@@ -159,7 +159,7 @@ the 1792 level-0 rows.
 
 ## Curation
 
-The collection has 68 languages; its floor is 31. All seven classics carry
+The collection has 74 languages; its floor is 31. All ten classics carry
 generators. Ordinary imperative entries with shared-shim generators and no
 consumer were removed. Nopstacle could not meet the embed conventions; ZTOALC
 L was a searched syntax-level lookup table. The retained 2D screen intersected
@@ -167,28 +167,124 @@ L was a searched syntax-level lookup table. The retained 2D screen intersected
 verdicts, co-categories, I/O and branch vocabulary, and page length. It admitted
 Super SNUSP and Alight and rejected Pinyin.
 
-The alternative route measures fame by esolangs backlinks and by an English
-Wikipedia article with 90-day pageviews, sampled 2026-09-27. A candidate may
-clear either proxy; low backlinks count against only old languages.
+The alternative admission route is fame: at least 60 unique esolangs linking
+pages. Resolve the candidate's title redirects, follow every `list=backlinks`
+continuation, include links through redirects across all namespaces, and
+deduplicate by linking page ID. Pause at least three seconds between requests.
 
-Brainfuck anchors the backlink bar at 282: `bf/5` (56) is sufficient, `bf/10`
-(28) carries nothing, and the axis test decides between them. The decided
-classics score 58--271; rejected Brainloller and Braincopter score 26 and 14.
-The band is intentionally indeterminate: Chicken 0.199, Shakespeare 0.195,
-and LOLCODE 0.167 fall inside it. A population percentile cannot replace the
-ratio: a fixed sample of 150 language pages had p99=20, below both rejected
-image languages.
+This fixed cutoff was adopted 2026-10-01 as a policy choice,
+not an empirically established popularity boundary. Record the resolved title,
+measurement date, and count. Missing data leaves fame unassessed, not failed.
+Below 60, fame supplies no exception; intrinsic axes still apply. Low backlinks
+count against only old languages. Wikipedia pageviews are not an admission gate.
 
-The fame bar is forward-only; past admissions are audited on the intrinsic
-axis test.
+Recognition sources checked 2026-10-01 provide curated selections, not
+popularity rankings or additional admission gates:
 
-Bitwise Cyclic Tag (0.66) also earned the cyclic-schedule axis. Deadfish (0.89)
+- [Kneusel, *Strange Code* (2022)](https://nostarch.com/strange-code):
+  named esolang chapters cover FRACTRAN, Piet, Brainfuck, and Befunge.
+  Filska and Firefly are the author's own creations; Forth, SNOBOL, and CLIPS
+  belong to the separate atypical-language section.
+- [Morr, *Esoteric Programming Languages*](https://blinry.org/esolangs/esolangs.pdf):
+  selects Brainfuck, INTERCAL, Befunge, Malbolge, and Shakespeare as iconic
+  examples with different properties, not an exhaustive canon.
+- [LMU teaching notes](https://cs.lmu.edu/~ray/notes/esolangs/): a brief themed,
+  theoretical, golfing, multidimensional, and difficulty-oriented tour.
+  Selects LOLCODE, Glowup Vibes, ArnoldC, Chef, Shakespeare, Rockstar,
+  Brainfuck, Binaryfuck, Lenguage, GolfScript, Pyth, CJam, Jelly, 05AB1E,
+  Vyxal, Befunge, AsciiDots, Piet, Whitespace, Unreadable, and Malbolge.
+- [Esolang featured archive](https://esolangs.org/w/index.php?title=Esolang:Featured_languages&oldid=161213):
+  administrator-selected features: Thue, Funciton, Brainfuck, Deadfish,
+  Emmental, Malbolge, Glass, and ///. Features are not popularity endorsements.
+
+Backlinks were remeasured 2026-10-01. Brainfuck scores 2,057; the former 282
+counted only the first API batch. The Brainfuck-relative gates and the
+indeterminate band are retired.
+
+The classics score Befunge 381, Underload 167, Thue 155, Malbolge 129,
+INTERCAL 103, FALSE 91, Fish 91, Unlambda 89, Smallfuck 66, and FRACTRAN 65;
+rejected Brainloller and Braincopter score 26 and 14. Piet (65) clears the
+fame gate; Whitespace (58),
+Forth (57), Chicken (55), Shakespeare (54), and LOLCODE (47) do not.
+
+The fame bar applies to existing exceptions too; languages with an intrinsic
+axis do not need it. Whitespace was removed at 58 backlinks: its stack machine
+adds no intrinsic axis.
+
+Bitwise Cyclic Tag (181) also earned the cyclic-schedule axis. Deadfish (315)
 has no input vocabulary and is therefore interpreter-only: fame can admit a
 language, but cannot create a generator interface.
 
-Cyclic tag 0.35 duplicates the Bitwise Cyclic Tag axis.
-Emmental 0.15 and Prelude 0.05 are implemented elsewhere but do not clear the
-fame bar, so neither admission route applies.
+[Cyclic tag](https://esolangs.org/w/index.php?title=Cyclic_tag_system&oldid=156412)
+(94) clears the fame gate despite duplicating Bitwise Cyclic Tag's axis.
+The 2026-10-01 audit found deterministic semantics: consume one queue bit,
+append the current production iff that bit is one, and advance the production
+pointer cyclically. Empty data halts. No stdin or output operation is specified;
+adopt BCT's initial-queue embed and final-deleted-bit answer, explicitly as
+package conventions. Serialize productions with semicolons, then a comma and
+the initial queue; preserve empty productions and require at least one.
+
+A direct padding construction meets the generator contracts. For a table of
+T = 2**n bits, the first n productions append 2**(n-i) zeros for input i,
+numbered from zero. Production n appends `1`; the remaining 2T productions
+alternate each table answer with an empty production. Initial data is the n
+ordered input bits followed by `1`, with uniform one-character fills `0`/`1`.
+After the inputs, the sentinel appends another sentinel behind 2r padding
+zeros, where r is the input row. Those zeros skip 2r productions; the next
+sentinel appends table[r], and the following empty production consumes it and
+halts. This makes the final deletion the answer.
+
+Rendered source measures exactly 5T + 2n + 1 characters; execution takes
+n + 3 + 2r steps. Emission writes 2(T-1) padding zeros and 2T table productions
+without search, so build work is O(T). The probe executed 309 tables and 3,352
+rows (exhaustive through three inputs; constants, parity, and eight seeded
+random tables at each of four through six), then sampled rows through n=14.
+The largest measured source was 81,949 characters; its worst-row execution
+was 32,783 steps. Published evolution, zero-no-append, empty-data, empty-rule,
+and nontermination controls passed. [Roadmap](roadmap.md) queues integration.
+
+Underload (167) and INTERCAL (103) also clear the backlink gate.
+Emmental (43) and Prelude (13) are implemented elsewhere and fail the backlink
+gate. Neither has established an intrinsic axis.
+
+The 2026-10-01 fame audit covered eight absent census entries:
+
+- [Boolfuck](https://samuelhughes.com/boof/) (76): generator follow-up.
+  Bit I/O is little-endian, EOF supplies zero, and partial output bytes pad
+  with zeros. Author-specified Brainfuck lowering passed 309 tables and 3,352
+  rows: exhaustive through three inputs, constants, parity, and eight seeded
+  random tables at each of four through six inputs. Reads consumed eight bits
+  per input. Full integration and rendered linearity remain open.
+- [Subleq](https://esolangs.org/wiki/Subleq) (83): generator follow-up.
+  Fix a dialect with unbounded integers, direct jumps, `-1 B C` input,
+  `A -1 C` byte output, and negative jumps halting. A hoisted-read decision-tree
+  probe passed the same 309 tables and 3,352 rows. Its decimal addresses do
+  not establish O(T) rendered size; derive a linear construction before admission.
+- [///](https://esolangs.org/wiki////) (88): generator follow-up, construction
+  open. There is no stdin, but `/a/$/a` with uniform one-character fills
+  `0` and `1` executed identity. Escaping, truncated-rule halt, and a divergent
+  replacement control were checked. This is not evidence for arbitrary tables.
+- [HQ9+](https://esolangs.org/wiki/HQ9%2B) (136): interpreter-only candidate.
+  No instruction reads input. `H` and `9` emit fixed non-Boolean text; `Q`
+  emits source containing `Q`; `+` emits nothing. No program emits a bare
+  Boolean answer. Pin greeting, lyric formatting, and case handling before integration.
+- [Nope.](https://esolangs.org/wiki/Nope.) (132): interpreter-only candidate.
+  `ConstantLanguage("Nope.")` ignores source and input, so neither runtime
+  input nor source embeds can change its output. Accept arbitrary source,
+  including empty source, under those constant semantics.
+- [Unary](https://esolangs.org/wiki/Unary) (63): interpreter-only candidate
+  under the generator contracts. Valid sources encode only their zero count;
+  equal-width valid fill pairs are identical. Runtime input exists through
+  decoded Brainfuck, but sources of length at most L supply at most L+1
+  functions. Covering all 2**T truth tables requires L >= 2**T - 1 somewhere,
+  precluding an O(T) generator. Pin decoded Brainfuck cell and EOF semantics.
+- [大白话](https://esolangs.org/wiki/大白话) (134): deferred. The command table is
+  explicitly partial; expression precedence, complete block grammar, library
+  semantics, and embedded-language dispatch are unspecified. A restricted
+  implementation would need a separately documented dialect, not invented semantics.
+- [Trivial brainfuck substitution](https://esolangs.org/wiki/Trivial_brainfuck_substitution)
+  (112): excluded as a family, not a single language. Its backlink count
+  does not establish fame for any particular member.
 
 The 2026-09-27 spec read closed the other candidates:
 
@@ -197,6 +293,11 @@ The 2026-09-27 spec read closed the other candidates:
 - Bytemap leaves byte order, division faults, and optional 8bpp undefined.
 - Gifunk defines motion through APNG/GIF frames but no instructions.
 - Turing Paint and Befunk are obscure but already implemented.
+
+The 2026-10-01 non-text screen deferred [BOOMOP](https://esolangs.org/wiki/BOOMOP):
+its entry/termination brightness metric, face selection at ray-edge hits, and
+equal-distance teleport anchors are unspecified. Character I/O is explicit;
+generator feasibility remains unaudited pending routing clarification.
 
 HuePrism, BitCode, PicCode, Brainloller, Braincopter, and the game-save
 languages remain rejected from the same image-source screen.

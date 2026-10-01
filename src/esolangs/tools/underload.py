@@ -19,9 +19,8 @@ from esolangs.tools.helpers import (
 )
 from esolangs.tools.wrap import wrap_tokens
 
-# Zero drops the upper promise; one swaps before dropping.  Pad zero
-# outside its pushed code so both setters occupy five characters.
-PAIR = ("(!^) ", "(~!^)")
+# ()! and :! are neutral, giving both selectors seven space-free characters.
+PAIR = ("(()!!^)", "(~:!!^)")
 _SHORT_PAIR = ("(!) ", "(~!)")
 _BIT_PAIR = (" ", "~")
 
@@ -129,7 +128,7 @@ def underload(truth_table: str, width: int | None = None) -> str:
         n = _validate_truth_table(truth_table)
         # Build both selector strings, then keep one with a single swap bit.
         program = "()!" + "(!)(~)(!)*$!" * n + program[3 + 4 * n :]
-    slots = 1 if short and width < 4 else (4 if short else 5)
+    slots = 1 if short and width < 4 else (4 if short else len(PAIR[0]))
     return wrap_tokens(program, width, rf"\${{{slots}}}|\(\)!|\([01]\)|.")
 
 
