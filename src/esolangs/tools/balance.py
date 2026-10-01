@@ -8,6 +8,7 @@ from esolangs.tools.back import back
 from esolangs.tools.befunge import balance_befunge
 from esolangs.tools.brainif import _brainif_tree, brainif
 from esolangs.tools.clockwise import clockwise
+from esolangs.tools.container import balance_container
 from esolangs.tools.dig import _dig_grid, dig
 from esolangs.tools.fargo import fargo
 from esolangs.tools.fish import balance_fish
@@ -154,6 +155,7 @@ BALANCERS: dict[str, Callable[[str, str], str]] = {
     "brainif": _brainif,
     "clockwise": _clockwise,
     "collatz_multiverse": balance_collatz_multiverse,
+    "container": balance_container,
     "dig": _dig,
     "fargo": _fargo,
     "fish": balance_fish,

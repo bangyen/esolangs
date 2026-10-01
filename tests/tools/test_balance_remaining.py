@@ -102,6 +102,7 @@ def _regime_tables():
         "BrainIf",
         "Clockwise",
         "Collatz Multiverse",
+        "Container",
         "Dig",
         "Fargo",
         "Streetcode",
@@ -170,6 +171,35 @@ def test_taglate_larger_seed_and_bootstrap_crossings():
         stdin = esolangs.encode_inputs("Taglate", list(map(int, format(row, "06b"))))
         output = esolangs.run("Taglate", balanced, stdin)
         assert esolangs.read_answer("Taglate", output) == table[row]
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("inputs", range(6, 11))
+@pytest.mark.parametrize("affine", [False, True])
+def test_container_larger_rule_transitions(inputs, affine):
+    rng = random.Random(1011 + inputs)
+    table = "".join(
+        str(row.bit_count() % 2) if affine else rng.choice("01")
+        for row in range(1 << inputs)
+    )
+    default = esolangs.generate("Container", table)
+    balanced = esolangs.generate("Container", table, balance=True)
+    widest = max(map(len, default.splitlines()))
+    layouts = [default] + [
+        esolangs.generate("Container", table, width)
+        for width in range(1, max(65, widest + 1))
+    ]
+    assert balanced in layouts
+    assert balance_score(balanced) == min(map(balance_score, layouts))
+    for row in (0, 1, len(table) // 2, len(table) - 1):
+        bits = tuple(map(int, format(row, f"0{inputs}b")))
+        stdin = esolangs.encode_inputs("Container", bits)
+        assert (
+            esolangs.read_answer(
+                "Container", esolangs.run("Container", balanced, stdin)
+            )
+            == table[row]
+        )
 
 
 @pytest.mark.medium
