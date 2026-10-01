@@ -33,8 +33,37 @@ def _push(value: int) -> _Operation:
     return _Operation(_PUSH, value)
 
 
+def _literal_product(
+    table: str, essential: list[int], inputs: int
+) -> list[_Operation] | None:
+    """Return a conjunction or its complement, consuming inputs in order."""
+    if table.count("1") == 1:
+        row, invert = table.index("1"), False
+    elif table.count("0") == 1:
+        row, invert = table.index("0"), True
+    else:
+        return None
+    literals = {
+        cell: (row >> (len(essential) - position - 1)) & 1
+        for position, cell in enumerate(essential)
+    }
+    operations = [_push(1)]
+    for cell in range(inputs):
+        operations.append(_Operation(_IN_NUMBER))
+        if cell not in literals:
+            operations.append(_Operation(_POP))
+        else:
+            if literals[cell] == 0:
+                operations.append(_Operation(_NOT))
+            operations.append(_Operation(_MULTIPLY))
+    if invert:
+        operations.append(_Operation(_NOT))
+    operations.append(_Operation(_OUT_NUMBER))
+    return operations
+
+
 def _operations(truth_table: str, inputs: int) -> list[_Operation]:
-    """Return stack operations for a linear table lookup.
+    """Return a literal product when possible, otherwise a linear lookup.
 
     Every input is read, but only the essential ones index the table: an
     ignored input is popped, and the stored table is projected onto the rest.
@@ -42,6 +71,9 @@ def _operations(truth_table: str, inputs: int) -> list[_Operation]:
     essential = essential_inputs(truth_table, inputs)
     kept = set(essential)
     truth_table = read_at(truth_table, essential, inputs)
+    direct = _literal_product(truth_table, essential, inputs)
+    if direct is not None:
+        return direct
     operations: list[_Operation] = []
     for bit in truth_table:
         operations.append(_push(1))

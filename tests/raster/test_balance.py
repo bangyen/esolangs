@@ -108,7 +108,7 @@ def test_line_extent_fast_path_preserves_merged_runs_and_shared_arms() -> None:
 
 
 def test_piet_invalid_plans_abort() -> None:
-    operations = _bounded_operations("0001")
+    operations = _bounded_operations("01101001")
     with pytest.raises(AssertionError, match="no room"):
         _plan(operations, 5, 6)
     plan = _plan(operations, 13, 14)
