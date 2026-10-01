@@ -32,7 +32,7 @@ def ram0(truth_table: str, width: int | None = None) -> str:
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.
     One-column builds through three inputs use unary-address NAND circuits.
-    Wider layouts retain the tree or lookup; only final ``z`` is the answer.
+    Wider layouts use the shared tree; only final ``z`` is the answer.
 
     RAM0 has no input command, so this is a parameterized generator: the
     template's input runs become a fixed-length two-command
@@ -58,14 +58,9 @@ def ram0(truth_table: str, width: int | None = None) -> str:
     itself; a leaf is shared the same way, and a test whose halves agree is
     skipped. That caps the tree at its distinct subtables, O(T) with addresses.
     Sharing never grows a table through four inputs (exhaustively checked).
-    Larger tables compare the shared tree with the linear lookup.
+    The shared tree handles larger tables too.
     """
-    if len(truth_table) <= 16:
-        program = in_input_order(truth_table, _ram0_shared)
-    else:
-        tree = in_input_order(truth_table, _ram0_shared)
-        lookup = _ram0_linear(truth_table)
-        program = tree if len(tree) < len(lookup) else lookup
+    program = in_input_order(truth_table, _ram0_shared)
     if width is None:
         return program
     from esolangs.tools.wrap import wrap_space_delimited
@@ -141,75 +136,6 @@ def _ram0_nand(truth_table: str) -> str:
 def _ram0_shared(truth_table: str, perm: tuple[int, ...]) -> str:
     """Emit one order's shared tree; see :func:`_ram0_ordered`."""
     return _ram0_ordered(truth_table, perm, share=True)
-
-
-def _ram0_linear(truth_table: str) -> str:
-    """Emit a linear straight-line RAM initializer and indexed lookup."""
-    n = _validate_truth_table(truth_table)
-    tokens: list[str] = []
-    labels: dict[str, int] = {}
-    jumps: list[tuple[int, str]] = []
-
-    def emit(*commands: str) -> None:
-        tokens.extend(commands)
-
-    def mark(name: str) -> None:
-        labels[name] = len(tokens)
-
-    def jump(target: str) -> None:
-        jumps.append((len(tokens), target))
-        tokens.append("@")
-
-    def unary(value: int) -> None:
-        emit("Z", *("A" for _ in range(value)))
-
-    def store_constant(address: int, value: int) -> None:
-        unary(address)
-        emit("N")
-        unary(value)
-        emit("S")
-
-    # Cells 0/1 hold the initializer's address counter and the selected table
-    # pointer; cells 2..n+1 hold the parameterized inputs.
-    for i in range(n):
-        unary(i + 2)
-        emit("N", "Z", _RAM0_INPUT, "S")
-
-    table_base = n + 2
-    store_constant(0, table_base - 1)
-    store_constant(1, table_base)
-
-    # Advance cell 0, using the new address as a temporary copy of itself,
-    # then store one table bit there.  This is constant work per row.
-    for bit in truth_table:
-        emit("Z", "L", "A", "N", "S")
-        emit("Z", "N", "Z", "L", "A", "L", "S")
-        emit("Z", "L", "N", "Z")
-        if bit == "1":
-            emit("A")
-        emit("S")
-
-    # Add each set bit's weight to the selected table pointer.  Across all
-    # inputs the unary runs contain 2T-2 commands.
-    for i in range(n):
-        unary(i + 2)
-        emit("L", "C")
-        one = f"input_{i}_one"
-        after = f"input_{i}_after"
-        jump(one)
-        jump(after)
-        mark(one)
-        unary(1)
-        emit("N", "Z", "A", "L")
-        emit(*("A" for _ in range(1 << (n - 1 - i))))
-        emit("S")
-        mark(after)
-
-    emit("Z", "A", "L", "L")
-    for at, target in jumps:
-        target_at = labels[target]
-        tokens[at] = str(target_at + 1)
-    return " ".join(tokens)
 
 
 def _ram0_ordered(

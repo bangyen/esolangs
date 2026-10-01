@@ -30,53 +30,18 @@ def jaune(truth_table: str) -> str:
 
     A repeated subtree is laid out once and jumped to (``share`` in
     :func:`_jaune_ordered`). Sharing never grows a table through four inputs
-    (exhaustively checked). Past that the shared tree, which lays out the
-    distinct subtables alone in O(T), races the linear lookup.  Over the 256
+    (exhaustively checked). The shared tree lays out
+    distinct subtables alone in O(T).  Over the 256
     three-input tables that is 7,437 to 7,199 characters (3.2%); over 200
     seeded five-input tables, 47,973 to 19,568 (59.2%), where the unshared
     tree would give 29,291.
     """
-    if len(truth_table) <= 16:
-        return in_input_order(truth_table, _jaune_shared)
-    shared = in_input_order(truth_table, _jaune_shared)
-    linear = _jaune_linear(truth_table)
-    return shared if len(shared) < len(linear) else linear
+    return in_input_order(truth_table, _jaune_shared)
 
 
 def _jaune_shared(truth_table: str, perm: tuple[int, ...]) -> str:
     """Return one order's program with its repeated subtrees jumped to."""
     return _jaune_ordered(truth_table, perm, share=True)
-
-
-def _jaune_linear(truth_table: str) -> str:
-    """Emit a linear spatial table and travelling counter for Jaune."""
-    n = _validate_truth_table(truth_table)
-    out = ["v>" * n]
-
-    # Cell n is counter 0; each row then owns one output cell and the next
-    # counter cell.  Only one increment is needed for a true row.
-    for bit in truth_table:
-        out.append(">")
-        if bit == "1":
-            out.append("+")
-        out.append(">")
-    out.append("<" * (n + 2 * len(truth_table)))
-
-    # Revisit each input, carry it in the hold cell, and add its unary weight
-    # to counter 0.  The weights sum to T-1.
-    for i in range(n):
-        out.append("#")
-        out.append(">" * (n - i))
-        out.append("&" * (1 << (n - 1 - i)))
-        if i + 1 < n:
-            out.append("<" * (n - i - 1))
-
-    # Move a decremented copy of the counter two cells at a time.  When it
-    # reaches zero, the adjacent cell is the selected output.
-    # A signed literal now includes ``-1?``; keep the decrement separate
-    # from the label jump with an ignored character.
-    out.append("1:2!#>>%&-x1?1!2:>^.")
-    return "".join(out)
 
 
 def _inverted_inputs(

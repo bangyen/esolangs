@@ -122,7 +122,8 @@ class TestParameterizedRam0:
         """
         from esolangs.tools import parameterized
         from esolangs.tools.helpers import best_input_order
-        from esolangs.tools.ram0 import _ram0_linear, _ram0_ordered
+        from esolangs.tools.ram0 import _ram0_ordered
+        from tests.tools.plain_oracles import _ram0_linear
 
         before = after = 0
         for table in tables:
@@ -174,7 +175,7 @@ class TestParameterizedRam0:
 
     def test_lookup_candidate_executes_wide_rows(self) -> None:
         """The straight-line lookup kept as a candidate still computes."""
-        from esolangs.tools.ram0 import _ram0_linear
+        from tests.tools.plain_oracles import _ram0_linear
 
         n = 6
         table = "".join(str(row.bit_count() & 1) for row in range(2**n))

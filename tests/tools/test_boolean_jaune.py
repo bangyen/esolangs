@@ -8,8 +8,9 @@ import pytest
 
 from esolangs import tools as boolean
 from esolangs.tools.helpers import best_input_order
-from esolangs.tools.jaune import _jaune_linear, _jaune_ordered
+from esolangs.tools.jaune import _jaune_ordered
 from tests.tools.boolean_runners import run_jaune
+from tests.tools.plain_oracles import _jaune_linear
 from tests.tools.sample_tables import five_input_sample
 
 
@@ -153,7 +154,7 @@ class TestJauneSharing:
     """A repeated subtree is laid out once and jumped to with ``?`` or ``!``.
 
     Through 16 entries sharing alone wins or ties for every table; wider
-    shared trees race the linear lookup. The plain constructor remains
+    shared trees handle larger tables too. The plain constructor remains
     an oracle for these size comparisons.
     """
 
