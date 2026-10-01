@@ -186,16 +186,19 @@ proof and remove the completed item.
   to lower the upper one; the existence and value of the limit remain open.
 
 - **Structural scaling audit.** Source-size arguments close B-tapemark,
-  Forþ, 6-5 and Circuit Diagram's default H area. B-tapemark now scans dense
-  column spans in linear work, retaining sorting only for sparse standalone
-  layouts; 552 before/after programs have identical rendered hashes and
-  executed outputs. The H builder still scans all sites at each depth and
-  constructs string prefixes; linear area does not prove linear build work.
-  Vandevelo's upkeep bound counts lines carrying `O(log n)`-character names
-  and leaves exact autocorrelation fallbacks unamortized.
-  Next: use integer H-node identities and depth buckets, and prove or repair
-  Vandevelo's character and fallback costs. Also resolve 6-5's documented
-  `O(n*T)` execution past 35 inputs against the linear execution contract.
+  Forþ, 6-5 and Circuit Diagram's default H area. The H builder now uses
+  integer heap identities and depth buckets: literal anchors take exactly
+  `4*T - 2*n - 4` visits. All 268 nonconstant two- and three-input H programs
+  retain identical source; all 2,088 rows execute correctly.
+  Vandevelo's upkeep proof gives `O(T)` lines but only `O(T log n)`
+  characters; exact `n*T` autocorrelation calls remain unamortized.
+  6-5's past-35-input fallback takes `Theta(n*T)` commands: its initial
+  `n-1` full-table passes already force that lower bound. Executed parity
+  tables on the all-zero input take `(28*n - 1)*T + 53*n + 31` commands
+  through n=9; linear source size does not meet the execution contract.
+  Next: remove Vandevelo's identifier factor and amortize or replace its
+  exact fallback; replace 6-5's full-table passes with a linear execution
+  construction. Neither obstruction is a language-wide lower bound.
 
 - **FRACTRAN order encoding.** One unchanged multiset of eight fractions
   computes all sixteen four-row tables by ordering each `1/p, 2/p` pair;
