@@ -96,8 +96,8 @@ See [debugging](https://github.com/bangyen/esolangs/blob/main/docs/usage.md#debu
 
 <!-- EXAMPLES:START -->
 
-Ready-to-run programs for each of the 71
-text languages with a boolean generator live in
+Ready-to-run programs for each of the 73
+languages with a boolean generator live in
 [`examples/`](https://github.com/bangyen/esolangs/tree/main/src/esolangs/examples).
 
 <!-- EXAMPLES:END -->

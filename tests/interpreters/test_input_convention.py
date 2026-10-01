@@ -282,6 +282,7 @@ def test_the_convention_is_reachable_through_the_base_class() -> None:
 #: answer differently, and each for a reason of its own -- so the set is a
 #: statement about them, not a list of exceptions to ignore.
 _EOF_IS_A_HALT: dict[str, str] = {
+    "piet": "an exhausted input command is ignored, as the spec requires",
     # Reads until the input runs out and treats that as its stop, which is
     # how its generated programs terminate at all.
     "suffolk": "reads to exhaustion, so EOF is the halt",
@@ -349,8 +350,16 @@ def test_running_out_of_input_reaches_the_caller(name: str) -> None:
     from esolangs.tools.examples import BOOLEAN_EXAMPLES
 
     example = BOOLEAN_EXAMPLES[name]
-    module = importlib.import_module("esolangs.interpreters." + example.interpreter)
+    from esolangs.raster import Raster
+
     program = example.generator("0110")
+    if isinstance(program, Raster):
+        from esolangs import run
+
+        with pytest.raises(EOFError):
+            run(name, program, "")
+        return
+    module = importlib.import_module("esolangs.interpreters." + example.interpreter)
     argument = program.splitlines() if example.split else program
     extra = {key: value for key, value in example.kwargs if key != "seed"}
     with pytest.raises(EOFError):

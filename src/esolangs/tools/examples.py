@@ -22,7 +22,8 @@ from collections.abc import Callable
 from dataclasses import dataclass, replace
 from typing import cast
 
-from esolangs.registry import Generator, canonical_id
+from esolangs.raster import Raster
+from esolangs.registry import LANGUAGES, SourceKind, canonical_id, resolve
 from esolangs.tools.a_painter_ant import PAIR as APA_PAIR
 from esolangs.tools.arrowqueue import PAIR as ARROWQUEUE_PAIR
 from esolangs.tools.back import PAIR as BACK_PAIR
@@ -69,7 +70,7 @@ class BooleanExample:
     the whole stdout.
     """
 
-    generator: Generator
+    generator: Callable[..., str | Raster]
     table: str
     interpreter: str
     expected: str
@@ -162,8 +163,16 @@ class BooleanExample:
     note: str = ""
     stem: str = ""
 
-    def build(self, width: int | None = DEFAULT_WIDTH, *, balance: bool = False) -> str:
-        """Return the program text this example commits.
+    @property
+    def filename(self) -> str:
+        """Return the example filename in the language's source format."""
+        kind = LANGUAGES[resolve(self.stem.replace("-", " "))].source_kind
+        return self.stem + (".png" if kind is SourceKind.RASTER else ".txt")
+
+    def build(
+        self, width: int | None = DEFAULT_WIDTH, *, balance: bool = False
+    ) -> str | Raster:
+        """Return the source this example commits.
 
         Wrapped to ``width`` by the token-aware wrapper ``stem`` selects
         (``None`` returns raw output; a language with no wrapper is unwrapped).
@@ -174,21 +183,23 @@ class BooleanExample:
             import esolangs
 
             language = canonical_id(self.stem.replace("-", " "))
-            program = cast(str, esolangs.generate(language, self.table, balance=True))
+            program = esolangs.generate(language, self.table, balance=True)
             if self.fill is not None:
-                program = esolangs.instantiate(language, program, self.bits)
+                program = esolangs.instantiate(language, cast(str, program), self.bits)
             return program
         if width is not None and takes_width(self.generator):
             program = self.generator(self.table, width)
         else:
             program = self.generator(self.table)
+        if isinstance(program, Raster):
+            return program
         if self.fill is not None:
             program = self.fill(program, list(self.bits))
         return wrap_program(program, canonical_id(self.stem.replace("-", " ")), width)
 
 
 def _reader(
-    generator: Callable[[str], str],
+    generator: Callable[[str], str | Raster],
     interpreter: str,
     *,
     table: str = AND2,
@@ -644,6 +655,10 @@ def _register() -> None:
     # Stamp each example with its own stem, so ``build()`` knows which
     # language it is and can pick the matching token-aware wrapper without
     # the caller having to supply it.
+    from esolangs import line, piet
+
+    reading["line"] = _reader(line.generate, "line")
+    reading["piet"] = _reader(piet.generate, "piet")
     for stem, example in {**reading, **embedded}.items():
         BOOLEAN_EXAMPLES[stem] = replace(example, stem=stem)
 

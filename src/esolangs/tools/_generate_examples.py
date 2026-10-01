@@ -13,6 +13,7 @@ import argparse
 import pathlib
 from collections.abc import Iterator
 
+from esolangs.raster import Raster
 from esolangs.registry import LANGUAGES, canonical_id
 from esolangs.tools.examples import BOOLEAN_EXAMPLES, BooleanExample
 
@@ -22,7 +23,7 @@ ROOT = pathlib.Path(__file__).parents[3]
 EXAMPLES = ROOT / "src" / "esolangs" / "examples"
 
 
-def boolean_programs() -> Iterator[tuple[str, str]]:
+def boolean_programs() -> Iterator[tuple[str, str | Raster]]:
     """Yield ``(stem, program)`` for every boolean example."""
     for stem, example in sorted(BOOLEAN_EXAMPLES.items()):
         yield stem, example.build(balance=True)
@@ -103,7 +104,7 @@ def boolean_manifest_text() -> str:
         else:
             expected = repr(example.expected) if example.expected else "(nothing)"
         rows.append(
-            f"| `{stem}.txt` | {_display_name(stem)} | `{example.table}` | "
+            f"| `{example.filename}` | {_display_name(stem)} | `{example.table}` | "
             f"`{row}` | {given} | {expected} |"
         )
     if any(e.note for e in BOOLEAN_EXAMPLES.values()):
@@ -137,15 +138,18 @@ def write_set(name: str) -> None:
     directory = EXAMPLES
     directory.mkdir(parents=True, exist_ok=True)
     for stem, generated in SETS[name]():
-        path = directory / f"{stem}.txt"
-        # The file is the generator's output plus a final newline, so it is
-        # a well-formed text file; the sync test compares after stripping
-        # that newline, exactly as the interpreters do when running it.
-        program = generated.rstrip("\n") + "\n"
-        existing = path.read_text(encoding="utf-8") if path.exists() else None
-        path.write_text(program, encoding="utf-8")
+        suffix = ".png" if isinstance(generated, Raster) else ".txt"
+        path = directory / f"{stem}{suffix}"
+        # Text files retain a final POSIX newline; PNGs retain their bytes.
+        program = (
+            generated.to_png()
+            if isinstance(generated, Raster)
+            else (generated.rstrip("\n") + "\n").encode("utf-8")
+        )
+        existing = path.read_bytes() if path.exists() else None
+        path.write_bytes(program)
         status = "unchanged" if existing == program else "wrote"
-        print(f"{status:9} examples/{stem}.txt")
+        print(f"{status:9} examples/{path.name}")
     if name == "boolean":
         write_boolean_manifest()
 

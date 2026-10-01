@@ -95,9 +95,11 @@ def test_readme_counts_match_the_registry() -> None:
     """
     module = load_script()
     examples = module.render_examples_section()
-    assert (
-        f"each of the {len(module.BOOLEAN)}\ntext languages with a boolean" in examples
+    count = sum(
+        lang.boolean is not None or lang.raster_boolean is not None
+        for lang in module.LANGUAGES.values()
     )
+    assert f"each of the {count}\nlanguages with a boolean" in examples
     assert f"  {len(module.BOOLEAN)} of the" in module.render_boolean_count_section()
 
 

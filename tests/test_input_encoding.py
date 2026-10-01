@@ -73,7 +73,9 @@ class TestTheExceptionalLanguages:
         their bits go.
         """
         assert set(example_stems()) == {
-            lang.id for lang in LANGUAGES.values() if lang.boolean is not None
+            lang.id
+            for lang in LANGUAGES.values()
+            if lang.boolean is not None or lang.raster_boolean is not None
         }
         for name in esolangs.list_languages():
             if not esolangs.describe(name)["boolean_generator"]:
