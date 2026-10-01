@@ -23,6 +23,7 @@ from itertools import pairwise
 from math import isqrt
 
 from esolangs.tools.helpers import MARK, MOST_INPUTS, mark
+from esolangs.tools.token_balance import balanced_token_width
 
 # 80: the conventional review/diff width, close to the repo's 88 for Python.
 DEFAULT_WIDTH = 80
@@ -359,13 +360,18 @@ def _unlambda(program: str, width: int) -> str:
 
 def _bitdeque(program: str, width: int) -> str:
     """Wrap Bitdeque, keeping each ``GOTO`` with its target operand."""
+    return _join_tokens(_bitdeque_tokens(program), width, separator=" ")
+
+
+def _bitdeque_tokens(program: str) -> list[str]:
+    """Return Bitdeque commands with their attached branch operands."""
     tokens: list[str] = []
     for token in program.split():
         if tokens and tokens[-1] == "GOTO":
             tokens[-1] = f"GOTO {token}"
         else:
             tokens.append(token)
-    return _join_tokens(tokens, width, separator=" ")
+    return tokens
 
 
 def _jaune(program: str, width: int) -> str:
@@ -605,7 +611,34 @@ def balance_program(program: str, language_id: str) -> str:
     wrapper = WRAPPERS.get(language_id)
     if "\n" not in program and wrapper is _polynomial:
         return _balance_polynomial(program)
-    if "\n" not in program and wrapper in (wrap_space_delimited, wrap_grid, _mammalian):
+    if "\n" not in program and wrapper is wrap_space_delimited:
+        tokens = program.split()
+        width = balanced_token_width(tokens, " ")
+        return min(program, _join_tokens(tokens, width, " "), key=balance_score)
+    patterns = {
+        "dimensional": _DIMENSIONAL_COMMAND,
+        "six_five": _SIX_FIVE_COMMAND,
+        "jaune": _JAUNE_COMMAND,
+        "false": _FALSE_COMMAND,
+        "unlambda": _UNLAMBDA_COMMAND,
+        "sophie": _SOPHIE_COMMAND,
+        "three_x": _BRACKET_LITERAL,
+        "eval": _EVAL_UNIT,
+    }
+    pattern = patterns.get(language_id)
+    if "\n" not in program and pattern is not None:
+        tokens = re.findall(f"{_RUN}|{pattern}", program)
+        width = balanced_token_width(tokens)
+        return min(program, _join_tokens(tokens, width, ""), key=balance_score)
+    if (
+        wrapper is wrap_chars
+        and any(MARK <= ord(c) < MARK + MOST_INPUTS for c in program)
+        and "\n" not in program
+    ):
+        tokens = re.findall(f"{_RUN}|[\\s\\S]", program)
+        width = balanced_token_width(tokens)
+        return min(program, _join_tokens(tokens, width, ""), key=balance_score)
+    if "\n" not in program and wrapper in (wrap_grid, _mammalian):
         tokens = program.split()
         if tokens and max(map(len, tokens)) >= len(tokens):
             # One token per row attains the width floor and maximum H=N.

@@ -7,6 +7,7 @@ import pytest
 
 import esolangs
 from esolangs.tools.fish import balance_fish, fish
+from esolangs.tools.token_balance import balanced_token_width
 from esolangs.tools.wrap import balance_program, balance_score, wrap_program
 
 
@@ -41,6 +42,69 @@ def test_polynomial_quotient_transitions_match_every_width():
         ]
         assert balanced in layouts
         assert balance_score(balanced) == min(map(balance_score, layouts))
+
+
+@pytest.mark.parametrize("separator", ["", " "])
+def test_token_fit_lattice_matches_every_width(separator):
+    from esolangs.tools.wrap import _join_tokens
+
+    assert balanced_token_width([], separator) == 1
+    for lengths in product(range(1, 5), repeat=6):
+        tokens = ["x" * length for length in lengths]
+        width = balanced_token_width(tokens, separator)
+        balanced = _join_tokens(tokens, width, separator)
+        optimum = min(
+            (_join_tokens(tokens, width, separator) for width in range(1, 30)),
+            key=balance_score,
+        )
+        assert balance_score(balanced) == balance_score(optimum)
+
+
+@pytest.mark.parametrize(("minimum", "maximum"), [(1, 5), (2, 9), (6, 15)])
+def test_token_fit_lattice_respects_width_regimes(minimum, maximum):
+    from esolangs.tools.wrap import _join_tokens
+
+    rng = random.Random(1013)
+    for _ in range(100):
+        tokens = ["x" * rng.randrange(1, 12) for _ in range(rng.randrange(1, 30))]
+        width = balanced_token_width(tokens, " ", minimum=minimum, maximum=maximum)
+        assert minimum <= width <= maximum
+        optimum = min(
+            (_join_tokens(tokens, width, " ") for width in range(minimum, maximum + 1)),
+            key=balance_score,
+        )
+        assert balance_score(_join_tokens(tokens, width, " ")) == balance_score(optimum)
+
+
+@pytest.mark.parametrize("separator", ["", " "])
+def test_token_fit_lattice_larger_unequal_tokens(separator):
+    from esolangs.tools.wrap import _join_tokens
+
+    rng = random.Random(1014)
+    for _ in range(20):
+        tokens = ["x" * rng.randrange(1, 61) for _ in range(rng.randrange(30, 81))]
+        width = balanced_token_width(tokens, separator)
+        optimum = min(
+            (
+                _join_tokens(tokens, width, separator)
+                for width in range(1, len(separator.join(tokens)) + 1)
+            ),
+            key=balance_score,
+        )
+        assert balance_score(_join_tokens(tokens, width, separator)) == balance_score(
+            optimum
+        )
+
+
+def test_fractran_parity_representation_omits_empty_width_regimes():
+    from esolangs.tools.balance import _fractran
+
+    parity = esolangs.generate("FRACTRAN", "0110", 4)
+    balanced = _fractran("0110", parity)
+    assert balanced in [
+        esolangs.generate("FRACTRAN", "0110", width) for width in range(1, 9)
+    ]
+    assert esolangs.evaluate("FRACTRAN", balanced, inputs=2) == "0110"
 
 
 @pytest.mark.medium
@@ -137,12 +201,19 @@ def _regime_tables():
         "ArrowQueue",
         "Back",
         "B-tapemark",
+        "Bitdeque",
         "BrainIf",
         "Clockwise",
         "Collatz Multiverse",
         "Container",
         "Dig",
         "Fargo",
+        "FALSE",
+        "Forbin",
+        "FRACTRAN",
+        "Jaune",
+        "Minsky Swap",
+        "RAM0",
         "Streetcode",
         "Thue",
         "Taglate",
@@ -164,6 +235,45 @@ def test_discrete_regimes_reach_the_supported_minimum(language, table):
     optimum = min(layouts, key=balance_score)
     assert balanced in layouts
     assert balance_score(balanced) == balance_score(optimum)
+    assert (
+        esolangs.evaluate(language, balanced, inputs=len(table).bit_length() - 1)
+        == table
+    )
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize(
+    "language",
+    ["Bitdeque", "FALSE", "Forbin", "FRACTRAN", "Jaune", "Minsky Swap", "RAM0"],
+)
+def test_larger_token_and_setter_regimes(language):
+    rng = random.Random(1015)
+    table = "".join(rng.choice("01") for _ in range(64))
+    default = esolangs.generate(language, table)
+    balanced = esolangs.generate(language, table, balance=True)
+    widest = max(map(len, default.split("\n")))
+    layouts = [default] + [
+        esolangs.generate(language, table, width) for width in range(1, widest + 1)
+    ]
+    assert balanced in layouts
+    assert balance_score(balanced) == min(map(balance_score, layouts))
+    assert esolangs.evaluate(language, balanced, inputs=6) == table
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize(
+    "language", ["3x", "6-5", "Eval", "Home Row", "Sophie", "Unlambda"]
+)
+@pytest.mark.parametrize("table", ["0110", "0001", "10010110"])
+def test_grammar_and_marked_run_fits_execute(language, table):
+    default = esolangs.generate(language, table)
+    balanced = esolangs.generate(language, table, balance=True)
+    layouts = [default] + [
+        esolangs.generate(language, table, width)
+        for width in range(1, len(default) + 1)
+    ]
+    assert balanced in layouts
+    assert balance_score(balanced) == min(map(balance_score, layouts))
     assert (
         esolangs.evaluate(language, balanced, inputs=len(table).bit_length() - 1)
         == table

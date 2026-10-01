@@ -80,6 +80,8 @@ def test_answer_fallback_reads_the_final_bit(monkeypatch):
 
     monkeypatch.setattr(_answers, "_example_for", lambda _language: None)
     assert esolangs.read_answer("brainfuck", "answer: 1\n") == "1"
+    with pytest.raises(esolangs.ProgramError, match="expected '0' or '1'"):
+        esolangs.read_answer("brainfuck", "answer: unknown\n")
 
 
 def test_isolated_worker_requires_a_deadline():
