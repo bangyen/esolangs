@@ -16,9 +16,9 @@ from collections.abc import Callable
 from functools import cache
 
 from esolangs.tools.helpers import (
-    _greedy_input_order,
     _validate_truth_table,
     constant_span_test,
+    input_orders,
     permute_truth_table,
 )
 from esolangs.tools.helpers import (
@@ -468,18 +468,6 @@ def _streetcode_shared(n: int, perm: tuple[int, ...] | None = None) -> list[str]
     return ["".join(row) for row in grid]
 
 
-def _streetcode_orders(truth_table: str, n: int) -> list[tuple[int, ...]]:
-    """Return the identity and greedy input orders, identity first.
-
-    Not through :func:`~esolangs.tools.helpers.best_input_order`: ``width``
-    chooses among every candidate, since the narrowest is often not the
-    shortest.  Both are kept and the rendered layouts decide.
-    """
-    identity = tuple(range(n))
-    greedy = _greedy_input_order(truth_table, n)
-    return [identity] if greedy == identity else [identity, greedy]
-
-
 def _streetcode_rotate(program: str) -> str:
     """Rotate a Streetcode grid 180 degrees and trim its new line ends.
 
@@ -636,7 +624,7 @@ def _streetcode_shared_programs(truth_table: str, n: int, tree: list[str]) -> li
     """Render the shared-lap layouts for every permitted input order."""
     identity = tuple(range(n))
     programs = []
-    for perm in _streetcode_orders(truth_table, n):
+    for perm in input_orders(truth_table):
         shared = _streetcode_combine(
             [
                 _streetcode_shared(n, perm),

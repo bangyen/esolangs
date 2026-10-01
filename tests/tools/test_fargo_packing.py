@@ -8,7 +8,8 @@ import pytest
 
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.fargo import run
-from esolangs.tools.fargo import _anf_coefficients, _arm_expression, fargo
+from esolangs.tools.fargo import _arm_expression, fargo
+from esolangs.tools.helpers import anf_coefficients
 from tests.tools.test_boolean_contract import _nested_dense
 
 
@@ -23,11 +24,16 @@ def _scalar_coefficients(table: str) -> list[int]:
     return values
 
 
-@pytest.mark.parametrize("n", [1, 2, 3, 4, 7, 8, 9, 15, 16, 17])
+@pytest.mark.parametrize("n", [0, 1, 2, 3, 4, 7, 8, 9, 15, 16, 17])
 def test_packed_coefficients_match_elementwise_transform(n: int) -> None:
     rng = random.Random(20260929 + n)
     table = format(rng.getrandbits(1 << n), f"0{1 << n}b")
-    assert _anf_coefficients(table) == _scalar_coefficients(table)
+    assert anf_coefficients(table) == _scalar_coefficients(table)
+
+
+@pytest.mark.parametrize("table", ["0", "1"])
+def test_reduced_constants_keep_their_coefficient(table: str) -> None:
+    assert anf_coefficients(table) == [int(table)]
 
 
 @pytest.mark.medium
@@ -35,7 +41,7 @@ def test_packed_coefficients_match_elementwise_transform(n: int) -> None:
 def test_packed_arm_word_work_and_execution(n: int) -> None:
     """Word visits stay bounded per row; dense inputs are positive controls."""
     table = _nested_dense(n)
-    coefficients = _anf_coefficients(table)
+    coefficients = anf_coefficients(table)
     visits = 0
 
     def profile(frame: FrameType, event: str, _arg: object) -> None:

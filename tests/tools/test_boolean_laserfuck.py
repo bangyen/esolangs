@@ -616,7 +616,7 @@ def test_valid_more_expensive_input_order_keeps_identity(
     identity = _laserfuck_build(table, (0, 1, 2), 80)
     alternative = _laserfuck_build(table, (1, 0, 2), 80)
     assert len(alternative) > len(identity)
-    monkeypatch.setattr(module, "_greedy_input_order", lambda _table, _n: (1, 0, 2))
+    monkeypatch.setattr(module, "input_orders", lambda _table: [(0, 1, 2), (1, 0, 2)])
     selected = boolean.laserfuck(table, 80)
     assert selected == identity
     for row, expected in enumerate(table):

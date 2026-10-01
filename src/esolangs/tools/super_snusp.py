@@ -8,7 +8,9 @@ language's random ``=`` opcode.
 
 from esolangs.tools.helpers import (
     _validate_truth_table,
+    anf_coefficients,
     essential_inputs,
+    move_text,
     read_at,
 )
 
@@ -26,26 +28,9 @@ _TWO_INPUT_SHORT = {
     "0111": "48{,-> ,-<^{>|.",
 }
 
-# ANF can beat the lookup on small sparse functions, but its coefficient pass
-# and input products are super-linear in the table.  Keeping that comparison
-# finite preserves the small wins without putting it on the scaling path.
+# ANF wins on small sparse functions, but its input products are super-linear.
+# Bound the comparison to keep those wins off the scaling path.
 _ANF_MAX_INPUTS = 4
-
-
-def _anf_coefficients(truth_table: str) -> list[int]:
-    """Return ANF coefficients indexed by the ordinary truth-table rows."""
-    coefficients = [int(bit) for bit in truth_table]
-    n = len(truth_table).bit_length() - 1
-    for bit in range(n):
-        for mask in range(len(coefficients)):
-            if mask & (1 << bit):
-                coefficients[mask] ^= coefficients[mask ^ (1 << bit)]
-    return coefficients
-
-
-def _move(start: int, end: int) -> str:
-    """Move the data pointer from ``start`` to ``end`` on the tape."""
-    return (">" if end > start else "<") * abs(end - start)
 
 
 def _flip(truth_table: str, negated: int) -> str:
@@ -104,7 +89,7 @@ def _emit_anf(
     if not used or used[-1] != n - 1:
         program.append("0")
     product = k + 1
-    coefficients = _anf_coefficients(_flip(truth_table, negated))
+    coefficients = anf_coefficients(_flip(truth_table, negated))
     if coefficients[0]:
         program.append(")")
 
@@ -117,9 +102,9 @@ def _emit_anf(
             if mask & table_bit:
                 program.extend(
                     [
-                        _move(product, input_index),
+                        move_text(product, input_index, ">", "<"),
                         "{",
-                        _move(input_index, product),
+                        move_text(input_index, product, ">", "<"),
                         "&",
                     ]
                 )
@@ -144,7 +129,7 @@ def _anf_cost(
     cost = 4 + 2 * n + k + 7 + min(flips, k - flips)
     if not used or used[-1] != n - 1:
         cost += 1
-    coefficients = _anf_coefficients(_flip(truth_table, negated))
+    coefficients = anf_coefficients(_flip(truth_table, negated))
     cost += coefficients[0]
     product = k + 1
     for mask, coefficient in enumerate(coefficients[1:], start=1):

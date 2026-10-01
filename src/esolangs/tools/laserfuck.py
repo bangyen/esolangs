@@ -14,10 +14,10 @@ from typing import NamedTuple
 
 from esolangs.tools import laserfuck_layout
 from esolangs.tools.helpers import (
-    _greedy_input_order,
     _validate_truth_table,
     constant_span_test,
     grid_width,
+    input_orders,
     narrowest_grid,
     permute_truth_table,
 )
@@ -726,12 +726,11 @@ def laserfuck(truth_table: str, width: int | None = None) -> str:
     against columns, so the narrowest program is often not the shortest,
     and the choice has to be made over the whole pool.
     """
-    n = _validate_truth_table(truth_table)
+    _validate_truth_table(truth_table)
     if width is None and len(truth_table) > 16:
         return _laserfuck_weighted(truth_table)
-    identity = tuple(range(n))
-    greedy = _greedy_input_order(truth_table, n)
-    orders = [identity] if greedy == identity else [identity, greedy]
+    orders = input_orders(truth_table)
+    identity = orders[0]
 
     def layouts(table: str, perm: tuple[int, ...]) -> tuple[str, ...]:
         """Return this order's one requested or two compact layouts."""
