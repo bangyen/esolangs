@@ -63,6 +63,40 @@ def _inverted_inputs(
     return frozenset(i for i in perm if score[i] > 0)
 
 
+class _JauneLabels:
+    """Track first copies and replay only the labels reached by shared jumps."""
+
+    def __init__(self) -> None:
+        self.next_label = 1
+        self.placed: dict[tuple[int, ...], int] = {}
+        self.jumped: set[tuple[int, ...]] = set()
+        self.targets: set[tuple[int, ...]] = set()
+        self.probe = False
+
+    def fresh(self) -> int:
+        self.next_label += 1
+        return self.next_label
+
+    def first(self, key: tuple[int, ...] | None, lbl: int | None = None) -> str:
+        """Place a first copy; return the label it needs if jumped to later."""
+        if key is None or not (self.probe or key in self.targets or lbl):
+            return ""
+        self.placed[key] = lbl or self.fresh()
+        return "" if lbl or self.probe else f"{self.placed[key]}:"
+
+    def render(self, build: Callable[[], str], *, share: bool) -> str:
+        """Emit once, or probe shared targets before replaying with their labels."""
+        self.probe = share
+        text = build()
+        if not share:
+            return text
+        self.probe = False
+        self.targets.update(self.jumped)
+        self.next_label = 1
+        self.placed.clear()
+        return build()
+
+
 def _jaune_ordered(
     truth_table: str, perm: tuple[int, ...], *, share: bool = False
 ) -> str:
@@ -84,14 +118,10 @@ def _jaune_ordered(
     labels exactly those.
     """
     n = _validate_truth_table(truth_table)
-    label = [1]
+    labels = _JauneLabels()
     constant = constant_span_test(truth_table)
     flip = _inverted_inputs(truth_table, perm, constant)
     ids = subtree_ids(truth_table)  # O(2**n), so a subtree's name is O(1)
-
-    def fresh() -> int:
-        label[0] += 1
-        return label[0]
 
     def move(frm: int, to: int) -> str:
         return ">" * (to - frm) if to >= frm else "<" * (frm - to)
@@ -134,32 +164,19 @@ def _jaune_ordered(
         adjust = "+" * (want - have) if want >= have else "-" * (have - want)
         return adjust + "^."
 
-    # Where each copy jumped to starts; ``probe`` places every first copy.
-    placed: dict[tuple[int, ...], int] = {}
-    jumped: set[tuple[int, ...]] = set()
-    targets: set[tuple[int, ...]] = set()
-    probe = [False]
-
     def name(level: int, lo: int, entry: int, held: int) -> tuple[int, ...] | None:
         if not share:
             return None
         _level, _block, key = subtree_slot(ids, level, lo >> (n - level), skip=True)
         return (*key, held) if key[0] < 0 else (*key, entry)
 
-    def first(key: tuple[int, ...] | None, lbl: int | None = None) -> str:
-        """Place a first copy; return the label it needs if jumped to later."""
-        if key is None or not (probe[0] or key in targets or lbl):
-            return ""
-        placed[key] = lbl or fresh()
-        return "" if lbl or probe[0] else f"{placed[key]}:"
-
     def arm(level: int, lo: int, hi: int, cell: int, held: int) -> tuple[str, int]:
         """Return an arm's code and, for a copy laid out before, its label."""
         key = name(level, lo, cell, held)
-        if key in placed:
-            jumped.add(key)
-            return "", placed[key]
-        return first(key) + node(level, lo, hi, cell, held), 0
+        if key in labels.placed:
+            labels.jumped.add(key)
+            return "", labels.placed[key]
+        return labels.first(key) + node(level, lo, hi, cell, held), 0
 
     def node(level: int, lo: int, hi: int, entry: int, held: int | None) -> str:
         if level == n or constant(lo, hi):
@@ -187,22 +204,22 @@ def _jaune_ordered(
         ):
             if truth_table[tlo] == "1":
                 return move(entry, cell) + "^."
-            skip = fresh()
+            skip = labels.fresh()
             return move(entry, cell) + f"{skip}?++{skip}:-^."
         nav = move(entry, cell)
         then_key = name(level + 1, tlo, cell, 1)
         else_key = name(level + 1, elo, cell, 0)
-        both = then_key not in placed and else_key not in placed
-        if both and else_key in targets and then_key not in targets:
+        both = then_key not in labels.placed and else_key not in labels.placed
+        if both and else_key in labels.targets and then_key not in labels.targets:
             # The else arm is labelled for its copies, so ``!`` jumps to it
             # and the then arm falls through: one label, not two.
             then = node(level + 1, tlo, thi, cell, 1)
             else_, else_at = arm(level + 1, elo, ehi, cell, 0)
-            return nav + f"{else_at or placed[else_key]}!{then}{else_}"
+            return nav + f"{else_at or labels.placed[else_key]}!{then}{else_}"
         if both:
             # Both arms laid out here: the then arm's label is the branch's.
-            then_lbl = fresh()
-            first(then_key, then_lbl)
+            then_lbl = labels.fresh()
+            labels.first(then_key, then_lbl)
             then = node(level + 1, tlo, thi, cell, 1)
             else_, else_at = arm(level + 1, elo, ehi, cell, 0)
             if else_at:
@@ -217,15 +234,4 @@ def _jaune_ordered(
             return nav + f"{then_at}?{else_}"
         return nav + f"{else_at}!{then}"
 
-    def tree() -> str:
-        label[0] = 1
-        placed.clear()
-        return reads + node(0, 0, 2**n, scratch, None)
-
-    if not share:
-        return tree()
-    probe[0] = True
-    tree()
-    probe[0] = False
-    targets.update(jumped)
-    return tree()
+    return labels.render(lambda: reads + node(0, 0, 2**n, scratch, None), share=share)
