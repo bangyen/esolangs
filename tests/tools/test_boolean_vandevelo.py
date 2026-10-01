@@ -271,8 +271,9 @@ def test_a_full_bank_respells_its_least_recently_used_register(monkeypatch) -> N
 
 def test_short_names_are_unique_and_skip_builtins() -> None:
     """The compact namespace does not shadow input, nil, or the loop."""
-    from esolangs.tools.vandevelo import _RESERVED, _name
+    from esolangs.tools.helpers import short_name
+    from esolangs.tools.vandevelo import _ALPHABET, _RESERVED
 
-    names = [_name(index) for index in range(500)]
+    names = [short_name(index, _ALPHABET) for index in range(500)]
     assert len(set(names)) == len(names)
     assert not set(names) & _RESERVED

@@ -1,7 +1,7 @@
 # Roadmap
 
-Only live work belongs here. Contracts and standing walls go to
-[limitations](limitations.md); a closed row leaves, and its commit is the record.
+Open work only. See [limitations](limitations.md) for standing contracts
+and proved limits; completed work is recorded in its commit.
 
 ## Conditional follow-up
 
@@ -18,12 +18,11 @@ Only live work belongs here. Contracts and standing walls go to
   generator. After one more executed round without a construction or bound,
   that language and row leave. An unproved wall is not a lookup table.
 
-  The audit covers totality, generation time, output size, and execution time.
+  Audit totality, generation time, output size, and execution time.
   `proofs/index.md` defines totality; `tests/proofs/deep/linearity.py` measures
   size by same-parity successive differences through n=12. Timings use the
   top five arities, best of three, and exclude loading; runs under 10 ms do not
-  establish an exponent. Closure requires a language-wide lower bound, not a
-  sample ratio. The live audit is:
+  establish an exponent. Closure requires a language-wide lower bound. Current status:
 
   | Language | Totality | Generation time | Output size | Execution time |
   | --- | --- | --- | --- | --- |
@@ -51,13 +50,13 @@ Only live work belongs here. Contracts and standing walls go to
 
 ## Open problems
 
-Research questions the proofs leave open.  Each names the first executable
-step; an answer lands in the paper it extends, and the row leaves.
+Each problem names a next executable step. Record its answer in the linked
+proof and remove the completed item.
 
 - **Brainfuck behaviour count.**  [brainfuck-count](proofs/brainfuck-count.md)
   brackets the growth rate of distinct behaviours (input-output maps on all
   inputs, repo model: clipped tape, `,` at EOF an error) of `C`-character
-  programs: `4.2420 <= liminf B(C)**(1/C) <= limsup <= 7.0194`, from
+  programs: `4.2420 <= liminf B(C)**(1/C) <= limsup <= 7.0347`, from
   `[2.414, 7.388]`.  Upper: behaviour-preserving shortlex rewriting (dead
   loops, clears, diverging bodies, excursion commutation) and an exactly
   certified Perron bound on the irreducible words; the old `7.388` counted
@@ -69,27 +68,28 @@ step; an answer lands in the paper it extends, and the row leaves.
   decodable.  The exact Collatz-Wielandt certificate gives `2121/500 = 4.242`,
   above the loop-free ceiling `2 + sqrt 5 = 4.2360`.  Thus loops strictly
   raise the rate.  A single fixed input gives `>= 3.366`.
-  Open: the limit.  Local rules have saturated near 7.06.  The global identities
-  `[[Y]] -> [Y]` and `[Y[] -> []`, certified for arbitrary balanced bodies
-  (read-free in the second), plus empty-loop commutation lower the upper bound
-  to 7.0194.  Next: admit `[]` and `[-]` tokens inside the four regular
-  commute monitors, prove each enlarged family sound, then certify and execute
-  the resulting upper bound.
+  Open: the limit and a sub-7 upper bound. The 7.0341 and 7.0194 certificates
+  used `[Y[] -> []` for arbitrary balanced read-free `Y`, which is unsound:
+  `+[-[]].` halts and prints NUL, while `+[].` diverges. The local-rule upper
+  certificate was 7.0600257. Extended sound commutations, positive-pointer cancellation,
+  print-loop rotation, and forced-divergence rules now certify 7.0347 with 11,673 DFA states.
+  Next: count unrestricted rotation and forced-divergence bodies in the corrected grammar;
+  the current regular monitors cap body bracket depth at one.
 
 - **Malbolge's first unreachable arity.**  Counting proves some 18-input
   table has no Malbolge program; 17 needs the program count a further
   `2**46076` down, and the length and alphabet cuts are dead
   ([limitations](limitations.md), Malbolge).  The live route is a dependence
   cut over the 24,434-cell threshold (the largest `K` with
-  `C(59049, K) * 8**K < 2**131072`), but NOT per program: `'o'*59046 +
-  '/<v'` computes the one-input identity and every one of its cells flips
-  it, so some program for a table can depend on all 59,049.  With full
+  `C(59049, K) * 8**K < 2**131072`). This cannot hold for every program:
+  `'o'*59046 + '/<v'` computes the one-input identity and changing any
+  cell flips it, so a program can depend on all 59,049 cells. With full
   stores a cell's first access is always a read, so dependent cells are
   touched cells; in the shipped constructions every sampled touched cell
   is dependent (3,416 at `n = 4`, 9,308 at 10, 16,650 at 11, at least
-  19,007 at 12).  What survives is a cut over ONE program per table -- a
-  normal form that strips nop runs and padding -- or a count of
-  descriptions rather than of flip-sensitive cells.  Either way it is a
+  19,007 at 12). A proof must count one normal-form representative per table,
+  stripping nop runs and padding, or count descriptions instead of
+  flip-sensitive cells. Either route requires a
   density lemma: 17 inputs need 2.22 bits a cell against the 3 a cell
   holds, so every program must waste 0.78 bits a cell (the sixteen-input
   build stores 1.11).  Directly sampling scaled stores cannot measure this:
@@ -108,11 +108,9 @@ step; an answer lands in the paper it extends, and the row leaves.
   complement.  Relocating alone leaves 317 cells, and the decoder needs
   thousands, so the remaining work is sharing setup, not placement.  See
   [malbolge-scaling](proofs/malbolge-scaling.md#seventeen-navigation-is-linear-in-address-so-packing-helps-measured).
-  The shipped
-  constructions reach 16 inputs (a positional address, one cell per row
-  pair), so 17 is the only arity whose status is unknown: a build would
-  need more than two table bits in nearly every cell, and a proof that one
-  table is unreachable needs the density lemma above.
+  The shipped construction reaches 16 inputs; 17 remains undecided. A build
+  needs more than two table bits in nearly every cell; an impossibility proof
+  needs the density lemma.
 
 - **Polynomial's constant.**  `prop:bracket` in
   [polynomial](proofs/polynomial.tex) brackets `C_P n / T**2` explicitly:
@@ -123,9 +121,9 @@ step; an answer lands in the paper it extends, and the row leaves.
   Upper side: embedded automaton programs with an additive decoder
   (`lem:adddec`, `prop:embprog`, effective profile `325/8` per state
   squared, `lem:effprofile`) on a trie-banded automaton (`lem:trieband`,
-  `lem:bandtrie`) with `(1 + o(1)) T/n` states for every `n`, so levels
-  are CLOSED.  Open: profile (`325/8` against mass `13/4`).  Sources neither
-  even nor odd pay mass `4` (`rem:parity`), even or odd ones `3`
+  `lem:bandtrie`) with `(1 + o(1)) T/n` states for every `n`. The level-count
+  problem is settled; the profile remains open (`325/8` against mass `13/4`).
+  Sources neither even nor odd pay mass `4` (`rem:parity`), even or odd ones `3`
   (`lem:evensigns`, both-signs rows on `E` with `f = x^e E(x**2)`), plus
   `1/4` for every large `n` by counting sign skeletons
   (`lem:evencount`, `cor:evenhard`; even or odd sources add and subtract
@@ -136,8 +134,8 @@ step; an answer lands in the paper it extends, and the row leaves.
   Retuning which states the embedded-automaton construction places inline
   cannot lower `325/8`: two unique successors per inline state force
   `a >= 1/2`, and its effective profile is minimized at `a = 1/2`, `x = 0`.
-  Next step: replace that instruction profile, or raise the mass bound; the
-  existing decoder has no remaining parameter route to a smaller constant.
+  Next: replace the instruction profile or raise the mass bound. Decoder
+  parameter tuning cannot lower the constant.
   Spending a fraction `delta` of the band width to shrink its operands is
   also closed: even the favorable relaxed constant
   `(325/8 - 4 delta)/(1 - delta)**2` is minimized at `delta = 0`.
@@ -176,12 +174,80 @@ step; an answer lands in the paper it extends, and the row leaves.
   exhaustively through two inputs.  A matching lower bound must price
   parity sources themselves.
 
-
 - **Factor leading constant.** [factor](proofs/factor.md#leading-constants)
   now brackets the worst-case minimum digits divided by `T*n` between
-  0.10034333 and 12.64325982 asymptotically. The lower side counts weighted
-  exponent compositions with adjacent equal commands merged; the upper side
-  prices the tree with fixed-modulus prime gaps. Parity encodings executed through five inputs do not determine
-  either limit. Next: count only semantically distinct decoded programs to
+  0.11528442 and 0.29229475 asymptotically (2.535423-fold gap). The lower side
+  counts weighted exponent compositions after local normalization and first-output pruning;
+  the upper side prices a traveling counter and fixed signed-ball blocks and an almost-all
+  prime-window covering bound.
+  Parity encodings executed through five inputs do not determine either limit.
+  Next: count only semantically distinct decoded programs to
   raise the lower coefficient, or construct a cheaper weighted command stream
   to lower the upper one; the existence and value of the limit remain open.
+
+- **Structural scaling audit.** Source-size arguments close B-tapemark,
+  Forþ, 6-5 and Circuit Diagram's default H area. The H builder now uses
+  integer heap identities and depth buckets: literal anchors take exactly
+  `4*T - 2*n - 4` visits. All 268 nonconstant two- and three-input H programs
+  retain identical source; all 2,088 rows execute correctly.
+  Vandevelo's upkeep proof gives `O(T)` lines but only `O(T log n)`
+  characters; exact `n*T` autocorrelation calls remain unamortized.
+  6-5's past-35-input fallback takes `Theta(n*T)` commands: its initial
+  `n-1` full-table passes already force that lower bound. Executed parity
+  tables on the all-zero input take `(28*n - 1)*T + 53*n + 31` commands
+  through n=9; linear source size does not meet the execution contract.
+  Next: remove Vandevelo's identifier factor and amortize or replace its
+  exact fallback; replace 6-5's full-table passes with a linear execution
+  construction. Neither obstruction is a language-wide lower bound.
+
+- **FRACTRAN order encoding.** One unchanged multiset of eight fractions
+  computes all sixteen four-row tables by ordering each `1/p, 2/p` pair;
+  all 64 rows executed. The one-consultation route is now closed negatively:
+  fixed applicability and postprocessing give a linear threshold class,
+  requiring at least `T-1` distinct fractions and `Omega(T log T)` text.
+  A four-guard overlap cycle executes all 24 orders on four rows and
+  realizes exactly fourteen tables, missing XOR and XNOR.
+  See [the order bound](proofs/fractran.md#order-only-decoding-with-one-priority-consultation).
+  Next: use repeated priority consultations with an admissible uniform-embed
+  router to encode the table solely by ordering a fixed `O(T)`-text multiset.
+  The indexed threshold route already achieves linear text by magnitudes.
+
+- **Brainfuck on bounded inputs.** The finite-set upper bound is now
+  `6.584428341`, below the all-input upper `7.0347`: delete unvisited reads,
+  then count seven-command segments by a certified adjacency matrix.
+  [Theorem 6](proofs/brainfuck-count.md#7b-bounded-input-upper-bound-theorem-6)
+  also covers varying input sets with total read budget `o(C)`, including
+  byte-input lengths at most `(1-eps)*log_256(C)`. The lower bound remains
+  `3.366148`. Next: establish the limit or sharpen either side, and derive
+  a nontrivial bound when input length is proportional to source length.
+
+- **Wider shared-residual constructions.** AddSubJump now chooses sharing
+  through five inputs: n=3 totals 99,032 -> 95,678 characters; 200 seeded
+  n=5 tables 252,406 -> 217,608 (13.79%), with no growth and every row
+  executed. Wider builds keep the linear packed decoder. Next: share packed
+  blocks without absolute-address text becoming super-linear; run
+  `tests/proofs/test_addsubjump_sharing.py` and the linearity regression.
+
+- **Execution and workspace bounds.** `scripts/screens/resources.py` executes
+  constant, parity and seeded dense tables through eight inputs. Sophie
+  advances monotonically through its source, using one accumulator and no
+  stack; BFStack's seven-bit leaves give at most `100*n + 8192` commands
+  and `2*max(n-7, 0) + 3` data-stack items. The benchmark's `--track-store`
+  measures exposed memory cells and stack items, excluding code, hidden
+  control stacks and integer bit widths. Next: count those omitted costs,
+  and extend construction bounds to another generator. Run
+  `python -m scripts.screens.resources --max-inputs 8`.
+
+- **Independent grammar certificates.** `scripts/perron_certificate.py`
+  checks exported DFA transitions and positive-vector inequalities using
+  integers only; the 11,673-state Brainfuck certificate passes at
+  `70347/10000`, and corrupted transitions, vectors and bounds are rejected.
+  This certifies the supplied matrix, not the soundness of its rewrite
+  grammar. Next: independently reconstruct forbidden-factor acceptance and
+  check each rewrite's semantic side conditions with divergence controls.
+  Export with `python -m tests.proofs._brainfuck_count --export notes/bf.json`,
+  then run `python scripts/perron_certificate.py notes/bf.json`.
+
+Controls are in `tests/proofs/test_research_tracks.py`. The linked proofs
+close ordered input-forgetting construction, generated-family loading bounds,
+and the weighted-description theorem.

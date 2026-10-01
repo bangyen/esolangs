@@ -9,12 +9,23 @@ from esolangs.interpreters.io import ScriptedIO
 from esolangs.tools.fish import fish
 
 
-def _run(table: str, row: int) -> tuple[str, int]:
+def _run(table: str, row: int, width: int | None = None) -> tuple[str, int]:
     n = len(table).bit_length() - 1
     bits = f"{row:0{n}b}"
     io = ScriptedIO("".join(f"{bit}\n" for bit in bits))
-    run(fish(table).splitlines(), io)
+    run(fish(table, width).splitlines(), io)
     return io.getvalue(), io.reads
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("width", [1, 3, 4, 5, 7, 13, 40, 80])
+def test_folded_lookup_executes_every_three_input_table(width: int) -> None:
+    for value in range(256):
+        table = f"{value:08b}"
+        program = fish(table, width)
+        assert max(map(len, program.split("\n"))) <= max(3, width)
+        for row, expected in enumerate(table):
+            assert _run(table, row, width) == (expected, 3)
 
 
 @pytest.mark.parametrize("n", range(1, 4))

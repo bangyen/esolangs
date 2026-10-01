@@ -131,3 +131,52 @@ def test_command_can_disable_signal_timeout(monkeypatch, capsys) -> None:
     monkeypatch.delattr(benchmark.signal, "SIGALRM")
     assert benchmark.main(["brainfuck", "0110", "--all-rows", "--no-timeout"]) == 0
     assert '"timeout": null' in capsys.readouterr().out
+
+
+def test_store_profile_and_worst_row() -> None:
+    result = measure(
+        "BFStack",
+        "0110",
+        repeat=1,
+        row=0,
+        step_cap=10_000,
+        all_rows=True,
+        track_store=True,
+        timeout=None,
+    )
+    assert all(item["matches"] for item in result["executions"])
+    assert result["worst_row_commands"] == max(
+        item["commands"] for item in result["executions"]
+    )
+    assert all(item["peak_memory_cells"] == 0 for item in result["executions"])
+    assert max(item["peak_stack_items"] for item in result["executions"]) == 3
+
+
+def test_partial_rows_do_not_claim_a_worst_row() -> None:
+    result = measure(
+        "Sophie",
+        "0110",
+        repeat=1,
+        row=0,
+        step_cap=10_000,
+        track_store=True,
+        timeout=None,
+    )
+    assert result["worst_row_commands"] is None
+    assert result["peak_memory_cells"] == 1
+    assert result["peak_stack_items"] == 0
+
+
+def test_capped_profile_does_not_claim_a_worst_row() -> None:
+    result = measure(
+        "BFStack",
+        "0110",
+        repeat=1,
+        row=0,
+        step_cap=1,
+        all_rows=True,
+        track_store=True,
+        timeout=None,
+    )
+    assert result["worst_row_commands"] is None
+    assert all(item["execution_status"] == "step_cap" for item in result["executions"])

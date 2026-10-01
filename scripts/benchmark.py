@@ -33,6 +33,8 @@ def _execute(
     row: int,
     cap: int,
     timeout: float | None,
+    *,
+    track_store: bool = False,
 ) -> dict[str, Any]:
     facts = esolangs.describe(language)
     bits = _bits(row, len(table).bit_length() - 1)
@@ -43,6 +45,8 @@ def _execute(
     else:
         source, stdin = program, esolangs.encode_inputs(language, bits, table)
     supported = isinstance(source, str) and facts["steppable_to_answer"]
+    if track_store and facts["answer_mode"] == "termination":
+        raise ValueError("store tracking requires a halting-answer language")
     result: dict[str, Any] = {
         "row": row,
         "expected_answer": table[row],
@@ -51,6 +55,8 @@ def _execute(
         "commands": None,
         "stepping_status": "supported" if supported else "unsupported",
         "execution_status": "pending",
+        "peak_memory_cells": None,
+        "peak_stack_items": None,
     }
 
     def drive(*_args: object) -> None:
@@ -73,10 +79,22 @@ def _execute(
             # The detector unwraps the VM; replay a halt to retain the
             # baseline's wrapper-step count, excluding its post-halt dump.
             vm = esolangs.make_vm(language, source, stdin)
+
+        def sample_store() -> None:
+            if track_store:
+                result["peak_memory_cells"] = max(
+                    result["peak_memory_cells"] or 0, len(vm.memory)
+                )
+                result["peak_stack_items"] = max(
+                    result["peak_stack_items"] or 0, len(vm.stack)
+                )
+
+        sample_store()
         steps = 0
         while not vm.halted and steps < cap:
             vm.step()
             steps += 1
+            sample_store()
         result["commands"] = steps if vm.halted else None
         if not vm.halted:
             result["execution_status"] = "step_cap"
@@ -125,6 +143,7 @@ def measure(
     all_rows: bool = False,
     sample_rows: tuple[int, ...] | None = None,
     timeout: float | None = 30.0,
+    track_store: bool = False,
 ) -> dict[str, Any]:
     """Benchmark the last timed artifact; optionally check every input row."""
     if repeat < 1 or step_cap < 1:
@@ -154,11 +173,15 @@ def measure(
     assert program is not None
     rows = range(len(table)) if all_rows else sample_rows or (row,)
     executions = [
-        _execute(language, program, table, at, step_cap, timeout) for at in rows
+        _execute(
+            language, program, table, at, step_cap, timeout, track_store=track_store
+        )
+        for at in rows
     ]
     selected = next(item for item in executions if item["row"] == row)
     return {
-        "schema": 2,
+        "schema": 3,
+        "track_store": track_store,
         "language": esolangs.describe(language)["name"],
         "truth_table": table,
         "inputs": len(table).bit_length() - 1,
@@ -170,6 +193,11 @@ def measure(
         "timeout": timeout,
         "all_rows": all_rows,
         "executions": executions,
+        "worst_row_commands": (
+            max(item["commands"] for item in executions)
+            if all_rows and all(item["commands"] is not None for item in executions)
+            else None
+        ),
         **selected,
     }
 
@@ -188,6 +216,11 @@ def main(argv: list[str] | None = None) -> int:
         "--no-timeout", action="store_const", dest="timeout", const=None
     )
     parser.add_argument("--all-rows", action="store_true")
+    parser.add_argument(
+        "--track-store",
+        action="store_true",
+        help="sample VM memory and stack lengths at each step",
+    )
     args = parser.parse_args(argv)
     if args.repeat < 1 or args.step_cap < 1:
         parser.error("--repeat and --step-cap must be positive")
@@ -202,6 +235,7 @@ def main(argv: list[str] | None = None) -> int:
         step_cap=args.step_cap,
         all_rows=args.all_rows,
         timeout=args.timeout,
+        track_store=args.track_store,
     )
     print(json.dumps(result, indent=2, sort_keys=True))
     return 0 if all(item["matches"] is True for item in result["executions"]) else 1

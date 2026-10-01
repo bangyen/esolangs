@@ -153,7 +153,7 @@ def generate(language: str, truth_table: str, width: int | None = None) -> str |
     """Return a program in ``language`` computing ``truth_table``.
 
     ``truth_table`` is a binary string of length ``2**n``, MSB first, so its
-    length implies ``n``.  Fourteen languages embed their inputs in the
+    length implies ``n``.  Some languages embed their inputs in the
     program text; for those this returns a *template* with each input as a
     run of one character (``$`` unless the language declares another), one
     run per input, exactly as long as the code :func:`instantiate` fills it
@@ -210,11 +210,86 @@ def generate(language: str, truth_table: str, width: int | None = None) -> str |
 def _is_template_for(template: str, name: str, truth_table: str) -> bool:
     """Return whether ``template`` is what ``name`` generates for the table.
 
-    A wrapped template passes where the plain one is a single line.
+    Compare wrapping using the language's whitespace rules.
     """
     plain = generate(name, truth_table)
     if not isinstance(plain, str):
         return False
+    if template == plain:
+        return True
+    language_id = LANGUAGES[name].id
+    generator = LANGUAGES[name].boolean
+    # Layouts may switch representations; their floor is a named candidate,
+    # unlike whitespace wrapping, so compare that template exactly too.
+    if (
+        generator is not None
+        and _takes_width(generator)
+        and template == generate(name, truth_table, 1)
+    ):
+        return True
+    if language_id == "minsky_swap" and template in (
+        generate(name, truth_table, 10),
+        generate(name, truth_table, 15),
+    ):
+        return True
+    if language_id == "back":
+        width = max(1, max(map(len, template.splitlines()), default=0))
+        if template == generate(name, truth_table, width):
+            return True
+    if language_id == "intercal":
+        from esolangs.tools.intercal import _intercal_tokens
+
+        narrow = generate(name, truth_table, 1)
+        if isinstance(narrow, str) and _intercal_tokens(template) == _intercal_tokens(
+            narrow
+        ):
+            return True
+        # Its primitive layout fits between the natural and simplified floors.
+        # Rebuild at the observed bound rather than accepting equivalent syntax.
+        width = max(1, max(map(len, template.splitlines()), default=0))
+        if template == generate(name, truth_table, width):
+            return True
+    if (
+        language_id in {"minifuck", "smallfuck"}
+        and generator is not None
+        and _takes_width(generator)
+    ):
+        for width in (1, 4):
+            narrow = str(generate(name, truth_table, width))
+            if language_id == "minifuck" and narrow.startswith("q\n"):
+                # Exact layouts were checked above; these LF absorb skips.
+                continue
+            if template.replace("\n", "") == narrow.replace("\n", ""):
+                return True
+    if (
+        language_id in {"fractran", "bitdeque", "crement"}
+        and generator is not None
+        and _takes_width(generator)
+    ):
+        narrow = generate(name, truth_table, 1)
+        if isinstance(narrow, str) and template.split() == narrow.split():
+            return True
+    if language_id in {"fractran", "crement"}:
+        # Short setters coexist with fitting layouts that retain the old pair.
+        width = max(1, max(map(len, template.splitlines()), default=0))
+        observed = generate(name, truth_table, width)
+        if isinstance(observed, str) and template.split() == observed.split():
+            return True
+    if language_id == "underload":
+        from esolangs.tools.underload import _underload_layout_tokens
+
+        for width in (1, 4):
+            narrow = str(generate(name, truth_table, width))
+            if isinstance(narrow, str) and _underload_layout_tokens(
+                template
+            ) == _underload_layout_tokens(narrow):
+                return True
+    # BIO discards whitespace; the other three tokenize on it. Their wrappers
+    # replace spaces with newlines, so removing newlines loses token boundaries.
+    if language_id == "bio":
+        return "".join(template.split()) == "".join(plain.split())
+    if language_id in {"bitdeque", "ram0", "fractran"}:
+        return template.split() == plain.split()
     return template == plain or (
         "\n" not in plain and template.replace("\n", "") == plain
     )
@@ -451,7 +526,11 @@ def run_bounded(
     if max_steps is None and timeout is None:
         raise ArgumentError("run_bounded needs max_steps or timeout")
     debugger = make_debugger(language, program, stdin)
-    reason = debugger.run(max_steps=max_steps, timeout=timeout)
+    try:
+        reason = debugger.run(max_steps=max_steps, timeout=timeout)
+    except EsolangError as exc:
+        exc.partial_output = debugger.output
+        raise
     if reason != "halted":
         error = ExecutionTimeoutError(f"execution stopped at the {reason} bound")
         error.partial_output = debugger.output
@@ -533,11 +612,14 @@ def run(
         # ``RecursionError`` was the one exception escaping ``EsolangError``.
         # The limit is CPython's, not the interpreter's (raising it made the
         # program run); Qoibl's tokenizer carries its own stack now.
-        raise InterpreterLimitError(
-            f"the {name} interpreter recursed deeper than CPython's stack "
-            f"limit allows on this program; the "
-            f"program is well formed, and sys.setrecursionlimit can raise "
-            f"the limit if this interpreter's depth grows with program size"
+        raise _keeping_output(
+            InterpreterLimitError(
+                f"the {name} interpreter recursed deeper than CPython's stack "
+                f"limit allows on this program; the "
+                f"program is well formed, and sys.setrecursionlimit can raise "
+                f"the limit if this interpreter's depth grows with program size"
+            ),
+            io_obj,
         ) from exc
     except ValueError as exc:
         # The interpreters signal a malformed program with a plain

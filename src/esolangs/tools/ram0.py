@@ -3,16 +3,13 @@
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
-    best_input_order,
+    in_input_order,
     subtree_ids,
     subtree_slot,
 )
 
-#: How each input is set: ``Z`` resets the register absolutely, so ``Z Z``
-#: leaves a zero and ``Z A`` a one whatever came before.  The template
-#: spells each input as a run of :data:`TEMPLATE_CHAR` this wide -- one
-#: token that instantiates to two commands.
-PAIR = ("Z Z", "Z A")
+#: A fixed Z precedes each slot; the one-command pair selects zero or one.
+PAIR = ("Z", "A")
 _RAM0_INPUT = TEMPLATE_CHAR * len(PAIR[0])
 
 #: A leaf: set ``z`` to the answer and jump to the halt trampoline.
@@ -29,15 +26,17 @@ def _ram0_width(address: int) -> int:
     return address + 4
 
 
-def ram0(truth_table: str) -> str:
+def ram0(truth_table: str, width: int | None = None) -> str:
     """Build a RAM0 template for the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.
+    One-column builds through three inputs use unary-address NAND circuits.
+    Wider layouts use the shared tree; only final ``z`` is the answer.
 
     RAM0 has no input command, so this is a parameterized generator: the
     template's input runs become a fixed-length two-command
-    setter — ``Z Z`` for a zero, ``Z A`` for a one — independent of the
+    unit — fixed ``Z``, then the ``Z``/``A`` setter — independent of the
     incoming register (``Z`` resets absolutely).  The earlier wall's
     variable-length setter (``Z`` vs ``Z A``) was what shifted the absolute
     ``goto`` operands; the padded setter removes that.
@@ -48,15 +47,9 @@ def ram0(truth_table: str) -> str:
     fixed low-address halt trampoline; the state dump's final ``z`` is the
     answer.
 
-    **The tree splits on its inputs in whichever order emits the shortest
-    program** (:func:`~esolangs.tools.helpers.best_input_order`).
-    Folding a subtree needs the rows it covers to agree, and which rows a
-    subtree covers is what the split order decides; RAM0 also spells an
-    input as a run of ``A`` as long as its *address*, so a cheap order here
-    additionally benefits from low addresses at deep, oft-repeated levels.
-    That assignment is fixed optimally by depth: level ``n-1`` uses address
-    zero, up to the root at ``n-1``.  The load remains in input order, so the
-    input runs and their positions are untouched.
+    **The tree splits in input order.**
+    Input addresses are assigned by depth: level ``n-1`` uses zero,
+    up to the root at ``n-1``. Input runs remain in stream order.
 
     **A repeated subtree is emitted once and jumped to.**  A node assumes
     nothing on entry (it sets ``z`` and loads its own bit), so a one-subtree
@@ -64,98 +57,85 @@ def ram0(truth_table: str) -> str:
     names the copy -- and a zero-subtree costs one ``goto`` in place of
     itself; a leaf is shared the same way, and a test whose halves agree is
     skipped. That caps the tree at its distinct subtables, O(T) with addresses.
-    The plain tree is a candidate through 16 entries and the linear lookup
-    past them; at five inputs the shared tree is a fifth of the lookup.
+    Sharing never grows a table through four inputs (exhaustively checked).
+    The shared tree handles larger tables too.
     """
-    if len(truth_table) <= 16:
-        return best_input_order(truth_table, _ram0_best)
-    tree = best_input_order(truth_table, _ram0_shared)
-    lookup = _ram0_linear(truth_table)
-    return tree if len(tree) < len(lookup) else lookup
+    program = in_input_order(truth_table, _ram0_shared)
+    if width is None:
+        return program
+    from esolangs.tools.wrap import wrap_space_delimited
+
+    if width == 1 and len(truth_table) <= 8:
+        program = _ram0_nand(truth_table)
+    return wrap_space_delimited(program, width)
+
+
+def _ram0_nand(truth_table: str) -> str:
+    """Build small Shannon circuits using unary addresses and NAND stores."""
+    n = _validate_truth_table(truth_table)
+    # RAM[0:2] implements NOT. A NAND writes NOT b to RAM[2+a], with
+    # RAM[3] reset to 1: reading RAM[3] then returns NOT(a AND b).
+    tokens = ["Z", "N", "A", "S"]
+
+    def target(address: int) -> None:
+        tokens.extend(["Z", *("A" for _ in range(address)), "N"])
+
+    def load(address: int) -> None:
+        tokens.extend(["Z", *("A" for _ in range(address)), "L"])
+
+    for i in range(n):
+        target(4 + i)
+        tokens.extend(["Z", _RAM0_INPUT, "S"])
+    gates: dict[tuple[int, int], int] = {}
+    next_address = 4 + n
+
+    def nand(left: int, right: int) -> int:
+        nonlocal next_address
+        if left == 1 or right == 1:
+            return 0
+        # Two true constants use the store kernel, avoiding self-recursion.
+        if left == 0 and right != 0:
+            return nand(right, right)
+        if right == 0 and left != 0:
+            return nand(left, left)
+        pair = (min(left, right), max(left, right))
+        if pair in gates:
+            return gates[pair]
+        result = next_address
+        next_address += 1
+        target(3)
+        tokens.extend(["Z", "A", "S"])
+        load(left)
+        tokens.extend(["A", "A", "N"])
+        load(right)
+        tokens.extend(["L", "S"])
+        target(result)
+        load(3)
+        tokens.append("S")
+        gates[pair] = result
+        return result
+
+    def tree(rows: str, level: int) -> int:
+        if rows == rows[0] * len(rows):
+            return 1 - int(rows[0])
+        half = len(rows) // 2
+        zero = tree(rows[:half], level + 1)
+        one = tree(rows[half:], level + 1)
+        if zero == one:
+            return zero
+        bit = 4 + level
+        inverted = nand(bit, bit)
+        return nand(nand(inverted, zero), nand(bit, one))
+
+    # Unary addresses would cost O(T squared) at unrestricted arity;
+    # the three-input cap keeps this fallback uniformly O(T).
+    load(tree(truth_table, 0))
+    return " ".join(tokens)
 
 
 def _ram0_shared(truth_table: str, perm: tuple[int, ...]) -> str:
     """Emit one order's shared tree; see :func:`_ram0_ordered`."""
     return _ram0_ordered(truth_table, perm, share=True)
-
-
-def _ram0_best(truth_table: str, perm: tuple[int, ...]) -> str:
-    """Return the shorter of one order's plain and shared trees."""
-    plain = _ram0_ordered(truth_table, perm)
-    shared = _ram0_shared(truth_table, perm)
-    return shared if len(shared) < len(plain) else plain
-
-
-def _ram0_linear(truth_table: str) -> str:
-    """Emit a linear straight-line RAM initializer and indexed lookup."""
-    n = _validate_truth_table(truth_table)
-    tokens: list[str] = []
-    labels: dict[str, int] = {}
-    jumps: list[tuple[int, str]] = []
-
-    def emit(*commands: str) -> None:
-        tokens.extend(commands)
-
-    def mark(name: str) -> None:
-        labels[name] = len(tokens)
-
-    def jump(target: str) -> None:
-        jumps.append((len(tokens), target))
-        tokens.append("@")
-
-    def unary(value: int) -> None:
-        emit("Z", *("A" for _ in range(value)))
-
-    def store_constant(address: int, value: int) -> None:
-        unary(address)
-        emit("N")
-        unary(value)
-        emit("S")
-
-    # Cells 0/1 hold the initializer's address counter and the selected table
-    # pointer; cells 2..n+1 hold the parameterized inputs.
-    for i in range(n):
-        unary(i + 2)
-        emit("N", _RAM0_INPUT, "S")
-
-    table_base = n + 2
-    store_constant(0, table_base - 1)
-    store_constant(1, table_base)
-
-    # Advance cell 0, using the new address as a temporary copy of itself,
-    # then store one table bit there.  This is constant work per row.
-    for bit in truth_table:
-        emit("Z", "L", "A", "N", "S")
-        emit("Z", "N", "Z", "L", "A", "L", "S")
-        emit("Z", "L", "N", "Z")
-        if bit == "1":
-            emit("A")
-        emit("S")
-
-    # Add each set bit's weight to the selected table pointer.  Across all
-    # inputs the unary runs contain 2T-2 commands.
-    for i in range(n):
-        unary(i + 2)
-        emit("L", "C")
-        one = f"input_{i}_one"
-        after = f"input_{i}_after"
-        jump(one)
-        jump(after)
-        mark(one)
-        unary(1)
-        emit("N", "Z", "A", "L")
-        emit(*("A" for _ in range(1 << (n - 1 - i))))
-        emit("S")
-        mark(after)
-
-    emit("Z", "A", "L", "L")
-    extra: list[int] = [0]
-    for token in tokens:
-        extra.append(extra[-1] + (token == _RAM0_INPUT))
-    for at, target in jumps:
-        target_at = labels[target]
-        tokens[at] = str(target_at + extra[target_at] + 1)
-    return " ".join(tokens)
 
 
 def _ram0_ordered(
@@ -187,7 +167,7 @@ def _ram0_ordered(
         tokens.extend("A" for _ in range(address))
         tokens.append("N")
         pos += 1 + address + 1
-        tokens.append(_RAM0_INPUT)  # expands to "Z A" / "Z Z"
+        tokens.extend(("Z", _RAM0_INPUT))  # reset, then set the bit
         pos += 2
         tokens.append("S")
         pos += 1

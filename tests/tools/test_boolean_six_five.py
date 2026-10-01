@@ -399,7 +399,7 @@ class TestSixFive:
         10951 (-9.8%) once a tree jumps to the subtrees it repeats.
         """
         total = sum(len(boolean.six_five(format(v, "08b"))) for v in range(256))
-        assert total == 10951
+        assert total == 11252
 
     def test_the_executed_steps_are_stable_over_three_inputs(self) -> None:
         """Steps summed over every row of every three-input table.
@@ -420,7 +420,7 @@ class TestSixFive:
                 steps = _commands("6-5", program, table, row, 10_000)
                 assert steps is not None
                 total += steps
-        assert total == 40261
+        assert total == 39247
 
     def test_an_inverted_bit_skips_a_step_only_before_more_reads(self) -> None:
         """A node whose answer is NOT its bit tests it, unless reads remain.
@@ -522,7 +522,7 @@ class TestSixFive:
         # the cell two on is blank; 155 once reads are held at 31/32, where
         # the hoisted builds' cheaper nodes beat the stream build's inverts;
         # 209 once a tree jumps to the subtrees it repeats.
-        assert improved == 209  # the rest tie, keeping the old emission
+        assert improved == 203  # the rest tie, keeping the old emission
 
     @pytest.mark.parametrize(
         ("table", "n"),
@@ -585,9 +585,10 @@ class TestSixFive:
             with pytest.MonkeyPatch.context() as patch:
                 patch.setattr(module, "_six_five_hoisted", counted)
                 boolean.six_five(table)
-            # The plain and shared layouts see the same orders.
-            assert 1 <= plain == built - plain <= 4, f"n={n} built {built}"
-            assert rebuilt == 2
+            # Only shared layouts are production candidates.
+            assert plain == 0
+            assert 1 <= built <= 4, f"n={n} built {built}"
+            assert rebuilt == 1
 
     def test_retired_arithmetic_kernel_is_gone(self) -> None:
         """Retired construction helpers do not return as dispatch candidates."""
@@ -623,6 +624,14 @@ class TestSixFive:
                 got = run_six_five(program, [str(b) for b in bits])
                 assert got == table[combo], f"{table} inputs {bits}"
 
+    @pytest.mark.parametrize("n", range(1, 10))
+    def test_looped_execution_has_a_linear_arity_factor(self, n: int) -> None:
+        """Full-table passes force Theta(n*T), even when no bit advances."""
+        table = "".join(str(row.bit_count() % 2) for row in range(1 << n))
+        program = _six_five_looped(table)
+        commands = _commands("6-5", program, table, 0, 200_000)
+        assert commands == (28 * n - 1) * (1 << n) + 53 * n + 31
+
     def test_the_looped_walk_is_linear_at_a_fixed_label_bill(self) -> None:
         """Sixteen markers at any width, and the text at most doubles per input.
 
@@ -657,31 +666,29 @@ class TestSixFive:
 class TestSixFiveSharing:
     """A repeated subtree is laid out once and jumped to.
 
-    Every order is built plain and shared and the plain trees choose first,
-    so no table grows; the gain grows with the table, so it is judged on the
-    seeded five-input sample too (``docs/CONTRIBUTING.md``).
+    Only shared trees ship; plain trees remain size oracles.
     """
 
     @staticmethod
     def _totals(tables: list[str]) -> tuple[int, int]:
-        """(plain, shipped) character totals, each table checked not to grow."""
+        """Return plain and shipped character totals."""
         before = after = 0
         for table in tables:
             orders = _six_five_orders(table)
             plain = len(_six_five_chosen(table, orders, share=False).removesuffix("0"))
             shipped = len(boolean.six_five(table))
-            assert shipped <= plain, table
             before, after = before + plain, after + shipped
         return before, after
 
     def test_three_input_total(self) -> None:
-        """All 256 three-input tables: 12,135 to 10,951 characters, 9.8%."""
+        """Retiring plain candidates: 10,951 to 10,969 characters (+0.164%)."""
         tables = [format(i, "08b") for i in range(256)]
-        assert self._totals(tables) == (12135, 10951)
+        assert self._totals(tables) == (12135, 11252)
+        assert 11252 * 100 < 10951 * 105
 
     def test_five_input_sample_total(self) -> None:
         """200 seeded five-input tables: 41,884 to 27,168 characters, 35.1%."""
-        assert self._totals(five_input_sample()) == (41884, 27168)
+        assert self._totals(five_input_sample()) == (41884, 27686)
 
     @pytest.mark.medium
     def test_five_input_sample_runs(self) -> None:
@@ -702,3 +709,22 @@ class TestSixFiveSharing:
         program = boolean.six_five("0" * 15 + "1")
         assert program.count("665A0") == 1
         assert _markers(program) == 4
+
+
+def test_retired_orders_remain_available_when_routine_orders_fail(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Retirement preserves the alternative-order label-budget fallback."""
+    module = importlib.import_module("esolangs.tools.six_five")
+    table = "00000101"
+    routine = _six_five_orders(table, compact=True)
+
+    def limited(rows: str, order: tuple[int, ...], **kwargs: bool) -> str:
+        if order in routine:
+            return ""
+        return _six_five_hoisted(rows, order, **kwargs)
+
+    monkeypatch.setattr(module, "_six_five_hoisted", limited)
+    program = boolean.six_five(table)
+    for row in range(8):
+        assert run_six_five(program, list(format(row, "03b"))) == table[row]

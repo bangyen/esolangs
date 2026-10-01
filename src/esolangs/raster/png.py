@@ -71,6 +71,11 @@ def _chunks(data: bytes) -> Iterator[tuple[bytes, bytes]]:
         body = data[pos + 8 : pos + 8 + length]
         if len(body) != length:
             raise ValueError(f"truncated {kind.decode('ascii', 'replace')} chunk")
+        crc = data[pos + 8 + length : pos + 12 + length]
+        if len(crc) != 4:
+            raise ValueError(f"truncated {kind.decode('ascii', 'replace')} chunk CRC")
+        if struct.unpack(">I", crc)[0] != zlib.crc32(kind + body) & 0xFFFFFFFF:
+            raise ValueError(f"invalid {kind.decode('ascii', 'replace')} chunk CRC")
         yield kind, body
         pos += 12 + length  # length + type + body + CRC
 
@@ -294,7 +299,7 @@ def _decode_png(
 
     data_stream = zlib.decompress(bytes(idat))
     needed = _expected_stream_size(width, height, channels, depth, interlace)
-    if len(data_stream) < needed:
+    if len(data_stream) != needed:
         # Reject before any allocation grows with the IHDR numbers.
         raise ValueError(
             f"IDAT holds {len(data_stream)} bytes but {width}x{height} at "
@@ -371,9 +376,9 @@ def _to_grey(
         if palette is None:
             raise ValueError("palette PNG has no PLTE chunk")
         entries = [palette[i : i + 3] for i in range(0, len(palette), 3)]
-        # Padded out to a full 256 entries because that is what bytes.translate
-        # wants; a sample indexing past the palette is a malformed file, and
-        # mapping it to black is as good as any other answer for one.
+        if any(value >= len(entries) for row in samples for value in row):
+            raise ValueError("palette index outside PLTE chunk")
+        # bytes.translate requires a full 256-entry table.
         table = bytes(_luma(*entry) for entry in entries).ljust(256, b"\x00")
         return [bytearray(row).translate(table) for row in samples]
 

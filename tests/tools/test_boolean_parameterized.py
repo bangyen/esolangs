@@ -629,6 +629,79 @@ class TestParameterizedMinskySwap:
                 got = self.run_minsky_swap(self.instantiate(template, bits))
                 assert got == str(int(table[combo])), f"{table} inputs {bits}"
 
+    @pytest.mark.parametrize("width", [1, 9, 10, 15, 20, 40, 80])
+    def test_rmsn_templates_preserve_command_targets(self, width: int) -> None:
+        """Public and example fills use the notation's one equal-width pair."""
+        import esolangs
+        from esolangs.tools.examples import BOOLEAN_EXAMPLES
+        from esolangs.tools.parameterized import minsky_swap_setters
+
+        example = BOOLEAN_EXAMPLES["minsky-swap"]
+        assert example.fill is not None
+        for n in (1, 2, 3, 5):
+            table = "".join(str(row.bit_count() & 1) for row in range(1 << n))
+            template = esolangs.generate("Minsky Swap", table, width)
+            pairs = minsky_swap_setters(template, n)
+            assert len(set(pairs)) == 1
+            assert len(pairs[0][0]) == len(pairs[0][1])
+            assert max(map(len, template.splitlines())) <= max(
+                width, 8 + len(str(2 ** (n + 1) + 7 * n + 6))
+            )
+            for row in range(1 << n):
+                bits = list(map(int, f"{row:0{n}b}"))
+                program = esolangs.instantiate("Minsky Swap", str(template), bits)
+                assert self.run_minsky_swap(program) == table[row]
+                assert self.run_minsky_swap(example.fill(template, bits)) == table[row]
+
+    def test_short_rmsn_public_floor(self) -> None:
+        import esolangs
+
+        template = esolangs.generate("Minsky Swap", "0110", 1)
+        assert template.setters == (("decnz(2);", "inc();   "),) * 2
+        assert max(map(len, template.splitlines())) == 9
+        for bits in ([0, 0], [0, 1], [1, 0], [1, 1]):
+            program = esolangs.instantiate("Minsky Swap", template, bits)
+            assert max(map(len, program.splitlines())) == 9
+            assert self.run_minsky_swap(program) == str(bits[0] ^ bits[1])
+
+    @pytest.mark.parametrize("n", [1, 2])
+    def test_single_digit_router_for_every_small_table(self, n: int) -> None:
+        import esolangs
+
+        for value in range(1 << (1 << n)):
+            table = format(value, f"0{1 << n}b")
+            for width in (1, 8, 9, 10, 15):
+                tagged = esolangs.generate("Minsky Swap", table, width)
+                assert tagged.setters is not None
+                assert len(tagged.setters) == n
+                assert len(set(tagged.setters)) == 1
+                assert len(tagged.setters[0][0]) == len(tagged.setters[0][1])
+                for template in (tagged, str(tagged)):
+                    for row in range(1 << n):
+                        bits = list(map(int, f"{row:0{n}b}"))
+                        program = esolangs.instantiate(
+                            "Minsky Swap", template, bits, truth_table=table
+                        )
+                        assert self.run_minsky_swap(program) == table[row]
+                    with pytest.raises(esolangs.TemplateError):
+                        esolangs.instantiate(
+                            "Minsky Swap",
+                            template,
+                            [0] * n,
+                            truth_table="".join(
+                                "1" if bit == "0" else "0" for bit in table
+                            ),
+                        )
+
+    def test_rmsn_growth_remains_linear(self) -> None:
+        from esolangs.tools import parameterized
+
+        sizes = [
+            len(parameterized.minsky_swap("01101001" * (2 ** (n - 3)), 1))
+            for n in (7, 8, 9)
+        ]
+        assert all(b <= 2 * a for a, b in pairwise(sizes))
+
     def test_template_is_input_independent(self) -> None:
         """The template has input runs, not hardcoded bits.
 
@@ -770,7 +843,7 @@ class TestParameterizedBfpda:
         template = parameterized.bfpda("0110")
         assert "{X" not in template
         # The first marker's ``<`` is dropped: ``@`` pushes a 1 onto the empty stack.
-        assert template.startswith("@$$$$<@$$$$")
+        assert template.startswith("@<$<@<$")
 
     def test_program_structure(self) -> None:
         """Each input is embedded once (pre-loaded), not re-embedded per node."""
@@ -781,7 +854,7 @@ class TestParameterizedBfpda:
 
         template = parameterized.bfpda("0110")
         # ``runs`` refuses a stray ``$``, so two spans is exactly two embeds
-        assert runs(template, "$", (BFPDA_PAIR,) * 2) == [(1, 5), (7, 11)]
+        assert runs(template, "$", (BFPDA_PAIR,) * 2) == [(2, 3), (6, 7)]
         assert "{C0}" not in template  # the marker is a constant, not a complement
         assert "{C1}" not in template
 
@@ -793,9 +866,9 @@ class TestParameterizedBfpda:
         """
         from esolangs.tools import parameterized
 
-        assert parameterized.bfpda("10") == "@$$$$[>>.]>[>@.>]"  # NOT
+        assert parameterized.bfpda("10") == "@<$[>>.]>[>@.>]"  # NOT
         assert parameterized.bfpda("0110") == (
-            "@$$$$<@$$$$[>>[>>.]>[>@.>]]>[>[>>@.>]>[>.]]"  # XOR
+            "@<$<@<$[>>[>>.]>[>@.>]]>[>[>>@.>]>[>.]]"  # XOR
         )
 
     def test_the_constructed_lengths_are_stable_over_three_inputs(self) -> None:
@@ -803,12 +876,12 @@ class TestParameterizedBfpda:
 
         24127 while each arm pushed a zero to break its loop and popped it
         after, and each leaf pushed its answer; 17578 once the arms end on
-        the empty stack a leaf leaves behind.
+        the empty stack a leaf leaves behind; 16042 with fresh-cell setters.
         """
         from esolangs.tools import parameterized
 
         total = sum(len(parameterized.bfpda(format(v, "08b"))) for v in range(256))
-        assert total == 17578
+        assert total == 16042
 
 
 class TestParameterizedHomeRow:
@@ -906,7 +979,7 @@ class TestParameterizedHomeRow:
         template = parameterized.home_row("0110")
         assert "{X" not in template
         # each packing line opens with its two-character run
-        assert "$$lsffffaafl$$lsffffafl" in template
+        assert "a$lsffffaafla$lsffffafl" in template
 
     def test_each_input_embedded_once(self) -> None:
 
@@ -924,7 +997,7 @@ class TestParameterizedHomeRow:
         """Only the rows before the table's trailing run get a guarded leaf."""
         from esolangs.tools import parameterized
 
-        setup = "aaaaaalsffaaaaaaaaffflf$$lsffffaafl$$lsffffafl"
+        setup = "aaaaaalsffaaaaaaaaffflfa$lsffffaafla$lsffffafl"
         assert parameterized.home_row("0111") == setup + "fffflflfflk;lffffak"
         assert parameterized.home_row("0110") == setup + (
             "fffflsflfflk;lfflsflfflak;lfflflfflak;lffffk"
@@ -1057,3 +1130,67 @@ class TestConstructorWorkBudget:
         _work[0] = 1  # _paint_all is called outside construct() here
         with pytest.raises(_WorkExhaustedError):
             _paint_all(b, (1, 3))
+
+
+@pytest.mark.parametrize("width", [1, 7, 9, 10, 11, 40, 80])
+def test_bitdeque_short_load_all_small_tables(width: int) -> None:
+    import esolangs
+
+    for n in range(1, 4):
+        for value in range(2 ** (2**n)):
+            table = format(value, f"0{2**n}b")
+            template = esolangs.generate("Bitdeque", table, width)
+            for row, expected in enumerate(table):
+                bits = list(map(int, format(row, f"0{n}b")))
+                program = esolangs.instantiate("Bitdeque", template, bits)
+                assert esolangs.run("Bitdeque", program) == expected
+
+
+def test_bitdeque_short_load_floor_and_rendered_total() -> None:
+    import esolangs
+
+    template = esolangs.generate("Bitdeque", "0110", 1)
+    assert max(map(len, template.splitlines())) == 7
+    for row in range(4):
+        program = esolangs.instantiate("Bitdeque", template, [row // 2, row % 2])
+        assert max(map(len, program.splitlines())) == 7
+    assert (
+        sum(
+            len(esolangs.generate("Bitdeque", format(value, "08b"), 1))
+            for value in range(256)
+        )
+        == 141184
+    )
+
+
+@pytest.mark.parametrize("width", [1, 9, 40, 80])
+def test_bitdeque_short_load_saved_source_and_large_tables(width: int) -> None:
+    import esolangs
+
+    for n in range(4, 7):
+        table = "".join(str(row.bit_count() % 2) for row in range(2**n))
+        template = str(esolangs.generate("Bitdeque", table, width))
+        for row in [0, 1, 2**n // 3, 2**n - 1]:
+            bits = list(map(int, format(row, f"0{n}b")))
+            program = esolangs.instantiate(
+                "Bitdeque", template, bits, truth_table=table
+            )
+            assert esolangs.run("Bitdeque", program) == table[row]
+
+
+def test_bitdeque_short_load_rejects_changed_prefix() -> None:
+    from esolangs.tools.parameterized import bitdeque, bitdeque_setters
+
+    template = bitdeque("0110", 1)
+    pair = bitdeque_setters(template, 2)
+    assert pair == (("POP  ", "EJECT"),) * 2
+    with pytest.raises(ValueError, match="shorter than"):
+        bitdeque_setters(template.replace("GOTO 16", "GOTO 17"), 2)
+
+
+def test_bitdeque_short_load_rejects_wrong_table_provenance() -> None:
+    import esolangs
+
+    template = str(esolangs.generate("Bitdeque", "0110", 9))
+    with pytest.raises(esolangs.TemplateError, match="not the template"):
+        esolangs.instantiate("Bitdeque", template, [0, 1], truth_table="0001")

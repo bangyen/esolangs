@@ -428,22 +428,30 @@ class TestTheSmallInconsistencies:
         assert exc.value.code == 2
         assert "--judge given more than once" in capsys.readouterr().err
 
-    def test_a_no_op_width_says_so(self, capsys: pytest.CaptureFixture[str]) -> None:
-        """It was silently ignored: two identical programs, one asked to differ.
-
-        Clockwise used to be the example and now stacks its tree to a
-        width; CV(N)(C) cannot follow it, because its loader rejects a
-        newline outright rather than choosing not to use one.
-        """
-        _out, err = call_both(["generate", "--width", "10", "CV(N)(C)", "0100"], capsys)
-        assert "no effect on CV(N)(C)" in err
-
-    def test_a_wrapping_width_says_nothing(
-        self, capsys: pytest.CaptureFixture[str]
+    def test_a_no_op_width_says_so(
+        self, capsysbinary: pytest.CaptureFixture[bytes]
     ) -> None:
-        """The note must not fire where the width does something."""
-        _out, err = call_both(["generate", "--width", "10", "Sophie", "0100"], capsys)
+        with (
+            patch.object(
+                sys, "argv", ["esolangs", "generate", "--width", "10", "Piet", "0100"]
+            ),
+            patch.object(sys, "stdin", _FakeStdin("")),
+        ):
+            main()
+        captured = capsysbinary.readouterr()
+        assert b"no effect on Piet" in captured.err
+        image = esolangs.Raster.from_png(captured.out)
+        assert esolangs.run("Piet", image, "0\n0\n") == "0"
+
+    @pytest.mark.parametrize("name", ["Sophie", "CV(N)(C)"])
+    def test_a_wrapping_width_says_nothing(
+        self, name: str, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        out, err = call_both(["generate", "--width", "10", name, "0100"], capsys)
         assert "no effect" not in err
+        assert max(map(len, out.splitlines())) <= 10
+        stdin = esolangs.encode_inputs(name, [0, 0], "0100")
+        assert esolangs.run(name, out, stdin) == "0"
 
     def test_describe_reports_the_width_effect(
         self, capsys: pytest.CaptureFixture[str]

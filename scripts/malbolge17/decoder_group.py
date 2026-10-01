@@ -14,6 +14,8 @@ import itertools
 from dataclasses import dataclass
 from pathlib import Path
 
+from planner import _Planner
+
 from esolangs.interpreters.other.malbolge import (
     _WORDS,
     _advance,
@@ -31,7 +33,6 @@ from esolangs.tools.malbolge import (
     _T_HELPERS,
     _T_LABELS,
     _emit_chain,
-    _Planner,
     _rotations,
     _valid_chars,
 )
@@ -132,13 +133,31 @@ def _expected(row: int, triple: tuple[int, ...]) -> str:
 
 
 @dataclass(frozen=True)
+class _SetupEmission:
+    """The pre-read code, static data, and known register/operand interface."""
+
+    code: dict[int, str]
+    data: dict[int, int]
+    memory: dict[int, int | None]
+    helpers: dict[str, int]
+    state_masks: dict[int, int]
+    parity_fields: tuple[int, int, int]
+    c: int
+    d: int
+    accumulator: int | None
+
+
+@dataclass(frozen=True)
 class _Emission:
-    """One row's emitted source and the cells that carry code and data."""
+    """One row's source, code and data maps, and movable block positions."""
 
     source: list[int]
     code_cells: int
     code: dict[int, str]
     data: dict[int, int]
+    row_start: int
+    copy_windows: tuple[tuple[str, int, int], ...]
+    setup: _SetupEmission
 
 
 @dataclass(frozen=True)
@@ -146,7 +165,7 @@ class _Group:
     """The fixed group cells and shared setup the decoder build reads."""
 
     base: int
-    z_cells: tuple[int, int, int]
+    z_cell: int | None
     clear: tuple[tuple[int, int], tuple[int, int]]
     view_cells: tuple[int, ...]
     mask_cells: tuple[int, ...]
@@ -157,10 +176,20 @@ class _Group:
     near_cells: list[int]
     used: set[int]
     taken: set[int]
+    reserved: frozenset[int]
+    runtime_base: bool
 
 
-def _setup() -> _Group:
+def _setup(
+    reserved: frozenset[int] = frozenset(),
+    *,
+    external_pointer: bool = False,
+    runtime_base: bool = False,
+    table_free_hubs: bool = False,
+) -> _Group:
     """Choose the group base and every shared walked cell, as the prototype did."""
+    if runtime_base and not external_pointer:
+        raise ValueError("runtime base requires external pointer")
     helpers = {128, 129}
     for value in _T_HELPERS.values():
         helpers.add(
@@ -172,7 +201,7 @@ def _setup() -> _Group:
         )
     order = [cell for cell in range(130, 300) if cell not in helpers]
     order += list(range(300, _ENTRY))
-    used = {*_LABELS, *_OTHERS}
+    used = {*_LABELS, *_OTHERS, *reserved}
     reach = {cell: _bfs(_g(cell)) for cell in order}
 
     def cell_for(value: int) -> int:
@@ -188,7 +217,7 @@ def _setup() -> _Group:
         for group in range(15000, 21000)
         if all((group - 1 + k) in reachable for k in range(3))
     )
-    z_cells = (cell_for(base - 1), cell_for(base), cell_for(base + 1))
+    z_cell = None if external_pointer else cell_for(base - 1)
     clear0, clear0_value = next(
         (cell, value)
         for cell in order
@@ -212,17 +241,35 @@ def _setup() -> _Group:
     for constant in _VIEW:
         taken |= {_landing(constant, char) for char in range(33, 127)}
 
+    hub_taken = set(taken)
+    minimum_hub = 10000
+    if table_free_hubs:
+        from address17 import table_cells
+        from compact_decoder import landing
+
+        hub_taken.update(table_cells())
+        hub_taken.update(
+            landing(state, parity, char)
+            for state in range(5)
+            for parity in range(2)
+            for char in range(33, 127)
+        )
+        minimum_hub = _ENTRY
+
     seeds: dict[str, tuple[int, list[str]]] = {}
     hub_values: dict[str, tuple[int, ...]] = {}
     for label in "01xn":
         label_cells = sorted(q for q in _LABELS if _LABELS[q] == label)
-        seed_cell = _seed_cell(order, used, reach, taken, label_cells)
+        seed_cell = _seed_cell(
+            order, used, reach, hub_taken, label_cells, minimum_hub=minimum_hub
+        )
         assert seed_cell is not None
         cell, path, hub = seed_cell
         used.add(cell)
         seeds[label] = (cell, path)
         hub_values[label] = (hub,)
         taken |= {hub, hub + 1, hub + 2, hub + 3}
+        hub_taken |= {hub, hub + 1, hub + 2, hub + 3}
 
     near_cells = sorted(
         {
@@ -234,7 +281,11 @@ def _setup() -> _Group:
             ),
         }
     )
-    neighbour = _neighbour_cell(order, used, reach, taken, near_cells)
+    if runtime_base:
+        near_cells = _OTHERS
+    neighbour = _neighbour_cell(
+        order, used, reach, hub_taken, near_cells, minimum_hub=minimum_hub
+    )
     assert neighbour is not None
     cell, path, hub = neighbour
     used.add(cell)
@@ -243,7 +294,7 @@ def _setup() -> _Group:
     taken |= {hub, hub + 1, hub + 2, hub + 3}
     return _Group(
         base=base,
-        z_cells=z_cells,
+        z_cell=z_cell,
         clear=((clear0, clear0_value), (clear1, clear1_value)),
         view_cells=view_cells,
         mask_cells=mask_cells,
@@ -254,6 +305,8 @@ def _setup() -> _Group:
         near_cells=near_cells,
         used=used,
         taken=taken,
+        reserved=reserved,
+        runtime_base=runtime_base,
     )
 
 
@@ -263,6 +316,8 @@ def _seed_cell(
     reach: dict[int, dict[int, list[str]]],
     taken: set[int],
     label_cells: list[int],
+    *,
+    minimum_hub: int = 10000,
 ) -> tuple[int, list[str], int] | None:
     """Find a walked seed whose label cells map to one free hub value."""
     for cell in order:
@@ -278,7 +333,7 @@ def _seed_cell(
             if len(set(collected)) != 1:
                 continue
             hub = collected[0]
-            if not 10000 <= hub < 59000:
+            if not minimum_hub <= hub < 59000:
                 continue
             if not any(_admits(hub + 3, e - 1) for e in _OTHERS):
                 continue
@@ -296,6 +351,8 @@ def _neighbour_cell(
     reach: dict[int, dict[int, list[str]]],
     taken: set[int],
     near_cells: list[int],
+    *,
+    minimum_hub: int = 10000,
 ) -> tuple[int, list[str], int] | None:
     """Find the seed for the shared neighbour-escape hub."""
     for cell in order:
@@ -311,7 +368,7 @@ def _neighbour_cell(
             if len(set(collected)) != 1:
                 continue
             hub = collected[0]
-            if not 10000 <= hub < 59000:
+            if not minimum_hub <= hub < 59000:
                 continue
             if not any(_admits(hub + 3, e - 1) for e in near_cells):
                 continue
@@ -321,26 +378,106 @@ def _neighbour_cell(
     return None
 
 
-def _build(row: int, group: _Group) -> _Emission:
+def _emit_field(
+    block: _Planner,
+    *,
+    base: int,
+    offset: int,
+    view_cell: int,
+    parity_cell: int,
+    pointer_cell: int,
+    z0: int,
+    all2: int,
+    compact_mask: tuple[int, int] | None = None,
+) -> None:
+    """Emit one destructive field read and its shared continuation jump."""
+    cell = base + offset
+    block.op("*", parity_cell)
+    block.op("p", view_cell)
+
+    def read() -> None:
+        block.goto(pointer_cell)
+        block.raw("j")
+        block.d = base
+        for _ in range(offset):
+            block.raw("o")
+        block.raw("p")
+        block.d = cell + 1
+        for _ in range(2 - offset):
+            block.raw("o")
+        for op in "jjoojj":
+            block.raw(op)
+        block.d = z0
+
+    read()
+    if compact_mask is not None:
+        from compact_decoder import load
+
+        load(block, compact_mask[0], compact_mask[1], all2)
+        read()
+    block.goto(pointer_cell)
+    block.raw("j")
+    block.d = base
+    for _ in range(offset):
+        block.raw("o")
+    block.raw("j")
+    block.raw("j")
+    block.raw("j")
+    block.raw("i")
+
+
+def _build(
+    row: int,
+    group: _Group,
+    row_offset: int = 0,
+    *,
+    external_pointer: bool = False,
+    external_parity: bool = False,
+    compact: bool = False,
+    common_setup: bool = False,
+) -> _Emission:
     """Emit one row's real-source group decoder and its code-cell count."""
+    if group.runtime_base and not (external_pointer and external_parity):
+        raise ValueError("runtime base requires external pointer and parity")
+    if common_setup and not compact:
+        raise ValueError("common setup requires the compact decoder")
     base = group.base
     used = {128, 129} | group.used
-    memory: dict[int, int | None] = {address: _g(address) for address in range(_ENTRY)}
+    memory: dict[int, int | None] = {
+        address: None if address in group.reserved else _g(address)
+        for address in range(_ENTRY)
+    }
     states = [_START[row]]
     if states[0] in (0, 2):
         states.append(4)
     elif states[0] == 1:
         states.extend((3, 4))
-    parity_cells: list[tuple[int, int]] = []
-    for state in states:
-        target = _PARITY[_POS[state][row] % 2]
+    # Fixed copies keep the setup identical across all eight rows.
+    parity_sources: dict[int, list[tuple[int, int]]] = {0: [], 1: []}
+    for parity in () if external_parity else (0, 0, 1):
+        target = _PARITY[parity]
         cell = next(
             cell
             for cell in group.reach
             if cell not in used and target in group.reach[cell]
         )
         used.add(cell)
-        parity_cells.append((cell, target))
+        parity_sources[parity].append((cell, target))
+    parity_counts = {0: 0, 1: 0}
+    parity_cells: list[tuple[int, int]] = []
+    for state in states:
+        offset = _POS[state][row]
+        if external_parity:
+            parity_cells.append(((145, 139, 144)[offset], _PARITY[(base + offset) % 2]))
+        else:
+            parity = offset % 2
+            parity_cells.append(parity_sources[parity][parity_counts[parity]])
+            parity_counts[parity] += 1
+    parity_fields = (
+        (145, 139, 144)
+        if external_parity
+        else (parity_sources[0][0][0], parity_sources[1][0][0], parity_sources[0][1][0])
+    )
     helpers = {"all1": 128, "all2": 129}
     for name, value in _T_HELPERS.items():
         cell = next(
@@ -351,8 +488,12 @@ def _build(row: int, group: _Group) -> _Emission:
         used.add(cell)
         helpers[name] = cell
     data = {base + k: _char_for("o", base + k) for k in range(3)}
-    planner = _Planner(_ENTRY + 1, 34 + (7 - _ENTRY) % 94, memory, data)
+    planner = _Planner(_ENTRY + 1, 34 + (7 - _ENTRY) % 94, memory, data, accumulator=0)
     planner.code[_ENTRY] = "j"
+    if compact:
+        from compact_decoder import begin
+
+        planner = begin(planner, used)
     _build_constants(planner, helpers)
     for cell in (helpers["all1"], helpers["all2"]):
         planner.op("p", cell)
@@ -360,28 +501,6 @@ def _build(row: int, group: _Group) -> _Emission:
     planner.op("*", helpers["w"])
     planner.op("p", helpers["all2"])
     phases = [len(planner.code)]
-    chains: list[tuple[str, int, int]] = [
-        (f"z{k}", group.z_cells[k], base - 1 + k) for k in range(3)
-    ]
-    chains += [
-        ("C0", group.clear[0][0], group.clear[0][1]),
-        ("C1", group.clear[1][0], group.clear[1][1]),
-    ]
-    chains += [(f"B{i}", group.view_cells[i], _BASES[i]) for i in range(5)]
-    chains += [
-        (f"M{i}", cell, _MASK)
-        for i, cell in enumerate(group.mask_cells[: len(parity_cells)])
-    ]
-    chains += [("R", group.group_pointer, base - 1)]
-    chains += [
-        (f"P{d}", cell, _PARITY[_POS[states[d]][row] % 2])
-        for d, (cell, _) in enumerate(parity_cells)
-    ]
-    for _, cell, value in chains:
-        ops = _bfs(_g(cell))
-        assert value in ops, (cell, value)
-        _emit_chain(planner, cell, " ".join(ops[value]), helpers)
-    phases.append(len(planner.code))
     values: dict[int, int] = {}
     for label in "01xnN":
         seed, seed_ops = group.seeds[label]
@@ -396,34 +515,68 @@ def _build(row: int, group: _Group) -> _Emission:
             planner.op("p", point)
             values[point] = group.hub_values[label][0]
     phases.append(len(planner.code))
-    planner.op("*", helpers["all2"])
-    planner.op("p", group.group_pointer)
-    planner.op("*", helpers["all1"])
-    planner.op("p", group.group_pointer)
-    for _ in range(10):
-        planner.op("*", group.group_pointer)
-        planner.op("p", helpers["w"])
-    ordered = sorted(
-        zip(parity_cells, states, strict=True),
-        key=lambda pair: _POS[pair[1]][row] % 2,
-    )
-    masks = group.mask_cells[: len(ordered)]
-    for index, (mask, ((cell, _), _state)) in enumerate(
-        zip(masks, ordered, strict=True)
-    ):
-        if index == 0:
-            planner.op("*", helpers["z0"])
+    if external_pointer:
+        chains: list[tuple[str, int, int]] = []
+    else:
+        assert group.z_cell is not None
+        chains = [("z", group.z_cell, base - 1)]
+    chains += [
+        ("C0", group.clear[0][0], group.clear[0][1]),
+        ("C1", group.clear[1][0], group.clear[1][1]),
+    ]
+    chains += [(f"B{i}", group.view_cells[i], _BASES[i]) for i in range(5)]
+    if not external_parity:
+        chains += [(f"M{i}", cell, _MASK) for i, cell in enumerate(group.mask_cells)]
+        chains += [("R", group.group_pointer, base - 1)]
+        chains += [
+            (f"P{parity}{index}", cell, target)
+            for parity, cells in parity_sources.items()
+            for index, (cell, target) in enumerate(cells)
+        ]
+    for _, cell, value in chains:
+        ops = _bfs(_g(cell))
+        assert value in ops, (cell, value)
+        _emit_chain(planner, cell, " ".join(ops[value]), helpers)
+    phases.append(len(planner.code))
+    if not external_parity:
+        planner.op("*", helpers["all2"])
+        planner.op("p", group.group_pointer)
+        planner.op("*", helpers["all1"])
+        planner.op("p", group.group_pointer)
+        for _ in range(10):
+            planner.op("*", group.group_pointer)
             planner.op("p", helpers["w"])
-        planner.op("p", mask)
-        planner.op("p", cell)
+        ordered = [*parity_sources[0], *parity_sources[1]]
+        for index, (mask, (cell, _)) in enumerate(
+            zip(group.mask_cells, ordered, strict=True)
+        ):
+            if index == 0:
+                planner.op("*", helpers["z0"])
+                planner.op("p", helpers["w"])
+            planner.op("p", mask)
+            planner.op("p", cell)
     phases.append(len(planner.code))
     z0 = values[group.near_cells[0]] + 1
+    compact_masks: dict[int, int] = {}
+    if compact:
+        from compact_decoder import emit_masks
+
+        compact_masks = emit_masks(
+            planner,
+            group,
+            used,
+            helpers,
+            list(range(5)) if common_setup else states,
+            derived=common_setup,
+        )
     pointer: dict[int, int] = {}
     for point in sorted(values):
         hub = values[point]
         if _admits(hub + 2, point - 1):
             pointer.setdefault(hub, point)
     avoid = set(group.taken) | set(data)
+    if compact:
+        avoid.update(range(41554, _WORDS))
     for hub in set(values.values()):
         if hub in pointer:
             data[hub + 2] = pointer[hub] - 1
@@ -433,7 +586,7 @@ def _build(row: int, group: _Group) -> _Emission:
     copies: list[tuple[str, int, int, list[int]]] = []
     for label in "01xn":
         key = _KEY[label]
-        room = 140 if key[0] == "p" else 300
+        room = 140 if key[0] == "p" else 1000 if compact else 300
         hubs = sorted({values[p] for p in values if _LABELS.get(p) == label})
         options: list[dict[int, tuple[int, int]]] = []
         for hub in hubs:
@@ -474,20 +627,49 @@ def _build(row: int, group: _Group) -> _Emission:
         return offset, group.view_cells[state], _VIEW[2 * state + parity], parity
 
     for state in range(5):
-        offset, _view_cell, constant, parity = view(state)
+        offset, _view_cell, _constant, fixed_parity = view(state)
         cell = base + offset
-        for char in _admissible(cell):
-            label = _LABEL_OF[_TARGET[_DELTA[state][_meaning(char, parity)]]]
-            landing = _landing(constant, char)
-            landing_char = next(
-                ch for ch in _valid_chars(landing) if _LABELS.get(ch + 1) == label
+        for parity in (
+            range(2) if group.runtime_base or common_setup else (fixed_parity,)
+        ):
+            constant = _VIEW[2 * state + parity]
+            chars = (
+                range(33, 127)
+                if group.runtime_base or common_setup
+                else _admissible(cell)
             )
-            assert data.get(landing, landing_char) == landing_char, (
-                "landing clash",
-                landing,
-            )
-            data[landing] = landing_char
-    cleared = {a for a in range(_ENTRY) if planner.mem.get(a) is None}
+            for char in chars:
+                label = _LABEL_OF[_TARGET[_DELTA[state][_meaning(char, parity)]]]
+                if compact:
+                    from compact_decoder import landing as compact_landing
+
+                    landing = compact_landing(state, parity, char)
+                else:
+                    landing = _landing(constant, char)
+                landing_char = next(
+                    ch for ch in _valid_chars(landing) if _LABELS.get(ch + 1) == label
+                )
+                assert data.get(landing, landing_char) == landing_char, (
+                    "landing clash",
+                    landing,
+                )
+                data[landing] = landing_char
+    setup = _SetupEmission(
+        code=dict(planner.code),
+        data=dict(data),
+        memory=dict(planner.mem),
+        helpers=dict(helpers),
+        state_masks=dict(compact_masks),
+        parity_fields=parity_fields,
+        c=planner.c,
+        d=planner.d,
+        accumulator=planner.accumulator,
+    )
+    cleared = {
+        a
+        for a in range(_ENTRY)
+        if planner.mem.get(a) is None or (compact and planner.mem.get(a) != _g(a))
+    }
     fresh: dict[int, int | None] = {a: _g(a) for a in range(_ENTRY)}
     planner.mem = fresh
     for address in cleared:
@@ -495,30 +677,38 @@ def _build(row: int, group: _Group) -> _Emission:
 
     def decoder(block: _Planner, state: int, depth: int) -> None:
         offset, view_cell, _constant, _parity = view(state)
-        cell = base + offset
-        z_cell = group.z_cells[offset]
-        block.op("*", parity_cells[depth][0])
-        block.op("p", view_cell)
-        block.goto(z_cell)
-        block.raw("j")
-        block.d = cell
-        block.raw("p")
-        block.d = cell + 1
-        for _ in range(2 - offset):
-            block.raw("o")
-        for op in "jjoojj":
-            block.raw(op)
-        block.d = z0
-        block.goto(z_cell)
-        block.raw("j")
-        block.d = cell
-        block.raw("j")
-        block.raw("j")
-        block.raw("j")
-        block.raw("i")
+        # One preserved base pointer reaches each within-group offset.
+        z_cell = 142 if external_pointer else group.z_cell
+        assert z_cell is not None
+        compact_mask = None
+        if compact:
+            from compact_decoder import mask
 
+            compact_mask = (compact_masks[state], mask(state))
+        _emit_field(
+            block,
+            base=base,
+            offset=offset,
+            view_cell=view_cell,
+            parity_cell=parity_fields[offset]
+            if common_setup
+            else parity_cells[depth][0],
+            pointer_cell=z_cell,
+            z0=z0,
+            all2=helpers["all2"],
+            compact_mask=compact_mask,
+        )
+
+    if row_offset < 0:
+        raise ValueError(row_offset)
+    assert not any(planner.c <= address < planner.c + row_offset for address in data)
+    planner.c += row_offset
+    planner.d += row_offset
+    row_start = planner.c
     decoder(planner, _START[row], 0)
     for key, address, room, _turns in copies:
+        if key == "s3" and 3 not in states and not common_setup:
+            continue
         block = _Planner(address, 0, dict(planner.mem), data)
         block.raw("o")
         block.raw("j")
@@ -532,13 +722,20 @@ def _build(row: int, group: _Group) -> _Emission:
             block.op("*", group.clear[0][0] if key == "p0" else group.clear[1][0])
             block.raw("<")
             block.raw("v")
-        assert all(address <= a < address + room for a in block.code)
+        assert all(address <= a < address + room for a in block.code), (
+            key,
+            address,
+            room,
+            max(block.code) - address + 1,
+        )
         for a, op in block.code.items():
             planner.code[a] = op
     source = [_char_for("o", a) for a in range(_WORDS)]
     for a, op in planner.code.items():
         source[a] = _char_for(op, a)
     for a, ch in data.items():
+        if compact:
+            assert a not in planner.code, (a, planner.code.get(a), ch)
         source[a] = ch
     phases.append(len(planner.code))
     return _Emission(
@@ -546,6 +743,9 @@ def _build(row: int, group: _Group) -> _Emission:
         code_cells=len(planner.code),
         code=dict(planner.code),
         data=dict(data),
+        row_start=row_start,
+        copy_windows=tuple((key, address, room) for key, address, room, _ in copies),
+        setup=setup,
     )
 
 
@@ -554,34 +754,55 @@ def _run(source: str, limit: int = 100_000) -> list[int]:
     return _run_traced(source, limit)[0]
 
 
-def _run_traced(source: str, limit: int = 100_000) -> tuple[list[int], set[int]]:
-    """Execute a real source, returning its output and the cells it runs."""
+def _run_traced(
+    source: str,
+    limit: int = 100_000,
+    prefill: dict[int, int] | None = None,
+) -> tuple[list[int], set[int]]:
+    """Return output and live cells; inject reserved data after startup."""
     memory = list(_initial_memory(source))
     state = (0, 0, 0, False)
     output: list[int] = []
     executed: set[int] = set()
+    injected = False
     for _ in range(limit):
+        if prefill is not None and state[1] == _ENTRY + 1 and not injected:
+            for address, value in prefill.items():
+                memory[address] = value
+            injected = True
         executed.add(state[1])
         state, writes, effect = _advance(state, memory)
         for address, value in writes:
+            assert not injected or prefill is None or address != 142
             memory[address] = value
         if effect is not None:
             output.append(effect)
         if state[3]:
+            assert prefill is None or injected
             return output, executed
     raise AssertionError("group decoder did not halt")
 
 
 def main() -> int:
     """Rebuild every row and reproduce the 2,744 real-source group cases."""
-    group = _setup()
+    group = _setup(frozenset({142, 145, 139, 144}), external_pointer=True)
     total = 0
     executed: set[int] = set()
+    live_rows: list[tuple[list[int], set[int]]] = []
+    emissions: list[_Emission] = []
     for row in range(8):
-        emission = _build(row, group)
+        emission = _build(
+            row,
+            group,
+            row_offset=200 * row,
+            external_pointer=True,
+            external_parity=True,
+        )
+        emissions.append(emission)
         source = emission.source
         default = [_char_for("o", a) for a in range(_WORDS)]
         set_cells = sum(1 for a in range(_WORDS) if source[a] != default[a])
+        row_executed: set[int] = set()
         for triple in itertools.product(range(7), repeat=3):
             program = list(source)
             for index in range(3):
@@ -596,14 +817,62 @@ def main() -> int:
             program[neighbour] = _admissible(neighbour)[
                 (triple[0] * 49 + triple[1] * 7 + triple[2]) % 8
             ]
-            char, seen = _run_traced("".join(chr(value) for value in program))
+            char, seen = _run_traced(
+                "".join(chr(value) for value in program),
+                prefill={
+                    142: group.base - 1,
+                    145: _PARITY[group.base % 2],
+                    139: _PARITY[(group.base + 1) % 2],
+                    144: _PARITY[(group.base + 2) % 2],
+                },
+            )
             executed |= seen
+            row_executed |= seen
             got = chr(char[0]) if char else None
             assert got == _expected(row, triple), (row, triple, got)
             total += 1
+        live_rows.append((source, row_executed))
         print(f"row {row}: {emission.code_cells} written, {set_cells} set cells")
+    common = set.intersection(*(seen for _, seen in live_rows))
+    variants = {
+        address
+        for address in executed
+        if len({source[address] for source, seen in live_rows if address in seen}) > 1
+    }
+    owners: dict[int, set[str]] = {}
+    for emission in emissions:
+        for address, op in emission.code.items():
+            owners.setdefault(address, set()).add(op)
+    conflicts = {address for address, ops in owners.items() if len(ops - {"o"}) > 1}
+    live_conflicts = {
+        address: {
+            row: emissions[row].code.get(address, "o")
+            for row, (_, seen) in enumerate(live_rows)
+            if address in seen
+        }
+        for address in conflicts
+    }
+    copy_classes: dict[str, list[list[int]]] = {}
+    for label in ("s3", "s4"):
+        classes: dict[tuple[str, ...], list[int]] = {}
+        for row, emission in enumerate(emissions):
+            _, address, room = next(
+                window for window in emission.copy_windows if window[0] == label
+            )
+            if not any(a in live_rows[row][1] for a in range(address, address + room)):
+                continue
+            signature = tuple(
+                emission.code.get(a, "o") for a in range(address, address + room)
+            )
+            classes.setdefault(signature, []).append(row)
+        copy_classes[label] = list(classes.values())
     print(f"five-state group decoder: {total} / {total}")
     print(f"executed cells across all rows: {len(executed)}")
+    print(f"common executed cells: {len(common)}; live row variants: {len(variants)}")
+    print(f"row starts: {[emission.row_start for emission in emissions]}")
+    print(f"non-nop opcode conflicts: {len(conflicts)} at {sorted(conflicts)}")
+    print(f"live conflict owners: {dict(sorted(live_conflicts.items()))}")
+    print(f"live copy classes: {copy_classes}")
     return 0
 
 

@@ -88,7 +88,6 @@ __all__ = [
     "b_tapemark",
     "back",
     "befunge",
-    "between",
     "bf_tree",
     "bfpda",
     "bfstack",

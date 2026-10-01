@@ -1,8 +1,7 @@
 # Seventeen-input Malbolge: research artifacts
 
-Supporting files for the "Seventeen" sections of
-[docs/proofs/malbolge-scaling.md](../../docs/proofs/malbolge-scaling.md).
-None of this is wired into the generator.
+Research tools for [malbolge-scaling](../../docs/proofs/malbolge-scaling.md)’s
+"Seventeen" sections; these are separate from the shipped generator.
 
 - `msim.c`, `tables.h` -- a C Malbolge simulator matching
   `esolangs.interpreters.other.malbolge` (checked against it). Build with
@@ -38,10 +37,10 @@ None of this is wired into the generator.
   escape and five-base parity views; also 2,744 of 2,744. Build `msim.c` as
   `/private/tmp/malbolge17-msim` before running it.
 - `prototype/five_lab.py.txt`, `prototype/chain_k.py.txt` -- the scratch
-  prototype of the five-state group decoder that runs 2,744 of 2,744 cases
-  on real sources (see the doc). Kept as text: it hard-codes `/tmp` paths
-  (`chain_k.py` is exec'd for its helpers) and is not written to the repo's
-  lint standard. To rerun `five_lab.py`, copy both into a scratch directory
+  five-state group-decoder prototype runs 2,744 of 2,744 real-source cases
+  (see the proof). Kept as text because it hard-codes `/tmp` paths, executes
+  `chain_k.py` for helpers, and does not meet the repo’s lint standard. To rerun
+  `five_lab.py`, copy both into a scratch directory
   as `.py`, fix its paths, build `msim`, and run with `PYTHONPATH=src`.
 - `fold_classes.py` -- the 272 triple classes that no `p p p` fold separates
   at the worst residue.
@@ -50,13 +49,35 @@ None of this is wired into the generator.
 - `tiling_runs.py` -- free cells in long runs under every digit-local
   six-slab tiling (best 5,127 in runs of 200 or more); needs numpy.
 - `address17.py` -- word-level model of the seventeen-input address fold
-  (16,384 groups, cells `0..6561` free, no wrap to cell 0).
+  (16,384 disjoint groups; the actual reader uses 49,152 cells in
+  `6563..59047`, with no wrap to cell 0).
 - `address_gadget.py` -- emits every fixed A/B/C/D address path plus combined
   dynamic A and A/B/C/D paths as real source; the combined program executes
   all 16,384 group addresses, retains the table pointer and initializes all
-  three parity words.
+  three parity words. The high-pointer layout stores that pointer at cell
+  142, continues at C=1,855, D=47, and reads three changed group-table cells
+  on eight executed rows.
+- `decoder_group.py` -- linted five-state group decoder; executes all 2,744
+  row/meaning cases with a pointer injected at cell 142 after startup and
+  reports the live shared and row-dependent cells.
+- `dispatch3.py` -- real-source three-input fold and eight-way row dispatcher;
+  exposes the eight terminal output stubs and exact emitted code/data maps.
+- `join_budget.py` -- exact address/decoder instruction-map union and table
+  overlap for the current separate emitters; `--live` traces all 16,384
+  address paths and checks emitted-code liveness.
 - `parity_views.py` -- exact five-base factorization of the ten view constants,
   its three consumable parity words and one-trit toggle, and emitted setup
   measurements.
 - `address_parity.py` -- exhaustive certificate for the straight-line reducer
   from the computed group pointer to the parity toggle operand.
+- `combined_helpers.py`, `live_rows.py` -- execute the shared address/label
+  setup, ten decoder helpers and final three-input row fold without injection.
+- `row_routes.py` -- eight live row landings, optionally jumping through one
+  pointer to a shared entry at `D=22`. All 131,072 inputs passed the shared
+  routing check; the row word remains in cell 20. Shared routing writes
+  33,239 instruction cells.
+- `shared_reader.py` -- shared-entry first-field read using the live pointer
+  and parity-selected view. Its 256 executed controls compare the result
+  against the actual pre-read memory word; 33,435 instruction cells. This
+  diagnostic halts after the read. Return navigation, complete Boolean
+  decoding and placement around the arbitrary table remain unfinished.

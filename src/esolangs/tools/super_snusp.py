@@ -8,7 +8,9 @@ language's random ``=`` opcode.
 
 from esolangs.tools.helpers import (
     _validate_truth_table,
+    anf_coefficients,
     essential_inputs,
+    move_text,
     read_at,
 )
 
@@ -26,26 +28,9 @@ _TWO_INPUT_SHORT = {
     "0111": "48{,-> ,-<^{>|.",
 }
 
-# ANF can beat the lookup on small sparse functions, but its coefficient pass
-# and input products are super-linear in the table.  Keeping that comparison
-# finite preserves the small wins without putting it on the scaling path.
+# ANF wins on small sparse functions, but its input products are super-linear.
+# Bound the comparison to keep those wins off the scaling path.
 _ANF_MAX_INPUTS = 4
-
-
-def _anf_coefficients(truth_table: str) -> list[int]:
-    """Return ANF coefficients indexed by the ordinary truth-table rows."""
-    coefficients = [int(bit) for bit in truth_table]
-    n = len(truth_table).bit_length() - 1
-    for bit in range(n):
-        for mask in range(len(coefficients)):
-            if mask & (1 << bit):
-                coefficients[mask] ^= coefficients[mask ^ (1 << bit)]
-    return coefficients
-
-
-def _move(start: int, end: int) -> str:
-    """Move the data pointer from ``start`` to ``end`` on the tape."""
-    return (">" if end > start else "<") * abs(end - start)
 
 
 def _flip(truth_table: str, negated: int) -> str:
@@ -74,14 +59,13 @@ def _emit_anf(
     truth_table: str,
     used: list[int],
     *,
-    coefficients: list[int] | None = None,
     negated: int = 0,
 ) -> str:
     """Emit a fixed-polarity ANF evaluator over ``used`` stream inputs.
 
     ``negated`` marks, as a row mask over ``truth_table``'s inputs, the
     retained inputs whose cells hold the complement; the terms are then the
-    ANF of the table with those inputs flipped (``coefficients`` when given).
+    ANF of the table with those inputs flipped.
     """
     k = len(used)
     base = _decode_base(k, negated)
@@ -105,8 +89,7 @@ def _emit_anf(
     if not used or used[-1] != n - 1:
         program.append("0")
     product = k + 1
-    if coefficients is None:
-        coefficients = _anf_coefficients(_flip(truth_table, negated))
+    coefficients = anf_coefficients(_flip(truth_table, negated))
     if coefficients[0]:
         program.append(")")
 
@@ -119,9 +102,9 @@ def _emit_anf(
             if mask & table_bit:
                 program.extend(
                     [
-                        _move(product, input_index),
+                        move_text(product, input_index, ">", "<"),
                         "{",
-                        _move(input_index, product),
+                        move_text(input_index, product, ">", "<"),
                         "&",
                     ]
                 )
@@ -138,7 +121,6 @@ def _anf_cost(
     truth_table: str,
     used: list[int],
     *,
-    coefficients: list[int] | None = None,
     negated: int = 0,
 ) -> int:
     """Return the rendered length of :func:`_emit_anf` without emitting it."""
@@ -147,8 +129,7 @@ def _anf_cost(
     cost = 4 + 2 * n + k + 7 + min(flips, k - flips)
     if not used or used[-1] != n - 1:
         cost += 1
-    if coefficients is None:
-        coefficients = _anf_coefficients(_flip(truth_table, negated))
+    coefficients = anf_coefficients(_flip(truth_table, negated))
     cost += coefficients[0]
     product = k + 1
     for mask, coefficient in enumerate(coefficients[1:], start=1):
@@ -163,28 +144,14 @@ def _anf_cost(
 
 
 def _polarity(n: int, truth_table: str, used: list[int]) -> tuple[int, int]:
-    """Return ``(negated, cost)``: a cheap input polarity for the ANF.
-
-    Which arm of an input is its ANF literal decides the terms: ``NOR`` is
-    every product of its inputs, ``AND`` of their complements a single one.
-    Both uniform polarities cost nothing extra (see :func:`_decode_base`),
-    so each is a start, and one greedy pass then flips every retained input
-    in turn, keeping a flip that shortens the build.  That is ``2(k + 1)``
-    priced candidates, not the ``2**k`` polarities, and it stays on the
-    bounded ANF path.
-    """
-    k = len(used)
-    best_mask, best_cost = 0, 0
-    for start in (0, (1 << k) - 1):
-        mask = start
-        cost = _anf_cost(n, truth_table, used, negated=mask)
-        for bit in range(k):
-            trial = _anf_cost(n, truth_table, used, negated=mask ^ 1 << bit)
-            if trial < cost:
-                mask, cost = mask ^ 1 << bit, trial
-        if not start or cost < best_cost:
-            best_mask, best_cost = mask, cost
-    return best_mask, best_cost
+    """Return a polarity and cost after one greedy pass from positive inputs."""
+    mask = 0
+    cost = _anf_cost(n, truth_table, used)
+    for bit in range(len(used)):
+        trial = _anf_cost(n, truth_table, used, negated=mask ^ 1 << bit)
+        if trial < cost:
+            mask, cost = mask ^ 1 << bit, trial
+    return mask, cost
 
 
 def _emit_lookup(truth_table: str) -> str:
@@ -345,4 +312,17 @@ def super_snusp(truth_table: str, width: int | None = None) -> str:
     flat = _super_snusp_flat(truth_table)
     if width is None or len(flat) <= width:
         return flat
+    if 0 < width < 3:
+        # START may be absent (wiki); the existing bottom-right leftward
+        # entry meets a backslash and climbs the complete straight evaluator.
+        return "\n".join(reversed("\\" + flat[1:]))
+    if width < 4:
+        pieces = []
+        for token in _super_snusp_tokens(flat):
+            if len(token) == 1:
+                pieces.append(token)
+            else:
+                # Both emitters use only 48/49 as multi-digit literals.
+                pieces.append("6{8*" + (")" if token[-1] == "9" else ""))
+        flat = "".join(pieces)
     return _super_snusp_folded(flat, width)

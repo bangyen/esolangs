@@ -3,6 +3,7 @@
 import pytest
 
 from esolangs.exceptions import HaltError, ProgramError
+from esolangs.interpreters.io import IO
 from esolangs.interpreters.other.crement import (
     _advance,
     _Instruction,
@@ -10,6 +11,7 @@ from esolangs.interpreters.other.crement import (
     _number,
     _parse,
     _State,
+    run,
 )
 from esolangs.vm import run_until_halt_or_cycle
 
@@ -52,6 +54,18 @@ def test_labels_here_and_signed_sums_resolve() -> None:
     program = _parse(":start +J end-start 0 * forward\n:end -D @-1 start+2")
     assert (program[0].address, program[0].data) == (1, 0)
     assert (program[1].address, program[1].data) == (0, 2)
+
+
+def test_whitespace_separates_fields_and_comments_are_spaces() -> None:
+    compact = ":start +J end-start 0 :end -D @-1 start+2"
+    folded = ":start\n+J\nend-start * comment\n0\n:end\n-D\n@-1\nstart+2"
+    assert _parse(compact) == _parse(folded)
+    assert _halts("+J\n0\n0")
+    assert not _halts("+J\n0\n1")
+    run("+J\n0\n0", IO())
+    machine = _Machine("")
+    assert machine.stack == []
+    assert _advance(machine.state) == machine.state
 
 
 def test_transition_is_pure_over_immutable_state() -> None:

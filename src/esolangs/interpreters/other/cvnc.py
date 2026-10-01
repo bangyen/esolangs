@@ -24,7 +24,9 @@ floors; an invalid function is inert but division by zero raises
 subtraction and ``s`` floor at zero; unbalanced loops, an empty program
 or an unsyllabifiable source raise :class:`ValueError`; ``s`` reads junk
 as zero, while EOF raises :class:`EOFError`; ASCII ``g`` folds to ``ɡ``
-because the wiki's example uses it.
+because the wiki's example uses it.  Spec deviation: LF is discarded
+before tokenization, syllabification and character-offset calculation;
+spaces, tabs and CR remain invalid.
 """
 
 from __future__ import annotations
@@ -387,7 +389,7 @@ class _Machine:
 
     def __init__(self, code: str, io: IO) -> None:
         """Parse ``code`` into commands and syllables, ready to step."""
-        self.tokens = _tokenize(code)
+        self.tokens = _tokenize(code.replace("\n", ""))
         if not self.tokens:
             raise ValueError("program is empty")
         self.starts = _syllabify(self.tokens)

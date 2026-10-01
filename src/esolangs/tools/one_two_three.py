@@ -50,7 +50,6 @@ from esolangs.tools.one_two_three_construct import (
     _ZERO,
     ConstructError,
     _Builder,
-    _construct_linear,
     _endgame,
     _on_mark,
     _paint,
@@ -221,15 +220,5 @@ def one_two_three(truth_table: str) -> str:
     n = _validate_truth_table(truth_table)
     if n > 3:
         return _in_name_order(construct(truth_table), n)
-    # The wide chain is the smaller of the two on 98 of the 256 three-input
-    # tables since it gave up pre-painting, so it competes here instead of
-    # being gated out by arity.  The mean still sets the crossover above.
-    # No guard on the chain: ``test_the_wide_route_is_exhaustive_and_loses_
-    # on_the_mean`` builds it for every table through three inputs.
-    # The first law and the chain come first, so ties keep what they built;
-    # the extra laws only ever replace a longer template.
-    candidates = [_construct_small(truth_table, n), _construct_linear(truth_table, n)]
-    candidates += [
-        _construct_small(truth_table, n, law) for law in range(1, len(_LAWS[n]))
-    ]
+    candidates = [_construct_small(truth_table, n, law) for law in range(len(_LAWS[n]))]
     return _in_name_order(min(candidates, key=len), n)

@@ -1,7 +1,7 @@
 # Limitations and contracts
 
-Standing contracts and walls. Closed scaling work belongs in its commit;
-Polynomial's proved wall is in [polynomial](proofs/polynomial.md).
+Interpreter conventions, generator constraints, and proved limits.
+See [Polynomial](proofs/polynomial.md) for its size lower bound.
 
 ## Interpreter conventions
 
@@ -44,11 +44,10 @@ character is build work. The input text must have:
 The template constructor enforces the shape. `tests/proofs/test_conventions.py`
 checks filled programs at n=2, 3, 5.
 
-A relaxed-width toggle is worth adding only for a smaller executed build; a
-space toggle has no remaining use. Reordering is optional around a construction, but
-its selection cost counts; named candidates are capped at four and the generic
-greedy scorer stops at n=10. Generator constructions may not use BFS or DFS;
-test-only oracles may.
+Add a relaxed-width option only if it produces a smaller, executed build.
+A space option has no remaining use. Input reordering counts toward generation
+cost: at most four named candidates, with the generic greedy scorer stopping
+at n=10. Generators may not use BFS or DFS; test-only oracles may.
 
 The screen script measures permuted tables, not admissible reorders under a
 fixed template and fill mapping. Dig, Flowchart, BrainIf, Sophie, and SLOW ACV
@@ -72,6 +71,10 @@ dense, parity, constant tables were executed exhaustively at each shipped
 arity. Construction details and measurements are in
 [malbolge-scaling](proofs/malbolge-scaling.md).
 
+Seventeen remains open. Executed decoder and instruction-reuse controls exist,
+but no source joins the address fold, row selector and complete decoder around
+an arbitrary full truth table. The shipped cap remains sixteen.
+
 Counting bounds each family independently of mixer quality:
 
 - stubs need three gap-3 cells per row: `3 * 2**n <= 59049`, hence `n <= 14`;
@@ -83,7 +86,7 @@ inputs would need sixteen labels, but its address admits eight characters.
 Seventeen inputs need more than two table bits per cell across almost the
 whole store.
 
-That construction gap ends before totality. Malbolge has 59,049 cells and
+The language itself has a separate limit. Malbolge has 59,049 cells and
 eight valid decoded instructions at each occupied source cell -- the
 decipherment cycles with the cell index, and `_XLAT1` holds each instruction
 character exactly once -- hence fewer than `sum(8**k for k in range(59050)) <
@@ -104,14 +107,14 @@ answer resting on at most 24,434 cells, the largest `K` with `C(59049, K) *
 the one-input identity and every cell flips it, so only a cut over one
 normal-form program per table remains open.
 
-The no-`i`/`j` model is still dead. Straight-line `c == d` from the reset
+The no-`i`/`j` model cannot express NOT. Straight-line `c == d` from the reset
 state gives a `p` its own cell's instruction character, one of 94 values in
 33..126, and the input pair `(49, 48)` is unreachable, so NOT is not
 expressible at any length.
 
 | Generator | Dense | Parity | Limit |
 | --- | ---: | ---: | --- |
-| Malbolge | 16 | 16 | Stubs need gap-3 readouts (none at eleven bits); the hashed cascade through fourteen resolves collisions over up to three levels and stops where their depth outruns the decoder. Fifteen and sixteen address positionally, three bits per two-trit digit, so no row collides; seventeen would need 65,536 row-pair cells in a 59,049-cell store ([scaling](proofs/malbolge-scaling.md)). |
+| Malbolge | 16 | 16 | Stubs need gap-3 readouts (none at eleven bits); the hashed cascade through fourteen resolves collisions over up to three levels and stops where their depth outruns the decoder. Fifteen and sixteen address positionally, three bits per two-trit digit, so no row collides; that positional readout needs 65,536 row-pair cells at seventeen in a 59,049-cell store. Three-cell packing remains unintegrated ([scaling](proofs/malbolge-scaling.md)). |
 | Polynomial | 10 | ≥11 | 1,934-instruction guard; dense n=11 is priced at 267 s and >100 MB. Parity is routed through the state machine (two states per input, ~11 instructions per level), so the guard does not bind it at ten. |
 
 Polynomial's block-incidence lemma forces `Omega(T/log T)` distinct real
@@ -145,16 +148,14 @@ Persistent stores use shared 32-cell chunks; RAM0 also indexes addresses.
 Those choices prevent repeated scans, but command cost and source size remain
 separate axes.
 
-### The Malbolge sampled rows are not redundant
+### Malbolge sampling
 
-`test_boolean_malbolge.py` is the largest single block in the suite, and
-each sampled test runs a stride sample (every 8th/16th/32nd row) *and* every
-second-level row of the cascade.  The two halves cover disjoint failures, so
-neither is trimmable: at eleven inputs, corrupting the level-0 answers of
-`_cascade_program` is caught by 117 stride rows and **0** second-level rows,
-while corrupting the second-level answers is caught by 127 second-level rows
-and only 18 stride rows.  The stride rows are the only cover for the 1792
-level-0 rows.  Recorded because the file's size reads like waste and is not.
+`test_boolean_malbolge.py` checks stride samples (every 8th/16th/32nd row)
+and every second-level cascade row. Both are needed: at eleven inputs,
+corrupting `_cascade_program`’s level-0 answers fails 117 stride rows and
+**0** second-level rows. Corrupting second-level answers fails 127
+second-level rows and only 18 stride rows. Only the stride sample covers
+the 1792 level-0 rows.
 
 ## Curation
 
@@ -214,25 +215,22 @@ languages remain rejected from the same image-source screen.
   the reference's own cat loop, which tests `^` against `-1`, a crash.
 - FRACTRAN has no I/O in the language, so this package reads the starting
   value from the source's first token and prints the value the run stops on.
-  A token may be written as a product of prime powers (`2^3*5` is 40), which
-  is notation only: it is how a generated starting value spells thousands of
-  digits without spelling them.
+  Prime-power products (`2^3*5` is 40) abbreviate starting values that would
+  otherwise need thousands of decimal digits.
 - Thue is nondeterministic by specification -- the rule *and* the position are
-  drawn at random -- and the interpreter draws, through the shared
-  `randomness` hook, rather than pinning a tie-break: a pinned one would make
-  every overlapping-rule program compute whatever this package preferred.
-  `--seed` fixes it.  The generator instead writes rules that never overlap,
+  drawn at random through the shared `randomness` hook. A fixed tie-break
+  would change overlapping-rule programs; `--seed` makes the draws repeatable.
+  The generator writes rules that never overlap,
   so each state it reaches has exactly one rewrite and the draw cannot change
   the answer; `tests/tools/test_boolean_classics.py` asserts that over every
   table to three inputs, and checks the answer under three seeds and the
   unseeded draw.
 - Unlambda's `@` reads a line and takes its first character, an empty line
-  giving a newline, since the package has no character stream.  Both spec
-  branches are live: at end of input `@` hands its argument `v`, reached by
-  catching the port's `EOFError` as nine other interpreters here catch it, and
-  the current character is left as it was.  `v` absorbs its arguments, so the
-  failure arm can run nothing of its own -- that is the language, not this
-  port.
+  giving a newline, since the package has no character stream.
+  At EOF, `@` catches the port’s `EOFError` (also caught by nine other
+  interpreters), hands its argument `v`, and leaves the current character
+  unchanged. `v` absorbs its arguments, so the failure arm cannot execute
+  its own code.
 - Bitdeque `GOTO n` is zero-based: it lands on command index `n`, where the
   wiki's "Nth operation" reads one-based.  The generator's labels match this.
 - BrainIf ignores a guarded line naming no command (`if 0 frobnicate`), which
@@ -243,5 +241,3 @@ languages remain rejected from the same image-source screen.
   line-oriented input.
 - Pinyin is rejected: its spelling rule contradicts its examples and its
   input-1 truth-machine example has no deterministic reading.
-
-Generated programs are evidence only after execution through their interpreter.

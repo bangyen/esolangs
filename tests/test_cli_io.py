@@ -27,6 +27,27 @@ class TestTheDecodeGuardsInProcess:
     fix this round's one real bug looking untested.
     """
 
+    @pytest.mark.parametrize("newline", ["\r\n", "\r"])
+    @pytest.mark.parametrize("language", ["NoComment", "CV(N)(C)", "Grapheme"])
+    def test_run_normalizes_text_file_newlines(
+        self, tmp_path: Path, newline: str, language: str
+    ) -> None:
+        program = esolangs.generate(language, "01")
+        assert isinstance(program, str)
+        if esolangs.describe(language)["parameterized"]:
+            program = esolangs.instantiate(language, program, [1])
+            stdin = ""
+        else:
+            stdin = esolangs.encode_inputs(language, [1])
+        path = tmp_path / "program.txt"
+        path.write_bytes((program.replace("\n", newline) + newline).encode())
+        source = cli._read_program(str(path))  # noqa: SLF001
+        assert (
+            esolangs.run(language, source, stdin)
+            == esolangs.run(language, path, stdin)
+            == "1"
+        )
+
     def test_read_program_refuses_a_binary_file(self, tmp_path: Path) -> None:
         """The file reader's own clause, called directly."""
         path = tmp_path / "b.txt"

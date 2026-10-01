@@ -188,7 +188,8 @@ def test_mux_refuses_below_its_minimum_arity() -> None:
     module = importlib.import_module("esolangs.tools.minifuck")
 
     assert module._MUX_MIN_ARITY == 2  # noqa: SLF001
-    assert module._mux("01", 1) is None  # noqa: SLF001
+    with pytest.raises(ValueError, match="at least two inputs"):
+        module._mux("01", 1)  # noqa: SLF001
 
 
 def test_the_probe_frame_refuses_codes_outside_its_key() -> None:

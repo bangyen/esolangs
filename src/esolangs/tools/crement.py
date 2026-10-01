@@ -23,7 +23,7 @@ five-input tables, 114,791 to 83,070 (27.6%).
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
-    best_input_order,
+    in_input_order,
     subtree_ids,
 )
 
@@ -43,21 +43,55 @@ _HALT, _LOOP = 0, 1
 PAIR = ("+J 0 0", "+J 0 1")
 
 
-def crement(truth_table: str) -> str:
+def crement_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
+    """Return data-only setters for field-wrapped testers."""
+    return (("0", "1") if TEMPLATE_CHAR in template.split() else PAIR,) * n
+
+
+def crement(truth_table: str, width: int | None = None) -> str:
     """Build a Crement template: one run per input, its tester's first line.
 
-    Constant subtrees fold, so the tree splits in the shorter of the identity
-    and greedy orders as emitted; the identity wins ties.  Each order is
-    built plain and shared (:func:`_crement_ordered`), and the shorter wins.
+    Constant subtrees fold and repeated halves share code. Splits stay in
+    input order; retiring the greedy candidate adds 1.57% to the three-input
+    total and 1.84% to the five-input sample.
+    Over-wide instructions use their shortest absolute or relative operands;
+    Below six columns, whitespace separates fields and only tester data is filled.
     """
-    return best_input_order(truth_table, _crement_best)
+    template = in_input_order(truth_table, _crement_shared)
+    if width is None or width <= 0 or max(map(len, template.splitlines())) <= width:
+        return template
+    lines = []
+    for here, line in enumerate(template.splitlines()):
+        if line.startswith(TEMPLATE_CHAR):
+            lines.append(line)
+            continue
+        operator, address, data = line.split()
+        lines.append(
+            f"{operator} {_short_operand(address, here)} {_short_operand(data, here)}"
+        )
+    narrowed = "\n".join(lines)
+    if width < 6:
+        narrowed = narrowed.replace(
+            TEMPLATE_CHAR * len(PAIR[0]), f"+J 0 {TEMPLATE_CHAR}"
+        )
+    if max(map(len, narrowed.splitlines())) > width:
+        from esolangs.tools.wrap import wrap_space_delimited
+
+        return wrap_space_delimited(narrowed, width)
+    return narrowed
 
 
-def _crement_best(truth_table: str, perm: tuple[int, ...]) -> str:
-    """Return the shorter of one order's plain and shared templates."""
-    plain = _crement_ordered(truth_table, perm)
-    shared = _crement_ordered(truth_table, perm, share=True)
-    return shared if len(shared) < len(plain) else plain
+def _short_operand(source: str, here: int) -> str:
+    """Return the shortest absolute or relative spelling of one operand."""
+    value = here + int(source[1:] or "0") if source.startswith("@") else int(source)
+    offset = value - here
+    relative = "@" if not offset else f"@{offset:+d}"
+    return min((source, str(value), relative), key=len)
+
+
+def _crement_shared(truth_table: str, perm: tuple[int, ...]) -> str:
+    """Return one order's shared template."""
+    return _crement_ordered(truth_table, perm, share=True)
 
 
 def _data(target: int, line: int) -> str:

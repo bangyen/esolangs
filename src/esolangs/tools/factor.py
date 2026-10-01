@@ -1,42 +1,24 @@
 """Boolean-function generator for Factor.
 
-A Factor program is an integer whose factorization is a Brainfuck program:
-ascending primes give the instruction order, a prime's residue mod 11 gives
-the instruction, and its exponent gives the run length.  So Factor pays
-``sum(L_i * log10(p_i))`` decimal digits over the maximal runs -- a *position*
-weight, since the primes come from one ascending stream, not a character
-count.  Emitting Brainfuck's shortest program is therefore the wrong
-objective, and this used to do exactly that.
+Ascending primes encode Brainfuck instructions by residue modulo eleven
+and run length by exponent. A compact tree tests inputs in stream order
+and puts the answer in the final input's unused flag. Multiplication loops
+build and subtract the ASCII offsets; only this tree is encoded.
 
-Two things follow.  The ASCII offsets are worth folding even though folding
-makes the Brainfuck program *longer* in runs: one multiply loop builds 48
-into a scratch cell and the answer cell together, and one loop subtracts it
-from every input, replacing ``48 * (n + 1)`` characters with 29.  That is
--25% to -45% of the digits over the tables measured, and it never lost --
-456 tables, exhaustive through three inputs and sampled to six.  A plain
-tree candidate was dropped for never winning one of them.
-
-And the input order wants choosing by digits rather than by characters,
-which is what :func:`~esolangs.tools.helpers.best_input_order` measures:
-worth -6% on NAND3, nothing on most tables.  Scoring needs no
-multiplication, since the digit count is ``floor(sum(L_i log10 p_i)) + 1``,
-so only the winner is ever encoded.
+Retiring alternate trees and weighted reordering adds 4.26% to the
+three-input digit total, 0.061% to the seeded five-input sample.
 """
 
 import heapq
-import math
 import sys
 from collections.abc import Iterator
 
 from esolangs.factor_primes import prime_segments
 from esolangs.tools.helpers import (
     _ASCII_ZERO,
-    _GREEDY_ORDER_MAX_ARITY,
-    _greedy_input_order,
     _validate_truth_table,
     decision_tree_body,
     move_text,
-    permute_truth_table,
 )
 
 __all__ = ["factor"]
@@ -84,16 +66,6 @@ def _spans(code: str) -> list[tuple[int, int]]:
     return out
 
 
-def _digit_cost(code: str) -> float:
-    """Return ``log10`` of the integer ``code`` encodes to.
-
-    The decimal length is this floored plus one, so comparing candidates
-    needs no multiplication.  Two candidates within a digit of each other can
-    rank by floating-point error; the loser is then one digit worse.
-    """
-    return math.fsum(length * math.log10(prime) for length, prime in _spans(code))
-
-
 def _encode(code: str) -> int:
     """Encode a Brainfuck program as the Factor integer for it.
 
@@ -115,18 +87,12 @@ def _encode(code: str) -> int:
     return heap[0][2] if heap else 1
 
 
-def _program(truth_table: str, perm: tuple[int, ...]) -> str:
-    """Build the Brainfuck program Factor encodes, for one input order.
-
-    Input ``k`` is read into cell ``2k`` with its flag at ``2k + 1`` and the
-    answer at ``2n``, the layout the shared tree body expects.  Above the
-    tree, one multiply loop puts 48 in the scratch cell at ``2n + 1`` and in
-    the answer cell, and one loop takes 48 off every input; the answer cell
-    therefore already holds ``'0'`` when the tree runs, so a ``'1'`` leaf's
-    single ``+`` finishes it and the print below the tree is bare.
-    """
+def _program(truth_table: str) -> str:
+    """Build the compact tree in input order, using the final input's flag."""
     n = _validate_truth_table(truth_table)
-    scratch, multiplier = 2 * n + 1, 2 * n + 2
+    perm = tuple(range(n))
+    result = 2 * n - 1
+    scratch, multiplier = result + 1, result + 2
     after_reads = 2 * (n - 1)
     back = scratch - after_reads
 
@@ -153,8 +119,16 @@ def _program(truth_table: str, perm: tuple[int, ...]) -> str:
         + "]"
         + "<" * back
     )
-    body, pos = decision_tree_body(truth_table, ">", "<", perm, after_reads)
-    return build + reads + dedent + body + move_text(pos, 2 * n, ">", "<") + "."
+    body, pos = decision_tree_body(
+        truth_table,
+        ">",
+        "<",
+        perm,
+        after_reads,
+        binary_leaves=True,
+        result=result,
+    )
+    return build + reads + dedent + body + move_text(pos, result, ">", "<") + "."
 
 
 def factor(truth_table: str) -> str:
@@ -166,17 +140,7 @@ def factor(truth_table: str) -> str:
     ``sys.get_int_max_str_digits()`` is raised to a bit-length estimate
     (``log10(2) < 0.30103``, never under-counting) and put back.
     """
-    n = _validate_truth_table(truth_table)
-    identity = tuple(range(n))
-    candidates = [_program(truth_table, identity)]
-    if n <= _GREEDY_ORDER_MAX_ARITY:
-        greedy = _greedy_input_order(truth_table, n)
-        if greedy != identity:
-            candidates.append(
-                _program(permute_truth_table(truth_table, greedy), greedy)
-            )
-
-    number = _encode(min(candidates, key=_digit_cost))
+    number = _encode(_program(truth_table))
     digits = int(number.bit_length() * 0.30103) + 1
     limit = sys.get_int_max_str_digits()
     if limit == 0 or digits <= limit:  # 0 is CPython's "unlimited"

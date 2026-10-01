@@ -439,3 +439,22 @@ class TestFastLanding:
             chunk, array, acc = _stash_chunk(array, acc)
             counts.append(len(chunk) - 2)
         assert counts[2:] == [1, 1, 1, 1]
+
+
+def test_unreachable_arm_is_declined_but_invariants_propagate(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import importlib
+
+    from esolangs.tools import slow_acv_mammalian as generate
+
+    module = importlib.import_module(generate.__module__)
+    assert module._try_arm(_Sums(), _Sums(), 8, None, 0) is None  # noqa: SLF001
+    assert module._try_arm(_Sums(), _Sums(), 8, None, 1000) is not None  # noqa: SLF001
+
+    def broken(*_args: object) -> None:
+        raise AssertionError("broken tuning invariant")
+
+    monkeypatch.setattr(module, "_tune", broken)
+    with pytest.raises(AssertionError, match="broken tuning invariant"):
+        module._try_arm(_Sums(), _Sums(), 8, None, 1000)  # noqa: SLF001

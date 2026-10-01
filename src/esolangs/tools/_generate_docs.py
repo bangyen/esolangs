@@ -90,11 +90,6 @@ _ANSI = re.compile(r"\x1b\[[0-9;]*m")
 _SAMPLE_BITS = [1, 0, 1]
 
 
-def _wiki_name(name: str) -> str:
-    """Return the esolangs wiki page title for the displayed language name."""
-    return name
-
-
 def render_package_count_section() -> str:
     """Render the total and source-shape counts in the README lead."""
     return (
@@ -102,15 +97,6 @@ def render_package_count_section() -> str:
         f"languages: {len(RUNNERS)} text and "
         f"{len(LANGUAGES) - len(RUNNERS)} raster."
     )
-
-
-def _wiki_link(name: str) -> str:
-    """Return the language's wiki URL, built by the registry so the two agree.
-
-    This used to build its own slug, which meant the README and
-    ``describe`` each had a copy of the same escaping bug.
-    """
-    return wiki_url(_wiki_name(name))
 
 
 def _source_link(name: str) -> str:
@@ -147,13 +133,14 @@ def render_languages_section() -> str:
         out.append("")
         out.append(description)
         out.append("")
+        # Separate README and describe slugs once duplicated the same escaping
+        # bug; use the registry's URL builder for both.
         for name in sorted(groups[prefix]):
             tier = (
                 "" if LANGUAGES[name].boolean is not None else " *(interpreter-only)*"
             )
             out.append(
-                f"- [{_wiki_name(name)}]({_wiki_link(name)})"
-                f" ([code]({_source_link(name)})){tier}"
+                f"- [{name}]({wiki_url(name)}) ([code]({_source_link(name)})){tier}"
             )
         out.append("")
     return "\n".join(out).rstrip()
@@ -170,12 +157,10 @@ def render_examples_section() -> str:
     """
     return "\n".join(
         [
-            "Ready-to-run programs are committed under"
-            " [`examples/`]"
-            "(https://github.com/bangyen/esolangs/tree/main/src/esolangs/examples):",
-            f"`examples/` holds a truth-table program for each of the {len(BOOLEAN)}",
-            "text languages with a boolean generator.  It regenerates via",
-            "`python scripts/generate.py examples`.",
+            f"Ready-to-run programs for each of the {len(BOOLEAN)}",
+            "text languages with a boolean generator live in",
+            "[`examples/`]"
+            "(https://github.com/bangyen/esolangs/tree/main/src/esolangs/examples).",
         ]
     )
 
@@ -262,8 +247,7 @@ def render_input_shapes_section() -> str:
                 if classics
                 else []
             ),
-            "Call `encode_inputs` rather than reading a row off",
-            "this table; it is generated from `describe`, and so is the table.",
+            "Use `encode_inputs` to build stdin; it and this table use `describe`.",
         ]
     )
     return "\n".join(rows)
@@ -320,20 +304,18 @@ def render_tui_section() -> str:
     drawn = "\n".join(line.rstrip() for line in _ANSI.sub("", screen).splitlines())
     return "\n".join(
         [
-            f"`--tui` steps it on screen instead.  This is a real frame --"
-            f" {_TUI_LANGUAGE} at",
-            f"step {_TUI_STEP}, redrawn by `tui.render` every time this file"
-            f" is generated:",
+            f"Generate a program with `esolangs generate {_TUI_LANGUAGE}"
+            f" {_TUI_TABLE} > flowchart.txt`, then run",
+            "`esolangs debug --tui --stdin \"$(printf '0\\n1\\n')\""
+            f" {_TUI_LANGUAGE} flowchart.txt` in a terminal.",
+            f"Here is {_TUI_LANGUAGE} at step {_TUI_STEP}:",
             "",
             "```",
             drawn,
             "```",
             "",
-            "The live screen reverse-videos the cell at that `ip`; colour"
-            " does not survive",
-            "the page."
-            "  [usage](https://github.com/bangyen/esolangs/blob/main/docs/usage.md#debugging)"
-            " names every key.",
+            "See [debugging](https://github.com/bangyen/esolangs/blob/main/docs/usage.md#debugging)"
+            " for controls.",
         ]
     )
 

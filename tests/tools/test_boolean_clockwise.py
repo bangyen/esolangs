@@ -88,7 +88,8 @@ class TestClockwise:
             assert len(differ) == 1, (entry, differ)
             assert flipped.splitlines()[differ[0][0]][differ[0][1]] == "+"
 
-    def test_every_run_reads_each_input_exactly_once(self) -> None:
+    @pytest.mark.parametrize("width", [None, 1])
+    def test_every_run_reads_each_input_exactly_once(self, width: int | None) -> None:
         """Clockwise's input queue rotates, so a run must consume 7n bits.
 
         The reads do not drain the queue, they rotate it; a program that read
@@ -113,7 +114,7 @@ class TestClockwise:
 
         for n in (1, 2, 3):
             table = "01101001"[: 2**n].ljust(2**n, "1")
-            program = boolean.clockwise(table)
+            program = boolean.clockwise(table, width)
             for combo in range(2**n):
                 machine = _Machine(
                     program.splitlines(), _Quiet("".join(_bits(combo, n)))
@@ -138,3 +139,55 @@ class TestClockwise:
         rise = (sizes[2] - sizes[1]) / (sizes[1] - sizes[0])
         assert 3.5 < rise < 4.4, sizes
         assert sizes[2] / 2**9 < 20, sizes
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("width", [1, 2, 3, 9, 10, 11, 20, 27, 80])
+def test_width_rotates_the_lookup_without_changing_answers(width: int) -> None:
+    """Both lookup orientations execute every row, including floor widths."""
+    import esolangs
+
+    for n in range(1, 7):
+        table = ("01101001" * 8)[: 1 << n]
+        plain = boolean.clockwise(table)
+        program = esolangs.generate("Clockwise", table, width)
+        plain_width = max(map(len, plain.splitlines()))
+        assert max(map(len, program.splitlines())) <= max(
+            width, min(plain_width, 2 if n <= 2 else 2 * n + 5)
+        )
+        if plain_width <= width:
+            assert program == plain
+        for combo in range(1 << n):
+            assert run_clockwise(program, _bits(combo, n)) == table[combo]
+
+
+def test_rotated_lookup_size_is_linear() -> None:
+    """Implicit padded rails keep rotation from rendering a filled rectangle."""
+    sizes = [len(boolean.clockwise("01101001" * (2 ** (n - 3)), 1)) for n in (5, 7, 9)]
+    assert sizes[2] / 2**9 < 30
+    assert 3.5 < (sizes[2] - sizes[1]) / (sizes[1] - sizes[0]) < 4.4
+
+
+@pytest.mark.medium
+def test_entry_digit_prefix_executes_every_small_table() -> None:
+    """The shared six bits precede lookup without carrying an index into it."""
+    assert max(map(len, boolean.clockwise("0110", 1).splitlines())) == 2
+    for n in range(1, 4):
+        for value in range(1 << (1 << n)):
+            table = format(value, f"0{1 << n}b")
+            program = boolean.clockwise(table, 1)
+            for row, expected in enumerate(table):
+                assert run_clockwise(program, _bits(row, n)) == expected
+
+
+def test_single_column_cannot_close_a_clockwise_ring() -> None:
+    """A downward beam's next clockwise turn leaves the only column."""
+    from esolangs.interpreters.grid_based.clockwise import _Machine
+    from esolangs.interpreters.io import ScriptedIO
+
+    machine = _Machine(["R", "R"], ScriptedIO(""))
+    machine.step()
+    machine.step()
+    with pytest.raises(ValueError, match="ring is not closed"):
+        machine.step()
+    assert len(boolean.clockwise("0110", 1)) == 112

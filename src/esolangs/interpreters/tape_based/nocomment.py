@@ -7,6 +7,9 @@ peeked stack top when the cell is nonzero, ``o`` prints.  Per the wiki, a
 non-command character is malformed (:class:`ValueError`) and popping or
 peeking an empty stack halts (:class:`~esolangs.exceptions.HaltError`).
 
+Repository deviation: loading removes LF before command indexing.
+Spaces, tabs and CR remain malformed.
+
 :func:`_advance` is a pure, total transition over an immutable ``_State``
 with no ``io`` argument; :class:`_Machine` is the shell that prints and
 raises.
@@ -87,6 +90,7 @@ class _Machine:
 
     def __init__(self, code: str, io: IO, tape: int = _TAPE) -> None:
         """Start with a cleared tape of ``tape`` cells at the origin."""
+        code = code.replace("\n", "")
         if tape < 1:
             raise ValueError(f"the NoComment tape needs at least one cell, got {tape}")
         self.io = io

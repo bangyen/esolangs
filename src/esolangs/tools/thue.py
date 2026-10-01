@@ -13,6 +13,8 @@ unpinned, as the classics tests assert to ``n = 3`` under several draws.
 
 from __future__ import annotations
 
+from string import ascii_letters
+
 from esolangs.tools.helpers import _validate_truth_table
 
 #: Entries are ``a``/``b`` so a ``0``/``1`` input line is never mistaken for
@@ -49,11 +51,21 @@ _RULES = "\n".join(
 )
 
 
-def thue(truth_table: str) -> str:
+def _chunk_marker(index: int, digits: int) -> str:
+    """Return a fixed-width name containing no table or control symbol."""
+    alphabet = "".join(char for char in ascii_letters if char not in "abLMRECD")
+    name = []
+    for _ in range(digits):
+        index, digit = divmod(index, len(alphabet))
+        name.append(alphabet[digit])
+    return "".join(reversed(name))
+
+
+def thue(truth_table: str, width: int | None = None) -> str:
     """Return a Thue program computing ``truth_table``.
 
     Reads ``n`` lines, one ``0``/``1`` per input in table order, and prints
-    the answer digit.
+    the answer digit. Narrow layouts expand named chunks before reading.
     """
     _validate_truth_table(truth_table)
     length = len(truth_table)
@@ -67,4 +79,56 @@ def thue(truth_table: str) -> str:
             row ^= carry
             carry >>= 1
         row |= carry
-    return f"{_RULES}\nLM{''.join(entries)}E"
+    table = "".join(entries)
+    program = f"{_RULES}\nLM{table}E"
+    if width is None or width <= 0 or max(map(len, program.splitlines())) <= width:
+        return program
+    # Contract only a completed return sweep. D restores L before reading,
+    # so the shorter start rules cannot fire on R in the table's interior.
+    rules_text = _RULES.replace("LR", "C").replace("::=LM", "::=D")
+    rules_text = rules_text.removesuffix("::=") + "LR::=C\nD::=LM\n::="
+    narrow = f"{rules_text}\nLM{table}E"
+    if max(map(len, narrow.splitlines())) <= width:
+        return narrow
+    # One-symbol nodes fit only bounded arities; larger trees retain chunks.
+    if length <= 8 and width < 9:
+        return _thue_short_tree(truth_table)
+    digits, capacity = 1, len(ascii_letters) - len("abLMRECD")
+    while capacity < length:
+        digits += 1
+        capacity *= len(ascii_letters) - len("abLMRECD")
+    marker_width = digits
+    # Payload covers its names' overhead, keeping even the narrowest source O(T).
+    payload = max(marker_width, width - marker_width - max(marker_width, 2) - 3)
+    rules = rules_text.splitlines()[:-1]
+    for index, offset in enumerate(range(0, length, payload)):
+        marker = _chunk_marker(index, digits)
+        following = (
+            _chunk_marker(index + 1, digits) if offset + payload < length else "RE"
+        )
+        rules.append(f"{marker}::={table[offset : offset + payload]}{following}")
+    # No input marker exists until expansion finishes and R sweeps back to L.
+    # Here T>=8 and 3*digits<T: max(width,9,3*digits+3)<T+3.
+    return "\n".join([*rules, "::=", "L" + _chunk_marker(0, digits)])
+
+
+def _thue_short_tree(truth_table: str) -> str:
+    """Return a seven-column decision tree for at most three inputs."""
+    size = len(truth_table)
+    names = ascii_letters.replace("I", "")
+    ready = names[: size - 1]
+    waiting = names[size - 1 : 2 * (size - 1)]
+    leaves = names[2 * (size - 1) : 2 * size]
+    rules = ["I::=:::", *(f"{name}::=~{bit}" for bit, name in enumerate(leaves))]
+    for node in range(size - 1):
+        # Ready and waiting symbols differ: a read can never expand twice.
+        rules.append(f"{ready[node]}::={waiting[node]}I")
+        for bit in range(2):
+            child = 2 * node + 1 + bit
+            target = (
+                ready[child]
+                if child < size - 1
+                else leaves[int(truth_table[child - size + 1])]
+            )
+            rules.append(f"{waiting[node]}{bit}::={target}")
+    return "\n".join([*rules, "::=", ready[0]])

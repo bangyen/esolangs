@@ -8,7 +8,8 @@ import pytest
 
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.fargo import run
-from esolangs.tools.fargo import _anf_coefficients, _arm_expression, fargo
+from esolangs.tools.fargo import _arm_expression, fargo
+from esolangs.tools.helpers import anf_coefficients
 from tests.tools.test_boolean_contract import _nested_dense
 
 
@@ -23,11 +24,16 @@ def _scalar_coefficients(table: str) -> list[int]:
     return values
 
 
-@pytest.mark.parametrize("n", [1, 2, 3, 4, 7, 8, 9, 15, 16, 17])
+@pytest.mark.parametrize("n", [0, 1, 2, 3, 4, 7, 8, 9, 15, 16, 17])
 def test_packed_coefficients_match_elementwise_transform(n: int) -> None:
     rng = random.Random(20260929 + n)
     table = format(rng.getrandbits(1 << n), f"0{1 << n}b")
-    assert _anf_coefficients(table) == _scalar_coefficients(table)
+    assert anf_coefficients(table) == _scalar_coefficients(table)
+
+
+@pytest.mark.parametrize("table", ["0", "1"])
+def test_reduced_constants_keep_their_coefficient(table: str) -> None:
+    assert anf_coefficients(table) == [int(table)]
 
 
 @pytest.mark.medium
@@ -35,7 +41,7 @@ def test_packed_coefficients_match_elementwise_transform(n: int) -> None:
 def test_packed_arm_word_work_and_execution(n: int) -> None:
     """Word visits stay bounded per row; dense inputs are positive controls."""
     table = _nested_dense(n)
-    coefficients = _anf_coefficients(table)
+    coefficients = anf_coefficients(table)
     visits = 0
 
     def profile(frame: FrameType, event: str, _arg: object) -> None:
@@ -88,11 +94,13 @@ def test_narrow_packed_constants_consume_input() -> None:
 
 def test_reordered_emission_has_a_real_character_budget(monkeypatch) -> None:
     """High-index literals stop before they can add a logarithmic text factor."""
-    from esolangs.tools.fargo import _Emission, _expressions, _SourceLimitError
+    from esolangs.tools.fargo import _Emission, _expression, _SourceLimitError
 
     n = 8
     table = _nested_dense(n)
-    budget = min(map(len, _expressions(table, n, tuple(range(n)))))
+    expression = _expression(table, n, tuple(range(n)))
+    assert expression is not None
+    budget = len(expression)
     original = _Emission.append
     characters = 0
     stops = 0
@@ -107,9 +115,9 @@ def test_reordered_emission_has_a_real_character_budget(monkeypatch) -> None:
             raise
 
     monkeypatch.setattr(_Emission, "append", record)
-    candidates = _expressions(table, n, tuple(reversed(range(n))), limit=budget)
+    candidate = _expression(table, n, tuple(reversed(range(n))), limit=budget)
     assert stops > 0
-    assert all(len(candidate) < budget for candidate in candidates)
+    assert candidate is None
     assert characters <= 2 * (budget + 9 + n.bit_length())
     row = (1 << n) // 3
     io = ScriptedIO(str(row))

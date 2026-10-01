@@ -628,14 +628,19 @@ class TestAPathAndItsTextDifferOnTheTrailingNewline:
     "is read", which reads as equivalence.
     """
 
-    def test_they_disagree_where_a_newline_is_not_legal(self, tmp_path: Path) -> None:
-        """CV(N)(C) has no newline in its alphabet, so it is the visible case."""
+    def test_lf_ignored_by_cvnc_makes_path_and_text_agree(self, tmp_path: Path) -> None:
         path = tmp_path / "c.txt"
-        path.write_text(esolangs.generate("CV(N)(C)", "0110") + "\n")
+        path.write_text(esolangs.generate("CV(N)(C)", "0110", 3) + "\n")
         stdin = esolangs.encode_inputs("CV(N)(C)", [0, 0], "0110")
         assert esolangs.run("CV(N)(C)", path, stdin, 5) == "0"
+        assert esolangs.run("CV(N)(C)", path.read_text(), stdin, 5) == "0"
+
+    def test_they_disagree_when_trailing_lf_is_a_token(self, tmp_path: Path) -> None:
+        path = tmp_path / "w.txt"
+        path.write_text("\n\n\n")
+        assert esolangs.run("Whitespace", path.read_text(), timeout=5) == ""
         with pytest.raises(esolangs.ProgramError):
-            esolangs.run("CV(N)(C)", path.read_text(), stdin, 5)
+            esolangs.run("Whitespace", path, timeout=5)
 
     def test_they_agree_without_one(self, tmp_path: Path) -> None:
         """The difference is the newline and nothing else."""

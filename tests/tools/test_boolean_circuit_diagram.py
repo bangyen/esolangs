@@ -287,7 +287,9 @@ class TestCircuitDiagramLayoutGuards:
             blocks = _h_blocks(n)
             leaf_depth = n if n % 2 == 0 else n - 1
             leaves = [
-                block for prefix, block in blocks.items() if len(prefix) == leaf_depth
+                block
+                for prefix, block in blocks.items()
+                if prefix.bit_length() - 1 == leaf_depth
             ]
             assert len(leaves) == 2**leaf_depth
             assert len({(block.x, block.y) for block in leaves}) == len(leaves)
@@ -295,6 +297,21 @@ class TestCircuitDiagramLayoutGuards:
             assert len(sites) == 2**n - 1
             assert len(set(sites.values())) == len(sites)
             assert _h_size(n) ** 2 <= 10_000 * 2**n
+
+    def test_h_depth_buckets_bound_literal_anchor_visits(self) -> None:
+        from esolangs.tools.circuit_diagram import _h_term_plan
+
+        for n in range(2, 13):
+            plan = _h_term_plan("01" * (1 << (n - 1)))
+            assert len(plan.levels) == n + 1
+            assert sum(map(len, plan.levels)) == len(plan.sites) == 2 ** (n + 1) - 1
+            for depth, nodes in enumerate(plan.levels):
+                assert len(nodes) == 1 << depth
+                assert set(nodes) == set(range(1 << depth, 1 << (depth + 1)))
+            visits = 2 * sum(
+                (n - depth) * len(nodes) for depth, nodes in enumerate(plan.levels)
+            )
+            assert visits == 4 * (1 << n) - 2 * n - 4
 
     @pytest.mark.slow
     def test_h_layout_executes_every_two_input_table(self) -> None:
@@ -407,6 +424,58 @@ class TestCircuitDiagramLayoutGuards:
                 assert columns <= max(width, floor), (table, width, columns)
                 assert self._run_at(table, width) == table, (table, width)
 
+    def test_narrow_gate_groups_preserve_every_small_table(self) -> None:
+        """Compact groups and native XOR gates preserve every small table."""
+        from esolangs.tools.circuit_diagram import circuit_diagram
+
+        program = circuit_diagram("0110", 1)
+        assert max(map(len, program.splitlines())) == 4
+        for n in range(1, 4):
+            for value in range(1 << (1 << n)):
+                table = format(value, f"0{1 << n}b")
+                assert self._run_at(table, 1) == table
+
+    def test_affine_floor_uses_native_xor_in_public_programs(self) -> None:
+        """The output returns beneath the native XOR gate."""
+        import esolangs
+
+        program = esolangs.generate("Circuit Diagram", "0110", 1)
+        assert max(map(len, program.splitlines())) == 4
+        assert len(program) == 32
+        assert "x" in program
+        # The old six-column gate already fits this request.
+        assert "x.-:" in str(esolangs.generate("Circuit Diagram", "0110", 6))
+        for table in ("0110", "1001"):
+            for width in (1, 4, 5, 6, 9, 11, 19):
+                assert self._run_at(table, width) == table
+
+    def test_native_affine_chains_verify_constants_and_complements(self) -> None:
+        from esolangs.interpreters.grid_based.circuit_diagram import run
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.tools.circuit_diagram import _affine_circuit
+
+        for n in range(1, 4):
+            for value in range(1 << (1 << n)):
+                table = format(value, f"0{1 << n}b")
+                program = _affine_circuit(table, 1)
+                if program is None:
+                    continue
+                for row, expected in enumerate(table):
+                    io = ScriptedIO("\n".join(format(row, f"0{n}b")) + "\n")
+                    run(program.splitlines(), io)
+                    assert io.getvalue() == expected
+                    assert io.reads == n
+
+    def test_output_columns_fit_the_affine_and_mux_boundary(self) -> None:
+        from esolangs.tools.circuit_diagram import circuit_diagram
+
+        for table in ("00000001", "01101001", "0110100110010110"):
+            floor = max(map(len, circuit_diagram(table, 1).splitlines()))
+            for width in range(1, 25):
+                program = circuit_diagram(table, width)
+                assert max(map(len, program.splitlines())) <= max(width, floor)
+                assert self._run_at(table, width) == table
+
     def test_banding_brings_every_arity_inside_eighty(self) -> None:
         """Which is the point: unbanded, parity clears 80 columns at n == 4.
 
@@ -424,8 +493,9 @@ class TestCircuitDiagramLayoutGuards:
             banded = circuit_diagram(table, 80)
             assert max(len(row) for row in flat.splitlines()) > 80, n
             assert max(len(row) for row in banded.splitlines()) <= 80, n
-            # and it costs rows, which is the trade
-            assert len(banded.splitlines()) > len(flat.splitlines()), n
+            # Compact groups can fit without a band; actual bands add rows.
+            assert len(banded.splitlines()) >= len(flat.splitlines()), n
+            assert self._run_at(table, 80) == table
 
     @pytest.mark.slow
     def test_a_band_must_re_carry_what_an_earlier_one_moved(
@@ -608,7 +678,10 @@ class TestCircuitDiagram:
         sizes = [len(_circuit_diagram_at(table, None, order)) for order in orders]
         assert sizes.index(min(sizes)) == winner
         assert sizes.count(min(sizes)) == 1
-        assert len(circuit_diagram(table)) == min(sizes)
+        compact = _selector_orders(table, compact=True)
+        assert len(circuit_diagram(table)) == min(
+            len(_circuit_diagram_at(table, None, order)) for order in compact
+        )
         assert self.run_table(table) == table
 
     def test_each_run_prints_exactly_one_bit(self) -> None:
@@ -664,9 +737,9 @@ class TestCircuitDiagram:
         )
 
         n = 3  # odd arity: every shape, including ``under``, at the leaves
-        prefixes = [p for p in _h_minterm_sites(n) if len(p) >= 2]
+        prefixes = [p for p in _h_minterm_sites(n) if p.bit_length() - 1 >= 2]
         # Selector signals are the non-leaf prefixes'; the literals follow.
-        tree = {index for index, p in enumerate(prefixes) if len(p) < n}
+        tree = {index for index, p in enumerate(prefixes) if p.bit_length() - 1 < n}
         tree |= set(range(len(prefixes), len(prefixes) + 2 * n))
 
         def wiring(table: str) -> set[tuple[str, int, int, int, int]]:
@@ -764,7 +837,7 @@ class TestCircuitDiagramSelectorOrder:
 
         tables = [format(value, "08b") for value in range(256)]
         assert sum(len(_circuit_diagram_at(table, None)) for table in tables) == 183978
-        assert sum(len(circuit_diagram(table)) for table in tables) == 147858
+        assert sum(len(circuit_diagram(table)) for table in tables) == 152716
 
     @pytest.mark.parametrize(
         ("zero", "one", "cost"),

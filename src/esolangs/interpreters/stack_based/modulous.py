@@ -32,7 +32,7 @@ Exhausted input raises :class:`EOFError` (the repo-wide convention).
 
 import re
 from collections.abc import Callable, Mapping
-from typing import cast
+from typing import Never, cast
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
@@ -204,6 +204,8 @@ class _Machine:
         """
         core, halted = _thaw(cast(_BranchState, state))
         stk, var, ind = core
+        if ind < 0:
+            ind %= len(self.tokens)
         mod = self.tokens[ind]
         arg = mod.split()
         advanced: _Core = (stk, var, ind + 1)
@@ -214,7 +216,12 @@ class _Machine:
         if handler is None:
             if "+" in mod or "-" in mod:
                 return (_freeze((_var_arith(advanced, mod), halted)),)
-            return (_freeze((advanced, halted)),)
+            _reject_unknown(mod, arg[0])
+
+        if arg[0] == "PRT":
+            n = _print_value(stk, var, mod, arg)
+            if "INT" not in mod:
+                chr(n)  # Validate the same character range as the I/O shell.
 
         if arg[0] == "INP":
             return None
@@ -282,11 +289,7 @@ class _Machine:
             # ``return``, so ``[PRTINT]`` -- a plausible slip for ``[PRT
             # INT]`` -- ran as nothing at all: the program exited 0 having
             # printed nothing, which is the worst answer to a typo.
-            raise ValueError(
-                f"[{mod}] is not a Modulous command: {arg[0]!r} is not one of "
-                f"{', '.join(sorted(_DISPATCH))}, and a bare VARn+k or VARn-k "
-                f"is the only other thing a command can be"
-            )
+            _reject_unknown(mod, arg[0])
 
         value: str | int | None = None
         if arg[0] == "PRT":
@@ -302,11 +305,27 @@ class _Machine:
 
     def _print(self, mod: str, arg: list[str]) -> None:
         """Write what ``PRT`` names: a variable, or the top of the stack."""
-        n = _named(self.var, _operand(arg, 1)) if "VAR" in mod else _top(self.stk)
+        n = _print_value(self.stk, self.var, mod, arg)
         if "INT" in mod:
             self.io.print_num(n)
         else:
             self.io.print_char(chr(n))
+
+
+def _reject_unknown(mod: str, command: str) -> Never:
+    """Reject a token neither dispatch nor variable arithmetic understands."""
+    raise ValueError(
+        f"[{mod}] is not a Modulous command: {command!r} is not one of "
+        f"{', '.join(sorted(_DISPATCH))}, and a bare VARn+k or VARn-k "
+        f"is the only other thing a command can be"
+    )
+
+
+def _print_value(
+    stk: tuple[int, ...], var: Mapping[str, int], mod: str, arg: list[str]
+) -> int:
+    """Return the value a PRT command prints."""
+    return _named(var, _operand(arg, 1)) if "VAR" in mod else _top(stk)
 
 
 def _top(stk: tuple[int, ...]) -> int:

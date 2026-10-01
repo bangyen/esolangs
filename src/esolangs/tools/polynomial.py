@@ -48,9 +48,10 @@ def polynomial(truth_table: str) -> str:
     construction is :func:`_polynomial_hybrid` at some ``k``: ``k == n`` a
     folded tree, ``k == 0`` one state machine (an ordered BDD merging equal
     residuals: parity needs two states per level, 11 instructions per
-    input), the interior a machine per residual; reduced variants drain a
-    leading run of ignored inputs.  Reordering is unreachable (a read
-    assigns the single register).  Selection is on rendered characters.
+    input), the interior a machine per residual. Reduced variants drain a
+    leading run only when ordinary builders exceed the instruction cap.
+    Reordering is unreachable (a read assigns the single register).
+    Selection is on rendered characters.
     More than ``_POLYNOMIAL_MAX_INSTRS`` raises :class:`ValueError`.
     """
     n = _validate_truth_table(truth_table)
@@ -72,7 +73,7 @@ def polynomial(truth_table: str) -> str:
     # turn branched on the wrong bit: 92 wrong rows over 26 tables).
     essential = essential_inputs(truth_table, n) or [0]
     lead = next((i for i in range(n) if i in essential), n)
-    if lead:
+    if lead and min(cost for cost, _ in builders) > _POLYNOMIAL_MAX_INSTRS:
         prefix: list[list[int]] = [[0, 2]] * lead
         reduced = read_at(truth_table, list(range(lead, n)), n)
         reduced_n = n - lead

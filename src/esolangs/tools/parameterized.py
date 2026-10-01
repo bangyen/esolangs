@@ -2,12 +2,14 @@ r"""Boolean generators that embed each input once.
 
 Input ``i`` is a run of :data:`TEMPLATE_CHAR` as wide as its setter, in
 name order; the harness fills the runs and runs one program per row.
-Equal-width setters keep bits out of the program length.  Each language's
-``(zero, one)`` pair is one constant its generator module owns (the
-``*_PAIR`` below for the five generators this module hosts); the example
+Equal-width setters keep bits out of the program length.  Each layout uses
+a uniform ``(zero, one)`` pair its generator module owns (the ``*_PAIR``
+below for the five generators this module hosts); the example
 in :mod:`esolangs.tools.examples` reads the same constant, so the widths
 the generator lays and the text the fill substitutes cannot drift apart.
 """
+
+import re
 
 from esolangs.tools.a_painter_ant import a_painter_ant
 from esolangs.tools.arrowqueue import (
@@ -58,6 +60,7 @@ from esolangs.tools.helpers import (
     decision_tree_tokens,
     essential_inputs,
     read_at,
+    runs,
 )
 from esolangs.tools.helpers import (
     permute_truth_table as permute_truth_table,
@@ -94,13 +97,16 @@ def _runs(pair: tuple[str, str], n: int) -> list[str]:
 
 
 BIO_PAIR = ("0oz;", "0ox;")
-#: Four is minimal: a search over ``<>@[]`` finds no equal-width pair under it.
-BFPDA_PAIR = ("<[@]", "<@@@")
+#: Each bit cell is freshly pushed as zero; the marker is a separate cell.
+BFPDA_PAIR = (" ", "@")
 BITDEQUE_PAIR = ("PUSH INVERT", "INVERT PUSH")
 #: Even widths: ``*`` swaps the pointer, so a one-wide zero would move it.
 MINSKY_SWAP_PAIR = ("**", "++")
+_MINSKY_RMSN_PAIR = ("swap();\nswap();", "inc(); \ninc(); ")
+_MINSKY_SHORT_RMSN_PAIR = ("decnz();", "inc();  ")
+_MINSKY_SMALL_RMSN_PAIR = ("decnz(2);", "inc();   ")
 #: ``j`` is the pad: a gate tests this cell next, so it must leave value and pointer.
-HOME_ROW_PAIR = ("as", "aj")
+HOME_ROW_PAIR = ("s", "j")
 
 
 # ("leaf", leaf_id, value, None, None) or ("node", node_id, level, zero, one).
@@ -147,8 +153,9 @@ def bfpda(truth_table: str) -> str:
     """Build a BF-PDA template for the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n``, MSB first.  Each
-    run is a four-character push of its bit; the load pushes every ``<@`` +
-    run pair so the stack holds all bits and markers with ``b0`` on top.
+    run flips a fresh zero cell or leaves it alone; the load pushes
+    a marker and that bit cell before every run. The stack holds all bits
+    and markers with ``b0`` on top.
     Characters outside ``@.<>[]`` are comments.  A node tests and consumes
     its bit with ``[>> one ]>[> zero ]``: ``[`` enters on a one and ``>>``
     pops it and its marker; on a zero ``>`` pops the bit and the second loop
@@ -161,7 +168,7 @@ def bfpda(truth_table: str) -> str:
     # Marker then bit, in name order, so the tree tests the last input
     # first (the same tree reflected; the reversed load bought nothing and
     # put the runs out of order).
-    head = "".join("<@" + run for run in _runs(BFPDA_PAIR, n))[1:]
+    head = "".join("<@<" + run for run in _runs(BFPDA_PAIR, n))[1:]
 
     def leaf(level: int, value: str) -> str:
         # A one stops on the bottom entry, the first marker, and prints it.
@@ -197,7 +204,7 @@ def bfpda(truth_table: str) -> str:
     return "".join(pieces)
 
 
-def bitdeque(truth_table: str) -> str:
+def bitdeque(truth_table: str, width: int | None = None) -> str:
     """Build a Bitdeque template for the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n``, MSB first.  Every
@@ -213,10 +220,71 @@ def bitdeque(truth_table: str) -> str:
     ``EJECT``/``INJECT`` work the head, so any bit can be brought to an end
     at two commands per position, measured not modelled.  Rotations happen
     inside the tree; the load is byte-identical under every order.
+    Below eleven columns, up to four inputs use POP/EJECT on fresh
+    zero/one endpoints; larger tables keep the linear load.
     """
     if len(truth_table) <= 16:
-        return best_input_order(truth_table, _bitdeque_ordered)
-    return _bitdeque_linear(truth_table)
+        program = best_input_order(truth_table, _bitdeque_ordered)
+        if width is not None and width < len(BITDEQUE_PAIR[0]):
+            program = best_input_order(
+                truth_table,
+                lambda table, perm: _bitdeque_ordered(table, perm, short=True),
+            )
+    else:
+        program = _bitdeque_linear(truth_table)
+    if width is not None:
+        from esolangs.tools.wrap import _bitdeque
+
+        return _bitdeque(program, width)
+    return program
+
+
+_BITDEQUE_SHORT_PAIR = ("POP  ", "EJECT")
+
+
+def _bitdeque_short_load(n: int) -> list[str]:
+    """Bracket stored inputs with head one/tail zero before each setter."""
+    tokens: list[str] = []
+    for i in range(n):
+        at = 5 + 15 * i
+        # POP/EJECT selects zero/one. Both branches remove the other
+        # sentinel, append the selected bit, and restore register zero.
+        tokens.extend(
+            [
+                "INVERT",
+                "INJECT",
+                "INVERT",
+                "PUSH",
+                TEMPLATE_CHAR * 5,
+                f"GOTO {at + 11}",
+                "EJECT",
+                "INVERT",
+                "PUSH",
+                "INVERT",
+                f"GOTO {at + 14}",
+                "POP",
+                "INVERT",
+                "PUSH",
+                "INVERT",
+            ]
+        )
+    return tokens
+
+
+def bitdeque_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
+    """Resolve the five-character load only from its exact fixed prefix."""
+    normalized = " ".join(template.split())
+    header = re.match(r"GOTO 3 INVERT GOTO 4 GOTO [0-9]+ INVERT ", normalized)
+    short_count = template.count(TEMPLATE_CHAR) // 5
+    short_load = " ".join(_bitdeque_short_load(short_count))
+    short = header is not None and normalized[header.end() :].startswith(
+        short_load + " "
+    )
+    pair = _BITDEQUE_SHORT_PAIR if short else BITDEQUE_PAIR
+    setters = (pair,) * n
+    if template.count(TEMPLATE_CHAR) == 5 * n:
+        runs(template, TEMPLATE_CHAR, setters)
+    return setters
 
 
 def _bitdeque_linear(truth_table: str) -> str:
@@ -263,7 +331,9 @@ def _bitdeque_linear(truth_table: str) -> str:
     return " ".join(tokens)
 
 
-def _bitdeque_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
+def _bitdeque_ordered(
+    truth_table: str, perm: tuple[int, ...], *, short: bool = False
+) -> str:
     """Emit one input order's Bitdeque template; see :func:`bitdeque`.
 
     ``perm`` is spent on the rotations before a node consumes its bit, a
@@ -275,7 +345,11 @@ def _bitdeque_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     n = _validate_truth_table(truth_table)
     # Level ``level`` tests input ``perm[level]``, whose load position is
     # its name; the row bit for a level is ``n - 1 - level``.
-    mask = sum(1 << (n - 1 - level) for level in range(n) if perm[level] % 2)
+    mask = (
+        0
+        if short
+        else sum(1 << (n - 1 - level) for level in range(n) if perm[level] % 2)
+    )
     seen = "".join(truth_table[row ^ mask] for row in range(2**n))
 
     def leaf(answer: str) -> list[str]:
@@ -322,7 +396,9 @@ def _bitdeque_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     prelude = ["GOTO 3", "INVERT", "GOTO 4", "GOTO@END", "INVERT"]
     # The setters read the route off the template's prefix, so they are
     # handed the prelude, whose opening ``GOTO 3`` names this one.
-    load_block_in_name_order = _runs(BITDEQUE_PAIR, n)
+    load_block_in_name_order = (
+        _bitdeque_short_load(n) if short else _runs(BITDEQUE_PAIR, n)
+    )
 
     # A node spends its rotation, its pop and its ``GOTO`` before either
     # subtree, so the walker's ``at`` lands on this node and ``at +
@@ -340,15 +416,15 @@ def _bitdeque_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
         leaf_tokens,
         node,
         parent_width=width,
-        start=len(prelude) + 2 * n,
+        start=len(prelude) + (15 * n if short else 2 * n),
         collapse=True,
     )
-    end = len(prelude) + 2 * n + len(tree)
+    end = len(prelude) + (15 * n if short else 2 * n) + len(tree)
     tokens = prelude + load_block_in_name_order + tree
     return " ".join("GOTO " + str(end) if t == "GOTO@END" else t for t in tokens)
 
 
-def minsky_swap(truth_table: str) -> str:
+def minsky_swap(truth_table: str, width: int | None = None) -> str:
     """Build a Minsky Swap template for the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n``, MSB first.  Every
@@ -362,7 +438,11 @@ def minsky_swap(truth_table: str) -> str:
     line 2 halts (a ``~`` targeting one past the end), lines 3-5
     (``+ * ~``) set ``reg[1]`` first.  Every target is the digit 2 or 3 (a
     leaf per row was ``Theta(T log T)`` of addresses), every table of one
-    arity is one length, and the dump reads ``0 {answer}``.
+    arity is one length, and the dump reads ``0 {answer}``.  Width switches
+    to RMSN, one command per line.  Below width 15 a shared increment
+    leaves setters eight wide; absolute jump operands set the remaining floor.
+    Below that floor, up to two inputs use a nine-command decision chain
+    with the first register as scratch; the answer remains the second register.
     """
     n = _validate_truth_table(truth_table)
 
@@ -387,17 +467,62 @@ def minsky_swap(truth_table: str) -> str:
     pos += 2**n
 
     end = pos + 1
-    return (
-        " ".join(tokens) + "\n" + " ".join(str(end if t == 0 else t) for t in targets)
-    )
+    resolved = [end if t == 0 else t for t in targets]
+    program = " ".join(tokens) + "\n" + " ".join(map(str, resolved))
+    if width is None or width <= 0 or max(map(len, program.splitlines())) <= width:
+        return program
+    if n <= 2 and width < 10:
+        # One bit contributes 1, the other 2: common inc plus decnz/inc
+        # adds 0/2 without branching. All leaves fit single-digit targets.
+        slot = TEMPLATE_CHAR * len(_MINSKY_SMALL_RMSN_PAIR[0])
+        lines = [slot] if n == 1 else [slot, "inc();", slot]
+        one = len(lines) + len(truth_table) + 1
+        for value in range(len(truth_table)):
+            row = value if n == 1 else (value & 1) * 2 + (value >> 1)
+            lines.append(f"decnz({one if truth_table[row] == '1' else one + 1});")
+        return "\n".join([*lines, "swap();", "inc();"])
+    lines = []
+    jumps = iter(resolved)
+    for token in tokens:
+        if token.startswith(TEMPLATE_CHAR):
+            if width < 15:
+                # Both fills still execute two commands, preserving every target.
+                lines.extend(
+                    ("inc();", TEMPLATE_CHAR * len(_MINSKY_SHORT_RMSN_PAIR[0]))
+                )
+            else:
+                lines.append(TEMPLATE_CHAR * len(_MINSKY_RMSN_PAIR[0]))
+        else:
+            for command in token:
+                if command == "~":
+                    lines.append(f"decnz({next(jumps)});")
+                elif command == "+":
+                    lines.append("inc();")
+                else:
+                    lines.append("swap();")
+    return "\n".join(lines)
+
+
+def minsky_swap_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
+    """Return the uniform pair for compact or line-oriented RMSN notation."""
+    pair = MINSKY_SWAP_PAIR
+    if template.startswith(TEMPLATE_CHAR * len(_MINSKY_SMALL_RMSN_PAIR[0])):
+        pair = _MINSKY_SMALL_RMSN_PAIR
+    elif template.startswith("decnz("):
+        pair = (
+            _MINSKY_RMSN_PAIR
+            if TEMPLATE_CHAR * len(_MINSKY_RMSN_PAIR[0]) in template
+            else _MINSKY_SHORT_RMSN_PAIR
+        )
+    return (pair,) * n
 
 
 def home_row(truth_table: str) -> str:
     """Build a Home Row template for the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n``, MSB first.  A
-    run is a two-character setter on a zero cell: ``a`` then ``s`` (clear)
-    or ``j`` (a skip that does not fire).  The bits pack into one binary
+    run follows a fixed ``a`` on a zero cell: ``s`` clears it,
+    while ``j`` is a skip that does not fire.  The bits pack into one binary
     accumulator: each packing line ``$$ l s ffff a{2**(n-1-i)} f l`` uses
     Home Row's position-stable ``l``/``s``/``l`` gate (loops cannot nest) to
     add the weight iff the bit is 1.  Then guarded leaves count it down:
@@ -417,7 +542,7 @@ def home_row(truth_table: str) -> str:
 
     setup = "aaaaaalsffaaaaaaaaffflf"
     bit_lines = [
-        run + "lsffff" + "a" * weights.get(i, 0) + "fl"
+        "a" + run + "lsffff" + "a" * weights.get(i, 0) + "fl"
         for i, run in enumerate(_runs(HOME_ROW_PAIR, n))
     ]
     guarded = table.rstrip(table[-1])

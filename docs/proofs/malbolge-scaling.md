@@ -1,12 +1,12 @@
-# Malbolge boolean generator: the hashed wall, and the build past it
+# Malbolge: generator limits and constructions
 
-Why the hashed cascade stopped at fourteen inputs, the positional build that
-now covers fifteen and sixteen, and why seventeen is out of reach for any
-build that spends a cell per pair of rows. Companion to the narrative in
-[../limitations.md](../limitations.md). Everything here is measured or
-verified against the interpreter's `crazy`/`rot`, or marked as an unbuilt
-design. The sections on the load law and the two fifteen-input cascade
-attempts are kept as the record of why the hash had to go.
+The hashed cascade reaches fourteen inputs; the positional construction
+reaches fifteen and sixteen. A construction using one cell per row pair
+cannot reach seventeen. See [limitations](../limitations.md) for the contract.
+
+Results below are measured, verified against the interpreter’s `crazy`/`rot`,
+or marked as unbuilt designs. The load law and two fifteen-input cascade
+attempts explain why the generator switched from hashing to positional reads.
 
 ## The load law
 
@@ -39,8 +39,8 @@ past load ~0.3 the required depth outruns any decoder pass count.
 
 ## Seventeen: three-cell orbit packing
 
-The one-cell-per-row-pair architecture stops at sixteen, but it does not give
-a language wall.  The raw capacity permits a different unbuilt design.  Use
+The one-cell-per-row-pair limit at sixteen is not a language bound. Raw
+capacity permits a different, unbuilt design.  Use
 fourteen inputs to select a block of eight rows and encode that block's eight
 answer bits in three source characters.  Three legal characters carry nine
 bits, so this needs `3 * 2**14 = 49,152` cells and leaves 9,897 for code.
@@ -76,13 +76,10 @@ interpreter run over all 131,072 rows.
 
 ## The emitted-size law
 
-`len(program)` is 59,049 at every arity: the whole store is the source, so the
-load limit *is* the emitted length rather than a bound on it, and reading
-linearity off `len()` measures the padding. What the construction spends is
-its **set cells** -- those differing from `f(a) = 33 + ((35 - a) % 94)`, the
-unique nop character for a cell's own address, which is what every untouched
-cell holds. Unwritten cells decode as op `o`, so a set cell is exactly a
-non-`o` cell.
+`len(program)` is always 59,049: the source fills the store. To measure
+construction growth, count **set cells** instead of padding. A set cell differs
+from `f(a) = 33 + ((35 - a) % 94)`, the unique nop character at address `a`.
+Untouched cells decode as `o`, so set cells are exactly the non-`o` cells.
 
 Through ten inputs that count is not fitted but exact:
 
@@ -1223,3 +1220,118 @@ not appending the decoder at their current addresses. Independently of
 placement, the prefix would fit the table's 9,897-cell complement by count with
 317 cells left. The decoder needs thousands, so setup must be shared
 and further address code removed rather than merely relocated.
+
+The linted decoder port now exposes its exact code and data maps, and the
+three-input row selector reaches eight distinct executable output stubs. Its
+code and data maps are exposed for the join; the stubs still halt. Across the
+decoder's 2,744 executions, 8,340 addresses
+run in at least one row and 7,447 run in every row, but 2,355 live addresses
+carry row-dependent source bytes. A naïve overlay is therefore invalid; the
+next join must put those live variants behind the eight dispatcher landings
+while retaining the common setup once.
+
+Staging the label seeds before the row-specific chains, then initializing two
+even and one odd parity word in the same order for every row, makes the emitted
+setup identical through cell 8,106. All 2,744 real-source cases still pass.
+The live row-dependent cells fall from 2,355 to 112; the eight row builds
+write 8,026--8,157 code cells each, up from 7,142--7,906. The remaining
+row-dependent instructions can now be placed after the shared prefix.
+
+The main decoder block also executes when each row places it 200 cells farther
+along the source. The eight starts are 8,073, 8,273, ..., 9,473, and all
+2,744 cases pass. This removes the main-block code conflicts. Four non-`o`
+opcode conflicts remain in the common high copy windows, at 32,875, 32,902,
+46,011 and 46,114. The standalone programs reach their own blocks by
+falling through blank cells; a combined source still needs row dispatch before
+those blocks and separate placement or sharing of the two conflicting copies.
+All four conflicts are live. The state-3 copy needs only two executed code
+variants (rows `3,5` and `4`), and the state-4 copy needs four (`0`, `1,6`,
+`2,5,7`, `3,4`). These are the copy classes the combined source must route.
+Omitting the unreachable state-3 block in the other five row builds retains
+all 2,744 outputs and reduces their written code by 91--150 cells each. Three
+non-`o` opcode conflicts remain in the live copies.
+
+The initial `join_budget.py` comparison of the separate address path and row-0 decoder
+with the exact 49,152 table cells. Their raw instruction-address union is
+13,672, including 6,625 table positions and 1,014 incompatible opcode
+overlaps. The table complement holds 9,897 cells: after the 7,047 current
+off-table instruction addresses, only 2,850 remain for those 6,625 table
+positions. This is a 3,775-address placement and sharing deficit for the
+current separate emitters, before joining the row dispatcher. It does not
+bound a redesigned source that shares code or data with the table.
+
+The address emitter now exposes a continuation at `C=1,799`, `D=47` after
+constructing the pointer and all three parity words. All 16,384 address paths
+reach that same register position with `A` holding one of the two stored
+parity words. The real-source suffix `ojppp<v` advances to pointer cell 48,
+jumps to the computed first group cell and reads all three cells in order.
+Eight groups outside the address code were changed to three valid characters
+each; all eight executions printed the independently folded value and retained
+the pointer. This is a working address-to-group read, not yet the five-state
+decoder or a source for arbitrary table contents.
+
+The decoder now uses one preserved `base-1` cell for every group read. After
+the jump it advances `D` by the selected within-group offset, so the other
+two `z` value chains disappear. All 2,744 real-source decoder cases still
+pass; each row writes 7,409--7,524 code cells. The separate-emitter join
+budget falls from 13,672 to 13,193 instruction addresses, leaving a
+3,296-address placement and sharing deficit. The address fold already
+preserves the matching dynamic `base-1` value in its pointer cell.
+Moving the address fold's preserved pointer from label-region cell 48 to
+walked cell 142 shortens that source from 9,588 to 9,280 code cells and cuts
+its table collisions from 5,151 to 4,837. All 16,384 address paths and
+49,152 parity words still pass. The continuation is now at `C=1,855`,
+`D=47`; a generated navigation path reaches cell 142 before the same
+three-cell group read. Reserving cell 142 in the decoder moves one label seed
+and leaves that cell untouched after startup. The decoder's external-pointer
+mode uses it for every group read and omits the separate `z` value chain.
+All 2,744 decoder cases pass with the pointer injected after startup. The
+raw address/decoder union is now 13,014 instruction addresses, leaving a
+3,117-address placement and sharing deficit. The decoder still constructs its
+own parity words and reducer. The
+`join_budget.py --live` trace visits all 9,280 address instructions; a
+one-path positive control leaves 4,185 unvisited.
+The existing decoder cannot retain the address fold's low parity outputs at
+cells `51,46,56`: even after replacing their label duties, row 0 on meaning
+triple `(1,0,1)` routes through cell 51 via the neighbouring group character.
+Putting a parity word there changes that jump and prints `0` instead of `1`.
+The parity words must move outside this low routing region or the route must
+change. The first high-parity placement currently collides with an address
+branch at cell 4,051, so that placement needs adjustment before execution.
+
+The current combined source executes the fourteen-input address fold, shared
+label setup, ten decoder helper initializers and final three-input row fold.
+Eight high row landings now jump through one preserved pointer to a common
+entry with `D=22`, retaining the row word in cell 20. All 131,072 seventeen-bit
+inputs reached that entry with the expected diagnostic output and preserved
+fold interface and helpers; a deliberately wrong row expectation was rejected.
+This routing source writes 33,239 instruction cells.
+
+The shared-entry reader then consumes the first parity word, selects the
+corresponding view and reads through the live pointer in cell 142. Its 256
+uninjected control executions compare the output and changed table word
+against the actual operand immediately before the read. It writes 33,435
+instruction cells and halts diagnostically, rather than returning to the
+five-state decoder. The actual three-field address mapping occupies 49,152
+disjoint cells in `6563..59047`; the source remains 59,049 characters long.
+Return navigation, complete Boolean decoding and placement around arbitrary
+table contents remain unfinished. This is not a seventeen-input generator.
+
+Separate shared-decoder controls now execute native common initialization and
+the final three-input row selector (`scripts/malbolge17/joined_decoder.py`).
+All 5,488 cases pass: eight row tails, two address parities and 343 meaning
+triples. The emitted source uses 27,032 instruction cells and 59,049 source
+characters. These controls inject the address, parity and selected table
+interface; they do not join the fourteen-input address producer or install the
+full truth table.
+
+An unshipped instruction-reuse prototype restores rotation at cell 247 and
+crazy at cell 26,500 through one continuation at cell 26,491. Four fixed
+operand records and their native initializer occupy 3,262 instruction cells,
+including six placement headers. Sixteen executions against complete admissible
+table fillings preserve all 49,152 table cells and all 940 decoder landing
+cells; one filling covers all 343 meaning triples. The prototype executes a
+fixed mixed-operation sequence, not Boolean-table queries. Variable-address
+read returns and integration with the address producer and complete decoder
+remain unresolved. These controls establish neither a seventeen-input
+generator nor an impossibility result.

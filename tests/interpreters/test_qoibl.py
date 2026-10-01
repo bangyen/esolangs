@@ -480,6 +480,26 @@ class TestQoiblParserGuards:
     rejecting is invisible until something malformed is accepted.
     """
 
+    @pytest.mark.parametrize(
+        "source",
+        [
+            "tt y qe",
+            "qe y tt",
+            "we y we y tt",
+            "rr e rr y tt",
+            "tt e yr ee ry y tt",
+            "tt e ry ee yr y tt",
+        ],
+    )
+    def test_mismatched_markers_are_rejected_at_execution(self, source: str) -> None:
+        with pytest.raises(esolangs.ProgramError):
+            esolangs.run("Qoibl", source)
+
+    def test_matched_markers_execute(self) -> None:
+        assert esolangs.run("Qoibl", "tt y tt") == chr(1)
+        assert esolangs.run("Qoibl", "tt e yr ee yr y tt") == chr(0)
+        assert esolangs.run("Qoibl", "tt e ry ee ry y tt") == chr(1)
+
     def test_steal_declines_a_literal_without_the_character(self) -> None:
         """Nothing is given back unless the literal actually ends in it.
 

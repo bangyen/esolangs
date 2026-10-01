@@ -18,6 +18,12 @@ def _public(module: object) -> list[tuple[str, Callable[..., Any]]]:
     ]
 
 
+def test_public_exports_resolve() -> None:
+    """Every advertised export exists, including non-callable metadata."""
+    for name in boolean.__all__:
+        assert hasattr(boolean, name), name
+
+
 def test_boolean_generators_take_a_truth_table() -> None:
     """Each generator takes ``truth_table`` and no required extra."""
     failures = {}

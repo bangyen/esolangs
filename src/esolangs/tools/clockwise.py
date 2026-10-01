@@ -20,11 +20,13 @@ _TABLE_ROWS = 5
 _DIGIT = "S;+;;+;;;S"
 
 
-def clockwise(truth_table: str) -> str:
+def clockwise(truth_table: str, width: int | None = None) -> str:
     """Build a Clockwise program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n``, MSB first; the
-    program prints ``'0'`` or ``'1'``.
+    program prints ``'0'`` or ``'1'``.  An over-wide lookup rotates
+    counterclockwise when narrower: two columns through two inputs, then
+    ``2*n + 5``.
 
     A flat indexed lookup, not a tree.  The table is one ``!`` per entry in
     a row of ``!``/``-`` pairs: the index sits in the accumulator, the
@@ -107,4 +109,97 @@ def clockwise(truth_table: str) -> str:
     for (x, y), char in cells.items():
         grid[y][x] = char
     # The interpreter pads short rows, so trailing filler is never reached.
-    return "\n".join("".join(row).rstrip() for row in grid)
+    program = "\n".join("".join(row).rstrip() for row in grid)
+    if width is None or width <= 0 or span <= width:
+        return program
+    original_cells, original_span = cells, span
+    if width < height + 2:
+        # Emit the common six digit bits on the entry rail, before reading.
+        # Only the selected final bit depends on the table. This removes the
+        # nine-row digit tail without changing the accumulator at the first read.
+        cells = {
+            (x + len(_DIGIT) + 1 if x else x, y): char
+            for (x, y), char in cells.items()
+            if y < digit
+        }
+        for x, char in enumerate(_DIGIT):
+            cells[x, 0] = char
+        cells[_DESCENT + len(_DIGIT) + 1, digit] = "R"
+        cells[_CLIMB + len(_DIGIT) + 1, digit] = "R"
+        height = digit + 1
+        span = max(x for x, _ in cells) + 1
+    # Counterclockwise rotation puts the wide lookup down the page.  Most
+    # rows end at the five table columns; the interpreter pads the entry rail.
+    rotated: dict[int, dict[int, str]] = {}
+    for (x, y), char in cells.items():
+        rotated.setdefault(span - x, {})[y + 1] = char
+    rotated[0] = {height + 1: "R"}
+    rotated[span + 1] = {1: "R", height + 1: "R"}
+    rotated.setdefault(span, {})[0] = "R"
+    rows: list[str] = []
+    for y in range(span + 2):
+        painted = rotated.get(y, {})
+        rows.append(
+            "".join(painted.get(x, " ") for x in range(max(painted, default=-1) + 1))
+        )
+    legacy = "\n".join(rows)
+    if max(map(len, rows)) <= width:
+        return legacy
+    lean = _clockwise_lean_rotate(original_cells, n, digit, original_span)
+    chosen = lean if max(map(len, lean.splitlines())) < max(map(len, rows)) else legacy
+    if size <= 4 and max(map(len, chosen.splitlines())) > width:
+        return _clockwise_two_columns(truth_table)
+    return chosen
+
+
+def _clockwise_lean_rotate(
+    cells: dict[tuple[int, int], str], n: int, digit: int, span: int
+) -> str:
+    """Share entry and return rails using zero/nonzero gates around the lookup."""
+    tail = digit - 1 if n > 1 else digit
+    body = {(x, y): char for (x, y), char in cells.items() if 0 < y < digit}
+    # The descent turns alongside the last gadget's return, outside its cells.
+    body[_DESCENT, tail] = "R"
+    body[_CLIMB, tail] = "R"
+    body[1, _TABLE_ROWS] = "+"  # Every completed answer returns with nonzero acc.
+    rotated: dict[int, dict[int, str]] = {}
+    for (x, y), char in body.items():
+        rotated.setdefault(span - x, {})[y] = char
+    prefix = _DIGIT[1:-1]  # Initial acc is already zero; clear after the entry turn.
+    rail = max(tail + 1, len(prefix))
+    rotated[0] = dict(enumerate(prefix)) | {rail: "R"}
+    rotated.setdefault(1, {})[rail] = "S"
+    rotated[span + 1] = {0: "R", rail: "R"}
+    rotated.setdefault(span, {})[0] = "?"
+    rotated.setdefault(span - _DESCENT, {})[0] = "!"
+    rows: list[str] = []
+    for row in range(span + 2):
+        painted = rotated.get(row, {})
+        rows.append(
+            "".join(
+                painted.get(col, " ") for col in range(max(painted, default=-1) + 1)
+            )
+        )
+    return "\n".join(rows)
+
+
+def _clockwise_two_columns(table: str) -> str:
+    """Index two inputs down one rail and accumulate the answer on the return."""
+    n = _validate_truth_table(table)
+    rows = [" R"]
+    read = "." * _READS
+    # Adding one to the first bit carries it into the second bit position;
+    # the next read clears the low bit and supplies the second input.
+    prefix = _DIGIT + read + ("+" + read if n == 2 else "")
+    for index, char in enumerate(prefix):
+        rows.append((";" if index == 0 else " ") + char)
+    previous = 0
+    for entry, bit in enumerate(table):
+        delta = 2 + (int(bit) ^ previous)
+        previous = int(bit)
+        # A selected zero turns north; positive accumulated values pass all
+        # earlier gates. Even padding preserves the telescoping answer parity.
+        for offset in range(delta):
+            rows.append("+" + ("-" if entry and offset == 0 else " "))
+        rows.append("!!")
+    return "\n".join(row.rstrip() for row in rows)

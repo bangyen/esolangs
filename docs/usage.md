@@ -1,13 +1,12 @@
 # Using the package
 
-Generate a program, feed it, and judge the result without language-specific
-branches. The API reads [`describe`](#describe) metadata instead.
+Generate and run programs through one API. It handles each language’s input
+and output conventions using [`describe`](#describe) metadata.
 
-## The round trip
+## Generate and verify
 
-`evaluate` runs a generated program on every row of its input space and
-returns the table it actually computes; `verify` compares that to the table
-you asked for.
+`evaluate` executes every input row and returns the observed truth table;
+`verify` compares it with the requested table.
 
 ```python
 import esolangs
@@ -16,11 +15,9 @@ esolangs.evaluate("A Painter Ant", "0110")  # -> '0110'
 esolangs.verify("Fargo", "10010110")  # -> True
 ```
 
-Both cover unusual input shapes, templates, and termination-encoded answers.
-For individual stages, use `generate`, `encode_inputs`, `run`, and
-`read_answer`.
+Both handle input formats, templates, and termination answers.
 
-## Guided XOR example
+## Run XOR
 
 XOR's table is `0110`: rows `00`, `01`, `10`, and `11` produce `0`, `1`,
 `1`, and `0`. A stdin-driven language runs one row like this:
@@ -54,7 +51,7 @@ raster.to_png()
 assert esolangs.verify("Piet", table)
 ```
 
-The VM exposes common state without erasing language-specific state:
+To step through a text program and inspect its state:
 
 ```python
 program = esolangs.generate("brainfuck", table)
@@ -67,9 +64,23 @@ for _ in range(20):
 print(vm.ip, vm.memory, vm.output)
 ```
 
-The [debugging](#debugging) section covers the interactive interface. Use
-`just benchmark brainfuck 0110 --row 1` when changing a generator; its JSON
-reports source units, generation time, and deterministic command count.
+The [debugging](#debugging) section covers the interactive interface.
+
+## Benchmarking
+
+Measure a generated program and check every input row:
+
+```bash
+just benchmark brainfuck 0110 --all-rows
+```
+
+The JSON reports rendered size, generation time, steps to halt, expected and
+actual answers, and execution status. It checks the artifact it measured;
+wrong or undecided rows exit unsuccessfully. Unsupported stepping is reported
+separately from a step cap or timeout. The row timeout defaults to 30 seconds;
+`--no-timeout` disables the signal guard for Windows or worker threads.
+`just sizes` checks the committed size and step baseline and requires each
+measured row to answer correctly.
 
 ## Exported callables
 
@@ -101,8 +112,7 @@ most-significant input first, so its length implies `n`.
 
 ## Feeding a program
 
-**How a language reads its input bits is not universal.** Let
-`encode_inputs` build the stdin rather than assembling it by hand:
+Input formats vary by language. Use `encode_inputs` to build stdin:
 
 ```python
 esolangs.encode_inputs("Taglate", [1, 0, 1])  # -> '0\n1\n0\n1\n'
@@ -120,48 +130,40 @@ esolangs.encode_inputs("Taglate", [1, 0, 1])  # -> '0\n1\n0\n1\n'
 The other 51 that read stdin take one `0`/`1` line per bit -- `'1\n0\n1\n'`.
 The remaining 19 embed their inputs and read no stdin: `instantiate` fills them.
 The 1 interpreter-only classics have no generator, so there is no generated stdin to feed.
-Call `encode_inputs` rather than reading a row off
-this table; it is generated from `describe`, and so is the table.
+Use `encode_inputs` to build stdin; it and this table use `describe`.
 
 <!-- INPUT-SHAPES:END -->
 
-A shape the checker cannot tell apart from a legitimate one still answers
-the wrong row, which is why the encoder is the interface and the table is
-only a reference. [`src/esolangs/examples/MANIFEST.md`](../src/esolangs/examples/MANIFEST.md)
-lists every example language's input column.
+[`MANIFEST.md`](../src/esolangs/examples/MANIFEST.md) lists each example’s
+input row and encoding.
 
-Stdin is checked against the shape and alphabet a language declares:
-`esolangs run` warns, `esolangs run --judge` refuses, and
-`esolangs.check_stdin(language, stdin, truth_table)` is the same judge from
-Python -- given the table it checks the bit *count* too, which catches a
-surplus line as well as a missing one.
+`esolangs run` warns about invalid input formats; `--judge` rejects them.
+In Python, use `check_stdin(language, stdin, truth_table)`. Supplying the
+table also checks the bit count, catching missing or extra lines.
 
 ## Templates
 
-Fourteen languages embed inputs, so `generate` returns a template with one
+For languages that embed inputs, `generate` returns a template with one
 ordered `$` run per input, exactly as long as its replacement. Fill it with
 `esolangs.instantiate(language, template, bits)`; running one unfilled is
-refused.  `esolangs list --details` marks them `tmpl` and identifies each
-one.
+refused. `esolangs list --details` marks them `tmpl`.
 
 ## Reading the answer
 
-Most languages print the answer, six dump their whole final state with it
-somewhere inside, and four answer by *terminating* -- they halt for a 0 and
-loop forever for a 1. `read_answer` handles the first two; for the third,
-bound the run and catch `ExecutionTimeoutError` as the 1.
+Most languages print the answer; six dump their final state, and four answer
+by termination: halt for 0, loop forever for 1. `read_answer` handles printed
+and state-dump answers. Use `evaluate` or `verify` for termination answers;
+they require a proved halt or cycle. A timeout remains undecided.
 
-The `answer_encoding` is `("halts", "diverges")` for those four, in the order
-`describe` gives them, so index 0 is the answer 0 and
-`encoding.index("diverges")` is the polarity.
+Their `answer_encoding` is `("halts", "diverges")`: index 0 means answer 0,
+and `encoding.index("diverges")` gives the divergence polarity.
 
 ## Width
 
 `generate` and the CLI's `--width` bound the columns. Most grids honour it
 by laying themselves out rather than being reflowed;
-`describe(language)["width_effect"]` says which of the three behaviours you
-have, and names the 15 that ignore a width because their newlines are part
-of the program.
+`describe(language)["width_effect"]` identifies the three behaviours,
+including the 15 languages that ignore width because newlines are semantic.
 
 ## Bounded execution
 
@@ -190,11 +192,9 @@ esolangs generate brainfuck 0110 > bf.txt
 printf '0\n1\n' | esolangs debug --steps 20 --watch-cell 0 brainfuck bf.txt
 ```
 
-`STOP_REASONS` is `("halted", "breakpoint", "max_steps", "timeout")` -- what
-`make_debugger(...).run()` returns. A program that *faults* raises out of
-`run` instead, so it has no reason of its own; the CLI catches that and
-prints a fifth word, `stopped: raised`, which is why that line ranges over
-more than this tuple.
+`make_debugger(...).run()` returns one of `STOP_REASONS`:
+`"halted"`, `"breakpoint"`, `"max_steps"`, or `"timeout"`. Program faults raise
+an exception instead; the CLI catches it and prints `stopped: raised`.
 
 `--tui` highlights the next operation and shows the tape, stack, output,
 named state, and watch history. Controls are `hjkl` to move, `t` to toggle a
@@ -207,11 +207,11 @@ unhighlighted. The header still shows the raw `ip`.
 
 ## describe
 
-`describe(language)` returns the record every function above branches on:
+`describe(language)` returns the language’s API metadata:
 `source_kind`, `input_shape`, `input_encoding`, `answer_mode`, `answer_encoding`,
 `width_effect`, `parameterized`, `reads_input` and the rest.
-`esolangs describe --json <language>` prints it, and `esolangs list
---details` reduces it to a marker column -- `gen`, `tmpl`, `ex`.
+`esolangs describe --json <language>` prints it; `esolangs list --details`
+shows the `gen`, `tmpl`, and `ex` markers.
 
 ## Compatibility
 

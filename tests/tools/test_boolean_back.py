@@ -240,3 +240,102 @@ class TestParameterizedBack:
                 for c in range(8)
             }
             assert len(sizes) == 1, f"{table} sizes {sorted(sizes)}"
+
+
+@pytest.mark.parametrize("width", [1, 10, 20, 80])
+def test_descending_loader_preserves_inputs_and_answers(width: int) -> None:
+    """The narrower entry reads page-order runs into matching tape cells."""
+    import esolangs
+
+    runner = TestParameterizedBack()
+    for n in range(1, 7):
+        table = "".join(str((row * 73 + row // 3) & 1) for row in range(1 << n))
+        plain = esolangs.generate("Back", table)
+        template = esolangs.generate("Back", table, width)
+        floor = max(map(len, plain.splitlines())) - 2
+        assert max(map(len, template.splitlines())) <= max(width, floor)
+        sizes = set()
+        for row, expected in enumerate(table):
+            bits = list(map(int, f"{row:0{n}b}"))
+            program = esolangs.instantiate(
+                "Back", str(template), bits, truth_table=table
+            )
+            sizes.add(len(program))
+            assert runner.run_back(program, n) == expected
+        assert len(sizes) == 1
+
+
+def test_descending_loader_rendered_size_stays_linear() -> None:
+    from esolangs.tools.back import back
+
+    sizes = []
+    for n in range(6, 11):
+        table = "".join(str(row.bit_count() & 1) for row in range(1 << n))
+        template = back(table, 1)
+        assert max(map(len, template.splitlines())) < max(
+            map(len, back(table).splitlines())
+        )
+        sizes.append(len(template))
+    assert all(later <= 2 * earlier for earlier, later in pairwise(sizes))
+
+
+def test_descending_loader_walks_permuted_cells_in_name_order() -> None:
+    from esolangs.tools.back import _back_ordered
+    from esolangs.tools.helpers import permute_truth_table
+
+    table = "00010011"
+    order = (2, 0, 1)
+    template = _back_ordered(permute_truth_table(table, order), order, 1)
+    runner = TestParameterizedBack()
+    for row, expected in enumerate(table):
+        bits = list(map(int, f"{row:03b}"))
+        assert runner.run_back(runner.instantiate(template, bits), 3) == expected
+
+
+@pytest.mark.medium
+def test_vertical_leaf_finish_preserves_every_small_table() -> None:
+    import esolangs
+
+    runner = TestParameterizedBack()
+    for n in range(1, 4):
+        size = 1 << n
+        for value in range(1 << size):
+            table = f"{value:0{size}b}"
+            template = esolangs.generate("back", table, 1)
+            for row, expected in enumerate(table):
+                bits = [(row >> shift) & 1 for shift in range(n - 1, -1, -1)]
+                code = esolangs.instantiate(
+                    "back", str(template), bits, truth_table=table
+                )
+                assert runner.run_back(code, n) == expected
+    assert max(map(len, esolangs.generate("back", "0110", 1).splitlines())) == 1
+    assert max(map(len, esolangs.generate("back", "0110", 8).splitlines())) == 8
+
+
+@pytest.mark.parametrize("n", [1, 2, 3, 5])
+@pytest.mark.parametrize("bias", [0, 1])
+def test_parity_accumulator_keeps_public_slots_and_provenance(
+    n: int, bias: int
+) -> None:
+    import esolangs
+
+    table = "".join(str((row.bit_count() & 1) ^ bias) for row in range(1 << n))
+    runner = TestParameterizedBack()
+    for width in (1, 4, 7, 10, 80):
+        tagged = esolangs.generate("Back", table, width)
+        assert tagged.setters == (("-", "+"),) * n
+        for template in (tagged, str(tagged)):
+            for row, expected in enumerate(table):
+                bits = list(map(int, f"{row:0{n}b}"))
+                program = esolangs.instantiate(
+                    "Back", template, bits, truth_table=table
+                )
+                assert runner.run_back(program, n) == expected
+                assert len(program) == len(tagged)
+                if width == 1:
+                    assert max(map(len, program.splitlines())) == 1
+            with pytest.raises(esolangs.TemplateError):
+                esolangs.instantiate(
+                    "Back", template, [0] * n, truth_table="0" * len(table)
+                )
+    assert max(map(len, esolangs.generate("Back", table, 1).splitlines())) == 1
