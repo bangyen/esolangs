@@ -7,7 +7,7 @@
 
 <!-- PACKAGE-COUNT:START -->
 
-Interpreters and Boolean generators for 75 esoteric languages: 73 text and 2 raster.
+Interpreters and Boolean generators for 74 esoteric languages: 72 text and 2 raster.
 
 <!-- PACKAGE-COUNT:END -->
 
@@ -94,7 +94,7 @@ See [debugging](https://github.com/bangyen/esolangs/blob/main/docs/usage.md#debu
 
 <!-- EXAMPLES:START -->
 
-Ready-to-run programs for each of the 72
+Ready-to-run programs for each of the 71
 text languages with a boolean generator live in
 [`examples/`](https://github.com/bangyen/esolangs/tree/main/src/esolangs/examples).
 
@@ -105,7 +105,7 @@ text languages with a boolean generator live in
 <details>
 <!-- IMPLEMENTED:START -->
 
-<summary>Show all 73 text languages</summary>
+<summary>Show all 72 text languages</summary>
 
 ### Grid-based Languages
 
@@ -141,7 +141,6 @@ Languages that use a stack for data manipulation.
 - [Modulous](https://esolangs.org/wiki/Modulous) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/stack_based/modulous.py))
 - [Underload](https://esolangs.org/wiki/Underload) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/stack_based/underload.py))
 - [Unsquare](https://esolangs.org/wiki/Unsquare) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/stack_based/unsquare.py))
-- [Whitespace](https://esolangs.org/wiki/Whitespace) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/stack_based/whitespace.py))
 
 ### Queue-based Languages
 
@@ -221,7 +220,7 @@ Line is an image-language module under `esolangs.line`; its suite is
 <!-- BOOLEAN-COUNT:START -->
 
 The truth table is a binary string of length `2**n`, most-significant input
-first; its length implies `n`, so it isn't passed separately.  72 of the
+first; its length implies `n`, so it isn't passed separately.  71 of the
 text languages have such a generator, some covering only a documented subset of
 tables.
 

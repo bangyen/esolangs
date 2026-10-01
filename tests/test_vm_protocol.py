@@ -620,13 +620,8 @@ def _first_move(name: str, program: str, stdin: str) -> tuple[int, int]:
     return (before[0] != after[0], before[1] != after[1])
 
 
-class TestAPathAndItsTextDifferOnTheTrailingNewline:
-    """``run(lang, path)`` and ``run(lang, path.read_text())`` disagree.
-
-    Reading a file strips one trailing newline and passing a string does
-    not.  Both halves are deliberate; the docstring said only that a Path
-    "is read", which reads as equivalence.
-    """
+class TestPathAndTextTrailingNewline:
+    """Path input strips one trailing newline; string input preserves it."""
 
     def test_lf_ignored_by_cvnc_makes_path_and_text_agree(self, tmp_path: Path) -> None:
         path = tmp_path / "c.txt"
@@ -634,13 +629,6 @@ class TestAPathAndItsTextDifferOnTheTrailingNewline:
         stdin = esolangs.encode_inputs("CV(N)(C)", [0, 0], "0110")
         assert esolangs.run("CV(N)(C)", path, stdin, 5) == "0"
         assert esolangs.run("CV(N)(C)", path.read_text(), stdin, 5) == "0"
-
-    def test_they_disagree_when_trailing_lf_is_a_token(self, tmp_path: Path) -> None:
-        path = tmp_path / "w.txt"
-        path.write_text("\n\n\n")
-        assert esolangs.run("Whitespace", path.read_text(), timeout=5) == ""
-        with pytest.raises(esolangs.ProgramError):
-            esolangs.run("Whitespace", path, timeout=5)
 
     def test_they_agree_without_one(self, tmp_path: Path) -> None:
         """The difference is the newline and nothing else."""

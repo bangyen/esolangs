@@ -1030,20 +1030,6 @@
     "source_units": 115
    }
   },
-  "Whitespace": {
-   "0110": {
-    "commands": 92,
-    "source_units": 214
-   },
-   "01101001": {
-    "commands": 176,
-    "source_units": 251
-   },
-   "0110100110010110": {
-    "commands": 336,
-    "source_units": 290
-   }
-  },
   "bit~": {
    "0110": {
     "commands": 129,

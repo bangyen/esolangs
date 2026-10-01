@@ -159,7 +159,7 @@ the 1792 level-0 rows.
 
 ## Curation
 
-The collection has 68 languages; its floor is 31. All seven classics carry
+The collection has 74 languages; its floor is 31. All ten classics carry
 generators. Ordinary imperative entries with shared-shim generators and no
 consumer were removed. Nopstacle could not meet the embed conventions; ZTOALC
 L was a searched syntax-level lookup table. The retained 2D screen intersected
@@ -172,7 +172,7 @@ pages. Resolve the candidate's title redirects, follow every `list=backlinks`
 continuation, include links through redirects across all namespaces, and
 deduplicate by linking page ID. Pause at least three seconds between requests.
 
-This fixed cutoff was adopted 2026-10-01 as a prospective policy choice,
+This fixed cutoff was adopted 2026-10-01 as a policy choice,
 not an empirically established popularity boundary. Record the resolved title,
 measurement date, and count. Missing data leaves fame unassessed, not failed.
 Below 60, fame supplies no exception; intrinsic axes still apply. Low backlinks
@@ -182,15 +182,17 @@ Backlinks were remeasured 2026-10-01. Brainfuck scores 2,057; the former 282
 counted only the first API batch. The Brainfuck-relative gates and the
 indeterminate band are retired.
 
-The seven classics score Befunge 381, Thue 155, Malbolge 129, FALSE 91,
-Unlambda 89, FRACTRAN 65, and Whitespace 58; rejected Brainloller and
-Braincopter score 26 and 14. Piet (65) clears the fame gate; Whitespace (58),
+The classics score Befunge 381, Underload 167, Thue 155, Malbolge 129,
+INTERCAL 103, FALSE 91, Fish 91, Unlambda 89, Smallfuck 66, and FRACTRAN 65;
+rejected Brainloller and Braincopter score 26 and 14. Piet (65) clears the
+fame gate; Whitespace (58),
 Forth (57), Chicken (55), Shakespeare (54), and LOLCODE (47) do not.
 
-The fame bar is forward-only; past admissions are audited on the intrinsic
-axis test.
+The fame bar applies to existing exceptions too; languages with an intrinsic
+axis do not need it. Whitespace was removed at 58 backlinks: its stack machine
+adds no intrinsic axis.
 
-Bitwise Cyclic Tag (181) also earned the cyclic-schedule axis. Deadfish (314)
+Bitwise Cyclic Tag (181) also earned the cyclic-schedule axis. Deadfish (315)
 has no input vocabulary and is therefore interpreter-only: fame can admit a
 language, but cannot create a generator interface.
 

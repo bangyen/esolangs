@@ -193,4 +193,4 @@ def test_the_contract_covers_generators_the_original_queue_missed() -> None:
     """
     queue = _LINEAR_SCALING | _LANGUAGE_SUPERLINEAR_SCALING | _OPEN_SCALING
     assert len(queue) == 26
-    assert len(BY_BOOLEAN) - len(queue) == 46
+    assert len(BY_BOOLEAN) - len(queue) == 45
