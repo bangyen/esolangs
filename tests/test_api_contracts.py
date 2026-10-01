@@ -31,6 +31,7 @@ from esolangs.exceptions import (
 )
 from esolangs.registry import LANGUAGES, parameterized_ids, template_char
 from esolangs.tools.wrap import takes_width
+from tests.generator_support import evaluate_generated, verify_generated
 
 XOR = "0110"
 ROOT = pathlib.Path(__file__).parents[1]
@@ -444,7 +445,7 @@ class TestTheSignaturesAgreeWithThemselves:
         object at 0x105fa12b0>`` is documentation nobody can use; the
         sentinel means "omit this", so it says so.
         """
-        for fn in (esolangs.evaluate, esolangs.verify):
+        for fn in (evaluate_generated, verify_generated):
             rendered = str(inspect.signature(fn))
             assert "<default>" in rendered, fn.__name__
             assert "object at 0x" not in rendered, fn.__name__
@@ -769,7 +770,7 @@ class TestTheThreadRefusalNamesAWayThrough:
         """
         for language in ("123", "ArrowQueue"):
             outcome = self._off_thread(
-                lambda language=language: esolangs.evaluate(  # type: ignore[misc]
+                lambda language=language: evaluate_generated(  # type: ignore[misc]
                     language, "0110", timeout=None
                 )
             )
@@ -929,8 +930,8 @@ class TestAnAddressIsNotAllocatedOnTrust:
     def test_an_ordinary_address_still_grows(self) -> None:
         """A cap that refused real programs would be worse than the bug."""
         assert esolangs.run("S*bleq", "20 0 0", "", 5) == ""
-        assert esolangs.evaluate("Decleq", "0110", timeout=30) == "0110"
-        assert esolangs.evaluate("S*bleq", "0110", timeout=30) == "0110"
+        assert evaluate_generated("Decleq", "0110", timeout=30) == "0110"
+        assert evaluate_generated("S*bleq", "0110", timeout=30) == "0110"
 
 
 class TestDecleqNegativeAddressing:
@@ -1054,7 +1055,7 @@ def test_evaluate_refuses_a_timeout_off_the_main_thread() -> None:
 
     def work() -> None:
         try:
-            esolangs.evaluate("123", "0110")
+            evaluate_generated("123", "0110")
         except BaseException as exc:
             box.append(exc)
 

@@ -11,6 +11,7 @@ import esolangs
 from esolangs.interpreters.grid_based.thisthat import run
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.tools.thisthat import _Builder, _deque_plan, _tree, thisthat
+from tests.generator_support import evaluate_generated, verify_generated
 
 
 def _run(table: str, row: int) -> tuple[str, int]:
@@ -150,7 +151,7 @@ def test_reordered_tables_through_six_inputs_execute() -> None:
             table = "".join(rng.choice("01") for _ in range(1 << n))
             program = thisthat(table)
             reordered += program != _tree(table, reorder=False)
-            assert esolangs.verify("thisthat", table), table
+            assert verify_generated("thisthat", table), table
     assert reordered
 
 
@@ -218,7 +219,7 @@ def test_strip_preserves_fitting_layouts_and_public_answers(width: int) -> None:
         source = esolangs.generate("thisthat", table, width)
         if max(map(len, old.splitlines())) <= width:
             assert source == old
-        assert esolangs.evaluate("thisthat", table, width=width) == table
+        assert evaluate_generated("thisthat", table, width=width) == table
 
 
 @pytest.mark.parametrize("n", [4, 6, 8])

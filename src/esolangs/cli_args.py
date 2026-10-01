@@ -35,8 +35,7 @@ _ARGUMENTS = {
     "read-answer": ("<language>",),
     "check-stdin": ("<language>",),
     "answer": ("<language>", "<truth-table>", "<bits>"),
-    "verify": ("<language>", "<truth-table>"),
-    "evaluate": ("<language>", "<truth-table>"),
+    "evaluate": ("<language>", "<program-file>"),
 }
 
 

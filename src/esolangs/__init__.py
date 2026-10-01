@@ -8,7 +8,7 @@ fills a parameterized generator's input runs; ``run`` executes a program;
 ``list_languages`` summarize the registry.  ``encode_inputs`` and
 ``read_answer`` feed a program and judge what it printed; ``check_stdin``,
 ``check_program`` and ``check_runnable`` apply the checks before anything
-runs; ``evaluate`` and ``verify`` are the whole round trip; ``spec`` is the
+runs; ``evaluate`` runs a supplied program on every input row; ``spec`` is the
 interpreter's own description of a language.
 
 Names resolve case-insensitively (:func:`esolangs.registry.resolve`), and
@@ -38,7 +38,7 @@ from esolangs._describe import (
     list_languages,
     spec,
 )
-from esolangs._evaluate import _Default, evaluate, verify
+from esolangs._evaluate import _Default, evaluate
 from esolangs._isolated import run_isolated
 from esolangs._validate import check_bits, check_timeout, check_width
 from esolangs.debugger import STOP_REASONS, Debugger, StopReason, make_debugger
@@ -148,7 +148,6 @@ __all__ = [
     "run_bounded",
     "run_isolated",
     "spec",
-    "verify",
 ]
 
 
@@ -620,7 +619,7 @@ def run(
             "the timeout guard uses SIGALRM and needs a Unix main thread; "
             "off it, either bound the run cooperatively with "
             "make_debugger(language, program, stdin).run(timeout=...), "
-            "which steps and so needs no signal, or use evaluate/verify "
+            "which steps and so needs no signal, or use evaluate "
             "with timeout=None -- they settle a diverging row by proving "
             "the loop rather than waiting for it"
         )

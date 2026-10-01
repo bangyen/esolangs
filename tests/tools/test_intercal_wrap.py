@@ -6,6 +6,7 @@ import pytest
 
 import esolangs
 from esolangs.tools.intercal import intercal
+from tests.generator_support import evaluate_generated
 
 
 @pytest.mark.parametrize("inputs", [1, 2, 3, 4, 5, 6])
@@ -31,14 +32,14 @@ def test_intercal_narrow_expressions_compute_every_row(
     polite = sum(line.startswith("PLEASE ") for line in lines)
     assert len(lines) <= 5 * polite
     assert len(lines) >= 3 * polite
-    assert esolangs.evaluate("INTERCAL", table, width=width) == table
+    assert evaluate_generated("INTERCAL", table, width=width) == table
 
 
 @pytest.mark.parametrize(
     "table", ["00", "11", "01", "10", "0000", "1111", "0110", "0001"]
 )
 def test_intercal_narrow_constant_and_shared_paths(table: str) -> None:
-    assert esolangs.evaluate("INTERCAL", table, width=1) == table
+    assert evaluate_generated("INTERCAL", table, width=1) == table
 
 
 def test_intercal_width_splits_an_overwide_expression() -> None:
@@ -54,7 +55,7 @@ def test_intercal_narrow_identities_execute_every_small_table(width: int) -> Non
     for n in range(1, 4):
         for value in range(2 ** (2**n)):
             table = format(value, f"0{2**n}b")
-            assert esolangs.evaluate("INTERCAL", table, width=width) == table
+            assert evaluate_generated("INTERCAL", table, width=width) == table
 
 
 def test_intercal_xor_floor_and_narrow_corpus_size() -> None:
@@ -97,7 +98,7 @@ def test_intercal_fitting_primitive_layout_keeps_its_source() -> None:
     previous = _intercal_narrow(table, simplify=False)
     width = max(map(len, previous.splitlines()))
     assert intercal(table, width) == previous
-    assert esolangs.evaluate("INTERCAL", table, width=width) == table
+    assert evaluate_generated("INTERCAL", table, width=width) == table
 
 
 @pytest.mark.parametrize("width", [1, 6, 9, 17, 19, 20, 22, 40, 80])

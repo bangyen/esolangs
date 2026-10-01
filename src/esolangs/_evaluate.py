@@ -1,4 +1,4 @@
-"""The round trip: :func:`evaluate` and :func:`verify`.
+"""Evaluate a supplied program on every Boolean input row.
 
 ``esolangs.run`` is reached through the package at call time (patchable).
 """
@@ -9,7 +9,6 @@ from typing import cast
 
 import esolangs
 from esolangs._answers import (
-    _validate_shape_for_evaluate,
     encode_inputs,
     read_answer,
 )
@@ -18,10 +17,11 @@ from esolangs._validate import check_timeout
 from esolangs.exceptions import (
     ArgumentError,
     EsolangError,
-    InputExhaustedError,
+    ProgramError,
 )
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.raster import Raster
+from esolangs.tools.helpers import MOST_INPUTS
 from esolangs.vm import make_vm
 
 
@@ -51,23 +51,19 @@ _ROW_TIMEOUT = 30.0
 
 def evaluate(
     language: str,
-    truth_table: str,
+    program: str | Raster,
     timeout: float | _Default | None = _DEFAULT,
-    width: int | None = None,
     *,
+    inputs: int,
     isolated: bool = False,
 ) -> str:
-    """Return the truth table a generated ``language`` program *actually* computes.
+    """Return the table a supplied program computes over ``inputs`` bits.
 
-    Generates, runs every row, returns the answers as a binary string;
-    :func:`verify` is this with the comparison done.  ``timeout`` bounds each
-    row: omit for the defaults, ``None`` for unbounded (callable off the main
-    thread).  The four termination-answer languages do not pay it: those rows are
-    settled by a repeated machine state, so the bound is only a backstop
-    for growth. A timeout raises rather than claiming divergence.
-    ``isolated=True`` runs each row in a subprocess with a portable deadline.
-    ``width`` is passed through.  A failure carries the row as a note and
-    ``partial_output``.
+    Inputs range from 1 to 64, in MSB-first row order. Parameterized languages
+    require a template, filled separately for each row. No program is generated.
+    The default bounds each row to 30 seconds (5 for termination answers).
+    Repeated states prove divergence; a timeout raises rather than counting as 1.
+    ``None`` disables the deadline; ``isolated=True`` needs a finite deadline.
     """
     # Checked here, not only inside ``run``: the termination path drives the
     # machine itself and never reaches ``run``, so a bound too small to
@@ -78,15 +74,22 @@ def evaluate(
         check_timeout(timeout)
     facts = describe(language)
     name = str(facts["name"])
-    inputs = _validate_shape_for_evaluate(truth_table)
+    if (
+        isinstance(inputs, bool)
+        or not isinstance(inputs, int)
+        or not 1 <= inputs <= MOST_INPUTS
+    ):
+        raise ArgumentError(f"inputs must be an integer from 1 to {MOST_INPUTS}")
+    if not isinstance(program, (str, Raster)):
+        raise ProgramError("program must be source text or a Raster")
+    rows = 1 << inputs
     terminating = facts["answer_mode"] == "termination"
     bound: float | None
     if isinstance(timeout, _Default):
         bound = _TERMINATION_TIMEOUT if terminating else _ROW_TIMEOUT
     else:
         # ``None`` is unbounded, as in :func:`run`, and the thread escape
-        # hatch (the guard is ``SIGALRM``).  Safe: every program here is
-        # generated, and the divergers are settled by a repeated state.
+        # hatch (the guard is ``SIGALRM``).
         bound = timeout
     if isolated and bound is None:
         raise ArgumentError("isolated evaluation requires a finite timeout")
@@ -107,12 +110,6 @@ def evaluate(
             "thread; off it, pass timeout=None -- a diverging row is "
             "settled by a repeated machine state rather than waited for"
         )
-    # The width goes to whichever call builds the runnable text: for a
-    # template that is ``instantiate`` below, which keeps every input's
-    # run whole where a break inside one would destroy it.
-    program = esolangs.generate(
-        name, truth_table, None if facts["parameterized"] else width
-    )
     if terminating:
         # Which of halting and diverging means 1, as data.  It is
         # ``("halts", "diverges")`` for all four, but reading the order
@@ -121,22 +118,21 @@ def evaluate(
         diverges_is = str(encoding.index("diverges"))
         halts_is = str(encoding.index("halts"))
     answers = []
-    for row in range(len(truth_table)):
+    for row in range(rows):
         bits = [(row >> (inputs - 1 - i)) & 1 for i in range(inputs)]
         source: str | Raster
         if facts["parameterized"]:
-            if isinstance(program, Raster):  # pragma: no cover - impossible metadata
-                raise TypeError("a raster generator cannot be parameterized")
-            source, stdin = esolangs.instantiate(name, program, bits, width), ""
+            if isinstance(program, Raster):
+                raise ProgramError("a parameterized language requires a text template")
+            source, stdin = esolangs.instantiate(name, program, bits), ""
         else:
-            source, stdin = program, encode_inputs(name, bits, truth_table)
+            source, stdin = program, encode_inputs(name, bits)
         try:
             if terminating:
-                if not isinstance(source, str):  # pragma: no cover - see below
-                    # Raster languages answer by output, never by termination,
-                    # so this arm is unreachable metadata; the sibling check
-                    # above carries the same note.
-                    raise TypeError("a raster language cannot answer by termination")
+                if not isinstance(source, str):
+                    raise ProgramError(
+                        "a termination-answer language requires text source"
+                    )
                 if isolated:
                     from esolangs._isolated import termination_isolated
 
@@ -160,7 +156,7 @@ def evaluate(
             # The row and its bits as a note (the classes share no
             # constructor); a 1024-row failure otherwise names no row.
             exc.add_note(
-                f"while evaluating row {row} of {len(truth_table)} "
+                f"while evaluating row {row} of {rows} "
                 f"(inputs {''.join(str(b) for b in bits)}), after "
                 f"{len(answers)} row{'' if len(answers) == 1 else 's'} "
                 f"answered {''.join(answers) or '(none)'}"
@@ -179,10 +175,7 @@ def _terminates(
 ) -> str:
     """Return this row's answer for a language that answers by terminating.
 
-    A repeated snapshot proves the loop in milliseconds (these programs
-    revisit a state within a hundred steps) where waiting cost five seconds
-    per 1-row.  The clock stays for growth, which never repeats.  A step
-    budget was rightly refused earlier; a repeated state is a fact, not a guess.
+    Repeated snapshots prove divergence; a growing state needs the deadline.
     """
     from esolangs.vm import run_until_halt_or_cycle
 
@@ -194,28 +187,5 @@ def _terminates(
         machine = make_vm(name, source, stdin)
         verdict.append(run_until_halt_or_cycle(machine))
 
-    try:
-        esolangs._run(_drive, source, ScriptedIO(""), bound)  # noqa: SLF001
-    except InputExhaustedError:  # pragma: no cover - see below
-        # Reading past the end is a halt.  Unreachable via :func:`evaluate`
-        # (it never underfeeds); kept for a caller passing its own stdin.
-        return halts
+    esolangs._run(_drive, source, ScriptedIO(""), bound)  # noqa: SLF001
     return halts if verdict and verdict[0] else diverges
-
-
-def verify(
-    language: str,
-    truth_table: str,
-    timeout: float | _Default | None = _DEFAULT,
-    width: int | None = None,
-    *,
-    isolated: bool = False,
-) -> bool:
-    """Whether a generated ``language`` program really computes ``truth_table``.
-
-    Use :func:`evaluate` to see which rows disagree.
-    """
-    return (
-        evaluate(language, truth_table, timeout, width, isolated=isolated)
-        == truth_table
-    )

@@ -7,13 +7,14 @@ import pytest
 
 import esolangs
 from esolangs._isolated import _decode, _worker
+from tests.generator_support import evaluate_generated, verify_generated
 
 
 @pytest.mark.medium
 @pytest.mark.parametrize("language", ["Suffolk", "123", "Piet"])
 def test_generated_xor_runs_every_row_in_a_worker(language):
     with ThreadPoolExecutor(max_workers=1) as pool:
-        assert pool.submit(esolangs.verify, language, "0110", isolated=True).result()
+        assert pool.submit(verify_generated, language, "0110", isolated=True).result()
 
 
 @pytest.mark.medium
@@ -41,7 +42,7 @@ def test_refuses_missing_or_invalid_deadline(timeout):
 
 def test_isolated_evaluation_requires_a_deadline():
     with pytest.raises(esolangs.ArgumentError, match="finite"):
-        esolangs.evaluate("Suffolk", "0110", None, isolated=True)
+        evaluate_generated("Suffolk", "0110", None, isolated=True)
 
 
 def test_decode_missing_result_and_notes():
@@ -180,6 +181,6 @@ def test_isolated_row_timeout_stays_undecided(language, monkeypatch):
     monkeypatch.setattr(esolangs, "run_isolated", expire)
     monkeypatch.setattr(_isolated, "termination_isolated", expire)
     with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
-        esolangs.evaluate(language, "0110", isolated=True)
+        evaluate_generated(language, "0110", isolated=True)
     assert caught.value.partial_output == "prefix"
     assert "row 0" in caught.value.__notes__[0]

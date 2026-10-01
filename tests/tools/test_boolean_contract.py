@@ -18,6 +18,7 @@ from esolangs.interpreters.io import ScriptedIO
 from esolangs.registry import BY_BOOLEAN, LANGUAGES
 from esolangs.tools.helpers import essential_inputs
 from esolangs.vm import run_until_halt_or_cycle
+from tests.generator_support import evaluate_generated
 
 # Every sweep here runs an interpreter over a generated program -- the whole
 # file is the execution gate -- so the module is `medium` and the inner loop
@@ -983,7 +984,7 @@ def test_every_generator_runs_what_it_builds(
     the one that broke instead of stopping at the first.
     """
     table = make(_ONE_MINTERM_ARITY)
-    assert esolangs.evaluate(name, table, timeout=30) == table
+    assert evaluate_generated(name, table, timeout=30) == table
 
 
 @pytest.mark.parametrize(

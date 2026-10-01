@@ -250,8 +250,8 @@ def test_draining_remains_available_at_the_instruction_cap(
     """A leading drain preserves tables excluded by the ordinary builders."""
     import importlib
 
-    import esolangs
+    from tests.generator_support import evaluate_generated
 
     module = importlib.import_module("esolangs.tools.polynomial")
     monkeypatch.setattr(module, "_POLYNOMIAL_MAX_INSTRS", 15)
-    assert esolangs.evaluate("Polynomial", "0101") == "0101"
+    assert evaluate_generated("Polynomial", "0101") == "0101"
