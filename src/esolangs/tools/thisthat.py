@@ -153,7 +153,12 @@ def _stream_tree(table: str) -> str:
         half = (lo + hi) // 2
         # The root's wider separation leaves its startup and wires clear of
         # leaf outputs. Another level would overlap an ancestor's wire.
-        pitch = 8 if depth == 2 and level == 0 else 4 if level == 0 else 2
+        if level != 0:
+            pitch = 2
+        elif depth == 2:
+            pitch = 8
+        else:
+            pitch = 4
         for sign, start, end in ((-1, lo, half), (1, half, hi)):
             child = (router[0], router[1] + sign * pitch)
             builder.connect(_path(router, child, "vertical"), "single")

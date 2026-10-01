@@ -99,7 +99,7 @@ def _smallfuck_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
         if constant(lo, mid):
             if truth_table[lo] == on:
                 builder.flip(result)
-                on = "01"[on == "0"]
+                on = "1" if on == "0" else "0"
             builder.move(bit)
             builder.code.append("[*")
             arm(level, mid, hi, result, on)

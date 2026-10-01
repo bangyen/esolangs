@@ -90,7 +90,7 @@ def _painted(painted: str, n: int, blank: int) -> tuple[int, int, str]:
         names += ["h", "g"]
     wide = f"Integer(0,{blocks - 1},0,0)"
     declarations = "".join(
-        f"  {wide if name in 'hg' else 'Char'} {name};\n" for name in names
+        f"  {wide if name in {'h', 'g'} else 'Char'} {name};\n" for name in names
     )
     statements = "".join(f"  {line}\n" for line in _folded(body))
     program = (

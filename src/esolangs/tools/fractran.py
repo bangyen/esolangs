@@ -404,8 +404,8 @@ def fractran(truth_table: str, width: int | None = None) -> str:
         narrow = _plain(truth_table, n, small_root=True)
         if max(map(len, narrow.split())) < floor:
             program = narrow
-    # Consume unique phase primes3/7 once, depositing5 for each one.
-    # Cancel paired ones, then move the remaining5 onto answer2.
+    # Consume unique phase primes 3/7 once, depositing 5 for each one.
+    # Cancel paired ones, then move the remaining 5 onto answer 2.
     if (
         n == 2
         and max(map(len, program.split())) > width

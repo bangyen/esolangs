@@ -14,7 +14,7 @@ import pathlib
 from collections.abc import Iterator
 
 from esolangs.registry import LANGUAGES, canonical_id
-from esolangs.tools.examples import BOOLEAN_EXAMPLES
+from esolangs.tools.examples import BOOLEAN_EXAMPLES, BooleanExample
 
 _BY_ID = {lang.id: name for name, lang in LANGUAGES.items()}
 
@@ -33,7 +33,7 @@ def _display_name(stem: str) -> str:
     return _BY_ID.get(canonical_id(stem.replace("-", " ")), stem)
 
 
-def _logical_row(stem: str, example: object) -> str:
+def _logical_row(stem: str, example: BooleanExample) -> str:
     """Return the input row as plain bits, however the language spells it.
 
     The Input column shows the *encoded* stdin, which made this table
@@ -50,14 +50,13 @@ def _logical_row(stem: str, example: object) -> str:
     """
     import esolangs
 
-    bits = getattr(example, "bits", ())
-    if getattr(example, "fill", None) is not None:
-        return "".join(str(b) for b in bits)
-    inputs = list(getattr(example, "inputs", ()))
+    if example.fill is not None:
+        return "".join(str(bit) for bit in example.bits)
+    inputs = list(example.inputs)
     if not inputs:
         return "(none)"
     name = _display_name(stem)
-    arity = len(example.table).bit_length() - 1  # type: ignore[attr-defined]
+    arity = len(example.table).bit_length() - 1
     for row in range(2**arity):
         candidate = [(row >> (arity - 1 - i)) & 1 for i in range(arity)]
         encoded = esolangs.encode_inputs(name, candidate).strip().split("\n")

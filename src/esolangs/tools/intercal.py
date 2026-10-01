@@ -120,7 +120,7 @@ def _intercal_narrow(
                     _Expr("mingle", ("and", "or", "xor").index(operator), children),
                 )
             )
-            # Boolean operands give a result at most7, which fits a onespot;
+            # Boolean operands give a result at most 7, which fits a onespot;
             # the following selection extracts its answer from bit1.
             expr = _Expr("select", children=(_Expr("input", intermediate - 1),))
         variable = n + 2 + len(assigned)
