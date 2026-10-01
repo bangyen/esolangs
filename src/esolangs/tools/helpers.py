@@ -17,6 +17,18 @@ _ASCII_ZERO = 48
 _ASCII_ONE = _ASCII_ZERO + 1  # ``ord("1")``, the digit the other branch prints
 
 
+def short_name(index: int, alphabet: str) -> str:
+    """Return the zero-based bijective-base name over a nonempty alphabet."""
+    if index < 0 or not alphabet:
+        raise ValueError("short_name needs a nonnegative index and nonempty alphabet")
+    value = index + 1
+    chars = []
+    while value:
+        value, digit = divmod(value - 1, len(alphabet))
+        chars.append(alphabet[digit])
+    return "".join(reversed(chars))
+
+
 def grid_width(program: str) -> int:
     """Return the widest rendered row, including its padding."""
     return max(map(len, program.split("\n")))

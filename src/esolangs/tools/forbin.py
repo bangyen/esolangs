@@ -7,6 +7,7 @@ from esolangs.tools.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
     constant_span_test,
+    short_name,
 )
 
 _FORBIN_ALPHABET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -27,15 +28,9 @@ _BLOCK_BITS = 7
 
 def _forbin_name(index: int) -> str:
     """Return the ``index``th shortest non-keyword identifier."""
-    base = len(_FORBIN_ALPHABET)
     candidate = 0
     while True:
-        value = candidate + 1
-        chars = []
-        while value:
-            value, digit = divmod(value - 1, base)
-            chars.append(_FORBIN_ALPHABET[digit])
-        name = "".join(reversed(chars))
+        name = short_name(candidate, _FORBIN_ALPHABET)
         if name not in _FORBIN_RESERVED:
             if index == 0:
                 return name

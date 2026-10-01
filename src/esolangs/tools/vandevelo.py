@@ -94,7 +94,7 @@ from __future__ import annotations
 import heapq
 from itertools import islice
 
-from esolangs.tools.helpers import _validate_truth_table
+from esolangs.tools.helpers import _validate_truth_table, short_name
 
 __all__ = ["vandevelo"]
 
@@ -129,17 +129,6 @@ def _bank_cap(n: int) -> int:
     ``n`` or ``2 * n`` would cost 40% and 23% at n=13 in forced respelling.
     """
     return n * n
-
-
-def _name(index: int) -> str:
-    """Return the ``index``th shortest non-reserved Vandevelo name."""
-    base = len(_ALPHABET)
-    value = index + 1
-    chars = []
-    while value:
-        value, digit = divmod(value - 1, base)
-        chars.append(_ALPHABET[digit])
-    return "".join(reversed(chars))
 
 
 def _points(mask: int) -> list[int]:
@@ -639,7 +628,7 @@ def vandevelo(truth_table: str, width: int | None = None) -> str:
     """Build a Vandevelo program computing ``truth_table`` by termination."""
     n = _validate_truth_table(truth_table)
     compact = width is not None
-    names = [_name(index) for index in range(n)]
+    names = [short_name(index, _ALPHABET) for index in range(n)]
     ones = {row for row, entry in enumerate(truth_table) if entry == "1"}
     cubes = _Peel(ones, n).run() if ones else []
     cover = _pruned([_constraints(base, dirs, n) for base, dirs in cubes])
@@ -696,7 +685,7 @@ def vandevelo(truth_table: str, width: int | None = None) -> str:
                         held, polarity = bank.pop(register)
                         toggles = _points(held ^ w)
                     elif len(bank) < _bank_cap(n):
-                        register = _name(next_register)
+                        register = short_name(next_register, _ALPHABET)
                         next_register += 1
                         toggles, polarity = _points(w), 0
                     else:
