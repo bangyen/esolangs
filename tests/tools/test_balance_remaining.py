@@ -317,6 +317,7 @@ def _regime_tables():
         "FALSE",
         "Forbin",
         "FRACTRAN",
+        "LaserFuck",
         "Jaune",
         "INTERCAL",
         "Minifuck",
@@ -709,3 +710,45 @@ def test_circuit_gate_column_and_band_fit_transitions(inputs, affine):
             language, balanced, esolangs.encode_inputs(language, bits)
         )
         assert esolangs.read_answer(language, output) == table[row]
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("inputs", [6, 8])
+def test_laserfuck_reader_tree_and_funnel_fits(inputs):
+    from esolangs.tools import laserfuck_layout
+    from esolangs.tools.helpers import input_orders, permute_truth_table
+    from esolangs.tools.laserfuck import _laserfuck_reader_candidates, _laserfuck_tree
+
+    language = "LaserFuck"
+    rng = random.Random(1023 + inputs)
+    table = "".join(rng.choice("01") for _ in range(1 << inputs))
+    default = esolangs.generate(language, table)
+    balanced = esolangs.generate(language, table, balance=True)
+    # This span fits every reader followed by its straight tree; all larger
+    # requests therefore repeat the shortest unconstrained tree layout.
+    widest = max(
+        laserfuck_layout.MARGIN
+        + max(item[1] for item in _laserfuck_reader_candidates(inputs, perm))
+        + max(
+            map(len, _laserfuck_tree(permute_truth_table(table, perm), inputs).upright)
+        )
+        + 3
+        for perm in input_orders(table)
+    )
+    layouts = [default] + [
+        esolangs.generate(language, table, width) for width in range(1, widest + 1)
+    ]
+    assert balanced in layouts
+    assert balance_score(balanced) == min(map(balance_score, layouts))
+    for row in (0, 1, len(table) // 2, len(table) - 1):
+        bits = tuple(map(int, format(row, f"0{inputs}b")))
+        output = esolangs.run(
+            language, balanced, esolangs.encode_inputs(language, bits)
+        )
+        assert esolangs.read_answer(language, output) == table[row]
+
+
+@pytest.mark.parametrize("language", ["Alight", "Qoibl"])
+def test_pending_native_balance_preserves_answers(language):
+    program = esolangs.generate(language, "0110", balance=True)
+    assert esolangs.evaluate(language, program, inputs=2) == "0110"
