@@ -324,6 +324,7 @@ def _regime_tables():
         "Minsky Swap",
         "Modulous",
         "Packlang",
+        "Qoibl",
         "RAM0",
         "Streetcode",
         "Thue",
@@ -752,3 +753,44 @@ def test_laserfuck_reader_tree_and_funnel_fits(inputs):
 def test_pending_native_balance_preserves_answers(language):
     program = esolangs.generate(language, "0110", balance=True)
     assert esolangs.evaluate(language, program, inputs=2) == "0110"
+
+
+def test_qoibl_affine_row_envelope_minima():
+    from esolangs.tools.qoibl_balance import _best_width
+
+    for negative, constant, positive, extra in product(
+        [32, 45, 60], [1, 5, 15], [-1, 4, 12], [0, 10, 30]
+    ):
+        rows = [(-2, negative), (0, constant), (1, positive)] + [(0, 1)] * extra
+        length = (
+            sum(slope for slope, _ in rows),
+            sum(offset for _, offset in rows) + len(rows) - 1,
+        )
+        width = _best_width(rows, length, 1, 15)
+        layouts = [
+            "\n".join("x" * (slope * columns + offset) for slope, offset in rows)
+            for columns in range(1, 16)
+        ]
+        assert balance_score(layouts[width - 1]) == min(map(balance_score, layouts))
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("inputs", range(6, 11))
+def test_qoibl_literal_chunk_quotients_and_statement_fits(inputs):
+    language = "Qoibl"
+    rng = random.Random(1024 + inputs)
+    table = "".join(rng.choice("01") for _ in range(1 << inputs))
+    default = esolangs.generate(language, table)
+    balanced = esolangs.generate(language, table, balance=True)
+    widest = max(map(len, default.split("\n")))
+    layouts = [default] + [
+        esolangs.generate(language, table, width) for width in range(1, widest + 1)
+    ]
+    assert balanced in layouts
+    assert balance_score(balanced) == min(map(balance_score, layouts))
+    for row in (0, 1, len(table) // 2, len(table) - 1):
+        bits = tuple(map(int, format(row, f"0{inputs}b")))
+        output = esolangs.run(
+            language, balanced, esolangs.encode_inputs(language, bits)
+        )
+        assert esolangs.read_answer(language, output) == table[row]

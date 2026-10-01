@@ -32,6 +32,7 @@ from esolangs.tools.minifuck import minifuck
 from esolangs.tools.minifuck_sim import PAIR
 from esolangs.tools.packlang import balance_packlang
 from esolangs.tools.parameterized import bitdeque, minsky_swap
+from esolangs.tools.qoibl_balance import balance_qoibl
 from esolangs.tools.ram0 import ram0
 from esolangs.tools.register import balance_collatz_multiverse
 from esolangs.tools.smallfuck import smallfuck, smallfuck_setters
@@ -460,6 +461,7 @@ BALANCERS: dict[str, Callable[[str, str], str]] = {
     "minsky_swap": _minsky_swap,
     "modulous": _modulous,
     "packlang": balance_packlang,
+    "qoibl": balance_qoibl,
     "ram0": _ram0,
     "streetcode": _streetcode,
     "super_snusp": _super_snusp,
