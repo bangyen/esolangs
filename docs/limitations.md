@@ -194,8 +194,34 @@ Bitwise Cyclic Tag (181) also earned the cyclic-schedule axis. Deadfish (314)
 has no input vocabulary and is therefore interpreter-only: fame can admit a
 language, but cannot create a generator interface.
 
-Cyclic tag (94) clears the backlink gate despite duplicating Bitwise Cyclic
-Tag's axis; [roadmap](roadmap.md) queues its specification and generator audit.
+[Cyclic tag](https://esolangs.org/w/index.php?title=Cyclic_tag_system&oldid=156412)
+(94) clears the fame gate despite duplicating Bitwise Cyclic Tag's axis.
+The 2026-10-01 audit found deterministic semantics: consume one queue bit,
+append the current production iff that bit is one, and advance the production
+pointer cyclically. Empty data halts. No stdin or output operation is specified;
+adopt BCT's initial-queue embed and final-deleted-bit answer, explicitly as
+package conventions. Serialize productions with semicolons, then a comma and
+the initial queue; preserve empty productions and require at least one.
+
+A direct padding construction meets the generator contracts. For a table of
+T = 2**n bits, the first n productions append 2**(n-i) zeros for input i,
+numbered from zero. Production n appends `1`; the remaining 2T productions
+alternate each table answer with an empty production. Initial data is the n
+ordered input bits followed by `1`, with uniform one-character fills `0`/`1`.
+After the inputs, the sentinel appends another sentinel behind 2r padding
+zeros, where r is the input row. Those zeros skip 2r productions; the next
+sentinel appends table[r], and the following empty production consumes it and
+halts. This makes the final deletion the answer.
+
+Rendered source measures exactly 5T + 2n + 1 characters; execution takes
+n + 3 + 2r steps. Emission writes 2(T-1) padding zeros and 2T table productions
+without search, so build work is O(T). The probe executed 309 tables and 3,352
+rows (exhaustive through three inputs; constants, parity, and eight seeded
+random tables at each of four through six), then sampled rows through n=14.
+The largest measured source was 81,949 characters; its worst-row execution
+was 32,783 steps. Published evolution, zero-no-append, empty-data, empty-rule,
+and nontermination controls passed. [Roadmap](roadmap.md) queues integration.
+
 Underload (167) and INTERCAL (103) also clear the backlink gate.
 Emmental (43) and Prelude (13) are implemented elsewhere and fail the backlink
 gate. Neither has established an intrinsic axis.
