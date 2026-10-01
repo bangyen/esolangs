@@ -6,6 +6,7 @@ import pytest
 
 import esolangs
 from esolangs.exceptions import ArgumentError
+from esolangs.tools.befunge import balance_befunge, befunge
 from esolangs.tools.super_snusp import (
     _super_snusp_layout,
     balance_super_snusp,
@@ -151,3 +152,41 @@ def test_super_snusp_balancing_reaches_global_minimum(table: str) -> None:
 def test_super_snusp_balance_rejects_long_literals() -> None:
     with pytest.raises(ValueError, match="at most two cells"):
         balance_super_snusp("123.")
+
+
+def _befunge_tables() -> list[str]:
+    tables = [
+        f"{value:0{1 << inputs}b}"
+        for inputs in range(1, 4)
+        for value in range(1 << (1 << inputs))
+    ]
+    rng = random.Random(952)
+    for inputs in range(4, 11):
+        tables.extend(
+            "".join(rng.choice("01") for _ in range(1 << inputs)) for _ in range(4)
+        )
+        tables.extend(
+            "".join(str((row.bit_count() + bias) % 2) for row in range(1 << inputs))
+            for bias in (0, 1)
+        )
+    return tables
+
+
+@pytest.mark.parametrize("table", _befunge_tables())
+def test_befunge_balancing_reaches_global_minimum(table: str) -> None:
+    default = befunge(table)
+    balanced = balance_befunge(table, default)
+    optimum = min(
+        [default] + [befunge(table, width) for width in range(1, 81)],
+        key=balance_score,
+    )
+    assert balance_score(balanced) == balance_score(optimum)
+    rows = balanced.split("\n")
+    assert len(rows) <= 25
+    assert max(map(len, rows)) <= 80
+    test_balance_executes("Befunge", table)
+
+
+def test_befunge_balance_rejects_oversized_table() -> None:
+    with pytest.raises(ValueError, match="at most ten inputs"):
+        balance_befunge("0" * 2048, "")

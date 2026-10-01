@@ -120,7 +120,7 @@ options:
                per input, and print the runnable program.  Substituting them
                by hand does not work: each language spells a set-input its
                own way, and a 0/1 in the slot is a different program.
-  --balance    balance Super SNUSP exactly. Single-line space/grid wrappers
+  --balance    balance Befunge and Super SNUSP exactly. Space/grid wrappers
                are also exact for equal cells or a dominant token. Otherwise
                estimate a square target from
                source area and keep the better default or candidate. Unequal
