@@ -54,7 +54,9 @@ each; a refresh follows a fixed fraction of removals, so the pool's cost
 loses; the sparse tail costs a constant per point.  Two terms sit
 outside that: the proof's exact fallback -- when no scored direction
 reaches the pigeonhole average on a dense working set, the most popular
-one is found by autocorrelation, ``n * 2**n`` a call, none on random
+one is found by quotient autocorrelation: a d-dimensional chain span
+needs O(n*|S|) projection and O((n-d)*2**(n-d)) transform work per call.
+The original full-space transform took ``n * 2**n`` a call, none on random
 dense tables to n=14 and one at n=15 -- and the dual-basis core below,
 at most ``sqrt(2**(dim + 1))`` inputs, so under ``sqrt(n)`` per clause
 at the peel's dimensions and 2% of the build at n=15.  The per-cube peel
@@ -269,6 +271,39 @@ def _best(node: _Node) -> tuple[int | None, int]:
     return best_v, best_c
 
 
+def _quotient_popularities(node: _Node, n: int) -> list[tuple[int, int]]:
+    """Return exact direction counts on S/span, with O(n*|S|) projection.
+
+    S is invariant under the d-dimensional span. Each quotient pair lifts
+    to 2**d pairs; the transform uses n-d dimensions, not n.
+    """
+    pivots: dict[int, int] = {}
+    dimension = len(node.span).bit_length() - 1
+    candidates = iter(node.span)
+    while len(pivots) < dimension:
+        value = next(candidates)
+        while value and value.bit_length() - 1 in pivots:
+            value ^= pivots[value.bit_length() - 1]
+        if value:
+            pivots[value.bit_length() - 1] = value
+    free = [bit for bit in range(n) if bit not in pivots]
+    quotient: set[int] = set()
+    for point in node.points:
+        for bit in range(n - 1, -1, -1):
+            if bit in pivots and point >> bit & 1:
+                point ^= pivots[bit]
+        quotient.add(sum((point >> bit & 1) << index for index, bit in enumerate(free)))
+    counts = _popularities(quotient, len(free))
+    return [
+        (
+            sum((value >> index & 1) << bit for index, bit in enumerate(free)),
+            count << dimension,
+        )
+        for value, count in enumerate(counts)
+        if value
+    ]
+
+
 def _ensure_popular(node: _Node, n: int) -> None:
     """Apply the proof's fallback: score the exact most popular direction.
 
@@ -284,11 +319,11 @@ def _ensure_popular(node: _Node, n: int) -> None:
     _, best_c = _best(node)
     if best_c * total >= size * size:
         return
-    popular = _popularities(node.points, n)
+    popular = _quotient_popularities(node, n)
     best_v = None
-    for v in range(1, total):
-        if popular[v] > best_c and v not in node.span and v not in node.cands:
-            best_v, best_c = v, popular[v]
+    for v, count in popular:
+        if count > best_c and v not in node.span and v not in node.cands:
+            best_v, best_c = v, count
     if best_v is not None:
         _score(node, [best_v])
 
