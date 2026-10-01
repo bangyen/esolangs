@@ -1,5 +1,6 @@
 """Boolean-function generator for Container."""
 
+from dataclasses import dataclass
 from itertools import count, pairwise
 
 from esolangs.tools.forbin import (
@@ -34,57 +35,24 @@ def _allocate_names(uses: dict[tuple[str, int, int], int]) -> _Names:
     return names
 
 
-def _container_tree(
-    truth_table: str, *, prune: bool = True, share: bool = False
-) -> str:
-    """Build a Container program computing the given truth table.
+@dataclass
+class _TreePlan:
+    n: int
+    root_tests: int
+    nodes: list[tuple[int, int, int, int]]
+    order: list[int]
+    parents: dict[int, list[int]]
+    relays: dict[int, int]
 
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
+    def key(self, index: int) -> tuple[str, int, int]:
+        if index < 0:
+            return ("root", 0, 0)
+        born, _tests, lo, _parent = self.nodes[index]
+        return ("node", born, lo >> (self.n - born))
 
-    Container is a synchronous rule system: every tick each container's value
-    becomes ``max(old + sum of deltas of satisfied ``X>=Y``/``X<=Y`` rules,
-    0)``, the empty-named container reads a line of input into ``IN`` when it
-    turns on, ``PRINT`` outputs ``OUT`` when it turns on, and ``EXIT`` halts
-    when its value changes.  There is no per-tick conditional, so the
-    generator timestamps everything with the tick counter ``T``:
 
-    * The empty container pulses on even ticks ``0..2(n-1)`` (``1 T>=2k``,
-      ``-2 T>=2k+1``, ``1 T>=2k+2``), reading one bit per pulse.
-    * For each bit ``k``, two armed gates (50, dipping to 49; and 47, dipping
-      to 48) make their ``IN`` comparisons hold for
-      exactly the tick the bit is in ``IN``, testing bit ``k`` once.
-    * A prefix survivor creates its two children while bit ``k`` is active;
-      the mismatching child is cancelled in that same tick.  The parent then
-      expires, so each tree edge costs constant work instead of retesting the
-      whole prefix at every leaf.  A leaf never decays: it holds its birth
-      value until the output gate reads it.
-    * A level whose halves agree is skipped (``prune=False`` keeps it): the
-      node is born two higher per skipped level, so it still decays to 1 on
-      its next tested bit.  The empty container still pulses ``n`` times, so
-      an ignored input costs only its read; a constant is a lone root leaf.
-    * At tick ``2n`` an output gate, resting above every leaf's birth value,
-      dips to 1, so the surviving leaf adds its entry to ``OUT`` (which holds
-      48 from the start); ``PRINT`` fires and ``EXIT`` halts.
-
-    The last block costs one line per leaf the table sends to 1, so a dense
-    table is summed from its **zero** leaves instead: ``OUT`` starts at 49
-    and each surviving zero leaf subtracts one, printing ``49 - S``.  The
-    clamp at zero never bites, since the value stays at 48 or 49.  Worth up
-    to 12.7% at ``n == 4`` (1356 characters down to 1184 for fifteen ones of
-    sixteen, before pruning).  A leaf that does not answer is never read, so
-    it is not emitted, and a gate no emitted child names is not declared.
-
-    ``share`` folds a node into the first live node at its depth with the
-    same subtable (``subtree_ids``): only one parent is ever alive, so the
-    copy takes a pair of birth rules from each, and the folded subtree is
-    not emitted.  That works on the copy's own side only, since a node's
-    mismatch rule names its side's gate.  A folded node on the other side
-    is a *relay* instead: born and cancelled like the node, it kills itself
-    the tick after and feeds the copy one less, so the copy still decays to
-    1 on its next tested bit and its subtree is spent once.
-    """
-    n = _validate_truth_table(truth_table)
+def _container_plan(truth_table: str, n: int, *, prune: bool, share: bool) -> _TreePlan:
+    """Plan pruned nodes, shared parents, and opposite-side relays."""
     size = 2**n
 
     # A node is born at one depth and next tests a level (``n`` for a leaf).
@@ -145,22 +113,15 @@ def _container_tree(
             else:
                 either[born, slot[1]] = i
         order = [i for i in order if i in parents]
-    fed: dict[int, list[int]] = {}
-    for relay, target in relays.items():
-        fed.setdefault(target, []).append(relay)
-    leaves = [i for i in order if nodes[i][1] == n] or [-1]
-    ones = sum(truth_table[nodes[i][2] if i >= 0 else 0] == "1" for i in leaves)
-    invert = ones > len(leaves) - ones
-    wanted = "0" if invert else "1"
-    answers = [i for i in leaves if truth_table[nodes[i][2] if i >= 0 else 0] == wanted]
-    order = [i for i in order if nodes[i][1] < n or i in answers]
+    return _TreePlan(n, root_tests, nodes, order, parents, relays)
 
-    def key(i: int) -> tuple[str, int, int]:
-        if i < 0:
-            return ("root", 0, 0)
-        born, _tests, lo, _parent = nodes[i]
-        return ("node", born, lo >> (n - born))
 
+def _container_names(
+    plan: _TreePlan, order: list[int], answers: list[int]
+) -> tuple[_Names, list[int]]:
+    """Allocate identifiers from emitted reference counts and return tested levels."""
+    n, root_tests, nodes = plan.n, plan.root_tests, plan.nodes
+    parents, relays, key = plan.parents, plan.relays, plan.key
     # Assign shortest names by how often each is spelt: a node once, once
     # more if it decays, twice per child it feeds and once if it adds to
     # ``OUT``; a gate once, and once a test.
@@ -178,6 +139,76 @@ def _container_tree(
     tested = sorted({k for side, k, _ in uses if side in ("low", "high")})
 
     names = _allocate_names(uses)
+
+    return names, tested
+
+
+def _container_tree(
+    truth_table: str, *, prune: bool = True, share: bool = False
+) -> str:
+    """Build a Container program computing the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first); the table length implies ``n``.
+
+    Container is a synchronous rule system: every tick each container's value
+    becomes ``max(old + sum of deltas of satisfied ``X>=Y``/``X<=Y`` rules,
+    0)``, the empty-named container reads a line of input into ``IN`` when it
+    turns on, ``PRINT`` outputs ``OUT`` when it turns on, and ``EXIT`` halts
+    when its value changes.  There is no per-tick conditional, so the
+    generator timestamps everything with the tick counter ``T``:
+
+    * The empty container pulses on even ticks ``0..2(n-1)`` (``1 T>=2k``,
+      ``-2 T>=2k+1``, ``1 T>=2k+2``), reading one bit per pulse.
+    * For each bit ``k``, two armed gates (50, dipping to 49; and 47, dipping
+      to 48) make their ``IN`` comparisons hold for
+      exactly the tick the bit is in ``IN``, testing bit ``k`` once.
+    * A prefix survivor creates its two children while bit ``k`` is active;
+      the mismatching child is cancelled in that same tick.  The parent then
+      expires, so each tree edge costs constant work instead of retesting the
+      whole prefix at every leaf.  A leaf never decays: it holds its birth
+      value until the output gate reads it.
+    * A level whose halves agree is skipped (``prune=False`` keeps it): the
+      node is born two higher per skipped level, so it still decays to 1 on
+      its next tested bit.  The empty container still pulses ``n`` times, so
+      an ignored input costs only its read; a constant is a lone root leaf.
+    * At tick ``2n`` an output gate, resting above every leaf's birth value,
+      dips to 1, so the surviving leaf adds its entry to ``OUT`` (which holds
+      48 from the start); ``PRINT`` fires and ``EXIT`` halts.
+
+    The last block costs one line per leaf the table sends to 1, so a dense
+    table is summed from its **zero** leaves instead: ``OUT`` starts at 49
+    and each surviving zero leaf subtracts one, printing ``49 - S``.  The
+    clamp at zero never bites, since the value stays at 48 or 49.  Worth up
+    to 12.7% at ``n == 4`` (1356 characters down to 1184 for fifteen ones of
+    sixteen, before pruning).  A leaf that does not answer is never read, so
+    it is not emitted, and a gate no emitted child names is not declared.
+
+    ``share`` folds a node into the first live node at its depth with the
+    same subtable (``subtree_ids``): only one parent is ever alive, so the
+    copy takes a pair of birth rules from each, and the folded subtree is
+    not emitted.  That works on the copy's own side only, since a node's
+    mismatch rule names its side's gate.  A folded node on the other side
+    is a *relay* instead: born and cancelled like the node, it kills itself
+    the tick after and feeds the copy one less, so the copy still decays to
+    1 on its next tested bit and its subtree is spent once.
+    """
+    n = _validate_truth_table(truth_table)
+    plan = _container_plan(truth_table, n, prune=prune, share=share)
+    nodes, root_tests = plan.nodes, plan.root_tests
+    order, parents, relays = plan.order, plan.parents, plan.relays
+    fed: dict[int, list[int]] = {}
+    for relay, target in relays.items():
+        fed.setdefault(target, []).append(relay)
+    leaves = [i for i in order if nodes[i][1] == n] or [-1]
+    ones = sum(truth_table[nodes[i][2] if i >= 0 else 0] == "1" for i in leaves)
+    invert = ones > len(leaves) - ones
+    wanted = "0" if invert else "1"
+    answers = [i for i in leaves if truth_table[nodes[i][2] if i >= 0 else 0] == wanted]
+    order = [i for i in order if nodes[i][1] < n or i in answers]
+
+    key = plan.key
+    names, tested = _container_names(plan, order, answers)
 
     root = names[("root", 0, 0)]
     output_gate = names[("output", 0, 0)]
