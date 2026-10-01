@@ -50,6 +50,7 @@ from typing import cast
 import pytest
 
 import esolangs
+import esolangs.debugger as debugger_api
 from esolangs.registry import RUNNERS
 from esolangs.vm import VM, _StepMachineWithShape, make_vm, run_until_halt
 
@@ -579,7 +580,7 @@ class TestTheCoordinateOrderIsRowThenColumn:
 
     def test_the_docstring_says_so(self) -> None:
         """And says it without re-promising the arity that was retired."""
-        doc = esolangs.VM.ip.__doc__ or ""
+        doc = debugger_api.VM.ip.__doc__ or ""
         assert "row then column" in doc
         assert "not stable within" in doc  # the older warning survives
 
@@ -601,7 +602,7 @@ def _first_move_pair(
     name: str, program: str, stdin: str
 ) -> tuple[tuple[int, ...], tuple[int, ...]]:
     """The coordinate before and after the first move that changes it."""
-    vm = esolangs.make_vm(name, program, stdin)
+    vm = debugger_api.make_vm(name, program, stdin)
     start = vm.ip
     assert isinstance(start, tuple)
     for _ in range(400):

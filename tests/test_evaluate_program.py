@@ -104,14 +104,14 @@ def test_api_refuses_bad_inputs(inputs: object) -> None:
 
 
 def test_api_refuses_bad_source() -> None:
-    with pytest.raises(esolangs.ProgramError, match="source text"):
+    with pytest.raises(esolangs.ProgramError, match="string of source"):
         esolangs.evaluate("brainfuck", 42, inputs=1)  # type: ignore[arg-type]
 
 
 @pytest.mark.parametrize("name", ["Minifuck", "Vandevelo"])
 def test_api_refuses_raster_for_text_answer(name: str) -> None:
     raster = esolangs.generate("Piet", "0110")
-    with pytest.raises(esolangs.ProgramError, match="text"):
+    with pytest.raises(esolangs.ProgramError, match="string of source"):
         esolangs.evaluate(name, raster, inputs=2)
 
 

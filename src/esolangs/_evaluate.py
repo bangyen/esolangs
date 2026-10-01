@@ -3,6 +3,7 @@
 ``esolangs.run`` is reached through the package at call time (patchable).
 """
 
+import os
 import signal
 import threading
 from typing import cast
@@ -17,7 +18,6 @@ from esolangs._validate import check_timeout
 from esolangs.exceptions import (
     ArgumentError,
     EsolangError,
-    ProgramError,
 )
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.raster import Raster
@@ -51,7 +51,7 @@ _ROW_TIMEOUT = 30.0
 
 def evaluate(
     language: str,
-    program: str | Raster,
+    program: str | Raster | os.PathLike[str],
     timeout: float | _Default | None = _DEFAULT,
     *,
     inputs: int,
@@ -60,7 +60,8 @@ def evaluate(
     """Return the table a supplied program computes over ``inputs`` bits.
 
     Inputs range from 1 to 64, in MSB-first row order. Parameterized languages
-    require a template, filled separately for each row. No program is generated.
+    require a template, filled separately for each row. Paths load text or PNG
+    source. No program is generated.
     The default bounds each row to 30 seconds (5 for termination answers).
     Repeated states prove divergence; a timeout raises rather than counting as 1.
     ``None`` disables the deadline; ``isolated=True`` needs a finite deadline.
@@ -80,8 +81,7 @@ def evaluate(
         or not 1 <= inputs <= MOST_INPUTS
     ):
         raise ArgumentError(f"inputs must be an integer from 1 to {MOST_INPUTS}")
-    if not isinstance(program, (str, Raster)):
-        raise ProgramError("program must be source text or a Raster")
+    program = esolangs._read_source(name, program)  # noqa: SLF001
     rows = 1 << inputs
     terminating = facts["answer_mode"] == "termination"
     bound: float | None
@@ -122,17 +122,12 @@ def evaluate(
         bits = [(row >> (inputs - 1 - i)) & 1 for i in range(inputs)]
         source: str | Raster
         if facts["parameterized"]:
-            if isinstance(program, Raster):
-                raise ProgramError("a parameterized language requires a text template")
-            source, stdin = esolangs.instantiate(name, program, bits), ""
+            source, stdin = esolangs.instantiate(name, cast("str", program), bits), ""
         else:
             source, stdin = program, encode_inputs(name, bits)
         try:
             if terminating:
-                if not isinstance(source, str):
-                    raise ProgramError(
-                        "a termination-answer language requires text source"
-                    )
+                source = cast("str", source)
                 if isolated:
                     from esolangs._isolated import termination_isolated
 
@@ -146,8 +141,8 @@ def evaluate(
                 answers.append(answer)
             else:
                 if isolated:
-                    output = esolangs.run_isolated(
-                        name, source, stdin, cast("float", bound)
+                    output = esolangs.run(
+                        name, source, stdin, cast("float", bound), isolated=True
                     )
                 else:
                     output = esolangs.run(name, source, stdin, bound)

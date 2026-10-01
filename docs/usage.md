@@ -56,7 +56,9 @@ To step through a text program and inspect its state:
 ```python
 program = esolangs.generate("brainfuck", table)
 stdin = esolangs.encode_inputs("brainfuck", [0, 1])
-vm = esolangs.make_vm("brainfuck", program, stdin)
+from esolangs.debugger import make_vm
+
+vm = make_vm("brainfuck", program, stdin)
 for _ in range(20):
     if vm.halted:
         break
@@ -87,7 +89,6 @@ measured row to answer correctly.
 <!-- PUBLIC-API:START -->
 
 - `esolangs.check_program` -- return `program` as source, having checked what can be checked here
-- `esolangs.check_runnable` -- reject a program that is a path or an unfilled template
 - `esolangs.check_stdin` -- refuse `stdin` that cannot be what `language` wants to read
 - `esolangs.describe` -- return a structured description of `language`
 - `esolangs.encode_inputs` -- return the stdin that feeds `bits` to a `language` program
@@ -95,13 +96,8 @@ measured row to answer correctly.
 - `esolangs.generate` -- return a program in `language` computing `truth_table`
 - `esolangs.instantiate` -- fill a parameterized generator's template with `bits`
 - `esolangs.list_languages` -- return the supported language names, sorted
-- `esolangs.make_debugger` -- return a `Debugger` over a fresh `VM` for `language`
-- `esolangs.make_vm` -- return a step-and-inspect wrapper around `language`'s interpreter
 - `esolangs.read_answer` -- return the answer bit a `language` program's `output` carries
 - `esolangs.run` -- execute `program` and return its output
-- `esolangs.run_bounded` -- execute a text program cooperatively, returning output only on halt
-- `esolangs.run_isolated` -- return output from a subprocess; the deadline includes loading and startup
-- `esolangs.spec` -- return the interpreter's own description of `language`
 
 <!-- PUBLIC-API:END -->
 
@@ -166,20 +162,24 @@ including the 15 languages that ignore width because newlines are semantic.
 
 ## Bounded execution
 
-`run_isolated(language, program, stdin, timeout=30)` bounds subprocess startup,
+`run(language, program, stdin, isolated=True, timeout=30)` bounds subprocess startup,
 loading and execution on Windows and worker threads. Timeout kills and reaps
 the child; errors retain their class and `partial_output`.
 `evaluate(..., isolated=True)` applies a finite
 deadline per row; a timeout remains undecided, including termination answers.
 
-`run_bounded(language, program, stdin, max_steps=100_000, timeout=1)`
+`run(language, program, stdin, max_steps=100_000, timeout=1)`
 returns output on halt and raises `ExecutionTimeoutError` with
-`partial_output` when either bound expires. Supply at least one bound.
+`partial_output` when either bound expires. `max_steps` selects cooperative stepping.
 It steps text languages on Windows and worker threads; deadlines are checked
 between steps, so loading and an individual step cannot be interrupted.
-Raster languages require `run`.
+Raster languages cannot be stepped. `isolated` and `max_steps` are mutually
+exclusive, and stepping does not support `seed`.
 
 ## Debugging
+
+The Python stepping API lives in `esolangs.debugger`: `VM`, `Debugger`,
+`make_vm`, `make_debugger`, `StopReason`, and `STOP_REASONS`.
 
 `esolangs debug` runs a program under the breakpoint/watch VM and reports
 where it stopped. `--steps` bounds the run, `--watch-cell` prints one value

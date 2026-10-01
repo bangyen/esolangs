@@ -15,52 +15,54 @@ pytestmark = pytest.mark.medium
 )
 def test_bounded_run_matches_whole_program_execution(language: str) -> None:
     program, stdin = SAMPLES[language]
-    assert esolangs.run_bounded(
-        language, program, stdin, max_steps=100_000
-    ) == esolangs.run(language, program, stdin)
+    assert esolangs.run(language, program, stdin, max_steps=100_000) == esolangs.run(
+        language, program, stdin
+    )
 
 
 def test_bounded_run_executes_generated_xor() -> None:
     program = esolangs.generate("Fargo", "0110")
     for row, expected in enumerate("0110"):
         stdin = esolangs.encode_inputs("Fargo", tuple(map(int, format(row, "02b"))))
-        assert esolangs.run_bounded("Fargo", program, stdin, max_steps=1000) == expected
+        assert esolangs.run("Fargo", program, stdin, max_steps=1000) == expected
 
 
 def test_step_exhaustion_keeps_partial_output() -> None:
     with pytest.raises(esolangs.ExecutionTimeoutError, match="max_steps") as caught:
-        esolangs.run_bounded("brainfuck", "+.[]", max_steps=10)
+        esolangs.run("brainfuck", "+.[]", max_steps=10)
     assert caught.value.partial_output == "\x01"
 
 
 def test_timeout_works_on_a_worker_thread() -> None:
     with ThreadPoolExecutor(max_workers=1) as pool:
-        future = pool.submit(esolangs.run_bounded, "brainfuck", "+[]", timeout=0.01)
+        future = pool.submit(
+            esolangs.run, "brainfuck", "+[]", max_steps=1_000_000, timeout=0.01
+        )
         with pytest.raises(esolangs.ExecutionTimeoutError, match="timeout"):
             future.result(timeout=5)
 
 
 def test_time_and_step_bounds_allow_a_halt() -> None:
-    assert esolangs.run_bounded("brainfuck", "+.", timeout=1, max_steps=2) == "\x01"
-    assert esolangs.run_bounded("brainfuck", "", max_steps=0) == ""
+    assert esolangs.run("brainfuck", "+.", timeout=1, max_steps=2) == "\x01"
+    assert esolangs.run("brainfuck", "", max_steps=0) == ""
 
 
 @pytest.mark.parametrize(
-    "options", [{}, {"max_steps": -1}, {"max_steps": True}, {"timeout": 0}]
+    "options", [{"max_steps": -1}, {"max_steps": True}, {"timeout": 0}]
 )
 def test_invalid_bounds_are_refused(options: dict[str, object]) -> None:
     with pytest.raises(esolangs.ArgumentError):
-        esolangs.run_bounded("brainfuck", "", **options)
+        esolangs.run("brainfuck", "", **options)
 
 
 def test_raster_execution_is_refused() -> None:
     with pytest.raises(esolangs.ArgumentError, match="no step machine"):
-        esolangs.run_bounded("Line", "", max_steps=1)
+        esolangs.run("Line", "", max_steps=1)
 
 
 def test_interpreter_errors_are_preserved() -> None:
     with pytest.raises(esolangs.InputExhaustedError):
-        esolangs.run_bounded("brainfuck", ",", max_steps=1)
+        esolangs.run("brainfuck", ",", max_steps=1)
 
 
 @pytest.mark.parametrize(
@@ -80,5 +82,5 @@ def test_interpreter_errors_keep_prior_output(
     language: str, program: str, error: type[esolangs.EsolangError], output: str
 ) -> None:
     with pytest.raises(error) as caught:
-        esolangs.run_bounded(language, program, max_steps=100)
+        esolangs.run(language, program, max_steps=100)
     assert caught.value.partial_output == output

@@ -19,6 +19,8 @@ from esolangs.exceptions import ArgumentError
 from esolangs.raster import Raster
 from esolangs.vm import VM, make_vm, run_until_halt
 
+__all__ = ["STOP_REASONS", "VM", "Debugger", "StopReason", "make_debugger", "make_vm"]
+
 #: Why a :meth:`Debugger.run` returned.
 StopReason = Literal["halted", "breakpoint", "max_steps", "timeout"]
 

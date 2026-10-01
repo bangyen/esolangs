@@ -5,6 +5,7 @@ import contextlib
 import pytest
 
 import esolangs
+import esolangs.debugger as debugger_api
 
 
 def _view_cases() -> list[tuple[str, object]]:
@@ -45,19 +46,19 @@ class TestViews:
     """The machine's own named state, found rather than listed."""
 
     def test_it_finds_the_names_the_machine_gives_its_state(self) -> None:
-        vm = esolangs.make_vm("brainfuck", "+++")
+        vm = debugger_api.make_vm("brainfuck", "+++")
         vm.step()
         assert dict(vm.views)["ptr"] == "0"
         assert dict(vm.views)["ind"] == "1"
 
     def test_it_leaves_out_what_every_language_already_offers(self) -> None:
-        vm = esolangs.make_vm("brainfuck", "+++")
+        vm = debugger_api.make_vm("brainfuck", "+++")
         named = dict(vm.views)
         for standard in ("ip", "memory", "stack", "output", "halted"):
             assert standard not in named
 
     def test_it_leaves_out_the_traits_and_the_snapshot_hooks(self) -> None:
-        vm = esolangs.make_vm("brainfuck", "+++")
+        vm = debugger_api.make_vm("brainfuck", "+++")
         named = dict(vm.views)
         for machinery in ("snapshot", "self_halts", "ip_shape"):
             assert machinery not in named
@@ -65,7 +66,7 @@ class TestViews:
     def test_a_language_whose_state_is_all_standard_names_nothing(self) -> None:
         # Not every machine keeps anything beyond the common five, and an
         # empty result is the right answer rather than a failure.
-        assert esolangs.make_vm("Sophie", "").views == ()
+        assert debugger_api.make_vm("Sophie", "").views == ()
 
     def test_a_long_sequence_is_cut_before_it_is_formatted(self) -> None:
         # A tape can be thousands of cells; the view has to be short, and
@@ -127,7 +128,7 @@ class TestViews:
             def broken(self) -> int:
                 raise RuntimeError("no")
 
-        vm = esolangs.make_vm("brainfuck", "+")
+        vm = debugger_api.make_vm("brainfuck", "+")
         object.__setattr__(vm, "_machine", _Machine())
         assert _DelegatingVM.views.fget(vm) == (("fine", "7"),)
 
@@ -148,7 +149,7 @@ class TestViews:
         id instead of by an assertion message.
         """
         stdin = "".join(line + "\n" for line in example.inputs)
-        vm = esolangs.make_vm(name, example.build(), stdin)
+        vm = debugger_api.make_vm(name, example.build(), stdin)
         assert all(isinstance(part, str) for view in vm.views for part in view), name
         # Again once the machine has moved, since a view reads state
         # that the initial one may not have reached.

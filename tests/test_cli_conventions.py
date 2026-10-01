@@ -108,26 +108,32 @@ class TestTheSpecIsReachable:
     def test_every_language_has_one(self) -> None:
         """The claim the feature rests on: there is something to show."""
         for name in esolangs.list_languages():
-            assert len(esolangs.spec(name)) > 200, name
+            assert len(esolangs.describe(name)["spec"]) > 200, name
 
     def test_it_is_the_interpreter_that_is_read(self) -> None:
         """Read, not stored, so it cannot drift from what it describes."""
         module = importlib.import_module(
             "esolangs.interpreters." + str(esolangs.describe("Unsquare")["interpreter"])
         )
-        assert esolangs.spec("Unsquare") == (module.__doc__ or "").strip()
+        assert esolangs.describe("Unsquare")["spec"] == (module.__doc__ or "").strip()
 
     def test_it_resolves_a_name_like_everything_else(self) -> None:
         """A spelling that works everywhere else has to work here."""
-        assert esolangs.spec("BRAINFUCK") == esolangs.spec("brainfuck")
-        assert esolangs.spec(" Unsquare ") == esolangs.spec("Unsquare")
+        assert (
+            esolangs.describe("BRAINFUCK")["spec"]
+            == esolangs.describe("brainfuck")["spec"]
+        )
+        assert (
+            esolangs.describe(" Unsquare ")["spec"]
+            == esolangs.describe("Unsquare")["spec"]
+        )
         with pytest.raises(esolangs.UnknownLanguageError):
-            esolangs.spec("nosuchlang")
+            esolangs.describe("nosuchlang")["spec"]
 
     def test_the_cli_prints_it(self, capsys: pytest.CaptureFixture[str]) -> None:
         """And prints the text, not a record with the text in it."""
         out, _err = call_both(["describe", "--spec", "Unsquare"], capsys)
-        assert out.strip() == esolangs.spec("Unsquare")
+        assert out.strip() == esolangs.describe("Unsquare")["spec"]
 
     def test_json_and_spec_together_give_a_field(
         self, capsys: pytest.CaptureFixture[str]
@@ -135,7 +141,7 @@ class TestTheSpecIsReachable:
         """A caller scripting it wants the record *and* the prose."""
         out, _err = call_both(["describe", "--json", "--spec", "brainfuck"], capsys)
         payload = json.loads(out)
-        assert payload["spec"] == esolangs.spec("brainfuck")
+        assert payload["spec"] == esolangs.describe("brainfuck")["spec"]
         assert payload["name"] == "brainfuck"
 
     def test_the_plain_output_points_at_it(

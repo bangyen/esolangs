@@ -16,6 +16,7 @@ from typing import ClassVar
 import pytest
 
 import esolangs
+import esolangs.debugger as debugger_api
 from esolangs import cli
 from esolangs.registry import _BY_ID, SUGGESTION_CUTOFF, canonical_id
 from tests.generator_support import evaluate_generated, verify_generated
@@ -496,8 +497,8 @@ class TestABadStdinIsAnArgumentFault:
         [
             lambda: esolangs.run("brainfuck", ",.", b"0\n"),
             lambda: esolangs.check_program("brainfuck", ",.", b"0\n"),
-            lambda: esolangs.make_vm("brainfuck", ",.", b"0\n"),
-            lambda: esolangs.make_debugger("brainfuck", ",.", b"0\n"),
+            lambda: debugger_api.make_vm("brainfuck", ",.", b"0\n"),
+            lambda: debugger_api.make_debugger("brainfuck", ",.", b"0\n"),
             lambda: esolangs.check_stdin("brainfuck", b"0\n"),
         ],
     )

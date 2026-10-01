@@ -13,6 +13,7 @@ from unittest.mock import patch
 import pytest
 
 import esolangs
+import esolangs.debugger as debugger_api
 from esolangs.cli import HELP
 from tests.cli_support import _LOOPS, call_both
 from tests.generator_support import evaluate_generated
@@ -842,7 +843,7 @@ class TestBreakAtWhereThereIsNoShape:
         """Circuit Diagram's ip is None, so there is nothing to compare."""
         program = esolangs.generate("Circuit Diagram", "0110")
         stdin = esolangs.encode_inputs("Circuit Diagram", [0, 1], "0110")
-        debugger = esolangs.make_debugger("Circuit Diagram", program, stdin)
+        debugger = debugger_api.make_debugger("Circuit Diagram", program, stdin)
         assert debugger.ip is None
         debugger.break_at(3)
         debugger.break_at((1, 2))

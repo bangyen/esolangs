@@ -16,8 +16,7 @@ def test_false_single_character_floor_executes_every_small_table() -> None:
             for row, expected in enumerate(table):
                 stdin = "\n".join(format(row, f"0{n}b")) + "\n"
                 assert (
-                    esolangs.run_bounded("FALSE", program, stdin, max_steps=100_000)
-                    == expected
+                    esolangs.run("FALSE", program, stdin, max_steps=100_000) == expected
                 )
 
 
@@ -39,7 +38,7 @@ def test_narrow_small_tokens_keep_larger_input_order(language: str) -> None:
                 else program
             )
             stdin = "\n".join(map(str, bits)) + "\n" if language == "FALSE" else ""
-            output = esolangs.run_bounded(language, code, stdin, max_steps=100_000)
+            output = esolangs.run(language, code, stdin, max_steps=100_000)
             assert (
                 output.startswith(f"z: {expected}\n")
                 if language == "RAM0"

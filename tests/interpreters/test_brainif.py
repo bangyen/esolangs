@@ -2,6 +2,7 @@
 
 from typing import ClassVar
 
+import esolangs.debugger as debugger_api
 from esolangs.interpreters.tape_based.brainif import run
 from tests.interpreters.contract import (
     CycleContract,
@@ -328,7 +329,7 @@ def test_nonpositive_goto_targets_are_rejected_by_run_and_vm() -> None:
             code = f"if {guard} goto {target}"
             with pytest.raises(esolangs.ProgramError, match="positive line number"):
                 esolangs.run("BrainIf", code)
-            vm = esolangs.make_vm("BrainIf", code)
+            vm = debugger_api.make_vm("BrainIf", code)
             with pytest.raises(esolangs.ProgramError, match="positive line number"):
                 vm.step()
 
@@ -342,6 +343,6 @@ def test_positive_goto_targets_match_run_and_vm() -> None:
         ("if 0 goto 2", ""),
     ):
         assert esolangs.run("BrainIf", code) == expected
-        vm = esolangs.make_vm("BrainIf", code)
+        vm = debugger_api.make_vm("BrainIf", code)
         assert run_until_halt(vm, limit=4)
         assert vm.output == expected

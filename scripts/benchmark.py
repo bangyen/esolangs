@@ -11,6 +11,7 @@ import time
 from typing import Any, cast
 
 import esolangs
+import esolangs.debugger as debugger_api
 from esolangs._validate import check_timeout
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
@@ -66,7 +67,7 @@ def _execute(
             result["actual_answer"] = esolangs.read_answer(language, output)
             return
         assert isinstance(source, str)
-        vm = esolangs.make_vm(language, source, stdin)
+        vm = debugger_api.make_vm(language, source, stdin)
         terminating = facts["answer_mode"] == "termination"
         if terminating:
             halted = run_until_halt_or_cycle(vm, limit=cap)
@@ -78,7 +79,7 @@ def _execute(
                 return
             # The detector unwraps the VM; replay a halt to retain the
             # baseline's wrapper-step count, excluding its post-halt dump.
-            vm = esolangs.make_vm(language, source, stdin)
+            vm = debugger_api.make_vm(language, source, stdin)
 
         def sample_store() -> None:
             if track_store:

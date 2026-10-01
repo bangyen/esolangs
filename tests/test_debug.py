@@ -5,13 +5,14 @@ import warnings
 import pytest
 
 import esolangs
+import esolangs.debugger as debugger_api
 from esolangs.exceptions import UnknownLanguageError
 from tests.samples import SAMPLES
 
 
 class TestBreakpoints:
     def test_break_at_stops_before_target(self) -> None:
-        dbg = esolangs.make_debugger(
+        dbg = debugger_api.make_debugger(
             "brainfuck",
             "+++>+++<-.",
         )
@@ -22,40 +23,40 @@ class TestBreakpoints:
         assert not dbg.halted
 
     def test_break_at_zero_fires_immediately(self) -> None:
-        dbg = esolangs.make_debugger("brainfuck", "+")
+        dbg = debugger_api.make_debugger("brainfuck", "+")
         dbg.break_at(0)
         dbg.run()
         assert dbg.ip == 0
         assert dbg.memory == [0]  # the initial cell, not yet incremented
 
     def test_break_on_cell(self) -> None:
-        dbg = esolangs.make_debugger("brainfuck", "+++++>++")
+        dbg = debugger_api.make_debugger("brainfuck", "+++++>++")
         dbg.break_on_cell(0, 5)
         dbg.run()
         assert dbg.memory == [5]  # stops before the '>' moves the pointer
 
     def test_break_on_cell_beyond_tape_does_not_fire(self) -> None:
         # the watch index never exists, so the run completes
-        dbg = esolangs.make_debugger("brainfuck", "+")
+        dbg = debugger_api.make_debugger("brainfuck", "+")
         dbg.break_on_cell(9, 1)
         dbg.run()
         assert dbg.halted
 
     def test_break_on_stack_top(self) -> None:
-        dbg = esolangs.make_debugger("Eval", "0^")
+        dbg = debugger_api.make_debugger("Eval", "0^")
         dbg.break_on_stack(0, 0)
         dbg.run()
         assert dbg.ip == (1, 1)  # one frame deep, its cursor past the 0
         assert dbg.stack == [0]
 
     def test_break_on_output(self) -> None:
-        dbg = esolangs.make_debugger("brainfuck", "+++.")
+        dbg = debugger_api.make_debugger("brainfuck", "+++.")
         dbg.break_on_output("\x03")
         dbg.run()
         assert dbg.output == "\x03"
 
     def test_break_when_generic(self) -> None:
-        dbg = esolangs.make_debugger("brainfuck", "++")
+        dbg = debugger_api.make_debugger("brainfuck", "++")
         dbg.break_when(lambda vm: vm.memory[0] == 1)
         dbg.run()
         assert dbg.memory == [1]
@@ -63,35 +64,35 @@ class TestBreakpoints:
 
 class TestWatches:
     def test_watch_cell_records_each_step(self) -> None:
-        dbg = esolangs.make_debugger("brainfuck", "++>+++")
+        dbg = debugger_api.make_debugger("brainfuck", "++>+++")
         history = dbg.watch_cell(0)
         for _ in range(3):
             dbg.step()
         assert history == [1, 2, 2]  # None once the pointer moves past
 
     def test_watch_cell_returns_same_list(self) -> None:
-        dbg = esolangs.make_debugger("brainfuck", "+")
+        dbg = debugger_api.make_debugger("brainfuck", "+")
         first = dbg.watch_cell(0)
         assert dbg.watch_cell(0) is first
         dbg.step()
         assert first == [1]
 
     def test_watch_stack_returns_same_list(self) -> None:
-        dbg = esolangs.make_debugger("Eval", "0^")
+        dbg = debugger_api.make_debugger("Eval", "0^")
         first = dbg.watch_stack(0)
         assert dbg.watch_stack(0) is first
         dbg.step()
         assert first == [0]
 
     def test_watch_stack_top(self) -> None:
-        dbg = esolangs.make_debugger("Eval", "0^")
+        dbg = debugger_api.make_debugger("Eval", "0^")
         history = dbg.watch_stack(0)
         dbg.step()
         dbg.step()
         assert history == [0, 0]
 
     def test_watch_cell_never_grown_records_none(self) -> None:
-        dbg = esolangs.make_debugger("brainfuck", "+")
+        dbg = debugger_api.make_debugger("brainfuck", "+")
         history = dbg.watch_cell(3)
         dbg.step()
         assert history == [None]
@@ -114,20 +115,20 @@ class TestEdges:
         Nothing pinned the default, so it could have been any string: the
         programs the other tests build never read.
         """
-        dbg = esolangs.make_debugger("brainfuck", ",")
+        dbg = debugger_api.make_debugger("brainfuck", ",")
         with pytest.raises(EOFError):
             dbg.step()
 
     def test_watching_the_cell_just_past_the_tape_is_absent(self) -> None:
         # One past the end, where a widened bound indexes out of range
         # instead of reporting the cell does not exist yet.
-        dbg = esolangs.make_debugger("brainfuck", "+")
+        dbg = debugger_api.make_debugger("brainfuck", "+")
         history = dbg.watch_cell(1)
         dbg.step()
         assert history == [None]
 
     def test_breaking_on_the_cell_just_past_the_tape_never_fires(self) -> None:
-        dbg = esolangs.make_debugger("brainfuck", "+")
+        dbg = debugger_api.make_debugger("brainfuck", "+")
         dbg.break_on_cell(1, 0)
         dbg.run()
         assert dbg.halted
@@ -138,21 +139,21 @@ class TestEdges:
         The two readings agree at slot 0 and on a two-deep stack, so this
         needs three distinct values to say anything at all.
         """
-        dbg = esolangs.make_debugger("BFStack", ">+>++>+++")
+        dbg = debugger_api.make_debugger("BFStack", ">+>++>+++")
         history = dbg.watch_stack(1)
         dbg.run()
         assert dbg.stack == [1, 2, 3]
         assert history[-1] == 2
 
     def test_breaking_on_a_slot_below_the_top(self) -> None:
-        dbg = esolangs.make_debugger("BFStack", ">+>++>+++")
+        dbg = debugger_api.make_debugger("BFStack", ">+>++>+++")
         dbg.break_on_stack(1, 2)
         dbg.run()
         assert not dbg.halted
         assert dbg.stack[-2] == 2
 
     def test_watching_the_slot_just_past_the_stack_is_absent(self) -> None:
-        dbg = esolangs.make_debugger("BFStack", ">+")
+        dbg = debugger_api.make_debugger("BFStack", ">+")
         history = dbg.watch_stack(1)
         dbg.step()
         dbg.step()
@@ -161,18 +162,18 @@ class TestEdges:
 
 class TestRun:
     def test_run_to_completion_matches_interpreter(self) -> None:
-        dbg = esolangs.make_debugger("brainfuck", "+++[>+++<-]>.")
+        dbg = debugger_api.make_debugger("brainfuck", "+++[>+++<-]>.")
         dbg.run()
         assert dbg.halted
         assert dbg.output == esolangs.run("brainfuck", "+++[>+++<-]>.")
 
     def test_max_steps_bounds_runaway(self) -> None:
-        dbg = esolangs.make_debugger("brainfuck", "+[]")
+        dbg = debugger_api.make_debugger("brainfuck", "+[]")
         dbg.run(max_steps=10)
         assert not dbg.halted
 
     def test_step_guards_on_halt(self) -> None:
-        dbg = esolangs.make_debugger("brainfuck", "+")
+        dbg = debugger_api.make_debugger("brainfuck", "+")
         dbg.run()
         dbg.step()  # must not raise
         assert dbg.halted
@@ -181,7 +182,7 @@ class TestRun:
 class TestFactory:
     def test_unknown_language_raises(self) -> None:
         with pytest.raises(UnknownLanguageError):
-            esolangs.make_debugger("NoSuchLanguage", "+")
+            debugger_api.make_debugger("NoSuchLanguage", "+")
 
     def test_registered_language_without_an_adapter_raises(
         self, monkeypatch: pytest.MonkeyPatch
@@ -196,7 +197,7 @@ class TestFactory:
 
         monkeypatch.delitem(_VM_ADAPTERS, "brainfuck")
         with pytest.raises(UnknownLanguageError):
-            esolangs.make_debugger("brainfuck", "+")
+            debugger_api.make_debugger("brainfuck", "+")
 
 
 class TestARunFinishesTheDump:
@@ -234,11 +235,11 @@ class TestARunFinishesTheDump:
         language.
         """
         program, stdin = SAMPLES["Minsky Swap"]
-        plain = esolangs.make_debugger("Minsky Swap", program, stdin)
+        plain = debugger_api.make_debugger("Minsky Swap", program, stdin)
         assert plain.run(timeout=10) == "halted"
         assert plain.output
 
-        stopped = esolangs.make_debugger("Minsky Swap", program, stdin)
+        stopped = debugger_api.make_debugger("Minsky Swap", program, stdin)
         stopped.break_on_output(plain.output)
         assert stopped.run(timeout=10) == "breakpoint"
         assert stopped.output == plain.output
@@ -271,7 +272,7 @@ class TestARunFinishesTheDump:
                 program, stdin = esolangs.instantiate(name, program, [0, 0]), ""
             else:
                 stdin = esolangs.encode_inputs(name, [0, 0], "0110")
-            debugger = esolangs.make_debugger(name, program, stdin)
+            debugger = debugger_api.make_debugger(name, program, stdin)
             assert debugger.run(timeout=30) == "halted"
             if not debugger.output:
                 empty.append(name)
@@ -285,7 +286,7 @@ class TestARunFinishesTheDump:
                 program, stdin = esolangs.instantiate(name, program, [0, 0]), ""
             else:
                 stdin = esolangs.encode_inputs(name, [0, 0], "0110")
-            debugger = esolangs.make_debugger(name, program, stdin)
+            debugger = debugger_api.make_debugger(name, program, stdin)
             debugger.run(timeout=30)
             assert debugger.output == esolangs.run(name, program, stdin, 30), name
 
@@ -295,7 +296,7 @@ class TestARunFinishesTheDump:
         A bound that is not needed should not be spent, so the crossing is
         conditional -- and this is what says so.
         """
-        debugger = esolangs.make_debugger("brainfuck", "+++.", "")
+        debugger = debugger_api.make_debugger("brainfuck", "+++.", "")
         history = debugger.watch_cell(0)
         debugger.run(timeout=10)
         assert len(history) == 4  # three increments and the print, no more
@@ -317,7 +318,7 @@ class TestTheDebuggerWarnsAboutStdinToo:
         with pytest.warns(esolangs.InputMismatchWarning, match="read past the end"):
             esolangs.run("Flowchart", program, "1\n", 10)
         with pytest.warns(esolangs.InputMismatchWarning, match="read past the end"):
-            esolangs.make_debugger("Flowchart", program, "1\n").run(timeout=10)
+            debugger_api.make_debugger("Flowchart", program, "1\n").run(timeout=10)
 
     def test_a_correct_input_stays_silent(self) -> None:
         """A warning that fires on correct input is worth less than none."""
@@ -325,12 +326,12 @@ class TestTheDebuggerWarnsAboutStdinToo:
         stdin = esolangs.encode_inputs("Flowchart", [1, 0], "0110")
         with warnings.catch_warnings():
             warnings.simplefilter("error")
-            esolangs.make_debugger("Flowchart", program, stdin).run(timeout=10)
+            debugger_api.make_debugger("Flowchart", program, stdin).run(timeout=10)
 
     def test_it_is_said_once(self) -> None:
         """``run`` on a halted machine returns at once; re-warning is noise."""
         program = esolangs.generate("Flowchart", "0110")
-        debugger = esolangs.make_debugger("Flowchart", program, "1\n")
+        debugger = debugger_api.make_debugger("Flowchart", program, "1\n")
         with pytest.warns(esolangs.InputMismatchWarning):
             debugger.run(timeout=10)
         with warnings.catch_warnings():
@@ -353,7 +354,7 @@ class TestSelfHaltsIsAWarningNotAGuarantee:
         """The refutation, run rather than asserted."""
         assert esolangs.describe("Suffolk")["self_halts"] is False
         program = esolangs.generate("Suffolk", "0110")
-        vm = esolangs.make_vm(
+        vm = debugger_api.make_vm(
             "Suffolk", program, esolangs.encode_inputs("Suffolk", [1, 0])
         )
         steps = 0
@@ -365,7 +366,7 @@ class TestSelfHaltsIsAWarningNotAGuarantee:
 
     def test_the_docstring_no_longer_promises_otherwise(self) -> None:
         """The wording is the fix, so the wording is what is checked."""
-        doc = esolangs.VM.self_halts.__doc__ or ""
+        doc = debugger_api.VM.self_halts.__doc__ or ""
         assert "does not promise" in doc
         assert "Suffolk" in doc
 
@@ -404,7 +405,7 @@ class TestABreakpointAtTheHaltIsReported:
 
     def test_an_output_watch_on_the_last_step_fires(self) -> None:
         """The case it was reported for, on the flagship language."""
-        dbg = esolangs.make_debugger(
+        dbg = debugger_api.make_debugger(
             "brainfuck", esolangs.generate("brainfuck", "0110"), stdin="1\n0\n"
         )
         dbg.break_on_output("1")
@@ -421,7 +422,7 @@ class TestABreakpointAtTheHaltIsReported:
         false one step later, and reported as ``"halted"``.
         """
         program, stdin = _runnable(name)
-        dbg = esolangs.make_debugger(name, program, stdin=stdin)
+        dbg = debugger_api.make_debugger(name, program, stdin=stdin)
         dbg.break_when(lambda vm: vm.halted and vm.output == "")
         assert dbg.run(max_steps=300_000) == "breakpoint"
         assert dbg.halted
@@ -435,7 +436,7 @@ class TestABreakpointAtTheHaltIsReported:
         what says whether the output is written yet.
         """
         program, stdin = _runnable(name)
-        dbg = esolangs.make_debugger(name, program, stdin=stdin)
+        dbg = debugger_api.make_debugger(name, program, stdin=stdin)
         dbg.break_when(lambda vm: vm.halted and vm.output == "")
         dbg.run(max_steps=300_000)
         assert dbg.run(max_steps=300_000) == "halted"
@@ -449,7 +450,7 @@ class TestABreakpointAtTheHaltIsReported:
         already-halted, already-dumped machine takes no step at all.
         """
         program, stdin = _runnable(name)
-        dbg = esolangs.make_debugger(name, program, stdin=stdin)
+        dbg = debugger_api.make_debugger(name, program, stdin=stdin)
         history = dbg.watch_cell(0)
         dbg.run(max_steps=300_000)
         after_one = len(history)
@@ -458,7 +459,7 @@ class TestABreakpointAtTheHaltIsReported:
         assert len(history) == after_one
 
 
-def _step_to_halt(dbg: esolangs.Debugger, budget: int = 200_000) -> None:
+def _step_to_halt(dbg: debugger_api.Debugger, budget: int = 200_000) -> None:
     """Drive ``dbg`` with ``step()`` alone until it halts.
 
     A plain loop, factored out so it can sit inside a ``pytest.raises``
@@ -517,7 +518,7 @@ class TestSteppingWarnsAboutStdinToo:
         short = "\n".join(lines[:-2]) + "\n" if len(lines) > 2 else ""
         if short == full:
             pytest.skip(f"{name} cannot be underfed by a line")
-        dbg = esolangs.make_debugger(name, program, stdin=short)
+        dbg = debugger_api.make_debugger(name, program, stdin=short)
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
             _step_to_halt(dbg)
@@ -539,6 +540,6 @@ class TestSteppingWarnsAboutStdinToo:
         program = esolangs.generate("Alight", "0110")
         full = esolangs.encode_inputs("Alight", [1, 0])
         short = "\n".join(full.split("\n")[:-2]) + "\n"
-        dbg = esolangs.make_debugger("Alight", program, stdin=short)
+        dbg = debugger_api.make_debugger("Alight", program, stdin=short)
         with pytest.raises(esolangs.HaltError, match="eof"):
             _step_to_halt(dbg)

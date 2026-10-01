@@ -10,7 +10,7 @@ import re
 
 import pytest
 
-import esolangs
+import esolangs.debugger as debugger_api
 
 
 def _painfuck_source(targets: str) -> str:
@@ -529,7 +529,7 @@ class TestRunUntilHaltOrCycle:
         """
         from esolangs.vm import run_until_halt, run_until_halt_or_cycle
 
-        vm = esolangs.make_vm("brainfuck", "++")
+        vm = debugger_api.make_vm("brainfuck", "++")
         run_until_halt(vm)
         assert vm.halted
         assert run_until_halt_or_cycle(vm) is True
@@ -1066,7 +1066,7 @@ class TestTheDetectorsTakeAVM:
         # message this function exists to improve on, so both halves are
         # pinned -- the sweep found each free to change on its own.
         with pytest.raises(TypeError, match=f"_SophieVM is not {re.escape(role)}:"):
-            getattr(module, detector)(esolangs.make_vm("Sophie", ""))
+            getattr(module, detector)(debugger_api.make_vm("Sophie", ""))
 
     def test_the_value_growth_detector_refuses_a_bounded_language(self) -> None:
         """Brainfuck's cells wrap, so a climb there is a cycle, not a proof.

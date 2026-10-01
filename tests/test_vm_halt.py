@@ -1,6 +1,6 @@
 """The plain bounded VM drive stops at its exact budget or predicate."""
 
-import esolangs
+import esolangs.debugger as debugger_api
 
 
 class TestRunUntilHalt:
@@ -118,14 +118,14 @@ class TestRunUntilHalt:
         """The callers pass a ``VM``, so the surface has to fit one."""
         from esolangs.vm import run_until_halt
 
-        vm = esolangs.make_vm("brainfuck", "++++++++[>++++++++<-]>+.")
+        vm = debugger_api.make_vm("brainfuck", "++++++++[>++++++++<-]>+.")
         assert run_until_halt(vm, 10_000) is True
         assert vm.output == "A"
 
     def test_a_budget_short_of_the_halt_reports_false(self) -> None:
         from esolangs.vm import run_until_halt
 
-        vm = esolangs.make_vm("brainfuck", "++++++++[>++++++++<-]>+.")
+        vm = debugger_api.make_vm("brainfuck", "++++++++[>++++++++<-]>+.")
         assert run_until_halt(vm, 5) is False
         assert vm.output == ""
 
@@ -141,12 +141,14 @@ class TestRunUntilHalt:
         from esolangs.vm import run_until_halt
 
         for limit in (-1, -1000):
-            assert run_until_halt(esolangs.make_vm("brainfuck", "+[]"), limit) is False
+            assert (
+                run_until_halt(debugger_api.make_vm("brainfuck", "+[]"), limit) is False
+            )
 
     def test_a_zero_budget_still_takes_no_step(self) -> None:
         """The positive control: the boundary the ``>=`` must not move."""
         from esolangs.vm import run_until_halt
 
-        vm = esolangs.make_vm("brainfuck", "++++++++[>++++++++<-]>+.")
+        vm = debugger_api.make_vm("brainfuck", "++++++++[>++++++++<-]>+.")
         assert run_until_halt(vm, 0) is False
         assert vm.output == ""

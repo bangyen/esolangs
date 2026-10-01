@@ -13,6 +13,7 @@ import re
 import pytest
 
 import esolangs
+import esolangs.debugger as debugger_api
 from esolangs import cli
 from esolangs.cli import HELP
 from tests.generator_support import evaluate_generated, verify_generated
@@ -394,7 +395,7 @@ class TestAProgramKnowsWhoseItIs:
     def test_a_foreign_program_is_refused_by_make_vm(self) -> None:
         program = esolangs.generate("brainfuck", "0110")
         with pytest.raises(esolangs.ProgramError, match="generated for brainfuck"):
-            esolangs.make_vm("Minsky Swap", program, "")
+            debugger_api.make_vm("Minsky Swap", program, "")
 
     def test_a_filled_template_carries_its_language(self) -> None:
         template = esolangs.generate("Minifuck", "0110")
@@ -597,28 +598,28 @@ class TestBreakAtChecksTheKindOfPosition:
     def test_a_tuple_is_refused_where_the_ip_is_an_index(self) -> None:
         """brainfuck's ip is an int."""
         program = esolangs.generate("brainfuck", "0110")
-        debugger = esolangs.make_debugger("brainfuck", program, "0\n1\n")
+        debugger = debugger_api.make_debugger("brainfuck", program, "0\n1\n")
         with pytest.raises(esolangs.ArgumentError, match="could never fire"):
             debugger.break_at((1, 2))
 
     def test_an_index_is_refused_where_the_ip_is_a_coordinate(self) -> None:
         """Alight's is a 4-tuple."""
         program = esolangs.generate("Alight", "0110")
-        debugger = esolangs.make_debugger("Alight", program, "0\n1\n")
+        debugger = debugger_api.make_debugger("Alight", program, "0\n1\n")
         with pytest.raises(esolangs.ArgumentError, match="could never fire"):
             debugger.break_at(10)
 
     def test_the_right_kind_is_accepted(self) -> None:
         """And still fires, which is the point of checking the other."""
         program = esolangs.generate("brainfuck", "0110")
-        debugger = esolangs.make_debugger("brainfuck", program, "0\n1\n")
+        debugger = debugger_api.make_debugger("brainfuck", program, "0\n1\n")
         debugger.break_at(0)
         assert debugger.run(max_steps=100) == "breakpoint"
 
     def test_the_arity_is_not_checked(self) -> None:
         """It varies within a run, so checking it would refuse valid ones."""
         program = esolangs.generate("Alight", "0110")
-        debugger = esolangs.make_debugger("Alight", program, "0\n1\n")
+        debugger = debugger_api.make_debugger("Alight", program, "0\n1\n")
         debugger.break_at((1, 2))  # wrong arity for Alight, accepted
 
 
@@ -713,7 +714,7 @@ class TestBreakAtNamesTheKindNotTheValue:
     def test_the_message_describes_the_kind(self) -> None:
         """A reader cannot generalize from one position's value."""
         program = esolangs.generate("brainfuck", "0110")
-        debugger = esolangs.make_debugger("brainfuck", program, "0\n1\n")
+        debugger = debugger_api.make_debugger("brainfuck", program, "0\n1\n")
         with pytest.raises(esolangs.ArgumentError, match="is an index"):
             debugger.break_at((1, 2))
 
@@ -774,7 +775,7 @@ class TestInstantiateCanCheckProvenance:
             bits = list(map(int, f"{row:03b}"))
             program = esolangs.instantiate(language, template, bits, truth_table=table)
             if language in {"ArrowQueue", "Crement"}:
-                machine = esolangs.make_vm(language, program)
+                machine = debugger_api.make_vm(language, program)
                 answer = "0" if run_until_halt_or_cycle(machine) else "1"
             else:
                 answer = esolangs.read_answer(language, esolangs.run(language, program))
@@ -898,7 +899,7 @@ class TestTheDebuggerMirrorsSnapshot:
         """And is the thing a caller most wants: a repeated state."""
         program = esolangs.generate("brainfuck", "0110")
         stdin = esolangs.encode_inputs("brainfuck", [0, 1], "0110")
-        debugger = esolangs.make_debugger("brainfuck", program, stdin)
+        debugger = debugger_api.make_debugger("brainfuck", program, stdin)
         assert debugger.snapshot() == debugger.vm.snapshot()
         before = debugger.snapshot()
         debugger.step()

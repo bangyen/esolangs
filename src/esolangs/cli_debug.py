@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import sys
 
-from esolangs import check_runnable, describe
+from esolangs import _check_runnable, describe
 from esolangs.cli_args import (
     _check_count,
     _fail,
@@ -138,7 +138,7 @@ def _debug(rest: list[str]) -> None:
     # escaped as a traceback from the one command whose whole promise is to
     # report a fault rather than propagate it.
     try:
-        check_runnable(language, program)
+        _check_runnable(language, program)
         if tui:
             # Built through the same refusals, then handed to the screen --
             # which owns the stepping from here, so nothing below runs.

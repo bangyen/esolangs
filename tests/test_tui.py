@@ -13,7 +13,7 @@ from unittest.mock import patch
 
 import pytest
 
-import esolangs
+import esolangs.debugger as debugger_api
 from esolangs.tui import (
     CLEAR,
     Frame,
@@ -587,7 +587,7 @@ class TestBreakpoints:
         # command line's run a live machine; both must stop in the same
         # place, or `--break-on-output` would mean two things.
         program = "++++++++[>++++++++<-]>+.+."
-        dbg = esolangs.make_debugger("brainfuck", program)
+        dbg = debugger_api.make_debugger("brainfuck", program)
         dbg.break_on_output("A")
         dbg.run()
         frame = History("brainfuck", program, "").find(
