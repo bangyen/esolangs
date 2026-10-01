@@ -90,11 +90,6 @@ _ANSI = re.compile(r"\x1b\[[0-9;]*m")
 _SAMPLE_BITS = [1, 0, 1]
 
 
-def _wiki_name(name: str) -> str:
-    """Return the esolangs wiki page title for the displayed language name."""
-    return name
-
-
 def render_package_count_section() -> str:
     """Render the total and source-shape counts in the README lead."""
     return (
@@ -102,15 +97,6 @@ def render_package_count_section() -> str:
         f"languages: {len(RUNNERS)} text and "
         f"{len(LANGUAGES) - len(RUNNERS)} raster."
     )
-
-
-def _wiki_link(name: str) -> str:
-    """Return the language's wiki URL, built by the registry so the two agree.
-
-    This used to build its own slug, which meant the README and
-    ``describe`` each had a copy of the same escaping bug.
-    """
-    return wiki_url(_wiki_name(name))
 
 
 def _source_link(name: str) -> str:
@@ -147,13 +133,14 @@ def render_languages_section() -> str:
         out.append("")
         out.append(description)
         out.append("")
+        # Separate README and describe slugs once duplicated the same escaping
+        # bug; use the registry's URL builder for both.
         for name in sorted(groups[prefix]):
             tier = (
                 "" if LANGUAGES[name].boolean is not None else " *(interpreter-only)*"
             )
             out.append(
-                f"- [{_wiki_name(name)}]({_wiki_link(name)})"
-                f" ([code]({_source_link(name)})){tier}"
+                f"- [{name}]({wiki_url(name)}) ([code]({_source_link(name)})){tier}"
             )
         out.append("")
     return "\n".join(out).rstrip()
