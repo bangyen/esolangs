@@ -58,7 +58,7 @@ Row gives the logical bits; Input gives their language-specific encoding.
 | `laserfuck.txt` | LaserFuck | `0001` | `01` | 0 1 | '0' |
 | `malbolge.txt` | Malbolge | `0001` | `01` | 0 1 | '0' |
 | `minifuck.txt` | Minifuck | `0001` | `01` | embedded 01 | '0' |
-| `minsky-swap.txt` | Minsky Swap | `0001` | `01` | embedded 01 | '0 0' |
+| `minsky-swap.txt` | Minsky Swap | `0001` | `01` | embedded 01 | '1 0' |
 | `modulous.txt` | Modulous | `0001` | `01` | 0 1 | '0' |
 | `nocomment.txt` | NoComment | `0001` | `01` | embedded 01 | '0' |
 | `packlang.txt` | Packlang | `0001` | `01` | 0 1 | '0' |

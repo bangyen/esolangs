@@ -20,6 +20,7 @@ spelling that drifted made an instantiated program loop and the suite hang.
 
 from collections.abc import Callable
 from dataclasses import dataclass, replace
+from typing import cast
 
 from esolangs.registry import Generator, canonical_id
 from esolangs.tools.a_painter_ant import PAIR as APA_PAIR
@@ -161,13 +162,22 @@ class BooleanExample:
     note: str = ""
     stem: str = ""
 
-    def build(self, width: int | None = DEFAULT_WIDTH) -> str:
+    def build(self, width: int | None = DEFAULT_WIDTH, *, balance: bool = False) -> str:
         """Return the program text this example commits.
 
         Wrapped to ``width`` by the token-aware wrapper ``stem`` selects
         (``None`` returns raw output; a language with no wrapper is unwrapped).
         A generator that takes a width lays itself out, as :func:`esolangs.generate`.
+        ``balance`` uses the public balanced generator instead of ``width``.
         """
+        if balance:
+            import esolangs
+
+            language = canonical_id(self.stem.replace("-", " "))
+            program = cast(str, esolangs.generate(language, self.table, balance=True))
+            if self.fill is not None:
+                program = esolangs.instantiate(language, program, self.bits)
+            return program
         if width is not None and takes_width(self.generator):
             program = self.generator(self.table, width)
         else:
@@ -547,7 +557,7 @@ def _register() -> None:
             "register_based.minsky_swap",
             setters=minsky_swap_setters,
             answer_mode="dump",
-            expected="0 0",
+            expected="1 0",
             note=(
                 "Minsky Swap has no output instruction and dumps its "
                 "registers at halt; the answer is the second one"

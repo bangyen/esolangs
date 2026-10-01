@@ -1,15 +1,11 @@
 # Example programs
 
-Committed examples match generator output, verified by
+Committed examples use `balance=True`, verified by
 `tests/scripts/test_examples.py`. Refresh them with:
 
 ```bash
 python scripts/generate.py examples
 ```
-
-Keep command boundaries intact when wrapping to 80 columns. Do not wrap grids,
-newline-sensitive programs, or overlong tokens. AddSubJump, Decleq, and
-S*bleq use fixed-width cells; BIO uses nesting indentation.
 
 Each `.txt` file is a Boolean example. [`MANIFEST.md`](MANIFEST.md) lists its
 language, truth table, input row, format, and expected output. Use

@@ -82,8 +82,22 @@ def test_boolean_example_matches_generator(name: str) -> None:
     single POSIX newline.
     """
     path = BASE_DIR / "examples" / f"{name}.txt"
-    expected = BOOLEAN_GENERATED[name].build().rstrip("\n") + "\n"
+    expected = BOOLEAN_GENERATED[name].build(balance=True).rstrip("\n") + "\n"
     assert path.read_text(encoding="utf-8") == expected
+
+
+def test_regeneration_yields_public_balanced_programs() -> None:
+    import esolangs
+    from esolangs.tools._generate_examples import boolean_programs
+
+    programs = dict(boolean_programs())
+    assert programs.keys() == BOOLEAN_GENERATED.keys()
+    for stem, example in BOOLEAN_GENERATED.items():
+        language = canonical_id(stem.replace("-", " "))
+        expected = esolangs.generate(language, example.table, balance=True)
+        if example.fill is not None:
+            expected = esolangs.instantiate(language, expected, example.bits)
+        assert programs[stem] == expected
 
 
 def test_the_manifest_matches_what_the_script_would_write() -> None:
