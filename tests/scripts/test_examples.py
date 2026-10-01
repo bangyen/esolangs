@@ -104,7 +104,9 @@ def test_regeneration_yields_public_balanced_programs() -> None:
     assert programs.keys() == BOOLEAN_GENERATED.keys()
     for stem, example in BOOLEAN_GENERATED.items():
         language = canonical_id(stem.replace("-", " "))
-        expected = esolangs.generate(language, example.table, balance=True)
+        expected = esolangs.generate(
+            language, example.table, balance=True, scale=example.scale
+        )
         if example.fill is not None:
             expected = esolangs.instantiate(language, expected, example.bits)
         assert programs[stem] == expected

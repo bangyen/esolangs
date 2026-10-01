@@ -162,6 +162,7 @@ class BooleanExample:
     kwargs: tuple[tuple[str, int], ...] = ()
     note: str = ""
     stem: str = ""
+    scale: int = 1
 
     @property
     def filename(self) -> str:
@@ -183,7 +184,9 @@ class BooleanExample:
             import esolangs
 
             language = canonical_id(self.stem.replace("-", " "))
-            program = esolangs.generate(language, self.table, balance=True)
+            program = esolangs.generate(
+                language, self.table, balance=True, scale=self.scale
+            )
             if self.fill is not None:
                 program = esolangs.instantiate(language, cast(str, program), self.bits)
             return program
@@ -192,7 +195,7 @@ class BooleanExample:
         else:
             program = self.generator(self.table)
         if isinstance(program, Raster):
-            return program
+            return program.upscaled(self.scale)
         if self.fill is not None:
             program = self.fill(program, list(self.bits))
         return wrap_program(program, canonical_id(self.stem.replace("-", " ")), width)
@@ -658,7 +661,11 @@ def _register() -> None:
     from esolangs import line, piet
 
     reading["line"] = _reader(line.generate, "line")
-    reading["piet"] = _reader(piet.generate, "piet")
+    reading["piet"] = replace(
+        _reader(piet.generate, "piet"),
+        scale=10,
+        note="10 pixels per codel for readability",
+    )
     for stem, example in {**reading, **embedded}.items():
         BOOLEAN_EXAMPLES[stem] = replace(example, stem=stem)
 
