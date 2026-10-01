@@ -19,10 +19,13 @@ the runner.
 
 Usage:
     python scripts/mutate.py interpreter Qoibl
+    python scripts/mutate.py interpreter Piet
     python scripts/mutate.py generator tools/streetcode --keep
 
 Requires: mutmut==3.7.0, which fixes a 3.3.1 bug that silently reported
 class-method mutants as killed. Mutant IDs are not comparable across versions.
+
+Raster interpreters use the copied-package harness with their own suites.
 """
 
 import argparse
@@ -47,6 +50,20 @@ if len(sys.argv) > 1 and sys.argv[1] == "generator":
     sys.argv = [sys.argv[0], *sys.argv[2:]]
     runpy.run_path(str(ROOT / "tests/tools/mutate_generator.py"), run_name="__main__")
 if len(sys.argv) > 1 and sys.argv[1] == "interpreter":
+    from esolangs.registry import LANGUAGES, SourceKind
+
+    raster = LANGUAGES.get(sys.argv[2]) if len(sys.argv) > 2 else None
+    if raster is not None and raster.source_kind is SourceKind.RASTER:
+        sys.argv = [
+            sys.argv[0],
+            f"{raster.id}/__init__",
+            *sys.argv[3:],
+            "--kind",
+            "interpreter",
+        ]
+        runpy.run_path(
+            str(ROOT / "tests/tools/mutate_generator.py"), run_name="__main__"
+        )
     sys.argv.pop(1)
 
 # Tests that reach past the interpreter -- into the VM or the registry --

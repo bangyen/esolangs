@@ -15,6 +15,8 @@ number.
 """
 
 import importlib.util
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -359,3 +361,80 @@ def test_config_isolates_xdist_and_applies_selection_to_every_pass(
     options = config["tool"]["pytest"]["ini_options"]["addopts"]
     assert options[:4] == ["-n", "0", "-m", "not slow"]
     assert options[4:] == ([] if selection is None else ["-k", "suffolk"])
+
+
+@pytest.mark.parametrize(
+    ("family", "module"),
+    [
+        ("line", "line_boolean"),
+        ("line", "simulate"),
+        ("piet", "piet_boolean"),
+        ("piet", "__init__"),
+    ],
+)
+def test_raster_modules_prepare_their_real_suites(
+    family: str, module: str, tmp_path: Path
+) -> None:
+    script = load_script()
+    assert script._parse_target(f"{family}/{module}") == (family, module)  # noqa: SLF001
+    proj, tests = script._prepare(family, module, tmp_path, slow=False)  # noqa: SLF001
+    assert tests == sorted(
+        p.name for p in (REPO_ROOT / "tests" / family).glob("test_*.py")
+    )
+    assert f"esolangs/{family}/{module}.py" in (proj / "pyproject.toml").read_text()
+    script._check_shadowing(proj, family, module)  # noqa: SLF001
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize(
+    ("family", "module", "old", "new", "node"),
+    [
+        (
+            "line",
+            "line_boolean",
+            "value = state",
+            "value = 1 - state",
+            "tests/line/test_line_boolean.py::TestLineBoolean::test_and_n2",
+        ),
+        (
+            "line",
+            "simulate",
+            "tape[pointer] = io.read()",
+            "tape[pointer] = 1 - io.read()",
+            "tests/line/test_raster.py::test_line_consumes_the_public_raster",
+        ),
+        (
+            "piet",
+            "piet_boolean",
+            "_Operation(_MULTIPLY)",
+            "_Operation(_ADD)",
+            "tests/piet/test_piet_boolean.py::test_every_row_executes[0001]",
+        ),
+        (
+            "piet",
+            "__init__",
+            "left * right",
+            "left + right",
+            "tests/piet/test_piet.py::test_stack_commands",
+        ),
+    ],
+)
+def test_raster_suites_kill_wrong_answers_in_the_copied_package(
+    family: str, module: str, old: str, new: str, node: str, tmp_path: Path
+) -> None:
+    script = load_script()
+    proj, _ = script._prepare(family, module, tmp_path, slow=False)  # noqa: SLF001
+    command = [sys.executable, "-m", "pytest", "-q", node]
+    baseline = subprocess.run(
+        command, cwd=proj, capture_output=True, text=True, timeout=30
+    )
+    assert baseline.returncode == 0, baseline.stdout + baseline.stderr
+    target = proj / "esolangs" / family / f"{module}.py"
+    source = target.read_text()
+    assert old in source
+    target.write_text(source.replace(old, new))
+    mutant = subprocess.run(
+        command, cwd=proj, capture_output=True, text=True, timeout=30
+    )
+    assert mutant.returncode == 1, mutant.stdout + mutant.stderr
+    assert "AssertionError" in mutant.stdout
