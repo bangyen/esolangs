@@ -94,3 +94,21 @@ def test_nonuniform_cells_retain_tokens(program: str) -> None:
     balanced = balance_program(program, "fractran")
     assert balanced.split() == program.split()
     assert balance_score(balanced) <= balance_score(program)
+
+
+@pytest.mark.parametrize("language", ["fractran", "sbleq", "slow_acv_mammalian"])
+@pytest.mark.parametrize("lengths", [(1, 1, 3), (2, 7, 1, 3), (1, 5, 2, 4, 1)])
+def test_dominant_token_reaches_global_minimum(
+    language: str, lengths: tuple[int, ...]
+) -> None:
+    program = " ".join("1" * length for length in lengths)
+    balanced = balance_program(program, language)
+    optimum = min(
+        (
+            wrap_program(program, language, width)
+            for width in range(1, len(program) + 1)
+        ),
+        key=balance_score,
+    )
+    assert balance_score(balanced) == balance_score(optimum)
+    assert balanced.split() == program.split()

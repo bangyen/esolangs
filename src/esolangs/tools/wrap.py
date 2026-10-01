@@ -565,10 +565,18 @@ def balance_width(program: str) -> int:
 
 
 def balance_program(program: str, language_id: str) -> str:
-    """Balance single-line equal tokens exactly; otherwise use an area target."""
+    """Balance equal cells or a dominant token exactly; otherwise estimate.
+
+    Lengths (2, 1, 1, 3) give a 4x3 estimate; width 3 gives a 3x3 grid.
+    """
     wrapper = WRAPPERS.get(language_id)
     if "\n" not in program and wrapper in (wrap_space_delimited, wrap_grid, _mammalian):
         tokens = program.split()
+        if tokens and max(map(len, tokens)) >= len(tokens):
+            # One token per row attains the width floor and maximum H=N.
+            # Longest token >= N makes W-H nonnegative for every layout.
+            narrow = wrap_program(program, language_id, 1)
+            return min((program, narrow), key=balance_score)
         if tokens and len({len(token) for token in tokens}) == 1:
             cell = len(tokens[0])
             if wrapper is not _mammalian or cell == 4:
