@@ -6,7 +6,8 @@ a Vandevelo program can bind is affine in the inputs (``==``/``!=`` are
 XNOR/XOR over nil), and only ``::`` chains evaluate conditionally, so a
 guard line hangs on an affine coset of inputs and a whole program hangs on
 a union of cosets.  The generator therefore emits one guard line per coset
-of an affine cover of the table's 1-set.
+of an affine cover of the table's 1-set. Affine tables bypass the peel:
+geometric doubling checks their form in O(T) characters, then emits one guard.
 
 A test for 0 is ``x? == Nil?``, eight characters and four steps over a
 bare ``x?``, so the guards are spelled to need it rarely.  A register
@@ -106,6 +107,7 @@ __all__ = ["vandevelo"]
 
 _ALPHABET = "abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMOPQRSTUVWXYZ0123456789_&*$"
 _RESERVED = {"Inp", "Nil", "l", "loop"}
+_COMPLEMENT = str.maketrans("01", "10")
 
 # Directions scored per node: the parent's best _INHERIT plus fresh nearest
 # differences inside the node.  The peel is exact with any cap -- a missed
@@ -662,15 +664,36 @@ def _constraints(base: int, dirs: list[int], n: int) -> list[tuple[int, int]]:
     return [(w, (w & base).bit_count() % 2) for w in duals]
 
 
+def _affine_form(table: str, n: int) -> tuple[int, int] | None:
+    """Return the XOR mask and constant, checking all rows in O(T) work."""
+    first = table[0]
+    mask = sum(1 << bit for bit in range(n) if table[1 << bit] != first)
+    expected = first
+    for bit in range(n):
+        expected += expected.translate(_COMPLEMENT) if mask & (1 << bit) else expected
+    return (mask, int(first)) if expected == table else None
+
+
 def vandevelo(truth_table: str, width: int | None = None) -> str:
     """Build a Vandevelo program computing ``truth_table`` by termination."""
     n = _validate_truth_table(truth_table)
     compact = width is not None
     names = [short_name(index, _ALPHABET) for index in range(n)]
-    ones = {row for row, entry in enumerate(truth_table) if entry == "1"}
-    cubes = _Peel(ones, n).run() if ones else []
-    cover = _pruned([_constraints(base, dirs, n) for base, dirs in cubes])
-    flips = _flips(cover, [len(dirs) for _, dirs in cubes], n)
+    affine = _affine_form(truth_table, n)
+    if affine is None:
+        ones = {row for row, entry in enumerate(truth_table) if entry == "1"}
+        cubes = _Peel(ones, n).run() if ones else []
+        cover = _pruned([_constraints(base, dirs, n) for base, dirs in cubes])
+        dims = [len(dirs) for _, dirs in cubes]
+    else:
+        mask, offset = affine
+        if mask:
+            cover, dims = [[(mask, offset ^ 1)]], [n - 1]
+        elif offset:
+            cover, dims = [[]], [n]
+        else:
+            cover, dims = [], []
+    flips = _flips(cover, dims, n)
     lines = []
     for index in range(n):
         # A flipped input is read negated, so its ``== Nil`` tests go.
