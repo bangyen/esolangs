@@ -428,6 +428,37 @@ def _cm_layout(program: str, width: int) -> str:
     )
 
 
+def _cm_orders(essential: list[int], *, expanded: bool) -> list[list[int]]:
+    """Return the selector orders, including the width-only first pair."""
+    orders = [essential]
+    if len(essential) >= 3:
+        if expanded:
+            orders.append(essential[2:] + essential[:2])
+        orders.append([*essential[1:-1], essential[0], essential[-1]])
+    return orders
+
+
+def _cm_constant_program(n: int, value: int, *, narrow: bool = False) -> str:
+    """Read every input and print one constant."""
+    if narrow:
+        lines = _cm_narrow_constants({value})
+        lines += [f"b{i}=zx+input,NOT PRINT." for i in range(n)]
+        lines.append(f"out=zx+k{value},DO PRINT.")
+    else:
+        lines = _cm_constants({value})
+        lines += [f"b{i} = negativeOne x + input, NOT PRINT." for i in range(n)]
+        lines.append(f"out = negativeOne x + k{value}, DO PRINT.")
+    return "\n".join(lines)
+
+
+def _cm_narrow_choice(fitted: str, layouts: list[str]) -> str:
+    """Choose the narrowest fallback, retaining the existing length tie-break."""
+    return min(
+        [fitted, *layouts],
+        key=lambda code: (max(map(len, code.splitlines())), len(code)),
+    )
+
+
 def collatz_multiverse(truth_table: str, width: int | None = None) -> str:
     """Build a Collatz Multiverse program computing the given truth table.
 
@@ -458,29 +489,16 @@ def collatz_multiverse(truth_table: str, width: int | None = None) -> str:
         # A constant table needs no evaluation, but the reads are the
         # interface: skipping them strands the caller's bits and the prompts.
         const = _ASCII_ZERO + int(truth_table[0])
-        lines = _cm_constants({const})
-        lines += [f"b{i} = negativeOne x + input, NOT PRINT." for i in range(n)]
-        lines.append(f"out = negativeOne x + k{const}, DO PRINT.")
-        program = "\n".join(lines)
+        program = _cm_constant_program(n, const)
         if width is None or width <= 0:
             return program
         fitted = _cm_layout(program, width)
         if max(map(len, fitted.splitlines())) <= width:
             return fitted
-        lines = _cm_narrow_constants({const})
-        lines += [f"b{i}=zx+input,NOT PRINT." for i in range(n)]
-        lines.append(f"out=zx+k{const},DO PRINT.")
-        narrow = _cm_layout("\n".join(lines), width)
-        return min(
-            (fitted, narrow), key=lambda c: (max(map(len, c.splitlines())), len(c))
-        )
+        narrow = _cm_layout(_cm_constant_program(n, const, narrow=True), width)
+        return _cm_narrow_choice(fitted, [narrow])
 
-    essential = essential_inputs(truth_table, n)
-    orders = [essential]
-    if len(essential) >= 3:
-        if width is not None:
-            orders.append(essential[2:] + essential[:2])
-        orders.append([*essential[1:-1], essential[0], essential[-1]])
+    orders = _cm_orders(essential_inputs(truth_table, n), expanded=width is not None)
     candidates = [
         _cm_build(truth_table, n, order, zero_top=zero_top)
         for order in orders
@@ -497,10 +515,66 @@ def collatz_multiverse(truth_table: str, width: int | None = None) -> str:
         for order in orders
         for zero_top in (False, True)
     ]
-    layouts = [fitted] + [
-        _cm_layout(c, width) for c in narrow_candidates if c is not None
+    layouts = [_cm_layout(c, width) for c in narrow_candidates if c is not None]
+    return _cm_narrow_choice(fitted, layouts)
+
+
+def _cm_layout_versions(program: str) -> tuple[str, ...]:
+    """Return reachable original, compact, aliased and renamed spellings."""
+    compact = _cm_layout(program, max(1, max(map(len, program.splitlines())) - 1))
+    aliased = _cm_layout(program, max(1, max(map(len, compact.splitlines())) - 1))
+    return program, compact, aliased, _cm_layout(program, 1)
+
+
+def balance_collatz_multiverse(truth_table: str, default: str) -> str:
+    """Balance the finite statement-spelling regimes at their fit thresholds."""
+    from esolangs.tools.wrap import balance_score
+
+    n = _validate_truth_table(truth_table)
+    wide = collatz_multiverse(truth_table, len(default))
+    if len(set(truth_table)) == 1:
+        narrow = [
+            _cm_constant_program(n, _ASCII_ZERO + int(truth_table[0]), narrow=True)
+        ]
+    else:
+        orders = _cm_orders(essential_inputs(truth_table, n), expanded=True)
+        narrow = [
+            source
+            for order in orders
+            for zero_top in (False, True)
+            if (
+                source := _cm_build(
+                    truth_table, n, order, zero_top=zero_top, narrow=True
+                )
+            )
+            is not None
+        ]
+    versions = [
+        [
+            (max(map(len, source.splitlines())), source)
+            for source in _cm_layout_versions(program)
+        ]
+        for program in [wide, *narrow]
     ]
-    return min(layouts, key=lambda c: (max(map(len, c.splitlines())), len(c)))
+    thresholds = {1}
+    for spellings in versions:
+        for span, _source in spellings:
+            thresholds.update((span, max(1, span - 1)))
+
+    def fitted(spellings: list[tuple[int, str]], width: int) -> str:
+        return next(
+            (source for span, source in spellings if span <= width), spellings[-1][1]
+        )
+
+    candidates = [default]
+    for width in sorted(thresholds):
+        program = fitted(versions[0], width)
+        if max(map(len, program.splitlines())) > width:
+            program = _cm_narrow_choice(
+                program, [fitted(item, width) for item in versions[1:]]
+            )
+        candidates.append(program)
+    return min(candidates, key=balance_score)
 
 
 def sophie(truth_table: str) -> str:
