@@ -19,6 +19,7 @@ is the entry point.
 import inspect
 import re
 from collections.abc import Callable
+from math import isqrt
 
 from esolangs.tools.helpers import MARK, MOST_INPUTS, mark
 
@@ -554,3 +555,23 @@ def wrap_program(program: str, language_id: str, width: int | None) -> str:
     if wrapper is None:
         return program
     return wrapper(program, width)
+
+
+def balance_width(program: str) -> int:
+    """Return a square target width from the default rendered area."""
+    rows = program.split("\n")
+    area = max(1, sum(map(len, rows)))
+    return isqrt(area - 1) + 1
+
+
+def balance_program(program: str, language_id: str) -> str:
+    """Rewrap once toward a square, retaining a better default layout."""
+    candidate = wrap_program(program, language_id, balance_width(program))
+    return min((program, candidate), key=balance_score)
+
+
+def balance_score(program: str) -> tuple[int, int, int]:
+    """Rank rendered shapes by imbalance, length, then width."""
+    rows = program.split("\n")
+    width = max(map(len, rows), default=0)
+    return abs(width - len(rows)), len(program), width
