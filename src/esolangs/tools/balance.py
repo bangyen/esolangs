@@ -5,6 +5,7 @@ from collections.abc import Callable
 from itertools import pairwise
 from math import isqrt
 
+from esolangs.tools._circuit_balance import balance_circuit_diagram
 from esolangs.tools.algebraic_programming_language import balance_apl
 from esolangs.tools.arrowqueue import arrowqueue
 from esolangs.tools.b_tapemark import b_tapemark
@@ -435,6 +436,7 @@ BALANCERS: dict[str, Callable[[str, str], str]] = {
     "befunge": balance_befunge,
     "bitdeque": _bitdeque,
     "brainif": _brainif,
+    "circuit_diagram": balance_circuit_diagram,
     "clockwise": _clockwise,
     "collatz_multiverse": balance_collatz_multiverse,
     "container": balance_container,
