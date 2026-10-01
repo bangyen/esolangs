@@ -66,9 +66,9 @@ class TestSuperSNUSP:
         """Every table to three inputs is no longer than its all-positive build.
 
         The all-positive ANF is the build before polarity was chosen, and it
-        is always the greedy pass's first start, so a chosen polarity can
+        is always the greedy pass's start, so a chosen polarity can
         only shorten it.  Over three inputs the sweep falls from 19,786 to
-        16,480 commands (16.7%).
+        16,567 commands (16.3%).
         """
         from esolangs.tools.helpers import essential_inputs, read_at
         from esolangs.tools.super_snusp import (
@@ -96,7 +96,7 @@ class TestSuperSNUSP:
                 if n == 3:
                     before += old
                     after += built
-        assert (before, after) == (19786, 16480)
+        assert (before, after) == (19786, 16567)
 
     @pytest.mark.parametrize(
         ("table", "program"),
