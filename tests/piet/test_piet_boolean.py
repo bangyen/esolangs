@@ -1,5 +1,6 @@
 """Piet's linear Boolean generator."""
 
+import random
 from itertools import pairwise, product
 
 import pytest
@@ -7,6 +8,7 @@ import pytest
 import esolangs
 from esolangs.piet import generate
 from esolangs.raster import Raster
+from esolangs.tools.helpers import essential_inputs, read_at
 from tests.generator_support import verify_generated
 
 
@@ -30,12 +32,44 @@ def test_png_round_trip_executes_the_same_program() -> None:
 
 @pytest.mark.medium
 def test_every_three_input_function_executes_through_png() -> None:
+    total = 0
     for encoded in range(256):
         truth_table = f"{encoded:08b}"
         program = Raster.from_png(generate(truth_table).to_png())
+        pixels = sum(map(len, program.rows))
+        essential = essential_inputs(truth_table, 3)
+        reduced = read_at(truth_table, essential, 3)
+        parent_width = (
+            18
+            + 2 * len(reduced)
+            + reduced.count("0")
+            + 5 * len(essential)
+            + 2 * (3 - len(essential))
+        )
+        assert pixels <= 3 * parent_width
+        total += pixels
         for row in range(8):
             stdin = "".join(f"{bit}\n" for bit in f"{row:03b}")
             assert esolangs.run("Piet", program, stdin) == truth_table[row]
+    # Parent table lookup emitted 38,997 codels over this exhaustive corpus.
+    assert total == 34_638
+
+
+@pytest.mark.medium
+def test_larger_functions_execute_through_png() -> None:
+    rng = random.Random(20261001)
+    for inputs in (4, 5, 6):
+        tables = [
+            "".join(rng.choice("01") for _ in range(2**inputs)) for _ in range(12)
+        ]
+        for row in (0, 2**inputs - 1, 2**inputs // 3):
+            table = "".join(str(int(i == row)) for i in range(2**inputs))
+            tables.extend((table, table.translate(str.maketrans("01", "10"))))
+        for table in tables:
+            for balanced in (False, True):
+                image = esolangs.generate("Piet", table, balance=balanced)
+                decoded = Raster.from_png(image.to_png())
+                assert esolangs.evaluate("Piet", decoded, inputs=inputs) == table
 
 
 def test_public_generate_returns_a_piet_raster() -> None:
