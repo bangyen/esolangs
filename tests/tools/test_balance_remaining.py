@@ -306,6 +306,11 @@ def _regime_tables():
         "Clockwise",
         "Collatz Multiverse",
         "Container",
+        "Crement",
+        "Dimensional",
+        "EGL",
+        "Smallfuck",
+        "Underload",
         "Dig",
         "Fargo",
         "FALSE",
@@ -638,4 +643,35 @@ def test_apl_large_frame_names_execute(inputs):
         output = esolangs.run(
             language, balanced, esolangs.encode_inputs(language, bits)
         )
+        assert esolangs.read_answer(language, output) == table[row]
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize(
+    "language", ["Crement", "Dimensional", "EGL", "Smallfuck", "Underload"]
+)
+@pytest.mark.parametrize("inputs", [6, 8])
+def test_larger_setter_and_header_regimes(language, inputs):
+    rng = random.Random(1021 + inputs)
+    table = "".join(rng.choice("01") for _ in range(1 << inputs))
+    default = esolangs.generate(language, table)
+    balanced = esolangs.generate(language, table, balance=True)
+    widest = max(map(len, default.split("\n")))
+    layouts = [default] + [
+        esolangs.generate(language, table, width) for width in range(1, widest + 1)
+    ]
+    assert balanced in layouts
+    assert balance_score(balanced) == min(map(balance_score, layouts))
+    if language == "Crement":
+        assert (
+            esolangs.evaluate(language, balanced, inputs=inputs, timeout=None) == table
+        )
+        return
+    for row in (0, 1, len(table) // 2, len(table) - 1):
+        bits = tuple(map(int, format(row, f"0{inputs}b")))
+        if esolangs.describe(language)["parameterized"]:
+            program, stdin = esolangs.instantiate(language, balanced, bits), ""
+        else:
+            program, stdin = balanced, esolangs.encode_inputs(language, bits)
+        output = esolangs.run(language, program, stdin)
         assert esolangs.read_answer(language, output) == table[row]
