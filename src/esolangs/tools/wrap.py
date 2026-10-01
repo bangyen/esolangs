@@ -565,7 +565,22 @@ def balance_width(program: str) -> int:
 
 
 def balance_program(program: str, language_id: str) -> str:
-    """Rewrap once toward a square, retaining a better default layout."""
+    """Balance single-line equal tokens exactly; otherwise use an area target."""
+    wrapper = WRAPPERS.get(language_id)
+    if "\n" not in program and wrapper in (wrap_space_delimited, wrap_grid, _mammalian):
+        tokens = program.split()
+        if tokens and len({len(token) for token in tokens}) == 1:
+            cell = len(tokens[0])
+            if wrapper is not _mammalian or cell == 4:
+                # For k equal cells, W=(cell+1)k-1 and H=ceil(N/k).
+                # The quadratic's positive root brackets the crossing.
+                stride = cell + 1
+                columns = max(
+                    1, (1 + isqrt(1 + 4 * stride * len(tokens))) // (2 * stride)
+                )
+                lower = wrap_program(program, language_id, stride * columns - 1)
+                upper = wrap_program(program, language_id, stride * (columns + 1) - 1)
+                return min((program, lower, upper), key=balance_score)
     candidate = wrap_program(program, language_id, balance_width(program))
     return min((program, candidate), key=balance_score)
 
