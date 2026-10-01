@@ -150,6 +150,61 @@ def test_fractran_parity_representation_omits_empty_width_regimes():
     assert esolangs.evaluate("FRACTRAN", balanced, inputs=2) == "0110"
 
 
+def test_bio_balance_keeps_source_that_does_not_tile_commands():
+    assert balance_program("not BIO", "bio") == "not BIO"
+
+
+def test_bio_nested_spaced_commands_keep_their_structural_runs():
+    program = "0ix{0ox; 0ix{0oy;};};"
+    balanced = balance_program(program, "bio")
+    layouts = [program] + [
+        wrap_program(program, "bio", width) for width in range(1, len(program) + 1)
+    ]
+    assert balance_score(balanced) == min(map(balance_score, layouts))
+    assert esolangs.run("BIO", balanced) == esolangs.run("BIO", program) == ""
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("inputs", range(4, 7))
+def test_bio_padding_caps_match_every_width(inputs):
+    rng = random.Random(1017 + inputs)
+    table = "".join(rng.choice("01") for _ in range(1 << inputs))
+    default = esolangs.generate("BIO", table)
+    balanced = esolangs.generate("BIO", table, balance=True)
+    layouts = [default] + [
+        esolangs.generate("BIO", table, width) for width in range(1, len(default) + 1)
+    ]
+    assert balanced in layouts
+    assert balance_score(balanced) == min(map(balance_score, layouts))
+    assert esolangs.evaluate("BIO", balanced, inputs=inputs) == table
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("inputs", range(7, 11))
+def test_bio_saturated_runs_attain_both_geometry_bounds(inputs):
+    rng = random.Random(1018 + inputs)
+    table = "".join(rng.choice("01") for _ in range(1 << inputs))
+    default = esolangs.generate("BIO", table)
+    balanced = esolangs.generate("BIO", table, balance=True)
+    full = esolangs.generate("BIO", table, 3 * len(table))
+    # Deep runs contain at most three four-cell commands; the last has at
+    # least one. A cap over four levels below the deepest cannot attain Wmax.
+    depth = len(table) - 1
+    lower = 2 * (depth - 4) + 2 * (depth - 4) // 3
+    upper = 2 * (depth + 1) + 2 * (depth + 1) // 3
+    layouts = [default, full] + [
+        esolangs.generate("BIO", table, width) for width in range(lower, upper + 1)
+    ]
+    assert balanced in layouts
+    assert balance_score(balanced) == min(map(balance_score, layouts))
+    assert len(balanced.split("\n")) == 2 * len(table) + 6 * (inputs - 1)
+    assert max(map(len, balanced.split("\n"))) == max(map(len, full.split("\n")))
+    for row in (0, 1, len(table) // 2, len(table) - 1):
+        bits = tuple(map(int, format(row, f"0{inputs}b")))
+        output = esolangs.run("BIO", esolangs.instantiate("BIO", balanced, bits))
+        assert esolangs.read_answer("BIO", output) == table[row]
+
+
 @pytest.mark.medium
 @pytest.mark.parametrize(
     "table", ["01", "10", "0110", "0001", "10010110", "0110100110010110"]
@@ -246,6 +301,7 @@ def _regime_tables():
         "B-tapemark",
         "Bitdeque",
         "BrainIf",
+        "BIO",
         "Clockwise",
         "Collatz Multiverse",
         "Container",
