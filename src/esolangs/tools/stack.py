@@ -27,8 +27,8 @@ def _sink_top(stack: tuple[int, ...], places: int) -> tuple[int, ...]:
 def stack_programs(n: int, sinks: Sinks, read: str) -> dict[tuple[int, ...], str]:
     """Read-and-sink program for each reachable stack arrangement.
 
-    Maps each arrangement (bottom to top, by input index) to its program,
-    Forþ passing its own ``sinks`` (``(places, ops)``) and ``read``.  A
+    Map each arrangement (bottom to top, by input index) to its program.
+    Forþ supplies its own ``sinks`` (``(places, ops)``) and ``read``.  A
     product, not a search: a read leaves its bit on top and the only lasting
     choice is how far it sinks (0, 1 or 2), so there are ``2 * 3**(n - 2)``
     arrangements, which a test pins.

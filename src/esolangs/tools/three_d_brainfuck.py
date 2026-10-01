@@ -161,7 +161,6 @@ def _three_d_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     move((perm[0], 0, 0))
     node(0, 0, 0)
 
-    # Exactly one leaf fired, so the offset is paid once, here.
     # Exactly one leaf fired, and the answer cell already holds the offset,
     # so a '1' leaf's single ``+`` has made it the right character.
     move(result)

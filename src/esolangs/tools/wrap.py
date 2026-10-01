@@ -130,7 +130,10 @@ def _span(length: int, cell: int) -> int:
 
     ``k`` cells hold ``k * cell + (k - 1)`` characters.
     """
-    return max(1, -(-(length + 1) // (cell + 1)))
+    cells, remainder = divmod(length + 1, cell + 1)
+    if remainder:
+        cells += 1
+    return max(1, cells)
 
 
 #: One input's mark run (:func:`~esolangs.tools.helpers.mark`), one token:

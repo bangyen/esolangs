@@ -95,8 +95,6 @@ from esolangs.tools.minifuck_pool import (
 # are re-exported rather than referenced through the module because the test
 # suite imports them from here by name, and because every use in this file
 # reads as part of the construction rather than as a call into a simulator.
-# ``_Sim`` and ``_Joint`` are re-exported rather than referenced through
-# the module because the test suite imports them from here by name.
 from esolangs.tools.minifuck_sim import (
     _MINIFUCK_INPUT,
     PAIR,

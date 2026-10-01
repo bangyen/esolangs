@@ -494,13 +494,12 @@ def minsky_swap(truth_table: str, width: int | None = None) -> str:
                 lines.append(TEMPLATE_CHAR * len(_MINSKY_RMSN_PAIR[0]))
         else:
             for command in token:
-                lines.append(
-                    f"decnz({next(jumps)});"
-                    if command == "~"
-                    else "inc();"
-                    if command == "+"
-                    else "swap();"
-                )
+                if command == "~":
+                    lines.append(f"decnz({next(jumps)});")
+                elif command == "+":
+                    lines.append("inc();")
+                else:
+                    lines.append("swap();")
     return "\n".join(lines)
 
 

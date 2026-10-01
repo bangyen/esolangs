@@ -94,9 +94,9 @@ def _ram0_nand(truth_table: str) -> str:
         if left == 1 or right == 1:
             return 0
         # Two true constants use the store kernel, avoiding self-recursion.
-        if left == 0 and right:
+        if left == 0 and right != 0:
             return nand(right, right)
-        if right == 0 and left:
+        if right == 0 and left != 0:
             return nand(left, left)
         pair = (min(left, right), max(left, right))
         if pair in gates:

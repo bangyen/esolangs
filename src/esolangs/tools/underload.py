@@ -91,10 +91,12 @@ def _shared(truth_table: str, *, short: bool = False) -> str:
         if key < 2:
             pieces.append("!" * (n - level) + f"({key})")
             return
-        if carry is None and (carry := choice(level, key)[1]) is not None:
-            pieces.append("(")
-            write(level_of[carry], carry, None)
-            pieces.append(")")
+        if carry is None:
+            carry = choice(level, key)[1]
+            if carry is not None:
+                pieces.append("(")
+                write(level_of[carry], carry, None)
+                pieces.append(")")
         zero, one = halves[key]
         if carry is not None:
             pieces.append("~")
@@ -134,11 +136,12 @@ def underload(truth_table: str, width: int | None = None) -> str:
 def underload_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
     """Return the uniform selector pair distinguished by its inert prefix."""
     clean = template.replace("\n", "")
-    pair = (
-        _BIT_PAIR
-        if clean.startswith("()!(!)")
-        else (_SHORT_PAIR if template.startswith("()!") else PAIR)
-    )
+    if clean.startswith("()!(!)"):
+        pair = _BIT_PAIR
+    elif template.startswith("()!"):
+        pair = _SHORT_PAIR
+    else:
+        pair = PAIR
     return (pair,) * n
 
 
