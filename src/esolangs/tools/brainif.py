@@ -183,43 +183,8 @@ def _brainif_dag(table: str) -> str:
     return "\n".join(lines)
 
 
-def _brainif_tree(truth_table: str, width: int | None, *, prune: bool = True) -> str:
-    """Build the tree/spatial candidate computing the given truth table.
-
-    ``truth_table`` is a binary string of length 2**n indexed by the inputs
-    (most significant first), ``n`` is the input count implied by the table length.
-
-    BrainIf reads each input into a cell with ``if 0 input``, then a
-    recursive decision tree checks each cell with ``if 49 goto``; zero falls
-    through to its subtree without spelling a second destination.
-
-    The answer byte is built *first*, on cell 0: 48 ``increment`` lines
-    once, rather than a climb per digit.  There is no way to copy a byte in
-    BrainIf, and a climb converges -- every entry value 0..47 leaves it
-    holding 48 -- so one climb cannot serve both digits however it is
-    entered.  Two climbs is 48 + 49 lines, which used to dominate: a
-    ``11110000`` program was 97 increments out of 153 lines.
-
-    Building first also fixes which way the tape runs.  The pointer steps
-    out over cells that are still zero, where one ``if 0 move right``
-    advances exactly one cell, and the tree reads its inputs from that far
-    cell back down toward the answer.  So a level is a read, two branch
-    tests and a step left, and a leaf is *there* already, adding one iff its
-    entry is a ``1`` before joining a two-line tail.
-
-    That is what makes the tree foldable: a level whose halves agree is read
-    and stepped past but not tested, as Line's tree skips it, so an ignored
-    input costs its three reading lines.  Every read still happens, or a
-    caller feeding several programs from one stream would desync.  Equal
-    spans at one level run the same code from the same cell, so the second
-    is one guarded ``goto`` to the first.  A wide table stays a tree while
-    it branches on at most :data:`_TREE_LEVELS` inputs.
-    """
-    n = _validate_truth_table(truth_table)
-    # Equal halves skip exactly the nonessential inputs. Decide before
-    # allocating entries; the unpruned tree retains its arity cutoff.
-    if (len(essential_inputs(truth_table, n)) if prune else n) > _TREE_LEVELS:
-        return _brainif_linear(truth_table)
+def _brainif_tree_entries(truth_table: str, n: int, *, prune: bool) -> list[_Entry]:
+    """Emit symbolic tree entries with one shared output tail."""
     # Initial zero skips the two-line output trampoline.  Leaves later return
     # with 48/49 to line 2, whose guards forward to the wide output-tail
     # address -- rendered twice, rather than once per leaf.
@@ -299,6 +264,11 @@ def _brainif_tree(truth_table: str, width: int | None, *, prune: bool = True) ->
     entries.append(_Cmd(f"if {_ASCII_ONE} output"))
     entries.append(_End())
 
+    return entries
+
+
+def _brainif_resolve(entries: list[_Entry], width: int | None) -> str:
+    """Resolve symbolic addresses and shorten commands when a width requires it."""
     # resolve labels from the actual line sequence (the "out" markers emit
     # no line, so the marker's target is the next line that does)
     labels: dict[int, int] = {}
@@ -345,6 +315,47 @@ def _brainif_tree(truth_table: str, width: int | None, *, prune: bool = True) ->
             for line in lines
         ]
     return "\n".join(lines)
+
+
+def _brainif_tree(truth_table: str, width: int | None, *, prune: bool = True) -> str:
+    """Build the tree/spatial candidate computing the given truth table.
+
+    ``truth_table`` is a binary string of length 2**n indexed by the inputs
+    (most significant first), ``n`` is the input count implied by the table length.
+
+    BrainIf reads each input into a cell with ``if 0 input``, then a
+    recursive decision tree checks each cell with ``if 49 goto``; zero falls
+    through to its subtree without spelling a second destination.
+
+    The answer byte is built *first*, on cell 0: 48 ``increment`` lines
+    once, rather than a climb per digit.  There is no way to copy a byte in
+    BrainIf, and a climb converges -- every entry value 0..47 leaves it
+    holding 48 -- so one climb cannot serve both digits however it is
+    entered.  Two climbs is 48 + 49 lines, which used to dominate: a
+    ``11110000`` program was 97 increments out of 153 lines.
+
+    Building first also fixes which way the tape runs.  The pointer steps
+    out over cells that are still zero, where one ``if 0 move right``
+    advances exactly one cell, and the tree reads its inputs from that far
+    cell back down toward the answer.  So a level is a read, two branch
+    tests and a step left, and a leaf is *there* already, adding one iff its
+    entry is a ``1`` before joining a two-line tail.
+
+    That is what makes the tree foldable: a level whose halves agree is read
+    and stepped past but not tested, as Line's tree skips it, so an ignored
+    input costs its three reading lines.  Every read still happens, or a
+    caller feeding several programs from one stream would desync.  Equal
+    spans at one level run the same code from the same cell, so the second
+    is one guarded ``goto`` to the first.  A wide table stays a tree while
+    it branches on at most :data:`_TREE_LEVELS` inputs.
+    """
+    n = _validate_truth_table(truth_table)
+    # Equal halves skip exactly the nonessential inputs. Decide before
+    # allocating entries; the unpruned tree retains its arity cutoff.
+    if (len(essential_inputs(truth_table, n)) if prune else n) > _TREE_LEVELS:
+        return _brainif_linear(truth_table)
+    entries = _brainif_tree_entries(truth_table, n, prune=prune)
+    return _brainif_resolve(entries, width)
 
 
 #: Levels whose walk becomes a marker-terminated ``goto`` loop instead of
