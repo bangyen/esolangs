@@ -219,14 +219,57 @@ class TestATemplateCarriesItsSetters:
         assert getattr(esolangs.generate("brainfuck", "0110"), "setters", None) is None
 
     def test_a_uniform_example_derives_its_setters_from_its_pair(self) -> None:
-        """Every embedded example carries one pair and derives from it."""
+        """Static pairs derive setters; notation-dependent pairs stay uniform."""
         from esolangs.tools.examples import BOOLEAN_EXAMPLES, _embedded, uniform
 
         embedded = [e for e in BOOLEAN_EXAMPLES.values() if e.setters is not None]
         uniform_ones = [e for e in embedded if e.pair is not None]
-        assert uniform_ones == embedded
+        dynamic = [e for e in embedded if e.pair is None]
+        assert set(dynamic) == {
+            BOOLEAN_EXAMPLES["bitdeque"],
+            BOOLEAN_EXAMPLES["fractran"],
+            BOOLEAN_EXAMPLES["crement"],
+            BOOLEAN_EXAMPLES["underload"],
+            BOOLEAN_EXAMPLES["smallfuck"],
+            BOOLEAN_EXAMPLES["minifuck"],
+            BOOLEAN_EXAMPLES["minsky-swap"],
+        }
         for example in uniform_ones:
             assert example.setters("", 3) == uniform(example.pair)("", 3)
+        example = BOOLEAN_EXAMPLES["minsky-swap"]
+        assert example.setters is not None
+        assert example.fill is not None
+        table = "01101001"
+        for width in (None, 1, 15):
+            template = esolangs.generate("Minsky Swap", table, width)
+            pairs = example.setters(template, 3)
+            assert pairs == template.setters
+            assert len(pairs) == 3
+            assert len(set(pairs)) == 1
+            assert len(pairs[0][0]) == len(pairs[0][1])
+            assert template.startswith("decnz(") == (width is not None)
+            for row, expected in enumerate(table):
+                bits = list(map(int, f"{row:03b}"))
+                program = example.fill(template, bits)
+                assert program == esolangs.instantiate("Minsky Swap", template, bits)
+                output = esolangs.run("Minsky Swap", program)
+                assert esolangs.read_answer("Minsky Swap", output) == expected
+        example = BOOLEAN_EXAMPLES["bitdeque"]
+        assert example.setters is not None
+        assert example.fill is not None
+        for width in (None, 1, 9, 15):
+            template = esolangs.generate("Bitdeque", table, width)
+            pairs = example.setters(template, 3)
+            assert pairs == template.setters
+            assert len(pairs) == 3
+            assert len(set(pairs)) == 1
+            assert len(pairs[0][0]) == len(pairs[0][1])
+            for row, expected in enumerate(table):
+                bits = list(map(int, f"{row:03b}"))
+                program = example.fill(template, bits)
+                assert program == esolangs.instantiate("Bitdeque", template, bits)
+                output = esolangs.run("Bitdeque", program)
+                assert esolangs.read_answer("Bitdeque", output) == expected
         with pytest.raises(TypeError, match="exactly one"):
             _embedded(
                 esolangs.generate, "x", pair=("a", "b"), setters=uniform(("a", "b"))
@@ -392,7 +435,14 @@ class TestAProgramKnowsWhoseItIs:
         assert getattr(copied, "language", None) == "brainfuck"
         template = pickle.loads(pickle.dumps(esolangs.generate("Minifuck", "0110", 20)))
         assert template == esolangs.generate("Minifuck", "0110", 20)
-        assert template.replace("\n", "") == esolangs.generate("Minifuck", "0110")
+        assert isinstance(template, str)
+        assert template == str(template)
+        assert json.dumps(template) == json.dumps(str(template))
+        assert getattr(template, "language", None) == "Minifuck"
+        assert (
+            template.replace("\n", "").encode()
+            == str(template).replace("\n", "").encode()
+        )
 
     def test_a_width_keeps_the_tag(self) -> None:
         program = esolangs.generate("brainfuck", "0110", 20)
@@ -694,6 +744,63 @@ class TestInstantiateCanCheckProvenance:
         template = esolangs.generate("Minifuck", "0110")
         assert esolangs.instantiate("Minifuck", template, [0, 1])
 
+    @pytest.mark.parametrize("language", ["BIO", "Bitdeque", "RAM0", "FRACTRAN"])
+    @pytest.mark.parametrize("width", [None, 5])
+    def test_wrapped_templates_keep_provenance(
+        self, language: str, width: int | None
+    ) -> None:
+        table = "01101001"
+        template = str(esolangs.generate(language, table, width))
+        for row, expected in enumerate(table):
+            bits = [(row >> shift) & 1 for shift in (2, 1, 0)]
+            program = esolangs.instantiate(language, template, bits, truth_table=table)
+            output = esolangs.run(language, program, timeout=1)
+            assert esolangs.read_answer(language, output) == expected
+        with pytest.raises(esolangs.TemplateError, match="is not the template"):
+            esolangs.instantiate(language, template, [0, 1, 0], truth_table="10010110")
+
+    @pytest.mark.parametrize(
+        "language", ["ArrowQueue", "Crement", "Minsky Swap", "Underload", "INTERCAL"]
+    )
+    @pytest.mark.parametrize("width", [1, 9, 10, 15, 20, 40, 80])
+    @pytest.mark.parametrize("as_string", [False, True])
+    def test_layout_templates_keep_provenance(
+        self, language: str, width: int, *, as_string: bool
+    ) -> None:
+        """Both tagged and saved layouts retain their table provenance."""
+        from esolangs.vm import run_until_halt_or_cycle
+
+        table = "01101001"
+        template = esolangs.generate(language, table, width)
+        if as_string:
+            template = str(template)
+        for row, expected in enumerate(table):
+            bits = list(map(int, f"{row:03b}"))
+            program = esolangs.instantiate(language, template, bits, truth_table=table)
+            if language in {"ArrowQueue", "Crement"}:
+                machine = esolangs.make_vm(language, program)
+                answer = "0" if run_until_halt_or_cycle(machine) else "1"
+            else:
+                answer = esolangs.read_answer(language, esolangs.run(language, program))
+            assert answer == expected
+        with pytest.raises(esolangs.TemplateError, match="is not the template"):
+            esolangs.instantiate(language, template, [0, 1, 0], truth_table="10010110")
+
+    @pytest.mark.parametrize("width", [1, 20, 40, 80])
+    def test_intercal_layout_candidates_keep_exact_provenance(self, width: int) -> None:
+        for inputs in range(1, 4):
+            for value in range(2 ** (2**inputs)):
+                table = format(value, f"0{2**inputs}b")
+                template = str(esolangs.generate("INTERCAL", table, width))
+                esolangs.instantiate(
+                    "INTERCAL", template, [0] * inputs, truth_table=table
+                )
+                wrong = table.translate(str.maketrans("01", "10"))
+                with pytest.raises(esolangs.TemplateError, match="is not the template"):
+                    esolangs.instantiate(
+                        "INTERCAL", template, [0] * inputs, truth_table=wrong
+                    )
+
 
 class TestSnapshotSaysItIsOpaque:
     """Its positions are not a schema and cannot be."""
@@ -803,7 +910,7 @@ class TestTheDebuggerMirrorsSnapshot:
 
 
 class TestAWidthAwareGeneratorCanStillOverrun:
-    """The docstring named LaserFuck; Streetcode is the worse of the two.
+    """Width-aware layouts can exceed a request below their construction floor.
 
     Both take the width themselves rather than being reflowed afterwards,
     which reads as a guarantee and is not one -- a token wider than the
@@ -816,7 +923,7 @@ class TestAWidthAwareGeneratorCanStillOverrun:
         counted = [
             max(len(line) for line in esolangs.generate(name, table, w).splitlines())
             - w
-            for w in range(8, 124, 4)
+            for w in range(1, 124, 4)
         ]
         over = [margin for margin in counted if margin > 0]
         return len(over), max(over, default=0)
@@ -828,12 +935,16 @@ class TestAWidthAwareGeneratorCanStillOverrun:
             assert widths > 0, f"{name} never overran"
             assert worst > 0
 
-    def test_streetcode_is_the_worse_of_the_two(self) -> None:
-        """The specific thing the docstring got backwards."""
-        laser_widths, laser_worst = self._overruns("LaserFuck", "10010110")
-        street_widths, street_worst = self._overruns("Streetcode", "10010110")
-        assert street_widths > laser_widths
-        assert street_worst > laser_worst
+    def test_width_floors_match_public_sources_and_overrun_counts(self) -> None:
+        """Warnings follow actual rendered widths, including narrower constructions."""
+        for name, floor, count, margin in (
+            ("LaserFuck", 8, 2, 7),
+            ("Streetcode", 7, 2, 6),
+        ):
+            source = esolangs.generate(name, "10010110", 1)
+            assert max(map(len, source.splitlines())) == floor
+            assert self._overruns(name, "10010110") == (count, margin)
+            assert esolangs.evaluate(name, "10010110", width=1) == "10010110"
 
     def test_the_pair_is_still_width_aware(self) -> None:
         """The two this class measures must stay in the group it measures.
@@ -1019,20 +1130,10 @@ class TestEvaluateTakesAWidth:
 
     @pytest.mark.parametrize(
         ("name", "effect"),
-        # Clockwise used to stand for "none" and now stacks its tree to a
-        # width, which is what pinning the effect against ``describe`` is
-        # for: it failed here rather than turning this into a test of
-        # "wrap" twice.  CV(N)(C) rejects newlines outright, so it cannot
-        # migrate the same way.
-        [("brainfuck", "wrap"), ("LaserFuck", "layout"), ("CV(N)(C)", "none")],
+        [("brainfuck", "wrap"), ("LaserFuck", "layout"), ("Line", "none")],
     )
     def test_it_works_for_each_width_effect(self, name: str, effect: str) -> None:
-        """The three things a width can do, one language each.
-
-        Pinned against ``describe`` rather than named in prose, so a
-        language that changes effect fails here instead of quietly making
-        this a test of one behaviour three times.
-        """
+        """Width effects remain explicit for text and raster generators."""
         assert esolangs.describe(name)["width_effect"] == effect
         assert esolangs.evaluate(name, "0110", timeout=30, width=25) == "0110"
 

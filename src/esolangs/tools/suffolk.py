@@ -70,9 +70,10 @@ def suffolk(truth_table: str) -> str:
         # comes back holding the *negated* bit.
         out.append(_one(_COUNTS[0][0]) + _write(_COUNTS[0][0]) * (_ASCII_ZERO - 1))
         out.append(">" * _COUNTS[0][0] + ",!")
-        if used.index(i):
+        input_position = used.index(i)
+        if input_position > 0:
             out.append(_read(_TWO) + _read(_COUNTS[0][0]) + _write(_TWO))
-            out.append((_read(_TWO) + _write(_DOWN)) * (half >> used.index(i)))
+            out.append((_read(_TWO) + _write(_DOWN)) * (half >> input_position))
         else:
             # The top bit steers the halves instead of the countdown.
             out.append(_read(_RAW) + _read(_COUNTS[0][0]) + _write(_RAW))

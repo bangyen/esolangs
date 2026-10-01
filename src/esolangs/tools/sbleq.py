@@ -4,7 +4,7 @@ from esolangs.tools.helpers import (
     _ASCII_ONE,
     _ASCII_ZERO,
     _validate_truth_table,
-    best_input_order,
+    in_input_order,
     subtree_ids,
     subtree_slot,
 )
@@ -76,8 +76,8 @@ def sbleq(truth_table: str) -> str:
     """
     _validate_truth_table(truth_table)
     if len(truth_table) <= 16:
-        return best_input_order(truth_table, _sbleq_best)
-    tree = best_input_order(truth_table, _sbleq_shared)
+        return in_input_order(truth_table, _sbleq_shared)
+    tree = in_input_order(truth_table, _sbleq_shared)
     packed = _sbleq_packed(truth_table)
     return tree if len(tree) < len(packed) else packed
 
@@ -85,13 +85,6 @@ def sbleq(truth_table: str) -> str:
 def _sbleq_shared(truth_table: str, perm: tuple[int, ...]) -> str:
     """Emit one order's shared tree; see :func:`_sbleq_hoisted`."""
     return _sbleq_hoisted(truth_table, perm, share=True)
-
-
-def _sbleq_best(truth_table: str, perm: tuple[int, ...]) -> str:
-    """Return the shorter of one order's plain and shared trees."""
-    plain = _sbleq_hoisted(truth_table, perm)
-    shared = _sbleq_shared(truth_table, perm)
-    return shared if len(shared) < len(plain) else plain
 
 
 def _sbleq_packed(truth_table: str) -> str:

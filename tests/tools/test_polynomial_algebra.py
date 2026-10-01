@@ -242,3 +242,16 @@ class TestBranchesTheGeneratorNoLongerReaches:
         product's slots are read straight off, with no bias decimal."""
         factors = [[1, 2 + i, 3 + i] for i in range(_PACKED_MIN_FACTORS + 8)]
         assert render_product(factors) == _incremental(factors)
+
+
+def test_draining_remains_available_at_the_instruction_cap(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A leading drain preserves tables excluded by the ordinary builders."""
+    import importlib
+
+    import esolangs
+
+    module = importlib.import_module("esolangs.tools.polynomial")
+    monkeypatch.setattr(module, "_POLYNOMIAL_MAX_INSTRS", 15)
+    assert esolangs.evaluate("Polynomial", "0101") == "0101"

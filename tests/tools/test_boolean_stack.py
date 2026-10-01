@@ -4,6 +4,8 @@ Covers the generators in :mod:`esolangs.tools.stack`: Grapheme,
 Forþ, Modulous, BFStack, and Unsquare.
 """
 
+import random
+
 import pytest
 
 import esolangs
@@ -389,6 +391,44 @@ class TestModulous:
             got = run_modulous(program, [str(b) for b in bits])
             assert got == str(int(table[combo])), f"inputs {bits}"
 
+    @pytest.mark.parametrize("width", [1, 4, 7, 13, 40, 80])
+    def test_narrow_chunks_execute_every_small_table(self, width: int) -> None:
+        for n in range(1, 4):
+            for value in range(2 ** (2**n)):
+                table = format(value, f"0{2**n}b")
+                program = esolangs.generate("Modulous", table, width)
+                assert max(map(len, program.splitlines())) <= max(width, 4)
+                for row in range(2**n):
+                    bits = list(format(row, f"0{n}b"))
+                    assert run_modulous(program, bits) == table[row]
+
+    @pytest.mark.medium
+    @pytest.mark.parametrize("n", [5, 8])
+    def test_narrow_chunks_and_relative_jumps_at_larger_arity(self, n: int) -> None:
+        rng = random.Random(20260930 + n)
+        for table in (
+            "".join(str(row.bit_count() & 1) for row in range(2**n)),
+            format(rng.getrandbits(2**n), f"0{2**n}b"),
+        ):
+            for width in (1, 4, 13, 80):
+                program = esolangs.generate("Modulous", table, width)
+                for row in [0, 2**n - 1, *rng.sample(range(2**n), 12)]:
+                    assert (
+                        run_modulous(program, list(format(row, f"0{n}b"))) == table[row]
+                    )
+
+    def test_narrow_literal_floor_and_corpus_size(self) -> None:
+        assert max(map(len, boolean.modulous("0110", 1).splitlines())) == 3
+        assert (
+            sum(len(boolean.modulous(format(v, "08b"), 1)) for v in range(256)) == 94976
+        )
+
+    def test_fitting_bracket_layout_keeps_its_source(self) -> None:
+        from esolangs.tools.wrap import _bracket_literal
+
+        natural = boolean.modulous("01101001")
+        assert boolean.modulous("01101001", 80) == _bracket_literal(natural, 80)
+
     def test_structure(self) -> None:
         """The table is one literal and the program prints one of its bytes."""
         program = boolean.modulous("10010110")
@@ -432,6 +472,53 @@ class TestBfstack:
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = run_bfstack(program, [str(b) for b in bits])
             assert got == str(int(table[combo])), f"inputs {bits}"
+
+    @pytest.mark.medium
+    @pytest.mark.parametrize("n", [7, 8, 9, 12])
+    def test_byte_index_boundaries(self, n: int) -> None:
+        """Seven-input blocks preserve the sentinel and high input bits."""
+        rng = random.Random(n)
+        table = "".join(rng.choice("01") for _ in range(1 << n))
+        program = boolean.bfstack(table)
+        rows = (
+            range(1 << n)
+            if n <= 9
+            else sorted(
+                {
+                    0,
+                    127,
+                    128,
+                    255,
+                    256,
+                    2047,
+                    2048,
+                    4095,
+                    *rng.sample(range(1 << n), 32),
+                }
+            )
+        )
+        for row in rows:
+            bits = [str((row >> i) & 1) for i in range(n - 1, -1, -1)]
+            assert run_bfstack(program, bits) == table[row], (n, row)
+
+    @pytest.mark.medium
+    @pytest.mark.parametrize("bit", "01")
+    def test_wide_constant_blocks_consume_every_input(self, bit: str) -> None:
+        """Folded blocks drain their inputs and leave only one answer."""
+        table = bit * 256 + ("1" if bit == "0" else "0") * 256
+        program = boolean.bfstack(table)
+        for row in (0, 255, 256, 511):
+            bits = [str((row >> i) & 1) for i in range(8, -1, -1)]
+            assert run_bfstack(program, bits) == table[row]
+        constant = boolean.bfstack(bit * 4096)
+        stdin = esolangs.encode_inputs("BFStack", [1] * 12) + "0\n"
+        assert esolangs.run("BFStack", constant + ",.", stdin=stdin) == bit + "0"
+
+    @pytest.mark.medium
+    def test_the_last_eight_input_row_does_not_wrap_to_zero(self) -> None:
+        """Index 256 previously skipped the decoder's outer loop."""
+        table = "0" * 255 + "1"
+        assert run_bfstack(boolean.bfstack(table), ["1"] * 8) == "1"
 
     def test_encode_decode_structure(self) -> None:
         """The program encodes the inputs then tests the zero rows."""

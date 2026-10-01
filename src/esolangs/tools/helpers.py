@@ -17,6 +17,28 @@ _ASCII_ZERO = 48
 _ASCII_ONE = _ASCII_ZERO + 1  # ``ord("1")``, the digit the other branch prints
 
 
+def short_name(index: int, alphabet: str) -> str:
+    """Return the zero-based bijective-base name over a nonempty alphabet."""
+    if index < 0 or not alphabet:
+        raise ValueError("short_name needs a nonnegative index and nonempty alphabet")
+    value = index + 1
+    chars = []
+    while value:
+        value, digit = divmod(value - 1, len(alphabet))
+        chars.append(alphabet[digit])
+    return "".join(reversed(chars))
+
+
+def grid_width(program: str) -> int:
+    """Return the widest rendered row, including its padding."""
+    return max(map(len, program.split("\n")))
+
+
+def narrowest_grid(*candidates: str) -> str:
+    """Return the narrowest layout, keeping the earlier one on a tie."""
+    return min(candidates, key=grid_width)
+
+
 def constant_span_test(truth_table: str) -> Callable[[int, int], bool]:
     """Return an O(1) test for whether a half-open table span is constant."""
     ones = [0]
@@ -189,6 +211,33 @@ def _validate_shape(truth_table: str) -> int:
     return n
 
 
+def anf_coefficients(truth_table: str) -> list[int]:
+    """Return row-indexed ANF coefficients, allowing a nullary reduced table.
+
+    Pack Theta(log T) coefficients per word for O(T) word-RAM work.
+    """
+    n = _validate_shape(truth_table)
+    if n == 0:
+        return [int(truth_table)]
+    width = max(2, 1 << (n.bit_length() - 1))
+    words = [
+        int(truth_table[start : start + width][::-1], 2)
+        for start in range(0, len(truth_table), width)
+    ]
+    stride = 1
+    while stride < width:
+        high = int(("1" * stride + "0" * stride) * (width // (2 * stride)), 2)
+        words = [value ^ ((value << stride) & high) for value in words]
+        stride *= 2
+    stride = 1
+    while stride < len(words):
+        for start in range(0, len(words), 2 * stride):
+            for offset in range(start, start + stride):
+                words[offset + stride] ^= words[offset]
+        stride *= 2
+    return [(value >> bit) & 1 for value in words for bit in range(width)]
+
+
 #: One ``(zero, one)`` pair per input, in name order: what a template's
 #: runs are filled with.  Each pair is equal width, checked by
 #: :func:`check_setters`, so the constant-width convention is a property
@@ -342,6 +391,45 @@ def _residual_ids(
     return levels, children, constants
 
 
+def deque_plan(order: tuple[int, ...]) -> tuple[list[bool], list[bool]] | None:
+    """Return head pushes by input and head pops by level that pop ``order``.
+
+    Inputs are read in order and each goes to the row's head or tail, so
+    the row reads (head first) the head-pushed inputs descending, input 0,
+    then the tail-pushed ones ascending; the tree pops either end at each
+    level.  Before input 0 is popped each pop is the largest left on its
+    side, so that prefix splits into two descending runs, the tail run
+    above every input popped after 0; those are all tail-pushed, so they
+    leave the row as a run each pop takes the least or the greatest of.
+    ``None`` when ``order`` has no such split: the plan is the greedy fit
+    (a tie goes to the lower run), which finds every poppable order.
+    """
+    depth = len(order)
+    zero = order.index(0)
+    floor = max(order[zero + 1 :], default=-1)
+    head_push = [False] * depth
+    head_pop = []
+    last = {True: depth, False: depth}
+    for x in order[:zero]:
+        fits = [
+            head for head in (True, False) if x < last[head] and (head or x > floor)
+        ]
+        if not fits:
+            return None
+        head = min(fits, key=last.__getitem__)
+        last[head] = x
+        head_push[x] = head
+        head_pop.append(head)
+    head_pop.append(True)
+    rest = sorted(order[zero + 1 :])
+    for x in order[zero + 1 :]:
+        if x not in (rest[0], rest[-1]):
+            return None
+        head_pop.append(x == rest[0])
+        rest.remove(x)
+    return head_push, head_pop
+
+
 def essential_inputs(truth_table: str, n: int) -> list[int]:
     """Input positions affecting the table, with O(T) worst-case RAM work.
 
@@ -415,6 +503,27 @@ def stored_inputs(truth_table: str, perm: tuple[int, ...]) -> set[int]:
 _GREEDY_ORDER_MAX_ARITY = 10
 
 
+def in_input_order(
+    truth_table: str,
+    build: Callable[[str, tuple[int, ...]], str],
+) -> str:
+    """Build a validated table in input order."""
+    n = _validate_truth_table(truth_table)
+    return build(truth_table, tuple(range(n)))
+
+
+def input_orders(
+    truth_table: str, *, max_arity: int | None = None
+) -> list[tuple[int, ...]]:
+    """Return identity then distinct greedy order, capped only when requested."""
+    n = _validate_truth_table(truth_table)
+    identity = tuple(range(n))
+    if max_arity is not None and n > max_arity:
+        return [identity]
+    greedy = _greedy_input_order(truth_table, n)
+    return [identity] if greedy == identity else [identity, greedy]
+
+
 def best_input_order(
     truth_table: str,
     build: Callable[[str, tuple[int, ...]], str],
@@ -436,20 +545,14 @@ def best_input_order(
     ``ADD``/``SUB``/``JMP IF`` rejects a variable operand -- no return leg
     (verified against the interpreter and the wiki).
     """
-    n = _validate_truth_table(truth_table)
-    identity = tuple(range(n))
-    greedy = (
-        _greedy_input_order(truth_table, n)
-        if n <= _GREEDY_ORDER_MAX_ARITY
-        else identity
-    )
-    orders = [] if greedy == identity else [greedy]
+    orders = input_orders(truth_table, max_arity=_GREEDY_ORDER_MAX_ARITY)
+    identity = orders[0]
 
     # An empty candidate means "this order could not be built" and is skipped
     # rather than winning on length 0.  Builders that always succeed retain
     # the plain behavior.
     best = build(truth_table, identity)
-    for perm in orders:
+    for perm in orders[1:]:
         candidate = build(permute_truth_table(truth_table, perm), perm)
         if candidate and (not best or len(candidate) < len(best)):
             best = candidate
@@ -570,56 +673,6 @@ def decision_tree_tokens[Token](
     return out
 
 
-def separated_tree_text(
-    truth_table: str,
-    leaf: Callable[[int, int], str],
-    *,
-    head: str,
-    between: str,
-    close: str,
-    one_first: bool = False,
-    pair: Callable[[int, int], str] | None = None,
-) -> str:
-    """Return a folded decision tree as text, with a separator between halves.
-
-    ``head`` opens a node and its first half, ``between`` closes that half
-    and opens the other, and ``close`` ends the node; ``leaf(level, row)``
-    writes a leaf, which a collapsed subtable reaches early.  ``one_first``
-    lays the one-half before the zero-half, and ``pair(level, mid)`` writes
-    a node whose halves are two different constants, split at row ``mid``.
-
-    :func:`decision_tree_tokens` deliberately cannot act *between* the
-    children, and a language whose branch is a delimited body -- FALSE's
-    ``[...]?`` lambda, Unlambda's ``d`` promise -- needs exactly that: one
-    delimiter per half, in the text, between the two.  One pre-order pass
-    with an explicit stack, so a node's text is appended once rather than
-    copied into its parent's: O(len(result)).
-    """
-    n = _validate_truth_table(truth_table)
-    constant = constant_span_test(truth_table)
-    pieces: list[str] = []
-    # A tuple is a subtable still to write; a string is text already placed.
-    work: list[str | tuple[int, int, int]] = [(0, 0, len(truth_table))]
-    while work:
-        item = work.pop()
-        if isinstance(item, str):
-            pieces.append(item)
-            continue
-        level, lo, hi = item
-        if level == n or constant(lo, hi):
-            pieces.append(leaf(level, lo))
-            continue
-        mid = (lo + hi) // 2
-        if pair is not None and constant(lo, mid) and constant(mid, hi):
-            pieces.append(pair(level, mid))
-            continue
-        halves = ((mid, hi), (lo, mid)) if one_first else ((lo, mid), (mid, hi))
-        pieces.append(head)
-        # Pushed back to front: the stack is popped, so this is source order.
-        work += [close, (level + 1, *halves[1]), between, (level + 1, *halves[0])]
-    return "".join(pieces)
-
-
 def move_text(start: int, target: int, right: str, left: str) -> str:
     """Return the moves taking a one-dimensional pointer to ``target``.
 
@@ -636,6 +689,9 @@ def decision_tree_body(
     left: str,
     perm: tuple[int, ...],
     start: int,
+    *,
+    binary_leaves: bool = False,
+    result: int | None = None,
 ) -> tuple[str, int]:
     """Return the decision tree alone, and the cell it leaves the pointer on.
 
@@ -644,6 +700,7 @@ def decision_tree_body(
     per command, and so wants to fold the ASCII offsets the reads and the
     print would otherwise spend 48 characters on each.
     :func:`_decision_tree_program` joins the three parts back.
+    ``binary_leaves`` transfers the final bit directly into the answer.
     """
     n = _validate_truth_table(truth_table)
 
@@ -655,7 +712,7 @@ def decision_tree_body(
         cells.append(move_text(pos, target, right, left))
         pos = target
 
-    result = 2 * n
+    result = 2 * n if result is None else result
     is_constant = constant_span_test(truth_table)
 
     def constant(i: int, combo: int) -> str | None:
@@ -676,6 +733,23 @@ def decision_tree_body(
     def node(i: int, combo: int) -> None:
         """Emit node ``i``: test ``b_i``, run one side, leave both cells zero."""
         bit = 2 * perm[i]
+        if binary_leaves and i == n - 1:
+            if truth_table[combo] == truth_table[combo + 1]:
+                if truth_table[combo] == "1":
+                    move(result)
+                    cells.append("+")
+                return
+            move(bit)
+            if truth_table[combo] == "1":
+                move(result)
+                cells.append("+")
+                move(bit)
+            cells.append("[-")
+            move(result)
+            cells.append("+" if truth_table[combo + 1] == "1" else "-")
+            move(bit)
+            cells.append("]")
+            return
         flag = bit + 1
         one = combo | (1 << (n - 1 - i))
         move(flag)
@@ -773,3 +847,14 @@ def _cm_constants(needed: Iterable[int], zero: str = "zero") -> list[str]:
             else:
                 lines.append(f"k{n} = k{a} x + k{c}, NOT PRINT.")
     return lines
+
+
+def _parity_bias(truth_table: str) -> int | None:
+    """Return the complement bit for parity, or None, in O(T)."""
+    bias = int(truth_table[0])
+    parity = bytearray(len(truth_table))
+    for row in range(1, len(truth_table)):
+        parity[row] = parity[row >> 1] ^ (row & 1)
+        if int(truth_table[row]) != parity[row] ^ bias:
+            return None
+    return bias

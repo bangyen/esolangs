@@ -229,31 +229,16 @@ def test_boolean_set_lists_exactly_the_exported_generators() -> None:
 # The tree generators that pick their input split order by measuring, and the
 # builder that emits one fixed order, so a test can compare the two.
 def _reordering_generators() -> list[object]:
-    from esolangs.tools.algebraic_programming_language import _apl_tree_ordered
     from esolangs.tools.painfuck import _painfuck_ordered
     from esolangs.tools.parameterized import (
         _bitdeque_ordered,
-        _ram0_ordered,
     )
-    from esolangs.tools.tape import _bf_ordered, _jaune_ordered
     from esolangs.tools.three_d_brainfuck import _three_d_ordered
 
     entries: list[tuple[str, object, object]] = [
-        (
-            "algebraic_programming_language",
-            boolean.algebraic_programming_language,
-            _apl_tree_ordered,
-        ),
-        (
-            "brainfuck",
-            boolean.brainfuck,
-            _bf_ordered,
-        ),
         ("painfuck", boolean.painfuck, _painfuck_ordered),
         ("three_d_brainfuck", boolean.three_d_brainfuck, _three_d_ordered),
-        ("ram0", boolean.ram0, _ram0_ordered),
         ("bitdeque", boolean.bitdeque, _bitdeque_ordered),
-        ("jaune", boolean.jaune, _jaune_ordered),
     ]
     return [
         (
@@ -296,16 +281,9 @@ def test_reordering_shrinks_the_tables_it_should(
     ``10101010`` depends solely on the *last* input, so splitting on it
     first folds the whole tree to a single leaf, while the identity order
     folds nothing until the bottom level.
-
-    Jaune is exempt because a *different* optimization already collects
-    this: it clobbers the inputs no node branches on rather than storing
-    them, so the identity order emits the minimal program for a
-    single-dependency table and there is nothing for a reorder to win.
-    Its gains show up on tables with several real dependencies instead.
     """
-    if name == "jaune":
-        pytest.skip("clobbering already makes the identity order optimal here")
-    assert len(fn("10101010")) < len(ordered("10101010", (0, 1, 2))), (
+    table = "10101010"
+    assert len(fn(table)) < len(ordered(table, (0, 1, 2))), (
         f"{name} did not reorder a table that only reordering folds"
     )
 
@@ -1033,7 +1011,7 @@ def test_the_exec_tables_really_need_every_input(make: Callable[[int], str]) -> 
 _DOCUMENTED_SIZES: dict[str, tuple[int, int, float]] = {
     "Circuit Diagram": (1_780_773, 2_505_897, 1.4),
     "Polynomial": (1_589_968, 5_016_851, 3.2),
-    "Factor": (16_711, 35_323, 2.1),
+    "Factor": (13_442, 27_799, 2.1),
 }
 
 

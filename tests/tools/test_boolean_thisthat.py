@@ -162,3 +162,80 @@ def test_layout_collisions_abort() -> None:
     builder.connect([(1, 0), (2, 0)], "single")
     with pytest.raises(ValueError, match="wire collision"):
         builder.connect([(1, 0), (2, 0)], "double")
+
+
+@pytest.mark.parametrize("width", [1, 10, 20, 40, 80])
+def test_rotated_layout_keeps_ports_and_bistack_axes(width: int) -> None:
+    """Rotation changes physical directions while input deque order stays fixed."""
+    for n in (1, 3, 5):
+        table = _parity(n)
+        plain = thisthat(table)
+        program = esolangs.generate("thisthat", table, width)
+        floor = min(max(map(len, plain.splitlines())), len(plain.splitlines()))
+        assert max(map(len, program.splitlines())) <= max(width, floor)
+        for row, expected in enumerate(table):
+            bits = f"{row:0{n}b}"
+            io = ScriptedIO("".join(f"{bit}\n" for bit in bits))
+            run(program.splitlines(), io)
+            assert (io.getvalue(), io.reads) == (expected, n)
+
+
+def test_rotated_rendered_area_remains_linear() -> None:
+    sizes = [len(thisthat(_parity(n), 1)) for n in (5, 7, 9)]
+    assert sizes[-1] / (1 << 9) < 300
+    assert sizes[2] / sizes[1] < 5
+
+
+@pytest.mark.medium
+def test_narrow_strip_executes_every_small_table() -> None:
+    """Each narrow branch consumes the same input deque and prints once."""
+    for n in range(1, 4):
+        size = 1 << n
+        for value in range(1 << size):
+            table = f"{value:0{size}b}"
+            source = esolangs.generate("thisthat", table, 1)
+            assert max(map(len, source.splitlines())) <= 9
+            for row, expected in enumerate(table):
+                io = ScriptedIO("".join(f"{bit}\n" for bit in f"{row:0{n}b}"))
+                run(source.splitlines(), io)
+                assert (io.getvalue(), io.reads) == (expected, n)
+    assert max(map(len, thisthat("0110", 1).splitlines())) == 1
+    assert len(thisthat("0110", 1)) == 17
+    assert sum(len(thisthat(format(v, "04b"), 1)) for v in range(16)) == 1104
+
+
+@pytest.mark.parametrize("width", [1, 3, 4, 5, 7, 9, 10, 19, 20, 40])
+def test_strip_preserves_fitting_layouts_and_public_answers(width: int) -> None:
+    from esolangs.tools.thisthat import _rotate_tree
+
+    for table in ("00", "11", "01", "10", "0110", "0001", "10010110"):
+        plain = thisthat(table)
+        old = plain
+        if max(map(len, plain.splitlines())) > width and len(plain.splitlines()) < max(
+            map(len, plain.splitlines())
+        ):
+            old = _rotate_tree(plain)
+        source = esolangs.generate("thisthat", table, width)
+        if max(map(len, old.splitlines())) <= width:
+            assert source == old
+        assert esolangs.evaluate("thisthat", table, width=width) == table
+
+
+@pytest.mark.parametrize("n", [4, 6, 8])
+def test_larger_narrow_layout_retains_linear_area_construction(n: int) -> None:
+    from esolangs.tools.thisthat import _rotate_tree
+
+    rng = random.Random(946 + n)
+    table = "".join(str(rng.randrange(2)) for _ in range(1 << n))
+    raw = thisthat(table)
+    expected = (
+        _rotate_tree(raw)
+        if len(raw.splitlines()) < max(map(len, raw.splitlines()))
+        else raw
+    )
+    source = esolangs.generate("thisthat", table, 1)
+    assert source == expected
+    for row in {0, (1 << n) - 1, *(rng.randrange(1 << n) for _ in range(4))}:
+        io = ScriptedIO("".join(f"{bit}\n" for bit in f"{row:0{n}b}"))
+        run(source.splitlines(), io)
+        assert (io.getvalue(), io.reads) == (table[row], n)

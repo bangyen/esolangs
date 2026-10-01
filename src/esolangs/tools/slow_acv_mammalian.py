@@ -155,6 +155,10 @@ def _node(array: list[int], acc: int) -> tuple[list[str], _State, _State, int]:
     return tokens, ([*loaded, 0], first), ([*loaded, 1], first + 1), start - 15
 
 
+class _UnreachableError(Exception):
+    """A trampoline target is not past its array's non-head sum."""
+
+
 def _trampoline(
     array: list[int], acc: int, target: int
 ) -> tuple[list[str], list[int], int]:
@@ -171,6 +175,8 @@ def _trampoline(
     """
     cur, val, tokens = list(array), acc, []
     rest_sum = sum(cur[1:])
+    if target <= rest_sum:
+        raise _UnreachableError("trampoline target is not past the running sum")
     while rest_sum < target - 255:
         chunk, cur, val = _stash_chunk(cur, val)
         rest_sum += _STASH_BYTE
@@ -771,7 +777,7 @@ def _try_arm(
     """
     try:
         return _tune(one, zero, weight, pool, cont)
-    except AssertionError:
+    except _UnreachableError:
         return None
 
 

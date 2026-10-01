@@ -233,6 +233,12 @@ class TestErrorsSurviveAProcessBoundary:
 class TestAnInterpreterLimitIsStillAnEsolangError:
     """Qoibl's interpreter recurses, and Python's stack is finite."""
 
+    def test_a_recursion_limit_preserves_prior_output(self) -> None:
+        program = "65\n" + "(" * 90
+        with pytest.raises(esolangs.InterpreterLimitError) as caught:
+            esolangs.run("Algebraic Programming Language", program)
+        assert caught.value.partial_output == "65\n"
+
     @staticmethod
     def _parity(n: int) -> str:
         """Return the parity table of arity ``n`` -- reliably a hard one."""

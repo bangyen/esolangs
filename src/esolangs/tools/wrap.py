@@ -3,16 +3,11 @@
 Most generators emit one long line and most languages read a newline as
 whitespace.  Wrapping is token-aware (slicing every ``width`` splits
 ``-6`` or BIO's ``0ox`` triples) and opt-in: 2D languages read newlines as
-rows, NoComment rejects them, Forbin and Packlang fold only an over-wide
-line.
+rows; Packlang folds only an over-wide line.
 
-Ten generators lay out their own shape instead (:func:`takes_width`):
-Streetcode and LaserFuck fold into a boustrophedon; Clockwise and
-Flowchart stack a column per node; Dig turns
-once; Alight and Super SNUSP steer; function x(y) and APL name a
-subexpression per line; Circuit Diagram bands.  Only Clockwise folds to
-any width; the rest floor (Flowchart ``n + 5``, Alight ``2 ** n``, Super SNUSP
-four, Circuit Diagram ~``10 * n``) and return the narrowest program.
+Generators detected by :func:`takes_width` lay out their own programs.
+They preserve structural lines and return a width floor when the requested
+width cannot fit whole tokens, statements or routing cells.
 
 :data:`MULTILINE` names the wrappers that handle their own structural
 lines.  :func:`_bio` indents by loop depth, :func:`wrap_grid` right-aligns
@@ -49,14 +44,23 @@ def wrap_space_delimited(program: str, width: int) -> str:
     return _join_tokens(program.split(), width, separator=" ")
 
 
-def _indented(program: str, width: int) -> str:
-    """Wrap each source line separately, preserving its leading indentation."""
-    lines: list[str] = []
+_PACKLANG_LEXEME = r"[A-Za-z_][A-Za-z_0-9]*|\d+|[{}();:,^!]"
+
+
+def _packlang(program: str, width: int) -> str:
+    """Fold complete Packlang lexical tokens, reducing indent when necessary."""
+    lines = []
     for line in program.split("\n"):
+        if len(line) <= width:
+            lines.append(line)
+            continue
+        tokens = re.findall(_PACKLANG_LEXEME, line)
+        if "".join(tokens) != "".join(line.split()):
+            return program
         indent = line[: len(line) - len(line.lstrip())]
-        content = line[len(indent) :]
-        wrapped = wrap_space_delimited(content, max(1, width - len(indent)))
-        lines.extend(indent + part for part in wrapped.split("\n"))
+        indent = indent[: max(0, width - max(map(len, tokens), default=0))]
+        folded = _join_tokens(tokens, max(1, width - len(indent)), separator=" ")
+        lines.extend(indent + part for part in folded.split("\n"))
     return "\n".join(lines)
 
 
@@ -126,7 +130,10 @@ def _span(length: int, cell: int) -> int:
 
     ``k`` cells hold ``k * cell + (k - 1)`` characters.
     """
-    return max(1, -(-(length + 1) // (cell + 1)))
+    cells, remainder = divmod(length + 1, cell + 1)
+    if remainder:
+        cells += 1
+    return max(1, cells)
 
 
 #: One input's mark run (:func:`~esolangs.tools.helpers.mark`), one token:
@@ -200,11 +207,11 @@ _SOPHIE_COMMAND = r"@\$\d+\{|@\$?.\{|#\$\d+|#\$?.|\}\{|."
 # Minifuck ``[`` skips the next character (``ind + 2``), so a newline
 # there is what gets skipped; consecutive ``[`` chain, so the whole run
 # stays with the character after it, or with the input run after it.
-_MINIFUCK_COMMAND = rf"\[+(?:{_RUN}|.)|."
+_MINIFUCK_COMMAND = rf"\[+(?:{_RUN}|[\s\S])|[\s\S]"
 
 # Jaune: operand before operator (``3?``, ``2+``, ``v?``) is the only
-# unbreakable unit.  A bare run ``++`` splits harmlessly (1 + 1 = 2).
-_JAUNE_COMMAND = r"\d+[-+:?!$@]|v[-+?!@]|."
+# unbreakable unit. Splitting ``++4:`` makes its final plus a label sign.
+_JAUNE_COMMAND = r"[+-]{2,}|[+-]?\d+[-+:?!$@]|v[-+?!@:$]|."
 _BRACKET_LITERAL = r"\[[^\]]*\]|."
 _EVAL_UNIT = r'"[^"]*"|\?.|.'
 
@@ -331,7 +338,11 @@ def _minifuck(program: str, width: int) -> str:
     ``[`` skips two *characters*, a newline included; a run chains, so in
     ``[[x`` a break before ``x`` is unsafe.
     """
-    return wrap_tokens(program, width, _MINIFUCK_COMMAND)
+    tokens = re.findall(f"{_RUN}|{_MINIFUCK_COMMAND}", program)
+    floor = max(map(len, tokens), default=0)
+    if "\n" in program and max(map(len, program.split("\n"))) <= max(width, floor):
+        return program
+    return _join_tokens(tokens, width, separator="")
 
 
 def _false(program: str, width: int) -> str:
@@ -365,9 +376,9 @@ def _jaune(program: str, width: int) -> str:
 
 
 def _bracket_literal(program: str, width: int) -> str:
-    """Wrap 3x and Modulous, keeping a bracketed group whole.
+    """Wrap 3x, keeping a bracketed group whole.
 
-    Both print through a bracketed literal, so a newline inside it prints.
+    A newline inside its bracketed literal prints.
     """
     return wrap_tokens(program, width, _BRACKET_LITERAL)
 
@@ -440,9 +451,7 @@ def _qoibl(program: str, width: int) -> str:
     return "\n".join(wrap_space_delimited(line, width) for line in program.split("\n"))
 
 
-# Language id -> wrapper.  Absent = never wrapped: semantic newlines (2D
-# grids), rejects them (NoComment), or position-dependent (ROTfuck).  See
-# the module docstring.
+# Language id -> wrapper; semantic newlines require generator-owned layouts.
 WRAPPERS = {
     "addsubjump": wrap_grid,
     "decleq": wrap_grid,
@@ -457,6 +466,12 @@ WRAPPERS = {
     "six_five": _six_five,
     # Safe anywhere: every space and newline is stripped before parsing.
     "bitwise_cyclic_tag": wrap_chars,
+    # Loader whitespace is discarded before assigning memory addresses.
+    "malbolge": wrap_chars,
+    # LF-only source-format deviation: discard breaks before parsing or addressing.
+    "cvnc": wrap_chars,
+    "grapheme": wrap_chars,
+    "nocomment": wrap_chars,
     "brainfuck": wrap_chars,
     "three_d_brainfuck": wrap_chars,
     "circlefuck": wrap_chars,
@@ -482,7 +497,6 @@ WRAPPERS = {
     # Operand-before-operator, so a break between the two is a load error.
     "jaune": _jaune,
     # Print through a literal that must not be broken.
-    "modulous": _bracket_literal,
     "eval": _quote_literal,
     # ``'x`` and ``.x``/``?x`` take the character after them.
     "false": _false,
@@ -499,18 +513,18 @@ WRAPPERS = {
     "a_painter_ant": wrap_chars,
     "bf_pda": wrap_chars,
     # One statement a line; each folds on its own.
-    "qoibl": _qoibl,
     # Generators emit indented blocks; fold only an over-wide line.
-    "forbin": _indented,
-    "packlang": _indented,
+    # Packlang punctuation separates tokens even without a space.
+    "packlang": _packlang,
 }
 
 
 # Wrappers that handle a multi-line program themselves instead of being
 # skipped: Taglate's first line seeds its queue (kept whole); Qoibl's every
 # line is a statement, folded separately for the reader (the language would
-# not notice).
-MULTILINE = frozenset({"taglate", "qoibl", "forbin", "packlang"})
+# not notice).  Minifuck keeps existing newline comments attached to the
+# bracket that may skip them, and preserves already-fitting template folds.
+MULTILINE = frozenset({"taglate", "packlang", "minifuck"})
 
 
 def takes_width(fn: Callable[..., str]) -> bool:

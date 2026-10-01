@@ -69,11 +69,12 @@ class TestStreetcode:
         assert boolean.streetcode(table) == rotated
 
     def test_default_uses_only_shared_layouts(self) -> None:
-        """Per-input loops are width fallbacks, never default candidates."""
+        """Through five inputs, defaults choose only shared layouts."""
         module = import_module("esolangs.tools.streetcode")
 
-        for n in range(1, 4):
-            for value in range(1 << (1 << n)):
+        for n in (1, 2, 3, 5):
+            values = (0x9466E472,) if n == 5 else range(1 << (1 << n))
+            for value in values:
                 table = format(value, f"0{1 << n}b")
                 tree = module._streetcode_tree(table)  # noqa: SLF001
                 shared = module._streetcode_shared_programs(table, n, tree)  # noqa: SLF001
@@ -213,9 +214,7 @@ class TestStreetcode:
     def test_width_takes_the_narrowest_when_none_fits(self) -> None:
         """Below every shape's width the narrowest one is returned.
 
-        The generator has no shape narrower than its own decision tree, so
-        an impossible width is a preference it cannot honour rather than an
-        error; returning the best available beats returning nothing.
+        The nine-row indexed street becomes the nine-column width floor.
         """
         table = "10"
         program = boolean.streetcode(table, 1)
@@ -248,13 +247,11 @@ class TestStreetcode:
     def test_the_narrowest_fallback_is_really_the_narrowest(self) -> None:
         """Below every shape's width, the narrowest shape comes back.
 
-        ``10`` cannot witness this: its candidates happen to agree, so a
-        fallback that returned the first or the lexicographically smallest
-        program would pass.  ``0100`` separates them -- the narrowest is 33
-        columns where the wrong pick is 36.
+        ``0100`` previously returned a 33-column hallway; the rotated
+        indexed street shares its kerb and needs seven, with the same answers.
         """
         program = boolean.streetcode("0100", 1)
-        assert _columns(program) == 33
+        assert _columns(program) == 7
         for combo in range(4):
             bits = [str((combo >> 1) & 1), str(combo & 1)]
             assert run_streetcode(program, bits) == "0100"[combo]
@@ -316,21 +313,43 @@ class TestStreetcode:
 
     def test_only_identity_and_greedy_orders_are_offered(self) -> None:
         """Streetcode never renders more than two order candidates."""
-        from esolangs.tools.streetcode import _streetcode_orders
+        from esolangs.tools.helpers import input_orders
 
         table = "01011010"
-        assert _streetcode_orders(table, 3)[0] == (0, 1, 2)
-        assert len(_streetcode_orders(table, 3)) <= 2
+        assert input_orders(table)[0] == (0, 1, 2)
+        assert len(input_orders(table)) <= 2
 
 
 def test_a_width_past_the_crossover_still_chooses_a_shape() -> None:
-    """The flat lookup is wide, so a width is a choice between two rotations.
-
-    Only building is timed here: the arity is past the crossover, where the
-    width branch has no narrow shape to fall back on, and a width it cannot
-    meet has to return the narrower rotation rather than the shorter one.
-    """
+    """Past the crossover a quarter turn gives the shared seven-column floor."""
     table = "0110100110010110" * 4
     both = (boolean.streetcode(table), _columns(boolean.streetcode(table)))
     assert boolean.streetcode(table, 10_000) == both[0]
-    assert _columns(boolean.streetcode(table, 1)) <= both[1]
+    assert _columns(boolean.streetcode(table, 1)) == 7
+
+
+@pytest.mark.parametrize("n", [1, 3, 6])
+@pytest.mark.parametrize("row", [0, 1, -1])
+@pytest.mark.parametrize("width", [1, 4, 7, 8, 9])
+def test_quarter_turned_lookup_preserves_input_order(
+    n: int, row: int, width: int
+) -> None:
+    from esolangs.interpreters.grid_based.streetcode import run
+    from esolangs.interpreters.io import ScriptedIO
+
+    table = "".join(str((value * 73 + value // 3) & 1) for value in range(1 << n))
+    row %= len(table)
+    program = boolean.streetcode(table, width)
+    assert _columns(program) == (7 if width < 9 else 9)
+    io = ScriptedIO("\n".join(f"{row:0{n}b}") + "\n")
+    run(program.splitlines(), io)
+    assert (io.getvalue(), io.reads) == (table[row], n)
+
+
+def test_quarter_turned_rendered_size_is_linear() -> None:
+    from itertools import pairwise
+
+    sizes = [
+        len(boolean.streetcode("01101001" * (2 ** (n - 3)), 1)) for n in (5, 6, 7, 8)
+    ]
+    assert all(later < 2 * earlier for earlier, later in pairwise(sizes))

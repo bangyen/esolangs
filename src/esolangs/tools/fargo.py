@@ -3,11 +3,10 @@
 ``@ i`` returns the ``i``th bit of the input number, so no routing is
 needed and the construction is the **algebraic normal form**
 ``f(x) = c0 XOR (c1 & x0) XOR (c2 & x1) XOR (c3 & x0 & x1) XOR ...``,
-coefficients from the Möbius transform (:func:`_anf_coefficients`).
+coefficients from the Möbius transform (:func:`anf_coefficients`).
 The emitter factors each variable as ``p = p0 ^ (x & p1)``, so every
 coefficient appears at most once; identity order emits O(T) characters.
-A second emitter
-picks each node's arm locally (:func:`_arm_expression`); the shorter wins.
+The emitter picks each node's arm locally (:func:`_arm_expression`).
 Through five inputs, character-cost splits and an indexed selector also
 compete; their difference recursion is bounded. The transform and arm rule
 pack Theta(log T) coefficients per word, giving O(T) word-RAM build work.
@@ -18,13 +17,19 @@ holding ``int(bits, 2)``, so input ``i`` (most-significant-first) is bit
 ``n - 1 - i`` of that number -- the only place the mapping appears.  The
 interpreter reads that line before execution, so every program consumes
 exactly one input line.  With no reads there is no read order: factoring
-order only renames the ``@`` literals, and :func:`fargo` tries four.
+order only renames the ``@`` literals, and :func:`fargo` compares named orders.
 """
 
 from collections.abc import Callable
 from functools import cache
+from string import ascii_lowercase
 
-from esolangs.tools.helpers import _validate_truth_table, permute_truth_table
+from esolangs.tools.helpers import (
+    _validate_truth_table,
+    anf_coefficients,
+    permute_truth_table,
+    short_name,
+)
 
 __all__ = ["fargo"]
 
@@ -34,45 +39,12 @@ def _word_width(n: int) -> int:
     return max(2, 1 << (n.bit_length() - 1))
 
 
-def _anf_coefficients(truth_table: str) -> list[int]:
-    """Return ANF coefficients in O(T) word-RAM work with Theta(log T)-bit words."""
-    n = _validate_truth_table(truth_table)
-    width = _word_width(n)
-    words = [
-        int(truth_table[start : start + width][::-1], 2)
-        for start in range(0, len(truth_table), width)
-    ]
-    stride = 1
-    while stride < width:
-        high = int(("1" * stride + "0" * stride) * (width // (2 * stride)), 2)
-        words = [value ^ ((value << stride) & high) for value in words]
-        stride *= 2
-    stride = 1
-    while stride < len(words):
-        for start in range(0, len(words), 2 * stride):
-            for offset in range(start, start + stride):
-                words[offset + stride] ^= words[offset]
-        stride *= 2
-    return [(value >> bit) & 1 for value in words for bit in range(width)]
-
-
-def _name(index: int) -> str:
-    """Return a short lowercase Fargo definition name."""
-    digits: list[str] = []
-    while True:
-        index, digit = divmod(index, 26)
-        digits.append(chr(ord("a") + digit))
-        if not index:
-            return "".join(reversed(digits))
-        index -= 1
-
-
 def _factored(masks: list[int], constant: int, n: int) -> str:
     """Return the ANF as short nullary definitions and one output call."""
     lines: list[str] = []
 
     def define(expression: str) -> str:
-        name = _name(len(lines))
+        name = short_name(len(lines), ascii_lowercase)
         lines.append(f"{name} {expression}")
         return name
 
@@ -127,44 +99,27 @@ class _Emission:
         return "".join(self.pieces)
 
 
-def _anf_expression(
-    coeffs: list[int], n: int, at: tuple[int, ...], *, limit: int | None = None
-) -> str:
-    """Return a factored ANF, stopping candidates that cannot beat ``limit``.
-
-    Emitted into one flat piece list: whether a half is empty,
-    or is the lone ``1`` (its only coefficient at its start), is read off
-    the prefix counts before descending, so no subtree string is rebuilt
-    per level.
-    """
-    nonzero = [0]
-    for coefficient in coeffs:
-        nonzero.append(nonzero[-1] + coefficient)
-    pieces = _Emission(limit)
-
-    def build(start: int, size: int, bit: int) -> None:
-        """Emit the span, which is known to hold a nonzero coefficient."""
-        if size == 1:
-            pieces.append("1")
-            return
-        half = size // 2
-        if nonzero[start + half] == nonzero[start + size]:
-            build(start, half, bit - 1)
-            return
-        if nonzero[start] != nonzero[start + half]:
-            pieces.append("^ ")
-            build(start, half, bit - 1)
-            pieces.append(" ")
-        if nonzero[start + size] - nonzero[start + half] == 1 and coeffs[start + half]:
-            pieces.append(f"@ {at[bit]:b}")
-        else:
-            pieces.append(f"& @ {at[bit]:b} ")
-            build(start + half, half, bit - 1)
-
-    if nonzero[-1] == 0:
-        return "0"
-    build(0, 1 << n, n - 1)
-    return pieces.render()
+def _arm_choice(
+    w0: int,
+    wd: int,
+    w1: int,
+    *,
+    one_constant: bool,
+    zero_implies_one: Callable[[], bool],
+    one_implies_zero: Callable[[], bool],
+) -> int:
+    """Choose a Davio or monotone OR arm, preserving polarity ties."""
+    if not w1:
+        return 1
+    if one_constant and w0:
+        return 2
+    options = [(w0 + wd, 0, 0), (w1 + wd, 1, 1)]
+    # Keep implication checks lazy: the constant shortcuts need neither.
+    if w0 and zero_implies_one():
+        options.append((w0 + w1, 0, 2))
+    if one_implies_zero():
+        options.append((w0 + w1, 1, 3))
+    return min(options)[2]
 
 
 def _arm_expression(
@@ -210,17 +165,14 @@ def _arm_expression(
         f0, f1 = table & mask, table >> half
         one = low ^ high
         w0, wd, w1 = count(low), count(high), count(one)
-        if not w1:
-            choice = 1
-        elif one == 1 and w0:
-            choice = 2
-        else:
-            options = [(w0 + wd, 0, 0), (w1 + wd, 1, 1)]
-            if w0 and not (f0 & ~f1):
-                options.append((w0 + w1, 0, 2))
-            if not (f1 & ~f0):
-                options.append((w0 + w1, 1, 3))
-            choice = min(options)[2]
+        choice = _arm_choice(
+            w0,
+            wd,
+            w1,
+            one_constant=one == 1,
+            zero_implies_one=lambda: not (f0 & ~f1),
+            one_implies_zero=lambda: not (f1 & ~f0),
+        )
         d = f0 ^ f1
         kept, kept_anf, op, operand, operand_anf = (
             (f0, low, "^", d, high),
@@ -263,17 +215,18 @@ def _arm_expression(
         f0, f1 = table[:half], table[half:]
         one = [a ^ b for a, b in zip(low, high, strict=True)]
         w0, wd, w1 = weight(low), weight(high), weight(one)
-        if not w1:
-            choice = 1
-        elif w1 == 1 and one[0] & 1 and w0:
-            choice = 2
-        else:
-            options = [(w0 + wd, 0, 0), (w1 + wd, 1, 1)]
-            if w0 and all(not (a & ~b) for a, b in zip(f0, f1, strict=True)):
-                options.append((w0 + w1, 0, 2))
-            if all(not (b & ~a) for a, b in zip(f0, f1, strict=True)):
-                options.append((w0 + w1, 1, 3))
-            choice = min(options)[2]
+        choice = _arm_choice(
+            w0,
+            wd,
+            w1,
+            one_constant=w1 == 1 and bool(one[0] & 1),
+            zero_implies_one=lambda: all(
+                not (a & ~b) for a, b in zip(f0, f1, strict=True)
+            ),
+            one_implies_zero=lambda: all(
+                not (b & ~a) for a, b in zip(f0, f1, strict=True)
+            ),
+        )
         d = [a ^ b for a, b in zip(f0, f1, strict=True)]
         kept, kept_anf, op, operand, operand_anf = (
             (f0, low, "^", d, high),
@@ -305,31 +258,26 @@ def _arm_expression(
     return pieces.render()
 
 
-def _orders(n: int) -> list[tuple[int, ...]]:
-    """Return the factoring orders tried: identity, reversed, both rotations."""
+def _orders(n: int, *, compact: bool = False) -> list[tuple[int, ...]]:
+    """Return two compact orders, or all four for width requests."""
     identity = tuple(range(n))
+    if compact:
+        return list(dict.fromkeys([identity, (*identity[1:], 0)]))
     orders = [identity, identity[::-1], (*identity[1:], 0), (n - 1, *identity[:-1])]
     return list(dict.fromkeys(orders))
 
 
-def _expressions(
+def _expression(
     truth_table: str, n: int, order: tuple[int, ...], *, limit: int | None = None
-) -> list[str]:
-    """Return both emitters, discarding candidates that cannot beat ``limit``."""
+) -> str | None:
+    """Return the arm expression, or None if it cannot beat ``limit``."""
     table = permute_truth_table(truth_table, order)
-    coeffs = _anf_coefficients(table)
+    coeffs = anf_coefficients(table)
     at = tuple(n - 1 - order[n - 1 - bit] for bit in range(n))
-    expressions = []
-    builders: tuple[Callable[[], str], ...] = (
-        lambda: _arm_expression(table, coeffs, n, at, limit=limit),
-        lambda: _anf_expression(coeffs, n, at, limit=limit),
-    )
-    for build in builders:
-        try:
-            expressions.append(build())
-        except _SourceLimitError:
-            continue
-    return expressions
+    try:
+        return _arm_expression(table, coeffs, n, at, limit=limit)
+    except _SourceLimitError:
+        return None
 
 
 _SELECTOR_BODY = "^ y & @ x ^ y z"
@@ -474,7 +422,7 @@ def _definition_program(expression: str, n: int) -> str:
     references = [f"{value:b}" for value in range(n)]
     lines: list[str] = []
     for tag, children in unique:
-        name = _name(len(lines))
+        name = short_name(len(lines), ascii_lowercase)
         arguments = " ".join(references[child] for child in children)
         lines.append(f"{name} {symbols[tag]} {arguments}")
         references.append(name)
@@ -490,26 +438,28 @@ def fargo(truth_table: str, width: int | None = None) -> str:
     the interpreter consumes the input line either way.
     """
     n = _validate_truth_table(truth_table)
-    coeffs = _anf_coefficients(truth_table)
+    orders = _orders(n, compact=width is None)
     # Identity has linear text. Stop other orders at that budget: repeating
     # a high bit index at the leaves would otherwise cost Theta(T log n).
     expression = ""
-    for order in _orders(n):
-        for candidate in _expressions(
+    for order in orders:
+        candidate = _expression(
             truth_table, n, order, limit=len(expression) if expression else None
+        )
+        if candidate is not None and (
+            not expression or len(candidate) < len(expression)
         ):
-            if not expression or len(candidate) < len(expression):
-                expression = candidate
+            expression = candidate
     compact = f"% 0 {expression}\n$\n"
     if n <= 5:
-        # Index selectors save 7.43% on 200 seeded five-input tables. Difference
+        # Index selectors save 7.79% on 200 seeded five-input tables. Difference
         # recursion stays capped, contributing only constant-size build work.
         compact = min(
             [
                 compact,
                 *[
                     program
-                    for order in _orders(n)
+                    for order in orders
                     for program in _cost_programs(truth_table, n, order)
                 ],
             ],
@@ -519,5 +469,6 @@ def fargo(truth_table: str, width: int | None = None) -> str:
         return compact
     if n > 5:
         return _definition_program(expression, n)
+    coeffs = anf_coefficients(truth_table)
     masks = [mask for mask in range(1 << n) if coeffs[mask] and mask]
     return _factored(masks, coeffs[0], n)

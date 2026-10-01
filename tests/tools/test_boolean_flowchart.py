@@ -24,25 +24,9 @@ class TestFlowchart:
         "table",
         ["00", "01", "0000", "0110", "11111111", "01101001", "0110100110010110"],
     )
-    def test_an_unconstrained_call_returns_the_shortest_layout(
-        self, table: str
-    ) -> None:
-        """Without a width every candidate is built and the shortest wins.
-
-        Three layouts compete: the flat tree, its stacked form, and the
-        deque lookup.  The deque takes the small arities too (it is about
-        six times shorter than the tree at ``n = 4``), but a table that
-        folds to one or two leaves still goes to the tree, so the contract
-        is the minimum rather than any one construction.
-        """
-        candidates = [
-            _flowchart_render(_flowchart_cells(table)),
-            _flowchart_render(_flowchart_stacked(table)),
-            _flowchart_deque(table),
-        ]
-        chosen = boolean.flowchart(table)
-        assert len(chosen) == min(len(c) for c in candidates)
-        assert chosen in candidates
+    def test_an_unconstrained_call_uses_the_deque(self, table: str) -> None:
+        """Tree layouts remain available for width requests."""
+        assert boolean.flowchart(table) == _flowchart_deque(table)
 
     def test_a_stacked_parity_tree_beats_the_flat_one(self) -> None:
         """From three inputs the stacked orientation is the shorter tree."""
@@ -150,8 +134,8 @@ class TestFlowchart:
         # a constant table needs no switch at all
         assert tree("11111111").count("< >") == 0
         assert tree("11110000").count("< >") == 1
-        # the fold is deep enough that a constant table keeps the tree
-        assert boolean.flowchart("11111111") == tree("11111111")
+        # a width request retains the folded tree
+        assert boolean.flowchart("11111111", 80) == tree("11111111")
 
     @pytest.mark.parametrize(
         "table", ["01", "0001", "01101001", "0110100110010110", "1000000000000000"]
@@ -263,7 +247,9 @@ class TestFlowchart:
         # ``(( ))``, and stacking spends a corridor column per level on top
         # of that -- so there the flat drawing is the narrower of the two
         # and asking for any width keeps it.
-        assert boolean.flowchart("1111", 1) == boolean.flowchart("1111")
+        assert boolean.flowchart("1111", 1) == _flowchart_render(
+            _flowchart_cells("1111")
+        )
 
     def test_a_stacked_corridor_belongs_to_its_depth(self) -> None:
         """Depth ``d``'s zero-branch falls down column ``d``, and nothing else.

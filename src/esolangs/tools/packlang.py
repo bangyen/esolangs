@@ -12,20 +12,16 @@ is an offset inside the block, so its digits stop growing once the table
 passes one block.  A block holding more ones than zeros is filled by a loop
 and its zeros punched back out, so a constant table pays per *block*.
 
-Every row runs every write, so the painted rows are the steps too.  The
-answer prints ``48 ^ t`` over painted ones or ``49 ^ t`` over painted
-zeros at the same length, so the table's minority is painted -- whichever
-polarity is shorter, then runs fewer writes.  A lone block is then never
-filled.  Over the three-input tables this and reading the first input
-without a doubling loop (nothing precedes it) take 64,744 commands to
-52,032 and 92,472 characters to 81,424.
+Every row runs every write. The answer prints ``48 ^ t`` over painted
+ones; retiring the opposite polarity adds 3.19% to the three-input total
+and 2.60% to the seeded five-input sample.
 
 The index is counted too: each input doubles what has been read and adds
 its bit.  Doubling drains one register into its partner two counts at a
 time, so the two alternate and no copy is ever needed.
 """
 
-from esolangs.tools.helpers import _ASCII_ONE, _ASCII_ZERO, _validate_truth_table
+from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table
 
 __all__ = ["packlang"]
 
@@ -41,24 +37,25 @@ _FILL_COST = 3
 _WIDTH = 72
 
 
-def packlang(truth_table: str) -> str:
-    """Build a linear-size Packlang program computing ``truth_table``."""
-    n = _validate_truth_table(truth_table)
-    # Painting the zeros and printing ``49 ^ t`` costs the same characters
-    # as painting the ones and printing ``48 ^ t``, so the program paints
-    # whichever takes fewer: shorter text first, then fewer writes run.
-    flipped = truth_table.translate(str.maketrans("01", "10"))
-    ones = _painted(truth_table, n, _ASCII_ZERO)
-    zeros = _painted(flipped, n, _ASCII_ONE)
-    return min(ones, zeros)[2]
+def packlang(truth_table: str, width: int | None = None) -> str:
+    """Build a linear-size Packlang program; narrow layouts floor at one token.
 
-
-def _painted(painted: str, n: int, blank: int) -> tuple[int, int, str]:
-    """Return a build painting ``painted``'s ones, printing ``blank`` elsewhere.
-
-    The key before the program is its length and the most writes a row
-    runs (the writes of its block, and the fill's rows).
+    The unused package name shortens below ten columns; keywords floor at seven.
     """
+    n = _validate_truth_table(truth_table)
+    program = _painted(truth_table, n)
+    if width is None or width <= 0:
+        return program
+    # The package is never named by its own body or the IO dependency.
+    if width < len("truthTable"):
+        program = program.removesuffix("} truthTable;\n") + "} t;\n"
+    from esolangs.tools.wrap import wrap_program
+
+    return wrap_program(program, "packlang", width)
+
+
+def _painted(painted: str, n: int) -> str:
+    """Return a program painting ``painted``'s ones into an array."""
     low = min(n, _BLOCK)
     span = 1 << low
     blocks = 1 << (n - low)
@@ -72,27 +69,25 @@ def _painted(painted: str, n: int, blank: int) -> tuple[int, int, str]:
     body += counted
 
     filled = False
-    work = 0
     for number in range(blocks):
         rows = painted[number * span : (number + 1) * span]
         writes, fill = _writes(rows)
         filled = filled or fill
-        work = max(work, len(writes) + span * fill)
         if not writes:
             continue
         guard = f"If !({index}^{number})Then{{" if blocks > 1 else ""
         body += [guard, *writes, "}" if guard else ""]
-    body += [f"charPut({blank}^t({low_index}));", "0;"]
+    body += [f"charPut({_ASCII_ZERO}^t({low_index}));", "0;"]
 
     names = ["i", "d", "c"] + (["q"] if filled else [])
     if blocks > 1:
         names += ["h", "g"]
     wide = f"Integer(0,{blocks - 1},0,0)"
     declarations = "".join(
-        f"  {wide if name in 'hg' else 'Char'} {name};\n" for name in names
+        f"  {wide if name in {'h', 'g'} else 'Char'} {name};\n" for name in names
     )
     statements = "".join(f"  {line}\n" for line in _folded(body))
-    program = (
+    return (
         "Package : IO {\n"
         f"{declarations}"
         f"  Array(Char,{span}) t;\n"
@@ -101,7 +96,6 @@ def _painted(painted: str, n: int, blank: int) -> tuple[int, int, str]:
         "  }\n"
         "} truthTable;\n"
     )
-    return len(program), work, program
 
 
 def _counter(first: str, second: str, count: int) -> tuple[list[str], str]:

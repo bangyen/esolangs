@@ -76,3 +76,49 @@ def test_render_has_no_blank_axis() -> None:
     grid = [row.ljust(width) for row in rows]
     assert all(row.strip() for row in grid)
     assert all(any(row[col] != " " for row in grid) for col in range(width))
+
+
+@pytest.mark.medium
+def test_narrow_staircase_executes_every_small_table_in_input_order() -> None:
+    import esolangs
+
+    assert max(map(len, esolangs.generate("B-tapemark", "0110", 1).splitlines())) == 9
+    for n in range(1, 4):
+        for value in range(1 << (1 << n)):
+            table = format(value, f"0{1 << n}b")
+            program = esolangs.generate("B-tapemark", table, 1)
+            for row, expected in enumerate(table):
+                assert execute(program, format(row, f"0{n}b")) == (expected, n)
+
+
+@pytest.mark.medium
+def test_narrow_weighted_arms_and_fitting_layouts() -> None:
+    from esolangs.tools.b_tapemark import _b_tapemark_narrow, _Builder
+
+    for n in range(4, 7):
+        table = "".join(
+            str((row * 17 + row // 3).bit_count() % 2) for row in range(1 << n)
+        )
+        original = tools.b_tapemark(table, 10000)
+        natural = max(map(len, original.splitlines()))
+        assert tools.b_tapemark(table, natural) == original
+        for width in (1, 9, 19, 80):
+            program = tools.b_tapemark(table, width)
+            assert max(map(len, program.splitlines())) <= max(
+                width, len(table) // 2 + 7
+            )
+            for row, expected in enumerate(table):
+                assert execute(program, format(row, f"0{n}b")) == (expected, n)
+    sizes = [len(_b_tapemark_narrow("01" * (1 << (n - 1)), n)) for n in (7, 8, 9)]
+    assert sizes[2] < 2.1 * sizes[1] < 4.41 * sizes[0]
+    # Sparse standalone layouts exercise coordinate compression on either axis.
+    horizontal, vertical = _Builder(), _Builder()
+    horizontal.put(0, 0, ">")
+    horizontal.put(100, 0, "!")
+    vertical.put(0, 0, "v")
+    vertical.put(0, 100, "!")
+    assert execute(horizontal.render(), "") == ("", 0)
+    assert execute(vertical.render(), "") == ("", 0)
+    assert _Builder().render() == ""
+    with pytest.raises(AssertionError, match="layout collision"):
+        horizontal.put(0, 0, "v")

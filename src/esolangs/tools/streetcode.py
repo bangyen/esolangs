@@ -16,10 +16,13 @@ from collections.abc import Callable
 from functools import cache
 
 from esolangs.tools.helpers import (
-    _greedy_input_order,
     _validate_truth_table,
     constant_span_test,
+    input_orders,
     permute_truth_table,
+)
+from esolangs.tools.helpers import (
+    grid_width as _streetcode_columns,
 )
 from esolangs.tools.wrap import shortest
 
@@ -465,23 +468,6 @@ def _streetcode_shared(n: int, perm: tuple[int, ...] | None = None) -> list[str]
     return ["".join(row) for row in grid]
 
 
-def _streetcode_orders(truth_table: str, n: int) -> list[tuple[int, ...]]:
-    """Return the identity and greedy input orders, identity first.
-
-    Not through :func:`~esolangs.tools.helpers.best_input_order`: ``width``
-    chooses among every candidate, since the narrowest is often not the
-    shortest.  Both are kept and the rendered layouts decide.
-    """
-    identity = tuple(range(n))
-    greedy = _greedy_input_order(truth_table, n)
-    return [identity] if greedy == identity else [identity, greedy]
-
-
-def _streetcode_columns(program: str) -> int:
-    """Return the widest row of ``program``, which is what a width bounds."""
-    return max(len(line) for line in program.split("\n"))
-
-
 def _streetcode_rotate(program: str) -> str:
     """Rotate a Streetcode grid 180 degrees and trim its new line ends.
 
@@ -492,14 +478,32 @@ def _streetcode_rotate(program: str) -> str:
     return "\n".join(row.ljust(width)[::-1].rstrip() for row in reversed(rows))
 
 
-# The flat lookup's nine rows, top to bottom.  The stalk is three cells deep
-# because at two the mouth stops being a junction and the turn into the room
-# is forced on both passes.
-_ROOF, _UP, _DOWN, _FLOOR, _STALK, _KERB, _WEST, _EAST, _SILL = range(9)
+def _streetcode_quarter_turn(program: str) -> str:
+    """Turn the complete street clockwise, exchanging horizontal/vertical walls."""
+    rows = program.splitlines()
+    span = max(map(len, rows))
+    walls = str.maketrans("-|", "|-")
+    padded = [row.ljust(span) for row in rows]
+    return "\n".join(
+        "".join(row[col] for row in reversed(padded)).translate(walls).rstrip()
+        for col in range(span)
+    )
 
-# Where the flat lookup starts being offered: at five it wins on the dense
-# and parity shapes and loses on a table that folds, so both are compared.
-_FLAT_FROM = 5
+
+def _streetcode_shared_kerb(program: str) -> str:
+    """Share the side-room floors with the street kerb, removing the stalk."""
+    rows = program.splitlines()
+    kerb = list(rows[_KERB])
+    for col, char in enumerate(rows[_FLOOR]):
+        if char == "+":
+            kerb[col] = char
+    return "\n".join([*rows[:_FLOOR], "".join(kerb), *rows[_WEST:]])
+
+
+# The flat lookup's nine rows, top to bottom.  The stalk is three cells deep
+# for the original separated-room layout; sharing the kerb instead
+# removes the stalk and both sets of corners still bound the junction.
+_ROOF, _UP, _DOWN, _FLOOR, _STALK, _KERB, _WEST, _EAST, _SILL = range(9)
 
 # ``I`` and the 48 ``~`` behind it: a junction tests a cell for zero and an
 # ASCII digit is 48 or 49, so the read has to be walked down to its bit.
@@ -620,7 +624,7 @@ def _streetcode_shared_programs(truth_table: str, n: int, tree: list[str]) -> li
     """Render the shared-lap layouts for every permitted input order."""
     identity = tuple(range(n))
     programs = []
-    for perm in _streetcode_orders(truth_table, n):
+    for perm in input_orders(truth_table):
         shared = _streetcode_combine(
             [
                 _streetcode_shared(n, perm),
@@ -649,7 +653,9 @@ def streetcode(truth_table: str, width: int | None = None) -> str:
     with their 180-degree rotations, and the tree splits in whichever input
     order is shortest -- a placement, since halls test cells positionally
     (:func:`_streetcode_shared`).  ``width`` chooses among the shapes rather
-    than reflowing (rows are streets); the narrowest wins when none fits.
+    than reflowing (rows are streets); a clockwise turn of the indexed
+    street supplies a nine-column floor when the existing shapes do not fit;
+    sharing its room floors with the kerb lowers narrower requests to seven.
     """
     n = _validate_truth_table(truth_table)
     if n >= 6:
@@ -661,7 +667,9 @@ def streetcode(truth_table: str, width: int | None = None) -> str:
         return (
             shortest(*fitting)
             if fitting
-            else min((flat, turned), key=_streetcode_columns)
+            else _streetcode_quarter_turn(
+                _streetcode_shared_kerb(flat) if width < 9 else flat
+            )
         )
     tree = _streetcode_tree(truth_table)
     # The per-input loops trade rows for columns, so only width selection
@@ -675,13 +683,17 @@ def streetcode(truth_table: str, width: int | None = None) -> str:
     # seeds avoids that.  It is built once per input order, identity first,
     # so a table no reorder improves keeps the program it already emitted.
     programs.extend(_streetcode_shared_programs(truth_table, n, tree))
-    if n >= _FLAT_FROM:
+    if width is not None and n == 5:
         programs.append(_streetcode_flat(truth_table, n))
     if width is not None:
         fitting = [p for p in programs if _streetcode_columns(p) <= width]
         if fitting:
             return shortest(*fitting)
-        # Nothing fits: fall back to the narrowest rather than the shortest.
-        return min(programs, key=_streetcode_columns)
+        # The indexed street has nine rows at every arity; rotating it
+        # makes those the width floor while preserving right-hand driving.
+        flat = _streetcode_flat(truth_table, n)
+        return _streetcode_quarter_turn(
+            _streetcode_shared_kerb(flat) if width < 9 else flat
+        )
     rotated = [_streetcode_rotate(program) for program in programs]
     return shortest(*programs, *rotated)

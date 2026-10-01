@@ -126,25 +126,20 @@ def six_five(truth_table: str) -> str:
     n == 10 vs 1023), and dense n == 7 needs 47.  Past that the table goes
     on the tape (:func:`_six_five_walk`, one label per input) and past 35
     inputs :func:`_six_five_looped` (sixteen at any width).  Trees stay
-    preferred while one fits.  Four orders compete: identity, fold-greedy,
-    reverse, first-then-reversed (the last two find cheap pointer walks on
-    symmetric tables; AND-8's 40320 orders took 17s vs milliseconds).  The
-    greedy order is scored through :data:`_GREEDY_ORDER_MAX_ARITY`, as in
-    :func:`best_input_order`; wider tables drop it.
+    preferred while one fits. Identity and reverse compete routinely;
+    fold-greedy and first-then-reversed remain label-budget fallbacks.
 
-    Within the budget each order's tree may also lay a repeated subtree out
-    once and jump to it (:class:`_Layout`), and every order is built both
-    ways; the unshared trees choose first and a shared one must be strictly
-    shorter, so no table grows.  Over the 256 three-input tables that is
-    12,135 to 10,951 characters (9.8%); over 200 seeded five-input tables,
-    41,884 to 27,168 (35.1%).
+    Each order shares repeated subtrees (:class:`_Layout`). Two routine
+    orders add 2.58% to the three-input total and 1.91% to the five-input
+    sample; alternate orders remain available when neither fits.
     """
-    orders = _six_five_orders(truth_table)
-    # The plain trees choose first and a shared one must be strictly shorter,
-    # so no table grows: the rebuild of a winner below can move the order.
-    plain = _six_five_chosen(truth_table, orders, share=False)
-    shared = _six_five_chosen(truth_table, orders, share=True)
-    best = shared if shared and (not plain or len(shared) < len(plain)) else plain
+    orders = _six_five_orders(truth_table, compact=True)
+    best = _six_five_chosen(truth_table, orders, share=True)
+    if not best:
+        remaining = dict.fromkeys(
+            order for order in _six_five_orders(truth_table) if order not in orders
+        )
+        best = _six_five_chosen(truth_table, remaining, share=True)
     if not best:
         # Every order overflowed the budget even shared, so the table has
         # too many distinct subtrees for any tree-shaped emission.  The walk
@@ -155,10 +150,14 @@ def six_five(truth_table: str) -> str:
     return best.removesuffix("0")
 
 
-def _six_five_orders(truth_table: str) -> dict[tuple[int, ...], None]:
-    """Return the four named input orders, deduplicated, identity first."""
+def _six_five_orders(
+    truth_table: str, *, compact: bool = False
+) -> dict[tuple[int, ...], None]:
+    """Return two routine orders, or all four for label-budget fallback."""
     n = _validate_truth_table(truth_table)
     identity = tuple(range(n))
+    if compact:
+        return dict.fromkeys((identity, tuple(reversed(identity))))
     return dict.fromkeys(
         (
             identity,
@@ -272,7 +271,8 @@ def _six_five_looped(truth_table: str) -> str:
     until one reads zero, and the marks are kept at ``6 * (v(q) - (n-1-i))``
     by ``n-1`` decrement passes then one increment pass per bit.  Every loop
     tests with ``7n`` and jumps back with the same label.  Size is linear;
-    execution ``O(n * 2**n)``.  Every row at n <= 7 executed; reached only past 35.
+    execution ``Theta(n * 2**n)``: the initial ``n-1`` passes alone
+    visit every row. Every row at n <= 7 executed; reached only past 35.
     """
     n = _validate_truth_table(truth_table)
     label = {

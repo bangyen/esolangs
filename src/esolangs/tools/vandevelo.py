@@ -44,7 +44,7 @@ differences once a fixed fraction of it has gone; below density
 ``1 / max(_CANDIDATES, n)`` the remainder is sparse and each cube is grown
 at its lowest point from that point's nearest differences instead.
 
-Time is linear in the table by construction: a node costs its candidate
+The proposed linear-time charge covers candidate upkeep: a node costs its candidate
 count times its size to build, and is either harvested entirely (charged
 to its points, once per level) or dropped when a pool refresh retires
 its direction (at most the pool's size of them per refresh); removing a
@@ -62,6 +62,8 @@ this replaces rescanned the remainder for every cube, ``Theta(T**2 /
 word)``; this one measures x1.7--2.3 per added input over n=10..15 at
 0.93--1.02 of its size.  Dense random tables measure 8.4--9.5 characters
 per entry at n=8..13.
+The exact calls lack an aggregate amortization bound, and the dual-basis
+core still needs a build-work bound. These measurements prove neither.
 
 A cube's guard needs one part per constraint, and any basis of the cube's
 dual space will do.  :func:`_constraints` builds one from short relations:
@@ -76,7 +78,7 @@ its parity and a morph strictly fewer, so upkeep never exceeds the total
 constraint weight.  Summed over the peel, ``4 * n`` per clause is ``4 * n
 + 36 * 2**n`` by the clause bound, and the second term is at most ``4 *
 2**dim`` per clause, hence ``4 * 2**n`` over the disjoint cubes.  Register
-upkeep is therefore O(T) -- under ``40 * 2**n + 4 * n`` lines -- and its
+upkeep is therefore O(T) lines -- under ``40 * 2**n + 4 * n`` lines -- and its
 measured share stays under half of the emitted text.  The bank holds at
 most ``n**2`` registers (:func:`_bank_cap`), so a register name is never
 longer than two input names and a full bank respells its least recently
@@ -86,7 +88,8 @@ the lookup is a constant per constraint.  The reduced-echelon basis alone
 would not give the weight bound: on a cube whose columns spread over
 ``2**dim`` values it weighs ``n * dim / 2`` however the pivots are chosen,
 which is ``Theta(T log log T)`` at the ``log2(n)`` dimensions the peel
-produces.
+produces. Identifier lengths are ``O(log n)``, so this argument bounds
+characters by ``O(T log n)``, not ``O(T)``. Removing that factor is open.
 """
 
 from __future__ import annotations
@@ -94,7 +97,7 @@ from __future__ import annotations
 import heapq
 from itertools import islice
 
-from esolangs.tools.helpers import _validate_truth_table
+from esolangs.tools.helpers import _validate_truth_table, short_name
 
 __all__ = ["vandevelo"]
 
@@ -129,17 +132,6 @@ def _bank_cap(n: int) -> int:
     ``n`` or ``2 * n`` would cost 40% and 23% at n=13 in forced respelling.
     """
     return n * n
-
-
-def _name(index: int) -> str:
-    """Return the ``index``th shortest non-reserved Vandevelo name."""
-    base = len(_ALPHABET)
-    value = index + 1
-    chars = []
-    while value:
-        value, digit = divmod(value - 1, base)
-        chars.append(_ALPHABET[digit])
-    return "".join(reversed(chars))
 
 
 def _points(mask: int) -> list[int]:
@@ -639,7 +631,7 @@ def vandevelo(truth_table: str, width: int | None = None) -> str:
     """Build a Vandevelo program computing ``truth_table`` by termination."""
     n = _validate_truth_table(truth_table)
     compact = width is not None
-    names = [_name(index) for index in range(n)]
+    names = [short_name(index, _ALPHABET) for index in range(n)]
     ones = {row for row, entry in enumerate(truth_table) if entry == "1"}
     cubes = _Peel(ones, n).run() if ones else []
     cover = _pruned([_constraints(base, dirs, n) for base, dirs in cubes])
@@ -696,7 +688,7 @@ def vandevelo(truth_table: str, width: int | None = None) -> str:
                         held, polarity = bank.pop(register)
                         toggles = _points(held ^ w)
                     elif len(bank) < _bank_cap(n):
-                        register = _name(next_register)
+                        register = short_name(next_register, _ALPHABET)
                         next_register += 1
                         toggles, polarity = _points(w), 0
                     else:

@@ -9,26 +9,35 @@ cells of source and O(n) executed commands, no branch and no loop.
 
 from __future__ import annotations
 
-from esolangs.tools.helpers import _validate_truth_table
+from esolangs.tools.helpers import _parity_bias, _validate_truth_table
 
 #: ``6 * 8``: Befunge has no multi-digit literal, so 48 is built arithmetically.
 _ASCII_ZERO = "68*"
 _END = ".@"
 
 
-def befunge(truth_table: str) -> str:
+def befunge(truth_table: str, width: int | None = None) -> str:
     """Return a Befunge grid computing ``truth_table``.
 
-    Row 0 is the header, which consumes the bits and ``g``s the answer; the
-    table follows, ``width`` columns wide, so row ``r`` sits at
-    ``(r % width, 1 + r // width)``.  ``width`` is a power of two near
-    ``sqrt(T)``, built by doubling so the header stays O(n) wide, and the
-    answer is the cell's character less the ASCII zero.
+    The natural grid has a straight header and a power-of-two table width
+    near ``sqrt(T)``.  An over-wide header folds along alternating rows;
+    ``g`` addresses the table below them.  The width floor reserves enough
+    cells for both within the 80x25 torus.  Tables above ten inputs raise
+    ``ValueError``: their cells alone exceed the torus. Narrow parity uses
+    one vertical column of input sums modulo two instead.
     """
     n = _validate_truth_table(truth_table)
     count = 1 << n
+    if count > 1024:
+        raise ValueError("Befunge supports at most ten inputs on its 80x25 grid")
+    if width is not None and 0 < width < 4:
+        bias = _parity_bias(truth_table)
+        if bias is not None:
+            # At most 25 commands even at n=10, within the native torus.
+            header = "v&" + "&+" * (n - 1) + "2%" + ("!" if bias else "") + _END
+            return "\n".join(header)
     shift = (n + 1) // 2
-    width = 1 << shift
+    table_width = 1 << shift
     # ``1`` then ``2*`` shift times is ``2**shift``; both are single commands.
     build_width = "1" + "2*" * shift
     header = (
@@ -44,5 +53,54 @@ def befunge(truth_table: str) -> str:
         + _END
     )
     rows = [header]
-    rows.extend(truth_table[base : base + width] for base in range(0, count, width))
-    return "\n".join(rows)
+    rows.extend(
+        truth_table[base : base + table_width] for base in range(0, count, table_width)
+    )
+    plain = "\n".join(rows)
+    if width is None or width <= 0:
+        width = 80
+    if max(map(len, rows)) <= min(width, 80) and len(rows) <= 25:
+        return plain
+    # At most two decimal digits per coordinate on the 80x25 torus.
+    # Reserving 23 rows of payload leaves the ceiling slack below 25 rows.
+    header_bound = 5 * n + 34
+    columns = min(80, max(width, 4, (count + header_bound + 22) // 23 + 2))
+    # Single-digit column counts save twelve literal cells.  This named
+    # bound applies only when it proves that the count remains single-digit.
+    narrow_bound = 5 * n + 22
+    narrow_columns = max(width, 4, (count + narrow_bound + 22) // 23 + 2)
+    if narrow_columns < 10:
+        columns, header_bound = narrow_columns, narrow_bound
+    header_rows = (header_bound + columns - 3) // (columns - 2)
+    literal = _literal(columns)
+    header = (
+        "0"
+        + "&\\2*+" * n
+        + ":"
+        + literal
+        + "%\\"
+        + literal
+        + "/"
+        + _literal(header_rows)
+        + "+g"
+        + _ASCII_ZERO
+        + "-"
+        + _END
+    )
+    folded = []
+    for row, base in enumerate(range(0, len(header), columns - 2)):
+        payload = header[base : base + columns - 2].ljust(columns - 2)
+        folded.append(
+            ">" + payload + "v" if row % 2 == 0 else "v" + payload[::-1] + "<"
+        )
+    folded.extend("" for _ in range(header_rows - len(folded)))
+    folded.extend(
+        truth_table[base : base + columns] for base in range(0, count, columns)
+    )
+    return "\n".join(folded)
+
+
+def _literal(value: int) -> str:
+    """Push ``value`` with decimal Horner arithmetic, one digit per cell."""
+    digits = str(value)
+    return digits[0] + "".join("91+*" + digit + "+" for digit in digits[1:])

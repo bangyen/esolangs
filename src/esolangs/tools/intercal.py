@@ -4,12 +4,12 @@ Subexpressions the expression would repeat are assigned once to spare
 variables and named where they recur (:func:`_intercal_shared`).
 """
 
+import re
 from dataclasses import dataclass
 
 from esolangs.tools.helpers import (
     _validate_truth_table,
-    best_input_order,
-    constant_span_test,
+    in_input_order,
 )
 
 TEMPLATE_CHAR = "@"
@@ -28,11 +28,16 @@ class _Expr:
         if self.op == "input":
             return f".{self.value + 1}"
         outer, inner = ("'", '"') if depth % 2 == 0 else ('"', "'")
+        if self.op == "mingle":
+            left, right = self.children
+            return f"{outer}{'&V?'[self.value]}{left.render()}${right.render()}{outer}"
+        if self.op == "select":
+            return f"{outer}{self.children[0].render()}~#2{outer}"
         if self.op == "not":
             children, operator = (*self.children, _Expr("constant", 1)), "?"
         else:
             children = self.children
-            operator = "&" if self.op == "and" else "V"
+            operator = {"and": "&", "or": "V", "xor": "?"}[self.op]
         left, right = children
         mingled = (
             f"{inner}{operator}{left.render(depth + 2)}$"
@@ -41,52 +46,128 @@ class _Expr:
         return f"{outer}{mingled}~#2{outer}"
 
 
-def intercal(truth_table: str) -> str:
+def intercal(truth_table: str, width: int | None = None) -> str:
     """Return a polite C-INTERCAL template computing ``truth_table``.
 
     Every input is assigned to its own variable before the expression, so
-    the Shannon levels may select them in any order: the shorter of the
-    identity and greedy orders is kept (:func:`best_input_order`).  Each
-    order is built plain and shared, and the shorter kept.
+    shared Shannon diagram tests them in input order. Retiring the greedy
+    order adds 2.14% to the three-input total and 1.68% to the five-input
+    sample.  Over-wide
+    expressions name each Boolean operation; narrower layouts break between tokens.
     """
-    return best_input_order(truth_table, _intercal_either)
+    natural = in_input_order(truth_table, _intercal_shared)
+    if width is None or width <= 0 or max(map(len, natural.splitlines())) <= width:
+        return natural
+    previous = _intercal_narrow(truth_table, simplify=False)
+    if max(map(len, previous.splitlines())) <= width:
+        return previous
+    narrow = _intercal_narrow(truth_table)
+    if max(map(len, narrow.splitlines())) <= width:
+        return narrow
+    split = _intercal_narrow(truth_table, split=True)
+    best = min((narrow, split), key=lambda program: max(map(len, program.splitlines())))
+    chosen = (
+        best
+        if max(map(len, best.splitlines())) < max(map(len, natural.splitlines()))
+        else natural
+    )
+    return _wrap_intercal(chosen, width)
 
 
-def _intercal_either(truth_table: str, perm: tuple[int, ...]) -> str:
-    """Return the shorter of the plain and the shared template for one order.
-
-    Ties keep the plain one, so sharing only ever shrinks a template: over
-    the three-input tables 4.5% (65,704 to 62,728 characters), over 200
-    seeded five-input ones 29.7% (195,636 to 137,608), since the share of
-    repeated subtrees grows with the table.  The equal-halves fold alone
-    saves 1.6% and 5.2%, the fold with shared nodes 4.5% and 25.6%.
-    """
-    plain = _intercal_ordered(truth_table, perm)
-    shared = _intercal_shared(truth_table, perm)
-    return shared if len(shared) < len(plain) else plain
+_TOKEN = re.compile(r"[A-Z]+|[.#][0-9]+|<-|@+|[0-9]+|[^\s]")
 
 
-def _intercal_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
-    """Emit one order's template; level ``k`` selects input ``perm[k]``.
+def _intercal_tokens(program: str) -> list[str]:
+    """Return whole keywords, decimal operands, and expression punctuation."""
+    return _TOKEN.findall(program)
 
-    ``truth_table`` is already permuted.  The assignments stay in name
-    order, input ``i`` in ``.{n - i}``.
+
+def _wrap_intercal(program: str, width: int) -> str:
+    """Break over-wide statements only at C-INTERCAL token boundaries."""
+    from esolangs.tools.wrap import _join_tokens
+
+    return "\n".join(
+        line
+        if len(line) <= width
+        else _join_tokens(_intercal_tokens(line), width, separator=" ")
+        for line in program.splitlines()
+    )
+
+
+def _intercal_narrow(
+    truth_table: str, *, simplify: bool = True, split: bool = False
+) -> str:
+    """Name each primitive operation in the reduced Shannon diagram.
+
+    At most O(T/log T) diagram nodes need O(log T)-digit names: O(T) source.
+    Constant arms simplify Boolean operations; complementary arms use XOR.
+    Each assignment has only one mingle/unary/select frame.
     """
     n = _validate_truth_table(truth_table)
-    constant = constant_span_test(truth_table)
+    nodes, root = _diagram(truth_table, n)
+    assigned: list[tuple[int, _Expr]] = []
 
-    def tree(level: int, lo: int, hi: int) -> _Expr:
-        if constant(lo, hi):
-            return _Expr("constant", int(truth_table[lo]))
-        mid = (lo + hi) // 2
-        # In name order large variable numbers occur near the root, where
-        # their decimal spelling is repeated least; this keeps source size
-        # linear in T.  A reorder moves them only through the greedy cap
-        # (n = 10), where no name is longer than two digits.
-        zero, one = tree(level + 1, lo, mid), tree(level + 1, mid, hi)
-        return _mux(_Expr("input", n - 1 - perm[level]), zero, one)
+    def name(expr: _Expr) -> _Expr:
+        if split:
+            children = expr.children
+            operator = "xor" if expr.op == "not" else expr.op
+            if expr.op == "not":
+                children = (*children, _ONE)
+            intermediate = n + 2 + len(assigned)
+            assigned.append(
+                (
+                    intermediate,
+                    _Expr("mingle", ("and", "or", "xor").index(operator), children),
+                )
+            )
+            # Boolean operands give a result at most 7, which fits a onespot;
+            # the following selection extracts its answer from bit1.
+            expr = _Expr("select", children=(_Expr("input", intermediate - 1),))
+        variable = n + 2 + len(assigned)
+        assigned.append((variable, expr))
+        return _Expr("input", variable - 1)
 
-    return _program(n, [], tree(0, 0, len(truth_table)))
+    selectors = [_Expr("input", n - 1 - level) for level in range(n)]
+    if not simplify:
+        inverses = [name(_Expr("not", children=(selector,))) for selector in selectors]
+        previous = [_ZERO, _ONE]
+        for level, zero, one in nodes[2:]:
+            low = name(_Expr("and", children=(inverses[level], previous[zero])))
+            high = name(_Expr("and", children=(selectors[level], previous[one])))
+            previous.append(name(_Expr("or", children=(low, high))))
+        return _program(n, assigned, previous[root])
+    negated: dict[int, _Expr] = {}
+    results = [_ZERO, _ONE]
+    complements = {0: 1, 1: 0}
+    seen: dict[tuple[int, int, int], int] = {}
+    for node, (level, zero, one) in enumerate(nodes[2:], 2):
+        mirror = (level, complements.get(zero, -1), complements.get(one, -1))
+        if mirror in seen:
+            other = seen[mirror]
+            complements[node], complements[other] = other, node
+        seen[level, zero, one] = node
+        selector = selectors[level]
+        if (zero, one) == (0, 1):
+            result = selector
+        elif complements.get(zero) == one:
+            result = name(_Expr("xor", children=(selector, results[zero])))
+        else:
+            if level not in negated:
+                negated[level] = name(_Expr("not", children=(selector,)))
+            if zero == 0:
+                result = name(_Expr("and", children=(selector, results[one])))
+            elif one == 0:
+                result = name(_Expr("and", children=(negated[level], results[zero])))
+            elif zero == 1:
+                result = name(_Expr("or", children=(negated[level], results[one])))
+            elif one == 1:
+                result = name(_Expr("or", children=(selector, results[zero])))
+            else:
+                low = name(_Expr("and", children=(negated[level], results[zero])))
+                high = name(_Expr("and", children=(selector, results[one])))
+                result = name(_Expr("or", children=(low, high)))
+        results.append(result)
+    return _program(n, assigned, results[root])
 
 
 def _mux(
@@ -170,7 +251,7 @@ def _diagram(truth_table: str, n: int) -> tuple[list[tuple[int, int, int]], int]
     two halves: ``O(T)`` dictionary lookups and no search.  Ids 0 and 1 are
     the constants; every later id is a ``(level, zero, one)`` node, listed
     after both its halves.  A subtable whose halves are the same id is that
-    id -- a constant span, as in :func:`_intercal_ordered`, or a node whose
+    id -- a constant span, or a node whose
     selector cannot change its value.
     """
     nodes: list[tuple[int, int, int]] = [(n, 0, 0), (n, 1, 1)]

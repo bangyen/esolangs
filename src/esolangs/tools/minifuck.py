@@ -6,12 +6,16 @@ are pinned differentially against the interpreter.
 """
 
 from functools import cache
+from inspect import signature
 
 from esolangs.tools.helpers import (
+    TEMPLATE_CHAR,
     _validate_shape,
     _validate_truth_table,
     essential_inputs,
+    mark_runs,
     read_at,
+    unmark,
 )
 
 # The strategies live in their own modules, but this one is the
@@ -91,10 +95,9 @@ from esolangs.tools.minifuck_pool import (
 # are re-exported rather than referenced through the module because the test
 # suite imports them from here by name, and because every use in this file
 # reads as part of the construction rather than as a call into a simulator.
-# ``_Sim`` and ``_Joint`` are re-exported rather than referenced through
-# the module because the test suite imports them from here by name.
 from esolangs.tools.minifuck_sim import (
     _MINIFUCK_INPUT,
+    PAIR,
 )
 from esolangs.tools.minifuck_sim import (
     _clamp as _clamp,
@@ -204,55 +207,105 @@ def _solve(truth_table: str) -> str:
         # disorders their names when one lies below an essential input.  The
         # full-arity mux embeds every slot in order, so that case uses it.
         if _lift_leaves_name_order(essential, n):
-            sculpted = _mux(truth_table, n)
-            if sculpted is not None:
-                return sculpted
+            return _mux(truth_table, n)
         inner = _solve(_project(truth_table, essential, n))
         return _lift(inner, essential, n)
 
     # Nullary and unary inner solves use the embed's named standing column.
     if n < _MUX_MIN_ARITY:
         degenerate = _degenerate(truth_table, n)
-        if degenerate is not None:
-            return degenerate
+        if degenerate is None:  # pragma: no cover - nullary/unary column rule
+            raise ValueError(
+                f"the Minifuck boolean generator could not build {truth_table!r}"
+            )
+        return degenerate
 
-    # The one total construction for every non-degenerate inner solve.
-    sculpted = _mux(truth_table, n)
-    if sculpted is not None:
-        return sculpted
-
-    # **Reaching this is a bug, not a refusal.**
-    #
-    # This used to be a deliberate cost gate.  The column and parked searches
-    # sat at this point; at ``n >= 5`` they were reachable and *unbounded* (a
-    # five-input table the staged enumeration cannot place ran past a
-    # 240-second cap and was still going), so they turned a fast failure into
-    # an indefinite one.  Deleting them made a miss raise at once, and the
-    # comment here recorded that as a trade of coverage for bounded cost:
-    # "the tables it refuses are unreached, not unbuildable".
-    #
-    # There are no such tables left.  :func:`_mux` carried an arity gate at
-    # the time, so everything above five landed here; that gate is gone (see
-    # :data:`_MUX_MIN_ARITY`), and every one of the route's six ``None``-sites
-    # closes by an argument uniform in ``n``.  The section this used to cite,
-    # "Is ``_mux`` total?" in ``the relevant generator tests``, did
-    # not survive that file's condensing; ``the relevant tests`` carries the claim
-    # now, for this generator and the other 68.  So the generator is total on
-    # the arities that document states: this raise says the
-    # totality argument has been broken by a change, and the message names the
-    # table that broke it.
-    raise ValueError(f"the Minifuck boolean generator could not build {truth_table!r}")
+    return _mux(truth_table, n)
 
 
-def minifuck(truth_table: str) -> str:
+def minifuck(truth_table: str, width: int | None = None) -> str:
     """Build a Minifuck template for the given truth table.
 
     :func:`_solve` plus the arity check: ``_solve`` accepts a nullary table
     while recursing (six such calls building the 276 tables up to three
-    inputs), but the API refuses it.
+    inputs), but the API refuses it.  Narrow layouts pair fresh walks with
+    comments so skip chains no longer bind the padding into one long line.
     """
-    _validate_truth_table(truth_table)
-    return _solve(truth_table)
+    n = _validate_truth_table(truth_table)
+    natural = _solve(truth_table)
+    if width is None or width <= 0:
+        return natural
+    wrapped = _wrap_template(natural, n, width)
+    if max(map(len, wrapped.splitlines())) <= width:
+        return wrapped
+    if width < 4 and all(
+        int(bit) == ((row.bit_count() ^ int(truth_table[0])) & 1)
+        for row, bit in enumerate(truth_table)
+    ):
+        return _parity_columns(n, int(truth_table[0]))
+    if n == 1:
+        # The lookup requires two inputs: duplicate each leaf and fix its
+        # second setter to zero, leaving the first as the sole named input.
+        narrow = _mux_lookup("".join(bit * 2 for bit in truth_table), 2, paired=True)
+        at = narrow.rindex(_MINIFUCK_INPUT)
+        narrow = narrow[:at] + PAIR[0] + narrow[at + len(PAIR[0]) :]
+    else:
+        narrow = _mux_lookup(truth_table, n, paired=True)
+    narrow = _wrap_template(narrow, n, width)
+    return (
+        narrow
+        if max(map(len, narrow.splitlines())) < max(map(len, wrapped.splitlines()))
+        else wrapped
+    )
+
+
+def _parity_columns(n: int, complement: int) -> str:
+    """Toggle output bit 7 with each input; every skip absorbs only LF."""
+    bits = [0] * 10
+    pointer = 0
+    parts = ["q"]
+
+    def emit(command: str) -> None:
+        nonlocal pointer
+        parts.append(command)
+        if command == "<":
+            pointer = max(0, pointer - 1)
+        else:
+            pointer += 1
+            bits[pointer] ^= 1
+            if not bits[pointer]:
+                bits[pointer + 1] ^= 1
+
+    for _ in range(n):
+        for _ in range(6):
+            emit("[")
+        parts.append(TEMPLATE_CHAR)
+        # Either input ends at 6 or 7; clamping seven left steps returns to 0.
+        for _ in range(7):
+            emit("<")
+    for cell in range(1, 7):
+        emit("[")
+        if bits[cell] != int(cell in (2, 3)):
+            emit("<")
+            emit("[")
+    if bits[7] != (complement ^ 1):
+        emit("[")
+        emit("<")
+    parts.append(".")
+    return "\n".join(parts)
+
+
+def minifuck_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
+    """Recognize the parity layout's inert q prefix; retain legacy two-cell bits."""
+    return (("x", "[") if template.startswith("q\n") else PAIR,) * n
+
+
+def _wrap_template(template: str, n: int, width: int) -> str:
+    """Wrap a template with each two-character input run kept atomic."""
+    from esolangs.tools.wrap import wrap_program
+
+    marked = mark_runs(template, TEMPLATE_CHAR, (PAIR,) * n)
+    return unmark(wrap_program(marked, "minifuck", width), TEMPLATE_CHAR, n)
 
 
 # The construction's cache and its undecorated body live on ``_solve`` now,
@@ -261,4 +314,6 @@ def minifuck(truth_table: str) -> str:
 # arity check off did not move the surface.
 minifuck.cache_clear = _solve.cache_clear  # type: ignore[attr-defined]
 minifuck.cache_info = _solve.cache_info  # type: ignore[attr-defined]
+# Keep the public width parameter visible despite the legacy raw-solver link.
+minifuck.__signature__ = signature(minifuck)  # type: ignore[attr-defined]
 minifuck.__wrapped__ = _solve.__wrapped__  # type: ignore[attr-defined]

@@ -3,12 +3,13 @@ r"""Interpreter for the C-INTERCAL core used by the Boolean generator.
 Supports scalar calculation with mingle, select, and unary logic; numeric
 ``WRITE IN``/``READ OUT``; ``NEXT``, ``RESUME``, ``FORGET``; and ``GIVE UP``.
 EOF while reading and invalid programs raise ``HaltError``. The compiler's
-politeness bounds are enforced.
+politeness bounds count logical statements; LF is whitespace between tokens.
 """
 
 from __future__ import annotations
 
 import re
+from itertools import pairwise
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
@@ -47,11 +48,15 @@ def _expression(
     text: str, variables: dict[int, int], at: int = 0
 ) -> tuple[_Value, int]:
     """Parse one fully grouped INTERCAL expression."""
+    while at < len(text) and text[at].isspace():
+        at += 1
     if at >= len(text):
         raise HaltError("incomplete INTERCAL expression")
     if text[at] in "'\"":
         delimiter = text[at]
         at += 1
+        while at < len(text) and text[at].isspace():
+            at += 1
         # A program truncated right after its delimiter leaves nothing to
         # read here; the entry guard above cannot see it, because `at` was
         # in range when this call began.
@@ -60,6 +65,8 @@ def _expression(
         unary = text[at] if text[at] in "&V?" else ""
         at += bool(unary)
         (left, width), at = _expression(text, variables, at)
+        while at < len(text) and text[at].isspace():
+            at += 1
         if at < len(text) and text[at] in "$~":
             operator = text[at]
             (right, right_width), at = _expression(text, variables, at + 1)
@@ -80,6 +87,8 @@ def _expression(
                 ]
                 left = sum(bit << i for i, bit in enumerate(selected))
                 width = 16 if len(selected) <= 16 else 32
+        while at < len(text) and text[at].isspace():
+            at += 1
         if at >= len(text) or text[at] != delimiter:
             raise HaltError("unbalanced INTERCAL expression group")
         return ((_unary(left, width, unary) if unary else left), width), at + 1
@@ -117,12 +126,44 @@ def _roman(value: int) -> str:
     return "".join(out)
 
 
+_START = re.compile(
+    r"(?<![A-Z])(?:\(\d+\)\s*)?(?:PLEASE(?:\s+DO)?|DO(?:\s+NOT)?|DON'T)\b"
+)
+_BARE = re.compile(
+    r"(?:\.\d+\s*<-|READ\s+OUT|WRITE\s+IN|GIVE\s+UP|RESUME\b|FORGET\b|\(\d+\)\s+NEXT)"
+)
+
+
+def _statements(code: str) -> list[str]:
+    """Assemble statements at identifiers, retaining bare core fixtures."""
+    starts = [match.start() for match in _START.finditer(code)]
+    bounds = [0, *starts, len(code)]
+    statements: list[str] = []
+    for left, right in pairwise(bounds):
+        fragments: list[str] = []
+        for line in code[left:right].splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            # Bare complete commands remain physical-line statements; a
+            # command after only an identifier completes that identifier.
+            if fragments and _BARE.match(line):
+                prefix = " ".join(fragments)
+                if _START.fullmatch(prefix) is None:
+                    statements.append(prefix)
+                    fragments = []
+            fragments.append(line)
+        if fragments:
+            statements.append(" ".join(fragments))
+    return statements
+
+
 class _Machine:
     """Parsed INTERCAL statements, variables, and NEXT stack."""
 
     def __init__(self, code: str, io: IO) -> None:
         self.io = io
-        self.lines = [line.strip() for line in code.splitlines() if line.strip()]
+        self.lines = _statements(code)
         polite = sum(
             bool(re.match(r"(?:\(\d+\)\s+)?PLEASE", line)) for line in self.lines
         )

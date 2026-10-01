@@ -205,7 +205,7 @@ def _shallowest(nodes: list[_Leaf | _Block | _Node], n: int) -> int:
     return min((e.depth for e in nodes if isinstance(e, _Leaf)), default=n)
 
 
-def _plain(truth_table: str, n: int) -> str:
+def _plain(truth_table: str, n: int, *, small_root: bool = False) -> str:
     """Return the table as a plain tree: every level read, no decoder.
 
     Only ``2`` is reserved, so the inputs and states take the smallest primes
@@ -215,6 +215,8 @@ def _plain(truth_table: str, n: int) -> str:
     nodes = _tree(truth_table, n, 0, 0)
     primes = _primes(1 + n + len(nodes))
     inputs, states = primes[1 : 1 + n], primes[1 + n :]
+    if small_root:
+        states[0], states[-1] = states[-1], states[0]
     fractions = _nodes(nodes, states, inputs, (1, 1))
     fractions += [f"1/{prime}" for prime in inputs[_shallowest(nodes, n) :]]
     return " ".join([_start(states, inputs), *fractions])
@@ -317,8 +319,8 @@ def _threshold(table: str, n: int) -> str:
     return " ".join([start, *rules])
 
 
-def _indexed(table: str, n: int) -> str:
-    """Return the smaller indexed threshold or packed-block construction."""
+def _indexed_blocks(table: str, n: int) -> str:
+    """Return indexed states with packed blocks and a fixed exponent decoder."""
     v, wide = _plan(n)
     nodes = _tree(table, n, v, wide)
     depths: dict[int, int] = {}
@@ -365,22 +367,65 @@ def _indexed(table: str, n: int) -> str:
     start = "*".join(
         [state(len(nodes) - 1)] + [f"{p}^{_FRACTRAN_INPUT}" for p in inputs]
     )
-    packed = " ".join([start, *rules])
+    return " ".join([start, *rules])
+
+
+def _indexed(table: str, n: int) -> str:
+    """Return the smaller indexed threshold or packed-block construction."""
+    packed = _indexed_blocks(table, n)
     threshold = _threshold(table, n)
     return threshold if len(threshold) <= len(packed) else packed
 
 
-def fractran(truth_table: str) -> str:
+def _fractran_raw(truth_table: str) -> str:
     """Return a template, with input-prime exponents filled by ``PAIR``.
 
     Halts at 1 or 2 for zero or one. Seven inputs use indexed blocks;
-    smaller tables retain the legacy size choice.
+    small tables use trees and intermediate tables use packed blocks.
     """
     n = _validate_truth_table(truth_table)
     if n >= _INDEXED_MIN:
         return _indexed(truth_table, n)
-    packed = _packed(truth_table, n)
-    if n > _PLAIN_MAX:
-        return packed
-    plain = _plain(truth_table, n)
-    return plain if len(plain) <= len(packed) else packed
+    if n <= _PLAIN_MAX:
+        return _plain(truth_table, n)
+    return _packed(truth_table, n)
+
+
+def fractran(truth_table: str, width: int | None = None) -> str:
+    """Return a template; narrow small tables give the root the smallest state prime."""
+    from esolangs.tools.wrap import wrap_program
+
+    program = _fractran_raw(truth_table)
+    if width is None:
+        return program
+    n = _validate_truth_table(truth_table)
+    floor = max(map(len, program.split()))
+    if floor > width and n <= _PLAIN_MAX:
+        narrow = _plain(truth_table, n, small_root=True)
+        if max(map(len, narrow.split())) < floor:
+            program = narrow
+    # Consume unique phase primes 3/7 once, depositing 5 for each one.
+    # Cancel paired ones, then move the remaining 5 onto answer 2.
+    if (
+        n == 2
+        and max(map(len, program.split())) > width
+        and all(int(bit) == row.bit_count() % 2 for row, bit in enumerate(truth_table))
+    ):
+        program = _PARITY_BINARY if width < 4 else _PARITY_TWO
+    return wrap_program(program, "fractran", width)
+
+
+_PARITY_TWO = "21 $/3 $/7 1/25 2/5"
+_PARITY_PAIR = ("1", "5")
+_PARITY_BINARY = "21 $/3 $/7 1/4"
+
+
+def fractran_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
+    """Return parity numerator setters only for the exact two-phase program."""
+    pair = PAIR
+    if n == 2:
+        if template.split() == _PARITY_TWO.split():
+            pair = _PARITY_PAIR
+        elif template.split() == _PARITY_BINARY.split():
+            pair = ("1", "2")
+    return (pair,) * n

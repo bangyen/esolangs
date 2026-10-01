@@ -82,16 +82,16 @@
   },
   "AddSubJump": {
    "0110": {
-    "commands": 16,
-    "source_units": 289
+    "commands": 17,
+    "source_units": 287
    },
    "01101001": {
-    "commands": 23,
-    "source_units": 559
+    "commands": 24,
+    "source_units": 450
    },
    "0110100110010110": {
-    "commands": 30,
-    "source_units": 1046
+    "commands": 32,
+    "source_units": 614
    }
   },
   "Algebraic Programming Language": {
@@ -100,12 +100,12 @@
     "source_units": 54
    },
    "01101001": {
-    "commands": 58,
-    "source_units": 97
+    "commands": 77,
+    "source_units": 98
    },
    "0110100110010110": {
-    "commands": 90,
-    "source_units": 179
+    "commands": 109,
+    "source_units": 182
    }
   },
   "Alight": {
@@ -152,16 +152,16 @@
   },
   "BF-PDA": {
    "0110": {
-    "commands": 24,
-    "source_units": 43
+    "commands": 20,
+    "source_units": 39
    },
    "01101001": {
-    "commands": 38,
-    "source_units": 89
+    "commands": 32,
+    "source_units": 83
    },
    "0110100110010110": {
-    "commands": 48,
-    "source_units": 175
+    "commands": 40,
+    "source_units": 167
    }
   },
   "BFStack": {
@@ -250,16 +250,16 @@
   },
   "BrainIf": {
    "0110": {
-    "commands": 61,
-    "source_units": 1097
+    "commands": 58,
+    "source_units": 993
    },
    "01101001": {
-    "commands": 67,
-    "source_units": 1253
+    "commands": 14,
+    "source_units": 1105
    },
    "0110100110010110": {
-    "commands": 70,
-    "source_units": 1409
+    "commands": 66,
+    "source_units": 1217
    }
   },
   "CV(N)(C)": {
@@ -348,8 +348,8 @@
     "source_units": 935
    },
    "0110100110010110": {
-    "commands": 39,
-    "source_units": 1051
+    "commands": 40,
+    "source_units": 1065
    }
   },
   "Container": {
@@ -474,22 +474,22 @@
     "source_units": 145
    },
    "0110100110010110": {
-    "commands": 11,
-    "source_units": 241
+    "commands": 6,
+    "source_units": 319
    }
   },
   "Factor": {
    "0110": {
-    "commands": 865,
-    "source_units": 352
+    "commands": 761,
+    "source_units": 266
    },
    "01101001": {
-    "commands": 1133,
-    "source_units": 672
+    "commands": 1023,
+    "source_units": 501
    },
    "0110100110010110": {
-    "commands": 1395,
-    "source_units": 1296
+    "commands": 1291,
+    "source_units": 966
    }
   },
   "Fargo": {
@@ -858,16 +858,16 @@
   },
   "Smallfuck": {
    "0110": {
-    "commands": 38,
-    "source_units": 48
+    "commands": 34,
+    "source_units": 44
    },
    "01101001": {
-    "commands": 68,
-    "source_units": 143
+    "commands": 62,
+    "source_units": 137
    },
    "0110100110010110": {
-    "commands": 101,
-    "source_units": 323
+    "commands": 93,
+    "source_units": 315
    }
   },
   "Sophie": {
@@ -898,14 +898,14 @@
     "source_units": 1551
    },
    "01101001100101101001011001101001": {
-    "commands": 686,
+    "commands": 1950,
     "commands_by_row": {
-     "0": 614,
-     "1": 624,
-     "16": 638,
-     "31": 686
+     "0": 1826,
+     "1": 1830,
+     "16": 1890,
+     "31": 1950
     },
-    "source_units": 2534
+    "source_units": 3251
    },
    "0110100110010110100101100110100110010110011010010110100110010110": {
     "commands": 876,
@@ -976,16 +976,16 @@
   },
   "Underload": {
    "0110": {
-    "commands": 26,
-    "source_units": 51
+    "commands": 22,
+    "source_units": 47
    },
    "01101001": {
-    "commands": 41,
-    "source_units": 94
+    "commands": 35,
+    "source_units": 88
    },
    "0110100110010110": {
-    "commands": 52,
-    "source_units": 161
+    "commands": 44,
+    "source_units": 153
    }
   },
   "Unlambda": {

@@ -80,6 +80,8 @@ from esolangs.tools.helpers import (
     _greedy_input_order,
     _validate_truth_table,
     essential_inputs,
+    grid_width,
+    narrowest_grid,
     permute_truth_table,
     read_at,
 )
@@ -152,31 +154,29 @@ def _h_size(inputs: int) -> int:
     return 2 * child + 2 * _LATTICE * inputs + 2 * _LATTICE
 
 
-def _h_blocks(inputs: int) -> dict[str, _Block]:
-    """Assign every two-bit prefix a non-overlapping H-layout square."""
+def _h_blocks(inputs: int) -> dict[int, _Block]:
+    """Assign every two-level heap node a non-overlapping H-layout square."""
     root = _Block(0, 0, _h_size(inputs))
-    blocks = {"": root}
+    blocks = {1: root}
 
-    def descend(prefix: str, remaining: int, block: _Block) -> None:
+    def descend(prefix: int, remaining: int, block: _Block) -> None:
         if remaining < 2:
             return
         child_size = _h_size(remaining - 2)
-        for bits, child in zip(
-            ("00", "01", "10", "11"), block.quadrants(child_size), strict=True
-        ):
-            blocks[prefix + bits] = child
-            descend(prefix + bits, remaining - 2, child)
+        for bits, child in zip(range(4), block.quadrants(child_size), strict=True):
+            blocks[4 * prefix + bits] = child
+            descend(4 * prefix + bits, remaining - 2, child)
 
-    descend("", inputs, root)
+    descend(1, inputs, root)
     return blocks
 
 
-def _h_sites(inputs: int) -> dict[str, tuple[int, int]]:
+def _h_sites(inputs: int) -> dict[int, tuple[int, int]]:
     """Return the centre-cross site of every non-leaf Shannon node."""
     blocks = _h_blocks(inputs)
-    sites: dict[str, tuple[int, int]] = {}
+    sites: dict[int, tuple[int, int]] = {}
     for prefix, block in blocks.items():
-        remaining = inputs - len(prefix)
+        remaining = inputs - (prefix.bit_length() - 1)
         if remaining == 0:
             continue
         if remaining == 1:
@@ -190,43 +190,54 @@ def _h_sites(inputs: int) -> dict[str, tuple[int, int]]:
         # parent sits between them with the same track to *its* left.
         track = _LATTICE * remaining
         sites[prefix] = (left + 2 * track + _LATTICE, top + track + _LATTICE)
-        sites[prefix + "0"] = (left + track, top + track)
-        sites[prefix + "1"] = (left + track, top + 2 * track + _LATTICE)
+        sites[2 * prefix] = (left + track, top + track)
+        sites[2 * prefix + 1] = (left + track, top + 2 * track + _LATTICE)
     return sites
 
 
-def _h_minterm_sites(inputs: int) -> dict[str, tuple[int, int]]:
-    """Return H-layout sites for every prefix, including minterm leaves."""
+def _h_minterm_sites(inputs: int) -> dict[int, tuple[int, int]]:
+    """Return H-layout sites for every heap node, including minterm leaves."""
     sites = _h_sites(inputs)
     blocks = _h_blocks(inputs)
     if inputs % 2 == 0:
         for prefix, block in blocks.items():
-            if len(prefix) == inputs:
+            if (prefix.bit_length() - 1) == inputs:
                 sites[prefix] = (
                     block.x + block.size // 2,
                     block.y + block.size // 2,
                 )
     else:
         for prefix, block in blocks.items():
-            if len(prefix) != inputs - 1:
+            if (prefix.bit_length() - 1) != inputs - 1:
                 continue
             middle_x = block.x + block.size // 2
             middle_y = block.y + block.size // 2
-            sites[prefix + "0"] = (middle_x - 8, middle_y + 8)
-            sites[prefix + "1"] = (middle_x + 8, middle_y + 8)
+            sites[2 * prefix] = (middle_x - 8, middle_y + 8)
+            sites[2 * prefix + 1] = (middle_x + 8, middle_y + 8)
     return sites
 
 
-def _h_term_layout(table: str) -> "_Layout":
-    """Route one truth table's parallel minterm tree through an H-layout.
+@dataclass(frozen=True)
+class _HTermPlan:
+    inputs: int
+    sites: dict[int, tuple[int, int]]
+    signals: dict[int, int]
+    literal_start: int
+    results: dict[int, int | None]
+    result_gates: set[int]
+    result_signal: int
+    levels: list[list[int]]
 
-    Every wire takes a lane fixed by its class (see ``_LATTICE``): the
-    input feeders run across then down, and everything else runs down its
-    own column then across, except the ``1`` literal's last hop to a gate
-    whose sibling sits beside it, which passes under the target.  Nothing
-    here searches; the collision check in :meth:`_RoutingLayout.route` is
-    a guard on the lattice.
-    """
+    def literal(self, depth: int, bit: str) -> int:
+        return self.literal_start + 2 * depth + int(bit)
+
+    def result_anchor(self, prefix: int) -> tuple[int, int]:
+        x, y = self.sites[prefix]
+        return x + _RESULT_TRACK[0], y - _RESULT_TRACK[1]
+
+
+def _h_term_plan(table: str) -> _HTermPlan:
+    """Assign minterm and result signals to fixed H-layout sites."""
     truth_table = table
     inputs = len(table).bit_length() - 1
     margin = _LATTICE * inputs + _LATTICE  # the root anchors and input feeders
@@ -234,54 +245,79 @@ def _h_term_layout(table: str) -> "_Layout":
         prefix: (x + margin, y + margin)
         for prefix, (x, y) in _h_minterm_sites(inputs).items()
     }
-    layout = _RoutingLayout()
+    levels: list[list[int]] = [[] for _ in range(inputs + 1)]
+    for node in sites:
+        levels[node.bit_length() - 1].append(node)
     signals = {
         prefix: index
-        for index, prefix in enumerate(prefix for prefix in sites if len(prefix) >= 2)
+        for index, prefix in enumerate(
+            prefix for prefix in sites if (prefix.bit_length() - 1) >= 2
+        )
     }
     literal_start = len(signals)
 
-    def literal(depth: int, bit: str) -> int:
-        return literal_start + 2 * depth + int(bit)
-
     next_signal = literal_start + 2 * inputs
-    results: dict[str, int | None] = {
-        prefix: signals[prefix] if truth_table[int(prefix, 2)] == "1" else None
+    results: dict[int, int | None] = {
+        prefix: signals[prefix] if truth_table[prefix - (1 << inputs)] == "1" else None
         for prefix in sites
-        if len(prefix) == inputs
+        if (prefix.bit_length() - 1) == inputs
     }
-    result_gates: set[str] = set()
+    result_gates: set[int] = set()
     for depth in range(inputs - 1, -1, -1):
-        for prefix in (p for p in sites if len(p) == depth):
-            zero = results.get(prefix + "0")
-            one = results.get(prefix + "1")
+        for prefix in levels[depth]:
+            zero = results.get(2 * prefix)
+            one = results.get(2 * prefix + 1)
             if zero is not None and one is not None:
                 results[prefix] = next_signal
                 next_signal += 1
                 result_gates.add(prefix)
             else:
                 results[prefix] = zero if zero is not None else one
-    result_signal = results[""]
+    result_signal = results[1]
     if result_signal is None:  # handled by the scalar constant construction
         raise AssertionError("the H layout needs at least one selected minterm")
 
+    return _HTermPlan(
+        inputs,
+        sites,
+        signals,
+        literal_start,
+        results,
+        result_gates,
+        result_signal,
+        levels,
+    )
+
+
+def _h_reserve_terms(
+    layout: _RoutingLayout, plan: _HTermPlan
+) -> dict[tuple[int, str, int], tuple[int, int]]:
+    """Reserve gate ports, result holds, and table-independent literal anchors."""
+    inputs, sites, signals = plan.inputs, plan.sites, plan.signals
+    literal, result_anchor = plan.literal, plan.result_anchor
     for prefix, (x, y) in sites.items():
-        if len(prefix) >= 2:
+        if (prefix.bit_length() - 1) >= 2:
             layout.glyph(x, y, "a")
-        if prefix:
-            signal = literal(0, prefix[0]) if len(prefix) == 1 else signals[prefix]
+        if prefix != 1:
+            signal = (
+                literal(0, str(prefix & 1))
+                if (prefix.bit_length() - 1) == 1
+                else signals[prefix]
+            )
             layout.reserve((x + 1, y), signal)
-        if len(prefix) >= 2:
-            parent = prefix[:-1]
+        if (prefix.bit_length() - 1) >= 2:
+            parent = prefix // 2
             layout.reserve(
                 (x - 1, y - 1),
-                (literal(0, parent[0]) if len(parent) == 1 else signals[parent]),
+                (
+                    literal(0, str(parent & 1))
+                    if (parent.bit_length() - 1) == 1
+                    else signals[parent]
+                ),
             )
-            layout.reserve((x - 1, y + 1), literal(len(prefix) - 1, prefix[-1]))
-
-    def result_anchor(prefix: str) -> tuple[int, int]:
-        x, y = sites[prefix]
-        return x + _RESULT_TRACK[0], y - _RESULT_TRACK[1]
+            layout.reserve(
+                (x - 1, y + 1), literal((prefix.bit_length() - 1) - 1, str(prefix & 1))
+            )
 
     # Every result anchor is kept clear whether or not this table uses it,
     # so the literal and selector trees are routed on a canvas that does
@@ -289,28 +325,42 @@ def _h_term_layout(table: str) -> "_Layout":
     # are routed.  A route may cross a held cell's neighbourhood but may
     # not corner there (see :meth:`_RoutingLayout._route_is_free`).
     for prefix in sites:
-        if len(prefix) == inputs:
+        if (prefix.bit_length() - 1) == inputs:
             continue
         x, y = result_anchor(prefix)
         for cell in ((x, y), (x + 1, y), (x - 1, y - 1), (x - 1, y + 1)):
             layout.reserve(cell, _HOLD)
-    literal_anchors: dict[tuple[int, str, str], tuple[int, int]] = {}
-    roots: dict[tuple[int, str], tuple[int, int]] = {}
+    # Depth buckets visit 4*T - 2*inputs - 4 anchors, not all sites per input.
+    literal_anchors: dict[tuple[int, str, int], tuple[int, int]] = {}
     for depth in range(inputs):
         for bit in "01":
-            for prefix in sites:
-                if len(prefix) <= depth:
+            for level in range(depth + 1):
+                for prefix in plan.levels[level]:
                     x, y = sites[prefix]
-                    below = _LATTICE * (depth - len(prefix))
+                    below = _LATTICE * (depth - (prefix.bit_length() - 1))
                     point = (
                         x - _LITERAL_TRACK_X[bit] - below,
                         y - _LITERAL_TRACK_Y[bit] - below,
                     )
                     literal_anchors[(depth, bit, prefix)] = point
                     layout.reserve(point, literal(depth, bit))
-                    if not prefix:
+                    if prefix == 1:
                         layout.junction(*point, literal(depth, bit))
-            roots[(depth, bit)] = literal_anchors[(depth, bit, "")]
+    return literal_anchors
+
+
+def _h_route_literals(
+    layout: _RoutingLayout,
+    plan: _HTermPlan,
+    literal_anchors: dict[tuple[int, str, int], tuple[int, int]],
+) -> None:
+    """Route input feeders, minterm prefixes, and literal fanout."""
+    inputs, sites, signals, literal = (
+        plan.inputs,
+        plan.sites,
+        plan.signals,
+        plan.literal,
+    )
     input_starts: dict[tuple[int, str], tuple[int, int]] = {}
     for depth in range(inputs):
         row = 8 * depth
@@ -331,21 +381,25 @@ def _h_term_layout(table: str) -> "_Layout":
         for bit in "01":
             layout.route(
                 input_starts[(depth, bit)],
-                roots[(depth, bit)],
+                literal_anchors[(depth, bit, 1)],
                 literal(depth, bit),
                 "across",
             )
     for (depth, bit, prefix), point in literal_anchors.items():
-        if prefix:
+        if prefix != 1:
             layout.junction(*point, literal(depth, bit))
     for prefix, (x, y) in sites.items():
-        if not prefix:
+        if prefix == 1:
             continue
-        signal = literal(0, prefix[0]) if len(prefix) == 1 else signals[prefix]
+        signal = (
+            literal(0, str(prefix & 1))
+            if (prefix.bit_length() - 1) == 1
+            else signals[prefix]
+        )
         source = (x + 1, y)
         layout.junction(*source, signal)
         for bit in "01":
-            child = prefix + bit
+            child = 2 * prefix + int(bit)
             if child not in sites:
                 continue
             child_x, child_y = sites[child]
@@ -354,27 +408,27 @@ def _h_term_layout(table: str) -> "_Layout":
     for depth in range(inputs):
         for bit in "01":
             signal = literal(depth, bit)
-            frontier = [""]
+            frontier = [1]
             for level in range(depth + 1):
                 following = []
                 for prefix in frontier:
                     branches = bit if level == depth else "01"
                     source = literal_anchors[(depth, bit, prefix)]
                     for branch in branches:
-                        child = prefix + branch
+                        child = 2 * prefix + int(branch)
                         shape: _Shape = "down"
                         if level == depth:
                             child_x, child_y = sites[child]
                             target = (
                                 (child_x + 1, child_y)
-                                if len(child) == 1
+                                if (child.bit_length() - 1) == 1
                                 else (child_x - 1, child_y + 1)
                             )
                             # Side-by-side siblings put both last-level
                             # targets on one row, and the ``0`` wire corners
                             # on it first; the ``1`` wire passes underneath.
                             side_by_side = (
-                                sites[prefix + "0"][0] != sites[prefix + "1"][0]
+                                sites[2 * prefix][0] != sites[2 * prefix + 1][0]
                             )
                             if side_by_side and bit == "1":
                                 shape = "under"
@@ -383,12 +437,19 @@ def _h_term_layout(table: str) -> "_Layout":
                             following.append(child)
                         layout.route(source, target, signal, shape)
                 frontier = following
+
+
+def _h_route_results(layout: _RoutingLayout, plan: _HTermPlan) -> None:
+    """Release result holds and join the selected minterms at the output."""
+    inputs, sites, results = plan.inputs, plan.sites, plan.results
+    result_gates, result_signal = plan.result_gates, plan.result_signal
+    result_anchor = plan.result_anchor
     layout.release(_HOLD)
-    result_points: dict[str, tuple[int, int]] = {}
+    result_points: dict[int, tuple[int, int]] = {}
     for prefix, result_value in results.items():
         if result_value is None:
             continue
-        if len(prefix) == inputs:
+        if (prefix.bit_length() - 1) == inputs:
             x, y = sites[prefix]
             result_points[prefix] = (x + 1, y)
         else:
@@ -403,20 +464,26 @@ def _h_term_layout(table: str) -> "_Layout":
     for prefix in result_gates:
         x, y = result_anchor(prefix)
         children = [
-            prefix + bit for bit in "01" if results.get(prefix + bit) is not None
+            2 * prefix + int(bit)
+            for bit in "01"
+            if results.get(2 * prefix + int(bit)) is not None
         ]
         for child, target in zip(
             children, ((x - 1, y - 1), (x - 1, y + 1)), strict=True
         ):
             layout.reserve(target, cast(int, results[child]))
-    root = result_points[""]
+    root = result_points[1]
     layout.junction(*root, result_signal)
     layout.glyph(root[0] + 1, root[1], "-")
     layout.glyph(root[0] + 2, root[1], ":")
     for depth in range(inputs):
-        for prefix in (p for p in sites if len(p) == depth and results[p] is not None):
+        for prefix in plan.levels[depth]:
+            if results[prefix] is None:
+                continue
             children = [
-                prefix + bit for bit in "01" if results.get(prefix + bit) is not None
+                2 * prefix + int(bit)
+                for bit in "01"
+                if results.get(2 * prefix + int(bit)) is not None
             ]
             if prefix in result_gates:
                 gate_x, gate_y = result_anchor(prefix)
@@ -431,6 +498,23 @@ def _h_term_layout(table: str) -> "_Layout":
                 if child_result is None:  # pragma: no cover - filtered above
                     raise AssertionError("missing result signal")
                 layout.route(result_points[child], target, child_result)
+
+
+def _h_term_layout(table: str) -> "_Layout":
+    """Route one truth table's parallel minterm tree through an H-layout.
+
+    Every wire takes a lane fixed by its class (see ``_LATTICE``): the
+    input feeders run across then down, and everything else runs down its
+    own column then across, except the ``1`` literal's last hop to a gate
+    whose sibling sits beside it, which passes under the target.  Nothing
+    here searches; the collision check in :meth:`_RoutingLayout.route` is
+    a guard on the lattice.
+    """
+    plan = _h_term_plan(table)
+    layout = _RoutingLayout()
+    literal_anchors = _h_reserve_terms(layout, plan)
+    _h_route_literals(layout, plan, literal_anchors)
+    _h_route_results(layout, plan)
     return layout
 
 
@@ -442,8 +526,11 @@ class _Builder:
     result on a fresh bus.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, *, narrow: bool = False) -> None:
         """Start an empty build."""
+        # Input junction, gate, output junction, then one clear column:
+        # different signals' junctions must remain two cells apart.
+        self.gate_stride = 4 if narrow else 3 * _COL_STEP
         self.layout = _Layout()
         self.next_column = 1
         self.next_row = 0
@@ -519,7 +606,7 @@ class _Builder:
             self.free_strides.remove(first)
         else:
             first = self.next_column
-            self.next_column += 3 * _COL_STEP
+            self.next_column += self.gate_stride
         return first, first + _COL_STEP
 
     def _band(self) -> None:
@@ -569,7 +656,7 @@ class _Builder:
             return True
         if any(group + _COL_STEP > after for group in self.free_strides):
             return True
-        return self.next_column + 3 * _COL_STEP <= self.limit
+        return self.next_column + self.gate_stride <= self.limit
 
     def _release(self, signal: int) -> None:
         """Give back ``signal``'s column group, if it owns one to give.
@@ -910,19 +997,13 @@ def _cheapest_selector_order(truth_table: str, n: int) -> tuple[int, ...]:
     return tuple(remaining + bottom_up[::-1])
 
 
-def _selector_orders(truth_table: str) -> list[tuple[int, ...] | None]:
-    """Return the selector orders worth building, identity (``None``) first.
+def _selector_orders(
+    truth_table: str, *, compact: bool = False
+) -> list[tuple[int, ...] | None]:
+    """Return named selector orders, identity first.
 
-    Only which rail each Shannon level selects moves; the rails themselves
-    are drawn, and read, in input order.  Three named candidates join the
-    identity: the shared greedy order
-    (:func:`~esolangs.tools.helpers._greedy_input_order`), which counts
-    constant cofactors; :func:`_cheapest_selector_order`, which counts this
-    fold's gates and complements; and the reversed identity, which hands
-    the bottom level -- the one with the most muxes -- the first rail.  None
-    of the three dominates: over all 256 three-input tables they save 7.4%,
-    12.5% and 13.6% alone and 19.6% together, against 19.8% for the best of
-    all six orders.  Four builds is the whole cost; nothing searches.
+    Compact builds keep identity, mux-cost greedy and reverse. Width requests
+    also try the constant-cofactor greedy order. Rails remain in input order.
     """
     n = len(truth_table).bit_length() - 1
     if n > _REORDER_MAX_ARITY:
@@ -932,7 +1013,7 @@ def _selector_orders(truth_table: str) -> list[tuple[int, ...] | None]:
     identity = tuple(range(len(used)))
     orders: list[tuple[int, ...] | None] = [None]
     for order in (
-        _greedy_input_order(table, len(used)),
+        identity if compact else _greedy_input_order(table, len(used)),
         _cheapest_selector_order(table, len(used)),
         identity[::-1],
     ):
@@ -968,7 +1049,7 @@ def _circuit_diagram_at(
     """
     _validate_truth_table(truth_table)
 
-    builder = _Builder()
+    builder = _Builder(narrow=limit is not None)
     n = len(truth_table).bit_length() - 1
     # Every input keeps its own ``-`` row -- the rows are the read order and
     # the interface -- but a table that ignores some of them is a smaller
@@ -1004,6 +1085,58 @@ def _circuit_diagram_at(
     return builder.layout.render()
 
 
+def _affine_circuit(table: str, width: int) -> str | None:
+    """Return a direct XOR chain if binary-carry parity verifies the table."""
+    n = _validate_truth_table(table)
+    constant = int(table[0])
+    coefficients = [constant ^ int(table[1 << bit]) for bit in range(n)]
+    parity = constant
+    for row, value in enumerate(table):
+        if parity != int(value):
+            return None
+        # All binary carries together flip fewer than 2T bits.
+        carry = row
+        bit = 0
+        while carry & 1:
+            parity ^= coefficients[bit]
+            carry >>= 1
+            bit += 1
+        if bit < n:
+            parity ^= coefficients[bit]
+    if n == 2 and all(coefficients):
+        if width < 6:
+            # Return the output below both inputs, then left. Two rows
+            # isolate its final junction from the colon's diagonal pin.
+            gate = "X" if constant else "x"
+            return f"-.\n  {gate}.\n-. |\n   .\n  .\n .\n |\n .-:"
+        # Adjacent input rows feed the two diagonal gate pins directly.
+        layout = _Layout()
+        for signal, row in enumerate((0, 2)):
+            layout.glyph(0, row, "-")
+            layout.junction(1, row, signal)
+        layout.glyph(2, 1, "X" if constant else "x")
+        layout.junction(3, 1, 2)
+        layout.glyph(4, 1, "-")
+        layout.glyph(5, 1, ":")
+        return layout.render()
+    builder = _Builder(narrow=True)
+    rails = [builder.input_bus() for _ in range(n)]
+    selected = [rail for bit, rail in enumerate(reversed(rails)) if coefficients[bit]]
+    builder.band_start = builder.next_column
+    # Reserve the output dash and colon beyond the last gate group.
+    builder.limit = max(1, width - 2)
+    if not selected:
+        result = builder.constant(rails[0], "X" if constant else "x")
+    elif len(selected) == 1:
+        result = builder.invert(selected[0]) if constant else selected[0]
+    else:
+        result = builder.gate("X" if constant else "x", selected[0], selected[1])
+        for rail in selected[2:]:
+            result = builder.gate("x", result, rail)
+    builder.output(result)
+    return builder.layout.render()
+
+
 def circuit_diagram(truth_table: str, width: int | None = None) -> str:
     """Build a Circuit Diagram program computing the given truth table.
 
@@ -1011,12 +1144,10 @@ def circuit_diagram(truth_table: str, width: int | None = None) -> str:
     for a column count: the drawing is built once without one, and again
     inside the width if that came out too wide.
 
-    Below eight inputs "once" is once per selector order
-    (:func:`_selector_orders`), the shortest kept, and a width bands that
-    order.  The orders' reach is a constant four builds: over all 256
-    three-input tables the shipped drawings are 19.6% smaller than the
-    identity's, 20.8% over all 65,536 four-input ones, and 9% to 19% on
-    random five- to seven-input ones.
+    Below eight inputs the shortest named selector order is kept. Compact
+    builds use three orders; width requests keep all four. Retiring the
+    constant-cofactor greedy choice adds 3.29% to the three-input total
+    and 1.62% to the seeded five-input sample.
 
     From eight inputs an unconstrained build uses the H-layout instead
     (:func:`_h_term_layout`).  That is a growth choice, not a size one: the
@@ -1034,7 +1165,8 @@ def circuit_diagram(truth_table: str, width: int | None = None) -> str:
     does with no new primitive: a tap already runs a bus down and then along
     a row in either direction.
 
-    The floor is what a band cannot reclaim -- the rails and the complements,
+    Below that floor, affine tables use native XOR/XNOR chains.
+    A mux layout's floor is what a band cannot reclaim -- the rails and complements,
     which their mux levels share and which therefore stay live for the whole
     drawing -- plus the carried signals and one gate group.  That is about
     ``8 * n`` columns, so the floor grows with the inputs rather than with
@@ -1049,15 +1181,17 @@ def circuit_diagram(truth_table: str, width: int | None = None) -> str:
     flat, order = min(
         (
             (_circuit_diagram_at(truth_table, None, order), order)
-            for order in _selector_orders(truth_table)
+            for order in _selector_orders(truth_table, compact=width is None)
         ),
         key=lambda built: len(built[0]),
     )
-    if width is None or max(len(line) for line in flat.split("\n")) <= width:
+    if width is None or grid_width(flat) <= width:
         return flat
     banded = _circuit_diagram_at(truth_table, width, order)
-    if max(len(line) for line in banded.split("\n")) < max(
-        len(line) for line in flat.split("\n")
-    ):
+    if grid_width(banded) <= width:
         return banded
-    return flat
+    # The output dash and colon extend beyond the final gate group.
+    banded = _circuit_diagram_at(truth_table, max(1, width - 2), order)
+    affine = _affine_circuit(truth_table, width)
+    candidates = (flat, banded) if affine is None else (flat, banded, affine)
+    return narrowest_grid(*candidates)

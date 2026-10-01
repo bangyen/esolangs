@@ -30,8 +30,6 @@ one on random programs.
 
 from __future__ import annotations
 
-from functools import cache
-
 from esolangs.tools.helpers import TEMPLATE_CHAR
 
 __all__ = ["ConstructError", "construct"]
@@ -419,18 +417,15 @@ def _phase_a(b: _Builder, marks: list[int]) -> None:
             raise ConstructError("merge failed to re-synchronize")
 
 
-def _separate(b: _Builder, marks: list[int], ws: tuple[int, ...] | None = None) -> None:
+def _separate(b: _Builder, marks: list[int], ws: tuple[int, ...]) -> None:
     """Give every row a unique position by a planned decode tree.
 
     Level ``i`` walks each same-position group, highest first, onto
     ``marks[i]``, where ``33`` splits it by bit ``i``.  Each visit is a shift
     ``"2"*s + "33"`` then a test ``"2"*w + "33"``, so the escape offset ``w``
-    is decoupled from the distance.  Doubling base (``ws is None``):
-    ``w = d // 2`` halves the minimum gap per level, so spacing ``2**(n+1)``
-    keeps every gap ``>= 2`` after ``n`` levels at any arity.  Tight
-    geometry: fixed even ``ws[i]``, the budget ``sum ws == 2**(n + 1) - 2``
-    under the spacing, positions closing to ``base + 2*r``; admitted by the
-    reference run, not this argument.
+    is decoupled from the distance. Fixed even escapes sum to
+    ``2**(n + 1) - 2``, below the mark spacing. This route is used only
+    at one through three inputs, whose row states are checked exhaustively.
     """
     for i, mk in enumerate(marks):
         for _visit in range(2**b.n + 1):
@@ -438,7 +433,7 @@ def _separate(b: _Builder, marks: list[int], ws: tuple[int, ...] | None = None) 
             if not pending:
                 break
             d = mk - max(pending)
-            w = max(1, d // 2) if ws is None else ws[i]
+            w = ws[i]
             if d < w:  # pragma: no cover - the probed arities all pass
                 raise ConstructError(f"level {i}: walk {d} under escape {w}")
             # `d < w` is refused above, and the planned walk always
@@ -455,44 +450,18 @@ def _separate(b: _Builder, marks: list[int], ws: tuple[int, ...] | None = None) 
         raise ConstructError("separation left shared positions")
 
 
-@cache
-def _geometry(n: int) -> tuple[tuple[int, ...], tuple[int, ...] | None]:
-    """Pick arity ``n``'s mark geometry: tight when it proves out.
+def _geometry(n: int) -> tuple[tuple[int, ...], tuple[int, ...]]:
+    """Return tight marks and binary escapes for the small modeled pipeline.
 
-    Tight: marks ``(i + 1) * 2**(n + 1) + 1`` with escapes ``2**(n - i)``,
-    linear where the base doubles -- 2.2x smaller at four inputs, 64x at
-    nine (48.2M vs 752K chars).  The spacing is ``2**(n + 1)`` because
-    ``2**n`` *is* the level-0 escape (an escapee cascaded onto mark 1); the
-    escapes are a binary encoding with budget ``2**(n + 1) - 2``, and the
-    least even spacing above it keeps every position odd.  Measured floor is
-    ``2**(n + 1) - 4`` (<=0.2%); ``- 6`` refuses at every ``n >= 3``.  One
-    reference run per arity (~1ms at seven inputs, cached) decides it: each
-    row at a distinct odd position with nothing marked above, else the
-    doubling base.  Passes at every probed arity (one through ten).
+    Four and more inputs use :func:`_construct_linear`; the three remaining
+    geometries satisfy the separation invariants on every input row.
     """
-    marks = tuple((i + 1) * 2 ** (n + 1) + 1 for i in range(n))
-    ws = tuple(2 ** (n - i) for i in range(n))
-    _work[0] = _WORK_BUDGET * max(1, 2 ** (n - 4))
-    try:
-        b = _Builder(n)
-        _phase_a(b, list(marks))
-        _close(b)
-        _separate(b, list(marks), ws)
-        rows = b.live()
-        poss = [r.pos for r in rows]
-        ok = (
-            len(set(poss)) == len(poss)
-            and all(p % 2 for p in poss)
-            and not any(_on_mark(r) for r in rows)
-            and all(r.tape >> (r.pos + 1 + _RING) == 0 for r in rows)
-        )
-    except (ConstructError, _WorkExhaustedError):  # pragma: no cover
-        ok = False
-    if ok:
-        return marks, ws
-    # No probed arity reaches this fallback; it is what keeps construct
-    # total by argument at the arities nobody has probed.
-    return tuple(2 ** (n + 1) * 2**i + 1 for i in range(n)), None  # pragma: no cover
+    if not 1 <= n <= 3:
+        raise ValueError("modeled geometry requires one through three inputs")
+    return (
+        tuple((i + 1) * 2 ** (n + 1) + 1 for i in range(n)),
+        tuple(2 ** (n - i) for i in range(n)),
+    )
 
 
 def _paint(b: _Builder, k: int) -> None:
@@ -567,11 +536,8 @@ def _verdict(b: _Builder, table: str) -> None:
     live = b.live()
     positions = [r.pos for r in live]
     if len(set(positions)) != len(positions) or any(p % 2 == 0 for p in positions):
-        # Never observed (separation puts row r at ``base + 2*r`` under
-        # the spacing :func:`_geometry` picks, checked to n = 10, and the
-        # mark base keeps the gaps even); raising
-        # keeps the no-unproven-template contract if a wider arity
-        # ever breaks the parity.
+        # Keep the verdict's precondition explicit even though the small
+        # geometries are exhaustively checked.
         raise ConstructError("verdict precondition: positions not distinct odd")
     a = max(r.pos for r in ones) + 2
     offsets: list[int] = []
@@ -794,16 +760,6 @@ def construct(truth_table: str) -> str:
     n = max(1, (len(truth_table) - 1).bit_length())
     if n >= 4:
         return _construct_linear(truth_table, n)
-    # The mark geometry comes from _geometry: the tight linear layout
-    # when its per-arity reference run proves out (every probed arity),
-    # the doubling base with halving escapes -- proven total at every
-    # arity -- otherwise.  The reference run manages its own budget and
-    # caches, so it is charged once per arity, not per table.
-    #
-    # The budget still bounds a diverging build, but everything about a
-    # wider table is exponentially bigger -- rows, template length,
-    # shield paints -- so the cap scales with the row count to stay a
-    # divergence guard, not an arity ceiling.
     marks_t, ws = _geometry(n)
     marks = list(marks_t)
     _work[0] = _WORK_BUDGET * max(1, 2 ** (n - 4))

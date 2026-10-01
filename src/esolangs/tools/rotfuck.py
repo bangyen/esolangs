@@ -88,6 +88,10 @@ def _pads() -> tuple[str, ...]:
 _PADS = _pads()
 
 
+class _UnplaceableError(Exception):
+    """Open seeks leave no admissible padding or loop placement."""
+
+
 class _Builder:
     """Emitted source, plus the rotation each character will execute at.
 
@@ -120,7 +124,7 @@ class _Builder:
             ):
                 self.emit(run)
                 return
-        raise AssertionError("no neutral pad is hidden from every open seek")
+        raise _UnplaceableError("no neutral pad is hidden from every open seek")
 
     def _fill(self, need: int) -> None:
         """Pad by exactly ``need`` rotations.
@@ -179,21 +183,12 @@ class _Builder:
             B  every    entry ...      run on every pass, ends on the test cell
             q  ]        entry + |B|    jumps back to A while that cell is nonzero
 
-        ``f`` fires because its cell is zero, which skips ``p`` -- the only
-        way to have a back-seek target that is never executed, and so the
-        only way to have a loop at all.  Its seek stops at ``x``, so the first
-        pass starts at ``B``, and ``A`` is padded until the whole cycle is 0
-        modulo 8: that is what makes every pass read the same commands and
-        the exit rotation independent of the trip count.
-
-        Why two halves.  ``f``'s cell is the cell ``B`` starts from on the
-        first pass, and ``q``'s is the cell ``B`` ends on; a loop whose
-        pointer came back to where it started would need those to be the same
-        cell, which cannot be both zero and the nonzero thing being tested.
-        So the pointer has to move by ``B``'s displacement each pass, and
-        ``A`` is what moves it back.  Only ``f``'s seek stops before ``B``,
-        so ``B`` is read by one seek and ``A`` by two -- nested loops belong
-        in ``B``.
+        ``f`` skips the unexecuted back-seek target ``p`` and stops at
+        ``x``, entering ``B`` first. Padding ``A`` makes the cycle length
+        zero modulo eight, so rotation is independent of the trip count.
+        ``B`` must move from ``f``'s zero cell to ``q``'s nonzero test cell;
+        ``A`` moves back. Only ``f``'s seek stops before ``B``, so nested
+        loops belong there, hidden from one seek rather than two.
 
         The caller owes: a zero under the pointer, an ``A`` that leaves the
         pointer on a nonzero cell (a zero there fires ``x``), and halves whose
@@ -201,14 +196,11 @@ class _Builder:
         """
         for _ in range(8):
             state = self._state()
-            try:
-                self._loop_once(every, again)
-            except AssertionError:
-                self._restore(state)
-                self._pad()
-            else:
+            if self._loop_once(every, again):
                 return
-        raise AssertionError("no rotation admits this loop")
+            self._restore(state)
+            self._pad()
+        raise _UnplaceableError("no rotation admits this loop")
 
     def _every(self, every: Callable[[], None], span: int) -> list[str] | None:
         """Emit ``B`` once to measure it; keep it only if it fits ``span``.
@@ -227,36 +219,36 @@ class _Builder:
             every()
             self._fill((span - self.rot + entry) % 8)
             body = self.src[mark:]
-        except AssertionError:
+        except _UnplaceableError:
             body = None
         self._restore(state)
         return body
 
-    def _loop_once(self, every: Callable[[], None], again: Callable[[], None]) -> None:
-        """Emit the loop at the current rotation, or fail leaving a mess."""
+    def _loop_once(self, every: Callable[[], None], again: Callable[[], None]) -> bool:
+        """Emit the loop at this rotation, restoring failed placements."""
         for span in _SPANS:
             state = self._state()
             try:
-                self._span_once(every, again, span)
-            except AssertionError:
-                self._restore(state)
-            else:
-                return
-        raise AssertionError("no body length fits this rotation")
+                if self._span_once(every, again, span):
+                    return True
+            except _UnplaceableError:
+                pass
+            self._restore(state)
+        return False
 
     def _span_once(
         self, every: Callable[[], None], again: Callable[[], None], span: int
-    ) -> None:
-        """Emit the loop with its ``B`` half of length ``span`` modulo eight."""
+    ) -> bool:
+        """Emit this span, or return false when its seeks cannot fit it."""
         phi = self.rot
         entry = (phi + 1) % 8
         back = (entry + span + 1) % 8
         fixed = (("[", phi), ("[", back), ("]", entry), ("]", entry + span))
         if not all(self._hidden(cmd, at) for cmd, at in fixed):
-            raise AssertionError("a loop's own brackets would show in a seek")
+            return False
         body = self._every(every, span)
         if body is None:
-            raise AssertionError("this body length does not fit")
+            return False
 
         self._put("[", phi)
         self._put("[", back)
@@ -269,6 +261,7 @@ class _Builder:
         self.src += body
         self._put("]", entry + span)
         self.rot = back
+        return True
 
     def text(self) -> str:
         """Return the finished, rotated source."""

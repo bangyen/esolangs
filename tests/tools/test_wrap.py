@@ -34,8 +34,8 @@ from esolangs.tools.wrap import (
     _bio,
     _bitdeque,
     _cell_width,
-    _indented,
     _mammalian,
+    _packlang,
     _polynomial,
     _six_five,
     _span,
@@ -82,19 +82,6 @@ NARROW_WIDTH = 13
 # the implementation: each was verified to break (or to be meaningless) when
 # newlines are inserted, so the table is the record of that finding.
 #
-# The eight below NoComment were found the same way, by inserting a newline
-# at every position of the language's own boolean program and running each
-# one.  Grapheme, CV(N)(C), Fargo and Super SNUSP have no safe position at
-# all; Alight has only the very end, where the newline adds an empty row
-# rather than splitting anything.  Minsky Swap has six, but none a wrapper
-# could use: five sit inside its leading ``****`` run and the sixth is the
-# end of the program, so there is nowhere between two statements to break.
-# Either way there is no token rule to find and no narrower width that
-# would help.  They are recorded because "we tried and it cannot be done"
-# is worth as much as a wrapper, and because each is a long line that
-# otherwise looks like an oversight -- CV(N)(C) reaches 1162 columns at
-# n == 4 and Super SNUSP 286.
-#
 # Four of them are already covered by a general rule and named anyway,
 # because each has a *specific* reason worth keeping rather than deriving
 # again.  Alight and Super SNUSP are 2D, where a newline is a row: Alight's
@@ -117,9 +104,6 @@ NARROW_WIDTH = 13
 # not touch the finished text -- the reasons above are why a break is
 # destructive, and those hold whatever the generator learns to do.
 UNWRAPPABLE = {
-    "nocomment": "a newline is an unrecognized command, a load error",
-    "grapheme": "every character must be A-Z, so a newline is a load error",
-    "cvnc": "the source must syllabify and a newline is in no syllable",
     "fargo": "each physical line is one command; expressions have no continuation",
     "minsky_swap": "only line 1 is code; line 2 gives its numeric jump distances",
     "alight": "a command is a word walked cell by cell; a row end cuts it",
@@ -136,42 +120,12 @@ UNWRAPPABLE = {
     "container": "each line declares a container or one of its rules",
     "crement": "each line is one instruction; jumps and patches name line numbers",
     "inject": "blocks and executable commands are delimited by source lines",
-    "intercal": "each physical line is one statement; groups have no continuation",
-    "malbolge": "the source is the full 59049-cell store; the mixer and the "
-    "stubs sit at fixed addresses, so reflowing loses the layout",
     "whitespace": "every space, tab and newline is a token or a number terminator",
     "thue": "a newline ends a rule, and the state's own newlines are part of it",
     "thisthat": "the H-tree's nodes and wires occupy fixed grid coordinates",
 }
 
-# The narrower claim needed by the registry audit: these generators currently
-# take no width and cannot be safely reflowed afterwards.  Keep it separate
-# from UNWRAPPABLE, which also contains self-laying grids such as Alight.  A
-# stale exception must fail below when its generator learns to honour width.
-WIDTH_EXCEPTIONS = {
-    name: UNWRAPPABLE[name]
-    for name in (
-        "arrowqueue",
-        "back",
-        "befunge",
-        "fish",
-        "clockwise",
-        "collatz_multiverse",
-        "container",
-        "crement",
-        "cvnc",
-        "grapheme",
-        "inject",
-        "intercal",
-        "malbolge",
-        "minsky_swap",
-        "nocomment",
-        "thue",
-        "thisthat",
-        "underload",
-        "whitespace",
-    )
-}
+WIDTH_EXCEPTIONS: dict[str, str] = {}
 
 # These are 2D too, and wrap_program must not touch them either -- but each
 # honours a width itself by *laying its program out* to fit rather than by
@@ -328,6 +282,19 @@ def test_wrapping_only_breaks_between_tokens(name: str, width: int) -> None:
     the multi-character-token languages.
     """
     example = _example(name)
+    if takes_width(example.generator):
+        plain = example.build(width)
+        wrapped = wrap_program(plain, LANGUAGES[name].id, max(1, width // 2))
+        if name == "Packlang":
+            from esolangs.interpreters.other.packlang import _tokenize
+
+            assert _tokenize(wrapped) == _tokenize(plain)
+        elif name in {"FRACTRAN", "RAM0"}:
+            assert wrapped.split() == plain.split()
+        else:
+            assert wrapped.replace("\n", "") == plain.replace("\n", "")
+        assert _run(name, wrapped) == _run(name, plain)
+        return
     plain = example.build(width=None)
     wrapped = example.build(width)
     if wrapped == plain:
@@ -359,7 +326,7 @@ def test_wrapping_only_breaks_between_tokens(name: str, width: int) -> None:
     # These are multi-line with no structural first line. Their parsers see
     # whitespace-delimited tokens across the whole source, so flattening and
     # repacking may move every original line break.
-    if LANGUAGES[name].id in {"qoibl", "forbin", "packlang"}:
+    if LANGUAGES[name].id in {"qoibl", "forbin"}:
         assert wrapped.split() == plain.split()
         return
     # Taglate's first line is a structural queue seed the wrapper must leave
@@ -428,8 +395,8 @@ def test_every_wrapper_actually_fires(name: str) -> None:
         return
     # Packlang already emits one short, indented statement per line.  Its
     # wrapper exists for a caller's wider hand-written line; the focused
-    # ``_indented`` test supplies that positive control.
-    if WRAPPERS[LANGUAGES[name].id] is _indented and all(
+    # ``_packlang`` tests supplies that positive control.
+    if WRAPPERS[LANGUAGES[name].id] is _packlang and all(
         len(line) <= 40 for line in raw.splitlines()
     ):
         return
@@ -511,14 +478,19 @@ def test_no_width_breaks_a_run(name: str) -> None:
     example = _example(name)
     if example.fill is None:
         pytest.skip(f"{name} is not parameterized; it has no placeholder")
+    from esolangs.tools.helpers import runs
+
     for arity in range(1, 4):
         template = generate(name, _table(arity))
         for width in range(4, 121):
             wrapped = generate(name, _table(arity), width)
             assert wrapped.inputs == template.inputs == arity, (name, width, arity)
-            assert wrapped.count(template.char) == template.count(template.char), (
-                f"{name}: width {width} at {arity} inputs lost a run"
-            )
+            assert wrapped.setters is not None
+            assert len(set(wrapped.setters)) == 1
+            assert len(runs(wrapped, wrapped.char, wrapped.setters)) == arity
+            assert wrapped.count(template.char) == sum(
+                len(zero) for zero, _one in wrapped.setters
+            ), f"{name}: width {width} at {arity} inputs lost a run"
 
 
 # Tables the generators take a *different path* on than parity.  The
@@ -668,7 +640,12 @@ def test_width_honouring_layout_meets_any_width_it_can(name: str) -> None:
     columns an input, and none of that belongs pinned in a test.
     """
     language = next(lang for lang in LANGUAGES.values() if lang.id == name)
-    for label, table in _HONOUR_TABLES.items():
+    tables = _HONOUR_TABLES
+    if name == "inject":
+        tables = {**tables, "parity5": _table(5)}
+    if name == "thue":
+        tables = {**tables, "parity4": _table(4)}
+    for label, table in tables.items():
         arity = len(table).bit_length() - 1
         bits = "0" * arity
         narrowest = _columns(_laid_out(language.name, table, bits, 1))
@@ -707,7 +684,12 @@ def test_width_honouring_layout_computes_the_same_thing(name: str) -> None:
     language = next(lang for lang in LANGUAGES.values() if lang.id == name)
     example = EXAMPLE_BY_ID[language.id]
     relaid = 0
-    for label, table in _HONOUR_TABLES.items():
+    tables = _HONOUR_TABLES
+    if name == "inject":
+        tables = {**tables, "parity5": _table(5)}
+    if name == "thue":
+        tables = {**tables, "parity4": _table(4)}
+    for label, table in tables.items():
         arity = len(table).bit_length() - 1
         for combo in range(2**arity):
             bits = format(combo, f"0{arity}b")
@@ -715,10 +697,26 @@ def test_width_honouring_layout_computes_the_same_thing(name: str) -> None:
             stdin = "" if example.fill else "".join(f"{bit}\n" for bit in bits)
             compact = _laid_out(language.name, table, bits, None)
             expected = _behaviour(language.name, compact, stdin)
-            for width in _HONOUR_WIDTHS:
+            if name == "back":
+                assert len(expected.split()) == arity + 1
+                assert set(expected.split()) <= {"0", "1"}
+                expected = esolangs.read_answer(language.name, expected)
+                assert expected == table[combo]
+            widths = (
+                (1, *_HONOUR_WIDTHS)
+                if name in {"arrowqueue", "container", "crement"}
+                else _HONOUR_WIDTHS
+            )
+            for width in widths:
                 folded = _laid_out(language.name, table, bits, width)
                 relaid += folded != compact
-                assert _behaviour(language.name, folded, stdin) == expected, (
+                actual = _behaviour(language.name, folded, stdin)
+                if name == "back":
+                    # Its contract is cell n; earlier cells are scratch.
+                    assert len(actual.split()) == arity + 1
+                    assert set(actual.split()) <= {"0", "1"}
+                    actual = esolangs.read_answer(language.name, actual)
+                assert actual == expected, (
                     f"{name}: laying {label} out to width {width} changed the "
                     f"answer for inputs {bits}"
                 )
@@ -751,7 +749,24 @@ def test_width_honouring_languages_respect_the_width(name: str) -> None:
     pin the layout, not the width.
     """
     language = next(lang for lang in LANGUAGES.values() if lang.id == name)
-    assert language.id not in WRAPPERS, f"{name} both lays out and reflows"
+    if language.id in WRAPPERS:
+        for row in range(4):
+            bits = format(row, "02b")
+            wrapped = _laid_out(language.name, TABLE, bits, 1)
+            raw = _laid_out(language.name, TABLE, bits, None)
+            stdin = (
+                ""
+                if esolangs.describe(language.name)["parameterized"]
+                else esolangs.encode_inputs(language.name, [int(bit) for bit in bits])
+            )
+            actual = _behaviour(language.name, wrapped, stdin)
+            expected = _behaviour(language.name, raw, stdin)
+            if name == "ram0":
+                # Its NAND circuit exposes z; n and RAM are scratch.
+                actual = esolangs.read_answer(language.name, actual)
+                expected = esolangs.read_answer(language.name, expected)
+                assert actual == TABLE[row]
+            assert actual == expected
     assert language.boolean is not None
     for width in (40, 80, 94):
         program = generate(language.name, TABLE, width)
@@ -1033,12 +1048,6 @@ def test_mammalian_uses_seed_sized_cells() -> None:
         assert all(match.start() % 5 == 0 for match in re.finditer(r"\S+", row))
 
 
-def test_indented_wrapper_preserves_blocks_and_folds_within_a_line() -> None:
-    """Statement boundaries and indentation survive a narrow width."""
-    program = "root {\n  alpha beta gamma;\n}\n"
-    assert _indented(program, 12) == "root {\n  alpha beta\n  gamma;\n}\n"
-
-
 def test_wrap_chars_breaks_anywhere() -> None:
     """The single-character families break at exactly the width."""
     assert wrap_chars("abcdef", 2) == "ab\ncd\nef"
@@ -1132,6 +1141,9 @@ def test_wrappers_refuse_input_they_do_not_recognize() -> None:
     # BIO's tokens have to tile the program exactly; a stray character means
     # the regex did not account for something, so the program is left alone.
     assert _bio("0ox;!!!", 40) == "0ox;!!!"
+    # Unknown punctuation must survive Packlang lexical folding verbatim.
+    unknown = "package t { invalid@token; }"
+    assert _packlang(unknown, 1) == unknown
     # Taglate needs a queue seed *and* commands below it.
     assert _taglate("seed-only", 40) == "seed-only"
 

@@ -145,8 +145,10 @@ class _Reading:
         tokens = self._tokens
         op = tokens[lo]
         if op == "tt":
-            return self.at(lo + 1, hi - 1)
+            return tokens[hi - 1] == op and self.at(lo + 1, hi - 1)
         if op in ("we", "rr"):
+            if tokens[hi - 1] != op:
+                return False
             # The block's own closer, which has to fall inside this span.
             ind = self._after[op][lo + 1]
             if ind >= hi:
@@ -163,7 +165,7 @@ class _Reading:
                     return False
                 return self.at(lo, beg) and self.at(beg + 3, hi)
         if op == "qe":
-            return self.at(lo + 1, hi - 1)
+            return tokens[hi - 1] == op and self.at(lo + 1, hi - 1)
         if op == "et":
             return hi - lo == 1
         return bool(re.fullmatch("[ey]+", op)) and hi - lo == 1
@@ -363,6 +365,16 @@ class _Machine:
         self.var = {}
         self.io = io
         self.code = tuple(tokenize(code if isinstance(code, str) else "\n".join(code)))
+        for statement in self.code:
+            if statement and not _Reading(statement).at(0, len(statement)):
+                kind = (
+                    "comparison operator"
+                    if "yr" in statement
+                    else "arithmetic operator"
+                    if "ry" in statement
+                    else "expression"
+                )
+                raise ValueError(f"malformed Qoibl {kind}")
         self.ind = 0
 
     @property

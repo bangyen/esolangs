@@ -15,54 +15,46 @@ manuscript bounding the coefficient mass of a polynomial multiple.
 `tests/proofs/test_citations.py` holds the numbered cross-references
 between them to the labels they name.
 
-This ledger answers one question: for every exported Boolean generator and
-every truth table of length `2**n`, does its construction produce a program
-for every finite `n`?  “Total” here means mathematical coverage, not practical
-availability.  Explicit limits on digits, instructions, lines, tape cells,
+This ledger records whether each exported Boolean generator covers every
+truth table of length `2**n`, for every finite `n`. “Total” means mathematical
+coverage, not practical availability. Explicit limits on digits, instructions,
+lines, tape cells,
 route width, work, or generation time are ignored: lifting such a guard leaves
 the construction below it unchanged.  Invalid-table guards are outside the
 domain.
 
-This is not a correctness proof for every emitted program.  The execution
-tests are that evidence.  Nor does a finite sweep prove the universal claim:
-the exhaustive `n <= 3` and sampled `n <= 10` sweeps in
-`tests/tools/test_boolean_contract.py` are counterexample searches for the
-arguments below.
+Execution tests check emitted programs; this ledger argues coverage for every
+finite arity. The exhaustive `n <= 3` and sampled `n <= 10` sweeps in
+`tests/tools/test_boolean_contract.py` seek counterexamples; they do not prove
+the coverage arguments.
 
-What is machine-checked lives in `tests/proofs/`.  `test_ledger.py` holds this
-document to the registry and to itself, and `test_schemes.py` holds each
-lookup and parameterized row to its scheme's measurable consequence (the
-`tree` and `minterms` rows carry no such per-row check); both are in the fast
-band and gate every push.  `tests/proofs/deep/` holds the proofs themselves,
-at two depths.
-`all_generators.py` runs a lemma battery against all 72: every single
-row of the table demonstrably participates in the emitted program at the
-flip-tested arities, and the construction completes at every arity of a ladder
-on both table shapes.  That
-is the counting half of each scheme above, and it is what makes "finite object
-covering every row" checkable per generator.  Four generators -- A Painter Ant,
-ArrowQueue, Container and BIO -- additionally have a hand-derived proof of
-their own specific argument, which no generic battery can reach.
+Machine checks live in `tests/proofs/`. `test_ledger.py` checks consistency
+with the registry; `test_schemes.py` checks measurable consequences for lookup
+and parameterized rows (`tree` and `minterms` have no per-row check). Both run
+in the fast band. The deeper proof checks live in `tests/proofs/deep/`.
+`all_generators.py` checks all 72 constructions: flipping each table row
+changes the emitted program at the tested arities, and each construction
+completes an arity ladder on both table shapes. This checks the counting half
+of each scheme. Four generators -- A Painter Ant, ArrowQueue, Container and
+BIO -- also have construction-specific proofs.
 
 Each proof declares the cost band it runs in, and
 `python -m tests.proofs.deep <band>` selects on that: `verify` is the local
 gate, `ci` adds the registry-wide battery, `by-hand` is the expensive set, and
-`all` is everything and is what `just proofs` runs.  The bands are what the
-justfile, the workflow and
-`scripts/verify.py` each invoke, so none of them carries a list of proofs;
-`test_bands.py` holds each band's declared cost budget (a self-declared
-number, not a measured time) and checks that no file under
-`deep/` is missing one.
+`all` runs everything, as does `just proofs`. The justfile, workflow, and
+`scripts/verify.py` select bands instead of
+listing proofs. `test_bands.py` checks each file under `deep/` declares a band
+and enforces the band’s declared cost budget, not a measured runtime.
 
-None of that bounds *size*: the schemes count nodes and entries, so a generator
-can satisfy its row and still emit super-linear text.  `linearity.py` is the
+Coverage does not bound source size: the schemes count nodes and entries,
+so a total generator can still emit super-linear text.  `linearity.py` is the
 separate, registry-wide scaling contract the roadmap asks for.  It measures
 characters per table entry past each generator's last route change and holds
 every generator to it except those the roadmap's scaling audit or this
-document's `cap` and `exception` rows already exempt.  Read its verdicts in one
-direction only: exceeding the bound is evidence, staying inside it is not, and
-Factor -- proven super-linear at the language level in [factor](factor.md) and
-measuring x2.11 -- is why.  Polynomial's block-incidence lemma forces
+document's `cap` and `exception` rows already exempt. Exceeding the bound is
+evidence against linearity; passing it is not a
+proof. Factor passes at x2.11 despite its language-level super-linear bound
+([factor](factor.md)).  Polynomial's block-incidence lemma forces
 `Omega(T/log T)` distinct real instruction-root values even when roots
 repeat, and the slack certificate prices every multiple of their distinct-root
 product, giving `Omega(T**2 / log T)` for every program, whatever its read
@@ -74,11 +66,10 @@ A `linear` row cannot be improved by more than a constant, and the reason is
 the counting argument the Malbolge exception uses below.  A language with `c`
 source characters has fewer than `c**(L+1)` programs of length at most `L`,
 against `2**T` tables of length `T`, so some table needs
-`L >= T / log2(c)` characters -- `T/3` for brainfuck's eight commands.  Every
-`linear` cell is therefore within a constant of optimal for free, which is why
-the Scaling column is worth reading only where it is *not* linear: the two
-rows proven to exceed the floor, Factor at `Theta(T log T)` and Polynomial at
-`Theta(T**2 / log T)`, and the `open` rows that may yet.
+`L >= T / log2(c)` characters -- `T/3` for brainfuck's eight commands. Thus each
+`linear` row is within a constant of the worst-case optimum.
+Factor at `Theta(T log T)` and Polynomial at `Theta(T**2 / log T)` provably
+exceed that floor; the `open` rows may also exceed it.
 
 
 Fargo's build bound uses a word RAM with `Theta(log T)`-bit words; input and
@@ -184,6 +175,7 @@ is itself total.
 for tables through a fixed crossover — `n <= 4`, or `n <= 6` for Container;
 BrainIf's tree counts only the inputs it branches on — and the lookup above it.  Streetcode builds both at five inputs and keeps
 the shorter, so its crossover is where the two meet rather than a constant.
+BrainIf also competes with its input-forgetting residual DAG, proved below.
 Each route is total on its own domain and the lookup
 carries the universal claim, so the tree below the crossover is a size
 optimization rather than part of the proof.  A width-constrained build may take
@@ -274,7 +266,7 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | bit~ | linear lookup | one tape cell an entry, and each input's one-shot loop jumps the pointer left by that input's weight, so the reads chain into a Horner index and a self-erasing walk carries the landed bit to one of two print windows | linear: bounded dependency scan and canonical residual IDs |
 | Bitdeque | parameterized lookup | head/tail discards leave the indexed entry in the deque | linear: 2T commands, discard blocks sum to T |
 | brainfuck | tree | `decision_tree_program` | linear: decision_tree_program, span walk, leaf moves geometric |
-| BrainIf | finite lookup | a spatial table is addressed by the read row index | linear: n + T strip cells of 2.6 lines |
+| BrainIf | tree | equal cofactors share one layered DAG node; spatial lookup remains a candidate | linear: O(T/n) nodes with O(n)-digit addresses |
 | Circlefuck | linear lookup | the tape is the program, so the table is its tail past the `@` that stops the run, entry 0 abutting the index digits at the ring's end; `}` deletes the cell under the pointer and slides the digits down into it, so counting the index out against one `}` apiece leaves the entry it names under the pointer | linear: bounded dependency scan and canonical residual IDs |
 | Circuit Diagram | tree | finite planar routing | linear: H-layout side C sqrt(T), area Theta(T) |
 | Clockwise | linear lookup | the ring is the table: one `!` per entry in a countdown row, and the index in the accumulator picks which one it is zero on, turning the pointer down that entry's own column; seven `.` an input build the index by Horner's rule, doubled between inputs by a two-row gadget that spends the accumulator as distance and buys back two per unit | linear: five table rows of 2T columns, doubling gadgets whose widths halve downward |
@@ -391,3 +383,47 @@ the interpreter decodes it to the tree the generator encoded.
 Accordingly, this ledger records 71 theoretical totality arguments and one
 proved language exception; every other row is `Total` or theoretically total
 past a resource ceiling.
+
+## Ordered reads without retained inputs
+
+Call a layered construction input-forgetting when, just before each read,
+its data store and pointer depend only on depth; the control location carries
+the residual function. Ordered reads alone do not imply this property:
+`,>,>,<<.` reaches one cursor with four stores after two reads. The shipped
+BrainIf residual-DAG candidate does satisfy it. Its first input cell is zero;
+before each later read, `if 48 increment` maps the prior Boolean byte to 49.
+The one input then overwrites it. No earlier input remains in the store.
+
+After `k` reads, distinct residual functions require distinct states: equal
+states would execute identically on every common suffix. At depth `k` there
+are at most `min(2**k, 2**(2**(n-k)))` distinct residuals. Intern equal pairs
+bottom-up to attain this bound level by level, with one node per distinct
+cofactor. No order search is needed; all pairs visited number below `T`.
+
+The worst-case total node count is `Theta(T/n)`. Let `r` be maximal with
+`2**r+r<=n`. For remaining depths through `r`, the double-exponential counts
+sum to at most `2*2**(2**r) <= 2T/2**r`. Larger remaining depths have at
+most `T/2**s` nodes and sum below `T/2**r`. Since `2**r>n/4` for `n>=4`,
+the total is below `12T/n`. For a matching lower bound, at remaining depth
+`r+1` assign every prefix a different zero-padded rank as its residual table.
+There are `T/2**(r+1) >= T/(2n)` prefixes and enough different residuals
+by maximality of `r`; every input-forgetting realization needs that width.
+
+BrainIf emits four lines per DAG node, three at the root. Destinations have
+`O(n)` digits, so the worst-case source is `O(T)`. Two shared output tails
+add constant text. A run consumes exactly `n` inputs in order and executes
+at most `4n+50` lines. The zero tail moves to a virgin cell only when the
+last byte is 49, then builds 48; the one tail increments 48 if needed and
+prints 49. All gotos go forward, so termination is structural.
+Interning and writing the labels cost `O(T)` in the repository's
+`Theta(n)`-bit table/index word model. This does not assert linear bit work.
+
+The public generator keeps the shorter source against the tree/spatial
+candidate; width requests retain that older route. Every three-input table
+shrinks: total characters `319576 -> 292492` (8.47%), summed executed
+lines `134984 -> 74752` (44.62%), with no table growing or slowing.
+All 2,120 rows through three inputs execute; constants, parity and four
+seeded tables per arity four through six also execute every row. A separate
+200-table five-input sample gives `573675 -> 360230` characters and
+`1501446 -> 280080` lines. Full-store boundary checks confirm erasure before
+the next read. The controls are in `tests/proofs/test_research_tracks.py`.

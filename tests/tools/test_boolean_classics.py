@@ -169,15 +169,7 @@ def _fractran_steps(template: str, n: int) -> int:
 
 @pytest.mark.medium
 def test_fractran_ships_the_plain_tree_where_the_decoder_costs_more() -> None:
-    """Below four inputs the decoder's constant outweighs what blocks save.
-
-    Twelve fractions and ten reserved primes, and a run that loads a block,
-    spends the offset and shifts it out, against a tree that reads every
-    level and stops on its leaf.  So through four inputs both are built and
-    the shorter ships, the tree on a tie; over the 256 three-input tables
-    no table grows in characters or in steps, the text falls from 41,010 to
-    27,842, and the steps from 34,314 to 9,592.
-    """
+    """Small trees beat packed blocks in source size and executed steps."""
     from esolangs.tools.fractran import _packed, _plain
 
     tables = [format(i, "08b") for i in range(256)]
@@ -210,7 +202,7 @@ def test_false_tests_the_low_bit_and_prints_a_constant_pair() -> None:
     and ``1``/``0`` its ``'0=_`` complement.  Over every three-input table
     the program falls from 22,170 characters to 12,034.
     """
-    from esolangs.tools.false import _plain
+    from tests.tools.plain_oracles import false_plain as _plain
 
     assert boolean.false("0110") == "^1&$[^'0=_.]?0=[^1&.]?"
     assert boolean.false("0001") == "^1&$[^1&.]?0=[^%0.]?"
@@ -226,7 +218,7 @@ def test_false_stores_repeated_halves_and_skips_equal_ones() -> None:
     256 three-input tables fall to 10,634 (11.6%), and 45,372 over the
     seeded five-input sample to 35,721 (21.3%).
     """
-    from esolangs.tools.false import _plain
+    from tests.tools.plain_oracles import false_plain as _plain
 
     three = [format(value, "08b") for value in range(256)]
     assert boolean.false("01101001") == (
@@ -268,7 +260,7 @@ def test_unlambda_binds_repeated_subtrees_and_skips_equal_halves() -> None:
     the 256 three-input tables fall to 32,522 (20.8%), and 144,722 over the
     seeded five-input sample to 100,963 (30.2%).
     """
-    from esolangs.tools.unlambda import _plain
+    from tests.tools.plain_oracles import unlambda_plain as _plain
 
     three = [format(value, "08b") for value in range(256)]
     assert boolean.unlambda("01101001") == (
@@ -345,8 +337,8 @@ def test_thue_answers_the_same_under_every_draw(table: str) -> None:
 
 def test_the_emissions_grow_by_a_line() -> None:
     """Successive differences at a fixed parity quadruple, exactly."""
-    from esolangs.tools.false import _plain
-    from esolangs.tools.unlambda import _plain as _plain_unlambda
+    from tests.tools.plain_oracles import false_plain as _plain
+    from tests.tools.plain_oracles import unlambda_plain as _plain_unlambda
 
     # FALSE's and Unlambda's shipped builds fold and share this table's
     # subtrees, so their plain trees are the ones measured.
@@ -474,3 +466,109 @@ def test_bitwise_cyclic_tag_does_not_cascade_a_one() -> None:
     """
     assert _bct_answer("1000", 0) == "1"
     assert _bct_answer("1" + "0" * 15, 0) == "1"
+
+
+@pytest.mark.medium
+def test_thue_contracted_heads_keep_a_unique_rewrite() -> None:
+    """Ready and waiting symbols leave exactly one rewrite before each read."""
+    from esolangs.interpreters.other.thue import _Machine, _matches
+
+    assert max(map(len, boolean.thue("0110", 1).splitlines())) == 7
+    for n in range(1, 4):
+        for value in range(1 << (1 << n)):
+            table = format(value, f"0{1 << n}b")
+            program = boolean.thue(table, 1)
+            for row, expected in enumerate(table):
+                stdin = "".join(f"{bit}\n" for bit in _bits(row, n))
+                io = ScriptedIO(stdin)
+                machine = _Machine(program, io, Seeded(row))
+                while not machine.halted:
+                    assert len(_matches(machine.state, machine.rules)) == 1
+                    machine.step()
+                assert io.getvalue() == expected
+
+
+@pytest.mark.medium
+def test_thue_fixed_width_chunk_names_expand_before_reading() -> None:
+    """The marker alphabet excludes every table and control symbol."""
+    from esolangs.interpreters.other.thue import _Machine, _matches
+
+    for n in range(4, 7):
+        table = "".join(
+            str((row * 17 + row // 3).bit_count() % 2) for row in range(1 << n)
+        )
+        program = boolean.thue(table, 1)
+        assert max(map(len, program.splitlines())) == 9
+        for row, expected in enumerate(table):
+            stdin = "".join(f"{bit}\n" for bit in _bits(row, n))
+            io = ScriptedIO(stdin)
+            machine = _Machine(program, io, Seeded(row))
+            while not machine.halted:
+                assert len(_matches(machine.state, machine.rules)) == 1
+                machine.step()
+            assert io.getvalue() == expected
+
+
+@pytest.mark.parametrize("width", [1, 4, 9, 40, 80])
+def test_fractran_phase_parity_all_small_tables(width: int) -> None:
+    import esolangs
+
+    for n in range(1, 4):
+        for value in range(2 ** (2**n)):
+            table = format(value, f"0{2**n}b")
+            assert esolangs.evaluate("FRACTRAN", table, width=width) == table
+
+
+@pytest.mark.parametrize("width", [1, 4, 5, 8, 9, 80])
+@pytest.mark.parametrize("as_string", [False, True])
+def test_fractran_phase_parity_public_uniform_setters(
+    width: int, *, as_string: bool
+) -> None:
+    import esolangs
+    from esolangs.tools.fractran import fractran_setters
+
+    template = esolangs.generate("FRACTRAN", "0110", width)
+    if as_string:
+        template = str(template)
+    pairs = fractran_setters(template, 2)
+    assert len(set(pairs)) == 1
+    for row, expected in enumerate("0110"):
+        program = esolangs.instantiate(
+            "FRACTRAN", template, [row // 2, row % 2], truth_table="0110"
+        )
+        assert (
+            esolangs.read_answer("FRACTRAN", esolangs.run("FRACTRAN", program))
+            == expected
+        )
+        if width < 9:
+            assert max(map(len, program.splitlines())) <= max(width, 4)
+    with pytest.raises(esolangs.TemplateError, match="not the template"):
+        esolangs.instantiate("FRACTRAN", template, [0, 1], truth_table="0001")
+
+
+def test_fractran_phase_parity_exact_resolver_and_size() -> None:
+    from esolangs.tools.fractran import fractran, fractran_setters
+
+    template = fractran("0110", 1)
+    assert len(template) == 14
+    assert max(map(len, template.splitlines())) == 3
+    assert fractran_setters(template, 2) == (("1", "2"),) * 2
+    legacy = fractran("0110", 4)
+    assert fractran_setters(legacy, 2) == (("1", "5"),) * 2
+    assert fractran_setters(legacy.replace("1/25", "1/5"), 2) == (("0", "1"),) * 2
+
+
+@pytest.mark.parametrize("n", [4, 5, 6])
+def test_fractran_phase_parity_retains_larger_layout_execution(n: int) -> None:
+    import esolangs
+
+    table = "".join(str(row.bit_count() % 2) for row in range(2**n))
+    for width in [1, 4, 80]:
+        program = esolangs.generate("FRACTRAN", table, width)
+        for row in [0, 1, 2**n // 3, 2**n - 1]:
+            bits = list(map(int, format(row, f"0{n}b")))
+            filled = esolangs.instantiate("FRACTRAN", program, bits)
+            assert (
+                esolangs.read_answer("FRACTRAN", esolangs.run("FRACTRAN", filled))
+                == table[row]
+            )

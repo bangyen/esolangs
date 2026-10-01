@@ -1,5 +1,6 @@
 """Boolean-function generators for stack-based languages."""
 
+import re
 from functools import cache
 from itertools import product
 
@@ -26,8 +27,8 @@ def _sink_top(stack: tuple[int, ...], places: int) -> tuple[int, ...]:
 def stack_programs(n: int, sinks: Sinks, read: str) -> dict[tuple[int, ...], str]:
     """Read-and-sink program for each reachable stack arrangement.
 
-    Maps each arrangement (bottom to top, by input index) to its program,
-    Forþ passing its own ``sinks`` (``(places, ops)``) and ``read``.  A
+    Map each arrangement (bottom to top, by input index) to its program.
+    Forþ supplies its own ``sinks`` (``(places, ops)``) and ``read``.  A
     product, not a search: a read leaves its bit on top and the only lasting
     choice is how far it sinks (0, 1 or 2), so there are ``2 * 3**(n - 2)``
     arrangements, which a test pins.
@@ -158,15 +159,13 @@ def forth(truth_table: str) -> str:
     its own index -- an internal node is the fixed ``2*1++:;``.  Linear in
     the table.  ``;`` pops, so the last input is tested first, and that
     order is kept.  A subtree equal to one already emitted at its level is
-    a call to it (:data:`_FORTH_SHARE`); the unshared build stays a
-    candidate, so sharing never lengthens a program.
+    a call to it (:data:`_FORTH_SHARE`). A removed scope pays for the
+    merged index step; two removed children pay for the sharing call.
     """
     n = _validate_truth_table(truth_table)
     natural = tuple(reversed(range(n)))
     table = permute_truth_table(truth_table, natural)
-    plain = _forth_ordered(table, natural)
-    shared = _forth_ordered(table, natural, share=True)
-    return shared if len(shared) < len(plain) else plain
+    return _forth_ordered(table, natural, share=True)
 
 
 # The read that pushes one normalized input bit.
@@ -303,8 +302,11 @@ def _forth_ordered(
     return "".join(prog)
 
 
-def modulous(truth_table: str) -> str:
-    """Build a Modulous program: a table literal popped down to its row."""
+def modulous(truth_table: str, width: int | None = None) -> str:
+    """Build a Modulous table lookup, chunking literals below the old width.
+
+    Command whitespace folds; each quoted chunk keeps its closing bracket.
+    """
     n = _validate_truth_table(truth_table)
     # ``PSH STR`` pushes the characters in reverse, so the leftmost entry is on
     # top and discarding ``index`` of them uncovers ``truth_table[index]`` --
@@ -320,7 +322,28 @@ def modulous(truth_table: str) -> str:
     # ``SWP``/``POP`` discards the entry *under* the counter, which is what
     # keeps the counter reachable: nothing but the top two cells is.
     walk = "[JMP F 5 IF 0][SUB 1][SWP][POP][JMP B 4][POP][PRT][END]"
-    return f'[PSH STR "{truth_table}"]{"".join(reads)}{walk}'
+    program = f'[PSH STR "{truth_table}"]{"".join(reads)}{walk}'
+    if width is None or width <= 0:
+        return program
+    from esolangs.tools.wrap import _bracket_literal, wrap_space_delimited
+
+    previous = _bracket_literal(program, width)
+    if max(map(len, previous.splitlines())) <= width:
+        return previous
+    # Push chunks from last to first: each string itself pushes in reverse.
+    # All jumps follow the prologue and are relative, so its length is free.
+    chunk = max(1, width - 3)
+    starts = range(0, len(truth_table), chunk)
+    prologue = (
+        "".join(f"[PSH INT {_ASCII_ZERO + int(bit)}]" for bit in reversed(truth_table))
+        if width < 4
+        else "".join(
+            f'[PSH STR "{truth_table[start : start + chunk]}"]'
+            for start in reversed(starts)
+        )
+    )
+    tokens = re.findall(r'"[^"]*"\]|[A-Z]+|\d+|[^\s]', prologue + "".join(reads) + walk)
+    return wrap_space_delimited(" ".join(tokens), width)
 
 
 def _bfstack_encoder(n: int, *, preset: bool) -> str:
@@ -373,15 +396,41 @@ def _bfstack_decoder(truth_table: str) -> tuple[str, bool]:
     return direct, False
 
 
-def bfstack(truth_table: str) -> str:
-    """Build a BFStack program computing the given truth table.
-
-    No branching: encode the inputs as ``1 + sum(bit*2^k)``, then nested
-    ``[`` loops single out the rows of whichever result value is rarer.
-    """
-    n = _validate_truth_table(truth_table)
+def _bfstack_small(truth_table: str, n: int) -> str:
+    """Return a byte-indexed decoder; at most seven inputs fit its sentinel."""
     decoder, preset = _bfstack_decoder(truth_table)
     return _bfstack_encoder(n, preset=preset) + decoder + "<" + "+" * _ASCII_ZERO + "."
+
+
+def bfstack(truth_table: str) -> str:
+    """Build a BFStack program, routing wider tables into seven-input blocks.
+
+    The byte index is ``1 + row``; eight inputs wrap its nonzero sentinel.
+    Prefix branches select blocks before the byte-indexed decoder runs.
+    """
+    n = _validate_truth_table(truth_table)
+    if n <= 7:
+        return _bfstack_small(truth_table, n)
+    constant = constant_span_test(truth_table)
+
+    def build(level: int, lo: int, hi: int) -> str:
+        remaining = n - level
+        if constant(lo, hi):
+            return (
+                ",<" * remaining
+                + ">"
+                + "+" * (_ASCII_ZERO + int(truth_table[lo]))
+                + ".<"
+            )
+        if remaining <= 7:
+            return _bfstack_small(truth_table[lo:hi], remaining) + "<"
+        mid = (lo + hi) // 2
+        zero, one = build(level + 1, lo, mid), build(level + 1, mid, hi)
+        # The one arm clears the sentinel below the bit. Both arms restore
+        # their stack depth, so the zero arm runs only when the bit was zero.
+        return ">+," + "-" * _ASCII_ZERO + "[<-" + one + ">]<[<" + zero + ">]<"
+
+    return build(0, 0, len(truth_table))
 
 
 def unsquare(truth_table: str) -> str:

@@ -61,3 +61,24 @@ def test_raster_execution_is_refused() -> None:
 def test_interpreter_errors_are_preserved() -> None:
     with pytest.raises(esolangs.InputExhaustedError):
         esolangs.run_bounded("brainfuck", ",", max_steps=1)
+
+
+@pytest.mark.parametrize(
+    ("language", "program", "error", "output"),
+    [
+        ("brainfuck", "+.,", esolangs.InputExhaustedError, "\x01"),
+        ("Underload", "(A)S!", esolangs.HaltError, "A"),
+        (
+            "Algebraic Programming Language",
+            "65\n" + "(" * 90,
+            esolangs.InterpreterLimitError,
+            "65\n",
+        ),
+    ],
+)
+def test_interpreter_errors_keep_prior_output(
+    language: str, program: str, error: type[esolangs.EsolangError], output: str
+) -> None:
+    with pytest.raises(error) as caught:
+        esolangs.run_bounded(language, program, max_steps=100)
+    assert caught.value.partial_output == output

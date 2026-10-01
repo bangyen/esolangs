@@ -26,9 +26,9 @@ from esolangs.tools.a_painter_ant import PAIR as APA_PAIR
 from esolangs.tools.arrowqueue import PAIR as ARROWQUEUE_PAIR
 from esolangs.tools.back import PAIR as BACK_PAIR
 from esolangs.tools.bitwise_cyclic_tag import PAIR as BCT_PAIR
-from esolangs.tools.crement import PAIR as CREMENT_PAIR
+from esolangs.tools.crement import crement_setters
 from esolangs.tools.eval_lang import PAIR as EVAL_PAIR
-from esolangs.tools.fractran import PAIR as FRACTRAN_PAIR
+from esolangs.tools.fractran import fractran_setters
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     Setters,
@@ -36,19 +36,19 @@ from esolangs.tools.helpers import (
 )
 from esolangs.tools.intercal import PAIR as INTERCAL_PAIR
 from esolangs.tools.intercal import TEMPLATE_CHAR as INTERCAL_CHAR
-from esolangs.tools.minifuck_sim import PAIR as MINIFUCK_PAIR
+from esolangs.tools.minifuck import minifuck_setters
 from esolangs.tools.nocomment import PAIR as NOCOMMENT_PAIR
 from esolangs.tools.one_two_three import PAIR as ONE_TWO_THREE_PAIR
 from esolangs.tools.parameterized import (
     BFPDA_PAIR,
     BIO_PAIR,
-    BITDEQUE_PAIR,
     HOME_ROW_PAIR,
-    MINSKY_SWAP_PAIR,
+    bitdeque_setters,
+    minsky_swap_setters,
 )
 from esolangs.tools.ram0 import PAIR as RAM0_PAIR
-from esolangs.tools.smallfuck import PAIR as SMALLFUCK_PAIR
-from esolangs.tools.underload import PAIR as UNDERLOAD_PAIR
+from esolangs.tools.smallfuck import smallfuck_setters
+from esolangs.tools.underload import underload_setters
 from esolangs.tools.wrap import DEFAULT_WIDTH, takes_width, wrap_program
 
 # The committed programs all witness the same two-input function and row:
@@ -175,10 +175,6 @@ class BooleanExample:
         if self.fill is not None:
             program = self.fill(program, list(self.bits))
         return wrap_program(program, canonical_id(self.stem.replace("-", " ")), width)
-
-
-def _kw(**kwargs: int) -> tuple[tuple[str, int], ...]:
-    return tuple(kwargs.items())
 
 
 def _reader(
@@ -407,7 +403,7 @@ def _register() -> None:
             answer_mode="dump",
             split=True,
             expected="0",
-            kwargs=_kw(seed=0),
+            kwargs=(("seed", 0),),
             note=(
                 "the initial heading is random by spec, so the example pins "
                 "the source it is drawn from: seed 0 draws heading 3"
@@ -500,7 +496,7 @@ def _register() -> None:
         "bitdeque": _embedded(
             b.bitdeque,
             "queue_based.bitdeque",
-            pair=BITDEQUE_PAIR,
+            setters=bitdeque_setters,
             answer_mode="dump",
             note=(
                 "Bitdeque has no output instruction and dumps its deque at "
@@ -523,7 +519,7 @@ def _register() -> None:
         "fractran": _embedded(
             b.fractran,
             "other.fractran",
-            pair=FRACTRAN_PAIR,
+            setters=fractran_setters,
             answer_mode="dump",
             answer_values=("1", "2"),
             expected="1",
@@ -544,11 +540,13 @@ def _register() -> None:
             answer_values=("", "I"),
             note="INTERCAL READ OUT prints blank for zero and I for one",
         ),
-        "minifuck": _embedded(b.minifuck, "tape_based.minifuck", pair=MINIFUCK_PAIR),
+        "minifuck": _embedded(
+            b.minifuck, "tape_based.minifuck", setters=minifuck_setters
+        ),
         "minsky-swap": _embedded(
             b.minsky_swap,
             "register_based.minsky_swap",
-            pair=MINSKY_SWAP_PAIR,
+            setters=minsky_swap_setters,
             answer_mode="dump",
             expected="0 0",
             note=(
@@ -574,13 +572,13 @@ def _register() -> None:
         "smallfuck": _embedded(
             b.smallfuck,
             "tape_based.smallfuck",
-            pair=SMALLFUCK_PAIR,
+            setters=smallfuck_setters,
             note="Smallfuck defines no I/O; this implementation prints final cell 2",
         ),
         "underload": _embedded(
             b.underload,
             "stack_based.underload",
-            pair=UNDERLOAD_PAIR,
+            setters=underload_setters,
         ),
         # 123 answers with the termination convention, as ArrowQueue does, so
         # only the halting (0) branch is committed.  The constructed template
@@ -622,7 +620,7 @@ def _register() -> None:
         "crement": _embedded(
             b.crement,
             "other.crement",
-            pair=CREMENT_PAIR,
+            setters=crement_setters,
             answer_mode="termination",
             answer_values=("halts", "diverges"),
             expected="",

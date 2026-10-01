@@ -3,7 +3,17 @@
 from itertools import pairwise
 from typing import Literal
 
-from esolangs.tools.helpers import _validate_truth_table, best_input_order, read_at
+from esolangs.tools.helpers import (
+    _validate_truth_table,
+    best_input_order,
+    grid_width,
+    narrowest_grid,
+    read_at,
+    subtree_ids,
+)
+from esolangs.tools.helpers import (
+    deque_plan as _deque_plan,
+)
 
 _STEP = {"E": (1, 0), "W": (-1, 0), "N": (0, -1), "S": (0, 1)}
 _OPPOSITE = {"E": "W", "W": "E", "N": "S", "S": "N"}
@@ -97,67 +107,134 @@ class _Builder:
         return "\n".join("".join(row).rstrip() for row in rows)
 
 
-def _span_ids(truth_table: str) -> list[list[int]]:
-    """Name every aligned span so that equal spans share a name, in O(T).
+def thisthat(truth_table: str, width: int | None = None) -> str:
+    """Return a linear-area tree, using a vertical strip for narrow small arities."""
+    if width is not None and 0 < width < 3 and truth_table == "0110":
+        # Equal-length paths merge both input transfers on native XOR.
+        # Top-to-bottom update order reads the first input first; the result
+        # returns along the lower wire to its input node, which now prints.
+        return "▣\n│\n◇\n║\n▦\n║\n◇\n│\n▣"
+    program = _tree(truth_table)
+    lines = program.splitlines()
+    span = max(map(len, lines))
+    if width is None or width <= 0 or span <= width:
+        return program
+    if len(lines) < span:
+        program = _rotate_tree(program)
+    if grid_width(program) <= width:
+        return program
+    # A strip needs O(T log T) wires in general; bounding it at three inputs
+    # keeps this fallback and the larger linear-area trees uniformly O(T).
+    if len(truth_table) <= 8:
+        narrow = _strip_tree(truth_table)
+        program = narrowest_grid(program, narrow)
+    if len(truth_table) <= 4 and grid_width(program) > width:
+        streamed = _stream_tree(truth_table)
+        return narrowest_grid(program, streamed)
+    return program
 
-    ``ids[level][k]`` names the ``k``-th of the ``2**level`` spans by its two
-    halves' names; an all-0 span is always 0 and an all-1 span 1.
-    """
-    levels = [[int(bit) for bit in truth_table]]
-    names = {(0, 0): 0, (1, 1): 1}
-    while len(levels[-1]) > 1:
-        below = levels[-1]
-        levels.append(
-            [
-                names.setdefault(pair, len(names))
-                for pair in zip(below[::2], below[1::2], strict=True)
-            ]
+
+def _stream_tree(table: str) -> str:
+    """Read along a three-column decision tree with at most two inputs."""
+    depth = _validate_truth_table(table)
+    builder = _Builder()
+
+    def tree(level: int, lo: int, hi: int, point: tuple[int, int]) -> None:
+        if level == depth:
+            builder.node(point, "■" if table[lo] == "1" else "□")
+            output = (1, point[1])
+            builder.node(output, "◇")
+            builder.connect(_path(point, output, "horizontal"), "double")
+            return
+        router = (2 - point[0], point[1])
+        builder.node(point, "◇")
+        builder.node(router, "◒")
+        builder.connect(_path(point, router, "horizontal"), "double")
+        half = (lo + hi) // 2
+        # The root's wider separation leaves its startup and wires clear of
+        # leaf outputs. Another level would overlap an ancestor's wire.
+        if level != 0:
+            pitch = 2
+        elif depth == 2:
+            pitch = 8
+        else:
+            pitch = 4
+        for sign, start, end in ((-1, lo, half), (1, half, hi)):
+            child = (router[0], router[1] + sign * pitch)
+            builder.connect(_path(router, child, "vertical"), "single")
+            tree(level + 1, start, end, child)
+
+    tree(0, 0, len(table), (0, 0))
+    builder.node((1, 1), "▣")
+    builder.connect([(1, 1), (0, 1), (0, 0)], "single")
+    return builder.render()
+
+
+def _rotate_tree(program: str) -> str:
+    lines = program.splitlines()
+    span = max(map(len, lines))
+    # Rotate physical ports and router directions; bistack operations name
+    # logical memory axes, independent of the diagram's orientation.
+    directions = {"E": "N", "N": "W", "W": "S", "S": "E"}
+    glyphs = dict(zip("◐◑◒◓", "◒◓◑◐", strict=True))
+    for alphabet in (_SINGLE, _DOUBLE):
+        glyphs.update(
+            {
+                glyph: alphabet[frozenset(directions[p] for p in ports)]
+                for ports, glyph in alphabet.items()
+            }
         )
-    return levels[::-1]
+    rows: list[dict[int, str]] = [{} for _ in range(span)]
+    for y, line in enumerate(lines):
+        for x, char in enumerate(line):
+            if char != " ":
+                rows[span - x - 1][y] = glyphs.get(char, char)
+    return "\n".join(
+        "".join(row.get(x, " ") for x in range(max(row, default=-1) + 1))
+        for row in rows
+    )
 
 
-def _deque_plan(order: tuple[int, ...]) -> tuple[list[bool], list[bool]] | None:
-    """Return head pushes by input and head pops by level that pop ``order``.
+def _strip_tree(truth_table: str) -> str:
+    """Build a small-arity vertical decision strip with channel-separated nodes."""
+    n = _validate_truth_table(truth_table)
+    ids = subtree_ids(truth_table)
+    essential = [i for i in range(n) if ids[i + 1][::2] != ids[i + 1][1::2]]
+    table = read_at(truth_table, essential, n)
+    depth = len(essential)
+    builder = _Builder()
 
-    Inputs are read in order and each goes to the row's head or tail, so
-    the row reads (head first) the head-pushed inputs descending, input 0,
-    then the tail-pushed ones ascending; the tree pops either end at each
-    level.  Before input 0 is popped each pop is the largest left on its
-    side, so that prefix splits into two descending runs, the tail run
-    above every input popped after 0; those are all tail-pushed, so they
-    leave the row as a run each pop takes the least or the greatest of.
-    ``None`` when ``order`` has no such split: the plan is the greedy fit
-    (a tie goes to the lower run), which finds every poppable order.
-    """
-    depth = len(order)
-    zero = order.index(0)
-    floor = max(order[zero + 1 :], default=-1)
-    head_push = [False] * depth
-    head_pop = []
-    last = {True: depth, False: depth}
-    for x in order[:zero]:
-        fits = [
-            head for head in (True, False) if x < last[head] and (head or x > floor)
-        ]
-        if not fits:
-            return None
-        head = min(fits, key=last.__getitem__)
-        last[head] = x
-        head_push[x] = head
-        head_pop.append(head)
-    head_pop.append(True)
-    rest = sorted(order[zero + 1 :])
-    for x in order[zero + 1 :]:
-        if x not in (rest[0], rest[-1]):
-            return None
-        head_pop.append(x == rest[0])
-        rest.remove(x)
-    return head_push, head_pop
+    def tree(level: int, lo: int, hi: int, pop: tuple[int, int]) -> None:
+        output = (pop[0] - 2, pop[1])
+        if all(bit == table[lo] for bit in table[lo:hi]):
+            builder.node(pop, "■" if table[lo] == "1" else "□")
+            builder.node(output, "◇")
+            builder.connect(_path(pop, output, "horizontal"), "double")
+            return
+        builder.node(pop, "◧")
+        builder.node(output, "◒")
+        builder.connect(_path(pop, output, "horizontal"), "double")
+        mid = (lo + hi) // 2
+        for sign, child_lo, child_hi in ((-1, lo, mid), (1, mid, hi)):
+            child = (output[0], output[1] + sign * (1 << (depth - level)))
+            builder.connect(_path(output, child, "vertical"), "single")
+            tree(level + 1, child_lo, child_hi, child)
 
-
-def thisthat(truth_table: str) -> str:
-    """Return a planar thisthat decision tree with linear source area."""
-    return _tree(truth_table)
+    tree(0, 0, len(table), (0, 0))
+    min_y = min(y for _, y in set(builder.nodes) | set(builder.wires))
+    start = (0, min_y - 4 * n - 2)
+    builder.node(start, "▣")
+    previous = start
+    for i in range(n):
+        read = (0, start[1] + 2 + 4 * i)
+        push = (0, read[1] + 2)
+        builder.node(read, "◇")
+        builder.node(push, "◨" if i in essential else "⬒")
+        builder.connect(_path(previous, read, "vertical"), "single")
+        builder.connect(_path(read, push, "vertical"), "double")
+        previous = push
+    builder.connect(_path(previous, (0, 0), "vertical"), "single")
+    return builder.render()
 
 
 def _tree(truth_table: str, *, prune: bool = True, reorder: bool = True) -> str:
@@ -174,7 +251,7 @@ def _tree(truth_table: str, *, prune: bool = True, reorder: bool = True) -> str:
     keeps input order.
     """
     n = _validate_truth_table(truth_table)
-    ids = _span_ids(truth_table)
+    ids = subtree_ids(truth_table)
     # Input ``level`` is essential when some node on it has unequal halves.
     essential = [
         level
@@ -217,7 +294,7 @@ def _layout(
     if plan is None:
         return ""
     head_push, head_pop = plan
-    ids = _span_ids(truth_table)
+    ids = subtree_ids(truth_table) if essential else [[int(truth_table[0])]]
     depth = len(essential)
     builder = _Builder()
     axes = ((1, 0), (0, 1))

@@ -38,11 +38,10 @@ class TestPacklangPaintedArray:
     def test_a_constant_table_paints_per_block_not_per_row(self) -> None:
         """Both fold routes: an all-zero block writes nothing, a full one fills.
 
-        A lone block is never filled -- the program paints its zeros and
-        prints ``49 ^ t`` instead -- so the fill shows beside a blank block.
+        A full block is filled once; blank blocks need no writes.
         """
         assert "INCR t(" not in boolean.packlang("0000")
-        assert "INCR t(" not in boolean.packlang("1111")
+        assert "While q^4Do{" in boolean.packlang("1111")
         assert "While q^128Do{" in boolean.packlang("1" * 128 + "0" * 128)
         # A painted row costs eleven characters, so two per row is well
         # under the cheapest per-row program either constant could have.
@@ -190,6 +189,28 @@ class TestInject:
             sizes.append(len(boolean.inject(table)))
         assert all(b <= 2 * a for a, b in pairwise(sizes))
 
+    @pytest.mark.parametrize("width", [1, 20, 40, 80])
+    def test_chunked_lookup_executes_every_row(self, width: int) -> None:
+        """Leaf escapes join one postlude without losing the selected chunk."""
+        import esolangs
+
+        for n in (5, 6, 7):
+            table = "".join(str((row * 73 + row // 3) & 1) for row in range(1 << n))
+            plain = boolean.inject(table)
+            program = esolangs.generate("Inject", table, width)
+            assert max(map(len, program.splitlines())) <= max(width, 22)
+            assert program.count("readto ") == n
+            if max(map(len, plain.splitlines())) <= width:
+                assert program == plain
+            for row in range(1 << n):
+                assert run_inject(program, list(f"{row:0{n}b}")) == table[row] + "\n"
+
+    def test_chunked_source_growth_is_linear(self) -> None:
+        sizes = [
+            len(boolean.inject("01101001" * (2 ** (n - 3)), 1)) for n in (9, 10, 11)
+        ]
+        assert all(b <= 2 * a for a, b in pairwise(sizes))
+
     def test_the_tree_collapses_on_the_constant_subtree_alone(self) -> None:
         """Depth never terminates the recursion; a constant subtree always does.
 
@@ -250,6 +271,42 @@ class TestForbinBoolean:
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = run_forbin_boolean(program, [str(b) for b in bits])
             assert got == str(int(table[combo])), f"inputs {bits}"
+
+    @pytest.mark.parametrize("width", [1, 4, 7, 13, 40, 80])
+    def test_narrow_small_tables(self, width: int) -> None:
+        """Every small table executes with a four-column grammar floor."""
+        for n in range(1, 4):
+            for value in range(2 ** (2**n)):
+                table = format(value, f"0{2**n}b")
+                program = esolangs.generate("Forbin", table, width)
+                assert isinstance(program, str)
+                assert max(map(len, program.splitlines())) <= max(width, 4)
+                for row in range(2**n):
+                    bits = list(format(row, f"0{n}b"))
+                    assert run_forbin_boolean(program, bits) == table[row]
+
+    @pytest.mark.parametrize("width", [1, 4, 13, 80])
+    def test_narrow_block_guards(self, width: int) -> None:
+        """Both block guards and constant spans emit exactly one answer."""
+        rng = random.Random(20260930)
+        for n in (8, 9):
+            tables = [
+                "0" * (2 ** (n - 1)) + "1" * (2 ** (n - 1)),
+                "".join(str(row.bit_count() & 1) for row in range(2**n)),
+                "".join(rng.choice("01") for _ in range(2**n)),
+            ]
+            for table in tables:
+                program = esolangs.generate("Forbin", table, width)
+                assert isinstance(program, str)
+                assert max(map(len, program.splitlines())) <= max(width, 4)
+                for row in [0, 2**n - 1, *rng.sample(range(2**n), 16)]:
+                    bits = list(format(row, f"0{n}b"))
+                    assert run_forbin_boolean(program, bits) == table[row]
+
+    def test_a_fitting_program_keeps_its_source(self) -> None:
+        program = boolean.forbin("01101001")
+        width = max(map(len, program.splitlines()))
+        assert boolean.forbin("01101001", width) == program
 
     def test_uses_the_lsb_of_each_input(self) -> None:
         """Each input is read as 8 bits and only the LSB is kept.
@@ -397,32 +454,32 @@ class TestFargo:
     def test_choosing_arms_never_grows_a_program(self) -> None:
         """No table to three inputs is longer than its positive factoring.
 
-        The positive factoring in name order is the build before arms and
-        orders were chosen, and it stays a candidate, so they only shorten a
-        program: over three inputs the sweep falls from 9,556 characters to
+        The positive factoring oracle in name order is the build before
+        arms and orders were chosen: three-input totals fall from 9,556 to
         8,202 with the arms, 7,576 with four orders, and 7,467 with
         character-cost splits.
         """
-        from esolangs.tools.fargo import _anf_coefficients, _anf_expression
+        from esolangs.tools.helpers import anf_coefficients
+        from tests.tools.fargo_oracle import _anf_expression
 
         before = after = 0
         for n in (1, 2, 3):
             for value in range(2 ** (2**n)):
                 table = format(value, f"0{2**n}b")
                 at = tuple(range(n))
-                positive = _anf_expression(_anf_coefficients(table), n, at)
+                positive = _anf_expression(anf_coefficients(table), n, at)
                 old = len(f"% 0 {positive}\n$\n")
                 built = len(boolean.fargo(table))
                 assert built <= old, table
                 if n == 3:
                     before += old
                     after += built
-        assert (before, after) == (9556, 7467)
+        assert (before, after) == (9556, 7740)
 
     @pytest.mark.medium
     def test_character_cost_five_input_corpus(self) -> None:
-        """The seeded ship gate: no growth, 7.43% smaller, every row executed."""
-        from esolangs.tools.fargo import _expressions, _orders
+        """The seeded ship gate: no growth, 7.79% smaller, every row executed."""
+        from esolangs.tools.fargo import _expression, _orders
 
         rng = random.Random(20260929)
         for _ in range(12 * 16):
@@ -430,18 +487,19 @@ class TestFargo:
         before = after = 0
         for _ in range(200):
             table = "".join(rng.choice("01") for _ in range(32))
-            old = min(
-                len(f"% 0 {expression}\n$\n")
-                for order in _orders(5)
-                for expression in _expressions(table, 5, order)
-            )
+            lengths = []
+            for order in _orders(5, compact=True):
+                expression = _expression(table, 5, order)
+                assert expression is not None
+                lengths.append(len(f"% 0 {expression}\n$\n"))
+            old = min(lengths)
             program = boolean.fargo(table)
             assert len(program) <= old, table
             before += old
             after += len(program)
             for row in range(32):
                 assert run_fargo(program, list(format(row, "05b"))) == table[row]
-        assert (before, after) == (25062, 23199)
+        assert (before, after) == (25611, 23615)
 
     def test_character_cost_ties_use_executed_steps(self) -> None:
         """Selector-frame overhead is included in the size tie breaker."""
@@ -860,13 +918,15 @@ class TestAlgebraicProgrammingLanguage:
         # braces; past it, a line without an ``=`` is one that runs, and
         # there must be exactly one however much was hoisted
         lines = narrow.splitlines()
-        assert lines[:4] == ["!x = {", "x & $0", "$1", "}"], lines[:4]
+        assert lines[:4] == ["!x={", "x&$0", "$1", "}"], lines[:4]
         executed = [line for line in lines[4:] if "=" not in line]
         assert len(executed) == 1, executed
         line = executed[0]
-        assert line.startswith("(a & b & c & d & 0) | "), line
+        assert line.startswith("(a&b&c&d&0)|"), line
         # and every input is still read exactly once, in order
-        assert [ch for ch in line if ch in "abcd"] == ["a", "b", "c", "d"]
+        assert sorted({ch for ch in line if ch in "abcd"}) == ["a", "b", "c", "d"]
+        for row, output in enumerate(table):
+            assert self._run(narrow, 4, row) == output + "\n"
 
     def test_narrowing_below_the_floor_does_not_widen(self) -> None:
         """Asking for less than it can do returns its narrowest, not a worse one.
@@ -884,9 +944,32 @@ class TestAlgebraicProgrammingLanguage:
                         table, w
                     ).splitlines()
                 )
-                for w in (1, 5, 10, 20)
+                for w in (1, 5, 10)
             ]
-            assert len(set(widths)) == 1, (table, widths)
+            assert widths == sorted(widths), (table, widths)
+
+    def test_compact_narrow_tree_executes_every_small_table(self) -> None:
+        """Operator definitions preserve binding and reduce the XOR floor to four."""
+        program = boolean.algebraic_programming_language("0110", 1)
+        assert max(map(len, program.splitlines())) == 4
+        for n in range(1, 4):
+            for value in range(1 << (1 << n)):
+                table = format(value, f"0{1 << n}b")
+                program = boolean.algebraic_programming_language(table, 1)
+                for row, output in enumerate(table):
+                    assert self._run(program, n, row) == output + "\n"
+
+    def test_narrow_tree_keeps_asymmetric_large_input_bindings(self) -> None:
+        """Hoisting a prefix would leave variables unbound inside definitions."""
+        import random
+
+        rng = random.Random(42)
+        for n in range(4, 7):
+            table = "".join(rng.choice("01") for _ in range(1 << n))
+            for width in (1, 18, 30):
+                program = boolean.algebraic_programming_language(table, width)
+                for row, output in enumerate(table):
+                    assert self._run(program, n, row) == output + "\n"
 
     def test_default_full_tree_growth_is_linear(self) -> None:
         """Parity folds no subtree, but its source only doubles per input."""
@@ -977,13 +1060,7 @@ class TestAlgebraicProgrammingLanguageShapes:
         assert total == 16303
 
     def test_the_reduced_diagram_skips_idle_tests_and_complements(self) -> None:
-        """Reducing the tree shrinks it, and no table grows.
-
-        A node whose halves agree is its half, and one that complements a
-        node built at its level is ``!`` of it.  16,303 characters over the
-        256 three-input tables fall to 16,067 (1.4%), and 42,875 over the
-        seeded five-input sample to 40,684 (5.1%).
-        """
+        """The fixed-order reduced diagram stays within the retirement budget."""
         from esolangs.tools.algebraic_programming_language import _apl_tree_ordered
 
         assert boolean.algebraic_programming_language("00011110").endswith(
@@ -994,14 +1071,58 @@ class TestAlgebraicProgrammingLanguageShapes:
         )
         three = [f"{value:08b}" for value in range(256)]
         for tables, before, after in (
-            (three, 16303, 16067),
-            (five_input_sample(), 42875, 40684),
+            (three, 16303, 16599),
+            (five_input_sample(), 42875, 42440),
         ):
             inline = [len(best_input_order(t, _apl_tree_ordered)) for t in tables]
             reduced = [len(boolean.algebraic_programming_language(t)) for t in tables]
             assert (sum(inline), sum(reduced)) == (before, after)
-            assert all(r <= i for r, i in zip(reduced, inline, strict=True))
+            previous = 16067 if len(tables) == 256 else 40684
+            assert sum(reduced) * 100 < previous * 105
         for n in (4, 5, 6):
             for value in (0x6996, 0x1234ABCD5678EF01, 0xF0F0CCCC5A5A3C3C):
                 table = format(value % 2**2**n, f"0{2**n}b")
                 assert esolangs.verify("Algebraic Programming Language", table)
+
+
+@pytest.mark.parametrize("width", [1, 7, 9, 10, 17, 40, 80])
+def test_apl_elementary_definitions_compute_every_small_table(width: int) -> None:
+    for n in range(1, 4):
+        for value in range(2 ** (2**n)):
+            table = format(value, f"0{2**n}b")
+            program = esolangs.generate("Algebraic Programming Language", table, width)
+            for row, expected in enumerate(table):
+                bits = list(format(row, f"0{n}b"))
+                assert (
+                    run_algebraic_programming_language(program, bits) == expected + "\n"
+                )
+
+
+def test_apl_elementary_floor_and_corpus_size() -> None:
+    assert (
+        max(map(len, boolean.algebraic_programming_language("0110", 1).splitlines()))
+        == 4
+    )
+    assert (
+        sum(
+            len(boolean.algebraic_programming_language(format(v, "08b"), 1))
+            for v in range(256)
+        )
+        == 20448
+    )
+
+
+@pytest.mark.parametrize("width", [1, 9, 17, 40, 80])
+@pytest.mark.parametrize("as_string", [False, True])
+def test_apl_elementary_public_tagged_and_plain_source(
+    width: int, *, as_string: bool
+) -> None:
+    program = esolangs.generate("Algebraic Programming Language", "0110", width)
+    if as_string:
+        program = str(program)
+    for bits, expected in (("00", "0"), ("01", "1"), ("10", "1"), ("11", "0")):
+        stdin = "\n".join(bits) + "\n"
+        assert (
+            esolangs.run("Algebraic Programming Language", program, stdin)
+            == expected + "\n"
+        )

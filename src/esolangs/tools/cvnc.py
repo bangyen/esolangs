@@ -31,8 +31,8 @@ nothing; the shorter of the two is kept.
 ``j`` is also how a repeated subtree is shared (:class:`_Stream`): the
 accumulator names a syllable, so a later copy climbs to the first copy's
 syllable with ``i``, ``æ`` and ``ə`` and jumps into it, where that is
-shorter.  Its leaves halt, so nothing returns.  The plain build stays a
-candidate.
+shorter. Its leaves halt, so nothing returns. Production uses the shared
+build.
 """
 
 import math
@@ -41,8 +41,9 @@ from functools import partial
 
 from esolangs.tools.helpers import (
     _validate_truth_table,
-    best_input_order,
     constant_span_test,
+    deque_plan,
+    in_input_order,
     subtree_ids,
 )
 
@@ -365,34 +366,15 @@ def _tree(table: str, stream: _Stream | None = None) -> list[str]:
 def _deque_schedule(
     perm: tuple[int, ...],
 ) -> tuple[list[str], list[str]] | None:
-    """Return the push and pop ends that serve ``perm``, or None if none do.
-
-    The ``2**n`` push assignments are searched; the pops are forced.
-    Servable orders are the unimodal ones: all through ``n == 3``, 20 of 24
-    at ``n == 4``, 252 of 720 at ``n == 6``.
-    """
-    n = len(perm)
-    for assignment in range(1 << n):
-        front = [i for i in range(n) if assignment >> i & 1]
-        back = [i for i in range(n) if not assignment >> i & 1]
-        # Front pushes reverse, back pushes keep order.
-        held = list(reversed(front)) + back
-        pops = []
-        for wanted in perm:
-            if held and held[0] == wanted:
-                pops.append(_POP_FRONT)
-                held.pop(0)
-            elif held and held[-1] == wanted:
-                pops.append(_POP_BACK)
-                held.pop()
-            else:
-                break
-        else:
-            pushes = [
-                _PUSH_FRONT if assignment >> i & 1 else _PUSH_BACK for i in range(n)
-            ]
-            return pushes, pops
-    return None
+    """Return this order's named two-run deque routing, or None."""
+    plan = deque_plan(perm)
+    if plan is None:
+        return None
+    pushes, pops = plan
+    return (
+        [_PUSH_FRONT if head else _PUSH_BACK for head in pushes],
+        [_POP_FRONT if head else _POP_BACK for head in pops],
+    )
 
 
 def _stored(
@@ -456,7 +438,7 @@ def _ordered(
 def _ordered_candidate(
     truth_table: str, perm: tuple[int, ...], offset: int | None = None
 ) -> str:
-    """Adapt :func:`_ordered` to :func:`best_input_order`'s contract."""
+    """Adapt :func:`_ordered` to :func:`in_input_order`'s contract."""
     return _ordered(truth_table, perm, offset) or ""
 
 
@@ -474,24 +456,20 @@ def cvnc(truth_table: str) -> str:
     ``truth_table`` is a binary string of length ``2**n``, MSB first; the
     program reads ``n`` lines and prints ``0`` or ``1``.  One read and one
     ``ɰ``/``ʋ`` branch per level, every leaf printing with ``θ`` and
-    jumping to the one shared halt gadget.  The identity and greedy read
-    orders are both built, and the shorter wins.  A program not shorter
+    jumping to the one shared halt gadget. Splits stay in input order.
+    A program not shorter
     than the gadget's reach gets one more squaring, repeated until it
-    fits; the contest is run once, since the gadget is a fixed-size
-    prologue rather than part of any leaf.
+    fits; changing the prologue rebases the shared body before its
+    reach is checked again.
     """
     # For the refusal only; the arity is not needed below.
     _validate_truth_table(truth_table)
-    body = best_input_order(truth_table, _ordered_candidate)
     squarings = _HALT_SQUARINGS
-    while len(_halt(squarings)) + len(body) >= _reach(squarings):
+    while True:
+        body = in_input_order(
+            truth_table,
+            partial(_ordered_candidate, offset=_prologue_syllables(squarings)),
+        )
+        if len(_halt(squarings)) + len(body) < _reach(squarings):
+            return _halt(squarings) + body
         squarings += 1
-    # A shared body jumps to syllables counted past this prologue, so it is
-    # built once the prologue is fixed; shorter, it fits the same reach.
-    shared = best_input_order(
-        truth_table,
-        partial(_ordered_candidate, offset=_prologue_syllables(squarings)),
-    )
-    if len(shared) < len(body):
-        body = shared
-    return _halt(squarings) + body

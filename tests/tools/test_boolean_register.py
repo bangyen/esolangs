@@ -78,14 +78,9 @@ class TestAddSubJump:
                 assert run_addsubjump(program, bits) == table[row]
 
     def test_three_input_total(self) -> None:
-        """The 256 three-input programs total 99,032 characters.
-
-        108,054 before every ``d`` operand named cell 7, a zero data word,
-        in place of the special zero ``-7``, and the entry stopped enabling
-        a flag mode nothing reads.
-        """
+        """Shared residuals reduce the n=3 total from 99,032 to 95,678."""
         total = sum(len(boolean.addsubjump(f"{value:08b}")) for value in range(256))
-        assert total == 99032
+        assert total == 95678
 
     def test_every_path_reads_each_input_once(self) -> None:
         """A run consumes exactly ``n`` inputs, whatever the table.
@@ -119,6 +114,40 @@ class TestAddSubJump:
 
 
 class TestQoibl:
+    @pytest.mark.medium
+    @pytest.mark.parametrize("batch", range(16))
+    @pytest.mark.parametrize("width", [1, 2, 3, 6, 13, 80])
+    def test_narrow_horner_literals_execute_small_tables(
+        self, batch: int, width: int
+    ) -> None:
+        import esolangs
+
+        for value in range(16 * batch, 16 * (batch + 1)):
+            table = format(value, "08b")
+            program = esolangs.generate("Qoibl", table, width)
+            assert max(map(len, program.splitlines())) <= max(width, 2)
+            for row in range(8):
+                assert run_qoibl(program, list(format(row, "03b"))) == table[row]
+
+    @pytest.mark.medium
+    @pytest.mark.parametrize("n", [5, 8])
+    @pytest.mark.parametrize("width", [1, 3, 13])
+    def test_narrow_horner_larger_literals(self, n: int, width: int) -> None:
+        rng = random.Random(20260930 + n)
+        for table in (
+            "".join(str(row.bit_count() & 1) for row in range(2**n)),
+            format(rng.getrandbits(2**n), f"0{2**n}b"),
+        ):
+            program = boolean.qoibl(table, width)
+            for row in rng.sample(range(2**n), 4):
+                assert run_qoibl(program, list(format(row, f"0{n}b"))) == table[row]
+
+    def test_narrow_horner_floor_and_corpus_size(self) -> None:
+        assert max(map(len, boolean.qoibl("0110", 1).splitlines())) == 2
+        assert (
+            sum(len(boolean.qoibl(format(v, "08b"), 1)) for v in range(256)) == 520366
+        )
+
     @pytest.mark.parametrize(
         ("table", "n"),
         [
@@ -511,6 +540,14 @@ class TestPolynomial:
 
 
 class TestDig:
+    def test_four_input_parity_keeps_the_compact_layout(self) -> None:
+        """Dropping the banded candidate grew this program from 436 to 706."""
+        table = "0110100110010110"
+        program = boolean.dig(table)
+        assert len(program) <= 436
+        for row, expected in enumerate(table):
+            assert run_dig(program, list(format(row, "04b"))) == expected
+
     @pytest.mark.medium
     def test_alternating_layout_executes_every_row(self) -> None:
         """The alternating-axis tree computes two dense wide tables."""
@@ -575,8 +612,8 @@ class TestDig:
         )
         assert boolean.dig("0110", width=80) == expected
 
-    def test_compact_layout_uses_the_shorter_orientation(self) -> None:
-        """The safe turn is useful for size, not only width requests."""
+    def test_banded_layout_remains_available_for_width_requests(self) -> None:
+        """A banded tree fits when the flat tree exceeds the requested width."""
         from esolangs.tools.register import _dig_grid
 
         table = "0110100110010110"
@@ -584,7 +621,7 @@ class TestDig:
         flat = _dig_grid(table, n, None)
         banded = _dig_grid(table, n, -(-(n + 2) // 2))
         assert len(banded) < len(flat)
-        assert boolean.dig(table) == banded
+        assert boolean.dig(table, width=18) == banded
 
     def test_a_constant_table_is_one_line(self) -> None:
         """Nothing to branch on, so the whole grid is a single leaf."""
@@ -606,6 +643,19 @@ class TestDig:
             1 for r in full.split("\n") if r.strip()
         )
         assert all(row.strip() for row in folded.splitlines())
+
+    def test_unaligned_leaf_chains_seven_input_reads(self) -> None:
+        """A folded flat leaf needs two windows beyond its six-read tail."""
+        from esolangs.interpreters.grid_based.dig import run
+        from esolangs.interpreters.io import ScriptedIO
+
+        for expected in "01":
+            program = boolean.dig(expected * 128, 1000)
+            for row in range(128):
+                io = ScriptedIO("\n".join(format(row, "07b")) + "\n")
+                run(program.splitlines(), io)
+                assert io.getvalue() == expected
+                assert io.reads == 7
 
     def test_a_long_read_run_chains_its_windows(self) -> None:
         """Past nine cells the ``$`` runs chain rather than growing a digit.
@@ -640,6 +690,29 @@ class TestDig:
                     bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
                     got = run_dig(narrow, [str(b) for b in bits])
                     assert got == str(int(table[combo])), (table, width, bits)
+
+    def test_rotated_small_dig_trees_keep_all_operand_reads(self) -> None:
+        """Quarter-turning changes neighbor priority, so execute every path."""
+        assert max(map(len, boolean.dig("0110", 1).splitlines())) == 4
+        for n in range(1, 4):
+            for value in range(1 << (1 << n)):
+                table = format(value, f"0{1 << n}b")
+                program = boolean.dig(table, 1)
+                for row, expected in enumerate(table):
+                    bits = list(format(row, f"0{n}b"))
+                    assert run_dig(program, bits) == expected
+
+    @pytest.mark.parametrize("width", [1, 2, 3, 4, 7])
+    def test_xor_polynomial_uses_four_operand_columns(self, width: int) -> None:
+        from esolangs.interpreters.grid_based.dig import run
+        from esolangs.interpreters.io import ScriptedIO
+
+        program = esolangs.generate("Dig", "0110", width)
+        assert max(map(len, program.splitlines())) == 4
+        for row, expected in enumerate("0110"):
+            io = ScriptedIO("\n".join(f"{row:02b}") + "\n")
+            run(program.splitlines(), io)
+            assert (io.getvalue(), io.reads) == (expected, 2)
 
     def test_a_folded_table_keeps_the_flat_layout(self) -> None:
         """Turning round is not always narrower, so the narrower one wins.
@@ -694,7 +767,7 @@ class TestDig:
         monkeypatch.setattr(dig_module, "_DIG_BAND", _DIG_STRIDE)
         for table in ("0110", "10010110", "0110100110010110"):
             with pytest.raises(AssertionError):
-                boolean.dig(table, 1)
+                boolean.dig(table, 8)
         monkeypatch.undo()
         # and the stride the rule names still builds
         assert boolean.dig("0110100110010110", 1)
@@ -807,10 +880,10 @@ class TestCollatzMultiverse:
         varied = [t for v in range(256) if len(set(t := format(v, "08b"))) > 1]
         plain = sum(len(_cm_build(t, 3, [0, 1, 2], zero_top=None)) for t in varied)
         built = sum(len(boolean.collatz_multiverse(t)) for t in varied)
-        assert (plain, built) == (450156, 218136)
+        assert (plain, built) == (450156, 228694)
 
     def test_numbering_never_grows_a_program(self) -> None:
-        """The plain build is the first candidate, so no table gets longer."""
+        """Numbered cells beat the retired value-as-code size oracle."""
         from esolangs.tools.register import _cm_build
 
         rng = random.Random(0)
@@ -821,6 +894,88 @@ class TestCollatzMultiverse:
             plain = _cm_build(table, n, list(range(n)), zero_top=None)
             assert plain is not None
             assert len(boolean.collatz_multiverse(table)) <= len(plain), table
+
+    @pytest.mark.parametrize("width", [1, 27, 32, 40, 80])
+    def test_narrow_statements_keep_array_addresses(self, width: int) -> None:
+        """Alias prefixes preserve odd captures and read every input once."""
+        import esolangs
+
+        for table in ("0000", "1111", "0110", "01101001", "10101010"):
+            n = len(table).bit_length() - 1
+            plain = boolean.collatz_multiverse(table)
+            program = esolangs.generate("Collatz Multiverse", table, width)
+            assert max(map(len, program.splitlines())) <= max(
+                width, max(map(len, plain.splitlines()))
+            )
+            assert program.count("input") == n
+            assert program.count("DO PRINT.") == 1
+            for row in range(1 << n):
+                assert (
+                    run_collatz_multiverse(program, list(f"{row:0{n}b}")) == table[row]
+                )
+
+    @pytest.mark.parametrize("width", [1, 27, 29, 30, 40, 80])
+    def test_narrow_renaming_preserves_every_small_table(self, width: int) -> None:
+        for n in range(1, 4):
+            for value in range(2 ** (2**n)):
+                table = format(value, f"0{2**n}b")
+                program = boolean.collatz_multiverse(table, width)
+                assert max(map(len, program.splitlines())) <= max(width, 29)
+                assert program.count("input") == n
+                for row in range(2**n):
+                    bits = list(format(row, f"0{n}b"))
+                    assert run_collatz_multiverse(program, bits) == table[row]
+
+    @pytest.mark.parametrize("n", [5, 8, 10])
+    def test_narrow_renaming_preserves_larger_decoders(self, n: int) -> None:
+        rng = random.Random(20260930 + n)
+        for table in (
+            "".join(str(row.bit_count() & 1) for row in range(2**n)),
+            "".join(rng.choice("01") for _ in range(2**n)),
+        ):
+            for width in (1, 29, 40, 80):
+                program = boolean.collatz_multiverse(table, width)
+                for row in rng.sample(range(2**n), 12):
+                    bits = list(format(row, f"0{n}b"))
+                    assert run_collatz_multiverse(program, bits) == table[row]
+
+    def test_fitting_alias_layout_keeps_its_register_names(self) -> None:
+        program = boolean.collatz_multiverse("00", 27)
+        assert max(map(len, program.splitlines())) <= 27
+        assert "k48" in program
+        for bit in ("0", "1"):
+            assert run_collatz_multiverse(program, [bit]) == "0"
+
+    def test_narrow_xor_uses_the_complete_statement_floor(self) -> None:
+        program = boolean.collatz_multiverse("0110", 1)
+        assert max(map(len, program.splitlines())) == 26
+
+    def test_numbered_constants_narrow_complete_statements(self) -> None:
+        """The narrow candidate changes source and actually reduces columns."""
+        plain = boolean.collatz_multiverse("01101001")
+        narrow = boolean.collatz_multiverse("01101001", 1)
+        assert "negativeOne" not in narrow
+        assert narrow.splitlines()[0].endswith("=zx+lineNumber,NOT PRINT.")
+        assert max(map(len, narrow.splitlines())) == 26
+        assert max(map(len, narrow.splitlines())) < max(map(len, plain.splitlines()))
+
+    def test_narrow_statement_floor_is_idempotent(self) -> None:
+        """Another alias prefix cannot narrow or widen the existing floor."""
+        from esolangs.tools.register import _cm_layout
+
+        table = "01101001"
+        narrow = boolean.collatz_multiverse(table, 1)
+        relaid = _cm_layout(narrow, 1)
+        assert relaid == narrow
+        for row, expected in enumerate(table):
+            assert run_collatz_multiverse(relaid, list(f"{row:03b}")) == expected
+
+    def test_narrow_cell_source_remains_linear(self) -> None:
+        sizes = [
+            len(boolean.collatz_multiverse("01101001" * (2 ** (n - 3)), 1))
+            for n in (7, 8)
+        ]
+        assert sizes[1] < 2 * sizes[0] + 256
 
 
 class TestDecleq:
