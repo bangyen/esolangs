@@ -167,24 +167,34 @@ L was a searched syntax-level lookup table. The retained 2D screen intersected
 verdicts, co-categories, I/O and branch vocabulary, and page length. It admitted
 Super SNUSP and Alight and rejected Pinyin.
 
-The alternative route measures fame by esolangs backlinks and by an English
-Wikipedia article with 90-day pageviews. A candidate may clear either proxy;
-low backlinks count against only old languages. Wikipedia was sampled
-2026-09-27; backlinks were remeasured 2026-10-01, resolving title redirects,
-following every API continuation, and counting unique linking page IDs across
-all namespaces, including links through redirects. Requests pause three seconds.
+The alternative admission route is fame. Either gate is sufficient:
 
-The backlink gate is 3% of Brainfuck's complete count, adopted 2026-10-01 as
-a prospective policy choice, not an empirically established popularity boundary.
-Measure both pages by the same method; the integer test is
-`100 * candidate >= 3 * brainfuck`. Below it, fame supplies no backlink-based
-exception; the intrinsic axis test still applies. Brainfuck scores 2,057, so
-the current threshold is 62. The former 282 counted only the first API batch;
-the `bf/5` and `bf/10` gate and its indeterminate band are retired.
+- **Community:** at least 60 unique esolangs linking pages. Resolve the
+  candidate's title redirects, follow every `list=backlinks` continuation,
+  include links through redirects across all namespaces, and deduplicate by
+  linking page ID. Pause at least three seconds between requests.
+- **Outside reach:** a standalone English Wikipedia article about the language
+  with at least 10,000 pageviews over the latest 90 complete UTC days available
+  before the measurement date. Use Wikimedia per-article daily counts for
+  `en.wikipedia.org`, `all-access`, and `user`; require all 90 days. Resolve
+  title redirects to the article, but do not count redirect-title traffic or
+  traffic to general articles, lists, or disambiguation pages.
+
+These fixed cutoffs were adopted 2026-10-01 as prospective policy choices,
+not empirically established popularity boundaries. Record the resolved title,
+measurement date, counts, and Wikipedia window. Missing data leaves that gate
+unassessed, not failed. Below both gates, fame supplies no exception; intrinsic
+axes still apply. Low backlinks count against only old languages.
+
+Backlinks were remeasured 2026-10-01. Brainfuck scores 2,057; the former 282
+counted only the first API batch. The Brainfuck-relative gates and the
+indeterminate band are retired. The 2026-09-27 Wikipedia sample covered
+2026-06-28 through 2026-09-25; Whitespace's 11,255 clears the Wikipedia gate
+for that window, not an unmeasured current window.
 
 The seven classics score Befunge 380, Thue 155, Malbolge 129, FALSE 91,
 Unlambda 89, FRACTRAN 65, and Whitespace 58; rejected Brainloller and
-Braincopter score 26 and 14. Piet (65) clears the gate; Whitespace (58),
+Braincopter score 26 and 14. Piet (65) clears the backlink gate; Whitespace (58),
 Chicken (55), Shakespeare (54), and LOLCODE (47) do not.
 
 The fame bar is forward-only; past admissions are audited on the intrinsic
@@ -196,8 +206,8 @@ language, but cannot create a generator interface.
 
 Cyclic tag (94) duplicates the Bitwise Cyclic Tag axis. Underload (167) and
 INTERCAL (103) also clear the backlink gate.
-Emmental (43) and Prelude (13) are implemented elsewhere but do not clear the
-fame bar, so neither admission route applies.
+Emmental (43) and Prelude (13) are implemented elsewhere and fail the backlink
+gate. Neither has established a qualifying Wikipedia count or intrinsic axis.
 
 The 2026-09-27 spec read closed the other candidates:
 
