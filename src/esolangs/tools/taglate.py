@@ -1,6 +1,7 @@
 """Boolean-function generator for Taglate."""
 
 from itertools import pairwise
+from math import isqrt
 
 from esolangs.tools.helpers import (
     _ASCII_ZERO,
@@ -331,3 +332,26 @@ def taglate(truth_table: str, width: int | None = None) -> str:
     if len(seed) > width:
         program = "\n" + _seed_commands(seed) + commands
     return wrap_program(program, "taglate", width)
+
+
+def balance_taglate(_table: str, default: str) -> str:
+    """Compare the square crossing for literal and bootstrapped queues."""
+    from esolangs.tools.wrap import balance_score, wrap_program
+
+    seed, _, commands = default.partition("\n")
+    candidates = [default]
+    bootstrapped = "\n" + _seed_commands(seed) + commands
+    regimes = [
+        (default, len(seed), max(len(seed), len(commands))),
+        (bootstrapped, 1, len(seed) - 1),
+    ]
+    for program, lower, upper in regimes:
+        length = len(program.partition("\n")[2])
+        # The seed adds one row: W=w, H=1+ceil(length/w). Widths on
+        # either side of w*w-w=length bracket the minimum imbalance.
+        crossing = (1 + isqrt(1 + 4 * length)) // 2
+        for width in (crossing, crossing + 1):
+            candidates.append(
+                wrap_program(program, "taglate", min(upper, max(lower, width)))
+            )
+    return min(candidates, key=balance_score)

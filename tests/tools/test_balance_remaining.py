@@ -97,6 +97,7 @@ def _regime_tables():
     "language",
     [
         "ArrowQueue",
+        "Back",
         "B-tapemark",
         "BrainIf",
         "Clockwise",
@@ -105,6 +106,7 @@ def _regime_tables():
         "Fargo",
         "Streetcode",
         "Thue",
+        "Taglate",
         "Flowchart",
         "Inject",
         "thisthat",
@@ -127,6 +129,47 @@ def test_discrete_regimes_reach_the_supported_minimum(language, table):
         esolangs.evaluate(language, balanced, inputs=len(table).bit_length() - 1)
         == table
     )
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("inputs", range(6, 11))
+def test_back_larger_tree_regimes(inputs):
+    rng = random.Random(1010 + inputs)
+    table = "".join(rng.choice("01") for _ in range(1 << inputs))
+    default = esolangs.generate("Back", table)
+    balanced = esolangs.generate("Back", table, balance=True)
+    layouts = [default] + [
+        esolangs.generate("Back", table, width) for width in range(1, 65)
+    ]
+    assert balanced in layouts
+    assert balance_score(balanced) == min(map(balance_score, layouts))
+    for row in (0, 1, len(table) // 2, len(table) - 1):
+        bits = list(map(int, format(row, f"0{inputs}b")))
+        source = esolangs.instantiate("Back", balanced, bits)
+        output = esolangs.run("Back", source)
+        assert esolangs.read_answer("Back", output) == table[row]
+
+
+@pytest.mark.medium
+def test_taglate_larger_seed_and_bootstrap_crossings():
+    from esolangs.tools.taglate import _seed_commands
+
+    table = "".join(str(row.bit_count() % 2) for row in range(64))
+    default = esolangs.generate("Taglate", table)
+    balanced = esolangs.generate("Taglate", table, balance=True)
+    seed, _, commands = default.partition("\n")
+    bootstrapped = "\n" + _seed_commands(seed) + commands
+    widest = max(map(len, default.split("\n")))
+    layouts = [default] + [
+        wrap_program(bootstrapped if width < len(seed) else default, "taglate", width)
+        for width in range(1, widest + 1)
+    ]
+    assert balanced in layouts
+    assert balance_score(balanced) == min(map(balance_score, layouts))
+    for row in (0, 1, 32, 63):
+        stdin = esolangs.encode_inputs("Taglate", list(map(int, format(row, "06b"))))
+        output = esolangs.run("Taglate", balanced, stdin)
+        assert esolangs.read_answer("Taglate", output) == table[row]
 
 
 @pytest.mark.medium
