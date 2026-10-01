@@ -550,6 +550,7 @@ class _Builder:
         # and complements are not in it: they are read by everything, sit
         # left of ``band_start``, and are never reclaimed.
         self.limit: int | None = None
+        self.next_limit: int | None = None
         self.band_start = 0
         self.live: list[int] = []
 
@@ -656,7 +657,13 @@ class _Builder:
             return True
         if any(group + _COL_STEP > after for group in self.free_strides):
             return True
-        return self.next_column + self.gate_stride <= self.limit
+        boundary = self.next_column + self.gate_stride
+        if boundary > self.limit:
+            self.next_limit = (
+                boundary if self.next_limit is None else min(self.next_limit, boundary)
+            )
+            return False
+        return True
 
     def _release(self, signal: int) -> None:
         """Give back ``signal``'s column group, if it owns one to give.
@@ -1023,7 +1030,11 @@ def _selector_orders(
 
 
 def _circuit_diagram_at(
-    truth_table: str, limit: int | None, perm: tuple[int, ...] | None = None
+    truth_table: str,
+    limit: int | None,
+    perm: tuple[int, ...] | None = None,
+    *,
+    _events: list[int] | None = None,
 ) -> str:
     """Build a Circuit Diagram program computing the given truth table.
 
@@ -1082,59 +1093,17 @@ def _circuit_diagram_at(
     elif result == "1":
         result = builder.constant(rails[0], "X")
     builder.output(result)
+    if _events is not None and builder.next_limit is not None:
+        _events.append(builder.next_limit)
     return builder.layout.render()
 
 
-def _affine_circuit(table: str, width: int) -> str | None:
-    """Return a direct XOR chain if binary-carry parity verifies the table."""
-    n = _validate_truth_table(table)
-    constant = int(table[0])
-    coefficients = [constant ^ int(table[1 << bit]) for bit in range(n)]
-    parity = constant
-    for row, value in enumerate(table):
-        if parity != int(value):
-            return None
-        # All binary carries together flip fewer than 2T bits.
-        carry = row
-        bit = 0
-        while carry & 1:
-            parity ^= coefficients[bit]
-            carry >>= 1
-            bit += 1
-        if bit < n:
-            parity ^= coefficients[bit]
-    if n == 2 and all(coefficients):
-        if width < 6:
-            # Return the output below both inputs, then left. Two rows
-            # isolate its final junction from the colon's diagonal pin.
-            gate = "X" if constant else "x"
-            return f"-.\n  {gate}.\n-. |\n   .\n  .\n .\n |\n .-:"
-        # Adjacent input rows feed the two diagonal gate pins directly.
-        layout = _Layout()
-        for signal, row in enumerate((0, 2)):
-            layout.glyph(0, row, "-")
-            layout.junction(1, row, signal)
-        layout.glyph(2, 1, "X" if constant else "x")
-        layout.junction(3, 1, 2)
-        layout.glyph(4, 1, "-")
-        layout.glyph(5, 1, ":")
-        return layout.render()
-    builder = _Builder(narrow=True)
-    rails = [builder.input_bus() for _ in range(n)]
-    selected = [rail for bit, rail in enumerate(reversed(rails)) if coefficients[bit]]
-    builder.band_start = builder.next_column
-    # Reserve the output dash and colon beyond the last gate group.
-    builder.limit = max(1, width - 2)
-    if not selected:
-        result = builder.constant(rails[0], "X" if constant else "x")
-    elif len(selected) == 1:
-        result = builder.invert(selected[0]) if constant else selected[0]
-    else:
-        result = builder.gate("X" if constant else "x", selected[0], selected[1])
-        for rail in selected[2:]:
-            result = builder.gate("x", result, rail)
-    builder.output(result)
-    return builder.layout.render()
+def _affine_circuit(
+    table: str, width: int, *, _events: list[int] | None = None
+) -> str | None:
+    from esolangs.tools._circuit_balance import affine_circuit
+
+    return affine_circuit(table, width, _events=_events)
 
 
 def circuit_diagram(truth_table: str, width: int | None = None) -> str:

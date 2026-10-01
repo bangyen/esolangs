@@ -303,6 +303,7 @@ def _regime_tables():
         "Bitdeque",
         "BrainIf",
         "BIO",
+        "Circuit Diagram",
         "Clockwise",
         "Collatz Multiverse",
         "Container",
@@ -674,4 +675,37 @@ def test_larger_setter_and_header_regimes(language, inputs):
         else:
             program, stdin = balanced, esolangs.encode_inputs(language, bits)
         output = esolangs.run(language, program, stdin)
+        assert esolangs.read_answer(language, output) == table[row]
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("inputs", [6, 8])
+@pytest.mark.parametrize("affine", [False, True])
+def test_circuit_gate_column_and_band_fit_transitions(inputs, affine):
+    from esolangs.tools.circuit_diagram import _circuit_diagram_at, _selector_orders
+
+    language = "Circuit Diagram"
+    rng = random.Random(1022 + inputs)
+    table = (
+        "".join(str(row.bit_count() % 2) for row in range(1 << inputs))
+        if affine
+        else "".join(rng.choice("01") for _ in range(1 << inputs))
+    )
+    default = esolangs.generate(language, table)
+    balanced = esolangs.generate(language, table, balance=True)
+    # Once any possible flat order fits, all larger widths repeat the selected flat.
+    widest = max(
+        max(map(len, _circuit_diagram_at(table, None, order).split("\n")))
+        for order in _selector_orders(table, compact=False)
+    )
+    layouts = [default] + [
+        esolangs.generate(language, table, width) for width in range(1, widest + 1)
+    ]
+    assert balanced in layouts
+    assert balance_score(balanced) == min(map(balance_score, layouts))
+    for row in (0, 1, len(table) // 2, len(table) - 1):
+        bits = tuple(map(int, format(row, f"0{inputs}b")))
+        output = esolangs.run(
+            language, balanced, esolangs.encode_inputs(language, bits)
+        )
         assert esolangs.read_answer(language, output) == table[row]
