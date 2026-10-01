@@ -624,6 +624,14 @@ class TestSixFive:
                 got = run_six_five(program, [str(b) for b in bits])
                 assert got == table[combo], f"{table} inputs {bits}"
 
+    @pytest.mark.parametrize("n", range(1, 10))
+    def test_looped_execution_has_a_linear_arity_factor(self, n: int) -> None:
+        """Full-table passes force Theta(n*T), even when no bit advances."""
+        table = "".join(str(row.bit_count() % 2) for row in range(1 << n))
+        program = _six_five_looped(table)
+        commands = _commands("6-5", program, table, 0, 200_000)
+        assert commands == (28 * n - 1) * (1 << n) + 53 * n + 31
+
     def test_the_looped_walk_is_linear_at_a_fixed_label_bill(self) -> None:
         """Sixteen markers at any width, and the text at most doubles per input.
 

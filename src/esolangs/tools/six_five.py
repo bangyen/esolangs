@@ -271,7 +271,8 @@ def _six_five_looped(truth_table: str) -> str:
     until one reads zero, and the marks are kept at ``6 * (v(q) - (n-1-i))``
     by ``n-1`` decrement passes then one increment pass per bit.  Every loop
     tests with ``7n`` and jumps back with the same label.  Size is linear;
-    execution ``O(n * 2**n)``.  Every row at n <= 7 executed; reached only past 35.
+    execution ``Theta(n * 2**n)``: the initial ``n-1`` passes alone
+    visit every row. Every row at n <= 7 executed; reached only past 35.
     """
     n = _validate_truth_table(truth_table)
     label = {

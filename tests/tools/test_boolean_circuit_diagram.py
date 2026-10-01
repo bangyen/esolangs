@@ -287,7 +287,9 @@ class TestCircuitDiagramLayoutGuards:
             blocks = _h_blocks(n)
             leaf_depth = n if n % 2 == 0 else n - 1
             leaves = [
-                block for prefix, block in blocks.items() if len(prefix) == leaf_depth
+                block
+                for prefix, block in blocks.items()
+                if prefix.bit_length() - 1 == leaf_depth
             ]
             assert len(leaves) == 2**leaf_depth
             assert len({(block.x, block.y) for block in leaves}) == len(leaves)
@@ -295,6 +297,21 @@ class TestCircuitDiagramLayoutGuards:
             assert len(sites) == 2**n - 1
             assert len(set(sites.values())) == len(sites)
             assert _h_size(n) ** 2 <= 10_000 * 2**n
+
+    def test_h_depth_buckets_bound_literal_anchor_visits(self) -> None:
+        from esolangs.tools.circuit_diagram import _h_term_plan
+
+        for n in range(2, 13):
+            plan = _h_term_plan("01" * (1 << (n - 1)))
+            assert len(plan.levels) == n + 1
+            assert sum(map(len, plan.levels)) == len(plan.sites) == 2 ** (n + 1) - 1
+            for depth, nodes in enumerate(plan.levels):
+                assert len(nodes) == 1 << depth
+                assert set(nodes) == set(range(1 << depth, 1 << (depth + 1)))
+            visits = 2 * sum(
+                (n - depth) * len(nodes) for depth, nodes in enumerate(plan.levels)
+            )
+            assert visits == 4 * (1 << n) - 2 * n - 4
 
     @pytest.mark.slow
     def test_h_layout_executes_every_two_input_table(self) -> None:
@@ -720,9 +737,9 @@ class TestCircuitDiagram:
         )
 
         n = 3  # odd arity: every shape, including ``under``, at the leaves
-        prefixes = [p for p in _h_minterm_sites(n) if len(p) >= 2]
+        prefixes = [p for p in _h_minterm_sites(n) if p.bit_length() - 1 >= 2]
         # Selector signals are the non-leaf prefixes'; the literals follow.
-        tree = {index for index, p in enumerate(prefixes) if len(p) < n}
+        tree = {index for index, p in enumerate(prefixes) if p.bit_length() - 1 < n}
         tree |= set(range(len(prefixes), len(prefixes) + 2 * n))
 
         def wiring(table: str) -> set[tuple[str, int, int, int, int]]:
