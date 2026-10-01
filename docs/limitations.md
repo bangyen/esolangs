@@ -174,14 +174,18 @@ low backlinks count against only old languages. Wikipedia was sampled
 following every API continuation, and counting unique linking page IDs across
 all namespaces, including links through redirects. Requests pause three seconds.
 
-The backlink gate is calibrated to the decided set: 58 or more is sufficient,
-26 or fewer carries nothing, and the axis test decides between them. The seven
-classics score Befunge 380, Thue 155, Malbolge 129, FALSE 91, Unlambda 89,
-FRACTRAN 65, and Whitespace 58; rejected Brainloller and Braincopter score 26
-and 14. Piet scores 65. Chicken 55, Shakespeare 54, and LOLCODE 47 lie in the
-indeterminate band. Brainfuck scores 2,057; the former 282 counted only the
-first API batch, so the `bf/5` and `bf/10` gate is retired. These calibration
-landmarks define the gate, not a universal popularity threshold.
+The backlink gate is 3% of Brainfuck's complete count, adopted 2026-10-01 as
+a prospective policy choice, not an empirically established popularity boundary.
+Measure both pages by the same method; the integer test is
+`100 * candidate >= 3 * brainfuck`. Below it, fame supplies no backlink-based
+exception; the intrinsic axis test still applies. Brainfuck scores 2,057, so
+the current threshold is 62. The former 282 counted only the first API batch;
+the `bf/5` and `bf/10` gate and its indeterminate band are retired.
+
+The seven classics score Befunge 380, Thue 155, Malbolge 129, FALSE 91,
+Unlambda 89, FRACTRAN 65, and Whitespace 58; rejected Brainloller and
+Braincopter score 26 and 14. Piet (65) clears the gate; Whitespace (58),
+Chicken (55), Shakespeare (54), and LOLCODE (47) do not.
 
 The fame bar is forward-only; past admissions are audited on the intrinsic
 axis test.
