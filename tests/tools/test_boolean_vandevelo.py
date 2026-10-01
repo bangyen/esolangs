@@ -136,6 +136,63 @@ def test_affine_detection_checks_non_basis_rows() -> None:
         assert _affine_form(changed, n) is None
 
 
+def test_affine_cosets_bypass_the_peel(monkeypatch: pytest.MonkeyPatch) -> None:
+    import importlib
+
+    from esolangs.tools.vandevelo import _affine_coset
+
+    module = importlib.import_module("esolangs.tools.vandevelo")
+
+    def reject(*_args: object) -> None:
+        raise AssertionError("an affine coset entered the cube peel")
+
+    monkeypatch.setattr(module, "_Peel", reject)
+    for n in range(1, 5):
+        for value in range(1 << (1 << n)):
+            table = format(value, f"0{1 << n}b")
+            ones = {row for row, entry in enumerate(table) if entry == "1"}
+            found = _affine_coset(table, ones)
+            base = min(ones, default=0)
+            closed = bool(ones) and all(
+                left ^ right ^ base in ones for left in ones for right in ones
+            )
+            assert (found is not None) == closed
+            if found is None:
+                continue
+            origin, dirs = found
+            points = {origin}
+            for direction in dirs:
+                assert direction ^ origin not in points
+                points |= {point ^ direction for point in points}
+            assert points == ones
+            program = vandevelo(table)
+            for bits in product((0, 1), repeat=n):
+                io = ScriptedIO("\n".join(map(str, bits)))
+                halted = run_until_halt_or_cycle(_Machine(program, io))
+                row = int("".join(map(str, bits)), 2)
+                assert str(int(not halted)) == table[row]
+                assert io.position() == n
+
+
+def test_coset_membership_work_is_geometric() -> None:
+    from esolangs.tools.vandevelo import _affine_coset
+
+    class CountedTable(str):
+        reads = 0
+
+        def __getitem__(self, key: int | slice) -> str:
+            self.reads += 1
+            return super().__getitem__(key)
+
+    for n in range(2, 13):
+        ones = {row for row in range(1 << n) if row & 3 == 0}
+        table = CountedTable(
+            "".join("1" if row in ones else "0" for row in range(1 << n))
+        )
+        assert _affine_coset(table, ones) is not None
+        assert table.reads == len(ones) - 1
+
+
 def test_the_exact_autocorrelation_improves_on_the_scored_candidates(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
