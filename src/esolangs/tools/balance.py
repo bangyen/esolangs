@@ -19,6 +19,7 @@ from esolangs.tools.forbin import forbin
 from esolangs.tools.fractran import _PARITY_BINARY, _PARITY_TWO, _PLAIN_MAX, _plain
 from esolangs.tools.helpers import _validate_truth_table
 from esolangs.tools.inject import inject
+from esolangs.tools.intercal import balance_intercal
 from esolangs.tools.parameterized import bitdeque, minsky_swap
 from esolangs.tools.ram0 import ram0
 from esolangs.tools.register import balance_collatz_multiverse
@@ -256,6 +257,7 @@ BALANCERS: dict[str, Callable[[str, str], str]] = {
     "forbin": _forbin,
     "fractran": _fractran,
     "inject": _inject,
+    "intercal": balance_intercal,
     "minsky_swap": _minsky_swap,
     "ram0": _ram0,
     "streetcode": _streetcode,

@@ -28,6 +28,49 @@ def test_mixed_digit_operands_share_one_grid_cell(language):
         assert balanced.split() == program.split()
 
 
+@pytest.mark.medium
+@pytest.mark.parametrize("language", ["sbleq", "slow_acv_mammalian"])
+def test_multicell_and_trimmed_grid_fits_match_every_width(language):
+    assert balance_program("", language) == ""
+    for lengths in product((1, 2, 4, 9), repeat=5):
+        program = " ".join("1" * length for length in lengths)
+        balanced = balance_program(program, language)
+        optimum = min(
+            [program]
+            + [
+                wrap_program(program, language, width)
+                for width in range(1, 4 * len(program) + 1)
+            ],
+            key=balance_score,
+        )
+        assert balance_score(balanced) == balance_score(optimum)
+        assert balanced.split() == program.split()
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("inputs", range(6, 11))
+def test_intercal_larger_statement_formats(inputs):
+    from esolangs.tools.intercal import _intercal_narrow
+
+    rng = random.Random(1016 + inputs)
+    table = "".join(rng.choice("01") for _ in range(1 << inputs))
+    default = esolangs.generate("INTERCAL", table)
+    balanced = esolangs.generate("INTERCAL", table, balance=True)
+    # Larger widths repeat this fitted format until the default starts fitting.
+    widest = max(map(len, _intercal_narrow(table, simplify=False).splitlines()))
+    layouts = [default] + [
+        esolangs.generate("INTERCAL", table, width) for width in range(1, widest + 1)
+    ]
+    assert balanced in layouts
+    assert balance_score(balanced) == min(map(balance_score, layouts))
+    for row in (0, 1, len(table) // 2, len(table) - 1):
+        bits = tuple(map(int, format(row, f"0{inputs}b")))
+        output = esolangs.run(
+            "INTERCAL", esolangs.instantiate("INTERCAL", balanced, bits)
+        )
+        assert esolangs.read_answer("INTERCAL", output) == table[row]
+
+
 def test_polynomial_quotient_transitions_match_every_width():
     programs = ["", "1", "+ - 1"]
     programs.extend(
@@ -212,6 +255,7 @@ def _regime_tables():
         "Forbin",
         "FRACTRAN",
         "Jaune",
+        "INTERCAL",
         "Minsky Swap",
         "RAM0",
         "Streetcode",

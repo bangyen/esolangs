@@ -604,10 +604,7 @@ def balance_width(program: str) -> int:
 
 
 def balance_program(program: str, language_id: str) -> str:
-    """Balance term folds, equal cells or a dominant token; otherwise estimate.
-
-    Lengths (2, 1, 1, 3) give a 4x3 estimate; width 3 gives a 3x3 grid.
-    """
+    """Balance whole-token fits and term folds; otherwise estimate source area."""
     wrapper = WRAPPERS.get(language_id)
     if "\n" not in program and wrapper is _polynomial:
         return _balance_polynomial(program)
@@ -640,24 +637,19 @@ def balance_program(program: str, language_id: str) -> str:
         return min(program, _join_tokens(tokens, width, ""), key=balance_score)
     if "\n" not in program and wrapper in (wrap_grid, _mammalian):
         tokens = program.split()
-        if tokens and max(map(len, tokens)) >= len(tokens):
-            # One token per row attains the width floor and maximum H=N.
-            # Longest token >= N makes W-H nonnegative for every layout.
-            narrow = wrap_program(program, language_id, 1)
-            return min((program, narrow), key=balance_score)
-        equal = bool(tokens) and len({len(token) for token in tokens}) == 1
-        cell = len(tokens[0]) if equal else 0
-        if tokens and wrapper is wrap_grid:
-            cell = _cell_width(tokens)
-            equal = all(_span(len(token), cell) == 1 for token in tokens)
-        if equal and (wrapper is not _mammalian or cell == 4):
-            # Aligned operands need one cell even when their digit counts vary.
-            # For k cells, W=(cell+1)k-1 and H=ceil(N/k).
-            stride = cell + 1
-            columns = max(1, (1 + isqrt(1 + 4 * stride * len(tokens))) // (2 * stride))
-            lower = wrap_program(program, language_id, stride * columns - 1)
-            upper = wrap_program(program, language_id, stride * (columns + 1) - 1)
-            return min((program, lower, upper), key=balance_score)
+        if not tokens:
+            return program
+        cell = 4 if wrapper is _mammalian else _cell_width(tokens)
+        aligned = [
+            token.ljust(_span(len(token), cell) * (cell + 1) - 1)
+            if wrapper is _mammalian
+            else token.rjust(_span(len(token), cell) * (cell + 1) - 1)
+            for token in tokens
+        ]
+        width = balanced_token_width(aligned, " ", rstrip_rows=True)
+        return min(
+            program, wrap_program(program, language_id, width), key=balance_score
+        )
     candidate = wrap_program(program, language_id, balance_width(program))
     return min((program, candidate), key=balance_score)
 

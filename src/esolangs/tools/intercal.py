@@ -82,6 +82,45 @@ def _intercal_tokens(program: str) -> list[str]:
     return _TOKEN.findall(program)
 
 
+def balance_intercal(table: str, default: str) -> str:
+    """Compare reachable statement formats and whole-token fit thresholds."""
+    from esolangs.tools.wrap import balance_score
+
+    def span(program: str) -> int:
+        return max(map(len, program.splitlines()))
+
+    natural_width = span(default)
+    previous = _intercal_narrow(table, simplify=False)
+    previous_width = span(previous)
+    narrow = _intercal_narrow(table)
+    narrow_width = span(narrow)
+    candidates = [default]
+    if previous_width < natural_width:
+        candidates.append(previous)
+    if narrow_width < min(natural_width, previous_width):
+        candidates.append(narrow)
+    split = _intercal_narrow(table, split=True)
+    best = min((narrow, split), key=span)
+    chosen = best if span(best) < natural_width else default
+    maximum = min(natural_width, previous_width, narrow_width) - 1
+    widths = {1}
+    for line in chosen.splitlines():
+        if len(line) <= maximum:
+            widths.add(len(line))
+        tokens = _intercal_tokens(line)
+        for start in range(len(tokens)):
+            used = 0
+            for token in tokens[start:]:
+                used = used + 1 + len(token) if used else len(token)
+                if used > maximum:
+                    break
+                widths.add(used)
+    # Within a format, a row changes only when a whole token run fits or
+    # the original statement starts fitting and retains its punctuation.
+    candidates.extend(_wrap_intercal(chosen, width) for width in widths)
+    return min(candidates, key=balance_score)
+
+
 def _wrap_intercal(program: str, width: int) -> str:
     """Break over-wide statements only at C-INTERCAL token boundaries."""
     from esolangs.tools.wrap import _join_tokens
