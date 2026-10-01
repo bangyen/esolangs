@@ -545,6 +545,14 @@ class TestPolynomial:
 
 
 class TestDig:
+    def test_four_input_parity_keeps_the_compact_layout(self) -> None:
+        """Dropping the banded candidate grew this program from 436 to 706."""
+        table = "0110100110010110"
+        program = boolean.dig(table)
+        assert len(program) <= 436
+        for row, expected in enumerate(table):
+            assert run_dig(program, list(format(row, "04b"))) == expected
+
     @pytest.mark.medium
     def test_alternating_layout_executes_every_row(self) -> None:
         """The alternating-axis tree computes two dense wide tables."""
@@ -610,7 +618,7 @@ class TestDig:
         assert boolean.dig("0110", width=80) == expected
 
     def test_banded_layout_remains_available_for_width_requests(self) -> None:
-        """The unconstrained layout avoids comparing orientations."""
+        """A banded tree fits when the flat tree exceeds the requested width."""
         from esolangs.tools.register import _dig_grid
 
         table = "0110100110010110"
@@ -618,7 +626,7 @@ class TestDig:
         flat = _dig_grid(table, n, None)
         banded = _dig_grid(table, n, -(-(n + 2) // 2))
         assert len(banded) < len(flat)
-        assert boolean.dig(table) == flat
+        assert boolean.dig(table, width=18) == banded
 
     def test_a_constant_table_is_one_line(self) -> None:
         """Nothing to branch on, so the whole grid is a single leaf."""
