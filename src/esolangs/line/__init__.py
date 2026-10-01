@@ -45,7 +45,7 @@ def _render_node(node: Node, heading: tuple[int, int] = (-1, 0)) -> Rows:
 
 
 @cache
-def generate(truth_table: str) -> Raster:
+def _generate(truth_table: str) -> Raster:
     """Return a Line raster computing ``truth_table``."""
     from .line_boolean import line_boolean
 
@@ -54,6 +54,11 @@ def generate(truth_table: str) -> Raster:
         _materialize=lambda: _render_node(node),
         _payload=node,
     )
+
+
+def generate(truth_table: str, *, scale: int = 1) -> Raster:
+    """Return a Line raster enlarged by an integer pixel factor."""
+    return _generate(truth_table).upscaled(scale)
 
 
 def balance(truth_table: str, _default: Raster) -> Raster:
@@ -99,12 +104,12 @@ def _run_node(node: Node, io: ScriptedIO) -> None:
         current = current.next or current.goto
 
 
-def run(program: Raster, io: ScriptedIO) -> None:
+def run(program: Raster, io: ScriptedIO, *, scale: int | None = None) -> None:
     """Execute a Line raster, writing decimal outputs through ``io``."""
-    if program._payload is not None:  # noqa: SLF001 - language-owned payload
+    if program._payload is not None and scale is None:  # noqa: SLF001 - language-owned payload
         _run_node(cast("Node", program._payload), io)  # noqa: SLF001
         return
     _run(
-        extract_mask(from_grey(_grey_rows(program.rows))),
+        extract_mask(from_grey(_grey_rows(program.rows)), scale=scale),
         IO(read=io.input_num, write=io.print_num),
     )

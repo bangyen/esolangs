@@ -21,10 +21,17 @@ class Language:
         object.__setattr__(self, "name", resolve(self.name))
 
     def generate(
-        self, truth_table: str, width: int | None = None, *, balance: bool = False
+        self,
+        truth_table: str,
+        width: int | None = None,
+        *,
+        balance: bool = False,
+        scale: int = 1,
     ) -> str | Raster:
         """Return a program computing ``truth_table``."""
-        return esolangs.generate(self.name, truth_table, width, balance=balance)
+        return esolangs.generate(
+            self.name, truth_table, width, balance=balance, scale=scale
+        )
 
     def instantiate(
         self,
@@ -45,6 +52,7 @@ class Language:
         *,
         isolated: bool = False,
         max_steps: int | None = None,
+        scale: int | None = None,
     ) -> str:
         """Execute source using the same bounds as :func:`esolangs.run`."""
         return esolangs.run(
@@ -55,6 +63,7 @@ class Language:
             seed,
             isolated=isolated,
             max_steps=max_steps,
+            scale=scale,
         )
 
     def evaluate(
@@ -64,10 +73,11 @@ class Language:
         *,
         inputs: int,
         isolated: bool = False,
+        scale: int | None = None,
     ) -> str:
         """Return the table computed over ``inputs`` bits."""
         return esolangs.evaluate(
-            self.name, program, timeout, inputs=inputs, isolated=isolated
+            self.name, program, timeout, inputs=inputs, isolated=isolated, scale=scale
         )
 
     def describe(self) -> LanguageInfo:

@@ -193,9 +193,11 @@ def _command(
     return 0, 0
 
 
-def run(program: Raster, io: ScriptedIO) -> None:
+def run(program: Raster, io: ScriptedIO, *, scale: int | None = None) -> None:
     """Execute a Piet image, with one pixel per codel."""
-    rows = program.rows
+    from esolangs.raster.scale import normalize
+
+    rows = normalize(program.rows, scale)
     current = (0, 0)
     dp, cc = 0, -1
     stack: list[int] = []
@@ -249,12 +251,12 @@ def run(program: Raster, io: ScriptedIO) -> None:
             return
 
 
-def generate(truth_table: str, width: int | None = None) -> Raster:
+def generate(truth_table: str, width: int | None = None, *, scale: int = 1) -> Raster:
     """Return a Piet raster computing ``truth_table``."""
     from .piet_boolean import generate as _generate
 
     if width is not None:
         from .balance import folded
 
-        return folded(truth_table, width)
-    return _generate(truth_table)
+        return folded(truth_table, width).upscaled(scale)
+    return _generate(truth_table).upscaled(scale)

@@ -14,14 +14,14 @@ USAGE = """usage: esolangs <command> [...]
 commands:
   list [--details] [--json]   list the supported languages
   encode <language> <bits>    print the stdin that feeds those bits
-  generate [--width [N] | --balance] [--bits BITS] <language> <truth-table>
+  generate [--width [N] | --balance] [--bits BITS] [--scale N] <language> <truth-table>
                               print a program computing a truth table
                               (--width wraps it; --bits fills a template)
   describe [--json] [--spec] <language>
                               print how that language reads its input and
                               where it puts the answer (--spec prints the
                               interpreter's own description of it)
-  run [--timeout S] [--judge] [--table T] [--seed N] <language> <file>
+  run [--timeout S] [--judge] [--table T] [--seed N] [--scale N] <language> <file>
                               run a program through its interpreter
                               (--judge prints the answer bit instead)
   check-stdin [--table T] <language>
@@ -98,7 +98,7 @@ options:
               booleans, so nobody has to parse the marker column.
 """,
     "generate": f"""usage: esolangs generate [--width [N] | --balance] [--bits BITS]
-                         <language> <truth-table>
+                         [--scale N] <language> <truth-table>
 
 Print a program in <language> computing <truth-table>.
 
@@ -118,6 +118,7 @@ options:
                per input, and print the runnable program.  Substituting them
                by hand does not work: each language spells a set-input its
                own way, and a 0/1 in the slot is a different program.
+  --scale N    enlarge raster pixels by N after layout (default 1).
   --balance    minimize the rendered width/height difference across supported
                layouts. Ties prefer shorter source, then smaller width. Tokens
                and routing can prevent a square; excludes --width.
@@ -141,7 +142,7 @@ examples:
   esolangs generate --bits 10 Minifuck 0110
 """,
     "run": """usage: esolangs run [--timeout S] [--judge] [--table T] [--seed N]
-                    <language> <program-file>
+                    [--scale N] <language> <program-file>
 
 Run a program through its interpreter and print what it writes.
 
@@ -169,6 +170,7 @@ options:
                      *not* terminating -- 123, ArrowQueue, Crement and
                      Vandevelo -- so a timeout there is the answer, not a
                      failure.
+  --scale N          override detected raster scale; 1 preserves native pixels.
   --seed N           fix the random draws so the run repeats.  Eight
                      languages draw: Befunge, Fish, LaserFuck, Modulous,
                      Painfuck, Super SNUSP, Thue and thisthat.  A seed for a language

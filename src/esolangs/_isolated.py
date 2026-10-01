@@ -61,6 +61,7 @@ def run_isolated(
     timeout: float = 30.0,
     *,
     seed: int | None = None,
+    scale: int | None = None,
 ) -> str:
     """Return output from a subprocess; the deadline includes loading and startup.
 
@@ -82,6 +83,7 @@ def run_isolated(
             "raster": raster,
             "stdin": stdin,
             "seed": seed,
+            "scale": scale,
         }
     )
     return _launch(request, timeout)
@@ -170,6 +172,7 @@ def _worker() -> None:
                 request["stdin"],
                 timeout=None,
                 seed=request["seed"],
+                scale=request.get("scale"),
             )
     except exceptions.EsolangError as error:
         args: tuple[object, ...] = error.args

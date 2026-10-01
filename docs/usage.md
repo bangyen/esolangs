@@ -37,6 +37,11 @@ layouts, breaking ties by source length (raster pixel area), then width.
 It excludes `width`. Line compares forward and reverse input-test orders;
 Piet folds its path with stack-neutral turns. Both construct O(T) pixels
 for a truth table of length T.
+Raster generators accept `scale=1` (CLI: `--scale N`), applied after layout.
+Both interpreters detect enlargement. Piet chooses the largest uniform codel
+grid anchored at the image origin; `run(..., scale=N)` or `--scale N`
+overrides detection. Use `scale=1` for native images whose blocks also fit a
+larger grid. Committed examples remain at native scale.
 
 ## Run XOR
 

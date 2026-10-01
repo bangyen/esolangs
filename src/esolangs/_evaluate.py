@@ -6,6 +6,7 @@
 import os
 import signal
 import threading
+from functools import partial
 from typing import cast
 
 import esolangs
@@ -56,6 +57,7 @@ def evaluate(
     *,
     inputs: int,
     isolated: bool = False,
+    scale: int | None = None,
 ) -> str:
     """Return the table a supplied program computes over ``inputs`` bits.
 
@@ -75,6 +77,12 @@ def evaluate(
         check_timeout(timeout)
     facts = describe(language)
     name = str(facts["name"])
+    if scale is not None:
+        from esolangs._validate import check_scale
+
+        check_scale(scale)
+        if facts["source_kind"] != "raster":
+            raise ArgumentError("scale is only supported for raster interpreters")
     if (
         isinstance(inputs, bool)
         or not isinstance(inputs, int)
@@ -140,12 +148,15 @@ def evaluate(
                     )
                 answers.append(answer)
             else:
+                runner = esolangs.run
+                if scale is not None:
+                    runner = partial(runner, scale=scale)
                 if isolated:
-                    output = esolangs.run(
+                    output = runner(
                         name, source, stdin, cast("float", bound), isolated=True
                     )
                 else:
-                    output = esolangs.run(name, source, stdin, bound)
+                    output = runner(name, source, stdin, bound)
                 answers.append(read_answer(name, output))
         except EsolangError as exc:
             # The row and its bits as a note (the classes share no
