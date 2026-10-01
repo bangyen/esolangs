@@ -517,10 +517,6 @@ def _streetcode_shared_kerb(program: str) -> str:
 # removes the stalk and both sets of corners still bound the junction.
 _ROOF, _UP, _DOWN, _FLOOR, _STALK, _KERB, _WEST, _EAST, _SILL = range(9)
 
-# Where the flat lookup starts being offered: at five it wins on the dense
-# and parity shapes and loses on a table that folds, so both are compared.
-_FLAT_FROM = 5
-
 # ``I`` and the 48 ``~`` behind it: a junction tests a cell for zero and an
 # ASCII digit is 48 or 49, so the read has to be walked down to its bit.
 _READ_RUN = 49
@@ -699,7 +695,7 @@ def streetcode(truth_table: str, width: int | None = None) -> str:
     # seeds avoids that.  It is built once per input order, identity first,
     # so a table no reorder improves keeps the program it already emitted.
     programs.extend(_streetcode_shared_programs(truth_table, n, tree))
-    if n >= _FLAT_FROM:
+    if width is not None and n == 5:
         programs.append(_streetcode_flat(truth_table, n))
     if width is not None:
         fitting = [p for p in programs if _streetcode_columns(p) <= width]
