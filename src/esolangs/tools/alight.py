@@ -24,13 +24,18 @@ _ALIGHT_EAST_TURN = "turn right;"
 _ALIGHT_WEST_TURN = "turn left;"
 
 
+def _half_before(value: int) -> str:
+    """Return value minus one half without floating-point rounding."""
+    return f"{value - 1}.5"
+
+
 def _alight_chunk(rows: int, width: int) -> int:
     """How many table entries one lookup may carry, inside ``width``.
 
     A chunk's guard, lookup and turn share a row; the index text is bounded
     by the largest row number, so this is a formula.
     """
-    index = len(f"{rows - 0.5}")
+    index = len(_half_before(rows))
     # ``skip i < I;`` is 10 + I, ``set r at{"", i-I};`` is 18 + I.
     overhead = 28 + 2 * index
     chunk = max(1, width - overhead - len(_ALIGHT_EAST_TURN))
@@ -70,12 +75,12 @@ def _alight_units(truth_table: str, n: int, chunk: int) -> list[list[str]]:
             if start == 0:
                 units.append(
                     [
-                        f"skip i > {start + len(piece) - 0.5}",
+                        f"skip i > {_half_before(start + len(piece))}",
                         f'set r at{{"{piece}", i+0.5}}',
                     ]
                 )
             else:
-                low = start - 0.5
+                low = _half_before(start)
                 units.append([f"skip i < {low}", f'set r at{{"{piece}", i-{low}}}'])
     units.append(["out r"])
     units.append(["end"])
@@ -91,8 +96,8 @@ def _alight_flat_compact(truth_table: str, n: int) -> str:
         expr += f"*2+{name}"
     # Every input is its character code.  The final half selects Alight's
     # half-integer list slot; omitting its leading zero saves one column.
-    offset = _ASCII_ZERO * ((1 << n) - 1) - 0.5
-    expr += f"-{offset:g}"
+    offset = _half_before(_ASCII_ZERO * ((1 << n) - 1))
+    expr += f"-{offset}"
     return ";".join(
         ["begin", *(f"var {name}" for name in names[:n]), "var r"]
         + [f"inp {name}" for name in names[:n]]
@@ -179,21 +184,9 @@ def _alight_balanced(truth_table: str, n: int, width: int) -> str:
     """
     if width < 1:
         raise ValueError("width must be at least 1")
-    flat = _alight_flat_compact(truth_table, n)
-    candidates = ["\n".join(flat)]
-    if len(flat) <= width:
-        candidates.append(flat)
-    for columns in range(1, min(width, len(flat)) + 1):
-        chunk = _alight_chunk(len(truth_table), columns)
-        folded = _alight_folded(_alight_units(truth_table, n, chunk), columns)
-        if _dimensions(folded)[0] <= width:
-            candidates.append(folded)
+    from esolangs.tools.alight_balance import select_alight
 
-    def score(program: str) -> tuple[int, int, int]:
-        rendered_width, height = _dimensions(program)
-        return max(rendered_width, height), rendered_width * height, len(program)
-
-    return min(candidates, key=score)
+    return select_alight(truth_table, n, width)
 
 
 def alight(truth_table: str, width: int | None = None) -> str:

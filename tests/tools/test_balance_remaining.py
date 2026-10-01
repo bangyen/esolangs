@@ -297,6 +297,7 @@ def _regime_tables():
     "language",
     [
         "Algebraic Programming Language",
+        "Alight",
         "ArrowQueue",
         "Back",
         "B-tapemark",
@@ -750,7 +751,7 @@ def test_laserfuck_reader_tree_and_funnel_fits(inputs):
 
 
 @pytest.mark.parametrize("language", ["Alight", "Qoibl"])
-def test_pending_native_balance_preserves_answers(language):
+def test_native_balance_preserves_answers(language):
     program = esolangs.generate(language, "0110", balance=True)
     assert esolangs.evaluate(language, program, inputs=2) == "0110"
 
@@ -794,3 +795,108 @@ def test_qoibl_literal_chunk_quotients_and_statement_fits(inputs):
             language, balanced, esolangs.encode_inputs(language, bits)
         )
         assert esolangs.read_answer(language, output) == table[row]
+
+
+def test_native_width_generators_have_balance_rules():
+    from esolangs.registry import LANGUAGES
+    from esolangs.tools.balance import BALANCERS
+    from esolangs.tools.wrap import takes_width
+
+    assert not [
+        name
+        for name, language in LANGUAGES.items()
+        if language.boolean is not None
+        and takes_width(language.boolean)
+        and language.id not in BALANCERS
+    ]
+
+
+def test_alight_affine_fold_comparisons_and_empty_turn_rows():
+    from esolangs.tools.alight import _alight_folded, _dimensions
+    from esolangs.tools.alight_balance import _fold_shape
+
+    pieces = [(0, 6)] * 3 + [(0, 8), (1, 20), (1, 20), (0, 6), (0, 4)]
+    assert _fold_shape(pieces, (1, 90), 1, 31)[3] == 4
+    for size in range(1, 31):
+        units = [[command] for command in ("begin", "var r", "var i", "set i 0")]
+        units += [[f'set r at{{"{"0" * size}", i+0.5}}']] * 2
+        units += [["out r"], ["end"]]
+        program = _alight_folded(units, size + 90)
+        width, height, length, _ = _fold_shape(pieces, (1, 90), size, 31)
+        assert (*_dimensions(program), len(program)) == (width, height, length)
+        assert esolangs.run("Alight", program) == "0"
+
+
+def test_alight_model_drift_aborts(monkeypatch):
+    import esolangs.tools.alight_balance as module
+
+    monkeypatch.setattr(module, "_alight_folded", lambda *_args: "begin;end;")
+    with pytest.raises(AssertionError, match="fold model disagrees"):
+        esolangs.generate("Alight", "0110", balance=True)
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("inputs", range(1, 9))
+def test_alight_native_minimax_records_match_rendered_columns(inputs):
+    from esolangs.tools.alight import (
+        _alight_chunk,
+        _alight_folded,
+        _alight_units,
+        _dimensions,
+    )
+
+    rng = random.Random(1025 + inputs)
+    table = "".join(rng.choice("01") for _ in range(1 << inputs))
+    flat = esolangs.generate("Alight", table)
+    # Render each column once; this retains the old selector's full candidate set.
+    forms = [(1, 0, "\n".join(flat)), (len(flat), 1, flat)]
+    for columns in range(1, len(flat) + 1):
+        program = _alight_folded(
+            _alight_units(table, inputs, _alight_chunk(len(table), columns)), columns
+        )
+        width, _ = _dimensions(program)
+        forms.append((max(width, columns), columns + 1, program))
+        assert (
+            esolangs.run(
+                "Alight", program, esolangs.encode_inputs("Alight", [0] * inputs)
+            )
+            == table[0]
+        )
+    ranked = []
+    for ready, priority, program in forms:
+        width, height = _dimensions(program)
+        ranked.append(
+            (
+                ready,
+                (max(width, height), width * height, len(program), priority),
+                program,
+            )
+        )
+    for width in range(1, max(ready for ready, _, _ in ranked) + 1):
+        expected = min(
+            (item for item in ranked if item[0] <= width), key=lambda item: item[1]
+        )[2]
+        assert esolangs.generate("Alight", table, width) == expected
+    balanced = esolangs.generate("Alight", table, balance=True)
+    winners = [flat] + [
+        min((item for item in ranked if item[0] <= width), key=lambda item: item[1])[2]
+        for width in range(1, max(ready for ready, _, _ in ranked) + 1)
+    ]
+    assert balance_score(balanced) == min(map(balance_score, winners))
+    for row in (0, 1, len(table) // 2, len(table) - 1):
+        bits = tuple(map(int, format(row, f"0{inputs}b")))
+        output = esolangs.run(
+            "Alight", balanced, esolangs.encode_inputs("Alight", bits)
+        )
+        assert esolangs.read_answer("Alight", output) == table[row]
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("balanced", [False, True])
+def test_alight_twelve_input_half_integer_offset(balanced):
+    table = "0" * 4095 + "1"
+    program = esolangs.generate("Alight", table, balance=balanced)
+    for row in (0, 1, 2048, 4095):
+        bits = tuple(map(int, format(row, "012b")))
+        output = esolangs.run("Alight", program, esolangs.encode_inputs("Alight", bits))
+        assert esolangs.read_answer("Alight", output) == table[row]

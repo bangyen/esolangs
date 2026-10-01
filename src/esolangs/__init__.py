@@ -72,8 +72,6 @@ from esolangs.tools.helpers import mark_runs, unmark
 # ``describe(...)["width_aware"]`` -- which is the question they were asking.
 from esolangs.tools.wrap import (
     balance_program,
-    balance_score,
-    balance_width,
     wrap_program,
 )
 from esolangs.tools.wrap import takes_width as _takes_width
@@ -154,8 +152,8 @@ def generate(
     it does nothing where newlines are semantic, and a single token longer
     than the width still overruns it.  A template wraps with each run kept
     whole, so every row breaks in the same places.
-    ``balance`` favors square layouts. Exact rules minimize the width/height
-    difference where available; other layouts estimate from default source area.
+    ``balance`` minimizes the rendered width/height difference across supported
+    layouts, breaking ties by source length, then width.
     Token and routing constraints can prevent a square layout.
     """
     if balance and width is not None:
@@ -172,11 +170,6 @@ def generate(
                 text, char, pairs = render_template(lang.id, text, default.inputs)
                 return _Template(text, default.language, char, pairs)
             return _Tagged(text, resolve(language))
-        if lang.boolean is not None and _takes_width(lang.boolean):
-            candidate = cast(
-                str, generate(language, truth_table, balance_width(default))
-            )
-            return min((default, candidate), key=balance_score)
         if isinstance(default, _Template):
             marked = mark_runs(default, default.char, default.setters)
             text = unmark(
