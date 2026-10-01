@@ -56,8 +56,14 @@ def test_a_register_binds_the_polarity_its_test_wants() -> None:
     assert lines[4:] == ["d ~> c?", "d ~> d? == b?", "d? :: a? :: loop?"]
 
 
-def test_a_test_implied_by_an_earlier_half_space_is_dropped() -> None:
+def test_a_test_implied_by_an_earlier_half_space_is_dropped(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Rows past ``a? :: loop?`` all have ``a`` at 0; nothing tests it again."""
+    import importlib
+
+    module = importlib.import_module("esolangs.tools.vandevelo")
+    monkeypatch.setattr(module, "_affine_coset", lambda *_: None)
     lines = vandevelo("01111111").splitlines()
     assert lines[4:] == ["a? :: loop?", "c? :: loop?", "b? :: loop?"]
 
@@ -86,7 +92,7 @@ def test_three_input_steps_and_sizes() -> None:
         program = vandevelo(format(index, "08b"))
         size += len(program)
         steps += sum(_steps(program, bits) for bits in product(range(2), repeat=3))
-    assert (size, steps) == (23481, 22769)
+    assert (size, steps) == (23425, 22669)
 
 
 def test_parity_is_a_single_hyperplane() -> None:
@@ -136,7 +142,9 @@ def test_affine_detection_checks_non_basis_rows() -> None:
         assert _affine_form(changed, n) is None
 
 
-def test_affine_cosets_bypass_the_peel(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_affine_cosets_and_complements_bypass_the_peel(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     import importlib
 
     from esolangs.tools.vandevelo import _affine_coset
@@ -165,13 +173,15 @@ def test_affine_cosets_bypass_the_peel(monkeypatch: pytest.MonkeyPatch) -> None:
                 assert direction ^ origin not in points
                 points |= {point ^ direction for point in points}
             assert points == ones
-            program = vandevelo(table)
-            for bits in product((0, 1), repeat=n):
-                io = ScriptedIO("\n".join(map(str, bits)))
-                halted = run_until_halt_or_cycle(_Machine(program, io))
-                row = int("".join(map(str, bits)), 2)
-                assert str(int(not halted)) == table[row]
-                assert io.position() == n
+            complement = "".join("1" if entry == "0" else "0" for entry in table)
+            for target in (table, complement):
+                program = vandevelo(target)
+                for bits in product((0, 1), repeat=n):
+                    io = ScriptedIO("\n".join(map(str, bits)))
+                    halted = run_until_halt_or_cycle(_Machine(program, io))
+                    row = int("".join(map(str, bits)), 2)
+                    assert str(int(not halted)) == target[row]
+                    assert io.position() == n
 
 
 def test_coset_membership_work_is_geometric() -> None:

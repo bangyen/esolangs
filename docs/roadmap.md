@@ -192,6 +192,8 @@ proof and remove the completed item.
   `O((n-d)*2**(n-d))` transform work per call. A forced six-input control
   executes the three-dimensional transform and matches full-space counts;
   280 generated programs retain identical source and all 2,536 rows execute.
+  Affine-coset complements use direct violation guards: the n=12 one-zero
+  table drops 40,938,391 candidate visits and shrinks from 333 to 277 characters.
   Next: remove the identifier factor, amortize projection and fallback calls,
   and bound the dual-basis core's aggregate work. Neither remaining gap is a
   language-wide lower bound; measured scaling does not settle them.
