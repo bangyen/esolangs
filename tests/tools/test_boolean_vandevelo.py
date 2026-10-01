@@ -142,6 +142,7 @@ def test_affine_detection_checks_non_basis_rows() -> None:
         assert _affine_form(changed, n) is None
 
 
+@pytest.mark.medium
 def test_affine_cosets_and_complements_bypass_the_peel(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

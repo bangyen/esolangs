@@ -98,7 +98,7 @@ def _runs(pair: tuple[str, str], n: int) -> list[str]:
 
 BIO_PAIR = ("0oz;", "0ox;")
 #: Each bit cell is freshly pushed as zero; the marker is a separate cell.
-BFPDA_PAIR = (" ", "@")
+BFPDA_PAIR = ("x", "@")
 BITDEQUE_PAIR = ("PUSH INVERT", "INVERT PUSH")
 #: Even widths: ``*`` swaps the pointer, so a one-wide zero would move it.
 MINSKY_SWAP_PAIR = ("**", "++")
