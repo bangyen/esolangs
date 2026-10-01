@@ -178,6 +178,25 @@ measurement date, and count. Missing data leaves fame unassessed, not failed.
 Below 60, fame supplies no exception; intrinsic axes still apply. Low backlinks
 count against only old languages. Wikipedia pageviews are not an admission gate.
 
+Recognition sources checked 2026-10-01 provide curated selections, not
+popularity rankings or additional admission gates:
+
+- [Kneusel, *Strange Code* (2022)](https://nostarch.com/strange-code):
+  named esolang chapters cover FRACTRAN, Piet, Brainfuck, and Befunge.
+  Filska and Firefly are the author's own creations; Forth, SNOBOL, and CLIPS
+  belong to the separate atypical-language section.
+- [Morr, *Esoteric Programming Languages*](https://blinry.org/esolangs/esolangs.pdf):
+  selects Brainfuck, INTERCAL, Befunge, Malbolge, and Shakespeare as iconic
+  examples with different properties, not an exhaustive canon.
+- [LMU teaching notes](https://cs.lmu.edu/~ray/notes/esolangs/): a brief themed,
+  theoretical, golfing, multidimensional, and difficulty-oriented tour.
+  Selects LOLCODE, Glowup Vibes, ArnoldC, Chef, Shakespeare, Rockstar,
+  Brainfuck, Binaryfuck, Lenguage, GolfScript, Pyth, CJam, Jelly, 05AB1E,
+  Vyxal, Befunge, AsciiDots, Piet, Whitespace, Unreadable, and Malbolge.
+- [Esolang featured archive](https://esolangs.org/w/index.php?title=Esolang:Featured_languages&oldid=161213):
+  administrator-selected features: Thue, Funciton, Brainfuck, Deadfish,
+  Emmental, Malbolge, Glass, and ///. Features are not popularity endorsements.
+
 Backlinks were remeasured 2026-10-01. Brainfuck scores 2,057; the former 282
 counted only the first API batch. The Brainfuck-relative gates and the
 indeterminate band are retired.
