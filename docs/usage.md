@@ -17,6 +17,22 @@ esolangs.evaluate("A Painter Ant", program, inputs=2)  # -> '0110'
 
 Evaluation handles input formats, templates, and termination answers.
 
+## Work with one language
+
+`Language(name)` binds the same functions to one canonical language name:
+
+```python
+bf = esolangs.Language("brainfuck")
+program = bf.generate("0110", balance=True)
+assert bf.evaluate(program, inputs=2) == "0110"
+output = bf.run(program, bf.encode_inputs([0, 1]))
+assert bf.read_answer(output) == "1"
+info = bf.describe()
+```
+
+It also provides `instantiate`, `check_program`, and `check_stdin`.
+The package functions remain available when working across languages.
+
 ## Run XOR
 
 XOR's table is `0110`: rows `00`, `01`, `10`, and `11` produce `0`, `1`,

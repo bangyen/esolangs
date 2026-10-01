@@ -42,6 +42,10 @@ def smoke(*, math_extra: bool) -> None:
     assert package.parent.name in {"site-packages", "dist-packages"}, package
     assert (package / "py.typed").is_file()
     assert "brainfuck" in _cli(["list"])
+    bound = esolangs.Language("BRAINFUCK")
+    program = bound.generate("0110", balance=True)
+    assert bound.evaluate(program, inputs=2) == "0110"
+    assert bound.read_answer(bound.run(program, bound.encode_inputs([0, 1]))) == "1"
     assert esolangs.run("brainfuck", "+.", max_steps=2, timeout=1) == "\x01"
     try:
         esolangs.run("brainfuck", "+[]", max_steps=10)

@@ -4,6 +4,7 @@
 ``evaluate`` returns a table. ``encode_inputs`` and ``read_answer`` handle rows.
 ``check_program`` and ``check_stdin`` validate; ``describe`` and ``list_languages``
 provide registry facts. Stepping and debugging live in :mod:`esolangs.debugger`.
+``Language(name)`` binds these functions to one language.
 Names resolve case-insensitively; deliberate errors derive from EsolangError.
 """
 
@@ -31,6 +32,7 @@ from esolangs._describe import (
 )
 from esolangs._evaluate import _DEFAULT, _Default, evaluate
 from esolangs._isolated import run_isolated as _run_isolated
+from esolangs._language import Language
 from esolangs._validate import check_bits, check_timeout, check_width
 from esolangs.exceptions import (
     ArgumentError,
@@ -109,6 +111,7 @@ __all__ = [
     "InputExhaustedError",
     "InputMismatchWarning",
     "InterpreterLimitError",
+    "Language",
     "LanguageInfo",
     "MissingDependencyError",
     "ProgramError",
