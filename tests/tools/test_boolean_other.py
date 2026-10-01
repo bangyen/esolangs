@@ -459,7 +459,7 @@ class TestFargo:
         8,202 with the arms, 7,576 with four orders, and 7,467 with
         character-cost splits.
         """
-        from esolangs.tools.fargo import _anf_coefficients
+        from esolangs.tools.helpers import anf_coefficients
         from tests.tools.fargo_oracle import _anf_expression
 
         before = after = 0
@@ -467,7 +467,7 @@ class TestFargo:
             for value in range(2 ** (2**n)):
                 table = format(value, f"0{2**n}b")
                 at = tuple(range(n))
-                positive = _anf_expression(_anf_coefficients(table), n, at)
+                positive = _anf_expression(anf_coefficients(table), n, at)
                 old = len(f"% 0 {positive}\n$\n")
                 built = len(boolean.fargo(table))
                 assert built <= old, table

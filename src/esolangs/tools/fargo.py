@@ -3,7 +3,7 @@
 ``@ i`` returns the ``i``th bit of the input number, so no routing is
 needed and the construction is the **algebraic normal form**
 ``f(x) = c0 XOR (c1 & x0) XOR (c2 & x1) XOR (c3 & x0 & x1) XOR ...``,
-coefficients from the Möbius transform (:func:`_anf_coefficients`).
+coefficients from the Möbius transform (:func:`anf_coefficients`).
 The emitter factors each variable as ``p = p0 ^ (x & p1)``, so every
 coefficient appears at most once; identity order emits O(T) characters.
 The emitter picks each node's arm locally (:func:`_arm_expression`).
@@ -23,7 +23,11 @@ order only renames the ``@`` literals, and :func:`fargo` compares named orders.
 from collections.abc import Callable
 from functools import cache
 
-from esolangs.tools.helpers import _validate_truth_table, permute_truth_table
+from esolangs.tools.helpers import (
+    _validate_truth_table,
+    anf_coefficients,
+    permute_truth_table,
+)
 
 __all__ = ["fargo"]
 
@@ -31,28 +35,6 @@ __all__ = ["fargo"]
 def _word_width(n: int) -> int:
     """Return a power-of-two packing width, at least two and Theta(n)."""
     return max(2, 1 << (n.bit_length() - 1))
-
-
-def _anf_coefficients(truth_table: str) -> list[int]:
-    """Return ANF coefficients in O(T) word-RAM work with Theta(log T)-bit words."""
-    n = _validate_truth_table(truth_table)
-    width = _word_width(n)
-    words = [
-        int(truth_table[start : start + width][::-1], 2)
-        for start in range(0, len(truth_table), width)
-    ]
-    stride = 1
-    while stride < width:
-        high = int(("1" * stride + "0" * stride) * (width // (2 * stride)), 2)
-        words = [value ^ ((value << stride) & high) for value in words]
-        stride *= 2
-    stride = 1
-    while stride < len(words):
-        for start in range(0, len(words), 2 * stride):
-            for offset in range(start, start + stride):
-                words[offset + stride] ^= words[offset]
-        stride *= 2
-    return [(value >> bit) & 1 for value in words for bit in range(width)]
 
 
 def _name(index: int) -> str:
@@ -299,7 +281,7 @@ def _expressions(
 ) -> list[str]:
     """Return the arm expression unless it cannot beat ``limit``."""
     table = permute_truth_table(truth_table, order)
-    coeffs = _anf_coefficients(table)
+    coeffs = anf_coefficients(table)
     at = tuple(n - 1 - order[n - 1 - bit] for bit in range(n))
     try:
         return [_arm_expression(table, coeffs, n, at, limit=limit)]
@@ -494,6 +476,6 @@ def fargo(truth_table: str, width: int | None = None) -> str:
         return compact
     if n > 5:
         return _definition_program(expression, n)
-    coeffs = _anf_coefficients(truth_table)
+    coeffs = anf_coefficients(truth_table)
     masks = [mask for mask in range(1 << n) if coeffs[mask] and mask]
     return _factored(masks, coeffs[0], n)

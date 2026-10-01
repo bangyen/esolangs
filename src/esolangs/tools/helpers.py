@@ -203,6 +203,33 @@ def _validate_shape(truth_table: str) -> int:
 #: runs are filled with.  Each pair is equal width, checked by
 #: :func:`check_setters`, so the constant-width convention is a property
 #: of the object rather than of every caller.
+def anf_coefficients(truth_table: str) -> list[int]:
+    """Return row-indexed ANF coefficients, allowing a nullary reduced table.
+
+    Pack Theta(log T) coefficients per word for O(T) word-RAM work.
+    """
+    n = _validate_shape(truth_table)
+    if n == 0:
+        return [int(truth_table)]
+    width = max(2, 1 << (n.bit_length() - 1))
+    words = [
+        int(truth_table[start : start + width][::-1], 2)
+        for start in range(0, len(truth_table), width)
+    ]
+    stride = 1
+    while stride < width:
+        high = int(("1" * stride + "0" * stride) * (width // (2 * stride)), 2)
+        words = [value ^ ((value << stride) & high) for value in words]
+        stride *= 2
+    stride = 1
+    while stride < len(words):
+        for start in range(0, len(words), 2 * stride):
+            for offset in range(start, start + stride):
+                words[offset + stride] ^= words[offset]
+        stride *= 2
+    return [(value >> bit) & 1 for value in words for bit in range(width)]
+
+
 Setters = tuple[tuple[str, str], ...]
 
 
@@ -473,6 +500,18 @@ def in_input_order(
     return build(truth_table, tuple(range(n)))
 
 
+def input_orders(
+    truth_table: str, *, max_arity: int | None = None
+) -> list[tuple[int, ...]]:
+    """Return identity then distinct greedy order, capped only when requested."""
+    n = _validate_truth_table(truth_table)
+    identity = tuple(range(n))
+    if max_arity is not None and n > max_arity:
+        return [identity]
+    greedy = _greedy_input_order(truth_table, n)
+    return [identity] if greedy == identity else [identity, greedy]
+
+
 def best_input_order(
     truth_table: str,
     build: Callable[[str, tuple[int, ...]], str],
@@ -494,20 +533,14 @@ def best_input_order(
     ``ADD``/``SUB``/``JMP IF`` rejects a variable operand -- no return leg
     (verified against the interpreter and the wiki).
     """
-    n = _validate_truth_table(truth_table)
-    identity = tuple(range(n))
-    greedy = (
-        _greedy_input_order(truth_table, n)
-        if n <= _GREEDY_ORDER_MAX_ARITY
-        else identity
-    )
-    orders = [] if greedy == identity else [greedy]
+    orders = input_orders(truth_table, max_arity=_GREEDY_ORDER_MAX_ARITY)
+    identity = orders[0]
 
     # An empty candidate means "this order could not be built" and is skipped
     # rather than winning on length 0.  Builders that always succeed retain
     # the plain behavior.
     best = build(truth_table, identity)
-    for perm in orders:
+    for perm in orders[1:]:
         candidate = build(permute_truth_table(truth_table, perm), perm)
         if candidate and (not best or len(candidate) < len(best)):
             best = candidate

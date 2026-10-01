@@ -313,11 +313,11 @@ class TestStreetcode:
 
     def test_only_identity_and_greedy_orders_are_offered(self) -> None:
         """Streetcode never renders more than two order candidates."""
-        from esolangs.tools.streetcode import _streetcode_orders
+        from esolangs.tools.helpers import input_orders
 
         table = "01011010"
-        assert _streetcode_orders(table, 3)[0] == (0, 1, 2)
-        assert len(_streetcode_orders(table, 3)) <= 2
+        assert input_orders(table)[0] == (0, 1, 2)
+        assert len(input_orders(table)) <= 2
 
 
 def test_a_width_past_the_crossover_still_chooses_a_shape() -> None:
