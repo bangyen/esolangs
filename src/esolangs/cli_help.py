@@ -14,7 +14,7 @@ USAGE = """usage: esolangs <command> [...]
 commands:
   list [--details] [--json]   list the supported languages
   encode <language> <bits>    print the stdin that feeds those bits
-  generate [--width [N]] [--bits BITS] <language> <truth-table>
+  generate [--width [N] | --balance] [--bits BITS] <language> <truth-table>
                               print a program computing a truth table
                               (--width wraps it; --bits fills a template)
   describe [--json] [--spec] <language>
@@ -99,8 +99,8 @@ options:
               an object per language carrying the same three facts as
               booleans, so nobody has to parse the marker column.
 """,
-    "generate": f"""usage: esolangs generate [--width [N]] [--bits BITS] <language>
-                         <truth-table>
+    "generate": f"""usage: esolangs generate [--width [N] | --balance] [--bits BITS]
+                         <language> <truth-table>
 
 Print a program in <language> computing <truth-table>.
 
@@ -120,6 +120,9 @@ options:
                per input, and print the runnable program.  Substituting them
                by hand does not work: each language spells a set-input its
                own way, and a 0/1 in the slot is a different program.
+  --balance    recalculate a square target from the default source area.
+               Keep the default if it is better balanced. Token and routing
+               constraints can prevent the global minimum; excludes --width.
   --width [N]  wrap the program to N columns (default {DEFAULT_WIDTH}) so it
                is readable in a diff.  Breaks only between whole tokens.
                `esolangs describe <language>` reports which of three

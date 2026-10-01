@@ -71,13 +71,19 @@ from esolangs.registry import (
     template_char,
 )
 from esolangs.tagged import _Tagged, _Template
-from esolangs.tools.wrap import takes_width as _takes_width
+from esolangs.tools.helpers import mark_runs, unmark
 
 # Imported private: it takes a *generator function*, not a language name, so
 # a caller reaching for ``esolangs.takes_width("LaserFuck")`` got False for
 # every language in the registry, contradicting both its own docstring and
 # ``describe(...)["width_aware"]`` -- which is the question they were asking.
-from esolangs.tools.wrap import wrap_program
+from esolangs.tools.wrap import (
+    balance_program,
+    balance_score,
+    balance_width,
+    wrap_program,
+)
+from esolangs.tools.wrap import takes_width as _takes_width
 from esolangs.vm import VM, make_vm
 
 
@@ -149,7 +155,9 @@ def __dir__() -> list[str]:
     return sorted(__all__)
 
 
-def generate(language: str, truth_table: str, width: int | None = None) -> str | Raster:
+def generate(
+    language: str, truth_table: str, width: int | None = None, *, balance: bool = False
+) -> str | Raster:
     """Return a program in ``language`` computing ``truth_table``.
 
     ``truth_table`` is a binary string of length ``2**n``, MSB first, so its
@@ -164,7 +172,29 @@ def generate(language: str, truth_table: str, width: int | None = None) -> str |
     it does nothing where newlines are semantic, and a single token longer
     than the width still overruns it.  A template wraps with each run kept
     whole, so every row breaks in the same places.
+    ``balance`` recalculates a square target from the default source area;
+    token and routing constraints can prevent a globally square layout.
     """
+    if balance and width is not None:
+        raise ArgumentError("balance and width are mutually exclusive")
+    if balance:
+        default = generate(language, truth_table)
+        if not isinstance(default, str):
+            return default
+        lang = LANGUAGES[resolve(language)]
+        if lang.boolean is not None and _takes_width(lang.boolean):
+            candidate = cast(
+                str, generate(language, truth_table, balance_width(default))
+            )
+            return min((default, candidate), key=balance_score)
+        if isinstance(default, _Template):
+            marked = mark_runs(default, default.char, default.setters)
+            text = unmark(
+                balance_program(marked, lang.id), default.char, default.inputs
+            )
+            return _Template(text, default.language, default.char, default.setters)
+        text = balance_program(default, lang.id)
+        return _Tagged(text, resolve(language))
     resolved = resolve(language)
     lang = LANGUAGES[resolved]
     fn = lang.boolean or lang.raster_boolean
