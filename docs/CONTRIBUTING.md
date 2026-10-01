@@ -5,6 +5,22 @@ model. Each needs a generator or a documented impossibility; record rejections
 in [limitations](limitations.md). See [architecture](architecture.md) for the
 execution path.
 
+## Development
+
+```bash
+just install-dev
+source .venv/bin/activate        # or prefix each command with `uv run`
+just test-quick
+```
+
+Run `just test` before committing; use `just test-full` for release-scale
+changes. Regenerate committed examples with
+`python scripts/generate.py examples`.
+
+CI installs the built wheel on Linux, macOS, and Windows, checking packaged
+examples, CLI I/O, Line/Piet PNG execution, and installation with and without
+the mathematics extra.
+
 ## What makes a candidate worth adding
 
 A new language must add a construction, branch mechanism, answer convention,

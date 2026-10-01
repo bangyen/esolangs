@@ -157,12 +157,10 @@ def render_examples_section() -> str:
     """
     return "\n".join(
         [
-            "Ready-to-run programs are committed under"
-            " [`examples/`]"
-            "(https://github.com/bangyen/esolangs/tree/main/src/esolangs/examples):",
-            f"`examples/` holds a truth-table program for each of the {len(BOOLEAN)}",
-            "text languages with a boolean generator.  It regenerates via",
-            "`python scripts/generate.py examples`.",
+            f"Ready-to-run programs for each of the {len(BOOLEAN)}",
+            "text languages with a boolean generator live in",
+            "[`examples/`]"
+            "(https://github.com/bangyen/esolangs/tree/main/src/esolangs/examples).",
         ]
     )
 
@@ -307,20 +305,18 @@ def render_tui_section() -> str:
     drawn = "\n".join(line.rstrip() for line in _ANSI.sub("", screen).splitlines())
     return "\n".join(
         [
-            f"`--tui` steps it on screen instead.  This is a real frame --"
-            f" {_TUI_LANGUAGE} at",
-            f"step {_TUI_STEP}, redrawn by `tui.render` every time this file"
-            f" is generated:",
+            f"Generate a program with `esolangs generate {_TUI_LANGUAGE}"
+            f" {_TUI_TABLE} > flowchart.txt`, then run",
+            "`esolangs debug --tui --stdin \"$(printf '0\\n1\\n')\""
+            f" {_TUI_LANGUAGE} flowchart.txt` in a terminal.",
+            f"Here is {_TUI_LANGUAGE} at step {_TUI_STEP}:",
             "",
             "```",
             drawn,
             "```",
             "",
-            "The live screen reverse-videos the cell at that `ip`; colour"
-            " does not survive",
-            "the page."
-            "  [usage](https://github.com/bangyen/esolangs/blob/main/docs/usage.md#debugging)"
-            " names every key.",
+            "See [debugging](https://github.com/bangyen/esolangs/blob/main/docs/usage.md#debugging)"
+            " for controls.",
         ]
     )
 
