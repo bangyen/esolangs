@@ -120,8 +120,9 @@ options:
                per input, and print the runnable program.  Substituting them
                by hand does not work: each language spells a set-input its
                own way, and a 0/1 in the slot is a different program.
-  --balance    balance equal cells and dominant tokens exactly in single-line
-               space/grid wrappers. Otherwise estimate a square target from
+  --balance    balance Super SNUSP exactly. Single-line space/grid wrappers
+               are also exact for equal cells or a dominant token. Otherwise
+               estimate a square target from
                source area and keep the better default or candidate. Unequal
                tokens and routing can miss the minimum; excludes --width.
   --width [N]  wrap the program to N columns (default {DEFAULT_WIDTH}) so it

@@ -1,9 +1,16 @@
 """Balanced layouts retain program semantics and template setters."""
 
+import random
+
 import pytest
 
 import esolangs
 from esolangs.exceptions import ArgumentError
+from esolangs.tools.super_snusp import (
+    _super_snusp_layout,
+    balance_super_snusp,
+    super_snusp,
+)
 from esolangs.tools.wrap import balance_program, balance_score, wrap_program
 from tests.test_cli import call_main
 
@@ -112,3 +119,35 @@ def test_dominant_token_reaches_global_minimum(
     )
     assert balance_score(balanced) == balance_score(optimum)
     assert balanced.split() == program.split()
+
+
+def _super_snusp_tables() -> list[str]:
+    tables = [
+        f"{value:0{1 << inputs}b}"
+        for inputs in range(1, 4)
+        for value in range(1 << (1 << inputs))
+    ]
+    rng = random.Random(941)
+    tables.extend(
+        "".join(rng.choice("01") for _ in range(1 << inputs))
+        for inputs in range(4, 7)
+        for _ in range(8)
+    )
+    return tables
+
+
+@pytest.mark.parametrize("table", _super_snusp_tables())
+def test_super_snusp_balancing_reaches_global_minimum(table: str) -> None:
+    flat = super_snusp(table)
+    balanced = balance_super_snusp(flat)
+    optimum = min(
+        (_super_snusp_layout(flat, width) for width in range(1, len(flat) + 1)),
+        key=balance_score,
+    )
+    assert balance_score(balanced) == balance_score(optimum)
+    test_balance_executes("Super_SNUSP", table)
+
+
+def test_super_snusp_balance_rejects_long_literals() -> None:
+    with pytest.raises(ValueError, match="at most two cells"):
+        balance_super_snusp("123.")
