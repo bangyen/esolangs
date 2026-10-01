@@ -1,12 +1,14 @@
 """Boolean-function generator for Algebraic Programming Language."""
 
 from itertools import pairwise
+from string import ascii_uppercase
 
 from esolangs.tools.helpers import (
     _validate_truth_table,
     best_input_order,
     constant_span_test,
     in_input_order,
+    short_name,
     subtree_ids,
 )
 
@@ -88,19 +90,6 @@ def _apl_tree_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
 
     tree(0, 1 << n, 0)
     return "".join(pieces)
-
-
-def _apl_name(index: int) -> str:
-    """Return the ``index``-th function name: an uppercase run, A..Z, AA, AB.
-
-    Names are uppercase runs, so they count in base 26.
-    """
-    digits = []
-    while True:
-        digits.append(chr(ord("A") + index % 26))
-        index = index // 26 - 1
-        if index < 0:
-            return "".join(reversed(digits))
 
 
 Key = tuple[int, int]
@@ -190,7 +179,7 @@ def _apl_tree_narrow(table: str, perm: tuple[int, ...], width: int) -> str:
     prefix, source = source.split(")|", 1)
     prefix += ")|"
     # There are fewer definitions than source characters, bounding name width.
-    name_width = len(_apl_name(len(source)))
+    name_width = len(short_name(len(source), ascii_uppercase))
     call_width = name_width + 2
     limit = max(width, 4 * call_width + 6, 2 * n + call_width + 4)
     definitions: list[str] = []
@@ -211,7 +200,7 @@ def _apl_tree_narrow(table: str, perm: tuple[int, ...], width: int) -> str:
         return "".join(pieces)
 
     def define(part: tuple[_Rope, int, int]) -> tuple[_Rope, int, int]:
-        name = _apl_name(len(definitions))
+        name = short_name(len(definitions), ascii_uppercase)
         definitions.append(f"{name}={render(part[0])}")
         call = f"{name}()"
         return call, len(call), 0
@@ -272,7 +261,7 @@ def _apl_narrow(table: str, perm: tuple[int, ...], width: int) -> str:
     definitions: list[str] = []
 
     def combine(left: str, operator: str, right: str) -> str:
-        name = _apl_name(len(definitions))
+        name = short_name(len(definitions), ascii_uppercase)
         definitions.append(f"{name}={left}{operator}{right}")
         return f"{name}()"
 

@@ -22,11 +22,13 @@ order only renames the ``@`` literals, and :func:`fargo` compares named orders.
 
 from collections.abc import Callable
 from functools import cache
+from string import ascii_lowercase
 
 from esolangs.tools.helpers import (
     _validate_truth_table,
     anf_coefficients,
     permute_truth_table,
+    short_name,
 )
 
 __all__ = ["fargo"]
@@ -37,23 +39,12 @@ def _word_width(n: int) -> int:
     return max(2, 1 << (n.bit_length() - 1))
 
 
-def _name(index: int) -> str:
-    """Return a short lowercase Fargo definition name."""
-    digits: list[str] = []
-    while True:
-        index, digit = divmod(index, 26)
-        digits.append(chr(ord("a") + digit))
-        if not index:
-            return "".join(reversed(digits))
-        index -= 1
-
-
 def _factored(masks: list[int], constant: int, n: int) -> str:
     """Return the ANF as short nullary definitions and one output call."""
     lines: list[str] = []
 
     def define(expression: str) -> str:
-        name = _name(len(lines))
+        name = short_name(len(lines), ascii_lowercase)
         lines.append(f"{name} {expression}")
         return name
 
@@ -431,7 +422,7 @@ def _definition_program(expression: str, n: int) -> str:
     references = [f"{value:b}" for value in range(n)]
     lines: list[str] = []
     for tag, children in unique:
-        name = _name(len(lines))
+        name = short_name(len(lines), ascii_lowercase)
         arguments = " ".join(references[child] for child in children)
         lines.append(f"{name} {symbols[tag]} {arguments}")
         references.append(name)
