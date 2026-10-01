@@ -21,6 +21,20 @@ and proved limits; completed work is recorded in its commit.
   document the obstruction and assess interpreter-only admission; an
   unsuccessful construction attempt is not an impossibility.
 
+- **Boolfuck, Subleq, and /// admission.** Fame scores are 76, 83, and 88;
+  [limitations](limitations.md) records the specification audit and executed
+  probes. Integrate Boolfuck's bit-stream I/O and prove rendered linearity;
+  choose Subleq's I/O dialect and derive a linear rendered construction;
+  derive ///'s general source-embedded generator. Execute every table through
+  three inputs and sampled larger tables before integration. A failed build
+  does not justify interpreter-only admission.
+
+- **HQ9+, Nope., and Unary interpreter-only admission.** Scores are 136, 132,
+  and 63; [limitations](limitations.md) records their generator obstructions.
+  Pin HQ9+'s output/case conventions and Unary's decoded Brainfuck dialect;
+  implement Nope.'s constant semantics without inspecting source or input.
+  Add execution, VM, and convention coverage before integration.
+
 - **Linear Boolean generators.**  Make build time and emitted size O(T), where
   T is the truth-table length.  For each remaining generator, either add a
   loop-less O(T) construction and an executed scaling regression, or record a

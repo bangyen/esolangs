@@ -200,6 +200,45 @@ Underload (167) and INTERCAL (103) also clear the backlink gate.
 Emmental (43) and Prelude (13) are implemented elsewhere and fail the backlink
 gate. Neither has established an intrinsic axis.
 
+The 2026-10-01 fame audit covered eight absent census entries:
+
+- [Boolfuck](https://samuelhughes.com/boof/) (76): generator follow-up.
+  Bit I/O is little-endian, EOF supplies zero, and partial output bytes pad
+  with zeros. Author-specified Brainfuck lowering passed 309 tables and 3,352
+  rows: exhaustive through three inputs, constants, parity, and eight seeded
+  random tables at each of four through six inputs. Reads consumed eight bits
+  per input. Full integration and rendered linearity remain open.
+- [Subleq](https://esolangs.org/wiki/Subleq) (83): generator follow-up.
+  Fix a dialect with unbounded integers, direct jumps, `-1 B C` input,
+  `A -1 C` byte output, and negative jumps halting. A hoisted-read decision-tree
+  probe passed the same 309 tables and 3,352 rows. Its decimal addresses do
+  not establish O(T) rendered size; derive a linear construction before admission.
+- [///](https://esolangs.org/wiki////) (88): generator follow-up, construction
+  open. There is no stdin, but `/a/$/a` with uniform one-character fills
+  `0` and `1` executed identity. Escaping, truncated-rule halt, and a divergent
+  replacement control were checked. This is not evidence for arbitrary tables.
+- [HQ9+](https://esolangs.org/wiki/HQ9%2B) (136): interpreter-only candidate.
+  No instruction reads input. `H` and `9` emit fixed non-Boolean text; `Q`
+  emits source containing `Q`; `+` emits nothing. No program emits a bare
+  Boolean answer. Pin greeting, lyric formatting, and case handling before integration.
+- [Nope.](https://esolangs.org/wiki/Nope.) (132): interpreter-only candidate.
+  `ConstantLanguage("Nope.")` ignores source and input, so neither runtime
+  input nor source embeds can change its output. Accept arbitrary source,
+  including empty source, under those constant semantics.
+- [Unary](https://esolangs.org/wiki/Unary) (63): interpreter-only candidate
+  under the generator contracts. Valid sources encode only their zero count;
+  equal-width valid fill pairs are identical. Runtime input exists through
+  decoded Brainfuck, but sources of length at most L supply at most L+1
+  functions. Covering all 2**T truth tables requires L >= 2**T - 1 somewhere,
+  precluding an O(T) generator. Pin decoded Brainfuck cell and EOF semantics.
+- [大白话](https://esolangs.org/wiki/大白话) (134): deferred. The command table is
+  explicitly partial; expression precedence, complete block grammar, library
+  semantics, and embedded-language dispatch are unspecified. A restricted
+  implementation would need a separately documented dialect, not invented semantics.
+- [Trivial brainfuck substitution](https://esolangs.org/wiki/Trivial_brainfuck_substitution)
+  (112): excluded as a family, not a single language. Its backlink count
+  does not establish fame for any particular member.
+
 The 2026-09-27 spec read closed the other candidates:
 
 - Self-replicating marbles leaves section order and collision timing undefined.
