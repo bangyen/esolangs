@@ -6,8 +6,8 @@ a Vandevelo program can bind is affine in the inputs (``==``/``!=`` are
 XNOR/XOR over nil), and only ``::`` chains evaluate conditionally, so a
 guard line hangs on an affine coset of inputs and a whole program hangs on
 a union of cosets.  The generator therefore emits one guard line per coset
-of an affine cover of the table's 1-set. Affine tables and single cosets
-bypass the peel: geometric doubling checks their form before emitting a guard.
+of an affine cover of the table's 1-set. Affine tables, single cosets and their
+complements bypass the peel after geometric doubling checks.
 
 A test for 0 is ``x? == Nil?``, eight characters and four steps over a
 bare ``x?``, so the guards are spelled to need it rarely.  A register
@@ -16,8 +16,8 @@ rather than ``!=`` -- and an input most of whose tests ask for 0 is read
 negated (``~!>``) when the rows reaching those tests agree.  A guard's
 bare tests run first, and a test every row reaching it passes -- the
 far side of an earlier one-test guard -- is dropped.  Over the
-three-input tables these take 30,476 steps to 22,769 and 26,438
-characters to 23,481.
+three-input tables these take 30,476 steps to 22,669 and 26,438
+characters to 23,425.
 
 The cover is an affine-cube peel.  A cube is grown by iterated popular
 differences: pick the direction ``v`` maximising ``|B & (B ^ v)|``,
@@ -703,9 +703,22 @@ def vandevelo(truth_table: str, width: int | None = None) -> str:
     if affine is None:
         ones = {row for row, entry in enumerate(truth_table) if entry == "1"}
         coset = _affine_coset(truth_table, ones)
-        cubes = [coset] if coset is not None else (_Peel(ones, n).run() if ones else [])
-        cover = _pruned([_constraints(base, dirs, n) for base, dirs in cubes])
-        dims = [len(dirs) for _, dirs in cubes]
+        excluded = None
+        if coset is None:
+            zeros = set(range(1 << n)) - ones
+            excluded = _affine_coset(truth_table.translate(_COMPLEMENT), zeros)
+        if excluded is not None:
+            equations = _constraints(*excluded, n)
+            cover = [[(mask, value ^ 1)] for mask, value in equations]
+            # The first failed equation partitions the complement, even
+            # though earlier failures let its redundant prefix tests go.
+            dims = [n - index - 1 for index in range(len(equations))]
+        else:
+            cubes = (
+                [coset] if coset is not None else (_Peel(ones, n).run() if ones else [])
+            )
+            cover = _pruned([_constraints(base, dirs, n) for base, dirs in cubes])
+            dims = [len(dirs) for _, dirs in cubes]
     else:
         mask, offset = affine
         if mask:
