@@ -56,6 +56,7 @@ Row gives the logical bits; Input gives their language-specific encoding.
 | `intercal.txt` | INTERCAL | `0001` | `01` | embedded 01 | '\n' |
 | `jaune.txt` | Jaune | `0001` | `01` | 0 1 | '0' |
 | `laserfuck.txt` | LaserFuck | `0001` | `01` | 0 1 | '0' |
+| `line.png` | Line | `0001` | `01` | 0 1 | '0' |
 | `malbolge.txt` | Malbolge | `0001` | `01` | 0 1 | '0' |
 | `minifuck.txt` | Minifuck | `0001` | `01` | embedded 01 | '0' |
 | `minsky-swap.txt` | Minsky Swap | `0001` | `01` | embedded 01 | '1 0' |
@@ -63,6 +64,7 @@ Row gives the logical bits; Input gives their language-specific encoding.
 | `nocomment.txt` | NoComment | `0001` | `01` | embedded 01 | '0' |
 | `packlang.txt` | Packlang | `0001` | `01` | 0 1 | '0' |
 | `painfuck.txt` | Painfuck | `0001` | `01` | 0 1 | '0' |
+| `piet.png` | Piet | `0001` | `01` | 0 1 | '0' |
 | `polynomial.txt` | Polynomial | `0001` | `01` | 0 1 | '0' |
 | `qoibl.txt` | Qoibl | `0001` | `01` | 0 1 | '0' |
 | `ram0.txt` | RAM0 | `0001` | `01` | embedded 01 | 'z: 0\nn: 0\nram: {\n    1: 0,\n    0: 1\n}' |

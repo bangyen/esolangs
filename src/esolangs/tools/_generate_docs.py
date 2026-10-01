@@ -155,10 +155,11 @@ def render_examples_section() -> str:
     generator has its committed file, so the registry is the source that
     cannot drift.
     """
+    count = sum(esolangs.describe(name)["boolean_generator"] for name in LANGUAGES)
     return "\n".join(
         [
-            f"Ready-to-run programs for each of the {len(BOOLEAN)}",
-            "text languages with a boolean generator live in",
+            f"Ready-to-run programs for each of the {count}",
+            "languages with a boolean generator live in",
             "[`examples/`]"
             "(https://github.com/bangyen/esolangs/tree/main/src/esolangs/examples).",
         ]

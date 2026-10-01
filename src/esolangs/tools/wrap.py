@@ -655,7 +655,7 @@ WRAPPERS = {
 MULTILINE = frozenset({"taglate", "packlang", "minifuck"})
 
 
-def takes_width(fn: Callable[..., str]) -> bool:
+def takes_width(fn: Callable[..., object]) -> bool:
     """Whether a generator lays its own program out to a width.
 
     Such a generator takes ``width`` directly; :func:`wrap_program` cannot

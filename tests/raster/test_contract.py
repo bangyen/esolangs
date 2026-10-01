@@ -15,6 +15,14 @@ RASTER_LANGUAGES = [
 ]
 
 
+@pytest.mark.medium
+@pytest.mark.parametrize("language", RASTER_LANGUAGES)
+def test_committed_png_computes_every_row(language: str) -> None:
+    examples = esolangs.describe(language)["examples"]
+    assert len(examples) == 1
+    assert esolangs.evaluate(language, Path(examples[0]), inputs=2) == "0001"
+
+
 def test_raster_type_has_neutral_ownership() -> None:
     assert Raster.__module__ == "esolangs.raster"
     assert esolangs.Raster is Raster

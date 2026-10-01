@@ -37,8 +37,9 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from esolangs import encode_inputs
+from esolangs import encode_inputs, run
 from esolangs.interpreters.io import ScriptedIO
+from esolangs.raster import Raster
 from esolangs.registry import LANGUAGES, canonical_id
 from esolangs.tools.examples import BOOLEAN_EXAMPLES
 from tests.raises import raises_message
@@ -68,8 +69,10 @@ def _arity(table: str) -> int:
     return len(table).bit_length() - 1
 
 
-def _run(example: BooleanExample, program: str, stdin: str) -> str:
+def _run(example: BooleanExample, program: str | Raster, stdin: str) -> str:
     """Run one generated program through the language's own interpreter."""
+    if isinstance(program, Raster):
+        return run(example.stem, program, stdin)
     module = importlib.import_module("esolangs.interpreters." + example.interpreter)
     io = ScriptedIO(stdin)
     argument = program.splitlines() if example.split else program

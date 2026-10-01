@@ -233,7 +233,6 @@ class TestDescribe:
             name
             for name in esolangs.list_languages()
             if esolangs.describe(name)["boolean_generator"]
-            and esolangs.describe(name)["source_kind"] == "text"
             and not esolangs.describe(name)["examples"]
         ]
         assert missing == []

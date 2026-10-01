@@ -37,7 +37,11 @@ class TestExamplesShipWithThePackage:
             for name in esolangs.list_languages()
             if esolangs.describe(name)["examples"]
         ]
-        assert len(populated) == 71
+        assert set(populated) == {
+            name
+            for name in esolangs.list_languages()
+            if esolangs.describe(name)["boolean_generator"]
+        }
 
     def test_every_reported_path_exists(self) -> None:
         """A path reported and absent is worse than none reported."""
@@ -68,7 +72,9 @@ class TestExamplesShipWithThePackage:
         declared = re.search(r"^esolangs = \[(.+?)\]", config, re.M)
         assert declared, "no package-data entry for esolangs"
         patterns = declared.group(1)
-        assert "examples/*.txt" in patterns
+        directory = pathlib.Path(esolangs.__file__).resolve().parent / "examples"
+        for suffix in {path.suffix for path in directory.iterdir()}:
+            assert f"examples/*{suffix}" in patterns
         assert "examples/*/*.txt" not in patterns
 
     def test_the_manifest_is_beside_them(self) -> None:

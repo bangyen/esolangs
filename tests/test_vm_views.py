@@ -25,6 +25,8 @@ def _view_cases() -> list[tuple[str, object]]:
             by_id.setdefault(key, name)
     cases: list[tuple[str, object]] = []
     for eid, example in BOOLEAN_EXAMPLES.items():
+        if LANGUAGES[esolangs.resolve(eid)].source_kind.value != "text":
+            continue
         name = (
             by_id.get(eid)
             or by_id.get(example.stem)

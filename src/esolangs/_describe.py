@@ -98,7 +98,8 @@ def describe(language: str) -> LanguageInfo:
     # ["examples"][0]))`` -- work from one directory and nowhere else: a
     # ``chdir`` away it is ``cannot read examples/brainfuck.txt``,
     # and for anyone who pip-installed there is no such directory at all.
-    examples = sorted(str(p) for p in _EXAMPLES.glob(f"{stem}.txt"))
+    suffix = ".png" if lang.source_kind.value == "raster" else ".txt"
+    examples = sorted(str(p) for p in _EXAMPLES.glob(f"{stem}{suffix}"))
     traits = (
         machine_traits(name)
         if name in RUNNERS

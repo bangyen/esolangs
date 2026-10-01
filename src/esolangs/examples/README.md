@@ -7,7 +7,7 @@ Committed examples use `balance=True`, verified by
 python scripts/generate.py examples
 ```
 
-Each `.txt` file is a Boolean example. [`MANIFEST.md`](MANIFEST.md) lists its
+Each `.txt` or `.png` file is a Boolean example. [`MANIFEST.md`](MANIFEST.md) lists its
 language, truth table, input row, format, and expected output. Use
 `esolangs.encode_inputs(language, bits)` for stdin; parameterized programs
 embed their inputs.
