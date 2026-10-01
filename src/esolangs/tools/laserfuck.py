@@ -466,7 +466,7 @@ class _LaserGrid:
     def put_run(self, row: int, col: int, text: str) -> None:
         """Write a whole run of cells, growing the ragged grid to reach it.
 
-        The tree arrives as runs, and going through :func:`put` a character
+        The tree arrives as runs, and going through :meth:`put` a character
         at a time dominated six-input builds.  A slice assignment leaves the same line:
         the run is blank-free, so nothing it covers had to be preserved.
         """
@@ -607,7 +607,7 @@ def _laserfuck_build(
     *,
     vertical_tree: bool = False,
 ) -> str:
-    r"""Build one LaserFuck program, reading its inputs in ``perm`` order.
+    r"""Build one LaserFuck program, placing inputs in ``perm`` tape order.
 
     ``truth_table`` is already permuted, so every row index here is in the
     permuted frame; ``perm`` is spent in exactly one place, the read section

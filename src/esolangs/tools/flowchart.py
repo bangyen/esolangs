@@ -186,18 +186,18 @@ def _flowchart_stacked(truth_table: str) -> dict[tuple[int, int], str]:
 def flowchart(truth_table: str, width: int | None = None) -> str:
     """Build a Flowchart program computing the given truth table.
 
-    ``truth_table`` is a binary string of length ``2**n``, MSB first.  Wide
-    unconstrained programs preload paired answers into deques and select
+    ``truth_table`` is a binary string of length ``2**n``, MSB first.
+    Unconstrained programs preload paired answers into deques and select
     one with the input bits. Width-constrained programs draw a decision
     tree, stacking branches when necessary. Every node connection includes
     a path cell; adjacent leaves have a blank gutter. Folded leaves still
-    read the skipped inputs. Without a width, every table uses the deque layout.
+    read the skipped inputs.
     """
     _validate_truth_table(truth_table)
     if width is None:
         return _flowchart_deque(truth_table)
     flat = _flowchart_render(_flowchart_cells(truth_table))
-    if width is not None and grid_width(flat) <= width:
+    if grid_width(flat) <= width:
         return flat
     stacked = _flowchart_render(_flowchart_stacked(truth_table))
     return narrowest_grid(flat, stacked)

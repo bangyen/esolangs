@@ -478,8 +478,8 @@ class TestFargo:
 
     @pytest.mark.medium
     def test_character_cost_five_input_corpus(self) -> None:
-        """The seeded ship gate: no growth, 7.43% smaller, every row executed."""
-        from esolangs.tools.fargo import _expressions, _orders
+        """The seeded ship gate: no growth, 7.79% smaller, every row executed."""
+        from esolangs.tools.fargo import _expression, _orders
 
         rng = random.Random(20260929)
         for _ in range(12 * 16):
@@ -487,11 +487,12 @@ class TestFargo:
         before = after = 0
         for _ in range(200):
             table = "".join(rng.choice("01") for _ in range(32))
-            old = min(
-                len(f"% 0 {expression}\n$\n")
-                for order in _orders(5, compact=True)
-                for expression in _expressions(table, 5, order)
-            )
+            lengths = []
+            for order in _orders(5, compact=True):
+                expression = _expression(table, 5, order)
+                assert expression is not None
+                lengths.append(len(f"% 0 {expression}\n$\n"))
+            old = min(lengths)
             program = boolean.fargo(table)
             assert len(program) <= old, table
             before += old

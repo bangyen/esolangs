@@ -267,17 +267,17 @@ def _orders(n: int, *, compact: bool = False) -> list[tuple[int, ...]]:
     return list(dict.fromkeys(orders))
 
 
-def _expressions(
+def _expression(
     truth_table: str, n: int, order: tuple[int, ...], *, limit: int | None = None
-) -> list[str]:
-    """Return the arm expression unless it cannot beat ``limit``."""
+) -> str | None:
+    """Return the arm expression, or None if it cannot beat ``limit``."""
     table = permute_truth_table(truth_table, order)
     coeffs = anf_coefficients(table)
     at = tuple(n - 1 - order[n - 1 - bit] for bit in range(n))
     try:
-        return [_arm_expression(table, coeffs, n, at, limit=limit)]
+        return _arm_expression(table, coeffs, n, at, limit=limit)
     except _SourceLimitError:
-        return []
+        return None
 
 
 _SELECTOR_BODY = "^ y & @ x ^ y z"
@@ -443,14 +443,16 @@ def fargo(truth_table: str, width: int | None = None) -> str:
     # a high bit index at the leaves would otherwise cost Theta(T log n).
     expression = ""
     for order in orders:
-        for candidate in _expressions(
+        candidate = _expression(
             truth_table, n, order, limit=len(expression) if expression else None
+        )
+        if candidate is not None and (
+            not expression or len(candidate) < len(expression)
         ):
-            if not expression or len(candidate) < len(expression):
-                expression = candidate
+            expression = candidate
     compact = f"% 0 {expression}\n$\n"
     if n <= 5:
-        # Index selectors save 7.43% on 200 seeded five-input tables. Difference
+        # Index selectors save 7.79% on 200 seeded five-input tables. Difference
         # recursion stays capped, contributing only constant-size build work.
         compact = min(
             [
