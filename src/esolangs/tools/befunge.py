@@ -9,7 +9,10 @@ cells of source and O(n) executed commands, no branch and no loop.
 
 from __future__ import annotations
 
+from math import isqrt
+
 from esolangs.tools.helpers import _parity_bias, _validate_truth_table
+from esolangs.tools.wrap import balance_score
 
 #: ``6 * 8``: Befunge has no multi-digit literal, so 48 is built arithmetically.
 _ASCII_ZERO = "68*"
@@ -104,3 +107,30 @@ def _literal(value: int) -> str:
     """Push ``value`` with decimal Horner arithmetic, one digit per cell."""
     digits = str(value)
     return digits[0] + "".join("91+*" + digit + "+" for digit in digits[1:])
+
+
+def balance_befunge(truth_table: str, default: str) -> str:
+    """Return the best-balanced supported Befunge grid within its 80x25 torus.
+
+    Each fixed header bound B gives H=ceil(B/(W-2))+ceil(T/W).
+    Its W=H crossing lies between s and s+2 for s=ceil(sqrt(B+T)).
+    """
+    n = _validate_truth_table(truth_table)
+    count = 1 << n
+    if count > 1024:
+        raise ValueError("Befunge supports at most ten inputs on its 80x25 grid")
+    candidates = [default]
+    for bound, low, high in ((5 * n + 22, 4, 9), (5 * n + 34, 10, 80)):
+        floor = max(low, (count + bound + 22) // 23 + 2)
+        if floor > high:
+            continue
+        side = isqrt(count + bound - 1) + 1
+        # H >= (B+T)/W and H <= (B+T)/(W-2)+2. Only the
+        # crossing and its predecessor can minimize |W-H| in each range.
+        candidates.extend(
+            befunge(truth_table, min(high, max(floor, width)))
+            for width in (side - 1, side, side + 1, side + 2)
+        )
+    if _parity_bias(truth_table) is not None:
+        candidates.append(befunge(truth_table, 1))
+    return min(candidates, key=balance_score)

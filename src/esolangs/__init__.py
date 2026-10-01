@@ -71,6 +71,7 @@ from esolangs.registry import (
     template_char,
 )
 from esolangs.tagged import _Tagged, _Template
+from esolangs.tools.befunge import balance_befunge
 from esolangs.tools.helpers import mark_runs, unmark
 from esolangs.tools.super_snusp import balance_super_snusp
 
@@ -175,7 +176,7 @@ def generate(
     whole, so every row breaks in the same places.
     ``balance`` recalculates a square target from the default source area;
     token and routing constraints can prevent a globally square layout.
-    Super SNUSP minimizes the difference over all its supported widths.
+    Befunge and Super SNUSP minimize the difference over all supported widths.
     """
     if balance and width is not None:
         raise ArgumentError("balance and width are mutually exclusive")
@@ -184,6 +185,8 @@ def generate(
         if not isinstance(default, str):
             return default
         lang = LANGUAGES[resolve(language)]
+        if lang.id == "befunge":
+            return _Tagged(balance_befunge(truth_table, default), resolve(language))
         if lang.id == "super_snusp":
             return _Tagged(balance_super_snusp(default), resolve(language))
         if lang.boolean is not None and _takes_width(lang.boolean):
