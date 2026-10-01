@@ -313,6 +313,7 @@ def _regime_tables():
         "Jaune",
         "INTERCAL",
         "Minsky Swap",
+        "Modulous",
         "RAM0",
         "Streetcode",
         "Thue",
@@ -516,3 +517,24 @@ def test_collatz_statement_thresholds_match_every_width(inputs):
             )
             == table[row]
         )
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("inputs", range(6, 11))
+def test_modulous_literal_chunk_quotients(inputs):
+    rng = random.Random(1017 + inputs)
+    table = "".join(rng.choice("01") for _ in range(1 << inputs))
+    default = esolangs.generate("Modulous", table)
+    balanced = esolangs.generate("Modulous", table, balance=True)
+    layouts = [default] + [
+        esolangs.generate("Modulous", table, width)
+        for width in range(1, len(default) + 1)
+    ]
+    assert balanced in layouts
+    assert balance_score(balanced) == min(map(balance_score, layouts))
+    for row in (0, 1, len(table) // 2, len(table) - 1):
+        bits = tuple(map(int, format(row, f"0{inputs}b")))
+        output = esolangs.run(
+            "Modulous", balanced, esolangs.encode_inputs("Modulous", bits)
+        )
+        assert esolangs.read_answer("Modulous", output) == table[row]
