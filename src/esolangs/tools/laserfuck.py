@@ -403,6 +403,203 @@ def _laserfuck_reader_candidates(
     return tuple(candidates)
 
 
+class _LaserReader(NamedTuple):
+    rows: tuple[str, ...]
+    exit_row: int
+    exit_col: int
+
+
+class _LaserTree(NamedTuple):
+    runs: list[list[tuple[int, str]]]
+    upright: list[str]
+
+
+def _laserfuck_reader(
+    n: int, perm: tuple[int, ...], width: int | None, *, vertical_tree: bool
+) -> _LaserReader:
+    """Select the reader placement and its outgoing beam position."""
+    # The tree adds only a column or two past the reader, so the reader is
+    # what a width has to bargain with: side by side the rings are one row
+    # and forty-odd columns, stacked they are seven rows and under twenty.
+    reader_rows: list[str] | tuple[str, ...]
+    if vertical_tree:
+        placements = _laserfuck_placements(n, perm)
+        reader_rows, reader_exit_row, reader_exit_col = _laserfuck_assemble_reader(
+            placements, "R" * len(placements)
+        )
+    else:
+        candidates = _laserfuck_reader_candidates(n, perm)
+        fitting = [
+            item
+            for item in candidates
+            if width is None or laserfuck_layout.MARGIN + item[1] + 2 <= width
+        ]
+        chosen = fitting[0] if fitting else min(candidates, key=lambda item: item[1])
+        _, _, reader_rows, reader_exit_row, reader_exit_col = chosen
+
+    return _LaserReader(tuple(reader_rows), reader_exit_row, reader_exit_col)
+
+
+class _LaserGrid:
+    def __init__(self) -> None:
+        self.cells: list[list[str]] = []
+
+    def put(self, row: int, col: int, char: str) -> None:
+        """Write one cell, growing the ragged grid to reach it.
+
+        The grid's final extent is not known here -- the tree is laid out
+        and mirrored as it goes -- so it stays ragged and grows on demand.
+        What changed is how: the two ``while`` loops appended one element
+        per call, which is 1.8M calls and the generator's hot path on a
+        six-input build.  Extending by the whole shortfall at once leaves
+        the same grid and lets the list resize in one step.
+        """
+        if len(self.cells) <= row:
+            self.cells.extend([] for _ in range(row + 1 - len(self.cells)))
+        line = self.cells[row]
+        # The layout fills each row left to right, so a column is never
+        # already in range and this always extends.
+        if len(line) <= col:  # pragma: no branch
+            line.extend(" " * (col + 1 - len(line)))
+        line[col] = char
+
+    def put_run(self, row: int, col: int, text: str) -> None:
+        """Write a whole run of cells, growing the ragged grid to reach it.
+
+        The tree arrives as runs, and going through :func:`put` a character
+        at a time dominated six-input builds.  A slice assignment leaves the same line:
+        the run is blank-free, so nothing it covers had to be preserved.
+        """
+        if len(self.cells) <= row:
+            self.cells.extend([] for _ in range(row + 1 - len(self.cells)))
+        line = self.cells[row]
+        if len(line) < col:
+            line.extend(" " * (col - len(line)))
+        line[col : col + len(text)] = text
+
+    def render(self) -> str:
+        lines = ["".join(line).rstrip() for line in self.cells]
+        while lines and not lines[-1]:
+            lines.pop()  # pragma: no cover - the grid ends on content
+        return "\n".join(lines)
+
+
+def _laserfuck_tree(truth_table: str, n: int) -> _LaserTree:
+    """Emit the decision-tree runs and their padded upright block."""
+    # The tree is built as its own block, mirrored, and hung under the
+    # reader: the beam turns down at the reader's end and a '/' faces it
+    # left, so no return row is needed to reach a rightward tree.
+    # A node is ``>#v)``: '#' skips the 'v' going in, ')' tests the cell; a
+    # zero continues on the row, a one turns back onto 'v' and drops to a
+    # '\' on a fresh row.  Rows scale with *one* edges, not nodes.
+    # Rows are ``(column, text)`` runs, filled left to right with no blanks
+    # (``><-+``, ``x``, ``>#v)``, ``\``); the old n! order search paid a
+    # cell dict twice over a mostly-blank staircase.  A row is appended
+    # exactly when a ``one`` edge creates it, so ``len(rows)`` is the next index.
+    rows: list[list[tuple[int, str]]] = [[]]
+
+    constant = constant_span_test(truth_table)
+
+    def emit(depth: int, first: int, row: int, col: int) -> None:
+        """Lay one row span, entered at ``(row, col)`` going right."""
+        stop = first + 2 ** (n - depth)
+        if depth == n or constant(first, stop):
+            index = first
+            # Inputs sit in cells 1..n, cell 0 at zero, so a zero answer
+            # needs no code.  Sweep all ``n`` cells from cell ``n`` down or
+            # an unconsumed one prints beside the answer: cells above
+            # ``depth`` are unknown, two ``-`` retire either (0 -> -2, 1 -> -1);
+            # consumed cells keep the sized run, so an unfolded table is unchanged.
+            run = ">" * (n - depth)
+            run += "--<" * (n - depth)
+            for level in range(depth, 0, -1):
+                bit = (first >> (n - level)) & 1
+                run += "-" * (bit + 1) + "<"
+            run += "+" if truth_table[index] == "1" else ""
+            rows[row].append((col, run + "x"))
+            return
+        rows[row].append((col, ">#v)"))
+        emit(depth + 1, first, row, col + 4)  # zero carries on along this row
+        drop = len(rows)
+        rows.append([(col + 2, "\\")])  # a one comes down the 'v' column
+        emit(depth + 1, first + 2 ** (n - depth - 1), drop, col + 3)
+
+    emit(0, 0, 0, 0)
+    span = max(col + len(text) for marks in rows for col, text in marks)
+    upright = []
+    for marks in rows:
+        parts: list[str] = []
+        cursor = 0
+        for col, text in marks:
+            if col > cursor:
+                parts.append(" " * (col - cursor))
+            parts.append(text)
+            cursor = col + len(text)
+        parts.append(" " * (span - cursor))
+        upright.append("".join(parts))
+
+    return _LaserTree(rows, upright)
+
+
+def _laserfuck_attach_tree(
+    grid: _LaserGrid,
+    reader: _LaserReader,
+    tree: _LaserTree,
+    width: int | None,
+    *,
+    vertical_tree: bool,
+) -> None:
+    """Place the tree straight, rotated, or hanging beneath its reader."""
+    margin = laserfuck_layout.MARGIN
+    reader_rows, reader_exit_row, reader_exit_col = reader
+    rows, upright = tree
+    # Carry straight on into the tree if the width allows reader + tree
+    # end to end; otherwise mirror it and hang it underneath (a '/' faces
+    # the beam left, so no return row is needed).
+    straight = margin + reader_exit_col + max(len(line) for line in upright)
+    if vertical_tree:
+        turned = _laserfuck_rotate(upright)
+        entry = margin + len(upright) - 1
+        exit_col = margin + reader_exit_col
+        top = len(reader_rows)
+        if entry < exit_col:
+            grid.put(reader_exit_row, exit_col, "v")
+            grid.put(top, exit_col, "/")
+            grid.put(top, entry, "v")
+            top += 1
+        else:
+            grid.put(reader_exit_row, entry, "v")
+        for offset, line in enumerate(turned):
+            for index, char in enumerate(line):
+                grid.put(top + offset, margin + index, char)
+    elif width is None or straight + 1 <= width:
+        # Laid from the runs, not from the padded rows: the tree is a
+        # staircase, so ``upright`` is mostly blanks, and a blank is
+        # re-padded by the next run on its row (or ``rstrip``ed off the
+        # end) rather than written.
+        for offset, marks in enumerate(rows):
+            for col, text in marks:
+                grid.put_run(
+                    reader_exit_row + offset, margin + reader_exit_col + col, text
+                )
+    else:
+        flipped = _laserfuck_flip(upright)
+        entry = len(flipped[0].rstrip()) - 1
+        # A narrow reader can leave the beam further left than the tree is
+        # wide, and the tree would run off the western edge.  Turning down
+        # further to the right costs nothing but the blank cells it crosses,
+        # so the fall column is pushed out to wherever the tree needs it.
+        fall = max(margin + reader_exit_col, margin + entry + 1)
+        # The reader is sized to its last occupied row (a flat block's
+        # return leg or a rotated block's foot), so clearance is its height.
+        top = len(reader_rows)
+        grid.put(reader_exit_row, fall, "v")
+        for offset, line in enumerate(flipped):
+            for index, char in enumerate(line):
+                grid.put(top + offset, fall - 1 - entry + index, char)
+        grid.put(top, fall, "/")
+
+
 def _laserfuck_build(
     truth_table: str,
     perm: tuple[int, ...],
@@ -474,176 +671,30 @@ def _laserfuck_build(
     the tree.
     """
     n = _validate_truth_table(truth_table)
-    # The tree adds only a column or two past the reader, so the reader is
-    # what a width has to bargain with: side by side the rings are one row
-    # and forty-odd columns, stacked they are seven rows and under twenty.
-    reader_rows: list[str] | tuple[str, ...]
-    if vertical_tree:
-        placements = _laserfuck_placements(n, perm)
-        reader_rows, reader_exit_row, reader_exit_col = _laserfuck_assemble_reader(
-            placements, "R" * len(placements)
-        )
-    else:
-        candidates = _laserfuck_reader_candidates(n, perm)
-        fitting = [
-            item
-            for item in candidates
-            if width is None or laserfuck_layout.MARGIN + item[1] + 2 <= width
-        ]
-        chosen = fitting[0] if fitting else min(candidates, key=lambda item: item[1])
-        _, _, reader_rows, reader_exit_row, reader_exit_col = chosen
+    reader = _laserfuck_reader(n, perm, width, vertical_tree=vertical_tree)
+    reader_rows = reader.rows
 
     margin = laserfuck_layout.MARGIN
-    grid: list[list[str]] = []
-
-    def put(row: int, col: int, char: str) -> None:
-        """Write one cell, growing the ragged grid to reach it.
-
-        The grid's final extent is not known here -- the tree is laid out
-        and mirrored as it goes -- so it stays ragged and grows on demand.
-        What changed is how: the two ``while`` loops appended one element
-        per call, which is 1.8M calls and the generator's hot path on a
-        six-input build.  Extending by the whole shortfall at once leaves
-        the same grid and lets the list resize in one step.
-        """
-        if len(grid) <= row:
-            grid.extend([] for _ in range(row + 1 - len(grid)))
-        line = grid[row]
-        # The layout fills each row left to right, so a column is never
-        # already in range and this always extends.
-        if len(line) <= col:  # pragma: no branch
-            line.extend(" " * (col + 1 - len(line)))
-        line[col] = char
-
-    def put_run(row: int, col: int, text: str) -> None:
-        """Write a whole run of cells, growing the ragged grid to reach it.
-
-        The tree arrives as runs, and going through :func:`put` a character
-        at a time dominated six-input builds.  A slice assignment leaves the same line:
-        the run is blank-free, so nothing it covers had to be preserved.
-        """
-        if len(grid) <= row:
-            grid.extend([] for _ in range(row + 1 - len(grid)))
-        line = grid[row]
-        if len(line) < col:
-            line.extend(" " * (col - len(line)))
-        line[col : col + len(text)] = text
+    grid = _LaserGrid()
 
     # The funnel: every start heading ends up on row 0 moving right.  Cell
     # (0, 0) stays blank so the tape dumps in decimal rather than byte mode.
-    put(0, 1, "}")
-    put(0, 2, "}")
-    put(1, 0, "|")
-    put(1, 1, "o")
-    put(1, 2, "^")
-    put(2, 1, "_")
+    grid.put(0, 1, "}")
+    grid.put(0, 2, "}")
+    grid.put(1, 0, "|")
+    grid.put(1, 1, "o")
+    grid.put(1, 2, "^")
+    grid.put(2, 1, "_")
 
     # The rings go on rows 0 and 1; the beam leaves them still moving right
     # with the pointer on cell 0.
     for offset, text in enumerate(reader_rows):
         for index, char in enumerate(text):
             if char != " ":
-                put(offset, margin + index, char)
-    # The tree is built as its own block, mirrored, and hung under the
-    # reader: the beam turns down at the reader's end and a '/' faces it
-    # left, so no return row is needed to reach a rightward tree.
-    # A node is ``>#v)``: '#' skips the 'v' going in, ')' tests the cell; a
-    # zero continues on the row, a one turns back onto 'v' and drops to a
-    # '\' on a fresh row.  Rows scale with *one* edges, not nodes.
-    # Rows are ``(column, text)`` runs, filled left to right with no blanks
-    # (``><-+``, ``x``, ``>#v)``, ``\``); the old n! order search paid a
-    # cell dict twice over a mostly-blank staircase.  A row is appended
-    # exactly when a ``one`` edge creates it, so ``len(rows)`` is the next index.
-    rows: list[list[tuple[int, str]]] = [[]]
-
-    constant = constant_span_test(truth_table)
-
-    def emit(depth: int, first: int, row: int, col: int) -> None:
-        """Lay one row span, entered at ``(row, col)`` going right."""
-        stop = first + 2 ** (n - depth)
-        if depth == n or constant(first, stop):
-            index = first
-            # Inputs sit in cells 1..n, cell 0 at zero, so a zero answer
-            # needs no code.  Sweep all ``n`` cells from cell ``n`` down or
-            # an unconsumed one prints beside the answer: cells above
-            # ``depth`` are unknown, two ``-`` retire either (0 -> -2, 1 -> -1);
-            # consumed cells keep the sized run, so an unfolded table is unchanged.
-            run = ">" * (n - depth)
-            run += "--<" * (n - depth)
-            for level in range(depth, 0, -1):
-                bit = (first >> (n - level)) & 1
-                run += "-" * (bit + 1) + "<"
-            run += "+" if truth_table[index] == "1" else ""
-            rows[row].append((col, run + "x"))
-            return
-        rows[row].append((col, ">#v)"))
-        emit(depth + 1, first, row, col + 4)  # zero carries on along this row
-        drop = len(rows)
-        rows.append([(col + 2, "\\")])  # a one comes down the 'v' column
-        emit(depth + 1, first + 2 ** (n - depth - 1), drop, col + 3)
-
-    emit(0, 0, 0, 0)
-    span = max(col + len(text) for marks in rows for col, text in marks)
-    upright = []
-    for marks in rows:
-        parts: list[str] = []
-        cursor = 0
-        for col, text in marks:
-            if col > cursor:
-                parts.append(" " * (col - cursor))
-            parts.append(text)
-            cursor = col + len(text)
-        parts.append(" " * (span - cursor))
-        upright.append("".join(parts))
-
-    # Carry straight on into the tree if the width allows reader + tree
-    # end to end; otherwise mirror it and hang it underneath (a '/' faces
-    # the beam left, so no return row is needed).
-    straight = margin + reader_exit_col + max(len(line) for line in upright)
-    if vertical_tree:
-        turned = _laserfuck_rotate(upright)
-        entry = margin + len(upright) - 1
-        exit_col = margin + reader_exit_col
-        top = len(reader_rows)
-        if entry < exit_col:
-            put(reader_exit_row, exit_col, "v")
-            put(top, exit_col, "/")
-            put(top, entry, "v")
-            top += 1
-        else:
-            put(reader_exit_row, entry, "v")
-        for offset, line in enumerate(turned):
-            for index, char in enumerate(line):
-                put(top + offset, margin + index, char)
-    elif width is None or straight + 1 <= width:
-        # Laid from the runs, not from the padded rows: the tree is a
-        # staircase, so ``upright`` is mostly blanks, and a blank is
-        # re-padded by the next run on its row (or ``rstrip``ed off the
-        # end) rather than written.
-        for offset, marks in enumerate(rows):
-            for col, text in marks:
-                put_run(reader_exit_row + offset, margin + reader_exit_col + col, text)
-    else:
-        flipped = _laserfuck_flip(upright)
-        entry = len(flipped[0].rstrip()) - 1
-        # A narrow reader can leave the beam further left than the tree is
-        # wide, and the tree would run off the western edge.  Turning down
-        # further to the right costs nothing but the blank cells it crosses,
-        # so the fall column is pushed out to wherever the tree needs it.
-        fall = max(margin + reader_exit_col, margin + entry + 1)
-        # The reader is sized to its last occupied row (a flat block's
-        # return leg or a rotated block's foot), so clearance is its height.
-        top = len(reader_rows)
-        put(reader_exit_row, fall, "v")
-        for offset, line in enumerate(flipped):
-            for index, char in enumerate(line):
-                put(top + offset, fall - 1 - entry + index, char)
-        put(top, fall, "/")
-
-    lines = ["".join(line).rstrip() for line in grid]
-    while lines and not lines[-1]:
-        lines.pop()  # pragma: no cover - the grid ends on content
-    return "\n".join(lines)
+                grid.put(offset, margin + index, char)
+    tree = _laserfuck_tree(truth_table, n)
+    _laserfuck_attach_tree(grid, reader, tree, width, vertical_tree=vertical_tree)
+    return grid.render()
 
 
 def laserfuck(truth_table: str, width: int | None = None) -> str:
