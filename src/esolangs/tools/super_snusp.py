@@ -159,28 +159,14 @@ def _anf_cost(
 
 
 def _polarity(n: int, truth_table: str, used: list[int]) -> tuple[int, int]:
-    """Return ``(negated, cost)``: a cheap input polarity for the ANF.
-
-    Which arm of an input is its ANF literal decides the terms: ``NOR`` is
-    every product of its inputs, ``AND`` of their complements a single one.
-    Both uniform polarities cost nothing extra (see :func:`_decode_base`),
-    so each is a start, and one greedy pass then flips every retained input
-    in turn, keeping a flip that shortens the build.  That is ``2(k + 1)``
-    priced candidates, not the ``2**k`` polarities, and it stays on the
-    bounded ANF path.
-    """
-    k = len(used)
-    best_mask, best_cost = 0, 0
-    for start in (0, (1 << k) - 1):
-        mask = start
-        cost = _anf_cost(n, truth_table, used, negated=mask)
-        for bit in range(k):
-            trial = _anf_cost(n, truth_table, used, negated=mask ^ 1 << bit)
-            if trial < cost:
-                mask, cost = mask ^ 1 << bit, trial
-        if not start or cost < best_cost:
-            best_mask, best_cost = mask, cost
-    return best_mask, best_cost
+    """Return a polarity and cost after one greedy pass from positive inputs."""
+    mask = 0
+    cost = _anf_cost(n, truth_table, used)
+    for bit in range(len(used)):
+        trial = _anf_cost(n, truth_table, used, negated=mask ^ 1 << bit)
+        if trial < cost:
+            mask, cost = mask ^ 1 << bit, trial
+    return mask, cost
 
 
 def _emit_lookup(truth_table: str) -> str:
