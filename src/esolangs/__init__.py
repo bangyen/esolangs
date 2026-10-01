@@ -169,7 +169,8 @@ def generate(
         if balancer is not None:
             text = balancer(truth_table, default)
             if isinstance(default, _Template):
-                return _Template(text, default.language, default.char, default.setters)
+                text, char, pairs = render_template(lang.id, text, default.inputs)
+                return _Template(text, default.language, char, pairs)
             return _Tagged(text, resolve(language))
         if lang.boolean is not None and _takes_width(lang.boolean):
             candidate = cast(
