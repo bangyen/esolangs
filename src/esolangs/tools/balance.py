@@ -13,6 +13,7 @@ from esolangs.tools.fish import balance_fish
 from esolangs.tools.flowchart import _flowchart_cells, _flowchart_render, flowchart
 from esolangs.tools.helpers import _validate_truth_table
 from esolangs.tools.inject import inject
+from esolangs.tools.register import balance_collatz_multiverse
 from esolangs.tools.streetcode import (
     _streetcode_flat,
     _streetcode_hallway_program,
@@ -143,6 +144,7 @@ BALANCERS: dict[str, Callable[[str, str], str]] = {
     "befunge": balance_befunge,
     "brainif": _brainif,
     "clockwise": _clockwise,
+    "collatz_multiverse": balance_collatz_multiverse,
     "dig": _dig,
     "fargo": _fargo,
     "fish": balance_fish,

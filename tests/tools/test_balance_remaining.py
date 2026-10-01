@@ -100,6 +100,7 @@ def _regime_tables():
         "B-tapemark",
         "BrainIf",
         "Clockwise",
+        "Collatz Multiverse",
         "Dig",
         "Fargo",
         "Streetcode",
@@ -115,14 +116,12 @@ def test_discrete_regimes_reach_the_supported_minimum(language, table):
     default = esolangs.generate(language, table)
     balanced = esolangs.generate(language, table, balance=True)
     widest = max(map(len, default.split("\n")))
-    optimum = min(
-        [default]
-        + [
-            esolangs.generate(language, table, width)
-            for width in range(1, max(65, widest + 1))
-        ],
-        key=balance_score,
-    )
+    layouts = [default] + [
+        esolangs.generate(language, table, width)
+        for width in range(1, max(65, widest + 1))
+    ]
+    optimum = min(layouts, key=balance_score)
+    assert balanced in layouts
     assert balance_score(balanced) == balance_score(optimum)
     assert (
         esolangs.evaluate(language, balanced, inputs=len(table).bit_length() - 1)
@@ -170,3 +169,29 @@ def test_streetcode_indexed_regimes_are_balanced_and_execute(table):
     )
     assert balance_score(balanced) == balance_score(optimum)
     assert esolangs.evaluate("Streetcode", balanced, inputs=6) == table
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("inputs", range(6, 11))
+def test_collatz_statement_thresholds_match_every_width(inputs):
+    rng = random.Random(1004 + inputs)
+    table = "".join(rng.choice("01") for _ in range(1 << inputs))
+    default = esolangs.generate("Collatz Multiverse", table)
+    balanced = esolangs.generate("Collatz Multiverse", table, balance=True)
+    widest = max(map(len, default.split("\n")))
+    layouts = [default] + [
+        esolangs.generate("Collatz Multiverse", table, width)
+        for width in range(1, max(65, widest + 1))
+    ]
+    assert balanced in layouts
+    assert balance_score(balanced) == min(map(balance_score, layouts))
+    for row in (0, 1, len(table) // 2, len(table) - 1):
+        bits = tuple(map(int, format(row, f"0{inputs}b")))
+        stdin = esolangs.encode_inputs("Collatz Multiverse", bits)
+        assert (
+            esolangs.read_answer(
+                "Collatz Multiverse",
+                esolangs.run("Collatz Multiverse", balanced, stdin),
+            )
+            == table[row]
+        )
