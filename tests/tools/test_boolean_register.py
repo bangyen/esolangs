@@ -78,9 +78,9 @@ class TestAddSubJump:
                 assert run_addsubjump(program, bits) == table[row]
 
     def test_three_input_total(self) -> None:
-        """Shared residuals reduce the n=3 total from 99,032 to 95,678."""
+        """Shared residuals reduce the n=3 total from 99,032 to 94,800."""
         total = sum(len(boolean.addsubjump(f"{value:08b}")) for value in range(256))
-        assert total == 95678
+        assert total == 94800
 
     def test_every_path_reads_each_input_once(self) -> None:
         """A run consumes exactly ``n`` inputs, whatever the table.

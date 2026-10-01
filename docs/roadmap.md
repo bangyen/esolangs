@@ -185,20 +185,16 @@ proof and remove the completed item.
   raise the lower coefficient, or construct a cheaper weighted command stream
   to lower the upper one; the existence and value of the limit remain open.
 
-- **Structural scaling audit.** Source-size arguments close B-tapemark,
-  Forþ, 6-5 and Circuit Diagram's default H area. The H builder now uses
-  integer heap identities and depth buckets: literal anchors take exactly
-  `4*T - 2*n - 4` visits. All 268 nonconstant two- and three-input H programs
-  retain identical source; all 2,088 rows execute correctly.
-  Vandevelo's upkeep proof gives `O(T)` lines but only `O(T log n)`
-  characters; exact `n*T` autocorrelation calls remain unamortized.
-  6-5's past-35-input fallback takes `Theta(n*T)` commands: its initial
-  `n-1` full-table passes already force that lower bound. Executed parity
-  tables on the all-zero input take `(28*n - 1)*T + 53*n + 31` commands
-  through n=9; linear source size does not meet the execution contract.
-  Next: remove Vandevelo's identifier factor and amortize or replace its
-  exact fallback; replace 6-5's full-table passes with a linear execution
-  construction. Neither obstruction is a language-wide lower bound.
+- **Vandevelo structural scaling.** Upkeep bounds `O(T)` lines and
+  `O(T log n)` characters; identifier references still carry the extra
+  factor. Exact fallback now transforms the quotient by a node's
+  `d`-dimensional span: `O(n*|S|)` projection plus
+  `O((n-d)*2**(n-d))` transform work per call. A forced six-input control
+  executes the three-dimensional transform and matches full-space counts;
+  280 generated programs retain identical source and all 2,536 rows execute.
+  Next: remove the identifier factor, amortize projection and fallback calls,
+  and bound the dual-basis core's aggregate work. Neither remaining gap is a
+  language-wide lower bound; measured scaling does not settle them.
 
 - **FRACTRAN order encoding.** One unchanged multiset of eight fractions
   computes all sixteen four-row tables by ordering each `1/p, 2/p` pair;
@@ -220,13 +216,6 @@ proof and remove the completed item.
   byte-input lengths at most `(1-eps)*log_256(C)`. The lower bound remains
   `3.366148`. Next: establish the limit or sharpen either side, and derive
   a nontrivial bound when input length is proportional to source length.
-
-- **Wider shared-residual constructions.** AddSubJump now chooses sharing
-  through five inputs: n=3 totals 99,032 -> 95,678 characters; 200 seeded
-  n=5 tables 252,406 -> 217,608 (13.79%), with no growth and every row
-  executed. Wider builds keep the linear packed decoder. Next: share packed
-  blocks without absolute-address text becoming super-linear; run
-  `tests/proofs/test_addsubjump_sharing.py` and the linearity regression.
 
 - **Execution and workspace bounds.** `scripts/screens/resources.py` executes
   constant, parity and seeded dense tables through eight inputs. Sophie

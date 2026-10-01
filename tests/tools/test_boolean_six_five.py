@@ -16,8 +16,8 @@ from esolangs.tools.six_five import (
     _six_five_chosen,
     _six_five_const,
     _six_five_dag_cost,
+    _six_five_guarded,
     _six_five_hoisted,
-    _six_five_looped,
     _six_five_markers,
     _six_five_orders,
     _six_five_stream_ordered,
@@ -604,10 +604,32 @@ class TestSixFive:
         assert not hasattr(module, "_six_five_nav")
         assert not hasattr(module, "_six_five_node_read")
 
+    def test_dag_count_does_not_compare_descendants(self) -> None:
+        """Nested keys compared n*T leaves even with cached tuple hashes."""
+        comparisons = 0
+
+        class Bit(str):
+            __hash__ = str.__hash__
+
+            def __eq__(self, other: object) -> bool:
+                nonlocal comparisons
+                comparisons += 1
+                return super().__eq__(other)
+
+        class Table(str):
+            def __getitem__(self, index: int | slice) -> str:
+                return Bit(super().__getitem__(index))
+
+        for n in range(3, 13):
+            comparisons = 0
+            table = Table("".join(str(row.bit_count() % 2) for row in range(1 << n)))
+            assert _six_five_dag_cost(table) == 2 * n
+            assert comparisons <= 2 * len(table)
+
     @pytest.mark.parametrize("n", range(1, 6))
     @pytest.mark.medium
-    def test_the_looped_walk_executes_every_row(self, n: int) -> None:
-        """The sixteen-label walk answers every row of every table shape.
+    def test_the_guarded_walk_executes_every_row(self, n: int) -> None:
+        """The guarded walk answers every row of every table shape.
 
         Dense, constant, and random tables: the constant ones are where a
         walk that never advances (all zeros) or advances at every bit (a
@@ -617,50 +639,53 @@ class TestSixFive:
         tables = [self._dense(n), "0" * 2**n, "1" * 2**n]
         tables += ["".join(rng.choice("01") for _ in range(2**n)) for _ in range(2)]
         for table in tables:
-            program = _six_five_looped(table)
-            assert _markers(program) == 16
+            program = _six_five_guarded(table)
+            assert _markers(program) == 1
             for combo in range(2**n):
                 bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-                got = run_six_five(program, [str(b) for b in bits])
+                feed = iter(str(b) for b in bits)
+                got = run_six_five_from(program, feed)
                 assert got == table[combo], f"{table} inputs {bits}"
+                with pytest.raises(StopIteration):
+                    next(feed)
 
     @pytest.mark.parametrize("n", range(1, 10))
-    def test_looped_execution_has_a_linear_arity_factor(self, n: int) -> None:
-        """Full-table passes force Theta(n*T), even when no bit advances."""
-        table = "".join(str(row.bit_count() % 2) for row in range(1 << n))
-        program = _six_five_looped(table)
-        commands = _commands("6-5", program, table, 0, 200_000)
-        assert commands == (28 * n - 1) * (1 << n) + 53 * n + 31
+    def test_guarded_execution_is_linear(self, n: int) -> None:
+        """Zero and one paths both stay inside the geometric stride bound."""
+        total = 1 << n
+        tables = [
+            "0" * total,
+            "1" * total,
+            "".join(str(row.bit_count() % 2) for row in range(total)),
+        ]
+        for table in tables:
+            program = _six_five_guarded(table)
+            for row in (0, total - 1):
+                commands = _commands("6-5", program, table, row, 20_000)
+                assert commands is not None
+                assert commands <= 13 * total // 2 + 4 * n + 12
+                if table == "1" * total and row == total - 1:
+                    assert commands == 13 * total // 2 + 4 * n + 12
 
-    def test_the_looped_walk_is_linear_at_a_fixed_label_bill(self) -> None:
-        """Sixteen markers at any width, and the text at most doubles per input.
+    def test_the_guarded_walk_has_linear_source(self) -> None:
+        for n in range(1, 13):
+            program = _six_five_guarded("1" * (1 << n))
+            assert _markers(program) == 1
+            assert len(program) == 7 * (1 << n) + 4 * n + 14
 
-        The marks are the only part that is not a constant per row -- the
-        2-adic valuations sum to ``2**n - n - 1`` -- so the per-row cost
-        settles rather than grows.
-        """
-        sizes = [len(_six_five_looped(self._dense(n))) for n in (8, 9, 10)]
-        assert all(_markers(_six_five_looped(self._dense(n))) == 16 for n in (1, 10))
-        assert sizes[1] <= 2 * sizes[0]
-        assert sizes[2] <= 2 * sizes[1]
-        assert sizes[2] < 8 * 2**10
-
-    def test_past_the_label_bound_the_walk_loops(
+    def test_past_the_label_bound_the_walk_uses_conditional_strides(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Only a 2**36-entry table reaches the bound, so it is lowered here.
-
-        Sixteen is the lowest bound the looped walk's own labels admit;
-        under it a seventeen-input table is "too wide" for the per-input
-        walk, and the dispatch hands it to the looped one rather than
-        refusing.
-        """
+        """Lower the unreachable 35-input limit and execute its replacement."""
         module = importlib.import_module("esolangs.tools.six_five")
-        monkeypatch.setattr(module, "_SIX_FIVE_MAX_LABEL", 16)
-        dense17 = self._dense(17)
-        assert _six_five_walk(dense17) == _six_five_looped(dense17)
+        table = self._dense(5)
+        monkeypatch.setattr(module, "_SIX_FIVE_MAX_LABEL", 4)
+        program = _six_five_walk(table)
+        assert program == _six_five_guarded(table)
+        for row in range(32):
+            assert run_six_five(program, list(format(row, "05b"))) == table[row]
         monkeypatch.setattr(module, "_SIX_FIVE_MAX_LABEL", 35)
-        assert _six_five_walk(dense17) != _six_five_looped(dense17)
+        assert _six_five_walk(table) != program
 
 
 class TestSixFiveSharing:
