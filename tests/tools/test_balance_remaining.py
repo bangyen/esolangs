@@ -296,6 +296,7 @@ def _regime_tables():
 @pytest.mark.parametrize(
     "language",
     [
+        "Algebraic Programming Language",
         "ArrowQueue",
         "Back",
         "B-tapemark",
@@ -599,3 +600,42 @@ def test_minifuck_larger_paired_token_fits():
     assert balanced in layouts
     assert balance_score(balanced) == min(map(balance_score, layouts))
     assert esolangs.evaluate("Minifuck", balanced, inputs=inputs) == table
+
+
+@pytest.mark.slow
+def test_apl_larger_frame_budget_transitions():
+    from esolangs.tools.algebraic_programming_language import _apl_tree_ordered
+    from esolangs.tools.helpers import input_orders, permute_truth_table
+
+    inputs = 6
+    rng = random.Random(1020 + inputs)
+    table = "".join(rng.choice("01") for _ in range(1 << inputs))
+    language = "Algebraic Programming Language"
+    default = esolangs.generate(language, table)
+    balanced = esolangs.generate(language, table, balance=True)
+    # No frame can split once the complete source fits, for either input order.
+    widest = max(
+        len(_apl_tree_ordered(permute_truth_table(table, perm), perm))
+        for perm in input_orders(table)
+    )
+    layouts = [default] + [
+        esolangs.generate(language, table, width) for width in range(1, widest + 1)
+    ]
+    assert balanced in layouts
+    assert balance_score(balanced) == min(map(balance_score, layouts))
+    assert esolangs.evaluate(language, balanced, inputs=inputs) == table
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("inputs", [8, 10])
+def test_apl_large_frame_names_execute(inputs):
+    language = "Algebraic Programming Language"
+    rng = random.Random(1020 + inputs)
+    table = "".join(rng.choice("01") for _ in range(1 << inputs))
+    balanced = esolangs.generate(language, table, balance=True)
+    for row in (0, 1, len(table) // 2, len(table) - 1):
+        bits = tuple(map(int, format(row, f"0{inputs}b")))
+        output = esolangs.run(
+            language, balanced, esolangs.encode_inputs(language, bits)
+        )
+        assert esolangs.read_answer(language, output) == table[row]
