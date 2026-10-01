@@ -25,7 +25,7 @@ EXAMPLES = ROOT / "src" / "esolangs" / "examples"
 def boolean_programs() -> Iterator[tuple[str, str]]:
     """Yield ``(stem, program)`` for every boolean example."""
     for stem, example in sorted(BOOLEAN_EXAMPLES.items()):
-        yield stem, example.build()
+        yield stem, example.build(balance=True)
 
 
 def _display_name(stem: str) -> str:

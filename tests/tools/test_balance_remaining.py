@@ -827,6 +827,14 @@ def test_alight_affine_fold_comparisons_and_empty_turn_rows():
         assert esolangs.run("Alight", program) == "0"
 
 
+def test_alight_planned_layouts_render_and_execute():
+    from esolangs.tools.alight_balance import _emit, _plans
+
+    for plan in _plans(2):
+        program = _emit("0110", 2, plan)
+        assert esolangs.evaluate("Alight", program, inputs=2) == "0110"
+
+
 def test_alight_model_drift_aborts(monkeypatch):
     import esolangs.tools.alight_balance as module
 

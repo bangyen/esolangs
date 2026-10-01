@@ -216,6 +216,7 @@ class TestStreetcodeAmbiguousTurns:
         root = Path(__file__).resolve().parents[2]
         for path in (
             "tests/fixtures/streetcode_hello.txt",
+            "tests/fixtures/streetcode_and2_wide.txt",
             "examples/streetcode.txt",
         ):
             code = (root / path).read_text().split("\n")
@@ -256,7 +257,8 @@ class TestStreetcodeAmbiguousTurns:
         root = Path(__file__).resolve().parents[2]
         for path, expected in (
             ("tests/fixtures/streetcode_hello.txt", 384),
-            ("examples/streetcode.txt", 268),
+            ("tests/fixtures/streetcode_and2_wide.txt", 268),
+            ("examples/streetcode.txt", 345),
         ):
             code = (root / path).read_text().split("\n")
             if code and code[-1] == "":
