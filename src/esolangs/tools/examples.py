@@ -177,10 +177,6 @@ class BooleanExample:
         return wrap_program(program, canonical_id(self.stem.replace("-", " ")), width)
 
 
-def _kw(**kwargs: int) -> tuple[tuple[str, int], ...]:
-    return tuple(kwargs.items())
-
-
 def _reader(
     generator: Callable[[str], str],
     interpreter: str,
@@ -407,7 +403,7 @@ def _register() -> None:
             answer_mode="dump",
             split=True,
             expected="0",
-            kwargs=_kw(seed=0),
+            kwargs=(("seed", 0),),
             note=(
                 "the initial heading is random by spec, so the example pins "
                 "the source it is drawn from: seed 0 draws heading 3"

@@ -258,20 +258,17 @@ def nocomment(truth_table: str) -> str:
     for j in range(k):
         cells.append((tbase + j, _ASCII_ZERO + int(table[j])))
     cells.sort(key=lambda cv: cv[1])
-    # The sentinel is appended unconditionally above, so there is always at
-    # least one cell to walk here.
-    if cells:  # pragma: no branch - the sentinel keeps this non-empty
-        first_addr, first_value = cells[0]
-        setup_move(first_addr)
-        setup.extend(["i"] * first_value)
-        prev_value = first_value
-        for addr, value in cells[1:]:
-            setup.append("n")
-            setup_move(addr)
-            setup.append("f")
-            diff = value - prev_value
-            setup.extend(["i"] * diff if diff > 0 else ["d"] * -diff)
-            prev_value = value
+    first_addr, first_value = cells[0]
+    setup_move(first_addr)
+    setup.extend(["i"] * first_value)
+    prev_value = first_value
+    for addr, value in cells[1:]:
+        setup.append("n")
+        setup_move(addr)
+        setup.append("f")
+        diff = value - prev_value
+        setup.extend(["i"] * diff if diff > 0 else ["d"] * -diff)
+        prev_value = value
     setup_move(index)
 
     return "".join(setup + commands)
