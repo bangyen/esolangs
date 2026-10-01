@@ -6,8 +6,8 @@ a Vandevelo program can bind is affine in the inputs (``==``/``!=`` are
 XNOR/XOR over nil), and only ``::`` chains evaluate conditionally, so a
 guard line hangs on an affine coset of inputs and a whole program hangs on
 a union of cosets.  The generator therefore emits one guard line per coset
-of an affine cover of the table's 1-set. Affine tables bypass the peel:
-geometric doubling checks their form in O(T) characters, then emits one guard.
+of an affine cover of the table's 1-set. Affine tables and single cosets
+bypass the peel: geometric doubling checks their form before emitting a guard.
 
 A test for 0 is ``x? == Nil?``, eight characters and four steps over a
 bare ``x?``, so the guards are spelled to need it rarely.  A register
@@ -674,6 +674,26 @@ def _affine_form(table: str, n: int) -> tuple[int, int] | None:
     return (mask, int(first)) if expected == table else None
 
 
+def _affine_coset(table: str, ones: set[int]) -> tuple[int, list[int]] | None:
+    """Return a basis for an affine 1-set, with O(T) membership work."""
+    size = len(ones)
+    if not size or size & (size - 1):
+        return None
+    base = min(ones)
+    points = {base}
+    dirs = []
+    for row, entry in enumerate(table):
+        if entry == "0" or row in points:
+            continue
+        direction = row ^ base
+        extension = {point ^ direction for point in points}
+        if len(points) * 2 > size or any(table[point] != "1" for point in extension):
+            return None
+        points.update(extension)
+        dirs.append(direction)
+    return base, dirs
+
+
 def vandevelo(truth_table: str, width: int | None = None) -> str:
     """Build a Vandevelo program computing ``truth_table`` by termination."""
     n = _validate_truth_table(truth_table)
@@ -682,7 +702,8 @@ def vandevelo(truth_table: str, width: int | None = None) -> str:
     affine = _affine_form(truth_table, n)
     if affine is None:
         ones = {row for row, entry in enumerate(truth_table) if entry == "1"}
-        cubes = _Peel(ones, n).run() if ones else []
+        coset = _affine_coset(truth_table, ones)
+        cubes = [coset] if coset is not None else (_Peel(ones, n).run() if ones else [])
         cover = _pruned([_constraints(base, dirs, n) for base, dirs in cubes])
         dims = [len(dirs) for _, dirs in cubes]
     else:
