@@ -1011,19 +1011,20 @@ class TestThePathGuardKnowsMoreThanTxt:
         """
         assert not esolangs._looks_like_a_path(program), program  # noqa: SLF001
 
-    def test_no_generated_program_is_mistaken(self) -> None:
+    @pytest.mark.parametrize(
+        "name",
+        [
+            name
+            for name in esolangs.list_languages()
+            if esolangs.describe(name)["boolean_generator"]
+            and esolangs.describe(name)["source_kind"] == "text"
+        ],
+    )
+    def test_no_generated_program_is_mistaken(self, name: str) -> None:
         """The widened rule is only safe while this holds."""
-        mistaken = []
-        for name in esolangs.list_languages():
-            if not esolangs.describe(name)["boolean_generator"]:
-                continue
-            if esolangs.describe(name)["source_kind"] != "text":
-                continue
-            for table in ("01", "0110"):
-                program = esolangs.generate(name, table)
-                if esolangs._looks_like_a_path(program):  # noqa: SLF001
-                    mistaken.append((name, table))
-        assert not mistaken, mistaken
+        for table in ("01", "0110"):
+            program = esolangs.generate(name, table)
+            assert not esolangs._looks_like_a_path(program), (name, table)  # noqa: SLF001
 
 
 class TestAHugeRowIndexIsRefusedNotCrashed:
