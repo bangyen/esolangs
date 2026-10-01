@@ -1,0 +1,172 @@
+"""Analytic balance rules match all supported layouts and execute every row."""
+
+import random
+
+import pytest
+
+import esolangs
+from esolangs.tools.fish import balance_fish, fish
+from esolangs.tools.wrap import balance_program, balance_score, wrap_program
+
+
+@pytest.mark.parametrize("language", ["addsubjump", "decleq", "sbleq"])
+def test_mixed_digit_operands_share_one_grid_cell(language):
+    for count in range(3, 65):
+        program = " ".join(("1", "22", "333")[index % 3] for index in range(count))
+        balanced = balance_program(program, language)
+        optimum = min(
+            [program]
+            + [
+                wrap_program(program, language, width)
+                for width in range(1, len(program) + 1)
+            ],
+            key=balance_score,
+        )
+        assert balance_score(balanced) == balance_score(optimum)
+        assert balanced.split() == program.split()
+
+
+@pytest.mark.parametrize("language", ["AddSubJump", "Decleq", "S*bleq"])
+@pytest.mark.parametrize("table", ["0110", "0001", "10010110"])
+def test_aligned_balanced_programs_compute_the_table(language, table):
+    balanced = esolangs.generate(language, table, balance=True)
+    default = esolangs.generate(language, table)
+    optimum = min(
+        [default]
+        + [esolangs.generate(language, table, width) for width in range(1, 129)],
+        key=balance_score,
+    )
+    assert balance_score(balanced) == balance_score(optimum)
+    assert (
+        esolangs.evaluate(language, balanced, inputs=len(table).bit_length() - 1)
+        == table
+    )
+
+
+def _fish_tables():
+    tables = [
+        format(value, f"0{1 << inputs}b")
+        for inputs in range(1, 4)
+        for value in range(1 << (1 << inputs))
+    ]
+    rng = random.Random(1002)
+    for inputs in range(4, 11):
+        tables.extend(
+            "".join(rng.choice("01") for _ in range(1 << inputs)) for _ in range(4)
+        )
+        tables.extend(
+            "".join(str((row.bit_count() + bias) % 2) for row in range(1 << inputs))
+            for bias in (0, 1)
+        )
+    return tables
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("table", _fish_tables())
+def test_fish_balance_matches_all_power_of_two_folds(table):
+    default = fish(table)
+    balanced = balance_fish(table, default)
+    layouts = [default, fish(table, 1)] + [
+        fish(table, (1 << exponent) + 2) for exponent in range(len(table).bit_length())
+    ]
+    optimum = min(layouts, key=balance_score)
+    assert balance_score(balanced) == balance_score(optimum)
+    assert esolangs.generate("Fish", table, balance=True) == balanced
+    assert (
+        esolangs.evaluate("Fish", balanced, inputs=len(table).bit_length() - 1) == table
+    )
+
+
+def _regime_tables():
+    tables = [
+        format(value, f"0{1 << inputs}b")
+        for inputs in range(1, 4)
+        for value in range(1 << (1 << inputs))
+    ]
+    rng = random.Random(1003)
+    tables.extend(
+        "".join(rng.choice("01") for _ in range(1 << inputs))
+        for inputs in (4, 5)
+        for _ in range(2)
+    )
+    return tables
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize(
+    "language",
+    [
+        "ArrowQueue",
+        "B-tapemark",
+        "BrainIf",
+        "Clockwise",
+        "Dig",
+        "Fargo",
+        "Streetcode",
+        "Thue",
+        "Flowchart",
+        "Inject",
+        "thisthat",
+        "Vandevelo",
+    ],
+)
+@pytest.mark.parametrize("table", _regime_tables())
+def test_discrete_regimes_reach_the_supported_minimum(language, table):
+    default = esolangs.generate(language, table)
+    balanced = esolangs.generate(language, table, balance=True)
+    widest = max(map(len, default.split("\n")))
+    optimum = min(
+        [default]
+        + [
+            esolangs.generate(language, table, width)
+            for width in range(1, max(65, widest + 1))
+        ],
+        key=balance_score,
+    )
+    assert balance_score(balanced) == balance_score(optimum)
+    assert (
+        esolangs.evaluate(language, balanced, inputs=len(table).bit_length() - 1)
+        == table
+    )
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("inputs", range(6, 11))
+def test_thue_payload_crossing_matches_every_width(inputs):
+    table = "".join(str(row.bit_count() % 2) for row in range(1 << inputs))
+    default = esolangs.generate("Thue", table)
+    balanced = esolangs.generate("Thue", table, balance=True)
+    optimum = min(
+        [default]
+        + [
+            esolangs.generate("Thue", table, width)
+            for width in range(1, len(table) + 12)
+        ],
+        key=balance_score,
+    )
+    assert balance_score(balanced) == balance_score(optimum)
+    for row in (0, 1, len(table) // 2, len(table) - 1):
+        bits = tuple(map(int, format(row, f"0{inputs}b")))
+        stdin = esolangs.encode_inputs("Thue", bits)
+        assert (
+            esolangs.read_answer("Thue", esolangs.run("Thue", balanced, stdin))
+            == table[row]
+        )
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("table", ["01" * 32, "0" * 64])
+def test_streetcode_indexed_regimes_are_balanced_and_execute(table):
+    default = esolangs.generate("Streetcode", table)
+    balanced = esolangs.generate("Streetcode", table, balance=True)
+    widest = max(map(len, default.split("\n")))
+    optimum = min(
+        [default]
+        + [
+            esolangs.generate("Streetcode", table, width)
+            for width in range(1, widest + 1)
+        ],
+        key=balance_score,
+    )
+    assert balance_score(balanced) == balance_score(optimum)
+    assert esolangs.evaluate("Streetcode", balanced, inputs=6) == table

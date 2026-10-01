@@ -577,18 +577,19 @@ def balance_program(program: str, language_id: str) -> str:
             # Longest token >= N makes W-H nonnegative for every layout.
             narrow = wrap_program(program, language_id, 1)
             return min((program, narrow), key=balance_score)
-        if tokens and len({len(token) for token in tokens}) == 1:
-            cell = len(tokens[0])
-            if wrapper is not _mammalian or cell == 4:
-                # For k equal cells, W=(cell+1)k-1 and H=ceil(N/k).
-                # The quadratic's positive root brackets the crossing.
-                stride = cell + 1
-                columns = max(
-                    1, (1 + isqrt(1 + 4 * stride * len(tokens))) // (2 * stride)
-                )
-                lower = wrap_program(program, language_id, stride * columns - 1)
-                upper = wrap_program(program, language_id, stride * (columns + 1) - 1)
-                return min((program, lower, upper), key=balance_score)
+        equal = bool(tokens) and len({len(token) for token in tokens}) == 1
+        cell = len(tokens[0]) if equal else 0
+        if tokens and wrapper is wrap_grid:
+            cell = _cell_width(tokens)
+            equal = all(_span(len(token), cell) == 1 for token in tokens)
+        if equal and (wrapper is not _mammalian or cell == 4):
+            # Aligned operands need one cell even when their digit counts vary.
+            # For k cells, W=(cell+1)k-1 and H=ceil(N/k).
+            stride = cell + 1
+            columns = max(1, (1 + isqrt(1 + 4 * stride * len(tokens))) // (2 * stride))
+            lower = wrap_program(program, language_id, stride * columns - 1)
+            upper = wrap_program(program, language_id, stride * (columns + 1) - 1)
+            return min((program, lower, upper), key=balance_score)
     candidate = wrap_program(program, language_id, balance_width(program))
     return min((program, candidate), key=balance_score)
 
