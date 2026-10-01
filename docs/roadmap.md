@@ -5,13 +5,13 @@ and proved limits; completed work is recorded in its commit.
 
 ## Conditional follow-up
 
-- **Cyclic tag admission.** Its 94 complete backlinks clear the 50-link fame
-  gate despite sharing Bitwise Cyclic Tag's axis. Next: audit the specification
-  and I/O interface, derive a loop-less O(T) Boolean generator under the
-  existing embed conventions, and execute every table through three inputs
-  plus sampled larger tables before integration. If the specification
-  precludes a generator, document the obstruction and assess interpreter-only
-  admission; an unsuccessful construction attempt is not an impossibility.
+- **Cyclic tag integration.** Its 94 complete backlinks clear the fame gate;
+  [limitations](limitations.md) records the completed specification and
+  generator audit. The direct padding construction emits 5T + 2n + 1 characters
+  and passed 309 tables / 3,352 rows, plus sampled rows through n=14. Implement
+  the semicolon-separated production parser, queue interpreter, ordered input
+  embed, and final-deletion answer convention; register the language and add
+  execution, VM, and convention coverage before integration.
 
 - **Forth, Chicken, and Shakespeare admission.** Their 57, 55, and 54 complete
   backlinks clear the 50-link fame gate. Audit each specification and I/O
