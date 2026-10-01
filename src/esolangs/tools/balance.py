@@ -2,6 +2,8 @@
 
 import re
 from collections.abc import Callable
+from itertools import pairwise
+from math import isqrt
 
 from esolangs.tools.arrowqueue import arrowqueue
 from esolangs.tools.b_tapemark import b_tapemark
@@ -23,6 +25,7 @@ from esolangs.tools.intercal import balance_intercal
 from esolangs.tools.parameterized import bitdeque, minsky_swap
 from esolangs.tools.ram0 import ram0
 from esolangs.tools.register import balance_collatz_multiverse
+from esolangs.tools.stack import modulous
 from esolangs.tools.streetcode import (
     _streetcode_flat,
     _streetcode_hallway_program,
@@ -38,6 +41,7 @@ from esolangs.tools.thue import balance_thue
 from esolangs.tools.token_balance import balanced_token_width
 from esolangs.tools.vandevelo import vandevelo
 from esolangs.tools.wrap import (
+    _BRACKET_LITERAL,
     _FALSE_COMMAND,
     _bitdeque_tokens,
     _join_tokens,
@@ -189,6 +193,80 @@ def _minsky_swap(table: str, default: str) -> str:
     )
 
 
+def _modulous(table: str, default: str) -> str:
+    """Balance bracket atoms and literal chunks at quotient and row fits."""
+    atoms = re.findall(_BRACKET_LITERAL, default)
+    floor = max(map(len, atoms))
+    width = balanced_token_width(atoms, minimum=floor)
+    candidates = [default, modulous(table, width)]
+    numeric = modulous(table, 1).split()
+    width = balanced_token_width(numeric, " ", maximum=3)
+    candidates.append(modulous(table, width))
+    # Below nine columns the three-word push prefix cannot share a row.
+    candidates.extend(modulous(table, width) for width in range(4, 9))
+    size = len(table)
+    whole = modulous(table, size + 3).split()
+    width = balanced_token_width(whole, " ", minimum=size + 3, maximum=floor - 1)
+    candidates.append(modulous(table, width))
+    suffix = re.findall(r'"[^"]*"\]|[A-Z]+|\d+|[^\s]', default[size + 12 :])
+    lengths = list(map(len, suffix))
+    fits = set()
+    for start in range(len(lengths)):
+        span = -1
+        for length in lengths[start:]:
+            span += length + 1
+            fits.add(span - 3)
+    fixed = [1, 3, 3, 0, 1, 3, 3]
+    partial_fits = {
+        sum(fixed[start:stop]) + stop - start - 1
+        for start in range(4)
+        for stop in range(4, 8)
+    }
+    quotients = {size}
+    for divisor in range(1, isqrt(size - 1) + 1):
+        quotients.update((divisor + 1, (size - 1) // divisor + 1))
+
+    def height(parts: list[int], columns: int) -> int:
+        rows, used = 1, 0
+        for length in parts:
+            if used and used + 1 + length > columns:
+                rows += 1
+                used = length
+            else:
+                used += length + bool(used)
+        return rows
+
+    best: tuple[int, int, int] | None = None
+    for count in quotients:
+        lower = max(6, (size + count - 1) // count)
+        upper = min(size - 1, (size - 1) // (count - 1))
+        if lower > upper:
+            continue
+        events = {lower, upper + 1}
+        events.update(fit for fit in fits if lower < fit <= upper)
+        events.update(
+            point
+            for extra in partial_fits
+            if lower < (point := (size + extra + count - 1) // count) <= upper
+        )
+        boundaries = sorted(events)
+        for start, stop in pairwise(boundaries):
+            partial = size - (count - 1) * start
+            rows = (
+                height([1, 3, 3, partial + 3, 1, 3, 3], start + 3)
+                + 2 * count
+                - 3
+                + height(lengths, start + 3)
+            )
+            columns = min(max(rows, start + 3), stop + 2)
+            score = (abs(columns - rows), size + 14 * count, columns)
+            if best is None or score < best:
+                best = score
+    if best is not None:
+        candidates.append(modulous(table, best[2]))
+    return min(candidates, key=balance_score)
+
+
 def _flowchart(table: str, default: str) -> str:
     """Compare deque lookup, flat tree and the supported stacked fallback."""
     flat = _flowchart_render(_flowchart_cells(table))
@@ -259,6 +337,7 @@ BALANCERS: dict[str, Callable[[str, str], str]] = {
     "inject": _inject,
     "intercal": balance_intercal,
     "minsky_swap": _minsky_swap,
+    "modulous": _modulous,
     "ram0": _ram0,
     "streetcode": _streetcode,
     "super_snusp": _super_snusp,
