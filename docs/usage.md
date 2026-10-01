@@ -41,7 +41,8 @@ Raster generators accept `scale=1` (CLI: `--scale N`), applied after layout.
 Both interpreters detect enlargement. Piet chooses the largest uniform codel
 grid anchored at the image origin; `run(..., scale=N)` or `--scale N`
 overrides detection. Use `scale=1` for native images whose blocks also fit a
-larger grid. The committed Piet example uses 10-pixel codels; Line stays native.
+larger grid. The committed Piet example uses 80-pixel codels (960×560),
+comparable in area to native Line (680×800).
 
 ## Run XOR
 

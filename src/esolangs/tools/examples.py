@@ -663,8 +663,8 @@ def _register() -> None:
     reading["line"] = _reader(line.generate, "line")
     reading["piet"] = replace(
         _reader(piet.generate, "piet"),
-        scale=10,
-        note="10 pixels per codel for readability",
+        scale=80,
+        note="80 pixels per codel, comparable in area to Line",
     )
     for stem, example in {**reading, **embedded}.items():
         BOOLEAN_EXAMPLES[stem] = replace(example, stem=stem)
