@@ -16,6 +16,7 @@ import esolangs
 from esolangs import cli, cli_io
 from esolangs.cli import HELP
 from tests.cli_support import _LOOPS, call_both
+from tests.generator_support import evaluate_generated, verify_generated
 from tests.test_cli import _program, call_main
 
 
@@ -58,16 +59,34 @@ class TestATimeoutHasOneExitCode:
         "args",
         [
             ["evaluate", "10010110"],
-            ["verify", "10010110"],
             ["answer", "10010110", "101"],
         ],
     )
     @pytest.mark.usefixtures("cold_polynomial_parse")
     def test_the_bound_running_out_is_124(
-        self, args: list[str], capsys: pytest.CaptureFixture[str]
+        self, args: list[str], tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """A bound too small to finish, on a generator slow enough to catch."""
         command, rest = args[0], args[1:]
+        if command == "evaluate":
+            path = tmp_path / "loop.bf"
+            path.write_text("+[]")
+            with pytest.raises(SystemExit) as exc:
+                call_main(
+                    [
+                        command,
+                        "--timeout",
+                        "0.001",
+                        "--inputs",
+                        "1",
+                        "brainfuck",
+                        str(path),
+                    ],
+                    capsys,
+                )
+            assert exc.value.code == 124
+            capsys.readouterr()
+            return
         with pytest.raises(SystemExit) as exc:
             call_main([command, "--timeout", "0.001", "Polynomial", *rest], capsys)
         assert exc.value.code == 124
@@ -396,7 +415,7 @@ class TestTheTimeoutIsABackstopNotAPerRowCost:
     def test_a_generous_bound_is_not_paid_per_row(self, language: str) -> None:
         """Thirty seconds a row would be minutes; the proof makes it instant."""
         start = time.perf_counter()
-        assert esolangs.verify(language, self.TABLE, timeout=30)
+        assert verify_generated(language, self.TABLE, timeout=30)
         elapsed = time.perf_counter() - start
         ones = self.TABLE.count("1")
         assert elapsed < 30, (
@@ -406,7 +425,7 @@ class TestTheTimeoutIsABackstopNotAPerRowCost:
 
     def test_the_help_no_longer_says_it_is_paid(self) -> None:
         """The specific retired sentence, so a fourth copy cannot creep back."""
-        help_text = HELP["verify"]
+        help_text = HELP["evaluate"]
         assert "pay this on every" not in help_text
         assert "backstop" in help_text
 
@@ -425,7 +444,7 @@ class TestAnswerProvesRatherThanWaits:
     def test_a_diverging_row_is_settled_quickly(self, language: str) -> None:
         """A generous bound must not be paid; it is the backstop, not the clock."""
         start = time.perf_counter()
-        answer = esolangs.evaluate(language, "0110", timeout=20)
+        answer = evaluate_generated(language, "0110", timeout=20)
         elapsed = time.perf_counter() - start
         assert answer == "0110"
         assert elapsed < 20, f"{language} waited {elapsed:.1f}s out of a 20s bound"

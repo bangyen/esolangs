@@ -30,7 +30,7 @@ operation, was a template), and **124** is a run stopped by ``--timeout``,
 after timeout(1) -- from every command that takes one, not only ``run`` and
 ``debug``.  That last one used to be 1 as well, which left the three
 languages whose answer *is* a timeout indistinguishable from a crash, and
-then stayed 1 in ``evaluate``, ``verify`` and ``answer`` after the other
+then stayed 1 in ``evaluate`` and ``answer`` after the other
 two were fixed, which left a script unable to use one code for the event.  Only
 an unexpected error still reaches the terminal as a traceback, which is what
 a traceback should mean.
@@ -116,7 +116,7 @@ from esolangs.cli_io import (
 from esolangs.cli_io import (
     _write_output as _write_output,
 )
-from esolangs.cli_round_trip import _answer, _evaluate, _verify
+from esolangs.cli_round_trip import _answer, _evaluate
 from esolangs.cli_run import _run
 from esolangs.exceptions import (
     EsolangError,
@@ -440,7 +440,6 @@ def _dispatch() -> None:
         "read-answer": _read_answer,
         "check-stdin": _check_stdin,
         "answer": _answer,
-        "verify": _verify,
         "evaluate": _evaluate,
         "debug": _debug,
     }[cmd](rest)

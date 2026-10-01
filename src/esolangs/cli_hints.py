@@ -186,7 +186,7 @@ def _diverging_answer(
     """Return the answer bit for a language that answers by terminating.
 
     By repeated-state proof, not by waiting: ``answer --timeout 20`` on a
-    1-row used to take twenty seconds where ``verify`` settles four rows
+    1-row used to take twenty seconds where ``evaluate`` settles four rows
     in a fifth of a second.  The clock stays as the backstop for unbounded
     growth.
     """

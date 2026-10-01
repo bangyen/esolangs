@@ -285,10 +285,10 @@ class TestTheAdvisoryNotesAreRenderedOnce:
         )
         assert "did not exist yet" in out
 
-    def test_verify_says_it_checks_the_generator(self) -> None:
+    def test_evaluate_says_it_runs_a_supplied_program(self) -> None:
         """So nobody mistakes it for a checker of a file they wrote."""
-        assert "checks the generator" in cli.HELP["verify"]
-        assert "run --judge" in cli.HELP["verify"]
+        assert "supplied program" in cli.HELP["evaluate"]
+        assert "No program is generated" in cli.HELP["evaluate"]
 
 
 class TestAMultiWordNameSuggestsQuoting:

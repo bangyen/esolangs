@@ -26,6 +26,7 @@ from esolangs.interpreters.stack_based.false import run as run_false
 from esolangs.tools.bitwise_cyclic_tag import PAIR as BCT_PAIR
 from esolangs.tools.fractran import PAIR as FRACTRAN_PAIR
 from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
+from tests.generator_support import evaluate_generated, verify_generated
 from tests.tools.boolean_runners import five_input_sample
 
 #: The line-reading three, each as ``(generator, interpreter run)``.
@@ -236,7 +237,7 @@ def test_false_stores_repeated_halves_and_skips_equal_ones() -> None:
     for n in (4, 6):
         for value in (0x6996, 0x1234ABCD5678EF01):
             table = format(value % 2**2**n, f"0{2**n}b")
-            assert esolangs.verify("FALSE", table), table
+            assert verify_generated("FALSE", table), table
 
 
 @pytest.mark.medium
@@ -247,7 +248,7 @@ def test_false_runs_out_of_variables_and_writes_the_rest_inline() -> None:
     table = format(random.Random(0).getrandbits(512), "0512b")
     program = boolean.false(table)
     assert all(f"]{name}:" in program for name in "abcdefghijklmnopqrstuvwxyz")
-    assert esolangs.verify("FALSE", table)
+    assert verify_generated("FALSE", table)
 
 
 @pytest.mark.medium  # both builds of 456 tables: 0.95s alone
@@ -282,7 +283,7 @@ def test_unlambda_binds_repeated_subtrees_and_skips_equal_halves() -> None:
     for n in (4, 6):
         for value in (0x6996, 0x1234ABCD5678EF01):
             table = format(value % 2**2**n, f"0{2**n}b")
-            assert esolangs.verify("Unlambda", table), table
+            assert verify_generated("Unlambda", table), table
 
 
 def test_thue_spells_the_table_once_and_its_rules_are_fixed() -> None:
@@ -511,12 +512,11 @@ def test_thue_fixed_width_chunk_names_expand_before_reading() -> None:
 
 @pytest.mark.parametrize("width", [1, 4, 9, 40, 80])
 def test_fractran_phase_parity_all_small_tables(width: int) -> None:
-    import esolangs
 
     for n in range(1, 4):
         for value in range(2 ** (2**n)):
             table = format(value, f"0{2**n}b")
-            assert esolangs.evaluate("FRACTRAN", table, width=width) == table
+            assert evaluate_generated("FRACTRAN", table, width=width) == table
 
 
 @pytest.mark.parametrize("width", [1, 4, 5, 8, 9, 80])
@@ -524,7 +524,6 @@ def test_fractran_phase_parity_all_small_tables(width: int) -> None:
 def test_fractran_phase_parity_public_uniform_setters(
     width: int, *, as_string: bool
 ) -> None:
-    import esolangs
     from esolangs.tools.fractran import fractran_setters
 
     template = esolangs.generate("FRACTRAN", "0110", width)
@@ -560,7 +559,6 @@ def test_fractran_phase_parity_exact_resolver_and_size() -> None:
 
 @pytest.mark.parametrize("n", [4, 5, 6])
 def test_fractran_phase_parity_retains_larger_layout_execution(n: int) -> None:
-    import esolangs
 
     table = "".join(str(row.bit_count() % 2) for row in range(2**n))
     for width in [1, 4, 80]:

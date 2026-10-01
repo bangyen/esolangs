@@ -32,11 +32,9 @@ commands:
   answer [--timeout S] <language> <truth-table> <bits>
                               generate, feed those bits, run, and print the
                               one answer bit
-  verify [--timeout S] [--width [N]] <language> <truth-table>
-                              generate, run every row, and report whether
-                              the program computes that table
-  evaluate [--timeout S] [--width [N]] <language> <truth-table>
-                              the same, printing the table it computed
+  evaluate [--timeout S] [--inputs N | --table T] <language> <program-file>
+                              run every input row and print the observed
+                              table; --table also checks the expected result
   debug [--steps N] [--timeout S] [--watch-cell I] [--stdin S] [--tui]
         [--break-at N] [--break-on-cell I=V] [--break-on-output S]
         [--table T] <language> <file>
@@ -59,7 +57,7 @@ examples:
   esolangs generate --bits 10 Minifuck 0110
   esolangs run Circlefuck hello.txt
   esolangs answer brainfuck 0110 10
-  esolangs verify Fargo 10010110
+  esolangs evaluate --table 10010110 Fargo program.txt
   esolangs encode LaserFuck 10 | esolangs run --judge LaserFuck prog.txt
   esolangs debug --steps 20 --watch-cell 0 brainfuck prog.txt
 """
@@ -195,7 +193,7 @@ examples:
 Generate a program for <truth-table>, feed it <bits>, run it, and print the
 single answer bit.
 
-This is `verify` for one row instead of all of them.  Everything it does was
+This generates and runs one row. Everything it does was
 already possible -- generate to a file, encode the bits, pipe them in, judge
 the output -- but that is four commands and a temporary file, and the
 encoding step is the one people get wrong.  Nothing here can be
@@ -215,50 +213,25 @@ options:
                      languages whose answer for a 1 is that the program
                      never stops, and to none for the rest.
 """,
-    "verify": """usage: esolangs verify [--timeout S] [--width [N]]
-                        <language> <truth-table>
+    "evaluate": """usage: esolangs evaluate [--timeout S] [--inputs N | --table T]
+                          <language> <program-file>
 
-Generate a program for <truth-table>, run it on every row of its input
-space, and report whether it computes that table.  Prints `ok`, or the
-table it computed and which rows disagree.
-
-This checks the generator, not a program you wrote: the program is built
-here from <truth-table>.  To judge a file of your own, use `esolangs
-run --judge`.
-
-A generator may refuse a table as too big for it; that is reported and
-exits 2, since nothing ran.
+Run the supplied program on every Boolean input row and print its observed
+truth table. No program is generated. Text, PNG sources, and parameterized
+templates are supported; templates are filled separately for every row.
 
 options:
-  --timeout SECONDS  bound each row.  The four languages that answer 1 by
-                     not terminating do *not* pay it per 1-row: those rows
-                     are settled by a repeated machine state, which proves
-                     the loop in microseconds, so the bound is only the
-                     backstop for a program that diverges by growing.
-  --width [N]        build the program wrapped to N columns and check
-                     *that*, which is the round trip worth running after a
-                     --width: a wrap that broke a token would compute a
-                     different table, or none.
+  --inputs N        enumerate N inputs, from 1 to 64, MSB first.
+  --table TABLE     infer the input count and compare the observed table with
+                     TABLE. Exits 1 on mismatch and names the differing rows.
+                     Mutually exclusive with --inputs; one is required.
+  --timeout SECONDS  bound each row. Defaults to 30 seconds, or 5 for
+                     termination answers. Repeated states prove divergence;
+                     the deadline is a backstop for growth, not an answer.
 
 examples:
-  esolangs verify brainfuck 0110
-  esolangs verify --timeout 5 123 0110
-  esolangs verify --width 40 brainfuck 10010110
-""",
-    "evaluate": """usage: esolangs evaluate [--timeout S] [--width [N]]
-                          <language> <truth-table>
-
-Print the truth table a generated <language> program actually computes.
-
-`verify` with the comparison left to you: the output is a binary string the
-same length as <truth-table>, so a mismatch shows which rows disagree
-rather than collapsing to a yes or no.  Exits 0 whenever the program ran,
-and 124 when --timeout stopped it -- which for the four languages that
-answer by not terminating is the answer rather than a fault.
-
-examples:
-  esolangs evaluate brainfuck 0110
-  esolangs evaluate "A Painter Ant" 10010110
+  esolangs evaluate --inputs 2 brainfuck program.txt
+  esolangs evaluate --table 0110 brainfuck program.txt
 """,
     "check-stdin": """usage: esolangs check-stdin [--table T] <language>
 

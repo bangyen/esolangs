@@ -15,6 +15,7 @@ import pytest
 import esolangs
 from esolangs import tools as boolean
 from esolangs.tools.helpers import best_input_order
+from tests.generator_support import verify_generated
 from tests.tools.boolean_runners import (
     five_input_sample,
     run_algebraic_programming_language,
@@ -1082,7 +1083,7 @@ class TestAlgebraicProgrammingLanguageShapes:
         for n in (4, 5, 6):
             for value in (0x6996, 0x1234ABCD5678EF01, 0xF0F0CCCC5A5A3C3C):
                 table = format(value % 2**2**n, f"0{2**n}b")
-                assert esolangs.verify("Algebraic Programming Language", table)
+                assert verify_generated("Algebraic Programming Language", table)
 
 
 @pytest.mark.parametrize("width", [1, 7, 9, 10, 17, 40, 80])

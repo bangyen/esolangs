@@ -9,6 +9,7 @@ from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.stack_based.underload import run
 from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
 from esolangs.tools.underload import PAIR, underload, underload_setters
+from tests.generator_support import verify_generated
 from tests.tools.boolean_runners import five_input_sample
 from tests.tools.plain_oracles import underload_plain as _plain
 
@@ -95,7 +96,7 @@ def test_repeated_subtrees_are_carried_and_no_table_grows() -> None:
     for n in (4, 6):
         for value in (0x6996, 0x1234ABCD5678EF01):
             table = format(value % 2**2**n, f"0{2**n}b")
-            assert esolangs.verify("Underload", table), table
+            assert verify_generated("Underload", table), table
 
 
 @pytest.mark.parametrize("width", [1, 3, 4, 5, 13, 40, 80])

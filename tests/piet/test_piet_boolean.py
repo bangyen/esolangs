@@ -7,6 +7,7 @@ import pytest
 import esolangs
 from esolangs.piet import generate
 from esolangs.raster import Raster
+from tests.generator_support import verify_generated
 
 
 @pytest.mark.parametrize(
@@ -41,7 +42,7 @@ def test_public_generate_returns_a_piet_raster() -> None:
     program = esolangs.generate("Piet", "01")
     assert isinstance(program, Raster)
     assert esolangs.run("Piet", program, "1\n") == "1"
-    assert esolangs.verify("Piet", "0110")
+    assert verify_generated("Piet", "0110")
 
 
 def test_emitted_pixels_are_linear_in_the_table() -> None:

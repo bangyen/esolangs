@@ -6,6 +6,7 @@ import pytest
 
 import esolangs
 from esolangs.tools.register import _cm_layout, collatz_multiverse
+from tests.generator_support import evaluate_generated
 from tests.tools.boolean_runners import run_collatz_multiverse
 
 
@@ -32,7 +33,7 @@ def test_public_layout_reads_all_inputs_and_preserves_fitting_source(
         source = esolangs.generate("collatz-multiverse", table, width)
         if max(map(len, old_layout.splitlines())) <= width:
             assert source == old_layout
-        assert esolangs.evaluate("collatz-multiverse", table, width=width) == table
+        assert evaluate_generated("collatz-multiverse", table, width=width) == table
 
 
 @pytest.mark.parametrize("n", [4, 6, 8, 10, 12])

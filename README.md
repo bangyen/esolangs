@@ -12,7 +12,7 @@ Interpreters and Boolean generators for 74 esoteric languages: 72 text and 2 ras
 <!-- PACKAGE-COUNT:END -->
 
 `generate` takes a truth table and returns a program computing it;
-`verify` runs that program on every row and checks what it answers.
+`evaluate` runs a supplied program on every row and returns what it answers.
 
 Start with the [CLI](#command-line) or [Python API](#python-api).
 The [usage guide](https://github.com/bangyen/esolangs/blob/main/docs/usage.md)
@@ -43,12 +43,14 @@ The Polynomial interpreter needs the optional mathematics extra:
 ```python
 import esolangs
 
-esolangs.verify("Fargo", "10010110", timeout=None)  # -> True
+program = esolangs.generate("Fargo", "10010110")
+esolangs.evaluate("Fargo", program, timeout=None, inputs=3)  # -> '10010110'
 ```
 
-`evaluate` returns the answers observed over every input row; `verify`
-compares them with the requested table. Termination answers require a proved
-halt or cycle; reaching a timeout raises `ExecutionTimeoutError`.
+`evaluate` returns the answers observed over every input row; compare the
+result with an expected table, or use CLI `evaluate --table TABLE`.
+Termination answers require a proved halt or cycle; reaching a timeout raises
+`ExecutionTimeoutError`.
 The default row timeout requires a Unix main thread. `timeout=None` disables
 that bound and also works on Windows and worker threads.
 

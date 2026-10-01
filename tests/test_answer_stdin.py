@@ -3,6 +3,7 @@
 import pytest
 
 import esolangs
+from tests.generator_support import evaluate_generated
 
 
 class TestTheStdinJudgeIsReachableFromPython:
@@ -50,7 +51,7 @@ class TestTheStdinJudgeIsReachableFromPython:
     def test_a_good_one_line_stdin_is_still_accepted(self) -> None:
         """A guard that refused the correct input would be worse."""
         esolangs.check_stdin("Clockwise", "101", "10010110")
-        assert esolangs.evaluate("Clockwise", "10010110", timeout=30) == "10010110"
+        assert evaluate_generated("Clockwise", "10010110", timeout=30) == "10010110"
 
     def test_the_run_path_warns_about_it_as_well(self) -> None:
         """Both documented routes, since both were silent.

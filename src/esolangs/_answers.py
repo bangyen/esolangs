@@ -252,11 +252,7 @@ def read_answer(language: str, output: str) -> str:
 
 
 def _validate_shape_for_evaluate(truth_table: str) -> int:
-    """Return the input count of ``truth_table``, refusing a malformed one.
-
-    The row loop needs the arity before :func:`generate` validates, and a
-    generator's error named the generator rather than the table.
-    """
+    """Return the input count of ``truth_table``, refusing a malformed one."""
     from esolangs.tools.helpers import _validate_truth_table
 
     if not isinstance(truth_table, str):

@@ -32,9 +32,9 @@ and hang proofs.
 
 Languages print a bit, dump state, or answer by halting. `read_answer` uses
 example metadata for printed and state-dump answers; `evaluate` also handles
-termination answers. It runs every input row through generation, optional
-instantiation, input encoding, execution, and extraction. `verify` compares
-the observed table with the requested one.
+termination answers. It runs a supplied program through optional
+instantiation, input encoding, execution, and extraction on every row.
+CLI `evaluate --table` compares the observed table with the expected one.
 
 To add a language, implement its interpreter and generator, register its
 `Language` and example metadata, and execute every generated input row. Follow

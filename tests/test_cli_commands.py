@@ -7,16 +7,15 @@ run, debug, answer, evaluate and verify, plus the options they share --
 import importlib
 import inspect
 import json
-import random
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 
 import esolangs
-from esolangs import cli_round_trip
 from esolangs.cli import HELP
 from tests.cli_support import _LOOPS, call_both
+from tests.generator_support import evaluate_generated
 from tests.test_cli import _program, call_main
 
 
@@ -559,66 +558,6 @@ class TestTheAnswerCommandDoesOneRow:
         assert "missing <bits>" in capsys.readouterr().err
 
 
-class TestTheRoundTripIsOneCommand:
-    """A CLI-only user had to write the loop the README says they need not."""
-
-    def test_verify_reports_a_match(self, capsys: pytest.CaptureFixture[str]) -> None:
-        """Every row generated, encoded, run and judged."""
-        assert call_main(["verify", "brainfuck", "0110"], capsys).strip() == "ok"
-
-    @pytest.mark.parametrize("name", ["Fargo", "Grapheme", "Clockwise", "Taglate"])
-    def test_verify_handles_the_odd_input_shapes(
-        self, name: str, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """The four shapes a hand-written loop gets wrong."""
-        assert call_main(["verify", name, "0110"], capsys).strip() == "ok"
-
-    def test_verify_handles_a_dump_language(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """A Painter Ant's answer is a mark in an eleven-line grid."""
-        assert call_main(["verify", "A Painter Ant", "0110"], capsys).strip() == "ok"
-
-    @pytest.mark.slow
-    def test_verify_handles_a_termination_language(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """Each 1-row costs the bound, so this one is paid for."""
-        out = call_main(["verify", "--timeout", "5", "123", "0110"], capsys)
-        assert out.strip() == "ok"
-
-    def test_evaluate_prints_the_computed_table(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """So a mismatch shows which rows disagree."""
-        out = call_main(["evaluate", "brainfuck", "10010110"], capsys)
-        assert out.strip() == "10010110"
-
-    def test_a_malformed_table_is_refused(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """Named as a table, at the usage exit code."""
-        with pytest.raises(SystemExit) as exc:
-            call_main(["verify", "brainfuck", "011"], capsys)
-        assert exc.value.code == 2
-
-    def test_a_missing_table_is_named(self, capsys: pytest.CaptureFixture[str]) -> None:
-        """The wiring that makes the shared machinery reach a new command."""
-        with pytest.raises(SystemExit) as exc:
-            call_main(["verify", "brainfuck"], capsys)
-        assert exc.value.code == 2
-        assert "missing <truth-table>" in capsys.readouterr().err
-
-    def test_the_new_commands_get_a_suggestion(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """They have to be in the set the did-you-mean searches."""
-        with pytest.raises(SystemExit) as exc:
-            call_main(["verfiy", "brainfuck", "0110"], capsys)
-        assert exc.value.code == 2
-        assert "did you mean verify" in capsys.readouterr().err
-
-
 class TestTheTableOptionClosesTheArityGap:
     """`run` has no arity of its own; the table supplies one."""
 
@@ -782,86 +721,6 @@ class TestJudgeAdmitsWhatItCannotCheck:
         assert err == ""
 
 
-class TestVerifyAndEvaluateTakeAWidth:
-    """The CLI half of the same gap, parsed the way ``generate`` parses it."""
-
-    def test_verify_accepts_a_width(self, capsys: pytest.CaptureFixture[str]) -> None:
-        """And still says ok, because the wrap did not break the program."""
-        out, err = call_both(
-            ["verify", "--width", "40", "brainfuck", "10010110"], capsys
-        )
-        assert out.strip() == "ok"
-        assert err == ""
-
-    def test_evaluate_accepts_a_width(self, capsys: pytest.CaptureFixture[str]) -> None:
-        """A template language, so the width has to reach ``instantiate``."""
-        out, _err = call_both(["evaluate", "--width", "40", "Minifuck", "0110"], capsys)
-        assert out.strip() == "0110"
-
-    def test_a_bare_width_takes_the_default(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """As it does on ``generate``, so the next word is the language."""
-        out, _err = call_both(["verify", "--width", "brainfuck", "0110"], capsys)
-        assert out.strip() == "ok"
-
-    def test_a_width_that_ate_the_table_says_so(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """``--width`` takes an optional N, which is a trap ``generate`` names.
-
-        Without the note the complaint is about a missing truth table, which
-        is baffling when you did type one.
-        """
-        with pytest.raises(SystemExit):
-            call_main(["verify", "--width", "0110", "brainfuck"], capsys)
-        assert "looks like a truth table" in capsys.readouterr().err
-
-    def test_the_help_mentions_it(self) -> None:
-        """A flag nobody can find is a flag nobody has."""
-        assert "--width" in HELP["verify"]
-        assert "--width" in HELP["evaluate"]
-
-
-class TestTheRoundTripsFailurePaths:
-    """The reporting a mismatch or a refusal goes through."""
-
-    def test_a_generator_refusal_exits_two(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """Nothing ran, so it is the usage class rather than a wrong answer."""
-        rng = random.Random(7)
-        dense = "".join(rng.choice("01") for _ in range(1 << 11))
-        with pytest.raises(SystemExit) as exc:
-            call_main(["verify", "Polynomial", dense], capsys)
-        assert exc.value.code == 2
-        assert "caps at" in capsys.readouterr().err
-
-    def test_a_mismatch_names_the_rows_that_disagree(
-        self, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """No language actually mismatches, so the reporting is driven here.
-
-        Which is the point of testing it: the path that says *what went
-        wrong* is the one a reader only ever reaches by mistake, so it
-        must not be the untested one.
-        """
-        monkeypatch.setattr(cli_round_trip, "evaluate", lambda *_a, **_k: "0000")
-        with pytest.raises(SystemExit) as exc:
-            call_main(["verify", "brainfuck", "0110"], capsys)
-        assert exc.value.code == 1
-        err = capsys.readouterr().err
-        assert "computed 0000, wanted 0110" in err
-        assert "2 row(s) disagree: 1, 2" in err
-
-    def test_evaluate_prints_a_mismatch_rather_than_failing(
-        self, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """`evaluate` reports and exits 0; the comparison is the caller's."""
-        monkeypatch.setattr(cli_round_trip, "evaluate", lambda *_a, **_k: "0000")
-        assert call_main(["evaluate", "brainfuck", "0110"], capsys).strip() == "0000"
-
-
 class TestTheAnswerCommandsFailurePaths:
     """What it does when the language or the table is wrong."""
 
@@ -911,7 +770,7 @@ class TestEvaluateNeedsNoSeed:
         self, language: str
     ) -> None:
         """The four that draw, less the slowest, four runs each."""
-        answers = {esolangs.evaluate(language, "0110", timeout=30) for _ in range(4)}
+        answers = {evaluate_generated(language, "0110", timeout=30) for _ in range(4)}
         assert answers == {"0110"}
 
     def test_run_still_takes_one_because_it_takes_any_program(self) -> None:

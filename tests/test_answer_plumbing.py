@@ -15,6 +15,7 @@ import pytest
 import esolangs
 from esolangs import cli
 from esolangs.cli import HELP
+from tests.generator_support import evaluate_generated, verify_generated
 
 ROOT = pathlib.Path(__file__).parents[1]
 
@@ -472,11 +473,11 @@ class TestTheVerifierIsShipped:
 
     def test_evaluate_returns_the_table_the_program_computes(self) -> None:
         """So a mismatch is locatable rather than summarized to False."""
-        assert esolangs.evaluate("brainfuck", "0110") == "0110"
+        assert evaluate_generated("brainfuck", "0110") == "0110"
 
     def test_verify_is_the_comparison(self) -> None:
         """The verdict, for callers who only want the verdict."""
-        assert esolangs.verify("brainfuck", "0110") is True
+        assert verify_generated("brainfuck", "0110") is True
 
     @pytest.mark.parametrize(
         "name", ["Fargo", "Clockwise", "Grapheme", "Taglate", "Minifuck", "RAM0"]
@@ -485,18 +486,18 @@ class TestTheVerifierIsShipped:
         self, name: str
     ) -> None:
         """The four odd input shapes and two template languages."""
-        assert esolangs.verify(name, "0110")
+        assert verify_generated(name, "0110")
 
     def test_it_reads_the_termination_polarity_as_data(self) -> None:
         """Rather than assuming halting is the zero."""
         facts = esolangs.describe("123")
         assert facts["answer_encoding"] == ("halts", "diverges")
-        assert esolangs.verify("123", "0110", timeout=5)
+        assert verify_generated("123", "0110", timeout=5)
 
     def test_a_malformed_table_is_refused_before_anything_runs(self) -> None:
         """Named as a table, not as whichever generator saw it first."""
         with pytest.raises(esolangs.TruthTableError):
-            esolangs.evaluate("brainfuck", "011")
+            evaluate_generated("brainfuck", "011")
 
     @pytest.mark.slow
     def test_every_language_verifies(self) -> None:
@@ -505,7 +506,7 @@ class TestTheVerifierIsShipped:
             n
             for n in esolangs.list_languages()
             if esolangs.describe(n)["boolean_generator"]
-            and not esolangs.verify(n, "0110")
+            and not verify_generated(n, "0110")
         ]
         assert not failed
 
@@ -887,7 +888,7 @@ class TestAPaintersMarkMustBeInAGrid:
 
     def test_a_real_grid_still_reads(self) -> None:
         """The check is worth nothing if it costs the actual answers."""
-        assert esolangs.evaluate("A Painter Ant", "0110") == "0110"
+        assert evaluate_generated("A Painter Ant", "0110") == "0110"
 
 
 class TestTheDebuggerMirrorsSnapshot:
@@ -939,7 +940,7 @@ class TestAWidthAwareGeneratorCanStillOverrun:
             source = esolangs.generate(name, "10010110", 1)
             assert max(map(len, source.splitlines())) == floor
             assert self._overruns(name, "10010110") == (count, margin)
-            assert esolangs.evaluate(name, "10010110", width=1) == "10010110"
+            assert evaluate_generated(name, "10010110", width=1) == "10010110"
 
     def test_the_pair_is_still_width_aware(self) -> None:
         """The two this class measures must stay in the group it measures.
@@ -1119,7 +1120,7 @@ class TestEvaluateTakesAWidth:
             name
             for name in esolangs.list_languages()
             if esolangs.describe(name)["boolean_generator"]
-            and esolangs.evaluate(name, "0110", timeout=30, width=40) != "0110"
+            and evaluate_generated(name, "0110", timeout=30, width=40) != "0110"
         ]
         assert not wrong
 
@@ -1130,7 +1131,7 @@ class TestEvaluateTakesAWidth:
     def test_it_works_for_each_width_effect(self, name: str, effect: str) -> None:
         """Width effects remain explicit for text and raster generators."""
         assert esolangs.describe(name)["width_effect"] == effect
-        assert esolangs.evaluate(name, "0110", timeout=30, width=25) == "0110"
+        assert evaluate_generated(name, "0110", timeout=30, width=25) == "0110"
 
     def test_a_template_language_gets_the_width_too(self) -> None:
         """``evaluate`` applies the width once, and the rows still answer.
@@ -1141,7 +1142,7 @@ class TestEvaluateTakesAWidth:
         must not be applied twice.
         """
         assert esolangs.describe("Minifuck")["parameterized"] is True
-        assert esolangs.evaluate("Minifuck", "0110", timeout=30, width=40) == "0110"
+        assert evaluate_generated("Minifuck", "0110", timeout=30, width=40) == "0110"
 
     def test_the_width_actually_reaches_the_program(self) -> None:
         """Otherwise this would pass with the argument thrown away."""
@@ -1150,13 +1151,13 @@ class TestEvaluateTakesAWidth:
         assert "\n" not in wide  # the unwrapped default is one line
         assert "\n" in narrow
         assert max(len(line) for line in narrow.splitlines()) <= 30
-        assert esolangs.evaluate("brainfuck", "10010110", width=30) == "10010110"
+        assert evaluate_generated("brainfuck", "10010110", width=30) == "10010110"
 
     def test_verify_takes_one_as_well(self) -> None:
         """It is ``evaluate`` with the comparison done, so it must pass it on."""
-        assert esolangs.verify("brainfuck", "10010110", width=30)
+        assert verify_generated("brainfuck", "10010110", width=30)
 
     def test_no_width_is_unchanged(self) -> None:
         """The default has to stay exactly what it was."""
-        assert esolangs.evaluate("brainfuck", "0110") == "0110"
-        assert esolangs.verify("brainfuck", "0110")
+        assert evaluate_generated("brainfuck", "0110") == "0110"
+        assert verify_generated("brainfuck", "0110")

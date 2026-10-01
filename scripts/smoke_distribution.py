@@ -87,6 +87,15 @@ def smoke(*, math_extra: bool) -> None:
                 )
                 == "0110"[row]
             )
+        assert (
+            _cli(["evaluate", "--table", "0110", "brainfuck", str(source)]).strip()
+            == "0110"
+        )
+        source.write_text(",>,<.", encoding="utf-8")
+        assert (
+            _cli(["evaluate", "--inputs", "2", "brainfuck", str(source)]).strip()
+            == "0011"
+        )
     for language in ("Line", "Piet"):
         raster = esolangs.generate(language, "0110")
         assert isinstance(raster, esolangs.Raster)
@@ -98,7 +107,12 @@ def smoke(*, math_extra: bool) -> None:
             )
             assert esolangs.read_answer(language, output) == "0110"[row]
     if hasattr(signal, "SIGALRM"):
-        assert esolangs.verify("brainfuck", "0110", timeout=1)
+        assert (
+            esolangs.evaluate(
+                "brainfuck", esolangs.generate("brainfuck", "0110"), timeout=1, inputs=2
+            )
+            == "0110"
+        )
         try:
             esolangs.run("brainfuck", "+[]", timeout=0.02)
         except esolangs.ExecutionTimeoutError:
@@ -110,20 +124,43 @@ def smoke(*, math_extra: bool) -> None:
     with ThreadPoolExecutor(max_workers=1) as pool:
         pool.submit(_refuses_timeout).result(timeout=5)
     with ThreadPoolExecutor(max_workers=1) as pool:
-        assert pool.submit(esolangs.verify, "Suffolk", "0110", isolated=True).result(
-            timeout=30
+        assert (
+            pool.submit(
+                esolangs.evaluate,
+                "Suffolk",
+                esolangs.generate("Suffolk", "0110"),
+                inputs=2,
+                isolated=True,
+            ).result(timeout=30)
+            == "0110"
         )
-    assert esolangs.verify("123", "01", isolated=True)
+    assert (
+        esolangs.evaluate(
+            "123", esolangs.generate("123", "01"), inputs=1, isolated=True
+        )
+        == "01"
+    )
     try:
         esolangs.run_isolated("brainfuck", "+[]", timeout=0.5)
     except esolangs.ExecutionTimeoutError:
         pass
     else:
         raise AssertionError("isolated timeout did not stop a loop")
-    assert esolangs.verify("123", "01", timeout=None)
+    assert (
+        esolangs.evaluate("123", esolangs.generate("123", "01"), timeout=None, inputs=1)
+        == "01"
+    )
     if math_extra:
         assert importlib.util.find_spec("sympy") is not None
-        assert esolangs.verify("Polynomial", "01", timeout=None)
+        assert (
+            esolangs.evaluate(
+                "Polynomial",
+                esolangs.generate("Polynomial", "01"),
+                timeout=None,
+                inputs=1,
+            )
+            == "01"
+        )
     else:
         assert importlib.util.find_spec("sympy") is None
         try:

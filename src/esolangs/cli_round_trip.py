@@ -1,4 +1,4 @@
-"""``esolangs answer``, ``evaluate`` and ``verify``: generate, run every row, judge."""
+"""Generate one answer, or evaluate a supplied program on every row."""
 
 from __future__ import annotations
 
@@ -12,16 +12,18 @@ from esolangs import (
     read_answer,
     run,
 )
+from esolangs._answers import _validate_shape_for_evaluate
 from esolangs.cli_args import (
     _check_count,
     _fail,
     _pop_options,
-    _pop_width,
     _split_positional,
+    _table_of,
     _timeout_of,
 )
-from esolangs.cli_hints import _diverging_answer, _exit_code, _looks_like_a_table
-from esolangs.exceptions import EsolangError, GeneratorCapError
+from esolangs.cli_hints import _diverging_answer, _exit_code
+from esolangs.cli_io import _read_program
+from esolangs.exceptions import EsolangError
 
 
 def _answer(rest: list[str]) -> None:
@@ -58,70 +60,44 @@ def _answer(rest: list[str]) -> None:
     except EsolangError as exc:
         # No ``TemplateError`` clause: this command generates the template
         # and fills it in the same breath, so it never hands an unfilled one
-        # on -- the same reason ``evaluate`` has none.
+        # on.
         _fail(str(exc), _exit_code(exc))
 
 
 def _evaluate(rest: list[str]) -> None:
-    """Print the table a generated program actually computes."""
-    _run_round_trip(rest, "evaluate")
-
-
-def _verify(rest: list[str]) -> None:
-    """Report whether a generated program computes the table asked for."""
-    _run_round_trip(rest, "verify")
-
-
-def _run_round_trip(rest: list[str], command: str) -> None:
-    """Shared body of ``verify`` and ``evaluate``.
-
-    One function because they differ only in what they print: the work --
-    generate, walk every row, encode, run, read the answer -- is the same,
-    and is the thing a CLI-only user had to write a shell loop for.
-    """
-    rest, options = _pop_options(rest, {"--timeout"})
+    """Print a supplied program's table, optionally checking the expected one."""
+    rest, options = _pop_options(rest, {"--timeout", "--inputs", "--table"})
     timeout = _timeout_of(options)
-    before = list(rest)
-    rest, width, bare = _pop_width(rest)
-    rest = _split_positional(rest, set(), {"--timeout", "--width"})
-    # The same trap ``generate`` carries: ``--width`` takes an *optional* N,
-    # so a truth table typed straight after it is eaten as the width and the
-    # complaint lands on a missing table.
-    eaten = ""
-    if width is not None and not bare:
-        for i, arg in enumerate(before[:-1]):
-            value = before[i + 1]
-            if arg == "--width" and _looks_like_a_table(value):
-                eaten = (
-                    f"\n\nnote: --width consumed {value!r}, which looks like a "
-                    f"truth table; put the table after the language"
-                )
-    _check_count(command, rest, 2, bare_width=bare, eaten=eaten)
-    language, table = rest[0], rest[1]
+    rest = _split_positional(rest, set(), {"--timeout", "--inputs", "--table"})
+    _check_count("evaluate", rest, 2)
+    table = _table_of(options)
+    if "--inputs" in options and table is not None:
+        _fail("--inputs and --table are mutually exclusive")
+    if table is not None:
+        inputs = _validate_shape_for_evaluate(table)
+    elif "--inputs" in options:
+        try:
+            inputs = int(options["--inputs"])
+        except ValueError:
+            _fail("--inputs must be an integer")
+    else:
+        _fail("evaluate requires --inputs N or --table TABLE")
+    language, path = rest
+    program = _read_program(path, timeout)
     try:
-        computed = evaluate(language, table, timeout, width)
-    except GeneratorCapError as exc:
-        # Nothing ran, so this is the usage class: the generator refused the
-        # table rather than building a program that got the wrong answer.
-        _fail(str(exc))
+        if timeout is None:
+            computed = evaluate(language, program, inputs=inputs)
+        else:
+            computed = evaluate(language, program, timeout, inputs=inputs)
     except EsolangError as exc:
-        # No ``TemplateError`` clause: this command never hands an unfilled
-        # template on, because ``evaluate`` reads ``parameterized`` and
-        # fills the slots itself.
         _fail(str(exc), _exit_code(exc))
-    if command == "evaluate":
-        print(computed)
-        return
-    if computed == table:
-        print("ok")
-        return
-    # The computed table beside the wanted one, because which rows disagree
-    # is the whole content of a failure here.
-    differing = [
-        i for i, (a, b) in enumerate(zip(computed, table, strict=True)) if a != b
-    ]
-    _fail(
-        f"computed {computed}, wanted {table}\n"
-        f"{len(differing)} row(s) disagree: {', '.join(map(str, differing))}",
-        1,
-    )
+    if table is not None and computed != table:
+        differing = [
+            i for i, (a, b) in enumerate(zip(computed, table, strict=True)) if a != b
+        ]
+        _fail(
+            f"computed {computed}, wanted {table}\n"
+            f"{len(differing)} row(s) disagree: {', '.join(map(str, differing))}",
+            1,
+        )
+    print(computed)

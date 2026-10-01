@@ -3,19 +3,19 @@
 Generate and run programs through one API. It handles each language’s input
 and output conventions using [`describe`](#describe) metadata.
 
-## Generate and verify
+## Evaluate a program
 
-`evaluate` executes every input row and returns the observed truth table;
-`verify` compares it with the requested table.
+`evaluate` executes every input row and returns the observed truth table.
+Pass the program and input count; compare the result with an expected table.
 
 ```python
 import esolangs
 
-esolangs.evaluate("A Painter Ant", "0110")  # -> '0110'
-esolangs.verify("Fargo", "10010110")  # -> True
+program = esolangs.generate("A Painter Ant", "0110")
+esolangs.evaluate("A Painter Ant", program, inputs=2)  # -> '0110'
 ```
 
-Both handle input formats, templates, and termination answers.
+Evaluation handles input formats, templates, and termination answers.
 
 ## Run XOR
 
@@ -30,7 +30,7 @@ program = esolangs.generate("brainfuck", table)
 stdin = esolangs.encode_inputs("brainfuck", [0, 1])
 output = esolangs.run("brainfuck", program, stdin)
 assert esolangs.read_answer("brainfuck", output) == "1"
-assert esolangs.verify("brainfuck", table)
+assert esolangs.evaluate("brainfuck", program, inputs=2) == table
 ```
 
 Some languages embed inputs in their source instead:
@@ -48,7 +48,7 @@ Raster languages return an image source:
 raster = esolangs.generate("Piet", table)
 assert isinstance(raster, esolangs.Raster)
 raster.to_png()
-assert esolangs.verify("Piet", table)
+assert esolangs.evaluate("Piet", raster, inputs=2) == table
 ```
 
 To step through a text program and inspect its state:
@@ -91,7 +91,7 @@ measured row to answer correctly.
 - `esolangs.check_stdin` -- refuse `stdin` that cannot be what `language` wants to read
 - `esolangs.describe` -- return a structured description of `language`
 - `esolangs.encode_inputs` -- return the stdin that feeds `bits` to a `language` program
-- `esolangs.evaluate` -- return the truth table a generated `language` program *actually* computes
+- `esolangs.evaluate` -- return the table a supplied program computes over `inputs` bits
 - `esolangs.generate` -- return a program in `language` computing `truth_table`
 - `esolangs.instantiate` -- fill a parameterized generator's template with `bits`
 - `esolangs.list_languages` -- return the supported language names, sorted
@@ -102,7 +102,6 @@ measured row to answer correctly.
 - `esolangs.run_bounded` -- execute a text program cooperatively, returning output only on halt
 - `esolangs.run_isolated` -- return output from a subprocess; the deadline includes loading and startup
 - `esolangs.spec` -- return the interpreter's own description of `language`
-- `esolangs.verify` -- whether a generated `language` program really computes `truth_table`
 
 <!-- PUBLIC-API:END -->
 
@@ -152,7 +151,7 @@ refused. `esolangs list --details` marks them `tmpl`.
 
 Most languages print the answer; six dump their final state, and four answer
 by termination: halt for 0, loop forever for 1. `read_answer` handles printed
-and state-dump answers. Use `evaluate` or `verify` for termination answers;
+and state-dump answers. Use `evaluate` for termination answers;
 they require a proved halt or cycle. A timeout remains undecided.
 
 Their `answer_encoding` is `("halts", "diverges")`: index 0 means answer 0,
@@ -170,7 +169,7 @@ including the 15 languages that ignore width because newlines are semantic.
 `run_isolated(language, program, stdin, timeout=30)` bounds subprocess startup,
 loading and execution on Windows and worker threads. Timeout kills and reaps
 the child; errors retain their class and `partial_output`.
-`evaluate(..., isolated=True)` and `verify(..., isolated=True)` apply a finite
+`evaluate(..., isolated=True)` applies a finite
 deadline per row; a timeout remains undecided, including termination answers.
 
 `run_bounded(language, program, stdin, max_steps=100_000, timeout=1)`

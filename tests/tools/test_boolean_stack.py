@@ -12,6 +12,7 @@ import esolangs
 from esolangs import tools as boolean
 from esolangs.tools import stack
 from esolangs.tools.helpers import permute_truth_table
+from tests.generator_support import evaluate_generated, verify_generated
 from tests.tools.boolean_runners import (
     five_input_sample,
     run_bfstack,
@@ -337,7 +338,7 @@ class TestForth:
         for n in (4, 5, 6):
             for _ in range(8):
                 table = format(rng.getrandbits(2**n), f"0{2**n}b")
-                assert esolangs.verify("Forþ", table), table
+                assert verify_generated("Forþ", table), table
 
     def test_const_large(self) -> None:
         """Constants above 225 need multiple base-15 digits."""
@@ -631,12 +632,12 @@ class TestGraphemeTable:
         collide, but the arities that broke stay pinned.
         """
         table = self._one_minterm(n)
-        assert esolangs.evaluate("Grapheme", table, timeout=60) == table
+        assert evaluate_generated("Grapheme", table, timeout=60) == table
 
     def test_parity_at_six_inputs_computes(self) -> None:
         """Parity is the table with nothing to fold, so every input is live."""
         table = "".join(str(bin(row).count("1") & 1) for row in range(64))
-        assert esolangs.evaluate("Grapheme", table, timeout=60) == table
+        assert evaluate_generated("Grapheme", table, timeout=60) == table
 
     def test_an_off_by_one_shift_returns_a_wrong_answer(
         self, monkeypatch: pytest.MonkeyPatch
@@ -650,4 +651,4 @@ class TestGraphemeTable:
         packed = stack._grapheme_table  # noqa: SLF001
         monkeypatch.setattr(stack, "_grapheme_table", lambda t: 2 * packed(t))
         table = self._one_minterm(6)
-        assert esolangs.evaluate("Grapheme", table, timeout=60) != table
+        assert evaluate_generated("Grapheme", table, timeout=60) != table
