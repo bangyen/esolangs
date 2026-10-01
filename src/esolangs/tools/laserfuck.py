@@ -828,3 +828,38 @@ def _laserfuck_raise_funnel(program: str) -> str:
     entry = len(shifted[0]) - len(shifted[0].lstrip())
     route = " " * entry + "/" + " " * (2 - entry) + "/"
     return "\n".join([" }}v", "|o^", " _", route, *shifted])
+
+
+def balance_laserfuck(table: str, default: str) -> str:
+    """Compare reader fits, tree placements and startup-funnel fits."""
+    n = _validate_truth_table(table)
+    orders = input_orders(table)
+    regimes = [(permute_truth_table(table, perm), perm) for perm in orders]
+    margin = laserfuck_layout.MARGIN
+    events = {1, 4}
+    for ordered, perm in regimes:
+        tree = _laserfuck_tree(ordered, n)
+        span = max(map(len, tree.upright))
+        for _, columns, _, _, exit_column in _laserfuck_reader_candidates(n, perm):
+            events.update((margin + columns + 2, margin + exit_column + span + 1))
+    boundaries = sorted(events)
+    widths = set(boundaries)
+    for index, start in enumerate(boundaries):
+        stop = boundaries[index + 1] if index + 1 < len(boundaries) else None
+        forms = [_laserfuck_build(ordered, perm, start) for ordered, perm in regimes]
+        if len(table) <= 8:
+            forms.append(_laserfuck_build(table, orders[0], start, vertical_tree=True))
+        # Reader and tree geometry is fixed within this interval. Only the
+        # source's own fit can switch its startup funnel or narrow fallback.
+        spans = {grid_width(form) for form in forms}
+        spans.update(grid_width(_laserfuck_raise_funnel(form)) for form in forms)
+        widths.update(
+            span for span in spans if start < span and (stop is None or span < stop)
+        )
+    from esolangs.tools.wrap import balance_score
+
+    return min(
+        default,
+        *(laserfuck(table, width) for width in sorted(widths)),
+        key=balance_score,
+    )

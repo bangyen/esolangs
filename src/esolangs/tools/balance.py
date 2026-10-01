@@ -27,6 +27,7 @@ from esolangs.tools.fractran import _PARITY_BINARY, _PARITY_TWO, _PLAIN_MAX, _pl
 from esolangs.tools.helpers import TEMPLATE_CHAR, _validate_truth_table, mark_runs
 from esolangs.tools.inject import inject
 from esolangs.tools.intercal import balance_intercal
+from esolangs.tools.laserfuck import balance_laserfuck
 from esolangs.tools.minifuck import minifuck
 from esolangs.tools.minifuck_sim import PAIR
 from esolangs.tools.packlang import balance_packlang
@@ -454,6 +455,7 @@ BALANCERS: dict[str, Callable[[str, str], str]] = {
     "fractran": _fractran,
     "inject": _inject,
     "intercal": balance_intercal,
+    "laserfuck": balance_laserfuck,
     "minifuck": _minifuck,
     "minsky_swap": _minsky_swap,
     "modulous": _modulous,
