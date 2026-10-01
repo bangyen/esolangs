@@ -31,8 +31,8 @@ nothing; the shorter of the two is kept.
 ``j`` is also how a repeated subtree is shared (:class:`_Stream`): the
 accumulator names a syllable, so a later copy climbs to the first copy's
 syllable with ``i``, ``æ`` and ``ə`` and jumps into it, where that is
-shorter.  Its leaves halt, so nothing returns.  The plain build stays a
-candidate.
+shorter. Its leaves halt, so nothing returns. Production uses the shared
+build.
 """
 
 import math

@@ -449,9 +449,9 @@ def collatz_multiverse(truth_table: str, width: int | None = None) -> str:
     which halves the three-input total, over the essential inputs only (an
     ignored input is read and never added). The last two or the first and
     last inputs select; width requests also try the first two.  Only which input a
-    level tests moves; the reads stay in name order.  Each is also built
-    for the complement, printed as ``49 - bit``, and with the last selector
-    added as ``2 - bit``: arithmetic swaps those arms, not the fill.
+    level tests moves; the reads stay in name order. Both code numberings
+    are tried: the empty chunk stays at code zero or moves to the top,
+    where its decoder pads drop.
     """
     n = _validate_truth_table(truth_table)
     if all(c == truth_table[0] for c in truth_table):
