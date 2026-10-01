@@ -4,6 +4,7 @@ from collections.abc import Callable
 
 from esolangs.tools.arrowqueue import arrowqueue
 from esolangs.tools.b_tapemark import b_tapemark
+from esolangs.tools.back import back
 from esolangs.tools.befunge import balance_befunge
 from esolangs.tools.brainif import _brainif_tree, brainif
 from esolangs.tools.clockwise import clockwise
@@ -23,6 +24,7 @@ from esolangs.tools.streetcode import (
     streetcode,
 )
 from esolangs.tools.super_snusp import balance_super_snusp
+from esolangs.tools.taglate import balance_taglate
 from esolangs.tools.thisthat import thisthat
 from esolangs.tools.thue import balance_thue
 from esolangs.tools.vandevelo import vandevelo
@@ -53,6 +55,12 @@ def _tapemark(table: str, default: str) -> str:
         b_tapemark(table, 1),
         key=balance_score,
     )
+
+
+def _back(table: str, default: str) -> str:
+    """Compare the reflected tree, descending tree and parity column."""
+    descending = back(table, max(1, _width(default) - 1))
+    return min(default, descending, back(table, 1), key=balance_score)
 
 
 def _brainif(table: str, default: str) -> str:
@@ -140,6 +148,7 @@ def _super_snusp(_table: str, default: str) -> str:
 
 BALANCERS: dict[str, Callable[[str, str], str]] = {
     "arrowqueue": _arrowqueue,
+    "back": _back,
     "b_tapemark": _tapemark,
     "befunge": balance_befunge,
     "brainif": _brainif,
@@ -152,6 +161,7 @@ BALANCERS: dict[str, Callable[[str, str], str]] = {
     "inject": _inject,
     "streetcode": _streetcode,
     "super_snusp": _super_snusp,
+    "taglate": balance_taglate,
     "thisthat": _thisthat,
     "thue": balance_thue,
     "vandevelo": _vandevelo,

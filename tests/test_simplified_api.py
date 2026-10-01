@@ -66,3 +66,24 @@ def test_isolated_seed_is_forwarded(monkeypatch):
     monkeypatch.setattr(esolangs, "_run_isolated", execute)
     assert esolangs.run("brainfuck", "+.", isolated=True, seed=7) == "result"
     assert seen == [("brainfuck", "+.", "", 30.0, 7)]
+
+
+def test_runnable_guard_refuses_non_source_values():
+    from esolangs import _check_runnable
+
+    with pytest.raises(esolangs.ProgramError, match="got int"):
+        _check_runnable("brainfuck", 7)
+
+
+def test_answer_fallback_reads_the_final_bit(monkeypatch):
+    from esolangs import _answers
+
+    monkeypatch.setattr(_answers, "_example_for", lambda _language: None)
+    assert esolangs.read_answer("brainfuck", "answer: 1\n") == "1"
+
+
+def test_isolated_worker_requires_a_deadline():
+    from esolangs import _isolated
+
+    with pytest.raises(esolangs.ArgumentError, match="finite timeout"):
+        _isolated.run_isolated("brainfuck", "+.", timeout=None)
