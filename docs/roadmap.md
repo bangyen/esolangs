@@ -218,6 +218,33 @@ proof and remove the completed item.
   `3.366148`. Next: establish the limit or sharpen either side, and derive
   a nontrivial bound when input length is proportional to source length.
 
+- **Wider shared-residual constructions.** AddSubJump now chooses sharing
+  through five inputs: n=3 totals 99,032 -> 95,678 characters; 200 seeded
+  n=5 tables 252,406 -> 217,608 (13.79%), with no growth and every row
+  executed. Wider builds keep the linear packed decoder. Next: share packed
+  blocks without absolute-address text becoming super-linear; run
+  `tests/proofs/test_addsubjump_sharing.py` and the linearity regression.
+
+- **Execution and workspace bounds.** `scripts/screens/resources.py` executes
+  constant, parity and seeded dense tables through eight inputs. Sophie
+  advances monotonically through its source, using one accumulator and no
+  stack; BFStack's seven-bit leaves give at most `100*n + 8192` commands
+  and `2*max(n-7, 0) + 3` data-stack items. The benchmark's `--track-store`
+  measures exposed memory cells and stack items, excluding code, hidden
+  control stacks and integer bit widths. Next: count those omitted costs,
+  and extend construction bounds to another generator. Run
+  `python -m scripts.screens.resources --max-inputs 8`.
+
+- **Independent grammar certificates.** `scripts/perron_certificate.py`
+  checks exported DFA transitions and positive-vector inequalities using
+  integers only; the 11,673-state Brainfuck certificate passes at
+  `70347/10000`, and corrupted transitions, vectors and bounds are rejected.
+  This certifies the supplied matrix, not the soundness of its rewrite
+  grammar. Next: independently reconstruct forbidden-factor acceptance and
+  check each rewrite's semantic side conditions with divergence controls.
+  Export with `python -m tests.proofs._brainfuck_count --export notes/bf.json`,
+  then run `python scripts/perron_certificate.py notes/bf.json`.
+
 Controls are in `tests/proofs/test_research_tracks.py`. The linked proofs
 close ordered input-forgetting construction, generated-family loading bounds,
 and the weighted-description theorem.

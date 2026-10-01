@@ -5,6 +5,7 @@ from typing import Any
 from esolangs.tools.helpers import (
     _ASCII_ONE,
     _ASCII_ZERO,
+    _residual_ids,
     _validate_truth_table,
     best_input_order,
     constant_span_test,
@@ -23,6 +24,9 @@ def addsubjump(truth_table: str) -> str:
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.
 
+    Through five inputs, shared residuals compete with the existing build;
+    wider tables retain the linear packed construction.
+
     Inputs are read once into a binary row index.  The table is packed into
     ``n``-bit numeric cells; a self-modified operand selects the indexed cell
     and repeated subtraction extracts its bit.  There are ``Theta(T/n)``
@@ -30,8 +34,12 @@ def addsubjump(truth_table: str) -> str:
     generation time and rendered size are both ``O(T)``.
     """
     if len(truth_table) <= 16:
-        return best_input_order(truth_table, _addsubjump_ordered)
-    return _addsubjump_packed(truth_table)
+        return best_input_order(truth_table, _addsubjump_candidate)
+    packed = _addsubjump_packed(truth_table)
+    if len(truth_table) == 32:
+        shared = _addsubjump_ordered(truth_table, tuple(range(5)), shared=True)
+        return min((packed, shared), key=len)
+    return packed
 
 
 def _addsubjump_packed(truth_table: str) -> str:
@@ -192,7 +200,16 @@ def _addsubjump_packed(truth_table: str) -> str:
     return " ".join(map(str, memory))
 
 
-def _addsubjump_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
+def _addsubjump_candidate(truth_table: str, perm: tuple[int, ...]) -> str:
+    """Choose the shorter tree or shared-residual build for one input order."""
+    tree = _addsubjump_ordered(truth_table, perm)
+    shared = _addsubjump_ordered(truth_table, perm, shared=True)
+    return min((tree, shared), key=len)
+
+
+def _addsubjump_ordered(
+    truth_table: str, perm: tuple[int, ...], *, shared: bool = False
+) -> str:
     """Emit one input order's AddSubJump program; see :func:`addsubjump`.
 
     ``truth_table`` is already permuted, so every row index here is in the
@@ -260,7 +277,19 @@ def _addsubjump_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     # O(1) on the span, so the tree is O(2**n).
     constant = constant_span_test(truth_table)
 
-    def build(level: int, lo: int, hi: int) -> None:
+    # IDs retain depth, so each row visits a self-modified branch at most once.
+    levels, children, _constants = _residual_ids(truth_table, n)
+    root = levels[0][0]
+    seen: dict[int, str] = {}
+
+    def build(level: int, lo: int, hi: int, residual: int) -> None:
+        if shared:
+            if residual in seen:
+                emit(6, 6, seen[residual], _ADD)
+                return
+            label = f"R{residual}"
+            seen[residual] = label
+            targets[label] = len(instructions)
         if constant(lo, hi):
             # Every read already happened up front, so a folded leaf prints
             # and halts with nothing to drain.
@@ -271,7 +300,7 @@ def _addsubjump_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
             # A discarded input has no cell to test.  Its bit cannot change
             # the answer, so both halves are the same function -- descend
             # into the zero half, keeping the row span halving with level.
-            build(level + 1, lo, lo + half)
+            build(level + 1, lo, lo + half, children[residual][0])
             return
         base = len(instructions)
         bit = f"B{perm[level]}"
@@ -287,11 +316,11 @@ def _addsubjump_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
         emit(6, 6, ztarget, _ADD)  # zero trampoline
         emit(6, 6, otarget, _ADD)  # one trampoline
         targets[ztarget] = len(instructions)
-        build(level + 1, lo, lo + half)
+        build(level + 1, lo, lo + half, children[residual][0])
         targets[otarget] = len(instructions)
-        build(level + 1, lo + half, hi)
+        build(level + 1, lo + half, hi, children[residual][1])
 
-    build(0, 0, 2**n)
+    build(0, 0, 2**n, root)
 
     base_data = 4 * len(instructions)
     # Insertion-ordered name -> index.  A dict rather than a list because the

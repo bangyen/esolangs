@@ -279,13 +279,12 @@ def certificate():
 
 def check_certificate(rows, vector):
     """Check M v <= (70347/10000) v using integers only."""
-    numerator, denominator = BOUND
-    assert len(rows) == len(vector)
-    assert all(value > 0 for value in vector)
-    for row, value in zip(rows, vector, strict=True):
-        assert len(row) == len(ALPHABET)
-        assert all(-1 <= target < len(rows) for target in row)
-        assert denominator * sum(vector[j] for j in row if j >= 0) <= numerator * value
+    from scripts.perron_certificate import check_certificate as check
+
+    try:
+        check(rows, vector, BOUND, ALPHABET)
+    except ValueError as error:
+        raise AssertionError(str(error)) from error
 
 
 def accepts(rows, word):
@@ -299,5 +298,18 @@ def accepts(rows, word):
 
 
 if __name__ == "__main__":
+    import argparse
+    import json
+    from pathlib import Path
+
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--export", type=Path)
+    args = parser.parse_args()
     rows, vector = certificate()
+    if args.export:
+        args.export.write_text(
+            json.dumps(
+                {"alphabet": ALPHABET, "bound": BOUND, "rows": rows, "vector": vector}
+            )
+        )
     print(f"{len(rows)} DFA states; exact upper certificate {BOUND[0]}/{BOUND[1]}")
