@@ -17,8 +17,6 @@ Interpreters and Boolean generators for 75 esoteric languages: 73 text and 2 ras
 Start with the [CLI](#command-line) or [Python API](#python-api).
 The [usage guide](https://github.com/bangyen/esolangs/blob/main/docs/usage.md)
 covers inputs, templates, answers, and debugging.
-For development, see [architecture](https://github.com/bangyen/esolangs/blob/main/docs/architecture.md)
-and [contributing](https://github.com/bangyen/esolangs/blob/main/docs/CONTRIBUTING.md).
 [Limitations](https://github.com/bangyen/esolangs/blob/main/docs/limitations.md)
 records contracts; the [roadmap](https://github.com/bangyen/esolangs/blob/main/docs/roadmap.md)
 tracks open work.
@@ -40,21 +38,6 @@ printf '0\n1\n' | esolangs debug --steps 20 --watch-cell 0 brainfuck bf.txt
 The Polynomial interpreter needs the optional mathematics extra:
 `pip install 'esolangs[math]'`.  The other languages install without SymPy.
 
-To work on the repository instead, install its development environment and
-run the quick verification loop:
-
-```bash
-just install-dev
-source .venv/bin/activate        # or prefix each command with `uv run`
-just test-quick
-```
-
-Run `just test` before committing; the
-[contribution guide](https://github.com/bangyen/esolangs/blob/main/docs/CONTRIBUTING.md)
-has the full workflow. CI also installs the built wheel on Linux, macOS,
-and Windows, checking packaged examples, CLI I/O, Line/Piet PNG execution,
-and installation with and without the mathematics extra.
-
 ## Python API
 
 ```python
@@ -72,7 +55,7 @@ that bound and also works on Windows and worker threads.
 Run each program with its intended language: a Suffolk program may run as
 brainfuck but produce the wrong answer. Input formats also vary; use
 [`encode_inputs`](https://github.com/bangyen/esolangs/blob/main/docs/usage.md#feeding-a-program)
-build the stdin.
+to build stdin.
 
 ## Examples
 
@@ -83,15 +66,14 @@ build the stdin.
 ```
 
 Feeding it the two input bits, one per line, prints their XOR.
-`tests/test_readme_example.py` runs all four rows, so the block cannot
-drift.
 
 ## Stepping a program
 
 <!-- TUI-FRAME:START -->
 
-`--tui` steps it on screen instead.  This is a real frame -- Flowchart at
-step 14, redrawn by `tui.render` every time this file is generated:
+Generate a program with `esolangs generate Flowchart 0110 > flowchart.txt`, then run
+`esolangs debug --tui --stdin "$(printf '0\n1\n')" Flowchart flowchart.txt` in a terminal.
+Here is Flowchart at step 14:
 
 ```
 Flowchart  step 14  ip (1, 57, 0, -1)  running
@@ -106,17 +88,15 @@ views    deques={0: [0, 1], 1: [1]}  pointers=[_Pointer(row=1, col=57, d=(
 hjkl move | t break | space step | c continue | r run | b back | q quit
 ```
 
-The live screen reverse-videos the cell at that `ip`; colour does not survive
-the page.  [usage](https://github.com/bangyen/esolangs/blob/main/docs/usage.md#debugging) names every key.
+See [debugging](https://github.com/bangyen/esolangs/blob/main/docs/usage.md#debugging) for controls.
 
 <!-- TUI-FRAME:END -->
 
 <!-- EXAMPLES:START -->
 
-Ready-to-run programs are committed under [`examples/`](https://github.com/bangyen/esolangs/tree/main/src/esolangs/examples):
-`examples/` holds a truth-table program for each of the 72
-text languages with a boolean generator.  It regenerates via
-`python scripts/generate.py examples`.
+Ready-to-run programs for each of the 72
+text languages with a boolean generator live in
+[`examples/`](https://github.com/bangyen/esolangs/tree/main/src/esolangs/examples).
 
 <!-- EXAMPLES:END -->
 
@@ -247,41 +227,15 @@ tables.
 
 <!-- BOOLEAN-COUNT:END -->
 
-`esolangs list --details` marks which languages have one (`gen`), which
-return a template (`tmpl`), and which have a committed example (`ex`); add
-`--json` for structured output:
-
-```bash
-esolangs list --details --json | jq '.[] | select(.name == "Sophie")'
-```
-
-```json
-{
-  "name": "Sophie",
-  "boolean_generator": true,
-  "parameterized": false,
-  "has_example": true
-}
-```
-
-Regenerate the committed examples with `python scripts/generate.py examples`.
-
-Measure a generated program and check every input row:
-
-```bash
-just benchmark brainfuck 0110 --all-rows
-```
-
-The JSON reports rendered size, generation time, steps to halt, expected and
-actual answers, and execution status. It checks the artifact it measured;
-wrong or undecided rows exit unsuccessfully. Unsupported stepping is reported
-separately from a step cap or timeout. The row timeout defaults to 30 seconds;
-`--no-timeout` disables the signal guard for Windows or worker threads.
-`just sizes` checks the committed size and step baseline and requires each
-measured row to answer correctly.
+`esolangs list --details` marks generators (`gen`), templates (`tmpl`),
+and committed examples (`ex`). See the
+[usage guide](https://github.com/bangyen/esolangs/blob/main/docs/usage.md)
+for input conventions and benchmarking.
 
 ## Contributing
 
-Read [the contribution guide](https://github.com/bangyen/esolangs/blob/main/docs/CONTRIBUTING.md),
-then run `just test`.
+See [contributing](https://github.com/bangyen/esolangs/blob/main/docs/CONTRIBUTING.md)
+for setup and verification, and
+[architecture](https://github.com/bangyen/esolangs/blob/main/docs/architecture.md)
+for the execution path.
 The project is GPL v3; see [LICENSE](https://github.com/bangyen/esolangs/blob/main/LICENSE).

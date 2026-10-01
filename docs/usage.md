@@ -66,9 +66,23 @@ for _ in range(20):
 print(vm.ip, vm.memory, vm.output)
 ```
 
-The [debugging](#debugging) section covers the interactive interface. Use
-`just benchmark brainfuck 0110 --row 1` when changing a generator; its JSON
-reports source units, generation time, and deterministic command count.
+The [debugging](#debugging) section covers the interactive interface.
+
+## Benchmarking
+
+Measure a generated program and check every input row:
+
+```bash
+just benchmark brainfuck 0110 --all-rows
+```
+
+The JSON reports rendered size, generation time, steps to halt, expected and
+actual answers, and execution status. It checks the artifact it measured;
+wrong or undecided rows exit unsuccessfully. Unsupported stepping is reported
+separately from a step cap or timeout. The row timeout defaults to 30 seconds;
+`--no-timeout` disables the signal guard for Windows or worker threads.
+`just sizes` checks the committed size and step baseline and requires each
+measured row to answer correctly.
 
 ## Exported callables
 
