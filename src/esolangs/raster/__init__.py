@@ -104,6 +104,24 @@ class Raster:
             object.__setattr__(self, "_rows", _freeze_rows(materialize()))
         return cast("Rows", self._rows)
 
+    def upscaled(self, scale: int = 1) -> Raster:
+        """Replicate pixels into solid squares, preserving language ownership."""
+        from esolangs._validate import check_scale
+
+        check_scale(scale)
+        if scale == 1:
+            return self
+
+        def materialize() -> Rows:
+            rows = [
+                tuple(pixel for pixel in row for _ in range(scale)) for row in self.rows
+            ]
+            return tuple(row for row in rows for _ in range(scale))
+
+        return Raster(
+            _materialize=materialize, _payload=self._payload, language=self.language
+        )
+
     @classmethod
     def from_png(cls, data: bytes) -> Raster:
         """Decode PNG bytes into raster source.

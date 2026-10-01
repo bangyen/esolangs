@@ -69,30 +69,34 @@ def crop_to_content(mask: Mask, margin: int = 2) -> Mask:
     return mask.crop(top, left, bottom - top, right - left)
 
 
-# Wiki images are 1x, fixtures go to 3x, and every candidate scale is a
-# full pass over the mask.
-_MAX_SCALE = 16
-
-
 def detect_scale(mask: Mask) -> int:
-    """Find the integer factor a Line drawing was scaled up by.
+    """Return the largest uniform grid anchored to the ink's top-left."""
+    from math import gcd
 
-    A ``k``-times upscale is a pixel replication, so every ``k``x``k`` block
-    aligned to the ink's top-left is uniform; the largest such ``k`` is the
-    scale.  Exact, where the ink/skeleton ratio was ~5% off; the two agree on
-    both wiki images at 1x-5x.  No ink returns 1.
-    """
     bounds = mask.bounds()
     if bounds is None:
         return 1
-    # Anchor to the first ink pixel: crop_to_content's margin is arbitrary.
-    top, left, _, _ = bounds
-    rows = [row >> left for row in mask.rows[top:]]
-    best = 1
-    for k in range(2, _MAX_SCALE + 1):
-        if _blocks_uniform(rows, k):
-            best = k
-    return best
+    top, left, bottom, right = bounds
+    scale = gcd(bottom - top + 1, right - left + 1)
+    previous = mask.rows[top] >> left
+    for y in range(top, bottom + 1):
+        row = mask.rows[y] >> left
+        if row != previous:
+            scale = gcd(scale, y - top)
+        previous = row
+        x = 0
+        while row:
+            blank = (row & -row).bit_length() - 1
+            row >>= blank
+            x += blank
+            scale = gcd(scale, x)
+            ink = (row ^ (row + 1)).bit_length() - 1
+            x += ink
+            row >>= ink
+            scale = gcd(scale, x)
+            if scale == 1:
+                return 1
+    return scale
 
 
 def _blocks_uniform(rows: list[int], k: int) -> bool:
@@ -122,7 +126,7 @@ def _blocks_uniform(rows: list[int], k: int) -> bool:
     return True
 
 
-def normalize_scale(mask: Mask) -> Mask:
+def normalize_scale(mask: Mask, scale: int | None = None) -> Mask:
     """Downscale ``mask`` to 1px-wide strokes if it was rendered larger.
 
     One pixel per block of the :func:`detect_scale` grid, recovering the
@@ -131,14 +135,24 @@ def normalize_scale(mask: Mask) -> Mask:
     width, and dividing from the corner dropped a fractional column at the
     far edge (the addition example at 4x has crop width 1054).
     """
-    scale = detect_scale(mask)
+    if scale is None:
+        scale = detect_scale(mask)
+    else:
+        from esolangs._validate import check_scale
+
+        check_scale(scale)
+        bounds = mask.bounds()
+        if bounds is not None:
+            top, left, _, _ = bounds
+            if not _blocks_uniform([row >> left for row in mask.rows[top:]], scale):
+                raise ValueError("scale requires uniform Line pixel squares")
     if scale <= 1:
         return mask
     # One pixel per block, anchored to the first ink pixel (see
     # detect_scale); every block is uniform, so which pixel does not matter.
     bounds = mask.bounds()
     if bounds is None:
-        raise AssertionError("detect_scale found an inked mask without bounds")
+        return mask
     top, left, _, _ = bounds
     return mask.subsample(scale, top % scale, left % scale)
 
@@ -552,10 +566,10 @@ def coverage_gap(mask: Mask, cursor: Cursor, stroke: Stroke) -> int:
     return (redrawn ^ reference).sum()
 
 
-def extract_mask(mask: Mask) -> Stroke:
+def extract_mask(mask: Mask, *, scale: int | None = None) -> Stroke:
     """Extract a walked program from an in-memory greyscale-derived mask."""
     mask = crop_to_content(mask)
-    mask = normalize_scale(mask)
+    mask = normalize_scale(mask, scale)
     cursor = find_cursor(mask)
     stroke = extract_tree(mask, cursor)
     gap = coverage_gap(mask, cursor, stroke)

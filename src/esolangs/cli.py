@@ -59,6 +59,7 @@ from esolangs.cli_args import (
     _pop_flags,
     _pop_options,
     _pop_width,
+    _scale_of,
     _split_positional,
 )
 from esolangs.cli_args import (
@@ -194,14 +195,15 @@ def _list(rest: list[str]) -> None:
 
 def _generate(rest: list[str]) -> None:
     """Print a program computing a truth table."""
-    rest, options = _pop_options(rest, {"--bits"})
+    rest, options = _pop_options(rest, {"--bits", "--scale"})
     rest, flags = _pop_flags(rest, {"--balance"})
     balance = "--balance" in flags
+    scale = _scale_of(options)
     before = list(rest)
     rest, width, bare = _pop_width(rest)
     if balance and width is not None:
         _fail("--balance and --width are mutually exclusive")
-    rest = _split_positional(rest, set(), {"--bits", "--width", "--balance"})
+    rest = _split_positional(rest, set(), {"--bits", "--width", "--balance", "--scale"})
     # `--width` takes an *optional* N, so a truth table typed straight after
     # it is consumed as the width and the report lands on the table being
     # missing -- which is baffling when you did type one.
@@ -220,7 +222,7 @@ def _generate(rest: list[str]) -> None:
         # wraps the template (or hands the width to a *layout* language,
         # which lays it out), and ``instantiate`` wraps a program
         # filled from an unwrapped template; a wrapped one fills in place.
-        program = generate(rest[0], rest[1], width, balance=balance)
+        program = generate(rest[0], rest[1], width, balance=balance, scale=scale or 1)
         if "--bits" in options:
             bits = options["--bits"]
             if set(bits) - {"0", "1"} or not bits:

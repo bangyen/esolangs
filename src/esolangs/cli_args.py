@@ -332,3 +332,17 @@ def _seed_of(options: dict[str, str]) -> int | None:
     except ValueError:
         _fail(f"--seed must be a whole number, got {options['--seed']!r}")
         raise  # pragma: no cover - unreachable; _fail exits
+
+
+def _scale_of(options: dict[str, str]) -> int | None:
+    """Read a positive integer pixel scale."""
+    if "--scale" not in options:
+        return None
+    from esolangs._validate import check_scale
+    from esolangs.exceptions import ArgumentError
+
+    try:
+        return check_scale(int(options["--scale"]))
+    except (ValueError, ArgumentError):
+        _fail(f"--scale must be a positive integer, got {options['--scale']!r}")
+        raise  # pragma: no cover - _fail exits

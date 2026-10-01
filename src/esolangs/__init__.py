@@ -33,7 +33,7 @@ from esolangs._describe import (
 from esolangs._evaluate import _DEFAULT, _Default, evaluate
 from esolangs._isolated import run_isolated as _run_isolated
 from esolangs._language import Language
-from esolangs._validate import check_bits, check_timeout, check_width
+from esolangs._validate import check_bits, check_scale, check_timeout, check_width
 from esolangs.exceptions import (
     ArgumentError,
     EsolangError,
@@ -136,7 +136,12 @@ def __dir__() -> list[str]:
 
 
 def generate(
-    language: str, truth_table: str, width: int | None = None, *, balance: bool = False
+    language: str,
+    truth_table: str,
+    width: int | None = None,
+    *,
+    balance: bool = False,
+    scale: int = 1,
 ) -> str | Raster:
     """Return a program in ``language`` computing ``truth_table``.
 
@@ -155,7 +160,14 @@ def generate(
     ``balance`` minimizes the rendered width/height difference across supported
     layouts, breaking ties by source length (raster pixel area), then width.
     Token and routing constraints can prevent a square layout.
+    Raster ``scale`` replicates pixels after layout; 1 preserves native output.
     """
+    check_scale(scale)
+    if scale != 1:
+        if LANGUAGES[resolve(language)].raster_boolean is None:
+            raise ArgumentError("scale is only supported for raster generators")
+        source = generate(language, truth_table, width, balance=balance)
+        return cast(Raster, source).upscaled(scale)
     if balance and width is not None:
         raise ArgumentError("balance and width are mutually exclusive")
     if balance:
@@ -569,9 +581,11 @@ def run(
     *,
     isolated: bool = False,
     max_steps: int | None = None,
+    scale: int | None = None,
 ) -> str:
     """Execute ``program`` and return its output.
 
+    Raster scale is detected unless ``scale`` supplies an explicit factor.
     ``program`` is source or a :class:`~pathlib.Path`; a string shaped like a
     filename is refused.  A Path and its text are
     not quite the same argument: a file loses one trailing newline, a
@@ -601,6 +615,10 @@ def run(
     languages that draw.  An unloadable program raises
     :class:`~esolangs.exceptions.ProgramError`.
     """
+    if scale is not None:
+        check_scale(scale)
+        if LANGUAGES[resolve(language)].raster_boolean is None:
+            raise ArgumentError("scale is only supported for raster interpreters")
     if isinstance(timeout, _Default):
         timeout = 30.0 if isolated else None
     check_timeout(timeout)
@@ -609,7 +627,9 @@ def run(
             raise ArgumentError("isolated and max_steps are mutually exclusive")
         if timeout is None:
             raise ArgumentError("isolated execution requires a finite timeout")
-        return _run_isolated(language, program, stdin, timeout, seed=seed)
+        if scale is None:
+            return _run_isolated(language, program, stdin, timeout, seed=seed)
+        return _run_isolated(language, program, stdin, timeout, seed=seed, scale=scale)
     if max_steps is not None:
         if seed is not None:
             raise ArgumentError("seed is unsupported with max_steps")
@@ -641,6 +661,10 @@ def run(
     program = check_program(name, program, stdin)
     if isinstance(program, Raster):
         run_fn = importlib.import_module(f"esolangs.{LANGUAGES[name].id}").run
+        if scale is not None:
+            from functools import partial
+
+            run_fn = partial(run_fn, scale=scale)
         split = False
     else:
         module, split = RUNNERS[name]

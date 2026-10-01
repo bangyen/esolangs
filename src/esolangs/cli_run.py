@@ -11,6 +11,7 @@ from esolangs.cli_args import (
     _fail,
     _pop_flags,
     _pop_options,
+    _scale_of,
     _seed_of,
     _split_positional,
     _table_of,
@@ -52,7 +53,7 @@ def _judge(language: str, output: str, mode: object) -> str:
 
 def _run(rest: list[str]) -> None:
     """Run a program through its interpreter and write its output."""
-    rest, options = _pop_options(rest, {"--timeout", "--table", "--seed"})
+    rest, options = _pop_options(rest, {"--timeout", "--table", "--seed", "--scale"})
     # The value is checked here, before the positionals are counted.  It ran
     # after, so `run --timeout brainfuck prog.txt` -- a forgotten number --
     # swallowed the language as the timeout's value and then reported
@@ -60,8 +61,11 @@ def _run(rest: list[str]) -> None:
     # argument that was not the problem.
     timeout = _timeout_of(options)
     rest, flags = _pop_flags(rest, {"--judge"})
-    rest = _split_positional(rest, set(), {"--timeout", "--judge", "--table", "--seed"})
+    rest = _split_positional(
+        rest, set(), {"--timeout", "--judge", "--table", "--seed", "--scale"}
+    )
     seed = _seed_of(options)
+    scale = _scale_of(options)
     judge = "--judge" in flags
     # Refused like every value-taking option is.  `--judge --judge` was
     # accepted in silence while `--timeout 5 --timeout 9` was refused, and
@@ -134,7 +138,7 @@ def _run(rest: list[str]) -> None:
             warnings.catch_warnings(record=True) as caught,
         ):
             warnings.simplefilter("always")
-            output = run(language, program, stdin, timeout, seed)
+            output = run(language, program, stdin, timeout, seed, scale=scale)
         surplus = next(
             (str(e.message) for e in caught if "lines supplied" in str(e.message)),
             None,
