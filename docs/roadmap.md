@@ -5,6 +5,14 @@ and proved limits; completed work is recorded in its commit.
 
 ## Conditional follow-up
 
+- **Cyclic tag admission.** Its 94 complete backlinks clear the 60-link fame
+  gate despite sharing Bitwise Cyclic Tag's axis. Next: audit the specification
+  and I/O interface, derive a loop-less O(T) Boolean generator under the
+  existing embed conventions, and execute every table through three inputs
+  plus sampled larger tables before integration. If the specification
+  precludes a generator, document the obstruction and assess interpreter-only
+  admission; an unsuccessful construction attempt is not an impossibility.
+
 - **Linear Boolean generators.**  Make build time and emitted size O(T), where
   T is the truth-table length.  For each remaining generator, either add a
   loop-less O(T) construction and an executed scaling regression, or record a

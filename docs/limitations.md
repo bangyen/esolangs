@@ -204,8 +204,9 @@ Bitwise Cyclic Tag (181) also earned the cyclic-schedule axis. Deadfish (314)
 has no input vocabulary and is therefore interpreter-only: fame can admit a
 language, but cannot create a generator interface.
 
-Cyclic tag (94) duplicates the Bitwise Cyclic Tag axis. Underload (167) and
-INTERCAL (103) also clear the backlink gate.
+Cyclic tag (94) clears the backlink gate despite duplicating Bitwise Cyclic
+Tag's axis; [roadmap](roadmap.md) queues its specification and generator audit.
+Underload (167) and INTERCAL (103) also clear the backlink gate.
 Emmental (43) and Prelude (13) are implemented elsewhere and fail the backlink
 gate. Neither has established a qualifying Wikipedia count or intrinsic axis.
 
