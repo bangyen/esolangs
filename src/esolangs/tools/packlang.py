@@ -21,7 +21,16 @@ its bit.  Doubling drains one register into its partner two counts at a
 time, so the two alternate and no copy is ever needed.
 """
 
+import re
+from itertools import pairwise
+
 from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table
+from esolangs.tools.wrap import (
+    _PACKLANG_LEXEME,
+    _join_tokens,
+    _packlang,
+    balance_score,
+)
 
 __all__ = ["packlang"]
 
@@ -52,6 +61,59 @@ def packlang(truth_table: str, width: int | None = None) -> str:
     from esolangs.tools.wrap import wrap_program
 
     return wrap_program(program, "packlang", width)
+
+
+def _balance_form(program: str, minimum: int, maximum: int) -> str:
+    """Balance statement fits and the affine interval of reduced indentation."""
+    records = []
+    events = {minimum, maximum + 1}
+    for line in program.split("\n"):
+        tokens = re.findall(_PACKLANG_LEXEME, line)
+        indent = len(line) - len(line.lstrip())
+        longest = max(map(len, tokens), default=0)
+        records.append((line, tokens, indent, longest))
+        events.update((len(line), longest, indent + longest))
+        for start in range(len(tokens)):
+            span = -1
+            for token in tokens[start:]:
+                span += len(token) + 1
+                events.update((span, indent + span))
+    boundaries = sorted(point for point in events if minimum <= point <= maximum + 1)
+    candidates = []
+    for start, stop in pairwise(boundaries):
+        height = 0
+        moving_width: int | None = None
+        for line, tokens, indent, longest in records:
+            if len(line) <= start:
+                height += 1
+                continue
+            padding = min(indent, max(0, start - longest))
+            rows = _join_tokens(tokens, max(1, start - padding), " ").split("\n")
+            height += len(rows)
+            span = max(map(len, rows))
+            if longest <= start < longest + indent:
+                offset = span - longest
+                moving_width = (
+                    max(moving_width, offset) if moving_width is not None else offset
+                )
+        candidates.append(start)
+        # Height is fixed between fits. Only reduced indentation grows with
+        # width, so its crossing of height is the other possible minimum.
+        if moving_width is not None:
+            candidates.append(min(max(height - moving_width, start), stop - 1))
+    return min((_packlang(program, width) for width in candidates), key=balance_score)
+
+
+def balance_packlang(_table: str, default: str) -> str:
+    """Compare token-fit layouts with the two package-name spellings."""
+    short = default.removesuffix("} truthTable;\n") + "} t;\n"
+    maximum = max(map(len, default.split("\n"))) - 1
+    return min(
+        default,
+        _balance_form(default, 10, maximum),
+        _balance_form(short, 1, 9),
+        key=balance_score,
+    )
 
 
 def _painted(painted: str, n: int) -> str:

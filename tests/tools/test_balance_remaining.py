@@ -312,8 +312,10 @@ def _regime_tables():
         "FRACTRAN",
         "Jaune",
         "INTERCAL",
+        "Minifuck",
         "Minsky Swap",
         "Modulous",
+        "Packlang",
         "RAM0",
         "Streetcode",
         "Thue",
@@ -538,3 +540,62 @@ def test_modulous_literal_chunk_quotients(inputs):
             "Modulous", balanced, esolangs.encode_inputs("Modulous", bits)
         )
         assert esolangs.read_answer("Modulous", output) == table[row]
+
+
+@pytest.mark.parametrize("indent", [0, 4, 16, 64])
+def test_packlang_reduced_indent_crossing(indent):
+    from esolangs.tools.packlang import _balance_form
+
+    for table in ("0110", "0001", "10010110"):
+        default = esolangs.generate("Packlang", table)
+        program = "\n".join(
+            " " * indent + row.lstrip() if row else row for row in default.split("\n")
+        )
+        widest = max(map(len, program.split("\n")))
+        balanced = _balance_form(program, 1, widest)
+        layouts = [
+            wrap_program(program, "packlang", width) for width in range(1, widest + 1)
+        ]
+        assert balanced in layouts
+        assert balance_score(balanced) == min(map(balance_score, layouts))
+        assert (
+            esolangs.evaluate("Packlang", balanced, inputs=len(table).bit_length() - 1)
+            == table
+        )
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("inputs", range(6, 11))
+def test_packlang_larger_statement_fits(inputs):
+    rng = random.Random(1018 + inputs)
+    table = "".join(rng.choice("01") for _ in range(1 << inputs))
+    default = esolangs.generate("Packlang", table)
+    balanced = esolangs.generate("Packlang", table, balance=True)
+    widest = max(map(len, default.split("\n")))
+    layouts = [default] + [
+        esolangs.generate("Packlang", table, width) for width in range(1, widest + 1)
+    ]
+    assert balanced in layouts
+    assert balance_score(balanced) == min(map(balance_score, layouts))
+    for row in (0, 1, len(table) // 2, len(table) - 1):
+        bits = tuple(map(int, format(row, f"0{inputs}b")))
+        output = esolangs.run(
+            "Packlang", balanced, esolangs.encode_inputs("Packlang", bits)
+        )
+        assert esolangs.read_answer("Packlang", output) == table[row]
+
+
+@pytest.mark.slow
+def test_minifuck_larger_paired_token_fits():
+    inputs = 6
+    rng = random.Random(1019 + inputs)
+    table = "".join(rng.choice("01") for _ in range(1 << inputs))
+    default = esolangs.generate("Minifuck", table)
+    balanced = esolangs.generate("Minifuck", table, balance=True)
+    layouts = [default] + [
+        esolangs.generate("Minifuck", table, width)
+        for width in range(1, len(default) + 1)
+    ]
+    assert balanced in layouts
+    assert balance_score(balanced) == min(map(balance_score, layouts))
+    assert esolangs.evaluate("Minifuck", balanced, inputs=inputs) == table

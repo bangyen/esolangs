@@ -19,9 +19,12 @@ from esolangs.tools.fish import balance_fish
 from esolangs.tools.flowchart import _flowchart_cells, _flowchart_render, flowchart
 from esolangs.tools.forbin import forbin
 from esolangs.tools.fractran import _PARITY_BINARY, _PARITY_TWO, _PLAIN_MAX, _plain
-from esolangs.tools.helpers import _validate_truth_table
+from esolangs.tools.helpers import TEMPLATE_CHAR, _validate_truth_table, mark_runs
 from esolangs.tools.inject import inject
 from esolangs.tools.intercal import balance_intercal
+from esolangs.tools.minifuck import minifuck
+from esolangs.tools.minifuck_sim import PAIR
+from esolangs.tools.packlang import balance_packlang
 from esolangs.tools.parameterized import bitdeque, minsky_swap
 from esolangs.tools.ram0 import ram0
 from esolangs.tools.register import balance_collatz_multiverse
@@ -43,6 +46,8 @@ from esolangs.tools.vandevelo import vandevelo
 from esolangs.tools.wrap import (
     _BRACKET_LITERAL,
     _FALSE_COMMAND,
+    _MINIFUCK_COMMAND,
+    _RUN,
     _bitdeque_tokens,
     _join_tokens,
     balance_score,
@@ -193,6 +198,33 @@ def _minsky_swap(table: str, default: str) -> str:
     )
 
 
+def _minifuck(table: str, default: str) -> str:
+    """Balance ordinary and paired skip tokens, including the parity column."""
+    n = _validate_truth_table(table)
+
+    def tokens(program: str) -> list[str]:
+        marked = mark_runs(program.replace("\n", ""), TEMPLATE_CHAR, (PAIR,) * n)
+        return re.findall(f"{_RUN}|{_MINIFUCK_COMMAND}", marked)
+
+    normal = tokens(default)
+    floor = max(map(len, normal))
+    width = balanced_token_width(normal, minimum=floor)
+    candidates = [default, minifuck(table, width), minifuck(table, 1)]
+    parity = all(
+        int(bit) == ((row.bit_count() ^ int(table[0])) & 1)
+        for row, bit in enumerate(table)
+    )
+    lower = 4 if parity else 1
+    if lower < floor:
+        # Below the ordinary token floor, paired tokens win throughout the
+        # regime exactly when their own floor is smaller; otherwise the
+        # generator retains the ordinary tokens throughout it.
+        narrow = tokens(minifuck(table, lower))
+        width = balanced_token_width(narrow, minimum=lower, maximum=floor - 1)
+        candidates.append(minifuck(table, width))
+    return min(candidates, key=balance_score)
+
+
 def _modulous(table: str, default: str) -> str:
     """Balance bracket atoms and literal chunks at quotient and row fits."""
     atoms = re.findall(_BRACKET_LITERAL, default)
@@ -336,8 +368,10 @@ BALANCERS: dict[str, Callable[[str, str], str]] = {
     "fractran": _fractran,
     "inject": _inject,
     "intercal": balance_intercal,
+    "minifuck": _minifuck,
     "minsky_swap": _minsky_swap,
     "modulous": _modulous,
+    "packlang": balance_packlang,
     "ram0": _ram0,
     "streetcode": _streetcode,
     "super_snusp": _super_snusp,
