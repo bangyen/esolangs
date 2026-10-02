@@ -217,10 +217,16 @@ def from_grey(grey: list[bytearray], threshold: int = 128) -> Mask:
     height = len(grey)
     width = len(grey[0]) if height else 0
     rows = []
+    patterns: dict[bytes, int] = {}
     for row in grey:
-        value = 0
-        for x, level in enumerate(row):
-            if level < threshold:
-                value |= 1 << x
+        key = bytes(row)
+        value = patterns.get(key)
+        if value is None:
+            value = 0
+            for x, level in enumerate(key):
+                if level < threshold:
+                    value |= 1 << x
+            if len(patterns) < 1024:
+                patterns[key] = value
         rows.append(value)
     return Mask(height, width, rows)
