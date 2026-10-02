@@ -1,40 +1,8 @@
-"""Boolean-function generators for languages in the ``other`` category."""
-
-# Every language whose construction is large enough to read on its own owns
-# a file; what is left here is three_x and bit_tilde, which are not.  The
-# rest are re-exported so this module stays the import site the package and
-# tests already use.
+"""Boolean generator for three x."""
 
 from collections import Counter
 from fractions import Fraction
 
-from esolangs.tools.clockwise import clockwise as clockwise
-
-# The strategies live in their own modules, but this one is the
-# construction's face: the registry, the wrapper and the suite all reach
-# it by this name.  Re-exported in the ``x as x`` form so a caller that
-# does not care where a piece lives need not know.
-from esolangs.tools.container import (
-    _container_threshold as _container_threshold,
-)
-from esolangs.tools.container import container as container
-from esolangs.tools.flowchart import (
-    _flowchart_cells as _flowchart_cells,
-)
-from esolangs.tools.flowchart import (
-    _flowchart_render as _flowchart_render,
-)
-from esolangs.tools.flowchart import (
-    _flowchart_stacked as _flowchart_stacked,
-)
-from esolangs.tools.flowchart import flowchart as flowchart
-from esolangs.tools.forbin import (
-    _FORBIN_RESERVED as _FORBIN_RESERVED,
-)
-from esolangs.tools.forbin import (
-    _forbin_name as _forbin_name,
-)
-from esolangs.tools.forbin import forbin as forbin
 from esolangs.tools.helpers import (
     _validate_truth_table,
     best_input_order,
@@ -42,20 +10,8 @@ from esolangs.tools.helpers import (
     essential_inputs,
     read_at,
 )
-from esolangs.tools.laserfuck import laserfuck as laserfuck
-from esolangs.tools.streetcode import streetcode as streetcode
-from esolangs.tools.taglate import taglate as taglate
 
-__all__ = [
-    "bit_tilde",
-    "clockwise",
-    "container",
-    "forbin",
-    "laserfuck",
-    "streetcode",
-    "taglate",
-    "three_x",
-]
+__all__ = ["three_x"]
 
 
 # 3x's only literal is ``3`` and its only arithmetic is ``x`` (replace the
@@ -268,71 +224,3 @@ def _three_x_build(
     return "".join(
         keys[piece] if isinstance(piece, tuple) else piece for piece in pieces
     )
-
-
-#: Cells the prologue plants below the table: the ``0`` window at 10..17,
-#: the ``1`` window at 1..8, and the two walk terminators at 18 and 27.
-_BIT_TILDE_PLANTED = (3, 4, 8, 12, 13, 18, 27)
-
-#: Step two cells left and flip, which runs forever over a zero lane and
-#: stops on the planted 1 it clears.  The leading ``<~`` primes the loop.
-_BIT_TILDE_WALK = "<~{<<~}"
-
-
-def bit_tilde(truth_table: str) -> str:
-    """Build a bit~ program computing the given truth table.
-
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first).  The table is one tape cell per entry
-    and the program *indexes* it.  ``{`` and ``}`` test the cell the pointer
-    stands on when they are reached, so ``{`` at an input's bit, a run of
-    ``<``, and ``}`` on a cell known to be zero is a jump left by a constant
-    taken only when that bit is 1.  One jump per input, weighted by Horner,
-    leaves the pointer on the entry the inputs name.
-
-    ``)`` writes its byte at the pointer, and that is what chains the jumps:
-    each read lands the next input's bit under the pointer wherever the last
-    jump left it, so no input is ever copied.  Entries sit two cells apart
-    because the other lane has to stay zero -- it is where the jumps land,
-    and a 1 there would run the loop again.
-
-    The answer leaves as a *position*.  The entry's bit guards a first walk,
-    and the shared second walk therefore starts from one of two cells and
-    ends on one of two, far enough apart that ``(`` prints a different
-    eight-cell window at each: ``"0"`` and ``"1"``, planted in the prologue.
-    """
-    n = _validate_truth_table(truth_table)
-
-    used = essential_inputs(truth_table, n) or [0]
-    table = read_at(truth_table, used, n)
-    width = len(used)
-    # Two cells an entry, above the planted region, and even so that the
-    # reads stay in the lane whose jumps land in the zero one.
-    start = 2 * len(table) + 34
-
-    planted = set(_BIT_TILDE_PLANTED)
-    planted.update(
-        start - 2 * index - 2 for index, bit in enumerate(table) if bit == "1"
-    )
-
-    prog: list[str] = []
-    pos = 0
-    for cell in sorted(planted):
-        prog.append(">" * (cell - pos) + "~")
-        pos = cell
-    prog.append(">" * (start - pos))
-
-    depth = {stream: level for level, stream in enumerate(used)}
-    for i in range(n):
-        # The byte a read lands leaves a 1 three cells along, in the lane a
-        # later jump tests, so it is cleared on the way to the input's bit.
-        prog.append(")>>>~")
-        if i in depth:
-            weight = 2 << (width - 1 - depth[i])
-            prog.append(">>>>{" + "<" * weight + "}" + "<" * 7)
-        else:
-            prog.append("<<<")
-
-    prog.append("<<{" + _BIT_TILDE_WALK + "}" + _BIT_TILDE_WALK)
-    prog.append("<" * 17 + "(")
-    return "".join(prog)

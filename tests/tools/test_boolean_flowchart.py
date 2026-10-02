@@ -6,9 +6,9 @@ import pytest
 
 from esolangs import tools as boolean
 from esolangs.interpreters.io import IO
-from esolangs.tools.flowchart import _flowchart_deque
-from esolangs.tools.other import (
+from esolangs.tools.flowchart import (
     _flowchart_cells,
+    _flowchart_deque,
     _flowchart_render,
     _flowchart_stacked,
 )
