@@ -9,13 +9,13 @@ from typing import ClassVar
 
 import pytest
 
-from esolangs.interpreters.grid_based._streetcode_geometry import (
+from esolangs.interpreters.grid_based.streetcode import _Machine, run
+from esolangs.interpreters.grid_based.streetcode.geometry import (
     _VOID,
     _matches,
     _rotate,
     _rotations,
 )
-from esolangs.interpreters.grid_based.streetcode import _Machine, run
 from esolangs.interpreters.io import IO
 from tests.interpreters.streetcode_support import run_street
 from tests.raises import raises_message

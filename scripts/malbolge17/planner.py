@@ -1,8 +1,8 @@
 """Malbolge research assembler retaining provably known low-memory writes."""
 
 from esolangs.interpreters.other.malbolge import _crazy
-from esolangs.tools._malbolge_core import _ENTRY, _rot
 from esolangs.tools.malbolge import _Planner as _BasePlanner
+from esolangs.tools.malbolge.core import _ENTRY, _rot
 
 
 class _Planner(_BasePlanner):

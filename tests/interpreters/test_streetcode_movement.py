@@ -8,7 +8,8 @@ from pathlib import Path
 
 import pytest
 
-from esolangs.interpreters.grid_based._streetcode_geometry import (
+from esolangs.interpreters.grid_based.streetcode import _Machine
+from esolangs.interpreters.grid_based.streetcode.geometry import (
     _NO_LATCHES,
     _Car,
     _choose_heading,
@@ -26,7 +27,6 @@ from esolangs.interpreters.grid_based._streetcode_geometry import (
     _road_mouth,
     _turn_of,
 )
-from esolangs.interpreters.grid_based.streetcode import _Machine
 from esolangs.interpreters.io import IO, ScriptedIO
 from tests.interpreters.streetcode_support import machine_unvalidated, run_and_capture
 

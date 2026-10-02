@@ -12,7 +12,7 @@ must map 272 classes onto all 256 answer vectors at its worst residue.
 from __future__ import annotations
 
 from esolangs.interpreters.other.malbolge import _crazy
-from esolangs.tools._malbolge_core import _char_for
+from esolangs.tools.malbolge.core import _char_for
 
 OPS = "ji*p</vo"
 

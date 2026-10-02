@@ -25,8 +25,8 @@ from row_projection import pointer_slots
 from runtime_decoder import _prefill, _prepare
 
 from esolangs.interpreters.other.malbolge import _advance, _op
-from esolangs.tools._malbolge_core import _char_for, _rot
-from esolangs.tools._malbolge_digits import _D_INITS, _GADGET
+from esolangs.tools.malbolge.core import _char_for, _rot
+from esolangs.tools.malbolge.digits import _D_INITS, _GADGET
 
 
 def build() -> tuple[_Emission, dict[int, int]]:

@@ -8,7 +8,7 @@ from row_routes import build_row_routes, row_words
 from setup_consumer import check_setup_memory, control_inputs
 
 from esolangs.interpreters.other.malbolge import _advance, _crazy, _initial_memory, _op
-from esolangs.tools._malbolge_core import _char_for, _rot
+from esolangs.tools.malbolge.core import _char_for, _rot
 
 
 def build_shared_reader() -> tuple[

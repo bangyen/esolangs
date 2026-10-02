@@ -131,7 +131,7 @@ Languages that move a pointer or beam across a 2D grid.
 - [Fish](https://esolangs.org/wiki/Fish) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/fish.py))
 - [Flowchart](https://esolangs.org/wiki/Flowchart) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/flowchart.py))
 - [LaserFuck](https://esolangs.org/wiki/LaserFuck) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/laserfuck.py))
-- [Streetcode](https://esolangs.org/wiki/Streetcode) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/streetcode.py))
+- [Streetcode](https://esolangs.org/wiki/Streetcode) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/streetcode/__init__.py))
 - [Super SNUSP](https://esolangs.org/wiki/Super_SNUSP) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/super_snusp.py))
 - [thisthat](https://esolangs.org/wiki/thisthat) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/thisthat.py))
 

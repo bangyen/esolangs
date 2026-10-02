@@ -296,19 +296,19 @@ class TestParseTarget:
         for family in ("tools",):
             kind = script._KINDS[family]  # noqa: SLF001
             for name in script._modules(family):  # noqa: SLF001
-                assert (kind.pkg_dir / f"{name}.py").exists()
+                assert (REPO_ROOT / "src" / kind.rel_target(name)).is_file()
 
     def test_the_bare_tools_modules_are_a_target_kind(self) -> None:
-        """``wrap`` is reachable, and only the package's own modules are.
-
-        The kind globs ``*.py`` directly under ``esolangs/tools``, so it
-        picks up the layout helpers without sweeping in a subpackage -- a
-        directory does not match the glob.
-        """
+        """Tools packages expose their implementations and helpers as targets."""
         script = load_script()
         modules = script._modules("tools")  # noqa: SLF001
         assert "wrap" in modules
         assert "boolean" not in modules
+        assert {"malbolge", "malbolge.core", "malbolge.digits"} <= set(modules)
+        assert script._parse_target("tools/malbolge.core") == ("tools", "malbolge.core")  # noqa: SLF001
+        assert script._KINDS["streetcode"].rel_target("geometry") == (  # noqa: SLF001
+            "esolangs/interpreters/grid_based/streetcode/geometry.py"
+        )
         kind = script._KINDS["tools"]  # noqa: SLF001
         assert kind.rel_target("wrap") == "esolangs/tools/wrap.py"
 
@@ -441,3 +441,40 @@ def test_raster_suites_kill_wrong_answers_in_the_copied_package(
     )
     assert mutant.returncode == 1, mutant.stdout + mutant.stderr
     assert "AssertionError" in mutant.stdout
+
+
+@pytest.mark.parametrize(
+    ("family", "target", "relative"),
+    [
+        ("tools", "malbolge", "esolangs/tools/malbolge/__init__.py"),
+        ("tools", "malbolge.core", "esolangs/tools/malbolge/core.py"),
+        (
+            "streetcode",
+            "geometry",
+            "esolangs/interpreters/grid_based/streetcode/geometry.py",
+        ),
+    ],
+)
+def test_package_mutation_targets_copy_real_modules(
+    tmp_path: Path,
+    family: str,
+    target: str,
+    relative: str,
+) -> None:
+    script = load_script()
+    proj, _ = script._prepare(family, target, tmp_path, slow=False)  # noqa: SLF001
+    assert (proj / relative).is_file()
+    assert f'paths_to_mutate = ["{relative}"]' in (proj / "pyproject.toml").read_text()
+    canonical = script._KINDS[family].dotted(target)  # noqa: SLF001
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            f"import importlib; print(importlib.import_module({canonical!r}).__file__)",
+        ],
+        cwd=proj,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    assert Path(result.stdout.strip()) == proj / relative

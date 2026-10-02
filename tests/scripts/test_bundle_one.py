@@ -322,6 +322,12 @@ def test_package_bundle_also_supports_text_without_pillow(tmp_path: Path) -> Non
             "from pathlib import Path\nfrom .ops import run\n"
             "load_source = Path.read_text\n"
         ),
+        "interpreters/other/demo/__main__.py": (
+            "from esolangs.interpreters._entry import script_main\n"
+            "from . import run, load_source\n"
+            "if __name__ == '__main__':\n"
+            "    script_main(run, loader=load_source)\n"
+        ),
         "interpreters/other/demo/ops.py": (
             "def run(program, io):\n    io.print_str(program)\n"
         ),
@@ -374,3 +380,27 @@ def test_raster_package_bundles_from_raw_http_sources(
     finally:
         server.shutdown()
         server.server_close()
+
+
+def test_streetcode_package_runs_standalone(tmp_path: Path) -> None:
+    canonical = "esolangs.interpreters.grid_based.streetcode"
+    entry = importlib.import_module(canonical + ".__main__")
+    assert entry.run is importlib.import_module(canonical).run
+    module = load_script()
+    bundle = tmp_path / "streetcode.py"
+    module.bundle("Streetcode", module.Source(None), bundle)
+    program = esolangs.generate("Streetcode", "0110", balance=True)
+    path = tmp_path / "program.txt"
+    path.write_text(program)
+    for bits in ("00", "01", "10", "11"):
+        stdin = "\n".join(bits) + "\n"
+        expected = esolangs.run("Streetcode", program, stdin)
+        result = subprocess.run(
+            [sys.executable, "-I", str(bundle), str(path)],
+            input=stdin,
+            capture_output=True,
+            text=True,
+            cwd=tmp_path,
+        )
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.replace("Input: ", "") == expected
