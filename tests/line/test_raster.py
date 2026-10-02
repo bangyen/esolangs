@@ -177,3 +177,36 @@ def test_the_graph_walker_steps_over_an_opcode_it_does_not_know() -> None:
     io = ScriptedIO()
     _run_node(start, io)
     assert io.getvalue() == "0"
+
+
+def test_repeated_greyscale_rows_do_not_share_mutable_buffers() -> None:
+    from esolangs.line import _grey_rows
+
+    row = ((255, 0, 0), (0, 255, 0))
+    grey = _grey_rows((row, row))
+    grey[0][0] = 0
+    assert grey == [bytearray([0, 150]), bytearray([76, 150])]
+
+
+def test_greyscale_conversion_preserves_many_distinct_rows() -> None:
+    from esolangs.line import _grey_rows
+
+    rows = tuple(((i // 256, i % 256, 0),) for i in range(1025))
+    expected = [
+        bytearray([(red * 19595 + green * 38470 + 0x8000) >> 16])
+        for ((red, green, _),) in rows
+    ]
+    assert _grey_rows(rows) == expected
+
+
+def test_rendered_grey_levels_survive_many_distinct_rows(monkeypatch) -> None:
+    from esolangs.line import _render_node
+    from esolangs.line.render import Canvas
+
+    canvas = Canvas(2, 1025)
+    canvas.pixels = [bytearray([i // 256, i % 256]) for i in range(1025)]
+    monkeypatch.setattr("esolangs.line.render.render", lambda *_args, **_kwargs: canvas)
+    rows = _render_node(line_boolean("01"))
+    assert rows == tuple(
+        tuple((level, level, level) for level in row) for row in canvas.pixels
+    )

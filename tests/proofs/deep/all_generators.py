@@ -74,9 +74,8 @@ _SHAPES = (("dense", _dense), ("parity", _parity))
 #: ``circuit_diagram``, which needs 2s by n=9 and times out past it.  Seven
 #: keeps that one affordable; eight is comfortable for the rest.
 _GROWTH_MAX = 8
-_GROWTH_OVERRIDE = {"circuit_diagram": 7, "line": 4}
-# Line row flips through n=4 exhausted a seven-minute probe; n=2 took 2s.
-_COMPARE_OVERRIDE = {"line": 2}
+# Line's pixel ladder through n=5 measured 0.8s.
+_GROWTH_OVERRIDE = {"circuit_diagram": 7, "line": 5}
 
 #: Generators that may refuse tables the others accept are read from the
 #: ledger's own ``cap``/``exception`` labels, not listed here, so a row that
@@ -153,13 +152,8 @@ def battery(row: Row, key: str) -> Result:
     result = Result(generator=row.generator, scheme=scheme)
     top = _GROWTH_OVERRIDE.get(key, _GROWTH_MAX)
     result.record("coverage  ", lambda: check_coverage(fn, allow_refusals=allow))
-    result.record(
-        "determinism",
-        lambda: check_determinism(fn, max_n=_COMPARE_OVERRIDE.get(key, 4)),
-    )
-    result.record(
-        "rows      ", lambda: check_rows(fn, max_n=_COMPARE_OVERRIDE.get(key, 4))
-    )
+    result.record("determinism", lambda: check_determinism(fn))
+    result.record("rows      ", lambda: check_rows(fn))
     result.record(
         "ladder    ", lambda: check_ladder(fn, top, _SHAPES, allow_refusals=allow)
     )

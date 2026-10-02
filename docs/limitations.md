@@ -16,9 +16,10 @@ See [Polynomial](proofs/polynomial.md) for its size lower bound.
   specifies only a two-road choice.
 - Line and Piet carry a raster source: `generate` returns an
   `esolangs.raster.Raster`, `run` takes it or a PNG path through the shared
-  codec, and `describe` reports `source_kind="raster"`. They stay outside
-  text-only `RUNNERS` and its VM, step, and fuzz contracts. Line retains its
-  graph for repeated rows; Piet emits and executes the pixels.
+  codec, and `describe` reports `source_kind="raster"`. Text and raster share
+  VM, step, and fuzz contracts; `RUNNERS` describes text bundling only. Line
+  retains its graph for repeated generated rows; stepping parses pixels. Piet
+  emits and executes pixels.
 
 ## Source positions
 

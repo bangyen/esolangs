@@ -19,8 +19,13 @@ def _freeze_rows(rows: Rows) -> Rows:
     # Generated images reuse immutable palette tuples millions of times.
     # Identity avoids equality accepting bool/float channels as cached integers.
     validated: dict[int, Pixel] = {}
+    validated_rows: dict[int, tuple[Pixel, ...]] = {}
     frozen_rows = []
     for row in rows:
+        if type(row) is tuple and id(row) in validated_rows:
+            frozen_rows.append(validated_rows[id(row)])
+            continue
+        unchanged = type(row) is tuple
         frozen_row = []
         for pixel in row:
             if type(pixel) is tuple and id(pixel) in validated:
@@ -35,9 +40,13 @@ def _freeze_rows(rows: Rows) -> Rows:
             ):
                 raise ValueError("Raster pixels must be 8-bit RGB triples")
             frozen_row.append(frozen)
+            unchanged = unchanged and frozen is pixel
             if type(pixel) is tuple and len(validated) < 1024:
                 validated[id(pixel)] = pixel
-        frozen_rows.append(tuple(frozen_row))
+        immutable_row = row if unchanged else tuple(frozen_row)
+        frozen_rows.append(immutable_row)
+        if unchanged and len(validated_rows) < 1024:
+            validated_rows[id(row)] = immutable_row
     result = tuple(frozen_rows)
     width = len(result[0]) if result else 0
     if not result or not width or any(len(row) != width for row in result):
