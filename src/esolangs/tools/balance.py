@@ -16,6 +16,7 @@ from esolangs.tools.back import back
 from esolangs.tools.befunge import balance_befunge
 from esolangs.tools.brainif import _brainif_tree, brainif
 from esolangs.tools.clockwise import clockwise
+from esolangs.tools.collatz_multiverse import balance_collatz_multiverse
 from esolangs.tools.container import balance_container
 from esolangs.tools.crement import crement
 from esolangs.tools.dig import _dig_grid, dig
@@ -38,7 +39,6 @@ from esolangs.tools.packlang import balance_packlang
 from esolangs.tools.parameterized import bitdeque, minsky_swap
 from esolangs.tools.qoibl_balance import balance_qoibl
 from esolangs.tools.ram0 import ram0
-from esolangs.tools.register import balance_collatz_multiverse
 from esolangs.tools.smallfuck import smallfuck, smallfuck_setters
 from esolangs.tools.stack import modulous
 from esolangs.tools.streetcode import (

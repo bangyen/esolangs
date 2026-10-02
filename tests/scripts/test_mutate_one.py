@@ -58,8 +58,8 @@ class TestRewriteImports:
         for line, module in (
             ("from esolangs.tools import streetcode as gen", "streetcode"),
             (
-                "from esolangs.tools.register import polynomial as gen",
-                "register.polynomial",
+                "from esolangs.tools.polynomial import polynomial as gen",
+                "polynomial.polynomial",
             ),
             (
                 "from esolangs.tools.dimensional import dimensional as gen",
