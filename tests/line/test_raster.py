@@ -266,3 +266,17 @@ def test_greyscale_runs_flush_at_colour_changes_and_row_end() -> None:
     assert grey == [bytearray([76] * 19 + [150] * 7 + [29] * 11)] * 2
     grey[0][0] = 0
     assert grey[1][0] == 76
+
+
+def test_rendered_rgb_runs_preserve_newline_levels_and_shared_pixels(monkeypatch):
+    from esolangs.line import _render_node
+    from esolangs.line.render import Canvas
+
+    canvas = Canvas(37, 2)
+    row = bytearray([10] * 19 + [0] * 7 + [255] * 11)
+    canvas.pixels = [row, bytearray(row)]
+    monkeypatch.setattr("esolangs.line.render.render", lambda *_a, **_kw: canvas)
+    rows = _render_node(line_boolean("01"))
+    assert rows == (tuple((level, level, level) for level in row),) * 2
+    assert rows[0] is rows[1]
+    assert rows[0][0] is rows[0][18]
