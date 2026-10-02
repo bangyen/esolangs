@@ -6,6 +6,7 @@ from unittest.mock import patch
 import pytest
 
 from esolangs.tools.helpers import essential_inputs
+from esolangs.tools.minifuck import _solve
 from tests.tools.minifuck_support import _MinifuckCase, _mux_separate, run_count
 
 
@@ -98,7 +99,7 @@ class TestParameterizedMinifuck(_MinifuckCase):
             if len(essential_inputs(table, 3)) > 2:
                 continue
             checked += 1
-            template = module.minifuck.__wrapped__(table)
+            template = _solve.__wrapped__(table)
             for combo in range(8):
                 bits = [(combo >> (2 - i)) & 1 for i in range(3)]
                 got = self.run_minifuck(self.instantiate(template, bits))
@@ -250,7 +251,7 @@ class TestParameterizedMinifuck(_MinifuckCase):
         for table_int in range(256):
             table = format(table_int, "08b")
             try:
-                template = module.minifuck.__wrapped__(table)
+                template = _solve.__wrapped__(table)
             except AssertionError:
                 searched.append(table)
                 continue
@@ -285,11 +286,11 @@ class TestParameterizedMinifuck(_MinifuckCase):
         module = importlib.import_module("esolangs.tools.minifuck")
 
         with patch.object(module, "_degenerate", lambda *_a, **_k: None):
-            module.minifuck.cache_clear()
+            _solve.cache_clear()
             try:
-                template = module.minifuck.__wrapped__(table)
+                template = _solve.__wrapped__(table)
             finally:
-                module.minifuck.cache_clear()
+                _solve.cache_clear()
 
         assert template, f"the {tier} tier returned nothing"
         for combo in range(4):

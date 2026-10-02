@@ -6,7 +6,7 @@ import pytest
 
 import esolangs
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.line import run as run_line
+from esolangs.interpreters.tape_based.line import run as run_line
 from esolangs.line.render import render
 from esolangs.raster import Raster
 from esolangs.tools.line import line_boolean
@@ -122,7 +122,7 @@ def test_a_generated_raster_runs_from_its_retained_graph() -> None:
     payload branch -- and with it the graph walker's input and output opcodes
     -- was never executed.
     """
-    from esolangs.line import generate
+    from esolangs.tools.line import line as generate
 
     program = generate("0110")
     assert program._payload is not None  # noqa: SLF001
@@ -134,7 +134,7 @@ def test_a_generated_raster_runs_from_its_retained_graph() -> None:
 @pytest.mark.medium  # 0.97s alone: renders and walks the pixels
 def test_the_graph_walker_matches_the_pixels() -> None:
     """Both routes answer the same, which is what makes the shortcut safe."""
-    from esolangs.line import generate
+    from esolangs.tools.line import line as generate
 
     program = generate("0110")
     through_graph = ScriptedIO("1\n1\n")

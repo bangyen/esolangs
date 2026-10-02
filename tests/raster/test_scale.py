@@ -94,11 +94,10 @@ def test_monochrome_codel_grid() -> None:
 
 @pytest.mark.medium
 @pytest.mark.parametrize("name", ["Line", "Piet"])
-def test_native_adapter_scales_and_runs(name: str) -> None:
-    import importlib
+def test_native_generator_scales_and_runs(name: str) -> None:
+    from esolangs.registry import GENERATORS
 
-    adapter = importlib.import_module(f"esolangs.{name.lower()}")
-    image = adapter.generate("00", scale=2)
+    image = GENERATORS[name]("00", scale=2)
     assert esolangs.run(name, Raster.from_png(image.to_png()), "1\n") == "0"
 
 

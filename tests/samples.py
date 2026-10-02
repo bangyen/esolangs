@@ -22,9 +22,9 @@ skipped.
 """
 
 from esolangs._program import Program
-from esolangs.line import generate as _line_sample
-from esolangs.piet import generate as _piet_sample
 from esolangs.raster import Raster
+from esolangs.tools.line import line as _line_sample
+from esolangs.tools.piet import piet as _piet_sample
 
 # The corrected Inject truth machine lives beside the interpreter's own
 # tests: the mutation bundle does not inline this module, so a test file

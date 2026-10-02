@@ -6,7 +6,6 @@ are pinned differentially against the interpreter.
 """
 
 from functools import cache
-from inspect import signature
 
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
@@ -306,14 +305,3 @@ def _wrap_template(template: str, n: int, width: int) -> str:
 
     marked = mark_runs(template, TEMPLATE_CHAR, (PAIR,) * n)
     return unmark(wrap_program(marked, "minifuck", width), TEMPLATE_CHAR, n)
-
-
-# The construction's cache and its undecorated body live on ``_solve`` now,
-# but tests and callers reach for them through the public name: keep
-# ``cache_clear``/``cache_info`` and ``__wrapped__`` here so splitting the
-# arity check off did not move the surface.
-minifuck.cache_clear = _solve.cache_clear  # type: ignore[attr-defined]
-minifuck.cache_info = _solve.cache_info  # type: ignore[attr-defined]
-# Keep the public width parameter visible despite the legacy raw-solver link.
-minifuck.__signature__ = signature(minifuck)  # type: ignore[attr-defined]
-minifuck.__wrapped__ = _solve.__wrapped__  # type: ignore[attr-defined]
