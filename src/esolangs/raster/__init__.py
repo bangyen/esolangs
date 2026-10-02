@@ -59,6 +59,9 @@ class Raster:
     """An immutable 8-bit RGB image source, stored row by row."""
 
     _rows: Rows | None = field(default=None, repr=False)
+    _normalizations: dict[int | None, Rows] = field(
+        default_factory=dict, repr=False, compare=False
+    )
     _materialize: Callable[[], Rows] | None = field(
         default=None, repr=False, compare=False
     )
@@ -75,6 +78,7 @@ class Raster:
     ) -> None:
         """Create a raster from pixels or a lazy language-owned renderer."""
         object.__setattr__(self, "_rows", rows)
+        object.__setattr__(self, "_normalizations", {})
         object.__setattr__(self, "_materialize", _materialize)
         object.__setattr__(self, "_payload", _payload)
         object.__setattr__(self, "_language", language)
@@ -122,6 +126,18 @@ class Raster:
             materialize = cast("Callable[[], Rows]", self._materialize)
             object.__setattr__(self, "_rows", _freeze_rows(materialize()))
         return cast("Rows", self._rows)
+
+    def _normalized(self, scale: int | None = None) -> Rows:
+        """Return cached codel rows; explicit and detected scales stay distinct."""
+        from esolangs._validate import check_scale
+
+        from .scale import normalize
+
+        if scale is not None:
+            check_scale(scale)
+        if scale not in self._normalizations:
+            self._normalizations[scale] = normalize(self.rows, scale)
+        return self._normalizations[scale]
 
     def upscaled(self, scale: int = 1) -> Raster:
         """Replicate pixels into solid squares, preserving language ownership."""

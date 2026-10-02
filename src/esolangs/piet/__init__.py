@@ -201,9 +201,7 @@ class _Machine:
     def __init__(
         self, program: Raster, io: ScriptedIO, *, scale: int | None = None
     ) -> None:
-        from esolangs.raster.scale import normalize
-
-        self.rows = normalize(program.rows, scale)
+        self.rows = program._normalized(scale)  # noqa: SLF001
         self.io = io
         self.current = (0, 0)
         self.dp, self.cc = 0, -1
