@@ -395,7 +395,7 @@ def _test_files(kind: _Kind) -> list[str]:
       and reach the generator through the package's re-export, which no
       import scan can see.  Measured over the 27 generator modules,
       importing alone under-selected 19 of them: every ``rotfuck`` test
-      lives in ``test_boolean_tape``, which imports only the package.
+      lives in ``test_boolean_rotfuck``, which imports only the package.
     * **By import, plus the contract suite always.**  Better -- the contract
       suite is where several generators are checked -- but it fixes only
       the one file that was noticed, and 19 modules were short by more than
