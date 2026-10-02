@@ -11,6 +11,7 @@ from contextlib import contextmanager
 from types import ModuleType
 from typing import Any
 
+from esolangs._program import Program
 from esolangs.exceptions import (
     ArgumentError,
     EsolangError,
@@ -39,7 +40,7 @@ def interpreter_module(name: str) -> ModuleType:
 
 def prepare_call(
     name: str,
-    program: str | Raster,
+    program: Program,
     target: Callable[..., Any],
     *,
     scale: int | None = None,

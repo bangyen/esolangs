@@ -36,6 +36,7 @@ from esolangs._execution import (
 )
 from esolangs._isolated import run_isolated as _run_isolated
 from esolangs._language import Language
+from esolangs._program import Program
 from esolangs._source import (
     InputSource,
     ProgramSource,
@@ -122,6 +123,7 @@ __all__ = [
     "Language",
     "LanguageInfo",
     "MissingDependencyError",
+    "Program",
     "ProgramError",
     "ProgramNotFoundError",
     "Raster",
@@ -153,7 +155,7 @@ def generate(
     *,
     balance: bool = False,
     scale: int = 1,
-) -> str | Raster:
+) -> Program:
     """Return a program in ``language`` computing ``truth_table``.
 
     ``truth_table`` is a binary string of length ``2**n``, MSB first, so its
@@ -260,10 +262,10 @@ def _is_template_for(template: str, name: str, truth_table: str) -> bool:
     observed_width = max(1, max(map(len, template.splitlines()), default=0))
 
     @cache
-    def layout(width: int) -> str | Raster:
+    def layout(width: int) -> Program:
         return generate(name, truth_table, width)
 
-    def same_tokens(program: str | Raster) -> bool:
+    def same_tokens(program: Program) -> bool:
         return isinstance(program, str) and template.split() == program.split()
 
     # Layouts may switch representations; their floor is a named candidate,
@@ -412,7 +414,7 @@ _PATH_CHARS = re.compile(r"^[\w./\\~-]+$")
 _PATH_EXTENSION = re.compile(r"\.[A-Za-z0-9]{1,5}$")
 
 
-def _looks_like_a_path(program: str | Raster) -> bool:
+def _looks_like_a_path(program: Program) -> bool:
     """Whether ``program`` is a filename someone meant to open.
 
     A path is legal text in most of these languages
@@ -429,7 +431,7 @@ def _looks_like_a_path(program: str | Raster) -> bool:
     return rooted or bool(_PATH_EXTENSION.search(program))
 
 
-def _check_runnable(language: str, program: str | Raster) -> None:
+def _check_runnable(language: str, program: Program) -> None:
     """Reject a program that is a path or an unfilled template.
 
     Both are valid input to an interpreter and each produced a confident
@@ -461,7 +463,7 @@ def _check_runnable(language: str, program: str | Raster) -> None:
         )
 
 
-def _read_source(language: str, program: ProgramSource) -> str | Raster:
+def _read_source(language: str, program: ProgramSource) -> Program:
     """Load source and check its kind and origin, allowing unfilled templates."""
     name = resolve(language)
     module = interpreter_module(name)
@@ -481,7 +483,7 @@ def _read_source(language: str, program: ProgramSource) -> str | Raster:
 
 def check_program(
     language: str, program: ProgramSource, stdin: InputSource = ""
-) -> str | Raster:
+) -> Program:
     """Return ``program`` as source, having checked what can be checked here.
 
     Not a load check: it refuses the wrong *kind* of thing (a path as a

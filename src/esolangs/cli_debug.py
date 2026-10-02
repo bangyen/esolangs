@@ -5,6 +5,7 @@ from __future__ import annotations
 import sys
 
 from esolangs import _check_runnable, describe
+from esolangs._program import Program
 from esolangs.cli_args import (
     _check_count,
     _errors,
@@ -28,13 +29,12 @@ from esolangs.cli_hints import (
 from esolangs.cli_io import _null_context, _read_program, _read_stdin, _UnboundedNotice
 from esolangs.debugger import make_debugger
 from esolangs.exceptions import EsolangError, TemplateError
-from esolangs.raster import Raster
 from esolangs.tui import breakpoint_for, run_tui
 
 
 def _run_tui_session(
     language: str,
-    program: str | Raster,
+    program: Program,
     stdin: str,
     options: dict[str, str],
     cell: tuple[int, int] | None,

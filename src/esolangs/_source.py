@@ -10,10 +10,11 @@ from esolangs._input import InputSource as InputSource
 from esolangs._input import Reader
 from esolangs._input import check_input as check_input
 from esolangs._input import read_input as read_input
+from esolangs._program import Program
 from esolangs.exceptions import ArgumentError, ProgramError, ProgramNotFoundError
 from esolangs.raster import Raster
 
-type ProgramSource = str | bytes | Raster | os.PathLike[str] | Reader
+type ProgramSource = Program | bytes | os.PathLike[str] | Reader
 
 
 @dataclass(frozen=True, slots=True)
@@ -30,7 +31,7 @@ class _FileSource:
         return self.path
 
 
-def _read_container(source: ProgramSource) -> tuple[str | bytes | Raster, bool]:
+def _read_container(source: ProgramSource) -> tuple[Program | bytes, bool]:
     try:
         if isinstance(source, _FileSource):
             return source.read(), True

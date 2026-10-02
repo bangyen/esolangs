@@ -13,6 +13,7 @@ import argparse
 import pathlib
 from collections.abc import Iterator
 
+from esolangs._program import Program
 from esolangs.raster import Raster
 from esolangs.registry import LANGUAGES, canonical_id
 from esolangs.tools.examples import BOOLEAN_EXAMPLES, BooleanExample
@@ -23,7 +24,7 @@ ROOT = pathlib.Path(__file__).parents[3]
 EXAMPLES = ROOT / "src" / "esolangs" / "examples"
 
 
-def boolean_programs() -> Iterator[tuple[str, str | Raster]]:
+def boolean_programs() -> Iterator[tuple[str, Program]]:
     """Yield ``(stem, program)`` for every boolean example."""
     for stem, example in sorted(BOOLEAN_EXAMPLES.items()):
         yield stem, example.build(balance=True)

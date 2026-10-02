@@ -13,6 +13,7 @@ from esolangs._answers import (
 )
 from esolangs._describe import describe
 from esolangs._execution import check_signal_timeout
+from esolangs._program import Program
 from esolangs._source import ProgramSource, check_scale_for
 from esolangs._validate import check_timeout
 from esolangs.exceptions import (
@@ -20,7 +21,6 @@ from esolangs.exceptions import (
     EsolangError,
 )
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.raster import Raster
 from esolangs.tools.helpers import MOST_INPUTS
 from esolangs.vm import make_vm
 
@@ -116,7 +116,7 @@ def evaluate(
     answers = []
     for row in range(rows):
         bits = [(row >> (inputs - 1 - i)) & 1 for i in range(inputs)]
-        source: str | Raster
+        source: Program
         if facts["parameterized"]:
             source, stdin = esolangs.instantiate(name, cast("str", program), bits), ""
         else:

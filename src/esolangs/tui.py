@@ -18,8 +18,8 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import TypeGuard, cast
 
+from esolangs._program import Program
 from esolangs.debugger import Debugger, make_debugger
-from esolangs.raster import Raster
 
 #: Back to the terminal's own attributes, which ends every marked run.
 _OFF = "\x1b[0m"
@@ -46,7 +46,7 @@ def _style(*, run: bool, stopped: bool, picked: bool) -> str:
     return f"\x1b[{';'.join(params)}m" if params else ""
 
 
-def _display_source(program: str | Raster, language: str) -> str:
+def _display_source(program: Program, language: str) -> str:
     if isinstance(program, str):
         return program
     from esolangs._execution import interpreter_module
@@ -376,7 +376,7 @@ def render(
     return "\n".join(out)
 
 
-def replay(language: str, program: str | Raster, stdin: str, step: int) -> Frame:
+def replay(language: str, program: Program, stdin: str, step: int) -> Frame:
     """Return the frame ``step`` commands into a fresh run.
 
     Exact because every VM is deterministic (seeded sources for the random
@@ -425,7 +425,7 @@ class History:
     #: What the retained frames may occupy before the oldest are dropped.
     budget = 64 << 20
 
-    def __init__(self, language: str, program: str | Raster, stdin: str = "") -> None:
+    def __init__(self, language: str, program: Program, stdin: str = "") -> None:
         """Start a history at step 0 of a fresh run."""
         self._language = language
         self._source = program
@@ -676,7 +676,7 @@ def drive(
 
 def run_tui(
     language: str,
-    program: str | Raster,
+    program: Program,
     stdin: str = "",
     max_steps: int = 1_000_000,
     stop: Callable[[Frame], bool] | None = None,

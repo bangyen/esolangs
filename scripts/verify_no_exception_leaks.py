@@ -51,6 +51,7 @@ _ROOT = pathlib.Path(__file__).resolve().parent.parent
 _HERE = pathlib.Path(__file__).resolve()
 sys.path.insert(0, str(_ROOT / "src"))
 
+from esolangs._program import Program
 from esolangs.exceptions import EsolangError
 from esolangs.raster import Raster
 from esolangs.registry import INTERPRETERS, example_stems
@@ -229,7 +230,7 @@ def _select(
     return picked, f"{len(picked)} interpreter(s) changed"
 
 
-def _drive(lang: str, program: str | Raster, stdin: str, cap: int) -> bool:
+def _drive(lang: str, program: Program, stdin: str, cap: int) -> bool:
     """Run one program, stepping it rather than running it to completion.
 
     Every registry language is step-capable (``esolangs.vm._VM_ADAPTERS``
@@ -266,8 +267,8 @@ _JOBS = max(1, int(os.environ.get("LEAKSWEEP_JOBS", 0)) or 2)
 
 
 def _corpus(
-    lang: str, examples: dict[str, list[str | Raster]], rng: random.Random
-) -> list[str | Raster]:
+    lang: str, examples: dict[str, list[Program]], rng: random.Random
+) -> list[Program]:
     """Return the programs swept for ``lang``, advancing ``rng`` as it goes.
 
     One generator feeds every language in order, so the parent and a worker
@@ -276,7 +277,7 @@ def _corpus(
     afresh.
     """
     seed = examples[lang][0] if examples[lang] else None
-    progs: list[str | Raster]
+    progs: list[Program]
     if isinstance(seed, Raster):
         progs = [seed]
         for _ in range(4):
@@ -298,9 +299,7 @@ def _corpus(
     return progs
 
 
-def _sweep_one(
-    lang: str, progs: list[str | Raster]
-) -> tuple[int, list[dict[str, str]]]:
+def _sweep_one(lang: str, progs: list[Program]) -> tuple[int, list[dict[str, str]]]:
     """Run every (program, stdin) for one language, collecting leaks.
 
     Escalating, because halting is monotone in the cap: run everything at a
@@ -315,7 +314,7 @@ def _sweep_one(
     pending = [(prog, stdin) for prog in progs for stdin in STDINS]
     n = len(pending)
     for cap in _CAP_LADDER:
-        still: list[tuple[str | Raster, str]] = []
+        still: list[tuple[Program, str]] = []
         for prog, stdin in pending:
             try:
                 if not _drive(lang, prog, stdin, cap):
@@ -353,7 +352,7 @@ _CACHE = _ROOT / ".leaksweep-cache.json"
 _USE_CACHE = os.environ.get("LEAKSWEEP_CACHE", "1") != "0"
 
 
-def _examples_by_slug() -> dict[str, list[str | Raster]]:
+def _examples_by_slug() -> dict[str, list[Program]]:
     """Return the shipped example programs keyed by canonical language ID.
 
     The filenames are dash-separated display names (``a-painter-ant``) and
@@ -365,7 +364,7 @@ def _examples_by_slug() -> dict[str, list[str | Raster]]:
     alone, without the mutations of a real program that find the
     interesting cases.
     """
-    by_slug: dict[str, list[str | Raster]] = {}
+    by_slug: dict[str, list[Program]] = {}
     directory = _ROOT / "src" / "esolangs" / "examples"
     for slug, stem in example_stems().items():
         path = directory / f"{stem}.txt"
@@ -405,7 +404,7 @@ def _sources(module: str) -> list[pathlib.Path]:
     ]
 
 
-def _fingerprint(module: str, examples: list[str | Raster]) -> str:
+def _fingerprint(module: str, examples: list[Program]) -> str:
     """Hash everything a sweep of ``module`` reads; a change to any part re-sweeps."""
     h = hashlib.sha256()
     for path in _sources(module):
@@ -481,7 +480,7 @@ def _worker(target: str) -> None:
     examples = {name: by_slug.get(slug, []) for name, slug in slug_of.items()}
 
     rng = random.Random(1234)
-    progs: list[str | Raster] = []
+    progs: list[Program] = []
     for lang in langs:  # replay in order so the corpus matches the parent's
         got = _corpus(lang, examples, rng)
         if lang == target:
