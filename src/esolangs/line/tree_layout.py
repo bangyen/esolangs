@@ -4,6 +4,7 @@ from .render import (
     _BRANCH_SPACING,
     _FORWARD,
     _STEM_LEN,
+    _TREE_GAP,
     Node,
     _op_segments,
     _rotate,
@@ -14,10 +15,12 @@ from .render import (
 Extent = tuple[int, int, int, int]
 
 
-def tree_extents(root: Node) -> dict[int, Extent]:
+def tree_extents(root: Node, *, compact: bool = True) -> dict[int, Extent]:
     """Return every subtree's exact bounding box in one postorder pass."""
     extents: dict[int, Extent] = {}
     runs: dict[int, tuple[Node, int]] = {}
+    stem = _TREE_GAP if compact else _STEM_LEN
+    gap = _TREE_GAP if compact else _BRANCH_SPACING
 
     def corners(box: Extent) -> list[tuple[int, int]]:
         y0, y1, x0, x1 = box
@@ -32,14 +35,14 @@ def tree_extents(root: Node) -> dict[int, Extent]:
             raise ValueError("a tree layout cannot contain a goto")
         points = [(0, 0)]
         if node.op == "?":
-            points.append((_STEM_LEN, 0))
+            points.append((stem, 0))
             for arm, heading in (
                 (node.zero, _turn_right(_FORWARD)),
                 (node.nonzero, _turn_left(_FORWARD)),
             ):
                 box = visit(arm)
-                spacing = _BRANCH_SPACING + max(-box[0], 0)
-                start_y = _STEM_LEN + heading[0] * spacing
+                spacing = gap + max(-box[0], 0)
+                start_y = stem + heading[0] * spacing
                 start_x = heading[1] * spacing
                 points.extend(
                     (start_y + dy, start_x + dx)

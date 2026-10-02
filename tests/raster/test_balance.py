@@ -58,17 +58,18 @@ def test_piet_balance_matches_rendered_width_oracle(table: str) -> None:
         *TABLES,
         *(
             pytest.param(table, marks=pytest.mark.slow)
-            for table in ("10010110", "00000001", "01011010")
+            for table in ("10010110", "00000001", "01011010", "01101110")
         ),
     ],
 )
 def test_line_balance_matches_rendered_orders(table: str) -> None:
     candidates = []
+    previous = []
     for reverse in (False, True):
         node = line_boolean(table, reverse=reverse)
         y0, y1, x0, x1 = tree_extents(node)[id(node)]
         for heading in ((-1, 0),):
-            canvas = render(node, start_heading=heading)
+            canvas = render(node, start_heading=heading, acyclic=True)
             assert sorted((canvas.width, canvas.height)) == sorted(
                 ((x1 - x0 + 2) * 20, (y1 - y0 + 2) * 20)
             )
@@ -79,9 +80,19 @@ def test_line_balance_matches_rendered_orders(table: str) -> None:
                     canvas.width,
                 )
             )
+            legacy = render(node, start_heading=heading, acyclic=True, compact=False)
+            previous.append(
+                (
+                    abs(legacy.width - legacy.height),
+                    legacy.width * legacy.height,
+                    legacy.width,
+                )
+            )
     image = esolangs.generate("Line", table, balance=True)
     assert isinstance(image, Raster)
-    assert score(image) == min(candidates)
+    expected = min(candidates + previous)
+    assert score(image) == expected
+    assert score(image)[1] <= min(previous)[1]
     assert (
         esolangs.evaluate(
             "Line", Raster.from_png(image.to_png()), inputs=len(table).bit_length() - 1
@@ -93,7 +104,18 @@ def test_line_balance_matches_rendered_orders(table: str) -> None:
 def test_line_extent_fast_path_preserves_merged_runs_and_shared_arms() -> None:
     leaf = Node("+", next=Node("+", next=Node("o")))
     for root in (leaf, Node("?", zero=leaf, nonzero=leaf), Node("?", zero=leaf)):
-        assert render(root, acyclic=True).pixels == render(root).pixels
+        compact = render(root, acyclic=True)
+        legacy = render(root)
+        assert render(root, acyclic=True, compact=False).pixels == legacy.pixels
+        assert compact.width * compact.height <= legacy.width * legacy.height
+        for value in (0, 1):
+            sources = [
+                Raster.from_png(png.write_grey(canvas.pixels))
+                for canvas in (compact, legacy)
+            ]
+            assert esolangs.run("Line", sources[0], str(value)) == esolangs.run(
+                "Line", sources[1], str(value)
+            )
     assert (
         esolangs.run(
             "Line",

@@ -8,13 +8,9 @@ halves agree is skipped, so a constant is one leaf and an ignored input
 is read but never tested.  A leaf prints the cell it just tested, after
 one ``+`` or ``-`` when the entry differs from that bit; a constant has no
 test and prints the unread cell ``n``.  ``truth_table`` is a binary string of
-length ``2**n``, MSB first.  Arms are sized from measured subtree extent
-(``render.py``), so n=4 parity renders at 1880x2060 rather than the old
-~17000x9000; the round trip is correct for every combination through
-n=10 (16800x14880, 23.7s extract, ~29s simulate, measured before the
-tree was pruned), which
-``tests/line/test_line_boolean.py`` exercises to n=8.  Nothing is
-enforced; n=11 upward is untested.
+length ``2**n``, MSB first. Arms use measured subtree extents. The acyclic
+renderer uses a two-cell gap: n=4 parity renders at 880x1720. PNG round trips
+cover parity through n=8, boundary rows at n=9, and every pruned topology at n=3.
 """
 
 from __future__ import annotations

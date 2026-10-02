@@ -231,6 +231,9 @@ _MERGEABLE = {"+", "-"}
 # at 1 none does, and the output-asserting suites do not catch it.
 _CLEARANCE = 1
 
+# Goto-free trees need one empty cell between subtree boxes, not return bays.
+_TREE_GAP = _CLEARANCE + 1
+
 
 def _leg_cells(
     start: tuple[int, int], legs: list[tuple[tuple[int, int], int]]
@@ -283,6 +286,8 @@ _GOTO_CORRIDOR = 1 + 2 * _CLEARANCE
 # because `id()` is reused once a `Node` is freed.
 _EXTENT_CACHE: dict[int, tuple[int, int, int, int]] = {}
 _TREE_NODES: set[int] = set()
+_TREE_STEM = _TREE_GAP
+_TREE_ARM = _TREE_GAP
 
 
 def _has_goto(node: Node | None, seen: set[int] | None = None) -> bool:
@@ -329,9 +334,10 @@ def _subtree_extent(node: Node | None) -> tuple[int, int, int, int]:
     return extent
 
 
-def _arm_spacing(arm: Node | None) -> int:
+def _arm_spacing(arm: Node | None, *, tree: bool = False) -> int:
     """How far a fork arm runs before laying out ``arm``'s own content.
 
+    ``tree`` uses the configured tree gap without a loop-return bay.
     Far enough that the subtree's measured reach back toward the trunk
     clears it, plus :data:`_BRANCH_SPACING` as floor and margin.  No sibling
     term: ``reach_back`` already puts each box on its own side, and a lateral
@@ -346,13 +352,14 @@ def _arm_spacing(arm: Node | None) -> int:
     their own fork's bay (dropping the multiplier shrank areas 17% at depth
     4 to 44% at depth 10).  A goto-free program renders pixel-identically.
     """
+    margin = _TREE_ARM if tree else _BRANCH_SPACING
     if arm is None:
-        return _BRANCH_SPACING
+        return margin
     # In the arm's frame, negative forward-extent is content behind the
     # entry point, toward the trunk.
     min_forward, _, _, _ = _subtree_extent(arm)
     corridors = _GOTO_CORRIDOR if id(arm) not in _TREE_NODES and _has_goto(arm) else 0
-    return _BRANCH_SPACING + max(-min_forward, 0) + corridors
+    return margin + max(-min_forward, 0) + corridors
 
 
 # Ring offset outside the body's bounding box: the smallest satisfying
@@ -400,7 +407,9 @@ def _stem_len(node: Node) -> int:
     own body loops back to pays it, so a goto-free program -- and any fork
     whose ring is shorter than the floor -- renders pixel-identically.
     """
-    if id(node) in _TREE_NODES or not _returns_to(node.nonzero, node):
+    if id(node) in _TREE_NODES:
+        return _TREE_STEM
+    if not _returns_to(node.nonzero, node):
         return _STEM_LEN
     _, _, _, x1 = _subtree_extent(node.nonzero)
     return max(_STEM_LEN, x1 + _RING_OFFSET + _CLEARANCE)
@@ -521,9 +530,10 @@ def _layout(
             cursor.advance(cursor.heading, _stem_len(node))
             entries[id(node)] = ((cursor.y, cursor.x), cursor.heading)
             right, left = cursor.branch()
-            right.advance(right.heading, _arm_spacing(node.zero))
+            tree = id(node) in _TREE_NODES
+            right.advance(right.heading, _arm_spacing(node.zero, tree=tree))
             right.finish()
-            left.advance(left.heading, _arm_spacing(node.nonzero))
+            left.advance(left.heading, _arm_spacing(node.nonzero, tree=tree))
             left.finish()
             _layout(node.zero, right, entries, depth + 1, measuring=measuring)
             _layout(node.nonzero, left, entries, depth + 1, measuring=measuring)
@@ -686,6 +696,7 @@ def render(
     scale: int = 1,
     *,
     acyclic: bool = False,
+    compact: bool = True,
 ) -> Canvas:
     """Lay out and rasterize a Line program, returning a :class:`Canvas`.
 
@@ -695,14 +706,19 @@ def render(
     drawing extracts exactly down to quality 34 and is destroyed by 28, 2x
     holds to 15, 4x to 10.  Redundancy at write time, not leniency at read
     time; :func:`extract.coverage_gap` stays strict.
+    ``compact=False`` retains the previous acyclic spacing for balancing's
+    no-growth fallback.
     """
     # See `_EXTENT_CACHE`: `id()`-keyed, so it must not outlive its nodes.
+    global _TREE_STEM, _TREE_ARM
     _EXTENT_CACHE.clear()
     _TREE_NODES.clear()
     if acyclic:
         from .tree_layout import tree_extents
 
-        _EXTENT_CACHE.update(tree_extents(root))
+        _TREE_STEM = _TREE_GAP if compact else _STEM_LEN
+        _TREE_ARM = _TREE_GAP if compact else _BRANCH_SPACING
+        _EXTENT_CACHE.update(tree_extents(root, compact=compact))
         _TREE_NODES.update(_EXTENT_CACHE)
     occupied: set[tuple[int, int]] = set()
     cursor = _Cursor(0, 0, start_heading, occupied=occupied)
