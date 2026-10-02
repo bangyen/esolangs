@@ -46,64 +46,7 @@ from esolangs.interpreters.grid_based._streetcode_geometry import (
     _require,
 )
 from esolangs.interpreters.grid_based._streetcode_geometry import (
-    _VOID as _VOID,
-)
-from esolangs.interpreters.grid_based._streetcode_geometry import (
-    _Car as _Car,
-)
-from esolangs.interpreters.grid_based._streetcode_geometry import (
-    _choose_heading as _choose_heading,
-)
-from esolangs.interpreters.grid_based._streetcode_geometry import (
-    _crossing_mouth as _crossing_mouth,
-)
-from esolangs.interpreters.grid_based._streetcode_geometry import (
-    _junction_choices as _junction_choices,
-)
-from esolangs.interpreters.grid_based._streetcode_geometry import (
-    _junction_kind as _junction_kind,
-)
-from esolangs.interpreters.grid_based._streetcode_geometry import (
-    _junction_shape as _junction_shape,
-)
-from esolangs.interpreters.grid_based._streetcode_geometry import (
-    _lane_bounded as _lane_bounded,
-)
-from esolangs.interpreters.grid_based._streetcode_geometry import (
-    _Latches as _Latches,
-)
-from esolangs.interpreters.grid_based._streetcode_geometry import (
-    _lawful_turn as _lawful_turn,
-)
-from esolangs.interpreters.grid_based._streetcode_geometry import (
-    _left as _left,
-)
-from esolangs.interpreters.grid_based._streetcode_geometry import (
-    _Merge as _Merge,
-)
-from esolangs.interpreters.grid_based._streetcode_geometry import (
-    _open_toward as _open_toward,
-)
-from esolangs.interpreters.grid_based._streetcode_geometry import (
-    _plus_dist as _plus_dist,
-)
-from esolangs.interpreters.grid_based._streetcode_geometry import (
-    _right as _right,
-)
-from esolangs.interpreters.grid_based._streetcode_geometry import (
-    _road_mouth as _road_mouth,
-)
-from esolangs.interpreters.grid_based._streetcode_geometry import (
-    _rotate as _rotate,
-)
-from esolangs.interpreters.grid_based._streetcode_geometry import (
-    _rotations as _rotations,
-)
-from esolangs.interpreters.grid_based._streetcode_geometry import (
     _State as _GeometryState,
-)
-from esolangs.interpreters.grid_based._streetcode_geometry import (
-    _turn_of as _turn_of,
 )
 from esolangs.interpreters.io import IO
 
