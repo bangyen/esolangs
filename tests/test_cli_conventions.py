@@ -261,9 +261,9 @@ class TestPrintedCommandsCanBePasted:
     def test_every_spaced_name_is_quoted_in_its_describe(
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        """All ten, since one unquoted survivor is the whole bug again."""
+        """Every name, since one unquoted survivor is the whole bug again."""
         spaced = [n for n in esolangs.list_languages() if " " in n]
-        assert len(spaced) == 10
+        assert len(spaced) == 11
         for name in spaced:
             out, _err = call_both(["describe", name], capsys)
             assert f'--spec "{name}"' in out, name

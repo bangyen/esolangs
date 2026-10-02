@@ -242,7 +242,8 @@ rows (exhaustive through three inputs; constants, parity, and eight seeded
 random tables at each of four through six), then sampled rows through n=14.
 The largest measured source was 81,949 characters; its worst-row execution
 was 32,783 steps. Published evolution, zero-no-append, empty-data, empty-rule,
-and nontermination controls passed. [Roadmap](roadmap.md) queues integration.
+and nontermination controls passed. The parser, queue interpreter, ordered embed, and final-deletion convention
+are integrated; regression tests execute 309 tables and 3,352 rows.
 
 Underload (167) and INTERCAL (103) also clear the backlink gate.
 Emmental (43) and Prelude (13) are implemented elsewhere and fail the backlink
@@ -250,21 +251,27 @@ gate. Neither has established an intrinsic axis.
 
 The 2026-10-01 fame audit covered eight absent census entries:
 
-- [Boolfuck](https://samuelhughes.com/boof/) (76): generator follow-up.
-  Bit I/O is little-endian, EOF supplies zero, and partial output bytes pad
-  with zeros. Author-specified Brainfuck lowering passed 309 tables and 3,352
-  rows: exhaustive through three inputs, constants, parity, and eight seeded
-  random tables at each of four through six inputs. Reads consumed eight bits
-  per input. Full integration and rendered linearity remain open.
-- [Subleq](https://esolangs.org/wiki/Subleq) (83): generator follow-up.
-  Fix a dialect with unbounded integers, direct jumps, `-1 B C` input,
-  `A -1 C` byte output, and negative jumps halting. A hoisted-read decision-tree
-  probe passed the same 309 tables and 3,352 rows. Its decimal addresses do
-  not establish O(T) rendered size; derive a linear construction before admission.
-- [///](https://esolangs.org/wiki////) (88): generator follow-up, construction
-  open. There is no stdin, but `/a/$/a` with uniform one-character fills
-  `0` and `1` executed identity. Escaping, truncated-rule halt, and a divergent
-  replacement control were checked. This is not evidence for arbitrary tables.
+- [Boolfuck](https://samuelhughes.com/boof/) (76): integrated with the
+  author's fixed Brainfuck lowering. Little-endian bit I/O supplies zero at
+  EOF and pads partial output bytes. Constant-size command replacements
+  preserve the Brainfuck generator's O(T) build and rendered-size bounds.
+- [Subleq](https://esolangs.org/wiki/Subleq) (83): integrated with unbounded
+  integers, direct jumps, `-1 B C` byte input (EOF raises), `A -1 C` byte
+  output, and negative jumps halting. The shared packed decoder stores
+  T/n chunks of n bits, with O(n) read instructions: O(T) rendered text.
+- [///](https://esolangs.org/wiki////) (88): integrated with ordered
+  one-character `a`/`b` embeds. Binary-to-unary substitutions form the row
+  index; T fixed sweeps consume that many two-character table entries.
+  Escaped future patterns prevent earlier sweeps corrupting later rules.
+  The selected entry becomes 0/1 and the suffix is deleted. Source is
+  exactly 20T + n + 53 characters; build work is O(T).
+
+Each new interpreter/generator executes 309 tables and 3,352 rows:
+exhaustive through three inputs, then constants, parity, and eight seeded
+random tables at each of four through six. Dense rendered-size difference
+ratios at n=8,10,12 are 3.997 (Cyclic tag), 3.854 (Boolfuck), 2.926 (Subleq),
+and 4.000 (///); the constructions, rather than these ratios, supply the bounds.
+
 - [HQ9+](https://esolangs.org/wiki/HQ9%2B) (136): interpreter-only candidate.
   No instruction reads input. `H` and `9` emit fixed non-Boolean text; `Q`
   emits source containing `Q`; `+` emits nothing. No program emits a bare

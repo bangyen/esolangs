@@ -14,6 +14,7 @@ from esolangs.tools.bio import bio
 from esolangs.tools.bit_tilde import bit_tilde
 from esolangs.tools.bitdeque import bitdeque
 from esolangs.tools.bitwise_cyclic_tag import bitwise_cyclic_tag
+from esolangs.tools.boolfuck import boolfuck
 from esolangs.tools.brainfuck import bf_tree, brainfuck
 from esolangs.tools.brainif import brainif
 from esolangs.tools.circlefuck import circlefuck
@@ -23,6 +24,7 @@ from esolangs.tools.collatz_multiverse import collatz_multiverse
 from esolangs.tools.container import container
 from esolangs.tools.crement import crement
 from esolangs.tools.cvnc import cvnc
+from esolangs.tools.cyclic_tag import cyclic_tag
 from esolangs.tools.decleq import decleq
 from esolangs.tools.dig import dig
 from esolangs.tools.dimensional import dimensional
@@ -58,10 +60,12 @@ from esolangs.tools.ram0 import ram0
 from esolangs.tools.rotfuck import rotfuck
 from esolangs.tools.sbleq import sbleq
 from esolangs.tools.six_five import six_five
+from esolangs.tools.slashes import slashes
 from esolangs.tools.slow_acv_mammalian import slow_acv_mammalian
 from esolangs.tools.smallfuck import smallfuck
 from esolangs.tools.sophie import sophie
 from esolangs.tools.streetcode import streetcode
+from esolangs.tools.subleq import subleq
 from esolangs.tools.suffolk import suffolk
 from esolangs.tools.super_snusp import super_snusp
 from esolangs.tools.taglate import taglate
@@ -91,6 +95,7 @@ __all__ = [
     "bit_tilde",
     "bitdeque",
     "bitwise_cyclic_tag",
+    "boolfuck",
     "brainfuck",
     "brainif",
     "circlefuck",
@@ -100,6 +105,7 @@ __all__ = [
     "container",
     "crement",
     "cvnc",
+    "cyclic_tag",
     "decleq",
     "dig",
     "dimensional",
@@ -135,10 +141,12 @@ __all__ = [
     "rotfuck",
     "sbleq",
     "six_five",
+    "slashes",
     "slow_acv_mammalian",
     "smallfuck",
     "sophie",
     "streetcode",
+    "subleq",
     "suffolk",
     "super_snusp",
     "taglate",

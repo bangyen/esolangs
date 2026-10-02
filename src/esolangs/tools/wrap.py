@@ -584,6 +584,9 @@ WRAPPERS = {
     "addsubjump": wrap_grid,
     "decleq": wrap_grid,
     "sbleq": wrap_grid,
+    "subleq": wrap_grid,
+    "boolfuck": wrap_chars,
+    "cyclic_tag": wrap_chars,
     # Space wrap stranded every sign alone; keep sign with term, one per line.
     "polynomial": _polynomial,
     # Space-delimited, but ``GOTO`` and its target must stay on one line.

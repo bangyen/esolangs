@@ -134,6 +134,7 @@ DUMPS_ON_THE_POST_HALT_STEP = frozenset(
         "Smallfuck",
         "Bitdeque",
         "Bitwise Cyclic Tag",
+        "Cyclic tag",
         "LaserFuck",
         "ArrowQueue",
         "Back",
@@ -182,6 +183,10 @@ NONDETERMINISTIC_AGAINST_RUN = frozenset({"LaserFuck"})
 
 # language -> (program, stdin)
 SAMPLES: dict[str, tuple[Program, str]] = {
+    "///": ("/a/b/a", ""),
+    "Boolfuck": ("+;", ""),
+    "Cyclic tag": (",1", ""),
+    "Subleq": ("6 -1 3 0 0 -1 65", ""),
     "123": ("3231", ""),
     "3D Brainfuck": ("+.", ""),
     "3x": ("3!", ""),

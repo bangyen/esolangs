@@ -32,7 +32,7 @@ Machine checks live in `tests/proofs/`. `test_ledger.py` checks consistency
 with the registry; `test_schemes.py` checks measurable consequences for lookup
 and parameterized rows (`tree` and `minterms` have no per-row check). Both run
 in the fast band. The deeper proof checks live in `tests/proofs/deep/`.
-`all_generators.py` checks all 73 constructions: flipping each table row
+`all_generators.py` checks all 77 constructions: flipping each table row
 changes the emitted program at the tested arities, and each construction
 completes an arity ladder on both table shapes. This checks the counting half
 of each scheme. Four generators -- A Painter Ant, ArrowQueue, Container and
@@ -181,7 +181,7 @@ carries the universal claim, so the tree below the crossover is a size
 optimization rather than part of the proof.  A width-constrained build may take
 the tree at any arity.  A Painter Ant, Alight, Befunge, BIO, B-tapemark,
 bit~, Bitwise Cyclic Tag, Circlefuck, Clockwise, Collatz Multiverse,
-Dimensional, EGL, Eval, Fish,
+Cyclic tag, ///, Subleq, Dimensional, EGL, Eval, Fish,
 Forbin, Minsky Swap, Modulous, NoComment, Packlang, Qoibl, SLOW ACV MAMMALIAN,
 Suffolk, Thue and Unsquare keep no tree route at all: A Painter
 Ant's
@@ -265,6 +265,10 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | bit~ | linear lookup | one tape cell an entry, and each input's one-shot loop jumps the pointer left by that input's weight, so the reads chain into a Horner index and a self-erasing walk carries the landed bit to one of two print windows | linear: bounded dependency scan and canonical residual IDs |
 | Bitdeque | parameterized lookup | head/tail discards leave the indexed entry in the deque | linear: 2T commands, discard blocks sum to T |
 | brainfuck | tree | `decision_tree_program` | linear: decision_tree_program, span walk, leaf moves geometric |
+| Boolfuck | reduction | fixed command substitutions lower the Brainfuck tree, consuming and emitting complete bytes | linear: constant-size lowering of the linear Brainfuck tree |
+| Cyclic tag | parameterized lookup | weighted zero padding advances the cyclic rule pointer to the indexed answer; the next empty rule deletes it | linear: 5T + 2n + 1 characters, weighted padding |
+| /// | parameterized lookup | binary-to-unary substitutions form the row index; T escaped sweeps consume indexed entries before decoding one answer and deleting the suffix | linear: T fixed-size sweeps and 2T table characters |
+| Subleq | finite lookup | direct-jump packed decoder with byte reads and self-modifying chunk selection | linear: T/n packed chunks of n bits, O(n) decoder |
 | BrainIf | tree | equal cofactors share one layered DAG node; spatial lookup remains a candidate | linear: O(T/n) nodes with O(n)-digit addresses |
 | Circlefuck | linear lookup | the tape is the program, so the table is its tail past the `@` that stops the run, entry 0 abutting the index digits at the ring's end; `}` deletes the cell under the pointer and slides the digits down into it, so counting the index out against one `}` apiece leaves the entry it names under the pointer | linear: bounded dependency scan and canonical residual IDs |
 | Circuit Diagram | tree | finite planar routing | linear: H-layout side C sqrt(T), area Theta(T) |
@@ -380,7 +384,7 @@ construction.  Parity at thirteen inputs is 966568 digits, built in
 three seconds with the prime powers multiplied as a balanced tree, and
 the interpreter decodes it to the tree the generator encoded.
 
-Accordingly, this ledger records 72 theoretical totality arguments and one
+Accordingly, this ledger records 76 theoretical totality arguments and one
 proved language exception; every other row is `Total` or theoretically total
 past a resource ceiling.
 

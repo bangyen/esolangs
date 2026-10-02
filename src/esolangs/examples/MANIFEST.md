@@ -28,6 +28,7 @@ Row gives the logical bits; Input gives their language-specific encoding.
 | `bitdeque.txt` | Bitdeque | `0001` | `01` | embedded 01 | '0' |
 | `bitwise-cyclic-tag.txt` | Bitwise Cyclic Tag | `0001` | `01` | embedded 01 | '0' |
 | `bit~.txt` | bit~ | `0001` | `01` | 01 | '0' |
+| `boolfuck.txt` | Boolfuck | `0001` | `01` | 01 | '0' |
 | `brainfuck.txt` | brainfuck | `0001` | `01` | 01 | '0' |
 | `brainif.txt` | BrainIf | `0001` | `01` | 01 | '0' |
 | `circlefuck.txt` | Circlefuck | `0001` | `01` | 01 | '0' |
@@ -37,6 +38,7 @@ Row gives the logical bits; Input gives their language-specific encoding.
 | `container.txt` | Container | `0001` | `01` | 01 | '0' |
 | `crement.txt` | Crement | `0001` | `01` | embedded 01 | (nothing) |
 | `cvnc.txt` | CV(N)(C) | `0001` | `01` | 0 1 | '0' |
+| `cyclic-tag.txt` | Cyclic tag | `0001` | `01` | embedded 01 | '0' |
 | `decleq.txt` | Decleq | `0001` | `01` | 01 | '0' |
 | `dig.txt` | Dig | `0001` | `01` | 0 1 | '0' |
 | `dimensional.txt` | Dimensional | `0001` | `01` | 0 1 | '0' |
@@ -70,10 +72,12 @@ Row gives the logical bits; Input gives their language-specific encoding.
 | `ram0.txt` | RAM0 | `0001` | `01` | embedded 01 | 'z: 0\nn: 0\nram: {\n    1: 0,\n    0: 1\n}' |
 | `rotfuck.txt` | ROTfuck | `0001` | `01` | 01 | '0' |
 | `sbleq.txt` | S*bleq | `0001` | `01` | 01 | '0' |
+| `slashes.txt` | /// | `0001` | `01` | embedded 01 | '0' |
 | `slow-acv-mammalian.txt` | SLOW ACV MAMMALIAN | `0001` | `01` | 01 | '0' |
 | `smallfuck.txt` | Smallfuck | `0001` | `01` | embedded 01 | '0' |
 | `sophie.txt` | Sophie | `0001` | `01` | 01 | '0' |
 | `streetcode.txt` | Streetcode | `0001` | `01` | 01 | '0' |
+| `subleq.txt` | Subleq | `0001` | `01` | 01 | '0' |
 | `suffolk.txt` | Suffolk | `0001` | `01` | 01 | '0' |
 | `super-snusp.txt` | Super SNUSP | `0001` | `01` | 01 | '0' |
 | `taglate.txt` | Taglate | `0001` | `01` | 01 | '0' |
@@ -96,6 +100,7 @@ Row gives the logical bits; Input gives their language-specific encoding.
 - **clockwise** -- Clockwise reads all its input bits in one go, so they go on one line -- one character per bit, not a line per bit, and not seven bits packed into a character: that packing is real but is on the output side. A line per bit, or a packed one, is read as a different row and answered wrongly
 - **container** -- Container prints the answer like any other reader; it also ends by calling sys.exit(0) rather than returning, which matters to a harness driving it but not to reading the result
 - **crement** -- Crement answers by termination: the tree's nodes patch a per-input tester's jump targets, and the row lands past the end (halts, 0) or on a self-jump (diverges, 1)
+- **cyclic-tag** -- Inputs fill the initial queue; the final deleted bit is the answer.
 - **fargo** -- Fargo reads one number whose bits are the inputs, so the committed input is the row index rather than a bit per line
 - **fractran** -- FRACTRAN has neither input nor output: the inputs are the exponents of n primes in the starting value, and the answer is the value the run stops on -- 1 for a zero and 2 for a one
 - **grapheme** -- Grapheme's generator normalizes each input line with ord(line[0]) - 65 and then maps zero to 1, so its input bits are spelled % and A: 'A' is a 1 and every other first character is a 0, which means a 0/1 line reads as 0 and the program answers the all-zeros row. The second step is not optional prose -- ord('A') - 65 is 0, so the subtraction alone says the opposite
@@ -106,6 +111,7 @@ Row gives the logical bits; Input gives their language-specific encoding.
 - **minsky-swap** -- Minsky Swap has no output instruction and dumps its registers at halt; the answer is the second one
 - **piet** -- 80 pixels per codel, comparable in area to Line
 - **ram0** -- RAM0 has no output instruction and dumps its whole state at halt; the answer is the 'z' register
+- **slashes** -- Inputs fill the binary row index before unary table selection.
 - **smallfuck** -- Smallfuck defines no I/O; this implementation prints final cell 2
 - **taglate** -- Taglate reads adjacent characters, but an odd input count above 1 is padded with a leading zero it reads like any other digit: an n=3 program wants four characters. Feeding three exhausts its input; padding at the end instead answers every row whose top bit is set wrongly
 - **thue** -- Thue draws which rewrite to make, by spec, and the interpreter draws too; this program's rules are written so that every state it reaches has exactly one, leaving the draw nothing to change

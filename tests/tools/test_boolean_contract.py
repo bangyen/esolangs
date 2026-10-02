@@ -545,6 +545,9 @@ _UNSHAPED = {
     "forbin",  # one painted call argument per entry, halved down to the first
     "malbolge",
     "minsky_swap",
+    "cyclic_tag",
+    "slashes",
+    "subleq",
     "b_tapemark",
     "bitwise_cyclic_tag",  # no branch, so every table of an arity is one length
     "minifuck",

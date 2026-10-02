@@ -138,6 +138,30 @@ LANGUAGES: dict[str, Language] = {
         id="bitwise_cyclic_tag",
         interpreter="queue_based.bitwise_cyclic_tag",
     ),
+    "Cyclic tag": Language(
+        "Cyclic tag",
+        boolean=_boolean.cyclic_tag,
+        id="cyclic_tag",
+        interpreter="queue_based.cyclic_tag",
+    ),
+    "Boolfuck": Language(
+        "Boolfuck",
+        "tape_based.boolfuck",
+        boolean=_boolean.boolfuck,
+        id="boolfuck",
+    ),
+    "Subleq": Language(
+        "Subleq",
+        "tape_based.subleq",
+        boolean=_boolean.subleq,
+        id="subleq",
+    ),
+    "///": Language(
+        "///",
+        "other.slashes",
+        boolean=_boolean.slashes,
+        id="slashes",
+    ),
     "BrainIf": Language(
         "BrainIf",
         "tape_based.brainif",

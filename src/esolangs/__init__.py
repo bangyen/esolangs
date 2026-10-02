@@ -451,13 +451,19 @@ def _check_runnable(language: str, program: Program) -> None:
             f"program must be a string of source or a Raster, got "
             f"{type(program).__name__}"
         )
-    if _looks_like_a_path(program):
+    # /// uses path-shaped strings as substitution rules.
+    if LANGUAGES[name].id != "slashes" and _looks_like_a_path(program):
         raise ProgramError(
             f"program looks like a path, not source: {program!r}. "
             f"Read the file first, or pass pathlib.Path({program!r})"
         )
     char = template_char(LANGUAGES[name].id)
     if char is not None and char in program:
+        if LANGUAGES[name].id == "slashes" and not isinstance(program, _Template):
+            from esolangs.tools.slashes import _is_unfilled_template
+
+            if not _is_unfilled_template(program):
+                return
         raise TemplateError(
             f"{name}'s generator returns a template, and this one still has "
             f"unfilled runs of {char!r} ({program.count(char)} characters); "

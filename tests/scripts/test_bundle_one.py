@@ -92,7 +92,7 @@ class TestBundleCompiles:
         """Every bundled file is importable and defines ``run``."""
         bundle_one = load_script()
         for name in RUNNERS:
-            out = tmp_path / f"{name}.py"
+            out = tmp_path / f"{canonical_id(name)}.py"
             bundle_one.bundle(name, bundle_one.Source(None), out)
             module = _load_bundle(out)
             assert callable(module.run), name
@@ -149,7 +149,7 @@ class TestBundleMatchesPackage:
         for name, (module, _split) in RUNNERS.items():
             if LANGUAGES[name].boolean is not None:
                 continue
-            out = tmp_path / f"{name}.py"
+            out = tmp_path / f"{canonical_id(name)}.py"
             bundle_one.bundle(name, bundle_one.Source(None), out)
             bundled = _load_bundle(out)
             expected = importlib.import_module("esolangs.interpreters." + module)
@@ -265,9 +265,9 @@ def test_install_one_downloads_and_runs_a_bundle() -> None:
         server.shutdown()
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("language", ["Line", "Piet"])
 @pytest.mark.parametrize("scale", [1, 2])
-@pytest.mark.medium
 def test_raster_bundle_matches_pixels_and_runs_standalone(
     language: str, scale: int, tmp_path: Path
 ) -> None:
@@ -411,7 +411,7 @@ def test_streetcode_package_runs_standalone(tmp_path: Path) -> None:
         assert result.stdout.replace("Input: ", "") == expected
 
 
-@pytest.mark.medium
+@pytest.mark.slow
 def test_polynomial_package_bundle_runs_standalone(tmp_path: Path) -> None:
     canonical = "esolangs.interpreters.register_based.polynomial"
     entry = importlib.import_module(canonical + ".__main__")

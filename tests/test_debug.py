@@ -239,7 +239,7 @@ class TestARunFinishesTheDump:
         parted when FRACTRAN joined one set and met again when BCT joined the
         other -- while the members never have, so compare the sets too.
         """
-        assert len(self._dumping()) == 8
+        assert len(self._dumping()) == 9
         mode = {
             n
             for n in esolangs.list_languages()
@@ -493,6 +493,7 @@ class TestSteppingWarnsAboutStdinToo:
         ]
 
     @pytest.mark.parametrize("name", _eof_is_a_value.__func__())  # type: ignore[attr-defined]
+    @pytest.mark.medium
     def test_stepping_to_the_halt_warns(self, name: str) -> None:
         """Fed one line short, which is the case the flag is about.
 

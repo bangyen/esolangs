@@ -5,6 +5,8 @@ import unicodedata
 
 # Display names whose canonical id cannot be produced by the slug rules.
 _CANONICAL_OVERRIDES = {
+    "///": "slashes",
+    "Slashalash": "slashes",
     # The parentheses mark optional CV(N)(C) slots but are part of the name;
     # the slug rule yields "cv_n_c" where the language is written as one word.
     "CV(N)(C)": "cvnc",
