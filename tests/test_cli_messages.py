@@ -14,6 +14,7 @@ import pytest
 import esolangs
 from esolangs import cli
 from esolangs.cli import main
+from esolangs.cli_io import _emit_partial, _smuggled_bytes, _write_output
 from tests.cli_support import _LOOPS, call_both
 from tests.test_cli import _FakeStdin, _program, call_main
 
@@ -749,7 +750,7 @@ class TestTheLastResortPaths:
         surrogate, and pytest's assertion rewriter cannot re-serialize the
         module afterwards.
         """
-        assert cli._smuggled_bytes("\udfff") is None  # noqa: SLF001 - private path
+        assert _smuggled_bytes("\udfff") is None
 
     def test_output_a_terminal_cannot_encode_is_written_as_bytes(self) -> None:
         """A lone surrogate reaches the byte stream rather than raising."""
@@ -774,7 +775,7 @@ class TestTheLastResortPaths:
                 raise UnicodeEncodeError("ascii", text, 0, 1, "narrow")
 
         with patch.object(sys, "stdout", _Narrow()):
-            cli._write_output("\ud800")  # noqa: SLF001 - the path is private
+            _write_output("\ud800")
         assert written, "nothing reached the byte stream"
 
     def test_a_value_error_from_the_screen_is_a_refusal(
@@ -807,7 +808,7 @@ class TestTheLastResortPathsContinued:
         neither returns early nor reports.
         """
         smuggled = "".join(chr(0xDC00 + byte) for byte in (0xC3, 0xA9))
-        assert cli._smuggled_bytes(smuggled) is None  # noqa: SLF001 - private path
+        assert _smuggled_bytes(smuggled) is None
 
     def test_output_survives_a_stream_with_no_byte_buffer(self) -> None:
         """Some streams are text only, and then the escape is the best there is."""
@@ -824,7 +825,7 @@ class TestTheLastResortPathsContinued:
                 return len(text)
 
         with patch.object(sys, "stdout", _TextOnly()):
-            cli._write_output("a\udc80b")  # noqa: SLF001 - private path
+            _write_output("a\udc80b")
         assert written
         assert "\\udc80" in written[0]
 
@@ -840,7 +841,7 @@ class TestTheLastResortPathsContinued:
         """
         failure = esolangs.HaltError("stopped")
         failure.partial_output = "Hi\n"
-        cli._emit_partial(failure)  # noqa: SLF001 - private path
+        _emit_partial(failure)
         assert capsys.readouterr().out == "Hi\n"
 
     def test_a_value_error_from_the_run_is_a_refusal(
