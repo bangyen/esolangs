@@ -74,8 +74,7 @@ _SHAPES = (("dense", _dense), ("parity", _parity))
 #: ``circuit_diagram``, which needs 2s by n=9 and times out past it.  Seven
 #: keeps that one affordable; eight is comfortable for the rest.
 _GROWTH_MAX = 8
-# Line's pixel ladder through n=5 measured 0.8s.
-_GROWTH_OVERRIDE = {"circuit_diagram": 7, "line": 5}
+_GROWTH_OVERRIDE = {"circuit_diagram": 7}
 
 #: Generators that may refuse tables the others accept are read from the
 #: ledger's own ``cap``/``exception`` labels, not listed here, so a row that
