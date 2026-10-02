@@ -148,7 +148,7 @@ def test_the_graph_walker_matches_the_pixels() -> None:
 
 def test_the_graph_walker_decrements() -> None:
     """``-`` is the one opcode no generated Line program emits."""
-    from esolangs.interpreters.tape_based.line import _run_node
+    from esolangs.interpreters.tape_based.line import _Machine
     from esolangs.line.render import Node
 
     minus = Node("-")
@@ -157,7 +157,7 @@ def test_the_graph_walker_decrements() -> None:
     start.next = minus
 
     io = ScriptedIO()
-    _run_node(start, io)
+    _Machine.run_node(start, io)
     assert io.getvalue() == "0"
 
 
@@ -168,14 +168,14 @@ def test_the_graph_walker_steps_over_an_opcode_it_does_not_know() -> None:
     walker has no else-arm, and this records that it keeps going rather
     than raising.
     """
-    from esolangs.interpreters.tape_based.line import _run_node
+    from esolangs.interpreters.tape_based.line import _Machine
     from esolangs.line.render import Node
 
     start = Node("!")
     start.next = Node("o")
 
     io = ScriptedIO()
-    _run_node(start, io)
+    _Machine.run_node(start, io)
     assert io.getvalue() == "0"
 
 

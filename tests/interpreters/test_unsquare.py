@@ -274,3 +274,17 @@ class TestStateViewValues:
         assert machine.acc == 2  # decremented once inside the body
         assert machine.jumps == (1,)  # the > that was entered
         assert machine.stack == (4,)  # what P pushed on the first pass
+
+
+def test_loading_a_stack_detaches_it_and_preserves_other_state() -> None:
+    from esolangs.interpreters.stack_based.unsquare import _Machine
+
+    machine = _Machine("+o", ScriptedIO())
+    machine.step()
+    values = [65, 66]
+    machine.load(values)
+    values[1] = 67
+    assert machine.stack == (65, 66)
+    assert machine.acc == 2
+    machine.step()
+    assert machine.io.getvalue() == "B"

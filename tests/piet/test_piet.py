@@ -6,7 +6,7 @@ import pytest
 
 import esolangs
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.stack_based.piet import _command, _perform_io, run
+from esolangs.interpreters.stack_based.piet import _command, _Machine, run
 from esolangs.raster import Raster
 
 LIGHT_RED = (255, 192, 192)
@@ -288,7 +288,7 @@ def _execute_command(change, size, stack, io):
     before = tuple(stack)
     after, dp, cc, effect = _command(change, size, before)
     assert before == tuple(stack)
-    stack[:] = _perform_io(after, effect, io)
+    stack[:] = _Machine.perform_io(after, effect, io)
     return dp, cc
 
 

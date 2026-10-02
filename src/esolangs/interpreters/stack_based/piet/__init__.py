@@ -20,8 +20,10 @@ from contextlib import suppress
 
 from esolangs._drive import drive
 from esolangs._source import raster_source as load_source
-from esolangs.interpreters.io import ScriptedIO
+from esolangs.interpreters.io import IO
 from esolangs.raster import Raster
+
+__all__ = ["load_source", "run"]
 
 supports_scale = True
 
@@ -183,32 +185,6 @@ def _command(
     return stack, 0, 0, None
 
 
-def _perform_io(
-    stack: tuple[int, ...], effect: _Effect, io: ScriptedIO
-) -> tuple[int, ...]:
-    """Perform a transition's I/O and return the resulting immutable stack."""
-    if effect is None:
-        return stack
-    action, value = effect
-    if action == "read_num":
-        try:
-            line = io.input_token()
-        except EOFError:
-            pass
-        else:
-            with suppress(ValueError):
-                return (*stack, int(line))
-    elif action == "read_char":
-        with suppress(EOFError):
-            return (*stack, io.input_char())
-    elif action == "write_num":
-        io.print_num(value)
-    else:
-        with suppress(ValueError):
-            io.print_char(chr(value))
-    return stack
-
-
 def _advance(
     state: _State, rows: tuple[tuple[Pixel, ...], ...]
 ) -> tuple[_State, _Effect]:
@@ -264,9 +240,31 @@ class _Machine:
 
     ip_shape = "grid"
 
-    def __init__(
-        self, program: Raster, io: ScriptedIO, *, scale: int | None = None
-    ) -> None:
+    @staticmethod
+    def perform_io(stack: tuple[int, ...], effect: _Effect, io: IO) -> tuple[int, ...]:
+        """Perform a transition's I/O and return the resulting immutable stack."""
+        if effect is None:
+            return stack
+        action, value = effect
+        if action == "read_num":
+            try:
+                line = io.input_token()
+            except EOFError:
+                pass
+            else:
+                with suppress(ValueError):
+                    return (*stack, int(line))
+        elif action == "read_char":
+            with suppress(EOFError):
+                return (*stack, io.input_char())
+        elif action == "write_num":
+            io.print_num(value)
+        else:
+            with suppress(ValueError):
+                io.print_char(chr(value))
+        return stack
+
+    def __init__(self, program: Raster, io: IO, *, scale: int | None = None) -> None:
         self.rows = program._normalized(scale)  # noqa: SLF001
         self.io = io
         self.state: _State = ((0, 0), 0, -1, (), _colour(self.rows[0][0]) == BLACK)
@@ -315,11 +313,11 @@ class _Machine:
 
     def step(self) -> None:
         state, effect = _advance(self.state, self.rows)
-        stack = _perform_io(state[3], effect, self.io)
+        stack = self.perform_io(state[3], effect, self.io)
         self.state = (*state[:3], stack, state[4])
 
 
-def run(program: Raster, io: ScriptedIO, *, scale: int | None = None) -> None:
+def run(program: Raster, io: IO, *, scale: int | None = None) -> None:
     """Execute a Piet image, detecting its codel scale."""
     machine = _Machine(program, io, scale=scale)
     drive(machine)

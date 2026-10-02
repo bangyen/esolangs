@@ -464,3 +464,31 @@ def test_two_merges_into_one_leg_share_the_resume_position() -> None:
 def test_band_probe_preserves_edges_and_all_three_rays(y, x, direction, expected):
     mask = Mask(3, 3, [0, 2, 0])
     assert lattice._band_lit(mask, y, x, direction) is expected  # noqa: SLF001
+
+
+def test_lattice_preserves_an_unsnappable_start_and_stops_a_zero_length_stroke() -> (
+    None
+):
+    mask = Mask(3, 3)
+    assert lattice._snap(mask, 1, 1, 0) == (1, 1)  # noqa: SLF001
+    stroke = lattice.walk_tree(mask, (1, 1), 0)
+    assert stroke.end == (1, 1)
+    assert len(stroke.vertices) == 2
+
+
+def test_lattice_crossing_keeps_the_arrival_heading() -> None:
+    assert lattice._classify({0, 2, 4, 6}, 4) == ("crossing", [0])  # noqa: SLF001
+
+
+@pytest.mark.parametrize("visited", [set(), {(20, 0)}, {(20, 40)}, {(20, 0), (20, 40)}])
+def test_lattice_fork_does_not_rewalk_visited_arm_endpoints(visited) -> None:
+    mask = Mask(41, 41)
+    for y in range(20, 41):
+        mask[y, 20] = True
+    for x in range(41):
+        mask[20, x] = True
+    seen = set(visited)
+    stroke = lattice.walk_tree(mask, (40, 20), 0, seen)
+    assert stroke.end == (20, 20)
+    assert (stroke.zero is None) == ((20, 40) in visited)
+    assert (stroke.nonzero is None) == ((20, 0) in visited)

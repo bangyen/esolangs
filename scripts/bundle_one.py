@@ -275,11 +275,177 @@ def _resolve(language: str, langs: dict[str, str]) -> str:
     raise KeyError(language)
 
 
+def _module_source(source: Source, module: str) -> tuple[str, bool]:
+    """Read a module or package without requiring an installed esolangs."""
+    from urllib.error import HTTPError
+
+    relative = module.removeprefix("esolangs.").replace(".", "/")
+    try:
+        return source.get(relative + ".py"), False
+    except FileNotFoundError:
+        pass
+    except HTTPError as exc:
+        if exc.code != 404:
+            raise
+    return source.get(relative + "/__init__.py"), True
+
+
+def _package_sources(source: Source, target: str) -> tuple[dict[str, str], set[str]]:
+    """Collect runtime imports, retaining module namespaces and relative imports."""
+    from importlib.util import resolve_name
+
+    sources: dict[str, str] = {}
+    packages: set[str] = set()
+
+    def visit(module: str) -> None:
+        if module in sources:
+            return
+        code, package = _module_source(source, module)
+        sources[module] = code
+        if package:
+            packages.add(module)
+        parent = module if package else module.rpartition(".")[0]
+        tree = ast.parse(code)
+        # Absolute imports inside helpers are lazy optional API dependencies;
+        # relative imports inside steps are the interpreter's own code.
+        imports = [node for node in tree.body if isinstance(node, ast.ImportFrom)]
+        imports.extend(
+            node
+            for node in ast.walk(tree)
+            if isinstance(node, ast.ImportFrom) and node.level and node not in imports
+        )
+        for node in imports:
+            if node.level:
+                dependency = resolve_name(
+                    "." * node.level + (node.module or ""), parent
+                )
+            elif node.module and node.module.startswith("esolangs."):
+                dependency = node.module
+            else:
+                continue
+            if node.module is None:
+                for alias in node.names:
+                    visit(dependency + "." + alias.name)
+            else:
+                visit(dependency)
+                if dependency in packages:
+                    # `from package import module` and exported values coexist.
+                    exported = ast.parse(sources[dependency])
+                    names = {
+                        node.name
+                        for node in exported.body
+                        if isinstance(node, (ast.ClassDef, ast.FunctionDef))
+                    }
+                    names.update(
+                        target.id
+                        for node in exported.body
+                        if isinstance(node, ast.Assign)
+                        for target in node.targets
+                        if isinstance(target, ast.Name)
+                    )
+                    names.update(
+                        node.name.id
+                        for node in exported.body
+                        if isinstance(node, ast.TypeAlias)
+                        and isinstance(node.name, ast.Name)
+                    )
+                    names.update(
+                        alias.asname or alias.name
+                        for node in exported.body
+                        if isinstance(node, ast.ImportFrom)
+                        for alias in node.names
+                    )
+                    for alias in node.names:
+                        if alias.name not in names:
+                            visit(dependency + "." + alias.name)
+
+    visit(target)
+    visit("esolangs.interpreters._entry")
+    return sources, packages
+
+
+_PACKAGE_RUNTIME = """
+import builtins as _builtins
+import importlib as _importlib
+import importlib.abc as _import_abc
+import importlib.util as _import_util
+import sys as _sys
+
+_prefix = "_esolangs_bundle_" + str(id(_sources))
+_parents = {name.rpartition(".")[0] for name in _sources}
+while any(name and name.rpartition(".")[0] not in _parents for name in tuple(_parents)):
+    _parents.update(name.rpartition(".")[0] for name in tuple(_parents) if name)
+
+class _BundleLoader(_import_abc.MetaPathFinder, _import_abc.Loader):
+    def find_spec(self, fullname, path=None, target=None):
+        if fullname == _prefix or fullname.startswith(_prefix + "."):
+            original = "esolangs" + fullname[len(_prefix):]
+            if original not in _sources and original not in _parents:
+                return None
+            package = original in _packages or original not in _sources
+            return _import_util.spec_from_loader(fullname, self, is_package=package)
+        return None
+
+    def create_module(self, spec):
+        return None
+
+    def exec_module(self, module):
+        original = "esolangs" + module.__name__[len(_prefix):]
+        code = _sources.get(original)
+        if code is None:
+            return
+        module.__file__ = "<bundle>/" + original.replace(".", "/") + ".py"
+        module.__dict__["__builtins__"] = dict(
+            vars(_builtins), __import__=_bundle_import
+        )
+        exec(compile(code, module.__file__, "exec"), module.__dict__)
+
+
+def _bundle_import(name, globals=None, locals=None, fromlist=(), level=0):
+    if not level and (name == "esolangs" or name.startswith("esolangs.")):
+        name = _prefix + name[len("esolangs"):]
+    return _builtins.__import__(name, globals, locals, fromlist, level)
+
+_sys.meta_path.insert(0, _BundleLoader())
+_interpreter = _importlib.import_module(_prefix + _target[len("esolangs"):])
+run = _interpreter.run
+
+if __name__ == "__main__":
+    _entry = _importlib.import_module(_prefix + ".interpreters._entry")
+    _entry.script_main(run, loader=_interpreter.load_source)
+"""
+
+
+def _bundle_package(source: Source, module: str, out: Path) -> Path:
+    """Write a single file preserving package namespaces and optional dependencies."""
+    target = "esolangs.interpreters." + module
+    sources, packages = _package_sources(source, target)
+    dependencies = []
+    for name, pattern in (("Pillow", r"from PIL\b"), ("sympy", _SYMPY.pattern)):
+        if any(re.search(pattern, code, re.M) for code in sources.values()):
+            dependencies.append(f"# Requires: pip install {name}\n")
+    code = (
+        "#!/usr/bin/env python3\n"
+        + "".join(dependencies)
+        + f"_sources = {sources!r}\n_packages = {sorted(packages)!r}\n"
+        + f"_target = {target!r}\n"
+        + _PACKAGE_RUNTIME
+    )
+    compile(code, out.name, "exec")
+    out.write_text(code)
+    return out
+
+
 def bundle(language: str, source: Source, out: Path | None) -> Path:
     """Write the self-contained interpreter bundle and return its path."""
     langs = _parse_registry(source)
     module = _resolve(language, langs)
     stem = module.rsplit(".", 1)[-1]
+    if out is None:
+        out = Path.cwd() / f"esolangs_{stem}.py"
+    _code, package = _module_source(source, "esolangs.interpreters." + module)
+    if package:
+        return _bundle_package(source, module, out)
     rel = f"interpreters/{module.replace('.', '/')}.py"
 
     parts: list[str] = []
@@ -294,9 +460,6 @@ def bundle(language: str, source: Source, out: Path | None) -> Path:
         requires_sympy,
         keep_main=True,
     )
-
-    if out is None:
-        out = Path.cwd() / f"esolangs_{stem}.py"
 
     header = [
         "#!/usr/bin/env python3",

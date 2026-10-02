@@ -239,3 +239,13 @@ class TestRunSaysWhenStdinLooksWrong:
             if caught:
                 noisy.append(f"{name}: {caught[0].message}")
         assert not noisy, "\n".join(noisy)
+
+
+@pytest.mark.parametrize("language", ["Grapheme", "Line", "Piet"])
+def test_numeric_or_line_input_count_is_checked_for_text_and_raster(
+    language: str,
+) -> None:
+    facts = esolangs.describe(language)
+    stdin = facts["input_encoding"][0] + "\n"
+    with pytest.raises(esolangs.ArgumentError, match="reads 2 line"):
+        esolangs.check_stdin(language, stdin, "0110")

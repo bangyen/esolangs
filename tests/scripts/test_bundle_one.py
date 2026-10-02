@@ -21,6 +21,7 @@ from pathlib import Path
 import pytest
 
 import esolangs
+from esolangs import Program
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.registry import LANGUAGES, RUNNERS, canonical_id
 from esolangs.tools.examples import BOOLEAN_EXAMPLES
@@ -60,7 +61,7 @@ def _load_bundle(tmp_path: Path) -> object:
     return module
 
 
-def _run_and_read(bundle_mod: object, arg: str | list[str], stdin: str = "") -> str:
+def _run_and_read(bundle_mod: object, arg: Program | list[str], stdin: str = "") -> str:
     """Run ``bundle_mod.run`` on ``arg`` and return its captured output.
 
     Two arguments, like ``esolangs.run`` itself: the comparison below is
@@ -113,7 +114,7 @@ class TestBundleMatchesPackage:
         interpreter keyword arguments (Suffolk's ``limit``) match too.
         """
         bundle_one = load_script()
-        tested = 0
+        tested = set()
         for stem, example in sorted(BOOLEAN_EXAMPLES.items()):
             name = _display_name(stem)
             if name is None or name not in RUNNERS:
@@ -137,8 +138,10 @@ class TestBundleMatchesPackage:
                 )
             )
             assert actual == expected, name
-            tested += 1
-        assert tested > 0
+            tested.add(name)
+        assert tested == {
+            name for name, language in LANGUAGES.items() if language.boolean is not None
+        }
 
     def test_no_generator_languages_import(self, tmp_path: Path) -> None:
         """Languages without a generator still bundle to importable files."""
@@ -260,3 +263,114 @@ def test_install_one_downloads_and_runs_a_bundle() -> None:
                 assert output.stdout == expected
     finally:
         server.shutdown()
+
+
+@pytest.mark.parametrize("language", ["Line", "Piet"])
+@pytest.mark.parametrize("scale", [1, 2])
+def test_raster_bundle_matches_pixels_and_runs_standalone(
+    language: str, scale: int, tmp_path: Path
+) -> None:
+    module = load_script()
+    out = tmp_path / "bundle.py"
+    module.bundle(language, module.Source(None), out)
+    bundled = _load_bundle(out)
+    program = esolangs.generate(language, "0110", balance=True, scale=scale)
+    path = tmp_path / "program.png"
+    path.write_bytes(program.to_png())
+    for bits in ("00", "01", "10", "11"):
+        stdin = "\n".join(bits) + "\n"
+        assert _run_and_read(bundled, program, stdin) == esolangs.run(
+            language, program, stdin
+        )
+        result = subprocess.run(
+            [sys.executable, "-I", str(out), str(path)],
+            input=stdin,
+            capture_output=True,
+            text=True,
+            cwd=tmp_path,
+        )
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.removeprefix("Input: Input: ") == esolangs.run(
+            language, path, stdin
+        )
+
+
+@pytest.mark.parametrize("language", ["Line", "Piet"])
+def test_raster_module_entry_point_matches_the_library(
+    language: str, tmp_path: Path
+) -> None:
+    canonical = "esolangs.interpreters." + LANGUAGES[language].interpreter
+    entry = importlib.import_module(canonical + ".__main__")
+    assert entry.run is importlib.import_module(canonical).run
+    path = tmp_path / "program.png"
+    path.write_bytes(esolangs.generate(language, "0110", balance=True).to_png())
+    result = subprocess.run(
+        [sys.executable, "-m", canonical, str(path)],
+        input="0\n1\n",
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "Input: Input: 1"
+
+
+def test_package_bundle_also_supports_text_without_pillow(tmp_path: Path) -> None:
+    module = load_script()
+    files = {
+        "registry/_table.py": 'LANGUAGES = {"Demo": Language("Demo", "other.demo")}',
+        "interpreters/other/demo/__init__.py": (
+            "from pathlib import Path\nfrom .ops import run\n"
+            "load_source = Path.read_text\n"
+        ),
+        "interpreters/other/demo/ops.py": (
+            "def run(program, io):\n    io.print_str(program)\n"
+        ),
+    }
+
+    class MemorySource(module.Source):
+        def get(self, relative):
+            if relative in files:
+                return files[relative]
+            return super().get(relative)
+
+    out = tmp_path / "demo.py"
+    module.bundle("Demo", MemorySource(None), out)
+    assert "pip install Pillow" not in out.read_text()
+    source = tmp_path / "program.txt"
+    source.write_text("hello")
+    result = subprocess.run(
+        [sys.executable, "-I", str(out), str(source)],
+        capture_output=True,
+        text=True,
+        cwd=tmp_path,
+    )
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "hello"
+
+
+@pytest.mark.parametrize("language", ["Line", "Piet"])
+def test_raster_package_bundles_from_raw_http_sources(
+    language: str, tmp_path: Path
+) -> None:
+    module = load_script()
+
+    class QuietHandler(SimpleHTTPRequestHandler):
+        def log_message(self, _format, *args):
+            pass
+
+    server = ThreadingHTTPServer(
+        ("127.0.0.1", 0), functools.partial(QuietHandler, directory=str(REPO_ROOT))
+    )
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    try:
+        out = tmp_path / "bundle.py"
+        module.bundle(
+            language, module.Source(f"http://127.0.0.1:{server.server_port}"), out
+        )
+        assert "Requires: pip install Pillow" in out.read_text()
+        bundled = _load_bundle(out)
+        program = esolangs.generate(language, "01")
+        assert _run_and_read(bundled, program, "1\n") == "1"
+    finally:
+        server.shutdown()
+        server.server_close()

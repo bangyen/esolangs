@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import sys
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any, Literal
 
 from esolangs.interpreters.io import IO
@@ -21,7 +22,10 @@ SourceShape = Literal["text", "keep", "strip"]
 
 
 def script_main(
-    run: Callable[[Any, IO], int | None], *, shape: SourceShape = "text"
+    run: Callable[[Any, IO], int | None],
+    *,
+    shape: SourceShape = "text",
+    loader: Callable[[Path], Any] | None = None,
 ) -> None:
     """Run the program file named by ``sys.argv[1]``, if one was given.
 
@@ -30,13 +34,15 @@ def script_main(
     """
     if len(sys.argv) < 2:
         return
-    with open(sys.argv[1], encoding="utf-8") as file:
-        text = file.read()
-    source: Any = text
+    if loader is None:
+        with open(sys.argv[1], encoding="utf-8") as file:
+            source: Any = file.read()
+    else:
+        source = loader(Path(sys.argv[1]))
     if shape == "keep":
-        source = text.splitlines(keepends=True)
+        source = source.splitlines(keepends=True)
     elif shape == "strip":
-        source = text.splitlines()
+        source = source.splitlines()
     code = run(source, IO())
     if code is not None:
         sys.exit(code)

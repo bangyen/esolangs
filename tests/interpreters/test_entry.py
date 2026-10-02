@@ -107,3 +107,19 @@ class TestArgumentHandling:
         monkeypatch.setattr("sys.argv", ["prog", str(path)])
         script_main(run)
         assert seen == ["◘\n"]
+
+
+def test_loader_receives_the_path_and_owns_source_decoding(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    seen, run = _spy()
+    path = tmp_path / "program.bin"
+    source = object()
+
+    def loader(actual: Path) -> object:
+        assert actual == path
+        return source
+
+    monkeypatch.setattr("sys.argv", ["prog", str(path)])
+    script_main(run, loader=loader)
+    assert seen == [source]

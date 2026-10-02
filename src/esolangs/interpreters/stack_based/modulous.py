@@ -449,14 +449,13 @@ def _inp(core: _Core, mod: str, _arg: list[str], value: str | int | None) -> _Co
 
     ``INT`` pushes the line as one number and the bare form pushes its
     characters, rightmost on top -- so what arrives is a sequence either
-    way, and an empty ``INT`` read pushes nothing at all.
+    way; numeric EOF is raised before this transition.
     """
     stk, var, ind = core
     text = "" if value is None else str(value)
-    if "INT" in mod and text:
-        return ((*stk, int(text)), var, ind)
     if "INT" in mod:
-        return core
+        # input_token returns a nonempty token or raises at EOF.
+        return ((*stk, int(text)), var, ind)
     return ((*stk, *[ord(c) for c in text][::-1]), var, ind)
 
 

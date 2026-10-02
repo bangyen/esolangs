@@ -36,7 +36,6 @@ class Language:
     id: str = ""
     boolean: Generator | None = None
     source_kind: SourceKind = SourceKind.TEXT
-    state_model: str | None = None
 
 
 LANGUAGES: dict[str, Language] = {
@@ -295,7 +294,6 @@ LANGUAGES: dict[str, Language] = {
     "Line": Language(
         "Line",
         interpreter="tape_based.line",
-        state_model="tape",
         id="line",
         source_kind=SourceKind.RASTER,
         boolean=_boolean.line,
@@ -303,7 +301,6 @@ LANGUAGES: dict[str, Language] = {
     "Piet": Language(
         "Piet",
         interpreter="stack_based.piet",
-        state_model="stack",
         id="piet",
         source_kind=SourceKind.RASTER,
         boolean=_boolean.piet,
