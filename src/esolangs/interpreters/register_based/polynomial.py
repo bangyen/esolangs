@@ -392,14 +392,10 @@ class _Machine:
 
         byte = None
         if two and not one and two - 1:
-            # An empty line reads as -1, which is what the trailing NUL in
-            # the original's ``input_str() + chr(0)`` produced: ``ord`` of
-            # that NUL is 0, and ``0 or -1`` is -1.
             try:
-                val = self.io.input_str() + chr(0)
+                byte = self.io.input_char()
             except EOFError:
-                val = chr(0)
-            byte = ord(val[0])
+                byte = 0
 
         (self.reg, self.ind), output = _advance(
             (self.reg, self.ind), self.instructions, byte, self._pairs

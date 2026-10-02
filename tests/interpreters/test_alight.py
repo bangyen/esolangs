@@ -151,7 +151,7 @@ class TestWikiExamples:
     @pytest.mark.parametrize("program", [CAT_TURN, CAT_SKIP], ids=["turn", "skip"])
     @pytest.mark.parametrize(
         ("stdin", "expected"),
-        [("h\ni\n", "hi"), ("a\nb\nc\n", "abc"), ("", ""), ("x\n", "x")],
+        [("h\ni\n", "h\ni\n"), ("a\nb\nc\n", "a\nb\nc\n"), ("", ""), ("x\n", "x\n")],
     )
     def test_cat_echoes_until_eof(
         self, program: list[str], stdin: str, expected: str
@@ -167,7 +167,7 @@ class TestWikiExamples:
 
     @pytest.mark.parametrize(
         ("stdin", "expected"),
-        [("h\ni\n", "ih"), ("a\nb\nc\n", "cba"), ("", ""), ("z\n", "z")],
+        [("h\ni\n", "\ni\nh"), ("a\nb\nc\n", "\nc\nb\na"), ("", ""), ("z\n", "\nz")],
     )
     def test_reversed_cat_reverses(self, stdin: str, expected: str) -> None:
         """The reversed cat collects its input and prints it backwards.
@@ -191,7 +191,7 @@ class TestWikiExamples:
         A turn that pivoted on the cell after the semicolon, or that read
         left as clockwise, would miss it.
         """
-        assert _run(CAT_TURN, "a\nb\nc\nd\ne\n") == "abcde"
+        assert _run(CAT_TURN, "a\nb\nc\nd\ne\n") == "a\nb\nc\nd\ne\n"
 
 
 class TestExpressions:
@@ -482,7 +482,7 @@ class TestGenerators:
             table = bin(value)[2:].zfill(2**n)
             program = alight(table)
             for combo in range(2**n):
-                bits = "".join(f"{(combo >> (n - 1 - i)) & 1}\n" for i in range(n))
+                bits = "".join(f"{(combo >> (n - 1 - i)) & 1}" for i in range(n))
                 assert _run(program.splitlines(), bits) == table[combo], (
                     f"table {table} row {combo}"
                 )
@@ -497,7 +497,7 @@ class TestGenerators:
             table = "".join(rng.choice("01") for _ in range(2**n))
             program = alight(table)
             for combo in range(2**n):
-                bits = "".join(f"{(combo >> (n - 1 - i)) & 1}\n" for i in range(n))
+                bits = "".join(f"{(combo >> (n - 1 - i)) & 1}" for i in range(n))
                 assert _run(program.splitlines(), bits) == table[combo], (
                     f"n={n} row {combo}"
                 )
@@ -506,7 +506,7 @@ class TestGenerators:
         """The reads are the interface, so a constant table still consumes them."""
         counts = set()
         for table in ("00000000", "01101001", "11111111"):
-            io = ScriptedIO("0\n" * 8)
+            io = ScriptedIO("0" * 8)
             run(alight(table).splitlines(), io)
             counts.add(io.position())
         assert counts == {3}
@@ -717,13 +717,9 @@ class TestEdgeCases:
         with pytest.raises(HaltError, match="no such variable"):
             run(["begin;wait q;end;"], ScriptedIO())
 
-    def test_an_empty_input_line_reads_as_zero(self) -> None:
-        """A blank line is a real line with no character, so it reads 0.
-
-        Distinct from EOF, which reads ``eof`` -- the cats rely on the
-        difference to know when to stop.
-        """
-        program = "begin;var c;inp c;skip c = 0;end;set c 65;out c;end;"
+    def test_newline_input_is_distinct_from_eof(self) -> None:
+        """Newline is character code 10, distinct from EOF."""
+        program = "begin;var c;inp c;skip c = 10;end;set c 65;out c;end;"
         assert _run([program], "\n") == "A"
 
     def test_a_function_with_no_arguments_and_a_bare_end(self) -> None:

@@ -12,6 +12,9 @@ Input is one bit per line. EOF makes ``◇`` send an empty transfer, and printin
 an empty transfer produces no text. Malformed input, connections, or source
 raise :class:`~esolangs.exceptions.HaltError`. ``◘`` uses the shared randomness
 hook, so callers may inject a reproducible source.
+
+External bits are consecutive 0 or 1 characters, ignoring whitespace; the spec
+does not define stdin framing.
 """
 
 from __future__ import annotations
@@ -441,13 +444,13 @@ class _Machine:
         elif cell == "◇":
             if pointer.channel == "execution":
                 try:
-                    bit = self.io.input_str()
+                    bit = self.io.input_bit()
                 except EOFError:
                     value = None
+                except ValueError:
+                    raise HaltError("thisthat input must be a bit") from None
                 else:
-                    if bit not in {"0", "1"}:
-                        raise HaltError("thisthat input must be a bit")
-                    value = int(bit)
+                    value = bit
                 self._emit(
                     following, pointer, self._exits(pointer, "data"), "data", value
                 )

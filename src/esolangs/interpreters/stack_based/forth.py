@@ -20,6 +20,9 @@ retain the reference's byte fallback.
 ``halted`` is true once no frame remains and a repeated
 :meth:`_Machine.snapshot` proves a loop.  A top-level abort sets
 ``_Machine.error`` so :func:`run` raises :class:`HaltError`.
+
+The spec asks for a string without defining its delimiter; comma reads one
+line, excluding its newline, and pushes its Unicode code points.
 """
 
 from dataclasses import dataclass

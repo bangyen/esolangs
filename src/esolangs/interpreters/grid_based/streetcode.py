@@ -20,8 +20,8 @@ Errors: a malformed program raises :class:`ValueError` at construction
 network, exactly one ``C``); a ``U`` with no opposite lane raises
 :class:`~esolangs.exceptions.HaltError`.  ``_`` at cell 0 clamps (the wiki
 says nothing; brainfuck clamps ``<``); ``O`` on a non-code-point raises
-``HaltError``.  ``I`` on exhausted input raises :class:`EOFError`; an
-empty line sets the cell to 0.
+``HaltError``.  ``I`` on exhausted input raises :class:`EOFError`; a
+newline stores character code 10.
 """
 
 import functools
@@ -597,8 +597,7 @@ class _Machine:
             # lower saturates.  See the module docstring.
             self.cp = max(0, self.cp - 1)
         elif op == "IN":
-            value = self.io.input_str()
-            self._set_cell(ord(value[0]) if value else 0)
+            self._set_cell(self.io.input_char())
         elif op == "OUT":
             try:
                 self.io.print_char(chr(self._cell()))

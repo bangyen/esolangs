@@ -118,7 +118,7 @@ class TestTape:
 
 class TestIO:
     def test_input_echo(self) -> None:
-        assert run_program(build(",>,<.>."), "A\nB") == "AB"
+        assert run_program(build(",>,<.>."), "A\nB") == "A\n"
 
     def test_an_input_character_above_255_is_taken_modulo_256(self) -> None:
         """``,`` writes a cell, so it reduces as ``+`` and ``-`` do.

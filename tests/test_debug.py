@@ -409,7 +409,7 @@ class TestABreakpointAtTheHaltIsReported:
     def test_an_output_watch_on_the_last_step_fires(self) -> None:
         """The case it was reported for, on the flagship language."""
         dbg = debugger_api.make_debugger(
-            "brainfuck", esolangs.generate("brainfuck", "0110"), stdin="1\n0\n"
+            "brainfuck", esolangs.generate("brainfuck", "0110"), stdin="10"
         )
         dbg.break_on_output("1")
         assert dbg.run(max_steps=100_000) == "breakpoint"

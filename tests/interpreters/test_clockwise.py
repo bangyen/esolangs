@@ -235,7 +235,7 @@ def test_reading_with_no_input_is_eof() -> None:
     from esolangs.interpreters.io import ScriptedIO
 
     with pytest.raises(EOFError):
-        run(".", ScriptedIO("\n"))
+        run(".", ScriptedIO(""))
 
 
 def _machine(code: object) -> object:

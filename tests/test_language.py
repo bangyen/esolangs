@@ -43,6 +43,7 @@ def test_bound_raster_language_loads_and_evaluates_png(tmp_path):
     assert language.evaluate(path, inputs=2) == "0110"
 
 
+@pytest.mark.medium
 def test_bound_language_preserves_subprocess_defaults_on_a_worker(tmp_path):
     language = esolangs.Language("brainfuck")
     path = tmp_path / "program.bf"

@@ -201,11 +201,11 @@ def _reads_stdin() -> list[str]:
 
 
 def _is_exceptional(name: str) -> bool:
-    """Return whether the stdin is anything but one ``0``/``1`` line per bit."""
+    """Return whether the stdin is anything but adjacent ``0``/``1`` characters."""
     record = esolangs.describe(name)
     shape = record["input_shape"]
     alphabet = tuple(record["input_encoding"])
-    return shape != "line_per_bit" or alphabet != ("0", "1")
+    return shape != "char_stream" or alphabet != ("0", "1")
 
 
 def render_input_shapes_section() -> str:
@@ -237,7 +237,7 @@ def render_input_shapes_section() -> str:
         [
             "",
             f"The other {len(reading) - len(odd)} that read stdin take one"
-            f" `0`/`1` line per bit -- `{default}`.",
+            f" `0`/`1` character per bit -- `{default}`.",
             f"The remaining {embedded} embed their inputs and read no stdin:"
             " `instantiate` fills them.",
             *(
@@ -307,7 +307,7 @@ def render_tui_section() -> str:
         [
             f"Generate a program with `esolangs generate {_TUI_LANGUAGE}"
             f" {_TUI_TABLE} > flowchart.txt`, then run",
-            "`esolangs debug --tui --stdin \"$(printf '0\\n1\\n')\""
+            "`esolangs debug --tui --stdin 01"
             f" {_TUI_LANGUAGE} flowchart.txt` in a terminal.",
             f"Here is {_TUI_LANGUAGE} at step {_TUI_STEP}:",
             "",

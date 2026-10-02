@@ -39,7 +39,7 @@ def _exit_code(exc: EsolangError) -> int:
 #: took against what it was given; these two read a single line -- all the
 #: bits at once, or a row index -- and a wrong count is indistinguishable
 #: from a right one without knowing the arity.
-_UNCOUNTABLE_SHAPES = ("one_line", "row_index")
+_UNCOUNTABLE_SHAPES = ("row_index", "char_stream_cyclic")
 
 
 def _template_hint(exc: TemplateError, language: str) -> str:
@@ -169,14 +169,14 @@ def _input_sentence(facts: LanguageInfo) -> str:
     example = f"{one}{zero}"
     if shape == "row_index":
         return 'one decimal row index, e.g. "2" for the bits 10'
-    if shape == "one_line":
-        return f'every bit on one line, e.g. "{example}"'
-    lines = f"{one}\\n{zero}"
-    if shape == "line_per_bit_padded":
+    if shape in {"char_stream", "char_stream_cyclic"}:
+        return f'adjacent bit characters, e.g. "{example}"'
+    if shape == "char_stream_padded":
         return (
-            f'one line per bit, e.g. "{lines}" -- and an odd count above one '
-            f"is padded with a leading {zero} line"
+            f'adjacent bit characters, e.g. "{example}" -- and an odd count '
+            f"above one is padded with a leading {zero} character"
         )
+    lines = f"{one}\\n{zero}"
     return f'one line per bit, e.g. "{lines}"'
 
 

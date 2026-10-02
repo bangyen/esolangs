@@ -260,10 +260,11 @@ class _Machine:
         char = self.code[self.row][self.col]
 
         value: int | None = None
-        if self.num and char in "=~":
-            temp = self.io.input_str()
-            if temp:
-                value = ord(temp[0]) if char == "=" else int(temp)
+        if self.num and char == "=":
+            value = self.io.input_char()
+        elif self.num and char == "~":
+            temp = self.io.input_token()
+            value = int(temp)
         elif self.num and char == ":":
             if self.mole < 10:
                 self.io.print_num(self.mole)

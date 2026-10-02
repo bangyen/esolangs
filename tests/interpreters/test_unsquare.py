@@ -74,16 +74,9 @@ class TestUnsquare:
     def test_read_blank_lines_reprompt(self) -> None:
         assert run_program("iPo", "\n\n7\n") == "\x00"
 
-    def test_a_whitespace_only_line_counts_as_blank(self) -> None:
-        """The re-prompt is on ``strip()``, not on emptiness.
-
-        ``test_read_blank_lines_reprompt`` prints the *accumulator*, which
-        is 0 whatever ``i`` pushed, so it cannot see what was read -- and
-        its lines are genuinely empty, which both readings skip.  Printing
-        what ``i`` pushed, from a line of spaces, is what separates them: a
-        reader stopping at ``not line`` takes the space itself.
-        """
-        assert run_program("io", "   \n7\n") == "7"
+    def test_input_preserves_spaces(self) -> None:
+        """A space is a character, not a request to skip a line."""
+        assert run_program("io", "   \n7\n") == " "
 
     def test_print_letter(self) -> None:
         assert run_program("+" * 32 + "Po") == "@"
@@ -181,11 +174,7 @@ class TestUnsquare:
 
 class TestStepMachine:
     def test_the_read_pushes_the_first_character(self) -> None:
-        """``i`` reads a line and pushes the byte the language says it does.
-
-        The cursor and snapshot moving is the shared contract below; what
-        lands on the stack is Unsquare's own.
-        """
+        """A character read pushes the next character code."""
         from esolangs.interpreters.stack_based.unsquare import _Machine
 
         machine = _Machine("i", ScriptedIO("hi"))

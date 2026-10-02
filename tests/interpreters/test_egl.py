@@ -19,8 +19,8 @@ def test_documented_examples() -> None:
     assert execute("10,1:++(>+++++<-)>=") == "10"
 
 
-def test_numeric_input() -> None:
-    assert execute("1,1:x=", "42\n") == "42"
+def test_character_input() -> None:
+    assert execute("1,1:x=", "42\n") == "52"
 
 
 def test_grid_output() -> None:

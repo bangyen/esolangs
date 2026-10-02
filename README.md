@@ -29,10 +29,10 @@ python -m pip install esolangs
 esolangs --help
 esolangs list
 esolangs generate Suffolk 0110 > program.txt
-printf '0\n1\n' | esolangs run Suffolk program.txt
+printf '01' | esolangs run Suffolk program.txt
 
 esolangs generate brainfuck 0110 > bf.txt
-printf '0\n1\n' | esolangs debug --steps 20 --watch-cell 0 brainfuck bf.txt
+printf '01' | esolangs debug --steps 20 --watch-cell 0 brainfuck bf.txt
 ```
 
 The Polynomial interpreter needs the optional mathematics extra:
@@ -68,14 +68,14 @@ to build stdin.
 ;@0{;}{;@0{#1}{#0}},
 ```
 
-Feeding it the two input bits, one per line, prints their XOR.
+Feeding it the two adjacent input characters prints their XOR.
 
 ## Stepping a program
 
 <!-- TUI-FRAME:START -->
 
 Generate a program with `esolangs generate Flowchart 0110 > flowchart.txt`, then run
-`esolangs debug --tui --stdin "$(printf '0\n1\n')" Flowchart flowchart.txt` in a terminal.
+`esolangs debug --tui --stdin 01 Flowchart flowchart.txt` in a terminal.
 Here is Flowchart at step 14:
 
 ```

@@ -7,6 +7,9 @@ comments and the unique direction marker become blank cells when loaded.
 The wiki does not define missing or repeated starts, unmatched quotes, or
 invalid source symbols; this interpreter raises :class:`ValueError` for them.
 Exhausted input raises :class:`EOFError`, following the package convention.
+
+Input symbols are consecutive Unicode characters, including newlines; the spec
+does not define their encoding or framing.
 """
 
 from __future__ import annotations

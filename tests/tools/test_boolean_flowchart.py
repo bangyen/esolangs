@@ -74,7 +74,7 @@ class TestFlowchart:
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = run_flowchart(program, [str(b) for b in bits])
             assert got == str(int(table[combo])), f"inputs {bits}"
-        io = ScriptedIO("0\n" * (n + 4))
+        io = ScriptedIO("0" * (n + 4))
         with contextlib.suppress(Exception, SystemExit):
             run_until_halt_or_cycle(_Machine(program.splitlines(), io))
         assert io.position() == n, (
@@ -188,10 +188,10 @@ class TestFlowchart:
         consumed = 0
 
         class _CountingIO(IO):
-            def input_str(self, _prompt: str = "Input: ") -> str:
+            def input_bit(self, _prompt: str = "Input: ") -> int:
                 nonlocal consumed
                 consumed += 1
-                return "1"
+                return 1
 
             def print_str(self, text: str) -> None:
                 pass

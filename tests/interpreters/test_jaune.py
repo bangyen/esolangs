@@ -52,15 +52,10 @@ class TestInput:
         with pytest.raises(EOFError):
             run_program("v.", "")
 
-    def test_an_empty_line_reads_as_zero(self) -> None:
-        """A line the user ended immediately holds no digit, so it is 0.
-
-        Running out of input raises, so the suite only ever reached the
-        two ends of the read -- a digit, or EOF -- and never the line that
-        is present but empty, which is where the fallback lives.
-        """
-        assert run_program("v^.", "\n") == "0"
-        assert run_program("5+v+^.", "\n") == "5"
+    def test_numeric_input_accepts_whitespace_and_signs(self) -> None:
+        """Numeric reads skip whitespace before the next integer."""
+        assert run_program("v^.", "\n42") == "42"
+        assert run_program("v^.", "-7") == "-7"
 
 
 class TestMemory:

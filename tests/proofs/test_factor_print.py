@@ -41,7 +41,7 @@ def test_printed_witness_executes(n: int, partition: int, *, reverse: bool) -> N
     for table in tables[partition::2]:
         program = _render(printed_program(table, reverse_last=reverse))
         for bits in itertools.product("01", repeat=n):
-            io = ScriptedIO("\n".join(bits))
+            io = ScriptedIO("".join(bits))
             run(program, io)
             assert io.getvalue() == table[int("".join(bits), 2)]
 

@@ -1,33 +1,10 @@
-r"""Shared I/O for interpreters.
+r"""Shared interpreter I/O with one cursor for character, token, and line reads.
 
-Every interpreter routes its output and input through an :class:`IO`
-instance instead of calling ``input``/``print`` directly.  This centralizes
-the three pieces of boilerplate each interpreter used to repeat:
-
-* the ``print(..., end="")`` call for character output,
-* the ``input("\\nInput: "[new:])`` prompt with its leading-newline flag,
-* the interaction plumbing, so the library can feed a string as stdin and
-  capture output without monkey-patching the builtins.
-
-The concrete source is injected at the low-level seam: the base class reads
-with ``input()`` and writes with ``print(..., end="")`` (so direct calls
-like ``bf.run(code)`` keep working under the test suite's
-``patch("builtins.input")``/``redirect_stdout``), while :class:`ScriptedIO`
-overrides those two primitives to consume a provided string and accumulate
-output.  Callers select the source by constructing the object, not by
-branching on a flag.
-
-Output is only observable once :meth:`ScriptedIO.getvalue` is called, which
-happens when a run completes; a program that never terminates therefore
-exposes none of its output through this interface.  (Factor's wiki talk
-page notes its reference flushes output in infinite loops, but every repo
-interpreter shares this buffered model.)
-
-The newline flag tracks whether the next input prompt should begin on a
-fresh line: it is set to ``True`` after any bare output (so the prompt moves
-to its own line) and back to ``False`` after reading (the cursor is already
-at the start of a line).  Programs that never print keep the prompt on the
-current line.
+Character reads return Unicode code points, preserving newlines and unread
+text. Numeric reads consume whitespace-delimited integer tokens; string reads
+consume one line. Interpreters retain their own cell-width and EOF rules.
+Interactive input is line-buffered; ScriptedIO consumes the supplied string
+without inserting delimiters. Output is buffered by ScriptedIO.
 """
 
 from __future__ import annotations
@@ -48,6 +25,8 @@ class IO:
     def __init__(self) -> None:
         """Create an IO with no pending prompt newline."""
         self._newline = False
+        self._pending = ""
+        self._reads = 0
 
     def _read(self, prompt: str) -> str:
         return input(prompt)
@@ -91,41 +70,81 @@ class IO:
     # keeps that decision visible at the call site.
 
     def input_str(self, prompt: str = "Input: ") -> str:
-        """Read a whole line of input, returning it without the newline."""
+        """Read one line, preserving any text left by character reads."""
         prefix = "\n" if self._newline else ""
-        val = self._read(prefix + prompt)
+        if self._pending:
+            value, self._pending = self._pending.rstrip("\n"), ""
+        else:
+            value = self._read(prefix + prompt)
         self._newline = False
-        return val
+        self._reads += 1
+        return value
+
+    def _read_char(self, prompt: str) -> str:
+        if not self._pending:
+            self._pending = self._read(prompt) + "\n"
+        value, self._pending = self._pending[0], self._pending[1:]
+        return value
 
     def input_char(self, prompt: str = "Input: ") -> int:
-        r"""Read a line and return its first character as a byte value.
+        """Read the next Unicode character, including newlines."""
+        prefix = "\n" if self._newline else ""
+        value = self._read_char(prefix + prompt)
+        self._newline = False
+        self._reads += 1
+        return ord(value)
 
-        An *empty* line reads as 0.  A line is delivered without its
-        terminator, so there is no character to take, and 0 is what every
-        interpreter reading through :meth:`input_str` already returns for
-        the same input -- Streetcode, LaserFuck, Suffolk and Jaune each
-        spell ``if line else 0`` at their own call site, and Dig reaches 0
-        by leaving the read unset.  This method used to return ``ord("\n")``
-        instead, which split the package in two: the same blank line read
-        as 10 through here and as 0 through those.
+    def _peek_char(self, prompt: str) -> str | None:
+        if not self._pending:
+            self._pending = self._read(prompt) + "\n"
+        return self._pending[0]
 
-        Reading *past the end* of the input is a different thing and still
-        raises :class:`EOFError`, from :meth:`input_str`.  That distinction
-        is what ``53ea8121`` was really protecting, and it is unchanged:
-        ``"".splitlines()`` is ``[]`` (no line at all -- EOF), while
-        ``"\n".splitlines()`` is ``[""]`` (one line, which is empty -- 0).
-        """
-        line = self.input_str(prompt)
-        return ord(line[0]) if line else 0
+    def input_token(self, prompt: str = "Input: ") -> str:
+        """Read one whitespace-delimited token, leaving its delimiter unread."""
+        prefix = "\n" if self._newline else ""
+        next_char = self._peek_char(prefix + prompt)
+        while next_char is not None and next_char.isspace():
+            self._read_char(prefix + prompt)
+            next_char = self._peek_char(prefix + prompt)
+        if next_char is None:
+            self._read_char(prefix + prompt)
+        token = []
+        while next_char is not None and not next_char.isspace():
+            token.append(self._read_char(prefix + prompt))
+            next_char = self._peek_char(prefix + prompt)
+        self._newline = False
+        self._reads += 1
+        return "".join(token)
 
     def input_num(self, prompt: str = "Input: ") -> int:
-        """Read a line and parse it as an integer."""
-        return int(self.input_str(prompt))
+        """Read a whitespace-delimited integer from the shared cursor."""
+        return int(self.input_token(prompt))
+
+    def input_bit(self, prompt: str = "Input: ") -> int:
+        """Read a 0 or 1 character, ignoring surrounding whitespace."""
+        value = chr(self.input_char(prompt))
+        while value.isspace():
+            value = chr(self.input_char(prompt))
+        if value not in {"0", "1"}:
+            raise ValueError("input must be a bit")
+        return int(value)
+
+    def input_all(self, prompt: str = "Input: ") -> str:
+        """Read the remaining character stream through EOF."""
+        values = []
+        try:
+            while self._peek_char(prompt) is not None:
+                values.append(self._read_char(prompt))
+        except EOFError:
+            pass
+        self._newline = False
+        self._reads += 1
+        return "".join(values)
 
     def position(self) -> int:
         """Report the input cursor, or 0 for a source with no cursor.
 
-        ``ScriptedIO`` overrides this with the number of lines consumed;
+        ``ScriptedIO`` overrides this with the character offset;
         an interactive source has no cursor to report, so the base returns
         0.  The state-cycle hang detector snapshots this so a loop that
         keeps reading input is not mistaken for a repeat.
@@ -147,14 +166,17 @@ class ScriptedIO(IO):
         """Read input from ``stdin`` and capture all output internally."""
         super().__init__()
         self._supplied = stdin.splitlines()
-        self._lines = iter(self._supplied)
+        self._source = stdin
+        self._offset = 0
         self._reads = 0
+        self._line_reads = 0
+        self._character_reads = False
         self._past_end = 0
         self._buffer = _stdlib_io.StringIO()
 
     @property
     def reads(self) -> int:
-        """How many lines the program has taken so far."""
+        """How many successful character, token, line, or whole-stream reads."""
         return self._reads
 
     @property
@@ -164,7 +186,7 @@ class ScriptedIO(IO):
         Counted even though the read raises, because seven languages catch
         that raise and carry on with a value -- and for them this is the
         only record that it happened.  ``reads`` deliberately does not
-        include these: it counts lines actually taken.
+        include these: it counts successful reads.
         """
         return self._past_end
 
@@ -179,24 +201,44 @@ class ScriptedIO(IO):
         """
         return len(self._supplied)
 
+    def _exhausted(self, unit: str) -> None:
+        self._past_end += 1
+        if unit == "line" and self._character_reads:
+            unit = "character"
+        supplied = self.supplied if unit == "line" else len(self._source)
+        reads = self._line_reads if unit == "line" else self._offset
+        raise InputExhaustedError(reads, supplied, unit)
+
     def _read(self, _prompt: str) -> str:
-        try:
-            value = next(self._lines)
-        except StopIteration:
-            # An InputExhaustedError *is* an EOFError, so the repo-wide
-            # convention every interpreter documents -- and Suffolk's run
-            # loop detects -- is unchanged.  What it adds is the message:
-            # a bare EOFError() reaches the caller as the empty string,
-            # which cannot say that the program wanted more input than the
-            # caller passed, or how much it had.
-            self._past_end += 1
-            raise InputExhaustedError(self._reads, len(self._supplied)) from None
-        self._reads += 1
+        if self._offset == len(self._source):
+            self._exhausted("line")
+        end = self._source.find("\n", self._offset)
+        if end < 0:
+            end = len(self._source)
+            stop = end
+        else:
+            stop = end + 1
+        value = self._source[self._offset : end]
+        self._offset = stop
+        self._line_reads += 1
+        return value.removesuffix("\r")
+
+    def _read_char(self, _prompt: str) -> str:
+        self._character_reads = True
+        if self._offset == len(self._source):
+            self._exhausted("character")
+        value = self._source[self._offset]
+        self._offset += 1
         return value
 
+    def _peek_char(self, _prompt: str) -> str | None:
+        if self._offset == len(self._source):
+            return None
+        return self._source[self._offset]
+
     def position(self) -> int:
-        """Report the number of input lines consumed so far."""
-        return self._reads
+        """Return the character offset shared by line and character reads."""
+        return self._offset
 
     def _write(self, value: object) -> None:
         self._buffer.write(str(value))

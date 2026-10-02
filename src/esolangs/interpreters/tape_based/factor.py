@@ -10,7 +10,7 @@ selects the command::
 The exponent is the repeat count; other residues are ignored.  Decoding is
 delegated to the brainfuck interpreter (8-bit wrap, ``<`` clamp, matched
 loops; unbalanced raises :class:`ValueError`).  No digits, 0 and 1 halt
-with no output; ``,`` reads a line's first byte and raises
+with no output; ``,`` reads the next character and raises
 :class:`EOFError` when input runs out.  :class:`_Machine` wraps the
 decoded brainfuck machine.
 """

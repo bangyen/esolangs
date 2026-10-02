@@ -363,6 +363,7 @@ def test_config_isolates_xdist_and_applies_selection_to_every_pass(
     assert options[4:] == ([] if selection is None else ["-k", "suffolk"])
 
 
+@pytest.mark.medium
 @pytest.mark.parametrize(
     ("family", "module"),
     [

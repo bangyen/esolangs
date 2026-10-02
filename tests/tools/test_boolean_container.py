@@ -20,7 +20,7 @@ def _run_container_capped(program: str, inputs: list[str], *, budget: int) -> st
     from esolangs.interpreters.io import ScriptedIO
     from esolangs.interpreters.other.container import _Machine
 
-    stream = ScriptedIO("".join(f"{line}\n" for line in inputs))
+    stream = ScriptedIO("".join(f"{line}" for line in inputs))
     machine = _Machine(program.splitlines(), stream)
     for _ in range(budget):
         if machine.halted:
@@ -85,7 +85,7 @@ class TestContainer:
         assert max(map(len, narrow.splitlines())) == 7
         assert max(map(len, original.splitlines())) > 7
         for row in range(8):
-            inputs = "\n".join(f"{row:03b}")
+            inputs = f"{row:03b}"
             before = _Machine(original.splitlines(), ScriptedIO(inputs))
             after = _Machine(narrow.splitlines(), ScriptedIO(inputs))
             keys = before.var.keys()

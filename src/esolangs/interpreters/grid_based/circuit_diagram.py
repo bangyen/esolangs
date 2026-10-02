@@ -18,8 +18,7 @@ point at each other ("connected both ways"), so ``-|`` and ``.|`` are
 non-connections; ``.`` connects to all eight neighbours; ``=`` is a
 crossover that chains (the prime tester's ``.===.``).
 
-Judgment calls, each resolved against the page's 4-bit prime tester,
-which the suite replays over all sixteen inputs:
+Choices checked against the page's 4-bit prime tester over all sixteen inputs:
 
 * **Values are events, and gates latch them.**  Sticky wirings are
   falsified by the page's flip-flop, which outputs ``1N1N1N...``; so a
@@ -34,8 +33,7 @@ which the suite replays over all sixteen inputs:
   :meth:`_Machine.snapshot`.
 * **Wire 1 is the first bit read and the MSB**: the only ordering under
   which the example's formula is primality.
-* **Input format**: one line per bit, ``1`` is one, anything else zero,
-  as Flowchart already does.
+* **Input format**: consecutive ``0``/``1`` characters, ignoring whitespace.
 * **Gate ports are direction-sets.**  The prime tester feeds ``<`` from
   the upper-left ``/`` on one line and the lower-left ``\`` on another,
   so a gate accepts any of its three left neighbours and drives any of
@@ -45,8 +43,7 @@ which the suite replays over all sixteen inputs:
   only the level cell (``.~.``), and one wiring may feed both slots of a
   gate (the constant-output circuit), so ports count per cell.
 
-The page's prime tester is missing five characters and as drawn prints
-nothing: two OR gates have an undriven input.
+The page's prime tester omits five characters: two OR inputs are undriven.
 ``tests/interpreters/test_circuit_diagram.py`` carries ``PRIME_TESTER``
 (repaired, replayed over sixteen inputs) and ``PRIME_TESTER_AS_DRAWN``
 (silence pinned).  The repair is derived and unique: the circuit is a
@@ -65,6 +62,9 @@ feeding and fed by one gate, an inconsistent width label) raise
 :class:`ValueError`.  At EOF a read yields a **zero bit** rather than
 raising, since every gate is live at once and the automaton needs a
 value to settle on; no :class:`HaltError` is raised.
+
+External bits are consecutive 0/1 characters, ignoring whitespace;
+the spec leaves stdin framing unspecified.
 """
 
 import re
@@ -1115,10 +1115,10 @@ class _Machine:
     def _read_bit(self) -> int:
         """Read one bit of input, taking exhausted input as a zero bit."""
         try:
-            value = self.io.input_str()
+            value = self.io.input_bit()
         except (EOFError, IndexError):
             return 0
-        return 1 if value.strip() == "1" else 0
+        return value
 
     def _load_sources(self) -> None:
         """Drive constants and the clock in generation zero."""

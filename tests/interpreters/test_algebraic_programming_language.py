@@ -184,8 +184,8 @@ class TestExecutionModel:
     def test_and_returns_its_right_operand_when_its_left_is_true(self) -> None:
         assert run_and_capture("5 & 9") == "9\n"
 
-    def test_an_empty_input_line_reads_as_zero(self) -> None:
-        assert run_and_capture("n", "\n") == "0\n"
+    def test_numeric_input_skips_blank_lines(self) -> None:
+        assert run_and_capture("n", "\n42") == "42\n"
 
     def test_a_bare_uppercase_name_passes_the_function_itself(self) -> None:
         """``WHILE(x, c)`` receives functions by name and calls them."""

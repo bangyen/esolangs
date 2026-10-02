@@ -18,11 +18,9 @@ bf = importlib.import_module("esolangs.interpreters.tape_based.brainfuck")
 def run_and_capture(code: str, inputs: list[str] | None = None) -> str:
     """Run a Brainfuck program and return its stdout.
 
-    ``inputs`` stays a list of lines because that is what this file's
-    ``,`` tests read most naturally; the shared runner takes the joined
-    stdin, so the join happens here.
+    ``inputs`` are consecutive character chunks, joined without separators.
     """
-    return run_program(bf.run, code, "".join(f"{line}\n" for line in inputs or []))
+    return run_program(bf.run, code, "".join(inputs or []))
 
 
 def _machine(code: str) -> object:

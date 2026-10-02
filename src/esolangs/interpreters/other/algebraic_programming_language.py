@@ -68,6 +68,9 @@ step between.  Each frame holds one call's expression and a cursor into
 its sub-evaluations, so ``step()`` advances exactly one node and a
 recursion pushes one frame per lap -- the granularity the ancestor check
 needs to prove ``x? = x & x?`` hangs.
+
+Input numbers are whitespace-delimited tokens; the spec does not define their
+text framing.
 """
 
 from __future__ import annotations
@@ -796,10 +799,8 @@ class _Machine:
                 self.globals[name] = self._read_number()
 
     def _read_number(self) -> _Number:
-        """Read one line of input as a number."""
-        text = self.io.input_str().strip()
-        if not text:
-            return 0
+        """Read one whitespace-delimited numeric token."""
+        text = self.io.input_token().strip()
         try:
             return _number(text)
         except ValueError as exc:

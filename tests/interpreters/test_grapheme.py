@@ -558,5 +558,6 @@ class TestContract(EmptyProgramContract, CycleContract, InputCursorContract):
     reader = staticmethod(_reader)
     reading_program = "W"
     reading_stdin = "hi"
+    position_after_read = 2
     halting_program = "FAFY"
     looping_program = "FAFHKMHZ"

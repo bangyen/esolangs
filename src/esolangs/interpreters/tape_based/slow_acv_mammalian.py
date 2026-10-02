@@ -228,9 +228,7 @@ class _Machine:
 
         byte = None
         if n == 8:
-            val = self.io.input_str()
-            if val:
-                byte = ord(val[0])
+            byte = self.io.input_char()
         elif n == 9:
             self.io.print_char(chr(self.acc % 256))
 
@@ -263,9 +261,7 @@ def run(code: str, io: IO) -> None:
                 return
             ind = target
         elif n == 8:
-            val = io.input_str()
-            if val:
-                arrays[0].append((ord(val[0]) ^ acc) % 256)
+            arrays[0].append((io.input_char() ^ acc) % 256)
         elif n == 9:
             io.print_char(chr(acc % 256))
         ind += 1

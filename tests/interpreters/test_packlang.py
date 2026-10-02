@@ -177,7 +177,7 @@ class TestWikiExamples:
         assert set(io.getvalue()) == {"1"}
 
     def test_cat_reaches_its_newline_terminator_at_eof(self) -> None:
-        machine = _Machine(CAT, io := ScriptedIO("h\ni\n"))
+        machine = _Machine(CAT, io := ScriptedIO("hi"))
         for _ in range(1000):
             machine.step()
             if io.getvalue() == "hi\r\n":
@@ -208,7 +208,7 @@ class TestLiteralBase:
     def test_the_decimal_examples_are_byte_exact(self) -> None:
         assert _run(HELLO) == "Hello, World!\r\n"
         assert _run(TRUTH_MACHINE, "0\n") == "0"
-        machine = _Machine(CAT, io := ScriptedIO("h\ni\n"))
+        machine = _Machine(CAT, io := ScriptedIO("hi"))
         for _ in range(1000):
             machine.step()
             if io.getvalue() == "hi\r\n":
@@ -351,7 +351,7 @@ Package : IO {
 """
         assert _run(code) == "A"
 
-    def test_empty_input_line_reads_as_zero(self) -> None:
+    def test_newline_input_is_preserved(self) -> None:
         """A supplied blank line remains distinct from EOF."""
         code = """
 Package : IO {
@@ -363,7 +363,7 @@ Package : IO {
   }
 } p;
 """
-        assert _run(code, "\n") == "\x00"
+        assert _run(code, "\n") == "\n"
 
 
 class TestErrors:
@@ -616,7 +616,7 @@ def _boolean_rows(table: str, n: int) -> list[str]:
     out = []
     for row in range(2**n):
         bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
-        out.append(_run(program, "".join(f"{b}\n" for b in bits)))
+        out.append(_run(program, "".join(f"{b}" for b in bits)))
     return out
 
 
@@ -686,7 +686,7 @@ class TestBooleanGenerator:
             program = packlang(format(value, "08b"))
             size += len(program)
             for row in range(8):
-                bits = "".join(f"{row >> (2 - i) & 1}\n" for i in range(3))
+                bits = "".join(f"{row >> (2 - i) & 1}" for i in range(3))
                 machine = _Machine(program, ScriptedIO(bits))
                 while not machine.halted:
                     machine.step()

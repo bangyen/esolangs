@@ -157,7 +157,7 @@ class TestIgnoredRootMultiplesPreserveExecution:
         def rows(code: str) -> str:
             out = []
             for row in range(1 << 2):
-                io = ScriptedIO("".join(f"{b}\n" for b in f"{row:02b}"))
+                io = ScriptedIO("".join(f"{b}" for b in f"{row:02b}"))
                 run(code, io)
                 out.append(io.getvalue())
             return "".join(out)

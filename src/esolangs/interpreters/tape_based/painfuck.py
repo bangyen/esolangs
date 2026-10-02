@@ -502,7 +502,7 @@ class _Machine:
                 state, effects = _advance(start, self.prog, self.n, reads, coins)
             except _NeedRead as want:
                 try:
-                    value = self.io.input_str() if want.line else self.io.input_char()
+                    value = self.io.input_token() if want.line else self.io.input_char()
                 except EOFError:
                     # The port raises in the shell, before the core has run
                     # a thing -- but the original had already advanced the

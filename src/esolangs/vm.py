@@ -888,7 +888,8 @@ def make_vm(
 ) -> VM:
     """Return a step-and-inspect wrapper around ``language``'s interpreter.
 
-    ``stdin`` is fed line by line; the name resolves case-insensitively via
+    ``stdin`` is consumed verbatim using the language's input unit. The name
+    resolves case-insensitively via
     :func:`~esolangs.registry.resolve`.  A name outside the registry raises
     :class:`UnknownLanguageError`. Text and raster use the same step interface. The
     program and ``stdin`` are checked as :func:`esolangs.run` checks them (an

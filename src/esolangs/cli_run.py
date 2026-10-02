@@ -119,8 +119,8 @@ def _run(rest: list[str]) -> None:
         # never run off an end for ``run`` to count; a note on every
         # table-less ``--judge`` fired on correct input.
         reads = (
-            "one line of bits"
-            if facts["input_shape"] == "one_line"
+            "a stream of bit characters"
+            if facts["input_shape"] == "char_stream_cyclic"
             else "one row index"
         )
         _fail(

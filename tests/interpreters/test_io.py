@@ -9,53 +9,37 @@ from esolangs.interpreters.io import IO, ScriptedIO
 
 
 def test_input_num() -> None:
-    """``input_num`` parses a whole line as an integer."""
+    """Parse one whitespace-delimited integer."""
     with patch("builtins.input", return_value="42"):
         assert IO().input_num() == 42
 
 
 def test_input_char() -> None:
-    """``input_char`` returns the first character as a byte value."""
+    """Return the next Unicode character code."""
     with patch("builtins.input", return_value="X"):
         assert IO().input_char() == ord("X")
 
 
 def test_input_char_on_an_empty_line() -> None:
-    """An empty line has no character to take, so it reads as 0.
-
-    This is the value the interpreters that call ``input_str`` directly
-    already return for the same input, so the package answers a blank
-    line one way rather than two.
-    """
+    """Interactive input supplies the newline that ended an empty line."""
     with patch("builtins.input", return_value=""):
-        assert IO().input_char() == 0
+        assert IO().input_char() == 10
 
 
-def test_input_char_agrees_with_a_hand_rolled_input_str_guard() -> None:
-    """The two ways of reading a character agree on a blank line.
-
-    ``if line else 0`` is what Streetcode, LaserFuck, Suffolk and Jaune
-    each spell at their own call site.  Pinned here because the split
-    between that and ``input_char`` is what this test exists to prevent
-    coming back.
-    """
-    for text in ("", "a", "xyz"):
-        with patch("builtins.input", return_value=text):
-            hand_rolled = ord(text[0]) if text else 0
-            assert IO().input_char() == hand_rolled
+def test_interactive_character_reads_preserve_the_complete_line() -> None:
+    for text, expected in [("", [10]), ("a", [97, 10]), ("xyz", [120, 121, 122, 10])]:
+        source = IO()
+        with patch("builtins.input", return_value=text) as reader:
+            assert [source.input_char() for _ in expected] == expected
+            assert reader.call_count == 1
 
 
 def test_input_char_empty_line_is_not_end_of_input() -> None:
-    """A blank line still feeds a value; only exhaustion is EOF.
-
-    ``"".splitlines()`` is ``[]`` -- no line at all, which is EOF -- while
-    ``"\\n".splitlines()`` is ``[""]``: one line, which happens to be
-    empty.  Reading it yields 0 rather than raising.
-    """
+    """A supplied newline is a character; only exhaustion raises EOFError."""
     import pytest
 
     io_obj = ScriptedIO("\n")
-    assert io_obj.input_char() == 0
+    assert io_obj.input_char() == 10
     with pytest.raises(EOFError):
         io_obj.input_char()
 
@@ -131,11 +115,101 @@ def test_base_io_reports_no_input_cursor() -> None:
     assert io_obj.position() == 0
 
 
-def test_scripted_io_position_counts_lines_consumed() -> None:
-    """``ScriptedIO`` reports how many input lines it has handed out."""
+def test_scripted_io_position_counts_characters_consumed() -> None:
+    """The cursor counts characters consumed, including line separators."""
     io_obj = ScriptedIO("a\nb")
     assert io_obj.position() == 0
     io_obj.input_str()
-    assert io_obj.position() == 1
-    io_obj.input_str()
     assert io_obj.position() == 2
+    io_obj.input_str()
+    assert io_obj.position() == 3
+
+
+def test_character_number_and_line_reads_share_one_cursor() -> None:
+    source = ScriptedIO("ab 42\ntail\n")
+    assert source.input_char() == ord("a")
+    assert source.input_char() == ord("b")
+    assert source.input_num() == 42
+    assert source.input_char() == 10
+    assert source.input_str() == "tail"
+    assert source.position() == 11
+
+
+def test_character_read_does_not_discard_line_remainder() -> None:
+    source = ScriptedIO("hello\nworld")
+    assert source.input_char() == ord("h")
+    assert source.input_str() == "ello"
+    assert source.input_char() == ord("w")
+    assert source.input_str() == "orld"
+
+
+def test_interactive_character_reads_preserve_remaining_text() -> None:
+    source = IO()
+    with patch("builtins.input", side_effect=["ab", "cd"]):
+        assert source.input_char() == ord("a")
+        assert source.input_str() == "b"
+        assert source.input_char() == ord("c")
+        assert source.input_char() == ord("d")
+        assert source.input_char() == 10
+
+
+def test_integer_tokens_preserve_delimiters_and_support_signs() -> None:
+    source = ScriptedIO("  -42 +7")
+    assert source.input_num() == -42
+    assert source.input_char() == ord(" ")
+    assert source.input_num() == 7
+    import pytest
+
+    with pytest.raises(EOFError):
+        source.input_num()
+
+
+def test_bit_reads_ignore_whitespace_but_reject_other_characters() -> None:
+    import pytest
+
+    source = ScriptedIO(" \n01x")
+    assert source.input_bit() == 0
+    assert source.input_bit() == 1
+    with pytest.raises(ValueError, match="input must be a bit"):
+        source.input_bit()
+
+
+def test_all_reads_preserve_newlines_and_remaining_characters() -> None:
+    source = ScriptedIO("ab\ncd\n")
+    assert source.input_char() == ord("a")
+    assert source.input_all() == "b\ncd\n"
+    assert source.input_all() == ""
+    assert source.position() == 6
+
+
+def test_interactive_all_reads_end_at_eof() -> None:
+    with patch("builtins.input", side_effect=["ab", "", EOFError]):
+        assert IO().input_all() == "ab\n\n"
+
+
+def test_interactive_integer_tokens_share_buffered_characters() -> None:
+    source = IO()
+    with patch("builtins.input", side_effect=[" 42 -7", "tail"]):
+        assert source.input_num() == 42
+        assert source.input_char() == ord(" ")
+        assert source.input_num() == -7
+        assert source.input_str() == ""
+        assert source.input_str() == "tail"
+
+
+def test_mixed_read_exhaustion_reports_character_offset() -> None:
+    import pickle
+
+    import pytest
+
+    from esolangs.exceptions import InputExhaustedError
+
+    source = ScriptedIO("ab\r\nc")
+    assert source.input_char() == ord("a")
+    assert source.input_str() == "b"
+    assert source.input_str() == "c"
+    with pytest.raises(InputExhaustedError) as error:
+        source.input_str()
+    copied = pickle.loads(pickle.dumps(error.value))
+    assert (copied.reads, copied.supplied, copied.unit) == (5, 5, "character")
+    assert source.past_end == 1

@@ -78,7 +78,7 @@ class TestRun:
         io = ScriptedIO("h\ni")
         with pytest.raises(EOFError):
             run(str(CAT), io)
-        assert io.getvalue() == "hi"
+        assert io.getvalue() == "h\ni"
 
     def test_wiki_truth_machine_zero(self) -> None:
         """Input 0 prints 0 and halts."""

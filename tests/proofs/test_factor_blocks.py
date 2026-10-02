@@ -84,7 +84,7 @@ def test_block_stride_preserves_payloads(width: int) -> None:
     code = data + _counter(width, stride=15)
     for row in range(blocks):
         bits = format(row, f"0{width}b") if width else ""
-        machine = _Machine(code, ScriptedIO("\n".join(bits)))
+        machine = _Machine(code, ScriptedIO("".join(bits)))
         while not machine.halted:
             assert machine.ptr or code[machine.ind] != "<"
             machine.step()
@@ -114,7 +114,7 @@ def test_block_decoder_executes(table: str, partition: int) -> None:
     n = len(table).bit_length() - 1
     code = block_program(table)
     for row in range(partition, len(table), 8):
-        io = ScriptedIO("\n".join(format(row, f"0{n}b")))
+        io = ScriptedIO("".join(format(row, f"0{n}b")))
         run_bf(code, io)
         assert io.getvalue() == table[row]
 

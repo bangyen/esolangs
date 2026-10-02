@@ -12,7 +12,7 @@ from esolangs.tools.fish import fish
 def _run(table: str, row: int, width: int | None = None) -> tuple[str, int]:
     n = len(table).bit_length() - 1
     bits = f"{row:0{n}b}"
-    io = ScriptedIO("".join(f"{bit}\n" for bit in bits))
+    io = ScriptedIO("".join(f"{bit}" for bit in bits))
     run(fish(table, width).splitlines(), io)
     return io.getvalue(), io.reads
 

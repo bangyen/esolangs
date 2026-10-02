@@ -76,12 +76,8 @@ def test_a_read_at_end_of_input_takes_the_spec_branch() -> None:
 
 
 def test_the_character_survives_a_read_that_found_nothing() -> None:
-    """A read at EOF replaced no character, so ``|`` still reports the last.
-
-    Reads twice with one line supplied: the second finds nothing, and ``|``
-    still hands over the ``Q`` the first one took.
-    """
-    assert run_program(run, "``k`@i``k`@i``|ii", "Q\n", suppress_eof=False) == "Q"
+    """A read at EOF preserves the character previously read."""
+    assert run_program(run, "``k`@i``k`@i``|ii", "Q", suppress_eof=False) == "Q"
 
 
 def test_e_ends_the_run() -> None:

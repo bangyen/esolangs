@@ -291,7 +291,7 @@ class TestFactor:
 
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            io = ScriptedIO("".join(f"{bit}\n" for bit in bits))
+            io = ScriptedIO("".join(f"{bit}" for bit in bits))
             run_bf(code, io)
             assert io.getvalue() == table[combo], f"inputs {bits}"
 
@@ -698,7 +698,7 @@ class TestBrainIf:
         for table in ("00110011", "00010011", "01011010"):
             program = boolean.brainif(table, width=1000)
             for row in range(8):
-                bits = "".join(f"{(row >> (2 - i)) & 1}\n" for i in range(3))
+                bits = "".join(f"{(row >> (2 - i)) & 1}" for i in range(3))
                 assert self._reads(program, bits) == (table[row], 3)
 
     def test_equal_spans_share_their_code(self) -> None:
@@ -713,7 +713,7 @@ class TestBrainIf:
         assert self._tests(program) == 3
         assert len(program) < len(boolean.brainif("0110", width=1000)) + 400
         for row in (0, 1, 2, 3, 21, 42, 63):
-            bits = "".join(f"{(row >> (5 - i)) & 1}\n" for i in range(6))
+            bits = "".join(f"{(row >> (5 - i)) & 1}" for i in range(6))
             assert self._reads(program, bits) == (table[row], 6)
 
     def test_pruning_never_grows_a_table(self) -> None:
@@ -958,7 +958,7 @@ def test_brainif_zero_landing_executes_all_small_tables(width: int) -> None:
             program = boolean.brainif(table, width)
             for row, expected in enumerate(table):
                 bits = list(format(row, f"0{n}b"))
-                io = ScriptedIO("\n".join([*bits, "sentinel"]))
+                io = ScriptedIO("".join(bits) + "sentinel")
                 run(program.splitlines(), io)
                 assert io.getvalue() == expected
                 assert io.input_str() == "sentinel"
@@ -984,7 +984,7 @@ def test_brainif_zero_landing_public_and_larger_samples(width: int) -> None:
         table = "".join(str((row * 73 + row // 3) % 2) for row in range(2**n))
         program = esolangs.generate("BrainIf", table, width)
         for row in [0, 1, 2**n // 3, 2**n - 1]:
-            stdin = "\n".join(format(row, f"0{n}b")) + "\n"
+            stdin = format(row, f"0{n}b")
             assert esolangs.run("BrainIf", program, stdin) == table[row]
             assert esolangs.run("BrainIf", str(program), stdin) == table[row]
 

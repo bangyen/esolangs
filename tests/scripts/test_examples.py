@@ -279,9 +279,9 @@ def _prove_halt(vm: object) -> bool:
 @pytest.mark.parametrize("name", sorted(BOOLEAN_EXAMPLES))
 @pytest.mark.medium
 def test_boolean_example(name: str) -> None:
-    _module, inputs, expected, _splitlines, _kwargs = BOOLEAN_EXAMPLES[name]
+    _module, _inputs, expected, _splitlines, _kwargs = BOOLEAN_EXAMPLES[name]
     path = BASE_DIR / "examples" / BOOLEAN_GENERATED[name].filename
-    stdin = "".join(f"{line}\n" for line in inputs)
+    stdin = BOOLEAN_GENERATED[name].stdin
     program = (
         Raster.from_png(path.read_bytes())
         if path.suffix == ".png"

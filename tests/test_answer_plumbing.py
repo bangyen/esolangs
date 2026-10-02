@@ -39,7 +39,7 @@ _SAMPLE_BITS = [1, 0, 1]
 _SHAPE_PROSE = {
     "one_line": r"(all |every |them all )?(bits? )?.{0,12}on one line",
     "row_index": r"row index as (one|a single) decimal number|row index as one decimal",
-    "line_per_bit_padded": r"pads an odd input count with a leading zero",
+    "char_stream_padded": r"pads an odd input count with a leading zero",
 }
 
 
@@ -59,16 +59,10 @@ class TestTheProseMatchesTheData:
 
     def test_exactly_three_languages_have_an_exceptional_shape(self) -> None:
         """Plus Grapheme's alphabet, which is the fourth exception."""
-        odd = {
-            name: esolangs.describe(name)["input_shape"]
-            for name in esolangs.list_languages()
-            if esolangs.describe(name)["input_shape"] != "line_per_bit"
-        }
-        assert odd == {
-            "Clockwise": "one_line",
-            "Fargo": "row_index",
-            "Taglate": "line_per_bit_padded",
-        }
+        assert esolangs.describe("brainfuck")["input_shape"] == "char_stream"
+        assert esolangs.describe("Fargo")["input_shape"] == "row_index"
+        assert esolangs.describe("Taglate")["input_shape"] == "char_stream_padded"
+        assert esolangs.describe("Grapheme")["input_encoding"] == ("%", "A")
 
     def test_the_reference_table_is_the_encoders_own_output(self) -> None:
         """The positive half, as data: every cell is what ``encode_inputs`` returns.
@@ -91,7 +85,7 @@ class TestTheProseMatchesTheData:
                 continue
             shape = record["input_shape"]
             alphabet = tuple(record["input_encoding"])
-            if shape == "line_per_bit" and alphabet == ("0", "1"):
+            if shape == "char_stream" and alphabet == ("0", "1"):
                 continue
             stdin = esolangs.encode_inputs(name, _SAMPLE_BITS)
             expected[name] = (f"`{shape}`", f"`{stdin!r}`")
@@ -662,7 +656,7 @@ class TestWhatHappensWhenAProgramIsUnderfed:
                 continue
             if facts["parameterized"]:
                 continue  # no stdin to underfeed
-            if facts["input_shape"] == "one_line":
+            if facts["input_shape"] == "char_stream_cyclic":
                 # Underfeeding a one-line language gives it a *shorter
                 # string*, not a read past an end, so there is no EOF to
                 # declare and nothing that could detect it.  Exempted by

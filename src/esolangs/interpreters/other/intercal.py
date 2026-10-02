@@ -4,6 +4,9 @@ Supports scalar calculation with mingle, select, and unary logic; numeric
 ``WRITE IN``/``READ OUT``; ``NEXT``, ``RESUME``, ``FORGET``; and ``GIVE UP``.
 EOF while reading and invalid programs raise ``HaltError``. The compiler's
 politeness bounds count logical statements; LF is whitespace between tokens.
+
+A number is read as one line of spelled-out digit words; the spec leaves its
+text delimiter unspecified.
 """
 
 from __future__ import annotations

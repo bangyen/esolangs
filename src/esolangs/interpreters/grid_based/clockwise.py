@@ -12,6 +12,9 @@ with no bits at all raises :class:`EOFError`.
 :func:`_advance` is a pure transition over an immutable ``_State`` with
 no ``io`` argument; :class:`_Machine` rebinds one state per ``step()``
 and flushes the byte.
+
+Input characters form the initial bit queue. This implementation preserves the
+complete supplied character stream rather than discarding later lines.
 """
 
 from __future__ import annotations
@@ -109,7 +112,7 @@ class _Machine:
 
         bits: list[str] = []
         if any("." in line for line in self.code):
-            for k in io.input_str():
+            for k in io.input_all():
                 val = f"{ord(k):07b}"
                 bits += list(val.zfill(_BYTE_BITS))
         self.state: _State = (0, 0, 0, 0, (), tuple(bits), False)

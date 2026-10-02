@@ -57,7 +57,7 @@ def _read_answer(name: str, table: str, row: int) -> tuple[str, int]:
     """Return what the generated program printed, and how many lines it read."""
     generate, run = _READERS[name]
     n = len(table).bit_length() - 1
-    io = ScriptedIO("".join(f"{bit}\n" for bit in _bits(row, n)))
+    io = ScriptedIO(esolangs.encode_inputs(name, _bits(row, n)))
     run(generate(table), io)
     return io.getvalue(), io.reads
 

@@ -167,13 +167,7 @@ WRAPPED = sorted(
 
 
 def test_every_boolean_generator_has_a_width_policy() -> None:
-    """Every generator reflows, lays itself out, or records why it cannot.
-
-    Derived from the registry so a new generator enters this audit without a
-    hand-written catalogue update.  ``UNWRAPPABLE`` may overlap self-layout,
-    but ``WIDTH_EXCEPTIONS`` may not: Alight cannot be reflowed after generation
-    but can build a different grid when it receives ``width`` itself.
-    """
+    """Every generator reflows, lays itself out, or records why it cannot."""
     boolean_ids = {
         language.id for language in LANGUAGES.values() if language.boolean is not None
     }
@@ -213,8 +207,8 @@ def _example(name: str) -> BooleanExample:
 
 
 def _stdin(name: str) -> str:
-    """The input lines ``name``'s example feeds its program."""
-    return "".join(f"{line}\n" for line in _example(name).inputs)
+    """Return the example's encoded stdin."""
+    return _example(name).stdin
 
 
 def _replaces_a_space(name: str) -> bool:
@@ -573,7 +567,7 @@ def test_wrapping_holds_on_a_table_the_examples_do_not_cover(
         wrapped = variant.build(NARROW_WIDTH)
         if wrapped == plain:
             continue
-        stdin = "".join(f"{line}\n" for line in variant.inputs)
+        stdin = variant.stdin
         assert _behaviour(name, wrapped, stdin) == _behaviour(name, plain, stdin), (
             f"{name}: wrapping changed the answer on the {shape} table, inputs {bits}"
         )
@@ -693,7 +687,11 @@ def test_width_honouring_layout_computes_the_same_thing(name: str) -> None:
         for combo in range(2**arity):
             bits = format(combo, f"0{arity}b")
             # A parameterized generator embeds its inputs and reads nothing.
-            stdin = "" if example.fill else "".join(f"{bit}\n" for bit in bits)
+            stdin = (
+                ""
+                if example.fill
+                else esolangs.encode_inputs(language.name, [int(bit) for bit in bits])
+            )
             compact = _laid_out(language.name, table, bits, None)
             expected = _behaviour(language.name, compact, stdin)
             if name == "back":

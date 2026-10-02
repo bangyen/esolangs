@@ -119,7 +119,7 @@ class TestBundleMatchesPackage:
             if name is None or name not in RUNNERS:
                 continue
             program = example.build(width=None)
-            stdin = "".join(f"{line}\n" for line in example.inputs)
+            stdin = example.stdin
             out = tmp_path / f"{stem}.py"
             bundle_one.bundle(name, bundle_one.Source(None), out)
             bundle_mod = _load_bundle(out)
@@ -187,12 +187,12 @@ class TestBundleDetails:
             [sys.executable, str(out), str(prog_file)],
             capture_output=True,
             text=True,
-            input="0\n1\n",
+            input="01",
         )
         assert result.returncode == 0
         # The bundle reads through the interactive IO, which writes an
-        # "Input: " prompt per read; the program's own output follows them.
-        assert result.stdout == "Input: Input: 1"
+        # "Input: " prompt per buffered line; the program's output follows it.
+        assert result.stdout == "Input: 1"
 
 
 #: The environment the installer is handed: deliberately bare, so the script

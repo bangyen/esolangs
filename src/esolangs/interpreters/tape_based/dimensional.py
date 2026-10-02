@@ -417,7 +417,7 @@ class _Machine:
             elif c == "d":
                 port = self.io.input_num()
             elif c == "x":
-                port = int(self.io.input_str(), 16)
+                port = int(self.io.input_token(), 16)
 
         state, effect = _advance(
             self._state, code, self.m, self.tape.value, self.tape.coord, port

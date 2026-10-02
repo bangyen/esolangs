@@ -149,7 +149,7 @@ class TestViews:
         is a few milliseconds and the failing language is named by the test
         id instead of by an assertion message.
         """
-        stdin = "".join(line + "\n" for line in example.inputs)
+        stdin = example.stdin
         vm = debugger_api.make_vm(name, example.build(), stdin)
         assert all(isinstance(part, str) for view in vm.views for part in view), name
         # Again once the machine has moved, since a view reads state

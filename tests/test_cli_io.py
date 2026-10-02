@@ -445,7 +445,7 @@ class TestStdinIsCheckedAgainstTheDeclaredAlphabet:
         path = tmp_path / "p.txt"
         path.write_text(esolangs.generate("brainfuck", "0101"))
         out, err = call_both(
-            ["run", "--judge", "brainfuck", str(path)], capsys, stdin="0\n1\n"
+            ["run", "--judge", "brainfuck", str(path)], capsys, stdin="01"
         )
         assert out.strip() == "1"
         assert err == ""
@@ -503,7 +503,7 @@ class TestReadingTheProgramFileIsBounded:
         """The guard is worth nothing if it costs the normal path."""
         path = tmp_path / "p.txt"
         path.write_text(esolangs.generate("brainfuck", "0110"))
-        result = run_cli("run", "--judge", "brainfuck", str(path), stdin="1\n0\n")
+        result = run_cli("run", "--judge", "brainfuck", str(path), stdin="10")
         assert result.returncode == 0
         assert result.stdout.strip() == "1"
 
@@ -671,10 +671,10 @@ class TestCheckStdinIsASubcommand:
             call_main(
                 ["check-stdin", "--table", "0110", "brainfuck"],
                 capsys,
-                stdin="1\n0\n1\n",
+                stdin="101",
             )
         assert exc.value.code == 2
-        assert "reads 2 line(s)" in capsys.readouterr().err
+        assert "reads 2 characters" in capsys.readouterr().err
 
     def test_it_reports_an_unknown_language_before_reading(
         self, capsys: pytest.CaptureFixture[str]
@@ -707,7 +707,7 @@ class TestCheckStdinSaysWhatItCanActuallyCheck:
 
     def test_a_line_per_bit_language_accepts_any_count(self) -> None:
         """Not a bug -- a count needs an arity, and only ``--table`` has one."""
-        for stdin in ("", "1\n", "1\n0\n1\n"):
+        for stdin in ("", "1", "101"):
             esolangs.check_stdin("brainfuck", stdin)
 
     def test_the_table_is_what_catches_the_count(self) -> None:
@@ -726,13 +726,19 @@ class TestCheckStdinSaysWhatItCanActuallyCheck:
             for name in esolangs.list_languages()
             if esolangs.describe(name)["boolean_generator"]
         }
-        assert [n for n, s in shapes.items() if s == "one_line"] == ["Clockwise"]
+        assert shapes["Clockwise"] == "char_stream_cyclic"
         assert [n for n, s in shapes.items() if s == "row_index"] == ["Fargo"]
-        assert sum(s == "line_per_bit" for s in shapes.values()) == 70
+        assert set(shapes.values()) == {
+            "char_stream",
+            "char_stream_cyclic",
+            "char_stream_padded",
+            "line_per_bit",
+            "row_index",
+        }
 
     def test_a_one_line_language_does_catch_a_stray_line(self) -> None:
         """Which is why the help can still claim a shape check at all."""
-        with pytest.raises(esolangs.ArgumentError, match="one line"):
+        with pytest.raises(esolangs.ArgumentError, match="unexpected character"):
             esolangs.check_stdin("Clockwise", "1\n0\n")
 
     def test_the_help_no_longer_overstates(self) -> None:

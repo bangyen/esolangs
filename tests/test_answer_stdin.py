@@ -68,13 +68,13 @@ class TestTheStdinJudgeIsReachableFromPython:
 
     def test_it_catches_a_surplus_line(self) -> None:
         """Six lines into a three-input program answered the first three."""
-        with pytest.raises(esolangs.ArgumentError, match="reads 3 line"):
-            esolangs.check_stdin("brainfuck", "1\n1\n0\n0\n1\n1\n", "00010111")
+        with pytest.raises(esolangs.ArgumentError, match="reads 3 characters"):
+            esolangs.check_stdin("brainfuck", "110011", "00010111")
 
     def test_it_catches_a_missing_line(self) -> None:
         """The direction that already errored at run time, now before it."""
-        with pytest.raises(esolangs.ArgumentError, match="reads 3 line"):
-            esolangs.check_stdin("brainfuck", "1\n0\n", "00010111")
+        with pytest.raises(esolangs.ArgumentError, match="reads 3 characters"):
+            esolangs.check_stdin("brainfuck", "10", "00010111")
 
     def test_it_catches_an_out_of_range_row_index(self) -> None:
         """What `run` could not check, because it does not know the arity."""
@@ -107,7 +107,7 @@ class TestTheStdinJudgeIsReachableFromPython:
 
     def test_the_table_is_optional(self) -> None:
         """Shape and alphabet are checkable without knowing the arity."""
-        esolangs.check_stdin("brainfuck", "1\n0\n")
+        esolangs.check_stdin("brainfuck", "10")
 
     def test_a_non_string_stdin_is_named(self) -> None:
         """A caller who passes the bit list itself, which is an easy slip."""
@@ -122,7 +122,7 @@ class TestTheStdinJudgeIsReachableFromPython:
         because the table says how many bits that one line should hold.
         """
         esolangs.check_stdin("Clockwise", "101", "00010111")
-        with pytest.raises(esolangs.ArgumentError, match="wants 3 bits"):
+        with pytest.raises(esolangs.ArgumentError, match="reads 3 characters"):
             esolangs.check_stdin("Clockwise", "10", "00010111")
 
 
@@ -134,7 +134,7 @@ class TestRunSaysWhenStdinLooksWrong:
         program = esolangs.generate("brainfuck", "00010111")
         with warnings.catch_warnings():
             warnings.simplefilter("error")
-            answer = esolangs.run("brainfuck", program, "1\n1\n0\n0\n1\n1\n", 10)
+            answer = esolangs.run("brainfuck", program, "110011", 10)
         # A warning, not a refusal: the run still happened and still answered.
         assert answer == "1"
 

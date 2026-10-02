@@ -8,9 +8,9 @@ is a nop and ``v`` halts.
 
 The reference interpreter hangs forever when the cell at ``c`` leaves 33-126;
 this one halts instead, the behaviour the wiki attributes to the specification.
-An input character is one line's first character -- the package's line-delimited
-convention, where an empty line is 0 -- and EOF is the value 59048, not an
-error.  A source character that does not decipher to an instruction raises
+Input consumes consecutive Unicode characters, including newlines; the spec
+does not define encoding or framing. EOF is the value 59048, not an error.  A
+source character that does not decipher to an instruction raises
 :class:`ValueError`.
 """
 

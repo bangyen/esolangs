@@ -166,8 +166,8 @@ class TestStreetcodeIO:
     def test_input_reads_only_first_character_of_line(self) -> None:
         assert run_street("CIO;", inputs=["hello"]) == "h"
 
-    def test_empty_input_line_reads_zero(self) -> None:
-        assert run_street("CIO;", inputs=[""]) == chr(0)
+    def test_newline_input_is_preserved(self) -> None:
+        assert run_street("CIO;", inputs=[""]) == chr(10)
 
     def test_exhausted_input_raises_eof(self) -> None:
         machine = _Machine(["CI;"], ScriptedIO(""))
@@ -376,7 +376,7 @@ class TestStreetcodeWikiExamples:
         scripted = ScriptedIO("A\nB\nC")
         with pytest.raises(EOFError):
             run(code, io=scripted)
-        assert scripted.getvalue() == "ABC"
+        assert scripted.getvalue() == "A\nB\nC"
 
     def test_infinite_loop_example_hangs(self) -> None:
         """The ambiguous-turn infinite loop is a genuine cycle, not a halt."""
@@ -475,7 +475,7 @@ class TestStreetcodeWikiExamples:
         io_obj = ScriptedIO("A\nB")
         with pytest.raises(EOFError):
             run(code, io=io_obj)
-        assert io_obj.getvalue() == "AB"
+        assert io_obj.getvalue() == "A\nB"
 
 
 def test_a_counting_ring_program_drives_its_whole_lap() -> None:

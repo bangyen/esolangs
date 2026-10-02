@@ -14,14 +14,16 @@ def test_generate_computes_its_table(language: str) -> None:
     """XOR, executed on all four rows -- the program, not just its text."""
     program = esolangs.generate(language, "0110")
     for row, expected in enumerate("0110"):
-        stdin = "".join(f"{bit}\n" for bit in format(row, "02b"))
+        stdin = esolangs.encode_inputs(
+            language, [int(bit) for bit in format(row, "02b")]
+        )
         assert esolangs.run(language, program, stdin) == expected
 
 
 def test_run_feeds_stdin() -> None:
     program = boolean.circlefuck("1101")
-    assert esolangs.run("Circlefuck", program, stdin="1\n0\n") == "0"
-    assert esolangs.run("Circlefuck", program, stdin="0\n1\n") == "1"
+    assert esolangs.run("Circlefuck", program, stdin="10") == "0"
+    assert esolangs.run("Circlefuck", program, stdin="01") == "1"
 
 
 def test_list_languages() -> None:

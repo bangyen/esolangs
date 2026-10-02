@@ -137,19 +137,35 @@ most-significant input first, so its length implies `n`.
 Input formats vary by language. Use `encode_inputs` to build stdin:
 
 ```python
-esolangs.encode_inputs("Taglate", [1, 0, 1])  # -> '0\n1\n0\n1\n'
+esolangs.encode_inputs("Taglate", [1, 0, 1])  # -> '0101'
 ```
 
 <!-- INPUT-SHAPES:START -->
 
 | Language | `input_shape` | Alphabet | stdin for inputs 1, 0, 1 |
 | --- | --- | --- | --- |
-| Clockwise | `one_line` | `0`/`1` | `'101'` |
+| 3x | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
+| Algebraic Programming Language | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
+| Befunge | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
+| CV(N)(C) | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
+| Clockwise | `char_stream_cyclic` | `0`/`1` | `'101'` |
+| Collatz Multiverse | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
+| Dig | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
+| Dimensional | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Fargo | `row_index` | `0`/`1` | `'5\n'` |
+| Forþ | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Grapheme | `line_per_bit` | `%`/`A` | `'A\n%\nA\n'` |
-| Taglate | `line_per_bit_padded` | `0`/`1` | `'0\n1\n0\n1\n'` |
+| Inject | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
+| Jaune | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
+| Line | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
+| Modulous | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
+| Painfuck | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
+| Piet | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
+| Taglate | `char_stream_padded` | `0`/`1` | `'0101'` |
+| Thue | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
+| Vandevelo | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 
-The other 50 that read stdin take one `0`/`1` line per bit -- `'1\n0\n1\n'`.
+The other 34 that read stdin take one `0`/`1` character per bit -- `'101'`.
 The remaining 19 embed their inputs and read no stdin: `instantiate` fills them.
 The 1 interpreter-only classics have no generator, so there is no generated stdin to feed.
 Use `encode_inputs` to build stdin; it and this table use `describe`.
@@ -215,7 +231,7 @@ each stop with their condition still true.
 
 ```bash
 esolangs generate brainfuck 0110 > bf.txt
-printf '0\n1\n' | esolangs debug --steps 20 --watch-cell 0 brainfuck bf.txt
+printf '01' | esolangs debug --steps 20 --watch-cell 0 brainfuck bf.txt
 ```
 
 `make_debugger(...).run()` returns one of `STOP_REASONS`:

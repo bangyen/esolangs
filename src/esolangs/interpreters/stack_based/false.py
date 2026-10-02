@@ -20,8 +20,8 @@ empty stack, dividing by zero, running a number as a lambda, computing on
 a lambda, and reading an unset variable raise
 :class:`~esolangs.exceptions.HaltError`.
 
-``^`` reads a line and takes its first character; an empty line is 0, and
-end of input is the spec's ``-1``, which the shell reaches by catching the
+``^`` consumes the next Unicode character, including newlines; end of input
+is the spec's ``-1``, which the shell reaches by catching the
 port's ``EOFError``.  Raising instead would make the reference's own cat
 loop -- which tests ``^`` against ``-1`` -- a crash.
 
@@ -349,8 +349,7 @@ def _advance(
         return (rest, variables, frames), ("char", _number(top, "','") & 0xFF)
     if char == "^":
         # The read already happened in the shell.  ``None`` is end of input,
-        # which the spec answers with -1; an empty line is 0, which is what
-        # every line-reading interpreter here returns for one.
+        # which the spec answers with -1.
         value = -1 if line is None else ord(line[0]) if line else 0
         return ((*stack, value), variables, frames), None
     # ``ß``/``B`` flush a buffer this package does not have, and every other
@@ -412,7 +411,7 @@ class _Machine:
         line: str | None = None
         if char == "^":
             try:
-                line = self.io.input_str()
+                line = chr(self.io.input_char())
             except EOFError:
                 # ``^`` has an EOF value in the spec, so the port's raise is
                 # caught and turned into it -- as nine other interpreters here

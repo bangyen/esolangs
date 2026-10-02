@@ -203,7 +203,7 @@ class TestTheShapeWarningFiresOnlyWhenItShould:
         """Sixty-five languages read 0/1 lines and must stay silent."""
         path = tmp_path / "bf.txt"
         path.write_text(esolangs.generate("brainfuck", "0110"))
-        out, err = call_both(["run", "brainfuck", str(path)], capsys, stdin="1\n0\n")
+        out, err = call_both(["run", "brainfuck", str(path)], capsys, stdin="10")
         assert out == "1"
         assert err == ""
 
@@ -230,9 +230,7 @@ class TestTheAdvisoryNotesAreRenderedOnce:
         """A raw UserWarning would print this file's path and a line of it."""
         path = tmp_path / "p.txt"
         path.write_text(esolangs.generate("brainfuck", "00010111"))
-        out, err = call_both(
-            ["run", "brainfuck", str(path)], capsys, stdin="1\n1\n0\n0\n1\n1\n"
-        )
+        out, err = call_both(["run", "brainfuck", str(path)], capsys, stdin="110011")
         assert out == "1"
         assert "read 3 of the 6 lines" not in err
         assert "UserWarning" not in err
@@ -257,11 +255,11 @@ class TestTheAdvisoryNotesAreRenderedOnce:
             call_main(
                 ["run", "--judge", "--table", "00010111", "brainfuck", str(path)],
                 capsys,
-                stdin="1\n1\n0\n0\n1\n1\n",
+                stdin="110011",
             )
         assert exc.value.code == 2
         err = capsys.readouterr().err
-        assert err.count("reads 3 line(s)") == 1
+        assert err.count("reads 3 characters") == 1
 
     def test_an_empty_program_file_is_noted(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
@@ -366,7 +364,7 @@ class TestSmallerReportsFromRoundFifteen:
         # every plain shape check, and advice on correct input is what this
         # CLI has spent rounds removing.  `check-stdin --help` says what the
         # flag adds.
-        _out, err = call_both(["check-stdin", "brainfuck"], capsys, stdin="1\n0\n")
+        _out, err = call_both(["check-stdin", "brainfuck"], capsys, stdin="10")
         assert err == ""
         assert "--table" in cli.HELP["check-stdin"]
 
@@ -387,10 +385,10 @@ class TestSmallerReportsFromRoundFifteen:
     @pytest.mark.parametrize(
         ("name", "phrase"),
         [
-            ("Clockwise", "every bit on one line"),
+            ("Clockwise", "adjacent bit characters"),
             ("Fargo", "one decimal row index"),
             ("Taglate", "padded with a leading"),
-            ("brainfuck", "one line per bit"),
+            ("brainfuck", "adjacent bit characters"),
         ],
     )
     def test_describe_spells_the_stdin_out(
@@ -515,7 +513,7 @@ class TestTheSmallInconsistencies:
                 str(path),
             ],
             capsys,
-            stdin="0\n1\n",
+            stdin="01",
         )
         assert "stopped: breakpoint" in out
         assert "no breakpoint matched" not in err
@@ -564,7 +562,7 @@ class TestRoundSixQol:
     ) -> None:
         """`run --help` used to answer this with a `python -c` incantation."""
         assert call_main(["encode", "Grapheme", "10"], capsys) == "A\n%\n"
-        assert call_main(["encode", "Taglate", "101"], capsys) == "0\n1\n0\n1\n"
+        assert call_main(["encode", "Taglate", "101"], capsys) == "0101"
 
     def test_encode_then_run_computes_the_table(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
