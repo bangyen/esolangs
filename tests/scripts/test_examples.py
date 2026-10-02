@@ -221,7 +221,7 @@ def test_every_boolean_generator_has_an_example() -> None:
 # -- so the files stay in sync with the generators.
 #
 # The input-reading languages take their bits on stdin; the parameterized
-# ones (see ``esolangs.tools.parameterized``) have the bits embedded
+# ones have the bits embedded
 # in the program text and read no input.  The halt-convention languages have
 # no output at all: their result is the halt-vs-loop convention, so only the
 # terminating (`0`) branch is committed -- the `1` branch loops forever by

@@ -13,24 +13,19 @@ from itertools import pairwise
 
 import pytest
 
+from esolangs.tools.back import _back_ordered
+from esolangs.tools.bitdeque import _bitdeque_ordered
+
 
 def _parameterized_generators():
-    """Return every parameterized generator the module exports.
+    """Return every registered generator whose examples carry a fill recipe."""
+    from esolangs.registry import LANGUAGES, parameterized_ids
 
-    Read off ``__all__`` rather than hand-listed.  The roster used to name
-    a hand-picked subset, so ``a_painter_ant``
-    was silently exempt from the exactly-once and slot-order
-    invariants below.  The exemption bought nothing (both satisfy both
-    invariants), which is what makes a silent roster worse than an explicit
-    one: nobody chose it.  ``instantiate`` is the shared helper, not
-    a generator, so it is the one name excluded, by name and for a reason.
-    """
-    from esolangs.tools import parameterized
-
+    ids = parameterized_ids()
     return [
-        (name, parameterized.__dict__[name])
-        for name in parameterized.__all__
-        if name != "instantiate"
+        (language.id, language.boolean)
+        for language in LANGUAGES.values()
+        if language.id in ids and language.boolean is not None
     ]
 
 
@@ -80,10 +75,10 @@ def test_run_form_generators_spell_their_own_runs(language: str, attr: str) -> N
     each as long as the code that replaces it.
     """
     import esolangs
-    from esolangs.tools import parameterized
+    from esolangs import tools as generators
 
     for table in ("01", "0110", "01101001"):
-        raw = getattr(parameterized, attr)(table)
+        raw = getattr(generators, attr)(table)
         assert "{X" not in raw, (language, table)
         template = esolangs.generate(language, table)
         assert str(template) == raw, (language, table)
@@ -260,12 +255,11 @@ def test_a_permuting_generator_changes_its_drawing() -> None:
     """
     from itertools import permutations
 
-    from esolangs.tools import parameterized
     from esolangs.tools.helpers import permute_truth_table
 
     checked = 0
     for name in ("back",):
-        build = parameterized._back_ordered  # noqa: SLF001
+        build = _back_ordered
         for table in ("10101010", "11001100", "00111100"):
             n = 3
             builds: dict[str, set[int]] = {}
@@ -317,9 +311,9 @@ class TestParameterizedBIO:
     @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every instantiated input produces the truth-table result."""
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
-        template = parameterized.bio(table)
+        template = generators.bio(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = self.run_bio(self.instantiate(template, bits), bits)
@@ -327,11 +321,11 @@ class TestParameterizedBIO:
 
     def test_template_is_input_independent(self) -> None:
         """The template has input runs, not hardcoded bits."""
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
+        from esolangs.tools.bio import BIO_PAIR
         from esolangs.tools.helpers import runs
-        from esolangs.tools.parameterized import BIO_PAIR
 
-        template = parameterized.bio("0110")
+        template = generators.bio("0110")
         # one four-character unit per input; the doubling between them
         # (eight commands, 32 characters) carries the first input's weight
         double = "0ix{1ox;0oy;0oy;};0iy{1oy;0ox;};"
@@ -341,19 +335,19 @@ class TestParameterizedBIO:
     def test_each_input_is_stored_once(self) -> None:
         """The packing scheme embeds each input exactly once."""
 
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
+        from esolangs.tools.bio import BIO_PAIR
         from esolangs.tools.helpers import runs
-        from esolangs.tools.parameterized import BIO_PAIR
 
         for n in (1, 2, 3):
             table = format(0, f"0{2**n}b")
-            template = parameterized.bio(table)
+            template = generators.bio(table)
             assert len(runs(template, "$", (BIO_PAIR,) * n)) == n
 
     def test_both_bits_embed_at_the_same_width(self) -> None:
         """A zero pads against the unread ``z``, so the program's length
         does not reveal the inputs."""
-        from esolangs.tools.parameterized import BIO_PAIR
+        from esolangs.tools.bio import BIO_PAIR
         from tests.tools.fills import _fill_bio
 
         for n in (1, 2, 3):
@@ -368,10 +362,10 @@ class TestParameterizedBIO:
 
     def test_padding_never_touches_a_read_register(self) -> None:
         """``z`` is inert: the generator emits no command that reads it."""
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
         for n in (1, 2, 3):
-            template = parameterized.bio(format(0, f"0{2**n}b"))
+            template = generators.bio(format(0, f"0{2**n}b"))
             assert "z" not in template.lower()
 
     def test_every_input_is_the_same_pair(self) -> None:
@@ -423,9 +417,9 @@ class TestParameterizedBitdeque:
     @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every instantiated input produces the truth-table result."""
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
-        template = parameterized.bitdeque(table)
+        template = generators.bitdeque(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = self.run_bitdeque(self.instantiate(template, bits))
@@ -435,11 +429,11 @@ class TestParameterizedBitdeque:
     @pytest.mark.medium
     def test_all_small_tables(self, n: int) -> None:
         """Every table up to three inputs produces the right result."""
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
         for table_int in range(2 ** (2**n)):
             table = format(table_int, f"0{2**n}b")
-            template = parameterized.bitdeque(table)
+            template = generators.bitdeque(table)
             for combo in range(2**n):
                 bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
                 got = self.run_bitdeque(self.instantiate(template, bits))
@@ -452,12 +446,12 @@ class TestParameterizedBitdeque:
         INVERT``/``INVERT PUSH``: the weight is in the template, so the
         linear route's runs are as narrow as the tree's.
         """
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
+        from esolangs.tools.bitdeque import BITDEQUE_PAIR
         from esolangs.tools.helpers import runs
-        from esolangs.tools.parameterized import BITDEQUE_PAIR
 
         for n in (2, 5):
-            template = parameterized.bitdeque("0110" * 2 ** (n - 2))
+            template = generators.bitdeque("0110" * 2 ** (n - 2))
             assert "{X" not in template
             setters = (BITDEQUE_PAIR,) * n
             spans = runs(template, "$", setters)
@@ -471,11 +465,11 @@ class TestParameterizedBitdeque:
         and running just the prelude and load shows the deque holding the
         complement, and the whole program still answers the table.
         """
+        from esolangs import tools as generators
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.queue_based.bitdeque import run
-        from esolangs.tools import parameterized
 
-        template = parameterized.bitdeque("0101")
+        template = generators.bitdeque("0101")
         prelude_and_load = " ".join(self.instantiate(template, [0, 1]).split()[:12])
         io = ScriptedIO()
         run(prelude_and_load, io)
@@ -492,11 +486,11 @@ class TestParameterizedBitdeque:
         five-input table: ``2**5 - 1`` of each discard command, and the
         register at the end of the load is zeroed statically.
         """
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
         n = 5
         table = "".join(str(row.bit_count() & 1) for row in range(2**n))
-        tokens = parameterized.bitdeque(table).split()
+        tokens = generators.bitdeque(table).split()
         assert tokens[:3] == ["PUSH", "INVERT", "PUSH"]  # parity opens 0, 1
         assert tokens.count("POP") == 2**n - 1 + n  # the discards, the reads
         assert tokens.count("EJECT") == 2**n - 1
@@ -505,49 +499,46 @@ class TestParameterizedBitdeque:
 
     def test_ordered_route_rotates_a_nonhead_input_toward_the_head(self) -> None:
         """The private candidate builder covers the other shortest rotation."""
-        from esolangs.tools import parameterized
 
-        template = parameterized._bitdeque_ordered(  # noqa: SLF001
-            "0110100110010110", (1, 0, 2, 3)
-        )
+        template = _bitdeque_ordered("0110100110010110", (1, 0, 2, 3))
         assert "EJECT PUSH EJECT" in template
 
     def test_constant_table_is_a_leaf(self) -> None:
         """A constant table emits a drain-and-push leaf with no branching."""
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
-        template = parameterized.bitdeque("0000")
+        template = generators.bitdeque("0000")
         assert "POP" in template
         assert "GOTO" in template
 
     def test_leaves_share_a_low_address_halt_trampoline(self) -> None:
         """Only the trampoline itself repeats the widening end address."""
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
-        template = parameterized.bitdeque("01101001")
+        template = generators.bitdeque("01101001")
         assert template.startswith("GOTO 3 INVERT GOTO 4 GOTO ")
         assert template.count("GOTO 0") == 8
 
     def test_linear_discard_executes_wide_rows(self) -> None:
         """Head/tail discards leave sampled six-input answers."""
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
         n = 6
         table = "".join(str(row.bit_count() & 1) for row in range(2**n))
-        template = parameterized.bitdeque(table)
+        template = generators.bitdeque(table)
         for row in (0, 1, 2, 7, 31, 32, 62, 63):
             bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
             assert self.run_bitdeque(self.instantiate(template, bits)) == table[row]
 
     def test_linear_discard_growth(self) -> None:
         """Wide templates and their fills scale with table size."""
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
         templates = []
         filled = []
         for n in range(11, 15):
             table = "".join(str(row.bit_count() & 1) for row in range(2**n))
-            template = parameterized.bitdeque(table)
+            template = generators.bitdeque(table)
             templates.append(len(template))
             filled.append(len(self.instantiate(template, [0] * n)))
         assert all(b <= 2 * a for a, b in pairwise(templates))
@@ -607,9 +598,9 @@ class TestParameterizedMinskySwap:
     @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every instantiated input produces the truth-table result."""
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
-        template = parameterized.minsky_swap(table)
+        template = generators.minsky_swap(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = self.run_minsky_swap(self.instantiate(template, bits))
@@ -619,11 +610,11 @@ class TestParameterizedMinskySwap:
     @pytest.mark.medium
     def test_all_small_tables(self, n: int) -> None:
         """Every table up to three inputs produces the right result."""
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
         for table_int in range(2 ** (2**n)):
             table = format(table_int, f"0{2**n}b")
-            template = parameterized.minsky_swap(table)
+            template = generators.minsky_swap(table)
             for combo in range(2**n):
                 bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
                 got = self.run_minsky_swap(self.instantiate(template, bits))
@@ -634,7 +625,7 @@ class TestParameterizedMinskySwap:
         """Public and example fills use the notation's one equal-width pair."""
         import esolangs
         from esolangs.tools.examples import BOOLEAN_EXAMPLES
-        from esolangs.tools.parameterized import minsky_swap_setters
+        from esolangs.tools.minsky_swap import minsky_swap_setters
 
         example = BOOLEAN_EXAMPLES["minsky-swap"]
         assert example.fill is not None
@@ -694,10 +685,10 @@ class TestParameterizedMinskySwap:
                         )
 
     def test_rmsn_growth_remains_linear(self) -> None:
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
         sizes = [
-            len(parameterized.minsky_swap("01101001" * (2 ** (n - 3)), 1))
+            len(generators.minsky_swap("01101001" * (2 ** (n - 3)), 1))
             for n in (7, 8, 9)
         ]
         assert all(b <= 2 * a for a, b in pairwise(sizes))
@@ -710,9 +701,9 @@ class TestParameterizedMinskySwap:
         those stages, not the runs.  The five commands ahead of the first
         run are the shared leaves and the ``~`` that jumps over them.
         """
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
-        template = parameterized.minsky_swap("0110")
+        template = generators.minsky_swap("0110")
         assert "{X" not in template
         assert template.startswith("~ ~ + * ~ $$ ~ ~ * ++ * $$ ~ ~ * + * *")
 
@@ -746,7 +737,7 @@ class TestParameterizedMinskySwap:
         """
         from esolangs.tools import minsky_swap
         from esolangs.tools.examples import AND2
-        from esolangs.tools.parameterized import MINSKY_SWAP_PAIR
+        from esolangs.tools.minsky_swap import MINSKY_SWAP_PAIR
         from tests.tools.fills import _fill_minsky_swap
 
         assert MINSKY_SWAP_PAIR == ("**", "++")
@@ -782,7 +773,7 @@ class TestParameterizedBfpda:
 
     def test_both_bits_embed_at_the_same_width(self) -> None:
         """The setter is four characters whichever bit it carries."""
-        from esolangs.tools.parameterized import BFPDA_PAIR
+        from esolangs.tools.bfpda import BFPDA_PAIR
         from tests.tools.fills import _fill_bfpda
 
         for n in (1, 2, 3):
@@ -814,9 +805,9 @@ class TestParameterizedBfpda:
     @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every instantiated input produces the truth-table result."""
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
-        template = parameterized.bfpda(table)
+        template = generators.bfpda(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = self.run_bfpda(self.instantiate(template, bits))
@@ -826,11 +817,11 @@ class TestParameterizedBfpda:
     @pytest.mark.medium
     def test_all_small_tables(self, n: int) -> None:
         """Every table up to three inputs produces the right result."""
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
         for table_int in range(2 ** (2**n)):
             table = format(table_int, f"0{2**n}b")
-            template = parameterized.bfpda(table)
+            template = generators.bfpda(table)
             for combo in range(2**n):
                 bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
                 got = self.run_bfpda(self.instantiate(template, bits))
@@ -838,9 +829,9 @@ class TestParameterizedBfpda:
 
     def test_template_is_input_independent(self) -> None:
         """The template has input runs, not hardcoded bits."""
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
-        template = parameterized.bfpda("0110")
+        template = generators.bfpda("0110")
         assert "{X" not in template
         # The first marker's ``<`` is dropped: ``@`` pushes a 1 onto the empty stack.
         assert template.startswith("@<$<@<$")
@@ -848,11 +839,11 @@ class TestParameterizedBfpda:
     def test_program_structure(self) -> None:
         """Each input is embedded once (pre-loaded), not re-embedded per node."""
 
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
+        from esolangs.tools.bfpda import BFPDA_PAIR
         from esolangs.tools.helpers import runs
-        from esolangs.tools.parameterized import BFPDA_PAIR
 
-        template = parameterized.bfpda("0110")
+        template = generators.bfpda("0110")
         # ``runs`` refuses a stray ``$``, so two spans is exactly two embeds
         assert runs(template, "$", (BFPDA_PAIR,) * 2) == [(2, 3), (6, 7)]
         assert "{C0}" not in template  # the marker is a constant, not a complement
@@ -864,10 +855,10 @@ class TestParameterizedBfpda:
         Both arms of a node end on an empty stack, so the ``]`` closing
         each exits without a pushed zero, and nothing is left to pop.
         """
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
-        assert parameterized.bfpda("10") == "@<$[>>.]>[>@.>]"  # NOT
-        assert parameterized.bfpda("0110") == (
+        assert generators.bfpda("10") == "@<$[>>.]>[>@.>]"  # NOT
+        assert generators.bfpda("0110") == (
             "@<$<@<$[>>[>>.]>[>@.>]]>[>[>>@.>]>[>.]]"  # XOR
         )
 
@@ -878,9 +869,9 @@ class TestParameterizedBfpda:
         after, and each leaf pushed its answer; 17578 once the arms end on
         the empty stack a leaf leaves behind; 16042 with fresh-cell setters.
         """
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
-        total = sum(len(parameterized.bfpda(format(v, "08b"))) for v in range(256))
+        total = sum(len(generators.bfpda(format(v, "08b"))) for v in range(256))
         assert total == 16042
 
 
@@ -903,7 +894,7 @@ class TestParameterizedHomeRow:
 
     def test_both_bits_embed_at_the_same_width(self) -> None:
         """The setter is two characters whichever bit it carries."""
-        from esolangs.tools.parameterized import HOME_ROW_PAIR
+        from esolangs.tools.home_row import HOME_ROW_PAIR
         from tests.tools.fills import _fill_home_row
 
         for n in (1, 2, 3):
@@ -935,9 +926,9 @@ class TestParameterizedHomeRow:
     @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every instantiated input produces the truth-table result."""
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
-        template = parameterized.home_row(table)
+        template = generators.home_row(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = self.run_home_row(self.instantiate(template, bits))
@@ -947,11 +938,11 @@ class TestParameterizedHomeRow:
     @pytest.mark.medium
     def test_all_small_tables(self, n: int) -> None:
         """Every table up to three inputs produces the right result."""
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
         for table_int in range(2 ** (2**n)):
             table = format(table_int, f"0{2**n}b")
-            template = parameterized.home_row(table)
+            template = generators.home_row(table)
             for combo in range(2**n):
                 bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
                 got = self.run_home_row(self.instantiate(template, bits))
@@ -960,13 +951,13 @@ class TestParameterizedHomeRow:
     def test_five_inputs_sample(self) -> None:
         """A sample of dense five-input tables, past the removed n <= 2 cap."""
 
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
         n = 5
         rng = random.Random(0)
         for _ in range(5):
             table = "".join(rng.choice("01") for _ in range(2**n))
-            template = parameterized.home_row(table)
+            template = generators.home_row(table)
             for combo in range(2**n):
                 bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
                 got = self.run_home_row(self.instantiate(template, bits))
@@ -974,20 +965,20 @@ class TestParameterizedHomeRow:
 
     def test_template_is_input_independent(self) -> None:
         """The template has input runs, not hardcoded bits."""
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
-        template = parameterized.home_row("0110")
+        template = generators.home_row("0110")
         assert "{X" not in template
         # each packing line opens with its two-character run
         assert "a$lsffffaafla$lsffffafl" in template
 
     def test_each_input_embedded_once(self) -> None:
 
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
         from esolangs.tools.helpers import runs
-        from esolangs.tools.parameterized import HOME_ROW_PAIR
+        from esolangs.tools.home_row import HOME_ROW_PAIR
 
-        template = parameterized.home_row("0110")
+        template = generators.home_row("0110")
         # ``runs`` refuses a stray ``$``, so two spans is exactly two embeds
         assert len(runs(template, "$", (HOME_ROW_PAIR,) * 2)) == 2
         assert "{C0}" not in template
@@ -995,11 +986,11 @@ class TestParameterizedHomeRow:
 
     def test_rows_that_agree_with_the_last_share_its_leaf(self) -> None:
         """Only the rows before the table's trailing run get a guarded leaf."""
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
         setup = "aaaaaalsffaaaaaaaaffflfa$lsffffaafla$lsffffafl"
-        assert parameterized.home_row("0111") == setup + "fffflflfflk;lffffak"
-        assert parameterized.home_row("0110") == setup + (
+        assert generators.home_row("0111") == setup + "fffflflfflk;lffffak"
+        assert generators.home_row("0110") == setup + (
             "fffflsflfflk;lfflsflfflak;lfflflfflak;lffffk"
         )
 
@@ -1010,10 +1001,10 @@ class TestParameterizedHomeRow:
         working copy and restored it; 37410 once a leaf only decrements and
         steps; 34521 once the rows agreeing with the last share its leaf.
         """
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
         tables = (format(v, "08b") for v in range(256))
-        assert sum(len(parameterized.home_row(t)) for t in tables) == 34521
+        assert sum(len(generators.home_row(t)) for t in tables) == 34521
 
 
 @pytest.mark.slow  # 2.6s: every fill of every parameterized generator
@@ -1179,7 +1170,7 @@ def test_bitdeque_short_load_saved_source_and_large_tables(width: int) -> None:
 
 
 def test_bitdeque_short_load_rejects_changed_prefix() -> None:
-    from esolangs.tools.parameterized import bitdeque, bitdeque_setters
+    from esolangs.tools.bitdeque import bitdeque, bitdeque_setters
 
     template = bitdeque("0110", 1)
     pair = bitdeque_setters(template, 2)

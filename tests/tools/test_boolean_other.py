@@ -695,14 +695,14 @@ class TestGeneratorEdgePaths:
 
     def test_parameterized_validation(self) -> None:
         """bio/back reject malformed truth tables."""
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
         with pytest.raises(ValueError, match="power-of-two"):
-            parameterized.bio("011")
+            generators.bio("011")
         with pytest.raises(ValueError, match="only '0' and '1'"):
-            parameterized.bio("0123")
+            generators.bio("0123")
         with pytest.raises(ValueError, match="power-of-two"):
-            parameterized.back("011")
+            generators.back("011")
 
     def test_dimensional_validation(self) -> None:
         """The Dimensional generator rejects bad truth tables."""

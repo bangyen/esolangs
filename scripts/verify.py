@@ -131,7 +131,8 @@ STEP_SCOPE: dict[str, tuple[str, ...]] = {
     # program and instantiate it through the shipped fill.  The runner is in
     # the scope too, since it decides which of them run at all.
     "deep proofs (verify band)": (
-        "src/esolangs/tools/parameterized.py",
+        "src/esolangs/tools/bio.py",
+        "src/esolangs/tools/arrowqueue.py",
         "src/esolangs/tools/examples.py",
         "tests/proofs/deep/",
     ),

@@ -32,8 +32,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from esolangs.tools import bio
+from esolangs.tools.bio import BIO_PAIR
 from esolangs.tools.helpers import runs
-from esolangs.tools.parameterized import BIO_PAIR
 
 #: Cost band; see ``__main__.py``. Telescoping-lookup lemmas, cheap enough that
 #: scoping them is the only reason they are ever skipped.

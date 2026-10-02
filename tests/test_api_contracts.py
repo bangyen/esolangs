@@ -98,7 +98,7 @@ class TestParameterizedTemplates:
     def test_the_set_matches_what_the_generators_emit(self) -> None:
         """The definition is behavioural, so nothing can quietly leave it.
 
-        The same set taken from ``parameterized.__all__`` omits Home Row,
+        The same set taken from the former category export roster omits Home Row,
         and three documents each named a different subset.
         """
         from esolangs.registry import template_setters

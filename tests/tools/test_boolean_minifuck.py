@@ -58,13 +58,13 @@ def test_minifuck_ignored_leading_inputs_compute_their_function() -> None:
     evidence it works.  Only running every row is, and a wrong build here
     would otherwise look exactly like a right one to the test above.
     """
+    from esolangs import tools as generators
     from esolangs.interpreters.io import ScriptedIO
     from esolangs.interpreters.tape_based.minifuck import run
-    from esolangs.tools import parameterized
     from tests.tools.fills import _fill_minifuck
 
     for table in ("01010101", "10101010"):
-        template = parameterized.minifuck(table)
+        template = generators.minifuck(table)
         widths = set()
         for combo in range(8):
             bits = [(combo >> (2 - i)) & 1 for i in range(3)]
@@ -125,13 +125,13 @@ def test_minifuck_builds_five_input_xor() -> None:
     equal-width check is what keeps the instantiation from leaking its
     inputs through ``len()``.
     """
+    from esolangs import tools as generators
     from esolangs.interpreters.io import ScriptedIO
     from esolangs.interpreters.tape_based.minifuck import run
-    from esolangs.tools import parameterized
     from tests.tools.fills import _fill_minifuck
 
     table = "".join(str(bin(r).count("1") & 1) for r in range(32))
-    template = parameterized.minifuck(table)
+    template = generators.minifuck(table)
 
     widths = set()
     for combo in range(32):

@@ -48,9 +48,9 @@ class TestParameterizedArrowQueue:
     @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every instantiated input halts or loops per its table entry."""
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
-        template = parameterized.arrowqueue(table)
+        template = generators.arrowqueue(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = self.run_arrowqueue(self.instantiate(template, bits))
@@ -60,11 +60,11 @@ class TestParameterizedArrowQueue:
     @pytest.mark.medium
     def test_all_small_tables(self, n: int) -> None:
         """Every table up to three inputs produces the right result."""
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
         for table_int in range(2 ** (2**n)):
             table = format(table_int, f"0{2**n}b")
-            template = parameterized.arrowqueue(table)
+            template = generators.arrowqueue(table)
             for combo in range(2**n):
                 bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
                 got = self.run_arrowqueue(self.instantiate(template, bits))
@@ -72,13 +72,13 @@ class TestParameterizedArrowQueue:
 
     def test_random_tables(self) -> None:
         """Seeded random tables through five inputs produce the right result."""
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
         random.seed(13)
         for n in (1, 2, 3, 4, 5):
             for _ in range(2):
                 table = "".join(random.choice("01") for _ in range(2**n))
-                template = parameterized.arrowqueue(table)
+                template = generators.arrowqueue(table)
                 for combo in range(2**n):
                     bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
                     got = self.run_arrowqueue(self.instantiate(template, bits))
@@ -86,11 +86,11 @@ class TestParameterizedArrowQueue:
 
     def test_linear_marker_cascade_executes_every_row(self) -> None:
         """Wide inputs become marker counts and select one cascade stage."""
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
         n = 6
         table = "".join(str((row.bit_count() ^ (row >> 2)) & 1) for row in range(2**n))
-        template = parameterized.arrowqueue(table)
+        template = generators.arrowqueue(table)
         sizes = set()
         for row in range(2**n):
             bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
@@ -101,16 +101,16 @@ class TestParameterizedArrowQueue:
 
     def test_linear_marker_cascade_scales_with_table(self) -> None:
         """Dense wide templates grow no faster than the table doubles."""
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
-        sizes = [len(parameterized.arrowqueue("1" * (2**n))) for n in range(7, 11)]
+        sizes = [len(generators.arrowqueue("1" * (2**n))) for n in range(7, 11)]
         assert all(b <= 2 * a for a, b in pairwise(sizes))
 
     def test_template_is_input_independent(self) -> None:
         """The template has one run per input, not hardcoded bits."""
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
-        template = parameterized.arrowqueue("0110")
+        template = generators.arrowqueue("0110")
         assert "{X" not in template
         setters = (PAIR,) * 2
         assert template.count(TEMPLATE_CHAR) == sum(len(zero) for zero, _ in setters)
@@ -125,10 +125,10 @@ class TestParameterizedArrowQueue:
         the template and the pair is the same at every input, every
         arity, and on both routes.
         """
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
         n = len(table).bit_length() - 1
-        template = parameterized.arrowqueue(table)
+        template = generators.arrowqueue(table)
         setters = (PAIR,) * n
         assert setters == ((".", "~"),) * n
         assert template.count(TEMPLATE_CHAR) == n
@@ -145,7 +145,7 @@ class TestParameterizedArrowQueue:
         table index, which the cascade below turns right on.
         """
         from esolangs.interpreters.grid_based.arrowqueue import _advance, _Machine
-        from esolangs.tools.parameterized import _STAGE
+        from esolangs.tools.arrowqueue import _STAGE
 
         for m in range(6):
             for bit in (0, 1):
@@ -178,11 +178,9 @@ class TestParameterizedArrowQueue:
         The comparison table has the same ones-count, so a shorter template
         means the tree folded rather than that something else shrank.
         """
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
-        assert len(parameterized.arrowqueue(table)) < len(
-            parameterized.arrowqueue(mixed)
-        )
+        assert len(generators.arrowqueue(table)) < len(generators.arrowqueue(mixed))
 
     @pytest.mark.parametrize(
         ("table", "n"),
@@ -200,9 +198,9 @@ class TestParameterizedArrowQueue:
 
         The five-input tables take the cascade, whose constant tail folds.
         """
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
-        template = parameterized.arrowqueue(table)
+        template = generators.arrowqueue(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = self.run_arrowqueue(self.instantiate(template, bits))
@@ -228,11 +226,11 @@ class TestParameterizedArrowQueue:
         whatever its length.  Every row executes, and the template is
         shorter than the unfolded cascade, which lays three rows an entry.
         """
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
         from esolangs.tools.arrowqueue import _MIDDLE, _STAGE
 
         n = len(table).bit_length() - 1
-        template = parameterized.arrowqueue(table)
+        template = generators.arrowqueue(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = self.run_arrowqueue(self.instantiate(template, bits))
@@ -273,7 +271,7 @@ class TestParameterizedArrowQueue:
         program halts -- reporting ``0`` for a ``1`` entry.  Dropping the
         drains here must therefore break the table.
         """
-        from esolangs.tools.parameterized import _TREE_1, _drained_leaf
+        from esolangs.tools.arrowqueue import _TREE_1, _drained_leaf
 
         undrained = _drained_leaf("1", 0)  # no drains at all
         assert [row.strip() for row in undrained if row.strip()] == [
@@ -289,8 +287,8 @@ class TestParameterizedArrowQueue:
 
     def test_folded_zero_leaf_needs_no_drain(self) -> None:
         """A ``0`` leaf halts by leaving the grid, which the queue cannot stop."""
-        from esolangs.tools import parameterized
-        from esolangs.tools.parameterized import _TREE_0, _drained_leaf
+        from esolangs import tools as generators
+        from esolangs.tools.arrowqueue import _TREE_0, _drained_leaf
 
         # It carries no drain at all.  Paying for one is not free: the
         # staircase sits a column right of the branches it replaces, so
@@ -299,7 +297,7 @@ class TestParameterizedArrowQueue:
         # fold until this case was carved out.
         assert _drained_leaf("0", 3) == list(_TREE_0)
         for table, n in (("0000", 2), ("0" * 8, 3)):
-            template = parameterized.arrowqueue(table)
+            template = generators.arrowqueue(table)
             for combo in range(2**n):
                 bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
                 assert self.run_arrowqueue(self.instantiate(template, bits)) == "0"
@@ -313,12 +311,7 @@ class TestParameterizedArrowQueue:
         cheaper, and the extra column blocked ``_compact``.  This pins the
         whole n <= 2 space, where such a regression showed up.
         """
-        from esolangs.tools.parameterized import (
-            _TREE_0,
-            _TREE_1,
-            _connect,
-            _tree,
-        )
+        from esolangs.tools.arrowqueue import _TREE_0, _TREE_1, _connect, _tree
 
         def unfolded(values: list[str]) -> list[str]:
             """The pre-fold construction: a branch per level, never collapsed."""
@@ -345,10 +338,10 @@ class TestParameterizedArrowQueue:
         The fold shrinks the tree, which is shared by all instantiations, so
         the program's size still cannot leak which bits were embedded.
         """
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
         for table, n in (("1111", 2), ("1100", 2), ("11110000", 3)):
-            template = parameterized.arrowqueue(table)
+            template = generators.arrowqueue(table)
             sizes = {
                 len(
                     self.instantiate(
@@ -374,7 +367,7 @@ class TestParameterizedArrowQueue:
         See ``the relevant generator tests`` (lemmas L2/L2'/L4).
         """
         from esolangs.interpreters.grid_based.arrowqueue import _Machine
-        from esolangs.tools.parameterized import _TREE_1
+        from esolangs.tools.arrowqueue import _TREE_1
         from esolangs.vm import run_until_halt_or_cycle
 
         rdlu = (0, 1, 2, 3)
@@ -396,11 +389,7 @@ class TestParameterizedArrowQueue:
         -- exactly where the header's descent lands -- and the bare ring
         appears only nested at column offset 3, where entry is rightward.
         """
-        from esolangs.tools.parameterized import (
-            _TREE_1,
-            _drained_leaf,
-            _tree,
-        )
+        from esolangs.tools.arrowqueue import _TREE_1, _drained_leaf, _tree
 
         for n in range(1, 6):
             assert _tree(list("1" * (2**n))) == _drained_leaf("1", n)

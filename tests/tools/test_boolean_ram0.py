@@ -58,9 +58,9 @@ class TestParameterizedRam0:
     @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every instantiated input produces the truth-table result."""
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
-        template = parameterized.ram0(table)
+        template = generators.ram0(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = self.run_ram0(self.instantiate(template, bits))
@@ -70,11 +70,11 @@ class TestParameterizedRam0:
     @pytest.mark.medium
     def test_all_small_tables(self, n: int) -> None:
         """Every table up to three inputs produces the right result."""
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
         for table_int in range(2 ** (2**n)):
             table = format(table_int, f"0{2**n}b")
-            template = parameterized.ram0(table)
+            template = generators.ram0(table)
             for combo in range(2**n):
                 bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
                 got = self.run_ram0(self.instantiate(template, bits))
@@ -82,19 +82,19 @@ class TestParameterizedRam0:
 
     def test_template_is_input_independent(self) -> None:
         """The template has one run per input, not hardcoded bits."""
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
         from esolangs.tools.helpers import TEMPLATE_CHAR, runs
         from esolangs.tools.ram0 import PAIR as RAM0_PAIR
 
-        template = parameterized.ram0("0110")
+        template = generators.ram0("0110")
         assert "{X" not in template
         assert len(runs(template, TEMPLATE_CHAR, (RAM0_PAIR,) * 2)) == 2
 
     def test_constant_table_is_a_leaf(self) -> None:
         """A constant table emits a single leaf with no branching."""
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
-        template = parameterized.ram0("0000")
+        template = generators.ram0("0000")
         assert template.count("C") == 1  # entry trampoline only
         assert "Z" in template
 
@@ -104,10 +104,10 @@ class TestParameterizedRam0:
         Parity's tree has eight leaves, but a leaf is emitted once per
         answer and the other six are jumps to those two.
         """
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
         from esolangs.tools.ram0 import _ram0_ordered
 
-        tokens = parameterized.ram0("01101001").split()
+        tokens = generators.ram0("01101001").split()
         assert tokens[0] == "C"
         assert tokens.count("2") == 2
         plain = _ram0_ordered("01101001", (0, 1, 2)).split()
@@ -120,7 +120,7 @@ class TestParameterizedRam0:
         Before is the plain tree in its best order through 16 entries and
         the straight-line lookup past them, as the generator was.
         """
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
         from esolangs.tools.helpers import best_input_order
         from esolangs.tools.ram0 import _ram0_ordered
         from tests.tools.plain_oracles import _ram0_linear
@@ -132,7 +132,7 @@ class TestParameterizedRam0:
                 if len(table) <= 16
                 else _ram0_linear(table)
             )
-            new = len(parameterized.ram0(table))
+            new = len(generators.ram0(table))
             before, after = before + old, after + new
         return before, after
 
@@ -153,22 +153,22 @@ class TestParameterizedRam0:
 
     def test_shared_tree_executes_wide_rows(self) -> None:
         """A seeded seven-input table, every row, through the shared tree."""
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
         n = 7
         table = format(random.Random(7).getrandbits(2**n), f"0{2**n}b")
-        template = parameterized.ram0(table)
+        template = generators.ram0(table)
         for row in range(2**n):
             bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
             assert self.run_ram0(self.instantiate(template, bits)) == table[row]
 
     def test_wide_template_executes_sampled_rows(self) -> None:
         """Past 16 entries the template returns sampled six-input rows."""
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
         n = 6
         table = "".join(str(row.bit_count() & 1) for row in range(2**n))
-        template = parameterized.ram0(table)
+        template = generators.ram0(table)
         for row in (0, 1, 2, 7, 31, 32, 62, 63):
             bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
             assert self.run_ram0(self.instantiate(template, bits)) == table[row]
@@ -186,10 +186,10 @@ class TestParameterizedRam0:
 
     def test_wide_template_growth(self) -> None:
         """Wide parity templates grow by at most the table-size ratio."""
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
         sizes = []
         for n in range(11, 15):
             table = "".join(str(row.bit_count() & 1) for row in range(2**n))
-            sizes.append(len(parameterized.ram0(table)))
+            sizes.append(len(generators.ram0(table)))
         assert all(b <= 2 * a for a, b in pairwise(sizes))

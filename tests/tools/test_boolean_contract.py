@@ -235,10 +235,8 @@ def test_boolean_set_lists_exactly_the_exported_generators() -> None:
 # The tree generators that pick their input split order by measuring, and the
 # builder that emits one fixed order, so a test can compare the two.
 def _reordering_generators() -> list[object]:
+    from esolangs.tools.bitdeque import _bitdeque_ordered
     from esolangs.tools.painfuck import _painfuck_ordered
-    from esolangs.tools.parameterized import (
-        _bitdeque_ordered,
-    )
     from esolangs.tools.three_d_brainfuck import _three_d_ordered
 
     entries: list[tuple[str, object, object]] = [

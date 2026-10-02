@@ -98,9 +98,8 @@ def _fills() -> dict[str, Callable[[str, list[int]], str]]:
     input instead of one that reads its inputs; each committed example
     already carries the substitution as its ``fill``, so this exposes the
     existing recipe rather than a second list.  Membership is derived, not
-    written down: ``parameterized.__all__`` omits Home Row, whose generator
-    emits the runs all the same, and the three hand-kept doc lists each
-    named a different subset.  ``fill`` matches what the generators emit.
+    written down: the former export roster omitted Home Row, and three
+    hand-kept doc lists named different subsets. ``fill`` matches the output.
     """
     from esolangs.tools import examples as _examples
 
