@@ -3,7 +3,6 @@
 ``esolangs.run`` is reached through the package at call time (patchable).
 """
 
-import os
 import signal
 import threading
 from functools import partial
@@ -15,6 +14,7 @@ from esolangs._answers import (
     read_answer,
 )
 from esolangs._describe import describe
+from esolangs._source import ProgramSource, check_scale_for
 from esolangs._validate import check_timeout
 from esolangs.exceptions import (
     ArgumentError,
@@ -52,7 +52,7 @@ _ROW_TIMEOUT = 30.0
 
 def evaluate(
     language: str,
-    program: str | Raster | os.PathLike[str],
+    program: ProgramSource,
     timeout: float | _Default | None = _DEFAULT,
     *,
     inputs: int,
@@ -77,12 +77,7 @@ def evaluate(
         check_timeout(timeout)
     facts = describe(language)
     name = str(facts["name"])
-    if scale is not None:
-        from esolangs._validate import check_scale
-
-        check_scale(scale)
-        if facts["source_kind"] != "raster":
-            raise ArgumentError("scale is only supported for raster interpreters")
+    check_scale_for(name, scale)
     if (
         isinstance(inputs, bool)
         or not isinstance(inputs, int)

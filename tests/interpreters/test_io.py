@@ -5,6 +5,8 @@ import json
 from contextlib import redirect_stdout
 from unittest.mock import patch
 
+import pytest
+
 from esolangs.interpreters.io import IO, ScriptedIO
 
 
@@ -213,3 +215,16 @@ def test_mixed_read_exhaustion_reports_character_offset() -> None:
     copied = pickle.loads(pickle.dumps(error.value))
     assert (copied.reads, copied.supplied, copied.unit) == (5, 5, "character")
     assert source.past_end == 1
+
+
+@pytest.mark.parametrize("separator", ["\r", "\v", "\f", "\x85", "\u2028", "\u2029"])
+def test_line_exhaustion_counts_only_actual_line_delimiters(separator: str) -> None:
+    from esolangs.exceptions import InputExhaustedError
+
+    source = ScriptedIO(f"a{separator}b\nend")
+    assert source.supplied == 2
+    assert source.input_str() == f"a{separator}b"
+    assert source.input_str() == "end"
+    with pytest.raises(InputExhaustedError) as error:
+        source.input_str()
+    assert (error.value.reads, error.value.supplied, error.value.unit) == (2, 2, "line")

@@ -127,6 +127,10 @@ class TestEveryAuditedCapIsCatchable:
         with pytest.raises(esolangs.GeneratorCapError):
             evaluate_generated("Polynomial", _big_table(11))
 
+    def test_befunge_grid_refusal_is_catchable(self) -> None:
+        with pytest.raises(esolangs.GeneratorCapError, match="80x25"):
+            esolangs.generate("Befunge", "0010" * (1 << 9))
+
     def test_nocomment_builds_at_the_arity_that_escaped(self) -> None:
         """The escape's subject is gone: n=12 is a template, not a refusal."""
         n = 12
@@ -496,11 +500,11 @@ class TestABadStdinIsAnArgumentFault:
     @pytest.mark.parametrize(
         "call",
         [
-            lambda: esolangs.run("brainfuck", ",.", b"0\n"),
-            lambda: esolangs.check_program("brainfuck", ",.", b"0\n"),
-            lambda: debugger_api.make_vm("brainfuck", ",.", b"0\n"),
-            lambda: debugger_api.make_debugger("brainfuck", ",.", b"0\n"),
-            lambda: esolangs.check_stdin("brainfuck", b"0\n"),
+            lambda: esolangs.run("brainfuck", ",.", ["0"]),
+            lambda: esolangs.check_program("brainfuck", ",.", ["0"]),
+            lambda: debugger_api.make_vm("brainfuck", ",.", ["0"]),
+            lambda: debugger_api.make_debugger("brainfuck", ",.", ["0"]),
+            lambda: esolangs.check_stdin("brainfuck", ["0"]),
         ],
     )
     def test_every_entry_point_agrees(self, call: object) -> None:

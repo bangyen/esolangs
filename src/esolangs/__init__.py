@@ -9,8 +9,6 @@ Names resolve case-insensitively; deliberate errors derive from EsolangError.
 """
 
 import importlib
-import os
-import pathlib
 import re
 import signal
 import threading
@@ -32,6 +30,13 @@ from esolangs._describe import (
 from esolangs._evaluate import _DEFAULT, _Default, evaluate
 from esolangs._isolated import run_isolated as _run_isolated
 from esolangs._language import Language
+from esolangs._source import (
+    InputSource,
+    ProgramSource,
+    check_input,
+    check_scale_for,
+    text_source,
+)
 from esolangs._validate import check_bits, check_scale, check_timeout, check_width
 from esolangs.exceptions import (
     ArgumentError,
@@ -52,8 +57,8 @@ from esolangs.exceptions import (
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.raster import Raster
 from esolangs.registry import (
+    INTERPRETERS,
     LANGUAGES,
-    RUNNERS,
     parameterized_ids,
     recover_setters,
     render_template,
@@ -455,47 +460,12 @@ def _check_runnable(language: str, program: str | Raster) -> None:
         )
 
 
-def _read_source(
-    language: str, program: str | Raster | os.PathLike[str]
-) -> str | Raster:
+def _read_source(language: str, program: ProgramSource) -> str | Raster:
     """Load source and check its kind and origin, allowing unfilled templates."""
     name = resolve(language)
-    raster = LANGUAGES[name].source_kind.value == "raster"
-    if isinstance(program, os.PathLike):
-        try:
-            path = pathlib.Path(program)
-            program = (
-                Raster.from_png(path.read_bytes())
-                if raster
-                else path.read_text(encoding="utf-8").removesuffix("\n")
-            )
-        except FileNotFoundError as exc:
-            # Split from the OSError clause below so a caller who passed a
-            # Path can write ``except FileNotFoundError`` and have it work.
-            raise ProgramNotFoundError(f"cannot read {program}: {exc}") from exc
-        except OSError as exc:
-            raise ProgramError(f"cannot read {program}: {exc}") from exc
-        except UnicodeDecodeError as exc:
-            # Named separately because it is a ``ValueError``, not an
-            # ``OSError``, so the clause above never caught it: a Path to a
-            # PNG raised a bare ``UnicodeDecodeError`` from inside pathlib
-            # where every other unreadable file is a ``ProgramError``.
-            raise ProgramError(
-                f"cannot read {program}: not text (invalid UTF-8 at byte {exc.start})"
-            ) from exc
-        except TypeError as exc:
-            # A ``__fspath__`` returning a non-str makes ``pathlib.Path``
-            # raise TypeError, which escaped the ``EsolangError`` promise.
-            raise ProgramError(f"cannot read {program}: {exc}") from exc
-        except ValueError as exc:
-            raise ProgramError(f"cannot read {program}: {exc}") from exc
-    expected = Raster if raster else str
-    if not isinstance(program, expected):
-        raise ProgramError(
-            f"program must be {'a Raster' if raster else 'a string of source'} "
-            f"or a Path, got "
-            f"{type(program).__name__}"
-        )
+    module = importlib.import_module(INTERPRETERS[name])
+    loader = getattr(module, "load_source", text_source)
+    program = loader(program)
     origin = getattr(program, "language", None)
     if origin is not None and origin != name:
         # The program says where it came from; a plain string does not and
@@ -509,12 +479,12 @@ def _read_source(
 
 
 def check_program(
-    language: str, program: str | Raster | os.PathLike[str], stdin: str = ""
+    language: str, program: ProgramSource, stdin: InputSource = ""
 ) -> str | Raster:
     """Return ``program`` as source, having checked what can be checked here.
 
     Not a load check: it refuses the wrong *kind* of thing (a path as a
-    string, an unfilled template, a non-string, an unreadable file, an
+    string, an unfilled template, an unsupported container, an unreadable file, an
     unknown name) and type-checks ``stdin``, but ``check_program("brainfuck",
     "[")`` returns the program and :func:`make_vm` raises ``ProgramError``.
     :func:`make_vm` calls this, so it cannot build a machine to check.
@@ -524,24 +494,22 @@ def check_program(
 
         path = pathlib.Path(describe(lang)["examples"][0])
         run(lang, path, encode_inputs(lang, [0, 1]))
+
+    Programs may also be UTF-8 text bytes, PNG bytes, or readable streams.
+    The interpreter chooses the decoder. Stdin streams are checked without
+    being consumed; execution snapshots their remaining text.
     """
     name = resolve(language)
     program = _read_source(name, program)
-    if not isinstance(stdin, str):
-        # ArgumentError, matching ``check_stdin``: stdin is not the program,
-        # and the four entry points here used to disagree with it.
-        raise ArgumentError(
-            f"stdin must be a string, got {type(stdin).__name__}; "
-            f"join your lines with '\\n'"
-        )
+    check_input(stdin)
     _check_runnable(name, program)
     return program
 
 
 def _run_bounded(
     language: str,
-    program: str | Raster | os.PathLike[str],
-    stdin: str = "",
+    program: ProgramSource,
+    stdin: InputSource = "",
     *,
     max_steps: int,
     timeout: float | None = None,
@@ -574,8 +542,8 @@ def _run_bounded(
 
 def run(
     language: str,
-    program: str | Raster | os.PathLike[str],
-    stdin: str = "",
+    program: ProgramSource,
+    stdin: InputSource = "",
     timeout: float | _Default | None = _DEFAULT,
     seed: int | None = None,
     *,
@@ -590,6 +558,11 @@ def run(
     filename is refused.  A Path and its text are
     not quite the same argument: a file loses one trailing newline, a
     string keeps it.
+
+    Bytes contain UTF-8 text or PNG source, as accepted by the interpreter.
+    Readable streams are consumed from their current position and left open.
+    Binary stdin is decoded as UTF-8, preserving the same character stream
+    as text stdin.
 
     ``isolated=True`` uses a subprocess deadline, including startup and loading
     (30 seconds by default). It works on Windows and worker threads.
@@ -612,10 +585,7 @@ def run(
     languages that draw.  An unloadable program raises
     :class:`~esolangs.exceptions.ProgramError`.
     """
-    if scale is not None:
-        check_scale(scale)
-        if LANGUAGES[resolve(language)].raster_boolean is None:
-            raise ArgumentError("scale is only supported for raster interpreters")
+    check_scale_for(language, scale)
     if isinstance(timeout, _Default):
         timeout = 30.0 if isolated else None
     check_timeout(timeout)
@@ -650,22 +620,14 @@ def run(
             "with timeout=None -- they settle a diverging row by proving "
             "the loop rather than waiting for it"
         )
-    # No guard on the lookup: ``resolve`` raises for a name outside the
-    # registry, and every registered language has an interpreter, so a name
-    # that reaches here is always in ``RUNNERS``.  The guard that used to sit
-    # here re-raised the error ``resolve`` had already raised.
     name = resolve(language)
     program = check_program(name, program, stdin)
-    if isinstance(program, Raster):
-        run_fn = importlib.import_module(f"esolangs.{LANGUAGES[name].id}").run
-        if scale is not None:
-            from functools import partial
+    run_fn = importlib.import_module(INTERPRETERS[name]).run
+    if scale is not None:
+        from functools import partial
 
-            run_fn = partial(run_fn, scale=scale)
-        split = False
-    else:
-        module, split = RUNNERS[name]
-        run_fn = importlib.import_module("esolangs.interpreters." + module).run
+        run_fn = partial(run_fn, scale=scale)
+    split = LANGUAGES[name].split
     io_obj = ScriptedIO(stdin)
     program_args: str | list[str] | Raster = (
         program.splitlines() if split and isinstance(program, str) else program
@@ -687,13 +649,6 @@ def run(
             ),
             io_obj,
         ) from exc
-    except ValueError as exc:
-        # The interpreters signal a malformed program with a plain
-        # ValueError, one per language and each well worded.  Re-raising as
-        # a ProgramError keeps those words and makes the package's promise
-        # true: `except EsolangError` around user-supplied source now holds,
-        # which is the handler an embedder actually writes.
-        raise _keeping_output(ProgramError(str(exc)), io_obj) from exc
     except EsolangError as exc:
         # A halt, a timeout, an exhausted input: the program ran and stopped
         # badly, which is exactly the case where what it printed first is
@@ -702,6 +657,13 @@ def run(
         # traceback rather than starting a new one from here.
         _keeping_output(exc, io_obj)
         raise
+    except ValueError as exc:
+        # The interpreters signal a malformed program with a plain
+        # ValueError, one per language and each well worded.  Re-raising as
+        # a ProgramError keeps those words and makes the package's promise
+        # true: `except EsolangError` around user-supplied source now holds,
+        # which is the handler an embedder actually writes.
+        raise _keeping_output(ProgramError(str(exc)), io_obj) from exc
     return io_obj.getvalue()
 
 

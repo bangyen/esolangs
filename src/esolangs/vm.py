@@ -18,11 +18,11 @@ sub-protocol.  :func:`run_until_halt` proves nothing.
 
 from __future__ import annotations
 
-import os
 from collections.abc import Callable, Hashable, Sequence
 from functools import cache
 from typing import Any, Protocol, cast, runtime_checkable
 
+from esolangs._source import InputSource, ProgramSource, check_scale_for
 from esolangs._vm_views import (
     _VIEW_ITEMS as _VIEW_ITEMS,
 )
@@ -33,6 +33,7 @@ from esolangs._vm_views import (
     machine_views,
 )
 from esolangs.exceptions import (
+    EsolangError,
     InterpreterLimitError,
     ProgramError,
     UnknownLanguageError,
@@ -713,7 +714,7 @@ class _DelegatingVM:
 
     _machine: _StepMachineWithShape
 
-    def __init__(self, stdin: str = "") -> None:
+    def __init__(self, stdin: InputSource = "") -> None:
         """Create the input stream every subclass's machine reads from.
 
         The program is not taken here: each subclass hands it to its machine.
@@ -742,7 +743,7 @@ class _DelegatingVM:
                 f"the {type(self).__name__} interpreter recursed deeper than "
                 f"CPython's stack limit allows on this program"
             ) from exc
-        except ProgramError:
+        except EsolangError:
             raise
         except ValueError as exc:
             raise ProgramError(str(exc)) from exc
@@ -813,7 +814,11 @@ def _derived_adapter(language: str) -> Callable[..., _DelegatingVM]:
         language = display_name
 
         def __init__(
-            self, program: str | Raster, stdin: str = "", *, scale: int | None = None
+            self,
+            program: str | Raster,
+            stdin: InputSource = "",
+            *,
+            scale: int | None = None,
         ) -> None:
             super().__init__(stdin)
             import importlib
@@ -881,8 +886,8 @@ def machine_traits(language: str) -> dict[str, bool]:
 
 def make_vm(
     language: str,
-    program: str | Raster | os.PathLike[str],
-    stdin: str = "",
+    program: ProgramSource,
+    stdin: InputSource = "",
     *,
     scale: int | None = None,
 ) -> VM:
@@ -904,13 +909,7 @@ def make_vm(
         # this is the branch that used to name it unknown; keep that.
         raise UnknownLanguageError(language)
     source = check_program(name, program, stdin)
-    if scale is not None:
-        from esolangs._validate import check_scale
-        from esolangs.exceptions import ArgumentError
-
-        check_scale(scale)
-        if not isinstance(source, Raster):
-            raise ArgumentError("scale is only supported for raster interpreters")
+    check_scale_for(name, scale)
     try:
         return _VM_ADAPTERS[name](source, stdin, scale=scale)
     except RecursionError as exc:
@@ -919,7 +918,7 @@ def make_vm(
             f"limit allows while loading this program "
             f"while parsing its source"
         ) from exc
-    except ProgramError:
+    except EsolangError:
         raise
     except ValueError as exc:
         # Most interpreters parse in their constructor and signal a

@@ -1,11 +1,11 @@
 """The public API with one language bound."""
 
-import os
 from dataclasses import dataclass
 
 import esolangs
 from esolangs._describe import LanguageInfo
 from esolangs._evaluate import _DEFAULT, _Default
+from esolangs._source import InputSource, ProgramSource
 from esolangs.raster import Raster
 from esolangs.registry import resolve
 
@@ -45,8 +45,8 @@ class Language:
 
     def run(
         self,
-        program: str | Raster | os.PathLike[str],
-        stdin: str = "",
+        program: ProgramSource,
+        stdin: InputSource = "",
         timeout: float | _Default | None = _DEFAULT,
         seed: int | None = None,
         *,
@@ -68,7 +68,7 @@ class Language:
 
     def evaluate(
         self,
-        program: str | Raster | os.PathLike[str],
+        program: ProgramSource,
         timeout: float | _Default | None = _DEFAULT,
         *,
         inputs: int,
@@ -95,7 +95,7 @@ class Language:
         return esolangs.read_answer(self.name, output)
 
     def check_program(
-        self, program: str | Raster | os.PathLike[str], stdin: str = ""
+        self, program: ProgramSource, stdin: InputSource = ""
     ) -> str | Raster:
         """Load and validate runnable source."""
         return esolangs.check_program(self.name, program, stdin)

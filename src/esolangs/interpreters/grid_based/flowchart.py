@@ -47,8 +47,8 @@ rather than invented, and every one of the three examples on the page
   that convention cannot express Flowchart's own truth machine: given
   ``0`` it reads a single bit, writes a single bit, and halts, so an
   eight-bit output buffer would never flush and the program would print
-  nothing at all.  ``/ /`` therefore reads one line and takes ``1`` as a
-  one bit and anything else as a zero, and ``\ \`` prints a literal
+  nothing at all. ``/ /`` therefore reads a ``0`` or ``1`` character,
+  ignoring whitespace, and ``\ \`` prints a literal
   ``'0'`` or ``'1'``.  EOF leaves the register empty rather than raising,
   which is exactly the "empty if there are no more bits to read" the spec
   asks for; a pointer reading past the end simply carries an empty
