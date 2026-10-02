@@ -74,6 +74,34 @@ class TestSubprocess:
 
 
 class TestInProcess:
+    @pytest.mark.slow
+    def test_evaluate_without_signal_timeouts(
+        self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        import signal
+
+        monkeypatch.delattr(signal, "SIGALRM", raising=False)
+        program = tmp_path / "xor.txt"
+        program.write_text(esolangs.generate("brainfuck", "0110"))
+        for options in ([], ["--timeout", "5"]):
+            assert (
+                call_main(
+                    [
+                        "evaluate",
+                        "brainfuck",
+                        str(program),
+                        "--table",
+                        "0110",
+                        *options,
+                    ],
+                    capsys,
+                )
+                == "0110\n"
+            )
+
     @pytest.mark.medium
     def test_evaluate_upscaled_piet_with_timeout(
         self, capsys: pytest.CaptureFixture[str]
@@ -882,7 +910,12 @@ class TestProgramFailuresAreReported:
         path = tmp_path / "su.txt"
         path.write_text(generated.stdout.rstrip("\n"))
         got = "".join(
-            run_cli("run", "Suffolk", str(path), stdin=f"{a}\n{b}\n").stdout
+            run_cli(
+                "run",
+                "Suffolk",
+                str(path),
+                stdin=esolangs.encode_inputs("Suffolk", [a, b]),
+            ).stdout
             for a in (0, 1)
             for b in (0, 1)
         )

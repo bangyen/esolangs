@@ -267,6 +267,7 @@ def test_install_one_downloads_and_runs_a_bundle() -> None:
 
 @pytest.mark.parametrize("language", ["Line", "Piet"])
 @pytest.mark.parametrize("scale", [1, 2])
+@pytest.mark.medium
 def test_raster_bundle_matches_pixels_and_runs_standalone(
     language: str, scale: int, tmp_path: Path
 ) -> None:
@@ -296,6 +297,7 @@ def test_raster_bundle_matches_pixels_and_runs_standalone(
 
 
 @pytest.mark.parametrize("language", ["Line", "Piet"])
+@pytest.mark.medium
 def test_raster_module_entry_point_matches_the_library(
     language: str, tmp_path: Path
 ) -> None:
@@ -314,6 +316,7 @@ def test_raster_module_entry_point_matches_the_library(
     assert result.stdout == "Input: Input: 1"
 
 
+@pytest.mark.medium
 def test_package_bundle_also_supports_text_without_pillow(tmp_path: Path) -> None:
     module = load_script()
     files = {
@@ -355,6 +358,7 @@ def test_package_bundle_also_supports_text_without_pillow(tmp_path: Path) -> Non
 
 
 @pytest.mark.parametrize("language", ["Line", "Piet"])
+@pytest.mark.medium
 def test_raster_package_bundles_from_raw_http_sources(
     language: str, tmp_path: Path
 ) -> None:
@@ -382,6 +386,7 @@ def test_raster_package_bundles_from_raw_http_sources(
         server.server_close()
 
 
+@pytest.mark.medium
 def test_streetcode_package_runs_standalone(tmp_path: Path) -> None:
     canonical = "esolangs.interpreters.grid_based.streetcode"
     entry = importlib.import_module(canonical + ".__main__")
@@ -406,6 +411,7 @@ def test_streetcode_package_runs_standalone(tmp_path: Path) -> None:
         assert result.stdout.replace("Input: ", "") == expected
 
 
+@pytest.mark.medium
 def test_polynomial_package_bundle_runs_standalone(tmp_path: Path) -> None:
     canonical = "esolangs.interpreters.register_based.polynomial"
     entry = importlib.import_module(canonical + ".__main__")
@@ -433,6 +439,7 @@ def test_polynomial_package_bundle_runs_standalone(tmp_path: Path) -> None:
         )
 
 
+@pytest.mark.medium
 def test_fractran_package_bundle_runs_standalone(tmp_path: Path) -> None:
     canonical = "esolangs.interpreters.other.fractran"
     entry = importlib.import_module(canonical + ".__main__")

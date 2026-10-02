@@ -57,7 +57,8 @@ examples:
   esolangs generate --bits 10 Minifuck 0110
   esolangs run Circlefuck hello.txt
   esolangs answer brainfuck 0110 10
-  esolangs evaluate --table 10010110 Fargo program.txt
+  esolangs generate Fargo 10010110 > fargo.txt
+  esolangs evaluate --table 10010110 Fargo fargo.txt
   esolangs encode LaserFuck 10 | esolangs run --judge LaserFuck prog.txt
   esolangs debug --steps 20 --watch-cell 0 brainfuck prog.txt
 """

@@ -86,12 +86,11 @@ def test_boolean_example_matches_generator(name: str) -> None:
     path = BASE_DIR / "examples" / example.filename
     program = example.build(balance=True)
     assert isinstance(example.build(width=None), Raster) == isinstance(program, Raster)
-    expected = (
-        program.to_png()
-        if isinstance(program, Raster)
-        else (program.rstrip("\n") + "\n").encode("utf-8")
-    )
-    assert path.read_bytes() == expected
+    if isinstance(program, Raster):
+        # PNG compression differs across platforms; the pixels are the program.
+        assert Raster.from_png(path.read_bytes()) == program
+    else:
+        assert path.read_bytes() == (program.rstrip("\n") + "\n").encode("utf-8")
 
 
 @pytest.mark.medium
