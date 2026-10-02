@@ -65,7 +65,7 @@ def test_loading_ignores_only_lf(char: str) -> None:
 @pytest.mark.medium
 @pytest.mark.parametrize("width", [1, 2, 3, 7, 13, 80])
 def test_generated_grapheme_programs_run_at_arbitrary_breaks(width: int) -> None:
-    from esolangs.tools.stack import grapheme
+    from esolangs.tools.grapheme import grapheme
     from esolangs.tools.wrap import wrap_chars
 
     tables = [f"{value:04b}" for value in range(16)]

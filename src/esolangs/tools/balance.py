@@ -36,12 +36,12 @@ from esolangs.tools.line import balance as balance_line
 from esolangs.tools.minifuck import minifuck
 from esolangs.tools.minifuck.sim import PAIR
 from esolangs.tools.minsky_swap import minsky_swap
+from esolangs.tools.modulous import modulous
 from esolangs.tools.packlang import balance_packlang
 from esolangs.tools.piet.balance import balance as balance_piet
 from esolangs.tools.qoibl.balance import balance_qoibl
 from esolangs.tools.ram0 import ram0
 from esolangs.tools.smallfuck import smallfuck, smallfuck_setters
-from esolangs.tools.stack import modulous
 from esolangs.tools.streetcode import (
     _streetcode_flat,
     _streetcode_hallway_program,

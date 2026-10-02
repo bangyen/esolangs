@@ -9,6 +9,7 @@ from esolangs.tools.b_tapemark import b_tapemark
 from esolangs.tools.back import back
 from esolangs.tools.befunge import befunge
 from esolangs.tools.bfpda import bfpda
+from esolangs.tools.bfstack import bfstack
 from esolangs.tools.bio import bio
 from esolangs.tools.bit_tilde import bit_tilde
 from esolangs.tools.bitdeque import bitdeque
@@ -33,7 +34,9 @@ from esolangs.tools.fargo import fargo
 from esolangs.tools.fish import fish
 from esolangs.tools.flowchart import flowchart
 from esolangs.tools.forbin import forbin
+from esolangs.tools.forth import forth
 from esolangs.tools.fractran import fractran
+from esolangs.tools.grapheme import grapheme
 from esolangs.tools.home_row import home_row
 from esolangs.tools.inject import inject
 from esolangs.tools.intercal import intercal
@@ -43,6 +46,7 @@ from esolangs.tools.line import line
 from esolangs.tools.malbolge import malbolge
 from esolangs.tools.minifuck import minifuck
 from esolangs.tools.minsky_swap import minsky_swap
+from esolangs.tools.modulous import modulous
 from esolangs.tools.nocomment import nocomment
 from esolangs.tools.one_two_three import one_two_three
 from esolangs.tools.packlang import packlang
@@ -57,7 +61,6 @@ from esolangs.tools.six_five import six_five
 from esolangs.tools.slow_acv_mammalian import slow_acv_mammalian
 from esolangs.tools.smallfuck import smallfuck
 from esolangs.tools.sophie import sophie
-from esolangs.tools.stack import bfstack, forth, grapheme, modulous, unsquare
 from esolangs.tools.streetcode import streetcode
 from esolangs.tools.suffolk import suffolk
 from esolangs.tools.super_snusp import super_snusp
@@ -68,6 +71,7 @@ from esolangs.tools.three_x import three_x
 from esolangs.tools.thue import thue
 from esolangs.tools.underload import underload
 from esolangs.tools.unlambda import unlambda
+from esolangs.tools.unsquare import unsquare
 from esolangs.tools.vandevelo import vandevelo
 
 __all__ = [
