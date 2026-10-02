@@ -166,9 +166,8 @@ class TestUndecorateClasses:
     def test_a_decorated_dataclass_is_rewritten(self, tmp_path: Path) -> None:
         """Mutmut skips a decorated ``ClassDef``, yielding it no mutants.
 
-        ``tape.py`` has five ``@dataclass`` nodes modelling the emitted
-        program, so left decorated they contribute nothing while the run
-        still prints a percentage over whatever else was mutated.
+        A decorated class contributes nothing while the run still prints
+        a percentage over whatever else was mutated.
         """
         script = load_script()
         target = tmp_path / "gen.py"
@@ -338,11 +337,11 @@ class TestPrepare:
         drifting apart.
         """
         script = load_script()
-        proj, _ = script._prepare("tools", "tape", tmp_path, slow=False)  # noqa: SLF001
+        proj, _ = script._prepare("tools", "brainfuck", tmp_path, slow=False)  # noqa: SLF001
         config = (proj / "pyproject.toml").read_text()
         mutated = config.split('paths_to_mutate = ["')[1].split('"]')[0]
         # The same expression ``_score`` uses to find mutmut's result file.
-        scored = proj / "mutants" / "esolangs" / "tools" / "tape.py.meta"
+        scored = proj / "mutants" / "esolangs" / "tools" / "brainfuck.py.meta"
         assert scored == proj / "mutants" / f"{mutated}.meta"
 
 

@@ -409,9 +409,7 @@ def _undecorate_classes(target: Path) -> list[str]:
 
     mutmut skips any ``ClassDef`` carrying decorators, so a ``@dataclass``
     state class yields no mutants while the run still prints a percentage.
-    ``tape.py`` is exactly this shape -- five decorated dataclasses
-    (``_Cmd``, ``_If``, ``_MoveLeft``, ``_Out``, ``_End``) that model the
-    emitted program -- and ``examples.py`` has another.
+    ``examples.py`` has a decorated dataclass describing emitted programs.
 
     Applying the decorator as a plain call below the class is what the
     decorator syntax means, so the class behaves identically, but the

@@ -1,6 +1,6 @@
 """Compile a brainfuck program into a Line ``Node`` graph.
 
-Build with ``esolangs.tools.tape.brainfuck``, compile here, render with
+Build with ``esolangs.tools.brainfuck.brainfuck``, compile here, render with
 :func:`render.render`, and the drawing round-trips through
 :func:`extract.extract`/:func:`simulate.run` to the same tape.  The
 mapping is 1:1 (``,`` -> ``i``, ``.`` -> ``o``; compare per-call numeric

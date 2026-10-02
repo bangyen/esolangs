@@ -5,16 +5,22 @@ from esolangs.tools.alight import alight
 from esolangs.tools.b_tapemark import b_tapemark
 from esolangs.tools.befunge import befunge
 from esolangs.tools.bitwise_cyclic_tag import bitwise_cyclic_tag
+from esolangs.tools.brainfuck import bf_tree, brainfuck
+from esolangs.tools.brainif import brainif
+from esolangs.tools.circlefuck import circlefuck
 from esolangs.tools.circuit_diagram import circuit_diagram
 from esolangs.tools.crement import crement
 from esolangs.tools.cvnc import cvnc
+from esolangs.tools.dimensional import dimensional
 from esolangs.tools.egl import egl
+from esolangs.tools.factor import factor
 from esolangs.tools.false import false
 from esolangs.tools.fargo import fargo
 from esolangs.tools.fish import fish
 from esolangs.tools.fractran import fractran
 from esolangs.tools.inject import inject
 from esolangs.tools.intercal import intercal
+from esolangs.tools.jaune import jaune
 from esolangs.tools.line import line
 from esolangs.tools.malbolge import malbolge
 from esolangs.tools.other import (
@@ -29,6 +35,7 @@ from esolangs.tools.other import (
     three_x,
 )
 from esolangs.tools.packlang import packlang
+from esolangs.tools.painfuck import painfuck
 from esolangs.tools.parameterized import (
     a_painter_ant,
     arrowqueue,
@@ -55,26 +62,16 @@ from esolangs.tools.register import (
     qoibl,
     sophie,
 )
+from esolangs.tools.rotfuck import rotfuck
+from esolangs.tools.sbleq import sbleq
+from esolangs.tools.six_five import six_five
+from esolangs.tools.slow_acv_mammalian import slow_acv_mammalian
 from esolangs.tools.smallfuck import smallfuck
 from esolangs.tools.stack import bfstack, forth, grapheme, modulous, unsquare
+from esolangs.tools.suffolk import suffolk
 from esolangs.tools.super_snusp import super_snusp
-from esolangs.tools.tape import (
-    bf_tree,
-    brainfuck,
-    brainif,
-    circlefuck,
-    dimensional,
-    factor,
-    jaune,
-    painfuck,
-    rotfuck,
-    sbleq,
-    six_five,
-    slow_acv_mammalian,
-    suffolk,
-    three_d_brainfuck,
-)
 from esolangs.tools.thisthat import thisthat
+from esolangs.tools.three_d_brainfuck import three_d_brainfuck
 from esolangs.tools.thue import thue
 from esolangs.tools.unlambda import unlambda
 from esolangs.tools.vandevelo import vandevelo
