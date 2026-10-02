@@ -36,7 +36,7 @@ from esolangs._execution import (
 )
 from esolangs._isolated import run_isolated as _run_isolated
 from esolangs._language import Language
-from esolangs._program import Program
+from esolangs._program import Program, RunnerProgram
 from esolangs._source import (
     InputSource,
     ProgramSource,
@@ -642,7 +642,7 @@ def run(
 
 def _run(
     run_fn: Callable[..., Any],
-    program: str | list[str] | Raster,
+    program: RunnerProgram,
     io_obj: ScriptedIO,
     timeout: float | None,
 ) -> None:
@@ -655,7 +655,7 @@ def _run(
 
 def _run_timed_signal(
     run_fn: Callable[..., Any],
-    program: str | list[str] | Raster,
+    program: RunnerProgram,
     io_obj: ScriptedIO,
     timeout: float,
 ) -> None:
