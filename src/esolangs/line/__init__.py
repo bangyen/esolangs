@@ -149,26 +149,9 @@ def balance(truth_table: str, _default: Raster) -> Raster:
 
 def _run_node(node: Node, io: ScriptedIO) -> None:
     """Execute the graph retained by a generated raster."""
-    tape: dict[int, int] = {}
-    pointer = 0
-    current: Node | None = node
-    while current is not None:
-        if current.op == "+":
-            tape[pointer] = tape.get(pointer, 0) + 1
-        elif current.op == "-":
-            tape[pointer] = tape.get(pointer, 0) - 1
-        elif current.op == ">":
-            pointer += 1
-        elif current.op == "<":
-            pointer -= 1
-        elif current.op == "i":
-            tape[pointer] = io.input_num()
-        elif current.op == "o":
-            io.print_num(tape.get(pointer, 0))
-        elif current.op == "?":
-            current = current.zero if tape.get(pointer, 0) == 0 else current.nonzero
-            continue
-        current = current.next or current.goto
+    from .simulate import run_node
+
+    run_node(node, IO(read=io.input_num, write=io.print_num))
 
 
 @lru_cache(maxsize=8)
@@ -192,42 +175,37 @@ def _source_view(program: Raster) -> str:
 
 
 class _Machine:
-    """Step a compiled pixel path, retaining tape and input state."""
+    """A Line run: immutable code and state with I/O handled by the shell."""
 
     ip_shape = "grid"
 
     def __init__(
         self, program: Raster, io: ScriptedIO, *, scale: int | None = None
     ) -> None:
-        from collections import defaultdict
+        from .simulate import _freeze_program, _State
 
-        from .simulate import _Compiled
-
-        self.node: _Compiled | None = _compiled(program, scale)
-        self.at = 0
-        self.pointer = 0
-        self.tape: dict[int, int] = defaultdict(int)
+        self.program = _freeze_program(_compiled(program, scale))
+        self.state: _State = (0, 0, 0, ())
         self.io = io
 
     @property
     def halted(self) -> bool:
-        return self.node is None
+        return self.state[0] is None
 
     @property
     def ip(self) -> tuple[int, ...] | None:
-        if self.node is None:
+        node, at = self.state[:2]
+        if node is None:
             return None
-        return (
-            self.node.positions[self.at]
-            if self.at < len(self.node.ops)
-            else self.node.end
-        )
+        frame = self.program[node]
+        return frame.positions[at] if at < len(frame.ops) else frame.end
 
     @property
     def memory(self) -> tuple[int, ...]:
+        tape = dict(self.state[3])
         return tuple(
-            self.tape.get(i, 0)
-            for i in range(min(self.tape, default=0), max(self.tape, default=0) + 1)
+            tape.get(i, 0)
+            for i in range(min(tape, default=0), max(tape, default=0) + 1)
         )
 
     @property
@@ -235,38 +213,25 @@ class _Machine:
         return ()
 
     def snapshot(self) -> tuple[object, ...]:
-        cells = tuple(
-            sorted((cell, value) for cell, value in self.tape.items() if value)
-        )
-        return id(self.node), self.at, self.pointer, cells, self.io.position()
+        node, at, pointer, tape = self.state
+        cells = tuple((cell, value) for cell, value in tape if value)
+        return node, at, pointer, cells, self.io.position()
 
     def step(self) -> None:
-        node = self.node
+        from .simulate import _advance
+
+        node, at = self.state[:2]
         if node is None:
             return
-        if self.at == len(node.ops):
-            if node.zero is None and node.nonzero is None:
-                self.node = node.goto
-            else:
-                self.node = node.zero if self.tape[self.pointer] == 0 else node.nonzero
-            self.at = 0
-            return
-        call = node.ops[self.at]
-        if call.op == "+":
-            self.tape[self.pointer] += call.count
-        elif call.op == "-":
-            self.tape[self.pointer] -= call.count
-        elif call.op == ">":
-            self.pointer += 1
-        elif call.op == "<":
-            self.pointer -= 1
-        elif call.op == "i":
-            self.tape[self.pointer] = self.io.input_num()
-        elif call.op == "o":
-            self.io.print_num(self.tape[self.pointer])
-        else:  # pragma: no cover - classify_ops emits only the six cases above
-            raise ValueError(f"unknown opcode {call.op!r}")
-        self.at += 1
+        frame = self.program[node]
+        value = (
+            self.io.input_num()
+            if at < len(frame.ops) and frame.ops[at][0] == "i"
+            else None
+        )
+        self.state, output = _advance(self.state, self.program, value)
+        if output is not None:
+            self.io.print_num(output)
 
 
 def run(program: Raster, io: ScriptedIO, *, scale: int | None = None) -> None:

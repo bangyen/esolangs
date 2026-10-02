@@ -6,7 +6,7 @@ repeatedly.  The wiki (https://esolangs.org/wiki/Line, "Unimplemented")
 leaves much unspecified; the choices here:
 
 * Tape: unbounded both ways, arbitrary-precision ints (no wrap or width
-  is documented), a ``defaultdict(int)`` on a pointer that may go negative.
+  is documented), an immutable sparse tape whose pointer may go negative.
 * Initial state: all zeros, pointer at 0.
 * ``+``/``-``: by 1, run ``count`` times for a merged run of repeats.
 * ``<``/``>``, ``i``/``o``: per the wiki's wording.
@@ -32,11 +32,14 @@ running only the ops not yet run (:func:`extract.OpCall`'s ``index``).
 
 from __future__ import annotations
 
-from collections import defaultdict
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 from .extract import DEFAULT_UNIT, OpCall, Stroke, Vertex, classify_ops
+
+if TYPE_CHECKING:
+    from .render import Node
 
 
 @dataclass
@@ -169,39 +172,126 @@ def compile_program(stroke: Stroke, unit: int = DEFAULT_UNIT) -> _Compiled:
     return _compile(stroke, unit)
 
 
-def run_compiled(program: _Compiled, io: IO | None = None) -> dict[int, int]:
-    """Run a program returned by :func:`compile_program`."""
-    if io is None:
-        io = IO()
-    tape: dict[int, int] = defaultdict(int)
-    pointer = 0
+type _Tape = tuple[tuple[int, int], ...]
+type _State = tuple[int | None, int, int, _Tape]
 
-    node: _Compiled | None = program
+
+@dataclass(frozen=True)
+class _Frame:
+    ops: tuple[tuple[str, int], ...]
+    positions: tuple[tuple[int, int], ...]
+    end: tuple[int, int]
+    zero: int | None
+    nonzero: int | None
+    goto: int | None
+
+
+def _freeze_program(root: _Compiled) -> tuple[_Frame, ...]:
+    """Return immutable instructions and indexed control links."""
+    nodes = [root]
+    indices = {id(root): 0}
+    for node in nodes:
+        for child in (node.zero, node.nonzero, node.goto):
+            if child is not None and id(child) not in indices:
+                indices[id(child)] = len(nodes)
+                nodes.append(child)
+    return tuple(
+        _Frame(
+            tuple((call.op, call.count) for call in node.ops),
+            node.positions,
+            node.end,
+            indices.get(id(node.zero)),
+            indices.get(id(node.nonzero)),
+            indices.get(id(node.goto)),
+        )
+        for node in nodes
+    )
+
+
+def _written(tape: _Tape, pointer: int, value: int) -> _Tape:
+    cells = dict(tape)
+    cells[pointer] = value
+    return tuple(sorted(cells.items()))
+
+
+def _advance(
+    state: _State, program: tuple[_Frame, ...], value: int | None = None
+) -> tuple[_State, int | None]:
+    """Return a pure Line transition and optional numeric output."""
+    node, at, pointer, tape = state
+    if node is None:
+        return state, None
+    frame = program[node]
+    cell = dict(tape).get(pointer, 0)
+    if at == len(frame.ops):
+        if frame.zero is None and frame.nonzero is None:
+            node = frame.goto
+        else:
+            tape = _written(tape, pointer, cell)
+            node = frame.zero if cell == 0 else frame.nonzero
+        return (node, 0, pointer, tape), None
+    op, count = frame.ops[at]
+    output = None
+    if op == "+":
+        tape = _written(tape, pointer, cell + count)
+    elif op == "-":
+        tape = _written(tape, pointer, cell - count)
+    elif op == ">":
+        pointer += 1
+    elif op == "<":
+        pointer -= 1
+    elif op == "i":
+        if value is None:
+            raise ValueError("input transition requires a value")
+        tape = _written(tape, pointer, value)
+    elif op == "o":
+        tape = _written(tape, pointer, cell)
+        output = cell
+    else:  # pragma: no cover - classification emits only these opcodes
+        raise ValueError(f"unknown opcode {op!r}")
+    return (node, at + 1, pointer, tape), output
+
+
+def _drive(program: tuple[_Frame, ...], io: IO) -> _Tape:
+    state: _State = (0, 0, 0, ())
+    node = state[0]
     while node is not None:
-        for call in node.ops:
-            if call.op == "+":
-                tape[pointer] += call.count
-            elif call.op == "-":
-                tape[pointer] -= call.count
-            elif call.op == ">":
-                pointer += 1
-            elif call.op == "<":
-                pointer -= 1
-            elif call.op == "i":
-                tape[pointer] = io.read()
-            elif call.op == "o":
-                io.write(tape[pointer])
-            else:  # pragma: no cover - defensive, classify_ops emits no others
-                raise ValueError(f"unknown opcode {call.op!r}")
+        at = state[1]
+        frame = program[node]
+        value = io.read() if at < len(frame.ops) and frame.ops[at][0] == "i" else None
+        state, output = _advance(state, program, value)
+        if output is not None:
+            io.write(output)
+        node = state[0]
+    return state[3]
 
-        if node.zero is None and node.nonzero is None:
-            node = node.goto
-            if node is None:
-                return dict(tape)
-            continue
-        node = node.zero if tape[pointer] == 0 else node.nonzero
 
-    return dict(tape)
+def run_compiled(program: _Compiled, io: IO | None = None) -> dict[int, int]:
+    """Run compiled code with immutable state, returning its final tape."""
+    return dict(_drive(_freeze_program(program), IO() if io is None else io))
+
+
+def run_node(root: Node, io: IO) -> None:
+    """Execute generated graph code through the same pure transition core."""
+    nodes = [root]
+    indices = {id(root): 0}
+    for node in nodes:
+        for child in (node.zero, node.nonzero, node.next, node.goto):
+            if child is not None and id(child) not in indices:
+                indices[id(child)] = len(nodes)
+                nodes.append(child)
+    frames = tuple(
+        _Frame(
+            ((node.op, 1),) if node.op in {"+", "-", ">", "<", "i", "o"} else (),
+            ((0, 0),),
+            (0, 0),
+            indices.get(id(node.zero)) if node.op == "?" else None,
+            indices.get(id(node.nonzero)) if node.op == "?" else None,
+            None if node.op == "?" else indices.get(id(node.next or node.goto)),
+        )
+        for node in nodes
+    )
+    _drive(frames, io)
 
 
 def run(
