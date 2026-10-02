@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import pytest
 
-from esolangs.interpreters.image_based.line.mask import Mask, from_grey
+from esolangs.interpreters.tape_based.line.mask import Mask, from_grey
 
 
 def test_get_and_set_round_trip() -> None:

@@ -16,9 +16,9 @@ from __future__ import annotations
 
 import pytest
 
-from esolangs.interpreters.image_based.line import extract
-from esolangs.interpreters.image_based.line.extract import _UNIT_TOLERANCE
-from esolangs.interpreters.image_based.line.mask import Mask
+from esolangs.interpreters.tape_based.line import extract
+from esolangs.interpreters.tape_based.line.extract import _UNIT_TOLERANCE
+from esolangs.interpreters.tape_based.line.mask import Mask
 
 
 def _blank(height: int = 8, width: int = 8) -> Mask:
@@ -95,7 +95,7 @@ def _vertices(runs: list[tuple[int, int]]) -> list:
     to the next -- so advancing along one axis produces any run list, which
     is what lets the scanner's rejection arms be stated as data.
     """
-    from esolangs.interpreters.image_based.line.lattice import Vertex
+    from esolangs.interpreters.tape_based.line.lattice import Vertex
 
     out = []
     x = 0

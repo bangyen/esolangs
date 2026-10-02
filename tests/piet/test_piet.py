@@ -5,8 +5,8 @@ from pathlib import Path
 import pytest
 
 import esolangs
-from esolangs.interpreters.image_based.piet import _command, _perform_io, run
 from esolangs.interpreters.io import ScriptedIO
+from esolangs.interpreters.stack_based.piet import _command, _perform_io, run
 from esolangs.raster import Raster
 
 LIGHT_RED = (255, 192, 192)
@@ -73,7 +73,7 @@ def test_white_slide_executes_no_transition() -> None:
 
 
 def test_white_slide_crosses_more_than_one_codel() -> None:
-    from esolangs.interpreters.image_based.piet import _slide
+    from esolangs.interpreters.stack_based.piet import _slide
 
     program = raster((WHITE, WHITE, LIGHT_RED))
     assert _slide(program.rows, (0, 0), 0, -1) == ((2, 0), 0, -1)
@@ -89,7 +89,7 @@ def test_nonstandard_colour_is_white() -> None:
 
 
 def test_white_turns_at_a_restriction() -> None:
-    from esolangs.interpreters.image_based.piet import _slide
+    from esolangs.interpreters.stack_based.piet import _slide
 
     program = raster(
         (LIGHT_RED, WHITE, BLACK),
@@ -99,7 +99,7 @@ def test_white_turns_at_a_restriction() -> None:
 
 
 def test_enclosed_white_terminates() -> None:
-    from esolangs.interpreters.image_based.piet import _slide
+    from esolangs.interpreters.stack_based.piet import _slide
 
     program = raster(
         (BLACK, BLACK, BLACK),
@@ -120,7 +120,7 @@ def test_white_start_with_no_exit_terminates() -> None:
 def test_white_start_and_trapped_slide_terminate(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    import esolangs.interpreters.image_based.piet as piet
+    import esolangs.interpreters.stack_based.piet as piet
 
     slides = iter([((1, 0), 0, -1), None])
     monkeypatch.setattr(piet, "_slide", lambda *_args: next(slides))
@@ -190,7 +190,7 @@ def test_public_api_loads_a_png(tmp_path: Path) -> None:
 def test_codel_chooser_selects_the_documented_edge(
     dp: int, cc: int, expected: tuple[int, int]
 ) -> None:
-    from esolangs.interpreters.image_based.piet import _exit
+    from esolangs.interpreters.stack_based.piet import _exit
 
     block = {(0, 0), (0, 1), (1, 0), (1, 1)}
     assert _exit(block, dp, cc) == expected
@@ -302,7 +302,7 @@ def test_commands_are_repeatable_and_only_request_io() -> None:
 
 
 def test_halted_transition_preserves_state() -> None:
-    from esolangs.interpreters.image_based.piet import _advance
+    from esolangs.interpreters.stack_based.piet import _advance
 
     state = ((0, 0), 0, -1, (3, 5), True)
     assert _advance(state, ((BLACK,),)) == (state, None)

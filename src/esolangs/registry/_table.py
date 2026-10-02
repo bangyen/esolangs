@@ -294,7 +294,7 @@ LANGUAGES: dict[str, Language] = {
     ),
     "Line": Language(
         "Line",
-        interpreter="image_based.line",
+        interpreter="tape_based.line",
         state_model="tape",
         id="line",
         source_kind=SourceKind.RASTER,
@@ -302,7 +302,7 @@ LANGUAGES: dict[str, Language] = {
     ),
     "Piet": Language(
         "Piet",
-        interpreter="image_based.piet",
+        interpreter="stack_based.piet",
         state_model="stack",
         id="piet",
         source_kind=SourceKind.RASTER,

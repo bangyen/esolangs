@@ -20,6 +20,6 @@ def balance(truth_table: str, default: Raster) -> Raster:
 
 def run(program: Raster, io: ScriptedIO, *, scale: int | None = None) -> None:
     """Execute a Line raster."""
-    from esolangs.interpreters.image_based.line import run
+    from esolangs.interpreters.tape_based.line import run
 
     run(program, io, scale=scale)

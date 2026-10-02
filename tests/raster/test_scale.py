@@ -4,8 +4,8 @@ import pytest
 
 import esolangs
 from esolangs.exceptions import ArgumentError, ProgramError
-from esolangs.interpreters.image_based.line.extract import detect_scale as line_scale
-from esolangs.interpreters.image_based.line.mask import Mask
+from esolangs.interpreters.tape_based.line.extract import detect_scale as line_scale
+from esolangs.interpreters.tape_based.line.mask import Mask
 from esolangs.raster import Raster
 from esolangs.raster.scale import detect_scale, normalize
 
@@ -143,7 +143,7 @@ def test_cli_rejects_invalid_scale(value, monkeypatch, capsys):
 
 
 def test_explicit_line_scale_rejects_partial_ink_blocks() -> None:
-    from esolangs.interpreters.image_based.line.extract import normalize_scale
+    from esolangs.interpreters.tape_based.line.extract import normalize_scale
 
     with pytest.raises(ValueError, match="uniform"):
         normalize_scale(Mask(3, 2, [3, 3, 3]), 2)
@@ -168,7 +168,7 @@ def test_explicit_scale_evaluation_including_isolation() -> None:
 
 
 def test_partial_blank_line_scale_group_is_allowed() -> None:
-    from esolangs.interpreters.image_based.line.extract import normalize_scale
+    from esolangs.interpreters.tape_based.line.extract import normalize_scale
 
     mask = Mask(3, 2, [3, 3, 0])
     assert normalize_scale(mask, 2).rows == [1, 0]

@@ -23,23 +23,23 @@ from pathlib import Path
 
 import pytest
 
-from esolangs.interpreters.image_based.line import lattice
-from esolangs.interpreters.image_based.line.extract import (
+from esolangs.interpreters.tape_based.line import lattice
+from esolangs.interpreters.tape_based.line.extract import (
     crop_to_content,
     detect_scale,
     extract,
     find_cursor,
     load_binary,
 )
-from esolangs.interpreters.image_based.line.lattice import _DIRS, Stroke, Vertex
-from esolangs.interpreters.image_based.line.mask import Mask, from_grey
-from esolangs.interpreters.image_based.line.simulate import IO, run
+from esolangs.interpreters.tape_based.line.lattice import _DIRS, Stroke, Vertex
+from esolangs.interpreters.tape_based.line.mask import Mask, from_grey
+from esolangs.interpreters.tape_based.line.simulate import IO, run
 from esolangs.line.render import Node, chain, render
 from esolangs.raster.png import read_grey
 
 
 def test_transition_preserves_prior_states_and_requests_output() -> None:
-    from esolangs.interpreters.image_based.line.simulate import _advance, _Frame
+    from esolangs.interpreters.tape_based.line.simulate import _advance, _Frame
 
     program = (_Frame((("i", 1), ("+", 2), ("o", 1)), (), (0, 0), None, None, None),)
     initial = (0, 0, 0, ())
@@ -412,7 +412,7 @@ def test_pixel_vm_matches_the_native_arithmetic_fixture(fixture: str) -> None:
 
 
 def test_compiled_missing_fork_arm_halts() -> None:
-    from esolangs.interpreters.image_based.line.simulate import (
+    from esolangs.interpreters.tape_based.line.simulate import (
         compile_program,
         run_compiled,
     )
@@ -425,7 +425,7 @@ def test_compiled_missing_fork_arm_halts() -> None:
 
 
 def test_two_merges_into_one_leg_share_the_resume_position() -> None:
-    from esolangs.interpreters.image_based.line.simulate import compile_program
+    from esolangs.interpreters.tape_based.line.simulate import compile_program
 
     root = _build_decrement_loop()
     start, end = root.vertices[1:3]
