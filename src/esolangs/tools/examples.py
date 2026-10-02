@@ -718,19 +718,4 @@ def _register() -> None:
 
 _register()
 
-# Committed programs that no current generator produces, so they are run as
-# behaviour tests but exempt from the generator-match check.
-#
-# Empty since Minifuck's entry was retired.  That program was the last
-# hand-written one: it read its inputs at runtime, the construction the old,
-# removed generator used, and was kept as the only committed record of that
-# reading model.  Minifuck's shipped generator is parameterized and embeds
-# its inputs, so ``examples/minifuck.txt`` is now generated like
-# every other file and the reading model survives as prose in
-# ``the relevant generator tests`` rather than as a program nothing produces.
-#
-# The mechanism is kept rather than deleted: it costs one empty dict and is
-# what a future committed-but-ungenerated program would use.
-HAND_WRITTEN: dict[str, tuple[str, tuple[str, ...], str, bool]] = {}
-
-__all__ = ["AND2", "BOOLEAN_EXAMPLES", "HAND_WRITTEN", "BooleanExample"]
+__all__ = ["AND2", "BOOLEAN_EXAMPLES", "BooleanExample"]
