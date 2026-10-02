@@ -82,7 +82,7 @@ jobs:
     - name: Check the distribution metadata
       run: uv run --with twine python -m twine check dist/*
 
-    - name: The built wheel installs and runs with and without math
+    - name: The built wheel installs and runs with and without optional extras
       run: |
         uv venv --python 3.12 /tmp/relcheck
         uv pip install --python /tmp/relcheck/bin/python dist/*.whl
@@ -90,6 +90,8 @@ jobs:
         wheels=(dist/*.whl)
         uv pip install --python /tmp/relcheck/bin/python "${wheels[0]}[math]"
         /tmp/relcheck/bin/python -I scripts/smoke_distribution.py --math
+        uv pip install --python /tmp/relcheck/bin/python "${wheels[0]}[image]"
+        /tmp/relcheck/bin/python -I scripts/smoke_distribution.py --math --image
 
     - uses: actions/upload-artifact@v7
       with:

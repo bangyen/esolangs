@@ -6,7 +6,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import cast
 
-from esolangs.exceptions import ProgramError
+from esolangs.exceptions import MissingDependencyError, ProgramError
 
 from . import png
 
@@ -156,6 +156,8 @@ class Raster:
             # ``__post_init__`` rejects the empty rows, which is still a bad
             # PNG rather than a caller error.
             return cls(tuple(tuple(row) for row in decoded))
+        except MissingDependencyError:
+            raise
         except Exception as exc:
             raise ProgramError(f"not a readable PNG: {exc}") from exc
 

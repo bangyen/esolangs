@@ -1,19 +1,4 @@
-"""Tests for png.py.
-
-Run via: uv run --with pytest pytest test_png.py
-
-png.py replaced Pillow (see the dependency notes in extract.py), so what
-needs guarding is that it still reads the checked-in wiki fixtures the way
-Pillow did and round-trips what render.py writes.  Pillow is not available
-to compare against here, so the fixture expectations below are the values
-Pillow produced when the swap was made, recorded as constants.
-
-Beyond that: every row filter the spec defines (the fixtures between them
-use 0/1/2/4, but a PNG this reads could legitimately use 3), the sub-byte
-bit depths, the colour types (a drawing that has been through an image
-editor comes back as RGB), and the rejections -- an unsupported format must
-raise rather than decode something plausible-looking but wrong.
-"""
+"""PNG pixel compatibility, round trips, and corruption checks."""
 
 from __future__ import annotations
 
@@ -105,7 +90,7 @@ def test_every_row_filter_decodes(filter_type: int) -> None:
     """All five spec filters reconstruct the same image.
 
     Each row is filtered by hand here rather than trusting an encoder, so a
-    wrong predictor in :func:`png._unfilter` shows up as wrong pixels rather
+    wrong filter predictor shows up as wrong pixels rather
     than being masked by a matching bug on the write side.
 
     The pixel values are chosen to exercise Average's floor-vs-round on an
@@ -142,7 +127,7 @@ def test_every_row_filter_decodes(filter_type: int) -> None:
             elif filter_type == 3:
                 row.append((value - ((left + up) >> 1)) & 0xFF)
             else:
-                row.append((value - png._paeth(left, up, upleft)) & 0xFF)  # noqa: SLF001
+                row.append((value - _paeth(left, up, upleft)) & 0xFF)
         rows.append(bytes([filter_type]) + bytes(row))
     assert png.read_grey(_encode(rows, width, height)) == want
 
@@ -390,10 +375,6 @@ def test_rejects_a_truncated_chunk() -> None:
         png.read_rgb(blob)
 
 
-def test_empty_png_pass_has_no_samples() -> None:
-    assert png._read_pass(b"", 0, 1, 1, 8) == []  # noqa: SLF001
-
-
 def test_rejects_an_unknown_compression_method() -> None:
     blob = bytearray(_encode([bytes([0, 0])], 1, 1))
     blob[8 + 8 + 10] = 1
@@ -516,3 +497,55 @@ def test_rejects_incomplete_chunk_crc(reader: Callable[[bytes], object]) -> None
 def test_rejects_surplus_pixel_data(reader: Callable[[bytes], object]) -> None:
     with pytest.raises(ValueError, match="IHDR is corrupt"):
         reader(_encode([bytes([0, 0, 255])], 1, 1))
+
+
+def _paeth(a: int, b: int, c: int) -> int:
+    p = a + b - c
+    distances = [abs(p - value) for value in (a, b, c)]
+    return (a, b, c)[distances.index(min(distances))]
+
+
+@pytest.mark.parametrize(
+    "operation",
+    [
+        lambda: png.read_rgb(b""),
+        lambda: png.read_grey(b""),
+        lambda: png.write_rgb([[(0, 0, 0)]]),
+        lambda: png.write_grey([bytearray([0])]),
+    ],
+)
+def test_missing_image_extra(
+    monkeypatch: pytest.MonkeyPatch, operation: Callable[[], object]
+) -> None:
+    from esolangs import MissingDependencyError
+
+    monkeypatch.setattr(png, "Image", None)
+    with pytest.raises(MissingDependencyError, match=r"esolangs\[image\]"):
+        operation()
+
+
+def test_raster_preserves_missing_dependency(monkeypatch: pytest.MonkeyPatch) -> None:
+    from esolangs import MissingDependencyError, Raster
+
+    monkeypatch.setattr(png, "Image", None)
+    with pytest.raises(MissingDependencyError, match=r"esolangs\[image\]"):
+        Raster.from_png(b"")
+
+
+def test_import_without_pillow(monkeypatch: pytest.MonkeyPatch) -> None:
+    import builtins
+    import runpy
+
+    from esolangs import MissingDependencyError
+
+    original_import = builtins.__import__
+
+    def without_pillow(name: str, *args: object, **kwargs: object) -> object:
+        if name == "PIL":
+            raise ModuleNotFoundError("No module named 'PIL'")
+        return original_import(name, *args, **kwargs)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(builtins, "__import__", without_pillow)
+    namespace = runpy.run_path(str(png.__file__))
+    with pytest.raises(MissingDependencyError, match=r"esolangs\[image\]"):
+        namespace["read_rgb"](b"")

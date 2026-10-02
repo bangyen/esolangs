@@ -1,4 +1,4 @@
-"""Exercise an installed distribution, CLI, raster paths, and math extra."""
+"""Exercise an installed distribution, CLI, raster paths, and optional extras."""
 
 from __future__ import annotations
 
@@ -36,7 +36,7 @@ def _refuses_timeout() -> None:
     assert "Unix main thread" in message
 
 
-def smoke(*, math_extra: bool) -> None:
+def smoke(*, math_extra: bool, image_extra: bool = False) -> None:
     """Check installed resources and behaviour outside the source checkout."""
     package = Path(esolangs.__file__).resolve().parent
     assert package.parent.name in {"site-packages", "dist-packages"}, package
@@ -69,7 +69,7 @@ def smoke(*, math_extra: bool) -> None:
         facts = esolangs.describe(name)
         if facts["boolean_generator"]:
             generated = esolangs.generate(name, "0110")
-            if isinstance(generated, esolangs.Raster):
+            if image_extra and isinstance(generated, esolangs.Raster):
                 generated = esolangs.Raster.from_png(generated.to_png())
             try:
                 assert esolangs.evaluate(name, generated, inputs=2) == "0110", name
@@ -110,7 +110,18 @@ def smoke(*, math_extra: bool) -> None:
     for language in ("Line", "Piet"):
         raster = esolangs.generate(language, "0110")
         assert isinstance(raster, esolangs.Raster)
-        decoded = esolangs.Raster.from_png(raster.to_png())
+        if image_extra:
+            decoded = esolangs.Raster.from_png(raster.to_png())
+        else:
+            decoded = raster
+            for operation in (raster.to_png, lambda: esolangs.Raster.from_png(b"")):
+                try:
+                    operation()
+                except esolangs.MissingDependencyError as exc:
+                    message = str(exc)
+                else:
+                    raise AssertionError("PNG I/O ran without its image extra")
+                assert "esolangs[image]" in message
         for row in range(4):
             bits = [row >> 1, row & 1]
             output = esolangs.run(
@@ -161,6 +172,7 @@ def smoke(*, math_extra: bool) -> None:
         esolangs.evaluate("123", esolangs.generate("123", "01"), timeout=None, inputs=1)
         == "01"
     )
+    assert (importlib.util.find_spec("PIL") is not None) == image_extra
     if math_extra:
         assert importlib.util.find_spec("sympy") is not None
         assert (
@@ -186,8 +198,9 @@ def main() -> None:
     """Run the artifact smoke check with or without its optional extra."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--math", action="store_true")
+    parser.add_argument("--image", action="store_true")
     args = parser.parse_args()
-    smoke(math_extra=args.math)
+    smoke(math_extra=args.math, image_extra=args.image)
     print("installed distribution smoke check passed")
 
 

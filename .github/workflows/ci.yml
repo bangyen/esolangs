@@ -290,8 +290,10 @@ jobs:
         echo "ARTIFACT_PYTHON=$artifact_python" >> "$GITHUB_ENV"
         uv pip install --python "$artifact_python" dist/*.whl
         "$artifact_python" -I scripts/smoke_distribution.py
-    - name: Install the math extra and exercise Polynomial
+    - name: Install optional extras and exercise Polynomial and PNG I/O
       run: |
         wheels=(dist/*.whl)
         uv pip install --python "$ARTIFACT_PYTHON" "${wheels[0]}[math]"
         "$ARTIFACT_PYTHON" -I scripts/smoke_distribution.py --math
+        uv pip install --python "$ARTIFACT_PYTHON" "${wheels[0]}[image]"
+        "$ARTIFACT_PYTHON" -I scripts/smoke_distribution.py --math --image

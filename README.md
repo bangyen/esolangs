@@ -36,7 +36,8 @@ printf '0\n1\n' | esolangs debug --steps 20 --watch-cell 0 brainfuck bf.txt
 ```
 
 The Polynomial interpreter needs the optional mathematics extra:
-`pip install 'esolangs[math]'`.  The other languages install without SymPy.
+`pip install 'esolangs[math]'`.  PNG loading and saving need
+`pip install 'esolangs[image]'`; in-memory raster programs need neither extra.
 
 ## Python API
 

@@ -21,9 +21,6 @@ from . import mask as mask_module
 from .lattice import _DIRS, _ink
 from .mask import Mask
 
-# Standard library only: Pillow, numpy, scipy and scikit-image were each
-# removed, and PNG-only is deliberate -- see the Line tests.
-
 
 def load_binary(path: str) -> Mask:
     """Load a PNG as a boolean ink mask (True = black/foreground).

@@ -26,6 +26,7 @@ keywords = ["esoteric", "programming", "languages", "interpreters", "brainfuck",
 dependencies = []
 
 [project.optional-dependencies]
+image = ["Pillow>=11.3.0"]
 math = [
     "sympy>=1.12.0",
 ]
@@ -50,6 +51,7 @@ dev = [
     "types-requests",
     "types-setuptools",
     "sympy>=1.12.0",
+    "Pillow>=11.3.0",
     "z3-solver>=4.15.0",
     # Was pinned to 3.3.1 against a class-method selection bug; 3.7.0 does not
     # have it, and fixes one of its own.  See scripts/mutate_one.py.
