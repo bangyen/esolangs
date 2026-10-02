@@ -75,7 +75,7 @@ Usage:
 Interpreter packages use their language ID; ``__init__`` targets the runner.
 Generator packages expose their runner and dotted helper targets.
 
-Requires: mutmut==3.7.0, the same pin ``mutate_one`` documents.
+Requires: mutmut==3.8.0, the same pin ``mutate_one`` documents.
 """
 
 import argparse

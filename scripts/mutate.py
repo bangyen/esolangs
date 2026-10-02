@@ -22,7 +22,7 @@ Usage:
     python scripts/mutate.py interpreter Piet
     python scripts/mutate.py generator tools/streetcode --keep
 
-Requires: mutmut==3.7.0, which fixes a 3.3.1 bug that silently reported
+Requires: mutmut==3.8.0, which fixes a 3.3.1 bug that silently reported
 class-method mutants as killed. Mutant IDs are not comparable across versions.
 
 Interpreter packages use the copied-package harness with their own suites.
