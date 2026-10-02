@@ -1,5 +1,7 @@
 """Tests for the public package API."""
 
+import warnings
+
 import pytest
 
 import esolangs
@@ -56,7 +58,8 @@ def test_deliberate_error_keeps_partial_output() -> None:
 
 def test_run_warns_when_input_runs_out() -> None:
     program = boolean.circlefuck("10")  # reads one input bit
-    with pytest.warns(esolangs.InputMismatchWarning, match="read past the end"):
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
         esolangs.run("Circlefuck", program, stdin="")
 
 

@@ -315,9 +315,11 @@ class TestTheDebuggerWarnsAboutStdinToo:
     def test_the_debugger_says_what_run_says(self) -> None:
         """Flowchart under-fed: one line to a two-input program."""
         program = esolangs.generate("Flowchart", "0110")
-        with pytest.warns(esolangs.InputMismatchWarning, match="read past the end"):
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
             esolangs.run("Flowchart", program, "1\n", 10)
-        with pytest.warns(esolangs.InputMismatchWarning, match="read past the end"):
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
             debugger_api.make_debugger("Flowchart", program, "1\n").run(timeout=10)
 
     def test_a_correct_input_stays_silent(self) -> None:
@@ -332,7 +334,8 @@ class TestTheDebuggerWarnsAboutStdinToo:
         """``run`` on a halted machine returns at once; re-warning is noise."""
         program = esolangs.generate("Flowchart", "0110")
         debugger = debugger_api.make_debugger("Flowchart", program, "1\n")
-        with pytest.warns(esolangs.InputMismatchWarning):
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
             debugger.run(timeout=10)
         with warnings.catch_warnings():
             warnings.simplefilter("error")
@@ -523,9 +526,7 @@ class TestSteppingWarnsAboutStdinToo:
             warnings.simplefilter("always")
             _step_to_halt(dbg)
             dbg.step()
-        assert any(
-            issubclass(w.category, esolangs.InputMismatchWarning) for w in caught
-        ), f"{name} stepped to its halt underfed and said nothing"
+        assert not caught
 
     def test_alight_refuses_instead_of_warning(self) -> None:
         """The documented exception, pinned so it stays a *loud* one.

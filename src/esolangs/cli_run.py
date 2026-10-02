@@ -106,7 +106,7 @@ def _run(rest: list[str]) -> None:
             f"--timeout SECONDS to bound it\n"
         )
     table = _table_of(options)
-    warning = _shape_warning(facts, stdin, table)
+    warning = _shape_warning(facts, stdin, table) if judge or table is not None else ""
     if warning and judge:
         # ``--judge`` wants one answer bit, so a bad stdin is a usage error
         # (the output would be one wrong digit); plain ``run`` only warns,
@@ -128,10 +128,6 @@ def _run(rest: list[str]) -> None:
             f"stdin alone -- pass --table <truth-table> with --judge, or use: "
             f"esolangs answer {_as_argument(name)} <truth-table> <bits>"
         )
-    # No copy of the warning here.  ``run`` emits the same judgement as a
-    # ``UserWarning`` now, so printing it as well said everything twice --
-    # and Python's default format would have put this file's path and a line
-    # of its source in front of it, which is nobody's idea of a CLI message.
     try:
         with (
             _UnboundedNotice("run") if timeout is None else _null_context(),
@@ -139,16 +135,6 @@ def _run(rest: list[str]) -> None:
         ):
             warnings.simplefilter("always")
             output = run(language, program, stdin, timeout, seed, scale=scale)
-        surplus = next(
-            (str(e.message) for e in caught if "lines supplied" in str(e.message)),
-            None,
-        )
-        if judge and surplus is not None:
-            # A surplus read under ``--judge`` is the arity mismatch the
-            # flag exists to catch: the answer bit would be for a different
-            # row.  Refused *instead of* being rendered as advice, so it is
-            # said once rather than twice.
-            _fail(f"{surplus}\n(refused because --judge asks for an answer bit)")
         for entry in caught:
             _note(str(entry.message))
         # The count and range checks ``--table`` buys; the library judges

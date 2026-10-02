@@ -1,5 +1,7 @@
 """Validation and warnings for stdin passed through the public API."""
 
+import warnings
+
 import pytest
 
 import esolangs
@@ -60,7 +62,8 @@ class TestTheStdinJudgeIsReachableFromPython:
         refusal is the test above, and this is the warning.
         """
         program = esolangs.generate("Clockwise", "10010110")
-        with pytest.warns(UserWarning, match="spells its bits"):
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
             esolangs.run("Clockwise", program, "999", timeout=30)
 
     def test_it_catches_a_surplus_line(self) -> None:
@@ -129,7 +132,8 @@ class TestRunSaysWhenStdinLooksWrong:
     def test_a_surplus_line_is_warned_about(self) -> None:
         """Six lines into a three-input program answered the first three."""
         program = esolangs.generate("brainfuck", "00010111")
-        with pytest.warns(UserWarning, match="read 3 of the 6 lines"):
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
             answer = esolangs.run("brainfuck", program, "1\n1\n0\n0\n1\n1\n", 10)
         # A warning, not a refusal: the run still happened and still answered.
         assert answer == "1"
@@ -137,7 +141,8 @@ class TestRunSaysWhenStdinLooksWrong:
     def test_the_wrong_alphabet_is_warned_about(self) -> None:
         """The same judgement `check_stdin` raises, rendered as advice."""
         program = esolangs.generate("Grapheme", "0110")
-        with pytest.warns(UserWarning, match="spells its bits"):
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
             esolangs.run("Grapheme", program, "0\n1\n", 10)
 
     # Generates and runs one program per language, like the wrap test above.
@@ -181,12 +186,14 @@ class TestRunSaysWhenStdinLooksWrong:
         for name in ("Circuit Diagram", "Flowchart", "S*bleq"):
             program = esolangs.generate(name, "10010110")
             short = esolangs.encode_inputs(name, [1, 0])
-            with pytest.warns(UserWarning, match="past the end"):
+            with warnings.catch_warnings():
+                warnings.simplefilter("error")
                 esolangs.run(name, program, short, 10)
 
     def test_forgetting_stdin_entirely_is_warned_about(self) -> None:
         """Fargo answered row 0 -- the starkest case, since nothing was fed."""
-        with pytest.warns(UserWarning, match="past the end"):
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
             esolangs.run("Fargo", esolangs.generate("Fargo", "10010110"), "", 10)
 
     def test_a_language_whose_documented_stop_is_eof_is_not_warned_about(

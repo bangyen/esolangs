@@ -89,7 +89,7 @@ def check_stdin(language: str, stdin: str, truth_table: str | None = None) -> No
 
     The CLI's judge, for Python callers: a ``0``/``1`` line to Grapheme,
     several lines to Clockwise, a non-number to Fargo.  Raises
-    :class:`~esolangs.exceptions.ArgumentError`; :func:`run` only warns.
+    :class:`~esolangs.exceptions.ArgumentError`; :func:`run` does not validate it.
     ``truth_table`` adds the count, catching surplus lines.  Every check reads
     a :func:`describe` field.
     """

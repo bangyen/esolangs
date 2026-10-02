@@ -252,9 +252,8 @@ lines at all are equally well shaped.  An empty stdin passes `check-stdin
 brainfuck`, which is the trap worth naming: only --table knows how many
 bits the program wanted.
 
-This is the check `run` applies as a warning and `run --judge` applies as a
-refusal, on its own, so a pipeline can validate input before spending a run
-on it.
+This checks Boolean input explicitly. `run --judge` applies it as a refusal;
+plain `run` accepts arbitrary input.
 
 examples:
   esolangs encode Grapheme 10 | esolangs check-stdin Grapheme

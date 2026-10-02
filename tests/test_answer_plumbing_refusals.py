@@ -11,6 +11,7 @@ from __future__ import annotations
 import contextlib
 import difflib
 import re
+import warnings
 from typing import ClassVar
 
 import pytest
@@ -533,7 +534,8 @@ class TestTheWarningHasItsOwnClass:
     def test_run_raises_it_by_class(self) -> None:
         """Which is what makes ``filterwarnings("error", ...)`` targeted."""
         program = esolangs.generate("brainfuck", "00011011")
-        with pytest.warns(esolangs.InputMismatchWarning):
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
             esolangs.run("brainfuck", program, "1\n1\n0\n0\n1\n1\n", 10)
 
 
