@@ -24,7 +24,7 @@ import pytest
 
 import esolangs
 from esolangs import generate, run
-from esolangs.registry import LANGUAGES, SourceKind, canonical_id, template_body
+from esolangs.registry import LANGUAGES, canonical_id, template_body
 from esolangs.tools.examples import BOOLEAN_EXAMPLES as BOOLEAN_GENERATED
 from esolangs.tools.examples import BooleanExample
 from esolangs.tools.wrap import (
@@ -124,8 +124,6 @@ UNWRAPPABLE = {
     "thisthat": "the H-tree's nodes and wires occupy fixed grid coordinates",
 }
 
-WIDTH_EXCEPTIONS: dict[str, str] = {}
-
 # These are 2D too, and wrap_program must not touch them either -- but each
 # honours a width itself by *laying its program out* to fit rather than by
 # ignoring it, so they belong here rather than in UNWRAPPABLE.  LaserFuck's
@@ -141,6 +139,10 @@ WIDTH_EXCEPTIONS: dict[str, str] = {}
 # what let it pass.  Dig has since grown a real one, so that entry would be
 # right today for a reason the table never had; a derived table cannot make
 # either mistake in the first place.
+WIDTH_EXCEPTIONS = {
+    "line": "tree geometry fixes the width; balance chooses orientation"
+}
+
 WIDTH_HONOURING = sorted(
     lang.id
     for lang in LANGUAGES.values()
@@ -166,8 +168,8 @@ WRAPPED = sorted(
 )
 
 
-def test_every_text_generator_has_a_width_policy() -> None:
-    """Every text generator reflows, lays itself out, or records why it cannot."""
+def test_every_generator_has_a_width_policy() -> None:
+    """Every generator reflows, lays itself out, or records why it cannot."""
     boolean_ids = {
         language.id for language in LANGUAGES.values() if language.boolean is not None
     }
@@ -175,20 +177,15 @@ def test_every_text_generator_has_a_width_policy() -> None:
         language.id
         for language in LANGUAGES.values()
         if language.boolean is not None
-        and language.source_kind is SourceKind.TEXT
         and language.id not in WRAPPERS
         and not takes_width(language.boolean)
         and language.id not in WIDTH_EXCEPTIONS
     }
     assert missing == set()
+    assert set(WIDTH_EXCEPTIONS) <= boolean_ids
+    assert all(reason.strip() for reason in WIDTH_EXCEPTIONS.values())
     assert set(UNWRAPPABLE) <= boolean_ids
-    assert set(WIDTH_EXCEPTIONS) <= set(UNWRAPPABLE)
     assert all(reason.strip() for reason in UNWRAPPABLE.values())
-    assert all(
-        not takes_width(language.boolean)
-        for language in LANGUAGES.values()
-        if language.id in WIDTH_EXCEPTIONS and language.boolean is not None
-    )
 
 
 def _table(arity: int) -> str:
