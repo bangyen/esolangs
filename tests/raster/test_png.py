@@ -623,3 +623,15 @@ def test_rgb_writer_revalidates_mutable_pixels(
             png.write_rgb(rows)
     else:
         assert png.read_rgb(png.write_rgb(rows)) == [[(0, 0, 0)], [(255, 0, 0)]]
+
+
+def test_rgb_writer_does_not_reuse_equal_invalid_pixels() -> None:
+    pixels = [[(1, 0, 0), (1.0, 0, 0)]]
+    with pytest.raises(TypeError):
+        png.write_rgb(pixels)  # type: ignore[arg-type]
+
+
+def test_rgb_writer_exceeds_pixel_cache() -> None:
+    row = tuple((index // 256, index % 256, 0) for index in range(1025))
+    rows = (row, tuple(reversed(row)))
+    assert png.read_rgb(png.write_rgb(rows)) == [list(part) for part in rows]
