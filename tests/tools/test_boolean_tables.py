@@ -1,52 +1,17 @@
-"""One sweep for the claim every boolean generator makes.
+"""Run every generator's small truth tables through the shared evaluator.
 
-A boolean generator's whole contract is that its program computes the
-truth table it was given.  Eight test modules asserted that by hand, once
-per language, with the same six lines each -- build the program, walk
-every input combination, run it, compare against the table -- so the
-comprehension that turns a row index into bits appeared ninety-seven
-times and the NOT/XOR/AND/NAND3 table it was fed appeared fifty-six.
-
-The data those copies varied over is already written down.
-:data:`~esolangs.tools.examples.BOOLEAN_EXAMPLES` pairs every
-generator with the interpreter that runs it, whether the program is split
-into lines, what the answer looks like when it arrives, and -- for the
-languages with no input command -- the ``fill`` that embeds a bit in the
-template.  That table is maintained for the committed examples, so the
-sweep here reads it rather than growing a second copy that could drift
-from it.
-
-What stays per module is what the copies were *also* doing: a language's
-own edge tables, its arity caps, the shapes its construction folds, the
-sizes it must not exceed.  This replaces the copied shape, not the
-language's own coverage -- the same split
-:mod:`tests.interpreters.contract` draws.
-
-The tables swept are small on purpose.  Every generator is checked over
-every table up to two inputs and a fixed set at three, which is where a
-construction that mishandles a constant row, a single-variable row, or a
-full tree shows it; the wider arities that cost real time stay in the
-per-language modules that know which of them are worth paying for.
+Sweep all one- and two-input tables and representative three-input shapes.
+Language-specific suites retain arity, layout, and size contracts.
 """
 
 from __future__ import annotations
 
-import importlib
-import re
-from typing import TYPE_CHECKING
-
 import pytest
 
-from esolangs import encode_inputs, run
-from esolangs._program import Program
-from esolangs.interpreters.io import ScriptedIO
-from esolangs.raster import Raster
-from esolangs.registry import LANGUAGES, canonical_id
+from esolangs import evaluate
+from esolangs.registry import GENERATORS, resolve
 from esolangs.tools.examples import BOOLEAN_EXAMPLES
 from tests.raises import raises_message
-
-if TYPE_CHECKING:
-    from esolangs.tools.examples import BooleanExample
 
 #: Every table over one and two inputs, then a set at three chosen for the
 #: shapes a tree can get wrong: constant, one-variable, parity, majority,
@@ -70,125 +35,7 @@ def _arity(table: str) -> int:
     return len(table).bit_length() - 1
 
 
-def _run(example: BooleanExample, program: Program, stdin: str) -> str:
-    """Run one generated program through the language's own interpreter."""
-    if isinstance(program, Raster):
-        return run(example.stem, program, stdin)
-    module = importlib.import_module("esolangs.interpreters." + example.interpreter)
-    io = ScriptedIO(stdin)
-    argument = program.splitlines() if example.split else program
-    extra = dict(example.kwargs)
-    # ``seed`` is not an argument to ``run``: it names the draw a language
-    # whose spec makes something random -- LaserFuck's initial heading --
-    # must be pinned to, so it arrives as the randomness source itself.
-    if "seed" in extra:
-        from esolangs.interpreters.randomness import Seeded
-
-        extra["rng"] = Seeded(extra.pop("seed"))
-    module.run(argument, io=io, **extra)
-    return io.getvalue()
-
-
-def _answer(example: BooleanExample, got: str) -> str:
-    """Strip the shape the language's output convention adds, and read the bit.
-
-    ``expected`` is what the committed example prints for a *known* bit,
-    so its trailing newline -- Inject's ``send`` terminator, APL's
-    statement print -- is the convention rather than the answer.  Removing
-    exactly that suffix leaves the digit the table is compared against.
-
-    ``answer_values`` is then how the language spells a 0 and a 1 where the
-    answer sits: the digits for every entry but FRACTRAN, whose run stops on
-    1 for a zero and 2 for a one.  Reading it here rather than skipping the
-    language keeps the sweep's claim on every generator whose whole output is
-    its answer, whatever alphabet that answer is in.
-
-    A declared ``answer_pattern`` wins, as it does in
-    :func:`esolangs._answers.read_answer`.  Stripping ``expected[1:]``
-    assumed the answer was one character wide, which is false wherever a
-    language spells a bit with none: INTERCAL prints blank for zero, so the
-    slice took its newline for the answer and left the newline in.  This
-    sweep cannot simply call ``read_answer`` instead -- that refuses the four
-    ``termination`` entries, which answer by diverging rather than printing.
-    """
-    zero, one = example.answer_values
-    if example.answer_pattern:
-        found = re.findall(example.answer_pattern, got)
-        raw = found[-1] if found else ""
-    else:
-        suffix = example.expected[1:]
-        raw = got[: -len(suffix)] if suffix and got.endswith(suffix) else got
-    if raw == zero:
-        return "0"
-    return "1" if raw == one else raw
-
-
-def _stdin(name: str, bits: list[int]) -> str:
-    """Spell ``bits`` the way this language's interpreter reads them.
-
-    The per-language facts -- Grapheme's ``%``/``A``, Clockwise's single
-    line, Fargo's row index, Taglate's ghost digit and missing trailing
-    newline -- used to be four frozensets right here, and that was the
-    problem: a caller of the library had no way to reach them, so each was
-    rediscovered as a silently wrong answer.  They now live on the example
-    entries and this delegates, which also means the sweep and the shipped
-    encoder cannot disagree about what a language reads.
-    """
-    return encode_inputs(_DISPLAY_NAME[name], bits)
-
-
-#: Example stem -> registry display name, which is what the public API takes.
-_BY_ID = {lang.id: name for name, lang in LANGUAGES.items()}
-_DISPLAY_NAME = {
-    stem: _BY_ID[canonical_id(stem.replace("-", " "))] for stem in BOOLEAN_EXAMPLES
-}
-
-
-def _combination(
-    name: str, example: BooleanExample, program: str, bits: list[int]
-) -> str:
-    """Present ``bits`` to a program the way its language takes them."""
-    if example.fill is not None:
-        return _run(example, example.fill(program, bits), "")
-    return _run(example, program, _stdin(name, bits))
-
-
-#: Languages the sweep cannot drive, with the reason.  Each is exercised by
-#: its own module instead; the completeness test below pins that this set
-#: names only real generators, so an entry cannot outlive its cause.
-_NOT_SWEPT: dict[str, str] = {
-    # Its implicit loop has no halting state -- a repeated snapshot is the
-    # language's stop -- so a plain ``run`` never returns.  Its own module
-    # drives the VM to the cycle and renders the grid.
-    "a-painter-ant": "halts by cycling, not by reaching a halt state",
-    # Reads until the input runs out and treats the EOFError as its halt,
-    # so the answer arrives through an exception rather than a return.
-    "suffolk": "stops on EOF rather than halting",
-    # Halts by exiting the process, which a sweep cannot catch per row.
-    "container": "halts by exiting with status 0",
-    # Answers by halting or looping forever rather than by printing, so
-    # there is no output to compare a row against.
-    "123": "answers by termination, not by output",
-    "crement": "answers by termination, not by output",
-    "vandevelo": "answers by termination, not by output",
-    # The dumping languages print their whole final state -- a tape, a
-    # register list, a queue, a RAM map -- and which part of that dump is
-    # the answer is a fact about the language, not a suffix a sweep can
-    # strip.  Their own modules read the cell they wrote.
-    "back": "dumps its tape, so the answer is a cell rather than the output",
-    "ram0": "dumps its machine, so the answer is a register rather than the output",
-    "minsky-swap": "dumps its registers, so the answer is one of them",
-    "arrowqueue": "dumps its queue, so the answer is one of its cells",
-    "bitdeque": "dumps its deque, so the answer is one of its cells",
-}
-
-
-def _sweepable() -> list[str]:
-    return sorted(set(BOOLEAN_EXAMPLES) - set(_NOT_SWEPT))
-
-
-@pytest.mark.parametrize("name", _sweepable())
-# 9.6s over the file: runs every generated program against its table.
+@pytest.mark.parametrize("name", sorted(BOOLEAN_EXAMPLES))
 @pytest.mark.medium
 @pytest.mark.slow
 def test_the_generated_program_computes_its_table(name: str) -> None:
@@ -207,10 +54,8 @@ def test_the_generated_program_computes_its_table(name: str) -> None:
             # A generator may document an arity or shape it refuses; the
             # refusal itself is its own module's to pin.
             continue
-        for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            got = _answer(example, _combination(name, example, program, bits))
-            assert got == table[combo], f"{name} {table} inputs {bits} gave {got!r}"
+        got = evaluate(name, program, inputs=n)
+        assert got == table, f"{name} {table} gave {got!r}"
 
 
 @pytest.mark.parametrize("name", sorted(BOOLEAN_EXAMPLES))
@@ -245,15 +90,5 @@ def test_a_table_of_other_characters_is_refused(name: str) -> None:
 
 
 def test_the_sweep_covers_every_registered_generator() -> None:
-    """No generator sits outside both the sweep and its exemption.
-
-    A hard-coded roster silently deselects: the way this fails is a
-    generator added to the examples table and never swept, which is
-    invisible unless the two are compared.
-    """
-    assert set(_sweepable()) | set(_NOT_SWEPT) == set(BOOLEAN_EXAMPLES)
-
-
-def test_every_exemption_names_a_real_generator() -> None:
-    """An exemption whose cause is gone must not linger unnoticed."""
-    assert set(_NOT_SWEPT) <= set(BOOLEAN_EXAMPLES)
+    """The examples corpus must cover the registry without exemptions."""
+    assert {resolve(name) for name in BOOLEAN_EXAMPLES} == set(GENERATORS)
