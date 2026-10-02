@@ -5,17 +5,16 @@ from unittest.mock import patch
 
 import pytest
 
-from esolangs.interpreters.grid_based.streetcode import (
+from esolangs.interpreters.grid_based._streetcode_geometry import (
     _NO_LATCHES,
     _Car,
     _drive,
     _Grid,
     _Latches,
-    _Machine,
     _Merge,
     _plus_dist,
-    _State,
 )
+from esolangs.interpreters.grid_based.streetcode import _Machine, _State
 from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.vm import _StepMachine, run_until_halt_or_cycle
 from tests.interpreters.streetcode_support import _RING_PROGRAM

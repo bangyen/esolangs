@@ -12,14 +12,13 @@ from contextlib import redirect_stdout
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.grid_based.streetcode import (
+from esolangs.interpreters.grid_based._streetcode_geometry import (
     _VOID,
     _WALLS,
     _Grid,
-    _Machine,
     _ReachableCell,
-    run,
 )
+from esolangs.interpreters.grid_based.streetcode import _Machine, run
 from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
 from tests.interpreters.streetcode_support import (
