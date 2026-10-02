@@ -546,12 +546,13 @@ def _run_bounded(
     *,
     max_steps: int,
     timeout: float | None = None,
+    scale: int | None = None,
 ) -> str:
-    """Execute a text program cooperatively, returning output only on halt.
+    """Execute a program cooperatively, returning output only on halt.
 
     Supply at least one bound. Limits raise :class:`ExecutionTimeoutError`
     with ``partial_output``. Works on Windows and worker threads; loading
-    and individual steps cannot be interrupted. Raster languages have no VM.
+    and individual steps cannot be interrupted.
     """
     from esolangs._validate import check_whole
 
@@ -559,7 +560,7 @@ def _run_bounded(
     check_timeout(timeout)
     from esolangs.debugger import make_debugger
 
-    debugger = make_debugger(language, program, stdin)
+    debugger = make_debugger(language, program, stdin, scale=scale)
     try:
         reason = debugger.run(max_steps=max_steps, timeout=timeout)
     except EsolangError as exc:
@@ -594,7 +595,7 @@ def run(
     ``isolated=True`` uses a subprocess deadline, including startup and loading
     (30 seconds by default). It works on Windows and worker threads.
     ``max_steps`` uses cooperative stepping; its optional timeout excludes loading
-    and cannot interrupt a single step. Raster programs cannot be stepped.
+    and cannot interrupt a single step. Text and raster programs support stepping.
     Isolation and step bounds cannot be combined; stepping does not support seed.
 
     ``stdin`` is fed line by line.  Reading past the end usually raises
@@ -634,7 +635,7 @@ def run(
         if seed is not None:
             raise ArgumentError("seed is unsupported with max_steps")
         return _run_bounded(
-            language, program, stdin, max_steps=max_steps, timeout=timeout
+            language, program, stdin, max_steps=max_steps, timeout=timeout, scale=scale
         )
     if timeout is not None and not (
         threading.current_thread() is threading.main_thread()

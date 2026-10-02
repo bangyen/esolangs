@@ -100,16 +100,7 @@ def describe(language: str) -> LanguageInfo:
     # and for anyone who pip-installed there is no such directory at all.
     suffix = ".png" if lang.source_kind.value == "raster" else ".txt"
     examples = sorted(str(p) for p in _EXAMPLES.glob(f"{stem}{suffix}"))
-    traits = (
-        machine_traits(name)
-        if name in RUNNERS
-        else {
-            "self_halts": True,
-            "dumps_on_the_post_halt_step": False,
-            "steppable_to_answer": False,
-            "eof_is_a_value": False,
-        }
-    )
+    traits = machine_traits(name)
     parameterized = lang.id in parameterized_ids()
     example = _example_for(lang.id)
     return {
@@ -117,7 +108,8 @@ def describe(language: str) -> LanguageInfo:
         "spec": _spec(name),
         "id": lang.id,
         "source_kind": lang.source_kind.value,
-        "state_model": _STATE_MODELS.get(family) if family else None,
+        "state_model": lang.state_model
+        or (_STATE_MODELS.get(family) if family else None),
         "interpreter": lang.interpreter,
         "boolean_generator": (
             lang.boolean is not None or lang.raster_boolean is not None

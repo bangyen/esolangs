@@ -51,7 +51,7 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
-from esolangs.registry import RUNNERS
+from esolangs.registry import INTERPRETERS
 from esolangs.vm import VM, _StepMachineWithShape, make_vm, run_until_halt
 
 from .samples import (
@@ -155,10 +155,10 @@ class TestSamplesCoverEveryLanguage:
         assert not RAISES_ON_THE_POST_HALT_STEP
 
     def test_every_registry_language_has_a_sample(self) -> None:
-        assert sorted(set(RUNNERS) - set(SAMPLES)) == []
+        assert sorted(set(INTERPRETERS) - set(SAMPLES)) == []
 
     def test_no_sample_names_a_language_the_registry_lost(self) -> None:
-        assert sorted(set(SAMPLES) - set(RUNNERS)) == []
+        assert sorted(set(SAMPLES) - set(INTERPRETERS)) == []
 
     @pytest.mark.parametrize(
         "exceptions",
@@ -179,7 +179,7 @@ class TestSamplesCoverEveryLanguage:
         stop excusing anything, and the sweep would start asserting the
         wrong invariant on whichever language inherited the behaviour.
         """
-        assert sorted(exceptions - set(RUNNERS)) == []
+        assert sorted(exceptions - set(INTERPRETERS)) == []
 
     def test_most_samples_write_something(self) -> None:
         """The output-comparing sweeps are not comparing nothing.
@@ -358,7 +358,7 @@ class TestEveryLanguageImplementsTheSameInterface:
     ``_StepMachineWithShape`` is the interface ``_DelegatingVM`` forwards
     to, so a machine failing it is one the shared adapter cannot wrap, and
     the language would need per-language code back in ``vm.py`` -- which
-    is exactly what deriving every adapter from ``RUNNERS`` removed.
+    is exactly what deriving every adapter from ``INTERPRETERS`` removed.
 
     Both protocols are ``runtime_checkable``, so ``isinstance`` checks that
     the members are *present*, not that their signatures or return types

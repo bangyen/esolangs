@@ -52,7 +52,8 @@ _HERE = pathlib.Path(__file__).resolve()
 sys.path.insert(0, str(_ROOT / "src"))
 
 from esolangs.exceptions import EsolangError
-from esolangs.registry import example_stems
+from esolangs.raster import Raster
+from esolangs.registry import INTERPRETERS, example_stems
 from esolangs.vm import make_vm, run_until_halt
 
 # Exceptions an interpreter is allowed to raise at the API boundary.
@@ -228,7 +229,7 @@ def _select(
     return picked, f"{len(picked)} interpreter(s) changed"
 
 
-def _drive(lang: str, program: str, stdin: str, cap: int) -> bool:
+def _drive(lang: str, program: str | Raster, stdin: str, cap: int) -> bool:
     """Run one program, stepping it rather than running it to completion.
 
     Every registry language is step-capable (``esolangs.vm._VM_ADAPTERS``
@@ -264,7 +265,9 @@ _LANG_TIMEOUT = 30.0
 _JOBS = max(1, int(os.environ.get("LEAKSWEEP_JOBS", 0)) or 2)
 
 
-def _corpus(lang: str, examples: dict[str, list[str]], rng: random.Random) -> list[str]:
+def _corpus(
+    lang: str, examples: dict[str, list[str | Raster]], rng: random.Random
+) -> list[str | Raster]:
     """Return the programs swept for ``lang``, advancing ``rng`` as it goes.
 
     One generator feeds every language in order, so the parent and a worker
@@ -272,8 +275,22 @@ def _corpus(lang: str, examples: dict[str, list[str]], rng: random.Random) -> li
     is why a worker replays the languages before its own rather than seeding
     afresh.
     """
+    seed = examples[lang][0] if examples[lang] else None
+    progs: list[str | Raster]
+    if isinstance(seed, Raster):
+        progs = [seed]
+        for _ in range(4):
+            rows = [list(row) for row in seed.rows]
+            y, x = rng.randrange(len(rows)), rng.randrange(len(rows[0]))
+            rows[y][x] = (0, 0, 0) if rows[y][x] != (0, 0, 0) else (255, 255, 255)
+            progs.append(Raster(tuple(tuple(row) for row in rows)))
+        progs.extend(
+            Raster(((pixel,),)) for pixel in ((0, 0, 0), (255, 255, 255), (17, 83, 149))
+        )
+        return progs
     progs = list(GENERIC)
     for src in examples[lang]:
+        assert isinstance(src, str)
         if lang == "Factor":
             src = _cap_numeric_runs(src)
         progs.append(src)
@@ -281,7 +298,9 @@ def _corpus(lang: str, examples: dict[str, list[str]], rng: random.Random) -> li
     return progs
 
 
-def _sweep_one(lang: str, progs: list[str]) -> tuple[int, list[dict[str, str]]]:
+def _sweep_one(
+    lang: str, progs: list[str | Raster]
+) -> tuple[int, list[dict[str, str]]]:
     """Run every (program, stdin) for one language, collecting leaks.
 
     Escalating, because halting is monotone in the cap: run everything at a
@@ -296,7 +315,7 @@ def _sweep_one(lang: str, progs: list[str]) -> tuple[int, list[dict[str, str]]]:
     pending = [(prog, stdin) for prog in progs for stdin in STDINS]
     n = len(pending)
     for cap in _CAP_LADDER:
-        still: list[tuple[str, str]] = []
+        still: list[tuple[str | Raster, str]] = []
         for prog, stdin in pending:
             try:
                 if not _drive(lang, prog, stdin, cap):
@@ -309,7 +328,7 @@ def _sweep_one(lang: str, progs: list[str]) -> tuple[int, list[dict[str, str]]]:
                         {
                             "exc": type(e).__name__,
                             "msg": str(e)[:120],
-                            "program": prog[:120],
+                            "program": str(prog)[:120],
                             "stdin": stdin,
                         }
                     )
@@ -334,7 +353,7 @@ _CACHE = _ROOT / ".leaksweep-cache.json"
 _USE_CACHE = os.environ.get("LEAKSWEEP_CACHE", "1") != "0"
 
 
-def _examples_by_slug() -> dict[str, list[str]]:
+def _examples_by_slug() -> dict[str, list[str | Raster]]:
     """Return the shipped example programs keyed by canonical language ID.
 
     The filenames are dash-separated display names (``a-painter-ant``) and
@@ -346,12 +365,18 @@ def _examples_by_slug() -> dict[str, list[str]]:
     alone, without the mutations of a real program that find the
     interesting cases.
     """
-    by_slug: dict[str, list[str]] = {}
+    by_slug: dict[str, list[str | Raster]] = {}
     directory = _ROOT / "src" / "esolangs" / "examples"
     for slug, stem in example_stems().items():
         path = directory / f"{stem}.txt"
         if path.exists():
             by_slug.setdefault(slug, []).append(path.read_text())
+        image = directory / f"{stem}.png"
+        if image.exists():
+            from esolangs.raster.scale import normalize
+
+            decoded = Raster.from_png(image.read_bytes())
+            by_slug.setdefault(slug, []).append(Raster(normalize(decoded.rows)))
     return by_slug
 
 
@@ -363,22 +388,31 @@ def _sources(module: str) -> list[pathlib.Path]:
     sweep that never read the interpreter.
     """
     pkg = _ROOT / "src" / "esolangs"
+    if module.startswith("esolangs."):
+        path = pkg / module.removeprefix("esolangs.").replace(".", "/")
+        sources = (
+            sorted(path.glob("*.py")) if path.is_dir() else [path.with_suffix(".py")]
+        )
+        if path.is_dir():
+            sources.extend(sorted((pkg / "raster").glob("*.py")))
+    else:
+        sources = [pkg / "interpreters" / (module.replace(".", "/") + ".py")]
     return [
         _HERE,
         _ROOT / "scripts" / "_scope.py",
-        pkg / "interpreters" / (module.replace(".", "/") + ".py"),
+        *sources,
         *(pkg / f for f in _SHARED),
     ]
 
 
-def _fingerprint(module: str, examples: list[str]) -> str:
+def _fingerprint(module: str, examples: list[str | Raster]) -> str:
     """Hash everything a sweep of ``module`` reads; a change to any part re-sweeps."""
     h = hashlib.sha256()
     for path in _sources(module):
         h.update(path.read_bytes())
         h.update(b"\0")
     for text in examples:
-        h.update(text.encode())
+        h.update(text.to_png() if isinstance(text, Raster) else text.encode())
         h.update(b"\0")
     h.update(f"{_STEP_CAP}:{_LANG_TIMEOUT}".encode())
     return h.hexdigest()
@@ -439,15 +473,15 @@ def _worker(target: str) -> None:
     factors its program with sympy before a step runs), which no step cap
     or in-process alarm can bound.
     """
-    from esolangs.registry import RUNNERS, canonical_id
+    from esolangs.registry import canonical_id
 
-    langs = sorted(RUNNERS)
+    langs = sorted(INTERPRETERS)
     slug_of = {name: canonical_id(name) for name in langs}
     by_slug = _examples_by_slug()
     examples = {name: by_slug.get(slug, []) for name, slug in slug_of.items()}
 
     rng = random.Random(1234)
-    progs: list[str] = []
+    progs: list[str | Raster] = []
     for lang in langs:  # replay in order so the corpus matches the parent's
         got = _corpus(lang, examples, rng)
         if lang == target:
@@ -460,18 +494,24 @@ def _worker(target: str) -> None:
 
 def main() -> None:
     """Sweep every registered language and report any that leaks."""
-    from esolangs.registry import RUNNERS, canonical_id
+    from esolangs.registry import canonical_id
 
     if "--worker" in sys.argv[1:]:
         _worker(sys.argv[sys.argv.index("--worker") + 1])
         return
 
     args = [a for a in sys.argv[1:] if a != "--all"]
-    langs = sorted(RUNNERS)
+    langs = sorted(INTERPRETERS)
     if "--all" in sys.argv[1:]:
         why = "--all"
     else:
-        langs, why = _select(langs, RUNNERS)
+        langs, why = _select(
+            langs,
+            {
+                name: (module.removeprefix("esolangs."), False)
+                for name, module in INTERPRETERS.items()
+            },
+        )
     print(f"sweeping {len(langs)} language(s): {why}", flush=True)
     if not langs:
         print("nothing to check (pass --all to sweep the whole registry)")
@@ -485,7 +525,7 @@ def main() -> None:
     print(f"languages without example programs: {len(missing)}", flush=True)
 
     cache = _load_cache()
-    keys = {n: _fingerprint(RUNNERS[n][0], examples[n]) for n in langs}
+    keys = {n: _fingerprint(INTERPRETERS[n], examples[n]) for n in langs}
     cached = [n for n in langs if cache.get(n) == keys[n]]
     if cached:
         print(f"unchanged since last clean sweep: {len(cached)}", flush=True)

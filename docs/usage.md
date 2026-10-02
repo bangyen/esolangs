@@ -198,9 +198,9 @@ deadline per row; a timeout remains undecided, including termination answers.
 `run(language, program, stdin, max_steps=100_000, timeout=1)`
 returns output on halt and raises `ExecutionTimeoutError` with
 `partial_output` when either bound expires. `max_steps` selects cooperative stepping.
-It steps text languages on Windows and worker threads; deadlines are checked
+It steps all languages on Windows and worker threads; deadlines are checked
 between steps, so loading and an individual step cannot be interrupted.
-Raster languages cannot be stepped. `isolated` and `max_steps` are mutually
+Text and raster languages share the VM and debugger. `isolated` and `max_steps` are mutually
 exclusive, and stepping does not support `seed`.
 
 ## Debugging

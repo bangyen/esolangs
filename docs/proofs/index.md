@@ -32,7 +32,7 @@ Machine checks live in `tests/proofs/`. `test_ledger.py` checks consistency
 with the registry; `test_schemes.py` checks measurable consequences for lookup
 and parameterized rows (`tree` and `minterms` have no per-row check). Both run
 in the fast band. The deeper proof checks live in `tests/proofs/deep/`.
-`all_generators.py` checks all 71 constructions: flipping each table row
+`all_generators.py` checks all 73 constructions: flipping each table row
 changes the emitted program at the tested arities, and each construction
 completes an arity ladder on both table shapes. This checks the counting half
 of each scheme. Four generators -- A Painter Ant, ArrowQueue, Container and
@@ -292,6 +292,7 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | INTERCAL | parameterized tree | equal-width constants set each input once; fully grouped mingle, unary logic, and select expressions form a Shannon tree | linear: reverse-depth numbering confines long names near the root |
 | Jaune | finite lookup | a spatial table reached with two labels, against a hoisted tree that lays out each distinct subtable once and jumps to it | linear: two cells per row, unary weights sum T - 1 |
 | LaserFuck | finite lookup | weighted arms select one of `2**n` prewritten cells, cleaned in one sweep | linear: three rows of linear appends, ~15T |
+| Line | tree | finite decision trees read inputs and choose a Boolean leaf; separated strokes preserve every branch | linear: alternating subtree extents bound rectangular area by O(T) |
 | Malbolge | exception | finite source space rules out some 18-input tables; the shipped branch-free five-cell mixer covers every table through ten inputs, a two-level pointer cascade covers eleven, a selector that splits the last input off that cascade covers twelve, answer stubs that read the last input cover thirteen, and four copies of that table selected by inputs twelve and thirteen cover fourteen; fifteen and sixteen replace the hash with a positional address, three input bits per two-trit digit, so no row collides; the cap is sixteen, and seventeen is open ([malbolge-scaling](malbolge-scaling.md)) | measured: fixed 59049-cell store through n <= 16 |
 | Minifuck | parameterized construction | `_mux` is the total fallback; its six failure sites close uniformly in `n` | linear: mux lookup, constant strings times O(T) counts |
 | Minsky Swap | parameterized lookup | every input is one `++`/`**` run; a stage per input adds its weight to the index register, and a `~` cascade routes the index to one of two shared leaves at the head of the program, so every table of one arity renders to the same length | linear: cascade routes to two shared leaves, one-digit targets |
@@ -300,6 +301,7 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | 123 | parameterized construction | table-independent separation plus verdict; failed tight geometry falls back to doubling geometry | linear: geometric paint per input, one-pass endgame |
 | Packlang | linear lookup | one 128-row array block, painted inside the `If` that selects it | linear: one write per differing row, block-bounded index digits |
 | Painfuck | tree | Brainfuck tree transliteration | linear: brainfuck tree, O(L) transliteration |
+| Piet | finite lookup | each table entry is pushed and an input index selects its output; literal products replace conjunction tables | linear: one bounded-width strip with O(T) codels |
 | Polynomial | tree, cap | each finite instruction list has a finite prime-product encoding; every program for a maximal-width table needs Omega(T/log T) distinct real roots ([polynomial](polynomial.md)) | lower bound: coefficient mass is Omega(T**2 / log T), matching the uncapped residual-DAG construction; equal-root blocks force Omega(T/log T) distinct real roots and the slack certificate prices every multiple ([polynomial](polynomial.md)) |
 | Qoibl | linear lookup | the table is one binary literal, divided by the power of two the reads build | linear: T-bit literal, one squaring statement per input |
 | RAM0 | parameterized tree | the inputs are stored once and each node loads its bit with `L`; a subtree already emitted is reached by `goto`, so only the distinct subtables are laid out, and the straight-line lookup is kept as a candidate | linear: O(T/n) distinct subtables, O(n) commands each |
@@ -378,7 +380,7 @@ construction.  Parity at thirteen inputs is 966568 digits, built in
 three seconds with the prime powers multiplied as a balanced tree, and
 the interpreter decodes it to the tree the generator encoded.
 
-Accordingly, this ledger records 70 theoretical totality arguments and one
+Accordingly, this ledger records 72 theoretical totality arguments and one
 proved language exception; every other row is `Total` or theoretically total
 past a resource ceiling.
 

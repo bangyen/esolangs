@@ -67,7 +67,14 @@ def smoke(*, math_extra: bool) -> None:
     assert "brainfuck" in entrypoint.stdout
     for name in esolangs.list_languages():
         facts = esolangs.describe(name)
-        if facts["boolean_generator"] and facts["source_kind"] == "text":
+        if facts["boolean_generator"]:
+            generated = esolangs.generate(name, "0110")
+            if isinstance(generated, esolangs.Raster):
+                generated = esolangs.Raster.from_png(generated.to_png())
+            try:
+                assert esolangs.evaluate(name, generated, inputs=2) == "0110", name
+            except esolangs.MissingDependencyError:
+                assert not math_extra, name
             assert facts["examples"], name
             for filename in facts["examples"]:
                 path = Path(filename)

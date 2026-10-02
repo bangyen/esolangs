@@ -84,7 +84,7 @@ class Result:
             self.passed.append(lemma)
 
 
-Builder = Callable[[str], str]
+Builder = Callable[[str], object]
 
 
 def tables_at(n: int, limit: int | None = None) -> Iterator[str]:
@@ -96,7 +96,7 @@ def tables_at(n: int, limit: int | None = None) -> Iterator[str]:
         yield "".join(bits)
 
 
-def build(fn: Builder, table: str) -> str | None:
+def build(fn: Builder, table: str) -> object | None:
     """Build ``table``, or ``None`` where the generator refuses it.
 
     A ``ValueError`` is the documented refusal for a table outside a
@@ -104,7 +104,7 @@ def build(fn: Builder, table: str) -> str | None:
     propagates, because a crash is not a refusal.
     """
     try:
-        return str(fn(table))
+        return fn(table)
     except ValueError:
         return None
 
@@ -212,7 +212,9 @@ def check_ladder(
             if program is None:
                 refused += 1
                 continue
-            built.setdefault(name, []).append((n, len(program)))
+            from tests.source_support import source_units
+
+            built.setdefault(name, []).append((n, source_units(program)))
     if not built:
         raise UnprovenError(f"builds no shape at any arity through n={max_n}")
     expected = list(range(1, max_n + 1))

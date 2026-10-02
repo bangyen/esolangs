@@ -34,16 +34,17 @@ class TestProtocol:
     def test_implements_vm_protocol(self) -> None:
         assert isinstance(debugger_api.make_vm("brainfuck", "+"), VM)
 
-    def test_a_raster_language_has_no_step_machine(self) -> None:
-        """Registered, so not ``UnknownLanguageError``; simply not steppable.
-
-        ``Line`` and ``Piet`` are the two registry names outside the text
-        ``RUNNERS``, and the old branch called them unknown.
-        """
-        with pytest.raises(esolangs.ArgumentError, match="raster language"):
-            debugger_api.make_vm("Line", esolangs.generate("Line", "01"))
-        with pytest.raises(esolangs.ArgumentError, match="raster language"):
-            debugger_api.make_debugger("Piet", "x")
+    @pytest.mark.medium
+    @pytest.mark.parametrize("language", ["Line", "Piet"])
+    def test_raster_languages_step_their_pixels(self, language: str) -> None:
+        source = esolangs.generate(language, "01")
+        pixels = esolangs.Raster.from_png(source.to_png())
+        vm = debugger_api.make_vm(language, pixels, "1\n")
+        assert isinstance(vm, VM)
+        assert _run_all(vm) == "1"
+        assert vm.ip is None
+        debugger = debugger_api.make_debugger(language, pixels, "0\n")
+        assert _run_all(debugger.vm) == "0"
 
 
 class TestBrainfuck:
@@ -897,7 +898,7 @@ class TestEveryLanguageIsSteppable:
     def test_every_registry_language_is_step_capable(self) -> None:
         """Every language can be wrapped, which is why the table is derived.
 
-        The adapters are built from ``RUNNERS`` itself, so "every language
+        The adapters are built from ``INTERPRETERS`` itself, so "every language
         has an adapter" is now true by construction and worth nothing as an
         assertion.  What is *not* automatic is the fact that made deriving
         them safe: that every registered interpreter actually exposes a
@@ -907,11 +908,11 @@ class TestEveryLanguageIsSteppable:
         """
         import importlib
 
-        from esolangs.registry import RUNNERS
+        from esolangs.registry import INTERPRETERS
 
         without: list[str] = []
-        for language, (module_path, _split) in sorted(RUNNERS.items()):
-            module = importlib.import_module(f"esolangs.interpreters.{module_path}")
+        for language, module_path in sorted(INTERPRETERS.items()):
+            module = importlib.import_module(module_path)
             state = getattr(module, "_Machine")  # noqa: B009
             if not hasattr(state, "step"):
                 without.append(language)
@@ -922,7 +923,7 @@ class TestEveryLanguageIsSteppable:
 
         A machine without ``snapshot()`` cannot have a hang proven, which is
         the cycle detector's real precondition.  The check reads the module
-        each language names in ``RUNNERS`` rather than the adapter's source:
+        each language names in ``INTERPRETERS`` rather than the adapter's source:
         most adapters are now derived from that entry and have no import to
         read back, and the registry is where the association actually lives.
 
@@ -932,14 +933,12 @@ class TestEveryLanguageIsSteppable:
         """
         import importlib
 
-        from esolangs.registry import RUNNERS
+        from esolangs.registry import INTERPRETERS
         from esolangs.vm import _VM_ADAPTERS
 
         without: list[str] = []
         for name in sorted(_VM_ADAPTERS):
-            module = importlib.import_module(
-                f"esolangs.interpreters.{RUNNERS[name][0]}"
-            )
+            module = importlib.import_module(INTERPRETERS[name])
             state = getattr(module, "_Machine")  # noqa: B009
             if not hasattr(state, "snapshot"):
                 without.append(name)
@@ -964,7 +963,7 @@ class TestEveryLanguageIsSteppable:
         import importlib
         import inspect
 
-        from esolangs.registry import RUNNERS
+        from esolangs.registry import INTERPRETERS
 
         methods = (
             "branching_snapshot",
@@ -974,8 +973,8 @@ class TestEveryLanguageIsSteppable:
 
         random_languages: set[str] = set()
         missing: dict[str, list[str]] = {}
-        for language, (module_path, _split) in sorted(RUNNERS.items()):
-            module = importlib.import_module(f"esolangs.interpreters.{module_path}")
+        for language, module_path in sorted(INTERPRETERS.items()):
+            module = importlib.import_module(module_path)
             state = getattr(module, "_Machine")  # noqa: B009
             if "rng" not in inspect.signature(state.__init__).parameters:
                 continue

@@ -138,6 +138,9 @@ STEP_SCOPE: dict[str, tuple[str, ...]] = {
     # Only an interpreter (or the sweep itself) can introduce a leak.
     "exception leaks": (
         "src/esolangs/interpreters/",
+        "src/esolangs/line/",
+        "src/esolangs/piet/",
+        "src/esolangs/raster/",
         "scripts/verify_no_exception_leaks.py",
     ),
 }

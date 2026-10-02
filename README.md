@@ -222,8 +222,8 @@ Line is an image-language module under `esolangs.line`; its suite is
 <!-- BOOLEAN-COUNT:START -->
 
 The truth table is a binary string of length `2**n`, most-significant input
-first; its length implies `n`, so it isn't passed separately.  71 of the
-text languages have such a generator, some covering only a documented subset of
+first; its length implies `n`, so it isn't passed separately.  73 of the
+languages have such a generator, some covering only a documented subset of
 tables.
 
 <!-- BOOLEAN-COUNT:END -->

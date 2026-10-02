@@ -16,23 +16,33 @@ Rows = tuple[tuple[Pixel, ...], ...]
 
 def _freeze_rows(rows: Rows) -> Rows:
     """Return validated immutable RGB rows, detached from the caller."""
-    frozen = tuple(tuple(tuple(pixel) for pixel in row) for row in rows)
-    width = len(frozen[0]) if frozen else 0
-    if not frozen or not width or any(len(row) != width for row in frozen):
+    # Generated images reuse immutable palette tuples millions of times.
+    # Identity avoids equality accepting bool/float channels as cached integers.
+    validated: dict[int, Pixel] = {}
+    frozen_rows = []
+    for row in rows:
+        frozen_row = []
+        for pixel in row:
+            if type(pixel) is tuple and id(pixel) in validated:
+                frozen_row.append(pixel)
+                continue
+            frozen = tuple(pixel)
+            if len(frozen) != 3 or any(
+                isinstance(value, bool)
+                or not isinstance(value, int)
+                or not 0 <= value <= 255
+                for value in frozen
+            ):
+                raise ValueError("Raster pixels must be 8-bit RGB triples")
+            frozen_row.append(frozen)
+            if type(pixel) is tuple and len(validated) < 1024:
+                validated[id(pixel)] = pixel
+        frozen_rows.append(tuple(frozen_row))
+    result = tuple(frozen_rows)
+    width = len(result[0]) if result else 0
+    if not result or not width or any(len(row) != width for row in result):
         raise ValueError("Raster needs non-empty equal-width rows")
-    if any(
-        len(pixel) != 3
-        or any(
-            isinstance(value, bool)
-            or not isinstance(value, int)
-            or not 0 <= value <= 255
-            for value in pixel
-        )
-        for row in frozen
-        for pixel in row
-    ):
-        raise ValueError("Raster pixels must be 8-bit RGB triples")
-    return cast("Rows", frozen)
+    return result
 
 
 @dataclass(frozen=True, init=False, eq=False)

@@ -24,6 +24,7 @@ import esolangs.tools as boolean
 from esolangs.registry import BY_BOOLEAN
 from esolangs.tools.helpers import runs
 from tests.proofs._ledger import Ledger, Row, load
+from tests.source_support import source_units
 
 #: Every table at ``n == 3`` that depends on exactly one input, both
 #: polarities, all at ones-count 4 -- the same ones-count as parity, so the
@@ -96,8 +97,8 @@ def _generator(row: Row) -> object:
 def _fold(fn: object) -> float:
     """How much the shortest one-dependency build saves against parity."""
     assert callable(fn)
-    parity = len(str(fn(_PARITY)))
-    best = min(len(str(fn(table))) for table in _ONE_DEPENDENCY)
+    parity = source_units(fn(_PARITY))
+    best = min(source_units(fn(table)) for table in _ONE_DEPENDENCY)
     return 1 - best / parity
 
 

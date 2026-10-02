@@ -15,10 +15,12 @@ import pytest
 import esolangs
 import esolangs.tools as boolean
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.registry import BY_BOOLEAN, LANGUAGES
+from esolangs.raster import Raster
+from esolangs.registry import BY_BOOLEAN, INTERPRETERS, LANGUAGES
 from esolangs.tools.helpers import essential_inputs
 from esolangs.vm import run_until_halt_or_cycle
 from tests.generator_support import evaluate_generated
+from tests.source_support import source_units
 
 # Every sweep here runs an interpreter over a generated program -- the whole
 # file is the execution gate -- so the module is `medium` and the inner loop
@@ -92,12 +94,10 @@ def _input_reading_generators() -> list[object]:
     for name in sorted(boolean.__all__):
         fn = getattr(boolean, name, None)
         lang = BY_BOOLEAN.get(name)
-        if not callable(fn) or lang is None or lang.interpreter is None:
+        if not callable(fn) or lang is None or lang.name not in INTERPRETERS:
             continue
         try:
-            run = importlib.import_module(
-                f"esolangs.interpreters.{lang.interpreter}"
-            ).run
+            run = importlib.import_module(INTERPRETERS[lang.name]).run
         except Exception:  # pragma: no cover - interpreter lives outside the pkg
             continue
         if name in _SEARCHING_GENERATORS | _SEARCHING_GENERATORS_REGRESSED:
@@ -122,7 +122,8 @@ def _reads(entry: tuple, table: str) -> int:
     """
     fn, lang, _run = entry
     try:
-        program = str(fn(table))
+        emitted = fn(table)
+        program = emitted if isinstance(emitted, Raster) else str(emitted)
     except ValueError:
         # A generator that does not cover this table emits no program, and a
         # program that does not exist reads nothing.  Reporting 0 routes the
@@ -130,8 +131,10 @@ def _reads(entry: tuple, table: str) -> int:
         # coverage gap, which is not what this test measures.
         return 0
     io = ScriptedIO("0\n" * 8)
-    source = program.splitlines() if lang.split else program
-    module = importlib.import_module("esolangs.interpreters." + lang.interpreter)
+    source = (
+        program.splitlines() if lang.split and isinstance(program, str) else program
+    )
+    module = importlib.import_module(INTERPRETERS[lang.name])
     machine_cls = getattr(module, "_Machine")  # noqa: B009
     # Every interpreter names its state object ``_Machine``, so this reads
     # the same count for every language.  It used to fall back to ``run``
@@ -270,7 +273,7 @@ def test_reordering_never_grows_a_program(
             # *did* place is an improvement on not building.
             if not baseline:
                 continue
-            assert len(fn(table)) <= len(baseline), f"{name} grew on {table}"
+            assert source_units(fn(table)) <= len(baseline), f"{name} grew on {table}"
 
 
 @pytest.mark.parametrize(("name", "fn", "ordered"), _reordering_generators())
@@ -284,7 +287,7 @@ def test_reordering_shrinks_the_tables_it_should(
     folds nothing until the bottom level.
     """
     table = "10101010"
-    assert len(fn(table)) < len(ordered(table, (0, 1, 2))), (
+    assert source_units(fn(table)) < len(ordered(table, (0, 1, 2))), (
         f"{name} did not reorder a table that only reordering folds"
     )
 
@@ -572,9 +575,9 @@ _PARITY = "01101001"
 @pytest.mark.parametrize(
     ("name", "fn"),
     sorted(
-        (lang.id, lang.boolean)
+        (lang.id, lang.boolean or lang.raster_boolean)
         for lang in LANGUAGES.values()
-        if lang.boolean is not None
+        if lang.boolean is not None or lang.raster_boolean is not None
     ),
     ids=lambda v: v if isinstance(v, str) else "",
 )
@@ -603,9 +606,9 @@ def test_a_one_entry_table_is_refused(name: str, fn: object, table: str) -> None
 @pytest.mark.parametrize(
     ("name", "fn"),
     sorted(
-        (lang.id, lang.boolean)
+        (lang.id, lang.boolean or lang.raster_boolean)
         for lang in LANGUAGES.values()
-        if lang.boolean is not None
+        if lang.boolean is not None or lang.raster_boolean is not None
     ),
     ids=lambda v: v if isinstance(v, str) else "",
 )
@@ -680,8 +683,8 @@ def test_generator_shape_is_what_the_catalogue_says(name: str) -> None:
     made an earlier audit call four folding generators unfolding.
     """
     fn = getattr(boolean, name)
-    best = min(len(fn(table)) for table in _ONE_DEPENDENCY)
-    parity = len(fn(_PARITY))
+    best = min(source_units(fn(table)) for table in _ONE_DEPENDENCY)
+    parity = source_units(fn(_PARITY))
     folds = 1 - best / parity
     if name in _REDUCING:
         # The gain is real but is not a fold, so assert it from the other
@@ -693,7 +696,7 @@ def test_generator_shape_is_what_the_catalogue_says(name: str) -> None:
             f"has regressed"
         )
         for table in _ONE_DEPENDENCY:
-            assert len(fn(table)) < parity, table
+            assert source_units(fn(table)) < parity, table
         return
     if name in _MINTERM_SHAPED:
         assert folds < 0.05, (
@@ -846,7 +849,7 @@ def test_every_generator_builds_up_to_ten_inputs(name: str, arities: range) -> N
             cap, pattern = _ARITY_CAPPED.get((name, shape), (_MAX_ARITY, ""))
             table = make(n)
             if n <= cap:
-                program = str(fn(table))
+                program = fn(table)
                 assert program, f"{name} built an empty program at n={n} ({shape})"
             else:
                 with pytest.raises(ValueError, match=re.escape(pattern)):
@@ -891,7 +894,7 @@ def test_every_generator_is_total_on_every_small_table(name: str) -> None:
     """
     fn = getattr(boolean, name)
     for table in _all_tables(_EXHAUSTIVE_ARITY):
-        program = str(fn(table))
+        program = fn(table)
         assert program, f"{name} built an empty program for {table!r}"
 
 
@@ -972,7 +975,11 @@ _EXEC_SHAPES = (("one_minterm", _one_minterm), ("one_hot", _one_hot))
 )
 @pytest.mark.parametrize(
     "name",
-    sorted(n for n in esolangs.list_languages() if LANGUAGES[n].boolean is not None),
+    sorted(
+        n
+        for n in esolangs.list_languages()
+        if LANGUAGES[n].boolean is not None or LANGUAGES[n].raster_boolean is not None
+    ),
 )
 @pytest.mark.slow
 def test_every_generator_runs_what_it_builds(

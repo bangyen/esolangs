@@ -38,6 +38,9 @@ from pathlib import Path
 # Run as a script (not under pytest), the repo root is not on the path.
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
+from concurrent.futures import ProcessPoolExecutor
+from multiprocessing import get_context
+
 import esolangs.tools as boolean
 from esolangs.registry import BY_BOOLEAN
 from tests.proofs._ledger import Row, load
@@ -71,7 +74,9 @@ _SHAPES = (("dense", _dense), ("parity", _parity))
 #: ``circuit_diagram``, which needs 2s by n=9 and times out past it.  Seven
 #: keeps that one affordable; eight is comfortable for the rest.
 _GROWTH_MAX = 8
-_GROWTH_OVERRIDE = {"circuit_diagram": 7}
+_GROWTH_OVERRIDE = {"circuit_diagram": 7, "line": 4}
+# Line row flips through n=4 exhausted a seven-minute probe; n=2 took 2s.
+_COMPARE_OVERRIDE = {"line": 2}
 
 #: Generators that may refuse tables the others accept are read from the
 #: ledger's own ``cap``/``exception`` labels, not listed here, so a row that
@@ -148,8 +153,13 @@ def battery(row: Row, key: str) -> Result:
     result = Result(generator=row.generator, scheme=scheme)
     top = _GROWTH_OVERRIDE.get(key, _GROWTH_MAX)
     result.record("coverage  ", lambda: check_coverage(fn, allow_refusals=allow))
-    result.record("determinism", lambda: check_determinism(fn))
-    result.record("rows      ", lambda: check_rows(fn))
+    result.record(
+        "determinism",
+        lambda: check_determinism(fn, max_n=_COMPARE_OVERRIDE.get(key, 4)),
+    )
+    result.record(
+        "rows      ", lambda: check_rows(fn, max_n=_COMPARE_OVERRIDE.get(key, 4))
+    )
     result.record(
         "ladder    ", lambda: check_ladder(fn, top, _SHAPES, allow_refusals=allow)
     )
@@ -164,11 +174,12 @@ def main() -> int:
     by_display = {lang.name: key for key, lang in BY_BOOLEAN.items()}
     rows = sorted(ledger.rows, key=lambda r: r.generator.lower())
 
-    results = []
-    for row in rows:
-        key = by_display[row.generator]
-        result = battery(row, key)
-        results.append(result)
+    # Independent batteries share two workers; serial raster checks exceeded CI.
+    with ProcessPoolExecutor(max_workers=2, mp_context=get_context("spawn")) as pool:
+        results = list(
+            pool.map(battery, rows, [by_display[row.generator] for row in rows])
+        )
+    for row, result in zip(rows, results, strict=True):
         status = f"{len(result.passed)}/5"
         if "cap" in row.labels or "exception" in row.labels:
             status += "  (cap/exception row: refusals allowed)"

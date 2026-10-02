@@ -374,3 +374,50 @@ class TestSyntheticLoopMechanism:
         io, _ = _io([])
         tape = run(_build_decrement_loop(), io=io)
         assert tape == {0: 0}
+
+
+@pytest.mark.parametrize("fixture", ["addition.png", "multiplication.png"])
+def test_pixel_vm_matches_the_native_arithmetic_fixture(fixture: str) -> None:
+    from esolangs import run as public_run
+    from esolangs.raster import Raster
+    from esolangs.vm import make_vm, run_until_halt
+
+    source = Raster.from_png((Path(FIXTURES) / fixture).read_bytes())
+    stdin = "3\n2\n"
+    vm = make_vm("Line", source, stdin)
+    assert run_until_halt(vm, 1000)
+    assert vm.output == public_run("Line", source, stdin)
+    assert vm.output == ("5" if fixture == "addition.png" else "6")
+
+
+def test_compiled_missing_fork_arm_halts() -> None:
+    from esolangs.line.simulate import compile_program, run_compiled
+
+    root = Stroke(vertices=[Vertex(0, 0, 0), Vertex(-20, 0, None)])
+    root.nonzero = Stroke(vertices=[Vertex(-20, 0, 0), Vertex(-40, 0, None)])
+    io, outputs = _io([])
+    assert run_compiled(compile_program(root), io=io) == {0: 0}
+    assert outputs == []
+
+
+def test_two_merges_into_one_leg_share_the_resume_position() -> None:
+    from esolangs.line.simulate import compile_program
+
+    root = _build_decrement_loop()
+    start, end = root.vertices[1:3]
+    fork = root.vertices[-1]
+    arms = []
+    for fraction in (1, 2):
+        point = Vertex(
+            start.y + (end.y - start.y) * fraction // 3,
+            start.x + (end.x - start.x) * fraction // 3,
+            None,
+        )
+        arms.append(Stroke(vertices=[Vertex(fork.y, fork.x, 0), point]))
+    root.zero, root.nonzero = arms
+    compiled = compile_program(root)
+    assert compiled.zero is not None
+    assert compiled.nonzero is not None
+    assert compiled.zero.goto is not None
+    assert compiled.zero.goto is compiled.nonzero.goto
+    assert compiled.zero.goto.positions == ()

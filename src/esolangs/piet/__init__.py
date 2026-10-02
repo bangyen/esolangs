@@ -193,62 +193,97 @@ def _command(
     return 0, 0
 
 
-def run(program: Raster, io: ScriptedIO, *, scale: int | None = None) -> None:
-    """Execute a Piet image, with one pixel per codel."""
-    from esolangs.raster.scale import normalize
+class _Machine:
+    """One colour transition or white slide per step."""
 
-    rows = normalize(program.rows, scale)
-    current = (0, 0)
-    dp, cc = 0, -1
-    stack: list[int] = []
-    colour = _colour(rows[0][0])
-    if colour == BLACK:
-        return
-    if colour == WHITE:
-        slid = _slide(rows, current, dp, cc)
-        if slid is None:
+    ip_shape = "grid"
+
+    def __init__(
+        self, program: Raster, io: ScriptedIO, *, scale: int | None = None
+    ) -> None:
+        from esolangs.raster.scale import normalize
+
+        self.rows = normalize(program.rows, scale)
+        self.io = io
+        self.current = (0, 0)
+        self.dp, self.cc = 0, -1
+        self.stack: list[int] = []
+        self.halted = _colour(self.rows[0][0]) == BLACK
+
+    @property
+    def ip(self) -> tuple[int, ...] | None:
+        return (
+            None
+            if self.halted
+            else (self.current[1], self.current[0], self.dp, self.cc)
+        )
+
+    @property
+    def memory(self) -> tuple[int, ...]:
+        return ()
+
+    def snapshot(self) -> tuple[object, ...]:
+        return (
+            self.current,
+            self.dp,
+            self.cc,
+            tuple(self.stack),
+            self.io.position(),
+            self.halted,
+        )
+
+    def step(self) -> None:
+        if self.halted:
             return
-        current, dp, cc = slid
-
-    while True:
-        colour = _colour(rows[current[1]][current[0]])
-        block = _block(rows, current)
-        moved = False
+        if _colour(self.rows[self.current[1]][self.current[0]]) == WHITE:
+            slid = _slide(self.rows, self.current, self.dp, self.cc)
+            if slid is None:
+                self.halted = True
+            else:
+                self.current, self.dp, self.cc = slid
+            return
+        colour = _colour(self.rows[self.current[1]][self.current[0]])
+        block = _block(self.rows, self.current)
         for attempt in range(8):
-            exit_x, exit_y = _exit(block, dp, cc)
-            dx, dy = _DIRECTIONS[dp]
+            exit_x, exit_y = _exit(block, self.dp, self.cc)
+            dx, dy = _DIRECTIONS[self.dp]
             target = exit_x + dx, exit_y + dy
             x, y = target
-            if 0 <= x < len(rows[0]) and 0 <= y < len(rows):
-                target_colour = _colour(rows[y][x])
+            if 0 <= x < len(self.rows[0]) and 0 <= y < len(self.rows):
+                target_colour = _colour(self.rows[y][x])
                 if target_colour == WHITE:
-                    slid = _slide(rows, target, dp, cc)
+                    slid = _slide(self.rows, target, self.dp, self.cc)
                     if slid is None:
+                        self.halted = True
                         return
-                    current, dp, cc = slid
-                    moved = True
-                    break
+                    self.current, self.dp, self.cc = slid
+                    return
                 if target_colour != BLACK:
                     old_hue, old_lightness = _COLOURS[colour]
                     new_hue, new_lightness = _COLOURS[target_colour]
                     dp_change, cc_change = _command(
                         ((new_hue - old_hue) % 6, (new_lightness - old_lightness) % 3),
                         len(block),
-                        stack,
-                        io,
+                        self.stack,
+                        self.io,
                     )
-                    dp = (dp + dp_change) % 4
+                    self.dp = (self.dp + dp_change) % 4
                     if cc_change % 2:
-                        cc *= -1
-                    current = target
-                    moved = True
-                    break
+                        self.cc *= -1
+                    self.current = target
+                    return
             if attempt % 2 == 0:
-                cc *= -1
+                self.cc *= -1
             else:
-                dp = (dp + 1) % 4
-        if not moved:
-            return
+                self.dp = (self.dp + 1) % 4
+        self.halted = True
+
+
+def run(program: Raster, io: ScriptedIO, *, scale: int | None = None) -> None:
+    """Execute a Piet image, detecting its codel scale."""
+    machine = _Machine(program, io, scale=scale)
+    while not machine.halted:
+        machine.step()
 
 
 def generate(truth_table: str, width: int | None = None, *, scale: int = 1) -> Raster:

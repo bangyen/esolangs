@@ -33,14 +33,13 @@ from esolangs._vm_views import (
     machine_views,
 )
 from esolangs.exceptions import (
-    ArgumentError,
     InterpreterLimitError,
     ProgramError,
     UnknownLanguageError,
 )
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.raster import Raster
-from esolangs.registry import LANGUAGES, RUNNERS, resolve
+from esolangs.registry import INTERPRETERS, LANGUAGES, resolve
 
 
 @runtime_checkable
@@ -795,13 +794,13 @@ class _DelegatingVM:
         return bool(getattr(self._machine, "eof_is_a_value", False))
 
 
-def _derived_adapter(language: str) -> Callable[[str, str], _DelegatingVM]:
+def _derived_adapter(language: str) -> Callable[..., _DelegatingVM]:
     """Build the adapter for a language whose wrapper is pure boilerplate.
 
-    Only the module and text-vs-lines differ, both already in ``RUNNERS``;
+    Only the module and text-vs-lines differ, both already in ``INTERPRETERS``;
     every registered language goes through here.
     """
-    module_path, split = RUNNERS[language]
+    module_path, split = INTERPRETERS[language], LANGUAGES[language].split
     # Bound to another name first: a class body cannot read the enclosing
     # function's ``language`` while binding a class attribute of that name.
     display_name = language
@@ -814,15 +813,19 @@ def _derived_adapter(language: str) -> Callable[[str, str], _DelegatingVM]:
         #: value here -- the difference between a wrong answer and a raise.
         language = display_name
 
-        def __init__(self, program: str, stdin: str = "") -> None:
+        def __init__(
+            self, program: str | Raster, stdin: str = "", *, scale: int | None = None
+        ) -> None:
             super().__init__(stdin)
             import importlib
             import inspect
 
             from esolangs.interpreters.randomness import Seeded
 
-            module = importlib.import_module(f"esolangs.interpreters.{module_path}")
-            code = program.splitlines() if split else program
+            module = importlib.import_module(module_path)
+            code = (
+                program.splitlines() if split and isinstance(program, str) else program
+            )
             # ``_Machine`` is private to its module but is the state object
             # this whole file is built around.
             state = getattr(module, "_Machine")  # noqa: B009
@@ -833,20 +836,24 @@ def _derived_adapter(language: str) -> Callable[[str, str], _DelegatingVM]:
                 seed = getattr(state, "reproducible_seed", 0)
                 self._machine = state(code, self._io, rng=Seeded(seed))
             else:
-                self._machine = state(code, self._io)
+                self._machine = (
+                    state(code, self._io, scale=scale)
+                    if scale is not None
+                    else state(code, self._io)
+                )
 
     _Derived.__name__ = _Derived.__qualname__ = f"_{language}VM"
     _Derived.__doc__ = f"Adapter for {language}; the interpreter describes its shape."
     return _Derived
 
 
-# Language name -> VM adapter, read off ``RUNNERS`` rather than listed
+# Language name -> VM adapter, read off ``INTERPRETERS`` rather than listed
 # again, so an unregistered name is the only thing raising
 # UnknownLanguageError.  Building an adapter imports nothing; the
 # interpreter is imported inside its ``__init__``.  Typed as the factory it
 # is used as rather than as the base class, which takes only the input.
-_VM_ADAPTERS: dict[str, Callable[[str, str], _DelegatingVM]] = {
-    name: _derived_adapter(name) for name in RUNNERS
+_VM_ADAPTERS: dict[str, Callable[..., _DelegatingVM]] = {
+    name: _derived_adapter(name) for name in INTERPRETERS
 }
 
 
@@ -859,9 +866,9 @@ def machine_traits(language: str) -> dict[str, bool]:
     import importlib
 
     # No membership check beyond ``resolve``: it only returns registry
-    # names, and the registry and ``RUNNERS`` hold the same 65.
+    # names, and the registry and ``INTERPRETERS`` hold the same names.
     name = resolve(language)
-    module = importlib.import_module(f"esolangs.interpreters.{RUNNERS[name][0]}")
+    module = importlib.import_module(INTERPRETERS[name])
     state = getattr(module, "_Machine")  # noqa: B009
     return {
         "self_halts": bool(getattr(state, "self_halts", True)),
@@ -874,14 +881,17 @@ def machine_traits(language: str) -> dict[str, bool]:
 
 
 def make_vm(
-    language: str, program: str | Raster | os.PathLike[str], stdin: str = ""
+    language: str,
+    program: str | Raster | os.PathLike[str],
+    stdin: str = "",
+    *,
+    scale: int | None = None,
 ) -> VM:
     """Return a step-and-inspect wrapper around ``language``'s interpreter.
 
     ``stdin`` is fed line by line; the name resolves case-insensitively via
     :func:`~esolangs.registry.resolve`.  A name outside the registry raises
-    :class:`UnknownLanguageError`; a registered raster language (Line, Piet)
-    has no step machine and raises :class:`ArgumentError` instead.  The
+    :class:`UnknownLanguageError`. Text and raster use the same step interface. The
     program and ``stdin`` are checked as :func:`esolangs.run` checks them (an
     unfilled template otherwise runs to a confident ``'0'``), and the checked
     value is what reaches the interpreter (:mod:`esolangs._validate`).
@@ -890,24 +900,24 @@ def make_vm(
 
     name = resolve(language)
     if name not in _VM_ADAPTERS:
-        if LANGUAGES[name].source_kind.value == "raster":
-            raise ArgumentError(
-                f"{name} is a raster language, which has no step machine; "
-                f"make_vm and make_debugger step text languages only"
-            )
-        # A text language with no adapter is an internal inconsistency, but
+        # A language with no adapter is an internal inconsistency, but
         # this is the branch that used to name it unknown; keep that.
         raise UnknownLanguageError(language)
     source = check_program(name, program, stdin)
-    if not isinstance(source, str):  # guarded by membership in text-only adapters
-        raise UnknownLanguageError(language)
+    if scale is not None:
+        from esolangs._validate import check_scale
+        from esolangs.exceptions import ArgumentError
+
+        check_scale(scale)
+        if not isinstance(source, Raster):
+            raise ArgumentError("scale is only supported for raster interpreters")
     try:
-        return _VM_ADAPTERS[name](source, stdin)
+        return _VM_ADAPTERS[name](source, stdin, scale=scale)
     except RecursionError as exc:
         raise InterpreterLimitError(
             f"the {name} interpreter recursed deeper than CPython's stack "
             f"limit allows while loading this program "
-            f"({len(source)} characters)"
+            f"while parsing its source"
         ) from exc
     except ProgramError:
         raise
