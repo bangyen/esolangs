@@ -167,11 +167,11 @@ class Raster:
         :class:`~esolangs.exceptions.ProgramError`.
         """
         try:
-            decoded = png.read_rgb(data)
+            decoded = png._rgb_rows(data)  # noqa: SLF001
             # Inside the guard too: a 0x0 image decodes cleanly and then
             # ``__post_init__`` rejects the empty rows, which is still a bad
             # PNG rather than a caller error.
-            return cls(tuple(tuple(row) for row in decoded))
+            return cls(decoded)
         except MissingDependencyError:
             raise
         except Exception as exc:

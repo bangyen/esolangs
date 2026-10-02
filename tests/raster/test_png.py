@@ -549,3 +549,40 @@ def test_import_without_pillow(monkeypatch: pytest.MonkeyPatch) -> None:
     namespace = runpy.run_path(str(png.__file__))
     with pytest.raises(MissingDependencyError, match=r"esolangs\[image\]"):
         namespace["read_rgb"](b"")
+
+
+def test_rgb_loading_reuses_immutable_pixels_and_rows() -> None:
+    from esolangs import Raster
+
+    red, black = (255, 0, 0), (0, 0, 0)
+    data = png.write_rgb([[red, red], [black, red], [red, red]])
+    image = Raster.from_png(data)
+    assert image.rows == ((red, red), (black, red), (red, red))
+    assert image.rows[0] is image.rows[2]
+    assert image.rows[0][0] is image.rows[0][1] is image.rows[1][1]
+    mutable = png.read_rgb(data)
+    mutable[0][0] = black
+    assert mutable[2] == [red, red]
+    assert image.rows[0] == (red, red)
+
+
+def test_rgb_loading_exceeds_pixel_cache_exactly() -> None:
+    from esolangs import Raster
+
+    colours = [(i // 256, i % 256, 17) for i in range(1025)]
+    pixels = [colours, colours]
+    data = png.write_rgb(pixels)
+    image = Raster.from_png(data)
+    assert image.rows == tuple(tuple(row) for row in pixels)
+    assert png.read_rgb(data) == pixels
+
+
+def test_rgb_loading_exceeds_row_cache_with_small_palette() -> None:
+    from esolangs import Raster
+
+    colours = ((0, 0, 0), (255, 255, 255))
+    pixels = [[colours[(y >> x) & 1] for x in range(11)] for y in range(1025)]
+    data = png.write_rgb(pixels + pixels[:1])
+    image = Raster.from_png(data)
+    assert image.rows == tuple(tuple(row) for row in pixels + pixels[:1])
+    assert image.rows[0] is image.rows[-1]

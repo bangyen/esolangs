@@ -6,9 +6,12 @@ import io
 import struct
 import zlib
 from collections.abc import Iterator
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from esolangs.exceptions import MissingDependencyError
+
+if TYPE_CHECKING:
+    from esolangs.raster import Pixel, Rows
 
 try:
     from PIL import Image
@@ -206,11 +209,41 @@ def read_grey(data: bytes) -> list[bytearray]:
     return [bytearray(raw[i : i + width]) for i in range(0, len(raw), width)]
 
 
-def read_rgb(data: bytes) -> list[list[tuple[int, int, int]]]:
-    """Decode PNG bytes to rows of 8-bit RGB pixels, ignoring alpha."""
+def _rgb_rows(data: bytes) -> Rows:
+    """Decode immutable RGB rows, reusing up to 1024 pixels and row patterns."""
     raw, width = _read(data, "RGB")
-    pixels = list(zip(raw[0::3], raw[1::3], raw[2::3], strict=True))
-    return [pixels[i : i + width] for i in range(0, len(pixels), width)]
+    palette: dict[bytes, Pixel] = {}
+    patterns: dict[bytes, tuple[Pixel, ...]] = {}
+    rows = []
+    stride = width * 3
+    for offset in range(0, len(raw), stride):
+        scanline = raw[offset : offset + stride]
+        row = patterns.get(scanline)
+        if row is None:
+            pixels = []
+            for x in range(0, stride, 3):
+                key = scanline[x : x + 3]
+                pixel = palette.get(key)
+                if pixel is None:
+                    if len(palette) == 1024:
+                        pixels = list(zip(raw[0::3], raw[1::3], raw[2::3], strict=True))
+                        return tuple(
+                            tuple(pixels[i : i + width])
+                            for i in range(0, len(pixels), width)
+                        )
+                    pixel = (key[0], key[1], key[2])
+                    palette[key] = pixel
+                pixels.append(pixel)
+            row = tuple(pixels)
+            if len(patterns) < 1024:
+                patterns[scanline] = row
+        rows.append(row)
+    return tuple(rows)
+
+
+def read_rgb(data: bytes) -> list[list[tuple[int, int, int]]]:
+    """Decode PNG bytes to independent mutable RGB rows, ignoring alpha."""
+    return [list(row) for row in _rgb_rows(data)]
 
 
 def _write(mode: str, width: int, height: int, raw: bytes) -> bytes:
