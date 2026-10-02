@@ -45,7 +45,7 @@ def _execute(
         source, stdin = esolangs.instantiate(language, program, bits), ""
     else:
         source, stdin = program, esolangs.encode_inputs(language, bits, table)
-    supported = isinstance(source, str) and facts["steppable_to_answer"]
+    supported = facts["steppable_to_answer"]
     if track_store and facts["answer_mode"] == "termination":
         raise ValueError("store tracking requires a halting-answer language")
     result: dict[str, Any] = {
@@ -66,7 +66,6 @@ def _execute(
             result["execution_status"] = "halted"
             result["actual_answer"] = esolangs.read_answer(language, output)
             return
-        assert isinstance(source, str)
         vm = debugger_api.make_vm(language, source, stdin)
         terminating = facts["answer_mode"] == "termination"
         if terminating:
@@ -170,6 +169,7 @@ def measure(
     for _ in range(repeat):
         started = time.perf_counter_ns()
         program = esolangs.generate(language, table)
+        _source_size(program)
         timings.append(time.perf_counter_ns() - started)
     assert program is not None
     rows = range(len(table)) if all_rows else sample_rows or (row,)

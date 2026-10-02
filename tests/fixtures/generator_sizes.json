@@ -648,15 +648,15 @@
   },
   "Line": {
    "0110": {
-    "commands": null,
+    "commands": 10,
     "source_units": 327600
    },
    "01101001": {
-    "commands": null,
+    "commands": 14,
     "source_units": 1183200
    },
    "0110100110010110": {
-    "commands": null,
+    "commands": 20,
     "source_units": 1513600
    }
   },
@@ -760,15 +760,15 @@
   },
   "Piet": {
    "0110": {
-    "commands": null,
+    "commands": 30,
     "source_units": 114
    },
    "01101001": {
-    "commands": null,
+    "commands": 40,
     "source_units": 159
    },
    "0110100110010110": {
-    "commands": null,
+    "commands": 56,
     "source_units": 234
    }
   },
