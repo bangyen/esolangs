@@ -7,6 +7,7 @@ import sys
 from esolangs import _check_runnable, describe
 from esolangs.cli_args import (
     _check_count,
+    _errors,
     _fail,
     _integer,
     _nonnegative,
@@ -93,12 +94,9 @@ def _debug(rest: list[str]) -> None:
     for name in ("--watch-cell", "--steps", "--break-at"):
         if name in numbers:
             _nonnegative(numbers[name], name, options[name])
-    program = _read_program(path, limit)
-    try:
+    program = _read_program(path, limit, language=language)
+    with _errors():
         facts = describe(language)
-    except EsolangError as exc:
-        _fail(str(exc))
-        raise  # pragma: no cover - unreachable; _fail exits
     # The key loop owns the terminal's stdin, so a piped stream cannot also
     # be the program's input: the two would race for the same descriptor.
     # ``--stdin`` is how a TUI run feeds its program instead.

@@ -8,7 +8,7 @@ step, so ``break_at`` on the initial position fires without executing it.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from inspect import signature
 from time import monotonic
 from typing import Literal
@@ -27,6 +27,19 @@ StopReason = Literal["halted", "breakpoint", "max_steps", "timeout"]
 #: returns; the CLI's ``debug`` also prints ``stopped: raised`` for a fault
 #: it caught, so a parsed ``stopped:`` line can fail against this tuple.
 STOP_REASONS: tuple[StopReason, ...] = ("halted", "breakpoint", "max_steps", "timeout")
+
+
+def _value_at[T](
+    values: Sequence[T], index: int, *, from_top: bool = False
+) -> T | None:
+    """Read a cell or stack slot, returning None when it is absent."""
+    return values[-1 - index if from_top else index] if index < len(values) else None
+
+
+def _watch[T](histories: dict[int, list[T]], index: int, name: str) -> list[T]:
+    """Register a validated slot and return its live history."""
+    check_whole(index, name)
+    return histories.setdefault(index, [])
 
 
 class Debugger:
@@ -162,9 +175,7 @@ class Debugger:
         check_whole(index, "index")
         if isinstance(value, bool) or not isinstance(value, int):
             raise ArgumentError(f"value must be an integer, got {value!r}")
-        self._breakpoints.append(
-            lambda vm: index < len(vm.memory) and vm.memory[index] == value
-        )
+        self._breakpoints.append(lambda vm: _value_at(vm.memory, index) == value)
 
     def break_on_stack(self, slot: int, value: object) -> None:
         """Stop when the ``slot``-th stack value from the top holds ``value``.
@@ -173,7 +184,10 @@ class Debugger:
         """
         check_whole(slot, "slot")
         self._breakpoints.append(
-            lambda vm: slot < len(vm.stack) and vm.stack[-1 - slot] == value
+            lambda vm: (
+                slot < len(vm.stack)
+                and _value_at(vm.stack, slot, from_top=True) == value
+            )
         )
 
     def break_on_output(self, text: str) -> None:
@@ -219,10 +233,7 @@ class Debugger:
         (Forbin 16 -> 0, Taglate 22 -> 4, Packlang, Circuit Diagram,
         Bitdeque).  Recording starts here; the list is live.
         """
-        check_whole(index, "index")
-        if index not in self._cell_history:
-            self._cell_history[index] = []
-        return self._cell_history[index]
+        return _watch(self._cell_history, index, "index")
 
     def watch_stack(self, slot: int) -> list[object]:
         """Record the ``slot``-th stack value from the top each step.
@@ -231,18 +242,15 @@ class Debugger:
         history: ``stack`` is ``[]`` there, and the protocol draws no line.
         ``describe(...)["state_model"]`` is the fact to consult first.
         """
-        check_whole(slot, "slot")
-        if slot not in self._stack_history:
-            self._stack_history[slot] = []
-        return self._stack_history[slot]
+        return _watch(self._stack_history, slot, "slot")
 
     def _record(self) -> None:
         memory = self.vm.memory
         for index, cell_history in self._cell_history.items():
-            cell_history.append(memory[index] if index < len(memory) else None)
+            cell_history.append(_value_at(memory, index))
         stack = self.vm.stack
         for slot, stack_history in self._stack_history.items():
-            stack_history.append(stack[-1 - slot] if slot < len(stack) else None)
+            stack_history.append(_value_at(stack, slot, from_top=True))
 
     def step(self) -> None:
         """Execute one command, recording any watches.

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from dataclasses import dataclass
 from pathlib import Path
 
 from esolangs._input import InputSource as InputSource
@@ -15,8 +16,24 @@ from esolangs.raster import Raster
 type ProgramSource = str | bytes | Raster | os.PathLike[str] | Reader
 
 
+@dataclass(frozen=True, slots=True)
+class _FileSource:
+    """A bounded file snapshot retaining file newline semantics."""
+
+    path: str
+    content: bytes
+
+    def read(self) -> bytes:
+        return self.content
+
+    def __str__(self) -> str:
+        return self.path
+
+
 def _read_container(source: ProgramSource) -> tuple[str | bytes | Raster, bool]:
     try:
+        if isinstance(source, _FileSource):
+            return source.read(), True
         if isinstance(source, os.PathLike):
             return Path(source).read_bytes(), True
         if isinstance(source, (str, bytes, Raster)):

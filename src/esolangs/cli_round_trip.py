@@ -81,7 +81,7 @@ def _evaluate(rest: list[str]) -> None:
     else:
         _fail("evaluate requires --inputs N or --table TABLE")
     language, path = rest
-    program = _read_program(path, timeout)
+    program = _read_program(path, timeout, language=language)
     try:
         if timeout is None:
             computed = evaluate(language, program, inputs=inputs)

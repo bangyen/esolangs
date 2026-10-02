@@ -49,12 +49,11 @@ def _style(*, run: bool, stopped: bool, picked: bool) -> str:
 def _display_source(program: str | Raster, language: str) -> str:
     if isinstance(program, str):
         return program
-    import importlib
-
+    from esolangs._execution import interpreter_module
     from esolangs.raster.scale import normalize
-    from esolangs.registry import INTERPRETERS, resolve
+    from esolangs.registry import resolve
 
-    module = importlib.import_module(INTERPRETERS[resolve(language)])
+    module = interpreter_module(resolve(language))
     source_view = getattr(module, "_source_view", None)
     if source_view is not None:
         return cast("str", source_view(program))

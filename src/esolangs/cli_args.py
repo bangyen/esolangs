@@ -8,6 +8,8 @@ are written once rather than per command.
 from __future__ import annotations
 
 import sys
+from collections.abc import Iterator
+from contextlib import contextmanager
 
 from esolangs._validate import check_timeout
 from esolangs.cli_help import (
@@ -292,10 +294,8 @@ def _table_of(options: dict[str, str]) -> str | None:
     # and this module is imported while the package is still assembling.
     from esolangs._answers import _validate_shape_for_evaluate
 
-    try:
+    with _errors():
         _validate_shape_for_evaluate(table)
-    except EsolangError as exc:
-        _fail(str(exc))
     return table
 
 
@@ -313,6 +313,15 @@ def _pop_cell(options: dict[str, str]) -> tuple[int, int] | None:
     if not sep or not _is_int(index) or not _is_int(value):
         _fail(f"--break-on-cell wants INDEX=VALUE, got {raw!r}")
     return int(index), int(value)
+
+
+@contextmanager
+def _errors(code: int = 2) -> Iterator[None]:
+    """Report library errors using the command's exit code."""
+    try:
+        yield
+    except EsolangError as exc:
+        _fail(str(exc), code)
 
 
 def _integer(

@@ -41,7 +41,7 @@ class TestTheDecodeGuardsInProcess:
             stdin = esolangs.encode_inputs(language, [1])
         path = tmp_path / "program.txt"
         path.write_bytes((program.replace("\n", newline) + newline).encode())
-        source = cli._read_program(str(path))  # noqa: SLF001
+        source = cli._read_program(str(path), language=language)  # noqa: SLF001
         assert (
             esolangs.run(language, source, stdin)
             == esolangs.run(language, path, stdin)
@@ -53,7 +53,7 @@ class TestTheDecodeGuardsInProcess:
         path = tmp_path / "b.txt"
         path.write_bytes(bytes(range(256)))
         with pytest.raises(SystemExit) as exc:
-            cli._read_program(str(path))  # noqa: SLF001
+            cli._read_program(str(path), language="brainfuck")  # noqa: SLF001
         assert exc.value.code == 2
 
     def test_read_program_still_refuses_an_unreadable_path(
@@ -61,23 +61,36 @@ class TestTheDecodeGuardsInProcess:
     ) -> None:
         """The OSError clause beside it, which the new one must not shadow."""
         with pytest.raises(SystemExit) as exc:
-            cli._read_program(str(tmp_path))  # noqa: SLF001
+            cli._read_program(str(tmp_path), language="brainfuck")  # noqa: SLF001
         assert exc.value.code == 2
 
-    def test_read_program_decodes_a_png(self, tmp_path: Path) -> None:
+    @pytest.mark.parametrize("language", ["Line", "Piet"])
+    def test_read_program_decodes_a_png(self, tmp_path: Path, language: str) -> None:
         """A raster language's program is a PNG, not UTF-8 text."""
         from esolangs.raster import Raster
 
         path = tmp_path / "tiny.png"
         path.write_bytes(Raster((((0, 0, 0),),)).to_png())
-        assert isinstance(cli._read_program(str(path)), Raster)  # noqa: SLF001
+        assert isinstance(cli._read_program(str(path), language=language), Raster)  # noqa: SLF001
+
+    def test_text_language_does_not_decode_png(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        from esolangs.raster import Raster
+
+        path = tmp_path / "program.png"
+        path.write_bytes(Raster((((0, 0, 0),),)).to_png())
+        with patch.object(Raster, "from_png") as decode, pytest.raises(SystemExit):
+            cli._read_program(str(path), language="brainfuck")  # noqa: SLF001
+        decode.assert_not_called()
+        assert "not text" in capsys.readouterr().err
 
     def test_read_program_refuses_a_corrupt_png(self, tmp_path: Path) -> None:
         """A PNG signature with nothing behind it is a bad PNG, not text."""
         path = tmp_path / "bad.png"
         path.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 20)
         with pytest.raises(SystemExit) as exc:
-            cli._read_program(str(path))  # noqa: SLF001
+            cli._read_program(str(path), language="Piet")  # noqa: SLF001
         assert exc.value.code == 2
 
     @pytest.mark.medium
@@ -540,7 +553,7 @@ class TestTheBoundedReaderInProcess:
         path = tmp_path / "b.txt"
         path.write_bytes(bytes(range(256)))
         with pytest.raises(SystemExit) as exc:
-            cli._bounded_read(str(path), 1.0)  # noqa: SLF001
+            cli._read_program(str(path), 1.0, language="brainfuck")  # noqa: SLF001
         assert exc.value.code == 2
         assert "not text" in capsys.readouterr().err
 
@@ -581,7 +594,7 @@ class TestTheBoundedReaderInProcess:
         text = "é" * (_MAX_PROGRAM_BYTES // 2)
         path = tmp_path / "full.txt"
         path.write_bytes(text.encode())
-        assert cli._bounded_read(str(path), 1.0) == text  # noqa: SLF001
+        assert cli._bounded_read(str(path), 1.0) == text.encode()  # noqa: SLF001
 
     def test_an_unexpected_error_propagates(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
