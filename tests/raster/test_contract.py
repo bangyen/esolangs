@@ -215,3 +215,18 @@ def test_repeated_tuple_rows_do_not_hide_an_invalid_mutation() -> None:
 def test_more_than_a_thousand_distinct_rows_remain_exact() -> None:
     rows = tuple(((i // 256, i % 256, 0),) for i in range(1025))
     assert Raster(rows).rows == rows
+
+
+def test_adjacent_mutable_pixels_are_frozen_on_each_occurrence() -> None:
+    class ChangingPixel(list):
+        def __iter__(self):
+            self[0] += 1
+            return iter((self[0], 0, 0))
+
+    pixel = ChangingPixel([0, 0, 0])
+    assert Raster(((pixel, pixel),)).rows == (((1, 0, 0), (2, 0, 0)),)
+
+
+def test_raster_rejects_a_noniterable_pixel() -> None:
+    with pytest.raises(TypeError):
+        Raster(((None,),))  # type: ignore[arg-type]

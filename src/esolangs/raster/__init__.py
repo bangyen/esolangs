@@ -27,9 +27,14 @@ def _freeze_rows(rows: Rows) -> Rows:
             continue
         unchanged = type(row) is tuple
         frozen_row = []
+        previous: Pixel | None = None
         for pixel in row:
+            if previous is not None and pixel is previous:
+                frozen_row.append(pixel)
+                continue
             if type(pixel) is tuple and id(pixel) in validated:
                 frozen_row.append(pixel)
+                previous = pixel
                 continue
             frozen = tuple(pixel)
             if len(frozen) != 3 or any(
@@ -41,8 +46,12 @@ def _freeze_rows(rows: Rows) -> Rows:
                 raise ValueError("Raster pixels must be 8-bit RGB triples")
             frozen_row.append(frozen)
             unchanged = unchanged and frozen is pixel
-            if type(pixel) is tuple and len(validated) < 1024:
-                validated[id(pixel)] = pixel
+            if type(pixel) is tuple:
+                previous = pixel
+                if len(validated) < 1024:
+                    validated[id(pixel)] = pixel
+            else:
+                previous = None
         immutable_row = row if unchanged else tuple(frozen_row)
         frozen_rows.append(immutable_row)
         if unchanged and len(validated_rows) < 1024:
