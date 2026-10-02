@@ -421,3 +421,22 @@ def test_two_merges_into_one_leg_share_the_resume_position() -> None:
     assert compiled.zero.goto is not None
     assert compiled.zero.goto is compiled.nonzero.goto
     assert compiled.zero.goto.positions == ()
+
+
+@pytest.mark.parametrize(
+    ("y", "x", "direction", "expected"),
+    [
+        (1, 0, 0, True),
+        (1, 1, 0, True),
+        (1, 2, 0, True),
+        (0, 0, 1, True),
+        (0, 0, 0, False),
+        (-2, 0, 0, False),
+        (3, 1, 0, False),
+        (1, -2, 0, False),
+        (1, 4, 0, False),
+    ],
+)
+def test_band_probe_preserves_edges_and_all_three_rays(y, x, direction, expected):
+    mask = Mask(3, 3, [0, 2, 0])
+    assert lattice._band_lit(mask, y, x, direction) is expected  # noqa: SLF001
