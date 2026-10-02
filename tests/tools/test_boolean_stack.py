@@ -1,16 +1,16 @@
 """Unit tests for the stack-based boolean generators.
 
-Covers the generators in :mod:`esolangs.tools.stack`: Grapheme,
-Forþ, Modulous, BFStack, and Unsquare.
+Covers Grapheme, Forþ, Modulous, BFStack, and Unsquare.
 """
 
+import importlib
 import random
 
 import pytest
 
 import esolangs
 from esolangs import tools as boolean
-from esolangs.tools import stack
+from esolangs.tools.grapheme import _grapheme_table
 from esolangs.tools.helpers import permute_truth_table
 from tests.generator_support import evaluate_generated, verify_generated
 from tests.tools.boolean_runners import (
@@ -43,7 +43,7 @@ def _forth_scope_keys(table: str) -> set[int]:
 
 def _forth_plain(table: str) -> str:
     """Forþ's build with no subtree shared: the fold alone, in natural order."""
-    from esolangs.tools.stack import _forth_ordered
+    from esolangs.tools.forth import _forth_ordered
 
     natural = tuple(reversed(range(len(table).bit_length() - 1)))
     return _forth_ordered(permute_truth_table(table, natural), natural)
@@ -52,7 +52,7 @@ def _forth_plain(table: str) -> str:
 class TestGrapheme:
     def test_a_literal_pushes_ten_times_any_value(self) -> None:
         """Int mode spells every value, 6 included, as one literal."""
-        from esolangs.tools.stack import _grapheme_literal
+        from esolangs.tools.grapheme import _grapheme_literal
 
         for value in (0, 1, 16, 106, 1006, 1_263_460, 9_999_996, 5_666_666):
             code = _grapheme_literal(value)
@@ -117,14 +117,14 @@ class TestForth:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Beyond n=10, use the natural order without enumerating 3**n orders."""
-        import esolangs.tools.stack as stack
+        module = importlib.import_module("esolangs.tools.forth")
 
         monkeypatch.setattr(
-            stack,
+            module,
             "_forth_stack_programs",
             lambda _n: (_ for _ in ()).throw(AssertionError("order contest ran")),
         )
-        program = stack.forth("0" * (2**11))
+        program = module.forth("0" * (2**11))
         assert run_forth(program, ["0"] * 11) == "0"
 
     def test_program_structure(self) -> None:
@@ -216,7 +216,7 @@ class TestForth:
 
     def test_the_natural_stack_order_is_emitted(self) -> None:
         """Forþ no longer contests reachable input orders."""
-        from esolangs.tools.stack import _forth_ordered
+        from esolangs.tools.forth import _forth_ordered
 
         natural = (2, 1, 0)
         for value in range(256):
@@ -237,7 +237,7 @@ class TestForth:
         times as many at n == 5, which is what keeps the saving from
         collapsing as ``n`` grows.
         """
-        from esolangs.tools.stack import _forth_stack_programs
+        from esolangs.tools.forth import _forth_stack_programs
 
         # The reachable *set* has a closed form, which is what pins the
         # search: after each read the new bit is on top, and the only
@@ -262,7 +262,7 @@ class TestForth:
         rather than ``3**n``: the enumeration walks every combination and
         drops the ones that would sink a bit past the bottom of the stack.
         """
-        from esolangs.tools.stack import _forth_stack_programs, _sink_top
+        from esolangs.tools.forth import _forth_stack_programs, _sink_top
 
         assert len(_forth_stack_programs(1)) == 1  # nothing to rearrange
         assert len(_forth_stack_programs(2)) == 2  # the second bit may swap
@@ -282,7 +282,7 @@ class TestForth:
         in the wrong places, which is why this returns rather than falling
         through to the tree.
         """
-        from esolangs.tools.stack import (
+        from esolangs.tools.forth import (
             _forth_ordered,
             _forth_stack_programs,
         )
@@ -332,7 +332,6 @@ class TestForth:
     @pytest.mark.medium
     def test_sharing_executes_at_four_to_six(self) -> None:
         """A call lands on its twin's scope at every arity sampled."""
-        import random
 
         rng = random.Random(0)
         for n in (4, 5, 6):
@@ -342,7 +341,7 @@ class TestForth:
 
     def test_const_large(self) -> None:
         """Constants above 225 need multiple base-15 digits."""
-        from esolangs.tools.stack import _forth_const
+        from esolangs.tools.forth import _forth_const
 
         assert _forth_const(0) == "0"
         assert len(_forth_const(300)) > len(_forth_const(48))
@@ -358,7 +357,7 @@ class TestForth:
         last single digit, 15 rolls over, and 225 is the first three-digit
         constant.
         """
-        from esolangs.tools.stack import _forth_const
+        from esolangs.tools.forth import _forth_const
 
         assert _forth_const(14) == "E"
         assert _forth_const(15) == "1F*0+"
@@ -616,7 +615,7 @@ class TestGraphemeTable:
         """Every entry survives the lift that forces a leading decimal 1."""
         for n in range(1, 9):
             for table in (self._one_minterm(n), "01" * (2 ** (n - 1))):
-                packed = stack._grapheme_table(table)  # noqa: SLF001
+                packed = _grapheme_table(table)
                 assert str(packed)[0] == "1"
                 low = format(packed % (1 << len(table)), f"0{len(table)}b")
                 assert low == table
@@ -648,7 +647,8 @@ class TestGraphemeTable:
         accumulator's power of two no longer cancels.  Without this control a
         table that happened to read right anywhere would look like proof.
         """
-        packed = stack._grapheme_table  # noqa: SLF001
-        monkeypatch.setattr(stack, "_grapheme_table", lambda t: 2 * packed(t))
+        packed = _grapheme_table
+        module = importlib.import_module("esolangs.tools.grapheme")
+        monkeypatch.setattr(module, "_grapheme_table", lambda t: 2 * packed(t))
         table = self._one_minterm(6)
         assert evaluate_generated("Grapheme", table, timeout=60) != table
