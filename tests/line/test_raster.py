@@ -240,3 +240,18 @@ def test_public_and_bounded_runs_reuse_pixels_with_fresh_state(
         assert esolangs.run("Line", source, stdin, max_steps=1000) == str(answer)
     assert parses == 1
     line._compiled.cache_clear()  # noqa: SLF001
+
+
+def test_greyscale_conversion_exceeds_pixel_cache() -> None:
+    from esolangs.line import _grey_rows
+
+    row = tuple((index // 256, index % 256, 17) for index in range(1025))
+    rows = (row, tuple(reversed(row)))
+    expected = [
+        bytearray(
+            (red * 19595 + green * 38470 + blue * 7471 + 0x8000) >> 16
+            for red, green, blue in part
+        )
+        for part in rows
+    ]
+    assert _grey_rows(rows) == expected
