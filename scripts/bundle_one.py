@@ -84,7 +84,7 @@ def _drop_lines(src: str, drop: set[int]) -> str:
 
 
 def _languages_tables(tree: ast.Module) -> list[ast.Dict]:
-    """Return the ``LANGUAGES`` and ``CLASSICS`` dict nodes, in file order."""
+    """Return registry dicts, including ``CLASSICS`` from older raw sources."""
     tables: list[ast.Dict] = []
     for node in tree.body:
         targets: list[ast.expr]
