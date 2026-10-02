@@ -5,12 +5,15 @@ from esolangs.tools.algebraic_programming_language import algebraic_programming_
 from esolangs.tools.alight import alight
 from esolangs.tools.b_tapemark import b_tapemark
 from esolangs.tools.befunge import befunge
+from esolangs.tools.bit_tilde import bit_tilde
 from esolangs.tools.bitwise_cyclic_tag import bitwise_cyclic_tag
 from esolangs.tools.brainfuck import bf_tree, brainfuck
 from esolangs.tools.brainif import brainif
 from esolangs.tools.circlefuck import circlefuck
 from esolangs.tools.circuit_diagram import circuit_diagram
+from esolangs.tools.clockwise import clockwise
 from esolangs.tools.collatz_multiverse import collatz_multiverse
+from esolangs.tools.container import container
 from esolangs.tools.crement import crement
 from esolangs.tools.cvnc import cvnc
 from esolangs.tools.decleq import decleq
@@ -21,23 +24,15 @@ from esolangs.tools.factor import factor
 from esolangs.tools.false import false
 from esolangs.tools.fargo import fargo
 from esolangs.tools.fish import fish
+from esolangs.tools.flowchart import flowchart
+from esolangs.tools.forbin import forbin
 from esolangs.tools.fractran import fractran
 from esolangs.tools.inject import inject
 from esolangs.tools.intercal import intercal
 from esolangs.tools.jaune import jaune
+from esolangs.tools.laserfuck import laserfuck
 from esolangs.tools.line import line
 from esolangs.tools.malbolge import malbolge
-from esolangs.tools.other import (
-    bit_tilde,
-    clockwise,
-    container,
-    flowchart,
-    forbin,
-    laserfuck,
-    streetcode,
-    taglate,
-    three_x,
-)
 from esolangs.tools.packlang import packlang
 from esolangs.tools.painfuck import painfuck
 from esolangs.tools.parameterized import (
@@ -66,10 +61,13 @@ from esolangs.tools.slow_acv_mammalian import slow_acv_mammalian
 from esolangs.tools.smallfuck import smallfuck
 from esolangs.tools.sophie import sophie
 from esolangs.tools.stack import bfstack, forth, grapheme, modulous, unsquare
+from esolangs.tools.streetcode import streetcode
 from esolangs.tools.suffolk import suffolk
 from esolangs.tools.super_snusp import super_snusp
+from esolangs.tools.taglate import taglate
 from esolangs.tools.thisthat import thisthat
 from esolangs.tools.three_d_brainfuck import three_d_brainfuck
+from esolangs.tools.three_x import three_x
 from esolangs.tools.thue import thue
 from esolangs.tools.unlambda import unlambda
 from esolangs.tools.vandevelo import vandevelo

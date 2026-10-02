@@ -1,4 +1,4 @@
-"""The generators still in :mod:`esolangs.tools.other`, and its neighbours.
+"""The generators still in :mod:`esolangs.tools`, and its neighbours.
 
 three_x and Forbin from the facade itself, plus Packlang, Inject,
 Fargo and the Algebraic Programming Language.  The languages with a generator
@@ -336,7 +336,7 @@ class TestForbinBoolean:
 
     def test_compact_variables_skip_keywords_without_duplicates(self) -> None:
         """Filtering a reserved word does not reuse its successor's name."""
-        from esolangs.tools.other import _FORBIN_RESERVED, _forbin_name
+        from esolangs.tools.forbin import _FORBIN_RESERVED, _forbin_name
 
         names = [_forbin_name(i) for i in range(600)]
         assert len(set(names)) == len(names)
@@ -549,7 +549,7 @@ class TestThreeX:
 
     def test_reordering_only_shrinks(self) -> None:
         """No table comes out longer than the identity order's program."""
-        from esolangs.tools.other import _three_x_ordered
+        from esolangs.tools.three_x import _three_x_ordered
 
         for i in range(256):
             table = format(i, "08b")
@@ -563,7 +563,7 @@ class TestThreeX:
         so reordering can only shrink a program, never churn one.  A constant
         table has no override blocks at all, so no order can beat it.
         """
-        from esolangs.tools.other import _three_x_ordered
+        from esolangs.tools.three_x import _three_x_ordered
 
         for table in ("0" * 8, "1" * 8):
             assert boolean.three_x(table) == _three_x_ordered(table, (0, 1, 2))
@@ -575,7 +575,7 @@ class TestThreeX:
         in when the reads happen: every build reads its ``n`` inputs up front,
         one ``?`` each, whatever order the tree tests them in.
         """
-        from esolangs.tools.other import _three_x_ordered
+        from esolangs.tools.three_x import _three_x_ordered
 
         table = "00010111"
         for perm in ((0, 1, 2), (2, 1, 0), (1, 2, 0)):
@@ -591,7 +591,7 @@ class TestThreeX:
 
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.stack_based.three_x import run
-        from esolangs.tools.other import _three_x_ordered
+        from esolangs.tools.three_x import _three_x_ordered
 
         def permuted(table: str, perm: tuple[int, ...]) -> str:
             out = []
@@ -662,9 +662,9 @@ class TestThreeX:
         """Keys are the shortest ``C ::= 3 | C C C x`` programs, by length."""
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.stack_based.three_x import run
-        from esolangs.tools import other
+        from esolangs.tools.three_x import _constants
 
-        codes = other._constants(13)  # noqa: SLF001
+        codes = _constants(13)
         assert [len(c) for c in codes] == [1, 4, 7, 7] + [10] * 4 + [13] * 5
         values = []
         for code in codes:
@@ -676,10 +676,10 @@ class TestThreeX:
 
     def test_constant_ladder_only_ever_extends(self) -> None:
         """More names append to the cache; 30 of them still fit 16 characters."""
-        from esolangs.tools import other
+        from esolangs.tools.three_x import _constants
 
-        first = other._constants(4)  # noqa: SLF001
-        longer = other._constants(30)  # noqa: SLF001
+        first = _constants(4)
+        longer = _constants(30)
         assert longer[:4] == first
         assert len(longer[-1]) <= 16
 
