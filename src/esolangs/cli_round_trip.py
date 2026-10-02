@@ -16,6 +16,7 @@ from esolangs._answers import _validate_shape_for_evaluate
 from esolangs.cli_args import (
     _check_count,
     _fail,
+    _integer,
     _pop_options,
     _split_positional,
     _table_of,
@@ -76,10 +77,7 @@ def _evaluate(rest: list[str]) -> None:
     if table is not None:
         inputs = _validate_shape_for_evaluate(table)
     elif "--inputs" in options:
-        try:
-            inputs = int(options["--inputs"])
-        except ValueError:
-            _fail("--inputs must be an integer")
+        inputs = _integer(options["--inputs"], "--inputs", show_value=False)
     else:
         _fail("evaluate requires --inputs N or --table TABLE")
     language, path = rest

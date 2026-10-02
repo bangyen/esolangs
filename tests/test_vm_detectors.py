@@ -1065,7 +1065,7 @@ class TestTheDetectorsTakeAVM:
         # The class is named as well as the role: "wrong type" alone is the
         # message this function exists to improve on, so both halves are
         # pinned -- the sweep found each free to change on its own.
-        with pytest.raises(TypeError, match=f"_SophieVM is not {re.escape(role)}:"):
+        with pytest.raises(TypeError, match=f"Sophie is not {re.escape(role)}:"):
             getattr(module, detector)(debugger_api.make_vm("Sophie", ""))
 
     def test_the_value_growth_detector_refuses_a_bounded_language(self) -> None:

@@ -75,9 +75,10 @@ class TestTheArmsThatTranslateWhatAnInterpreterRaises:
         """Already ours, so it is re-raised rather than wrapped twice."""
         planted = ProgramError("unmatched something")
         with (
-            patch.dict(
-                vm_module._VM_ADAPTERS,  # noqa: SLF001 - the arm is private
-                {"brainfuck": self._adapter(planted)},
+            patch.object(
+                vm_module.interpreter_module("brainfuck"),
+                "_Machine",
+                self._adapter(planted),
             ),
             pytest.raises(ProgramError) as exc,
         ):
@@ -87,9 +88,10 @@ class TestTheArmsThatTranslateWhatAnInterpreterRaises:
     def test_a_recursion_error_from_the_loader_becomes_a_limit(self) -> None:
         """A loader that recurses past CPython's stack is a limit, not a bug."""
         with (
-            patch.dict(
-                vm_module._VM_ADAPTERS,  # noqa: SLF001 - the arm is private
-                {"brainfuck": self._adapter(RecursionError())},
+            patch.object(
+                vm_module.interpreter_module("brainfuck"),
+                "_Machine",
+                self._adapter(RecursionError()),
             ),
             pytest.raises(InterpreterLimitError, match="recursed deeper"),
         ):

@@ -870,21 +870,6 @@ class TestFactory:
         with pytest.raises(UnknownLanguageError, match="NoSuchLanguage"):
             debugger_api.make_vm("NoSuchLanguage", "+")
 
-    def test_registered_language_without_an_adapter_raises(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """A registry language missing from ``_VM_ADAPTERS`` also raises.
-
-        Every current registry language has an adapter, so this exercises
-        ``make_vm``'s defensive fallback (not just the unregistered-name
-        check) by removing one adapter for the duration of the test.
-        """
-        from esolangs.vm import _VM_ADAPTERS
-
-        monkeypatch.delitem(_VM_ADAPTERS, "brainfuck")
-        with pytest.raises(UnknownLanguageError):
-            debugger_api.make_vm("brainfuck", "+")
-
 
 class TestEveryLanguageIsSteppable:
     """The two whole-registry invariants, as tests rather than prose.
@@ -896,16 +881,7 @@ class TestEveryLanguageIsSteppable:
     """
 
     def test_every_registry_language_is_step_capable(self) -> None:
-        """Every language can be wrapped, which is why the table is derived.
-
-        The adapters are built from ``INTERPRETERS`` itself, so "every language
-        has an adapter" is now true by construction and worth nothing as an
-        assertion.  What is *not* automatic is the fact that made deriving
-        them safe: that every registered interpreter actually exposes a
-        step-capable state object.  A new language that ran only as a whole
-        program would still get an adapter built for it, and would fail on
-        the first ``step()`` rather than here -- so that is what is checked.
-        """
+        """Every registered interpreter exposes a step-capable state."""
         import importlib
 
         from esolangs.registry import INTERPRETERS
@@ -919,25 +895,13 @@ class TestEveryLanguageIsSteppable:
         assert without == []
 
     def test_every_adapter_wraps_a_state_object_with_a_snapshot(self) -> None:
-        """``run_until_halt_or_cycle`` needs ``snapshot()`` on the machine.
-
-        A machine without ``snapshot()`` cannot have a hang proven, which is
-        the cycle detector's real precondition.  The check reads the module
-        each language names in ``INTERPRETERS`` rather than the adapter's source:
-        most adapters are now derived from that entry and have no import to
-        read back, and the registry is where the association actually lives.
-
-        This deliberately does not build the machines -- that would need a
-        valid program for every language -- so it checks the class each
-        module exposes as its state object.
-        """
+        """Cycle detection requires a snapshot on every interpreter state."""
         import importlib
 
         from esolangs.registry import INTERPRETERS
-        from esolangs.vm import _VM_ADAPTERS
 
         without: list[str] = []
-        for name in sorted(_VM_ADAPTERS):
+        for name in sorted(INTERPRETERS):
             module = importlib.import_module(INTERPRETERS[name])
             state = getattr(module, "_Machine")  # noqa: B009
             if not hasattr(state, "snapshot"):
@@ -1005,12 +969,10 @@ class TestEveryLanguageIsSteppable:
         interpreter.  Nothing else covers it: every other test reads these
         properties without writing to them.
         """
-        from esolangs.vm import _VM_ADAPTERS, _DelegatingVM
+        from esolangs.registry import INTERPRETERS
 
         checked = 0
-        for name, adapter in sorted(_VM_ADAPTERS.items()):
-            if not issubclass(adapter, _DelegatingVM):
-                continue
+        for name in sorted(INTERPRETERS):
             program, stdin = SAMPLES[name]
             vm = debugger_api.make_vm(name, program, stdin)
             with contextlib.suppress(Exception):

@@ -184,21 +184,6 @@ class TestFactory:
         with pytest.raises(UnknownLanguageError):
             debugger_api.make_debugger("NoSuchLanguage", "+")
 
-    def test_registered_language_without_an_adapter_raises(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """A registry language missing from ``_VM_ADAPTERS`` also raises.
-
-        Every current registry language has an adapter, so this exercises
-        ``make_vm``'s defensive fallback (not just the unregistered-name
-        check) by removing one adapter for the duration of the test.
-        """
-        from esolangs.vm import _VM_ADAPTERS
-
-        monkeypatch.delitem(_VM_ADAPTERS, "brainfuck")
-        with pytest.raises(UnknownLanguageError):
-            debugger_api.make_debugger("brainfuck", "+")
-
 
 class TestARunFinishesTheDump:
     """Six languages finished a *run* holding an empty output.

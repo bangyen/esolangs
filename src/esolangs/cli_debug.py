@@ -8,7 +8,8 @@ from esolangs import _check_runnable, describe
 from esolangs.cli_args import (
     _check_count,
     _fail,
-    _is_int,
+    _integer,
+    _nonnegative,
     _pop_cell,
     _pop_flags,
     _pop_options,
@@ -80,33 +81,18 @@ def _debug(rest: list[str]) -> None:
     rest = _split_positional(rest, set(), options_taken | {"--tui"})
     _check_count("debug", rest, 2)
     language, path = rest[0], rest[1]
-    for name in ("--steps", "--watch-cell", "--break-at"):
-        if name in options and not _is_int(options[name]):
-            _fail(f"{name} must be an integer, got {options[name]!r}")
+    numbers = {
+        name: _integer(options[name], name)
+        for name in ("--steps", "--watch-cell", "--break-at")
+        if name in options
+    }
     cell = _pop_cell(options)
-    # ``_pop_cell`` accepts ``-1`` as an integer, and the value half of the
-    # pair may legitimately be negative; the index half may not -- indexing
-    # from the end is not a place a breakpoint can name.  Uncaught, it
-    # reached ``check_whole`` and ``main``'s catch-all, which reported a bug
-    # in esolangs at exit 70 for a typo.
-    if cell is not None and cell[0] < 0:
-        _fail(f"--break-on-cell index must not be negative, got {cell[0]}")
-    # A negative cell index is Python list indexing leaking through: it
-    # printed cell 0's history under the name -1, which is a wrong answer
-    # rather than an empty one.  Every other negative here is refused.
-    if "--watch-cell" in options and int(options["--watch-cell"]) < 0:
-        _fail(f"--watch-cell must not be negative, got {options['--watch-cell']}")
-    # A negative bound is not a smaller bound, it is no bound: the run went
-    # unbounded, which is the one thing --steps exists to prevent.
-    if "--steps" in options and int(options["--steps"]) < 0:
-        _fail(f"--steps must not be negative, got {options['--steps']}")
-    # And the third one, which was the only integer flag here without a
-    # negative guard.  It passed the is-an-integer check above, reached
-    # ``Debugger.break_at``'s own validation, and came back out of ``main``'s
-    # catch-all as "internal error ... this is a bug in esolangs" at exit
-    # 70 -- inviting a bug report for a typo.
-    if "--break-at" in options and int(options["--break-at"]) < 0:
-        _fail(f"--break-at must not be negative, got {options['--break-at']}")
+    # The breakpoint value may be negative; its cell index may not.
+    if cell is not None:
+        _nonnegative(cell[0], "--break-on-cell index", cell[0])
+    for name in ("--watch-cell", "--steps", "--break-at"):
+        if name in numbers:
+            _nonnegative(numbers[name], name, options[name])
     program = _read_program(path, limit)
     try:
         facts = describe(language)
