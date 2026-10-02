@@ -38,7 +38,7 @@ dev = [
     "click>=8.3.3",
     "pygments>=2.20.0",
     "urllib3>=2.7.0",
-    "ruff==0.16.5",
+    "ruff==0.16.9",
     "mypy==2.3.1",
     # verify.py's duplicate-code step runs `python -m pylint`, and *skips
     # itself* when the import is missing -- so a checkout without pylint
@@ -55,7 +55,7 @@ dev = [
     "z3-solver>=4.15.0",
     # Was pinned to 3.3.1 against a class-method selection bug; 3.7.0 does not
     # have it, and fixes one of its own.  See scripts/mutate_one.py.
-    "mutmut==3.7.0",
+    "mutmut==3.8.0",
 ]
 
 [project.urls]

@@ -83,7 +83,7 @@ jobs:
     # changed since.  The key is per commit and the restore prefix takes the
     # newest, so every run saves and the next run inherits.
     - name: Restore the leak sweep's clean fingerprints
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: .leaksweep-cache.json
         key: leaksweep-${{ github.sha }}
