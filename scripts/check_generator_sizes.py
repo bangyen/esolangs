@@ -49,9 +49,8 @@ BASELINE = REPO_ROOT / "tests" / "fixtures" / "generator_sizes.json"
 TABLES = ("0110", "01101001", "0110100110010110")
 
 #: Far below ``benchmark.py``'s default.  Every language that halts on this
-#: corpus does so in well under this many steps; the thirteen records with a
-#: null ``commands`` are the raster and non-steppable languages, which return
-#: None before stepping rather than on the cap.
+#: corpus does so in well under this many steps. Non-steppable languages
+#: return null ``commands`` before stepping rather than on the cap.
 STEP_CAP = 200_000
 
 # Dense parity reaches the named layout switches without folding inputs away.

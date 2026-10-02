@@ -1,5 +1,7 @@
 """Tests for the public benchmark command."""
 
+import pytest
+
 import esolangs
 from scripts.benchmark import measure
 
@@ -55,8 +57,9 @@ def test_measure_reports_wrong_output(monkeypatch) -> None:
     assert result["matches"] is False
 
 
-def test_step_cap_is_not_unsupported() -> None:
-    result = measure("brainfuck", "0110", repeat=1, row=1, step_cap=1)
+@pytest.mark.parametrize("language", ["brainfuck", "Line", "Piet"])
+def test_step_cap_is_not_unsupported(language: str) -> None:
+    result = measure(language, "0110", repeat=1, row=1, step_cap=1)
     assert result["stepping_status"] == "supported"
     assert result["execution_status"] == "step_cap"
     assert result["commands"] is None
@@ -64,12 +67,44 @@ def test_step_cap_is_not_unsupported() -> None:
     assert result["matches"] is None
 
 
-def test_raster_is_executed_without_stepping() -> None:
-    result = measure("Piet", "0110", repeat=1, row=1, step_cap=1, all_rows=True)
-    assert result["stepping_status"] == "unsupported"
+@pytest.mark.parametrize("language", ["Line", "Piet"])
+def test_raster_counts_commands_and_checks_every_row(language: str) -> None:
+    result = measure(language, "0110", repeat=1, row=1, step_cap=10_000, all_rows=True)
+    assert result["stepping_status"] == "supported"
     assert result["execution_status"] == "halted"
+    assert result["commands"] > 0
+    assert all(item["matches"] for item in result["executions"])
+    assert result["worst_row_commands"] > 0
+
+
+def test_nonsteppable_language_still_checks_every_row() -> None:
+    result = measure(
+        "A Painter Ant", "0110", repeat=1, row=1, step_cap=1, all_rows=True
+    )
+    assert result["stepping_status"] == "unsupported"
     assert result["commands"] is None
     assert all(item["matches"] for item in result["executions"])
+
+
+def test_generation_timing_includes_lazy_pixels(monkeypatch) -> None:
+    from scripts import benchmark
+
+    image = esolangs.generate("Line", "0110")
+    assert isinstance(image, esolangs.Raster)
+    rows = image.rows
+    clock = [0]
+
+    def materialize():
+        clock[0] += 100
+        return rows
+
+    monkeypatch.setattr(
+        esolangs, "generate", lambda *_args: esolangs.Raster(_materialize=materialize)
+    )
+    monkeypatch.setattr(benchmark.time, "perf_counter_ns", lambda: clock[0])
+    result = measure("Line", "0110", repeat=1, row=1, step_cap=10_000)
+    assert result["generation_ns_best"] == 100
+    assert result["matches"] is True
 
 
 def test_cycle_is_proven_without_waiting() -> None:
