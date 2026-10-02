@@ -703,11 +703,12 @@ def _register() -> None:
     # Stamp each example with its own stem, so ``build()`` knows which
     # language it is and can pick the matching token-aware wrapper without
     # the caller having to supply it.
-    from esolangs import line, piet
+    from esolangs.tools.line import line
+    from esolangs.tools.piet import piet
 
-    reading["line"] = _reader(line.generate, "line")
+    reading["line"] = _reader(line, "tape_based.line")
     reading["piet"] = replace(
-        _reader(piet.generate, "piet"),
+        _reader(piet, "stack_based.piet"),
         scale=80,
         note="80 pixels per codel, comparable in area to Line",
     )

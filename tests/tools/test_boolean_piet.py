@@ -6,9 +6,9 @@ from itertools import pairwise, product
 import pytest
 
 import esolangs
-from esolangs.piet import generate
 from esolangs.raster import Raster
 from esolangs.tools.helpers import essential_inputs, read_at
+from esolangs.tools.piet import piet as generate
 from tests.generator_support import verify_generated
 
 
@@ -102,9 +102,10 @@ def test_invalid_truth_table_is_rejected(truth_table: str) -> None:
         generate(truth_table)
 
 
-def test_legacy_piet_entry_points() -> None:
+def test_piet_generator_and_interpreter() -> None:
     from esolangs.interpreters.io import ScriptedIO
-    from esolangs.piet import generate, run
+    from esolangs.interpreters.stack_based.piet import run
+    from esolangs.tools.piet import piet as generate
 
     program = generate("01", scale=2)
     io = ScriptedIO("1")

@@ -240,9 +240,10 @@ class TestLineBoolean:
             line_boolean("0102")
 
 
-def test_language_package_retains_generator_entry_points() -> None:
+def test_line_generator_entry_points() -> None:
     import esolangs
-    from esolangs.line import balance, generate
+    from esolangs.tools.line import balance
+    from esolangs.tools.line import line as generate
 
     source = generate("01", scale=2)
     assert esolangs.evaluate("Line", source, inputs=1) == "01"

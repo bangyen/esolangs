@@ -2,6 +2,7 @@
 
 import importlib
 
+from esolangs.tools.minifuck import _solve
 from tests.tools.minifuck_support import _mux_separate
 
 
@@ -81,7 +82,7 @@ def test_failed_projection_mux_aborts_without_lifting() -> None:
     import pytest
 
     module = importlib.import_module("esolangs.tools.minifuck")
-    module.minifuck.cache_clear()
+    _solve.cache_clear()
     try:
         with (
             patch.object(
@@ -91,7 +92,7 @@ def test_failed_projection_mux_aborts_without_lifting() -> None:
         ):
             module.minifuck("0101")
     finally:
-        module.minifuck.cache_clear()
+        _solve.cache_clear()
 
 
 def test_failed_unary_column_rule_aborts_without_a_program() -> None:
@@ -101,7 +102,7 @@ def test_failed_unary_column_rule_aborts_without_a_program() -> None:
     import pytest
 
     module = importlib.import_module("esolangs.tools.minifuck")
-    module.minifuck.cache_clear()
+    _solve.cache_clear()
     try:
         with (
             patch.object(module, "_degenerate", return_value=None),
@@ -109,7 +110,7 @@ def test_failed_unary_column_rule_aborts_without_a_program() -> None:
         ):
             module.minifuck("01")
     finally:
-        module.minifuck.cache_clear()
+        _solve.cache_clear()
 
 
 def test_canonical_endgame_rejects_an_accumulator_inside_the_pool() -> None:

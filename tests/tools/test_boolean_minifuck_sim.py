@@ -187,7 +187,7 @@ class TestMinifuckSim(_MinifuckCase):
         as it happens.
         """
         from esolangs.tools import minifuck_sim
-        from esolangs.tools.minifuck import minifuck
+        from esolangs.tools.minifuck import _solve, minifuck
 
         real_emit = minifuck_sim._Joint.emit  # noqa: SLF001
         checked = [0]
@@ -212,10 +212,10 @@ class TestMinifuckSim(_MinifuckCase):
         # an earlier test already built emits far less the second time.
         # Counting only the divergent-pointer emissions keeps the floor
         # meaningful without depending on which caches happen to be warm.
-        minifuck.cache_clear()
+        _solve.cache_clear()
         with patch.object(minifuck_sim._Joint, "emit", checking_emit):  # noqa: SLF001
             for table in ("01", "0110", "10010110"):
                 minifuck(table)
-        minifuck.cache_clear()
+        _solve.cache_clear()
 
         assert checked[0], "no emission met rows whose pointers had diverged"

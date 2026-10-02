@@ -4,6 +4,7 @@ import importlib
 
 import pytest
 
+from esolangs.tools.minifuck import _solve
 from tests.tools.minifuck_support import (
     _MinifuckCase,
     _mux_separate,
@@ -20,7 +21,7 @@ class TestMinifuckPool(_MinifuckCase):
 
         They replaced a breadth-first search, so the property that matters
         is coverage: wherever the search would have found a pool, the list
-        must too.  This builds through the public entry point precisely
+        must too.  This builds through the solver precisely
         because the routes differ -- the degenerate one reaches the endgame
         from states the mux never produces, and six of the ten codes answer
         only those.
@@ -36,11 +37,9 @@ class TestMinifuckPool(_MinifuckCase):
         one to pin.
         """
 
-        module = importlib.import_module("esolangs.tools.minifuck")
-
         for table_int in range(16):
             table = format(table_int, "04b")
-            assert module.minifuck.__wrapped__(table), table
+            assert _solve.__wrapped__(table), table
 
     def test_the_pool_codes_are_generated_from_the_law(self) -> None:
         """The five codes are spelled by the law, not stored as strings.

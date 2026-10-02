@@ -139,7 +139,6 @@ STEP_SCOPE: dict[str, tuple[str, ...]] = {
     "exception leaks": (
         "src/esolangs/interpreters/",
         "src/esolangs/line/",
-        "src/esolangs/piet/",
         "src/esolangs/raster/",
         "scripts/verify_no_exception_leaks.py",
     ),
