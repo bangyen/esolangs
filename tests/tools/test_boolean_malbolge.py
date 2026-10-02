@@ -21,6 +21,7 @@ from esolangs import tools as boolean
 from esolangs.exceptions import GeneratorCapError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.malbolge import _XLAT1, _load, run
+from esolangs.tools._malbolge_core import _cascade
 
 _module = importlib.import_module("esolangs.tools.malbolge")
 
@@ -116,7 +117,7 @@ def test_program_is_the_full_store() -> None:
 
 
 def _second_level_rows() -> list[int]:
-    _, level, _, _ = _module._cascade()  # noqa: SLF001
+    _, level, _, _ = _cascade()
     return [row for row, lvl in enumerate(level) if lvl == 1]
 
 
