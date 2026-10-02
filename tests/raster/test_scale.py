@@ -226,3 +226,27 @@ def test_normalization_cache_belongs_to_frozen_source() -> None:
     red[0] = True
     with pytest.raises(ValueError, match="RGB"):
         Raster(mutable)
+
+
+def test_normalization_checks_vertical_rows_after_reuse() -> None:
+    black, red = (0, 0, 0), (255, 0, 0)
+    row = (black, black, red, red)
+    with pytest.raises(ProgramError, match="uniform"):
+        normalize((row, row, row, (black, red, red, red)), 2)
+
+
+def test_scale_row_reuse_exceeds_cache_limit() -> None:
+    black, red = (0, 0, 0), (255, 0, 0)
+    logical = tuple(
+        tuple(red if (index >> x) & 1 else black for x in range(12))
+        for index in range(1025)
+    )
+    source = Raster(logical + logical[:1]).upscaled(2)
+    assert detect_scale(source.rows) == 2
+    assert normalize(source.rows, 2) == logical + logical[:1]
+
+
+def test_normalization_rejects_horizontal_changes_in_matching_rows() -> None:
+    row = ((0, 0, 0), (255, 0, 0))
+    with pytest.raises(ProgramError, match="uniform"):
+        normalize((row, row), 2)
