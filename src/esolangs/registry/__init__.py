@@ -86,7 +86,7 @@ def example_stems() -> dict[str, str]:
 
     return {
         canonical_id(stem.replace("-", " ")): stem
-        for stem in set(_examples.BOOLEAN_EXAMPLES) | set(_examples.HAND_WRITTEN)
+        for stem in _examples.BOOLEAN_EXAMPLES
     }
 
 

@@ -21,7 +21,6 @@ import esolangs
 from esolangs.raster import Raster
 from esolangs.registry import LANGUAGES, canonical_id
 from esolangs.tools.examples import BOOLEAN_EXAMPLES as BOOLEAN_GENERATED
-from esolangs.tools.examples import HAND_WRITTEN
 from esolangs.vm import (
     _FramedMachine,
     _TapeMachine,
@@ -145,7 +144,7 @@ def test_boolean_examples_cover_every_committed_file() -> None:
         if p.suffix in (".txt", ".png")
     }
     expected = {example.filename for example in BOOLEAN_GENERATED.values()}
-    assert on_disk == expected | {f"{stem}.txt" for stem in HAND_WRITTEN}
+    assert on_disk == expected
 
 
 @pytest.mark.parametrize("name", sorted(HALT_CONVENTION))
@@ -208,10 +207,7 @@ def test_every_boolean_generator_has_an_example() -> None:
     registered = {
         canonical_id(lang.name) for lang in LANGUAGES.values() if lang.boolean
     }
-    covered = {
-        canonical_id(stem.replace("-", " "))
-        for stem in set(BOOLEAN_GENERATED) | set(HAND_WRITTEN)
-    }
+    covered = {canonical_id(stem.replace("-", " ")) for stem in BOOLEAN_GENERATED}
     assert registered - covered == _NO_EXAMPLE, (
         "boolean generators with no committed example: "
         f"{sorted(registered - covered - _NO_EXAMPLE)}"
@@ -233,9 +229,6 @@ def test_every_boolean_generator_has_an_example() -> None:
 BOOLEAN_EXAMPLES = {
     stem: (ex.interpreter, list(ex.inputs), ex.expected, ex.split, dict(ex.kwargs))
     for stem, ex in BOOLEAN_GENERATED.items()
-} | {
-    stem: (interpreter, list(inputs), expected, split, {})
-    for stem, (interpreter, inputs, expected, split) in HAND_WRITTEN.items()
 }
 
 
