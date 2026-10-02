@@ -11,7 +11,7 @@ from __future__ import annotations
 from collections.abc import Callable, Sequence
 from inspect import signature
 from time import monotonic
-from typing import Literal
+from typing import Literal, get_args
 
 from esolangs._source import InputSource, ProgramSource
 from esolangs._validate import check_timeout, check_whole
@@ -26,7 +26,7 @@ StopReason = Literal["halted", "breakpoint", "max_steps", "timeout"]
 #: :data:`StopReason`'s members as iterable data.  What :meth:`Debugger.run`
 #: returns; the CLI's ``debug`` also prints ``stopped: raised`` for a fault
 #: it caught, so a parsed ``stopped:`` line can fail against this tuple.
-STOP_REASONS: tuple[StopReason, ...] = ("halted", "breakpoint", "max_steps", "timeout")
+STOP_REASONS: tuple[StopReason, ...] = get_args(StopReason)
 
 
 def _value_at[T](

@@ -620,7 +620,6 @@ WRAPPERS = {
     "slow_acv_mammalian": _mammalian,
     # Multi-character tokens (``vs``, ``0b1``, ``L C 19``); space is the
     # only safe break.
-    "lamfunc": wrap_space_delimited,
     "ram0": wrap_space_delimited,
     # Operand-before-operator, so a break between the two is a load error.
     "jaune": _jaune,
@@ -647,12 +646,12 @@ WRAPPERS = {
 }
 
 
-# Wrappers that handle a multi-line program themselves instead of being
-# skipped: Taglate's first line seeds its queue (kept whole); Qoibl's every
-# line is a statement, folded separately for the reader (the language would
-# not notice).  Minifuck keeps existing newline comments attached to the
-# bracket that may skip them, and preserves already-fitting template folds.
-MULTILINE = frozenset({"taglate", "packlang", "minifuck"})
+# These wrappers preserve structural rows or existing newline comments.
+MULTILINE = frozenset(
+    language_id
+    for language_id, wrapper in WRAPPERS.items()
+    if wrapper in {_taglate, _packlang, _minifuck}
+)
 
 
 def takes_width(fn: Callable[..., object]) -> bool:
