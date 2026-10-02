@@ -635,3 +635,11 @@ def test_rgb_writer_exceeds_pixel_cache() -> None:
     row = tuple((index // 256, index % 256, 0) for index in range(1025))
     rows = (row, tuple(reversed(row)))
     assert png.read_rgb(png.write_rgb(rows)) == [list(part) for part in rows]
+
+
+@pytest.mark.parametrize("invalid", [(0, 0, 256), (1.0, 0, 0)])
+def test_rgb_writer_validates_pixels_after_cache_saturation(invalid) -> None:
+    row = [(index // 256, index % 256, 0) for index in range(1024)]
+    row.append(invalid)
+    with pytest.raises((ValueError, TypeError)):
+        png.write_rgb([row])
