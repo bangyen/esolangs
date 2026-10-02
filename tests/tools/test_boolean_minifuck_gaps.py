@@ -3,16 +3,14 @@
 import importlib
 
 from esolangs.tools.minifuck import _solve
-from tests.tools.minifuck_support import _mux_separate
-
-
-def _scout_setup(module: object, n: int) -> tuple[object, range]:
-    """The separation ``_mux`` scouts at ``n``, with the accumulators it tries."""
-    base = _mux_separate(n)
-    positions = base.ptrs()
-    lowest, highest = min(positions), max(positions)
-    accs = range(highest - lowest + module._POOL_WIDTH + 1, lowest - 1)  # noqa: SLF001
-    return base, accs
+from esolangs.tools.minifuck_mux import (
+    _MUX_BASE,
+    _mux,
+    _mux_lookup,
+    _mux_start,
+    _probe_frame,
+)
+from esolangs.tools.minifuck_pool import _POOL_WIDTH
 
 
 class TestMuxUsesOneRule:
@@ -20,19 +18,13 @@ class TestMuxUsesOneRule:
 
     def test_the_rule_matches_the_named_lookup(self) -> None:
         """The named strip construction is the production spelling."""
-        module = importlib.import_module("esolangs.tools.minifuck")
         for n, table in ((2, "0110"), (2, "0001"), (3, "01101001")):
-            built = module._mux(table, n)  # noqa: SLF001
-            assert built == module._mux_lookup(table, n)  # noqa: SLF001
+            built = _mux(table, n)
+            assert built == _mux_lookup(table, n)
 
     def test_the_start_displacement_sets_the_baseline_phase(self) -> None:
         """Crossing an odd extra prefix flips the zero-control column."""
-        module = importlib.import_module("esolangs.tools.minifuck")
-        phases = [
-            (n ^ (module._mux_start(n) - module._MUX_BASE) ^ 1)  # noqa: SLF001
-            & 1
-            for n in range(2, 9)
-        ]
+        phases = [(n ^ (_mux_start(n) - _MUX_BASE) ^ 1) & 1 for n in range(2, 9)]
         assert phases == [1, 0, 1, 1, 0, 1, 0]
 
 
@@ -51,8 +43,7 @@ class TestProbeFrameAndColumns:
         242 leaves the region's cells alone but changes what sits above it,
         which the frame cannot describe.
         """
-        module = importlib.import_module("esolangs.tools.minifuck")
-        assert module._probe_frame(".[[...[<", 242) is None  # noqa: SLF001
+        assert _probe_frame(".[[...[<", 242) is None
 
 
 def test_degenerate_column_rules_execute_or_decline() -> None:
@@ -118,7 +109,6 @@ def test_canonical_endgame_rejects_an_accumulator_inside_the_pool() -> None:
     import pytest
 
     from esolangs.tools.minifuck_mux import _canonical_endgame
-    from esolangs.tools.minifuck_pool import _POOL_WIDTH
     from esolangs.tools.minifuck_sim import _Joint
 
     joint = _Joint(1)
@@ -131,7 +121,6 @@ def test_canonical_endgame_rejects_an_accumulator_inside_the_pool() -> None:
 def test_probe_frame_refuses_a_pointer_outside_its_low_byte() -> None:
     """A low-byte summary cannot describe a cursor that has left that byte."""
     from esolangs.tools.minifuck_mux import _probe_frame
-    from esolangs.tools.minifuck_pool import _POOL_WIDTH
 
     assert _probe_frame("[" * (_POOL_WIDTH - 1), 0) == (_POOL_WIDTH - 1, 0)
     assert _probe_frame("[" * _POOL_WIDTH, 0) is None
