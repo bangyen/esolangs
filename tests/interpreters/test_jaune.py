@@ -347,3 +347,10 @@ class TestContract(SnapshotContract):
 
     machine = staticmethod(_machine)
     stepping_program = "6+5+^."
+
+
+@pytest.mark.parametrize(("code", "expected"), [("+12^.", "1"), ("-12^.", "-1")])
+def test_a_sign_without_an_operand_command_remains_a_bare_operation(
+    code: str, expected: str
+) -> None:
+    assert run_program(code) == expected

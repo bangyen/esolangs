@@ -847,3 +847,35 @@ class TestBreakAtWhereThereIsNoShape:
         assert debugger.ip is None
         debugger.break_at(3)
         debugger.break_at((1, 2))
+
+
+@pytest.mark.parametrize("language", ["Line", "Piet"])
+def test_debug_raster_table_warns_about_an_input_count_mismatch(
+    language: str, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    program = esolangs.generate(language, "01")
+    path = tmp_path / "program.png"
+    path.write_bytes(program.to_png())
+    _out, err = call_both(
+        ["debug", "--steps", "1", "--table", "0110", language, str(path)],
+        capsys,
+        stdin="0\n",
+    )
+    assert "reads 2 line" in err
+
+
+def test_run_reports_an_interpreter_warning_once(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import warnings
+
+    def run(*_args, **_kwargs):
+        warnings.warn("interpreter notice", UserWarning, stacklevel=1)
+        return "result"
+
+    monkeypatch.setattr("esolangs.cli_run.run", run)
+    out, err = call_both(
+        ["run", "--timeout", "1", "brainfuck", _program(tmp_path, ".")], capsys
+    )
+    assert out == "result"
+    assert err.count("interpreter notice") == 1

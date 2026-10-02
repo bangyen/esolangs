@@ -297,3 +297,25 @@ def test_boolean_set_names_are_registered() -> None:
     """Every language marked boolean in the matrix is a registered language."""
     module = load_script()
     assert set(module.LANGUAGES) >= module.BOOLEAN
+
+
+def test_language_listing_covers_every_interpreter() -> None:
+    module = load_script()
+    rendered = module.render_languages_section()
+    for name, language in module.LANGUAGES.items():
+        if language.interpreter is not None:
+            assert f"- [{name}]" in rendered
+    for path in re.findall(r"/blob/main/([^)]*)", rendered):
+        assert (REPO_ROOT / path).is_file()
+
+
+def test_language_listing_only_lists_available_interpreters(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = load_script()
+    monkeypatch.setitem(
+        module.LANGUAGES, "Line", replace(module.LANGUAGES["Line"], interpreter=None)
+    )
+    rendered = module.render_languages_section()
+    assert "- [Line]" not in rendered
+    assert f"Show all {len(module.LANGUAGES) - 1} languages" in rendered

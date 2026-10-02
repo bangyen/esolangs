@@ -31,7 +31,7 @@ import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO, ScriptedIO
-from esolangs.registry import LANGUAGES, RUNNERS
+from esolangs.registry import LANGUAGES
 
 # The interpreter tree, anchored to this file rather than the working
 # directory, so the sweep finds the same modules wherever pytest was
@@ -95,7 +95,8 @@ def _module_files() -> list[pathlib.Path]:
     the omission.  A walk that discovers the tree cannot acquire that hole.
     """
     return sorted(
-        path for path in _INTERPRETERS.glob("*/*.py") if not path.name.startswith("_")
+        [path for path in _INTERPRETERS.glob("*/*.py") if not path.name.startswith("_")]
+        + list(_INTERPRETERS.glob("*/*/__init__.py"))
     )
 
 
@@ -165,7 +166,11 @@ def _machine_declarations(path: pathlib.Path) -> tuple[ast.ClassDef, ast.Functio
     """
     tree = ast.parse(path.read_text(encoding="utf-8"))
     assert any(
-        (isinstance(node, ast.ClassDef) and node.name == "_State")
+        (
+            isinstance(node, ast.ImportFrom)
+            and any(alias.name == "_State" for alias in node.names)
+        )
+        or (isinstance(node, ast.ClassDef) and node.name == "_State")
         or (
             isinstance(node, ast.TypeAlias)
             and isinstance(node.name, ast.Name)
@@ -206,10 +211,17 @@ class TestTheSweepCanSee:
         or by missing a category the way the docstring checker missed two.
         """
         walked = {
-            path.relative_to(_INTERPRETERS).as_posix().removesuffix(".py")
+            path.relative_to(_INTERPRETERS)
+            .as_posix()
+            .removesuffix("/__init__.py")
+            .removesuffix(".py")
             for path in _module_files()
         }
-        registered = {module.replace(".", "/") for module, _ in RUNNERS.values()}
+        registered = {
+            lang.interpreter.replace(".", "/")
+            for lang in LANGUAGES.values()
+            if lang.interpreter
+        }
         assert sorted(registered - walked) == []
 
     def test_the_io_surface_is_not_empty(self) -> None:
@@ -453,6 +465,8 @@ class TestEntryPointConventions:
 
     @staticmethod
     def _main_call(path: pathlib.Path) -> ast.Call:
+        if path.name == "__init__.py":
+            path = path.with_name("__main__.py")
         tree = ast.parse(path.read_text(encoding="utf-8"))
         blocks = [
             node
@@ -479,7 +493,7 @@ class TestEntryPointConventions:
         assert isinstance(call.func, ast.Name)
         assert call.func.id == "script_main"
         assert [ast.unparse(arg) for arg in call.args] == ["run"]
-        assert {keyword.arg for keyword in call.keywords} <= {"shape"}
+        assert {keyword.arg for keyword in call.keywords} <= {"shape", "loader"}
 
     @pytest.mark.parametrize(
         "path",
@@ -491,9 +505,13 @@ class TestEntryPointConventions:
         call = self._main_call(path)
         shape = "text"
         for keyword in call.keywords:
+            if keyword.arg == "loader":
+                assert ast.unparse(keyword.value) == "load_source"
+                shape = "loaded"
+                continue
             assert isinstance(keyword.value, ast.Constant)
             shape = keyword.value.value
-        assert shape in ("text", "keep", "strip")
+        assert shape in ("text", "keep", "strip", "loaded")
 
         tree = ast.parse(path.read_text(encoding="utf-8"))
         run = next(
@@ -507,7 +525,11 @@ class TestEntryPointConventions:
         # equality: the shape has to be among what `run` takes, not the only
         # thing it takes.
         accepted = {part.strip() for part in ast.unparse(annotation).split("|")}
-        wanted = "str" if shape == "text" else "list[str]"
+        wanted = (
+            "Raster"
+            if shape == "loaded"
+            else ("str" if shape == "text" else "list[str]")
+        )
         assert wanted in accepted, (
             f"{path.name}: shape={shape!r} but run takes {accepted}"
         )

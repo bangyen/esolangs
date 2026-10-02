@@ -54,10 +54,10 @@ BY_BOOLEAN: dict[str, Language] = {
 RUNNERS: dict[str, tuple[str, bool]] = {
     name: (lang.interpreter, lang.split)
     for name, lang in LANGUAGES.items()
-    if lang.interpreter and lang.source_kind is SourceKind.TEXT
+    if lang.interpreter
 }
 
-# Public workflows select by capability; RUNNERS describes text bundling only.
+# Public workflows select by capability.
 GENERATORS = {
     name: generator
     for name, lang in LANGUAGES.items()

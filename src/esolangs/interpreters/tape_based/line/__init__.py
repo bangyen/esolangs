@@ -16,18 +16,21 @@ from functools import lru_cache
 from typing import TYPE_CHECKING, cast
 
 from esolangs._source import raster_source as load_source
-from esolangs.interpreters.io import ScriptedIO
+from esolangs.interpreters.io import IO
 from esolangs.raster import Pixel, Raster, Rows
 
 from .extract import extract_mask
 from .mask import from_grey
-from .simulate import IO
+from .simulate import IO as _LINE_IO
+from .simulate import _State
 from .simulate import run_compiled as _run_compiled
 
 if TYPE_CHECKING:
     from esolangs.line.render import Node
 
     from .simulate import _Compiled
+
+__all__ = ["load_source", "run"]
 
 supports_scale = True
 
@@ -80,13 +83,6 @@ def _grey_rows(rows: Rows) -> list[bytearray]:
     return grey
 
 
-def _run_node(node: Node, io: ScriptedIO) -> None:
-    """Execute the graph retained by a generated raster."""
-    from .simulate import run_node
-
-    run_node(node, IO(read=io.input_num, write=io.print_num))
-
-
 @lru_cache(maxsize=8)
 def _compiled(program: Raster, scale: int | None = None) -> _Compiled:
     from .simulate import compile_program
@@ -110,12 +106,17 @@ def _source_view(program: Raster) -> str:
 class _Machine:
     """A Line run: immutable code and state with I/O handled by the shell."""
 
+    @staticmethod
+    def run_node(node: Node, io: IO) -> None:
+        """Execute the graph retained by a generated raster."""
+        from .simulate import run_node
+
+        run_node(node, _LINE_IO(read=io.input_num, write=io.print_num))
+
     ip_shape = "grid"
 
-    def __init__(
-        self, program: Raster, io: ScriptedIO, *, scale: int | None = None
-    ) -> None:
-        from .simulate import _freeze_program, _State
+    def __init__(self, program: Raster, io: IO, *, scale: int | None = None) -> None:
+        from .simulate import _freeze_program
 
         self.program = _freeze_program(_compiled(program, scale))
         self.state: _State = (0, 0, 0, ())
@@ -167,12 +168,12 @@ class _Machine:
             self.io.print_num(output)
 
 
-def run(program: Raster, io: ScriptedIO, *, scale: int | None = None) -> None:
+def run(program: Raster, io: IO, *, scale: int | None = None) -> None:
     """Execute a Line raster, writing decimal outputs through ``io``."""
     if program._payload is not None and scale is None:  # noqa: SLF001 - language-owned payload
-        _run_node(cast("Node", program._payload), io)  # noqa: SLF001
+        _Machine.run_node(cast("Node", program._payload), io)  # noqa: SLF001
         return
     _run_compiled(
         _compiled(program, scale),
-        IO(read=io.input_num, write=io.print_num),
+        _LINE_IO(read=io.input_num, write=io.print_num),
     )

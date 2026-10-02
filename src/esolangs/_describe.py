@@ -7,7 +7,6 @@ from esolangs._execution import interpreter_module
 from esolangs.exceptions import ProgramError
 from esolangs.registry import (
     LANGUAGES,
-    RUNNERS,
     example_stems,
     parameterized_ids,
     resolve,
@@ -90,8 +89,7 @@ def describe(language: str) -> LanguageInfo:
     """
     name = resolve(language)
     lang = LANGUAGES[name]
-    module = RUNNERS.get(name)
-    family = module[0].split(".")[0] if module else None
+    family = lang.interpreter.split(".")[0] if lang.interpreter else None
     stem = example_stems().get(lang.id, lang.id)
     # Absolute.  These were relative to the repository root, which made the
     # recipe this package advertises -- ``run(lang, Path(describe(lang)
@@ -108,8 +106,7 @@ def describe(language: str) -> LanguageInfo:
         "spec": _spec(name),
         "id": lang.id,
         "source_kind": lang.source_kind.value,
-        "state_model": lang.state_model
-        or (_STATE_MODELS.get(family) if family else None),
+        "state_model": _STATE_MODELS.get(family) if family else None,
         "interpreter": lang.interpreter,
         "boolean_generator": lang.boolean is not None,
         "parameterized": parameterized,

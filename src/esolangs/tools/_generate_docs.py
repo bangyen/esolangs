@@ -11,10 +11,11 @@ import re
 from typing import cast
 
 import esolangs
-from esolangs.registry import LANGUAGES, RUNNERS, wiki_url
+from esolangs.registry import LANGUAGES, SourceKind, wiki_url
 from esolangs.tools import BOOLEAN
 
 ROOT = pathlib.Path(__file__).parents[3]
+_INTERPRETERS = pathlib.Path(__file__).parents[1] / "interpreters"
 
 
 # The README's Implemented Languages section, grouped by interpreter
@@ -92,17 +93,20 @@ _SAMPLE_BITS = [1, 0, 1]
 
 def render_package_count_section() -> str:
     """Render the total and source-shape counts in the README lead."""
+    text_count = sum(lang.source_kind is SourceKind.TEXT for lang in LANGUAGES.values())
     return (
         f"Interpreters and Boolean generators for {len(LANGUAGES)} esoteric "
-        f"languages: {len(RUNNERS)} text and "
-        f"{len(LANGUAGES) - len(RUNNERS)} raster."
+        f"languages: {text_count} text and "
+        f"{len(LANGUAGES) - text_count} raster."
     )
 
 
 def _source_link(name: str) -> str:
     """Return the GitHub URL of the language's Python interpreter."""
-    module = RUNNERS[name][0]
+    module = cast(str, LANGUAGES[name].interpreter)
     path = module.replace(".", "/")
+    if not (_INTERPRETERS / f"{path}.py").is_file():
+        path += "/__init__"
     return (
         f"https://github.com/bangyen/esolangs/blob/main/"
         f"src/esolangs/interpreters/{path}.py"
@@ -117,16 +121,15 @@ def render_languages_section() -> str:
     page and the interpreter's source file on GitHub.  The ``<summary>``
     count is generated too, so it stays in sync.
     """
+    count = sum(lang.interpreter is not None for lang in LANGUAGES.values())
     out: list[str] = [
-        # ``RUNNERS`` is the text languages; the two raster languages
-        # (Line, Piet) are named just below the block, so say "text" rather
-        # than let "62" read as the whole registry's 64.
-        f"<summary>Show all {len(RUNNERS)} text languages</summary>",
+        f"<summary>Show all {count} languages</summary>",
         "",
     ]
     groups: dict[str, list[str]] = {prefix: [] for prefix, _, _ in _README_HEADINGS}
-    for name, (module, _) in RUNNERS.items():
-        groups[module.split(".")[0]].append(name)
+    for name, lang in LANGUAGES.items():
+        if lang.interpreter is not None:
+            groups[lang.interpreter.split(".")[0]].append(name)
 
     for prefix, heading, description in _README_HEADINGS:
         out.append(f"### {heading}")
