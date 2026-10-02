@@ -62,8 +62,8 @@ class TestRewriteImports:
                 "register.polynomial",
             ),
             (
-                "from esolangs.tools.tape import dimensional as gen",
-                "tape.dimensional",
+                "from esolangs.tools.dimensional import dimensional as gen",
+                "dimensional.dimensional",
             ),
         ):
             out = script._rewrite_imports(f"{line}\n", "bundled", module)  # noqa: SLF001

@@ -310,7 +310,7 @@ def test_reorder_permutation_preserves_the_function() -> None:
 
 def test_greedy_order_never_grows_a_wide_program() -> None:
     """The identity candidate keeps the greedy heuristic from growing output."""
-    from esolangs.tools.tape import _bf_ordered
+    from esolangs.tools.brainfuck import _bf_ordered
 
     n = 8
     table = "0" * (2**n - 1) + "1"
@@ -427,7 +427,7 @@ def test_the_tree_program_spends_its_permutation_on_the_tested_cell() -> None:
     """
     from itertools import permutations
 
-    from esolangs.tools.tape import _bf_ordered
+    from esolangs.tools.brainfuck import _bf_ordered
 
     lengths = {
         perm: len(_bf_ordered("00010111", perm)) for perm in permutations(range(3))
