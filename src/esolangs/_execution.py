@@ -11,7 +11,7 @@ from contextlib import contextmanager
 from types import ModuleType
 from typing import Any
 
-from esolangs._program import Program
+from esolangs._program import Program, RunnerProgram
 from esolangs.exceptions import (
     ArgumentError,
     EsolangError,
@@ -20,7 +20,6 @@ from esolangs.exceptions import (
 )
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.randomness import Seeded
-from esolangs.raster import Raster
 from esolangs.registry import INTERPRETERS, LANGUAGES
 
 
@@ -46,7 +45,7 @@ def prepare_call(
     scale: int | None = None,
     seed: int | None = None,
     reproducible: bool = False,
-) -> tuple[str | list[str] | Raster, dict[str, Any]]:
+) -> tuple[RunnerProgram, dict[str, Any]]:
     """Prepare source shape and options for a runner or machine constructor."""
     code = (
         program.splitlines()
