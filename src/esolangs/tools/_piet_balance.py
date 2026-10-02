@@ -3,11 +3,11 @@
 from math import isqrt
 from typing import NamedTuple
 
+from esolangs.piet import BLACK
 from esolangs.raster import Raster
 from esolangs.tools.helpers import _validate_truth_table
 
-from . import BLACK
-from .piet_boolean import (
+from .piet import (
     _MULTIPLY,
     _POP,
     _next_colour,

@@ -15,6 +15,7 @@ from esolangs.tools.fish import fish
 from esolangs.tools.fractran import fractran
 from esolangs.tools.inject import inject
 from esolangs.tools.intercal import intercal
+from esolangs.tools.line import line
 from esolangs.tools.malbolge import malbolge
 from esolangs.tools.other import (
     bit_tilde,
@@ -44,7 +45,7 @@ from esolangs.tools.parameterized import (
     ram0,
     underload,
 )
-from esolangs.tools.raster import line, piet
+from esolangs.tools.piet import piet
 from esolangs.tools.register import (
     addsubjump,
     collatz_multiverse,

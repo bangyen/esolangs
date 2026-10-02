@@ -15,13 +15,16 @@ cover parity through n=8, boundary rows at n=9, and every pruned topology at n=3
 
 from __future__ import annotations
 
+import re
+from functools import lru_cache
+
+from esolangs.line.render import Node, chain
+from esolangs.raster import Pixel, Raster, Rows
 from esolangs.tools.helpers import (
     _residual_ids,
     _validate_truth_table,
     permute_truth_table,
 )
-
-from .render import Node, chain
 
 
 def line_boolean(truth_table: str, *, reverse: bool = False) -> Node:
@@ -73,12 +76,71 @@ def line_boolean(truth_table: str, *, reverse: bool = False) -> Node:
     return head
 
 
-if __name__ == "__main__":
-    import sys
+_GREY_RUN = re.compile(rb"(.)\1*", re.DOTALL)
 
-    from .render import render
 
-    tt = sys.argv[1] if len(sys.argv) > 1 else "0001"
-    out_path = sys.argv[2] if len(sys.argv) > 2 else "line_bool_out.png"
-    render(line_boolean(tt)).save(out_path)
-    print(f"wrote {out_path}")
+def _render_node(
+    node: Node, heading: tuple[int, int] = (-1, 0), *, compact: bool = True
+) -> Rows:
+    """Render a generated Line graph into shared RGB rows."""
+    from esolangs.line.render import render
+
+    canvas = render(node, start_heading=heading, acyclic=True, compact=compact)
+    palette = tuple((level, level, level) for level in range(256))
+    cache: dict[bytes, tuple[Pixel, ...]] = {}
+    rows = []
+    for row in canvas.pixels:
+        key = bytes(row)
+        pixels = cache.get(key)
+        if pixels is None:
+            expanded = []
+            for run in _GREY_RUN.finditer(key):
+                expanded.extend([palette[run[1][0]]] * (run.end() - run.start()))
+            pixels = tuple(expanded)
+            if len(cache) < 1024:
+                cache[key] = pixels
+        rows.append(pixels)
+    return tuple(rows)
+
+
+@lru_cache(maxsize=8)
+def _generate(truth_table: str) -> Raster:
+    """Return a Line raster computing ``truth_table``."""
+    node = line_boolean(truth_table)
+    return Raster(
+        _materialize=lambda: _render_node(node),
+        _payload=node,
+    )
+
+
+def line(truth_table: str, *, scale: int = 1) -> Raster:
+    """Return a Line raster enlarged by an integer pixel factor."""
+    return _generate(truth_table).upscaled(scale)
+
+
+def balance(truth_table: str, _default: Raster) -> Raster:
+    """Choose the most balanced compact or previous forward/reverse tree."""
+    from esolangs.line.render import _UNIT
+    from esolangs.line.tree_layout import tree_extents
+
+    plans = []
+    previous = []
+    for reverse in (False, True):
+        node = line_boolean(truth_table, reverse=reverse)
+        y0, y1, x0, x1 = tree_extents(node)[id(node)]
+        width, height = (x1 - x0 + 2) * _UNIT, (y1 - y0 + 2) * _UNIT
+        heading = (-1, 0)
+        plans.append(((abs(width - height), width * height, width), node, heading))
+        y0, y1, x0, x1 = tree_extents(node, compact=False)[id(node)]
+        width, height = (x1 - x0 + 2) * _UNIT, (y1 - y0 + 2) * _UNIT
+        previous.append(((abs(width - height), width * height, width), node, heading))
+    score, selected, heading = min(plans, key=lambda plan: plan[0])
+    old_score, old_selected, old_heading = min(previous, key=lambda plan: plan[0])
+    # 01101110 ties in imbalance but grows 1,187,200 -> 1,276,000 pixels.
+    compact = score <= old_score
+    if not compact:
+        selected, heading = old_selected, old_heading
+    return Raster(
+        _materialize=lambda: _render_node(selected, heading, compact=compact),
+        _payload=selected,
+    )

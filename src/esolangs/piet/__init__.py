@@ -326,11 +326,7 @@ def run(program: Raster, io: ScriptedIO, *, scale: int | None = None) -> None:
 
 
 def generate(truth_table: str, width: int | None = None, *, scale: int = 1) -> Raster:
-    """Return a Piet raster computing ``truth_table``."""
-    from .piet_boolean import generate as _generate
+    """Return a Piet raster computing the table."""
+    from esolangs.tools.piet import piet
 
-    if width is not None:
-        from .balance import folded
-
-        return folded(truth_table, width).upscaled(scale)
-    return _generate(truth_table).upscaled(scale)
+    return piet(truth_table, width, scale=scale)

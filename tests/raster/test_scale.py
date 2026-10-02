@@ -175,7 +175,7 @@ def test_partial_blank_line_scale_group_is_allowed() -> None:
 
 
 def test_empty_piet_operation_path_halts() -> None:
-    from esolangs.piet.balance import _emit, _plan
+    from esolangs.tools._piet_balance import _emit, _plan
 
     image = _emit([], _plan([], 13, 14))
     assert esolangs.run("Piet", image) == ""

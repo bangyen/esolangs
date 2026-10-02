@@ -5,10 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from functools import cache
 
+from esolangs.piet import _COLOURS, BLACK
 from esolangs.raster import Raster
 from esolangs.tools.helpers import _validate_truth_table, essential_inputs, read_at
-
-from . import _COLOURS, BLACK
 
 Change = tuple[int, int]
 
@@ -125,7 +124,7 @@ def _next_colour(colour: tuple[int, int, int], change: Change) -> tuple[int, int
 
 
 @cache
-def generate(truth_table: str) -> Raster:
+def _generate(truth_table: str) -> Raster:
     """Return a Piet raster computing ``truth_table`` in linear space."""
     inputs = _validate_truth_table(truth_table)
     operations = _operations(truth_table, inputs)
@@ -154,3 +153,12 @@ def generate(truth_table: str) -> Raster:
     rows[1][x] = colour
     rows[2][x] = colour
     return Raster(tuple(tuple(row) for row in rows))
+
+
+def piet(truth_table: str, width: int | None = None, *, scale: int = 1) -> Raster:
+    """Return a Piet raster computing the table."""
+    if width is not None:
+        from esolangs.tools._piet_balance import folded
+
+        return folded(truth_table, width).upscaled(scale)
+    return _generate(truth_table).upscaled(scale)

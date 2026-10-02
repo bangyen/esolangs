@@ -69,8 +69,8 @@ Usage:
     python scripts/mutate.py generator tools/register
     python scripts/mutate.py generator tools/streetcode
     python scripts/mutate.py generator dimensional --keep   # leave the work dir
-    python scripts/mutate.py generator line/line_boolean
-    python scripts/mutate.py generator piet/piet_boolean
+    python scripts/mutate.py generator tools/line
+    python scripts/mutate.py generator tools/piet
 
 Raster families include their interpreter modules; ``__init__`` targets the
 public runner. They use the copied package rather than text-only bundling.
@@ -109,6 +109,7 @@ sys.path.insert(0, str(ROOT / "src"))
 # generators against the remaining ones alone.
 _TOOLS_SUPPORT = (
     Path("tests/source_support.py"),
+    Path("tests/generator_support.py"),
     Path("tests/__init__.py"),
     Path("tests/divergence.py"),
     Path("tests/raises.py"),
@@ -200,7 +201,7 @@ _KINDS = {
         "piet",
         "piet",
         "tests/piet",
-        (*_TOOLS_SUPPORT, Path("tests/generator_support.py")),
+        _TOOLS_SUPPORT,
         include_init=True,
     ),
     "tools": _Kind("tools", "tools", "tests/tools", _TOOLS_SUPPORT, needs_scripts=True),

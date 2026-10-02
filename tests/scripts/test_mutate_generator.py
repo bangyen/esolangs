@@ -367,9 +367,9 @@ def test_config_isolates_xdist_and_applies_selection_to_every_pass(
 @pytest.mark.parametrize(
     ("family", "module"),
     [
-        ("line", "line_boolean"),
+        ("tools", "line"),
         ("line", "simulate"),
-        ("piet", "piet_boolean"),
+        ("tools", "piet"),
         ("piet", "__init__"),
     ],
 )
@@ -391,11 +391,11 @@ def test_raster_modules_prepare_their_real_suites(
     ("family", "module", "old", "new", "node"),
     [
         (
+            "tools",
             "line",
-            "line_boolean",
             "value = state",
             "value = 1 - state",
-            "tests/line/test_line_boolean.py::TestLineBoolean::test_and_n2",
+            "tests/tools/test_boolean_line.py::TestLineBoolean::test_and_n2",
         ),
         (
             "line",
@@ -405,11 +405,11 @@ def test_raster_modules_prepare_their_real_suites(
             "tests/line/test_raster.py::test_line_consumes_the_public_raster",
         ),
         (
+            "tools",
             "piet",
-            "piet_boolean",
             "_Operation(_MULTIPLY)",
             "_Operation(_ADD)",
-            "tests/piet/test_piet_boolean.py::test_every_row_executes[0001]",
+            "tests/tools/test_boolean_piet.py::test_every_row_executes[0001]",
         ),
         (
             "piet",

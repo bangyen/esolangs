@@ -7,9 +7,9 @@ import pytest
 import esolangs
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.line import run as run_line
-from esolangs.line.line_boolean import line_boolean
 from esolangs.line.render import render
 from esolangs.raster import Raster
+from esolangs.tools.line import line_boolean
 
 
 def test_png_round_trip_preserves_rgb() -> None:
@@ -200,8 +200,8 @@ def test_greyscale_conversion_preserves_many_distinct_rows() -> None:
 
 
 def test_rendered_grey_levels_survive_many_distinct_rows(monkeypatch) -> None:
-    from esolangs.line import _render_node
     from esolangs.line.render import Canvas
+    from esolangs.tools.line import _render_node
 
     canvas = Canvas(2, 1025)
     canvas.pixels = [bytearray([i // 256, i % 256]) for i in range(1025)]
@@ -269,8 +269,8 @@ def test_greyscale_runs_flush_at_colour_changes_and_row_end() -> None:
 
 
 def test_rendered_rgb_runs_preserve_newline_levels_and_shared_pixels(monkeypatch):
-    from esolangs.line import _render_node
     from esolangs.line.render import Canvas
+    from esolangs.tools.line import _render_node
 
     canvas = Canvas(37, 2)
     row = bytearray([10] * 19 + [0] * 7 + [255] * 11)

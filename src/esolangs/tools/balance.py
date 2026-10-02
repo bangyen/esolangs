@@ -5,10 +5,9 @@ from collections.abc import Callable
 from itertools import pairwise
 from math import isqrt
 
-from esolangs.line import balance as balance_line
-from esolangs.piet.balance import balance as balance_piet
 from esolangs.raster import Raster
 from esolangs.tools._circuit_balance import balance_circuit_diagram
+from esolangs.tools._piet_balance import balance as balance_piet
 from esolangs.tools.algebraic_programming_language import balance_apl
 from esolangs.tools.alight_balance import balance_alight
 from esolangs.tools.arrowqueue import arrowqueue
@@ -32,6 +31,7 @@ from esolangs.tools.helpers import TEMPLATE_CHAR, _validate_truth_table, mark_ru
 from esolangs.tools.inject import inject
 from esolangs.tools.intercal import balance_intercal
 from esolangs.tools.laserfuck import balance_laserfuck
+from esolangs.tools.line import balance as balance_line
 from esolangs.tools.minifuck import minifuck
 from esolangs.tools.minifuck_sim import PAIR
 from esolangs.tools.packlang import balance_packlang
