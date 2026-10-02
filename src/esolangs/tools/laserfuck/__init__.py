@@ -12,7 +12,6 @@ block on end to meet a width.
 from functools import cache
 from typing import NamedTuple
 
-from esolangs.tools import laserfuck_layout
 from esolangs.tools.helpers import (
     _validate_truth_table,
     constant_span_test,
@@ -21,6 +20,7 @@ from esolangs.tools.helpers import (
     narrowest_grid,
     permute_truth_table,
 )
+from esolangs.tools.laserfuck import layout as laserfuck_layout
 
 __all__ = ["laserfuck"]
 

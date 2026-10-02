@@ -33,6 +33,7 @@ def _digit_limit_for(digits: int) -> Iterator[None]:
 
 
 def primes(count: int) -> list[int]:
+    """Return the first ``count`` primes."""
     primes: list[int] = []
     candidate = 2
     while len(primes) < count:
@@ -43,6 +44,7 @@ def primes(count: int) -> list[int]:
 
 
 def multiply(a: list[int], b: list[int]) -> list[int]:
+    """Return the product of ascending-degree coefficient lists."""
     result: list[int] = [0] * (len(a) + len(b) - 1)
     for i, ai in enumerate(a):
         for j, bj in enumerate(b):

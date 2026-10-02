@@ -1,7 +1,7 @@
 """The Minifuck suites' shared harness: run a program, fill a template."""
 
 from esolangs.tools.helpers import TEMPLATE_CHAR, runs
-from esolangs.tools.minifuck_sim import PAIR
+from esolangs.tools.minifuck.sim import PAIR
 
 
 def run_count(template: str, n: int) -> int:
@@ -46,14 +46,14 @@ class _MinifuckCase:
 # --- The separation gadget and the pool oracles.  Nothing shipped builds
 # through these: the mux is the preloaded-strip lookup.  They stay as the
 # fixtures and the exhaustive checks the pool tests drive.
-from esolangs.tools.minifuck_mux import (  # noqa: E402
+from esolangs.tools.minifuck.mux import (  # noqa: E402
     _MUX_GUARD,
     _mux_start,
     _mux_weight,
     _mux_weights,
 )
-from esolangs.tools.minifuck_pool import _POOL, _POOL_WIDTH, _READS  # noqa: E402
-from esolangs.tools.minifuck_sim import _Joint, _walk_to  # noqa: E402
+from esolangs.tools.minifuck.pool import _POOL, _POOL_WIDTH, _READS  # noqa: E402
+from esolangs.tools.minifuck.sim import _Joint, _walk_to  # noqa: E402
 from tests.tools.minifuck_pool_oracle import _endgame, _find_pool  # noqa: E402
 
 # One separation per arity, forked out.  A dict: the value is a mutable ``_Joint``.

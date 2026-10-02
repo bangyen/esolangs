@@ -1,5 +1,6 @@
 """The public raster boundary exercised by Line."""
 
+import importlib
 from pathlib import Path
 
 import pytest
@@ -7,9 +8,9 @@ import pytest
 import esolangs
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.tape_based.line import run as run_line
-from esolangs.line.render import render
 from esolangs.raster import Raster
 from esolangs.tools.line import line_boolean
+from esolangs.tools.line.render import render
 
 
 def test_png_round_trip_preserves_rgb() -> None:
@@ -149,7 +150,7 @@ def test_the_graph_walker_matches_the_pixels() -> None:
 def test_the_graph_walker_decrements() -> None:
     """``-`` is the one opcode no generated Line program emits."""
     from esolangs.interpreters.tape_based.line import _Machine
-    from esolangs.line.render import Node
+    from esolangs.tools.line.render import Node
 
     minus = Node("-")
     minus.next = Node("o")
@@ -169,7 +170,7 @@ def test_the_graph_walker_steps_over_an_opcode_it_does_not_know() -> None:
     than raising.
     """
     from esolangs.interpreters.tape_based.line import _Machine
-    from esolangs.line.render import Node
+    from esolangs.tools.line.render import Node
 
     start = Node("!")
     start.next = Node("o")
@@ -200,12 +201,16 @@ def test_greyscale_conversion_preserves_many_distinct_rows() -> None:
 
 
 def test_rendered_grey_levels_survive_many_distinct_rows(monkeypatch) -> None:
-    from esolangs.line.render import Canvas
     from esolangs.tools.line import _render_node
+    from esolangs.tools.line.render import Canvas
 
     canvas = Canvas(2, 1025)
     canvas.pixels = [bytearray([i // 256, i % 256]) for i in range(1025)]
-    monkeypatch.setattr("esolangs.line.render.render", lambda *_args, **_kwargs: canvas)
+    monkeypatch.setattr(
+        importlib.import_module("esolangs.tools.line.render"),
+        "render",
+        lambda *_args, **_kwargs: canvas,
+    )
     rows = _render_node(line_boolean("01"))
     assert rows == tuple(
         tuple((level, level, level) for level in row) for row in canvas.pixels
@@ -269,13 +274,17 @@ def test_greyscale_runs_flush_at_colour_changes_and_row_end() -> None:
 
 
 def test_rendered_rgb_runs_preserve_newline_levels_and_shared_pixels(monkeypatch):
-    from esolangs.line.render import Canvas
     from esolangs.tools.line import _render_node
+    from esolangs.tools.line.render import Canvas
 
     canvas = Canvas(37, 2)
     row = bytearray([10] * 19 + [0] * 7 + [255] * 11)
     canvas.pixels = [row, bytearray(row)]
-    monkeypatch.setattr("esolangs.line.render.render", lambda *_a, **_kw: canvas)
+    monkeypatch.setattr(
+        importlib.import_module("esolangs.tools.line.render"),
+        "render",
+        lambda *_a, **_kw: canvas,
+    )
     rows = _render_node(line_boolean("01"))
     assert rows == (tuple((level, level, level) for level in row),) * 2
     assert rows[0] is rows[1]

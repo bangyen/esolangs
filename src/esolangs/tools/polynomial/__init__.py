@@ -1,6 +1,6 @@
 """Boolean-function generator for Polynomial.
 
-:mod:`esolangs.tools._polynomial` is the algebra; this decides the
+:mod:`esolangs.tools.polynomial.algebra` is the algebra; this decides the
 instructions.  Every instruction is priced by opcode: ``[a, b]`` is the
 factor ``(x - a)**2 + p**(2*b)`` and ``[v]`` is ``x - p**v``, with
 ``+=`` at ``b == 1``, ``-=`` 2, ``*=`` 3, ``//=`` 4 and ``if > 0`` at
@@ -142,7 +142,7 @@ def _polynomial_assemble(instrs: list[list[int]]) -> str:
     ``if > 0; input; *= span`` and ``endif; += 1`` are such runs, so a block
     spends three primes, not six.
     """
-    from esolangs.tools._polynomial import estimate_product, render_product
+    from esolangs.tools.polynomial.algebra import estimate_product, render_product
 
     factors = _polynomial_factors(instrs)
     estimate = estimate_product(factors)
@@ -162,7 +162,7 @@ def _polynomial_assemble(instrs: list[list[int]]) -> str:
 
 def _polynomial_factors(instrs: list[list[int]]) -> list[list[int]]:
     """Encode instructions as factors without expanding their product."""
-    from esolangs.tools._polynomial import primes
+    from esolangs.tools.polynomial.algebra import primes
 
     groups: list[list[list[int]]] = []
     for instr in instrs:

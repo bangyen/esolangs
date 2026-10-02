@@ -1,11 +1,11 @@
-"""Covers the pool half of :mod:`esolangs.tools.minifuck_pool`."""
+"""Covers the pool half of :mod:`esolangs.tools.minifuck.pool`."""
 
 import importlib
 
 import pytest
 
 from esolangs.tools.minifuck import _solve
-from esolangs.tools.minifuck_pool import (
+from esolangs.tools.minifuck.pool import (
     _BASE,
     _PLANS,
     _POOL_CODES,
@@ -15,7 +15,7 @@ from esolangs.tools.minifuck_pool import (
     _embed,
     _step,
 )
-from esolangs.tools.minifuck_sim import _clamp, _Joint, _Sim
+from esolangs.tools.minifuck.sim import _clamp, _Joint, _Sim
 from tests.tools.minifuck_pool_oracle import (
     _POOL_PTR_MAX,
     _endgame,
@@ -125,8 +125,8 @@ class TestMinifuckPool(_MinifuckCase):
         at 1 rather than 2, so the core spreads marks instead of moving one.
         """
 
-        from esolangs.tools.minifuck_pool import _POOL_CODES
-        from esolangs.tools.minifuck_sim import _Sim
+        from esolangs.tools.minifuck.pool import _POOL_CODES
+        from esolangs.tools.minifuck.sim import _Sim
 
         core = "[[[<["
 
@@ -347,8 +347,8 @@ class TestMinifuckPool(_MinifuckCase):
         carries the inputs -- so the pool search declines outright until a
         clamp has brought them back together.
         """
-        from esolangs.tools.minifuck_pool import _embed
-        from esolangs.tools.minifuck_sim import _clamp
+        from esolangs.tools.minifuck.pool import _embed
+        from esolangs.tools.minifuck.sim import _clamp
         from tests.tools.minifuck_pool_oracle import _find_pool
 
         spread = _embed(2)
@@ -369,8 +369,8 @@ class TestMinifuckPool(_MinifuckCase):
         """
 
         module = importlib.import_module("tests.tools.minifuck_pool_oracle")
-        from esolangs.tools.minifuck_pool import _embed
-        from esolangs.tools.minifuck_sim import _clamp
+        from esolangs.tools.minifuck.pool import _embed
+        from esolangs.tools.minifuck.sim import _clamp
         from tests.tools.minifuck_pool_oracle import _endgame
 
         joint = _embed(2)
@@ -442,8 +442,8 @@ class TestMinifuckPool(_MinifuckCase):
         one leftward channel, and it is not this one -- so a leftward
         target is refused rather than silently ignored.
         """
-        from esolangs.tools.minifuck_pool import _embed
-        from esolangs.tools.minifuck_sim import _clamp, _walk_to
+        from esolangs.tools.minifuck.pool import _embed
+        from esolangs.tools.minifuck.sim import _clamp, _walk_to
 
         spread = _embed(2)
         with pytest.raises(ValueError, match="converged pointer"):

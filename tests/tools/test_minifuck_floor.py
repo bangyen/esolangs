@@ -7,7 +7,7 @@ import pytest
 import esolangs
 from esolangs.tools.helpers import TEMPLATE_CHAR, mark_runs
 from esolangs.tools.minifuck import _solve, minifuck, minifuck_setters
-from esolangs.tools.minifuck_sim import PAIR
+from esolangs.tools.minifuck.sim import PAIR
 from esolangs.tools.wrap import wrap_program
 
 

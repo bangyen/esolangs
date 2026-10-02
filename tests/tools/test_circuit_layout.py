@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import pytest
 
-from esolangs.tools._circuit_layout import _RoutingLayout
+from esolangs.tools.circuit_diagram.layout import _RoutingLayout
 
 
 def test_reserve_replaces_the_owner_and_its_index_entries() -> None:

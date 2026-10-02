@@ -27,8 +27,8 @@ from esolangs.interpreters.tape_based.line.simulate import (
     compile_program,
     run_compiled,
 )
-from esolangs.line.render import Node, render
 from esolangs.tools.line import line_boolean
+from esolangs.tools.line.render import Node, render
 
 
 def _forks(node: Node | None) -> int:

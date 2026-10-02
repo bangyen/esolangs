@@ -17,7 +17,7 @@ from esolangs.tools.eval_lang import PAIR as EVAL_PAIR
 from esolangs.tools.examples import _fill_from, uniform
 from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
 from esolangs.tools.home_row import HOME_ROW_PAIR
-from esolangs.tools.minifuck_sim import PAIR as MINIFUCK_PAIR
+from esolangs.tools.minifuck.sim import PAIR as MINIFUCK_PAIR
 from esolangs.tools.minsky_swap import minsky_swap_setters
 from esolangs.tools.nocomment import PAIR as NOCOMMENT_PAIR
 from esolangs.tools.ram0 import PAIR as RAM0_PAIR

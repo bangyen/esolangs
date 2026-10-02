@@ -1,11 +1,11 @@
 """Circuit Diagram affine chains and exact width transitions."""
 
-from esolangs.tools._circuit_layout import _Layout
 from esolangs.tools.circuit_diagram import (
     _Builder,
     _circuit_diagram_at,
     _selector_orders,
 )
+from esolangs.tools.circuit_diagram.layout import _Layout
 from esolangs.tools.helpers import _validate_truth_table, grid_width, narrowest_grid
 
 

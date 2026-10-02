@@ -18,13 +18,13 @@ from __future__ import annotations
 import re
 from functools import lru_cache
 
-from esolangs.line.render import Node, chain
 from esolangs.raster import Pixel, Raster, Rows
 from esolangs.tools.helpers import (
     _residual_ids,
     _validate_truth_table,
     permute_truth_table,
 )
+from esolangs.tools.line.render import Node, chain
 
 
 def line_boolean(truth_table: str, *, reverse: bool = False) -> Node:
@@ -83,7 +83,7 @@ def _render_node(
     node: Node, heading: tuple[int, int] = (-1, 0), *, compact: bool = True
 ) -> Rows:
     """Render a generated Line graph into shared RGB rows."""
-    from esolangs.line.render import render
+    from esolangs.tools.line.render import render
 
     canvas = render(node, start_heading=heading, acyclic=True, compact=compact)
     palette = tuple((level, level, level) for level in range(256))
@@ -120,8 +120,8 @@ def line(truth_table: str, *, scale: int = 1) -> Raster:
 
 def balance(truth_table: str, _default: Raster) -> Raster:
     """Choose the most balanced compact or previous forward/reverse tree."""
-    from esolangs.line.render import _UNIT
-    from esolangs.line.tree_layout import tree_extents
+    from esolangs.tools.line.render import _UNIT
+    from esolangs.tools.line.tree_layout import tree_extents
 
     plans = []
     previous = []

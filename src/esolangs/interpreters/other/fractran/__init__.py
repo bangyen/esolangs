@@ -32,9 +32,8 @@ import re
 from typing import cast
 
 from esolangs._drive import drive
-from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
-from esolangs.interpreters.other._fractran_index import (
+from esolangs.interpreters.other.fractran.index import (
     Factors,
     Index,
     advance,
@@ -221,7 +220,3 @@ def run(code: str, io: IO) -> None:
     """Run a FRACTRAN program, printing the value it ends on."""
     machine = _Machine(code, io)
     drive(machine)
-
-
-if __name__ == "__main__":
-    script_main(run)

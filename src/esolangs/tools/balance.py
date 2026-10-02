@@ -6,16 +6,15 @@ from itertools import pairwise
 from math import isqrt
 
 from esolangs.raster import Raster
-from esolangs.tools._circuit_balance import balance_circuit_diagram
-from esolangs.tools._piet_balance import balance as balance_piet
 from esolangs.tools.algebraic_programming_language import balance_apl
-from esolangs.tools.alight_balance import balance_alight
+from esolangs.tools.alight.balance import balance_alight
 from esolangs.tools.arrowqueue import arrowqueue
 from esolangs.tools.b_tapemark import b_tapemark
 from esolangs.tools.back import back
 from esolangs.tools.befunge import balance_befunge
 from esolangs.tools.bitdeque import bitdeque
 from esolangs.tools.brainif import _brainif_tree, brainif
+from esolangs.tools.circuit_diagram.balance import balance_circuit_diagram
 from esolangs.tools.clockwise import clockwise
 from esolangs.tools.collatz_multiverse import balance_collatz_multiverse
 from esolangs.tools.container import balance_container
@@ -35,10 +34,11 @@ from esolangs.tools.intercal import balance_intercal
 from esolangs.tools.laserfuck import balance_laserfuck
 from esolangs.tools.line import balance as balance_line
 from esolangs.tools.minifuck import minifuck
-from esolangs.tools.minifuck_sim import PAIR
+from esolangs.tools.minifuck.sim import PAIR
 from esolangs.tools.minsky_swap import minsky_swap
 from esolangs.tools.packlang import balance_packlang
-from esolangs.tools.qoibl_balance import balance_qoibl
+from esolangs.tools.piet.balance import balance as balance_piet
+from esolangs.tools.qoibl.balance import balance_qoibl
 from esolangs.tools.ram0 import ram0
 from esolangs.tools.smallfuck import smallfuck, smallfuck_setters
 from esolangs.tools.stack import modulous

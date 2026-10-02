@@ -7,7 +7,7 @@ from esolangs.interpreters.stack_based.piet import BLACK
 from esolangs.raster import Raster
 from esolangs.tools.helpers import _validate_truth_table
 
-from .piet import (
+from . import (
     _MULTIPLY,
     _POP,
     _next_colour,

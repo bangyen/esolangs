@@ -5,11 +5,11 @@ import itertools
 import pytest
 
 import esolangs
-from esolangs.line.render import Node, render
-from esolangs.line.tree_layout import tree_extents
 from esolangs.raster import Raster, png
-from esolangs.tools._piet_balance import _bounded_operations, _emit, _plan
 from esolangs.tools.line import line_boolean
+from esolangs.tools.line.render import Node, render
+from esolangs.tools.line.tree_layout import tree_extents
+from esolangs.tools.piet.balance import _bounded_operations, _emit, _plan
 
 pytestmark = pytest.mark.medium
 
@@ -147,7 +147,7 @@ def test_piet_invalid_plans_abort() -> None:
 
 
 def test_piet_keeps_an_already_better_layout() -> None:
-    from esolangs.tools._piet_balance import balance
+    from esolangs.tools.piet.balance import balance
 
     source = esolangs.generate("Piet", "0001", balance=True)
     assert isinstance(source, Raster)
@@ -160,7 +160,7 @@ def test_piet_keeps_an_already_better_layout() -> None:
 def test_line_fast_path_avoids_subtree_walks(monkeypatch: pytest.MonkeyPatch) -> None:
     import importlib
 
-    module = importlib.import_module("esolangs.line.render")
+    module = importlib.import_module("esolangs.tools.line.render")
 
     def reject(*_args: object) -> None:
         raise AssertionError("tree renderer revisited a subtree")

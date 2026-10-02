@@ -449,6 +449,20 @@ def test_raster_suites_kill_wrong_answers_in_the_copied_package(
         ("tools", "malbolge", "esolangs/tools/malbolge/__init__.py"),
         ("tools", "malbolge.core", "esolangs/tools/malbolge/core.py"),
         (
+            "tools",
+            "one_two_three.construction",
+            "esolangs/tools/one_two_three/construction.py",
+        ),
+        ("tools", "line.render", "esolangs/tools/line/render.py"),
+        ("fractran", "index", "esolangs/interpreters/other/fractran/index.py"),
+        ("tools", "minifuck.sim", "esolangs/tools/minifuck/sim.py"),
+        ("tools", "piet.balance", "esolangs/tools/piet/balance.py"),
+        (
+            "polynomial",
+            "roots",
+            "esolangs/interpreters/register_based/polynomial/roots.py",
+        ),
+        (
             "streetcode",
             "geometry",
             "esolangs/interpreters/grid_based/streetcode/geometry.py",
@@ -478,3 +492,20 @@ def test_package_mutation_targets_copy_real_modules(
     )
     assert result.returncode == 0, result.stderr
     assert Path(result.stdout.strip()) == proj / relative
+
+
+def test_interpreter_mutation_discovery_includes_nested_packages(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    script = load_script()
+    monkeypatch.setattr(script, "ROOT", tmp_path)
+    package = tmp_path / "src/esolangs/interpreters/demo"
+    (package / "ops").mkdir(parents=True)
+    for relative in ("__init__.py", "__main__.py", "ops/__init__.py", "ops/step.py"):
+        (package / relative).write_text("")
+    kind = script._Kind("demo", "interpreters/demo", "tests", (), include_init=True)  # noqa: SLF001
+    monkeypatch.setitem(script._KINDS, "demo", kind)  # noqa: SLF001
+    assert script._modules("demo") == ["__init__", "ops", "ops.step"]  # noqa: SLF001
+    assert kind.rel_target("ops") == "esolangs/interpreters/demo/ops/__init__.py"
+    assert kind.rel_target("ops.step") == "esolangs/interpreters/demo/ops/step.py"

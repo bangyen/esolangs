@@ -11,8 +11,8 @@ from esolangs.interpreters.register_based.polynomial import (
     _bracket_pairs,
     sanitize_terms,
 )
-from esolangs.tools._polynomial import format_coeffs, multiply, primes
 from esolangs.tools.polynomial import _polynomial_decode_key
+from esolangs.tools.polynomial.algebra import format_coeffs, multiply, primes
 from tests.tools.boolean_runners import run_polynomial
 
 

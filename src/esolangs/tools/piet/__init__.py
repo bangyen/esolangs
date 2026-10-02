@@ -158,7 +158,7 @@ def _generate(truth_table: str) -> Raster:
 def piet(truth_table: str, width: int | None = None, *, scale: int = 1) -> Raster:
     """Return a Piet raster computing the table."""
     if width is not None:
-        from esolangs.tools._piet_balance import folded
+        from esolangs.tools.piet.balance import folded
 
         return folded(truth_table, width).upscaled(scale)
     return _generate(truth_table).upscaled(scale)

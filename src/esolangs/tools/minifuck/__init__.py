@@ -16,18 +16,18 @@ from esolangs.tools.helpers import (
     read_at,
     unmark,
 )
-from esolangs.tools.minifuck_mux import (
+from esolangs.tools.minifuck.mux import (
     _MUX_MIN_ARITY,
     _canonical_endgame,
     _mux,
     _mux_lookup,
 )
-from esolangs.tools.minifuck_pool import (
+from esolangs.tools.minifuck.pool import (
     _BASE,
     _SEP,
     _embed,
 )
-from esolangs.tools.minifuck_sim import (
+from esolangs.tools.minifuck.sim import (
     _MINIFUCK_INPUT,
     PAIR,
     _clamp,
@@ -105,7 +105,7 @@ def _solve(truth_table: str) -> str:
     ``xx`` for a zero.  The program embeds each input once, computes past
     the pool, relays the answer into the *pointer*, and prints one digit;
     every emission is tracked against all rows by
-    :mod:`esolangs.tools.minifuck_sim` and :class:`ValueError` is raised
+    :mod:`esolangs.tools.minifuck.sim` and :class:`ValueError` is raised
     otherwise.  Cached; no route enumerates candidates.
     """
     n = _validate_shape(truth_table)

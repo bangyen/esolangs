@@ -1,4 +1,4 @@
-"""Covers :mod:`esolangs.tools.one_two_three_construct`."""
+"""Covers :mod:`esolangs.tools.one_two_three.construction`."""
 
 import random
 from collections.abc import Iterable
@@ -7,7 +7,7 @@ import pytest
 
 from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs, runs
 from esolangs.tools.one_two_three import ONE, ZERO
-from esolangs.tools.one_two_three_construct import _RING
+from esolangs.tools.one_two_three.construction import _RING
 from tests.tools.boolean_runners import one_two_three_result
 
 
@@ -39,7 +39,7 @@ class TestParameterizedOneTwoThree:
 
     Every arity is *constructed*; the stored plan tables are retired.  Small
     arities build in ``one_two_three``, wider ones in
-    ``one_two_three_construct``.  Neither replays what it emitted, so the
+    ``one_two_three.construction``.  Neither replays what it emitted, so the
     sweeps here are the execution gate: every ``n <= 3`` row run per command.
     """
 
@@ -206,7 +206,7 @@ class TestParameterizedOneTwoThree:
         golden of its own: a plan emitting three bytes more per table, or
         two fewer, changed nothing any test compared.
         """
-        from esolangs.tools.one_two_three_construct import construct
+        from esolangs.tools.one_two_three.construction import construct
 
         assert construct("01") == (
             f"2222{_X}1111121211222222111111233222332233222211211211213311111111"
@@ -222,7 +222,7 @@ class TestParameterizedOneTwoThree:
         two the other way.  The sum over the sweep is, and it is the same
         shape of assertion the small route already carries.
         """
-        from esolangs.tools.one_two_three_construct import construct
+        from esolangs.tools.one_two_three.construction import construct
 
         total = sum(len(construct(format(value, "08b"))) for value in range(256))
         assert total == 189055
@@ -293,7 +293,7 @@ class TestParameterizedOneTwoThree:
         """
         from esolangs import tools as generators
         from esolangs.tools.one_two_three import _construct_small, _in_name_order
-        from esolangs.tools.one_two_three_construct import _construct_linear
+        from esolangs.tools.one_two_three.construction import _construct_linear
 
         small = len(_in_name_order(_construct_small(table, 3), 3))
         wide = len(_in_name_order(_construct_linear(table, 3), 3))
@@ -311,7 +311,7 @@ class TestParameterizedOneTwoThree:
         smaller on 98 of the 256.
         """
         from esolangs.tools.one_two_three import one_two_three
-        from esolangs.tools.one_two_three_construct import _construct_linear
+        from esolangs.tools.one_two_three.construction import _construct_linear
 
         for n in (1, 2, 3):
             for value in range(2 ** (2**n)):
@@ -340,7 +340,7 @@ class TestParameterizedOneTwoThree:
         Totals before and after: 94 -> 80 at one input, 1105 -> 769 at two.
         """
         from esolangs.tools.one_two_three import _construct_small, one_two_three
-        from esolangs.tools.one_two_three_construct import _construct_linear
+        from esolangs.tools.one_two_three.construction import _construct_linear
 
         for n, before, after in ((1, 94, 80), (2, 1105, 769)):
             tables = [format(v, f"0{2**n}b") for v in range(2 ** (2**n))]
@@ -428,7 +428,7 @@ class TestParameterizedOneTwoThree:
         success.  The paints go through ``_paint_all``; ``_paint`` itself is
         the small-arity route's, covered by the test two below.
         """
-        from esolangs.tools import one_two_three_construct as construct_mod
+        from esolangs.tools.one_two_three import construction as construct_mod
 
         called: set[str] = set()
         originals = {
@@ -472,7 +472,7 @@ class TestParameterizedOneTwoThree:
         row lands on ``start + 2*bit_reverse(r)``, and every cell above
         matches the closed form.
         """
-        from esolangs.tools.one_two_three_construct import (
+        from esolangs.tools.one_two_three.construction import (
             _exec_run,
             _leftover,
             _on_mark,
@@ -512,7 +512,7 @@ class TestParameterizedOneTwoThree:
         four-input budget under a searched verdict.  The wide route plans
         instead of searching; each is checked row by row on the interpreter.
         """
-        from esolangs.tools.one_two_three_construct import construct
+        from esolangs.tools.one_two_three.construction import construct
 
         for table in ("1000110011010101", "0100000011001001"):
             # construct() emits without replaying; the rows below are the gate.
@@ -531,7 +531,7 @@ class TestParameterizedOneTwoThree:
         This witness keeps a gate local to the suite: all sixteen rows halt
         or revisit an exact state, never through a fuel limit.
         """
-        from esolangs.tools.one_two_three_construct import construct
+        from esolangs.tools.one_two_three.construction import construct
 
         table = "1100010001000111"
         template = construct(table)
@@ -547,7 +547,7 @@ class TestParameterizedOneTwoThree:
         stripes cancel everywhere but the top cell.  Checked across rows at
         distinct positions with junk tapes, ``k == 1`` and wider offsets.
         """
-        from esolangs.tools.one_two_three_construct import (
+        from esolangs.tools.one_two_three.construction import (
             _RING,
             _WORK_BUDGET,
             _Builder,
@@ -570,7 +570,7 @@ class TestParameterizedOneTwoThree:
 
     def test_paint_all_sweeps_the_span_once(self) -> None:
         """The fused painter flips an arbitrary mask in one linear sweep."""
-        from esolangs.tools.one_two_three_construct import (
+        from esolangs.tools.one_two_three.construction import (
             _RING,
             _WORK_BUDGET,
             _Builder,
@@ -592,7 +592,7 @@ class TestParameterizedOneTwoThree:
 
     def test_paint_all_replays_mixed_runs_exactly(self) -> None:
         """A conditional sweep replays ``21`` as two different commands."""
-        from esolangs.tools.one_two_three_construct import (
+        from esolangs.tools.one_two_three.construction import (
             _RING,
             _WORK_BUDGET,
             _Builder,
@@ -619,7 +619,7 @@ class TestParameterizedOneTwoThree:
         re-checks rather than assumes, so an arity that broke the parity
         would raise instead of handing out an unvouched template.
         """
-        from esolangs.tools.one_two_three_construct import (
+        from esolangs.tools.one_two_three.construction import (
             _WORK_BUDGET,
             ConstructError,
             _Builder,
@@ -645,7 +645,7 @@ class TestParameterizedOneTwoThree:
     @pytest.mark.parametrize("n", [1, 2, 3])
     def test_small_geometry_separates_every_row(self, n: int) -> None:
         """The modeled route's complete arity domain needs no geometry probe."""
-        from esolangs.tools import one_two_three_construct as module
+        from esolangs.tools.one_two_three import construction as module
 
         module._work[0] = module._WORK_BUDGET  # noqa: SLF001
         marks, escapes = module._geometry(n)  # noqa: SLF001
@@ -662,13 +662,13 @@ class TestParameterizedOneTwoThree:
 
     @pytest.mark.parametrize("n", [0, 4])
     def test_geometry_rejects_other_arities(self, n: int) -> None:
-        from esolangs.tools.one_two_three_construct import _geometry
+        from esolangs.tools.one_two_three.construction import _geometry
 
         with pytest.raises(ValueError, match="one through three"):
             _geometry(n)
 
     def test_linear_endgame_parks_all_four_residues(self) -> None:
-        from esolangs.tools import one_two_three_construct as module
+        from esolangs.tools.one_two_three import construction as module
 
         positions = {0, 1, 2, 3}
         program = module._linear_endgame(positions)  # noqa: SLF001
@@ -684,7 +684,7 @@ class TestParameterizedOneTwoThree:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Budget exhaustion aborts without changing the mark geometry."""
-        from esolangs.tools import one_two_three_construct as module
+        from esolangs.tools.one_two_three import construction as module
 
         geometry = module._geometry(3)  # noqa: SLF001
         with monkeypatch.context() as patch:
@@ -702,7 +702,7 @@ class TestParameterizedOneTwoThree:
         the -3 row re-occupies -4 -> 0 while another stays put.  Contrived --
         real builds keep rows in lockstep -- but it must terminate, not spin.
         """
-        from esolangs.tools.one_two_three_construct import (
+        from esolangs.tools.one_two_three.construction import (
             ConstructError,
             _Builder,
             _normalize,
@@ -731,7 +731,7 @@ class TestParameterizedOneTwoThree:
         simultaneously on a FALSE cell; a row whose tape covers the whole
         search window supplies none, so the search must give up.
         """
-        from esolangs.tools.one_two_three_construct import (
+        from esolangs.tools.one_two_three.construction import (
             ConstructError,
             _Builder,
             _close,
@@ -758,7 +758,7 @@ class TestParameterizedOneTwoThree:
         while it marches right forever, so the rerun neither escapes nor
         repeats within the cap -- a diverging candidate segment's shape.
         """
-        from esolangs.tools.one_two_three_construct import (
+        from esolangs.tools.one_two_three.construction import (
             ConstructError,
             _Builder,
             _Row,
@@ -779,7 +779,7 @@ class TestParameterizedOneTwoThree:
 
     def test_test_reports_a_kill_that_escapes(self) -> None:
         """``test(kills=...)`` requires every named victim to provably loop."""
-        from esolangs.tools.one_two_three_construct import (
+        from esolangs.tools.one_two_three.construction import (
             ConstructError,
             _Builder,
             _Row,
@@ -805,7 +805,7 @@ class TestParameterizedOneTwoThree:
         the close must report it, because every adopted kill claims one
         specific row is now provably looping.
         """
-        from esolangs.tools.one_two_three_construct import (
+        from esolangs.tools.one_two_three.construction import (
             ConstructError,
             _Builder,
             _Row,
@@ -826,7 +826,7 @@ class TestParameterizedOneTwoThree:
 
     def test_test_reports_an_unintended_loop(self) -> None:
         """A plain ``test()`` requires every TRUE row to escape, not loop."""
-        from esolangs.tools.one_two_three_construct import (
+        from esolangs.tools.one_two_three.construction import (
             ConstructError,
             _Builder,
             _Row,
@@ -887,7 +887,7 @@ class TestParameterizedOneTwoThree:
         commands* and must not depend on which path ran them.  Each case
         selects one path, with the budget just under its charge.
         """
-        from esolangs.tools.one_two_three_construct import (
+        from esolangs.tools.one_two_three.construction import (
             _exec_char,
             _exec_run,
             _Row,
@@ -928,7 +928,7 @@ class TestParameterizedOneTwoThree:
         has to be freed first.  The allowance is ``64 * 2**n + 64`` passes,
         which a small ``n`` beside far wider rows outlasts: a real exit.
         """
-        from esolangs.tools.one_two_three_construct import (
+        from esolangs.tools.one_two_three.construction import (
             _WORK_BUDGET,
             ConstructError,
             _Builder,
@@ -968,7 +968,7 @@ class TestParameterizedOneTwoThree:
         """A stage that cannot prove its move is reported, never worked
         around -- the alternative is emitting a template no stage proved.
         """
-        from esolangs.tools import one_two_three_construct as module
+        from esolangs.tools.one_two_three import construction as module
 
         def refuse(*_: object, **__: object) -> None:
             raise module.ConstructError("verdict precondition: constructed refusal")
@@ -985,7 +985,7 @@ class TestParameterizedOneTwoThree:
         pinned: the real interpreter's, which is the shipped contract, and
         :func:`_replay_verdict`'s, which the suite uses elsewhere.
         """
-        from esolangs.tools.one_two_three_construct import construct
+        from esolangs.tools.one_two_three.construction import construct
         from tests.tools.one_two_three_support import _replay_verdict
 
         template = construct("01")
@@ -1000,7 +1000,7 @@ class TestParameterizedOneTwoThree:
         The planned verdict claims totality by argument; this spread is
         the fast in-suite witness (the slow suite sweeps every table).
         """
-        from esolangs.tools.one_two_three_construct import construct
+        from esolangs.tools.one_two_three.construction import construct
 
         built = 0
         for value in range(0, 256, 17):
@@ -1019,7 +1019,7 @@ class TestParameterizedOneTwoThree:
         every other closed form.  ``apply_token`` resolves an input fill
         against the row's own bits; a plain token passes straight through.
         """
-        from esolangs.tools.one_two_three_construct import (
+        from esolangs.tools.one_two_three.construction import (
             _WORK_BUDGET,
             _Builder,
             _exec_run,
@@ -1047,7 +1047,7 @@ class TestParameterizedOneTwoThree:
         cell.  The neighbours are the contrast -- -2 lands on 0 (printing a
         junk byte no snapshot sees), anything else is a plain step right.
         """
-        from esolangs.tools.one_two_three_construct import (
+        from esolangs.tools.one_two_three.construction import (
             _WORK_BUDGET,
             ConstructError,
             _exec_char,
@@ -1079,7 +1079,7 @@ class TestParameterizedOneTwoThree:
         and the emitted ``2``s carry every row to a clean cell -- none there
         would leave the next segment starting on a TRUE cell.
         """
-        from esolangs.tools.one_two_three_construct import (
+        from esolangs.tools.one_two_three.construction import (
             _RING,
             _WORK_BUDGET,
             _Builder,
@@ -1112,7 +1112,7 @@ class TestParameterizedOneTwoThree:
         does -- reached here by starting a real run on the cell rather than
         by walking onto it.
         """
-        from esolangs.tools.one_two_three_construct import ConstructError
+        from esolangs.tools.one_two_three.construction import ConstructError
         from tests.tools.one_two_three_support import _replay_twos
 
         # Nothing to walk: the state is handed straight back.

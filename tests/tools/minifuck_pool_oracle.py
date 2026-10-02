@@ -2,14 +2,14 @@
 
 from functools import cache
 
-from esolangs.tools.minifuck_pool import (
+from esolangs.tools.minifuck.pool import (
     _POOL,
     _POOL_CODES,
     _POOL_MASK,
     _POOL_WIDTH,
     _PROBE_WALK_OUT,
 )
-from esolangs.tools.minifuck_sim import _Joint, _runs, _Sim, _walk_to
+from esolangs.tools.minifuck.sim import _Joint, _runs, _Sim, _walk_to
 
 #: Rightmost pointer at which the window is the whole key (at 3 codes reach
 #: above cell 7; 3 of 300 verdicts changed).  Every build site has pointer

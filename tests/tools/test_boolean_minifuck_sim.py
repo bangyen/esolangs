@@ -1,4 +1,4 @@
-"""Covers :mod:`esolangs.tools.minifuck_sim` against the interpreter."""
+"""Covers :mod:`esolangs.tools.minifuck.sim` against the interpreter."""
 
 from unittest.mock import patch
 
@@ -19,7 +19,7 @@ class TestMinifuckSim(_MinifuckCase):
         first eight cells as one byte -- emitting that character, or
         killing the row if the byte is zero.
         """
-        from esolangs.tools.minifuck_sim import _Sim
+        from esolangs.tools.minifuck.sim import _Sim
 
         dead = _Sim(16)
         dead.dead = True
@@ -75,7 +75,7 @@ class TestMinifuckSim(_MinifuckCase):
 
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.minifuck import run
-        from esolangs.tools.minifuck_sim import _Sim
+        from esolangs.tools.minifuck.sim import _Sim
 
         rng = random.Random(20260902)
         printed = deaths = skips = 0
@@ -127,7 +127,7 @@ class TestMinifuckSim(_MinifuckCase):
         """
         import random
 
-        from esolangs.tools.minifuck_sim import _Sim
+        from esolangs.tools.minifuck.sim import _Sim
 
         rng = random.Random(20260906)
         skips = walks_cascaded = clamped = 0
@@ -186,8 +186,8 @@ class TestMinifuckSim(_MinifuckCase):
         itself drives the comparison, with every emission checked both ways
         as it happens.
         """
-        from esolangs.tools import minifuck_sim
         from esolangs.tools.minifuck import _solve, minifuck
+        from esolangs.tools.minifuck import sim as minifuck_sim
 
         real_emit = minifuck_sim._Joint.emit  # noqa: SLF001
         checked = [0]
@@ -219,3 +219,21 @@ class TestMinifuckSim(_MinifuckCase):
         _solve.cache_clear()
 
         assert checked[0], "no emission met rows whose pointers had diverged"
+
+
+def test_settled_embed_matches_the_interpreter() -> None:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.tape_based.minifuck import _Machine
+    from esolangs.tools.minifuck.pool import _embed
+    from tests.tools.fills import _fill_minifuck
+
+    for n in (1, 2, 3):
+        for settle in (1, 2):
+            joint = _embed(n, settle=settle)
+            for bits, model in zip(joint.rows, joint.ms, strict=True):
+                code = _fill_minifuck(joint.template(), bits)
+                machine = _Machine(code, ScriptedIO(""))
+                while not machine.halted:
+                    machine.step()
+                assert machine.ptr == model.ptr
+                assert machine.snapshot()[0] == model.tape

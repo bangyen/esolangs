@@ -3,14 +3,14 @@
 import importlib
 
 from esolangs.tools.minifuck import _solve
-from esolangs.tools.minifuck_mux import (
+from esolangs.tools.minifuck.mux import (
     _MUX_BASE,
     _mux,
     _mux_lookup,
     _mux_start,
     _probe_frame,
 )
-from esolangs.tools.minifuck_pool import _POOL_WIDTH
+from esolangs.tools.minifuck.pool import _POOL_WIDTH
 
 
 class TestMuxUsesOneRule:
@@ -108,8 +108,8 @@ def test_canonical_endgame_rejects_an_accumulator_inside_the_pool() -> None:
     """The pool is reserved; invalid accumulator placement fails before emitting."""
     import pytest
 
-    from esolangs.tools.minifuck_mux import _canonical_endgame
-    from esolangs.tools.minifuck_sim import _Joint
+    from esolangs.tools.minifuck.mux import _canonical_endgame
+    from esolangs.tools.minifuck.sim import _Joint
 
     joint = _Joint(1)
     before = joint.template()
@@ -120,7 +120,7 @@ def test_canonical_endgame_rejects_an_accumulator_inside_the_pool() -> None:
 
 def test_probe_frame_refuses_a_pointer_outside_its_low_byte() -> None:
     """A low-byte summary cannot describe a cursor that has left that byte."""
-    from esolangs.tools.minifuck_mux import _probe_frame
+    from esolangs.tools.minifuck.mux import _probe_frame
 
     assert _probe_frame("[" * (_POOL_WIDTH - 1), 0) == (_POOL_WIDTH - 1, 0)
     assert _probe_frame("[" * _POOL_WIDTH, 0) is None

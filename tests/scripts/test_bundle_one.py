@@ -404,3 +404,50 @@ def test_streetcode_package_runs_standalone(tmp_path: Path) -> None:
         )
         assert result.returncode == 0, result.stderr
         assert result.stdout.replace("Input: ", "") == expected
+
+
+def test_polynomial_package_bundle_runs_standalone(tmp_path: Path) -> None:
+    canonical = "esolangs.interpreters.register_based.polynomial"
+    entry = importlib.import_module(canonical + ".__main__")
+    assert entry.run is importlib.import_module(canonical).run
+    module = load_script()
+    out = tmp_path / "polynomial.py"
+    module.bundle("Polynomial", module.Source(None), out)
+    program = esolangs.generate("Polynomial", "0110")
+    path = tmp_path / "program.txt"
+    path.write_text(program)
+    for bits in ("00", "01", "10", "11"):
+        stdin = "\n".join(bits) + "\n"
+        result = subprocess.run(
+            [sys.executable, "-I", str(out), str(path)],
+            input=stdin,
+            capture_output=True,
+            text=True,
+            cwd=tmp_path,
+        )
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.replace("Input: ", "") == esolangs.run(
+            "Polynomial",
+            program,
+            stdin,
+        )
+
+
+def test_fractran_package_bundle_runs_standalone(tmp_path: Path) -> None:
+    canonical = "esolangs.interpreters.other.fractran"
+    entry = importlib.import_module(canonical + ".__main__")
+    assert entry.run is importlib.import_module(canonical).run
+    module = load_script()
+    out = tmp_path / "fractran.py"
+    module.bundle("Fractran", module.Source(None), out)
+    program = "2^3*3^4 3/2"
+    path = tmp_path / "program.txt"
+    path.write_text(program)
+    result = subprocess.run(
+        [sys.executable, "-I", str(out), str(path)],
+        capture_output=True,
+        text=True,
+        cwd=tmp_path,
+    )
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == esolangs.run("Fractran", program) == str(3**7)
