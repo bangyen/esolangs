@@ -13,7 +13,7 @@ from functools import lru_cache
 from typing import TYPE_CHECKING, cast
 
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.raster import Raster, Rows
+from esolangs.raster import Pixel, Raster, Rows
 
 from .extract import extract_mask
 from .mask import from_grey
@@ -27,13 +27,21 @@ if TYPE_CHECKING:
 
 def _grey_rows(rows: Rows) -> list[bytearray]:
     """Reduce RGB rows to Line's greyscale input representation."""
-    return [
-        bytearray(
-            (red * 19595 + green * 38470 + blue * 7471 + 0x8000) >> 16
-            for red, green, blue in row
-        )
-        for row in rows
-    ]
+    cache: dict[int, tuple[tuple[Pixel, ...], bytes]] = {}
+    grey = []
+    for row in rows:
+        cached = cache.get(id(row))
+        if cached is None:
+            levels = bytes(
+                (red * 19595 + green * 38470 + blue * 7471 + 0x8000) >> 16
+                for red, green, blue in row
+            )
+            if len(cache) < 1024:
+                cache[id(row)] = row, levels
+        else:
+            levels = cached[1]
+        grey.append(bytearray(levels))
+    return grey
 
 
 def _render_node(node: Node, heading: tuple[int, int] = (-1, 0)) -> Rows:
@@ -42,7 +50,17 @@ def _render_node(node: Node, heading: tuple[int, int] = (-1, 0)) -> Rows:
 
     canvas = render(node, start_heading=heading, acyclic=True)
     palette = tuple((level, level, level) for level in range(256))
-    return tuple(tuple(palette[level] for level in row) for row in canvas.pixels)
+    cache: dict[bytes, tuple[Pixel, ...]] = {}
+    rows = []
+    for row in canvas.pixels:
+        key = bytes(row)
+        pixels = cache.get(key)
+        if pixels is None:
+            pixels = tuple(palette[level] for level in row)
+            if len(cache) < 1024:
+                cache[key] = pixels
+        rows.append(pixels)
+    return tuple(rows)
 
 
 @lru_cache(maxsize=8)

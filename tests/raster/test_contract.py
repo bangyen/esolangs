@@ -185,3 +185,33 @@ def test_text_step_builders_refuse_raster_scale(builder_name: str) -> None:
         builder("brainfuck", "+", scale=2)
     with pytest.raises(esolangs.ArgumentError):
         builder("brainfuck", "+", scale=0)
+
+
+def test_repeated_tuple_rows_with_mutable_pixels_are_revalidated() -> None:
+    pixel = [0, 0, 0]
+    row = (pixel,)
+
+    def rows():
+        yield row
+        pixel[0] = 255
+        yield row
+
+    assert Raster(rows()).rows == (((0, 0, 0),), ((255, 0, 0),))
+
+
+def test_repeated_tuple_rows_do_not_hide_an_invalid_mutation() -> None:
+    pixel = [0, 0, 0]
+    row = (pixel,)
+
+    def rows():
+        yield row
+        pixel[0] = True
+        yield row
+
+    with pytest.raises(ValueError, match="RGB"):
+        Raster(rows())
+
+
+def test_more_than_a_thousand_distinct_rows_remain_exact() -> None:
+    rows = tuple(((i // 256, i % 256, 0),) for i in range(1025))
+    assert Raster(rows).rows == rows
