@@ -10,6 +10,20 @@
   ]
  },
  "records": {
+  "///": {
+   "0110": {
+    "commands": 45,
+    "source_units": 135
+   },
+   "01101001": {
+    "commands": 70,
+    "source_units": 216
+   },
+   "0110100110010110": {
+    "commands": 119,
+    "source_units": 377
+   }
+  },
   "123": {
    "0110": {
     "commands": 58,
@@ -248,6 +262,20 @@
     "source_units": 137
    }
   },
+  "Boolfuck": {
+   "0110": {
+    "commands": 7398,
+    "source_units": 7625
+   },
+   "01101001": {
+    "commands": 10426,
+    "source_units": 11869
+   },
+   "0110100110010110": {
+    "commands": 13370,
+    "source_units": 17975
+   }
+  },
   "BrainIf": {
    "0110": {
     "commands": 58,
@@ -378,6 +406,20 @@
    "0110100110010110": {
     "commands": 18,
     "source_units": 245
+   }
+  },
+  "Cyclic tag": {
+   "0110": {
+    "commands": 11,
+    "source_units": 25
+   },
+   "01101001": {
+    "commands": 20,
+    "source_units": 47
+   },
+   "0110100110010110": {
+    "commands": 37,
+    "source_units": 89
    }
   },
   "Decleq": {
@@ -916,6 +958,20 @@
      "63": 876
     },
     "source_units": 3185
+   }
+  },
+  "Subleq": {
+   "0110": {
+    "commands": 76,
+    "source_units": 738
+   },
+   "01101001": {
+    "commands": 125,
+    "source_units": 837
+   },
+   "0110100110010110": {
+    "commands": 245,
+    "source_units": 934
    }
   },
   "Suffolk": {

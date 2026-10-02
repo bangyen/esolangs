@@ -104,6 +104,7 @@ NARROW_WIDTH = 13
 # not touch the finished text -- the reasons above are why a break is
 # destructive, and those hold whatever the generator learns to do.
 UNWRAPPABLE = {
+    "slashes": "newlines are literal output and substitution data",
     "fargo": "each physical line is one command; expressions have no continuation",
     "minsky_swap": "only line 1 is code; line 2 gives its numeric jump distances",
     "alight": "a command is a word walked cell by cell; a row end cuts it",
@@ -140,7 +141,8 @@ UNWRAPPABLE = {
 # right today for a reason the table never had; a derived table cannot make
 # either mistake in the first place.
 WIDTH_EXCEPTIONS = {
-    "line": "tree geometry fixes the width; balance chooses orientation"
+    "slashes": "newlines are literal output and substitution data",
+    "line": "tree geometry fixes the width; balance chooses orientation",
 }
 
 WIDTH_HONOURING = sorted(

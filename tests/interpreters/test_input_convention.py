@@ -49,6 +49,7 @@ def test_numeric_readers_accept_tokens_on_the_same_line(language):
 #: answer differently, and each for a reason of its own -- so the set is a
 #: statement about them, not a list of exceptions to ignore.
 _EOF_IS_A_HALT: dict[str, str] = {
+    "boolfuck": "EOF supplies zero bits",
     "piet": "an exhausted input command is ignored, as the spec requires",
     # Reads until the input runs out and treats that as its stop, which is
     # how its generated programs terminate at all.

@@ -5,22 +5,6 @@ and proved limits; completed work is recorded in its commit.
 
 ## Conditional follow-up
 
-- **Cyclic tag integration.** Its 94 complete backlinks clear the fame gate;
-  [limitations](limitations.md) records the completed specification and
-  generator audit. The direct padding construction emits 5T + 2n + 1 characters
-  and passed 309 tables / 3,352 rows, plus sampled rows through n=14. Implement
-  the semicolon-separated production parser, queue interpreter, ordered input
-  embed, and final-deletion answer convention; register the language and add
-  execution, VM, and convention coverage before integration.
-
-- **Boolfuck, Subleq, and /// admission.** Fame scores are 76, 83, and 88;
-  [limitations](limitations.md) records the specification audit and executed
-  probes. Integrate Boolfuck's bit-stream I/O and prove rendered linearity;
-  choose Subleq's I/O dialect and derive a linear rendered construction;
-  derive ///'s general source-embedded generator. Execute every table through
-  three inputs and sampled larger tables before integration. A failed build
-  does not justify interpreter-only admission.
-
 - **HQ9+, Nope., and Unary interpreter-only admission.** Scores are 136, 132,
   and 63; [limitations](limitations.md) records their generator obstructions.
   Pin HQ9+'s output/case conventions and Unary's decoded Brainfuck dialect;

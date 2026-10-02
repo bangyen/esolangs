@@ -472,6 +472,10 @@ def _register() -> None:
             b.qoibl, "register_based.qoibl", split=True, input_shape="char_stream"
         ),
         "rotfuck": _reader(b.rotfuck, "tape_based.rotfuck", input_shape="char_stream"),
+        "boolfuck": _reader(
+            b.boolfuck, "tape_based.boolfuck", input_shape="char_stream"
+        ),
+        "subleq": _reader(b.subleq, "tape_based.subleq", input_shape="char_stream"),
         "sbleq": _reader(b.sbleq, "tape_based.sbleq", input_shape="char_stream"),
         "slow-acv-mammalian": _reader(
             b.slow_acv_mammalian,
@@ -569,6 +573,18 @@ def _register() -> None:
                 "halt; the generator leaves exactly one bit on it, so the "
                 "whole dump is the answer and there is no position to name"
             ),
+        ),
+        "slashes": _embedded(
+            b.slashes,
+            "other.slashes",
+            pair=("a", "b"),
+            note="Inputs fill the binary row index before unary table selection.",
+        ),
+        "cyclic-tag": _embedded(
+            b.cyclic_tag,
+            "queue_based.cyclic_tag",
+            pair=BCT_PAIR,
+            note="Inputs fill the initial queue; the final deleted bit is the answer.",
         ),
         "bitwise-cyclic-tag": _embedded(
             b.bitwise_cyclic_tag,
