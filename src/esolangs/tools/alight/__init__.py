@@ -184,7 +184,7 @@ def _alight_balanced(truth_table: str, n: int, width: int) -> str:
     """
     if width < 1:
         raise ValueError("width must be at least 1")
-    from esolangs.tools.alight_balance import select_alight
+    from esolangs.tools.alight.balance import select_alight
 
     return select_alight(truth_table, n, width)
 

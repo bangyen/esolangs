@@ -717,9 +717,9 @@ def test_circuit_gate_column_and_band_fit_transitions(inputs, affine):
 @pytest.mark.slow
 @pytest.mark.parametrize("inputs", [6, 8])
 def test_laserfuck_reader_tree_and_funnel_fits(inputs):
-    from esolangs.tools import laserfuck_layout
     from esolangs.tools.helpers import input_orders, permute_truth_table
     from esolangs.tools.laserfuck import _laserfuck_reader_candidates, _laserfuck_tree
+    from esolangs.tools.laserfuck import layout as laserfuck_layout
 
     language = "LaserFuck"
     rng = random.Random(1023 + inputs)
@@ -757,7 +757,7 @@ def test_native_balance_preserves_answers(language):
 
 
 def test_qoibl_affine_row_envelope_minima():
-    from esolangs.tools.qoibl_balance import _best_width
+    from esolangs.tools.qoibl.balance import _best_width
 
     for negative, constant, positive, extra in product(
         [32, 45, 60], [1, 5, 15], [-1, 4, 12], [0, 10, 30]
@@ -813,7 +813,7 @@ def test_native_width_generators_have_balance_rules():
 
 def test_alight_affine_fold_comparisons_and_empty_turn_rows():
     from esolangs.tools.alight import _alight_folded, _dimensions
-    from esolangs.tools.alight_balance import _fold_shape
+    from esolangs.tools.alight.balance import _fold_shape
 
     pieces = [(0, 6)] * 3 + [(0, 8), (1, 20), (1, 20), (0, 6), (0, 4)]
     assert _fold_shape(pieces, (1, 90), 1, 31)[3] == 4
@@ -828,7 +828,7 @@ def test_alight_affine_fold_comparisons_and_empty_turn_rows():
 
 
 def test_alight_planned_layouts_render_and_execute():
-    from esolangs.tools.alight_balance import _emit, _plans
+    from esolangs.tools.alight.balance import _emit, _plans
 
     for plan in _plans(2):
         program = _emit("0110", 2, plan)
@@ -836,7 +836,7 @@ def test_alight_planned_layouts_render_and_execute():
 
 
 def test_alight_model_drift_aborts(monkeypatch):
-    import esolangs.tools.alight_balance as module
+    from esolangs.tools.alight import balance as module
 
     monkeypatch.setattr(module, "_alight_folded", lambda *_args: "begin;end;")
     with pytest.raises(AssertionError, match="fold model disagrees"):

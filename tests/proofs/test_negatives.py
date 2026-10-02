@@ -36,8 +36,8 @@ from esolangs.interpreters.register_based.polynomial import (
     run,
     sanitize,
 )
-from esolangs.tools._polynomial import format_coeffs, multiply
 from esolangs.tools.polynomial import polynomial
+from esolangs.tools.polynomial.algebra import format_coeffs, multiply
 
 # --------------------------------------------------------------------------
 # Polynomial cannot ship a factored program

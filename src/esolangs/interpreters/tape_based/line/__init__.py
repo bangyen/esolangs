@@ -26,7 +26,7 @@ from .simulate import _State
 from .simulate import run_compiled as _run_compiled
 
 if TYPE_CHECKING:
-    from esolangs.line.render import Node
+    from esolangs.tools.line.render import Node
 
     from .simulate import _Compiled
 

@@ -4,7 +4,7 @@ Test-only.  The generator emits by rule; this replays the emitted code
 against every row so a construction that spells the wrong thing fails.
 """
 
-from esolangs.tools.one_two_three_construct import _ONE, _RING, ConstructError
+from esolangs.tools.one_two_three.construction import _ONE, _RING, ConstructError
 
 
 def _jump_tables(code: str) -> tuple[list[int], list[int]]:

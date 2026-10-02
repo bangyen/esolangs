@@ -1,6 +1,6 @@
 """The packed polynomial multiplication agrees with the incremental one.
 
-:func:`~esolangs.tools._polynomial.render_product` has two paths over the
+:func:`~esolangs.tools.polynomial.algebra.render_product` has two paths over the
 same factors -- an incremental ``multiply`` loop below
 ``_PACKED_MIN_FACTORS`` and Kronecker substitution above it -- and its
 docstring's claim is that both "render the same bytes".  That claim is the
@@ -17,7 +17,7 @@ so they are driven directly.
 
 import pytest
 
-from esolangs.tools._polynomial import (
+from esolangs.tools.polynomial.algebra import (
     _PACKED_MIN_FACTORS,
     _normalise,
     _pack,
@@ -91,7 +91,7 @@ class TestResourceEstimate:
         from esolangs.tools.polynomial import _polynomial_dag, _polynomial_factors
         from tests.tools.test_boolean_contract import _dense
 
-        module = importlib.import_module("esolangs.tools._polynomial")
+        module = importlib.import_module("esolangs.tools.polynomial.algebra")
         original = _pack
         packed_digits: list[int] = []
 
@@ -230,7 +230,7 @@ class TestBranchesTheGeneratorNoLongerReaches:
     def test_the_digit_cap_is_lifted_and_restored(self) -> None:
         import sys
 
-        from esolangs.tools._polynomial import _digit_limit_for
+        from esolangs.tools.polynomial.algebra import _digit_limit_for
 
         before = sys.get_int_max_str_digits()
         with _digit_limit_for(before + 200):

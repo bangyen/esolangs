@@ -109,3 +109,21 @@ def test_the_lookup_is_keyed_the_way_the_sweep_reads_it() -> None:
     by_slug = module._examples_by_slug()  # type: ignore[attr-defined]  # noqa: SLF001
     assert "a_painter_ant" in by_slug
     assert "a-painter-ant" not in by_slug
+
+
+def test_package_source_aliases_include_nested_helpers(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    sweep = load_script()
+    package = tmp_path / "src/esolangs/interpreters/other/demo"
+    package.mkdir(parents=True)
+    (package / "__init__.py").write_text("")
+    helper = package / "ops/parse.py"
+    helper.parent.mkdir()
+    helper.write_text("")
+    monkeypatch.setattr(sweep, "_ROOT", tmp_path)
+    short = sweep._sources("other.demo")  # noqa: SLF001
+    full = sweep._sources("esolangs.interpreters.other.demo")  # noqa: SLF001
+    assert short == full
+    assert {package / "__init__.py", helper} <= set(short)

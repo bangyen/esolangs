@@ -1,4 +1,4 @@
-"""Covers :mod:`esolangs.tools.minifuck` and :mod:`esolangs.tools.minifuck_mux`."""
+"""Covers :mod:`esolangs.tools.minifuck` and :mod:`esolangs.tools.minifuck.mux`."""
 
 import importlib
 from unittest.mock import patch
@@ -7,8 +7,8 @@ import pytest
 
 from esolangs.tools.helpers import essential_inputs
 from esolangs.tools.minifuck import _solve
-from esolangs.tools.minifuck_mux import _MUX_MIN_ARITY, _mux, _mux_lookup
-from esolangs.tools.minifuck_sim import _MINIFUCK_INPUT
+from esolangs.tools.minifuck.mux import _MUX_MIN_ARITY, _mux, _mux_lookup
+from esolangs.tools.minifuck.sim import _MINIFUCK_INPUT
 from tests.tools.minifuck_support import _MinifuckCase, _mux_separate, run_count
 
 

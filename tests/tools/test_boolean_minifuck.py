@@ -12,7 +12,7 @@ import importlib
 import pytest
 
 from esolangs.tools.helpers import TEMPLATE_CHAR, essential_inputs, runs
-from esolangs.tools.minifuck_mux import (
+from esolangs.tools.minifuck.mux import (
     _MUX_MIN_ARITY,
     _MUX_PRESERVE_RIGHT,
     _SCULPT_POOL_CODE,
@@ -21,8 +21,8 @@ from esolangs.tools.minifuck_mux import (
     _mux_weight,
     _probe_frame,
 )
-from esolangs.tools.minifuck_pool import _POOL_MASK
-from esolangs.tools.minifuck_sim import PAIR, _Joint, _runs, _Sim
+from esolangs.tools.minifuck.pool import _POOL_MASK
+from esolangs.tools.minifuck.sim import PAIR, _Joint, _runs, _Sim
 from tests.tools.minifuck_support import _mux_separate, run_count
 
 
@@ -168,7 +168,7 @@ def test_a_flipped_embed_complements_in_place_and_keeps_slot_order() -> None:
     coordinate is most likely to break.
     """
 
-    from esolangs.tools.minifuck_pool import _FLIP, _embed
+    from esolangs.tools.minifuck.pool import _FLIP, _embed
 
     for n in (2, 3):
         plain = _embed(n).template()
@@ -226,7 +226,7 @@ def test_the_weight_law_matches_the_parsed_runs() -> None:
     """
     import random
 
-    from esolangs.tools.minifuck_sim import _runs, _Sim
+    from esolangs.tools.minifuck.sim import _runs, _Sim
 
     rng = random.Random(20260910)
     applied = refused = 0
@@ -296,7 +296,7 @@ def test_the_rewind_law_matches_the_parsed_runs() -> None:
     """
     import random
 
-    from esolangs.tools.minifuck_sim import _runs, _Sim
+    from esolangs.tools.minifuck.sim import _runs, _Sim
 
     rng = random.Random(20260911)
     fused = fell_back = 0

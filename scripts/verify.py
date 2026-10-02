@@ -139,7 +139,7 @@ STEP_SCOPE: dict[str, tuple[str, ...]] = {
     # Only an interpreter (or the sweep itself) can introduce a leak.
     "exception leaks": (
         "src/esolangs/interpreters/",
-        "src/esolangs/line/",
+        "src/esolangs/tools/line/",
         "src/esolangs/raster/",
         "scripts/verify_no_exception_leaks.py",
     ),
@@ -301,6 +301,10 @@ def _pytest_scope(changed: list[str]) -> list[str] | str:
                 paths.add(f)
             continue
         if f.startswith("src/esolangs/interpreters/") and f.endswith(".py"):
+            relative = Path(f).relative_to("src/esolangs/interpreters")
+            # Package helpers can share a filename with another interpreter.
+            if len(relative.parts) > 2:
+                return WHOLE_SUITE
             stem = Path(f).stem
             if stem.startswith("_"):
                 return WHOLE_SUITE

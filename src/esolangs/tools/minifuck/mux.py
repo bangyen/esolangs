@@ -6,7 +6,7 @@ cell; the strip is preloaded with the table and one left run reads it.
 
 from functools import cache
 
-from esolangs.tools.minifuck_pool import (
+from esolangs.tools.minifuck.pool import (
     _BASE,
     _POOL_CODES,
     _POOL_MASK,
@@ -14,7 +14,7 @@ from esolangs.tools.minifuck_pool import (
     _PROBE_WALK_OUT,
     _READS,
 )
-from esolangs.tools.minifuck_sim import (
+from esolangs.tools.minifuck.sim import (
     _MINIFUCK_INPUT,
     _Joint,
     _runs,

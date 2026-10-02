@@ -75,7 +75,7 @@ a run prints exactly one character.
 from dataclasses import dataclass
 from typing import Literal, cast
 
-from esolangs.tools._circuit_layout import _HOLD, _Layout, _RoutingLayout, _Shape
+from esolangs.tools.circuit_diagram.layout import _HOLD, _Layout, _RoutingLayout, _Shape
 from esolangs.tools.helpers import (
     _greedy_input_order,
     _validate_truth_table,
@@ -1101,7 +1101,7 @@ def _circuit_diagram_at(
 def _affine_circuit(
     table: str, width: int, *, _events: list[int] | None = None
 ) -> str | None:
-    from esolangs.tools._circuit_balance import affine_circuit
+    from esolangs.tools.circuit_diagram.balance import affine_circuit
 
     return affine_circuit(table, width, _events=_events)
 

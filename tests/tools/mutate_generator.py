@@ -40,7 +40,7 @@ import-time trampoline in ``registry``/``lamfunc`` before mutmut has set
 ``paths_to_mutate``, so only it gets trampolines; every other module is
 copied verbatim and imports normally.  The generator modules also import
 cleanly on their own -- ``esolangs.tools.*`` reaches only
-``helpers``, ``wrap``, ``_polynomial`` and ``laserfuck_layout``.  None of
+``helpers``, ``wrap``, ``polynomial.algebra`` and ``laserfuck.layout``.  None of
 them do work at import time.
 
 So the layout is the package itself, copied whole into a work directory
@@ -139,7 +139,7 @@ class _Kind:
     than separate code paths.  Every one satisfies the two preconditions the
     layout relies on: each module imports cleanly on its own, and nothing it
     reaches does work at import time.  ``esolangs.tools.*`` reaches only
-    ``helpers``, ``wrap``, ``_polynomial`` and ``laserfuck_layout``, which
+    ``helpers``, ``wrap``, ``polynomial.algebra`` and ``laserfuck.layout``, which
     the copied package resolves like any other import.
 
     ``tests_dir`` is deliberately narrow: pointing mutmut at the whole
@@ -329,7 +329,7 @@ def _modules(family: str) -> list[str]:
     kind = _KINDS[family]
     modules = []
     paths = (
-        kind.pkg_dir.rglob("*.py") if family == "tools" else kind.pkg_dir.glob("*.py")
+        kind.pkg_dir.glob("*.py") if family == "core" else kind.pkg_dir.rglob("*.py")
     )
     for path in paths:
         relative = path.relative_to(kind.pkg_dir)

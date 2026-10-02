@@ -14,7 +14,7 @@ Root recovery is exact: ``[a, b]`` is ``(x-a)^2 + p**(2*b)`` and ``[v]``
 is ``x - p**v``, so the Gaussian integer roots are recovered exactly and
 the values read off (a real root ``p**v`` passes 2**53 at ``p**8`` for
 ``p >= 100``, where ``complex`` would round).  The recovery lives in
-:mod:`._polynomial_roots`: past ``_NTT_MIN_DEGREE`` candidates come from
+:mod:`.roots`: past ``_NTT_MIN_DEGREE`` candidates come from
 roots modulo two small prime fields found by NTT; acceptance is exact
 division either way.  Whatever the peels leave, and every sparse source,
 goes through ``p``-adic lifting and a 2-D lattice behind the gap lemma,
@@ -29,9 +29,8 @@ import sys
 from collections.abc import Callable, Sequence
 
 from esolangs._drive import drive
-from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
-from esolangs.interpreters.register_based._polynomial_roots import (
+from esolangs.interpreters.register_based.polynomial.roots import (
     _PEEL_MAX_EXPONENT,
     _PEEL_MAX_IMAGINARY_EXPONENT,
     _find_roots,
@@ -40,7 +39,7 @@ from esolangs.interpreters.register_based._polynomial_roots import (
     _Root,
     _sparse_roots,
 )
-from esolangs.interpreters.register_based._polynomial_roots import (
+from esolangs.interpreters.register_based.polynomial.roots import (
     prime as prime,
 )
 
@@ -409,7 +408,3 @@ def run(code: str, io: IO) -> None:
     """Execute a Polynomial program to completion."""
     machine = _Machine(code, io)
     drive(machine)
-
-
-if __name__ == "__main__":
-    script_main(run)

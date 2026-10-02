@@ -34,8 +34,8 @@ from esolangs.interpreters.tape_based.line.extract import (
 from esolangs.interpreters.tape_based.line.lattice import _DIRS, Stroke, Vertex
 from esolangs.interpreters.tape_based.line.mask import Mask, from_grey
 from esolangs.interpreters.tape_based.line.simulate import IO, run
-from esolangs.line.render import Node, chain, render
 from esolangs.raster.png import read_grey
+from esolangs.tools.line.render import Node, chain, render
 
 
 def test_transition_preserves_prior_states_and_requests_output() -> None:

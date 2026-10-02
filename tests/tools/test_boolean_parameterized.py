@@ -1068,7 +1068,7 @@ class TestConstructorWorkBudget:
         against the wrong row spells the wrong program for that row alone,
         which no aggregate length check would catch.
         """
-        from esolangs.tools.one_two_three_construct import (
+        from esolangs.tools.one_two_three.construction import (
             _ONE,
             _ZERO,
             _Row,
@@ -1082,7 +1082,7 @@ class TestConstructorWorkBudget:
 
     def test_a_fill_coalesces_with_the_run_beside_it(self) -> None:
         """Adjacent equal characters become one run, fills included."""
-        from esolangs.tools.one_two_three_construct import (
+        from esolangs.tools.one_two_three.construction import (
             _ONE,
             _Row,
             _row_runs,
@@ -1098,7 +1098,7 @@ class TestConstructorWorkBudget:
         the paint up front is what makes the refusal cheap rather than
         something noticed a million commands later.
         """
-        from esolangs.tools.one_two_three_construct import (
+        from esolangs.tools.one_two_three.construction import (
             _Builder,
             _paint_all,
             _Row,

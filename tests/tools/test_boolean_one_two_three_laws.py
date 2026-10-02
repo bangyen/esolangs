@@ -131,7 +131,7 @@ class TestSeparationLaws:
             _verdict_junky,
             _work,
         )
-        from esolangs.tools.one_two_three_construct import (
+        from esolangs.tools.one_two_three.construction import (
             _construct_linear,
             _WorkExhaustedError,
         )

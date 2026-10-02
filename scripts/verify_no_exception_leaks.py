@@ -387,15 +387,15 @@ def _sources(module: str) -> list[pathlib.Path]:
     sweep that never read the interpreter.
     """
     pkg = _ROOT / "src" / "esolangs"
-    if module.startswith("esolangs."):
-        path = pkg / module.removeprefix("esolangs.").replace(".", "/")
-        sources = (
-            sorted(path.glob("*.py")) if path.is_dir() else [path.with_suffix(".py")]
-        )
-        if path.is_dir():
-            sources.extend(sorted((pkg / "raster").glob("*.py")))
-    else:
-        sources = [pkg / "interpreters" / (module.replace(".", "/") + ".py")]
+    relative = (
+        module.removeprefix("esolangs.")
+        if module.startswith("esolangs.")
+        else "interpreters." + module
+    )
+    path = pkg / relative.replace(".", "/")
+    sources = sorted(path.rglob("*.py")) if path.is_dir() else [path.with_suffix(".py")]
+    if path.is_dir():
+        sources.extend(sorted((pkg / "raster").rglob("*.py")))
     return [
         _HERE,
         _ROOT / "scripts" / "_scope.py",

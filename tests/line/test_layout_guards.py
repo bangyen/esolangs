@@ -4,8 +4,8 @@ import pytest
 
 from esolangs.interpreters.tape_based.line import extract
 from esolangs.interpreters.tape_based.line.mask import Mask
-from esolangs.line import render
-from esolangs.line.bf_to_line import bf_to_line
+from esolangs.tools.line import render
+from esolangs.tools.line.bf_to_line import bf_to_line
 
 
 def test_thick_square_is_not_an_arrowhead() -> None:

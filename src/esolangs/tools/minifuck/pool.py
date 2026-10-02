@@ -1,6 +1,6 @@
 """The Minifuck embed and the pool (cells 0..7) the endgame prints through."""
 
-from esolangs.tools.minifuck_sim import _clamp, _Joint, _walk_to
+from esolangs.tools.minifuck.sim import _clamp, _Joint, _walk_to
 
 # First embedded bit; the pool is cells 0..7, plus room for the walk-in.
 _BASE = 16

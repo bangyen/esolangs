@@ -39,7 +39,7 @@ from typing import TYPE_CHECKING
 from .extract import DEFAULT_UNIT, OpCall, Stroke, Vertex, classify_ops
 
 if TYPE_CHECKING:
-    from esolangs.line.render import Node
+    from esolangs.tools.line.render import Node
 
 
 @dataclass
