@@ -280,6 +280,7 @@ def write_rgb(pixels: Sequence[Sequence[tuple[int, int, int]]]) -> bytes:
         raise ValueError("expected a non-empty 2-D RGB image")
     packed_rows: dict[int, tuple[Sequence[tuple[int, int, int]], bytes]] = {}
     packed_pixels: dict[int, tuple[tuple[int, int, int], bytes]] = {}
+    cache_pixels = True
     parts = []
     for row in pixels:
         cached = packed_rows.get(id(row))
@@ -289,17 +290,18 @@ def write_rgb(pixels: Sequence[Sequence[tuple[int, int, int]]]) -> bytes:
         immutable = type(row) is tuple
         raw = bytearray()
         for pixel in row:
-            cached_pixel = packed_pixels.get(id(pixel))
-            if cached_pixel is not None:
-                raw.extend(cached_pixel[1])
-                continue
+            if cache_pixels:
+                cached_pixel = packed_pixels.get(id(pixel))
+                if cached_pixel is not None:
+                    raw.extend(cached_pixel[1])
+                    continue
             if len(pixel) != 3 or any(not 0 <= value <= 255 for value in pixel):
                 raise ValueError(f"invalid RGB pixel {pixel!r}")
-            packed_pixel = bytes(pixel)
-            raw.extend(packed_pixel)
+            raw.extend(pixel)
             if type(pixel) is tuple:
-                if len(packed_pixels) < 1024:
-                    packed_pixels[id(pixel)] = pixel, packed_pixel
+                if cache_pixels:
+                    packed_pixels[id(pixel)] = pixel, bytes(pixel)
+                    cache_pixels = len(packed_pixels) < 1024
             else:
                 immutable = False
         packed = bytes(raw)
