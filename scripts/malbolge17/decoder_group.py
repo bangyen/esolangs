@@ -500,6 +500,10 @@ def _build(
         planner.op("p", cell)
     planner.op("*", helpers["w"])
     planner.op("p", helpers["all2"])
+    if common_setup:
+        from compact_decoder import emit_navigation
+
+        emit_navigation(planner, group, used, helpers)
     phases = [len(planner.code)]
     values: dict[int, int] = {}
     for label in "01xnN":
