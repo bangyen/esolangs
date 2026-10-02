@@ -16,6 +16,9 @@ exhausted input raises :class:`EOFError`.  Malformed programs raise
 revisits a state on unbounded integers, and ``esolangs.run``'s
 ``timeout`` is the guard.  :func:`_advance` is pure over an immutable
 ``_State`` whose tuple memory is part of the state because it grows.
+
+The spec leaves user input unspecified; this interpreter reads consecutive
+Unicode character codes, including newlines.
 """
 
 from __future__ import annotations

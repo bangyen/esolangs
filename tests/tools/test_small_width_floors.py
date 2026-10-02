@@ -14,7 +14,7 @@ def test_false_single_character_floor_executes_every_small_table() -> None:
             program = esolangs.generate("FALSE", table, 1)
             assert max(map(len, program.splitlines())) == 1
             for row, expected in enumerate(table):
-                stdin = "\n".join(format(row, f"0{n}b")) + "\n"
+                stdin = format(row, f"0{n}b")
                 assert (
                     esolangs.run("FALSE", program, stdin, max_steps=100_000) == expected
                 )
@@ -37,7 +37,7 @@ def test_narrow_small_tokens_keep_larger_input_order(language: str) -> None:
                 if language != "FALSE"
                 else program
             )
-            stdin = "\n".join(map(str, bits)) + "\n" if language == "FALSE" else ""
+            stdin = "".join(map(str, bits)) if language == "FALSE" else ""
             output = esolangs.run(language, code, stdin, max_steps=100_000)
             assert (
                 output.startswith(f"z: {expected}\n")

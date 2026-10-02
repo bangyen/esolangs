@@ -370,7 +370,7 @@ class TestTheTableOptionIsUsedByPlainRun:
         _out, err = call_both(
             ["run", "--table", "0110", "Clockwise", str(path)], capsys, stdin="101"
         )
-        assert "wants 2 bits" in err
+        assert "reads 2 characters" in err
 
     def test_a_correct_input_stays_silent(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
@@ -575,7 +575,7 @@ class TestTheTableOptionClosesTheArityGap:
                 stdin="101",
             )
         assert exc.value.code == 2
-        assert "wants 2 bits" in capsys.readouterr().err
+        assert "reads 2 characters" in capsys.readouterr().err
 
     def test_an_out_of_range_row_index_is_refused(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
@@ -717,7 +717,7 @@ class TestJudgeAdmitsWhatItCannotCheck:
         _out, err = call_both(
             ["run", "--judge", "--table", "0110", "brainfuck", str(path)],
             capsys,
-            stdin="1\n0\n",
+            stdin="10",
         )
         assert err == ""
 

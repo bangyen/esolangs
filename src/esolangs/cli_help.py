@@ -71,12 +71,11 @@ piped straight into `esolangs run`:
 
     esolangs encode Taglate 101 | esolangs run Taglate prog.txt
 
-Most languages read one 0/1 line per bit and this is no more than what you
-would have typed.  Four are not most languages, and each fails silently if
-you guess: Grapheme spells its bits %/A, Clockwise wants them all on one
-line, Fargo wants the row index as one decimal number, and Taglate pads an
-odd input count with a leading zero line.  `esolangs describe <language>`
-prints which of those you are dealing with.
+Character readers take adjacent 0/1 characters. Numeric readers take
+whitespace-delimited tokens; string readers take lines. Grapheme spells
+its bits %/A, Fargo takes one decimal row index, and Taglate pads an odd
+input count with a leading zero character. `esolangs describe <language>`
+prints the encoding.
 
 A language whose generator embeds the inputs in the program reads no stdin
 at all; `esolangs generate --bits` builds those.
@@ -147,12 +146,10 @@ examples:
 Run a program through its interpreter and print what it writes.
 
 The program is read from <program-file>; its input is this command's stdin.
-Most languages read one line per input bit, but four do not: Grapheme reads
-%/A rather than 0/1, Clockwise takes every bit on one line, Fargo takes the
-row index as one decimal number, and Taglate pads an odd input count with a
-leading zero.  Stdin is checked against that shape -- this command warns,
-`--judge` refuses -- but a wrong shape that still looks legitimate answers
-the wrong row, so let `esolangs encode` spell it:
+Input is consumed verbatim using the language's character, number, or
+string reads. For generated Boolean programs, `esolangs encode` spells the
+input characters, numeric tokens, or lines. `--table` checks that encoding;
+`--judge` refuses incorrect input.
 
     esolangs encode Taglate 101 | esolangs run Taglate prog.txt
 
@@ -243,14 +240,11 @@ and exits 2 -- the wrong alphabet, a shape the language cannot read, a row
 index with a leading zero, and with --table the wrong bit count or an index
 out of range.
 
-Without --table it judges *shape*, and for most languages a shape is not a
-count.  Clockwise wants every bit on one line; Fargo wants one row index.
-For those two a stray line is a shape error and is caught.  Of the rest,
-every language but Taglate reads a line per bit; Taglate reads a line per
-bit plus a padding one -- and for all of them one line, three lines and no
-lines at all are equally well shaped.  An empty stdin passes `check-stdin
-brainfuck`, which is the trap worth naming: only --table knows how many
-bits the program wanted.
+Without --table it judges only the input alphabet and encoding. An empty
+stdin passes `check-stdin brainfuck`: only --table knows how many bits the
+program wanted. Character readers preserve newlines, so use adjacent bit
+characters rather than inserting line separators. Fargo takes one decimal
+row index.
 
 This checks Boolean input explicitly. `run --judge` applies it as a refusal;
 plain `run` accepts arbitrary input.
@@ -338,8 +332,8 @@ options:
                        `stopped: timeout`.  Like --steps this bounds a
                        program that never halts, which is what the four
                        terminate-as-answer languages are.
-  --stdin TEXT         feed TEXT to the program as its input, one line per
-                       newline.  The only way to give a debugged program
+  --stdin TEXT         feed TEXT verbatim using the language's input unit.
+                       The only way to give a debugged program
                        input, since the Python API cannot feed a live
                        debugger either.
   --table T            check the stdin against the shape and alphabet T's

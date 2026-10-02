@@ -22,7 +22,7 @@ def egl(truth_table: str, width: int | None = None) -> str:
     pieces = [f"{size},2:", "v", ">".join(cells), "%"]
 
     # One read and one weighted guard an input; the weights sum to T - 1.
-    pieces += [f"x(-{'>' * (1 << (n - 1 - index))})" for index in range(n)]
+    pieces += [f"x{'-' * 48}(-{'>' * (1 << (n - 1 - index))})" for index in range(n)]
     pieces.append("v=")
 
     program = "".join(pieces)

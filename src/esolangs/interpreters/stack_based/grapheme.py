@@ -32,6 +32,9 @@ rewind for ``Z``) is part of the transition, reading the *virtual* depth.
 The old ``steps``/``limit`` budget is gone: unbounded pushes are what
 ``esolangs.run``'s ``timeout`` catches, and ancestor replay is decided by
 :func:`esolangs.vm.run_until_halt_or_ancestor`.
+
+The spec asks for strings without defining their delimiter; W reads one line,
+excluding its newline.
 """
 
 from __future__ import annotations

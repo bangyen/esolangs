@@ -11,43 +11,43 @@ Row gives the logical bits; Input gives their language-specific encoding.
 | Program | Language | Table | Row | Input | Expected output |
 | --- | --- | --- | --- | --- | --- |
 | `123.txt` | 123 | `0001` | `01` | embedded 01 | not the answer -- see note |
-| `3d-brainfuck.txt` | 3D Brainfuck | `0001` | `01` | 0 1 | '0' |
+| `3d-brainfuck.txt` | 3D Brainfuck | `0001` | `01` | 01 | '0' |
 | `3x.txt` | 3x | `0001` | `01` | 0 1 | '0' |
-| `6-5.txt` | 6-5 | `0001` | `01` | 0 1 | '0' |
+| `6-5.txt` | 6-5 | `0001` | `01` | 01 | '0' |
 | `a-painter-ant.txt` | A Painter Ant | `0001` | `01` | embedded 01 | '....\n####\n.o.#' |
-| `addsubjump.txt` | AddSubJump | `0001` | `01` | 0 1 | '0' |
+| `addsubjump.txt` | AddSubJump | `0001` | `01` | 01 | '0' |
 | `algebraic-programming-language.txt` | Algebraic Programming Language | `0001` | `01` | 0 1 | '0\n' |
-| `alight.txt` | Alight | `0001` | `01` | 0 1 | '0' |
+| `alight.txt` | Alight | `0001` | `01` | 01 | '0' |
 | `arrowqueue.txt` | ArrowQueue | `0001` | `01` | embedded 01 | '1 0 0 1 2 3' |
-| `b-tapemark.txt` | B-tapemark | `0001` | `01` | 0 1 | '0' |
+| `b-tapemark.txt` | B-tapemark | `0001` | `01` | 01 | '0' |
 | `back.txt` | Back | `0001` | `01` | embedded 01 | '0 1 0' |
 | `befunge.txt` | Befunge | `0001` | `01` | 0 1 | '0 ' |
 | `bf-pda.txt` | BF-PDA | `0001` | `01` | embedded 01 | '0' |
-| `bfstack.txt` | BFStack | `0001` | `01` | 0 1 | '0' |
+| `bfstack.txt` | BFStack | `0001` | `01` | 01 | '0' |
 | `bio.txt` | BIO | `0001` | `01` | embedded 01 | '0' |
 | `bitdeque.txt` | Bitdeque | `0001` | `01` | embedded 01 | '0' |
 | `bitwise-cyclic-tag.txt` | Bitwise Cyclic Tag | `0001` | `01` | embedded 01 | '0' |
-| `bit~.txt` | bit~ | `0001` | `01` | 0 1 | '0' |
-| `brainfuck.txt` | brainfuck | `0001` | `01` | 0 1 | '0' |
-| `brainif.txt` | BrainIf | `0001` | `01` | 0 1 | '0' |
-| `circlefuck.txt` | Circlefuck | `0001` | `01` | 0 1 | '0' |
-| `circuit_diagram.txt` | Circuit Diagram | `0001` | `01` | 0 1 | '0' |
+| `bit~.txt` | bit~ | `0001` | `01` | 01 | '0' |
+| `brainfuck.txt` | brainfuck | `0001` | `01` | 01 | '0' |
+| `brainif.txt` | BrainIf | `0001` | `01` | 01 | '0' |
+| `circlefuck.txt` | Circlefuck | `0001` | `01` | 01 | '0' |
+| `circuit_diagram.txt` | Circuit Diagram | `0001` | `01` | 01 | '0' |
 | `clockwise.txt` | Clockwise | `0001` | `01` | 01 | '0' |
 | `collatz-multiverse.txt` | Collatz Multiverse | `0001` | `01` | 0 1 | '0' |
-| `container.txt` | Container | `0001` | `01` | 0 1 | '0' |
+| `container.txt` | Container | `0001` | `01` | 01 | '0' |
 | `crement.txt` | Crement | `0001` | `01` | embedded 01 | (nothing) |
 | `cvnc.txt` | CV(N)(C) | `0001` | `01` | 0 1 | '0' |
-| `decleq.txt` | Decleq | `0001` | `01` | 0 1 | '0' |
+| `decleq.txt` | Decleq | `0001` | `01` | 01 | '0' |
 | `dig.txt` | Dig | `0001` | `01` | 0 1 | '0' |
 | `dimensional.txt` | Dimensional | `0001` | `01` | 0 1 | '0' |
-| `egl.txt` | EGL | `0001` | `01` | 0 1 | '0' |
+| `egl.txt` | EGL | `0001` | `01` | 01 | '0' |
 | `eval.txt` | Eval | `0001` | `01` | embedded 01 | '0' |
-| `factor.txt` | Factor | `0001` | `01` | 0 1 | '0' |
-| `false.txt` | FALSE | `0001` | `01` | 0 1 | '0' |
+| `factor.txt` | Factor | `0001` | `01` | 01 | '0' |
+| `false.txt` | FALSE | `0001` | `01` | 01 | '0' |
 | `fargo.txt` | Fargo | `0001` | `01` | 1 | '0' |
-| `fish.txt` | Fish | `0001` | `01` | 0 1 | '0' |
-| `flowchart.txt` | Flowchart | `0001` | `01` | 0 1 | '0' |
-| `forbin.txt` | Forbin | `0001` | `01` | 0 1 | '0' |
+| `fish.txt` | Fish | `0001` | `01` | 01 | '0' |
+| `flowchart.txt` | Flowchart | `0001` | `01` | 01 | '0' |
+| `forbin.txt` | Forbin | `0001` | `01` | 01 | '0' |
 | `forþ.txt` | Forþ | `0001` | `01` | 0 1 | '0' |
 | `fractran.txt` | FRACTRAN | `0001` | `01` | embedded 01 | '1' |
 | `grapheme.txt` | Grapheme | `0001` | `01` | % A | '0' |
@@ -55,33 +55,33 @@ Row gives the logical bits; Input gives their language-specific encoding.
 | `inject.txt` | Inject | `0001` | `01` | 0 1 | '0\n' |
 | `intercal.txt` | INTERCAL | `0001` | `01` | embedded 01 | '\n' |
 | `jaune.txt` | Jaune | `0001` | `01` | 0 1 | '0' |
-| `laserfuck.txt` | LaserFuck | `0001` | `01` | 0 1 | '0' |
+| `laserfuck.txt` | LaserFuck | `0001` | `01` | 01 | '0' |
 | `line.png` | Line | `0001` | `01` | 0 1 | '0' |
-| `malbolge.txt` | Malbolge | `0001` | `01` | 0 1 | '0' |
+| `malbolge.txt` | Malbolge | `0001` | `01` | 01 | '0' |
 | `minifuck.txt` | Minifuck | `0001` | `01` | embedded 01 | '0' |
 | `minsky-swap.txt` | Minsky Swap | `0001` | `01` | embedded 01 | '1 0' |
 | `modulous.txt` | Modulous | `0001` | `01` | 0 1 | '0' |
 | `nocomment.txt` | NoComment | `0001` | `01` | embedded 01 | '0' |
-| `packlang.txt` | Packlang | `0001` | `01` | 0 1 | '0' |
+| `packlang.txt` | Packlang | `0001` | `01` | 01 | '0' |
 | `painfuck.txt` | Painfuck | `0001` | `01` | 0 1 | '0' |
 | `piet.png` | Piet | `0001` | `01` | 0 1 | '0' |
-| `polynomial.txt` | Polynomial | `0001` | `01` | 0 1 | '0' |
-| `qoibl.txt` | Qoibl | `0001` | `01` | 0 1 | '0' |
+| `polynomial.txt` | Polynomial | `0001` | `01` | 01 | '0' |
+| `qoibl.txt` | Qoibl | `0001` | `01` | 01 | '0' |
 | `ram0.txt` | RAM0 | `0001` | `01` | embedded 01 | 'z: 0\nn: 0\nram: {\n    1: 0,\n    0: 1\n}' |
-| `rotfuck.txt` | ROTfuck | `0001` | `01` | 0 1 | '0' |
-| `sbleq.txt` | S*bleq | `0001` | `01` | 0 1 | '0' |
-| `slow-acv-mammalian.txt` | SLOW ACV MAMMALIAN | `0001` | `01` | 0 1 | '0' |
+| `rotfuck.txt` | ROTfuck | `0001` | `01` | 01 | '0' |
+| `sbleq.txt` | S*bleq | `0001` | `01` | 01 | '0' |
+| `slow-acv-mammalian.txt` | SLOW ACV MAMMALIAN | `0001` | `01` | 01 | '0' |
 | `smallfuck.txt` | Smallfuck | `0001` | `01` | embedded 01 | '0' |
-| `sophie.txt` | Sophie | `0001` | `01` | 0 1 | '0' |
-| `streetcode.txt` | Streetcode | `0001` | `01` | 0 1 | '0' |
-| `suffolk.txt` | Suffolk | `0001` | `01` | 0 1 | '0' |
-| `super-snusp.txt` | Super SNUSP | `0001` | `01` | 0 1 | '0' |
-| `taglate.txt` | Taglate | `0001` | `01` | 0 1 | '0' |
-| `thisthat.txt` | thisthat | `0001` | `01` | 0 1 | '0' |
+| `sophie.txt` | Sophie | `0001` | `01` | 01 | '0' |
+| `streetcode.txt` | Streetcode | `0001` | `01` | 01 | '0' |
+| `suffolk.txt` | Suffolk | `0001` | `01` | 01 | '0' |
+| `super-snusp.txt` | Super SNUSP | `0001` | `01` | 01 | '0' |
+| `taglate.txt` | Taglate | `0001` | `01` | 01 | '0' |
+| `thisthat.txt` | thisthat | `0001` | `01` | 01 | '0' |
 | `thue.txt` | Thue | `0001` | `01` | 0 1 | '0' |
 | `underload.txt` | Underload | `0001` | `01` | embedded 01 | '0' |
-| `unlambda.txt` | Unlambda | `0001` | `01` | 0 1 | '0' |
-| `unsquare.txt` | Unsquare | `0001` | `01` | 0 1 | '0' |
+| `unlambda.txt` | Unlambda | `0001` | `01` | 01 | '0' |
+| `unsquare.txt` | Unsquare | `0001` | `01` | 01 | '0' |
 | `vandevelo.txt` | Vandevelo | `0001` | `01` | 0 1 | (nothing) |
 
 ## Notes
@@ -107,6 +107,6 @@ Row gives the logical bits; Input gives their language-specific encoding.
 - **piet** -- 80 pixels per codel, comparable in area to Line
 - **ram0** -- RAM0 has no output instruction and dumps its whole state at halt; the answer is the 'z' register
 - **smallfuck** -- Smallfuck defines no I/O; this implementation prints final cell 2
-- **taglate** -- Taglate takes a line per bit like most languages, but an odd input count above 1 is padded with a leading zero it reads like any other digit: an n=3 program wants four lines. Feeding three exhausts its input; padding at the end instead answers every row whose top bit is set wrongly
+- **taglate** -- Taglate reads adjacent characters, but an odd input count above 1 is padded with a leading zero it reads like any other digit: an n=3 program wants four characters. Feeding three exhausts its input; padding at the end instead answers every row whose top bit is set wrongly
 - **thue** -- Thue draws which rewrite to make, by spec, and the interpreter draws too; this program's rules are written so that every state it reaches has exactly one, leaving the draw nothing to change
 - **vandevelo** -- Vandevelo answers by terminating: nil halts and not nil loops

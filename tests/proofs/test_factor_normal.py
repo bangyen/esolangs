@@ -66,7 +66,7 @@ def test_normalized_truth_witnesses(n: int, partition: int) -> None:
         assert len(normal) < len(code)
         assert normalize(normal) == normal
         for row in range(2**n):
-            bits = "\n".join(format(row, f"0{n}b"))
+            bits = "".join(format(row, f"0{n}b"))
             original, reduced = ScriptedIO(bits), ScriptedIO(bits)
             run_bf(code, original)
             run_bf(normal, reduced)
@@ -112,7 +112,7 @@ def test_prefix_normalized_witnesses(n: int, partition: int) -> None:
         assert "]." not in normal
         assert all(first != "." or second == "]" for first, second in pairwise(normal))
         for row in range(2**n):
-            bits = "\n".join(format(row, f"0{n}b"))
+            bits = "".join(format(row, f"0{n}b"))
             io = _FirstOutputIO(bits)
             with pytest.raises(_PrintedError):
                 run_bf(normal, io)

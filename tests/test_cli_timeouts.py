@@ -240,7 +240,7 @@ class TestTimeoutValuesAreCheckedOnce:
         out = call_main(
             ["run", "--judge", "--timeout", "100000", "brainfuck", str(path)],
             capsys,
-            stdin="1\n0\n",
+            stdin="10",
         )
         assert out.strip() == "1"
 

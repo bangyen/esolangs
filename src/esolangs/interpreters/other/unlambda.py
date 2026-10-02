@@ -22,10 +22,9 @@ character that is not a command raise :class:`ValueError`.  Every value is
 applicable, so nothing at run time is invalid and no
 :class:`~esolangs.exceptions.HaltError` arises.
 
-One decision this package's line-based input forces: ``@`` reads a whole
-line and takes its first character, and an empty line gives a newline --
-there is no character stream to take one character from.  Both of the spec's
-branches are live.  At end of input ``@`` hands its argument ``v``, which the
+``@`` consumes the next Unicode character, including newlines. The spec
+does not define character encoding. Both input branches are live.  At end of
+input ``@`` hands its argument ``v``, which the
 shell reaches by catching the ``EOFError`` the port raises, as nine other
 interpreters here catch it and carry on with their language's value; letting
 it escape would make ``@``'s failure branch unreachable and every
@@ -384,7 +383,7 @@ class _Machine:
         at_eof = False
         if reading:
             try:
-                line = self.io.input_str()
+                line = chr(self.io.input_char())
             except EOFError:
                 # The spec's end-of-input branch: ``@`` hands its argument
                 # ``v`` rather than ``k``.  Nine interpreters here already

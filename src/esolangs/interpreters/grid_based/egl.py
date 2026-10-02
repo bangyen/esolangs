@@ -1,7 +1,7 @@
 """Interpreter for EGL.
 
 EGL stores unbounded integers in a declared rectangular grid.  A data pointer
-moves between cells; ``x`` reads a decimal integer and ``=`` prints one.
+moves between cells; ``x`` reads a character code and ``=`` prints a decimal integer.
 Parenthesized bodies repeat while the cell on which their opening parenthesis
 was executed is nonzero.
 
@@ -9,6 +9,9 @@ The wiki does not define malformed dimensions, unmatched loops, or movement
 outside the grid; this interpreter raises :class:`ValueError` for all three.
 Exhausted input raises :class:`EOFError` (the repo-wide convention).  EGL has
 no specified invalid runtime operation requiring :class:`HaltError`.
+
+The spec does not define input representation; x reads the next Unicode
+character code, including newlines.
 """
 
 from __future__ import annotations
@@ -138,7 +141,7 @@ class _Machine:
         if self.halted:
             return
         command = self.code[self.state[0]]
-        value = self.io.input_num() if command == "x" else None
+        value = self.io.input_char() if command == "x" else None
         self.state, output = _advance(
             self.state, self.code, self.pairs, self.width, self.height, value
         )

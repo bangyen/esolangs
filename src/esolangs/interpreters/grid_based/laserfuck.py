@@ -12,6 +12,9 @@ writes wrap in two's-complement order.
 The initial heading and every ``*`` split are drawn from ``rng``, so one
 argument makes a run reproducible; ``None`` draws for real, as the
 cross-check does.  Exhausted input raises :class:`EOFError`.
+
+The spec leaves input representation unspecified; comma reads the next Unicode
+character code, including newlines.
 """
 
 from typing import cast
@@ -366,7 +369,7 @@ class _Machine:
         stepping to a standstill writes what ``run`` writes; the VM adapter
         once dumped on ``not lsrs`` where ``run`` dumped on ``halted``, so a
         program stopped by a second ``o`` printed under one and not the
-        other.  ``,``'s line and ``*``'s coin are read here, only when the
+        other.  ``,``'s character and ``*``'s coin are read here, only when the
         cell under the beam is that command.
         """
         if self.halted:
@@ -392,12 +395,7 @@ class _Machine:
 
         byte = None
         if op == ",":
-            # An empty (or blank) input line reads a zero -- the package
-            # convention, not the language's.  The wiki says nothing about
-            # input at all, and the cross-check is this repo's own harness,
-            # so neither sources this value.
-            line_val = self.io.input_str()
-            byte = ord(line_val[0]) if line_val else 0
+            byte = self.io.input_char()
         split = draw(self._rng, 2) if op == "*" else 0
 
         self._restore(_advance(self._state, op, row, col, d, byte, split))

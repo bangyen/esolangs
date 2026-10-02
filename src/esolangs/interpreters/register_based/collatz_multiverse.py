@@ -13,6 +13,9 @@ malformed line, numeric literal or redefinition of ``input`` raises
 :class:`ValueError`.  :func:`_advance` is pure over an immutable
 ``_State``; the shell pre-reads every ``input`` a line names, and
 :func:`_read` defaults a missing array to zero rather than creating it.
+
+Input numbers are whitespace-delimited integer tokens; the spec does not define
+delimiters.
 """
 
 from __future__ import annotations

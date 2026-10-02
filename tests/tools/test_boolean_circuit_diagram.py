@@ -326,7 +326,7 @@ class TestCircuitDiagramLayoutGuards:
             output = []
             for index in range(4):
                 bits = format(index, "02b")
-                io = ScriptedIO("".join(f"{bit}\n" for bit in bits))
+                io = ScriptedIO("".join(f"{bit}" for bit in bits))
                 run(program, io)
                 output.append(io.getvalue())
             assert "".join(output) == table
@@ -391,7 +391,7 @@ class TestCircuitDiagramLayoutGuards:
         program = circuit_diagram(table, width).split("\n")
         results = []
         for index in range(len(table)):
-            stdin = "".join(f"{bit}\n" for bit in format(index, f"0{n}b"))
+            stdin = "".join(f"{bit}" for bit in format(index, f"0{n}b"))
             io = ScriptedIO(stdin)
             run(program, io)
             results.append(io.getvalue())
@@ -461,7 +461,7 @@ class TestCircuitDiagramLayoutGuards:
                 if program is None:
                     continue
                 for row, expected in enumerate(table):
-                    io = ScriptedIO("\n".join(format(row, f"0{n}b")) + "\n")
+                    io = ScriptedIO(format(row, f"0{n}b"))
                     run(program.splitlines(), io)
                     assert io.getvalue() == expected
                     assert io.reads == n
@@ -554,7 +554,7 @@ class TestCircuitDiagram:
         results = []
         for index in range(len(table)):
             bits = format(index, f"0{n}b")
-            stdin = "".join(f"{bit}\n" for bit in bits)
+            stdin = "".join(f"{bit}" for bit in bits)
             io = ScriptedIO(stdin)
             run(program, io)
             results.append(io.getvalue())
@@ -818,7 +818,7 @@ class TestCircuitDiagram:
                 continue
             program = _h_term_layout(table).render().splitlines()
             for index in range(16):
-                io = ScriptedIO("".join(f"{bit}\n" for bit in format(index, "04b")))
+                io = ScriptedIO("".join(f"{bit}" for bit in format(index, "04b")))
                 run(program, io)
                 assert io.getvalue() == table[index], (table, index)
 

@@ -62,10 +62,9 @@ Further decisions for gaps the wiki leaves open:
   such function raises :class:`ValueError`, as does an unbalanced or
   empty program, a malformed declaration, or a call with the wrong
   argument count.
-* **EOF.**  ``charGet`` reads a line and takes its first byte.  As the wiki
-  specifies, exhausted input yields newline byte 10, making the wiki cat's
-  ``c ^ 10`` terminator reachable.  A supplied blank line remains 0 under
-  the package-wide distinction between an empty line and no line at all.
+* **EOF.** ``charGet`` consumes the next character, including newlines.
+  Exhausted input yields newline byte 10, as specified; the wiki cat's
+  ``c ^ 10`` terminator therefore remains reachable.
 * **Invalid runtime operations** raise
   :class:`~esolangs.exceptions.HaltError`: an undefined variable or
   function, an array index outside its length, and one rule of this

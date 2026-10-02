@@ -8,9 +8,9 @@ divides/modulos/nots, 3 compares/rotates/switches, 4 duplicates/rolls/reads
 a number and 5 reads a char or prints a number/char.  A block with no
 colour exit and no white slide ends the run.
 
-Two deviations: a colour outside the 18 standard ones is treated as white,
-and the input commands read the package's line-oriented stdin, so a blank
-line is a value rather than end of input.
+A colour outside the 18 standard ones is treated as white. Input commands
+share a cursor: character reads preserve newlines; numeric reads consume
+whitespace-delimited integers. Exhausted input commands are ignored.
 """
 
 from __future__ import annotations
@@ -188,12 +188,12 @@ def _perform_io(
     action, value = effect
     if action == "read_num":
         try:
-            line = io.input_str()
+            line = io.input_token()
         except EOFError:
             pass
         else:
             with suppress(ValueError):
-                return (*stack, int(line) if line else 0)
+                return (*stack, int(line))
     elif action == "read_char":
         with suppress(EOFError):
             return (*stack, io.input_char())

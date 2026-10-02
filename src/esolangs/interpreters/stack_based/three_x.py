@@ -16,6 +16,9 @@ cross-check exits 3) and rejects anything but an integer or fraction;
 ``_State``; :func:`_needs` and :func:`_forward` let the shell reject
 underflow and unmatched brackets first, and the shell checks the zero
 divisor.  :class:`_Machine` rebinds one state per ``step()``.
+
+Input numbers are whitespace-delimited integer or fraction tokens; the spec
+does not define delimiters.
 """
 
 from __future__ import annotations
@@ -185,7 +188,7 @@ class _Machine:
                 self.state = (len(self.code), stack, jumps, variables)
                 raise HaltError("unmatched (")
         elif char == "?":
-            line = self.io.input_str().strip()
+            line = self.io.input_token().strip()
             if not _RATIONAL.fullmatch(line):
                 raise ValueError("input must be an integer or a fraction")
             if "/" in line and int(line.rsplit("/", 1)[1]) == 0:

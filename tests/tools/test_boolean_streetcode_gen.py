@@ -341,7 +341,7 @@ def test_quarter_turned_lookup_preserves_input_order(
     row %= len(table)
     program = boolean.streetcode(table, width)
     assert _columns(program) == (7 if width < 9 else 9)
-    io = ScriptedIO("\n".join(f"{row:0{n}b}") + "\n")
+    io = ScriptedIO(f"{row:0{n}b}")
     run(program.splitlines(), io)
     assert (io.getvalue(), io.reads) == (table[row], n)
 

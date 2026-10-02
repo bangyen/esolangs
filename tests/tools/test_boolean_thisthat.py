@@ -17,7 +17,7 @@ from tests.generator_support import evaluate_generated, verify_generated
 def _run(table: str, row: int) -> tuple[str, int]:
     n = len(table).bit_length() - 1
     bits = f"{row:0{n}b}"
-    io = ScriptedIO("".join(f"{bit}\n" for bit in bits))
+    io = ScriptedIO("".join(f"{bit}" for bit in bits))
     run(thisthat(table).splitlines(), io)
     return io.getvalue(), io.reads
 
@@ -62,7 +62,7 @@ def test_constants_test_nothing() -> None:
         n = len(table).bit_length() - 1
         for row in range(0, 1 << n, 1 if n <= 3 else 9):
             bits = f"{row:0{n}b}"
-            io = ScriptedIO("".join(f"{bit}\n" for bit in bits))
+            io = ScriptedIO("".join(f"{bit}" for bit in bits))
             run(program.splitlines(), io)
             assert (io.getvalue(), io.reads) == (table[0], n)
     assert len(thisthat("0" * 8)) == 79  # 1,169 before
@@ -176,7 +176,7 @@ def test_rotated_layout_keeps_ports_and_bistack_axes(width: int) -> None:
         assert max(map(len, program.splitlines())) <= max(width, floor)
         for row, expected in enumerate(table):
             bits = f"{row:0{n}b}"
-            io = ScriptedIO("".join(f"{bit}\n" for bit in bits))
+            io = ScriptedIO("".join(f"{bit}" for bit in bits))
             run(program.splitlines(), io)
             assert (io.getvalue(), io.reads) == (expected, n)
 
@@ -197,7 +197,7 @@ def test_narrow_strip_executes_every_small_table() -> None:
             source = esolangs.generate("thisthat", table, 1)
             assert max(map(len, source.splitlines())) <= 9
             for row, expected in enumerate(table):
-                io = ScriptedIO("".join(f"{bit}\n" for bit in f"{row:0{n}b}"))
+                io = ScriptedIO("".join(f"{bit}" for bit in f"{row:0{n}b}"))
                 run(source.splitlines(), io)
                 assert (io.getvalue(), io.reads) == (expected, n)
     assert max(map(len, thisthat("0110", 1).splitlines())) == 1
@@ -237,6 +237,6 @@ def test_larger_narrow_layout_retains_linear_area_construction(n: int) -> None:
     source = esolangs.generate("thisthat", table, 1)
     assert source == expected
     for row in {0, (1 << n) - 1, *(rng.randrange(1 << n) for _ in range(4))}:
-        io = ScriptedIO("".join(f"{bit}\n" for bit in f"{row:0{n}b}"))
+        io = ScriptedIO("".join(f"{bit}" for bit in f"{row:0{n}b}"))
         run(source.splitlines(), io)
         assert (io.getvalue(), io.reads) == (table[row], n)

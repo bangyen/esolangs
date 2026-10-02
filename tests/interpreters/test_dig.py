@@ -199,9 +199,9 @@ class TestDigEdgeCases:
         with pytest.raises(HaltError):
             run([">$/", " 10"], io=IO())
 
-    def test_empty_input_line_reads_zero(self) -> None:
-        """An empty input line stores 0 in the mole."""
-        assert run_and_capture([">$=:", " 2 "], inputs=[""]) == "0"
+    def test_newline_input_is_preserved(self) -> None:
+        """A character read preserves the newline."""
+        assert run_and_capture([">$=:", " 2 "], inputs=[""]) == "\n"
 
     def test_a_steer_digit_outside_zero_and_one_goes_straight(self) -> None:
         """``#`` turns on 1 and 0; every other digit holds the heading.

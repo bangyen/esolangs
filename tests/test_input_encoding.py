@@ -41,12 +41,12 @@ class TestTheExceptionalLanguages:
     @pytest.mark.parametrize(
         ("language", "bits", "expected"),
         [
-            ("brainfuck", [1, 0, 1], "1\n0\n1\n"),
+            ("brainfuck", [1, 0, 1], "101"),
             ("Grapheme", [1, 0, 1], "A\n%\nA\n"),  # a "0" line reads as true
             ("Clockwise", [1, 0, 1], "101"),  # seven bits per character
             ("Fargo", [1, 0, 1], "5\n"),  # one number, indexed by bit
-            ("Taglate", [1, 0, 1], "0\n1\n0\n1\n"),  # the leading ghost digit
-            ("Taglate", [1, 0], "1\n0\n"),  # an even arity takes no ghost
+            ("Taglate", [1, 0, 1], "0101"),  # the leading ghost digit
+            ("Taglate", [1, 0], "10"),  # an even arity takes no ghost
         ],
     )
     def test_the_encoding_is_what_the_language_reads(
@@ -61,9 +61,9 @@ class TestTheExceptionalLanguages:
         assert _rows(language, table) == table
 
     def test_describe_reports_the_shape(self) -> None:
-        assert esolangs.describe("Clockwise")["input_shape"] == "one_line"
+        assert esolangs.describe("Clockwise")["input_shape"] == "char_stream_cyclic"
         assert esolangs.describe("Fargo")["input_shape"] == "row_index"
-        assert esolangs.describe("brainfuck")["input_shape"] == "line_per_bit"
+        assert esolangs.describe("brainfuck")["input_shape"] == "char_stream"
 
     def test_every_reading_language_has_an_encoding(self) -> None:
         """``encode_inputs`` indexes the example table, which must cover all.
@@ -152,7 +152,7 @@ class TestAnswerMode:
 
     def test_taglates_shape_names_its_padding(self) -> None:
         """Plain ``line_per_bit`` hid the pad digit its n=3 program needs."""
-        assert esolangs.describe("Taglate")["input_shape"] == "line_per_bit_padded"
+        assert esolangs.describe("Taglate")["input_shape"] == "char_stream_padded"
 
     @pytest.mark.slow
     def test_output_mode_means_the_printed_answer_is_the_table(self) -> None:

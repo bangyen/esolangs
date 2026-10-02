@@ -24,8 +24,8 @@ def encode_inputs(
 ) -> str:
     """Return the stdin that feeds ``bits`` to a ``language`` program.
 
-    Most read one ``0``/``1`` line per input; Grapheme spells ``%``/``A``,
-    Clockwise wants one line, Fargo one number, Taglate pads an odd count --
+    Character readers take adjacent digits; numeric readers take tokens.
+    Grapheme spells ``%``/``A``, Fargo takes a row index, Taglate pads odd counts --
     each answering the obvious guess with a wrong bit.  ``truth_table`` is
     needed only where the encoding depends on arity.  A language that embeds
     its inputs is refused; use :func:`instantiate`.
@@ -79,7 +79,11 @@ def encode_inputs(
     zero, one = example.alphabet
     padded = [0, *bits] if example.ghost_digit and len(bits) % 2 and bits[1:] else bits
     digits = [one if bit else zero for bit in padded]
-    if example.input_shape == "one_line":
+    if example.input_shape in {
+        "char_stream",
+        "char_stream_padded",
+        "char_stream_cyclic",
+    }:
         return "".join(digits)
     return "".join(f"{digit}\n" for digit in digits)
 
@@ -87,10 +91,10 @@ def encode_inputs(
 def check_stdin(language: str, stdin: str, truth_table: str | None = None) -> None:
     """Refuse ``stdin`` that cannot be what ``language`` wants to read.
 
-    The CLI's judge, for Python callers: a ``0``/``1`` line to Grapheme,
-    several lines to Clockwise, a non-number to Fargo.  Raises
+    The CLI's judge, for Python callers: a wrong alphabet, unexpected
+    character, or non-number row index.  Raises
     :class:`~esolangs.exceptions.ArgumentError`; :func:`run` does not validate it.
-    ``truth_table`` adds the count, catching surplus lines.  Every check reads
+    ``truth_table`` adds the count, catching surplus inputs.  Every check reads
     a :func:`describe` field.
     """
     facts = describe(language)
@@ -111,9 +115,9 @@ def check_stdin(language: str, stdin: str, truth_table: str | None = None) -> No
     wanted = None
     if truth_table is not None:
         wanted = _validate_shape_for_evaluate(truth_table)
-        if shape == "line_per_bit_padded" and wanted % 2 and wanted > 1:
+        if shape == "char_stream_padded" and wanted % 2 and wanted > 1:
             # Taglate's pad is a digit the program reads like any other, so
-            # an odd input count above one costs an extra line.  Read off
+            # an odd input count above one costs an extra character.  Read off
             # the shape, which is where that fact already lives.
             wanted += 1
 
@@ -157,24 +161,17 @@ def check_stdin(language: str, stdin: str, truth_table: str | None = None) -> No
                     f"{wanted}-input program (0..{2**wanted - 1})"
                 )
         return
-    if shape == "one_line":
-        if len(lines) != 1:
-            raise ArgumentError(
-                f"{name} wants every bit on one line, but stdin is {len(lines)} line(s)"
-            )
-        if wanted is not None and len(lines[0]) != wanted:
-            raise ArgumentError(
-                f"{name} wants {wanted} bits on its one line, got {len(lines[0])}"
-            )
-        # Per character (a character is a bit here); this branch used to
-        # return past the per-line alphabet check, so
-        # ``check_stdin("Clockwise", "999", table)`` was accepted.
-        astray = [char for char in lines[0] if char not in (zero, one)]
+    if shape in {"char_stream", "char_stream_padded", "char_stream_cyclic"}:
+        astray = [char for char in stdin if char not in (zero, one)]
         if astray:
             raise ArgumentError(
                 f"{name} spells its bits {zero!r} and {one!r}, and "
-                f"{len(astray)} character(s) of its one line are outside "
-                f"that -- the first is {astray[0]!r}"
+                f"stdin contains an unexpected character {astray[0]!r}"
+            )
+        if wanted is not None and len(stdin) != wanted:
+            raise ArgumentError(
+                f"{name} reads {wanted} characters for this table, "
+                f"but stdin has {len(stdin)}"
             )
         return
     stray = [line for line in lines if line not in (zero, one)]

@@ -194,7 +194,7 @@ class TestErrorsSurviveAProcessBoundary:
 
         program = esolangs.generate("brainfuck", "10010110")
         with pytest.raises(esolangs.InputExhaustedError) as caught:
-            esolangs.run("brainfuck", program, "1\n0\n", 10)
+            esolangs.run("brainfuck", program, "10", 10)
         restored = pickle.loads(pickle.dumps(caught.value))
         assert str(restored) == str(caught.value)
         assert restored.reads == caught.value.reads
@@ -223,7 +223,7 @@ class TestErrorsSurviveAProcessBoundary:
             lambda: esolangs.run("brainfuck", None),  # type: ignore[arg-type]
             lambda: esolangs.run("brainfuck", "+[]", "", 0.01),
             lambda: esolangs.run(
-                "brainfuck", esolangs.generate("brainfuck", "10010110"), "1\n0\n", 10
+                "brainfuck", esolangs.generate("brainfuck", "10010110"), "10", 10
             ),
         ]
         for raise_it in raisers:
@@ -563,7 +563,7 @@ class TestAFailedRowSaysWhichRow:
         def fail_on_the_sixth(
             language: str, program: object, stdin: str = "", timeout: object = None
         ) -> str:
-            if stdin == "1\n0\n1\n":  # row 5 of an eight-row table
+            if stdin == "101":  # row 5 of an eight-row table
                 raise esolangs.ExecutionTimeoutError("execution exceeded the bound")
             return real_run(language, program, stdin, timeout)  # type: ignore[arg-type]
 
@@ -608,7 +608,7 @@ class TestAFailedRowSaysWhichRow:
         def exhaust(
             language: str, program: object, stdin: str = "", timeout: object = None
         ) -> str:
-            if stdin == "1\n1\n":
+            if stdin == "11":
                 raise esolangs.InputExhaustedError(2, 2)
             return real_run(language, program, stdin, timeout)  # type: ignore[arg-type]
 

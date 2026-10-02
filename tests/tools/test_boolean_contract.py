@@ -121,6 +121,8 @@ def _reads(entry: tuple, table: str) -> int:
     count at that point is the same number either way.
     """
     fn, lang, _run = entry
+    if esolangs.describe(lang.name)["parameterized"]:
+        return 0
     try:
         emitted = fn(table)
         program = emitted if isinstance(emitted, Raster) else str(emitted)
@@ -130,7 +132,7 @@ def _reads(entry: tuple, table: str) -> int:
         # caller into its "does not read input" skip rather than failing on a
         # coverage gap, which is not what this test measures.
         return 0
-    io = ScriptedIO("0\n" * 8)
+    io = ScriptedIO(esolangs.encode_inputs(lang.name, [0] * 8))
     source = (
         program.splitlines() if lang.split and isinstance(program, str) else program
     )
@@ -146,7 +148,7 @@ def _reads(entry: tuple, table: str) -> int:
         of = getattr(machine_cls, "of", None)
         build = of if callable(of) else machine_cls
         run_until_halt_or_cycle(build(source, io))
-    return io.position()
+    return io.reads
 
 
 @pytest.mark.parametrize(
@@ -365,7 +367,7 @@ def test_greedy_order_is_correct_when_it_is_not_the_identity() -> None:
     program = boolean.brainfuck(table)
     for combo in range(2**n):
         bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
-        stdin = "".join(f"{bit}\n" for bit in bits)
+        stdin = "".join(f"{bit}" for bit in bits)
         got = run_program(run, program, stdin)
         assert got == table[combo], f"inputs {bits}"
 

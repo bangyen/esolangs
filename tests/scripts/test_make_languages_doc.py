@@ -293,9 +293,7 @@ def test_the_shape_table_carries_the_encoders_output() -> None:
     module = load_script()
     rendered = module.render_input_shapes_section()
     assert "| Fargo | `row_index` | `0`/`1` | `'5\\n'` |" in rendered
-    assert "| Taglate | `line_per_bit_padded` | `0`/`1` | `'0\\n1\\n0\\n1\\n'` |" in (
-        rendered
-    )
+    assert "| Taglate | `char_stream_padded` | `0`/`1` | `'0101'` |" in (rendered)
 
 
 def test_boolean_set_names_are_registered() -> None:

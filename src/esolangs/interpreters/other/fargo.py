@@ -23,6 +23,9 @@ index (see :meth:`_Machine._bit`).
 Evaluation uses an explicit ``_Frame`` stack: recursion is Fargo's only
 loop, native recursion would hit Python's limit, and the growing stack is
 what :func:`esolangs.vm.run_until_halt_or_ancestor` proves a hang on.
+
+Its initial number is a whitespace-delimited integer token; the spec does not
+define text framing.
 """
 
 from __future__ import annotations
@@ -253,7 +256,7 @@ class _Machine:
     def _read_input(self) -> int:
         """Read the input number, treating empty or invalid input as 0."""
         try:
-            text = self.io.input_str()
+            text = self.io.input_token()
         except EOFError:
             return 0
         try:

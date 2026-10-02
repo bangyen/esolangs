@@ -132,6 +132,9 @@ which is the same state ``{ }`` clears it to.  The nodes that consume the
 register -- printing it, or pushing it onto a deque -- skip a turn while it
 is empty, so a program that reads past the end of its input keeps running
 and simply stops emitting.  No :class:`HaltError` is raised at EOF.
+
+External bits are consecutive 0 or 1 characters, ignoring whitespace; the spec
+does not define stdin framing.
 """
 
 from dataclasses import dataclass, field, replace
@@ -824,10 +827,10 @@ class _Machine:
     def _read_bit(self) -> int | None:
         """Read one bit of input, or ``None`` once the input is exhausted."""
         try:
-            value = self.io.input_str()
+            value = self.io.input_bit()
         except (EOFError, IndexError):
             return None
-        return 1 if value.strip() == "1" else 0
+        return value
 
 
 def run(code: list[str], io: IO) -> None:

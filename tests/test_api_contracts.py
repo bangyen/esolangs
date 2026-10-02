@@ -94,6 +94,7 @@ class TestParameterizedTemplates:
         with pytest.raises(TemplateError, match="reads its inputs"):
             esolangs.instantiate("brainfuck", esolangs.generate("brainfuck", XOR), [0])
 
+    @pytest.mark.medium
     def test_the_set_matches_what_the_generators_emit(self) -> None:
         """The definition is behavioural, so nothing can quietly leave it.
 
@@ -149,8 +150,8 @@ class TestErrorsAreCatchable:
 
     def test_exhausted_input_says_how_much_there_was(self) -> None:
         """A bare ``EOFError()`` reached the caller as the empty string."""
-        with pytest.raises(InputExhaustedError, match="1 line supplied"):
-            esolangs.run("brainfuck", ",,.", stdin="0\n")
+        with pytest.raises(InputExhaustedError, match="1 character supplied"):
+            esolangs.run("brainfuck", ",,.", stdin="0")
 
     def test_it_is_still_an_eoferror(self) -> None:
         """The repo-wide convention every interpreter documents is unchanged."""
@@ -180,7 +181,7 @@ class TestDebuggerResume:
 
     def _debugger(self) -> debugger_api.Debugger:
         return debugger_api.make_debugger(
-            "brainfuck", esolangs.generate("brainfuck", XOR), stdin="1\n0\n"
+            "brainfuck", esolangs.generate("brainfuck", XOR), stdin="10"
         )
 
     def test_output_breakpoint_does_not_deadlock(self) -> None:
@@ -349,13 +350,12 @@ class TestEveryDeliberateErrorIsCatchable:
             facts = esolangs.describe(name)
             if facts["parameterized"] or facts["answer_convention"]:
                 continue  # needs bits embedded, or answers by terminating
-            zero, one = facts["input_encoding"]  # type: ignore[misc]
             for example in facts["examples"]:  # type: ignore[union-attr]
                 try:
                     esolangs.run(
                         name,
                         pathlib.Path(ROOT / example),
-                        stdin=f"{zero}\n{one}\n",
+                        stdin=esolangs.encode_inputs(name, [0, 1]),
                         timeout=20,
                     )
                 except EsolangError as exc:

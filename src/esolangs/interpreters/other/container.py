@@ -201,7 +201,7 @@ class _Machine:
             # The read blocks until there is a character to take, which is
             # an effect and so belongs here rather than in the transition.
             while not queue:
-                queue = tuple(self.io.input_str())
+                queue = (chr(self.io.input_char()),)
             byte = ord(queue[0])
             queue = queue[1:]
 

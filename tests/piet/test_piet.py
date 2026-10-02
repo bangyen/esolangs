@@ -127,26 +127,24 @@ def test_white_start_and_trapped_slide_terminate(
     assert execute(raster((WHITE, LIGHT_RED))) == ""
 
 
-def test_input_character_and_output_character() -> None:
+@pytest.mark.parametrize("character", ["Z", "\n", "\0", "ā"])
+@pytest.mark.parametrize("scale", [1, 3])
+def test_input_character_and_output_character(character: str, scale: int) -> None:
     # in(char), then out(char)
     program = raster(
         (LIGHT_RED, BLACK, BLACK, DARK_BLUE),
         (LIGHT_RED, LIGHT_RED, LIGHT_MAGENTA, DARK_BLUE),
         (BLACK, BLACK, BLACK, DARK_BLUE),
     )
-    assert execute(program, "Z\n") == "Z"
+    loaded = Raster.from_png(program.upscaled(scale).to_png())
+    assert execute(loaded, character) == character
 
 
-def test_input_number_reads_a_blank_line_as_zero() -> None:
-    """A blank line is the package's 0, not a dropped read.
-
-    ``input_num`` is ``int(line)``, which raised on the empty string and was
-    suppressed, so this command pushed nothing where the char command pushed
-    0 -- contradicting the module's own "a blank line is a value".
-    """
+def test_input_number_skips_whitespace_until_eof() -> None:
+    """Whitespace without a number reaches EOF, which leaves the stack alone."""
     blank: list[int] = []
     _execute_command((4, 2), 1, blank, ScriptedIO("\n"))
-    assert blank == [0]
+    assert blank == []
     number: list[int] = []
     _execute_command((4, 2), 1, number, ScriptedIO("7\n"))
     assert number == [7]
@@ -308,3 +306,16 @@ def test_halted_transition_preserves_state() -> None:
 
     state = ((0, 0), 0, -1, (3, 5), True)
     assert _advance(state, ((BLACK,),)) == (state, None)
+
+
+def test_numeric_and_character_commands_share_the_input_cursor() -> None:
+    source = ScriptedIO("A -7\nB")
+    stack: list[int] = []
+    _execute_command((5, 0), 1, stack, source)
+    _execute_command((4, 2), 1, stack, source)
+    _execute_command((5, 0), 1, stack, source)
+    _execute_command((5, 0), 1, stack, source)
+    assert stack == [65, -7, 10, 66]
+    assert source.position() == 6
+    _execute_command((5, 0), 1, stack, source)
+    assert stack == [65, -7, 10, 66]

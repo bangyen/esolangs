@@ -381,9 +381,9 @@ class _Machine:
     def step(self) -> None:
         """Execute one command, advancing (or jumping) the position.
 
-        The reading forms take a line here and convert it; an empty line
-        reads as zero, the package convention (:meth:`io.IO.input_char`),
-        since the wiki says nothing about an empty read.
+        Reads consume whitespace-delimited integer tokens from the shared
+        cursor. Blank lines are skipped; exhaustion raises EOFError.
+        Signed values are accepted independently of Boolean input encoding.
         """
         if self.halted:
             return
@@ -393,8 +393,8 @@ class _Machine:
         if cmd.op == "^":
             self.io.print_num(get(self.cells, self.ptr))
         elif cmd.op in ("v", "v+", "v-", "v?", "v!", "v@"):
-            ch = self.io.input_str()
-            value = ord(ch[0]) - 48 if ch else 0
+            ch = self.io.input_token()
+            value = int(ch)
 
         self._restore(_advance(self._state, self.commands, self.marks, value))
 

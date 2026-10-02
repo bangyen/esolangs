@@ -72,7 +72,7 @@ class TestBitTilde:
         assert run_scripted(">)(<", "A") == "A"
 
     def test_two_inputs_and_outputs(self) -> None:
-        assert run_scripted(")()(", "hi\n!") == "h!"
+        assert run_scripted(")()(", "hi\n!") == "hi"
 
     def test_input_grows_the_pool_to_fit_its_window(self) -> None:
         """``)`` past the first cell extends the pool to hold all eight bits.

@@ -11,6 +11,8 @@ Input exhaustion raises :class:`EOFError`. Malformed programs raise
 
 The execution model is a pure function over an immutable ``_State``. The
 mutable VM shell performs input and replaces that state once per step.
+
+The spec does not delimit input values; Inp reads one line, excluding its newline.
 """
 
 from __future__ import annotations

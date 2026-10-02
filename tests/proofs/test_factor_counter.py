@@ -33,7 +33,7 @@ def test_counter_witness_executes(n: int, partition: int) -> None:
     for table in tables[partition::partitions]:
         program = _render(counter_program(table))
         for row in range(2**n):
-            io = ScriptedIO("\n".join(format(row, f"0{n}b")))
+            io = ScriptedIO("".join(format(row, f"0{n}b")))
             run(program, io)
             assert io.getvalue() == table[row]
 
@@ -52,7 +52,7 @@ def test_counter_preserves_payloads(width: int, partition: int) -> None:
     code = data + _counter(width)
     for row in range(partition, pairs, 4):
         bits = format(row, f"0{width}b") if width else ""
-        machine = _Machine(code, ScriptedIO("\n".join(bits)))
+        machine = _Machine(code, ScriptedIO("".join(bits)))
         while not machine.halted:
             assert machine.ptr or code[machine.ind] != "<"
             machine.step()

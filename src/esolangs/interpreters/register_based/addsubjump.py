@@ -11,6 +11,9 @@ Overflow stay 0); reading ``-1`` raises :class:`EOFError` when input runs
 out; malformed source raises :class:`ValueError`; no instruction cap
 (``esolangs.run``'s ``timeout``); a write to an address too large to
 allocate halts with :class:`HaltError`.
+
+The spec leaves input representation unspecified; this interpreter reads
+consecutive Unicode characters, including newlines.
 """
 
 import re

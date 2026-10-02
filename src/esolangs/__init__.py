@@ -597,7 +597,8 @@ def run(
     and cannot interrupt a single step. Text and raster programs support stepping.
     Isolation and step bounds cannot be combined; stepping does not support seed.
 
-    ``stdin`` is fed line by line without Boolean validation. Reading past
+    ``stdin`` is consumed verbatim using the language's input unit, without
+    Boolean validation. Reading past
     the end usually raises :class:`~esolangs.exceptions.InputExhaustedError`;
     ``describe(language)["eof_is_a_value"]`` marks languages supplying a value.
     Some halt instead. Use :func:`check_stdin`

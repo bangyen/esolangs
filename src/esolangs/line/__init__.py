@@ -5,6 +5,9 @@ Turns and kinks select tape, arithmetic, input, and output operations; a
 T-junction branches on the current cell.  The filled arrowhead chooses the
 entry point and initial direction.  Source must be a lossless PNG because
 anti-aliasing changes the path geometry.
+
+Input numbers are whitespace-delimited integer tokens; the spec does not define
+text framing.
 """
 
 from __future__ import annotations
