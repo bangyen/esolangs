@@ -2,9 +2,10 @@
 
 import pytest
 
-from esolangs.line import extract, render
+from esolangs.interpreters.image_based.line import extract
+from esolangs.interpreters.image_based.line.mask import Mask
+from esolangs.line import render
 from esolangs.line.bf_to_line import bf_to_line
-from esolangs.line.mask import Mask
 
 
 def test_thick_square_is_not_an_arrowhead() -> None:

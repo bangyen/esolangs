@@ -549,8 +549,8 @@ class TestSpecAbortsRatherThanReturningNothing:
 
     def test_a_raster_language_returns_its_own_module_docstring(self) -> None:
         """The raster branch hard-coded ``esolangs.line``, so Piet got Line's."""
-        piet = importlib.import_module("esolangs.piet")
-        line = importlib.import_module("esolangs.line")
+        piet = importlib.import_module("esolangs.interpreters.image_based.piet")
+        line = importlib.import_module("esolangs.interpreters.image_based.line")
         assert esolangs.describe("Piet")["spec"] == (piet.__doc__ or "").strip()
         assert esolangs.describe("Piet")["spec"] != (line.__doc__ or "").strip()
 

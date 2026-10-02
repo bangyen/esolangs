@@ -417,22 +417,20 @@ def test_interpreter_docstrings_follow_the_template() -> None:
     names = {
         lang.interpreter: name for name, lang in LANGUAGES.items() if lang.interpreter
     }
-    walked = {
-        path.relative_to(_INTERPRETERS).with_suffix("").as_posix()
-        for path in _module_files()
-    }
-    assert {module.replace(".", "/") for module in names} <= walked
+    named_paths = {}
+    for module, name in names.items():
+        relative = pathlib.Path(*module.split("."))
+        path = _INTERPRETERS / relative.with_suffix(".py")
+        if not path.exists():
+            path = _INTERPRETERS / relative / "__init__.py"
+        assert path.is_file(), module
+        named_paths[path] = name
+    paths = sorted(set(_module_files()) | set(named_paths))
     failures = {
         path.relative_to(_INTERPRETERS).as_posix(): _docstring_issues(
-            path,
-            names.get(
-                path.relative_to(_INTERPRETERS)
-                .with_suffix("")
-                .as_posix()
-                .replace("/", ".")
-            ),
+            path, named_paths.get(path)
         )
-        for path in _module_files()
+        for path in paths
     }
     assert {path: issues for path, issues in failures.items() if issues} == {}
 

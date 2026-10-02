@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from functools import cache
 
-from esolangs.piet import _COLOURS, BLACK
+from esolangs.interpreters.image_based.piet import _COLOURS, BLACK
 from esolangs.raster import Raster
 from esolangs.tools.helpers import _validate_truth_table, essential_inputs, read_at
 

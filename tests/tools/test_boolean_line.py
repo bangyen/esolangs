@@ -21,9 +21,13 @@ from pathlib import Path
 
 import pytest
 
-from esolangs.line.extract import extract
+from esolangs.interpreters.image_based.line.extract import extract
+from esolangs.interpreters.image_based.line.simulate import (
+    IO,
+    compile_program,
+    run_compiled,
+)
 from esolangs.line.render import Node, render
-from esolangs.line.simulate import IO, compile_program, run_compiled
 from esolangs.tools.line import line_boolean
 
 

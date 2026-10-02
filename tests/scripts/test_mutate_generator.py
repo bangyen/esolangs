@@ -382,7 +382,10 @@ def test_raster_modules_prepare_their_real_suites(
     assert tests == sorted(
         p.name for p in (REPO_ROOT / "tests" / family).glob("test_*.py")
     )
-    assert f"esolangs/{family}/{module}.py" in (proj / "pyproject.toml").read_text()
+    assert (
+        script._KINDS[family].rel_target(module)  # noqa: SLF001
+        in (proj / "pyproject.toml").read_text()
+    )
     script._check_shadowing(proj, family, module)  # noqa: SLF001
 
 
@@ -430,7 +433,7 @@ def test_raster_suites_kill_wrong_answers_in_the_copied_package(
         command, cwd=proj, capture_output=True, text=True, timeout=30
     )
     assert baseline.returncode == 0, baseline.stdout + baseline.stderr
-    target = proj / "esolangs" / family / f"{module}.py"
+    target = proj / script._KINDS[family].rel_target(module)  # noqa: SLF001
     source = target.read_text()
     assert old in source
     target.write_text(source.replace(old, new))

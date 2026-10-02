@@ -64,13 +64,9 @@ GENERATORS = {
     if (generator := lang.boolean) is not None
 }
 INTERPRETERS = {
-    name: (
-        f"esolangs.{lang.id}"
-        if lang.source_kind is SourceKind.RASTER
-        else f"esolangs.interpreters.{lang.interpreter}"
-    )
+    name: f"esolangs.interpreters.{lang.interpreter}"
     for name, lang in LANGUAGES.items()
-    if lang.interpreter is not None or lang.source_kind is SourceKind.RASTER
+    if lang.interpreter is not None
 }
 
 
