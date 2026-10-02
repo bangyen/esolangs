@@ -9,6 +9,7 @@ anti-aliasing changes the path geometry.
 
 from __future__ import annotations
 
+import re
 from functools import lru_cache
 from typing import TYPE_CHECKING, cast
 
@@ -73,6 +74,9 @@ def _grey_rows(rows: Rows) -> list[bytearray]:
     return grey
 
 
+_GREY_RUN = re.compile(rb"(.)\1*", re.DOTALL)
+
+
 def _render_node(
     node: Node, heading: tuple[int, int] = (-1, 0), *, compact: bool = True
 ) -> Rows:
@@ -87,7 +91,10 @@ def _render_node(
         key = bytes(row)
         pixels = cache.get(key)
         if pixels is None:
-            pixels = tuple(palette[level] for level in row)
+            expanded = []
+            for run in _GREY_RUN.finditer(key):
+                expanded.extend([palette[run[1][0]]] * (run.end() - run.start()))
+            pixels = tuple(expanded)
             if len(cache) < 1024:
                 cache[key] = pixels
         rows.append(pixels)
