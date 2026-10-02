@@ -9,18 +9,20 @@ from esolangs.tools.minifuck_pool import (
     _BASE,
     _PLANS,
     _POOL_CODES,
-    _POOL_PTR_MAX,
     _POOL_WIDTH,
     _PROBE_WALK_OUT,
     _READS,
     _embed,
+    _step,
+)
+from esolangs.tools.minifuck_sim import _clamp, _Joint, _Sim
+from tests.tools.minifuck_pool_oracle import (
+    _POOL_PTR_MAX,
     _endgame,
     _find_pool,
     _pool_code_for_row,
     _pool_slice,
-    _step,
 )
-from esolangs.tools.minifuck_sim import _clamp, _Joint, _Sim
 from tests.tools.minifuck_support import (
     _MinifuckCase,
     _mux_separate,
@@ -345,8 +347,9 @@ class TestMinifuckPool(_MinifuckCase):
         carries the inputs -- so the pool search declines outright until a
         clamp has brought them back together.
         """
-        from esolangs.tools.minifuck_pool import _embed, _find_pool
+        from esolangs.tools.minifuck_pool import _embed
         from esolangs.tools.minifuck_sim import _clamp
+        from tests.tools.minifuck_pool_oracle import _find_pool
 
         spread = _embed(2)
         assert len(set(spread.ptrs())) > 1, "the embed should leave rows apart"
@@ -365,9 +368,10 @@ class TestMinifuckPool(_MinifuckCase):
         to print, and emitting the read anyway would print a junk byte.
         """
 
-        module = importlib.import_module("esolangs.tools.minifuck_pool")
-        from esolangs.tools.minifuck_pool import _embed, _endgame
+        module = importlib.import_module("tests.tools.minifuck_pool_oracle")
+        from esolangs.tools.minifuck_pool import _embed
         from esolangs.tools.minifuck_sim import _clamp
+        from tests.tools.minifuck_pool_oracle import _endgame
 
         joint = _embed(2)
         _clamp(joint)
