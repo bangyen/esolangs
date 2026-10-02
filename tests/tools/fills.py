@@ -62,3 +62,12 @@ def instantiate_crement(template: str, bits: list[int]) -> str:
     return fill_runs(
         template, TEMPLATE_CHAR, crement_setters(template, len(bits)), bits
     )
+
+
+def _run_form(pair: tuple[str, str], n: int) -> str:
+    """A bare template of ``n`` runs, one per input, as wide as its setter.
+
+    The synthetic template the width tests fill: nothing but the runs, so
+    the filled length is the setters' alone.
+    """
+    return "$" * len(pair[0]) * n

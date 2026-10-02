@@ -52,17 +52,10 @@ class TestTestFiles:
         assert selected == sorted(p.name for p in TOOLS_TESTS.glob("test_*.py"))
 
     def test_the_suites_that_only_import_the_package_are_included(self) -> None:
-        """The specific files import-based selection used to drop.
-
-        ``test_boolean_other`` imports ``boolean`` and nothing below it, so
-        a scan for ``esolangs.tools.<module>`` does not select it --
-        and it is where every ``laserfuck`` test lives.  Named individually
-        because the general assertion above would still pass if the
-        directory itself lost it.
-        """
+        """Include suites that reach generators through package re-exports."""
         script = load_script()
         selected = script._test_files(script._KINDS["tools"])  # noqa: SLF001
-        assert "test_boolean_other.py" in selected
+        assert "test_boolean_three_x.py" in selected
         assert "test_boolean_contract.py" in selected
 
 
