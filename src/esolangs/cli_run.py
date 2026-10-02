@@ -8,6 +8,7 @@ import warnings
 from esolangs import describe, read_answer, run
 from esolangs.cli_args import (
     _check_count,
+    _errors,
     _fail,
     _pop_flags,
     _pop_options,
@@ -74,18 +75,15 @@ def _run(rest: list[str]) -> None:
         _fail("--judge given more than once")
     _check_count("run", rest, 2)
     language, path = rest[0], rest[1]
-    program = _read_program(path, timeout)
+    program = _read_program(path, timeout, language=language)
     # Resolved *before* stdin is read.  It was after, so
     # `esolangs run NotALang prog.txt` with stdin held open blocked forever
     # without ever saying the language was unknown -- the one thing it could
     # have answered without reading a byte.
-    try:
+    with _errors():
         facts = describe(language)
         mode = facts["answer_mode"]
         name = facts["name"]
-    except EsolangError as exc:
-        _fail(str(exc))
-        raise  # pragma: no cover - unreachable; _fail exits
     stdin = _read_stdin(timeout, _stdin_hint(facts))
     if mode == "termination" and timeout is None:
         if judge:

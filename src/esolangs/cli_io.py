@@ -10,6 +10,8 @@ import sys
 import threading
 from contextlib import AbstractContextManager, nullcontext
 
+from esolangs import _read_source
+from esolangs._source import _FileSource
 from esolangs.cli_args import (
     _fail,
 )
@@ -19,10 +21,6 @@ from esolangs.cli_hints import (
 )
 from esolangs.exceptions import EsolangError
 from esolangs.raster import Raster
-
-#: A program file that starts with the PNG signature is an image-language
-#: program, decoded to a :class:`~esolangs.raster.Raster` rather than text.
-_PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
 
 
 def _null_context() -> AbstractContextManager[None]:
@@ -86,20 +84,16 @@ class _UnboundedNotice:
         self._timer.cancel()
 
 
-def _read_program(path: str, timeout: float | None = None) -> str | Raster:
-    """Return the program in ``path``, or exit with a usage error.
-
-    A raster language's program is a PNG, so the bytes are read and, when
-    they carry the PNG signature, decoded here; otherwise they are UTF-8
-    text.  One trailing newline is the text file's: CV(N)(C), Grapheme and
-    NoComment reject one, and ``esolangs generate ... > prog.txt`` writes it.
-    """
-    # The *open* is on the thread as well as the read.  Opening a FIFO
-    # blocks until a writer appears, so bounding only the read left the
-    # command hanging one line earlier -- which is what a reader saw when
-    # ``--timeout 2`` did not stop ``run`` on an unfed pipe.
-    program = _bounded_read(path, timeout)
-    return program.removesuffix("\n") if isinstance(program, str) else program
+def _read_program(
+    path: str, timeout: float | None = None, *, language: str
+) -> str | Raster:
+    """Read a bounded file and let its interpreter decode the snapshot."""
+    content = _bounded_read(path, timeout)
+    try:
+        return _read_source(language, _FileSource(path, content))
+    except EsolangError as exc:
+        _fail(str(exc))
+        raise  # pragma: no cover - _fail exits
 
 
 def _note(message: str) -> None:
@@ -107,17 +101,11 @@ def _note(message: str) -> None:
     sys.stderr.write(f"{message}\n")
 
 
-def _bounded_read(path: str, timeout: float | None) -> str | Raster:
+def _bounded_read(path: str, timeout: float | None) -> bytes:
     """Open and read ``path``, with a size cap and a deadline.
 
-    Only the blocking open+read runs on the daemon thread: ``open`` on a
-    FIFO waits for a writer, and ``/dev/zero`` reached 3.9 GB ignoring
-    ``--timeout`` and SIGINT inside one C call.  Decoding (UTF-8, or a PNG
-    for a raster program) runs here on the caller's thread, so its cost is
-    not charged to the deadline: a Line PNG decoded for longer than a short
-    ``--timeout`` and was misreported as a FIFO that never delivered, though
-    the file was a regular one.  The cap is two orders above the largest
-    generated program.
+    Only acquisition runs on the daemon thread; interpreter decoding follows
+    on the caller's thread. The cap applies before any decoding.
     """
     box: list[bytes | BaseException] = []
 
@@ -149,24 +137,7 @@ def _bounded_read(path: str, timeout: float | None) -> str | Raster:
             f"reads; the largest program this package generates is far under "
             f"it, so this is almost certainly not a program"
         )
-    if result.startswith(_PNG_MAGIC):
-        # A raster program; decoding it here means ``run`` and ``debug``
-        # accept the same PNG ``generate`` wrote, rather than reading its
-        # bytes as text and refusing "not text".
-        try:
-            return Raster.from_png(result)
-        except EsolangError as exc:
-            _fail(str(exc))
-    try:
-        text = result.decode("utf-8")
-    except UnicodeDecodeError as exc:
-        # Its own clause: ``UnicodeDecodeError`` is a ``ValueError``, not an
-        # ``OSError``, so pointing ``run`` at a PNG used to dump a raw
-        # traceback where every other unreadable file gets one clean line.
-        _fail(f"cannot read {path}: not text ({_decode_note(exc)})")
-    # Match Path.read_text's universal newlines: CRLF left a stray command
-    # in NoComment, CV(N)(C) and Grapheme after stripping the final LF.
-    return text.replace("\r\n", "\n").replace("\r", "\n")
+    return result
 
 
 def _smuggled_bytes(text: str) -> UnicodeDecodeError | None:
