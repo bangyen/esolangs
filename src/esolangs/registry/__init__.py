@@ -45,9 +45,9 @@ __all__ = [
 # generators' names made a sweep skip sixteen boolean generators silently,
 # which is how Jaune's input count survived; one map leaves no wrong pick.
 BY_BOOLEAN: dict[str, Language] = {
-    (lang.boolean.__name__ if lang.boolean is not None else lang.id): lang
+    lang.boolean.__name__: lang
     for lang in LANGUAGES.values()
-    if lang.boolean is not None or lang.raster_boolean is not None
+    if lang.boolean is not None
 }
 
 # Display name -> (interpreter module, split lines).
@@ -61,7 +61,7 @@ RUNNERS: dict[str, tuple[str, bool]] = {
 GENERATORS = {
     name: generator
     for name, lang in LANGUAGES.items()
-    if (generator := lang.boolean or lang.raster_boolean) is not None
+    if (generator := lang.boolean) is not None
 }
 INTERPRETERS = {
     name: (

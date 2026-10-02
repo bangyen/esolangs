@@ -111,12 +111,9 @@ def describe(language: str) -> LanguageInfo:
         "state_model": lang.state_model
         or (_STATE_MODELS.get(family) if family else None),
         "interpreter": lang.interpreter,
-        "boolean_generator": (
-            lang.boolean is not None or lang.raster_boolean is not None
-        ),
+        "boolean_generator": lang.boolean is not None,
         "parameterized": parameterized,
-        "reads_input": (lang.boolean is not None or lang.raster_boolean is not None)
-        and not parameterized,
+        "reads_input": (lang.boolean is not None) and not parameterized,
         # Derived, not recomputed: this was a second copy of the very
         # expression _width_effect() evaluates, so the two could drift into
         # disagreeing about the same language.
@@ -147,7 +144,7 @@ def _width_effect(lang: Any) -> str:
     # One expression rather than an early return for the generator-less
     # case: every registered language has a generator, so that return was a
     # line no input could reach.
-    generator = lang.boolean or lang.raster_boolean
+    generator = lang.boolean
     if generator is not None and _takes_width(generator):
         return "layout"
     return "wrap" if lang.id in WRAPPERS else "none"

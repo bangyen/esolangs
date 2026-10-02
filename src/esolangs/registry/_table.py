@@ -6,8 +6,6 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from enum import StrEnum
 
-from esolangs import line as _line
-from esolangs import piet as _piet
 from esolangs import tools as _boolean
 from esolangs.raster import Raster
 from esolangs.registry._slug import canonical_id
@@ -18,8 +16,7 @@ from esolangs.registry._slug import canonical_id
 # ``width`` bounding the columns, since a shape cannot be reflowed after the
 # fact the way a single long line can.  ``...`` keeps both arities callable
 # with the table alone, which is how every width-less caller invokes them.
-Generator = Callable[..., str]
-RasterGenerator = Callable[..., Raster]
+Generator = Callable[..., str | Raster]
 
 
 class SourceKind(StrEnum):
@@ -39,7 +36,6 @@ class Language:
     id: str = ""
     boolean: Generator | None = None
     source_kind: SourceKind = SourceKind.TEXT
-    raster_boolean: RasterGenerator | None = None
     state_model: str | None = None
 
 
@@ -301,14 +297,14 @@ LANGUAGES: dict[str, Language] = {
         state_model="tape",
         id="line",
         source_kind=SourceKind.RASTER,
-        raster_boolean=_line.generate,
+        boolean=_boolean.line,
     ),
     "Piet": Language(
         "Piet",
         state_model="stack",
         id="piet",
         source_kind=SourceKind.RASTER,
-        raster_boolean=_piet.generate,
+        boolean=_boolean.piet,
     ),
     "SLOW ACV MAMMALIAN": Language(
         "SLOW ACV MAMMALIAN",

@@ -206,9 +206,7 @@ def test_every_boolean_generator_has_an_example() -> None:
     missing -- an empty exemption set is the assertion that none exist.
     """
     registered = {
-        canonical_id(lang.name)
-        for lang in LANGUAGES.values()
-        if lang.boolean or lang.raster_boolean
+        canonical_id(lang.name) for lang in LANGUAGES.values() if lang.boolean
     }
     covered = {
         canonical_id(stem.replace("-", " "))

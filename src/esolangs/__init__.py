@@ -13,7 +13,7 @@ import re
 import signal
 import threading
 from collections.abc import Callable, Sequence
-from functools import partial
+from functools import cache, partial
 from typing import Any, TypedDict, cast
 
 from esolangs._answers import (
@@ -28,7 +28,12 @@ from esolangs._describe import (
     list_languages,
 )
 from esolangs._evaluate import _DEFAULT, _Default, evaluate
-from esolangs._execution import interpreter_errors, interpreter_module, prepare_call
+from esolangs._execution import (
+    check_signal_timeout,
+    interpreter_errors,
+    interpreter_module,
+    prepare_call,
+)
 from esolangs._isolated import run_isolated as _run_isolated
 from esolangs._language import Language
 from esolangs._source import (
@@ -60,6 +65,7 @@ from esolangs.raster import Raster
 from esolangs.registry import (
     INTERPRETERS,
     LANGUAGES,
+    SourceKind,
     parameterized_ids,
     recover_setters,
     render_template,
@@ -169,7 +175,7 @@ def generate(
     """
     check_scale(scale)
     if scale != 1:
-        if LANGUAGES[resolve(language)].raster_boolean is None:
+        if LANGUAGES[resolve(language)].source_kind is not SourceKind.RASTER:
             raise ArgumentError("scale is only supported for raster generators")
         source = generate(language, truth_table, width, balance=balance)
         return cast(Raster, source).upscaled(scale)
@@ -200,7 +206,7 @@ def generate(
         return _Tagged(text, resolve(language))
     resolved = resolve(language)
     lang = LANGUAGES[resolved]
-    fn = lang.boolean or lang.raster_boolean
+    fn = lang.boolean
     if fn is None:
         # Registered, but no generator can exist: Deadfish reads nothing.  This
         # raised UnknownLanguageError, whose message points at `esolangs list`
@@ -219,7 +225,7 @@ def generate(
     check_width(width)
     laid_out = width is not None and _takes_width(fn)
     generated = fn(truth_table, width) if laid_out else fn(truth_table)
-    if lang.raster_boolean is not None:
+    if lang.source_kind is SourceKind.RASTER:
         if not isinstance(generated, Raster):  # pragma: no cover - registry invariant
             raise ProgramError(f"{resolved}'s generator did not return a Raster")
         # Tagged the way a text program is ``_Tagged``: a Line raster fed to
@@ -250,67 +256,61 @@ def _is_template_for(template: str, name: str, truth_table: str) -> bool:
         return True
     language_id = LANGUAGES[name].id
     generator = LANGUAGES[name].boolean
+    width_aware = generator is not None and _takes_width(generator)
+    observed_width = max(1, max(map(len, template.splitlines()), default=0))
+
+    @cache
+    def layout(width: int) -> str | Raster:
+        return generate(name, truth_table, width)
+
+    def same_tokens(program: str | Raster) -> bool:
+        return isinstance(program, str) and template.split() == program.split()
+
     # Layouts may switch representations; their floor is a named candidate,
     # unlike whitespace wrapping, so compare that template exactly too.
-    if (
-        generator is not None
-        and _takes_width(generator)
-        and template == generate(name, truth_table, 1)
-    ):
+    if width_aware and template == layout(1):
         return True
     if language_id == "minsky_swap" and template in (
-        generate(name, truth_table, 10),
-        generate(name, truth_table, 15),
+        layout(10),
+        layout(15),
     ):
         return True
-    if language_id == "back":
-        width = max(1, max(map(len, template.splitlines()), default=0))
-        if template == generate(name, truth_table, width):
-            return True
+    if language_id == "back" and template == layout(observed_width):
+        return True
     if language_id == "intercal":
         from esolangs.tools.intercal import _intercal_tokens
 
-        narrow = generate(name, truth_table, 1)
+        narrow = layout(1)
         if isinstance(narrow, str) and _intercal_tokens(template) == _intercal_tokens(
             narrow
         ):
             return True
         # Its primitive layout fits between the natural and simplified floors.
         # Rebuild at the observed bound rather than accepting equivalent syntax.
-        width = max(1, max(map(len, template.splitlines()), default=0))
-        if template == generate(name, truth_table, width):
+        if template == layout(observed_width):
             return True
-    if (
-        language_id in {"minifuck", "smallfuck"}
-        and generator is not None
-        and _takes_width(generator)
-    ):
+    if language_id in {"minifuck", "smallfuck"} and width_aware:
         for width in (1, 4):
-            narrow = str(generate(name, truth_table, width))
+            narrow = str(layout(width))
             if language_id == "minifuck" and narrow.startswith("q\n"):
                 # Exact layouts were checked above; these LF absorb skips.
                 continue
             if template.replace("\n", "") == narrow.replace("\n", ""):
                 return True
-    if (
-        language_id in {"fractran", "bitdeque", "crement"}
-        and generator is not None
-        and _takes_width(generator)
-    ):
-        narrow = generate(name, truth_table, 1)
-        if isinstance(narrow, str) and template.split() == narrow.split():
+    if language_id in {"fractran", "bitdeque", "crement"} and width_aware:
+        narrow = layout(1)
+        if same_tokens(narrow):
             return True
     if language_id in {"fractran", "crement"}:
         # Short setters coexist with fitting layouts that retain the old pair.
-        width = max(1, max(map(len, template.splitlines()), default=0))
-        observed = generate(name, truth_table, width)
-        if isinstance(observed, str) and template.split() == observed.split():
+        observed = layout(observed_width)
+        if same_tokens(observed):
             return True
     if language_id == "underload":
         from esolangs.tools.underload import _underload_layout_tokens
 
         for width in (1, 4):
-            narrow = str(generate(name, truth_table, width))
+            narrow = str(layout(width))
             if isinstance(narrow, str) and _underload_layout_tokens(
                 template
             ) == _underload_layout_tokens(narrow):
@@ -320,7 +320,7 @@ def _is_template_for(template: str, name: str, truth_table: str) -> bool:
     if language_id == "bio":
         return "".join(template.split()) == "".join(plain.split())
     if language_id in {"bitdeque", "ram0", "fractran"}:
-        return template.split() == plain.split()
+        return same_tokens(plain)
     return template == plain or (
         "\n" not in plain and template.replace("\n", "") == plain
     )
@@ -604,23 +604,20 @@ def run(
         return _run_bounded(
             language, program, stdin, max_steps=max_steps, timeout=timeout, scale=scale
         )
-    if timeout is not None and not (
-        threading.current_thread() is threading.main_thread()
-        and hasattr(signal, "SIGALRM")
-    ):
-        # Before ``_run``, so every ValueError from the run is the
-        # interpreter's.  The message names both routes out for a worker
-        # thread.  Not a silent fallback to stepping: two paths for one
-        # function is how they diverged (``tests/test_stepping_parity.py``).
-        raise ArgumentError(
-            "the timeout guard uses SIGALRM and needs a Unix main thread; "
-            "off it, either bound the run cooperatively with "
-            "esolangs.debugger.make_debugger(language, program, stdin)"
-            ".run(timeout=...), "
-            "which steps and so needs no signal, or use evaluate "
-            "with timeout=None -- they settle a diverging row by proving "
-            "the loop rather than waiting for it"
-        )
+    # Before ``_run``, so every ValueError from the run is the
+    # interpreter's.  The message names both routes out for a worker
+    # thread.  Not a silent fallback to stepping: two paths for one
+    # function is how they diverged (``tests/test_stepping_parity.py``).
+    check_signal_timeout(
+        timeout,
+        "the timeout guard uses SIGALRM and needs a Unix main thread; "
+        "off it, either bound the run cooperatively with "
+        "esolangs.debugger.make_debugger(language, program, stdin)"
+        ".run(timeout=...), "
+        "which steps and so needs no signal, or use evaluate "
+        "with timeout=None -- they settle a diverging row by proving "
+        "the loop rather than waiting for it",
+    )
     name = resolve(language)
     program = check_program(name, program, stdin)
     run_fn = interpreter_module(name).run

@@ -69,9 +69,7 @@ def _generated_seed(language: str) -> str | Raster | None:
 
     A language with no boolean generator falls back to ``SAMPLES``.
     """
-    boolean_generator = (
-        LANGUAGES[language].boolean or LANGUAGES[language].raster_boolean
-    )
+    boolean_generator = LANGUAGES[language].boolean
     if boolean_generator is not None:
         try:
             return boolean_generator("0110")

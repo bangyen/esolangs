@@ -9,9 +9,7 @@ from esolangs.raster import Raster
 from esolangs.registry import LANGUAGES
 
 GENERATORS = sorted(
-    name
-    for name, lang in LANGUAGES.items()
-    if lang.boolean is not None or lang.raster_boolean is not None
+    name for name, lang in LANGUAGES.items() if lang.boolean is not None
 )
 pytestmark = pytest.mark.medium
 
