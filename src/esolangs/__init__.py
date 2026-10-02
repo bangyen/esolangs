@@ -28,6 +28,7 @@ from esolangs._describe import (
     list_languages,
 )
 from esolangs._evaluate import _DEFAULT, _Default, evaluate
+from esolangs._execution import interpreter_errors, interpreter_module, prepare_call
 from esolangs._isolated import run_isolated as _run_isolated
 from esolangs._language import Language
 from esolangs._source import (
@@ -463,7 +464,7 @@ def _check_runnable(language: str, program: str | Raster) -> None:
 def _read_source(language: str, program: ProgramSource) -> str | Raster:
     """Load source and check its kind and origin, allowing unfilled templates."""
     name = resolve(language)
-    module = importlib.import_module(INTERPRETERS[name])
+    module = interpreter_module(name)
     loader = getattr(module, "load_source", text_source)
     program = loader(program)
     origin = getattr(program, "language", None)
@@ -622,91 +623,20 @@ def run(
         )
     name = resolve(language)
     program = check_program(name, program, stdin)
-    run_fn = importlib.import_module(INTERPRETERS[name]).run
-    if scale is not None:
-        from functools import partial
-
-        run_fn = partial(run_fn, scale=scale)
-    split = LANGUAGES[name].split
+    run_fn = interpreter_module(name).run
+    program_args, options = prepare_call(name, program, run_fn, scale=scale, seed=seed)
+    if options:
+        run_fn = partial(run_fn, **options)
     io_obj = ScriptedIO(stdin)
-    program_args: str | list[str] | Raster = (
-        program.splitlines() if split and isinstance(program, str) else program
-    )
-    if seed is not None:
-        run_fn = _seeded(name, run_fn, seed)
-    try:
+    with interpreter_errors(
+        f"the {name} interpreter recursed deeper than CPython's stack "
+        "limit allows on this program; the program is well formed, and "
+        "sys.setrecursionlimit can raise the limit if this interpreter's "
+        "depth grows with program size",
+        io_obj,
+    ):
         _run(run_fn, program_args, io_obj, timeout)
-    except RecursionError as exc:
-        # ``RecursionError`` was the one exception escaping ``EsolangError``.
-        # The limit is CPython's, not the interpreter's (raising it made the
-        # program run); Qoibl's tokenizer carries its own stack now.
-        raise _keeping_output(
-            InterpreterLimitError(
-                f"the {name} interpreter recursed deeper than CPython's stack "
-                f"limit allows on this program; the "
-                f"program is well formed, and sys.setrecursionlimit can raise "
-                f"the limit if this interpreter's depth grows with program size"
-            ),
-            io_obj,
-        ) from exc
-    except EsolangError as exc:
-        # A halt, a timeout, an exhausted input: the program ran and stopped
-        # badly, which is exactly the case where what it printed first is
-        # worth keeping.  Re-raised as itself, so the class and everything
-        # hanging off it are untouched, and a bare ``raise`` keeps the
-        # traceback rather than starting a new one from here.
-        _keeping_output(exc, io_obj)
-        raise
-    except ValueError as exc:
-        # The interpreters signal a malformed program with a plain
-        # ValueError, one per language and each well worded.  Re-raising as
-        # a ProgramError keeps those words and makes the package's promise
-        # true: `except EsolangError` around user-supplied source now holds,
-        # which is the handler an embedder actually writes.
-        raise _keeping_output(ProgramError(str(exc)), io_obj) from exc
     return io_obj.getvalue()
-
-
-def _seeded(name: str, run_fn: Callable[..., Any], seed: int) -> Callable[..., Any]:
-    """Bind ``seed`` to ``run_fn``'s random source, refusing where there is none.
-
-    Eight languages draw (Befunge, Fish, LaserFuck, Modulous, Painfuck,
-    Super SNUSP, Thue, and thisthat) and nothing public passed an ``rng``: ten runs of
-    ``o+++.`` gave ``3`` five times and nothing five times, while ``make_vm``
-    always seeded.  A seed for a language that draws nothing is refused: the
-    likelier reading is the wrong language.
-    """
-    import inspect
-
-    if "rng" not in inspect.signature(run_fn).parameters:
-        raise ArgumentError(
-            f"{name} draws no random values, so a seed has nothing to fix; "
-            f"the languages that draw are Befunge, Fish, LaserFuck, "
-            f"Modulous, Painfuck, Super SNUSP, Thue and thisthat"
-        )
-    from esolangs.interpreters.randomness import Seeded
-
-    try:
-        rng = Seeded(seed)
-    except (TypeError, ValueError) as exc:
-        # ``random.Random`` rejects an unseedable type with TypeError and a
-        # surrogate string with UnicodeEncodeError (a ValueError); either
-        # used to escape the package's "every deliberate error is an
-        # EsolangError".
-        raise ArgumentError(str(exc)) from exc
-    return partial(run_fn, rng=rng)
-
-
-def _keeping_output[E: EsolangError](exc: E, io_obj: ScriptedIO) -> E:
-    """Attach what the program printed before ``exc``, and return it.
-
-    The attribute is what the CLI prints; the note is for a traceback reader.
-    """
-    written = io_obj.getvalue()
-    if written:
-        exc.partial_output = written
-        exc.add_note(f"the program printed {written[:200]!r} before this")
-    return exc
 
 
 def _run(

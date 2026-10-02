@@ -17,6 +17,7 @@ transition; :class:`_Machine` rebinds one state per ``step()``.
 
 from __future__ import annotations
 
+from esolangs._drive import drive
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 
@@ -256,8 +257,7 @@ def run(code: list[str], io: IO) -> int | None:
     ``__main__`` block turns the code into a process exit.
     """
     machine = _Machine(code, io)
-    while not machine.halted:
-        machine.step()
+    drive(machine)
     return machine.exit_code
 
 

@@ -47,15 +47,23 @@ def test_missing_dependency_error_is_public() -> None:
     assert issubclass(esolangs.MissingDependencyError, ImportError)
 
 
-def test_deliberate_error_keeps_partial_output() -> None:
-    from esolangs import _keeping_output
+def test_deliberate_error_keeps_partial_output(monkeypatch: pytest.MonkeyPatch) -> None:
     from esolangs.interpreters.io import ScriptedIO
 
-    io = ScriptedIO()
-    io.print_str("before")
-    error = _keeping_output(EsolangError("stop"), io)
-    assert error.partial_output == "before"
-    assert error.__notes__ == ["the program printed 'before' before this"]
+    error = EsolangError("stop")
+
+    def stop(
+        _runner: object, _program: object, io: ScriptedIO, _timeout: object
+    ) -> None:
+        io.print_str("before")
+        raise error
+
+    monkeypatch.setattr(esolangs, "_run", stop)
+    with pytest.raises(EsolangError) as caught:
+        esolangs.run("brainfuck", "+")
+    assert caught.value is error
+    assert caught.value.partial_output == "before"
+    assert caught.value.__notes__ == ["the program printed 'before' before this"]
 
 
 def test_run_warns_when_input_runs_out() -> None:

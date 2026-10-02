@@ -28,6 +28,7 @@ import re
 import sys
 from collections.abc import Callable, Sequence
 
+from esolangs._drive import drive
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.register_based._polynomial_roots import (
@@ -407,8 +408,7 @@ class _Machine:
 def run(code: str, io: IO) -> None:
     """Execute a Polynomial program to completion."""
     machine = _Machine(code, io)
-    while not machine.halted:
-        machine.step()
+    drive(machine)
 
 
 if __name__ == "__main__":

@@ -1,9 +1,9 @@
 """Registry facts as data: :func:`describe`, :func:`_spec`, :func:`list_languages`."""
 
-import importlib
 import pathlib
 from typing import Any, TypedDict
 
+from esolangs._execution import interpreter_module
 from esolangs.exceptions import ProgramError
 from esolangs.registry import (
     LANGUAGES,
@@ -161,15 +161,7 @@ def _spec(language: str) -> str:
     Raises under ``-OO``, which strips docstrings.
     """
     name = resolve(language)
-    lang = LANGUAGES[name]
-    if lang.source_kind.value == "raster":
-        # The language's own module (``esolangs.line``, ``esolangs.piet``).
-        # Hard-coding ``line`` gave Piet the Line spec, matching neither the
-        # docstring nor how ``run`` resolves the interpreter.
-        interpreter = importlib.import_module(f"esolangs.{lang.id}")
-    else:
-        module = RUNNERS[name][0]
-        interpreter = importlib.import_module("esolangs.interpreters." + module)
+    interpreter = interpreter_module(name)
     text = (interpreter.__doc__ or "").strip()
     if not text:
         # ``-OO`` strips docstrings, so this returned ``""`` for every one --

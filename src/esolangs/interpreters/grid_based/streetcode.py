@@ -28,6 +28,7 @@ import functools
 from collections.abc import Mapping
 from typing import Literal, Self, assert_never
 
+from esolangs._drive import drive
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.grid_based._streetcode_geometry import (
@@ -685,8 +686,7 @@ class _Machine:
 def run(code: list[str], io: IO) -> None:
     """Drive a Streetcode car over ``code`` until it halts."""
     machine = _Machine._for_run(code, io)  # noqa: SLF001
-    while not machine.halted:
-        machine.step()
+    drive(machine)
 
 
 if __name__ == "__main__":

@@ -19,6 +19,7 @@ import math
 import re
 import sys
 
+from esolangs._drive import drive
 from esolangs.factor_primes import prime_segments
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
@@ -221,8 +222,7 @@ class _Machine:
 def run(code: str, io: IO) -> None:
     """Run a Factor program, executing the brainfuck it decodes to."""
     machine = _Machine(code, io)
-    while not machine.halted:
-        machine.step()
+    drive(machine)
 
 
 if __name__ == "__main__":

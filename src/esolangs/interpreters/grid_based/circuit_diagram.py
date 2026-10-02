@@ -72,6 +72,7 @@ from datetime import UTC, datetime
 from functools import lru_cache
 from typing import Final, Literal, cast
 
+from esolangs._drive import drive
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO, ScriptedIO
 
@@ -1191,8 +1192,7 @@ class _Machine:
 def run(code: list[str], io: IO) -> None:
     """Execute a Circuit Diagram program."""
     machine = _Machine._for_run(code, io)  # noqa: SLF001 -- public fast path
-    while not machine.halted:
-        machine.step()
+    drive(machine)
 
 
 if __name__ == "__main__":
