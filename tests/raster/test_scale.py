@@ -179,3 +179,50 @@ def test_empty_piet_operation_path_halts() -> None:
 
     image = _emit([], _plan([], 13, 14))
     assert esolangs.run("Piet", image) == ""
+
+
+@pytest.mark.parametrize("scale", [None, 2])
+def test_piet_reuses_normalized_rows(scale: int | None) -> None:
+    from esolangs.vm import make_vm
+
+    image = esolangs.Raster.from_png(
+        esolangs.generate("Piet", "0001", scale=2).to_png()
+    )
+    first = make_vm("Piet", image, "0\n0\n", scale=scale)
+    second = make_vm("Piet", image, "1\n1\n", scale=scale)
+    assert first._machine.rows is second._machine.rows  # noqa: SLF001
+    for vm, answer in ((first, "0"), (second, "1")):
+        for _ in range(1000):
+            if vm.halted:
+                break
+            vm.step()
+        assert vm.halted
+        assert vm.output == answer
+
+
+def test_normalization_cache_keeps_scale_semantics() -> None:
+    red, light, terminal, black = (255, 0, 0), (255, 192, 192), (192, 0, 192), (0, 0, 0)
+    image = Raster(
+        ((light, black, terminal), (light, red, terminal), (black, black, terminal))
+    ).upscaled(2)
+    for scale, expected in ((None, "2"), (1, "8"), (2, "2"), (None, "2"), (1, "8")):
+        assert esolangs.run("Piet", image, scale=scale) == expected
+    for scale in (True, False, 0, -1, 1.5, "2"):
+        with pytest.raises(ArgumentError, match="scale"):
+            image._normalized(scale)  # noqa: SLF001
+    with pytest.raises(ProgramError, match="divisible"):
+        image._normalized(4)  # noqa: SLF001
+
+
+def test_normalization_cache_belongs_to_frozen_source() -> None:
+    black, red = [0, 0, 0], [255, 0, 0]
+    mutable = [[black, black], [black, black]]
+    first = Raster(mutable)
+    assert first._normalized() == (((0, 0, 0),),)  # noqa: SLF001
+    mutable[0][0] = red
+    second = Raster(mutable)
+    assert second._normalized() == second.rows  # noqa: SLF001
+    assert first._normalized() == (((0, 0, 0),),)  # noqa: SLF001
+    red[0] = True
+    with pytest.raises(ValueError, match="RGB"):
+        Raster(mutable)
