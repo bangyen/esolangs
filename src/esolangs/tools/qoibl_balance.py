@@ -3,7 +3,7 @@
 from itertools import combinations
 from math import isqrt
 
-from esolangs.tools.register import qoibl
+from esolangs.tools.qoibl import qoibl
 from esolangs.tools.wrap import balance_score
 
 _Affine = tuple[int, int]

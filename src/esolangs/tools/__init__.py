@@ -1,5 +1,6 @@
 """Boolean-function program generators and shared generation helpers."""
 
+from esolangs.tools.addsubjump import addsubjump
 from esolangs.tools.algebraic_programming_language import algebraic_programming_language
 from esolangs.tools.alight import alight
 from esolangs.tools.b_tapemark import b_tapemark
@@ -9,8 +10,11 @@ from esolangs.tools.brainfuck import bf_tree, brainfuck
 from esolangs.tools.brainif import brainif
 from esolangs.tools.circlefuck import circlefuck
 from esolangs.tools.circuit_diagram import circuit_diagram
+from esolangs.tools.collatz_multiverse import collatz_multiverse
 from esolangs.tools.crement import crement
 from esolangs.tools.cvnc import cvnc
+from esolangs.tools.decleq import decleq
+from esolangs.tools.dig import dig
 from esolangs.tools.dimensional import dimensional
 from esolangs.tools.egl import egl
 from esolangs.tools.factor import factor
@@ -53,20 +57,14 @@ from esolangs.tools.parameterized import (
     underload,
 )
 from esolangs.tools.piet import piet
-from esolangs.tools.register import (
-    addsubjump,
-    collatz_multiverse,
-    decleq,
-    dig,
-    polynomial,
-    qoibl,
-    sophie,
-)
+from esolangs.tools.polynomial import polynomial
+from esolangs.tools.qoibl import qoibl
 from esolangs.tools.rotfuck import rotfuck
 from esolangs.tools.sbleq import sbleq
 from esolangs.tools.six_five import six_five
 from esolangs.tools.slow_acv_mammalian import slow_acv_mammalian
 from esolangs.tools.smallfuck import smallfuck
+from esolangs.tools.sophie import sophie
 from esolangs.tools.stack import bfstack, forth, grapheme, modulous, unsquare
 from esolangs.tools.suffolk import suffolk
 from esolangs.tools.super_snusp import super_snusp

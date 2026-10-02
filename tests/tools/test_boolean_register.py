@@ -1,6 +1,6 @@
 """Unit tests for the register-based boolean generators.
 
-Covers the generators in :mod:`esolangs.tools.register`: Decleq,
+Covers the generators in :mod:`esolangs.tools`: Decleq,
 AddSubJump, Collatz Multiverse, Sophie, Dig, Qoibl, Polynomial, and Point
 Break.
 """
@@ -13,13 +13,8 @@ import pytest
 
 import esolangs
 from esolangs import tools as boolean
-from esolangs.tools.register import (
-    _DIG_BRANCH,
-    _DIG_RETURN,
-    _DIG_STRIDE,
-    _polynomial_dag,
-    _polynomial_states,
-)
+from esolangs.tools.dig import _DIG_BRANCH, _DIG_RETURN, _DIG_STRIDE
+from esolangs.tools.polynomial import _polynomial_dag, _polynomial_states
 from tests.tools.boolean_oracles import (
     _polynomial_tree,
 )
@@ -307,7 +302,7 @@ class TestPolynomial:
         of n == 10 by construction, and the dense fixture sits under it
         with room that is measured, not assumed.
         """
-        from esolangs.tools.register import _POLYNOMIAL_MAX_INSTRS
+        from esolangs.tools.polynomial import _POLYNOMIAL_MAX_INSTRS
 
         states = [min(2**k, 2 ** (2 ** (10 - k))) for k in range(11)]
         # Root level 3, every other level 6 per state, two leaves at 6.
@@ -387,7 +382,7 @@ class TestPolynomial:
         The dispatch screens on the cost before rendering, so a drift here
         silently skips a table the emitter would have shortened.
         """
-        from esolangs.tools.register import (
+        from esolangs.tools.polynomial import (
             _polynomial_hybrid,
             _polynomial_hybrid_cost,
         )
@@ -409,7 +404,7 @@ class TestPolynomial:
         hybrid collapses to a leaf before reaching it and comes out
         shorter (4 instructions against 5 at n == 1).
         """
-        from esolangs.tools.register import _polynomial_hybrid
+        from esolangs.tools.polynomial import _polynomial_hybrid
 
         for n in range(1, 4):
             for value in range(1 << (1 << n)):
@@ -431,7 +426,7 @@ class TestPolynomial:
         there would emit the worse program at n == 4, where 2000 sampled
         tables reach 6.
         """
-        from esolangs.tools.register import (
+        from esolangs.tools.polynomial import (
             _POLYNOMIAL_SCREEN_SLACK,
             _polynomial_assemble,
             _polynomial_hybrid,
@@ -468,7 +463,7 @@ class TestPolynomial:
         machine: the residuals merge *within* the top split and not across
         it, so neither parent construction sees the merge.
         """
-        from esolangs.tools.register import _polynomial_hybrid
+        from esolangs.tools.polynomial import _polynomial_hybrid
 
         assert len(_polynomial_hybrid(table, 1)) < len(_polynomial_tree(table))
         program = boolean.polynomial(table)
@@ -485,7 +480,7 @@ class TestPolynomial:
         every state test; the rows with a 1 in the drained bit are still
         the ones that matter here.
         """
-        from esolangs.tools.register import _polynomial_drained_dag
+        from esolangs.tools.polynomial import _polynomial_drained_dag
 
         table = "0000010100000101"  # ignores its first input
         assert _polynomial_drained_dag(table) is not None
@@ -508,10 +503,7 @@ class TestPolynomial:
         fewest-instruction candidate is not the shortest render: five of
         256.
         """
-        from esolangs.tools.register import (
-            _polynomial_assemble,
-            _polynomial_hybrid,
-        )
+        from esolangs.tools.polynomial import _polynomial_assemble, _polynomial_hybrid
 
         machine = _polynomial_assemble(_polynomial_hybrid(table, 0))
         tree = _polynomial_assemble(_polynomial_tree(table))
@@ -614,7 +606,7 @@ class TestDig:
 
     def test_banded_layout_remains_available_for_width_requests(self) -> None:
         """A banded tree fits when the flat tree exceeds the requested width."""
-        from esolangs.tools.register import _dig_grid
+        from esolangs.tools.dig import _dig_grid
 
         table = "0110100110010110"
         n = 4
@@ -875,7 +867,7 @@ class TestCollatzMultiverse:
         460296 over all 256 tables, the plain build now 450156 of the 254
         varied ones (one-letter aliases only where they pay).
         """
-        from esolangs.tools.register import _cm_build
+        from esolangs.tools.collatz_multiverse import _cm_build
 
         varied = [t for v in range(256) if len(set(t := format(v, "08b"))) > 1]
         plain = sum(len(_cm_build(t, 3, [0, 1, 2], zero_top=None)) for t in varied)
@@ -884,7 +876,7 @@ class TestCollatzMultiverse:
 
     def test_numbering_never_grows_a_program(self) -> None:
         """Numbered cells beat the retired value-as-code size oracle."""
-        from esolangs.tools.register import _cm_build
+        from esolangs.tools.collatz_multiverse import _cm_build
 
         rng = random.Random(0)
         tables = [format(v, "08b") for v in range(1, 255)]
@@ -961,7 +953,7 @@ class TestCollatzMultiverse:
 
     def test_narrow_statement_floor_is_idempotent(self) -> None:
         """Another alias prefix cannot narrow or widen the existing floor."""
-        from esolangs.tools.register import _cm_layout
+        from esolangs.tools.collatz_multiverse import _cm_layout
 
         table = "01101001"
         narrow = boolean.collatz_multiverse(table, 1)

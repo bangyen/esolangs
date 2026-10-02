@@ -217,7 +217,7 @@ class TestParseTarget:
     def test_a_qualified_target_resolves_in_each_family(self) -> None:
         """Both kinds are reachable, named ``family/module``."""
         script = load_script()
-        assert script._parse_target("tools/register") == ("tools", "register")  # noqa: SLF001
+        assert script._parse_target("tools/decleq") == ("tools", "decleq")  # noqa: SLF001
         assert script._parse_target("tools/wrap") == ("tools", "wrap")  # noqa: SLF001
 
     def test_an_unambiguous_bare_name_still_resolves(self) -> None:
@@ -245,10 +245,10 @@ class TestParseTarget:
         script._FAMILIES = (*script._FAMILIES, "mirror")  # noqa: SLF001
         try:
             with pytest.raises(SystemExit) as excinfo:
-                script._parse_target("register")  # noqa: SLF001
+                script._parse_target("decleq")  # noqa: SLF001
             message = str(excinfo.value)
-            assert "tools/register" in message
-            assert "mirror/register" in message
+            assert "tools/decleq" in message
+            assert "mirror/decleq" in message
         finally:
             del kinds["mirror"]
 
@@ -261,7 +261,7 @@ class TestParseTarget:
             script._parse_target("nosuchmodule")  # noqa: SLF001
         message = str(excinfo.value)
         assert "nosuchmodule" in message
-        assert "register" in message
+        assert "decleq" in message
 
     def test_an_unknown_family_is_refused(self) -> None:
         """A qualified target with a bad family names the families instead."""

@@ -66,7 +66,7 @@ Every kind is reachable as ``family/module``.  A bare name is accepted only
 where one kind defines it; see :func:`_parse_target`.
 
 Usage:
-    python scripts/mutate.py generator tools/register
+    python scripts/mutate.py generator tools/decleq
     python scripts/mutate.py generator tools/streetcode
     python scripts/mutate.py generator dimensional --keep   # leave the work dir
     python scripts/mutate.py generator tools/line
