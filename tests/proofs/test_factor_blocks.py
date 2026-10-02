@@ -123,6 +123,6 @@ def test_block_decoder_executes(table: str, partition: int) -> None:
 def test_block_factor_executes() -> None:
     table = format(0xA596B47C, "032b")
     program = _render(block_program(table))
-    io = ScriptedIO("0\n0\n0\n0\n0")
+    io = ScriptedIO("00000")
     run(program, io)
     assert io.getvalue() == table[0] == "1"

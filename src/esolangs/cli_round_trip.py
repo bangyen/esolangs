@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import signal
+
 from esolangs import (
     Raster,
     describe,
@@ -85,9 +87,20 @@ def _evaluate(rest: list[str]) -> None:
     program = _read_program(path, timeout, language=language)
     try:
         if timeout is None:
-            computed = evaluate(language, program, inputs=inputs)
+            computed = evaluate(
+                language,
+                program,
+                inputs=inputs,
+                isolated=not hasattr(signal, "SIGALRM"),
+            )
         else:
-            computed = evaluate(language, program, timeout, inputs=inputs)
+            computed = evaluate(
+                language,
+                program,
+                timeout,
+                inputs=inputs,
+                isolated=not hasattr(signal, "SIGALRM"),
+            )
     except EsolangError as exc:
         _fail(str(exc), _exit_code(exc))
     if table is not None and computed != table:

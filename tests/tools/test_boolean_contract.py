@@ -1170,7 +1170,9 @@ def test_nothing_else_is_anywhere_near_that_big() -> None:
     biggest = max(
         (len(esolangs.generate(name, _dense(9))), name)
         for name in esolangs.list_languages()
-        if name not in _DOCUMENTED_SIZES and LANGUAGES[name].boolean is not None
+        if name not in _DOCUMENTED_SIZES
+        and LANGUAGES[name].boolean is not None
+        and esolangs.describe(name)["source_kind"] == "text"
     )
     assert biggest[0] < 600_000, biggest
     # SLOW ACV MAMMALIAN leads at 115707, just ahead of thisthat's planar

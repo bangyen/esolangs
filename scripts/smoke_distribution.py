@@ -44,9 +44,10 @@ def smoke(*, math_extra: bool, image_extra: bool = False) -> None:
     assert "brainfuck" in _cli(["list"])
     bound = esolangs.Language("BRAINFUCK")
     program = bound.generate("0110", balance=True)
-    assert bound.evaluate(program, inputs=2) == "0110"
+    assert bound.evaluate(program, inputs=2, isolated=True) == "0110"
     assert bound.read_answer(bound.run(program, bound.encode_inputs([0, 1]))) == "1"
-    assert esolangs.run("brainfuck", "+.", max_steps=2, timeout=1) == "\x01"
+    assert esolangs.run("brainfuck", "+.", max_steps=2) == "\x01"
+    assert esolangs.run("brainfuck", "+.", timeout=1, isolated=True) == "\x01"
     try:
         esolangs.run("brainfuck", "+[]", max_steps=10)
     except esolangs.ExecutionTimeoutError:
@@ -72,7 +73,10 @@ def smoke(*, math_extra: bool, image_extra: bool = False) -> None:
             if image_extra and isinstance(generated, esolangs.Raster):
                 generated = esolangs.Raster.from_png(generated.to_png())
             try:
-                assert esolangs.evaluate(name, generated, inputs=2) == "0110", name
+                assert (
+                    esolangs.evaluate(name, generated, inputs=2, isolated=True)
+                    == "0110"
+                ), name
             except esolangs.MissingDependencyError:
                 assert not math_extra, name
             assert facts["examples"], name

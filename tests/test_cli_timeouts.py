@@ -30,30 +30,6 @@ class TestATimeoutHasOneExitCode:
     load-bearing rather than tidy.
     """
 
-    @pytest.fixture
-    def cold_polynomial_parse(self) -> None:
-        """Make the bound below genuinely unmeetable, whatever ran first.
-
-        ``--timeout`` has a floor of a millisecond -- ``check_timeout``
-        measured the alarm landing inside the guard's own teardown below
-        that -- so a test of the bound needs a row that reliably costs
-        more than one.  A Polynomial row does not: it is ~0.5ms warm at
-        every arity (n=3, 4, 5 all measure 0.46-0.54ms), because the whole
-        cost is one cold parse per program, ~290ms, held by
-        ``_parse_program`` and ``_factor_roots``.  Those caches are
-        load-bearing -- re-parsing a tens-of-megabytes program cost 0.9s a
-        row -- so the fix is not to remove them but to start cold: any
-        earlier test in the same worker that ran this table left these
-        three passing for the wrong reason, and then failing under the
-        full band, where something does.  Widening the table does not
-        help; the warm row does not grow with it.
-        """
-        from esolangs.interpreters.register_based.polynomial import _parse_program
-        from esolangs.interpreters.register_based.polynomial.roots import _factor_roots
-
-        _parse_program.cache_clear()
-        _factor_roots.cache_clear()
-
     @pytest.mark.medium
     @pytest.mark.parametrize(
         "args",
@@ -62,11 +38,14 @@ class TestATimeoutHasOneExitCode:
             ["answer", "10010110", "101"],
         ],
     )
-    @pytest.mark.usefixtures("cold_polynomial_parse")
     def test_the_bound_running_out_is_124(
-        self, args: list[str], tmp_path: Path, capsys: pytest.CaptureFixture[str]
+        self,
+        args: list[str],
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """A bound too small to finish, on a generator slow enough to catch."""
+        """Both commands report 124 when an executed program never halts."""
         command, rest = args[0], args[1:]
         if command == "evaluate":
             path = tmp_path / "loop.bf"
@@ -87,8 +66,11 @@ class TestATimeoutHasOneExitCode:
             assert exc.value.code == 124
             capsys.readouterr()
             return
+        # Validation warms Polynomial's parse cache before the deadline starts.
+        # A diverging program makes this independent of cold-parse timing.
+        monkeypatch.setattr("esolangs.cli_round_trip.generate", lambda *_args: "+[]")
         with pytest.raises(SystemExit) as exc:
-            call_main([command, "--timeout", "0.001", "Polynomial", *rest], capsys)
+            call_main([command, "--timeout", "0.001", "brainfuck", *rest], capsys)
         assert exc.value.code == 124
         capsys.readouterr()
 
