@@ -689,8 +689,7 @@ class VM(Protocol):
         is ``True`` but halts on ``cannot apply '+' to 2.0 and 'eof'``;
         Suffolk is ``False`` but the read *ends* the program.  Swept one
         line short: of 52 languages reading stdin, 44 of 45 ``False`` raise
-        and 6 of 7 ``True`` answer a different row with
-        :class:`~esolangs.exceptions.InputMismatchWarning`.
+        and 6 of 7 ``True`` answer a different row.
         """
 
     @property

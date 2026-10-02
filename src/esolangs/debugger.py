@@ -48,7 +48,6 @@ class Debugger:
         self._suppressed: set[int] = set()
         self._hits: set[int] = set()
         self._timed_out = False
-        self._warned = False
         self._dumped = False
 
     @property
@@ -251,11 +250,9 @@ class Debugger:
 
         Delegates past the halt: the post-halt-dump languages keep their answer
         there, and returning early cost a debugger-driven verifier 58/65.
-        Warns about an underfed stdin at the halt as :meth:`run` does.
         """
         self.vm.step()
         self._record()
-        self._warn_about_stdin_once()
 
     def run(
         self, max_steps: int | None = None, timeout: float | None = None
@@ -281,7 +278,6 @@ class Debugger:
         self._timed_out = False
         halted = run_until_halt(self, max_steps, stop=lambda: self._stop(deadline))
         if halted:
-            self._warn_about_stdin_once()
             # Breakpoints are checked before each step, so one the final
             # step makes true was never seen (``break_on_output`` on a
             # program ending in ``.``).  Checked both before and after the
@@ -310,35 +306,6 @@ class Debugger:
             self._suppressed = set(self._hits)
             return "breakpoint"
         return "max_steps"
-
-    def _warn_about_stdin_once(self) -> None:
-        """Say what :func:`esolangs.run` says about a stdin that did not fit.
-
-        Fewer lines than given, or -- the one that matters -- a read past the
-        end where the end is a value: a wrong answer in silence.  At the halt,
-        where the counts are final; once per debugger, since ``run`` on a halted
-        machine returns immediately.
-        """
-        if self._warned:
-            return
-        name = getattr(self.vm, "language", None)
-        io_obj = getattr(self.vm, "_io", None)
-        if name is None or io_obj is None:  # pragma: no cover - every adapter has both
-            return
-        # Over-read is warned the moment it happens: six languages take the
-        # exhausted read as a value (Circuit Diagram at step 4 of 5), so a
-        # halt-time warning was silent on every bounded run, and never
-        # emitted at all on Suptiftam with empty stdin (``"max_steps"``).
-        # Surplus or malformed lines cannot be known until the program stops
-        # asking, so that half waits for the halt -- a bounded run that
-        # stops before it is the one case ``run``/``check_stdin`` catch and
-        # this cannot.
-        if not (getattr(io_obj, "past_end", False) or self.vm.halted):
-            return
-        self._warned = True
-        from esolangs import _warn_about_surplus
-
-        _warn_about_surplus(str(name), io_obj)
 
     def _stop(self, deadline: float | None) -> bool:
         """Whether to stop before the next step: a breakpoint, or the clock."""

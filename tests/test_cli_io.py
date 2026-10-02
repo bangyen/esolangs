@@ -168,7 +168,7 @@ class TestTheDecodeGuardsInProcess:
         assert "no bound" in err
         assert "--timeout" in err
 
-    def test_debug_warns_about_a_mismatched_shape_too(
+    def test_debug_accepts_non_boolean_input(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """`run` and `debug` feed the same stdin to the same interpreter."""
@@ -177,7 +177,7 @@ class TestTheDecodeGuardsInProcess:
         _out, err = call_both(
             ["debug", "--steps", "50", "Grapheme", str(path)], capsys, stdin="1\n0\n"
         )
-        assert "spells its bits" in err
+        assert "spells its bits" not in err
 
 
 class TestTheStdinReaderInProcess:
@@ -413,16 +413,16 @@ class TestStdinIsCheckedAgainstTheDeclaredAlphabet:
     """
 
     @pytest.mark.parametrize("line", [" 1", "\t1", "2", "true", "01", "+1"])
-    def test_plain_run_warns_about_a_stray_line(
+    def test_plain_run_accepts_a_non_boolean_line(
         self, line: str, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        """A warning, because `run` executes arbitrary programs."""
+        """General execution does not impose a Boolean input alphabet."""
         path = tmp_path / "p.txt"
         path.write_text(esolangs.generate("brainfuck", "0101"))
         _out, err = call_both(
             ["run", "brainfuck", str(path)], capsys, stdin=f"0\n{line}\n"
         )
-        assert "spells its bits" in err
+        assert "spells its bits" not in err
 
     @pytest.mark.parametrize("line", [" 1", "2", "true"])
     def test_judge_refuses_it(

@@ -14,7 +14,6 @@ import pathlib
 import re
 import signal
 import threading
-import warnings
 from collections.abc import Callable, Sequence
 from functools import partial
 from typing import Any, TypedDict, cast
@@ -598,15 +597,11 @@ def run(
     and cannot interrupt a single step. Text and raster programs support stepping.
     Isolation and step bounds cannot be combined; stepping does not support seed.
 
-    ``stdin`` is fed line by line.  Reading past the end usually raises
-    :class:`~esolangs.exceptions.InputExhaustedError`;
-    ``describe(language)["eof_is_a_value"]`` marks the languages that take a
-    value and answer a *different row*, warning with
-    :class:`~esolangs.exceptions.InputMismatchWarning` (Clockwise and Fargo
-    read one line, so only ``check_stdin`` with the table catches them).
-    Two are neither: Alight halts on ``cannot apply '+' to 2.0 and 'eof'``,
-    Suffolk ends the program.  Take the alphabet from
-    ``describe(language)["input_encoding"]``; the wrong one is a wrong result.
+    ``stdin`` is fed line by line without Boolean validation. Reading past
+    the end usually raises :class:`~esolangs.exceptions.InputExhaustedError`;
+    ``describe(language)["eof_is_a_value"]`` marks languages supplying a value.
+    Some halt instead. Use :func:`check_stdin`
+    explicitly to validate input for a Boolean-generated program.
 
     ``timeout`` is wall-clock seconds and raises
     :class:`~esolangs.exceptions.ExecutionTimeoutError` (a
@@ -674,7 +669,6 @@ def run(
     program_args: str | list[str] | Raster = (
         program.splitlines() if split and isinstance(program, str) else program
     )
-    _warn_about_stdin(name, stdin)
     if seed is not None:
         run_fn = _seeded(name, run_fn, seed)
     try:
@@ -707,31 +701,7 @@ def run(
         # traceback rather than starting a new one from here.
         _keeping_output(exc, io_obj)
         raise
-    _warn_about_surplus(name, io_obj)
     return io_obj.getvalue()
-
-
-def _warn_about_stdin(name: str, stdin: str) -> None:
-    """Warn, once, if ``stdin`` contradicts what ``name`` declares it reads.
-
-    A warning, not a refusal: ``run`` executes arbitrary programs.  The same
-    judgement :func:`check_stdin` raises, rendered as advice.
-    """
-    if not stdin:
-        # Empty stdin is legitimate (the protocol tests run every language
-        # that way); a program that reads anyway is caught by the counts below.
-        return
-    if not describe(name)["reads_input"]:
-        # A language that embeds its inputs is *given* no stdin by design --
-        # ``evaluate`` passes "" for every one of them -- so there is
-        # nothing here to be wrong.  ``check_stdin`` refuses the pair
-        # outright, which is right for a caller who asked; as advice it was
-        # just noise, and it fired once per row of every template language.
-        return
-    try:
-        check_stdin(name, stdin)
-    except EsolangError as exc:
-        warnings.warn(str(exc), InputMismatchWarning, stacklevel=3)
 
 
 def _seeded(name: str, run_fn: Callable[..., Any], seed: int) -> Callable[..., Any]:
@@ -774,35 +744,6 @@ def _keeping_output[E: EsolangError](exc: E, io_obj: ScriptedIO) -> E:
         exc.partial_output = written
         exc.add_note(f"the program printed {written[:200]!r} before this")
     return exc
-
-
-def _warn_about_surplus(name: str, io_obj: ScriptedIO) -> None:
-    """Warn if the program left supplied input unread.
-
-    Six lines to a three-input program answered the first three silently,
-    while too few always said "2 lines supplied, read 3".  Not an error:
-    reading less than given is what many programs do.
-    """
-    read, supplied = io_obj.reads, io_obj.supplied
-    if supplied > read > 0:
-        warnings.warn(
-            f"{name} read {read} of the {supplied} lines supplied on stdin; "
-            f"the rest were ignored -- is this the right arity?",
-            InputMismatchWarning,
-            stacklevel=3,
-        )
-    if io_obj.past_end and describe(name)["eof_is_a_value"]:
-        # Read past the end and kept going: the silent wrong answer the
-        # five ``eof_is_a_value`` languages give (a different row, or row
-        # 0).  Counted, not ``supplied == 0``, which missed underfeeding.
-        # Gated because Suffolk ends *by* running out of input.
-        warnings.warn(
-            f"{name} read past the end of its input {io_obj.past_end} time(s) "
-            f"and took a value each time rather than stopping; the answer is "
-            f"for the row that implies, not the one the input names",
-            InputMismatchWarning,
-            stacklevel=3,
-        )
 
 
 def _run(

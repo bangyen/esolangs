@@ -175,7 +175,9 @@ def _debug(rest: list[str]) -> None:
     # state up to the fault is the thing they asked to see.
     fault = None
     reason = None
-    warning = _shape_warning(describe(language), stdin, table)
+    warning = (
+        _shape_warning(describe(language), stdin, table) if table is not None else ""
+    )
     if warning:
         sys.stderr.write(f"{warning}\n")
     # ``run`` gained this last round and ``debug`` did not, so `debug 123
