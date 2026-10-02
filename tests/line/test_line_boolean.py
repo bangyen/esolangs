@@ -46,7 +46,7 @@ def _check_truth_table(
     truth_table: str, n: int, tmp_path: Path, rows: Iterable[int] | None = None
 ) -> None:
     path = str(tmp_path / "bool.png")
-    render(line_boolean(truth_table)).save(path)
+    render(line_boolean(truth_table), acyclic=True).save(path)
     program = compile_program(extract(path))
     for combo in range(2**n) if rows is None else rows:
         bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
