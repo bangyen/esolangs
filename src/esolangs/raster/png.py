@@ -1,35 +1,34 @@
-"""A minimal PNG reader and writer for raster-language source.
-
-Images are passed as one ``bytearray`` of greyscale levels per row -- the
-same shape ``render.Canvas`` keeps its pixels in, and what
-``mask.from_grey`` thresholds into an ink mask.
-
-Reading accepts any PNG the spec defines -- every colour type, every bit
-depth from 1 to 16, interlaced or not -- and reduces it to greyscale on the
-way in; writing always emits plain 8-bit greyscale.  Reading broadly matters
-because a Line drawing that has been through an image editor comes back in
-whatever that editor prefers (commonly RGB, sometimes 16-bit) while still
-being visually the same black-and-white drawing.
-
-The point is not to be a general codec.  PNG's container is a handful of
-length-tagged chunks and its compression is plain zlib, both in the standard
-library; the only real work is undoing the per-row filters, which is the
-loop in :func:`_unfilter`.  That is small enough to be worth owning outright
-rather than depending on Pillow to do -- see the dependency notes in
-``extract.py``.
-"""
+"""PNG I/O through the optional image extra; alpha is discarded."""
 
 from __future__ import annotations
 
+import io
 import struct
 import zlib
 from collections.abc import Iterator
+from typing import Any
+
+from esolangs.exceptions import MissingDependencyError
+
+try:
+    from PIL import Image
+except ModuleNotFoundError:
+    Image = None  # type: ignore[assignment]
+
+
+def _require_image() -> Any:
+    """Return Pillow or name the extra that installs it."""
+    if Image is None:
+        raise MissingDependencyError(
+            "PNG I/O requires optional image support; "
+            "install it with `pip install 'esolangs[image]'`"
+        )
+    return Image
+
 
 _SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
-# Colour type codes from the PNG spec (IHDR byte 9).  Only the two
-# single-channel ones are handled; the rest are named to make the rejection
-# message in :func:`read_grey` specific about what was found.
+# PNG colour type codes (IHDR byte 9).
 _GREY = 0
 _RGB = 2
 _PALETTE = 3
@@ -47,17 +46,6 @@ _COLOUR_NAMES = {
     _GREY_ALPHA: "greyscale+alpha",
     _RGBA: "truecolour+alpha",
 }
-
-
-def _luma(red: int, green: int, blue: int) -> int:
-    """Reduce a colour to grey with ITU-R 601-2 weights, as Pillow does.
-
-    Pillow's ``convert("L")`` uses this exact fixed-point form rather than a
-    float or a floor-divided decimal; the ``+ 0x8000`` rounds to nearest.
-    Cheaper formulas agree on pure black and white but differ by one level on
-    mid-greys, which is enough to flip a pixel across the ink threshold.
-    """
-    return (red * 19595 + green * 38470 + blue * 7471 + 0x8000) >> 16
 
 
 def _chunks(data: bytes) -> Iterator[tuple[bytes, bytes]]:
@@ -80,62 +68,6 @@ def _chunks(data: bytes) -> Iterator[tuple[bytes, bytes]]:
         pos += 12 + length  # length + type + body + CRC
 
 
-def _paeth(a: int, b: int, c: int) -> int:
-    """Predict a byte the way the PNG spec's Paeth filter does.
-
-    Returns whichever of left/up/up-left is closest to ``a + b - c``.
-    """
-    p = a + b - c
-    pa, pb, pc = abs(p - a), abs(p - b), abs(p - c)
-    if pa <= pb and pa <= pc:
-        return a
-    if pb <= pc:
-        return b
-    return c
-
-
-def _unfilter(raw: bytes, height: int, stride: int, step: int) -> bytearray:
-    """Reverse the per-row filters, returning ``height * stride`` raw bytes.
-
-    Each row in ``raw`` is prefixed with a filter-type byte and is decoded
-    against the row above it, and filters 1/3/4 also depend on earlier bytes
-    *within* the same row, so this is inherently sequential.  ``step`` is the
-    byte distance to the pixel on the left: one whole pixel, which is
-    ``channels * depth // 8`` bytes, floored at 1 because sub-byte pixels
-    predict from the neighbouring byte.
-    """
-    out = bytearray(height * stride)
-    prev = bytearray(stride)
-    pos = 0
-    for y in range(height):
-        filter_type = raw[pos]
-        pos += 1
-        row = bytearray(raw[pos : pos + stride])
-        pos += stride
-        if filter_type == 0:  # None
-            pass
-        elif filter_type == 1:  # Sub
-            for i in range(step, stride):
-                row[i] = (row[i] + row[i - step]) & 0xFF
-        elif filter_type == 2:  # Up
-            for i in range(stride):
-                row[i] = (row[i] + prev[i]) & 0xFF
-        elif filter_type == 3:  # Average
-            for i in range(stride):
-                left = row[i - step] if i >= step else 0
-                row[i] = (row[i] + ((left + prev[i]) >> 1)) & 0xFF
-        elif filter_type == 4:  # Paeth
-            for i in range(stride):
-                left = row[i - step] if i >= step else 0
-                upleft = prev[i - step] if i >= step else 0
-                row[i] = (row[i] + _paeth(left, prev[i], upleft)) & 0xFF
-        else:
-            raise ValueError(f"unknown PNG row filter {filter_type}")
-        out[y * stride : (y + 1) * stride] = row
-        prev = row
-    return out
-
-
 # Adam7's seven passes, each as (first row, first column, row step, column
 # step).  Pass k stores a subsampled grid; together the seven tile the image
 # exactly once, which is what lets a decoder show a coarse preview early.
@@ -150,46 +82,6 @@ _ADAM7 = (
 )
 
 
-def _unpack_row(raw: bytes, width: int, channels: int, depth: int) -> list[int]:
-    """Expand one filtered-and-restored row to one integer per sample."""
-    count = width * channels
-    if depth == 8:
-        return list(raw[:count])
-    if depth == 16:
-        # Big-endian, per the spec.
-        return [(raw[2 * i] << 8) | raw[2 * i + 1] for i in range(count)]
-    per_byte = 8 // depth
-    mask = (1 << depth) - 1
-    out: list[int] = []
-    for byte in raw:
-        # Most-significant sample first, per the spec.
-        for shift in range(per_byte - 1, -1, -1):
-            out.append((byte >> (shift * depth)) & mask)
-    return out[:count]  # trailing samples are row padding
-
-
-def _read_pass(
-    stream: bytes, width: int, height: int, channels: int, depth: int, offset: int = 0
-) -> list[list[int]]:
-    """Decode one non-interlaced image (or one Adam7 pass) from ``stream``.
-
-    ``offset`` is where this pass's filtered rows start; a whole
-    non-interlaced image is just the single pass beginning at zero.
-    """
-    if width == 0 or height == 0:
-        return []
-    stride = (width * channels * depth + 7) // 8
-    # The filter predictor looks one *pixel* to the left, which is the pixel's
-    # whole width in bytes -- never less than one, since sub-byte pixels
-    # predict from the adjacent byte.
-    step = max(1, channels * depth // 8)
-    raw = _unfilter(stream[offset:], height, stride, step)
-    return [
-        _unpack_row(bytes(raw[y * stride : (y + 1) * stride]), width, channels, depth)
-        for y in range(height)
-    ]
-
-
 def _pass_size(width: int, height: int, index: int) -> tuple[int, int]:
     """How many columns and rows Adam7 pass ``index`` holds."""
     row0, col0, row_step, col_step = _ADAM7[index]
@@ -201,42 +93,10 @@ def _pass_size(width: int, height: int, index: int) -> tuple[int, int]:
     )
 
 
-def _deinterlace(
-    stream: bytes, width: int, height: int, channels: int, depth: int
-) -> list[list[int]]:
-    """Reassemble the seven Adam7 passes into ordinary scanlines.
-
-    Each pass is a complete little image with its own dimensions, its own row
-    filters and its own row padding, laid end to end in the same zlib stream,
-    so each is decoded exactly like a non-interlaced one and its pixels are
-    then scattered onto the lattice it came from.
-    """
-    rows = [[0] * (width * channels) for _ in range(height)]
-    offset = 0
-    for index, (row0, col0, row_step, col_step) in enumerate(_ADAM7):
-        pass_width, pass_height = _pass_size(width, height, index)
-        if pass_width == 0 or pass_height == 0:
-            continue
-        decoded = _read_pass(stream, pass_width, pass_height, channels, depth, offset)
-        for y, row in enumerate(decoded):
-            target = rows[row0 + y * row_step]
-            for x in range(pass_width):
-                base = (col0 + x * col_step) * channels
-                target[base : base + channels] = row[x * channels : (x + 1) * channels]
-        stride = (pass_width * channels * depth + 7) // 8
-        offset += pass_height * (stride + 1)  # each row carries a filter byte
-    return rows
-
-
 def _expected_stream_size(
     width: int, height: int, channels: int, depth: int, interlace: int
 ) -> int:
-    """Return the zlib stream length the IHDR dimensions require.
-
-    A corrupt width/height in IHDR otherwise reaches ``_unfilter``'s
-    ``bytearray(height * stride)`` and ``_deinterlace``'s row lists, which
-    the OS kills with SIGKILL before Python can raise ``MemoryError``.
-    """
+    """Return the stream length required by IHDR before allocating pixels."""
     if not interlace:
         stride = (width * channels * depth + 7) // 8
         return height * (stride + 1)
@@ -249,10 +109,10 @@ def _expected_stream_size(
     return total
 
 
-def _decode_png(
+def _validate_png(
     data: bytes,
-) -> tuple[list[list[int]], int, int, int, int, bytes | None]:
-    """Return decoded samples plus width, channels, depth, colour and palette."""
+) -> tuple[int, int, int, bytes]:
+    """Validate the container and stream before Pillow allocates pixels."""
     header = None
     palette = None
     idat = bytearray()
@@ -306,159 +166,77 @@ def _decode_png(
             f"depth {depth} needs {needed}; the image is truncated or its "
             f"IHDR is corrupt"
         )
-    if interlace:
-        samples = _deinterlace(data_stream, width, height, channels, depth)
-    else:
-        samples = _read_pass(data_stream, width, height, channels, depth)
+    if colour == _PALETTE and palette is None:
+        raise ValueError("palette PNG has no PLTE chunk")
+    offset = 0
+    passes = (
+        [_pass_size(width, height, i) for i in range(7)]
+        if interlace
+        else [(width, height)]
+    )
+    for pass_width, pass_height in passes:
+        if not pass_width or not pass_height:
+            continue
+        stride = (pass_width * channels * depth + 7) // 8
+        for _ in range(pass_height):
+            if data_stream[offset] > 4:
+                raise ValueError(f"unknown PNG row filter {data_stream[offset]}")
+            offset += stride + 1
+    return width, depth, colour, palette or b""
 
-    return samples, width, channels, depth, colour, palette
+
+def _read(data: bytes, mode: str) -> tuple[bytes, int]:
+    image = _require_image()
+    width, depth, colour, palette = _validate_png(data)
+    with image.open(io.BytesIO(data), formats=["PNG"]) as opened:
+        opened.load()
+        if colour == _PALETTE and max(opened.tobytes()) >= len(palette) // 3:
+            raise ValueError("palette index outside PLTE chunk")
+        if colour == _GREY and depth == 16:
+            # I;16 -> L clips; taking the high byte preserves dark strokes.
+            raw = opened.tobytes("raw", "I;16B")
+            with image.frombytes("L", opened.size, raw[0::2]) as grey:
+                return grey.convert(mode).tobytes(), width
+        return opened.convert(mode).tobytes(), width
 
 
 def read_grey(data: bytes) -> list[bytearray]:
-    """Decode PNG bytes to one ``bytearray`` of greyscale levels per row.
-
-    Colour is reduced with the same ITU-R 601-2 luma weights Pillow's
-    ``convert("L")`` uses -- palette entries included -- so an ink threshold
-    means the same thing whichever format a drawing arrives in.
-    """
-    decoded = _decode_png(data)
-    return _to_grey(*decoded)
+    """Decode PNG bytes to rows of greyscale levels, ignoring alpha."""
+    raw, width = _read(data, "L")
+    return [bytearray(raw[i : i + width]) for i in range(0, len(raw), width)]
 
 
 def read_rgb(data: bytes) -> list[list[tuple[int, int, int]]]:
-    """Decode PNG bytes to rows of 8-bit ``(red, green, blue)`` pixels."""
-    samples, width, channels, depth, colour, palette = _decode_png(data)
-    top = (1 << depth) - 1
-
-    def level(value: int) -> int:
-        if depth == 8:
-            return value
-        if depth == 16:
-            return value >> 8
-        return value * 255 // top
-
-    rows: list[list[tuple[int, int, int]]] = []
-    for row in samples:
-        pixels: list[tuple[int, int, int]] = []
-        for x in range(width):
-            base = x * channels
-            if colour == _PALETTE:
-                if palette is None:
-                    raise ValueError("palette PNG has no PLTE chunk")
-                offset = row[base] * 3
-                entry = palette[offset : offset + 3]
-                if len(entry) != 3:
-                    raise ValueError("palette index outside PLTE chunk")
-                pixels.append((entry[0], entry[1], entry[2]))
-            elif colour in (_RGB, _RGBA):
-                pixels.append(tuple(level(v) for v in row[base : base + 3]))  # type: ignore[arg-type]
-            else:
-                grey = level(row[base])
-                pixels.append((grey, grey, grey))
-        rows.append(pixels)
-    return rows
+    """Decode PNG bytes to rows of 8-bit RGB pixels, ignoring alpha."""
+    raw, width = _read(data, "RGB")
+    pixels = list(zip(raw[0::3], raw[1::3], raw[2::3], strict=True))
+    return [pixels[i : i + width] for i in range(0, len(pixels), width)]
 
 
-def _to_grey(
-    samples: list[list[int]],
-    width: int,
-    channels: int,
-    depth: int,
-    colour: int,
-    palette: bytes | None,
-) -> list[bytearray]:
-    """Reduce decoded samples to one greyscale byte per pixel.
-
-    ``samples`` holds one row per scanline, already unpacked to one integer
-    per sample and with any row padding dropped.
-    """
-    if colour == _PALETTE:
-        if palette is None:
-            raise ValueError("palette PNG has no PLTE chunk")
-        entries = [palette[i : i + 3] for i in range(0, len(palette), 3)]
-        if any(value >= len(entries) for row in samples for value in row):
-            raise ValueError("palette index outside PLTE chunk")
-        # bytes.translate requires a full 256-entry table.
-        table = bytes(_luma(*entry) for entry in entries).ljust(256, b"\x00")
-        return [bytearray(row).translate(table) for row in samples]
-
-    # Bring every depth onto the same 0-255 scale before reducing colour, so
-    # the luma weights and the ink threshold mean one thing throughout.
-    top = (1 << depth) - 1
-    if depth == 8:
-
-        def level(value: int) -> int:
-            return value
-    elif depth == 16:
-        # Take the high byte, i.e. scale 0-65535 down onto 0-255.  This is a
-        # deliberate departure from Pillow, whose I;16 -> L conversion *clips*
-        # rather than scaling: under Pillow every 16-bit value above 255 comes
-        # out white, so a drawing whose ink is stored as, say, 1000 decodes to
-        # a blank page with every stroke erased.  Scaling keeps the picture.
-        # The two agree on pure 0 and pure 65535, which is what a clean
-        # black-and-white drawing actually contains, so this only ever differs
-        # in Pillow's favour on files Pillow would have mangled.
-        def level(value: int) -> int:
-            return value >> 8
-    else:
-
-        def level(value: int) -> int:
-            return value * 255 // top
-
-    if colour in (_RGB, _RGBA):
-        # Alpha is dropped rather than composited, matching Pillow's
-        # convert("L"): a Line drawing's transparency is not ink.
-        return [
-            bytearray(
-                _luma(level(row[i]), level(row[i + 1]), level(row[i + 2]))
-                for i in range(0, width * channels, channels)
-            )
-            for row in samples
-        ]
-    if colour == _GREY_ALPHA:
-        return [bytearray(level(v) for v in row[0 : width * 2 : 2]) for row in samples]
-    return [bytearray(level(v) for v in row[:width]) for row in samples]
+def _write(mode: str, width: int, height: int, raw: bytes) -> bytes:
+    image = _require_image()
+    output = io.BytesIO()
+    with image.frombytes(mode, (width, height), raw) as opened:
+        opened.save(output, format="PNG")
+    return output.getvalue()
 
 
 def write_grey(pixels: list[bytearray]) -> bytes:
-    """Encode one ``bytearray`` of greyscale levels per row as 8-bit PNG bytes.
-
-    Every row is written with filter type 0 (None).  Filtering exists to help
-    the compressor, and these drawings are near-empty white canvases that zlib
-    already collapses; picking a filter per row would add a heuristic for no
-    benefit anyone here can see.
-    """
+    """Encode rectangular greyscale rows as PNG bytes."""
     height = len(pixels)
     width = len(pixels[0]) if height else 0
-    if any(len(row) != width for row in pixels):
-        raise ValueError("expected a 2-D greyscale image with equal-length rows")
-
-    raw = bytearray()
-    for row in pixels:
-        raw.append(0)  # filter type: None
-        raw += row
-
-    def chunk(kind: bytes, body: bytes) -> bytes:
-        return (
-            struct.pack(">I", len(body))
-            + kind
-            + body
-            + struct.pack(">I", zlib.crc32(kind + body) & 0xFFFFFFFF)
+    if not height or not width or any(len(row) != width for row in pixels):
+        raise ValueError(
+            "expected a non-empty 2-D greyscale image with equal-length rows"
         )
-
-    ihdr = struct.pack(">IIBBBBB", width, height, 8, _GREY, 0, 0, 0)
-    return (
-        _SIGNATURE
-        + chunk(b"IHDR", ihdr)
-        + chunk(b"IDAT", zlib.compress(bytes(raw), 9))
-        + chunk(b"IEND", b"")
-    )
+    return _write("L", width, height, b"".join(pixels))
 
 
 def write_grey_file(path: str, pixels: list[bytearray]) -> None:
     """Write greyscale rows to ``path`` as a PNG."""
+    data = write_grey(pixels)
     with open(path, "wb") as handle:
-        handle.write(write_grey(pixels))
+        handle.write(data)
 
 
 def write_rgb(pixels: list[list[tuple[int, int, int]]]) -> bytes:
@@ -469,24 +247,8 @@ def write_rgb(pixels: list[list[tuple[int, int, int]]]) -> bytes:
         raise ValueError("expected a non-empty 2-D RGB image")
     raw = bytearray()
     for row in pixels:
-        raw.append(0)
         for pixel in row:
             if len(pixel) != 3 or any(not 0 <= value <= 255 for value in pixel):
                 raise ValueError(f"invalid RGB pixel {pixel!r}")
             raw.extend(pixel)
-
-    def chunk(kind: bytes, body: bytes) -> bytes:
-        return (
-            struct.pack(">I", len(body))
-            + kind
-            + body
-            + struct.pack(">I", zlib.crc32(kind + body) & 0xFFFFFFFF)
-        )
-
-    ihdr = struct.pack(">IIBBBBB", width, height, 8, _RGB, 0, 0, 0)
-    return (
-        _SIGNATURE
-        + chunk(b"IHDR", ihdr)
-        + chunk(b"IDAT", zlib.compress(bytes(raw), 9))
-        + chunk(b"IEND", b"")
-    )
+    return _write("RGB", width, height, bytes(raw))
