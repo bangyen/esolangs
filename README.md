@@ -105,6 +105,11 @@ languages with a boolean generator live in
 
 ## Implemented languages
 
+Familiar languages include [brainfuck](https://esolangs.org/wiki/brainfuck),
+[Befunge](https://esolangs.org/wiki/Befunge), [Piet](https://esolangs.org/wiki/Piet),
+[INTERCAL](https://esolangs.org/wiki/INTERCAL), and
+[Malbolge](https://esolangs.org/wiki/Malbolge).
+
 <details>
 <!-- IMPLEMENTED:START -->
 

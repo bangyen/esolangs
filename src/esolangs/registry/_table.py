@@ -442,12 +442,6 @@ LANGUAGES: dict[str, Language] = {
         boolean=_boolean.vandevelo,
         id="vandevelo",
     ),
-}
-
-#: Classics admitted through the same fame gate as new candidates.
-#: All ten carry generators. Malbolge caps at sixteen inputs; FRACTRAN
-#: emits linear text with shared indexed block dictionaries.
-CLASSICS: dict[str, Language] = {
     "Befunge": Language(
         "Befunge",
         "grid_based.befunge",
@@ -511,5 +505,3 @@ CLASSICS: dict[str, Language] = {
         id="underload",
     ),
 }
-
-LANGUAGES.update(CLASSICS)
