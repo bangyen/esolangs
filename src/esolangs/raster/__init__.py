@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from functools import partial
+from itertools import takewhile
+from operator import is_not
 from typing import cast
 
 from esolangs.exceptions import MissingDependencyError, ProgramError
@@ -25,15 +28,16 @@ def _freeze_rows(rows: Rows) -> Rows:
         if type(row) is tuple and id(row) in validated_rows:
             frozen_rows.append(validated_rows[id(row)])
             continue
-        unchanged = type(row) is tuple
-        frozen_row = []
+        frozen_row: list[Pixel] | None = None if type(row) is tuple else []
         previous: Pixel | None = None
         for pixel in row:
             if previous is not None and pixel is previous:
-                frozen_row.append(pixel)
+                if frozen_row is not None:
+                    frozen_row.append(pixel)
                 continue
             if type(pixel) is tuple and id(pixel) in validated:
-                frozen_row.append(pixel)
+                if frozen_row is not None:
+                    frozen_row.append(pixel)
                 previous = pixel
                 continue
             frozen = tuple(pixel)
@@ -44,17 +48,19 @@ def _freeze_rows(rows: Rows) -> Rows:
                 for value in frozen
             ):
                 raise ValueError("Raster pixels must be 8-bit RGB triples")
-            frozen_row.append(frozen)
-            unchanged = unchanged and frozen is pixel
+            if frozen_row is None and frozen is not pixel:
+                frozen_row = list(takewhile(partial(is_not, pixel), row))
+            if frozen_row is not None:
+                frozen_row.append(frozen)
             if type(pixel) is tuple:
                 previous = pixel
                 if len(validated) < 1024:
                     validated[id(pixel)] = pixel
             else:
                 previous = None
-        immutable_row = row if unchanged else tuple(frozen_row)
+        immutable_row = row if frozen_row is None else tuple(frozen_row)
         frozen_rows.append(immutable_row)
-        if unchanged and len(validated_rows) < 1024:
+        if frozen_row is None and len(validated_rows) < 1024:
             validated_rows[id(row)] = immutable_row
     result = tuple(frozen_rows)
     width = len(result[0]) if result else 0
