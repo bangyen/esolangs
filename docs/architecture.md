@@ -30,6 +30,13 @@ the shared scripted I/O object, and calls its `run(code, io)` entry point.
 `make_vm` exposes the interpreter’s step-capable machine to the debugger
 and hang proofs.
 
+Interpreters are grouped by execution model. Each language owns a module or
+a package containing its helpers; generators follow the same ownership rule.
+`tests/interpreters/` and `tests/tools/` hold language suites and shared
+contract checks. Line and Piet use the same verification and mutation
+workflows as text languages. `scripts/` holds verification, mutation, and
+documentation tools.
+
 Languages print a bit, dump state, or answer by halting. `read_answer` uses
 example metadata for printed and state-dump answers; `evaluate` also handles
 termination answers. It runs a supplied program through optional
