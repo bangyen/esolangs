@@ -18,7 +18,7 @@ from esolangs.raster import Pixel, Raster, Rows
 from .extract import extract_mask
 from .mask import from_grey
 from .simulate import IO
-from .simulate import run as _run
+from .simulate import run_compiled as _run_compiled
 
 if TYPE_CHECKING:
     from .render import Node
@@ -238,7 +238,7 @@ def run(program: Raster, io: ScriptedIO, *, scale: int | None = None) -> None:
     if program._payload is not None and scale is None:  # noqa: SLF001 - language-owned payload
         _run_node(cast("Node", program._payload), io)  # noqa: SLF001
         return
-    _run(
-        extract_mask(from_grey(_grey_rows(program.rows)), scale=scale),
+    _run_compiled(
+        _compiled(program, scale),
         IO(read=io.input_num, write=io.print_num),
     )
