@@ -194,10 +194,7 @@ def _pop_width(rest: list[str]) -> tuple[list[str], int | None, bool]:
             args.append(arg)
             i += 1
             continue
-        try:
-            width = int(value)
-        except ValueError:
-            _fail(f"--width must be an integer, got {value!r}")
+        width = _integer(value, "--width")
         if width is not None and width <= 0:
             _fail(f"--width must be positive, got {width}")
     return args, width, bare
@@ -318,6 +315,24 @@ def _pop_cell(options: dict[str, str]) -> tuple[int, int] | None:
     return int(index), int(value)
 
 
+def _integer(
+    value: str, name: str, *, kind: str = "an integer", show_value: bool = True
+) -> int:
+    """Parse an integer with a flag-specific usage error."""
+    try:
+        return int(value)
+    except ValueError:
+        suffix = f", got {value!r}" if show_value else ""
+        _fail(f"{name} must be {kind}{suffix}")
+        raise  # pragma: no cover - _fail exits
+
+
+def _nonnegative(value: int, name: str, shown: object) -> None:
+    """Reject negative bounds and cell indices."""
+    if value < 0:
+        _fail(f"{name} must not be negative, got {shown}")
+
+
 def _seed_of(options: dict[str, str]) -> int | None:
     """Read ``--seed``, refusing anything that is not a whole number.
 
@@ -327,11 +342,7 @@ def _seed_of(options: dict[str, str]) -> int | None:
     """
     if "--seed" not in options:
         return None
-    try:
-        return int(options["--seed"])
-    except ValueError:
-        _fail(f"--seed must be a whole number, got {options['--seed']!r}")
-        raise  # pragma: no cover - unreachable; _fail exits
+    return _integer(options["--seed"], "--seed", kind="a whole number")
 
 
 def _scale_of(options: dict[str, str]) -> int | None:
@@ -342,7 +353,9 @@ def _scale_of(options: dict[str, str]) -> int | None:
     from esolangs.exceptions import ArgumentError
 
     try:
-        return check_scale(int(options["--scale"]))
+        return check_scale(
+            _integer(options["--scale"], "--scale", kind="a positive integer")
+        )
     except (ValueError, ArgumentError):
         _fail(f"--scale must be a positive integer, got {options['--scale']!r}")
         raise  # pragma: no cover - _fail exits

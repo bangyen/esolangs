@@ -2,6 +2,8 @@
 
 from typing import Protocol
 
+from esolangs._traits import trait
+
 
 class Machine(Protocol):
     @property
@@ -14,5 +16,5 @@ def drive(machine: Machine) -> None:
     """Run to halt, including a language's declared final output step."""
     while not machine.halted:
         machine.step()
-    if getattr(machine, "dumps_on_the_post_halt_step", False):
+    if trait(machine, "dumps_on_the_post_halt_step"):
         machine.step()
