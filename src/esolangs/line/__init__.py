@@ -28,14 +28,37 @@ if TYPE_CHECKING:
 def _grey_rows(rows: Rows) -> list[bytearray]:
     """Reduce RGB rows to Line's greyscale input representation."""
     cache: dict[int, tuple[tuple[Pixel, ...], bytes]] = {}
+    pixels: dict[int, tuple[Pixel, int]] = {}
+    cache_pixels = True
     grey = []
     for row in rows:
         cached = cache.get(id(row))
         if cached is None:
-            levels = bytes(
-                (red * 19595 + green * 38470 + blue * 7471 + 0x8000) >> 16
-                for red, green, blue in row
-            )
+            if not cache_pixels:
+                levels = bytes(
+                    (red * 19595 + green * 38470 + blue * 7471 + 0x8000) >> 16
+                    for red, green, blue in row
+                )
+            else:
+                converted = bytearray()
+                previous: Pixel | None = None
+                level = 0
+                for pixel in row:
+                    if pixel is not previous:
+                        cached_pixel = pixels.get(id(pixel)) if cache_pixels else None
+                        if cached_pixel is None:
+                            red, green, blue = pixel
+                            level = (
+                                red * 19595 + green * 38470 + blue * 7471 + 0x8000
+                            ) >> 16
+                            if cache_pixels:
+                                pixels[id(pixel)] = pixel, level
+                                cache_pixels = len(pixels) < 1024
+                        else:
+                            level = cached_pixel[1]
+                        previous = pixel
+                    converted.append(level)
+                levels = bytes(converted)
             if len(cache) < 1024:
                 cache[id(row)] = row, levels
         else:
