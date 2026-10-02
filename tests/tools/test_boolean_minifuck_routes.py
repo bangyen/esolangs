@@ -20,7 +20,7 @@ class TestParameterizedMinifuck(_MinifuckCase):
         [
             ("10", 1),  # NOT
             ("01", 1),  # identity
-            # ``parameterized.minifuck`` searches, and it is the *build*
+            # ``generators.minifuck`` searches, and it is the *build*
             # that costs, not the assertion: measured at one worker, a
             # two-input table takes 2.7s (NAND) to 9.0s (XOR) to emit while
             # a one-input table takes ~0.03s.  So the two-input cases carry
@@ -41,9 +41,9 @@ class TestParameterizedMinifuck(_MinifuckCase):
     @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every instantiated input produces the truth-table result."""
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
-        template = parameterized.minifuck(table)
+        template = generators.minifuck(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = self.run_minifuck(self.instantiate(template, bits))
@@ -62,11 +62,11 @@ class TestParameterizedMinifuck(_MinifuckCase):
         No longer marked ``slow``: the fixed mux rule builds all sixteen in
         milliseconds.
         """
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
         for table_int in range(16):
             table = format(table_int, "04b")
-            template = parameterized.minifuck(table)
+            template = generators.minifuck(table)
             for combo in range(4):
                 bits = [(combo >> (1 - i)) & 1 for i in range(2)]
                 got = self.run_minifuck(self.instantiate(template, bits))
@@ -313,9 +313,9 @@ class TestParameterizedMinifuck(_MinifuckCase):
         construction without exercising a distinct path.  The current
         combined check takes 0.12s serially, so it belongs in the fast suite.
         """
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
-        template = parameterized.minifuck("0110")
+        template = generators.minifuck("0110")
         assert "{X" not in template
         assert run_count(template, 2) == 2
         lengths = {

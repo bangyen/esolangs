@@ -1,11 +1,17 @@
 """Boolean-function program generators and shared generation helpers."""
 
+from esolangs.tools.a_painter_ant import a_painter_ant
 from esolangs.tools.addsubjump import addsubjump
 from esolangs.tools.algebraic_programming_language import algebraic_programming_language
 from esolangs.tools.alight import alight
+from esolangs.tools.arrowqueue import arrowqueue
 from esolangs.tools.b_tapemark import b_tapemark
+from esolangs.tools.back import back
 from esolangs.tools.befunge import befunge
+from esolangs.tools.bfpda import bfpda
+from esolangs.tools.bio import bio
 from esolangs.tools.bit_tilde import bit_tilde
+from esolangs.tools.bitdeque import bitdeque
 from esolangs.tools.bitwise_cyclic_tag import bitwise_cyclic_tag
 from esolangs.tools.brainfuck import bf_tree, brainfuck
 from esolangs.tools.brainif import brainif
@@ -20,6 +26,7 @@ from esolangs.tools.decleq import decleq
 from esolangs.tools.dig import dig
 from esolangs.tools.dimensional import dimensional
 from esolangs.tools.egl import egl
+from esolangs.tools.eval_lang import eval  # noqa: A004 - named Eval
 from esolangs.tools.factor import factor
 from esolangs.tools.false import false
 from esolangs.tools.fargo import fargo
@@ -27,33 +34,23 @@ from esolangs.tools.fish import fish
 from esolangs.tools.flowchart import flowchart
 from esolangs.tools.forbin import forbin
 from esolangs.tools.fractran import fractran
+from esolangs.tools.home_row import home_row
 from esolangs.tools.inject import inject
 from esolangs.tools.intercal import intercal
 from esolangs.tools.jaune import jaune
 from esolangs.tools.laserfuck import laserfuck
 from esolangs.tools.line import line
 from esolangs.tools.malbolge import malbolge
+from esolangs.tools.minifuck import minifuck
+from esolangs.tools.minsky_swap import minsky_swap
+from esolangs.tools.nocomment import nocomment
+from esolangs.tools.one_two_three import one_two_three
 from esolangs.tools.packlang import packlang
 from esolangs.tools.painfuck import painfuck
-from esolangs.tools.parameterized import (
-    a_painter_ant,
-    arrowqueue,
-    back,
-    bfpda,
-    bio,
-    bitdeque,
-    eval,  # noqa: A004 - the language is named "Eval"
-    home_row,
-    minifuck,
-    minsky_swap,
-    nocomment,
-    one_two_three,
-    ram0,
-    underload,
-)
 from esolangs.tools.piet import piet
 from esolangs.tools.polynomial import polynomial
 from esolangs.tools.qoibl import qoibl
+from esolangs.tools.ram0 import ram0
 from esolangs.tools.rotfuck import rotfuck
 from esolangs.tools.sbleq import sbleq
 from esolangs.tools.six_five import six_five
@@ -69,6 +66,7 @@ from esolangs.tools.thisthat import thisthat
 from esolangs.tools.three_d_brainfuck import three_d_brainfuck
 from esolangs.tools.three_x import three_x
 from esolangs.tools.thue import thue
+from esolangs.tools.underload import underload
 from esolangs.tools.unlambda import unlambda
 from esolangs.tools.vandevelo import vandevelo
 

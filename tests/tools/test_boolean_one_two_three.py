@@ -53,11 +53,11 @@ class TestParameterizedOneTwoThree:
     @pytest.mark.medium
     def test_all_small_tables(self, n: int) -> None:
         """Every one-, two- and three-input table halts or loops per its entry."""
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
         for table_int in range(2 ** (2**n)):
             table = format(table_int, f"0{2**n}b")
-            template = parameterized.one_two_three(table)
+            template = generators.one_two_three(table)
             for combo in range(2**n):
                 bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
                 got = self.run(self.instantiate(template, bits))
@@ -69,10 +69,10 @@ class TestParameterizedOneTwoThree:
         The monotonicity argument forbids these: a set bit can only add a
         pass under the neutral setter, so the looping set is upward-closed.
         """
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
         for table in ("0110", "1110", "1001", "1000"):
-            template = parameterized.one_two_three(table)
+            template = generators.one_two_three(table)
             got = "".join(
                 self.run(self.instantiate(template, [(c >> 1) & 1, c & 1]))
                 for c in range(4)
@@ -87,14 +87,14 @@ class TestParameterizedOneTwoThree:
         Every looping row must revisit a state: a run that neither halts nor
         cycles within the budget is exactly the shape that must not ship.
         """
+        from esolangs import tools as generators
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.one_two_three import _Machine
-        from esolangs.tools import parameterized
 
         for n in (1, 2, 3):
             for table_int in range(2 ** (2**n)):
                 table = format(table_int, f"0{2**n}b")
-                template = parameterized.one_two_three(table)
+                template = generators.one_two_three(table)
                 for combo in range(2**n):
                     bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
                     code = self.instantiate(template, bits)
@@ -120,15 +120,15 @@ class TestParameterizedOneTwoThree:
         could call a loop a halt, so every row through three inputs is
         checked both ways.
         """
+        from esolangs import tools as generators
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.one_two_three import _Machine
-        from esolangs.tools import parameterized
         from tests.tools.one_two_three_support import _replay_verdict
 
         for n in (1, 2, 3):
             for table_int in range(2 ** (2**n)):
                 table = format(table_int, f"0{2**n}b")
-                template = parameterized.one_two_three(table)
+                template = generators.one_two_three(table)
                 for combo in range(2**n):
                     bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
                     code = self.instantiate(template, bits)
@@ -202,7 +202,7 @@ class TestParameterizedOneTwoThree:
         """``construct`` itself, pinned -- not the small route.
 
         The exact-template tests above go through
-        ``parameterized.one_two_three``, so the wider construction had no
+        ``generators.one_two_three``, so the wider construction had no
         golden of its own: a plan emitting three bytes more per table, or
         two fewer, changed nothing any test compared.
         """
@@ -229,21 +229,21 @@ class TestParameterizedOneTwoThree:
 
     def test_slots_run_in_name_order(self) -> None:
         """Every emitted template embeds exactly two runs, one per input."""
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
         for table_int in range(16):
             table = format(table_int, "04b")
-            template = parameterized.one_two_three(table)
+            template = generators.one_two_three(table)
             assert "{X" not in template
             assert len(runs(template, TEMPLATE_CHAR, ((ZERO, ONE),) * 2)) == 2, table
 
     def test_both_bits_embed_at_the_same_width(self) -> None:
         """A zero and a one embed at equal width, so length leaks nothing."""
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
         for table_int in range(16):
             table = format(table_int, "04b")
-            template = parameterized.one_two_three(table)
+            template = generators.one_two_three(table)
             sizes = {
                 len(self.instantiate(template, [(c >> 1) & 1, c & 1])) for c in range(4)
             }
@@ -257,10 +257,10 @@ class TestParameterizedOneTwoThree:
         one decode shape's bound, not the language's.  Every row is
         replayed here on the real interpreter.
         """
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
         table = "0000000000000000"
-        template = parameterized.one_two_three(table)
+        template = generators.one_two_three(table)
         assert len(runs(template, TEMPLATE_CHAR, ((ZERO, ONE),) * 4)) == 4, table
         sizes = set()
         for combo in range(16):
@@ -291,14 +291,14 @@ class TestParameterizedOneTwoThree:
         by arity would cost size on 98 of the 256.  These four straddle it;
         the extra separation laws then undercut either on three of them.
         """
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
         from esolangs.tools.one_two_three import _construct_small, _in_name_order
         from esolangs.tools.one_two_three_construct import _construct_linear
 
         small = len(_in_name_order(_construct_small(table, 3), 3))
         wide = len(_in_name_order(_construct_linear(table, 3), 3))
         assert (wide < small) == (route == "wide"), (small, wide)
-        assert len(parameterized.one_two_three(table)) == length <= min(small, wide)
+        assert len(generators.one_two_three(table)) == length <= min(small, wide)
 
     @pytest.mark.medium  # 2120 rows of the real interpreter, 0.9s
     def test_the_wide_route_is_exhaustive_and_loses_on_the_mean(self) -> None:
@@ -367,9 +367,9 @@ class TestParameterizedOneTwoThree:
         the law's constants, or to the order its tests fire in, moves these
         bytes even where every truth-table assertion still passes.
         """
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
-        assert parameterized.one_two_three(table) == template
+        assert generators.one_two_three(table) == template
 
     def test_the_paint_pass_is_only_run_when_something_was_painted(
         self,
@@ -385,13 +385,13 @@ class TestParameterizedOneTwoThree:
         every three-input table alone and the wide route's 56902.  (A
         template is as long as the programs it fills to.)
         """
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
         total = 0
         for n in (1, 2, 3):
             for table_int in range(2 ** (2**n)):
                 table = format(table_int, f"0{2**n}b")
-                total += len(parameterized.one_two_three(table))
+                total += len(generators.one_two_three(table))
         assert total == 35682
 
     def test_a_seed_with_even_positions_is_refused(self) -> None:
@@ -855,12 +855,12 @@ class TestParameterizedOneTwoThree:
         the power-of-two check and is refused on arity instead.  The rule is
         the shared validator's, so this asserts the shared wording.
         """
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
         # ``match`` is a substring search, so the equality below is what
         # actually pins the message.
         with pytest.raises(ValueError, match="at least one input") as caught:
-            parameterized.one_two_three("1")
+            generators.one_two_three("1")
         assert str(caught.value) == (
             "truth table needs at least one input (n >= 1); "
             "a one-entry table is a constant, not a boolean function"
@@ -869,12 +869,12 @@ class TestParameterizedOneTwoThree:
     def test_each_input_is_embedded_once(self) -> None:
         """Each input's run appears exactly once, and nothing else is a run."""
 
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
         for n in (1, 2, 3):
             for table_int in range(2 ** (2**n)):
                 table = format(table_int, f"0{2**n}b")
-                template = parameterized.one_two_three(table)
+                template = generators.one_two_three(table)
                 spans = runs(template, TEMPLATE_CHAR, ((ZERO, ONE),) * n)
                 assert len(spans) == n, (table, spans)
                 assert template.count(TEMPLATE_CHAR) == n * len(ZERO), table

@@ -28,6 +28,9 @@ from esolangs.registry import LANGUAGES, SourceKind, canonical_id, resolve
 from esolangs.tools.a_painter_ant import PAIR as APA_PAIR
 from esolangs.tools.arrowqueue import PAIR as ARROWQUEUE_PAIR
 from esolangs.tools.back import PAIR as BACK_PAIR
+from esolangs.tools.bfpda import BFPDA_PAIR
+from esolangs.tools.bio import BIO_PAIR
+from esolangs.tools.bitdeque import bitdeque_setters
 from esolangs.tools.bitwise_cyclic_tag import PAIR as BCT_PAIR
 from esolangs.tools.crement import crement_setters
 from esolangs.tools.eval_lang import PAIR as EVAL_PAIR
@@ -37,18 +40,13 @@ from esolangs.tools.helpers import (
     Setters,
     fill_runs,
 )
+from esolangs.tools.home_row import HOME_ROW_PAIR
 from esolangs.tools.intercal import PAIR as INTERCAL_PAIR
 from esolangs.tools.intercal import TEMPLATE_CHAR as INTERCAL_CHAR
 from esolangs.tools.minifuck import minifuck_setters
+from esolangs.tools.minsky_swap import minsky_swap_setters
 from esolangs.tools.nocomment import PAIR as NOCOMMENT_PAIR
 from esolangs.tools.one_two_three import PAIR as ONE_TWO_THREE_PAIR
-from esolangs.tools.parameterized import (
-    BFPDA_PAIR,
-    BIO_PAIR,
-    HOME_ROW_PAIR,
-    bitdeque_setters,
-    minsky_swap_setters,
-)
 from esolangs.tools.ram0 import PAIR as RAM0_PAIR
 from esolangs.tools.smallfuck import smallfuck_setters
 from esolangs.tools.underload import underload_setters

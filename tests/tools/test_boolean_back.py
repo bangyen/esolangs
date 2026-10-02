@@ -4,7 +4,8 @@ from itertools import pairwise
 
 import pytest
 
-from esolangs.tools.helpers import TEMPLATE_CHAR, runs
+from esolangs.tools.back import _back_ordered
+from esolangs.tools.helpers import TEMPLATE_CHAR, permute_truth_table, runs
 
 
 class TestParameterizedBack:
@@ -30,11 +31,11 @@ class TestParameterizedBack:
 
     def test_program_length_is_the_same_for_every_input(self) -> None:
         """Both bits cost one command, so the size reveals nothing."""
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
         from tests.tools.fills import _fill_back
 
         for n in (1, 2, 3):
-            template = parameterized.back(format(0, f"0{2**n}b"))
+            template = generators.back(format(0, f"0{2**n}b"))
             sizes = {
                 len(_fill_back(template, [(c >> (n - 1 - i)) & 1 for i in range(n)]))
                 for c in range(2**n)
@@ -59,9 +60,9 @@ class TestParameterizedBack:
     @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every instantiated input produces the truth-table result."""
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
-        template = parameterized.back(table)
+        template = generators.back(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = self.run_back(self.instantiate(template, bits), n)
@@ -71,11 +72,11 @@ class TestParameterizedBack:
     @pytest.mark.medium
     def test_all_small_tables(self, n: int) -> None:
         """Every table up to three inputs produces the right result."""
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
         for table_int in range(2 ** (2**n)):
             table = format(table_int, f"0{2**n}b")
-            template = parameterized.back(table)
+            template = generators.back(table)
             for combo in range(2**n):
                 bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
                 got = self.run_back(self.instantiate(template, bits), n)
@@ -83,28 +84,28 @@ class TestParameterizedBack:
 
     def test_template_is_input_independent(self) -> None:
         """The template has one run per input, not hardcoded bits."""
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
         from esolangs.tools.back import PAIR
 
-        template = parameterized.back("0110")
+        template = generators.back("0110")
         assert "{X" not in template
         assert len(runs(template, TEMPLATE_CHAR, (PAIR,) * 2)) == 2
 
     def test_each_input_is_stored_once(self) -> None:
         """Each input is embedded once in the tape load, not re-embedded."""
 
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
         for n in (1, 2, 3):
             table = format(0, f"0{2**n}b")
-            template = parameterized.back(table)
+            template = generators.back(table)
             assert template.count(TEMPLATE_CHAR) == n
 
     def test_tree_uses_tape_decision_nodes(self) -> None:
         """The reflected decision tree retains its skip and both mirrors."""
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
-        template = parameterized.back("0110")
+        template = generators.back("0110")
         assert "+" in template
         assert "/" in template
         assert "\\" in template
@@ -112,31 +113,31 @@ class TestParameterizedBack:
 
     def test_the_natural_order_folds_its_aligned_dependency(self) -> None:
         """Only a dependency aligned with the natural root folds immediately."""
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
-        scattered = len(parameterized.back("10101010"))
-        aligned = len(parameterized.back("11110000"))
-        parity = len(parameterized.back("01101001"))
+        scattered = len(generators.back("10101010"))
+        aligned = len(generators.back("11110000"))
+        parity = len(generators.back("01101001"))
         assert scattered == parity
         assert aligned < parity
 
     def test_the_identity_template_is_emitted(self) -> None:
         """Back no longer contests input orders."""
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
         for table in ("01101001", "10101010", "11110000", "00111100", "10010110"):
             n = (len(table) - 1).bit_length()
-            identity = parameterized._back_ordered(table, tuple(range(n)))  # noqa: SLF001
-            assert parameterized.back(table) == identity, table
+            identity = _back_ordered(table, tuple(range(n)))
+            assert generators.back(table) == identity, table
 
     def test_full_tree_growth_is_linear(self) -> None:
         """Reflection makes depth padding geometric; parity folds nothing."""
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
         sizes = []
         for n in range(6, 11):
             table = "".join(str(row.bit_count() & 1) for row in range(2**n))
-            sizes.append(len(parameterized.back(table)))
+            sizes.append(len(generators.back(table)))
         assert all(later <= 2 * earlier for earlier, later in pairwise(sizes))
 
     @pytest.mark.parametrize(
@@ -152,9 +153,9 @@ class TestParameterizedBack:
         different function rather than failing to draw, so only running it
         catches the slip.
         """
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
-        template = parameterized.back(table)
+        template = generators.back(table)
         for combo in range(8):
             bits = [(combo >> (2 - i)) & 1 for i in range(3)]
             got = self.run_back(self.instantiate(template, bits), 3)
@@ -177,14 +178,12 @@ class TestParameterizedBack:
         """
         from itertools import permutations
 
-        from esolangs.tools import parameterized
-
         walked = 0
         for table in ("0110", "10101010", "01101001"):
             n = (len(table) - 1).bit_length()
             for perm in permutations(range(n)):
-                permuted = parameterized.permute_truth_table(table, perm)
-                built = parameterized._back_ordered(permuted, perm)  # noqa: SLF001
+                permuted = permute_truth_table(table, perm)
+                built = _back_ordered(permuted, perm)
                 assert built.count(TEMPLATE_CHAR) == n, (table, perm)
                 walked += built.count("<")
         # A non-identity order has to step the pointer back at some point;
@@ -207,11 +206,11 @@ class TestParameterizedBack:
         on the page.
         """
 
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
         walked = 0
         for table in ("11110000", "10101010", "01101001", "00111100"):
-            template = parameterized.back(table)
+            template = generators.back(table)
             assert template.count(TEMPLATE_CHAR) == 3, f"{table} embeds each once"
             # Reflection moves the load to the last occupied cell of its row.
             column = [
@@ -230,11 +229,11 @@ class TestParameterizedBack:
         unit and both bits still cost the same two rows.  Splitting them
         would let the template's height reveal an input.
         """
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
         from tests.tools.fills import _fill_back
 
         for table in ("10101010", "11001100", "01101001"):
-            template = parameterized.back(table)
+            template = generators.back(table)
             sizes = {
                 len(_fill_back(template, [(c >> (2 - i)) & 1 for i in range(3)]))
                 for c in range(8)

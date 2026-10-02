@@ -123,13 +123,8 @@ def test_parameterized_rows_embed_each_input_exactly_once() -> None:
     the character -- a run of the wrong width, a run left over, or a stray
     character all refuse.
 
-    Driving this from the ledger rather than from
-    ``esolangs.tools.parameterized.__all__`` is deliberate.  Home Row is a
-    parameterized generator -- its docstring says so and it emits the runs --
-    but it is absent from that module's roster, so the suite's existing
-    exactly-once sweep has never run on it.  The ledger knows it is
-    ``parameterized tree``, so reading the obligation from the ledger closes
-    that hole without depending on the roster being complete.
+    The ledger supplies an independent obligation. The former category
+    export roster omitted Home Row despite its parameterized construction.
     """
     rows = _parameterized_rows(load())
     assert rows, "the ledger lists no parameterized rows"

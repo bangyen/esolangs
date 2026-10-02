@@ -14,6 +14,7 @@ from esolangs.tools.arrowqueue import arrowqueue
 from esolangs.tools.b_tapemark import b_tapemark
 from esolangs.tools.back import back
 from esolangs.tools.befunge import balance_befunge
+from esolangs.tools.bitdeque import bitdeque
 from esolangs.tools.brainif import _brainif_tree, brainif
 from esolangs.tools.clockwise import clockwise
 from esolangs.tools.collatz_multiverse import balance_collatz_multiverse
@@ -35,8 +36,8 @@ from esolangs.tools.laserfuck import balance_laserfuck
 from esolangs.tools.line import balance as balance_line
 from esolangs.tools.minifuck import minifuck
 from esolangs.tools.minifuck_sim import PAIR
+from esolangs.tools.minsky_swap import minsky_swap
 from esolangs.tools.packlang import balance_packlang
-from esolangs.tools.parameterized import bitdeque, minsky_swap
 from esolangs.tools.qoibl_balance import balance_qoibl
 from esolangs.tools.ram0 import ram0
 from esolangs.tools.smallfuck import smallfuck, smallfuck_setters
