@@ -1,6 +1,6 @@
 """Compatibility entry points for Piet."""
 
-from esolangs.interpreters.image_based.piet import run as run
+from esolangs.interpreters.stack_based.piet import run as run
 from esolangs.raster import Raster
 
 

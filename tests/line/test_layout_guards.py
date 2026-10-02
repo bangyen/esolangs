@@ -2,8 +2,8 @@
 
 import pytest
 
-from esolangs.interpreters.image_based.line import extract
-from esolangs.interpreters.image_based.line.mask import Mask
+from esolangs.interpreters.tape_based.line import extract
+from esolangs.interpreters.tape_based.line.mask import Mask
 from esolangs.line import render
 from esolangs.line.bf_to_line import bf_to_line
 

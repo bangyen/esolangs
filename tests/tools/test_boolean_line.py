@@ -21,8 +21,8 @@ from pathlib import Path
 
 import pytest
 
-from esolangs.interpreters.image_based.line.extract import extract
-from esolangs.interpreters.image_based.line.simulate import (
+from esolangs.interpreters.tape_based.line.extract import extract
+from esolangs.interpreters.tape_based.line.simulate import (
     IO,
     compile_program,
     run_compiled,

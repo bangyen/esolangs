@@ -3,7 +3,7 @@
 from math import isqrt
 from typing import NamedTuple
 
-from esolangs.interpreters.image_based.piet import BLACK
+from esolangs.interpreters.stack_based.piet import BLACK
 from esolangs.raster import Raster
 from esolangs.tools.helpers import _validate_truth_table
 

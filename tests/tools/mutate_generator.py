@@ -198,14 +198,14 @@ class _Kind:
 _KINDS = {
     "line": _Kind(
         "line",
-        "interpreters/image_based/line",
+        "interpreters/tape_based/line",
         "tests/line",
         _TOOLS_SUPPORT,
         include_init=True,
     ),
     "piet": _Kind(
         "piet",
-        "interpreters/image_based/piet",
+        "interpreters/stack_based/piet",
         "tests/piet",
         _TOOLS_SUPPORT,
         include_init=True,

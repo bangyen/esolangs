@@ -29,7 +29,7 @@ def test_raster_rejects_an_invalid_channel() -> None:
 
 def test_raster_converts_to_greyscale() -> None:
     raster = Raster((((255, 0, 0), (0, 255, 0), (0, 0, 255)),))
-    from esolangs.interpreters.image_based.line import _grey_rows
+    from esolangs.interpreters.tape_based.line import _grey_rows
 
     assert _grey_rows(raster.rows) == [bytearray([76, 150, 29])]
 
@@ -63,7 +63,7 @@ def test_public_run_loads_line_png(tmp_path: Path) -> None:
 
 def test_a_corrupt_png_is_a_value_error(tmp_path: Path) -> None:
     """The decoder's raw zlib/struct errors used to escape ``load_binary``."""
-    from esolangs.interpreters.image_based.line import extract
+    from esolangs.interpreters.tape_based.line import extract
 
     path = tmp_path / "corrupt.png"
     path.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 20)
@@ -73,7 +73,7 @@ def test_a_corrupt_png_is_a_value_error(tmp_path: Path) -> None:
 
 def test_verify_finds_its_fixtures() -> None:
     """The old path did not exist, so the script verified nothing and passed."""
-    from esolangs.interpreters.image_based.line import verify
+    from esolangs.interpreters.tape_based.line import verify
 
     assert verify.FIXTURES.is_dir()
     assert list(verify.FIXTURES.glob("*.png"))
@@ -83,7 +83,7 @@ def test_verify_fails_when_there_is_nothing_to_check(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """An empty sweep is not a pass."""
-    from esolangs.interpreters.image_based.line import verify
+    from esolangs.interpreters.tape_based.line import verify
 
     assert verify.main(tmp_path) == 1
     assert "no fixtures" in capsys.readouterr().err
@@ -91,7 +91,7 @@ def test_verify_fails_when_there_is_nothing_to_check(
 
 def test_verify_reports_a_fixture_that_does_not_extract(tmp_path: Path) -> None:
     """The pass/fail loop itself, on an image that is not a Line program."""
-    from esolangs.interpreters.image_based.line import verify
+    from esolangs.interpreters.tape_based.line import verify
 
     (tmp_path / "blank.png").write_bytes(Raster((((0, 0, 0),),)).to_png())
     assert verify.main(tmp_path) == 1
@@ -107,7 +107,7 @@ def test_verify_passes_on_the_committed_fixtures(
     exists to report -- every fixture extracting cleanly -- was the one it
     never ran under test.
     """
-    from esolangs.interpreters.image_based.line import verify
+    from esolangs.interpreters.tape_based.line import verify
 
     assert verify.main() == 0
     out = capsys.readouterr().out
@@ -148,7 +148,7 @@ def test_the_graph_walker_matches_the_pixels() -> None:
 
 def test_the_graph_walker_decrements() -> None:
     """``-`` is the one opcode no generated Line program emits."""
-    from esolangs.interpreters.image_based.line import _run_node
+    from esolangs.interpreters.tape_based.line import _run_node
     from esolangs.line.render import Node
 
     minus = Node("-")
@@ -168,7 +168,7 @@ def test_the_graph_walker_steps_over_an_opcode_it_does_not_know() -> None:
     walker has no else-arm, and this records that it keeps going rather
     than raising.
     """
-    from esolangs.interpreters.image_based.line import _run_node
+    from esolangs.interpreters.tape_based.line import _run_node
     from esolangs.line.render import Node
 
     start = Node("!")
@@ -180,7 +180,7 @@ def test_the_graph_walker_steps_over_an_opcode_it_does_not_know() -> None:
 
 
 def test_repeated_greyscale_rows_do_not_share_mutable_buffers() -> None:
-    from esolangs.interpreters.image_based.line import _grey_rows
+    from esolangs.interpreters.tape_based.line import _grey_rows
 
     row = ((255, 0, 0), (0, 255, 0))
     grey = _grey_rows((row, row))
@@ -189,7 +189,7 @@ def test_repeated_greyscale_rows_do_not_share_mutable_buffers() -> None:
 
 
 def test_greyscale_conversion_preserves_many_distinct_rows() -> None:
-    from esolangs.interpreters.image_based.line import _grey_rows
+    from esolangs.interpreters.tape_based.line import _grey_rows
 
     rows = tuple(((i // 256, i % 256, 0),) for i in range(1025))
     expected = [
@@ -219,7 +219,7 @@ def test_rendered_grey_levels_survive_many_distinct_rows(monkeypatch) -> None:
 def test_public_and_bounded_runs_reuse_pixels_with_fresh_state(
     fixture: str, expected: list[int], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    import esolangs.interpreters.image_based.line as line
+    import esolangs.interpreters.tape_based.line as line
 
     source = Raster.from_png(
         (Path(__file__).parents[1] / "fixtures" / "line" / fixture).read_bytes()
@@ -243,7 +243,7 @@ def test_public_and_bounded_runs_reuse_pixels_with_fresh_state(
 
 
 def test_greyscale_conversion_exceeds_pixel_cache() -> None:
-    from esolangs.interpreters.image_based.line import _grey_rows
+    from esolangs.interpreters.tape_based.line import _grey_rows
 
     row = tuple((index // 256, index % 256, 17) for index in range(1025))
     rows = (row, tuple(reversed(row)))
@@ -258,7 +258,7 @@ def test_greyscale_conversion_exceeds_pixel_cache() -> None:
 
 
 def test_greyscale_runs_flush_at_colour_changes_and_row_end() -> None:
-    from esolangs.interpreters.image_based.line import _grey_rows
+    from esolangs.interpreters.tape_based.line import _grey_rows
 
     red, green, blue = (255, 0, 0), (0, 255, 0), (0, 0, 255)
     row = (red,) * 19 + (green,) * 7 + (blue,) * 11

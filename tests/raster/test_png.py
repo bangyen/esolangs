@@ -339,7 +339,7 @@ def test_a_jpeg_is_refused_with_a_usable_message(tmp_path: Path) -> None:
     wrong-format case likely enough to be worth a message that
     says what to do next instead of "bad signature".
     """
-    from esolangs.interpreters.image_based.line import extract
+    from esolangs.interpreters.tape_based.line import extract
 
     path = tmp_path / "drawing.jpg"
     # A JPEG start-of-image plus APP0, which is all the sniff looks at.
