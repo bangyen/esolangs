@@ -39,8 +39,9 @@ _DIRS: list[tuple[int, int]] = [
 
 
 def _ink(mask: Mask, y: int, x: int) -> bool:
-    h, w = mask.shape
-    return 0 <= y < h and 0 <= x < w and bool(mask[y, x])
+    return (
+        0 <= y < mask.height and 0 <= x < mask.width and bool((mask.rows[y] >> x) & 1)
+    )
 
 
 # render.py's _UNIT.  Only the probe's scale; the band reads real lengths,
@@ -56,7 +57,9 @@ _PROBE_LENGTH = max(1, UNIT * 3 // 4)
 def _band_lit(mask: Mask, y: int, x: int, direction: int) -> bool:
     """Whether any of the 3 parallel rays (center + 1px either side) is ink."""
     pdy, pdx = _DIRS[(direction + 2) % 8]
-    return any(_ink(mask, y + pdy * k, x + pdx * k) for k in (-1, 0, 1))
+    return (
+        _ink(mask, y - pdy, x - pdx) or _ink(mask, y, x) or _ink(mask, y + pdy, x + pdx)
+    )
 
 
 def star(mask: Mask, y: int, x: int, length: int = _PROBE_LENGTH) -> set[int]:
