@@ -4,7 +4,7 @@ from address17 import ALL1, ALL2, group_word
 from parity_views import MASK, STORED_PARITY, TOGGLE
 
 from esolangs.interpreters.other.malbolge import _crazy
-from esolangs.tools._malbolge_core import _rot
+from esolangs.tools.malbolge.core import _rot
 
 
 def parity_operand(pointer: int) -> int:

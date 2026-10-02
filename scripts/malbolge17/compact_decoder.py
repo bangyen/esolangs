@@ -17,8 +17,8 @@ from decoder_group import (
 from planner import _Planner
 
 from esolangs.interpreters.other.malbolge import _crazy
-from esolangs.tools._malbolge_core import _g, _rot
 from esolangs.tools.malbolge import _chain, _emit_chain
+from esolangs.tools.malbolge.core import _g, _rot
 
 ALL1, ALL2 = 29524, 59048
 

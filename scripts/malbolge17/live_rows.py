@@ -10,8 +10,8 @@ from helper_consumer import helper_values
 from planner import _Planner
 from setup_consumer import check_setup_memory, control_inputs
 
-from esolangs.tools._malbolge_core import _char_for
-from esolangs.tools._malbolge_digits import _D_INITS, _GADGET
+from esolangs.tools.malbolge.core import _char_for
+from esolangs.tools.malbolge.digits import _D_INITS, _GADGET
 
 
 def build_live_rows(

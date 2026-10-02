@@ -72,8 +72,8 @@ Usage:
     python scripts/mutate.py generator tools/line
     python scripts/mutate.py generator tools/piet
 
-Raster families include their interpreter modules; ``__init__`` targets the
-public runner. They use the copied package rather than text-only bundling.
+Interpreter packages use their language ID; ``__init__`` targets the runner.
+Generator packages expose their runner and dotted helper targets.
 
 Requires: mutmut==3.7.0, the same pin ``mutate_one`` documents.
 """
@@ -93,6 +93,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
+
+from esolangs.registry import LANGUAGES  # noqa: E402
 
 # Test-support modules the suites import that are not themselves tests.
 # ``tests.interpreters.runner`` is what ``boolean_runners`` drives the
@@ -190,7 +192,10 @@ class _Kind:
 
     def rel_target(self, module: str) -> str:
         """Return the path mutmut mutates, relative to the work directory."""
-        parts = ["esolangs", *self.pkg_rel.split("/"), f"{module}.py"]
+        relative = Path(module.replace(".", "/") + ".py")
+        if not (self.pkg_dir / relative).is_file():
+            relative = Path(module.replace(".", "/")) / "__init__.py"
+        parts = ["esolangs", *self.pkg_rel.split("/"), str(relative)]
         return "/".join(part for part in parts if part)
 
 
@@ -273,6 +278,19 @@ _KINDS = {
     ),
 }
 
+for _language in LANGUAGES.values():
+    if _language.interpreter is None or _language.id in _KINDS:
+        continue
+    _relative = "interpreters/" + _language.interpreter.replace(".", "/")
+    if (ROOT / "src/esolangs" / _relative / "__init__.py").is_file():
+        _KINDS[_language.id] = _Kind(
+            _language.id,
+            _relative,
+            "tests/interpreters",
+            _TOOLS_SUPPORT,
+            include_init=True,
+        )
+
 _FAMILIES = tuple(_KINDS)
 
 # The per-test alarm turns a mutant that *hangs* the suite into one that
@@ -306,22 +324,26 @@ _BASELINE_TIMEOUT = 600.0
 _MIN_KILL_RATE = 0.1
 
 
-# Modules in a family package that are not generators.  ``__init__`` is the
-# re-export surface and ``__main__`` a ``python -m`` entry point; neither
-# holds generation logic worth a mutant.  ``helpers`` is deliberately *not*
-# here: it is shared machinery the output depends on, so it is a real
-# target.
-_NON_TARGETS = frozenset({"__init__", "__main__"})
-
-
 def _modules(family: str) -> list[str]:
     """Return the mutable module names in ``family``, sorted."""
-    return sorted(
-        p.stem
-        for p in _KINDS[family].pkg_dir.glob("*.py")
-        if p.stem not in _NON_TARGETS
-        or (p.stem == "__init__" and _KINDS[family].include_init)
+    kind = _KINDS[family]
+    modules = []
+    paths = (
+        kind.pkg_dir.rglob("*.py") if family == "tools" else kind.pkg_dir.glob("*.py")
     )
+    for path in paths:
+        relative = path.relative_to(kind.pkg_dir)
+        if path.stem == "__main__":
+            continue
+        if path.stem == "__init__":
+            if relative.parent == Path("."):
+                if kind.include_init:
+                    modules.append("__init__")
+            else:
+                modules.append(".".join(relative.parent.parts))
+        else:
+            modules.append(".".join(relative.with_suffix("").parts))
+    return sorted(modules)
 
 
 def _parse_target(target: str) -> tuple[str, str]:

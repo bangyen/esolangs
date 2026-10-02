@@ -10,7 +10,7 @@ right-hand side" or its leftmost/second-leftmost "ambiguous turn" rule, so
 the movement interpretation lives there with the wiki examples
 corroborating each rule.
 
-Movement is pure and lives in :mod:`._streetcode_geometry`; the mutable run
+Movement is pure and lives in :mod:`.geometry`; the mutable run
 lives in :class:`_Machine`.  :func:`_drive` is the whole of movement in one
 signature, ``_drive(grid, state, arrival_cell, current_cell)``, which lets
 :meth:`_Machine._drive_states` enumerate the state space.
@@ -30,8 +30,7 @@ from typing import Literal, Self, assert_never
 
 from esolangs._drive import drive
 from esolangs.exceptions import HaltError
-from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.grid_based._streetcode_geometry import (
+from esolangs.interpreters.grid_based.streetcode.geometry import (
     _DELTA,
     _NO_LATCHES,
     _WALL_FORMS,
@@ -45,7 +44,7 @@ from esolangs.interpreters.grid_based._streetcode_geometry import (
     _ReachableCell,
     _require,
 )
-from esolangs.interpreters.grid_based._streetcode_geometry import (
+from esolangs.interpreters.grid_based.streetcode.geometry import (
     _State as _GeometryState,
 )
 from esolangs.interpreters.io import IO
@@ -630,7 +629,3 @@ def run(code: list[str], io: IO) -> None:
     """Drive a Streetcode car over ``code`` until it halts."""
     machine = _Machine._for_run(code, io)  # noqa: SLF001
     drive(machine)
-
-
-if __name__ == "__main__":
-    script_main(run, shape="keep")

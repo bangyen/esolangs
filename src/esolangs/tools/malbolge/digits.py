@@ -39,16 +39,7 @@ from functools import cache
 
 from esolangs.interpreters.other.malbolge import _crazy
 
-from ._malbolge_core import (
-    _ENTRY,
-    _WORDS,
-    _build_constants,
-    _char_for,
-    _g,
-    _rot,
-    _table_char,
-)
-from .malbolge import (
+from . import (
     _DIGITS_N,
     _T_HELPERS,
     _T_HUB_CELLS,
@@ -60,6 +51,15 @@ from .malbolge import (
     _rotations,
     _t_jump,
     _valid_chars,
+)
+from .core import (
+    _ENTRY,
+    _WORDS,
+    _build_constants,
+    _char_for,
+    _g,
+    _rot,
+    _table_char,
 )
 
 #: The gadget: ``/`` reads an input, ``K`` sets ``A`` to 0 / all-1 / all-2 and

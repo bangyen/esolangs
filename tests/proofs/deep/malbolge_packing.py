@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 
-from esolangs.tools._malbolge_digits import _readouts
+from esolangs.tools.malbolge.digits import _readouts
 
 BAND = "verify"
 COST = 0.5

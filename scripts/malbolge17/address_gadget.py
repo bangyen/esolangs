@@ -14,7 +14,8 @@ from esolangs.interpreters.other.malbolge import (
     _initial_memory,
     _op,
 )
-from esolangs.tools._malbolge_core import (
+from esolangs.tools.malbolge import _T_HELPERS, _chain, _emit_chain, _valid_chars
+from esolangs.tools.malbolge.core import (
     _ENTRY,
     _WORDS,
     _build_constants,
@@ -22,8 +23,7 @@ from esolangs.tools._malbolge_core import (
     _g,
     _rot,
 )
-from esolangs.tools._malbolge_digits import _GADGET
-from esolangs.tools.malbolge import _T_HELPERS, _chain, _emit_chain, _valid_chars
+from esolangs.tools.malbolge.digits import _GADGET
 
 # Seed 33 collides at C5468 after reserving the V route; 78 lands at 51395/50666.
 _V_HANDOFF_SELECTOR_SEED = 78

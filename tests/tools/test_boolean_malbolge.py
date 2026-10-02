@@ -21,7 +21,7 @@ from esolangs import tools as boolean
 from esolangs.exceptions import GeneratorCapError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.malbolge import _XLAT1, _load, run
-from esolangs.tools._malbolge_core import _cascade
+from esolangs.tools.malbolge.core import _cascade
 
 _module = importlib.import_module("esolangs.tools.malbolge")
 
@@ -310,7 +310,7 @@ def test_fourteen_inputs_every_row(shape: object) -> None:
     assert _rows(table) == list(table)
 
 
-_digits = importlib.import_module("esolangs.tools._malbolge_digits")
+_digits = importlib.import_module("esolangs.tools.malbolge.digits")
 
 
 def test_digit_readouts_are_distinct_and_clear_of_the_code() -> None:
@@ -387,3 +387,18 @@ def test_a_value_meaning_needs_sixteen_characters() -> None:
     witness = {11, 15, 17, 22, 24, 29, 31, 38, 44, 62, 64, 71, 76, 78, 85, 91}
     for h in range(94):
         assert witness & {(i - h) % 94 for i in indices}
+
+
+@pytest.mark.parametrize("n", range(11, 17))
+def test_public_high_arity_routes_execute_boundary_rows(n: int) -> None:
+    table = _dense(n)
+    rows = [0, 1, 2**n - 2, 2**n - 1]
+    assert _rows(table, rows) == [table[row] for row in rows]
+
+
+def test_fourteen_rejects_colliding_final_level(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(_module, "_F_LEVEL3", (0, 0))
+    with pytest.raises(AssertionError, match="a row never resolves"):
+        _module._f_tables.__wrapped__()  # noqa: SLF001

@@ -323,43 +323,44 @@ def _package_sources(source: Source, target: str) -> tuple[dict[str, str], set[s
                 dependency = node.module
             else:
                 continue
-            if node.module is None:
+            if node.module is None and dependency not in packages:
                 for alias in node.names:
                     visit(dependency + "." + alias.name)
-            else:
-                visit(dependency)
-                if dependency in packages:
-                    # `from package import module` and exported values coexist.
-                    exported = ast.parse(sources[dependency])
-                    names = {
-                        node.name
-                        for node in exported.body
-                        if isinstance(node, (ast.ClassDef, ast.FunctionDef))
-                    }
-                    names.update(
-                        target.id
-                        for node in exported.body
-                        if isinstance(node, ast.Assign)
-                        for target in node.targets
-                        if isinstance(target, ast.Name)
-                    )
-                    names.update(
-                        node.name.id
-                        for node in exported.body
-                        if isinstance(node, ast.TypeAlias)
-                        and isinstance(node.name, ast.Name)
-                    )
-                    names.update(
-                        alias.asname or alias.name
-                        for node in exported.body
-                        if isinstance(node, ast.ImportFrom)
-                        for alias in node.names
-                    )
-                    for alias in node.names:
-                        if alias.name not in names:
-                            visit(dependency + "." + alias.name)
+                continue
+            visit(dependency)
+            if dependency in packages:
+                # `from package import module` and exported values coexist.
+                exported = ast.parse(sources[dependency])
+                names = {
+                    node.name
+                    for node in exported.body
+                    if isinstance(node, (ast.ClassDef, ast.FunctionDef))
+                }
+                names.update(
+                    target.id
+                    for node in exported.body
+                    if isinstance(node, ast.Assign)
+                    for target in node.targets
+                    if isinstance(target, ast.Name)
+                )
+                names.update(
+                    node.name.id
+                    for node in exported.body
+                    if isinstance(node, ast.TypeAlias)
+                    and isinstance(node.name, ast.Name)
+                )
+                names.update(
+                    alias.asname or alias.name
+                    for node in exported.body
+                    if isinstance(node, ast.ImportFrom) and node.module is not None
+                    for alias in node.names
+                )
+                for alias in node.names:
+                    if alias.name not in names:
+                        visit(dependency + "." + alias.name)
 
     visit(target)
+    visit(target + ".__main__")
     visit("esolangs.interpreters._entry")
     return sources, packages
 
@@ -411,8 +412,9 @@ _interpreter = _importlib.import_module(_prefix + _target[len("esolangs"):])
 run = _interpreter.run
 
 if __name__ == "__main__":
-    _entry = _importlib.import_module(_prefix + ".interpreters._entry")
-    _entry.script_main(run, loader=_interpreter.load_source)
+    _main = _sources[_target + ".__main__"]
+    _globals = dict(vars(_interpreter), __name__="__main__")
+    exec(compile(_main, "<bundle>/__main__.py", "exec"), _globals)
 """
 
 

@@ -13,7 +13,7 @@ straight-line programs" in docs/proofs/malbolge-scaling.md.
 from __future__ import annotations
 
 from esolangs.interpreters.other.malbolge import _crazy
-from esolangs.tools._malbolge_core import _char_for, _rot
+from esolangs.tools.malbolge.core import _char_for, _rot
 
 W = 59049
 PLAIN = range(33, 127)

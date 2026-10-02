@@ -25,7 +25,7 @@ the answer stub read the thirteenth.  ``n == 14`` computes four copies'
 readouts in the main code, lets inputs twelve and thirteen pick a copy and
 the stub read the fourteenth, and resolves shared cells over three levels.
 ``n == 15`` and ``n == 16`` drop the hash for a collision-free positional
-address (:mod:`esolangs.tools._malbolge_digits`); ``n > 16`` is refused.
+address (:mod:`esolangs.tools.malbolge.digits`); ``n > 16`` is refused.
 """
 
 from __future__ import annotations
@@ -38,7 +38,7 @@ from esolangs.exceptions import GeneratorCapError
 from esolangs.interpreters.other.malbolge import _XLAT1, _XLAT2, _crazy
 from esolangs.tools.helpers import _validate_truth_table
 
-from ._malbolge_core import (
+from .core import (
     _C_INITS,
     _C_POST,
     _C_SCHEDULE,
@@ -486,7 +486,7 @@ def _thirteen_program(truth_table: str) -> str:
 # least 81 leaves a value that ``j`` lands inside the window); that keeps the
 # main code under the level-3 region.
 _FOURTEEN_N = 14
-#: Fifteen and sixteen inputs: :mod:`esolangs.tools._malbolge_digits`.
+#: Fifteen and sixteen inputs: :mod:`esolangs.tools.malbolge.digits`.
 _DIGITS_N = 16
 #: ``g`` values of the extra state cells 5, 6 and 7.
 _F_EXTRA = (57, 75, 119)
@@ -960,7 +960,7 @@ def malbolge(truth_table: str) -> str:
         )
     if n > _FOURTEEN_N:
         # Deferred: the positional build reads this module.
-        from ._malbolge_digits import _digits_program
+        from .digits import _digits_program
 
         return _digits_program(truth_table)
     if n == _FOURTEEN_N:

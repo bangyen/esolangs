@@ -5,7 +5,8 @@ from unittest.mock import patch
 
 import pytest
 
-from esolangs.interpreters.grid_based._streetcode_geometry import (
+from esolangs.interpreters.grid_based.streetcode import _Machine, _State
+from esolangs.interpreters.grid_based.streetcode.geometry import (
     _NO_LATCHES,
     _Car,
     _drive,
@@ -14,7 +15,6 @@ from esolangs.interpreters.grid_based._streetcode_geometry import (
     _Merge,
     _plus_dist,
 )
-from esolangs.interpreters.grid_based.streetcode import _Machine, _State
 from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.vm import _StepMachine, run_until_halt_or_cycle
 from tests.interpreters.streetcode_support import _RING_PROGRAM
@@ -166,7 +166,7 @@ class TestStreetcodeDriveStates:
         module object works either way, because the bundler rewrites the
         import that produced it.
         """
-        from esolangs.interpreters.grid_based import _streetcode_geometry as module
+        from esolangs.interpreters.grid_based.streetcode import geometry as module
 
         with (
             patch.object(
@@ -192,7 +192,7 @@ class TestStreetcodeDriveStates:
         drives the same way".  Comparing the whole drive-state graph at
         the shipped bound against a generous one says exactly that.
         """
-        from esolangs.interpreters.grid_based import _streetcode_geometry as module
+        from esolangs.interpreters.grid_based.streetcode import geometry as module
 
         root = Path(__file__).resolve().parents[2]
         code = (root / path).read_text().split("\n")
