@@ -62,9 +62,6 @@ from esolangs.cli_args import (
     _scale_of,
     _split_positional,
 )
-from esolangs.cli_args import (
-    _table_of as _table_of,
-)
 from esolangs.cli_debug import _debug
 from esolangs.cli_help import (
     HELP,
@@ -78,43 +75,8 @@ from esolangs.cli_hints import (
     _shell_hint,
     _swapped_hint,
 )
-from esolangs.cli_hints import (
-    _shape_warning as _shape_warning,
-)
-from esolangs.cli_hints import (
-    _template_hint as _template_hint,
-)
-
-# The strategies live in their own modules, but this one is the
-# construction's face: the registry, the wrapper and the suite all reach
-# it by this name.  Re-exported in the ``x as x`` form so a caller that
-# does not care where a piece lives need not know.
-from esolangs.cli_io import (
-    _UNBOUNDED_NOTICE_AFTER as _UNBOUNDED_NOTICE_AFTER,
-)
-from esolangs.cli_io import (
-    _bounded_read as _bounded_read,
-)
-from esolangs.cli_io import (
-    _emit_partial as _emit_partial,
-)
-from esolangs.cli_io import (
-    _read_program as _read_program,
-)
 from esolangs.cli_io import (
     _read_stdin,
-)
-from esolangs.cli_io import (
-    _smuggled_bytes as _smuggled_bytes,
-)
-from esolangs.cli_io import (
-    _UnboundedNotice as _UnboundedNotice,
-)
-from esolangs.cli_io import (
-    _WaitingNotice as _WaitingNotice,
-)
-from esolangs.cli_io import (
-    _write_output as _write_output,
 )
 from esolangs.cli_round_trip import _answer, _evaluate
 from esolangs.cli_run import _run

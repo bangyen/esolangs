@@ -27,12 +27,6 @@ from esolangs._program import Program
 from esolangs._source import InputSource, ProgramSource, check_scale_for
 from esolangs._traits import trait, traits
 from esolangs._vm_views import (
-    _VIEW_ITEMS as _VIEW_ITEMS,
-)
-from esolangs._vm_views import (
-    _abbreviate as _abbreviate,
-)
-from esolangs._vm_views import (
     machine_views,
 )
 from esolangs.interpreters.io import ScriptedIO

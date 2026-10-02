@@ -15,7 +15,7 @@ import pathlib
 import pytest
 
 import esolangs
-from esolangs.cli import _template_hint
+from esolangs.cli_hints import _template_hint
 from esolangs.exceptions import ProgramError, TemplateError
 from esolangs.registry import LANGUAGES, example_stems
 

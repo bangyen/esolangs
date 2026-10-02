@@ -71,14 +71,14 @@ class TestViews:
     def test_a_long_sequence_is_cut_before_it_is_formatted(self) -> None:
         # A tape can be thousands of cells; the view has to be short, and
         # cheap to produce, at every step.
-        from esolangs.vm import _abbreviate
+        from esolangs._vm_views import _abbreviate
 
         text = _abbreviate(list(range(4096)))
         assert len(text) < 80
         assert "+4088 more" in text
 
     def test_a_short_sequence_is_shown_whole(self) -> None:
-        from esolangs.vm import _abbreviate
+        from esolangs._vm_views import _abbreviate
 
         assert _abbreviate([1, 2, 3]) == "[1, 2, 3]"
 
@@ -89,13 +89,13 @@ class TestViews:
         readings differ; a sweep found a widened comparison here passing
         every other test in this class.
         """
-        from esolangs.vm import _VIEW_ITEMS, _abbreviate
+        from esolangs._vm_views import _VIEW_ITEMS, _abbreviate
 
         assert "more" not in _abbreviate(list(range(_VIEW_ITEMS)))
         assert "more" in _abbreviate(list(range(_VIEW_ITEMS + 1)))
 
     def test_a_long_scalar_is_truncated(self) -> None:
-        from esolangs.vm import _abbreviate
+        from esolangs._vm_views import _abbreviate
 
         assert len(_abbreviate("x" * 500)) <= 60
 
@@ -107,7 +107,7 @@ class TestViews:
         500-character value comes back short says nothing about where the
         edge is, which a sweep found free to move either way.
         """
-        from esolangs.vm import _abbreviate
+        from esolangs._vm_views import _abbreviate
 
         assert _abbreviate("x" * 58) == repr("x" * 58)
         assert len(repr("x" * 58)) == 60
