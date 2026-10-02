@@ -643,3 +643,9 @@ def test_rgb_writer_validates_pixels_after_cache_saturation(invalid) -> None:
     row.append(invalid)
     with pytest.raises((ValueError, TypeError)):
         png.write_rgb([row])
+
+
+def test_rgb_loading_runs_preserve_channel_alignment_and_newlines() -> None:
+    colours = [(10, 10, 10), (1, 2, 1), (2, 1, 2), (0, 255, 10)]
+    row = [pixel for index, pixel in enumerate(colours) for _ in range(index + 1)]
+    assert png.read_rgb(png.write_rgb([row])) == [row]

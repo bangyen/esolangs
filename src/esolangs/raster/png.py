@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+import re
 import struct
 import zlib
 from collections.abc import Iterator, Sequence
@@ -209,6 +210,9 @@ def read_grey(data: bytes) -> list[bytearray]:
     return [bytearray(raw[i : i + width]) for i in range(0, len(raw), width)]
 
 
+_RGB_RUN = re.compile(rb"(.{3})\1*", re.DOTALL)
+
+
 def _rgb_rows(data: bytes) -> Rows:
     """Decode immutable RGB rows, reusing up to 1024 pixels and row patterns."""
     raw, width = _read(data, "RGB")
@@ -221,8 +225,8 @@ def _rgb_rows(data: bytes) -> Rows:
         row = patterns.get(scanline)
         if row is None:
             pixels = []
-            for x in range(0, stride, 3):
-                key = scanline[x : x + 3]
+            for run in _RGB_RUN.finditer(scanline):
+                key = run[1]
                 pixel = palette.get(key)
                 if pixel is None:
                     if len(palette) == 1024:
@@ -233,7 +237,7 @@ def _rgb_rows(data: bytes) -> Rows:
                         )
                     pixel = (key[0], key[1], key[2])
                     palette[key] = pixel
-                pixels.append(pixel)
+                pixels.extend([pixel] * ((run.end() - run.start()) // 3))
             row = tuple(pixels)
             if len(patterns) < 1024:
                 patterns[scanline] = row
