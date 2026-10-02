@@ -21,7 +21,7 @@ def _bits(row: int, inputs: int) -> list[int]:
     return [(row >> shift) & 1 for shift in range(inputs - 1, -1, -1)]
 
 
-def _source_size(program: str | esolangs.Raster) -> int:
+def _source_size(program: esolangs.Program) -> int:
     if isinstance(program, str):
         return len(program)
     return sum(len(row) for row in program.rows)
@@ -29,7 +29,7 @@ def _source_size(program: str | esolangs.Raster) -> int:
 
 def _execute(
     language: str,
-    program: str | esolangs.Raster,
+    program: esolangs.Program,
     table: str,
     row: int,
     cap: int,
@@ -39,7 +39,7 @@ def _execute(
 ) -> dict[str, Any]:
     facts = esolangs.describe(language)
     bits = _bits(row, len(table).bit_length() - 1)
-    source: str | esolangs.Raster
+    source: esolangs.Program
     if facts["parameterized"]:
         assert isinstance(program, str)
         source, stdin = esolangs.instantiate(language, program, bits), ""
@@ -121,7 +121,7 @@ def _execute(
 
 def _commands(
     language: str,
-    program: str | esolangs.Raster,
+    program: esolangs.Program,
     table: str,
     row: int,
     cap: int,
@@ -165,7 +165,7 @@ def measure(
             "benchmark timeout needs a Unix main thread; pass timeout=None"
         )
     timings: list[int] = []
-    program: str | esolangs.Raster | None = None
+    program: esolangs.Program | None = None
     for _ in range(repeat):
         started = time.perf_counter_ns()
         program = esolangs.generate(language, table)

@@ -23,6 +23,7 @@ from functools import cache
 from typing import Any, Protocol, cast, runtime_checkable
 
 from esolangs._execution import interpreter_errors, interpreter_module, prepare_call
+from esolangs._program import Program
 from esolangs._source import InputSource, ProgramSource, check_scale_for
 from esolangs._traits import trait, traits
 from esolangs._vm_views import (
@@ -35,7 +36,6 @@ from esolangs._vm_views import (
     machine_views,
 )
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.raster import Raster
 from esolangs.registry import resolve
 
 
@@ -709,7 +709,7 @@ class _DelegatingVM:
     def __init__(
         self,
         language: str,
-        program: str | Raster,
+        program: Program,
         stdin: InputSource = "",
         *,
         scale: int | None = None,

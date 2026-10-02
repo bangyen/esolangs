@@ -21,6 +21,7 @@ a language added without an entry fails there rather than being silently
 skipped.
 """
 
+from esolangs._program import Program
 from esolangs.line import generate as _line_sample
 from esolangs.piet import generate as _piet_sample
 from esolangs.raster import Raster
@@ -180,7 +181,7 @@ RAISES_ON_THE_POST_HALT_STEP: frozenset[str] = frozenset()
 NONDETERMINISTIC_AGAINST_RUN = frozenset({"LaserFuck"})
 
 # language -> (program, stdin)
-SAMPLES: dict[str, tuple[str | Raster, str]] = {
+SAMPLES: dict[str, tuple[Program, str]] = {
     "123": ("3231", ""),
     "3D Brainfuck": ("+.", ""),
     "3x": ("3!", ""),

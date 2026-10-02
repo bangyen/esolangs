@@ -22,6 +22,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, replace
 from typing import cast
 
+from esolangs._program import Program
 from esolangs.raster import Raster
 from esolangs.registry import LANGUAGES, SourceKind, canonical_id, resolve
 from esolangs.tools.a_painter_ant import PAIR as APA_PAIR
@@ -70,7 +71,7 @@ class BooleanExample:
     the whole stdout.
     """
 
-    generator: Callable[..., str | Raster]
+    generator: Callable[..., Program]
     table: str
     interpreter: str
     expected: str
@@ -162,7 +163,7 @@ class BooleanExample:
 
     def build(
         self, width: int | None = DEFAULT_WIDTH, *, balance: bool = False
-    ) -> str | Raster:
+    ) -> Program:
         """Return the source this example commits.
 
         Wrapped to ``width`` by the token-aware wrapper ``stem`` selects
@@ -203,7 +204,7 @@ class BooleanExample:
 
 
 def _reader(
-    generator: Callable[[str], str | Raster],
+    generator: Callable[[str], Program],
     interpreter: str,
     *,
     table: str = AND2,

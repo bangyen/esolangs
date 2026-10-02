@@ -588,7 +588,7 @@ _HONOUR_TABLES = {
 _HONOUR_WIDTHS = (10, 20, 40, 80)
 
 
-def _columns(program: str | esolangs.Raster) -> int:
+def _columns(program: esolangs.Program) -> int:
     """The width of the widest row of ``program``."""
     if isinstance(program, esolangs.Raster):
         return len(program.rows[0])

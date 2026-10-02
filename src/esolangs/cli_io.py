@@ -11,6 +11,7 @@ import threading
 from contextlib import AbstractContextManager, nullcontext
 
 from esolangs import _read_source
+from esolangs._program import Program
 from esolangs._source import _FileSource
 from esolangs.cli_args import (
     _fail,
@@ -20,7 +21,6 @@ from esolangs.cli_hints import (
     _decode_note,
 )
 from esolangs.exceptions import EsolangError
-from esolangs.raster import Raster
 
 
 def _null_context() -> AbstractContextManager[None]:
@@ -84,9 +84,7 @@ class _UnboundedNotice:
         self._timer.cancel()
 
 
-def _read_program(
-    path: str, timeout: float | None = None, *, language: str
-) -> str | Raster:
+def _read_program(path: str, timeout: float | None = None, *, language: str) -> Program:
     """Read a bounded file and let its interpreter decode the snapshot."""
     content = _bounded_read(path, timeout)
     try:

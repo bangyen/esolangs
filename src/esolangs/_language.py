@@ -5,8 +5,8 @@ from dataclasses import dataclass
 import esolangs
 from esolangs._describe import LanguageInfo
 from esolangs._evaluate import _DEFAULT, _Default
+from esolangs._program import Program
 from esolangs._source import InputSource, ProgramSource
-from esolangs.raster import Raster
 from esolangs.registry import resolve
 
 
@@ -27,7 +27,7 @@ class Language:
         *,
         balance: bool = False,
         scale: int = 1,
-    ) -> str | Raster:
+    ) -> Program:
         """Return a program computing ``truth_table``."""
         return esolangs.generate(
             self.name, truth_table, width, balance=balance, scale=scale
@@ -94,9 +94,7 @@ class Language:
         """Extract the answer bit from raw output."""
         return esolangs.read_answer(self.name, output)
 
-    def check_program(
-        self, program: ProgramSource, stdin: InputSource = ""
-    ) -> str | Raster:
+    def check_program(self, program: ProgramSource, stdin: InputSource = "") -> Program:
         """Load and validate runnable source."""
         return esolangs.check_program(self.name, program, stdin)
 

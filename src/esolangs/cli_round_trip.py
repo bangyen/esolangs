@@ -13,6 +13,7 @@ from esolangs import (
     run,
 )
 from esolangs._answers import _validate_shape_for_evaluate
+from esolangs._program import Program
 from esolangs.cli_args import (
     _check_count,
     _fail,
@@ -41,7 +42,7 @@ def _answer(rest: list[str]) -> None:
         name = str(facts["name"])
         row = [int(bit) for bit in bits]
         program = generate(name, table)
-        source: str | Raster
+        source: Program
         if facts["parameterized"]:
             if isinstance(program, Raster):  # pragma: no cover - inconsistent metadata
                 raise TypeError("a raster generator cannot be parameterized")

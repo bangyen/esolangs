@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 
 from esolangs import tools as _boolean
-from esolangs.raster import Raster
+from esolangs._program import Program
 from esolangs.registry._slug import canonical_id
 
 # A generator: ``generator(truth_table)`` returns a program computing it.
@@ -16,7 +16,7 @@ from esolangs.registry._slug import canonical_id
 # ``width`` bounding the columns, since a shape cannot be reflowed after the
 # fact the way a single long line can.  ``...`` keeps both arities callable
 # with the table alone, which is how every width-less caller invokes them.
-Generator = Callable[..., str | Raster]
+Generator = Callable[..., Program]
 
 
 class SourceKind(StrEnum):
