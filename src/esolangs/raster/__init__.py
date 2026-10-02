@@ -179,4 +179,4 @@ class Raster:
 
     def to_png(self) -> bytes:
         """Encode this raster as PNG bytes."""
-        return png.write_rgb([list(row) for row in self.rows])
+        return png.write_rgb(self.rows)

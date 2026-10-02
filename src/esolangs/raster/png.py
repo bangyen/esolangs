@@ -5,7 +5,7 @@ from __future__ import annotations
 import io
 import struct
 import zlib
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from typing import TYPE_CHECKING, Any
 
 from esolangs.exceptions import MissingDependencyError
@@ -272,16 +272,28 @@ def write_grey_file(path: str, pixels: list[bytearray]) -> None:
         handle.write(data)
 
 
-def write_rgb(pixels: list[list[tuple[int, int, int]]]) -> bytes:
+def write_rgb(pixels: Sequence[Sequence[tuple[int, int, int]]]) -> bytes:
     """Encode rectangular 8-bit RGB rows as PNG bytes."""
     height = len(pixels)
     width = len(pixels[0]) if height else 0
     if not height or not width or any(len(row) != width for row in pixels):
         raise ValueError("expected a non-empty 2-D RGB image")
-    raw = bytearray()
+    packed_rows: dict[int, tuple[Sequence[tuple[int, int, int]], bytes]] = {}
+    parts = []
     for row in pixels:
+        cached = packed_rows.get(id(row))
+        if cached is not None:
+            parts.append(cached[1])
+            continue
+        immutable = type(row) is tuple
+        raw = bytearray()
         for pixel in row:
             if len(pixel) != 3 or any(not 0 <= value <= 255 for value in pixel):
                 raise ValueError(f"invalid RGB pixel {pixel!r}")
             raw.extend(pixel)
-    return _write("RGB", width, height, bytes(raw))
+            immutable = immutable and type(pixel) is tuple
+        packed = bytes(raw)
+        parts.append(packed)
+        if immutable and len(packed_rows) < 1024:
+            packed_rows[id(row)] = row, packed
+    return _write("RGB", width, height, b"".join(parts))
