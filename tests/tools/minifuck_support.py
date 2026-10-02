@@ -52,14 +52,9 @@ from esolangs.tools.minifuck_mux import (  # noqa: E402
     _mux_weight,
     _mux_weights,
 )
-from esolangs.tools.minifuck_pool import (  # noqa: E402
-    _POOL,
-    _POOL_WIDTH,
-    _READS,
-    _endgame,
-    _find_pool,
-)
+from esolangs.tools.minifuck_pool import _POOL, _POOL_WIDTH, _READS  # noqa: E402
 from esolangs.tools.minifuck_sim import _Joint, _walk_to  # noqa: E402
+from tests.tools.minifuck_pool_oracle import _endgame, _find_pool  # noqa: E402
 
 # One separation per arity, forked out.  A dict: the value is a mutable ``_Joint``.
 _MUX_SEPARATED: dict[int, _Joint] = {}
