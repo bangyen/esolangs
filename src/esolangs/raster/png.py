@@ -293,21 +293,36 @@ def write_rgb(pixels: Sequence[Sequence[tuple[int, int, int]]]) -> bytes:
             continue
         immutable = type(row) is tuple
         raw = bytearray()
+        previous: tuple[int, int, int] | None = None
+        previous_bytes = b""
+        repeats = 0
         for pixel in row:
+            if previous is not None and pixel is previous:
+                repeats += 1
+                continue
+            if repeats:
+                raw.extend(previous_bytes * repeats)
+                repeats = 0
+            previous = None
             if cache_pixels:
                 cached_pixel = packed_pixels.get(id(pixel))
                 if cached_pixel is not None:
-                    raw.extend(cached_pixel[1])
+                    previous, previous_bytes = cached_pixel
+                    repeats = 1
                     continue
             if len(pixel) != 3 or any(not 0 <= value <= 255 for value in pixel):
                 raise ValueError(f"invalid RGB pixel {pixel!r}")
             raw.extend(pixel)
             if type(pixel) is tuple:
                 if cache_pixels:
-                    packed_pixels[id(pixel)] = pixel, bytes(pixel)
+                    previous = pixel
+                    previous_bytes = bytes(pixel)
+                    packed_pixels[id(pixel)] = pixel, previous_bytes
                     cache_pixels = len(packed_pixels) < 1024
             else:
                 immutable = False
+        if repeats:
+            raw.extend(previous_bytes * repeats)
         packed = bytes(raw)
         parts.append(packed)
         if immutable and len(packed_rows) < 1024:

@@ -649,3 +649,20 @@ def test_rgb_loading_runs_preserve_channel_alignment_and_newlines() -> None:
     colours = [(10, 10, 10), (1, 2, 1), (2, 1, 2), (0, 255, 10)]
     row = [pixel for index, pixel in enumerate(colours) for _ in range(index + 1)]
     assert png.read_rgb(png.write_rgb([row])) == [row]
+
+
+def test_rgb_writer_flushes_repeated_pixels_between_colours_and_at_end() -> None:
+    red, black = (255, 0, 0), (0, 0, 0)
+    row = (red,) * 19 + (black,) * 7 + (red,) * 11
+    assert png.read_rgb(png.write_rgb((row,))) == [list(row)]
+
+
+def test_rgb_writer_packs_adjacent_mutable_pixels_independently() -> None:
+    class ChangingPixel(list):
+        def __iter__(self):
+            self[0] += 1
+            return iter((self[0], 0, 0))
+
+    pixel = ChangingPixel([0, 0, 0])
+    # Range validation and packing each iterate the mutable pixel.
+    assert png.read_rgb(png.write_rgb(((pixel, pixel),))) == [[(2, 0, 0), (4, 0, 0)]]
