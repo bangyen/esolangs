@@ -23,6 +23,29 @@ from esolangs.tools.malbolge.core import _g, _rot
 ALL1, ALL2 = 29524, 59048
 
 
+def emit_navigation(
+    plan: _Planner, group: _Group, used: set[int], helpers: dict[str, int]
+) -> None:
+    """Initialize direct view pointers through the ALL2 trit involution."""
+    for target in sorted(group.view_cells):
+        seed = _crazy(ALL2, target - 1)
+        source = next(
+            (
+                cell
+                for cell in range(130, 420)
+                if cell not in used and plan.mem.get(cell) == seed
+            ),
+            None,
+        )
+        if source is None:
+            continue
+        used.add(source)
+        group.used.add(source)
+        plan.op("*", helpers["all2"])
+        plan.op("p", source)
+        assert plan.mem[source] == target - 1
+
+
 def mask(state: int) -> int:
     """Return the operand preserving six low trits and tagging the state."""
     shifts = (3**6, -(3**6), -(3**7), -(3**6) - 3**7, 3**6 + 3**7)
