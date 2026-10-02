@@ -55,6 +55,7 @@ from esolangs.tools.taglate import balance_taglate
 from esolangs.tools.thisthat import thisthat
 from esolangs.tools.thue import balance_thue
 from esolangs.tools.token_balance import balanced_token_width
+from esolangs.tools.underload import PAIR as UNDERLOAD_PAIR
 from esolangs.tools.underload import underload
 from esolangs.tools.vandevelo import vandevelo
 from esolangs.tools.wrap import (
@@ -269,8 +270,8 @@ def _smallfuck(table: str, default: str) -> str:
 
 
 def _underload(table: str, default: str) -> str:
-    """Balance five-character selectors, the width-four form and swap bits."""
-    normal = re.findall(r"\${5}|\(\)!|\([01]\)|.", default)
+    """Balance default selectors, the width-four form and swap bits."""
+    normal = re.findall(rf"\${{{len(UNDERLOAD_PAIR[0])}}}|\(\)!|\([01]\)|.", default)
     width = balanced_token_width(normal, minimum=5)
     short = underload(table, 3).replace("\n", "")
     tokens = re.findall(r"\$|\(\)!|\([01]\)|.", short)
