@@ -586,3 +586,40 @@ def test_rgb_loading_exceeds_row_cache_with_small_palette() -> None:
     image = Raster.from_png(data)
     assert image.rows == tuple(tuple(row) for row in pixels + pixels[:1])
     assert image.rows[0] is image.rows[-1]
+
+
+def test_rgb_writer_reuses_immutable_rows_without_changing_png() -> None:
+    row = ((255, 0, 0), (0, 0, 0))
+    immutable = (row, row, row)
+    mutable = [list(row) for row in immutable]
+    assert png.write_rgb(immutable) == png.write_rgb(mutable)
+    assert png.read_rgb(png.write_rgb(immutable)) == mutable
+
+
+def test_rgb_writer_exceeds_row_reuse_limit_exactly() -> None:
+    rows = tuple(((i // 256, i % 256, 17),) for i in range(1025))
+    rows += (rows[0], rows[-1])
+    assert png.read_rgb(png.write_rgb(rows)) == [list(row) for row in rows]
+
+
+@pytest.mark.parametrize("tuple_row", [False, True])
+@pytest.mark.parametrize("changed", [255, 256])
+def test_rgb_writer_revalidates_mutable_pixels(
+    changed: int, *, tuple_row: bool
+) -> None:
+    pixel = [0, 0, 0]
+    row = (pixel,) if tuple_row else [pixel]
+
+    class ChangingRows(list):
+        def __iter__(self):
+            pixel[0] = 0
+            yield row
+            pixel[0] = changed
+            yield row
+
+    rows = ChangingRows([row, row])
+    if changed == 256:
+        with pytest.raises(ValueError, match="invalid RGB"):
+            png.write_rgb(rows)
+    else:
+        assert png.read_rgb(png.write_rgb(rows)) == [[(0, 0, 0)], [(255, 0, 0)]]
