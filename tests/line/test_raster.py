@@ -255,3 +255,14 @@ def test_greyscale_conversion_exceeds_pixel_cache() -> None:
         for part in rows
     ]
     assert _grey_rows(rows) == expected
+
+
+def test_greyscale_runs_flush_at_colour_changes_and_row_end() -> None:
+    from esolangs.line import _grey_rows
+
+    red, green, blue = (255, 0, 0), (0, 255, 0), (0, 0, 255)
+    row = (red,) * 19 + (green,) * 7 + (blue,) * 11
+    grey = _grey_rows((row, row))
+    assert grey == [bytearray([76] * 19 + [150] * 7 + [29] * 11)] * 2
+    grey[0][0] = 0
+    assert grey[1][0] == 76
