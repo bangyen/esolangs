@@ -230,3 +230,21 @@ def test_adjacent_mutable_pixels_are_frozen_on_each_occurrence() -> None:
 def test_raster_rejects_a_noniterable_pixel() -> None:
     with pytest.raises(TypeError):
         Raster(((None,),))  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize("row_type", [tuple, list])
+def test_raster_detaches_mutable_pixels_after_an_immutable_prefix(row_type):
+    red, black = (255, 0, 0), (0, 0, 0)
+    mutable = [1, 2, 3]
+    row = row_type([red, red, black, red, mutable, red, red, black])
+    raster = Raster((row,))
+    assert raster.rows == ((red, red, black, red, (1, 2, 3), red, red, black),)
+    mutable[0] = 255
+    assert raster.rows[0][4] == (1, 2, 3)
+    assert raster.rows[0][0] is red
+
+
+def test_raster_preserves_validated_immutable_row_identity() -> None:
+    red, black = (255, 0, 0), (0, 0, 0)
+    row = (red, red, black, red)
+    assert Raster((row, row)).rows[0] is row
