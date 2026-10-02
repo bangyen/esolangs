@@ -16,10 +16,9 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import TypeGuard
+from typing import TypeGuard, cast
 
 from esolangs.debugger import Debugger, make_debugger
-from esolangs.exceptions import ArgumentError
 from esolangs.raster import Raster
 
 #: Back to the terminal's own attributes, which ends every marked run.
@@ -45,6 +44,28 @@ def _style(*, run: bool, stopped: bool, picked: bool) -> str:
     if picked:
         params.append("4")
     return f"\x1b[{';'.join(params)}m" if params else ""
+
+
+def _display_source(program: str | Raster, language: str) -> str:
+    if isinstance(program, str):
+        return program
+    import importlib
+
+    from esolangs.raster.scale import normalize
+    from esolangs.registry import INTERPRETERS, resolve
+
+    module = importlib.import_module(INTERPRETERS[resolve(language)])
+    source_view = getattr(module, "_source_view", None)
+    if source_view is not None:
+        return cast("str", source_view(program))
+    rows = normalize(program.rows)
+    palette = sorted({pixel for row in rows for pixel in row})
+    symbols = {
+        pixel: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"[i % 62]
+        for i, pixel in enumerate(palette)
+    }
+    symbols[(0, 0, 0)], symbols[(255, 255, 255)] = "#", " "
+    return "\n".join("".join(symbols[pixel] for pixel in row) for row in rows)
 
 
 @dataclass(frozen=True)
@@ -356,7 +377,7 @@ def render(
     return "\n".join(out)
 
 
-def replay(language: str, program: str, stdin: str, step: int) -> Frame:
+def replay(language: str, program: str | Raster, stdin: str, step: int) -> Frame:
     """Return the frame ``step`` commands into a fresh run.
 
     Exact because every VM is deterministic (seeded sources for the random
@@ -379,7 +400,7 @@ def replay(language: str, program: str, stdin: str, step: int) -> Frame:
     # past the halt reports where the program really stopped.  The run key
     # asks for its whole bound, and stepping back from there has to land on
     # the last real step rather than one short of a million.
-    return Frame.of(language, program, dbg, taken, fault)
+    return Frame.of(language, _display_source(program, language), dbg, taken, fault)
 
 
 def _frame_bytes(frame: Frame) -> int:
@@ -405,18 +426,19 @@ class History:
     #: What the retained frames may occupy before the oldest are dropped.
     budget = 64 << 20
 
-    def __init__(self, language: str, program: str, stdin: str = "") -> None:
+    def __init__(self, language: str, program: str | Raster, stdin: str = "") -> None:
         """Start a history at step 0 of a fresh run."""
         self._language = language
-        self._program = program
-        self._stdin = stdin
+        self._source = program
         self._dbg = make_debugger(language, program, stdin)
+        self._program = _display_source(program, language)
+        self._stdin = stdin
         self._fault: str | None = None
         self._frames: list[Frame] = []
         self._base = 0
         self._bytes = 0
         self._top = 0
-        self._remember(Frame.of(language, program, self._dbg, 0))
+        self._remember(Frame.of(language, self._program, self._dbg, 0))
 
     @property
     def top(self) -> int:
@@ -436,7 +458,7 @@ class History:
         if step < self._base:
             # Rewound past what is still held; the run is deterministic, so
             # replaying reaches the same state the dropped frame held.
-            return replay(self._language, self._program, self._stdin, step)
+            return replay(self._language, self._source, self._stdin, step)
         while self._top < step and not self._dbg.halted and self._fault is None:
             self._advance()
         return self._frames[-1]
@@ -668,12 +690,6 @@ def run_tui(
     (``self_halts``).  Everything here is raw-mode handling; the stepping is
     :func:`drive`.
     """
-    if isinstance(program, Raster):
-        # A raster language has no step machine; refuse before taking the
-        # terminal.  ``make_debugger`` says the same thing for the batch path.
-        raise ArgumentError(
-            f"{language} is a raster language, which has no step machine"
-        )
     import shutil
     import sys
     import termios

@@ -40,6 +40,7 @@ class Language:
     boolean: Generator | None = None
     source_kind: SourceKind = SourceKind.TEXT
     raster_boolean: RasterGenerator | None = None
+    state_model: str | None = None
 
 
 LANGUAGES: dict[str, Language] = {
@@ -297,12 +298,14 @@ LANGUAGES: dict[str, Language] = {
     ),
     "Line": Language(
         "Line",
+        state_model="tape",
         id="line",
         source_kind=SourceKind.RASTER,
         raster_boolean=_line.generate,
     ),
     "Piet": Language(
         "Piet",
+        state_model="stack",
         id="piet",
         source_kind=SourceKind.RASTER,
         raster_boolean=_piet.generate,

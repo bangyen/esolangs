@@ -9,7 +9,7 @@ anti-aliasing changes the path geometry.
 
 from __future__ import annotations
 
-from functools import cache
+from functools import lru_cache
 from typing import TYPE_CHECKING, cast
 
 from esolangs.interpreters.io import ScriptedIO
@@ -22,6 +22,7 @@ from .simulate import run as _run
 
 if TYPE_CHECKING:
     from .render import Node
+    from .simulate import _Compiled
 
 
 def _grey_rows(rows: Rows) -> list[bytearray]:
@@ -44,7 +45,7 @@ def _render_node(node: Node, heading: tuple[int, int] = (-1, 0)) -> Rows:
     return tuple(tuple(palette[level] for level in row) for row in canvas.pixels)
 
 
-@cache
+@lru_cache(maxsize=8)
 def _generate(truth_table: str) -> Raster:
     """Return a Line raster computing ``truth_table``."""
     from .line_boolean import line_boolean
@@ -102,6 +103,104 @@ def _run_node(node: Node, io: ScriptedIO) -> None:
             current = current.zero if tape.get(pointer, 0) == 0 else current.nonzero
             continue
         current = current.next or current.goto
+
+
+@lru_cache(maxsize=8)
+def _compiled(program: Raster, scale: int | None = None) -> _Compiled:
+    from .simulate import compile_program
+
+    return compile_program(
+        extract_mask(from_grey(_grey_rows(program.rows)), scale=scale)
+    )
+
+
+def _source_view(program: Raster) -> str:
+    """Return the cropped, normalized pixel grid used by the walker."""
+    from .extract import crop_to_content, normalize_scale
+
+    mask = normalize_scale(crop_to_content(from_grey(_grey_rows(program.rows))))
+    return "\n".join(
+        "".join("#" if mask[y, x] else " " for x in range(mask.width))
+        for y in range(mask.height)
+    )
+
+
+class _Machine:
+    """Step a compiled pixel path, retaining tape and input state."""
+
+    ip_shape = "grid"
+
+    def __init__(
+        self, program: Raster, io: ScriptedIO, *, scale: int | None = None
+    ) -> None:
+        from collections import defaultdict
+
+        from .simulate import _Compiled
+
+        self.node: _Compiled | None = _compiled(program, scale)
+        self.at = 0
+        self.pointer = 0
+        self.tape: dict[int, int] = defaultdict(int)
+        self.io = io
+
+    @property
+    def halted(self) -> bool:
+        return self.node is None
+
+    @property
+    def ip(self) -> tuple[int, ...] | None:
+        if self.node is None:
+            return None
+        return (
+            self.node.positions[self.at]
+            if self.at < len(self.node.ops)
+            else self.node.end
+        )
+
+    @property
+    def memory(self) -> tuple[int, ...]:
+        return tuple(
+            self.tape.get(i, 0)
+            for i in range(min(self.tape, default=0), max(self.tape, default=0) + 1)
+        )
+
+    @property
+    def stack(self) -> tuple[object, ...]:
+        return ()
+
+    def snapshot(self) -> tuple[object, ...]:
+        cells = tuple(
+            sorted((cell, value) for cell, value in self.tape.items() if value)
+        )
+        return id(self.node), self.at, self.pointer, cells, self.io.position()
+
+    def step(self) -> None:
+        node = self.node
+        if node is None:
+            return
+        if self.at == len(node.ops):
+            if node.zero is None and node.nonzero is None:
+                self.node = node.goto
+            else:
+                self.node = node.zero if self.tape[self.pointer] == 0 else node.nonzero
+            self.at = 0
+            return
+        call = node.ops[self.at]
+        if call.op == "+":
+            self.tape[self.pointer] += call.count
+        elif call.op == "-":
+            self.tape[self.pointer] -= call.count
+        elif call.op == ">":
+            self.pointer += 1
+        elif call.op == "<":
+            self.pointer -= 1
+        elif call.op == "i":
+            self.tape[self.pointer] = self.io.input_num()
+        elif call.op == "o":
+            self.io.print_num(self.tape[self.pointer])
+        else:  # pragma: no cover - classify_ops emits only the six cases above
+            raise ValueError(f"unknown opcode {call.op!r}")
+        self.at += 1
 
 
 def run(program: Raster, io: ScriptedIO, *, scale: int | None = None) -> None:

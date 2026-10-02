@@ -106,11 +106,13 @@ import esolangs.tools as boolean
 from esolangs.registry import BY_BOOLEAN
 from tests.proofs._ledger import load as load_ledger
 from tests.proofs._roadmap import load as load_audit
-from tests.tools.test_boolean_contract import _nested_dense, _parity
 
 #: Cost band; see ``__main__.py``.  It passes now that Forþ is linear, so the
 #: band is a cost call rather than a triage one: it builds every generator at
 #: rising arity, and 30s is too slow for CI to spend on every push.
+from tests.source_support import source_units
+from tests.tools.test_boolean_contract import _nested_dense, _parity
+
 BAND = "by-hand"
 COST = 30.0
 
@@ -157,6 +159,8 @@ ARITY_OVERRIDE = {
     "factor": 11,
     "polynomial": 9,
     "streetcode": 10,
+    # Native Line at n=6 already renders millions of pixels.
+    "line": 6,
 }
 
 
@@ -187,7 +191,7 @@ def _series(
     out = []
     for n in range(1, top + 1):
         try:
-            out.append((n, len(str(fn(make(n))))))
+            out.append((n, source_units(fn(make(n)))))
         except ValueError:
             break  # a refusal is the generator's ceiling, not a failure
     return out
@@ -451,7 +455,7 @@ def main() -> int:
     print()
 
     measured = [measure(key, name) for name, key in sorted(by_display.items())]
-    assert len(measured) == len(BY_BOOLEAN) == 72, "not every generator was measured"
+    assert len(measured) == len(BY_BOOLEAN), "not every generator was measured"
 
     print(
         f"Scaling contract: {len(measured)} generators, "

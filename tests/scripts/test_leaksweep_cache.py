@@ -10,6 +10,8 @@ import importlib.util
 import sys
 from pathlib import Path
 
+import pytest
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = REPO_ROOT / "scripts" / "verify_no_exception_leaks.py"
 
@@ -27,26 +29,27 @@ def load_script() -> object:
 
 def test_every_hashed_source_exists() -> None:
     """Every path the key reads is a real file, for every registered interpreter."""
-    from esolangs.registry import RUNNERS
+    from esolangs.registry import INTERPRETERS
 
     sweep = load_script()
-    for name, (module, _) in RUNNERS.items():
+    for name, module in INTERPRETERS.items():
         for path in sweep._sources(module):  # type: ignore[attr-defined]  # noqa: SLF001
             assert path.is_file(), (name, path)
 
 
 def test_the_key_reads_the_interpreter_and_the_examples() -> None:
     """Two interpreters differ only in their module file; two corpora in text."""
-    from esolangs.registry import RUNNERS
+    from esolangs.registry import INTERPRETERS
 
     sweep = load_script()
     fingerprint = sweep._fingerprint  # type: ignore[attr-defined]  # noqa: SLF001
-    bf, brainif = RUNNERS["brainfuck"][0], RUNNERS["BrainIf"][0]
+    bf, brainif = INTERPRETERS["brainfuck"], INTERPRETERS["BrainIf"]
     assert fingerprint(bf, ["+"]) != fingerprint(brainif, ["+"])
     assert fingerprint(bf, ["+"]) != fingerprint(bf, ["-"])
     assert fingerprint(bf, ["+"]) == fingerprint(bf, ["+"])
 
 
+@pytest.mark.medium
 def test_the_sweep_loads_the_packaged_examples() -> None:
     """The old ``examples/boolean`` path disappeared with the package move."""
     sweep = load_script()
@@ -62,6 +65,7 @@ def test_factor_corpus_caps_the_total_operand_not_each_line() -> None:
     assert capped == "1234567890\n12"
 
 
+@pytest.mark.medium
 def test_every_language_resolves_its_example() -> None:
     """The sweep's corpus reaches every language's shipped example program.
 
@@ -84,16 +88,17 @@ def test_every_language_resolves_its_example() -> None:
     there either.  Deadfish is the only one, and the fuzz suites reach it
     through ``SAMPLES`` instead.
     """
-    from esolangs.registry import LANGUAGES, RUNNERS, canonical_id
+    from esolangs.registry import GENERATORS, INTERPRETERS, canonical_id
 
     module = load_script()
     by_slug = module._examples_by_slug()  # type: ignore[attr-defined]  # noqa: SLF001
-    generating = [name for name in RUNNERS if LANGUAGES[name].boolean is not None]
+    generating = list(GENERATORS)
     missing = sorted(name for name in generating if not by_slug.get(canonical_id(name)))
     assert missing == []
-    assert [n for n in RUNNERS if n not in generating] == ["Deadfish"]
+    assert [n for n in INTERPRETERS if n not in generating] == ["Deadfish"]
 
 
+@pytest.mark.medium
 def test_the_lookup_is_keyed_the_way_the_sweep_reads_it() -> None:
     """The positive control: a dash-stemmed key would not be found.
 

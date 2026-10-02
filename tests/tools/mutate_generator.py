@@ -108,6 +108,7 @@ sys.path.insert(0, str(ROOT / "src"))
 # ``tests/tools`` a silently uncollected suite would have scored its
 # generators against the remaining ones alone.
 _TOOLS_SUPPORT = (
+    Path("tests/source_support.py"),
     Path("tests/__init__.py"),
     Path("tests/divergence.py"),
     Path("tests/raises.py"),

@@ -7,7 +7,8 @@ each puts this directory on ``sys.path`` for the import, as
 
 from collections.abc import Callable, Iterator
 
-from esolangs.registry import LANGUAGES, resolve
+from esolangs.raster import Raster
+from esolangs.registry import GENERATORS, resolve
 
 #: Every two- and three-input table, MSB first.
 PAIRS = [format(i, "04b") for i in range(16)]
@@ -15,10 +16,8 @@ TABLES = [format(i, "08b") for i in range(256)]
 
 
 def generators() -> Iterator[tuple[str, Callable[[str], object]]]:
-    """Yield ``(registry name, generator)`` for every text boolean generator."""
-    for key, lang in sorted(LANGUAGES.items()):
-        if lang.boolean is not None:
-            yield key, lang.boolean
+    """Yield ``(registry name, generator)`` for every Boolean generator."""
+    yield from sorted(GENERATORS.items())
 
 
 def sizes(gen: Callable[[str], object], tables: list[str]) -> dict[str, int | None]:
@@ -30,7 +29,12 @@ def sizes(gen: Callable[[str], object], tables: list[str]) -> dict[str, int | No
     out: dict[str, int | None] = {}
     for table in tables:
         try:
-            out[table] = len(str(gen(table)))
+            program = gen(table)
+            out[table] = (
+                sum(map(len, program.rows))
+                if isinstance(program, Raster)
+                else len(str(program))
+            )
         except ValueError:
             out[table] = None
     return out

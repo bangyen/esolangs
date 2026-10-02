@@ -140,6 +140,7 @@ ARITY_OVERRIDE = {
     "circuit_diagram": 7,
     "container": 6,
     "factor": 7,
+    "line": 6,
     "flowchart": 8,
     "one_two_three": 8,
     "polynomial": 7,
@@ -344,7 +345,7 @@ def main() -> int:
     )
 
     measured = [measure(key, name) for name, key in sorted(by_display.items())]
-    assert len(measured) == len(BY_BOOLEAN) == 72, "not every generator was measured"
+    assert len(measured) == len(BY_BOOLEAN), "not every generator was measured"
 
     print(f"Execution contract: {len(measured)} generators, bound x{MAX_GROWTH}\n")
     print(f"  {'generator':30s} {'growth':>7s} {'commands':>9s}  where")

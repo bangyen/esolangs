@@ -67,6 +67,7 @@ class _Compiled:
     # A leaf's loop-back (see _compile): another node, or a resume point
     # holding only the ops not yet run at the merge.
     goto: _Compiled | None = None
+    positions: tuple[tuple[int, int], ...] = ()
 
 
 def _compile(stroke: Stroke, unit: int) -> _Compiled:
@@ -88,7 +89,16 @@ def _compile(stroke: Stroke, unit: int) -> _Compiled:
     def build(node: Stroke) -> _Compiled:
         ops = classify_ops(node.vertices, unit)
         last = node.vertices[-1]
-        compiled = _Compiled(ops=ops, end=(last.y, last.x), zero=None, nonzero=None)
+        compiled = _Compiled(
+            ops=ops,
+            end=(last.y, last.x),
+            zero=None,
+            nonzero=None,
+            positions=tuple(
+                (node.vertices[call.index].y, node.vertices[call.index].x)
+                for call in ops
+            ),
+        )
         if node.zero is not None:
             compiled.zero = build(node.zero)
         if node.nonzero is not None:
@@ -109,6 +119,9 @@ def _compile(stroke: Stroke, unit: int) -> _Compiled:
                 zero=target.zero,
                 nonzero=target.nonzero,
                 goto=target.goto,
+                positions=tuple(
+                    target.positions[target.ops.index(call)] for call in remaining
+                ),
             )
         return resume_cache[key]
 

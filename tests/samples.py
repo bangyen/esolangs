@@ -10,7 +10,7 @@ to import and which program to hand it -- the shape a table plus a sweep
 replaces.
 
 :data:`SAMPLES` is that table: for every name in
-:data:`~esolangs.registry.RUNNERS`, the smallest program that reaches the
+:data:`~esolangs.registry.INTERPRETERS`, the smallest program that reaches the
 language's halt, and the stdin it reads on the way (``""`` for the ones
 that read nothing).  The programs are *tiny* deliberately -- a generated
 one is the wrong input here, since the sweep runs each entry to completion
@@ -20,6 +20,10 @@ and some languages take tens of thousands of steps.
 a language added without an entry fails there rather than being silently
 skipped.
 """
+
+from esolangs.line import generate as _line_sample
+from esolangs.piet import generate as _piet_sample
+from esolangs.raster import Raster
 
 # The corrected Inject truth machine lives beside the interpreter's own
 # tests: the mutation bundle does not inline this module, so a test file
@@ -176,7 +180,7 @@ RAISES_ON_THE_POST_HALT_STEP: frozenset[str] = frozenset()
 NONDETERMINISTIC_AGAINST_RUN = frozenset({"LaserFuck"})
 
 # language -> (program, stdin)
-SAMPLES: dict[str, tuple[str, str]] = {
+SAMPLES: dict[str, tuple[str | Raster, str]] = {
     "123": ("3231", ""),
     "3D Brainfuck": ("+.", ""),
     "3x": ("3!", ""),
@@ -263,3 +267,9 @@ SAMPLES: dict[str, tuple[str, str]] = {
     "Unsquare": ("Io", ""),
     "Vandevelo": ("Nil?", ""),
 }
+
+
+# Raster samples are decoded, so VM checks exercise pixel extraction.
+
+SAMPLES["Line"] = (Raster.from_png(_line_sample("01").to_png()), "1\n")
+SAMPLES["Piet"] = (Raster.from_png(_piet_sample("01").to_png()), "1\n")

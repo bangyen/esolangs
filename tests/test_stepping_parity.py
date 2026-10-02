@@ -68,7 +68,7 @@ class TestTheTraitsAreReportedBeforeAMachineExists:
             for n in esolangs.list_languages()
             if not esolangs.describe(n)["steppable_to_answer"]
         ]
-        assert unsteppable == ["A Painter Ant", "Line", "Piet"]
+        assert unsteppable == ["A Painter Ant"]
 
     def test_the_debugger_mirrors_them_too(self) -> None:
         """Reading them meant reaching through ``.vm``, which decides nothing."""

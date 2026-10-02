@@ -55,9 +55,12 @@ def test_invalid_bounds_are_refused(options: dict[str, object]) -> None:
         esolangs.run("brainfuck", "", **options)
 
 
-def test_raster_execution_is_refused() -> None:
-    with pytest.raises(esolangs.ArgumentError, match="no step machine"):
-        esolangs.run("Line", "", max_steps=1)
+@pytest.mark.parametrize("language", ["Line", "Piet"])
+def test_raster_execution_obeys_the_step_bound(language: str) -> None:
+    source = esolangs.generate(language, "01")
+    assert esolangs.run(language, source, "1\n", max_steps=1000) == "1"
+    with pytest.raises(esolangs.ExecutionTimeoutError):
+        esolangs.run(language, source, "1\n", max_steps=0)
 
 
 def test_interpreter_errors_are_preserved() -> None:

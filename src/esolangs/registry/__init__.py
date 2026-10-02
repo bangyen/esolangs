@@ -19,6 +19,8 @@ if TYPE_CHECKING:
 
 __all__ = [
     "BY_BOOLEAN",
+    "GENERATORS",
+    "INTERPRETERS",
     "LANGUAGES",
     "RUNNERS",
     "SUGGESTION_CUTOFF",
@@ -43,9 +45,9 @@ __all__ = [
 # generators' names made a sweep skip sixteen boolean generators silently,
 # which is how Jaune's input count survived; one map leaves no wrong pick.
 BY_BOOLEAN: dict[str, Language] = {
-    lang.boolean.__name__: lang
+    (lang.boolean.__name__ if lang.boolean is not None else lang.id): lang
     for lang in LANGUAGES.values()
-    if lang.boolean is not None
+    if lang.boolean is not None or lang.raster_boolean is not None
 }
 
 # Display name -> (interpreter module, split lines).
@@ -53,6 +55,22 @@ RUNNERS: dict[str, tuple[str, bool]] = {
     name: (lang.interpreter, lang.split)
     for name, lang in LANGUAGES.items()
     if lang.interpreter and lang.source_kind is SourceKind.TEXT
+}
+
+# Public workflows select by capability; RUNNERS describes text bundling only.
+GENERATORS = {
+    name: generator
+    for name, lang in LANGUAGES.items()
+    if (generator := lang.boolean or lang.raster_boolean) is not None
+}
+INTERPRETERS = {
+    name: (
+        f"esolangs.{lang.id}"
+        if lang.source_kind is SourceKind.RASTER
+        else f"esolangs.interpreters.{lang.interpreter}"
+    )
+    for name, lang in LANGUAGES.items()
+    if lang.interpreter is not None or lang.source_kind is SourceKind.RASTER
 }
 
 

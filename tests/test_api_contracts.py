@@ -687,8 +687,6 @@ class TestAMistypedPathIsNotRunAsAProgram:
         for name in esolangs.list_languages():
             if not esolangs.describe(name)["boolean_generator"]:
                 continue
-            if esolangs.describe(name)["source_kind"] != "text":
-                continue
             for table in ("01", "0110", "10010110"):
                 program = esolangs.generate(name, table)
                 looks = (
@@ -1017,14 +1015,15 @@ class TestThePathGuardKnowsMoreThanTxt:
             name
             for name in esolangs.list_languages()
             if esolangs.describe(name)["boolean_generator"]
-            and esolangs.describe(name)["source_kind"] == "text"
         ],
     )
     def test_no_generated_program_is_mistaken(self, name: str) -> None:
         """The widened rule is only safe while this holds."""
         for table in ("01", "0110"):
             program = esolangs.generate(name, table)
-            assert not esolangs._looks_like_a_path(program), (name, table)  # noqa: SLF001
+            assert not (
+                isinstance(program, str) and esolangs._looks_like_a_path(program)  # noqa: SLF001
+            ), (name, table)
 
 
 class TestAHugeRowIndexIsRefusedNotCrashed:

@@ -25,8 +25,6 @@ def _view_cases() -> list[tuple[str, object]]:
             by_id.setdefault(key, name)
     cases: list[tuple[str, object]] = []
     for eid, example in BOOLEAN_EXAMPLES.items():
-        if LANGUAGES[esolangs.resolve(eid)].source_kind.value != "text":
-            continue
         name = (
             by_id.get(eid)
             or by_id.get(example.stem)
@@ -134,6 +132,7 @@ class TestViews:
         object.__setattr__(vm, "_machine", _Machine())
         assert _DelegatingVM.views.fget(vm) == (("fine", "7"),)
 
+    @pytest.mark.medium
     @pytest.mark.parametrize(("name", "example"), _VIEW_CASES, ids=_VIEW_IDS)
     def test_a_language_can_be_asked_on_a_real_program(self, name, example) -> None:
         """No interpreter's properties raise when read as views.
@@ -166,4 +165,6 @@ class TestViews:
         resolved zero languages would otherwise pass by vacuously collecting
         no cases at all.
         """
-        assert len(_VIEW_CASES) > 50, f"only reached {len(_VIEW_CASES)} languages"
+        from esolangs.registry import GENERATORS
+
+        assert set(_VIEW_IDS) == set(GENERATORS)

@@ -44,6 +44,7 @@ from esolangs.tools.parameterized import (
     ram0,
     underload,
 )
+from esolangs.tools.raster import line, piet
 from esolangs.tools.register import (
     addsubjump,
     collatz_multiverse,
@@ -122,6 +123,7 @@ __all__ = [
     "intercal",
     "jaune",
     "laserfuck",
+    "line",
     "malbolge",
     "minifuck",
     "minsky_swap",
@@ -130,6 +132,7 @@ __all__ = [
     "one_two_three",
     "packlang",
     "painfuck",
+    "piet",
     "polynomial",
     "qoibl",
     "ram0",
@@ -161,5 +164,7 @@ def __getattr__(name: str) -> frozenset[str]:
     from esolangs.registry import LANGUAGES
 
     return frozenset(
-        lang.name for lang in LANGUAGES.values() if lang.boolean is not None
+        lang.name
+        for lang in LANGUAGES.values()
+        if lang.boolean is not None or lang.raster_boolean is not None
     )

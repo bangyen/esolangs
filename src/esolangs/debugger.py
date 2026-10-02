@@ -361,16 +361,19 @@ class Debugger:
 
 
 def make_debugger(
-    language: str, program: str | Raster | os.PathLike[str], stdin: str = ""
+    language: str,
+    program: str | Raster | os.PathLike[str],
+    stdin: str = "",
+    *,
+    scale: int | None = None,
 ) -> Debugger:
     """Return a :class:`Debugger` over a fresh :class:`VM` for ``language``.
 
     ``stdin`` is fed line by line.  An unknown name raises
-    :class:`UnknownLanguageError`; a registered raster language raises
-    :class:`ArgumentError` (no step machine).  A malformed program raises
+    :class:`UnknownLanguageError`.  A malformed program raises
     :class:`~esolangs.exceptions.ProgramError`, and on Clockwise -- which
     reads its whole input while the machine is built -- an underfed stdin
     raises :class:`~esolangs.exceptions.InputExhaustedError` here rather
     than at :meth:`Debugger.run`.
     """
-    return Debugger(make_vm(language, program, stdin))
+    return Debugger(make_vm(language, program, stdin, scale=scale))
