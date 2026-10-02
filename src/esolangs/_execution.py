@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import importlib
 import inspect
+import signal
+import threading
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from types import ModuleType
@@ -19,6 +21,15 @@ from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.randomness import Seeded
 from esolangs.raster import Raster
 from esolangs.registry import INTERPRETERS, LANGUAGES
+
+
+def check_signal_timeout(timeout: float | None, message: str) -> None:
+    """Refuse a signal deadline outside a Unix main thread."""
+    if timeout is not None and not (
+        threading.current_thread() is threading.main_thread()
+        and hasattr(signal, "SIGALRM")
+    ):
+        raise ArgumentError(message)
 
 
 def interpreter_module(name: str) -> ModuleType:

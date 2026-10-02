@@ -24,7 +24,7 @@ import pytest
 
 import esolangs
 from esolangs import generate, run
-from esolangs.registry import LANGUAGES, canonical_id, template_body
+from esolangs.registry import LANGUAGES, SourceKind, canonical_id, template_body
 from esolangs.tools.examples import BOOLEAN_EXAMPLES as BOOLEAN_GENERATED
 from esolangs.tools.examples import BooleanExample
 from esolangs.tools.wrap import (
@@ -166,8 +166,8 @@ WRAPPED = sorted(
 )
 
 
-def test_every_boolean_generator_has_a_width_policy() -> None:
-    """Every generator reflows, lays itself out, or records why it cannot."""
+def test_every_text_generator_has_a_width_policy() -> None:
+    """Every text generator reflows, lays itself out, or records why it cannot."""
     boolean_ids = {
         language.id for language in LANGUAGES.values() if language.boolean is not None
     }
@@ -175,6 +175,7 @@ def test_every_boolean_generator_has_a_width_policy() -> None:
         language.id
         for language in LANGUAGES.values()
         if language.boolean is not None
+        and language.source_kind is SourceKind.TEXT
         and language.id not in WRAPPERS
         and not takes_width(language.boolean)
         and language.id not in WIDTH_EXCEPTIONS
@@ -587,8 +588,10 @@ _HONOUR_TABLES = {
 _HONOUR_WIDTHS = (10, 20, 40, 80)
 
 
-def _columns(program: str) -> int:
+def _columns(program: str | esolangs.Raster) -> int:
     """The width of the widest row of ``program``."""
+    if isinstance(program, esolangs.Raster):
+        return len(program.rows[0])
     return max(len(line) for line in program.split("\n"))
 
 
@@ -611,6 +614,7 @@ def _laid_out(name: str, table: str, bits: str, width: int | None) -> str:
         table=table,
         bits=tuple(int(bit) for bit in bits) if example.fill else (),
         inputs=() if example.fill else tuple(bits),
+        scale=1,
     )
     return variant.build(width)
 
@@ -767,7 +771,7 @@ def test_width_honouring_languages_respect_the_width(name: str) -> None:
     assert language.boolean is not None
     for width in (40, 80, 94):
         program = generate(language.name, TABLE, width)
-        assert max(map(len, program.split("\n"))) <= width
+        assert _columns(program) <= width
     # omitting the width is still the compact one-shot form
     assert generate(language.name, TABLE) == _public(language, TABLE)
 

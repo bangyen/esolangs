@@ -577,9 +577,9 @@ _PARITY = "01101001"
 @pytest.mark.parametrize(
     ("name", "fn"),
     sorted(
-        (lang.id, lang.boolean or lang.raster_boolean)
+        (lang.id, lang.boolean)
         for lang in LANGUAGES.values()
-        if lang.boolean is not None or lang.raster_boolean is not None
+        if lang.boolean is not None
     ),
     ids=lambda v: v if isinstance(v, str) else "",
 )
@@ -608,9 +608,9 @@ def test_a_one_entry_table_is_refused(name: str, fn: object, table: str) -> None
 @pytest.mark.parametrize(
     ("name", "fn"),
     sorted(
-        (lang.id, lang.boolean or lang.raster_boolean)
+        (lang.id, lang.boolean)
         for lang in LANGUAGES.values()
-        if lang.boolean is not None or lang.raster_boolean is not None
+        if lang.boolean is not None
     ),
     ids=lambda v: v if isinstance(v, str) else "",
 )
@@ -977,11 +977,7 @@ _EXEC_SHAPES = (("one_minterm", _one_minterm), ("one_hot", _one_hot))
 )
 @pytest.mark.parametrize(
     "name",
-    sorted(
-        n
-        for n in esolangs.list_languages()
-        if LANGUAGES[n].boolean is not None or LANGUAGES[n].raster_boolean is not None
-    ),
+    sorted(n for n in esolangs.list_languages() if LANGUAGES[n].boolean is not None),
 )
 @pytest.mark.slow
 def test_every_generator_runs_what_it_builds(

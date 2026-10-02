@@ -3,8 +3,6 @@
 ``esolangs.run`` is reached through the package at call time (patchable).
 """
 
-import signal
-import threading
 from functools import partial
 from typing import cast
 
@@ -14,6 +12,7 @@ from esolangs._answers import (
     read_answer,
 )
 from esolangs._describe import describe
+from esolangs._execution import check_signal_timeout
 from esolangs._source import ProgramSource, check_scale_for
 from esolangs._validate import check_timeout
 from esolangs.exceptions import (
@@ -96,22 +95,16 @@ def evaluate(
         bound = timeout
     if isolated and bound is None:
         raise ArgumentError("isolated evaluation requires a finite timeout")
-    if (
-        not isolated
-        and bound is not None
-        and not (
-            threading.current_thread() is threading.main_thread()
-            and hasattr(signal, "SIGALRM")
-        )
-    ):
+    if not isolated:
         # The termination path drives ``_run`` directly and so never reached
         # ``run``'s guard: off a main thread it leaked ``signal.signal``'s
         # bare ValueError.  ``timeout=None`` is the route out, as for
         # :func:`run`; the divergers are settled by a repeated state.
-        raise ArgumentError(
+        check_signal_timeout(
+            bound,
             "evaluate's timeout guard uses SIGALRM and needs a Unix main "
             "thread; off it, pass timeout=None -- a diverging row is "
-            "settled by a repeated machine state rather than waited for"
+            "settled by a repeated machine state rather than waited for",
         )
     if terminating:
         # Which of halting and diverging means 1, as data.  It is

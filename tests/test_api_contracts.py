@@ -254,8 +254,7 @@ class TestDescribe:
         signature = {
             name
             for name, lang in LANGUAGES.items()
-            if (generator := lang.boolean or lang.raster_boolean) is not None
-            and takes_width(generator)
+            if (generator := lang.boolean) is not None and takes_width(generator)
         }
         assert aware == signature
         assert aware, "no generator lays itself out; the flag guards nothing"

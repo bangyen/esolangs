@@ -164,7 +164,5 @@ def __getattr__(name: str) -> frozenset[str]:
     from esolangs.registry import LANGUAGES
 
     return frozenset(
-        lang.name
-        for lang in LANGUAGES.values()
-        if lang.boolean is not None or lang.raster_boolean is not None
+        lang.name for lang in LANGUAGES.values() if lang.boolean is not None
     )
