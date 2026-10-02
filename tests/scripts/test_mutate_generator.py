@@ -79,7 +79,7 @@ class TestPytestArgs:
         """
         script = load_script()
         kind = script._KINDS["tools"]  # noqa: SLF001
-        args = script._pytest_args(kind, ["test_boolean_tape.py"])  # noqa: SLF001
+        args = script._pytest_args(kind, ["test_boolean_rotfuck.py"])  # noqa: SLF001
         assert "-m" not in args
 
     def test_xdist_is_turned_off(self) -> None:
@@ -90,7 +90,7 @@ class TestPytestArgs:
         """
         script = load_script()
         kind = script._KINDS["tools"]  # noqa: SLF001
-        args = script._pytest_args(kind, ["test_boolean_tape.py"])  # noqa: SLF001
+        args = script._pytest_args(kind, ["test_boolean_rotfuck.py"])  # noqa: SLF001
         assert args[args.index("-n") + 1] == "0"
 
     def test_the_runner_command_quotes_its_arguments(self) -> None:
@@ -105,7 +105,7 @@ class TestPytestArgs:
 
         script = load_script()
         kind = script._KINDS["tools"]  # noqa: SLF001
-        tests = ["test_boolean_tape.py"]
+        tests = ["test_boolean_rotfuck.py"]
         command = script._runner_command(kind, tests)  # noqa: SLF001
         expected = script._pytest_args(kind, tests)  # noqa: SLF001
         assert shlex.split(command)[3:] == expected

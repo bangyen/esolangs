@@ -770,7 +770,7 @@ class TestGeneratorEdgePaths:
 
         An operand is one character and the alphabet ends at ``Z``, so 35
         branch labels fit and 36 do not.  The refusal is already witnessed
-        by a 63-marker table (see ``test_boolean_tape``), but only from far
+        by a 63-marker table (see ``test_boolean_six_five``), but only from far
         above -- which leaves the boundary itself free to move by one, and
         a table needing exactly 35 would then be refused despite being
         spellable.  ``_six_five_label`` marks that limit, so the two are
