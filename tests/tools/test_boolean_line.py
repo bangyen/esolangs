@@ -1,6 +1,6 @@
-"""Tests for line_boolean.py: render -> extract -> simulate round-trips.
+"""Tests for the Line Boolean generator: render -> extract -> simulate round-trips.
 
-Run via: uv run --with pytest pytest test_line_boolean.py
+Run via: uv run pytest tests/tools/test_boolean_line.py
 
 Covers n=1 through n=3 across every input combination, plus the specific
 geometry bug this module's development caught: render.py's `_layout` used
@@ -22,9 +22,9 @@ from pathlib import Path
 import pytest
 
 from esolangs.line.extract import extract
-from esolangs.line.line_boolean import line_boolean
 from esolangs.line.render import Node, render
 from esolangs.line.simulate import IO, compile_program, run_compiled
+from esolangs.tools.line import line_boolean
 
 
 def _forks(node: Node | None) -> int:
@@ -234,3 +234,14 @@ class TestLineBoolean:
         """A truth table containing anything but 0/1 is rejected."""
         with pytest.raises(ValueError, match="only '0' and '1'"):
             line_boolean("0102")
+
+
+def test_language_package_retains_generator_entry_points() -> None:
+    import esolangs
+    from esolangs.line import balance, generate
+
+    source = generate("01", scale=2)
+    assert esolangs.evaluate("Line", source, inputs=1) == "01"
+    balanced = balance("01", generate("01"))
+    assert balanced.to_png() == esolangs.generate("Line", "01", balance=True).to_png()
+    assert esolangs.evaluate("Line", balanced.to_png(), inputs=1) == "01"
