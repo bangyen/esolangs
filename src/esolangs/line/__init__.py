@@ -43,21 +43,27 @@ def _grey_rows(rows: Rows) -> list[bytearray]:
                 converted = bytearray()
                 previous: Pixel | None = None
                 level = 0
+                repeats = 0
                 for pixel in row:
-                    if pixel is not previous:
-                        cached_pixel = pixels.get(id(pixel)) if cache_pixels else None
-                        if cached_pixel is None:
-                            red, green, blue = pixel
-                            level = (
-                                red * 19595 + green * 38470 + blue * 7471 + 0x8000
-                            ) >> 16
-                            if cache_pixels:
-                                pixels[id(pixel)] = pixel, level
-                                cache_pixels = len(pixels) < 1024
-                        else:
-                            level = cached_pixel[1]
-                        previous = pixel
-                    converted.append(level)
+                    if pixel is previous:
+                        repeats += 1
+                        continue
+                    if repeats:
+                        converted.extend(bytes((level,)) * repeats)
+                    cached_pixel = pixels.get(id(pixel)) if cache_pixels else None
+                    if cached_pixel is None:
+                        red, green, blue = pixel
+                        level = (
+                            red * 19595 + green * 38470 + blue * 7471 + 0x8000
+                        ) >> 16
+                        if cache_pixels:
+                            pixels[id(pixel)] = pixel, level
+                            cache_pixels = len(pixels) < 1024
+                    else:
+                        level = cached_pixel[1]
+                    previous = pixel
+                    repeats = 1
+                converted.extend(bytes((level,)) * repeats)
                 levels = bytes(converted)
             if len(cache) < 1024:
                 cache[id(row)] = row, levels
