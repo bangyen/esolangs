@@ -19,7 +19,7 @@ class TestMinifuckSim(_MinifuckCase):
         first eight cells as one byte -- emitting that character, or
         killing the row if the byte is zero.
         """
-        from esolangs.tools.minifuck import _Sim
+        from esolangs.tools.minifuck_sim import _Sim
 
         dead = _Sim(16)
         dead.dead = True
@@ -75,7 +75,7 @@ class TestMinifuckSim(_MinifuckCase):
 
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.minifuck import run
-        from esolangs.tools.minifuck import _Sim
+        from esolangs.tools.minifuck_sim import _Sim
 
         rng = random.Random(20260902)
         printed = deaths = skips = 0
@@ -127,7 +127,7 @@ class TestMinifuckSim(_MinifuckCase):
         """
         import random
 
-        from esolangs.tools.minifuck import _Sim
+        from esolangs.tools.minifuck_sim import _Sim
 
         rng = random.Random(20260906)
         skips = walks_cascaded = clamped = 0

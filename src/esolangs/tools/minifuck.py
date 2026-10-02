@@ -16,102 +16,21 @@ from esolangs.tools.helpers import (
     read_at,
     unmark,
 )
-
-# The strategies live in their own modules, but this one is the
-# construction's face: the registry, the wrapper and the suite all reach
-# it by this name.  Re-exported in the ``x as x`` form so a caller that
-# does not care where a piece lives need not know.
-from esolangs.tools.minifuck_mux import (
-    _MUX_BASE as _MUX_BASE,
-)
 from esolangs.tools.minifuck_mux import (
     _MUX_MIN_ARITY,
     _canonical_endgame,
     _mux,
     _mux_lookup,
 )
-from esolangs.tools.minifuck_mux import (
-    _MUX_PRESERVE_RIGHT as _MUX_PRESERVE_RIGHT,
-)
-from esolangs.tools.minifuck_mux import (
-    _SCULPT_POOL_CODE as _SCULPT_POOL_CODE,
-)
-from esolangs.tools.minifuck_mux import (
-    _mux_start as _mux_start,
-)
-from esolangs.tools.minifuck_mux import (
-    _mux_weight as _mux_weight,
-)
-from esolangs.tools.minifuck_mux import (
-    _probe_frame as _probe_frame,
-)
 from esolangs.tools.minifuck_pool import (
     _BASE,
     _SEP,
     _embed,
 )
-from esolangs.tools.minifuck_pool import (
-    _FLIP as _FLIP,
-)
-from esolangs.tools.minifuck_pool import (
-    _PLANS as _PLANS,
-)
-from esolangs.tools.minifuck_pool import (
-    _POOL_CODES as _POOL_CODES,
-)
-from esolangs.tools.minifuck_pool import (
-    _POOL_MASK as _POOL_MASK,
-)
-from esolangs.tools.minifuck_pool import (
-    _POOL_PTR_MAX as _POOL_PTR_MAX,
-)
-from esolangs.tools.minifuck_pool import (
-    _POOL_WIDTH as _POOL_WIDTH,
-)
-from esolangs.tools.minifuck_pool import (
-    _PROBE_WALK_OUT as _PROBE_WALK_OUT,
-)
-from esolangs.tools.minifuck_pool import (
-    _READS as _READS,
-)
-from esolangs.tools.minifuck_pool import (
-    _endgame as _endgame,
-)
-from esolangs.tools.minifuck_pool import (
-    _find_pool as _find_pool,
-)
-from esolangs.tools.minifuck_pool import (
-    _pool_code_for_row as _pool_code_for_row,
-)
-from esolangs.tools.minifuck_pool import (
-    _pool_slice as _pool_slice,
-)
-from esolangs.tools.minifuck_pool import (
-    _step as _step,
-)
-
-# The machine the construction below emits against.  ``_Sim`` and ``_Joint``
-# are re-exported rather than referenced through the module because the test
-# suite imports them from here by name, and because every use in this file
-# reads as part of the construction rather than as a call into a simulator.
 from esolangs.tools.minifuck_sim import (
     _MINIFUCK_INPUT,
     PAIR,
-)
-from esolangs.tools.minifuck_sim import (
-    _clamp as _clamp,
-)
-from esolangs.tools.minifuck_sim import (
-    _Joint as _Joint,
-)
-from esolangs.tools.minifuck_sim import (
-    _runs as _runs,
-)
-from esolangs.tools.minifuck_sim import (
-    _Sim as _Sim,
-)
-from esolangs.tools.minifuck_sim import (
-    _walk_to as _walk_to,
+    _clamp,
 )
 
 __all__ = ["minifuck"]

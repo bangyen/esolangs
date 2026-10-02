@@ -11,8 +11,18 @@ import importlib
 
 import pytest
 
-from esolangs.tools.helpers import TEMPLATE_CHAR, runs
-from esolangs.tools.minifuck_sim import PAIR
+from esolangs.tools.helpers import TEMPLATE_CHAR, essential_inputs, runs
+from esolangs.tools.minifuck_mux import (
+    _MUX_MIN_ARITY,
+    _MUX_PRESERVE_RIGHT,
+    _SCULPT_POOL_CODE,
+    _mux,
+    _mux_lookup,
+    _mux_weight,
+    _probe_frame,
+)
+from esolangs.tools.minifuck_pool import _POOL_MASK
+from esolangs.tools.minifuck_sim import PAIR, _Joint, _runs, _Sim
 from tests.tools.minifuck_support import _mux_separate, run_count
 
 
@@ -89,7 +99,7 @@ def test_minifuck_single_essential_falls_past_the_degenerate_lookup() -> None:
     module = importlib.import_module("esolangs.tools.minifuck")
 
     for table in ("01010101", "10101010"):
-        assert module.essential_inputs(table, 3) == [2]
+        assert essential_inputs(table, 3) == [2]
         assert module._degenerate(table, 3) is None  # noqa: SLF001
 
         # Declining is only correct if the build still produces the table.
@@ -158,7 +168,7 @@ def test_a_flipped_embed_complements_in_place_and_keeps_slot_order() -> None:
     coordinate is most likely to break.
     """
 
-    from esolangs.tools.minifuck import _FLIP, _embed
+    from esolangs.tools.minifuck_pool import _FLIP, _embed
 
     for n in (2, 3):
         plain = _embed(n).template()
@@ -185,11 +195,9 @@ def test_a_flipped_embed_complements_in_place_and_keeps_slot_order() -> None:
 def test_mux_refuses_below_its_minimum_arity() -> None:
     """``_mux`` separates rows, which needs at least two of them to separate."""
 
-    module = importlib.import_module("esolangs.tools.minifuck")
-
-    assert module._MUX_MIN_ARITY == 2  # noqa: SLF001
+    assert _MUX_MIN_ARITY == 2
     with pytest.raises(ValueError, match="at least two inputs"):
-        module._mux("01", 1)  # noqa: SLF001
+        _mux("01", 1)
 
 
 def test_the_probe_frame_refuses_codes_outside_its_key() -> None:
@@ -201,12 +209,10 @@ def test_the_probe_frame_refuses_codes_outside_its_key() -> None:
     long walk crosses cell 8.  Both must decline rather than summarise.
     """
 
-    module = importlib.import_module("esolangs.tools.minifuck")
-
-    byte = _mux_separate(2).ms[0].tape & module._POOL_MASK  # noqa: SLF001
-    assert module._probe_frame("[", byte) is None  # noqa: SLF001
-    assert module._probe_frame("[x" * 9, byte) is None  # noqa: SLF001
-    assert module._probe_frame(module._SCULPT_POOL_CODE, byte) is not None  # noqa: SLF001
+    byte = _mux_separate(2).ms[0].tape & _POOL_MASK
+    assert _probe_frame("[", byte) is None
+    assert _probe_frame("[x" * 9, byte) is None
+    assert _probe_frame(_SCULPT_POOL_CODE, byte) is not None
 
 
 def test_the_weight_law_matches_the_parsed_runs() -> None:
@@ -222,8 +228,6 @@ def test_the_weight_law_matches_the_parsed_runs() -> None:
 
     from esolangs.tools.minifuck_sim import _runs, _Sim
 
-    module = importlib.import_module("esolangs.tools.minifuck")
-
     rng = random.Random(20260910)
     applied = refused = 0
     for _ in range(2500):
@@ -238,7 +242,7 @@ def test_the_weight_law_matches_the_parsed_runs() -> None:
             assert fast.key() == slow.key(), "a refusal touched the row"
             continue
         applied += 1
-        slow.apply(_runs(module._mux_weight(units)))  # noqa: SLF001
+        slow.apply(_runs(_mux_weight(units)))
         assert fast.key() == slow.key(), (units, slow.key())
     assert applied, "the fused arm never fired"
     assert refused, "the refusal arm never fired"
@@ -250,7 +254,7 @@ def test_the_weight_law_matches_the_parsed_runs() -> None:
             fast.tape, fast.ptr = (1 << 40) - 1, ptr
             slow = fast.copy()
             if fast.run_weight(units):
-                slow.apply(_runs(module._mux_weight(units)))  # noqa: SLF001
+                slow.apply(_runs(_mux_weight(units)))
                 assert fast.key() == slow.key(), (ptr, units)
             else:
                 floor_refusals += 1
@@ -269,12 +273,12 @@ def test_the_weight_law_matches_the_parsed_runs() -> None:
 
     # The joint-level fallback: a row the law refuses advances by the
     # parsed runs and the pair must land on the same state.
-    joint = module._Joint(1)  # noqa: SLF001
+    joint = _Joint(1)
     for m in joint.ms:
         m.tape, m.ptr = 0b1011 << 5, 8
     joint.ms[0].skip = True
     clones = [m.copy() for m in joint.ms]
-    code = module._mux_weight(3)  # noqa: SLF001
+    code = _mux_weight(3)
     joint.emit_weight(code, 3)
     assert joint.parts[-1] == code
     for m, clone in zip(joint.ms, clones, strict=True):
@@ -355,14 +359,12 @@ def test_the_lookup_rule_is_linear(n: int) -> None:
     """The direct strip has one bounded-cost block per table cell."""
     import random
 
-    module = importlib.import_module("esolangs.tools.minifuck")
-
     rng = random.Random(20260914)
     table = format(rng.getrandbits(2**n), f"0{2**n}b")
-    built = module._mux(table, n)  # noqa: SLF001
+    built = _mux(table, n)
     assert built is not None
 
-    assert built == module._mux_lookup(table, n)  # noqa: SLF001
+    assert built == _mux_lookup(table, n)
     assert len(built) <= 650 + 70 * 2**n
 
 
@@ -383,14 +385,13 @@ def test_the_strip_is_laid_without_a_round_trip() -> None:
 def test_the_preserving_step_restores_arbitrary_tape() -> None:
     """The lookup's right step preserves every tested tape and advances one."""
 
-    module = importlib.import_module("esolangs.tools.minifuck")
     for ptr in (0, 7):
         for tape in range(256):
-            sim = module._Sim(32)  # noqa: SLF001
+            sim = _Sim(32)
             sim.ptr = ptr
             sim.tape = tape << (ptr + 1)
             before = sim.tape
-            sim.apply(module._runs(module._MUX_PRESERVE_RIGHT))  # noqa: SLF001
+            sim.apply(_runs(_MUX_PRESERVE_RIGHT))
             assert (sim.ptr, sim.tape, sim.skip) == (ptr + 1, before, False)
 
 

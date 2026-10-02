@@ -5,6 +5,22 @@ import importlib
 import pytest
 
 from esolangs.tools.minifuck import _solve
+from esolangs.tools.minifuck_pool import (
+    _BASE,
+    _PLANS,
+    _POOL_CODES,
+    _POOL_PTR_MAX,
+    _POOL_WIDTH,
+    _PROBE_WALK_OUT,
+    _READS,
+    _embed,
+    _endgame,
+    _find_pool,
+    _pool_code_for_row,
+    _pool_slice,
+    _step,
+)
+from esolangs.tools.minifuck_sim import _clamp, _Joint, _Sim
 from tests.tools.minifuck_support import (
     _MinifuckCase,
     _mux_separate,
@@ -57,10 +73,8 @@ class TestMinifuckPool(_MinifuckCase):
         no override at all.
         """
 
-        module = importlib.import_module("esolangs.tools.minifuck")
-
         # The anchor: the derivation must reproduce these exactly, in order.
-        assert module._POOL_CODES == (  # noqa: SLF001
+        assert _POOL_CODES == (
             "[[[<[<<<<",
             "[<[[[<[<[<",
             "[<[<[[[<[<[<",
@@ -70,7 +84,7 @@ class TestMinifuckPool(_MinifuckCase):
 
         # The step law itself, away from the plans: a carry of c spells a run
         # of 2c-1 brackets, and dropping the skip spells the even run.
-        step = module._step  # noqa: SLF001
+        step = _step
         assert step() == "[<"  # the default: carry one, trail by one
         assert step(carry=2) == "[[[<"
         assert step(carry=1, odd=False) == "[[<"
@@ -78,8 +92,8 @@ class TestMinifuckPool(_MinifuckCase):
 
         # Two of the five plans are (steps, core) and nothing else, which is
         # what "one construction indexed by where the mark goes" means.
-        plans = module._PLANS  # noqa: SLF001
-        assert len(plans) == len(module._POOL_CODES)  # noqa: SLF001
+        plans = _PLANS
+        assert len(plans) == len(_POOL_CODES)
         bare = [(n, core) for n, core, over in plans if not over]
         assert bare == [(4, 1), (5, 2)], bare
 
@@ -109,7 +123,8 @@ class TestMinifuckPool(_MinifuckCase):
         at 1 rather than 2, so the core spreads marks instead of moving one.
         """
 
-        from esolangs.tools.minifuck import _POOL_CODES, _Sim
+        from esolangs.tools.minifuck_pool import _POOL_CODES
+        from esolangs.tools.minifuck_sim import _Sim
 
         core = "[[[<["
 
@@ -178,10 +193,9 @@ class TestMinifuckPool(_MinifuckCase):
         """
         import random
 
-        module = importlib.import_module("esolangs.tools.minifuck")
-        codes = module._POOL_CODES  # noqa: SLF001
-        width = module._POOL_WIDTH  # noqa: SLF001
-        ptr_max = module._POOL_PTR_MAX  # noqa: SLF001
+        codes = _POOL_CODES
+        width = _POOL_WIDTH
+        ptr_max = _POOL_PTR_MAX
 
         def scan(joint: object, cell7: int, walk_out: int) -> str | None:
             """The replaced search, kept as the oracle."""
@@ -191,12 +205,12 @@ class TestMinifuckPool(_MinifuckCase):
             return None
 
         def joint_of(sims: list[object]) -> object:
-            joint = module._Joint.__new__(module._Joint)  # noqa: SLF001
+            joint = _Joint.__new__(_Joint)
             joint.ms = sims
             return joint
 
         def row(tape: int, ptr: int = 0, *, skip: bool = False) -> object:
-            sim = module._Sim(512)  # noqa: SLF001
+            sim = _Sim(512)
             sim.tape = tape
             sim.ptr = ptr
             sim.skip = skip
@@ -208,8 +222,8 @@ class TestMinifuckPool(_MinifuckCase):
                 for skip in (False, True):
                     for cell7 in (0, 1):
                         joint = joint_of([row(low, ptr, skip=skip)])
-                        walk_out = module._PROBE_WALK_OUT  # noqa: SLF001
-                        assert module._find_pool(joint, cell7, walk_out) == scan(  # noqa: SLF001
+                        walk_out = _PROBE_WALK_OUT
+                        assert _find_pool(joint, cell7, walk_out) == scan(
                             joint, cell7, walk_out
                         ), (low, ptr, skip, cell7)
 
@@ -227,7 +241,7 @@ class TestMinifuckPool(_MinifuckCase):
             joint = joint_of(sims)
             for cell7 in (0, 1):
                 walk_out = rnd.choice([9, 12, 20, 33])
-                assert module._find_pool(joint, cell7, walk_out) == scan(  # noqa: SLF001
+                assert _find_pool(joint, cell7, walk_out) == scan(
                     joint, cell7, walk_out
                 ), [(s.tape & ((1 << width) - 1), s.ptr) for s in sims]
 
@@ -242,21 +256,16 @@ class TestMinifuckPool(_MinifuckCase):
         so a slice that quietly disagreed with it would fail here.
         """
 
-        module = importlib.import_module("esolangs.tools.minifuck")
-        codes = module._POOL_CODES  # noqa: SLF001
-        ptr_max = module._POOL_PTR_MAX  # noqa: SLF001
+        codes = _POOL_CODES
+        ptr_max = _POOL_PTR_MAX
 
         whole = {
             (low, ptr, skip, cell7): answer
-            for low in range(1 << module._POOL_WIDTH)  # noqa: SLF001
+            for low in range(1 << _POOL_WIDTH)
             for ptr in range(ptr_max + 1)
             for skip in (False, True)
             for cell7 in (0, 1)
-            if (
-                answer := module._pool_code_for_row(  # noqa: SLF001
-                    codes, low, ptr, cell7, skip=skip
-                )
-            )
+            if (answer := _pool_code_for_row(codes, low, ptr, cell7, skip=skip))
             is not None
         }
 
@@ -264,9 +273,7 @@ class TestMinifuckPool(_MinifuckCase):
             (low, ptr, skip, cell7): answer
             for ptr in range(ptr_max + 1)
             for skip in (False, True)
-            for (low, cell7), answer in module._pool_slice(  # noqa: SLF001
-                codes, ptr, skip=skip
-            ).items()
+            for (low, cell7), answer in _pool_slice(codes, ptr, skip=skip).items()
         }
 
         assert union == whole
@@ -282,23 +289,18 @@ class TestMinifuckPool(_MinifuckCase):
         where the language stops working.
         """
 
-        module = importlib.import_module("esolangs.tools.minifuck")
-        ptr_max = module._POOL_PTR_MAX  # noqa: SLF001
+        ptr_max = _POOL_PTR_MAX
 
-        outside = module._Sim(512)  # noqa: SLF001
+        outside = _Sim(512)
         outside.tape = 156
         outside.ptr = 3
-        joint = module._Joint.__new__(module._Joint)  # noqa: SLF001
+        joint = _Joint.__new__(_Joint)
         joint.ms = [outside]
 
         assert ptr_max == 2, "the bound this test pins has moved"
-        assert module._find_pool(joint, 1, 12) is None  # noqa: SLF001
+        assert _find_pool(joint, 1, 12) is None
         # ... while the simulator still finds a code from there.
-        served = [
-            code
-            for code in module._POOL_CODES  # noqa: SLF001
-            if _pool_reaches(joint, code, 1, 12)
-        ]
+        served = [code for code in _POOL_CODES if _pool_reaches(joint, code, 1, 12)]
         assert served, "expected the scan to still answer outside the domain"
 
     def test_pool_reaches_refuses_a_code_that_kills_a_row(self) -> None:
@@ -312,11 +314,9 @@ class TestMinifuckPool(_MinifuckCase):
         sees.
         """
 
-        module = importlib.import_module("esolangs.tools.minifuck")
-
         joint = _mux_separate(2)
         joint.emit("x")
-        module._clamp(joint)  # noqa: SLF001
+        _clamp(joint)
         cell7 = 0
         walk_out = min(_mux_separate(2).ptrs()) - 3
         # ``[[`` leaves a row dead or mid-skip, so the code is refused before
@@ -334,9 +334,7 @@ class TestMinifuckPool(_MinifuckCase):
         # Exactly one of the pool's own codes serves this joint -- the guards
         # are a filter over the list, not a formality that passes everything.
         served = [
-            code
-            for code in module._POOL_CODES  # noqa: SLF001
-            if _pool_reaches(joint, code, cell7, walk_out)
+            code for code in _POOL_CODES if _pool_reaches(joint, code, cell7, walk_out)
         ]
         assert len(served) == 1, served
 
@@ -347,7 +345,8 @@ class TestMinifuckPool(_MinifuckCase):
         carries the inputs -- so the pool search declines outright until a
         clamp has brought them back together.
         """
-        from esolangs.tools.minifuck import _clamp, _embed, _find_pool
+        from esolangs.tools.minifuck_pool import _embed, _find_pool
+        from esolangs.tools.minifuck_sim import _clamp
 
         spread = _embed(2)
         assert len(set(spread.ptrs())) > 1, "the embed should leave rows apart"
@@ -366,10 +365,9 @@ class TestMinifuckPool(_MinifuckCase):
         to print, and emitting the read anyway would print a junk byte.
         """
 
-        # The package re-exports the generator under the submodule's own
-        # name, so import the module explicitly rather than by attribute.
         module = importlib.import_module("esolangs.tools.minifuck_pool")
-        from esolangs.tools.minifuck import _clamp, _embed, _endgame
+        from esolangs.tools.minifuck_pool import _embed, _endgame
+        from esolangs.tools.minifuck_sim import _clamp
 
         joint = _embed(2)
         _clamp(joint)
@@ -391,15 +389,13 @@ class TestMinifuckPool(_MinifuckCase):
         production construction no longer calls either spelling.
         """
 
-        module = importlib.import_module("esolangs.tools.minifuck")
-
         def retired(joint: object, truth_table: str, acc: int) -> object:
             """The replaced trial loop, verbatim."""
-            for read in module._READS:  # noqa: SLF001
+            for read in _READS:
                 for cell7 in (0, 1):
                     probe = joint.fork()  # type: ignore[attr-defined]
                     try:
-                        module._endgame(probe, acc, read, cell7)  # noqa: SLF001
+                        _endgame(probe, acc, read, cell7)
                     except ValueError:
                         continue
                     if probe.printed() == list(truth_table):
@@ -408,15 +404,15 @@ class TestMinifuckPool(_MinifuckCase):
 
         real = _try_print
         sites: list[tuple[object, str, int]] = []
-        base = module._BASE  # noqa: SLF001
+        base = _BASE
         for n, table, acc in (
             (0, "1", base),
             (1, "01", base),
             (2, "0011", base),
             (2, "0110", base),
         ):
-            joint = module._embed(n)  # noqa: SLF001
-            module._clamp(joint)  # noqa: SLF001
+            joint = _embed(n)
+            _clamp(joint)
             sites.append((joint, table, acc))
         misses = hits = 0
         for joint, table, acc in sites:
@@ -442,7 +438,8 @@ class TestMinifuckPool(_MinifuckCase):
         one leftward channel, and it is not this one -- so a leftward
         target is refused rather than silently ignored.
         """
-        from esolangs.tools.minifuck import _clamp, _embed, _walk_to
+        from esolangs.tools.minifuck_pool import _embed
+        from esolangs.tools.minifuck_sim import _clamp, _walk_to
 
         spread = _embed(2)
         with pytest.raises(ValueError, match="converged pointer"):
