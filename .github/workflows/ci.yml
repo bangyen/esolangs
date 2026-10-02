@@ -143,7 +143,8 @@ jobs:
       # is no worker count left to raise.  What made this job slow was the
       # `slow` band: 546 of 10172 tests that measure, locally at two workers,
       # 289s against the 81s the rest take.  The `slow` job below runs
-      # them sharded; this runs fast and `medium`.
+      # them sharded; this runs fast and `medium`. Weekly law sweeps cost
+      # another six minutes and belong only in weekly.yml.
       #
       # `--cov-branch` is free on this leg (see the table above) and the gate
       # below needs the arcs.
@@ -156,7 +157,7 @@ jobs:
       # the touched files -- and a shared floor would read that subset as a
       # collapse.  The changed-line gate below is the per-PR check; this only
       # catches whole-tree erosion.
-      run: uv run pytest -n auto -m "not slow" --cov --cov-branch --cov-report=xml --cov-report=term-missing --cov-fail-under=97
+      run: uv run pytest -n auto -m "not slow and not weekly" --cov --cov-branch --cov-report=xml --cov-report=term-missing --cov-fail-under=97
 
     # The fast suite cannot judge pre-existing lines covered only by a slow
     # test, so `--partial` reports those whole-file gaps without blocking.
@@ -168,7 +169,7 @@ jobs:
 
     - name: Test with pytest
       if: matrix.python-version != '3.14'
-      run: uv run pytest -n auto -m "not slow"
+      run: uv run pytest -n auto -m "not slow and not weekly"
 
 
   slow:
