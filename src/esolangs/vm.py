@@ -22,6 +22,7 @@ from collections.abc import Callable, Hashable, Sequence
 from functools import cache
 from typing import Any, Protocol, cast, runtime_checkable
 
+from esolangs._execution import interpreter_errors, interpreter_module, prepare_call
 from esolangs._source import InputSource, ProgramSource, check_scale_for
 from esolangs._vm_views import (
     _VIEW_ITEMS as _VIEW_ITEMS,
@@ -33,14 +34,11 @@ from esolangs._vm_views import (
     machine_views,
 )
 from esolangs.exceptions import (
-    EsolangError,
-    InterpreterLimitError,
-    ProgramError,
     UnknownLanguageError,
 )
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.raster import Raster
-from esolangs.registry import INTERPRETERS, LANGUAGES, resolve
+from esolangs.registry import INTERPRETERS, resolve
 
 
 @runtime_checkable
@@ -736,17 +734,11 @@ class _DelegatingVM:
         becomes :class:`~esolangs.exceptions.ProgramError`, a
         ``RecursionError`` :class:`~esolangs.exceptions.InterpreterLimitError`.
         """
-        try:
+        with interpreter_errors(
+            f"the {type(self).__name__} interpreter recursed deeper than "
+            "CPython's stack limit allows on this program"
+        ):
             self._machine.step()
-        except RecursionError as exc:
-            raise InterpreterLimitError(
-                f"the {type(self).__name__} interpreter recursed deeper than "
-                f"CPython's stack limit allows on this program"
-            ) from exc
-        except EsolangError:
-            raise
-        except ValueError as exc:
-            raise ProgramError(str(exc)) from exc
 
     def snapshot(self) -> Hashable:
         """Return the underlying machine's complete state."""
@@ -795,12 +787,7 @@ class _DelegatingVM:
 
 
 def _derived_adapter(language: str) -> Callable[..., _DelegatingVM]:
-    """Build the adapter for a language whose wrapper is pure boilerplate.
-
-    Only the module and text-vs-lines differ, both already in ``INTERPRETERS``;
-    every registered language goes through here.
-    """
-    module_path, split = INTERPRETERS[language], LANGUAGES[language].split
+    """Build the common step adapter for a registered interpreter."""
     # Bound to another name first: a class body cannot read the enclosing
     # function's ``language`` while binding a class attribute of that name.
     display_name = language
@@ -821,30 +808,11 @@ def _derived_adapter(language: str) -> Callable[..., _DelegatingVM]:
             scale: int | None = None,
         ) -> None:
             super().__init__(stdin)
-            import importlib
-            import inspect
-
-            from esolangs.interpreters.randomness import Seeded
-
-            module = importlib.import_module(module_path)
-            code = (
-                program.splitlines() if split and isinstance(program, str) else program
+            state = interpreter_module(display_name)._Machine  # noqa: SLF001 - interpreter adapter
+            code, options = prepare_call(
+                display_name, program, state, scale=scale, reproducible=True
             )
-            # ``_Machine`` is private to its module but is the state object
-            # this whole file is built around.
-            state = getattr(module, "_Machine")  # noqa: B009
-            # Seeded for reproducibility (the interpreter falls back to
-            # ``secrets``); the seed is the machine's, since the first draw
-            # is a fact about the language (LaserFuck starts heading up).
-            if "rng" in inspect.signature(state).parameters:
-                seed = getattr(state, "reproducible_seed", 0)
-                self._machine = state(code, self._io, rng=Seeded(seed))
-            else:
-                self._machine = (
-                    state(code, self._io, scale=scale)
-                    if scale is not None
-                    else state(code, self._io)
-                )
+            self._machine = state(code, self._io, **options)
 
     _Derived.__name__ = _Derived.__qualname__ = f"_{language}VM"
     _Derived.__doc__ = f"Adapter for {language}; the interpreter describes its shape."
@@ -910,18 +878,8 @@ def make_vm(
         raise UnknownLanguageError(language)
     source = check_program(name, program, stdin)
     check_scale_for(name, scale)
-    try:
+    with interpreter_errors(
+        f"the {name} interpreter recursed deeper than CPython's stack "
+        "limit allows while loading this program while parsing its source"
+    ):
         return _VM_ADAPTERS[name](source, stdin, scale=scale)
-    except RecursionError as exc:
-        raise InterpreterLimitError(
-            f"the {name} interpreter recursed deeper than CPython's stack "
-            f"limit allows while loading this program "
-            f"while parsing its source"
-        ) from exc
-    except EsolangError:
-        raise
-    except ValueError as exc:
-        # Most interpreters parse in their constructor and signal a
-        # malformed program with a plain ``ValueError``, which ``run``
-        # re-raises as ``ProgramError``.
-        raise ProgramError(str(exc)) from exc

@@ -20,6 +20,7 @@ a meaning the wiki does not give them.
 Exhausted input raises :class:`EOFError` (the repo-wide convention).
 """
 
+from esolangs._drive import drive
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
@@ -280,8 +281,7 @@ def run(
 ) -> None:
     """Execute a Dig program with mole movement and underground work commands."""
     machine = _Machine(code, io)
-    while not machine.halted:
-        machine.step()
+    drive(machine)
 
 
 if __name__ == "__main__":

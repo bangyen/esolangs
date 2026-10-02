@@ -18,6 +18,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from contextlib import suppress
 
+from esolangs._drive import drive
 from esolangs._source import raster_source as load_source
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.raster import Raster
@@ -321,8 +322,7 @@ class _Machine:
 def run(program: Raster, io: ScriptedIO, *, scale: int | None = None) -> None:
     """Execute a Piet image, detecting its codel scale."""
     machine = _Machine(program, io, scale=scale)
-    while not machine.halted:
-        machine.step()
+    drive(machine)
 
 
 def generate(truth_table: str, width: int | None = None, *, scale: int = 1) -> Raster:

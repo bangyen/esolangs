@@ -77,6 +77,7 @@ operation.
 
 from typing import Literal, TypeGuard, cast
 
+from esolangs._drive import drive
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
@@ -1187,8 +1188,7 @@ def _freeze(value: object) -> object:
 def run(code: list[str] | str, io: IO) -> None:
     """Run an Alight program to its ``end``."""
     machine = _Machine(code, io)
-    while not machine.halted:
-        machine.step()
+    drive(machine)
 
 
 if __name__ == "__main__":

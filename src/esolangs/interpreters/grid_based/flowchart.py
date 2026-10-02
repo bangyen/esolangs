@@ -140,6 +140,7 @@ does not define stdin framing.
 from dataclasses import dataclass, field, replace
 from typing import Literal, assert_never
 
+from esolangs._drive import drive
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 
@@ -836,8 +837,7 @@ class _Machine:
 def run(code: list[str], io: IO) -> None:
     """Execute a Flowchart program."""
     machine = _Machine(code, io)
-    while not machine.halted:
-        machine.step()
+    drive(machine)
 
 
 if __name__ == "__main__":

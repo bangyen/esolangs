@@ -72,12 +72,11 @@ def check_scale_for(language: str, scale: int | None) -> None:
     """Validate scale using the interpreter's declared capability."""
     if scale is None:
         return
-    import importlib
-
+    from esolangs._execution import interpreter_module
     from esolangs._validate import check_scale
-    from esolangs.registry import INTERPRETERS, resolve
+    from esolangs.registry import resolve
 
     check_scale(scale)
-    module = importlib.import_module(INTERPRETERS[resolve(language)])
+    module = interpreter_module(resolve(language))
     if not getattr(module, "supports_scale", False):
         raise ArgumentError("scale is only supported for raster interpreters")

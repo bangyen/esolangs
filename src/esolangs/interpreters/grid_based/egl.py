@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import re
 
+from esolangs._drive import drive
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.brackets import match_brackets
 from esolangs.interpreters.io import IO
@@ -154,8 +155,7 @@ class _Machine:
 def run(code: str, io: IO) -> None:
     """Run an EGL program to the end of its source."""
     machine = _Machine(code, io)
-    while not machine.halted:
-        machine.step()
+    drive(machine)
 
 
 if __name__ == "__main__":

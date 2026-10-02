@@ -21,6 +21,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
+from esolangs._drive import drive
 from esolangs.exceptions import InputExhaustedError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
@@ -208,8 +209,7 @@ class _Machine:
 def run(code: list[str], io: IO) -> None:
     """Run a Clockwise program, reading input bits when the ring reads ``.``."""
     machine = _Machine(code, io)
-    while not machine.halted:
-        machine.step()
+    drive(machine)
 
 
 if __name__ == "__main__":

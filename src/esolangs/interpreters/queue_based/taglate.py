@@ -18,6 +18,7 @@ keeps the RFC 3986 unreserved set and ``%XX``-encodes the rest
 :class:`EOFError`.
 """
 
+from esolangs._drive import drive
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.brackets import unmatched
@@ -264,8 +265,7 @@ class _Machine:
 def run(code: list[str], io: IO) -> None:
     """Run a Taglate program seeded by the first line's queue."""
     machine = _Machine(code, io)
-    while not machine.halted:
-        machine.step()
+    drive(machine)
 
 
 if __name__ == "__main__":

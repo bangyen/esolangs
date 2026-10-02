@@ -16,6 +16,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, replace
 
+from esolangs._drive import drive
 from esolangs.exceptions import HaltError, ProgramError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
@@ -185,8 +186,7 @@ class _Machine:
 def run(code: str, io: IO) -> None:
     """Run a Crement program until it executes past its final instruction."""
     machine = _Machine(code, io)
-    while not machine.halted:
-        machine.step()
+    drive(machine)
 
 
 if __name__ == "__main__":

@@ -19,6 +19,7 @@ character code, including newlines.
 
 from typing import cast
 
+from esolangs._drive import drive
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.persistent import (
@@ -428,9 +429,7 @@ def run(code: list[str], io: IO, rng: Randomness | None = None) -> None:
     signature as the other drawing interpreters.
     """
     machine = _Machine(code, io, rng)
-    while not machine.halted:
-        machine.step()
-    machine.step()  # the post-halt step dumps the tape
+    drive(machine)
 
 
 if __name__ == "__main__":

@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from esolangs._drive import drive
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 
@@ -242,8 +243,7 @@ class _Machine:
 def run(source: str, io: IO) -> None:
     """Run a B-tapemark program until ``!`` executes."""
     machine = _Machine(source, io)
-    while not machine.halted:
-        machine.step()
+    drive(machine)
 
 
 if __name__ == "__main__":
