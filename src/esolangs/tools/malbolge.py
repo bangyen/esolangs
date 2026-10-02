@@ -38,7 +38,7 @@ from esolangs.exceptions import GeneratorCapError
 from esolangs.interpreters.other.malbolge import _XLAT1, _XLAT2, _crazy
 from esolangs.tools.helpers import _validate_truth_table
 
-from ._malbolge_core import (  # noqa: F401  (re-exported for the tests)
+from ._malbolge_core import (
     _C_INITS,
     _C_POST,
     _C_SCHEDULE,
@@ -54,7 +54,6 @@ from ._malbolge_core import (  # noqa: F401  (re-exported for the tests)
     _WORDS,
     _apply,
     _build_constants,
-    _cascade,
     _cascade_program,
     _char_for,
     _g,
