@@ -37,6 +37,27 @@ from esolangs.line.render import Node, chain, render
 from esolangs.line.simulate import IO, run
 from esolangs.raster.png import read_grey
 
+
+def test_transition_preserves_prior_states_and_requests_output() -> None:
+    from esolangs.line.simulate import _advance, _Frame
+
+    program = (_Frame((("i", 1), ("+", 2), ("o", 1)), (), (0, 0), None, None, None),)
+    initial = (0, 0, 0, ())
+    entered, output = _advance(initial, program, 3)
+    assert output is None
+    assert _advance(initial, program, 3) == (entered, None)
+    changed, _ = _advance(entered, program)
+    emitted, output = _advance(changed, program)
+    assert output == 5
+    assert initial == (0, 0, 0, ())
+    assert entered == (0, 1, 0, ((0, 3),))
+    assert changed == (0, 2, 0, ((0, 5),))
+    halted, _ = _advance(emitted, program)
+    assert _advance(halted, program) == (halted, None)
+    with pytest.raises(ValueError, match="requires a value"):
+        _advance(initial, program)
+
+
 # Anchored to this file rather than the working directory, so the wiki
 # fixtures resolve no matter where pytest is invoked from.
 FIXTURES = str(Path(__file__).parents[1] / "fixtures" / "line")

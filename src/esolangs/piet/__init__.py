@@ -116,85 +116,147 @@ def _slide(
         dp = (dp + 1) % 4
 
 
-def _binary(stack: list[int], operation: Callable[[int, int], int]) -> None:
-    if len(stack) < 2:
-        return
-    right = stack.pop()
-    left = stack.pop()
-    stack.append(operation(left, right))
+type _State = tuple[Point, int, int, tuple[int, ...], bool]
+type _Effect = tuple[str, int] | None
+
+
+def _binary(
+    stack: tuple[int, ...], operation: Callable[[int, int], int]
+) -> tuple[int, ...]:
+    return (*stack[:-2], operation(stack[-2], stack[-1])) if len(stack) >= 2 else stack
 
 
 def _command(
-    change: tuple[int, int], size: int, stack: list[int], io: ScriptedIO
-) -> tuple[int, int]:
-    """Execute one colour transition, returning DP and CC changes."""
-    hue, lightness = change
-    if (hue, lightness) == (0, 1):
-        stack.append(size)
-    elif (hue, lightness) == (0, 2):
-        if stack:
-            stack.pop()
-    elif (hue, lightness) == (1, 0):
-        _binary(stack, lambda left, right: left + right)
-    elif (hue, lightness) == (1, 1):
-        _binary(stack, lambda left, right: left - right)
-    elif (hue, lightness) == (1, 2):
-        _binary(stack, lambda left, right: left * right)
-    elif (hue, lightness) in {(2, 0), (2, 1)}:
+    change: tuple[int, int], size: int, stack: tuple[int, ...]
+) -> tuple[tuple[int, ...], int, int, _Effect]:
+    """Return the stack, control changes, and requested I/O effect."""
+    lightness = change[1]
+    if change == (0, 1):
+        stack = (*stack, size)
+    elif change == (0, 2):
+        stack = stack[:-1]
+    elif change == (1, 0):
+        stack = _binary(stack, lambda left, right: left + right)
+    elif change == (1, 1):
+        stack = _binary(stack, lambda left, right: left - right)
+    elif change == (1, 2):
+        stack = _binary(stack, lambda left, right: left * right)
+    elif change in {(2, 0), (2, 1)}:
         if len(stack) >= 2 and stack[-1] != 0:
-            right = stack.pop()
-            left = stack.pop()
-            stack.append(left // right if lightness == 0 else left % right)
-    elif (hue, lightness) == (2, 2):
+            left, right = stack[-2:]
+            stack = (*stack[:-2], left // right if lightness == 0 else left % right)
+    elif change == (2, 2):
         if stack:
-            stack[-1] = int(stack[-1] == 0)
-    elif (hue, lightness) == (3, 0):
-        _binary(stack, lambda left, right: int(left > right))
-    elif (hue, lightness) == (3, 1):
-        return (stack.pop() if stack else 0), 0
-    elif (hue, lightness) == (3, 2):
-        return 0, (stack.pop() if stack else 0)
-    elif (hue, lightness) == (4, 0):
+            stack = (*stack[:-1], int(stack[-1] == 0))
+    elif change == (3, 0):
+        stack = _binary(stack, lambda left, right: int(left > right))
+    elif change == (3, 1):
+        return stack[:-1], stack[-1] if stack else 0, 0, None
+    elif change == (3, 2):
+        return stack[:-1], 0, stack[-1] if stack else 0, None
+    elif change == (4, 0):
         if stack:
-            stack.append(stack[-1])
-    elif (hue, lightness) == (4, 1):
+            stack = (*stack, stack[-1])
+    elif change == (4, 1):
         if len(stack) >= 2:
             depth, rolls = stack[-2:]
             if 0 < depth <= len(stack) - 2:
-                del stack[-2:]
+                stack = stack[:-2]
                 rolls %= depth
                 if rolls:
-                    stack[-depth:] = stack[-rolls:] + stack[-depth:-rolls]
-    elif (hue, lightness) == (4, 2):
-        # A blank line is the package's 0, and the module docstring promises
-        # it is a value rather than end of input -- but ``input_num`` is
-        # ``int(line)``, which raised on the empty string and was suppressed,
-        # so this command pushed nothing where the char command pushes 0.
+                    stack = (*stack[:-depth], *stack[-rolls:], *stack[-depth:-rolls])
+    elif change == (4, 2):
+        return stack, 0, 0, ("read_num", 0)
+    elif change == (5, 0):
+        return stack, 0, 0, ("read_char", 0)
+    elif change in {(5, 1), (5, 2)} and stack:
+        return (
+            stack[:-1],
+            0,
+            0,
+            ("write_num" if lightness == 1 else "write_char", stack[-1]),
+        )
+    return stack, 0, 0, None
+
+
+def _perform_io(
+    stack: tuple[int, ...], effect: _Effect, io: ScriptedIO
+) -> tuple[int, ...]:
+    """Perform a transition's I/O and return the resulting immutable stack."""
+    if effect is None:
+        return stack
+    action, value = effect
+    if action == "read_num":
         try:
             line = io.input_str()
         except EOFError:
             pass
         else:
-            if not line:
-                stack.append(0)
-            else:
-                with suppress(ValueError):
-                    stack.append(int(line))
-    elif (hue, lightness) == (5, 0):
+            with suppress(ValueError):
+                return (*stack, int(line) if line else 0)
+    elif action == "read_char":
         with suppress(EOFError):
-            stack.append(io.input_char())
-    elif (hue, lightness) == (5, 1):
-        if stack:
-            io.print_num(stack.pop())
-    elif (hue, lightness) == (5, 2) and stack:
-        value = stack.pop()
+            return (*stack, io.input_char())
+    elif action == "write_num":
+        io.print_num(value)
+    else:
         with suppress(ValueError):
             io.print_char(chr(value))
-    return 0, 0
+    return stack
+
+
+def _advance(
+    state: _State, rows: tuple[tuple[Pixel, ...], ...]
+) -> tuple[_State, _Effect]:
+    """Return one pure colour transition or white slide and its I/O request."""
+    current, dp, cc, stack, halted = state
+    if halted:
+        return state, None
+    colour = _colour(rows[current[1]][current[0]])
+    if colour == WHITE:
+        slid = _slide(rows, current, dp, cc)
+        return (
+            (current, dp, cc, stack, True) if slid is None else (*slid, stack, False)
+        ), None
+    block = _block(rows, current)
+    for attempt in range(8):
+        exit_x, exit_y = _exit(block, dp, cc)
+        dx, dy = _DIRECTIONS[dp]
+        target = exit_x + dx, exit_y + dy
+        x, y = target
+        if 0 <= x < len(rows[0]) and 0 <= y < len(rows):
+            target_colour = _colour(rows[y][x])
+            if target_colour == WHITE:
+                slid = _slide(rows, target, dp, cc)
+                return (
+                    (current, dp, cc, stack, True)
+                    if slid is None
+                    else (*slid, stack, False)
+                ), None
+            if target_colour != BLACK:
+                old_hue, old_lightness = _COLOURS[colour]
+                new_hue, new_lightness = _COLOURS[target_colour]
+                stack, dp_change, cc_change, effect = _command(
+                    ((new_hue - old_hue) % 6, (new_lightness - old_lightness) % 3),
+                    len(block),
+                    stack,
+                )
+                return (
+                    target,
+                    (dp + dp_change) % 4,
+                    -cc if cc_change % 2 else cc,
+                    stack,
+                    False,
+                ), effect
+        if attempt % 2 == 0:
+            cc *= -1
+        else:
+            dp = (dp + 1) % 4
+    return (current, dp, cc, stack, True), None
 
 
 class _Machine:
-    """One colour transition or white slide per step."""
+    """A Piet run: one immutable state rebound after each pure transition."""
 
     ip_shape = "grid"
 
@@ -203,10 +265,27 @@ class _Machine:
     ) -> None:
         self.rows = program._normalized(scale)  # noqa: SLF001
         self.io = io
-        self.current = (0, 0)
-        self.dp, self.cc = 0, -1
-        self.stack: list[int] = []
-        self.halted = _colour(self.rows[0][0]) == BLACK
+        self.state: _State = ((0, 0), 0, -1, (), _colour(self.rows[0][0]) == BLACK)
+
+    @property
+    def current(self) -> Point:
+        return self.state[0]
+
+    @property
+    def dp(self) -> int:
+        return self.state[1]
+
+    @property
+    def cc(self) -> int:
+        return self.state[2]
+
+    @property
+    def stack(self) -> tuple[int, ...]:
+        return self.state[3]
+
+    @property
+    def halted(self) -> bool:
+        return self.state[4]
 
     @property
     def ip(self) -> tuple[int, ...] | None:
@@ -225,56 +304,15 @@ class _Machine:
             self.current,
             self.dp,
             self.cc,
-            tuple(self.stack),
+            self.stack,
             self.io.position(),
             self.halted,
         )
 
     def step(self) -> None:
-        if self.halted:
-            return
-        if _colour(self.rows[self.current[1]][self.current[0]]) == WHITE:
-            slid = _slide(self.rows, self.current, self.dp, self.cc)
-            if slid is None:
-                self.halted = True
-            else:
-                self.current, self.dp, self.cc = slid
-            return
-        colour = _colour(self.rows[self.current[1]][self.current[0]])
-        block = _block(self.rows, self.current)
-        for attempt in range(8):
-            exit_x, exit_y = _exit(block, self.dp, self.cc)
-            dx, dy = _DIRECTIONS[self.dp]
-            target = exit_x + dx, exit_y + dy
-            x, y = target
-            if 0 <= x < len(self.rows[0]) and 0 <= y < len(self.rows):
-                target_colour = _colour(self.rows[y][x])
-                if target_colour == WHITE:
-                    slid = _slide(self.rows, target, self.dp, self.cc)
-                    if slid is None:
-                        self.halted = True
-                        return
-                    self.current, self.dp, self.cc = slid
-                    return
-                if target_colour != BLACK:
-                    old_hue, old_lightness = _COLOURS[colour]
-                    new_hue, new_lightness = _COLOURS[target_colour]
-                    dp_change, cc_change = _command(
-                        ((new_hue - old_hue) % 6, (new_lightness - old_lightness) % 3),
-                        len(block),
-                        self.stack,
-                        self.io,
-                    )
-                    self.dp = (self.dp + dp_change) % 4
-                    if cc_change % 2:
-                        self.cc *= -1
-                    self.current = target
-                    return
-            if attempt % 2 == 0:
-                self.cc *= -1
-            else:
-                self.dp = (self.dp + 1) % 4
-        self.halted = True
+        state, effect = _advance(self.state, self.rows)
+        stack = _perform_io(state[3], effect, self.io)
+        self.state = (*state[:3], stack, state[4])
 
 
 def run(program: Raster, io: ScriptedIO, *, scale: int | None = None) -> None:

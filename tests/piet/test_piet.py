@@ -6,7 +6,7 @@ import pytest
 
 import esolangs
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.piet import _command, run
+from esolangs.piet import _command, _perform_io, run
 from esolangs.raster import Raster
 
 LIGHT_RED = (255, 192, 192)
@@ -145,13 +145,13 @@ def test_input_number_reads_a_blank_line_as_zero() -> None:
     0 -- contradicting the module's own "a blank line is a value".
     """
     blank: list[int] = []
-    _command((4, 2), 1, blank, ScriptedIO("\n"))
+    _execute_command((4, 2), 1, blank, ScriptedIO("\n"))
     assert blank == [0]
     number: list[int] = []
-    _command((4, 2), 1, number, ScriptedIO("7\n"))
+    _execute_command((4, 2), 1, number, ScriptedIO("7\n"))
     assert number == [7]
     at_end: list[int] = []
-    _command((4, 2), 1, at_end, ScriptedIO(""))
+    _execute_command((4, 2), 1, at_end, ScriptedIO(""))
     assert at_end == []
 
 
@@ -220,45 +220,45 @@ def test_stack_commands(
 ) -> None:
     io = ScriptedIO()
     stack = before.copy()
-    assert _command(change, 7, stack, io) == (0, 0)
+    assert _execute_command(change, 7, stack, io) == (0, 0)
     assert stack == after
 
 
 def test_pointer_and_switch_return_control_changes() -> None:
     io = ScriptedIO()
     stack = [-1, 3]
-    assert _command((3, 1), 1, stack, io) == (3, 0)
-    assert _command((3, 2), 1, stack, io) == (0, -1)
+    assert _execute_command((3, 1), 1, stack, io) == (3, 0)
+    assert _execute_command((3, 2), 1, stack, io) == (0, -1)
 
 
 def test_empty_pointer_and_switch_are_ignored() -> None:
     io = ScriptedIO()
-    assert _command((3, 1), 1, [], io) == (0, 0)
-    assert _command((3, 2), 1, [], io) == (0, 0)
+    assert _execute_command((3, 1), 1, [], io) == (0, 0)
+    assert _execute_command((3, 2), 1, [], io) == (0, 0)
 
 
 def test_invalid_commands_leave_the_stack_unchanged() -> None:
     io = ScriptedIO()
     for change, stack in [((1, 0), [1]), ((2, 0), [4, 0]), ((4, 1), [1, -2])]:
         before = stack.copy()
-        _command(change, 1, stack, io)
+        _execute_command(change, 1, stack, io)
         assert stack == before
 
 
 @pytest.mark.parametrize("change", [(0, 2), (2, 2), (4, 0), (5, 1), (5, 2)])
 def test_empty_unary_commands_are_ignored(change: tuple[int, int]) -> None:
     stack: list[int] = []
-    _command(change, 1, stack, ScriptedIO())
+    _execute_command(change, 1, stack, ScriptedIO())
     assert stack == []
 
 
 def test_zero_roll_and_shallow_roll_are_ignored() -> None:
     io = ScriptedIO()
     zero = [1, 2, 2, 0]
-    _command((4, 1), 1, zero, io)
+    _execute_command((4, 1), 1, zero, io)
     assert zero == [1, 2]
     shallow = [1]
-    _command((4, 1), 1, shallow, io)
+    _execute_command((4, 1), 1, shallow, io)
     assert shallow == [1]
 
 
@@ -274,13 +274,37 @@ def test_switch_transition_changes_the_run_codel_chooser() -> None:
 def test_number_input_and_output() -> None:
     io = ScriptedIO("42\n")
     stack: list[int] = []
-    _command((4, 2), 1, stack, io)
-    _command((5, 1), 1, stack, io)
+    _execute_command((4, 2), 1, stack, io)
+    _execute_command((5, 1), 1, stack, io)
     assert io.getvalue() == "42"
 
 
 def test_invalid_and_exhausted_input_are_ignored() -> None:
     stack: list[int] = []
-    _command((4, 2), 1, stack, ScriptedIO("no\n"))
-    _command((5, 0), 1, stack, ScriptedIO())
+    _execute_command((4, 2), 1, stack, ScriptedIO("no\n"))
+    _execute_command((5, 0), 1, stack, ScriptedIO())
     assert stack == []
+
+
+def _execute_command(change, size, stack, io):
+    before = tuple(stack)
+    after, dp, cc, effect = _command(change, size, before)
+    assert before == tuple(stack)
+    stack[:] = _perform_io(after, effect, io)
+    return dp, cc
+
+
+def test_commands_are_repeatable_and_only_request_io() -> None:
+    stack = (3, 5)
+    assert _command((1, 0), 1, stack) == ((8,), 0, 0, None)
+    assert _command((1, 0), 1, stack) == ((8,), 0, 0, None)
+    assert _command((5, 1), 1, stack) == ((3,), 0, 0, ("write_num", 5))
+    assert _command((4, 2), 1, stack) == (stack, 0, 0, ("read_num", 0))
+    assert stack == (3, 5)
+
+
+def test_halted_transition_preserves_state() -> None:
+    from esolangs.piet import _advance
+
+    state = ((0, 0), 0, -1, (3, 5), True)
+    assert _advance(state, ((BLACK,),)) == (state, None)
