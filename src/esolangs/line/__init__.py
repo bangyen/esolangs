@@ -16,6 +16,7 @@ import re
 from functools import lru_cache
 from typing import TYPE_CHECKING, cast
 
+from esolangs._source import raster_source as load_source
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.raster import Pixel, Raster, Rows
 
@@ -27,6 +28,8 @@ from .simulate import run_compiled as _run_compiled
 if TYPE_CHECKING:
     from .render import Node
     from .simulate import _Compiled
+
+supports_scale = True
 
 
 def _grey_rows(rows: Rows) -> list[bytearray]:

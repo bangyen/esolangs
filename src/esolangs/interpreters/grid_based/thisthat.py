@@ -8,8 +8,8 @@ barriers; the shared bistack is a sparse plane whose cursor moves diagonally.
 The specification says a cursor move can fail without defining the collision;
 this interpreter refuses a move exactly when its destination cell holds a bit.
 
-Input is one bit per line. EOF makes ``◇`` send an empty transfer, and printing
-an empty transfer produces no text. Malformed input, connections, or source
+EOF makes ``◇`` send an empty transfer; printing an empty transfer produces no
+text. Malformed input, connections, or source
 raise :class:`~esolangs.exceptions.HaltError`. ``◘`` uses the shared randomness
 hook, so callers may inject a reproducible source.
 

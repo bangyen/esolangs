@@ -11,7 +11,8 @@ from __future__ import annotations
 
 import io as _stdlib_io
 
-from esolangs.exceptions import InputExhaustedError
+from esolangs._input import InputSource, read_input
+from esolangs.exceptions import ArgumentError, InputExhaustedError
 
 
 class IO:
@@ -118,7 +119,11 @@ class IO:
 
     def input_num(self, prompt: str = "Input: ") -> int:
         """Read a whitespace-delimited integer from the shared cursor."""
-        return int(self.input_token(prompt))
+        token = self.input_token(prompt)
+        try:
+            return int(token)
+        except ValueError as exc:
+            raise ArgumentError(f"input must be an integer, got {token!r}") from exc
 
     def input_bit(self, prompt: str = "Input: ") -> int:
         """Read a 0 or 1 character, ignoring surrounding whitespace."""
@@ -155,17 +160,21 @@ class IO:
 class ScriptedIO(IO):
     """An :class:`IO` that reads from a string and captures output.
 
-    Used by :func:`esolangs.run` to drive a program from a ``stdin`` string
-    without patching the builtins.  ``_read`` ignores the prompt (matching
+    Used by :func:`esolangs.run` to drive a program from text, UTF-8 bytes,
+    or a readable stream. Streams are consumed once and left open.
+    ``_read`` ignores the prompt (matching
     the old patched reader) and raises :class:`EOFError` when input runs
     out; ``_write`` appends to an internal buffer returned by
     :meth:`getvalue`.
     """
 
-    def __init__(self, stdin: str = "") -> None:
-        """Read input from ``stdin`` and capture all output internally."""
+    def __init__(self, stdin: InputSource = "") -> None:
+        """Snapshot ``stdin`` as text and capture all output internally."""
         super().__init__()
-        self._supplied = stdin.splitlines()
+        stdin = read_input(stdin)
+        self._supplied = stdin.count("\n") + int(
+            bool(stdin) and not stdin.endswith("\n")
+        )
         self._source = stdin
         self._offset = 0
         self._reads = 0
@@ -199,7 +208,7 @@ class ScriptedIO(IO):
         exception a read past the end raises -- which already carried both
         numbers.
         """
-        return len(self._supplied)
+        return self._supplied
 
     def _exhausted(self, unit: str) -> None:
         self._past_end += 1

@@ -18,8 +18,11 @@ from __future__ import annotations
 from collections.abc import Callable
 from contextlib import suppress
 
+from esolangs._source import raster_source as load_source
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.raster import Raster
+
+supports_scale = True
 
 Pixel = tuple[int, int, int]
 Point = tuple[int, int]

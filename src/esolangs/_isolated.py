@@ -6,9 +6,12 @@ import json
 import os
 import subprocess  # nosec B404 -- fixed Python worker; source travels over stdin.
 import sys
+from threading import Thread
+from time import monotonic
 from typing import Any, cast
 
 from esolangs import exceptions
+from esolangs._source import InputSource, ProgramSource, read_input
 from esolangs._validate import check_timeout
 from esolangs.raster import Raster
 from esolangs.registry import resolve
@@ -56,8 +59,8 @@ def _decode(text: str, *, expired: bool) -> str:
 
 def run_isolated(
     language: str,
-    program: str | Raster | os.PathLike[str],
-    stdin: str = "",
+    program: ProgramSource,
+    stdin: InputSource = "",
     timeout: float = 30.0,
     *,
     seed: int | None = None,
@@ -67,6 +70,7 @@ def run_isolated(
 
     Works on Windows and worker threads. Errors retain their public class,
     notes and output; timeout kills and reaps the child.
+    A blocked caller-owned stream read may finish in the background after timeout.
     """
     import esolangs
 
@@ -74,19 +78,43 @@ def run_isolated(
     if timeout is None:
         raise exceptions.ArgumentError("isolated execution requires a finite timeout")
     name = resolve(language)
-    program = esolangs.check_program(name, program, stdin)
-    raster = isinstance(program, Raster)
-    request = json.dumps(
-        {
-            "language": name,
-            "program": program.rows if isinstance(program, Raster) else program,
-            "raster": raster,
-            "stdin": stdin,
-            "seed": seed,
-            "scale": scale,
-        }
-    )
-    return _launch(request, timeout)
+    deadline = monotonic() + timeout
+    box: list[str | BaseException] = []
+
+    def prepare() -> None:
+        try:
+            source = esolangs.check_program(name, program, stdin)
+            box.append(
+                json.dumps(
+                    {
+                        "language": name,
+                        "program": source.rows
+                        if isinstance(source, Raster)
+                        else source,
+                        "raster": isinstance(source, Raster),
+                        "stdin": read_input(stdin),
+                        "seed": seed,
+                        "scale": scale,
+                    }
+                )
+            )
+        except BaseException as exc:
+            box.append(exc)
+
+    # Caller-owned streams need not be picklable or interruptible. A daemon
+    # bounds acquisition without transferring or closing their handles.
+    reader = Thread(target=prepare, daemon=True)
+    reader.start()
+    reader.join(max(0.0, deadline - monotonic()))
+    remaining = deadline - monotonic()
+    if reader.is_alive() or remaining <= 0:
+        raise exceptions.ExecutionTimeoutError(
+            "execution timed out while loading input"
+        )
+    request = box[0]
+    if isinstance(request, BaseException):
+        raise request
+    return _launch(request, remaining)
 
 
 def _launch(request: str, timeout: float) -> str:

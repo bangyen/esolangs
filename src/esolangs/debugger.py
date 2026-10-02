@@ -8,15 +8,14 @@ step, so ``break_at`` on the initial position fires without executing it.
 
 from __future__ import annotations
 
-import os
 from collections.abc import Callable
 from inspect import signature
 from time import monotonic
 from typing import Literal
 
+from esolangs._source import InputSource, ProgramSource
 from esolangs._validate import check_timeout, check_whole
 from esolangs.exceptions import ArgumentError
-from esolangs.raster import Raster
 from esolangs.vm import VM, make_vm, run_until_halt
 
 __all__ = ["STOP_REASONS", "VM", "Debugger", "StopReason", "make_debugger", "make_vm"]
@@ -329,14 +328,14 @@ class Debugger:
 
 def make_debugger(
     language: str,
-    program: str | Raster | os.PathLike[str],
-    stdin: str = "",
+    program: ProgramSource,
+    stdin: InputSource = "",
     *,
     scale: int | None = None,
 ) -> Debugger:
     """Return a :class:`Debugger` over a fresh :class:`VM` for ``language``.
 
-    ``stdin`` is fed line by line.  An unknown name raises
+    ``stdin`` is consumed using the language's input unit. An unknown name raises
     :class:`UnknownLanguageError`.  A malformed program raises
     :class:`~esolangs.exceptions.ProgramError`, and on Clockwise -- which
     reads its whole input while the machine is built -- an underfed stdin

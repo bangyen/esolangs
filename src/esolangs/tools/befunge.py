@@ -1,6 +1,6 @@
 """Befunge boolean program builder: the grid is the lookup table.
 
-``befunge(truth_table)`` reads one ``0``/``1`` line per input, folds them
+``befunge(truth_table)`` reads one ``0``/``1`` integer token per input, folds them
 into a row index with Horner's rule, and reads the answer out of a grid the
 generator wrote, one cell per table entry.  ``g`` addresses a cell by
 coordinate, so the table is data the instruction pointer never walks: O(T)
@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from math import isqrt
 
+from esolangs.exceptions import GeneratorCapError
 from esolangs.tools.helpers import _parity_bias, _validate_truth_table
 from esolangs.tools.wrap import balance_score
 
@@ -26,13 +27,13 @@ def befunge(truth_table: str, width: int | None = None) -> str:
     near ``sqrt(T)``.  An over-wide header folds along alternating rows;
     ``g`` addresses the table below them.  The width floor reserves enough
     cells for both within the 80x25 torus.  Tables above ten inputs raise
-    ``ValueError``: their cells alone exceed the torus. Narrow parity uses
+    ``GeneratorCapError``: their cells alone exceed the torus. Narrow parity uses
     one vertical column of input sums modulo two instead.
     """
     n = _validate_truth_table(truth_table)
     count = 1 << n
     if count > 1024:
-        raise ValueError("Befunge supports at most ten inputs on its 80x25 grid")
+        raise GeneratorCapError("Befunge supports at most ten inputs on its 80x25 grid")
     if width is not None and 0 < width < 4:
         bias = _parity_bias(truth_table)
         if bias is not None:

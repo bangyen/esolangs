@@ -1,0 +1,190 @@
+"""Execution keeps the same behavior across source and input containers."""
+
+import io
+from dataclasses import replace
+from pathlib import Path
+from threading import Event
+from typing import Any
+
+import pytest
+
+import esolangs
+from esolangs.debugger import make_debugger
+from esolangs.registry import LANGUAGES, SourceKind
+
+
+@pytest.mark.parametrize("language", ["brainfuck", "Piet", "Line"])
+@pytest.mark.parametrize("container", ["bytes", "text_stream", "binary_stream"])
+@pytest.mark.parametrize("mode", ["normal", "steps", "isolated"])
+def test_execution_container_parity(language: str, container: str, mode: str) -> None:
+    program = esolangs.generate(language, "01")
+    data = (
+        program.to_png() if isinstance(program, esolangs.Raster) else program.encode()
+    )
+    source: Any = data
+    if container == "text_stream":
+        source = (
+            io.BytesIO(data)
+            if isinstance(program, esolangs.Raster)
+            else io.StringIO(program)
+        )
+    elif container == "binary_stream":
+        source = io.BytesIO(data)
+    stdin = io.BytesIO(b"1")
+    bounds: dict[str, Any] = {}
+    if mode == "steps":
+        bounds["max_steps"] = 10000
+    elif mode == "isolated":
+        bounds["isolated"] = True
+    assert esolangs.run(language, source, stdin, **bounds) == "1"
+    assert stdin.tell() == 1
+    assert not stdin.closed
+    if hasattr(source, "closed"):
+        assert not source.closed
+
+
+@pytest.mark.parametrize("language", ["brainfuck", "Piet", "Line"])
+def test_streams_work_with_bound_api_debugging_and_evaluation(language: str) -> None:
+    api = esolangs.Language(language)
+    program = api.generate("01")
+    data = (
+        program.to_png() if isinstance(program, esolangs.Raster) else program.encode()
+    )
+    assert api.evaluate(io.BytesIO(data), inputs=1) == "01"
+    debugger = make_debugger(language, io.BytesIO(data), io.StringIO("1"))
+    assert debugger.run(max_steps=10000) == "halted"
+    assert debugger.output == "1"
+
+
+def test_nonseekable_streams_are_read_once_from_the_current_position() -> None:
+    class Stream:
+        def __init__(self, value: str | bytes) -> None:
+            self.value = value
+            self.reads = 0
+
+        def read(self) -> str | bytes:
+            self.reads += 1
+            assert self.reads == 1
+            return self.value
+
+    program, stdin = Stream(b",.,."), Stream("\n\x00")
+    assert esolangs.check_program("brainfuck", program, stdin) == ",.,."
+    assert stdin.reads == 0
+    assert esolangs.run("brainfuck", ",.,.", stdin) == "\n\x00"
+    assert (program.reads, stdin.reads) == (1, 1)
+    source = io.StringIO("ignored,.")
+    source.seek(7)
+    assert esolangs.run("brainfuck", source, "Z") == "Z"
+
+
+@pytest.mark.parametrize(
+    "stdin", ["é", "é".encode(), io.StringIO("é"), io.BytesIO("é".encode())]
+)
+def test_binary_stdin_uses_the_same_unicode_character_stream(stdin: Any) -> None:
+    assert esolangs.run("brainfuck", ",.", stdin) == "é"
+
+
+def test_raster_interpreter_owns_loading_and_scale_support(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    program = esolangs.generate("Piet", "01", scale=2)
+    monkeypatch.setitem(
+        LANGUAGES,
+        "Piet",
+        replace(LANGUAGES["Piet"], source_kind=SourceKind.TEXT, raster_boolean=None),
+    )
+    assert esolangs.run("Piet", program.to_png(), "1", scale=2) == "1"
+    assert esolangs.run("Piet", program, "1", scale=2, max_steps=100) == "1"
+
+
+def test_path_loading_retains_existing_newline_normalization(tmp_path: Path) -> None:
+    path = tmp_path / "source.txt"
+    path.write_bytes(b"+,\r\n.\r\n")
+    assert esolangs.check_program("brainfuck", path) == "+,\n."
+    assert esolangs.run("brainfuck", path, "Q") == "Q"
+
+
+@pytest.mark.parametrize("container", ["bytes", "stream"])
+@pytest.mark.parametrize("mode", ["normal", "steps", "isolated"])
+def test_invalid_utf8_input_is_an_argument_error(container: str, mode: str) -> None:
+    argument = b"\xff" if container == "bytes" else io.BytesIO(b"\xff")
+    bounds: dict[str, Any] = {}
+    if mode == "steps":
+        bounds["max_steps"] = 100
+    elif mode == "isolated":
+        bounds["isolated"] = True
+    with pytest.raises(esolangs.ArgumentError, match="cannot read stdin"):
+        esolangs.run("brainfuck", ",.", argument, **bounds)
+
+
+@pytest.mark.parametrize("mode", ["normal", "steps", "isolated"])
+def test_stream_failures_keep_public_error_types(mode: str) -> None:
+    bounds: dict[str, Any] = {}
+    if mode == "steps":
+        bounds["max_steps"] = 100
+    elif mode == "isolated":
+        bounds["isolated"] = True
+
+    class Broken:
+        def read(self) -> str:
+            raise OSError("broken stream")
+
+    class Wrong:
+        def read(self) -> int:
+            return 4
+
+    class NeedsArgument:
+        def read(self, _argument: int) -> str:
+            return "A"
+
+    for stream in (Broken(), Wrong(), NeedsArgument()):
+        with pytest.raises(esolangs.ProgramError):
+            esolangs.run("brainfuck", stream, **bounds)  # type: ignore[arg-type]
+        with pytest.raises(esolangs.ArgumentError):
+            esolangs.run("brainfuck", ",.", stream, **bounds)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize("mode", ["normal", "steps", "isolated"])
+def test_invalid_numeric_input_is_not_mislabeled_as_a_program_error(mode: str) -> None:
+    bounds: dict[str, Any] = {}
+    if mode == "steps":
+        bounds["max_steps"] = 100
+    elif mode == "isolated":
+        bounds["isolated"] = True
+    assert esolangs.run("Befunge", "&.@", b"-12345", **bounds) == "-12345 "
+    with pytest.raises(
+        esolangs.ArgumentError, match="input must be an integer"
+    ) as error:
+        esolangs.run("Befunge", '"A",&.@', io.StringIO("invalid"), **bounds)
+    assert error.value.partial_output == "A"
+
+
+@pytest.mark.parametrize("blocked", ["program", "stdin"])
+def test_isolated_deadline_bounds_stream_acquisition(
+    blocked: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from esolangs import _isolated
+
+    entered, release, finished = Event(), Event(), Event()
+
+    class Stream:
+        def read(self) -> str:
+            entered.set()
+            release.wait(5)
+            finished.set()
+            return ",." if blocked == "program" else "A"
+
+    def launch(_request: str, _timeout: float) -> str:
+        pytest.fail("a blocked read must time out before launching the child")
+
+    monkeypatch.setattr(_isolated, "_launch", launch)
+    program: Any = Stream() if blocked == "program" else ",."
+    stdin: Any = Stream() if blocked == "stdin" else "A"
+    try:
+        with pytest.raises(esolangs.ExecutionTimeoutError, match="loading input"):
+            esolangs.run("brainfuck", program, stdin, isolated=True, timeout=0.1)
+        assert entered.is_set()
+        assert not finished.is_set()
+    finally:
+        release.set()
+        assert finished.wait(1)
