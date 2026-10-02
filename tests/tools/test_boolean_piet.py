@@ -100,3 +100,13 @@ def test_ignored_inputs_are_read_but_not_indexed() -> None:
 def test_invalid_truth_table_is_rejected(truth_table: str) -> None:
     with pytest.raises(ValueError, match="truth table"):
         generate(truth_table)
+
+
+def test_legacy_piet_entry_points() -> None:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.piet import generate, run
+
+    program = generate("01", scale=2)
+    io = ScriptedIO("1")
+    run(program, io)
+    assert io.getvalue() == "1"

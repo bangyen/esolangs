@@ -29,11 +29,11 @@ from pathlib import Path
 
 import pytest
 
+from esolangs.interpreters.image_based.line.extract import extract
+from esolangs.interpreters.image_based.line.simulate import IO, run
 from esolangs.line import render as render_module
 from esolangs.line.bf_to_line import bf_to_line
-from esolangs.line.extract import extract
 from esolangs.line.render import render
-from esolangs.line.simulate import IO, run
 
 
 def _run_bf(program: str, path: Path, inputs: list[int] | None = None) -> list[int]:

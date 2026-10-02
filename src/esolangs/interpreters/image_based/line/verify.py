@@ -11,7 +11,7 @@ from pathlib import Path
 from .extract import extract
 
 # The old ``__file__.parent / "fixtures"`` did not exist.
-FIXTURES = Path(__file__).resolve().parents[3] / "tests" / "fixtures" / "line"
+FIXTURES = Path(__file__).resolve().parents[5] / "tests" / "fixtures" / "line"
 
 
 def main(fixtures: Path = FIXTURES) -> int:

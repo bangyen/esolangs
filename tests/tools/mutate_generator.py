@@ -196,10 +196,16 @@ class _Kind:
 
 # Keyed by the name the CLI takes.
 _KINDS = {
-    "line": _Kind("line", "line", "tests/line", _TOOLS_SUPPORT, include_init=True),
+    "line": _Kind(
+        "line",
+        "interpreters/image_based/line",
+        "tests/line",
+        _TOOLS_SUPPORT,
+        include_init=True,
+    ),
     "piet": _Kind(
         "piet",
-        "piet",
+        "interpreters/image_based/piet",
         "tests/piet",
         _TOOLS_SUPPORT,
         include_init=True,
