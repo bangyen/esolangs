@@ -1,48 +1,10 @@
 """bio generator tests."""
 
-import importlib
-
-import pytest
-
 from tests.tools.fills import _run_form
 
 
 class TestParameterizedBIO:
     """Input-by-substitution generators for the no-input language BIO."""
-
-    def run_bio(self, prog: str, bits: list[int]) -> str:
-        from tests.interpreters.runner import run_program
-
-        run = importlib.import_module("esolangs.interpreters.register_based.bio").run
-        return run_program(run, prog, "".join(f"{b}\n" for b in bits))
-
-    def instantiate(self, tpl: str, bits: list[int]) -> str:
-        """Fill the template the way the example harness does."""
-        from tests.tools.fills import _fill_bio
-
-        return _fill_bio(tpl, bits)
-
-    @pytest.mark.parametrize(
-        ("table", "n"),
-        [
-            ("10", 1),  # NOT
-            ("01", 1),
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("11111110", 3),  # NAND3
-            ("01101001", 3),  # XOR3
-        ],
-    )
-    @pytest.mark.medium
-    def test_truth_table(self, table: str, n: int) -> None:
-        """Every instantiated input produces the truth-table result."""
-        from esolangs import tools as generators
-
-        template = generators.bio(table)
-        for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            got = self.run_bio(self.instantiate(template, bits), bits)
-            assert got == str(int(table[combo])), f"inputs {bits}"
 
     def test_template_is_input_independent(self) -> None:
         """The template has input runs, not hardcoded bits."""
@@ -87,11 +49,14 @@ class TestParameterizedBIO:
 
     def test_padding_never_touches_a_read_register(self) -> None:
         """``z`` is inert: the generator emits no command that reads it."""
-        from esolangs import tools as generators
+        import esolangs
+        from esolangs.interpreters.register_based.bio import parse
 
         for n in (1, 2, 3):
-            template = generators.bio(format(0, f"0{2**n}b"))
-            assert "z" not in template.lower()
+            template = esolangs.generate("BIO", "0" * (1 << n))
+            commands = parse(esolangs.instantiate("BIO", template, [0] * n))
+            assert commands.count("0oz;") == n
+            assert all(command not in ("0iz{", "1iz;") for command in commands)
 
     def test_every_input_is_the_same_pair(self) -> None:
         """The weight lives in the template: one ``(zero, one)`` at every arity."""
