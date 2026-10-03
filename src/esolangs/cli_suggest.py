@@ -5,9 +5,9 @@ from collections.abc import Iterable
 from typing import NamedTuple, cast
 
 from esolangs._execution import interpreter_errors
-from esolangs.cli_args import _check_count, _errors, _fail, _split_positional
+from esolangs.cli_args import _check_count, _errors, _split_positional
 from esolangs.cli_io import _read_program
-from esolangs.registry import LANGUAGES, resolve
+from esolangs.registry import LANGUAGES, SourceKind, resolve
 
 
 class _Correction(NamedTuple):
@@ -181,10 +181,15 @@ def _suggest(rest: list[str]) -> None:
         "packlang": _packlang_corrections,
     }
     handler = handlers.get(LANGUAGES[language].id)
-    if handler is None:
-        _fail("source correction previews support Modulous, Bitdeque and Packlang")
-        return  # pragma: no cover - _fail exits
     source = _read_program(rest[1], language=language)
+    if handler is None:
+        reason = (
+            "raster source has no command spellings to correct"
+            if LANGUAGES[language].source_kind == SourceKind.RASTER
+            else "no safe keyword correction rules are available for this language"
+        )
+        print(f"{language}: {reason}; the program is not validated")
+        return
     source = cast(str, source)
     with (
         _errors(),

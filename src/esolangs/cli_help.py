@@ -71,7 +71,8 @@ HELP = {
     "suggest": """usage: esolangs suggest <language> <program-file>
 
 Preview command spelling corrections with 1-based line and column numbers.
-Supports Modulous, Bitdeque and Packlang. Edits fix keyword case or a unique
+Accepts every language; spelling edits cover Modulous, Bitdeque and Packlang.
+Other languages explain why no edits are offered. Edits fix keyword case or a unique
 one-edit match (insertion, deletion, substitution or adjacent swap).
 Modulous and Bitdeque preview commands; Bitdeque skips GOTO targets.
 Packlang previews required package, datatype, Then and Do keywords. Variable

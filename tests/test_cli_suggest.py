@@ -86,7 +86,7 @@ def test_preview_does_not_execute_even_a_loop_or_read_input(
     ("args", "message"),
     [
         (["Modulous"], "missing <program-file>"),
-        (["brainfuck", "missing"], "support Modulous, Bitdeque and Packlang"),
+        (["brainfuck", "missing"], "cannot read"),
         (["unknown", "missing"], "unknown language"),
         (["Modulous", "missing"], "cannot read"),
         (["--apply", "Modulous", "missing"], "unknown option"),
