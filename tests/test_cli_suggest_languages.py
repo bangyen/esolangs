@@ -4,7 +4,35 @@ import pytest
 
 import esolangs
 from esolangs.cli_suggest import _bitdeque_corrections, _packlang_corrections
+from esolangs.registry import LANGUAGES, SourceKind
 from tests.cli_support import call_both
+
+
+@pytest.mark.parametrize(
+    "language",
+    [
+        name
+        for name, spec in LANGUAGES.items()
+        if spec.id not in {"modulous", "bitdeque", "packlang"}
+    ],
+)
+def test_other_languages_offer_explicit_no_edit_result(language, tmp_path, capsys):
+    from PIL import Image
+
+    path = tmp_path / "program"
+    if LANGUAGES[language].source_kind == SourceKind.RASTER:
+        Image.new("RGB", (1, 1), "white").save(path, format="PNG")
+        reason = "raster source has no command spellings"
+    else:
+        path.write_text("pussh arbitrary identifiers", encoding="utf-8")
+        reason = "no safe keyword correction rules"
+    before = path.read_bytes()
+    out, err = call_both(["suggest", language, str(path)], capsys)
+    assert reason in out
+    assert "not validated" in out
+    assert "->" not in out
+    assert not err
+    assert path.read_bytes() == before
 
 
 def _repaired(source, corrections):
