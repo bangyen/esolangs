@@ -18,12 +18,12 @@ consecutive Unicode characters, including newlines.
 
 import re
 from dataclasses import dataclass
+from decimal import Decimal
 
 from esolangs._drive import drive
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
-from esolangs.interpreters.memory import parse_int_memory as _parse
 from esolangs.interpreters.source_hints import syntax_error
 
 # The largest memory a run will grow.  Cell values are unbounded, but the
@@ -217,6 +217,16 @@ def _split_labels(line: list[str]) -> tuple[list[str], list[str]]:
     return labels, rest
 
 
+def _integer(source: str) -> int:
+    """Parse integer operands without CPython's decimal conversion cap."""
+    try:
+        return int(source)
+    except ValueError:
+        if not re.fullmatch(r"[+-]?\d(?:_?\d)*", source):
+            raise
+        return int(Decimal(source.replace("_", "")))
+
+
 def _assembly(code: str) -> list[int]:
     """Assemble documented AddSubJump source into integer memory."""
     macros, source = _macros(_source_lines(code))
@@ -271,7 +281,7 @@ def _assembly(code: str) -> list[int]:
         if token == "?":  # nosec B105 - assembly punctuation, not a password
             return next_ip
         try:
-            return int(token)
+            return _integer(token)
         except ValueError:
             pass
         if not _LABEL.fullmatch(token):
@@ -290,7 +300,7 @@ def _assembly(code: str) -> list[int]:
             raise syntax_error(
                 f"undefined label {name!r}", "define the label before using its address"
             )
-        return labels[name] + (int(offset) if offset else 0)
+        return labels[name] + (_integer(offset) if offset else 0)
 
     memory: list[int] = []
     for at, data, operands in parsed:
@@ -308,7 +318,11 @@ def _assembly(code: str) -> list[int]:
 def _program(code: str) -> list[int]:
     """Parse raw integer memory, or assemble source using symbolic syntax."""
     try:
-        return list(_parse(code))
+        return [
+            _integer(token)
+            for line in code.splitlines()
+            for token in line.split("#", 1)[0].split()
+        ]
     except ValueError:
         return _assembly(code)
 
@@ -534,7 +548,7 @@ class _Machine:
         a, b, _c, d = _operands(self.state)
         if _too_large(self.state, a):
             raise HaltError(
-                f"memory address {a} is too large",
+                f"memory address {Decimal(a)} is too large",
                 hint="keep memory addresses within the interpreter allocation limit",
             )
         reads = tuple(
