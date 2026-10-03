@@ -373,3 +373,61 @@ class TestContract(SnapshotContract):
 
     machine = staticmethod(_machine)
     stepping_program = "SEED PRONOUNCE"
+
+
+@pytest.mark.parametrize("io_modulus", [255, 256])
+@pytest.mark.parametrize(
+    ("program", "stdin", "value"),
+    [
+        ("ACCEPT CONSUME CONSUME PRONOUNCE", "ÿ", 255),
+        ("ACCEPT CONSUME CONSUME EXCRETE CONSUME PRONOUNCE", "ÿ", 255),
+        ("ACCEPT CONSUME CONSUME PRONOUNCE", "Ā", 0),
+        (" ".join(["SEED"] * 256 + ["DIGEST", "PRONOUNCE"]), "", 0),
+    ],
+)
+def test_moduli_agree_between_fast_run_and_vm(
+    io_modulus: int, program: str, stdin: str, value: int
+) -> None:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine, run
+
+    fast = ScriptedIO(stdin)
+    run(program, fast, cell_modulus=256, io_modulus=io_modulus)
+    stepped = ScriptedIO(stdin)
+    machine = _Machine(program, stepped, cell_modulus=256, io_modulus=io_modulus)
+    while not machine.halted:
+        machine.step()
+    assert fast.getvalue() == stepped.getvalue() == chr(value % io_modulus)
+    assert fast.reads == stepped.reads == len(stdin)
+
+
+@pytest.mark.parametrize("io_modulus", [255, 256])
+def test_excrete_uses_io_modulus_without_changing_seed(io_modulus: int) -> None:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
+
+    machine = _Machine("EXCRETE SEED", ScriptedIO(), io_modulus=io_modulus)
+    machine.acc = 256
+    machine.step()
+    assert machine.lst[0] == (0, 256 % io_modulus)
+    assert machine.acc == 0
+    machine.step()
+    assert machine.lst[0] == (1, 256 % io_modulus)
+
+
+@pytest.mark.parametrize(
+    "settings",
+    [
+        {"cell_modulus": 255},
+        {"cell_modulus": 256.0},
+        {"io_modulus": 254},
+        {"io_modulus": 255.0},
+    ],
+)
+def test_unsupported_moduli_are_rejected_before_execution(settings) -> None:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine, run
+
+    for entry in (_Machine, run):
+        with pytest.raises(ValueError, match="modulus must"):
+            entry("PRONOUNCE", ScriptedIO(), **settings)
