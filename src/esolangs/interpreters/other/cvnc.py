@@ -201,16 +201,17 @@ def _match_loops(tokens: list[str]) -> dict[int, int]:
 class _Parser:
     """A recursive-descent reader for the function the program has built.
 
-    Parses and evaluates together since the accumulator is fixed for one
-    application.  A parse failure is an *invalid* function, which
-    :func:`_apply` turns into "leave the accumulator alone".
+    Validate before evaluating: an invalid ``a/0+`` must remain inert.
     """
 
-    def __init__(self, symbols: list[str], accumulator: int) -> None:
+    def __init__(
+        self, symbols: list[str], accumulator: int, *, validate_only: bool = False
+    ) -> None:
         """Read ``symbols``, substituting ``accumulator`` for every ``a``."""
         self.symbols = symbols
         self.accumulator = accumulator
         self.index = 0
+        self.validate_only = validate_only
 
     def _peek(self) -> str | None:
         return self.symbols[self.index] if self.index < len(self.symbols) else None
@@ -228,6 +229,8 @@ class _Parser:
         while (symbol := self._peek()) in _ADDITIVE:
             self.index += 1
             right = self._term()
+            if self.validate_only:
+                continue
             # The accumulator is unsigned, so a subtraction floors at zero
             # rather than going negative.
             value = value + right if symbol == "+" else max(value - right, 0)
@@ -239,6 +242,8 @@ class _Parser:
         while (symbol := self._peek()) in _MULTIPLICATIVE:
             self.index += 1
             right = self._factor()
+            if self.validate_only:
+                continue
             if symbol == "*":
                 value *= right
                 continue
@@ -299,6 +304,7 @@ def _popped(deque: tuple[int, ...], *, front: bool) -> tuple[tuple[int, ...], in
 def _applied(accumulator: int, function: tuple[str, ...]) -> int:
     """Return the function applied to the accumulator, if it parses."""
     try:
+        _Parser(list(function), accumulator, validate_only=True).parse()
         return _Parser(list(function), accumulator).parse()
     except _InvalidFunctionError:
         return accumulator
