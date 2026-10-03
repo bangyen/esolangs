@@ -178,6 +178,7 @@ class _Group:
     taken: set[int]
     reserved: frozenset[int]
     runtime_base: bool
+    low_neighbour: bool
 
 
 def _setup(
@@ -186,6 +187,7 @@ def _setup(
     external_pointer: bool = False,
     runtime_base: bool = False,
     table_free_hubs: bool = False,
+    low_neighbour: bool = False,
 ) -> _Group:
     """Choose the group base and every shared walked cell, as the prototype did."""
     if runtime_base and not external_pointer:
@@ -284,7 +286,13 @@ def _setup(
     if runtime_base:
         near_cells = _OTHERS
     neighbour = _neighbour_cell(
-        order, used, reach, hub_taken, near_cells, minimum_hub=minimum_hub
+        order,
+        used,
+        reach,
+        hub_taken,
+        near_cells,
+        minimum_hub=minimum_hub,
+        fixed_hub=364 if low_neighbour else None,
     )
     assert neighbour is not None
     cell, path, hub = neighbour
@@ -292,6 +300,9 @@ def _setup(
     seeds["N"] = (cell, path)
     hub_values["N"] = (hub,)
     taken |= {hub, hub + 1, hub + 2, hub + 3}
+    if low_neighbour:
+        assert not set(range(364, 368)) & used
+        used.update(range(364, 368))
     return _Group(
         base=base,
         z_cell=z_cell,
@@ -307,6 +318,7 @@ def _setup(
         taken=taken,
         reserved=reserved,
         runtime_base=runtime_base,
+        low_neighbour=low_neighbour,
     )
 
 
@@ -353,6 +365,7 @@ def _neighbour_cell(
     near_cells: list[int],
     *,
     minimum_hub: int = 10000,
+    fixed_hub: int | None = None,
 ) -> tuple[int, list[str], int] | None:
     """Find the seed for the shared neighbour-escape hub."""
     for cell in order:
@@ -365,12 +378,23 @@ def _neighbour_cell(
                 walk = _crazy(walk, _g(point))
                 walk = _crazy(walk, walk)
                 collected.append(walk)
+                if fixed_hub is not None and walk != fixed_hub:
+                    break
+            if len(collected) != len(near_cells):
+                continue
             if len(set(collected)) != 1:
                 continue
             hub = collected[0]
-            if not minimum_hub <= hub < 59000:
+            if fixed_hub is not None:
+                if hub != fixed_hub or not any(
+                    e - 1 in reach[hub + 3] for e in near_cells
+                ):
+                    continue
+            elif not minimum_hub <= hub < 59000:
                 continue
-            if not any(_admits(hub + 3, e - 1) for e in near_cells):
+            if fixed_hub is None and not any(
+                _admits(hub + 3, e - 1) for e in near_cells
+            ):
                 continue
             if {hub, hub + 1, hub + 2, hub + 3} & taken:
                 continue
@@ -441,6 +465,8 @@ def _build(
         raise ValueError("runtime base requires external pointer and parity")
     if common_setup and not compact:
         raise ValueError("common setup requires the compact decoder")
+    if group.low_neighbour and not common_setup:
+        raise ValueError("low neighbour requires common setup")
     base = group.base
     used = {128, 129} | group.used
     memory: dict[int, int | None] = {
@@ -501,12 +527,14 @@ def _build(
     planner.op("*", helpers["w"])
     planner.op("p", helpers["all2"])
     if common_setup:
-        from compact_decoder import emit_navigation
+        from compact_decoder import emit_low_neighbour, emit_navigation
 
         emit_navigation(planner, group, used, helpers)
+        if group.low_neighbour:
+            emit_low_neighbour(planner, group, used, helpers)
     phases = [len(planner.code)]
     values: dict[int, int] = {}
-    for label in "01xnN":
+    for label in "N01xn" if group.low_neighbour else "01xnN":
         seed, seed_ops = group.seeds[label]
         _emit_chain(planner, seed, " ".join(seed_ops), helpers)
         points = (
@@ -582,11 +610,22 @@ def _build(
     if compact:
         avoid.update(range(41554, _WORDS))
     for hub in set(values.values()):
-        if hub in pointer:
+        if hub in pointer and not (group.low_neighbour and hub == 364):
             data[hub + 2] = pointer[hub] - 1
             assert _admits(hub + 2, pointer[hub] - 1)
-        escape = next(e for e in group.near_cells if _admits(hub + 3, e - 1))
+        escape = next(
+            e
+            for e in group.near_cells
+            if (
+                e - 1 in group.reach[367]
+                if group.low_neighbour and hub == 364
+                else _admits(hub + 3, e - 1)
+            )
+        )
         data[hub + 3] = escape - 1
+        if group.low_neighbour and hub == 364:
+            _emit_chain(planner, 367, " ".join(group.reach[367][escape - 1]), helpers)
+            assert planner.mem[367] == escape - 1
     copies: list[tuple[str, int, int, list[int]]] = []
     for label in "01xn":
         key = _KEY[label]
@@ -738,6 +777,8 @@ def _build(
     for a, op in planner.code.items():
         source[a] = _char_for(op, a)
     for a, ch in data.items():
+        if group.low_neighbour and a == 367:
+            continue
         if compact:
             assert a not in planner.code, (a, planner.code.get(a), ch)
         source[a] = ch

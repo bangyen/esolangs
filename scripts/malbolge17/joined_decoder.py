@@ -35,6 +35,7 @@ def build() -> tuple[_Emission, dict[int, int]]:
         external_pointer=True,
         runtime_base=True,
         table_free_hubs=True,
+        low_neighbour=True,
     )
     emission = _build(
         0,
@@ -75,6 +76,19 @@ def build() -> tuple[_Emission, dict[int, int]]:
     tmp = fresh()
     rowword = fresh()
     projection = fresh(53)
+    # Row selection and earlier reads mutate these words before a reader runs.
+    mutable = {
+        *range(34),
+        *cells,
+        tmp,
+        rowword,
+        projection,
+        142,
+        145,
+        139,
+        144,
+        *group.view_cells,
+    }
 
     def decoder(p: _Planner, row: int, state: int) -> None:
         offset = _POS[state][row]
@@ -98,6 +112,7 @@ def build() -> tuple[_Emission, dict[int, int]]:
             if a in blocked or a - 1 in blocked:
                 continue
             p = _Planner(a, 0, dict(setup.memory), data)
+            p.mem.update(dict.fromkeys(mutable))
             for op in "jjoojj":
                 p.raw(op)
             p.d = z0
@@ -243,6 +258,7 @@ def build() -> tuple[_Emission, dict[int, int]]:
     plan, emitted, _routes = place_chunks(plan, chunks, blocked, protected)
 
     def select(p: _Planner, field: int) -> None:
+        p.mem.update(dict.fromkeys(mutable))
         # Only the selected record rotates; its unvisited neighbour stays ASCII.
         for _ in range(5):
             p.goto(rowword)
@@ -287,6 +303,8 @@ def build() -> tuple[_Emission, dict[int, int]]:
     for a, op in code.items():
         source[a] = _char_for(op, a)
     for a, v in data.items():
+        if a == 367:
+            continue
         assert a not in code, (a, v)
         source[a] = v
     seeds: dict[int, int] = {}
