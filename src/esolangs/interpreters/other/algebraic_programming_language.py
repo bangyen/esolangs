@@ -850,13 +850,19 @@ class _Machine:
         try:
             return _number(text)
         except ValueError as exc:
-            raise HaltError(f"input {text!r} is not a number") from exc
+            raise HaltError(
+                f"input {text!r} is not a number",
+                hint="supply a decimal number as input",
+            ) from exc
 
     def _step_frame(self, frame: _Frame) -> None:
         """Resolve one node of ``frame``'s current expression."""
         self._steps += 1
         if self._steps > self._WORK_LIMIT:
-            raise HaltError("expression exceeded the evaluation budget")
+            raise HaltError(
+                "expression exceeded the evaluation budget",
+                hint="reduce nesting or repeated evaluation to fit the budget",
+            )
         if not frame.work:
             self._advance(frame)
             return
@@ -1042,7 +1048,10 @@ def _truthy(value: object) -> bool:
 def _as_number(value: object) -> _Number:
     """Coerce a value to a number, refusing a function."""
     if isinstance(value, bool) or not isinstance(value, (int, float)):
-        raise HaltError(f"expected a number, got {value!r}")
+        raise HaltError(
+            f"expected a number, got {value!r}",
+            hint="use a numeric value in this expression",
+        )
     return value
 
 
@@ -1062,17 +1071,25 @@ def _arith(op: str, left: _Number, right: _Number) -> _Number:
         return left * right
     if op == "/":
         if right == 0:
-            raise HaltError("division by zero")
+            raise HaltError(
+                "division by zero", hint="ensure the divisor is nonzero before dividing"
+            )
         quotient = left / right
         # Keep an exact integer where the division is exact, so the
         # unbounded-integer model survives a round trip through ``/``.
         return int(quotient) if quotient.is_integer() else quotient
     if op == "%":
         if right == 0:
-            raise HaltError("modulo by zero")
+            raise HaltError(
+                "modulo by zero",
+                hint="ensure the divisor is nonzero before taking a remainder",
+            )
         return left % right
     if left == 0 and right < 0:
-        raise HaltError("zero to a negative power")
+        raise HaltError(
+            "zero to a negative power",
+            hint="use a nonzero base for a negative exponent",
+        )
     return left**right
 
 

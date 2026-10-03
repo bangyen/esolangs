@@ -180,7 +180,10 @@ def _injected(state: _State, rest: str) -> _State:
     try:
         compiled = re.compile(pattern)
     except re.error as exc:
-        raise HaltError(f"invalid regex: {pattern}") from exc
+        raise HaltError(
+            f"invalid regex: {pattern}",
+            hint="correct the regex syntax before executing the substitution",
+        ) from exc
     body = [compiled.sub(replacement, line) for line in _contents(state, name)]
     return _replaced(state, name, body)
 

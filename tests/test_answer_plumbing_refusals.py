@@ -928,7 +928,7 @@ class TestTerminationTimeoutIsUndecided:
             esolangs.ExecutionTimeoutError, match="forced timeout"
         ) as exc:
             verify_generated("123", "01")
-        assert "while evaluating row 0" in exc.value.__notes__[0]
+        assert any("while evaluating row 0" in note for note in exc.value.__notes__)
 
     @pytest.mark.medium
     def test_vm_construction_is_timed(self, monkeypatch: pytest.MonkeyPatch) -> None:

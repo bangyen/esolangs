@@ -76,7 +76,10 @@ type _State = tuple[tuple[int, ...], dict[int, str], _Frames, bool]
 def _top(stack: tuple[int, ...]) -> int:
     """Return the top of ``stack``, halting when there is none."""
     if not stack:
-        raise HaltError("the stack is empty, so there is no top value to read")
+        raise HaltError(
+            "the stack is empty, so there is no top value to read",
+            hint="push a value before reading or removing the stack top",
+        )
     return stack[-1]
 
 

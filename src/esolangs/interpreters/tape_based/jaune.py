@@ -256,19 +256,28 @@ def _advance(
     elif c == "?":
         target = marks.get((":", cmd.arg))
         if target is None:
-            raise HaltError(f"jump to undefined label {cmd.arg}")
+            raise HaltError(
+                f"jump to undefined label {cmd.arg}",
+                hint="define the destination label or correct the jump target",
+            )
         if get(cells, ptr) != 0:
             return (cells, ptr, hold, target, calls)
     elif c == "!":
         target = marks.get((":", cmd.arg))
         if target is None:
-            raise HaltError(f"jump to undefined label {cmd.arg}")
+            raise HaltError(
+                f"jump to undefined label {cmd.arg}",
+                hint="define the destination label or correct the jump target",
+            )
         if get(cells, ptr) == 0:
             return (cells, ptr, hold, target, calls)
     elif c == "@":
         target = marks.get(("$", cmd.arg))
         if target is None:
-            raise HaltError(f"call to undefined subroutine {cmd.arg}")
+            raise HaltError(
+                f"call to undefined subroutine {cmd.arg}",
+                hint="define the subroutine or correct the call target",
+            )
         return (cells, ptr, hold, target, (*calls, pos + 1))
     elif c in ("v?", "v!"):
         # The read names the label, so the operand is the digit just taken
@@ -278,7 +287,10 @@ def _advance(
         num = value if value is not None else 0
         target = marks.get((":", num))
         if target is None:
-            raise HaltError(f"jump to undefined label {num}")
+            raise HaltError(
+                f"jump to undefined label {num}",
+                hint="define the destination label or correct the jump target",
+            )
         cell = get(cells, ptr)
         taken = cell != 0 if c == "v?" else cell == 0
         if taken:
@@ -287,11 +299,17 @@ def _advance(
         num = value if value is not None else 0
         target = marks.get(("$", num))
         if target is None:
-            raise HaltError(f"call to undefined subroutine {num}")
+            raise HaltError(
+                f"call to undefined subroutine {num}",
+                hint="define the subroutine or correct the call target",
+            )
         return (cells, ptr, hold, target, (*calls, pos + 1))
     elif c == ";":
         if not calls:
-            raise HaltError("; with no active subroutine call")
+            raise HaltError(
+                "; with no active subroutine call",
+                hint="call a subroutine before returning with ;",
+            )
         return (cells, ptr, hold, calls[-1], calls[:-1])
     elif c == ".":
         return (cells, ptr, hold, len(commands), calls)

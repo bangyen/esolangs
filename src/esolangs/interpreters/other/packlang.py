@@ -94,6 +94,13 @@ from esolangs._drive import drive
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.other._packlang_values import (
+    _get,
+    _int,
+    _node,
+    _set,
+    _truth,
+)
 from esolangs.interpreters.source_hints import keyword_hint, syntax_error
 
 # There is no recursion ceiling.  A call pushes a frame rather than
@@ -676,41 +683,6 @@ def _entry(program: _Program, order: list[str]) -> _Function:
     )
 
 
-def _get(store: _Store, name: str) -> object:
-    for slot, value in store:
-        if slot == name:
-            return value
-    raise HaltError(f"undefined variable {name!r}")
-
-
-def _set(store: _Store, name: str, value: object) -> _Store:
-    return tuple((slot, value if slot == name else old) for slot, old in store)
-
-
-def _truth(value: int) -> bool:
-    return value != 0
-
-
-def _node(value: object) -> _Expr:
-    """Narrow a child slot back to an expression node.
-
-    The parser builds heterogeneous tuples -- a tag, then names, ints, and
-    sub-nodes -- so a slot's static type is ``object`` and every recursive
-    call would otherwise need a cast.  This is the one place the shape is
-    re-checked, and a violation is a malformed tree rather than bad input.
-    """
-    if not isinstance(value, tuple):
-        raise HaltError(f"malformed expression node {value!r}")
-    return value
-
-
-def _int(value: object) -> int:
-    """Narrow a literal or a stored scalar to an ``int``."""
-    if isinstance(value, bool) or not isinstance(value, int):
-        raise HaltError(f"expected a number, got {value!r}")
-    return value
-
-
 def _evaluate(node: _Expr, store: _Store, program: _Program, caller: str) -> int:
     """Return the value of an expression, which contains no unresolved call.
 
@@ -725,12 +697,18 @@ def _evaluate(node: _Expr, store: _Store, program: _Program, caller: str) -> int
     if kind == "var":
         value = _get(store, str(node[1]))
         if isinstance(value, tuple):
-            raise HaltError(f"{node[1]!r} is an array and has no scalar value")
+            raise HaltError(
+                f"{node[1]!r} is an array and has no scalar value",
+                hint="index the array to select a scalar element",
+            )
         return _int(value)
     if kind == "length":
         value = _get(store, str(node[1]))
         if not isinstance(value, tuple):
-            raise HaltError(f"{node[1]!r} is not an array")
+            raise HaltError(
+                f"{node[1]!r} is not an array",
+                hint="use an array variable for indexing",
+            )
         return len(value)
     if kind == "xor":
         left = _evaluate(_node(node[1]), store, program, caller)
@@ -757,12 +735,20 @@ def _apply(node: _Expr, store: _Store, program: _Program, caller: str) -> int:
         raise HaltError(f"unresolved call to {name!r}")
     value = _get(store, name)
     if not isinstance(value, tuple):
-        raise HaltError(f"{name!r} is not an array")
+        raise HaltError(
+            f"{name!r} is not an array", hint="use an array variable for indexing"
+        )
     if len(args) != 1:
-        raise HaltError(f"indexing {name!r} takes exactly one index")
+        raise HaltError(
+            f"indexing {name!r} takes exactly one index",
+            hint="supply exactly one index when accessing an array",
+        )
     index = _evaluate(args[0], store, program, caller)
     if not 0 <= index < len(value):
-        raise HaltError(f"index {index} is outside {name!r}")
+        raise HaltError(
+            f"index {index} is outside {name!r}",
+            hint="keep the index within the bounds stated in the diagnostic",
+        )
     return _int(value[index])
 
 
@@ -857,11 +843,15 @@ def _callee(node: _Expr, program: _Program, caller: str) -> _Function:
     name = str(node[1])
     func = program.functions.get(name)
     if func is None:
-        raise HaltError(f"undefined function {name!r}")
+        raise HaltError(
+            f"undefined function {name!r}",
+            hint="define the function before calling it; check its spelling",
+        )
     if not _visible(func, caller, program):
         raise HaltError(
             f"{caller!r} does not depend on {func.package!r}, "
-            f"so {name!r} is not in scope"
+            f"so {name!r} is not in scope",
+            hint="declare the package dependency before calling its function",
         )
     return func
 
@@ -869,7 +859,10 @@ def _callee(node: _Expr, program: _Program, caller: str) -> _Function:
 def _entered(func: _Function, values: list[int], program: _Program) -> _Frame:
     """Build the frame a call runs in, binding its arguments."""
     if len(values) != len(func.params):
-        raise HaltError(f"{func.name!r} takes {len(func.params)} arguments")
+        raise HaltError(
+            f"{func.name!r} takes {len(func.params)} arguments",
+            hint="pass the number of arguments declared by the function",
+        )
     store = _initial_store(func, program)
     bound = dict(zip(func.params, values, strict=True))
     return _Frame(func, tuple((slot, bound.get(slot, value)) for slot, value in store))
@@ -980,15 +973,23 @@ def _write(
         if index is None:
             if whole is not None:
                 return _set(store, name, whole.zero())
-            raise HaltError(f"{name!r} is an array and needs an index")
+            raise HaltError(
+                f"{name!r} is an array and needs an index",
+                hint="supply an index when assigning an array element",
+            )
         at = _evaluate(_node(index), store, program, caller)
         if not 0 <= at < len(value):
-            raise HaltError(f"index {at} is outside {name!r}")
+            raise HaltError(
+                f"index {at} is outside {name!r}",
+                hint="keep the index within the bounds stated in the diagnostic",
+            )
         row = list(value)
         row[at] = update(_int(row[at]))
         return _set(store, name, tuple(row))
     if index is not None:
-        raise HaltError(f"{name!r} is not an array")
+        raise HaltError(
+            f"{name!r} is not an array", hint="use an array variable for indexing"
+        )
     return _set(store, name, update(_int(value)))
 
 

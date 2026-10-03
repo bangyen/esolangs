@@ -217,7 +217,8 @@ class _Machine:
             if not 0 <= tape[cell] <= _MAX_CHAR:
                 raise HaltError(
                     f"'A' prints cell {cell} as a character and it holds "
-                    f"{tape[cell]}, outside 0..{_MAX_CHAR}"
+                    f"{tape[cell]}, outside 0..{_MAX_CHAR}",
+                    hint="keep the output cell between 0 and 1114111",
                 )
             self.io.print_char(chr(tape[cell]))
         elif tok == "B":

@@ -542,7 +542,10 @@ class _Machine:
             return
         a, b, _c, d = _operands(self.state)
         if _too_large(self.state, a):
-            raise HaltError(f"memory address {a} is too large")
+            raise HaltError(
+                f"memory address {a} is too large",
+                hint="keep memory addresses within the interpreter allocation limit",
+            )
         reads = tuple(
             self.io.input_char()
             for addr in ((d, b) if a == _IO else (d, b, a))

@@ -78,7 +78,10 @@ class _Machine:
         if self.halted:
             return
         if self.pc + 2 >= len(self.cells):
-            raise HaltError("incomplete Subleq instruction")
+            raise HaltError(
+                "incomplete Subleq instruction",
+                hint="provide all three addresses for the fetched Subleq instruction",
+            )
         a, b, c = self.cells[self.pc : self.pc + 3]
         if a == -1:
             if b < 0:

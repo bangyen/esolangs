@@ -161,11 +161,13 @@ class _Machine:
         char = self.code[ind]
         if char == "f" and not stack:
             raise HaltError(
-                f"'f' at position {ind} pops the stack and the stack is empty"
+                f"'f' at position {ind} pops the stack and the stack is empty",
+                hint="push a value before reading or removing the stack top",
             )
         if char in "sb" and acc and not stack:
             raise HaltError(
-                f"{char!r} at position {ind} peeks the stack and the stack is empty"
+                f"{char!r} at position {ind} peeks the stack and the stack is empty",
+                hint="push a value before reading or removing the stack top",
             )
         if char in "sb" and acc and stack:
             # ``s`` skips X forward, ``b`` jumps back X-1: next is ind ± X + 1.
@@ -174,7 +176,8 @@ class _Machine:
             if not 0 <= ind + delta + 1 < self.length:
                 raise HaltError(
                     f"{char!r} at position {ind} jumps {delta:+d} to "
-                    f"{ind + delta + 1}, outside the program's 0..{self.length - 1}"
+                    f"{ind + delta + 1}, outside the program's 0..{self.length - 1}",
+                    hint="keep the jump target inside the program",
                 )
         elif char == "o":
             self.io.print_char(chr(acc))

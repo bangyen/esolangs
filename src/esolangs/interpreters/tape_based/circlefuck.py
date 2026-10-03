@@ -305,7 +305,8 @@ class _Machine:
             # Deleting the last cell would leave nothing to run.
             raise HaltError(
                 "'}' deletes the current cell and this is the last one, "
-                "so there would be no program left to run"
+                "so there would be no program left to run",
+                hint="retain at least one cell in the program",
             )
         if char == ",":
             with suppress(EOFError):

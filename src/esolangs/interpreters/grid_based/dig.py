@@ -60,7 +60,8 @@ def _value(code: tuple[str, ...], row: int, col: int, size: int) -> int:
                 return int(val)
     raise HaltError(
         f"the operator at row {row}, column {col} has no digit beside it "
-        f"to use as its operand"
+        f"to use as its operand",
+        hint="put a digit beside the operator to supply its operand",
     )
 
 
@@ -111,7 +112,10 @@ def _advance(
             mole *= _value(code, row, col, size)
         elif char == "/":
             if (n := _value(code, row, col, size)) == 0:
-                raise HaltError(f"division by zero at row {row}, column {col}")
+                raise HaltError(
+                    f"division by zero at row {row}, column {col}",
+                    hint="ensure the divisor is nonzero before dividing",
+                )
             mole //= n
         elif char == ";":
             code = _write(code, row, col, str(mole))

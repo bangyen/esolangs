@@ -334,12 +334,18 @@ class _Machine:
             value = bound
             if isinstance(value, _Func):
                 return value
-            raise HaltError(f"calling non-function argument {name!r}")
+            raise HaltError(
+                f"calling non-function argument {name!r}",
+                hint="pass a callable function argument before invoking it",
+            )
         if name in _BUILTINS:
             return _BUILTINS[name]
         if name in self.defs:
             return _Func(name, len(self.defs[name].params))
-        raise HaltError(f"calling undefined function {name!r}")
+        raise HaltError(
+            f"calling undefined function {name!r}",
+            hint="define the function before calling it; check its spelling",
+        )
 
     def _check_outer_call(self, definition: _Def) -> None:
         """Raise unless ``definition``'s code is exactly one outer call.
@@ -493,7 +499,10 @@ class _Machine:
         """Coerce ``value`` to an integer, refusing an array or function."""
         if isinstance(value, int):
             return value
-        raise HaltError("expected a number, got an array or function")
+        raise HaltError(
+            "expected a number, got an array or function",
+            hint="use a numeric value in this expression",
+        )
 
     def _builtin(
         self, frame: _Frame, fn: _Func, args: list[_Value]
@@ -530,14 +539,19 @@ class _Machine:
         """Coerce ``value`` to an array, refusing anything else."""
         if isinstance(value, tuple):
             return value
-        raise HaltError("expected an array")
+        raise HaltError(
+            "expected an array", hint="pass an array value to this operation"
+        )
 
     def _index(self, array: _Value, which: _Value) -> _Value:
         """Return the ``which``th element of ``array``."""
         items = self._array(array)
         pos = self._number(which)
         if not 0 <= pos < len(items):
-            raise HaltError(f"array index {pos} out of range")
+            raise HaltError(
+                f"array index {pos} out of range",
+                hint="keep the index within the array bounds",
+            )
         return items[pos]
 
     def _bit(self, which: _Value) -> int:
@@ -570,7 +584,8 @@ class _Machine:
             return body
         if body.arity:
             raise HaltError(
-                f"conditional body {body.name!r} takes {body.arity} argument(s)"
+                f"conditional body {body.name!r} takes {body.arity} argument(s)",
+                hint="pass the conditional body its declared number of arguments",
             )
         self._invoke(frame, body, [])
         # Either way the value is already accounted for: a user function's

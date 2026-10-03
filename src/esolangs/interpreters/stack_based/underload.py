@@ -18,7 +18,10 @@ type _Effect = str | None
 
 
 def _fail() -> None:
-    raise HaltError("invalid Underload program or stack underflow")
+    raise HaltError(
+        "invalid Underload program or stack underflow",
+        hint="leave enough stack entries for the operation to consume",
+    )
 
 
 def _element(program: str, start: int) -> tuple[str, int]:

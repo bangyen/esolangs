@@ -86,7 +86,9 @@ def interpreter_errors(
     except (RecursionError, EsolangError, ValueError) as original:
         error: EsolangError
         if isinstance(original, RecursionError):
-            error = InterpreterLimitError(recursion_message)
+            error = InterpreterLimitError(
+                recursion_message, hint="reduce expression nesting or recursion depth"
+            )
         elif isinstance(original, EsolangError):
             error = original
         else:

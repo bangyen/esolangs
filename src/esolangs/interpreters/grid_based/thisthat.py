@@ -115,7 +115,10 @@ class _Machine:
             if cell == "▣"
         )
         if not starts:
-            raise HaltError("thisthat needs at least one start node")
+            raise HaltError(
+                "thisthat needs at least one start node",
+                hint="add a thisthat start node to the execution graph",
+            )
         unknown = {
             cell
             for line in self.grid
@@ -123,7 +126,10 @@ class _Machine:
             if cell != " " and cell not in _PORTS and cell not in _NODES
         }
         if unknown:
-            raise HaltError(f"unsupported thisthat cell: {min(unknown)!r}")
+            raise HaltError(
+                f"unsupported thisthat cell: {min(unknown)!r}",
+                hint="use cells documented by esolangs describe --spec thisthat",
+            )
         self.pointers: tuple[_Pointer, ...] = starts
         self.cells: dict[_Point, int] = {}
         self.cursor: _Point = (0, 0)
@@ -449,7 +455,10 @@ class _Machine:
                 except EOFError:
                     value = None
                 except ValueError:
-                    raise HaltError("thisthat input must be a bit") from None
+                    raise HaltError(
+                        "thisthat input must be a bit",
+                        hint="supply input bits as 0 or 1 characters",
+                    ) from None
                 else:
                     value = bit
                 self._emit(
@@ -499,7 +508,10 @@ class _Machine:
             value = {"□": 0, "■": 1, "▦": None}[cell]
             self._emit(following, pointer, self._exits(pointer, "data"), "data", value)
         else:
-            raise HaltError(f"unsupported thisthat cell: {cell!r}")
+            raise HaltError(
+                f"unsupported thisthat cell: {cell!r}",
+                hint="use cells documented by esolangs describe --spec thisthat",
+            )
 
     def step(self) -> None:
         if self.halted:

@@ -161,7 +161,10 @@ def _advance(
             stk = (*stk, ind)
     elif c in "]*":
         if not stk:
-            raise HaltError(f"{c!r} at position {ind} closes a loop that never opened")
+            raise HaltError(
+                f"{c!r} at position {ind} closes a loop that never opened",
+                hint="add the matching loop opener before this closing instruction",
+            )
         ind = stk[-1] - 1
         stk = stk[:-1]
         if c == "*":
