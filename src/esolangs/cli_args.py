@@ -16,10 +16,10 @@ from esolangs.cli_help import (
     HELP,
 )
 from esolangs.cli_hints import (
+    _cli_error_text,
     _did_you_mean,
 )
 from esolangs.exceptions import EsolangError
-from esolangs.interpreters.source_hints import error_text
 from esolangs.tools.wrap import DEFAULT_WIDTH
 
 #: Flags every subcommand accepts, so a near miss on one of them is
@@ -44,7 +44,7 @@ _ARGUMENTS = {
 
 def _fail(message: str | BaseException, code: int = 2) -> None:
     if isinstance(message, BaseException):
-        message = error_text(message)
+        message = _cli_error_text(message)
     sys.stderr.write(message + "\n")
     sys.exit(code)
 
@@ -279,7 +279,7 @@ def _timeout_of(options: dict[str, str]) -> float | None:
     except EsolangError as exc:
         # Re-worded from ``timeout`` to ``--timeout``: the library names the
         # parameter, and this names the flag the reader typed.
-        _fail(str(exc).replace("timeout must", "--timeout must", 1))
+        _fail(_cli_error_text(exc).replace("timeout must", "--timeout must", 1))
     return seconds
 
 

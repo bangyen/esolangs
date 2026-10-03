@@ -8,6 +8,7 @@ from difflib import get_close_matches
 from esolangs import LanguageInfo, check_stdin
 from esolangs._evaluate import _terminates
 from esolangs.exceptions import EsolangError, ExecutionTimeoutError, TemplateError
+from esolangs.interpreters.source_hints import error_text
 from esolangs.registry import SUGGESTION_CUTOFF
 
 # A watched cell's history longer than this is printed abridged: the whole
@@ -42,16 +43,45 @@ def _exit_code(exc: EsolangError) -> int:
 _UNCOUNTABLE_SHAPES = ("row_index", "char_stream_cyclic")
 
 
+def _cli_error_text(exc: BaseException) -> str:
+    """Render notes using CLI flags, preserving the original diagnostic."""
+    message = str(exc)
+    notes = error_text(exc)[len(message) :]
+    for parameter, flag in (
+        ("timeout=5.0", "--timeout 5.0"),
+        ("scale=1", "--scale 1"),
+        ("omit scale", "omit --scale"),
+        ("width=80", "--width 80"),
+        ("seed=0", "--seed 0"),
+        ("integer bits to instantiate()", "0/1 digits to --bits"),
+    ):
+        notes = notes.replace(parameter, flag)
+    return message + notes
+
+
+def _generate_hint(exc: EsolangError, language: str, table: str) -> str:
+    """Keep generator notes and point template input advice at the CLI."""
+    message = str(exc)
+    notes = _cli_error_text(exc)[len(message) :]
+    notes = notes.replace(
+        "run the generated program with stdin=encode_inputs(language, bits)",
+        f"pipe input from esolangs encode {_as_argument(language)} <bits> "
+        "when running the generated program",
+    )
+    return message + _swapped_hint(language, table) + notes
+
+
 def _template_hint(exc: TemplateError, language: str) -> str:
     """Re-point a template refusal at the CLI flag that fills the slots."""
     message = str(exc)
+    notes = _cli_error_text(exc)[len(message) :]
     pointer = "fill them with esolangs.instantiate("
     if pointer not in message:
-        return message
+        return message + notes
     head = message.split(pointer)[0]
     return (
         f"{head}fill them with: esolangs generate --bits <bits> "
-        f"{_as_argument(language)} <table>"
+        f"{_as_argument(language)} <table>{notes}"
     )
 
 

@@ -302,7 +302,7 @@ def _worker() -> None:
         if isinstance(error, exceptions.UnknownLanguageError):
             args = (error.language, error.suggestions)
         elif isinstance(error, exceptions.InputExhaustedError):
-            args = (error.reads, error.supplied)
+            args = (error.reads, error.supplied, error.unit)
         send(
             {
                 "error": type(error).__name__,

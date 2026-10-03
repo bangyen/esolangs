@@ -69,11 +69,12 @@ from esolangs.cli_help import (
 )
 from esolangs.cli_hints import (
     _as_argument,
+    _cli_error_text,
     _did_you_mean,
+    _generate_hint,
     _input_sentence,
     _looks_like_a_table,
     _shell_hint,
-    _swapped_hint,
 )
 from esolangs.cli_io import (
     _read_stdin,
@@ -97,7 +98,7 @@ def _encode(rest: list[str]) -> None:
     try:
         sys.stdout.write(encode_inputs(language, [int(bit) for bit in bits]))
     except EsolangError as exc:
-        _fail(_shell_hint(str(exc), language))
+        _fail(_shell_hint(_cli_error_text(exc), language))
 
 
 def _list(rest: list[str]) -> None:
@@ -194,7 +195,7 @@ def _generate(rest: list[str]) -> None:
             program = cast(str, program)
             program = instantiate(rest[0], program, [int(b) for b in bits], width)
     except EsolangError as exc:
-        _fail(f"{exc}{_swapped_hint(rest[0], rest[1])}")
+        _fail(_generate_hint(exc, rest[0], rest[1]))
     if (
         (width is not None or bare or balance)
         and describe(rest[0])["width_effect"] == "none"
