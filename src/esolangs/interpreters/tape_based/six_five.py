@@ -14,8 +14,6 @@ holding the two I/O tokens and ``A``'s range check.
 
 from __future__ import annotations
 
-import re
-
 from esolangs._drive import drive
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
@@ -53,13 +51,16 @@ def _tokens(code: str) -> list[str]:
 
     A ``C`` not operand to ``7``/``8`` starts a comment to end of line.
     """
-    # Lookbehind, not a captured character: ``([^78])C`` needed a character
-    # before the ``C``, so a comment on the first line (``C...``) survived.
-    code = re.sub(r"(?<![78])C[^\n]*", "", code)
     toks: list[str] = []
     i = 0
     while i < len(code):
-        if code[i] in "78" and i + 1 < len(code):
+        if code[i] == "C":
+            # In ``78C`` the 8 is an operand, so C starts a comment.
+            end = code.find("\n", i)
+            if end < 0:
+                break
+            i = end
+        elif code[i] in "78" and i + 1 < len(code):
             toks.append(code[i : i + 2])
             i += 2
         else:
