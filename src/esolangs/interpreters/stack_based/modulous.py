@@ -42,7 +42,7 @@ from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.randomness import Randomness, draw
-from esolangs.interpreters.source_hints import keyword_hint, syntax_error
+from esolangs.interpreters.source_hints import keyword_hint, syntax_error, with_hint
 
 #: A command is a bracketed group, which may hold one quoted string.
 _TOKEN = re.compile(r'\[([^\[\]\"]*("[^"]*")?)]')
@@ -240,9 +240,16 @@ class _Machine:
             n = int(_operand(arg, 1))
             if n >= 1:
                 if n > _RND_FANOUT:
-                    raise TimeoutError(
-                        f"undecided: one 'RND {n}' exceeds the {_RND_FANOUT}-outcome "
-                        "cap on a single transition"
+                    raise with_hint(
+                        TimeoutError(
+                            f"undecided: one 'RND {n}' exceeds "
+                            f"the {_RND_FANOUT}-outcome "
+                            "cap on a single transition"
+                        ),
+                        (
+                            f"reduce RND to at most {_RND_FANOUT}; limit "
+                            "does not raise this transition cap"
+                        ),
                     )
                 values = tuple(range(n))
 

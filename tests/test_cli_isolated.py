@@ -12,7 +12,8 @@ from tests.cli_support import call_both
         (",.", [], 0, "A", ""),
         (",[.]", ["--max-output", "3"], 1, "AAA\n", "output limit exceeded"),
         (",[.]", ["--max-output", "0"], 1, "", "output limit exceeded"),
-        (",.+[]", ["--timeout", "0.5"], 124, "A\n", "deadline"),
+        # Includes worker startup; 0.5s lost output in two full-suite runs.
+        (",.+[]", ["--timeout", "2"], 124, "A\n", "deadline"),
         (",.", ["--judge"], 0, "1\n", ""),
     ],
 )

@@ -29,3 +29,9 @@ def error_text(error: BaseException) -> str:
         note for note in getattr(error, "__notes__", ()) if note.startswith("hint:")
     )
     return "\n".join((str(error), *hints))
+
+
+def with_hint[E: Exception](error: E, hint: str) -> E:
+    """Attach guidance without changing an error's type or diagnostic."""
+    error.add_note(f"hint: {hint}")
+    return error
