@@ -11,3 +11,11 @@ from scripts.screens.resources import audit, corpus
 def test_resource_bounds(language: str, n: int) -> None:
     for table in corpus(n).values():
         audit(language, n, table)
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("n", [1, 3, 5])
+def test_subleq_packed_store_and_integer_bounds(n: int) -> None:
+    for table in corpus(n).values():
+        result = audit("Subleq", n, table)
+        assert result["peak_data_bits"] >= result["peak_memory_cells"]

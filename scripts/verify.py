@@ -277,10 +277,21 @@ def _is_collected(path: str) -> bool:
     return any(fnmatch(name, pattern) for pattern in COLLECTED_PATTERNS)
 
 
+INTERPRETER_CONTRACT_TESTS = (
+    "tests/test_vm_protocol.py",
+    "tests/test_stepping_parity.py",
+    "tests/test_api_contracts.py",
+    "tests/test_interpreter_conventions.py",
+    "tests/interpreters/test_io.py",
+    "tests/interpreters/test_input_convention.py",
+    "tests/interpreters/test_semantic_oracles.py",
+)
+
+
 def _pytest_scope(changed: list[str]) -> list[str] | str:
     """Return the pytest paths covering *changed*.
 
-    An interpreter is covered by its own test module; anything touched under
+    An interpreter runs its language suite and shared contracts; anything under
     ``tests/`` is run directly.  ``WHOLE_SUITE`` means the coverage is not
     localisable -- a new interpreter with no test module yet, or a source file
     whose tests live somewhere this cannot predict -- so everything runs rather
@@ -303,7 +314,7 @@ def _pytest_scope(changed: list[str]) -> list[str] | str:
         if f.startswith("src/esolangs/interpreters/") and f.endswith(".py"):
             relative = Path(f).relative_to("src/esolangs/interpreters")
             # Package helpers can share a filename with another interpreter.
-            if len(relative.parts) > 2:
+            if len(relative.parts) != 2:
                 return WHOLE_SUITE
             stem = Path(f).stem
             if stem.startswith("_"):
@@ -312,6 +323,11 @@ def _pytest_scope(changed: list[str]) -> list[str] | str:
             if not (ROOT / candidate).exists():
                 return WHOLE_SUITE
             paths.add(candidate)
+            # Language-local tests cannot detect broken VM or public I/O contracts.
+            paths.update(INTERPRETER_CONTRACT_TESTS)
+            generator_tests = f"tests/tools/test_boolean_{stem}.py"
+            if (ROOT / generator_tests).exists():
+                paths.add(generator_tests)
             continue
         if f.startswith("src/"):
             return WHOLE_SUITE  # non-interpreter source: not localisable

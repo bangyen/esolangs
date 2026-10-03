@@ -561,6 +561,7 @@ def run(
     isolated: bool = False,
     max_steps: int | None = None,
     scale: int | None = None,
+    max_output: int | None = None,
 ) -> str:
     """Execute ``program`` and return its output.
 
@@ -580,6 +581,8 @@ def run(
     ``max_steps`` uses cooperative stepping; its optional timeout excludes loading
     and cannot interrupt a single step. Text and raster programs support stepping.
     Isolation and step bounds cannot be combined; stepping does not support seed.
+    ``max_output`` bounds isolated output in Unicode characters, retaining the
+    prefix and raising ``InterpreterLimitError`` when exceeded; zero is allowed.
 
     ``stdin`` is consumed verbatim using the language's input unit, without
     Boolean validation. Reading past
@@ -600,11 +603,27 @@ def run(
     if isinstance(timeout, _Default):
         timeout = 30.0 if isolated else None
     check_timeout(timeout)
+    if max_output is not None:
+        from esolangs._validate import check_whole
+
+        check_whole(max_output, "max_output")
+        if not isolated:
+            raise ArgumentError("max_output requires isolated=True")
     if isolated:
         if max_steps is not None:
             raise ArgumentError("isolated and max_steps are mutually exclusive")
         if timeout is None:
             raise ArgumentError("isolated execution requires a finite timeout")
+        if max_output is not None:
+            return _run_isolated(
+                language,
+                program,
+                stdin,
+                timeout,
+                seed=seed,
+                scale=scale,
+                max_output=max_output,
+            )
         if scale is None:
             return _run_isolated(language, program, stdin, timeout, seed=seed)
         return _run_isolated(language, program, stdin, timeout, seed=seed, scale=scale)

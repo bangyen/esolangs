@@ -14,7 +14,7 @@ import esolangs
 import esolangs.debugger as debugger_api
 from esolangs._validate import check_timeout
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.vm import run_until_halt_or_cycle
+from esolangs.vm import VM, run_until_halt_or_cycle
 
 
 def _bits(row: int, inputs: int) -> list[int]:
@@ -25,6 +25,42 @@ def _source_size(program: esolangs.Program) -> int:
     if isinstance(program, str):
         return len(program)
     return sum(len(row) for row in program.rows)
+
+
+def _integer_bits(value: int) -> int:
+    """Count magnitude bits (one for zero) and a sign bit for negatives."""
+    return max(1, value.bit_length()) + int(value < 0)
+
+
+def _payload_profile(language: str, vm: VM) -> dict[str, int] | None:
+    """Count logical data and control integers for three audited machine shapes.
+
+    Excludes Python overhead, static parser indexes and I/O buffers. Subleq's
+    mutable code is included in its memory; other source is measured separately.
+    """
+    state = vm.snapshot()
+    if language == "BFStack":
+        data, control, pc, _cursor = cast(
+            "tuple[tuple[int, ...], tuple[int, ...], int, int]", state
+        )
+    elif language == "Sophie":
+        pc, accumulator, _skip, control, _halted = cast(
+            "tuple[int, int, bool, tuple[int, ...], bool]", state
+        )
+        data = (accumulator,)
+    elif language == "Subleq":
+        data, pc, _cursor = cast("tuple[tuple[int, ...], int, int]", state)
+        control = ()
+    else:
+        return None
+    widths = [_integer_bits(value) for value in (*data, *control)]
+    return {
+        "peak_control_stack_items": len(control),
+        "peak_data_bits": sum(_integer_bits(value) for value in data),
+        "peak_control_stack_bits": sum(_integer_bits(value) for value in control),
+        "peak_integer_bits": max(widths, default=0),
+        "peak_pc_bits": _integer_bits(pc),
+    }
 
 
 def _execute(
@@ -58,6 +94,11 @@ def _execute(
         "execution_status": "pending",
         "peak_memory_cells": None,
         "peak_stack_items": None,
+        "peak_control_stack_items": None,
+        "peak_data_bits": None,
+        "peak_control_stack_bits": None,
+        "peak_integer_bits": None,
+        "peak_pc_bits": None,
     }
 
     def drive(*_args: object) -> None:
@@ -88,6 +129,10 @@ def _execute(
                 result["peak_stack_items"] = max(
                     result["peak_stack_items"] or 0, len(vm.stack)
                 )
+                profile = _payload_profile(str(facts["name"]), vm)
+                if profile is not None:
+                    for key, value in profile.items():
+                        result[key] = max(result[key] or 0, value)
 
         sample_store()
         steps = 0
@@ -181,7 +226,7 @@ def measure(
     ]
     selected = next(item for item in executions if item["row"] == row)
     return {
-        "schema": 3,
+        "schema": 4,
         "track_store": track_store,
         "language": esolangs.describe(language)["name"],
         "truth_table": table,
@@ -220,7 +265,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--track-store",
         action="store_true",
-        help="sample VM memory and stack lengths at each step",
+        help="sample stores; Sophie/BFStack/Subleq also report integer payloads",
     )
     args = parser.parse_args(argv)
     if args.repeat < 1 or args.step_cap < 1:
