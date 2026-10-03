@@ -13,6 +13,18 @@ class Observation:
     halted: bool
 
 
+@dataclass(frozen=True)
+class StackObservation:
+    output: str
+    stack: tuple[int, ...]
+    control: tuple[int, ...]
+    memory: tuple[int, ...]
+    ip: int
+    consumed: int
+    halted: bool
+    error: str | None
+
+
 def boolfuck(code: str, stdin: str, cap: int) -> Observation:
     pairs = {}
     opens = []
@@ -126,6 +138,69 @@ def cyclic_tag(code: str, _stdin: str, cap: int) -> Observation:
         rule = (rule + 1) % len(rules)
     return Observation(
         answer if not queue else "", tuple(map(int, queue)), offsets[rule], 0, not queue
+    )
+
+
+def bfstack(code: str, stdin: str, cap: int) -> StackObservation:
+    data = []
+    loops = []
+    output = []
+    pc = consumed = 0
+    error = None
+    for _ in range(cap):
+        if pc >= len(code):
+            break
+        command = code[pc]
+        if command in "<+-.[" and not data:
+            error = "HaltError"
+            break
+        if command == ">":
+            data.append(0)
+        elif command == "<":
+            data.pop()
+        elif command == "+":
+            data[-1] = (data[-1] + 1) % 256
+        elif command == "-":
+            data[-1] = (data[-1] - 1) % 256
+        elif command == ".":
+            output.append(chr(data[-1]))
+        elif command == ",":
+            if consumed == len(stdin):
+                error = "EOFError"
+                break
+            data.append(ord(stdin[consumed]))
+            consumed += 1
+        elif command == "[":
+            if data[-1]:
+                loops.append(pc)
+            else:
+                nesting = 1
+                while nesting and pc + 1 < len(code):
+                    pc += 1
+                    if code[pc] == "[":
+                        nesting += 1
+                    elif code[pc] == "]":
+                        nesting -= 1
+                if nesting:
+                    pc = len(code)
+                    error = "ValueError"
+                    break
+        elif command == "]":
+            if not loops:
+                error = "HaltError"
+                break
+            pc = loops.pop()
+            continue
+        pc += 1
+    return StackObservation(
+        "".join(output),
+        tuple(data),
+        tuple(loops),
+        (),
+        pc,
+        consumed,
+        pc >= len(code),
+        error,
     )
 
 
