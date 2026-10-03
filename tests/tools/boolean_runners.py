@@ -140,12 +140,6 @@ def run_forth(program: str, inputs: list[str]) -> str:
     return run_program(run, program, _stdin(inputs))
 
 
-def run_circlefuck(program: str, inputs: list[str]) -> str:
-    from esolangs.interpreters.tape_based.circlefuck import run
-
-    return run_program(run, program, "".join(inputs))
-
-
 def run_bit_tilde(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.tape_based.bit_tilde import run
 
