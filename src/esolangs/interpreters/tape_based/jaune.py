@@ -5,10 +5,10 @@ decimal, ``v`` reads a digit, ``>``/``<`` move, ``#`` copies to the hold,
 ``&`` adds it back, ``%`` zeroes, ``+``/``-`` with an optional count
 adjust.  ``(number):`` labels, ``?``/``!`` jump when nonzero/zero, ``$``
 defines a subroutine, ``@`` calls it, ``;`` returns, ``.`` ends the main
-program.  A repeated command like ``^^`` is a counted command; ``v`` as an
-operand reads a digit as the count or the label/subroutine name.
+program. Repeated ``+``/``-`` combine into a count; ``v`` as an operand
+reads an integer as the count or the label/subroutine name.
 
-Gaps decided: ``v`` reads signed integer tokens and raises :class:`EOFError`
+Gaps decided: ``v`` reads whitespace-delimited signed integer tokens and raises :class:`EOFError`
 at end of input; the tape is unbounded to the right and ``<`` at cell 0
 clamps (the wiki says only "previous cell"; see Streetcode's ``_``);
 cells are plain integers, as JauneJS's ``+=`` is; a read operand is
@@ -107,9 +107,9 @@ def _parse(code: str) -> list[_Command]:
     n = len(code)
     while i < n:
         c = code[i]
-        if c in "+-" and i + 1 < n and code[i + 1].isdigit():
+        if c in "+-" and i + 1 < n and code[i + 1] in "0123456789":
             j = i + 1
-            while j < n and code[j].isdigit():
+            while j < n and code[j] in "0123456789":
                 j += 1
             if j < n and (code[j] in _NUMBERED or code[j] in "+-"):
                 num = int(code[i:j])
@@ -149,9 +149,9 @@ def _parse(code: str) -> list[_Command]:
             count = j - i
             out.append(_Counted("+" if c == "+" else "-", count))
             i = j
-        elif c.isdigit():
+        elif c in "0123456789":
             j = i
-            while j < n and code[j].isdigit():
+            while j < n and code[j] in "0123456789":
                 j += 1
             num = int(code[i:j])
             if j < n and (op := code[j]) in _NUMBERED:
