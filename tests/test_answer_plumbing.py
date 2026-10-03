@@ -680,8 +680,8 @@ class TestWhatHappensWhenAProgramIsUnderfed:
             and not esolangs.describe(name)["parameterized"]
             and self._underfed(name)[0] == "raised"
         )
-        # Whitespace removal leaves 38 generators that raise on underfed stdin.
-        assert raised == 38
+        # Subleq admission adds one generator that raises on underfed stdin.
+        assert raised == 39
 
     def test_the_trait_is_reported_by_describe(self) -> None:
         """A caller must be able to learn this without underfeeding one."""
