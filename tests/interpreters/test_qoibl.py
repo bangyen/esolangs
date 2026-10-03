@@ -610,12 +610,10 @@ class TestTheTokenizerCarriesItsOwnStack:
             ("yr", [["yr"]]),
             ("et", [["et"]]),
             ("eet", [["e"], ["et"]]),
-            # The `et`/`yr` ambiguity: a reading that consumes the next
-            # character is tried before one that reaches backwards, so `eyr`
-            # is a literal `ey` then `ry`, not `e` then `yr`.
-            ("eyr ", [["ey", "ry"]]),
-            ("eeyr", [["eey", "ry"]]),
-            ("yyr", [["yy", "ry"]]),
+            # A trailing r can borrow y; it cannot invent a following y.
+            ("eyr ", [["e", "yr"]]),
+            ("eeyr", [["ee", "yr"]]),
+            ("yyr", [["y", "yr"]]),
             # Whitespace is a boundary, so the backwards reach cannot cross
             # it and the same characters read differently.
             ("e yr", [["e", "yr"]]),
@@ -625,7 +623,6 @@ class TestTheTokenizerCarriesItsOwnStack:
             ("we", [["we"]]),
             ("qe", [["qe"]]),
             ("\nrr", [["rr"]]),
-            ("e\n\nr\n", [["e", "ry"]]),
         ],
     )
     def test_the_reading_order_is_unchanged(
@@ -641,6 +638,7 @@ class TestTheTokenizerCarriesItsOwnStack:
         """
         assert tokenize(source) == expected
 
-    def test_an_unparseable_program_is_still_empty(self) -> None:
-        """The failure path has an order too, and it returns no statements."""
-        assert tokenize("qt y\nqrt\nrt") == [[]]
+    @pytest.mark.parametrize("source", ["qt y\nqrt\nrt", "e\n\nr\n"])
+    def test_a_failed_scan_rejects_literal_data(self, source: str) -> None:
+        with pytest.raises(ValueError, match="malformed Qoibl expression"):
+            tokenize(source)
