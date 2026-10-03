@@ -1,5 +1,6 @@
 """Bounded interpreters sharing no parser, transition, or I/O code with production."""
 
+from collections import deque
 from dataclasses import dataclass
 
 
@@ -97,6 +98,34 @@ def subleq(code: str, stdin: str, cap: int) -> Observation:
         pc = target if a != -1 and value <= 0 else pc + 3
     return Observation(
         "".join(output), tuple(cells), pc, consumed, pc < 0 or pc >= len(cells)
+    )
+
+
+def cyclic_tag(code: str, _stdin: str, cap: int) -> Observation:
+    parts = code.split(",")
+    if len(parts) != 2:
+        raise ValueError("expected one queue separator")
+    rules = ["".join(rule.split()) for rule in parts[0].split(";")]
+    data = "".join(parts[1].split())
+    if any(bit not in "01" for word in [*rules, data] for bit in word):
+        raise ValueError("nonbinary rule or queue")
+    starts = [0] + [at + 1 for at, char in enumerate(parts[0]) if char == ";"]
+    offsets = [
+        next(at for at in range(start, len(code)) if not code[at].isspace())
+        for start in starts
+    ]
+    queue = deque(data)
+    rule = 0
+    answer = ""
+    for _ in range(cap):
+        if not queue:
+            break
+        answer = queue.popleft()
+        if answer == "1":
+            queue.extend(rules[rule])
+        rule = (rule + 1) % len(rules)
+    return Observation(
+        answer if not queue else "", tuple(map(int, queue)), offsets[rule], 0, not queue
     )
 
 
