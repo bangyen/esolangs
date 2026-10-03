@@ -78,6 +78,29 @@ def mask(state: int) -> int:
     return ALL1 + (3**6 - 1) // 2 + shifts[state]
 
 
+def emit_low_neighbour(
+    plan: _Planner, group: _Group, used: set[int], helpers: dict[str, int]
+) -> None:
+    """Initialize D127's return edge without changing bootstrap source cells."""
+    source = next(
+        cell for cell in group.reach if cell not in used and 153 in group.reach[cell]
+    )
+    used.add(source)
+    group.used.add(source)
+    _emit_chain(plan, source, " ".join(group.reach[source][153]), helpers)
+    assert plan.accumulator == 153
+    plan.op("p", helpers["all1"])
+    plan.op("p", 365)
+    assert plan.mem[365] == 126
+    # ALL2 + pp produces binary trits; zero + p restores ALL1.
+    plan.op("*", helpers["all2"])
+    plan.op("p", helpers["all1"])
+    plan.op("p", helpers["all1"])
+    plan.op("*", helpers["z0"])
+    plan.op("p", helpers["all1"])
+    assert plan.mem[helpers["all1"]] == ALL1
+
+
 def landing(state: int, parity: int, char: int) -> int:
     """Return one of 940 distinct addresses below the truth-table tiling."""
     return _crazy(mask(state), _crazy(_VIEW[2 * state + parity], char)) + 1
