@@ -304,14 +304,8 @@ def _eval(expr: list[str], var: _Vars, read: _Read, emit: _Emit) -> tuple[int, _
         return var.get(_variable(key), 0), var
     if op == "et":
         return read(), var
-    # ``tokenize`` only accepts a split under which every statement parses,
-    # so the tokens that reach here are the keywords above, a binary
-    # ``[ey]+`` literal, or ``yr``/``ry`` -- and those two are taken by the
-    # ``in expr`` arms before the keyword tests run.  The fallback stays for
-    # a hand-built expression list.
-    if re.fullmatch("[ey]+", op):  # pragma: no branch - see above
-        return int(op.replace("e", "0").replace("y", "1"), 2), var
-    return 0, var
+    # Loading validates literals; unreachable hand-built tokens need no arm.
+    return int(op.replace("e", "0").replace("y", "1"), 2), var
 
 
 def _operands(

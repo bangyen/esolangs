@@ -229,12 +229,6 @@ def run_addsubjump(program: str, inputs: list[str]) -> str:
     return run_program(run, program, "".join(inputs))
 
 
-def run_qoibl(program: str, inputs: list[str]) -> str:
-    from esolangs.interpreters.register_based.qoibl import run
-
-    return run_program(run, program.splitlines(), "".join(inputs))
-
-
 def run_polynomial(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.register_based.polynomial import run
 
