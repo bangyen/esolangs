@@ -18,23 +18,8 @@ def run_and_capture(code: str, inputs: list[str] | None = None) -> str:
 
 
 class TestBFStack:
-    def test_push_and_output(self) -> None:
-        assert run_and_capture(">+.") == "\x01"
-
-    def test_increment_twice(self) -> None:
-        assert run_and_capture(">++.") == "\x02"
-
-    def test_pop(self) -> None:
-        """< pops the top of the stack."""
-        assert run_and_capture(">+>+<.") == "\x01"
-
     def test_a_pop_leaves_everything_below_it(self) -> None:
-        """Popping removes one cell, not all but the bottom one.
-
-        ``test_pop`` uses two cells, where dropping the top and keeping
-        only the bottom are the same stack.  Three cells with distinct
-        values separate them, and popping twice reads each in turn.
-        """
+        """Three distinct cells distinguish a pop from keeping only the bottom."""
         three = ">+" + ">++" + ">+++"
         assert run_and_capture(three + ".") == "\x03"
         assert run_and_capture(three + "<.") == "\x02"
@@ -51,33 +36,9 @@ class TestBFStack:
         assert run_and_capture(three + "-.") == "\x02"
         assert run_and_capture(three + "-<.") == "\x02"
 
-    def test_input(self) -> None:
-        """, pushes ASCII input onto the stack."""
-        assert run_and_capture(">,.", inputs=["Z"]) == "Z"
-
     def test_input_adds_a_cell_rather_than_overwriting_one(self) -> None:
-        """``,`` pushes, so what was on top before is still underneath.
-
-        ``test_input`` prints the byte immediately, which reads the same
-        whether ``,`` pushed a cell or overwrote the one ``>`` made -- and
-        the InputCursorContract's ``">,"`` reads as though a cell has to
-        exist first, so the file pointed both ways at once.  Popping the
-        read byte settles it: pushing leaves the 1 below it to print, while
-        overwriting would have consumed it and left the stack empty.
-        """
+        """Popping the read byte must reveal the previous top."""
         assert run_and_capture(">+,<.", inputs=["Z"]) == "\x01"
-
-    def test_loop(self) -> None:
-        """A loop that zeroes its cell executes exactly once."""
-        assert run_and_capture(">+[>+<-]>+.") == "\x01"
-
-    def test_loop_skipped_when_zero(self) -> None:
-        """[ jumps past its matching ] when the top is zero."""
-        assert run_and_capture(">[>]") == ""
-
-    def test_loop_skip_nested(self) -> None:
-        """A skipped loop with nested [ brackets counts both."""
-        assert run_and_capture(">[[-]]") == ""
 
     def test_loop_skip_unmatched(self) -> None:
         """A skipped [ with no closing ] is a malformed program.
@@ -103,23 +64,8 @@ class TestBFStack:
         with pytest.raises(HaltError):
             run_and_capture(">]")
 
-    def test_decrement(self) -> None:
-        """- subtracts one from the top of the stack.
-
-        Nothing in the suite used ``-`` outside a loop body whose output it
-        never reached, so the whole line was unconstrained: subtracting,
-        adding, or storing None to the top all passed.
-        """
-        assert run_and_capture(">+-.") == "\x00"
-        assert run_and_capture(">++-.") == "\x01"
-
     def test_cells_wrap_at_a_byte(self) -> None:
-        """+ and - wrap modulo 256, in both directions.
-
-        ``test_increment_twice`` reaches 2, so the modulus was never
-        approached from either side: one below zero and one above 255 are
-        where a wrap at any other width would show.
-        """
+        """Both byte boundaries distinguish a different arithmetic modulus."""
         assert run_and_capture(">-.") == "\xff"
         assert run_and_capture(">" + "+" * 256 + ".") == "\x00"
         assert run_and_capture(">" + "+" * 255 + ".") == "\xff"

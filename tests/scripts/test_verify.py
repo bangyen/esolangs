@@ -80,6 +80,14 @@ class TestPytestScopeCollects:
             verify.WHOLE_SUITE
         )
 
+    def test_an_interpreter_includes_its_independent_semantic_suite(self) -> None:
+        verify = load_script()
+        scope = verify._pytest_scope(  # noqa: SLF001
+            ["src/esolangs/interpreters/stack_based/bfstack.py"]
+        )
+        assert "tests/interpreters/test_bfstack.py" in scope
+        assert "tests/interpreters/test_bfstack_semantics.py" in scope
+
     def test_the_patterns_match_pyproject(self) -> None:
         """``COLLECTED_PATTERNS`` is pytest's ``python_files``, not a guess.
 

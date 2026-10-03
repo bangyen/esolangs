@@ -323,6 +323,8 @@ def _pytest_scope(changed: list[str]) -> list[str] | str:
             if not (ROOT / candidate).exists():
                 return WHOLE_SUITE
             paths.add(candidate)
+            for suite in (ROOT / "tests/interpreters").glob(f"test_{stem}_*.py"):
+                paths.add(suite.relative_to(ROOT).as_posix())
             # Language-local tests cannot detect broken VM or public I/O contracts.
             paths.update(INTERPRETER_CONTRACT_TESTS)
             generator_tests = f"tests/tools/test_boolean_{stem}.py"
