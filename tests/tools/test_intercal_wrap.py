@@ -50,6 +50,7 @@ def test_intercal_width_splits_an_overwide_expression() -> None:
     assert intercal(table, 1000) == intercal(table)
 
 
+@pytest.mark.medium
 @pytest.mark.parametrize("width", [1, 6, 9, 13, 17, 19, 22, 26, 40, 80])
 def test_intercal_narrow_identities_execute_every_small_table(width: int) -> None:
     for n in range(1, 4):
