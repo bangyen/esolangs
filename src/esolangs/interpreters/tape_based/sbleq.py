@@ -3,7 +3,7 @@ r"""Interpreter for S*bleq.
 A Subleq derivative: each instruction ``a b c`` does ``mem[a] -= mem[b]``
 and, if the result is ``<= 0``, jumps to ``mem[c]`` (indirect); otherwise
 the pointer advances by three.  Address ``-1`` is the instruction
-pointer, ``-2`` the next input byte (zero at EOF, per the wiki), ``-3``
+pointer, ``-2`` the next input character (zero at EOF), ``-3``
 outputs the other operand; none appears in ``c``.  ``store`` selects the
 base (``a``), ``S*bl*q`` (``a`` and ``b``) or ``Subl*q`` (``b``)
 variant; the ``S**bleq`` indirection family is not implemented.
@@ -16,6 +16,7 @@ a negative jump target.  Malformed programs raise :class:`ValueError`.
 from esolangs._validate import check_address
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.memory import format_integer
 from esolangs.interpreters.memory import parse_int_memory as _parse
 from esolangs.interpreters.source_hints import syntax_error
 
@@ -46,7 +47,7 @@ def _read(state: _State, addr: int, byte: int | None = None) -> int:
     if addr >= 0:
         return mem[addr] if addr < len(mem) else 0
     raise syntax_error(
-        f"invalid address {addr}",
+        f"invalid address {format_integer(addr)}",
         (
             "use a nonnegative memory address, -1 for the instruction "
             "pointer or -2 for input"
@@ -73,22 +74,23 @@ def _write(state: _State, addr: int, value: int) -> _State:
 def _advance(state: _State, store: str, byte: int | None = None) -> _State:
     """Return the state after executing one ``a b c`` instruction.
 
-    Pure; output is the caller's, input arrives as ``byte``.  ``"ab"`` and
-    ``"b"`` also write ``b`` when it is a real address.
+    Pure; output is the caller's, input arrives as ``byte``.
+    The variant selects the destinations, including pointer writes.
     """
     mem, ip, _halted = state
     a, b, c = mem[ip], mem[ip + 1], mem[ip + 2]
     if c < 0:
         raise syntax_error(
-            f"invalid S*bleq branch address {c}", "use a nonnegative branch address"
+            f"invalid S*bleq branch address {format_integer(c)}",
+            "use a nonnegative branch address",
         )
     if a == -3 or b == -3:
         # The print already happened in the shell.
         return (mem, ip + 3, False)
 
     diff = _read(state, a, byte) - _read(state, b, byte)
-    after = _write(state, a, diff)
-    if store in ("ab", "b") and b >= 0:
+    after = _write(state, a, diff) if store in ("a", "ab") else state
+    if store in ("ab", "b"):
         after = _write(after, b, diff)
 
     if diff > 0:
