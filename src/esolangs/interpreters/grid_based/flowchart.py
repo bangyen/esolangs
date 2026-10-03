@@ -20,7 +20,7 @@ tabulates explicitly:
 ``{ }``      clear the register, making it empty
 ``< >``      switch: 1 turns left, 0 turns right, empty goes on
 ``/ /``      read one bit of input into the register
-``\ \``      output the register's bit (nothing when it is empty)
+``\ \``      output the register's bit (zero when it is empty)
 ``\[ ]/``    push the register onto the top of the deque
 ``/[ ]\``    push the register onto the bottom of the deque
 ``\{ }/``    pop the deque's top into the register
@@ -67,31 +67,11 @@ rather than invented, and every one of the three examples on the page
   clause then means the remembered direction is declined whenever taking
   it would reverse the pointer.
 
-* **An empty register produces nothing rather than a zero.**  The spec's
-  table says of ``\ \`` that "empty is zero", but the wiki's own cat program
-  contradicts the sentence: its read loop ends by popping an exhausted
-  deque, so the pointer reaches the output node with an empty register on
-  its last lap.  Emitting a zero there would make the cat print a trailing
-  ``0`` it never read (``101`` in, ``1010`` out), which is not a cat.  The
-  example is taken as ground truth, so ``\ \`` prints nothing on an empty
-  register; for the same reason a push of an empty register is a no-op (the
-  deques hold bits, and empty is not one) and a pop from an exhausted deque
-  leaves the register empty.  The truth machine never outputs an empty
-  register, so nothing else on the page constrains this.
-
-  This one is a genuine judgment call and could reasonably go the other
-  way.  The page is categorised Unimplemented, so its
-  diagrams were almost certainly never run, and a spurious trailing bit is
-  exactly the kind of edge case a hand-written example misses -- "the cat
-  is simply buggy, and the prose means what it says" is a defensible
-  reading.  What tipped it here is that the two are not symmetric: under
-  "empty is zero" *every* terminating run of the cat emits the extra bit,
-  since its read loop can only end by popping an exhausted deque, so the
-  example would not be slightly wrong but categorically not a cat.  The
-  page asserts both things and no implementation satisfies both, so
-  something on it is wrong either way.  Reverting is small and local:
-  print ``"0"`` for an empty register in :meth:`_Machine._execute` and
-  update ``test_no_trailing_zero_from_the_empty_register``.
+* **An empty register outputs zero, as the command table specifies.**
+  The wiki's cat reaches output after popping an exhausted deque, so it
+  appends a spurious zero (``101`` in, ``1010`` out). The explicit rule
+  takes precedence over that faulty example. Pushing an empty register
+  remains a no-op because deques hold bits, not empty values.
 
 * **Pointers run in lock-step, round-robin, in creation order.**  The
   spec fixes the starting order (top-most, left-most) and says pointers
@@ -128,10 +108,9 @@ a node off its middle, no ``( )`` to start from, or a non-end node with no
 onward path) raise :class:`ValueError`.
 
 At EOF a ``/ /`` read leaves the register **empty** rather than raising,
-which is the same state ``{ }`` clears it to.  The nodes that consume the
-register -- printing it, or pushing it onto a deque -- skip a turn while it
-is empty, so a program that reads past the end of its input keeps running
-and simply stops emitting.  No :class:`HaltError` is raised at EOF.
+which is the same state ``{ }`` clears it to. Output prints zero for that
+state; pushes onto a deque skip it. A program reading past EOF keeps running
+without a :class:`HaltError`.
 
 External bits are consecutive 0 or 1 characters, ignoring whitespace; the spec
 does not define stdin framing.
@@ -802,8 +781,7 @@ class _Machine:
         elif spelling == "/ /":
             reg = self._read_bit()
         elif spelling == "\\ \\":
-            if reg is not None:
-                self.io.print_str(str(reg))
+            self.io.print_str(str(0 if reg is None else reg))
         elif spelling == "\\[ ]/":
             if reg is not None:
                 self._deque(p).append(reg)
