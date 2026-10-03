@@ -11,6 +11,7 @@ left-clamped pointer and EOFError on exhausted character input.
 from esolangs._drive import drive
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.source_hints import syntax_error
 from esolangs.interpreters.tape_based.brainfuck import _Machine as _BFMachine
 
 type _State = _BFMachine
@@ -23,12 +24,21 @@ def decode(code: str) -> str:
         if char == "0":
             count += 1
         elif not char.isspace():
-            raise ValueError("Unary source must contain only zeros and whitespace")
+            raise syntax_error(
+                "Unary source must contain only zeros and whitespace",
+                "write only 0 characters, with optional whitespace",
+            )
     if not count:
         return ""
     bits = count.bit_length() - 1
     if bits % 3:
-        raise ValueError("Unary encoding has an incomplete 3-bit command")
+        raise syntax_error(
+            "Unary encoding has an incomplete 3-bit command",
+            (
+                "choose a zero count whose binary encoding after the "
+                "leading 1 contains complete three-bit commands"
+            ),
+        )
     return "".join(
         "><+-.,[]"[(count >> shift) & 7] for shift in range(bits - 3, -1, -3)
     )

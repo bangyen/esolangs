@@ -19,6 +19,7 @@ from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.interpreters.randomness import FirstDraw, Randomness, draw
+from esolangs.interpreters.source_hints import syntax_error
 
 type Number = int | float
 type _State = tuple[object, ...]
@@ -44,7 +45,10 @@ class _Machine:
         self, code: Sequence[str], io: IO, rng: Randomness | None = None
     ) -> None:
         if not code or not (width := max(map(len, code), default=0)):
-            raise ValueError("Fish program cannot be empty")
+            raise syntax_error(
+                "Fish program cannot be empty",
+                "provide a nonempty grid; ; halts immediately",
+            )
         self.code = code
         self.io = io
         self._rng = rng

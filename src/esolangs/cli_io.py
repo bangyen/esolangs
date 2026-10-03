@@ -90,7 +90,7 @@ def _read_program(path: str, timeout: float | None = None, *, language: str) -> 
     try:
         return _read_source(language, _FileSource(path, content))
     except EsolangError as exc:
-        _fail(str(exc))
+        _fail(exc)
         raise  # pragma: no cover - _fail exits
 
 

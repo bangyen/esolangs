@@ -10,6 +10,7 @@ from tests.interpreters.contract import (
     StateViewContract,
 )
 from tests.interpreters.runner import run_program
+from tests.raises import raises_message
 
 
 def run_and_capture(code: list[str], inputs: list[str] | None = None) -> str:
@@ -147,9 +148,8 @@ class TestBrainIfGeneratedHelloWorld:
         The message is matched in full, and with its casing: a loose
         substring lets the wording drift without any test objecting.
         """
-        import pytest
 
-        with pytest.raises(ValueError, match=r"^malformed BrainIf line: if$"):
+        with raises_message(ValueError, "malformed BrainIf line: if"):
             run_and_capture(["if"])
 
     def test_a_value_with_no_command_is_well_formed(self) -> None:
@@ -163,9 +163,8 @@ class TestBrainIfGeneratedHelloWorld:
 
     def test_goto_missing_target_rejected(self) -> None:
         """A goto without a target line is malformed."""
-        import pytest
 
-        with pytest.raises(ValueError, match=r"^goto requires a target line$"):
+        with raises_message(ValueError, "goto requires a target line"):
             run_and_capture(["if 0 goto"])
 
 

@@ -43,6 +43,7 @@ from esolangs._drive import drive
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.source_hints import syntax_error
 
 _LETTERS = "abcdefghijklmnopqrstuvwxyz"
 _VARS = len(_LETTERS)
@@ -119,9 +120,10 @@ def _closers(code: str) -> dict[int, int]:
         char = code[index]
         if char == "'":
             if index + 1 >= len(code):
-                raise ValueError(
+                raise syntax_error(
                     "a FALSE source cannot end in a quote, which takes the "
-                    "character after it"
+                    "character after it",
+                    "follow ' with the literal character, for example 'A",
                 )
             index += 2
             continue
@@ -129,18 +131,29 @@ def _closers(code: str) -> dict[int, int]:
             closer = "}" if char == "{" else '"'
             found = code.find(closer, index + 1)
             if found < 0:
-                raise ValueError(f"unterminated {char!r} in a FALSE program")
+                raise syntax_error(
+                    f"unterminated {char!r} in a FALSE program",
+                    (
+                        "close the quoted string or brace comment with its matching "
+                        "delimiter"
+                    ),
+                )
             index = found + 1
             continue
         if char == "[":
             open_indices.append(index)
         elif char == "]":
             if not open_indices:
-                raise ValueError("a FALSE ']' closes a '[' that is not there")
+                raise syntax_error(
+                    "a FALSE ']' closes a '[' that is not there",
+                    "put [ before this ] to open a lambda",
+                )
             pairs[open_indices.pop()] = index
         index += 1
     if open_indices:
-        raise ValueError("unterminated '[' in a FALSE program")
+        raise syntax_error(
+            "unterminated '[' in a FALSE program", "close the lambda with ]"
+        )
     return pairs
 
 

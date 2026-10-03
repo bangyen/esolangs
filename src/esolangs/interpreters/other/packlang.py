@@ -94,6 +94,7 @@ from esolangs._drive import drive
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.source_hints import keyword_hint, syntax_error
 
 # There is no recursion ceiling.  A call pushes a frame rather than
 # recursing natively, so a runaway program grows the frame list on the
@@ -260,7 +261,14 @@ def _tokenize(code: str) -> list[str]:
     """
     tokens = _TOKEN.findall(code)
     if "".join(tokens) != "".join(code.split()):
-        raise ValueError("program contains characters that are not Packlang tokens")
+        raise syntax_error(
+            "program contains characters that are not Packlang tokens",
+            (
+                "use identifiers, decimal numbers and {}();:,^! "
+                "punctuation; place comments in the supported comment "
+                "syntax"
+            ),
+        )
     return tokens
 
 
@@ -281,14 +289,23 @@ class _Parser:
     def next_token(self) -> str:
         word = self.peek()
         if word is None:
-            raise ValueError("unexpected end of program")
+            raise syntax_error(
+                "unexpected end of program",
+                "complete the declaration or statement and close its delimiters",
+            )
         self.pos += 1
         return word
 
     def expect(self, word: str) -> None:
         got = self.next_token()
         if got != word:
-            raise ValueError(f"expected {word!r}, got {got!r}")
+            raise syntax_error(
+                f"expected {word!r}, got {got!r}",
+                (
+                    "put the expected token at this position; Packlang keywords "
+                    "are case-sensitive"
+                ),
+            )
 
     def parse_type(self) -> _Type:
         """Parse a datatype, including its parenthesized parameters."""
@@ -305,7 +322,10 @@ class _Parser:
             length = self.number()
             self.expect(")")
             if length < 0:  # pragma: no cover - `number` requires isdigit
-                raise ValueError("array length must not be negative")
+                raise syntax_error(
+                    "array length must not be negative",
+                    "use an array length of zero or greater",
+                )
             return _Type(inner.low, inner.high, inner.under, inner.over, length)
         if name == "Pointer":
             self.expect("(")
@@ -319,7 +339,14 @@ class _Parser:
             # String is a byte sequence; with no literal syntax for one on
             # the wiki, it is an array whose length a declaration fixes.
             return _Type() if name != "String" else _Type(length=0)
-        raise ValueError(f"unknown datatype {name!r}")
+        raise syntax_error(
+            f"unknown datatype {name!r}",
+            keyword_hint(
+                name,
+                ("Integer", "Char", "String", "Array", "Pointer"),
+                "use Integer, Char, String, Array(type, length) or Pointer(type)",
+            ),
+        )
 
     def commas(self, count: int) -> range:
         """Yield ``count`` slots, consuming the commas between them."""
@@ -331,7 +358,10 @@ class _Parser:
         if word == ",":
             word = self.next_token()
         if not word.isdigit():
-            raise ValueError(f"expected a number, got {word!r}")
+            raise syntax_error(
+                f"expected a number, got {word!r}",
+                "write a nonnegative decimal integer",
+            )
         return int(word)
 
     def expression(self) -> tuple[object, ...]:
@@ -357,7 +387,10 @@ class _Parser:
         if word.isdigit():
             return ("lit", int(word))
         if not word[:1].isalpha() and word[:1] != "_":
-            raise ValueError(f"unexpected token {word!r} in an expression")
+            raise syntax_error(
+                f"unexpected token {word!r} in an expression",
+                "use a decimal number, variable, call or ! expression",
+            )
         if self.peek() == "(":
             self.next_token()
             # ``myArray(length)`` is spelled exactly like that on the wiki,
@@ -382,7 +415,10 @@ class _Parser:
         """Parse a target: a name, optionally with an index."""
         name = self.next_token()
         if not (name[:1].isalpha() or name[:1] == "_"):
-            raise ValueError(f"expected a variable name, got {name!r}")
+            raise syntax_error(
+                f"expected a variable name, got {name!r}",
+                "use an identifier starting with a letter or underscore",
+            )
         index = None
         if self.peek() == "(":
             self.next_token()
@@ -395,7 +431,9 @@ class _Parser:
         self.expect("{")
         while self.peek() != "}":
             if self.peek() is None:
-                raise ValueError("unbalanced '{' in program")
+                raise syntax_error(
+                    "unbalanced '{' in program", "close the statement block with }"
+                )
             self.statement(out, local_types)
         self.next_token()
 
@@ -448,12 +486,18 @@ class _Parser:
                 raise AssertionError("isinstance(args, tuple)")
             if expr[1] == "charPut":
                 if len(args) != 1:
-                    raise ValueError("charPut takes exactly one argument")
+                    raise syntax_error(
+                        "charPut takes exactly one argument",
+                        "pass one value to charPut, for example charPut(65)",
+                    )
                 out.append([_PRINT, args[0]])
                 return
             target = args[0] if len(args) == 1 else None
             if not isinstance(target, tuple) or target[0] not in ("var", "apply"):
-                raise ValueError("charGet takes exactly one variable")
+                raise syntax_error(
+                    "charGet takes exactly one variable",
+                    "pass one variable to charGet, for example charGet(c)",
+                )
             name = str(target[1])
             # ``charGet(a(i))`` reads into an array element; the index is
             # the sole argument of the "apply" the parser built for it.
@@ -509,14 +553,20 @@ def _parse(code: str) -> _Program:
     """Parse a whole program into its packages and functions."""
     tokens = _tokenize(_strip_comments(code))
     if not tokens:
-        raise ValueError("empty program")
+        raise syntax_error(
+            "empty program",
+            "provide a Package containing a parameterless entry function",
+        )
     parser = _Parser(tokens)
     program = _Program()
     order: list[str] = []
     while parser.peek() is not None:
         kind = parser.next_token()
         if kind not in ("Package", "Dependency"):
-            raise ValueError(f"expected a Package or Dependency, got {kind!r}")
+            raise syntax_error(
+                f"expected a Package or Dependency, got {kind!r}",
+                "start the declaration with Package or Dependency",
+            )
         deps = []
         if parser.peek() == ":":
             parser.next_token()
@@ -529,7 +579,10 @@ def _parse(code: str) -> _Program:
         globals_here: dict[str, _Type] = {}
         while parser.peek() != "}":
             if parser.peek() is None:
-                raise ValueError("unbalanced '{' in package body")
+                raise syntax_error(
+                    "unbalanced '{' in package body",
+                    "close the package body with } before its package name and ;",
+                )
             _member(parser, members, globals_here)
         parser.next_token()
         package = parser.next_token()
@@ -614,7 +667,13 @@ def _entry(program: _Program, order: list[str]) -> _Function:
             return candidates[0]
     # A parameterless function anywhere, as the last resort: PlusOrMinus's
     # own function takes a parameter, so such a program has no entry.
-    raise ValueError("program has no parameterless entry function")
+    raise syntax_error(
+        "program has no parameterless entry function",
+        (
+            "define a parameterless main function or a sole "
+            "parameterless function in the last package"
+        ),
+    )
 
 
 def _get(store: _Store, name: str) -> object:

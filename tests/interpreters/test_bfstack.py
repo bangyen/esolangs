@@ -10,6 +10,7 @@ from tests.interpreters.contract import (
     StateViewContract,
 )
 from tests.interpreters.runner import run_program
+from tests.raises import raises_message
 
 
 def run_and_capture(code: str, inputs: list[str] | None = None) -> str:
@@ -85,7 +86,7 @@ class TestBFStack:
         ``unmatched``, which any rewording keeping that one word would
         still satisfy.
         """
-        with pytest.raises(ValueError, match=r"^unmatched '\['$"):
+        with raises_message(ValueError, "unmatched '['"):
             run_and_capture(">[")
 
     def test_output_on_empty_stack_raises(self) -> None:
@@ -207,7 +208,7 @@ class TestStepMachine:
 
         machine = _Machine(">[", ScriptedIO())
         machine.step()  # > pushes 0
-        with pytest.raises(ValueError, match=r"^unmatched '\['$"):
+        with raises_message(ValueError, "unmatched '['"):
             machine.step()  # [ scans for a partner and runs off the end
         assert machine.halted
         assert machine.ind == 2

@@ -10,6 +10,7 @@ from tests.interpreters.contract import (
     StateViewContract,
 )
 from tests.interpreters.runner import run_program
+from tests.raises import raises_message
 
 
 def run_and_capture(code: list[str], inputs: list[str] | None = None) -> str:
@@ -76,7 +77,7 @@ class TestClockwise:
         assert run_and_capture(["  !", "R R"]) == ""
 
     def test_unclosed_ring_rejected(self) -> None:
-        with pytest.raises(ValueError, match=r"^Clockwise ring is not closed$"):
+        with raises_message(ValueError, "Clockwise ring is not closed"):
             run_and_capture(["+;S"])
 
     def test_leaving_the_grid_is_rejected_rather_than_turned(self) -> None:
@@ -86,7 +87,7 @@ class TestClockwise:
         at that edge leaves the grid as well.  Here a clockwise turn would
         land on row 1 and close the ring, and the pointer walks off anyway.
         """
-        with pytest.raises(ValueError, match=r"^Clockwise ring is not closed$"):
+        with raises_message(ValueError, "Clockwise ring is not closed"):
             run_and_capture(["  ?", "R  "])
 
 
@@ -135,7 +136,7 @@ class TestMove:
 
         grid = ["  R", "R R"]
         for row, col in ((2, 0), (-1, 0), (0, 3), (0, -1)):
-            with pytest.raises(ValueError, match=r"^Clockwise ring is not closed$"):
+            with raises_message(ValueError, "Clockwise ring is not closed"):
                 move(row, col, 0, grid, 0)
 
     def test_the_pointer_reports_when_it_is_back_at_the_origin(self) -> None:
@@ -165,7 +166,7 @@ class TestMove:
         grid = ["RR", "RR"]
         assert move(0, 1, 1, grid, 0)[:3] == (0, 0, 2)
         assert move(1, 0, 2, grid, 0)[:3] == (0, 0, 3)
-        with pytest.raises(ValueError, match=r"^Clockwise ring is not closed$"):
+        with raises_message(ValueError, "Clockwise ring is not closed"):
             move(0, -1, 3, grid, 0)
 
     def test_a_question_turns_once_when_nonzero(self) -> None:

@@ -21,6 +21,7 @@ from esolangs._drive import drive
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.source_hints import syntax_error
 
 # Finite by specification: the wiki defines pointer overflow as moving "to
 # the opposite end of memory" and says "the memory space needs to be static".
@@ -93,7 +94,10 @@ class _Machine:
         """Start with a cleared tape of ``tape`` cells at the origin."""
         code = code.replace("\n", "")
         if tape < 1:
-            raise ValueError(f"the NoComment tape needs at least one cell, got {tape}")
+            raise syntax_error(
+                f"the NoComment tape needs at least one cell, got {tape}",
+                "choose a tape size of at least 1",
+            )
         self.io = io
         self.code = code
         self.size = tape
@@ -175,7 +179,13 @@ class _Machine:
         elif char == "o":
             self.io.print_char(chr(acc))
         elif char not in "idclrnfsb":
-            raise ValueError(f"unrecognized NoComment command {char!r}")
+            raise syntax_error(
+                f"unrecognized NoComment command {char!r}",
+                (
+                    "use only i/d/c/l/r/n/f/s/b/o commands; LF is allowed but "
+                    "spaces and tabs are not"
+                ),
+            )
         self.state = _advance(self.state, self.code, self.size)
 
 

@@ -12,6 +12,7 @@ from esolangs._input import check_input as check_input
 from esolangs._input import read_input as read_input
 from esolangs._program import Program
 from esolangs.exceptions import ArgumentError, ProgramError, ProgramNotFoundError
+from esolangs.interpreters.source_hints import syntax_error
 from esolangs.raster import Raster
 
 type ProgramSource = Program | bytes | os.PathLike[str] | Reader
@@ -44,12 +45,22 @@ def _read_container(source: ProgramSource) -> tuple[Program | bytes, bool]:
             if isinstance(value, (str, bytes)):
                 return value, False
     except FileNotFoundError as exc:
-        raise ProgramNotFoundError(f"cannot read {source!s}: {exc}") from exc
+        raise syntax_error(
+            f"cannot read {source!s}: {exc}",
+            "check that the source path exists and names the intended program file",
+            error_type=ProgramNotFoundError,
+        ) from exc
     except (OSError, TypeError, ValueError) as exc:
-        raise ProgramError(f"cannot read {source!s}: {exc}") from exc
-    raise ProgramError(
+        raise syntax_error(
+            f"cannot read {source!s}: {exc}",
+            "check that the program file or stream is readable",
+            error_type=ProgramError,
+        ) from exc
+    raise syntax_error(
         "program must be a string of source, bytes, a Raster, a Path, "
-        f"or a readable stream, got {type(source).__name__}"
+        f"or a readable stream, got {type(source).__name__}",
+        "pass source text or bytes; use pathlib.Path for a program filename",
+        error_type=ProgramError,
     )
 
 
@@ -60,12 +71,16 @@ def text_source(source: ProgramSource) -> str:
         try:
             value = value.decode("utf-8")
         except UnicodeDecodeError as exc:
-            raise ProgramError(
-                f"cannot read {source!s}: not text (invalid UTF-8 at byte {exc.start})"
+            raise syntax_error(
+                f"cannot read {source!s}: not text (invalid UTF-8 at byte {exc.start})",
+                "save the text program as UTF-8 before running it",
+                error_type=ProgramError,
             ) from exc
     if not isinstance(value, str):
-        raise ProgramError(
-            f"program must be a string of source or a Path, got {type(value).__name__}"
+        raise syntax_error(
+            f"program must be a string of source or a Path, got {type(value).__name__}",
+            "pass text source or UTF-8 bytes; use pathlib.Path for a text filename",
+            error_type=ProgramError,
         )
     return (
         value.replace("\r\n", "\n").replace("\r", "\n").removesuffix("\n")
@@ -80,8 +95,10 @@ def raster_source(source: ProgramSource) -> Raster:
     if isinstance(value, bytes):
         return Raster.from_png(value)
     if not isinstance(value, Raster):
-        raise ProgramError(
-            f"program must be a Raster or a Path, got {type(value).__name__}"
+        raise syntax_error(
+            f"program must be a Raster or a Path, got {type(value).__name__}",
+            "pass a Raster or PNG bytes; use pathlib.Path for a PNG filename",
+            error_type=ProgramError,
         )
     return value
 

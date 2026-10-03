@@ -5,6 +5,7 @@ from contextlib import redirect_stdout
 
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.tape_based.suffolk import run
+from tests.raises import raises_message
 
 
 def run_and_capture(code: str) -> str:
@@ -80,9 +81,8 @@ class TestSuffolk:
         is a substring search, so the wording could drift to anything that
         still contains the word and no test would say so.
         """
-        import pytest
 
-        with pytest.raises(ValueError, match=r"^Suffolk program cannot be empty$"):
+        with raises_message(ValueError, "Suffolk program cannot be empty"):
             run("", IO())
 
     def test_a_repeated_state_ends_the_run(self) -> None:

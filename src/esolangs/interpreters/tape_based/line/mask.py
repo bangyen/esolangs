@@ -26,6 +26,8 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 
+from esolangs.interpreters.source_hints import syntax_error
+
 
 class Mask:
     """A 2-D boolean image, one row bitmask per scanline."""
@@ -80,7 +82,10 @@ class Mask:
 
     def _check(self, other: Mask) -> None:
         if self.shape != other.shape:
-            raise ValueError(f"mask shapes differ: {self.shape} vs {other.shape}")
+            raise syntax_error(
+                f"mask shapes differ: {self.shape} vs {other.shape}",
+                "use masks with identical height and width",
+            )
 
     def __and__(self, other: Mask) -> Mask:
         """Pixelwise AND with a same-shaped mask."""

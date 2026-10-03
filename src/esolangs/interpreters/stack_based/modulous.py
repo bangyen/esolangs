@@ -42,6 +42,7 @@ from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.randomness import Randomness, draw
+from esolangs.interpreters.source_hints import syntax_error
 
 #: A command is a bracketed group, which may hold one quoted string.
 _TOKEN = re.compile(r'\[([^\[\]\"]*("[^"]*")?)]')
@@ -67,9 +68,13 @@ def _reject_stray_text(code: str) -> None:
     if tail := code[end:].strip():
         stray.append(tail)
     if stray:
-        raise ValueError(
+        raise syntax_error(
             f"{stray[0]!r} is outside any [command]; Modulous reads only "
-            f"bracketed commands, so this would have been dropped silently"
+            f"bracketed commands, so this would have been dropped silently",
+            (
+                "enclose each command in balanced square brackets; for "
+                "example [PSH INT 1]"
+            ),
         )
 
 
@@ -320,10 +325,11 @@ def _reject_unknown(mod: str, command: str) -> Never:
     """Reject a token neither dispatch nor variable arithmetic understands."""
     close = get_close_matches(command, sorted(_DISPATCH), n=2, cutoff=0.65)
     hint = f"; did you mean {close[0]}?" if len(close) == 1 else ""
-    raise ValueError(
+    raise syntax_error(
         f"[{mod}] is not a Modulous command: {command!r} is not one of "
         f"{', '.join(sorted(_DISPATCH))}, and a bare VARn+k or VARn-k "
-        f"is the only other thing a command can be{hint}"
+        f"is the only other thing a command can be{hint}",
+        "use a listed command keyword, with spaces before its operands",
     )
 
 
@@ -344,7 +350,13 @@ def _top(stk: tuple[int, ...]) -> int:
 def _operand(arg: list[str], n: int) -> str:
     """Return the ``n``-th token of a command, rejecting a missing operand."""
     if n >= len(arg):
-        raise ValueError(f"missing operand in {' '.join(arg)}")
+        raise syntax_error(
+            f"missing operand in {' '.join(arg)}",
+            (
+                "supply the required operand; for example [PSH INT 1], [ADD "
+                "1] or [JMP F 1]"
+            ),
+        )
     return arg[n]
 
 
@@ -405,8 +417,9 @@ def _psh(core: _Core, mod: str, arg: list[str], _value: str | int | None) -> _Co
         if len(parts) < 3:
             # ``[PSH STR hello]`` has no quoted section, so ``split`` had no
             # second element and the raw IndexError escaped ``run``.
-            raise ValueError(
-                f'missing quoted string in {" ".join(arg)}; expected [PSH STR "text"]'
+            raise syntax_error(
+                f'missing quoted string in {" ".join(arg)}; expected [PSH STR "text"]',
+                ('enclose the string in double quotes, for example [PSH STR "text"]'),
             )
         m = parts[1]
         return ((*stk, *[ord(c) for c in m][::-1]), var, ind)

@@ -74,45 +74,15 @@ from typing import Final, Literal, cast
 
 from esolangs._drive import drive
 from esolangs.interpreters._entry import script_main
+from esolangs.interpreters.grid_based._circuit_definitions import split_definitions
+from esolangs.interpreters.grid_based._circuit_diagram_hints import Hint
 from esolangs.interpreters.io import IO, ScriptedIO
 
 type _Definitions = dict[str, tuple[str, ...]]
 
-_DEFINITION_HEADER = re.compile(r"\s*\{([A-Za-z]+|[<>%])\s*")
-
 
 def _split_definitions(code: list[str]) -> tuple[list[str], _Definitions]:
-    """Return the main grid and the named function bodies declared around it."""
-    main: list[str] = []
-    definitions: _Definitions = {}
-    position = 0
-    while position < len(code):
-        line = code[position].rstrip("\n")
-        header = _DEFINITION_HEADER.fullmatch(line)
-        if header is None:
-            if line.strip() == "}":
-                raise ValueError(
-                    f"unmatched function terminator at line {position + 1}"
-                )
-            main.append(code[position])
-            position += 1
-            continue
-        name = header.group(1)
-        body: list[str] = []
-        position += 1
-        while position < len(code) and code[position].strip() != "}":
-            body.append(code[position])
-            position += 1
-        if position == len(code):
-            raise ValueError(f"unterminated function {name!r}")
-        if name in definitions:
-            raise ValueError(f"duplicate function {name!r}")
-        if name in (_GATES | frozenset((_CLOCK,))):
-            raise ValueError(f"function name {name!r} is reserved")
-        if name not in (_SPLIT, _COMBINE, _REMOVE):
-            definitions[name] = tuple(body)
-        position += 1
-    return main, definitions
+    return split_definitions(code, _GATES | {_CLOCK}, (_SPLIT, _COMBINE, _REMOVE))
 
 
 # Wire characters, and the directions each one accepts a connection from.
@@ -378,10 +348,10 @@ class _Parser:
             col = min(line.index(char) for char in unknown)
             char = line[col]
             if char in _OUT_OF_SCOPE:
-                raise ValueError(
+                raise Hint.SUPPORTED_GATES.error(
                     f"{_OUT_OF_SCOPE[char]} is out of scope: {char!r} at ({col}, {row})"
                 )
-            raise ValueError(f"unknown character {char!r} at ({col}, {row})")
+            raise Hint.SYMBOL.error(f"unknown character {char!r} at ({col}, {row})")
 
         for row, line in enumerate(self.grid.rows):
             for match in _LABEL_NAME.finditer(line):
@@ -405,7 +375,7 @@ class _Parser:
                     and self.grid.at(row, expression.end()) in _WIRES
                 ):
                     continue
-                raise ValueError(
+                raise Hint.FUNCTION_OR_WIDTH.error(
                     f"unknown function or wire label {text!r} "
                     f"at ({match.start()}, {row})"
                 )
@@ -459,13 +429,13 @@ class _Parser:
                     continue
                 if self.grid.at(row, start - 1) not in _WIRES:
                     if text[0].isdigit():
-                        raise ValueError(
+                        raise Hint.WIRE_LABEL.error(
                             f"wire label at ({start}, {row}) annotates no wire"
                         )
                     continue  # pragma: no cover - validation rejects this label
                 if self.grid.at(row, col) not in _WIRES:
                     if text[0].isdigit():
-                        raise ValueError(
+                        raise Hint.WIRE_LABEL.error(
                             f"wire label at ({start}, {row}) annotates no wire"
                         )
                     continue  # pragma: no cover - validation rejects this label
@@ -478,7 +448,7 @@ class _Parser:
                     else None
                 )
                 if width is not None and width < 1:
-                    raise ValueError(
+                    raise Hint.POSITIVE_WIDTH.error(
                         f"wire label {text!r} at ({start}, {row}) must be positive"
                     )
                 merged = self._apply_label(start, col, row, width)
@@ -497,14 +467,16 @@ class _Parser:
             if wiring is not None and wiring not in flanking:  # pragma: no branch
                 flanking.append(wiring)
         if not flanking:  # pragma: no cover - both flanks were checked above
-            raise ValueError(f"wire label at ({start}, {row}) annotates no wire")
+            raise Hint.WIRE_LABEL.error(
+                f"wire label at ({start}, {row}) annotates no wire"
+            )
 
         merged = _Wiring(frozenset().union(*(w.cells for w in flanking)))
         merged.width = width if width is not None else flanking[0].width
         merged.labelled = width is not None or any(w.labelled for w in flanking)
         for wiring in flanking:
             if width is not None and wiring.labelled and wiring.width != width:
-                raise ValueError(
+                raise Hint.WIRE_WIDTH.error(
                     f"inconsistent wire labels at ({start}, {row}): "
                     f"{wiring.width} and {width}"
                 )
@@ -620,7 +592,7 @@ class _Parser:
                     [] if char in (_ZERO, _ONE, _CLOCK) else self._ports(row, col, -1)
                 )
                 if char == _OUTPUT and self.grid.at(row, col - 1) != "-":
-                    raise ValueError(
+                    raise Hint.OUTPUT_WIRE.error(
                         f"':' at ({col}, {row}) requires '-' directly to its left"
                     )
                 if char == "~" and len(incoming) > 1:
@@ -648,7 +620,7 @@ class _Parser:
         else:
             wanted_in = 2
         if len(gate.inputs) != wanted_in:
-            raise ValueError(
+            raise Hint.INPUT_PORTS.error(
                 f"{gate.kind!r} at ({gate.col}, {gate.row}) takes {wanted_in} "
                 f"input(s), found {len(gate.inputs)}"
             )
@@ -659,7 +631,7 @@ class _Parser:
             return
         wanted_out = 2 if gate.kind == _SPLIT else 1
         if len(gate.outputs) != wanted_out:
-            raise ValueError(
+            raise Hint.OUTPUT_PORTS.error(
                 f"{gate.kind!r} at ({gate.col}, {gate.row}) drives {wanted_out} "
                 f"output(s), found {len(gate.outputs)}"
             )
@@ -677,7 +649,7 @@ class _Parser:
                     if wiring.width == width:
                         continue
                     if wiring.labelled:
-                        raise ValueError(
+                        raise Hint.GATE_WIDTH.error(
                             f"{gate.kind!r} at ({gate.col}, {gate.row}) implies "
                             f"{width} wire(s) for a wiring labelled "
                             f"{wiring.width}"
@@ -689,7 +661,7 @@ class _Parser:
         # Each pass fixes at least one wiring's width or stops, so the
         # fixpoint is reached within one pass per wiring; this catches a
         # flow that somehow cycles rather than letting it spin.
-        raise ValueError(  # pragma: no cover - the width flow always settles
+        raise Hint.SETTLED_WIDTHS.error(  # pragma: no cover - widths always settle
             "multi-wire widths do not settle"
         )
 
@@ -709,7 +681,7 @@ class _Parser:
             fixed = {w.width for w in wirings if w.labelled}
             if len(fixed) > 1:
                 width_text = ", ".join(str(width) for width in sorted(fixed))
-                raise ValueError(
+                raise Hint.SYMBOLIC_WIDTH.error(
                     f"wire label {name!r} has inconsistent widths: {width_text}"
                 )
             width = next(iter(fixed), max(w.width for w in wirings))
@@ -724,7 +696,7 @@ class _Parser:
                 term if isinstance(term, int) else widths[term] for term in terms
             )
             if wiring.labelled and wiring.width != width:
-                raise ValueError(
+                raise Hint.LABEL_WIDTH.error(
                     f"symbolic wire label implies {width} wire(s) for a wiring "
                     f"labelled {wiring.width}"
                 )
@@ -756,7 +728,7 @@ class _Parser:
         if gate.kind == _REMOVE:
             total = gate.inputs[1].width - gate.inputs[0].width
             if total < 1:
-                raise ValueError(
+                raise Hint.OUTPUT_SLICE.error(
                     f"'%' at ({gate.col}, {gate.row}) removes every output wire"
                 )
             return [(gate.outputs[0], total)]
@@ -850,11 +822,13 @@ def _evaluate_function(
 ) -> tuple[int, ...]:
     """Evaluate one custom gate atomically for ``inputs``."""
     if gate.body is None:  # pragma: no cover - callers select custom gates
-        raise ValueError(f"{gate.kind!r} has no function body")
+        raise Hint.FUNCTION_BODY.error(f"{gate.kind!r} has no function body")
     bindings: dict[str, int] = {}
     input_rows = [line for line in gate.body if line.lstrip().startswith("-")]
     if len(input_rows) != len(inputs):  # pragma: no cover - arity checked earlier
-        raise ValueError(f"function {gate.kind!r} input count changed while running")
+        raise Hint.FUNCTION_ARITY.error(
+            f"function {gate.kind!r} input count changed while running"
+        )
     for line, value in zip(input_rows, inputs, strict=True):
         labels = [
             match
@@ -866,7 +840,7 @@ def _evaluate_function(
         ]
         if not labels:
             if len(value) != 1:
-                raise ValueError(
+                raise Hint.SINGLE_INPUT_WIRE.error(
                     f"function {gate.kind!r} expects a one-wire input, "
                     f"received {len(value)}"
                 )
@@ -875,19 +849,19 @@ def _evaluate_function(
         if all(term.isdigit() for term in terms):
             expected = sum(int(term) for term in terms)
             if expected != len(value):
-                raise ValueError(
+                raise Hint.INPUT_WIDTH.error(
                     f"function {gate.kind!r} expects {expected} input wires, "
                     f"received {len(value)}"
                 )
         elif len(terms) == 1 and terms[0].isalpha():
             old = bindings.setdefault(terms[0], len(value))
             if old != len(value):
-                raise ValueError(
+                raise Hint.BOUND_WIDTH.error(
                     f"function {gate.kind!r} binds {terms[0]!r} "
                     f"to both {old} and {len(value)}"
                 )
         else:
-            raise ValueError(
+            raise Hint.INPUT_LABEL.error(
                 f"function {gate.kind!r} input label must be a number or one name"
             )
 
@@ -923,7 +897,7 @@ def _evaluate_function(
     while not machine.halted:
         snapshot = machine.snapshot()
         if snapshot in seen:
-            raise ValueError(f"function {gate.kind!r} does not settle")
+            raise Hint.SETTLED_FUNCTION.error(f"function {gate.kind!r} does not settle")
         seen.add(snapshot)
         emitted.extend(
             _emitted((machine.values, machine.latches), machine.wirings, machine.gates)
@@ -931,7 +905,7 @@ def _evaluate_function(
         machine.step()
     output = "".join(emitted)
     if not output or set(output) - {"0", "1"}:
-        raise ValueError(f"function {gate.kind!r} did not return bits")
+        raise Hint.RETURN_BITS.error(f"function {gate.kind!r} did not return bits")
     return tuple(int(bit) for bit in output)
 
 

@@ -64,7 +64,13 @@ def test_loop_and_eof_rules() -> None:
 def test_input_cursor_is_in_snapshot() -> None:
     io = ScriptedIO("A")
     machine = _Machine(_source(",."), io)
+    assert machine.ptr == 0
+    assert machine.tape == (0,)
+    assert machine.input_position() == 0
     machine.step()
+    assert machine.ptr == 0
+    assert machine.tape == (65,)
+    assert machine.input_position() == 1
     assert machine.memory == [65]
     assert io.position() == 1
     assert machine.snapshot()[-1] == 1

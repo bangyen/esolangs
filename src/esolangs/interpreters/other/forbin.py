@@ -51,6 +51,7 @@ from esolangs._drive import drive
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.source_hints import syntax_error
 
 # The parse tree, as tuples discriminated by their first element.  Four
 # families, because the grammar has four: a value, a for-loop pattern, the
@@ -117,7 +118,13 @@ class _Parser:
         return self.t[self.i] if self.i < self.n else ""
 
     def _fail(self, msg: str) -> NoReturn:
-        raise ValueError(f"{msg} at position {self.i}")
+        raise syntax_error(
+            f"{msg} at position {self.i}",
+            (
+                "use bit literals 0/1, identifiers, and balanced call "
+                "parentheses or block braces at this position"
+            ),
+        )
 
     def _expect(self, ch: str) -> None:
         self._skip_ws()
@@ -725,7 +732,10 @@ class _Machine:
         self._length = len(code)
         self.globals = _Parser(code).parse()
         if "main" not in self.globals:
-            raise ValueError("Forbin program has no main function")
+            raise syntax_error(
+                "Forbin program has no main function",
+                "define a main function, for example main { return 0; }",
+            )
         reader = _BitReader(io)
         main_fn = self.globals["main"]
         main_frame = _Frame(main_fn, None)

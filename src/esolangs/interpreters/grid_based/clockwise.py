@@ -25,6 +25,7 @@ from esolangs._drive import drive
 from esolangs.exceptions import InputExhaustedError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.source_hints import syntax_error
 
 #: How many parity bits make one printed byte.
 _BYTE_BITS = 7
@@ -48,7 +49,13 @@ def move(
 ) -> tuple[int, int, int, str, int]:
     """Step the pointer one cell, returning position, direction, and the cell."""
     if not 0 <= row < len(code) or not 0 <= col < len(code[row]):
-        raise ValueError("Clockwise ring is not closed")
+        raise syntax_error(
+            "Clockwise ring is not closed",
+            (
+                "place R turns so the pointer stays within the grid and "
+                "returns to the origin"
+            ),
+        )
     o = code[row][col]
     c = (o == "R") or (o == "?" and acc != 0) or (o == "!" and acc == 0)
 
@@ -106,7 +113,10 @@ class _Machine:
     def __init__(self, code: list[str], io: IO) -> None:
         """Pad ``code`` and read the input bits up front, like :func:`run`."""
         if not code:
-            raise ValueError("Clockwise program cannot be empty")
+            raise syntax_error(
+                "Clockwise program cannot be empty",
+                "provide a nonempty ring of cells with R turns at its corners",
+            )
         self.io = io
         size = max(len(lne) for lne in code)
         self.code = tuple(c.ljust(size) for c in code)

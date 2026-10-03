@@ -42,6 +42,7 @@ from esolangs.interpreters.register_based.polynomial.roots import (
 from esolangs.interpreters.register_based.polynomial.roots import (
     prime as prime,
 )
+from esolangs.interpreters.source_hints import syntax_error
 
 
 def _bracket_pairs(string: list[list[int]]) -> dict[int, int]:
@@ -78,7 +79,9 @@ def brackets(string: list[list[int]], pointer: int) -> int:
     while count:
         pointer += direct
         if pointer < 0 or pointer >= len(string):
-            raise ValueError("unmatched control-flow bracket")
+            raise syntax_error(
+                "unmatched control-flow bracket", "balance the control-flow brackets"
+            )
         if len(string[pointer]) == 1:
             if string[pointer][0] in [2, 6]:
                 count -= 1
@@ -228,7 +231,10 @@ def _parse_program(code: str) -> tuple[tuple[int, ...], ...]:
     """
     cleaned_code = re.sub(r"[^\df(x)=+-^]", "", code)
     if cleaned_code[:5] != "f(x)=":
-        raise ValueError("Polynomial program must start with 'f(x) = '")
+        raise syntax_error(
+            "Polynomial program must start with 'f(x) = '",
+            "begin the source with f(x) = followed by the polynomial",
+        )
     _require_sympy()
     terms = sanitize_terms(cleaned_code)
     degree = max(terms, default=0)

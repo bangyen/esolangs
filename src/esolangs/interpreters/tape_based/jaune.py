@@ -39,6 +39,7 @@ from esolangs.interpreters.persistent import (
     length,
     put,
 )
+from esolangs.interpreters.source_hints import syntax_error
 
 # The two command shapes, kept apart by their operators.  Because no
 # operator appears in both, comparing ``cmd.op`` discriminates the union:
@@ -166,7 +167,10 @@ def _parse(code: str) -> list[_Command]:
                 i = j
         elif c in ":-?!$@":
             # a bare operator with no number: malformed
-            raise ValueError(f"command {c!r} requires a number")
+            raise syntax_error(
+                f"command {c!r} requires a number",
+                "put the required decimal number immediately after the command",
+            )
         else:
             i += 1  # ignore anything else
     return out

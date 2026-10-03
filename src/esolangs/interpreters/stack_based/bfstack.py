@@ -17,6 +17,7 @@ from esolangs._drive import drive
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.source_hints import syntax_error
 
 #: One instant of a run: ``(ind, stk, lst)`` -- the code cursor, the data
 #: stack, and the loop stack.  A value, not a record: every transition below
@@ -177,7 +178,7 @@ class _Machine:
             # caller that catches the error still sees that, so the cursor
             # is moved here rather than left where the scan began.
             self.state = (self.size, stk, lst)
-            raise ValueError("unmatched '['")
+            raise syntax_error("unmatched '['", "close the loop with ]")
         byte = None
         if char == ".":
             self.io.print_char(chr(stk[-1]))

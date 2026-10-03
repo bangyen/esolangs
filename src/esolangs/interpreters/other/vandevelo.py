@@ -23,6 +23,7 @@ from dataclasses import dataclass
 from esolangs._drive import drive
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.source_hints import syntax_error
 
 _NAME = re.compile(r"[A-Za-z0-9_&*$]+")
 _ASSIGN = re.compile(r"([A-Za-z0-9_&*$]+)\s*(~!>|~>|-!>|->)\s*(.+)")
@@ -51,7 +52,13 @@ def _expr(source: str) -> _Expr:
             left, right = source.split(operator, 1)
             return _Expr(kind, left=_expr(left), right=_expr(right))
     if not source.endswith("?") or not _NAME.fullmatch(source[:-1]):
-        raise ValueError(f"invalid expression: {source}")
+        raise syntax_error(
+            f"invalid expression: {source}",
+            (
+                "write a variable access as name?, optionally comparing two "
+                "accesses with == or !="
+            ),
+        )
     return _Expr("var", name=source[:-1])
 
 
@@ -146,12 +153,17 @@ def _advance(
         name = expression.name
         if name == "Inp":
             if input_value is None:
-                raise ValueError("input value required for 'Inp'")
+                raise syntax_error(
+                    "input value required for 'Inp'", "supply an input value for Inp"
+                )
             result = input_value
         else:
             stored = _stored(state.store, name)
             if stored is None:
-                raise ValueError(f"undefined variable: {name}")
+                raise syntax_error(
+                    f"undefined variable: {name}",
+                    "assign the variable before reading it with name?",
+                )
             if isinstance(stored, bool):
                 result = stored
             else:
@@ -165,7 +177,9 @@ def _advance(
     elif kind == "not":
         operand = expression.left
         if operand is None:
-            raise ValueError("negation has no operand")
+            raise syntax_error(
+                "negation has no operand", "put an expression after the negation"
+            )
         if stage == 0:
             return _State(
                 state.ind,
@@ -178,7 +192,10 @@ def _advance(
     elif stage == 0:
         operand = expression.left
         if operand is None:
-            raise ValueError("comparison has no left operand")
+            raise syntax_error(
+                "comparison has no left operand",
+                "put a variable access before == or !=",
+            )
         return _State(
             state.ind,
             state.part,
@@ -189,7 +206,10 @@ def _advance(
     elif stage == 1:
         operand = expression.right
         if operand is None:
-            raise ValueError("comparison has no right operand")
+            raise syntax_error(
+                "comparison has no right operand",
+                "put a variable access after == or !=",
+            )
         return _State(
             state.ind,
             state.part,

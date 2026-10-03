@@ -24,6 +24,7 @@ from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.memory import parse_int_memory as _parse
+from esolangs.interpreters.source_hints import syntax_error
 
 # The largest memory a run will grow.  Cell values are unbounded, but the
 # list backing them is not: past this the allocation is one no machine
@@ -88,22 +89,36 @@ def _macros(lines: list[list[str]]) -> tuple[dict[str, _Macro], list[list[str]]]
             at += 1
             continue
         if len(line) < 3 or "{" not in line:
-            raise ValueError("malformed AddSubJump macro definition")
+            raise syntax_error(
+                "malformed AddSubJump macro definition",
+                "write def <name> <parameters> { with the body on following lines",
+            )
         brace = line.index("{")
         if brace != len(line) - 1 or brace < 2:
-            raise ValueError("malformed AddSubJump macro definition")
+            raise syntax_error(
+                "malformed AddSubJump macro definition",
+                "put { last on the macro header line",
+            )
         name = line[1]
         body: list[tuple[str, ...]] = []
         at += 1
         while at < len(lines) and lines[at] != ["}"]:
             if "{" in lines[at] or "}" in lines[at]:
-                raise ValueError("nested AddSubJump macro definition")
+                raise syntax_error(
+                    "nested AddSubJump macro definition",
+                    "put macro definitions at the top level instead of nesting them",
+                )
             body.append(tuple(lines[at]))
             at += 1
         if at == len(lines):
-            raise ValueError(f"macro {name!r} is missing '}}'")
+            raise syntax_error(
+                f"macro {name!r} is missing '}}'",
+                "close the macro body with } on its own line",
+            )
         if name in macros:
-            raise ValueError(f"duplicate macro {name!r}")
+            raise syntax_error(
+                f"duplicate macro {name!r}", "give each macro a unique name"
+            )
         macros[name] = _Macro(tuple(line[2:brace]), tuple(body))
         at += 1
     return macros, program
@@ -142,12 +157,16 @@ def _expand(lines: list[list[str]], macros: dict[str, _Macro]) -> list[list[str]
             return [prefix + line]
         name = line[0]
         if name in active:
-            raise ValueError(f"recursive macro {name!r}")
+            raise syntax_error(
+                f"recursive macro {name!r}",
+                "remove recursive macro calls; expansion must terminate",
+            )
         macro = macros[name]
         args = line[1:]
         if len(args) != len(macro.params):
-            raise ValueError(
-                f"macro {name!r} takes {len(macro.params)} arguments, got {len(args)}"
+            raise syntax_error(
+                f"macro {name!r} takes {len(macro.params)} arguments, got {len(args)}",
+                "pass the number of operands declared by the macro parameters",
             )
         values = dict(zip(macro.params, args, strict=True))
         local = _defined_labels(macro.body) - set(macro.params)
@@ -185,7 +204,9 @@ def _split_labels(line: list[str]) -> tuple[list[str], list[str]]:
         if defining and ":" in token:
             name, value = token.split(":", 1)
             if not name:
-                raise ValueError("empty AddSubJump label")
+                raise syntax_error(
+                    "empty AddSubJump label", "put a name before : to define a label"
+                )
             labels.append(name)
             if value:
                 rest.append(value)
@@ -207,7 +228,10 @@ def _assembly(code: str) -> list[int]:
         definitions, tokens = _split_labels(line)
         for name in definitions:
             if name in labels:
-                raise ValueError(f"duplicate label {name!r}")
+                raise syntax_error(
+                    f"duplicate label {name!r}",
+                    "give each label a unique name distinct from built-in labels",
+                )
             labels[name] = address
         if not tokens:
             continue
@@ -220,17 +244,25 @@ def _assembly(code: str) -> list[int]:
                     continue
                 name, item = token.split(":", 1)
                 if not name:
-                    raise ValueError("empty AddSubJump label")
+                    raise syntax_error(
+                        "empty AddSubJump label",
+                        "put a name before : in the data declaration",
+                    )
                 if name in labels:
-                    raise ValueError(f"duplicate label {name!r}")
+                    raise syntax_error(
+                        f"duplicate label {name!r}",
+                        "give each data label a unique name",
+                    )
                 labels[name] = address + len(operands)
                 if item:
                     operands.append(item)
         else:
             operands = tokens[1:] if tokens[0].upper() == "ASJ" else tokens
             if len(operands) not in (2, 3, 4):
-                raise ValueError(
-                    f"AddSubJump instruction needs 2 to 4 operands, got {len(operands)}"
+                raise syntax_error(
+                    "AddSubJump instruction needs 2 to 4 operands, "
+                    f"got {len(operands)}",
+                    ("write ASJ with 2 to 4 address operands"),
                 )
         parsed.append((address, data, operands))
         address += len(operands) if data else 4
@@ -243,13 +275,21 @@ def _assembly(code: str) -> list[int]:
         except ValueError:
             pass
         if not _LABEL.fullmatch(token):
-            raise ValueError(f"invalid AddSubJump operand {token!r}")
+            raise syntax_error(
+                f"invalid AddSubJump operand {token!r}",
+                (
+                    "use an integer, ?, or a label with an optional signed "
+                    "decimal offset"
+                ),
+            )
         match = re.fullmatch(r"(.+?)([+-]\d+)?", token)
         if match is None:  # pragma: no cover - _LABEL accepted the same grammar
             raise AssertionError("label grammar disagrees with its parser")
         name, offset = match.groups()
         if name not in labels:
-            raise ValueError(f"undefined label {name!r}")
+            raise syntax_error(
+                f"undefined label {name!r}", "define the label before using its address"
+            )
         return labels[name] + (int(offset) if offset else 0)
 
     memory: list[int] = []

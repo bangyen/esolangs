@@ -221,7 +221,7 @@ def _describe(rest: list[str]) -> None:
     try:
         facts = describe(rest[0])
     except EsolangError as exc:
-        _fail(str(exc))
+        _fail(exc)
         raise  # pragma: no cover - unreachable; _fail exits
     if as_spec:
         print(json.dumps(facts, indent=2) if as_json else facts["spec"])
@@ -278,14 +278,14 @@ def _check_stdin(rest: list[str]) -> None:
     try:
         facts = describe(language)
     except EsolangError as exc:
-        _fail(str(exc))
+        _fail(exc)
         raise  # pragma: no cover - unreachable; _fail exits
     stdin = _read_stdin(hint="; pipe the input in, or close stdin")
     table = options.get("--table")
     try:
         check_stdin(str(facts["name"]), stdin, table)
     except EsolangError as exc:
-        _fail(str(exc))
+        _fail(exc)
 
 
 def _read_answer(rest: list[str]) -> None:
@@ -296,7 +296,7 @@ def _read_answer(rest: list[str]) -> None:
     try:
         facts = describe(language)
     except EsolangError as exc:
-        _fail(str(exc))
+        _fail(exc)
         raise  # pragma: no cover - unreachable; _fail exits
     if facts["answer_mode"] == "termination":
         polarity = facts["answer_encoding"]
@@ -316,7 +316,7 @@ def _read_answer(rest: list[str]) -> None:
     try:
         print(read_answer(language, output))
     except EsolangError as exc:
-        _fail(str(exc))
+        _fail(exc)
 
 
 def main() -> None:

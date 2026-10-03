@@ -24,6 +24,7 @@ from esolangs._drive import drive
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.source_hints import syntax_error
 
 #: One instant of a run: ``(ind, ptr, cells, done)`` -- the code cursor, the
 #: data pointer, the tape, and whether ``@`` has halted the run.
@@ -62,7 +63,10 @@ def parse(code: str) -> list[int]:
             continue
         ind += 1
         if ind >= len(code):
-            raise ValueError("invalid Circlefuck escape")
+            raise syntax_error(
+                "invalid Circlefuck escape",
+                "follow the backslash with an escape such as n, space or x41",
+            )
         tail = code[ind:]
         if tail.startswith("space"):
             cells.append(32)
@@ -79,7 +83,10 @@ def parse(code: str) -> list[int]:
         elif code[ind] == "o":
             digits = code[ind + 1 : ind + 4]
             if len(digits) != 3 or any(d not in "01234567" for d in digits):
-                raise ValueError("invalid Circlefuck escape")
+                raise syntax_error(
+                    "invalid Circlefuck escape",
+                    "give \\o exactly three octal digits, for example \\o101",
+                )
             cells.append(int(digits, 8))
             ind += 4
         elif code[ind] == "x":
@@ -87,14 +94,20 @@ def parse(code: str) -> list[int]:
             if len(digits) != 2 or any(
                 d not in "0123456789abcdefABCDEF" for d in digits
             ):
-                raise ValueError("invalid Circlefuck escape")
+                raise syntax_error(
+                    "invalid Circlefuck escape",
+                    "give \\x exactly two hex digits, for example \\x41",
+                )
             cells.append(int(digits, 16))
             ind += 3
         elif code[ind].isdigit():
             digits = code[ind : ind + 3]
             if len(digits) == 3 and digits.isdigit():
                 if int(digits) > 255:
-                    raise ValueError("invalid Circlefuck escape")
+                    raise syntax_error(
+                        "invalid Circlefuck escape",
+                        "use a three-digit decimal byte from 000 through 255",
+                    )
                 cells.append(int(digits))
                 ind += 3
             else:
@@ -104,7 +117,10 @@ def parse(code: str) -> list[int]:
             cells.append(int(code[ind], 16))
             ind += 1
         else:
-            raise ValueError("invalid Circlefuck escape")
+            raise syntax_error(
+                "invalid Circlefuck escape",
+                "use a supported escape such as \\n, \\space or \\x41",
+            )
     return cells
 
 
@@ -213,7 +229,10 @@ class _Machine:
         self.io = io
         cells = list(_parsed(code))
         if not cells:
-            raise ValueError("Circlefuck program cannot be empty")
+            raise syntax_error(
+                "Circlefuck program cannot be empty",
+                "provide at least one program cell; @ halts immediately",
+            )
         # The shell owns the tape as a mutable list: a write is one
         # assignment rather than a rebuilt tuple.  Every observer below
         # copies it, so nothing outside this class can reach the list.

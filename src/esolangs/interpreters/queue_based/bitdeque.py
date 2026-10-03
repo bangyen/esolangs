@@ -17,6 +17,7 @@ import re
 from esolangs._drive import drive
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.source_hints import keyword_hint, syntax_error
 
 #: One instant of a run: ``(ind, reg, deq, rendered)`` -- the token cursor,
 #: the register, the deque, and whether the end-of-run dump has been
@@ -66,16 +67,26 @@ def _reject_stray_text(code: str, pattern: re.Pattern[str]) -> None:
     end = 0
     for match in pattern.finditer(code):
         if stray := code[end : match.start()].strip():
-            raise ValueError(
+            raise syntax_error(
                 f"{stray.split()[0]!r} is not a Bitdeque command; the "
                 f"commands are INJECT, PUSH, EJECT, POP, INVERT and GOTO n, "
-                f"in upper case"
+                f"in upper case",
+                keyword_hint(
+                    stray.split()[0],
+                    ("INJECT", "PUSH", "EJECT", "POP", "INVERT", "GOTO"),
+                    "write uppercase commands; GOTO takes a nonnegative target",
+                ),
             )
         end = match.end()
     if tail := code[end:].strip():
-        raise ValueError(
+        raise syntax_error(
             f"{tail.split()[0]!r} is not a Bitdeque command; the commands "
-            f"are INJECT, PUSH, EJECT, POP, INVERT and GOTO n, in upper case"
+            f"are INJECT, PUSH, EJECT, POP, INVERT and GOTO n, in upper case",
+            keyword_hint(
+                tail.split()[0],
+                ("INJECT", "PUSH", "EJECT", "POP", "INVERT", "GOTO"),
+                "write uppercase commands; GOTO takes a nonnegative target",
+            ),
         )
 
 

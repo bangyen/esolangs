@@ -30,6 +30,7 @@ from esolangs._drive import drive
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.source_hints import syntax_error
 
 #: The value ``^`` yields for a key never assigned.
 _UNSET = 3
@@ -191,9 +192,21 @@ class _Machine:
         elif char == "?":
             line = self.io.input_token().strip()
             if not _RATIONAL.fullmatch(line):
-                raise ValueError("input must be an integer or a fraction")
+                raise syntax_error(
+                    "input must be an integer or a fraction",
+                    (
+                        "supply a decimal integer or a fraction with nonzero "
+                        "denominator, for example 3/2"
+                    ),
+                )
             if "/" in line and int(line.rsplit("/", 1)[1]) == 0:
-                raise ValueError("input must be an integer or a fraction")
+                raise syntax_error(
+                    "input must be an integer or a fraction",
+                    (
+                        "supply a decimal integer or a fraction with nonzero "
+                        "denominator, for example 3/2"
+                    ),
+                )
             value = Fraction(line)
         elif char == "!":
             top = stack[-1]

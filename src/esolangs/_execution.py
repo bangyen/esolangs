@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib
 import inspect
+import shlex
 import signal
 import threading
 from collections.abc import Callable, Iterator
@@ -74,7 +75,10 @@ def prepare_call(
 
 @contextmanager
 def interpreter_errors(
-    recursion_message: str, io_obj: ScriptedIO | None = None
+    recursion_message: str,
+    io_obj: ScriptedIO | None = None,
+    *,
+    language: str | None = None,
 ) -> Iterator[None]:
     """Translate interpreter failures, preserving public errors and prior output."""
     try:
@@ -87,6 +91,38 @@ def interpreter_errors(
             error = original
         else:
             error = ProgramError(str(original))
+            for note in getattr(original, "__notes__", ()):
+                error.add_note(note)
+        if isinstance(original, ValueError) and not any(
+            note.startswith("hint:") for note in getattr(error, "__notes__", ())
+        ):
+            message = str(original)
+            if message.startswith("invalid literal for int()"):
+                base = message.partition("with base ")[2].partition(":")[0]
+                hint = (
+                    "use a decimal integer for the numeric operand or input"
+                    if base == "10"
+                    else f"use a base-{base} integer for the numeric operand or input"
+                )
+            elif message.startswith("could not convert string to float"):
+                hint = "use a decimal number for the numeric operand or input"
+            elif message.startswith("chr() arg not in range"):
+                hint = "keep character output values between 0 and 1114111"
+            elif message.startswith("bytes must be in range"):
+                hint = "keep byte values between 0 and 255"
+            elif message.startswith("Exceeds the limit ("):
+                hint = (
+                    "shorten the decimal literal or set PYTHONINTMAXSTRDIGITS "
+                    "to a larger limit"
+                )
+            elif language is not None:
+                hint = (
+                    "check the language syntax with esolangs describe --spec "
+                    f"{shlex.quote(language)}"
+                )
+            else:
+                hint = "check the operands and input against the language's syntax"
+            error.add_note(f"hint: {hint}")
         if io_obj is not None and (written := io_obj.getvalue()):
             error.partial_output = written
             error.add_note(f"the program printed {written[:200]!r} before this")
