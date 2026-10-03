@@ -527,8 +527,9 @@ _REDUCING = {
 # zeros.
 #
 # ``befunge``, ``clockwise``, ``dimensional`` and ``modulous``
-# are branch-free lookups: Befunge writes one grid cell per entry and reads it
-# with ``g``, Clockwise stops a countdown on the entry's own column, Modulous
+# are branch-free lookups: Befunge reads a grid cell with ``g`` (six packed
+# bits per cell above ten inputs), Clockwise stops a countdown on the entry's
+# own column, Modulous
 # pops a ``PSH STR`` table down to the indexed character, so a 0% fold is
 # the construction working.
 # Dimensional paints one cell an entry along dimension 1 and stops at the last

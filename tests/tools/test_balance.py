@@ -191,5 +191,13 @@ def test_befunge_balancing_reaches_global_minimum(table: str) -> None:
 
 
 def test_befunge_balance_rejects_oversized_table() -> None:
-    with pytest.raises(ValueError, match="at most ten inputs"):
-        balance_befunge("0" * 2048, "")
+    with pytest.raises(ValueError, match="at most thirteen inputs"):
+        balance_befunge("0" * 16384, "")
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("inputs", [11, 12, 13])
+def test_packed_befunge_balancing_reaches_global_minimum(inputs: int) -> None:
+    rng = random.Random(inputs)
+    table = "".join(rng.choice("01") for _ in range(1 << inputs))
+    test_befunge_balancing_reaches_global_minimum(table)

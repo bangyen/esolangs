@@ -49,8 +49,9 @@ and proved limits; completed work is recorded in its commit.
   | Malbolge | Exception | Open | Linear | Linear |
   | Polynomial | Cap | Language lower bound | Language lower bound | Linear |
 
-  Befunge ships through ten inputs. Its fixed 80x25 source grid admits fewer
-  than `2**42000` programs even with Unicode cells, whereas sixteen inputs
+  Befunge ships through thirteen inputs using a six-bit printable-ASCII lookup.
+  Its fixed 80x25 source grid admits fewer than `2**42000` programs even with
+  Unicode cells, whereas sixteen inputs
   admit `2**65536` truth tables. Some have no program under the source-embedded
   contract; unbounded runtime integers do not enlarge the source alphabet.
 

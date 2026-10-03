@@ -257,7 +257,7 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | ArrowQueue | parameterized lookup | one stage per input doubles the queued markers and adds the bit (Horner), and the count selects one of `2**n` constant-size cascade stages | linear: at most 6n + 3T rows, the constant tail folded |
 | B-tapemark | finite lookup | the blank grid is the table, one mark per row copied by `*`; a stage per input walks the mark pointer by that input's weight and `+` prints the mark it lands on | linear: 3T copy cells, T pointer steps, one stage per input |
 | Back | parameterized tree | — | linear: leaf moves sum geometrically, sparse row render |
-| Befunge | exception | cell-per-entry lookup ships through ten inputs; finite source space excludes some sixteen-input tables | linear: T table cells, one g at the index |
+| Befunge | exception | six-bit ASCII lookup ships through thirteen inputs; finite source space excludes some sixteen-input tables | linear: T table cells, one g at the index |
 | Bitwise Cyclic Tag | parameterized lookup | the table is the program, one four-bit cell per row; each embedded bit appends two walk zeros per unit of its place value, and a cell consumes exactly two, so the zeros carry the program pointer to the indexed cell and the held-back sentinel arrives there to fire it; the cell's second `0` consumes the answer it just appended, without which a 1 would cascade into the rows below | linear: 4T table cells, 4T walk appends, 5T + n steps |
 | BF-PDA | parameterized tree | — | linear: span walk, leaf drains sum geometrically |
 | BFStack | minterms | — | linear: zero-row walk telescopes to T |
@@ -338,9 +338,12 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
   tables, so some have no program. Unbounded stack integers and self-modification
   do not change this source-count bound. For byte-only source the bound is
   `2**16000`, already excluding some fourteen-input tables. The shipped
-  cell-per-entry lookup stops earlier, at ten; its 2,048-cell obstruction at
-  eleven applies only to that construction. Enlarging the torus or supplying
-  the table as extra input changes the generator contract.
+  six-bit printable-ASCII lookup covers every table through thirteen inputs,
+  meeting the byte-source arity bound. For row `r`, it reads cell `r//6`,
+  subtracts 32 and divides by `2**(r%6)` before taking modulo two. The three
+  binary digits of `u = r%6` build the divisor as
+  `(1+u%2)*(1+3*((u//2)%2))*(1+15*(u//4))`, without a loop. Enlarging the torus
+  or supplying the table as extra input changes the generator contract.
 
 - Malbolge has 59,049 source cells and exactly eight valid decoded
   instructions at each occupied cell.  Including shorter programs gives fewer
