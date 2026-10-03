@@ -248,6 +248,8 @@ it).  Where a generator dispatches on table size, the cell describes the
 wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 `tests/proofs/test_linearity.py` checks the column against the audit.
 
+<!-- PROOF-STATUS:START -->
+
 | Generator | Proof | Qualification | Scaling |
 | --- | --- | --- | --- |
 | A Painter Ant | parameterized lookup | each embedded bit keeps the ant on a self-painting corridor or lifts it off, and the template walk after it advances the ant by that bit's weight, stopping at the corridor's end, leaving it over the indexed answer cell or the trailing run's first, which answers alike | linear: table walk; corridor weights sum to T |
@@ -327,6 +329,8 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | Unlambda | tree | each half is a `d` promise, forced by the `?` test that selects it, since an argument spelled inline would be evaluated before the application; the shipped node instead returns `s` over its selected promises, so a repeated subtree bound once as a promise reaches every half below, and the plain tree stays a candidate | linear: 29 characters an internal node, four a leaf |
 | Unsquare | linear lookup | the table is one `O`/`I` push per row, reversed, and each read pops its bit's weight in cells off the top of it | linear: `2**n` cells and `2**n - 1` pops, two bytes a row |
 | Vandevelo | minterms | an affine-cube peel emits one guard line per coset of an affine cover of the 1-set | linear: amortised peel; sqrt(log T) dual-basis core; proof fallback n 2^n |
+
+<!-- PROOF-STATUS:END -->
 
 ## Exceptions and walls
 

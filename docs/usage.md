@@ -302,3 +302,7 @@ or size.
 A breaking public change requires a major release. When old and new interfaces
 can coexist, the replacement is documented for at least one minor release.
 Security and correctness fixes may reject input accepted by mistake.
+
+CLI portable execution: `esolangs run --isolated --timeout 3 --max-output 4096 brainfuck program.txt`.
+`--isolated` defaults to 30 seconds; `--max-output` requires it. File acquisition,
+stdin acquisition, and subprocess execution each use that bound separately.
