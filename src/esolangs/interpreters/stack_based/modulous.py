@@ -35,6 +35,7 @@ spec does not define their text framing.
 
 import re
 from collections.abc import Callable, Mapping
+from difflib import get_close_matches
 from typing import Never, cast
 
 from esolangs.exceptions import HaltError
@@ -317,10 +318,12 @@ class _Machine:
 
 def _reject_unknown(mod: str, command: str) -> Never:
     """Reject a token neither dispatch nor variable arithmetic understands."""
+    close = get_close_matches(command, sorted(_DISPATCH), n=2, cutoff=0.65)
+    hint = f"; did you mean {close[0]}?" if len(close) == 1 else ""
     raise ValueError(
         f"[{mod}] is not a Modulous command: {command!r} is not one of "
         f"{', '.join(sorted(_DISPATCH))}, and a bare VARn+k or VARn-k "
-        f"is the only other thing a command can be"
+        f"is the only other thing a command can be{hint}"
     )
 
 
@@ -402,7 +405,9 @@ def _psh(core: _Core, mod: str, arg: list[str], _value: str | int | None) -> _Co
         if len(parts) < 3:
             # ``[PSH STR hello]`` has no quoted section, so ``split`` had no
             # second element and the raw IndexError escaped ``run``.
-            raise ValueError(f"missing quoted string in {' '.join(arg)}")
+            raise ValueError(
+                f'missing quoted string in {" ".join(arg)}; expected [PSH STR "text"]'
+            )
         m = parts[1]
         return ((*stk, *[ord(c) for c in m][::-1]), var, ind)
     if "VAR" in mod:
