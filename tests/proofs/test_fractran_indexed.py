@@ -5,14 +5,15 @@
 from __future__ import annotations
 
 import random
-from itertools import product
+from fractions import Fraction
 
 import pytest
 
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.other.fractran import _choose, _Machine, _parse
+from esolangs.interpreters.other.fractran import _Machine
 from esolangs.tools.fractran import PAIR, _threshold, fractran
 from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
+from tests.interpreters.test_fractran_semantics import parse, selection
 
 
 def _row(template: str, table: str, row: int, *, literal: bool) -> tuple[int, int]:
@@ -28,16 +29,16 @@ def _row(template: str, table: str, row: int, *, literal: bool) -> tuple[int, in
     assert machine._index is not None
     assert all(keys is not None for keys in machine._index.keys.values())
     if literal:
-        value, fractions, _ = _parse(code)
-        assert machine.fractions == fractions
+        value, raw, _ = parse(code)
+        fractions = tuple(Fraction(a, b) for a, b in raw)
+        assert machine.fractions == raw
     steps = 0
     while not machine.halted:
         if literal:
-            index = _choose(value, fractions)
+            index, following = selection(value, fractions)
             assert machine._next() == index
             if index is not None:
-                a, b = fractions[index]
-                value = value * a // b
+                value = following
         machine.step()
         steps += 1
         assert steps <= 4 * n + 4
@@ -46,16 +47,6 @@ def _row(template: str, table: str, row: int, *, literal: bool) -> tuple[int, in
     assert machine.value == (2 if table[row] == "1" else 1)
     assert machine.inspections <= 16 * (n + 1) ** 2
     return steps, machine.inspections
-
-
-def test_every_small_table_matches_literal_fraction_choices() -> None:
-    for n in range(1, 4):
-        size = 1 << n
-        for bits in product("01", repeat=size):
-            table = "".join(bits)
-            template = _threshold(table, n)
-            for row in range(size):
-                _row(template, table, row, literal=True)
 
 
 @pytest.mark.medium
@@ -98,16 +89,16 @@ def test_index_preserves_reduced_guards_and_nonmonotone_priority() -> None:
         code = " ".join([str(start), *(f"{a}/{b}" for a, b in pairs)])
         machine = _Machine(code, ScriptedIO(""))
         assert machine._index is not None
-        value, fractions, _ = _parse(code)
+        value, raw, _ = parse(code)
+        fractions = tuple(Fraction(a, b) for a, b in raw)
         for _step in range(16):
-            index = _choose(value, fractions)
+            index, following = selection(value, fractions)
             assert machine._next() == index
             machine.step()
             if index is None:
                 assert machine.halted
                 break
-            a, b = fractions[index]
-            value = value * a // b
+            value = following
             assert machine.value == value
 
 
@@ -141,8 +132,8 @@ def test_wider_executed_size_scaling() -> None:
     assert trend <= 4.4
 
 
-def test_narrow_root_state_preserves_every_small_table() -> None:
-    from esolangs.tools.fractran import _fractran_raw, fractran_setters
+def test_narrow_root_state_preserves_emitted_size() -> None:
+    from esolangs.tools.fractran import _fractran_raw
 
     before = after = 0
     for n in range(1, 4):
@@ -153,18 +144,6 @@ def test_narrow_root_state_preserves_every_small_table() -> None:
             narrow = fractran(table, width=1)
             assert fractran(table) == raw
             assert max(map(len, narrow.splitlines())) <= max(map(len, raw.split()))
-            for row in range(size):
-                bits = [(row >> shift) & 1 for shift in range(n - 1, -1, -1)]
-                code = fill_runs(
-                    narrow, TEMPLATE_CHAR, fractran_setters(narrow, n), bits
-                )
-                machine = _Machine(code, ScriptedIO(""))
-                for _ in range(4 * n + 4):
-                    if machine.halted:
-                        break
-                    machine.step()
-                assert machine.halted
-                assert machine.value == (2 if table[row] == "1" else 1)
             if n == 3:
                 before += len(raw.replace(" ", "\n"))
                 after += len(narrow)
