@@ -19,7 +19,7 @@ type _Effect = str | None
 
 def _fail() -> None:
     raise HaltError(
-        "invalid Underload program or stack underflow",
+        "Underload stack underflow",
         hint="leave enough stack entries for the operation to consume",
     )
 
@@ -35,7 +35,7 @@ def _element(program: str, start: int) -> tuple[str, int]:
             depth -= 1
         at += 1
     if depth:
-        _fail()
+        raise HaltError("unmatched Underload '('", hint="close the string with ')'")
     return program[start + 1 : at - 1], at
 
 
@@ -53,8 +53,13 @@ def _advance(state: _State) -> tuple[_State, _Effect]:
         value, at = _element(program, at)
         stack.append(value)
         return (program, at, tuple(stack)), None
-    if command == ")" or command not in "~:!*a^S":
-        _fail()
+    if command == ")":
+        raise HaltError("unmatched Underload ')'", hint="open the string with '('")
+    if command not in "~:!*a^S":
+        raise HaltError(
+            f"unknown Underload command {command!r}",
+            hint="use () strings and ~ : ! * a ^ S commands",
+        )
     needed = 2 if command in "~*" else 1
     if len(stack) < needed:
         _fail()

@@ -71,13 +71,16 @@ HELP = {
     "suggest": """usage: esolangs suggest <language> <program-file>
 
 Preview command spelling corrections with 1-based line and column numbers.
-Accepts every language; spelling edits cover Modulous, Bitdeque and Packlang.
-Other languages explain why no edits are offered. Edits fix keyword case or a unique
+Accepts every language; spelling edits cover Modulous, Bitdeque, Packlang,
+BrainIf, Grapheme and Collatz Multiverse. Other languages explain why no edits
+are offered. Edits fix keyword case or a unique
 one-edit match (insertion, deletion, substitution or adjacent swap).
 Modulous and Bitdeque preview commands; Bitdeque skips GOTO targets.
 Packlang previews required package, datatype, Then and Do keywords. Variable
 and function names, comments and speculative declarations are untouched.
 Ambiguous matches and operands receive no proposed edit.
+BrainIf previews required command words; Grapheme previews command case outside
+literals; Collatz Multiverse previews DO/NOT PRINT after a valid assignment.
 
 The program is neither run nor modified. Apply chosen edits yourself, then
 run the program to check its behavior. No suggestions does not mean valid.

@@ -169,6 +169,114 @@ def _packlang_corrections(source: str) -> tuple[_Correction, ...]:
     return tuple(sorted(corrections, key=lambda correction: correction.start))
 
 
+def _brainif_corrections(source: str) -> tuple[_Correction, ...]:
+    from esolangs.interpreters.tape_based.brainif import _COMMANDS, _parse
+
+    corrections: list[_Correction] = []
+    offset = 0
+    for line in source.splitlines(keepends=True):
+        tokens = list(re.finditer(r"\S+", line))
+        edits = []
+        for index, vocabulary in ((0, ("if",)), (2, _COMMANDS)):
+            if index < len(tokens):
+                token = tokens[index]
+                correction = _keyword_correction(
+                    token.group(), token.start(), vocabulary
+                )
+                if correction is not None:
+                    edits.append(correction)
+        command = (
+            next(
+                (edit.after for edit in edits if edit.start == tokens[2].start()),
+                tokens[2].group(),
+            )
+            if len(tokens) > 2
+            else ""
+        )
+        if command == "move" and len(tokens) > 3:
+            token = tokens[3]
+            correction = _keyword_correction(
+                token.group(), token.start(), ("left", "right")
+            )
+            if correction is not None:
+                edits.append(correction)
+        repaired = line
+        for edit in sorted(edits, reverse=True):
+            repaired = repaired[: edit.start] + edit.after + repaired[edit.end :]
+        _parse(repaired)
+        corrections.extend(
+            _Correction(
+                edit.start + offset,
+                edit.end + offset,
+                edit.before,
+                edit.after,
+                edit.reason,
+            )
+            for edit in edits
+        )
+        offset += len(line)
+    return tuple(sorted(corrections))
+
+
+def _grapheme_corrections(source: str) -> tuple[_Correction, ...]:
+    from esolangs.interpreters.stack_based.grapheme import _OPENS
+
+    corrections = []
+    delimiter = ""
+    for index, char in enumerate(source):
+        if delimiter:
+            if char == delimiter:
+                delimiter = ""
+            continue
+        if "a" <= char <= "z":
+            corrections.append(
+                _Correction(
+                    index,
+                    index + 1,
+                    char,
+                    char.upper(),
+                    "Grapheme requires uppercase Latin command letters",
+                )
+            )
+            char = char.upper()
+        if char in _OPENS:
+            delimiter = char
+    return tuple(corrections)
+
+
+def _collatz_corrections(source: str) -> tuple[_Correction, ...]:
+    from esolangs.interpreters.register_based.collatz_multiverse import _LINE
+
+    corrections: list[_Correction] = []
+    offset = 0
+    for line in source.splitlines(keepends=True):
+        suffix = re.search(r",\s*([A-Za-z]+)\s+([A-Za-z]+)\.\s*$", line)
+        if suffix is not None:
+            edits = []
+            for group, vocabulary in ((1, ("DO", "NOT")), (2, ("PRINT",))):
+                correction = _keyword_correction(
+                    suffix.group(group), suffix.start(group), vocabulary
+                )
+                if correction is not None:
+                    edits.append(correction)
+            repaired = line
+            for edit in reversed(edits):
+                repaired = repaired[: edit.start] + edit.after + repaired[edit.end :]
+            if _LINE.fullmatch(repaired):
+                corrections.extend(
+                    _Correction(
+                        edit.start + offset,
+                        edit.end + offset,
+                        edit.before,
+                        edit.after,
+                        edit.reason,
+                    )
+                    for edit in edits
+                )
+        offset += len(line)
+    return tuple(corrections)
+
+
 def _suggest(rest: list[str]) -> None:
     """Print located corrections; leave the file and stdin untouched."""
     rest = _split_positional(rest, set())
@@ -179,6 +287,9 @@ def _suggest(rest: list[str]) -> None:
         "modulous": _modulous_corrections,
         "bitdeque": _bitdeque_corrections,
         "packlang": _packlang_corrections,
+        "brainif": _brainif_corrections,
+        "grapheme": _grapheme_corrections,
+        "collatz_multiverse": _collatz_corrections,
     }
     handler = handlers.get(LANGUAGES[language].id)
     source = _read_program(rest[1], language=language)
