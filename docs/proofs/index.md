@@ -257,7 +257,7 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | ArrowQueue | parameterized lookup | one stage per input doubles the queued markers and adds the bit (Horner), and the count selects one of `2**n` constant-size cascade stages | linear: at most 6n + 3T rows, the constant tail folded |
 | B-tapemark | finite lookup | the blank grid is the table, one mark per row copied by `*`; a stage per input walks the mark pointer by that input's weight and `+` prints the mark it lands on | linear: 3T copy cells, T pointer steps, one stage per input |
 | Back | parameterized tree | — | linear: leaf moves sum geometrically, sparse row render |
-| Befunge | exception | cell-per-entry lookup covers at most ten inputs on the fixed 80x25 torus; no uniform lift is proved | linear: T table cells, one g at the index |
+| Befunge | exception | cell-per-entry lookup ships through ten inputs; finite source space excludes some sixteen-input tables | linear: T table cells, one g at the index |
 | Bitwise Cyclic Tag | parameterized lookup | the table is the program, one four-bit cell per row; each embedded bit appends two walk zeros per unit of its place value, and a cell consumes exactly two, so the zeros carry the program pointer to the indexed cell and the held-back sentinel arrives there to fire it; the cell's second `0` consumes the answer it just appended, without which a 1 would cascade into the rows below | linear: 4T table cells, 4T walk appends, 5T + n steps |
 | BF-PDA | parameterized tree | — | linear: span walk, leaf drains sum geometrically |
 | BFStack | minterms | — | linear: zero-row walk telescopes to T |
@@ -330,11 +330,17 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 
 ## Exceptions and walls
 
-- Befunge's shipped lookup stops at ten inputs: an eleven-input table needs
-  2,048 cells before instructions, exceeding its fixed 80x25 torus. This
-  obstructs the lookup construction, not every possible program. No uniform
-  larger-table construction is proved; enlarging the torus changes the
-  language contract and is not a resource-ceiling lift.
+- Befunge starts with an empty stack and a fixed 80x25 source grid. Each
+  Python character has fewer than `2**21` possible values, so there are fewer
+  than `2**42000` initial grids, including every padded shorter source. With
+  stdin restricted to the input bits and randomness fixed, each grid computes
+  at most one truth table at a given arity. Sixteen inputs have `2**65536`
+  tables, so some have no program. Unbounded stack integers and self-modification
+  do not change this source-count bound. For byte-only source the bound is
+  `2**16000`, already excluding some fourteen-input tables. The shipped
+  cell-per-entry lookup stops earlier, at ten; its 2,048-cell obstruction at
+  eleven applies only to that construction. Enlarging the torus or supplying
+  the table as extra input changes the generator contract.
 
 - Malbolge has 59,049 source cells and exactly eight valid decoded
   instructions at each occupied cell.  Including shorter programs gives fewer
@@ -392,7 +398,7 @@ three seconds with the prime powers multiplied as a balanced tree, and
 the interpreter decodes it to the tree the generator encoded.
 
 Accordingly, this ledger records 75 theoretical totality arguments and two
-exceptions: one open construction gap and one proved language obstruction.
+proved language exceptions under the source-embedded contract.
 Every other row is `Total` or theoretically total past a resource ceiling.
 
 ## Ordered reads without retained inputs
