@@ -12,7 +12,7 @@ from esolangs._input import check_input as check_input
 from esolangs._input import read_input as read_input
 from esolangs._program import Program
 from esolangs.exceptions import ArgumentError, ProgramError, ProgramNotFoundError
-from esolangs.interpreters.source_hints import syntax_error
+from esolangs.interpreters.source_hints import syntax_error, with_hint
 from esolangs.raster import Raster
 
 type ProgramSource = Program | bytes | os.PathLike[str] | Reader
@@ -114,4 +114,7 @@ def check_scale_for(language: str, scale: int | None) -> None:
     check_scale(scale)
     module = interpreter_module(resolve(language))
     if not getattr(module, "supports_scale", False):
-        raise ArgumentError("scale is only supported for raster interpreters")
+        raise with_hint(
+            ArgumentError("scale is only supported for raster interpreters"),
+            ("omit scale for text languages; apply it only to raster source"),
+        )

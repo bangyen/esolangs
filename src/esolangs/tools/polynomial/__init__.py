@@ -13,6 +13,7 @@ renders 1.9x shorter than the ``-= 1; if == 0`` builder, n == 7 2.1x.
 from typing import Any
 
 from esolangs.exceptions import GeneratorCapError
+from esolangs.interpreters.source_hints import with_hint
 from esolangs.tools.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
@@ -94,12 +95,18 @@ def polynomial(truth_table: str) -> str:
 
     fits = [(cost, build) for cost, build in builders if cost <= _POLYNOMIAL_MAX_INSTRS]
     if not fits:
-        raise GeneratorCapError(
-            "the Polynomial boolean generator groups instructions onto "
-            f"primes and caps at {_POLYNOMIAL_MAX_INSTRS}, but this table "
-            f"needs {min(cost for cost, _ in builders)} under its cheapest "
-            "construction, which costs more per row than checking a table "
-            "of this width can afford",
+        raise with_hint(
+            GeneratorCapError(
+                "the Polynomial boolean generator groups instructions onto "
+                f"primes and caps at {_POLYNOMIAL_MAX_INSTRS}, but this table "
+                f"needs {min(cost for cost, _ in builders)} under its cheapest "
+                "construction, which costs more per row than checking a table "
+                "of this width can afford",
+            ),
+            (
+                "check another generator's limits; layout "
+                "cannot raise the prime instruction budget"
+            ),
         )
 
     # Select on rendered characters; the instruction count only screens
@@ -147,11 +154,17 @@ def _polynomial_assemble(instrs: list[list[int]]) -> str:
     factors = _polynomial_factors(instrs)
     estimate = estimate_product(factors)
     if estimate.rendered_chars > _POLYNOMIAL_MAX_ESTIMATED_CHARS:
-        raise GeneratorCapError(
-            "the Polynomial expansion is conservatively bounded at "
-            f"{estimate.rendered_chars} characters and "
-            f"{estimate.peak_decimal_digits} live decimal digits, past the "
-            f"{_POLYNOMIAL_MAX_ESTIMATED_CHARS}-character construction ceiling"
+        raise with_hint(
+            GeneratorCapError(
+                "the Polynomial expansion is conservatively bounded at "
+                f"{estimate.rendered_chars} characters and "
+                f"{estimate.peak_decimal_digits} live decimal digits, past the "
+                f"{_POLYNOMIAL_MAX_ESTIMATED_CHARS}-character construction ceiling"
+            ),
+            (
+                "check another generator's limits; output "
+                "width cannot reduce the polynomial expansion"
+            ),
         )
     # The expansion is the whole cost past n == 7 -- the factor count is the
     # degree, and multiplying them in one incremental sweep rescans a

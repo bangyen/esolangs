@@ -14,6 +14,7 @@ from typing import Any, TextIO, cast
 from esolangs import exceptions
 from esolangs._source import InputSource, ProgramSource, read_input
 from esolangs._validate import check_timeout, check_whole
+from esolangs.interpreters.source_hints import with_hint
 from esolangs.raster import Raster
 from esolangs.registry import resolve
 
@@ -81,7 +82,10 @@ def run_isolated(
     if max_output is not None:
         check_whole(max_output, "max_output")
     if timeout is None:
-        raise exceptions.ArgumentError("isolated execution requires a finite timeout")
+        raise with_hint(
+            exceptions.ArgumentError("isolated execution requires a finite timeout"),
+            ("set a positive finite timeout, for example timeout=5.0"),
+        )
     name = resolve(language)
     deadline = monotonic() + timeout
     box: list[str | BaseException] = []

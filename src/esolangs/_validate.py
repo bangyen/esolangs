@@ -16,24 +16,39 @@ _TIMEOUT_CEILING = 2_592_000.0
 def check_whole(value: object, name: str) -> int:
     """Return ``value`` as a non-negative index, or refuse it by name."""
     from esolangs.exceptions import ArgumentError
+    from esolangs.interpreters.source_hints import with_hint
 
     if isinstance(value, bool) or not isinstance(value, int) or value < 0:
-        raise ArgumentError(f"{name} must be a non-negative integer, got {value!r}")
+        raise with_hint(
+            ArgumentError(f"{name} must be a non-negative integer, got {value!r}"),
+            f"use a non-negative integer, for example {name}=0; "
+            "bools and floats are not counts",
+        )
     return value
 
 
 def check_timeout(timeout: object) -> None:
     """Refuse invalid timeouts; ``None`` is allowed."""
     from esolangs.exceptions import ArgumentError
+    from esolangs.interpreters.source_hints import with_hint
 
     if timeout is None:
         return
     if isinstance(timeout, bool) or not isinstance(timeout, int | float):
-        raise ArgumentError(f"timeout must be a number or None, got {timeout!r}")
+        raise with_hint(
+            ArgumentError(f"timeout must be a number or None, got {timeout!r}"),
+            ("set a timeout in seconds, for example timeout=5.0"),
+        )
     if timeout != timeout or timeout in _INFINITE:
-        raise ArgumentError(f"timeout must be finite, got {timeout!r}")
+        raise with_hint(
+            ArgumentError(f"timeout must be finite, got {timeout!r}"),
+            ("set a timeout in seconds, for example timeout=5.0"),
+        )
     if timeout <= 0:
-        raise ArgumentError(f"timeout must be positive, got {timeout}")
+        raise with_hint(
+            ArgumentError(f"timeout must be positive, got {timeout}"),
+            ("set a timeout in seconds, for example timeout=5.0"),
+        )
     if timeout > _TIMEOUT_CEILING:
         # ``setitimer`` takes a C interval, and a big enough float does not
         # fit one: 1e9 came back as ``ItimerError: [Errno 22] Invalid
@@ -41,9 +56,12 @@ def check_timeout(timeout: object) -> None:
         # both as raw tracebacks.  Zero, negatives, ``inf`` and ``nan`` were
         # all refused cleanly; only the large finite case fell through, and
         # a bound that long is not one anybody wants anyway.
-        raise ArgumentError(
-            f"timeout must be at most {_TIMEOUT_CEILING} seconds, got "
-            f"{timeout}; a longer one does not fit the wall-clock timer"
+        raise with_hint(
+            ArgumentError(
+                f"timeout must be at most {_TIMEOUT_CEILING} seconds, got "
+                f"{timeout}; a longer one does not fit the wall-clock timer"
+            ),
+            ("set a timeout in seconds, for example timeout=5.0"),
         )
     if timeout < _TIMEOUT_FLOOR:
         # Measured: below about a millisecond the alarm lands inside the
@@ -51,35 +69,53 @@ def check_timeout(timeout: object) -> None:
         # 100-microsecond bound were killed outright, none at a millisecond
         # or above (4000 runs each).  The shortest bound this package uses
         # is five seconds.
-        raise ArgumentError(
-            f"timeout must be at least {_TIMEOUT_FLOOR} seconds, got "
-            f"{timeout}; the wall-clock guard is a signal and cannot be "
-            f"taken down reliably faster than that"
+        raise with_hint(
+            ArgumentError(
+                f"timeout must be at least {_TIMEOUT_FLOOR} seconds, got "
+                f"{timeout}; the wall-clock guard is a signal and cannot be "
+                f"taken down reliably faster than that"
+            ),
+            ("set a timeout in seconds, for example timeout=5.0"),
         )
 
 
 def check_width(width: object) -> None:
     """Refuse a width that is not a positive integer."""
     from esolangs.exceptions import ArgumentError
+    from esolangs.interpreters.source_hints import with_hint
 
     if width is None:
         return
     if isinstance(width, bool) or not isinstance(width, int):
-        raise ArgumentError(f"width must be an integer or None, got {width!r}")
+        raise with_hint(
+            ArgumentError(f"width must be an integer or None, got {width!r}"),
+            ("use a positive integer column width, for example width=80"),
+        )
     if width <= 0:
-        raise ArgumentError(f"width must be positive, got {width}")
+        raise with_hint(
+            ArgumentError(f"width must be positive, got {width}"),
+            ("use a positive integer column width, for example width=80"),
+        )
 
 
 def check_bits(bits: object, what: str = "bits") -> list[int]:
     """Return a nonempty list or tuple of integer bits, or refuse it."""
     from esolangs.exceptions import ArgumentError
+    from esolangs.interpreters.source_hints import with_hint
 
     if isinstance(bits, str) or not isinstance(bits, list | tuple):
-        raise ArgumentError(
-            f"{what} must be a list or tuple of 0s and 1s, got {type(bits).__name__}"
+        raise with_hint(
+            ArgumentError(
+                f"{what} must be a list or tuple of 0s and 1s, "
+                f"got {type(bits).__name__}"
+            ),
+            ("pass integer bits as a list or tuple, for example [0, 1]"),
         )
     if not bits:
-        raise ArgumentError(f"{what} must not be empty; a program reads at least one")
+        raise with_hint(
+            ArgumentError(f"{what} must not be empty; a program reads at least one"),
+            ("pass integer bits as a list or tuple, for example [0, 1]"),
+        )
     if any(
         isinstance(bit, bool) or not isinstance(bit, int) or bit not in (0, 1)
         for bit in bits
@@ -88,12 +124,18 @@ def check_bits(bits: object, what: str = "bits") -> list[int]:
             # Said separately because "must be 0 or 1" reads as wrong when
             # you passed True.  Before this check `[True, False]` and
             # `[1.0, 0.0]` were accepted and selected a different row.
-            raise ArgumentError(
-                f"{what} must be the integers 0 and 1; bools are refused on "
-                f"purpose, because True == 1 and a list of them used to be "
-                f"accepted as a different row, got {list(bits)!r}"
+            raise with_hint(
+                ArgumentError(
+                    f"{what} must be the integers 0 and 1; bools are refused on "
+                    f"purpose, because True == 1 and a list of them used to be "
+                    f"accepted as a different row, got {list(bits)!r}"
+                ),
+                ("pass integer bits as a list or tuple, for example [0, 1]"),
             )
-        raise ArgumentError(f"{what} must each be 0 or 1, got {list(bits)!r}")
+        raise with_hint(
+            ArgumentError(f"{what} must each be 0 or 1, got {list(bits)!r}"),
+            ("pass integer bits as a list or tuple, for example [0, 1]"),
+        )
     return list(bits)
 
 
@@ -127,7 +169,14 @@ def check_address(addr: int, language: str) -> int:
 def check_scale(scale: object) -> int:
     """Return a positive integer pixel replication factor."""
     from esolangs.exceptions import ArgumentError
+    from esolangs.interpreters.source_hints import with_hint
 
     if isinstance(scale, bool) or not isinstance(scale, int) or scale < 1:
-        raise ArgumentError(f"scale must be a positive integer, got {scale!r}")
+        raise with_hint(
+            ArgumentError(f"scale must be a positive integer, got {scale!r}"),
+            (
+                "use scale=1 for the original raster size or "
+                "an integer replication factor"
+            ),
+        )
     return scale

@@ -62,6 +62,7 @@ from esolangs.exceptions import (
     UnknownLanguageError,
 )
 from esolangs.interpreters.io import ScriptedIO
+from esolangs.interpreters.source_hints import with_hint
 from esolangs.raster import Raster
 from esolangs.registry import (
     INTERPRETERS,
@@ -180,11 +181,20 @@ def generate(
     check_scale(scale)
     if scale != 1:
         if LANGUAGES[resolve(language)].source_kind is not SourceKind.RASTER:
-            raise ArgumentError("scale is only supported for raster generators")
+            raise with_hint(
+                ArgumentError("scale is only supported for raster generators"),
+                ("omit scale for text languages; apply it only to raster source"),
+            )
         source = generate(language, truth_table, width, balance=balance)
         return cast(Raster, source).upscaled(scale)
     if balance and width is not None:
-        raise ArgumentError("balance and width are mutually exclusive")
+        raise with_hint(
+            ArgumentError("balance and width are mutually exclusive"),
+            (
+                "omit width when balance=True, or disable "
+                "balance when choosing a fixed width"
+            ),
+        )
     if balance:
         default = generate(language, truth_table)
         lang = LANGUAGES[resolve(language)]
@@ -218,9 +228,12 @@ def generate(
             f"generator contracts. `esolangs list --details` marks it 'int'"
         )
     if not isinstance(truth_table, str):
-        raise TruthTableError(
-            f"truth table must be a string of '0' and '1', got "
-            f"{type(truth_table).__name__}"
+        raise with_hint(
+            TruthTableError(
+                f"truth table must be a string of '0' and '1', got "
+                f"{type(truth_table).__name__}"
+            ),
+            ("pass truth-table text, for example '0110' for two-input XOR"),
         )
     check_width(width)
     laid_out = width is not None and _takes_width(fn)
@@ -347,32 +360,51 @@ def instantiate(
     if not isinstance(template, str):
         # Before the provenance check, which calls ``template.replace`` and
         # so leaked an ``AttributeError`` for a non-string.
-        raise TemplateError(
-            f"template must be the string generate() returned, got "
-            f"{type(template).__name__}"
+        raise with_hint(
+            TemplateError(
+                f"template must be the string generate() returned, got "
+                f"{type(template).__name__}"
+            ),
+            (
+                "pass the template returned by generate(), "
+                "then supply integer bits to instantiate()"
+            ),
         )
     if truth_table is not None and not _is_template_for(template, name, truth_table):
         # The provenance check a tag cannot make: a hand-written string is
         # untagged by design (a tag cannot survive a file), and
         # `instantiate("Minifuck", "hello $$", [1])` filled it happily.
         # Given the table it should have come from, that is decidable.
-        raise TemplateError(
-            f"this is not the template generate({name!r}, {truth_table!r}) "
-            f"returns, so filling it would produce a program that does not "
-            f"compute that table"
+        raise with_hint(
+            TemplateError(
+                f"this is not the template generate({name!r}, {truth_table!r}) "
+                f"returns, so filling it would produce a program that does not "
+                f"compute that table"
+            ),
+            (
+                "regenerate the template from the intended "
+                "language and truth table before instantiating "
+                "it"
+            ),
         )
     char = template_char(LANGUAGES[name].id)
     if char is None:
-        raise TemplateError(
-            f"{name} reads its inputs rather than embedding them, so there "
-            f"is nothing to instantiate; pass them in as stdin instead"
+        raise with_hint(
+            TemplateError(
+                f"{name} reads its inputs rather than embedding them, so there "
+                f"is nothing to instantiate; pass them in as stdin instead"
+            ),
+            ("run the generated program with stdin=encode_inputs(language, bits)"),
         )
     origin = getattr(template, "language", None)
     if origin is not None and origin != name:
-        raise TemplateError(
-            f"this template came from generate({origin!r}, ...), so filling "
-            f"it as {name} would substitute {name}'s setter code into a "
-            f"{origin} program -- which runs, and answers the wrong row"
+        raise with_hint(
+            TemplateError(
+                f"this template came from generate({origin!r}, ...), so filling "
+                f"it as {name} would substitute {name}'s setter code into a "
+                f"{origin} program -- which runs, and answers the wrong row"
+            ),
+            ("instantiate the template using the language that generated it"),
         )
     bits = check_bits(bits, "bits")
     tagged = template if isinstance(template, _Template) else None
@@ -380,16 +412,28 @@ def instantiate(
         if char not in template:
             # An ordinary program and an already-filled template look the
             # same from here, so the message names both.
-            raise TemplateError(
-                f"this {name} text has no run of {char!r} to fill: it is either "
-                f"an ordinary program or a template instantiate() has already "
-                f"been applied to, and generate({name!r}, table) returns the "
-                f"template to fill"
+            raise with_hint(
+                TemplateError(
+                    f"this {name} text has no run of {char!r} to fill: it is either "
+                    f"an ordinary program or a template instantiate() has already "
+                    f"been applied to, and generate({name!r}, table) returns the "
+                    f"template to fill"
+                ),
+                (
+                    "keep the original unfilled generate() result "
+                    "and instantiate it separately for each row"
+                ),
             )
         try:
             pairs = recover_setters(LANGUAGES[name].id, template)
         except ValueError as exc:
-            raise TemplateError(f"not a {name} template: {exc}") from exc
+            raise with_hint(
+                TemplateError(f"not a {name} template: {exc}"),
+                (
+                    "recreate the template with generate(); avoid "
+                    "manually editing its placeholder runs"
+                ),
+            ) from exc
         tagged = _Template(template, name, char, pairs)
     if len(bits) != tagged.inputs:
         given = (
@@ -397,9 +441,13 @@ def instantiate(
             if len(bits) == 1
             else f"{len(bits)} bits were given"
         )
-        raise TemplateError(
-            f"this {name} template has {tagged.inputs} input"
-            f"{'' if tagged.inputs == 1 else 's'}, but {given}"
+        raise with_hint(
+            TemplateError(
+                f"this {name} template has {tagged.inputs} input"
+                f"{'' if tagged.inputs == 1 else 's'}, but {given}"
+            ),
+            f"pass exactly {tagged.inputs} integer bits to instantiate(), "
+            "one per input",
         )
     program = template_body(LANGUAGES[name].id, tagged.fill(bits))
     return _Tagged(wrap_program(program, LANGUAGES[name].id, width), name)
@@ -604,12 +652,21 @@ def run(
 
         check_whole(max_output, "max_output")
         if not isolated:
-            raise ArgumentError("max_output requires isolated=True")
+            raise with_hint(
+                ArgumentError("max_output requires isolated=True"),
+                ("set isolated=True to bound output, or omit max_output"),
+            )
     if isolated:
         if max_steps is not None:
-            raise ArgumentError("isolated and max_steps are mutually exclusive")
+            raise with_hint(
+                ArgumentError("isolated and max_steps are mutually exclusive"),
+                ("use isolation with timeout, or use max_steps without isolation"),
+            )
         if timeout is None:
-            raise ArgumentError("isolated execution requires a finite timeout")
+            raise with_hint(
+                ArgumentError("isolated execution requires a finite timeout"),
+                ("set a positive finite timeout, for example timeout=5.0"),
+            )
         if max_output is not None:
             return _run_isolated(
                 language,
@@ -625,7 +682,13 @@ def run(
         return _run_isolated(language, program, stdin, timeout, seed=seed, scale=scale)
     if max_steps is not None:
         if seed is not None:
-            raise ArgumentError("seed is unsupported with max_steps")
+            raise with_hint(
+                ArgumentError("seed is unsupported with max_steps"),
+                (
+                    "omit max_steps for seeded execution and use "
+                    "timeout to bound the run"
+                ),
+            )
         return _run_bounded(
             language, program, stdin, max_steps=max_steps, timeout=timeout, scale=scale
         )

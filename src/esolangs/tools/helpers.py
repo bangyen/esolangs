@@ -8,6 +8,7 @@ from collections.abc import Callable, Iterable, Sequence
 from itertools import pairwise, repeat
 
 from esolangs.exceptions import TruthTableError
+from esolangs.interpreters.source_hints import with_hint
 
 # ``ord("0")``.  Input digits arrive as 48/49 from a byte-oriented read, and a
 # result prints as ``_ASCII_ZERO + bit``, so this offset appears in every
@@ -165,9 +166,12 @@ def _validate_truth_table(truth_table: str) -> int:
     """
     n = _validate_shape(truth_table)
     if n == 0:
-        raise TruthTableError(
-            "truth table needs at least one input (n >= 1); "
-            "a one-entry table is a constant, not a boolean function"
+        raise with_hint(
+            TruthTableError(
+                "truth table needs at least one input (n >= 1); "
+                "a one-entry table is a constant, not a boolean function"
+            ),
+            ("use '00' or '11' to represent a constant with one input"),
         )
     return n
 
@@ -188,9 +192,12 @@ def _validate_shape(truth_table: str) -> int:
         # reads like a shell-quoting bug rather than a typo.  The sibling
         # validator in ``encode`` echoed the argument all along.
         bad = next((i, c) for i, c in enumerate(truth_table) if c not in {"0", "1"})
-        raise TruthTableError(
-            f"truth table must contain only '0' and '1', got {truth_table!r} "
-            f"-- {bad[1]!r} at position {bad[0]} is not one of them"
+        raise with_hint(
+            TruthTableError(
+                f"truth table must contain only '0' and '1', got {truth_table!r} "
+                f"-- {bad[1]!r} at position {bad[0]} is not one of them"
+            ),
+            ("write adjacent 0/1 results in row order, without spaces or separators"),
         )
     n = len(truth_table).bit_length() - 1
     if len(truth_table) != 2**n:
@@ -204,9 +211,15 @@ def _validate_shape(truth_table: str) -> int:
             if truth_table
             else ""
         )
-        raise TruthTableError(
-            "truth table must have a power-of-two number of entries "
-            f"(2**n), got {len(truth_table)}{between}",
+        raise with_hint(
+            TruthTableError(
+                "truth table must have a power-of-two number of entries "
+                f"(2**n), got {len(truth_table)}{between}",
+            ),
+            (
+                "choose n inputs and provide 2**n results; two "
+                "inputs need four, for example '0110'"
+            ),
         )
     return n
 
