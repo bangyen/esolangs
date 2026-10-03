@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.memory import parse_integer
 from esolangs.interpreters.persistent import (
     Chunked,
     append,
@@ -52,7 +53,7 @@ def _parse(line: str) -> _Line:
             "malformed BrainIf line: " + line,
             "write if <integer> <command>, for example if 0 increment",
         )
-    value = int(arr[1])
+    value = parse_integer(arr[1])
     command = arr[2] if len(arr) > 2 else ""
     if command == "move":
         if len(arr) != 4 or arr[3] not in ("right", "left"):
@@ -72,7 +73,7 @@ def _parse(line: str) -> _Line:
                 "malformed BrainIf line: " + line,
                 "give goto exactly one target line, for example if 0 goto 1",
             )
-        target = int(arr[3])
+        target = parse_integer(arr[3])
         if target < 1:
             raise syntax_error(
                 "goto target must be a positive line number",
