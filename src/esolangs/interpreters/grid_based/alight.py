@@ -31,14 +31,9 @@ operation.
   infix applied strictly left to right with no precedence and no grouping:
   ``a+b*c`` is ``(a+b)*c``.  Unary ``!`` appears in no example and is taken
   as prefix, the only reading that does not need an operand it lacks.
-* **Three-argument ``at`` sets in place** and returns the same list, where
-  the prose says it returns a copy.  The reversed-cat example runs
-  ``at{l, len{l}-0.5, c}`` as a bare command, discarding the result: under
-  copy semantics that is a no-op, ``l`` stays all ``nil``, and the example
-  crashes on its own first ``out``.  In place it reverses its input.  A bare
-  *call* is therefore a command too, evaluated for its effect.  Lists are
-  consequently references: ``set m l`` aliases, and a function can mutate a
-  list argument.
+* **Three-argument ``at`` returns a shallow copy**, per the explicit rule.
+  The reversed-cat example discards that copy and fails on nonempty input.
+  Bare calls are accepted and their return values discarded.
 * **EOF.**  ``inp`` past the end of input stores ``eof``, which is what the
   cat examples' ``c = eof`` guard tests.  An empty line is a real line and
   reads as 0, following the repo's ``input_char`` convention.
@@ -413,9 +408,8 @@ type _Expr = tuple[object, ...]
 #: a copy of the source.
 #:
 #: ``vars`` is frozen to nested tuples by :func:`_freeze` before a snapshot
-#: stores it, because a variable may hold a list -- and since three-argument
-#: ``at`` writes in place, a live reference would let a later command mutate
-#: a snapshot the cycle detector had already banked.
+#: stores it, because a variable may hold a list; snapshots must contain values,
+#: not live references.
 type _State = tuple[int, int, _Heading, tuple[object, ...]]
 
 
@@ -667,12 +661,9 @@ class _Machine:
 
         Returns the rewritten expression and the name of the user call to
         push, or None when nothing is left to run.  Every call it passes
-        -- **builtins included** -- is replaced by its value, so an
-        effectful ``at{l, i, v}`` runs exactly once no matter how many
-        times the command is re-entered.  Re-evaluating the whole
-        expression instead would fire it once per contained call:
-        measured, ``set v at{l,0.5,67}+f{1}+g{2}`` would write three
-        times.
+        -- **builtins included** -- is replaced by its value, so a
+        builtin is evaluated once even when a command resumes after a
+        user call.
 
         Left to right, innermost first, which is ``_eval``'s own order --
         so which ``HaltError`` fires first, and the order of any output a
@@ -848,7 +839,7 @@ class _Machine:
             self._eval_rest(text, "wait")
             return
         # A bare *call* is a command, run for its effect and its value
-        # discarded -- the reversed-cat example's ``at{l, len{l}-0.5, c};``.
+        # discarded.
         # Only a call, not any expression: the example shows no other kind,
         # and a call is the only expression that can have an effect at all.
         p = _Parser(text)
@@ -1038,13 +1029,9 @@ def _builtin(name: str, args: list[_Value]) -> _Value:
         )
     if seq and isinstance(seq[0], list) != isinstance(args[2], list):
         raise Hint.ELEMENT_TYPE.halt("at would put the wrong type of value in a list")
-    # Sets in place, against the prose's "returns a copy" -- see the module
-    # docstring.  The reversed-cat example's bare ``at{l, len{l}-0.5, c};``
-    # command is a pure no-op under copy semantics, which leaves ``l`` all
-    # nil and makes the example crash on its own first ``out``; in place it
-    # reverses.  The example wins.
-    seq[slot] = args[2]
-    return seq
+    result = seq.copy()
+    result[slot] = args[2]
+    return result
 
 
 def _find_func(

@@ -5,7 +5,8 @@ in > < + - . , [ ] order. Whitespace is ignored, as in the wiki's formatted
 example. Empty source halts; one zero encodes empty Brainfuck. Other symbols,
 incomplete triples and unmatched brackets raise ValueError. The unspecified
 Brainfuck dialect follows this repo: 8-bit wrapping cells, right-growing tape,
-left-clamped pointer and EOFError on exhausted character input.
+left-clamped pointer. Exhausted character input stores zero, as in the
+wiki's cat example.
 """
 
 from esolangs._drive import drive
@@ -14,7 +15,18 @@ from esolangs.interpreters.io import IO
 from esolangs.interpreters.source_hints import syntax_error
 from esolangs.interpreters.tape_based.brainfuck import _Machine as _BFMachine
 
-type _State = _BFMachine
+
+class _UnaryBFMachine(_BFMachine):
+    def step(self) -> None:
+        try:
+            super().step()
+        except EOFError:
+            # Only comma reads input; it has no jump and replaces the cell.
+            ind, ptr, tape, _acc, _dirty = self.state
+            self.state = (ind + 1, ptr, tape, 0, True)
+
+
+type _State = _UnaryBFMachine
 
 
 def decode(code: str) -> str:
@@ -49,7 +61,7 @@ class _Machine:
 
     def __init__(self, code: str, io: IO) -> None:
         self.io = io
-        self.state: _State = _BFMachine(decode(code), io)
+        self.state: _State = _UnaryBFMachine(decode(code), io)
 
     @property
     def halted(self) -> bool:
