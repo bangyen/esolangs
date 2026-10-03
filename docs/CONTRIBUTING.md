@@ -1,7 +1,7 @@
 # Contributing
 
-Add stable, deterministic languages verifiable through this repository's I/O
-model. Each needs a generator or a documented impossibility; record rejections
+Add stable, deterministic languages verifiable through the repo's I/O model.
+Each needs a generator or documented impossibility; record rejections
 in [limitations](limitations.md). See [architecture](architecture.md) for the
 execution path.
 
@@ -18,9 +18,8 @@ changes (`test-full` includes slow tests; weekly probes run separately with
 `just test-py`, or in scheduled CI). Regenerate committed examples with
 `python scripts/generate.py examples`.
 
-CI installs the built wheel on Linux, macOS, and Windows, checking packaged
-examples, CLI I/O, Line/Piet PNG execution, and installation with and without
-the mathematics extra.
+CI checks the wheel on Linux, macOS and Windows: packaged examples, CLI I/O,
+Line/Piet PNG execution, and installation with and without the mathematics extra.
 
 ## What makes a candidate worth adding
 
@@ -57,24 +56,22 @@ Curation also defines removal independently of admission.
 
 Start from `src/esolangs/interpreters/_template.py`. Every interpreter:
 
-- Exposes `run(code, io)` with a required `IO` (most grid languages get
-  `split=True` in the registry and receive lines; A Painter Ant, B-tapemark
-  and EGL take the source whole).  Prints and reads through `io`; never
-  `print`/`input`.
+- Exposes `run(code, io)` with required `IO`; uses `io` for all I/O.
+  Most grids receive lines via registry `split=True`; A Painter Ant,
+  B-tapemark and EGL receive whole source.
 - Raises `ValueError` for a malformed program and `HaltError` for an
   invalid runtime operation, and terminates by construction: the fuzz
   suites feed random and empty programs.
 - Guards an input line before indexing it (`if val:`); an empty line is
   legal, and running out raises `EOFError` either way.
-- Keeps the run state in a class named `_Machine` with `step()`, `halted`
-  and `snapshot()` (the complete state, input cursor included).  The name
-  is looked up by the tests: when `dimensional.py` used it for something
-  else the language was silently skipped.
+- Exposes `_Machine.step()`, `halted` and a complete `snapshot()`, including
+  the input cursor. Tests look up that exact name; `dimensional.py` was
+  silently skipped when it named something else.
 - Writes the language as a pure transition (`_advance`) over an immutable
   state, with `step` as the shell doing the I/O; a store that cannot be
   threaded cheaply returns effects instead (`grapheme.py`).
-- Documents decisions for genuine spec gaps in the module docstring
-  (`suffolk.py` shows one); it must not define away invalid operations.
+- Documents spec-gap decisions in its docstring (`suffolk.py`); never defines
+  away invalid operations.
 - Provides a `__main__` block calling `run(data, IO())`.
 
 `tests/test_interpreter_conventions.py` checks the module docstring names
@@ -100,9 +97,8 @@ A generator size optimization must meet all of these requirements:
   template runs in input order, one uniform `(zero, one)` fill pair, at most
   four named reorder candidates, no search, O(T) size and generation
   (`tests/proofs/deep/linearity.py`).
-- **No interpreter leniency**: a program that runs only because an
-  interpreter forgives it (truncated keywords, missing operands) is not
-  shorter.
+- **No interpreter leniency**: truncated keywords or missing operands do not
+  count as shorter programs.
 
 Execution-time optimizations require 5% fewer commands summed over every row
 of the three-input tables (`scripts/screens/steps.py`), with no table slower

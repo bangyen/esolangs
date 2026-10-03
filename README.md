@@ -11,8 +11,7 @@ Interpreters and Boolean generators for 81 esoteric languages: 79 text and 2 ras
 
 <!-- PACKAGE-COUNT:END -->
 
-`generate` takes a truth table and returns a program computing it;
-`evaluate` runs a supplied program on every row and returns what it answers.
+`generate` builds a truth-table program; `evaluate` returns its observed table.
 
 Start with the [CLI](#command-line) or [Python API](#python-api).
 The [usage guide](https://github.com/bangyen/esolangs/blob/main/docs/usage.md)
@@ -48,16 +47,15 @@ program = esolangs.generate("Fargo", "10010110")
 esolangs.evaluate("Fargo", program, timeout=None, inputs=3)  # -> '10010110'
 ```
 
-`evaluate` returns the answers observed over every input row; compare the
-result with an expected table, or use CLI `evaluate --table TABLE`.
-Termination answers require a proved halt or cycle; reaching a timeout raises
+Compare the result with the expected table, or use CLI `evaluate --table TABLE`.
+Termination answers require a proved halt or cycle; a timeout raises
 `ExecutionTimeoutError`.
 Use `isolated=True` for a bounded run on Windows or worker threads.
 The default in-process row timeout requires a Unix main thread;
 `timeout=None` disables that bound.
 
-Run each program with its intended language: a Suffolk program may run as
-brainfuck but produce the wrong answer. Input formats also vary; use
+Use the intended language: Suffolk source may run as brainfuck with a wrong
+answer. Use
 [`encode_inputs`](https://github.com/bangyen/esolangs/blob/main/docs/usage.md#feeding-a-program)
 to build stdin.
 
@@ -230,8 +228,7 @@ Languages that don't fit into the above categories.
 <!-- IMPLEMENTED:END -->
 </details>
 
-Line and Piet use the tape and stack interpreter families; their suites run
-with the rest by `just test`.
+`just test` includes Line and Piet's tape and stack interpreter suites.
 
 ## Generators
 

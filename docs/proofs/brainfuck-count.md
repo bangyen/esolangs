@@ -7,9 +7,8 @@ constant work removed in `e5276dc` (`lem:draw`, `prop:reduced`,
 
 ## Status
 
-The limit remains open. The proved bounds narrow
-`[1 + sqrt 2, 1 + lambda] = [2.414, 7.388]`; their numerical certificates
-use exact rational arithmetic:
+The limit remains open. Exact rational certificates narrow the former
+`[1 + sqrt 2, 1 + lambda] = [2.414, 7.388]` interval:
 
 | model (section 1) | lower bound on `liminf B(C)^(1/C)` | upper bound on `limsup B(C)^(1/C)` |
 |---|---|---|
@@ -689,7 +688,7 @@ The replacement 7.0347 certificate is reproducible with
 monitors, computes a candidate vector by power iteration, rounds it at scale `10**12`, and
 checks the displayed Perron inequality using integers only. Floating-point accuracy is not a
 hypothesis of the certificate. `tests/proofs/test_brainfuck_count.py` checks the automata against
-an independent regex oracle, executes 240 contextual rewrite pairs, and rejects the unsafe
+an independent regex oracle, executes 2,944 contextual rewrite pairs, and rejects the unsafe
 read/print commutations with positive counterexamples. The invalid `[-[]]` body remains accepted.
 
 The dead-cell certificates of section 5b come from the transfer matrices on `(p, m)`, and on

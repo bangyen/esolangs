@@ -1,10 +1,9 @@
 # Coefficient mass for common norm Gaussian factors
 
-A quadratic mass bound holds for the raw common-norm factor and for scaled
-reciprocal or anti-reciprocal integer multiples. Arbitrary integer multiples
-remain conjectural. The common-norm hypothesis does not cover the general
-Gaussian register-root families in
-[Polynomial](polynomial.tex), whose norms need not agree.
+Quadratic mass is proved for raw common-norm factors and scaled reciprocal
+or anti-reciprocal integer multiples; arbitrary multiples remain conjectural.
+[Polynomial](polynomial.tex)'s general Gaussian register roots need not share
+a norm.
 
 Let `K >= 2`, let `p_j` be distinct primes, and put `c_j = p_j^b_j`
 with `b_j >= 2`. Suppose nonzero integers `a_j` satisfy
@@ -87,7 +86,7 @@ within these reciprocal classes.
 Reciprocity of `Q` does not imply reciprocity of an arbitrary multiple.
 The support bound also does not locate its nonzero coefficients at
 indices where radius divisibility supplies a quadratic charge.
-The missing result must control cancellation for arbitrary integer quotients.
+The missing result is cancellation control for arbitrary integer quotients.
 
 Local half-factor approximations do not remove this difficulty. For
 example, select one root `alpha_j` from each quadratic and let
@@ -103,9 +102,7 @@ the quotient in `Z[i][y]`. Thus a nonreal-density bound for a raw
 half-factor cannot extend to unrestricted Gaussian quotients.
 This is not a counterexample to the integer-multiplier conjecture.
 
-Canonical integer-scaled tails can instead pay valuation height, but
-rescaling back to rational approximants changes both sizes and
-denominators. A bound before that rescaling is not an integer
-height-transfer theorem. The common-norm conjecture remains open;
-even its completion would not settle the general register-root case
-or close Polynomial's factor-12.5 constant bracket.
+Integer-scaled tails can pay valuation height, but rescaling to rational
+approximants changes sizes and denominators; a pre-rescaling bound does not
+transfer integer height. The common-norm conjecture remains open and would
+not alone settle general register roots or Polynomial's factor-12.5 bracket.

@@ -18,9 +18,6 @@ requires only `w = Omega(n)`; choosing `w` near `n / 3` keeps execution within
 a fractional power of `T`. Both constructions are executed in
 `tests/proofs/deep/fractran_packed.py`.
 
-The sections below also correct the earlier notation-dependent packing
-argument and explain why Factor’s behaviour count does not apply here.
-
 ## Setup
 
 A FRACTRAN program is a starting value `v` and an ordered list of positive
@@ -71,20 +68,16 @@ pairs sharing a raw denominator with different guards do fire both.
     invariant under every step, and the whole run is a function of the
     exponent vector (e_p(x))_{p in S} alone.
 
-Every guard and every multiplier is supported on `S`, so no step tests or
-changes `u`. The consequence is the one that matters for encoding: the
-*digits* of a written integer are not data. A `0.3T`-character decimal
-constant carries `T` bits to a reader and almost nothing to the machine,
-which can only ever see its exponents over `S`. A truth table cannot be
-carried as a number.
+Every guard and multiplier is supported on `S`, so no step tests or changes
+`u`. A `0.3T`-character decimal constant carries `T` bits to a reader, but the
+machine sees only its exponents over `S`, not its decimal digits.
 
     Lemma 5 (relabelling). Any injection of S into the primes, applied to v
     and to every q_i, yields a program with an identical run structure and
     the same computed table.
 
-So a prime's identity carries nothing either. Only how many primes there
-are, and which role each plays, can be read -- which is why the cost of a
-prime is the cost of writing *some* prime of that rank.
+Prime identities therefore carry no information beyond their number and
+roles; charge the cost of writing some prime of that rank.
 
     Lemma 6 (monotone guards). Fix two inputs whose runs have fired the
     same fractions for t steps. As a condition on the inputs, "g divides
@@ -129,16 +122,13 @@ the prime number theorem.
     that gives each of the T rows its own guard, or its own prime, needs
     D = Omega(T log T) characters.
 
-This is the wall, and it is where the earlier prose was pointing: not "the
-`T`th prime costs `log10(T log T)` digits" -- true but paid once -- but that
-digit cost is *additive*, so `T` addresses cost `T` of those logs however
-they are packed into numbers. A prime-per-node tree pays exactly this, and the
-floor is not loose for it: measured on the unfoldable table (parity), it
+The `T`th prime's `log10(T log T)`-digit cost is paid once, but distinct
+prime costs add: `T` addresses require `T` such charges, however packed.
+A prime-per-node tree attains this order. On the unfoldable parity table it
 emits `m = 3T + n - 2` fractions over `k = 2T + n` primes with all `m`
 guards distinct, and `D / log10(m!)` falls to `3.00` by `n = 12`.
 
-Read the hypothesis. It is a wall for programs that address rows, and a
-program is under no obligation to address rows: Theorem 15 addresses
+Programs need not address individual rows. Theorem 15 addresses
 `3T / w` of them for a block width `w = Theta(n)`, and pays this same
 budget for those, which comes to `Theta(T)`.
 
@@ -150,13 +140,11 @@ The alternative to `T` addresses is to pack rows into one prime's exponent.
     e log10 p characters.
 
 A table held as a `T`-bit exponent then costs about `2**T * 0.30`
-characters, so packing trades the wrong way -- an exponent of `2**k` carries
-`k` bits and costs `2**k` digits. **This is the claim that was previously
-stated unconditionally, and it is false under this port's rendering**, which
-parses `p^e` in starting values, numerators and denominators alike: there
+characters: an exponent of `2**k` carries `k` bits but costs `2**k` digits.
+This bound does not apply to the port's `p^e` notation, accepted in starting
+values, numerators and denominators: there
 the same exponent costs `log10 e + log10 p + 1`, so a `T`-bit exponent is
-about `0.3T` characters and the size axis does not forbid it at all. What
-forbids it is the clock.
+about `0.3T` characters. Execution cost supplies the remaining constraint.
 
     Lemma 11. Let M be the largest exponent appearing in the text. Each
     step changes each e_p by at most M, and the only predicates available on

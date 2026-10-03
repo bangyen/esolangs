@@ -1,7 +1,7 @@
 # Polynomial: the scaling lower bound
 
-The standalone theorem is [polynomial.tex](polynomial.tex).  This companion
-retains implementation bounds, searches, counterexamples, and proof history.
+See [polynomial.tex](polynomial.tex) for the standalone theorem; this companion
+covers implementation bounds, searches, and counterexamples.
 
 Program text lists the expanded coefficients of a polynomial whose roots
 encode instructions. Every program for a maximal-width table requires
@@ -83,8 +83,8 @@ so their zero-padded Decimal operands are each `Theta(R)` digits and the root
 alone costs `Omega(R**alpha)`.  Therefore current fixed-libmpdec generation is
 
 `Theta(R**alpha) = Theta((T**2/log T)**alpha)` word operations, about
-`Theta(T**3.169925/log**1.584963 T)`.  This closes the implementation-time
-gap.  Inside libmpdec's direct-FNT range the same argument gives
+`Theta(T**3.169925/log**1.584963 T)`. Inside libmpdec's direct-FNT range
+the same argument gives
 `Theta(R log R) = Theta(T**2)`; the public resource ceiling stays inside that
 range.  The classification is for fixed-word libmpdec operations, not a
 language-level multiplication lower bound or a claim about other Decimal
