@@ -9,9 +9,7 @@ Gaps decided: division by zero and popping an empty queue halt with
 :class:`~esolangs.exceptions.HaltError`; an empty queue reads as 0 for
 loop conditions; unmatched ``gy``/``gz`` raise :class:`ValueError`; a
 non-command character (and a lone ``g``) is **skipped** -- so ``qqq``
-runs cleanly -- because ``test_a_skipped_character_advances_the_cursor``
-and its neighbours pin that deliberately, where Bitdeque, the other
-queue language, refuses; ``t``
+runs cleanly. Bitdeque instead requires recognized command words. ``t``
 keeps the RFC 3986 unreserved set and ``%XX``-encodes the rest
 (uppercase hex, wider above 255), narrower than the real page's
 ``!$'()*,/:;?@`` and ``+`` but within the spec.  Exhausted input raises
