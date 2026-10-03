@@ -14,6 +14,7 @@ import copy
 from collections.abc import Sequence
 from typing import cast
 
+from esolangs._drive import drive
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO, ScriptedIO
@@ -285,8 +286,7 @@ class _Machine:
 def run(code: list[str], io: IO, rng: Randomness | None = None) -> None:
     """Execute a Fish codebox until ``;``."""
     machine = _Machine(code, io, rng)
-    while not machine.halted:
-        machine.step()
+    drive(machine)
 
 
 if __name__ == "__main__":

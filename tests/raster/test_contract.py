@@ -15,6 +15,14 @@ RASTER_LANGUAGES = [
 ]
 
 
+@pytest.mark.medium
+@pytest.mark.parametrize("language", RASTER_LANGUAGES)
+def test_committed_png_computes_every_row(language: str) -> None:
+    examples = esolangs.describe(language)["examples"]
+    assert len(examples) == 1
+    assert esolangs.evaluate(language, Path(examples[0]), inputs=2) == "0001"
+
+
 def test_raster_type_has_neutral_ownership() -> None:
     assert Raster.__module__ == "esolangs.raster"
     assert esolangs.Raster is Raster
@@ -132,3 +140,111 @@ def test_lazy_raster_does_not_cache_invalid_pixels() -> None:
         _ = raster.rows
     pixels[0][0][0] = 0
     assert raster.rows == (((0, 0, 0),),)
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("language", RASTER_LANGUAGES)
+def test_bounded_raster_run_preserves_explicit_scale(language: str) -> None:
+    from esolangs.debugger import make_debugger
+    from esolangs.vm import make_vm
+
+    source = esolangs.generate(language, "01", scale=2)
+    assert isinstance(source, Raster)
+    source = Raster.from_png(source.to_png())
+    assert esolangs.run(language, source, "1\n", scale=2, max_steps=1000) == "1"
+    vm = make_vm(language, source, "0\n", scale=2)
+    while not vm.halted:
+        vm.step()
+    assert vm.output == "0"
+    debugger = make_debugger(language, source, "1\n", scale=2)
+    assert debugger.run(max_steps=1000) == "halted"
+    assert debugger.output == "1"
+    assert esolangs.describe(language)["state_model"] in {"tape", "stack"}
+
+
+@pytest.mark.parametrize("channel", [True, 1.0])
+def test_palette_validation_does_not_confuse_equal_channel_types(
+    channel: object,
+) -> None:
+    valid = (1, 0, 0)
+    with pytest.raises(ValueError, match="RGB"):
+        Raster(((valid, (channel, 0, 0)),))  # type: ignore[arg-type]
+
+
+def test_palette_validation_remains_bounded() -> None:
+    pixels = tuple((i // 256, i % 256, 0) for i in range(1025))
+    assert Raster((pixels,)).rows == (pixels,)
+
+
+@pytest.mark.parametrize("builder_name", ["make_vm", "make_debugger"])
+def test_text_step_builders_refuse_raster_scale(builder_name: str) -> None:
+    import esolangs.debugger as debugger
+
+    builder = getattr(debugger, builder_name)
+    with pytest.raises(esolangs.ArgumentError, match="only supported for raster"):
+        builder("brainfuck", "+", scale=2)
+    with pytest.raises(esolangs.ArgumentError):
+        builder("brainfuck", "+", scale=0)
+
+
+def test_repeated_tuple_rows_with_mutable_pixels_are_revalidated() -> None:
+    pixel = [0, 0, 0]
+    row = (pixel,)
+
+    def rows():
+        yield row
+        pixel[0] = 255
+        yield row
+
+    assert Raster(rows()).rows == (((0, 0, 0),), ((255, 0, 0),))
+
+
+def test_repeated_tuple_rows_do_not_hide_an_invalid_mutation() -> None:
+    pixel = [0, 0, 0]
+    row = (pixel,)
+
+    def rows():
+        yield row
+        pixel[0] = True
+        yield row
+
+    with pytest.raises(ValueError, match="RGB"):
+        Raster(rows())
+
+
+def test_more_than_a_thousand_distinct_rows_remain_exact() -> None:
+    rows = tuple(((i // 256, i % 256, 0),) for i in range(1025))
+    assert Raster(rows).rows == rows
+
+
+def test_adjacent_mutable_pixels_are_frozen_on_each_occurrence() -> None:
+    class ChangingPixel(list):
+        def __iter__(self):
+            self[0] += 1
+            return iter((self[0], 0, 0))
+
+    pixel = ChangingPixel([0, 0, 0])
+    assert Raster(((pixel, pixel),)).rows == (((1, 0, 0), (2, 0, 0)),)
+
+
+def test_raster_rejects_a_noniterable_pixel() -> None:
+    with pytest.raises(TypeError):
+        Raster(((None,),))  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize("row_type", [tuple, list])
+def test_raster_detaches_mutable_pixels_after_an_immutable_prefix(row_type):
+    red, black = (255, 0, 0), (0, 0, 0)
+    mutable = [1, 2, 3]
+    row = row_type([red, red, black, red, mutable, red, red, black])
+    raster = Raster((row,))
+    assert raster.rows == ((red, red, black, red, (1, 2, 3), red, red, black),)
+    mutable[0] = 255
+    assert raster.rows[0][4] == (1, 2, 3)
+    assert raster.rows[0][0] is red
+
+
+def test_raster_preserves_validated_immutable_row_identity() -> None:
+    red, black = (255, 0, 0), (0, 0, 0)
+    row = (red, red, black, red)
+    assert Raster((row, row)).rows[0] is row

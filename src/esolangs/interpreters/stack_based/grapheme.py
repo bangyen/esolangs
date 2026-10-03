@@ -32,6 +32,9 @@ rewind for ``Z``) is part of the transition, reading the *virtual* depth.
 The old ``steps``/``limit`` budget is gone: unbounded pushes are what
 ``esolangs.run``'s ``timeout`` catches, and ancestor replay is decided by
 :func:`esolangs.vm.run_until_halt_or_ancestor`.
+
+The spec asks for strings without defining their delimiter; W reads one line,
+excluding its newline.
 """
 
 from __future__ import annotations
@@ -39,6 +42,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Final, Literal
 
+from esolangs._drive import drive
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
@@ -478,8 +482,7 @@ class _Machine:
 def run(code: str, io: IO) -> None:
     """Run a Grapheme program to completion."""
     machine = _Machine(code, io)
-    while not machine.halted:
-        machine.step()
+    drive(machine)
 
 
 if __name__ == "__main__":

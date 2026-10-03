@@ -104,6 +104,7 @@ NARROW_WIDTH = 13
 # not touch the finished text -- the reasons above are why a break is
 # destructive, and those hold whatever the generator learns to do.
 UNWRAPPABLE = {
+    "slashes": "newlines are literal output and substitution data",
     "fargo": "each physical line is one command; expressions have no continuation",
     "minsky_swap": "only line 1 is code; line 2 gives its numeric jump distances",
     "alight": "a command is a word walked cell by cell; a row end cuts it",
@@ -124,8 +125,6 @@ UNWRAPPABLE = {
     "thisthat": "the H-tree's nodes and wires occupy fixed grid coordinates",
 }
 
-WIDTH_EXCEPTIONS: dict[str, str] = {}
-
 # These are 2D too, and wrap_program must not touch them either -- but each
 # honours a width itself by *laying its program out* to fit rather than by
 # ignoring it, so they belong here rather than in UNWRAPPABLE.  LaserFuck's
@@ -141,6 +140,11 @@ WIDTH_EXCEPTIONS: dict[str, str] = {}
 # what let it pass.  Dig has since grown a real one, so that entry would be
 # right today for a reason the table never had; a derived table cannot make
 # either mistake in the first place.
+WIDTH_EXCEPTIONS = {
+    "slashes": "newlines are literal output and substitution data",
+    "line": "tree geometry fixes the width; balance chooses orientation",
+}
+
 WIDTH_HONOURING = sorted(
     lang.id
     for lang in LANGUAGES.values()
@@ -166,14 +170,8 @@ WRAPPED = sorted(
 )
 
 
-def test_every_boolean_generator_has_a_width_policy() -> None:
-    """Every generator reflows, lays itself out, or records why it cannot.
-
-    Derived from the registry so a new generator enters this audit without a
-    hand-written catalogue update.  ``UNWRAPPABLE`` may overlap self-layout,
-    but ``WIDTH_EXCEPTIONS`` may not: Alight cannot be reflowed after generation
-    but can build a different grid when it receives ``width`` itself.
-    """
+def test_every_generator_has_a_width_policy() -> None:
+    """Every generator reflows, lays itself out, or records why it cannot."""
     boolean_ids = {
         language.id for language in LANGUAGES.values() if language.boolean is not None
     }
@@ -186,14 +184,10 @@ def test_every_boolean_generator_has_a_width_policy() -> None:
         and language.id not in WIDTH_EXCEPTIONS
     }
     assert missing == set()
+    assert set(WIDTH_EXCEPTIONS) <= boolean_ids
+    assert all(reason.strip() for reason in WIDTH_EXCEPTIONS.values())
     assert set(UNWRAPPABLE) <= boolean_ids
-    assert set(WIDTH_EXCEPTIONS) <= set(UNWRAPPABLE)
     assert all(reason.strip() for reason in UNWRAPPABLE.values())
-    assert all(
-        not takes_width(language.boolean)
-        for language in LANGUAGES.values()
-        if language.id in WIDTH_EXCEPTIONS and language.boolean is not None
-    )
 
 
 def _table(arity: int) -> str:
@@ -213,8 +207,8 @@ def _example(name: str) -> BooleanExample:
 
 
 def _stdin(name: str) -> str:
-    """The input lines ``name``'s example feeds its program."""
-    return "".join(f"{line}\n" for line in _example(name).inputs)
+    """Return the example's encoded stdin."""
+    return _example(name).stdin
 
 
 def _replaces_a_space(name: str) -> bool:
@@ -573,7 +567,7 @@ def test_wrapping_holds_on_a_table_the_examples_do_not_cover(
         wrapped = variant.build(NARROW_WIDTH)
         if wrapped == plain:
             continue
-        stdin = "".join(f"{line}\n" for line in variant.inputs)
+        stdin = variant.stdin
         assert _behaviour(name, wrapped, stdin) == _behaviour(name, plain, stdin), (
             f"{name}: wrapping changed the answer on the {shape} table, inputs {bits}"
         )
@@ -593,8 +587,10 @@ _HONOUR_TABLES = {
 _HONOUR_WIDTHS = (10, 20, 40, 80)
 
 
-def _columns(program: str) -> int:
+def _columns(program: esolangs.Program) -> int:
     """The width of the widest row of ``program``."""
+    if isinstance(program, esolangs.Raster):
+        return len(program.rows[0])
     return max(len(line) for line in program.split("\n"))
 
 
@@ -617,6 +613,7 @@ def _laid_out(name: str, table: str, bits: str, width: int | None) -> str:
         table=table,
         bits=tuple(int(bit) for bit in bits) if example.fill else (),
         inputs=() if example.fill else tuple(bits),
+        scale=1,
     )
     return variant.build(width)
 
@@ -693,7 +690,11 @@ def test_width_honouring_layout_computes_the_same_thing(name: str) -> None:
         for combo in range(2**arity):
             bits = format(combo, f"0{arity}b")
             # A parameterized generator embeds its inputs and reads nothing.
-            stdin = "" if example.fill else "".join(f"{bit}\n" for bit in bits)
+            stdin = (
+                ""
+                if example.fill
+                else esolangs.encode_inputs(language.name, [int(bit) for bit in bits])
+            )
             compact = _laid_out(language.name, table, bits, None)
             expected = _behaviour(language.name, compact, stdin)
             if name == "back":
@@ -769,7 +770,7 @@ def test_width_honouring_languages_respect_the_width(name: str) -> None:
     assert language.boolean is not None
     for width in (40, 80, 94):
         program = generate(language.name, TABLE, width)
-        assert max(map(len, program.split("\n"))) <= width
+        assert _columns(program) <= width
     # omitting the width is still the compact one-shot form
     assert generate(language.name, TABLE) == _public(language, TABLE)
 

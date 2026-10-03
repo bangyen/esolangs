@@ -20,7 +20,7 @@ from __future__ import annotations
 import sys
 
 from esolangs.interpreters.other.malbolge import _XLAT2, _crazy
-from esolangs.tools._malbolge_core import _char_for, _f, _rot
+from esolangs.tools.malbolge.core import _char_for, _f, _rot
 
 W = 59049
 

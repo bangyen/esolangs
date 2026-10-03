@@ -55,9 +55,9 @@ class TestParameterizedNoComment:
     @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every instantiated input produces the truth-table result."""
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
-        template = parameterized.nocomment(table)
+        template = generators.nocomment(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = self.run_nocomment(self.instantiate(template, bits))
@@ -67,11 +67,11 @@ class TestParameterizedNoComment:
     @pytest.mark.medium
     def test_all_small_tables(self, n: int) -> None:
         """Every table up to three inputs produces the right result."""
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
         for table_int in range(2 ** (2**n)):
             table = format(table_int, f"0{2**n}b")
-            template = parameterized.nocomment(table)
+            template = generators.nocomment(table)
             for combo in range(2**n):
                 bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
                 got = self.run_nocomment(self.instantiate(template, bits))
@@ -79,17 +79,17 @@ class TestParameterizedNoComment:
 
     def test_template_is_input_independent(self) -> None:
         """The template has one run per input, not hardcoded bits."""
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
-        template = parameterized.nocomment("0110")
+        template = generators.nocomment("0110")
         assert "{X" not in template
         assert template.count(TEMPLATE_CHAR) == 2 * len(PAIR[0])
 
     def test_program_structure(self) -> None:
         """A one-bit template computes the index then skips to the output."""
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
-        template = parameterized.nocomment("10")
+        template = generators.nocomment("10")
         assert template.startswith(TEMPLATE_CHAR * len(PAIR[0]))
         # The complement is computed at runtime: one run per input, no second.
         assert template.count(TEMPLATE_CHAR) == len(PAIR[0])
@@ -99,11 +99,11 @@ class TestParameterizedNoComment:
 
     def test_four_input_works(self) -> None:
         """A dense four-input table assembles and runs correctly."""
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
         for combo in range(16):
             bits = [(combo >> (3 - i)) & 1 for i in range(4)]
-            template = parameterized.nocomment("1010101010101010")
+            template = generators.nocomment("1010101010101010")
             got = self.run_nocomment(self.instantiate(template, bits))
             assert got == str(int("1010101010101010"[combo])), f"inputs {bits}"
 
@@ -162,11 +162,11 @@ class TestParameterizedNoComment:
         The n=13 table is one the tape-resident decode refused on the
         default tape, and it is executed here on a *six*-cell one.
         """
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
         n = 13
         table = "".join(str((r * r + r // 3) % 2) for r in range(2**n))
-        template = parameterized.nocomment(table)
+        template = generators.nocomment(table)
         assert set(template) <= set("idclrnfsbo") | {TEMPLATE_CHAR}
         for combo in (0, 1, 2**n - 1, 2**n - 2, 1234, 2731, 4096, 6000):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
@@ -182,21 +182,21 @@ class TestParameterizedNoComment:
         the dispatch is checked to follow the constant rather than restate
         it.
         """
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
         from esolangs.tools.nocomment import _NOCOMMENT_CHAIN_MIN, _nocomment_chain
 
         assert _NOCOMMENT_CHAIN_MIN == 4
         three, four = "01101001", "0110100110010110"
-        narrow = parameterized.nocomment(three)
+        narrow = generators.nocomment(three)
         chained = _nocomment_chain(three, 3)
         assert narrow != chained
         assert len(narrow) < len(chained)
-        chain = parameterized.nocomment(four)
+        chain = generators.nocomment(four)
         assert chain == _nocomment_chain(four, 4)
         module = importlib.import_module("esolangs.tools.nocomment")
         module._NOCOMMENT_CHAIN_MIN = 99  # noqa: SLF001
         try:
-            assert len(parameterized.nocomment(four)) > len(chain)
+            assert len(generators.nocomment(four)) > len(chain)
         finally:
             module._NOCOMMENT_CHAIN_MIN = 4  # noqa: SLF001
 
@@ -208,14 +208,14 @@ class TestParameterizedNoComment:
         table's -- which is what keeps NoComment in the reducing class past
         the narrow decode.
         """
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
         n = 6
         table = "".join(str((r >> 4) & 1 ^ (r & 1)) for r in range(2**n))
-        template = parameterized.nocomment(table)
+        template = generators.nocomment(table)
         assert template.count(TEMPLATE_CHAR) == n * len(PAIR[0])
         parity = "".join(str(bin(r).count("1") % 2) for r in range(2**n))
-        assert len(template) < len(parameterized.nocomment(parity))
+        assert len(template) < len(generators.nocomment(parity))
         assert template.count("fsf") == 4 + 2 + 1  # four rows, two stages, a pad
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
@@ -224,10 +224,10 @@ class TestParameterizedNoComment:
 
     def test_the_chain_is_linear_in_the_table(self) -> None:
         """Six commands per row and a stage per 32: the size doubles with the table."""
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
         sizes = [
-            len(parameterized.nocomment("01" * 2 ** (n - 1))) for n in (9, 10, 11, 12)
+            len(generators.nocomment("01" * 2 ** (n - 1))) for n in (9, 10, 11, 12)
         ]
         for small, big in pairwise(sizes):
             assert big < 2 * small, sizes
@@ -235,7 +235,7 @@ class TestParameterizedNoComment:
 
     def _check_wide_arity(self, n: int, rows: Iterable[int]) -> None:
         """Run the four probe tables at arity ``n`` over ``rows``."""
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
         tables = {
             "alternating": "01" * (2 ** (n - 1)),
@@ -245,7 +245,7 @@ class TestParameterizedNoComment:
         }
         rows = list(rows)
         for name, table in tables.items():
-            template = parameterized.nocomment(table)
+            template = generators.nocomment(table)
             for combo in rows:
                 bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
                 got = self.run_nocomment(self.instantiate(template, bits))

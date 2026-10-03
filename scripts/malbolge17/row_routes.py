@@ -11,7 +11,7 @@ from live_rows import build_live_rows
 from planner import _Planner
 from setup_consumer import check_setup_memory, control_inputs
 
-from esolangs.tools._malbolge_core import _char_for, _g, _rot
+from esolangs.tools.malbolge.core import _char_for, _g, _rot
 
 
 def row_words() -> list[int]:

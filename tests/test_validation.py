@@ -12,11 +12,12 @@ from __future__ import annotations
 import pytest
 
 import esolangs
+import esolangs.debugger as debugger_api
 from esolangs.debugger import STOP_REASONS
 
 
-def _debugger() -> esolangs.Debugger:
-    return esolangs.make_debugger("brainfuck", "+[]", stdin="")
+def _debugger() -> debugger_api.Debugger:
+    return debugger_api.make_debugger("brainfuck", "+[]", stdin="")
 
 
 class TestABoundMustBind:
@@ -59,7 +60,7 @@ class TestABreakpointMustBeAbleToFire:
         and the test would pass for the wrong reason.
         """
         program = esolangs.generate("Streetcode", "0110")
-        dbg = esolangs.make_debugger(
+        dbg = debugger_api.make_debugger(
             "Streetcode", program, stdin=esolangs.encode_inputs("Streetcode", [0, 1])
         )
         assert isinstance(dbg.ip, tuple)
@@ -151,7 +152,7 @@ class TestTheChecksAreSymmetric:
         with pytest.raises(expected):
             esolangs.run("brainfuck", program, stdin)  # type: ignore[arg-type]
         with pytest.raises(expected):
-            esolangs.make_debugger("brainfuck", program, stdin)  # type: ignore[arg-type]
+            debugger_api.make_debugger("brainfuck", program, stdin)  # type: ignore[arg-type]
 
     @pytest.mark.parametrize("text", [None, 5, b"x"])
     def test_break_on_output_refuses_a_non_string(self, text: object) -> None:
@@ -169,7 +170,7 @@ class TestTheChecksAreSymmetric:
             _debugger().break_when(lambda: True)  # type: ignore[arg-type,misc]
 
     def test_break_when_still_takes_a_real_predicate(self) -> None:
-        dbg = esolangs.make_debugger("brainfuck", "+++", stdin="")
+        dbg = debugger_api.make_debugger("brainfuck", "+++", stdin="")
         dbg.break_when(lambda vm: bool(vm.memory) and vm.memory[0] == 2)
         assert dbg.run(max_steps=10) == "breakpoint"
 

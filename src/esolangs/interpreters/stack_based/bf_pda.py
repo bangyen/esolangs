@@ -11,6 +11,7 @@ state and the transition is total; an empty or unbalanced program raises
 
 from __future__ import annotations
 
+from esolangs._drive import drive
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.brackets import match_brackets
 from esolangs.interpreters.io import IO
@@ -112,8 +113,7 @@ class _Machine:
 def run(code: str, io: IO) -> None:
     """Run a BF-PDA program, halting when it reaches the end of the code."""
     machine = _Machine(code, io)
-    while not machine.halted:
-        machine.step()
+    drive(machine)
 
 
 if __name__ == "__main__":

@@ -61,9 +61,9 @@ class TestEvalBoolean:
     @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every instantiated input produces the truth-table result."""
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
-        template = parameterized.eval(table)
+        template = generators.eval(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = self.run_eval(self.instantiate(template, bits))
@@ -73,11 +73,11 @@ class TestEvalBoolean:
     @pytest.mark.medium
     def test_all_small_tables(self, n: int) -> None:
         """Every table up to three inputs produces the right result."""
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
         for table_int in range(2 ** (2**n)):
             table = format(table_int, f"0{2**n}b")
-            template = parameterized.eval(table)
+            template = generators.eval(table)
             for combo in range(2**n):
                 bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
                 got = self.run_eval(self.instantiate(template, bits))
@@ -85,10 +85,10 @@ class TestEvalBoolean:
 
     def test_ignored_inputs_shrink_the_lookup(self) -> None:
         """A constant table pushes one result and only drains its inputs."""
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
-        full = parameterized.eval("10010110")
-        folded = parameterized.eval("11111111")
+        full = generators.eval("10010110")
+        folded = generators.eval("11111111")
         assert len(folded) < len(full)
         assert folded == _X * 3 + "`~;~~;~~;~."
 
@@ -99,11 +99,11 @@ class TestEvalBoolean:
         the inputs.  A fold that depended on the bits would reintroduce
         exactly that leak, so this pins equal width on folded tables too.
         """
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
         for table in ("11111111", "11110000", "11001100", "0001"):
             n = len(table).bit_length() - 1
-            template = parameterized.eval(table)
+            template = generators.eval(table)
             widths = {
                 len(
                     self.instantiate(
@@ -116,17 +116,17 @@ class TestEvalBoolean:
 
     def test_template_is_input_independent(self) -> None:
         """The template has one run per input, not hardcoded bits."""
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
-        template = parameterized.eval("0110")
+        template = generators.eval("0110")
         assert "{X" not in template
         assert template.count(TEMPLATE_CHAR) == 2 * len(PAIR[0])
 
     def test_linear_lookup_structure(self) -> None:
         """Each level shares one half-stack discard between both branches."""
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
-        template = parameterized.eval("0110")
+        template = generators.eval("0110")
         assert template.startswith(_X * 2)
         assert template.endswith(".")
         assert '"' not in template
@@ -138,23 +138,23 @@ class TestEvalBoolean:
 
     def test_reordering_is_not_part_of_the_lookup(self) -> None:
         """The free staged order is always shortest for the linear lookup."""
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
+        from esolangs.tools.eval_lang import _eval_ordered
         from esolangs.tools.helpers import permute_truth_table
-        from esolangs.tools.parameterized import _eval_ordered
 
         # Staging pushes X0 first, so the free arrangement's split order is
         # the reversal -- the no-ops build is not the identity permutation.
         free = tuple(reversed(range(3)))
         for value in range(256):
             table = format(value, "08b")
-            dispatched = len(parameterized.eval(table))
+            dispatched = len(generators.eval(table))
             staged = len(_eval_ordered(permute_truth_table(table, free), ""))
             assert dispatched == staged, table
 
     def test_reorder_cost_selects_the_emitted_template(self) -> None:
         """The pricing model matches every candidate and picks the shortest."""
+        from esolangs.tools.eval_lang import _eval_ordered
         from esolangs.tools.helpers import permute_truth_table
-        from esolangs.tools.parameterized import _eval_ordered
         from tests.tools.eval_reorders import _eval_cost, _eval_stack_programs
 
         for n in (1, 2, 3):
@@ -178,12 +178,12 @@ class TestEvalBoolean:
         stack its nodes pop from.  Equal-width embedding therefore still
         holds, since nothing inside a run moved.
         """
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
         from tests.tools.fills import _fill_eval
 
         # A table whose cheapest order is not the free one.
         table = "00001101"
-        template = parameterized.eval(table)
+        template = generators.eval(table)
         assert template.startswith(_X * 3)  # runs unmoved
         widths = {
             len(_fill_eval(template, [(c >> (2 - i)) & 1 for i in range(3)]))
@@ -303,18 +303,18 @@ class TestEvalBoolean:
 
     def test_scales_to_more_inputs(self) -> None:
         """Size stays linear and a wider generated program executes."""
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
         sizes = []
         for width in range(6, 13):
             parity = "".join(str(i.bit_count() & 1) for i in range(2**width))
-            sizes.append(len(parameterized.eval(parity)) / len(parity))
+            sizes.append(len(generators.eval(parity)) / len(parity))
         assert sizes == sorted(sizes, reverse=True)
         assert sizes[-1] < 2.1
 
         n = 6
         table = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(2**n))
-        template = parameterized.eval(table)
+        template = generators.eval(table)
         # The template is the exact shape of every program it fills to.
         assert len(template) == len(self.instantiate(template, [0] * n)) == 206
         for combo in range(2**n):

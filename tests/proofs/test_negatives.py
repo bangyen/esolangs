@@ -36,8 +36,8 @@ from esolangs.interpreters.register_based.polynomial import (
     run,
     sanitize,
 )
-from esolangs.tools._polynomial import format_coeffs, multiply
-from esolangs.tools.register import polynomial
+from esolangs.tools.polynomial import polynomial
+from esolangs.tools.polynomial.algebra import format_coeffs, multiply
 
 # --------------------------------------------------------------------------
 # Polynomial cannot ship a factored program
@@ -157,7 +157,7 @@ class TestIgnoredRootMultiplesPreserveExecution:
         def rows(code: str) -> str:
             out = []
             for row in range(1 << 2):
-                io = ScriptedIO("".join(f"{b}\n" for b in f"{row:02b}"))
+                io = ScriptedIO("".join(f"{b}" for b in f"{row:02b}"))
                 run(code, io)
                 out.append(io.getvalue())
             return "".join(out)

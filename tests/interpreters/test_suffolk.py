@@ -141,14 +141,14 @@ class TestSuffolk:
             machine.step()
         assert machine.tape == (1,)
 
-    def test_empty_input_clears_the_accumulator(self) -> None:
-        """, on an empty line leaves the accumulator at zero, not one."""
+    def test_newline_input_adds_its_code(self) -> None:
+        """Comma adds a newline's character code to the accumulator."""
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.suffolk import _Machine
 
         machine = _Machine(",.", ScriptedIO("\n"))
         machine.step()
-        assert machine.acc == 0
+        assert machine.acc == 10
 
 
 class TestStepMachine:
@@ -211,7 +211,7 @@ class TestStepMachine:
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.suffolk import _Machine
 
-        machine = _Machine(",.", ScriptedIO("A\n"))
+        machine = _Machine(",.", ScriptedIO("A"))
         machine.step()
         assert machine.acc == ord("A")
         machine.step()

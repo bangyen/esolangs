@@ -296,7 +296,7 @@ class TestSlowAcvMammalian:
         weights = _weights(3)
         for row in range(8):
             bits = [(row >> (2 - i)) & 1 for i in range(3)]
-            machine = _Machine(program, ScriptedIO("".join(f"{b}\n" for b in bits)))
+            machine = _Machine(program, ScriptedIO("".join(f"{b}" for b in bits)))
             while not machine.halted:
                 machine.step()
             banked = sum(w for w, b in zip(weights, bits, strict=True) if b)

@@ -87,7 +87,7 @@ def _sbleq_shared(truth_table: str, perm: tuple[int, ...]) -> str:
     return _sbleq_hoisted(truth_table, perm, share=True)
 
 
-def _sbleq_packed(truth_table: str) -> str:
+def _sbleq_packed(truth_table: str, *, direct: bool = False) -> str:
     """Emit a linear-size packed-table decoder for S*bleq."""
     n = _validate_truth_table(truth_table)
     instructions: list[tuple[int | str, int | str, str]] = []
@@ -97,6 +97,7 @@ def _sbleq_packed(truth_table: str) -> str:
         "ONE": 1,
         "NEGONE": -1,
         "NEG48": -_ASCII_ZERO,
+        "POS48": _ASCII_ZERO,
         "N": n,
         "INDEX": 0,
         "TMP": 0,
@@ -111,6 +112,9 @@ def _sbleq_packed(truth_table: str) -> str:
         "OUT": _ASCII_ZERO,
         "HALT": -1,
     }
+
+    if not direct:
+        del values["POS48"]
 
     def mark(name: str) -> None:
         labels[name] = len(instructions)
@@ -142,15 +146,22 @@ def _sbleq_packed(truth_table: str) -> str:
         emit(cell, "ZERO", zero)
         jump(positive)
 
-    # Read ASCII bits once and form their binary row index.
-    for _ in range(n):
-        clear("TMP")
-        emit("TMP", -2)
-        emit("TMP", "NEG48")
-        clear("BIT")
-        emit("BIT", "TMP")
-        add("INDEX", "INDEX")
-        add("INDEX", "BIT")
+    if direct:
+        for _ in range(n):
+            emit("TMP", "INPUT")
+            emit("TMP", "POS48")
+            add("INDEX", "INDEX")
+            add("INDEX", "TMP")
+    else:
+        # Read ASCII bits once and form their binary row index.
+        for _ in range(n):
+            clear("TMP")
+            emit("TMP", -2)
+            emit("TMP", "NEG48")
+            clear("BIT")
+            emit("BIT", "TMP")
+            add("INDEX", "INDEX")
+            add("INDEX", "BIT")
 
     mark("select_test")
     branch_positive("INDEX", "select_step", "selected")
@@ -196,8 +207,8 @@ def _sbleq_packed(truth_table: str) -> str:
     jump("div_init")
     mark("output")
     add("OUT", "R")
-    emit(-3, "OUT")
-    jump("@HALT")
+    emit("OUTPUT" if direct else -3, "OUT")
+    jump("halt" if direct else "@HALT")
 
     # Negative packed values let one subtraction load a positive chunk.
     chunks = [
@@ -207,6 +218,35 @@ def _sbleq_packed(truth_table: str) -> str:
         )
         for start in range(0, len(truth_table), n)
     ]
+
+    if direct:
+        names = [*values, *(f"CHUNK{i}" for i in range(len(chunks)))]
+        base = 3 * len(instructions)
+        address = {name: base + i for i, name in enumerate(names)}
+        memory = [0] * (base + len(names))
+
+        def direct_operand(value: int | str) -> int:
+            return address[value] if isinstance(value, str) else value
+
+        for i, (a, b, target) in enumerate(instructions):
+            c = (
+                3 * (i + 1)
+                if target == "next"
+                else (-1 if target == "halt" else 3 * labels[target])
+            )
+            if b == "INPUT":
+                triple = [-1, direct_operand(a), c]
+            elif a == "OUTPUT":
+                triple = [direct_operand(b), -1, c]
+            else:
+                triple = [direct_operand(b), direct_operand(a), c]
+            memory[3 * i : 3 * i + 3] = triple
+        for name, value in values.items():
+            memory[address[name]] = value
+        for i, value in enumerate(chunks):
+            memory[address[f"CHUNK{i}"]] = value
+        memory[3 * load_operand_increment + 1] = 3 * load_chunk
+        return " ".join(map(str, memory))
 
     target_names = [f"TARGET{i}" for i in range(len(instructions))]
     names = [*values, *target_names, *(f"CHUNK{i}" for i in range(len(chunks)))]

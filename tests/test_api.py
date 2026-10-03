@@ -1,5 +1,7 @@
 """Tests for the public package API."""
 
+import warnings
+
 import pytest
 
 import esolangs
@@ -12,14 +14,16 @@ def test_generate_computes_its_table(language: str) -> None:
     """XOR, executed on all four rows -- the program, not just its text."""
     program = esolangs.generate(language, "0110")
     for row, expected in enumerate("0110"):
-        stdin = "".join(f"{bit}\n" for bit in format(row, "02b"))
+        stdin = esolangs.encode_inputs(
+            language, [int(bit) for bit in format(row, "02b")]
+        )
         assert esolangs.run(language, program, stdin) == expected
 
 
 def test_run_feeds_stdin() -> None:
     program = boolean.circlefuck("1101")
-    assert esolangs.run("Circlefuck", program, stdin="1\n0\n") == "0"
-    assert esolangs.run("Circlefuck", program, stdin="0\n1\n") == "1"
+    assert esolangs.run("Circlefuck", program, stdin="10") == "0"
+    assert esolangs.run("Circlefuck", program, stdin="01") == "1"
 
 
 def test_list_languages() -> None:
@@ -43,20 +47,29 @@ def test_missing_dependency_error_is_public() -> None:
     assert issubclass(esolangs.MissingDependencyError, ImportError)
 
 
-def test_deliberate_error_keeps_partial_output() -> None:
-    from esolangs import _keeping_output
+def test_deliberate_error_keeps_partial_output(monkeypatch: pytest.MonkeyPatch) -> None:
     from esolangs.interpreters.io import ScriptedIO
 
-    io = ScriptedIO()
-    io.print_str("before")
-    error = _keeping_output(EsolangError("stop"), io)
-    assert error.partial_output == "before"
-    assert error.__notes__ == ["the program printed 'before' before this"]
+    error = EsolangError("stop")
+
+    def stop(
+        _runner: object, _program: object, io: ScriptedIO, _timeout: object
+    ) -> None:
+        io.print_str("before")
+        raise error
+
+    monkeypatch.setattr(esolangs, "_run", stop)
+    with pytest.raises(EsolangError) as caught:
+        esolangs.run("brainfuck", "+")
+    assert caught.value is error
+    assert caught.value.partial_output == "before"
+    assert caught.value.__notes__ == ["the program printed 'before' before this"]
 
 
 def test_run_warns_when_input_runs_out() -> None:
     program = boolean.circlefuck("10")  # reads one input bit
-    with pytest.warns(esolangs.InputMismatchWarning, match="read past the end"):
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
         esolangs.run("Circlefuck", program, stdin="")
 
 

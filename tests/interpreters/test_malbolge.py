@@ -59,10 +59,8 @@ def test_a_one_character_program_halts_immediately() -> None:
     assert run_program(run, "Q") == ""
 
 
-def test_input_is_one_line_per_character() -> None:
-    # One line per character is the package's stdin convention; bound the
-    # run, since the wiki's own cat does not stop at EOF.
-    io = ScriptedIO("H\ni\n!\n")
+def test_input_is_a_character_stream() -> None:
+    io = ScriptedIO("Hi!")
     machine = _Machine(CAT, io)
     for _ in range(200):
         if machine.halted:

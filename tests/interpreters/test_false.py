@@ -61,9 +61,9 @@ def test_a_character_is_pushed_and_printed() -> None:
     assert run_program(run, "'A,") == "A"
 
 
-def test_a_read_takes_the_first_character_of_a_line() -> None:
+def test_a_read_preserves_newline() -> None:
     assert run_program(run, "^'0-.", "1\n") == "1"
-    assert run_program(run, "^.", "\n") == "0"  # an empty line reads as 0
+    assert run_program(run, "^.", "\n") == "10"
 
 
 def test_a_read_past_the_end_is_the_specs_minus_one() -> None:
@@ -74,7 +74,7 @@ def test_a_read_past_the_end_is_the_specs_minus_one() -> None:
     """
     assert run_program(run, "^.", suppress_eof=False) == "-1"
     # The reference's cat loop: read until -1, printing each character.
-    assert run_program(run, "[^$1_=~][,]#%", "A\nB\n", suppress_eof=False) == "AB"
+    assert run_program(run, "[^$1_=~][,]#%", "A\nB\n", suppress_eof=False) == "A\nB\n"
 
 
 def test_a_comment_is_skipped_and_its_brackets_do_not_nest() -> None:

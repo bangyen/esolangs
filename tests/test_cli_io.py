@@ -13,8 +13,16 @@ from unittest.mock import patch
 import pytest
 
 import esolangs
-from esolangs import cli
 from esolangs.cli import HELP, main
+from esolangs.cli_args import _table_of
+from esolangs.cli_hints import _shape_warning
+from esolangs.cli_io import (
+    _bounded_read,
+    _read_program,
+    _read_stdin,
+    _UnboundedNotice,
+    _WaitingNotice,
+)
 from tests.cli_support import EXAMPLES, call_both
 from tests.test_cli import call_main, run_cli
 
@@ -41,7 +49,7 @@ class TestTheDecodeGuardsInProcess:
             stdin = esolangs.encode_inputs(language, [1])
         path = tmp_path / "program.txt"
         path.write_bytes((program.replace("\n", newline) + newline).encode())
-        source = cli._read_program(str(path))  # noqa: SLF001
+        source = _read_program(str(path), language=language)
         assert (
             esolangs.run(language, source, stdin)
             == esolangs.run(language, path, stdin)
@@ -53,7 +61,7 @@ class TestTheDecodeGuardsInProcess:
         path = tmp_path / "b.txt"
         path.write_bytes(bytes(range(256)))
         with pytest.raises(SystemExit) as exc:
-            cli._read_program(str(path))  # noqa: SLF001
+            _read_program(str(path), language="brainfuck")
         assert exc.value.code == 2
 
     def test_read_program_still_refuses_an_unreadable_path(
@@ -61,23 +69,36 @@ class TestTheDecodeGuardsInProcess:
     ) -> None:
         """The OSError clause beside it, which the new one must not shadow."""
         with pytest.raises(SystemExit) as exc:
-            cli._read_program(str(tmp_path))  # noqa: SLF001
+            _read_program(str(tmp_path), language="brainfuck")
         assert exc.value.code == 2
 
-    def test_read_program_decodes_a_png(self, tmp_path: Path) -> None:
+    @pytest.mark.parametrize("language", ["Line", "Piet"])
+    def test_read_program_decodes_a_png(self, tmp_path: Path, language: str) -> None:
         """A raster language's program is a PNG, not UTF-8 text."""
         from esolangs.raster import Raster
 
         path = tmp_path / "tiny.png"
         path.write_bytes(Raster((((0, 0, 0),),)).to_png())
-        assert isinstance(cli._read_program(str(path)), Raster)  # noqa: SLF001
+        assert isinstance(_read_program(str(path), language=language), Raster)
+
+    def test_text_language_does_not_decode_png(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        from esolangs.raster import Raster
+
+        path = tmp_path / "program.png"
+        path.write_bytes(Raster((((0, 0, 0),),)).to_png())
+        with patch.object(Raster, "from_png") as decode, pytest.raises(SystemExit):
+            _read_program(str(path), language="brainfuck")
+        decode.assert_not_called()
+        assert "not text" in capsys.readouterr().err
 
     def test_read_program_refuses_a_corrupt_png(self, tmp_path: Path) -> None:
         """A PNG signature with nothing behind it is a bad PNG, not text."""
         path = tmp_path / "bad.png"
         path.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 20)
         with pytest.raises(SystemExit) as exc:
-            cli._read_program(str(path))  # noqa: SLF001
+            _read_program(str(path), language="Piet")
         assert exc.value.code == 2
 
     @pytest.mark.medium
@@ -102,7 +123,7 @@ class TestTheDecodeGuardsInProcess:
                 raise UnicodeDecodeError("utf-8", b"\x80", 0, 1, "invalid start byte")
 
         with patch.object(sys, "stdin", _BadStdin()), pytest.raises(SystemExit) as exc:
-            cli._read_stdin()  # noqa: SLF001
+            _read_stdin()
         assert exc.value.code == 2
         assert "not text" in capsys.readouterr().err
 
@@ -129,7 +150,7 @@ class TestTheDecodeGuardsInProcess:
             patch.object(sys, "stdin", _LenientStdin()),
             pytest.raises(SystemExit) as exc,
         ):
-            cli._read_stdin()  # noqa: SLF001
+            _read_stdin()
         assert exc.value.code == 2
         assert "not text (invalid UTF-8 at byte 0)" in capsys.readouterr().err
 
@@ -144,7 +165,7 @@ class TestTheDecodeGuardsInProcess:
                 return "é\N{ROCKET}1\n"
 
         with patch.object(sys, "stdin", _WideStdin()):
-            assert cli._read_stdin() == "é\N{ROCKET}1\n"  # noqa: SLF001
+            assert _read_stdin() == "é\N{ROCKET}1\n"
 
     def test_read_stdin_is_empty_on_a_terminal(self) -> None:
         """The branch beside it: nothing piped in."""
@@ -157,18 +178,18 @@ class TestTheDecodeGuardsInProcess:
                 raise AssertionError("should not read a terminal")
 
         with patch.object(sys, "stdin", _Tty()):
-            assert cli._read_stdin() == ""  # noqa: SLF001
+            assert _read_stdin() == ""
 
     def test_the_unbounded_notice_writes_one_line(
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """Called directly rather than waited for."""
-        cli._UnboundedNotice._say("run")  # noqa: SLF001
+        _UnboundedNotice._say("run")  # noqa: SLF001
         err = capsys.readouterr().err
         assert "no bound" in err
         assert "--timeout" in err
 
-    def test_debug_warns_about_a_mismatched_shape_too(
+    def test_debug_accepts_non_boolean_input(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """`run` and `debug` feed the same stdin to the same interpreter."""
@@ -177,7 +198,7 @@ class TestTheDecodeGuardsInProcess:
         _out, err = call_both(
             ["debug", "--steps", "50", "Grapheme", str(path)], capsys, stdin="1\n0\n"
         )
-        assert "spells its bits" in err
+        assert "spells its bits" not in err
 
 
 class TestTheStdinReaderInProcess:
@@ -203,7 +224,7 @@ class TestTheStdinReaderInProcess:
             patch.object(sys, "stdin", _BlockingStdin()),
             pytest.raises(SystemExit) as exc,
         ):
-            cli._read_stdin(0.2)  # noqa: SLF001
+            _read_stdin(0.2)
         blocked.set()
         assert exc.value.code == 124
         assert "no input arrived on stdin" in capsys.readouterr().err
@@ -222,13 +243,13 @@ class TestTheStdinReaderInProcess:
             patch.object(sys, "stdin", _BrokenStdin()),
             pytest.raises(RuntimeError, match="disk on fire"),
         ):
-            cli._read_stdin()  # noqa: SLF001
+            _read_stdin()
 
     def test_the_waiting_notice_writes_one_line(
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """Called directly rather than waited for."""
-        cli._WaitingNotice._say("; close it")  # noqa: SLF001
+        _WaitingNotice._say("; close it")  # noqa: SLF001
         err = capsys.readouterr().err
         assert "still waiting for input on stdin" in err
         assert "close it" in err
@@ -413,16 +434,16 @@ class TestStdinIsCheckedAgainstTheDeclaredAlphabet:
     """
 
     @pytest.mark.parametrize("line", [" 1", "\t1", "2", "true", "01", "+1"])
-    def test_plain_run_warns_about_a_stray_line(
+    def test_plain_run_accepts_a_non_boolean_line(
         self, line: str, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        """A warning, because `run` executes arbitrary programs."""
+        """General execution does not impose a Boolean input alphabet."""
         path = tmp_path / "p.txt"
         path.write_text(esolangs.generate("brainfuck", "0101"))
         _out, err = call_both(
             ["run", "brainfuck", str(path)], capsys, stdin=f"0\n{line}\n"
         )
-        assert "spells its bits" in err
+        assert "spells its bits" not in err
 
     @pytest.mark.parametrize("line", [" 1", "2", "true"])
     def test_judge_refuses_it(
@@ -445,7 +466,7 @@ class TestStdinIsCheckedAgainstTheDeclaredAlphabet:
         path = tmp_path / "p.txt"
         path.write_text(esolangs.generate("brainfuck", "0101"))
         out, err = call_both(
-            ["run", "--judge", "brainfuck", str(path)], capsys, stdin="0\n1\n"
+            ["run", "--judge", "brainfuck", str(path)], capsys, stdin="01"
         )
         assert out.strip() == "1"
         assert err == ""
@@ -459,18 +480,18 @@ class TestStdinIsCheckedAgainstTheDeclaredAlphabet:
             if esolangs.describe(name)["parameterized"]:
                 continue
             stdin = esolangs.encode_inputs(name, [1, 0], "0110")
-            if cli._shape_warning(esolangs.describe(name), stdin):  # noqa: SLF001
+            if _shape_warning(esolangs.describe(name), stdin):
                 noisy.append(name)
         assert not noisy, noisy
 
     def test_the_alphabet_check_reads_the_declared_alphabet(self) -> None:
         """Grapheme's own bits are %/A, so 0/1 is what is wrong there."""
         facts = esolangs.describe("Grapheme")
-        assert cli._shape_warning(facts, "%\nA\n") == ""  # noqa: SLF001
+        assert _shape_warning(facts, "%\nA\n") == ""
         # 0/1 is wrong *here*, and the specific message is the one that
         # fires: the general stray-line rule runs last so a language with
         # something better to say keeps saying it.
-        assert "spells its bits" in cli._shape_warning(facts, "0\n1\n")  # noqa: SLF001
+        assert "spells its bits" in _shape_warning(facts, "0\n1\n")
 
 
 # 8.5s over 9 tests: drives the CLI as a subprocess.
@@ -503,7 +524,7 @@ class TestReadingTheProgramFileIsBounded:
         """The guard is worth nothing if it costs the normal path."""
         path = tmp_path / "p.txt"
         path.write_text(esolangs.generate("brainfuck", "0110"))
-        result = run_cli("run", "--judge", "brainfuck", str(path), stdin="1\n0\n")
+        result = run_cli("run", "--judge", "brainfuck", str(path), stdin="10")
         assert result.returncode == 0
         assert result.stdout.strip() == "1"
 
@@ -520,7 +541,7 @@ class TestTheBoundedReaderInProcess:
         fifo = tmp_path / "fifo"
         os.mkfifo(fifo)
         with pytest.raises(SystemExit) as exc:
-            cli._bounded_read(str(fifo), 0.2)  # noqa: SLF001
+            _bounded_read(str(fifo), 0.2)
         assert exc.value.code == 124
         assert "not delivering data" in capsys.readouterr().err
 
@@ -529,7 +550,7 @@ class TestTheBoundedReaderInProcess:
     ) -> None:
         """The OSError clause, now that the open happens on the thread."""
         with pytest.raises(SystemExit) as exc:
-            cli._bounded_read(str(tmp_path), 1.0)  # noqa: SLF001
+            _bounded_read(str(tmp_path), 1.0)
         assert exc.value.code == 2
         assert "cannot read" in capsys.readouterr().err
 
@@ -540,7 +561,7 @@ class TestTheBoundedReaderInProcess:
         path = tmp_path / "b.txt"
         path.write_bytes(bytes(range(256)))
         with pytest.raises(SystemExit) as exc:
-            cli._bounded_read(str(path), 1.0)  # noqa: SLF001
+            _read_program(str(path), 1.0, language="brainfuck")
         assert exc.value.code == 2
         assert "not text" in capsys.readouterr().err
 
@@ -552,7 +573,7 @@ class TestTheBoundedReaderInProcess:
         path = tmp_path / "large.txt"
         path.write_bytes(prefix + ("€" * 600_000).encode())
         with pytest.raises(SystemExit) as exc:
-            cli._bounded_read(str(path), 1.0)  # noqa: SLF001
+            _bounded_read(str(path), 1.0)
         assert exc.value.code == 2
         assert "larger than" in capsys.readouterr().err
 
@@ -569,7 +590,7 @@ class TestTheBoundedReaderInProcess:
             patch.object(Raster, "from_png") as decode,
             pytest.raises(SystemExit) as exc,
         ):
-            cli._bounded_read(str(path), 1.0)  # noqa: SLF001
+            _bounded_read(str(path), 1.0)
         assert exc.value.code == 2
         assert "larger than" in capsys.readouterr().err
         decode.assert_not_called()
@@ -581,7 +602,7 @@ class TestTheBoundedReaderInProcess:
         text = "é" * (_MAX_PROGRAM_BYTES // 2)
         path = tmp_path / "full.txt"
         path.write_bytes(text.encode())
-        assert cli._bounded_read(str(path), 1.0) == text  # noqa: SLF001
+        assert _bounded_read(str(path), 1.0) == text.encode()
 
     def test_an_unexpected_error_propagates(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -595,7 +616,7 @@ class TestTheBoundedReaderInProcess:
 
         monkeypatch.setattr("builtins.open", _boom)
         with pytest.raises(RuntimeError, match="disk on fire"):
-            cli._bounded_read(str(path), 1.0)  # noqa: SLF001
+            _bounded_read(str(path), 1.0)
 
 
 # 2.2s over 6 tests: drives the CLI as a subprocess.
@@ -671,10 +692,10 @@ class TestCheckStdinIsASubcommand:
             call_main(
                 ["check-stdin", "--table", "0110", "brainfuck"],
                 capsys,
-                stdin="1\n0\n1\n",
+                stdin="101",
             )
         assert exc.value.code == 2
-        assert "reads 2 line(s)" in capsys.readouterr().err
+        assert "reads 2 characters" in capsys.readouterr().err
 
     def test_it_reports_an_unknown_language_before_reading(
         self, capsys: pytest.CaptureFixture[str]
@@ -707,7 +728,7 @@ class TestCheckStdinSaysWhatItCanActuallyCheck:
 
     def test_a_line_per_bit_language_accepts_any_count(self) -> None:
         """Not a bug -- a count needs an arity, and only ``--table`` has one."""
-        for stdin in ("", "1\n", "1\n0\n1\n"):
+        for stdin in ("", "1", "101"):
             esolangs.check_stdin("brainfuck", stdin)
 
     def test_the_table_is_what_catches_the_count(self) -> None:
@@ -726,13 +747,19 @@ class TestCheckStdinSaysWhatItCanActuallyCheck:
             for name in esolangs.list_languages()
             if esolangs.describe(name)["boolean_generator"]
         }
-        assert [n for n, s in shapes.items() if s == "one_line"] == ["Clockwise"]
+        assert shapes["Clockwise"] == "char_stream_cyclic"
         assert [n for n, s in shapes.items() if s == "row_index"] == ["Fargo"]
-        assert sum(s == "line_per_bit" for s in shapes.values()) == 70
+        assert set(shapes.values()) == {
+            "char_stream",
+            "char_stream_cyclic",
+            "char_stream_padded",
+            "line_per_bit",
+            "row_index",
+        }
 
     def test_a_one_line_language_does_catch_a_stray_line(self) -> None:
         """Which is why the help can still claim a shape check at all."""
-        with pytest.raises(esolangs.ArgumentError, match="one line"):
+        with pytest.raises(esolangs.ArgumentError, match="unexpected character"):
             esolangs.check_stdin("Clockwise", "1\n0\n")
 
     def test_the_help_no_longer_overstates(self) -> None:
@@ -752,18 +779,18 @@ class TestTheTableOptionIsValidated:
 
     def test_no_table_is_none(self) -> None:
         """``run`` and ``debug`` may be called without the flag."""
-        assert cli._table_of({}) is None  # noqa: SLF001
+        assert _table_of({}) is None
 
     def test_a_valid_table_is_returned_unchanged(self) -> None:
         """The gate must not drop the arity the later checks need."""
-        assert cli._table_of({"--table": "0110"}) == "0110"  # noqa: SLF001
+        assert _table_of({"--table": "0110"}) == "0110"
 
     def test_a_malformed_table_exits_two(
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """Exit 2, like ``check-stdin`` and every other bad option value."""
         with pytest.raises(SystemExit) as exc:
-            cli._table_of({"--table": "0120"})  # noqa: SLF001
+            _table_of({"--table": "0120"})
         assert exc.value.code == 2
         assert "truth table" in capsys.readouterr().err
 

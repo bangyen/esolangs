@@ -121,3 +121,12 @@ def check_address(addr: int, language: str) -> int:
             f"past the {_MAX_CELLS}-cell limit this interpreter allocates"
         )
     return addr
+
+
+def check_scale(scale: object) -> int:
+    """Return a positive integer pixel replication factor."""
+    from esolangs.exceptions import ArgumentError
+
+    if isinstance(scale, bool) or not isinstance(scale, int) or scale < 1:
+        raise ArgumentError(f"scale must be a positive integer, got {scale!r}")
+    return scale

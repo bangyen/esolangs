@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import re
 
+from esolangs._drive import drive
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 
@@ -172,9 +173,7 @@ class _Machine:
 def run(code: str, io: IO) -> None:
     """Run a Bitdeque program and print the deque at the end."""
     machine = _Machine(code, io)
-    while not machine.halted:
-        machine.step()
-    machine.step()  # the post-halt step prints the deque
+    drive(machine)
 
 
 if __name__ == "__main__":

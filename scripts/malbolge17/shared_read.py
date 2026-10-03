@@ -12,8 +12,8 @@ from esolangs.interpreters.other.malbolge import (
     _crazy,
     _initial_memory,
 )
-from esolangs.tools._malbolge_core import _WORDS, _char_for
 from esolangs.tools.malbolge import _valid_chars
+from esolangs.tools.malbolge.core import _WORDS, _char_for
 
 _ENTRY = 420
 _POINTERS = (60, 61, 62)

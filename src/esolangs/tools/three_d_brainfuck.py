@@ -11,7 +11,7 @@ way Painfuck and Dimensional do; it folds it instead, building 48 once on
 the scratch axis and subtracting it from every input in one loop.  The
 layout alone was worth 2% -- a flag was already one step away on a linear
 tape -- and the fold is what pays.  Folding is not itself a 3D trick and
-would shrink :func:`~esolangs.tools.tape.brainfuck` too.
+would shrink :func:`~esolangs.tools.brainfuck.brainfuck` too.
 """
 
 from esolangs.tools.helpers import (

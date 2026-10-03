@@ -7,12 +7,16 @@ comments and the unique direction marker become blank cells when loaded.
 The wiki does not define missing or repeated starts, unmatched quotes, or
 invalid source symbols; this interpreter raises :class:`ValueError` for them.
 Exhausted input raises :class:`EOFError`, following the package convention.
+
+Input symbols are consecutive Unicode characters, including newlines; the spec
+does not define their encoding or framing.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 
+from esolangs._drive import drive
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 
@@ -239,8 +243,7 @@ class _Machine:
 def run(source: str, io: IO) -> None:
     """Run a B-tapemark program until ``!`` executes."""
     machine = _Machine(source, io)
-    while not machine.halted:
-        machine.step()
+    drive(machine)
 
 
 if __name__ == "__main__":

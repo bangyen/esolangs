@@ -12,12 +12,16 @@ with no bits at all raises :class:`EOFError`.
 :func:`_advance` is a pure transition over an immutable ``_State`` with
 no ``io`` argument; :class:`_Machine` rebinds one state per ``step()``
 and flushes the byte.
+
+Input characters form the initial bit queue. This implementation preserves the
+complete supplied character stream rather than discarding later lines.
 """
 
 from __future__ import annotations
 
 from collections.abc import Sequence
 
+from esolangs._drive import drive
 from esolangs.exceptions import InputExhaustedError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
@@ -109,7 +113,7 @@ class _Machine:
 
         bits: list[str] = []
         if any("." in line for line in self.code):
-            for k in io.input_str():
+            for k in io.input_all():
                 val = f"{ord(k):07b}"
                 bits += list(val.zfill(_BYTE_BITS))
         self.state: _State = (0, 0, 0, 0, (), tuple(bits), False)
@@ -205,8 +209,7 @@ class _Machine:
 def run(code: list[str], io: IO) -> None:
     """Run a Clockwise program, reading input bits when the ring reads ``.``."""
     machine = _Machine(code, io)
-    while not machine.halted:
-        machine.step()
+    drive(machine)
 
 
 if __name__ == "__main__":

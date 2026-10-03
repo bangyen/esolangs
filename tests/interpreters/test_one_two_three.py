@@ -43,7 +43,7 @@ class Test123:
         io = ScriptedIO("h\ni")
         with pytest.raises(EOFError):
             run(WIKI_CAT, io)
-        assert io.getvalue() == "hi"
+        assert io.getvalue() == "h\ni"
 
     def test_false_jump_skips_forward(self) -> None:
         """A FALSE 3 skips to the next 3, then the 1 halts (pos below 0)."""

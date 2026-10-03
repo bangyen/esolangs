@@ -1,29 +1,19 @@
-"""Public API for the esolangs package.
+"""Generate programs, run source, evaluate truth tables, and describe languages.
 
-``generate`` produces a program computing a truth table; ``instantiate``
-fills a parameterized generator's input runs; ``run`` executes a program;
-``run_bounded`` steps one within cooperative limits;
-``run_isolated`` executes one with a subprocess deadline;
-``make_vm`` and ``make_debugger`` step one; ``describe`` and
-``list_languages`` summarize the registry.  ``encode_inputs`` and
-``read_answer`` feed a program and judge what it printed; ``check_stdin``,
-``check_program`` and ``check_runnable`` apply the checks before anything
-runs; ``evaluate`` and ``verify`` are the whole round trip; ``spec`` is the
-interpreter's own description of a language.
-
-Names resolve case-insensitively (:func:`esolangs.registry.resolve`), and
-every deliberate error derives from :class:`~esolangs.exceptions.EsolangError`.
+``generate`` builds source; ``instantiate`` fills templates; ``run`` executes;
+``evaluate`` returns a table. ``encode_inputs`` and ``read_answer`` handle rows.
+``check_program`` and ``check_stdin`` validate; ``describe`` and ``list_languages``
+provide registry facts. Stepping and debugging live in :mod:`esolangs.debugger`.
+``Language(name)`` binds these functions to one language.
+Names resolve case-insensitively; deliberate errors derive from EsolangError.
 """
 
 import importlib
-import os
-import pathlib
 import re
 import signal
 import threading
-import warnings
 from collections.abc import Callable, Sequence
-from functools import partial
+from functools import cache, partial
 from typing import Any, TypedDict, cast
 
 from esolangs._answers import (
@@ -36,12 +26,25 @@ from esolangs._describe import (
     LanguageInfo,
     describe,
     list_languages,
-    spec,
 )
-from esolangs._evaluate import _Default, evaluate, verify
-from esolangs._isolated import run_isolated
-from esolangs._validate import check_bits, check_timeout, check_width
-from esolangs.debugger import STOP_REASONS, Debugger, StopReason, make_debugger
+from esolangs._evaluate import _DEFAULT, _Default, evaluate
+from esolangs._execution import (
+    check_signal_timeout,
+    interpreter_errors,
+    interpreter_module,
+    prepare_call,
+)
+from esolangs._isolated import run_isolated as _run_isolated
+from esolangs._language import Language
+from esolangs._program import Program, RunnerProgram
+from esolangs._source import (
+    InputSource,
+    ProgramSource,
+    check_input,
+    check_scale_for,
+    text_source,
+)
+from esolangs._validate import check_bits, check_scale, check_timeout, check_width
 from esolangs.exceptions import (
     ArgumentError,
     EsolangError,
@@ -61,8 +64,9 @@ from esolangs.exceptions import (
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.raster import Raster
 from esolangs.registry import (
+    INTERPRETERS,
     LANGUAGES,
-    RUNNERS,
+    SourceKind,
     parameterized_ids,
     recover_setters,
     render_template,
@@ -71,14 +75,18 @@ from esolangs.registry import (
     template_char,
 )
 from esolangs.tagged import _Tagged, _Template
-from esolangs.tools.wrap import takes_width as _takes_width
+from esolangs.tools.balance import BALANCERS as _BALANCERS
+from esolangs.tools.helpers import mark_runs, unmark
 
 # Imported private: it takes a *generator function*, not a language name, so
 # a caller reaching for ``esolangs.takes_width("LaserFuck")`` got False for
 # every language in the registry, contradicting both its own docstring and
 # ``describe(...)["width_aware"]`` -- which is the question they were asking.
-from esolangs.tools.wrap import wrap_program
-from esolangs.vm import VM, make_vm
+from esolangs.tools.wrap import (
+    balance_program,
+    wrap_program,
+)
+from esolangs.tools.wrap import takes_width as _takes_width
 
 
 #: From the installed distribution (a hand-kept copy said 0.1.0 at 0.2.0);
@@ -104,28 +112,27 @@ def __getattr__(name: str) -> str:
 #: alongside the six functions anyone wants, and there was no way to tell
 #: from the outside which was which.
 __all__ = [
-    "STOP_REASONS",
-    "VM",
     "ArgumentError",
-    "Debugger",
     "EsolangError",
     "ExecutionTimeoutError",
     "GeneratorCapError",
     "HaltError",
     "InputExhaustedError",
     "InputMismatchWarning",
+    "InputSource",
     "InterpreterLimitError",
+    "Language",
     "LanguageInfo",
     "MissingDependencyError",
+    "Program",
     "ProgramError",
     "ProgramNotFoundError",
+    "ProgramSource",
     "Raster",
-    "StopReason",
     "TemplateError",
     "TruthTableError",
     "UnknownLanguageError",
     "check_program",
-    "check_runnable",
     "check_stdin",
     "describe",
     "encode_inputs",
@@ -133,14 +140,8 @@ __all__ = [
     "generate",
     "instantiate",
     "list_languages",
-    "make_debugger",
-    "make_vm",
     "read_answer",
     "run",
-    "run_bounded",
-    "run_isolated",
-    "spec",
-    "verify",
 ]
 
 
@@ -149,7 +150,14 @@ def __dir__() -> list[str]:
     return sorted(__all__)
 
 
-def generate(language: str, truth_table: str, width: int | None = None) -> str | Raster:
+def generate(
+    language: str,
+    truth_table: str,
+    width: int | None = None,
+    *,
+    balance: bool = False,
+    scale: int = 1,
+) -> Program:
     """Return a program in ``language`` computing ``truth_table``.
 
     ``truth_table`` is a binary string of length ``2**n``, MSB first, so its
@@ -164,10 +172,45 @@ def generate(language: str, truth_table: str, width: int | None = None) -> str |
     it does nothing where newlines are semantic, and a single token longer
     than the width still overruns it.  A template wraps with each run kept
     whole, so every row breaks in the same places.
+    ``balance`` minimizes the rendered width/height difference across supported
+    layouts, breaking ties by source length (raster pixel area), then width.
+    Token and routing constraints can prevent a square layout.
+    Raster ``scale`` replicates pixels after layout; 1 preserves native output.
     """
+    check_scale(scale)
+    if scale != 1:
+        if LANGUAGES[resolve(language)].source_kind is not SourceKind.RASTER:
+            raise ArgumentError("scale is only supported for raster generators")
+        source = generate(language, truth_table, width, balance=balance)
+        return cast(Raster, source).upscaled(scale)
+    if balance and width is not None:
+        raise ArgumentError("balance and width are mutually exclusive")
+    if balance:
+        default = generate(language, truth_table)
+        lang = LANGUAGES[resolve(language)]
+        balancer = _BALANCERS.get(lang.id)
+        if isinstance(default, Raster):
+            if balancer is None:
+                return default
+            raster_balance = cast(Callable[[str, Raster], Raster], balancer)
+            return raster_balance(truth_table, default).tagged(resolve(language))
+        if balancer is not None:
+            text = cast(Callable[[str, str], str], balancer)(truth_table, default)
+            if isinstance(default, _Template):
+                text, char, pairs = render_template(lang.id, text, default.inputs)
+                return _Template(text, default.language, char, pairs)
+            return _Tagged(text, resolve(language))
+        if isinstance(default, _Template):
+            marked = mark_runs(default, default.char, default.setters)
+            text = unmark(
+                balance_program(marked, lang.id), default.char, default.inputs
+            )
+            return _Template(text, default.language, default.char, default.setters)
+        text = balance_program(default, lang.id)
+        return _Tagged(text, resolve(language))
     resolved = resolve(language)
     lang = LANGUAGES[resolved]
-    fn = lang.boolean or lang.raster_boolean
+    fn = lang.boolean
     if fn is None:
         # Registered, but no generator can exist: Deadfish reads nothing.  This
         # raised UnknownLanguageError, whose message points at `esolangs list`
@@ -184,11 +227,9 @@ def generate(language: str, truth_table: str, width: int | None = None) -> str |
             f"{type(truth_table).__name__}"
         )
     check_width(width)
-    laid_out = (
-        width is not None and lang.boolean is not None and _takes_width(lang.boolean)
-    )
+    laid_out = width is not None and _takes_width(fn)
     generated = fn(truth_table, width) if laid_out else fn(truth_table)
-    if lang.raster_boolean is not None:
+    if lang.source_kind is SourceKind.RASTER:
         if not isinstance(generated, Raster):  # pragma: no cover - registry invariant
             raise ProgramError(f"{resolved}'s generator did not return a Raster")
         # Tagged the way a text program is ``_Tagged``: a Line raster fed to
@@ -219,67 +260,61 @@ def _is_template_for(template: str, name: str, truth_table: str) -> bool:
         return True
     language_id = LANGUAGES[name].id
     generator = LANGUAGES[name].boolean
+    width_aware = generator is not None and _takes_width(generator)
+    observed_width = max(1, max(map(len, template.splitlines()), default=0))
+
+    @cache
+    def layout(width: int) -> Program:
+        return generate(name, truth_table, width)
+
+    def same_tokens(program: Program) -> bool:
+        return isinstance(program, str) and template.split() == program.split()
+
     # Layouts may switch representations; their floor is a named candidate,
     # unlike whitespace wrapping, so compare that template exactly too.
-    if (
-        generator is not None
-        and _takes_width(generator)
-        and template == generate(name, truth_table, 1)
-    ):
+    if width_aware and template == layout(1):
         return True
     if language_id == "minsky_swap" and template in (
-        generate(name, truth_table, 10),
-        generate(name, truth_table, 15),
+        layout(10),
+        layout(15),
     ):
         return True
-    if language_id == "back":
-        width = max(1, max(map(len, template.splitlines()), default=0))
-        if template == generate(name, truth_table, width):
-            return True
+    if language_id == "back" and template == layout(observed_width):
+        return True
     if language_id == "intercal":
         from esolangs.tools.intercal import _intercal_tokens
 
-        narrow = generate(name, truth_table, 1)
+        narrow = layout(1)
         if isinstance(narrow, str) and _intercal_tokens(template) == _intercal_tokens(
             narrow
         ):
             return True
         # Its primitive layout fits between the natural and simplified floors.
         # Rebuild at the observed bound rather than accepting equivalent syntax.
-        width = max(1, max(map(len, template.splitlines()), default=0))
-        if template == generate(name, truth_table, width):
+        if template == layout(observed_width):
             return True
-    if (
-        language_id in {"minifuck", "smallfuck"}
-        and generator is not None
-        and _takes_width(generator)
-    ):
+    if language_id in {"minifuck", "smallfuck"} and width_aware:
         for width in (1, 4):
-            narrow = str(generate(name, truth_table, width))
+            narrow = str(layout(width))
             if language_id == "minifuck" and narrow.startswith("q\n"):
                 # Exact layouts were checked above; these LF absorb skips.
                 continue
             if template.replace("\n", "") == narrow.replace("\n", ""):
                 return True
-    if (
-        language_id in {"fractran", "bitdeque", "crement"}
-        and generator is not None
-        and _takes_width(generator)
-    ):
-        narrow = generate(name, truth_table, 1)
-        if isinstance(narrow, str) and template.split() == narrow.split():
+    if language_id in {"fractran", "bitdeque", "crement"} and width_aware:
+        narrow = layout(1)
+        if same_tokens(narrow):
             return True
     if language_id in {"fractran", "crement"}:
         # Short setters coexist with fitting layouts that retain the old pair.
-        width = max(1, max(map(len, template.splitlines()), default=0))
-        observed = generate(name, truth_table, width)
-        if isinstance(observed, str) and template.split() == observed.split():
+        observed = layout(observed_width)
+        if same_tokens(observed):
             return True
     if language_id == "underload":
         from esolangs.tools.underload import _underload_layout_tokens
 
         for width in (1, 4):
-            narrow = str(generate(name, truth_table, width))
+            narrow = str(layout(width))
             if isinstance(narrow, str) and _underload_layout_tokens(
                 template
             ) == _underload_layout_tokens(narrow):
@@ -289,7 +324,7 @@ def _is_template_for(template: str, name: str, truth_table: str) -> bool:
     if language_id == "bio":
         return "".join(template.split()) == "".join(plain.split())
     if language_id in {"bitdeque", "ram0", "fractran"}:
-        return template.split() == plain.split()
+        return same_tokens(plain)
     return template == plain or (
         "\n" not in plain and template.replace("\n", "") == plain
     )
@@ -381,7 +416,7 @@ _PATH_CHARS = re.compile(r"^[\w./\\~-]+$")
 _PATH_EXTENSION = re.compile(r"\.[A-Za-z0-9]{1,5}$")
 
 
-def _looks_like_a_path(program: str | Raster) -> bool:
+def _looks_like_a_path(program: Program) -> bool:
     """Whether ``program`` is a filename someone meant to open.
 
     A path is legal text in most of these languages
@@ -398,7 +433,7 @@ def _looks_like_a_path(program: str | Raster) -> bool:
     return rooted or bool(_PATH_EXTENSION.search(program))
 
 
-def check_runnable(language: str, program: str | Raster) -> None:
+def _check_runnable(language: str, program: Program) -> None:
     """Reject a program that is a path or an unfilled template.
 
     Both are valid input to an interpreter and each produced a confident
@@ -416,13 +451,19 @@ def check_runnable(language: str, program: str | Raster) -> None:
             f"program must be a string of source or a Raster, got "
             f"{type(program).__name__}"
         )
-    if _looks_like_a_path(program):
+    # /// uses path-shaped strings as substitution rules.
+    if LANGUAGES[name].id != "slashes" and _looks_like_a_path(program):
         raise ProgramError(
             f"program looks like a path, not source: {program!r}. "
             f"Read the file first, or pass pathlib.Path({program!r})"
         )
     char = template_char(LANGUAGES[name].id)
     if char is not None and char in program:
+        if LANGUAGES[name].id == "slashes" and not isinstance(program, _Template):
+            from esolangs.tools.slashes import _is_unfilled_template
+
+            if not _is_unfilled_template(program):
+                return
         raise TemplateError(
             f"{name}'s generator returns a template, and this one still has "
             f"unfilled runs of {char!r} ({program.count(char)} characters); "
@@ -430,60 +471,12 @@ def check_runnable(language: str, program: str | Raster) -> None:
         )
 
 
-def check_program(
-    language: str, program: str | Raster | os.PathLike[str], stdin: str = ""
-) -> str | Raster:
-    """Return ``program`` as source, having checked what can be checked here.
-
-    Not a load check: it refuses the wrong *kind* of thing (a path as a
-    string, an unfilled template, a non-string, an unreadable file, an
-    unknown name) and type-checks ``stdin``, but ``check_program("brainfuck",
-    "[")`` returns the program and :func:`make_vm` raises ``ProgramError``.
-    :func:`make_vm` calls this, so it cannot build a machine to check.
-    :func:`check_stdin` judges ``stdin``'s shape.  A :class:`~pathlib.Path`
-    is read here with one trailing newline stripped (CV(N)(C), Grapheme and
-    NoComment reject one), so the whole call is::
-
-        path = pathlib.Path(describe(lang)["examples"][0])
-        run(lang, path, encode_inputs(lang, [0, 1]))
-    """
+def _read_source(language: str, program: ProgramSource) -> Program:
+    """Load source and check its kind and origin, allowing unfilled templates."""
     name = resolve(language)
-    raster = LANGUAGES[name].source_kind.value == "raster"
-    if isinstance(program, os.PathLike):
-        try:
-            path = pathlib.Path(program)
-            program = (
-                Raster.from_png(path.read_bytes())
-                if raster
-                else path.read_text(encoding="utf-8").removesuffix("\n")
-            )
-        except FileNotFoundError as exc:
-            # Split from the OSError clause below so a caller who passed a
-            # Path can write ``except FileNotFoundError`` and have it work.
-            raise ProgramNotFoundError(f"cannot read {program}: {exc}") from exc
-        except OSError as exc:
-            raise ProgramError(f"cannot read {program}: {exc}") from exc
-        except UnicodeDecodeError as exc:
-            # Named separately because it is a ``ValueError``, not an
-            # ``OSError``, so the clause above never caught it: a Path to a
-            # PNG raised a bare ``UnicodeDecodeError`` from inside pathlib
-            # where every other unreadable file is a ``ProgramError``.
-            raise ProgramError(
-                f"cannot read {program}: not text (invalid UTF-8 at byte {exc.start})"
-            ) from exc
-        except TypeError as exc:
-            # A ``__fspath__`` returning a non-str makes ``pathlib.Path``
-            # raise TypeError, which escaped the ``EsolangError`` promise.
-            raise ProgramError(f"cannot read {program}: {exc}") from exc
-        except ValueError as exc:
-            raise ProgramError(f"cannot read {program}: {exc}") from exc
-    expected = Raster if raster else str
-    if not isinstance(program, expected):
-        raise ProgramError(
-            f"program must be {'a Raster' if raster else 'a string of source'} "
-            f"or a Path, got "
-            f"{type(program).__name__}"
-        )
+    module = interpreter_module(name)
+    loader = getattr(module, "load_source", text_source)
+    program = loader(program)
     origin = getattr(program, "language", None)
     if origin is not None and origin != name:
         # The program says where it came from; a plain string does not and
@@ -493,39 +486,59 @@ def check_program(
             f"{name} would read it as {name} source -- which may well run, "
             f"and answer nonsense"
         )
-    if not isinstance(stdin, str):
-        # ArgumentError, matching ``check_stdin``: stdin is not the program,
-        # and the four entry points here used to disagree with it.
-        raise ArgumentError(
-            f"stdin must be a string, got {type(stdin).__name__}; "
-            f"join your lines with '\\n'"
-        )
-    check_runnable(name, program)
     return program
 
 
-def run_bounded(
+def check_program(
+    language: str, program: ProgramSource, stdin: InputSource = ""
+) -> Program:
+    """Return ``program`` as source, having checked what can be checked here.
+
+    Not a load check: it refuses the wrong *kind* of thing (a path as a
+    string, an unfilled template, an unsupported container, an unreadable file, an
+    unknown name) and type-checks ``stdin``, but ``check_program("brainfuck",
+    "[")`` returns the program and :func:`make_vm` raises ``ProgramError``.
+    :func:`make_vm` calls this, so it cannot build a machine to check.
+    :func:`check_stdin` judges ``stdin``'s shape.  A :class:`~pathlib.Path`
+    is read here with one trailing newline stripped (CV(N)(C), Grapheme and
+    NoComment reject one), so the whole call is::
+
+        path = pathlib.Path(describe(lang)["examples"][0])
+        run(lang, path, encode_inputs(lang, [0, 1]))
+
+    Programs may also be UTF-8 text bytes, PNG bytes, or readable streams.
+    The interpreter chooses the decoder. Stdin streams are checked without
+    being consumed; execution snapshots their remaining text.
+    """
+    name = resolve(language)
+    program = _read_source(name, program)
+    check_input(stdin)
+    _check_runnable(name, program)
+    return program
+
+
+def _run_bounded(
     language: str,
-    program: str | Raster | os.PathLike[str],
-    stdin: str = "",
+    program: ProgramSource,
+    stdin: InputSource = "",
     *,
-    max_steps: int | None = None,
+    max_steps: int,
     timeout: float | None = None,
+    scale: int | None = None,
 ) -> str:
-    """Execute a text program cooperatively, returning output only on halt.
+    """Execute a program cooperatively, returning output only on halt.
 
     Supply at least one bound. Limits raise :class:`ExecutionTimeoutError`
     with ``partial_output``. Works on Windows and worker threads; loading
-    and individual steps cannot be interrupted. Raster languages have no VM.
+    and individual steps cannot be interrupted.
     """
     from esolangs._validate import check_whole
 
-    if max_steps is not None:
-        check_whole(max_steps, "max_steps")
+    check_whole(max_steps, "max_steps")
     check_timeout(timeout)
-    if max_steps is None and timeout is None:
-        raise ArgumentError("run_bounded needs max_steps or timeout")
-    debugger = make_debugger(language, program, stdin)
+    from esolangs.debugger import make_debugger
+
+    debugger = make_debugger(language, program, stdin, scale=scale)
     try:
         reason = debugger.run(max_steps=max_steps, timeout=timeout)
     except EsolangError as exc:
@@ -540,27 +553,43 @@ def run_bounded(
 
 def run(
     language: str,
-    program: str | Raster | os.PathLike[str],
-    stdin: str = "",
-    timeout: float | None = None,
+    program: ProgramSource,
+    stdin: InputSource = "",
+    timeout: float | _Default | None = _DEFAULT,
     seed: int | None = None,
+    *,
+    isolated: bool = False,
+    max_steps: int | None = None,
+    scale: int | None = None,
+    max_output: int | None = None,
 ) -> str:
     """Execute ``program`` and return its output.
 
+    Raster scale is detected unless ``scale`` supplies an explicit factor.
     ``program`` is source or a :class:`~pathlib.Path`; a string shaped like a
     filename is refused.  A Path and its text are
     not quite the same argument: a file loses one trailing newline, a
     string keeps it.
 
-    ``stdin`` is fed line by line.  Reading past the end usually raises
-    :class:`~esolangs.exceptions.InputExhaustedError`;
-    ``describe(language)["eof_is_a_value"]`` marks the languages that take a
-    value and answer a *different row*, warning with
-    :class:`~esolangs.exceptions.InputMismatchWarning` (Clockwise and Fargo
-    read one line, so only ``check_stdin`` with the table catches them).
-    Two are neither: Alight halts on ``cannot apply '+' to 2.0 and 'eof'``,
-    Suffolk ends the program.  Take the alphabet from
-    ``describe(language)["input_encoding"]``; the wrong one is a wrong result.
+    Bytes contain UTF-8 text or PNG source, as accepted by the interpreter.
+    Readable streams are consumed from their current position and left open.
+    Binary stdin is decoded as UTF-8, preserving the same character stream
+    as text stdin.
+
+    ``isolated=True`` uses a subprocess deadline, including startup and loading
+    (30 seconds by default). It works on Windows and worker threads.
+    ``max_steps`` uses cooperative stepping; its optional timeout excludes loading
+    and cannot interrupt a single step. Text and raster programs support stepping.
+    Isolation and step bounds cannot be combined; stepping does not support seed.
+    ``max_output`` bounds isolated output in Unicode characters, retaining the
+    prefix and raising ``InterpreterLimitError`` when exceeded; zero is allowed.
+
+    ``stdin`` is consumed verbatim using the language's input unit, without
+    Boolean validation. Reading past
+    the end usually raises :class:`~esolangs.exceptions.InputExhaustedError`;
+    ``describe(language)["eof_is_a_value"]`` marks languages supplying a value.
+    Some halt instead. Use :func:`check_stdin`
+    explicitly to validate input for a Boolean-generated program.
 
     ``timeout`` is wall-clock seconds and raises
     :class:`~esolangs.exceptions.ExecutionTimeoutError` (a
@@ -570,173 +599,75 @@ def run(
     languages that draw.  An unloadable program raises
     :class:`~esolangs.exceptions.ProgramError`.
     """
+    check_scale_for(language, scale)
+    if isinstance(timeout, _Default):
+        timeout = 30.0 if isolated else None
     check_timeout(timeout)
-    if timeout is not None and not (
-        threading.current_thread() is threading.main_thread()
-        and hasattr(signal, "SIGALRM")
-    ):
-        # Before ``_run``, so every ValueError from the run is the
-        # interpreter's.  The message names both routes out for a worker
-        # thread.  Not a silent fallback to stepping: two paths for one
-        # function is how they diverged (``tests/test_stepping_parity.py``).
-        raise ArgumentError(
-            "the timeout guard uses SIGALRM and needs a Unix main thread; "
-            "off it, either bound the run cooperatively with "
-            "make_debugger(language, program, stdin).run(timeout=...), "
-            "which steps and so needs no signal, or use evaluate/verify "
-            "with timeout=None -- they settle a diverging row by proving "
-            "the loop rather than waiting for it"
+    if max_output is not None:
+        from esolangs._validate import check_whole
+
+        check_whole(max_output, "max_output")
+        if not isolated:
+            raise ArgumentError("max_output requires isolated=True")
+    if isolated:
+        if max_steps is not None:
+            raise ArgumentError("isolated and max_steps are mutually exclusive")
+        if timeout is None:
+            raise ArgumentError("isolated execution requires a finite timeout")
+        if max_output is not None:
+            return _run_isolated(
+                language,
+                program,
+                stdin,
+                timeout,
+                seed=seed,
+                scale=scale,
+                max_output=max_output,
+            )
+        if scale is None:
+            return _run_isolated(language, program, stdin, timeout, seed=seed)
+        return _run_isolated(language, program, stdin, timeout, seed=seed, scale=scale)
+    if max_steps is not None:
+        if seed is not None:
+            raise ArgumentError("seed is unsupported with max_steps")
+        return _run_bounded(
+            language, program, stdin, max_steps=max_steps, timeout=timeout, scale=scale
         )
-    # No guard on the lookup: ``resolve`` raises for a name outside the
-    # registry, and every registered language has an interpreter, so a name
-    # that reaches here is always in ``RUNNERS``.  The guard that used to sit
-    # here re-raised the error ``resolve`` had already raised.
+    # Before ``_run``, so every ValueError from the run is the
+    # interpreter's.  The message names both routes out for a worker
+    # thread.  Not a silent fallback to stepping: two paths for one
+    # function is how they diverged (``tests/test_stepping_parity.py``).
+    check_signal_timeout(
+        timeout,
+        "the timeout guard uses SIGALRM and needs a Unix main thread; "
+        "off it, either bound the run cooperatively with "
+        "esolangs.debugger.make_debugger(language, program, stdin)"
+        ".run(timeout=...), "
+        "which steps and so needs no signal, or use evaluate "
+        "with timeout=None -- they settle a diverging row by proving "
+        "the loop rather than waiting for it",
+    )
     name = resolve(language)
     program = check_program(name, program, stdin)
-    if isinstance(program, Raster):
-        run_fn = importlib.import_module(f"esolangs.{LANGUAGES[name].id}").run
-        split = False
-    else:
-        module, split = RUNNERS[name]
-        run_fn = importlib.import_module("esolangs.interpreters." + module).run
+    run_fn = interpreter_module(name).run
+    program_args, options = prepare_call(name, program, run_fn, scale=scale, seed=seed)
+    if options:
+        run_fn = partial(run_fn, **options)
     io_obj = ScriptedIO(stdin)
-    program_args: str | list[str] | Raster = (
-        program.splitlines() if split and isinstance(program, str) else program
-    )
-    _warn_about_stdin(name, stdin)
-    if seed is not None:
-        run_fn = _seeded(name, run_fn, seed)
-    try:
+    with interpreter_errors(
+        f"the {name} interpreter recursed deeper than CPython's stack "
+        "limit allows on this program; the program is well formed, and "
+        "sys.setrecursionlimit can raise the limit if this interpreter's "
+        "depth grows with program size",
+        io_obj,
+    ):
         _run(run_fn, program_args, io_obj, timeout)
-    except RecursionError as exc:
-        # ``RecursionError`` was the one exception escaping ``EsolangError``.
-        # The limit is CPython's, not the interpreter's (raising it made the
-        # program run); Qoibl's tokenizer carries its own stack now.
-        raise _keeping_output(
-            InterpreterLimitError(
-                f"the {name} interpreter recursed deeper than CPython's stack "
-                f"limit allows on this program; the "
-                f"program is well formed, and sys.setrecursionlimit can raise "
-                f"the limit if this interpreter's depth grows with program size"
-            ),
-            io_obj,
-        ) from exc
-    except ValueError as exc:
-        # The interpreters signal a malformed program with a plain
-        # ValueError, one per language and each well worded.  Re-raising as
-        # a ProgramError keeps those words and makes the package's promise
-        # true: `except EsolangError` around user-supplied source now holds,
-        # which is the handler an embedder actually writes.
-        raise _keeping_output(ProgramError(str(exc)), io_obj) from exc
-    except EsolangError as exc:
-        # A halt, a timeout, an exhausted input: the program ran and stopped
-        # badly, which is exactly the case where what it printed first is
-        # worth keeping.  Re-raised as itself, so the class and everything
-        # hanging off it are untouched, and a bare ``raise`` keeps the
-        # traceback rather than starting a new one from here.
-        _keeping_output(exc, io_obj)
-        raise
-    _warn_about_surplus(name, io_obj)
     return io_obj.getvalue()
-
-
-def _warn_about_stdin(name: str, stdin: str) -> None:
-    """Warn, once, if ``stdin`` contradicts what ``name`` declares it reads.
-
-    A warning, not a refusal: ``run`` executes arbitrary programs.  The same
-    judgement :func:`check_stdin` raises, rendered as advice.
-    """
-    if not stdin:
-        # Empty stdin is legitimate (the protocol tests run every language
-        # that way); a program that reads anyway is caught by the counts below.
-        return
-    if not describe(name)["reads_input"]:
-        # A language that embeds its inputs is *given* no stdin by design --
-        # ``evaluate`` passes "" for every one of them -- so there is
-        # nothing here to be wrong.  ``check_stdin`` refuses the pair
-        # outright, which is right for a caller who asked; as advice it was
-        # just noise, and it fired once per row of every template language.
-        return
-    try:
-        check_stdin(name, stdin)
-    except EsolangError as exc:
-        warnings.warn(str(exc), InputMismatchWarning, stacklevel=3)
-
-
-def _seeded(name: str, run_fn: Callable[..., Any], seed: int) -> Callable[..., Any]:
-    """Bind ``seed`` to ``run_fn``'s random source, refusing where there is none.
-
-    Eight languages draw (Befunge, Fish, LaserFuck, Modulous, Painfuck,
-    Super SNUSP, Thue, and thisthat) and nothing public passed an ``rng``: ten runs of
-    ``o+++.`` gave ``3`` five times and nothing five times, while ``make_vm``
-    always seeded.  A seed for a language that draws nothing is refused: the
-    likelier reading is the wrong language.
-    """
-    import inspect
-
-    if "rng" not in inspect.signature(run_fn).parameters:
-        raise ArgumentError(
-            f"{name} draws no random values, so a seed has nothing to fix; "
-            f"the languages that draw are Befunge, Fish, LaserFuck, "
-            f"Modulous, Painfuck, Super SNUSP, Thue and thisthat"
-        )
-    from esolangs.interpreters.randomness import Seeded
-
-    try:
-        rng = Seeded(seed)
-    except (TypeError, ValueError) as exc:
-        # ``random.Random`` rejects an unseedable type with TypeError and a
-        # surrogate string with UnicodeEncodeError (a ValueError); either
-        # used to escape the package's "every deliberate error is an
-        # EsolangError".
-        raise ArgumentError(str(exc)) from exc
-    return partial(run_fn, rng=rng)
-
-
-def _keeping_output[E: EsolangError](exc: E, io_obj: ScriptedIO) -> E:
-    """Attach what the program printed before ``exc``, and return it.
-
-    The attribute is what the CLI prints; the note is for a traceback reader.
-    """
-    written = io_obj.getvalue()
-    if written:
-        exc.partial_output = written
-        exc.add_note(f"the program printed {written[:200]!r} before this")
-    return exc
-
-
-def _warn_about_surplus(name: str, io_obj: ScriptedIO) -> None:
-    """Warn if the program left supplied input unread.
-
-    Six lines to a three-input program answered the first three silently,
-    while too few always said "2 lines supplied, read 3".  Not an error:
-    reading less than given is what many programs do.
-    """
-    read, supplied = io_obj.reads, io_obj.supplied
-    if supplied > read > 0:
-        warnings.warn(
-            f"{name} read {read} of the {supplied} lines supplied on stdin; "
-            f"the rest were ignored -- is this the right arity?",
-            InputMismatchWarning,
-            stacklevel=3,
-        )
-    if io_obj.past_end and describe(name)["eof_is_a_value"]:
-        # Read past the end and kept going: the silent wrong answer the
-        # five ``eof_is_a_value`` languages give (a different row, or row
-        # 0).  Counted, not ``supplied == 0``, which missed underfeeding.
-        # Gated because Suffolk ends *by* running out of input.
-        warnings.warn(
-            f"{name} read past the end of its input {io_obj.past_end} time(s) "
-            f"and took a value each time rather than stopping; the answer is "
-            f"for the row that implies, not the one the input names",
-            InputMismatchWarning,
-            stacklevel=3,
-        )
 
 
 def _run(
     run_fn: Callable[..., Any],
-    program: str | list[str] | Raster,
+    program: RunnerProgram,
     io_obj: ScriptedIO,
     timeout: float | None,
 ) -> None:
@@ -749,7 +680,7 @@ def _run(
 
 def _run_timed_signal(
     run_fn: Callable[..., Any],
-    program: str | list[str] | Raster,
+    program: RunnerProgram,
     io_obj: ScriptedIO,
     timeout: float,
 ) -> None:

@@ -21,6 +21,7 @@ from pathlib import Path
 import pytest
 
 import esolangs
+from esolangs import Program
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.registry import LANGUAGES, RUNNERS, canonical_id
 from esolangs.tools.examples import BOOLEAN_EXAMPLES
@@ -60,7 +61,7 @@ def _load_bundle(tmp_path: Path) -> object:
     return module
 
 
-def _run_and_read(bundle_mod: object, arg: str | list[str], stdin: str = "") -> str:
+def _run_and_read(bundle_mod: object, arg: Program | list[str], stdin: str = "") -> str:
     """Run ``bundle_mod.run`` on ``arg`` and return its captured output.
 
     Two arguments, like ``esolangs.run`` itself: the comparison below is
@@ -91,7 +92,7 @@ class TestBundleCompiles:
         """Every bundled file is importable and defines ``run``."""
         bundle_one = load_script()
         for name in RUNNERS:
-            out = tmp_path / f"{name}.py"
+            out = tmp_path / f"{canonical_id(name)}.py"
             bundle_one.bundle(name, bundle_one.Source(None), out)
             module = _load_bundle(out)
             assert callable(module.run), name
@@ -113,13 +114,13 @@ class TestBundleMatchesPackage:
         interpreter keyword arguments (Suffolk's ``limit``) match too.
         """
         bundle_one = load_script()
-        tested = 0
+        tested = set()
         for stem, example in sorted(BOOLEAN_EXAMPLES.items()):
             name = _display_name(stem)
             if name is None or name not in RUNNERS:
                 continue
             program = example.build(width=None)
-            stdin = "".join(f"{line}\n" for line in example.inputs)
+            stdin = example.stdin
             out = tmp_path / f"{stem}.py"
             bundle_one.bundle(name, bundle_one.Source(None), out)
             bundle_mod = _load_bundle(out)
@@ -137,8 +138,10 @@ class TestBundleMatchesPackage:
                 )
             )
             assert actual == expected, name
-            tested += 1
-        assert tested > 0
+            tested.add(name)
+        assert tested == {
+            name for name, language in LANGUAGES.items() if language.boolean is not None
+        }
 
     def test_no_generator_languages_import(self, tmp_path: Path) -> None:
         """Languages without a generator still bundle to importable files."""
@@ -146,7 +149,7 @@ class TestBundleMatchesPackage:
         for name, (module, _split) in RUNNERS.items():
             if LANGUAGES[name].boolean is not None:
                 continue
-            out = tmp_path / f"{name}.py"
+            out = tmp_path / f"{canonical_id(name)}.py"
             bundle_one.bundle(name, bundle_one.Source(None), out)
             bundled = _load_bundle(out)
             expected = importlib.import_module("esolangs.interpreters." + module)
@@ -187,12 +190,12 @@ class TestBundleDetails:
             [sys.executable, str(out), str(prog_file)],
             capture_output=True,
             text=True,
-            input="0\n1\n",
+            input="01",
         )
         assert result.returncode == 0
         # The bundle reads through the interactive IO, which writes an
-        # "Input: " prompt per read; the program's own output follows them.
-        assert result.stdout == "Input: Input: 1"
+        # "Input: " prompt per buffered line; the program's output follows it.
+        assert result.stdout == "Input: 1"
 
 
 #: The environment the installer is handed: deliberately bare, so the script
@@ -260,3 +263,198 @@ def test_install_one_downloads_and_runs_a_bundle() -> None:
                 assert output.stdout == expected
     finally:
         server.shutdown()
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("language", ["Line", "Piet"])
+@pytest.mark.parametrize("scale", [1, 2])
+def test_raster_bundle_matches_pixels_and_runs_standalone(
+    language: str, scale: int, tmp_path: Path
+) -> None:
+    module = load_script()
+    out = tmp_path / "bundle.py"
+    module.bundle(language, module.Source(None), out)
+    bundled = _load_bundle(out)
+    program = esolangs.generate(language, "0110", balance=True, scale=scale)
+    path = tmp_path / "program.png"
+    path.write_bytes(program.to_png())
+    for bits in ("00", "01", "10", "11"):
+        stdin = "\n".join(bits) + "\n"
+        assert _run_and_read(bundled, program, stdin) == esolangs.run(
+            language, program, stdin
+        )
+        result = subprocess.run(
+            [sys.executable, "-I", str(out), str(path)],
+            input=stdin,
+            capture_output=True,
+            text=True,
+            cwd=tmp_path,
+        )
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.removeprefix("Input: Input: ") == esolangs.run(
+            language, path, stdin
+        )
+
+
+@pytest.mark.parametrize("language", ["Line", "Piet"])
+@pytest.mark.medium
+def test_raster_module_entry_point_matches_the_library(
+    language: str, tmp_path: Path
+) -> None:
+    canonical = "esolangs.interpreters." + LANGUAGES[language].interpreter
+    entry = importlib.import_module(canonical + ".__main__")
+    assert entry.run is importlib.import_module(canonical).run
+    path = tmp_path / "program.png"
+    path.write_bytes(esolangs.generate(language, "0110", balance=True).to_png())
+    result = subprocess.run(
+        [sys.executable, "-m", canonical, str(path)],
+        input="0\n1\n",
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "Input: Input: 1"
+
+
+@pytest.mark.medium
+def test_package_bundle_also_supports_text_without_pillow(tmp_path: Path) -> None:
+    module = load_script()
+    files = {
+        "registry/_table.py": 'LANGUAGES = {"Demo": Language("Demo", "other.demo")}',
+        "interpreters/other/demo/__init__.py": (
+            "from pathlib import Path\nfrom .ops import run\n"
+            "load_source = Path.read_text\n"
+        ),
+        "interpreters/other/demo/__main__.py": (
+            "from esolangs.interpreters._entry import script_main\n"
+            "from . import run, load_source\n"
+            "if __name__ == '__main__':\n"
+            "    script_main(run, loader=load_source)\n"
+        ),
+        "interpreters/other/demo/ops.py": (
+            "def run(program, io):\n    io.print_str(program)\n"
+        ),
+    }
+
+    class MemorySource(module.Source):
+        def get(self, relative):
+            if relative in files:
+                return files[relative]
+            return super().get(relative)
+
+    out = tmp_path / "demo.py"
+    module.bundle("Demo", MemorySource(None), out)
+    assert "pip install Pillow" not in out.read_text()
+    source = tmp_path / "program.txt"
+    source.write_text("hello")
+    result = subprocess.run(
+        [sys.executable, "-I", str(out), str(source)],
+        capture_output=True,
+        text=True,
+        cwd=tmp_path,
+    )
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "hello"
+
+
+@pytest.mark.parametrize("language", ["Line", "Piet"])
+@pytest.mark.medium
+def test_raster_package_bundles_from_raw_http_sources(
+    language: str, tmp_path: Path
+) -> None:
+    module = load_script()
+
+    class QuietHandler(SimpleHTTPRequestHandler):
+        def log_message(self, _format, *args):
+            pass
+
+    server = ThreadingHTTPServer(
+        ("127.0.0.1", 0), functools.partial(QuietHandler, directory=str(REPO_ROOT))
+    )
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    try:
+        out = tmp_path / "bundle.py"
+        module.bundle(
+            language, module.Source(f"http://127.0.0.1:{server.server_port}"), out
+        )
+        assert "Requires: pip install Pillow" in out.read_text()
+        bundled = _load_bundle(out)
+        program = esolangs.generate(language, "01")
+        assert _run_and_read(bundled, program, "1\n") == "1"
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
+@pytest.mark.medium
+def test_streetcode_package_runs_standalone(tmp_path: Path) -> None:
+    canonical = "esolangs.interpreters.grid_based.streetcode"
+    entry = importlib.import_module(canonical + ".__main__")
+    assert entry.run is importlib.import_module(canonical).run
+    module = load_script()
+    bundle = tmp_path / "streetcode.py"
+    module.bundle("Streetcode", module.Source(None), bundle)
+    program = esolangs.generate("Streetcode", "0110", balance=True)
+    path = tmp_path / "program.txt"
+    path.write_text(program)
+    for bits in ("00", "01", "10", "11"):
+        stdin = "\n".join(bits) + "\n"
+        expected = esolangs.run("Streetcode", program, stdin)
+        result = subprocess.run(
+            [sys.executable, "-I", str(bundle), str(path)],
+            input=stdin,
+            capture_output=True,
+            text=True,
+            cwd=tmp_path,
+        )
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.replace("Input: ", "") == expected
+
+
+@pytest.mark.slow
+def test_polynomial_package_bundle_runs_standalone(tmp_path: Path) -> None:
+    canonical = "esolangs.interpreters.register_based.polynomial"
+    entry = importlib.import_module(canonical + ".__main__")
+    assert entry.run is importlib.import_module(canonical).run
+    module = load_script()
+    out = tmp_path / "polynomial.py"
+    module.bundle("Polynomial", module.Source(None), out)
+    program = esolangs.generate("Polynomial", "0110")
+    path = tmp_path / "program.txt"
+    path.write_text(program)
+    for bits in ("00", "01", "10", "11"):
+        stdin = "\n".join(bits) + "\n"
+        result = subprocess.run(
+            [sys.executable, "-I", str(out), str(path)],
+            input=stdin,
+            capture_output=True,
+            text=True,
+            cwd=tmp_path,
+        )
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.replace("Input: ", "") == esolangs.run(
+            "Polynomial",
+            program,
+            stdin,
+        )
+
+
+@pytest.mark.medium
+def test_fractran_package_bundle_runs_standalone(tmp_path: Path) -> None:
+    canonical = "esolangs.interpreters.other.fractran"
+    entry = importlib.import_module(canonical + ".__main__")
+    assert entry.run is importlib.import_module(canonical).run
+    module = load_script()
+    out = tmp_path / "fractran.py"
+    module.bundle("Fractran", module.Source(None), out)
+    program = "2^3*3^4 3/2"
+    path = tmp_path / "program.txt"
+    path.write_text(program)
+    result = subprocess.run(
+        [sys.executable, "-I", str(out), str(path)],
+        capture_output=True,
+        text=True,
+        cwd=tmp_path,
+    )
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == esolangs.run("Fractran", program) == str(3**7)

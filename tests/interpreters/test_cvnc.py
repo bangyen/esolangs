@@ -39,7 +39,7 @@ class TestWikiExamples:
         io = ScriptedIO("H\ni\n!\n")
         with pytest.raises(EOFError):
             run(CAT, io)
-        assert io.getvalue() == "Hi!"
+        assert io.getvalue() == "H\ni\n!\n"
 
     def test_truth_machine_prints_zero_once_and_halts(self) -> None:
         assert run_program(TRUTH_MACHINE, "0\n") == "0"
@@ -155,7 +155,8 @@ class TestFricatives:
 
     def test_an_unparseable_input_line_reads_as_zero(self) -> None:
         assert run_program("su" + "θi", "banana\n") == "0"
-        assert run_program("su" + "θi", "\n") == "0"
+        with pytest.raises(EOFError):
+            run_program("su" + "θi", "\n")
 
     def test_a_negative_input_floors_at_zero(self) -> None:
         """The accumulator is unsigned."""

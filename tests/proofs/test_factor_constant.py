@@ -26,10 +26,10 @@ def test_terminal_transfer_corpus(n: int, partition: int) -> None:
         program = factor(table)
         witness = _program(table)
         for bits in itertools.product("01", repeat=n):
-            io = ScriptedIO("\n".join(bits))
+            io = ScriptedIO("".join(bits))
             run(program, io)
             assert io.getvalue() == table[int("".join(bits), 2)]
-            io = ScriptedIO("\n".join(bits))
+            io = ScriptedIO("".join(bits))
             run_brainfuck(witness, io)
             assert io.getvalue() == table[int("".join(bits), 2)]
 

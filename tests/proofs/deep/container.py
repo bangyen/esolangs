@@ -35,7 +35,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.container import _Machine
-from esolangs.tools.other import _container_threshold
+from esolangs.tools.container import _container_threshold
 
 #: Cost band; see ``__main__.py``. L1 enumerates every row of twelve arities
 #: and L4 executes every row of six wide tables; 3.1s measured.  Weakening a

@@ -4,11 +4,14 @@ from __future__ import annotations
 
 import sys
 
-from esolangs import check_runnable, describe
+from esolangs import _check_runnable, describe
+from esolangs._program import Program
 from esolangs.cli_args import (
     _check_count,
+    _errors,
     _fail,
-    _is_int,
+    _integer,
+    _nonnegative,
     _pop_cell,
     _pop_flags,
     _pop_options,
@@ -26,13 +29,12 @@ from esolangs.cli_hints import (
 from esolangs.cli_io import _null_context, _read_program, _read_stdin, _UnboundedNotice
 from esolangs.debugger import make_debugger
 from esolangs.exceptions import EsolangError, TemplateError
-from esolangs.raster import Raster
 from esolangs.tui import breakpoint_for, run_tui
 
 
 def _run_tui_session(
     language: str,
-    program: str | Raster,
+    program: Program,
     stdin: str,
     options: dict[str, str],
     cell: tuple[int, int] | None,
@@ -80,39 +82,21 @@ def _debug(rest: list[str]) -> None:
     rest = _split_positional(rest, set(), options_taken | {"--tui"})
     _check_count("debug", rest, 2)
     language, path = rest[0], rest[1]
-    for name in ("--steps", "--watch-cell", "--break-at"):
-        if name in options and not _is_int(options[name]):
-            _fail(f"{name} must be an integer, got {options[name]!r}")
+    numbers = {
+        name: _integer(options[name], name)
+        for name in ("--steps", "--watch-cell", "--break-at")
+        if name in options
+    }
     cell = _pop_cell(options)
-    # ``_pop_cell`` accepts ``-1`` as an integer, and the value half of the
-    # pair may legitimately be negative; the index half may not -- indexing
-    # from the end is not a place a breakpoint can name.  Uncaught, it
-    # reached ``check_whole`` and ``main``'s catch-all, which reported a bug
-    # in esolangs at exit 70 for a typo.
-    if cell is not None and cell[0] < 0:
-        _fail(f"--break-on-cell index must not be negative, got {cell[0]}")
-    # A negative cell index is Python list indexing leaking through: it
-    # printed cell 0's history under the name -1, which is a wrong answer
-    # rather than an empty one.  Every other negative here is refused.
-    if "--watch-cell" in options and int(options["--watch-cell"]) < 0:
-        _fail(f"--watch-cell must not be negative, got {options['--watch-cell']}")
-    # A negative bound is not a smaller bound, it is no bound: the run went
-    # unbounded, which is the one thing --steps exists to prevent.
-    if "--steps" in options and int(options["--steps"]) < 0:
-        _fail(f"--steps must not be negative, got {options['--steps']}")
-    # And the third one, which was the only integer flag here without a
-    # negative guard.  It passed the is-an-integer check above, reached
-    # ``Debugger.break_at``'s own validation, and came back out of ``main``'s
-    # catch-all as "internal error ... this is a bug in esolangs" at exit
-    # 70 -- inviting a bug report for a typo.
-    if "--break-at" in options and int(options["--break-at"]) < 0:
-        _fail(f"--break-at must not be negative, got {options['--break-at']}")
-    program = _read_program(path, limit)
-    try:
+    # The breakpoint value may be negative; its cell index may not.
+    if cell is not None:
+        _nonnegative(cell[0], "--break-on-cell index", cell[0])
+    for name in ("--watch-cell", "--steps", "--break-at"):
+        if name in numbers:
+            _nonnegative(numbers[name], name, options[name])
+    program = _read_program(path, limit, language=language)
+    with _errors():
         facts = describe(language)
-    except EsolangError as exc:
-        _fail(str(exc))
-        raise  # pragma: no cover - unreachable; _fail exits
     # The key loop owns the terminal's stdin, so a piped stream cannot also
     # be the program's input: the two would race for the same descriptor.
     # ``--stdin`` is how a TUI run feeds its program instead.
@@ -138,7 +122,7 @@ def _debug(rest: list[str]) -> None:
     # escaped as a traceback from the one command whose whole promise is to
     # report a fault rather than propagate it.
     try:
-        check_runnable(language, program)
+        _check_runnable(language, program)
         if tui:
             # Built through the same refusals, then handed to the screen --
             # which owns the stepping from here, so nothing below runs.
@@ -175,7 +159,9 @@ def _debug(rest: list[str]) -> None:
     # state up to the fault is the thing they asked to see.
     fault = None
     reason = None
-    warning = _shape_warning(describe(language), stdin, table)
+    warning = (
+        _shape_warning(describe(language), stdin, table) if table is not None else ""
+    )
     if warning:
         sys.stderr.write(f"{warning}\n")
     # ``run`` gained this last round and ``debug`` did not, so `debug 123

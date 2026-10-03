@@ -152,7 +152,7 @@ def load(path: Path | None = None) -> Ledger:
     # count still has to stay grammatical, so the plural cannot be hard-coded.
     count = re.search(
         r"records (\d+) theoretical totality arguments and (\w+)\s+"
-        r"(?:open|proved language) exceptions?",
+        r"(?:(?:open|proved language) )?exceptions?",
         text,
     )
     assert count, f"{DOC} no longer states its own totals"
@@ -163,7 +163,7 @@ def load(path: Path | None = None) -> Ledger:
     # Matched against whitespace-collapsed prose: the sentence is wrapped to
     # 80 columns, so the names and the verb routinely straddle a line break.
     exempt = re.search(
-        r"([\w,\-~ ()]+?) keeps? no tree route at all",
+        r"([\w,\-~/ ()]+?) keeps? no tree route at all",
         " ".join(schemes.split()),
     )
     assert exempt, "Size dispatch no longer names which rows lack a tree route"

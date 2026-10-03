@@ -15,9 +15,12 @@ import pytest
 import esolangs
 import esolangs.tools as boolean
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.registry import BY_BOOLEAN, LANGUAGES
+from esolangs.raster import Raster
+from esolangs.registry import BY_BOOLEAN, INTERPRETERS, LANGUAGES
 from esolangs.tools.helpers import essential_inputs
 from esolangs.vm import run_until_halt_or_cycle
+from tests.generator_support import evaluate_generated
+from tests.source_support import source_units
 
 # Every sweep here runs an interpreter over a generated program -- the whole
 # file is the execution gate -- so the module is `medium` and the inner loop
@@ -91,12 +94,10 @@ def _input_reading_generators() -> list[object]:
     for name in sorted(boolean.__all__):
         fn = getattr(boolean, name, None)
         lang = BY_BOOLEAN.get(name)
-        if not callable(fn) or lang is None or lang.interpreter is None:
+        if not callable(fn) or lang is None or lang.name not in INTERPRETERS:
             continue
         try:
-            run = importlib.import_module(
-                f"esolangs.interpreters.{lang.interpreter}"
-            ).run
+            run = importlib.import_module(INTERPRETERS[lang.name]).run
         except Exception:  # pragma: no cover - interpreter lives outside the pkg
             continue
         if name in _SEARCHING_GENERATORS | _SEARCHING_GENERATORS_REGRESSED:
@@ -120,17 +121,22 @@ def _reads(entry: tuple, table: str) -> int:
     count at that point is the same number either way.
     """
     fn, lang, _run = entry
+    if esolangs.describe(lang.name)["parameterized"]:
+        return 0
     try:
-        program = str(fn(table))
+        emitted = fn(table)
+        program = emitted if isinstance(emitted, Raster) else str(emitted)
     except ValueError:
         # A generator that does not cover this table emits no program, and a
         # program that does not exist reads nothing.  Reporting 0 routes the
         # caller into its "does not read input" skip rather than failing on a
         # coverage gap, which is not what this test measures.
         return 0
-    io = ScriptedIO("0\n" * 8)
-    source = program.splitlines() if lang.split else program
-    module = importlib.import_module("esolangs.interpreters." + lang.interpreter)
+    io = ScriptedIO(esolangs.encode_inputs(lang.name, [0] * 8))
+    source = (
+        program.splitlines() if lang.split and isinstance(program, str) else program
+    )
+    module = importlib.import_module(INTERPRETERS[lang.name])
     machine_cls = getattr(module, "_Machine")  # noqa: B009
     # Every interpreter names its state object ``_Machine``, so this reads
     # the same count for every language.  It used to fall back to ``run``
@@ -142,7 +148,7 @@ def _reads(entry: tuple, table: str) -> int:
         of = getattr(machine_cls, "of", None)
         build = of if callable(of) else machine_cls
         run_until_halt_or_cycle(build(source, io))
-    return io.position()
+    return io.reads
 
 
 @pytest.mark.parametrize(
@@ -229,10 +235,8 @@ def test_boolean_set_lists_exactly_the_exported_generators() -> None:
 # The tree generators that pick their input split order by measuring, and the
 # builder that emits one fixed order, so a test can compare the two.
 def _reordering_generators() -> list[object]:
+    from esolangs.tools.bitdeque import _bitdeque_ordered
     from esolangs.tools.painfuck import _painfuck_ordered
-    from esolangs.tools.parameterized import (
-        _bitdeque_ordered,
-    )
     from esolangs.tools.three_d_brainfuck import _three_d_ordered
 
     entries: list[tuple[str, object, object]] = [
@@ -269,7 +273,7 @@ def test_reordering_never_grows_a_program(
             # *did* place is an improvement on not building.
             if not baseline:
                 continue
-            assert len(fn(table)) <= len(baseline), f"{name} grew on {table}"
+            assert source_units(fn(table)) <= len(baseline), f"{name} grew on {table}"
 
 
 @pytest.mark.parametrize(("name", "fn", "ordered"), _reordering_generators())
@@ -283,7 +287,7 @@ def test_reordering_shrinks_the_tables_it_should(
     folds nothing until the bottom level.
     """
     table = "10101010"
-    assert len(fn(table)) < len(ordered(table, (0, 1, 2))), (
+    assert source_units(fn(table)) < len(ordered(table, (0, 1, 2))), (
         f"{name} did not reorder a table that only reordering folds"
     )
 
@@ -304,7 +308,7 @@ def test_reorder_permutation_preserves_the_function() -> None:
 
 def test_greedy_order_never_grows_a_wide_program() -> None:
     """The identity candidate keeps the greedy heuristic from growing output."""
-    from esolangs.tools.tape import _bf_ordered
+    from esolangs.tools.brainfuck import _bf_ordered
 
     n = 8
     table = "0" * (2**n - 1) + "1"
@@ -361,7 +365,7 @@ def test_greedy_order_is_correct_when_it_is_not_the_identity() -> None:
     program = boolean.brainfuck(table)
     for combo in range(2**n):
         bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
-        stdin = "".join(f"{bit}\n" for bit in bits)
+        stdin = "".join(f"{bit}" for bit in bits)
         got = run_program(run, program, stdin)
         assert got == table[combo], f"inputs {bits}"
 
@@ -421,7 +425,7 @@ def test_the_tree_program_spends_its_permutation_on_the_tested_cell() -> None:
     """
     from itertools import permutations
 
-    from esolangs.tools.tape import _bf_ordered
+    from esolangs.tools.brainfuck import _bf_ordered
 
     lengths = {
         perm: len(_bf_ordered("00010111", perm)) for perm in permutations(range(3))
@@ -523,8 +527,9 @@ _REDUCING = {
 # zeros.
 #
 # ``befunge``, ``clockwise``, ``dimensional`` and ``modulous``
-# are branch-free lookups: Befunge writes one grid cell per entry and reads it
-# with ``g``, Clockwise stops a countdown on the entry's own column, Modulous
+# are branch-free lookups: Befunge reads a grid cell with ``g`` (six packed
+# bits per cell above ten inputs), Clockwise stops a countdown on the entry's
+# own column, Modulous
 # pops a ``PSH STR`` table down to the indexed character, so a 0% fold is
 # the construction working.
 # Dimensional paints one cell an entry along dimension 1 and stops at the last
@@ -541,6 +546,9 @@ _UNSHAPED = {
     "forbin",  # one painted call argument per entry, halved down to the first
     "malbolge",
     "minsky_swap",
+    "cyclic_tag",
+    "slashes",
+    "subleq",
     "b_tapemark",
     "bitwise_cyclic_tag",  # no branch, so every table of an arity is one length
     "minifuck",
@@ -679,8 +687,8 @@ def test_generator_shape_is_what_the_catalogue_says(name: str) -> None:
     made an earlier audit call four folding generators unfolding.
     """
     fn = getattr(boolean, name)
-    best = min(len(fn(table)) for table in _ONE_DEPENDENCY)
-    parity = len(fn(_PARITY))
+    best = min(source_units(fn(table)) for table in _ONE_DEPENDENCY)
+    parity = source_units(fn(_PARITY))
     folds = 1 - best / parity
     if name in _REDUCING:
         # The gain is real but is not a fold, so assert it from the other
@@ -692,7 +700,7 @@ def test_generator_shape_is_what_the_catalogue_says(name: str) -> None:
             f"has regressed"
         )
         for table in _ONE_DEPENDENCY:
-            assert len(fn(table)) < parity, table
+            assert source_units(fn(table)) < parity, table
         return
     if name in _MINTERM_SHAPED:
         assert folds < 0.05, (
@@ -845,7 +853,7 @@ def test_every_generator_builds_up_to_ten_inputs(name: str, arities: range) -> N
             cap, pattern = _ARITY_CAPPED.get((name, shape), (_MAX_ARITY, ""))
             table = make(n)
             if n <= cap:
-                program = str(fn(table))
+                program = fn(table)
                 assert program, f"{name} built an empty program at n={n} ({shape})"
             else:
                 with pytest.raises(ValueError, match=re.escape(pattern)):
@@ -890,7 +898,7 @@ def test_every_generator_is_total_on_every_small_table(name: str) -> None:
     """
     fn = getattr(boolean, name)
     for table in _all_tables(_EXHAUSTIVE_ARITY):
-        program = str(fn(table))
+        program = fn(table)
         assert program, f"{name} built an empty program for {table!r}"
 
 
@@ -983,7 +991,7 @@ def test_every_generator_runs_what_it_builds(
     the one that broke instead of stopping at the first.
     """
     table = make(_ONE_MINTERM_ARITY)
-    assert esolangs.evaluate(name, table, timeout=30) == table
+    assert evaluate_generated(name, table, timeout=30) == table
 
 
 @pytest.mark.parametrize(
@@ -1166,10 +1174,10 @@ def test_nothing_else_is_anywhere_near_that_big() -> None:
     biggest = max(
         (len(esolangs.generate(name, _dense(9))), name)
         for name in esolangs.list_languages()
-        if name not in _DOCUMENTED_SIZES and LANGUAGES[name].boolean is not None
+        if name not in _DOCUMENTED_SIZES
+        and LANGUAGES[name].boolean is not None
+        and esolangs.describe(name)["source_kind"] == "text"
     )
     assert biggest[0] < 600_000, biggest
-    # SLOW ACV MAMMALIAN leads at 115707, just ahead of thisthat's planar
-    # H-tree (113805, 124937 before its loader row moved over the tree),
-    # whose bounding rectangle carries whitespace as well as the live wires.
-    assert biggest[1] == "SLOW ACV MAMMALIAN", biggest
+    # Boolfuck leads at 194026 characters after its admission.
+    assert biggest[1] == "Boolfuck", biggest

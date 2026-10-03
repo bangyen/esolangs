@@ -7,7 +7,7 @@ right.  ``3`` is a NOP below 0; on TRUE it jumps back to the previous
 ``3`` (or the start), on FALSE forward to the next (or the end).  The
 program halts only at the end with the pointer below 0, else loops.
 Locations 0-7 are LSB-first (location 0 is bit 0).
-``2`` reads a line's first byte and raises :class:`EOFError` when
+``2`` reads the next character and raises :class:`EOFError` when
 exhausted; comments are NOPs and do not terminate execution.
 :func:`_advance` is pure over an immutable ``_State``; ``2``'s I/O is
 the shell's.
@@ -17,6 +17,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 
+from esolangs._drive import drive
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 
@@ -200,8 +201,7 @@ class _Machine:
 def run(code: str, io: IO) -> None:
     """Run a 123 program."""
     machine = _Machine(code, io)
-    while not machine.halted:
-        machine.step()
+    drive(machine)
 
 
 if __name__ == "__main__":

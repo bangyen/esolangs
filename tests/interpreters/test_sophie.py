@@ -187,27 +187,27 @@ class TestSophieInputHandling:
             redirect_stdout(io.StringIO()) as f,
         ):
             run("#$42:.&", io=IO())
-        # Accumulator should remain 42
+        # A newline replaces the accumulator with character code 10.
         assert f.getvalue() == "42"
 
     @pytest.mark.usefixtures("timeout_protection")
-    def test_empty_char_input(self) -> None:
+    def test_newline_char_input(self) -> None:
         with (
             patch("builtins.input", return_value=""),
             redirect_stdout(io.StringIO()) as f,
         ):
             run("#$42;.&", io=IO())
-        # Accumulator should remain 42
-        assert f.getvalue() == "42"
+        # A newline replaces the accumulator with character code 10.
+        assert f.getvalue() == "10"
 
     @pytest.mark.usefixtures("timeout_protection")
     def test_multiple_inputs(self) -> None:
         with (
-            patch("builtins.input", side_effect=["65", "B"]),
+            patch("builtins.input", side_effect=["65 B"]),
             redirect_stdout(io.StringIO()) as f,
         ):
             run(":;,&", io=IO())
-        assert f.getvalue() == "B"
+        assert f.getvalue() == " "
 
 
 class TestSophieEdgeCases:
@@ -353,13 +353,12 @@ class TestSophieExamples:
         assert f.getvalue() == "0"
 
     @pytest.mark.usefixtures("timeout_protection")
-    def test_cat_program_empty(self) -> None:
-        with (
-            patch("builtins.input", return_value=""),
-            redirect_stdout(io.StringIO()) as f,
-        ):
-            run("[;@$0{&}{,}]", io=IO())
-        assert f.getvalue() == ""
+    def test_cat_program_stops_on_nul(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+
+        source = ScriptedIO("\0")
+        run("[;@$0{&}{,}]", io=source)
+        assert source.getvalue() == ""
 
     @pytest.mark.usefixtures("timeout_protection")
     def test_cat_program_with_input(self) -> None:

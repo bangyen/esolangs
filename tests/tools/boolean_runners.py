@@ -19,7 +19,6 @@ import io
 import random
 from collections.abc import Iterator
 from contextlib import redirect_stdout
-from unittest.mock import patch
 
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.randomness import FirstDraw
@@ -59,7 +58,7 @@ def run_dig(program: str, inputs: list[str]) -> str:
 def run_six_five(program: str, inputs: list[str]) -> str:
 
     run = importlib.import_module("esolangs.interpreters.tape_based.six_five").run
-    return run_program(run, program, _stdin(inputs))
+    return run_program(run, program, "".join(inputs))
 
 
 def _run_from(module: str, program: str, feed: Iterator[str]) -> str:
@@ -73,11 +72,13 @@ def _run_from(module: str, program: str, feed: Iterator[str]) -> str:
     """
     run = importlib.import_module(module).run
     buffer = io.StringIO()
-    with (
-        patch("builtins.input", side_effect=lambda *_: next(feed)),
-        redirect_stdout(buffer),
-    ):
-        run(program, io=IO())
+
+    class CharacterFeed(IO):
+        def input_char(self, _prompt: str = "Input: ") -> int:
+            return ord(next(feed))
+
+    with redirect_stdout(buffer):
+        run(program, io=CharacterFeed())
     return buffer.getvalue()
 
 
@@ -117,25 +118,25 @@ def run_dimensional(program: str, inputs: list[str]) -> str:
 def run_bf(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.tape_based.brainfuck import run
 
-    return run_program(run, program, _stdin(inputs))
+    return run_program(run, program, "".join(inputs))
 
 
 def run_three_d_brainfuck(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.tape_based.three_d_brainfuck import run
 
-    return run_program(run, program, _stdin(inputs))
+    return run_program(run, program, "".join(inputs))
 
 
 def run_factor(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.tape_based.factor import run
 
-    return run_program(run, program, _stdin(inputs))
+    return run_program(run, program, "".join(inputs))
 
 
 def run_suffolk(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.tape_based.suffolk import run
 
-    return run_program(run, program, _stdin(inputs))
+    return run_program(run, program, "".join(inputs))
 
 
 def run_painfuck(program: str, inputs: list[str]) -> str:
@@ -147,7 +148,7 @@ def run_painfuck(program: str, inputs: list[str]) -> str:
 def run_rotfuck(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.tape_based.rotfuck import run
 
-    return run_program(run, program, _stdin(inputs))
+    return run_program(run, program, "".join(inputs))
 
 
 def run_forth(program: str, inputs: list[str]) -> str:
@@ -159,13 +160,13 @@ def run_forth(program: str, inputs: list[str]) -> str:
 def run_circlefuck(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.tape_based.circlefuck import run
 
-    return run_program(run, program, _stdin(inputs))
+    return run_program(run, program, "".join(inputs))
 
 
 def run_bit_tilde(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.tape_based.bit_tilde import run
 
-    return run_program(run, program, _stdin(inputs))
+    return run_program(run, program, "".join(inputs))
 
 
 def run_jaune(program: str, inputs: list[str]) -> str:
@@ -192,7 +193,7 @@ def run_collatz_multiverse(program: str, inputs: list[str]) -> str:
 def run_decleq(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.register_based.decleq import run
 
-    return run_program(run, program, _stdin(inputs))
+    return run_program(run, program, "".join(inputs))
 
 
 def run_cvnc(program: str, inputs: list[str]) -> str:
@@ -224,25 +225,25 @@ def run_fargo(program: str, inputs: list[str]) -> str:
 def run_forbin_boolean(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.other.forbin import run
 
-    return run_program(run, program, _stdin(inputs))
+    return run_program(run, program, "".join(inputs))
 
 
 def run_addsubjump(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.register_based.addsubjump import run
 
-    return run_program(run, program, _stdin(inputs))
+    return run_program(run, program, "".join(inputs))
 
 
 def run_qoibl(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.register_based.qoibl import run
 
-    return run_program(run, program.splitlines(), _stdin(inputs))
+    return run_program(run, program.splitlines(), "".join(inputs))
 
 
 def run_polynomial(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.register_based.polynomial import run
 
-    return run_program(run, program, _stdin(inputs))
+    return run_program(run, program, "".join(inputs))
 
 
 def run_polynomial_from(program: str, feed: Iterator[str]) -> str:
@@ -253,43 +254,43 @@ def run_polynomial_from(program: str, feed: Iterator[str]) -> str:
 def run_bfstack(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.stack_based.bfstack import run
 
-    return run_program(run, program, _stdin(inputs))
+    return run_program(run, program, "".join(inputs))
 
 
 def run_unsquare(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.stack_based.unsquare import run
 
-    return run_program(run, program, _stdin(inputs))
+    return run_program(run, program, "".join(inputs))
 
 
 def run_slow_acv_mammalian(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.tape_based.slow_acv_mammalian import run
 
-    return run_program(run, program, _stdin(inputs))
+    return run_program(run, program, "".join(inputs))
 
 
 def run_streetcode(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.grid_based.streetcode import run
 
-    return run_program(run, program.splitlines(), _stdin(inputs))
+    return run_program(run, program.splitlines(), "".join(inputs))
 
 
 def run_flowchart(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.grid_based.flowchart import run
 
-    return run_program(run, program.splitlines(), _stdin(inputs))
+    return run_program(run, program.splitlines(), "".join(inputs))
 
 
 def run_sophie(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.register_based.sophie import run
 
-    return run_program(run, program, _stdin(inputs))
+    return run_program(run, program, "".join(inputs))
 
 
 def run_sbleq(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.tape_based.sbleq import run
 
-    return run_program(run, program, _stdin(inputs))
+    return run_program(run, program, "".join(inputs))
 
 
 def run_modulous(program: str, inputs: list[str]) -> str:
@@ -315,25 +316,25 @@ def run_grapheme(program: str, inputs: list[str]) -> str:
 def run_brainif(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.tape_based.brainif import run
 
-    return run_program(run, program.splitlines(), _stdin(inputs))
+    return run_program(run, program.splitlines(), "".join(inputs))
 
 
 def run_container(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.other.container import run
 
-    return run_program(run, program.splitlines(), _stdin(inputs))
+    return run_program(run, program.splitlines(), "".join(inputs))
 
 
 def run_taglate(program: str, inputs: list[str]) -> str:
     import esolangs
 
-    return esolangs.run("Taglate", program, stdin="\n".join(inputs))
+    return esolangs.run("Taglate", program, stdin="".join(inputs))
 
 
 def run_clockwise(program: str, inputs: list[str]) -> str:
     import esolangs
 
-    # Clockwise reads the whole input as one line (7 bits per char)
+    # Clockwise loads the complete character stream (7 bits per char).
     return esolangs.run("Clockwise", program, stdin="".join(inputs))
 
 
@@ -348,8 +349,8 @@ def run_laserfuck(program: str, inputs: list[str], heading: int) -> str:
         def __init__(self, ins: list[str]) -> None:
             self._ins = list(ins)
 
-        def input_str(self, _prompt: str = "Input: ") -> str:
-            return self._ins.pop(0)
+        def input_char(self, _prompt: str = "Input: ") -> int:
+            return ord(self._ins.pop(0))
 
         def print_char(self, char: str) -> None:
             buffer.write(char)

@@ -17,6 +17,7 @@ transition; :class:`_Machine` rebinds one state per ``step()``.
 
 from __future__ import annotations
 
+from esolangs._drive import drive
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 
@@ -201,7 +202,7 @@ class _Machine:
             # The read blocks until there is a character to take, which is
             # an effect and so belongs here rather than in the transition.
             while not queue:
-                queue = tuple(self.io.input_str())
+                queue = (chr(self.io.input_char()),)
             byte = ord(queue[0])
             queue = queue[1:]
 
@@ -256,8 +257,7 @@ def run(code: list[str], io: IO) -> int | None:
     ``__main__`` block turns the code into a process exit.
     """
     machine = _Machine(code, io)
-    while not machine.halted:
-        machine.step()
+    drive(machine)
     return machine.exit_code
 
 

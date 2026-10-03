@@ -14,14 +14,14 @@ USAGE = """usage: esolangs <command> [...]
 commands:
   list [--details] [--json]   list the supported languages
   encode <language> <bits>    print the stdin that feeds those bits
-  generate [--width [N]] [--bits BITS] <language> <truth-table>
+  generate [--width [N] | --balance] [--bits BITS] [--scale N] <language> <truth-table>
                               print a program computing a truth table
                               (--width wraps it; --bits fills a template)
   describe [--json] [--spec] <language>
                               print how that language reads its input and
                               where it puts the answer (--spec prints the
                               interpreter's own description of it)
-  run [--timeout S] [--judge] [--table T] [--seed N] <language> <file>
+  run [--timeout S] [--judge] [--table T] [--seed N] [--scale N] <language> <file>
                               run a program through its interpreter
                               (--judge prints the answer bit instead)
   check-stdin [--table T] <language>
@@ -32,11 +32,9 @@ commands:
   answer [--timeout S] <language> <truth-table> <bits>
                               generate, feed those bits, run, and print the
                               one answer bit
-  verify [--timeout S] [--width [N]] <language> <truth-table>
-                              generate, run every row, and report whether
-                              the program computes that table
-  evaluate [--timeout S] [--width [N]] <language> <truth-table>
-                              the same, printing the table it computed
+  evaluate [--timeout S] [--inputs N | --table T] <language> <program-file>
+                              run every input row and print the observed
+                              table; --table also checks the expected result
   debug [--steps N] [--timeout S] [--watch-cell I] [--stdin S] [--tui]
         [--break-at N] [--break-on-cell I=V] [--break-on-output S]
         [--table T] <language> <file>
@@ -59,7 +57,8 @@ examples:
   esolangs generate --bits 10 Minifuck 0110
   esolangs run Circlefuck hello.txt
   esolangs answer brainfuck 0110 10
-  esolangs verify Fargo 10010110
+  esolangs generate Fargo 10010110 > fargo.txt
+  esolangs evaluate --table 10010110 Fargo fargo.txt
   esolangs encode LaserFuck 10 | esolangs run --judge LaserFuck prog.txt
   esolangs debug --steps 20 --watch-cell 0 brainfuck prog.txt
 """
@@ -73,12 +72,11 @@ piped straight into `esolangs run`:
 
     esolangs encode Taglate 101 | esolangs run Taglate prog.txt
 
-Most languages read one 0/1 line per bit and this is no more than what you
-would have typed.  Four are not most languages, and each fails silently if
-you guess: Grapheme spells its bits %/A, Clockwise wants them all on one
-line, Fargo wants the row index as one decimal number, and Taglate pads an
-odd input count with a leading zero line.  `esolangs describe <language>`
-prints which of those you are dealing with.
+Character readers take adjacent 0/1 characters. Numeric readers take
+whitespace-delimited tokens; string readers take lines. Grapheme spells
+its bits %/A, Fargo takes one decimal row index, and Taglate pads an odd
+input count with a leading zero character. `esolangs describe <language>`
+prints the encoding.
 
 A language whose generator embeds the inputs in the program reads no stdin
 at all; `esolangs generate --bits` builds those.
@@ -99,8 +97,8 @@ options:
               an object per language carrying the same three facts as
               booleans, so nobody has to parse the marker column.
 """,
-    "generate": f"""usage: esolangs generate [--width [N]] [--bits BITS] <language>
-                         <truth-table>
+    "generate": f"""usage: esolangs generate [--width [N] | --balance] [--bits BITS]
+                         [--scale N] <language> <truth-table>
 
 Print a program in <language> computing <truth-table>.
 
@@ -120,6 +118,10 @@ options:
                per input, and print the runnable program.  Substituting them
                by hand does not work: each language spells a set-input its
                own way, and a 0/1 in the slot is a different program.
+  --scale N    enlarge raster pixels by N after layout (default 1).
+  --balance    minimize the rendered width/height difference across supported
+               layouts. Ties prefer shorter source, then smaller width. Tokens
+               and routing can prevent a square; excludes --width.
   --width [N]  wrap the program to N columns (default {DEFAULT_WIDTH}) so it
                is readable in a diff.  Breaks only between whole tokens.
                `esolangs describe <language>` reports which of three
@@ -140,17 +142,15 @@ examples:
   esolangs generate --bits 10 Minifuck 0110
 """,
     "run": """usage: esolangs run [--timeout S] [--judge] [--table T] [--seed N]
-                    <language> <program-file>
+                    [--scale N] <language> <program-file>
 
 Run a program through its interpreter and print what it writes.
 
 The program is read from <program-file>; its input is this command's stdin.
-Most languages read one line per input bit, but four do not: Grapheme reads
-%/A rather than 0/1, Clockwise takes every bit on one line, Fargo takes the
-row index as one decimal number, and Taglate pads an odd input count with a
-leading zero.  Stdin is checked against that shape -- this command warns,
-`--judge` refuses -- but a wrong shape that still looks legitimate answers
-the wrong row, so let `esolangs encode` spell it:
+Input is consumed verbatim using the language's character, number, or
+string reads. For generated Boolean programs, `esolangs encode` spells the
+input characters, numeric tokens, or lines. `--table` checks that encoding;
+`--judge` refuses incorrect input.
 
     esolangs encode Taglate 101 | esolangs run Taglate prog.txt
 
@@ -168,6 +168,7 @@ options:
                      *not* terminating -- 123, ArrowQueue, Crement and
                      Vandevelo -- so a timeout there is the answer, not a
                      failure.
+  --scale N          override detected raster scale; 1 preserves native pixels.
   --seed N           fix the random draws so the run repeats.  Eight
                      languages draw: Befunge, Fish, LaserFuck, Modulous,
                      Painfuck, Super SNUSP, Thue and thisthat.  A seed for a language
@@ -190,7 +191,7 @@ examples:
 Generate a program for <truth-table>, feed it <bits>, run it, and print the
 single answer bit.
 
-This is `verify` for one row instead of all of them.  Everything it does was
+This generates and runs one row. Everything it does was
 already possible -- generate to a file, encode the bits, pipe them in, judge
 the output -- but that is four commands and a temporary file, and the
 encoding step is the one people get wrong.  Nothing here can be
@@ -210,50 +211,25 @@ options:
                      languages whose answer for a 1 is that the program
                      never stops, and to none for the rest.
 """,
-    "verify": """usage: esolangs verify [--timeout S] [--width [N]]
-                        <language> <truth-table>
+    "evaluate": """usage: esolangs evaluate [--timeout S] [--inputs N | --table T]
+                          <language> <program-file>
 
-Generate a program for <truth-table>, run it on every row of its input
-space, and report whether it computes that table.  Prints `ok`, or the
-table it computed and which rows disagree.
-
-This checks the generator, not a program you wrote: the program is built
-here from <truth-table>.  To judge a file of your own, use `esolangs
-run --judge`.
-
-A generator may refuse a table as too big for it; that is reported and
-exits 2, since nothing ran.
+Run the supplied program on every Boolean input row and print its observed
+truth table. No program is generated. Text, PNG sources, and parameterized
+templates are supported; templates are filled separately for every row.
 
 options:
-  --timeout SECONDS  bound each row.  The four languages that answer 1 by
-                     not terminating do *not* pay it per 1-row: those rows
-                     are settled by a repeated machine state, which proves
-                     the loop in microseconds, so the bound is only the
-                     backstop for a program that diverges by growing.
-  --width [N]        build the program wrapped to N columns and check
-                     *that*, which is the round trip worth running after a
-                     --width: a wrap that broke a token would compute a
-                     different table, or none.
+  --inputs N        enumerate N inputs, from 1 to 64, MSB first.
+  --table TABLE     infer the input count and compare the observed table with
+                     TABLE. Exits 1 on mismatch and names the differing rows.
+                     Mutually exclusive with --inputs; one is required.
+  --timeout SECONDS  bound each row. Defaults to 30 seconds, or 5 for
+                     termination answers. Repeated states prove divergence;
+                     the deadline is a backstop for growth, not an answer.
 
 examples:
-  esolangs verify brainfuck 0110
-  esolangs verify --timeout 5 123 0110
-  esolangs verify --width 40 brainfuck 10010110
-""",
-    "evaluate": """usage: esolangs evaluate [--timeout S] [--width [N]]
-                          <language> <truth-table>
-
-Print the truth table a generated <language> program actually computes.
-
-`verify` with the comparison left to you: the output is a binary string the
-same length as <truth-table>, so a mismatch shows which rows disagree
-rather than collapsing to a yes or no.  Exits 0 whenever the program ran,
-and 124 when --timeout stopped it -- which for the four languages that
-answer by not terminating is the answer rather than a fault.
-
-examples:
-  esolangs evaluate brainfuck 0110
-  esolangs evaluate "A Painter Ant" 10010110
+  esolangs evaluate --inputs 2 brainfuck program.txt
+  esolangs evaluate --table 0110 brainfuck program.txt
 """,
     "check-stdin": """usage: esolangs check-stdin [--table T] <language>
 
@@ -265,18 +241,14 @@ and exits 2 -- the wrong alphabet, a shape the language cannot read, a row
 index with a leading zero, and with --table the wrong bit count or an index
 out of range.
 
-Without --table it judges *shape*, and for most languages a shape is not a
-count.  Clockwise wants every bit on one line; Fargo wants one row index.
-For those two a stray line is a shape error and is caught.  Of the rest,
-every language but Taglate reads a line per bit; Taglate reads a line per
-bit plus a padding one -- and for all of them one line, three lines and no
-lines at all are equally well shaped.  An empty stdin passes `check-stdin
-brainfuck`, which is the trap worth naming: only --table knows how many
-bits the program wanted.
+Without --table it judges only the input alphabet and encoding. An empty
+stdin passes `check-stdin brainfuck`: only --table knows how many bits the
+program wanted. Character readers preserve newlines, so use adjacent bit
+characters rather than inserting line separators. Fargo takes one decimal
+row index.
 
-This is the check `run` applies as a warning and `run --judge` applies as a
-refusal, on its own, so a pipeline can validate input before spending a run
-on it.
+This checks Boolean input explicitly. `run --judge` applies it as a refusal;
+plain `run` accepts arbitrary input.
 
 examples:
   esolangs encode Grapheme 10 | esolangs check-stdin Grapheme
@@ -361,8 +333,8 @@ options:
                        `stopped: timeout`.  Like --steps this bounds a
                        program that never halts, which is what the four
                        terminate-as-answer languages are.
-  --stdin TEXT         feed TEXT to the program as its input, one line per
-                       newline.  The only way to give a debugged program
+  --stdin TEXT         feed TEXT verbatim using the language's input unit.
+                       The only way to give a debugged program
                        input, since the Python API cannot feed a live
                        debugger either.
   --table T            check the stdin against the shape and alphabet T's

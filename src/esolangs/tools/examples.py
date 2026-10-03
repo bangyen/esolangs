@@ -20,11 +20,17 @@ spelling that drifted made an instantiated program loop and the suite hang.
 
 from collections.abc import Callable
 from dataclasses import dataclass, replace
+from typing import cast
 
-from esolangs.registry import Generator, canonical_id
+from esolangs._program import Program
+from esolangs.raster import Raster
+from esolangs.registry import LANGUAGES, SourceKind, canonical_id, resolve
 from esolangs.tools.a_painter_ant import PAIR as APA_PAIR
 from esolangs.tools.arrowqueue import PAIR as ARROWQUEUE_PAIR
 from esolangs.tools.back import PAIR as BACK_PAIR
+from esolangs.tools.bfpda import BFPDA_PAIR
+from esolangs.tools.bio import BIO_PAIR
+from esolangs.tools.bitdeque import bitdeque_setters
 from esolangs.tools.bitwise_cyclic_tag import PAIR as BCT_PAIR
 from esolangs.tools.crement import crement_setters
 from esolangs.tools.eval_lang import PAIR as EVAL_PAIR
@@ -34,18 +40,13 @@ from esolangs.tools.helpers import (
     Setters,
     fill_runs,
 )
+from esolangs.tools.home_row import HOME_ROW_PAIR
 from esolangs.tools.intercal import PAIR as INTERCAL_PAIR
 from esolangs.tools.intercal import TEMPLATE_CHAR as INTERCAL_CHAR
 from esolangs.tools.minifuck import minifuck_setters
+from esolangs.tools.minsky_swap import minsky_swap_setters
 from esolangs.tools.nocomment import PAIR as NOCOMMENT_PAIR
 from esolangs.tools.one_two_three import PAIR as ONE_TWO_THREE_PAIR
-from esolangs.tools.parameterized import (
-    BFPDA_PAIR,
-    BIO_PAIR,
-    HOME_ROW_PAIR,
-    bitdeque_setters,
-    minsky_swap_setters,
-)
 from esolangs.tools.ram0 import PAIR as RAM0_PAIR
 from esolangs.tools.smallfuck import smallfuck_setters
 from esolangs.tools.underload import underload_setters
@@ -64,11 +65,11 @@ class BooleanExample:
     ``generator(table)`` produces the program (or the template ``fill``
     instantiates with ``bits``); ``interpreter`` is the dotted module,
     ``split`` passes lines, ``kwargs`` extra ``run()`` ints (``seed`` becomes
-    a ``Seeded`` for LaserFuck); ``inputs`` are stdin lines; ``expected`` is
+    a ``Seeded`` for LaserFuck); ``inputs`` are encoded stdin chunks; ``expected`` is
     the whole stdout.
     """
 
-    generator: Generator
+    generator: Callable[..., Program]
     table: str
     interpreter: str
     expected: str
@@ -122,18 +123,8 @@ class BooleanExample:
     #: the reason predicts all-ones and debugs the wrong thing.  Carried
     #: here so ``describe`` can tell a caller before they feed it digits.
     alphabet: tuple[str, str] = ("0", "1")
-    #: How the bits are laid out on stdin.  ``line_per_bit`` is the rule
-    #: everywhere else; ``one_line`` puts them all on one (Clockwise packs
-    #: seven bits per character and reads the lot in one go); ``row_index``
-    #: sends a single number whose bits are the inputs (Fargo reads it
-    #: before the program starts and indexes it with ``@ k``);
-    #: ``line_per_bit_padded`` is Taglate's: a line per bit like the
-    #: majority, plus the leading zero ``ghost_digit`` describes.  It was
-    #: briefly called ``char_stream``, on the strength of a comment saying
-    #: Taglate "reads a character at a time" -- true of the interpreter,
-    #: false of the stdin it wants, since :class:`ScriptedIO` hands over
-    #: whole lines.  Feeding it literal characters (``"01"``) is an
-    #: input-exhausted error; a line per bit is what works.
+    #: Boolean input encoding: adjacent characters, numeric/string lines,
+    #: a row index, or the padded character stream Taglate requires.
     input_shape: str = "line_per_bit"
     #: Whether an odd input count is padded with a leading zero the program
     #: reads like any other digit.  Taglate's slot stride has to land on a
@@ -160,25 +151,58 @@ class BooleanExample:
     kwargs: tuple[tuple[str, int], ...] = ()
     note: str = ""
     stem: str = ""
+    scale: int = 1
 
-    def build(self, width: int | None = DEFAULT_WIDTH) -> str:
-        """Return the program text this example commits.
+    @property
+    def filename(self) -> str:
+        """Return the example filename in the language's source format."""
+        kind = LANGUAGES[resolve(self.stem.replace("-", " "))].source_kind
+        return self.stem + (".png" if kind is SourceKind.RASTER else ".txt")
+
+    def build(
+        self, width: int | None = DEFAULT_WIDTH, *, balance: bool = False
+    ) -> Program:
+        """Return the source this example commits.
 
         Wrapped to ``width`` by the token-aware wrapper ``stem`` selects
         (``None`` returns raw output; a language with no wrapper is unwrapped).
         A generator that takes a width lays itself out, as :func:`esolangs.generate`.
+        ``balance`` uses the public balanced generator instead of ``width``.
         """
+        if balance:
+            import esolangs
+
+            language = canonical_id(self.stem.replace("-", " "))
+            program = esolangs.generate(
+                language, self.table, balance=True, scale=self.scale
+            )
+            if self.fill is not None:
+                program = esolangs.instantiate(language, cast(str, program), self.bits)
+            return program
         if width is not None and takes_width(self.generator):
             program = self.generator(self.table, width)
         else:
             program = self.generator(self.table)
+        if isinstance(program, Raster):
+            return program.upscaled(self.scale)
         if self.fill is not None:
             program = self.fill(program, list(self.bits))
         return wrap_program(program, canonical_id(self.stem.replace("-", " ")), width)
 
+    @property
+    def stdin(self) -> str:
+        """Return the example input with its language-specific separators."""
+        if self.input_shape in {
+            "char_stream",
+            "char_stream_padded",
+            "char_stream_cyclic",
+        }:
+            return "".join(self.inputs)
+        return "".join(f"{line}\n" for line in self.inputs)
+
 
 def _reader(
-    generator: Callable[[str], str],
+    generator: Callable[[str], Program],
     interpreter: str,
     *,
     table: str = AND2,
@@ -195,6 +219,8 @@ def _reader(
     answer_values: tuple[str, str] = ("0", "1"),
 ) -> BooleanExample:
     """Build an input-reading example, whose bits are read from stdin."""
+    if input_shape in {"char_stream", "char_stream_padded"}:
+        inputs = ("".join(inputs),)
     return BooleanExample(
         answer_mode=answer_mode,
         answer_pattern=answer_pattern,
@@ -296,7 +322,9 @@ def _register() -> None:
     from esolangs import tools as b
 
     reading = {
-        "addsubjump": _reader(b.addsubjump, "register_based.addsubjump"),
+        "addsubjump": _reader(
+            b.addsubjump, "register_based.addsubjump", input_shape="char_stream"
+        ),
         # An executed line prints its result and nothing else, so the
         # answer arrives with the newline that ends that line.
         "algebraic-programming-language": _reader(
@@ -305,8 +333,12 @@ def _register() -> None:
             expected="0\n",
             note="an executed line prints its result, so the answer ends in a newline",
         ),
-        "alight": _reader(b.alight, "grid_based.alight", split=True),
-        "b-tapemark": _reader(b.b_tapemark, "grid_based.b_tapemark"),
+        "alight": _reader(
+            b.alight, "grid_based.alight", split=True, input_shape="char_stream"
+        ),
+        "b-tapemark": _reader(
+            b.b_tapemark, "grid_based.b_tapemark", input_shape="char_stream"
+        ),
         # ``.`` writes the digit and a trailing space, so the committed
         # answer carries it and the sweep strips it.
         "befunge": _reader(
@@ -315,11 +347,17 @@ def _register() -> None:
             expected="0 ",
             split=True,
         ),
-        "bfstack": _reader(b.bfstack, "stack_based.bfstack"),
-        "bit~": _reader(b.bit_tilde, "tape_based.bit_tilde"),
-        "brainfuck": _reader(b.brainfuck, "tape_based.brainfuck"),
-        "brainif": _reader(b.brainif, "tape_based.brainif", split=True),
-        "circlefuck": _reader(b.circlefuck, "tape_based.circlefuck"),
+        "bfstack": _reader(b.bfstack, "stack_based.bfstack", input_shape="char_stream"),
+        "bit~": _reader(b.bit_tilde, "tape_based.bit_tilde", input_shape="char_stream"),
+        "brainfuck": _reader(
+            b.brainfuck, "tape_based.brainfuck", input_shape="char_stream"
+        ),
+        "brainif": _reader(
+            b.brainif, "tape_based.brainif", split=True, input_shape="char_stream"
+        ),
+        "circlefuck": _reader(
+            b.circlefuck, "tape_based.circlefuck", input_shape="char_stream"
+        ),
         "collatz-multiverse": _reader(
             b.collatz_multiverse, "register_based.collatz_multiverse"
         ),
@@ -330,6 +368,7 @@ def _register() -> None:
             note="Container prints the answer like any other reader; it "
             "also ends by calling sys.exit(0) rather than returning, which "
             "matters to a harness driving it but not to reading the result",
+            input_shape="char_stream",
         ),
         # ``send`` terminates every line it writes, so the answer arrives
         # with a newline after it -- there is no other output command.
@@ -342,13 +381,14 @@ def _register() -> None:
         "circuit_diagram": _reader(
             b.circuit_diagram,
             "grid_based.circuit_diagram",
+            input_shape="char_stream",
             split=True,
         ),
         "clockwise": _reader(
             b.clockwise,
             "grid_based.clockwise",
             inputs=("01",),
-            input_shape="one_line",
+            input_shape="char_stream_cyclic",
             split=True,
             note="Clockwise reads all its input bits in one go, so they go "
             "on one line -- one character per bit, not a line per bit, and "
@@ -357,14 +397,18 @@ def _register() -> None:
             "is read as a different row and answered wrongly",
         ),
         "cvnc": _reader(b.cvnc, "other.cvnc"),
-        "decleq": _reader(b.decleq, "register_based.decleq"),
+        "decleq": _reader(b.decleq, "register_based.decleq", input_shape="char_stream"),
         "dig": _reader(b.dig, "grid_based.dig", split=True),
         "dimensional": _reader(b.dimensional, "tape_based.dimensional"),
-        "egl": _reader(b.egl, "grid_based.egl"),
-        "factor": _reader(b.factor, "tape_based.factor"),
-        "false": _reader(b.false, "stack_based.false"),
-        "fish": _reader(b.fish, "grid_based.fish", split=True),
-        "thisthat": _reader(b.thisthat, "grid_based.thisthat", split=True),
+        "egl": _reader(b.egl, "grid_based.egl", input_shape="char_stream"),
+        "factor": _reader(b.factor, "tape_based.factor", input_shape="char_stream"),
+        "false": _reader(b.false, "stack_based.false", input_shape="char_stream"),
+        "fish": _reader(
+            b.fish, "grid_based.fish", split=True, input_shape="char_stream"
+        ),
+        "thisthat": _reader(
+            b.thisthat, "grid_based.thisthat", split=True, input_shape="char_stream"
+        ),
         # Fargo reads one *number* before the program starts, not a bit per
         # line, and ``@ k`` indexes that number's bits.  The boolean
         # convention is therefore to feed the row index: the inputs
@@ -378,8 +422,10 @@ def _register() -> None:
             note="Fargo reads one number whose bits are the inputs, so the "
             "committed input is the row index rather than a bit per line",
         ),
-        "flowchart": _reader(b.flowchart, "grid_based.flowchart", split=True),
-        "forbin": _reader(b.forbin, "other.forbin"),
+        "flowchart": _reader(
+            b.flowchart, "grid_based.flowchart", split=True, input_shape="char_stream"
+        ),
+        "forbin": _reader(b.forbin, "other.forbin", input_shape="char_stream"),
         "forþ": _reader(b.forth, "stack_based.forth"),
         "grapheme": _reader(
             b.grapheme,
@@ -408,35 +454,54 @@ def _register() -> None:
                 "the initial heading is random by spec, so the example pins "
                 "the source it is drawn from: seed 0 draws heading 3"
             ),
+            input_shape="char_stream",
         ),
         "malbolge": _reader(
             b.malbolge,
             "other.malbolge",
             note="the answer is one character and is printed with no newline",
+            input_shape="char_stream",
         ),
         "modulous": _reader(b.modulous, "stack_based.modulous"),
-        "packlang": _reader(b.packlang, "other.packlang"),
+        "packlang": _reader(b.packlang, "other.packlang", input_shape="char_stream"),
         "painfuck": _reader(b.painfuck, "tape_based.painfuck"),
-        "polynomial": _reader(b.polynomial, "register_based.polynomial"),
-        "qoibl": _reader(b.qoibl, "register_based.qoibl", split=True),
-        "rotfuck": _reader(b.rotfuck, "tape_based.rotfuck"),
-        "sbleq": _reader(b.sbleq, "tape_based.sbleq"),
-        "slow-acv-mammalian": _reader(
-            b.slow_acv_mammalian, "tape_based.slow_acv_mammalian"
+        "polynomial": _reader(
+            b.polynomial, "register_based.polynomial", input_shape="char_stream"
         ),
-        "sophie": _reader(b.sophie, "register_based.sophie"),
-        "streetcode": _reader(b.streetcode, "grid_based.streetcode", split=True),
-        "super-snusp": _reader(b.super_snusp, "grid_based.super_snusp", split=True),
-        "suffolk": _reader(b.suffolk, "tape_based.suffolk"),
+        "qoibl": _reader(
+            b.qoibl, "register_based.qoibl", split=True, input_shape="char_stream"
+        ),
+        "rotfuck": _reader(b.rotfuck, "tape_based.rotfuck", input_shape="char_stream"),
+        "boolfuck": _reader(
+            b.boolfuck, "tape_based.boolfuck", input_shape="char_stream"
+        ),
+        "subleq": _reader(b.subleq, "tape_based.subleq", input_shape="char_stream"),
+        "sbleq": _reader(b.sbleq, "tape_based.sbleq", input_shape="char_stream"),
+        "slow-acv-mammalian": _reader(
+            b.slow_acv_mammalian,
+            "tape_based.slow_acv_mammalian",
+            input_shape="char_stream",
+        ),
+        "sophie": _reader(b.sophie, "register_based.sophie", input_shape="char_stream"),
+        "streetcode": _reader(
+            b.streetcode, "grid_based.streetcode", split=True, input_shape="char_stream"
+        ),
+        "super-snusp": _reader(
+            b.super_snusp,
+            "grid_based.super_snusp",
+            split=True,
+            input_shape="char_stream",
+        ),
+        "suffolk": _reader(b.suffolk, "tape_based.suffolk", input_shape="char_stream"),
         "taglate": _reader(
             b.taglate,
             "queue_based.taglate",
             split=True,
-            input_shape="line_per_bit_padded",
+            input_shape="char_stream_padded",
             ghost_digit=True,
-            note="Taglate takes a line per bit like most languages, but an "
+            note="Taglate reads adjacent characters, but an "
             "odd input count above 1 is padded with a leading zero it reads "
-            "like any other digit: an n=3 program wants four lines. Feeding "
+            "like any other digit: an n=3 program wants four characters. Feeding "
             "three exhausts its input; padding at the end instead answers "
             "every row whose top bit is set wrongly",
         ),
@@ -448,8 +513,10 @@ def _register() -> None:
             "every state it reaches has exactly one, leaving the draw nothing "
             "to change",
         ),
-        "unlambda": _reader(b.unlambda, "other.unlambda"),
-        "unsquare": _reader(b.unsquare, "stack_based.unsquare"),
+        "unlambda": _reader(b.unlambda, "other.unlambda", input_shape="char_stream"),
+        "unsquare": _reader(
+            b.unsquare, "stack_based.unsquare", input_shape="char_stream"
+        ),
         "vandevelo": _reader(
             b.vandevelo,
             "other.vandevelo",
@@ -458,9 +525,13 @@ def _register() -> None:
             expected="",
             note="Vandevelo answers by terminating: nil halts and not nil loops",
         ),
-        "3d-brainfuck": _reader(b.three_d_brainfuck, "tape_based.three_d_brainfuck"),
+        "3d-brainfuck": _reader(
+            b.three_d_brainfuck,
+            "tape_based.three_d_brainfuck",
+            input_shape="char_stream",
+        ),
         "3x": _reader(b.three_x, "stack_based.three_x"),
-        "6-5": _reader(b.six_five, "tape_based.six_five"),
+        "6-5": _reader(b.six_five, "tape_based.six_five", input_shape="char_stream"),
     }
 
     embedded = {
@@ -502,6 +573,18 @@ def _register() -> None:
                 "halt; the generator leaves exactly one bit on it, so the "
                 "whole dump is the answer and there is no position to name"
             ),
+        ),
+        "slashes": _embedded(
+            b.slashes,
+            "other.slashes",
+            pair=("a", "b"),
+            note="Inputs fill the binary row index before unary table selection.",
+        ),
+        "cyclic-tag": _embedded(
+            b.cyclic_tag,
+            "queue_based.cyclic_tag",
+            pair=BCT_PAIR,
+            note="Inputs fill the initial queue; the final deleted bit is the answer.",
         ),
         "bitwise-cyclic-tag": _embedded(
             b.bitwise_cyclic_tag,
@@ -547,7 +630,7 @@ def _register() -> None:
             "register_based.minsky_swap",
             setters=minsky_swap_setters,
             answer_mode="dump",
-            expected="0 0",
+            expected="1 0",
             note=(
                 "Minsky Swap has no output instruction and dumps its "
                 "registers at halt; the answer is the second one"
@@ -634,25 +717,19 @@ def _register() -> None:
     # Stamp each example with its own stem, so ``build()`` knows which
     # language it is and can pick the matching token-aware wrapper without
     # the caller having to supply it.
+    from esolangs.tools.line import line
+    from esolangs.tools.piet import piet
+
+    reading["line"] = _reader(line, "tape_based.line")
+    reading["piet"] = replace(
+        _reader(piet, "stack_based.piet"),
+        scale=80,
+        note="80 pixels per codel, comparable in area to Line",
+    )
     for stem, example in {**reading, **embedded}.items():
         BOOLEAN_EXAMPLES[stem] = replace(example, stem=stem)
 
 
 _register()
 
-# Committed programs that no current generator produces, so they are run as
-# behaviour tests but exempt from the generator-match check.
-#
-# Empty since Minifuck's entry was retired.  That program was the last
-# hand-written one: it read its inputs at runtime, the construction the old,
-# removed generator used, and was kept as the only committed record of that
-# reading model.  Minifuck's shipped generator is parameterized and embeds
-# its inputs, so ``examples/minifuck.txt`` is now generated like
-# every other file and the reading model survives as prose in
-# ``the relevant generator tests`` rather than as a program nothing produces.
-#
-# The mechanism is kept rather than deleted: it costs one empty dict and is
-# what a future committed-but-ungenerated program would use.
-HAND_WRITTEN: dict[str, tuple[str, tuple[str, ...], str, bool]] = {}
-
-__all__ = ["AND2", "BOOLEAN_EXAMPLES", "HAND_WRITTEN", "BooleanExample"]
+__all__ = ["AND2", "BOOLEAN_EXAMPLES", "BooleanExample"]

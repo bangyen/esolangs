@@ -11,24 +11,61 @@ import time
 from typing import Any, cast
 
 import esolangs
+import esolangs.debugger as debugger_api
 from esolangs._validate import check_timeout
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.vm import run_until_halt_or_cycle
+from esolangs.vm import VM, run_until_halt_or_cycle
 
 
 def _bits(row: int, inputs: int) -> list[int]:
     return [(row >> shift) & 1 for shift in range(inputs - 1, -1, -1)]
 
 
-def _source_size(program: str | esolangs.Raster) -> int:
+def _source_size(program: esolangs.Program) -> int:
     if isinstance(program, str):
         return len(program)
     return sum(len(row) for row in program.rows)
 
 
+def _integer_bits(value: int) -> int:
+    """Count magnitude bits (one for zero) and a sign bit for negatives."""
+    return max(1, value.bit_length()) + int(value < 0)
+
+
+def _payload_profile(language: str, vm: VM) -> dict[str, int] | None:
+    """Count logical data and control integers for three audited machine shapes.
+
+    Excludes Python overhead, static parser indexes and I/O buffers. Subleq's
+    mutable code is included in its memory; other source is measured separately.
+    """
+    state = vm.snapshot()
+    if language == "BFStack":
+        data, control, pc, _cursor = cast(
+            "tuple[tuple[int, ...], tuple[int, ...], int, int]", state
+        )
+    elif language == "Sophie":
+        pc, accumulator, _skip, control, _halted = cast(
+            "tuple[int, int, bool, tuple[int, ...], bool]", state
+        )
+        data = (accumulator,)
+    elif language == "Subleq":
+        data, pc, _cursor = cast("tuple[tuple[int, ...], int, int]", state)
+        control = ()
+    else:
+        return None
+    widths = [_integer_bits(value) for value in (*data, *control)]
+    return {
+        "peak_control_stack_items": len(control),
+        "peak_data_bits": sum(_integer_bits(value) for value in data),
+        "peak_control_stack_bits": sum(_integer_bits(value) for value in control),
+        "peak_integer_bits": max(widths, default=0),
+        "peak_pc_bits": _integer_bits(pc),
+    }
+
+
 def _execute(
     language: str,
-    program: str | esolangs.Raster,
+    program: esolangs.Program,
     table: str,
     row: int,
     cap: int,
@@ -38,13 +75,13 @@ def _execute(
 ) -> dict[str, Any]:
     facts = esolangs.describe(language)
     bits = _bits(row, len(table).bit_length() - 1)
-    source: str | esolangs.Raster
+    source: esolangs.Program
     if facts["parameterized"]:
         assert isinstance(program, str)
         source, stdin = esolangs.instantiate(language, program, bits), ""
     else:
         source, stdin = program, esolangs.encode_inputs(language, bits, table)
-    supported = isinstance(source, str) and facts["steppable_to_answer"]
+    supported = facts["steppable_to_answer"]
     if track_store and facts["answer_mode"] == "termination":
         raise ValueError("store tracking requires a halting-answer language")
     result: dict[str, Any] = {
@@ -57,6 +94,11 @@ def _execute(
         "execution_status": "pending",
         "peak_memory_cells": None,
         "peak_stack_items": None,
+        "peak_control_stack_items": None,
+        "peak_data_bits": None,
+        "peak_control_stack_bits": None,
+        "peak_integer_bits": None,
+        "peak_pc_bits": None,
     }
 
     def drive(*_args: object) -> None:
@@ -65,8 +107,7 @@ def _execute(
             result["execution_status"] = "halted"
             result["actual_answer"] = esolangs.read_answer(language, output)
             return
-        assert isinstance(source, str)
-        vm = esolangs.make_vm(language, source, stdin)
+        vm = debugger_api.make_vm(language, source, stdin)
         terminating = facts["answer_mode"] == "termination"
         if terminating:
             halted = run_until_halt_or_cycle(vm, limit=cap)
@@ -78,7 +119,7 @@ def _execute(
                 return
             # The detector unwraps the VM; replay a halt to retain the
             # baseline's wrapper-step count, excluding its post-halt dump.
-            vm = esolangs.make_vm(language, source, stdin)
+            vm = debugger_api.make_vm(language, source, stdin)
 
         def sample_store() -> None:
             if track_store:
@@ -88,6 +129,10 @@ def _execute(
                 result["peak_stack_items"] = max(
                     result["peak_stack_items"] or 0, len(vm.stack)
                 )
+                profile = _payload_profile(str(facts["name"]), vm)
+                if profile is not None:
+                    for key, value in profile.items():
+                        result[key] = max(result[key] or 0, value)
 
         sample_store()
         steps = 0
@@ -121,7 +166,7 @@ def _execute(
 
 def _commands(
     language: str,
-    program: str | esolangs.Raster,
+    program: esolangs.Program,
     table: str,
     row: int,
     cap: int,
@@ -165,10 +210,11 @@ def measure(
             "benchmark timeout needs a Unix main thread; pass timeout=None"
         )
     timings: list[int] = []
-    program: str | esolangs.Raster | None = None
+    program: esolangs.Program | None = None
     for _ in range(repeat):
         started = time.perf_counter_ns()
         program = esolangs.generate(language, table)
+        _source_size(program)
         timings.append(time.perf_counter_ns() - started)
     assert program is not None
     rows = range(len(table)) if all_rows else sample_rows or (row,)
@@ -180,7 +226,7 @@ def measure(
     ]
     selected = next(item for item in executions if item["row"] == row)
     return {
-        "schema": 3,
+        "schema": 4,
         "track_store": track_store,
         "language": esolangs.describe(language)["name"],
         "truth_table": table,
@@ -219,7 +265,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--track-store",
         action="store_true",
-        help="sample VM memory and stack lengths at each step",
+        help="sample stores; Sophie/BFStack/Subleq also report integer payloads",
     )
     args = parser.parse_args(argv)
     if args.repeat < 1 or args.step_cap < 1:

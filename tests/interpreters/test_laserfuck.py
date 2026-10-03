@@ -48,8 +48,8 @@ class TestLaserFuck:
             def __init__(self) -> None:
                 self.buf = io.StringIO()
 
-            def input_str(self, _prompt: str = "Input: ") -> str:
-                return "1"
+            def input_char(self, _prompt: str = "Input: ") -> int:
+                return ord("1")
 
             def print_char(self, char: str) -> None:
                 self.buf.write(char)
@@ -105,8 +105,8 @@ class TestLaserFuck:
             def __init__(self) -> None:
                 self.buf = io.StringIO()
 
-            def input_str(self, _prompt: str = "Input: ") -> str:
-                return "42"
+            def input_char(self, _prompt: str = "Input: ") -> int:
+                return ord("4")
 
             def print_char(self, char: str) -> None:
                 self.buf.write(char)
@@ -369,20 +369,14 @@ class TestSurvivorGaps:
         assert run_and_capture(["x+_ o{", "     "]) == "1"
 
     def test_a_mirror_reads_the_value_not_the_written_flag(self) -> None:
-        """A cell that was written *and* is zero does not deflect.
-
-        Each tape cell carries a value and a flag saying it was written,
-        and the mirrors must consult the value.  Reading the flag instead
-        looks right everywhere a cell was incremented; ``,`` on an empty
-        line writes a zero, which is the case that separates them.
-        """
+        """A supplied NUL marks a zero cell, which the conditional mirror skips."""
 
         class TestIO(IO):
             def __init__(self) -> None:
                 self.buf = io.StringIO()
 
-            def input_str(self, _prompt: str = "Input: ") -> str:
-                return ""
+            def input_char(self, _prompt: str = "Input: ") -> int:
+                return 0
 
             def print_char(self, char: str) -> None:
                 self.buf.write(char)
@@ -454,26 +448,18 @@ class TestSurvivorGaps:
             assert run_and_capture(cage, heading=heading) == "1", heading
 
     def test_a_zero_cell_passes_the_other_conditional_mirror(self) -> None:
-        r"""``)`` on a written zero: it does not deflect, and the guard holds.
-
-        The companion to the ``(`` case above, and the one that pins the
-        guard's *shape*.  ``,`` on an empty line writes a zero, so a beam
-        arriving at ``)`` must carry straight on; joining the two
-        conditions with ``or``, comparing the value the wrong way round,
-        or reading the written-flag instead all deflect it into the second
-        ``,``, which has no input left and raises.
-        """
+        """A supplied NUL writes zero, so the beam passes the mirror straight."""
 
         class TestIO(IO):
             def __init__(self) -> None:
                 self.buf = io.StringIO()
                 self.reads = 0
 
-            def input_str(self, _prompt: str = "Input: ") -> str:
+            def input_char(self, _prompt: str = "Input: ") -> int:
                 self.reads += 1
                 if self.reads > 1:  # a deflected beam comes back for more
                     raise EOFError
-                return ""
+                return 0
 
             def print_char(self, char: str) -> None:
                 self.buf.write(char)

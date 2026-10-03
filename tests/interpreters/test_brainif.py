@@ -2,6 +2,7 @@
 
 from typing import ClassVar
 
+import esolangs.debugger as debugger_api
 from esolangs.interpreters.tape_based.brainif import run
 from tests.interpreters.contract import (
     CycleContract,
@@ -29,18 +30,9 @@ class TestBrainIfBasicCommands:
     def test_input(self) -> None:
         assert run_and_capture(["if 0 input", "if 65 output"], inputs=["A"]) == "A"
 
-    def test_input_retries_past_blank_lines(self) -> None:
-        """A blank line is read again, not stored as the newline it ended.
-
-        ``input`` reads whole lines, and an empty one carries no character
-        to take -- so the read repeats until a line has one.  Nothing else
-        in the suite feeds a blank line, and the retry is the loop's only
-        observable: without it the first empty string would be indexed and
-        raise, and a loop entered on the wrong condition would either skip
-        the read or never leave it.
-        """
-        code = ["if 0 input", "if 65 output"]
-        assert run_and_capture(code, inputs=["", "", "A"]) == "A"
+    def test_input_preserves_newlines(self) -> None:
+        """Input stores a newline rather than skipping it."""
+        assert run_and_capture(["if 0 input", "if 10 output"], inputs=["", "A"]) == "\n"
 
     def test_move_right(self) -> None:
         code = ["if 0 right", "if 0 increment", "if 1 output"]
@@ -228,13 +220,13 @@ class TestStepMachine:
         assert _advance((0, 0, cells), None) == (1, 0, cells)
         assert _advance((0, 0, cells), (0, "right", 0)) == (1, 1, cells)
 
-    def test_machine_retries_a_blank_input_line(self) -> None:
+    def test_machine_stores_a_newline(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.brainif import _Machine
 
         machine = _Machine(["if 0 input"], ScriptedIO("\nA\n"))
         machine.step()
-        assert machine.cells == (65,)
+        assert machine.cells == (10,)
 
 
 def test_a_blank_line_is_skipped() -> None:
@@ -328,7 +320,7 @@ def test_nonpositive_goto_targets_are_rejected_by_run_and_vm() -> None:
             code = f"if {guard} goto {target}"
             with pytest.raises(esolangs.ProgramError, match="positive line number"):
                 esolangs.run("BrainIf", code)
-            vm = esolangs.make_vm("BrainIf", code)
+            vm = debugger_api.make_vm("BrainIf", code)
             with pytest.raises(esolangs.ProgramError, match="positive line number"):
                 vm.step()
 
@@ -342,6 +334,6 @@ def test_positive_goto_targets_match_run_and_vm() -> None:
         ("if 0 goto 2", ""),
     ):
         assert esolangs.run("BrainIf", code) == expected
-        vm = esolangs.make_vm("BrainIf", code)
+        vm = debugger_api.make_vm("BrainIf", code)
         assert run_until_halt(vm, limit=4)
         assert vm.output == expected

@@ -1,4 +1,4 @@
-"""Exercise an installed distribution, CLI, raster paths, and math extra."""
+"""Exercise an installed distribution, CLI, raster paths, and optional extras."""
 
 from __future__ import annotations
 
@@ -36,15 +36,20 @@ def _refuses_timeout() -> None:
     assert "Unix main thread" in message
 
 
-def smoke(*, math_extra: bool) -> None:
+def smoke(*, math_extra: bool, image_extra: bool = False) -> None:
     """Check installed resources and behaviour outside the source checkout."""
     package = Path(esolangs.__file__).resolve().parent
     assert package.parent.name in {"site-packages", "dist-packages"}, package
     assert (package / "py.typed").is_file()
     assert "brainfuck" in _cli(["list"])
-    assert esolangs.run_bounded("brainfuck", "+.", max_steps=2, timeout=1) == "\x01"
+    bound = esolangs.Language("BRAINFUCK")
+    program = bound.generate("0110", balance=True)
+    assert bound.evaluate(program, inputs=2, isolated=True) == "0110"
+    assert bound.read_answer(bound.run(program, bound.encode_inputs([0, 1]))) == "1"
+    assert esolangs.run("brainfuck", "+.", max_steps=2) == "\x01"
+    assert esolangs.run("brainfuck", "+.", timeout=1, isolated=True) == "\x01"
     try:
-        esolangs.run_bounded("brainfuck", "+[]", max_steps=10)
+        esolangs.run("brainfuck", "+[]", max_steps=10)
     except esolangs.ExecutionTimeoutError:
         pass
     else:
@@ -63,7 +68,17 @@ def smoke(*, math_extra: bool) -> None:
     assert "brainfuck" in entrypoint.stdout
     for name in esolangs.list_languages():
         facts = esolangs.describe(name)
-        if facts["boolean_generator"] and facts["source_kind"] == "text":
+        if facts["boolean_generator"]:
+            generated = esolangs.generate(name, "0110")
+            if image_extra and isinstance(generated, esolangs.Raster):
+                generated = esolangs.Raster.from_png(generated.to_png())
+            try:
+                assert (
+                    esolangs.evaluate(name, generated, inputs=2, isolated=True)
+                    == "0110"
+                ), name
+            except esolangs.MissingDependencyError:
+                assert not math_extra, name
             assert facts["examples"], name
             for filename in facts["examples"]:
                 path = Path(filename)
@@ -87,10 +102,30 @@ def smoke(*, math_extra: bool) -> None:
                 )
                 == "0110"[row]
             )
+        assert (
+            _cli(["evaluate", "--table", "0110", "brainfuck", str(source)]).strip()
+            == "0110"
+        )
+        source.write_text(",>,<.", encoding="utf-8")
+        assert (
+            _cli(["evaluate", "--inputs", "2", "brainfuck", str(source)]).strip()
+            == "0011"
+        )
     for language in ("Line", "Piet"):
         raster = esolangs.generate(language, "0110")
         assert isinstance(raster, esolangs.Raster)
-        decoded = esolangs.Raster.from_png(raster.to_png())
+        if image_extra:
+            decoded = esolangs.Raster.from_png(raster.to_png())
+        else:
+            decoded = raster
+            for operation in (raster.to_png, lambda: esolangs.Raster.from_png(b"")):
+                try:
+                    operation()
+                except esolangs.MissingDependencyError as exc:
+                    message = str(exc)
+                else:
+                    raise AssertionError("PNG I/O ran without its image extra")
+                assert "esolangs[image]" in message
         for row in range(4):
             bits = [row >> 1, row & 1]
             output = esolangs.run(
@@ -98,7 +133,12 @@ def smoke(*, math_extra: bool) -> None:
             )
             assert esolangs.read_answer(language, output) == "0110"[row]
     if hasattr(signal, "SIGALRM"):
-        assert esolangs.verify("brainfuck", "0110", timeout=1)
+        assert (
+            esolangs.evaluate(
+                "brainfuck", esolangs.generate("brainfuck", "0110"), timeout=1, inputs=2
+            )
+            == "0110"
+        )
         try:
             esolangs.run("brainfuck", "+[]", timeout=0.02)
         except esolangs.ExecutionTimeoutError:
@@ -110,20 +150,44 @@ def smoke(*, math_extra: bool) -> None:
     with ThreadPoolExecutor(max_workers=1) as pool:
         pool.submit(_refuses_timeout).result(timeout=5)
     with ThreadPoolExecutor(max_workers=1) as pool:
-        assert pool.submit(esolangs.verify, "Suffolk", "0110", isolated=True).result(
-            timeout=30
+        assert (
+            pool.submit(
+                esolangs.evaluate,
+                "Suffolk",
+                esolangs.generate("Suffolk", "0110"),
+                inputs=2,
+                isolated=True,
+            ).result(timeout=30)
+            == "0110"
         )
-    assert esolangs.verify("123", "01", isolated=True)
+    assert (
+        esolangs.evaluate(
+            "123", esolangs.generate("123", "01"), inputs=1, isolated=True
+        )
+        == "01"
+    )
     try:
-        esolangs.run_isolated("brainfuck", "+[]", timeout=0.5)
+        esolangs.run("brainfuck", "+[]", timeout=0.5, isolated=True)
     except esolangs.ExecutionTimeoutError:
         pass
     else:
         raise AssertionError("isolated timeout did not stop a loop")
-    assert esolangs.verify("123", "01", timeout=None)
+    assert (
+        esolangs.evaluate("123", esolangs.generate("123", "01"), timeout=None, inputs=1)
+        == "01"
+    )
+    assert (importlib.util.find_spec("PIL") is not None) == image_extra
     if math_extra:
         assert importlib.util.find_spec("sympy") is not None
-        assert esolangs.verify("Polynomial", "01", timeout=None)
+        assert (
+            esolangs.evaluate(
+                "Polynomial",
+                esolangs.generate("Polynomial", "01"),
+                timeout=None,
+                inputs=1,
+            )
+            == "01"
+        )
     else:
         assert importlib.util.find_spec("sympy") is None
         try:
@@ -138,8 +202,9 @@ def main() -> None:
     """Run the artifact smoke check with or without its optional extra."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--math", action="store_true")
+    parser.add_argument("--image", action="store_true")
     args = parser.parse_args()
-    smoke(math_extra=args.math)
+    smoke(math_extra=args.math, image_extra=args.image)
     print("installed distribution smoke check passed")
 
 

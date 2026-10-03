@@ -8,9 +8,11 @@ import warnings
 from esolangs import describe, read_answer, run
 from esolangs.cli_args import (
     _check_count,
+    _errors,
     _fail,
     _pop_flags,
     _pop_options,
+    _scale_of,
     _seed_of,
     _split_positional,
     _table_of,
@@ -52,7 +54,7 @@ def _judge(language: str, output: str, mode: object) -> str:
 
 def _run(rest: list[str]) -> None:
     """Run a program through its interpreter and write its output."""
-    rest, options = _pop_options(rest, {"--timeout", "--table", "--seed"})
+    rest, options = _pop_options(rest, {"--timeout", "--table", "--seed", "--scale"})
     # The value is checked here, before the positionals are counted.  It ran
     # after, so `run --timeout brainfuck prog.txt` -- a forgotten number --
     # swallowed the language as the timeout's value and then reported
@@ -60,8 +62,11 @@ def _run(rest: list[str]) -> None:
     # argument that was not the problem.
     timeout = _timeout_of(options)
     rest, flags = _pop_flags(rest, {"--judge"})
-    rest = _split_positional(rest, set(), {"--timeout", "--judge", "--table", "--seed"})
+    rest = _split_positional(
+        rest, set(), {"--timeout", "--judge", "--table", "--seed", "--scale"}
+    )
     seed = _seed_of(options)
+    scale = _scale_of(options)
     judge = "--judge" in flags
     # Refused like every value-taking option is.  `--judge --judge` was
     # accepted in silence while `--timeout 5 --timeout 9` was refused, and
@@ -70,18 +75,15 @@ def _run(rest: list[str]) -> None:
         _fail("--judge given more than once")
     _check_count("run", rest, 2)
     language, path = rest[0], rest[1]
-    program = _read_program(path, timeout)
+    program = _read_program(path, timeout, language=language)
     # Resolved *before* stdin is read.  It was after, so
     # `esolangs run NotALang prog.txt` with stdin held open blocked forever
     # without ever saying the language was unknown -- the one thing it could
     # have answered without reading a byte.
-    try:
+    with _errors():
         facts = describe(language)
         mode = facts["answer_mode"]
         name = facts["name"]
-    except EsolangError as exc:
-        _fail(str(exc))
-        raise  # pragma: no cover - unreachable; _fail exits
     stdin = _read_stdin(timeout, _stdin_hint(facts))
     if mode == "termination" and timeout is None:
         if judge:
@@ -102,7 +104,7 @@ def _run(rest: list[str]) -> None:
             f"--timeout SECONDS to bound it\n"
         )
     table = _table_of(options)
-    warning = _shape_warning(facts, stdin, table)
+    warning = _shape_warning(facts, stdin, table) if judge or table is not None else ""
     if warning and judge:
         # ``--judge`` wants one answer bit, so a bad stdin is a usage error
         # (the output would be one wrong digit); plain ``run`` only warns,
@@ -115,8 +117,8 @@ def _run(rest: list[str]) -> None:
         # never run off an end for ``run`` to count; a note on every
         # table-less ``--judge`` fired on correct input.
         reads = (
-            "one line of bits"
-            if facts["input_shape"] == "one_line"
+            "a stream of bit characters"
+            if facts["input_shape"] == "char_stream_cyclic"
             else "one row index"
         )
         _fail(
@@ -124,27 +126,13 @@ def _run(rest: list[str]) -> None:
             f"stdin alone -- pass --table <truth-table> with --judge, or use: "
             f"esolangs answer {_as_argument(name)} <truth-table> <bits>"
         )
-    # No copy of the warning here.  ``run`` emits the same judgement as a
-    # ``UserWarning`` now, so printing it as well said everything twice --
-    # and Python's default format would have put this file's path and a line
-    # of its source in front of it, which is nobody's idea of a CLI message.
     try:
         with (
             _UnboundedNotice("run") if timeout is None else _null_context(),
             warnings.catch_warnings(record=True) as caught,
         ):
             warnings.simplefilter("always")
-            output = run(language, program, stdin, timeout, seed)
-        surplus = next(
-            (str(e.message) for e in caught if "lines supplied" in str(e.message)),
-            None,
-        )
-        if judge and surplus is not None:
-            # A surplus read under ``--judge`` is the arity mismatch the
-            # flag exists to catch: the answer bit would be for a different
-            # row.  Refused *instead of* being rendered as advice, so it is
-            # said once rather than twice.
-            _fail(f"{surplus}\n(refused because --judge asks for an answer bit)")
+            output = run(language, program, stdin, timeout, seed, scale=scale)
         for entry in caught:
             _note(str(entry.message))
         # The count and range checks ``--table`` buys; the library judges

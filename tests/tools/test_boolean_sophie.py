@@ -7,11 +7,8 @@ import pytest
 
 from esolangs import tools as boolean
 from esolangs.tools.helpers import _ASCII_ONE, _ASCII_ZERO
-from esolangs.tools.register import (
-    _SOPHIE_CHARACTERS,
-    _SOPHIE_RESERVED,
-    _polynomial_states,
-)
+from esolangs.tools.polynomial import _polynomial_states
+from esolangs.tools.sophie import _SOPHIE_CHARACTERS, _SOPHIE_RESERVED
 from tests.tools.boolean_oracles import (
     _sophie_dag,
     _sophie_tree,
@@ -57,7 +54,7 @@ def _numeric(program: str, *, keep_10: bool = False) -> str:
 class TestSophie:
     def test_hybrid_subsumes_both_routes(self) -> None:
         """The hybrid is no longer than either prior construction through n=3."""
-        from esolangs.tools.register import _sophie_hybrid
+        from esolangs.tools.sophie import _sophie_hybrid
 
         improved = 0
         for n in range(1, 4):

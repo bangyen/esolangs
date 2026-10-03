@@ -12,14 +12,15 @@ import pytest
 from scripts import mutate_weekly
 
 
-def test_rotation_visits_every_pair_and_repeats_after_four_weeks() -> None:
+def test_rotation_visits_every_pair_and_repeats() -> None:
     date = datetime.date(2026, 12, 21)
     pairs = {
-        mutate_weekly.targets_for(date + datetime.timedelta(weeks=i)) for i in range(4)
+        mutate_weekly.targets_for(date + datetime.timedelta(weeks=i))
+        for i in range(len(mutate_weekly.TARGETS))
     }
     assert pairs == set(mutate_weekly.TARGETS)
     assert mutate_weekly.targets_for(date) == mutate_weekly.targets_for(
-        date + datetime.timedelta(weeks=4)
+        date + datetime.timedelta(weeks=len(mutate_weekly.TARGETS))
     )
 
 

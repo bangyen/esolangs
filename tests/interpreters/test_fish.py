@@ -28,7 +28,7 @@ def test_literals_arithmetic_comparison_and_output() -> None:
 
 
 def test_input_returns_minus_one_at_eof() -> None:
-    assert _run("iin;", "A\n") == "-1"
+    assert _run("iin;", "A") == "-1"
 
 
 def test_stack_stack_register_and_rotations() -> None:

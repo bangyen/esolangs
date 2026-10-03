@@ -85,7 +85,7 @@ def test_regular_rewrite_execution(
     tape: tuple[int, ...], start: int, remaining: tuple[int, ...]
 ) -> None:
     prefix = ",>,>,>,<<<" + ">" * start
-    stdin = "".join(chr(byte) + "\n" for byte in (*tape, *remaining))
+    stdin = "".join(chr(byte) for byte in (*tape, *remaining))
     for left, right in _REWRITES:
         lhs = _observe(prefix + left + ".<.>.", stdin)
         rhs = _observe(prefix + right + ".<.>.", stdin)
@@ -95,7 +95,7 @@ def test_regular_rewrite_execution(
 @pytest.mark.medium
 def test_io_commutation_negative_controls() -> None:
     prefix = ",>,>,>,<<<"
-    stdin = "\x00\n\x01\n\x00\n\x00\n"
+    stdin = "\x00\x01\x00\x00"
     assert _observe(prefix + ">[]<,", stdin)[0] == "diverge"
     assert _observe(prefix + ",>[]<", stdin)[0] == "eof"
     assert _observe(prefix + ">.<.", stdin)[1] != _observe(prefix + ".>.<", stdin)[1]

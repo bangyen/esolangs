@@ -1,6 +1,9 @@
 """Tests for the public benchmark command."""
 
+import pytest
+
 import esolangs
+from esolangs.vm import make_vm
 from scripts.benchmark import measure
 
 
@@ -55,8 +58,9 @@ def test_measure_reports_wrong_output(monkeypatch) -> None:
     assert result["matches"] is False
 
 
-def test_step_cap_is_not_unsupported() -> None:
-    result = measure("brainfuck", "0110", repeat=1, row=1, step_cap=1)
+@pytest.mark.parametrize("language", ["brainfuck", "Line", "Piet"])
+def test_step_cap_is_not_unsupported(language: str) -> None:
+    result = measure(language, "0110", repeat=1, row=1, step_cap=1)
     assert result["stepping_status"] == "supported"
     assert result["execution_status"] == "step_cap"
     assert result["commands"] is None
@@ -64,12 +68,44 @@ def test_step_cap_is_not_unsupported() -> None:
     assert result["matches"] is None
 
 
-def test_raster_is_executed_without_stepping() -> None:
-    result = measure("Piet", "0110", repeat=1, row=1, step_cap=1, all_rows=True)
-    assert result["stepping_status"] == "unsupported"
+@pytest.mark.parametrize("language", ["Line", "Piet"])
+def test_raster_counts_commands_and_checks_every_row(language: str) -> None:
+    result = measure(language, "0110", repeat=1, row=1, step_cap=10_000, all_rows=True)
+    assert result["stepping_status"] == "supported"
     assert result["execution_status"] == "halted"
+    assert result["commands"] > 0
+    assert all(item["matches"] for item in result["executions"])
+    assert result["worst_row_commands"] > 0
+
+
+def test_nonsteppable_language_still_checks_every_row() -> None:
+    result = measure(
+        "A Painter Ant", "0110", repeat=1, row=1, step_cap=1, all_rows=True
+    )
+    assert result["stepping_status"] == "unsupported"
     assert result["commands"] is None
     assert all(item["matches"] for item in result["executions"])
+
+
+def test_generation_timing_includes_lazy_pixels(monkeypatch) -> None:
+    from scripts import benchmark
+
+    image = esolangs.generate("Line", "0110")
+    assert isinstance(image, esolangs.Raster)
+    rows = image.rows
+    clock = [0]
+
+    def materialize():
+        clock[0] += 100
+        return rows
+
+    monkeypatch.setattr(
+        esolangs, "generate", lambda *_args: esolangs.Raster(_materialize=materialize)
+    )
+    monkeypatch.setattr(benchmark.time, "perf_counter_ns", lambda: clock[0])
+    result = measure("Line", "0110", repeat=1, row=1, step_cap=10_000)
+    assert result["generation_ns_best"] == 100
+    assert result["matches"] is True
 
 
 def test_cycle_is_proven_without_waiting() -> None:
@@ -180,3 +216,42 @@ def test_capped_profile_does_not_claim_a_worst_row() -> None:
     )
     assert result["worst_row_commands"] is None
     assert all(item["execution_status"] == "step_cap" for item in result["executions"])
+
+
+def test_hidden_loop_stack_counts_separately_from_data() -> None:
+    from scripts.benchmark import _payload_profile
+
+    vm = make_vm("BFStack", ">+[>+[-]<-]")
+    for _ in range(6):
+        vm.step()
+    profile = _payload_profile("BFStack", vm)
+    assert profile is not None
+    assert vm.stack == [1, 1]
+    assert profile["peak_control_stack_items"] == 2
+    assert profile["peak_control_stack_bits"] == 5
+    assert profile["peak_data_bits"] == 2
+
+
+@pytest.mark.parametrize(
+    ("language", "code", "bits"),
+    [("Sophie", "#$1024", 11), ("Subleq", "3 -1 0 -1024", 12)],
+)
+def test_integer_payload_counts_magnitude_and_negative_sign(
+    language, code, bits
+) -> None:
+    from scripts.benchmark import _payload_profile
+
+    vm = make_vm(language, code)
+    vm.step()
+    profile = _payload_profile(language, vm)
+    assert profile is not None
+    assert profile["peak_integer_bits"] == bits
+    assert profile["peak_control_stack_items"] == 0
+
+
+def test_unaudited_machine_does_not_report_zero_hidden_store() -> None:
+    result = measure(
+        "brainfuck", "0110", repeat=1, row=0, step_cap=10_000, track_store=True
+    )
+    assert result["peak_control_stack_items"] is None
+    assert result["peak_data_bits"] is None

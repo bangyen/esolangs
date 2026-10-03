@@ -24,6 +24,7 @@ import pytest
 import esolangs
 from esolangs.registry import LANGUAGES
 from esolangs.tools.wrap import WRAPPERS
+from tests.generator_support import evaluate_generated
 
 # Narrow enough to break somewhere in almost every program, and coprime-ish
 # so the breaks land in different places rather than all at one stride.
@@ -159,4 +160,4 @@ def test_streetcode_lays_out_every_two_input_table(width: int) -> None:
     written east of the street's own wall.
     """
     for table in ("0001", "0010", "1101", "1110", "0110"):
-        assert esolangs.evaluate("Streetcode", table, timeout=30, width=width) == table
+        assert evaluate_generated("Streetcode", table, timeout=30, width=width) == table

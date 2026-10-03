@@ -11,10 +11,11 @@ import re
 from typing import cast
 
 import esolangs
-from esolangs.registry import LANGUAGES, RUNNERS, wiki_url
+from esolangs.registry import LANGUAGES, SourceKind, wiki_url
 from esolangs.tools import BOOLEAN
 
 ROOT = pathlib.Path(__file__).parents[3]
+_INTERPRETERS = pathlib.Path(__file__).parents[1] / "interpreters"
 
 
 # The README's Implemented Languages section, grouped by interpreter
@@ -92,17 +93,20 @@ _SAMPLE_BITS = [1, 0, 1]
 
 def render_package_count_section() -> str:
     """Render the total and source-shape counts in the README lead."""
+    text_count = sum(lang.source_kind is SourceKind.TEXT for lang in LANGUAGES.values())
     return (
         f"Interpreters and Boolean generators for {len(LANGUAGES)} esoteric "
-        f"languages: {len(RUNNERS)} text and "
-        f"{len(LANGUAGES) - len(RUNNERS)} raster."
+        f"languages: {text_count} text and "
+        f"{len(LANGUAGES) - text_count} raster."
     )
 
 
 def _source_link(name: str) -> str:
     """Return the GitHub URL of the language's Python interpreter."""
-    module = RUNNERS[name][0]
+    module = cast(str, LANGUAGES[name].interpreter)
     path = module.replace(".", "/")
+    if not (_INTERPRETERS / f"{path}.py").is_file():
+        path += "/__init__"
     return (
         f"https://github.com/bangyen/esolangs/blob/main/"
         f"src/esolangs/interpreters/{path}.py"
@@ -117,16 +121,15 @@ def render_languages_section() -> str:
     page and the interpreter's source file on GitHub.  The ``<summary>``
     count is generated too, so it stays in sync.
     """
+    count = sum(lang.interpreter is not None for lang in LANGUAGES.values())
     out: list[str] = [
-        # ``RUNNERS`` is the text languages; the two raster languages
-        # (Line, Piet) are named just below the block, so say "text" rather
-        # than let "62" read as the whole registry's 64.
-        f"<summary>Show all {len(RUNNERS)} text languages</summary>",
+        f"<summary>Show all {count} languages</summary>",
         "",
     ]
     groups: dict[str, list[str]] = {prefix: [] for prefix, _, _ in _README_HEADINGS}
-    for name, (module, _) in RUNNERS.items():
-        groups[module.split(".")[0]].append(name)
+    for name, lang in LANGUAGES.items():
+        if lang.interpreter is not None:
+            groups[lang.interpreter.split(".")[0]].append(name)
 
     for prefix, heading, description in _README_HEADINGS:
         out.append(f"### {heading}")
@@ -155,10 +158,11 @@ def render_examples_section() -> str:
     generator has its committed file, so the registry is the source that
     cannot drift.
     """
+    count = sum(esolangs.describe(name)["boolean_generator"] for name in LANGUAGES)
     return "\n".join(
         [
-            f"Ready-to-run programs for each of the {len(BOOLEAN)}",
-            "text languages with a boolean generator live in",
+            f"Ready-to-run programs for each of the {count}",
+            "languages with a boolean generator live in",
             "[`examples/`]"
             "(https://github.com/bangyen/esolangs/tree/main/src/esolangs/examples).",
         ]
@@ -173,7 +177,7 @@ def render_boolean_count_section() -> str:
             " most-significant input",
             f"first; its length implies `n`, so it isn't passed separately."
             f"  {len(BOOLEAN)} of the",
-            "text languages have such a generator, some covering only a"
+            "languages have such a generator, some covering only a"
             " documented subset of",
             "tables.",
         ]
@@ -200,11 +204,11 @@ def _reads_stdin() -> list[str]:
 
 
 def _is_exceptional(name: str) -> bool:
-    """Return whether the stdin is anything but one ``0``/``1`` line per bit."""
+    """Return whether the stdin is anything but adjacent ``0``/``1`` characters."""
     record = esolangs.describe(name)
     shape = record["input_shape"]
     alphabet = tuple(record["input_encoding"])
-    return shape != "line_per_bit" or alphabet != ("0", "1")
+    return shape != "char_stream" or alphabet != ("0", "1")
 
 
 def render_input_shapes_section() -> str:
@@ -236,7 +240,7 @@ def render_input_shapes_section() -> str:
         [
             "",
             f"The other {len(reading) - len(odd)} that read stdin take one"
-            f" `0`/`1` line per bit -- `{default}`.",
+            f" `0`/`1` character per bit -- `{default}`.",
             f"The remaining {embedded} embed their inputs and read no stdin:"
             " `instantiate` fills them.",
             *(
@@ -306,7 +310,7 @@ def render_tui_section() -> str:
         [
             f"Generate a program with `esolangs generate {_TUI_LANGUAGE}"
             f" {_TUI_TABLE} > flowchart.txt`, then run",
-            "`esolangs debug --tui --stdin \"$(printf '0\\n1\\n')\""
+            "`esolangs debug --tui --stdin 01"
             f" {_TUI_LANGUAGE} flowchart.txt` in a terminal.",
             f"Here is {_TUI_LANGUAGE} at step {_TUI_STEP}:",
             "",

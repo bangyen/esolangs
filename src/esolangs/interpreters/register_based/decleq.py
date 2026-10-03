@@ -16,10 +16,14 @@ exhausted input raises :class:`EOFError`.  Malformed programs raise
 revisits a state on unbounded integers, and ``esolangs.run``'s
 ``timeout`` is the guard.  :func:`_advance` is pure over an immutable
 ``_State`` whose tuple memory is part of the state because it grows.
+
+The spec leaves user input unspecified; this interpreter reads consecutive
+Unicode character codes, including newlines.
 """
 
 from __future__ import annotations
 
+from esolangs._drive import drive
 from esolangs._validate import check_address
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
@@ -157,8 +161,7 @@ class _Machine:
 def run(code: str, io: IO) -> None:
     """Run a Decleq program to completion."""
     machine = _Machine(code, io)
-    while not machine.halted:
-        machine.step()
+    drive(machine)
 
 
 if __name__ == "__main__":

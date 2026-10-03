@@ -62,7 +62,7 @@ class TestLaserfuckGridWrite:
         program: a padding bug there would corrupt the grid, not raise.
         """
         program = laserfuck("0110")
-        # ``test_boolean_other`` runs this program against the table from
+        # ``test_boolean_laserfuck`` runs this program against the table from
         # every heading; here the point is only that the backfilling write
         # produces a grid at all, and that every row it padded is as wide
         # as the character it was padded for.

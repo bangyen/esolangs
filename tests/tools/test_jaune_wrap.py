@@ -2,7 +2,7 @@
 
 import pytest
 
-import esolangs
+from tests.generator_support import evaluate_generated
 
 
 @pytest.mark.parametrize("program", ["++4:", "--4?", "-4?", "+12+", "v:", "v$"])
@@ -18,4 +18,4 @@ def test_jaune_wrapping_preserves_signed_operands_and_runs(program: str) -> None
 def test_jaune_wrapping_preserves_the_reordered_retirement_witness() -> None:
     """A line break inside ++ before label4 formerly lost an increment."""
     for width in (1, 16):
-        assert esolangs.evaluate("Jaune", "00100001", width=width) == "00100001"
+        assert evaluate_generated("Jaune", "00100001", width=width) == "00100001"

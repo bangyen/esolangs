@@ -23,19 +23,40 @@ from pathlib import Path
 
 import pytest
 
-from esolangs.line import lattice
-from esolangs.line.extract import (
+from esolangs.interpreters.tape_based.line import lattice
+from esolangs.interpreters.tape_based.line.extract import (
     crop_to_content,
     detect_scale,
     extract,
     find_cursor,
     load_binary,
 )
-from esolangs.line.lattice import _DIRS, Stroke, Vertex
-from esolangs.line.mask import Mask, from_grey
-from esolangs.line.render import Node, chain, render
-from esolangs.line.simulate import IO, run
+from esolangs.interpreters.tape_based.line.lattice import _DIRS, Stroke, Vertex
+from esolangs.interpreters.tape_based.line.mask import Mask, from_grey
+from esolangs.interpreters.tape_based.line.simulate import IO, run
 from esolangs.raster.png import read_grey
+from esolangs.tools.line.render import Node, chain, render
+
+
+def test_transition_preserves_prior_states_and_requests_output() -> None:
+    from esolangs.interpreters.tape_based.line.simulate import _advance, _Frame
+
+    program = (_Frame((("i", 1), ("+", 2), ("o", 1)), (), (0, 0), None, None, None),)
+    initial = (0, 0, 0, ())
+    entered, output = _advance(initial, program, 3)
+    assert output is None
+    assert _advance(initial, program, 3) == (entered, None)
+    changed, _ = _advance(entered, program)
+    emitted, output = _advance(changed, program)
+    assert output == 5
+    assert initial == (0, 0, 0, ())
+    assert entered == (0, 1, 0, ((0, 3),))
+    assert changed == (0, 2, 0, ((0, 5),))
+    halted, _ = _advance(emitted, program)
+    assert _advance(halted, program) == (halted, None)
+    with pytest.raises(ValueError, match="requires a value"):
+        _advance(initial, program)
+
 
 # Anchored to this file rather than the working directory, so the wiki
 # fixtures resolve no matter where pytest is invoked from.
@@ -374,3 +395,100 @@ class TestSyntheticLoopMechanism:
         io, _ = _io([])
         tape = run(_build_decrement_loop(), io=io)
         assert tape == {0: 0}
+
+
+@pytest.mark.parametrize("fixture", ["addition.png", "multiplication.png"])
+def test_pixel_vm_matches_the_native_arithmetic_fixture(fixture: str) -> None:
+    from esolangs import run as public_run
+    from esolangs.raster import Raster
+    from esolangs.vm import make_vm, run_until_halt
+
+    source = Raster.from_png((Path(FIXTURES) / fixture).read_bytes())
+    stdin = "3\n2\n"
+    vm = make_vm("Line", source, stdin)
+    assert run_until_halt(vm, 1000)
+    assert vm.output == public_run("Line", source, stdin)
+    assert vm.output == ("5" if fixture == "addition.png" else "6")
+
+
+def test_compiled_missing_fork_arm_halts() -> None:
+    from esolangs.interpreters.tape_based.line.simulate import (
+        compile_program,
+        run_compiled,
+    )
+
+    root = Stroke(vertices=[Vertex(0, 0, 0), Vertex(-20, 0, None)])
+    root.nonzero = Stroke(vertices=[Vertex(-20, 0, 0), Vertex(-40, 0, None)])
+    io, outputs = _io([])
+    assert run_compiled(compile_program(root), io=io) == {0: 0}
+    assert outputs == []
+
+
+def test_two_merges_into_one_leg_share_the_resume_position() -> None:
+    from esolangs.interpreters.tape_based.line.simulate import compile_program
+
+    root = _build_decrement_loop()
+    start, end = root.vertices[1:3]
+    fork = root.vertices[-1]
+    arms = []
+    for fraction in (1, 2):
+        point = Vertex(
+            start.y + (end.y - start.y) * fraction // 3,
+            start.x + (end.x - start.x) * fraction // 3,
+            None,
+        )
+        arms.append(Stroke(vertices=[Vertex(fork.y, fork.x, 0), point]))
+    root.zero, root.nonzero = arms
+    compiled = compile_program(root)
+    assert compiled.zero is not None
+    assert compiled.nonzero is not None
+    assert compiled.zero.goto is not None
+    assert compiled.zero.goto is compiled.nonzero.goto
+    assert compiled.zero.goto.positions == ()
+
+
+@pytest.mark.parametrize(
+    ("y", "x", "direction", "expected"),
+    [
+        (1, 0, 0, True),
+        (1, 1, 0, True),
+        (1, 2, 0, True),
+        (0, 0, 1, True),
+        (0, 0, 0, False),
+        (-2, 0, 0, False),
+        (3, 1, 0, False),
+        (1, -2, 0, False),
+        (1, 4, 0, False),
+    ],
+)
+def test_band_probe_preserves_edges_and_all_three_rays(y, x, direction, expected):
+    mask = Mask(3, 3, [0, 2, 0])
+    assert lattice._band_lit(mask, y, x, direction) is expected  # noqa: SLF001
+
+
+def test_lattice_preserves_an_unsnappable_start_and_stops_a_zero_length_stroke() -> (
+    None
+):
+    mask = Mask(3, 3)
+    assert lattice._snap(mask, 1, 1, 0) == (1, 1)  # noqa: SLF001
+    stroke = lattice.walk_tree(mask, (1, 1), 0)
+    assert stroke.end == (1, 1)
+    assert len(stroke.vertices) == 2
+
+
+def test_lattice_crossing_keeps_the_arrival_heading() -> None:
+    assert lattice._classify({0, 2, 4, 6}, 4) == ("crossing", [0])  # noqa: SLF001
+
+
+@pytest.mark.parametrize("visited", [set(), {(20, 0)}, {(20, 40)}, {(20, 0), (20, 40)}])
+def test_lattice_fork_does_not_rewalk_visited_arm_endpoints(visited) -> None:
+    mask = Mask(41, 41)
+    for y in range(20, 41):
+        mask[y, 20] = True
+    for x in range(41):
+        mask[20, x] = True
+    seen = set(visited)
+    stroke = lattice.walk_tree(mask, (40, 20), 0, seen)
+    assert stroke.end == (20, 20)
+    assert (stroke.zero is None) == ((20, 40) in visited)
+    assert (stroke.nonzero is None) == ((20, 0) in visited)

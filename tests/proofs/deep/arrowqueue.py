@@ -21,21 +21,22 @@ import random
 import sys
 
 from esolangs.interpreters.grid_based.arrowqueue import _advance, _Machine
-from esolangs.tools.arrowqueue import _DRAINED_RING, _compact
-from esolangs.tools.helpers import TEMPLATE_CHAR
-from esolangs.tools.parameterized import (
+from esolangs.tools.arrowqueue import (
+    _DRAINED_RING,
     _MIDDLE,
     _STAGE,
     _TREE_0,
     _TREE_1,
     _TREE_BRANCH_0,
     _TREE_BRANCH_1,
+    _compact,
     _connect,
     _drained_leaf,
     _header,
     _tree,
     arrowqueue,
 )
+from esolangs.tools.helpers import TEMPLATE_CHAR
 from esolangs.vm import run_until_halt_or_cycle
 from tests.tools.fills import _instantiate_arrowqueue
 

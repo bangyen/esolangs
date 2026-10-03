@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
+from esolangs._drive import drive
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 
@@ -168,9 +169,7 @@ def run(code: list[str], io: IO) -> None:
     The dump is :meth:`_Machine.step`'s post-halt step.
     """
     machine = _Machine(code, io)
-    while not machine.halted:
-        machine.step()
-    machine.step()  # the post-halt step prints the queue
+    drive(machine)
 
 
 if __name__ == "__main__":

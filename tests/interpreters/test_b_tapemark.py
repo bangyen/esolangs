@@ -27,7 +27,7 @@ def test_documented_cat() -> None:
     io = ScriptedIO("A\nB\n")
     with pytest.raises(EOFError):
         run("/>-+|\\\n\\    /", io)
-    assert io.getvalue() == "AB"
+    assert io.getvalue() == "A\nB\n"
 
 
 def test_copy_and_character_input() -> None:

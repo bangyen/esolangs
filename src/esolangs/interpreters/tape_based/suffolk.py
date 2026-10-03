@@ -4,7 +4,7 @@
 ``!`` writes the cell a value from the accumulator clamped at zero, ``,``
 reads a byte, ``.`` prints the accumulator minus one; the code reruns
 forever.  The wiki has ``,`` read one character with EOF zeroing the
-accumulator; this reads a line's first byte, zeroes the accumulator at EOF,
+accumulator; this reads consecutive characters, zeroes the accumulator at EOF,
 and ends the scripted run there.  An empty program raises :class:`ValueError`.
 :func:`run` otherwise stops on a repeated state, never a pass count.
 The transition :func:`_advance` is pure over an immutable ``_State``
@@ -160,11 +160,10 @@ class _Machine:
         byte = None
         if sym == ",":
             try:
-                inp = self.io.input_str()
+                byte = acc + self.io.input_char()
             except EOFError:
-                inp = ""
+                byte = 0
                 self._exhausted = True
-            byte = acc + ord(inp[0]) if inp else 0
         elif sym == "." and acc:
             self.io.print_char(chr(acc - 1))
         self.state = _advance(self.state, self.code, byte)

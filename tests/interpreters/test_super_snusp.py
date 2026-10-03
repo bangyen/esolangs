@@ -79,7 +79,7 @@ def test_invalid_stack_and_arithmetic_operations_raise_halt_error(program: str) 
 
 
 def _run_boolean(program: str, bits: tuple[int, ...]) -> str:
-    stdin = "".join(f"{bit}\n" for bit in bits)
+    stdin = "".join(f"{bit}" for bit in bits)
     return run_super(program, stdin)
 
 

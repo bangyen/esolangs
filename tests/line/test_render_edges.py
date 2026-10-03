@@ -10,8 +10,8 @@ from __future__ import annotations
 
 import pytest
 
-from esolangs.line import render as render_module
-from esolangs.line.render import chain
+from esolangs.tools.line import render as render_module
+from esolangs.tools.line.render import chain
 
 
 class TestChain:

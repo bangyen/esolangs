@@ -18,29 +18,19 @@ sub-protocol.  :func:`run_until_halt` proves nothing.
 
 from __future__ import annotations
 
-import os
 from collections.abc import Callable, Hashable, Sequence
 from functools import cache
 from typing import Any, Protocol, cast, runtime_checkable
 
-from esolangs._vm_views import (
-    _VIEW_ITEMS as _VIEW_ITEMS,
-)
-from esolangs._vm_views import (
-    _abbreviate as _abbreviate,
-)
+from esolangs._execution import interpreter_errors, interpreter_module, prepare_call
+from esolangs._program import Program
+from esolangs._source import InputSource, ProgramSource, check_scale_for
+from esolangs._traits import trait, traits
 from esolangs._vm_views import (
     machine_views,
 )
-from esolangs.exceptions import (
-    ArgumentError,
-    InterpreterLimitError,
-    ProgramError,
-    UnknownLanguageError,
-)
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.raster import Raster
-from esolangs.registry import LANGUAGES, RUNNERS, resolve
+from esolangs.registry import resolve
 
 
 @runtime_checkable
@@ -124,7 +114,8 @@ def _unwrap(machine: object, protocol: type[Any], role: str) -> object:
     if isinstance(inner, protocol):
         return inner
     raise TypeError(
-        f"{type(machine).__name__} is not {role}: neither it nor any machine "
+        f"{getattr(machine, 'language', type(machine).__name__)} is not {role}: "
+        "neither it nor any machine "
         "it wraps provides the required members"
     )
 
@@ -690,8 +681,7 @@ class VM(Protocol):
         is ``True`` but halts on ``cannot apply '+' to 2.0 and 'eof'``;
         Suffolk is ``False`` but the read *ends* the program.  Swept one
         line short: of 52 languages reading stdin, 44 of 45 ``False`` raise
-        and 6 of 7 ``True`` answer a different row with
-        :class:`~esolangs.exceptions.InputMismatchWarning`.
+        and 6 of 7 ``True`` answer a different row.
         """
 
     @property
@@ -706,21 +696,25 @@ class VM(Protocol):
 
 
 class _DelegatingVM:
-    """A VM for an interpreter that describes its own shape.
-
-    Subclasses provide ``__init__``; everything else forwards, and
-    ``output`` is captured here.  ``memory`` and ``stack`` are copied out
-    so a caller cannot write into a running machine.
-    """
+    """Wrap a registered interpreter, copying its exposed memory and stack."""
 
     _machine: _StepMachineWithShape
 
-    def __init__(self, stdin: str = "") -> None:
-        """Create the input stream every subclass's machine reads from.
-
-        The program is not taken here: each subclass hands it to its machine.
-        """
+    def __init__(
+        self,
+        language: str,
+        program: Program,
+        stdin: InputSource = "",
+        *,
+        scale: int | None = None,
+    ) -> None:
+        self.language = language
         self._io = ScriptedIO(stdin)
+        state = interpreter_module(language)._Machine  # noqa: SLF001 - interpreter adapter
+        code, options = prepare_call(
+            language, program, state, scale=scale, reproducible=True
+        )
+        self._machine = state(code, self._io, **options)
 
     @property
     def output(self) -> str:
@@ -737,17 +731,11 @@ class _DelegatingVM:
         becomes :class:`~esolangs.exceptions.ProgramError`, a
         ``RecursionError`` :class:`~esolangs.exceptions.InterpreterLimitError`.
         """
-        try:
+        with interpreter_errors(
+            f"the {self.language} interpreter recursed deeper than "
+            "CPython's stack limit allows on this program"
+        ):
             self._machine.step()
-        except RecursionError as exc:
-            raise InterpreterLimitError(
-                f"the {type(self).__name__} interpreter recursed deeper than "
-                f"CPython's stack limit allows on this program"
-            ) from exc
-        except ProgramError:
-            raise
-        except ValueError as exc:
-            raise ProgramError(str(exc)) from exc
 
     def snapshot(self) -> Hashable:
         """Return the underlying machine's complete state."""
@@ -772,7 +760,7 @@ class _DelegatingVM:
 
     @property
     def self_halts(self) -> bool:
-        return bool(getattr(self._machine, "self_halts", True))
+        return trait(self._machine, "self_halts")
 
     @property
     def ip_shape(self) -> str:
@@ -784,70 +772,15 @@ class _DelegatingVM:
 
     @property
     def dumps_on_the_post_halt_step(self) -> bool:
-        return bool(getattr(self._machine, "dumps_on_the_post_halt_step", False))
+        return trait(self._machine, "dumps_on_the_post_halt_step")
 
     @property
     def steppable_to_answer(self) -> bool:
-        return bool(getattr(self._machine, "steppable_to_answer", True))
+        return trait(self._machine, "steppable_to_answer")
 
     @property
     def eof_is_a_value(self) -> bool:
-        return bool(getattr(self._machine, "eof_is_a_value", False))
-
-
-def _derived_adapter(language: str) -> Callable[[str, str], _DelegatingVM]:
-    """Build the adapter for a language whose wrapper is pure boilerplate.
-
-    Only the module and text-vs-lines differ, both already in ``RUNNERS``;
-    every registered language goes through here.
-    """
-    module_path, split = RUNNERS[language]
-    # Bound to another name first: a class body cannot read the enclosing
-    # function's ``language`` while binding a class attribute of that name.
-    display_name = language
-
-    class _Derived(_DelegatingVM):
-        #: The registry's display name for this adapter's language.
-        #:
-        #: ``_DelegatingVM`` never sees a name, and the debugger needs one
-        #: to ask ``describe`` whether a read past the end of input is a
-        #: value here -- the difference between a wrong answer and a raise.
-        language = display_name
-
-        def __init__(self, program: str, stdin: str = "") -> None:
-            super().__init__(stdin)
-            import importlib
-            import inspect
-
-            from esolangs.interpreters.randomness import Seeded
-
-            module = importlib.import_module(f"esolangs.interpreters.{module_path}")
-            code = program.splitlines() if split else program
-            # ``_Machine`` is private to its module but is the state object
-            # this whole file is built around.
-            state = getattr(module, "_Machine")  # noqa: B009
-            # Seeded for reproducibility (the interpreter falls back to
-            # ``secrets``); the seed is the machine's, since the first draw
-            # is a fact about the language (LaserFuck starts heading up).
-            if "rng" in inspect.signature(state).parameters:
-                seed = getattr(state, "reproducible_seed", 0)
-                self._machine = state(code, self._io, rng=Seeded(seed))
-            else:
-                self._machine = state(code, self._io)
-
-    _Derived.__name__ = _Derived.__qualname__ = f"_{language}VM"
-    _Derived.__doc__ = f"Adapter for {language}; the interpreter describes its shape."
-    return _Derived
-
-
-# Language name -> VM adapter, read off ``RUNNERS`` rather than listed
-# again, so an unregistered name is the only thing raising
-# UnknownLanguageError.  Building an adapter imports nothing; the
-# interpreter is imported inside its ``__init__``.  Typed as the factory it
-# is used as rather than as the base class, which takes only the input.
-_VM_ADAPTERS: dict[str, Callable[[str, str], _DelegatingVM]] = {
-    name: _derived_adapter(name) for name in RUNNERS
-}
+        return trait(self._machine, "eof_is_a_value")
 
 
 @cache
@@ -856,32 +789,23 @@ def machine_traits(language: str) -> dict[str, bool]:
 
     Read off the state *class*, so :func:`esolangs.describe` needs no program.
     """
-    import importlib
-
-    # No membership check beyond ``resolve``: it only returns registry
-    # names, and the registry and ``RUNNERS`` hold the same 65.
-    name = resolve(language)
-    module = importlib.import_module(f"esolangs.interpreters.{RUNNERS[name][0]}")
-    state = getattr(module, "_Machine")  # noqa: B009
-    return {
-        "self_halts": bool(getattr(state, "self_halts", True)),
-        "dumps_on_the_post_halt_step": bool(
-            getattr(state, "dumps_on_the_post_halt_step", False)
-        ),
-        "steppable_to_answer": bool(getattr(state, "steppable_to_answer", True)),
-        "eof_is_a_value": bool(getattr(state, "eof_is_a_value", False)),
-    }
+    state = interpreter_module(resolve(language))._Machine  # noqa: SLF001 - traits need no instance
+    return traits(state)
 
 
 def make_vm(
-    language: str, program: str | Raster | os.PathLike[str], stdin: str = ""
+    language: str,
+    program: ProgramSource,
+    stdin: InputSource = "",
+    *,
+    scale: int | None = None,
 ) -> VM:
     """Return a step-and-inspect wrapper around ``language``'s interpreter.
 
-    ``stdin`` is fed line by line; the name resolves case-insensitively via
+    ``stdin`` is consumed verbatim using the language's input unit. The name
+    resolves case-insensitively via
     :func:`~esolangs.registry.resolve`.  A name outside the registry raises
-    :class:`UnknownLanguageError`; a registered raster language (Line, Piet)
-    has no step machine and raises :class:`ArgumentError` instead.  The
+    :class:`UnknownLanguageError`. Text and raster use the same step interface. The
     program and ``stdin`` are checked as :func:`esolangs.run` checks them (an
     unfilled template otherwise runs to a confident ``'0'``), and the checked
     value is what reaches the interpreter (:mod:`esolangs._validate`).
@@ -889,30 +813,10 @@ def make_vm(
     from esolangs import check_program
 
     name = resolve(language)
-    if name not in _VM_ADAPTERS:
-        if LANGUAGES[name].source_kind.value == "raster":
-            raise ArgumentError(
-                f"{name} is a raster language, which has no step machine; "
-                f"make_vm and make_debugger step text languages only"
-            )
-        # A text language with no adapter is an internal inconsistency, but
-        # this is the branch that used to name it unknown; keep that.
-        raise UnknownLanguageError(language)
     source = check_program(name, program, stdin)
-    if not isinstance(source, str):  # guarded by membership in text-only adapters
-        raise UnknownLanguageError(language)
-    try:
-        return _VM_ADAPTERS[name](source, stdin)
-    except RecursionError as exc:
-        raise InterpreterLimitError(
-            f"the {name} interpreter recursed deeper than CPython's stack "
-            f"limit allows while loading this program "
-            f"({len(source)} characters)"
-        ) from exc
-    except ProgramError:
-        raise
-    except ValueError as exc:
-        # Most interpreters parse in their constructor and signal a
-        # malformed program with a plain ``ValueError``, which ``run``
-        # re-raises as ``ProgramError``.
-        raise ProgramError(str(exc)) from exc
+    check_scale_for(name, scale)
+    with interpreter_errors(
+        f"the {name} interpreter recursed deeper than CPython's stack "
+        "limit allows while loading this program while parsing its source"
+    ):
+        return _DelegatingVM(name, source, stdin, scale=scale)

@@ -19,7 +19,8 @@ from esolangs.interpreters.other.malbolge import (
     _initial_memory,
     _op,
 )
-from esolangs.tools._malbolge_core import (
+from esolangs.tools.malbolge import _T_HELPERS, _T_LOW, _chain, _emit_chain
+from esolangs.tools.malbolge.core import (
     _ENTRY,
     _WORDS,
     _build_constants,
@@ -27,14 +28,13 @@ from esolangs.tools._malbolge_core import (
     _g,
     _rot,
 )
-from esolangs.tools._malbolge_digits import (
+from esolangs.tools.malbolge.digits import (
     _D_FLOOR,
     _D_INITS,
     _GADGET,
     _K,
     _hubs,
 )
-from esolangs.tools.malbolge import _T_HELPERS, _T_LOW, _chain, _emit_chain
 
 _OPS = "ji*p</vo"
 

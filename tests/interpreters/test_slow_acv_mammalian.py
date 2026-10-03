@@ -44,14 +44,8 @@ class TestMammalian:
         program = Path(__file__).parents[2] / "tests/fixtures/mammalian.txt"
         assert run_and_capture(program.read_text()) == "Hello, world!\n"
 
-    def test_accept_on_a_blank_line_appends_nothing(self) -> None:
-        """``ACCEPT`` takes the first byte of a line, and a blank line has none.
-
-        Reading is by line, so an empty one is a real answer rather than
-        end-of-input -- exhausted input raises ``EOFError`` instead.  With
-        no byte to fold against the accumulator there is nothing to append,
-        and the list is left as it was.
-        """
+    def test_accept_appends_a_newline(self) -> None:
+        """ACCEPT appends a newline byte, narrowed like other input."""
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
 
@@ -60,7 +54,7 @@ class TestMammalian:
             machine.step()
             return list(machine.lst[0])
 
-        assert accepted("\n") == [0], "a blank line appends nothing"
+        assert accepted("\n") == [0, 10], "a newline is folded in and appended"
         assert accepted("A\n") == [0, 65], "a byte is folded in and appended"
         # A character past U+00FF is the only way the fold exceeds a byte,
         # so it is what pins the wrap: 321 % 256 is 65, where 257 gives 64.

@@ -21,6 +21,7 @@ from esolangs import tools as boolean
 from esolangs.exceptions import GeneratorCapError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.malbolge import _XLAT1, _load, run
+from esolangs.tools.malbolge.core import _cascade
 
 _module = importlib.import_module("esolangs.tools.malbolge")
 
@@ -32,7 +33,7 @@ def _rows(table: str, rows: Sequence[int] | None = None) -> list[str]:
     outputs = []
     for value in range(1 << n) if rows is None else rows:
         bits = [(value >> (n - 1 - i)) & 1 for i in range(n)]
-        io = ScriptedIO("".join(f"{bit}\n" for bit in bits))
+        io = ScriptedIO("".join(f"{bit}" for bit in bits))
         run(program, io)
         outputs.append(io.getvalue())
     return outputs
@@ -67,7 +68,7 @@ def test_wrapping_preserves_loaded_addresses_and_output(table: str, width: int) 
     n = len(table).bit_length() - 1
     rows = range(len(table)) if n <= 3 else (0, 1, len(table) // 2, len(table) - 1)
     for row in rows:
-        io = ScriptedIO("\n".join(f"{row:0{n}b}"))
+        io = ScriptedIO(f"{row:0{n}b}")
         run(wrapped, io)
         assert io.getvalue() == table[row]
         assert io.reads == n
@@ -116,7 +117,7 @@ def test_program_is_the_full_store() -> None:
 
 
 def _second_level_rows() -> list[int]:
-    _, level, _, _ = _module._cascade()  # noqa: SLF001
+    _, level, _, _ = _cascade()
     return [row for row, lvl in enumerate(level) if lvl == 1]
 
 
@@ -309,7 +310,7 @@ def test_fourteen_inputs_every_row(shape: object) -> None:
     assert _rows(table) == list(table)
 
 
-_digits = importlib.import_module("esolangs.tools._malbolge_digits")
+_digits = importlib.import_module("esolangs.tools.malbolge.digits")
 
 
 def test_digit_readouts_are_distinct_and_clear_of_the_code() -> None:
@@ -386,3 +387,18 @@ def test_a_value_meaning_needs_sixteen_characters() -> None:
     witness = {11, 15, 17, 22, 24, 29, 31, 38, 44, 62, 64, 71, 76, 78, 85, 91}
     for h in range(94):
         assert witness & {(i - h) % 94 for i in indices}
+
+
+@pytest.mark.parametrize("n", range(11, 17))
+def test_public_high_arity_routes_execute_boundary_rows(n: int) -> None:
+    table = _dense(n)
+    rows = [0, 1, 2**n - 2, 2**n - 1]
+    assert _rows(table, rows) == [table[row] for row in rows]
+
+
+def test_fourteen_rejects_colliding_final_level(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(_module, "_F_LEVEL3", (0, 0))
+    with pytest.raises(AssertionError, match="a row never resolves"):
+        _module._f_tables.__wrapped__()  # noqa: SLF001

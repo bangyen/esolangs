@@ -37,7 +37,7 @@ def test_readme_program_computes_xor_on_every_row() -> None:
     would pass a single-row check."""
     program = _readme_program()
     for row, expected in enumerate(_TABLE):
-        stdin = "".join(f"{bit}\n" for bit in format(row, "02b"))
+        stdin = "".join(f"{bit}" for bit in format(row, "02b"))
         assert run(_LANGUAGE, program, stdin) == expected
 
 

@@ -40,7 +40,7 @@ import-time trampoline in ``registry``/``lamfunc`` before mutmut has set
 ``paths_to_mutate``, so only it gets trampolines; every other module is
 copied verbatim and imports normally.  The generator modules also import
 cleanly on their own -- ``esolangs.tools.*`` reaches only
-``helpers``, ``wrap``, ``_polynomial`` and ``laserfuck_layout``.  None of
+``helpers``, ``wrap``, ``polynomial.algebra`` and ``laserfuck.layout``.  None of
 them do work at import time.
 
 So the layout is the package itself, copied whole into a work directory
@@ -66,11 +66,16 @@ Every kind is reachable as ``family/module``.  A bare name is accepted only
 where one kind defines it; see :func:`_parse_target`.
 
 Usage:
-    python scripts/mutate.py generator tools/register
+    python scripts/mutate.py generator tools/decleq
     python scripts/mutate.py generator tools/streetcode
     python scripts/mutate.py generator dimensional --keep   # leave the work dir
+    python scripts/mutate.py generator tools/line
+    python scripts/mutate.py generator tools/piet
 
-Requires: mutmut==3.7.0, the same pin ``mutate_one`` documents.
+Interpreter packages use their language ID; ``__init__`` targets the runner.
+Generator packages expose their runner and dotted helper targets.
+
+Requires: mutmut==3.8.0, the same pin ``mutate_one`` documents.
 """
 
 import argparse
@@ -89,6 +94,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 
+from esolangs.registry import LANGUAGES  # noqa: E402
+
 # Test-support modules the suites import that are not themselves tests.
 # ``tests.interpreters.runner`` is what ``boolean_runners`` drives the
 # interpreters through, so a generator's output can be executed, and
@@ -103,6 +110,8 @@ sys.path.insert(0, str(ROOT / "src"))
 # ``tests/tools`` a silently uncollected suite would have scored its
 # generators against the remaining ones alone.
 _TOOLS_SUPPORT = (
+    Path("tests/source_support.py"),
+    Path("tests/generator_support.py"),
     Path("tests/__init__.py"),
     Path("tests/divergence.py"),
     Path("tests/raises.py"),
@@ -130,7 +139,7 @@ class _Kind:
     than separate code paths.  Every one satisfies the two preconditions the
     layout relies on: each module imports cleanly on its own, and nothing it
     reaches does work at import time.  ``esolangs.tools.*`` reaches only
-    ``helpers``, ``wrap``, ``_polynomial`` and ``laserfuck_layout``, which
+    ``helpers``, ``wrap``, ``polynomial.algebra`` and ``laserfuck.layout``, which
     the copied package resolves like any other import.
 
     ``tests_dir`` is deliberately narrow: pointing mutmut at the whole
@@ -147,6 +156,7 @@ class _Kind:
         *,
         needs_scripts: bool = False,
         skip_tests: frozenset[str] = frozenset(),
+        include_init: bool = False,
     ) -> None:
         self.name = name
         self.pkg_rel = pkg_rel  # under src/esolangs, e.g. "tools"
@@ -159,6 +169,7 @@ class _Kind:
         # importable.  Kept as small and as named as possible: a glob with
         # no exceptions is the goal, and every name here owes a reason.
         self.skip_tests = skip_tests
+        self.include_init = include_init
 
     @property
     def pkg_dir(self) -> Path:
@@ -177,16 +188,33 @@ class _Kind:
         # the rest of the top-of-stack modules live; joining it blindly
         # would ask for ``esolangs..vm``.
         parts = ["esolangs", *self.pkg_rel.split("/"), module]
-        return ".".join(part for part in parts if part)
+        return ".".join(part for part in parts if part and part != "__init__")
 
     def rel_target(self, module: str) -> str:
         """Return the path mutmut mutates, relative to the work directory."""
-        parts = ["esolangs", *self.pkg_rel.split("/"), f"{module}.py"]
+        relative = Path(module.replace(".", "/") + ".py")
+        if not (self.pkg_dir / relative).is_file():
+            relative = Path(module.replace(".", "/")) / "__init__.py"
+        parts = ["esolangs", *self.pkg_rel.split("/"), str(relative)]
         return "/".join(part for part in parts if part)
 
 
 # Keyed by the name the CLI takes.
 _KINDS = {
+    "line": _Kind(
+        "line",
+        "interpreters/tape_based/line",
+        "tests/line",
+        _TOOLS_SUPPORT,
+        include_init=True,
+    ),
+    "piet": _Kind(
+        "piet",
+        "interpreters/stack_based/piet",
+        "tests/piet",
+        _TOOLS_SUPPORT,
+        include_init=True,
+    ),
     "tools": _Kind("tools", "tools", "tests/tools", _TOOLS_SUPPORT, needs_scripts=True),
     # The package root: ``vm``, ``debug``, ``tui``, ``cli``, ``registry``.
     #
@@ -250,6 +278,19 @@ _KINDS = {
     ),
 }
 
+for _language in LANGUAGES.values():
+    if _language.interpreter is None or _language.id in _KINDS:
+        continue
+    _relative = "interpreters/" + _language.interpreter.replace(".", "/")
+    if (ROOT / "src/esolangs" / _relative / "__init__.py").is_file():
+        _KINDS[_language.id] = _Kind(
+            _language.id,
+            _relative,
+            "tests/interpreters",
+            _TOOLS_SUPPORT,
+            include_init=True,
+        )
+
 _FAMILIES = tuple(_KINDS)
 
 # The per-test alarm turns a mutant that *hangs* the suite into one that
@@ -283,21 +324,26 @@ _BASELINE_TIMEOUT = 600.0
 _MIN_KILL_RATE = 0.1
 
 
-# Modules in a family package that are not generators.  ``__init__`` is the
-# re-export surface and ``__main__`` a ``python -m`` entry point; neither
-# holds generation logic worth a mutant.  ``helpers`` is deliberately *not*
-# here: it is shared machinery the output depends on, so it is a real
-# target.
-_NON_TARGETS = frozenset({"__init__", "__main__"})
-
-
 def _modules(family: str) -> list[str]:
     """Return the mutable module names in ``family``, sorted."""
-    return sorted(
-        p.stem
-        for p in _KINDS[family].pkg_dir.glob("*.py")
-        if p.stem not in _NON_TARGETS
+    kind = _KINDS[family]
+    modules = []
+    paths = (
+        kind.pkg_dir.glob("*.py") if family == "core" else kind.pkg_dir.rglob("*.py")
     )
+    for path in paths:
+        relative = path.relative_to(kind.pkg_dir)
+        if path.stem == "__main__":
+            continue
+        if path.stem == "__init__":
+            if relative.parent == Path("."):
+                if kind.include_init:
+                    modules.append("__init__")
+            else:
+                modules.append(".".join(relative.parent.parts))
+        else:
+            modules.append(".".join(relative.with_suffix("").parts))
+    return sorted(modules)
 
 
 def _parse_target(target: str) -> tuple[str, str]:
@@ -349,7 +395,7 @@ def _test_files(kind: _Kind) -> list[str]:
       and reach the generator through the package's re-export, which no
       import scan can see.  Measured over the 27 generator modules,
       importing alone under-selected 19 of them: every ``rotfuck`` test
-      lives in ``test_boolean_tape``, which imports only the package.
+      lives in ``test_boolean_rotfuck``, which imports only the package.
     * **By import, plus the contract suite always.**  Better -- the contract
       suite is where several generators are checked -- but it fixes only
       the one file that was noticed, and 19 modules were short by more than
@@ -385,9 +431,7 @@ def _undecorate_classes(target: Path) -> list[str]:
 
     mutmut skips any ``ClassDef`` carrying decorators, so a ``@dataclass``
     state class yields no mutants while the run still prints a percentage.
-    ``tape.py`` is exactly this shape -- five decorated dataclasses
-    (``_Cmd``, ``_If``, ``_MoveLeft``, ``_Out``, ``_End``) that model the
-    emitted program -- and ``examples.py`` has another.
+    ``examples.py`` has a decorated dataclass describing emitted programs.
 
     Applying the decorator as a plain call below the class is what the
     decorator syntax means, so the class behaves identically, but the
@@ -769,6 +813,12 @@ def main() -> int:
     )
     parser.add_argument("--report", type=Path, help="write the completed score as JSON")
     parser.add_argument(
+        "--kind",
+        choices=("generator", "interpreter"),
+        default="generator",
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
         "--focused",
         action="store_true",
         help="select test names containing the module name for bounded scheduled runs",
@@ -877,7 +927,7 @@ def main() -> int:
             args.report.write_text(
                 json.dumps(
                     {
-                        "kind": "generator",
+                        "kind": args.kind,
                         "target": f"{family}/{module}",
                         "killed": killed,
                         "total": total,

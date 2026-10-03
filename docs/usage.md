@@ -3,19 +3,46 @@
 Generate and run programs through one API. It handles each language’s input
 and output conventions using [`describe`](#describe) metadata.
 
-## Generate and verify
+## Evaluate a program
 
-`evaluate` executes every input row and returns the observed truth table;
-`verify` compares it with the requested table.
+`evaluate` executes every input row and returns the observed truth table.
+Pass the program and input count; compare the result with an expected table.
 
 ```python
 import esolangs
 
-esolangs.evaluate("A Painter Ant", "0110")  # -> '0110'
-esolangs.verify("Fargo", "10010110")  # -> True
+program = esolangs.generate("A Painter Ant", "0110")
+esolangs.evaluate("A Painter Ant", program, inputs=2)  # -> '0110'
 ```
 
-Both handle input formats, templates, and termination answers.
+Evaluation handles input formats, templates, and termination answers.
+
+## Work with one language
+
+`Language(name)` binds the same functions to one canonical language name:
+
+```python
+bf = esolangs.Language("brainfuck")
+program = bf.generate("0110", balance=True)
+assert bf.evaluate(program, inputs=2) == "0110"
+output = bf.run(program, bf.encode_inputs([0, 1]))
+assert bf.read_answer(output) == "1"
+info = bf.describe()
+```
+
+It also provides `instantiate`, `check_program`, and `check_stdin`.
+The package functions remain available when working across languages.
+`balance=True` minimizes the rendered width/height difference across supported
+layouts, breaking ties by source length (raster pixel area), then width.
+It excludes `width`. Line compares forward and reverse input-test orders;
+Piet folds its path with stack-neutral turns. Both construct O(T) pixels
+for a truth table of length T.
+Raster generators accept `scale=1` (CLI: `--scale N`), applied after layout.
+Both interpreters detect enlargement. Piet chooses the largest uniform codel
+grid anchored at the image origin; `run(..., scale=N)` or `--scale N`
+overrides detection. Use `scale=1` for native images whose blocks also fit a
+larger grid. The committed Piet example uses 80-pixel codels (960×560),
+comparable in area to native Line (680×800).
 
 ## Run XOR
 
@@ -30,7 +57,7 @@ program = esolangs.generate("brainfuck", table)
 stdin = esolangs.encode_inputs("brainfuck", [0, 1])
 output = esolangs.run("brainfuck", program, stdin)
 assert esolangs.read_answer("brainfuck", output) == "1"
-assert esolangs.verify("brainfuck", table)
+assert esolangs.evaluate("brainfuck", program, inputs=2) == table
 ```
 
 Some languages embed inputs in their source instead:
@@ -48,7 +75,7 @@ Raster languages return an image source:
 raster = esolangs.generate("Piet", table)
 assert isinstance(raster, esolangs.Raster)
 raster.to_png()
-assert esolangs.verify("Piet", table)
+assert esolangs.evaluate("Piet", raster, inputs=2) == table
 ```
 
 To step through a text program and inspect its state:
@@ -56,7 +83,9 @@ To step through a text program and inspect its state:
 ```python
 program = esolangs.generate("brainfuck", table)
 stdin = esolangs.encode_inputs("brainfuck", [0, 1])
-vm = esolangs.make_vm("brainfuck", program, stdin)
+from esolangs.debugger import make_vm
+
+vm = make_vm("brainfuck", program, stdin)
 for _ in range(20):
     if vm.halted:
         break
@@ -87,22 +116,15 @@ measured row to answer correctly.
 <!-- PUBLIC-API:START -->
 
 - `esolangs.check_program` -- return `program` as source, having checked what can be checked here
-- `esolangs.check_runnable` -- reject a program that is a path or an unfilled template
 - `esolangs.check_stdin` -- refuse `stdin` that cannot be what `language` wants to read
 - `esolangs.describe` -- return a structured description of `language`
 - `esolangs.encode_inputs` -- return the stdin that feeds `bits` to a `language` program
-- `esolangs.evaluate` -- return the truth table a generated `language` program *actually* computes
+- `esolangs.evaluate` -- return the table a supplied program computes over `inputs` bits
 - `esolangs.generate` -- return a program in `language` computing `truth_table`
 - `esolangs.instantiate` -- fill a parameterized generator's template with `bits`
 - `esolangs.list_languages` -- return the supported language names, sorted
-- `esolangs.make_debugger` -- return a `Debugger` over a fresh `VM` for `language`
-- `esolangs.make_vm` -- return a step-and-inspect wrapper around `language`'s interpreter
 - `esolangs.read_answer` -- return the answer bit a `language` program's `output` carries
 - `esolangs.run` -- execute `program` and return its output
-- `esolangs.run_bounded` -- execute a text program cooperatively, returning output only on halt
-- `esolangs.run_isolated` -- return output from a subprocess; the deadline includes loading and startup
-- `esolangs.spec` -- return the interpreter's own description of `language`
-- `esolangs.verify` -- whether a generated `language` program really computes `truth_table`
 
 <!-- PUBLIC-API:END -->
 
@@ -115,20 +137,36 @@ most-significant input first, so its length implies `n`.
 Input formats vary by language. Use `encode_inputs` to build stdin:
 
 ```python
-esolangs.encode_inputs("Taglate", [1, 0, 1])  # -> '0\n1\n0\n1\n'
+esolangs.encode_inputs("Taglate", [1, 0, 1])  # -> '0101'
 ```
 
 <!-- INPUT-SHAPES:START -->
 
 | Language | `input_shape` | Alphabet | stdin for inputs 1, 0, 1 |
 | --- | --- | --- | --- |
-| Clockwise | `one_line` | `0`/`1` | `'101'` |
+| 3x | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
+| Algebraic Programming Language | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
+| Befunge | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
+| CV(N)(C) | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
+| Clockwise | `char_stream_cyclic` | `0`/`1` | `'101'` |
+| Collatz Multiverse | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
+| Dig | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
+| Dimensional | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Fargo | `row_index` | `0`/`1` | `'5\n'` |
+| Forþ | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Grapheme | `line_per_bit` | `%`/`A` | `'A\n%\nA\n'` |
-| Taglate | `line_per_bit_padded` | `0`/`1` | `'0\n1\n0\n1\n'` |
+| Inject | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
+| Jaune | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
+| Line | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
+| Modulous | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
+| Painfuck | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
+| Piet | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
+| Taglate | `char_stream_padded` | `0`/`1` | `'0101'` |
+| Thue | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
+| Vandevelo | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 
-The other 50 that read stdin take one `0`/`1` line per bit -- `'1\n0\n1\n'`.
-The remaining 19 embed their inputs and read no stdin: `instantiate` fills them.
+The other 36 that read stdin take one `0`/`1` character per bit -- `'101'`.
+The remaining 21 embed their inputs and read no stdin: `instantiate` fills them.
 The 1 interpreter-only classics have no generator, so there is no generated stdin to feed.
 Use `encode_inputs` to build stdin; it and this table use `describe`.
 
@@ -152,7 +190,7 @@ refused. `esolangs list --details` marks them `tmpl`.
 
 Most languages print the answer; six dump their final state, and four answer
 by termination: halt for 0, loop forever for 1. `read_answer` handles printed
-and state-dump answers. Use `evaluate` or `verify` for termination answers;
+and state-dump answers. Use `evaluate` for termination answers;
 they require a proved halt or cycle. A timeout remains undecided.
 
 Their `answer_encoding` is `("halts", "diverges")`: index 0 means answer 0,
@@ -167,20 +205,35 @@ including the 15 languages that ignore width because newlines are semantic.
 
 ## Bounded execution
 
-`run_isolated(language, program, stdin, timeout=30)` bounds subprocess startup,
+`run(language, program, stdin, isolated=True, timeout=30)` bounds subprocess startup,
 loading and execution on Windows and worker threads. Timeout kills and reaps
 the child; errors retain their class and `partial_output`.
-`evaluate(..., isolated=True)` and `verify(..., isolated=True)` apply a finite
+`evaluate(..., isolated=True)` applies a finite
 deadline per row; a timeout remains undecided, including termination answers.
 
-`run_bounded(language, program, stdin, max_steps=100_000, timeout=1)`
+`run(language, program, stdin, max_steps=100_000, timeout=1)`
 returns output on halt and raises `ExecutionTimeoutError` with
-`partial_output` when either bound expires. Supply at least one bound.
-It steps text languages on Windows and worker threads; deadlines are checked
+`partial_output` when either bound expires. `max_steps` selects cooperative stepping.
+It steps all languages on Windows and worker threads; deadlines are checked
 between steps, so loading and an individual step cannot be interrupted.
-Raster languages require `run`.
+Text and raster languages share the VM and debugger. `isolated` and `max_steps` are mutually
+exclusive, and stepping does not support `seed`.
+
+With `isolated=True`, `max_output` caps output in Unicode characters. Exceeding
+the cap raises `InterpreterLimitError` with the retained prefix in `partial_output`.
+Zero permits no output; halting at exactly the cap succeeds.
+
+```python
+try:
+    esolangs.run("brainfuck", ",[.]", "y", isolated=True, timeout=3, max_output=12)
+except esolangs.InterpreterLimitError as exc:
+    assert exc.partial_output == "y" * 12
+```
 
 ## Debugging
+
+The Python stepping API lives in `esolangs.debugger`: `VM`, `Debugger`,
+`make_vm`, `make_debugger`, `StopReason`, and `STOP_REASONS`.
 
 `esolangs debug` runs a program under the breakpoint/watch VM and reports
 where it stopped. `--steps` bounds the run, `--watch-cell` prints one value
@@ -189,12 +242,29 @@ each stop with their condition still true.
 
 ```bash
 esolangs generate brainfuck 0110 > bf.txt
-printf '0\n1\n' | esolangs debug --steps 20 --watch-cell 0 brainfuck bf.txt
+printf '01' | esolangs debug --steps 20 --watch-cell 0 brainfuck bf.txt
 ```
 
 `make_debugger(...).run()` returns one of `STOP_REASONS`:
 `"halted"`, `"breakpoint"`, `"max_steps"`, or `"timeout"`. Program faults raise
 an exception instead; the CLI catches it and prints `stopped: raised`.
+
+`break_on_output(text)` stops once output contains `text`. After a hit, `run`
+suppresses that breakpoint until its condition becomes false, so resuming can
+progress without clearing it. `clear_breakpoints()` removes all breakpoints
+while preserving the machine, output and watches. A breakpoint can stop before
+the halt instruction executes; inspect `halted` separately from the stop reason.
+
+```python
+from esolangs.debugger import make_debugger
+
+debug = make_debugger("brainfuck", ",[.]", "y")
+debug.break_on_output("yy")
+assert debug.run(max_steps=100) == "breakpoint"
+assert debug.output == "yy"
+assert debug.run(max_steps=20) == "max_steps"
+assert len(debug.output) > 2
+```
 
 `--tui` highlights the next operation and shows the tape, stack, output,
 named state, and watch history. Controls are `hjkl` to move, `t` to toggle a

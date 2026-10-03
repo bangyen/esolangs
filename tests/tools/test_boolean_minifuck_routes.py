@@ -1,4 +1,4 @@
-"""Covers :mod:`esolangs.tools.minifuck` and :mod:`esolangs.tools.minifuck_mux`."""
+"""Covers :mod:`esolangs.tools.minifuck` and :mod:`esolangs.tools.minifuck.mux`."""
 
 import importlib
 from unittest.mock import patch
@@ -6,6 +6,9 @@ from unittest.mock import patch
 import pytest
 
 from esolangs.tools.helpers import essential_inputs
+from esolangs.tools.minifuck import _solve
+from esolangs.tools.minifuck.mux import _MUX_MIN_ARITY, _mux, _mux_lookup
+from esolangs.tools.minifuck.sim import _MINIFUCK_INPUT
 from tests.tools.minifuck_support import _MinifuckCase, _mux_separate, run_count
 
 
@@ -17,7 +20,7 @@ class TestParameterizedMinifuck(_MinifuckCase):
         [
             ("10", 1),  # NOT
             ("01", 1),  # identity
-            # ``parameterized.minifuck`` searches, and it is the *build*
+            # ``generators.minifuck`` searches, and it is the *build*
             # that costs, not the assertion: measured at one worker, a
             # two-input table takes 2.7s (NAND) to 9.0s (XOR) to emit while
             # a one-input table takes ~0.03s.  So the two-input cases carry
@@ -38,9 +41,9 @@ class TestParameterizedMinifuck(_MinifuckCase):
     @pytest.mark.medium
     def test_truth_table(self, table: str, n: int) -> None:
         """Every instantiated input produces the truth-table result."""
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
-        template = parameterized.minifuck(table)
+        template = generators.minifuck(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = self.run_minifuck(self.instantiate(template, bits))
@@ -59,11 +62,11 @@ class TestParameterizedMinifuck(_MinifuckCase):
         No longer marked ``slow``: the fixed mux rule builds all sixteen in
         milliseconds.
         """
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
         for table_int in range(16):
             table = format(table_int, "04b")
-            template = parameterized.minifuck(table)
+            template = generators.minifuck(table)
             for combo in range(4):
                 bits = [(combo >> (1 - i)) & 1 for i in range(2)]
                 got = self.run_minifuck(self.instantiate(template, bits))
@@ -98,7 +101,7 @@ class TestParameterizedMinifuck(_MinifuckCase):
             if len(essential_inputs(table, 3)) > 2:
                 continue
             checked += 1
-            template = module.minifuck.__wrapped__(table)
+            template = _solve.__wrapped__(table)
             for combo in range(8):
                 bits = [(combo >> (2 - i)) & 1 for i in range(3)]
                 got = self.run_minifuck(self.instantiate(template, bits))
@@ -122,15 +125,13 @@ class TestParameterizedMinifuck(_MinifuckCase):
         route contributes.
         """
 
-        module = importlib.import_module("esolangs.tools.minifuck")
-
         separated = _mux_separate(4)
         positions = separated.ptrs()
         assert len(set(positions)) == 16, positions
         assert run_count(separated.template(), 4) == 4
 
         table = "0110100110010110"
-        template = module._mux(table, 4)  # noqa: SLF001
+        template = _mux(table, 4)
         assert template is not None
         assert run_count(template, 4) == 4
         widths = set()
@@ -168,7 +169,7 @@ class TestParameterizedMinifuck(_MinifuckCase):
         from esolangs.tools.helpers import essential_inputs
 
         module = importlib.import_module("esolangs.tools.minifuck")
-        assert module._MUX_MIN_ARITY == 2  # noqa: SLF001
+        assert _MUX_MIN_ARITY == 2
 
         n = 6
         # Fixed table rather than a sampled one: a test that picks its own
@@ -217,10 +218,8 @@ class TestParameterizedMinifuck(_MinifuckCase):
         without computing would otherwise pass silently.
         """
 
-        module = importlib.import_module("esolangs.tools.minifuck")
-
         table = "01101001100101101001011001101001"  # five-input XOR
-        template = module._mux(table, 5)  # noqa: SLF001
+        template = _mux(table, 5)
         assert template is not None
 
         widths = set()
@@ -250,7 +249,7 @@ class TestParameterizedMinifuck(_MinifuckCase):
         for table_int in range(256):
             table = format(table_int, "08b")
             try:
-                template = module.minifuck.__wrapped__(table)
+                template = _solve.__wrapped__(table)
             except AssertionError:
                 searched.append(table)
                 continue
@@ -285,11 +284,11 @@ class TestParameterizedMinifuck(_MinifuckCase):
         module = importlib.import_module("esolangs.tools.minifuck")
 
         with patch.object(module, "_degenerate", lambda *_a, **_k: None):
-            module.minifuck.cache_clear()
+            _solve.cache_clear()
             try:
-                template = module.minifuck.__wrapped__(table)
+                template = _solve.__wrapped__(table)
             finally:
-                module.minifuck.cache_clear()
+                _solve.cache_clear()
 
         assert template, f"the {tier} tier returned nothing"
         for combo in range(4):
@@ -300,13 +299,11 @@ class TestParameterizedMinifuck(_MinifuckCase):
     def test_the_mux_uses_the_preloaded_strip_rule(self) -> None:
         """``_mux`` is exactly the named linear lookup construction."""
 
-        module = importlib.import_module("esolangs.tools.minifuck")
-
         table = "1010000110011011"
-        built = module._mux(table, 4)  # noqa: SLF001
+        built = _mux(table, 4)
         assert built is not None
 
-        assert built == module._mux_lookup(table, 4)  # noqa: SLF001
+        assert built == _mux_lookup(table, 4)
 
     def test_template_is_input_independent_and_equal_length(self) -> None:
         """The template has placeholders and every fill has the same length.
@@ -316,9 +313,9 @@ class TestParameterizedMinifuck(_MinifuckCase):
         construction without exercising a distinct path.  The current
         combined check takes 0.12s serially, so it belongs in the fast suite.
         """
-        from esolangs.tools import parameterized
+        from esolangs import tools as generators
 
-        template = parameterized.minifuck("0110")
+        template = generators.minifuck("0110")
         assert "{X" not in template
         assert run_count(template, 2) == 2
         lengths = {
@@ -339,7 +336,7 @@ class TestParameterizedMinifuck(_MinifuckCase):
         inner = module._solve("01")  # noqa: SLF001
 
         lifted = module._lift(inner, [0], 2)  # noqa: SLF001
-        assert lifted == inner + module._MINIFUCK_INPUT  # noqa: SLF001
+        assert lifted == inner + _MINIFUCK_INPUT
         assert run_count(lifted, 2) == 2
         for a, b in ((0, 0), (0, 1), (1, 0), (1, 1)):
             assert self.run_minifuck(self.instantiate(lifted, [a, b])) == str(a)

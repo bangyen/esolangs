@@ -28,6 +28,9 @@ is the worst answer to a typo, so both raise now.  A reader who wants a
 comment has ``[]``, which the empty-token rule already skips.
 
 Exhausted input raises :class:`EOFError` (the repo-wide convention).
+
+Input numbers are whitespace-delimited tokens and strings are lines; the
+spec does not define their text framing.
 """
 
 import re
@@ -295,7 +298,7 @@ class _Machine:
         if arg[0] == "PRT":
             self._print(mod, arg)
         elif arg[0] == "INP":
-            value = self.io.input_str()
+            value = self.io.input_token() if "INT" in mod else self.io.input_str()
         elif arg[0] == "RND":
             n = int(_operand(arg, 1))
             if n >= 1:
@@ -446,14 +449,13 @@ def _inp(core: _Core, mod: str, _arg: list[str], value: str | int | None) -> _Co
 
     ``INT`` pushes the line as one number and the bare form pushes its
     characters, rightmost on top -- so what arrives is a sequence either
-    way, and an empty ``INT`` read pushes nothing at all.
+    way; numeric EOF is raised before this transition.
     """
     stk, var, ind = core
     text = "" if value is None else str(value)
-    if "INT" in mod and text:
-        return ((*stk, int(text)), var, ind)
     if "INT" in mod:
-        return core
+        # input_token returns a nonempty token or raises at EOF.
+        return ((*stk, int(text)), var, ind)
     return ((*stk, *[ord(c) for c in text][::-1]), var, ind)
 
 

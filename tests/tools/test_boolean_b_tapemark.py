@@ -11,7 +11,7 @@ from esolangs.interpreters.io import ScriptedIO
 
 def execute(program: str, bits: str) -> tuple[str, int]:
     """Run ``program`` with one input line per bit."""
-    io = ScriptedIO("".join(f"{bit}\n" for bit in bits))
+    io = ScriptedIO("".join(f"{bit}" for bit in bits))
     run(program, io)
     return io.getvalue(), io.reads
 

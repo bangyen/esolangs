@@ -25,7 +25,7 @@ def test_constant_still_reads_every_input() -> None:
     program = vandevelo("00000000")
     io = ScriptedIO("0\n1\n0\n")
     assert run_until_halt_or_cycle(_Machine(program, io))
-    assert io.position() == 3
+    assert io.reads == 3
 
 
 def test_one_rows_are_named_cubes() -> None:
@@ -129,7 +129,7 @@ def test_affine_tables_bypass_the_peel(monkeypatch: pytest.MonkeyPatch) -> None:
                     halted = run_until_halt_or_cycle(_Machine(program, io))
                     row = int("".join(map(str, bits)), 2)
                     assert str(int(not halted)) == table[row]
-                    assert io.position() == n
+                    assert io.reads == n
 
 
 def test_affine_detection_checks_non_basis_rows() -> None:
@@ -182,7 +182,7 @@ def test_affine_cosets_and_complements_bypass_the_peel(
                     halted = run_until_halt_or_cycle(_Machine(program, io))
                     row = int("".join(map(str, bits)), 2)
                     assert str(int(not halted)) == target[row]
-                    assert io.position() == n
+                    assert io.reads == n
 
 
 def test_coset_membership_work_is_geometric() -> None:

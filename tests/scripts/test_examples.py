@@ -17,9 +17,10 @@ from pathlib import Path
 
 import pytest
 
+import esolangs
+from esolangs.raster import Raster
 from esolangs.registry import LANGUAGES, canonical_id
 from esolangs.tools.examples import BOOLEAN_EXAMPLES as BOOLEAN_GENERATED
-from esolangs.tools.examples import HAND_WRITTEN
 from esolangs.vm import (
     _FramedMachine,
     _TapeMachine,
@@ -81,9 +82,32 @@ def test_boolean_example_matches_generator(name: str) -> None:
     ``python scripts/generate.py examples boolean``. The file ends with a
     single POSIX newline.
     """
-    path = BASE_DIR / "examples" / f"{name}.txt"
-    expected = BOOLEAN_GENERATED[name].build().rstrip("\n") + "\n"
-    assert path.read_text(encoding="utf-8") == expected
+    example = BOOLEAN_GENERATED[name]
+    path = BASE_DIR / "examples" / example.filename
+    program = example.build(balance=True)
+    assert isinstance(example.build(width=None), Raster) == isinstance(program, Raster)
+    if isinstance(program, Raster):
+        # PNG compression differs across platforms; the pixels are the program.
+        assert Raster.from_png(path.read_bytes()) == program
+    else:
+        assert path.read_bytes() == (program.rstrip("\n") + "\n").encode("utf-8")
+
+
+@pytest.mark.medium
+def test_regeneration_yields_public_balanced_programs() -> None:
+    import esolangs
+    from esolangs.tools._generate_examples import boolean_programs
+
+    programs = dict(boolean_programs())
+    assert programs.keys() == BOOLEAN_GENERATED.keys()
+    for stem, example in BOOLEAN_GENERATED.items():
+        language = canonical_id(stem.replace("-", " "))
+        expected = esolangs.generate(
+            language, example.table, balance=True, scale=example.scale
+        )
+        if example.fill is not None:
+            expected = esolangs.instantiate(language, expected, example.bits)
+        assert programs[stem] == expected
 
 
 def test_the_manifest_matches_what_the_script_would_write() -> None:
@@ -113,8 +137,13 @@ def test_example_filenames_are_windows_portable() -> None:
 
 def test_boolean_examples_cover_every_committed_file() -> None:
     """Every file in examples is accounted for, and vice versa."""
-    on_disk = {p.stem for p in (BASE_DIR / "examples").glob("*.txt")}
-    assert on_disk == set(BOOLEAN_GENERATED) | set(HAND_WRITTEN)
+    on_disk = {
+        p.name
+        for p in (BASE_DIR / "examples").iterdir()
+        if p.suffix in (".txt", ".png")
+    }
+    expected = {example.filename for example in BOOLEAN_GENERATED.values()}
+    assert on_disk == expected
 
 
 @pytest.mark.parametrize("name", sorted(HALT_CONVENTION))
@@ -177,10 +206,7 @@ def test_every_boolean_generator_has_an_example() -> None:
     registered = {
         canonical_id(lang.name) for lang in LANGUAGES.values() if lang.boolean
     }
-    covered = {
-        canonical_id(stem.replace("-", " "))
-        for stem in set(BOOLEAN_GENERATED) | set(HAND_WRITTEN)
-    }
+    covered = {canonical_id(stem.replace("-", " ")) for stem in BOOLEAN_GENERATED}
     assert registered - covered == _NO_EXAMPLE, (
         "boolean generators with no committed example: "
         f"{sorted(registered - covered - _NO_EXAMPLE)}"
@@ -194,7 +220,7 @@ def test_every_boolean_generator_has_an_example() -> None:
 # -- so the files stay in sync with the generators.
 #
 # The input-reading languages take their bits on stdin; the parameterized
-# ones (see ``esolangs.tools.parameterized``) have the bits embedded
+# ones have the bits embedded
 # in the program text and read no input.  The halt-convention languages have
 # no output at all: their result is the halt-vs-loop convention, so only the
 # terminating (`0`) branch is committed -- the `1` branch loops forever by
@@ -202,9 +228,6 @@ def test_every_boolean_generator_has_an_example() -> None:
 BOOLEAN_EXAMPLES = {
     stem: (ex.interpreter, list(ex.inputs), ex.expected, ex.split, dict(ex.kwargs))
     for stem, ex in BOOLEAN_GENERATED.items()
-} | {
-    stem: (interpreter, list(inputs), expected, split, {})
-    for stem, (interpreter, inputs, expected, split) in HAND_WRITTEN.items()
 }
 
 
@@ -246,11 +269,18 @@ def _prove_halt(vm: object) -> bool:
 @pytest.mark.parametrize("name", sorted(BOOLEAN_EXAMPLES))
 @pytest.mark.medium
 def test_boolean_example(name: str) -> None:
-    _module, inputs, expected, _splitlines, _kwargs = BOOLEAN_EXAMPLES[name]
+    _module, _inputs, expected, _splitlines, _kwargs = BOOLEAN_EXAMPLES[name]
+    path = BASE_DIR / "examples" / BOOLEAN_GENERATED[name].filename
+    stdin = BOOLEAN_GENERATED[name].stdin
     program = (
-        (BASE_DIR / "examples" / f"{name}.txt").read_text(encoding="utf-8").rstrip("\n")
+        Raster.from_png(path.read_bytes())
+        if path.suffix == ".png"
+        else path.read_text(encoding="utf-8").rstrip("\n")
     )
-    vm = make_vm(VM_LANGUAGE[_module], program, "".join(f"{line}\n" for line in inputs))
+    if isinstance(program, Raster):
+        got = esolangs.run(name, program, stdin)
+    else:
+        vm = make_vm(VM_LANGUAGE[_module], program, stdin)
     if name == "a-painter-ant":
         # Its implicit loop has no halting state: a repeated snapshot is its
         # language-defined stop.  The public interpreter renders only at a
@@ -259,7 +289,7 @@ def test_boolean_example(name: str) -> None:
         while vm.ip != 0:
             vm.step()
         got = vm._machine.render()  # type: ignore[attr-defined]  # noqa: SLF001
-    else:
+    elif isinstance(program, str):
         # Suffolk used to need a branch here: its reading programs stopped
         # on an escaping ``EOFError`` rather than halting, so the prover had
         # to be wrapped in ``pytest.raises``.  The exhausted read is a halt
@@ -309,16 +339,26 @@ class TestTheWritersWriteWhatTheBuildersBuild:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         module = self._redirect(monkeypatch, tmp_path / "examples")
-        programs = [("one", "a"), ("two", "b\n")]
+        programs = [("one", "a"), ("two", "b\n"), ("image", Raster((((0, 0, 0),),)))]
         monkeypatch.setitem(module.SETS, "boolean", lambda: iter(programs))  # type: ignore[attr-defined]
         module.write_set("boolean")  # type: ignore[attr-defined]
 
-        written = {path.stem for path in (tmp_path / "examples").glob("*.txt")}
-        assert written == {"one", "two"}
+        written = {
+            path.stem
+            for path in (tmp_path / "examples").iterdir()
+            if path.suffix in (".txt", ".png")
+        }
+        assert written == {"one", "two", "image"}
         assert (tmp_path / "examples" / "MANIFEST.md").is_file()
         for stem, generated in programs:
-            text = (tmp_path / "examples" / f"{stem}.txt").read_text(encoding="utf-8")
-            assert text == generated.rstrip("\n") + "\n"
+            if isinstance(generated, Raster):
+                png = (tmp_path / "examples" / f"{stem}.png").read_bytes()
+                assert Raster.from_png(png) == generated
+            else:
+                text = (tmp_path / "examples" / f"{stem}.txt").read_text(
+                    encoding="utf-8"
+                )
+                assert text == generated.rstrip("\n") + "\n"
 
     def test_a_second_write_reports_unchanged(
         self,

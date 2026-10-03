@@ -10,7 +10,7 @@ from parity_views import STORED_PARITY
 from planner import _Planner
 from shared_fold import build_shared_fold
 
-from esolangs.tools._malbolge_core import _char_for
+from esolangs.tools.malbolge.core import _char_for
 
 
 def control_inputs() -> Iterator[tuple[int, ...]]:

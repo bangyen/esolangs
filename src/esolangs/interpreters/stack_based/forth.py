@@ -20,10 +20,14 @@ retain the reference's byte fallback.
 ``halted`` is true once no frame remains and a repeated
 :meth:`_Machine.snapshot` proves a loop.  A top-level abort sets
 ``_Machine.error`` so :func:`run` raises :class:`HaltError`.
+
+The spec asks for a string without defining its delimiter; comma reads one
+line, excluding its newline, and pushes its Unicode code points.
 """
 
 from dataclasses import dataclass
 
+from esolangs._drive import drive
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
@@ -360,8 +364,7 @@ class _Machine:
 def run(code: str, io: IO) -> None:
     """Run a Forþ program."""
     machine = _Machine(code, io)
-    while not machine.halted:
-        machine.step()
+    drive(machine)
     if machine.error:
         raise HaltError("the top-level scope aborted, which Forþ reports as status 3")
 

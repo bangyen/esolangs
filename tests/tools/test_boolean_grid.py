@@ -126,7 +126,7 @@ class TestSuperSNUSP:
         results = []
         for index in range(len(table)):
             bits = format(index, f"0{n}b")
-            stdin = "".join(f"{bit}\n" for bit in bits)
+            stdin = "".join(f"{bit}" for bit in bits)
             scripted = ScriptedIO(stdin)
             run(program, scripted)
             results.append(scripted.getvalue().strip())
@@ -301,7 +301,7 @@ class TestSuperSNUSPWidth:
     def _run(program: str, bits: list[str]) -> str:
         import esolangs
 
-        stdin = "".join(f"{bit}\n" for bit in bits)
+        stdin = "".join(f"{bit}" for bit in bits)
         return esolangs.run("Super SNUSP", program, stdin=stdin, timeout=5.0).strip()
 
     def test_a_width_folds_the_line_and_it_still_computes(self) -> None:
@@ -353,7 +353,7 @@ class TestAlightWidth:
     def _run(program: str, bits: list[str]) -> str:
         import esolangs
 
-        stdin = "".join(f"{bit}\n" for bit in bits)
+        stdin = "".join(f"{bit}" for bit in bits)
         return esolangs.run("Alight", program, stdin=stdin, timeout=5.0).strip()
 
     def test_a_width_turns_the_straight_walk_vertical(self) -> None:

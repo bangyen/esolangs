@@ -13,7 +13,7 @@ from unittest.mock import patch
 
 import pytest
 
-import esolangs
+import esolangs.debugger as debugger_api
 from esolangs.tui import (
     CLEAR,
     Frame,
@@ -587,7 +587,7 @@ class TestBreakpoints:
         # command line's run a live machine; both must stop in the same
         # place, or `--break-on-output` would mean two things.
         program = "++++++++[>++++++++<-]>+.+."
-        dbg = esolangs.make_debugger("brainfuck", program)
+        dbg = debugger_api.make_debugger("brainfuck", program)
         dbg.break_on_output("A")
         dbg.run()
         frame = History("brainfuck", program, "").find(
@@ -1125,3 +1125,42 @@ class TestAgainstTheInterpreter:
         program = "\n".join(["o  v", "   <"])
         frame = _frame(program, (1, 3), language="Clockwise", ip_shape="grid")
         assert _highlighted(render(frame)) == "<"
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("language", ["Line", "Piet"])
+def test_raster_history_replays_the_original_pixels(language: str) -> None:
+    from esolangs import generate
+    from esolangs.raster import Raster
+
+    source = generate(language, "01", scale=2)
+    assert isinstance(source, Raster)
+    source = Raster.from_png(source.to_png())
+    history = History(language, source, "1\n")
+    first = history.at(0)
+    frame = history.find(0, None, 1000)
+    assert frame.halted
+    assert frame.output == "1"
+    assert frame.ip_shape == "grid"
+    assert replay(language, source, "1\n", frame.step) == frame
+    assert history.at(0) == first
+    assert render(frame)
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("scale", [1, 3])
+def test_line_highlight_tracks_ink_after_crop_and_scale(scale: int) -> None:
+    from esolangs import generate
+    from esolangs.raster import Raster
+
+    source = generate("Line", "01", scale=scale)
+    assert isinstance(source, Raster)
+    history = History("Line", Raster.from_png(source.to_png()), "1\n")
+    for step in range(100):
+        frame = history.at(step)
+        if frame.halted:
+            assert frame.output == "1"
+            break
+        assert _highlighted(render(frame)) == "#"
+    else:
+        pytest.fail("identity did not halt within 100 steps")

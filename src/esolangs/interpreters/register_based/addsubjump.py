@@ -11,11 +11,15 @@ Overflow stay 0); reading ``-1`` raises :class:`EOFError` when input runs
 out; malformed source raises :class:`ValueError`; no instruction cap
 (``esolangs.run``'s ``timeout``); a write to an address too large to
 allocate halts with :class:`HaltError`.
+
+The spec leaves input representation unspecified; this interpreter reads
+consecutive Unicode characters, including newlines.
 """
 
 import re
 from dataclasses import dataclass
 
+from esolangs._drive import drive
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
@@ -512,8 +516,7 @@ class _Machine:
 def run(code: str, io: IO) -> None:
     """Run an AddSubJump program to completion."""
     machine = _Machine(code, io)
-    while not machine.halted:
-        machine.step()
+    drive(machine)
 
 
 if __name__ == "__main__":

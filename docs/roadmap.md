@@ -5,22 +5,6 @@ and proved limits; completed work is recorded in its commit.
 
 ## Conditional follow-up
 
-- **Cyclic tag integration.** Its 94 complete backlinks clear the fame gate;
-  [limitations](limitations.md) records the completed specification and
-  generator audit. The direct padding construction emits 5T + 2n + 1 characters
-  and passed 309 tables / 3,352 rows, plus sampled rows through n=14. Implement
-  the semicolon-separated production parser, queue interpreter, ordered input
-  embed, and final-deletion answer convention; register the language and add
-  execution, VM, and convention coverage before integration.
-
-- **Boolfuck, Subleq, and /// admission.** Fame scores are 76, 83, and 88;
-  [limitations](limitations.md) records the specification audit and executed
-  probes. Integrate Boolfuck's bit-stream I/O and prove rendered linearity;
-  choose Subleq's I/O dialect and derive a linear rendered construction;
-  derive ///'s general source-embedded generator. Execute every table through
-  three inputs and sampled larger tables before integration. A failed build
-  does not justify interpreter-only admission.
-
 - **HQ9+, Nope., and Unary interpreter-only admission.** Scores are 136, 132,
   and 63; [limitations](limitations.md) records their generator obstructions.
   Pin HQ9+'s output/case conventions and Unary's decoded Brainfuck dialect;
@@ -60,9 +44,16 @@ and proved limits; completed work is recorded in its commit.
 
   | Language | Totality | Generation time | Output size | Execution time |
   | --- | --- | --- | --- | --- |
+  | Befunge | Exception | Linear | Linear | Linear |
   | Factor | Total | Language lower bound | Language lower bound | Linear |
   | Malbolge | Exception | Open | Linear | Linear |
   | Polynomial | Cap | Language lower bound | Language lower bound | Linear |
+
+  Befunge ships through thirteen inputs using a six-bit printable-ASCII lookup.
+  Its fixed 80x25 source grid admits fewer than `2**42000` programs even with
+  Unicode cells, whereas sixteen inputs
+  admit `2**65536` truth tables. Some have no program under the source-embedded
+  contract; unbounded runtime integers do not enlarge the source alphabet.
 
   Malbolge ships through sixteen inputs; finite source space excludes some
   18-input tables, leaving generation time at seventeen open. Its fixed
