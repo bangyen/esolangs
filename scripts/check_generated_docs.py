@@ -10,6 +10,8 @@ from esolangs.tools import _generate_docs
 ROOT = Path(__file__).parents[1]
 GENERATED = (
     "README.md",
+    "docs/proofs/index.md",
+    "docs/roadmap.md",
     "docs/usage.md",
     "docs/CONTRIBUTING.md",
     ".github/ISSUE_TEMPLATE/language_request.yml",

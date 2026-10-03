@@ -21,7 +21,8 @@ commands:
                               print how that language reads its input and
                               where it puts the answer (--spec prints the
                               interpreter's own description of it)
-  run [--timeout S] [--judge] [--table T] [--seed N] [--scale N] <language> <file>
+  run [--timeout S] [--isolated] [--max-output N] [--judge] [--table T]
+      [--seed N] [--scale N] <language> <file>
                               run a program through its interpreter
                               (--judge prints the answer bit instead)
   check-stdin [--table T] <language>
@@ -141,8 +142,9 @@ examples:
   esolangs generate brainfuck 0110
   esolangs generate --bits 10 Minifuck 0110
 """,
-    "run": """usage: esolangs run [--timeout S] [--judge] [--table T] [--seed N]
-                    [--scale N] <language> <program-file>
+    "run": """usage: esolangs run [--timeout S] [--isolated] [--max-output N]
+                    [--judge] [--table T] [--seed N] [--scale N]
+                    <language> <program-file>
 
 Run a program through its interpreter and print what it writes.
 
@@ -163,6 +165,8 @@ exit codes: 0 ran, 1 the program broke while running, 2 the ask was wrong
 out, 130 interrupted.
 
 options:
+  --isolated         run in a subprocess; portable deadline, default 30 seconds.
+  --max-output N     cap isolated output in Unicode characters (including zero).
   --timeout SECONDS  stop the run after this long rather than hanging.
                      Unbounded by default.  Four languages answer 1 by
                      *not* terminating -- 123, ArrowQueue, Crement and

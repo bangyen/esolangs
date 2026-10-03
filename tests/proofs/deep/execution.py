@@ -167,23 +167,14 @@ EXEMPT = {
 
 
 def exempt_generators() -> dict[str, str]:
-    """Every generator this contract does not hold to the bound.
-
-    :data:`EXEMPT` plus the resource-ceiling rows of ``proofs/index.md`` and the
-    roadmap audit rows whose execution-time cell is open, read from the
-    documents the way ``linearity.py`` reads them: a generator that cannot
-    be built past a low arity cannot produce the rungs a slope needs.
-    Reading them
-    means closing a cap row or an execution cell arms this contract against
-    that generator with no edit here.
-    """
+    """Return manifest exemptions plus the nonhalting generator's obstruction."""
     reasons = dict(EXEMPT)
     for row in load_ledger().rows:
         for label in ("cap", "exception"):
             if label in row.labels:
-                reasons.setdefault(row.generator, f"proofs/index.md {label} row")
+                reasons.setdefault(row.generator, f"proofs/status.json {label} row")
     for name in sorted(load_audit().execution_unsettled):
-        reasons.setdefault(name, "roadmap scaling audit: execution open")
+        reasons.setdefault(name, "proofs/status.json scaling audit: execution open")
     return reasons
 
 

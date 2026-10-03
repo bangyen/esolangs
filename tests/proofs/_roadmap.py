@@ -1,30 +1,9 @@
-"""Parse the roadmap's live scaling audit into the set the linearity test uses.
-
-``docs/roadmap.md`` carries the live audit table for the "Linear Boolean
-generators" item: one row per language with something still open on one of
-four axes -- totality, generation time, output size, execution time -- with a
-verdict per axis.  Rows are *deleted* from it as they close, so the table is
-exactly the open set -- `350d2e2e` trimmed twenty-one rows that had been
-confirmed linear.
-
-The linearity contract reads that table rather than carrying its own list, for
-the same reason :mod:`tests.proofs._ledger` reads ``proofs/index.md``: a duplicated
-list is free to drift, and this one has drifted before.  Closing a row then
-means one edit, to the doc, and the contract immediately starts *demanding*
-linearity of the generator that left.
-
-The parser adapts to the document, never the other way round.
-"""
+"""Read the structured scaling audit used by proof contracts."""
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 from pathlib import Path
-
-#: Resolved from this file, not the working directory: the suite runs from the
-#: repo root, from ``just``, and from a worktree.
-DOC = Path(__file__).resolve().parents[2] / "docs" / "roadmap.md"
 
 #: Verdicts that settle a column as linear.  Two spellings are in use -- the
 #: trimmed table wrote ``O(T)`` for LaserFuck and ``Linear`` for the rest --
@@ -97,37 +76,20 @@ class Audit:
         )
 
 
-def _unescape(cell: str) -> str:
-    r"""Undo the markdown escaping a table cell needs (``S\*bleq``)."""
-    return re.sub(r"\\(.)", r"\1", cell).strip()
-
-
 def load(path: Path | None = None) -> Audit:
     """Read and parse the live scaling audit."""
-    text = (path or DOC).read_text(encoding="utf-8")
+    from esolangs.tools._proof_status import load as load_status
 
-    # The table sits inside an indented list item, so the pipes are not at
-    # column zero; anchor on the header rather than on line starts.
-    header = re.search(
-        r"^\s*\|\s*Language\s*\|\s*Totality\s*\|\s*Generation time\s*\|"
-        r"\s*Output size\s*\|\s*Execution time\s*\|\s*$",
-        text,
-        re.MULTILINE,
+    _, rows = load_status() if path is None else load_status(path)
+    return Audit(
+        rows=tuple(
+            AuditRow(
+                row.generator,
+                row.totality,
+                row.generation_time,
+                row.output_size,
+                row.execution_time,
+            )
+            for row in rows
+        )
     )
-    assert header, f"{DOC} no longer carries the live scaling audit table"
-
-    rows = []
-    for line in text[header.end() :].splitlines():
-        stripped = line.strip()
-        if not stripped.startswith("|"):
-            if stripped:
-                break  # the table ended at the following prose
-            continue
-        cells = [cell.strip() for cell in stripped.strip("|").split("|")]
-        if set("".join(cells)) <= {"-", " "}:
-            continue  # the ``| --- |`` separator
-        assert len(cells) == 5, f"unexpected audit row: {line!r}"
-        rows.append(AuditRow(_unescape(cells[0]), *cells[1:]))
-
-    assert rows, f"{DOC} has a scaling audit header but no rows"
-    return Audit(rows=tuple(rows))

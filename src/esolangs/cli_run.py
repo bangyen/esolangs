@@ -10,6 +10,8 @@ from esolangs.cli_args import (
     _check_count,
     _errors,
     _fail,
+    _integer,
+    _nonnegative,
     _pop_flags,
     _pop_options,
     _scale_of,
@@ -54,16 +56,39 @@ def _judge(language: str, output: str, mode: object) -> str:
 
 def _run(rest: list[str]) -> None:
     """Run a program through its interpreter and write its output."""
-    rest, options = _pop_options(rest, {"--timeout", "--table", "--seed", "--scale"})
+    rest, options = _pop_options(
+        rest, {"--timeout", "--table", "--seed", "--scale", "--max-output"}
+    )
     # The value is checked here, before the positionals are counted.  It ran
     # after, so `run --timeout brainfuck prog.txt` -- a forgotten number --
     # swallowed the language as the timeout's value and then reported
     # "missing <program-file>", sending the reader to look at the one
     # argument that was not the problem.
     timeout = _timeout_of(options)
-    rest, flags = _pop_flags(rest, {"--judge"})
+    rest, flags = _pop_flags(rest, {"--judge", "--isolated"})
+    isolated = "--isolated" in flags
+    if isolated and timeout is None:
+        timeout = 30.0
+    max_output = None
+    if "--max-output" in options:
+        if not isolated:
+            _fail("--max-output requires --isolated")
+        max_output = _integer(
+            options["--max-output"], "--max-output", kind="a non-negative integer"
+        )
+        _nonnegative(max_output, "--max-output", options["--max-output"])
     rest = _split_positional(
-        rest, set(), {"--timeout", "--judge", "--table", "--seed", "--scale"}
+        rest,
+        set(),
+        {
+            "--timeout",
+            "--judge",
+            "--table",
+            "--seed",
+            "--scale",
+            "--isolated",
+            "--max-output",
+        },
     )
     seed = _seed_of(options)
     scale = _scale_of(options)
@@ -71,8 +96,9 @@ def _run(rest: list[str]) -> None:
     # Refused like every value-taking option is.  `--judge --judge` was
     # accepted in silence while `--timeout 5 --timeout 9` was refused, and
     # the inconsistency is the finding rather than either policy.
-    if flags.count("--judge") > 1:
-        _fail("--judge given more than once")
+    for flag in ("--judge", "--isolated"):
+        if flags.count(flag) > 1:
+            _fail(f"{flag} given more than once")
     _check_count("run", rest, 2)
     language, path = rest[0], rest[1]
     program = _read_program(path, timeout, language=language)
@@ -132,7 +158,19 @@ def _run(rest: list[str]) -> None:
             warnings.catch_warnings(record=True) as caught,
         ):
             warnings.simplefilter("always")
-            output = run(language, program, stdin, timeout, seed, scale=scale)
+            if isolated:
+                output = run(
+                    language,
+                    program,
+                    stdin,
+                    timeout,
+                    seed,
+                    scale=scale,
+                    isolated=True,
+                    max_output=max_output,
+                )
+            else:
+                output = run(language, program, stdin, timeout, seed, scale=scale)
         for entry in caught:
             _note(str(entry.message))
         # The count and range checks ``--table`` buys; the library judges

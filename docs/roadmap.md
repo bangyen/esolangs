@@ -3,7 +3,20 @@
 Open work only. See [limitations](limitations.md) for standing contracts
 and proved limits; completed work is recorded in its commit.
 
-## Conditional follow-up
+## Engineering priorities
+
+1. **Portable CLI regression coverage.** Exercise isolated deadlines and output
+   limits in the Windows distribution job. Done when both failure paths retain
+   partial output and their documented exit codes. Budget: existing CI job;
+   one short subprocess per case, no search.
+2. **Proof evidence references.** Add precise proof anchors or test node IDs to
+   `proofs/status.json`, then validate their targets. Done when every open audit
+   row has a checked evidence reference. Budget: file reads only; no generators.
+3. **Verification timing refresh.** Refresh slow-shard durations from the next
+   scheduled CI artifact. Done when the fixture matches that run and shard
+   estimates are reported. Budget: reuse scheduled measurements; no extra suite.
+
+## Research follow-up
 
 - **Piet++ specification and generator audit.** The language is tagged
   [Unimplemented](https://esolangs.org/wiki/Piet%2B%2B). Nested-stack cofactor
@@ -32,7 +45,11 @@ and proved limits; completed work is recorded in its commit.
   `proofs/index.md` defines totality; `tests/proofs/deep/linearity.py` measures
   size by same-parity successive differences through n=12. Timings use the
   top five arities, best of three, and exclude loading; runs under 10 ms do not
-  establish an exponent. Closure requires a language-wide lower bound. Current status:
+  establish an exponent. Closure requires a language-wide lower bound.
+  Edit `proofs/status.json` and run `python scripts/generate.py docs` to update
+  both status tables. Current status:
+
+  <!-- SCALING-STATUS:START -->
 
   | Language | Totality | Generation time | Output size | Execution time |
   | --- | --- | --- | --- | --- |
@@ -40,6 +57,8 @@ and proved limits; completed work is recorded in its commit.
   | Factor | Total | Language lower bound | Language lower bound | Linear |
   | Malbolge | Exception | Open | Linear | Linear |
   | Polynomial | Cap | Language lower bound | Language lower bound | Linear |
+
+  <!-- SCALING-STATUS:END -->
 
   Befunge ships through thirteen inputs using a six-bit printable-ASCII lookup.
   Its fixed 80x25 source grid admits fewer than `2**42000` programs even with

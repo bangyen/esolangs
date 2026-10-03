@@ -1,14 +1,4 @@
-"""Parse ``docs/proofs/index.md`` into the structure the proof tests enforce.
-
-The ledger is prose, and until now nothing read it: its 62 rows, its proof
-schemes and its two audit sections could drift from the registry and from each
-other without anything failing.  This module is the reader that makes the
-drift detectable; :mod:`tests.proofs.test_ledger` is the assertion.
-
-The parser adapts to the document, never the other way round.  Nothing here
-should motivate reformatting ``proofs/index.md`` -- if a section grows a shape this
-cannot read, widen the parser.
-"""
+"""Read structured proof rows and audit the surrounding proof prose."""
 
 from __future__ import annotations
 
@@ -130,17 +120,12 @@ def load(path: Path | None = None) -> Ledger:
     """Read and parse the ledger."""
     text = (path or DOC).read_text(encoding="utf-8")
 
-    rows = []
-    for line in _section(text, "Generator ledger").splitlines():
-        if not line.startswith("| ") or line.startswith(("| ---", "| Generator")):
-            continue
-        cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
-        # Four cells, not "at least three": a row that lost its Scaling cell
-        # would otherwise parse as settled by omission.
-        assert len(cells) == 4, f"{DOC} ledger row has {len(cells)} cells: {line!r}"
-        generator, proof, qualification, scaling = cells
-        labels = tuple(part.strip() for part in proof.split(","))
-        rows.append(Row(generator, labels, qualification, scaling))
+    from esolangs.tools._proof_status import load as load_status
+
+    proofs, _ = load_status()
+    rows = [
+        Row(row.generator, row.labels, row.qualification, row.scaling) for row in proofs
+    ]
 
     schemes = _section(text, "Proof schemes")
     defined = {

@@ -52,8 +52,9 @@ esolangs.evaluate("Fargo", program, timeout=None, inputs=3)  # -> '10010110'
 result with an expected table, or use CLI `evaluate --table TABLE`.
 Termination answers require a proved halt or cycle; reaching a timeout raises
 `ExecutionTimeoutError`.
-The default row timeout requires a Unix main thread. `timeout=None` disables
-that bound and also works on Windows and worker threads.
+Use `isolated=True` for a bounded run on Windows or worker threads.
+The default in-process row timeout requires a Unix main thread;
+`timeout=None` disables that bound.
 
 Run each program with its intended language: a Suffolk program may run as
 brainfuck but produce the wrong answer. Input formats also vary; use

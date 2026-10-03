@@ -14,7 +14,8 @@ just test-quick
 ```
 
 Run `just test` before committing; use `just test-full` for release-scale
-changes. Regenerate committed examples with
+changes (`test-full` includes slow tests; weekly probes run separately with
+`just test-py`, or in scheduled CI). Regenerate committed examples with
 `python scripts/generate.py examples`.
 
 CI installs the built wheel on Linux, macOS, and Windows, checking packaged
