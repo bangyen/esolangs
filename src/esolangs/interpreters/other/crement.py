@@ -45,6 +45,26 @@ class _State:
     program: tuple[_Instruction, ...]
 
 
+def _decimal(source: str) -> int:
+    """Parse ASCII digits without CPython's decimal conversion cap."""
+    value = 0
+    for start in range(0, len(source), 9):
+        block = source[start : start + 9]
+        value = value * 10 ** len(block) + int(block)
+    return value
+
+
+def _decimal_text(value: int) -> str:
+    """Format an address without CPython's decimal conversion cap."""
+    sign = "-" if value < 0 else ""
+    value = abs(value)
+    blocks = []
+    while value >= 1_000_000_000:
+        value, remainder = divmod(value, 1_000_000_000)
+        blocks.append(f"{remainder:09d}")
+    return sign + str(value) + "".join(reversed(blocks))
+
+
 def _number(source: str, labels: dict[str, int], here: int) -> int:
     """Resolve one signed sum of literals, labels, and ``@``."""
     position = 0
@@ -62,7 +82,7 @@ def _number(source: str, labels: dict[str, int], here: int) -> int:
         if atom == "@":
             term = here
         elif atom.isdigit():
-            term = int(atom)
+            term = _decimal(atom)
         else:
             try:
                 term = labels[atom]
@@ -152,7 +172,7 @@ def _advance(state: _State) -> _State:
         return state
     if state.ip < 0:
         raise HaltError(
-            f"Crement executed negative address {state.ip}",
+            f"Crement executed negative address {_decimal_text(state.ip)}",
             hint="keep executed, jump and write addresses nonnegative",
         )
 
@@ -162,7 +182,7 @@ def _advance(state: _State) -> _State:
         target = instruction.address if condition else state.ip + 1
         if target < 0:
             raise HaltError(
-                f"Crement jumped to negative address {target}",
+                f"Crement jumped to negative address {_decimal_text(target)}",
                 hint="keep executed, jump and write addresses nonnegative",
             )
         return _State(target, state.program)
@@ -171,7 +191,7 @@ def _advance(state: _State) -> _State:
     program = state.program
     if target < 0:
         raise HaltError(
-            f"Crement wrote to negative address {target}",
+            f"Crement wrote to negative address {_decimal_text(target)}",
             hint="keep executed, jump and write addresses nonnegative",
         )
     if target < len(program):
