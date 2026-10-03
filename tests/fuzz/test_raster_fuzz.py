@@ -88,6 +88,11 @@ def test_random_small_images_have_only_documented_outcomes(language: str) -> Non
         ("blur",),
         ("sharpen",),
         ("crop",),
+        ("jpeg",),
+        ("bilinear",),
+        ("bicubic",),
+        ("bilinear", "jpeg"),
+        ("jpeg", "bicubic"),
         ("blur", "contrast"),
         ("contrast", "blur"),
         ("brightness", "grayscale"),
@@ -115,7 +120,27 @@ def test_filtered_images_have_only_documented_outcomes(
             image = image.filter(ImageFilter.GaussianBlur(rng.uniform(0.25, 1.25)))
         elif operation == "sharpen":
             image = ImageEnhance.Sharpness(image).enhance(rng.uniform(1.5, 3.0))
-        else:
+        elif operation == "jpeg":
+            compressed = BytesIO()
+            image.save(
+                compressed,
+                format="JPEG",
+                quality=rng.randint(25, 50) if variant == 0 else rng.randint(75, 95),
+                subsampling=2 if variant == 0 else 0,
+            )
+            image = Image.open(BytesIO(compressed.getvalue())).convert("RGB")
+        elif operation in ("bilinear", "bicubic"):
+            factor = rng.uniform(0.5, 0.9) if variant == 0 else rng.uniform(1.1, 1.5)
+            image = image.resize(
+                (
+                    max(1, round(image.width * factor)),
+                    max(1, round(image.height * factor)),
+                ),
+                Image.Resampling.BILINEAR
+                if operation == "bilinear"
+                else Image.Resampling.BICUBIC,
+            )
+        elif operation == "crop":
             left = rng.randrange(image.width)
             top = rng.randrange(image.height)
             image = image.crop(
@@ -126,6 +151,8 @@ def test_filtered_images_have_only_documented_outcomes(
                     rng.randrange(top + 1, image.height + 1),
                 )
             )
+        else:
+            raise AssertionError(f"unknown image operation: {operation}")
     encoded = BytesIO()
     image.save(encoded, format="PNG")
     filtered = Raster.from_png(encoded.getvalue())
