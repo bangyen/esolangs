@@ -82,6 +82,7 @@ from esolangs._drive import drive
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.source_hints import syntax_error
 
 # The only datatype is a number, but a *function* reaches an expression
 # slot too: the wiki's ``WHILE(x, c)`` takes its condition and body as
@@ -232,14 +233,19 @@ class _Parser:
     def expect(self, word: str) -> None:
         """Consume ``token`` or fail as malformed."""
         if self.peek() != word:
-            raise ValueError(f"expected {word!r}")
+            raise syntax_error(
+                f"expected {word!r}", "put the expected token at this position"
+            )
         self.ind += 1
 
     def parse(self) -> _Node:
         """Parse the whole token list, rejecting a trailing remainder."""
         node = self.expr()
         if self.peek() is not None:
-            raise ValueError(f"trailing input at {self.peek()!r}")
+            raise syntax_error(
+                f"trailing input at {self.peek()!r}",
+                "keep exactly one expression on this line",
+            )
         return node
 
     def expr(self) -> _Node:
@@ -381,14 +387,20 @@ class _Parser:
         """Parse a literal, name, call, or bracketed expression."""
         word = self.peek()
         if word is None:
-            raise ValueError("unexpected end of expression")
+            raise syntax_error(
+                "unexpected end of expression",
+                "provide a literal, variable or function call after the operator",
+            )
         if word[0] in _DIGITS:
             self.take()
             node: _Node = ("lit", _number(word))
             # ``1(2)`` is invalid syntax by the spec, and so is ``1 a``:
             # implied multiplication is between *variables*.
             if self.peek() == "(":
-                raise ValueError("bracket multiplication is invalid syntax")
+                raise syntax_error(
+                    "bracket multiplication is invalid syntax",
+                    "write multiplication explicitly with *, for example 1*(2)",
+                )
             return self._implied(node)
         if word == "(":
             self.take()
@@ -411,7 +423,10 @@ class _Parser:
             # A bare uppercase name is the function itself, which is how
             # ``WHILE(x, c)`` receives something it can call.
             return ("ref", name)
-        raise ValueError(f"unexpected token {word!r}")
+        raise syntax_error(
+            f"unexpected token {word!r}",
+            "use a number, lowercase variable or uppercase function call here",
+        )
 
     def _arguments(self) -> list[_Node]:
         """Parse a parenthesised, comma-separated argument list."""
@@ -466,7 +481,10 @@ def _parse_lhs(lhs: str) -> tuple[str, list[str]]:
     lhs = lhs.strip()
     tokens = _tokens(lhs)
     if not tokens:
-        raise ValueError("definition has no left-hand side")
+        raise syntax_error(
+            "definition has no left-hand side",
+            "put a variable, function header or operator pattern before =",
+        )
     if len(tokens) == 1 and _is_lower(tokens[0]):
         return tokens[0], []
     if _is_upper(tokens[0]):
@@ -478,14 +496,23 @@ def _parse_lhs(lhs: str) -> tuple[str, list[str]]:
         params: list[str] = []
         if ind < len(tokens):
             if tokens[ind] != "(":
-                raise ValueError(f"malformed function header {lhs!r}")
+                raise syntax_error(
+                    f"malformed function header {lhs!r}",
+                    (
+                        "write an uppercase function name with lowercase "
+                        "parameters, for example F(x)"
+                    ),
+                )
             ind += 1
             while ind < len(tokens) and tokens[ind] != ")":
                 if tokens[ind] == ",":
                     ind += 1
                     continue
                 if not _is_lower(tokens[ind]):
-                    raise ValueError(f"bad parameter {tokens[ind]!r}")
+                    raise syntax_error(
+                        f"bad parameter {tokens[ind]!r}",
+                        "use a single lowercase letter for each parameter",
+                    )
                 params.append(tokens[ind])
                 ind += 1
             # The loop cannot run out of tokens: getting past it needs a
@@ -493,7 +520,10 @@ def _parse_lhs(lhs: str) -> tuple[str, list[str]]:
             # ``bad parameter`` check above.
             ind += 1
         if ind != len(tokens):
-            raise ValueError(f"trailing input in header {lhs!r}")
+            raise syntax_error(
+                f"trailing input in header {lhs!r}",
+                "end the function header after its closing parenthesis",
+            )
         return name, params
     # A custom operator: letters are argument slots, everything else is a
     # literal symbol of the pattern.
@@ -506,11 +536,23 @@ def _parse_lhs(lhs: str) -> tuple[str, list[str]]:
         elif len(word) == 1 and _is_symbol(word):
             pattern += word
         else:
-            raise ValueError(f"bad operator pattern {lhs!r}")
+            raise syntax_error(
+                f"bad operator pattern {lhs!r}",
+                (
+                    "use lowercase parameter letters and operator symbols, for "
+                    "example a#b"
+                ),
+            )
     if not op_params or "\0" not in pattern:
-        raise ValueError(f"operator {lhs!r} takes no arguments")
+        raise syntax_error(
+            f"operator {lhs!r} takes no arguments",
+            "include at least one lowercase parameter in the operator pattern",
+        )
     if len(set(op_params)) != len(op_params):
-        raise ValueError(f"operator {lhs!r} repeats a parameter")
+        raise syntax_error(
+            f"operator {lhs!r} repeats a parameter",
+            "give each operator parameter a distinct lowercase letter",
+        )
     return pattern, op_params
 
 
@@ -535,7 +577,7 @@ def _blocks(code: str) -> list[str]:
             pending = ""
             depth = 0
     if pending:
-        raise ValueError("unbalanced { in program")
+        raise syntax_error("unbalanced { in program", "close each { block with }")
     return out
 
 
@@ -546,7 +588,10 @@ def _body(rhs: str, defs: dict[str, _Definition]) -> list[_Node]:
         if not text.endswith("}"):
             # ``_blocks`` has already balanced the braces, so what is left
             # is a block with something after its closer -- ``F() = {1} 2``.
-            raise ValueError(f"trailing input after block in {text!r}")
+            raise syntax_error(
+                f"trailing input after block in {text!r}",
+                "end the definition after its closing }",
+            )
         inner = text[1:-1]
         return [
             _Parser(_tokens(line), defs).parse()
@@ -855,7 +900,10 @@ class _Machine:
             return frame.locals[name]
         if name in self.globals:
             return self.globals[name]
-        raise ValueError(f"unknown variable {name!r}")
+        raise syntax_error(
+            f"unknown variable {name!r}",
+            "define the lowercase variable before reading it",
+        )
 
     def _lookup_function(self, name: str) -> object:
         """Resolve a bare uppercase name to the definition it refers to.
@@ -868,7 +916,10 @@ class _Machine:
         """
         if name in self.defs:
             return self.defs[name]
-        raise ValueError(f"unknown function {name!r}")
+        raise syntax_error(
+            f"unknown function {name!r}",
+            "define this uppercase function before referring to it",
+        )
 
     def _descend(self, frame: _Frame, node: _Node) -> None:
         """Queue ``node`` as the next sub-evaluation of the current one."""
@@ -915,11 +966,21 @@ class _Machine:
         target = frame.locals.get(name)
         definition = target if isinstance(target, _Definition) else self.defs.get(name)
         if definition is None:
-            raise ValueError(f"unknown function {name!r}")
+            raise syntax_error(
+                f"unknown function {name!r}",
+                (
+                    "define the called function or pass a defined function as "
+                    "the parameter"
+                ),
+            )
         if len(done) != len(definition.params):
-            raise ValueError(
+            raise syntax_error(
                 f"{definition.name!r} takes {len(definition.params)} "
-                f"argument(s), got {len(done)}"
+                f"argument(s), got {len(done)}",
+                (
+                    "pass exactly the number of arguments declared in the "
+                    "function header"
+                ),
             )
         frame.work.pop()
         self._push(definition, dict(zip(definition.params, done, strict=True)))

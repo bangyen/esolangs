@@ -48,6 +48,7 @@ from esolangs.interpreters.grid_based.streetcode.geometry import (
     _State as _GeometryState,
 )
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.source_hints import syntax_error
 
 
 class _State(_GeometryState):
@@ -69,7 +70,10 @@ class _Machine:
     def __init__(self, code: list[str], io: IO) -> None:
         """Locate the single ``C`` and derive the car's initial heading."""
         if not code or not any(line.strip() for line in code):
-            raise ValueError("Streetcode program cannot be empty")
+            raise syntax_error(
+                "Streetcode program cannot be empty",
+                "draw an enclosed two-cell-wide street containing one C",
+            )
         self.io = io
         self.grid = _Grid(code)
 
@@ -80,8 +84,9 @@ class _Machine:
             if ch == "C"
         ]
         if len(starts) != 1:
-            raise ValueError(
-                f"Streetcode program must have exactly one C, found {len(starts)}"
+            raise syntax_error(
+                f"Streetcode program must have exactly one C, found {len(starts)}",
+                "keep exactly one C on the street as the car start",
             )
         # The whole of the machine's steering state, in the one record the
         # movement rules speak in.  ``step`` hands it to :func:`_drive` and
@@ -266,9 +271,10 @@ class _Machine:
             # ``;`` reports ``"halt"`` rather than ``None``, so ``None``
             # means only the one thing.
             if any(successor is None for successor in edges.values()):
-                raise ValueError(
+                raise syntax_error(
                     f"the car cannot drive out of {(state.row, state.col)} heading"
-                    f" {state.heading}: the street is a dead end with no ';'"
+                    f" {state.heading}: the street is a dead end with no ';'",
+                    "continue the road or place ; at the intended stop",
                 )
             self._check_state_invariants(state, edges)
 
@@ -366,7 +372,7 @@ class _Machine:
             return None
         violation = self._width_violation(visited)
         if violation is not None:
-            raise ValueError(violation)
+            raise syntax_error(violation, "keep the reachable street two cells wide")
         return visited
 
     def _width_violation(self, reachable: set[_ReachableCell]) -> str | None:
@@ -423,7 +429,13 @@ class _Machine:
                     "".join("." if ch not in _WALLS else ch for ch in block[i : i + 3])
                     for i in (0, 3, 6)
                 )
-                raise ValueError(f"malformed wall at {(r, c)} ({shape})")
+                raise syntax_error(
+                    f"malformed wall at {(r, c)} ({shape})",
+                    (
+                        "join wall segments using the supported straight, corner "
+                        "and junction shapes"
+                    ),
+                )
 
     def _validate_enclosed(self, reachable: set[_ReachableCell]) -> None:
         """Reject a street that runs off the edge of the grid.
@@ -434,7 +446,9 @@ class _Machine:
         """
         violation = self._enclosure_violation(reachable)
         if violation is not None:
-            raise ValueError(violation)
+            raise syntax_error(
+                violation, "enclose the street with walls before the grid border"
+            )
 
     def _enclosure_violation(self, reachable: set[_ReachableCell]) -> str | None:
         """Name a road cell on the grid's border, or ``None`` if none is.
@@ -457,7 +471,9 @@ class _Machine:
         """
         violation = self._glyph_violation()
         if violation is not None:
-            raise ValueError(violation)
+            raise syntax_error(
+                violation, "join - and | wall segments through a + corner or junction"
+            )
 
     def _glyph_violation(self) -> str | None:
         """Name a ``-`` drawn beside a ``|``, or ``None`` if none is."""
@@ -492,7 +508,9 @@ class _Machine:
         """
         violation = self._connection_violation(reachable)
         if violation is not None:
-            raise ValueError(violation)
+            raise syntax_error(
+                violation, "connect all drawn geometry to the street containing C"
+            )
 
     def _connection_violation(self, reachable: set[_ReachableCell]) -> str | None:
         """Name drawn geometry off the street, or ``None`` if none is."""

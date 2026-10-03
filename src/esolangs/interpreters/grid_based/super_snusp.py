@@ -20,6 +20,7 @@ from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.randomness import Randomness, draw
+from esolangs.interpreters.source_hints import syntax_error
 
 _DIRECTIONS = ((0, 1), (1, 0), (0, -1), (-1, 0))
 _RULD = (3, 0, 1, 2)
@@ -209,7 +210,10 @@ class _Machine:
         self, code: Sequence[str], io: IO, rng: Randomness | None = None
     ) -> None:
         if not code or not (width := max(map(len, code), default=0)):
-            raise ValueError("Super SNUSP program cannot be empty")
+            raise syntax_error(
+                "Super SNUSP program cannot be empty",
+                ("provide a nonempty grid with an entry point and a terminating path"),
+            )
         self.code = tuple(row.ljust(width) for row in code)
         self.io, self._rng = io, rng
         starts = [

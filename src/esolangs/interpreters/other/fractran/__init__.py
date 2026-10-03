@@ -40,6 +40,7 @@ from esolangs.interpreters.other.fractran.index import (
     compile_index,
     integer,
 )
+from esolangs.interpreters.source_hints import syntax_error
 
 #: A fraction, as the numerator and denominator it was written with.
 type _Fraction = tuple[int, int]
@@ -57,7 +58,10 @@ def _product(text: str) -> int:
     for factor in text.split("*"):
         found = _POWER.match(factor)
         if found is None:
-            raise ValueError(f"{factor!r} is not a FRACTRAN number or power")
+            raise syntax_error(
+                f"{factor!r} is not a FRACTRAN number or power",
+                ("write a decimal integer or a power such as 2^3; join factors with *"),
+            )
         base, exponent = found.group(1), found.group(2)
         total *= int(base) ** (1 if exponent is None else int(exponent))
     return total
@@ -67,19 +71,31 @@ def _parse(code: str) -> tuple[int, tuple[_Fraction, ...], tuple[int, ...]]:
     """Return the starting value, the fractions, and each token's offset."""
     tokens = [(found.start(), found.group()) for found in re.finditer(r"[^\s,]+", code)]
     if not tokens:
-        raise ValueError("a FRACTRAN program needs a starting value")
+        raise syntax_error(
+            "a FRACTRAN program needs a starting value",
+            ("put a positive starting integer before the fractions, for example 2 3/2"),
+        )
     start = _product(tokens[0][1])
     if start <= 0:
-        raise ValueError("a FRACTRAN starting value must be positive")
+        raise syntax_error(
+            "a FRACTRAN starting value must be positive",
+            "use a starting integer greater than zero",
+        )
     fractions = []
     for _offset, token in tokens[1:]:
         head, slash, tail = token.partition("/")
         numerator = _product(head)
         denominator = _product(tail) if slash else 1
         if denominator == 0:
-            raise ValueError(f"FRACTRAN fraction {token!r} divides by zero")
+            raise syntax_error(
+                f"FRACTRAN fraction {token!r} divides by zero",
+                "use a nonzero denominator, for example 3/2",
+            )
         if numerator <= 0:
-            raise ValueError(f"FRACTRAN fraction {token!r} is not positive")
+            raise syntax_error(
+                f"FRACTRAN fraction {token!r} is not positive",
+                "use positive numerators and denominators",
+            )
         fractions.append((numerator, denominator))
     return start, tuple(fractions), tuple(offset for offset, _token in tokens)
 

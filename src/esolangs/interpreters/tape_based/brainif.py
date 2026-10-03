@@ -23,6 +23,7 @@ from esolangs.interpreters.persistent import (
     length,
     put,
 )
+from esolangs.interpreters.source_hints import syntax_error
 
 #: ``(ind, ptr, cells)``: an immutable value, rebound per step.  The
 #: parsed line is a parameter, not a field.
@@ -45,24 +46,42 @@ def _parse(line: str) -> _Line:
         return None
     arr = line.split()
     if len(arr) < 2 or arr[0] != "if":
-        raise ValueError("malformed BrainIf line: " + line)
+        raise syntax_error(
+            "malformed BrainIf line: " + line,
+            "write if <integer> <command>, for example if 0 increment",
+        )
     value = int(arr[1])
     command = arr[2] if len(arr) > 2 else ""
     if command == "move":
         if len(arr) != 4 or arr[3] not in ("right", "left"):
-            raise ValueError("malformed BrainIf line: " + line)
+            raise syntax_error(
+                "malformed BrainIf line: " + line,
+                "write if <integer> move left or move right",
+            )
         return (value, arr[3], 0)
     if command == "goto":
         if len(arr) < 4:
-            raise ValueError("goto requires a target line")
+            raise syntax_error(
+                "goto requires a target line",
+                "write if <integer> goto <positive line number>",
+            )
         if len(arr) != 4:
-            raise ValueError("malformed BrainIf line: " + line)
+            raise syntax_error(
+                "malformed BrainIf line: " + line,
+                "give goto exactly one target line, for example if 0 goto 1",
+            )
         target = int(arr[3])
         if target < 1:
-            raise ValueError("goto target must be a positive line number")
+            raise syntax_error(
+                "goto target must be a positive line number",
+                "number target lines from 1",
+            )
         return (value, command, target)
     if len(arr) > 3:
-        raise ValueError("malformed BrainIf line: " + line)
+        raise syntax_error(
+            "malformed BrainIf line: " + line,
+            "give the guarded command only its required operands",
+        )
     if command in ("increment", "inc", "right", "left", "input", "output"):
         return (value, command, 0)
     # Unknown commands remain inert under the convention in limitations.md.

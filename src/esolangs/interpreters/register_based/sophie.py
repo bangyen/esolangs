@@ -24,6 +24,7 @@ from esolangs._drive import drive
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.source_hints import syntax_error
 
 
 def matches(code: str) -> None:
@@ -57,11 +58,17 @@ def matches(code: str) -> None:
                 depth += 1
             elif char == end:
                 if depth == 0:
-                    raise ValueError(f"unmatched '{end}' at position {i}")
+                    raise syntax_error(
+                        f"unmatched '{end}' at position {i}",
+                        "put the matching opener before this closing delimiter",
+                    )
                 depth -= 1
             i += 1
         if depth:
-            raise ValueError(f"unmatched '{opr}'")
+            raise syntax_error(
+                f"unmatched '{opr}'",
+                "close this opening delimiter with its matching partner",
+            )
 
 
 def _partners(code: str) -> dict[int, int]:

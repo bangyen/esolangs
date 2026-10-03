@@ -143,6 +143,7 @@ from typing import Literal, assert_never
 from esolangs._drive import drive
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.source_hints import syntax_error
 
 # Headings, as (d_row, d_col) with rows growing downward.
 _UP = (-1, 0)
@@ -415,7 +416,13 @@ class _Machine:
                 else:
                     c = line[col]
                     if c != " " and c not in _EXITS:
-                        raise ValueError(f"unknown character {c!r} at ({col}, {row})")
+                        raise syntax_error(
+                            f"unknown character {c!r} at ({col}, {row})",
+                            (
+                                "use Flowchart nodes and connected path glyphs; "
+                                "keep other text outside the diagram"
+                            ),
+                        )
                     col += 1
         self._check_separation()
         self._check_alignment()
@@ -426,7 +433,10 @@ class _Machine:
             for dr, dc in (_RIGHT, _DOWN):
                 neighbour = self.nodes.get((row + dr, col + dc))
                 if neighbour is not None and (dr or neighbour != node):
-                    raise ValueError(f"nodes touch without a path at ({col}, {row})")
+                    raise syntax_error(
+                        f"nodes touch without a path at ({col}, {row})",
+                        "separate the nodes with a connecting path",
+                    )
 
     def _check_alignment(self) -> None:
         """Reject a vertical path that enters a node off its middle.
@@ -452,9 +462,10 @@ class _Machine:
                     spelling, col0 = node
                     middle = col0 + len(spelling) // 2
                     if col != middle:
-                        raise ValueError(
+                        raise syntax_error(
                             f"vertical path at ({col}, {row}) enters {spelling!r} at "
-                            f"column {col}, but its middle is column {middle}"
+                            f"column {col}, but its middle is column {middle}",
+                            "connect a vertical path at the middle column of the node",
                         )
 
     def _start(self) -> tuple[int, int]:
@@ -464,7 +475,10 @@ class _Machine:
                 node = self.nodes.get((row, col))
                 if node and node[0] == "( )" and node[1] == col:
                     return (row, col)
-        raise ValueError("Flowchart program has no '( )' start node")
+        raise syntax_error(
+            "Flowchart program has no '( )' start node",
+            "add a ( ) start node and connect its exit",
+        )
 
     def _fork_at_start(self) -> None:
         """Split the initial pointer if the start node has several exits.
@@ -476,7 +490,9 @@ class _Machine:
         here = (p.row, p.col)
         exits = self._reading_order(self._exits_from_node(p.row, p.col, None))
         if not exits:
-            raise ValueError("start node has no exit path")
+            raise syntax_error(
+                "start node has no exit path", "connect a path leaving the start node"
+            )
         self.pointers = [_Pointer(row, col, d, prev=here) for row, col, d in exits]
 
     def _cells_of(self, row: int, col: int) -> list[tuple[int, int]]:
@@ -689,7 +705,10 @@ class _Machine:
         p = self.pointers[i]
         exits = self._exits_from_node(p.row, p.col, p.prev)
         if not exits:
-            raise ValueError("non-end node has no exit path")
+            raise syntax_error(
+                "non-end node has no exit path",
+                "connect an exit path or use an end node",
+            )
         order = (p.d, _turn_right(p.d), _turn_left(p.d))
         exits.sort(key=lambda step: order.index(step[2]))
         if prefer is not None:
@@ -730,7 +749,10 @@ class _Machine:
         p = self.pointers[i]
         exits = self._reading_order(self._exits_from_node(p.row, p.col, p.prev))
         if not exits:
-            raise ValueError("non-end node has no exit path")
+            raise syntax_error(
+                "non-end node has no exit path",
+                "connect an exit path or use an end node",
+            )
         here = (p.row, p.col)
         for n_row, n_col, d in exits[1:]:
             self.pointers.append(

@@ -46,6 +46,7 @@ from esolangs._drive import drive
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.source_hints import syntax_error
 
 _FUNC: Final = "func"
 
@@ -332,7 +333,10 @@ def _advance(
     else:
         # a string read from input and executed via G/I may carry any
         # character; reject it like the top-level program validation would
-        raise ValueError(f"unhandled command {c!r}")
+        raise syntax_error(
+            f"unhandled command {c!r}",
+            "use uppercase Latin command letters A through Z",
+        )
 
     pc += 1
     if pending_at >= 0 and pc == pending_at + 2:
@@ -363,8 +367,9 @@ class _Machine:
         """Build a machine running ``code`` as its top-level frame."""
         code = code.replace("\n", "")
         if any(c not in "ABCDEFGHIJKLMNOPQRSTUVWXYZ" for c in code):
-            raise ValueError(
-                "Grapheme programs may only contain uppercase Latin letters"
+            raise syntax_error(
+                "Grapheme programs may only contain uppercase Latin letters",
+                "use uppercase Latin command letters A through Z",
             )
         self.stack: list[_Value] = []
         self.vars: _Vars = {}

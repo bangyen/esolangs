@@ -39,6 +39,7 @@ from dataclasses import dataclass
 from esolangs._drive import drive
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.source_hints import syntax_error
 
 
 @dataclass(frozen=True)
@@ -178,14 +179,20 @@ def _tokens(code: str) -> list[_Term | None]:
             continue
         if char in ".?":
             if index >= len(code):
-                raise ValueError(f"Unlambda {char!r} has no character after it")
+                raise syntax_error(
+                    f"Unlambda {char!r} has no character after it",
+                    "follow . or ? with its literal character, for example .A",
+                )
             out.append(_Print(code[index]) if char == "." else _Query(code[index]))
             index += 1
             continue
         if char in _COMMANDS:
             out.append(_COMMANDS[char])
             continue
-        raise ValueError(f"{char!r} is not an Unlambda command")
+        raise syntax_error(
+            f"{char!r} is not an Unlambda command",
+            ("use Unlambda combinators or ` for application; # starts a comment"),
+        )
     return out
 
 
@@ -205,9 +212,13 @@ def _parse(code: str) -> _Term:
         while True:
             if not pending:
                 if whole is not None:
-                    raise ValueError(
+                    raise syntax_error(
                         "an Unlambda program is one expression, and this "
-                        "source spells a second one after the first"
+                        "source spells a second one after the first",
+                        (
+                            "combine the expressions using prefix ` application, or "
+                            "keep a single expression"
+                        ),
                     )
                 whole = term
                 break
@@ -218,9 +229,15 @@ def _parse(code: str) -> _Term:
             pending.pop()
             term = _App(slot[0], slot[1])
     if pending:
-        raise ValueError("an Unlambda backtick is missing one of its two terms")
+        raise syntax_error(
+            "an Unlambda backtick is missing one of its two terms",
+            "give each ` exactly two expressions, for example `ii",
+        )
     if whole is None:
-        raise ValueError("an Unlambda program cannot be empty")
+        raise syntax_error(
+            "an Unlambda program cannot be empty",
+            "provide one expression; i is the identity combinator",
+        )
     return whole
 
 

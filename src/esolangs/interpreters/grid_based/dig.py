@@ -24,6 +24,7 @@ from esolangs._drive import drive
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.source_hints import syntax_error
 
 # Headings as (drow, dcol), in the order the ``^>'<`` glyphs select
 # them: up, right, down, left.  Row grows downward.
@@ -163,7 +164,10 @@ class _Machine:
     ) -> None:
         """Pad ``code`` to a square grid, like :func:`run`."""
         if not code or not any(line.strip() for line in code):
-            raise ValueError("Dig program cannot be empty")
+            raise syntax_error(
+                "Dig program cannot be empty",
+                "provide a nonempty grid; @ halts immediately",
+            )
         self.io = io
         self.size = max(len(lne) for lne in code)
         self.code = tuple(c.ljust(self.size) for c in code)

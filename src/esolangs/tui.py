@@ -20,6 +20,7 @@ from typing import TypeGuard, cast
 
 from esolangs._program import Program
 from esolangs.debugger import Debugger, make_debugger
+from esolangs.interpreters.source_hints import error_text
 
 #: Back to the terminal's own attributes, which ends every marked run.
 _OFF = "\x1b[0m"
@@ -371,7 +372,7 @@ def render(
         named = "  ".join(f"{name}={text}" for name, text in frame.views)
         out.append(f"views    {named}"[:width])
     if frame.fault:
-        out.append(f"fault    {frame.fault}"[:width])
+        out.extend(line[:width] for line in f"fault    {frame.fault}".splitlines())
     out.append(foot[:width])
     return "\n".join(out)
 
@@ -392,7 +393,7 @@ def replay(language: str, program: Program, stdin: str, step: int) -> Frame:
         try:
             dbg.step()
         except Exception as exc:
-            fault = f"{type(exc).__name__}: {exc}"
+            fault = f"{type(exc).__name__}: {error_text(exc)}"
             break
         taken += 1
     # The count is what was *executed*, not what was asked for, so a request
@@ -508,7 +509,7 @@ class History:
             # The fault belongs to the step that did not complete, so it is
             # attached to the frame already standing at this count, matching
             # what ``replay`` reports for the same request.
-            self._fault = f"{type(exc).__name__}: {exc}"
+            self._fault = f"{type(exc).__name__}: {error_text(exc)}"
             self._bytes -= _frame_bytes(self._frames.pop())
             self._remember(
                 Frame.of(

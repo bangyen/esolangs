@@ -656,6 +656,7 @@ def run(
         "sys.setrecursionlimit can raise the limit if this interpreter's "
         "depth grows with program size",
         io_obj,
+        language=name,
     ):
         _run(run_fn, program_args, io_obj, timeout)
     return io_obj.getvalue()

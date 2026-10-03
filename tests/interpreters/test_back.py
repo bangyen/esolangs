@@ -7,6 +7,7 @@ from typing import ClassVar
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.tape_based.back import run
 from tests.interpreters.contract import CycleContract, SnapshotContract
+from tests.raises import raises_message
 
 
 def run_and_capture(code: list[str]) -> str:
@@ -92,12 +93,11 @@ class TestBack:
         is a substring search, so the wording could drift to anything still
         containing the word and no test would say so.
         """
-        import pytest
 
-        message = r"^Back program cannot be empty$"
-        with pytest.raises(ValueError, match=message):
+        message = "Back program cannot be empty"
+        with raises_message(ValueError, message):
             run_and_capture(["\n"])
-        with pytest.raises(ValueError, match=message):
+        with raises_message(ValueError, message):
             run_and_capture(["   ", "\t"])
 
     def test_a_short_line_is_padded_on_the_right(self) -> None:

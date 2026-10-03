@@ -21,6 +21,7 @@ from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.randomness import Randomness, draw
+from esolangs.interpreters.source_hints import syntax_error
 
 #: ``?`` picks one, in the order the shell's draw maps to: right, down, left, up.
 _DIRECTIONS = ((1, 0), (0, 1), (-1, 0), (0, -1))
@@ -185,9 +186,15 @@ class _Machine:
         self, code: Sequence[str], io: IO, rng: Randomness | None = None
     ) -> None:
         if not code or not (width := max(map(len, code), default=0)):
-            raise ValueError("Befunge program cannot be empty")
+            raise syntax_error(
+                "Befunge program cannot be empty",
+                "provide a nonempty grid; @ halts immediately",
+            )
         if width > _WIDTH or len(code) > _HEIGHT:
-            raise ValueError("Befunge program exceeds its 80x25 playfield")
+            raise syntax_error(
+                "Befunge program exceeds its 80x25 playfield",
+                "keep each row at most 80 characters and the grid at most 25 rows",
+            )
         rows = [row.ljust(_WIDTH) for row in code]
         rows.extend(" " * _WIDTH for _ in range(_HEIGHT - len(rows)))
         self.grid = tuple(tuple(row) for row in rows)

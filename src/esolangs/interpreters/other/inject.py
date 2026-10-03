@@ -34,6 +34,7 @@ from esolangs._drive import drive
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.source_hints import syntax_error
 
 # A label line is exactly a name and a semicolon; the semicolon is not part
 # of the name.  Surrounding whitespace is not significant -- the wiki's own
@@ -54,13 +55,19 @@ def _spans(lines: list[str]) -> dict[str, tuple[int, int]]:
             continue
         name = match.group(1)
         if name in spans:
-            raise ValueError(f"label written more than twice: {name}")
+            raise syntax_error(
+                f"label written more than twice: {name}",
+                "use each label exactly twice to open and close its block",
+            )
         if name in opened:
             spans[name] = (opened.pop(name), i)
         else:
             opened[name] = i
     if opened:
-        raise ValueError(f"unclosed label-block: {sorted(opened)[0]}")
+        raise syntax_error(
+            f"unclosed label-block: {sorted(opened)[0]}",
+            "repeat the opening name; to close its label block",
+        )
     return spans
 
 
@@ -80,7 +87,10 @@ type _State = tuple[Sequence[str], _Spans, int, bool]
 def _span(spans: _Spans, name: str) -> tuple[int, int]:
     """Return ``name``'s delimiters, rejecting a label that has none."""
     if name not in spans:
-        raise ValueError(f"unknown label: {name}")
+        raise syntax_error(
+            f"unknown label: {name}",
+            "declare a block with this label before referencing it",
+        )
     return spans[name]
 
 
@@ -154,13 +164,19 @@ def _injected(state: _State, rest: str) -> _State:
     """Run ``inject X=S/R``: substitute ``S`` with ``R`` in block ``X``."""
     name, sep, expression = rest.partition("=")
     if not sep:
-        raise ValueError(f"inject needs a label and a regex: {rest}")
+        raise syntax_error(
+            f"inject needs a label and a regex: {rest}",
+            "write inject <label>=<regex>/<replacement>",
+        )
     # The pattern cannot contain a slash, so the *first* slash is the
     # separator and everything after it is the replacement -- which may
     # itself contain slashes.
     pattern, sep, replacement = expression.partition("/")
     if not sep:
-        raise ValueError(f"inject needs a replacement: {rest}")
+        raise syntax_error(
+            f"inject needs a replacement: {rest}",
+            ("put / and the replacement after the regex, for example inject data=x/y"),
+        )
     try:
         compiled = re.compile(pattern)
     except re.error as exc:
@@ -201,7 +217,9 @@ def _advance(state: _State, line_in: str | None = None) -> tuple[_State, list[st
         lines, spans, ind, done = state
     elif command == "skip":
         if rest:
-            raise ValueError(f"skip takes no argument: {line}")
+            raise syntax_error(
+                f"skip takes no argument: {line}", "write skip with no operands"
+            )
         return _skipped(state), output
     elif command == "skipif":
         if len(_contents(state, rest)) >= 1:
@@ -210,7 +228,10 @@ def _advance(state: _State, line_in: str | None = None) -> tuple[_State, list[st
         left, _, right = rest.partition(" ")
         right = right.strip()
         if not left or not right:
-            raise ValueError(f"skipq takes two labels: {line}")
+            raise syntax_error(
+                f"skipq takes two labels: {line}",
+                "write skipq <first label> <second label>",
+            )
         if _contents(state, left) == _contents(state, right):
             return _skipped(state), output
     # Anything else is a *data* line and executes as a no-op.  This is

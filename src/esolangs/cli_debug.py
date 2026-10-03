@@ -29,6 +29,7 @@ from esolangs.cli_hints import (
 from esolangs.cli_io import _null_context, _read_program, _read_stdin, _UnboundedNotice
 from esolangs.debugger import make_debugger
 from esolangs.exceptions import EsolangError, TemplateError
+from esolangs.interpreters.source_hints import error_text
 from esolangs.tui import breakpoint_for, run_tui
 
 
@@ -53,7 +54,7 @@ def _run_tui_session(
     try:
         run_tui(language, program, stdin, stop=stop, at=at, watch=watch)
     except ValueError as exc:
-        _fail(str(exc))
+        _fail(exc)
 
 
 def _debug(rest: list[str]) -> None:
@@ -132,7 +133,7 @@ def _debug(rest: list[str]) -> None:
     except TemplateError as exc:
         _fail(_template_hint(exc, language))
     except EsolangError as exc:
-        _fail(str(exc))
+        _fail(exc)
     except ValueError as exc:
         _fail(f"{language}: {exc}")
     breakpoints_set = False
@@ -180,7 +181,7 @@ def _debug(rest: list[str]) -> None:
         with _UnboundedNotice("debug") if not bounded else _null_context():
             reason = dbg.run(steps, limit)
     except Exception as exc:
-        fault = f"{type(exc).__name__}: {exc}"
+        fault = f"{type(exc).__name__}: {error_text(exc)}"
 
     if breakpoints_set and reason != "breakpoint":
         # A breakpoint that never fires looks exactly like a program that

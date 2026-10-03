@@ -19,6 +19,7 @@ from esolangs.cli_hints import (
     _did_you_mean,
 )
 from esolangs.exceptions import EsolangError
+from esolangs.interpreters.source_hints import error_text
 from esolangs.tools.wrap import DEFAULT_WIDTH
 
 #: Flags every subcommand accepts, so a near miss on one of them is
@@ -41,7 +42,9 @@ _ARGUMENTS = {
 }
 
 
-def _fail(message: str, code: int = 2) -> None:
+def _fail(message: str | BaseException, code: int = 2) -> None:
+    if isinstance(message, BaseException):
+        message = error_text(message)
     sys.stderr.write(message + "\n")
     sys.exit(code)
 
@@ -321,7 +324,7 @@ def _errors(code: int = 2) -> Iterator[None]:
     try:
         yield
     except EsolangError as exc:
-        _fail(str(exc), code)
+        _fail(exc, code)
 
 
 def _integer(

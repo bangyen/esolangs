@@ -13,6 +13,8 @@ import random
 import secrets
 from typing import Protocol
 
+from esolangs.interpreters.source_hints import syntax_error
+
 
 class Randomness(Protocol):
     """A source of small random integers, standing in for ``secrets``."""
@@ -46,7 +48,10 @@ class Seeded:
     def randbelow(self, upper: int) -> int:
         """Return a value in ``range(upper)``; an empty range raises."""
         if upper <= 0:
-            raise ValueError(f"upper bound must be positive, got {upper}")
+            raise syntax_error(
+                f"upper bound must be positive, got {upper}",
+                "use an upper bound of at least 1",
+            )
         return self._random.randrange(upper)
 
 
@@ -67,7 +72,10 @@ class FirstDraw:
     def randbelow(self, upper: int) -> int:
         """Return the chosen value once, then the seeded or pinned draws."""
         if upper <= 0:
-            raise ValueError(f"upper bound must be positive, got {upper}")
+            raise syntax_error(
+                f"upper bound must be positive, got {upper}",
+                "use an upper bound of at least 1",
+            )
         if self._first is not None:
             first, self._first = self._first, None
             return first % upper

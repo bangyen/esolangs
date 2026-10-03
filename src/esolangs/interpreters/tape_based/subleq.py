@@ -13,6 +13,7 @@ from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.memory import parse_int_memory
+from esolangs.interpreters.source_hints import syntax_error
 
 type _State = tuple[int]
 
@@ -67,7 +68,10 @@ class _Machine:
 
     def _read(self, address: int) -> int:
         if address < 0:
-            raise ValueError(f"invalid Subleq data address {address}")
+            raise syntax_error(
+                f"invalid Subleq data address {address}",
+                ("use a nonnegative data address; -1 is reserved for I/O"),
+            )
         return self.cells[address] if address < len(self.cells) else 0
 
     def step(self) -> None:
@@ -78,7 +82,13 @@ class _Machine:
         a, b, c = self.cells[self.pc : self.pc + 3]
         if a == -1:
             if b < 0:
-                raise ValueError("Subleq input requires a nonnegative destination")
+                raise syntax_error(
+                    "Subleq input requires a nonnegative destination",
+                    (
+                        "use -1 as the input operand and a valid nonnegative "
+                        "destination address"
+                    ),
+                )
             check_address(b, "Subleq")
             values = (self.io.input_char() % 256, 0)
         elif b == -1:

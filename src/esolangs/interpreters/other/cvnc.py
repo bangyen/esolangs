@@ -38,6 +38,7 @@ from esolangs._drive import drive
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.source_hints import syntax_error
 
 __all__ = ["run"]
 
@@ -125,7 +126,13 @@ def _tokenize(code: str) -> list[str]:
         if char == "g":
             char = _SCRIPT_G
         if char not in _CONSONANTS and char not in _NASALS and char not in _VOWELS:
-            raise ValueError(f"not a CV(N)(C) symbol: {char!r}")
+            raise syntax_error(
+                f"not a CV(N)(C) symbol: {char!r}",
+                (
+                    "use IPA command symbols in CV(N)(C) syllables; spaces and "
+                    "tabs are not separators"
+                ),
+            )
         tokens.append(char)
         index += 1
     return tokens
@@ -138,10 +145,19 @@ def _syllabify(tokens: list[str]) -> list[int]:
     while index < len(tokens):
         starts.append(index)
         if tokens[index] not in _CONSONANTS:
-            raise ValueError(f"syllable must start with a consonant: {tokens[index]!r}")
+            raise syntax_error(
+                f"syllable must start with a consonant: {tokens[index]!r}",
+                (
+                    "start each syllable with a non-nasal consonant followed by "
+                    "a vowel, for example si"
+                ),
+            )
         index += 1
         if index >= len(tokens) or tokens[index] not in _VOWELS:
-            raise ValueError("syllable must have a vowel after its consonant")
+            raise syntax_error(
+                "syllable must have a vowel after its consonant",
+                "follow the consonant with i, ə, æ, o or u",
+            )
         index += 1
         if index < len(tokens) and tokens[index] in _NASALS:
             index += 1
@@ -165,12 +181,17 @@ def _match_loops(tokens: list[str]) -> dict[int, int]:
             stack.append(index)
         elif token == _LOOP_END:
             if not stack:
-                raise ValueError("loop end with no matching start")
+                raise syntax_error(
+                    "loop end with no matching start",
+                    "place a matching ɰ or ɰ̊ loop opener before ʋ",
+                )
             start = stack.pop()
             pairs[start] = index
             pairs[index] = start
     if stack:
-        raise ValueError("loop start with no matching end")
+        raise syntax_error(
+            "loop start with no matching end", "close each ɰ or ɰ̊ loop with ʋ"
+        )
     return pairs
 
 
@@ -392,7 +413,10 @@ class _Machine:
         """Parse ``code`` into commands and syllables, ready to step."""
         self.tokens = _tokenize(code.replace("\n", ""))
         if not self.tokens:
-            raise ValueError("program is empty")
+            raise syntax_error(
+                "program is empty",
+                "provide at least one CV(N)(C) syllable, for example si",
+            )
         self.starts = _syllabify(self.tokens)
         self.pairs = _match_loops(self.tokens)
         # ``ɹ`` indexes the source by codepoint, so the token that each

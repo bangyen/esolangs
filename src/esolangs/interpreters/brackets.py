@@ -12,10 +12,15 @@ itself; all build a table once at load, never a scan per jump.
 
 from __future__ import annotations
 
+from esolangs.interpreters.source_hints import syntax_error
 
-def unmatched(char: str, position: int) -> ValueError:
+
+def unmatched(char: str, position: int, hint: str | None = None) -> ValueError:
     """Build the rejection every static bracket scan raises."""
-    return ValueError(f"unmatched {char!r} at position {position}")
+    return syntax_error(
+        f"unmatched {char!r} at position {position}",
+        hint or "pair each loop opener with its corresponding closing delimiter",
+    )
 
 
 def match_brackets(
@@ -33,10 +38,16 @@ def match_brackets(
             stack.append(i)
         elif char == close_char:
             if not stack:
-                raise unmatched(close_char, i)
+                raise unmatched(
+                    close_char,
+                    i,
+                    f"put a matching {open_char!r} before this {close_char!r}",
+                )
             open_i = stack.pop()
             res[open_i] = i
             res[i] = open_i
     if stack:
-        raise unmatched(open_char, stack[-1])
+        raise unmatched(
+            open_char, stack[-1], f"close this {open_char!r} with {close_char!r}"
+        )
     return res

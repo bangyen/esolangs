@@ -20,6 +20,7 @@ from __future__ import annotations
 from esolangs._drive import drive
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.source_hints import syntax_error
 
 #: The container values, as an immutable name->value mapping in name order,
 #: so one logical set of values has exactly one spelling.
@@ -124,7 +125,13 @@ class _Machine:
                     self.obj.append(Con(line))
             elif line:
                 if not self.obj:
-                    raise ValueError("rule line before any container declaration")
+                    raise syntax_error(
+                        "rule line before any container declaration",
+                        (
+                            "declare a container ending in a colon before its "
+                            "rules, for example name:"
+                        ),
+                    )
                 self.obj[-1].add(line)
 
         self.state: _State = (tuple(sorted(start.items())), (), None, 0)

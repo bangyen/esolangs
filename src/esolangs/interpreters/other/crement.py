@@ -20,6 +20,7 @@ from esolangs._drive import drive
 from esolangs.exceptions import HaltError, ProgramError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.source_hints import syntax_error
 
 _NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 _OPERATOR = re.compile(r"([+-])([ADJ])")
@@ -52,7 +53,11 @@ def _number(source: str, labels: dict[str, int], here: int) -> int:
     while position < len(source):
         match = _TERM.match(source, position)
         if match is None or (position and not match.group(1)):
-            raise ProgramError(f"invalid number: {source}")
+            raise syntax_error(
+                f"invalid number: {source}",
+                "write signed sums of integers, labels or @, for example label+1",
+                error_type=ProgramError,
+            )
         sign, atom = match.groups()
         if atom == "@":
             term = here
@@ -62,12 +67,20 @@ def _number(source: str, labels: dict[str, int], here: int) -> int:
             try:
                 term = labels[atom]
             except KeyError:
-                raise ProgramError(f"undefined label: {atom}") from None
+                raise syntax_error(
+                    f"undefined label: {atom}",
+                    "define the label with :name before referencing it",
+                    error_type=ProgramError,
+                ) from None
         value += -term if sign == "-" else term
         position = match.end()
         terms += 1
     if not terms:
-        raise ProgramError("a number must contain at least one term")
+        raise syntax_error(
+            "a number must contain at least one term",
+            "supply an integer, label or @ as the numeric term",
+            error_type=ProgramError,
+        )
     return value
 
 
@@ -91,20 +104,36 @@ def _parse(code: str) -> tuple[_Instruction, ...]:
         if tokens[0].startswith(":"):
             label = tokens[0][1:]
             if not _NAME.fullmatch(label):
-                raise ProgramError(f"invalid label: {label}")
+                raise syntax_error(
+                    f"invalid label: {label}",
+                    "use an identifier starting with a letter or underscore after :",
+                    error_type=ProgramError,
+                )
             if label in labels:
-                raise ProgramError(f"duplicate label: {label}")
+                raise syntax_error(
+                    f"duplicate label: {label}",
+                    "give each label a unique name",
+                    error_type=ProgramError,
+                )
             labels[label] = address
 
     program = []
     for address, tokens in enumerate(lines):
         fields = tokens[1:] if tokens[0].startswith(":") else tokens
         if len(fields) != 3:
-            raise ProgramError(f"instruction {address} must have three fields")
+            raise syntax_error(
+                f"instruction {address} must have three fields",
+                "write an opcode, address and data, for example +J 1 0",
+                error_type=ProgramError,
+            )
         operator, address_source, data_source = fields
         match = _OPERATOR.fullmatch(operator)
         if match is None:
-            raise ProgramError(f"invalid opcode: {operator}")
+            raise syntax_error(
+                f"invalid opcode: {operator}",
+                "use +A, -A, +D, -D, +J or -J as the opcode",
+                error_type=ProgramError,
+            )
         sign, opcode = match.groups()
         program.append(
             _Instruction(

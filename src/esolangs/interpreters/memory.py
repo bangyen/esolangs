@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from esolangs.interpreters.source_hints import syntax_error
+
 
 def parse_int_memory(code: str) -> list[int]:
     """Split ``code`` into a list of whitespace-separated integers.
@@ -18,5 +20,8 @@ def parse_int_memory(code: str) -> list[int]:
             try:
                 tokens.append(int(tok))
             except ValueError:
-                raise ValueError(f"malformed memory token: {tok!r}") from None
+                raise syntax_error(
+                    f"malformed memory token: {tok!r}",
+                    "write whitespace-separated decimal integers; # starts a comment",
+                ) from None
     return tokens

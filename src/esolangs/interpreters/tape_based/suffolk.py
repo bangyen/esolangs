@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.source_hints import syntax_error
 
 #: ``(ind, ptr, acc, tape)``: an immutable value, rebound per step.  No
 #: halted flag: Suffolk has no instruction-level halt.
@@ -59,7 +60,13 @@ class _Machine:
         ``code`` must be non-empty.
         """
         if not code:
-            raise ValueError("Suffolk program cannot be empty")
+            raise syntax_error(
+                "Suffolk program cannot be empty",
+                (
+                    "provide a nonempty program; , reads input and ends the "
+                    "scripted run at EOF"
+                ),
+            )
         self.io = io
         self.code = code
         self.state: _State = (0, 0, 0, (0,))

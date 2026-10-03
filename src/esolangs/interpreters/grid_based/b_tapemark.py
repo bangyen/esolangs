@@ -19,6 +19,7 @@ from dataclasses import dataclass
 from esolangs._drive import drive
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.source_hints import syntax_error
 
 type _Point = tuple[int, int]
 
@@ -135,11 +136,23 @@ def _load(source: str) -> _State:
                 if char != " ":
                     cells[x, y] = char
             else:
-                raise ValueError(f"invalid B-tapemark symbol: {char!r}")
+                raise syntax_error(
+                    f"invalid B-tapemark symbol: {char!r}",
+                    (
+                        "use B-tapemark commands, digits or uppercase letters; put "
+                        "comments inside double quotes"
+                    ),
+                )
     if quoted:
-        raise ValueError("unmatched quote in B-tapemark program")
+        raise syntax_error(
+            "unmatched quote in B-tapemark program",
+            "close each double-quoted comment with another double quote",
+        )
     if len(starts) != 1:
-        raise ValueError("B-tapemark program needs exactly one start marker")
+        raise syntax_error(
+            "B-tapemark program needs exactly one start marker",
+            "keep exactly one direction start marker outside comments",
+        )
     point, direction = starts[0]
     return _State(0, (point, point), direction, (_Grid(cells), _Grid({})))
 
@@ -168,7 +181,10 @@ def _advance(
         output = data_symbol
     elif command == "-" and data_symbol == " ":
         if input_symbol is None:
-            raise ValueError("input symbol required for '-' command")
+            raise syntax_error(
+                "input symbol required for '-' command",
+                "supply a character of input before executing -",
+            )
         changed = _write(grids[data], positions[data], input_symbol)
         grids = (grids[0], changed) if data else (changed, grids[1])
     elif command == "*":

@@ -50,7 +50,7 @@ def _judge(language: str, output: str, mode: object) -> str:
     try:
         return read_answer(language, output)
     except EsolangError as exc:
-        _fail(str(exc), 1)
+        _fail(exc, 1)
         raise  # pragma: no cover - unreachable; _fail exits
 
 
@@ -203,12 +203,12 @@ def _run(rest: list[str]) -> None:
         # shared exit 1, which made the four termination languages'
         # answer indistinguishable from a crash.
         _emit_partial(exc)
-        _fail(str(exc), _TIMEOUT_EXIT)
+        _fail(exc, _TIMEOUT_EXIT)
     except EsolangError as exc:
         # A usage error (an unknown language) is still 2; anything the
         # program itself did is the program's failure, and exits 1.
         _emit_partial(exc)
-        _fail(str(exc), _exit_code(exc))
+        _fail(exc, _exit_code(exc))
     if judge:
         print(_judge(language, output, mode))
         return

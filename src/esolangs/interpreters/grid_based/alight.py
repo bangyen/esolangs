@@ -80,7 +80,10 @@ from typing import Literal, TypeGuard, cast
 from esolangs._drive import drive
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
+from esolangs.interpreters.grid_based._alight_helpers import _freeze, _grid
+from esolangs.interpreters.grid_based._alight_hints import Hint
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.source_hints import keyword_hint, syntax_error
 
 #: Headings as ``(drow, dcol)`` in screen coordinates -- row grows downward,
 #: so a *left* turn (counter-clockwise on the page) takes east to north.
@@ -184,18 +187,6 @@ class _Walker:
         )
 
 
-def _grid(code: list[str]) -> list[str]:
-    """Pad ``code`` to a rectangle, so every in-bounds cell is a character.
-
-    Ragged lines are the norm -- the wiki's examples have a row whose only
-    content is a trailing space, and one that is short of the widest -- and
-    padding once here is what lets the walker index a cell without a length
-    test at every read.
-    """
-    width = max((len(line) for line in code), default=0)
-    return [line.ljust(width) for line in code]
-
-
 def _find(grid: list[str], word: str) -> tuple[int, int, _Heading] | None:
     """Return where ``word`` is spelled on the grid, and the heading it runs in.
 
@@ -268,7 +259,7 @@ def _scan(
         row += drow
         col += dcol
     if quoted or escape:
-        raise ValueError("unterminated string literal")
+        raise Hint.SCANNED_LITERAL.error("unterminated string literal")
     # Stepped off the grid: back up onto the last in-bounds cell, which is
     # the pivot an edge-terminated command ends on.
     return "".join(text), row - drow, col - dcol
@@ -333,7 +324,7 @@ def _parse_operand(p: _Parser) -> "_Expr":
     """Parse one operand: a literal, a list, a ``!``, a call, or a variable."""
     c = p.peek()
     if c == "":
-        raise ValueError("expression ends early")
+        raise Hint.OPERAND.error("expression ends early")
     if c == "!":
         p.pos += 1
         return ("not", _parse_operand(p))
@@ -345,7 +336,7 @@ def _parse_operand(p: _Parser) -> "_Expr":
             # terminator or hits the grid edge, where ``_scan`` raises
             # "unterminated string literal".  Kept as a guard because
             # ``_parse_operand`` is also called on hand-built text.
-            raise ValueError("character literal ends early")
+            raise Hint.CHARACTER_LITERAL.error("character literal ends early")
         p.pos += 1
         return ("num", float(ord(p.text[p.pos - 1])))
     if c == '"':
@@ -360,7 +351,7 @@ def _parse_operand(p: _Parser) -> "_Expr":
             # never closes runs to the grid edge and is refused there with
             # this message.  Kept because the parser is also called on
             # hand-built text, where nothing has scanned it.
-            raise ValueError("unterminated string literal")
+            raise Hint.STRING_LITERAL.error("unterminated string literal")
         p.pos += 1
         return ("list", chars)
     if c == "[":
@@ -370,7 +361,7 @@ def _parse_operand(p: _Parser) -> "_Expr":
         return ("num", _parse_number(p))
     name = p.word()
     if not name:
-        raise ValueError(f"cannot parse operand at {p.text[p.pos :]!r}")
+        raise Hint.OPERAND_KIND.error(f"cannot parse operand at {p.text[p.pos :]!r}")
     if p.peek() == "{":
         p.pos += 1
         return ("call", name, _parse_args(p, "}"))
@@ -388,7 +379,9 @@ def _parse_number(p: _Parser) -> float:
     try:
         return float(p.text[start : p.pos])
     except ValueError:
-        raise ValueError(f"bad number literal {p.text[start : p.pos]!r}") from None
+        raise Hint.NUMBER.error(
+            f"bad number literal {p.text[start : p.pos]!r}"
+        ) from None
 
 
 def _parse_args(p: _Parser, close: str) -> list["_Expr"]:
@@ -404,7 +397,7 @@ def _parse_args(p: _Parser, close: str) -> list["_Expr"]:
             p.pos += 1
             return args
         if c != ",":
-            raise ValueError(f"expected {close!r} or ',' in {p.text!r}")
+            raise Hint.ARGUMENTS.error(f"expected {close!r} or ',' in {p.text!r}")
         p.pos += 1
 
 
@@ -577,10 +570,10 @@ class _Machine:
         self.io = io
         self.halted = False
         if not self.grid or not self.grid[0]:
-            raise ValueError("empty program")
+            raise Hint.PROGRAM.error("empty program")
         start = _find(self.grid, "begin")
         if start is None:
-            raise ValueError("program has no 'begin'")
+            raise Hint.ENTRY.error("program has no 'begin'")
         row, col, heading = start
         drow, dcol = heading
         # The walk resumes from just past ``begin``'s last character; the
@@ -807,7 +800,9 @@ class _Machine:
         p.word()
         expr = _parse_expr(p)
         if not p.at_end():
-            raise ValueError(f"trailing text after {word!r} expression: {text!r}")
+            raise Hint.EXPRESSION.error(
+                f"trailing text after {word!r} expression: {text!r}"
+            )
         return self._eval(self.walker.pending or expr)
 
     def _exec(self, text: str, word: str) -> None:
@@ -817,7 +812,7 @@ class _Machine:
             # cell between two semicolons is legal there, which is what lets
             # a vertical command carry a blank row.
             if text.strip():
-                raise ValueError(f"cannot parse command {text!r}")
+                raise Hint.COMMAND.error(f"cannot parse command {text!r}")
             return
         if word == "var":
             name = self._name(text)
@@ -834,7 +829,7 @@ class _Machine:
                 raise HaltError(f"no such variable: {name!r}")
             expr = _parse_expr(p)
             if not p.at_end():
-                raise ValueError(f"trailing text in set: {text!r}")
+                raise Hint.ASSIGNMENT.error(f"trailing text in set: {text!r}")
             self.vars[name] = self._eval(self.walker.pending or expr)
             return
         if word == "inp":
@@ -865,7 +860,14 @@ class _Machine:
                 else:
                     self._call(word, [self._eval(a) for a in args])
                 return
-        raise ValueError(f"unknown command {word!r} in {text!r}")
+        raise syntax_error(
+            f"unknown command {word!r} in {text!r}",
+            keyword_hint(
+                word,
+                ("var", "set", "inp", "out", "wait"),
+                "use var/set/inp/out/wait or a function call name{arguments}",
+            ),
+        )
 
     def _name(self, text: str) -> str:
         """Read the single variable name a ``var``/``inp``/``out`` names."""
@@ -874,12 +876,14 @@ class _Machine:
         name = p.word()
         self._check_name(name)
         if not p.at_end():
-            raise ValueError(f"trailing text after variable name: {text!r}")
+            raise Hint.VARIABLE_OPERANDS.error(
+                f"trailing text after variable name: {text!r}"
+            )
         return name
 
     def _check_name(self, name: str) -> None:
         if not name or not name.isalnum() or name in _RESERVED:
-            raise ValueError(f"bad variable name {name!r}")
+            raise Hint.VARIABLE_NAME.error(f"bad variable name {name!r}")
 
     def _existing(self, text: str) -> str:
         name = self._name(text)
@@ -986,7 +990,7 @@ class _Machine:
             return "nil"
         expr = _parse_expr(p)
         if not p.at_end():
-            raise ValueError(f"trailing text after end value: {text!r}")
+            raise Hint.RETURN_VALUE.error(f"trailing text after end value: {text!r}")
         return self._eval(self.walker.pending or expr)
 
 
@@ -1163,26 +1167,6 @@ def _first_call_or_none(expr: "_Expr", name: str) -> "_Expr | None":
         if found is not None:
             return found
     return expr if tag == "call" and expr[1] == name else None
-
-
-def _freeze(value: object) -> object:
-    """Return a hashable copy of a value, for :meth:`_Machine.snapshot`.
-
-    Variables hold lists, which are not hashable, and a snapshot that
-    dropped them would call two different states equal -- so the freeze is
-    recursive rather than a ``str()``.
-    """
-    if isinstance(value, dict):
-        return tuple(sorted((k, _freeze(v)) for k, v in value.items()))
-    if isinstance(value, list):
-        return tuple(_freeze(v) for v in value)
-    if isinstance(value, tuple):
-        # A pending expression is a tuple *tree* whose leaves can be live
-        # lists -- a ``("list", [...])`` node, or a ``("val", <list>)`` an
-        # evaluated ``at`` left behind.  Returning it unchanged would bank
-        # a snapshot that a later mutation silently rewrites.
-        return tuple(_freeze(v) for v in value)
-    return value
 
 
 def run(code: list[str] | str, io: IO) -> None:

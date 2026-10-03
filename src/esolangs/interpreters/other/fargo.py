@@ -37,6 +37,7 @@ from esolangs._drive import drive
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.source_hints import syntax_error
 
 # The wiki renders the truth machine with zero-width spaces inside two of
 # its lines; they are invisible presentation, not syntax, so the tokenizer
@@ -347,7 +348,10 @@ class _Machine:
         token.
         """
         if not definition.code:
-            raise ValueError(f"function {definition.name!r} has no outer call")
+            raise syntax_error(
+                f"function {definition.name!r} has no outer call",
+                "give the function body one complete prefix call",
+            )
         owed = 1
         for index, token in enumerate(definition.code):
             bare = _bare_name(token)
@@ -366,11 +370,15 @@ class _Machine:
                 arity = 0
             owed += arity - 1
             if owed == 0 and index != len(definition.code) - 1:
-                raise ValueError(
-                    f"function {definition.name!r} has more than one outer call"
+                raise syntax_error(
+                    f"function {definition.name!r} has more than one outer call",
+                    "nest calls as arguments of one outer prefix call",
                 )
         if owed != 0:
-            raise ValueError(f"function {definition.name!r} has no outer call")
+            raise syntax_error(
+                f"function {definition.name!r} has no outer call",
+                "supply every argument required by the outer prefix call",
+            )
 
     def step(self) -> None:
         """Execute one command, advancing the machine."""
@@ -473,7 +481,10 @@ class _Machine:
         :meth:`_check_outer_call` rejected every definition that could.
         """
         if frame.pending:
-            raise ValueError("call wants more args")
+            raise syntax_error(
+                "call wants more args",
+                "supply every argument required by the pending prefix call",
+            )
         self.frames.pop()
         if self.frames:
             self._supply(self.frames[-1], frame.result)

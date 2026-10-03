@@ -10,6 +10,7 @@ from operator import is_not
 from typing import cast
 
 from esolangs.exceptions import MissingDependencyError, ProgramError
+from esolangs.interpreters.source_hints import syntax_error
 
 from . import png
 
@@ -47,7 +48,13 @@ def _freeze_rows(rows: Rows) -> Rows:
                 or not 0 <= value <= 255
                 for value in frozen
             ):
-                raise ValueError("Raster pixels must be 8-bit RGB triples")
+                raise syntax_error(
+                    "Raster pixels must be 8-bit RGB triples",
+                    (
+                        "use three integer RGB channels from 0 through 255 for "
+                        "every pixel"
+                    ),
+                )
             if frozen_row is None and frozen is not pixel:
                 frozen_row = list(takewhile(partial(is_not, pixel), row))
             if frozen_row is not None:
@@ -65,7 +72,10 @@ def _freeze_rows(rows: Rows) -> Rows:
     result = tuple(frozen_rows)
     width = len(result[0]) if result else 0
     if not result or not width or any(len(row) != width for row in result):
-        raise ValueError("Raster needs non-empty equal-width rows")
+        raise syntax_error(
+            "Raster needs non-empty equal-width rows",
+            ("provide at least one nonempty row and keep all rows the same width"),
+        )
     return result
 
 
@@ -103,7 +113,10 @@ class Raster:
         """Validate the rectangular raster shape."""
         if self._rows is None:
             if self._materialize is None:
-                raise ValueError("Raster needs pixels or a materializer")
+                raise syntax_error(
+                    "Raster needs pixels or a materializer",
+                    "supply RGB pixels or a function that materializes them",
+                )
             return
         object.__setattr__(self, "_rows", _freeze_rows(self._rows))
 
@@ -190,7 +203,12 @@ class Raster:
         except MissingDependencyError:
             raise
         except Exception as exc:
-            raise ProgramError(f"not a readable PNG: {exc}") from exc
+            error = ProgramError(f"not a readable PNG: {exc}")
+            for note in getattr(exc, "__notes__", ()):
+                error.add_note(note)
+            if not getattr(error, "__notes__", ()):
+                error.add_note("hint: restore or re-export the drawing as a valid PNG")
+            raise error from exc
 
     def to_png(self) -> bytes:
         """Encode this raster as PNG bytes."""
