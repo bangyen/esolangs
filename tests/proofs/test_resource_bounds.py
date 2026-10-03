@@ -8,9 +8,10 @@ from scripts.screens.resources import audit, corpus
 @pytest.mark.medium
 @pytest.mark.parametrize("language", ["Sophie", "BFStack"])
 @pytest.mark.parametrize("n", [1, 3, 7, 8])
-def test_resource_bounds(language: str, n: int) -> None:
-    for table in corpus(n).values():
-        audit(language, n, table)
+@pytest.mark.parametrize("family", ["zero", "one", "parity", "dense"])
+def test_resource_bounds(language: str, n: int, family: str) -> None:
+    result = audit(language, n, corpus(n)[family])
+    assert result["source_utf8_bits"] == 8 * result["source_units"]
 
 
 @pytest.mark.medium

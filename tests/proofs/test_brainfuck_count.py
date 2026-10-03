@@ -75,6 +75,87 @@ _REWRITES = (
 )
 
 
+def _regular_rewrite_variants() -> list[tuple[str, str]]:
+    """Instantiate all fifteen monitors with their stated body restrictions."""
+    import re
+
+    from tests.proofs._brainfuck_count import regular_patterns
+
+    stationary_rf = ("", "+-", ".", "[-]", ".[--]", ".[-]")
+    stationary_io = ("", ",", "[,-]", ".,", ",[-]", ".[,-]")
+    confined_rf = ("", ".", "[-]", ">+<", ".>--<", ">.+<")
+    confined_io = ("", ",", "[,-]", ">+<", ".>,<", ">.,+<")
+    silent = ("", "+", "[--]", ">+<", "+[-]", ">-<")
+    halting = ("", "+", "[-]", ">+<", "+[-]", ">+-<")
+    readfree = ("", "-", "+.", ">+<", "[-]", "<>")
+    body = ("", "+", ",", ">+<", "[-]", "<,>")
+    cases = []
+    for i in range(len(body)):
+        s0, s1 = stationary_rf[i], stationary_io[i]
+        f0, f1, ni, h = confined_rf[i], confined_io[i], silent[i], halting[i]
+        loop = "[" + ("", ",", ".-", "+-", ",.-", "--")[i] + "]"
+        p0, p1 = ".>" + f0 + "<", ".>" + f1 + "<"
+        residue = "+" * (256 if i == 5 else i)
+        command = ".+-"[i % 3]
+        increment = "+-"[i % 2]
+        variants = [
+            (">[]<" + s0 + ">", s0 + ">[]"),
+            ("[]>" + f0 + "<", ">" + f0 + "<[]"),
+            ("[-]>" + f1 + "<", ">" + f1 + "<[-]"),
+            (">[-]<" + s1 + ">", s1 + ">[-]"),
+            (">" + ni + "<" + command, command + ">" + ni + "<"),
+            (">" + h + "<,", ",>" + h + "<"),
+            (">" + f1 + "<" + increment, increment + ">" + f1 + "<"),
+            ("[" + "+" * i + "[-]" + residue + "]", "[-]" if i in (0, 5) else "[]"),
+            (loop + ">" + h + "<", ">" + h + "<" + loop),
+            (">" + loop + "<" + "+" * i + ">", "+" * i + ">" + loop),
+            (
+                "[" + readfree[i] + "[" + readfree[-i - 1] + "].." + increment + ".]",
+                "[]",
+            ),
+            (">" + f1 + "<>", ">" + f1),
+            ("[-]" + p1 + "[.,].", "[-]" + p1 + "."),
+            ("[" + p0 + "[],.>]", "[]"),
+            ("[." + body[i] + "].", ".[" + body[i] + ".]"),
+        ]
+        for pattern, (left, right) in zip(regular_patterns(), variants, strict=True):
+            assert re.search(pattern, left), (pattern, left)
+            assert left != right
+            # Every instance decreases the paper's shortlex order.
+            order = {char: index for index, char in enumerate(".,-+<>[]")}
+            assert (len(right), tuple(order[c] for c in right)) < (
+                len(left),
+                tuple(order[c] for c in left),
+            )
+        cases.extend(variants)
+    return cases
+
+
+def _local_rewrite_variants() -> list[tuple[str, str]]:
+    """Exercise cancellation, dead stores, preserved-cell loops and excursions."""
+    cases = [(word, "") for word in ("+-", "-+", "><")]
+    cases += [(word, "[-]") for word in ("+[-]", "-[-]")]
+    cases += [(word, ",") for word in ("+,", "-,", "[-],")]
+    cases += [("[" + "+" * k + "]", "[" + "-" * k + "]") for k in range(1, 5)]
+    cases.append(("[].", ".[]"))
+    preserved = ("", ".", "+-", ">+<", ".>.<")
+    for first in preserved:
+        cases.append(("[-]" + first + "[+,.]", "[-]" + first))
+        if first:
+            cases.extend([("[" + first + "]", "[]"), ("[]" + first, first + "[]")])
+        for second in preserved:
+            cases.append(("[" + first + "[" + second + "],.>]", "[]"))
+    for excursion in (">+<", ">>+<<", ">+-<"):
+        cases.extend((excursion + command, command + excursion) for command in ".,+-")
+        cases.append(("[-]" + excursion, excursion + "[-]"))
+    for excursion in (">.<", ">,<", ">.,<"):
+        cases.extend((excursion + command, command + excursion) for command in "+-")
+        cases.append(("[-]" + excursion, excursion + "[-]"))
+    for body in ("", "+", ".,", ">+<"):
+        cases.append((">" + body + "<>", ">" + body))
+    return cases
+
+
 @pytest.mark.medium
 @pytest.mark.parametrize(
     "tape", [(0, 1, 2, 0), (1, 0, 2, 0), (2, 255, 0, 1), (255, 2, 1, 0)]
@@ -86,7 +167,11 @@ def test_regular_rewrite_execution(
 ) -> None:
     prefix = ",>,>,>,<<<" + ">" * start
     stdin = "".join(chr(byte) for byte in (*tape, *remaining))
-    for left, right in _REWRITES:
+    for left, right in (
+        *_REWRITES,
+        *_regular_rewrite_variants(),
+        *_local_rewrite_variants(),
+    ):
         lhs = _observe(prefix + left + ".<.>.", stdin)
         rhs = _observe(prefix + right + ".<.>.", stdin)
         assert lhs == rhs, (left, right, tape, start, remaining, lhs, rhs)
@@ -99,6 +184,15 @@ def test_io_commutation_negative_controls() -> None:
     assert _observe(prefix + ">[]<,", stdin)[0] == "diverge"
     assert _observe(prefix + ",>[]<", stdin)[0] == "eof"
     assert _observe(prefix + ">.<.", stdin)[1] != _observe(prefix + ".>.<", stdin)[1]
+    # Moving a read before a possibly diverging silent excursion changes EOF.
+    assert _observe(">[--]<,", "")[0] == "eof"
+    assert _observe(">+[--]<,", "")[0] == "diverge"
+    assert _observe(",>+[--]<", "")[0] == "eof"
+    # A read-free prefix is insufficient: the tested cell must be preserved.
+    assert _observe("+[-[]].", "")[0] == "halt"
+    assert _observe("+[].", "")[0] == "diverge"
+    # Clipping forbids cancelling <> at cell zero.
+    assert _observe(prefix + "<>.", stdin) != _observe(prefix + ".", stdin)
 
 
 @pytest.mark.medium
@@ -114,6 +208,12 @@ def test_regular_certificate() -> None:
 
     rows, vector = certificate()
     check_certificate(rows, vector)
+    from scripts.grammar_certificate import check_grammar
+    from tests.proofs._brainfuck_count import local_patterns, regular_patterns
+
+    assert check_grammar(
+        rows, ".,-+<>[]", sorted(local_patterns()), regular_patterns()
+    ) >= len(rows)
     from scripts.perron_certificate import check_certificate as independent_check
     from tests.proofs._brainfuck_count import ALPHABET, BOUND
 
@@ -138,6 +238,81 @@ def test_regular_certificate() -> None:
     assert not accepts(rows, "[[.-]+]")
     with pytest.raises(AssertionError):
         check_certificate(rows, [1] * len(rows))
+
+
+def test_independent_grammar_rejects_legal_but_wrong_transitions() -> None:
+    from scripts.grammar_certificate import check_grammar
+
+    # The spectral checker can accept this matrix, but it forbids no factors.
+    with pytest.raises(ValueError, match="grammar mismatch on '\\+-'"):
+        check_grammar([[0, 0]], "+-", ["+-"], [])
+    with pytest.raises(ValueError, match="grammar mismatch"):
+        check_grammar([[-1, 0]], "+-", [], [])
+    with pytest.raises(ValueError, match="budget"):
+        check_grammar([[0, 0]], "+-", [], [r"\+\+-"], state_cap=1)
+    with pytest.raises(ValueError, match="empty regular"):
+        check_grammar([[0]], "+", [], [r"\+*"])
+
+
+def test_independent_position_monitor_matches_regex_engine() -> None:
+    import itertools
+    import re
+
+    from scripts.grammar_certificate import _RegexMonitor
+
+    alphabet = "+-[]"
+    patterns = [r"\[\](?:\+|\[-*\])*\+", r"\[[+\-]*\]\+", r"(?:\+-|\[\])*-"]
+    for pattern in patterns:
+        monitor = _RegexMonitor(pattern, alphabet)
+        for length in range(6):
+            for chars in itertools.product(alphabet, repeat=length):
+                state = 0
+                for char in chars:
+                    state = monitor.transitions(state)[alphabet.index(char)]
+                    if state == -1:
+                        break
+                assert (state == -1) == bool(re.search(pattern, "".join(chars)))
+
+
+def test_independent_literal_monitor_matches_substring_oracle() -> None:
+    import itertools
+
+    from scripts.grammar_certificate import _LiteralMonitor
+
+    factors = ["aaba", "bab", "aba", "bba"]
+    monitor = _LiteralMonitor(factors, "ab")
+    for length in range(8):
+        for chars in itertools.product("ab", repeat=length):
+            state = 0
+            for char in chars:
+                state = monitor.rows[state]["ab".index(char)]
+                if monitor.bad[state]:
+                    break
+            assert monitor.bad[state] == any(
+                factor in "".join(chars) for factor in factors
+            )
+
+
+@pytest.mark.parametrize(
+    ("factors", "regexes", "message"),
+    [
+        ([""], [], "literal"),
+        (["z"], [], "literal"),
+        ([], ["["], "invalid regular"),
+        ([], ["z"], "outside alphabet"),
+        ([], ["[a-z]"], "character class"),
+        ([], ["(?i:a)"], "flags"),
+        ([], ["(?i)a"], "flags"),
+        ([], ["a+"], "operator"),
+    ],
+)
+def test_independent_grammar_rejects_unsupported_factors(
+    factors, regexes, message
+) -> None:
+    from scripts.grammar_certificate import check_grammar
+
+    with pytest.raises(ValueError, match=message):
+        check_grammar([[0, 0]], "ab", factors, regexes)
 
 
 def test_factor_automaton_matches_regex_oracle() -> None:

@@ -50,6 +50,7 @@ def audit(language: str, n: int, table: str) -> dict[str, int | str]:
             "peak_control_stack_bits",
             "peak_integer_bits",
             "peak_pc_bits",
+            "peak_machine_bits",
         )
     }
     if language == "Sophie":
@@ -58,6 +59,9 @@ def audit(language: str, n: int, table: str) -> dict[str, int | str]:
         assert memory == 1
         assert stack == 0
         assert payload["peak_control_stack_items"] == 0
+        assert (
+            payload["peak_machine_bits"] <= 8 + result["source_units"].bit_length() + 2
+        )
     elif language == "BFStack":
         # Prefix arms cost <100 each. The <=7-bit leaf normalizes <=7
         # bytes, adds <=127 weights and visits <=128 cascade guards;
@@ -71,6 +75,10 @@ def audit(language: str, n: int, table: str) -> dict[str, int | str]:
         assert payload["peak_integer_bits"] <= max(
             8, result["source_units"].bit_length()
         )
+        assert payload["peak_machine_bits"] <= (
+            8 * (2 * max(n - 7, 0) + 3)
+            + (max(n - 7, 0) + 2 ** min(n, 7) + 3) * result["source_units"].bit_length()
+        )
     elif language == "Subleq":
         # Eight instructions per input, fewer than 60 fixed instructions and
         # 18 registers, then ceil(T/n) chunks. Selection costs <16T commands;
@@ -82,12 +90,17 @@ def audit(language: str, n: int, table: str) -> dict[str, int | str]:
         assert payload["peak_integer_bits"] <= max(
             n + 1, cell_bound.bit_length() + 1, 7
         )
+        assert payload["peak_machine_bits"] <= (
+            cell_bound * max(n + 1, cell_bound.bit_length() + 1, 7)
+            + cell_bound.bit_length()
+        )
     else:
         raise ValueError("resource bounds cover Sophie, BFStack and Subleq")
     return {
         "language": language,
         "inputs": n,
         "source_units": result["source_units"],
+        "source_utf8_bits": result["source_utf8_bits"],
         "worst_row_commands": commands,
         "peak_memory_cells": memory,
         "peak_stack_items": stack,

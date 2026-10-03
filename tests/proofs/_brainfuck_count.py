@@ -309,7 +309,14 @@ if __name__ == "__main__":
     if args.export:
         args.export.write_text(
             json.dumps(
-                {"alphabet": ALPHABET, "bound": BOUND, "rows": rows, "vector": vector}
+                {
+                    "alphabet": ALPHABET,
+                    "bound": BOUND,
+                    "rows": rows,
+                    "vector": vector,
+                    "factors": sorted(local_patterns()),
+                    "regexes": regular_patterns(),
+                }
             )
         )
     print(f"{len(rows)} DFA states; exact upper certificate {BOUND[0]}/{BOUND[1]}")

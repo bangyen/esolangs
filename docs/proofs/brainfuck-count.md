@@ -189,6 +189,25 @@ one increment or decrement, and more prints. Print rotation runs the same
 sequence of `.` and `Y` blocks: at zero both print once; at nonzero both run `. Y . Y ... .`,
 ending on the same zero cell or at the same EOF.
 
+The exported certificate now includes its finite factors and regular monitors.
+`scripts/perron_certificate.py --check-grammar` reconstructs acceptance with
+failure links for finite factors and first/last/follow position automata for
+regular factors, independently of the builder's Thompson construction and
+minimization. Both use Python's regex parser. Exhausting the reachable product
+checks both inclusions across 135,576 state pairs for the 11,673-state matrix;
+the exact spectral certificate remains `70347/10000`. The checker rejects a
+spectrally valid matrix with a different factor language and aborts if its
+150,000-pair budget is exhausted.
+
+Execution controls instantiate all fifteen regular families with six body
+variants each, plus 79 local-rule witnesses, at four byte configurations,
+two pointer positions and two remaining-input configurations. They compare
+halting tape, pointer, consumed input and output, EOF output, and divergence
+proved by repeated complete state. Negative controls preserve the distinctions
+between EOF and divergence, cell preservation and merely read-free bodies,
+and clipped and unclipped pointer cancellation. These finite controls check
+the stated side conditions; the general soundness arguments remain above.
+
 Each replacement shortens the program or decreases lexicographic order under `. , - + < > [ ]`. The checker rebuilds the finite factors with `L = 6`, excursion-body limits 6 (silent) and
 5 (I/O), and clipped-cancellation limit 4. It intersects their avoidance DFA with the fifteen
 regular monitors and minimizes after each intersection. This gives 11,673 states, not a frozen
