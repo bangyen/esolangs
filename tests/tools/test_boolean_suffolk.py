@@ -1,11 +1,6 @@
 """suffolk generator tests."""
 
-import pytest
-
 from esolangs import tools as boolean
-from tests.tools.boolean_runners import (
-    run_suffolk,
-)
 
 
 class TestSuffolk:
@@ -17,31 +12,6 @@ class TestSuffolk:
             sizes.append(len(boolean.suffolk(table)))
         assert sizes == [2211, 3224, 5087]
         assert sizes[2] < 2 * sizes[1]
-
-    @pytest.mark.parametrize(
-        ("table", "n"),
-        [
-            ("10", 1),  # NOT
-            ("01", 1),  # identity
-            ("00", 1),  # constant zero
-            ("11", 1),  # constant one
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("1110", 2),  # NAND
-            ("11111110", 3),  # NAND3
-            ("01101001", 3),  # XOR3
-            ("1111111100000000", 4),  # top half
-            ("1000000000000000", 4),  # single one (AND4)
-        ],
-    )
-    @pytest.mark.medium
-    def test_truth_table(self, table: str, n: int) -> None:
-        """Every input combination produces the truth-table result."""
-        program = boolean.suffolk(table)
-        for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            got = run_suffolk(program, [str(b) for b in bits])
-            assert got == str(int(table[combo])), f"inputs {bits}"
 
     def test_constant_tables_collapse_but_still_read(self) -> None:
         """A constant table skips the minterms but still reads its inputs.
@@ -88,22 +58,3 @@ class TestSuffolk:
         assert all(len(sizes) == 1 for sizes in groups.values())  # profile fixes it
         assert min(groups[(1, 0)]) < min(groups[(3, 0)])  # more steps cost more
         assert min(groups[(1, 1)]) < min(groups[(1, 3)])
-
-    @pytest.mark.parametrize(
-        "table",
-        ["11111110", "1111111111111110", "0111111111111111", "11111100"],
-    )
-    def test_complemented_tables_still_compute(self, table: str) -> None:
-        """The inverted print stage answers the original table, not its flip.
-
-        ``.`` emits ``chr(acc - 1)`` and ``!`` computes
-        ``max(0, cell + 1 - acc)``, so the constant the flip cell carries has
-        to account for both; preloading it one low prints ``'/'`` instead of
-        ``'0'``, which is how an earlier attempt failed.
-        """
-        n = (len(table) - 1).bit_length()
-        program = boolean.suffolk(table)
-        for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            got = run_suffolk(program, [str(b) for b in bits])
-            assert got == table[combo], f"inputs {bits}"

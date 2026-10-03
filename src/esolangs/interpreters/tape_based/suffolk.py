@@ -50,8 +50,7 @@ def _advance(state: _State, code: str, byte: int | None = None) -> _State:
 class _Machine:
     """Per-run Suffolk state: the code, tape, and accumulator."""
 
-    #: ``while not vm.halted`` never returns; :func:`run` needs no bound
-    #: (both reading and non-reading programs end only by a proved repeat).
+    #: Non-reading execution needs a repeat certificate; EOF ends scripted input.
     self_halts = False
 
     def __init__(self, code: str, io: IO) -> None:
@@ -147,13 +146,13 @@ class _Machine:
         programs that read once more and hit EOF were called periodic.
         """
         ind, ptr, acc, tape = self.state
-        return (ind, ptr, acc, tape, self.io.position())
+        return (ind, ptr, acc, tape, self.io.position(), self._exhausted)
 
     def step(self) -> None:
         """Execute one command, wrapping to the start at the end of the code.
 
         ``,`` hands the transition the new accumulator: the sum on a character,
-        zero on a blank line or at EOF.
+        zero at EOF.
         """
         if self._exhausted:
             return
