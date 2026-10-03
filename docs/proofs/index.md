@@ -179,7 +179,7 @@ BrainIf also competes with its input-forgetting residual DAG, proved below.
 Each route is total on its own domain and the lookup
 carries the universal claim, so the tree below the crossover is a size
 optimization rather than part of the proof.  A width-constrained build may take
-the tree at any arity.  A Painter Ant, Alight, Befunge, BIO, B-tapemark,
+the tree at any arity.  A Painter Ant, Alight, BIO, B-tapemark,
 bit~, Bitwise Cyclic Tag, Circlefuck, Clockwise, Collatz Multiverse,
 Cyclic tag, ///, Subleq, Dimensional, EGL, Eval, Fish,
 Forbin, Minsky Swap, Modulous, NoComment, Packlang, Qoibl, SLOW ACV MAMMALIAN,
@@ -257,7 +257,7 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | ArrowQueue | parameterized lookup | one stage per input doubles the queued markers and adds the bit (Horner), and the count selects one of `2**n` constant-size cascade stages | linear: at most 6n + 3T rows, the constant tail folded |
 | B-tapemark | finite lookup | the blank grid is the table, one mark per row copied by `*`; a stage per input walks the mark pointer by that input's weight and `+` prints the mark it lands on | linear: 3T copy cells, T pointer steps, one stage per input |
 | Back | parameterized tree | — | linear: leaf moves sum geometrically, sparse row render |
-| Befunge | finite lookup | the grid is the table, one cell per entry, read by `g` at the Horner index | linear: T table cells, one g at the index |
+| Befunge | exception | cell-per-entry lookup covers at most ten inputs on the fixed 80x25 torus; no uniform lift is proved | linear: T table cells, one g at the index |
 | Bitwise Cyclic Tag | parameterized lookup | the table is the program, one four-bit cell per row; each embedded bit appends two walk zeros per unit of its place value, and a cell consumes exactly two, so the zeros carry the program pointer to the indexed cell and the held-back sentinel arrives there to fire it; the cell's second `0` consumes the answer it just appended, without which a 1 would cascade into the rows below | linear: 4T table cells, 4T walk appends, 5T + n steps |
 | BF-PDA | parameterized tree | — | linear: span walk, leaf drains sum geometrically |
 | BFStack | minterms | — | linear: zero-row walk telescopes to T |
@@ -330,6 +330,12 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 
 ## Exceptions and walls
 
+- Befunge's shipped lookup stops at ten inputs: an eleven-input table needs
+  2,048 cells before instructions, exceeding its fixed 80x25 torus. This
+  obstructs the lookup construction, not every possible program. No uniform
+  larger-table construction is proved; enlarging the torus changes the
+  language contract and is not a resource-ceiling lift.
+
 - Malbolge has 59,049 source cells and exactly eight valid decoded
   instructions at each occupied cell.  Including shorter programs gives fewer
   than `sum(8**k for k in range(59050)) < 2**177148` distinct programs, while
@@ -343,8 +349,9 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
   no collisions, and shows why seventeen is beyond any build spending a cell per row
   pair.  Whether some 17-input table has no program is open.
 
-The former exception, `%^2^-1`, left with its language.  Every other row is
-`Total`, or theoretically total past the resource ceiling below.
+The former exception, `%^2^-1`, left with its language. Every row outside
+these two exceptions is `Total`, or theoretically total past the resource
+ceiling below.
 
 ### Resource-ceiling audit
 
@@ -384,9 +391,9 @@ construction.  Parity at thirteen inputs is 966568 digits, built in
 three seconds with the prime powers multiplied as a balanced tree, and
 the interpreter decodes it to the tree the generator encoded.
 
-Accordingly, this ledger records 76 theoretical totality arguments and one
-proved language exception; every other row is `Total` or theoretically total
-past a resource ceiling.
+Accordingly, this ledger records 75 theoretical totality arguments and two
+exceptions: one open construction gap and one proved language obstruction.
+Every other row is `Total` or theoretically total past a resource ceiling.
 
 ## Ordered reads without retained inputs
 
