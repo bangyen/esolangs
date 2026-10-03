@@ -79,8 +79,9 @@ Modulous and Bitdeque preview commands; Bitdeque skips GOTO targets.
 Packlang previews required package, datatype, Then and Do keywords. Variable
 and function names, comments and speculative declarations are untouched.
 Ambiguous matches and operands receive no proposed edit.
-BrainIf previews required command words; Grapheme previews command case outside
-literals; Collatz Multiverse previews DO/NOT PRINT after a valid assignment.
+BrainIf previews required command words; Grapheme previews letter case throughout
+the source, including literals; Collatz Multiverse previews DO/NOT PRINT after
+a valid assignment.
 
 The program is neither run nor modified. Apply chosen edits yourself, then
 run the program to check its behavior. No suggestions does not mean valid.

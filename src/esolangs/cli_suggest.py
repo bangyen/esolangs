@@ -219,29 +219,17 @@ def _brainif_corrections(source: str) -> tuple[_Correction, ...]:
 
 
 def _grapheme_corrections(source: str) -> tuple[_Correction, ...]:
-    from esolangs.interpreters.stack_based.grapheme import _OPENS
-
-    corrections = []
-    delimiter = ""
-    for index, char in enumerate(source):
-        if delimiter:
-            if char == delimiter:
-                delimiter = ""
-            continue
-        if "a" <= char <= "z":
-            corrections.append(
-                _Correction(
-                    index,
-                    index + 1,
-                    char,
-                    char.upper(),
-                    "Grapheme requires uppercase Latin command letters",
-                )
-            )
-            char = char.upper()
-        if char in _OPENS:
-            delimiter = char
-    return tuple(corrections)
+    return tuple(
+        _Correction(
+            index,
+            index + 1,
+            char,
+            char.upper(),
+            "Grapheme source requires uppercase Latin letters",
+        )
+        for index, char in enumerate(source)
+        if "a" <= char <= "z"
+    )
 
 
 def _collatz_corrections(source: str) -> tuple[_Correction, ...]:
