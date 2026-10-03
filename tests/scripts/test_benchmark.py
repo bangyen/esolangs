@@ -3,6 +3,7 @@
 import pytest
 
 import esolangs
+from esolangs.vm import make_vm
 from scripts.benchmark import measure
 
 
@@ -215,3 +216,42 @@ def test_capped_profile_does_not_claim_a_worst_row() -> None:
     )
     assert result["worst_row_commands"] is None
     assert all(item["execution_status"] == "step_cap" for item in result["executions"])
+
+
+def test_hidden_loop_stack_counts_separately_from_data() -> None:
+    from scripts.benchmark import _payload_profile
+
+    vm = make_vm("BFStack", ">+[>+[-]<-]")
+    for _ in range(6):
+        vm.step()
+    profile = _payload_profile("BFStack", vm)
+    assert profile is not None
+    assert vm.stack == [1, 1]
+    assert profile["peak_control_stack_items"] == 2
+    assert profile["peak_control_stack_bits"] == 5
+    assert profile["peak_data_bits"] == 2
+
+
+@pytest.mark.parametrize(
+    ("language", "code", "bits"),
+    [("Sophie", "#$1024", 11), ("Subleq", "3 -1 0 -1024", 12)],
+)
+def test_integer_payload_counts_magnitude_and_negative_sign(
+    language, code, bits
+) -> None:
+    from scripts.benchmark import _payload_profile
+
+    vm = make_vm(language, code)
+    vm.step()
+    profile = _payload_profile(language, vm)
+    assert profile is not None
+    assert profile["peak_integer_bits"] == bits
+    assert profile["peak_control_stack_items"] == 0
+
+
+def test_unaudited_machine_does_not_report_zero_hidden_store() -> None:
+    result = measure(
+        "brainfuck", "0110", repeat=1, row=0, step_cap=10_000, track_store=True
+    )
+    assert result["peak_control_stack_items"] is None
+    assert result["peak_data_bits"] is None
