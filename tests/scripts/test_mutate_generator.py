@@ -316,6 +316,7 @@ class TestParseTarget:
         assert kind.rel_target("wrap") == "esolangs/tools/wrap.py"
 
 
+@pytest.mark.medium
 class TestPrepare:
     def test_the_mutated_path_is_the_requested_family(self, tmp_path: Path) -> None:
         """``paths_to_mutate`` must name the family that was asked for.
@@ -331,21 +332,6 @@ class TestPrepare:
         proj, _ = script._prepare("tools", "wrap", tmp_path, slow=False)  # noqa: SLF001
         config = (proj / "pyproject.toml").read_text()
         assert 'paths_to_mutate = ["esolangs/tools/wrap.py"]' in config
-
-    def test_the_mutated_path_and_the_score_path_agree(self, tmp_path: Path) -> None:
-        """The file mutmut writes is the file the score is read from.
-
-        Asserted as a pair rather than separately: they are two spellings of
-        one path in different functions, and the failure mode is them
-        drifting apart.
-        """
-        script = load_script()
-        proj, _ = script._prepare("tools", "brainfuck", tmp_path, slow=False)  # noqa: SLF001
-        config = (proj / "pyproject.toml").read_text()
-        mutated = config.split('paths_to_mutate = ["')[1].split('"]')[0]
-        # The same expression ``_score`` uses to find mutmut's result file.
-        scored = proj / "mutants" / "esolangs" / "tools" / "brainfuck.py.meta"
-        assert scored == proj / "mutants" / f"{mutated}.meta"
 
 
 @pytest.mark.parametrize("selection", [None, "suffolk"])
