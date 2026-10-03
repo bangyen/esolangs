@@ -2,9 +2,8 @@
 
 Brainfuck whose program rotates: every executed command advances all
 non-comment characters one step along ``+-><,.[]``.  A comment is passed
-over without rotating (the wiki rotates "every time an instruction is
-executed"; the alternative would make whitespace significant) -- the
-package's reading, since the page defines no comment.  Tape as plain
+over without rotating: only executed commands advance the rotation.
+Tape as plain
 Brainfuck: 8-bit, ``<`` clamped, :class:`EOFError` on exhausted input.
 Brackets match dynamically: a jumping bracket rotates first, then seeks
 its partner in the rotated program; a partnerless bracket that fires
