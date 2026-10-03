@@ -51,10 +51,16 @@ __all__ = ["slow_acv_mammalian"]
 #: How many arrays the machine has; ``SPRINT`` moves the pointer mod this.
 _ARRAYS = 23
 
+# Arithmetic domain of the current construction, including its replay model.
+# XOR read nodes and parity-based merges are proved only for this byte domain.
+_MODULUS = 256
+if _MODULUS != 256:  # pragma: no cover - changing the domain needs a new proof
+    raise ValueError("Mammalian construction currently requires modulus 256")
+
 # The byte a stash chunk appends.  It is what raises the sum, and the sum is
 # what puts a distant token index within a jump's reach, so the chunk buys
 # the most reach per token by appending the largest byte there is.
-_STASH_BYTE = 255
+_STASH_BYTE = _MODULUS - 1
 
 # The read node's second seed run.  The aim class fixes ``first & 48 == 16``,
 # and XORing bits 4-5 from ``01`` to ``10`` is ``+16``, so this run is what
@@ -65,7 +71,10 @@ _J2 = 16
 # steps its head by 17 -- odd, so every residue is reachable.
 _W = 16
 _W_STEP = _W + 1
-_W_INV = pow(_W_STEP, -1, 256)
+_GREEDY_MIN = _MODULUS - _W_STEP
+_GREEDY_COUNTS = _W_STEP - 1
+_EXACT_TAIL = 2 * _STASH_BYTE
+_W_INV = pow(_W_STEP, -1, _MODULUS)
 
 #: The print arrays, indexed by the digit their middle cell holds.  A leaf
 #: SPRINTs from array 16 with head ``v``, landing on ``(16 + v) % 23``, and
@@ -96,7 +105,7 @@ type _State = tuple[list[int], int]
 def _seeded(array: Sequence[int], count: int) -> list[int]:
     """``array`` after ``count`` ``SEED``s, which only move the head."""
     out = list(array)
-    out[0] = (out[0] + count) % 256
+    out[0] = (out[0] + count) % _MODULUS
     return out
 
 
@@ -107,7 +116,7 @@ def _stash_chunk(array: list[int], acc: int) -> tuple[list[str], list[int], int]
     wrap, so the count solves in one step; from the third chunk on every
     count is 1, so a chunk is 3 tokens for 255 of reach.
     """
-    count = (((acc % 256) ^ _STASH_BYTE) - sum(array)) % 256
+    count = (((acc % _MODULUS) ^ _STASH_BYTE) - sum(array)) % _MODULUS
     return (
         [*["SEED"] * count, "DIGEST", "EXCRETE"],
         [*_seeded(array, count), _STASH_BYTE],
@@ -135,8 +144,8 @@ def _node(array: list[int], acc: int) -> tuple[list[str], _State, _State, int]:
     to ``start - 15`` with ``acc == first + 1``.  Neither exit depends on
     ``j1``, so the landing commits before the arm and merge exist.
     """
-    wrap = (256 - array[0]) % 256
-    opened = [*_seeded(array, wrap), acc % 256]
+    wrap = (_MODULUS - array[0]) % _MODULUS
+    opened = [*_seeded(array, wrap), acc % _MODULUS]
     start = sum(opened)
     j1 = _aim(start)
     first = start + j1
@@ -177,16 +186,16 @@ def _trampoline(
     rest_sum = sum(cur[1:])
     if target <= rest_sum:
         raise _UnreachableError("trampoline target is not past the running sum")
-    while rest_sum < target - 255:
+    while rest_sum < target - _STASH_BYTE:
         chunk, cur, val = _stash_chunk(cur, val)
         rest_sum += _STASH_BYTE
         tokens += chunk
     hop = target - rest_sum
-    if not 1 <= hop <= 255:  # pragma: no cover - the window solve is exact
-        raise AssertionError(f"trampoline byte {hop} escaped 1..255")
-    count = (((val % 256) ^ hop) - (cur[0] + rest_sum)) % 256
+    if not 1 <= hop <= _STASH_BYTE:  # pragma: no cover - the window solve is exact
+        raise AssertionError(f"trampoline byte {hop} escaped 1..{_STASH_BYTE}")
+    count = (((val % _MODULUS) ^ hop) - (cur[0] + rest_sum)) % _MODULUS
     tokens += [*["SEED"] * count, "DIGEST", "EXCRETE", "DIGEST", "LEAPFROG"]
-    out = [(cur[0] + count) % 256, *cur[1:], hop]
+    out = [(cur[0] + count) % _MODULUS, *cur[1:], hop]
     return tokens, out, sum(out)
 
 
@@ -203,18 +212,18 @@ def _trampoline_len(array: list[int], acc: int, target: int) -> int:
     tokens = 0
     rest_sum = sum(cur[1:])
     for _ in range(2):
-        if rest_sum >= target - 255:
+        if rest_sum >= target - _STASH_BYTE:
             break
         chunk, cur, val = _stash_chunk(cur, val)
         rest_sum += _STASH_BYTE
         tokens += len(chunk)
-    if rest_sum < target - 255:
-        more = -(-(target - 255 - rest_sum) // _STASH_BYTE)
+    if rest_sum < target - _STASH_BYTE:
+        more = -(-(target - _STASH_BYTE - rest_sum) // _STASH_BYTE)
         tokens += 3 * more
         rest_sum += _STASH_BYTE * more
-        cur = [(cur[0] + more) % 256, *cur[1:]]
+        cur = [(cur[0] + more) % _MODULUS, *cur[1:]]
     hop = target - rest_sum
-    count = (((val % 256) ^ hop) - (cur[0] + rest_sum)) % 256
+    count = (((val % _MODULUS) ^ hop) - (cur[0] + rest_sum)) % _MODULUS
     return tokens + count + 4
 
 
@@ -290,11 +299,11 @@ def _replay(st: _Sums, tokens: Sequence[str], bit: int = 0) -> None:
             continue
         if seeds:
             for arr in range(_ARRAYS):
-                st.heads[arr] = (st.heads[arr] + (arr + 1) * seeds) % 256
+                st.heads[arr] = (st.heads[arr] + (arr + 1) * seeds) % _MODULUS
             seeds = 0
         _apply(st, tok, bit)
     for arr in range(_ARRAYS):
-        st.heads[arr] = (st.heads[arr] + (arr + 1) * seeds) % 256
+        st.heads[arr] = (st.heads[arr] + (arr + 1) * seeds) % _MODULUS
 
 
 def _apply(st: _Sums, tok: str, bit: int) -> None:
@@ -302,11 +311,13 @@ def _apply(st: _Sums, tok: str, bit: int) -> None:
     if tok == "DIGEST":
         st.acc ^= st.heads[st.ptr] + st.rest(st.ptr)
     elif tok == "EXCRETE":
-        st.append(st.ptr, st.acc % 256)
+        st.append(st.ptr, st.acc % _MODULUS)
         st.acc = 0
     elif tok == "ACCEPT":
-        if st.acc % 256 != 48:
-            raise AssertionError(f"ACCEPT entered with acc % 256 == {st.acc % 256}")
+        if st.acc % _MODULUS != 48:
+            raise AssertionError(
+                f"ACCEPT entered with acc % {_MODULUS} == {st.acc % _MODULUS}"
+            )
         st.n0 += bit
     elif tok == "CONSUME":
         cells = st.cells[st.ptr]
@@ -337,8 +348,8 @@ def _route(st: _Sums, dest: int) -> list[str]:
         _replay(st, tokens)
     want = (dest - here) % _ARRAYS
     step = here + 1
-    for count in range(256):
-        if ((st.heads[here] + step * count) % 256) % _ARRAYS == want:
+    for count in range(_MODULUS):
+        if ((st.heads[here] + step * count) % _MODULUS) % _ARRAYS == want:
             run = [*["SEED"] * count, "SPRINT"]
             _replay(st, run)
             if st.ptr != dest:  # pragma: no cover - the residue solve is exact
@@ -351,8 +362,8 @@ def _route_len(head: int, here: int, dest: int) -> int:
     """Token count :func:`_route` spends from head ``head``, accumulator 0."""
     want = (dest - here) % _ARRAYS
     step = here + 1
-    for count in range(256):
-        if ((head + step * count) % 256) % _ARRAYS == want:
+    for count in range(_MODULUS):
+        if ((head + step * count) % _MODULUS) % _ARRAYS == want:
             return count + 1
     raise AssertionError(f"no seed count routes {here} to {dest}")  # pragma: no cover
 
@@ -366,7 +377,9 @@ def _exact_append(st: _Sums, value: int) -> list[str]:
     arr = st.ptr
     if arr % 2:  # pragma: no cover - every planted array is even by choice
         raise AssertionError(f"array {arr} has an even seed step")
-    count = ((value - st.heads[arr] - st.rest(arr)) * pow(arr + 1, -1, 256)) % 256
+    count = (
+        (value - st.heads[arr] - st.rest(arr)) * pow(arr + 1, -1, _MODULUS)
+    ) % _MODULUS
     tokens = [*["SEED"] * count, "DIGEST", "EXCRETE"]
     before = st.rest(arr)
     _replay(st, tokens)
@@ -377,7 +390,7 @@ def _exact_append(st: _Sums, value: int) -> list[str]:
 
 def _w_exact_chunk(st: _Sums, value: int) -> list[str]:
     """Append exactly ``value`` (1..255) to array 16's non-head sum."""
-    count = ((value - st.hw - st.nw) * _W_INV) % 256
+    count = ((value - st.hw - st.nw) * _W_INV) % _MODULUS
     tokens = [*["SEED"] * count, "DIGEST", "EXCRETE"]
     before = st.nw
     _replay(st, tokens)
@@ -391,12 +404,14 @@ def _w_greedy_chunk(st: _Sums) -> list[str]:
 
     Head steps by 17, so 16 counts always hit the 17-wide window [239, 255].
     """
-    for count in range(16):
-        if (st.hw + st.nw + _W_STEP * count) % 256 >= 239:
+    for count in range(_GREEDY_COUNTS):
+        if (st.hw + st.nw + _W_STEP * count) % _MODULUS >= _GREEDY_MIN:
             tokens = [*["SEED"] * count, "DIGEST", "EXCRETE"]
             _replay(st, tokens)
             return tokens
-    raise AssertionError("no 17-step residue in [239, 255]")  # pragma: no cover
+    raise AssertionError(
+        f"no {_W_STEP}-step residue in [{_GREEDY_MIN}, {_STASH_BYTE}]"
+    )  # pragma: no cover
 
 
 def _w_raise(st: _Sums, amount: int) -> list[str]:
@@ -407,10 +422,10 @@ def _w_raise(st: _Sums, amount: int) -> list[str]:
     """
     tokens: list[str] = []
     end = st.nw + amount
-    while end - st.nw > 510:
+    while end - st.nw > _EXACT_TAIL:
         tokens += _w_greedy_chunk(st)
-    if end - st.nw > 255:
-        tokens += _w_exact_chunk(st, end - st.nw - 255)
+    if end - st.nw > _STASH_BYTE:
+        tokens += _w_exact_chunk(st, end - st.nw - _STASH_BYTE)
     if end - st.nw:
         tokens += _w_exact_chunk(st, end - st.nw)
     return tokens
@@ -423,14 +438,16 @@ def _greedy_step_table() -> tuple[tuple[int, int], ...]:
     any table of programs -- 256 residues, once, at import time.
     """
     table = []
-    for r in range(256):
-        for count in range(16):
-            added = (r + _W_STEP * count) % 256
-            if added >= 239:
+    for r in range(_MODULUS):
+        for count in range(_GREEDY_COUNTS):
+            added = (r + _W_STEP * count) % _MODULUS
+            if added >= _GREEDY_MIN:
                 table.append((count, added))
                 break
         else:  # pragma: no cover - argued in _w_greedy_chunk's docstring
-            raise AssertionError(f"no 17-step residue in [239, 255] from {r}")
+            raise AssertionError(
+                f"no {_W_STEP}-step residue in [{_GREEDY_MIN}, {_STASH_BYTE}] from {r}"
+            )
     return tuple(table)
 
 
@@ -473,7 +490,7 @@ def _greedy_advance(r: int, target: int) -> tuple[int, int, int, int]:
         seed_count += count
         steps += 1
         advance += added
-        r = (2 * added) % 256
+        r = (2 * added) % _MODULUS
     return seed_count, steps, advance, r
 
 
@@ -485,24 +502,24 @@ def _w_raise_len(hw: int, nw: int, amount: int) -> tuple[int, int]:
     instead of walked chunk by chunk.  Sizing an arm's slot only needs
     this length and the resulting head, never the token text itself.
     """
-    r = (hw + nw) % 256
-    target = max(0, amount - 510)
+    r = (hw + nw) % _MODULUS
+    target = max(0, amount - _EXACT_TAIL)
     total_seeds, chunks, greedy_advance_amt, r = _greedy_advance(r, target)
     remaining = amount - greedy_advance_amt
-    if remaining > 255:
-        value = remaining - 255
-        count = ((value - r) * _W_INV) % 256
+    if remaining > _STASH_BYTE:
+        value = remaining - _STASH_BYTE
+        count = ((value - r) * _W_INV) % _MODULUS
         total_seeds += count
         chunks += 1
-        r = (2 * value) % 256
-        remaining = 255
+        r = (2 * value) % _MODULUS
+        remaining = _STASH_BYTE
     if remaining:
         value = remaining
-        count = ((value - r) * _W_INV) % 256
+        count = ((value - r) * _W_INV) % _MODULUS
         total_seeds += count
         chunks += 1
     tokens = total_seeds + 2 * chunks
-    final_hw = (hw + _W_STEP * total_seeds) % 256
+    final_hw = (hw + _W_STEP * total_seeds) % _MODULUS
     return tokens, final_hw
 
 
@@ -528,7 +545,7 @@ def _weights(n: int) -> list[int]:
     """
     free = min(n, _FREE)
     fixed = n - free
-    weights = [256 * (1 << (fixed - 1 - i)) for i in range(fixed)]
+    weights = [_MODULUS * (1 << (fixed - 1 - i)) for i in range(fixed)]
     return weights + [_LEAF_UNIT * (1 << k) for k in range(free)]
 
 
@@ -599,7 +616,7 @@ def _arm(
     """
     st = one.clone()
     tokens = _arm_core(st, weight, pool)
-    run = [*["SEED"] * ((beta - st.h0 - st.n0) % 256), "DIGEST", "EXCRETE"]
+    run = [*["SEED"] * ((beta - st.h0 - st.n0) % _MODULUS), "DIGEST", "EXCRETE"]
     _replay(st, run)
     tokens += run
     tokens += _jump(st, cont)
@@ -612,7 +629,7 @@ def _arm_core_len(st: _Sums, weight: int, pool: int | None) -> int:
     out = _route_len(st.heads[0], 0, pool if pool is not None else _W)
     if pool is not None:
         return launder + out + 3 + _route_len(st.heads[pool], pool, 0)
-    hw = (st.hw + _W_STEP * (out - 1)) % 256
+    hw = (st.hw + _W_STEP * (out - 1)) % _MODULUS
     raise_len, final_hw = _w_raise_len(hw, st.nw, weight)
     return launder + out + raise_len + _route_len(final_hw, _W, 0)
 
@@ -650,9 +667,9 @@ def _dispatch_head(hw: int) -> int:
     below 239 -- past that the extra 17 wraps and the second leaf misses.
     """
     want = (_PRINT[0] - _W) % _ARRAYS
-    for count in range(256):
-        value = (hw + _W_STEP * count) % 256
-        if value % _ARRAYS == want and value <= 238:
+    for count in range(_MODULUS):
+        value = (hw + _W_STEP * count) % _MODULUS
+        if value % _ARRAYS == want and value < _GREEDY_MIN:
             return count
     raise AssertionError("no seed count aims the leaf pair")  # pragma: no cover
 
@@ -795,12 +812,12 @@ def _tune(
     beta = _STASH_BYTE
     for _ in range(8):
         arm_toks, merged = _arm(one, weight, pool, beta, cont)
-        delta = (merged.h0 - z.h0) % 256
+        delta = (merged.h0 - z.h0) % _MODULUS
         if delta == 0:
             return arm_toks, merged
         if delta % 2:  # pragma: no cover - see the evenness argument
             raise AssertionError(f"odd head delta {delta}")
-        beta = (beta + delta // 2) % 256
+        beta = (beta + delta // 2) % _MODULUS
     raise AssertionError("the tuning byte did not settle")  # pragma: no cover
 
 
@@ -852,7 +869,7 @@ def _emit(
     if st.nw != base:  # pragma: no cover - the prologue raise is exact
         raise AssertionError(f"the dispatch sum is {st.nw}, not {base}")
     if (_W + st.hw) % _ARRAYS != _PRINT[0] or (
-        _W + (st.hw + _W_STEP) % 256
+        _W + (st.hw + _W_STEP) % _MODULUS
     ) % _ARRAYS != _PRINT[1]:  # pragma: no cover - _dispatch_head solves both
         raise AssertionError(f"head {st.hw} misses the print pair")
     tokens += ["SEED"] * max(0, base - len(tokens))
