@@ -20,7 +20,7 @@ from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.randomness import Randomness, draw
-from esolangs.interpreters.source_hints import syntax_error
+from esolangs.interpreters.source_hints import syntax_error, with_hint
 
 _DIRECTIONS = ((0, 1), (1, 0), (0, -1), (-1, 0))
 _RULD = (3, 0, 1, 2)
@@ -326,9 +326,15 @@ class _Machine:
         if command == "=" and values:
             low, high = sorted((_read(cells, pointer), values[-1]))
             if high - low + 1 > _EQUAL_FANOUT:
-                raise TimeoutError(
-                    f"undecided: one '=' spanning {high - low + 1} values exceeds "
-                    f"the {_EQUAL_FANOUT}-outcome cap on a single transition"
+                raise with_hint(
+                    TimeoutError(
+                        f"undecided: one '=' spanning {high - low + 1} values exceeds "
+                        f"the {_EQUAL_FANOUT}-outcome cap on a single transition"
+                    ),
+                    (
+                        f"keep the random range within {_EQUAL_FANOUT} values; "
+                        "limit does not raise this transition cap"
+                    ),
                 )
             offsets = tuple(range(high - low + 1))
 

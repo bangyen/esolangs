@@ -30,6 +30,7 @@ from esolangs._vm_views import (
     machine_views,
 )
 from esolangs.interpreters.io import ScriptedIO
+from esolangs.interpreters.source_hints import with_hint
 from esolangs.registry import resolve
 
 
@@ -100,7 +101,7 @@ class _BranchingStepMachine(Protocol):
         """
 
 
-def _unwrap(machine: object, protocol: type[Any], role: str) -> object:
+def _unwrap(machine: object, protocol: type[Any], role: str, *, hint: str) -> object:
     """Return ``machine``, or the interpreter state a :class:`VM` wraps.
 
     The protocol is tried before the unwrap, so a raw machine is handed
@@ -113,10 +114,13 @@ def _unwrap(machine: object, protocol: type[Any], role: str) -> object:
     inner = getattr(machine, "_machine", None)
     if isinstance(inner, protocol):
         return inner
-    raise TypeError(
-        f"{getattr(machine, 'language', type(machine).__name__)} is not {role}: "
-        "neither it nor any machine "
-        "it wraps provides the required members"
+    raise with_hint(
+        TypeError(
+            f"{getattr(machine, 'language', type(machine).__name__)} is not {role}: "
+            "neither it nor any machine "
+            "it wraps provides the required members"
+        ),
+        hint,
     )
 
 
@@ -137,7 +141,13 @@ def run_until_halt_or_cycle(
     never repeats a state and so would not return.
     """
     machine = cast(
-        _StepMachine, _unwrap(machine, _StepMachine, "steppable with a snapshot")
+        _StepMachine,
+        _unwrap(
+            machine,
+            _StepMachine,
+            "steppable with a snapshot",
+            hint=("pass make_vm(...) or a machine with step, halted and snapshot"),
+        ),
     )
     tortoise = machine.snapshot()
     power = 1
@@ -145,8 +155,12 @@ def run_until_halt_or_cycle(
     steps = 0
     while not machine.halted:
         if limit is not None and steps >= limit:
-            raise TimeoutError(
-                f"undecided after {limit} steps: neither halted nor repeated a state"
+            raise with_hint(
+                TimeoutError(
+                    f"undecided after {limit} steps: "
+                    "neither halted nor repeated a state"
+                ),
+                ("increase limit; for growing states try a supported growth detector"),
             )
         machine.step()
         steps += 1
@@ -179,7 +193,15 @@ def run_until_halt_or_all_branches_cycle(
     """
     machine = cast(
         _BranchingStepMachine,
-        _unwrap(machine, _BranchingStepMachine, "branch-enumerable"),
+        _unwrap(
+            machine,
+            _BranchingStepMachine,
+            "branch-enumerable",
+            hint=(
+                "use a machine with branching_snapshot, "
+                "branching_halted and branching_successors"
+            ),
+        ),
     )
     pending = [machine.branching_snapshot()]
     seen: set[Hashable] = set()
@@ -190,18 +212,30 @@ def run_until_halt_or_all_branches_cycle(
         # `>=`: a negative limit never equals a count rising from zero, so
         # the cap switched itself off and the caller hung.
         if len(seen) >= limit:
-            raise TimeoutError(
-                f"undecided after {limit} branching states: the reachable "
-                "graph may be unbounded"
+            raise with_hint(
+                TimeoutError(
+                    f"undecided after {limit} branching states: the reachable "
+                    "graph may be unbounded"
+                ),
+                (
+                    "increase the branching state limit if feasible; the "
+                    "result remains undecided"
+                ),
             )
         seen.add(state)
         if machine.branching_halted(state):
             return True
         successors = machine.branching_successors(state, limit - len(seen))
         if successors is None:
-            raise TimeoutError(
-                "undecided: a branching transition needs input that cannot "
-                "be safely forked"
+            raise with_hint(
+                TimeoutError(
+                    "undecided: a branching transition needs input that cannot "
+                    "be safely forked"
+                ),
+                (
+                    "use fixed input and a seeded single-path run; that "
+                    "does not decide all random paths"
+                ),
             )
         pending.extend(successors)
     return False
@@ -244,7 +278,18 @@ def run_until_halt_or_ancestor(machine: _FramedMachine | VM, limit: int = 64) ->
     across the Forbin suite) -- and exhausting it raises
     :class:`TimeoutError`.  No call stack raises :class:`TypeError`.
     """
-    machine = cast(_FramedMachine, _unwrap(machine, _FramedMachine, "framed"))
+    machine = cast(
+        _FramedMachine,
+        _unwrap(
+            machine,
+            _FramedMachine,
+            "framed",
+            hint=(
+                "use a machine with frames and frame_entry_key; "
+                "otherwise try exact-state cycle detection"
+            ),
+        ),
+    )
     keys: dict[int, Hashable] = {}
     pushes = 0
     while pushes < limit:
@@ -262,9 +307,15 @@ def run_until_halt_or_ancestor(machine: _FramedMachine | VM, limit: int = 64) ->
         keys[depth] = machine.frame_entry_key(machine.frames[-1])
         if keys[depth] in [k for d, k in keys.items() if d < depth]:
             return False
-    raise TimeoutError(
-        f"undecided after {limit} pushed frames: neither halted nor repeated "
-        "an ancestor's entry state"
+    raise with_hint(
+        TimeoutError(
+            f"undecided after {limit} pushed frames: neither halted nor repeated "
+            "an ancestor's entry state"
+        ),
+        (
+            "increase the pushed-frame limit; changing arguments "
+            "may prevent an ancestor match"
+        ),
     )
 
 
@@ -331,7 +382,18 @@ def run_until_halt_or_growth(machine: _TapeMachine | VM, limit: int = 100_000) -
     never saw).  ``limit`` is in steps and raises :class:`TimeoutError`;
     no tape raises :class:`TypeError`.
     """
-    machine = cast(_TapeMachine, _unwrap(machine, _TapeMachine, "a tape machine"))
+    machine = cast(
+        _TapeMachine,
+        _unwrap(
+            machine,
+            _TapeMachine,
+            "a tape machine",
+            hint=(
+                "use a compatible rightward-growing tape machine; "
+                "otherwise try exact-state cycle detection"
+            ),
+        ),
+    )
     # The last visit keeps the broad, one-period certificate.  ``origins``
     # proves a steady wave after its first full phase, while ``waves`` is
     # Brent's O(1)-per-position checkpoint for a phase that begins after a
@@ -386,9 +448,12 @@ def run_until_halt_or_growth(machine: _TapeMachine | VM, limit: int = 100_000) -
         machine.step()
     if machine.halted:
         return True
-    raise TimeoutError(
-        f"undecided after {limit} steps: neither halted nor grew by a "
-        "provable translation"
+    raise with_hint(
+        TimeoutError(
+            f"undecided after {limit} steps: neither halted nor grew by a "
+            "provable translation"
+        ),
+        ("increase limit; for repeated exact states try run_until_halt_or_cycle"),
     )
 
 
@@ -474,7 +539,16 @@ def run_until_halt_or_value_growth(
     Bounded values raise :class:`TypeError`: a climbing byte wraps.
     """
     machine = cast(
-        _AffineMachine, _unwrap(machine, _AffineMachine, "an affine machine")
+        _AffineMachine,
+        _unwrap(
+            machine,
+            _AffineMachine,
+            "an affine machine",
+            hint=(
+                "use a machine with unbounded affine values; wrapping "
+                "cells need exact-state cycle detection"
+            ),
+        ),
     )
     # One slack per step in a single log, and per key the last three steps
     # that visited it, so a lap is a slice rather than a list of its own.
@@ -496,9 +570,12 @@ def run_until_halt_or_value_growth(
         machine.step()
     if machine.halted:
         return True
-    raise TimeoutError(
-        f"undecided after {limit} steps: neither halted nor climbed by a "
-        "provable affine step"
+    raise with_hint(
+        TimeoutError(
+            f"undecided after {limit} steps: neither halted nor climbed by a "
+            "provable affine step"
+        ),
+        ("increase limit; for repeated exact states try run_until_halt_or_cycle"),
     )
 
 

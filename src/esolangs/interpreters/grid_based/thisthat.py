@@ -30,6 +30,7 @@ from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.randomness import Randomness, draw
+from esolangs.interpreters.source_hints import with_hint
 
 type _Point = tuple[int, int]
 type _Channel = Literal["execution", "data"]
@@ -305,8 +306,14 @@ class _Machine:
         for radix in radices:
             branch_count *= radix
         if branch_count > limit:
-            raise TimeoutError(
-                f"undecided after {limit} random merges in one thisthat cycle"
+            raise with_hint(
+                TimeoutError(
+                    f"undecided after {limit} random merges in one thisthat cycle"
+                ),
+                (
+                    "increase the branching state/outcome limit if "
+                    "feasible or reduce simultaneous random merges"
+                ),
             )
         choices = product(*(range(radix) for radix in radices)) if radices else [()]
         successors = []
