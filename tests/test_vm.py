@@ -91,10 +91,10 @@ class TestGrapheme:
         assert (vm.ip, vm.memory, vm.stack) == ((0,), [], [])
         vm.step()  # F starts int mode
         vm.step()  # A accumulates
-        vm.step()  # F ends int mode, pushes 10
-        assert vm.stack == [10]
+        vm.step()  # F ends int mode, pushes 1
+        assert vm.stack == [1]
         vm.step()  # Y prints
-        assert vm.output == "10"
+        assert vm.output == "1"
         assert vm.halted
         assert vm.ip == (len("FAFY"),)  # frames are gone once halted
         assert vm.memory == []
@@ -104,7 +104,7 @@ class TestGrapheme:
             debugger_api.make_vm("Grapheme", "a")
 
     def test_ip_exposes_the_call_stack(self) -> None:
-        # FAF pushes 10, EKE pushes the string "K"; G calls it as a nested
+        # FAF pushes 1, EKE pushes the string "K"; G calls it as a nested
         # frame (K dups the shared stack's top), so ip grows to (caller pc,
         # callee pc) while that frame is active instead of folding it into
         # one cursor.
@@ -112,11 +112,11 @@ class TestGrapheme:
         for _ in range(7):
             vm.step()
         assert vm.ip == (7, 0)  # caller's pc past G, callee's pc at its start
-        assert vm.stack == [10]
+        assert vm.stack == [1]
         vm.step()  # the callee's K command runs, then the frame finishes
         assert vm.halted
         assert vm.ip == (7,)  # the callee frame is gone once it returns
-        assert vm.stack == [10, 10]
+        assert vm.stack == [1, 1]
 
     def test_caller_resumes_after_the_callee_returns(self) -> None:
         # Y after G still has to run once the callee pops, proving the
@@ -126,7 +126,7 @@ class TestGrapheme:
         for _ in range(9):
             vm.step()
         assert vm.halted
-        assert vm.output == "10"  # Y printed the duplicated int 10
+        assert vm.output == "1"  # Y printed the duplicated int 1
         assert vm.ip == (len("FAFEKEGY"),)
 
 

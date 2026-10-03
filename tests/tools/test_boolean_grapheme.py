@@ -13,13 +13,13 @@ from tests.tools.boolean_runners import (
 
 
 class TestGrapheme:
-    def test_a_literal_pushes_ten_times_any_value(self) -> None:
+    def test_a_literal_pushes_its_value(self) -> None:
         """Int mode spells every value, 6 included, as one literal."""
         from esolangs.tools.grapheme import _grapheme_literal
 
         for value in (0, 1, 16, 106, 1006, 1_263_460, 9_999_996, 5_666_666):
             code = _grapheme_literal(value)
-            assert run_grapheme(code + "Y", []) == str(10 * value), value
+            assert run_grapheme(code + "Y", []) == str(value), value
 
     @pytest.mark.parametrize(
         ("table", "n"),
@@ -70,9 +70,9 @@ class TestGrapheme:
         assert 0.30 < grown < 0.35, sizes
 
     def test_the_program_is_only_grapheme_commands(self) -> None:
-        """Only int-mode digits and the eleven commands used are emitted."""
+        """Only int-mode digits and the commands used are emitted."""
         for table in ("10", "0110", "0001", "11111110"):
-            assert set(boolean.grapheme(table)) <= set("ABCDEFGHIKLPRSTWYZ"), table
+            assert set(boolean.grapheme(table)) <= set("ABCDEFGHIKLMPRSTWYZ"), table
 
 
 class TestGraphemeTable:

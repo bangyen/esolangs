@@ -6,17 +6,17 @@ from esolangs.tools.helpers import _validate_truth_table, essential_inputs, read
 #: with no letter is 6 -- ``F`` closes the mode.  16 with a borrow spells it.
 _GRAPHEME_DIGITS = "ZABCDE?GHIJKLMNOPQRSTUVWXY"
 
-#: Holds 65.  A literal is worth ten times its digits, so ``9`` names key 90.
+#: Holds 65 at integer key 9.
 _GRAPHEME_CONST = 9
 
 
 def _grapheme_push65() -> str:
-    """Grapheme code pushing 65 (``ord('A')``), spelled ``70 - (50 / 10)``."""
-    return "FAF" + "FEF" + "R" + "FGF" + "B"
+    """Grapheme code pushing 65 (``ord('A')``), spelled ``5 * 13``."""
+    return "FEFFMFS"
 
 
 def _grapheme_literal(value: int) -> str:
-    """Return an int-mode literal pushing ``10 * value``, for ``value >= 0``."""
+    """Return a literal for nonnegative ``value`` without a leading decimal 6."""
     digits = [int(c) for c in str(value)]
     if digits[0] == 6:
         raise AssertionError("a leading 6 has nothing to borrow from")
@@ -52,15 +52,13 @@ def grapheme(truth_table: str) -> str:
     table = truth_table if len(used) == n else read_at(truth_table, used, n)
     reading = set(used)
 
-    ten = _grapheme_literal(1)
-    one = ten * 2 + "R"
-    two = ten + _grapheme_literal(2) + "R"
+    one = _grapheme_literal(1)
+    two = _grapheme_literal(2)
     store65 = _grapheme_push65() + _grapheme_literal(_GRAPHEME_CONST) + "C"
     read_bit = "W" + _grapheme_literal(_GRAPHEME_CONST) + "D" + "B" + "T"
     drop_unread_line = "WM"
     square = "KS"
     double_unless_set = two + "B" + "S"
-    match_the_literal_scale = ten + "S"
     shift = "R"
     low_bit = "K" + two + "LR" + two + "SLB"
 
@@ -70,7 +68,6 @@ def grapheme(truth_table: str) -> str:
             pieces.append(square + read_bit + double_unless_set)
         else:
             pieces.append(drop_unread_line)
-    pieces.append(match_the_literal_scale)
     pieces.append(_grapheme_literal(_grapheme_table(table)))
     pieces.append(shift + low_bit + "Y")
     return "".join(pieces)
