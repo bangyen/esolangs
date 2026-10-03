@@ -26,7 +26,7 @@ ALL1, ALL2 = 29524, 59048
 def emit_navigation(
     plan: _Planner, group: _Group, used: set[int], helpers: dict[str, int]
 ) -> None:
-    """Initialize direct view pointers through the ALL2 trit involution."""
+    """Initialize view and constant-load pointers through crazy compositions."""
     for target in sorted(group.view_cells):
         seed = _crazy(ALL2, target - 1)
         source = next(
@@ -44,6 +44,32 @@ def emit_navigation(
         plan.op("*", helpers["all2"])
         plan.op("p", source)
         assert plan.mem[source] == target - 1
+
+    source = next(
+        cell for cell in range(130, 420) if cell not in used and plan.mem[cell] == 109
+    )
+    load(plan, source, 109, helpers["all2"])
+    mixer = helpers["all1"]
+    plan.op("p", mixer)
+    value = _crazy(109, ALL1)
+    assert plan.mem[mixer] == value
+    for index, (seed, target) in enumerate(((45, 128), (47, 129))):
+        cell = next(
+            cell
+            for cell in range(130, 420)
+            if cell not in used and plan.mem[cell] == seed
+        )
+        used.add(cell)
+        group.used.add(cell)
+        if index:
+            load(plan, mixer, value, helpers["all2"])
+        plan.op("p", cell)
+        assert plan.mem[cell] == target - 1
+    # Binary 109 permits restoring ALL1; these bridges save 108 code cells.
+    plan.op("*", helpers["all2"])
+    plan.op("p", mixer)
+    plan.op("p", mixer)
+    assert plan.mem[mixer] == ALL1
 
 
 def mask(state: int) -> int:
