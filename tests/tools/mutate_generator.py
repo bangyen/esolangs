@@ -82,6 +82,7 @@ import argparse
 import ast
 import json
 import os
+import posixpath
 import re
 import shlex
 import shutil
@@ -89,6 +90,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import tomllib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -422,6 +424,126 @@ def _test_files(kind: _Kind) -> list[str]:
     )
 
 
+def _imported_modules(path: Path, module: str) -> set[str]:
+    """Return imports resolved against ``module``'s package."""
+    package = module if path.name == "__init__.py" else module.rpartition(".")[0]
+    names: set[str] = set()
+    for node in ast.walk(ast.parse(path.read_text())):
+        if isinstance(node, ast.Import):
+            names.update(alias.name for alias in node.names)
+        elif isinstance(node, ast.ImportFrom):
+            base = node.module or ""
+            if node.level:
+                parents = package.split(".")
+                if node.level > 1:
+                    parents = parents[: -(node.level - 1)]
+                base = ".".join([*parents, *base.split(".")]).rstrip(".")
+            names.add(base)
+            names.update(f"{base}.{alias.name}" for alias in node.names)
+    return names
+
+
+def _module_path(module: str, root: Path) -> Path | None:
+    """Return a local module's file, or ``None`` for an imported symbol."""
+    path = root.joinpath(*module.split("."))
+    if path.with_suffix(".py").is_file():
+        return path.with_suffix(".py")
+    init = path / "__init__.py"
+    return init if init.is_file() else None
+
+
+def _tool_dependencies(
+    module: str, imports: dict[str, set[str] | None] | None = None
+) -> set[str]:
+    """Return the producer and its transitive tool-module imports."""
+    if imports is None:
+        imports = {}
+    pending = [module]
+    found: set[str] = set()
+    while pending:
+        name = pending.pop()
+        if name in found:
+            continue
+        if name not in imports:
+            path = _module_path(name, ROOT / "src")
+            imports[name] = None if path is None else _imported_modules(path, name)
+        imported_names = imports[name]
+        if imported_names is None:
+            continue
+        found.add(name)
+        pending.extend(
+            imported
+            for imported in imported_names
+            if imported.startswith("esolangs.tools.") and imported not in found
+        )
+    return found
+
+
+def _generator_oracles(module: str) -> list[Path]:
+    """Return independent interpreter oracles for affected generators."""
+    target = f"esolangs.tools.{module}"
+    selected: set[Path] = set()
+    dependencies: dict[str, set[str]] = {}
+    imports: dict[str, set[str] | None] = {}
+    affected: set[str] = set()
+    for language in LANGUAGES.values():
+        producer = language.boolean
+        if producer is None or language.interpreter is None:
+            continue
+        name = producer.__module__
+        if name not in dependencies:
+            dependencies[name] = _tool_dependencies(name, imports)
+        if not any(
+            dependency == target or dependency.startswith(f"{target}.")
+            for dependency in dependencies[name]
+        ):
+            continue
+        affected.add(language.name)
+        stem = language.interpreter.rsplit(".", 1)[-1]
+        selected.update(ROOT.glob(f"tests/interpreters/test_{stem}_*semantics.py"))
+        if stem == "line":
+            selected.update(ROOT.glob("tests/line/test_*semantics.py"))
+    # Early audits share a suite whose parameter literals name the languages.
+    for path in ROOT.glob("tests/interpreters/test_*semantic*.py"):
+        names = {
+            node.value
+            for node in ast.walk(ast.parse(path.read_text()))
+            if isinstance(node, ast.Constant) and isinstance(node.value, str)
+        }
+        if names & affected:
+            selected.add(path)
+    return sorted(path.relative_to(ROOT) for path in selected)
+
+
+def _oracle_support(oracles: list[Path]) -> list[Path]:
+    """Return oracle files, package initializers and imported test helpers."""
+    pending = list(oracles)
+    found: set[Path] = set()
+    while pending:
+        path = pending.pop()
+        if path in found:
+            continue
+        found.add(path)
+        for parent in path.parents:
+            if parent == Path("."):
+                break
+            init = parent / "__init__.py"
+            if (ROOT / init).is_file() and init not in found:
+                pending.append(init)
+        module = ".".join(path.with_suffix("").parts)
+        if path.name == "__init__.py":
+            module = module.removesuffix(".__init__")
+        for imported in _imported_modules(ROOT / path, module):
+            if not imported.startswith("tests."):
+                continue
+            dependency = _module_path(imported, ROOT)
+            if dependency is not None:
+                relative = dependency.relative_to(ROOT)
+                if relative not in found:
+                    pending.append(relative)
+    return sorted(found)
+
+
 # A decorator line on a class, and the class statement it applies to.
 _DECORATED_CLASS = re.compile(
     r"^(?P<decorators>(?:@[^\n(]+(?:\([^\n]*\))?\n)+)class (?P<name>\w+)", re.M
@@ -601,7 +723,7 @@ def _pytest_args(kind: _Kind, tests: list[str]) -> list[str]:
     workers -- to run a suite that takes seconds.
     """
     return ["-x", "-q", "-p", "no:cacheprovider", "-n", "0"] + [
-        f"{kind.tests_rel}/{name}" for name in tests
+        posixpath.normpath(f"{kind.tests_rel}/{name}") for name in tests
     ]
 
 
@@ -652,6 +774,21 @@ def _prepare(
         shutil.copy(path, tools / path.name)
     (tools / "conftest.py").write_text(_CONFTEST)
 
+    oracles = _generator_oracles(module) if family == "tools" else []
+    support_roots = oracles
+    if family == "tools":
+        support_roots = [
+            *oracles,
+            *(Path(kind.tests_rel) / name for name in _test_files(kind)),
+        ]
+    for relative in _oracle_support(support_roots):
+        dest = proj / relative
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy(ROOT / relative, dest)
+    for directory in {path.parent for path in oracles}:
+        (proj / directory / "conftest.py").write_text(_CONFTEST)
+    tests.extend(posixpath.relpath(path.as_posix(), kind.tests_rel) for path in oracles)
+
     # Several suites read a shipped example, and the APA checkers read the
     # fixtures.  Both are resolved relative to the test file's parents, which
     # lands in proj for the baseline and in mutants/ for the mutation runs --
@@ -691,6 +828,10 @@ def _prepare(
         )
 
     runner = _runner_command(kind, tests)
+    collection = [kind.tests_rel, *[path.as_posix() for path in oracles]]
+    markers = tomllib.loads((ROOT / "pyproject.toml").read_text())["tool"]["pytest"][
+        "ini_options"
+    ]["markers"]
     # In addopts rather than in the runner's arguments, so that mutmut's
     # stats pass -- which supplies its own -- deselects these too.
     options = ["-n", "0"]
@@ -708,21 +849,15 @@ def _prepare(
         'also_copy = ["esolangs/", "tests/"]\n'
         "backup = false\n"
         f'runner = "{runner}"\n'
-        # The kind's own directory rather than ``tests``.  mutmut's stats
-        # pass collects this path ignoring the runner's own arguments, so a
-        # wider path sweeps in tests that cannot resolve from the work
-        # directory.
-        f'tests_dir = ["{kind.tests_rel}"]\n'
+        # Stats, warmup and execution must see the same oracle files.
+        f"pytest_add_cli_args_test_selection = {json.dumps(collection)}\n"
         "\n"
         # The work dir has its own pyproject, so the repo's pytest config
         # does not apply and the markers the suites use must be re-declared
         # -- ``--strict-markers`` is not in force here, but an unregistered
         # mark still warns on every one of thousands of mutant runs.
         "[tool.pytest.ini_options]\n"
-        "markers = [\n"
-        '    "slow: marks tests as slow",\n'
-        '    "integration: marks tests as integration tests",\n'
-        "]\n" + addopts
+        f"markers = {json.dumps(markers)}\n" + addopts
     )
     (work / "sitecustomize.py").write_text(_SITECUSTOMIZE)
     return proj, tests
