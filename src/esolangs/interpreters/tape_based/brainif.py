@@ -23,7 +23,7 @@ from esolangs.interpreters.persistent import (
     length,
     put,
 )
-from esolangs.interpreters.source_hints import syntax_error
+from esolangs.interpreters.source_hints import keyword_hint, syntax_error
 
 #: ``(ind, ptr, cells)``: an immutable value, rebound per step.  The
 #: parsed line is a parameter, not a field.
@@ -39,7 +39,7 @@ def _parse(line: str) -> _Line:
     """Return the parsed form of one source line, or raise if malformed.
 
     Commands are whole whitespace-delimited words; ``inc`` also names
-    ``increment``. Unknown commands retain the documented inert behavior.
+    ``increment``. Unknown commands raise ValueError, even on a false guard.
     """
     line = line.strip()
     if not line:
@@ -84,8 +84,14 @@ def _parse(line: str) -> _Line:
         )
     if command in ("increment", "inc", "right", "left", "input", "output"):
         return (value, command, 0)
-    # Unknown commands remain inert under the convention in limitations.md.
-    return (value, "", 0)
+    raise syntax_error(
+        f"unknown BrainIf command {command!r}",
+        keyword_hint(
+            command,
+            ("increment", "inc", "right", "left", "move", "goto", "input", "output"),
+            "write increment, move left/right, goto <line>, input or output",
+        ),
+    )
 
 
 def _advance(state: _State, line: _Line, byte: int | None = None) -> _State:

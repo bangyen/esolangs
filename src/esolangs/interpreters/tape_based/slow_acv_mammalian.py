@@ -12,6 +12,7 @@ import operator
 
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.source_hints import keyword_hint, syntax_error
 
 #: One instant of a run: ``(arrays, ptr, acc, ind, halted)`` -- the 23
 #: arrays, the pointer that picks the current one, the accumulator, the
@@ -121,8 +122,17 @@ _OPCODE = {name: op for op, name in enumerate(_INS)}
 
 @functools.lru_cache(maxsize=16)
 def _tokens(code: str) -> tuple[str, ...]:
-    """Return whole whitespace-delimited instructions, ignoring other words."""
-    return tuple(word for word in code.split() if word in _OPCODE)
+    """Return whitespace-delimited instructions; reject unknown words."""
+    words = tuple(code.split())
+    for word in words:
+        if word not in _OPCODE:
+            raise syntax_error(
+                f"unknown SLOW ACV MAMMALIAN command {word!r}",
+                keyword_hint(
+                    word, _INS, "use uppercase, whitespace-delimited commands"
+                ),
+            )
+    return words
 
 
 def _advance(state: _State, n: int, byte: int | None = None) -> _State:

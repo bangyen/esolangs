@@ -340,8 +340,10 @@ languages remain rejected from the same image-source screen.
   its own code.
 - Bitdeque `GOTO n` is zero-based: it lands on command index `n`, where the
   wiki's "Nth operation" reads one-based.  The generator's labels match this.
-- BrainIf ignores a guarded line naming no command (`if 0 frobnicate`), which
-  the wiki errors on; only the six named commands act.
+- BrainIf rejects unknown commands, including those under a false guard.
+  `inc`, `left` and `right` remain aliases for the canonical commands.
+- SLOW ACV MAMMALIAN rejects unknown words; commands are uppercase and
+  whitespace-delimited. The Hello World fixture omits prose annotations.
 - Jaune dispatch to an undefined marker is unspecified.
 - Alight expressions are infix and left-to-right; three-argument `at` mutates.
 - Packlang literals are decimal; its cat cannot receive byte 10 under

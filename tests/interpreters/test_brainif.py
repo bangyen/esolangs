@@ -122,17 +122,19 @@ class TestBrainIfGeneratedHelloWorld:
         ]
         assert run_and_capture(program, inputs=["0"]) == "0"
 
-    def test_unknown_instruction_ignored(self) -> None:
-        """Lines without a recognized instruction are ignored.
+    def test_unknown_instruction_rejected(self) -> None:
+        import pytest
 
-        A deliberate convention, not the wiki's error; recorded in
-        ``docs/limitations.md``.
-        """
-        assert run_and_capture(["if 0 output", "if 0 frobnicate"]) == "\x00"
+        for value in (0, 1):
+            with pytest.raises(ValueError, match="unknown BrainIf command"):
+                run_and_capture([f"if {value} frobnicate"])
 
     def test_embedded_command_names_do_not_execute(self) -> None:
+        import pytest
+
         for command in ("incidental", "incrementoutput", "XinputY", "moveright"):
-            assert run_and_capture([f"if 0 {command}", "if 0 output"]) == "\x00"
+            with pytest.raises(ValueError, match="unknown BrainIf command"):
+                run_and_capture([f"if 0 {command}", "if 0 output"])
 
     def test_command_words_accept_horizontal_whitespace(self) -> None:
         assert run_and_capture(["if\t0\tinc", "if 1 output"]) == "\x01"
@@ -152,14 +154,11 @@ class TestBrainIfGeneratedHelloWorld:
         with raises_message(ValueError, "malformed BrainIf line: if"):
             run_and_capture(["if"])
 
-    def test_a_value_with_no_command_is_well_formed(self) -> None:
-        """Two tokens are enough: ``if 0`` names a value and does nothing.
+    def test_a_value_with_no_command_is_rejected(self) -> None:
+        import pytest
 
-        This is the other side of the arity guard.  Only a line of fewer
-        than two tokens is malformed, so a two-token line has to run --
-        and it is the case that separates ``< 2`` from ``< 3``.
-        """
-        assert run_and_capture(["if 0", "if 0 output"]) == "\x00"
+        with pytest.raises(ValueError, match="unknown BrainIf command"):
+            run_and_capture(["if 0", "if 0 output"])
 
     def test_goto_missing_target_rejected(self) -> None:
         """A goto without a target line is malformed."""
