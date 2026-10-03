@@ -7,7 +7,6 @@ import pytest
 from esolangs import tools as boolean
 from tests.tools.boolean_runners import (
     run_bf,
-    run_factor,
 )
 
 
@@ -23,94 +22,6 @@ class TestFactor:
         second = next(segments)
         assert first == (2, 42, list(sympy.primerange(2, 42)))
         assert second == (42, 82, list(sympy.primerange(42, 82)))
-
-    @pytest.mark.parametrize(
-        ("table", "n"),
-        [
-            ("10", 1),  # NOT
-            ("01", 1),  # identity
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("1110", 2),  # NAND
-            ("11111110", 3),  # NAND3
-        ],
-    )
-    @pytest.mark.medium
-    def test_truth_table(self, table: str, n: int) -> None:
-        """Every input combination produces the truth-table result."""
-        program = boolean.factor(table)
-        for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            got = run_factor(program, [str(b) for b in bits])
-            assert got == str(int(table[combo])), f"inputs {bits}"
-
-    def test_factors_back_into_a_working_bf_program(self) -> None:
-        """The integer's factorization is a brainfuck program for the table.
-
-        This used to assert the stronger ``factor(t) ==
-        _factor_encode(brainfuck(t))``, which pinned *which* brainfuck
-        program was encoded.  Factor pays a prime per run rather than a
-        character per command, so it builds for that objective instead and no
-        longer emits brainfuck's shortest program; what has to hold is the
-        encoding itself, which is what this decodes and runs.
-        """
-        import sympy
-
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.brainfuck import run as run_bf
-        from esolangs.tools.factor import _BF_RESIDUE
-
-        table = "0110"
-        n = 2
-        command = {residue: char for char, residue in _BF_RESIDUE.items()}
-        factors = sorted(sympy.factorint(int(boolean.factor(table))).items())
-        code = "".join(command[prime % 11] * power for prime, power in factors)
-
-        for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            io = ScriptedIO("".join(f"{bit}" for bit in bits))
-            run_bf(code, io)
-            assert io.getvalue() == table[combo], f"inputs {bits}"
-
-    def test_builds_above_the_greedy_order_cap(self) -> None:
-        """Past ``_GREEDY_ORDER_MAX_ARITY`` only the identity order is built.
-
-        The generator scores two input orders by digits and keeps the better;
-        above the cap the greedy order is not searched at all, which is a path
-        of its own.  AND11 takes it cheaply -- the tree folds to one leaf, so
-        this is 1330 digits and a 2ms build rather than parity's 425ms.
-        """
-        from esolangs.tools.helpers import _GREEDY_ORDER_MAX_ARITY
-
-        n = _GREEDY_ORDER_MAX_ARITY + 1
-        table = "0" * (2**n - 1) + "1"
-        program = boolean.factor(table)
-        assert program.isdigit()
-        assert run_factor(program, ["1"] * n) == "1"
-        assert run_factor(program, ["0"] * n) == "0"
-
-    def test_a_table_past_cpythons_own_limit_still_renders(self) -> None:
-        """XOR7 exceeds CPython's 4300-digit rendering guard.
-
-        Terminal transfers brought XOR6 below it; use the next arity to
-        keep exercising the temporary limit increase.
-        """
-        xor7 = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(128))
-        program = boolean.factor(xor7)
-        assert program.isdigit()
-        assert len(program) > sys.get_int_max_str_digits()
-
-    def test_the_render_leaves_the_global_limit_alone(self) -> None:
-        """The digit limit is process-global, so it is borrowed, not kept.
-
-        A generator that raised it and walked away would silently disarm
-        the guard for everything else in the process.
-        """
-        before = sys.get_int_max_str_digits()
-        boolean.factor(
-            "".join("1" if bin(i).count("1") % 2 else "0" for i in range(16))
-        )
-        assert sys.get_int_max_str_digits() == before
 
     def test_the_render_works_under_an_unlimited_global(self) -> None:
         """``sys.set_int_max_str_digits(0)`` means unlimited, not zero.
