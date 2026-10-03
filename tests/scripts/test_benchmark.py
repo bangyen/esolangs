@@ -230,6 +230,7 @@ def test_hidden_loop_stack_counts_separately_from_data() -> None:
     assert profile["peak_control_stack_items"] == 2
     assert profile["peak_control_stack_bits"] == 5
     assert profile["peak_data_bits"] == 2
+    assert profile["peak_machine_bits"] == 2 + 5 + vm.ip.bit_length()
 
 
 @pytest.mark.parametrize(
@@ -247,6 +248,12 @@ def test_integer_payload_counts_magnitude_and_negative_sign(
     assert profile is not None
     assert profile["peak_integer_bits"] == bits
     assert profile["peak_control_stack_items"] == 0
+    assert profile["peak_machine_bits"] == (
+        profile["peak_data_bits"]
+        + profile["peak_control_stack_bits"]
+        + profile["peak_pc_bits"]
+        + (2 if language == "Sophie" else 0)
+    )
 
 
 def test_unaudited_machine_does_not_report_zero_hidden_store() -> None:
@@ -255,3 +262,15 @@ def test_unaudited_machine_does_not_report_zero_hidden_store() -> None:
     )
     assert result["peak_control_stack_items"] is None
     assert result["peak_data_bits"] is None
+    assert result["peak_machine_bits"] is None
+    assert result["source_utf8_bits"] == 8 * result["source_units"]
+
+
+def test_machine_peak_is_not_the_sum_of_separate_peaks() -> None:
+    from scripts.benchmark import _execute
+
+    result = _execute("Sophie", "#$1024#$0.", "00", 0, 10, None, track_store=True)
+    assert result["matches"] is True
+    # The large accumulator is cleared before the cursor needs its fourth bit.
+    assert result["peak_machine_bits"] == 16
+    assert result["peak_data_bits"] + result["peak_pc_bits"] + 2 == 17

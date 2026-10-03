@@ -35,10 +35,11 @@ def _integer_bits(value: int) -> int:
 def _payload_profile(language: str, vm: VM) -> dict[str, int] | None:
     """Count logical data and control integers for three audited machine shapes.
 
-    Excludes Python overhead, static parser indexes and I/O buffers. Subleq's
+    Excludes Python overhead, static parser indexes and I/O state. Subleq's
     mutable code is included in its memory; other source is measured separately.
     """
     state = vm.snapshot()
+    flags = 0
     if language == "BFStack":
         data, control, pc, _cursor = cast(
             "tuple[tuple[int, ...], tuple[int, ...], int, int]", state
@@ -48,18 +49,24 @@ def _payload_profile(language: str, vm: VM) -> dict[str, int] | None:
             "tuple[int, int, bool, tuple[int, ...], bool]", state
         )
         data = (accumulator,)
+        flags = 2
     elif language == "Subleq":
         data, pc, _cursor = cast("tuple[tuple[int, ...], int, int]", state)
         control = ()
     else:
         return None
-    widths = [_integer_bits(value) for value in (*data, *control)]
+    data_widths = [_integer_bits(value) for value in data]
+    control_widths = [_integer_bits(value) for value in control]
+    data_bits = sum(data_widths)
+    control_bits = sum(control_widths)
+    pc_bits = _integer_bits(pc)
     return {
         "peak_control_stack_items": len(control),
-        "peak_data_bits": sum(_integer_bits(value) for value in data),
-        "peak_control_stack_bits": sum(_integer_bits(value) for value in control),
-        "peak_integer_bits": max(widths, default=0),
-        "peak_pc_bits": _integer_bits(pc),
+        "peak_data_bits": data_bits,
+        "peak_control_stack_bits": control_bits,
+        "peak_integer_bits": max((*data_widths, *control_widths), default=0),
+        "peak_pc_bits": pc_bits,
+        "peak_machine_bits": data_bits + control_bits + pc_bits + flags,
     }
 
 
@@ -99,6 +106,7 @@ def _execute(
         "peak_control_stack_bits": None,
         "peak_integer_bits": None,
         "peak_pc_bits": None,
+        "peak_machine_bits": None,
     }
 
     def drive(*_args: object) -> None:
@@ -226,13 +234,16 @@ def measure(
     ]
     selected = next(item for item in executions if item["row"] == row)
     return {
-        "schema": 4,
+        "schema": 5,
         "track_store": track_store,
         "language": esolangs.describe(language)["name"],
         "truth_table": table,
         "inputs": len(table).bit_length() - 1,
         "source_kind": esolangs.describe(language)["source_kind"],
         "source_units": _source_size(program),
+        "source_utf8_bits": 8 * len(program.encode("utf-8"))
+        if isinstance(program, str)
+        else None,
         "generation_ns_best": min(timings),
         "generation_ns_median": int(statistics.median(timings)),
         "step_cap": step_cap,

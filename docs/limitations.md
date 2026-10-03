@@ -149,6 +149,15 @@ Persistent stores use shared 32-cell chunks; RAM0 also indexes addresses.
 Those choices prevent repeated scans, but command cost and source size remain
 separate axes.
 
+`scripts/screens/resources.py` checks Sophie, BFStack and Subleq on 96 tables
+and all 6,120 rows through eight inputs. The benchmark reports UTF-8 source
+bits, hidden control stacks, signed integer widths and the simultaneous peak
+of data, control, cursor and machine flags. Separate peaks need not coincide.
+Python overhead, static parser indexes and I/O state are excluded. At eight
+inputs the sampled peak machine payloads are 18, 756 and 3,066 bits respectively;
+these are measurements, not language-wide space bounds. Construction bounds
+are asserted in the screen and controlled by `tests/proofs/test_resource_bounds.py`.
+
 ### Malbolge sampling
 
 `test_boolean_malbolge.py` checks stride samples (every 8th/16th/32nd row)
