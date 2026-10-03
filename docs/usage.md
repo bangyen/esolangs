@@ -219,6 +219,17 @@ between steps, so loading and an individual step cannot be interrupted.
 Text and raster languages share the VM and debugger. `isolated` and `max_steps` are mutually
 exclusive, and stepping does not support `seed`.
 
+With `isolated=True`, `max_output` caps output in Unicode characters. Exceeding
+the cap raises `InterpreterLimitError` with the retained prefix in `partial_output`.
+Zero permits no output; halting at exactly the cap succeeds.
+
+```python
+try:
+    esolangs.run("brainfuck", ",[.]", "y", isolated=True, timeout=3, max_output=12)
+except esolangs.InterpreterLimitError as exc:
+    assert exc.partial_output == "y" * 12
+```
+
 ## Debugging
 
 The Python stepping API lives in `esolangs.debugger`: `VM`, `Debugger`,
@@ -237,6 +248,23 @@ printf '01' | esolangs debug --steps 20 --watch-cell 0 brainfuck bf.txt
 `make_debugger(...).run()` returns one of `STOP_REASONS`:
 `"halted"`, `"breakpoint"`, `"max_steps"`, or `"timeout"`. Program faults raise
 an exception instead; the CLI catches it and prints `stopped: raised`.
+
+`break_on_output(text)` stops once output contains `text`. After a hit, `run`
+suppresses that breakpoint until its condition becomes false, so resuming can
+progress without clearing it. `clear_breakpoints()` removes all breakpoints
+while preserving the machine, output and watches. A breakpoint can stop before
+the halt instruction executes; inspect `halted` separately from the stop reason.
+
+```python
+from esolangs.debugger import make_debugger
+
+debug = make_debugger("brainfuck", ",[.]", "y")
+debug.break_on_output("yy")
+assert debug.run(max_steps=100) == "breakpoint"
+assert debug.output == "yy"
+assert debug.run(max_steps=20) == "max_steps"
+assert len(debug.output) > 2
+```
 
 `--tui` highlights the next operation and shows the tape, stack, output,
 named state, and watch history. Controls are `hjkl` to move, `t` to toggle a
