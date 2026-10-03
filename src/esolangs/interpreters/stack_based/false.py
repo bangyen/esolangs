@@ -192,7 +192,7 @@ def _literal(code: str, pc: int, end: int) -> tuple[int, int]:
     """Return the integer literal starting at ``pc``, and the index past it."""
     stop = pc
     value = 0
-    while stop < end and code[stop].isdigit():
+    while stop < end and "0" <= code[stop] <= "9":
         # Bounded accumulation avoids Python's decimal conversion limit.
         value = _wrap32(value * 10 + int(code[stop]))
         stop += 1
@@ -277,7 +277,7 @@ def _advance(
     char = code[frame.pc]
     frames = (*frames[:-1], _at(frame, frame.pc + 1))
 
-    if char.isdigit():
+    if "0" <= char <= "9":
         value, stop = _literal(code, frame.pc, frame.end)
         frames = (*frames[:-1], _at(frame, stop))
         return ((*stack, value), variables, frames), None
@@ -434,7 +434,8 @@ class _Machine:
 
     @property
     def stack(self) -> list[object]:
-        return list(self.state[0])
+        # Loop completion consumes its flag even when no command follows.
+        return list(_finalize(self.state)[0])
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
