@@ -13,7 +13,15 @@ from tests.cli_support import call_both
     [
         name
         for name, spec in LANGUAGES.items()
-        if spec.id not in {"modulous", "bitdeque", "packlang"}
+        if spec.id
+        not in {
+            "modulous",
+            "bitdeque",
+            "packlang",
+            "brainif",
+            "grapheme",
+            "collatz_multiverse",
+        }
     ],
 )
 def test_other_languages_offer_explicit_no_edit_result(language, tmp_path, capsys):

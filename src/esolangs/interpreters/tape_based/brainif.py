@@ -34,6 +34,8 @@ type _State = tuple[int, int, Chunked[int]]
 #: ``target`` is meaningful only for ``goto`` and is zero otherwise.
 type _Line = tuple[int, str, int] | None
 
+_COMMANDS = ("increment", "inc", "right", "left", "move", "goto", "input", "output")
+
 
 def _parse(line: str) -> _Line:
     """Return the parsed form of one source line, or raise if malformed.
@@ -82,13 +84,13 @@ def _parse(line: str) -> _Line:
             "malformed BrainIf line: " + line,
             "give the guarded command only its required operands",
         )
-    if command in ("increment", "inc", "right", "left", "input", "output"):
+    if command in _COMMANDS:
         return (value, command, 0)
     raise syntax_error(
         f"unknown BrainIf command {command!r}",
         keyword_hint(
             command,
-            ("increment", "inc", "right", "left", "move", "goto", "input", "output"),
+            _COMMANDS,
             "write increment, move left/right, goto <line>, input or output",
         ),
     )
