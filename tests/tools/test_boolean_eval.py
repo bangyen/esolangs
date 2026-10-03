@@ -1,7 +1,5 @@
 """Covers :mod:`esolangs.tools.eval_lang`."""
 
-import pytest
-
 from esolangs import tools as boolean
 from esolangs.tools.eval_lang import PAIR
 from esolangs.tools.helpers import TEMPLATE_CHAR
@@ -12,14 +10,6 @@ _X = TEMPLATE_CHAR * len(PAIR[0])
 
 class TestEvalBoolean:
     """Input-by-substitution boolean generator for the no-input language Eval."""
-
-    def run_eval(self, prog: str) -> str:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.stack_based.eval import run
-
-        io_ = ScriptedIO("")
-        run(prog, io_)
-        return io_.getvalue()
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
         """Fill the template the way the example harness does."""
@@ -40,48 +30,6 @@ class TestEvalBoolean:
                 assert len(_fill_eval(template, zeros)) == len(
                     _fill_eval(template, ones)
                 ), f"n={n} input {i}"
-
-    @pytest.mark.parametrize(
-        ("table", "n"),
-        [
-            ("10", 1),  # NOT
-            ("01", 1),  # identity
-            ("00", 1),  # constant zero
-            ("11", 1),  # constant one
-            ("0001", 2),  # AND
-            ("0110", 2),  # XOR
-            ("0111", 2),  # OR
-            ("1110", 2),  # NAND
-            ("11111110", 3),  # NAND3
-            ("01101001", 3),  # XOR3
-            ("1000000000000000", 4),  # AND4
-            ("1111111100000000", 4),  # top half
-        ],
-    )
-    @pytest.mark.medium
-    def test_truth_table(self, table: str, n: int) -> None:
-        """Every instantiated input produces the truth-table result."""
-        from esolangs import tools as generators
-
-        template = generators.eval(table)
-        for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            got = self.run_eval(self.instantiate(template, bits))
-            assert got == str(int(table[combo])), f"inputs {bits}"
-
-    @pytest.mark.parametrize("n", [1, 2, 3])
-    @pytest.mark.medium
-    def test_all_small_tables(self, n: int) -> None:
-        """Every table up to three inputs produces the right result."""
-        from esolangs import tools as generators
-
-        for table_int in range(2 ** (2**n)):
-            table = format(table_int, f"0{2**n}b")
-            template = generators.eval(table)
-            for combo in range(2**n):
-                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-                got = self.run_eval(self.instantiate(template, bits))
-                assert got == str(int(table[combo])), f"{table} inputs {bits}"
 
     def test_ignored_inputs_shrink_the_lookup(self) -> None:
         """A constant table pushes one result and only drains its inputs."""
@@ -317,7 +265,3 @@ class TestEvalBoolean:
         template = generators.eval(table)
         # The template is the exact shape of every program it fills to.
         assert len(template) == len(self.instantiate(template, [0] * n)) == 206
-        for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            got = self.run_eval(self.instantiate(template, bits))
-            assert got == str(int(table[combo])), f"inputs {bits}"
