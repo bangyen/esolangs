@@ -260,3 +260,22 @@ def test_published_hello_and_cell_copy_add_subtract_not():
             )
             assert verdict == "halt"
             assert result.cells[1:3] == [(left + operation * right) & 255, 0]
+
+
+@pytest.mark.medium
+def test_all_byte_noncommands_and_lf_jump_targets():
+    for char in map(chr, range(256)):
+        if char not in "idclrnfsbo\n":
+            result, verdict = compare("iin" + char + "o", cap=8)
+            assert verdict == "error"
+            assert result.ip == 3
+    for source in ("ciinsiio", "ciindbo", "cbo", "ciinsio", "nib"):
+        plain, verdict = compare(source, cap=30)
+        wrapped, wrapped_verdict = compare("\n" + "\n".join(source) + "\n", cap=30)
+        assert plain.snapshot() == wrapped.snapshot()
+        assert plain.output == wrapped.output
+        assert verdict == wrapped_verdict
+    result, verdict = compare("ci" + "n" * 260 + "f" * 260 + "o", cap=530)
+    assert verdict == "halt"
+    assert result.output == "\x01"
+    assert not result.stack

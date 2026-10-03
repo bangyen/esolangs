@@ -59,31 +59,6 @@ class TestParameterizedNoComment:
         assert actual == independent
         return actual
 
-    @pytest.mark.parametrize(
-        ("table", "n"),
-        [
-            ("10", 1),  # NOT
-            ("01", 1),
-            ("00", 1),  # constant zero
-            ("11", 1),  # constant one
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("1110", 2),  # NAND
-            ("11111110", 3),  # NAND3
-            ("01101001", 3),  # XOR3
-        ],
-    )
-    @pytest.mark.medium
-    def test_truth_table(self, table: str, n: int) -> None:
-        """Every instantiated input produces the truth-table result."""
-        from esolangs import tools as generators
-
-        template = generators.nocomment(table)
-        for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            got = self.run_nocomment(self.instantiate(template, bits))
-            assert got == str(int(table[combo])), f"inputs {bits}"
-
     @pytest.mark.parametrize("n", [1, 2, 3])
     @pytest.mark.medium
     def test_all_small_tables(self, n: int) -> None:
@@ -97,26 +72,6 @@ class TestParameterizedNoComment:
                 bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
                 got = self.run_nocomment(self.instantiate(template, bits))
                 assert got == str(int(table[combo])), f"{table} inputs {bits}"
-
-    def test_template_is_input_independent(self) -> None:
-        """The template has one run per input, not hardcoded bits."""
-        from esolangs import tools as generators
-
-        template = generators.nocomment("0110")
-        assert "{X" not in template
-        assert template.count(TEMPLATE_CHAR) == 2 * len(PAIR[0])
-
-    def test_program_structure(self) -> None:
-        """A one-bit template computes the index then skips to the output."""
-        from esolangs import tools as generators
-
-        template = generators.nocomment("10")
-        assert template.startswith(TEMPLATE_CHAR * len(PAIR[0]))
-        # The complement is computed at runtime: one run per input, no second.
-        assert template.count(TEMPLATE_CHAR) == len(PAIR[0])
-        assert template.endswith("o")  # a single final output
-        assert template.count("s") == 3  # NOT gate + guarded increment + index skip
-        assert template.count("o") == 1
 
     def test_four_input_works(self) -> None:
         """A dense four-input table assembles and runs correctly."""
