@@ -49,10 +49,10 @@ and proved limits; completed work is recorded in its commit.
   | Malbolge | Exception | Open | Linear | Linear |
   | Polynomial | Cap | Language lower bound | Language lower bound | Linear |
 
-  Befunge ships through ten inputs: its cell-per-entry lookup cannot fit an
-  eleven-input table on the fixed 80x25 torus. No uniform larger-table
-  construction is proved under that geometry; this is an open gap, not a
-  proved language impossibility.
+  Befunge ships through ten inputs. Its fixed 80x25 source grid admits fewer
+  than `2**42000` programs even with Unicode cells, whereas sixteen inputs
+  admit `2**65536` truth tables. Some have no program under the source-embedded
+  contract; unbounded runtime integers do not enlarge the source alphabet.
 
   Malbolge ships through sixteen inputs; finite source space excludes some
   18-input tables, leaving generation time at seventeen open. Its fixed
