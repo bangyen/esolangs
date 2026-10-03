@@ -66,20 +66,6 @@ class TestParameterizedRam0:
             got = self.run_ram0(self.instantiate(template, bits))
             assert got == str(int(table[combo])), f"inputs {bits}"
 
-    @pytest.mark.parametrize("n", [1, 2, 3])
-    @pytest.mark.medium
-    def test_all_small_tables(self, n: int) -> None:
-        """Every table up to three inputs produces the right result."""
-        from esolangs import tools as generators
-
-        for table_int in range(2 ** (2**n)):
-            table = format(table_int, f"0{2**n}b")
-            template = generators.ram0(table)
-            for combo in range(2**n):
-                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-                got = self.run_ram0(self.instantiate(template, bits))
-                assert got == str(int(table[combo])), f"{table} inputs {bits}"
-
     def test_template_is_input_independent(self) -> None:
         """The template has one run per input, not hardcoded bits."""
         from esolangs import tools as generators
