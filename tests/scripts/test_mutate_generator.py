@@ -87,6 +87,15 @@ class TestPytestArgs:
         args = script._pytest_args(kind, ["test_boolean_rotfuck.py"])  # noqa: SLF001
         assert args[args.index("-n") + 1] == "0"
 
+    def test_oracle_paths_remain_portable_in_runner_config(self) -> None:
+        script = load_script()
+        kind = script._KINDS["tools"]  # noqa: SLF001
+        args = script._pytest_args(  # noqa: SLF001
+            kind, ["../interpreters/test_factor_semantics.py"]
+        )
+        assert "tests/interpreters/test_factor_semantics.py" in args
+        assert all("\\" not in arg for arg in args)
+
     def test_the_runner_command_quotes_its_arguments(self) -> None:
         """Mutmut splits the runner with ``shlex``, so it must be quoted.
 
@@ -356,6 +365,34 @@ def test_config_isolates_xdist_and_applies_selection_to_every_pass(
     assert options[4:] == ([] if selection is None else ["-k", "suffolk"])
 
 
+@pytest.mark.medium
+@pytest.mark.parametrize(
+    ("family", "module"),
+    [
+        ("tools", "line"),
+        ("line", "simulate"),
+        ("tools", "piet"),
+        ("piet", "__init__"),
+    ],
+)
+def test_raster_modules_prepare_their_real_suites(
+    family: str, module: str, tmp_path: Path
+) -> None:
+    script = load_script()
+    assert script._parse_target(f"{family}/{module}") == (family, module)  # noqa: SLF001
+    proj, tests = script._prepare(family, module, tmp_path, slow=False)  # noqa: SLF001
+    expected = sorted(p.name for p in (REPO_ROOT / "tests" / family).glob("test_*.py"))
+    assert tests[: len(expected)] == expected
+    if family == "tools" and module == "line":
+        assert "../line/test_pixel_semantics.py" in tests
+        assert (proj / "tests/line/reference_pixels.py").is_file()
+    assert (
+        script._KINDS[family].rel_target(module)  # noqa: SLF001
+        in (proj / "pyproject.toml").read_text()
+    )
+    script._check_shadowing(proj, family, module)  # noqa: SLF001
+
+
 # Two child pytest runs per case: 24-37s in the normal-suite profile.
 @pytest.mark.slow
 @pytest.mark.parametrize(
@@ -491,3 +528,100 @@ def test_interpreter_mutation_discovery_includes_nested_packages(
     assert script._modules("demo") == ["__init__", "ops", "ops.step"]  # noqa: SLF001
     assert kind.rel_target("ops") == "esolangs/interpreters/demo/ops/__init__.py"
     assert kind.rel_target("ops.step") == "esolangs/interpreters/demo/ops/step.py"
+
+
+def test_forwarded_generators_include_their_independent_oracles() -> None:
+    script = load_script()
+    selected = script._generator_oracles("brainfuck")  # noqa: SLF001
+    assert Path("tests/interpreters/test_brainfuck_semantics.py") in selected
+    assert Path("tests/interpreters/test_semantic_oracles.py") in selected
+    assert Path("tests/interpreters/test_rotfuck_semantics.py") not in selected
+    shared = script._generator_oracles("helpers")  # noqa: SLF001
+    assert Path("tests/interpreters/test_factor_semantics.py") in shared
+    assert Path("tests/line/test_pixel_semantics.py") in shared
+
+
+def test_oracle_support_follows_reference_imports_without_selecting_them() -> None:
+    script = load_script()
+    oracle = Path("tests/interpreters/test_factor_semantics.py")
+    assert script._generator_oracles("factor") == [oracle]  # noqa: SLF001
+    support = script._oracle_support([oracle])  # noqa: SLF001
+    assert Path("tests/interpreters/test_brainfuck_semantics.py") in support
+    assert Path("tests/interpreters/__init__.py") in support
+    assert Path("tests/conftest.py") not in support
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize(
+    ("target", "node", "producer"),
+    [
+        ("rotfuck", "test_generated_all_small_tables[2]", "rotfuck"),
+        ("bit_tilde", "test_every_small_generated_table[2]", "bit_tilde"),
+        ("factor", "test_generated_all_small_tables[2]", "factor"),
+    ],
+)
+def test_independent_oracle_runs_and_kills_wrong_output_in_copy(
+    target: str, node: str, producer: str, tmp_path: Path
+) -> None:
+    import ast
+    import shlex
+    import tomllib
+
+    script = load_script()
+    proj, tests = script._prepare("tools", target, tmp_path, slow=True)  # noqa: SLF001
+    config = tomllib.loads((proj / "pyproject.toml").read_text())
+    collection = config["tool"]["mutmut"]["pytest_add_cli_args_test_selection"]
+    oracle = f"tests/interpreters/test_{target}_semantics.py"
+    assert collection == ["tests/tools", oracle]
+    assert oracle in shlex.split(config["tool"]["mutmut"]["runner"])
+    assert f"../interpreters/test_{target}_semantics.py" in tests
+    command = [sys.executable, "-m", "pytest", "-q", f"{oracle}::{node}"]
+    baseline = subprocess.run(
+        command, cwd=proj, capture_output=True, text=True, timeout=15
+    )
+    assert baseline.returncode == 0, baseline.stdout + baseline.stderr
+    path = proj / script._KINDS["tools"].rel_target(target)  # noqa: SLF001
+    lines = path.read_text().splitlines(keepends=True)
+    function = next(
+        item
+        for item in ast.parse("".join(lines)).body
+        if isinstance(item, ast.FunctionDef) and item.name == producer
+    )
+    # All three producers start with their docstring; preserve it as such.
+    lines.insert(
+        function.body[1].lineno - 1, '    truth_table = "0" * len(truth_table)\n'
+    )
+    path.write_text("".join(lines))
+    mutant = subprocess.run(
+        command, cwd=proj, capture_output=True, text=True, timeout=15
+    )
+    assert mutant.returncode == 1, mutant.stdout + mutant.stderr
+    assert "AssertionError" in mutant.stdout
+    assert "ERROR collecting" not in mutant.stdout
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("slow", [False, True])
+def test_oracle_markers_apply_to_collection_and_execution(
+    *, slow: bool, tmp_path: Path
+) -> None:
+    import tomllib
+
+    script = load_script()
+    proj, _ = script._prepare("tools", "bit_tilde", tmp_path, slow=slow)  # noqa: SLF001
+    config = tomllib.loads((proj / "pyproject.toml").read_text())
+    paths = config["tool"]["mutmut"]["pytest_add_cli_args_test_selection"]
+    assert paths[0] == "tests/tools"
+    # This existing suite imports the CLI helper once missing from the copy.
+    collection = ["tests/tools/test_balance.py", *paths[1:]]
+    command = [sys.executable, "-m", "pytest", "--collect-only", "-q", *collection]
+    collected = subprocess.run(
+        command, cwd=proj, capture_output=True, text=True, timeout=15
+    )
+    assert collected.returncode == 0, collected.stdout + collected.stderr
+    assert (
+        "test_every_small_generated_table[2]" in collected.stdout
+        if slow
+        else ("test_every_small_generated_table[2]" not in collected.stdout)
+    )
+    assert "test_positive_controls" in collected.stdout
