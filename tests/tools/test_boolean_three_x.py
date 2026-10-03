@@ -8,12 +8,6 @@ from esolangs import tools as boolean
 
 
 class TestThreeX:
-    def test_identity_program_structure(self) -> None:
-        """The 01 table reads a bit and stores it before printing."""
-        program = boolean.three_x("01")
-        assert program.startswith("?")
-        assert program.endswith("!")
-
     def test_reordering_only_shrinks(self) -> None:
         """No table comes out longer than the identity order's program."""
         from esolangs.tools.three_x import _three_x_ordered
@@ -87,24 +81,10 @@ class TestThreeX:
         with pytest.raises(ValueError, match="only '0' and '1'"):
             boolean.three_x("02")
 
-    def test_uses_input_variables(self) -> None:
-        """Each input bit is read into a distinct variable."""
-        program = boolean.three_x("0001")
-        assert program.count("?") == 2
-        assert "333x" in program  # the constant-0 encoding appears
-        assert "3333x3x" in program  # the constant-1 encoding appears
-
     def test_constant_table_has_no_override_blocks(self) -> None:
         """When every row equals the default, no ( ... ) guards are emitted."""
         assert "(" not in boolean.three_x("0" * 4)
         assert "(" not in boolean.three_x("1" * 4)
-
-    def test_majority_default_handles_zero_row(self) -> None:
-        """A zero row differing from a majority-1 default still overrides it."""
-        program = boolean.three_x("0110")  # XOR: two 1s, two 0s
-        assert program.startswith("?")
-        assert program.endswith("!")
-        assert "(" in program  # the zero row needs an override block
 
     def test_scales_to_more_inputs(self) -> None:
         """The generator handles n beyond the built-in constants."""

@@ -103,9 +103,8 @@ def _loaded(
     return Fraction(_UNSET)
 
 
-# Ruby's Rational() string parser accepts integers and "a/b" fractions only,
-# not decimals; the interpreter rejects the same inputs.
-_RATIONAL = re.compile(r"^[+-]?\d+(?:/[+-]?\d+)?$")
+# Input tokens are integers or fractions with an unsigned denominator.
+_RATIONAL = re.compile(r"^[+-]?\d+(?:/\d+)?$")
 
 
 class _Machine:
@@ -157,9 +156,9 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        # All three stores are already tuples, and the variables are kept
-        # in key order, so the state goes in as it stands.
-        return self.state
+        # ?(!?)! can revisit this state while consuming 1 1 0; the input
+        # cursor separates the repeat from the later zero that ends the loop.
+        return (*self.state, self.io.position())
 
     def step(self) -> None:
         """Execute one command, advancing (or jumping) the cursor."""
