@@ -255,6 +255,10 @@ def test_seeded_signed_operands_labels_and_calls(seed):
 
 @pytest.mark.medium
 def test_positive_controls_nested_calls_and_tape_chunk_boundaries():
+    for source, stdin in (("v@^.1$7+;", "1"), ("v@^.1$v@;2$7+;", "1 2")):
+        expected, status = compare(source, stdin, cap=200)
+        assert status == "halt"
+        assert expected.output == "7"
     for source in ("v+v+^.", "v+>v+#<&^.", "v+>v+1@^.1$#<&;", "v+>v+1:1-<1+>1?<^."):
         expected, status = compare(source, "3 4", cap=200)
         assert status == "halt"

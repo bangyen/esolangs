@@ -154,7 +154,7 @@ def _jaune_ordered(
         if reads.endswith(">"):
             reads = reads[:-1]
             scratch = slot - 1
-    elif n and (n - 1) not in stored:
+    else:
         reads += ">"
         scratch = slot + 1
 

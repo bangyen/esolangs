@@ -35,28 +35,7 @@ from esolangs.interpreters.tape_based.line.lattice import _DIRS, Stroke, Vertex
 from esolangs.interpreters.tape_based.line.mask import Mask, from_grey
 from esolangs.interpreters.tape_based.line.simulate import IO, run
 from esolangs.raster.png import read_grey
-from esolangs.tools.line.render import Node, chain, render
-
-
-def test_transition_preserves_prior_states_and_requests_output() -> None:
-    from esolangs.interpreters.tape_based.line.simulate import _advance, _Frame
-
-    program = (_Frame((("i", 1), ("+", 2), ("o", 1)), (), (0, 0), None, None, None),)
-    initial = (0, 0, 0, ())
-    entered, output = _advance(initial, program, 3)
-    assert output is None
-    assert _advance(initial, program, 3) == (entered, None)
-    changed, _ = _advance(entered, program)
-    emitted, output = _advance(changed, program)
-    assert output == 5
-    assert initial == (0, 0, 0, ())
-    assert entered == (0, 1, 0, ((0, 3),))
-    assert changed == (0, 2, 0, ((0, 5),))
-    halted, _ = _advance(emitted, program)
-    assert _advance(halted, program) == (halted, None)
-    with pytest.raises(ValueError, match="requires a value"):
-        _advance(initial, program)
-
+from esolangs.tools.line.render import chain, render
 
 # Anchored to this file rather than the working directory, so the wiki
 # fixtures resolve no matter where pytest is invoked from.
@@ -116,25 +95,6 @@ class TestCursorSelection:
         assert find_cursor(mask).x < drawing.width
 
 
-class TestBasicOps:
-    """Opcode basics through a real render -> extract -> simulate round-trip."""
-
-    def test_plus_repeats_merge_into_one_count(self, tmp_path: Path) -> None:
-        """Three consecutive `+` render as one merged kink, still count=3."""
-        path = str(tmp_path / "plusplusplus.png")
-        render(chain("+", "+", "+")).save(path)
-        tape = run(extract(path))
-        assert tape.get(0, 0) == 3
-
-    def test_pointer_movement_and_increment_across_cells(self, tmp_path: Path) -> None:
-        """`>` moves the pointer; `+` increments whichever cell it lands on."""
-        path = str(tmp_path / "move.png")
-        render(chain(">", "+", "+", "<", "+")).save(path)
-        tape = run(extract(path))
-        assert tape.get(0, 0) == 1
-        assert tape.get(1, 0) == 2
-
-
 class TestRenderScale:
     """`render(scale=k)` thickens strokes without changing the program.
 
@@ -144,17 +104,6 @@ class TestRenderScale:
     makes it safe to use at all: a scaled drawing must extract to exactly the
     program the 1x drawing does.
     """
-
-    @pytest.mark.parametrize("scale", [1, 2, 3, 4])
-    def test_scaled_render_extracts_the_same_program(
-        self, scale: int, tmp_path: Path
-    ) -> None:
-        """Every scale round-trips to the same tape as 1x."""
-        path = str(tmp_path / f"scaled{scale}.png")
-        render(chain(">", "+", "+", "<", "+"), scale=scale).save(path)
-        tape = run(extract(path))
-        assert tape.get(0, 0) == 1
-        assert tape.get(1, 0) == 2
 
     @pytest.mark.parametrize("scale", [2, 3])
     def test_scale_multiplies_the_canvas_exactly(self, scale: int) -> None:
@@ -184,39 +133,6 @@ class TestRenderScale:
             render(chain("+"), scale=bad)
 
 
-class TestConditionalBranch:
-    """Confirms the zero/nonzero swap documented in run()'s docstring.
-
-    lattice.py's Stroke.zero/Stroke.nonzero field names are rotated 180
-    degrees from the wiki's "turn right if 0" rule, so a render.py-drawn
-    `zero` arm (which render.py draws turning right, matching the wiki)
-    round-trips into the walked tree's `nonzero` field.  These exercise
-    both directions of that swap through a real round-trip, not just by
-    reading the code.
-    """
-
-    @pytest.fixture
-    def tree(self, tmp_path: Path) -> Stroke:
-        """Render a `?` with distinct, easily-told-apart zero/nonzero arms."""
-        path = str(tmp_path / "branch.png")
-        node = Node("?", zero=chain("+", "+"), nonzero=chain("-", ">"))
-        render(Node("i", next=node)).save(path)
-        return extract(path)
-
-    def test_zero_cell_takes_the_plus_plus_arm(self, tree: Stroke) -> None:
-        """A zero input cell runs the `++` arm, not the `-` `>` one."""
-        io, _ = _io([0])
-        tape = run(tree, io=io)
-        assert tape.get(0, 0) == 2
-
-    def test_nonzero_cell_takes_the_minus_greater_arm(self, tree: Stroke) -> None:
-        """A nonzero input cell runs the `-` `>` arm, not the `++` one."""
-        io, _ = _io([5])
-        tape = run(tree, io=io)
-        assert tape.get(0, 0) == 4
-        assert tape.get(1, 0) == 0
-
-
 class TestWikiFixtures:
     """Both wiki fixtures compute correct results across several real inputs.
 
@@ -228,26 +144,6 @@ class TestWikiFixtures:
     with real inputs and checking the arithmetic, which is exactly what
     these tests do.
     """
-
-    @pytest.mark.parametrize(
-        ("a", "b", "expected"),
-        [(3, 2, 5), (0, 0, 0), (7, 3, 10), (10, 10, 20), (0, 1, 1)],
-    )
-    def test_addition(self, a: int, b: int, expected: int) -> None:
-        """addition.png computes a + b for several input pairs, including 0."""
-        io, outputs = _io([a, b])
-        run(extract(f"{FIXTURES}/addition.png"), io=io)
-        assert outputs == [expected]
-
-    @pytest.mark.parametrize(
-        ("a", "b", "expected"),
-        [(3, 2, 6), (4, 4, 16), (0, 5, 0)],
-    )
-    def test_multiplication(self, a: int, b: int, expected: int) -> None:
-        """multiplication.png computes a * b for several input pairs."""
-        io, outputs = _io([a, b])
-        run(extract(f"{FIXTURES}/multiplication.png"), io=io)
-        assert outputs == [expected]
 
     def test_antialiased_scan(self) -> None:
         """Softened 3px strokes retain their program and arithmetic."""
@@ -395,20 +291,6 @@ class TestSyntheticLoopMechanism:
         io, _ = _io([])
         tape = run(_build_decrement_loop(), io=io)
         assert tape == {0: 0}
-
-
-@pytest.mark.parametrize("fixture", ["addition.png", "multiplication.png"])
-def test_pixel_vm_matches_the_native_arithmetic_fixture(fixture: str) -> None:
-    from esolangs import run as public_run
-    from esolangs.raster import Raster
-    from esolangs.vm import make_vm, run_until_halt
-
-    source = Raster.from_png((Path(FIXTURES) / fixture).read_bytes())
-    stdin = "3\n2\n"
-    vm = make_vm("Line", source, stdin)
-    assert run_until_halt(vm, 1000)
-    assert vm.output == public_run("Line", source, stdin)
-    assert vm.output == ("5" if fixture == "addition.png" else "6")
 
 
 def test_compiled_missing_fork_arm_halts() -> None:

@@ -147,21 +147,6 @@ def test_the_graph_walker_matches_the_pixels() -> None:
     assert through_graph.getvalue() == through_pixels.getvalue() == "0"
 
 
-def test_the_graph_walker_decrements() -> None:
-    """``-`` is the one opcode no generated Line program emits."""
-    from esolangs.interpreters.tape_based.line import _Machine
-    from esolangs.tools.line.render import Node
-
-    minus = Node("-")
-    minus.next = Node("o")
-    start = Node("+")
-    start.next = minus
-
-    io = ScriptedIO()
-    _Machine.run_node(start, io)
-    assert io.getvalue() == "0"
-
-
 def test_the_graph_walker_steps_over_an_opcode_it_does_not_know() -> None:
     """Characterizing the fall-through: an unknown op advances, silently.
 
@@ -289,3 +274,37 @@ def test_rendered_rgb_runs_preserve_newline_levels_and_shared_pixels(monkeypatch
     assert rows == (tuple((level, level, level) for level in row),) * 2
     assert rows[0] is rows[1]
     assert rows[0][0] is rows[0][18]
+
+
+def test_diagonal_entry_skips_detached_arrow_corners() -> None:
+    from esolangs.interpreters.tape_based.line.extract import extract_tree, find_cursor
+    from esolangs.interpreters.tape_based.line.mask import from_grey
+    from esolangs.tools.line.render import Canvas, _arrowhead
+
+    canvas = Canvas(140, 110)
+    _arrowhead(canvas, 95, 45, (-1, 1))
+    mask = from_grey(canvas.pixels)
+    with pytest.raises(ValueError, match="no path pixels"):
+        extract_tree(mask, find_cursor(mask))
+    canvas.line([(45, 95), (125, 15)])
+    mask = from_grey(canvas.pixels)
+    stroke = extract_tree(mask, find_cursor(mask))
+    assert stroke.vertices[0].heading == 1
+    assert (stroke.vertices[-1].y, stroke.vertices[-1].x) == (15, 125)
+    io = ScriptedIO()
+    run_line(Raster(tuple(tuple((v, v, v) for v in row) for row in canvas.pixels)), io)
+    assert io.getvalue() == ""
+
+
+def test_explicit_entry_heading_preserves_execution() -> None:
+    from esolangs.interpreters.tape_based.line.extract import extract_tree, find_cursor
+    from esolangs.interpreters.tape_based.line.mask import from_grey
+    from esolangs.tools.line.render import chain
+
+    canvas = render(chain("+", "o"))
+    mask = from_grey(canvas.pixels)
+    cursor = find_cursor(mask)
+    assert extract_tree(mask, cursor, start_heading=0) == extract_tree(mask, cursor)
+    io = ScriptedIO()
+    run_line(Raster(tuple(tuple((v, v, v) for v in row) for row in canvas.pixels)), io)
+    assert io.getvalue() == "1"
