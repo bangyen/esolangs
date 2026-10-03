@@ -167,7 +167,7 @@ esolangs.encode_inputs("Taglate", [1, 0, 1])  # -> '0101'
 
 The other 36 that read stdin take one `0`/`1` character per bit -- `'101'`.
 The remaining 21 embed their inputs and read no stdin: `instantiate` fills them.
-The 1 interpreter-only classics have no generator, so there is no generated stdin to feed.
+The 4 interpreter-only classics have no generator, so there is no generated stdin to feed.
 Use `encode_inputs` to build stdin; it and this table use `describe`.
 
 <!-- INPUT-SHAPES:END -->

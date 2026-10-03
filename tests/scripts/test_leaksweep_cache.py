@@ -85,8 +85,8 @@ def test_every_language_resolves_its_example() -> None:
     A language with no generator is exempt, and that is the same fact rather
     than a second one: ``examples/`` is generated from the boolean examples, so
     a language that cannot have a generator cannot have a committed program
-    there either.  Deadfish is the only one, and the fuzz suites reach it
-    through ``SAMPLES`` instead.
+    there either. The fuzz suites reach interpreter-only languages through
+    ``SAMPLES`` instead.
     """
     from esolangs.registry import GENERATORS, INTERPRETERS, canonical_id
 
@@ -95,7 +95,12 @@ def test_every_language_resolves_its_example() -> None:
     generating = list(GENERATORS)
     missing = sorted(name for name in generating if not by_slug.get(canonical_id(name)))
     assert missing == []
-    assert [n for n in INTERPRETERS if n not in generating] == ["Deadfish"]
+    assert sorted(n for n in INTERPRETERS if n not in generating) == [
+        "Deadfish",
+        "HQ9+",
+        "Nope.",
+        "Unary",
+    ]
 
 
 @pytest.mark.medium

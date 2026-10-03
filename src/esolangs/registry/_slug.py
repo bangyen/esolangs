@@ -27,9 +27,9 @@ _DIGIT_WORDS = {
 
 
 #: How close a miss has to be before it is offered as "did you mean".
-#: Measured over 269 single-edit typos of the registered names: 0.6 and 0.65
-#: both rescue 265, 0.7 starts costing real rescues, and 0.65 is the lowest
-#: that stays silent for every non-name (``nope``, ``zzzz``, ``xyz``, ...).
+#: Measured over 358 single-edit typos of the registered names: 0.6 and 0.65
+#: both rescue 353, 0.7 starts costing real rescues, and 0.65 is the lowest
+#: that stays silent for every non-name (``snorey``, ``zzzz``, ``xyz``, ...).
 #: ``TestASuggestionIsWorthLessThanSilence`` re-runs both halves of that
 #: trade; the CLI's option-name suggester shares the number, not a copy.
 SUGGESTION_CUTOFF = 0.65

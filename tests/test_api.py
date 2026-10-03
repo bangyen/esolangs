@@ -160,7 +160,7 @@ def test_generate_refuses_a_language_with_no_generator() -> None:
         esolangs.generate("Deadfish", "0110")
     message = str(exc.value)
     assert "no boolean generator" in message
-    assert "reads no input" in message
+    assert "generator contracts" in message
     assert "'int'" in message
 
 

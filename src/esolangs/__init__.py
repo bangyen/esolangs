@@ -212,14 +212,10 @@ def generate(
     lang = LANGUAGES[resolved]
     fn = lang.boolean
     if fn is None:
-        # Registered, but no generator can exist: Deadfish reads nothing.  This
-        # raised UnknownLanguageError, whose message points at `esolangs list`
-        # -- which shows the language.  Pinned since before it could fire, but
-        # against a monkeypatched entry, so the contradiction went unnoticed.
+        # Unary reads input but cannot meet the generator's size contract.
         raise ArgumentError(
-            f"{resolved} has no boolean generator: it reads no input at all, so "
-            f"there is no way to hand a program the truth table's inputs. "
-            f"`esolangs list --details` marks it 'int'"
+            f"{resolved} has no boolean generator under this repository's "
+            f"generator contracts. `esolangs list --details` marks it 'int'"
         )
     if not isinstance(truth_table, str):
         raise TruthTableError(

@@ -220,6 +220,9 @@ SAMPLES: dict[str, tuple[Program, str]] = {
     # branch loops forever, so the halting input is the one to sweep.
     "CV(N)(C)": ("soθɰ̊oθʋi", "0\n"),
     "Deadfish": ("iissso", ""),
+    "HQ9+": ("h+q", ""),
+    "Nope.": ("", ""),
+    "Unary": ("0" * 108, "Z"),
     "Decleq": ("-2 5 9 9 9 65 0 0", ""),
     "Dig": (">$5:\n 2 ", ""),
     "Dimensional": ("+.+.+.", ""),
