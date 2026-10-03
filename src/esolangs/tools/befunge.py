@@ -12,6 +12,7 @@ from __future__ import annotations
 from math import isqrt
 
 from esolangs.exceptions import GeneratorCapError
+from esolangs.interpreters.source_hints import with_hint
 from esolangs.tools.helpers import _parity_bias, _validate_truth_table
 from esolangs.tools.wrap import balance_score
 
@@ -34,8 +35,14 @@ def befunge(truth_table: str, width: int | None = None) -> str:
     n = _validate_truth_table(truth_table)
     count = 1 << n
     if n > 13:
-        raise GeneratorCapError(
-            "Befunge supports at most thirteen inputs on its 80x25 grid"
+        raise with_hint(
+            GeneratorCapError(
+                "Befunge supports at most thirteen inputs on its 80x25 grid"
+            ),
+            (
+                "check another generator's limits; width "
+                "cannot enlarge Befunge's fixed 80x25 grid"
+            ),
         )
     if n > 10:
         return _packed_befunge(truth_table, n, width)
@@ -163,8 +170,14 @@ def balance_befunge(truth_table: str, default: str) -> str:
     n = _validate_truth_table(truth_table)
     count = 1 << n
     if n > 13:
-        raise GeneratorCapError(
-            "Befunge supports at most thirteen inputs on its 80x25 grid"
+        raise with_hint(
+            GeneratorCapError(
+                "Befunge supports at most thirteen inputs on its 80x25 grid"
+            ),
+            (
+                "check another generator's limits; width "
+                "cannot enlarge Befunge's fixed 80x25 grid"
+            ),
         )
     candidates = [default]
     layouts = [(5 * n + 22, 4, 9), (5 * n + 34, 10, 80)]

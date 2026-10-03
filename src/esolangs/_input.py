@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Protocol
 
 from esolangs.exceptions import ArgumentError
+from esolangs.interpreters.source_hints import with_hint
 
 
 class Reader(Protocol):
@@ -21,9 +22,12 @@ def check_input(source: InputSource) -> None:
     if not isinstance(source, (str, bytes)) and not callable(
         getattr(source, "read", None)
     ):
-        raise ArgumentError(
-            "stdin must be a string, bytes, or a readable stream, got "
-            f"{type(source).__name__}"
+        raise with_hint(
+            ArgumentError(
+                "stdin must be a string, bytes, or a readable stream, got "
+                f"{type(source).__name__}"
+            ),
+            ("to read a file, pass its open stream or its UTF-8 text contents"),
         )
 
 
@@ -37,5 +41,15 @@ def read_input(source: InputSource) -> str:
         if isinstance(value, str):
             return value
     except (OSError, TypeError, ValueError) as exc:
-        raise ArgumentError(f"cannot read stdin: {exc}") from exc
-    raise ArgumentError("stdin stream must return a string or bytes")
+        raise with_hint(
+            ArgumentError(f"cannot read stdin: {exc}"),
+            ("open the input stream for reading and encode binary input as UTF-8"),
+        ) from exc
+    raise with_hint(
+        ArgumentError("stdin stream must return a string or bytes"),
+        (
+            "make stream.read() return text or UTF-8 "
+            "bytes; alternatively pass the contents "
+            "directly"
+        ),
+    )

@@ -21,6 +21,7 @@ from esolangs.exceptions import (
 )
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.randomness import Seeded
+from esolangs.interpreters.source_hints import with_hint
 from esolangs.registry import INTERPRETERS, LANGUAGES
 
 
@@ -58,10 +59,13 @@ def prepare_call(
         options["scale"] = scale
     draws = "rng" in inspect.signature(target).parameters
     if seed is not None and not draws:
-        raise ArgumentError(
-            f"{name} draws no random values, so a seed has nothing to fix; "
-            "the languages that draw are Befunge, Fish, LaserFuck, "
-            "Modulous, Painfuck, Super SNUSP, Thue and thisthat"
+        raise with_hint(
+            ArgumentError(
+                f"{name} draws no random values, so a seed has nothing to fix; "
+                "the languages that draw are Befunge, Fish, LaserFuck, "
+                "Modulous, Painfuck, Super SNUSP, Thue and thisthat"
+            ),
+            ("omit seed when running a deterministic language"),
         )
     if draws and (seed is not None or reproducible):
         try:
@@ -69,7 +73,10 @@ def prepare_call(
                 seed if seed is not None else getattr(target, "reproducible_seed", 0)
             )
         except (TypeError, ValueError) as exc:
-            raise ArgumentError(str(exc)) from exc
+            raise with_hint(
+                ArgumentError(str(exc)),
+                ("use a supported seed value, for example the integer seed=0"),
+            ) from exc
     return code, options
 
 
