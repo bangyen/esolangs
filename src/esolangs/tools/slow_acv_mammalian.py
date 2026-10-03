@@ -44,6 +44,7 @@ tables through ``n == 12``.  All ``n`` inputs are read unconditionally.
 
 from collections.abc import Sequence
 
+from esolangs._mammalian import DEFAULT_MODULI, MammalianModuli
 from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table
 
 __all__ = ["slow_acv_mammalian"]
@@ -53,14 +54,14 @@ _ARRAYS = 23
 
 # Arithmetic domain of the current construction, including its replay model.
 # XOR read nodes and parity-based merges are proved only for this byte domain.
-_MODULUS = 256
-if _MODULUS != 256:  # pragma: no cover - changing the domain needs a new proof
-    raise ValueError("Mammalian construction currently requires modulus 256")
+_GENERATOR_MODULI = MammalianModuli(cell_modulus=256, io_modulus=256)
+_MODULUS = _GENERATOR_MODULI.cell_modulus
+_IO_MODULUS = _GENERATOR_MODULI.io_modulus
 
 # The byte a stash chunk appends.  It is what raises the sum, and the sum is
 # what puts a distant token index within a jump's reach, so the chunk buys
 # the most reach per token by appending the largest byte there is.
-_STASH_BYTE = _MODULUS - 1
+_STASH_BYTE = _IO_MODULUS - 1
 
 # The read node's second seed run.  The aim class fixes ``first & 48 == 16``,
 # and XORing bits 4-5 from ``01`` to ``10`` is ``+16``, so this run is what
@@ -145,7 +146,7 @@ def _node(array: list[int], acc: int) -> tuple[list[str], _State, _State, int]:
     ``j1``, so the landing commits before the arm and merge exist.
     """
     wrap = (_MODULUS - array[0]) % _MODULUS
-    opened = [*_seeded(array, wrap), acc % _MODULUS]
+    opened = [*_seeded(array, wrap), acc % _IO_MODULUS]
     start = sum(opened)
     j1 = _aim(start)
     first = start + j1
@@ -311,7 +312,7 @@ def _apply(st: _Sums, tok: str, bit: int) -> None:
     if tok == "DIGEST":
         st.acc ^= st.heads[st.ptr] + st.rest(st.ptr)
     elif tok == "EXCRETE":
-        st.append(st.ptr, st.acc % _MODULUS)
+        st.append(st.ptr, st.acc % _IO_MODULUS)
         st.acc = 0
     elif tok == "ACCEPT":
         if st.acc % _MODULUS != 48:
@@ -829,12 +830,23 @@ def _check_merge(merged: _Sums, zero: _Sums, weight: int) -> None:
         raise AssertionError(f"the banked weight drifted by {merged.nw - zero.nw}")
 
 
-def slow_acv_mammalian(truth_table: str) -> str:
+def slow_acv_mammalian(
+    truth_table: str,
+    *,
+    cell_modulus: int = DEFAULT_MODULI.cell_modulus,
+    io_modulus: int = DEFAULT_MODULI.io_modulus,
+) -> str:
     """Build a SLOW ACV MAMMALIAN program evaluating ``truth_table``.
 
     One read node per input (``ACCEPT``), one dispatch jump, one
     eight-token leaf slot per entry: O(T) text.
     """
+    moduli = MammalianModuli(cell_modulus, io_modulus)
+    if moduli != _GENERATOR_MODULI:
+        raise ValueError(
+            "Mammalian generator supports only cell_modulus=256, io_modulus=256; "
+            "the modulo-255 construction is not implemented"
+        )
     n = _validate_truth_table(truth_table)
     weights = _weights(n)
     free = min(n, _FREE)

@@ -458,3 +458,26 @@ def test_unreachable_arm_is_declined_but_invariants_propagate(
     monkeypatch.setattr(module, "_tune", broken)
     with pytest.raises(AssertionError, match="broken tuning invariant"):
         module._try_arm(_Sums(), _Sums(), 8, None, 1000)  # noqa: SLF001
+
+
+def test_explicit_default_moduli_preserve_generation() -> None:
+    from esolangs.tools.slow_acv_mammalian import slow_acv_mammalian
+
+    assert slow_acv_mammalian(
+        "01", cell_modulus=256, io_modulus=256
+    ) == slow_acv_mammalian("01")
+
+
+@pytest.mark.parametrize(
+    ("settings", "message"),
+    [
+        ({"cell_modulus": 255}, "cell_modulus must be 256"),
+        ({"io_modulus": 254}, "io_modulus must be 255 or 256"),
+        ({"io_modulus": 255}, "modulo-255 construction is not implemented"),
+    ],
+)
+def test_generator_rejects_unverified_moduli(settings, message: str) -> None:
+    from esolangs.tools.slow_acv_mammalian import slow_acv_mammalian
+
+    with pytest.raises(ValueError, match=message):
+        slow_acv_mammalian("01", **settings)
