@@ -1,12 +1,10 @@
 # Using the package
 
-Generate and run programs through one API. It handles each language’s input
-and output conventions using [`describe`](#describe) metadata.
+The API handles language I/O conventions using [`describe`](#describe) metadata.
 
 ## Evaluate a program
 
-`evaluate` executes every input row and returns the observed truth table.
-Pass the program and input count; compare the result with an expected table.
+`evaluate` returns the observed table for a supplied program and input count:
 
 ```python
 import esolangs
@@ -15,7 +13,7 @@ program = esolangs.generate("A Painter Ant", "0110")
 esolangs.evaluate("A Painter Ant", program, inputs=2)  # -> '0110'
 ```
 
-Evaluation handles input formats, templates, and termination answers.
+It handles input formats, templates and termination answers.
 
 ## Work with one language
 
@@ -30,8 +28,8 @@ assert bf.read_answer(output) == "1"
 info = bf.describe()
 ```
 
-It also provides `instantiate`, `check_program`, and `check_stdin`.
-The package functions remain available when working across languages.
+It also binds `instantiate`, `check_program` and `check_stdin`; use the package
+functions across languages.
 `balance=True` minimizes the rendered width/height difference across supported
 layouts, breaking ties by source length (raster pixel area), then width.
 It excludes `width`. Line compares forward and reverse input-test orders;
@@ -46,8 +44,8 @@ comparable in area to native Line (680×800).
 
 ## Run XOR
 
-XOR's table is `0110`: rows `00`, `01`, `10`, and `11` produce `0`, `1`,
-`1`, and `0`. A stdin-driven language runs one row like this:
+XOR's table is `0110`, ordered by rows `00`, `01`, `10`, `11`.
+Run one stdin-driven row:
 
 ```python
 import esolangs
@@ -103,10 +101,9 @@ Measure a generated program and check every input row:
 just benchmark brainfuck 0110 --all-rows
 ```
 
-The JSON reports rendered size, generation time, steps to halt, expected and
-actual answers, and execution status. It checks the artifact it measured;
-wrong or undecided rows exit unsuccessfully. Unsupported stepping is reported
-separately from a step cap or timeout. The row timeout defaults to 30 seconds;
+JSON reports rendered size, generation time, halt steps, expected and actual
+answers, and execution status. Wrong or undecided rows fail; unsupported
+stepping is distinct from a cap or timeout. The row timeout defaults to 30 seconds;
 `--no-timeout` disables the signal guard for Windows or worker threads.
 `just sizes` checks the committed size and step baseline and requires each
 measured row to answer correctly.
@@ -128,13 +125,12 @@ measured row to answer correctly.
 
 <!-- PUBLIC-API:END -->
 
-`generate` takes a truth table -- `0110` is XOR -- and returns a program
-computing it. The table is a binary string of length `2**n`,
-most-significant input first, so its length implies `n`.
+Truth tables are binary strings of length `2**n`, most-significant input first;
+their length determines `n`.
 
 ## Feeding a program
 
-Input formats vary by language. Use `encode_inputs` to build stdin:
+Build language-specific stdin with `encode_inputs`:
 
 ```python
 esolangs.encode_inputs("Taglate", [1, 0, 1])  # -> '0101'
@@ -175,9 +171,8 @@ Use `encode_inputs` to build stdin; it and this table use `describe`.
 [`MANIFEST.md`](../src/esolangs/examples/MANIFEST.md) lists each example’s
 input row and encoding.
 
-`esolangs run` warns about invalid input formats; `--judge` rejects them.
-In Python, use `check_stdin(language, stdin, truth_table)`. Supplying the
-table also checks the bit count, catching missing or extra lines.
+`esolangs run` warns about invalid stdin; `--judge` rejects it.
+`check_stdin(language, stdin, truth_table)` also checks the input bit count.
 
 ## Templates
 
@@ -193,13 +188,11 @@ by termination: halt for 0, loop forever for 1. `read_answer` handles printed
 and state-dump answers. Use `evaluate` for termination answers;
 they require a proved halt or cycle. A timeout remains undecided.
 
-Their `answer_encoding` is `("halts", "diverges")`: index 0 means answer 0,
-and `encoding.index("diverges")` gives the divergence polarity.
+Their `answer_encoding` is `("halts", "diverges")`; its index gives the bit.
 
 ## Width
 
-`generate` and the CLI's `--width` bound the columns. Most grids honour it
-by laying themselves out rather than being reflowed;
+`generate` and CLI `--width` bound columns through layout;
 `describe(language)["width_effect"]` identifies the three behaviours,
 including the 15 languages that ignore width because newlines are semantic.
 
@@ -272,8 +265,7 @@ breakpoint, `c` to continue, `space` to step, `b` to step back, `r` to finish,
 and `q` to quit. Use `--stdin`; keyboard commands and program input cannot
 share a stream.
 
-Call-stack and 3-D positions cannot identify source text, so they remain
-unhighlighted. The header still shows the raw `ip`.
+Call-stack and 3-D positions show raw `ip` without source highlighting.
 
 ## describe
 
@@ -299,8 +291,8 @@ generated program text, debugger presentation, and private `_` names may
 change without deprecation; generated programs retain behaviour, not spelling
 or size.
 
-A breaking public change requires a major release. When old and new interfaces
-can coexist, the replacement is documented for at least one minor release.
+A breaking public change requires a major release. Coexisting replacements
+are documented for at least one minor release.
 Security and correctness fixes may reject input accepted by mistake.
 
 CLI portable execution: `esolangs run --isolated --timeout 3 --max-output 4096 brainfuck program.txt`.

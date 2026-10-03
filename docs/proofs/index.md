@@ -1,50 +1,40 @@
 # Boolean-generator coverage proofs
 
-The standalone complexity proof is [Polynomial](polynomial.tex); its
-Markdown companion retains implementation bounds, measurements,
-counterexamples, and the development record.  Factor's `Theta(T log T)` is
-short enough to live in [factor](factor.md) alone.
-[fractran](fractran.md) proves FRACTRAN's address budget and then refutes it
-as a claim about the language: the shipped generator packs blocks and costs
-`Theta(T)`, buying that with steps rather than characters.
-[brainfuck-count](brainfuck-count.md) bounds the number of distinct
-behaviours of `C`-character Brainfuck programs.
-Polynomial's lower bound cites one result it does not prove:
+The standalone [Polynomial proof](polynomial.tex) has a
+[Markdown companion](polynomial.md) for implementation bounds, measurements
+and counterexamples. [Factor](factor.md) proves `Theta(T log T)` text;
+[FRACTRAN](fractran.md) proves a super-linear address budget but linear
+language complexity through packing, trading characters for steps.
+[brainfuck-count](brainfuck-count.md) bounds distinct behaviours of
+`C`-character programs. Polynomial's lower bound imports
 Corollary 3.4 of [coefficient-mass](https://github.com/bangyen/coefficient-mass/blob/v1/coefficient-mass.tex), the companion
 manuscript bounding the coefficient mass of a polynomial multiple.
 `tests/proofs/test_citations.py` holds the numbered cross-references
 between them to the labels they name.
 
-This ledger records whether each exported Boolean generator covers every
-truth table of length `2**n`, for every finite `n`. “Total” means mathematical
-coverage, not practical availability. Explicit limits on digits, instructions,
-lines, tape cells,
-route width, work, or generation time are ignored: lifting such a guard leaves
-the construction below it unchanged.  Invalid-table guards are outside the
-domain.
+The ledger records coverage of every `2**n`-bit table for every finite `n`.
+“Total” means mathematical coverage. Ignore explicit digit, instruction,
+line, tape, route-width, work and generation-time guards when lifting them
+leaves the construction unchanged; invalid tables are outside the domain.
 
-Execution tests check emitted programs; this ledger argues coverage for every
-finite arity. The exhaustive `n <= 3` and sampled `n <= 10` sweeps in
+The exhaustive `n <= 3` and sampled `n <= 10` sweeps in
 `tests/tools/test_boolean_contract.py` seek counterexamples; they do not prove
 the coverage arguments.
 
-Machine checks live in `tests/proofs/`. `test_ledger.py` checks consistency
-with the registry; `test_schemes.py` checks measurable consequences for lookup
-and parameterized rows (`tree` and `minterms` have no per-row check). Both run
-in the fast band. The deeper proof checks live in `tests/proofs/deep/`.
+In `tests/proofs/`, fast-band `test_ledger.py` checks registry consistency,
+and `test_schemes.py` checks lookup and parameterized rows (`tree` and
+`minterms` have no per-row check). Deeper checks live in `tests/proofs/deep/`.
 `all_generators.py` checks all 77 constructions: flipping each table row
 changes the emitted program at the tested arities, and each construction
 completes an arity ladder on both table shapes. This checks the counting half
 of each scheme. Four generators -- A Painter Ant, ArrowQueue, Container and
 BIO -- also have construction-specific proofs.
 
-Each proof declares the cost band it runs in, and
-`python -m tests.proofs.deep <band>` selects on that: `verify` is the local
-gate, `ci` adds the registry-wide battery, `by-hand` is the expensive set, and
-`all` runs everything, as does `just proofs`. The justfile, workflow, and
-`scripts/verify.py` select bands instead of
-listing proofs. `test_bands.py` checks each file under `deep/` declares a band
-and enforces the band’s declared cost budget, not a measured runtime.
+`python -m tests.proofs.deep <band>` selects declared cost bands: `verify`
+for the local gate, `ci` for the registry battery, `by-hand` for expensive
+checks, and `all` for everything, as with `just proofs`. The justfile,
+workflow and `scripts/verify.py` select bands; `test_bands.py` requires each
+file's declaration and enforces its stated budget, not a measured runtime.
 
 Coverage does not bound source size: the schemes count nodes and entries,
 so a total generator can still emit super-linear text.  `linearity.py` is the
@@ -62,12 +52,10 @@ count: only the last two reads before a routing position can carry a residual
 that depends on its next input and not on it alone.  The argument is in
 [polynomial](polynomial.md).
 
-A `linear` row cannot be improved by more than a constant, and the reason is
-the counting argument the Malbolge exception uses below.  A language with `c`
+A `linear` row is within a constant of the worst-case optimum. A language with `c`
 source characters has fewer than `c**(L+1)` programs of length at most `L`,
 against `2**T` tables of length `T`, so some table needs
-`L >= T / log2(c)` characters -- `T/3` for brainfuck's eight commands. Thus each
-`linear` row is within a constant of the worst-case optimum.
+`L >= T / log2(c)` characters -- `T/3` for brainfuck's eight commands.
 Factor at `Theta(T log T)` and Polynomial at `Theta(T**2 / log T)` provably
 exceed that floor; the `open` rows may also exceed it.
 
@@ -226,14 +214,10 @@ in `test_schemes.py` carries them as documented exceptions.
 
 ## Generator ledger
 
-The names are the callable entries indexed by `BY_BOOLEAN`.  Rows sharing a
-proof scheme share the proof above; the qualification column records the
-language-specific final step or an exception.  The Proof column names the
-coverage witness, which need not be the shipped default route (as the
-`parameterized tree` scheme says): a generator may ship a smaller arithmetic
-construction while the named scheme is what proves totality.  `cap` means
-theoretically total after ignoring the performance/resource ceiling as
-specified above.
+Names are the callable entries in `BY_BOOLEAN`. Proof names the coverage
+witness, which may differ from the shipped route; Qualification supplies
+the language-specific step or exception. Shared schemes use the proofs
+above. `cap` means total after the stated resource ceiling is lifted.
 
 The Scaling column is the worst-case cost of the construction in `T = 2**n`,
 read from the code rather than measured (the size contract in

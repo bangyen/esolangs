@@ -4,8 +4,8 @@ The hashed cascade reaches fourteen inputs; the positional construction
 reaches fifteen and sixteen. A construction using one cell per row pair
 cannot reach seventeen. See [limitations](../limitations.md) for the contract.
 
-Results below are measured, verified against the interpreter’s `crazy`/`rot`,
-or marked as unbuilt designs. The load law and two fifteen-input cascade
+Results distinguish measurements, interpreter-verified `crazy`/`rot` identities,
+and unbuilt designs. The load law and two fifteen-input cascade
 attempts explain why the generator switched from hashing to positional reads.
 
 ## The load law
@@ -652,6 +652,16 @@ cells. Nothing here proves or refutes that. Evidence either way is the
 construction side: a working seventeen-input build with 49,152 table cells
 and ~8,400 code cells would weigh roughly 169,000 bits (estimated), and for
 most tables it would have to be near-lightest.
+
+Dependence counts give a separate control: every sampled touched cell in
+shipped constructions was dependent (3,416 at n=4, 9,308 at 10, 16,650 at 11,
+at least 19,007 at 12). A density lemma for seventeen must charge 2.22 bits
+per cell against capacity 3, leaving 0.78 wasted; the sixteen-input table
+uses 1.11. Scaled-store sampling cannot establish this: at `3**6` cells,
+1,618 bits requires about `2**809` programs even for an expected first
+collision, or `2**2428` at `3**7`. Of 10,000 random legal programs, 234 and
+246 respectively computed a total one-input table; the sample caps distinct
+table density at 0.0183 and 0.0061 bits per cell.
 
 ### Seventeen: code and data in the same cells
 
