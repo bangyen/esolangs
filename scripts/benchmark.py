@@ -45,8 +45,8 @@ def _payload_profile(language: str, vm: VM) -> dict[str, int] | None:
             "tuple[tuple[int, ...], tuple[int, ...], int, int]", state
         )
     elif language == "Sophie":
-        pc, accumulator, _skip, control, _halted = cast(
-            "tuple[int, int, bool, tuple[int, ...], bool]", state
+        pc, accumulator, _skip, control, _halted, _cursor = cast(
+            "tuple[int, int, bool, tuple[int, ...], bool, int]", state
         )
         data = (accumulator,)
         flags = 2

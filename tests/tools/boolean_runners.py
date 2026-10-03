@@ -92,11 +92,6 @@ def run_addsubjump_from(program: str, feed: Iterator[str]) -> str:
     return _run_from("esolangs.interpreters.register_based.addsubjump", program, feed)
 
 
-def run_sophie_from(program: str, feed: Iterator[str]) -> str:
-    """Run a Sophie program against an iterator; see :func:`_run_from`."""
-    return _run_from("esolangs.interpreters.register_based.sophie", program, feed)
-
-
 def run_algebraic_programming_language(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.other.algebraic_programming_language import run
 
@@ -279,12 +274,6 @@ def run_flowchart(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.grid_based.flowchart import run
 
     return run_program(run, program.splitlines(), "".join(inputs))
-
-
-def run_sophie(program: str, inputs: list[str]) -> str:
-    from esolangs.interpreters.register_based.sophie import run
-
-    return run_program(run, program, "".join(inputs))
 
 
 def run_sbleq(program: str, inputs: list[str]) -> str:

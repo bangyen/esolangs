@@ -3,10 +3,9 @@
 Esoteric language equivalent to a Finite State Automaton.
 Single accumulator with basic control flow operations.
 
-`*` breaks out of the whole enclosing loop nest (and later loops run
-normally); a single-branch `@c{}` skips its block cleanly when the condition
-fails.  `&` halts.  Unbalanced brackets are a malformed program and are
-rejected with :class:`ValueError`; a `*` break with no enclosing loop is an
+`*` breaks out of the nearest enclosing loop. A single-branch `@c{}` skips
+its block when the condition fails. `&` halts. Unmatched structural brackets
+raise :class:`ValueError`; a `*` break with no enclosing loop is an
 invalid operation and halts the program with
 :class:`~esolangs.exceptions.HaltError`.
 
@@ -19,101 +18,76 @@ end of the code.
 """
 
 import re
+from collections.abc import Iterator
 
 from esolangs._drive import drive
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.memory import format_integer, parse_integer
 from esolangs.interpreters.source_hints import syntax_error
 
 
-def matches(code: str) -> None:
-    """Raise :class:`ValueError` if ``[]`` or ``{}`` brackets are unbalanced.
+def _brackets(code: str) -> Iterator[tuple[int, str]]:
+    """Yield structural brackets, skipping literal data in loads and guards."""
+    for token in re.finditer(r"\#(?:\$\d+|\$?.)|@(?:\$\d+|\$?.)\{|[\[\]{}]", code):
+        glyph = token[0]
+        if glyph.startswith("#"):
+            continue
+        if glyph.startswith("@"):
+            yield token.end() - 1, "{"
+        else:
+            yield token.start(), glyph
 
-    The wiki defines ``[``/``]`` loops and ``{``/``}`` blocks (conditionals
-    and comments) only for matched pairs; a program with unbalanced brackets
-    is malformed, so the interpreter rejects it rather than inventing a halt.
-    A ``#`` load consumes one data character (``#$`` an optional marker plus
-    digits or a character), so a bracket loaded that way is data, not
-    structure.
-    """
-    for opr, end in (("[", "]"), ("{", "}")):
+
+def matches(code: str) -> None:
+    """Reject unmatched structural brackets; loaded and tested brackets are data."""
+    brackets = list(_brackets(code))
+    for opener, closer in (("[", "]"), ("{", "}")):
         depth = 0
-        i = 0
-        while i < len(code):
-            char = code[i]
-            if char == "#":
-                i += 1
-                if i < len(code) and code[i] == "$":
-                    i += 1
-                    if i < len(code) and code[i].isdigit():
-                        while i < len(code) and code[i].isdigit():
-                            i += 1
-                    elif i < len(code):
-                        i += 1  # #$<char>: the optional marker plus one char
-                elif i < len(code):
-                    i += 1  # the loaded character
-                continue
-            if char == opr:
+        for index, glyph in brackets:
+            if glyph == opener:
                 depth += 1
-            elif char == end:
+            elif glyph == closer:
                 if depth == 0:
                     raise syntax_error(
-                        f"unmatched '{end}' at position {i}",
+                        f"unmatched '{closer}' at position {index}",
                         "put the matching opener before this closing delimiter",
                     )
                 depth -= 1
-            i += 1
         if depth:
             raise syntax_error(
-                f"unmatched '{opr}'",
+                f"unmatched '{opener}'",
                 "close this opening delimiter with its matching partner",
             )
 
 
 def _partners(code: str) -> dict[int, int]:
-    """Map each ``[`` and ``{`` to the index :func:`find` would return.
-
-    One pass per bracket pair, built when the program loads.  Both jumps
-    used to call :func:`find`, which rescans from the bracket every time it
-    is reached, so a loop skipped or a block entered cost the length of its
-    body once per visit.
-
-    Deliberately blind to ``#`` loads, exactly as :func:`find` is.
-    :func:`matches` is *not* -- it treats a loaded bracket as data -- so the
-    two already disagree on a program that loads one, and this reproduces
-    the reading the jumps actually use rather than quietly adopting the
-    other.  An opener with no partner maps to ``len(code)``, which is what
-    :func:`find` returns when its scan runs off the end.
-    """
+    """Return literal-aware partners for code already accepted by matches."""
     table: dict[int, int] = {}
-    for opr, end in (("[", "]"), ("{", "}")):
-        open_at: list[int] = []
-        for i, char in enumerate(code):
-            if char == opr:
-                open_at.append(i)
-            elif char == end and open_at:
-                table[open_at.pop()] = i
-        for i in open_at:
-            table[i] = len(code)
+    brackets = list(_brackets(code))
+    for opener, closer in (("[", "]"), ("{", "}")):
+        stack: list[int] = []
+        for index, glyph in brackets:
+            if glyph == opener:
+                stack.append(index)
+            elif glyph == closer and stack:
+                table[stack.pop()] = index
     return table
 
 
 def find(code: str, ind: int) -> int:
-    """Find the matching closing bracket for a given opening bracket."""
-    opr = code[ind]
-    end = chr(ord(opr) + 2)
-    match = 1
-
-    while match:
-        ind += 1
-        if ind == len(code):
-            break
-        if (c := code[ind]) == opr:
-            match += 1
-        elif c == end:
-            match -= 1
-    return ind
+    """Return the literal-aware closing position, or source length if unmatched."""
+    opener = code[ind]
+    closer = chr(ord(opener) + 2)
+    depth = 1
+    for index, glyph in _brackets(code):
+        if index <= ind:
+            continue
+        depth += (glyph == opener) - (glyph == closer)
+        if not depth:
+            return index
+    return len(code)
 
 
 #: One instant of a run: ``(acc, ind, skp, stk, halted)`` -- the
@@ -121,13 +95,8 @@ def find(code: str, ind: int) -> int:
 #: positions, and whether ``&`` fired.  A value :func:`_advance` maps
 #: forward, with the stack as a ``tuple`` for the same reason.
 #:
-#: ``skp`` is state, not a detail of one command.  ``*`` sets it and a
-#: *later* ``[`` reads it to decide whether to enter its loop or jump past
-#: it, so the flag outlives the command that raised it -- which is what
-#: makes a break escape a whole nest rather than one level.
-#:
-#: The code is not here: Sophie never rewrites itself, so a step is handed
-#: the program rather than carrying it.
+#: ``skp`` remains a compatibility view, always false. Break jumps directly
+#: past its own loop: propagating a skip flag wrongly skipped later loops.
 type _State = tuple[int, int, bool, tuple[int, ...], bool]
 
 
@@ -145,30 +114,24 @@ def _advance(
     and already rejected if the input did not qualify, in which case it is
     ``None`` and the accumulator stands.
 
-    Two jumps land deliberately short.  ``]`` and ``*`` return to one
-    before the loop's ``[`` so the trailing advance re-reads it, and a
+    ``]`` returns to one before its loop's ``[`` to re-read it; ``*``
+    jumps past that loop's close. A
     conditional that fails jumps to its block's ``}`` -- or to the ``{`` of
     an else-block if one follows, so the trailing advance enters it.
     """
     acc, ind, skp, stk, halted = state
 
     if (c := code[ind]) == "[":
-        if skp:
-            ind = partners[ind]
-            if not stk:
-                skp = False
-        else:
-            stk = (*stk, ind)
+        stk = (*stk, ind)
     elif c in "]*":
         if not stk:
             raise HaltError(
                 f"{c!r} at position {ind} closes a loop that never opened",
                 hint="add the matching loop opener before this closing instruction",
             )
-        ind = stk[-1] - 1
+        opener = stk[-1]
         stk = stk[:-1]
-        if c == "*":
-            skp = True
+        ind = opener - 1 if c == "]" else partners[opener]
     elif c in ".,":
         pass  # printed by the caller; the accumulator is unchanged
     elif c in ":;":
@@ -181,11 +144,13 @@ def _advance(
     else:
         val = code[ind:]
         if m := re.match(r"@\$(\d+){", val):
-            ind = _branch(code, partners, ind, m.end() - 1, taken=acc == int(m[1]))
+            ind = _branch(
+                code, partners, ind, m.end() - 1, taken=acc == parse_integer(m[1])
+            )
         elif m := re.match(r"@\$?(.){", val):
             ind = _branch(code, partners, ind, m.end() - 1, taken=acc == ord(m[1]))
         elif m := re.match(r"#\$(\d+)", val):
-            acc = int(m[1])
+            acc = parse_integer(m[1])
             ind += m.end() - 1
         elif m := re.match(r"#\$?(.)", val):
             acc = ord(m[1])
@@ -257,6 +222,7 @@ class _Machine:
             self.skp,
             self.stk,
             self._halted_by_command,
+            self.io.position(),
         )
 
     @property
@@ -289,13 +255,13 @@ class _Machine:
 
         value: int | None = None
         if c == ".":
-            self.io.print_num(self.acc)
+            self.io.print_str(format_integer(self.acc))
         elif c == ",":
             self.io.print_char(chr(self.acc))
         elif c == ":":
             num = self.io.input_token()
             if num.isdigit():
-                value = int(num)
+                value = parse_integer(num)
         elif c == ";":
             value = self.io.input_char()
 
