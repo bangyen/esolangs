@@ -116,12 +116,6 @@ def run_bf(program: str, inputs: list[str]) -> str:
     return run_program(run, program, "".join(inputs))
 
 
-def run_three_d_brainfuck(program: str, inputs: list[str]) -> str:
-    from esolangs.interpreters.tape_based.three_d_brainfuck import run
-
-    return run_program(run, program, "".join(inputs))
-
-
 def run_factor(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.tape_based.factor import run
 

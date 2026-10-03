@@ -255,3 +255,15 @@ def test_generated_wide_tables_and_public_execution(n, kind, width):
         assert expected.output == answer
         assert expected.consumed == n
         assert esolangs.run("3D Brainfuck", source, stdin) == answer
+
+
+@pytest.mark.medium
+def test_generator_paths_reach_signed_targets():
+    from esolangs.tools.three_d_brainfuck import _path
+
+    points = ((0, 0, 0), (2, -3, 5), (-2, 4, -1))
+    for start, target in itertools.product(points, repeat=2):
+        source = _path(start, target)
+        expected, verdict = compare(source, array=start, cap=len(source) + 1)
+        assert verdict == "halt"
+        assert expected.array == target
