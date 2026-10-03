@@ -13,7 +13,6 @@ from contextlib import redirect_stdout
 import pytest
 
 import esolangs
-from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 from tests.interpreters.contract import (
     CycleContract,
@@ -31,250 +30,27 @@ def run_and_capture(code: str) -> str:
     return buffer.getvalue()
 
 
-@pytest.mark.parametrize(
-    ("code", "expected"),
-    [("ciinsiio", "\x02"), ("ciindbo", "\x00"), ("cbo", "\x00")],
-)
-def test_lf_does_not_change_indexed_jump_targets(code: str, expected: str) -> None:
-    from esolangs.interpreters.io import ScriptedIO
-    from esolangs.interpreters.tape_based.nocomment import _Machine
-
-    plain = _Machine(code, ScriptedIO(""))
-    wrapped = _Machine("\n" + "\n".join(code) + "\n", ScriptedIO(""))
-    while not plain.halted:
-        assert plain.snapshot() == wrapped.snapshot()
-        plain.step()
-        wrapped.step()
-    assert wrapped.halted
-    assert plain.snapshot() == wrapped.snapshot()
-    assert wrapped.ind == len(code)
-    assert wrapped.io.getvalue() == plain.io.getvalue() == expected
-
-
-@pytest.mark.parametrize("char", [" ", "\t", "\r", "x"])
-def test_loading_ignores_only_lf(char: str) -> None:
-    with pytest.raises(ValueError, match="unrecognized NoComment command"):
-        run_and_capture("\nci" + char + "o\n")
-
-
-def test_lf_preserves_jump_range_errors() -> None:
-    code = "ciinsio"
-    messages = []
-    for source in (code, "\n".join(code)):
-        with pytest.raises(HaltError) as error:
-            run_and_capture(source)
-        messages.append(str(error.value))
-    assert messages[0] == messages[1]
-
-
 @pytest.mark.medium
 @pytest.mark.parametrize("width", [1, 2, 3, 7, 13, 80])
 def test_generated_nocomment_templates_run_at_arbitrary_breaks(width: int) -> None:
-    from esolangs.interpreters.io import ScriptedIO
-    from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
-    from esolangs.tools.nocomment import PAIR
     from esolangs.tools.nocomment import nocomment as generate
     from esolangs.tools.wrap import wrap_chars
+    from tests.tools.test_boolean_nocomment import TestParameterizedNoComment
 
     tables = [f"{value:04b}" for value in range(16)]
     tables += ["00000000", "11111111", "01101001", "01010011", "01101001" * 2]
+    oracle = TestParameterizedNoComment()
     for table in tables:
         n = len(table).bit_length() - 1
         template = wrap_chars(generate(table), width)
         assert max(map(len, template.splitlines())) <= width
         for row, expected in enumerate(table):
             bits = [int(bit) for bit in f"{row:0{n}b}"]
-            source = fill_runs(template, TEMPLATE_CHAR, [PAIR] * n, bits)
-            io = ScriptedIO("")
-            nocomment.run(source, io)
-            assert io.getvalue() == expected
+            source = oracle.instantiate(template, bits)
+            assert oracle.run_nocomment(source) == expected
 
 
 class TestNoComment:
-    def test_output_character(self) -> None:
-        assert run_and_capture("c" + "i" * 65 + "o") == "A"
-
-    def test_cell_clears(self) -> None:
-        """C resets the cell, so a following o prints a NUL."""
-        assert run_and_capture("ciio") == "\x02"
-        assert run_and_capture("co") == "\x00"
-
-    def test_cell_wraps(self) -> None:
-        assert run_and_capture("c" + "i" * 256 + "o") == "\x00"
-        assert run_and_capture("do") == "\xff"
-
-    def test_pointer_wraps(self) -> None:
-        """The static tape's pointer wraps to the opposite end (per the wiki)."""
-        assert run_and_capture("c" + "i" * 65 + "r" + "o") == "\x00"
-        assert run_and_capture("c" + "i" * 65 + "r" + "i" * 70 + "o") == "F"
-        # l at cell 0 wraps to cell 4095, a fresh zero cell
-        assert run_and_capture("c" + "i" * 65 + "l" + "o") == "\x00"
-        assert run_and_capture("c" + "i" * 65 + "r" + "l" + "o") == "A"
-
-    def test_tape_size_is_configurable(self) -> None:
-        """The wiki fixes the wrap but not the size, so the size is a knob.
-
-        The size is observable through that wrap -- cell 0 steps left to
-        ``tape - 1`` -- so this pins the argument reaching *both* wrap sites
-        rather than only the allocation.
-        """
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.nocomment import _TAPE, _Machine
-
-        assert _TAPE == 4096  # the default stays put; moving it moves behaviour
-
-        for size in (2, 512, 8192):
-            left = _Machine("l", ScriptedIO(), size)
-            left.step()
-            assert left.ptr == size - 1
-
-            right = _Machine("r" * size, ScriptedIO(), size)
-            while not right.halted:
-                right.step()
-            assert right.ptr == 0  # a full lap returns to the origin
-
-    def test_tape_size_must_be_positive(self) -> None:
-        """A tape with no cells has no cell to point at."""
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.nocomment import _Machine
-
-        for size in (0, -1):
-            with pytest.raises(ValueError, match="at least one cell"):
-                _Machine("i", ScriptedIO(), size)
-
-    def test_a_one_cell_tape_is_accepted(self) -> None:
-        """One cell is the smallest legal tape, and the guard's own edge.
-
-        ``test_tape_size_must_be_positive`` pins the rejected side and
-        ``test_tape_size_is_configurable`` starts at 2, so nothing stood on
-        the boundary itself: widening the floor to ``<= 1`` or ``< 2``
-        rejects a one-cell tape and no test objected.  One cell is the
-        degenerate wrap -- both ``l`` and ``r`` return to the only cell, so
-        the increments survive a move that would otherwise land elsewhere.
-        """
-        buffer = io.StringIO()
-        with redirect_stdout(buffer):
-            nocomment.run("c" + "i" * 65 + "rlo", IO(), tape=1)
-        assert buffer.getvalue() == "A"
-
-    def test_run_forwards_the_tape_size(self) -> None:
-        """``run`` passes its ``tape`` through, rather than taking the default.
-
-        Every other size test builds a ``_Machine`` directly, so dropping
-        the argument at ``run``'s only call site left the default in place
-        with nothing to notice.  A two-cell tape makes ``rr`` a full lap
-        back to the marked cell; on the 4096-cell default the same program
-        stops two cells away and prints a fresh zero.
-        """
-        buffer = io.StringIO()
-        with redirect_stdout(buffer):
-            nocomment.run("c" + "i" * 65 + "rro", IO(), tape=2)
-        assert buffer.getvalue() == "A"
-
-    def test_stack_push_pop(self) -> None:
-        """N pushes the cell; f pops into it."""
-        assert run_and_capture("c" + "i" * 65 + "n" + "f" + "o") == "A"
-        assert run_and_capture("c" + "i" * 65 + "n" + "r" + "f" + "o") == "A"
-        assert run_and_capture("c" + "i" * 65 + "n" + "n" + "f" + "f" + "o") == "A"
-
-    def test_skip_forward(self) -> None:
-        """S skips X commands forward when the current cell is nonzero."""
-        # cell = 2, push 2: skip the two i's, print cell 2
-        assert run_and_capture("cii" + "n" + "s" + "ii" + "o") == "\x02"
-        assert run_and_capture("ci" + "n" + "s" + "i" + "o") == "\x01"
-
-    def test_jump_back(self) -> None:
-        """B jumps back X-1 and loops until the cell reaches zero.
-
-        The suite reached ``b`` only through the out-of-range error, so a
-        backward jump was never actually taken.  Here ``n`` pushes 2 and the
-        body decrements, so the jump fires once and the loop ends: the
-        stack still holds its 2 afterwards, which is what makes the jump a
-        peek rather than a pop.
-        """
-        assert run_and_capture("ciindbo") == "\x00"
-        assert run_and_capture("ciindbdo") == "\xff"
-
-    def test_jump_needs_a_nonzero_cell(self) -> None:
-        """S and b do nothing when the current cell is zero.
-
-        Both jumps are guarded on the cell *and* the stack, and every test
-        ran them with both satisfied -- so requiring either one alone would
-        have passed.  Clearing the cell first leaves the jump untaken and
-        the skipped commands run.
-        """
-        assert run_and_capture("ciincsio") == "\x01"
-        assert run_and_capture("cbo") == "\x00"
-
-    def test_jump_peek_underflow_is_error(self) -> None:
-        """A taken s or b needs a stack value to peek."""
-        with pytest.raises(HaltError):
-            run_and_capture("cisio")
-        with pytest.raises(HaltError):
-            run_and_capture("cibo")
-
-    def test_jump_target_is_checked_one_past_the_jump(self) -> None:
-        """The range check looks at the command the jump lands on.
-
-        ``test_jump_out_of_range_is_error`` overshoots by a wide margin, so
-        the exact edge went unchecked: the target could be computed one
-        either side and still be far outside.  Here the skip of 2 from the
-        ``s`` targets one past the last command -- rejected by a single
-        position, which computing the target one lower, or comparing the
-        upper bound inclusively, would have allowed.
-        """
-        with pytest.raises(HaltError):
-            run_and_capture("ciinsio")
-
-    def test_backward_jump_of_zero_leaves_the_code(self) -> None:
-        """A backward jump of 0 targets one past the jump, which is off the end.
-
-        Pushing a zero and jumping back by it gives a target of ``ind + 1``
-        -- past the last command here, so it is rejected.  It is the only
-        way to reach the low edge of the range check, where a bound of 1 or
-        an exclusive comparison would behave differently.
-        """
-        with pytest.raises(HaltError):
-            run_and_capture("nib")
-
-    def test_taken_jump_cannot_peek_an_empty_stack(self) -> None:
-        with pytest.raises(HaltError):
-            run_and_capture("iisbinbo")
-
-    def test_every_non_command_character_is_rejected(self) -> None:
-        """No character outside the ten commands is executable -- no no-ops exist.
-
-        The jump commands share one branch, so ``s`` and ``b`` form a set,
-        and a set can be widened to swallow a character that should have
-        been malformed.  Pinning that with one chosen sentinel would only
-        pin the sentinel, so this sweeps the whole printable range against
-        the command set itself: whatever a widened set admits, it is in here.
-        The preceding ``iin`` leaves a nonzero cell and a stacked value, so
-        a character wrongly read as a jump would act rather than be ignored.
-        """
-        for char in map(chr, range(0x20, 0x7F)):
-            if char in "idclrnfsbo":
-                continue
-            with pytest.raises(ValueError, match="unrecognized NoComment command"):
-                run_and_capture("iin" + char + "o")
-
-    def test_unrecognized_command_is_error(self) -> None:
-        """The wiki allows no comments; a non-command is a malformed program."""
-        with pytest.raises(ValueError, match="unrecognized NoComment command"):
-            run_and_capture("x" + "c" + "i" * 65 + "o")
-
-    def test_stack_underflow_is_error(self) -> None:
-        """Popping an empty stack is an invalid operation."""
-        with pytest.raises(HaltError):
-            run_and_capture("c" + "i" * 65 + "f" + "o")
-
-    def test_jump_out_of_range_is_error(self) -> None:
-        """A forward or backward jump leaving the code space is invalid."""
-        with pytest.raises(HaltError):
-            run_and_capture("c" + "i" * 10 + "n" + "s" + "o")
-        with pytest.raises(HaltError):
-            run_and_capture("c" + "i" * 10 + "n" + "b" + "o")
-
     def test_a_long_increment_run_prints_hello_world(self) -> None:
         """Thirteen characters walked out on one cell with ``i``/``d``."""
         program = (
@@ -286,24 +62,6 @@ class TestNoComment:
             "dddddddddddddddddddddddddo"
         )
         assert esolangs.run("NoComment", program) == "Hello, World!"
-
-
-class TestStepMachine:
-    def test_step_tracks_tape_stack_and_cursor(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.nocomment import _Machine
-
-        machine = _Machine("cino", ScriptedIO())
-        assert (machine.ptr, machine.ind, machine.stack) == (0, 0, ())
-        machine.step()  # c clears the cell
-        machine.step()  # i increments it
-        machine.step()  # n pushes the cell
-        assert machine.stack == (1,)
-        machine.step()  # o prints the cell
-        assert machine.io.getvalue() == "\x01"
-        assert machine.halted
-        machine.step()  # stepping a halted machine is a no-op
-        assert machine.ind == 4
 
 
 def _machine(code: object) -> object:
