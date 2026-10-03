@@ -129,7 +129,7 @@ class TestEveryAuditedCapIsCatchable:
 
     def test_befunge_grid_refusal_is_catchable(self) -> None:
         with pytest.raises(esolangs.GeneratorCapError, match="80x25"):
-            esolangs.generate("Befunge", "0010" * (1 << 9))
+            esolangs.generate("Befunge", "0010" * (1 << 12))
 
     def test_nocomment_builds_at_the_arity_that_escaped(self) -> None:
         """The escape's subject is gone: n=12 is a template, not a refusal."""

@@ -170,6 +170,6 @@ def test_unproved_scaling_requires_a_totality_exception(ledger: Ledger) -> None:
 
 def test_befunge_refusal_is_an_explicit_totality_exception(ledger: Ledger) -> None:
     """The fixed-torus refusal must not disappear from the totality audit."""
-    with pytest.raises(esolangs.GeneratorCapError, match="at most ten inputs"):
-        esolangs.generate("Befunge", "01" * 1024)
+    with pytest.raises(esolangs.GeneratorCapError, match="at most thirteen inputs"):
+        esolangs.generate("Befunge", "01" * 8192)
     assert "exception" in ledger.by_name()["Befunge"].labels

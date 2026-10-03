@@ -54,7 +54,7 @@ TABLES = ("0110", "01101001", "0110100110010110")
 STEP_CAP = 200_000
 
 # Dense parity reaches the named layout switches without folding inputs away.
-BOUNDARIES = {"Circuit Diagram": (7, 8), "Streetcode": (5, 6)}
+BOUNDARIES = {"Befunge": (10, 11), "Circuit Diagram": (7, 8), "Streetcode": (5, 6)}
 
 
 def boundary_tables(name: str) -> tuple[str, ...]:
