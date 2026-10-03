@@ -97,7 +97,7 @@ def _advance(
     elif char == ".":
         pass  # printed by the caller; the cell is unchanged
     elif char == ",":
-        cells = {**cells, ap: byte if byte is not None else 0}
+        cells = {**cells, ap: byte % 256 if byte is not None else 0}
     elif char == "[":
         if cells.get(ap, 0) == 0:
             return (cells, ap, (match[pos[0]] + 1, 0, 0), heading)
