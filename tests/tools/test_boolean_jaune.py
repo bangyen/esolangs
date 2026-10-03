@@ -76,7 +76,7 @@ class TestJaune:
             io = ScriptedIO("0\n" * n)
             with contextlib.suppress(Exception, SystemExit):
                 run(boolean.jaune(table), io=io)
-            assert io.position() == n, (
+            assert io.reads == n, (
                 f"{table} consumed {io.position()} inputs, expected {n}"
             )
 

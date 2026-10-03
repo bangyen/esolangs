@@ -16,7 +16,7 @@ Lists index from 0.5: ``at{l, 0.5}`` is the first element.  Functions are
 defined with ``func name{a, b}`` in place of ``begin`` and return via
 ``end <value>``, each call getting its own variable namespace.
 
-Input is one line per ``inp``, taking the line's first character; output is
+Input is the next Unicode character per ``inp``, including newlines; output is
 one character per ``out``.  Run a program with ``python -m
 esolangs.interpreters.grid_based.alight prog.al``.
 
@@ -77,6 +77,7 @@ operation.
 
 from typing import Literal, TypeGuard, cast
 
+from esolangs._drive import drive
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
@@ -889,12 +890,10 @@ class _Machine:
     def _read(self) -> _Value:
         """Read one character, or ``eof`` when the input is exhausted."""
         try:
-            line = self.io.input_str()
+            value = self.io.input_char()
         except EOFError:
             return "eof"
-        # An empty line is a real line with no character on it; 0 is what
-        # ``input_char`` and every other interpreter here return for one.
-        return float(ord(line[0])) if line else 0.0
+        return float(value)
 
     def _write(self, value: _Value) -> None:
         if not _is_num(value):
@@ -1189,8 +1188,7 @@ def _freeze(value: object) -> object:
 def run(code: list[str] | str, io: IO) -> None:
     """Run an Alight program to its ``end``."""
     machine = _Machine(code, io)
-    while not machine.halted:
-        machine.step()
+    drive(machine)
 
 
 if __name__ == "__main__":

@@ -32,7 +32,7 @@ Machine checks live in `tests/proofs/`. `test_ledger.py` checks consistency
 with the registry; `test_schemes.py` checks measurable consequences for lookup
 and parameterized rows (`tree` and `minterms` have no per-row check). Both run
 in the fast band. The deeper proof checks live in `tests/proofs/deep/`.
-`all_generators.py` checks all 71 constructions: flipping each table row
+`all_generators.py` checks all 77 constructions: flipping each table row
 changes the emitted program at the tested arities, and each construction
 completes an arity ladder on both table shapes. This checks the counting half
 of each scheme. Four generators -- A Painter Ant, ArrowQueue, Container and
@@ -179,9 +179,9 @@ BrainIf also competes with its input-forgetting residual DAG, proved below.
 Each route is total on its own domain and the lookup
 carries the universal claim, so the tree below the crossover is a size
 optimization rather than part of the proof.  A width-constrained build may take
-the tree at any arity.  A Painter Ant, Alight, Befunge, BIO, B-tapemark,
+the tree at any arity.  A Painter Ant, Alight, BIO, B-tapemark,
 bit~, Bitwise Cyclic Tag, Circlefuck, Clockwise, Collatz Multiverse,
-Dimensional, EGL, Eval, Fish,
+Cyclic tag, ///, Subleq, Dimensional, EGL, Eval, Fish,
 Forbin, Minsky Swap, Modulous, NoComment, Packlang, Qoibl, SLOW ACV MAMMALIAN,
 Suffolk, Thue and Unsquare keep no tree route at all: A Painter
 Ant's
@@ -257,7 +257,7 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | ArrowQueue | parameterized lookup | one stage per input doubles the queued markers and adds the bit (Horner), and the count selects one of `2**n` constant-size cascade stages | linear: at most 6n + 3T rows, the constant tail folded |
 | B-tapemark | finite lookup | the blank grid is the table, one mark per row copied by `*`; a stage per input walks the mark pointer by that input's weight and `+` prints the mark it lands on | linear: 3T copy cells, T pointer steps, one stage per input |
 | Back | parameterized tree | — | linear: leaf moves sum geometrically, sparse row render |
-| Befunge | finite lookup | the grid is the table, one cell per entry, read by `g` at the Horner index | linear: T table cells, one g at the index |
+| Befunge | exception | six-bit ASCII lookup ships through thirteen inputs; finite source space excludes some sixteen-input tables | linear: T table cells, one g at the index |
 | Bitwise Cyclic Tag | parameterized lookup | the table is the program, one four-bit cell per row; each embedded bit appends two walk zeros per unit of its place value, and a cell consumes exactly two, so the zeros carry the program pointer to the indexed cell and the held-back sentinel arrives there to fire it; the cell's second `0` consumes the answer it just appended, without which a 1 would cascade into the rows below | linear: 4T table cells, 4T walk appends, 5T + n steps |
 | BF-PDA | parameterized tree | — | linear: span walk, leaf drains sum geometrically |
 | BFStack | minterms | — | linear: zero-row walk telescopes to T |
@@ -265,6 +265,10 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | bit~ | linear lookup | one tape cell an entry, and each input's one-shot loop jumps the pointer left by that input's weight, so the reads chain into a Horner index and a self-erasing walk carries the landed bit to one of two print windows | linear: bounded dependency scan and canonical residual IDs |
 | Bitdeque | parameterized lookup | head/tail discards leave the indexed entry in the deque | linear: 2T commands, discard blocks sum to T |
 | brainfuck | tree | `decision_tree_program` | linear: decision_tree_program, span walk, leaf moves geometric |
+| Boolfuck | reduction | fixed command substitutions lower the Brainfuck tree, consuming and emitting complete bytes | linear: constant-size lowering of the linear Brainfuck tree |
+| Cyclic tag | parameterized lookup | weighted zero padding advances the cyclic rule pointer to the indexed answer; the next empty rule deletes it | linear: 5T + 2n + 1 characters, weighted padding |
+| /// | parameterized lookup | binary-to-unary substitutions form the row index; T escaped sweeps consume indexed entries before decoding one answer and deleting the suffix | linear: T fixed-size sweeps and 2T table characters |
+| Subleq | finite lookup | direct-jump packed decoder with byte reads and self-modifying chunk selection | linear: T/n packed chunks of n bits, O(n) decoder |
 | BrainIf | tree | equal cofactors share one layered DAG node; spatial lookup remains a candidate | linear: O(T/n) nodes with O(n)-digit addresses |
 | Circlefuck | linear lookup | the tape is the program, so the table is its tail past the `@` that stops the run, entry 0 abutting the index digits at the ring's end; `}` deletes the cell under the pointer and slides the digits down into it, so counting the index out against one `}` apiece leaves the entry it names under the pointer | linear: bounded dependency scan and canonical residual IDs |
 | Circuit Diagram | tree | finite planar routing | linear: H-layout side C sqrt(T), area Theta(T) |
@@ -292,6 +296,7 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | INTERCAL | parameterized tree | equal-width constants set each input once; fully grouped mingle, unary logic, and select expressions form a Shannon tree | linear: reverse-depth numbering confines long names near the root |
 | Jaune | finite lookup | a spatial table reached with two labels, against a hoisted tree that lays out each distinct subtable once and jumps to it | linear: two cells per row, unary weights sum T - 1 |
 | LaserFuck | finite lookup | weighted arms select one of `2**n` prewritten cells, cleaned in one sweep | linear: three rows of linear appends, ~15T |
+| Line | tree | finite decision trees read inputs and choose a Boolean leaf; separated strokes preserve every branch | linear: alternating subtree extents bound rectangular area by O(T) |
 | Malbolge | exception | finite source space rules out some 18-input tables; the shipped branch-free five-cell mixer covers every table through ten inputs, a two-level pointer cascade covers eleven, a selector that splits the last input off that cascade covers twelve, answer stubs that read the last input cover thirteen, and four copies of that table selected by inputs twelve and thirteen cover fourteen; fifteen and sixteen replace the hash with a positional address, three input bits per two-trit digit, so no row collides; the cap is sixteen, and seventeen is open ([malbolge-scaling](malbolge-scaling.md)) | measured: fixed 59049-cell store through n <= 16 |
 | Minifuck | parameterized construction | `_mux` is the total fallback; its six failure sites close uniformly in `n` | linear: mux lookup, constant strings times O(T) counts |
 | Minsky Swap | parameterized lookup | every input is one `++`/`**` run; a stage per input adds its weight to the index register, and a `~` cascade routes the index to one of two shared leaves at the head of the program, so every table of one arity renders to the same length | linear: cascade routes to two shared leaves, one-digit targets |
@@ -300,6 +305,7 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | 123 | parameterized construction | table-independent separation plus verdict; failed tight geometry falls back to doubling geometry | linear: geometric paint per input, one-pass endgame |
 | Packlang | linear lookup | one 128-row array block, painted inside the `If` that selects it | linear: one write per differing row, block-bounded index digits |
 | Painfuck | tree | Brainfuck tree transliteration | linear: brainfuck tree, O(L) transliteration |
+| Piet | finite lookup | each table entry is pushed and an input index selects its output; literal products replace conjunction tables | linear: one bounded-width strip with O(T) codels |
 | Polynomial | tree, cap | each finite instruction list has a finite prime-product encoding; every program for a maximal-width table needs Omega(T/log T) distinct real roots ([polynomial](polynomial.md)) | lower bound: coefficient mass is Omega(T**2 / log T), matching the uncapped residual-DAG construction; equal-root blocks force Omega(T/log T) distinct real roots and the slack certificate prices every multiple ([polynomial](polynomial.md)) |
 | Qoibl | linear lookup | the table is one binary literal, divided by the power of two the reads build | linear: T-bit literal, one squaring statement per input |
 | RAM0 | parameterized tree | the inputs are stored once and each node loads its bit with `L`; a subtree already emitted is reached by `goto`, so only the distinct subtables are laid out, and the straight-line lookup is kept as a candidate | linear: O(T/n) distinct subtables, O(n) commands each |
@@ -324,6 +330,21 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 
 ## Exceptions and walls
 
+- Befunge starts with an empty stack and a fixed 80x25 source grid. Each
+  Python character has fewer than `2**21` possible values, so there are fewer
+  than `2**42000` initial grids, including every padded shorter source. With
+  stdin restricted to the input bits and randomness fixed, each grid computes
+  at most one truth table at a given arity. Sixteen inputs have `2**65536`
+  tables, so some have no program. Unbounded stack integers and self-modification
+  do not change this source-count bound. For byte-only source the bound is
+  `2**16000`, already excluding some fourteen-input tables. The shipped
+  six-bit printable-ASCII lookup covers every table through thirteen inputs,
+  meeting the byte-source arity bound. For row `r`, it reads cell `r//6`,
+  subtracts 32 and divides by `2**(r%6)` before taking modulo two. The three
+  binary digits of `u = r%6` build the divisor as
+  `(1+u%2)*(1+3*((u//2)%2))*(1+15*(u//4))`, without a loop. Enlarging the torus
+  or supplying the table as extra input changes the generator contract.
+
 - Malbolge has 59,049 source cells and exactly eight valid decoded
   instructions at each occupied cell.  Including shorter programs gives fewer
   than `sum(8**k for k in range(59050)) < 2**177148` distinct programs, while
@@ -337,8 +358,9 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
   no collisions, and shows why seventeen is beyond any build spending a cell per row
   pair.  Whether some 17-input table has no program is open.
 
-The former exception, `%^2^-1`, left with its language.  Every other row is
-`Total`, or theoretically total past the resource ceiling below.
+The former exception, `%^2^-1`, left with its language. Every row outside
+these two exceptions is `Total`, or theoretically total past the resource
+ceiling below.
 
 ### Resource-ceiling audit
 
@@ -378,9 +400,9 @@ construction.  Parity at thirteen inputs is 966568 digits, built in
 three seconds with the prime powers multiplied as a balanced tree, and
 the interpreter decodes it to the tree the generator encoded.
 
-Accordingly, this ledger records 70 theoretical totality arguments and one
-proved language exception; every other row is `Total` or theoretically total
-past a resource ceiling.
+Accordingly, this ledger records 75 theoretical totality arguments and two
+proved language exceptions under the source-embedded contract.
+Every other row is `Total` or theoretically total past a resource ceiling.
 
 ## Ordered reads without retained inputs
 

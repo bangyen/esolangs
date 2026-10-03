@@ -254,7 +254,7 @@ class TestQoiblExamples:
         # Test 2 + 3 = 5
         def run_adder() -> str:
             with (
-                patch("builtins.input", side_effect=["2", "3"]),
+                patch("builtins.input", side_effect=["23"]),
                 redirect_stdout(io.StringIO()) as f,
             ):
                 run(code, IO())

@@ -17,7 +17,7 @@ from esolangs.interpreters.other.malbolge import (
     _initial_memory,
     _op,
 )
-from esolangs.tools._malbolge_core import _WORDS
+from esolangs.tools.malbolge.core import _WORDS
 
 
 def _executed(source: str, bits: tuple[int, ...]) -> set[int]:

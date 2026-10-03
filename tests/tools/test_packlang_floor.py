@@ -8,6 +8,7 @@ import esolangs
 from esolangs.interpreters.other.packlang import _tokenize
 from esolangs.tools.packlang import packlang
 from esolangs.tools.wrap import wrap_program
+from tests.generator_support import evaluate_generated
 
 
 @pytest.mark.parametrize("inputs", [1, 2, 3])
@@ -17,7 +18,7 @@ def test_every_small_packlang_table_executes_at_the_new_floor(inputs: int) -> No
         table = format(value, f"0{1 << inputs}b")
         source = esolangs.generate("Packlang", table, 1)
         assert max(map(len, source.splitlines())) == 7
-        assert esolangs.evaluate("Packlang", table, width=1) == table
+        assert evaluate_generated("Packlang", table, width=1) == table
 
 
 @pytest.mark.parametrize("inputs", [4, 5, 8, 10])

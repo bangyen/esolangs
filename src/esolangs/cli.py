@@ -30,7 +30,7 @@ operation, was a template), and **124** is a run stopped by ``--timeout``,
 after timeout(1) -- from every command that takes one, not only ``run`` and
 ``debug``.  That last one used to be 1 as well, which left the three
 languages whose answer *is* a timeout indistinguishable from a crash, and
-then stayed 1 in ``evaluate``, ``verify`` and ``answer`` after the other
+then stayed 1 in ``evaluate`` and ``answer`` after the other
 two were fixed, which left a script unable to use one code for the event.  Only
 an unexpected error still reaches the terminal as a traceback, which is what
 a traceback should mean.
@@ -53,17 +53,14 @@ from esolangs import (
     list_languages,
     read_answer,
 )
-from esolangs import spec as _spec
 from esolangs.cli_args import (
     _check_count,
     _fail,
     _pop_flags,
     _pop_options,
     _pop_width,
+    _scale_of,
     _split_positional,
-)
-from esolangs.cli_args import (
-    _table_of as _table_of,
 )
 from esolangs.cli_debug import _debug
 from esolangs.cli_help import (
@@ -78,50 +75,16 @@ from esolangs.cli_hints import (
     _shell_hint,
     _swapped_hint,
 )
-from esolangs.cli_hints import (
-    _shape_warning as _shape_warning,
-)
-from esolangs.cli_hints import (
-    _template_hint as _template_hint,
-)
-
-# The strategies live in their own modules, but this one is the
-# construction's face: the registry, the wrapper and the suite all reach
-# it by this name.  Re-exported in the ``x as x`` form so a caller that
-# does not care where a piece lives need not know.
-from esolangs.cli_io import (
-    _UNBOUNDED_NOTICE_AFTER as _UNBOUNDED_NOTICE_AFTER,
-)
-from esolangs.cli_io import (
-    _bounded_read as _bounded_read,
-)
-from esolangs.cli_io import (
-    _emit_partial as _emit_partial,
-)
-from esolangs.cli_io import (
-    _read_program as _read_program,
-)
 from esolangs.cli_io import (
     _read_stdin,
 )
-from esolangs.cli_io import (
-    _smuggled_bytes as _smuggled_bytes,
-)
-from esolangs.cli_io import (
-    _UnboundedNotice as _UnboundedNotice,
-)
-from esolangs.cli_io import (
-    _WaitingNotice as _WaitingNotice,
-)
-from esolangs.cli_io import (
-    _write_output as _write_output,
-)
-from esolangs.cli_round_trip import _answer, _evaluate, _verify
+from esolangs.cli_round_trip import _answer, _evaluate
 from esolangs.cli_run import _run
 from esolangs.exceptions import (
     EsolangError,
 )
-from esolangs.registry import LANGUAGES
+from esolangs.registry import LANGUAGES, resolve
+from esolangs.tools.balance import BALANCERS
 
 
 def _encode(rest: list[str]) -> None:
@@ -194,10 +157,15 @@ def _list(rest: list[str]) -> None:
 
 def _generate(rest: list[str]) -> None:
     """Print a program computing a truth table."""
-    rest, options = _pop_options(rest, {"--bits"})
+    rest, options = _pop_options(rest, {"--bits", "--scale"})
+    rest, flags = _pop_flags(rest, {"--balance"})
+    balance = "--balance" in flags
+    scale = _scale_of(options)
     before = list(rest)
     rest, width, bare = _pop_width(rest)
-    rest = _split_positional(rest, set(), {"--bits", "--width"})
+    if balance and width is not None:
+        _fail("--balance and --width are mutually exclusive")
+    rest = _split_positional(rest, set(), {"--bits", "--width", "--balance", "--scale"})
     # `--width` takes an *optional* N, so a truth table typed straight after
     # it is consumed as the width and the report lands on the table being
     # missing -- which is baffling when you did type one.
@@ -216,7 +184,7 @@ def _generate(rest: list[str]) -> None:
         # wraps the template (or hands the width to a *layout* language,
         # which lays it out), and ``instantiate`` wraps a program
         # filled from an unwrapped template; a wrapped one fills in place.
-        program = generate(rest[0], rest[1], width)
+        program = generate(rest[0], rest[1], width, balance=balance, scale=scale or 1)
         if "--bits" in options:
             bits = options["--bits"]
             if set(bits) - {"0", "1"} or not bits:
@@ -227,9 +195,14 @@ def _generate(rest: list[str]) -> None:
             program = instantiate(rest[0], program, [int(b) for b in bits], width)
     except EsolangError as exc:
         _fail(f"{exc}{_swapped_hint(rest[0], rest[1])}")
-    if (width is not None or bare) and describe(rest[0])["width_effect"] == "none":
+    if (
+        (width is not None or bare or balance)
+        and describe(rest[0])["width_effect"] == "none"
+        and not (balance and LANGUAGES[resolve(rest[0])].id in BALANCERS)
+    ):
         sys.stderr.write(
-            f"note: --width has no effect on {describe(rest[0])['name']} -- "
+            f"note: {'--balance' if balance else '--width'} has no effect on "
+            f"{describe(rest[0])['name']} -- "
             f"the generator retains its original layout\n"
         )
     if isinstance(program, Raster):
@@ -251,10 +224,7 @@ def _describe(rest: list[str]) -> None:
         _fail(str(exc))
         raise  # pragma: no cover - unreachable; _fail exits
     if as_spec:
-        # Printed rather than folded into the record, because it is prose
-        # of a few thousand characters and would swamp every other field.
-        text = _spec(str(facts["name"]))
-        print(json.dumps({**facts, "spec": text}, indent=2) if as_json else text)
+        print(json.dumps(facts, indent=2) if as_json else facts["spec"])
         return
     if as_json:
         # Verbatim, including the keys the reading layout hides: a caller
@@ -433,7 +403,6 @@ def _dispatch() -> None:
         "read-answer": _read_answer,
         "check-stdin": _check_stdin,
         "answer": _answer,
-        "verify": _verify,
         "evaluate": _evaluate,
         "debug": _debug,
     }[cmd](rest)

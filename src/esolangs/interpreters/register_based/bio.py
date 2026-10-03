@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import re
 
+from esolangs._drive import drive
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 
@@ -192,8 +193,7 @@ def _advance(state: _State, commands: list[str], closes: tuple[int, ...]) -> _St
 def run(code: str, io: IO) -> None:
     """Execute BIO code and produce output."""
     machine = _Machine(code, io)
-    while not machine.halted:
-        machine.step()
+    drive(machine)
 
 
 if __name__ == "__main__":

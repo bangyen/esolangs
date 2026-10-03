@@ -95,9 +95,8 @@ def test_readme_counts_match_the_registry() -> None:
     """
     module = load_script()
     examples = module.render_examples_section()
-    assert (
-        f"each of the {len(module.BOOLEAN)}\ntext languages with a boolean" in examples
-    )
+    count = sum(lang.boolean is not None for lang in module.LANGUAGES.values())
+    assert f"each of the {count}\nlanguages with a boolean" in examples
     assert f"  {len(module.BOOLEAN)} of the" in module.render_boolean_count_section()
 
 
@@ -291,12 +290,32 @@ def test_the_shape_table_carries_the_encoders_output() -> None:
     module = load_script()
     rendered = module.render_input_shapes_section()
     assert "| Fargo | `row_index` | `0`/`1` | `'5\\n'` |" in rendered
-    assert "| Taglate | `line_per_bit_padded` | `0`/`1` | `'0\\n1\\n0\\n1\\n'` |" in (
-        rendered
-    )
+    assert "| Taglate | `char_stream_padded` | `0`/`1` | `'0101'` |" in (rendered)
 
 
 def test_boolean_set_names_are_registered() -> None:
     """Every language marked boolean in the matrix is a registered language."""
     module = load_script()
     assert set(module.LANGUAGES) >= module.BOOLEAN
+
+
+def test_language_listing_covers_every_interpreter() -> None:
+    module = load_script()
+    rendered = module.render_languages_section()
+    for name, language in module.LANGUAGES.items():
+        if language.interpreter is not None:
+            assert f"- [{name}]" in rendered
+    for path in re.findall(r"/blob/main/([^)]*)", rendered):
+        assert (REPO_ROOT / path).is_file()
+
+
+def test_language_listing_only_lists_available_interpreters(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = load_script()
+    monkeypatch.setitem(
+        module.LANGUAGES, "Line", replace(module.LANGUAGES["Line"], interpreter=None)
+    )
+    rendered = module.render_languages_section()
+    assert "- [Line]" not in rendered
+    assert f"Show all {len(module.LANGUAGES) - 1} languages" in rendered

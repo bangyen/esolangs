@@ -47,8 +47,8 @@ rather than invented, and every one of the three examples on the page
   that convention cannot express Flowchart's own truth machine: given
   ``0`` it reads a single bit, writes a single bit, and halts, so an
   eight-bit output buffer would never flush and the program would print
-  nothing at all.  ``/ /`` therefore reads one line and takes ``1`` as a
-  one bit and anything else as a zero, and ``\ \`` prints a literal
+  nothing at all. ``/ /`` therefore reads a ``0`` or ``1`` character,
+  ignoring whitespace, and ``\ \`` prints a literal
   ``'0'`` or ``'1'``.  EOF leaves the register empty rather than raising,
   which is exactly the "empty if there are no more bits to read" the spec
   asks for; a pointer reading past the end simply carries an empty
@@ -132,11 +132,15 @@ which is the same state ``{ }`` clears it to.  The nodes that consume the
 register -- printing it, or pushing it onto a deque -- skip a turn while it
 is empty, so a program that reads past the end of its input keeps running
 and simply stops emitting.  No :class:`HaltError` is raised at EOF.
+
+External bits are consecutive 0 or 1 characters, ignoring whitespace; the spec
+does not define stdin framing.
 """
 
 from dataclasses import dataclass, field, replace
 from typing import Literal, assert_never
 
+from esolangs._drive import drive
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 
@@ -824,17 +828,16 @@ class _Machine:
     def _read_bit(self) -> int | None:
         """Read one bit of input, or ``None`` once the input is exhausted."""
         try:
-            value = self.io.input_str()
+            value = self.io.input_bit()
         except (EOFError, IndexError):
             return None
-        return 1 if value.strip() == "1" else 0
+        return value
 
 
 def run(code: list[str], io: IO) -> None:
     """Execute a Flowchart program."""
     machine = _Machine(code, io)
-    while not machine.halted:
-        machine.step()
+    drive(machine)
 
 
 if __name__ == "__main__":

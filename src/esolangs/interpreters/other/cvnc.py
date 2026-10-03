@@ -34,6 +34,7 @@ from __future__ import annotations
 import math
 from collections.abc import Hashable
 
+from esolangs._drive import drive
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
@@ -283,8 +284,8 @@ def _fricative(
     if token == _PRINT_CHAR:
         return state, chr(accumulator % 256)
     if token == _READ_NUM:
-        # The accumulator is unsigned, so a negative line floors at zero,
-        # and an empty line (a bare Enter) reads as 0 rather than raising.
+        # The accumulator is unsigned, so negative tokens floor at zero.
+        # Invalid numeric text also reads as zero.
         return (max(_as_int((line or "").strip()), 0), deque, function, pointer), None
     # what is left is ``ʒ``, the character read
     return ((byte or 0) % 256, deque, function, pointer), None
@@ -456,7 +457,7 @@ class _Machine:
         line = None
         byte = None
         if token == _READ_NUM:
-            line = self.io.input_str()
+            line = self.io.input_token()
         elif token == _READ_CHAR:
             byte = self.io.input_char()
 
@@ -481,8 +482,7 @@ class _Machine:
 def run(code: str, io: IO) -> None:
     """Run a CV(N)(C) program to completion."""
     machine = _Machine(code, io)
-    while not machine.halted:
-        machine.step()
+    drive(machine)
 
 
 if __name__ == "__main__":

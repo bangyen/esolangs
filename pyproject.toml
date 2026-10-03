@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "esolangs"
-version = "0.6.0"
+version = "0.7.0"
 description = "A curated collection of esoteric programming language interpreters"
 authors = [{name = "Bangyen Pham", email = "bangyenp@gmail.com"}]
 license = "GPL-3.0-or-later"
@@ -26,6 +26,7 @@ keywords = ["esoteric", "programming", "languages", "interpreters", "brainfuck",
 dependencies = []
 
 [project.optional-dependencies]
+image = ["Pillow>=11.3.0"]
 math = [
     "sympy>=1.12.0",
 ]
@@ -37,7 +38,7 @@ dev = [
     "click>=8.3.3",
     "pygments>=2.20.0",
     "urllib3>=2.7.0",
-    "ruff==0.16.5",
+    "ruff==0.16.9",
     "mypy==2.3.1",
     # verify.py's duplicate-code step runs `python -m pylint`, and *skips
     # itself* when the import is missing -- so a checkout without pylint
@@ -50,10 +51,11 @@ dev = [
     "types-requests",
     "types-setuptools",
     "sympy>=1.12.0",
+    "Pillow>=11.3.0",
     "z3-solver>=4.15.0",
     # Was pinned to 3.3.1 against a class-method selection bug; 3.7.0 does not
     # have it, and fixes one of its own.  See scripts/mutate_one.py.
-    "mutmut==3.7.0",
+    "mutmut==3.8.0",
 ]
 
 [project.urls]
@@ -74,7 +76,7 @@ exclude = ["tests*", "examples*", "docs*"]
 # root, which left them out of the wheel, so `describe(...)["examples"]` was
 # populated from a checkout and empty from an install, with nothing to say
 # which you had.
-esolangs = ["py.typed", "examples/*.md", "examples/*.txt"]
+esolangs = ["py.typed", "examples/*.md", "examples/*.txt", "examples/*.png"]
 
 [tool.ruff]
 target-version = "py312"

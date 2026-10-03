@@ -23,6 +23,9 @@ index (see :meth:`_Machine._bit`).
 Evaluation uses an explicit ``_Frame`` stack: recursion is Fargo's only
 loop, native recursion would hit Python's limit, and the growing stack is
 what :func:`esolangs.vm.run_until_halt_or_ancestor` proves a hang on.
+
+Its initial number is a whitespace-delimited integer token; the spec does not
+define text framing.
 """
 
 from __future__ import annotations
@@ -30,6 +33,7 @@ from __future__ import annotations
 from collections.abc import Hashable
 from dataclasses import dataclass, replace
 
+from esolangs._drive import drive
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
@@ -253,7 +257,7 @@ class _Machine:
     def _read_input(self) -> int:
         """Read the input number, treating empty or invalid input as 0."""
         try:
-            text = self.io.input_str()
+            text = self.io.input_token()
         except EOFError:
             return 0
         try:
@@ -567,8 +571,7 @@ class _Machine:
 def run(code: str, io: IO) -> None:
     """Run a Fargo program, reading its input number before it begins."""
     machine = _Machine(code, io)
-    while not machine.halted:
-        machine.step()
+    drive(machine)
 
 
 if __name__ == "__main__":

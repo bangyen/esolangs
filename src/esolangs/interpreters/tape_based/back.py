@@ -47,6 +47,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
+from esolangs._drive import drive
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 
@@ -227,9 +228,7 @@ class _Machine:
 def run(code: list[str], io: IO) -> None:
     """Run a Back program, printing the tape when it halts."""
     machine = _Machine(code, io)
-    while not machine.halted:
-        machine.step()
-    machine.step()  # the post-halt step prints the tape
+    drive(machine)
 
 
 if __name__ == "__main__":

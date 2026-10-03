@@ -9,6 +9,7 @@ module docstring shape ``tests/test_interpreter_conventions.py`` checks --
 are listed under "Interpreter conventions" in ``docs/CONTRIBUTING.md``.
 """
 
+from esolangs._drive import drive
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 
@@ -92,8 +93,7 @@ class _Machine:
 
 def run(code: str, io: IO) -> None:
     machine = _Machine(code, io)
-    while not machine.halted:
-        machine.step()
+    drive(machine)
 
 
 if __name__ == "__main__":

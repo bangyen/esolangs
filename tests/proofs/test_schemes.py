@@ -24,6 +24,7 @@ import esolangs.tools as boolean
 from esolangs.registry import BY_BOOLEAN
 from esolangs.tools.helpers import runs
 from tests.proofs._ledger import Ledger, Row, load
+from tests.source_support import source_units
 
 #: Every table at ``n == 3`` that depends on exactly one input, both
 #: polarities, all at ones-count 4 -- the same ones-count as parity, so the
@@ -96,8 +97,8 @@ def _generator(row: Row) -> object:
 def _fold(fn: object) -> float:
     """How much the shortest one-dependency build saves against parity."""
     assert callable(fn)
-    parity = len(str(fn(_PARITY)))
-    best = min(len(str(fn(table))) for table in _ONE_DEPENDENCY)
+    parity = source_units(fn(_PARITY))
+    best = min(source_units(fn(table)) for table in _ONE_DEPENDENCY)
     return 1 - best / parity
 
 
@@ -122,13 +123,8 @@ def test_parameterized_rows_embed_each_input_exactly_once() -> None:
     the character -- a run of the wrong width, a run left over, or a stray
     character all refuse.
 
-    Driving this from the ledger rather than from
-    ``esolangs.tools.parameterized.__all__`` is deliberate.  Home Row is a
-    parameterized generator -- its docstring says so and it emits the runs --
-    but it is absent from that module's roster, so the suite's existing
-    exactly-once sweep has never run on it.  The ledger knows it is
-    ``parameterized tree``, so reading the obligation from the ledger closes
-    that hole without depending on the roster being complete.
+    The ledger supplies an independent obligation. The former category
+    export roster omitted Home Row despite its parameterized construction.
     """
     rows = _parameterized_rows(load())
     assert rows, "the ledger lists no parameterized rows"

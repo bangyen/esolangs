@@ -8,16 +8,17 @@ step, so ``break_at`` on the initial position fires without executing it.
 
 from __future__ import annotations
 
-import os
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from inspect import signature
 from time import monotonic
-from typing import Literal
+from typing import Literal, get_args
 
+from esolangs._source import InputSource, ProgramSource
 from esolangs._validate import check_timeout, check_whole
 from esolangs.exceptions import ArgumentError
-from esolangs.raster import Raster
 from esolangs.vm import VM, make_vm, run_until_halt
+
+__all__ = ["STOP_REASONS", "VM", "Debugger", "StopReason", "make_debugger", "make_vm"]
 
 #: Why a :meth:`Debugger.run` returned.
 StopReason = Literal["halted", "breakpoint", "max_steps", "timeout"]
@@ -25,7 +26,20 @@ StopReason = Literal["halted", "breakpoint", "max_steps", "timeout"]
 #: :data:`StopReason`'s members as iterable data.  What :meth:`Debugger.run`
 #: returns; the CLI's ``debug`` also prints ``stopped: raised`` for a fault
 #: it caught, so a parsed ``stopped:`` line can fail against this tuple.
-STOP_REASONS: tuple[StopReason, ...] = ("halted", "breakpoint", "max_steps", "timeout")
+STOP_REASONS: tuple[StopReason, ...] = get_args(StopReason)
+
+
+def _value_at[T](
+    values: Sequence[T], index: int, *, from_top: bool = False
+) -> T | None:
+    """Read a cell or stack slot, returning None when it is absent."""
+    return values[-1 - index if from_top else index] if index < len(values) else None
+
+
+def _watch[T](histories: dict[int, list[T]], index: int, name: str) -> list[T]:
+    """Register a validated slot and return its live history."""
+    check_whole(index, name)
+    return histories.setdefault(index, [])
 
 
 class Debugger:
@@ -46,7 +60,6 @@ class Debugger:
         self._suppressed: set[int] = set()
         self._hits: set[int] = set()
         self._timed_out = False
-        self._warned = False
         self._dumped = False
 
     @property
@@ -162,9 +175,7 @@ class Debugger:
         check_whole(index, "index")
         if isinstance(value, bool) or not isinstance(value, int):
             raise ArgumentError(f"value must be an integer, got {value!r}")
-        self._breakpoints.append(
-            lambda vm: index < len(vm.memory) and vm.memory[index] == value
-        )
+        self._breakpoints.append(lambda vm: _value_at(vm.memory, index) == value)
 
     def break_on_stack(self, slot: int, value: object) -> None:
         """Stop when the ``slot``-th stack value from the top holds ``value``.
@@ -173,7 +184,10 @@ class Debugger:
         """
         check_whole(slot, "slot")
         self._breakpoints.append(
-            lambda vm: slot < len(vm.stack) and vm.stack[-1 - slot] == value
+            lambda vm: (
+                slot < len(vm.stack)
+                and _value_at(vm.stack, slot, from_top=True) == value
+            )
         )
 
     def break_on_output(self, text: str) -> None:
@@ -205,8 +219,7 @@ class Debugger:
     def clear_breakpoints(self) -> None:
         """Drop every breakpoint, leaving the watches and the run intact.
 
-        Without it a condition that stays true (:meth:`break_on_output`'s) could
-        not be taken back.
+        Resuming already suppresses the last hit until its condition goes false.
         """
         self._breakpoints.clear()
         self._suppressed.clear()
@@ -219,10 +232,7 @@ class Debugger:
         (Forbin 16 -> 0, Taglate 22 -> 4, Packlang, Circuit Diagram,
         Bitdeque).  Recording starts here; the list is live.
         """
-        check_whole(index, "index")
-        if index not in self._cell_history:
-            self._cell_history[index] = []
-        return self._cell_history[index]
+        return _watch(self._cell_history, index, "index")
 
     def watch_stack(self, slot: int) -> list[object]:
         """Record the ``slot``-th stack value from the top each step.
@@ -231,29 +241,24 @@ class Debugger:
         history: ``stack`` is ``[]`` there, and the protocol draws no line.
         ``describe(...)["state_model"]`` is the fact to consult first.
         """
-        check_whole(slot, "slot")
-        if slot not in self._stack_history:
-            self._stack_history[slot] = []
-        return self._stack_history[slot]
+        return _watch(self._stack_history, slot, "slot")
 
     def _record(self) -> None:
         memory = self.vm.memory
         for index, cell_history in self._cell_history.items():
-            cell_history.append(memory[index] if index < len(memory) else None)
+            cell_history.append(_value_at(memory, index))
         stack = self.vm.stack
         for slot, stack_history in self._stack_history.items():
-            stack_history.append(stack[-1 - slot] if slot < len(stack) else None)
+            stack_history.append(_value_at(stack, slot, from_top=True))
 
     def step(self) -> None:
         """Execute one command, recording any watches.
 
         Delegates past the halt: the post-halt-dump languages keep their answer
         there, and returning early cost a debugger-driven verifier 58/65.
-        Warns about an underfed stdin at the halt as :meth:`run` does.
         """
         self.vm.step()
         self._record()
-        self._warn_about_stdin_once()
 
     def run(
         self, max_steps: int | None = None, timeout: float | None = None
@@ -279,7 +284,6 @@ class Debugger:
         self._timed_out = False
         halted = run_until_halt(self, max_steps, stop=lambda: self._stop(deadline))
         if halted:
-            self._warn_about_stdin_once()
             # Breakpoints are checked before each step, so one the final
             # step makes true was never seen (``break_on_output`` on a
             # program ending in ``.``).  Checked both before and after the
@@ -309,35 +313,6 @@ class Debugger:
             return "breakpoint"
         return "max_steps"
 
-    def _warn_about_stdin_once(self) -> None:
-        """Say what :func:`esolangs.run` says about a stdin that did not fit.
-
-        Fewer lines than given, or -- the one that matters -- a read past the
-        end where the end is a value: a wrong answer in silence.  At the halt,
-        where the counts are final; once per debugger, since ``run`` on a halted
-        machine returns immediately.
-        """
-        if self._warned:
-            return
-        name = getattr(self.vm, "language", None)
-        io_obj = getattr(self.vm, "_io", None)
-        if name is None or io_obj is None:  # pragma: no cover - every adapter has both
-            return
-        # Over-read is warned the moment it happens: six languages take the
-        # exhausted read as a value (Circuit Diagram at step 4 of 5), so a
-        # halt-time warning was silent on every bounded run, and never
-        # emitted at all on Suptiftam with empty stdin (``"max_steps"``).
-        # Surplus or malformed lines cannot be known until the program stops
-        # asking, so that half waits for the halt -- a bounded run that
-        # stops before it is the one case ``run``/``check_stdin`` catch and
-        # this cannot.
-        if not (getattr(io_obj, "past_end", False) or self.vm.halted):
-            return
-        self._warned = True
-        from esolangs import _warn_about_surplus
-
-        _warn_about_surplus(str(name), io_obj)
-
     def _stop(self, deadline: float | None) -> bool:
         """Whether to stop before the next step: a breakpoint, or the clock."""
         if deadline is not None and monotonic() > deadline:
@@ -359,16 +334,19 @@ class Debugger:
 
 
 def make_debugger(
-    language: str, program: str | Raster | os.PathLike[str], stdin: str = ""
+    language: str,
+    program: ProgramSource,
+    stdin: InputSource = "",
+    *,
+    scale: int | None = None,
 ) -> Debugger:
     """Return a :class:`Debugger` over a fresh :class:`VM` for ``language``.
 
-    ``stdin`` is fed line by line.  An unknown name raises
-    :class:`UnknownLanguageError`; a registered raster language raises
-    :class:`ArgumentError` (no step machine).  A malformed program raises
+    ``stdin`` is consumed using the language's input unit. An unknown name raises
+    :class:`UnknownLanguageError`.  A malformed program raises
     :class:`~esolangs.exceptions.ProgramError`, and on Clockwise -- which
     reads its whole input while the machine is built -- an underfed stdin
     raises :class:`~esolangs.exceptions.InputExhaustedError` here rather
     than at :meth:`Debugger.run`.
     """
-    return Debugger(make_vm(language, program, stdin))
+    return Debugger(make_vm(language, program, stdin, scale=scale))

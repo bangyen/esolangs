@@ -1,13 +1,12 @@
-"""Registry facts as data: :func:`describe`, :func:`spec`, :func:`list_languages`."""
+"""Registry facts as data: :func:`describe`, :func:`_spec`, :func:`list_languages`."""
 
-import importlib
 import pathlib
 from typing import Any, TypedDict
 
+from esolangs._execution import interpreter_module
 from esolangs.exceptions import ProgramError
 from esolangs.registry import (
     LANGUAGES,
-    RUNNERS,
     example_stems,
     parameterized_ids,
     resolve,
@@ -40,6 +39,7 @@ class LanguageInfo(TypedDict):
     """
 
     name: str
+    spec: str
     id: str
     source_kind: str
     state_model: str | None
@@ -66,6 +66,7 @@ class LanguageInfo(TypedDict):
 def describe(language: str) -> LanguageInfo:
     """Return a structured description of ``language``.
 
+    ``spec`` contains the interpreter docstring; missing docstrings raise.
     Identity: ``name``, ``id``, ``source_kind``, ``state_model``,
     ``interpreter``, ``wiki_url``.
     Generation: ``boolean_generator``; ``parameterized`` (a template, filled by
@@ -88,39 +89,28 @@ def describe(language: str) -> LanguageInfo:
     """
     name = resolve(language)
     lang = LANGUAGES[name]
-    module = RUNNERS.get(name)
-    family = module[0].split(".")[0] if module else None
+    family = lang.interpreter.split(".")[0] if lang.interpreter else None
     stem = example_stems().get(lang.id, lang.id)
     # Absolute.  These were relative to the repository root, which made the
     # recipe this package advertises -- ``run(lang, Path(describe(lang)
     # ["examples"][0]))`` -- work from one directory and nowhere else: a
     # ``chdir`` away it is ``cannot read examples/brainfuck.txt``,
     # and for anyone who pip-installed there is no such directory at all.
-    examples = sorted(str(p) for p in _EXAMPLES.glob(f"{stem}.txt"))
-    traits = (
-        machine_traits(name)
-        if name in RUNNERS
-        else {
-            "self_halts": True,
-            "dumps_on_the_post_halt_step": False,
-            "steppable_to_answer": False,
-            "eof_is_a_value": False,
-        }
-    )
+    suffix = ".png" if lang.source_kind.value == "raster" else ".txt"
+    examples = sorted(str(p) for p in _EXAMPLES.glob(f"{stem}{suffix}"))
+    traits = machine_traits(name)
     parameterized = lang.id in parameterized_ids()
     example = _example_for(lang.id)
     return {
         "name": name,
+        "spec": _spec(name),
         "id": lang.id,
         "source_kind": lang.source_kind.value,
         "state_model": _STATE_MODELS.get(family) if family else None,
         "interpreter": lang.interpreter,
-        "boolean_generator": (
-            lang.boolean is not None or lang.raster_boolean is not None
-        ),
+        "boolean_generator": lang.boolean is not None,
         "parameterized": parameterized,
-        "reads_input": (lang.boolean is not None or lang.raster_boolean is not None)
-        and not parameterized,
+        "reads_input": (lang.boolean is not None) and not parameterized,
         # Derived, not recomputed: this was a second copy of the very
         # expression _width_effect() evaluates, so the two could drift into
         # disagreeing about the same language.
@@ -151,12 +141,13 @@ def _width_effect(lang: Any) -> str:
     # One expression rather than an early return for the generator-less
     # case: every registered language has a generator, so that return was a
     # line no input could reach.
-    if lang.boolean is not None and _takes_width(lang.boolean):
+    generator = lang.boolean
+    if generator is not None and _takes_width(generator):
         return "layout"
     return "wrap" if lang.id in WRAPPERS else "none"
 
 
-def spec(language: str) -> str:
+def _spec(language: str) -> str:
     """Return the interpreter's own description of ``language``.
 
     The module docstring: the command table and where this implementation
@@ -164,15 +155,7 @@ def spec(language: str) -> str:
     Raises under ``-OO``, which strips docstrings.
     """
     name = resolve(language)
-    lang = LANGUAGES[name]
-    if lang.source_kind.value == "raster":
-        # The language's own module (``esolangs.line``, ``esolangs.piet``).
-        # Hard-coding ``line`` gave Piet the Line spec, matching neither the
-        # docstring nor how ``run`` resolves the interpreter.
-        interpreter = importlib.import_module(f"esolangs.{lang.id}")
-    else:
-        module = RUNNERS[name][0]
-        interpreter = importlib.import_module("esolangs.interpreters." + module)
+    interpreter = interpreter_module(name)
     text = (interpreter.__doc__ or "").strip()
     if not text:
         # ``-OO`` strips docstrings, so this returned ``""`` for every one --

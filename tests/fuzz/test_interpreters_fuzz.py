@@ -29,9 +29,11 @@ from unittest.mock import patch
 import pytest
 
 import esolangs
+from esolangs._program import Program
 from esolangs.exceptions import EsolangError, GeneratorCapError
 from esolangs.interpreters.io import IO
-from esolangs.registry import LANGUAGES, RUNNERS
+from esolangs.raster import Raster
+from esolangs.registry import INTERPRETERS, LANGUAGES
 from esolangs.vm import make_vm, run_until_halt, run_until_halt_or_cycle
 from tests.samples import SAMPLES
 
@@ -50,7 +52,7 @@ FUZZ = {
 _HOSTILE = "!?+-*/[]{}()<>;:,. 01az\n"
 
 
-def _generated_seed(language: str) -> str | None:
+def _generated_seed(language: str) -> Program | None:
     """Return a generator-built program for ``language``, or ``None``.
 
     The mutation corpus used to be seeded from ``SAMPLES`` alone, and those
@@ -78,10 +80,17 @@ def _generated_seed(language: str) -> str | None:
 
 
 def _mutate(
-    seed: str, stdin: str, rng: random.Random, alphabet: str
-) -> list[tuple[str, str]]:
-    """Return four single-edit variants of ``seed``: inserts and deletions."""
-    variants = []
+    seed: Program, stdin: str, rng: random.Random, alphabet: str
+) -> list[tuple[Program, str]]:
+    """Return four edits to the seed's native source representation."""
+    variants: list[tuple[Program, str]] = []
+    if isinstance(seed, Raster):
+        for _ in range(4):
+            rows = [list(row) for row in seed.rows]
+            y, x = rng.randrange(len(rows)), rng.randrange(len(rows[0]))
+            rows[y][x] = (0, 0, 0) if rows[y][x] != (0, 0, 0) else (255, 255, 255)
+            variants.append((Raster(rows), stdin))
+        return variants
     for _ in range(4):
         if not seed:
             variants.append((rng.choice(alphabet), stdin))
@@ -114,18 +123,20 @@ def _expired_at(deadline: float) -> Callable[[], bool]:
 _MAX_OPERAND_DIGITS = 12
 
 
-def _affordable_variant(program: str) -> bool:
+def _affordable_variant(program: Program) -> bool:
     """Return whether ``program`` is cheap enough to hand to ``make_vm``.
 
     Screens the program text rather than the language: any language whose
     program is a numeral pays this cost, and a name list would go stale.
     """
+    if isinstance(program, Raster):
+        return True
     return not any(
         len(run) > _MAX_OPERAND_DIGITS for run in re.findall(r"\d+", program)
     )
 
 
-def _drives_cheaply(language: str, seed: str) -> bool:
+def _drives_cheaply(language: str, seed: Program) -> bool:
     """Return whether ``seed`` runs its first steps fast enough to fuzz.
 
     A step is not a unit of work, and on Factor the work is not even in a
@@ -160,7 +171,7 @@ def _drives_cheaply(language: str, seed: str) -> bool:
     return time.monotonic() <= deadline
 
 
-def _mutated_sources(language: str) -> list[tuple[str, str]]:
+def _mutated_sources(language: str) -> list[tuple[Program, str]]:
     """Return short hostile variants of ``language``'s programs.
 
     Every interpreter gets this fuzzer, including languages with generators:
@@ -188,7 +199,14 @@ def _mutated_sources(language: str) -> list[tuple[str, str]]:
     seed = _generated_seed(language)
     if seed is not None and _drives_cheaply(language, seed):
         variants.append((seed, ""))
-        variants += _mutate(seed, "", rng, "".join(sorted(set(seed))) or _HOSTILE)
+        variants += _mutate(
+            seed,
+            "",
+            rng,
+            ("".join(sorted(set(seed))) or _HOSTILE)
+            if isinstance(seed, str)
+            else _HOSTILE,
+        )
         variants += _mutate(seed, "", rng, _HOSTILE)[:1]
 
     variants.append(("".join(rng.choice(_HOSTILE) for _ in range(12)), ""))
@@ -196,13 +214,15 @@ def _mutated_sources(language: str) -> list[tuple[str, str]]:
 
 
 @pytest.fixture(scope="module")
-def fuzz_cases(request: pytest.FixtureRequest) -> tuple[str, list[tuple[str, str]]]:
+def fuzz_cases(
+    request: pytest.FixtureRequest,
+) -> tuple[str, list[tuple[Program, str]]]:
     """Build one language's deterministic mutation corpus once."""
     language = request.param
     return language, _mutated_sources(language)
 
 
-def _fuzz_mutated_source(language: str, program: str, stdin: str) -> None:
+def _fuzz_mutated_source(language: str, program: Program, stdin: str) -> None:
     """Drive one hostile variant through the bounded VM checks."""
     if not _affordable_variant(program):
         return  # a numeral too long to factor; see _MAX_OPERAND_DIGITS
@@ -238,10 +258,12 @@ def _fuzz_mutated_source(language: str, program: str, stdin: str) -> None:
 
 
 @pytest.mark.parametrize("case_index", range(11))
-@pytest.mark.parametrize("fuzz_cases", sorted(RUNNERS), indirect=True, scope="module")
+@pytest.mark.parametrize(
+    "fuzz_cases", sorted(INTERPRETERS), indirect=True, scope="module"
+)
 @pytest.mark.medium
 def test_every_interpreter_fuzzes_mutated_sources(
-    fuzz_cases: tuple[str, list[tuple[str, str]]], case_index: int
+    fuzz_cases: tuple[str, list[tuple[Program, str]]], case_index: int
 ) -> None:
     """Fuzz every registered interpreter through bounded VM execution.
 

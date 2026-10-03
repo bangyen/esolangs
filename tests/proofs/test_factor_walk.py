@@ -34,7 +34,7 @@ def test_walked_witness_executes(
     for table in tables[partition::2]:
         program = _render(witness(table))
         for bits in itertools.product("01", repeat=n):
-            io = ScriptedIO("\n".join(bits))
+            io = ScriptedIO("".join(bits))
             run(program, io)
             assert io.getvalue() == table[int("".join(bits), 2)]
 
@@ -44,7 +44,7 @@ def test_walked_witness_executes(
 def test_walk_lands_on_every_address(n: int) -> None:
     code = walked_program("0" * 2**n)
     for row in range(2**n):
-        io = ScriptedIO("\n".join(format(row, f"0{n}b")))
+        io = ScriptedIO("".join(format(row, f"0{n}b")))
         machine = _Machine(code, io)
         while not machine.halted:
             machine.step()

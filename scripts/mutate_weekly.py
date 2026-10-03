@@ -16,6 +16,8 @@ TARGETS = (
     ("brainfuck", "tools/smallfuck"),
     ("Bitdeque", "tools/suffolk"),
     ("Smallfuck", "tools/underload"),
+    ("Line", "tools/piet"),
+    ("Piet", "tools/line"),
 )
 SECONDS_PER_TARGET = 240
 

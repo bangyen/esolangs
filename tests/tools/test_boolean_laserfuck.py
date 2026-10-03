@@ -6,7 +6,7 @@ import random
 import pytest
 
 from esolangs import tools as boolean
-from esolangs.tools import laserfuck_layout
+from esolangs.tools.laserfuck import layout as laserfuck_layout
 from tests.tools.boolean_runners import (
     run_laserfuck,
 )

@@ -12,7 +12,7 @@ from row_routes import row_words
 from setup_consumer import check_setup_memory, control_inputs
 
 from esolangs.interpreters.other.malbolge import _crazy
-from esolangs.tools._malbolge_core import _char_for
+from esolangs.tools.malbolge.core import _char_for
 
 
 def pointer_slots() -> list[int]:

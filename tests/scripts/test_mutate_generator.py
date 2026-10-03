@@ -15,6 +15,8 @@ number.
 """
 
 import importlib.util
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -50,17 +52,10 @@ class TestTestFiles:
         assert selected == sorted(p.name for p in TOOLS_TESTS.glob("test_*.py"))
 
     def test_the_suites_that_only_import_the_package_are_included(self) -> None:
-        """The specific files import-based selection used to drop.
-
-        ``test_boolean_other`` imports ``boolean`` and nothing below it, so
-        a scan for ``esolangs.tools.<module>`` does not select it --
-        and it is where every ``laserfuck`` test lives.  Named individually
-        because the general assertion above would still pass if the
-        directory itself lost it.
-        """
+        """Include suites that reach generators through package re-exports."""
         script = load_script()
         selected = script._test_files(script._KINDS["tools"])  # noqa: SLF001
-        assert "test_boolean_other.py" in selected
+        assert "test_boolean_three_x.py" in selected
         assert "test_boolean_contract.py" in selected
 
 
@@ -77,7 +72,7 @@ class TestPytestArgs:
         """
         script = load_script()
         kind = script._KINDS["tools"]  # noqa: SLF001
-        args = script._pytest_args(kind, ["test_boolean_tape.py"])  # noqa: SLF001
+        args = script._pytest_args(kind, ["test_boolean_rotfuck.py"])  # noqa: SLF001
         assert "-m" not in args
 
     def test_xdist_is_turned_off(self) -> None:
@@ -88,7 +83,7 @@ class TestPytestArgs:
         """
         script = load_script()
         kind = script._KINDS["tools"]  # noqa: SLF001
-        args = script._pytest_args(kind, ["test_boolean_tape.py"])  # noqa: SLF001
+        args = script._pytest_args(kind, ["test_boolean_rotfuck.py"])  # noqa: SLF001
         assert args[args.index("-n") + 1] == "0"
 
     def test_the_runner_command_quotes_its_arguments(self) -> None:
@@ -103,7 +98,7 @@ class TestPytestArgs:
 
         script = load_script()
         kind = script._KINDS["tools"]  # noqa: SLF001
-        tests = ["test_boolean_tape.py"]
+        tests = ["test_boolean_rotfuck.py"]
         command = script._runner_command(kind, tests)  # noqa: SLF001
         expected = script._pytest_args(kind, tests)  # noqa: SLF001
         assert shlex.split(command)[3:] == expected
@@ -164,9 +159,8 @@ class TestUndecorateClasses:
     def test_a_decorated_dataclass_is_rewritten(self, tmp_path: Path) -> None:
         """Mutmut skips a decorated ``ClassDef``, yielding it no mutants.
 
-        ``tape.py`` has five ``@dataclass`` nodes modelling the emitted
-        program, so left decorated they contribute nothing while the run
-        still prints a percentage over whatever else was mutated.
+        A decorated class contributes nothing while the run still prints
+        a percentage over whatever else was mutated.
         """
         script = load_script()
         target = tmp_path / "gen.py"
@@ -216,7 +210,7 @@ class TestParseTarget:
     def test_a_qualified_target_resolves_in_each_family(self) -> None:
         """Both kinds are reachable, named ``family/module``."""
         script = load_script()
-        assert script._parse_target("tools/register") == ("tools", "register")  # noqa: SLF001
+        assert script._parse_target("tools/decleq") == ("tools", "decleq")  # noqa: SLF001
         assert script._parse_target("tools/wrap") == ("tools", "wrap")  # noqa: SLF001
 
     def test_an_unambiguous_bare_name_still_resolves(self) -> None:
@@ -244,10 +238,10 @@ class TestParseTarget:
         script._FAMILIES = (*script._FAMILIES, "mirror")  # noqa: SLF001
         try:
             with pytest.raises(SystemExit) as excinfo:
-                script._parse_target("register")  # noqa: SLF001
+                script._parse_target("decleq")  # noqa: SLF001
             message = str(excinfo.value)
-            assert "tools/register" in message
-            assert "mirror/register" in message
+            assert "tools/decleq" in message
+            assert "mirror/decleq" in message
         finally:
             del kinds["mirror"]
 
@@ -260,7 +254,7 @@ class TestParseTarget:
             script._parse_target("nosuchmodule")  # noqa: SLF001
         message = str(excinfo.value)
         assert "nosuchmodule" in message
-        assert "register" in message
+        assert "decleq" in message
 
     def test_an_unknown_family_is_refused(self) -> None:
         """A qualified target with a bad family names the families instead."""
@@ -295,19 +289,19 @@ class TestParseTarget:
         for family in ("tools",):
             kind = script._KINDS[family]  # noqa: SLF001
             for name in script._modules(family):  # noqa: SLF001
-                assert (kind.pkg_dir / f"{name}.py").exists()
+                assert (REPO_ROOT / "src" / kind.rel_target(name)).is_file()
 
     def test_the_bare_tools_modules_are_a_target_kind(self) -> None:
-        """``wrap`` is reachable, and only the package's own modules are.
-
-        The kind globs ``*.py`` directly under ``esolangs/tools``, so it
-        picks up the layout helpers without sweeping in a subpackage -- a
-        directory does not match the glob.
-        """
+        """Tools packages expose their implementations and helpers as targets."""
         script = load_script()
         modules = script._modules("tools")  # noqa: SLF001
         assert "wrap" in modules
         assert "boolean" not in modules
+        assert {"malbolge", "malbolge.core", "malbolge.digits"} <= set(modules)
+        assert script._parse_target("tools/malbolge.core") == ("tools", "malbolge.core")  # noqa: SLF001
+        assert script._KINDS["streetcode"].rel_target("geometry") == (  # noqa: SLF001
+            "esolangs/interpreters/grid_based/streetcode/geometry.py"
+        )
         kind = script._KINDS["tools"]  # noqa: SLF001
         assert kind.rel_target("wrap") == "esolangs/tools/wrap.py"
 
@@ -336,11 +330,11 @@ class TestPrepare:
         drifting apart.
         """
         script = load_script()
-        proj, _ = script._prepare("tools", "tape", tmp_path, slow=False)  # noqa: SLF001
+        proj, _ = script._prepare("tools", "brainfuck", tmp_path, slow=False)  # noqa: SLF001
         config = (proj / "pyproject.toml").read_text()
         mutated = config.split('paths_to_mutate = ["')[1].split('"]')[0]
         # The same expression ``_score`` uses to find mutmut's result file.
-        scored = proj / "mutants" / "esolangs" / "tools" / "tape.py.meta"
+        scored = proj / "mutants" / "esolangs" / "tools" / "brainfuck.py.meta"
         assert scored == proj / "mutants" / f"{mutated}.meta"
 
 
@@ -359,3 +353,152 @@ def test_config_isolates_xdist_and_applies_selection_to_every_pass(
     options = config["tool"]["pytest"]["ini_options"]["addopts"]
     assert options[:4] == ["-n", "0", "-m", "not slow"]
     assert options[4:] == ([] if selection is None else ["-k", "suffolk"])
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize(
+    ("family", "module"),
+    [
+        ("tools", "line"),
+        ("line", "simulate"),
+        ("tools", "piet"),
+        ("piet", "__init__"),
+    ],
+)
+def test_raster_modules_prepare_their_real_suites(
+    family: str, module: str, tmp_path: Path
+) -> None:
+    script = load_script()
+    assert script._parse_target(f"{family}/{module}") == (family, module)  # noqa: SLF001
+    proj, tests = script._prepare(family, module, tmp_path, slow=False)  # noqa: SLF001
+    assert tests == sorted(
+        p.name for p in (REPO_ROOT / "tests" / family).glob("test_*.py")
+    )
+    assert (
+        script._KINDS[family].rel_target(module)  # noqa: SLF001
+        in (proj / "pyproject.toml").read_text()
+    )
+    script._check_shadowing(proj, family, module)  # noqa: SLF001
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize(
+    ("family", "module", "old", "new", "node"),
+    [
+        (
+            "tools",
+            "line",
+            "value = state",
+            "value = 1 - state",
+            "tests/tools/test_boolean_line.py::TestLineBoolean::test_and_n2",
+        ),
+        (
+            "line",
+            "simulate",
+            "tape = _written(tape, pointer, value)",
+            "tape = _written(tape, pointer, 1 - value)",
+            "tests/line/test_raster.py::test_line_consumes_the_public_raster",
+        ),
+        (
+            "tools",
+            "piet",
+            "_Operation(_MULTIPLY)",
+            "_Operation(_ADD)",
+            "tests/tools/test_boolean_piet.py::test_every_row_executes[0001]",
+        ),
+        (
+            "piet",
+            "__init__",
+            "left * right",
+            "left + right",
+            "tests/piet/test_piet.py::test_stack_commands",
+        ),
+    ],
+)
+def test_raster_suites_kill_wrong_answers_in_the_copied_package(
+    family: str, module: str, old: str, new: str, node: str, tmp_path: Path
+) -> None:
+    script = load_script()
+    proj, _ = script._prepare(family, module, tmp_path, slow=False)  # noqa: SLF001
+    command = [sys.executable, "-m", "pytest", "-q", node]
+    baseline = subprocess.run(
+        command, cwd=proj, capture_output=True, text=True, timeout=30
+    )
+    assert baseline.returncode == 0, baseline.stdout + baseline.stderr
+    target = proj / script._KINDS[family].rel_target(module)  # noqa: SLF001
+    source = target.read_text()
+    assert old in source
+    target.write_text(source.replace(old, new))
+    mutant = subprocess.run(
+        command, cwd=proj, capture_output=True, text=True, timeout=30
+    )
+    assert mutant.returncode == 1, mutant.stdout + mutant.stderr
+    assert "AssertionError" in mutant.stdout
+
+
+@pytest.mark.parametrize(
+    ("family", "target", "relative"),
+    [
+        ("tools", "malbolge", "esolangs/tools/malbolge/__init__.py"),
+        ("tools", "malbolge.core", "esolangs/tools/malbolge/core.py"),
+        (
+            "tools",
+            "one_two_three.construction",
+            "esolangs/tools/one_two_three/construction.py",
+        ),
+        ("tools", "line.render", "esolangs/tools/line/render.py"),
+        ("fractran", "index", "esolangs/interpreters/other/fractran/index.py"),
+        ("tools", "minifuck.sim", "esolangs/tools/minifuck/sim.py"),
+        ("tools", "piet.balance", "esolangs/tools/piet/balance.py"),
+        (
+            "polynomial",
+            "roots",
+            "esolangs/interpreters/register_based/polynomial/roots.py",
+        ),
+        (
+            "streetcode",
+            "geometry",
+            "esolangs/interpreters/grid_based/streetcode/geometry.py",
+        ),
+    ],
+)
+def test_package_mutation_targets_copy_real_modules(
+    tmp_path: Path,
+    family: str,
+    target: str,
+    relative: str,
+) -> None:
+    script = load_script()
+    proj, _ = script._prepare(family, target, tmp_path, slow=False)  # noqa: SLF001
+    assert (proj / relative).is_file()
+    assert f'paths_to_mutate = ["{relative}"]' in (proj / "pyproject.toml").read_text()
+    canonical = script._KINDS[family].dotted(target)  # noqa: SLF001
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            f"import importlib; print(importlib.import_module({canonical!r}).__file__)",
+        ],
+        cwd=proj,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    assert Path(result.stdout.strip()) == proj / relative
+
+
+def test_interpreter_mutation_discovery_includes_nested_packages(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    script = load_script()
+    monkeypatch.setattr(script, "ROOT", tmp_path)
+    package = tmp_path / "src/esolangs/interpreters/demo"
+    (package / "ops").mkdir(parents=True)
+    for relative in ("__init__.py", "__main__.py", "ops/__init__.py", "ops/step.py"):
+        (package / relative).write_text("")
+    kind = script._Kind("demo", "interpreters/demo", "tests", (), include_init=True)  # noqa: SLF001
+    monkeypatch.setitem(script._KINDS, "demo", kind)  # noqa: SLF001
+    assert script._modules("demo") == ["__init__", "ops", "ops.step"]  # noqa: SLF001
+    assert kind.rel_target("ops") == "esolangs/interpreters/demo/ops/__init__.py"
+    assert kind.rel_target("ops.step") == "esolangs/interpreters/demo/ops/step.py"

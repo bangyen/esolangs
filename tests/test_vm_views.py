@@ -5,6 +5,7 @@ import contextlib
 import pytest
 
 import esolangs
+import esolangs.debugger as debugger_api
 
 
 def _view_cases() -> list[tuple[str, object]]:
@@ -45,19 +46,19 @@ class TestViews:
     """The machine's own named state, found rather than listed."""
 
     def test_it_finds_the_names_the_machine_gives_its_state(self) -> None:
-        vm = esolangs.make_vm("brainfuck", "+++")
+        vm = debugger_api.make_vm("brainfuck", "+++")
         vm.step()
         assert dict(vm.views)["ptr"] == "0"
         assert dict(vm.views)["ind"] == "1"
 
     def test_it_leaves_out_what_every_language_already_offers(self) -> None:
-        vm = esolangs.make_vm("brainfuck", "+++")
+        vm = debugger_api.make_vm("brainfuck", "+++")
         named = dict(vm.views)
         for standard in ("ip", "memory", "stack", "output", "halted"):
             assert standard not in named
 
     def test_it_leaves_out_the_traits_and_the_snapshot_hooks(self) -> None:
-        vm = esolangs.make_vm("brainfuck", "+++")
+        vm = debugger_api.make_vm("brainfuck", "+++")
         named = dict(vm.views)
         for machinery in ("snapshot", "self_halts", "ip_shape"):
             assert machinery not in named
@@ -65,19 +66,19 @@ class TestViews:
     def test_a_language_whose_state_is_all_standard_names_nothing(self) -> None:
         # Not every machine keeps anything beyond the common five, and an
         # empty result is the right answer rather than a failure.
-        assert esolangs.make_vm("Sophie", "").views == ()
+        assert debugger_api.make_vm("Sophie", "").views == ()
 
     def test_a_long_sequence_is_cut_before_it_is_formatted(self) -> None:
         # A tape can be thousands of cells; the view has to be short, and
         # cheap to produce, at every step.
-        from esolangs.vm import _abbreviate
+        from esolangs._vm_views import _abbreviate
 
         text = _abbreviate(list(range(4096)))
         assert len(text) < 80
         assert "+4088 more" in text
 
     def test_a_short_sequence_is_shown_whole(self) -> None:
-        from esolangs.vm import _abbreviate
+        from esolangs._vm_views import _abbreviate
 
         assert _abbreviate([1, 2, 3]) == "[1, 2, 3]"
 
@@ -88,13 +89,13 @@ class TestViews:
         readings differ; a sweep found a widened comparison here passing
         every other test in this class.
         """
-        from esolangs.vm import _VIEW_ITEMS, _abbreviate
+        from esolangs._vm_views import _VIEW_ITEMS, _abbreviate
 
         assert "more" not in _abbreviate(list(range(_VIEW_ITEMS)))
         assert "more" in _abbreviate(list(range(_VIEW_ITEMS + 1)))
 
     def test_a_long_scalar_is_truncated(self) -> None:
-        from esolangs.vm import _abbreviate
+        from esolangs._vm_views import _abbreviate
 
         assert len(_abbreviate("x" * 500)) <= 60
 
@@ -106,7 +107,7 @@ class TestViews:
         500-character value comes back short says nothing about where the
         edge is, which a sweep found free to move either way.
         """
-        from esolangs.vm import _abbreviate
+        from esolangs._vm_views import _abbreviate
 
         assert _abbreviate("x" * 58) == repr("x" * 58)
         assert len(repr("x" * 58)) == 60
@@ -127,10 +128,11 @@ class TestViews:
             def broken(self) -> int:
                 raise RuntimeError("no")
 
-        vm = esolangs.make_vm("brainfuck", "+")
+        vm = debugger_api.make_vm("brainfuck", "+")
         object.__setattr__(vm, "_machine", _Machine())
         assert _DelegatingVM.views.fget(vm) == (("fine", "7"),)
 
+    @pytest.mark.medium
     @pytest.mark.parametrize(("name", "example"), _VIEW_CASES, ids=_VIEW_IDS)
     def test_a_language_can_be_asked_on_a_real_program(self, name, example) -> None:
         """No interpreter's properties raise when read as views.
@@ -147,8 +149,8 @@ class TestViews:
         is a few milliseconds and the failing language is named by the test
         id instead of by an assertion message.
         """
-        stdin = "".join(line + "\n" for line in example.inputs)
-        vm = esolangs.make_vm(name, example.build(), stdin)
+        stdin = example.stdin
+        vm = debugger_api.make_vm(name, example.build(), stdin)
         assert all(isinstance(part, str) for view in vm.views for part in view), name
         # Again once the machine has moved, since a view reads state
         # that the initial one may not have reached.
@@ -163,4 +165,6 @@ class TestViews:
         resolved zero languages would otherwise pass by vacuously collecting
         no cases at all.
         """
-        assert len(_VIEW_CASES) > 50, f"only reached {len(_VIEW_CASES)} languages"
+        from esolangs.registry import GENERATORS
+
+        assert set(_VIEW_IDS) == set(GENERATORS)

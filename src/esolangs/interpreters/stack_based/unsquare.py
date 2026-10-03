@@ -3,18 +3,22 @@
 A stack with an accumulator: ``O``/``I`` push 0/1, ``A`` pops into the
 accumulator, ``S`` swaps the top two, ``+``/``-``/``x`` add 2, subtract
 2, double, ``P`` pushes it, ``o`` prints the top as a character (decimal
-if not a code point), ``i`` reads a line (re-prompting on blank) and
-pushes its first character, ``>``/``<`` loop unless the accumulator is
+if not a code point), ``i`` pushes the next Unicode character code,
+``>``/``<`` loop unless the accumulator is
 0 or 1.  An empty pop, a swap or ``o`` without enough elements, an
 unmatched ``<`` or a ``>`` with no ``<`` raise :class:`HaltError` (the
 cross-check exits 3); ``i`` raises :class:`EOFError` when exhausted.
 :func:`_advance` is pure and total over an immutable ``_State``:
 :func:`_needs` lets the shell reject an underflow first and
 :func:`_forward` returns ``None`` for an unmatched ``>``.
+
+The spec leaves input representation unspecified; i reads the next Unicode
+character code, including whitespace.
 """
 
 from __future__ import annotations
 
+from esolangs._drive import drive
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
@@ -202,18 +206,14 @@ class _Machine:
             else:
                 self.io.print_num(value)
         elif char == "i":
-            line = self.io.input_str()
-            while not line.strip():
-                line = self.io.input_str()
-            byte = ord(line[0])
+            byte = self.io.input_char()
         self.state = _advance(self.state, self.code, byte, target)
 
 
 def run(code: str, io: IO) -> None:
     """Run an Unsquare program."""
     machine = _Machine(code, io)
-    while not machine.halted:
-        machine.step()
+    drive(machine)
 
 
 if __name__ == "__main__":

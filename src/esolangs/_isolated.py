@@ -6,10 +6,14 @@ import json
 import os
 import subprocess  # nosec B404 -- fixed Python worker; source travels over stdin.
 import sys
-from typing import Any, cast
+from queue import Empty, Full, Queue
+from threading import Event, Thread
+from time import monotonic
+from typing import Any, TextIO, cast
 
 from esolangs import exceptions
-from esolangs._validate import check_timeout
+from esolangs._source import InputSource, ProgramSource, read_input
+from esolangs._validate import check_timeout, check_whole
 from esolangs.raster import Raster
 from esolangs.registry import resolve
 
@@ -56,38 +60,69 @@ def _decode(text: str, *, expired: bool) -> str:
 
 def run_isolated(
     language: str,
-    program: str | Raster,
-    stdin: str = "",
+    program: ProgramSource,
+    stdin: InputSource = "",
     timeout: float = 30.0,
     *,
     seed: int | None = None,
+    scale: int | None = None,
+    max_output: int | None = None,
 ) -> str:
     """Return output from a subprocess; the deadline includes loading and startup.
 
     Works on Windows and worker threads. Errors retain their public class,
     notes and output; timeout kills and reaps the child.
+    A blocked caller-owned stream read may finish in the background after timeout.
     """
     import esolangs
 
     check_timeout(timeout)
+    if max_output is not None:
+        check_whole(max_output, "max_output")
     if timeout is None:
         raise exceptions.ArgumentError("isolated execution requires a finite timeout")
     name = resolve(language)
-    program = esolangs.check_program(name, program, stdin)
-    raster = isinstance(program, Raster)
-    request = json.dumps(
-        {
-            "language": name,
-            "program": program.rows if isinstance(program, Raster) else program,
-            "raster": raster,
-            "stdin": stdin,
-            "seed": seed,
-        }
-    )
-    return _launch(request, timeout)
+    deadline = monotonic() + timeout
+    box: list[str | BaseException] = []
+
+    def prepare() -> None:
+        try:
+            source = esolangs.check_program(name, program, stdin)
+            box.append(
+                json.dumps(
+                    {
+                        "language": name,
+                        "program": source.rows
+                        if isinstance(source, Raster)
+                        else source,
+                        "raster": isinstance(source, Raster),
+                        "stdin": read_input(stdin),
+                        "seed": seed,
+                        "scale": scale,
+                        "max_output": max_output,
+                    }
+                )
+            )
+        except BaseException as exc:
+            box.append(exc)
+
+    # Caller-owned streams need not be picklable or interruptible. A daemon
+    # bounds acquisition without transferring or closing their handles.
+    reader = Thread(target=prepare, daemon=True)
+    reader.start()
+    reader.join(max(0.0, deadline - monotonic()))
+    remaining = deadline - monotonic()
+    if reader.is_alive() or remaining <= 0:
+        raise exceptions.ExecutionTimeoutError(
+            "execution timed out while loading input"
+        )
+    request = box[0]
+    if isinstance(request, BaseException):
+        raise request
+    return _launch(request, remaining, max_output=max_output)
 
 
-def _launch(request: str, timeout: float) -> str:
+def _launch(request: str, timeout: float, *, max_output: int | None = None) -> str:
     """Run one JSON request, killing and reaping on deadline."""
     env = dict(os.environ)
     env["PYTHONPATH"] = os.pathsep.join(sys.path)
@@ -95,11 +130,13 @@ def _launch(request: str, timeout: float) -> str:
         [sys.executable, "-c", "from esolangs._isolated import _worker; _worker()"],
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        stderr=subprocess.PIPE if max_output is None else subprocess.DEVNULL,
         text=True,
         encoding="utf-8",
         env=env,
     ) as child:
+        if max_output is not None:
+            return _bounded_output(child, request, timeout)
         expired = False
         try:
             output, _stderr = child.communicate(request, timeout=timeout)
@@ -112,6 +149,76 @@ def _launch(request: str, timeout: float) -> str:
             child.communicate()
             raise
     return _decode(output, expired=expired)
+
+
+def _bounded_output(child: subprocess.Popen[str], request: str, timeout: float) -> str:
+    """Read bounded worker records; kill and reap on an output limit or deadline."""
+    records: Queue[str | BaseException | None] = Queue(maxsize=16)
+    stopped = Event()
+
+    def publish(record: str | BaseException | None) -> bool:
+        while not stopped.is_set():
+            try:
+                records.put(record, timeout=0.05)
+                return True
+            except Full:
+                pass
+        return False
+
+    def transfer() -> None:
+        try:
+            # _launch always opens both streams with PIPE.
+            stdin = cast("TextIO", child.stdin)
+            stdout = cast("TextIO", child.stdout)
+            stdin.write(request)
+            stdin.close()
+            for line in stdout:
+                if not publish(line):
+                    return
+        except Exception as error:
+            publish(error)
+        finally:
+            publish(None)
+
+    reader = Thread(target=transfer, daemon=True)
+    deadline = monotonic() + timeout
+    reader.start()
+    output: list[str] = []
+    expired = False
+    limited = False
+    try:
+        while True:
+            if monotonic() >= deadline:
+                expired = True
+                break
+            try:
+                record = records.get(timeout=max(0.0, deadline - monotonic()))
+            except Empty:
+                expired = True
+                break
+            if record is None:
+                break
+            if isinstance(record, BaseException):
+                raise record
+            output.append(record)
+            try:
+                limited = bool(json.loads(record).get("output_limit"))
+            except json.JSONDecodeError:
+                break
+            if limited:
+                break
+        # A complete verdict must still leave the worker within its deadline.
+        if not expired and not limited:
+            try:
+                child.wait(timeout=max(0.0, deadline - monotonic()))
+            except subprocess.TimeoutExpired:
+                expired = True
+    finally:
+        stopped.set()
+        child.kill()
+        child.wait()
+        reader.join()
+    return _decode("".join(output), expired=expired)
 
 
 def termination_isolated(
@@ -146,9 +253,19 @@ def _worker() -> None:
         print(json.dumps(message), flush=True)
 
     class StreamingIO(ScriptedIO):
+        written = 0
+
         def _write(self, value: object) -> None:
-            super()._write(value)
-            send({"output": str(value)})
+            text = str(value)
+            limit = request.get("max_output")
+            accepted = text if limit is None else text[: max(0, limit - self.written)]
+            super()._write(accepted)
+            self.written += len(accepted)
+            # One write may contain an entire dump; keep protocol records bounded.
+            for at in range(0, len(accepted), 4096):
+                send({"output": accepted[at : at + 4096]})
+            if len(accepted) != len(text):
+                raise exceptions.InterpreterLimitError("isolated output limit exceeded")
 
     vars(esolangs)["ScriptedIO"] = StreamingIO
     request = json.load(sys.stdin)
@@ -170,6 +287,7 @@ def _worker() -> None:
                 request["stdin"],
                 timeout=None,
                 seed=request["seed"],
+                scale=request.get("scale"),
             )
     except exceptions.EsolangError as error:
         args: tuple[object, ...] = error.args
@@ -182,6 +300,8 @@ def _worker() -> None:
                 "error": type(error).__name__,
                 "args": args,
                 "notes": getattr(error, "__notes__", []),
+                "output_limit": isinstance(error, exceptions.InterpreterLimitError)
+                and str(error) == "isolated output limit exceeded",
             }
         )
     else:

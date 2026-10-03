@@ -4,9 +4,12 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from functools import partial
+from itertools import takewhile
+from operator import is_not
 from typing import cast
 
-from esolangs.exceptions import ProgramError
+from esolangs.exceptions import MissingDependencyError, ProgramError
 
 from . import png
 
@@ -16,23 +19,54 @@ Rows = tuple[tuple[Pixel, ...], ...]
 
 def _freeze_rows(rows: Rows) -> Rows:
     """Return validated immutable RGB rows, detached from the caller."""
-    frozen = tuple(tuple(tuple(pixel) for pixel in row) for row in rows)
-    width = len(frozen[0]) if frozen else 0
-    if not frozen or not width or any(len(row) != width for row in frozen):
+    # Generated images reuse immutable palette tuples millions of times.
+    # Identity avoids equality accepting bool/float channels as cached integers.
+    validated: dict[int, Pixel] = {}
+    validated_rows: dict[int, tuple[Pixel, ...]] = {}
+    frozen_rows = []
+    for row in rows:
+        if type(row) is tuple and id(row) in validated_rows:
+            frozen_rows.append(validated_rows[id(row)])
+            continue
+        frozen_row: list[Pixel] | None = None if type(row) is tuple else []
+        previous: Pixel | None = None
+        for pixel in row:
+            if previous is not None and pixel is previous:
+                if frozen_row is not None:
+                    frozen_row.append(pixel)
+                continue
+            if type(pixel) is tuple and id(pixel) in validated:
+                if frozen_row is not None:
+                    frozen_row.append(pixel)
+                previous = pixel
+                continue
+            frozen = tuple(pixel)
+            if len(frozen) != 3 or any(
+                isinstance(value, bool)
+                or not isinstance(value, int)
+                or not 0 <= value <= 255
+                for value in frozen
+            ):
+                raise ValueError("Raster pixels must be 8-bit RGB triples")
+            if frozen_row is None and frozen is not pixel:
+                frozen_row = list(takewhile(partial(is_not, pixel), row))
+            if frozen_row is not None:
+                frozen_row.append(frozen)
+            if type(pixel) is tuple:
+                previous = pixel
+                if len(validated) < 1024:
+                    validated[id(pixel)] = pixel
+            else:
+                previous = None
+        immutable_row = row if frozen_row is None else tuple(frozen_row)
+        frozen_rows.append(immutable_row)
+        if frozen_row is None and len(validated_rows) < 1024:
+            validated_rows[id(row)] = immutable_row
+    result = tuple(frozen_rows)
+    width = len(result[0]) if result else 0
+    if not result or not width or any(len(row) != width for row in result):
         raise ValueError("Raster needs non-empty equal-width rows")
-    if any(
-        len(pixel) != 3
-        or any(
-            isinstance(value, bool)
-            or not isinstance(value, int)
-            or not 0 <= value <= 255
-            for value in pixel
-        )
-        for row in frozen
-        for pixel in row
-    ):
-        raise ValueError("Raster pixels must be 8-bit RGB triples")
-    return cast("Rows", frozen)
+    return result
 
 
 @dataclass(frozen=True, init=False, eq=False)
@@ -40,6 +74,9 @@ class Raster:
     """An immutable 8-bit RGB image source, stored row by row."""
 
     _rows: Rows | None = field(default=None, repr=False)
+    _normalizations: dict[int | None, Rows] = field(
+        default_factory=dict, repr=False, compare=False
+    )
     _materialize: Callable[[], Rows] | None = field(
         default=None, repr=False, compare=False
     )
@@ -56,6 +93,7 @@ class Raster:
     ) -> None:
         """Create a raster from pixels or a lazy language-owned renderer."""
         object.__setattr__(self, "_rows", rows)
+        object.__setattr__(self, "_normalizations", {})
         object.__setattr__(self, "_materialize", _materialize)
         object.__setattr__(self, "_payload", _payload)
         object.__setattr__(self, "_language", language)
@@ -104,6 +142,36 @@ class Raster:
             object.__setattr__(self, "_rows", _freeze_rows(materialize()))
         return cast("Rows", self._rows)
 
+    def _normalized(self, scale: int | None = None) -> Rows:
+        """Return cached codel rows; explicit and detected scales stay distinct."""
+        from esolangs._validate import check_scale
+
+        from .scale import normalize
+
+        if scale is not None:
+            check_scale(scale)
+        if scale not in self._normalizations:
+            self._normalizations[scale] = normalize(self.rows, scale)
+        return self._normalizations[scale]
+
+    def upscaled(self, scale: int = 1) -> Raster:
+        """Replicate pixels into solid squares, preserving language ownership."""
+        from esolangs._validate import check_scale
+
+        check_scale(scale)
+        if scale == 1:
+            return self
+
+        def materialize() -> Rows:
+            rows = [
+                tuple(pixel for pixel in row for _ in range(scale)) for row in self.rows
+            ]
+            return tuple(row for row in rows for _ in range(scale))
+
+        return Raster(
+            _materialize=materialize, _payload=self._payload, language=self.language
+        )
+
     @classmethod
     def from_png(cls, data: bytes) -> Raster:
         """Decode PNG bytes into raster source.
@@ -114,14 +182,16 @@ class Raster:
         :class:`~esolangs.exceptions.ProgramError`.
         """
         try:
-            decoded = png.read_rgb(data)
+            decoded = png._rgb_rows(data)  # noqa: SLF001
             # Inside the guard too: a 0x0 image decodes cleanly and then
             # ``__post_init__`` rejects the empty rows, which is still a bad
             # PNG rather than a caller error.
-            return cls(tuple(tuple(row) for row in decoded))
+            return cls(decoded)
+        except MissingDependencyError:
+            raise
         except Exception as exc:
             raise ProgramError(f"not a readable PNG: {exc}") from exc
 
     def to_png(self) -> bytes:
         """Encode this raster as PNG bytes."""
-        return png.write_rgb([list(row) for row in self.rows])
+        return png.write_rgb(self.rows)

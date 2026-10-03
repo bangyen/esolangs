@@ -390,7 +390,7 @@ def _check_routing(failures: list[str]) -> int:
         return "".join(bits[: 2**n])
 
     for n in (2, 3, 4):
-        from esolangs.interpreters.register_based._polynomial_roots import _find_roots
+        from esolangs.interpreters.register_based.polynomial.roots import _find_roots
 
         cleaned = re.sub(r"[^\df(x)=+-^]", "", polynomial(dense(n)))
         roots = _find_roots(sanitize(cleaned))

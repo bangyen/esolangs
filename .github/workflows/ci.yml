@@ -83,7 +83,7 @@ jobs:
     # changed since.  The key is per commit and the restore prefix takes the
     # newest, so every run saves and the next run inherits.
     - name: Restore the leak sweep's clean fingerprints
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: .leaksweep-cache.json
         key: leaksweep-${{ github.sha }}
@@ -143,7 +143,8 @@ jobs:
       # is no worker count left to raise.  What made this job slow was the
       # `slow` band: 546 of 10172 tests that measure, locally at two workers,
       # 289s against the 81s the rest take.  The `slow` job below runs
-      # them sharded; this runs fast and `medium`.
+      # them sharded; this runs fast and `medium`. Weekly law sweeps cost
+      # another six minutes and belong only in weekly.yml.
       #
       # `--cov-branch` is free on this leg (see the table above) and the gate
       # below needs the arcs.
@@ -156,7 +157,7 @@ jobs:
       # the touched files -- and a shared floor would read that subset as a
       # collapse.  The changed-line gate below is the per-PR check; this only
       # catches whole-tree erosion.
-      run: uv run pytest -n auto -m "not slow" --cov --cov-branch --cov-report=xml --cov-report=term-missing --cov-fail-under=97
+      run: uv run pytest -n auto -m "not slow and not weekly" --cov --cov-branch --cov-report=xml --cov-report=term-missing --cov-fail-under=97
 
     # The fast suite cannot judge pre-existing lines covered only by a slow
     # test, so `--partial` reports those whole-file gaps without blocking.
@@ -168,7 +169,7 @@ jobs:
 
     - name: Test with pytest
       if: matrix.python-version != '3.14'
-      run: uv run pytest -n auto -m "not slow"
+      run: uv run pytest -n auto -m "not slow and not weekly"
 
 
   slow:
@@ -290,8 +291,10 @@ jobs:
         echo "ARTIFACT_PYTHON=$artifact_python" >> "$GITHUB_ENV"
         uv pip install --python "$artifact_python" dist/*.whl
         "$artifact_python" -I scripts/smoke_distribution.py
-    - name: Install the math extra and exercise Polynomial
+    - name: Install optional extras and exercise Polynomial and PNG I/O
       run: |
         wheels=(dist/*.whl)
         uv pip install --python "$ARTIFACT_PYTHON" "${wheels[0]}[math]"
         "$ARTIFACT_PYTHON" -I scripts/smoke_distribution.py --math
+        uv pip install --python "$ARTIFACT_PYTHON" "${wheels[0]}[image]"
+        "$ARTIFACT_PYTHON" -I scripts/smoke_distribution.py --math --image

@@ -6,8 +6,8 @@ from pathlib import Path
 from planner import _Planner
 
 from esolangs.interpreters.other.malbolge import _crazy
-from esolangs.tools._malbolge_core import _ENTRY, _build_constants, _g
 from esolangs.tools.malbolge import _T_HELPERS, _chain, _emit_chain
+from esolangs.tools.malbolge.core import _ENTRY, _build_constants, _g
 
 VIEWS = (242, 728, 1700, 2186, 4616, 5102, 6074, 6560, 13364, 13850)
 PARITY = (39122, 39365)

@@ -6,6 +6,8 @@ polarity: a cell may hold an input or its complement at one command.  Neither us
 language's random ``=`` opcode.
 """
 
+from math import isqrt
+
 from esolangs.tools.helpers import (
     _validate_truth_table,
     anf_coefficients,
@@ -13,6 +15,7 @@ from esolangs.tools.helpers import (
     move_text,
     read_at,
 )
+from esolangs.tools.wrap import balance_score
 
 __all__ = ["super_snusp"]
 
@@ -262,25 +265,24 @@ def _super_snusp_folded(program: str, width: int) -> str:
     limit = max(width, max(len(token) for token in tokens) + 2)
     cells: dict[tuple[int, int], str] = {}
     row, col, step = 0, 0, 1
-    pending = list(tokens)
-    # Every pass places at least one token and the pass that empties
-    # ``pending`` leaves through the break below.
+    index = 0
+    # Each row consumes a token; the final row leaves through the break.
     while True:
         edge = limit - 1 if step == 1 else 0
         mirror = "\\" if step == 1 else "/"
         room = abs(edge - col)
         taken: list[str] = []
         used = 0
-        while pending:
-            token = pending[0]
+        while index < len(tokens):
+            token = tokens[index]
             if taken and used + len(token) > room:
                 break
             taken.append(token)
             used += len(token)
-            pending.pop(0)
+            index += 1
         for i, char in enumerate("".join(taken)):
             cells[row, col + i * step] = char
-        if not pending:
+        if index == len(tokens):
             break
         cells[row, edge] = mirror
         cells[row + 1, edge] = mirror
@@ -309,7 +311,11 @@ def super_snusp(truth_table: str, width: int | None = None) -> str:
     mirrors turn a row round in one row and one column.  A width under the
     floor returns the narrowest program rather than refusing.
     """
-    flat = _super_snusp_flat(truth_table)
+    return _super_snusp_layout(_super_snusp_flat(truth_table), width)
+
+
+def _super_snusp_layout(flat: str, width: int | None) -> str:
+    """Return the natural, vertical, or folded layout of ``flat``."""
     if width is None or len(flat) <= width:
         return flat
     if 0 < width < 3:
@@ -326,3 +332,23 @@ def super_snusp(truth_table: str, width: int | None = None) -> str:
                 pieces.append("6{8*" + (")" if token[-1] == "9" else ""))
         flat = "".join(pieces)
     return _super_snusp_folded(flat, width)
+
+
+def balance_super_snusp(flat: str) -> str:
+    """Return the best-balanced supported layout of a generated straight line.
+
+    Tokens must have at most two cells. For s=ceil(sqrt(L)), the normal
+    fold's W=H crossing lies at s+1 or s+2; s covers the preceding width.
+    Row count decreases with width, so only crossing neighbors can win.
+    """
+    if any(len(token) > 2 for token in _super_snusp_tokens(flat)):
+        raise ValueError("Super SNUSP balancing requires tokens of at most two cells")
+    side = isqrt(len(flat) - 1) + 1
+    # W rows hold at most (W-1)^2 cells and at least W*(W-3)+1:
+    # first-row room is W-1, later room W-2, and each row wastes at most one.
+    lower = _super_snusp_layout(flat, max(4, side))
+    middle = _super_snusp_layout(flat, max(4, side + 1))
+    upper = _super_snusp_layout(flat, max(4, side + 2))
+    vertical = _super_snusp_layout(flat, 1)
+    narrow = _super_snusp_layout(flat, 3)
+    return min((flat, lower, middle, upper, vertical, narrow), key=balance_score)

@@ -22,19 +22,19 @@ from esolangs.interpreters.other.malbolge import (
     _crazy,
     _initial_memory,
 )
-from esolangs.tools._malbolge_core import (
-    _ENTRY,
-    _build_constants,
-    _char_for,
-    _g,
-    _rot,
-)
 from esolangs.tools.malbolge import (
     _T_HELPERS,
     _T_LABELS,
     _emit_chain,
     _rotations,
     _valid_chars,
+)
+from esolangs.tools.malbolge.core import (
+    _ENTRY,
+    _build_constants,
+    _char_for,
+    _g,
+    _rot,
 )
 
 _VIEW = (242, 728, 1700, 2186, 4616, 5102, 6074, 6560, 13364, 13850)

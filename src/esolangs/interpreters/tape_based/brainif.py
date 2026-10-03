@@ -194,11 +194,7 @@ class _Machine:
                 if command == "output":
                     self.io.print_char(chr(value))
                 elif command == "input":
-                    # The original skips empty reads rather than storing
-                    # one, so a blank input line is not a zero byte.
-                    while not (s := self.io.input_str()):
-                        pass
-                    byte = ord(s[0])
+                    byte = self.io.input_char()
         self.state = _advance(self.state, parsed, byte)
 
 
@@ -233,9 +229,7 @@ def run(code: list[str], io: IO) -> None:
             ind = target - 1
             continue
         elif command == "input":
-            while not (text := io.input_str()):
-                pass
-            cells[ptr] = ord(text[0])
+            cells[ptr] = io.input_char()
         elif command == "output":
             io.print_char(chr(value))
         ind += 1

@@ -36,7 +36,7 @@ def test_finite_input_entropy_certificate() -> None:
 
 
 def _trace_reads(code: str, bits: tuple[int, ...]) -> tuple[object, set[int]]:
-    io = ScriptedIO("\n".join(chr(bit) for bit in bits))
+    io = ScriptedIO("".join(chr(bit) for bit in bits))
     machine = _Machine(code, io)
     visited: set[int] = set()
     seen: set[tuple[object, ...]] = set()
@@ -95,7 +95,7 @@ def test_forgetting_dag_executes_every_small_table() -> None:
             table = format(value, f"0{1 << n}b")
             code = _brainif_dag(table)
             for row in range(1 << n):
-                io = ScriptedIO("\n".join(format(row, f"0{n}b")))
+                io = ScriptedIO("".join(format(row, f"0{n}b")))
                 run_brainif(code.splitlines(), io)
                 assert io.getvalue() == table[row]
                 assert io.reads == n
@@ -156,7 +156,7 @@ def test_brainif_selection_size_and_steps_never_regress() -> None:
             for code in (old, new):
                 total = 0
                 for row in range(1 << n):
-                    io = ScriptedIO("\n".join(format(row, f"0{n}b")))
+                    io = ScriptedIO("".join(format(row, f"0{n}b")))
                     machine = BrainIf(code.splitlines(), io)
                     count = 0
                     while not machine.halted:
@@ -183,7 +183,7 @@ def test_dag_forgets_the_previous_input_before_reuse() -> None:
 
     code = _brainif_dag("00011011").splitlines()
     for row in range(8):
-        io = ScriptedIO("\n".join(format(row, "03b")))
+        io = ScriptedIO("".join(format(row, "03b")))
         machine = BrainIf(code, io)
         boundaries = []
         steps = 0
@@ -243,7 +243,7 @@ def test_one_priority_consultation_cannot_shatter_a_guard_cycle() -> None:
 def test_ordered_reads_retain_four_stores_at_one_cursor() -> None:
     states = []
     for prefix in itertools.product("01", repeat=2):
-        io = ScriptedIO("\n".join((*prefix, "0")))
+        io = ScriptedIO("".join((*prefix, "0")))
         machine = _Machine(",>,>,<<.", io)
         while io.reads < 2:
             machine.step()
@@ -263,7 +263,7 @@ def test_bounded_input_census_distinguishes_read_observations() -> None:
         for commands in itertools.product("><+-.,", repeat=length):
             behavior = []
             for bits in inputs:
-                io = ScriptedIO("\n".join(chr(bit) for bit in bits))
+                io = ScriptedIO("".join(chr(bit) for bit in bits))
                 machine = _Machine("".join(commands), io)
                 try:
                     while not machine.halted:

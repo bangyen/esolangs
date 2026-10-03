@@ -4,8 +4,8 @@ from decoder_group import _VIEW, _setup
 from planner import _Planner
 
 from esolangs.interpreters.other.malbolge import _advance, _crazy, _initial_memory, _op
-from esolangs.tools._malbolge_core import _build_constants, _char_for, _g, _rot
 from esolangs.tools.malbolge import _T_HELPERS, _chain, _emit_chain
+from esolangs.tools.malbolge.core import _build_constants, _char_for, _g, _rot
 
 ALL1, ALL2 = 29524, 59048
 

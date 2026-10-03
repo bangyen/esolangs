@@ -4,6 +4,9 @@ Supports scalar calculation with mingle, select, and unary logic; numeric
 ``WRITE IN``/``READ OUT``; ``NEXT``, ``RESUME``, ``FORGET``; and ``GIVE UP``.
 EOF while reading and invalid programs raise ``HaltError``. The compiler's
 politeness bounds count logical statements; LF is whitespace between tokens.
+
+A number is read as one line of spelled-out digit words; the spec leaves its
+text delimiter unspecified.
 """
 
 from __future__ import annotations
@@ -11,6 +14,7 @@ from __future__ import annotations
 import re
 from itertools import pairwise
 
+from esolangs._drive import drive
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
@@ -251,8 +255,7 @@ class _Machine:
 def run(code: str, io: IO) -> None:
     """Execute an INTERCAL program."""
     machine = _Machine(code, io)
-    while not machine.halted:
-        machine.step()
+    drive(machine)
 
 
 if __name__ == "__main__":

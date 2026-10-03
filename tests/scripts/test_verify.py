@@ -56,6 +56,30 @@ class TestPytestScopeCollects:
         scope = verify._pytest_scope(["tests/test_vm.py"])  # noqa: SLF001
         assert scope == ["tests/test_vm.py"]
 
+    def test_a_package_helper_widens_despite_a_matching_test_name(self) -> None:
+        verify = load_script()
+        scope = verify._pytest_scope(  # noqa: SLF001
+            ["src/esolangs/interpreters/other/demo/brainfuck.py"]
+        )
+        assert scope == verify.WHOLE_SUITE
+
+    def test_an_interpreter_runs_shared_contracts_and_its_generator(self) -> None:
+        verify = load_script()
+        scope = verify._pytest_scope(  # noqa: SLF001
+            ["src/esolangs/interpreters/tape_based/brainfuck.py"]
+        )
+        assert isinstance(scope, list)
+        assert set(verify.INTERPRETER_CONTRACT_TESTS) <= set(scope)
+        assert "tests/interpreters/test_brainfuck.py" in scope
+        assert "tests/tools/test_boolean_brainfuck.py" in scope
+        assert all((REPO_ROOT / path).is_file() for path in scope)
+
+    def test_shared_interpreter_code_still_widens(self) -> None:
+        verify = load_script()
+        assert verify._pytest_scope(["src/esolangs/interpreters/io.py"]) == (  # noqa: SLF001
+            verify.WHOLE_SUITE
+        )
+
     def test_the_patterns_match_pyproject(self) -> None:
         """``COLLECTED_PATTERNS`` is pytest's ``python_files``, not a guess.
 

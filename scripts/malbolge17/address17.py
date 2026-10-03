@@ -30,8 +30,8 @@ from collections.abc import Sequence
 from functools import cache
 
 from esolangs.interpreters.other.malbolge import _crazy
-from esolangs.tools._malbolge_core import _rot
-from esolangs.tools._malbolge_digits import _GADGET, _K
+from esolangs.tools.malbolge.core import _rot
+from esolangs.tools.malbolge.digits import _GADGET, _K
 
 W = 59049
 ALL1, ALL2 = 29524, 59048

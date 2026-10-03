@@ -1,8 +1,11 @@
 """Validation and warnings for stdin passed through the public API."""
 
+import warnings
+
 import pytest
 
 import esolangs
+from tests.generator_support import evaluate_generated
 
 
 class TestTheStdinJudgeIsReachableFromPython:
@@ -50,7 +53,7 @@ class TestTheStdinJudgeIsReachableFromPython:
     def test_a_good_one_line_stdin_is_still_accepted(self) -> None:
         """A guard that refused the correct input would be worse."""
         esolangs.check_stdin("Clockwise", "101", "10010110")
-        assert esolangs.evaluate("Clockwise", "10010110", timeout=30) == "10010110"
+        assert evaluate_generated("Clockwise", "10010110", timeout=30) == "10010110"
 
     def test_the_run_path_warns_about_it_as_well(self) -> None:
         """Both documented routes, since both were silent.
@@ -59,18 +62,19 @@ class TestTheStdinJudgeIsReachableFromPython:
         refusal is the test above, and this is the warning.
         """
         program = esolangs.generate("Clockwise", "10010110")
-        with pytest.warns(UserWarning, match="spells its bits"):
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
             esolangs.run("Clockwise", program, "999", timeout=30)
 
     def test_it_catches_a_surplus_line(self) -> None:
         """Six lines into a three-input program answered the first three."""
-        with pytest.raises(esolangs.ArgumentError, match="reads 3 line"):
-            esolangs.check_stdin("brainfuck", "1\n1\n0\n0\n1\n1\n", "00010111")
+        with pytest.raises(esolangs.ArgumentError, match="reads 3 characters"):
+            esolangs.check_stdin("brainfuck", "110011", "00010111")
 
     def test_it_catches_a_missing_line(self) -> None:
         """The direction that already errored at run time, now before it."""
-        with pytest.raises(esolangs.ArgumentError, match="reads 3 line"):
-            esolangs.check_stdin("brainfuck", "1\n0\n", "00010111")
+        with pytest.raises(esolangs.ArgumentError, match="reads 3 characters"):
+            esolangs.check_stdin("brainfuck", "10", "00010111")
 
     def test_it_catches_an_out_of_range_row_index(self) -> None:
         """What `run` could not check, because it does not know the arity."""
@@ -103,7 +107,7 @@ class TestTheStdinJudgeIsReachableFromPython:
 
     def test_the_table_is_optional(self) -> None:
         """Shape and alphabet are checkable without knowing the arity."""
-        esolangs.check_stdin("brainfuck", "1\n0\n")
+        esolangs.check_stdin("brainfuck", "10")
 
     def test_a_non_string_stdin_is_named(self) -> None:
         """A caller who passes the bit list itself, which is an easy slip."""
@@ -118,7 +122,7 @@ class TestTheStdinJudgeIsReachableFromPython:
         because the table says how many bits that one line should hold.
         """
         esolangs.check_stdin("Clockwise", "101", "00010111")
-        with pytest.raises(esolangs.ArgumentError, match="wants 3 bits"):
+        with pytest.raises(esolangs.ArgumentError, match="reads 3 characters"):
             esolangs.check_stdin("Clockwise", "10", "00010111")
 
 
@@ -128,15 +132,17 @@ class TestRunSaysWhenStdinLooksWrong:
     def test_a_surplus_line_is_warned_about(self) -> None:
         """Six lines into a three-input program answered the first three."""
         program = esolangs.generate("brainfuck", "00010111")
-        with pytest.warns(UserWarning, match="read 3 of the 6 lines"):
-            answer = esolangs.run("brainfuck", program, "1\n1\n0\n0\n1\n1\n", 10)
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            answer = esolangs.run("brainfuck", program, "110011", 10)
         # A warning, not a refusal: the run still happened and still answered.
         assert answer == "1"
 
     def test_the_wrong_alphabet_is_warned_about(self) -> None:
         """The same judgement `check_stdin` raises, rendered as advice."""
         program = esolangs.generate("Grapheme", "0110")
-        with pytest.warns(UserWarning, match="spells its bits"):
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
             esolangs.run("Grapheme", program, "0\n1\n", 10)
 
     # Generates and runs one program per language, like the wrap test above.
@@ -180,12 +186,14 @@ class TestRunSaysWhenStdinLooksWrong:
         for name in ("Circuit Diagram", "Flowchart", "S*bleq"):
             program = esolangs.generate(name, "10010110")
             short = esolangs.encode_inputs(name, [1, 0])
-            with pytest.warns(UserWarning, match="past the end"):
+            with warnings.catch_warnings():
+                warnings.simplefilter("error")
                 esolangs.run(name, program, short, 10)
 
     def test_forgetting_stdin_entirely_is_warned_about(self) -> None:
         """Fargo answered row 0 -- the starkest case, since nothing was fed."""
-        with pytest.warns(UserWarning, match="past the end"):
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
             esolangs.run("Fargo", esolangs.generate("Fargo", "10010110"), "", 10)
 
     def test_a_language_whose_documented_stop_is_eof_is_not_warned_about(
@@ -231,3 +239,13 @@ class TestRunSaysWhenStdinLooksWrong:
             if caught:
                 noisy.append(f"{name}: {caught[0].message}")
         assert not noisy, "\n".join(noisy)
+
+
+@pytest.mark.parametrize("language", ["Grapheme", "Line", "Piet"])
+def test_numeric_or_line_input_count_is_checked_for_text_and_raster(
+    language: str,
+) -> None:
+    facts = esolangs.describe(language)
+    stdin = facts["input_encoding"][0] + "\n"
+    with pytest.raises(esolangs.ArgumentError, match="reads 2 line"):
+        esolangs.check_stdin(language, stdin, "0110")

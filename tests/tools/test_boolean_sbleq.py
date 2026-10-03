@@ -68,7 +68,9 @@ class TestSbleq:
 
     def test_only_the_hoisted_route_remains(self) -> None:
         """The former node-read builder is gone, not merely bypassed."""
-        import esolangs.tools.tape as module
+        import importlib
+
+        module = importlib.import_module("esolangs.tools.sbleq")
 
         assert not hasattr(module, "_sbleq_node_read")
 

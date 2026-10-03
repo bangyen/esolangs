@@ -11,13 +11,16 @@ from __future__ import annotations
 import contextlib
 import difflib
 import re
+import warnings
 from typing import ClassVar
 
 import pytest
 
 import esolangs
-from esolangs import cli
+import esolangs.debugger as debugger_api
+from esolangs.cli_hints import _did_you_mean
 from esolangs.registry import _BY_ID, SUGGESTION_CUTOFF, canonical_id
+from tests.generator_support import evaluate_generated, verify_generated
 
 
 class TestTheNewChecksRefuseTheirOwnBadInput:
@@ -31,7 +34,7 @@ class TestTheNewChecksRefuseTheirOwnBadInput:
     def test_evaluate_names_a_non_string_table(self) -> None:
         """Reported before any generator sees it, for the same reason."""
         with pytest.raises(esolangs.TruthTableError, match="got list"):
-            esolangs.evaluate("brainfuck", [0, 1, 1, 0])  # type: ignore[arg-type]
+            evaluate_generated("brainfuck", [0, 1, 1, 0])  # type: ignore[arg-type]
 
     def test_machine_traits_refuses_an_unregistered_name(self) -> None:
         """Same contract as ``make_vm``, which is the only other reader."""
@@ -122,7 +125,11 @@ class TestEveryAuditedCapIsCatchable:
     def test_it_is_catchable_through_evaluate_too(self) -> None:
         """NoComment's leaked through ``evaluate`` identically."""
         with pytest.raises(esolangs.GeneratorCapError):
-            esolangs.evaluate("Polynomial", _big_table(11))
+            evaluate_generated("Polynomial", _big_table(11))
+
+    def test_befunge_grid_refusal_is_catchable(self) -> None:
+        with pytest.raises(esolangs.GeneratorCapError, match="80x25"):
+            esolangs.generate("Befunge", "0010" * (1 << 12))
 
     def test_nocomment_builds_at_the_arity_that_escaped(self) -> None:
         """The escape's subject is gone: n=12 is a template, not a refusal."""
@@ -191,7 +198,7 @@ class TestErrorsSurviveAProcessBoundary:
 
         program = esolangs.generate("brainfuck", "10010110")
         with pytest.raises(esolangs.InputExhaustedError) as caught:
-            esolangs.run("brainfuck", program, "1\n0\n", 10)
+            esolangs.run("brainfuck", program, "10", 10)
         restored = pickle.loads(pickle.dumps(caught.value))
         assert str(restored) == str(caught.value)
         assert restored.reads == caught.value.reads
@@ -220,7 +227,7 @@ class TestErrorsSurviveAProcessBoundary:
             lambda: esolangs.run("brainfuck", None),  # type: ignore[arg-type]
             lambda: esolangs.run("brainfuck", "+[]", "", 0.01),
             lambda: esolangs.run(
-                "brainfuck", esolangs.generate("brainfuck", "10010110"), "1\n0\n", 10
+                "brainfuck", esolangs.generate("brainfuck", "10010110"), "10", 10
             ),
         ]
         for raise_it in raisers:
@@ -280,7 +287,7 @@ class TestAnInterpreterLimitIsStillAnEsolangError:
         reached -- so the language was capped near 2800 characters by
         CPython rather than by anything Qoibl says.
         """
-        assert esolangs.verify("Qoibl", self._parity(6), timeout=300)
+        assert verify_generated("Qoibl", self._parity(6), timeout=300)
 
     def test_it_is_a_halt_error(self) -> None:
         """The run ended abnormally, which is what that base means."""
@@ -384,8 +391,8 @@ class TestASuggestionIsWorthLessThanSilence:
 
     def test_the_cli_shares_the_number(self) -> None:
         """Its docstring promised the same cutoff while keeping its own copy."""
-        assert cli._did_you_mean("nope", esolangs.list_languages()) == ""  # noqa: SLF001
-        assert "--width" in cli._did_you_mean("--wdith", ["--width", "--bits"])  # noqa: SLF001
+        assert _did_you_mean("nope", esolangs.list_languages()) == ""
+        assert "--width" in _did_you_mean("--wdith", ["--width", "--bits"])
 
 
 class TestAnUnknownNameIsShownReadably:
@@ -493,11 +500,11 @@ class TestABadStdinIsAnArgumentFault:
     @pytest.mark.parametrize(
         "call",
         [
-            lambda: esolangs.run("brainfuck", ",.", b"0\n"),
-            lambda: esolangs.check_program("brainfuck", ",.", b"0\n"),
-            lambda: esolangs.make_vm("brainfuck", ",.", b"0\n"),
-            lambda: esolangs.make_debugger("brainfuck", ",.", b"0\n"),
-            lambda: esolangs.check_stdin("brainfuck", b"0\n"),
+            lambda: esolangs.run("brainfuck", ",.", ["0"]),
+            lambda: esolangs.check_program("brainfuck", ",.", ["0"]),
+            lambda: debugger_api.make_vm("brainfuck", ",.", ["0"]),
+            lambda: debugger_api.make_debugger("brainfuck", ",.", ["0"]),
+            lambda: esolangs.check_stdin("brainfuck", ["0"]),
         ],
     )
     def test_every_entry_point_agrees(self, call: object) -> None:
@@ -531,7 +538,8 @@ class TestTheWarningHasItsOwnClass:
     def test_run_raises_it_by_class(self) -> None:
         """Which is what makes ``filterwarnings("error", ...)`` targeted."""
         program = esolangs.generate("brainfuck", "00011011")
-        with pytest.warns(esolangs.InputMismatchWarning):
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
             esolangs.run("brainfuck", program, "1\n1\n0\n0\n1\n1\n", 10)
 
 
@@ -559,13 +567,13 @@ class TestAFailedRowSaysWhichRow:
         def fail_on_the_sixth(
             language: str, program: object, stdin: str = "", timeout: object = None
         ) -> str:
-            if stdin == "1\n0\n1\n":  # row 5 of an eight-row table
+            if stdin == "101":  # row 5 of an eight-row table
                 raise esolangs.ExecutionTimeoutError("execution exceeded the bound")
             return real_run(language, program, stdin, timeout)  # type: ignore[arg-type]
 
         monkeypatch.setattr(esolangs, "run", fail_on_the_sixth)
         with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
-            esolangs.evaluate("brainfuck", "01101001", timeout=10)
+            evaluate_generated("brainfuck", "01101001", timeout=10)
         note = "\n".join(getattr(caught.value, "__notes__", []))
         assert "row 5 of 8" in note
         assert "inputs 101" in note
@@ -583,13 +591,13 @@ class TestAFailedRowSaysWhichRow:
         """
         table = "".join(str(bin(r).count("1") & 1) for r in range(128))
         with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
-            esolangs.evaluate("Circuit Diagram", table, timeout=0.005)
+            evaluate_generated("Circuit Diagram", table, timeout=0.005)
         note = "\n".join(getattr(caught.value, "__notes__", []))
         assert "row 0 of 128" in note
 
     def test_a_clean_evaluate_adds_nothing(self) -> None:
         """A note is for a failure; a success must not grow one."""
-        assert esolangs.evaluate("brainfuck", "0110") == "0110"
+        assert evaluate_generated("brainfuck", "0110") == "0110"
 
     def test_the_note_survives_the_exception_type(
         self, monkeypatch: pytest.MonkeyPatch
@@ -604,13 +612,13 @@ class TestAFailedRowSaysWhichRow:
         def exhaust(
             language: str, program: object, stdin: str = "", timeout: object = None
         ) -> str:
-            if stdin == "1\n1\n":
+            if stdin == "11":
                 raise esolangs.InputExhaustedError(2, 2)
             return real_run(language, program, stdin, timeout)  # type: ignore[arg-type]
 
         monkeypatch.setattr(esolangs, "run", exhaust)
         with pytest.raises(esolangs.InputExhaustedError) as caught:
-            esolangs.evaluate("brainfuck", "0110", timeout=10)
+            evaluate_generated("brainfuck", "0110", timeout=10)
         assert caught.value.reads == 2
         assert caught.value.supplied == 2
         assert "read past the end of input" in str(caught.value)
@@ -819,7 +827,7 @@ class TestTheCallersSignalsAreTheirOwn:
         confident ``1111`` for XOR.
         """
         with pytest.raises(esolangs.ArgumentError, match=r"at least 0\.001"):
-            esolangs.evaluate("123", "0110", 1e-06)
+            evaluate_generated("123", "0110", 1e-06)
 
 
 class TestEvaluateCanRunOffTheMainThread:
@@ -837,12 +845,12 @@ class TestEvaluateCanRunOffTheMainThread:
 
         names = ["brainfuck", "Suffolk", "123", "A Painter Ant", "Fargo"]
         with cf.ThreadPoolExecutor(4) as pool:
-            got = list(pool.map(lambda n: esolangs.verify(n, "0110", None), names))
+            got = list(pool.map(lambda n: verify_generated(n, "0110", None), names))
         assert all(got), dict(zip(names, got, strict=True))
 
     def test_omitting_it_still_takes_the_defaults(self) -> None:
         """A sentinel, so adding the escape hatch broke no existing caller."""
-        assert esolangs.evaluate("123", "0110") == "0110"
+        assert evaluate_generated("123", "0110") == "0110"
 
 
 class TestDivergenceIsProvenNotWaitedOut:
@@ -852,7 +860,7 @@ class TestDivergenceIsProvenNotWaitedOut:
     @pytest.mark.parametrize("table", ["0110", "00011011"])
     def test_the_proven_answer_is_the_table(self, name: str, table: str) -> None:
         """The answers must be the ones the clock used to give, exactly."""
-        assert esolangs.evaluate(name, table) == table
+        assert evaluate_generated(name, table) == table
 
     def test_it_no_longer_costs_a_timeout_per_row(self) -> None:
         """It was five seconds per 1-row: twenty seconds for this call.
@@ -865,7 +873,7 @@ class TestDivergenceIsProvenNotWaitedOut:
         import time
 
         start = time.monotonic()
-        esolangs.evaluate("123", "0110")
+        evaluate_generated("123", "0110")
         assert time.monotonic() - start < 5.0
 
 
@@ -881,12 +889,12 @@ class TestTheTerminationProofFallsBackToTheClock:
         loaded machine let a row outlast it.  The fallback is real --
         unbounded growth never repeats a state -- but no table here reaches it.
         """
-        assert esolangs.evaluate("123", "0110", None) == "0110"
+        assert evaluate_generated("123", "0110", None) == "0110"
 
     def test_the_answers_match_what_the_clock_used_to_give(self) -> None:
         """The proof must not have changed any verdict, only the cost."""
         for name in ("123", "ArrowQueue"):
-            assert esolangs.evaluate(name, "0110") == "0110"
+            assert evaluate_generated(name, "0110") == "0110"
 
 
 class TestEvaluateNoLongerClaimsToPayTheTimeout:
@@ -897,18 +905,15 @@ class TestEvaluateNoLongerClaimsToPayTheTimeout:
         import time
 
         start = time.monotonic()
-        assert esolangs.evaluate("123", "0110") == "0110"
+        assert evaluate_generated("123", "0110") == "0110"
         assert time.monotonic() - start < 2.0
 
     def test_the_docstring_says_the_proof_is_the_mechanism(self) -> None:
         """Prose, checked, because it was prose that had gone stale."""
         doc = esolangs.evaluate.__doc__
         assert doc is not None
-        # Not a search for the old phrase: the correction quotes it in
-        # order to retract it, so an absence test fails on the fix.  What
-        # has to be there is the mechanism and the denial.
-        assert "repeated machine state" in doc
-        assert "do not pay it" in doc
+        assert "Repeated states prove divergence" in doc
+        assert "a timeout raises" in doc
 
 
 class TestTerminationTimeoutIsUndecided:
@@ -922,7 +927,7 @@ class TestTerminationTimeoutIsUndecided:
         with pytest.raises(
             esolangs.ExecutionTimeoutError, match="forced timeout"
         ) as exc:
-            esolangs.verify("123", "01")
+            verify_generated("123", "01")
         assert "while evaluating row 0" in exc.value.__notes__[0]
 
     @pytest.mark.medium
@@ -937,4 +942,4 @@ class TestTerminationTimeoutIsUndecided:
 
         monkeypatch.setattr(_evaluate, "make_vm", slow_machine)
         with pytest.raises(esolangs.ExecutionTimeoutError):
-            esolangs.evaluate("123", "01", timeout=0.02)
+            evaluate_generated("123", "01", timeout=0.02)

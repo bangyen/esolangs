@@ -33,6 +33,7 @@ is the normal end.  A ``:::`` rule with no input left propagates ``EOFError``.
 
 from __future__ import annotations
 
+from esolangs._drive import drive
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.randomness import Randomness, draw
@@ -215,8 +216,7 @@ class _Machine:
 def run(code: str, io: IO, rng: Randomness | None = None) -> None:
     """Run a Thue program."""
     machine = _Machine(code, io, rng)
-    while not machine.halted:
-        machine.step()
+    drive(machine)
 
 
 if __name__ == "__main__":

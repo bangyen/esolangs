@@ -1,19 +1,4 @@
-"""Tests for png.py.
-
-Run via: uv run --with pytest pytest test_png.py
-
-png.py replaced Pillow (see the dependency notes in extract.py), so what
-needs guarding is that it still reads the checked-in wiki fixtures the way
-Pillow did and round-trips what render.py writes.  Pillow is not available
-to compare against here, so the fixture expectations below are the values
-Pillow produced when the swap was made, recorded as constants.
-
-Beyond that: every row filter the spec defines (the fixtures between them
-use 0/1/2/4, but a PNG this reads could legitimately use 3), the sub-byte
-bit depths, the colour types (a drawing that has been through an image
-editor comes back as RGB), and the rejections -- an unsupported format must
-raise rather than decode something plausible-looking but wrong.
-"""
+"""PNG pixel compatibility, round trips, and corruption checks."""
 
 from __future__ import annotations
 
@@ -105,7 +90,7 @@ def test_every_row_filter_decodes(filter_type: int) -> None:
     """All five spec filters reconstruct the same image.
 
     Each row is filtered by hand here rather than trusting an encoder, so a
-    wrong predictor in :func:`png._unfilter` shows up as wrong pixels rather
+    wrong filter predictor shows up as wrong pixels rather
     than being masked by a matching bug on the write side.
 
     The pixel values are chosen to exercise Average's floor-vs-round on an
@@ -142,7 +127,7 @@ def test_every_row_filter_decodes(filter_type: int) -> None:
             elif filter_type == 3:
                 row.append((value - ((left + up) >> 1)) & 0xFF)
             else:
-                row.append((value - png._paeth(left, up, upleft)) & 0xFF)  # noqa: SLF001
+                row.append((value - _paeth(left, up, upleft)) & 0xFF)
         rows.append(bytes([filter_type]) + bytes(row))
     assert png.read_grey(_encode(rows, width, height)) == want
 
@@ -354,7 +339,7 @@ def test_a_jpeg_is_refused_with_a_usable_message(tmp_path: Path) -> None:
     wrong-format case likely enough to be worth a message that
     says what to do next instead of "bad signature".
     """
-    from esolangs.line import extract
+    from esolangs.interpreters.tape_based.line import extract
 
     path = tmp_path / "drawing.jpg"
     # A JPEG start-of-image plus APP0, which is all the sniff looks at.
@@ -388,10 +373,6 @@ def test_rejects_a_truncated_chunk() -> None:
     blob = png._SIGNATURE + struct.pack(">I", 4) + b"IHDR" + b"x"  # noqa: SLF001
     with pytest.raises(ValueError, match="truncated IHDR"):
         png.read_rgb(blob)
-
-
-def test_empty_png_pass_has_no_samples() -> None:
-    assert png._read_pass(b"", 0, 1, 1, 8) == []  # noqa: SLF001
 
 
 def test_rejects_an_unknown_compression_method() -> None:
@@ -516,3 +497,172 @@ def test_rejects_incomplete_chunk_crc(reader: Callable[[bytes], object]) -> None
 def test_rejects_surplus_pixel_data(reader: Callable[[bytes], object]) -> None:
     with pytest.raises(ValueError, match="IHDR is corrupt"):
         reader(_encode([bytes([0, 0, 255])], 1, 1))
+
+
+def _paeth(a: int, b: int, c: int) -> int:
+    p = a + b - c
+    distances = [abs(p - value) for value in (a, b, c)]
+    return (a, b, c)[distances.index(min(distances))]
+
+
+@pytest.mark.parametrize(
+    "operation",
+    [
+        lambda: png.read_rgb(b""),
+        lambda: png.read_grey(b""),
+        lambda: png.write_rgb([[(0, 0, 0)]]),
+        lambda: png.write_grey([bytearray([0])]),
+    ],
+)
+def test_missing_image_extra(
+    monkeypatch: pytest.MonkeyPatch, operation: Callable[[], object]
+) -> None:
+    from esolangs import MissingDependencyError
+
+    monkeypatch.setattr(png, "Image", None)
+    with pytest.raises(MissingDependencyError, match=r"esolangs\[image\]"):
+        operation()
+
+
+def test_raster_preserves_missing_dependency(monkeypatch: pytest.MonkeyPatch) -> None:
+    from esolangs import MissingDependencyError, Raster
+
+    monkeypatch.setattr(png, "Image", None)
+    with pytest.raises(MissingDependencyError, match=r"esolangs\[image\]"):
+        Raster.from_png(b"")
+
+
+def test_import_without_pillow(monkeypatch: pytest.MonkeyPatch) -> None:
+    import builtins
+    import runpy
+
+    from esolangs import MissingDependencyError
+
+    original_import = builtins.__import__
+
+    def without_pillow(name: str, *args: object, **kwargs: object) -> object:
+        if name == "PIL":
+            raise ModuleNotFoundError("No module named 'PIL'")
+        return original_import(name, *args, **kwargs)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(builtins, "__import__", without_pillow)
+    namespace = runpy.run_path(str(png.__file__))
+    with pytest.raises(MissingDependencyError, match=r"esolangs\[image\]"):
+        namespace["read_rgb"](b"")
+
+
+def test_rgb_loading_reuses_immutable_pixels_and_rows() -> None:
+    from esolangs import Raster
+
+    red, black = (255, 0, 0), (0, 0, 0)
+    data = png.write_rgb([[red, red], [black, red], [red, red]])
+    image = Raster.from_png(data)
+    assert image.rows == ((red, red), (black, red), (red, red))
+    assert image.rows[0] is image.rows[2]
+    assert image.rows[0][0] is image.rows[0][1] is image.rows[1][1]
+    mutable = png.read_rgb(data)
+    mutable[0][0] = black
+    assert mutable[2] == [red, red]
+    assert image.rows[0] == (red, red)
+
+
+def test_rgb_loading_exceeds_pixel_cache_exactly() -> None:
+    from esolangs import Raster
+
+    colours = [(i // 256, i % 256, 17) for i in range(1025)]
+    pixels = [colours, colours]
+    data = png.write_rgb(pixels)
+    image = Raster.from_png(data)
+    assert image.rows == tuple(tuple(row) for row in pixels)
+    assert png.read_rgb(data) == pixels
+
+
+def test_rgb_loading_exceeds_row_cache_with_small_palette() -> None:
+    from esolangs import Raster
+
+    colours = ((0, 0, 0), (255, 255, 255))
+    pixels = [[colours[(y >> x) & 1] for x in range(11)] for y in range(1025)]
+    data = png.write_rgb(pixels + pixels[:1])
+    image = Raster.from_png(data)
+    assert image.rows == tuple(tuple(row) for row in pixels + pixels[:1])
+    assert image.rows[0] is image.rows[-1]
+
+
+def test_rgb_writer_reuses_immutable_rows_without_changing_png() -> None:
+    row = ((255, 0, 0), (0, 0, 0))
+    immutable = (row, row, row)
+    mutable = [list(row) for row in immutable]
+    assert png.write_rgb(immutable) == png.write_rgb(mutable)
+    assert png.read_rgb(png.write_rgb(immutable)) == mutable
+
+
+def test_rgb_writer_exceeds_row_reuse_limit_exactly() -> None:
+    rows = tuple(((i // 256, i % 256, 17),) for i in range(1025))
+    rows += (rows[0], rows[-1])
+    assert png.read_rgb(png.write_rgb(rows)) == [list(row) for row in rows]
+
+
+@pytest.mark.parametrize("tuple_row", [False, True])
+@pytest.mark.parametrize("changed", [255, 256])
+def test_rgb_writer_revalidates_mutable_pixels(
+    changed: int, *, tuple_row: bool
+) -> None:
+    pixel = [0, 0, 0]
+    row = (pixel,) if tuple_row else [pixel]
+
+    class ChangingRows(list):
+        def __iter__(self):
+            pixel[0] = 0
+            yield row
+            pixel[0] = changed
+            yield row
+
+    rows = ChangingRows([row, row])
+    if changed == 256:
+        with pytest.raises(ValueError, match="invalid RGB"):
+            png.write_rgb(rows)
+    else:
+        assert png.read_rgb(png.write_rgb(rows)) == [[(0, 0, 0)], [(255, 0, 0)]]
+
+
+def test_rgb_writer_does_not_reuse_equal_invalid_pixels() -> None:
+    pixels = [[(1, 0, 0), (1.0, 0, 0)]]
+    with pytest.raises(TypeError):
+        png.write_rgb(pixels)  # type: ignore[arg-type]
+
+
+def test_rgb_writer_exceeds_pixel_cache() -> None:
+    row = tuple((index // 256, index % 256, 0) for index in range(1025))
+    rows = (row, tuple(reversed(row)))
+    assert png.read_rgb(png.write_rgb(rows)) == [list(part) for part in rows]
+
+
+@pytest.mark.parametrize("invalid", [(0, 0, 256), (1.0, 0, 0)])
+def test_rgb_writer_validates_pixels_after_cache_saturation(invalid) -> None:
+    row = [(index // 256, index % 256, 0) for index in range(1024)]
+    row.append(invalid)
+    with pytest.raises((ValueError, TypeError)):
+        png.write_rgb([row])
+
+
+def test_rgb_loading_runs_preserve_channel_alignment_and_newlines() -> None:
+    colours = [(10, 10, 10), (1, 2, 1), (2, 1, 2), (0, 255, 10)]
+    row = [pixel for index, pixel in enumerate(colours) for _ in range(index + 1)]
+    assert png.read_rgb(png.write_rgb([row])) == [row]
+
+
+def test_rgb_writer_flushes_repeated_pixels_between_colours_and_at_end() -> None:
+    red, black = (255, 0, 0), (0, 0, 0)
+    row = (red,) * 19 + (black,) * 7 + (red,) * 11
+    assert png.read_rgb(png.write_rgb((row,))) == [list(row)]
+
+
+def test_rgb_writer_packs_adjacent_mutable_pixels_independently() -> None:
+    class ChangingPixel(list):
+        def __iter__(self):
+            self[0] += 1
+            return iter((self[0], 0, 0))
+
+    pixel = ChangingPixel([0, 0, 0])
+    # Range validation and packing each iterate the mutable pixel.
+    assert png.read_rgb(png.write_rgb(((pixel, pixel),))) == [[(2, 0, 0), (4, 0, 0)]]

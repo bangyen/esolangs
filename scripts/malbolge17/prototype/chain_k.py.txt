@@ -6,7 +6,7 @@ state12 reads cellB, converges to print0/print1. Uses the state6_fix fixes
 (constant setup after _build_constants; low-L cells keep nop char)."""
 import sys; sys.path.insert(0,'/home/user/esolangs/src')
 from esolangs.interpreters.other.malbolge import _advance,_crazy,_WORDS,_ROTATE,_initial_memory
-from esolangs.tools._malbolge_core import _char_for,_g,_ENTRY,_build_constants,_rot
+from esolangs.tools.malbolge.core import _char_for,_g,_ENTRY,_build_constants,_rot
 from esolangs.tools.malbolge import _Planner,_T_HELPERS,_emit_chain,_rotations,_valid_chars
 INSTR={6,7,29,35,48,65,66,84}
 def rot(v): return v//3+(v%3)*_ROTATE

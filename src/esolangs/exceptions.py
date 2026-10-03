@@ -103,22 +103,23 @@ class InputExhaustedError(EsolangError, EOFError):
     An :class:`EOFError`, the convention the interpreters detect on.
     """
 
-    def __init__(self, reads: int, supplied: int) -> None:
-        """Build the error after ``reads`` reads against ``supplied`` lines."""
+    def __init__(self, reads: int, supplied: int, unit: str = "line") -> None:
+        """Build the error after ``reads`` reads against ``supplied`` input units."""
         super().__init__(
             f"program read past the end of input: {supplied} "
-            f"line{'' if supplied == 1 else 's'} supplied, "
+            f"{unit}{'' if supplied == 1 else 's'} supplied, "
             f"read {reads + 1}"
         )
         self.reads = reads
         self.supplied = supplied
+        self.unit = unit
 
     def __reduce__(self) -> tuple[object, tuple[object, ...]]:
         """Rebuild from the arguments, not from the rendered message.
 
         Unpicklable, it took a ``ProcessPoolExecutor`` down with ``BrokenProcessPool``.
         """
-        return (type(self), (self.reads, self.supplied))
+        return (type(self), (self.reads, self.supplied, self.unit))
 
 
 class GeneratorCapError(EsolangError, ValueError):

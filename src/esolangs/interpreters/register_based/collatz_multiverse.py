@@ -13,6 +13,9 @@ malformed line, numeric literal or redefinition of ``input`` raises
 :class:`ValueError`.  :func:`_advance` is pure over an immutable
 ``_State``; the shell pre-reads every ``input`` a line names, and
 :func:`_read` defaults a missing array to zero rather than creating it.
+
+Input numbers are whitespace-delimited integer tokens; the spec does not define
+delimiters.
 """
 
 from __future__ import annotations
@@ -20,6 +23,7 @@ from __future__ import annotations
 import re
 from typing import cast
 
+from esolangs._drive import drive
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 
@@ -258,8 +262,7 @@ def _advance(
 def run(code: str, io: IO) -> None:
     """Run a Collatz Multiverse program."""
     machine = _Machine(code, io)
-    while not machine.halted:
-        machine.step()
+    drive(machine)
 
 
 if __name__ == "__main__":

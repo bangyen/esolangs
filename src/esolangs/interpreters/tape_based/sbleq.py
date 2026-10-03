@@ -153,7 +153,7 @@ class _Machine:
     def input_byte(self) -> int:
         # -2 returns the next byte of input; EOF reads as zero
         try:
-            return ord(self.io.input_str()[0])
+            return self.io.input_char()
         except (EOFError, IndexError):
             return 0
 

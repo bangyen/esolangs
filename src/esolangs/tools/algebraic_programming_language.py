@@ -4,10 +4,13 @@ from itertools import pairwise
 from string import ascii_uppercase
 
 from esolangs.tools.helpers import (
+    _GREEDY_ORDER_MAX_ARITY,
     _validate_truth_table,
     best_input_order,
     constant_span_test,
     in_input_order,
+    input_orders,
+    permute_truth_table,
     short_name,
     subtree_ids,
 )
@@ -172,8 +175,10 @@ def _apl_reduced_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
 type _Rope = str | tuple[_Rope, ...]
 
 
-def _apl_tree_narrow(table: str, perm: tuple[int, ...], width: int) -> str:
-    """Split a compact tree into definitions with bounded fresh text per call."""
+def _apl_tree_layout(
+    table: str, perm: tuple[int, ...], width: int
+) -> tuple[str, int | None]:
+    """Return the split tree and its next frame-budget transition."""
     n = _validate_truth_table(table)
     source = _apl_tree_ordered(table, perm).removeprefix(_NOT + "\n").replace(" ", "")
     prefix, source = source.split(")|", 1)
@@ -183,6 +188,7 @@ def _apl_tree_narrow(table: str, perm: tuple[int, ...], width: int) -> str:
     call_width = name_width + 2
     limit = max(width, 4 * call_width + 6, 2 * n + call_width + 4)
     definitions: list[str] = []
+    events: set[int] = set()
     # A frame's pieces carry their fresh source-character count; references
     # carry zero. Every definition consumes at least one call-width of fresh
     # text, so O(T / n) names of O(n) characters keep total source O(T).
@@ -206,7 +212,8 @@ def _apl_tree_narrow(table: str, perm: tuple[int, ...], width: int) -> str:
         return call, len(call), 0
 
     def trim(parts: list[tuple[_Rope, int, int]], budget: int) -> None:
-        while sum(length for _, length, _ in parts) > budget:
+        while (span := sum(length for _, length, _ in parts)) > budget:
+            events.add(span + name_width + 1)
             eligible = [
                 (length, index)
                 for index, (_, length, fresh) in enumerate(parts)
@@ -234,7 +241,9 @@ def _apl_tree_narrow(table: str, perm: tuple[int, ...], width: int) -> str:
         else:
             frames[-1].append((char, 1, 1))
     parts = frames[0]
-    if sum(length for _, length, _ in parts) + len(prefix) > limit:
+    span = sum(length for _, length, _ in parts) + len(prefix)
+    if span > limit:
+        events.add(span)
         parts = [
             define(
                 (
@@ -245,16 +254,27 @@ def _apl_tree_narrow(table: str, perm: tuple[int, ...], width: int) -> str:
             )
         ]
     complement = _NOT.replace(" ", "")
-    return "\n".join(
+    program = "\n".join(
         [complement, *definitions, prefix + render(tuple(node for node, _, _ in parts))]
     )
+    return program, min(events, default=None)
 
 
 def _apl_narrow(table: str, perm: tuple[int, ...], width: int) -> str:
-    previous = _apl_tree_narrow(table, perm, width)
+    return _apl_narrow_layout(table, perm, width)[0]
+
+
+def _apl_narrow_layout(
+    table: str, perm: tuple[int, ...], width: int
+) -> tuple[str, int | None]:
+    """Return the chosen spelling and its next frame or format fit."""
+    previous, next_width = _apl_tree_layout(table, perm, width)
     n = _validate_truth_table(table)
     if n > 3 or max(map(len, previous.splitlines())) <= width:
-        return previous
+        return previous, next_width
+    events = [max(map(len, previous.splitlines()))]
+    if next_width is not None:
+        events.append(next_width)
     # At most nine primitive definitions use one-character names below n=4.
     # Larger trees retain fresh-text splitting, avoiding O(T log T) names.
     constant = constant_span_test(table)
@@ -295,15 +315,19 @@ def _apl_narrow(table: str, perm: tuple[int, ...], width: int) -> str:
     chosen = min(
         (previous, candidate), key=lambda program: max(map(len, program.splitlines()))
     )
-    if max(map(len, chosen.splitlines())) <= width:
-        return chosen
+    span = max(map(len, chosen.splitlines()))
+    if span <= width:
+        return chosen, min(events)
+    events.append(span)
     operators = _apl_short_operators(table, perm)
     if width < 5 and table == "0110":
+        events.append(5)
         # a+b-2ab: the executed sum binds both globals before the unary calls.
         operators = "!x={\nx*b\n}\n?x={\nx*2\n}\n~x={\na-x\n}\n^x={\n~?!x\n}\n^a+b"
-    return min(
+    program = min(
         (chosen, operators), key=lambda program: max(map(len, program.splitlines()))
     )
+    return program, min(events)
 
 
 def _apl_short_operators(table: str, perm: tuple[int, ...]) -> str:
@@ -330,3 +354,20 @@ def _apl_short_operators(table: str, perm: tuple[int, ...]) -> str:
     else:
         lines.extend(["x`y={", f"${root}", "}", "`".join(_NAMES[: len(perm)])])
     return "\n".join(lines)
+
+
+def balance_apl(table: str, default: str) -> str:
+    """Compare reachable frame-budget and short-definition fit transitions."""
+    orders = input_orders(table, max_arity=_GREEDY_ORDER_MAX_ARITY)
+    regimes = [(permute_truth_table(table, perm), perm) for perm in orders]
+    candidates = [default]
+    width: int | None = 1
+    while width is not None:
+        layouts = [
+            _apl_narrow_layout(ordered, perm, width) for ordered, perm in regimes
+        ]
+        candidates.append(min((program for program, _ in layouts), key=len))
+        width = min((point for _, point in layouts if point is not None), default=None)
+    from esolangs.tools.wrap import balance_score
+
+    return min(candidates, key=balance_score)

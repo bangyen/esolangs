@@ -387,8 +387,8 @@ def _container_threshold(truth_table: str) -> str:
     return "\n".join(lines)
 
 
-def _narrow_rules(program: str, width: int) -> str:
-    """Factor numeric conditions and partition deltas into complete rules."""
+def _narrow_rule_parts(program: str, width: int) -> list[str | tuple[int, str]]:
+    """Factor numeric conditions, retaining deltas before their partition."""
     lines = program.splitlines()
     occupied = {
         line[:-1].split("=", 1)[0] for line in lines if line.endswith(":")
@@ -397,7 +397,7 @@ def _narrow_rules(program: str, width: int) -> str:
     constants: dict[str, str] = {}
     declarations: list[str] = []
     declared: set[str] = set()
-    output: list[str] = []
+    output: list[str | tuple[int, str]] = []
     for line in lines:
         if line.endswith(":"):
             output.append(line)
@@ -421,6 +421,18 @@ def _narrow_rules(program: str, width: int) -> str:
                 if name not in declared:
                     declarations.append(declaration)
                     declared.add(name)
+        output.append((delta, condition))
+    return output + declarations
+
+
+def _narrow_rules(program: str, width: int) -> str:
+    """Factor numeric conditions and partition deltas into complete rules."""
+    output: list[str] = []
+    for part in _narrow_rule_parts(program, width):
+        if isinstance(part, str):
+            output.append(part)
+            continue
+        delta, condition = part
         # Splitting a delta under one condition leaves every synchronous tick equal.
         digits = max(1, width - len(condition) - 1 - (delta < 0))
         bound = 10 ** min(digits, len(str(abs(delta)))) - 1
@@ -429,7 +441,7 @@ def _narrow_rules(program: str, width: int) -> str:
         output.extend(f"{sign}{bound} {condition}" for _ in range(quotient))
         if remainder:
             output.append(f"{sign}{remainder} {condition}")
-    return "\n".join(output + declarations)
+    return "\n".join(output)
 
 
 def container(truth_table: str, width: int | None = None) -> str:
@@ -449,3 +461,48 @@ def container(truth_table: str, width: int | None = None) -> str:
         _narrow_rules(_container_threshold(truth_table), width),
         key=lambda text: (max(map(len, text.splitlines())), len(text)),
     )
+
+
+def balance_container(table: str, default: str) -> str:
+    """Compare rule-fit and decimal-delta budget transitions."""
+    from esolangs.tools.wrap import balance_score
+
+    n = _validate_truth_table(table)
+    span = max(map(len, default.splitlines()))
+    programs = [default]
+    if n <= 6:
+        programs.append(_container_threshold(table))
+    thresholds = {1}
+    for program in programs:
+        # Constant names stay fixed between original rule-fit thresholds.
+        boundaries = {1, span}
+        boundaries.update(
+            len(str(int(delta))) + 1 + len(condition)
+            for line in program.splitlines()
+            if not line.endswith(":")
+            for delta, condition in [line.split()]
+        )
+        boundaries = {value for value in boundaries if value <= span}
+        for lower, stop in pairwise(sorted(boundaries)):
+            thresholds.add(lower)
+            for part in _narrow_rule_parts(program, lower):
+                if isinstance(part, str):
+                    continue
+                delta, condition = part
+                # Within a naming regime only the permitted decimal digits
+                # change a rule. One-digit deltas already apply at its start.
+                overhead = len(condition) + 1 + (delta < 0)
+                thresholds.update(
+                    overhead + digits
+                    for digits in range(2, len(str(abs(delta))) + 1)
+                    if lower < overhead + digits < stop
+                )
+    candidates = [default]
+    for width in thresholds:
+        candidates.append(
+            min(
+                (_narrow_rules(program, width) for program in programs),
+                key=lambda text: (max(map(len, text.splitlines())), len(text)),
+            )
+        )
+    return min(candidates, key=balance_score)

@@ -20,6 +20,7 @@ end of the code.
 
 import re
 
+from esolangs._drive import drive
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
@@ -287,13 +288,11 @@ class _Machine:
         elif c == ",":
             self.io.print_char(chr(self.acc))
         elif c == ":":
-            num = self.io.input_str()
+            num = self.io.input_token()
             if num.isdigit():
                 value = int(num)
         elif c == ";":
-            val = self.io.input_str()
-            if val:
-                value = ord(val[0])
+            value = self.io.input_char()
 
         self._restore(_advance(self._state, self.code, self._partners, value))
 
@@ -301,8 +300,7 @@ class _Machine:
 def run(code: str, io: IO) -> None:
     """Execute Sophie program code."""
     machine = _Machine(code, io)
-    while not machine.halted:
-        machine.step()
+    drive(machine)
 
 
 if __name__ == "__main__":

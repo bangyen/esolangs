@@ -19,6 +19,8 @@ if TYPE_CHECKING:
 
 __all__ = [
     "BY_BOOLEAN",
+    "GENERATORS",
+    "INTERPRETERS",
     "LANGUAGES",
     "RUNNERS",
     "SUGGESTION_CUTOFF",
@@ -52,7 +54,19 @@ BY_BOOLEAN: dict[str, Language] = {
 RUNNERS: dict[str, tuple[str, bool]] = {
     name: (lang.interpreter, lang.split)
     for name, lang in LANGUAGES.items()
-    if lang.interpreter and lang.source_kind is SourceKind.TEXT
+    if lang.interpreter
+}
+
+# Public workflows select by capability.
+GENERATORS = {
+    name: generator
+    for name, lang in LANGUAGES.items()
+    if (generator := lang.boolean) is not None
+}
+INTERPRETERS = {
+    name: f"esolangs.interpreters.{lang.interpreter}"
+    for name, lang in LANGUAGES.items()
+    if lang.interpreter is not None
 }
 
 
@@ -72,7 +86,7 @@ def example_stems() -> dict[str, str]:
 
     return {
         canonical_id(stem.replace("-", " ")): stem
-        for stem in set(_examples.BOOLEAN_EXAMPLES) | set(_examples.HAND_WRITTEN)
+        for stem in _examples.BOOLEAN_EXAMPLES
     }
 
 
@@ -84,9 +98,8 @@ def _fills() -> dict[str, Callable[[str, list[int]], str]]:
     input instead of one that reads its inputs; each committed example
     already carries the substitution as its ``fill``, so this exposes the
     existing recipe rather than a second list.  Membership is derived, not
-    written down: ``parameterized.__all__`` omits Home Row, whose generator
-    emits the runs all the same, and the three hand-kept doc lists each
-    named a different subset.  ``fill`` matches what the generators emit.
+    written down: the former export roster omitted Home Row, and three
+    hand-kept doc lists named different subsets. ``fill`` matches the output.
     """
     from esolangs.tools import examples as _examples
 

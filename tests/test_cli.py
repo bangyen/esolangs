@@ -63,24 +63,76 @@ class TestSubprocess:
     def test_generate(self) -> None:
         result = run_cli("generate", "Sophie", "0110")
         assert result.returncode == 0
-        assert esolangs.run("Sophie", result.stdout, "0\n1\n") == "1"
+        assert esolangs.run("Sophie", result.stdout, "01") == "1"
 
     def test_run(self, tmp_path: Path) -> None:
         program = tmp_path / "prog.soph"
         program.write_text(esolangs.generate("Sophie", "0110"))
-        result = run_cli("run", "Sophie", str(program), stdin="0\n1\n")
+        result = run_cli("run", "Sophie", str(program), stdin="01")
         assert result.returncode == 0
         assert result.stdout == "1"
 
 
 class TestInProcess:
+    @pytest.mark.slow
+    def test_evaluate_without_signal_timeouts(
+        self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        import signal
+
+        monkeypatch.delattr(signal, "SIGALRM", raising=False)
+        program = tmp_path / "xor.txt"
+        program.write_text(esolangs.generate("brainfuck", "0110"))
+        for options in ([], ["--timeout", "5"]):
+            assert (
+                call_main(
+                    [
+                        "evaluate",
+                        "brainfuck",
+                        str(program),
+                        "--table",
+                        "0110",
+                        *options,
+                    ],
+                    capsys,
+                )
+                == "0110\n"
+            )
+
+    @pytest.mark.medium
+    def test_evaluate_upscaled_piet_with_timeout(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        program = Path(__file__).parents[1] / "src/esolangs/examples/piet.png"
+        out = call_main(
+            ["evaluate", "Piet", str(program), "--inputs", "2", "--timeout", "5"],
+            capsys,
+        )
+        assert out == "0001\n"
+
+    def test_evaluate_unknown_language(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        program = tmp_path / "program.txt"
+        program.write_text("anything")
+        with pytest.raises(SystemExit) as exc:
+            call_main(
+                ["evaluate", "NoSuchLanguage", str(program), "--inputs", "2"],
+                capsys,
+            )
+        assert exc.value.code == 2
+        assert "unknown language" in capsys.readouterr().err
+
     def test_list(self, capsys: pytest.CaptureFixture[str]) -> None:
         out = call_main(["list"], capsys)
         assert "Sophie" in out
 
     def test_generate(self, capsys: pytest.CaptureFixture[str]) -> None:
         out = call_main(["generate", "Sophie", "0110"], capsys)
-        assert esolangs.run("Sophie", out, "0\n1\n") == "1"
+        assert esolangs.run("Sophie", out, "01") == "1"
 
     def test_generating_a_raster_writes_png_bytes(
         self, capsysbinary: pytest.CaptureFixture[bytes]
@@ -126,7 +178,7 @@ class TestInProcess:
     def test_run(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
         program = tmp_path / "prog.soph"
         program.write_text(esolangs.generate("Sophie", "0110"))
-        out = call_main(["run", "Sophie", str(program)], capsys, stdin="0\n1\n")
+        out = call_main(["run", "Sophie", str(program)], capsys, stdin="01")
         assert out == "1"
 
     def test_run_feeds_stdin(
@@ -136,7 +188,7 @@ class TestInProcess:
 
         program = tmp_path / "prog.txt"
         program.write_text(boolean.circlefuck("1101"))
-        out = call_main(["run", "Circlefuck", str(program)], capsys, stdin="1\n0\n")
+        out = call_main(["run", "Circlefuck", str(program)], capsys, stdin="10")
         assert out == "0"
 
     def test_run_missing_file(self, capsys: pytest.CaptureFixture[str]) -> None:
@@ -181,7 +233,7 @@ class TestPackageEntryPoint:
         with patch.object(sys, "argv", ["esolangs", "generate", "Sophie", "0110"]):
             runpy.run_module("esolangs", run_name="__main__")
         out = capsys.readouterr().out
-        assert esolangs.run("Sophie", out, "0\n1\n") == "1"
+        assert esolangs.run("Sophie", out, "01") == "1"
 
 
 class TestWidthOption:
@@ -191,7 +243,7 @@ class TestWidthOption:
         """``--width N`` bounds the generated program's columns."""
         out = call_main(["generate", "brainfuck", TABLE3, "--width", "20"], capsys)
         assert max(len(line) for line in out.rstrip("\n").split("\n")) <= 20
-        assert esolangs.run("brainfuck", out, "0\n1\n1\n") == "0"
+        assert esolangs.run("brainfuck", out, "011") == "0"
 
     def test_a_width_of_one_is_positive(
         self, capsys: pytest.CaptureFixture[str]
@@ -215,7 +267,7 @@ class TestWidthOption:
         """
         out = call_main(["generate", "--width", "20", "brainfuck", TABLE3], capsys)
         assert max(len(line) for line in out.rstrip("\n").split("\n")) <= 20
-        assert esolangs.run("brainfuck", out, "0\n1\n1\n") == "0"
+        assert esolangs.run("brainfuck", out, "011") == "0"
 
     def test_width_with_an_equals_sign(
         self, capsys: pytest.CaptureFixture[str]
@@ -248,7 +300,7 @@ class TestWidthOption:
         wrong thing, so only an integer is taken as the option's value.
         """
         out = call_main(["generate", "--width", "brainfuck", TABLE3], capsys)
-        assert esolangs.run("brainfuck", out, "0\n1\n1\n") == "0"
+        assert esolangs.run("brainfuck", out, "011") == "0"
 
     def test_width_rejects_a_non_integer_after_equals(
         self, capsys: pytest.CaptureFixture[str]
@@ -361,7 +413,7 @@ class TestDebugCommand:
         assert exc.value.code == 1
         out = capsys.readouterr().out
         assert "raised: InputExhaustedError" in out
-        assert "0 lines supplied" in out
+        assert "0 characters supplied" in out
         assert "halted: no" in out
 
     def test_unknown_language(
@@ -858,7 +910,12 @@ class TestProgramFailuresAreReported:
         path = tmp_path / "su.txt"
         path.write_text(generated.stdout.rstrip("\n"))
         got = "".join(
-            run_cli("run", "Suffolk", str(path), stdin=f"{a}\n{b}\n").stdout
+            run_cli(
+                "run",
+                "Suffolk",
+                str(path),
+                stdin=esolangs.encode_inputs("Suffolk", [a, b]),
+            ).stdout
             for a in (0, 1)
             for b in (0, 1)
         )
@@ -902,7 +959,7 @@ class TestOutputAndAbridging:
     ) -> None:
         """``--`` is positional-from-here for every parser, not just one."""
         out = call_main(["generate", "--", "brainfuck", TABLE3], capsys)
-        assert esolangs.run("brainfuck", out, "0\n1\n1\n") == "0"
+        assert esolangs.run("brainfuck", out, "011") == "0"
 
 
 class TestGenerateArgumentTypes:

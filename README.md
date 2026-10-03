@@ -7,12 +7,12 @@
 
 <!-- PACKAGE-COUNT:START -->
 
-Interpreters and Boolean generators for 74 esoteric languages: 72 text and 2 raster.
+Interpreters and Boolean generators for 78 esoteric languages: 76 text and 2 raster.
 
 <!-- PACKAGE-COUNT:END -->
 
 `generate` takes a truth table and returns a program computing it;
-`verify` runs that program on every row and checks what it answers.
+`evaluate` runs a supplied program on every row and returns what it answers.
 
 Start with the [CLI](#command-line) or [Python API](#python-api).
 The [usage guide](https://github.com/bangyen/esolangs/blob/main/docs/usage.md)
@@ -29,26 +29,29 @@ python -m pip install esolangs
 esolangs --help
 esolangs list
 esolangs generate Suffolk 0110 > program.txt
-printf '0\n1\n' | esolangs run Suffolk program.txt
+printf '01' | esolangs run Suffolk program.txt
 
 esolangs generate brainfuck 0110 > bf.txt
-printf '0\n1\n' | esolangs debug --steps 20 --watch-cell 0 brainfuck bf.txt
+printf '01' | esolangs debug --steps 20 --watch-cell 0 brainfuck bf.txt
 ```
 
 The Polynomial interpreter needs the optional mathematics extra:
-`pip install 'esolangs[math]'`.  The other languages install without SymPy.
+`pip install 'esolangs[math]'`.  PNG loading and saving need
+`pip install 'esolangs[image]'`; in-memory raster programs need neither extra.
 
 ## Python API
 
 ```python
 import esolangs
 
-esolangs.verify("Fargo", "10010110", timeout=None)  # -> True
+program = esolangs.generate("Fargo", "10010110")
+esolangs.evaluate("Fargo", program, timeout=None, inputs=3)  # -> '10010110'
 ```
 
-`evaluate` returns the answers observed over every input row; `verify`
-compares them with the requested table. Termination answers require a proved
-halt or cycle; reaching a timeout raises `ExecutionTimeoutError`.
+`evaluate` returns the answers observed over every input row; compare the
+result with an expected table, or use CLI `evaluate --table TABLE`.
+Termination answers require a proved halt or cycle; reaching a timeout raises
+`ExecutionTimeoutError`.
 The default row timeout requires a Unix main thread. `timeout=None` disables
 that bound and also works on Windows and worker threads.
 
@@ -65,14 +68,14 @@ to build stdin.
 ;@0{;}{;@0{#1}{#0}},
 ```
 
-Feeding it the two input bits, one per line, prints their XOR.
+Feeding it the two adjacent input characters prints their XOR.
 
 ## Stepping a program
 
 <!-- TUI-FRAME:START -->
 
 Generate a program with `esolangs generate Flowchart 0110 > flowchart.txt`, then run
-`esolangs debug --tui --stdin "$(printf '0\n1\n')" Flowchart flowchart.txt` in a terminal.
+`esolangs debug --tui --stdin 01 Flowchart flowchart.txt` in a terminal.
 Here is Flowchart at step 14:
 
 ```
@@ -94,18 +97,23 @@ See [debugging](https://github.com/bangyen/esolangs/blob/main/docs/usage.md#debu
 
 <!-- EXAMPLES:START -->
 
-Ready-to-run programs for each of the 71
-text languages with a boolean generator live in
+Ready-to-run programs for each of the 77
+languages with a boolean generator live in
 [`examples/`](https://github.com/bangyen/esolangs/tree/main/src/esolangs/examples).
 
 <!-- EXAMPLES:END -->
 
 ## Implemented languages
 
+Familiar languages include [brainfuck](https://esolangs.org/wiki/brainfuck),
+[Befunge](https://esolangs.org/wiki/Befunge), [Piet](https://esolangs.org/wiki/Piet),
+[INTERCAL](https://esolangs.org/wiki/INTERCAL), and
+[Malbolge](https://esolangs.org/wiki/Malbolge).
+
 <details>
 <!-- IMPLEMENTED:START -->
 
-<summary>Show all 72 text languages</summary>
+<summary>Show all 78 languages</summary>
 
 ### Grid-based Languages
 
@@ -123,7 +131,7 @@ Languages that move a pointer or beam across a 2D grid.
 - [Fish](https://esolangs.org/wiki/Fish) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/fish.py))
 - [Flowchart](https://esolangs.org/wiki/Flowchart) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/flowchart.py))
 - [LaserFuck](https://esolangs.org/wiki/LaserFuck) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/laserfuck.py))
-- [Streetcode](https://esolangs.org/wiki/Streetcode) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/streetcode.py))
+- [Streetcode](https://esolangs.org/wiki/Streetcode) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/streetcode/__init__.py))
 - [Super SNUSP](https://esolangs.org/wiki/Super_SNUSP) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/super_snusp.py))
 - [thisthat](https://esolangs.org/wiki/thisthat) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/thisthat.py))
 
@@ -139,6 +147,7 @@ Languages that use a stack for data manipulation.
 - [Forþ](https://esolangs.org/wiki/For%C3%BE) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/stack_based/forth.py))
 - [Grapheme](https://esolangs.org/wiki/Grapheme) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/stack_based/grapheme.py))
 - [Modulous](https://esolangs.org/wiki/Modulous) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/stack_based/modulous.py))
+- [Piet](https://esolangs.org/wiki/Piet) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/stack_based/piet/__init__.py))
 - [Underload](https://esolangs.org/wiki/Underload) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/stack_based/underload.py))
 - [Unsquare](https://esolangs.org/wiki/Unsquare) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/stack_based/unsquare.py))
 
@@ -148,6 +157,7 @@ Languages whose primary data structure is a queue or deque.
 
 - [Bitdeque](https://esolangs.org/wiki/Bitdeque) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/queue_based/bitdeque.py))
 - [Bitwise Cyclic Tag](https://esolangs.org/wiki/Bitwise_Cyclic_Tag) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/queue_based/bitwise_cyclic_tag.py))
+- [Cyclic tag](https://esolangs.org/wiki/Cyclic_tag) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/queue_based/cyclic_tag.py))
 - [Taglate](https://esolangs.org/wiki/Taglate) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/queue_based/taglate.py))
 
 ### Tape-based Languages
@@ -158,12 +168,14 @@ Languages that operate on a tape (similar to Turing machines).
 - [3D Brainfuck](https://esolangs.org/wiki/3D_Brainfuck) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/three_d_brainfuck.py))
 - [6-5](https://esolangs.org/wiki/6-5) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/six_five.py))
 - [Back](https://esolangs.org/wiki/Back) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/back.py))
+- [Boolfuck](https://esolangs.org/wiki/Boolfuck) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/boolfuck.py))
 - [BrainIf](https://esolangs.org/wiki/BrainIf) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/brainif.py))
 - [Circlefuck](https://esolangs.org/wiki/Circlefuck) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/circlefuck.py))
 - [Dimensional](https://esolangs.org/wiki/Dimensional) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/dimensional.py))
 - [Factor](https://esolangs.org/wiki/Factor) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/factor.py))
 - [Home Row](https://esolangs.org/wiki/Home_Row) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/home_row.py))
 - [Jaune](https://esolangs.org/wiki/Jaune) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/jaune.py))
+- [Line](https://esolangs.org/wiki/Line) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/line/__init__.py))
 - [Minifuck](https://esolangs.org/wiki/Minifuck) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/minifuck.py))
 - [NoComment](https://esolangs.org/wiki/NoComment) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/nocomment.py))
 - [Painfuck](https://esolangs.org/wiki/Painfuck) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/painfuck.py))
@@ -171,6 +183,7 @@ Languages that operate on a tape (similar to Turing machines).
 - [S*bleq](https://esolangs.org/wiki/S*bleq) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/sbleq.py))
 - [SLOW ACV MAMMALIAN](https://esolangs.org/wiki/SLOW_ACV_MAMMALIAN) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/slow_acv_mammalian.py))
 - [Smallfuck](https://esolangs.org/wiki/Smallfuck) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/smallfuck.py))
+- [Subleq](https://esolangs.org/wiki/Subleq) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/subleq.py))
 - [Suffolk](https://esolangs.org/wiki/Suffolk) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/suffolk.py))
 - [bit~](https://esolangs.org/wiki/bit~) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/bit_tilde.py))
 - [brainfuck](https://esolangs.org/wiki/brainfuck) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/brainfuck.py))
@@ -185,7 +198,7 @@ Languages that use registers to store and manipulate data.
 - [Deadfish](https://esolangs.org/wiki/Deadfish) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/register_based/deadfish.py)) *(interpreter-only)*
 - [Decleq](https://esolangs.org/wiki/Decleq) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/register_based/decleq.py))
 - [Minsky Swap](https://esolangs.org/wiki/Minsky_Swap) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/register_based/minsky_swap.py))
-- [Polynomial](https://esolangs.org/wiki/Polynomial) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/register_based/polynomial.py))
+- [Polynomial](https://esolangs.org/wiki/Polynomial) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/register_based/polynomial/__init__.py))
 - [Qoibl](https://esolangs.org/wiki/Qoibl) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/register_based/qoibl.py))
 - [RAM0](https://esolangs.org/wiki/RAM0) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/register_based/ram0.py))
 - [Sophie](https://esolangs.org/wiki/Sophie) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/register_based/sophie.py))
@@ -194,11 +207,12 @@ Languages that use registers to store and manipulate data.
 
 Languages that don't fit into the above categories.
 
+- [///](https://esolangs.org/wiki/%2F%2F%2F) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/slashes.py))
 - [Algebraic Programming Language](https://esolangs.org/wiki/Algebraic_Programming_Language) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/algebraic_programming_language.py))
 - [CV(N)(C)](https://esolangs.org/wiki/CV(N)(C)) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/cvnc.py))
 - [Container](https://esolangs.org/wiki/Container) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/container.py))
 - [Crement](https://esolangs.org/wiki/Crement) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/crement.py))
-- [FRACTRAN](https://esolangs.org/wiki/FRACTRAN) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/fractran.py))
+- [FRACTRAN](https://esolangs.org/wiki/FRACTRAN) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/fractran/__init__.py))
 - [Fargo](https://esolangs.org/wiki/Fargo) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/fargo.py))
 - [Forbin](https://esolangs.org/wiki/Forbin) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/forbin.py))
 - [INTERCAL](https://esolangs.org/wiki/INTERCAL) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/intercal.py))
@@ -212,16 +226,16 @@ Languages that don't fit into the above categories.
 <!-- IMPLEMENTED:END -->
 </details>
 
-Line is an image-language module under `esolangs.line`; its suite is
-`tests/line/`, run with the rest by `just test`.
+Line and Piet use the tape and stack interpreter families; their suites run
+with the rest by `just test`.
 
 ## Generators
 
 <!-- BOOLEAN-COUNT:START -->
 
 The truth table is a binary string of length `2**n`, most-significant input
-first; its length implies `n`, so it isn't passed separately.  71 of the
-text languages have such a generator, some covering only a documented subset of
+first; its length implies `n`, so it isn't passed separately.  77 of the
+languages have such a generator, some covering only a documented subset of
 tables.
 
 <!-- BOOLEAN-COUNT:END -->

@@ -7,6 +7,9 @@ leaves it open): the run halts at the end of the code.  Exhausted input
 raises :class:`EOFError`.  :func:`_advance` is a pure function from
 :class:`_State` to the next state plus an :class:`_Effect` naming what
 the shell owes; :func:`_load` is the pure half of a read.
+
+Input framing is unspecified; this interpreter reads consecutive Unicode
+character codes, narrowing to its byte cells.
 """
 
 from esolangs.interpreters._entry import script_main

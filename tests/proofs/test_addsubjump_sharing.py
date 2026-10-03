@@ -5,6 +5,7 @@ import random
 import pytest
 
 import esolangs
+import esolangs.debugger as debugger_api
 from esolangs.tools.addsubjump import (
     _addsubjump_ordered,
     _addsubjump_packed,
@@ -45,7 +46,7 @@ def test_sharing_admission() -> None:
                 new += len(program)
             for row, expected in enumerate(table):
                 bits = [(row >> shift) & 1 for shift in reversed(range(n))]
-                vm = esolangs.make_vm(
+                vm = debugger_api.make_vm(
                     "AddSubJump", program, esolangs.encode_inputs("AddSubJump", bits)
                 )
                 for _ in range(100_000):

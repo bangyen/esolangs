@@ -11,6 +11,8 @@ Input exhaustion raises :class:`EOFError`. Malformed programs raise
 
 The execution model is a pure function over an immutable ``_State``. The
 mutable VM shell performs input and replaces that state once per step.
+
+The spec does not delimit input values; Inp reads one line, excluding its newline.
 """
 
 from __future__ import annotations
@@ -18,6 +20,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
+from esolangs._drive import drive
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 
@@ -262,8 +265,7 @@ class _Machine:
 def run(code: str, io: IO) -> None:
     """Run a Vandevelo program to the end of its source."""
     machine = _Machine(code, io)
-    while not machine.halted:
-        machine.step()
+    drive(machine)
 
 
 if __name__ == "__main__":

@@ -106,7 +106,7 @@ class TestClockwise:
             def __init__(self, text: str) -> None:
                 self._text = text
 
-            def input_str(self) -> str:
+            def input_all(self, _prompt: str = "Input: ") -> str:
                 return self._text
 
             def print_char(self, char: str) -> None:

@@ -6,10 +6,8 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from enum import StrEnum
 
-from esolangs import line as _line
-from esolangs import piet as _piet
 from esolangs import tools as _boolean
-from esolangs.raster import Raster
+from esolangs._program import Program
 from esolangs.registry._slug import canonical_id
 
 # A generator: ``generator(truth_table)`` returns a program computing it.
@@ -18,8 +16,7 @@ from esolangs.registry._slug import canonical_id
 # ``width`` bounding the columns, since a shape cannot be reflowed after the
 # fact the way a single long line can.  ``...`` keeps both arities callable
 # with the table alone, which is how every width-less caller invokes them.
-Generator = Callable[..., str]
-RasterGenerator = Callable[..., Raster]
+Generator = Callable[..., Program]
 
 
 class SourceKind(StrEnum):
@@ -39,7 +36,6 @@ class Language:
     id: str = ""
     boolean: Generator | None = None
     source_kind: SourceKind = SourceKind.TEXT
-    raster_boolean: RasterGenerator | None = None
 
 
 LANGUAGES: dict[str, Language] = {
@@ -141,6 +137,30 @@ LANGUAGES: dict[str, Language] = {
         boolean=_boolean.bitwise_cyclic_tag,
         id="bitwise_cyclic_tag",
         interpreter="queue_based.bitwise_cyclic_tag",
+    ),
+    "Cyclic tag": Language(
+        "Cyclic tag",
+        boolean=_boolean.cyclic_tag,
+        id="cyclic_tag",
+        interpreter="queue_based.cyclic_tag",
+    ),
+    "Boolfuck": Language(
+        "Boolfuck",
+        "tape_based.boolfuck",
+        boolean=_boolean.boolfuck,
+        id="boolfuck",
+    ),
+    "Subleq": Language(
+        "Subleq",
+        "tape_based.subleq",
+        boolean=_boolean.subleq,
+        id="subleq",
+    ),
+    "///": Language(
+        "///",
+        "other.slashes",
+        boolean=_boolean.slashes,
+        id="slashes",
     ),
     "BrainIf": Language(
         "BrainIf",
@@ -297,15 +317,17 @@ LANGUAGES: dict[str, Language] = {
     ),
     "Line": Language(
         "Line",
+        interpreter="tape_based.line",
         id="line",
         source_kind=SourceKind.RASTER,
-        raster_boolean=_line.generate,
+        boolean=_boolean.line,
     ),
     "Piet": Language(
         "Piet",
+        interpreter="stack_based.piet",
         id="piet",
         source_kind=SourceKind.RASTER,
-        raster_boolean=_piet.generate,
+        boolean=_boolean.piet,
     ),
     "SLOW ACV MAMMALIAN": Language(
         "SLOW ACV MAMMALIAN",
@@ -444,12 +466,6 @@ LANGUAGES: dict[str, Language] = {
         boolean=_boolean.vandevelo,
         id="vandevelo",
     ),
-}
-
-#: Classics admitted through the same fame gate as new candidates.
-#: All ten carry generators. Malbolge caps at sixteen inputs; FRACTRAN
-#: emits linear text with shared indexed block dictionaries.
-CLASSICS: dict[str, Language] = {
     "Befunge": Language(
         "Befunge",
         "grid_based.befunge",
@@ -513,5 +529,3 @@ CLASSICS: dict[str, Language] = {
         id="underload",
     ),
 }
-
-LANGUAGES.update(CLASSICS)

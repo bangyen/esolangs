@@ -14,6 +14,7 @@ import pytest
 import esolangs
 from esolangs import cli
 from esolangs.cli import main
+from esolangs.cli_io import _emit_partial, _smuggled_bytes, _write_output
 from tests.cli_support import _LOOPS, call_both
 from tests.test_cli import _FakeStdin, _program, call_main
 
@@ -166,7 +167,7 @@ class TestTheShapeWarningFiresOnlyWhenItShould:
         path = tmp_path / "g.txt"
         path.write_text(esolangs.generate("Grapheme", "0110"))
         _out, err = call_both(["run", "Grapheme", str(path)], capsys, stdin="1\n0\n")
-        assert "spells its bits" in err
+        assert "spells its bits" not in err
 
     def test_multiple_lines_into_a_one_line_language_warn(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
@@ -175,7 +176,7 @@ class TestTheShapeWarningFiresOnlyWhenItShould:
         path = tmp_path / "c.txt"
         path.write_text(esolangs.generate("Clockwise", "0110"))
         _out, err = call_both(["run", "Clockwise", str(path)], capsys, stdin="1\n0\n")
-        assert "wants every bit on one line" in err
+        assert "wants every bit on one line" not in err
 
     def test_multiple_lines_into_a_row_index_language_warn(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
@@ -184,7 +185,7 @@ class TestTheShapeWarningFiresOnlyWhenItShould:
         path = tmp_path / "f.txt"
         path.write_text(esolangs.generate("Fargo", "0110"))
         _out, err = call_both(["run", "Fargo", str(path)], capsys, stdin="1\n0\n")
-        assert "row index" in err
+        assert "row index" not in err
 
     def test_the_encoded_stdin_is_not_warned_about(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
@@ -203,7 +204,7 @@ class TestTheShapeWarningFiresOnlyWhenItShould:
         """Sixty-five languages read 0/1 lines and must stay silent."""
         path = tmp_path / "bf.txt"
         path.write_text(esolangs.generate("brainfuck", "0110"))
-        out, err = call_both(["run", "brainfuck", str(path)], capsys, stdin="1\n0\n")
+        out, err = call_both(["run", "brainfuck", str(path)], capsys, stdin="10")
         assert out == "1"
         assert err == ""
 
@@ -230,11 +231,9 @@ class TestTheAdvisoryNotesAreRenderedOnce:
         """A raw UserWarning would print this file's path and a line of it."""
         path = tmp_path / "p.txt"
         path.write_text(esolangs.generate("brainfuck", "00010111"))
-        out, err = call_both(
-            ["run", "brainfuck", str(path)], capsys, stdin="1\n1\n0\n0\n1\n1\n"
-        )
+        out, err = call_both(["run", "brainfuck", str(path)], capsys, stdin="110011")
         assert out == "1"
-        assert "read 3 of the 6 lines" in err
+        assert "read 3 of the 6 lines" not in err
         assert "UserWarning" not in err
         assert "cli.py" not in err
 
@@ -245,7 +244,7 @@ class TestTheAdvisoryNotesAreRenderedOnce:
         path = tmp_path / "p.txt"
         path.write_text(esolangs.generate("Grapheme", "0110"))
         _out, err = call_both(["run", "Grapheme", str(path)], capsys, stdin="0\n1\n")
-        assert err.count("spells its bits") == 1
+        assert err.count("spells its bits") == 0
 
     def test_judge_refuses_a_surplus_line_once(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
@@ -255,13 +254,13 @@ class TestTheAdvisoryNotesAreRenderedOnce:
         path.write_text(esolangs.generate("brainfuck", "00010111"))
         with pytest.raises(SystemExit) as exc:
             call_main(
-                ["run", "--judge", "brainfuck", str(path)],
+                ["run", "--judge", "--table", "00010111", "brainfuck", str(path)],
                 capsys,
-                stdin="1\n1\n0\n0\n1\n1\n",
+                stdin="110011",
             )
         assert exc.value.code == 2
         err = capsys.readouterr().err
-        assert err.count("lines supplied") == 1
+        assert err.count("reads 3 characters") == 1
 
     def test_an_empty_program_file_is_noted(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
@@ -285,10 +284,10 @@ class TestTheAdvisoryNotesAreRenderedOnce:
         )
         assert "did not exist yet" in out
 
-    def test_verify_says_it_checks_the_generator(self) -> None:
+    def test_evaluate_says_it_runs_a_supplied_program(self) -> None:
         """So nobody mistakes it for a checker of a file they wrote."""
-        assert "checks the generator" in cli.HELP["verify"]
-        assert "run --judge" in cli.HELP["verify"]
+        assert "supplied program" in cli.HELP["evaluate"]
+        assert "No program is generated" in cli.HELP["evaluate"]
 
 
 class TestAMultiWordNameSuggestsQuoting:
@@ -366,7 +365,7 @@ class TestSmallerReportsFromRoundFifteen:
         # every plain shape check, and advice on correct input is what this
         # CLI has spent rounds removing.  `check-stdin --help` says what the
         # flag adds.
-        _out, err = call_both(["check-stdin", "brainfuck"], capsys, stdin="1\n0\n")
+        _out, err = call_both(["check-stdin", "brainfuck"], capsys, stdin="10")
         assert err == ""
         assert "--table" in cli.HELP["check-stdin"]
 
@@ -387,10 +386,10 @@ class TestSmallerReportsFromRoundFifteen:
     @pytest.mark.parametrize(
         ("name", "phrase"),
         [
-            ("Clockwise", "every bit on one line"),
+            ("Clockwise", "adjacent bit characters"),
             ("Fargo", "one decimal row index"),
             ("Taglate", "padded with a leading"),
-            ("brainfuck", "one line per bit"),
+            ("brainfuck", "adjacent bit characters"),
         ],
     )
     def test_describe_spells_the_stdin_out(
@@ -428,20 +427,38 @@ class TestTheSmallInconsistencies:
         assert exc.value.code == 2
         assert "--judge given more than once" in capsys.readouterr().err
 
+    @pytest.mark.medium
     def test_a_no_op_width_says_so(
         self, capsysbinary: pytest.CaptureFixture[bytes]
     ) -> None:
         with (
             patch.object(
-                sys, "argv", ["esolangs", "generate", "--width", "10", "Piet", "0100"]
+                sys, "argv", ["esolangs", "generate", "--width", "10", "Line", "0100"]
             ),
             patch.object(sys, "stdin", _FakeStdin("")),
         ):
             main()
         captured = capsysbinary.readouterr()
-        assert b"no effect on Piet" in captured.err
+        assert b"no effect on Line" in captured.err
         image = esolangs.Raster.from_png(captured.out)
-        assert esolangs.run("Piet", image, "0\n0\n") == "0"
+        assert esolangs.run("Line", image, "0\n0\n") == "0"
+
+    @pytest.mark.medium
+    def test_line_balance_has_no_no_op_warning(
+        self, capsysbinary: pytest.CaptureFixture[bytes]
+    ) -> None:
+        with (
+            patch.object(
+                sys, "argv", ["esolangs", "generate", "--balance", "Line", "0001"]
+            ),
+            patch.object(sys, "stdin", _FakeStdin("")),
+        ):
+            main()
+        captured = capsysbinary.readouterr()
+        assert b"no effect" not in captured.err
+        image = esolangs.Raster.from_png(captured.out)
+        assert (len(image.rows[0]), len(image.rows)) == (680, 800)
+        assert esolangs.run("Line", image, "1\n1\n") == "1"
 
     @pytest.mark.parametrize("name", ["Sophie", "CV(N)(C)"])
     def test_a_wrapping_width_says_nothing(
@@ -497,7 +514,7 @@ class TestTheSmallInconsistencies:
                 str(path),
             ],
             capsys,
-            stdin="0\n1\n",
+            stdin="01",
         )
         assert "stopped: breakpoint" in out
         assert "no breakpoint matched" not in err
@@ -546,7 +563,7 @@ class TestRoundSixQol:
     ) -> None:
         """`run --help` used to answer this with a `python -c` incantation."""
         assert call_main(["encode", "Grapheme", "10"], capsys) == "A\n%\n"
-        assert call_main(["encode", "Taglate", "101"], capsys) == "0\n1\n0\n1\n"
+        assert call_main(["encode", "Taglate", "101"], capsys) == "0101"
 
     def test_encode_then_run_computes_the_table(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
@@ -733,7 +750,7 @@ class TestTheLastResortPaths:
         surrogate, and pytest's assertion rewriter cannot re-serialize the
         module afterwards.
         """
-        assert cli._smuggled_bytes("\udfff") is None  # noqa: SLF001 - private path
+        assert _smuggled_bytes("\udfff") is None
 
     def test_output_a_terminal_cannot_encode_is_written_as_bytes(self) -> None:
         """A lone surrogate reaches the byte stream rather than raising."""
@@ -758,7 +775,7 @@ class TestTheLastResortPaths:
                 raise UnicodeEncodeError("ascii", text, 0, 1, "narrow")
 
         with patch.object(sys, "stdout", _Narrow()):
-            cli._write_output("\ud800")  # noqa: SLF001 - the path is private
+            _write_output("\ud800")
         assert written, "nothing reached the byte stream"
 
     def test_a_value_error_from_the_screen_is_a_refusal(
@@ -791,7 +808,7 @@ class TestTheLastResortPathsContinued:
         neither returns early nor reports.
         """
         smuggled = "".join(chr(0xDC00 + byte) for byte in (0xC3, 0xA9))
-        assert cli._smuggled_bytes(smuggled) is None  # noqa: SLF001 - private path
+        assert _smuggled_bytes(smuggled) is None
 
     def test_output_survives_a_stream_with_no_byte_buffer(self) -> None:
         """Some streams are text only, and then the escape is the best there is."""
@@ -808,7 +825,7 @@ class TestTheLastResortPathsContinued:
                 return len(text)
 
         with patch.object(sys, "stdout", _TextOnly()):
-            cli._write_output("a\udc80b")  # noqa: SLF001 - private path
+            _write_output("a\udc80b")
         assert written
         assert "\\udc80" in written[0]
 
@@ -824,7 +841,7 @@ class TestTheLastResortPathsContinued:
         """
         failure = esolangs.HaltError("stopped")
         failure.partial_output = "Hi\n"
-        cli._emit_partial(failure)  # noqa: SLF001 - private path
+        _emit_partial(failure)
         assert capsys.readouterr().out == "Hi\n"
 
     def test_a_value_error_from_the_run_is_a_refusal(

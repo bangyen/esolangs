@@ -5,7 +5,7 @@ import pytest
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.register_based.polynomial import _Machine as Polynomial
 from esolangs.interpreters.register_based.sophie import _Machine as Sophie
-from esolangs.tools.register import _polynomial_assemble
+from esolangs.tools.polynomial import _polynomial_assemble
 from tests.tools.boolean_oracles import _polynomial_tree, _sophie_dag, _sophie_tree
 
 
@@ -25,7 +25,7 @@ def test_retired_oracle_executes_every_row(oracle: str, table: str) -> None:
         machine_type = Sophie
     for row, expected in enumerate(table):
         bits = format(row, f"0{n}b")
-        io = ScriptedIO("\n".join(bits) + "\nZ\n")
+        io = ScriptedIO("".join(bits) + "Z\n")
         machine = machine_type(code, io)
         for _ in range(1000):
             if machine.halted:

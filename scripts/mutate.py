@@ -19,10 +19,13 @@ the runner.
 
 Usage:
     python scripts/mutate.py interpreter Qoibl
+    python scripts/mutate.py interpreter Piet
     python scripts/mutate.py generator tools/streetcode --keep
 
-Requires: mutmut==3.7.0, which fixes a 3.3.1 bug that silently reported
+Requires: mutmut==3.8.0, which fixes a 3.3.1 bug that silently reported
 class-method mutants as killed. Mutant IDs are not comparable across versions.
+
+Interpreter packages use the copied-package harness with their own suites.
 """
 
 import argparse
@@ -47,6 +50,29 @@ if len(sys.argv) > 1 and sys.argv[1] == "generator":
     sys.argv = [sys.argv[0], *sys.argv[2:]]
     runpy.run_path(str(ROOT / "tests/tools/mutate_generator.py"), run_name="__main__")
 if len(sys.argv) > 1 and sys.argv[1] == "interpreter":
+    from esolangs.registry import LANGUAGES
+
+    language = LANGUAGES.get(sys.argv[2]) if len(sys.argv) > 2 else None
+    if (
+        language is not None
+        and language.interpreter is not None
+        and (
+            ROOT
+            / "src/esolangs/interpreters"
+            / language.interpreter.replace(".", "/")
+            / "__init__.py"
+        ).is_file()
+    ):
+        sys.argv = [
+            sys.argv[0],
+            f"{language.id}/__init__",
+            *sys.argv[3:],
+            "--kind",
+            "interpreter",
+        ]
+        runpy.run_path(
+            str(ROOT / "tests/tools/mutate_generator.py"), run_name="__main__"
+        )
     sys.argv.pop(1)
 
 # Tests that reach past the interpreter -- into the VM or the registry --
@@ -68,13 +94,6 @@ _NOT_REWRITTEN = ("vm", "registry", "tools")
 # classes are the *only* ones a score may legitimately leave out, which
 # ``_score`` checks its exclusions against.
 _INLINED = ("esolangs.exceptions", "esolangs.interpreters.io")
-
-# A companion that is part of the language rather than shared infrastructure.
-# Start mutation here so Streetcode's geometry does not disappear into
-# ``_inlined.py`` with IO and the other dependencies.
-_MUTATION_ROOT = {
-    "grid_based.streetcode": "grid_based._streetcode_geometry",
-}
 
 # How far past the unmutated baseline a single test may run before the alarm
 # in ``_CONFTEST`` fails it.  Both numbers are deliberately generous: the only
@@ -353,15 +372,6 @@ def _rewrite_imports(src: str, stem: str, module: str = "") -> str:
             rf"import {stem} as \1",
             src,
         )
-        root = _MUTATION_ROOT.get(module)
-        if root is not None:
-            package, companion = root.rsplit(".", 1)
-            src = re.sub(
-                rf"from esolangs\.interpreters\.{re.escape(package)} import "
-                rf"{re.escape(companion)} as (\w+)",
-                rf"import {stem} as \1",
-                src,
-            )
         # ``from esolangs.<pkg> import <name> as m`` imports the interpreter
         # *module*, not a name inside it.  The bundle is that module, so the
         # rewrite is a plain alias -- repointing it at ``from {stem} import
@@ -492,8 +502,9 @@ def _split_inlined(bundle: Path, module: str) -> int:
     lines moved.
     """
     text = bundle.read_text()
-    root = _MUTATION_ROOT.get(module, module)
-    marker = f"# --- inlined from esolangs/interpreters/{root.replace('.', '/')}.py ---"
+    marker = (
+        f"# --- inlined from esolangs/interpreters/{module.replace('.', '/')}.py ---"
+    )
     head, sep, tail = text.partition(marker)
     if not sep:
         raise SystemExit(f"no inline marker for {module} in {bundle.name}")

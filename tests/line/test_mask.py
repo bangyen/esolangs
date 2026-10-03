@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import pytest
 
-from esolangs.line.mask import Mask, from_grey
+from esolangs.interpreters.tape_based.line.mask import Mask, from_grey
 
 
 def test_get_and_set_round_trip() -> None:
@@ -154,3 +154,20 @@ def test_from_grey_thresholds_at_mid_grey() -> None:
     """Levels below the threshold are ink; the threshold itself is not."""
     mask = from_grey([bytearray([0, 127, 128, 255])])
     assert list(mask.nonzero()) == [(0, 0), (0, 1)]
+
+
+def test_from_grey_reuses_patterns_with_independent_masks() -> None:
+    row = bytearray([0, 127, 128, 255])
+    mask = from_grey([row, row])
+    mask[0, 0] = False
+    row[0] = 255
+    assert mask.rows == [2, 3]
+    assert from_grey([row], threshold=129).rows == [6]
+
+
+def test_from_grey_exceeds_pattern_cache() -> None:
+    rows = [
+        bytearray(0 if (index >> x) & 1 else 255 for x in range(11))
+        for index in range(1025)
+    ]
+    assert from_grey(rows + rows[:1]).rows == [*range(1025), 0]
