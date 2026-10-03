@@ -41,10 +41,34 @@ def test_repairs_execute(language, handler, source, output, tmp_path, capsys):
     assert path.read_bytes() == before
 
 
-@pytest.mark.parametrize("source", ["EaE", "FaF", "HaH", "eabc"])
-def test_grapheme_literal_contents_are_untouched(source):
+@pytest.mark.parametrize(
+    ("source", "output"),
+    [
+        ("EaE", ""),
+        ("FaF", ""),
+        ("HyH", ""),
+        ("eabey", "AB"),
+        ("fabfy", "12"),
+        ("fafhyhi", "1"),
+    ],
+)
+def test_grapheme_case_corrections_include_literals(source, output, tmp_path, capsys):
     edits = _grapheme_corrections(source)
-    assert not edits or [(edit.before, edit.after) for edit in edits] == [("e", "E")]
+    assert repaired(source, edits) == source.upper()
+    assert all(edit.after == edit.before.upper() for edit in edits)
+    assert esolangs.run("Grapheme", repaired(source, edits), timeout=1) == output
+    path = tmp_path / "program"
+    path.write_text(source)
+    out, err = call_both(["suggest", "Grapheme", str(path)], capsys)
+    assert "->" in out
+    assert not err
+    assert path.read_text() == source
+
+
+def test_grapheme_case_preview_preserves_other_characters():
+    source = "Eé1?E\naY"
+    assert repaired(source, _grapheme_corrections(source)) == "Eé1?E\nAY"
+    assert not _grapheme_corrections("EABEYFAFY")
 
 
 def test_collatz_identifiers_are_untouched():
