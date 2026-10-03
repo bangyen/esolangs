@@ -31,10 +31,12 @@ class TestMammalian:
 
     @pytest.mark.parametrize("word", ["SEEDSEED", "XSEEDY", "SEED!", "SEED/SEED"])
     def test_embedded_instruction_names_do_not_execute(self, word: str) -> None:
-        assert run_and_capture(f"{word} CONSUME PRONOUNCE") == "\x00"
+        with pytest.raises(ValueError, match="unknown SLOW ACV MAMMALIAN command"):
+            run_and_capture(f"{word} CONSUME PRONOUNCE")
 
     def test_concatenated_program_does_not_execute(self) -> None:
-        assert run_and_capture("SEEDCONSUMEPRONOUNCE") == ""
+        with pytest.raises(ValueError, match="unknown SLOW ACV MAMMALIAN command"):
+            run_and_capture("SEEDCONSUMEPRONOUNCE")
 
     def test_pronomce_default(self) -> None:
         assert run_and_capture("PRONOUNCE") == "\x00"

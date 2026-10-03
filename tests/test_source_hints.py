@@ -32,6 +32,8 @@ _BAD_SOURCE = [
     ("Boolfuck", "[", "close this '['"),
     ("Subleq", "x", "decimal integers"),
     ("BrainIf", "if 0 move up", "move left or move right"),
+    ("BrainIf", "if 0 incremnt", "did you mean 'increment'"),
+    ("SLOW ACV MAMMALIAN", "PRONOUNCEE", "did you mean 'PRONOUNCE'"),
     ("Circlefuck", r"\xG0", "two hex digits"),
     ("Circuit Diagram", "?", "supported Circuit Diagram"),
     ("Clockwise", "", "ring"),
@@ -75,6 +77,27 @@ _BAD_SOURCE = [
     ("Thue", "a::=b", "line containing only ::="),
     ("Unlambda", "`i", "exactly two expressions"),
 ]
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("guard", [0, 1])
+def test_brainif_unknown_command_is_a_cli_source_error(guard, tmp_path, capsys):
+    path = tmp_path / "bad.brainif"
+    path.write_text(f"if {guard} incremnt", encoding="utf-8")
+    with pytest.raises(SystemExit) as caught:
+        call_both(["run", "BrainIf", str(path)], capsys)
+    assert caught.value.code == 2
+    captured = capsys.readouterr()
+    assert not captured.out
+    assert "unknown BrainIf command" in captured.err
+    assert "did you mean 'increment'" in captured.err
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("word", ["comment", "seed", "PRONOUNCEE"])
+def test_mammalian_rejects_unknown_words_before_output(word):
+    with pytest.raises(ValueError, match="unknown SLOW ACV MAMMALIAN command"):
+        esolangs.run("SLOW ACV MAMMALIAN", f"PRONOUNCE {word}", timeout=1)
 
 
 @pytest.mark.medium
