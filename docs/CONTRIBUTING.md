@@ -40,8 +40,8 @@ answer convention, or input interface:
 These are generator tests. A language whose specification precludes a
 generator qualifies only through the fame threshold under Curation in
 [limitations](limitations.md). Such languages are interpreter-only, marked
-`int` by `esolangs list --details`; Deadfish is the sole example. Curation also
-defines removal independently of admission.
+`int` by `esolangs list --details`; Deadfish, HQ9+, Nope. and Unary qualify.
+Curation also defines removal independently of admission.
 
 ## Layout
 

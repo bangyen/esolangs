@@ -302,12 +302,12 @@ class TestAnInterpreterLimitIsStillAnEsolangError:
 
 
 class TestASuggestionIsWorthLessThanSilence:
-    """0.6 offered ``Sophie`` for ``nope``.
+    """0.6 offers ``Nope.`` for ``snorey``.
 
     A wrong guess is worse than none: it sends the reader off to check a
     language they never meant.  0.65 is the lowest cutoff that suggests
-    nothing for any of the junk below, and it rescues exactly as many real
-    typos as 0.6 did -- 265 of 269 single-edit slips across the 59 names.
+    nothing for any of the junk below, and it rescues as many real
+    typos as 0.6 does -- 353 of 358 single-edit slips.
     0.7 starts costing rescues.
 
     The numbers are recomputed below rather than quoted, so the constant
@@ -328,7 +328,7 @@ class TestASuggestionIsWorthLessThanSilence:
             if typo and canonical_id(typo) not in _BY_ID
         ]
 
-    _JUNK = ("nope", "zzzz", "xyz", "qqqqqq", "hello", "python", "asdf", "foo")
+    _JUNK = ("snorey", "zzzz", "xyz", "qqqqqq", "hello", "python", "asdf", "foo")
 
     def _score(self, cutoff: float) -> tuple[int, int, int]:
         """Return (typos rescued, typos tried, junk words given a guess)."""
@@ -363,7 +363,7 @@ class TestASuggestionIsWorthLessThanSilence:
         assert self._score(0.7)[0] < shipped[0]
 
     @pytest.mark.parametrize(
-        "word", ["nope", "zzzz", "xyz", "qqqqqq", "hello", "python", "asdf", "foo"]
+        "word", ["snorey", "zzzz", "xyz", "qqqqqq", "hello", "python", "asdf", "foo"]
     )
     def test_a_word_that_is_not_close_gets_no_guess(self, word: str) -> None:
         """It gets the command that lists them, which is the honest answer."""
@@ -391,7 +391,7 @@ class TestASuggestionIsWorthLessThanSilence:
 
     def test_the_cli_shares_the_number(self) -> None:
         """Its docstring promised the same cutoff while keeping its own copy."""
-        assert _did_you_mean("nope", esolangs.list_languages()) == ""
+        assert _did_you_mean("snorey", esolangs.list_languages()) == ""
         assert "--width" in _did_you_mean("--wdith", ["--width", "--bits"])
 
 

@@ -160,7 +160,7 @@ the 1792 level-0 rows.
 
 ## Curation
 
-The collection has 74 languages; its floor is 31. All ten classics carry
+The collection has 81 languages; its floor is 31. All ten classics carry
 generators. Ordinary imperative entries with shared-shim generators and no
 consumer were removed. Nopstacle could not meet the embed conventions; ZTOALC
 L was a searched syntax-level lookup table. The retained 2D screen intersected
@@ -272,20 +272,21 @@ random tables at each of four through six. Dense rendered-size difference
 ratios at n=8,10,12 are 3.997 (Cyclic tag), 3.854 (Boolfuck), 2.926 (Subleq),
 and 4.000 (///); the constructions, rather than these ratios, supply the bounds.
 
-- [HQ9+](https://esolangs.org/wiki/HQ9%2B) (136): interpreter-only candidate.
+- [HQ9+](https://esolangs.org/wiki/HQ9%2B) (136): interpreter-only.
   No instruction reads input. `H` and `9` emit fixed non-Boolean text; `Q`
   emits source containing `Q`; `+` emits nothing. No program emits a bare
-  Boolean answer. Pin greeting, lyric formatting, and case handling before integration.
-- [Nope.](https://esolangs.org/wiki/Nope.) (132): interpreter-only candidate.
+  Boolean answer. Output formatting and case are pinned in the interpreter.
+- [Nope.](https://esolangs.org/wiki/Nope.) (131, 2026-10-03): interpreter-only.
   `ConstantLanguage("Nope.")` ignores source and input, so neither runtime
   input nor source embeds can change its output. Accept arbitrary source,
   including empty source, under those constant semantics.
-- [Unary](https://esolangs.org/wiki/Unary) (63): interpreter-only candidate
-  under the generator contracts. Valid sources encode only their zero count;
-  equal-width valid fill pairs are identical. Runtime input exists through
+- [Unary](https://esolangs.org/wiki/Unary) (63): interpreter-only under the generator
+  contracts. Valid sources encode only their zero count; whitespace formatting
+  does not evade that bound. Runtime input exists through
   decoded Brainfuck, but sources of length at most L supply at most L+1
   functions. Covering all 2**T truth tables requires L >= 2**T - 1 somewhere,
-  precluding an O(T) generator. Pin decoded Brainfuck cell and EOF semantics.
+  precluding an O(T) generator. Decoded Brainfuck uses wrapping bytes,
+  a left-clamped tape and EOF errors.
 - [大白话](https://esolangs.org/wiki/大白话) (134): deferred. The command table is
   explicitly partial; expression precedence, complete block grammar, library
   semantics, and embedded-language dispatch are unspecified. A restricted

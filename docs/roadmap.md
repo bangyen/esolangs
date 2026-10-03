@@ -5,23 +5,15 @@ and proved limits; completed work is recorded in its commit.
 
 ## Conditional follow-up
 
-- **HQ9+, Nope., and Unary interpreter-only admission.** Scores are 136, 132,
-  and 63; [limitations](limitations.md) records their generator obstructions.
-  Pin HQ9+'s output/case conventions and Unary's decoded Brainfuck dialect;
-  implement Nope.'s constant semantics without inspecting source or input.
-  Add execution, VM, and convention coverage before integration.
-
-- **Emmental and AsciiDots intrinsic-axis audits.** Curated recognition sources
-  in [limitations](limitations.md) motivate investigation, not admission.
-  For [Emmental](https://esolangs.org/wiki/Emmental), test whether redefining
-  instruction meanings yields a construction or branch mechanism absent from
-  the collection; its 43 backlinks do not clear the fame gate. For
-  [AsciiDots](https://esolangs.org/wiki/AsciiDots), pin scheduling, dot
-  duplication, interaction, and I/O semantics before comparing data-bearing
-  paths with existing grid walkers. Admit either only after establishing a
-  distinct axis and deriving an O(T) Boolean generator under the embed
-  conventions. Execute every table through three inputs and sampled larger
-  tables; record ambiguity or obstruction rather than inventing semantics.
+- **Piet++ specification and generator audit.** The language is tagged
+  [Unimplemented](https://esolangs.org/wiki/Piet%2B%2B). Nested-stack cofactor
+  descent adds a data-tree selection mechanism: a strict raster subset ran
+  309 generated tables across 3,352 rows, including every table through three
+  inputs. Pin Read/Write operands, invalid typed operations, and image/block
+  updates before implementing the full language. Verify that no implementation
+  exists, derive the loop-less O(T) generator, and execute it through three
+  inputs and sampled larger tables under the input conventions. The subset
+  probe establishes feasibility, not full-language correctness or admission.
 
 - **Linear Boolean generators.**  Make build time and emitted size O(T), where
   T is the truth-table length.  For each remaining generator, either add a
