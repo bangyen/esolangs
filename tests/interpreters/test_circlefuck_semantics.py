@@ -1,9 +1,12 @@
 """Independent byte escapes and identity-based ring; wiki revision 156668."""
 
 import itertools
+import random
+import re
 
 import pytest
 
+import esolangs
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.tape_based.circlefuck import _Machine, parse
@@ -17,7 +20,7 @@ def test_all_byte_escape_spellings(value):
         f"\\x{value:02x}",
         f"\\x{value:02X}",
     ):
-        assert parse(source) == [value]
+        assert parse(source) == decode(source) == [value]
         assert parse("A" + source + "Z") == [65, value, 90]
     if value < 16:
         assert parse("\\" + f"{value:X}") == [value]
@@ -35,7 +38,7 @@ def test_named_escapes_and_nonprintable_filter():
         ("b", 8),
         ("\\", 92),
     ):
-        assert parse("\\" + spelling) == [value]
+        assert parse("\\" + spelling) == decode("\\" + spelling) == [value]
     for value in range(512):
         char = chr(value)
         if value == 92:
@@ -52,6 +55,8 @@ def test_out_of_byte_range_escapes_are_rejected(base):
         source = f"\\o{value:03o}" if base == 8 else f"\\{value:03d}"
         with pytest.raises(ValueError, match="invalid Circlefuck escape"):
             parse(source)
+        with pytest.raises(ValueError, match="invalid Circlefuck escape"):
+            decode(source)
 
 
 @pytest.mark.parametrize(
@@ -75,6 +80,8 @@ def test_out_of_byte_range_escapes_are_rejected(base):
 def test_malformed_and_nonascii_escape_digits(source):
     with pytest.raises(ValueError, match="invalid Circlefuck escape"):
         parse(source)
+    with pytest.raises(ValueError, match="invalid Circlefuck escape"):
+        decode(source)
 
 
 class Ring:
@@ -276,3 +283,141 @@ def test_published_hello_quine_cat_and_truth_machine():
     assert verdict == "cycle"
     assert result.output
     assert set(result.output) == {"1"}
+
+
+def decode(source):
+    pattern = re.compile(
+        r"\\(?:space|[ nrtb\\]|o[0-7]{3}|x[0-9a-fA-F]{2}|[0-9]{3}|[0-9A-F])|[^\\]"
+    )
+    result = []
+    position = 0
+    while position < len(source):
+        match = pattern.match(source, position)
+        if not match:
+            raise ValueError("invalid Circlefuck escape")
+        token = match.group()
+        position = match.end()
+        if len(token) == 1:
+            if 33 <= ord(token) <= 126:
+                result.append(ord(token))
+        else:
+            tail = token[1:]
+            if tail in ("space", " ", "n", "r", "t", "b", "\\"):
+                value = {
+                    "space": 32,
+                    " ": 32,
+                    "n": 10,
+                    "r": 13,
+                    "t": 9,
+                    "b": 8,
+                    "\\": 92,
+                }[tail]
+            elif tail.startswith("o"):
+                value = int(tail[1:], 8)
+            elif tail.startswith("x"):
+                value = int(tail[1:], 16)
+            else:
+                value = int(tail, 10 if len(tail) == 3 else 16)
+            if value > 255:
+                raise ValueError("invalid Circlefuck escape")
+            result.append(value)
+    return result
+
+
+def run_generated(source, stdin, output, cap=100000):
+    expected = Ring(decode(source), stdin=stdin)
+    actual = _Machine(source, ScriptedIO(stdin))
+    assert actual.cells == tuple(node[0] for node in expected.nodes)
+    for _ in range(cap):
+        if expected.done:
+            break
+        expected.step()
+        actual.step()
+    assert expected.done
+    assert observe(actual) == (
+        expected.snapshot(),
+        True,
+        expected.output,
+        expected.past_end,
+    )
+    assert expected.output == output
+    return expected
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize(("n", "batch"), [(1, 0), (2, 0), *[(3, i) for i in range(8)]])
+@pytest.mark.parametrize("width", [None, 1, 7, 80])
+def test_generated_all_small_tables(n, batch, width):
+    for value in range(batch * 32, min(batch * 32 + 32, 1 << (1 << n))):
+        table = f"{value:0{1 << n}b}"
+        source = esolangs.generate("Circlefuck", table, width=width)
+        for row, answer in enumerate(table):
+            stdin = f"{row:0{n}b}"
+            expected = run_generated(source, stdin, answer)
+            assert expected.consumed == n
+            assert esolangs.run("Circlefuck", source, stdin) == answer
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("values", [[0, 255], [48, 49, 50, 51], [0, 92, 123, 255]])
+def test_generated_arbitrary_bytes(values):
+    from esolangs.tools.circlefuck import _circlefuck_table
+
+    n = (len(values) - 1).bit_length()
+    source = _circlefuck_table(values)
+    for row, value in enumerate(values):
+        expected = run_generated(source, f"{row:0{n}b}", chr(value))
+        assert expected.consumed == n
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("row", [0, 127, 128, 129, 255, 256, 257, 383, 384, 511])
+def test_generated_nine_input_carry_boundaries(row):
+    table = "".join("1" if index % 3 == 0 else "0" for index in range(512))
+    source = esolangs.generate("Circlefuck", table)
+    expected = run_generated(source, f"{row:09b}", table[row])
+    assert expected.consumed == 9
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize(
+    "stdin", ["", "1\n", "x\ny\nz\n", "9\n9\n9\n", "\u0101\x00\xff"]
+)
+def test_generated_outside_alphabet_and_eof(stdin):
+    table = "01101001"
+    consumed = min(3, len(stdin))
+    bits = [int((ord(stdin[i]) & 255) != 48) if i < consumed else 1 for i in range(3)]
+    row = sum(bit << (2 - i) for i, bit in enumerate(bits))
+    expected = run_generated(esolangs.generate("Circlefuck", table), stdin, table[row])
+    assert expected.consumed == consumed
+    assert expected.past_end == 3 - consumed
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("n", [10, 11, 12])
+def test_generated_programs_used_for_size_growth(n):
+    randomizer = random.Random(11)
+    for arity in (10, 11, 12):
+        table = "".join(randomizer.choice("01") for _ in range(1 << arity))
+        if arity == n:
+            break
+    source = esolangs.generate("Circlefuck", table)
+    for row in (0, 1, (1 << (n - 1)) - 1, 1 << (n - 1), (1 << n) - 1):
+        expected = run_generated(source, f"{row:0{n}b}", table[row])
+        assert expected.consumed == n
+
+
+def test_empty_decoded_program_is_rejected():
+    for source in ("", " \n\t", "\u0101"):
+        assert decode(source) == []
+        with pytest.raises(ValueError, match=r"^Circlefuck program cannot be empty$"):
+            _Machine(source, ScriptedIO())
+
+
+@pytest.mark.medium
+def test_every_byte_outside_command_set_is_inert():
+    for value in range(256):
+        expected, verdict = compare_values([value, 46, 64], cap=20)
+        if chr(value) not in "><+-.,[]@#{}":
+            assert verdict == "halt"
+            assert expected.output == chr(value)
