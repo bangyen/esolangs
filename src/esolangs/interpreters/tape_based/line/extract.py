@@ -328,22 +328,57 @@ Stroke = lattice.Stroke
 Vertex = lattice.Vertex
 
 
-def extract_tree(mask: Mask, cursor: Cursor, start_heading: int = 0) -> Stroke:
+def extract_tree(
+    mask: Mask, cursor: Cursor, start_heading: int | None = None
+) -> Stroke:
     """Walk a Line image's full path tree from the cursor.
 
-    ``start_heading`` indexes ``_DIRS`` (0 = N, every wiki example).
+    ``start_heading`` overrides the direction inferred from the arrowhead.
     Delegates to :func:`lattice.walk_tree`.
     """
     stripped = mask & ~cursor.blob
-    nearest = min(
-        stripped.nonzero(),
-        key=lambda p: (p[0] - cursor.y) ** 2 + (p[1] - cursor.x) ** 2,
-        default=None,
-    )
-    if nearest is None:
+    pixels = set(stripped.nonzero())
+    if not pixels:
         raise syntax_error(
             "no path pixels found outside the cursor blob",
             "connect a path extending beyond the cursor",
+        )
+
+    def distance(point: tuple[int, int]) -> float:
+        return (point[0] - cursor.y) ** 2 + (point[1] - cursor.x) ** 2
+
+    nearest = min(pixels, key=distance)
+    remaining = set(pixels)
+    while remaining:
+        candidate = min(remaining, key=distance)
+        component = {candidate}
+        frontier = [candidate]
+        while frontier and len(component) <= _ARROWHEAD_TIP_GAP:
+            y, x = frontier.pop()
+            for dy, dx in _DIRS:
+                point = y + dy, x + dx
+                if point in pixels and point not in component:
+                    component.add(point)
+                    frontier.append(point)
+        if len(component) > _ARROWHEAD_TIP_GAP:
+            nearest = candidate
+            break
+        # The grown blob leaves two detached tip corners. On diagonal
+        # arrows those can be nearer than the actual outgoing path.
+        remaining.difference_update(component)
+    else:
+        raise syntax_error(
+            "no path pixels found outside the cursor blob",
+            "connect a path extending beyond the cursor",
+        )
+    if start_heading is None:
+        offset_y, offset_x = nearest[0] - cursor.y, nearest[1] - cursor.x
+        start_heading = max(
+            range(8),
+            key=lambda index: (
+                (offset_y * _DIRS[index][0] + offset_x * _DIRS[index][1])
+                / (_DIRS[index][0] ** 2 + _DIRS[index][1] ** 2) ** 0.5
+            ),
         )
     start = lattice.find_start(stripped, *nearest, start_heading)
     return lattice.walk_tree(stripped, start, start_heading)

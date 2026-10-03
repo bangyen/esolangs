@@ -269,7 +269,7 @@ type _Emit = Callable[[str], None]
 
 
 def _eval(expr: list[str], var: _Vars, read: _Read, emit: _Emit) -> tuple[int, _Vars]:
-    """Return ``expr``'s value and the variables it leaves behind.
+    """Return a validated expression's value and resulting variables.
 
     ``we`` evaluates its target before its value; ``rr`` re-evaluates its
     condition against the variables its body returned.

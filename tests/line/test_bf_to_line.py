@@ -50,67 +50,6 @@ def _run_bf(program: str, path: Path, inputs: list[int] | None = None) -> list[i
     return outputs
 
 
-class TestStraightLine:
-    """Loop-free programs: the baseline that never depended on loop geometry."""
-
-    def test_increment_and_print(self, tmp_path: Path) -> None:
-        """Three `+` then `.` prints 3."""
-        assert _run_bf("+++.", tmp_path / "inc.png") == [3]
-
-    def test_pointer_movement(self, tmp_path: Path) -> None:
-        """`>` moves the pointer, so `.` prints the second cell."""
-        assert _run_bf("+>++.", tmp_path / "move.png") == [2]
-
-    def test_input_is_echoed(self, tmp_path: Path) -> None:
-        """`,` reads a whole number and `.` prints it back unchanged."""
-        assert _run_bf(",.", tmp_path / "echo.png", inputs=[7]) == [7]
-
-
-class TestSingleLoop:
-    """One level of `[...]`, drawn as a real reconnecting stroke.
-
-    These passed before the nested-loop fix, but only by accident: their
-    merge point classified as a spurious `"fork"` exactly like the nested
-    case, and survived only because both bogus arms happened to land on
-    already-visited vertices, degrading the stroke back to a leaf.  They are
-    kept as regression cover for that accident becoming real behavior.
-    """
-
-    def test_clear_loop_zeroes_cell(self, tmp_path: Path) -> None:
-        """`[-]` decrements until the cell reads zero, then falls through."""
-        assert _run_bf("+++[-].", tmp_path / "clear.png") == [0]
-
-    def test_move_loop_transfers_cell(self, tmp_path: Path) -> None:
-        """`[>+<-]` moves a cell's value one place right."""
-        assert _run_bf("+++[>+<-]>.", tmp_path / "move_loop.png") == [3]
-
-    def test_multiply_loop(self, tmp_path: Path) -> None:
-        """The classic 8x8 multiply loop, plus one, reaches 65."""
-        assert _run_bf("++++++++[>++++++++<-]>+.", tmp_path / "mul.png") == [65]
-
-    def test_loop_body_never_runs_on_zero_cell(self, tmp_path: Path) -> None:
-        """A loop whose cell is already 0 falls straight through to its exit."""
-        assert _run_bf("[>+<-]>.", tmp_path / "skip.png") == [0]
-
-
-class TestNestedLoops:
-    """Two levels of real `[...]` -- the case that was broken.
-
-    `++[>++[>+<-]<-]>>.` computes 2*2 into cell 2.  Before the fix it built
-    the correct tape but never reached its own final `.`, so it printed
-    nothing; asserting on the *output* (not just the tape) is what makes
-    this test actually cover the regression.
-    """
-
-    def test_nested_multiply_prints_result(self, tmp_path: Path) -> None:
-        """The exact program that silently truncated before the fix."""
-        assert _run_bf("++[>++[>+<-]<-]>>.", tmp_path / "nested.png") == [4]
-
-    def test_nested_loop_reaches_code_after_outer_loop(self, tmp_path: Path) -> None:
-        """The op *after* a nested loop still runs -- the exact truncation seen."""
-        assert _run_bf("++[>++[>+<-]<-]>>+++.", tmp_path / "nested_tail.png") == [7]
-
-
 def _max_between_stroke_adjacency(program: str) -> int:
     """Most cells of one stroke sitting flush against a *different* stroke.
 

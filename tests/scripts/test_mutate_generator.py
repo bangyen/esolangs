@@ -366,7 +366,10 @@ def test_config_isolates_xdist_and_applies_selection_to_every_pass(
             "line",
             "value = state",
             "value = 1 - state",
-            "tests/tools/test_boolean_line.py::TestLineBoolean::test_and_n2",
+            (
+                "tests/tools/test_boolean_line.py::TestLineBoolean::"
+                "test_only_dependent_levels_are_tested"
+            ),
         ),
         (
             "line",
