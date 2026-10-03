@@ -6,7 +6,8 @@ toggle string/int/function mode, accumulating characters into a value
 pushed when the mode ends.
 
 Repository deviation: loading removes LF before validation, modes and indexing.
-Spaces, tabs and CR remain malformed.
+Spaces, tabs and CR remain malformed. Integer conversion shifts between letters:
+the spec's truth-machine body ``FAFY`` prints 1, despite the prose ordering.
 
 Gaps decided: underflow, math or ``Y`` on a function, a negative ``N``
 integer (alphabet ``A``-``J``), a function as a variable name, an
@@ -61,10 +62,10 @@ _Value = int | str | _Function
 
 
 def _int_from(buf: list[str]) -> int:
-    """Parse an intmode buffer: ``res = (res + digit) * 10`` per letter."""
+    """Parse an intmode buffer, shifting only between letters."""
     res = 0
     for c in buf:
-        res = (res + (ord(c) - 64 if c != "Z" else 0)) * 10
+        res = res * 10 + (ord(c) - 64 if c != "Z" else 0)
     return res
 
 
@@ -78,7 +79,7 @@ def _to_int(value: _Value) -> int:
     for c in value:
         if c == "F":
             break
-        res = (res + (ord(c) - 64 if c != "Z" else 0)) * 10
+        res = res * 10 + (ord(c) - 64 if c != "Z" else 0)
     return res
 
 

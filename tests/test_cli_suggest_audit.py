@@ -23,7 +23,7 @@ def repaired(source, edits):
         ("BrainIf", _brainif_corrections, "IF 0 incremnt\nif 1 ouput", "\x01"),
         ("BrainIf", _brainif_corrections, "if 0 mov right\nif 0 output", "\x00"),
         ("BrainIf", _brainif_corrections, "if 0 move rihgt\nif 0 output", "\x00"),
-        ("Grapheme", _grapheme_corrections, "FAFy", "10"),
+        ("Grapheme", _grapheme_corrections, "FAFy", "1"),
         ("Collatz Multiverse", _collatz_corrections, "a = b x + c, do PRNIT.", "\x00"),
         ("Collatz Multiverse", _collatz_corrections, "a = b x + c, NTO PRINT.", ""),
     ],
@@ -119,9 +119,11 @@ def test_new_previews_do_not_step_machines(
 ):
     import importlib
 
-    machine = importlib.import_module(f"esolangs.interpreters.{module}")._Machine
+    machine = vars(importlib.import_module(f"esolangs.interpreters.{module}"))[
+        "_Machine"
+    ]
 
-    def forbidden(*args):
+    def forbidden(*_args):
         raise AssertionError("preview executed the program")
 
     monkeypatch.setattr(machine, "step", forbidden)

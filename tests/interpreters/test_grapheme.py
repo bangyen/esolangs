@@ -30,13 +30,13 @@ def run_program(code: str, stdin: str = "") -> str:
     ("code", "expected"),
     [
         ("EABCEY", "ABC"),
-        ("FABFY", "120"),
-        ("FAFHYHI", "10"),
+        ("FABFY", "12"),
+        ("FAFHYHI", "1"),
         ("HABHJY", "2"),
         ("HABHNY", "AB"),
-        ("FAFFFUKY", "10"),
+        ("FAFFFUKY", "1"),
         ("FFFAFXYK", "0"),
-        ("FBFFAFFAFLRFFVKY", "20"),
+        ("FBFFAFFAFLRFFVKY", "2"),
     ],
 )
 def test_lf_is_removed_before_literals_functions_and_command_positions(
@@ -93,15 +93,15 @@ class TestModes:
         assert run_program("EAY") == ""
 
     def test_intmode(self) -> None:
-        # F A F -> 10; F B F -> 20; A adds; Y prints
-        assert run_program("FAFFBFAY") == "30"
+        # F A F -> 1; F B F -> 2; A adds; Y prints
+        assert run_program("FAFFBFAY") == "3"
 
     def test_intmode_empty_is_zero(self) -> None:
         assert run_program("FFY") == "0"
 
     def test_funcmode(self) -> None:
-        # H Y H makes a function of Y; I runs it on the pushed 10
-        assert run_program("FAFHYHIE") == "10"
+        # H Y H makes a function of Y; I runs it on the pushed 1
+        assert run_program("FAFHYHIE") == "1"
 
     def test_an_unterminated_mode_is_flushed_when_its_frame_ends(self) -> None:
         """Each mode still yields its value when the code runs out.
@@ -113,16 +113,16 @@ class TestModes:
         it, one per mode.
         """
         assert run_program("HEABHIY") == "AB"  # string
-        assert run_program("HFABHIY") == "120"  # int
+        assert run_program("HFABHIY") == "12"  # int
         assert run_program("EHABEGNY") == "AB"  # function, via N
 
 
 class TestArithmetic:
     def test_subtract(self) -> None:
-        assert run_program("FAFFBFBY") == "10"
+        assert run_program("FAFFBFBY") == "1"
 
     def test_multiply(self) -> None:
-        assert run_program("FAFFBFSY") == "200"
+        assert run_program("FAFFBFSY") == "2"
 
     def test_floor_divide(self) -> None:
         assert run_program("FCFFBFRY") == "0"
@@ -134,10 +134,10 @@ class TestArithmetic:
 
 class TestStack:
     def test_duplicate(self) -> None:
-        assert run_program("FAFKYY") == "1010"
+        assert run_program("FAFKYY") == "11"
 
     def test_swap(self) -> None:
-        assert run_program("FAFFBFLYY") == "1020"
+        assert run_program("FAFFBFLYY") == "12"
 
     def test_reverse(self) -> None:
         assert run_program("EABEECDEPYY") == "ABCD"
@@ -146,7 +146,7 @@ class TestStack:
         assert run_program("EAEM") == ""
 
     def test_truthiness_to_number(self) -> None:
-        assert run_program("FAFTY") == "0"  # 10 is truthy -> push 0
+        assert run_program("FAFTY") == "0"  # 1 is truthy -> push 0
         assert run_program("FFTY") == "1"  # 0 is falsy -> push 1
 
 
@@ -155,12 +155,12 @@ class TestStrings:
         assert run_program("EAEOY") == "1"
 
     def test_int_to_string(self) -> None:
-        # 10 -> digits 1,0 -> "AJ"
-        assert run_program("FAFNY") == "AJ"
+        # 1 -> digit 1 -> "A"
+        assert run_program("FAFNY") == "A"
 
     def test_string_to_int(self) -> None:
-        # J on "AJ" parses intmode-style: A=1, J=10 -> (0+1)*10=10, (10+10)*10=200
-        assert run_program("EAJEJY") == "200"
+        # A=1 and J=10: 1*10 + 10 = 20
+        assert run_program("EAJEJY") == "20"
 
     def test_function_to_string(self) -> None:
         assert run_program("HABHNY") == "AB"
@@ -177,7 +177,7 @@ class TestVariables:
 
 class TestFunctions:
     def test_g_executes_string(self) -> None:
-        assert run_program("FAFEYEG") == "10"
+        assert run_program("FAFEYEG") == "1"
 
     def test_g_on_input_with_bad_commands_rejected(self) -> None:
         """A string read from input and executed via G is validated, not asserted on."""
@@ -187,17 +187,17 @@ class TestFunctions:
             run_program("WG", "zkg")
 
     def test_i_runs_function(self) -> None:
-        assert run_program("FAFHYHIE") == "10"
+        assert run_program("FAFHYHIE") == "1"
 
     def test_z_runs_while_stack_nonempty(self) -> None:
-        assert run_program("FAFHYHZ") == "10"
+        assert run_program("FAFHYHZ") == "1"
 
     def test_z_repeats_until_the_stack_empties(self) -> None:
-        # K duplicates the 10, so the Z body runs twice before the stack empties
-        assert run_program("FAFKHYHZ") == "1010"
+        # K duplicates the 1, so the Z body runs twice before the stack empties
+        assert run_program("FAFKHYHZ") == "11"
 
     def test_q_conditional_execution(self) -> None:
-        # truthy 10 on the stack, fn Y: Q pops fn and the 10, then Y pops empty
+        # truthy 1 on the stack, fn Y: Q pops fn and the 1, then Y pops empty
         with pytest.raises(HaltError, match="popped"):
             run_program("FAFHYHQ")
 
@@ -214,32 +214,32 @@ class TestConditionalsThatDoNothing:
     def test_q_ignores_a_value_that_is_not_a_function(self) -> None:
         # Q pops two integers rather than a function and a test, so there is
         # no body to run; the third copy is what Y prints.
-        assert run_program("FAFKKQY") == "10"
+        assert run_program("FAFKKQY") == "1"
 
     def test_v_does_not_jump_when_the_test_is_truthy(self) -> None:
         # V pops a truthy value, so the pc is left alone and Y still runs.
-        assert run_program("FAFKKVY") == "10"
+        assert run_program("FAFKKVY") == "1"
 
     def test_z_ignores_a_value_that_is_not_a_function(self) -> None:
         # Z needs a function to loop over; an integer leaves the stack as is.
-        assert run_program("FAFKZY") == "10"
+        assert run_program("FAFKZY") == "1"
 
 
 class TestSkips:
     def test_u_skips_when_falsy(self) -> None:
-        # [10, 0]: U pops 0 (falsy) and skips the K, so Y prints the 10
-        assert run_program("FAFFFUKY") == "10"
+        # [1, 0]: U pops 0 (falsy) and skips the K, so Y prints the 1
+        assert run_program("FAFFFUKY") == "1"
 
     def test_u_does_not_skip_when_truthy(self) -> None:
-        # [0, 10]: U pops 10 (truthy), K duplicates the 0, Y prints it
+        # [0, 1]: U pops 1 (truthy), K duplicates the 0, Y prints it
         assert run_program("FFFAFUKY") == "0"
 
     def test_x_skips_next_when_falsy(self) -> None:
-        # [10, 0]: X pops 0 (falsy) and skips the K, so Y prints the 10
-        assert run_program("FAFFFXKY") == "10"
+        # [1, 0]: X pops 0 (falsy) and skips the K, so Y prints the 1
+        assert run_program("FAFFFXKY") == "1"
 
     def test_x_skips_after_next_when_truthy(self) -> None:
-        # [0, 10]: X pops 10 (truthy), Y prints the 0, then the K is skipped
+        # [0, 1]: X pops 1 (truthy), Y prints the 0, then the K is skipped
         assert run_program("FFFAFXYK") == "0"
 
     def test_the_command_u_skips_is_one_that_would_have_printed(self) -> None:
@@ -251,7 +251,7 @@ class TestSkips:
         ``Y`` itself is the difference.
         """
         assert run_program("FAFFFUY") == ""  # falsy: the Y is skipped
-        assert run_program("FBFFAFUY") == "20"  # truthy: the Y runs
+        assert run_program("FBFFAFUY") == "2"  # truthy: the Y runs
 
     def test_x_resumes_two_commands_on(self) -> None:
         """After the one command it lets through, ``X`` skips exactly one.
@@ -260,9 +260,9 @@ class TestSkips:
         skipping it and running it off the end look alike.  Following it
         with more code shows where execution comes back.
         """
-        # [10, 20, 30]: X pops the truthy 30, Y prints 20, the K is skipped,
-        # and the last Y prints the 10 that is still underneath.
-        assert run_program("FAFFBFFCFXYKY") == "2010"
+        # [1, 2, 3]: X pops the truthy 3, Y prints 2, the K is skipped,
+        # and the last Y prints the 1 that is still underneath.
+        assert run_program("FAFFBFFCFXYKY") == "21"
 
     def test_x_can_open_the_body_it_governs(self) -> None:
         """``X`` works at the very start of a called body.
@@ -272,8 +272,8 @@ class TestSkips:
         likely to mistake for "nothing pending" -- but the main program
         can never put ``X`` there, since it would pop an empty stack.
         """
-        # the body is XYK: X pops the 20, Y prints the 10, the K is skipped
-        assert run_program("FAFFBFHXYKHI") == "10"
+        # the body is XYK: X pops the 2, Y prints the 1, the K is skipped
+        assert run_program("FAFFBFHXYKHI") == "1"
 
 
 class TestIO:
@@ -308,7 +308,7 @@ class TestErrors:
         assert machine.ip == (0,)  # one frame, at its start
         while not machine.halted:
             machine.step()
-        assert machine.io.getvalue() == "10"
+        assert machine.io.getvalue() == "1"
         # every frame has popped, so ip falls back to where the program ends
         assert machine.ip == (len("FAFY"),)
 
@@ -318,7 +318,7 @@ class TestErrors:
 
 class TestEdgeCases:
     def test_j_on_an_int_is_identity(self) -> None:
-        assert run_program("FAFJJY") == "10"
+        assert run_program("FAFJJY") == "1"
 
     def test_j_on_a_function_counts_its_commands(self) -> None:
         assert run_program("HABHJY") == "2"
@@ -339,7 +339,7 @@ class TestEdgeCases:
         assert run_program("HHTY") == "1"  # empty function falsy
 
     def test_i_pushes_back_a_non_function(self) -> None:
-        assert run_program("FAFIY") == "10"
+        assert run_program("FAFIY") == "1"
 
     def test_v_branches_on_a_falsy_value(self) -> None:
         with pytest.raises(HaltError, match="popped"):
@@ -358,9 +358,9 @@ class TestEdgeCases:
         program, which ends the frame whichever way it went; a jump of one
         that lands on a later command is what fixes the direction.
         """
-        # [20, 1, 0]: V pops the falsy 0 and the offset 1, skipping the M
-        # that would otherwise discard the 20 before Y prints it
-        assert run_program("FBFFFTFFVMY") == "20"
+        # [2, 1, 0]: V pops the falsy 0 and the offset 1, skipping the M
+        # that would otherwise discard the 2 before Y prints it
+        assert run_program("FBFFFTFFVMY") == "2"
 
     def test_a_z_lap_starts_with_nothing_pending(self) -> None:
         """Each pass over a ``Z`` body begins with no skip outstanding.
@@ -371,7 +371,7 @@ class TestEdgeCases:
         two commands long, too short to reach such a position.
         """
         # four values, and a body of four commands: dup, drop, drop, print
-        assert run_program("FAFFBFFCFFDFHKMMYHZ") == "3010"
+        assert run_program("FAFFBFFCFFDFHKMMYHZ") == "31"
 
     def test_a_call_does_not_repeat_itself(self) -> None:
         """Only ``Z`` re-runs its body; ``I`` runs it once.
@@ -380,9 +380,9 @@ class TestEdgeCases:
         and a set one part ways only when the stack outlives the body --
         which is exactly what this program leaves behind.
         """
-        # 10 and 20 on the stack, the function prints one of them and
-        # returns; the 10 is still there, and must not restart the body
-        assert run_program("FAFFBFHYHI") == "20"
+        # 1 and 2 on the stack, the function prints one of them and
+        # returns; the 1 is still there, and must not restart the body
+        assert run_program("FAFFBFHYHI") == "2"
 
     def test_the_last_command_leaves_the_machine_halted(self) -> None:
         """A frame finishes on the step that runs its final command.
@@ -404,8 +404,8 @@ class TestEdgeCases:
         # the body decrements the count, keeps a copy, and calls itself
         # again through Q while the copy is nonzero
         program = "H" + "FFTPBKFAFDQ" + "H" + "FAFC" + "FAFD" + "G"
-        assert run_program("FEZF" + program) == ""
-        assert run_program("FEZF" + "FFT" + "A" + program) == ""
+        assert run_program("FEZZF" + program) == ""
+        assert run_program("FEZZF" + "FFT" + "A" + program) == ""
 
     def test_the_error_messages_read_in_full(self) -> None:
         """Each message entire, not the fragment the tests match on.
@@ -464,7 +464,7 @@ class TestStepMachine:
         """
         from esolangs.interpreters.stack_based.grapheme import _Machine
 
-        for code, value in (("EAEK", "A"), ("FAFK", 10), ("HAHK", ("func", "A"))):
+        for code, value in (("EAEK", "A"), ("FAFK", 1), ("HAHK", ("func", "A"))):
             machine = _Machine(code, ScriptedIO())
             for _ in range(3):
                 machine.step()
@@ -487,8 +487,8 @@ class TestNumberEncoding:
     def test_letters_count_from_a(self) -> None:
         from esolangs.interpreters.stack_based.grapheme import _to_int
 
-        assert _to_int("A") == 10
-        assert _to_int("B") == 20
+        assert _to_int("A") == 1
+        assert _to_int("B") == 2
 
     def test_z_is_zero_not_its_place_in_the_alphabet(self) -> None:
         """``Z`` is the one letter that does not stand for its offset."""
@@ -500,9 +500,9 @@ class TestNumberEncoding:
         """Position matters: AZ and ZA are different numbers."""
         from esolangs.interpreters.stack_based.grapheme import _to_int
 
-        assert _to_int("AZ") == 100
-        assert _to_int("ZA") == 10
-        assert _to_int("AB") == 120
+        assert _to_int("AZ") == 10
+        assert _to_int("ZA") == 1
+        assert _to_int("AB") == 12
 
     def test_an_empty_value_is_zero(self) -> None:
         from esolangs.interpreters.stack_based.grapheme import _to_int
@@ -520,11 +520,11 @@ class TestNumberEncoding:
         from esolangs.interpreters.stack_based.grapheme import _int_from
 
         assert _int_from(list("Z")) == 0
-        assert _int_from(list("A")) == 10
-        assert _int_from(list("AZ")) == 100
-        assert _int_from(list("ZA")) == 10
+        assert _int_from(list("A")) == 1
+        assert _int_from(list("AZ")) == 10
+        assert _int_from(list("ZA")) == 1
         assert run_program("FZFY") == "0"
-        assert run_program("FAZFY") == "100"
+        assert run_program("FAZFY") == "10"
 
     def test_an_empty_string_is_worth_nothing_in_arithmetic(self) -> None:
         """``A`` on two empty strings is 0, not the ord of a stand-in.
@@ -561,3 +561,32 @@ class TestContract(EmptyProgramContract, CycleContract, InputCursorContract):
     position_after_read = 2
     halting_program = "FAFY"
     looping_program = "FAFHKMHZ"
+
+
+@pytest.mark.parametrize(
+    ("letters", "value"),
+    [("", 0), ("A", 1), ("AB", 12), ("ABC", 123), ("AZ", 10), ("ZA", 1), ("Y", 25)],
+)
+def test_integer_conversion_shifts_only_between_letters(letters, value):
+    assert run_program("F" + letters + "FY") == str(value)
+    assert run_program("E" + letters + "EJY") == str(value)
+
+
+def test_string_integer_conversion_stops_before_f_without_a_final_shift():
+    assert run_program("EABFCEJY") == "12"
+
+
+def test_spec_truth_machine_zero_branch():
+    assert run_program("HFAFYHWJUZFZFY", "Z") == "0"
+
+
+def test_truth_machine_body_repeats_one_with_a_live_stack():
+    from esolangs.interpreters.stack_based.grapheme import _Machine
+
+    machine = _Machine("FAFHFAFYHZ", ScriptedIO())
+    for _ in range(100):
+        machine.step()
+        if len(machine.io.getvalue()) >= 5:
+            break
+    assert machine.io.getvalue() == "11111"
+    assert not machine.halted
