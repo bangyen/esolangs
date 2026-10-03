@@ -33,8 +33,7 @@ from esolangs.interpreters.source_hints import syntax_error
 #: pointer reaching an ``@`` -- rather than a position the cursor passes:
 #: the tape is circular, so there is no end to run off.
 #:
-#: ``done`` stays out of ``snapshot``, which reports the three live fields
-#: plus the input cursor, in the order it always returned them.
+#: ``snapshot`` includes ``done``: executing ``@`` changes only that field.
 type _State = tuple[int, int, tuple[int, ...], bool]
 
 #: The one change a cell makes to the tape: ``("set", i, value)`` writes a
@@ -287,11 +286,15 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        # A tuple copy of the tape, not the list itself: the detector holds
-        # snapshots across steps, and a live reference would mutate under
-        # it and make a real repeat compare unequal to itself.  The order
-        # is the one this returned before ``done`` joined the state.
-        return (tuple(self._cells), self._ind, self._ptr, self.io.position())
+        # Copy the tape so later self-modification cannot rewrite history.
+        # The halt flag distinguishes the two states on the same ``@`` cell.
+        return (
+            tuple(self._cells),
+            self._ind,
+            self._ptr,
+            self.io.position(),
+            self._done,
+        )
 
     def step(self) -> None:
         """Execute one cell, advancing the pointers."""
