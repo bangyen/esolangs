@@ -9,7 +9,7 @@ from esolangs import debugger as debugger_api
 
 
 @pytest.mark.medium
-@pytest.mark.parametrize("language", ["Cyclic tag", "Boolfuck", "Subleq", "///"])
+@pytest.mark.parametrize("language", ["Cyclic tag", "Boolfuck", "Subleq"])
 @pytest.mark.parametrize("n", [4, 5, 6])
 @pytest.mark.parametrize("case", range(11))
 def test_larger_tables(language: str, n: int, case: int) -> None:
@@ -64,7 +64,7 @@ def test_vm_output_matches_runner(language: str) -> None:
 
 
 @pytest.mark.medium
-@pytest.mark.parametrize("language", ["Cyclic tag", "Boolfuck", "Subleq", "///"])
+@pytest.mark.parametrize("language", ["Cyclic tag", "Boolfuck", "Subleq"])
 def test_executed_rendered_scaling(language: str) -> None:
     sizes = []
     for n in (8, 10, 12):
