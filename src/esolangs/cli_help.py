@@ -25,6 +25,8 @@ commands:
       [--seed N] [--scale N] <language> <file>
                               run a program through its interpreter
                               (--judge prints the answer bit instead)
+  suggest <language> <program-file>
+                              preview unambiguous command spelling edits
   check-stdin [--table T] <language>
                               judge stdin against what that language reads,
                               without running anything
@@ -66,6 +68,19 @@ examples:
 
 
 HELP = {
+    "suggest": """usage: esolangs suggest <language> <program-file>
+
+Preview command spelling corrections with 1-based line and column numbers.
+Currently supports Modulous: uppercase keywords and unique one-edit matches
+(insertion, deletion, substitution or adjacent swap). Ambiguous matches,
+operands, strings and variable arithmetic receive no proposed edit.
+
+The program is neither run nor modified. Apply chosen edits yourself, then
+run the program to check its behavior. No suggestions does not mean valid.
+
+example:
+  esolangs suggest Modulous program.mod
+""",
     "encode": """usage: esolangs encode <language> <bits>
 
 Print the stdin that feeds <bits> to a <language> program, so it can be
