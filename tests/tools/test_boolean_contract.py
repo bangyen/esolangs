@@ -1178,7 +1178,5 @@ def test_nothing_else_is_anywhere_near_that_big() -> None:
         and esolangs.describe(name)["source_kind"] == "text"
     )
     assert biggest[0] < 600_000, biggest
-    # SLOW ACV MAMMALIAN leads at 115707, just ahead of thisthat's planar
-    # H-tree (113805, 124937 before its loader row moved over the tree),
-    # whose bounding rectangle carries whitespace as well as the live wires.
-    assert biggest[1] == "SLOW ACV MAMMALIAN", biggest
+    # Boolfuck leads at 194026 characters after its admission.
+    assert biggest[1] == "Boolfuck", biggest
