@@ -276,7 +276,9 @@ def _advance(
                 tape = _set(tape, ptr, int(str(line)))
             except ValueError:
                 raise _Halted(
-                    (tape, loop, ptr, ind, rep), effects, HaltError()
+                    (tape, loop, ptr, ind, rep),
+                    effects,
+                    HaltError(hint="supply a decimal integer for i input"),
                 ) from None
         elif c == "j":
             # ``j`` is answered with a character code, so this is already an int.
@@ -299,7 +301,10 @@ def _advance(
                 raise _Halted(
                     (tape, loop, ptr, ind, rep),
                     effects,
-                    HaltError("unmatched 'b': the loop stack is empty"),
+                    HaltError(
+                        "unmatched 'b': the loop stack is empty",
+                        hint="execute a matching loop opener before b",
+                    ),
                 )
             ind = loop[-1]
             loop = loop[:-1]

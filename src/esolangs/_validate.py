@@ -118,7 +118,8 @@ def check_address(addr: int, language: str) -> int:
     if addr > _MAX_CELLS:
         raise InterpreterLimitError(
             f"{language} would have to grow its store to {addr + 1} cells, "
-            f"past the {_MAX_CELLS}-cell limit this interpreter allocates"
+            f"past the {_MAX_CELLS}-cell limit this interpreter allocates",
+            hint="use smaller memory addresses to fit the interpreter allocation limit",
         )
     return addr
 

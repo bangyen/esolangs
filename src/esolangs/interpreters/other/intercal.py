@@ -55,7 +55,10 @@ def _expression(
     while at < len(text) and text[at].isspace():
         at += 1
     if at >= len(text):
-        raise HaltError("incomplete INTERCAL expression")
+        raise HaltError(
+            "incomplete INTERCAL expression",
+            hint="supply a complete INTERCAL operand or expression",
+        )
     if text[at] in "'\"":
         delimiter = text[at]
         at += 1
@@ -65,7 +68,10 @@ def _expression(
         # read here; the entry guard above cannot see it, because `at` was
         # in range when this call began.
         if at >= len(text):
-            raise HaltError("incomplete INTERCAL expression")
+            raise HaltError(
+                "incomplete INTERCAL expression",
+                hint="supply a complete INTERCAL operand or expression",
+            )
         unary = text[at] if text[at] in "&V?" else ""
         at += bool(unary)
         (left, width), at = _expression(text, variables, at)
@@ -76,7 +82,10 @@ def _expression(
             (right, right_width), at = _expression(text, variables, at + 1)
             if operator == "$":
                 if width != 16 or right_width != 16:
-                    raise HaltError("INTERCAL mingle needs two onespot values")
+                    raise HaltError(
+                        "INTERCAL mingle needs two onespot values",
+                        hint="use two 16-bit onespot values as mingle operands",
+                    )
                 left = sum(
                     (((left >> bit) & 1) << (2 * bit + 1))
                     | (((right >> bit) & 1) << (2 * bit))
@@ -94,11 +103,17 @@ def _expression(
         while at < len(text) and text[at].isspace():
             at += 1
         if at >= len(text) or text[at] != delimiter:
-            raise HaltError("unbalanced INTERCAL expression group")
+            raise HaltError(
+                "unbalanced INTERCAL expression group",
+                hint="balance the expression grouping marks",
+            )
         return ((_unary(left, width, unary) if unary else left), width), at + 1
     match = re.match(r"([.#])(\d+)", text[at:])
     if match is None:
-        raise HaltError("invalid INTERCAL operand")
+        raise HaltError(
+            "invalid INTERCAL operand",
+            hint="use an INTERCAL constant, variable or grouped expression",
+        )
     sigil, number = match.groups()
     value = int(number)
     return ((variables.get(value, 0) if sigil == "." else value), 16), at + len(
@@ -176,7 +191,10 @@ class _Machine:
             or polite * 5 < len(self.lines)
             or polite * 3 > len(self.lines)
         ):
-            raise HaltError("INTERCAL program is insufficiently or excessively polite")
+            raise HaltError(
+                "INTERCAL program is insufficiently or excessively polite",
+                hint="use PLEASE on one fifth to one third of the statements",
+            )
         self.labels: dict[int, int] = {}
         for i, line in enumerate(self.lines):
             found = re.match(r"\((\d+)\)", line)
@@ -219,17 +237,26 @@ class _Machine:
             target, source = line.split(" <- ", 1)
             (value, _width), end = _expression(source, variables)
             if end != len(source) or not target.startswith("."):
-                raise HaltError("invalid INTERCAL calculation")
+                raise HaltError(
+                    "invalid INTERCAL calculation",
+                    hint="use a valid INTERCAL expression as the assignment value",
+                )
             variables[int(target[1:])] = value & 0xFFFF
         elif line.startswith("READ OUT "):
             (value, _width), end = _expression(line[9:], variables)
             if end != len(line[9:]):
-                raise HaltError("invalid INTERCAL output expression")
+                raise HaltError(
+                    "invalid INTERCAL output expression",
+                    hint="give READ OUT a valid numeric expression",
+                )
             self.io.print_str(_roman(value) + "\n")
         elif line.startswith("WRITE IN ."):
             words = self.io.input_str().upper().split()
             if not words or any(word not in _DIGITS for word in words):
-                raise HaltError("invalid INTERCAL numeric input")
+                raise HaltError(
+                    "invalid INTERCAL numeric input",
+                    hint="supply decimal numeric input",
+                )
             variables[int(line[10:])] = int("".join(_DIGITS[word] for word in words))
         elif line.endswith(" NEXT") and line.startswith("("):
             label = int(line[1 : line.index(")")])
@@ -239,16 +266,24 @@ class _Machine:
             command, source = line.split(" ", 1)
             (count, _width), end = _expression(source, variables)
             if end != len(source) or count == 0:
-                raise HaltError("invalid INTERCAL stack count")
+                raise HaltError(
+                    "invalid INTERCAL stack count", hint="use a nonnegative stack count"
+                )
             if command == "RESUME":
                 if count > len(stack):
-                    raise HaltError("INTERCAL NEXT stack underflow")
+                    raise HaltError(
+                        "INTERCAL NEXT stack underflow",
+                        hint="leave enough stack entries for the operation to consume",
+                    )
                 ind = stack[-count]
             stack = stack[: max(0, len(stack) - count)]
         elif line == "GIVE UP":
             ind = len(self.lines)
         else:
-            raise HaltError(f"unsupported INTERCAL statement: {line}")
+            raise HaltError(
+                f"unsupported INTERCAL statement: {line}",
+                hint="use statements supported by esolangs describe --spec INTERCAL",
+            )
         self.state = (ind, tuple(sorted(variables.items())), stack)
 
 

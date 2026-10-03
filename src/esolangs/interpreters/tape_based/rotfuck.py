@@ -150,13 +150,19 @@ def _advance(state: _State, chars: tuple[str, ...], byte: int | None = None) -> 
         rot += 1
         partner = _forward(chars, rot, ind)
         if partner is None:
-            raise HaltError("an executed '[' has no bracket partner")
+            raise HaltError(
+                "an executed '[' has no bracket partner",
+                hint="pair each executed [ with a matching ]",
+            )
         return (tape, ptr, partner + 1, rot)
     elif char == "]" and tape[ptr] != 0:
         rot += 1
         partner = _backward(chars, rot, ind)
         if partner is None:
-            raise HaltError("an executed ']' has no bracket partner")
+            raise HaltError(
+                "an executed ']' has no bracket partner",
+                hint="pair each executed [ with a matching ]",
+            )
         return (tape, ptr, partner + 1, rot)
 
     if char in _COMMANDS:
@@ -280,14 +286,20 @@ def run(code: str, io: IO) -> None:
             rot += 1
             partner = _forward(chars, rot, ind)
             if partner is None:
-                raise HaltError("an executed '[' has no bracket partner")
+                raise HaltError(
+                    "an executed '[' has no bracket partner",
+                    hint="pair each executed [ with a matching ]",
+                )
             ind = partner + 1
             continue
         elif char == "]" and tape[ptr] != 0:
             rot += 1
             partner = _backward(chars, rot, ind)
             if partner is None:
-                raise HaltError("an executed ']' has no bracket partner")
+                raise HaltError(
+                    "an executed ']' has no bracket partner",
+                    hint="pair each executed [ with a matching ]",
+                )
             ind = partner + 1
             continue
 

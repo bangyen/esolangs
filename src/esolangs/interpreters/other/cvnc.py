@@ -240,7 +240,10 @@ class _Parser:
                 value *= right
                 continue
             if right == 0:
-                raise HaltError("division by zero in the function")
+                raise HaltError(
+                    "division by zero in the function",
+                    hint="ensure the divisor is nonzero before dividing",
+                )
             value //= right
         return value
 
@@ -283,7 +286,10 @@ type _State = tuple[int, tuple[int, ...], tuple[str, ...], int]
 def _popped(deque: tuple[int, ...], *, front: bool) -> tuple[tuple[int, ...], int]:
     """Pop one end of the deque, refusing an empty one."""
     if not deque:
-        raise HaltError("pop from an empty deque")
+        raise HaltError(
+            "pop from an empty deque",
+            hint="append a value before removing one from the deque",
+        )
     return (deque[1:], deque[0]) if front else (deque[:-1], deque[-1])
 
 

@@ -32,7 +32,10 @@ _VARIABLES = 256
 def _variable(index: int) -> int:
     """Return a valid Qoibl variable index, rejecting an out-of-range one."""
     if not 0 <= index < _VARIABLES:
-        raise HaltError(f"variable index {index} is outside 0..{_VARIABLES - 1}")
+        raise HaltError(
+            f"variable index {index} is outside 0..{_VARIABLES - 1}",
+            hint="keep the index within the bounds stated in the diagnostic",
+        )
     return index
 
 
@@ -356,7 +359,10 @@ def _arithmetic(
         return x * y, var
     if num == "yy":
         if y == 0:
-            raise HaltError(f"division by zero: {x} divided by {y}")
+            raise HaltError(
+                f"division by zero: {x} divided by {y}",
+                hint="ensure the divisor is nonzero before dividing",
+            )
         return x // y, var
     raise syntax_error(
         "unrecognized arithmetic operator", "use ee, ey, ye or yy after ry"

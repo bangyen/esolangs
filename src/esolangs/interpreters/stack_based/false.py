@@ -160,14 +160,20 @@ def _closers(code: str) -> dict[int, int]:
 def _pop(stack: tuple[_Value, ...]) -> tuple[_Value, tuple[_Value, ...]]:
     """Return the top of ``stack`` and the rest, halting when it is empty."""
     if not stack:
-        raise HaltError("the stack is empty, so there is nothing to pop")
+        raise HaltError(
+            "the stack is empty, so there is nothing to pop",
+            hint="push a value before reading or removing the stack top",
+        )
     return stack[-1], stack[:-1]
 
 
 def _number(value: _Value, what: str) -> int:
     """Return ``value`` as an integer, halting when it is a lambda."""
     if isinstance(value, _Lambda):
-        raise HaltError(f"{what} needs a number, but that stack entry is a lambda")
+        raise HaltError(
+            f"{what} needs a number, but that stack entry is a lambda",
+            hint="push a number rather than a lambda for this operation",
+        )
     return value
 
 
@@ -175,7 +181,10 @@ def _variable(value: _Value) -> int:
     """Return the variable index ``value`` names, halting when it is not one."""
     index = _number(value, "a variable reference")
     if not 0 <= index < _VARS:
-        raise HaltError(f"{index} is not one of FALSE's 26 variable references")
+        raise HaltError(
+            f"{index} is not one of FALSE's 26 variable references",
+            hint="use a variable reference from a through z",
+        )
     return index
 
 
@@ -204,7 +213,10 @@ def _binary(char: str, stack: tuple[_Value, ...]) -> tuple[_Value, ...]:
         return (*rest, _wrap32(one * two))
     if char == "/":
         if two == 0:
-            raise HaltError("FALSE divides by zero here")
+            raise HaltError(
+                "FALSE divides by zero here",
+                hint="ensure the divisor is nonzero before dividing",
+            )
         return (*rest, _wrap32(_trunc_div(one, two)))
     if char == "&":
         return (*rest, _wrap32(one & two))
@@ -305,7 +317,10 @@ def _advance(
         depth, rest = _pop(stack)
         index = _number(depth, "'ø'")
         if not 0 <= index < len(rest):
-            raise HaltError(f"'ø' asks for stack entry {index}, which is not there")
+            raise HaltError(
+                f"'ø' asks for stack entry {index}, which is not there",
+                hint="push enough values for the requested stack depth",
+            )
         return ((*rest, rest[len(rest) - 1 - index]), variables, frames), None
     if char == "_":
         top, rest = _pop(stack)
@@ -332,19 +347,26 @@ def _advance(
         fetched = variables[index]
         if fetched is None:
             raise HaltError(
-                f"FALSE variable {_LETTERS[index]!r} was read before it was stored"
+                f"FALSE variable {_LETTERS[index]!r} was read before it was stored",
+                hint="store a value in the variable before reading it",
             )
         return ((*rest, fetched), variables, frames), None
     if char == "!":
         body, rest = _pop(stack)
         if not isinstance(body, _Lambda):
-            raise HaltError("'!' runs a lambda, but the top of the stack is a number")
+            raise HaltError(
+                "'!' runs a lambda, but the top of the stack is a number",
+                hint="push a lambda before invoking this operation",
+            )
         return (rest, variables, (*frames, _Frame(body.start, body.end))), None
     if char == "?":
         body, rest = _pop(stack)
         flag, rest = _pop(rest)
         if not isinstance(body, _Lambda):
-            raise HaltError("'?' runs a lambda, but the top of the stack is a number")
+            raise HaltError(
+                "'?' runs a lambda, but the top of the stack is a number",
+                hint="push a lambda before invoking this operation",
+            )
         if _number(flag, "'?'"):
             return (rest, variables, (*frames, _Frame(body.start, body.end))), None
         return (rest, variables, frames), None
@@ -352,7 +374,10 @@ def _advance(
         body, rest = _pop(stack)
         cond, rest = _pop(rest)
         if not isinstance(body, _Lambda) or not isinstance(cond, _Lambda):
-            raise HaltError("'#' drives two lambdas, and one of these is a number")
+            raise HaltError(
+                "'#' drives two lambdas, and one of these is a number",
+                hint="push two lambdas for the loop condition and body",
+            )
         loop = _Loop(cond.start, cond.end, cond, body)
         return (rest, variables, (*frames, loop)), None
     if char == ".":

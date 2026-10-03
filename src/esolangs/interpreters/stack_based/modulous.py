@@ -42,7 +42,7 @@ from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.randomness import Randomness, draw
-from esolangs.interpreters.source_hints import syntax_error
+from esolangs.interpreters.source_hints import keyword_hint, syntax_error
 
 #: A command is a bracketed group, which may hold one quoted string.
 _TOKEN = re.compile(r'\[([^\[\]\"]*("[^"]*")?)]')
@@ -343,7 +343,10 @@ def _print_value(
 def _top(stk: tuple[int, ...]) -> int:
     """Return the top of the stack, halting on an empty stack."""
     if not stk:
-        raise HaltError("the stack is empty, so there is no top value to read")
+        raise HaltError(
+            "the stack is empty, so there is no top value to read",
+            hint="push a value before reading or removing the stack top",
+        )
     return stk[-1]
 
 
@@ -364,7 +367,12 @@ def _named(var: Mapping[str, int], name: str) -> int:
     """Return the value of ``name``, halting when it is not a variable."""
     if name not in var:
         known = ", ".join(sorted(var)) or "none are defined yet"
-        raise HaltError(f"{name} is not a defined variable ({known})")
+        raise HaltError(
+            f"{name} is not a defined variable ({known})",
+            hint=keyword_hint(
+                name, var, "define the variable before reading it; check its spelling"
+            ),
+        )
     return var[name]
 
 
@@ -448,7 +456,10 @@ def _swp(core: _Core, _mod: str, _arg: list[str], _value: str | int | None) -> _
     stk, var, ind = core
     if len(stk) < 2:
         were = "is 1" if len(stk) == 1 else f"are {len(stk)}"
-        raise HaltError(f"SWP needs two values on the stack and there {were}")
+        raise HaltError(
+            f"SWP needs two values on the stack and there {were}",
+            hint="push two values before SWP",
+        )
     return ((*stk[:-2], stk[-1], stk[-2]), var, ind)
 
 
@@ -493,7 +504,10 @@ def _rnd(core: _Core, _mod: str, arg: list[str], value: str | int | None) -> _Co
     stk, var, ind = core
     n = int(_operand(arg, 1))
     if n < 1:
-        raise HaltError(f"RND needs an upper bound of at least 1, got {n}")
+        raise HaltError(
+            f"RND needs an upper bound of at least 1, got {n}",
+            hint="give RND an upper bound of at least 1",
+        )
     return ((*stk, int(value) if value is not None else 0), var, ind)
 
 

@@ -443,7 +443,10 @@ def _lookup(frame: _Frame | None, name: str, globals_: dict[str, _Function]) -> 
         return name
     if name in globals_:
         return globals_[name]
-    raise HaltError(f"undeclared identifier {name!r}")
+    raise HaltError(
+        f"undeclared identifier {name!r}",
+        hint="declare the identifier before using it; check its spelling",
+    )
 
 
 def _eval(
@@ -459,7 +462,7 @@ def _eval(
         value = _eval(node[1], frame, globals_, reader, depth)
         if value in (0, 1):
             return 1 - value
-        raise HaltError("! needs a bit")
+        raise HaltError("! needs a bit", hint="use 0 or 1 as the operand")
     if node[0] == "var":
         return _lookup(frame, node[1], globals_)
     if node[0] == "fnlit":
@@ -477,7 +480,10 @@ def _bound(value: object, which: str) -> int:
     otherwise raise Python's own TypeError instead of halting.
     """
     if isinstance(value, bool) or not isinstance(value, int):
-        raise HaltError(f"for {which} bound must be a number, got {value!r}")
+        raise HaltError(
+            f"for {which} bound must be a number, got {value!r}",
+            hint="use numeric values for both loop bounds",
+        )
     return value
 
 
@@ -505,7 +511,10 @@ def _call(
         # ``("in", "out")`` test in ``_value`` -- so the remaining one is
         # ``out`` and needs no test of its own.
         if len(args) != 8:
-            raise HaltError("out needs exactly 8 bit arguments")
+            raise HaltError(
+                "out needs exactly 8 bit arguments",
+                hint="give out eight arguments, each equal to 0 or 1",
+            )
         byte = 0
         for bit in args:
             # Same rule as ``!`` above: a bit is 0 or 1, and anything
@@ -515,10 +524,15 @@ def _call(
             elif bit == 1:
                 byte = byte * 2 + 1
             else:
-                raise HaltError("out needs bit arguments")
+                raise HaltError(
+                    "out needs bit arguments", hint="give out arguments equal to 0 or 1"
+                )
         reader.io.print_char(chr(byte))
         return 0
-    raise HaltError("called value is not a function")
+    raise HaltError(
+        "called value is not a function",
+        hint="call a function value rather than a scalar or list",
+    )
 
 
 def _run(
@@ -848,7 +862,8 @@ class _Machine:
             self._step_once()
         except RecursionError:
             raise HaltError(
-                "expression-position recursion exceeded the host's depth limit"
+                "expression-position recursion exceeded the host's depth limit",
+                hint="reduce expression-position recursion depth",
             ) from None
 
     def _step_once(self) -> None:

@@ -187,17 +187,24 @@ class _Machine:
         char = self.code[ind]
         if len(stack) < _needs(char):
             raise HaltError(
-                "empty stack" if _needs(char) == 1 else "swap needs two elements"
+                "empty stack" if _needs(char) == 1 else "swap needs two elements",
+                hint=f"push {_needs(char)} values before {char!r}",
             )
         if char == "<" and not jumps:
-            raise HaltError("unmatched <")
+            raise HaltError(
+                "unmatched <",
+                hint="pair each loop or group opener with its corresponding closer",
+            )
         target = None
         byte = None
         if char == ">" and acc in (0, 1):
             target = _forward(self.code, ind)
             if target is None:
                 self.state = (self.size, acc, stack, jumps)
-                raise HaltError("unmatched >")
+                raise HaltError(
+                    "unmatched >",
+                    hint="pair each loop or group opener with its corresponding closer",
+                )
         elif char == "o":
             value = stack[-1]
             codepoint = value & 0xFFFFFFFF

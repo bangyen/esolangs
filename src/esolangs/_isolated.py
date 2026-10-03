@@ -40,7 +40,8 @@ def _decode(text: str, *, expired: bool) -> str:
         raise error
     if result is None:
         error = exceptions.InterpreterLimitError(
-            "isolated interpreter exited without a result"
+            "isolated interpreter exited without a result",
+            hint="check the worker exit status and available system resources",
         )
         error.partial_output = partial
         raise error
@@ -52,8 +53,8 @@ def _decode(text: str, *, expired: bool) -> str:
             args = [args[0], tuple(args[1])]
         error = cls(*args)
         error.partial_output = partial
-        for note in result.get("notes", []):
-            error.add_note(note)
+        if "notes" in result:
+            error.__notes__ = list(result["notes"])
         raise error
     return cast("str", result["result"])
 
@@ -265,7 +266,10 @@ def _worker() -> None:
             for at in range(0, len(accepted), 4096):
                 send({"output": accepted[at : at + 4096]})
             if len(accepted) != len(text):
-                raise exceptions.InterpreterLimitError("isolated output limit exceeded")
+                raise exceptions.InterpreterLimitError(
+                    "isolated output limit exceeded",
+                    hint="reduce output or raise max_output if the output is needed",
+                )
 
     vars(esolangs)["ScriptedIO"] = StreamingIO
     request = json.load(sys.stdin)

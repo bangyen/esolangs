@@ -563,7 +563,9 @@ class _Machine:
             try:
                 self.io.print_char(chr(self._cell()))
             except ValueError:
-                raise HaltError from None
+                raise HaltError(
+                    hint="keep character output values between 0 and 1114111"
+                ) from None
         elif op == "TURN":
             # The U-turn ends in the lane now on the right; turning in
             # place leaves the car in the oncoming lane, where the hug's
@@ -575,7 +577,8 @@ class _Machine:
                 raise HaltError(
                     f"a U-turn at {arrival_cell} has nowhere to end: the "
                     f"street has no opposite lane, which is narrower than "
-                    f"the spec allows"
+                    f"the spec allows",
+                    hint="widen the street so a U-turn has an opposite lane",
                 )
             self._state = turned
             return

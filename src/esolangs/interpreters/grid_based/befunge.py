@@ -90,7 +90,10 @@ def _advance(
         elif command == "/":
             if not a:
                 if number_input is None:
-                    raise HaltError("'/' divides by zero and needs a result")
+                    raise HaltError(
+                        "'/' divides by zero and needs a result",
+                        hint="ensure the divisor is nonzero before dividing",
+                    )
                 stack = (*stack, number_input)
             else:
                 quotient = abs(b) // abs(a)
@@ -98,7 +101,10 @@ def _advance(
         else:
             if not a:
                 if number_input is None:
-                    raise HaltError("'%' divides by zero and needs a result")
+                    raise HaltError(
+                        "'%' divides by zero and needs a result",
+                        hint="ensure the divisor is nonzero before dividing",
+                    )
                 stack = (*stack, number_input)
             else:
                 quotient = abs(b) // abs(a)
@@ -122,7 +128,10 @@ def _advance(
         dx, dy = 0, 1
     elif command == "?":
         if random_dir is None:
-            raise HaltError("'?' needs a random draw and none was supplied")
+            raise HaltError(
+                "'?' needs a random draw and none was supplied",
+                hint="supply a randomness source for this operation",
+            )
         dx, dy = _DIRECTIONS[random_dir]
     elif command == "_":
         a, stack = _pop(stack)
@@ -164,11 +173,17 @@ def _advance(
             grid = tuple(rows)
     elif command == "&":
         if number_input is None:
-            raise HaltError("'&' reads a number and there is no input left")
+            raise HaltError(
+                "'&' reads a number and there is no input left",
+                hint="supply another input value or stop reading at end of input",
+            )
         stack = _push(stack, number_input)
     elif command == "~":
         if char_input is None:
-            raise HaltError("'~' reads a character and there is no input left")
+            raise HaltError(
+                "'~' reads a character and there is no input left",
+                hint="supply another input value or stop reading at end of input",
+            )
         stack = _push(stack, char_input)
     elif command == "@":
         done = True

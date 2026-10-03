@@ -104,7 +104,9 @@ def _as_num(value: _Value) -> int:
         return value
     if isinstance(value, str):
         return ord((value or "\0")[0])
-    raise HaltError("math on a function is undefined")
+    raise HaltError(
+        "math on a function is undefined", hint="use numeric operands for arithmetic"
+    )
 
 
 def _truthy(value: _Value) -> bool:
@@ -157,7 +159,10 @@ def _pop(view: _StackView, pops: int) -> tuple[int, _Value]:
     Sound only because every command pops before it pushes.
     """
     if pops >= len(view):
-        raise HaltError("popped an empty stack")
+        raise HaltError(
+            "popped an empty stack",
+            hint="push a value before reading or removing the stack top",
+        )
     return pops + 1, view[-1 - pops]
 
 
@@ -236,7 +241,9 @@ def _advance(
         pops, a = _pop(view, pops)
         pops, b = _pop(view, pops)
         if _as_num(b) == 0:
-            raise HaltError("division by zero")
+            raise HaltError(
+                "division by zero", hint="ensure the divisor is nonzero before dividing"
+            )
         pushes = (_as_num(a) // _as_num(b),)
     elif c == "S":
         pops, b = _pop(view, pops)
@@ -246,14 +253,23 @@ def _advance(
         pops, name = _pop(view, pops)
         pops, value = _pop(view, pops)
         if isinstance(name, tuple):
-            raise HaltError("a function cannot name a variable")
+            raise HaltError(
+                "a function cannot name a variable",
+                hint="use a string or numeric name for the variable",
+            )
         variables = {**variables, name: value}
     elif c == "D":
         pops, name = _pop(view, pops)
         if isinstance(name, tuple):
-            raise HaltError("a function cannot name a variable")
+            raise HaltError(
+                "a function cannot name a variable",
+                hint="use a string or numeric name for the variable",
+            )
         if name not in variables:
-            raise HaltError(f"undeclared variable {name!r}")
+            raise HaltError(
+                f"undeclared variable {name!r}",
+                hint="declare the variable before reading it; check its spelling",
+            )
         pushes = (variables[name],)
     elif c in _OPENS:
         mode, buf = _OPENS[c], ()
@@ -261,7 +277,10 @@ def _advance(
         pops, value = _pop(view, pops)
         raw = value[1] if isinstance(value, tuple) and value[0] == _FUNC else value
         if not isinstance(raw, str):
-            raise HaltError("G needs a string or a function")
+            raise HaltError(
+                "G needs a string or a function",
+                hint="pass G a string or a function value",
+            )
         body = raw
     elif c == "I":
         pops, value = _pop(view, pops)
@@ -319,7 +338,10 @@ def _advance(
     elif c == "Y":
         pops, value = _pop(view, pops)
         if isinstance(value, tuple):
-            raise HaltError("Y cannot output a function")
+            raise HaltError(
+                "Y cannot output a function",
+                hint="use a whole-number character code between 0 and 1114111",
+            )
         output = value
     elif c == "Z":
         pops, value = _pop(view, pops)

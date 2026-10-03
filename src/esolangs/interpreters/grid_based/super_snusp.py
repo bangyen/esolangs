@@ -45,7 +45,8 @@ def _floor_root(value: int, degree: int) -> int:
         raise HaltError(
             f"';' takes the {degree}-th root of {value}, which has no integer "
             f"value: the degree must be positive, and an even root needs a "
-            f"non-negative value"
+            f"non-negative value",
+            hint="use positive root degrees; even degrees need nonnegative radicands",
         )
     if value < 0:
         positive = _floor_root(-value, degree)
@@ -79,7 +80,10 @@ def _write(
 
 def _top(values: tuple[int, ...]) -> int:
     if not values:
-        raise HaltError("the value stack is empty, so there is no top to read")
+        raise HaltError(
+            "the value stack is empty, so there is no top to read",
+            hint="push a value before reading or removing the stack top",
+        )
     return values[-1]
 
 
@@ -112,7 +116,10 @@ def _advance(
         elif command == "%":
             divisor = _top(values)
             if not divisor:
-                raise HaltError("'%' takes the remainder by the stacked 0")
+                raise HaltError(
+                    "'%' takes the remainder by the stacked 0",
+                    hint="push a nonzero divisor before taking a remainder",
+                )
             rem = abs(value) % abs(divisor)
             cells = _write(cells, pointer, -rem if value < 0 else rem)
         elif command in "&*+-:;[]^|":
@@ -127,17 +134,26 @@ def _advance(
                 value -= operand
             elif command == ":":
                 if not operand:
-                    raise HaltError(f"':' divides {value} by zero")
+                    raise HaltError(
+                        f"':' divides {value} by zero",
+                        hint="ensure the divisor is nonzero before dividing",
+                    )
                 value //= operand
             elif command == ";":
                 value = _floor_root(value, operand)
             elif command == "[":
                 if operand < 0:
-                    raise HaltError(f"'[' shifts left by {operand}, which is negative")
+                    raise HaltError(
+                        f"'[' shifts left by {operand}, which is negative",
+                        hint="use a nonnegative shift count",
+                    )
                 value <<= operand
             elif command == "]":
                 if operand < 0:
-                    raise HaltError(f"']' shifts right by {operand}, which is negative")
+                    raise HaltError(
+                        f"']' shifts right by {operand}, which is negative",
+                        hint="use a nonnegative shift count",
+                    )
                 value >>= operand
             elif command == "^":
                 value ^= operand
@@ -146,13 +162,18 @@ def _advance(
             cells = _write(cells, pointer, value)
         elif command == ",":
             if char_input is None:
-                raise HaltError("',' reads a character and there is no input left")
+                raise HaltError(
+                    "',' reads a character and there is no input left",
+                    hint="supply another input value or stop reading at end of input",
+                )
             cells = _write(cells, pointer, char_input)
         elif command == ".":
             try:
                 chr(value)
             except ValueError:
-                raise HaltError from None
+                raise HaltError(
+                    hint="keep character output values between 0 and 1114111"
+                ) from None
             effect = ("char", value)
         elif command == "/":
             heading = _RULD[heading]
@@ -161,12 +182,16 @@ def _advance(
         elif command == "=":
             other = _top(values)
             if random_offset is None:
-                raise HaltError("'=' needs a random draw and none was supplied")
+                raise HaltError(
+                    "'=' needs a random draw and none was supplied",
+                    hint="supply a randomness source for this operation",
+                )
             low, high = sorted((value, other))
             if not 0 <= random_offset <= high - low:
                 raise HaltError(
                     f"'=' was given the draw {random_offset}, outside the "
-                    f"0..{high - low} its range {low}..{high} allows"
+                    f"0..{high - low} its range {low}..{high} allows",
+                    hint="supply a random draw within the stated range",
                 )
             cells = _write(cells, pointer, low + random_offset)
             values = values[:-1]
@@ -182,7 +207,10 @@ def _advance(
             steps = 2 if value == 0 else 1
         elif command == "@":
             if number_input is None:
-                raise HaltError("'@' reads a number and there is no input left")
+                raise HaltError(
+                    "'@' reads a number and there is no input left",
+                    hint="supply another input value or stop reading at end of input",
+                )
             cells = _write(cells, pointer, number_input)
         elif command == "_":
             cells = _write(cells, pointer, -value)

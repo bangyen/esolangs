@@ -430,7 +430,7 @@ def _truth(value: _Value) -> bool:
         return True
     if value == "right":
         return False
-    raise HaltError(f"guard is not a boolean: {value!r}")
+    raise Hint.BOOLEAN_GUARD.halt(f"guard is not a boolean: {value!r}")
 
 
 def _boolean(flag: bool) -> _Special:  # noqa: FBT001 - a conversion, not a mode
@@ -481,7 +481,7 @@ def _arith(op: str, left: _Value, right: _Value) -> _Value:
     """
     if isinstance(left, list) and isinstance(right, list):
         if op != "+":
-            raise HaltError(f"cannot apply {op!r} to two lists")
+            raise Hint.OPERAND_TYPES.halt(f"cannot apply {op!r} to two lists")
         return [*left, *right]
     if isinstance(left, list):
         return _repeat(op, left, right)
@@ -490,7 +490,7 @@ def _arith(op: str, left: _Value, right: _Value) -> _Value:
         # ``"ab" * 3`` are the same list.
         return _repeat(op, right, left)
     if not (_is_num(left) and _is_num(right)):
-        raise HaltError(f"cannot apply {op!r} to {left!r} and {right!r}")
+        raise Hint.OPERAND_TYPES.halt(f"cannot apply {op!r} to {left!r} and {right!r}")
     if op == "+":
         return left + right
     if op == "-":
@@ -498,16 +498,18 @@ def _arith(op: str, left: _Value, right: _Value) -> _Value:
     if op == "*":
         return left * right
     if right == 0:
-        raise HaltError("division by zero")
+        raise Hint.DIVISOR.halt("division by zero")
     return left / right
 
 
 def _repeat(op: str, seq: list[_Value], count: _Value) -> _Value:
     """Repeat a list by a count, the only list-and-number operation there is."""
     if op != "*" or not _is_num(count):
-        raise HaltError(f"cannot apply {op!r} to a list and {count!r}")
+        raise Hint.OPERAND_TYPES.halt(f"cannot apply {op!r} to a list and {count!r}")
     if count != int(count) or count < 0:
-        raise HaltError(f"list repeat count is not a whole number: {count!r}")
+        raise Hint.REPEAT_COUNT.halt(
+            f"list repeat count is not a whole number: {count!r}"
+        )
     return seq * int(count)
 
 
@@ -529,10 +531,10 @@ def _index(value: _Value) -> int:
     rather than an inline ``int(i)``.
     """
     if not _is_num(value):
-        raise HaltError(f"list index is not a number: {value!r}")
+        raise Hint.NUMERIC_INDEX.halt(f"list index is not a number: {value!r}")
     slot = value - 0.5
     if slot != int(slot) or slot < 0:
-        raise HaltError(f"list index is not 0.5 + k: {value!r}")
+        raise Hint.INDEX_FORM.halt(f"list index is not 0.5 + k: {value!r}")
     return int(slot)
 
 
@@ -775,7 +777,7 @@ class _Machine:
         self.walker.returned = None
         self.row, self.col, self.heading = row + drow, col + dcol, heading
         if not self._in_bounds(self.row, self.col):
-            raise HaltError("walked off the grid")
+            raise Hint.GRID_PATH.halt("walked off the grid")
 
     def _finish(self, text: str) -> None:
         """Run an ``end``: halt the program, or return from a call."""
@@ -817,7 +819,9 @@ class _Machine:
         if word == "var":
             name = self._name(text)
             if name in self.vars:
-                raise HaltError(f"variable {name!r} already exists")
+                raise Hint.VARIABLE_DECLARATION.halt(
+                    f"variable {name!r} already exists"
+                )
             self.vars[name] = "nil"
             return
         if word == "set":
@@ -826,7 +830,7 @@ class _Machine:
             name = p.word()
             self._check_name(name)
             if name not in self.vars:
-                raise HaltError(f"no such variable: {name!r}")
+                raise Hint.VARIABLE_REFERENCE.halt(f"no such variable: {name!r}")
             expr = _parse_expr(p)
             if not p.at_end():
                 raise Hint.ASSIGNMENT.error(f"trailing text in set: {text!r}")
@@ -888,7 +892,7 @@ class _Machine:
     def _existing(self, text: str) -> str:
         name = self._name(text)
         if name not in self.vars:
-            raise HaltError(f"no such variable: {name!r}")
+            raise Hint.VARIABLE_REFERENCE.halt(f"no such variable: {name!r}")
         return name
 
     def _read(self) -> _Value:
@@ -901,9 +905,9 @@ class _Machine:
 
     def _write(self, value: _Value) -> None:
         if not _is_num(value):
-            raise HaltError(f"cannot output {value!r} as a character")
+            raise Hint.CHARACTER_OUTPUT.halt(f"cannot output {value!r} as a character")
         if value != int(value) or not 0 <= value < 0x110000:
-            raise HaltError(f"not a character code: {value!r}")
+            raise Hint.CHARACTER_OUTPUT.halt(f"not a character code: {value!r}")
         self.io.print_char(chr(int(value)))
 
     def _eval(self, expr: _Expr) -> _Value:
@@ -926,7 +930,7 @@ class _Machine:
         if tag == "var":
             name = cast(str, expr[1])
             if name not in self.vars:
-                raise HaltError(f"no such variable: {name!r}")
+                raise Hint.VARIABLE_REFERENCE.halt(f"no such variable: {name!r}")
             return self.vars[name]
         if tag == "list":
             return [self._eval(e) for e in cast(list[_Expr], expr[1])]
@@ -967,10 +971,10 @@ class _Machine:
         """
         found = _find_func(self.grid, name)
         if found is None:
-            raise HaltError(f"no such function: {name!r}")
+            raise Hint.FUNCTION_REFERENCE.halt(f"no such function: {name!r}")
         row, col, heading, params = found
         if len(params) != len(args):
-            raise HaltError(
+            raise Hint.CALL_ARITY.halt(
                 f"function {name!r} takes {len(params)} arguments, got {len(args)}"
             )
         self.walkers.append(
@@ -998,22 +1002,24 @@ def _builtin(name: str, args: list[_Value]) -> _Value:
     """Apply one of the four builtin functions."""
     if name in ("trunc", "sign"):
         if len(args) != 1 or not _is_num(args[0]):
-            raise HaltError(f"{name} takes one number")
+            raise Hint.BUILTIN_NUMBER.halt(f"{name} takes one number")
         value = args[0]
         if name == "trunc":
             return float(int(value))
         return float((value > 0) - (value < 0))
     if len(args) < 1 or not isinstance(args[0], list):
-        raise HaltError(f"{name} takes a list")
+        raise Hint.BUILTIN_LIST.halt(f"{name} takes a list")
     seq = args[0]
     if name == "len":
         if len(args) == 1:
             return float(len(seq))
         if len(args) != 2 or not _is_num(args[1]):
-            raise HaltError("len takes a list and optionally a count")
+            raise Hint.LEN_ARGUMENTS.halt("len takes a list and optionally a count")
         count = args[1]
         if count != int(count) or count < 0:
-            raise HaltError(f"len pad count is not a whole number: {count!r}")
+            raise Hint.PADDING_COUNT.halt(
+                f"len pad count is not a whole number: {count!r}"
+            )
         padding: list[_Value] = ["nil"] * int(count)
         return [*seq, *padding]
     if len(args) == 2:
@@ -1022,12 +1028,16 @@ def _builtin(name: str, args: list[_Value]) -> _Value:
         slot = _index(args[1])
         return seq[slot] if slot < len(seq) else "nil"
     if len(args) != 3:
-        raise HaltError("at takes a list, an index, and optionally a value")
+        raise Hint.AT_ARGUMENTS.halt(
+            "at takes a list, an index, and optionally a value"
+        )
     slot = _index(args[1])
     if slot >= len(seq):
-        raise HaltError(f"at index {args[1]!r} past the end of a {len(seq)}-list")
+        raise Hint.INDEXED_WRITE.halt(
+            f"at index {args[1]!r} past the end of a {len(seq)}-list"
+        )
     if seq and isinstance(seq[0], list) != isinstance(args[2], list):
-        raise HaltError("at would put the wrong type of value in a list")
+        raise Hint.ELEMENT_TYPE.halt("at would put the wrong type of value in a list")
     # Sets in place, against the prose's "returns a copy" -- see the module
     # docstring.  The reversed-cat example's bare ``at{l, len{l}-0.5, c};``
     # command is a pure no-op under copy semantics, which leaves ``l`` all

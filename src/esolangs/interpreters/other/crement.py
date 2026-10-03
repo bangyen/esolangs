@@ -151,20 +151,29 @@ def _advance(state: _State) -> _State:
     if state.ip >= len(state.program):
         return state
     if state.ip < 0:
-        raise HaltError(f"Crement executed negative address {state.ip}")
+        raise HaltError(
+            f"Crement executed negative address {state.ip}",
+            hint="keep executed, jump and write addresses nonnegative",
+        )
 
     instruction = state.program[state.ip]
     if instruction.opcode == "J":
         condition = instruction.data * instruction.polarity > 0
         target = instruction.address if condition else state.ip + 1
         if target < 0:
-            raise HaltError(f"Crement jumped to negative address {target}")
+            raise HaltError(
+                f"Crement jumped to negative address {target}",
+                hint="keep executed, jump and write addresses nonnegative",
+            )
         return _State(target, state.program)
 
     target = instruction.address
     program = state.program
     if target < 0:
-        raise HaltError(f"Crement wrote to negative address {target}")
+        raise HaltError(
+            f"Crement wrote to negative address {target}",
+            hint="keep executed, jump and write addresses nonnegative",
+        )
     if target < len(program):
         value = instruction.data + instruction.polarity
         changed = replace(

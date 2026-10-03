@@ -168,10 +168,14 @@ class _Machine:
         if _needs_operand(char) and not stk:
             raise HaltError(
                 f"{char!r} at position {ind} needs a value on the stack and "
-                f"the stack is empty"
+                f"the stack is empty",
+                hint="push a value before reading or removing the stack top",
             )
         if char == "]" and not lst:
-            raise HaltError(f"']' at position {ind} closes a loop that never opened")
+            raise HaltError(
+                f"']' at position {ind} closes a loop that never opened",
+                hint="add the matching loop opener before this closing instruction",
+            )
         if char == "[" and not stk[-1] and self._jumps[ind] is None:
             # The original scanned the cursor to the end before it noticed
             # the bracket was unmatched, leaving the machine halted.  A
