@@ -29,7 +29,7 @@ _FLIPPED = "^'0=_"
 def false(truth_table: str, width: int | None = None) -> str:
     """Return a FALSE program computing ``truth_table``.
 
-    Reads ``n`` lines, one ``0``/``1`` per input in table order, and prints
+    Reads ``n`` characters, one ``0``/``1`` per input in table order, and prints
     the answer digit.
     """
     n = _validate_truth_table(truth_table)
