@@ -82,7 +82,11 @@ def parse(code: str) -> list[int]:
             ind += 1
         elif code[ind] == "o":
             digits = code[ind + 1 : ind + 4]
-            if len(digits) != 3 or any(d not in "01234567" for d in digits):
+            if (
+                len(digits) != 3
+                or any(d not in "01234567" for d in digits)
+                or int(digits, 8) > 255
+            ):
                 raise syntax_error(
                     "invalid Circlefuck escape",
                     "give \\o exactly three octal digits, for example \\o101",
@@ -100,9 +104,9 @@ def parse(code: str) -> list[int]:
                 )
             cells.append(int(digits, 16))
             ind += 3
-        elif code[ind].isdigit():
+        elif code[ind] in "0123456789":
             digits = code[ind : ind + 3]
-            if len(digits) == 3 and digits.isdigit():
+            if len(digits) == 3 and all(d in "0123456789" for d in digits):
                 if int(digits) > 255:
                     raise syntax_error(
                         "invalid Circlefuck escape",
