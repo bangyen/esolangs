@@ -11,6 +11,7 @@ class Observation:
     ip: int
     consumed: int
     halted: bool
+    internal: tuple[int, ...] | None = None
 
 
 @dataclass(frozen=True)
@@ -73,9 +74,26 @@ def boolfuck(code: str, stdin: str, cap: int) -> Observation:
     halted = pc == len(code)
     if halted and outgoing:
         output.append(chr(sum(b * 2**i for i, b in enumerate(outgoing))))
+        outgoing.clear()
     occupied = [at for at, value in cells.items() if value] + [0, ptr]
     memory = tuple(cells.get(at, 0) for at in range(min(occupied), max(occupied) + 1))
-    return Observation("".join(output), memory, pc, consumed, halted)
+    used_input = bit_at % 8
+    buffered = (
+        (ord(stdin[(bit_at - 1) // 8]) % 256)
+        if bit_at and (bit_at - 1) // 8 < len(stdin)
+        else 0
+    )
+    incoming = buffered >> (used_input or 8)
+    remaining = 8 - used_input if used_input else 0
+    internal = (
+        pc,
+        ptr,
+        incoming,
+        remaining,
+        sum(b * 2**i for i, b in enumerate(outgoing)),
+        len(outgoing),
+    )
+    return Observation("".join(output), memory, pc, consumed, halted, internal)
 
 
 def subleq(code: str, stdin: str, cap: int) -> Observation:

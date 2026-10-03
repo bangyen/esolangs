@@ -35,10 +35,14 @@ def observed(language, code, stdin, cap):
         machine.step()
     if machine.halted and getattr(machine, "dumps_on_the_post_halt_step", False):
         machine.step()
-    if language == "Cyclic tag":
-        assert machine.stack == []
+    assert machine.stack == []
     return Observation(
-        io.getvalue(), tuple(machine.memory), machine.ip, io.position(), machine.halted
+        io.getvalue(),
+        tuple(machine.memory),
+        machine.ip,
+        io.position(),
+        machine.halted,
+        machine.state if language == "Boolfuck" else None,
     )
 
 
@@ -86,6 +90,10 @@ def subleq_corpus():
         "12 13 6 12 -1 9 13 -1 9 12 12 -1 3 2",
         "12 13 6 12 -1 9 13 -1 9 12 12 -1 1 2",
         "0 0 0",
+        "9 -1 3 10 -1 6 0 0 -1 72 105",
+        "-1 9 3 9 -1 6 0 0 -1 0",
+        "10 10 -1",
+        "0 0",
     ]
     rng = random.Random(1702)
     for _ in range(96):
@@ -231,12 +239,12 @@ def test_generated_programs_execute_in_independent_interpreters(language, table)
         result = ORACLES[language](source, stdin, 100_000)
         assert result.halted, (language, table, row)
         assert result.output == expected, (language, table, row)
-        if language == "Cyclic tag":
-            io = ScriptedIO("unused")
+        if language in {"Cyclic tag", "Boolfuck", "Subleq"}:
+            io = ScriptedIO(stdin)
             module = importlib.import_module(INTERPRETERS[language])
             module.run(source, io)
             assert io.getvalue() == expected
-            assert io.position() == 0
+            assert io.position() == len(stdin)
 
 
 @pytest.mark.parametrize("cap", [0, 1, 2, 17, 200])
@@ -303,3 +311,86 @@ def test_cyclic_tag_run_matches_reference_controls(source):
     module.run(source, io)
     assert io.getvalue() == result.output
     assert io.position() == 0
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("language", ["Boolfuck", "Subleq"])
+@pytest.mark.parametrize("batch", range(16))
+def test_remaining_three_input_tables_in_independent_engines(language, batch):
+    module = importlib.import_module(INTERPRETERS[language])
+    for value in range(batch * 16, (batch + 1) * 16):
+        table = format(value, "08b")
+        source = esolangs.generate(language, table)
+        for row, answer in enumerate(table):
+            bits = [int(bit) for bit in format(row, "03b")]
+            stdin = esolangs.encode_inputs(language, bits, table)
+            result = ORACLES[language](source, stdin, 100_000)
+            assert result.halted, (language, table, row)
+            assert result.output == answer, (language, table, row)
+            assert observed(language, source, stdin, 100_000) == result, (
+                language,
+                table,
+                row,
+            )
+            io = ScriptedIO(stdin)
+            module.run(source, io)
+            assert io.getvalue() == answer
+            assert io.position() == len(stdin)
+
+
+@pytest.mark.parametrize(
+    ("code", "stdin", "output"),
+    [
+        ("+;", "", "\x01"),
+        ("<+;>;<;", "", "\x05"),
+        (",;" * 8, "A", "A"),
+        (",;" * 8, "", "\0"),
+        ("+[,];", "", "\0"),
+        ("ignored text", "", ""),
+    ],
+)
+def test_boolfuck_run_matches_reference_controls(code, stdin, output):
+    result = boolfuck(code, stdin, 200)
+    assert result.halted
+    assert result.output == output
+    assert observed("Boolfuck", code, stdin, 200) == result
+    io = ScriptedIO(stdin)
+    module = importlib.import_module(INTERPRETERS["Boolfuck"])
+    module.run(code, io)
+    assert io.getvalue() == output
+    assert io.position() == result.consumed
+
+
+def test_boolfuck_snapshot_distinguishes_tape_at_equal_control_state():
+    module = importlib.import_module(INTERPRETERS["Boolfuck"])
+    machine = module._Machine("+[+]", ScriptedIO())  # noqa: SLF001
+    machine.step()
+    before = machine.snapshot()
+    state = machine.state
+    for _ in range(3):
+        machine.step()
+    assert machine.state == state
+    assert machine.ones == set()
+    assert machine.snapshot() != before
+
+
+def test_subleq_snapshot_distinguishes_memory_at_equal_instruction_pointer():
+    module = importlib.import_module(INTERPRETERS["Subleq"])
+    machine = module._Machine("9 10 0 0 0 -1 0 0 0 1 0", ScriptedIO())  # noqa: SLF001
+    before = machine.snapshot()
+    machine.step()
+    assert machine.pc == 0
+    assert machine.memory[-1] == -1
+    assert machine.snapshot() != before
+
+
+def test_subleq_snapshot_distinguishes_consumed_input_at_equal_memory_and_pointer():
+    module = importlib.import_module(INTERPRETERS["Subleq"])
+    machine = module._Machine("-1 9 3 9 9 0 0 0 -1 0", ScriptedIO("A"))  # noqa: SLF001
+    before = machine.snapshot()
+    state = machine.pc, machine.memory
+    machine.step()
+    machine.step()
+    assert (machine.pc, machine.memory) == state
+    assert machine.io.position() == 1
+    assert machine.snapshot() != before
