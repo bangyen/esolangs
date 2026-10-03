@@ -345,7 +345,15 @@ languages remain rejected from the same image-source screen.
 - SLOW ACV MAMMALIAN rejects unknown words; commands are uppercase and
   whitespace-delimited. The Hello World fixture omits prose annotations.
 - Jaune dispatch to an undefined marker is unspecified.
-- Alight expressions are infix and left-to-right; three-argument `at` mutates.
+- Alight retains infix, left-to-right expressions for compatibility with
+  existing programs and generators, despite the explicit postfix rule.
+  Three-argument `at` returns a copy; the wiki reversed cat discards it.
+- CV(N)(C) accepts ASCII `g` as an alias for `ɡ` to run the wiki greeting.
+  CV(N)(C), Grapheme and NoComment discard LF to run line-wrapped generated
+  programs; these are source-rule deviations, not specification gaps.
+- Grapheme shifts integer digits only between letters for compatibility with
+  existing programs and generators. The prose's final multiplication is
+  omitted; the wiki truth machine prints 1 rather than 10.
 - Packlang literals are decimal; its cat cannot receive byte 10 under
   line-oriented input.
 - Pinyin is rejected: its spelling rule contradicts its examples and its

@@ -7,8 +7,8 @@ peeked stack top when the cell is nonzero, ``o`` prints.  Per the wiki, a
 non-command character is malformed (:class:`ValueError`) and popping or
 peeking an empty stack halts (:class:`~esolangs.exceptions.HaltError`).
 
-Repository deviation: loading removes LF before command indexing.
-Spaces, tabs and CR remain malformed.
+Repository deviation: loading removes LF before command indexing so
+line-wrapped generated programs run. Spaces, tabs and CR remain malformed.
 
 :func:`_advance` is a pure, total transition over an immutable ``_State``
 with no ``io`` argument; :class:`_Machine` is the shell that prints and

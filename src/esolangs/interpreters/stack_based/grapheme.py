@@ -5,9 +5,10 @@ strings and functions, with an untyped variable map.  ``E``/``F``/``H``
 toggle string/int/function mode, accumulating characters into a value
 pushed when the mode ends.
 
-Repository deviation: loading removes LF before validation, modes and indexing.
-Spaces, tabs and CR remain malformed. Integer conversion shifts between letters:
-the spec's truth-machine body ``FAFY`` prints 1, despite the prose ordering.
+Repository deviations: loading removes LF before validation, modes and indexing
+so line-wrapped generated programs run. Spaces, tabs and CR remain malformed.
+Integer conversion shifts between letters for existing programs and generators;
+the truth-machine body ``FAFY`` prints 1 rather than the prose rule's 10.
 
 Gaps decided: underflow, math or ``Y`` on a function, a negative ``N``
 integer (alphabet ``A``-``J``), a function as a variable name, an

@@ -23,10 +23,13 @@ floors; an invalid function is inert but division by zero raises
 :class:`~esolangs.exceptions.HaltError`, as does popping an empty deque;
 subtraction and ``s`` floor at zero; unbalanced loops, an empty program
 or an unsyllabifiable source raise :class:`ValueError`; ``s`` reads junk
-as zero, while EOF raises :class:`EOFError`; ASCII ``g`` folds to ``ɡ``
-because the wiki's example uses it.  Spec deviation: LF is discarded
-before tokenization, syllabification and character-offset calculation;
-spaces, tabs and CR remain invalid.
+as zero, while EOF raises :class:`EOFError`.
+
+Compatibility extensions: ASCII ``g`` folds to the command table's ``ɡ`` to
+accept the wiki's Hello, world! spelling. LF is discarded before tokenization,
+syllabification and character-offset calculation so line-wrapped generated
+programs run. These extend the IPA-source rule; spaces, tabs and CR remain
+invalid.
 """
 
 from __future__ import annotations

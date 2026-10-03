@@ -27,8 +27,9 @@ operation.
 
 * **Operator order.**  The prose says operators are postfix, but every
   example on the page is infix -- ``turn c = eof``, ``set x len{l}-0.5``,
-  ``skip sign{x} > 0``.  Examples are ground truth, so expressions parse as
-  infix applied strictly left to right with no precedence and no grouping:
+  ``skip sign{x} > 0``.  This repository retains infix syntax for existing
+  programs and generators as a spec deviation, applied strictly left to
+  right with no precedence and no grouping:
   ``a+b*c`` is ``(a+b)*c``.  Unary ``!`` appears in no example and is taken
   as prefix, the only reading that does not need an operand it lacks.
 * **Three-argument ``at`` returns a shallow copy**, per the explicit rule.
@@ -265,7 +266,7 @@ class _Parser:
 
     Infix, strictly left to right, no precedence: the examples are all
     infix (``len{l}-0.5``, ``sign{x} > 0``) though the prose says postfix,
-    and examples are ground truth.  So an expression is one operand
+    retained as a compatibility deviation. An expression is one operand
     followed by any number of ``<operator> <operand>`` pairs, each folded
     into the accumulated left-hand side as it is read.
     """
