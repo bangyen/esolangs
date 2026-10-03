@@ -71,9 +71,12 @@ HELP = {
     "suggest": """usage: esolangs suggest <language> <program-file>
 
 Preview command spelling corrections with 1-based line and column numbers.
-Currently supports Modulous: uppercase keywords and unique one-edit matches
-(insertion, deletion, substitution or adjacent swap). Ambiguous matches,
-operands, strings and variable arithmetic receive no proposed edit.
+Supports Modulous, Bitdeque and Packlang. Edits fix keyword case or a unique
+one-edit match (insertion, deletion, substitution or adjacent swap).
+Modulous and Bitdeque preview commands; Bitdeque skips GOTO targets.
+Packlang previews required package, datatype, Then and Do keywords. Variable
+and function names, comments and speculative declarations are untouched.
+Ambiguous matches and operands receive no proposed edit.
 
 The program is neither run nor modified. Apply chosen edits yourself, then
 run the program to check its behavior. No suggestions does not mean valid.

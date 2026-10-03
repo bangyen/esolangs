@@ -87,13 +87,13 @@ Further decisions for gaps the wiki leaves open:
   returns 0.
 """
 
-import re
 from collections.abc import Callable
 
 from esolangs._drive import drive
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.other._packlang_lex import _strip_comments, _tokenize
 from esolangs.interpreters.other._packlang_values import (
     _get,
     _int,
@@ -231,54 +231,6 @@ class _Frame:
         return (self.func.name, self.pc, self.store, self.result)
 
 
-def _strip_comments(code: str) -> str:
-    """Remove ``%$ ... %`` blocks and ``% ...`` line comments.
-
-    Block comments are taken first: ``%$`` opens one and the next bare
-    ``%`` closes it, so a line comment inside a block is part of the block.
-    Both are replaced by a space rather than deleted, so ``a%c%b`` cannot
-    fuse into one token.
-    """
-    out = []
-    i = 0
-    while i < len(code):
-        if code.startswith("%$", i):
-            end = code.find("%", i + 2)
-            i = len(code) if end < 0 else end + 1
-            out.append(" ")
-        elif code[i] == "%":
-            end = code.find("\n", i)
-            i = len(code) if end < 0 else end
-            out.append(" ")
-        else:
-            out.append(code[i])
-            i += 1
-    return "".join(out)
-
-
-_TOKEN = re.compile(r"[A-Za-z_][A-Za-z_0-9]*|\d+|[{}();:,^!]")
-
-
-def _tokenize(code: str) -> list[str]:
-    """Return the program's tokens, comments already stripped.
-
-    Any character the pattern does not match is not a Packlang token, so a
-    program containing one is malformed -- the fuzz suite's random input is
-    exactly that case, and it must raise rather than be silently skipped.
-    """
-    tokens = _TOKEN.findall(code)
-    if "".join(tokens) != "".join(code.split()):
-        raise syntax_error(
-            "program contains characters that are not Packlang tokens",
-            (
-                "use identifiers, decimal numbers and {}();:,^! "
-                "punctuation; place comments in the supported comment "
-                "syntax"
-            ),
-        )
-    return tokens
-
-
 class _Parser:
     """Recursive-descent parser producing flat statement lists.
 
@@ -313,6 +265,16 @@ class _Parser:
                     "are case-sensitive"
                 ),
             )
+
+    def package_kind(self) -> str:
+        """Read the required package declaration keyword."""
+        kind = self.next_token()
+        if kind not in ("Package", "Dependency"):
+            raise syntax_error(
+                f"expected a Package or Dependency, got {kind!r}",
+                "start the declaration with Package or Dependency",
+            )
+        return kind
 
     def parse_type(self) -> _Type:
         """Parse a datatype, including its parenthesized parameters."""
@@ -559,21 +521,20 @@ class _Program:
 def _parse(code: str) -> _Program:
     """Parse a whole program into its packages and functions."""
     tokens = _tokenize(_strip_comments(code))
-    if not tokens:
+    return _parse_packages(_Parser(tokens))
+
+
+def _parse_packages(parser: _Parser) -> _Program:
+    """Parse packages with the supplied token parser."""
+    if parser.peek() is None:
         raise syntax_error(
             "empty program",
             "provide a Package containing a parameterless entry function",
         )
-    parser = _Parser(tokens)
     program = _Program()
     order: list[str] = []
     while parser.peek() is not None:
-        kind = parser.next_token()
-        if kind not in ("Package", "Dependency"):
-            raise syntax_error(
-                f"expected a Package or Dependency, got {kind!r}",
-                "start the declaration with Package or Dependency",
-            )
+        parser.package_kind()
         deps = []
         if parser.peek() == ":":
             parser.next_token()

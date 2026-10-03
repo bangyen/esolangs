@@ -1,8 +1,10 @@
 """Preview spelling edits without executing or rewriting a program."""
 
 import re
+from collections.abc import Iterable
 from typing import NamedTuple, cast
 
+from esolangs._execution import interpreter_errors
 from esolangs.cli_args import _check_count, _errors, _fail, _split_positional
 from esolangs.cli_io import _read_program
 from esolangs.registry import LANGUAGES, resolve
@@ -38,6 +40,28 @@ def _one_edit(word: str, candidate: str) -> bool:
     )
 
 
+def _keyword_correction(
+    word: str,
+    start: int,
+    known: Iterable[str],
+    *,
+    case_reason: str = "keyword spelling is case-sensitive",
+) -> _Correction | None:
+    """Return one unique case or spelling edit from the supplied vocabulary."""
+    vocabulary = tuple(known)
+    if word in vocabulary:
+        return None
+    folded = word.casefold()
+    candidates = [name for name in vocabulary if name.casefold() == folded]
+    reason = case_reason
+    if not candidates:
+        candidates = [name for name in vocabulary if _one_edit(folded, name.casefold())]
+        reason = "one spelling edit from a unique command keyword"
+    if len(candidates) != 1:
+        return None
+    return _Correction(start, start + len(word), word, candidates[0], reason)
+
+
 def _modulous_corrections(source: str) -> tuple[_Correction, ...]:
     """Return unique one-edit command corrections in balanced Modulous source."""
     from esolangs.interpreters.stack_based.modulous import (
@@ -53,22 +77,96 @@ def _modulous_corrections(source: str) -> tuple[_Correction, ...]:
         if keyword is None:
             continue
         word = keyword.group(1)
-        if word in _DISPATCH:
-            continue
-        if word.upper() in _DISPATCH:
-            candidate = word.upper()
-            reason = "command keywords are uppercase"
-        else:
-            candidates = [name for name in _DISPATCH if _one_edit(word.upper(), name)]
-            if len(candidates) != 1:
-                continue
-            candidate = candidates[0]
-            reason = "one spelling edit from a unique command keyword"
         start = token.start(1) + keyword.start(1)
-        corrections.append(
-            _Correction(start, start + len(word), word, candidate, reason)
+        correction = _keyword_correction(
+            word, start, _DISPATCH, case_reason="command keywords are uppercase"
         )
+        if correction is not None:
+            corrections.append(correction)
     return tuple(corrections)
+
+
+def _bitdeque_corrections(source: str) -> tuple[_Correction, ...]:
+    """Return command edits, skipping the token consumed as each GOTO target."""
+    from esolangs.interpreters.queue_based.bitdeque import _COMMANDS
+
+    corrections = []
+    target = False
+    for token in re.finditer(r"\S+", source):
+        word = token.group()
+        if target:
+            target = False
+            continue
+        correction = None
+        if word.isalpha() and word.isascii():
+            correction = _keyword_correction(
+                word,
+                token.start(),
+                _COMMANDS,
+                case_reason="command keywords are uppercase",
+            )
+        if correction is not None:
+            corrections.append(correction)
+        target = (correction.after if correction is not None else word) == "GOTO"
+    return tuple(corrections)
+
+
+def _packlang_corrections(source: str) -> tuple[_Correction, ...]:
+    """Return edits only where Packlang's parser requires a keyword."""
+    from esolangs.interpreters.other._packlang_lex import (
+        _TOKEN,
+        _strip_comments,
+        _tokenize,
+    )
+    from esolangs.interpreters.other.packlang import (
+        _DATATYPES,
+        _parse_packages,
+        _Parser,
+        _Type,
+    )
+
+    masked = _strip_comments(source, preserve_positions=True)
+    tokens = _tokenize(masked)
+    positions = [match.start() for match in _TOKEN.finditer(masked)]
+    corrections: list[_Correction] = []
+
+    class PreviewParser(_Parser):
+        _speculating = False
+
+        def correct(self, vocabulary: Iterable[str]) -> None:
+            word = self.peek()
+            if word is None or self._speculating:
+                return
+            correction = _keyword_correction(word, positions[self.pos], vocabulary)
+            if correction is not None:
+                self.tokens[self.pos] = correction.after
+                corrections.append(correction)
+
+        def package_kind(self) -> str:
+            self.correct(("Package", "Dependency"))
+            return super().package_kind()
+
+        def parse_type(self) -> _Type:
+            self.correct(_DATATYPES)
+            return super().parse_type()
+
+        def expect(self, word: str) -> None:
+            if word in ("Then", "Do"):
+                self.correct((word,))
+            super().expect(word)
+
+        def is_declaration(self) -> bool:
+            # Array(Integer, n) can also be a call; speculative parsing
+            # must not rewrite identifiers in its arguments.
+            previous = self._speculating
+            self._speculating = True
+            try:
+                return super().is_declaration()
+            finally:
+                self._speculating = previous
+
+    _parse_packages(PreviewParser(tokens))
+    return tuple(sorted(corrections, key=lambda correction: correction.start))
 
 
 def _suggest(rest: list[str]) -> None:
@@ -77,15 +175,24 @@ def _suggest(rest: list[str]) -> None:
     _check_count("suggest", rest, 2)
     with _errors():
         language = resolve(rest[0])
-    if LANGUAGES[language].id != "modulous":
-        _fail("source correction previews currently support Modulous only")
+    handlers = {
+        "modulous": _modulous_corrections,
+        "bitdeque": _bitdeque_corrections,
+        "packlang": _packlang_corrections,
+    }
+    handler = handlers.get(LANGUAGES[language].id)
+    if handler is None:
+        _fail("source correction previews support Modulous, Bitdeque and Packlang")
+        return  # pragma: no cover - _fail exits
     source = _read_program(rest[1], language=language)
     source = cast(str, source)
-    try:
-        corrections = _modulous_corrections(source)
-    except ValueError as exc:
-        _fail(exc)
-        raise  # pragma: no cover - _fail exits
+    with (
+        _errors(),
+        interpreter_errors(
+            "source preview exceeds parser recursion depth", language=language
+        ),
+    ):
+        corrections = handler(source)
     line, column, cursor = 1, 1, 0
     for correction in corrections:
         prefix = source[cursor : correction.start]
