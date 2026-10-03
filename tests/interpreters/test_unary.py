@@ -57,8 +57,7 @@ def test_byte_wrap_pointer_clamp_and_right_growth() -> None:
 def test_loop_and_eof_rules() -> None:
     assert run_program(run, _source("-[-].")) == "\x00"
     assert run_program(run, _source("[]")) == ""
-    with pytest.raises(EOFError):
-        run_program(run, _source(","), suppress_eof=False)
+    assert run_program(run, _source("+,."), suppress_eof=False) == "\x00"
 
 
 def test_input_cursor_is_in_snapshot() -> None:
@@ -77,3 +76,7 @@ def test_input_cursor_is_in_snapshot() -> None:
     machine.step()
     assert machine.halted
     assert io.getvalue() == "A"
+
+
+def test_eof_clears_a_previously_read_cell() -> None:
+    assert run_program(run, _source(",,."), "A", suppress_eof=False) == "\x00"
