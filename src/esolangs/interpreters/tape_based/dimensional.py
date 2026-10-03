@@ -109,6 +109,16 @@ class _Tape:
     def value(self) -> int:
         return cast(int, self.node_at(2).child())
 
+    def peek_value(self) -> int:
+        """Return the addressed byte without allocating an unvisited slot."""
+        node = self.top
+        while node.level > 2:
+            child = node.slots.get(node.key())
+            if child is None:
+                return 0
+            node = cast(_Level, child)
+        return cast(int, node.slots.get(node.key(), 0))
+
     def set_value(self, value: int) -> None:
         node = self.node_at(2)
         node.slots[node.key()] = value % 256
@@ -130,12 +140,18 @@ def _matches(code: str) -> dict[int, int]:
     stack_c: list[int] = []
     res: dict[int, int] = {}
     comment = False
+    operand_end = 0
     for i, char in enumerate(code):
+        if i < operand_end:
+            continue
         if comment:
             if char == "*":
                 comment = False
             continue
-        if char == "*":
+        if char in ":=":
+            # Literal payloads are data, including bracket and comment glyphs.
+            operand_end = i + (2 if char == ":" else 3)
+        elif char == "*":
             comment = True
         elif char == "[":
             stack_b.append(i)
@@ -287,13 +303,13 @@ def _advance(
                 "'=' must be followed by two hex digits",
                 "follow = with exactly two hexadecimal digits, for example =41",
             )
-        try:
-            literal = int(code[ind : ind + 2], 16)
-        except ValueError as exc:
+        digits = code[ind : ind + 2]
+        if any(char not in "0123456789abcdefABCDEF" for char in digits):
             raise syntax_error(
-                f"invalid hex literal {code[ind : ind + 2]!r}",
+                f"invalid hex literal {digits!r}",
                 "use hexadecimal digits 0-9 or A-F after =, for example =41",
-            ) from exc
+            )
+        literal = int(digits, 16)
         return ((ind + 2, comment, axis), _SetValue(literal))
     if c == "$":
         wanted, ind = _number(code, ind, 2)
@@ -349,7 +365,7 @@ class _Machine:
     @property
     def memory(self) -> list[int]:
         """The addressable cells."""
-        return [self.tape.value()]
+        return [self.tape.peek_value()]
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
