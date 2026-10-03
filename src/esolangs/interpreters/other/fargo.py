@@ -60,6 +60,10 @@ class _Func:
         #: Parameter positions taking a function unevaluated (``:``'s second).
         self.raw = raw
 
+    def __repr__(self) -> str:
+        """Identify a callable's semantics, independent of allocation."""
+        return f"_Func({self.name!r}, {self.arity}, {self.raw!r})"
+
 
 # Arrays nest (``+[] x y`` concatenates two of them), so the alias is
 # recursive; the ``type`` statement is lazily evaluated, which is what lets
@@ -188,7 +192,7 @@ def _parse_definition(
         if bare in _BUILTINS or bare in known or _is_literal(bare):
             break
         params.append(token)
-        known.add(token)
+        known.add(bare)
     else:
         index = len(rest)
     return _Def(name, tuple(params), tuple(rest[index:]))
@@ -336,50 +340,68 @@ class _Machine:
         if name in _BUILTINS:
             return _BUILTINS[name]
         if name in self.defs:
-            return _Func(name, len(self.defs[name].params))
+            definition = self.defs[name]
+            raw = tuple(
+                index
+                for index, parameter in enumerate(definition.params)
+                if _bare_name(parameter) != parameter
+            )
+            return _Func(name, len(definition.params), raw)
         raise HaltError(
             f"calling undefined function {name!r}",
             hint="define the function before calling it; check its spelling",
         )
 
-    def _check_outer_call(self, definition: _Def) -> None:
-        """Raise unless ``definition``'s code is exactly one outer call.
-
-        The owed-argument count must return to zero exactly once, at the last
-        token.
-        """
-        if not definition.code:
-            raise syntax_error(
-                f"function {definition.name!r} has no outer call",
-                "give the function body one complete prefix call",
-            )
-        owed = 1
+    def _check_outer_call(
+        self, definition: _Def, binds: dict[str, _Value] | None = None
+    ) -> None:
+        """Require one expression; bound functions supply their arity at invocation."""
+        parameters = {_bare_name(parameter) for parameter in definition.params}
+        pending = [False]
         for index, token in enumerate(definition.code):
-            bare = _bare_name(token)
-            # A raw reference (``:f``) is a value, not a call, so it owes
-            # nothing -- but the bare ``:`` is the conditional itself.
-            if bare != token or _is_literal(bare) or bare in definition.params:
-                arity = 0
-            elif bare in _BUILTINS:
-                arity = _BUILTINS[bare].arity
-            elif bare in self.defs:
-                # Including the definition being checked: parsing files it
-                # into ``defs`` before this runs, so a self-call resolves
-                # here and needs no separate arm.
-                arity = len(self.defs[bare].params)
-            else:
-                arity = 0
-            owed += arity - 1
-            if owed == 0 and index != len(definition.code) - 1:
+            if not pending:
                 raise syntax_error(
                     f"function {definition.name!r} has more than one outer call",
                     "nest calls as arguments of one outer prefix call",
                 )
-        if owed != 0:
-            raise syntax_error(
-                f"function {definition.name!r} has no outer call",
-                "supply every argument required by the outer prefix call",
-            )
+            raw = pending.pop()
+            bare = _bare_name(token)
+            if bare != token or _is_literal(bare) or raw:
+                continue
+            if bare in parameters:
+                if binds is None:
+                    # Each remaining token supplies at most one owed argument.
+                    # Extra tokens may belong to this parameter's unknown arity.
+                    if len(definition.code) - index < len(pending) + 1:
+                        break
+                    return
+                value = binds[bare]
+                if not isinstance(value, _Func):
+                    continue
+                fn = value
+            elif bare in _BUILTINS:
+                fn = _BUILTINS[bare]
+            elif bare in self.defs:
+                target = self.defs[bare]
+                fn = _Func(
+                    bare,
+                    len(target.params),
+                    tuple(
+                        i
+                        for i, parameter in enumerate(target.params)
+                        if _bare_name(parameter) != parameter
+                    ),
+                )
+            else:
+                continue
+            pending.extend(i in fn.raw for i in reversed(range(fn.arity)))
+        else:
+            if not pending:
+                return
+        raise syntax_error(
+            f"function {definition.name!r} has no outer call",
+            "supply every argument required by the outer prefix call",
+        )
 
     def step(self) -> None:
         """Execute one command, advancing the machine."""
@@ -422,11 +444,9 @@ class _Machine:
             return
         if frame.binds and (bound := frame.bound(token)) is not None:
             value = bound
-            if isinstance(value, _Func) and value.arity == 0:
-                self._invoke(frame, value, [])
+            if not isinstance(value, _Func):
+                self._supply(frame, value)
                 return
-            self._supply(frame, value)
-            return
         fn = self._lookup(token, frame)
         if fn.arity == 0:
             self._invoke(frame, fn, [])
@@ -472,14 +492,20 @@ class _Machine:
                 self._supply(frame, result)
             return
         definition = self.defs[fn.name]
-        binds = tuple(zip(definition.params, args, strict=False))
+        binds = tuple(
+            zip(
+                (_bare_name(parameter) for parameter in definition.params),
+                args,
+                strict=True,
+            )
+        )
+        self._check_outer_call(definition, dict(binds))
         self.frames.append(_Frame(definition.code, fn_name=fn.name, binds=binds))
 
     def _finish(self, frame: _Frame) -> None:
         """Pop a finished frame, delivering its value to its caller.
 
-        Only a top-level line can end owing arguments;
-        :meth:`_check_outer_call` rejected every definition that could.
+        Definitions are checked again once parameter arities are bound.
         """
         if frame.pending:
             raise syntax_error(
