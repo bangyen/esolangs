@@ -28,6 +28,7 @@ from esolangs._validate import check_address
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.memory import format_integer
 from esolangs.interpreters.memory import parse_int_memory as _parse
 
 _OUT = -2
@@ -56,7 +57,8 @@ def _written(memory: tuple[int, ...], addr: int, value: int) -> tuple[int, ...]:
         if addr < -len(memory):
             # Was a bare ``IndexError`` (``run("Decleq", "4 -8")`` gave a traceback).
             raise HaltError(
-                f"address {addr} is {-addr - len(memory)} cells past the "
+                f"address {format_integer(addr)} is "
+                f"{format_integer(-addr - len(memory))} cells past the "
                 f"left end of a {len(memory)}-cell store",
                 hint="keep the address inside the allocated store",
             )

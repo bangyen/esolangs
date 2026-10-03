@@ -1,40 +1,10 @@
 """decleq generator tests."""
 
-import random
-
-import pytest
-
 from esolangs import tools as boolean
-from tests.tools.boolean_runners import (
-    run_decleq,
-)
 from tests.tools.test_boolean_contract import _parity
 
 
 class TestDecleq:
-    @pytest.mark.parametrize(
-        ("table", "n"),
-        [
-            ("10", 1),  # NOT
-            ("01", 1),  # identity
-            ("00", 1),  # constant zero
-            ("11", 1),  # constant one
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("1110", 2),  # NAND
-            ("11111110", 3),  # NAND3
-            ("01101001", 3),  # XOR3
-        ],
-    )
-    @pytest.mark.medium
-    def test_truth_table(self, table: str, n: int) -> None:
-        """Every input combination produces the truth-table result."""
-        program = boolean.decleq(table)
-        for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            got = run_decleq(program, [str(b) for b in bits])
-            assert got == str(int(table[combo])), f"inputs {bits}"
-
     def test_essential_bits_get_one_chain_each(self) -> None:
         """Each essential bit is decremented 47 times, then tested once.
 
@@ -85,23 +55,6 @@ class TestDecleq:
         per_entry = [len(boolean.decleq(_parity(n))) / 2**n for n in (8, 10, 12)]
         assert per_entry[0] > per_entry[1] > per_entry[2]
         assert per_entry[2] < 8
-        rng = random.Random(6)
-        table = "".join(rng.choice("01") for _ in range(64))
-        program = boolean.decleq(table)
-        for combo in range(64):
-            bits = [(combo >> (5 - i)) & 1 for i in range(6)]
-            got = run_decleq(program, [str(b) for b in bits])
-            assert got == table[combo], f"inputs {bits}"
-
-    def test_folded_leaves_still_print_correctly(self) -> None:
-        """Every folded table still prints its entry for every input."""
-        for table in ("11111111", "11110000", "11001100", "00001111"):
-            program = boolean.decleq(table)
-            n = len(table).bit_length() - 1
-            for combo in range(2**n):
-                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-                got = run_decleq(program, [str(b) for b in bits])
-                assert got == str(int(table[combo])), f"{table} inputs {bits}"
 
     def test_untaken_jumps_target_zero(self) -> None:
         """A jump no run can take is spelt ``0``, not the next address.

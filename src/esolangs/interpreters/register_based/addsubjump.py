@@ -18,12 +18,13 @@ consecutive Unicode characters, including newlines.
 
 import re
 from dataclasses import dataclass
-from decimal import Decimal
 
 from esolangs._drive import drive
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.memory import format_integer
+from esolangs.interpreters.memory import parse_integer as _integer
 from esolangs.interpreters.source_hints import syntax_error
 
 # The largest memory a run will grow.  Cell values are unbounded, but the
@@ -215,16 +216,6 @@ def _split_labels(line: list[str]) -> tuple[list[str], list[str]]:
             rest.append(token)
             defining = False
     return labels, rest
-
-
-def _integer(source: str) -> int:
-    """Parse integer operands without CPython's decimal conversion cap."""
-    try:
-        return int(source)
-    except ValueError:
-        if not re.fullmatch(r"[+-]?\d(?:_?\d)*", source):
-            raise
-        return int(Decimal(source.replace("_", "")))
 
 
 def _assembly(code: str) -> list[int]:
@@ -548,7 +539,7 @@ class _Machine:
         a, b, _c, d = _operands(self.state)
         if _too_large(self.state, a):
             raise HaltError(
-                f"memory address {Decimal(a)} is too large",
+                f"memory address {format_integer(a)} is too large",
                 hint="keep memory addresses within the interpreter allocation limit",
             )
         reads = tuple(
