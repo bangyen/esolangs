@@ -35,6 +35,8 @@ def observed(language, code, stdin, cap):
         machine.step()
     if machine.halted and getattr(machine, "dumps_on_the_post_halt_step", False):
         machine.step()
+    if language == "Cyclic tag":
+        assert machine.stack == []
     return Observation(
         io.getvalue(), tuple(machine.memory), machine.ip, io.position(), machine.halted
     )
@@ -229,6 +231,12 @@ def test_generated_programs_execute_in_independent_interpreters(language, table)
         result = ORACLES[language](source, stdin, 100_000)
         assert result.halted, (language, table, row)
         assert result.output == expected, (language, table, row)
+        if language == "Cyclic tag":
+            io = ScriptedIO("unused")
+            module = importlib.import_module(INTERPRETERS[language])
+            module.run(source, io)
+            assert io.getvalue() == expected
+            assert io.position() == 0
 
 
 @pytest.mark.parametrize("cap", [0, 1, 2, 17, 200])
@@ -267,3 +275,31 @@ def test_cyclic_tag_every_three_input_table_in_independent_engine(table):
         assert result.halted, (table, row)
         assert result.output == answer, (table, row)
         assert observed("Cyclic tag", source, "", 200) == result, (table, row)
+        module = importlib.import_module(INTERPRETERS["Cyclic tag"])
+        io = ScriptedIO("unused")
+        module.run(source, io)
+        assert io.getvalue() == answer
+        assert io.position() == 0
+
+
+def test_cyclic_tag_snapshot_distinguishes_growth_at_equal_program_position():
+    module = importlib.import_module(INTERPRETERS["Cyclic tag"])
+    machine = module._Machine("11,1", ScriptedIO())  # noqa: SLF001
+    machine.step()
+    before = machine.snapshot()
+    cursor = machine.ip
+    machine.step()
+    assert machine.ip == cursor
+    assert machine.live == "111"
+    assert machine.snapshot() != before
+
+
+@pytest.mark.parametrize("source", [" , 1 ", "1;0,", "0;0,10", "00,01"])
+def test_cyclic_tag_run_matches_reference_controls(source):
+    result = cyclic_tag(source, "unused", 200)
+    assert result.halted
+    io = ScriptedIO("unused")
+    module = importlib.import_module(INTERPRETERS["Cyclic tag"])
+    module.run(source, io)
+    assert io.getvalue() == result.output
+    assert io.position() == 0
