@@ -44,9 +44,15 @@ and proved limits; completed work is recorded in its commit.
 
   | Language | Totality | Generation time | Output size | Execution time |
   | --- | --- | --- | --- | --- |
+  | Befunge | Exception | Linear | Linear | Linear |
   | Factor | Total | Language lower bound | Language lower bound | Linear |
   | Malbolge | Exception | Open | Linear | Linear |
   | Polynomial | Cap | Language lower bound | Language lower bound | Linear |
+
+  Befunge ships through ten inputs: its cell-per-entry lookup cannot fit an
+  eleven-input table on the fixed 80x25 torus. No uniform larger-table
+  construction is proved under that geometry; this is an open gap, not a
+  proved language impossibility.
 
   Malbolge ships through sixteen inputs; finite source space excludes some
   18-input tables, leaving generation time at seventeen open. Its fixed

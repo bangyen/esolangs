@@ -152,7 +152,7 @@ def load(path: Path | None = None) -> Ledger:
     # count still has to stay grammatical, so the plural cannot be hard-coded.
     count = re.search(
         r"records (\d+) theoretical totality arguments and (\w+)\s+"
-        r"(?:open|proved language) exceptions?",
+        r"(?:(?:open|proved language) )?exceptions?",
         text,
     )
     assert count, f"{DOC} no longer states its own totals"

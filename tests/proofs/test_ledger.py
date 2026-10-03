@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import pytest
 
+import esolangs
 from esolangs.registry import BY_BOOLEAN
 from tests.proofs._ledger import (
     LINEAR_CLAUSE_WORDS,
@@ -161,10 +162,14 @@ def test_every_row_carries_a_scaling_cell(ledger: Ledger) -> None:
             )
 
 
-def test_the_measured_class_is_the_exception_row(ledger: Ledger) -> None:
-    """``measured`` means nothing bounds it, which is what ``exception`` means.
-
-    Kept in step in both directions so neither label can be granted alone.
-    """
+def test_unproved_scaling_requires_a_totality_exception(ledger: Ledger) -> None:
+    """An exception may still bound its construction on the supported domain."""
     measured = {row.generator for row in ledger.rows if row.scaling_class == "measured"}
-    assert measured == {row.generator for row in ledger.labelled("exception")}
+    assert measured <= {row.generator for row in ledger.labelled("exception")}
+
+
+def test_befunge_refusal_is_an_explicit_totality_exception(ledger: Ledger) -> None:
+    """The fixed-torus refusal must not disappear from the totality audit."""
+    with pytest.raises(esolangs.GeneratorCapError, match="at most ten inputs"):
+        esolangs.generate("Befunge", "01" * 1024)
+    assert "exception" in ledger.by_name()["Befunge"].labels
