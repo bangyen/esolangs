@@ -70,6 +70,10 @@ Start from `src/esolangs/interpreters/_template.py`. Every interpreter:
 - Writes the language as a pure transition (`_advance`) over an immutable
   state, with `step` as the shell doing the I/O; a store that cannot be
   threaded cheaply returns effects instead (`grapheme.py`).
+- Follows explicit specification rules. Examples resolve omissions only when
+  consistent with those rules; internal consistency alone does not establish
+  author intent. Records contradictions rather than silently repairing them.
+  Documents and tests any intentional deviation.
 - Documents spec-gap decisions in its docstring (`suffolk.py`); never defines
   away invalid operations.
 - Provides a `__main__` block calling `run(data, IO())`.
