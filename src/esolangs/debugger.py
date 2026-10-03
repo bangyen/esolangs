@@ -219,8 +219,7 @@ class Debugger:
     def clear_breakpoints(self) -> None:
         """Drop every breakpoint, leaving the watches and the run intact.
 
-        Without it a condition that stays true (:meth:`break_on_output`'s) could
-        not be taken back.
+        Resuming already suppresses the last hit until its condition goes false.
         """
         self._breakpoints.clear()
         self._suppressed.clear()
