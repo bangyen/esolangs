@@ -394,6 +394,11 @@ def run_until_halt_or_growth(machine: _TapeMachine | VM, limit: int = 100_000) -
             ),
         ),
     )
+    if not getattr(machine, "supports_tape_growth", True):
+        raise with_hint(
+            TypeError("growth detection requires a rightward-growing tape"),
+            "use exact-state cycle detection for a finite tape",
+        )
     # The last visit keeps the broad, one-period certificate.  ``origins``
     # proves a steady wave after its first full phase, while ``waves`` is
     # Brent's O(1)-per-position checkpoint for a phase that begins after a
