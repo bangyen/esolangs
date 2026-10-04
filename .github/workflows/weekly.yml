@@ -71,7 +71,7 @@ jobs:
     # Per-PR CI reports it with `--partial`; the blocking form is the local
     # command that report prints.
     - name: Test with pytest (full suite, including the slow band)
-      run: uv run pytest -n auto -p scripts.pytest_durations --duration-output test-durations.json
+      run: uv run python -m pytest -n auto -p scripts.pytest_durations --duration-output test-durations.json
 
     - name: Retain measured test durations
       if: always()
