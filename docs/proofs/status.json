@@ -702,7 +702,7 @@
       "generation_time": "Linear",
       "output_size": "Linear",
       "execution_time": "Linear",
-      "evidence": "docs/roadmap.md"
+      "evidence": "docs/proofs/index.md#exceptions-and-walls"
     },
     {
       "generator": "Factor",
@@ -710,7 +710,7 @@
       "generation_time": "Language lower bound",
       "output_size": "Language lower bound",
       "execution_time": "Linear",
-      "evidence": "docs/proofs/factor.md"
+      "evidence": "docs/proofs/factor.md#language-lower-bound"
     },
     {
       "generator": "Malbolge",
@@ -718,7 +718,7 @@
       "generation_time": "Open",
       "output_size": "Linear",
       "execution_time": "Linear",
-      "evidence": "docs/proofs/malbolge-scaling.md"
+      "evidence": "docs/proofs/malbolge-scaling.md#generation-time"
     },
     {
       "generator": "Polynomial",
@@ -726,7 +726,7 @@
       "generation_time": "Language lower bound",
       "output_size": "Language lower bound",
       "execution_time": "Linear",
-      "evidence": "docs/proofs/polynomial.md"
+      "evidence": "docs/proofs/polynomial.md#construction-and-cold-parse-time"
     }
   ]
 }

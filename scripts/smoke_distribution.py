@@ -106,6 +106,32 @@ def smoke(*, math_extra: bool, image_extra: bool = False) -> None:
             _cli(["evaluate", "--table", "0110", "brainfuck", str(source)]).strip()
             == "0110"
         )
+        for program, options, code, output, diagnostic in (
+            (",.+[]", ["--timeout", "2"], 124, "A\n", "deadline"),
+            (",[.]", ["--max-output", "3"], 1, "AAA\n", "output limit exceeded"),
+        ):
+            source.write_text(program, encoding="utf-8")
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    "-I",
+                    "-m",
+                    "esolangs",
+                    "run",
+                    "--isolated",
+                    *options,
+                    "brainfuck",
+                    str(source),
+                ],
+                input="A",
+                capture_output=True,
+                text=True,
+                timeout=30,
+                check=False,
+            )
+            assert result.returncode == code, result
+            assert result.stdout == output, result
+            assert diagnostic in result.stderr, result
         source.write_text(",>,<.", encoding="utf-8")
         assert (
             _cli(["evaluate", "--inputs", "2", "brainfuck", str(source)]).strip()

@@ -77,3 +77,31 @@ def test_bad_durations_are_refused(tmp_path, payload):
 def test_invalid_shard_arguments_are_refused():
     with pytest.raises(ValueError, match="invalid shard"):
         load_script().shard_ids([], -1, 2)
+
+
+def test_shard_reports_estimate_and_unknown_weights(tmp_path, monkeypatch, capsys):
+    shard = load_script()
+    path = tmp_path / "durations.json"
+    path.write_text('{"a": 10, "b": 2, "stale": 1000}')
+    monkeypatch.setattr(shard, "collect_ids", lambda _marker: ["a", "b", "c"])
+    monkeypatch.setattr(
+        shard.subprocess,
+        "run",
+        lambda *_args, **_kwargs: type("Result", (), {"returncode": 0})(),
+    )
+    assert (
+        shard.main(
+            [
+                "--marker",
+                "slow",
+                "--shard",
+                "0",
+                "--shards",
+                "1",
+                "--durations",
+                str(path),
+            ]
+        )
+        == 0
+    )
+    assert "18.0s (1 tests use median fallback 6.000s)" in capsys.readouterr().out
