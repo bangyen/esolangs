@@ -1,6 +1,7 @@
 """Covers :mod:`esolangs.tools.slow_acv_mammalian`."""
 
 import random
+from math import gcd
 
 import pytest
 
@@ -883,3 +884,19 @@ def test_modulo_255_merge_rejects_a_one_branch_past_the_target() -> None:
     zero = _Sums(io_modulus=255)
     one.n0 = 1000
     assert _try_arm(one, zero, 8, None, 500) is None
+
+
+@pytest.mark.parametrize("modulus", [255, 256])
+@pytest.mark.parametrize("step", range(1, 24))
+def test_short_routing_is_earliest(modulus: int, step: int) -> None:
+    from esolangs.tools._mammalian_compact import _routing_seeds
+
+    if gcd(step, modulus) != 1:
+        return
+    for head in range(modulus):
+        earliest = {}
+        for count in range(modulus):
+            want = ((head + step * count) % modulus) % 23
+            earliest.setdefault(want, count)
+        for want, count in earliest.items():
+            assert _routing_seeds(head, step, want, modulus) == count
