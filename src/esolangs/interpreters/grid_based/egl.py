@@ -22,6 +22,7 @@ from esolangs._drive import drive
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.brackets import match_brackets
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.memory import format_integer, parse_integer
 from esolangs.interpreters.source_hints import syntax_error
 
 type _State = tuple[int, int, int, tuple[int, ...], tuple[tuple[int, int, int], ...]]
@@ -31,7 +32,7 @@ type _Output = int | str | None
 def _render_grid(grid: tuple[int, ...], width: int) -> str:
     """Return the grid in EGL's pipe-delimited display format."""
     return "".join(
-        "|" + "|".join(map(str, grid[start : start + width])) + "|\n"
+        "|" + "|".join(map(format_integer, grid[start : start + width])) + "|\n"
         for start in range(0, len(grid), width)
     )
 
@@ -112,7 +113,7 @@ class _Machine:
                 "EGL program must begin with 'width,height:'",
                 "start with positive grid dimensions, for example 2,3:+=",
             )
-        self.width, self.height = map(int, match.group(1, 2))
+        self.width, self.height = map(parse_integer, match.group(1, 2))
         if self.width < 1 or self.height < 1:
             raise syntax_error(
                 "EGL grid dimensions must be positive",
@@ -126,6 +127,7 @@ class _Machine:
                 "unmatched parenthesis in EGL program", "pair every ( with a closing )"
             ) from error
         self.io = io
+        self._input_reads = 0
         self.state: _State = (
             0,
             0,
@@ -149,20 +151,22 @@ class _Machine:
         return list(self.state[3])
 
     def snapshot(self) -> tuple[object, ...]:
-        return (*self.state, self.io.position())
+        return (*self.state, self.io.position(), self._input_reads)
 
     def step(self) -> None:
         if self.halted:
             return
         command = self.code[self.state[0]]
         value = self.io.input_char() if command == "x" else None
+        if command == "x":
+            self._input_reads += 1
         self.state, output = _advance(
             self.state, self.code, self.pairs, self.width, self.height, value
         )
         if isinstance(output, str):
             self.io.print_str(output)
         elif output is not None:
-            self.io.print_num(output)
+            self.io.print_str(format_integer(output))
 
 
 def run(code: str, io: IO) -> None:
