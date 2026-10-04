@@ -471,7 +471,7 @@ def test_explicit_default_moduli_preserve_generation() -> None:
 @pytest.mark.parametrize(
     ("settings", "message"),
     [
-        ({"cell_modulus": 255}, "needs io_modulus 255"),
+        ({"cell_modulus": 254}, "cell_modulus must be 255 or 256"),
         ({"io_modulus": 254}, "io_modulus must be 255 or 256"),
     ],
 )
@@ -487,16 +487,19 @@ def test_generator_rejects_unverified_moduli(settings, message: str) -> None:
     [f"{value:0{1 << n}b}" for n in range(1, 4) for value in range(1 << (1 << n))],
 )
 @pytest.mark.parametrize("cell_modulus", [255, 256])
-def test_modulo_255_generates_every_small_table(table: str, cell_modulus: int) -> None:
+@pytest.mark.parametrize("io_modulus", [255, 256])
+def test_moduli_generate_every_small_table(
+    table: str, cell_modulus: int, io_modulus: int
+) -> None:
     from esolangs.interpreters.io import ScriptedIO
     from esolangs.interpreters.tape_based.slow_acv_mammalian import run
     from esolangs.tools.slow_acv_mammalian import slow_acv_mammalian
 
-    source = slow_acv_mammalian(table, cell_modulus=cell_modulus, io_modulus=255)
+    source = slow_acv_mammalian(table, cell_modulus=cell_modulus, io_modulus=io_modulus)
     n = len(table).bit_length() - 1
     for row, expected in enumerate(table):
         io = ScriptedIO(f"{row:0{n}b}")
-        run(source, io, cell_modulus=cell_modulus, io_modulus=255)
+        run(source, io, cell_modulus=cell_modulus, io_modulus=io_modulus)
         assert io.getvalue() == expected
         assert io.reads == n
 
@@ -504,8 +507,9 @@ def test_modulo_255_generates_every_small_table(table: str, cell_modulus: int) -
 @pytest.mark.medium
 @pytest.mark.parametrize("n", [4, 5, 6, 7])
 @pytest.mark.parametrize("cell_modulus", [255, 256])
-def test_modulo_255_banks_weights_across_the_layout_boundary(
-    n: int, cell_modulus: int
+@pytest.mark.parametrize("io_modulus", [255, 256])
+def test_moduli_generate_asymmetric_tables(
+    n: int, cell_modulus: int, io_modulus: int
 ) -> None:
     from esolangs.interpreters.io import ScriptedIO
     from esolangs.interpreters.tape_based.slow_acv_mammalian import run
@@ -513,10 +517,10 @@ def test_modulo_255_banks_weights_across_the_layout_boundary(
 
     rng = random.Random(20261003 + n)
     table = "".join(str(rng.getrandbits(1)) for _ in range(1 << n))
-    source = slow_acv_mammalian(table, cell_modulus=cell_modulus, io_modulus=255)
+    source = slow_acv_mammalian(table, cell_modulus=cell_modulus, io_modulus=io_modulus)
     for row, expected in enumerate(table):
         io = ScriptedIO(f"{row:0{n}b}")
-        run(source, io, cell_modulus=cell_modulus, io_modulus=255)
+        run(source, io, cell_modulus=cell_modulus, io_modulus=io_modulus)
         assert io.getvalue() == expected
         assert io.reads == n
 
@@ -530,16 +534,43 @@ def test_cell_255_tree_rejects_backward_sum_targets() -> None:
         _State().jump(0)
 
 
-def test_cell_255_tree_runs_in_stepped_interpreter() -> None:
+@pytest.mark.parametrize("head", [0, 254])
+@pytest.mark.parametrize("extra", [0, 512])
+def test_cell_255_appends_every_value_with_a_missing_head(
+    head: int, extra: int
+) -> None:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
+    from esolangs.tools._mammalian255 import _State
+
+    for value in range(255):
+        rest = value + 1 + extra
+        state = _State(head=head, rest=rest, io_modulus=256)
+        tokens = state.append(value)
+        machine = _Machine(
+            " ".join(tokens), ScriptedIO(), cell_modulus=255, io_modulus=256
+        )
+        chunks, tail = divmod(rest, 254)
+        machine.lst = ((head, *[254] * chunks, tail), *machine.lst[1:])
+        for _ in tokens:
+            machine.step()
+        assert machine.lst[0][-1] == value
+        assert sum(machine.lst[0][1:]) == state.rest == rest + value
+        assert machine.lst[0][0] == state.head
+        assert machine.acc == state.acc == 0
+
+
+@pytest.mark.parametrize("io_modulus", [255, 256])
+def test_cell_255_tree_runs_in_stepped_interpreter(io_modulus: int) -> None:
     from esolangs.interpreters.io import ScriptedIO
     from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
     from esolangs.tools.slow_acv_mammalian import slow_acv_mammalian
 
     table = "00101101"
-    source = slow_acv_mammalian(table, cell_modulus=255, io_modulus=255)
+    source = slow_acv_mammalian(table, cell_modulus=255, io_modulus=io_modulus)
     for row, expected in enumerate(table):
         io = ScriptedIO(f"{row:03b}")
-        machine = _Machine(source, io, cell_modulus=255, io_modulus=255)
+        machine = _Machine(source, io, cell_modulus=255, io_modulus=io_modulus)
         for _ in range(len(source.split())):
             if machine.halted:
                 break
