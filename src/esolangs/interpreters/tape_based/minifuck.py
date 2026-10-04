@@ -10,8 +10,12 @@ the shell owes; :func:`_load` is the pure half of a read.
 
 Input framing is unspecified; this interpreter reads consecutive Unicode
 character codes, narrowing to its byte cells.
+``input_framing="integer_tokens"`` reads whitespace-delimited signed integers
+instead of Unicode character codes. EOF raises EOFError in either mode.
+
 """
 
+from esolangs._framing import InputFraming
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 
@@ -137,8 +141,9 @@ class _Machine:
     The tape never rewinds, so a program always halts.
     """
 
-    def __init__(self, code: str, io: IO) -> None:
+    def __init__(self, code: str, io: IO, *, input_framing: str = "characters") -> None:
         """Start with an eight-cell tape at the origin."""
+        self.framing = InputFraming(input_framing)
         self.io = io
         self.state = _start(code)
 
@@ -196,12 +201,13 @@ class _Machine:
         if effect[0] is not None:
             self.io.print_char(effect[0])
         elif effect[1]:
-            state = _load(state, self.io.input_char())
+            state = _load(state, self.framing.read(self.io))
         self.state = state
 
 
-def run(code: str, io: IO) -> None:
+def run(code: str, io: IO, *, input_framing: str = "characters") -> None:
     """Run a Minifuck program."""
+    framing = InputFraming(input_framing)
     tape = 0
     length = _WIDTH
     ptr = 0
@@ -212,7 +218,7 @@ def run(code: str, io: IO) -> None:
         if char is not None:
             io.print_char(char)
         elif reads:
-            _, tape, _, _, _ = _load((code, tape, length, ptr, ind), io.input_char())
+            _, tape, _, _, _ = _load((code, tape, length, ptr, ind), framing.read(io))
 
 
 if __name__ == "__main__":

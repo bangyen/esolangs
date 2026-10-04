@@ -2,6 +2,7 @@
 
 from typing import Any
 
+from esolangs._framing import InputFraming
 from esolangs.tools.helpers import (
     _ASCII_ONE,
     _ASCII_ZERO,
@@ -18,7 +19,7 @@ from esolangs.tools.helpers import (
 _ADD = 7
 
 
-def addsubjump(truth_table: str) -> str:
+def addsubjump(truth_table: str, *, input_framing: str = "characters") -> str:
     """Build an AddSubJump program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
@@ -33,6 +34,7 @@ def addsubjump(truth_table: str) -> str:
     cells of ``O(n)`` digits and the decoder has ``O(n)`` instructions, so
     generation time and rendered size are both ``O(T)``.
     """
+    InputFraming(input_framing)
     if len(truth_table) <= 16:
         return best_input_order(truth_table, _addsubjump_candidate)
     packed = min(

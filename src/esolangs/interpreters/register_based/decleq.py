@@ -19,11 +19,15 @@ revisits a state on unbounded integers, and ``esolangs.run``'s
 
 The spec leaves user input unspecified; this interpreter reads consecutive
 Unicode character codes, including newlines.
+``input_framing="integer_tokens"`` reads whitespace-delimited signed integers
+instead of Unicode character codes. EOF raises EOFError in either mode.
+
 """
 
 from __future__ import annotations
 
 from esolangs._drive import drive
+from esolangs._framing import InputFraming
 from esolangs._validate import check_address
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
@@ -97,7 +101,8 @@ def _advance(state: _State, byte: int | None = None) -> _State:
 class _Machine:
     """A Decleq run: one immutable ``_State``, rebound per step."""
 
-    def __init__(self, code: str, io: IO) -> None:
+    def __init__(self, code: str, io: IO, *, input_framing: str = "characters") -> None:
+        self.framing = InputFraming(input_framing)
         """Parse ``code`` into memory and reset the pointer."""
         self.io = io
         self.state: _State = (0, tuple(_parse(code)))
@@ -155,13 +160,13 @@ class _Machine:
         if a == _OUT:
             self.io.print_char(chr(_read(self.state[1], b) & 0xFF))
         elif a == _IN:
-            byte = self.io.input_char()
+            byte = self.framing.read(self.io)
         self.state = _advance(self.state, byte)
 
 
-def run(code: str, io: IO) -> None:
+def run(code: str, io: IO, *, input_framing: str = "characters") -> None:
     """Run a Decleq program to completion."""
-    machine = _Machine(code, io)
+    machine = _Machine(code, io, input_framing=input_framing)
     drive(machine)
 
 
