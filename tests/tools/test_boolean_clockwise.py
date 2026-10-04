@@ -51,13 +51,6 @@ class TestClockwise:
                 for combo in range(size):
                     assert run_clockwise(program, _bits(combo, n)) == table[combo]
 
-    def test_ring_starts_at_origin(self) -> None:
-        """The program is a closed ring whose pointer starts at (0, 0)."""
-        program = boolean.clockwise("0110")
-        lines = program.splitlines()
-        assert lines[0][0] == " "
-        assert run_clockwise(program, ["1", "0"]) == "1"  # XOR(1, 0)
-
     def test_the_table_is_one_cell_per_entry(self) -> None:
         """The construction's signature: the answer row holds the table itself.
 

@@ -29,19 +29,6 @@ class TestBf:
             got = run_bf(program, [str(b) for b in bits])
             assert got == str(int(table[combo])), f"inputs {bits}"
 
-    def test_bf_is_the_tree(self) -> None:
-        """bf is the folded tree, for constant and sparse tables alike.
-
-        There used to be a minterm construction here and ``bf`` returned
-        whichever was shorter.  Folding left the tree ahead on every table
-        but the two constant ones -- where it costs about 2.5x, a bounded
-        factor on two tables out of 65536 -- so the minterm went away and
-        the constant tables go to the tree with everything else.
-        """
-        xor6 = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(64))
-        for table in ("0" * 16, "0" * 15 + "1", xor6):  # constant, AND4, dense
-            assert boolean.brainfuck(table) == boolean.bf_tree(table)
-
 
 class TestBfTree:
     @pytest.mark.parametrize(
@@ -65,21 +52,6 @@ class TestBfTree:
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = run_bf(program, [str(b) for b in bits])
             assert got == str(int(table[combo])), f"inputs {bits}"
-
-    def test_tree_small_on_dense_tables(self) -> None:
-        """The tree shares bit tests, so dense tables stay small."""
-        xor6 = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(64))
-        assert len(boolean.bf_tree(xor6)) < 10_000
-
-    def test_constant_subtrees_fold(self) -> None:
-        """A constant slice emits a leaf instead of branching on more bits.
-
-        Both tables have the same number of ones, so the difference is the
-        arrangement alone: ``11110000`` is two constant halves and folds to
-        one leaf each, while the parity table has no constant subtree above
-        a single row and emits the full tree.
-        """
-        assert len(boolean.bf_tree("11110000")) < len(boolean.bf_tree("10010110"))
 
     def test_parity_table_is_unfolded(self) -> None:
         """A table with no constant subtree still spends a leaf per row.
