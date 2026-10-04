@@ -1,12 +1,12 @@
 """Interpreter for Container.
 
-The first line declares rules (``name = initial`` or a bare ``name``);
+Headers declare containers (``name = initial:`` or a bare ``name:``);
 following indented lines attach conditional deltas (``n cond``) to the
 most recent container.  Each tick updates every container from the *old*
 values; PRINT outputs OUT as a byte when it turns on, the empty-named
-container reads a line into IN when it fires, and EXIT halts.  A rule
+container reads a character into IN when it fires, and EXIT halts.  A rule
 before any declaration raises :class:`ValueError`; an empty program halts
-at once; exhausted input raises :class:`EOFError`.  :func:`run` returns
+at once; EOF supplies zero.  :func:`run` returns
 the EXIT code (``None`` if EXIT never fired) rather than exiting.
 
 :func:`_advance` is a pure transition over an immutable ``_State`` with
@@ -20,16 +20,17 @@ from __future__ import annotations
 from esolangs._drive import drive
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.memory import parse_integer
 from esolangs.interpreters.source_hints import syntax_error
 
 #: The container values, as an immutable name->value mapping in name order,
 #: so one logical set of values has exactly one spelling.
 type _Vars = tuple[tuple[str, int], ...]
 
-#: One instant of a run: ``(vars, queue, exit_code, tick)`` -- the container
+#: One instant of a run: ``(vars, queue, exit_code, tick, reads)`` -- the container
 #: values, the pending input characters, the EXIT code once it fires, and
-#: the tick counter.  A value, not a record: every transition below returns
-#: a new one rather than editing one in place.
+#: the tick counter, and successful input reads. Each transition returns
+#: a new value rather than editing one in place.
 #:
 #: ``exit_code`` is state because halting here is a value a tick produces,
 #: not a position: EXIT changing is what stops the run, and the code it
@@ -38,7 +39,7 @@ type _Vars = tuple[tuple[str, int], ...]
 #: ``tick`` is deliberately excluded from ``snapshot``: it counts steps, not
 #: state, and including it would make every state unique by construction
 #: and reduce the cycle detector to a step budget.
-type _State = tuple[_Vars, tuple[str, ...], int | None, int]
+type _State = tuple[_Vars, tuple[str, ...], int | None, int, int]
 
 
 def _get(variables: _Vars, name: str) -> int:
@@ -78,7 +79,7 @@ class Con:
     def add(self, cond: str) -> None:
         """Append a rule ``n cond`` that adds ``n`` when ``cond`` holds."""
         n, c = cond.split()
-        self.rules.append((int(n), c))
+        self.rules.append((parse_integer(n), c))
 
     def update(self, var: dict[str, int]) -> int:
         """Return the value after applying every satisfied rule."""
@@ -86,7 +87,7 @@ class Con:
         def val(s: str) -> int:
             if s in var:
                 return var[s]
-            return int(s)
+            return parse_integer(s)
 
         res = var[self.name]
         for n, c in self.rules:
@@ -106,6 +107,8 @@ class Con:
 class _Machine:
     """Per-run Container state: the containers, their values, and EXIT."""
 
+    eof_is_a_value = True
+
     def __init__(self, code: list[str], io: IO) -> None:
         """Parse ``code`` into containers and start every value at rest."""
         self.io = io
@@ -118,7 +121,9 @@ class _Machine:
                 line = line[:-1]
                 if "=" in line:
                     x, y = line.split("=")
-                    start[x] = int(y)
+                    start[x] = parse_integer(y)
+                    if start[x] < 0:
+                        raise ValueError("initial container value must be nonnegative")
                     self.obj.append(Con(x))
                 else:
                     start[line] = 0
@@ -134,7 +139,7 @@ class _Machine:
                     )
                 self.obj[-1].add(line)
 
-        self.state: _State = (tuple(sorted(start.items())), (), None, 0)
+        self.state: _State = (tuple(sorted(start.items())), (), None, 0, 0)
 
     # The language's own names.  They are views on the current state rather
     # than fields of their own, so there is one place a step can change.
@@ -180,9 +185,10 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        variables, queue, exit_code, _tick_count = self.state
-        return (variables, queue, exit_code)
-        # tick is excluded: it counts steps, not state, and always differs
+        variables, queue, exit_code, _tick_count, reads = self.state
+        return (variables, queue, exit_code, self.io.position(), reads)
+        # Successful reads distinguish unread input even when IO has no cursor.
+        # EOF supplies zero without advancing it, so real EOF cycles stay detectable.
 
     def step(self) -> None:
         """Execute one full tick, updating every container's value.
@@ -192,7 +198,7 @@ class _Machine:
         """
         if self.halted:
             return
-        variables, queue, _exit, _count = self.state
+        variables, queue, _exit, _count, _reads = self.state
         new = _tick(self.obj, variables)
         output, reads = _ports(variables, new)
 
@@ -200,15 +206,20 @@ class _Machine:
             self.io.print_char(chr(output))
 
         byte = None
+        read_success = False
         if reads:
-            # The read blocks until there is a character to take, which is
-            # an effect and so belongs here rather than in the transition.
-            while not queue:
-                queue = (chr(self.io.input_char()),)
-            byte = ord(queue[0])
-            queue = queue[1:]
+            # A pulse consumes one character; EOF supplies the specified zero.
+            try:
+                while not queue:
+                    queue = (chr(self.io.input_char()),)
+            except EOFError:
+                byte = 0
+            else:
+                byte = ord(queue[0])
+                queue = queue[1:]
+                read_success = True
 
-        self.state = _advance(self.state, new, queue, byte)
+        self.state = _advance(self.state, new, queue, byte, read_success=read_success)
 
 
 def _rises(variables: _Vars, new: _Vars, name: str) -> bool:
@@ -237,6 +248,8 @@ def _advance(
     new: _Vars,
     queue: tuple[str, ...],
     byte: int | None,
+    *,
+    read_success: bool = False,
 ) -> _State:
     """Return the state a tick lands on.
 
@@ -244,12 +257,12 @@ def _advance(
     what the read took and writes into IN.  EXIT halts on a *change*, and
     the new value is the code.
     """
-    variables, _queue, exit_code, count = state
+    variables, _queue, exit_code, count, reads = state
     if byte is not None:
         new = tuple(sorted({**dict(new), "IN": byte}.items()))
     if _has(variables, "EXIT") and _get(variables, "EXIT") != _get(new, "EXIT"):
         exit_code = _get(new, "EXIT")
-    return (new, queue, exit_code, count + 1)
+    return (new, queue, exit_code, count + 1, reads + int(read_success))
 
 
 def run(code: list[str], io: IO) -> int | None:
