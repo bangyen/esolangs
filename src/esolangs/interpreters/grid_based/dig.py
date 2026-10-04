@@ -24,6 +24,7 @@ from esolangs._drive import drive
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.memory import format_integer, parse_integer
 from esolangs.interpreters.source_hints import syntax_error
 
 # Headings as (drow, dcol), in the order the ``^>'<`` glyphs select
@@ -44,11 +45,13 @@ _DIRECT = [(-1, 0), (0, 1), (1, 0), (0, -1)]
 #: ``num`` is the underground counter ``$`` arms.  Every work command is
 #: inert unless it is positive, so it is what decides whether a cell is an
 #: instruction or scenery.
-type _State = tuple[tuple[str, ...], int, int, int, int, int, bool]
+type _Cell = str | int
+type _Grid = tuple[tuple[_Cell, ...], ...]
+type _State = tuple[_Grid, int, int, int, int, int, bool]
 
 
-def _value(code: tuple[str, ...], row: int, col: int, size: int) -> int:
-    """Return the first digit adjacent to ``(row, col)``.
+def _value(code: _Grid, row: int, col: int, size: int) -> int:
+    """Return the first numeric cell adjacent to ``(row, col)``.
 
     A work command that needs a digit and finds none is an invalid runtime
     operation, so this halts rather than inventing a default.
@@ -56,6 +59,9 @@ def _value(code: tuple[str, ...], row: int, col: int, size: int) -> int:
     for d_row, d_col in _DIRECT:
         if 0 <= row + d_row < len(code) and 0 <= col + d_col < size:
             val = code[row + d_row][col + d_col]
+            if isinstance(val, int):
+                # A stored12 is one operand; it must not become two cells.
+                return val
             if val.isdigit():
                 return int(val)
     raise HaltError(
@@ -65,10 +71,10 @@ def _value(code: tuple[str, ...], row: int, col: int, size: int) -> int:
     )
 
 
-def _write(code: tuple[str, ...], row: int, col: int, text: str) -> tuple[str, ...]:
-    """Return ``code`` with the cell at ``(row, col)`` replaced by ``text``."""
+def _write(code: _Grid, row: int, col: int, value: int) -> _Grid:
+    """Return a grid with one cell replaced by the mole's integer value."""
     line = code[row]
-    return (*code[:row], line[:col] + text + line[col + 1 :], *code[row + 1 :])
+    return (*code[:row], (*line[:col], value, *line[col + 1 :]), *code[row + 1 :])
 
 
 def _advance(
@@ -90,7 +96,11 @@ def _advance(
     code, row, col, move, mole, num, done = state
     char = code[row][col]
 
-    if num:
+    if isinstance(char, int):
+        if num:
+            mole = char
+            num -= 1
+    elif num:
         if char == "%":
             # "Overrides current value with space when 0, and newline when
             # 1."  The wiki stops there, unlike ``#`` below, which spells
@@ -118,7 +128,7 @@ def _advance(
                 )
             mole //= n
         elif char == ";":
-            code = _write(code, row, col, str(mole))
+            code = _write(code, row, col, mole)
         elif char.isdigit():
             mole = int(char)
         elif char.isalpha() or char in ".,!?":
@@ -140,6 +150,8 @@ def _advance(
         move %= 4
     elif char == "$":
         num = _value(code, row, col, size)
+        if num < 0:
+            raise HaltError(f"negative digging distance at row {row}, column {col}")
     elif char == "@":
         return (code, row, col, move, mole, num, True)
 
@@ -166,7 +178,7 @@ class _Machine:
         code: list[str],
         io: IO,
     ) -> None:
-        """Pad ``code`` to a square grid, like :func:`run`."""
+        """Pad ``code`` to a rectangular grid, like :func:`run`."""
         if not code or not any(line.strip() for line in code):
             raise syntax_error(
                 "Dig program cannot be empty",
@@ -174,10 +186,11 @@ class _Machine:
             )
         self.io = io
         self.size = max(len(lne) for lne in code)
-        self.code = tuple(c.ljust(self.size) for c in code)
+        self.code: _Grid = tuple(tuple(c.ljust(self.size)) for c in code)
         self.mole = self.num = self.row = self.col = 0
         self.move = 1
         self._done = False
+        self._input_reads = 0
 
     @property
     def halted(self) -> bool:
@@ -218,6 +231,7 @@ class _Machine:
             self.num,
             self.code,
             self.io.position(),
+            self._input_reads,  # IO providers may expose no cursor.
         )
 
     @property
@@ -266,12 +280,14 @@ class _Machine:
         value: int | None = None
         if self.num and char == "=":
             value = self.io.input_char()
+            self._input_reads += 1
         elif self.num and char == "~":
             temp = self.io.input_token()
-            value = int(temp)
+            self._input_reads += 1
+            value = parse_integer(temp)
         elif self.num and char == ":":
             if self.mole < 10:
-                self.io.print_num(self.mole)
+                self.io.print_str(format_integer(self.mole))
             else:
                 self.io.print_char(chr(self.mole))
 
