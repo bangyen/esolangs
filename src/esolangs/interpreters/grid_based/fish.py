@@ -1,6 +1,7 @@
 r"""Interpreter for Fish (``><>``), using the current non-threaded language.
 
-The initial rectangle wraps; ``p`` may expand its positive bounds and may use
+The codebox wraps as a rectangle and stores raw Unicode codepoints; counts
+and coordinates must be integral. ``p`` may expand positive bounds and use
 negative coordinates as storage. Character input returns -1 at EOF. Division
 uses Python's true division, matching the specification's floating result.
 Invalid instructions, stack underflow, and division by zero raise
@@ -11,6 +12,7 @@ Invalid instructions, stack underflow, and division by zero raise
 from __future__ import annotations
 
 import copy
+import math
 from collections.abc import Sequence
 from typing import cast
 
@@ -18,6 +20,7 @@ from esolangs._drive import drive
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO, ScriptedIO
+from esolangs.interpreters.memory import format_integer
 from esolangs.interpreters.randomness import FirstDraw, Randomness, draw
 from esolangs.interpreters.source_hints import syntax_error
 
@@ -33,6 +36,42 @@ def _integer(value: Number) -> int:
     if isinstance(value, float) and not value.is_integer():
         raise HaltError("something smells fishy...", hint="use a whole-number operand")
     return int(value)
+
+
+def _character(value: Number) -> str:
+    """Decode a codepoint or raise a Fish runtime error."""
+    value = _integer(value)
+    if not 0 <= value <= 0x10FFFF:
+        raise HaltError("something smells fishy...")
+    return chr(value)
+
+
+def _calculate(command: str, left: Number, right: Number) -> Number:
+    """Evaluate arithmetic, rejecting unsupported floating results."""
+    try:
+        if command == "+":
+            result = left + right
+        elif command == "-":
+            result = left - right
+        elif command == "*":
+            result = left * right
+        elif command in ",%":
+            if right == 0:
+                raise HaltError(
+                    "something smells fishy...", hint="use a nonzero divisor"
+                )
+            result = left / right if command == "," else left % right
+        elif command == "(":
+            result = int(left < right)
+        elif command == ")":
+            result = int(left > right)
+        else:
+            result = int(left == right)
+    except OverflowError:
+        raise HaltError("something smells fishy...") from None
+    if isinstance(result, float) and not math.isfinite(result):
+        raise HaltError("something smells fishy...")
+    return result
 
 
 class _Machine:
@@ -84,6 +123,8 @@ class _Machine:
             tuple(self.registers),
             self.quote,
             self.halted,
+            self.width,
+            self.height,
             self.io.position(),
         )
 
@@ -102,6 +143,7 @@ class _Machine:
         self.quote = cast(str | None, state[7])
         self.halted = cast(bool, state[8])
         self.cells = dict(cast(tuple[tuple[tuple[int, int], int], ...], cells))
+        self.width, self.height = cast(int, state[9]), cast(int, state[10])
         packed = cast(tuple[tuple[Number, ...], ...], stacks)
         self.stacks = [list(stack) for stack in packed]
         self.registers = list(cast(tuple[Number | None, ...], registers))
@@ -115,10 +157,11 @@ class _Machine:
             return (current,)
         x, y = cast(int, current[0]), cast(int, current[1])
         frozen_cells = cast(tuple[tuple[tuple[int, int], int], ...], current[4])
-        command = chr(dict(frozen_cells).get((x, y), 0))
-        if command == "i":
+        command = _character(dict(frozen_cells).get((x, y), 0))
+        interpreting = current[7] is None
+        if interpreting and command == "i":
             return None
-        choices = range(4) if command == "x" else range(1)
+        choices = range(4) if interpreting and command == "x" else range(1)
         successors = []
         for choice in choices:
             branch = copy.deepcopy(self)
@@ -126,10 +169,12 @@ class _Machine:
             branch.io = ScriptedIO("")
             branch._rng = FirstDraw(choice)  # noqa: SLF001 - same-class state fork
             branch.step()
-            successors.append(branch.snapshot())
+            successors.append((*branch.snapshot()[:-1], current[-1]))
         return tuple(successors)
 
-    def _fail(self, hint: str) -> None:
+    def _fail(
+        self, hint: str = "check the operand bounds for this instruction"
+    ) -> None:
         raise HaltError("something smells fishy...", hint=hint)
 
     def _pop(self) -> Number:
@@ -145,7 +190,7 @@ class _Machine:
     def step(self) -> None:
         if self.halted:
             return
-        command = chr(self.cells.get((self.x, self.y), 0))
+        command = _character(self.cells.get((self.x, self.y), 0))
         stack = self.stacks[-1]
         if self.quote is not None:
             if command == self.quote:
@@ -160,26 +205,7 @@ class _Machine:
             stack.append(int(command, 16))
         elif command in "+-*,%()=":
             right, left = self._pop(), self._pop()
-            if command == "+":
-                stack.append(left + right)
-            elif command == "-":
-                stack.append(left - right)
-            elif command == "*":
-                stack.append(left * right)
-            elif command == ",":
-                if right == 0:
-                    self._fail("use a nonzero divisor")
-                stack.append(left / right)
-            elif command == "%":
-                if right == 0:
-                    self._fail("use a nonzero remainder divisor")
-                stack.append(left % right)
-            elif command == "(":
-                stack.append(int(left < right))
-            elif command == ")":
-                stack.append(int(left > right))
-            else:
-                stack.append(int(left == right))
+            stack.append(_calculate(command, left, right))
         elif command in "><^v":
             self.dx, self.dy = {
                 ">": (1, 0),
@@ -202,10 +228,13 @@ class _Machine:
         elif command == "!":
             self._advance()
         elif command == "?":
-            if self._pop() != 0:
+            if self._pop() == 0:
                 self._advance()
         elif command == ".":
-            self.y, self.x = _integer(self._pop()), _integer(self._pop())
+            y, x = _integer(self._pop()), _integer(self._pop())
+            if x < 0 or y < 0:
+                self._fail()
+            self.x, self.y = x, y
         elif command == ":":
             value = self._pop()
             stack.extend((value, value))
@@ -272,9 +301,17 @@ class _Machine:
             except EOFError:
                 stack.append(-1)
         elif command == "o":
-            self.io.print_char(chr(_integer(self._pop())))
+            self.io.print_char(_character(self._pop()))
         elif command == "n":
-            self.io.print_value(self._pop())
+            value = self._pop()
+            if isinstance(value, float):
+                if not math.isfinite(value):
+                    self._fail()
+                if value.is_integer():
+                    value = int(value)
+            self.io.print_str(
+                format_integer(value) if isinstance(value, int) else str(value)
+            )
         elif command == ";":
             self.halted = True
             return
