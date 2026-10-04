@@ -101,7 +101,7 @@ def _run(rest: list[str]) -> None:
             _fail(f"{flag} given more than once")
     _check_count("run", rest, 2)
     language, path = rest[0], rest[1]
-    program = _read_program(path, timeout, language=language)
+    table = _table_of(options)
     # Resolved *before* stdin is read.  It was after, so
     # `esolangs run NotALang prog.txt` with stdin held open blocked forever
     # without ever saying the language was unknown -- the one thing it could
@@ -110,7 +110,6 @@ def _run(rest: list[str]) -> None:
         facts = describe(language)
         mode = facts["answer_mode"]
         name = facts["name"]
-    stdin = _read_stdin(timeout, _stdin_hint(facts))
     if mode == "termination" and timeout is None:
         if judge:
             # Judging needs the bound, so this is a refusal rather than the
@@ -129,7 +128,8 @@ def _run(rest: list[str]) -> None:
             f"program with that answer will run until you stop it; pass "
             f"--timeout SECONDS to bound it\n"
         )
-    table = _table_of(options)
+    program = _read_program(path, timeout, language=language)
+    stdin = _read_stdin(timeout, _stdin_hint(facts))
     warning = _shape_warning(facts, stdin, table) if judge or table is not None else ""
     if warning and judge:
         # ``--judge`` wants one answer bit, so a bad stdin is a usage error

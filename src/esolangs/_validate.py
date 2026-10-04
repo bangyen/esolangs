@@ -13,6 +13,19 @@ _TIMEOUT_FLOOR = 0.001
 _TIMEOUT_CEILING = 2_592_000.0
 
 
+def _argument_repr(value: object) -> str:
+    """Describe rejected values even beyond CPython's decimal rendering cap."""
+    try:
+        return repr(value)
+    except ValueError:
+        if isinstance(value, int):
+            sign = "negative " if value < 0 else ""
+            return f"<{sign}integer with {value.bit_length()} bits>"
+        if isinstance(value, list):
+            return "[" + ", ".join(_argument_repr(item) for item in value) + "]"
+        return f"<{type(value).__name__}>"
+
+
 def check_whole(value: object, name: str) -> int:
     """Return ``value`` as a non-negative index, or refuse it by name."""
     from esolangs.exceptions import ArgumentError
@@ -20,7 +33,9 @@ def check_whole(value: object, name: str) -> int:
 
     if isinstance(value, bool) or not isinstance(value, int) or value < 0:
         raise with_hint(
-            ArgumentError(f"{name} must be a non-negative integer, got {value!r}"),
+            ArgumentError(
+                f"{name} must be a non-negative integer, got {_argument_repr(value)}"
+            ),
             f"use a non-negative integer, for example {name}=0; "
             "bools and floats are not counts",
         )
@@ -36,17 +51,19 @@ def check_timeout(timeout: object) -> None:
         return
     if isinstance(timeout, bool) or not isinstance(timeout, int | float):
         raise with_hint(
-            ArgumentError(f"timeout must be a number or None, got {timeout!r}"),
+            ArgumentError(
+                f"timeout must be a number or None, got {_argument_repr(timeout)}"
+            ),
             ("set a timeout in seconds, for example timeout=5.0"),
         )
     if timeout != timeout or timeout in _INFINITE:
         raise with_hint(
-            ArgumentError(f"timeout must be finite, got {timeout!r}"),
+            ArgumentError(f"timeout must be finite, got {_argument_repr(timeout)}"),
             ("set a timeout in seconds, for example timeout=5.0"),
         )
     if timeout <= 0:
         raise with_hint(
-            ArgumentError(f"timeout must be positive, got {timeout}"),
+            ArgumentError(f"timeout must be positive, got {_argument_repr(timeout)}"),
             ("set a timeout in seconds, for example timeout=5.0"),
         )
     if timeout > _TIMEOUT_CEILING:
@@ -59,7 +76,8 @@ def check_timeout(timeout: object) -> None:
         raise with_hint(
             ArgumentError(
                 f"timeout must be at most {_TIMEOUT_CEILING} seconds, got "
-                f"{timeout}; a longer one does not fit the wall-clock timer"
+                f"{_argument_repr(timeout)}; a longer one does not fit "
+                "the wall-clock timer"
             ),
             ("set a timeout in seconds, for example timeout=5.0"),
         )
@@ -72,7 +90,8 @@ def check_timeout(timeout: object) -> None:
         raise with_hint(
             ArgumentError(
                 f"timeout must be at least {_TIMEOUT_FLOOR} seconds, got "
-                f"{timeout}; the wall-clock guard is a signal and cannot be "
+                f"{_argument_repr(timeout)}; the wall-clock guard is a signal "
+                "and cannot be "
                 f"taken down reliably faster than that"
             ),
             ("set a timeout in seconds, for example timeout=5.0"),
@@ -88,12 +107,14 @@ def check_width(width: object) -> None:
         return
     if isinstance(width, bool) or not isinstance(width, int):
         raise with_hint(
-            ArgumentError(f"width must be an integer or None, got {width!r}"),
+            ArgumentError(
+                f"width must be an integer or None, got {_argument_repr(width)}"
+            ),
             ("use a positive integer column width, for example width=80"),
         )
     if width <= 0:
         raise with_hint(
-            ArgumentError(f"width must be positive, got {width}"),
+            ArgumentError(f"width must be positive, got {_argument_repr(width)}"),
             ("use a positive integer column width, for example width=80"),
         )
 
@@ -128,12 +149,14 @@ def check_bits(bits: object, what: str = "bits") -> list[int]:
                 ArgumentError(
                     f"{what} must be the integers 0 and 1; bools are refused on "
                     f"purpose, because True == 1 and a list of them used to be "
-                    f"accepted as a different row, got {list(bits)!r}"
+                    f"accepted as a different row, got {_argument_repr(list(bits))}"
                 ),
                 ("pass integer bits as a list or tuple, for example [0, 1]"),
             )
         raise with_hint(
-            ArgumentError(f"{what} must each be 0 or 1, got {list(bits)!r}"),
+            ArgumentError(
+                f"{what} must each be 0 or 1, got {_argument_repr(list(bits))}"
+            ),
             ("pass integer bits as a list or tuple, for example [0, 1]"),
         )
     return list(bits)
@@ -159,7 +182,8 @@ def check_address(addr: int, language: str) -> int:
 
     if addr >= _MAX_CELLS:
         raise InterpreterLimitError(
-            f"{language} would have to grow its store to {addr + 1} cells, "
+            f"{language} would have to grow its store to "
+            f"{_argument_repr(addr + 1)} cells, "
             f"past the {_MAX_CELLS}-cell limit this interpreter allocates",
             hint="use smaller memory addresses to fit the interpreter allocation limit",
         )
@@ -173,7 +197,9 @@ def check_scale(scale: object) -> int:
 
     if isinstance(scale, bool) or not isinstance(scale, int) or scale < 1:
         raise with_hint(
-            ArgumentError(f"scale must be a positive integer, got {scale!r}"),
+            ArgumentError(
+                f"scale must be a positive integer, got {_argument_repr(scale)}"
+            ),
             (
                 "use scale=1 for the original raster size or "
                 "an integer replication factor"

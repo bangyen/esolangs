@@ -229,3 +229,31 @@ def test_memory_address_at_the_cell_limit_is_refused():
     for address in (_MAX_CELLS, _MAX_CELLS + 1):
         with pytest.raises(InterpreterLimitError, match="cell limit"):
             check_address(address, "S*bleq")
+
+
+@pytest.mark.parametrize(
+    "operation",
+    [
+        lambda huge: esolangs.run("brainfuck", "", timeout=huge),
+        lambda huge: esolangs.run("brainfuck", "", timeout=-huge),
+        lambda huge: esolangs.run("brainfuck", "", isolated=True, max_output=-huge),
+        lambda huge: esolangs.generate("brainfuck", "01", width=-huge),
+        lambda huge: esolangs.encode_inputs("brainfuck", [huge]),
+        lambda huge: esolangs.encode_inputs("brainfuck", [True, huge]),
+        lambda huge: esolangs.run(
+            "Piet", esolangs.Raster((((0, 0, 0),),)), scale=-huge
+        ),
+        lambda huge: esolangs.run("brainfuck", "", timeout={"value": huge}),
+    ],
+)
+def test_oversized_integer_arguments_keep_public_errors(operation):
+    with pytest.raises(esolangs.ArgumentError) as caught:
+        operation(10**5000)
+    assert len(str(caught.value)) < 400
+
+
+def test_oversized_memory_addresses_keep_the_allocation_error():
+    from esolangs._validate import check_address
+
+    with pytest.raises(esolangs.InterpreterLimitError, match="integer with"):
+        check_address(10**5000, "S*bleq")

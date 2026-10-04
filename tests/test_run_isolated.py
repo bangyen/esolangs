@@ -26,6 +26,20 @@ def test_timeout_retains_streamed_output():
 
 
 @pytest.mark.medium
+def test_isolation_preserves_integer_seeds_beyond_the_decimal_rendering_limit():
+    seeds = [*range(8), 10**5000, -(10**5000), "text seed"]
+    direct = [
+        esolangs.run("LaserFuck", "o+++.\n", seed=seed, timeout=5) for seed in seeds
+    ]
+    isolated = [
+        esolangs.run("LaserFuck", "o+++.\n", seed=seed, timeout=5, isolated=True)
+        for seed in seeds
+    ]
+    assert set(direct) == {"", "3"}
+    assert isolated == direct
+
+
+@pytest.mark.medium
 def test_input_error_retains_counts_and_output():
     with pytest.raises(esolangs.InputExhaustedError) as caught:
         esolangs.run("brainfuck", "+.,", isolated=True)
@@ -197,6 +211,13 @@ def test_output_limit_accepts_exact_length_and_unicode():
     with pytest.raises(esolangs.InterpreterLimitError) as caught:
         esolangs.run("Sophie", "#λ,,", isolated=True, max_output=1)
     assert caught.value.partial_output == "λ"
+
+
+@pytest.mark.medium
+def test_output_limit_beyond_the_decimal_rendering_limit_accepts_small_output():
+    assert (
+        esolangs.run("brainfuck", "++.", isolated=True, max_output=10**5000) == "\x02"
+    )
 
 
 @pytest.mark.medium
@@ -425,3 +446,32 @@ def test_isolated_row_timeout_stays_undecided(language, monkeypatch):
         evaluate_generated(language, "0110", isolated=True)
     assert caught.value.partial_output == "prefix"
     assert any("row 0" in note for note in caught.value.__notes__)
+
+
+def test_worker_decodes_large_integer_seed_and_output_cap(monkeypatch, capsys):
+    import io
+    import sys
+
+    huge = 10**5000
+    payload = {
+        "language": "brainfuck",
+        "program": "++.",
+        "raster": False,
+        "stdin": "",
+        "seed": hex(-huge),
+        "integer_seed": True,
+        "max_output": hex(huge),
+        "integer_max_output": True,
+    }
+    original_run = esolangs.run
+
+    def run(*args, **kwargs):
+        assert kwargs.pop("seed") == -huge
+        return original_run(*args, **kwargs)
+
+    monkeypatch.setattr(esolangs, "ScriptedIO", esolangs.ScriptedIO)
+    monkeypatch.setattr(esolangs, "run", run)
+    monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(payload)))
+    _worker()
+    messages = [json.loads(line) for line in capsys.readouterr().out.splitlines()]
+    assert messages[-1] == {"result": "\x02"}
