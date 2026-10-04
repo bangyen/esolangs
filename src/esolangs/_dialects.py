@@ -2,17 +2,26 @@
 
 from dataclasses import dataclass
 
+INDEX_BASES = (0, 1)
+EXPRESSION_SYNTAXES = ("infix", "postfix")
+LITERAL_POLICIES = ("decimal", "binary_digits")
+UNSET_POLICIES = ("error", "zero")
+UNKNOWN_POLICIES = ("ignore", "error")
+TAPE_BOUNDARIES = ("error", "wrap", "clamp")
+SCHEDULINGS = ("creation", "reverse")
+DEQUE_CURSORS = ("pointer", "shared")
+
 
 def index_base(value: int) -> int:
     """Validate zero- or one-based indexing."""
-    if type(value) is not int or value not in (0, 1):
+    if type(value) is not int or value not in INDEX_BASES:
         raise ValueError("index_base must be 0 or 1")
     return value
 
 
 def expression_syntax(value: str) -> str:
     """Validate Alight expression notation."""
-    if value not in ("infix", "postfix"):
+    if value not in EXPRESSION_SYNTAXES:
         raise ValueError("expression_syntax must be infix or postfix")
     return value
 
@@ -22,7 +31,7 @@ class PacklangLiterals:
     policy: str = "decimal"
 
     def __post_init__(self) -> None:
-        if self.policy not in ("decimal", "binary_digits"):
+        if self.policy not in LITERAL_POLICIES:
             raise ValueError("literal_policy must be decimal or binary_digits")
 
     def parse(self, text: str) -> int:
@@ -43,9 +52,9 @@ class FalseDialect:
 
     def __post_init__(self) -> None:
         index_base(self.pick_base)
-        if self.unset_variables not in ("error", "zero"):
+        if self.unset_variables not in UNSET_POLICIES:
             raise ValueError("unset_variables must be error or zero")
-        if self.unknown_commands not in ("ignore", "error"):
+        if self.unknown_commands not in UNKNOWN_POLICIES:
             raise ValueError("unknown_commands must be ignore or error")
 
 
@@ -62,7 +71,7 @@ class LineDialect:
         ):
             if value is not None and (type(value) is not int or value < minimum):
                 raise ValueError(f"{name} must be at least {minimum}")
-        if self.boundary not in ("error", "wrap", "clamp"):
+        if self.boundary not in TAPE_BOUNDARIES:
             raise ValueError("boundary must be error, wrap or clamp")
         if self.tape_size is None and self.boundary != "error":
             raise ValueError("wrap and clamp require tape_size")
@@ -88,9 +97,9 @@ class FlowchartDialect:
     deque_cursor: str = "pointer"
 
     def __post_init__(self) -> None:
-        if self.scheduling not in ("creation", "reverse"):
+        if self.scheduling not in SCHEDULINGS:
             raise ValueError("scheduling must be creation or reverse")
-        if self.deque_cursor not in ("pointer", "shared"):
+        if self.deque_cursor not in DEQUE_CURSORS:
             raise ValueError("deque_cursor must be pointer or shared")
 
 

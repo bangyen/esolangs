@@ -90,6 +90,7 @@ class Language:
         scale: int | None = None,
         max_rows: int | None = _DEFAULT_MAX_ROWS,
         total_timeout: float | None = None,
+        settings: DialectSettings | None = None,
     ) -> Iterator[str]:
         """Yield this program's table one answer bit at a time."""
         return esolangs.iter_evaluate(
@@ -101,6 +102,7 @@ class Language:
             scale=scale,
             max_rows=max_rows,
             total_timeout=total_timeout,
+            settings=settings,
         )
 
     def evaluate(
@@ -113,6 +115,7 @@ class Language:
         scale: int | None = None,
         max_rows: int | None = _DEFAULT_MAX_ROWS,
         total_timeout: float | None = None,
+        settings: DialectSettings | None = None,
     ) -> str:
         """Return the table computed over ``inputs`` bits."""
         return esolangs.evaluate(
@@ -124,6 +127,7 @@ class Language:
             scale=scale,
             max_rows=max_rows,
             total_timeout=total_timeout,
+            settings=settings,
         )
 
     def describe(self) -> LanguageInfo:

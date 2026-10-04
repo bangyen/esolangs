@@ -2,8 +2,10 @@
 
 from dataclasses import dataclass
 
-from esolangs._dialects import LineDialect
+from esolangs._dialects import TAPE_BOUNDARIES, LineDialect
 from esolangs.exceptions import HaltError
+
+EOF_POLICIES = ("error", "zero", "minus_one", "unchanged")
 
 
 @dataclass(frozen=True)
@@ -19,11 +21,11 @@ class BrainfuckDialect:
             self.tape_size,
             self.boundary if self.tape_size is not None else "error",
         )
-        if self.boundary not in ("clamp", "error", "wrap"):
+        if self.boundary not in TAPE_BOUNDARIES:
             raise ValueError("boundary must be clamp, error or wrap")
         if self.boundary == "wrap" and self.tape_size is None:
             raise ValueError("wrap requires tape_size")
-        if self.eof not in ("error", "zero", "minus_one", "unchanged"):
+        if self.eof not in EOF_POLICIES:
             raise ValueError("eof must be error, zero, minus_one or unchanged")
 
     def cell(self, value: int) -> int:

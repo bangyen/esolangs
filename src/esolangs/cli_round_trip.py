@@ -28,6 +28,7 @@ from esolangs.cli_args import (
     _fail,
     _integer,
     _pop_options,
+    _settings_of,
     _split_positional,
     _table_of,
     _timeout_of,
@@ -35,6 +36,7 @@ from esolangs.cli_args import (
 from esolangs.cli_hints import _diverging_answer, _exit_code
 from esolangs.cli_io import _read_program
 from esolangs.exceptions import EsolangError
+from esolangs.settings import dialect_options
 
 
 def _answer(rest: list[str]) -> None:
@@ -78,13 +80,28 @@ def _answer(rest: list[str]) -> None:
 def _evaluate(rest: list[str]) -> None:
     """Print a supplied program's table, optionally checking the expected one."""
     rest, options = _pop_options(
-        rest, {"--timeout", "--inputs", "--table", "--max-rows", "--total-timeout"}
+        rest,
+        {
+            "--timeout",
+            "--inputs",
+            "--table",
+            "--max-rows",
+            "--total-timeout",
+            "--settings",
+        },
     )
     timeout = _timeout_of(options)
     rest = _split_positional(
         rest,
         set(),
-        {"--timeout", "--inputs", "--table", "--max-rows", "--total-timeout"},
+        {
+            "--timeout",
+            "--inputs",
+            "--table",
+            "--max-rows",
+            "--total-timeout",
+            "--settings",
+        },
     )
     _check_count("evaluate", rest, 2)
     table = _table_of(options)
@@ -107,9 +124,11 @@ def _evaluate(rest: list[str]) -> None:
         else None
     )
     language, path = rest
+    settings = _settings_of(options)
     isolated = not hasattr(signal, "SIGALRM")
     deadline = None if total_timeout is None else monotonic() + total_timeout
     try:
+        dialect_options(language, settings)
         _evaluation_rows(inputs, max_rows)
         program = _prepare(
             lambda: _read_program(path, timeout, language=language),
@@ -125,6 +144,7 @@ def _evaluate(rest: list[str]) -> None:
                 max_rows=max_rows,
                 total_timeout=total_timeout,
                 isolated=isolated,
+                settings=settings,
             )
         else:
             computed = evaluate(
@@ -135,6 +155,7 @@ def _evaluate(rest: list[str]) -> None:
                 max_rows=max_rows,
                 total_timeout=total_timeout,
                 isolated=isolated,
+                settings=settings,
             )
     except EsolangError as exc:
         _fail(exc, _exit_code(exc))
