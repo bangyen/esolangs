@@ -525,6 +525,72 @@ def test_moduli_generate_asymmetric_tables(
         assert io.reads == n
 
 
+@pytest.mark.parametrize("modulus", [255, 256])
+@pytest.mark.parametrize(
+    "table",
+    [f"{value:0{1 << n}b}" for n in range(1, 4) for value in range(1 << (1 << n))],
+)
+def test_coprime_chain_generates_every_small_table(table: str, modulus: int) -> None:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.tape_based.slow_acv_mammalian import run
+    from esolangs.tools._mammalian_compact import compact_chain
+
+    n = len(table).bit_length() - 1
+    source = compact_chain(table, n, modulus=modulus)
+    for row, expected in enumerate(table):
+        io = ScriptedIO(f"{row:0{n}b}")
+        run(source, io, cell_modulus=modulus, io_modulus=modulus)
+        assert io.getvalue() == expected
+        assert io.reads == n
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("n", [4, 5, 6, 7])
+def test_coprime_chain_generates_asymmetric_modulo_256_tables(n: int) -> None:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.tape_based.slow_acv_mammalian import run
+    from esolangs.tools._mammalian_compact import compact_chain
+
+    rng = random.Random(20261003 + n)
+    table = "".join(str(rng.getrandbits(1)) for _ in range(1 << n))
+    source = compact_chain(table, n, modulus=256)
+    for row, expected in enumerate(table):
+        io = ScriptedIO(f"{row:0{n}b}")
+        run(source, io)
+        assert io.getvalue() == expected
+        assert io.reads == n
+
+
+def test_coprime_chain_rejects_backward_targets() -> None:
+    from esolangs.tools._mammalian_compact import _Chain, _State
+
+    chain = _Chain(255)
+    with pytest.raises(ValueError, match="precedes"):
+        chain.raise_to(_State(), -1)
+    with pytest.raises(ValueError, match="precedes"):
+        chain.jump(_State(), 0)
+
+
+@pytest.mark.parametrize("modulus", [255, 256])
+def test_coprime_chain_runs_in_stepped_interpreter(modulus: int) -> None:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
+    from esolangs.tools._mammalian_compact import compact_chain
+
+    table = "0010110101110001"
+    source = compact_chain(table, 4, modulus=modulus)
+    for row, expected in enumerate(table):
+        io = ScriptedIO(f"{row:04b}")
+        machine = _Machine(source, io, cell_modulus=modulus, io_modulus=modulus)
+        for _ in range(len(source.split())):
+            if machine.halted:
+                break
+            machine.step()
+        assert machine.halted
+        assert io.getvalue() == expected
+        assert io.reads == 4
+
+
 def test_cell_255_tree_rejects_backward_sum_targets() -> None:
     from esolangs.tools._mammalian255 import _State
 
