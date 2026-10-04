@@ -23,6 +23,7 @@ from esolangs.interpreters.persistent import (
     length,
     put,
 )
+from esolangs.interpreters.source_hints import keyword_hint, syntax_error
 
 #: ``(ind, ptr, cells)``: an immutable value, rebound per step.  The
 #: parsed line is a parameter, not a field.
@@ -33,40 +34,66 @@ type _State = tuple[int, int, Chunked[int]]
 #: ``target`` is meaningful only for ``goto`` and is zero otherwise.
 type _Line = tuple[int, str, int] | None
 
+_COMMANDS = ("increment", "inc", "right", "left", "move", "goto", "input", "output")
+
 
 def _parse(line: str) -> _Line:
     """Return the parsed form of one source line, or raise if malformed.
 
     Commands are whole whitespace-delimited words; ``inc`` also names
-    ``increment``. Unknown commands retain the documented inert behavior.
+    ``increment``. Unknown commands raise ValueError, even on a false guard.
     """
     line = line.strip()
     if not line:
         return None
     arr = line.split()
     if len(arr) < 2 or arr[0] != "if":
-        raise ValueError("malformed BrainIf line: " + line)
+        raise syntax_error(
+            "malformed BrainIf line: " + line,
+            "write if <integer> <command>, for example if 0 increment",
+        )
     value = int(arr[1])
     command = arr[2] if len(arr) > 2 else ""
     if command == "move":
         if len(arr) != 4 or arr[3] not in ("right", "left"):
-            raise ValueError("malformed BrainIf line: " + line)
+            raise syntax_error(
+                "malformed BrainIf line: " + line,
+                "write if <integer> move left or move right",
+            )
         return (value, arr[3], 0)
     if command == "goto":
         if len(arr) < 4:
-            raise ValueError("goto requires a target line")
+            raise syntax_error(
+                "goto requires a target line",
+                "write if <integer> goto <positive line number>",
+            )
         if len(arr) != 4:
-            raise ValueError("malformed BrainIf line: " + line)
+            raise syntax_error(
+                "malformed BrainIf line: " + line,
+                "give goto exactly one target line, for example if 0 goto 1",
+            )
         target = int(arr[3])
         if target < 1:
-            raise ValueError("goto target must be a positive line number")
+            raise syntax_error(
+                "goto target must be a positive line number",
+                "number target lines from 1",
+            )
         return (value, command, target)
     if len(arr) > 3:
-        raise ValueError("malformed BrainIf line: " + line)
-    if command in ("increment", "inc", "right", "left", "input", "output"):
+        raise syntax_error(
+            "malformed BrainIf line: " + line,
+            "give the guarded command only its required operands",
+        )
+    if command in _COMMANDS:
         return (value, command, 0)
-    # Unknown commands remain inert under the convention in limitations.md.
-    return (value, "", 0)
+    raise syntax_error(
+        f"unknown BrainIf command {command!r}",
+        keyword_hint(
+            command,
+            _COMMANDS,
+            "write increment, move left/right, goto <line>, input or output",
+        ),
+    )
 
 
 def _advance(state: _State, line: _Line, byte: int | None = None) -> _State:

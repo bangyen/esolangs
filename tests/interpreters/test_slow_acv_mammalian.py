@@ -31,10 +31,12 @@ class TestMammalian:
 
     @pytest.mark.parametrize("word", ["SEEDSEED", "XSEEDY", "SEED!", "SEED/SEED"])
     def test_embedded_instruction_names_do_not_execute(self, word: str) -> None:
-        assert run_and_capture(f"{word} CONSUME PRONOUNCE") == "\x00"
+        with pytest.raises(ValueError, match="unknown SLOW ACV MAMMALIAN command"):
+            run_and_capture(f"{word} CONSUME PRONOUNCE")
 
     def test_concatenated_program_does_not_execute(self) -> None:
-        assert run_and_capture("SEEDCONSUMEPRONOUNCE") == ""
+        with pytest.raises(ValueError, match="unknown SLOW ACV MAMMALIAN command"):
+            run_and_capture("SEEDCONSUMEPRONOUNCE")
 
     def test_pronomce_default(self) -> None:
         assert run_and_capture("PRONOUNCE") == "\x00"
@@ -371,3 +373,74 @@ class TestContract(SnapshotContract):
 
     machine = staticmethod(_machine)
     stepping_program = "SEED PRONOUNCE"
+
+
+@pytest.mark.parametrize("io_modulus", [255, 256])
+@pytest.mark.parametrize("cell_modulus", [255, 256])
+@pytest.mark.parametrize(
+    ("program", "stdin"),
+    [
+        ("ACCEPT CONSUME CONSUME PRONOUNCE", "ÿ"),
+        ("ACCEPT CONSUME CONSUME EXCRETE CONSUME PRONOUNCE", "ÿ"),
+        ("ACCEPT CONSUME CONSUME PRONOUNCE", "Ā"),
+        (" ".join(["SEED"] * 256 + ["DIGEST", "PRONOUNCE"]), ""),
+    ],
+)
+def test_moduli_agree_between_fast_run_and_vm(
+    cell_modulus: int, io_modulus: int, program: str, stdin: str
+) -> None:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine, run
+
+    fast = ScriptedIO(stdin)
+    run(program, fast, cell_modulus=cell_modulus, io_modulus=io_modulus)
+    stepped = ScriptedIO(stdin)
+    machine = _Machine(
+        program, stepped, cell_modulus=cell_modulus, io_modulus=io_modulus
+    )
+    while not machine.halted:
+        machine.step()
+    raw_value = ord(stdin) if stdin else 256
+    expected = raw_value % cell_modulus
+    assert fast.getvalue() == stepped.getvalue() == chr(expected % io_modulus)
+    assert fast.reads == stepped.reads == len(stdin)
+
+
+@pytest.mark.parametrize("cell_modulus", [255, 256])
+def test_conflagrate_uses_cell_modulus(cell_modulus: int) -> None:
+    from esolangs.interpreters.tape_based.slow_acv_mammalian import _total
+
+    arrays = ((512, 254),) + ((),) * 22
+    assert _total(1, arrays, cell_modulus)[0] == (510, 256 % cell_modulus)
+
+
+@pytest.mark.parametrize("io_modulus", [255, 256])
+def test_excrete_uses_io_modulus_without_changing_seed(io_modulus: int) -> None:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
+
+    machine = _Machine("EXCRETE SEED", ScriptedIO(), io_modulus=io_modulus)
+    machine.acc = 256
+    machine.step()
+    assert machine.lst[0] == (0, 256 % io_modulus)
+    assert machine.acc == 0
+    machine.step()
+    assert machine.lst[0] == (1, 256 % io_modulus)
+
+
+@pytest.mark.parametrize(
+    "settings",
+    [
+        {"cell_modulus": 254},
+        {"cell_modulus": 256.0},
+        {"io_modulus": 254},
+        {"io_modulus": 255.0},
+    ],
+)
+def test_unsupported_moduli_are_rejected_before_execution(settings) -> None:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine, run
+
+    for entry in (_Machine, run):
+        with pytest.raises(ValueError, match="modulus must"):
+            entry("PRONOUNCE", ScriptedIO(), **settings)

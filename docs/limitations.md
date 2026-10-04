@@ -149,6 +149,15 @@ Persistent stores use shared 32-cell chunks; RAM0 also indexes addresses.
 Those choices prevent repeated scans, but command cost and source size remain
 separate axes.
 
+`scripts/screens/resources.py` checks Sophie, BFStack and Subleq on 96 tables
+and all 6,120 rows through eight inputs. The benchmark reports UTF-8 source
+bits, hidden control stacks, signed integer widths and the simultaneous peak
+of data, control, cursor and machine flags. Separate peaks need not coincide.
+Python overhead, static parser indexes and I/O state are excluded. At eight
+inputs the sampled peak machine payloads are 18, 756 and 3,066 bits respectively;
+these are measurements, not language-wide space bounds. Construction bounds
+are asserted in the screen and controlled by `tests/proofs/test_resource_bounds.py`.
+
 ### Malbolge sampling
 
 `test_boolean_malbolge.py` checks stride samples (every 8th/16th/32nd row)
@@ -160,27 +169,26 @@ the 1792 level-0 rows.
 
 ## Curation
 
-The collection has 74 languages; its floor is 31. All ten classics carry
-generators. Ordinary imperative entries with shared-shim generators and no
-consumer were removed. Nopstacle could not meet the embed conventions; ZTOALC
-L was a searched syntax-level lookup table. The retained 2D screen intersected
+The collection has 81 languages; its floor is 31. All ten classics have
+generators. Removed: unused ordinary imperative entries with shared-shim
+generators; Nopstacle for incompatible embeds; ZTOALC L for a searched
+syntax-level lookup table. The 2D screen intersected
 1,543 unimplemented with 567 two-dimensional pages, then filtered 36 by prior
 verdicts, co-categories, I/O and branch vocabulary, and page length. It admitted
 Super SNUSP and Alight and rejected Pinyin.
 
-The alternative admission route is fame: at least 60 unique esolangs linking
-pages. Resolve the candidate's title redirects, follow every `list=backlinks`
-continuation, include links through redirects across all namespaces, and
-deduplicate by linking page ID. Pause at least three seconds between requests.
+Fame admits languages with at least 60 unique esolangs linking pages. Resolve
+title redirects, exhaust `list=backlinks` continuations, include redirect links
+across all namespaces, and deduplicate by page ID. Pause at least three seconds
+between requests.
 
-This fixed cutoff was adopted 2026-10-01 as a policy choice,
-not an empirically established popularity boundary. Record the resolved title,
-measurement date, and count. Missing data leaves fame unassessed, not failed.
-Below 60, fame supplies no exception; intrinsic axes still apply. Low backlinks
-count against only old languages. Wikipedia pageviews are not an admission gate.
+The cutoff is policy, adopted 2026-10-01, not a measured popularity boundary.
+Record resolved title, date and count; missing data means unassessed. Below
+60, only intrinsic axes can admit a language. Low backlinks count against
+only old languages; Wikipedia pageviews are not a gate.
 
-Recognition sources checked 2026-10-01 provide curated selections, not
-popularity rankings or additional admission gates:
+Recognition sources checked 2026-10-01 supply selections, not admission gates
+or popularity rankings:
 
 - [Kneusel, *Strange Code* (2022)](https://nostarch.com/strange-code):
   named esolang chapters cover FRACTRAN, Piet, Brainfuck, and Befunge.
@@ -198,9 +206,8 @@ popularity rankings or additional admission gates:
   administrator-selected features: Thue, Funciton, Brainfuck, Deadfish,
   Emmental, Malbolge, Glass, and ///. Features are not popularity endorsements.
 
-Backlinks were remeasured 2026-10-01. Brainfuck scores 2,057; the former 282
-counted only the first API batch. The Brainfuck-relative gates and the
-indeterminate band are retired.
+The 2026-10-01 count gives Brainfuck 2,057 backlinks; 282 counted only the first
+API batch. Brainfuck-relative gates and the indeterminate band are retired.
 
 The classics score Befunge 381, Underload 167, Thue 155, Malbolge 129,
 INTERCAL 103, FALSE 91, Fish 91, Unlambda 89, Smallfuck 66, and FRACTRAN 65;
@@ -208,48 +215,40 @@ rejected Brainloller and Braincopter score 26 and 14. Piet (65) clears the
 fame gate; Whitespace (58),
 Forth (57), Chicken (55), Shakespeare (54), and LOLCODE (47) do not.
 
-The fame bar applies to existing exceptions too; languages with an intrinsic
-axis do not need it. Whitespace was removed at 58 backlinks: its stack machine
-adds no intrinsic axis.
+Existing fame exceptions must still clear the bar; intrinsic axes are exempt.
+Whitespace was removed at 58 backlinks with no intrinsic axis.
 
-Bitwise Cyclic Tag (181) also earned the cyclic-schedule axis. Deadfish (315)
-has no input vocabulary and is therefore interpreter-only: fame can admit a
-language, but cannot create a generator interface.
+Bitwise Cyclic Tag (181) also adds the cyclic-schedule axis. Deadfish (315)
+is interpreter-only because it has no input vocabulary.
 
 [Cyclic tag](https://esolangs.org/w/index.php?title=Cyclic_tag_system&oldid=156412)
 (94) clears the fame gate despite duplicating Bitwise Cyclic Tag's axis.
-The 2026-10-01 audit found deterministic semantics: consume one queue bit,
-append the current production iff that bit is one, and advance the production
-pointer cyclically. Empty data halts. No stdin or output operation is specified;
-adopt BCT's initial-queue embed and final-deleted-bit answer, explicitly as
-package conventions. Serialize productions with semicolons, then a comma and
-the initial queue; preserve empty productions and require at least one.
+The 2026-10-01 audit pins consume-one-bit semantics: append the current
+production iff the bit is one, then advance cyclically; empty data halts.
+With no specified I/O, the package adopts BCT's initial-queue embed and
+final-deleted-bit answer. Serialize productions with semicolons, then a comma
+and the initial queue; preserve empty productions and require at least one.
 
-A direct padding construction meets the generator contracts. For a table of
-T = 2**n bits, the first n productions append 2**(n-i) zeros for input i,
-numbered from zero. Production n appends `1`; the remaining 2T productions
-alternate each table answer with an empty production. Initial data is the n
-ordered input bits followed by `1`, with uniform one-character fills `0`/`1`.
-After the inputs, the sentinel appends another sentinel behind 2r padding
-zeros, where r is the input row. Those zeros skip 2r productions; the next
-sentinel appends table[r], and the following empty production consumes it and
-halts. This makes the final deletion the answer.
+For T = 2**n, productions i = 0..n-1 append 2**(n-i) zeros; production n
+appends `1`. The remaining 2T productions alternate table bits with empty
+productions. Initial data embeds the n ordered bits with uniform `0`/`1` fills,
+then `1`. For row r, the inputs leave 2r zeros before a new sentinel; those
+zeros skip 2r productions, and the sentinel appends table[r]. The next empty
+production consumes the answer and halts.
 
-Rendered source measures exactly 5T + 2n + 1 characters; execution takes
-n + 3 + 2r steps. Emission writes 2(T-1) padding zeros and 2T table productions
-without search, so build work is O(T). The probe executed 309 tables and 3,352
-rows (exhaustive through three inputs; constants, parity, and eight seeded
-random tables at each of four through six), then sampled rows through n=14.
-The largest measured source was 81,949 characters; its worst-row execution
-was 32,783 steps. Published evolution, zero-no-append, empty-data, empty-rule,
-and nontermination controls passed. The parser, queue interpreter, ordered embed, and final-deletion convention
-are integrated; regression tests execute 309 tables and 3,352 rows.
+Source is exactly 5T + 2n + 1 characters; execution takes n + 3 + 2r steps.
+Emission writes 2(T-1) padding zeros and 2T table productions without search:
+O(T) build work. Tests execute 309 tables and 3,352 rows, exhaustive through
+three inputs, then constants, parity and eight seeded random tables per arity
+four through six. Probes sampled through n=14: at most 81,949 characters and
+32,783 steps. Published evolution, zero-no-append, empty-data, empty-rule and
+nontermination controls passed.
 
 Underload (167) and INTERCAL (103) also clear the backlink gate.
 Emmental (43) and Prelude (13) are implemented elsewhere and fail the backlink
 gate. Neither has established an intrinsic axis.
 
-The 2026-10-01 fame audit covered eight absent census entries:
+The 2026-10-01 fame audit covered eight census candidates:
 
 - [Boolfuck](https://samuelhughes.com/boof/) (76): integrated with the
   author's fixed Brainfuck lowering. Little-endian bit I/O supplies zero at
@@ -266,26 +265,25 @@ The 2026-10-01 fame audit covered eight absent census entries:
   The selected entry becomes 0/1 and the suffix is deleted. Source is
   exactly 20T + n + 53 characters; build work is O(T).
 
-Each new interpreter/generator executes 309 tables and 3,352 rows:
-exhaustive through three inputs, then constants, parity, and eight seeded
-random tables at each of four through six. Dense rendered-size difference
-ratios at n=8,10,12 are 3.997 (Cyclic tag), 3.854 (Boolfuck), 2.926 (Subleq),
-and 4.000 (///); the constructions, rather than these ratios, supply the bounds.
+Each uses the same 309-table, 3,352-row corpus as Cyclic tag. Dense size-difference
+ratios at n=8,10,12 are 3.997 (Cyclic tag), 3.854 (Boolfuck), 2.926 (Subleq)
+and 4.000 (///). The constructions supply the bounds; these ratios are measurements.
 
-- [HQ9+](https://esolangs.org/wiki/HQ9%2B) (136): interpreter-only candidate.
+- [HQ9+](https://esolangs.org/wiki/HQ9%2B) (136): interpreter-only.
   No instruction reads input. `H` and `9` emit fixed non-Boolean text; `Q`
   emits source containing `Q`; `+` emits nothing. No program emits a bare
-  Boolean answer. Pin greeting, lyric formatting, and case handling before integration.
-- [Nope.](https://esolangs.org/wiki/Nope.) (132): interpreter-only candidate.
+  Boolean answer. Output formatting and case are pinned in the interpreter.
+- [Nope.](https://esolangs.org/wiki/Nope.) (131, 2026-10-03): interpreter-only.
   `ConstantLanguage("Nope.")` ignores source and input, so neither runtime
   input nor source embeds can change its output. Accept arbitrary source,
   including empty source, under those constant semantics.
-- [Unary](https://esolangs.org/wiki/Unary) (63): interpreter-only candidate
-  under the generator contracts. Valid sources encode only their zero count;
-  equal-width valid fill pairs are identical. Runtime input exists through
+- [Unary](https://esolangs.org/wiki/Unary) (63): interpreter-only under the generator
+  contracts. Valid sources encode only their zero count; whitespace formatting
+  does not evade that bound. Runtime input exists through
   decoded Brainfuck, but sources of length at most L supply at most L+1
   functions. Covering all 2**T truth tables requires L >= 2**T - 1 somewhere,
-  precluding an O(T) generator. Pin decoded Brainfuck cell and EOF semantics.
+  precluding an O(T) generator. Decoded Brainfuck uses wrapping bytes,
+  a left-clamped tape and EOF errors.
 - [大白话](https://esolangs.org/wiki/大白话) (134): deferred. The command table is
   explicitly partial; expression precedence, complete block grammar, library
   semantics, and embedded-language dispatch are unspecified. A restricted
@@ -294,7 +292,7 @@ and 4.000 (///); the constructions, rather than these ratios, supply the bounds.
   (112): excluded as a family, not a single language. Its backlink count
   does not establish fame for any particular member.
 
-The 2026-09-27 spec read closed the other candidates:
+The 2026-09-27 audit closed these candidates:
 
 - Self-replicating marbles leaves section order and collision timing undefined.
 - Wirefunge leaves initialization open and duplicates thisthat's gates.
@@ -342,10 +340,20 @@ languages remain rejected from the same image-source screen.
   its own code.
 - Bitdeque `GOTO n` is zero-based: it lands on command index `n`, where the
   wiki's "Nth operation" reads one-based.  The generator's labels match this.
-- BrainIf ignores a guarded line naming no command (`if 0 frobnicate`), which
-  the wiki errors on; only the six named commands act.
+- BrainIf rejects unknown commands, including those under a false guard.
+  `inc`, `left` and `right` remain aliases for the canonical commands.
+- SLOW ACV MAMMALIAN rejects unknown words; commands are uppercase and
+  whitespace-delimited. The Hello World fixture omits prose annotations.
 - Jaune dispatch to an undefined marker is unspecified.
-- Alight expressions are infix and left-to-right; three-argument `at` mutates.
+- Alight retains infix, left-to-right expressions for compatibility with
+  existing programs and generators, despite the explicit postfix rule.
+  Three-argument `at` returns a copy; the wiki reversed cat discards it.
+- CV(N)(C) accepts ASCII `g` as an alias for `ɡ` to run the wiki greeting.
+  CV(N)(C), Grapheme and NoComment discard LF to run line-wrapped generated
+  programs; these are source-rule deviations, not specification gaps.
+- Grapheme shifts integer digits only between letters for compatibility with
+  existing programs and generators. The prose's final multiplication is
+  omitted; the wiki truth machine prints 1 rather than 10.
 - Packlang literals are decimal; its cat cannot receive byte 10 under
   line-oriented input.
 - Pinyin is rejected: its spelling rule contradicts its examples and its

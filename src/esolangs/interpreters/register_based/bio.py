@@ -19,6 +19,7 @@ import re
 from esolangs._drive import drive
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.source_hints import syntax_error
 
 #: ``(ind, reg, stk)``: an immutable value, rebound per step.  Commands
 #: are a parameter, not a field.  ``snapshot`` still returns
@@ -71,17 +72,22 @@ def parse(code: str) -> list[str]:
     stripped = _COMMENT.sub("", code)
     commands = [match.group().lower() for match in _COMMAND.finditer(stripped)]
     if "".join(commands) != "".join(stripped.lower().split()):
-        raise ValueError("BIO: not a command")
+        raise syntax_error(
+            "BIO: not a command",
+            "use complete BIO commands with their required punctuation",
+        )
     depth = 0
     for command in commands:
         if command.endswith("{"):
             depth += 1
         elif command == "};":
             if not depth:
-                raise ValueError("BIO: '}' closes no loop")
+                raise syntax_error(
+                    "BIO: '}' closes no loop", "put a loop opener before };"
+                )
             depth -= 1
     if depth:
-        raise ValueError("BIO: unmatched '{'")
+        raise syntax_error("BIO: unmatched '{'", "close each loop with };")
     return commands
 
 

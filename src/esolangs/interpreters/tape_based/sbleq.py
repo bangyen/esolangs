@@ -17,6 +17,7 @@ from esolangs._validate import check_address
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.memory import parse_int_memory as _parse
+from esolangs.interpreters.source_hints import syntax_error
 
 # The three store targets the wiki defines: base S*bleq, S*bl*q, Subl*q.
 _STORES = ("a", "ab", "b")
@@ -44,7 +45,13 @@ def _read(state: _State, addr: int, byte: int | None = None) -> int:
         return byte if byte is not None else 0
     if addr >= 0:
         return mem[addr] if addr < len(mem) else 0
-    raise ValueError(f"invalid address {addr}")
+    raise syntax_error(
+        f"invalid address {addr}",
+        (
+            "use a nonnegative memory address, -1 for the instruction "
+            "pointer or -2 for input"
+        ),
+    )
 
 
 def _write(state: _State, addr: int, value: int) -> _State:
@@ -72,7 +79,9 @@ def _advance(state: _State, store: str, byte: int | None = None) -> _State:
     mem, ip, _halted = state
     a, b, c = mem[ip], mem[ip + 1], mem[ip + 2]
     if c < 0:
-        raise ValueError(f"invalid S*bleq branch address {c}")
+        raise syntax_error(
+            f"invalid S*bleq branch address {c}", "use a nonnegative branch address"
+        )
     if a == -3 or b == -3:
         # The print already happened in the shell.
         return (mem, ip + 3, False)
@@ -116,7 +125,9 @@ class _Machine:
         self.store = store
         self._halted = False
         if store not in _STORES:
-            raise ValueError(f"unknown store target: {store!r}")
+            raise syntax_error(
+                f"unknown store target: {store!r}", "choose store a, ab or b"
+            )
 
     @property
     def halted(self) -> bool:

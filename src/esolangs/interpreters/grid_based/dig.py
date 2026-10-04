@@ -24,6 +24,7 @@ from esolangs._drive import drive
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.source_hints import syntax_error
 
 # Headings as (drow, dcol), in the order the ``^>'<`` glyphs select
 # them: up, right, down, left.  Row grows downward.
@@ -59,7 +60,8 @@ def _value(code: tuple[str, ...], row: int, col: int, size: int) -> int:
                 return int(val)
     raise HaltError(
         f"the operator at row {row}, column {col} has no digit beside it "
-        f"to use as its operand"
+        f"to use as its operand",
+        hint="put a digit beside the operator to supply its operand",
     )
 
 
@@ -110,7 +112,10 @@ def _advance(
             mole *= _value(code, row, col, size)
         elif char == "/":
             if (n := _value(code, row, col, size)) == 0:
-                raise HaltError(f"division by zero at row {row}, column {col}")
+                raise HaltError(
+                    f"division by zero at row {row}, column {col}",
+                    hint="ensure the divisor is nonzero before dividing",
+                )
             mole //= n
         elif char == ";":
             code = _write(code, row, col, str(mole))
@@ -163,7 +168,10 @@ class _Machine:
     ) -> None:
         """Pad ``code`` to a square grid, like :func:`run`."""
         if not code or not any(line.strip() for line in code):
-            raise ValueError("Dig program cannot be empty")
+            raise syntax_error(
+                "Dig program cannot be empty",
+                "provide a nonempty grid; @ halts immediately",
+            )
         self.io = io
         self.size = max(len(lne) for lne in code)
         self.code = tuple(c.ljust(self.size) for c in code)

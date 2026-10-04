@@ -69,17 +69,19 @@ from esolangs.cli_help import (
 )
 from esolangs.cli_hints import (
     _as_argument,
+    _cli_error_text,
     _did_you_mean,
+    _generate_hint,
     _input_sentence,
     _looks_like_a_table,
     _shell_hint,
-    _swapped_hint,
 )
 from esolangs.cli_io import (
     _read_stdin,
 )
 from esolangs.cli_round_trip import _answer, _evaluate
 from esolangs.cli_run import _run
+from esolangs.cli_suggest import _suggest
 from esolangs.exceptions import (
     EsolangError,
 )
@@ -97,7 +99,7 @@ def _encode(rest: list[str]) -> None:
     try:
         sys.stdout.write(encode_inputs(language, [int(bit) for bit in bits]))
     except EsolangError as exc:
-        _fail(_shell_hint(str(exc), language))
+        _fail(_shell_hint(_cli_error_text(exc), language))
 
 
 def _list(rest: list[str]) -> None:
@@ -194,7 +196,7 @@ def _generate(rest: list[str]) -> None:
             program = cast(str, program)
             program = instantiate(rest[0], program, [int(b) for b in bits], width)
     except EsolangError as exc:
-        _fail(f"{exc}{_swapped_hint(rest[0], rest[1])}")
+        _fail(_generate_hint(exc, rest[0], rest[1]))
     if (
         (width is not None or bare or balance)
         and describe(rest[0])["width_effect"] == "none"
@@ -221,7 +223,7 @@ def _describe(rest: list[str]) -> None:
     try:
         facts = describe(rest[0])
     except EsolangError as exc:
-        _fail(str(exc))
+        _fail(exc)
         raise  # pragma: no cover - unreachable; _fail exits
     if as_spec:
         print(json.dumps(facts, indent=2) if as_json else facts["spec"])
@@ -278,14 +280,14 @@ def _check_stdin(rest: list[str]) -> None:
     try:
         facts = describe(language)
     except EsolangError as exc:
-        _fail(str(exc))
+        _fail(exc)
         raise  # pragma: no cover - unreachable; _fail exits
     stdin = _read_stdin(hint="; pipe the input in, or close stdin")
     table = options.get("--table")
     try:
         check_stdin(str(facts["name"]), stdin, table)
     except EsolangError as exc:
-        _fail(str(exc))
+        _fail(exc)
 
 
 def _read_answer(rest: list[str]) -> None:
@@ -296,7 +298,7 @@ def _read_answer(rest: list[str]) -> None:
     try:
         facts = describe(language)
     except EsolangError as exc:
-        _fail(str(exc))
+        _fail(exc)
         raise  # pragma: no cover - unreachable; _fail exits
     if facts["answer_mode"] == "termination":
         polarity = facts["answer_encoding"]
@@ -316,7 +318,7 @@ def _read_answer(rest: list[str]) -> None:
     try:
         print(read_answer(language, output))
     except EsolangError as exc:
-        _fail(str(exc))
+        _fail(exc)
 
 
 def main() -> None:
@@ -400,6 +402,7 @@ def _dispatch() -> None:
         "encode": _encode,
         "generate": _generate,
         "run": _run,
+        "suggest": _suggest,
         "read-answer": _read_answer,
         "check-stdin": _check_stdin,
         "answer": _answer,

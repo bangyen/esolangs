@@ -22,6 +22,7 @@ from esolangs._drive import drive
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.brackets import match_brackets
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.source_hints import syntax_error
 
 type _State = tuple[int, int, int, tuple[int, ...], tuple[tuple[int, int, int], ...]]
 type _Output = int | str | None
@@ -81,7 +82,9 @@ def _advance(
             loops = (*loops, (pc, row, col))
     elif command == ")":
         if not loops:
-            raise ValueError("unmatched ')' in EGL program")
+            raise syntax_error(
+                "unmatched ')' in EGL program", "pair each closing ) with an earlier ("
+            )
         opening, loop_row, loop_col = loops[-1]
         if cells[loop_row * width + loop_col] != 0:
             pc = opening
@@ -89,7 +92,13 @@ def _advance(
             loops = loops[:-1]
 
     if not 0 <= row < height or not 0 <= col < width:
-        raise ValueError("EGL pointer moved outside the grid")
+        raise syntax_error(
+            "EGL pointer moved outside the grid",
+            (
+                "keep pointer movements within the declared width and "
+                "height, or enlarge the grid"
+            ),
+        )
     return (pc + 1, row, col, tuple(cells), loops), output
 
 
@@ -99,15 +108,23 @@ class _Machine:
     def __init__(self, code: str, io: IO) -> None:
         match = re.fullmatch(r"(\d+),(\d+):(.*)", code, re.DOTALL)
         if match is None:
-            raise ValueError("EGL program must begin with 'width,height:'")
+            raise syntax_error(
+                "EGL program must begin with 'width,height:'",
+                "start with positive grid dimensions, for example 2,3:+=",
+            )
         self.width, self.height = map(int, match.group(1, 2))
         if self.width < 1 or self.height < 1:
-            raise ValueError("EGL grid dimensions must be positive")
+            raise syntax_error(
+                "EGL grid dimensions must be positive",
+                "use dimensions of at least 1, for example 1,1:",
+            )
         self.code = match.group(3)
         try:
             self.pairs = match_brackets(self.code, "(", ")")
         except ValueError as error:
-            raise ValueError("unmatched parenthesis in EGL program") from error
+            raise syntax_error(
+                "unmatched parenthesis in EGL program", "pair every ( with a closing )"
+            ) from error
         self.io = io
         self.state: _State = (
             0,

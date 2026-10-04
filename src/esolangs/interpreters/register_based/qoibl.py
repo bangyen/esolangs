@@ -22,6 +22,7 @@ from collections.abc import Callable, Mapping, Sequence
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.source_hints import syntax_error
 
 INSTRUCTIONS = frozenset({"tt", "we", "qe", "et", "yr", "ry", "rr"})
 OPERATORS = frozenset({"ee", "ey", "ye", "yy"})
@@ -31,7 +32,10 @@ _VARIABLES = 256
 def _variable(index: int) -> int:
     """Return a valid Qoibl variable index, rejecting an out-of-range one."""
     if not 0 <= index < _VARIABLES:
-        raise HaltError(f"variable index {index} is outside 0..{_VARIABLES - 1}")
+        raise HaltError(
+            f"variable index {index} is outside 0..{_VARIABLES - 1}",
+            hint="keep the index within the bounds stated in the diagnostic",
+        )
     return index
 
 
@@ -263,7 +267,9 @@ def _eval(expr: list[str], var: _Vars, read: _Read, emit: _Emit) -> tuple[int, _
     condition against the variables its body returned.
     """
     if not expr:
-        raise ValueError("malformed expression")
+        raise syntax_error(
+            "malformed expression", "provide a nonempty Qoibl expression"
+        )
 
     if (op := expr[0]) == "tt":
         value, var = _eval(expr[1:-1], var, read, emit)
@@ -309,8 +315,12 @@ def _operands(
     """
     beg = expr.index(marker)
     if beg + 1 >= len(expr):
-        raise ValueError(
-            "malformed comparison" if marker == "yr" else "malformed arithmetic"
+        raise syntax_error(
+            "malformed comparison" if marker == "yr" else "malformed arithmetic",
+            (
+                "put an ee/ey/ye/yy operator and an operand on each side of "
+                "the yr or ry form"
+            ),
         )
     num = expr[beg + 1]
     x, var = _eval(expr[:beg], var, read, emit)
@@ -331,7 +341,9 @@ def _compare(
         return int(x < y), var
     if num == "yy":
         return int(x != y), var
-    raise ValueError("unrecognized comparison operator")
+    raise syntax_error(
+        "unrecognized comparison operator", "use ee, ey, ye or yy after yr"
+    )
 
 
 def _arithmetic(
@@ -347,9 +359,14 @@ def _arithmetic(
         return x * y, var
     if num == "yy":
         if y == 0:
-            raise HaltError(f"division by zero: {x} divided by {y}")
+            raise HaltError(
+                f"division by zero: {x} divided by {y}",
+                hint="ensure the divisor is nonzero before dividing",
+            )
         return x // y, var
-    raise ValueError("unrecognized arithmetic operator")
+    raise syntax_error(
+        "unrecognized arithmetic operator", "use ee, ey, ye or yy after ry"
+    )
 
 
 class _Machine:
@@ -374,7 +391,13 @@ class _Machine:
                     if "ry" in statement
                     else "expression"
                 )
-                raise ValueError(f"malformed Qoibl {kind}")
+                raise syntax_error(
+                    f"malformed Qoibl {kind}",
+                    (
+                        "complete each expression and pair its delimiters; "
+                        "comparison and arithmetic use ee/ey/ye/yy operators"
+                    ),
+                )
         self.ind = 0
 
     @property

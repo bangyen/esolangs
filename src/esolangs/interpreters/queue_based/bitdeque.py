@@ -17,6 +17,7 @@ import re
 from esolangs._drive import drive
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.source_hints import keyword_hint, syntax_error
 
 #: One instant of a run: ``(ind, reg, deq, rendered)`` -- the token cursor,
 #: the register, the deque, and whether the end-of-run dump has been
@@ -33,6 +34,8 @@ from esolangs.interpreters.io import IO
 #: but they *are* in ``snapshot`` -- which is where they already were, and
 #: removing them would change every hash the cycle detector has stored.
 type _State = tuple[int, int, tuple[int, ...], bool]
+
+_COMMANDS = ("INJECT", "PUSH", "EJECT", "POP", "INVERT", "GOTO")
 
 
 def _advance(state: _State, sym: str) -> _State:
@@ -66,16 +69,26 @@ def _reject_stray_text(code: str, pattern: re.Pattern[str]) -> None:
     end = 0
     for match in pattern.finditer(code):
         if stray := code[end : match.start()].strip():
-            raise ValueError(
+            raise syntax_error(
                 f"{stray.split()[0]!r} is not a Bitdeque command; the "
                 f"commands are INJECT, PUSH, EJECT, POP, INVERT and GOTO n, "
-                f"in upper case"
+                f"in upper case",
+                keyword_hint(
+                    stray.split()[0],
+                    _COMMANDS,
+                    "write uppercase commands; GOTO takes a nonnegative target",
+                ),
             )
         end = match.end()
     if tail := code[end:].strip():
-        raise ValueError(
+        raise syntax_error(
             f"{tail.split()[0]!r} is not a Bitdeque command; the commands "
-            f"are INJECT, PUSH, EJECT, POP, INVERT and GOTO n, in upper case"
+            f"are INJECT, PUSH, EJECT, POP, INVERT and GOTO n, in upper case",
+            keyword_hint(
+                tail.split()[0],
+                _COMMANDS,
+                "write uppercase commands; GOTO takes a nonnegative target",
+            ),
         )
 
 
@@ -92,7 +105,7 @@ class _Machine:
     def __init__(self, code: str, io: IO) -> None:
         """Tokenize ``code`` and reset the register, deque, and cursor."""
         self.io = io
-        lst = ("INJECT", "PUSH", "EJECT", "POP", "INVERT", r"GOTO\s+(\d+)")
+        lst = tuple(r"GOTO\s+(\d+)" if name == "GOTO" else name for name in _COMMANDS)
         join = rf"(?<!\S)({'|'.join(lst)})(?!\S)"
         _reject_stray_text(code, re.compile(join))
         self.tokens = re.findall(join, code)

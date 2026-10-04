@@ -23,10 +23,82 @@ from esolangs.tools.malbolge.core import _g, _rot
 ALL1, ALL2 = 29524, 59048
 
 
+def emit_navigation(
+    plan: _Planner, group: _Group, used: set[int], helpers: dict[str, int]
+) -> None:
+    """Initialize view and constant-load pointers through crazy compositions."""
+    for target in sorted(group.view_cells):
+        seed = _crazy(ALL2, target - 1)
+        source = next(
+            (
+                cell
+                for cell in range(130, 420)
+                if cell not in used and plan.mem.get(cell) == seed
+            ),
+            None,
+        )
+        if source is None:
+            continue
+        used.add(source)
+        group.used.add(source)
+        plan.op("*", helpers["all2"])
+        plan.op("p", source)
+        assert plan.mem[source] == target - 1
+
+    source = next(
+        cell for cell in range(130, 420) if cell not in used and plan.mem[cell] == 109
+    )
+    load(plan, source, 109, helpers["all2"])
+    mixer = helpers["all1"]
+    plan.op("p", mixer)
+    value = _crazy(109, ALL1)
+    assert plan.mem[mixer] == value
+    for index, (seed, target) in enumerate(((45, 128), (47, 129))):
+        cell = next(
+            cell
+            for cell in range(130, 420)
+            if cell not in used and plan.mem[cell] == seed
+        )
+        used.add(cell)
+        group.used.add(cell)
+        if index:
+            load(plan, mixer, value, helpers["all2"])
+        plan.op("p", cell)
+        assert plan.mem[cell] == target - 1
+    # Binary 109 permits restoring ALL1; these bridges save 108 code cells.
+    plan.op("*", helpers["all2"])
+    plan.op("p", mixer)
+    plan.op("p", mixer)
+    assert plan.mem[mixer] == ALL1
+
+
 def mask(state: int) -> int:
     """Return the operand preserving six low trits and tagging the state."""
     shifts = (3**6, -(3**6), -(3**7), -(3**6) - 3**7, 3**6 + 3**7)
     return ALL1 + (3**6 - 1) // 2 + shifts[state]
+
+
+def emit_low_neighbour(
+    plan: _Planner, group: _Group, used: set[int], helpers: dict[str, int]
+) -> None:
+    """Initialize D127's return edge without changing bootstrap source cells."""
+    source = next(
+        cell for cell in group.reach if cell not in used and 153 in group.reach[cell]
+    )
+    used.add(source)
+    group.used.add(source)
+    _emit_chain(plan, source, " ".join(group.reach[source][153]), helpers)
+    assert plan.accumulator == 153
+    plan.op("p", helpers["all1"])
+    plan.op("p", 365)
+    assert plan.mem[365] == 126
+    # ALL2 + pp produces binary trits; zero + p restores ALL1.
+    plan.op("*", helpers["all2"])
+    plan.op("p", helpers["all1"])
+    plan.op("p", helpers["all1"])
+    plan.op("*", helpers["z0"])
+    plan.op("p", helpers["all1"])
+    assert plan.mem[helpers["all1"]] == ALL1
 
 
 def landing(state: int, parity: int, char: int) -> int:

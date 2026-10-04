@@ -36,6 +36,7 @@ from itertools import product
 
 from esolangs.exceptions import GeneratorCapError
 from esolangs.interpreters.other.malbolge import _XLAT1, _XLAT2, _crazy
+from esolangs.interpreters.source_hints import with_hint
 from esolangs.tools.helpers import _validate_truth_table
 
 from .core import (
@@ -953,10 +954,16 @@ def malbolge(truth_table: str) -> str:
     """
     n = _validate_truth_table(truth_table)
     if n > _DIGITS_N:
-        raise GeneratorCapError(
-            f"Malbolge builds at most {_DIGITS_N} inputs, got {n}: every row "
-            "pair owns a cell, and seventeen inputs would need 65,536 of the "
-            "store's 59,049"
+        raise with_hint(
+            GeneratorCapError(
+                f"Malbolge builds at most {_DIGITS_N} inputs, got {n}: every row "
+                "pair owns a cell, and seventeen inputs would need 65,536 of the "
+                "store's 59,049"
+            ),
+            (
+                "use fewer inputs or check another generator's "
+                "limits; width cannot enlarge Malbolge's store"
+            ),
         )
     if n > _FOURTEEN_N:
         # Deferred: the positional build reads this module.

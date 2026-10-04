@@ -19,6 +19,7 @@ from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.interpreters.randomness import FirstDraw, Randomness, draw
+from esolangs.interpreters.source_hints import syntax_error
 
 type Number = int | float
 type _State = tuple[object, ...]
@@ -30,7 +31,7 @@ _NOP = " \t\r\n"
 def _integer(value: Number) -> int:
     """Return an integer operand or fail as Fish does on invalid use."""
     if isinstance(value, float) and not value.is_integer():
-        raise HaltError("something smells fishy...")
+        raise HaltError("something smells fishy...", hint="use a whole-number operand")
     return int(value)
 
 
@@ -44,7 +45,10 @@ class _Machine:
         self, code: Sequence[str], io: IO, rng: Randomness | None = None
     ) -> None:
         if not code or not (width := max(map(len, code), default=0)):
-            raise ValueError("Fish program cannot be empty")
+            raise syntax_error(
+                "Fish program cannot be empty",
+                "provide a nonempty grid; ; halts immediately",
+            )
         self.code = code
         self.io = io
         self._rng = rng
@@ -129,12 +133,12 @@ class _Machine:
             successors.append(branch.snapshot())
         return tuple(successors)
 
-    def _fail(self) -> None:
-        raise HaltError("something smells fishy...")
+    def _fail(self, hint: str) -> None:
+        raise HaltError("something smells fishy...", hint=hint)
 
     def _pop(self) -> Number:
         if not self.stacks[-1]:
-            self._fail()
+            self._fail("push a value before removing the stack top")
         return self.stacks[-1].pop()
 
     def _advance(self, count: int = 1) -> None:
@@ -168,11 +172,11 @@ class _Machine:
                 stack.append(left * right)
             elif command == ",":
                 if right == 0:
-                    self._fail()
+                    self._fail("use a nonzero divisor")
                 stack.append(left / right)
             elif command == "%":
                 if right == 0:
-                    self._fail()
+                    self._fail("use a nonzero remainder divisor")
                 stack.append(left % right)
             elif command == "(":
                 stack.append(int(left < right))
@@ -219,11 +223,11 @@ class _Machine:
             stack.extend((one, three, two))
         elif command == "}":
             if not stack:
-                self._fail()
+                self._fail("push a value before rotating the stack")
             stack.insert(0, stack.pop())
         elif command == "{":
             if not stack:
-                self._fail()
+                self._fail("push a value before rotating the stack")
             stack.append(stack.pop(0))
         elif command == "r":
             stack.reverse()
@@ -232,7 +236,7 @@ class _Machine:
         elif command == "[":
             count = _integer(self._pop())
             if count < 0 or count > len(stack):
-                self._fail()
+                self._fail("use a stack split count from 0 to the current stack length")
             moved = stack[-count:] if count else []
             if count:
                 del stack[-count:]
@@ -279,7 +283,7 @@ class _Machine:
             self.halted = True
             return
         elif command not in _NOP and command != "\0":
-            self._fail()
+            self._fail("use an instruction documented by esolangs describe --spec Fish")
         self._advance()
 
 

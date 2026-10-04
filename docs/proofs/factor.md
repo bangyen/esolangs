@@ -1,9 +1,9 @@
 # Factor: size and construction bounds
 
-Worst-case Factor source length for a `T`-bit truth table is
-`Theta(T log T)` digits, at the language level and for the generator.  The
-upper bound uses a linear Brainfuck program and short prime windows; the
-lower bound counts every integer encoding.
+Worst-case Factor source length is `Theta(T log T)` digits for a `T`-bit
+table, for both the language and generator. Linear Brainfuck programs and
+short prime windows give the upper bound; counting integer encodings gives
+the lower bound.
 
 A Factor program is one decimal integer. Factoring it yields an ordered list
 of prime powers; a prime's residue mod 11 selects a Brainfuck command and its
@@ -48,19 +48,17 @@ sequence of commands. Since `beta` can decrease to `1/15`, for every
 
     Q = O_eta(m**(15/14 + eta)).
 
-This argument requires the first matching prime; arbitrary delayed prime
-choices can skip complete windows. `tests/proofs/test_factor_prime_cover.py`
-checks the covering implication against the actual greedy encoder, with a
-nonempty-window control and a delayed-prime counterexample.
+Delayed prime choices can skip complete windows. The greedy encoder's
+first-match requirement is checked in `tests/proofs/test_factor_prime_cover.py`,
+with a nonempty-window control and a delayed-prime counterexample.
 
 Consequently `log Q = O(log(m + 1))` and
 
     D = O(C log(m + 1)) = O(T log(T + 1)).
 
-The shipped generator modifies this tree to reduce decimal digits.
-Digits are `sum(L_i log10 p_i)` over the runs -- weighted by position, since
-the primes ascend -- so the shortest brainfuck program is not the cheapest
-Factor one, and the `48(n + 1)` characters of ASCII offset are folded into one
+Digits cost `sum(L_i log10 p_i)` over runs, weighted by ascending primes.
+The shortest Brainfuck source need not minimize Factor digits. The generator
+folds the `48(n + 1)` ASCII-offset characters into one
 multiply loop and one subtracting loop: -38.5% of the digits at `n = 2`, -0.2%
 at `n = 13`. An `O(n)` saving against a doubling tree leaves the bound
 `D = O(T log T)` untouched, and the folded program is never larger.
@@ -121,8 +119,8 @@ is the upper bound
 
     generation = O(T + Q log log Q + D**alpha) = T**O(1).
 
-Only the upper bound is claimed: the terms need not balance, so `Theta` is not
-established. Table traversal can dominate for a pruned tree.
+The terms need not balance; table traversal can dominate a pruned tree, so
+`Theta` is not established.
 
 ## Cold parsing
 
@@ -133,9 +131,9 @@ successful prime divisions. Decimal parsing, sieving, gcds and divisions are all
 polynomial in `Q,D,C`; with `Q=T**O(1)`, cold parsing and its
 `O(sqrt(Q) + D + C)` live storage are polynomial in `T`.
 
-That statement cannot cover arbitrary Factor programs. A balanced `D`-digit
-semiprime can force the trial sieve toward `sqrt(N) = 10**Theta(D)`. There is
-no polynomial bound in source digits, and no fallback claim is made.
+A balanced `D`-digit semiprime can force trial sieving toward
+`sqrt(N) = 10**Theta(D)`, excluding a polynomial source-digit bound for
+arbitrary programs. No fallback is claimed.
 
 A conservative bit bound makes the generated-family claim explicit. Put
 `B = ceil(log2(N+1))`. Charge a `b`-bit gcd or decimal conversion at
@@ -156,10 +154,10 @@ Together with the proved `Q=O_eta(T**(15/14+eta))`, `B,D=O(T*n)` and
 
     generated cold loading = O_eps(T**(71/28+eps)*n**2) bit work.
 
-The bound includes decimal conversion, prime discovery and VM construction;
-it needs no factorization oracle. It is an upper bound, not a claim that
-this exponent is attained. Generated parity sources through six inputs
-were loaded and executed separately from their construction.
+This upper bound includes decimal conversion, prime discovery and VM
+construction without a factorization oracle; the exponent need not be attained.
+Generated parity sources through six inputs were loaded and executed
+separately from construction.
 
 ### General weighted descriptions
 

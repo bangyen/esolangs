@@ -37,6 +37,7 @@ from esolangs._drive import drive
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.randomness import Randomness, draw
+from esolangs.interpreters.source_hints import syntax_error
 
 _SEPARATOR = "::="
 #: The right-hand side that reads a line of input instead of text.
@@ -77,19 +78,24 @@ def _parse(code: str) -> tuple[tuple[_Rule, ...], str]:
     lines = code.split("\n")
     cut = _separator(lines)
     if cut is None:
-        raise ValueError(
+        raise syntax_error(
             "a Thue program needs a '::=' line with nothing but whitespace on "
-            "either side, to separate its rules from its starting state"
+            "either side, to separate its rules from its starting state",
+            ("insert a line containing only ::= between the rules and starting state"),
         )
     rules = []
     for line in lines[:cut]:
         head, found, tail = line.partition(_SEPARATOR)
         if not found:
-            raise ValueError(f"Thue rule line has no '::=': {line!r}")
+            raise syntax_error(
+                f"Thue rule line has no '::=': {line!r}",
+                "write each rule as left::=right",
+            )
         if not head:
-            raise ValueError(
+            raise syntax_error(
                 f"Thue rule {line!r} has an empty left-hand side, which "
-                f"matches everywhere and so never lets a run finish"
+                f"matches everywhere and so never lets a run finish",
+                "give the rule a nonempty left-hand side",
             )
         rules.append((head, tail))
     return tuple(rules), "\n".join(lines[cut + 1 :])

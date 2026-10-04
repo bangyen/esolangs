@@ -20,6 +20,7 @@ import re
 from esolangs._drive import drive
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.source_hints import syntax_error
 
 #: One instant of a run: ``(ind, ptr, reg, dumped)`` -- the cursor, the
 #: register pointer, both registers, and whether the end-of-run dump has
@@ -71,7 +72,10 @@ def _parse(code: str) -> tuple[str, list[int]]:
                 continue
             match = pattern.fullmatch(line)
             if match is None:
-                raise ValueError("RMSN requires one command per line")
+                raise syntax_error(
+                    "RMSN requires one command per line",
+                    "put one inc(n);, swap(n); or decnz(n); command on each line",
+                )
             if (command := match[1]) == "inc":
                 prog += "+"
             elif command == "swap":
@@ -111,7 +115,10 @@ class _Machine:
         for i, ch in enumerate(self.prog):
             if ch == "~":
                 if len(self.targets) >= len(nums):
-                    raise ValueError("unmatched '~' with no jump target")
+                    raise syntax_error(
+                        "unmatched '~' with no jump target",
+                        "supply one 1-based jump target on the second line for each ~",
+                    )
                 self.targets[i] = nums[len(self.targets)]
 
         # ``halted`` is read twice per command -- once by ``run``'s loop and

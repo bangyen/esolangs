@@ -21,6 +21,7 @@ from esolangs.exceptions import (
     EsolangError,
 )
 from esolangs.interpreters.io import ScriptedIO
+from esolangs.interpreters.source_hints import with_hint
 from esolangs.tools.helpers import MOST_INPUTS
 from esolangs.vm import make_vm
 
@@ -82,7 +83,13 @@ def evaluate(
         or not isinstance(inputs, int)
         or not 1 <= inputs <= MOST_INPUTS
     ):
-        raise ArgumentError(f"inputs must be an integer from 1 to {MOST_INPUTS}")
+        raise with_hint(
+            ArgumentError(f"inputs must be an integer from 1 to {MOST_INPUTS}"),
+            (
+                "choose the program input count; inputs=2 is "
+                "valid for a two-input program"
+            ),
+        )
     program = esolangs._read_source(name, program)  # noqa: SLF001
     rows = 1 << inputs
     terminating = facts["answer_mode"] == "termination"
@@ -94,7 +101,10 @@ def evaluate(
         # hatch (the guard is ``SIGALRM``).
         bound = timeout
     if isolated and bound is None:
-        raise ArgumentError("isolated evaluation requires a finite timeout")
+        raise with_hint(
+            ArgumentError("isolated evaluation requires a finite timeout"),
+            ("set a positive finite timeout, for example timeout=5.0"),
+        )
     if not isolated:
         # The termination path drives ``_run`` directly and so never reached
         # ``run``'s guard: off a main thread it leaked ``signal.signal``'s

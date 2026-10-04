@@ -30,6 +30,7 @@ from esolangs._drive import drive
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.source_hints import syntax_error
 
 #: The value ``^`` yields for a key never assigned.
 _UNSET = 3
@@ -172,13 +173,21 @@ class _Machine:
         ind, stack, jumps, variables = self.state
         char = self.code[ind]
         if len(stack) < _needs(char):
-            raise HaltError("empty stack")
+            raise HaltError(
+                "empty stack",
+                hint="push a value before reading or removing the stack top",
+            )
         if char == "x" and stack[-3] == 0:
             # ``x`` divides by the third item, so a zero there faults before
             # anything is popped.
-            raise HaltError("division by zero")
+            raise HaltError(
+                "division by zero", hint="ensure the divisor is nonzero before dividing"
+            )
         if char == ")" and stack[-1] != 0 and not jumps:
-            raise HaltError("unmatched )")
+            raise HaltError(
+                "unmatched )",
+                hint="pair each loop or group opener with its corresponding closer",
+            )
         value = None
         target = None
         if char == "(" and stack[-1] == 0:
@@ -187,13 +196,28 @@ class _Machine:
                 # The original's scan walked the cursor to the end before
                 # noticing, so a caller catching the error sees that.
                 self.state = (len(self.code), stack, jumps, variables)
-                raise HaltError("unmatched (")
+                raise HaltError(
+                    "unmatched (",
+                    hint="pair each loop or group opener with its corresponding closer",
+                )
         elif char == "?":
             line = self.io.input_token().strip()
             if not _RATIONAL.fullmatch(line):
-                raise ValueError("input must be an integer or a fraction")
+                raise syntax_error(
+                    "input must be an integer or a fraction",
+                    (
+                        "supply a decimal integer or a fraction with nonzero "
+                        "denominator, for example 3/2"
+                    ),
+                )
             if "/" in line and int(line.rsplit("/", 1)[1]) == 0:
-                raise ValueError("input must be an integer or a fraction")
+                raise syntax_error(
+                    "input must be an integer or a fraction",
+                    (
+                        "supply a decimal integer or a fraction with nonzero "
+                        "denominator, for example 3/2"
+                    ),
+                )
             value = Fraction(line)
         elif char == "!":
             top = stack[-1]

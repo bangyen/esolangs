@@ -1,13 +1,7 @@
 """Unit tests for the Alight interpreter and its generator.
 
-The three programs on the wiki are the ground truth here, and they are
-transcribed verbatim from the page's source: one leading space per line is
-``<pre>`` markup and is stripped, and nothing else is touched, because the
-column each character sits in *is* the program.  Between them they exercise
-every part of the language the page documents -- both guards, all four
-headings, lists, fractional indices, ``len`` and ``at`` in both arities --
-so an interpreter that reproduces their stated behaviour has its geometry
-and its expression semantics pinned by the spec's own examples.
+Wiki examples pin grid geometry; explicit copy semantics take precedence
+where the reversed-cat example discards the result of three-argument at.
 """
 
 from typing import ClassVar
@@ -169,17 +163,15 @@ class TestWikiExamples:
         ("stdin", "expected"),
         [("h\ni\n", "\ni\nh"), ("a\nb\nc\n", "\nc\nb\na"), ("", ""), ("z\n", "\nz")],
     )
-    def test_reversed_cat_reverses(self, stdin: str, expected: str) -> None:
-        """The reversed cat collects its input and prints it backwards.
-
-        This is the example that decides three-argument ``at``.  The wiki's
-        prose says it returns a *copy*, but the program runs it as a bare
-        command (``at{l, len{l}-0.5, c};``) and discards the result: under
-        copy semantics that command does nothing, ``l`` stays a list of
-        ``nil``, and the program raises on its own first ``out``.  It
-        reverses only if ``at`` writes in place, so the example decides it.
-        """
-        assert _run(REVERSED_CAT, stdin) == expected
+    def test_reversed_cat_discards_the_required_copy(
+        self, stdin: str, expected: str
+    ) -> None:
+        """The wiki example discards at's copy and outputs nil."""
+        if stdin:
+            with pytest.raises(HaltError, match="cannot output"):
+                _run(REVERSED_CAT, stdin)
+        else:
+            assert _run(REVERSED_CAT, stdin) == expected
 
     def test_cat_geometry_closes_the_loop(self) -> None:
         """The turn-cat's loop returns to ``inp``, which only one geometry does.
@@ -405,29 +397,18 @@ class TestFunctions:
         assert len(machine.walkers) > 1000
         assert not machine.halted
 
-    def test_an_effectful_at_beside_a_call_fires_exactly_once(self) -> None:
-        """The constraint that shapes how a command is re-entered.
-
-        A command holding calls is re-entered once per call, so anything
-        re-evaluated on the way runs again -- and 3-arg ``at`` *writes*.
-        The write here is a read-modify-write (``+1``), so a second firing
-        is visible as a second increment; an idempotent write would look
-        identical either way and prove nothing.
-
-        ``_reduce`` therefore substitutes the value of every call it
-        passes, builtins included, rather than only the user calls.
-        """
+    def test_at_copy_beside_a_call_preserves_the_original(self) -> None:
+        """A copied list beside a user call leaves its input intact."""
         program = [
             'begin;var l;set l "A";var v;'
             "set v len{at{l, 0.5, at{l, 0.5}+1}}+f{0};"
             "var c;set c at{l, 0.5};out c;end;",
             "func f{a};end a;",
         ]
-        # 'A' is 65: one increment gives 'B', two would give 'C'.
-        assert _run(program) == "B"
+        assert _run(program) == "A"
 
-    def test_two_calls_beside_an_effectful_at_still_fire_it_once(self) -> None:
-        """Two re-entries rather than one, so a per-entry bug is louder."""
+    def test_at_copy_beside_two_calls_preserves_the_original(self) -> None:
+        """Resuming after two calls also preserves the original list."""
         program = [
             'begin;var l;set l "A";var v;'
             "set v len{at{l, 0.5, at{l, 0.5}+1}}+f{0}+g{0};"
@@ -435,7 +416,7 @@ class TestFunctions:
             "func f{a};end a;",
             "func g{a};end a;",
         ]
-        assert _run(program) == "B"
+        assert _run(program) == "A"
 
     def test_a_ring_inside_a_called_function_is_provable(self) -> None:
         """The reason calls are framed rather than run inline.
@@ -569,16 +550,11 @@ class TestSnapshot(SnapshotContract):
         positions = {snap[-1] for snap in seen}
         assert len(positions) > 1
 
-    def test_a_banked_snapshot_survives_a_later_list_mutation(self) -> None:
-        """Freezing a list variable is what makes a snapshot a value.
-
-        Three-argument ``at`` writes in place, so a snapshot holding the
-        live list would be changed retroactively by a later command -- the
-        cycle detector would compare against a state that no longer
-        describes the past.  The reversed cat is the program that does this:
-        it appends a slot and writes into it on every character.
-        """
-        machine = _Machine(REVERSED_CAT, ScriptedIO("a\nb\nc\n"))
+    def test_a_banked_snapshot_survives_list_replacement(self) -> None:
+        """Replacing a list must not alter a banked snapshot."""
+        machine = _Machine(
+            ['begin;var l;set l "A";set l at{l,0.5,66};end;'], ScriptedIO()
+        )
         banked = None
         for _ in range(400):
             if machine.halted:
@@ -590,9 +566,7 @@ class TestSnapshot(SnapshotContract):
                 copy = machine.snapshot()
             machine.step()
         assert banked is not None, "the run never held a non-empty list"
-        # The list grew and was written to after ``banked`` was taken; an
-        # unfrozen snapshot would have followed it and still compare equal
-        # to a freshly taken one.
+        # The variable now holds the changed copy.
         assert banked == copy
         assert banked != machine.snapshot()
 
@@ -919,13 +893,20 @@ class TestFunctionDefinitionEdges:
         ]
         assert _run(program) == "A"
 
-    def test_a_call_used_as_a_bare_command_runs_for_its_effect(self) -> None:
-        """The reversed cat's shape, in miniature: a call whose value is dropped.
-
-        ``at`` writes in place, so the bare call is what changes ``l``; the
-        following ``out`` reads back what it wrote.
-        """
+    def test_a_bare_at_call_discards_its_copy(self) -> None:
+        """Discarding an at-copy leaves the original list intact."""
         program = (
             'begin;var l;set l "xy";at{l, 0.5, 65};var c;set c at{l, 0.5};out c;end;'
         )
-        assert _run([program]) == "A"
+        assert _run([program]) == "x"
+
+
+@pytest.mark.parametrize("command", ["", "set l "])
+def test_at_returns_a_copy_without_changing_aliases(command: str) -> None:
+    program = (
+        'begin;var l;var m;var c;set l "A";set m l;'
+        + command
+        + "at{l,0.5,66};set c at{l,0.5};out c;"
+        "set c at{m,0.5};out c;end;"
+    )
+    assert _run([program]) == ("BA" if command else "AA")

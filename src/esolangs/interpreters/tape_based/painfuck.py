@@ -44,6 +44,7 @@ from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.randomness import Randomness, draw
+from esolangs.interpreters.source_hints import with_hint
 
 # The two substitution cycles, in the order the cross-check scans them.
 _CYCLES = ("pevkjzwr", "yuctsobqihald")
@@ -276,7 +277,9 @@ def _advance(
                 tape = _set(tape, ptr, int(str(line)))
             except ValueError:
                 raise _Halted(
-                    (tape, loop, ptr, ind, rep), effects, HaltError()
+                    (tape, loop, ptr, ind, rep),
+                    effects,
+                    HaltError(hint="supply a decimal integer for i input"),
                 ) from None
         elif c == "j":
             # ``j`` is answered with a character code, so this is already an int.
@@ -299,7 +302,10 @@ def _advance(
                 raise _Halted(
                     (tape, loop, ptr, ind, rep),
                     effects,
-                    HaltError("unmatched 'b': the loop stack is empty"),
+                    HaltError(
+                        "unmatched 'b': the loop stack is empty",
+                        hint="execute a matching loop opener before b",
+                    ),
                 )
             ind = loop[-1]
             loop = loop[:-1]
@@ -461,8 +467,15 @@ class _Machine:
                 )
             except _NeedCoin as need_coin:
                 if len(pending) + len(successors) + 2 > limit:
-                    raise TimeoutError(
-                        f"undecided after {limit} coin outcomes in one Painfuck step"
+                    raise with_hint(
+                        TimeoutError(
+                            f"undecided after {limit} coin outcomes "
+                            "in one Painfuck step"
+                        ),
+                        (
+                            "increase the branching state/outcome limit if "
+                            "feasible or reduce coin-repeated instructions"
+                        ),
                     ) from need_coin
                 pending.extend(((*coins, 0), (*coins, 1)))
             except _NeedRead:

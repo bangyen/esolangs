@@ -310,7 +310,10 @@ class TestModulous:
         ``mod.split('"')[1]`` on it raised a bare ``IndexError`` past
         ``run``'s ``ValueError`` boundary.
         """
-        with raises_message(ValueError, "missing quoted string in PSH STR hello"):
+        with raises_message(
+            ValueError,
+            'missing quoted string in PSH STR hello; expected [PSH STR "text"]',
+        ):
             run("[PSH STR hello]", IO())
 
     def test_missing_operand_message_quotes_the_whole_command(self) -> None:
@@ -346,6 +349,22 @@ class TestModulous:
             run("[p 5]", IO())
         with pytest.raises(ValueError, match="PRTINT"):
             run('[PSH STR "x"][PRTINT][END]', IO())
+
+    @pytest.mark.parametrize(
+        ("source", "hint"),
+        [("[PHS INT 5]", "PSH"), ("[PRTT INT]", "PRT")],
+    )
+    def test_unknown_command_suggests_one_match(self, source: str, hint: str) -> None:
+        with pytest.raises(ValueError, match=rf"did you mean {hint}\?"):
+            run(source, IO())
+
+    @pytest.mark.parametrize("source", ["[XYZ]", "[PRP]", "[P]", "[S]", "[p 5]"])
+    def test_unknown_command_without_unique_match_has_no_hint(
+        self, source: str
+    ) -> None:
+        with pytest.raises(ValueError, match="is not a Modulous command") as error:
+            run(source, IO())
+        assert "did you mean" not in str(error.value)
 
     def test_text_outside_a_command_is_refused(self) -> None:
         """``findall`` dropped it, so an unbalanced bracket ran half a program.

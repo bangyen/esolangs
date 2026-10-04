@@ -14,6 +14,7 @@ from esolangs.exceptions import (
     ProgramError,
     TruthTableError,
 )
+from esolangs.interpreters.source_hints import with_hint
 from esolangs.registry import LANGUAGES, resolve
 
 
@@ -52,9 +53,12 @@ def encode_inputs(
         from esolangs.tools.helpers import _validate_truth_table
 
         if not isinstance(truth_table, str):
-            raise TruthTableError(
-                f"truth table must be a string of '0' and '1', got "
-                f"{type(truth_table).__name__}"
+            raise with_hint(
+                TruthTableError(
+                    f"truth table must be a string of '0' and '1', got "
+                    f"{type(truth_table).__name__}"
+                ),
+                ("pass truth-table text, for example '0110' for two-input XOR"),
             )
         arity = _validate_truth_table(truth_table)
         if len(bits) != arity:
@@ -253,8 +257,11 @@ def _validate_shape_for_evaluate(truth_table: str) -> int:
     from esolangs.tools.helpers import _validate_truth_table
 
     if not isinstance(truth_table, str):
-        raise TruthTableError(
-            f"truth table must be a string of '0' and '1', got "
-            f"{type(truth_table).__name__}"
+        raise with_hint(
+            TruthTableError(
+                f"truth table must be a string of '0' and '1', got "
+                f"{type(truth_table).__name__}"
+            ),
+            ("pass truth-table text, for example '0110' for two-input XOR"),
         )
     return _validate_truth_table(truth_table)

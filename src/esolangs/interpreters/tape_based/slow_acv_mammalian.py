@@ -5,13 +5,16 @@ on the current one, SPRINT moves the pointer, LEAPFROG jumps, ACCEPT reads
 a byte, PRONOUNCE prints the accumulator as a byte.  SPRINT with a
 too-large ``x`` is a NOP (per the wiki); LEAPFROG to a negative target is
 undefined there, so it halts.  Exhausted input raises :class:`EOFError`.
+Cell operations and I/O each accept modulus 255 or 256, defaulting to 256.
 """
 
 import functools
 import operator
 
+from esolangs._mammalian import DEFAULT_MODULI, MammalianModuli
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.source_hints import keyword_hint, syntax_error
 
 #: One instant of a run: ``(arrays, ptr, acc, ind, halted)`` -- the 23
 #: arrays, the pointer that picks the current one, the accumulator, the
@@ -28,7 +31,9 @@ type _Arrays = tuple[tuple[int, ...], ...]
 type _State = tuple[_Arrays, int, int, int, bool]
 
 
-def _total(op: int, arrays: _Arrays) -> _Arrays:
+def _total(
+    op: int, arrays: _Arrays, cell_modulus: int = DEFAULT_MODULI.cell_modulus
+) -> _Arrays:
     """Return ``arrays`` after SEED (``op == 0``) or CONFLAGRATE.
 
     SEED adds each array's one-based index to its head mod 256.
@@ -47,7 +52,7 @@ def _total(op: int, arrays: _Arrays) -> _Arrays:
         # same work without the frames.
         seeded = []
         for num, arr in enumerate(arrays):
-            seeded.append(((arr[0] + num + 1) % 256, *arr[1:]) if arr else arr)
+            seeded.append(((arr[0] + num + 1) % cell_modulus, *arr[1:]) if arr else arr)
         return tuple(seeded)
 
     size = [len(arr) for arr in arrays]
@@ -61,7 +66,7 @@ def _total(op: int, arrays: _Arrays) -> _Arrays:
         if x > y and y:
             num = x // y
             flat[k] -= num
-            flat[n] = (y + num) % 256
+            flat[n] = (y + num) % cell_modulus
         elif x < y and x:
             num = y % x
             flat[k] += num
@@ -74,7 +79,12 @@ def _total(op: int, arrays: _Arrays) -> _Arrays:
     return tuple(out)
 
 
-def _partial(op: int, curr: tuple[int, ...], acc: int) -> tuple[tuple[int, ...], int]:
+def _partial(
+    op: int,
+    curr: tuple[int, ...],
+    acc: int,
+    io_modulus: int = DEFAULT_MODULI.io_modulus,
+) -> tuple[tuple[int, ...], int]:
     """Return the current array and accumulator after one array op.
 
     EXCRETE (2) appends the accumulator as a byte and clears it, CONSUME (3)
@@ -83,7 +93,7 @@ def _partial(op: int, curr: tuple[int, ...], acc: int) -> tuple[tuple[int, ...],
     leave the state alone.
     """
     if op == 2:
-        return ((*curr, acc % 256), 0)
+        return ((*curr, acc % io_modulus), 0)
     if op == 3:
         if not curr:
             return (curr, acc)
@@ -121,11 +131,26 @@ _OPCODE = {name: op for op, name in enumerate(_INS)}
 
 @functools.lru_cache(maxsize=16)
 def _tokens(code: str) -> tuple[str, ...]:
-    """Return whole whitespace-delimited instructions, ignoring other words."""
-    return tuple(word for word in code.split() if word in _OPCODE)
+    """Return whitespace-delimited instructions; reject unknown words."""
+    words = tuple(code.split())
+    for word in words:
+        if word not in _OPCODE:
+            raise syntax_error(
+                f"unknown SLOW ACV MAMMALIAN command {word!r}",
+                keyword_hint(
+                    word, _INS, "use uppercase, whitespace-delimited commands"
+                ),
+            )
+    return words
 
 
-def _advance(state: _State, n: int, byte: int | None = None) -> _State:
+def _advance(
+    state: _State,
+    n: int,
+    byte: int | None = None,
+    *,
+    moduli: MammalianModuli = DEFAULT_MODULI,
+) -> _State:
     """Return the state after executing the token with opcode ``n``.
 
     Pure; PRONOUNCE changes only the cursor and ACCEPT's byte arrives as
@@ -138,9 +163,9 @@ def _advance(state: _State, n: int, byte: int | None = None) -> _State:
     curr = arrays[ptr]
 
     if n < 2:
-        arrays = _total(n, arrays)
+        arrays = _total(n, arrays, moduli.cell_modulus)
     elif n < 6:
-        curr, acc = _partial(n, curr, acc)
+        curr, acc = _partial(n, curr, acc, moduli.io_modulus)
         arrays = (*arrays[:ptr], curr, *arrays[ptr + 1 :])
     elif n == 6 and acc < len(curr):
         if acc < -len(curr):
@@ -155,7 +180,7 @@ def _advance(state: _State, n: int, byte: int | None = None) -> _State:
             return (arrays, ptr, acc, ind, True)
         ind = target
     elif n == 8 and byte is not None:
-        head = (*arrays[0], (byte ^ acc) % 256)
+        head = (*arrays[0], (byte ^ acc) % moduli.cell_modulus)
         arrays = (head, *arrays[1:])
 
     return (arrays, ptr, acc, ind + 1, halted)
@@ -164,7 +189,15 @@ def _advance(state: _State, n: int, byte: int | None = None) -> _State:
 class _Machine:
     """One SLOW ACV MAMMALIAN run: the 23 arrays, pointer, acc, and cursor."""
 
-    def __init__(self, code: str, io: IO) -> None:
+    def __init__(
+        self,
+        code: str,
+        io: IO,
+        *,
+        cell_modulus: int = DEFAULT_MODULI.cell_modulus,
+        io_modulus: int = DEFAULT_MODULI.io_modulus,
+    ) -> None:
+        self.moduli = MammalianModuli(cell_modulus, io_modulus)
         self.io = io
         self.tokens = _tokens(code)
         self.lst: _Arrays = tuple((0,) for _ in range(23))
@@ -230,13 +263,20 @@ class _Machine:
         if n == 8:
             byte = self.io.input_char()
         elif n == 9:
-            self.io.print_char(chr(self.acc % 256))
+            self.io.print_char(chr(self.acc % self.moduli.io_modulus))
 
-        self._restore(_advance(self._state, n, byte))
+        self._restore(_advance(self._state, n, byte, moduli=self.moduli))
 
 
-def run(code: str, io: IO) -> None:
-    """Run a SLOW ACV MAMMALIAN program."""
+def run(
+    code: str,
+    io: IO,
+    *,
+    cell_modulus: int = DEFAULT_MODULI.cell_modulus,
+    io_modulus: int = DEFAULT_MODULI.io_modulus,
+) -> None:
+    """Run with separate cell and EXCRETE/PRONOUNCE moduli."""
+    moduli = MammalianModuli(cell_modulus, io_modulus)
     tokens = _tokens(code)
     arrays = [[0] for _ in range(23)]
     ind = ptr = acc = 0
@@ -246,12 +286,14 @@ def run(code: str, io: IO) -> None:
         if n == 0:
             for num, arr in enumerate(arrays, 1):
                 if arr:
-                    arr[0] = (arr[0] + num) % 256
+                    arr[0] = (arr[0] + num) % moduli.cell_modulus
         elif n == 1:
-            rebuilt = _total(1, tuple(tuple(arr) for arr in arrays))
+            rebuilt = _total(
+                1, tuple(tuple(arr) for arr in arrays), moduli.cell_modulus
+            )
             arrays = [list(arr) for arr in rebuilt]
         elif n < 6:
-            updated, acc = _partial(n, tuple(curr), acc)
+            updated, acc = _partial(n, tuple(curr), acc, moduli.io_modulus)
             arrays[ptr] = list(updated)
         elif n == 6 and acc < len(curr):
             ptr = (ptr + curr[acc]) % 23
@@ -261,9 +303,9 @@ def run(code: str, io: IO) -> None:
                 return
             ind = target
         elif n == 8:
-            arrays[0].append((io.input_char() ^ acc) % 256)
+            arrays[0].append((io.input_char() ^ acc) % moduli.cell_modulus)
         elif n == 9:
-            io.print_char(chr(acc % 256))
+            io.print_char(chr(acc % moduli.io_modulus))
         ind += 1
 
 

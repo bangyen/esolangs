@@ -1,7 +1,7 @@
 """Boolean-function generator for SLOW ACV MAMMALIAN.
 
-A *chain* of ``n`` read nodes and one dispatch jump into a table of
-eight-token leaf slots: O(T) size and build, where the tree it replaced was
+The default modulo-256 construction chains ``n`` read nodes and dispatches
+into eight-token leaf slots: O(T) size and build. The tree it replaced was
 super-linear (``S(d) >= (2 + 1/255) S(d-1)``).  Three identities carry the
 control flow, machine-verified end to end over every table through
 ``n == 3``:
@@ -44,6 +44,7 @@ tables through ``n == 12``.  All ``n`` inputs are read unconditionally.
 
 from collections.abc import Sequence
 
+from esolangs._mammalian import DEFAULT_MODULI, MammalianModuli
 from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table
 
 __all__ = ["slow_acv_mammalian"]
@@ -51,10 +52,16 @@ __all__ = ["slow_acv_mammalian"]
 #: How many arrays the machine has; ``SPRINT`` moves the pointer mod this.
 _ARRAYS = 23
 
+# Arithmetic domain of the current construction, including its replay model.
+# XOR read nodes and parity-based merges are proved only for this byte domain.
+_GENERATOR_MODULI = MammalianModuli(cell_modulus=256, io_modulus=256)
+_MODULUS = _GENERATOR_MODULI.cell_modulus
+_IO_MODULUS = _GENERATOR_MODULI.io_modulus
+
 # The byte a stash chunk appends.  It is what raises the sum, and the sum is
 # what puts a distant token index within a jump's reach, so the chunk buys
 # the most reach per token by appending the largest byte there is.
-_STASH_BYTE = 255
+_STASH_BYTE = _IO_MODULUS - 1
 
 # The read node's second seed run.  The aim class fixes ``first & 48 == 16``,
 # and XORing bits 4-5 from ``01`` to ``10`` is ``+16``, so this run is what
@@ -65,7 +72,10 @@ _J2 = 16
 # steps its head by 17 -- odd, so every residue is reachable.
 _W = 16
 _W_STEP = _W + 1
-_W_INV = pow(_W_STEP, -1, 256)
+_GREEDY_MIN = _MODULUS - _W_STEP
+_GREEDY_COUNTS = _W_STEP - 1
+_EXACT_TAIL = 2 * _STASH_BYTE
+_W_INV = pow(_W_STEP, -1, _MODULUS)
 
 #: The print arrays, indexed by the digit their middle cell holds.  A leaf
 #: SPRINTs from array 16 with head ``v``, landing on ``(16 + v) % 23``, and
@@ -96,18 +106,29 @@ type _State = tuple[list[int], int]
 def _seeded(array: Sequence[int], count: int) -> list[int]:
     """``array`` after ``count`` ``SEED``s, which only move the head."""
     out = list(array)
-    out[0] = (out[0] + count) % 256
+    out[0] = (out[0] + count) % _MODULUS
     return out
 
 
-def _stash_chunk(array: list[int], acc: int) -> tuple[list[str], list[int], int]:
-    """``SEED*k DIGEST EXCRETE``, appending exactly ``_STASH_BYTE``.
+def _stash_chunk(
+    array: list[int], acc: int, *, io_modulus: int = _IO_MODULUS
+) -> tuple[list[str], list[int], int]:
+    """Append the maximum I/O residue and clear the accumulator.
 
-    The sum's low byte advances by one per ``SEED`` even across a head
+    With modulo-256 I/O, the low byte advances by one per ``SEED`` across a head
     wrap, so the count solves in one step; from the third chunk on every
     count is 1, so a chunk is 3 tokens for 255 of reach.
     """
-    count = (((acc % 256) ^ _STASH_BYTE) - sum(array)) % 256
+    if io_modulus == 255:
+        cur = list(array)
+        tokens = []
+        if acc:
+            cur.append(acc % io_modulus)
+            tokens.append("EXCRETE")
+        head = (io_modulus - 1 - sum(cur[1:])) % io_modulus
+        tokens += ["SEED"] * ((head - cur[0]) % _MODULUS) + ["DIGEST", "EXCRETE"]
+        return tokens, [head, *cur[1:], io_modulus - 1], 0
+    count = (((acc % _MODULUS) ^ _STASH_BYTE) - sum(array)) % _MODULUS
     return (
         [*["SEED"] * count, "DIGEST", "EXCRETE"],
         [*_seeded(array, count), _STASH_BYTE],
@@ -128,15 +149,17 @@ def _aim(start: int) -> int:
     return 64 - offset
 
 
-def _node(array: list[int], acc: int) -> tuple[list[str], _State, _State, int]:
+def _node(
+    array: list[int], acc: int, *, io_modulus: int = _IO_MODULUS
+) -> tuple[list[str], _State, _State, int]:
     """One read node: tokens, the 0-exit, the 1-exit, and the landing.
 
     The 0-branch falls through with ``acc == first``; the 1-branch jumps
     to ``start - 15`` with ``acc == first + 1``.  Neither exit depends on
     ``j1``, so the landing commits before the arm and merge exist.
     """
-    wrap = (256 - array[0]) % 256
-    opened = [*_seeded(array, wrap), acc % 256]
+    wrap = (_MODULUS - array[0]) % _MODULUS
+    opened = [*_seeded(array, wrap), acc % io_modulus]
     start = sum(opened)
     j1 = _aim(start)
     first = start + j1
@@ -160,7 +183,7 @@ class _UnreachableError(Exception):
 
 
 def _trampoline(
-    array: list[int], acc: int, target: int
+    array: list[int], acc: int, target: int, *, io_modulus: int = _IO_MODULUS
 ) -> tuple[list[str], list[int], int]:
     """Build an unconditional jump to token ``target``, plus its exit state.
 
@@ -173,24 +196,28 @@ def _trampoline(
     list every iteration -- as a naive read of the loop condition would
     -- costs O(chunks**2) for no reason.
     """
+    if io_modulus == 255:
+        return _trampoline_255(array, acc, target)
     cur, val, tokens = list(array), acc, []
     rest_sum = sum(cur[1:])
     if target <= rest_sum:
         raise _UnreachableError("trampoline target is not past the running sum")
-    while rest_sum < target - 255:
+    while rest_sum < target - _STASH_BYTE:
         chunk, cur, val = _stash_chunk(cur, val)
         rest_sum += _STASH_BYTE
         tokens += chunk
     hop = target - rest_sum
-    if not 1 <= hop <= 255:  # pragma: no cover - the window solve is exact
-        raise AssertionError(f"trampoline byte {hop} escaped 1..255")
-    count = (((val % 256) ^ hop) - (cur[0] + rest_sum)) % 256
+    if not 1 <= hop <= _STASH_BYTE:  # pragma: no cover - the window solve is exact
+        raise AssertionError(f"trampoline byte {hop} escaped 1..{_STASH_BYTE}")
+    count = (((val % _MODULUS) ^ hop) - (cur[0] + rest_sum)) % _MODULUS
     tokens += [*["SEED"] * count, "DIGEST", "EXCRETE", "DIGEST", "LEAPFROG"]
-    out = [(cur[0] + count) % 256, *cur[1:], hop]
+    out = [(cur[0] + count) % _MODULUS, *cur[1:], hop]
     return tokens, out, sum(out)
 
 
-def _trampoline_len(array: list[int], acc: int, target: int) -> int:
+def _trampoline_len(
+    array: list[int], acc: int, target: int, *, io_modulus: int = _IO_MODULUS
+) -> int:
     """Token count :func:`_trampoline` would emit reaching ``target``, O(1).
 
     The first two chunks solve a residue from ``acc``; every chunk after
@@ -199,23 +226,65 @@ def _trampoline_len(array: list[int], acc: int, target: int) -> int:
     instead of walked -- what lets the per-node retry search check a
     candidate landing without paying for the trampoline it would build.
     """
+    if io_modulus == 255:
+        return _trampoline_255_len(array, acc, target)
     cur, val = list(array), acc
     tokens = 0
     rest_sum = sum(cur[1:])
     for _ in range(2):
-        if rest_sum >= target - 255:
+        if rest_sum >= target - _STASH_BYTE:
             break
         chunk, cur, val = _stash_chunk(cur, val)
         rest_sum += _STASH_BYTE
         tokens += len(chunk)
-    if rest_sum < target - 255:
-        more = -(-(target - 255 - rest_sum) // _STASH_BYTE)
+    if rest_sum < target - _STASH_BYTE:
+        more = -(-(target - _STASH_BYTE - rest_sum) // _STASH_BYTE)
         tokens += 3 * more
         rest_sum += _STASH_BYTE * more
-        cur = [(cur[0] + more) % 256, *cur[1:]]
+        cur = [(cur[0] + more) % _MODULUS, *cur[1:]]
     hop = target - rest_sum
-    count = (((val % 256) ^ hop) - (cur[0] + rest_sum)) % 256
+    count = (((val % _MODULUS) ^ hop) - (cur[0] + rest_sum)) % _MODULUS
     return tokens + count + 4
+
+
+def _trampoline_255(
+    array: list[int], acc: int, target: int
+) -> tuple[list[str], list[int], int]:
+    """Reach target by appending residues after clearing the accumulator."""
+    cur, tokens = list(array), []
+    if acc:
+        cur.append(acc % 255)
+        tokens.append("EXCRETE")
+    rest = sum(cur[1:])
+    if target <= rest:
+        raise _UnreachableError("trampoline target is not past the running sum")
+    while rest < target - 254:
+        chunk, cur, _ = _stash_chunk(cur, 0, io_modulus=255)
+        rest += 254
+        tokens += chunk
+    hop = target - rest
+    head = (hop - rest) % 255
+    tokens += ["SEED"] * ((head - cur[0]) % _MODULUS)
+    tokens += ["DIGEST", "EXCRETE", "DIGEST", "LEAPFROG"]
+    out = [head, *cur[1:], hop]
+    return tokens, out, sum(out)
+
+
+def _trampoline_255_len(array: list[int], acc: int, target: int) -> int:
+    """Count the same chunks; head 254 to 0 takes two SEEDs, not one."""
+    head, rest, tokens = array[0], sum(array[1:]), int(acc != 0)
+    rest += acc % 255 if acc else 0
+    if target <= rest:
+        raise _UnreachableError("trampoline target is not past the running sum")
+    chunks = max(0, -(-(target - 254 - rest) // 254))
+    if chunks:
+        first = (254 - rest) % 255
+        wraps = (first + chunks - 1) // 255
+        tokens += (first - head) % _MODULUS + 3 * chunks - 1 + wraps
+        head = (first + chunks - 1) % 255
+        rest += 254 * chunks
+    hop = target - rest
+    return tokens + (((hop - rest) % 255) - head) % _MODULUS + 4
 
 
 class _Sums:
@@ -227,15 +296,17 @@ class _Sums:
     and by ``SPRINT``'s ``curr[acc]``, so those carry their cells.
     """
 
-    __slots__ = ("acc", "cells", "heads", "n0", "nw", "ptr")
+    __slots__ = ("acc", "cells", "heads", "io_modulus", "n0", "nw", "ptr")
 
-    def __init__(self) -> None:
+    def __init__(self, *, io_modulus: int = _IO_MODULUS) -> None:
+        self.io_modulus = MammalianModuli(io_modulus=io_modulus).io_modulus
         self.heads = [0] * _ARRAYS
         self.cells: dict[int, list[int]] = {}
         self.n0 = self.nw = self.acc = self.ptr = 0
 
     def clone(self) -> "_Sums":
         out = _Sums.__new__(_Sums)
+        out.io_modulus = self.io_modulus
         out.heads = list(self.heads)
         out.cells = {key: list(val) for key, val in self.cells.items()}
         out.n0, out.nw, out.acc, out.ptr = self.n0, self.nw, self.acc, self.ptr
@@ -290,11 +361,11 @@ def _replay(st: _Sums, tokens: Sequence[str], bit: int = 0) -> None:
             continue
         if seeds:
             for arr in range(_ARRAYS):
-                st.heads[arr] = (st.heads[arr] + (arr + 1) * seeds) % 256
+                st.heads[arr] = (st.heads[arr] + (arr + 1) * seeds) % _MODULUS
             seeds = 0
         _apply(st, tok, bit)
     for arr in range(_ARRAYS):
-        st.heads[arr] = (st.heads[arr] + (arr + 1) * seeds) % 256
+        st.heads[arr] = (st.heads[arr] + (arr + 1) * seeds) % _MODULUS
 
 
 def _apply(st: _Sums, tok: str, bit: int) -> None:
@@ -302,11 +373,13 @@ def _apply(st: _Sums, tok: str, bit: int) -> None:
     if tok == "DIGEST":
         st.acc ^= st.heads[st.ptr] + st.rest(st.ptr)
     elif tok == "EXCRETE":
-        st.append(st.ptr, st.acc % 256)
+        st.append(st.ptr, st.acc % st.io_modulus)
         st.acc = 0
     elif tok == "ACCEPT":
-        if st.acc % 256 != 48:
-            raise AssertionError(f"ACCEPT entered with acc % 256 == {st.acc % 256}")
+        if st.acc % _MODULUS != 48:
+            raise AssertionError(
+                f"ACCEPT entered with acc % {_MODULUS} == {st.acc % _MODULUS}"
+            )
         st.n0 += bit
     elif tok == "CONSUME":
         cells = st.cells[st.ptr]
@@ -337,8 +410,8 @@ def _route(st: _Sums, dest: int) -> list[str]:
         _replay(st, tokens)
     want = (dest - here) % _ARRAYS
     step = here + 1
-    for count in range(256):
-        if ((st.heads[here] + step * count) % 256) % _ARRAYS == want:
+    for count in range(_MODULUS):
+        if ((st.heads[here] + step * count) % _MODULUS) % _ARRAYS == want:
             run = [*["SEED"] * count, "SPRINT"]
             _replay(st, run)
             if st.ptr != dest:  # pragma: no cover - the residue solve is exact
@@ -351,8 +424,8 @@ def _route_len(head: int, here: int, dest: int) -> int:
     """Token count :func:`_route` spends from head ``head``, accumulator 0."""
     want = (dest - here) % _ARRAYS
     step = here + 1
-    for count in range(256):
-        if ((head + step * count) % 256) % _ARRAYS == want:
+    for count in range(_MODULUS):
+        if ((head + step * count) % _MODULUS) % _ARRAYS == want:
             return count + 1
     raise AssertionError(f"no seed count routes {here} to {dest}")  # pragma: no cover
 
@@ -366,7 +439,8 @@ def _exact_append(st: _Sums, value: int) -> list[str]:
     arr = st.ptr
     if arr % 2:  # pragma: no cover - every planted array is even by choice
         raise AssertionError(f"array {arr} has an even seed step")
-    count = ((value - st.heads[arr] - st.rest(arr)) * pow(arr + 1, -1, 256)) % 256
+    head = (value - st.rest(arr)) % st.io_modulus
+    count = ((head - st.heads[arr]) * pow(arr + 1, -1, _MODULUS)) % _MODULUS
     tokens = [*["SEED"] * count, "DIGEST", "EXCRETE"]
     before = st.rest(arr)
     _replay(st, tokens)
@@ -376,8 +450,10 @@ def _exact_append(st: _Sums, value: int) -> list[str]:
 
 
 def _w_exact_chunk(st: _Sums, value: int) -> list[str]:
-    """Append exactly ``value`` (1..255) to array 16's non-head sum."""
-    count = ((value - st.hw - st.nw) * _W_INV) % 256
+    """Append exactly ``value`` to array 16's non-head sum."""
+    if st.io_modulus == 255:
+        return _exact_append(st, value)
+    count = ((value - st.hw - st.nw) * _W_INV) % _MODULUS
     tokens = [*["SEED"] * count, "DIGEST", "EXCRETE"]
     before = st.nw
     _replay(st, tokens)
@@ -387,30 +463,42 @@ def _w_exact_chunk(st: _Sums, value: int) -> list[str]:
 
 
 def _w_greedy_chunk(st: _Sums) -> list[str]:
-    """Append a byte of at least 239 for at most 15 ``SEED``s.
+    """Append a high residue for at most 15 ``SEED``s.
 
     Head steps by 17, so 16 counts always hit the 17-wide window [239, 255].
     """
-    for count in range(16):
-        if (st.hw + st.nw + _W_STEP * count) % 256 >= 239:
+    if st.io_modulus == 255:
+        # Folding 256 head positions into 255 residues leaves no gap over 17.
+        for count in range(_GREEDY_COUNTS):
+            head = (st.hw + _W_STEP * count) % _MODULUS
+            if (head + st.nw) % 255 >= 255 - _W_STEP:
+                tokens = [*["SEED"] * count, "DIGEST", "EXCRETE"]
+                _replay(st, tokens)
+                return tokens
+        raise AssertionError("no 17-step residue in [238, 254]")  # pragma: no cover
+    for count in range(_GREEDY_COUNTS):
+        if (st.hw + st.nw + _W_STEP * count) % _MODULUS >= _GREEDY_MIN:
             tokens = [*["SEED"] * count, "DIGEST", "EXCRETE"]
             _replay(st, tokens)
             return tokens
-    raise AssertionError("no 17-step residue in [239, 255]")  # pragma: no cover
+    raise AssertionError(
+        f"no {_W_STEP}-step residue in [{_GREEDY_MIN}, {_STASH_BYTE}]"
+    )  # pragma: no cover
 
 
 def _w_raise(st: _Sums, amount: int) -> list[str]:
     """Raise array 16's non-head sum by exactly ``amount >= 0``.
 
-    Greedy chunks close all but the last 510, two exact chunks finish:
+    Greedy chunks close all but two maximum residues; exact chunks finish:
     about a token per 14 of weight, never overshot.
     """
     tokens: list[str] = []
     end = st.nw + amount
-    while end - st.nw > 510:
+    maximum = st.io_modulus - 1
+    while end - st.nw > 2 * maximum:
         tokens += _w_greedy_chunk(st)
-    if end - st.nw > 255:
-        tokens += _w_exact_chunk(st, end - st.nw - 255)
+    if end - st.nw > maximum:
+        tokens += _w_exact_chunk(st, end - st.nw - maximum)
     if end - st.nw:
         tokens += _w_exact_chunk(st, end - st.nw)
     return tokens
@@ -423,14 +511,16 @@ def _greedy_step_table() -> tuple[tuple[int, int], ...]:
     any table of programs -- 256 residues, once, at import time.
     """
     table = []
-    for r in range(256):
-        for count in range(16):
-            added = (r + _W_STEP * count) % 256
-            if added >= 239:
+    for r in range(_MODULUS):
+        for count in range(_GREEDY_COUNTS):
+            added = (r + _W_STEP * count) % _MODULUS
+            if added >= _GREEDY_MIN:
                 table.append((count, added))
                 break
         else:  # pragma: no cover - argued in _w_greedy_chunk's docstring
-            raise AssertionError(f"no 17-step residue in [239, 255] from {r}")
+            raise AssertionError(
+                f"no {_W_STEP}-step residue in [{_GREEDY_MIN}, {_STASH_BYTE}] from {r}"
+            )
     return tuple(table)
 
 
@@ -473,7 +563,7 @@ def _greedy_advance(r: int, target: int) -> tuple[int, int, int, int]:
         seed_count += count
         steps += 1
         advance += added
-        r = (2 * added) % 256
+        r = (2 * added) % _MODULUS
     return seed_count, steps, advance, r
 
 
@@ -485,30 +575,32 @@ def _w_raise_len(hw: int, nw: int, amount: int) -> tuple[int, int]:
     instead of walked chunk by chunk.  Sizing an arm's slot only needs
     this length and the resulting head, never the token text itself.
     """
-    r = (hw + nw) % 256
-    target = max(0, amount - 510)
+    r = (hw + nw) % _MODULUS
+    target = max(0, amount - _EXACT_TAIL)
     total_seeds, chunks, greedy_advance_amt, r = _greedy_advance(r, target)
     remaining = amount - greedy_advance_amt
-    if remaining > 255:
-        value = remaining - 255
-        count = ((value - r) * _W_INV) % 256
+    if remaining > _STASH_BYTE:
+        value = remaining - _STASH_BYTE
+        count = ((value - r) * _W_INV) % _MODULUS
         total_seeds += count
         chunks += 1
-        r = (2 * value) % 256
-        remaining = 255
+        r = (2 * value) % _MODULUS
+        remaining = _STASH_BYTE
     if remaining:
         value = remaining
-        count = ((value - r) * _W_INV) % 256
+        count = ((value - r) * _W_INV) % _MODULUS
         total_seeds += count
         chunks += 1
     tokens = total_seeds + 2 * chunks
-    final_hw = (hw + _W_STEP * total_seeds) % 256
+    final_hw = (hw + _W_STEP * total_seeds) % _MODULUS
     return tokens, final_hw
 
 
 def _jump(st: _Sums, target: int) -> list[str]:
     """Emit an array-0 trampoline to ``target`` and replay it onto ``st``."""
-    tokens, out_arr, out_acc = _trampoline(st.arr0(), st.acc, target)
+    tokens, out_arr, out_acc = _trampoline(
+        st.arr0(), st.acc, target, io_modulus=st.io_modulus
+    )
     _replay(st, tokens)
     if (st.h0, st.n0, st.acc) != (out_arr[0], sum(out_arr[1:]), out_acc):
         raise AssertionError("sum replay diverged from the trampoline model")
@@ -528,7 +620,7 @@ def _weights(n: int) -> list[int]:
     """
     free = min(n, _FREE)
     fixed = n - free
-    weights = [256 * (1 << (fixed - 1 - i)) for i in range(fixed)]
+    weights = [_MODULUS * (1 << (fixed - 1 - i)) for i in range(fixed)]
     return weights + [_LEAF_UNIT * (1 << k) for k in range(free)]
 
 
@@ -599,25 +691,34 @@ def _arm(
     """
     st = one.clone()
     tokens = _arm_core(st, weight, pool)
-    run = [*["SEED"] * ((beta - st.h0 - st.n0) % 256), "DIGEST", "EXCRETE"]
-    _replay(st, run)
-    tokens += run
-    tokens += _jump(st, cont)
+    tokens += _close_arm(st, beta, cont)
     return tokens, st
+
+
+def _close_arm(st: _Sums, beta: int, cont: int) -> list[str]:
+    """Append the tuning residue and jump to the merge."""
+    if st.io_modulus == 255:
+        run = _exact_append(st, beta)
+    else:
+        run = [*["SEED"] * ((beta - st.h0 - st.n0) % _MODULUS), "DIGEST", "EXCRETE"]
+        _replay(st, run)
+    return run + _jump(st, cont)
 
 
 def _arm_core_len(st: _Sums, weight: int, pool: int | None) -> int:
     """Token count :func:`_arm_core` would spend, without building it."""
+    if st.io_modulus == 255:
+        return len(_arm_core(st.clone(), weight, pool))
     launder = 2 if st.acc else 0
     out = _route_len(st.heads[0], 0, pool if pool is not None else _W)
     if pool is not None:
         return launder + out + 3 + _route_len(st.heads[pool], pool, 0)
-    hw = (st.hw + _W_STEP * (out - 1)) % 256
+    hw = (st.hw + _W_STEP * (out - 1)) % _MODULUS
     raise_len, final_hw = _w_raise_len(hw, st.nw, weight)
     return launder + out + raise_len + _route_len(final_hw, _W, 0)
 
 
-def _leaf(digit: int) -> list[str]:
+def _leaf(digit: int, *, unit: int = _LEAF_UNIT) -> list[str]:
     """Return the tokens run ``digit`` executes, padded to one slot.
 
     ``EXCRETE`` clears the accumulator the dispatch left, the ``SPRINT``
@@ -639,7 +740,7 @@ def _leaf(digit: int) -> list[str]:
         "EXCRETE",
         "LEAPFROG",
     ]
-    return [*body, *["SEED"] * (_LEAF_UNIT - len(body))]
+    return [*body, *["SEED"] * (unit - len(body))]
 
 
 def _dispatch_head(hw: int) -> int:
@@ -650,9 +751,9 @@ def _dispatch_head(hw: int) -> int:
     below 239 -- past that the extra 17 wraps and the second leaf misses.
     """
     want = (_PRINT[0] - _W) % _ARRAYS
-    for count in range(256):
-        value = (hw + _W_STEP * count) % 256
-        if value % _ARRAYS == want and value <= 238:
+    for count in range(_MODULUS):
+        value = (hw + _W_STEP * count) % _MODULUS
+        if value % _ARRAYS == want and value < _GREEDY_MIN:
             return count
     raise AssertionError("no seed count aims the leaf pair")  # pragma: no cover
 
@@ -689,16 +790,18 @@ def _level(
     """
     tokens: list[str] = []
     while True:
-        node_toks, _, _, landing = _node(st.arr0(), st.acc)
+        node_toks, _, _, landing = _node(st.arr0(), st.acc, io_modulus=st.io_modulus)
         node_end = pos + len(node_toks)
         zero, one = st.clone(), st.clone()
         _replay(zero, node_toks, bit=0)
         _replay(one, node_toks, bit=1)
         arm_toks, merged, cont = _settle(one, zero, weight, pool, landing)
-        reach = len(_lead(zero)) + _trampoline_len(_laundered(zero).arr0(), 0, cont)
+        reach = len(_lead(zero)) + _trampoline_len(
+            _laundered(zero).arr0(), 0, cont, io_modulus=st.io_modulus
+        )
         if landing >= node_end + reach:
             break
-        chunk, _, _ = _stash_chunk(st.arr0(), st.acc)
+        chunk, _, _ = _stash_chunk(st.arr0(), st.acc, io_modulus=st.io_modulus)
         _replay(st, chunk)
         tokens += chunk
         pos += len(chunk)
@@ -786,21 +889,32 @@ def _tune(
 ) -> tuple[list[str], _Sums]:
     """Build the arm, moving ``beta`` until the two branches' heads agree.
 
-    The delta is always even (both paths' final solves leave ``head0 ==
-    2*hop - cont``) and beta moves it at slope -2; a chunk-count boundary
-    can shift the structure under the solve, which the loop absorbs.
+    Both paths leave ``head0 == 2*hop - cont`` in the I/O residue domain.
+    Modulo 255, reuse the zero path's hop and solve beta directly. Modulo
+    256 the delta is even; the loop absorbs chunk-boundary changes.
     """
     z = _laundered(zero)
     _jump(z, cont)
-    beta = _STASH_BYTE
+    if one.io_modulus == 255:
+        st = one.clone()
+        tokens = _arm_core(st, weight, pool)
+        # Closing head is (2*hop - cont) % 255. Reuse the zero path's hop;
+        # beta + 254*chunks = cont - nonhead - hop fixes beta modulo 254.
+        hop = ((z.h0 + cont) * pow(2, -1, 255)) % 255
+        gap = cont - st.n0 - hop
+        if gap < 0:
+            raise _UnreachableError("merge precedes the one-branch sum")
+        tokens += _close_arm(st, gap % 254, cont)
+        return tokens, st
+    beta = one.io_modulus - 1
     for _ in range(8):
         arm_toks, merged = _arm(one, weight, pool, beta, cont)
-        delta = (merged.h0 - z.h0) % 256
+        delta = (merged.h0 - z.h0) % one.io_modulus
         if delta == 0:
             return arm_toks, merged
         if delta % 2:  # pragma: no cover - see the evenness argument
             raise AssertionError(f"odd head delta {delta}")
-        beta = (beta + delta // 2) % 256
+        beta = (beta + delta // 2) % _MODULUS
     raise AssertionError("the tuning byte did not settle")  # pragma: no cover
 
 
@@ -812,31 +926,69 @@ def _check_merge(merged: _Sums, zero: _Sums, weight: int) -> None:
         raise AssertionError(f"the banked weight drifted by {merged.nw - zero.nw}")
 
 
-def slow_acv_mammalian(truth_table: str) -> str:
+def slow_acv_mammalian(
+    truth_table: str,
+    *,
+    cell_modulus: int = DEFAULT_MODULI.cell_modulus,
+    io_modulus: int = DEFAULT_MODULI.io_modulus,
+) -> str:
     """Build a SLOW ACV MAMMALIAN program evaluating ``truth_table``.
 
     One read node per input (``ACCEPT``), one dispatch jump, one
-    eight-token leaf slot per entry: O(T) text.
+    leaf slot per entry: O(T) text. Above five inputs, modulo-255 I/O
+    packs 32 seven-token leaves into each 255-token block.
+    Cell modulus 255 uses coprime-array chains above two inputs with
+    I/O modulus 255, or above one with 256; smaller tables use a tree.
     """
+    moduli = MammalianModuli(cell_modulus, io_modulus)
     n = _validate_truth_table(truth_table)
-    weights = _weights(n)
-    free = min(n, _FREE)
-    pools: list[int | None] = [None] * (n - free + 1) + list(_POOLS[: free - 1])
+    if moduli.cell_modulus == 255:
+        # Chain/tree characters: 64835/95678 at n=3 with I/O 255;
+        # 83404/83749 at n=2 with I/O 256. Smaller trees win below these.
+        if n >= (3 if moduli.io_modulus == 255 else 2):
+            from esolangs.tools._mammalian_compact import compact_chain
+
+            return compact_chain(
+                truth_table,
+                n,
+                modulus=moduli.cell_modulus,
+                io_modulus=moduli.io_modulus,
+            )
+        from esolangs.tools._mammalian255 import decision_tree
+
+        return decision_tree(truth_table, n, io_modulus=moduli.io_modulus)
+    unit = _LEAF_UNIT
+    if moduli.io_modulus == 255 and n > _FREE:
+        unit = 7
+        fixed = n - _FREE
+        stride = moduli.io_modulus
+        weights = [stride * (1 << (fixed - 1 - i)) for i in range(fixed)]
+        weights += [unit * (1 << i) for i in range(_FREE)]
+        pools: list[int | None] = [None] * (fixed + 1) + list(_POOLS)
+    else:
+        weights = _weights(n)
+        free = min(n, _FREE)
+        pools = [None] * (n - free + 1) + list(_POOLS[: free - 1])
     base = 0
     for _ in range(12):
-        tokens = _emit(truth_table, weights, pools, base)
-        leaf_start = len(tokens) - _LEAF_UNIT * len(truth_table)
+        tokens = _emit(weights, pools, base, io_modulus=moduli.io_modulus, unit=unit)
+        leaf_start = len(tokens) - sum(weights) - unit
         if leaf_start == base:
-            return " ".join(_with_leaves(tokens, truth_table, weights))
+            return " ".join(_with_leaves(tokens, truth_table, weights, unit=unit))
         base = max(leaf_start, base)
     raise AssertionError("the leaf base did not settle")  # pragma: no cover
 
 
 def _emit(
-    truth_table: str, weights: Sequence[int], pools: Sequence[int | None], base: int
+    weights: Sequence[int],
+    pools: Sequence[int | None],
+    base: int,
+    *,
+    io_modulus: int = _IO_MODULUS,
+    unit: int = _LEAF_UNIT,
 ) -> list[str]:
     """Return everything but the leaf bodies: prologue, chain, dispatch, pad."""
-    st = _Sums()
+    st = _Sums(io_modulus=io_modulus)
     pairs = [(w, p) for w, p in zip(weights, pools, strict=True) if p is not None]
     tokens = _prologue(st, pairs, base)
     pos = len(tokens)
@@ -852,23 +1004,26 @@ def _emit(
     if st.nw != base:  # pragma: no cover - the prologue raise is exact
         raise AssertionError(f"the dispatch sum is {st.nw}, not {base}")
     if (_W + st.hw) % _ARRAYS != _PRINT[0] or (
-        _W + (st.hw + _W_STEP) % 256
+        _W + (st.hw + _W_STEP) % _MODULUS
     ) % _ARRAYS != _PRINT[1]:  # pragma: no cover - _dispatch_head solves both
         raise AssertionError(f"head {st.hw} misses the print pair")
     tokens += ["SEED"] * max(0, base - len(tokens))
-    return tokens + ["SEED"] * (_LEAF_UNIT * len(truth_table))
+    return tokens + ["SEED"] * (sum(weights) + unit)
 
 
 def _with_leaves(
-    tokens: list[str], truth_table: str, weights: Sequence[int]
+    tokens: list[str],
+    truth_table: str,
+    weights: Sequence[int],
+    *,
+    unit: int = _LEAF_UNIT,
 ) -> list[str]:
     """Overwrite the padded tail with one leaf per row, at its own slot."""
-    out = tokens[: len(tokens) - _LEAF_UNIT * len(truth_table)]
-    slots = [""] * len(truth_table)
+    out = tokens.copy()
+    base = len(tokens) - sum(weights) - unit
     n = len(weights)
     for row, entry in enumerate(truth_table):
         banked = sum(w for i, w in enumerate(weights) if (row >> (n - 1 - i)) & 1)
-        slots[banked // _LEAF_UNIT] = entry
-    for entry in slots:
-        out += _leaf(int(entry))
+        start = base + banked
+        out[start : start + unit] = _leaf(int(entry), unit=unit)
     return out
