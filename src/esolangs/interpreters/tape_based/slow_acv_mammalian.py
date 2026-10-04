@@ -5,8 +5,7 @@ on the current one, SPRINT moves the pointer, LEAPFROG jumps, ACCEPT reads
 a byte, PRONOUNCE prints the accumulator as a byte.  SPRINT with a
 too-large ``x`` is a NOP (per the wiki); LEAPFROG to a negative target is
 undefined there, so it halts.  Exhausted input raises :class:`EOFError`.
-Cell operations default to modulus 256; EXCRETE and PRONOUNCE separately
-accept I/O modulus 255 or 256, defaulting to the existing 256 dialect.
+Cell operations and I/O each accept modulus 255 or 256, defaulting to 256.
 """
 
 import functools
