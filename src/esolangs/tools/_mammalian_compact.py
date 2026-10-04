@@ -17,6 +17,22 @@ class _State:
         return replace(self, rest=self.rest.copy())
 
 
+def _routing_seeds(head: int, step: int, want: int, modulus: int) -> int:
+    """Return the earliest SEED count reaching a head congruent to want modulo 23."""
+    if step == 23:
+        wraps = (head - want) * pow(modulus, -1, 23) % 23
+        return max(0, -(-(wraps * modulus - head) // step))
+    inverse = pow(step, -1, 23)
+    for wraps in range(step + 1):
+        first = max(0, -(-(wraps * modulus - head) // step))
+        last = min(modulus - 1, ((wraps + 1) * modulus - 1 - head) // step)
+        residue = (want - head + wraps * modulus) * inverse % 23
+        count = first + (residue - first) % 23
+        if count <= last:
+            return count
+    raise AssertionError("no routing head")  # pragma: no cover - coprime steps
+
+
 class _Chain:
     def __init__(self, modulus: int, *, io_modulus: int | None = None) -> None:
         moduli = MammalianModuli(modulus, modulus if io_modulus is None else io_modulus)
@@ -85,10 +101,12 @@ class _Chain:
         count = (head - self.head(state)) * pow(state.ptr + 1, -1, self.modulus)
         return self.seed(state, count % self.modulus)
 
-    def route(self, state: _State, dest: int) -> list[str]:
+    def route(self, state: _State, dest: int, *, short: bool = False) -> list[str]:
         tokens = self.clear(state) if state.acc else []
         want = (dest - state.ptr) % 23
         count = (want - self.head(state)) * pow(state.ptr + 1, -1, self.modulus)
+        if short:
+            count = _routing_seeds(self.head(state), state.ptr + 1, want, self.modulus)
         tokens += self.seed(state, count % self.modulus)
         state.ptr = dest
         return [*tokens, "SPRINT"]
@@ -199,14 +217,14 @@ class _Chain:
 
         arm = self.clear(one)
         if pool is None:
-            arm += self.route(one, self.weight)
+            arm += self.route(one, self.weight, short=True)
             arm += self.raise_to(one, one.rest[self.weight] + weight)
         else:
-            arm += self.route(one, pool)
+            arm += self.route(one, pool, short=True)
             one.rest[pool] -= weight
             one.acc, one.ptr = weight, self.weight
             arm += ["CONSUME", "SPRINT", *self.clear(one)]
-        arm += self.route(one, 0)
+        arm += self.route(one, 0, short=True)
         gap = cont - one.rest[0] - hop
         if gap < 0:  # pragma: no cover - arm region includes all head solves
             raise AssertionError("merge precedes the one-branch sum")
