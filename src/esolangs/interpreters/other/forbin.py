@@ -101,6 +101,8 @@ class _Parser:
         self.t = text
         self.i = 0
         self.n = len(text)
+        self.initializers: list[_Statement] = []
+        self._definition_scopes: list[dict[str, _Function]] = []
 
     def _skip_ws(self) -> None:
         while self.i < self.n:
@@ -162,9 +164,12 @@ class _Parser:
             self.i += 1
             save = self.i
             first = self._ident()
+            params = [first]
+            while self._peek() == ",":
+                self._expect(",")
+                params.append(self._ident())
             self._skip_ws()
             if self._peek() == "@":  # anonymous function literal
-                params = [first]
                 self._expect("@")
                 body, nested = self._block()
                 self._expect(")")
@@ -230,6 +235,16 @@ class _Parser:
         if self._peek() == "(":
             self.i += 1
             items: list[_Pattern] = []
+            if len(vars_) > 1 and self._peek() != "(":
+                shorthand: list[_Star | _ValuePat] = []
+                while self._peek() != ")":
+                    if shorthand:
+                        self._expect(",")
+                    shorthand.append(self._pattern())
+                self._expect(")")
+                group: _Group = ("group", shorthand)
+                iteration: _Iter = ("iter", vars_, [group])
+                return iteration
             while self._peek() != ")":
                 if items:
                     self._expect(",")
@@ -272,12 +287,14 @@ class _Parser:
         self._expect("{")
         stmts: list[_Statement] = []
         nested: dict[str, _Function] = {}
+        self._definition_scopes.append(nested)
         while True:
             self._skip_ws()
             if self.i >= self.n:
                 self._fail("unterminated block, expected '}'")
             if self.t[self.i] == "}":
                 self.i += 1
+                self._definition_scopes.pop()
                 return stmts, nested
             c = self.t[self.i]
             if c.isalpha() or c == "_":
@@ -306,7 +323,9 @@ class _Parser:
             if j >= self.n or not (self.t[j].isalnum() or self.t[j] == "_"):
                 self.i = j
                 spec = self._for_spec()
-                body, _ = self._block()
+                body, nested = self._block()
+                # Top-level parsing only admits definitions and assignments.
+                self._definition_scopes[-1].update(nested)
                 return ("for", spec, body)
         first = self._value()
         self._skip_ws()
@@ -336,7 +355,7 @@ class _Parser:
             rhs = self._values()
             self._semi()
             return ("assign", names, rhs)
-        if first[0] not in ("var", "call"):
+        if first[0] not in ("var", "call", "fnlit"):
             self._fail("statement must be a call, assignment, or return")
         args = (
             self._values() if self._peek() in "01!(_" or self._peek().isalpha() else []
@@ -350,10 +369,16 @@ class _Parser:
             self._skip_ws()
             if self.i >= self.n:
                 return funcs
+            start = self.i
             name, params = self._header()
             self._skip_ws()
             if self._peek() != "{":
-                self._fail("expected '{' after function name")
+                if self._peek() != "=":
+                    self._fail("expected '{' after function name")
+                self.i = start
+                initializer = self._statement()
+                self.initializers.append(initializer)
+                continue
             fn = _Function(name, params)
             fn.body, fn.nested = self._block()
             funcs[fn.name] = fn
@@ -365,12 +390,15 @@ class _BitReader:
     def __init__(self, io: IO) -> None:
         self.io = io
         self.bits: list[int] = []
+        self.reads = 0
 
     def read(self) -> int:
         if not self.bits:
             byte = self.io.input_char()
             self.bits = [(byte >> k) & 1 for k in range(7, -1, -1)]
-        return self.bits.pop(0)
+        bit = self.bits.pop(0)
+        self.reads += 1
+        return bit
 
 
 class _Frame:
@@ -566,13 +594,19 @@ def _exec_stmt(
     if stmt[0] == "assign":
         targets, rhs = stmt[1], stmt[2]
         if len(rhs) == 1:
-            for name in targets:
-                if name != "_":
-                    frame.locals[name] = _eval(rhs[0], frame, globals_, reader, depth)
+            bindings = [
+                (name, _eval(rhs[0], frame, globals_, reader, depth))
+                for name in targets
+                if name != "_"
+            ]
         else:
-            for name, value in zip(targets, rhs, strict=False):
-                if name != "_":
-                    frame.locals[name] = _eval(value, frame, globals_, reader, depth)
+            bindings = [
+                (name, _eval(value, frame, globals_, reader, depth))
+                for name, value in zip(targets, rhs, strict=False)
+                if name != "_"
+            ]
+        for name, value in bindings:
+            frame.locals[name] = value
         return None
     if stmt[0] == "call":
         callee = _eval(stmt[1], frame, globals_, reader, depth)
@@ -699,20 +733,15 @@ def _start_statement_call(
     frame: _Frame,
     globals_: dict[str, _Function],
     reader: _BitReader,
-) -> _Frame | None:
-    """Evaluate a statement-position call and return a pushed frame, if any.
-
-    For a user function, returns a new pushed ``_Frame`` instead of calling
-    it natively.  A builtin (``in``/``out``) or a non-``call`` statement
-    returns ``None``;
-    the caller runs it through the unchanged, recursive ``_exec_stmt``.
-    """
+) -> _Frame | Literal[False] | None:
+    """Return a pushed frame, False for a completed call, or None for a noncall."""
     if stmt[0] != "call":
         return None
     callee = _eval(stmt[1], frame, globals_, reader, 0)
-    if not isinstance(callee, _Function):
-        return None
     args = [_eval(a, frame, globals_, reader, 0) for a in stmt[2]]
+    if not isinstance(callee, _Function):
+        _call(callee, args, frame, globals_, reader, 0)
+        return False
     new_frame = _Frame(callee, frame)
     # unpassed parameters are set to 0 (per the wiki)
     for name in callee.args:
@@ -744,15 +773,19 @@ class _Machine:
         # Where the source ends, kept because ``ip`` still has to report a
         # position once every frame has been popped.
         self._length = len(code)
-        self.globals = _Parser(code).parse()
+        parser = _Parser(code)
+        self.globals = parser.parse()
         if "main" not in self.globals:
             raise syntax_error(
                 "Forbin program has no main function",
                 "define a main function, for example main { return 0; }",
             )
         reader = _BitReader(io)
+        self.global_frame = _Frame(_Function("$globals", []), None)
+        for initializer in parser.initializers:
+            _exec_stmt(initializer, self.global_frame, self.globals, reader, 0)
         main_fn = self.globals["main"]
-        main_frame = _Frame(main_fn, None)
+        main_frame = _Frame(main_fn, self.global_frame)
         # unpassed parameters are set to 0 (per the wiki); main is called
         # with a single dummy argument 0, so every parameter ends up 0
         for name in main_fn.args:
@@ -809,10 +842,20 @@ class _Machine:
         with identical bindings every lap and is one read from returning,
         not looping.  See :func:`esolangs.vm.run_until_halt_or_ancestor`.
         """
+        bindings: dict[str, object] = {}
+        scope: _Frame | None = frame
+        while scope is not None:
+            for name, value in scope.locals.items():
+                bindings.setdefault(name, value)
+            for name, function in scope.fn.nested.items():
+                bindings.setdefault(name, function)
+            scope = scope.parent
         return (
-            frame.fn.name,
-            tuple(sorted((k, repr(v)) for k, v in frame.locals.items())),
+            frame.fn,
+            tuple(sorted((name, repr(value)) for name, value in bindings.items())),
             self.io.position(),
+            tuple(self.reader.bits),
+            self.reader.reads,
         )
 
     def snapshot(self) -> tuple[object, ...]:
@@ -834,10 +877,23 @@ class _Machine:
                     tuple(sorted((k, repr(v)) for k, v in f.locals.items())),
                     f.for_ind if f.for_rows is not None else -1,
                     f.for_body_pos if f.for_rows is not None else -1,
+                    f.fn,
+                    None
+                    if f.for_rows is None
+                    else tuple(tuple(row) for row in f.for_rows),
+                    () if f.for_rows is None else tuple(f.for_names),
                 )
                 for f in self.frames
             ),
             self.io.position(),
+            tuple(self.reader.bits),
+            self.reader.reads,
+            tuple(
+                sorted(
+                    (name, repr(value))
+                    for name, value in self.global_frame.locals.items()
+                )
+            ),
         )
 
     def step(self) -> None:
@@ -883,11 +939,15 @@ class _Machine:
             return
 
         pushed = _start_statement_call(stmt, frame, self.globals, self.reader)
-        if pushed is not None:
+        if isinstance(pushed, _Frame):
             self.frames[-1] = frame.at(pos=frame.pos + 1)
             self.frames.append(pushed)
             return
-        got = _exec_stmt(stmt, frame, self.globals, self.reader, 0)
+        got = (
+            None
+            if pushed is False
+            else _exec_stmt(stmt, frame, self.globals, self.reader, 0)
+        )
         self.frames[-1] = frame.at(pos=frame.pos + 1)
         if got is not None:
             self._pop()
@@ -900,11 +960,15 @@ class _Machine:
         if frame.for_body_pos < len(frame.for_body):
             stmt = frame.for_body[frame.for_body_pos]
             pushed = _start_statement_call(stmt, frame, self.globals, self.reader)
-            if pushed is not None:
+            if isinstance(pushed, _Frame):
                 self.frames[-1] = frame.at(for_body_pos=frame.for_body_pos + 1)
                 self.frames.append(pushed)
                 return
-            got = _exec_stmt(stmt, frame, self.globals, self.reader, 0)
+            got = (
+                None
+                if pushed is False
+                else _exec_stmt(stmt, frame, self.globals, self.reader, 0)
+            )
             self.frames[-1] = frame.at(for_body_pos=frame.for_body_pos + 1)
             if got is not None:
                 self._pop()
