@@ -463,9 +463,9 @@ def test_unreachable_arm_is_declined_but_invariants_propagate(
 def test_explicit_default_moduli_preserve_generation() -> None:
     from esolangs.tools.slow_acv_mammalian import slow_acv_mammalian
 
-    assert slow_acv_mammalian(
-        "01", cell_modulus=256, io_modulus=256
-    ) == slow_acv_mammalian("01")
+    baseline = slow_acv_mammalian("01")
+    slow_acv_mammalian("01", io_modulus=255)
+    assert slow_acv_mammalian("01", cell_modulus=256, io_modulus=256) == baseline
 
 
 @pytest.mark.parametrize(
@@ -473,7 +473,6 @@ def test_explicit_default_moduli_preserve_generation() -> None:
     [
         ({"cell_modulus": 255}, "cell_modulus must be 256"),
         ({"io_modulus": 254}, "io_modulus must be 255 or 256"),
-        ({"io_modulus": 255}, "modulo-255 construction is not implemented"),
     ],
 )
 def test_generator_rejects_unverified_moduli(settings, message: str) -> None:
@@ -481,3 +480,96 @@ def test_generator_rejects_unverified_moduli(settings, message: str) -> None:
 
     with pytest.raises(ValueError, match=message):
         slow_acv_mammalian("01", **settings)
+
+
+@pytest.mark.parametrize(
+    "table",
+    [f"{value:0{1 << n}b}" for n in range(1, 4) for value in range(1 << (1 << n))],
+)
+def test_modulo_255_generates_every_small_table(table: str) -> None:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.tape_based.slow_acv_mammalian import run
+    from esolangs.tools.slow_acv_mammalian import slow_acv_mammalian
+
+    source = slow_acv_mammalian(table, io_modulus=255)
+    n = len(table).bit_length() - 1
+    for row, expected in enumerate(table):
+        io = ScriptedIO(f"{row:0{n}b}")
+        run(source, io, io_modulus=255)
+        assert io.getvalue() == expected
+        assert io.reads == n
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("n", [4, 5, 6, 7])
+def test_modulo_255_banks_weights_across_the_layout_boundary(n: int) -> None:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.tape_based.slow_acv_mammalian import run
+    from esolangs.tools.slow_acv_mammalian import slow_acv_mammalian
+
+    rng = random.Random(20261003 + n)
+    table = "".join(str(rng.getrandbits(1)) for _ in range(1 << n))
+    source = slow_acv_mammalian(table, io_modulus=255)
+    for row, expected in enumerate(table):
+        io = ScriptedIO(f"{row:0{n}b}")
+        run(source, io, io_modulus=255)
+        assert io.getvalue() == expected
+        assert io.reads == n
+
+
+@pytest.mark.parametrize("head", [0, 127, 255])
+@pytest.mark.parametrize("acc", [0, 507])
+@pytest.mark.parametrize("target", [700, 1000, 66000])
+def test_modulo_255_trampoline_length_and_execution(
+    head: int, acc: int, target: int
+) -> None:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
+    from esolangs.tools.slow_acv_mammalian import _trampoline, _trampoline_len
+
+    array = [head, 254]
+    tokens, predicted, predicted_acc = _trampoline(array, acc, target, io_modulus=255)
+    assert len(tokens) == _trampoline_len(array, acc, target, io_modulus=255)
+    machine = _Machine(" ".join(tokens), ScriptedIO(), io_modulus=255)
+    machine.lst = (tuple(array), *machine.lst[1:])
+    machine.acc = acc
+    for _ in range(len(tokens) + 1):
+        if machine.halted:
+            break
+        machine.step()
+    assert machine.halted
+    assert machine.ind == target
+    assert machine.lst[0] == tuple(predicted)
+    assert machine.acc == predicted_acc
+
+
+@pytest.mark.parametrize("target", [0, 254, 255, 507])
+def test_modulo_255_trampoline_rejects_a_target_consumed_by_normalization(
+    target: int,
+) -> None:
+    from esolangs.tools.slow_acv_mammalian import (
+        _trampoline,
+        _trampoline_len,
+        _UnreachableError,
+    )
+
+    for build in (_trampoline, _trampoline_len):
+        with pytest.raises(_UnreachableError):
+            build([0, 254], 253, target, io_modulus=255)
+
+
+def test_modulo_255_greedy_window_covers_every_head_and_sum_residue() -> None:
+    for head in range(256):
+        for rest in range(255):
+            assert any(
+                (((head + 17 * seeds) % 256) + rest) % 255 >= 238 for seeds in range(16)
+            )
+
+
+def test_modulo_255_merge_rejects_a_one_branch_past_the_target() -> None:
+    from esolangs.tools.slow_acv_mammalian import _try_arm
+
+    one = _Sums(io_modulus=255)
+    zero = _Sums(io_modulus=255)
+    one.n0 = 1000
+    assert _try_arm(one, zero, 8, None, 500) is None
