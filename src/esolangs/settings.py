@@ -24,6 +24,7 @@ from esolangs._dialects import (
 from esolangs._framing import INPUT_FRAMINGS, InputFraming
 from esolangs._grapheme import INTEGER_CONVERSIONS, GraphemeDialect
 from esolangs._jaune import UNDEFINED_TARGETS, JauneDialect
+from esolangs._laserfuck import LaserfuckDialect
 from esolangs._mammalian import MODULI, MammalianModuli
 from esolangs.exceptions import ArgumentError
 from esolangs.registry import LANGUAGES, resolve
@@ -34,6 +35,7 @@ _VALIDATORS: dict[str, Any] = {
     "unary": BrainfuckDialect,
     "line": LineDialect,
     "jaune": JauneDialect,
+    "laserfuck": LaserfuckDialect,
     "grapheme": GraphemeDialect,
     "unsquare": InputFraming,
     "decleq": InputFraming,

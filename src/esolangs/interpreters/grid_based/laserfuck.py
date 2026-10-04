@@ -11,7 +11,8 @@ writes wrap in two's-complement order.
 
 The initial heading and every ``*`` split are drawn from ``rng``, so one
 argument makes a run reproducible; ``None`` draws for real, as the
-cross-check does.  Exhausted input raises :class:`EOFError`.
+cross-check does. Exhausted input raises :class:`EOFError` by default;
+``eof`` also accepts zero, minus_one and unchanged.
 
 The spec leaves input representation unspecified; comma reads the next Unicode
 character code, including newlines.
@@ -20,6 +21,7 @@ character code, including newlines.
 from typing import cast
 
 from esolangs._drive import drive
+from esolangs._laserfuck import LaserfuckDialect
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.persistent import (
@@ -185,6 +187,8 @@ class _Machine:
         code: list[str],
         io: IO,
         rng: Randomness | None = None,
+        *,
+        eof: str = "error",
     ) -> None:
         """Start a laser at ``o``, drawing its heading from ``rng``.
 
@@ -192,6 +196,7 @@ class _Machine:
         There is no ``heading`` argument: a source answering the first draw
         does that job and the splits' too.
         """
+        self._dialect = LaserfuckDialect(eof)
         self.io = io
         self._rng = rng
         text = [list(ln) for ln in code]
@@ -396,7 +401,13 @@ class _Machine:
 
         byte = None
         if op == ",":
-            byte = self.io.input_char()
+            try:
+                byte = self.io.input_char()
+            except EOFError:
+                byte = self._dialect.exhausted(get(self.tape, self.ptr)[0])
+                if self._dialect.eof == "unchanged":
+                    # An untouched zero must remain absent from the final tape dump.
+                    op = " "
         split = draw(self._rng, 2) if op == "*" else 0
 
         self._restore(_advance(self._state, op, row, col, d, byte, split))
@@ -421,14 +432,16 @@ class _Machine:
             self.io.print_num(val)
 
 
-def run(code: list[str], io: IO, rng: Randomness | None = None) -> None:
+def run(
+    code: list[str], io: IO, rng: Randomness | None = None, *, eof: str = "error"
+) -> None:
     """Run a LaserFuck program, printing the tape when it halts.
 
     ``rng`` supplies the initial direction (``randbelow(4)``: 0=up, 1=down,
     2=left, 3=right) and each ``*`` split; ``None`` draws for real.  Same
     signature as the other drawing interpreters.
     """
-    machine = _Machine(code, io, rng)
+    machine = _Machine(code, io, rng, eof=eof)
     drive(machine)
 
 
