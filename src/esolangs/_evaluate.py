@@ -131,6 +131,7 @@ def iter_evaluate(
     isolated: bool = False,
     scale: int | None = None,
     max_rows: int | None = _DEFAULT_MAX_ROWS,
+    max_output: int | None = None,
     total_timeout: float | None = None,
     settings: DialectSettings | None = None,
 ) -> Iterator[str]:
@@ -140,9 +141,17 @@ def iter_evaluate(
     the full table (None opts out); ``total_timeout`` includes loading and pauses
     between yields. Row timeouts default to 30 seconds, 5 for termination.
     A timeout never proves divergence. Paths load once; templates fill per row.
+    ``max_output`` caps each isolated row in Unicode characters.
     ``settings`` applies to template filling and every execution path.
     """
     dialect_options(language, settings)
+    if max_output is not None:
+        check_whole(max_output, "max_output")
+        if not isolated:
+            raise with_hint(
+                ArgumentError("max_output requires isolated=True"),
+                "set isolated=True to bound each row's output, or omit max_output",
+            )
     started = monotonic()
     check_timeout(total_timeout)
     # Checked here, not only inside ``run``: the termination path drives the
@@ -217,6 +226,10 @@ def iter_evaluate(
                         termination_runner = partial(
                             termination_runner, settings=settings
                         )
+                    if max_output is not None:
+                        termination_runner = partial(
+                            termination_runner, max_output=max_output
+                        )
                     answer = termination_runner(
                         name,
                         source,
@@ -238,6 +251,8 @@ def iter_evaluate(
                     runner = partial(runner, settings=settings)
                 if scale is not None:
                     runner = partial(runner, scale=scale)
+                if max_output is not None:
+                    runner = partial(runner, max_output=max_output)
                 if isolated:
                     output = runner(
                         name, source, stdin, cast("float", row_bound), isolated=True
@@ -268,6 +283,7 @@ def evaluate(
     isolated: bool = False,
     scale: int | None = None,
     max_rows: int | None = _DEFAULT_MAX_ROWS,
+    max_output: int | None = None,
     total_timeout: float | None = None,
     settings: DialectSettings | None = None,
 ) -> str:
@@ -276,6 +292,7 @@ def evaluate(
     Repeated states prove divergence; a timeout raises rather than counting as 1.
     Row timeouts default to 30 seconds (5 for termination). ``max_rows`` defaults
     to 1,048,576; None opts out. ``total_timeout`` optionally bounds the whole run.
+    ``max_output`` caps each isolated row in Unicode characters.
     """
     answers = []
     try:
@@ -287,6 +304,7 @@ def evaluate(
             isolated=isolated,
             scale=scale,
             max_rows=max_rows,
+            max_output=max_output,
             total_timeout=total_timeout,
             settings=settings,
         ):

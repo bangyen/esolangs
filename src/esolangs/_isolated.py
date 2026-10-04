@@ -250,6 +250,7 @@ def termination_isolated(
     diverges: str,
     *,
     settings: DialectSettings | None = None,
+    max_output: int | None = None,
 ) -> str:
     """Prove halt or cycle in a child; deadline never means divergence."""
     choices = dialect_options(name, settings)
@@ -262,9 +263,12 @@ def termination_isolated(
                 "raster": False,
                 "termination": [halts, diverges],
                 "settings": choices,
+                "max_output": hex(max_output) if max_output is not None else None,
+                "integer_max_output": max_output is not None,
             }
         ),
         timeout,
+        max_output=max_output,
     )
 
 
@@ -311,7 +315,11 @@ def _worker() -> None:
             }
         )
         if "termination" in request:
+            from esolangs import vm
             from esolangs._evaluate import _terminates
+
+            if request.get("max_output") is not None:
+                vars(vm)["ScriptedIO"] = StreamingIO
 
             halts, diverges = request["termination"]
             output = _terminates(

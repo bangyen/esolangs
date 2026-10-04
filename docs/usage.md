@@ -204,6 +204,9 @@ loading and execution on Windows and worker threads. Timeout kills and reaps
 the child; errors retain their class and `partial_output`.
 `evaluate(..., isolated=True)` applies a finite
 deadline per row; a timeout remains undecided, including termination answers.
+`evaluate(..., isolated=True, max_output=N)` caps each row in Unicode characters;
+CLI `evaluate --max-output N` enables isolation. Overflow raises
+`InterpreterLimitError` with partial output and the failing row.
 
 `run(language, program, stdin, max_steps=100_000, timeout=1)`
 returns output on halt and raises `ExecutionTimeoutError` with

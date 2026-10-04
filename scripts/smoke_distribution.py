@@ -44,7 +44,7 @@ def smoke(*, math_extra: bool, image_extra: bool = False) -> None:
     assert "brainfuck" in _cli(["list"])
     bound = esolangs.Language("BRAINFUCK")
     program = bound.generate("0110", balance=True)
-    assert bound.evaluate(program, inputs=2, isolated=True) == "0110"
+    assert bound.evaluate(program, inputs=2, isolated=True, max_output=1) == "0110"
     assert bound.read_answer(bound.run(program, bound.encode_inputs([0, 1]))) == "1"
     assert esolangs.run("brainfuck", "+.", max_steps=2) == "\x01"
     assert esolangs.run("brainfuck", "+.", timeout=1, isolated=True) == "\x01"

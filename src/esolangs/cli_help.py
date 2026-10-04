@@ -36,7 +36,7 @@ commands:
   answer [--timeout S] [--settings JSON] <language> <truth-table> <bits>
                               generate, feed those bits, run, and print the
                               one answer bit
-  evaluate [--timeout S] [--total-timeout S] [--max-rows N]
+  evaluate [--timeout S] [--total-timeout S] [--max-rows N] [--max-output N]
            [--inputs N | --table T] [--settings JSON] <language> <program-file>
                               run every input row and print the observed
                               table; --table also checks the expected result
@@ -246,7 +246,7 @@ options:
                      never stops, and to none for the rest.
 """,
     "evaluate": """usage: esolangs evaluate [--timeout S] [--total-timeout S]
-                          [--max-rows N] [--inputs N | --table T]
+                          [--max-rows N] [--max-output N] [--inputs N | --table T]
                           [--settings JSON]
                           <language> <program-file>
 
@@ -264,6 +264,7 @@ options:
                      the deadline is a backstop for growth, not an answer.
   --total-timeout S  bound the whole evaluation in seconds.
   --max-rows N       refuse larger tables; defaults to 1,048,576 rows.
+  --max-output N     cap each row in Unicode characters; enables isolation.
   --settings JSON    dialect overrides shared with generate and run.
 
 examples:
