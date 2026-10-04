@@ -55,6 +55,16 @@ class Language:
             self.name, template, bits, width, truth_table, settings=settings
         )
 
+    def dump_program(
+        self, program: Program, *, settings: DialectSettings | None = None
+    ) -> str:
+        """Return portable JSON retaining source and dialect choices."""
+        return esolangs.dump_program(self.name, program, settings=settings)
+
+    def load_program(self, document: str) -> Program:
+        """Restore portable JSON as this language's tagged source."""
+        return esolangs.load_program(self.name, document)
+
     def run(
         self,
         program: ProgramSource,

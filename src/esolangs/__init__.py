@@ -3,6 +3,7 @@
 ``generate`` builds source; ``instantiate`` fills templates; ``run`` executes;
 ``evaluate`` returns a table; ``iter_evaluate`` streams it.
 ``encode_inputs`` and ``read_answer`` handle rows.
+``dump_program`` and ``load_program`` preserve source provenance in portable JSON.
 ``check_program`` and ``check_stdin`` validate; ``describe`` and ``list_languages``
 provide registry facts. Stepping and debugging live in :mod:`esolangs.debugger`.
 ``Language(name)`` binds these functions to one language.
@@ -64,6 +65,7 @@ from esolangs.exceptions import (
 )
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.source_hints import with_hint
+from esolangs.portable import dump_program, load_program
 from esolangs.raster import Raster
 from esolangs.registry import (
     INTERPRETERS,
@@ -139,12 +141,14 @@ __all__ = [
     "check_program",
     "check_stdin",
     "describe",
+    "dump_program",
     "encode_inputs",
     "evaluate",
     "generate",
     "instantiate",
     "iter_evaluate",
     "list_languages",
+    "load_program",
     "read_answer",
     "run",
 ]
