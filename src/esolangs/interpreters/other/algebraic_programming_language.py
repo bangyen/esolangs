@@ -76,12 +76,14 @@ text framing.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from math import isfinite
 from typing import Literal
 
 from esolangs._drive import drive
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.memory import format_integer, parse_integer
 from esolangs.interpreters.source_hints import syntax_error
 
 # The only datatype is a number, but a *function* reaches an expression
@@ -189,14 +191,14 @@ def _tokens(line: str) -> list[str]:
 
 def _number(word: str) -> _Number:
     """Parse a numeric literal, keeping integers exact."""
-    return float(word) if "." in word else int(word)
+    return _as_number(float(word)) if "." in word else parse_integer(word)
 
 
 class _Parser:
     """A recursive-descent parser for one expression.
 
     Precedence, lowest first: ``|``, ``&``, ``+``/``-``, ``*``/``/``/``%``,
-    ``**`` (right-associative), unary ``-`` and ``$``, then custom
+    unary ``-`` and ``$``, ``**`` (right-associative), then custom
     operators, calls, and brackets.  The wiki says custom operators bind
     tighter than everything except brackets and functions, which is where
     :meth:`_postfix` sits.
@@ -259,13 +261,23 @@ class _Parser:
     def _binary(self, level: int) -> _Node:
         """Parse a left-associative level of the precedence ladder."""
         if level == len(self._LEVELS):
-            return self._power()
+            return self._unary()
         node = self._binary(level + 1)
         while True:
             word = self.peek()
             # No ``**`` guard is needed here: ``_power`` consumes one
             # before returning, so the cursor never sits on the first
             # ``*`` of a ``**`` by the time this loop sees it.
+            implied = (
+                level == 3
+                and word is not None
+                and _is_lower(word)
+                and self.ind > 0
+                and _is_lower(self.tokens[self.ind - 1])
+            )
+            if implied:
+                node = ("bin", "*", node, self._binary(level + 1))
+                continue
             if word is None or word not in self._LEVELS[level]:
                 return node
             self.take()
@@ -281,11 +293,11 @@ class _Parser:
 
     def _power(self) -> _Node:
         """Parse ``**``, which is right-associative."""
-        base = self._unary()
+        base = self._operand()
         if self._at_power():
             self.take()
             self.take()
-            return ("bin", "**", base, self._power())
+            return ("bin", "**", base, self._unary())
         return base
 
     def _unary(self) -> _Node:
@@ -297,7 +309,7 @@ class _Parser:
         if word == "$":
             self.take()
             return ("ret", self._unary())
-        return self._operand()
+        return self._power()
 
     def _operand(self) -> _Node:
         """Parse a prefix operator, or an atom with its trailing operators."""
@@ -401,19 +413,19 @@ class _Parser:
                     "bracket multiplication is invalid syntax",
                     "write multiplication explicitly with *, for example 1*(2)",
                 )
-            return self._implied(node)
+            return node
         if word == "(":
             self.take()
             inner = self.expr()
             self.expect(")")
-            return self._implied(inner)
+            return inner
         if _is_lower(word):
             self.take()
             if self.peek() == "(":
                 # ``c()`` where ``c`` is a parameter holding a function:
                 # the wiki's ``IF(x, c) = x & c()`` calls its argument.
                 return ("call", word, self._arguments())
-            return self._implied(("var", word))
+            return ("var", word)
         if _is_upper(word):
             name = ""
             while self.peek() is not None and _is_upper(str(self.peek())):
@@ -439,15 +451,6 @@ class _Parser:
                 args.append(self.expr())
         self.expect(")")
         return args
-
-    def _implied(self, node: _Node) -> _Node:
-        """Fold implied multiplication (``ab`` is ``a * b``) onto ``node``."""
-        while True:
-            word = self.peek()
-            if word is None or not _is_lower(word):
-                return node
-            self.take()
-            node = ("bin", "*", node, ("var", word))
 
 
 def _split_definition(line: str) -> tuple[str, str] | None:
@@ -504,20 +507,21 @@ def _parse_lhs(lhs: str) -> tuple[str, list[str]]:
                     ),
                 )
             ind += 1
-            while ind < len(tokens) and tokens[ind] != ")":
-                if tokens[ind] == ",":
+            if ind < len(tokens) and tokens[ind] != ")":
+                # _split_definition only supplies bracket-balanced headers;
+                # a comma cannot be the final token before the equals sign.
+                while True:
+                    if not _is_lower(tokens[ind]):
+                        raise ValueError(f"bad parameter {tokens[ind]!r}")
+                    if tokens[ind] in params:
+                        raise ValueError(f"function {lhs!r} repeats a parameter")
+                    params.append(tokens[ind])
                     ind += 1
-                    continue
-                if not _is_lower(tokens[ind]):
-                    raise syntax_error(
-                        f"bad parameter {tokens[ind]!r}",
-                        "use a single lowercase letter for each parameter",
-                    )
-                params.append(tokens[ind])
-                ind += 1
-            # The loop cannot run out of tokens: getting past it needs a
-            # closer, and ``)`` ends it here while ``}`` fails the
-            # ``bad parameter`` check above.
+                    if ind >= len(tokens) or tokens[ind] != ",":
+                        break
+                    ind += 1
+            if ind >= len(tokens) or tokens[ind] != ")":
+                raise ValueError(f"malformed function header {lhs!r}")
             ind += 1
         if ind != len(tokens):
             raise syntax_error(
@@ -593,6 +597,8 @@ def _body(rhs: str, defs: dict[str, _Definition]) -> list[_Node]:
                 "end the definition after its closing }",
             )
         inner = text[1:-1]
+        if not inner.strip():
+            raise ValueError("empty function body")
         return [
             _Parser(_tokens(line), defs).parse()
             for line in (s.strip() for s in inner.splitlines())
@@ -646,8 +652,6 @@ class _State:
     globals: dict[str, object]
     frames: list[_Frame]
     line: int
-    pending: _Node | None
-    steps: int
 
 
 class _Machine:
@@ -659,15 +663,10 @@ class _Machine:
     the frame stack, printing the result when the stack empties.
     """
 
-    #: The wiki gives no bound; this caps *one* line's evaluation so a
-    #: runaway expression cannot allocate without limit while still
-    #: leaving the hang detectors room to prove a loop.
-    _WORK_LIMIT = 1 << 20
-
     def __init__(self, code: str, io: IO) -> None:
         self.io = io
         self.lines = _blocks(code)
-        self.state = _State({}, {}, [], 0, None, 0)
+        self.state = _State({}, {}, [], 0)
 
     @property
     def defs(self) -> dict[str, _Definition]:
@@ -688,14 +687,6 @@ class _Machine:
     @line.setter
     def line(self, value: int) -> None:
         self.state.line = value
-
-    @property
-    def _steps(self) -> int:
-        return self.state.steps
-
-    @_steps.setter
-    def _steps(self, value: int) -> None:
-        self.state.steps = value
 
     @property
     def halted(self) -> bool:
@@ -733,10 +724,10 @@ class _Machine:
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection.
 
-        Bindings go through ``repr`` because a value may be a
-        :class:`_Definition`, which is not meaningfully hashable; the
-        input cursor is included so a loop that keeps reading is never
-        mistaken for a repeat.
+        Typed keys preserve exact numbers and retained function identity.
+        A redefined ``F`` can call its older body through a saved alias;
+        name-only keys incorrectly reported that finite call as a cycle.
+        The input cursor distinguishes calls that keep reading.
 
         The work stack is captured *by content*, not by depth.  Recording
         only its length made two genuinely different states compare equal
@@ -747,18 +738,18 @@ class _Machine:
         """
         return (
             self.line,
-            tuple(sorted((k, repr(v)) for k, v in self.globals.items())),
+            tuple(sorted((k, _value_key(v)) for k, v in self.globals.items())),
             tuple(
                 (
-                    f.fn.name,
+                    _value_key(f.fn),
                     f.stmt,
                     tuple(
-                        (id(node), tuple(repr(v) for v in done))
+                        (id(node), tuple(_value_key(v) for v in done))
                         for node, done in f.work
                     ),
-                    repr(f.value),
+                    _value_key(f.value),
                     f.returned,
-                    tuple(sorted((k, repr(v)) for k, v in f.locals.items())),
+                    tuple(sorted((k, _value_key(v)) for k, v in f.locals.items())),
                 )
                 for f in self.frames
             ),
@@ -778,8 +769,8 @@ class _Machine:
         if not isinstance(frame, _Frame):
             raise AssertionError("isinstance(frame, _Frame)")
         return (
-            frame.fn.name,
-            tuple(sorted((k, repr(v)) for k, v in frame.locals.items())),
+            _value_key(frame.fn),
+            tuple(sorted((k, _value_key(v)) for k, v in frame.locals.items())),
             self.io.position(),
         )
 
@@ -857,12 +848,6 @@ class _Machine:
 
     def _step_frame(self, frame: _Frame) -> None:
         """Resolve one node of ``frame``'s current expression."""
-        self._steps += 1
-        if self._steps > self._WORK_LIMIT:
-            raise HaltError(
-                "expression exceeded the evaluation budget",
-                hint="reduce nesting or repeated evaluation to fit the budget",
-            )
         if not frame.work:
             self._advance(frame)
             return
@@ -1029,13 +1014,15 @@ class _Machine:
     def _print(self, value: object) -> None:
         """Write one result, formatted the way the wiki's examples read."""
         number = _as_number(value)
-        text = str(number) if isinstance(number, int) else _format_float(number)
+        text = (
+            format_integer(number) if isinstance(number, int) else _format_float(number)
+        )
         self.io.print_str(text + "\n")
 
 
 def _format_float(value: float) -> str:
     """Render a float, dropping a trailing ``.0`` from an integral one."""
-    return str(int(value)) if value.is_integer() else str(value)
+    return format_integer(int(value)) if value.is_integer() else str(value)
 
 
 def _truthy(value: object) -> bool:
@@ -1052,10 +1039,36 @@ def _as_number(value: object) -> _Number:
             f"expected a number, got {value!r}",
             hint="use a numeric value in this expression",
         )
+    if isinstance(value, float) and not isfinite(value):
+        raise HaltError("number must be finite")
     return value
 
 
+def _value_key(value: object) -> tuple[object, ...]:
+    """Keep numeric types and retained function identities distinct."""
+    if isinstance(value, _Definition):
+        return (
+            "function",
+            id(value),
+            value.name,
+            tuple(value.params),
+            tuple(id(node) for node in value.body),
+            tuple(value.control),
+        )
+    if isinstance(value, float):
+        return ("float", value.hex())
+    return ("integer", value)
+
+
 def _arith(op: str, left: _Number, right: _Number) -> _Number:
+    """Apply an operator, rejecting nonfinite and nonreal results."""
+    try:
+        return _as_number(_raw_arith(op, left, right))
+    except OverflowError as exc:
+        raise HaltError("arithmetic result exceeds the float range") from exc
+
+
+def _raw_arith(op: str, left: _Number, right: _Number) -> _Number:
     """Apply one arithmetic operator, keeping integers exact.
 
     ``op`` is one of the six the parser emits for a ``bin`` node other
@@ -1074,6 +1087,10 @@ def _arith(op: str, left: _Number, right: _Number) -> _Number:
             raise HaltError(
                 "division by zero", hint="ensure the divisor is nonzero before dividing"
             )
+        if isinstance(left, int) and isinstance(right, int):
+            quotient_int, remainder = divmod(left, right)
+            if remainder == 0:
+                return quotient_int
         quotient = left / right
         # Keep an exact integer where the division is exact, so the
         # unbounded-integer model survives a round trip through ``/``.
@@ -1094,39 +1111,38 @@ def _arith(op: str, left: _Number, right: _Number) -> _Number:
 
 
 def _contains_return(node: _Node) -> bool:
-    """Whether ``$`` appears anywhere in ``node``; see :class:`_Definition`."""
-    if node[0] == "ret":
-        return True
-    if node[0] == "neg":
-        return _contains_return(node[1])
-    if node[0] == "bin":
-        return _contains_return(node[2]) or _contains_return(node[3])
-    if node[0] == "call":
-        return any(_contains_return(arg) for arg in node[2])
+    """Return whether a statement syntactically contains a return."""
+    pending = [node]
+    while pending:
+        current = pending.pop()
+        if current[0] == "ret":
+            return True
+        if current[0] == "neg":
+            pending.append(current[1])
+        elif current[0] == "bin":
+            pending.extend((current[2], current[3]))
+        elif current[0] == "call":
+            pending.extend(current[2])
     return False
 
 
 def _free_variables(node: _Node) -> list[str]:
-    """List the variables in ``node``, in order of first appearance."""
+    """Return variables in first-appearance order without recursive traversal."""
     out: list[str] = []
-
-    def walk(current: _Node) -> None:
+    seen: set[str] = set()
+    pending = [node]
+    while pending:
+        current = pending.pop()
         if current[0] == "var":
-            if current[1] not in out:
+            if current[1] not in seen:
+                seen.add(current[1])
                 out.append(current[1])
-            return
-        if current[0] in ("neg", "ret"):
-            walk(current[1])
-            return
-        if current[0] == "bin":
-            walk(current[2])
-            walk(current[3])
-            return
-        if current[0] == "call":
-            for arg in current[2]:
-                walk(arg)
-
-    walk(node)
+        elif current[0] in ("neg", "ret"):
+            pending.append(current[1])
+        elif current[0] == "bin":
+            pending.extend((current[3], current[2]))
+        elif current[0] == "call":
+            pending.extend(reversed(current[2]))
     return out
 
 
