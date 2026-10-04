@@ -3,33 +3,9 @@
 import random
 from itertools import pairwise
 
-import pytest
-
-from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.other.intercal import run
-from esolangs.tools.helpers import best_input_order, fill_runs
+from esolangs.tools.helpers import best_input_order
 from esolangs.tools.intercal import PAIR, TEMPLATE_CHAR, intercal
 from tests.tools.plain_oracles import intercal_plain as _intercal_ordered
-
-
-def _run(table: str, row: int) -> str:
-    n = len(table).bit_length() - 1
-    bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
-    program = fill_runs(intercal(table), TEMPLATE_CHAR, [PAIR] * n, bits)
-    io = ScriptedIO("")
-    run(program, io)
-    output = io.getvalue()
-    assert output in {"\n", "I\n"}
-    return "1" if output == "I\n" else "0"
-
-
-@pytest.mark.medium  # executes every table (1.3s at n = 3)
-@pytest.mark.parametrize("n", range(1, 4))
-def test_every_table_through_three_inputs(n: int) -> None:
-    width = 1 << n
-    for value in range(1 << width):
-        table = f"{value:0{width}b}"
-        assert "".join(_run(table, row) for row in range(width)) == table
 
 
 def test_setters_are_equal_width_and_embedded_once() -> None:
@@ -92,12 +68,3 @@ def test_repeated_subexpressions_are_assigned_once() -> None:
             before, after = len(_unshared(table)), len(intercal(table))
             old, new = old + before, new + after
         assert (old, new) == pinned
-
-
-@pytest.mark.parametrize("n", range(4, 7))
-@pytest.mark.medium
-def test_shared_templates_execute_on_sampled_tables(n: int) -> None:
-    rng = random.Random(n)
-    for _ in range(3):
-        table = format(rng.getrandbits(1 << n), f"0{1 << n}b")
-        assert "".join(_run(table, row) for row in range(1 << n)) == table

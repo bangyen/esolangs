@@ -187,3 +187,10 @@ def test_invalid_transition_is_atomic(source, text, message, reads):
     assert (tuple(vm.lines), vm.spans, vm.ind, vm.done) == before
     assert vm.snapshot()[4] == reads
     assert vm.io.getvalue() == ""
+
+
+def test_skip_before_an_instruction_halts_without_executing_it():
+    result = check("skip\nsend data\ndata;\nnever\ndata;", "")
+    assert result["halted"]
+    assert result["output"] == ""
+    assert result["error"] is None

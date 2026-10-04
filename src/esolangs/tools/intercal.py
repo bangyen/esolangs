@@ -30,9 +30,10 @@ class _Expr:
         outer, inner = ("'", '"') if depth % 2 == 0 else ('"', "'")
         if self.op == "mingle":
             left, right = self.children
-            return f"{outer}{'&V?'[self.value]}{left.render()}${right.render()}{outer}"
+            return f"{outer}{left.render()}${right.render()}{outer}"
         if self.op == "select":
-            return f"{outer}{self.children[0].render()}~#2{outer}"
+            operand = self.children[0].render()
+            return f"{outer}{inner}{'&V?'[self.value]}{operand}{inner}~#1{outer}"
         if self.op == "not":
             children, operator = (*self.children, _Expr("constant", 1)), "?"
         else:
@@ -43,7 +44,7 @@ class _Expr:
             f"{inner}{operator}{left.render(depth + 2)}$"
             f"{right.render(depth + 2)}{inner}"
         )
-        return f"{outer}{mingled}~#2{outer}"
+        return f"{outer}{mingled}~#1{outer}"
 
 
 def intercal(truth_table: str, width: int | None = None) -> str:
@@ -159,9 +160,13 @@ def _intercal_narrow(
                     _Expr("mingle", ("and", "or", "xor").index(operator), children),
                 )
             )
-            # Boolean operands give a result at most 7, which fits a onespot;
-            # the following selection extracts its answer from bit1.
-            expr = _Expr("select", children=(_Expr("input", intermediate - 1),))
+            # Store the raw mingle (at most 3); unary OR/XOR on the 32-bit
+            # mingle can set bit31 and would overflow a onespot assignment.
+            expr = _Expr(
+                "select",
+                ("and", "or", "xor").index(operator),
+                children=(_Expr("input", intermediate - 1),),
+            )
         variable = n + 2 + len(assigned)
         assigned.append((variable, expr))
         return _Expr("input", variable - 1)
