@@ -182,7 +182,7 @@ def generate(
     layouts, breaking ties by source length (raster pixel area), then width.
     Token and routing constraints can prevent a square layout.
     Raster ``scale`` replicates pixels after layout; 1 preserves native output.
-    ``settings`` supplies dialect overrides shared with execution; excludes balance.
+    ``settings`` supplies dialect overrides shared with execution.
     """
     options = dialect_options(language, settings)
     check_scale(scale)
@@ -196,8 +196,6 @@ def generate(
             language, truth_table, width, balance=balance, settings=settings
         )
         return cast(Raster, source).upscaled(scale)
-    if balance and options:
-        raise ArgumentError("balance does not support explicit dialect settings")
     if balance and width is not None:
         raise with_hint(
             ArgumentError("balance and width are mutually exclusive"),
@@ -207,7 +205,7 @@ def generate(
             ),
         )
     if balance:
-        default = generate(language, truth_table)
+        default = generate(language, truth_table, settings=settings)
         lang = LANGUAGES[resolve(language)]
         balancer = _BALANCERS.get(lang.id)
         if isinstance(default, Raster):
@@ -216,9 +214,15 @@ def generate(
             raster_balance = cast(Callable[[str, Raster], Raster], balancer)
             return raster_balance(truth_table, default).tagged(resolve(language))
         if balancer is not None:
-            text = cast(Callable[[str, str], str], balancer)(truth_table, default)
+            # Only these dialects change a balancer's reconstructed instructions.
+            balance_options = options if lang.id in {"alight", "bitdeque"} else {}
+            text = cast(Callable[..., str], balancer)(
+                truth_table, default, **balance_options
+            )
             if isinstance(default, _Template):
-                text, char, pairs = render_template(lang.id, text, default.inputs)
+                text, char, pairs = render_template(
+                    lang.id, text, default.inputs, settings=settings
+                )
                 return _Template(text, default.language, char, pairs)
             return _Tagged(text, resolve(language))
         if isinstance(default, _Template):

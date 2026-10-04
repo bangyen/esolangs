@@ -14,6 +14,7 @@ from esolangs.tools.alight import (
     _alight_units,
     _dimensions,
     _half_before,
+    _postfix_units,
 )
 from esolangs.tools.helpers import _validate_truth_table
 
@@ -173,9 +174,44 @@ def select_alight(table: str, n: int, width: int) -> str:
     return _emit(table, n, plan)
 
 
-def balance_alight(table: str, _default: str) -> str:
+def _balance_postfix(table: str, n: int, default: str) -> str:
+    """Balance whole and square-root chunks at greedy fold transitions."""
+    width, height = _dimensions(default)
+    best = (abs(width - height), len(default), width)
+    selected: tuple[list[list[str]], int, tuple[int, int, int]] | None = None
+    size = len(table)
+    for chunk in {size, isqrt(size - 1) + 1}:
+        units = _postfix_units(table, n, chunk)
+        pieces = [(0, len(";".join(unit)) + 1) for unit in units]
+        lower = max(length for _, length in pieces) + _EAST + 1
+        upper = sum(length for _, length in pieces)
+        while lower <= upper:
+            _, height, _, stop = _fold_shape(pieces, (1, 0), lower, upper + 1)
+            # Height is constant until the next row-fit transition; its nearest
+            # permitted width minimizes imbalance without a width sweep.
+            columns = min(max(height, lower), stop - 1)
+            width, height, length, _ = _fold_shape(pieces, (1, 0), columns, stop)
+            score = (abs(width - height), length, width)
+            if score < best:
+                best = score
+                selected = units, columns, (width, height, length)
+            lower = stop
+    if selected is None:
+        return default
+    units, columns, shape = selected
+    program = _alight_folded(units, columns)
+    if (*_dimensions(program), len(program)) != shape:
+        raise AssertionError("Alight postfix fold model disagrees with rendering")
+    return program
+
+
+def balance_alight(
+    table: str, _default: str, *, expression_syntax: str = "infix"
+) -> str:
     """Balance the layouts that can win the native minimax width selector."""
     n = _validate_truth_table(table)
+    if expression_syntax == "postfix":
+        return _balance_postfix(table, n, _default)
     plans = _plans(n)
     records = [next(plan for plan in plans if plan.kind == 1)]
     best: _Plan | None = None

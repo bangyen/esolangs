@@ -10,6 +10,7 @@ from esolangs._evaluate import _terminates
 from esolangs.exceptions import EsolangError, ExecutionTimeoutError, TemplateError
 from esolangs.interpreters.source_hints import error_text
 from esolangs.registry import SUGGESTION_CUTOFF
+from esolangs.settings import DialectSettings
 
 # A watched cell's history longer than this is printed abridged: the whole
 # thing was one line of 486 comma-separated values for a 486-step program,
@@ -211,7 +212,13 @@ def _input_sentence(facts: LanguageInfo) -> str:
 
 
 def _diverging_answer(
-    name: str, source: str, stdin: str, bound: float, facts: LanguageInfo
+    name: str,
+    source: str,
+    stdin: str,
+    bound: float,
+    facts: LanguageInfo,
+    *,
+    settings: DialectSettings | None = None,
 ) -> str:
     """Return the answer bit for a language that answers by terminating.
 
@@ -228,6 +235,7 @@ def _diverging_answer(
         bound,
         str(encoding.index("halts")),
         str(encoding.index("diverges")),
+        settings=settings,
     )
 
 

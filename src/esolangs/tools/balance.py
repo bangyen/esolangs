@@ -189,10 +189,10 @@ def _ram0(table: str, default: str) -> str:
     )
 
 
-def _bitdeque(table: str, default: str) -> str:
+def _bitdeque(table: str, default: str, *, index_base: int = 0) -> str:
     """Balance the eleven-cell and short endpoint loads in their width regimes."""
     normal = _bitdeque_tokens(default)
-    short = _bitdeque_tokens(bitdeque(table, 1))
+    short = _bitdeque_tokens(bitdeque(table, 1, index_base=index_base))
     normal_width = balanced_token_width(normal, " ", minimum=11)
     short_width = balanced_token_width(short, " ", maximum=10)
     return min(
