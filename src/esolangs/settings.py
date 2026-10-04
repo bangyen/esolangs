@@ -21,6 +21,7 @@ from esolangs._dialects import (
     expression_syntax,
     index_base,
 )
+from esolangs._jaune import UNDEFINED_TARGETS, JauneDialect
 from esolangs._mammalian import MODULI, MammalianModuli
 from esolangs.exceptions import ArgumentError
 from esolangs.registry import LANGUAGES, resolve
@@ -30,6 +31,7 @@ _VALIDATORS: dict[str, Any] = {
     "factor": BrainfuckDialect,
     "unary": BrainfuckDialect,
     "line": LineDialect,
+    "jaune": JauneDialect,
     "false": FalseDialect,
     "flowchart": FlowchartDialect,
     "slow_acv_mammalian": MammalianModuli,
@@ -54,6 +56,7 @@ class DialectSettings:
             "unknown_commands",
             "scheduling",
             "deque_cursor",
+            "undefined_targets",
         }
         for key, value in choices.items():
             if key not in integer | text:
@@ -173,6 +176,7 @@ def dialect_choices(language: str) -> dict[str, DialectOption]:
         "eof": EOF_POLICIES,
         "scheduling": SCHEDULINGS,
         "deque_cursor": DEQUE_CURSORS,
+        "undefined_targets": UNDEFINED_TARGETS,
     }
     if language_id == "slow_acv_mammalian":
         choices.update(cell_modulus=MODULI, io_modulus=MODULI)
