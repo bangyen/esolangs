@@ -1,6 +1,5 @@
 """Boolean program generator for Unsquare."""
 
-from esolangs._framing import InputFraming
 from esolangs.tools.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
@@ -9,7 +8,7 @@ from esolangs.tools.helpers import (
 )
 
 
-def unsquare(truth_table: str, *, input_framing: str = "characters") -> str:
+def unsquare(truth_table: str) -> str:
     """Build an Unsquare program for a binary ``2**n``-entry table, MSB first.
 
     Reversed ``O``/``I`` entries put row ``r`` at depth ``r``; each read pops
@@ -18,7 +17,6 @@ def unsquare(truth_table: str, *, input_framing: str = "characters") -> str:
     it, ``>`` pops only for 1, ``OA`` zeroes it for the returning ``<``.
     Index ``2**m - 1`` against ``2**m`` cells prevents underflow.
     """
-    InputFraming(input_framing)
     n = _validate_truth_table(truth_table)
     used = essential_inputs(truth_table, n) or [0]
     reduced = read_at(truth_table, used, n)

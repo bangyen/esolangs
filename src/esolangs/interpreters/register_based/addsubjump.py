@@ -14,16 +14,12 @@ allocate halts with :class:`HaltError`.
 
 The spec leaves input representation unspecified; this interpreter reads
 consecutive Unicode characters, including newlines.
-``input_framing="integer_tokens"`` reads whitespace-delimited signed integers
-instead of Unicode character codes. EOF raises EOFError in either mode.
-
 """
 
 import re
 from dataclasses import dataclass
 
 from esolangs._drive import drive
-from esolangs._framing import InputFraming
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
@@ -461,8 +457,7 @@ def _advance(state: _State, reads: tuple[int, ...]) -> tuple[int, _State]:
 class _Machine:
     """Per-run ASJ state: the self-modifying memory, ip, and flags."""
 
-    def __init__(self, code: str, io: IO, *, input_framing: str = "characters") -> None:
-        self.framing = InputFraming(input_framing)
+    def __init__(self, code: str, io: IO) -> None:
         """Parse ``code`` into memory and reset the pointer and flags."""
         self.io = io
         self.state: _State = (_pack(_program(code)), 0, 0, 0, 0, 0, 0)
@@ -552,7 +547,7 @@ class _Machine:
                 hint="keep memory addresses within the interpreter allocation limit",
             )
         reads = tuple(
-            self.framing.read(self.io)
+            self.io.input_char()
             for addr in ((d, b) if a == _IO else (d, b, a))
             if addr == _IO
         )
@@ -561,9 +556,9 @@ class _Machine:
             self.io.print_char(chr(value & 0xFF))
 
 
-def run(code: str, io: IO, *, input_framing: str = "characters") -> None:
+def run(code: str, io: IO) -> None:
     """Run an AddSubJump program to completion."""
-    machine = _Machine(code, io, input_framing=input_framing)
+    machine = _Machine(code, io)
     drive(machine)
 
 

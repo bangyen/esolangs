@@ -13,7 +13,7 @@ USAGE = """usage: esolangs <command> [...]
 
 commands:
   list [--details] [--json]   list the supported languages
-  encode [--settings JSON] <language> <bits>    print the stdin that feeds those bits
+  encode <language> <bits>    print the stdin that feeds those bits
   generate [--width [N] | --balance] [--bits BITS] [--scale N]
            [--settings JSON] [--portable] <language> <truth-table>
                               print a program computing a truth table
@@ -29,7 +29,7 @@ commands:
                               (--judge prints the answer bit instead)
   suggest <language> <program-file>
                               preview unambiguous command spelling edits
-  check-stdin [--table T] [--settings JSON] <language>
+  check-stdin [--table T] <language>
                               judge stdin against what that language reads,
                               without running anything
   read-answer <language>      read a program's output on stdin and print
@@ -94,7 +94,7 @@ example:
   esolangs generate Modulous 0110 > program.txt
   esolangs suggest Modulous program.txt
 """,
-    "encode": """usage: esolangs encode [--settings JSON] <language> <bits>
+    "encode": """usage: esolangs encode <language> <bits>
 
 Print the stdin that feeds <bits> to a <language> program, so it can be
 piped straight into `esolangs run`:
@@ -105,8 +105,7 @@ Character readers take adjacent 0/1 characters. Numeric readers take
 whitespace-delimited tokens; string readers take lines. Grapheme spells
 its bits %/A, Fargo takes one decimal row index, and Taglate pads an odd
 input count with a leading zero character. `esolangs describe <language>`
-prints the default encoding. Integer-token framing spells 0/1 as 48/49;
-pass the same --settings JSON to encode and run.
+prints the encoding.
 
 A language whose generator embeds the inputs in the program reads no stdin
 at all; `esolangs generate --bits` builds those.
@@ -151,7 +150,7 @@ options:
                own way, and a 0/1 in the slot is a different program.
   --portable   write JSON retaining source, dialect choices, and template setters.
   --scale N    enlarge raster pixels by N after layout (default 1).
-  --settings JSON  dialect overrides, e.g. '{{"index_base":1}}'.
+  --settings JSON  dialect overrides, e.g. '{{"expression_syntax":"postfix"}}'.
   --balance    minimize the rendered width/height difference across supported
                layouts. Ties prefer shorter source, then smaller width. Tokens
                and routing can prevent a square; excludes --width.
@@ -173,7 +172,8 @@ options:
 examples:
   esolangs generate brainfuck 0110
   esolangs generate --bits 10 Minifuck 0110
-  esolangs generate --portable --settings '{{"index_base":1}}' Bitdeque 0110 > p.json
+  esolangs generate --portable --settings '{{"expression_syntax":"postfix"}}' \\
+      Alight 0110 > p.json
 """,
     "run": """usage: esolangs run [--timeout S] [--isolated] [--max-output N]
                     [--max-memory BYTES] [--judge] [--table T] [--seed N]
@@ -284,8 +284,7 @@ examples:
   esolangs evaluate --inputs 2 brainfuck program.txt
   esolangs evaluate --table 0110 brainfuck program.txt
 """,
-    "check-stdin": """usage: esolangs check-stdin [--table T] [--settings JSON]
-                            <language>
+    "check-stdin": """usage: esolangs check-stdin [--table T] <language>
 
 Read stdin and say whether it is what <language> wants, without running a
 program.

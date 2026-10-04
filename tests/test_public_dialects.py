@@ -14,25 +14,9 @@ from esolangs.vm import complete_vm, make_vm
 from tests.cli_support import call_both
 
 CASES = [
-    ("Bitdeque", DialectSettings(index_base=1)),
     ("Alight", DialectSettings(expression_syntax="postfix")),
     ("Packlang", DialectSettings(literal_policy="binary_digits")),
-    (
-        "FALSE",
-        DialectSettings(pick_base=1, unset_variables="zero", unknown_commands="error"),
-    ),
-    ("Line", DialectSettings(cell_modulus=255, tape_size=8, boundary="wrap")),
-    ("Flowchart", DialectSettings(scheduling="reverse", deque_cursor="shared")),
-    (
-        "Brainfuck",
-        DialectSettings(cell_modulus=65536, tape_size=8, boundary="wrap", eof="zero"),
-    ),
-    (
-        "Factor",
-        DialectSettings(
-            cell_modulus=None, tape_size=8, boundary="error", eof="unchanged"
-        ),
-    ),
+    ("Grapheme", DialectSettings(integer_conversion="after_each_letter")),
     ("SLOW ACV MAMMALIAN", DialectSettings(cell_modulus=255, io_modulus=256)),
 ]
 
@@ -73,19 +57,13 @@ def test_generated_rows_match_across_execution_paths(language, settings):
         assert complete_vm(vm, 100_000) == direct
 
 
-@pytest.mark.parametrize(
-    ("eof", "expected"),
-    [("zero", "\x00"), ("minus_one", chr(255)), ("unchanged", "\x01")],
-)
-def test_exhausted_input_policy_reaches_debugger_and_bound_language(eof, expected):
-    settings = DialectSettings(eof=eof)
-    language = esolangs.Language("Brainfuck")
-    assert language.run("+,.", settings=settings) == expected
-    debugger = make_debugger("Brainfuck", "+,.", settings=settings)
+def test_conversion_reaches_debugger_and_bound_language():
+    settings = DialectSettings(integer_conversion="after_each_letter")
+    language = esolangs.Language("Grapheme")
+    assert language.run("FAFY", settings=settings) == "10"
+    debugger = make_debugger("Grapheme", "FAFY", settings=settings)
     debugger.run(max_steps=10)
-    assert debugger.vm.output == expected
-    program = language.generate("01", settings=settings)
-    assert language.run(program, "1", settings=settings) == "1"
+    assert debugger.vm.output == "10"
 
 
 class Unreadable(StringIO):
@@ -99,15 +77,10 @@ class Unreadable(StringIO):
 @pytest.mark.parametrize(
     ("language", "settings"),
     [
-        ("Brainfuck", DialectSettings(boundary="wrap")),
-        ("Brainfuck", DialectSettings(cell_modulus=1)),
-        ("Brainfuck", DialectSettings(index_base=1)),
+        ("Brainfuck", DialectSettings(cell_modulus=256)),
         ("Alight", DialectSettings(expression_syntax="prefix")),
         ("Packlang", DialectSettings(literal_policy="octal")),
-        ("FALSE", DialectSettings(unset_variables="ignore")),
-        ("Line", DialectSettings(tape_size=0)),
-        ("Flowchart", DialectSettings(scheduling="random")),
-        ("Fargo", DialectSettings(eof="zero")),
+        ("FALSE", DialectSettings(integer_conversion="after_each_letter")),
         ("SLOW ACV MAMMALIAN", DialectSettings(io_modulus=257)),
     ],
 )
@@ -121,16 +94,14 @@ def test_invalid_settings_fail_before_reading(language, settings, options):
 
 
 def test_settings_are_immutable_and_do_not_change_defaults():
-    settings = DialectSettings(eof="zero")
+    settings = DialectSettings(integer_conversion="after_each_letter")
     with pytest.raises(FrozenInstanceError):
         settings._items = ()  # noqa: SLF001 - test frozen storage
-    options = settings.options("Brainfuck")
-    options["eof"] = "error"
-    assert esolangs.run("Brainfuck", ",.", settings=settings) == "\x00"
-    with pytest.raises(esolangs.InputExhaustedError):
-        esolangs.run("Brainfuck", ",.")
+    options = settings.options("Grapheme")
+    options["integer_conversion"] = "between_letters"
+    assert esolangs.run("Grapheme", "FAFY", settings=settings) == "10"
+    assert esolangs.run("Grapheme", "FAFY") == "1"
     assert DialectSettings().options("Unary") == {}
-    assert esolangs.run("Unary", "0", settings=DialectSettings()) == ""
 
 
 @pytest.mark.parametrize(
@@ -143,19 +114,11 @@ def test_constructor_refuses_unknown_or_untyped_choices(choices):
 
 def test_settings_require_the_public_object():
     with pytest.raises(esolangs.ArgumentError, match="DialectSettings"):
-        esolangs.run("Brainfuck", Unreadable(), settings={"eof": "zero"})
-
-
-@pytest.mark.medium
-def test_isolation_preserves_large_integer_settings():
-    settings = DialectSettings(cell_modulus=10**5000)
-    assert esolangs.run("Brainfuck", "+.", settings=settings, isolated=True) == "\x01"
-
-
-def test_scaled_raster_keeps_dialect_settings():
-    settings = DialectSettings(cell_modulus=2, tape_size=2, boundary="wrap")
-    program = esolangs.generate("Line", "01", scale=2, settings=settings)
-    assert esolangs.run("Line", program, "1", settings=settings) == "1"
+        esolangs.run(
+            "Brainfuck",
+            Unreadable(),
+            settings={"integer_conversion": "after_each_letter"},
+        )
 
 
 @pytest.mark.parametrize(("language", "settings"), CASES)
@@ -177,16 +140,17 @@ def test_balanced_postfix_chunks_execute(inputs):
 
 @pytest.mark.medium
 def test_cli_generate_and_run_share_settings(tmp_path: Path, capsys):
-    choices = '{"index_base":1}'
+    choices = '{"expression_syntax":"postfix"}'
     generated, _ = call_both(
-        ["generate", "--settings", choices, "--bits", "10", "Bitdeque", "0110"], capsys
+        ["generate", "--settings", choices, "Alight", "0110"], capsys
     )
-    path = tmp_path / "bitdeque.txt"
+    path = tmp_path / "alight.txt"
     path.write_text(generated)
     for isolated in ([], ["--isolated"]):
         output, _ = call_both(
-            ["run", "--settings", choices, "--judge", *isolated, "Bitdeque", str(path)],
+            ["run", "--settings", choices, "--judge", *isolated, "Alight", str(path)],
             capsys,
+            stdin="10",
         )
         assert output.strip() == "1"
 
@@ -201,80 +165,46 @@ def test_cli_invalid_settings_precede_io(choices, capsys):
     assert caught.value.code == 2
 
 
-@pytest.mark.parametrize(
-    ("language", "settings"),
-    [
-        ("Brainfuck", DialectSettings(cell_modulus=49)),
-        ("Factor", DialectSettings(tape_size=3)),
-        ("Line", DialectSettings(tape_size=1)),
-    ],
-)
-def test_generation_refuses_insufficient_dialect_storage(language, settings):
-    with pytest.raises(esolangs.ArgumentError, match="requires"):
-        esolangs.generate(language, "0110", settings=settings)
-
-
-@pytest.mark.parametrize("width", [1, 40])
-def test_bitdeque_settings_survive_tagged_and_plain_templates(width):
-    settings = DialectSettings(index_base=1)
-    table = "10010110"
-    language = esolangs.Language("Bitdeque")
-    template = language.generate(table, width, settings=settings)
-    for row, expected in enumerate(table):
-        bits = tuple(map(int, format(row, "03b")))
-        for source in (template, str(template)):
-            filled = language.instantiate(source, bits, width, table, settings=settings)
-            assert language.run(filled, settings=settings) == expected
-
-
-@pytest.mark.parametrize("isolated", [[], ["--isolated", "--max-output", "1"]])
-def test_cli_eof_setting_changes_execution(tmp_path: Path, capsys, isolated):
-    path = tmp_path / "eof.bf"
-    path.write_text("+,.")
-    output, _ = call_both(
-        ["run", "--settings", '{"eof":"unchanged"}', *isolated, "Brainfuck", str(path)],
-        capsys,
-    )
-    assert output == "\x01"
-
-
 def test_cli_help_shows_literal_settings_json(capsys):
     with pytest.raises(SystemExit) as caught:
         call_both(["generate", "--help"], capsys)
     assert caught.value.code == 0
     help_text = capsys.readouterr().out
-    assert '{"index_base":1}' in help_text
+    assert '{"expression_syntax":"postfix"}' in help_text
 
 
 @pytest.mark.parametrize("language", ["Bitdeque", "Alight", "Packlang"])
 def test_single_choice_languages_refuse_other_keys(language):
     with pytest.raises(esolangs.ArgumentError):
-        esolangs.run(language, Unreadable(), settings=DialectSettings(eof="zero"))
+        esolangs.run(language, Unreadable(), settings=DialectSettings(cell_modulus=255))
 
 
-@pytest.mark.medium
 @pytest.mark.parametrize(
-    ("choices", "source", "expected"),
+    "key",
     [
-        ({"pick_base": 1}, "7 8 1ø.", "8"),
-        ({"unset_variables": "zero"}, "a;.", "0"),
-        ({"unknown_commands": "error"}, '"`"{`}', "`"),
+        "index_base",
+        "pick_base",
+        "unset_variables",
+        "unknown_commands",
+        "tape_size",
+        "boundary",
+        "eof",
+        "scheduling",
+        "deque_cursor",
+        "junction_tie_break",
+        "undefined_targets",
+        "input_framing",
     ],
 )
-def test_false_choices_are_observable_through_public_paths(choices, source, expected):
-    settings = DialectSettings(**choices)
-    assert esolangs.run("FALSE", source, settings=settings) == expected
-    assert esolangs.run("FALSE", source, settings=settings, max_steps=20) == expected
-    assert esolangs.run("FALSE", source, settings=settings, isolated=True) == expected
+def test_omission_policies_are_not_public_choices(key):
+    with pytest.raises(esolangs.ArgumentError, match="unknown dialect setting"):
+        DialectSettings(**{key: "default"})
 
 
-@pytest.mark.medium
-def test_unary_uses_its_own_default_eof_and_accepts_overrides():
-    source = "0" * 108  # Unary's sentinel and comma/dot codes encode ,.
-    assert esolangs.run("Unary", source, settings=DialectSettings()) == "\x00"
-    settings = DialectSettings(cell_modulus=255, eof="minus_one")
-    expected = chr(254)
-    assert esolangs.run("Unary", source, settings=settings) == expected
-    assert esolangs.run("Unary", source, settings=settings, max_steps=2) == expected
-    assert esolangs.run("Unary", source, settings=settings, isolated=True) == expected
-    assert complete_vm(make_vm("Unary", source, settings=settings), 2) == expected
+def test_only_conflicting_specs_publish_choices():
+    languages = {
+        name
+        for name in esolangs.list_languages()
+        if esolangs.describe(name)["dialect_settings"]
+    }
+    assert languages == {name for name, _ in CASES}

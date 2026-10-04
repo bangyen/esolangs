@@ -25,8 +25,7 @@ is the spec's ``-1``, which the shell reaches by catching the
 port's ``EOFError``.  Raising instead would make the reference's own cat
 loop -- which tests ``^`` against ``-1`` -- a crash.
 
-Specification gaps default to ``pick_base=0``, ``unset_variables="error"``
-and ``unknown_commands="ignore"``. Alternatives are 1, "zero" and "error".  ``ø`` counts
+Three points the specification leaves open are decided here.  ``ø`` counts
 from zero, so ``0ø`` is ``$``: the description ("dup the nth stack item")
 does not say where the count starts.  A variable read before it is stored
 raises rather than inventing a value, since the spec gives no initial one.
@@ -40,7 +39,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 
-from esolangs._dialects import DEFAULT_FALSE, FalseDialect
 from esolangs._drive import drive
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
@@ -264,11 +262,7 @@ def _finalize(state: _State) -> _State:
 
 
 def _advance(
-    state: _State,
-    code: str,
-    closers: dict[int, int],
-    line: str | None = None,
-    dialect: FalseDialect = DEFAULT_FALSE,
+    state: _State, code: str, closers: dict[int, int], line: str | None = None
 ) -> tuple[_State, _Effect]:
     """Return the state after one command, and what to write.
 
@@ -321,7 +315,7 @@ def _advance(
         return ((*rest, two, three, one), variables, frames), None
     if char in "øO":
         depth, rest = _pop(stack)
-        index = _number(depth, "'ø'") - dialect.pick_base
+        index = _number(depth, "'ø'")
         if not 0 <= index < len(rest):
             raise HaltError(
                 f"'ø' asks for stack entry {index}, which is not there",
@@ -399,8 +393,6 @@ def _advance(
         return ((*stack, value), variables, frames), None
     # ``ß``/``B`` flush a buffer this package does not have, and every other
     # character is ignored, as the reference's parser ignores whitespace.
-    if dialect.unknown_commands == "error" and not char.isspace() and char not in "ßB":
-        raise ValueError(f"unknown FALSE command {char!r}")
     return (stack, variables, frames), None
 
 
@@ -412,24 +404,11 @@ class _Machine:
     #: reports it: a caller has to know its short stdin was not refused.
     eof_is_a_value = True
 
-    def __init__(
-        self,
-        code: str,
-        io: IO,
-        *,
-        pick_base: int = 0,
-        unset_variables: str = "error",
-        unknown_commands: str = "ignore",
-    ) -> None:
-        self.dialect = FalseDialect(pick_base, unset_variables, unknown_commands)
+    def __init__(self, code: str, io: IO) -> None:
         self.code = code
         self.io = io
         self.closers = _closers(code)
-        self.state: _State = (
-            (),
-            (0 if unset_variables == "zero" else None,) * _VARS,
-            (_Frame(0, len(code)),),
-        )
+        self.state: _State = ((), (None,) * _VARS, (_Frame(0, len(code)),))
 
     @property
     def halted(self) -> bool:
@@ -478,9 +457,7 @@ class _Machine:
                 # turn it into their own language's.  Letting it escape made
                 # the reference's own cat loop (``[^1_=~][,]#``) a crash.
                 line = None
-        self.state, effect = _advance(
-            state, self.code, self.closers, line, self.dialect
-        )
+        self.state, effect = _advance(state, self.code, self.closers, line)
         if effect is None:
             return
         kind, value = effect
@@ -492,22 +469,9 @@ class _Machine:
             self.io.print_str(str(value))
 
 
-def run(
-    code: str,
-    io: IO,
-    *,
-    pick_base: int = 0,
-    unset_variables: str = "error",
-    unknown_commands: str = "ignore",
-) -> None:
+def run(code: str, io: IO) -> None:
     """Run a FALSE program."""
-    machine = _Machine(
-        code,
-        io,
-        pick_base=pick_base,
-        unset_variables=unset_variables,
-        unknown_commands=unknown_commands,
-    )
+    machine = _Machine(code, io)
     drive(machine)
 
 

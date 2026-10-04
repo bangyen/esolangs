@@ -2,8 +2,7 @@
 
 PUSH/INJECT append the register to the deque, POP/EJECT pop it (0 when
 empty), INVERT flips the register, GOTO jumps to a 0-based command when
-it is nonzero (GOTO 2 lands on the third command). ``index_base=1``
-selects one-based targets instead.  The wiki has no I/O,
+it is nonzero (GOTO 2 lands on the third command).  The wiki has no I/O,
 so the deque is printed space-separated when the program ends -- the
 repo's convention.  A word that is not one of the six upper-case commands
 raises :class:`ValueError` (the old tokenizer ran a lower-case program
@@ -15,7 +14,6 @@ from __future__ import annotations
 
 import re
 
-from esolangs._dialects import index_base as validate_index_base
 from esolangs._drive import drive
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
@@ -104,16 +102,13 @@ class _Machine:
     #: its output.
     dumps_on_the_post_halt_step = True
 
-    def __init__(self, code: str, io: IO, *, index_base: int = 0) -> None:
+    def __init__(self, code: str, io: IO) -> None:
         """Tokenize ``code`` and reset the register, deque, and cursor."""
-        self.index_base = validate_index_base(index_base)
         self.io = io
         lst = tuple(r"GOTO\s+(\d+)" if name == "GOTO" else name for name in _COMMANDS)
         join = rf"(?<!\S)({'|'.join(lst)})(?!\S)"
         _reject_stray_text(code, re.compile(join))
         self.tokens = re.findall(join, code)
-        if any(int(target) < self.index_base for _, target in self.tokens if target):
-            raise ValueError("GOTO target is below index_base")
         # ``halted`` is read twice per token -- once by ``run``'s loop and
         # once by ``step``'s guard -- so the length is taken once here.
         self.size = len(self.tokens)
@@ -181,19 +176,16 @@ class _Machine:
                 self.render()
                 self.state = (ind, reg, deq, True)
             return
-        sym = self.tokens[ind][0]
-        if sym.startswith("GOTO"):
-            sym = f"GOTO {int(sym[4:]) - self.index_base}"
-        self.state = _advance(self.state, sym)
+        self.state = _advance(self.state, self.tokens[ind][0])
 
     def render(self) -> None:
         """Print the deque contents, one value per space, no trailing newline."""
         self.io.print_str(" ".join(map(str, self.state[2])))
 
 
-def run(code: str, io: IO, *, index_base: int = 0) -> None:
+def run(code: str, io: IO) -> None:
     """Run a Bitdeque program and print the deque at the end."""
-    machine = _Machine(code, io, index_base=index_base)
+    machine = _Machine(code, io)
     drive(machine)
 
 

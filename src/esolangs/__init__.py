@@ -220,15 +220,13 @@ def generate(
                 resolve(language), settings=settings
             )
         if balancer is not None:
-            # Only these dialects change a balancer's reconstructed instructions.
-            balance_options = options if lang.id in {"alight", "bitdeque"} else {}
+            # Alight notation changes a balancer's reconstructed instructions.
+            balance_options = options if lang.id == "alight" else {}
             text = cast(Callable[..., str], balancer)(
                 truth_table, default, **balance_options
             )
             if isinstance(default, _Template):
-                text, char, pairs = render_template(
-                    lang.id, text, default.inputs, settings=settings
-                )
+                text, char, pairs = render_template(lang.id, text, default.inputs)
                 return _Template(text, default.language, char, pairs, settings=settings)
             return _Tagged(text, resolve(language), settings=settings)
         if isinstance(default, _Template):
@@ -285,9 +283,7 @@ def generate(
     # that, wrapped with every run whole (see render_template).
     inputs = len(truth_table).bit_length() - 1
     wrap_to = None if laid_out else width
-    text, char, pairs = render_template(
-        lang.id, slots, inputs, wrap_to, settings=settings
-    )
+    text, char, pairs = render_template(lang.id, slots, inputs, wrap_to)
     return _Template(text, resolved, char, pairs, settings=settings)
 
 
@@ -468,7 +464,7 @@ def instantiate(
                 ),
             )
         try:
-            pairs = recover_setters(LANGUAGES[name].id, template, settings=settings)
+            pairs = recover_setters(LANGUAGES[name].id, template)
         except ValueError as exc:
             raise with_hint(
                 TemplateError(f"not a {name} template: {exc}"),

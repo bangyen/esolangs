@@ -13,7 +13,6 @@ from esolangs.registry._table import LANGUAGES, Generator, Language, SourceKind
 from esolangs.tools.helpers import MOST_INPUTS, Setters
 
 if TYPE_CHECKING:
-    from esolangs.settings import DialectSettings
     from esolangs.tools.examples import BooleanExample
 
 
@@ -115,19 +114,13 @@ def template_body(language_id: str, text: str) -> str:
     return text if body is None else body(text)
 
 
-def template_setters(
-    language_id: str, template: str, n: int, *, settings: DialectSettings | None = None
-) -> Setters:
+def template_setters(language_id: str, template: str, n: int) -> Setters:
     """Return the ``(zero, one)`` pairs ``template`` fills its ``n`` inputs with.
 
     ``template`` is the generator's own output (slots, before rendering)
     or the rendered run form -- the setters read what they need from it,
     which for the two-route generators is the route's prefix.
     """
-    if language_id == "bitdeque" and settings is not None:
-        from esolangs.tools.bitdeque import bitdeque_setters
-
-        return bitdeque_setters(template, n, **settings.options("Bitdeque"))
     setters = _examples_by_id()[language_id].setters
     if setters is None:  # pragma: no cover -- _examples_by_id keeps only setters
         raise TemplateError(
@@ -141,8 +134,6 @@ def render_template(
     slots: str,
     n: int,
     width: int | None = None,
-    *,
-    settings: DialectSettings | None = None,
 ) -> tuple[str, str, Setters]:
     """Return the public template for a generator's slot-marked output.
 
@@ -159,7 +150,7 @@ def render_template(
         raise TemplateError(
             f"{language_id} reads its inputs rather than embedding them"
         )
-    setters = template_setters(language_id, slots, n, settings=settings)
+    setters = template_setters(language_id, slots, n)
     if width is None:
         return slots, char, setters
     wrapped = wrap_program(mark_runs(slots, char, setters), language_id, width)
@@ -171,9 +162,7 @@ def render_template(
 _MOST_INPUTS = MOST_INPUTS
 
 
-def recover_setters(
-    language_id: str, template: str, *, settings: DialectSettings | None = None
-) -> Setters:
+def recover_setters(language_id: str, template: str) -> Setters:
     """Return the pairs a plain run-form ``template`` was rendered from.
 
     A template read back from a file carries no pairs, but the language's
@@ -192,7 +181,7 @@ def recover_setters(
         )
     total = template.count(char)
     for n in range(1, _MOST_INPUTS + 1):
-        setters = template_setters(language_id, template, n, settings=settings)
+        setters = template_setters(language_id, template, n)
         if sum(len(zero) for zero, _one in setters) != total:
             continue
         runs(template, char, setters)  # refuses a shape the widths do not fit

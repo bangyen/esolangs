@@ -7,7 +7,6 @@ are pinned differentially against the interpreter.
 
 from functools import cache
 
-from esolangs._framing import InputFraming
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     _validate_shape,
@@ -142,9 +141,7 @@ def _solve(truth_table: str) -> str:
     return _mux(truth_table, n)
 
 
-def minifuck(
-    truth_table: str, width: int | None = None, *, input_framing: str = "characters"
-) -> str:
+def minifuck(truth_table: str, width: int | None = None) -> str:
     """Build a Minifuck template for the given truth table.
 
     :func:`_solve` plus the arity check: ``_solve`` accepts a nullary table
@@ -152,7 +149,6 @@ def minifuck(
     inputs), but the API refuses it.  Narrow layouts pair fresh walks with
     comments so skip chains no longer bind the padding into one long line.
     """
-    InputFraming(input_framing)
     n = _validate_truth_table(truth_table)
     natural = _solve(truth_table)
     if width is None or width <= 0:

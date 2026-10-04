@@ -101,7 +101,7 @@ def test_run_and_debug_restored_program(tmp_path, capsys, language, settings):
 @pytest.mark.medium
 @pytest.mark.parametrize("scale", [1, 2])
 def test_cli_scaled_raster(tmp_path, capsys, scale):
-    settings = DialectSettings(cell_modulus=255, tape_size=8, boundary="wrap")
+    settings = DialectSettings()
     path = save_generated(tmp_path, capsys, "Line", settings, "--scale", str(scale))
     output, error = call_both(
         ["evaluate", "--portable", "--table", "0110", "Line", str(path)], capsys
@@ -110,7 +110,7 @@ def test_cli_scaled_raster(tmp_path, capsys, scale):
 
 
 @pytest.mark.medium
-@pytest.mark.parametrize("language", ["Alight", "Bitdeque", "Line"])
+@pytest.mark.parametrize("language", ["Alight", "Packlang", "Grapheme"])
 def test_portable_isolated_cli(tmp_path, capsys, language):
     settings = dict(CASES)[language]
     path = save_generated(tmp_path, capsys, language, settings, table="01")
@@ -153,37 +153,34 @@ def test_portable_isolated_cli(tmp_path, capsys, language):
 
 
 @pytest.mark.medium
-@pytest.mark.parametrize("command", ["run", "debug", "evaluate"])
-def test_partial_override_inherits_finite_tape(tmp_path, capsys, command):
+@pytest.mark.parametrize("command", ["run", "debug"])
+def test_partial_override_inherits_cell_modulus(tmp_path, capsys, command):
     source = _Tagged(
-        ",>>.",
-        "brainfuck",
-        DialectSettings(cell_modulus=256, tape_size=2, eof="unchanged"),
+        "SEED " * 255 + "DIGEST PRONOUNCE",
+        "SLOW ACV MAMMALIAN",
+        DialectSettings(cell_modulus=256, io_modulus=255),
     )
     path = tmp_path / "program.json"
-    path.write_text(esolangs.dump_program("Brainfuck", source), encoding="utf-8")
-    extra = ["--inputs", "1"] if command == "evaluate" else []
+    path.write_text(
+        esolangs.dump_program("SLOW ACV MAMMALIAN", source), encoding="utf-8"
+    )
     output, error = call_both(
         [
             command,
             "--portable",
             "--settings",
-            '{"boundary":"wrap"}',
-            *extra,
-            "Brainfuck",
+            '{"io_modulus":256}',
+            "SLOW ACV MAMMALIAN",
             str(path),
         ],
         capsys,
-        "1",
     )
     assert error == ""
     if command == "run":
-        assert output == "1"
-    elif command == "evaluate":
-        assert output == "01\n"
+        assert output == chr(255)
     else:
         assert "halted: yes" in output
-        assert "output: '1'" in output
+        assert "output: 'ÿ'" in output
 
 
 @pytest.mark.parametrize("command", ["run", "debug"])
@@ -195,7 +192,7 @@ def test_partial_override_inherits_finite_tape(tmp_path, capsys, command):
     ],
 )
 def test_invalid_overrides_fail_before_stdin(tmp_path, capsys, command, choices):
-    source = _Tagged("+.", "brainfuck", DialectSettings(tape_size=2))
+    source = _Tagged("+.", "brainfuck", DialectSettings())
     path = tmp_path / "program.json"
     path.write_text(esolangs.dump_program("Brainfuck", source), encoding="utf-8")
     with (
@@ -217,7 +214,7 @@ def test_invalid_overrides_fail_before_stdin(tmp_path, capsys, command, choices)
             capsys,
         )
     assert caught.value.code == 2
-    assert "invalid dialect settings" in capsys.readouterr().err
+    assert "dialect setting" in capsys.readouterr().err
 
 
 @pytest.mark.parametrize("command", ["run", "debug", "evaluate"])
@@ -253,17 +250,19 @@ def test_raw_file_named_portable_flag(tmp_path, capsys, monkeypatch):
 
 
 @pytest.mark.medium
-@pytest.mark.parametrize("override", [None, "zero"])
+@pytest.mark.parametrize("override", [None, "between_letters"])
 def test_tui_replay_preserves_restored_choices(tmp_path, capsys, monkeypatch, override):
     source = _Tagged(
-        "+>>,+.++++",
-        "brainfuck",
-        DialectSettings(cell_modulus=2, tape_size=2, boundary="wrap", eof="unchanged"),
+        "FAFYPPPP", "Grapheme", DialectSettings(integer_conversion="after_each_letter")
     )
     path = tmp_path / "program.json"
-    path.write_text(esolangs.dump_program("Brainfuck", source), encoding="utf-8")
+    path.write_text(esolangs.dump_program("Grapheme", source), encoding="utf-8")
     monkeypatch.setattr(_FakeStdin, "isatty", lambda _self: True)
-    options = [] if override is None else ["--settings", json.dumps({"eof": override})]
+    options = (
+        []
+        if override is None
+        else ["--settings", json.dumps({"integer_conversion": override})]
+    )
     with patch("esolangs.cli_debug.run_tui") as screen:
         call_both(
             [
@@ -273,7 +272,7 @@ def test_tui_replay_preserves_restored_choices(tmp_path, capsys, monkeypatch, ov
                 "--stdin",
                 "",
                 *options,
-                "Brainfuck",
+                "Grapheme",
                 str(path),
             ],
             capsys,
@@ -283,10 +282,10 @@ def test_tui_replay_preserves_restored_choices(tmp_path, capsys, monkeypatch, ov
     settings = screen.call_args.kwargs.get("settings")
     history = History(language, restored, stdin, settings=settings)
     history.budget = 1
-    assert history.at(16).output == ("\x00" if override is None else "\x01")
+    assert history.at(8).output == ("10" if override is None else "1")
     assert history.retained < history.top
-    assert history.at(6) == replay(language, restored, stdin, 6, settings=settings)
-    assert history.at(6).output == ("\x00" if override is None else "\x01")
+    assert history.at(4) == replay(language, restored, stdin, 4, settings=settings)
+    assert history.at(4).output == ("10" if override is None else "1")
 
 
 @pytest.mark.parametrize("command", ["run", "debug", "evaluate"])
@@ -312,9 +311,13 @@ def test_portable_choices_and_memory_budget_reach_worker(
     from esolangs import _isolated
 
     budget = 96 * 1024 * 1024
-    source = _Tagged(",>>.", "brainfuck", DialectSettings(tape_size=2, boundary="wrap"))
+    source = esolangs.generate(
+        "Grapheme",
+        "01",
+        settings=DialectSettings(integer_conversion="after_each_letter"),
+    )
     path = tmp_path / "program.json"
-    path.write_text(esolangs.dump_program("Brainfuck", source), encoding="utf-8")
+    path.write_text(esolangs.dump_program("Grapheme", source), encoding="utf-8")
     monkeypatch.setattr(_isolated.sys, "platform", "linux")
     calls = []
     runner = vars(esolangs)["_run_isolated"]
@@ -334,11 +337,11 @@ def test_portable_choices_and_memory_budget_reach_worker(
             *options,
             "--max-memory",
             str(budget),
-            "Brainfuck",
+            "Grapheme",
             str(path),
         ],
         capsys,
-        "1",
+        esolangs.encode_inputs("Grapheme", [1]),
     )
     assert (output, error) == (("1" if command == "run" else "01\n"), "")
     assert calls == [budget] * (1 if command == "run" else 2)
@@ -372,9 +375,13 @@ def test_portable_memory_budget_rejected_before_file_read(command, capsys):
 @pytest.mark.skipif(sys.platform != "linux", reason="Linux RLIMIT_AS only")
 @pytest.mark.parametrize("command", ["run", "evaluate"])
 def test_portable_program_executes_with_real_memory_cap(tmp_path, capsys, command):
-    source = _Tagged(",>>.", "brainfuck", DialectSettings(tape_size=2, boundary="wrap"))
+    source = esolangs.generate(
+        "Grapheme",
+        "01",
+        settings=DialectSettings(integer_conversion="after_each_letter"),
+    )
     path = tmp_path / "program.json"
-    path.write_text(esolangs.dump_program("Brainfuck", source), encoding="utf-8")
+    path.write_text(esolangs.dump_program("Grapheme", source), encoding="utf-8")
     options = ["--isolated"] if command == "run" else ["--inputs", "1"]
     output, error = call_both(
         [
@@ -383,10 +390,10 @@ def test_portable_program_executes_with_real_memory_cap(tmp_path, capsys, comman
             *options,
             "--max-memory",
             str(96 * 1024 * 1024),
-            "Brainfuck",
+            "Grapheme",
             str(path),
         ],
         capsys,
-        "1",
+        esolangs.encode_inputs("Grapheme", [1]),
     )
     assert (output, error) == (("1" if command == "run" else "01\n"), "")

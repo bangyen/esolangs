@@ -65,9 +65,7 @@ rather than invented, and every one of the three examples on the page
   genuine ambiguity: which way to leave a junction (a ``T``-shaped fork in
   the line) or a node whose semantics do not name an exit.  The 180deg
   clause then means the remembered direction is declined whenever taking
-  it would reverse the pointer. On a path, ``junction_tie_break`` chooses
-  right_first (default) or left_first only after memory and straight travel
-  leave a tie. Node exit rules are unchanged.
+  it would reverse the pointer.
 
 * **An empty register outputs zero, as the command table specifies.**
   The wiki's cat reaches output after popping an exhausted deque, so it
@@ -75,10 +73,7 @@ rather than invented, and every one of the three examples on the page
   takes precedence over that faulty example. Pushing an empty register
   remains a no-op because deques hold bits, not empty values.
 
-* **Pointers default to lock-step rounds in creation order.**
-  ``scheduling="reverse"`` reverses each round; newborn pointers wait for
-  the next round in either mode. ``deque_cursor="shared"`` gives all pointers
-  one cursor instead of the default per-pointer cursor.  The
+* **Pointers run in lock-step, round-robin, in creation order.**  The
   spec fixes the starting order (top-most, left-most) and says pointers
   "run in parallel" but never gives an interleaving, and because the deques
   are shared the choice is observable.  One step per pointer per round keeps
@@ -124,7 +119,6 @@ does not define stdin framing.
 from dataclasses import dataclass, field, replace
 from typing import Literal, assert_never
 
-from esolangs._dialects import FlowchartDialect
 from esolangs._drive import drive
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
@@ -326,7 +320,6 @@ class _State:
 
     pointers: list[_Pointer]
     deques: dict[int, list[int]]
-    shared_cursor: int = 0
 
 
 class _Machine:
@@ -357,17 +350,8 @@ class _Machine:
     #: out which.
     eof_is_a_value = True
 
-    def __init__(
-        self,
-        code: list[str],
-        io: IO,
-        *,
-        scheduling: str = "creation",
-        deque_cursor: str = "pointer",
-        junction_tie_break: str = "right_first",
-    ) -> None:
+    def __init__(self, code: list[str], io: IO) -> None:
         """Parse ``code``'s nodes and start on the first ``( )``."""
-        self.dialect = FlowchartDialect(scheduling, deque_cursor, junction_tie_break)
         self.io = io
         rows = [line.rstrip("\n") for line in code]
         self.width = max((len(r) for r in rows), default=0)
@@ -609,19 +593,13 @@ class _Machine:
             tuple(p.state() for p in self.pointers),
             tuple(sorted((k, tuple(v)) for k, v in self.deques.items() if v)),
             self.io.position(),
-            *(
-                (self.state.shared_cursor,)
-                if self.dialect.deque_cursor == "shared"
-                else ()
-            ),
         )
 
     def step(self) -> None:
         """Advance every live pointer one cell, in creation order."""
         if self.halted:
             return
-        order = range(len(self.pointers))
-        for i in reversed(order) if self.dialect.scheduling == "reverse" else order:
+        for i in range(len(self.pointers)):
             if not self.pointers[i].done:
                 self._advance(i)
 
@@ -662,10 +640,7 @@ class _Machine:
                 allowed = [remembered]
             elif p.d in allowed:
                 allowed = [p.d]
-        turns = (_turn_right(p.d), _turn_left(p.d))
-        if self.dialect.junction_tie_break == "left_first":
-            turns = turns[::-1]
-        d = next(d for d in (p.d, *turns) if d in allowed)
+        d = next(d for d in (p.d, _turn_right(p.d), _turn_left(p.d)) if d in allowed)
         self._put(i, p.remembering(self._anchor(p.row, p.col), d))
         self._move(i, d)
 
@@ -767,12 +742,7 @@ class _Machine:
 
     def _deque(self, p: _Pointer) -> list[int]:
         """Return ``p``'s currently selected deque, creating it if needed."""
-        return self.deques.setdefault(
-            self.state.shared_cursor
-            if self.dialect.deque_cursor == "shared"
-            else p.deque,
-            [],
-        )
+        return self.deques.setdefault(p.deque, [])
 
     def _execute(self, i: int) -> None:
         """Run the node under pointer ``i``, then move it off that node.
@@ -799,12 +769,7 @@ class _Machine:
             self._switch(i)
             return
 
-        reg = p.reg
-        deque = (
-            self.state.shared_cursor
-            if self.dialect.deque_cursor == "shared"
-            else p.deque
-        )
+        reg, deque = p.reg, p.deque
         if spelling == "[ ]":
             reg = 1 if reg is None else reg ^ 1
         elif spelling == "{ ]":
@@ -840,8 +805,6 @@ class _Machine:
             # than silently falling through to ``_leave``.
             assert_never(spelling)
 
-        if self.dialect.deque_cursor == "shared":
-            self.state.shared_cursor = deque
         self._put(i, replace(p, reg=reg, deque=deque))
         self._leave(i)
 
@@ -871,22 +834,9 @@ class _Machine:
         return value
 
 
-def run(
-    code: list[str],
-    io: IO,
-    *,
-    scheduling: str = "creation",
-    deque_cursor: str = "pointer",
-    junction_tie_break: str = "right_first",
-) -> None:
+def run(code: list[str], io: IO) -> None:
     """Execute a Flowchart program."""
-    machine = _Machine(
-        code,
-        io,
-        scheduling=scheduling,
-        deque_cursor=deque_cursor,
-        junction_tie_break=junction_tie_break,
-    )
+    machine = _Machine(code, io)
     drive(machine)
 
 

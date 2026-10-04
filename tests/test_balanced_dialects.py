@@ -16,7 +16,7 @@ from tests.cli_support import call_both
 @pytest.mark.parametrize(
     ("language", "choices"),
     [
-        ("Bitdeque", '{"index_base":1}'),
+        ("Grapheme", '{"integer_conversion":"after_each_letter"}'),
         ("Alight", '{"expression_syntax":"postfix"}'),
         ("Packlang", '{"literal_policy":"binary_digits"}'),
     ],
@@ -28,22 +28,20 @@ def test_cli_answer_uses_settings(language, choices, capsys):
 
 
 def test_cli_debug_uses_settings(tmp_path: Path, capsys):
-    source = tmp_path / "eof.bf"
-    source.write_text("+,.")
+    source = tmp_path / "conversion.grapheme"
+    source.write_text("FAFY")
     output, _ = call_both(
         [
             "debug",
             "--settings",
-            '{"eof":"unchanged"}',
-            "--stdin",
-            "",
-            "Brainfuck",
+            '{"integer_conversion":"after_each_letter"}',
+            "Grapheme",
             str(source),
         ],
         capsys,
     )
     assert "halted: yes" in output
-    assert "output: '\\x01'" in output
+    assert "output: '10'" in output
 
 
 @pytest.mark.parametrize("command", ["answer", "debug"])
@@ -53,25 +51,32 @@ def test_cli_settings_rejected_before_work(command, capsys):
         patch("esolangs.cli_debug._read_program", side_effect=AssertionError("read")),
         pytest.raises(SystemExit) as exc,
     ):
-        call_both([command, "--settings", '{"eof":"zero"}', *rest], capsys)
+        call_both(
+            [
+                command,
+                "--settings",
+                '{"integer_conversion":"after_each_letter"}',
+                *rest,
+            ],
+            capsys,
+        )
     assert exc.value.code == 2
 
 
 def test_tui_settings_reach_wrapper():
-    settings = DialectSettings(eof="zero")
+    settings = DialectSettings(integer_conversion="after_each_letter")
     with patch("esolangs.cli_debug.run_tui") as run:
-        _run_tui_session("Brainfuck", ",.", "", {}, None, settings)
+        _run_tui_session("Grapheme", "FAFY", "", {}, None, settings)
     assert run.call_args.kwargs["settings"] is settings
 
 
 def test_tui_replay_retains_settings():
-    settings = DialectSettings(cell_modulus=2, eof="unchanged")
-    history = History("Brainfuck", "++++,.", settings=settings)
+    settings = DialectSettings(integer_conversion="after_each_letter")
+    history = History("Grapheme", "FAFYPPPP", settings=settings)
     history.budget = 1
-    final = history.at(6)
-    assert final.output == "\x00"
-    assert history.at(1).memory == (1,)
-    assert history.at(2) == replay("Brainfuck", "++++,.", "", 2, settings=settings)
+    assert history.at(8).output == "10"
+    assert history.at(4).output == "10"
+    assert history.at(2) == replay("Grapheme", "FAFYPPPP", "", 2, settings=settings)
 
 
 def test_postfix_balance_model_checks_rendering():
@@ -85,7 +90,7 @@ def test_postfix_balance_model_checks_rendering():
 
 @pytest.mark.parametrize("plain", [False, True])
 def test_balanced_bitdeque_setters(plain):
-    settings = DialectSettings(index_base=1)
+    settings = DialectSettings()
     table = "10010110"
     program = esolangs.generate("Bitdeque", table, balance=True, settings=settings)
     for row, expected in enumerate(table):
@@ -98,8 +103,8 @@ def test_balanced_bitdeque_setters(plain):
 
 
 def test_cli_tui_uses_settings(tmp_path: Path, capsys):
-    source = tmp_path / "eof.bf"
-    source.write_text(",.")
+    source = tmp_path / "conversion.grapheme"
+    source.write_text("FAFY")
     with (
         patch("tests.test_cli._FakeStdin.isatty", return_value=True),
         patch("esolangs.cli_debug.run_tui") as run,
@@ -109,13 +114,15 @@ def test_cli_tui_uses_settings(tmp_path: Path, capsys):
                 "debug",
                 "--tui",
                 "--settings",
-                '{"eof":"zero"}',
-                "Brainfuck",
+                '{"integer_conversion":"after_each_letter"}',
+                "Grapheme",
                 str(source),
             ],
             capsys,
         ) == ("", "")
-    assert run.call_args.kwargs["settings"] == DialectSettings(eof="zero")
+    assert run.call_args.kwargs["settings"] == DialectSettings(
+        integer_conversion="after_each_letter"
+    )
 
 
 @pytest.mark.parametrize("bit", ["0", "1"])

@@ -89,23 +89,18 @@ from esolangs.exceptions import (
     EsolangError,
 )
 from esolangs.registry import LANGUAGES, resolve
-from esolangs.settings import dialect_options
 from esolangs.tools.balance import BALANCERS
 
 
 def _encode(rest: list[str]) -> None:
     """Print the stdin that feeds a language its input bits."""
-    rest, options = _pop_options(rest, {"--settings"})
-    rest = _split_positional(rest, set(), {"--settings"})
-    settings = _settings_of(options)
+    rest = _split_positional(rest, set())
     _check_count("encode", rest, 2)
     language, bits = rest[0], rest[1]
     if set(bits) - {"0", "1"} or not bits:
         _fail(f"bits must be a string of 0s and 1s, got {bits!r}")
     try:
-        sys.stdout.write(
-            encode_inputs(language, [int(bit) for bit in bits], settings=settings)
-        )
+        sys.stdout.write(encode_inputs(language, [int(bit) for bit in bits]))
     except EsolangError as exc:
         _fail(_shell_hint(_cli_error_text(exc), language))
 
@@ -305,13 +300,11 @@ def _describe(rest: list[str]) -> None:
 
 def _check_stdin(rest: list[str]) -> None:
     """Judge stdin against a language's declared shape, running nothing."""
-    rest, options = _pop_options(rest, {"--table", "--settings"})
-    rest = _split_positional(rest, set(), {"--table", "--settings"})
+    rest, options = _pop_options(rest, {"--table"})
+    rest = _split_positional(rest, set(), {"--table"})
     _check_count("check-stdin", rest, 1)
     language = rest[0]
-    settings = _settings_of(options)
     try:
-        dialect_options(language, settings)
         facts = describe(language)
     except EsolangError as exc:
         _fail(exc)
@@ -319,7 +312,7 @@ def _check_stdin(rest: list[str]) -> None:
     stdin = _read_stdin(hint="; pipe the input in, or close stdin")
     table = options.get("--table")
     try:
-        check_stdin(str(facts["name"]), stdin, table, settings=settings)
+        check_stdin(str(facts["name"]), stdin, table)
     except EsolangError as exc:
         _fail(exc)
 

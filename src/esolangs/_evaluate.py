@@ -219,7 +219,7 @@ def iter_evaluate(
         def prepare_row(bits: list[int] = bits) -> tuple[Program, str]:
             if contract.parameterized:
                 return instantiator(name, cast("str", program), bits), ""
-            return program, encode_inputs(name, bits, settings=settings)
+            return program, encode_inputs(name, bits)
 
         try:
             source, stdin = _prepare(prepare_row, deadline, isolated=isolated)

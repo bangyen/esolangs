@@ -41,7 +41,7 @@ from esolangs.cli_io import (
     _write_output,
 )
 from esolangs.exceptions import EsolangError, ExecutionTimeoutError, TemplateError
-from esolangs.settings import dialect_options, effective_settings
+from esolangs.settings import dialect_options
 
 
 def _judge(language: str, output: str, mode: object) -> str:
@@ -158,16 +158,7 @@ def _run(rest: list[str]) -> None:
         path, timeout, language=language, portable=portable, settings=settings
     )
     stdin = _read_stdin(timeout, _stdin_hint(facts))
-    warning = (
-        _shape_warning(
-            facts,
-            stdin,
-            table,
-            settings=effective_settings(language, program, settings),
-        )
-        if judge or table is not None
-        else ""
-    )
+    warning = _shape_warning(facts, stdin, table) if judge or table is not None else ""
     if warning and judge:
         # ``--judge`` wants one answer bit, so a bad stdin is a usage error
         # (the output would be one wrong digit); plain ``run`` only warns,

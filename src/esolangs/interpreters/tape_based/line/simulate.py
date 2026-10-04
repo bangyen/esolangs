@@ -5,9 +5,8 @@ itself) revisits the same fork many times, so this walks the same tree
 repeatedly.  The wiki (https://esolangs.org/wiki/Line, "Unimplemented")
 leaves much unspecified; the choices here:
 
-* Tape defaults to unbounded both ways with arbitrary-precision cells.
-  ``LineDialect`` optionally wraps cells and bounds the tape at 0..size-1,
-  with error, wrap or clamp behavior at its ends.
+* Tape: unbounded both ways, arbitrary-precision ints (no wrap or width
+  is documented), an immutable sparse tape whose pointer may go negative.
 * Initial state: all zeros, pointer at 0.
 * ``+``/``-``: by 1, run ``count`` times for a merged run of repeats.
 * ``<``/``>``, ``i``/``o``: per the wiki's wording.
@@ -37,7 +36,6 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from esolangs._dialects import DEFAULT_LINE, LineDialect
 from esolangs.interpreters.source_hints import syntax_error
 
 from .extract import DEFAULT_UNIT, OpCall, Stroke, Vertex, classify_ops
@@ -219,10 +217,7 @@ def _written(tape: _Tape, pointer: int, value: int) -> _Tape:
 
 
 def _advance(
-    state: _State,
-    program: tuple[_Frame, ...],
-    value: int | None = None,
-    dialect: LineDialect = DEFAULT_LINE,
+    state: _State, program: tuple[_Frame, ...], value: int | None = None
 ) -> tuple[_State, int | None]:
     """Return a pure Line transition and optional numeric output."""
     node, at, pointer, tape = state
@@ -240,20 +235,20 @@ def _advance(
     op, count = frame.ops[at]
     output = None
     if op == "+":
-        tape = _written(tape, pointer, dialect.cell(cell + count))
+        tape = _written(tape, pointer, cell + count)
     elif op == "-":
-        tape = _written(tape, pointer, dialect.cell(cell - count))
+        tape = _written(tape, pointer, cell - count)
     elif op == ">":
-        pointer = dialect.pointer(pointer + 1)
+        pointer += 1
     elif op == "<":
-        pointer = dialect.pointer(pointer - 1)
+        pointer -= 1
     elif op == "i":
         if value is None:
             raise syntax_error(
                 "input transition requires a value",
                 "supply the input value before applying the input transition",
             )
-        tape = _written(tape, pointer, dialect.cell(value))
+        tape = _written(tape, pointer, value)
     elif op == "o":
         tape = _written(tape, pointer, cell)
         output = cell
@@ -264,30 +259,26 @@ def _advance(
     return (node, at + 1, pointer, tape), output
 
 
-def _drive(
-    program: tuple[_Frame, ...], io: IO, dialect: LineDialect = DEFAULT_LINE
-) -> _Tape:
+def _drive(program: tuple[_Frame, ...], io: IO) -> _Tape:
     state: _State = (0, 0, 0, ())
     node = state[0]
     while node is not None:
         at = state[1]
         frame = program[node]
         value = io.read() if at < len(frame.ops) and frame.ops[at][0] == "i" else None
-        state, output = _advance(state, program, value, dialect)
+        state, output = _advance(state, program, value)
         if output is not None:
             io.write(output)
         node = state[0]
     return state[3]
 
 
-def run_compiled(
-    program: _Compiled, io: IO | None = None, *, dialect: LineDialect = DEFAULT_LINE
-) -> dict[int, int]:
+def run_compiled(program: _Compiled, io: IO | None = None) -> dict[int, int]:
     """Run compiled code with immutable state, returning its final tape."""
-    return dict(_drive(_freeze_program(program), IO() if io is None else io, dialect))
+    return dict(_drive(_freeze_program(program), IO() if io is None else io))
 
 
-def run_node(root: Node, io: IO, *, dialect: LineDialect = DEFAULT_LINE) -> None:
+def run_node(root: Node, io: IO) -> None:
     """Execute generated graph code through the same pure transition core."""
     nodes = [root]
     indices = {id(root): 0}
@@ -307,7 +298,7 @@ def run_node(root: Node, io: IO, *, dialect: LineDialect = DEFAULT_LINE) -> None
         )
         for node in nodes
     )
-    _drive(frames, io, dialect)
+    _drive(frames, io)
 
 
 def run(
