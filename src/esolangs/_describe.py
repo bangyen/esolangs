@@ -1,17 +1,19 @@
 """Registry facts as data: :func:`describe`, :func:`_spec`, :func:`list_languages`."""
 
 import pathlib
-from typing import Any, TypedDict
+from typing import TypedDict
 
 from esolangs._execution import interpreter_module
 from esolangs.exceptions import ProgramError
 from esolangs.registry import (
     LANGUAGES,
+    Language,
     example_stems,
     parameterized_ids,
     resolve,
     wiki_url,
 )
+from esolangs.registry._contracts import AnswerMode, InputShape, WidthEffect
 from esolangs.settings import DialectOption, dialect_choices
 from esolangs.tools.wrap import WRAPPERS
 from esolangs.tools.wrap import takes_width as _takes_width
@@ -51,10 +53,10 @@ class LanguageInfo(TypedDict):
     parameterized: bool
     reads_input: bool
     width_aware: bool
-    width_effect: str
+    width_effect: WidthEffect
     input_encoding: tuple[str, str]
-    input_shape: str
-    answer_mode: str
+    input_shape: InputShape
+    answer_mode: AnswerMode
     answer_pattern: str
     answer_encoding: tuple[str, str]
     answer_convention: str | None
@@ -108,7 +110,7 @@ def describe(language: str) -> LanguageInfo:
     examples = sorted(str(p) for p in _EXAMPLES.glob(f"{stem}{suffix}"))
     traits = machine_traits(name)
     parameterized = lang.id in parameterized_ids()
-    example = _example_for(lang.id)
+    contract = lang.contract
     return {
         "name": name,
         "dialect_settings": dialect_choices(name),
@@ -127,12 +129,12 @@ def describe(language: str) -> LanguageInfo:
         # disagreeing about the same language.
         "width_aware": _width_effect(lang) == "layout",
         "width_effect": _width_effect(lang),
-        "input_encoding": example.alphabet if example else ("0", "1"),
-        "input_shape": example.input_shape if example else "line_per_bit",
-        "answer_mode": example.answer_mode if example else "output",
-        "answer_pattern": example.answer_pattern if example else "",
-        "answer_encoding": example.answer_values if example else ("0", "1"),
-        "answer_convention": (example.note or None) if example else None,
+        "input_encoding": contract.alphabet,
+        "input_shape": contract.input_shape,
+        "answer_mode": contract.answer_mode,
+        "answer_pattern": contract.answer_pattern,
+        "answer_encoding": contract.answer_values,
+        "answer_convention": contract.note or None,
         # Spelled out rather than ``**machine_traits(name)``: that returns
         # a ``dict[str, bool]``, which a TypedDict cannot verify a
         # ``**``-expansion of, so the merge would have silently accepted a
@@ -147,11 +149,8 @@ def describe(language: str) -> LanguageInfo:
     }
 
 
-def _width_effect(lang: Any) -> str:
+def _width_effect(lang: Language) -> WidthEffect:
     """Return ``"layout"`` (a shape built to fit), ``"wrap"`` or ``"none"``."""
-    # One expression rather than an early return for the generator-less
-    # case: every registered language has a generator, so that return was a
-    # line no input could reach.
     generator = lang.boolean
     if generator is not None and _takes_width(generator):
         return "layout"
@@ -179,17 +178,6 @@ def _spec(language: str) -> str:
             f"PYTHONOPTIMIZE=2), which strips them"
         )
     return text
-
-
-def _example_for(language_id: str) -> Any:
-    """Return the committed boolean example for ``language_id``, or None.
-
-    Deferred: ``examples`` imports the registry.
-    """
-    from esolangs.tools.examples import BOOLEAN_EXAMPLES
-
-    stem = example_stems().get(language_id)
-    return BOOLEAN_EXAMPLES.get(stem) if stem is not None else None
 
 
 def list_languages() -> list[str]:

@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field, replace
 from enum import StrEnum
 
 from esolangs import tools as _boolean
 from esolangs._program import Program
+from esolangs.registry._contracts import CONTRACTS, BooleanContract
 from esolangs.registry._slug import canonical_id
 from esolangs.tools.befunge import MAX_INPUTS as BEFUNGE_MAX_INPUTS
 from esolangs.tools.malbolge import MAX_INPUTS as MALBOLGE_MAX_INPUTS
@@ -44,6 +45,7 @@ class Language:
     source_kind: SourceKind = SourceKind.TEXT
     generator_max_inputs: int | None = None
     generator_restrictions: str = ""
+    contract: BooleanContract = field(default_factory=BooleanContract)
 
 
 LANGUAGES: dict[str, Language] = {
@@ -544,4 +546,11 @@ LANGUAGES: dict[str, Language] = {
         boolean=_boolean.underload,
         id="underload",
     ),
+}
+
+LANGUAGES = {
+    name: replace(
+        lang, contract=CONTRACTS.get(lang.interpreter or "", BooleanContract())
+    )
+    for name, lang in LANGUAGES.items()
 }

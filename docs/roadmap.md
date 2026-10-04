@@ -3,6 +3,29 @@
 Open work only. See [limitations](limitations.md) for standing contracts
 and proved limits; completed work is recorded in its commit.
 
+## Execution order and budgets
+
+Priorities below order the existing next steps. Ceilings are proposed CPU-time
+budgets, not measured runtimes or additional compute authorization. Price each
+run first; a ceiling never overrides the standing remaining budget. Run the
+cheapest positive control before a negative sweep, and stop at the ceiling.
+
+| Priority | Track | First experiment | CPU ceiling | Stop condition |
+| --- | --- | --- | --- | --- |
+| 1 | Vandevelo | Instrument identifier characters, projection visits and fallback calls on the existing corpus; test one uniform naming or amortization rule. | 10 min | Stop after one rule if output differs or the extra factor remains unbounded. |
+| 2 | Linear generators | Audit the four status rows against their executed controls; select one unproved axis for a loop-less construction. | 10 min | Stop when the control fails, the ceiling is reached, or no named construction emerges. |
+| 3 | FRACTRAN order encoding | Build one repeated-consultation router; execute small order families with the existing XOR/XNOR control. | 15 min | Stop if the router cannot represent the control or needs super-linear text. |
+| 4 | Brainfuck behaviour count | Extend the certified automaton with one sound unrestricted body class. | 15 min | Stop if cell preservation fails or certified counting exceeds the ceiling. |
+| 5 | Brainfuck bounded inputs | Price one source-length-proportional read-budget counting model. | 10 min | Stop if no finite certified model follows; do not launch enumeration. |
+| 6 | Factor leading constant | Price one semantic normalization rule on the existing decoded corpus. | 10 min | Stop on a changed output or no improvement to the counted class. |
+| 7 | Polynomial constant | Derive and check one stronger coefficient-mass charge on the existing small witnesses. | 10 min | Stop on a parity counterexample or if arbitrary multipliers remain untreated. |
+| 8 | Piet++ audit | Resolve one listed specification gap and test it against the pinned executor. | 5 min | Stop if operand or update semantics remain contradictory; defer admission. |
+| 9 | Malbolge arity 17 | Price a symbolic shared-setup layout before generating any dense table. | 5 min | Stop if decoder, selector and address fold do not fit the store; defer a search. |
+
+A failed experiment records its counterexample in the linked proof. A measured
+improvement needs emitted-size measurements and executed output; a scaling
+measurement alone does not close a proof obligation.
+
 ## Research follow-up
 
 - **Piet++ specification and generator audit.** The wiki still tags the language

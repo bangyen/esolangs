@@ -274,10 +274,12 @@ class TestATemplateCarriesItsSetters:
             _embedded(esolangs.generate, "x")
         # A pair-only call derives its setters; the import-time examples are
         # not always captured by the coverage tracer, so exercise it here.
-        derived = _embedded(esolangs.generate, "x", pair=("a", "b"))
+        derived = _embedded(esolangs.generate, "tape_based.brainfuck", pair=("a", "b"))
         assert derived.pair == ("a", "b")
         # And a setters-only call must not try to derive them.
-        explicit = _embedded(esolangs.generate, "x", setters=uniform(("a", "b")))
+        explicit = _embedded(
+            esolangs.generate, "tape_based.brainfuck", setters=uniform(("a", "b"))
+        )
         assert explicit.setters is not None
 
     def test_unequal_widths_are_refused(self) -> None:

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import difflib
-from collections.abc import Callable
 from functools import cache
 from typing import TYPE_CHECKING
 from urllib.parse import quote
@@ -88,26 +87,6 @@ def example_stems() -> dict[str, str]:
     return {
         canonical_id(stem.replace("-", " ")): stem
         for stem in _examples.BOOLEAN_EXAMPLES
-    }
-
-
-@cache
-def _fills() -> dict[str, Callable[[str, list[int]], str]]:
-    """Return canonical id -> the substitution that instantiates a template.
-
-    A *parameterized* generator returns a program with one run of ``$`` per
-    input instead of one that reads its inputs; each committed example
-    already carries the substitution as its ``fill``, so this exposes the
-    existing recipe rather than a second list.  Membership is derived, not
-    written down: the former export roster omitted Home Row, and three
-    hand-kept doc lists named different subsets. ``fill`` matches the output.
-    """
-    from esolangs.tools import examples as _examples
-
-    return {
-        canonical_id(stem.replace("-", " ")): example.fill
-        for stem, example in _examples.BOOLEAN_EXAMPLES.items()
-        if example.fill is not None
     }
 
 
@@ -226,7 +205,9 @@ def recover_setters(
 
 def parameterized_ids() -> frozenset[str]:
     """Return the canonical ids whose boolean generator emits a template."""
-    return frozenset(_fills())
+    return frozenset(
+        lang.id for lang in LANGUAGES.values() if lang.contract.parameterized
+    )
 
 
 # Canonical id -> display name, the index :func:`resolve` matches against.
