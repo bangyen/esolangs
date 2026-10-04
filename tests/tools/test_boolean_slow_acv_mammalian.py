@@ -578,8 +578,9 @@ def test_coprime_chain_rejects_backward_targets() -> None:
         chain.jump(_State(), 0)
 
 
-@pytest.mark.parametrize(("modulus", "io_modulus"), [(255, 256), (256, 255)])
-def test_mixed_chain_greedy_chunks_keep_their_short_continuation(
+@pytest.mark.parametrize("modulus", [255, 256])
+@pytest.mark.parametrize("io_modulus", [255, 256])
+def test_chain_greedy_chunks_keep_their_short_continuation(
     modulus: int, io_modulus: int
 ) -> None:
     from esolangs.tools._mammalian_compact import _Chain, _State
@@ -612,6 +613,7 @@ def test_mixed_chain_appends_all_missing_head_values(
         state = _State(head=head, ptr=ptr)
         state.rest[ptr] = rest
         tokens = chain.append(state, value)
+        assert len(tokens) <= 2 * 254 + pow(ptr + 1, -1, 255) + 4
         machine = _Machine(
             " ".join(tokens), ScriptedIO(), cell_modulus=255, io_modulus=256
         )
@@ -674,6 +676,53 @@ def test_native_255_pooled_blocks_in_stepped_interpreter(row: int) -> None:
     assert io.reads == 6
 
 
+@pytest.mark.parametrize("modulus", [255, 256])
+@pytest.mark.parametrize("io_modulus", [255, 256])
+@pytest.mark.parametrize("head", [0, 254])
+@pytest.mark.parametrize("pos", [0, 65_536])
+@pytest.mark.parametrize("weight", [1, 65_536])
+@pytest.mark.parametrize("bit", [0, 1])
+def test_chain_regions_cover_distant_nodes_and_large_weights(
+    modulus: int, io_modulus: int, head: int, pos: int, weight: int, bit: int
+) -> None:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
+    from esolangs.tools._mammalian_compact import _Chain, _State
+
+    chain = _Chain(modulus, io_modulus=io_modulus)
+    state = _State(head=head, acc=io_modulus + 48)
+    state.rest[chain.weight] = 3 * io_modulus + 17
+    tokens, expected = chain.level(state.clone(), weight, pos, None)
+    machine = _Machine(
+        " ".join(["SEED"] * pos + tokens),
+        ScriptedIO(str(bit)),
+        cell_modulus=modulus,
+        io_modulus=io_modulus,
+    )
+    maximum = io_modulus - 1
+    machine.lst = []
+    for array, rest in enumerate(state.rest):
+        chunks, tail = divmod(rest, maximum)
+        machine.lst.append(
+            [
+                (array + 1) * head % modulus,
+                *[maximum] * chunks,
+                *([tail] if tail else []),
+            ]
+        )
+    machine.ind, machine.acc = pos, state.acc
+    for _ in range(len(tokens) + 1):
+        if machine.halted:
+            break
+        machine.step()
+    assert machine.halted
+    assert machine.acc == expected.acc
+    expected.rest[chain.weight] += bit * weight
+    for array, cells in enumerate(machine.lst):
+        assert cells[0] == (array + 1) * expected.head % modulus
+        assert sum(cells[1:]) == expected.rest[array]
+
+
 def test_cell_255_tree_rejects_backward_sum_targets() -> None:
     from esolangs.tools._mammalian255 import _State
 
@@ -713,10 +762,10 @@ def test_cell_255_appends_every_value_with_a_missing_head(
 def test_cell_255_tree_runs_in_stepped_interpreter(io_modulus: int) -> None:
     from esolangs.interpreters.io import ScriptedIO
     from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
-    from esolangs.tools.slow_acv_mammalian import slow_acv_mammalian
+    from esolangs.tools._mammalian255 import decision_tree
 
     table = "00101101"
-    source = slow_acv_mammalian(table, cell_modulus=255, io_modulus=io_modulus)
+    source = decision_tree(table, 3, io_modulus=io_modulus)
     for row, expected in enumerate(table):
         io = ScriptedIO(f"{row:03b}")
         machine = _Machine(source, io, cell_modulus=255, io_modulus=io_modulus)
