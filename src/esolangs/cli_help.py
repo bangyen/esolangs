@@ -87,7 +87,8 @@ The program is neither run nor modified. Apply chosen edits yourself, then
 run the program to check its behavior. No suggestions does not mean valid.
 
 example:
-  esolangs suggest Modulous program.mod
+  esolangs generate Modulous 0110 > program.txt
+  esolangs suggest Modulous program.txt
 """,
     "encode": """usage: esolangs encode <language> <bits>
 
