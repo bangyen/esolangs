@@ -2,6 +2,7 @@
 
 from collections.abc import Callable
 
+from esolangs._jaune import JauneDialect
 from esolangs.tools.helpers import (
     _validate_truth_table,
     constant_span_test,
@@ -12,11 +13,19 @@ from esolangs.tools.helpers import (
 )
 
 
-def jaune(truth_table: str) -> str:
+def jaune(
+    truth_table: str,
+    *,
+    cell_modulus: int | None = None,
+    tape_size: int | None = None,
+    boundary: str = "clamp",
+    eof: str = "error",
+    undefined_targets: str = "error",
+) -> str:
     """Build a Jaune program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n``, MSB first.  All
-    bits are read up front (``v``, ``ord-48``), then ``?`` jumps route the
+    bits are read up front (``v``, integer tokens), then ``?`` jumps route the
     tree; each leaf prints with ``^`` and terminates.  Only inputs the tree
     branches on get a cell (``>`` after the read), so the tree navigates a
     span as wide as the real dependencies, and a leaf prints from its
@@ -36,6 +45,14 @@ def jaune(truth_table: str) -> str:
     seeded five-input tables, 47,973 to 19,568 (59.2%), where the unshared
     tree would give 29,291.
     """
+    n = _validate_truth_table(truth_table)
+    dialect = JauneDialect(cell_modulus, tape_size, boundary, eof, undefined_targets)
+    stored = stored_inputs(truth_table, tuple(range(n)))
+    required = len(stored) + int(n - 1 not in stored)
+    if not stored:
+        required = 2
+    if dialect.tape_size is not None and dialect.tape_size < required:
+        raise ValueError(f"Boolean generation requires at least {required} tape cells")
     return in_input_order(truth_table, _jaune_shared)
 
 
