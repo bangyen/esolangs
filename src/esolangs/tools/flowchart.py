@@ -1,5 +1,6 @@
 """Boolean-function generator for Flowchart."""
 
+from esolangs._dialects import FlowchartDialect
 from esolangs.tools.helpers import (
     _validate_truth_table,
     constant_span_test,
@@ -183,7 +184,13 @@ def _flowchart_stacked(truth_table: str) -> dict[tuple[int, int], str]:
     return cells
 
 
-def flowchart(truth_table: str, width: int | None = None) -> str:
+def flowchart(
+    truth_table: str,
+    width: int | None = None,
+    *,
+    scheduling: str = "creation",
+    deque_cursor: str = "pointer",
+) -> str:
     """Build a Flowchart program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n``, MSB first.
@@ -193,6 +200,7 @@ def flowchart(truth_table: str, width: int | None = None) -> str:
     a path cell; adjacent leaves have a blank gutter. Folded leaves still
     read the skipped inputs.
     """
+    FlowchartDialect(scheduling, deque_cursor)
     _validate_truth_table(truth_table)
     if width is None:
         return _flowchart_deque(truth_table)

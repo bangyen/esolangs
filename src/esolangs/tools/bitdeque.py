@@ -2,6 +2,7 @@
 
 import re
 
+from esolangs._dialects import index_base as validate_index_base
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
@@ -16,7 +17,7 @@ __all__ = ["BITDEQUE_PAIR", "bitdeque", "bitdeque_setters"]
 BITDEQUE_PAIR = ("PUSH INVERT", "INVERT PUSH")
 
 
-def bitdeque(truth_table: str, width: int | None = None) -> str:
+def bitdeque(truth_table: str, width: int | None = None, *, index_base: int = 0) -> str:
     """Build a Bitdeque template for the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n``, MSB first.  Every
@@ -35,6 +36,7 @@ def bitdeque(truth_table: str, width: int | None = None) -> str:
     Below eleven columns, up to four inputs use POP/EJECT on fresh
     zero/one endpoints; larger tables keep the linear load.
     """
+    validate_index_base(index_base)
     if len(truth_table) <= 16:
         program = best_input_order(truth_table, _bitdeque_ordered)
         if width is not None and width < len(BITDEQUE_PAIR[0]):
@@ -44,6 +46,10 @@ def bitdeque(truth_table: str, width: int | None = None) -> str:
             )
     else:
         program = _bitdeque_linear(truth_table)
+    if index_base:
+        program = re.sub(
+            r"GOTO (\d+)", lambda match: f"GOTO {int(match[1]) + index_base}", program
+        )
     if width is not None:
         from esolangs.tools.wrap import _bitdeque
 
@@ -83,9 +89,18 @@ def _bitdeque_short_load(n: int) -> list[str]:
     return tokens
 
 
-def bitdeque_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
+def bitdeque_setters(
+    template: str, n: int, *, index_base: int = 0
+) -> tuple[tuple[str, str], ...]:
     """Resolve the five-character load only from its exact fixed prefix."""
+    validate_index_base(index_base)
     normalized = " ".join(template.split())
+    if index_base:
+        normalized = re.sub(
+            r"GOTO (\d+)",
+            lambda match: f"GOTO {int(match[1]) - index_base}",
+            normalized,
+        )
     header = re.match(r"GOTO 3 INVERT GOTO 4 GOTO [0-9]+ INVERT ", normalized)
     short_count = template.count(TEMPLATE_CHAR) // 5
     short_load = " ".join(_bitdeque_short_load(short_count))

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from string import ascii_lowercase
 
+from esolangs._dialects import FalseDialect
 from esolangs.tools.helpers import (
     _validate_truth_table,
     subtree_ids,
@@ -26,12 +27,20 @@ _SAME = "^1&"
 _FLIPPED = "^'0=_"
 
 
-def false(truth_table: str, width: int | None = None) -> str:
+def false(
+    truth_table: str,
+    width: int | None = None,
+    *,
+    pick_base: int = 0,
+    unset_variables: str = "error",
+    unknown_commands: str = "ignore",
+) -> str:
     """Return a FALSE program computing ``truth_table``.
 
     Reads ``n`` lines, one ``0``/``1`` per input in table order, and prints
     the answer digit.
     """
+    FalseDialect(pick_base, unset_variables, unknown_commands)
     n = _validate_truth_table(truth_table)
     program = _shared(truth_table, n)
     # The only two-character atom is the ASCII-zero push; multiplication

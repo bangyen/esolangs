@@ -18,6 +18,7 @@ from __future__ import annotations
 import re
 from functools import lru_cache
 
+from esolangs._dialects import LineDialect
 from esolangs.raster import Pixel, Raster, Rows
 from esolangs.tools.helpers import (
     _residual_ids,
@@ -113,8 +114,19 @@ def _generate(truth_table: str) -> Raster:
     )
 
 
-def line(truth_table: str, *, scale: int = 1) -> Raster:
+def line(
+    truth_table: str,
+    *,
+    scale: int = 1,
+    cell_modulus: int | None = None,
+    tape_size: int | None = None,
+    boundary: str = "error",
+) -> Raster:
     """Return a Line raster enlarged by an integer pixel factor."""
+    dialect = LineDialect(cell_modulus, tape_size, boundary)
+    n = _validate_truth_table(truth_table)
+    if dialect.tape_size is not None and dialect.tape_size < n + 1:
+        raise ValueError(f"Line generator requires at least {n + 1} tape cells")
     return _generate(truth_table).upscaled(scale)
 
 
