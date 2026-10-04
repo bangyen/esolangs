@@ -206,6 +206,12 @@ loading and execution on Windows and worker threads. Timeout kills and reaps
 the child; errors retain their class and `partial_output`.
 `evaluate(..., isolated=True)` applies a finite
 deadline per row; a timeout remains undecided, including termination answers.
+`max_memory=BYTES` bounds a Linux isolated worker's virtual address space,
+including Python overhead. `run` requires `isolated=True`; CLI
+`evaluate --max-memory BYTES` enables isolation. Other platforms refuse the
+option. Parent source loading is outside the cap; exhaustion raises
+`InterpreterLimitError`, never a Boolean answer.
+
 `evaluate(..., isolated=True, max_output=N)` caps each row in Unicode characters;
 CLI `evaluate --max-output N` enables isolation. Overflow raises
 `InterpreterLimitError` with partial output and the failing row.

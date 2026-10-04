@@ -1,6 +1,8 @@
 """Registry facts as data: :func:`describe`, :func:`_spec`, :func:`list_languages`."""
 
+import json
 import pathlib
+from functools import cache
 from typing import TypedDict
 
 from esolangs._execution import interpreter_module
@@ -31,6 +33,64 @@ _STATE_MODELS = {
     "queue_based": "queue",
     "other": "other",
 }
+
+
+class ScalingStatus(TypedDict):
+    """Manifest verdicts; None means the axis has no explicit audit row."""
+
+    totality: str | None
+    generation_time: str | None
+    output_size: str | None
+    execution_time: str | None
+    evidence: str | None
+
+
+class ProofStatus(TypedDict):
+    """A ledger description and independent audited scaling verdicts."""
+
+    labels: list[str]
+    qualification: str
+    scaling: str
+    evidence: str
+    audit: ScalingStatus
+
+
+@cache
+def _proof_manifest() -> dict[str, ProofStatus]:
+    """Index the packaged, generated manifest without inferring missing verdicts."""
+    data = json.loads(
+        pathlib.Path(__file__)
+        .with_name("proof_status.json")
+        .read_text(encoding="utf-8")
+    )
+    audits = {row["generator"]: row for row in data["audit"]}
+    return {
+        row["generator"]: {
+            "labels": row["labels"],
+            "qualification": row["qualification"],
+            "scaling": row["scaling"],
+            "evidence": row["evidence"],
+            "audit": {
+                "totality": audits.get(row["generator"], {}).get("totality"),
+                "generation_time": audits.get(row["generator"], {}).get(
+                    "generation_time"
+                ),
+                "output_size": audits.get(row["generator"], {}).get("output_size"),
+                "execution_time": audits.get(row["generator"], {}).get(
+                    "execution_time"
+                ),
+                "evidence": audits.get(row["generator"], {}).get("evidence"),
+            },
+        }
+        for row in data["ledger"]
+    }
+
+
+def _proof_for(name: str) -> ProofStatus | None:
+    """Return independent mutable metadata, including caller-owned nested values."""
+    from copy import deepcopy
+
+    return deepcopy(_proof_manifest().get(name))
 
 
 class LanguageInfo(TypedDict):
@@ -67,11 +127,15 @@ class LanguageInfo(TypedDict):
     examples: list[str]
     wiki_url: str
     dialect_settings: dict[str, DialectOption]
+    proof_status: ProofStatus | None
 
 
 def describe(language: str) -> LanguageInfo:
     """Return a structured description of ``language``.
 
+    ``proof_status`` separates ledger prose from explicit four-axis audits;
+    absent audit verdicts are None, not guarantees. Measured denotes an empirical
+    regression, not a proof. Evidence is repo-relative.
     ``spec`` contains the interpreter docstring; missing docstrings raise.
     ``dialect_settings`` gives runtime defaults, choices, bounds and dependencies.
     Identity: ``name``, ``id``, ``source_kind``, ``state_model``,
@@ -113,6 +177,7 @@ def describe(language: str) -> LanguageInfo:
     contract = lang.contract
     return {
         "name": name,
+        "proof_status": _proof_for(name),
         "dialect_settings": dialect_choices(name),
         "spec": _spec(name),
         "id": lang.id,

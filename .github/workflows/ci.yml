@@ -298,3 +298,29 @@ jobs:
         "$ARTIFACT_PYTHON" -I scripts/smoke_distribution.py --math
         uv pip install --python "$ARTIFACT_PYTHON" "${wheels[0]}[image]"
         "$ARTIFACT_PYTHON" -I scripts/smoke_distribution.py --math --image
+
+  execution-platform:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+        python-version: ["3.12", "3.14"]
+    env:
+      PYTHONUTF8: "1"
+    steps:
+    - uses: actions/checkout@v7
+    - uses: astral-sh/setup-uv@v7
+    - uses: actions/setup-python@v7
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install test dependencies
+      run: uv sync --extra dev --python ${{ matrix.python-version }}
+    - name: Exercise paths, deadlines, output limits and worker cleanup
+      run: >
+        uv run pytest -q -o addopts=""
+        tests/test_execution_portable.py tests/test_memory_budget.py
+        tests/test_run_isolated.py::test_output_limit_stops_an_infinite_writer_and_reaps
+        tests/test_run_isolated.py::test_capped_timeout_retains_output_and_reaps
+        tests/test_run_isolated.py::test_input_error_retains_counts_and_output

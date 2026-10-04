@@ -60,7 +60,15 @@ def _run(rest: list[str]) -> None:
     """Run a program through its interpreter and write its output."""
     rest, options = _pop_options(
         rest,
-        {"--timeout", "--table", "--seed", "--scale", "--max-output", "--settings"},
+        {
+            "--timeout",
+            "--table",
+            "--seed",
+            "--scale",
+            "--max-output",
+            "--max-memory",
+            "--settings",
+        },
     )
     # The value is checked here, before the positionals are counted.  It ran
     # after, so `run --timeout brainfuck prog.txt` -- a forgotten number --
@@ -80,6 +88,13 @@ def _run(rest: list[str]) -> None:
             options["--max-output"], "--max-output", kind="a non-negative integer"
         )
         _nonnegative(max_output, "--max-output", options["--max-output"])
+    max_memory = None
+    if "--max-memory" in options:
+        max_memory = _integer(options["--max-memory"], "--max-memory")
+        with _errors():
+            from esolangs._isolated import check_memory
+
+            check_memory(max_memory, isolated=isolated)
     rest = _split_positional(
         rest,
         set(),
@@ -92,6 +107,7 @@ def _run(rest: list[str]) -> None:
             "--settings",
             "--isolated",
             "--max-output",
+            "--max-memory",
         },
     )
     seed = _seed_of(options)
@@ -174,6 +190,7 @@ def _run(rest: list[str]) -> None:
                     scale=scale,
                     isolated=True,
                     max_output=max_output,
+                    max_memory=max_memory,
                     settings=settings,
                 )
             else:

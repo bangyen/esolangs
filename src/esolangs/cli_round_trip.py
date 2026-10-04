@@ -96,6 +96,7 @@ def _evaluate(rest: list[str]) -> None:
             "--table",
             "--max-rows",
             "--max-output",
+            "--max-memory",
             "--total-timeout",
             "--settings",
         },
@@ -110,6 +111,7 @@ def _evaluate(rest: list[str]) -> None:
             "--table",
             "--max-rows",
             "--max-output",
+            "--max-memory",
             "--total-timeout",
             "--settings",
         },
@@ -141,9 +143,21 @@ def _evaluate(rest: list[str]) -> None:
     )
     language, path = rest
     settings = _settings_of(options)
-    isolated = max_output is not None or not hasattr(signal, "SIGALRM")
+    max_memory = (
+        _integer(options["--max-memory"], "--max-memory")
+        if "--max-memory" in options
+        else None
+    )
+    isolated = (
+        max_output is not None
+        or max_memory is not None
+        or not hasattr(signal, "SIGALRM")
+    )
     deadline = None if total_timeout is None else monotonic() + total_timeout
     try:
+        from esolangs._isolated import check_memory
+
+        check_memory(max_memory, isolated=isolated)
         dialect_options(language, settings)
         _evaluation_rows(inputs, max_rows)
         if max_output is not None:
@@ -161,6 +175,7 @@ def _evaluate(rest: list[str]) -> None:
                 inputs=inputs,
                 max_rows=max_rows,
                 max_output=max_output,
+                max_memory=max_memory,
                 total_timeout=total_timeout,
                 isolated=isolated,
                 settings=settings,
@@ -173,6 +188,7 @@ def _evaluate(rest: list[str]) -> None:
                 inputs=inputs,
                 max_rows=max_rows,
                 max_output=max_output,
+                max_memory=max_memory,
                 total_timeout=total_timeout,
                 isolated=isolated,
                 settings=settings,

@@ -74,6 +74,8 @@ class Language:
         *,
         isolated: bool = False,
         max_steps: int | None = None,
+        max_output: int | None = None,
+        max_memory: int | None = None,
         settings: DialectSettings | None = None,
         scale: int | None = None,
     ) -> str:
@@ -86,6 +88,8 @@ class Language:
             seed,
             isolated=isolated,
             max_steps=max_steps,
+            max_output=max_output,
+            max_memory=max_memory,
             settings=settings,
             scale=scale,
         )
@@ -100,6 +104,7 @@ class Language:
         scale: int | None = None,
         max_rows: int | None = _DEFAULT_MAX_ROWS,
         max_output: int | None = None,
+        max_memory: int | None = None,
         total_timeout: float | None = None,
         settings: DialectSettings | None = None,
     ) -> Iterator[str]:
@@ -113,6 +118,7 @@ class Language:
             scale=scale,
             max_rows=max_rows,
             max_output=max_output,
+            max_memory=max_memory,
             total_timeout=total_timeout,
             settings=settings,
         )
@@ -127,6 +133,7 @@ class Language:
         scale: int | None = None,
         max_rows: int | None = _DEFAULT_MAX_ROWS,
         max_output: int | None = None,
+        max_memory: int | None = None,
         total_timeout: float | None = None,
         settings: DialectSettings | None = None,
     ) -> str:
@@ -140,6 +147,7 @@ class Language:
             scale=scale,
             max_rows=max_rows,
             max_output=max_output,
+            max_memory=max_memory,
             total_timeout=total_timeout,
             settings=settings,
         )

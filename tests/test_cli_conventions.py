@@ -288,7 +288,12 @@ class TestTheTopLevelUsageKeepsUp:
         lines = USAGE.splitlines()
         for i, line in enumerate(lines):
             if line.strip().startswith(command + " ") or line.strip() == command:
-                return " ".join(lines[i : i + 2])
+                block = [line]
+                for continuation in lines[i + 1 :]:
+                    if not continuation.strip().startswith(("[", "<")):
+                        break
+                    block.append(continuation)
+                return " ".join(block)
         raise AssertionError(f"{command} is not in the usage block at all")
 
     def test_every_command_is_listed(self) -> None:

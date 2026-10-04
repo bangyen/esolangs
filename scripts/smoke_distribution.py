@@ -69,6 +69,7 @@ def smoke(*, math_extra: bool, image_extra: bool = False) -> None:
     for name in esolangs.list_languages():
         facts = esolangs.describe(name)
         if facts["boolean_generator"]:
+            assert facts["proof_status"] is not None, name
             generated = esolangs.generate(name, "0110")
             if image_extra and isinstance(generated, esolangs.Raster):
                 generated = esolangs.Raster.from_png(generated.to_png())

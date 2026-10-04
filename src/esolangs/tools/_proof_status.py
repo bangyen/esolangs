@@ -102,7 +102,7 @@ def load(path: Path = MANIFEST) -> tuple[tuple[ProofRow, ...], tuple[ScalingRow,
             )
         )
         if totality not in {"Total", "Cap", "Exception"} or any(
-            cost not in {"Linear", "O(T)", "Open", "Language lower bound"}
+            cost not in {"Linear", "O(T)", "Measured", "Open", "Language lower bound"}
             for cost in costs
         ):
             raise ValueError("unknown scaling verdict")
@@ -128,6 +128,9 @@ def load(path: Path = MANIFEST) -> tuple[tuple[ProofRow, ...], tuple[ScalingRow,
 def update_docs() -> None:
     """Render both status tables without changing surrounding prose."""
     proofs, audits = load()
+    packaged = ROOT / "src/esolangs/proof_status.json"
+    packaged.parent.mkdir(parents=True, exist_ok=True)
+    packaged.write_bytes(MANIFEST.read_bytes())
     tables = (
         (
             ROOT / "docs/proofs/index.md",
