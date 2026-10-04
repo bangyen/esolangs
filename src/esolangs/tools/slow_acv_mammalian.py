@@ -939,6 +939,8 @@ def slow_acv_mammalian(
     above five inputs so solved weights remain multiples of 255.
     """
     moduli = MammalianModuli(cell_modulus, io_modulus)
+    if moduli.cell_modulus != 256:
+        raise ValueError("Mammalian generator cell_modulus must be 256")
     n = _validate_truth_table(truth_table)
     unit = _LEAF_UNIT
     if moduli.io_modulus == 255 and n > _FREE:
