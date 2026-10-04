@@ -102,9 +102,14 @@ def run_isolated(
                         else source,
                         "raster": isinstance(source, Raster),
                         "stdin": read_input(stdin),
-                        "seed": seed,
+                        # Decimal JSON rendering rejects valid 4301-digit seeds.
+                        "seed": hex(seed) if isinstance(seed, int) else seed,
+                        "integer_seed": isinstance(seed, int),
                         "scale": scale,
-                        "max_output": max_output,
+                        "max_output": hex(max_output)
+                        if max_output is not None
+                        else None,
+                        "integer_max_output": max_output is not None,
                     }
                 )
             )
@@ -277,6 +282,8 @@ def _worker() -> None:
 
     vars(esolangs)["ScriptedIO"] = StreamingIO
     request = json.load(sys.stdin)
+    if request.get("integer_max_output", False):
+        request["max_output"] = int(request["max_output"], 16)
     program = request["program"]
     if request["raster"]:
         program = Raster(tuple(tuple(tuple(pixel) for pixel in row) for row in program))
@@ -294,7 +301,9 @@ def _worker() -> None:
                 program,
                 request["stdin"],
                 timeout=None,
-                seed=request["seed"],
+                seed=int(request["seed"], 16)
+                if request.get("integer_seed", False)
+                else request["seed"],
                 scale=request.get("scale"),
             )
     except exceptions.EsolangError as error:

@@ -841,3 +841,27 @@ def test_width_after_separator_is_positional() -> None:
     from esolangs.cli_args import _pop_width
 
     assert _pop_width(["--", "--width", "80"]) == (["--", "--width", "80"], None, False)
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize(
+    ("arguments", "diagnostic"),
+    [
+        (["--table", "xyz", "brainfuck"], "truth table"),
+        (["--judge", "123"], "--judge needs --timeout"),
+    ],
+)
+def test_run_rejects_bad_options_before_acquiring_source_or_stdin(
+    arguments, diagnostic, monkeypatch, capsys
+):
+    import esolangs.cli_run as cli_run
+
+    def unreadable(*_args, **_kwargs):
+        pytest.fail("invalid run options must be rejected before reading")
+
+    monkeypatch.setattr(cli_run, "_read_program", unreadable)
+    monkeypatch.setattr(cli_run, "_read_stdin", unreadable)
+    with pytest.raises(SystemExit) as caught:
+        call_main(["run", *arguments, "never-read.txt"], capsys)
+    assert caught.value.code == 2
+    assert diagnostic in capsys.readouterr().err

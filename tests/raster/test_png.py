@@ -666,3 +666,49 @@ def test_rgb_writer_packs_adjacent_mutable_pixels_independently() -> None:
     pixel = ChangingPixel([0, 0, 0])
     # Range validation and packing each iterate the mutable pixel.
     assert png.read_rgb(png.write_rgb(((pixel, pixel),))) == [[(2, 0, 0), (4, 0, 0)]]
+
+
+@pytest.mark.parametrize("raw_size", [4, 16384])
+def test_png_decompression_is_bounded_by_header(monkeypatch, raw_size) -> None:
+    original = zlib.decompressobj
+    expanded = []
+
+    class BoundedDecoder:
+        def __init__(self):
+            self.decoder = original()
+
+        def decompress(self, data, max_length):
+            result = self.decoder.decompress(data, max_length)
+            expanded.append((max_length, len(result)))
+            return result
+
+        @property
+        def eof(self):
+            return self.decoder.eof
+
+    monkeypatch.setattr(png.zlib, "decompressobj", BoundedDecoder)
+    blob = _encode([bytes(raw_size)], 1, 1, colour=2)
+    if raw_size == 4:
+        assert png.read_rgb(blob) == [[(0, 0, 0)]]
+    else:
+        with pytest.raises(ValueError, match="IHDR"):
+            png.read_rgb(blob)
+    assert expanded == [(5, min(raw_size, 5))]
+
+
+def test_png_rejects_missing_compressed_checksum() -> None:
+    blob = _encode([bytes(4)], 1, 1, colour=2)
+    chunks = bytearray(blob[:8])
+    for kind, body in png._chunks(blob):  # noqa: SLF001
+        if kind == b"IDAT":
+            body = body[:-1]
+        chunks.extend(struct.pack(">I", len(body)) + kind + body)
+        chunks.extend(struct.pack(">I", zlib.crc32(kind + body)))
+    with pytest.raises(ValueError, match="truncated PNG compressed stream"):
+        png.read_rgb(bytes(chunks))
+
+
+def test_png_rejects_dimensions_beyond_platform_size() -> None:
+    blob = _encode([bytes(4)], 0xFFFFFFFF, 0xFFFFFFFF, depth=16, colour=6)
+    with pytest.raises(ValueError, match="IHDR"):
+        png.read_rgb(blob)

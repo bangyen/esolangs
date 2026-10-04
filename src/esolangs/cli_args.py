@@ -280,7 +280,11 @@ def _timeout_of(options: dict[str, str], *, option: str = "--timeout") -> float 
     except EsolangError as exc:
         # Re-worded from ``timeout`` to ``--timeout``: the library names the
         # parameter, and this names the flag the reader typed.
-        _fail(_cli_error_text(exc).replace("timeout must", "--timeout must", 1))
+        _fail(
+            _cli_error_text(exc)
+            .replace("timeout must", f"{option} must", 1)
+            .replace("--timeout 5.0", f"{option} 5.0")
+        )
     return seconds
 
 
