@@ -10,6 +10,7 @@ UNKNOWN_POLICIES = ("ignore", "error")
 TAPE_BOUNDARIES = ("error", "wrap", "clamp")
 SCHEDULINGS = ("creation", "reverse")
 DEQUE_CURSORS = ("pointer", "shared")
+JUNCTION_TIE_BREAKS = ("right_first", "left_first")
 
 
 def index_base(value: int) -> int:
@@ -95,12 +96,15 @@ class LineDialect:
 class FlowchartDialect:
     scheduling: str = "creation"
     deque_cursor: str = "pointer"
+    junction_tie_break: str = "right_first"
 
     def __post_init__(self) -> None:
         if self.scheduling not in SCHEDULINGS:
             raise ValueError("scheduling must be creation or reverse")
         if self.deque_cursor not in DEQUE_CURSORS:
             raise ValueError("deque_cursor must be pointer or shared")
+        if self.junction_tie_break not in JUNCTION_TIE_BREAKS:
+            raise ValueError("junction_tie_break must be right_first or left_first")
 
 
 DEFAULT_FALSE = FalseDialect()
