@@ -629,25 +629,30 @@ def test_mixed_chain_appends_all_missing_head_values(
 
 @pytest.mark.parametrize("modulus", [255, 256])
 @pytest.mark.parametrize("io_modulus", [255, 256])
+@pytest.mark.parametrize(
+    ("inputs", "row"),
+    [(inputs, row) for inputs in (4, 6) for row in range(1 << inputs)],
+)
 def test_coprime_chain_runs_in_stepped_interpreter(
-    modulus: int, io_modulus: int
+    modulus: int, io_modulus: int, inputs: int, row: int
 ) -> None:
     from esolangs.interpreters.io import ScriptedIO
     from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
     from esolangs.tools._mammalian_compact import compact_chain
 
-    table = "0010110101110001"
-    source = compact_chain(table, 4, modulus=modulus, io_modulus=io_modulus)
-    for row, expected in enumerate(table):
-        io = ScriptedIO(f"{row:04b}")
-        machine = _Machine(source, io, cell_modulus=modulus, io_modulus=io_modulus)
-        for _ in range(len(source.split())):
-            if machine.halted:
-                break
-            machine.step()
-        assert machine.halted
-        assert io.getvalue() == expected
-        assert io.reads == 4
+    rng = random.Random(20261003 + inputs)
+    table = "".join(str(rng.getrandbits(1)) for _ in range(1 << inputs))
+    source = compact_chain(table, inputs, modulus=modulus, io_modulus=io_modulus)
+    token_count = len(source.split())
+    io = ScriptedIO(f"{row:0{inputs}b}")
+    machine = _Machine(source, io, cell_modulus=modulus, io_modulus=io_modulus)
+    for _ in range(token_count):
+        if machine.halted:
+            break
+        machine.step()
+    assert machine.halted
+    assert io.getvalue() == table[row]
+    assert io.reads == inputs
 
 
 def test_cell_255_tree_rejects_backward_sum_targets() -> None:

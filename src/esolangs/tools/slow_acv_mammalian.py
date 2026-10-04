@@ -943,8 +943,8 @@ def slow_acv_mammalian(
     moduli = MammalianModuli(cell_modulus, io_modulus)
     n = _validate_truth_table(truth_table)
     if moduli.cell_modulus == 255:
-        # Chain/tree characters: 157678/204981 at n=4 with I/O 255;
-        # 177576/191028 at n=3 with I/O 256. Smaller trees win below these.
+        # Chain/tree characters: 143876/204981 at n=4 with I/O 255;
+        # 171818/191028 at n=3 with I/O 256. Smaller trees win below these.
         if n >= (4 if moduli.io_modulus == 255 else 3):
             from esolangs.tools._mammalian_compact import compact_chain
 

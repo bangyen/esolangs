@@ -1,7 +1,7 @@
 """Mammalian chains with coprime array assignments."""
 
 from dataclasses import dataclass, field, replace
-from math import gcd
+from math import gcd, lcm
 
 from esolangs._mammalian import MammalianModuli
 
@@ -38,6 +38,11 @@ class _Chain:
                     self.prints = (first, second)
                     self.digit_seeds = seeds
                     self.dispatch_head = head
+                    self.pools = tuple(
+                        array
+                        for array in units
+                        if array not in (0, self.weight, first, second)
+                    )[:4]
                     return
         raise AssertionError(
             "no coprime print pair"
@@ -133,7 +138,9 @@ class _Chain:
         state.acc = state.head + state.rest[0]
         return [*tokens, "DIGEST", "LEAPFROG"], hop
 
-    def level(self, state: _State, weight: int, pos: int) -> tuple[list[str], _State]:
+    def level(
+        self, state: _State, weight: int, pos: int, pool: int | None
+    ) -> tuple[list[str], _State]:
         # Greedy banking costs at most four tokens per 252 added. These
         # slopes also cover jump chunks; the constants cover head solves.
         mixed = self.io_modulus != self.modulus
@@ -159,8 +166,14 @@ class _Chain:
         tokens += jump
 
         arm = self.clear(one)
-        arm += self.route(one, self.weight)
-        arm += self.raise_to(one, one.rest[self.weight] + weight)
+        if pool is None:
+            arm += self.route(one, self.weight)
+            arm += self.raise_to(one, one.rest[self.weight] + weight)
+        else:
+            arm += self.route(one, pool)
+            one.rest[pool] -= weight
+            one.acc, one.ptr = weight, self.weight
+            arm += ["CONSUME", "SPRINT", *self.clear(one)]
         arm += self.route(one, 0)
         gap = cont - one.rest[0] - hop
         if gap < 0:  # pragma: no cover - arm region includes all head solves
@@ -172,6 +185,9 @@ class _Chain:
         arm += closing
         expected = zero.clone()
         expected.rest[self.weight] += weight
+        if pool is not None:
+            # Spent pools are never read again; the remaining live state merges.
+            expected.rest[pool] -= weight
         if one != expected:  # pragma: no cover - exact merge invariant
             raise AssertionError("branch states did not merge")
         if len(tokens) > prefix_size or len(arm) > arm_size:  # pragma: no cover
@@ -180,7 +196,29 @@ class _Chain:
         tokens += arm + ["SEED"] * (arm_size - len(arm))
         return tokens, zero
 
-    def emit(self, inputs: int, base: int) -> list[str]:
+    def plan(self, inputs: int) -> tuple[list[tuple[int, int | None]], int, int]:
+        free = min(inputs, len(self.pools) + 1)
+        fixed = inputs - free
+        stride = lcm(self.io_modulus, 8)
+        weights = [stride * (1 << (fixed - bit - 1)) for bit in range(fixed)]
+        weights += [8 * (1 << bit) for bit in range(free)]
+        pools: list[int | None] = [None] * (fixed + 1) + list(self.pools[: free - 1])
+        return list(zip(weights, pools, strict=True)), free, stride
+
+    def plant_pool(self, state: _State, weight: int, pool: int) -> list[str]:
+        # CONSUME removes index weight+1; the hop stays at index weight
+        # for SPRINT. The array has 2*weight+3 cells including its head.
+        tokens = self.route(state, pool)
+        for cell in range(2 * weight + 2):
+            if cell == weight - 1:
+                tokens += self.append(state, (self.weight - pool) % 23)
+            elif cell == weight:
+                tokens += self.append(state, weight)
+            else:
+                tokens += self.clear(state)
+        return tokens + self.route(state, 0)
+
+    def emit(self, plan: list[tuple[int, int | None]], base: int) -> list[str]:
         state = _State()
         tokens = []
         for digit, array in enumerate(self.prints):
@@ -188,12 +226,14 @@ class _Chain:
             tokens += self.append(state, 48 + digit)
             tokens += self.clear(state)
             tokens += self.route(state, 0)
+        for weight, pool in plan:
+            if pool is not None:
+                tokens += self.plant_pool(state, weight, pool)
         tokens += self.route(state, self.weight)
         tokens += self.raise_to(state, base)
         tokens += self.route(state, 0)
-        for bit in range(inputs):
-            weight = self.io_modulus * (1 << (inputs - bit - 1))
-            level, state = self.level(state, weight, len(tokens))
+        for weight, pool in plan:
+            level, state = self.level(state, weight, len(tokens), pool)
             tokens += level
         tokens += self.route(state, self.weight)
         count = (self.dispatch_head - self.head(state)) * pow(
@@ -204,30 +244,37 @@ class _Chain:
         return tokens + ["SEED"] * max(0, base - len(tokens))
 
     def build(self, table: str, inputs: int) -> str:
+        plan, free, stride = self.plan(inputs)
         base = 0
         for _ in range(16):
-            tokens = self.emit(inputs, base)
+            tokens = self.emit(plan, base)
             if len(tokens) == base:
                 break
             base = len(tokens)
         else:  # pragma: no cover - base padding exceeds the emission slope
             raise AssertionError("leaf base did not settle")
-        for digit in table:
-            leaf = [
-                "EXCRETE",
-                *["SEED"] * (int(digit) * self.digit_seeds),
-                "SPRINT",
-                "CONSUME",
-                "PRONOUNCE",
-                "EXCRETE",
-                "LEAPFROG",
-            ]
-            tokens += leaf + ["SEED"] * (self.io_modulus - len(leaf))
+        # Small pooled weights use eight-token slots. Prefix blocks start
+        # on the full I/O period so later head solves ignore banked prefixes.
+        for group in range(1 << (inputs - free)):
+            tokens += ["SEED"] * (base + group * stride - len(tokens))
+            for offset in range(1 << free):
+                suffix = int(f"{offset:0{free}b}"[::-1], 2)
+                digit = table[(group << free) | suffix]
+                leaf = [
+                    "EXCRETE",
+                    *["SEED"] * (int(digit) * self.digit_seeds),
+                    "SPRINT",
+                    "CONSUME",
+                    "PRONOUNCE",
+                    "EXCRETE",
+                    "LEAPFROG",
+                ]
+                tokens += leaf + ["SEED"] * (8 - len(leaf))
         return " ".join(tokens)
 
 
 def compact_chain(
     table: str, inputs: int, *, modulus: int, io_modulus: int | None = None
 ) -> str:
-    """Emit a coprime-step chain whose weights vanish under I/O reduction."""
+    """Emit pooled-weight chains with eight-token leaves in I/O-aligned blocks."""
     return _Chain(modulus, io_modulus=io_modulus).build(table, inputs)
