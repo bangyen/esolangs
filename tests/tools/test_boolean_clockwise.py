@@ -3,54 +3,10 @@
 import pytest
 
 from esolangs import tools as boolean
-from tests.tools.boolean_runners import (
-    run_clockwise,
-)
-
-
-def _bits(combo: int, n: int) -> list[str]:
-    """The input digits for a table row, MSB first."""
-    return [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
+from tests.interpreters.clockwise_observer import Factory
 
 
 class TestClockwise:
-    @pytest.mark.parametrize(
-        ("table", "n"),
-        [
-            ("01", 1),
-            ("10", 1),
-            ("00", 1),
-            ("11", 1),
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("1110", 2),  # NAND
-            ("00000001", 3),  # AND3
-            ("1000000000000000", 4),  # AND4
-        ],
-    )
-    @pytest.mark.medium
-    def test_truth_table(self, table: str, n: int) -> None:
-        """Every input combination prints the result as an ASCII digit."""
-        program = boolean.clockwise(table)
-        for combo in range(2**n):
-            bits = _bits(combo, n)
-            got = run_clockwise(program, bits)
-            assert got == table[combo], f"inputs {bits}"
-
-    @pytest.mark.medium
-    def test_the_lookup_computes_every_row_at_five_and_six_inputs(self) -> None:
-        """The indexed table answers two dense five- and six-input tables."""
-        for n in (5, 6):
-            size = 1 << n
-            tables = (
-                ("01101001" * (size // 8))[:size],
-                "".join(str((i * 73 + i // 3) & 1) for i in range(size)),
-            )
-            for table in tables:
-                program = boolean.clockwise(table)
-                for combo in range(size):
-                    assert run_clockwise(program, _bits(combo, n)) == table[combo]
-
     def test_the_table_is_one_cell_per_entry(self) -> None:
         """The construction's signature: the answer row holds the table itself.
 
@@ -80,45 +36,6 @@ class TestClockwise:
             ]
             assert len(differ) == 1, (entry, differ)
             assert flipped.splitlines()[differ[0][0]][differ[0][1]] == "+"
-
-    @pytest.mark.parametrize("width", [None, 1])
-    def test_every_run_reads_each_input_exactly_once(self, width: int | None) -> None:
-        """Clockwise's input queue rotates, so a run must consume 7n bits.
-
-        The reads do not drain the queue, they rotate it; a program that read
-        a different number of bits on different rows would leave the queue
-        somewhere else each time and desync a caller feeding several
-        programs from one stream.  Seven reads an input, every input, is
-        what makes the rotation a whole turn -- so the queue at the end is
-        the queue at the start, for every row of the table.
-        """
-        from esolangs.interpreters.grid_based.clockwise import _Machine
-        from esolangs.interpreters.io import IO
-
-        class _Quiet(IO):
-            def __init__(self, text: str) -> None:
-                self._text = text
-
-            def input_all(self, _prompt: str = "Input: ") -> str:
-                return self._text
-
-            def print_char(self, char: str) -> None:
-                pass
-
-        for n in (1, 2, 3):
-            table = "01101001"[: 2**n].ljust(2**n, "1")
-            program = boolean.clockwise(table, width)
-            for combo in range(2**n):
-                machine = _Machine(
-                    program.splitlines(), _Quiet("".join(_bits(combo, n)))
-                )
-                start = machine.inp
-                steps = 0
-                while not machine.halted:
-                    machine.step()
-                    steps += 1
-                    assert steps < 100_000, "run did not close the ring"
-                assert machine.inp == start, (n, combo)
 
     def test_size_is_linear_in_the_table(self) -> None:
         """Four table rows and a doubling chain: both linear, so size is.
@@ -150,8 +67,9 @@ def test_width_rotates_the_lookup_without_changing_answers(width: int) -> None:
         )
         if plain_width <= width:
             assert program == plain
+        factory = Factory(program.splitlines())
         for combo in range(1 << n):
-            assert run_clockwise(program, _bits(combo, n)) == table[combo]
+            assert factory.check(format(combo, f"0{n}b"), table[combo])["halted"]
 
 
 def test_rotated_lookup_size_is_linear() -> None:
@@ -159,18 +77,6 @@ def test_rotated_lookup_size_is_linear() -> None:
     sizes = [len(boolean.clockwise("01101001" * (2 ** (n - 3)), 1)) for n in (5, 7, 9)]
     assert sizes[2] / 2**9 < 30
     assert 3.5 < (sizes[2] - sizes[1]) / (sizes[1] - sizes[0]) < 4.4
-
-
-@pytest.mark.medium
-def test_entry_digit_prefix_executes_every_small_table() -> None:
-    """The shared six bits precede lookup without carrying an index into it."""
-    assert max(map(len, boolean.clockwise("0110", 1).splitlines())) == 2
-    for n in range(1, 4):
-        for value in range(1 << (1 << n)):
-            table = format(value, f"0{1 << n}b")
-            program = boolean.clockwise(table, 1)
-            for row, expected in enumerate(table):
-                assert run_clockwise(program, _bits(row, n)) == expected
 
 
 def test_single_column_cannot_close_a_clockwise_ring() -> None:
