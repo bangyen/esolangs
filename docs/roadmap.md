@@ -5,14 +5,7 @@ and proved limits; completed work is recorded in its commit.
 
 ## Engineering priorities
 
-1. **Portable CLI regression coverage.** Exercise isolated deadlines and output
-   limits in the Windows distribution job. Done when both failure paths retain
-   partial output and their documented exit codes. Budget: existing CI job;
-   one short subprocess per case, no search.
-2. **Proof evidence references.** Add precise proof anchors or test node IDs to
-   `proofs/status.json`, then validate their targets. Done when every open audit
-   row has a checked evidence reference. Budget: file reads only; no generators.
-3. **Verification timing refresh.** Refresh slow-shard durations from the next
+1. **Verification timing refresh.** Refresh slow-shard durations from the next
    scheduled CI artifact. Done when the fixture matches that run and shard
    estimates are reported. Budget: reuse scheduled measurements; no extra suite.
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -39,6 +40,33 @@ def _text(row: dict[str, object], key: str) -> str:
     if not isinstance(value, str) or not value:
         raise ValueError(f"invalid proof status field: {key}")
     return value
+
+
+def _check_evidence(reference: str, *, precise: bool) -> None:
+    """Check a local Markdown heading; audit evidence must name one."""
+    relative, separator, anchor = reference.partition("#")
+    target = (ROOT / relative).resolve()
+    if not target.is_relative_to(ROOT.resolve()) or not target.is_file():
+        raise ValueError(f"missing evidence: {reference}")
+    if precise and (not separator or not anchor):
+        raise ValueError(f"invalid audit evidence: {reference}")
+    if separator:
+        anchors = set()
+        counts: dict[str, int] = {}
+        fenced = False
+        for line in target.read_text(encoding="utf-8").splitlines():
+            if line.startswith(("```", "~~~")):
+                fenced = not fenced
+            if fenced:
+                continue
+            heading = re.match(r"^#{1,6} +(.+?)(?: +#+)?$", line)
+            if heading:
+                slug = re.sub(r"[^\w\- ]", "", heading[1].lower()).replace(" ", "-")
+                count = counts.get(slug, 0)
+                counts[slug] = count + 1
+                anchors.add(f"{slug}-{count}" if count else slug)
+        if anchor not in anchors:
+            raise ValueError(f"missing evidence anchor: {reference}")
 
 
 def load(path: Path = MANIFEST) -> tuple[tuple[ProofRow, ...], tuple[ScalingRow, ...]]:
@@ -93,8 +121,7 @@ def load(path: Path = MANIFEST) -> tuple[tuple[ProofRow, ...], tuple[ScalingRow,
         if len(names) != len(set(names)):
             raise ValueError("duplicate proof status generator")
         for row in rows:
-            if not (ROOT / row.evidence.split("#", 1)[0]).is_file():
-                raise ValueError(f"missing evidence: {row.evidence}")
+            _check_evidence(row.evidence, precise=isinstance(row, ScalingRow))
     return tuple(proofs), tuple(audits)
 
 
