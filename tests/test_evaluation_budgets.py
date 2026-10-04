@@ -180,3 +180,30 @@ def test_cli_total_timeout_names_invalid_numeric_option(tmp_path, capsys):
 def test_isolated_evaluation_requires_at_least_one_finite_budget():
     with pytest.raises(esolangs.ArgumentError, match="finite timeout"):
         esolangs.evaluate("brainfuck", ",.", inputs=1, timeout=None, isolated=True)
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize(
+    ("options", "message", "exit_code"),
+    [
+        (["--inputs", "0"], "inputs must be an integer from 1 to 64", 2),
+        (["--inputs", "65"], "inputs must be an integer from 1 to 64", 2),
+        (["--inputs", "64"], "exceeding max_rows", 1),
+        (["--inputs", "1", "--max-rows", "1"], "exceeding max_rows", 1),
+        (["--inputs", "1", "--max-rows", "-1"], "non-negative integer", 2),
+        (["--table", "0110", "--max-rows", "3"], "exceeding max_rows", 1),
+    ],
+)
+def test_cli_rejects_invalid_budgets_before_loading(
+    options, message, exit_code, monkeypatch, capsys
+):
+    import esolangs.cli_round_trip as round_trip
+
+    def unreadable(*_args, **_kwargs):
+        pytest.fail("invalid evaluation must be rejected before reading source")
+
+    monkeypatch.setattr(round_trip, "_read_program", unreadable)
+    with pytest.raises(SystemExit) as caught:
+        call_main(["evaluate", "brainfuck", "never-read.txt", *options], capsys)
+    assert caught.value.code == exit_code
+    assert message in capsys.readouterr().err

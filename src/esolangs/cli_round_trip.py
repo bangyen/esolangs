@@ -16,7 +16,12 @@ from esolangs import (
     run,
 )
 from esolangs._answers import _validate_shape_for_evaluate
-from esolangs._evaluate import _DEFAULT_MAX_ROWS, _prepare, _remaining
+from esolangs._evaluate import (
+    _DEFAULT_MAX_ROWS,
+    _evaluation_rows,
+    _prepare,
+    _remaining,
+)
 from esolangs._program import Program
 from esolangs.cli_args import (
     _check_count,
@@ -105,6 +110,7 @@ def _evaluate(rest: list[str]) -> None:
     isolated = not hasattr(signal, "SIGALRM")
     deadline = None if total_timeout is None else monotonic() + total_timeout
     try:
+        _evaluation_rows(inputs, max_rows)
         program = _prepare(
             lambda: _read_program(path, timeout, language=language),
             deadline,

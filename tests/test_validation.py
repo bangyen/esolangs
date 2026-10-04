@@ -219,3 +219,13 @@ class TestNameResolutionIsTrulyCaseInsensitive:
         for name in esolangs.list_languages():
             assert esolangs.describe(name.upper())["name"] == name
             assert esolangs.describe(name.lower())["name"] == name
+
+
+def test_memory_address_at_the_cell_limit_is_refused():
+    from esolangs._validate import _MAX_CELLS, check_address
+    from esolangs.exceptions import InterpreterLimitError
+
+    assert check_address(_MAX_CELLS - 1, "S*bleq") == _MAX_CELLS - 1
+    for address in (_MAX_CELLS, _MAX_CELLS + 1):
+        with pytest.raises(InterpreterLimitError, match="cell limit"):
+            check_address(address, "S*bleq")

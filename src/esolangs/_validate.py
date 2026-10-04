@@ -157,7 +157,7 @@ def check_address(addr: int, language: str) -> int:
     """
     from esolangs.exceptions import InterpreterLimitError
 
-    if addr > _MAX_CELLS:
+    if addr >= _MAX_CELLS:
         raise InterpreterLimitError(
             f"{language} would have to grow its store to {addr + 1} cells, "
             f"past the {_MAX_CELLS}-cell limit this interpreter allocates",

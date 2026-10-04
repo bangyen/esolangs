@@ -94,38 +94,10 @@ def _prepare[T](call: Callable[[], T], deadline: float | None, *, isolated: bool
     return values[0]
 
 
-def iter_evaluate(
-    language: str,
-    program: ProgramSource,
-    timeout: float | _Default | None = _DEFAULT,
-    *,
-    inputs: int,
-    isolated: bool = False,
-    scale: int | None = None,
-    max_rows: int | None = _DEFAULT_MAX_ROWS,
-    total_timeout: float | None = None,
-) -> Iterator[str]:
-    """Yield answer bits in MSB-first row order without retaining the table.
-
-    Validation and source loading begin on first iteration. ``max_rows`` bounds
-    the full table (None opts out); ``total_timeout`` includes loading and pauses
-    between yields. Row timeouts default to 30 seconds, 5 for termination.
-    A timeout never proves divergence. Paths load once; templates fill per row.
-    """
-    started = monotonic()
-    check_timeout(total_timeout)
+def _evaluation_rows(inputs: int, max_rows: int | None) -> int:
+    """Validate an evaluation's input count and row budget before acquisition."""
     if max_rows is not None:
         check_whole(max_rows, "max_rows")
-    # Checked here, not only inside ``run``: the termination path drives the
-    # machine itself and never reaches ``run``, so a bound too small to
-    # service was refused for the languages that halt and silently read as
-    # "diverges" for the termination-answer ones -- the same argument
-    # answering a different table depending on which kind of language it was.
-    if not isinstance(timeout, _Default):
-        check_timeout(timeout)
-    facts = describe(language)
-    name = str(facts["name"])
-    check_scale_for(name, scale)
     if (
         isinstance(inputs, bool)
         or not isinstance(inputs, int)
@@ -146,6 +118,40 @@ def iter_evaluate(
             ),
             "raise max_rows deliberately or use fewer inputs",
         )
+    return rows
+
+
+def iter_evaluate(
+    language: str,
+    program: ProgramSource,
+    timeout: float | _Default | None = _DEFAULT,
+    *,
+    inputs: int,
+    isolated: bool = False,
+    scale: int | None = None,
+    max_rows: int | None = _DEFAULT_MAX_ROWS,
+    total_timeout: float | None = None,
+) -> Iterator[str]:
+    """Yield answer bits in MSB-first row order without retaining the table.
+
+    Validation and source loading begin on first iteration. ``max_rows`` bounds
+    the full table (None opts out); ``total_timeout`` includes loading and pauses
+    between yields. Row timeouts default to 30 seconds, 5 for termination.
+    A timeout never proves divergence. Paths load once; templates fill per row.
+    """
+    started = monotonic()
+    check_timeout(total_timeout)
+    # Checked here, not only inside ``run``: the termination path drives the
+    # machine itself and never reaches ``run``, so a bound too small to
+    # service was refused for the languages that halt and silently read as
+    # "diverges" for the termination-answer ones -- the same argument
+    # answering a different table depending on which kind of language it was.
+    if not isinstance(timeout, _Default):
+        check_timeout(timeout)
+    facts = describe(language)
+    name = str(facts["name"])
+    check_scale_for(name, scale)
+    rows = _evaluation_rows(inputs, max_rows)
     terminating = facts["answer_mode"] == "termination"
     bound: float | None
     if isinstance(timeout, _Default):
