@@ -196,14 +196,20 @@ class _Chain:
         tokens += arm + ["SEED"] * (arm_size - len(arm))
         return tokens, zero
 
-    def plan(self, inputs: int) -> tuple[list[tuple[int, int | None]], int, int]:
+    def plan(self, inputs: int) -> tuple[list[tuple[int, int | None]], int, int, int]:
         free = min(inputs, len(self.pools) + 1)
         fixed = inputs - free
-        stride = lcm(self.io_modulus, 8)
+        unit = 8
+        stride = lcm(self.io_modulus, unit)
+        if self.io_modulus == 255 and inputs > free:
+            unit = 6 + self.digit_seeds
+            free = min(free, (self.io_modulus // unit).bit_length() - 1)
+            fixed = inputs - free
+            stride = self.io_modulus
         weights = [stride * (1 << (fixed - bit - 1)) for bit in range(fixed)]
-        weights += [8 * (1 << bit) for bit in range(free)]
+        weights += [unit * (1 << bit) for bit in range(free)]
         pools: list[int | None] = [None] * (fixed + 1) + list(self.pools[: free - 1])
-        return list(zip(weights, pools, strict=True)), free, stride
+        return list(zip(weights, pools, strict=True)), free, stride, unit
 
     def plant_pool(self, state: _State, weight: int, pool: int) -> list[str]:
         # CONSUME removes index weight+1; the hop stays at index weight
@@ -244,7 +250,7 @@ class _Chain:
         return tokens + ["SEED"] * max(0, base - len(tokens))
 
     def build(self, table: str, inputs: int) -> str:
-        plan, free, stride = self.plan(inputs)
+        plan, free, stride, unit = self.plan(inputs)
         base = 0
         for _ in range(16):
             tokens = self.emit(plan, base)
@@ -253,8 +259,8 @@ class _Chain:
             base = len(tokens)
         else:  # pragma: no cover - base padding exceeds the emission slope
             raise AssertionError("leaf base did not settle")
-        # Small pooled weights use eight-token slots. Prefix blocks start
-        # on the full I/O period so later head solves ignore banked prefixes.
+        # Prefix blocks start on the I/O period; leaf offsets need no shared
+        # alignment because LEAPFROG addresses individual tokens.
         for group in range(1 << (inputs - free)):
             tokens += ["SEED"] * (base + group * stride - len(tokens))
             for offset in range(1 << free):
@@ -269,12 +275,12 @@ class _Chain:
                     "EXCRETE",
                     "LEAPFROG",
                 ]
-                tokens += leaf + ["SEED"] * (8 - len(leaf))
+                tokens += leaf + ["SEED"] * (unit - len(leaf))
         return " ".join(tokens)
 
 
 def compact_chain(
     table: str, inputs: int, *, modulus: int, io_modulus: int | None = None
 ) -> str:
-    """Emit pooled-weight chains with eight-token leaves in I/O-aligned blocks."""
+    """Emit pooled-weight chains with leaves in I/O-aligned blocks."""
     return _Chain(modulus, io_modulus=io_modulus).build(table, inputs)

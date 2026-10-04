@@ -43,7 +43,6 @@ tables through ``n == 12``.  All ``n`` inputs are read unconditionally.
 """
 
 from collections.abc import Sequence
-from math import lcm
 
 from esolangs._mammalian import DEFAULT_MODULI, MammalianModuli
 from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table
@@ -936,8 +935,8 @@ def slow_acv_mammalian(
     """Build a SLOW ACV MAMMALIAN program evaluating ``truth_table``.
 
     One read node per input (``ACCEPT``), one dispatch jump, one
-    eight-token leaf slot per entry: O(T) text. Modulo-255 I/O aligns
-    blocks of 32 leaves so solved weights vanish modulo 255.
+    leaf slot per entry: O(T) text. Above five inputs, modulo-255 I/O
+    packs 32 seven-token leaves into each 255-token block.
     Cell modulus 255 uses coprime-array chains above three inputs with
     I/O modulus 255, or above two with 256; smaller tables use a tree.
     """
@@ -960,8 +959,9 @@ def slow_acv_mammalian(
         return decision_tree(truth_table, n, io_modulus=moduli.io_modulus)
     unit = _LEAF_UNIT
     if moduli.io_modulus == 255 and n > _FREE:
+        unit = 7
         fixed = n - _FREE
-        stride = lcm(moduli.io_modulus, unit)
+        stride = moduli.io_modulus
         weights = [stride * (1 << (fixed - 1 - i)) for i in range(fixed)]
         weights += [unit * (1 << i) for i in range(_FREE)]
         pools: list[int | None] = [None] * (fixed + 1) + list(_POOLS)
@@ -972,7 +972,7 @@ def slow_acv_mammalian(
     base = 0
     for _ in range(12):
         tokens = _emit(weights, pools, base, io_modulus=moduli.io_modulus, unit=unit)
-        leaf_start = len(tokens) - unit * (sum(weights) // unit + 1)
+        leaf_start = len(tokens) - sum(weights) - unit
         if leaf_start == base:
             return " ".join(_with_leaves(tokens, truth_table, weights, unit=unit))
         base = max(leaf_start, base)
@@ -1008,7 +1008,7 @@ def _emit(
     ) % _ARRAYS != _PRINT[1]:  # pragma: no cover - _dispatch_head solves both
         raise AssertionError(f"head {st.hw} misses the print pair")
     tokens += ["SEED"] * max(0, base - len(tokens))
-    return tokens + ["SEED"] * (unit * (sum(weights) // unit + 1))
+    return tokens + ["SEED"] * (sum(weights) + unit)
 
 
 def _with_leaves(
@@ -1019,13 +1019,11 @@ def _with_leaves(
     unit: int = _LEAF_UNIT,
 ) -> list[str]:
     """Overwrite the padded tail with one leaf per row, at its own slot."""
-    slot_count = sum(weights) // unit + 1
-    out = tokens[: len(tokens) - unit * slot_count]
-    slots = [""] * slot_count
+    out = tokens.copy()
+    base = len(tokens) - sum(weights) - unit
     n = len(weights)
     for row, entry in enumerate(truth_table):
         banked = sum(w for i, w in enumerate(weights) if (row >> (n - 1 - i)) & 1)
-        slots[banked // unit] = entry
-    for entry in slots:
-        out += _leaf(int(entry), unit=unit) if entry else ["SEED"] * unit
+        start = base + banked
+        out[start : start + unit] = _leaf(int(entry), unit=unit)
     return out
