@@ -510,7 +510,16 @@ class TestDescribeHasANameableType:
                     assert all(isinstance(v, dict) for v in value.values()), (name, key)
                 elif expected == int | None:
                     assert value is None or type(value) is int, (name, key)
-                else:  # the two that may be None
+                elif key == "proof_status":
+                    assert value is None or isinstance(value, dict), (name, key)
+                    if value is not None:
+                        declared = next(
+                            kind
+                            for kind in typing.get_args(expected)
+                            if typing.is_typeddict(kind)
+                        )
+                        assert set(value) == set(declared.__annotations__), (name, key)
+                else:  # the two strings that may be None
                     assert value is None or isinstance(value, str), (name, key)
 
     def test_the_four_machine_traits_are_still_carried(self) -> None:

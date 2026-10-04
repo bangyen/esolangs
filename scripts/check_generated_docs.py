@@ -9,6 +9,7 @@ from esolangs.tools import _generate_docs
 
 ROOT = Path(__file__).parents[1]
 GENERATED = (
+    "src/esolangs/proof_status.json",
     "README.md",
     "docs/proofs/index.md",
     "docs/roadmap.md",

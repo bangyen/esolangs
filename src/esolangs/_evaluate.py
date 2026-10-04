@@ -132,6 +132,7 @@ def iter_evaluate(
     scale: int | None = None,
     max_rows: int | None = _DEFAULT_MAX_ROWS,
     max_output: int | None = None,
+    max_memory: int | None = None,
     total_timeout: float | None = None,
     settings: DialectSettings | None = None,
 ) -> Iterator[str]:
@@ -142,9 +143,13 @@ def iter_evaluate(
     between yields. Row timeouts default to 30 seconds, 5 for termination.
     A timeout never proves divergence. Paths load once; templates fill per row.
     ``max_output`` caps each isolated row in Unicode characters.
+    ``max_memory`` caps Linux worker virtual address space in bytes.
     Retained dialect choices apply to filling and execution; explicit ``settings``
     overrides individual choices.
     """
+    from esolangs._isolated import check_memory
+
+    check_memory(max_memory, isolated=isolated)
     settings = effective_settings(language, program, settings)
     dialect_options(language, settings)
     if max_output is not None:
@@ -233,6 +238,10 @@ def iter_evaluate(
                         termination_runner = partial(
                             termination_runner, max_output=max_output
                         )
+                    if max_memory is not None:
+                        termination_runner = partial(
+                            termination_runner, max_memory=max_memory
+                        )
                     answer = termination_runner(
                         name,
                         source,
@@ -256,6 +265,8 @@ def iter_evaluate(
                     runner = partial(runner, scale=scale)
                 if max_output is not None:
                     runner = partial(runner, max_output=max_output)
+                if max_memory is not None:
+                    runner = partial(runner, max_memory=max_memory)
                 if isolated:
                     output = runner(
                         name, source, stdin, cast("float", row_bound), isolated=True
@@ -287,6 +298,7 @@ def evaluate(
     scale: int | None = None,
     max_rows: int | None = _DEFAULT_MAX_ROWS,
     max_output: int | None = None,
+    max_memory: int | None = None,
     total_timeout: float | None = None,
     settings: DialectSettings | None = None,
 ) -> str:
@@ -296,6 +308,7 @@ def evaluate(
     Row timeouts default to 30 seconds (5 for termination). ``max_rows`` defaults
     to 1,048,576; None opts out. ``total_timeout`` optionally bounds the whole run.
     ``max_output`` caps each isolated row in Unicode characters.
+    ``max_memory`` caps Linux worker virtual address space in bytes.
     """
     answers = []
     try:
@@ -308,6 +321,7 @@ def evaluate(
             scale=scale,
             max_rows=max_rows,
             max_output=max_output,
+            max_memory=max_memory,
             total_timeout=total_timeout,
             settings=settings,
         ):

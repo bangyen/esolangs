@@ -35,7 +35,7 @@ from tests.tools.test_boolean_contract import (
 #: Listed so a typo cannot quietly reclassify a row: anything unrecognized
 #: reads as "not settled", which would silently *exempt* a generator from the
 #: bound.  The totality column carries the ledger's own labels instead.
-_VERDICTS = SETTLED | {"Open", "Language lower bound"}
+_VERDICTS = SETTLED | {"Measured", "Open", "Language lower bound"}
 _TOTALITY_VERDICTS = {TOTAL, "Cap", "Exception"}
 
 
@@ -194,3 +194,13 @@ def test_the_contract_covers_generators_the_original_queue_missed() -> None:
     queue = _LINEAR_SCALING | _LANGUAGE_SUPERLINEAR_SCALING | _OPEN_SCALING
     assert len(queue) == 26
     assert len(BY_BOOLEAN) - len(queue) == 51
+
+
+def test_measured_vandevelo_remains_held_to_both_regressions(audit: Audit) -> None:
+    row = audit.by_name()["Vandevelo"]
+    assert row.output_size == "Measured"
+    assert row.execution_time == "Measured"
+    assert not row.size_is_settled
+    assert row.is_open
+    assert "Vandevelo" not in exempt_generators()
+    assert "Vandevelo" not in execution_exempt()

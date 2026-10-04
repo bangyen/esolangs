@@ -22,8 +22,8 @@ commands:
                               print how that language reads its input and
                               where it puts the answer (--spec prints the
                               interpreter's own description of it)
-  run [--timeout S] [--isolated] [--max-output N] [--judge] [--table T]
-      [--seed N] [--scale N] [--settings JSON] <language> <file>
+  run [--timeout S] [--isolated] [--max-output N] [--max-memory BYTES]
+      [--judge] [--table T] [--seed N] [--scale N] [--settings JSON] <language> <file>
                               run a program through its interpreter
                               (--judge prints the answer bit instead)
   suggest <language> <program-file>
@@ -36,8 +36,9 @@ commands:
   answer [--timeout S] [--settings JSON] <language> <truth-table> <bits>
                               generate, feed those bits, run, and print the
                               one answer bit
-  evaluate [--timeout S] [--total-timeout S] [--max-rows N] [--max-output N]
-           [--inputs N | --table T] [--settings JSON] <language> <program-file>
+  evaluate [--timeout S] [--total-timeout S] [--max-rows N]
+           [--max-output N] [--max-memory BYTES] [--inputs N | --table T]
+           [--settings JSON] <language> <program-file>
                               run every input row and print the observed
                               table; --table also checks the expected result
   debug [--steps N] [--timeout S] [--watch-cell I] [--stdin S] [--tui]
@@ -170,7 +171,8 @@ examples:
   esolangs generate --bits 10 Minifuck 0110
 """,
     "run": """usage: esolangs run [--timeout S] [--isolated] [--max-output N]
-                    [--judge] [--table T] [--seed N] [--scale N] [--settings JSON]
+                    [--max-memory BYTES] [--judge] [--table T] [--seed N]
+                    [--scale N] [--settings JSON]
                     <language> <program-file>
 
 Run a program through its interpreter and print what it writes.
@@ -194,6 +196,7 @@ out, 130 interrupted.
 options:
   --isolated         run in a subprocess; portable deadline, default 30 seconds.
   --max-output N     cap isolated output in Unicode characters (including zero).
+  --max-memory BYTES cap Linux worker address space; requires --isolated.
   --timeout SECONDS  stop the run after this long rather than hanging.
                      Unbounded by default.  Four languages answer 1 by
                      *not* terminating -- 123, ArrowQueue, Crement and
@@ -246,8 +249,8 @@ options:
                      never stops, and to none for the rest.
 """,
     "evaluate": """usage: esolangs evaluate [--timeout S] [--total-timeout S]
-                          [--max-rows N] [--max-output N] [--inputs N | --table T]
-                          [--settings JSON]
+                          [--max-rows N] [--max-output N] [--max-memory BYTES]
+                          [--inputs N | --table T] [--settings JSON]
                           <language> <program-file>
 
 Run the supplied program on every Boolean input row and print its observed
@@ -255,6 +258,7 @@ truth table. No program is generated. Text, PNG sources, and parameterized
 templates are supported; templates are filled separately for every row.
 
 options:
+  --max-memory BYTES cap Linux worker address space per row; implies isolation.
   --inputs N        enumerate N inputs, from 1 to 64, MSB first.
   --table TABLE     infer the input count and compare the observed table with
                      TABLE. Exits 1 on mismatch and names the differing rows.

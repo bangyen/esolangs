@@ -312,7 +312,7 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | Underload | parameterized tree | equal-width input programs leave one selector apiece; each node stores both branches as strings and the selector evaluates exactly one, while a constant leaf discards the unused selectors; a repeated subtree is pushed once and carried above the next selector, and the plain tree stays a candidate | linear: 7n input characters plus at most 11T - 4 tree characters |
 | Unlambda | tree | each half is a `d` promise, forced by the `?` test that selects it, since an argument spelled inline would be evaluated before the application; the shipped node instead returns `s` over its selected promises, so a repeated subtree bound once as a promise reaches every half below, and the plain tree stays a candidate | linear: 29 characters an internal node, four a leaf |
 | Unsquare | linear lookup | the table is one `O`/`I` push per row, reversed, and each read pops its bit's weight in cells off the top of it | linear: `2**n` cells and `2**n - 1` pops, two bytes a row |
-| Vandevelo | minterms | an affine-cube peel emits one guard line per coset of an affine cover of the 1-set | linear: amortised peel; sqrt(log T) dual-basis core; proof fallback n 2^n |
+| Vandevelo | minterms | an affine-cube peel emits one guard line per coset of an affine cover of the 1-set | open: O(T) upkeep lines, O(T log n) identifier text; exact fallback and dual-basis aggregate work unproved |
 
 <!-- PROOF-STATUS:END -->
 
@@ -435,3 +435,31 @@ seeded tables per arity four through six also execute every row. A separate
 200-table five-input sample gives `573675 -> 360230` characters and
 `1501446 -> 280080` lines. Full-store boundary checks confirm erasure before
 the next read. The controls are in `tests/proofs/test_research_tracks.py`.
+
+
+## Vandevelo identifier and fallback audit
+
+The construction bounds register upkeep by `O(T)` lines, but identifiers
+cost `O(log n)` characters per occurrence. Exact quotient fallback calls
+and dual-basis core work still lack aggregate amortization bounds. The audit
+marks size and command count `Measured`: both retain their existing
+regression gates without claiming an asymptotic proof.
+
+`scripts/profile_vandevelo.py` counts identifier characters, exact fallback
+calls, projection element and bit visits, and transform element visits.
+A forced six-input span-invariant control invokes the fallback once:
+12 projection elements, 12 projection bit visits and 128 transform element
+visits. Its selected direction has exactly eight pairs, checked directly.
+The default corpus executes 66 tables through six inputs and 2,772 rows
+across original and renamed programs. Nine fallback calls visit 64 points,
+37 projection bits and 220 transform elements.
+
+The tested naming rule assigns the shortest existing names to the most
+frequent identifiers, replacing tokens simultaneously. On `Random(0)`'s
+12-input dense table, source shrinks from 32,269 to 31,942 characters
+(1.01%); its 4,414 identifier occurrences occupy 5,273 characters before
+renaming. Sixteen evenly spaced input rows, including both endpoints,
+execute under both spellings and match the table. Reproduce with
+`--min-inputs 12 --max-inputs 12 --random-cases 1 --sample-rows 16`.
+The rule misses the 5% shipping threshold and retains growing identifier
+lengths, so it remains an experiment. Neither gap is closed by this audit.

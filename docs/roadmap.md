@@ -13,7 +13,7 @@ cheapest positive control before a negative sweep, and stop at the ceiling.
 | Priority | Track | First experiment | CPU ceiling | Stop condition |
 | --- | --- | --- | --- | --- |
 | 1 | Vandevelo | Instrument identifier characters, projection visits and fallback calls on the existing corpus; test one uniform naming or amortization rule. | 10 min | Stop after one rule if output differs or the extra factor remains unbounded. |
-| 2 | Linear generators | Audit the four status rows against their executed controls; select one unproved axis for a loop-less construction. | 10 min | Stop when the control fails, the ceiling is reached, or no named construction emerges. |
+| 2 | Linear generators | Audit the status rows against their executed controls; select one unproved axis for a loop-less construction. | 10 min | Stop when the control fails, the ceiling is reached, or no named construction emerges. |
 | 3 | FRACTRAN order encoding | Build one repeated-consultation router; execute small order families with the existing XOR/XNOR control. | 15 min | Stop if the router cannot represent the control or needs super-linear text. |
 | 4 | Brainfuck behaviour count | Extend the certified automaton with one sound unrestricted body class. | 15 min | Stop if cell preservation fails or certified counting exceeds the ceiling. |
 | 5 | Brainfuck bounded inputs | Price one source-length-proportional read-budget counting model. | 10 min | Stop if no finite certified model follows; do not launch enumeration. |
@@ -58,6 +58,7 @@ measurement alone does not close a proof obligation.
   size by same-parity successive differences through n=12. Timings use the
   top five arities, best of three, and exclude loading; runs under 10 ms do not
   establish an exponent. Closure requires a language-wide lower bound.
+  `Measured` retains the empirical regression gate without asserting a proof.
   Edit `proofs/status.json` and run `python scripts/generate.py docs` to update
   both status tables. Current status:
 
@@ -69,6 +70,7 @@ measurement alone does not close a proof obligation.
   | Factor | Total | Language lower bound | Language lower bound | Linear |
   | Malbolge | Exception | Open | Linear | Linear |
   | Polynomial | Cap | Language lower bound | Language lower bound | Linear |
+  | Vandevelo | Total | Open | Measured | Measured |
 
   <!-- SCALING-STATUS:END -->
 
@@ -162,7 +164,10 @@ proof and remove the completed item.
   280 generated programs retain identical source and all 2,536 rows execute.
   Affine-coset complements use direct violation guards: the n=12 one-zero
   table drops 40,938,391 candidate visits and shrinks from 333 to 277 characters.
-  Next: remove the identifier factor, amortize projection and fallback calls,
+  The occurrence-weighted naming audit shrinks a seeded n=12 source by 1.01%,
+  below the shipping threshold; `scripts/profile_vandevelo.py` records its
+  executed controls. Next: remove the identifier factor, amortize projection
+  and fallback calls,
   and bound the dual-basis core's aggregate work. Neither remaining gap is a
   language-wide lower bound; measured scaling does not settle them.
 

@@ -652,6 +652,7 @@ def run(
     max_steps: int | None = None,
     scale: int | None = None,
     max_output: int | None = None,
+    max_memory: int | None = None,
     settings: DialectSettings | None = None,
 ) -> str:
     """Execute ``program`` and return its output.
@@ -676,6 +677,8 @@ def run(
     Isolation and step bounds cannot be combined; stepping does not support seed.
     ``max_output`` bounds isolated output in Unicode characters, retaining the
     prefix and raising ``InterpreterLimitError`` when exceeded; zero is allowed.
+    ``max_memory`` caps Linux worker virtual address space in bytes, including
+    Python overhead; other platforms refuse it. Loading in the parent is not capped.
 
     ``stdin`` is consumed verbatim using the language's input unit, without
     Boolean validation. Reading past
@@ -698,6 +701,9 @@ def run(
     if isinstance(timeout, _Default):
         timeout = 30.0 if isolated else None
     check_timeout(timeout)
+    from esolangs._isolated import check_memory
+
+    check_memory(max_memory, isolated=isolated)
     if max_output is not None:
         from esolangs._validate import check_whole
 
@@ -718,7 +724,7 @@ def run(
                 ArgumentError("isolated execution requires a finite timeout"),
                 ("set a positive finite timeout, for example timeout=5.0"),
             )
-        if max_output is not None:
+        if max_output is not None or max_memory is not None:
             return _run_isolated(
                 language,
                 program,
@@ -727,6 +733,7 @@ def run(
                 seed=seed,
                 scale=scale,
                 max_output=max_output,
+                max_memory=max_memory,
                 settings=settings,
             )
         if settings is not None:
