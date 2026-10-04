@@ -928,3 +928,28 @@ def test_missing_head_raise_uses_reachable_nonfinal_chunks(
         assert cells[0] == (array + 1) * state.head % 255
     if rest % 256 == 0:
         assert machine.lst[0][chunks + 2] == 254
+
+
+@pytest.mark.parametrize("modulus", [255, 256])
+def test_read_calibration_reaches_earliest_safe_head(modulus: int) -> None:
+    from esolangs.tools._mammalian_compact import _read_seeds
+
+    for total in range(64):
+        for head in range(modulus):
+            count = _read_seeds(head, total, modulus)
+            expected = next(
+                step
+                for step in range(modulus)
+                if (head + step) % modulus <= modulus - 17
+                and (total + (head + step) % modulus - 16) % 64 in range(0, 15, 2)
+            )
+            assert count == expected
+            calibrated = (head + count) % modulus
+            for carry in (0, 65_536):
+                first = total + carry + calibrated
+                second = first + 16
+                assert first ^ second == 48
+                for bit in (0, 1):
+                    assert (48 ^ (second + bit)) - (calibrated + 16) == (
+                        total + carry - 16 + bit
+                    )

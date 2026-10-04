@@ -33,6 +33,17 @@ def _routing_seeds(head: int, step: int, want: int, modulus: int) -> int:
     raise AssertionError("no routing head")  # pragma: no cover - coprime steps
 
 
+def _read_seeds(head: int, total: int, modulus: int) -> int:
+    """Reach the earliest nonwrapping head whose two DIGEST sums XOR to 48."""
+    offset = (total + head - 16) % 64
+    count = offset % 2 if offset <= 14 else 64 - offset
+    if head + count > modulus - 17:
+        offset = (total - 16) % 64
+        first = offset % 2 if offset <= 14 else 64 - offset
+        count = modulus - head + first
+    return count
+
+
 class _Chain:
     def __init__(self, modulus: int, *, io_modulus: int | None = None) -> None:
         moduli = MammalianModuli(modulus, modulus if io_modulus is None else io_modulus)
@@ -207,12 +218,15 @@ class _Chain:
         cont = landing + arm_size
         tokens = self.clear(state)
         tokens += self.raise_to(state, landing + 15)
-        tokens += self.seed(state, (-state.head) % self.modulus)
         start = state.rest[0]
-        offset = (start - 16) % 64
-        seeds = start % 2 if offset <= 14 else 64 - offset
-        first = start + seeds
+        if self.modulus < self.io_modulus:
+            seeds = _read_seeds(state.head, start, self.modulus)
+        else:
+            tokens += self.seed(state, (-state.head) % self.modulus)
+            offset = (start - 16) % 64
+            seeds = start % 2 if offset <= 14 else 64 - offset
         tokens += self.seed(state, seeds)
+        first = start + state.head
         tokens += ["DIGEST"]
         tokens += self.seed(state, 16)
         tokens += ["DIGEST", "ACCEPT", "DIGEST", "LEAPFROG"]
