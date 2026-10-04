@@ -17,6 +17,7 @@ from esolangs._drive import drive
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.source_hints import syntax_error
 
 #: One instant of a run: ``(ind, stk, lst)`` -- the code cursor, the data
 #: stack, and the loop stack.  A value, not a record: every transition below
@@ -167,17 +168,21 @@ class _Machine:
         if _needs_operand(char) and not stk:
             raise HaltError(
                 f"{char!r} at position {ind} needs a value on the stack and "
-                f"the stack is empty"
+                f"the stack is empty",
+                hint="push a value before reading or removing the stack top",
             )
         if char == "]" and not lst:
-            raise HaltError(f"']' at position {ind} closes a loop that never opened")
+            raise HaltError(
+                f"']' at position {ind} closes a loop that never opened",
+                hint="add the matching loop opener before this closing instruction",
+            )
         if char == "[" and not stk[-1] and self._jumps[ind] is None:
             # The original scanned the cursor to the end before it noticed
             # the bracket was unmatched, leaving the machine halted.  A
             # caller that catches the error still sees that, so the cursor
             # is moved here rather than left where the scan began.
             self.state = (self.size, stk, lst)
-            raise ValueError("unmatched '['")
+            raise syntax_error("unmatched '['", "close the loop with ]")
         byte = None
         if char == ".":
             self.io.print_char(chr(stk[-1]))

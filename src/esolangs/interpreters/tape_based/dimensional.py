@@ -39,6 +39,7 @@ from esolangs._drive import drive
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.brackets import unmatched
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.source_hints import syntax_error
 
 
 class _Level:
@@ -275,15 +276,24 @@ def _advance(
         return ((ind, comment, axis), _SetValue(port if port is not None else 0))
     if c == ":":
         if ind >= len(code):
-            raise ValueError("':' must be followed by a character")
+            raise syntax_error(
+                "':' must be followed by a character",
+                "follow : with one literal character, for example :A",
+            )
         return ((ind + 1, comment, axis), _SetValue(ord(code[ind])))
     if c == "=":
         if ind + 2 > len(code):
-            raise ValueError("'=' must be followed by two hex digits")
+            raise syntax_error(
+                "'=' must be followed by two hex digits",
+                "follow = with exactly two hexadecimal digits, for example =41",
+            )
         try:
             literal = int(code[ind : ind + 2], 16)
         except ValueError as exc:
-            raise ValueError(f"invalid hex literal {code[ind : ind + 2]!r}") from exc
+            raise syntax_error(
+                f"invalid hex literal {code[ind : ind + 2]!r}",
+                "use hexadecimal digits 0-9 or A-F after =, for example =41",
+            ) from exc
         return ((ind + 2, comment, axis), _SetValue(literal))
     if c == "$":
         wanted, ind = _number(code, ind, 2)

@@ -22,10 +22,13 @@ def _copy(plan: _Planner, start: int | None = None) -> _Planner:
         plan.d,
         dict(plan.mem),
         dict(plan.data),
+        accumulator=plan.accumulator,
     )
 
 
 def _emit(plan: _Planner, chunk: _Chunk, incoming: int | None = None) -> None:
+    if incoming is None:
+        incoming = plan.accumulator
     for index, (operation, target, value) in enumerate(chunk):
         if (
             index == 0
@@ -36,6 +39,8 @@ def _emit(plan: _Planner, chunk: _Chunk, incoming: int | None = None) -> None:
             continue
         plan.op(operation, target)
         plan.mem[target] = value
+        if operation in ("*", "p"):
+            plan.accumulator = value
 
 
 def place_chunks(

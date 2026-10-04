@@ -22,6 +22,7 @@ from functools import lru_cache
 from esolangs._drive import drive
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.source_hints import syntax_error
 
 #: Instruction decipherment: ``(cell - 33 + c) % 94`` indexes this.
 _XLAT1 = (
@@ -127,12 +128,19 @@ def _initial_memory(code: str) -> tuple[int, ...]:
         # decipherment cycles with the cell index, so the decode check below
         # rejects a long source before this can fire.
         if index >= _WORDS:  # pragma: no cover
-            raise ValueError("Malbolge program is longer than its 59049 cells")
+            raise syntax_error(
+                "Malbolge program is longer than its 59049 cells",
+                "keep the source within 59049 memory cells",
+            )
         decoded = _op(cell, index)
         if decoded is None or decoded not in "ji*p</vo":
-            raise ValueError(
+            raise syntax_error(
                 f"Malbolge source character {char!r} at cell {index} does not "
-                f"decipher to an instruction"
+                f"decipher to an instruction",
+                (
+                    "choose printable source characters whose "
+                    "position-dependent decoding is a Malbolge instruction"
+                ),
             )
         memory[index] = cell
         index += 1

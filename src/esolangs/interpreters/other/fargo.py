@@ -37,6 +37,7 @@ from esolangs._drive import drive
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.source_hints import syntax_error
 
 # The wiki renders the truth machine with zero-width spaces inside two of
 # its lines; they are invisible presentation, not syntax, so the tokenizer
@@ -333,12 +334,18 @@ class _Machine:
             value = bound
             if isinstance(value, _Func):
                 return value
-            raise HaltError(f"calling non-function argument {name!r}")
+            raise HaltError(
+                f"calling non-function argument {name!r}",
+                hint="pass a callable function argument before invoking it",
+            )
         if name in _BUILTINS:
             return _BUILTINS[name]
         if name in self.defs:
             return _Func(name, len(self.defs[name].params))
-        raise HaltError(f"calling undefined function {name!r}")
+        raise HaltError(
+            f"calling undefined function {name!r}",
+            hint="define the function before calling it; check its spelling",
+        )
 
     def _check_outer_call(self, definition: _Def) -> None:
         """Raise unless ``definition``'s code is exactly one outer call.
@@ -347,7 +354,10 @@ class _Machine:
         token.
         """
         if not definition.code:
-            raise ValueError(f"function {definition.name!r} has no outer call")
+            raise syntax_error(
+                f"function {definition.name!r} has no outer call",
+                "give the function body one complete prefix call",
+            )
         owed = 1
         for index, token in enumerate(definition.code):
             bare = _bare_name(token)
@@ -366,11 +376,15 @@ class _Machine:
                 arity = 0
             owed += arity - 1
             if owed == 0 and index != len(definition.code) - 1:
-                raise ValueError(
-                    f"function {definition.name!r} has more than one outer call"
+                raise syntax_error(
+                    f"function {definition.name!r} has more than one outer call",
+                    "nest calls as arguments of one outer prefix call",
                 )
         if owed != 0:
-            raise ValueError(f"function {definition.name!r} has no outer call")
+            raise syntax_error(
+                f"function {definition.name!r} has no outer call",
+                "supply every argument required by the outer prefix call",
+            )
 
     def step(self) -> None:
         """Execute one command, advancing the machine."""
@@ -473,7 +487,10 @@ class _Machine:
         :meth:`_check_outer_call` rejected every definition that could.
         """
         if frame.pending:
-            raise ValueError("call wants more args")
+            raise syntax_error(
+                "call wants more args",
+                "supply every argument required by the pending prefix call",
+            )
         self.frames.pop()
         if self.frames:
             self._supply(self.frames[-1], frame.result)
@@ -482,7 +499,10 @@ class _Machine:
         """Coerce ``value`` to an integer, refusing an array or function."""
         if isinstance(value, int):
             return value
-        raise HaltError("expected a number, got an array or function")
+        raise HaltError(
+            "expected a number, got an array or function",
+            hint="use a numeric value in this expression",
+        )
 
     def _builtin(
         self, frame: _Frame, fn: _Func, args: list[_Value]
@@ -519,14 +539,19 @@ class _Machine:
         """Coerce ``value`` to an array, refusing anything else."""
         if isinstance(value, tuple):
             return value
-        raise HaltError("expected an array")
+        raise HaltError(
+            "expected an array", hint="pass an array value to this operation"
+        )
 
     def _index(self, array: _Value, which: _Value) -> _Value:
         """Return the ``which``th element of ``array``."""
         items = self._array(array)
         pos = self._number(which)
         if not 0 <= pos < len(items):
-            raise HaltError(f"array index {pos} out of range")
+            raise HaltError(
+                f"array index {pos} out of range",
+                hint="keep the index within the array bounds",
+            )
         return items[pos]
 
     def _bit(self, which: _Value) -> int:
@@ -559,7 +584,8 @@ class _Machine:
             return body
         if body.arity:
             raise HaltError(
-                f"conditional body {body.name!r} takes {body.arity} argument(s)"
+                f"conditional body {body.name!r} takes {body.arity} argument(s)",
+                hint="pass the conditional body its declared number of arguments",
             )
         self._invoke(frame, body, [])
         # Either way the value is already accounted for: a user function's

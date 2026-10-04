@@ -416,27 +416,14 @@ def _self_check() -> list[tuple[str, float, float]]:
 
 
 def exempt_generators() -> dict[str, str]:
-    """Generators the documents already say are not settled as linear.
-
-    Read from both ledgers rather than listed here.  The roadmap's audit table
-    holds the open scaling rows; ``proofs/index.md`` marks the generators whose
-    construction runs into a resource ceiling (``cap``) or has no totality
-    argument at all (``exception``).  Closing a row in either document is a
-    one-line edit that immediately arms this contract against that generator.
-
-    Not read from the ledger's Scaling column: that column opens a row on
-    *time* as well as size (SLOW ACV MAMMALIAN's ballast loop), and this
-    contract measures size only, so the audit's size cell is the narrower
-    and correct source.  ``test_the_scaling_column_is_the_audit`` keeps the
-    column and the audit in step.
-    """
+    """Return manifest exemptions for open size claims and totality ceilings."""
     reasons = {}
     for row in load_ledger().rows:
         for label in ("cap", "exception"):
             if label in row.labels:
-                reasons[row.generator] = f"proofs/index.md {label} row"
+                reasons[row.generator] = f"proofs/status.json {label} row"
     for name in sorted(load_audit().unsettled):
-        reasons[name] = "roadmap scaling audit: open"
+        reasons[name] = "proofs/status.json scaling audit: open"
     return reasons
 
 

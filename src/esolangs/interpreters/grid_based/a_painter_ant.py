@@ -18,6 +18,7 @@ from typing import Literal
 
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.source_hints import syntax_error
 
 # ``(dx, dy)``; named so a heading stays distinct from its character.
 _Heading = Literal["n", "e", "s", "w"]
@@ -68,7 +69,10 @@ def _advance(state: _State, command: str) -> _Move:
     # Only a move if the lowercased character is a heading.
     heading = _HEADING.get(command.lower())
     if heading is None:  # pragma: no cover - _INSTRUCTIONS admits no other
-        raise ValueError(f"unknown command {command!r}")
+        raise syntax_error(
+            f"unknown command {command!r}",
+            "use only n/e/s/w or N/E/S/W to move, and p/P to paint",
+        )
     dx, dy = _MOVE[heading]
     if (_colour(grid, (x + dx, y + dy)) == 1) == command.isupper():
         return (x + dx, y + dy, ip, None)
@@ -107,7 +111,10 @@ class _Machine:
         self.prog = "".join(c for c in code if not c.isspace())
         for c in self.prog:
             if c not in _INSTRUCTIONS:
-                raise ValueError(f"unknown instruction {c!r}")
+                raise syntax_error(
+                    f"unknown instruction {c!r}",
+                    "use only n/e/s/w or N/E/S/W to move, and p/P to paint",
+                )
         self.grid: dict[tuple[int, int], int] = {}
         self.visited: set[tuple[int, int]] = {(0, 0)}
         self.x = self.y = 0

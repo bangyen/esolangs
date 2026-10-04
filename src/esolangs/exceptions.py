@@ -22,9 +22,11 @@ class HaltError(EsolangError):
     #: Message for a bare ``raise HaltError``.
     DEFAULT = "the interpreter halted on an operation with no defined result"
 
-    def __init__(self, *args: object) -> None:
-        """Fall back to :data:`DEFAULT` when raised with no message."""
+    def __init__(self, *args: object, hint: str | None = None) -> None:
+        """Keep the diagnostic and optionally attach an operation-specific hint."""
         super().__init__(*(args or (self.DEFAULT,)))
+        if hint is not None:
+            self.add_note(f"hint: {hint}")
 
 
 class ExecutionTimeoutError(HaltError, TimeoutError):
@@ -32,6 +34,13 @@ class ExecutionTimeoutError(HaltError, TimeoutError):
 
     Not a plain :class:`HaltError`: four languages answer by terminating.
     """
+
+    def __init__(self, *args: object) -> None:
+        """Keep the timeout diagnostic and suggest checking termination first."""
+        super().__init__(
+            *args,
+            hint="check loop termination and blocked input before increasing the bound",
+        )
 
 
 class UnknownLanguageError(EsolangError, ValueError):
@@ -71,6 +80,14 @@ class ArgumentError(EsolangError, ValueError):
 class MissingDependencyError(EsolangError, ImportError):
     """An optional dependency required by one language is not installed."""
 
+    def __init__(self, *args: object) -> None:
+        """Keep the dependency diagnostic and identify the installation environment."""
+        super().__init__(*args)
+        self.add_note(
+            "hint: install the named optional extra into the Python environment "
+            "running esolangs"
+        )
+
 
 class ProgramError(EsolangError, ValueError):
     """A program could not be loaded: it is malformed for its language."""
@@ -109,6 +126,11 @@ class InputExhaustedError(EsolangError, EOFError):
             f"program read past the end of input: {supplied} "
             f"{unit}{'' if supplied == 1 else 's'} supplied, "
             f"read {reads + 1}"
+        )
+        self.add_note(
+            f"hint: supply at least {reads + 1} input "
+            f"{unit}{'' if reads == 0 else 's'} "
+            "or stop the program from reading past the supplied input"
         )
         self.reads = reads
         self.supplied = supplied

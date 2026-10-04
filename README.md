@@ -7,12 +7,11 @@
 
 <!-- PACKAGE-COUNT:START -->
 
-Interpreters and Boolean generators for 78 esoteric languages: 76 text and 2 raster.
+Interpreters and Boolean generators for 81 esoteric languages: 79 text and 2 raster.
 
 <!-- PACKAGE-COUNT:END -->
 
-`generate` takes a truth table and returns a program computing it;
-`evaluate` runs a supplied program on every row and returns what it answers.
+`generate` builds a truth-table program; `evaluate` returns its observed table.
 
 Start with the [CLI](#command-line) or [Python API](#python-api).
 The [usage guide](https://github.com/bangyen/esolangs/blob/main/docs/usage.md)
@@ -48,15 +47,15 @@ program = esolangs.generate("Fargo", "10010110")
 esolangs.evaluate("Fargo", program, timeout=None, inputs=3)  # -> '10010110'
 ```
 
-`evaluate` returns the answers observed over every input row; compare the
-result with an expected table, or use CLI `evaluate --table TABLE`.
-Termination answers require a proved halt or cycle; reaching a timeout raises
+Compare the result with the expected table, or use CLI `evaluate --table TABLE`.
+Termination answers require a proved halt or cycle; a timeout raises
 `ExecutionTimeoutError`.
-The default row timeout requires a Unix main thread. `timeout=None` disables
-that bound and also works on Windows and worker threads.
+Use `isolated=True` for a bounded run on Windows or worker threads.
+The default in-process row timeout requires a Unix main thread;
+`timeout=None` disables that bound.
 
-Run each program with its intended language: a Suffolk program may run as
-brainfuck but produce the wrong answer. Input formats also vary; use
+Use the intended language: Suffolk source may run as brainfuck with a wrong
+answer. Use
 [`encode_inputs`](https://github.com/bangyen/esolangs/blob/main/docs/usage.md#feeding-a-program)
 to build stdin.
 
@@ -113,7 +112,7 @@ Familiar languages include [brainfuck](https://esolangs.org/wiki/brainfuck),
 <details>
 <!-- IMPLEMENTED:START -->
 
-<summary>Show all 78 languages</summary>
+<summary>Show all 81 languages</summary>
 
 ### Grid-based Languages
 
@@ -185,6 +184,7 @@ Languages that operate on a tape (similar to Turing machines).
 - [Smallfuck](https://esolangs.org/wiki/Smallfuck) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/smallfuck.py))
 - [Subleq](https://esolangs.org/wiki/Subleq) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/subleq.py))
 - [Suffolk](https://esolangs.org/wiki/Suffolk) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/suffolk.py))
+- [Unary](https://esolangs.org/wiki/Unary) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/unary.py)) *(interpreter-only)*
 - [bit~](https://esolangs.org/wiki/bit~) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/bit_tilde.py))
 - [brainfuck](https://esolangs.org/wiki/brainfuck) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/brainfuck.py))
 
@@ -197,6 +197,7 @@ Languages that use registers to store and manipulate data.
 - [Collatz Multiverse](https://esolangs.org/wiki/Collatz_Multiverse) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/register_based/collatz_multiverse.py))
 - [Deadfish](https://esolangs.org/wiki/Deadfish) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/register_based/deadfish.py)) *(interpreter-only)*
 - [Decleq](https://esolangs.org/wiki/Decleq) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/register_based/decleq.py))
+- [HQ9+](https://esolangs.org/wiki/HQ9+) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/register_based/hq9.py)) *(interpreter-only)*
 - [Minsky Swap](https://esolangs.org/wiki/Minsky_Swap) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/register_based/minsky_swap.py))
 - [Polynomial](https://esolangs.org/wiki/Polynomial) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/register_based/polynomial/__init__.py))
 - [Qoibl](https://esolangs.org/wiki/Qoibl) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/register_based/qoibl.py))
@@ -218,6 +219,7 @@ Languages that don't fit into the above categories.
 - [INTERCAL](https://esolangs.org/wiki/INTERCAL) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/intercal.py))
 - [Inject](https://esolangs.org/wiki/Inject) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/inject.py))
 - [Malbolge](https://esolangs.org/wiki/Malbolge) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/malbolge.py))
+- [Nope.](https://esolangs.org/wiki/Nope.) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/nope.py)) *(interpreter-only)*
 - [Packlang](https://esolangs.org/wiki/Packlang) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/packlang.py))
 - [Thue](https://esolangs.org/wiki/Thue) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/thue.py))
 - [Unlambda](https://esolangs.org/wiki/Unlambda) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/unlambda.py))
@@ -226,8 +228,7 @@ Languages that don't fit into the above categories.
 <!-- IMPLEMENTED:END -->
 </details>
 
-Line and Piet use the tape and stack interpreter families; their suites run
-with the rest by `just test`.
+`just test` includes Line and Piet's tape and stack interpreter suites.
 
 ## Generators
 

@@ -5,8 +5,10 @@ strings and functions, with an untyped variable map.  ``E``/``F``/``H``
 toggle string/int/function mode, accumulating characters into a value
 pushed when the mode ends.
 
-Repository deviation: loading removes LF before validation, modes and indexing.
-Spaces, tabs and CR remain malformed.
+Repository deviations: loading removes LF before validation, modes and indexing
+so line-wrapped generated programs run. Spaces, tabs and CR remain malformed.
+Integer conversion shifts between letters for existing programs and generators;
+the truth-machine body ``FAFY`` prints 1 rather than the prose rule's 10.
 
 Gaps decided: underflow, math or ``Y`` on a function, a negative ``N``
 integer (alphabet ``A``-``J``), a function as a variable name, an
@@ -46,6 +48,7 @@ from esolangs._drive import drive
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.source_hints import syntax_error
 
 _FUNC: Final = "func"
 
@@ -60,10 +63,10 @@ _Value = int | str | _Function
 
 
 def _int_from(buf: list[str]) -> int:
-    """Parse an intmode buffer: ``res = (res + digit) * 10`` per letter."""
+    """Parse an intmode buffer, shifting only between letters."""
     res = 0
     for c in buf:
-        res = (res + (ord(c) - 64 if c != "Z" else 0)) * 10
+        res = res * 10 + (ord(c) - 64 if c != "Z" else 0)
     return res
 
 
@@ -77,7 +80,7 @@ def _to_int(value: _Value) -> int:
     for c in value:
         if c == "F":
             break
-        res = (res + (ord(c) - 64 if c != "Z" else 0)) * 10
+        res = res * 10 + (ord(c) - 64 if c != "Z" else 0)
     return res
 
 
@@ -103,7 +106,9 @@ def _as_num(value: _Value) -> int:
         return value
     if isinstance(value, str):
         return ord((value or "\0")[0])
-    raise HaltError("math on a function is undefined")
+    raise HaltError(
+        "math on a function is undefined", hint="use numeric operands for arithmetic"
+    )
 
 
 def _truthy(value: _Value) -> bool:
@@ -156,7 +161,10 @@ def _pop(view: _StackView, pops: int) -> tuple[int, _Value]:
     Sound only because every command pops before it pushes.
     """
     if pops >= len(view):
-        raise HaltError("popped an empty stack")
+        raise HaltError(
+            "popped an empty stack",
+            hint="push a value before reading or removing the stack top",
+        )
     return pops + 1, view[-1 - pops]
 
 
@@ -235,7 +243,9 @@ def _advance(
         pops, a = _pop(view, pops)
         pops, b = _pop(view, pops)
         if _as_num(b) == 0:
-            raise HaltError("division by zero")
+            raise HaltError(
+                "division by zero", hint="ensure the divisor is nonzero before dividing"
+            )
         pushes = (_as_num(a) // _as_num(b),)
     elif c == "S":
         pops, b = _pop(view, pops)
@@ -245,14 +255,23 @@ def _advance(
         pops, name = _pop(view, pops)
         pops, value = _pop(view, pops)
         if isinstance(name, tuple):
-            raise HaltError("a function cannot name a variable")
+            raise HaltError(
+                "a function cannot name a variable",
+                hint="use a string or numeric name for the variable",
+            )
         variables = {**variables, name: value}
     elif c == "D":
         pops, name = _pop(view, pops)
         if isinstance(name, tuple):
-            raise HaltError("a function cannot name a variable")
+            raise HaltError(
+                "a function cannot name a variable",
+                hint="use a string or numeric name for the variable",
+            )
         if name not in variables:
-            raise HaltError(f"undeclared variable {name!r}")
+            raise HaltError(
+                f"undeclared variable {name!r}",
+                hint="declare the variable before reading it; check its spelling",
+            )
         pushes = (variables[name],)
     elif c in _OPENS:
         mode, buf = _OPENS[c], ()
@@ -260,7 +279,10 @@ def _advance(
         pops, value = _pop(view, pops)
         raw = value[1] if isinstance(value, tuple) and value[0] == _FUNC else value
         if not isinstance(raw, str):
-            raise HaltError("G needs a string or a function")
+            raise HaltError(
+                "G needs a string or a function",
+                hint="pass G a string or a function value",
+            )
         body = raw
     elif c == "I":
         pops, value = _pop(view, pops)
@@ -318,7 +340,10 @@ def _advance(
     elif c == "Y":
         pops, value = _pop(view, pops)
         if isinstance(value, tuple):
-            raise HaltError("Y cannot output a function")
+            raise HaltError(
+                "Y cannot output a function",
+                hint="use a whole-number character code between 0 and 1114111",
+            )
         output = value
     elif c == "Z":
         pops, value = _pop(view, pops)
@@ -332,7 +357,10 @@ def _advance(
     else:
         # a string read from input and executed via G/I may carry any
         # character; reject it like the top-level program validation would
-        raise ValueError(f"unhandled command {c!r}")
+        raise syntax_error(
+            f"unhandled command {c!r}",
+            "use uppercase Latin command letters A through Z",
+        )
 
     pc += 1
     if pending_at >= 0 and pc == pending_at + 2:
@@ -363,8 +391,9 @@ class _Machine:
         """Build a machine running ``code`` as its top-level frame."""
         code = code.replace("\n", "")
         if any(c not in "ABCDEFGHIJKLMNOPQRSTUVWXYZ" for c in code):
-            raise ValueError(
-                "Grapheme programs may only contain uppercase Latin letters"
+            raise syntax_error(
+                "Grapheme programs may only contain uppercase Latin letters",
+                "use uppercase Latin command letters A through Z",
             )
         self.stack: list[_Value] = []
         self.vars: _Vars = {}

@@ -1,7 +1,5 @@
 """Unit tests for the Unsquare interpreter."""
 
-import pytest
-
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.stack_based.unsquare import run
@@ -10,6 +8,7 @@ from tests.interpreters.contract import (
     InputCursorContract,
     StateViewContract,
 )
+from tests.raises import raises_message
 
 
 def run_program(code: str, stdin: str = "") -> str:
@@ -153,19 +152,19 @@ class TestUnsquare:
         elements, so it refuses a stack that is merely short rather than
         empty.
         """
-        with pytest.raises(HaltError, match=r"^empty stack$"):
+        with raises_message(HaltError, "empty stack"):
             run_program("A")
-        with pytest.raises(HaltError, match=r"^empty stack$"):
+        with raises_message(HaltError, "empty stack"):
             run_program("o")
-        with pytest.raises(HaltError, match=r"^swap needs two elements$"):
+        with raises_message(HaltError, "swap needs two elements"):
             run_program("S")
-        with pytest.raises(HaltError, match=r"^swap needs two elements$"):
+        with raises_message(HaltError, "swap needs two elements"):
             run_program("IS")
 
     def test_error_unmatched_brackets(self) -> None:
-        with pytest.raises(HaltError, match=r"^unmatched <$"):
+        with raises_message(HaltError, "unmatched <"):
             run_program("<")
-        with pytest.raises(HaltError, match=r"^unmatched >$"):
+        with raises_message(HaltError, "unmatched >"):
             run_program(">")
 
     def test_empty_program(self) -> None:
@@ -211,7 +210,7 @@ class TestStepMachine:
         from esolangs.interpreters.stack_based.unsquare import _Machine
 
         machine = _Machine(">", ScriptedIO())
-        with pytest.raises(HaltError, match=r"^unmatched >$"):
+        with raises_message(HaltError, "unmatched >"):
             machine.step()
         assert machine.halted
         assert machine.ind == 1

@@ -139,7 +139,7 @@ class TestErrorsAreCatchable:
             # is not the program.  Either way it is an EsolangError, which is
             # what this class is about.
             (lambda: esolangs.run("brainfuck", ",.", stdin=["0"]), ArgumentError),
-            (lambda: esolangs.run("Nope", "+"), UnknownLanguageError),
+            (lambda: esolangs.run("zzzz", "+"), UnknownLanguageError),
         ],
     )
     def test_it_derives_from_the_base(self, call: object, expected: type) -> None:

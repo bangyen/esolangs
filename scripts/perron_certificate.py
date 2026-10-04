@@ -1,8 +1,13 @@
-"""Check an exported DFA spectral bound with integer arithmetic only."""
+"""Check an exported DFA spectral bound and optional forbidden-factor grammar."""
 
 import argparse
 import json
+import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from grammar_certificate import check_grammar
 
 
 def check_certificate(
@@ -36,15 +41,22 @@ def main() -> None:
     """Validate JSON without importing the DFA builder or numerical solvers."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("certificate", type=Path)
+    parser.add_argument("--check-grammar", action="store_true")
     args = parser.parse_args()
     data = json.loads(args.certificate.read_text())
     try:
         check_certificate(
             data["rows"], data["vector"], tuple(data["bound"]), data["alphabet"]
         )
+        if args.check_grammar:
+            count = check_grammar(
+                data["rows"], data["alphabet"], data["factors"], data["regexes"]
+            )
     except (ValueError, KeyError, TypeError) as error:
         parser.exit(1, f"{error}\n")
     print(f"{len(data['rows'])} states: {data['bound'][0]}/{data['bound'][1]} verified")
+    if args.check_grammar:
+        print(f"forbidden-factor grammar verified across {count} reachable pairs")
 
 
 if __name__ == "__main__":

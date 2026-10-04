@@ -380,6 +380,9 @@ def update_readme() -> None:
 
 def main() -> int:
     """Write every generated documentation section."""
+    from esolangs.tools._proof_status import update_docs
+
+    update_docs()
     update_readme()
     print("updated the generated sections of README.md")
     update_usage()

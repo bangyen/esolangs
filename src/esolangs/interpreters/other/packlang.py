@@ -87,13 +87,21 @@ Further decisions for gaps the wiki leaves open:
   returns 0.
 """
 
-import re
 from collections.abc import Callable
 
 from esolangs._drive import drive
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.other._packlang_lex import _strip_comments, _tokenize
+from esolangs.interpreters.other._packlang_values import (
+    _get,
+    _int,
+    _node,
+    _set,
+    _truth,
+)
+from esolangs.interpreters.source_hints import keyword_hint, syntax_error
 
 # There is no recursion ceiling.  A call pushes a frame rather than
 # recursing natively, so a runaway program grows the frame list on the
@@ -223,47 +231,6 @@ class _Frame:
         return (self.func.name, self.pc, self.store, self.result)
 
 
-def _strip_comments(code: str) -> str:
-    """Remove ``%$ ... %`` blocks and ``% ...`` line comments.
-
-    Block comments are taken first: ``%$`` opens one and the next bare
-    ``%`` closes it, so a line comment inside a block is part of the block.
-    Both are replaced by a space rather than deleted, so ``a%c%b`` cannot
-    fuse into one token.
-    """
-    out = []
-    i = 0
-    while i < len(code):
-        if code.startswith("%$", i):
-            end = code.find("%", i + 2)
-            i = len(code) if end < 0 else end + 1
-            out.append(" ")
-        elif code[i] == "%":
-            end = code.find("\n", i)
-            i = len(code) if end < 0 else end
-            out.append(" ")
-        else:
-            out.append(code[i])
-            i += 1
-    return "".join(out)
-
-
-_TOKEN = re.compile(r"[A-Za-z_][A-Za-z_0-9]*|\d+|[{}();:,^!]")
-
-
-def _tokenize(code: str) -> list[str]:
-    """Return the program's tokens, comments already stripped.
-
-    Any character the pattern does not match is not a Packlang token, so a
-    program containing one is malformed -- the fuzz suite's random input is
-    exactly that case, and it must raise rather than be silently skipped.
-    """
-    tokens = _TOKEN.findall(code)
-    if "".join(tokens) != "".join(code.split()):
-        raise ValueError("program contains characters that are not Packlang tokens")
-    return tokens
-
-
 class _Parser:
     """Recursive-descent parser producing flat statement lists.
 
@@ -281,14 +248,33 @@ class _Parser:
     def next_token(self) -> str:
         word = self.peek()
         if word is None:
-            raise ValueError("unexpected end of program")
+            raise syntax_error(
+                "unexpected end of program",
+                "complete the declaration or statement and close its delimiters",
+            )
         self.pos += 1
         return word
 
     def expect(self, word: str) -> None:
         got = self.next_token()
         if got != word:
-            raise ValueError(f"expected {word!r}, got {got!r}")
+            raise syntax_error(
+                f"expected {word!r}, got {got!r}",
+                (
+                    "put the expected token at this position; Packlang keywords "
+                    "are case-sensitive"
+                ),
+            )
+
+    def package_kind(self) -> str:
+        """Read the required package declaration keyword."""
+        kind = self.next_token()
+        if kind not in ("Package", "Dependency"):
+            raise syntax_error(
+                f"expected a Package or Dependency, got {kind!r}",
+                "start the declaration with Package or Dependency",
+            )
+        return kind
 
     def parse_type(self) -> _Type:
         """Parse a datatype, including its parenthesized parameters."""
@@ -305,7 +291,10 @@ class _Parser:
             length = self.number()
             self.expect(")")
             if length < 0:  # pragma: no cover - `number` requires isdigit
-                raise ValueError("array length must not be negative")
+                raise syntax_error(
+                    "array length must not be negative",
+                    "use an array length of zero or greater",
+                )
             return _Type(inner.low, inner.high, inner.under, inner.over, length)
         if name == "Pointer":
             self.expect("(")
@@ -319,7 +308,14 @@ class _Parser:
             # String is a byte sequence; with no literal syntax for one on
             # the wiki, it is an array whose length a declaration fixes.
             return _Type() if name != "String" else _Type(length=0)
-        raise ValueError(f"unknown datatype {name!r}")
+        raise syntax_error(
+            f"unknown datatype {name!r}",
+            keyword_hint(
+                name,
+                ("Integer", "Char", "String", "Array", "Pointer"),
+                "use Integer, Char, String, Array(type, length) or Pointer(type)",
+            ),
+        )
 
     def commas(self, count: int) -> range:
         """Yield ``count`` slots, consuming the commas between them."""
@@ -331,7 +327,10 @@ class _Parser:
         if word == ",":
             word = self.next_token()
         if not word.isdigit():
-            raise ValueError(f"expected a number, got {word!r}")
+            raise syntax_error(
+                f"expected a number, got {word!r}",
+                "write a nonnegative decimal integer",
+            )
         return int(word)
 
     def expression(self) -> tuple[object, ...]:
@@ -357,7 +356,10 @@ class _Parser:
         if word.isdigit():
             return ("lit", int(word))
         if not word[:1].isalpha() and word[:1] != "_":
-            raise ValueError(f"unexpected token {word!r} in an expression")
+            raise syntax_error(
+                f"unexpected token {word!r} in an expression",
+                "use a decimal number, variable, call or ! expression",
+            )
         if self.peek() == "(":
             self.next_token()
             # ``myArray(length)`` is spelled exactly like that on the wiki,
@@ -382,7 +384,10 @@ class _Parser:
         """Parse a target: a name, optionally with an index."""
         name = self.next_token()
         if not (name[:1].isalpha() or name[:1] == "_"):
-            raise ValueError(f"expected a variable name, got {name!r}")
+            raise syntax_error(
+                f"expected a variable name, got {name!r}",
+                "use an identifier starting with a letter or underscore",
+            )
         index = None
         if self.peek() == "(":
             self.next_token()
@@ -395,7 +400,9 @@ class _Parser:
         self.expect("{")
         while self.peek() != "}":
             if self.peek() is None:
-                raise ValueError("unbalanced '{' in program")
+                raise syntax_error(
+                    "unbalanced '{' in program", "close the statement block with }"
+                )
             self.statement(out, local_types)
         self.next_token()
 
@@ -448,12 +455,18 @@ class _Parser:
                 raise AssertionError("isinstance(args, tuple)")
             if expr[1] == "charPut":
                 if len(args) != 1:
-                    raise ValueError("charPut takes exactly one argument")
+                    raise syntax_error(
+                        "charPut takes exactly one argument",
+                        "pass one value to charPut, for example charPut(65)",
+                    )
                 out.append([_PRINT, args[0]])
                 return
             target = args[0] if len(args) == 1 else None
             if not isinstance(target, tuple) or target[0] not in ("var", "apply"):
-                raise ValueError("charGet takes exactly one variable")
+                raise syntax_error(
+                    "charGet takes exactly one variable",
+                    "pass one variable to charGet, for example charGet(c)",
+                )
             name = str(target[1])
             # ``charGet(a(i))`` reads into an array element; the index is
             # the sole argument of the "apply" the parser built for it.
@@ -508,15 +521,20 @@ class _Program:
 def _parse(code: str) -> _Program:
     """Parse a whole program into its packages and functions."""
     tokens = _tokenize(_strip_comments(code))
-    if not tokens:
-        raise ValueError("empty program")
-    parser = _Parser(tokens)
+    return _parse_packages(_Parser(tokens))
+
+
+def _parse_packages(parser: _Parser) -> _Program:
+    """Parse packages with the supplied token parser."""
+    if parser.peek() is None:
+        raise syntax_error(
+            "empty program",
+            "provide a Package containing a parameterless entry function",
+        )
     program = _Program()
     order: list[str] = []
     while parser.peek() is not None:
-        kind = parser.next_token()
-        if kind not in ("Package", "Dependency"):
-            raise ValueError(f"expected a Package or Dependency, got {kind!r}")
+        parser.package_kind()
         deps = []
         if parser.peek() == ":":
             parser.next_token()
@@ -529,7 +547,10 @@ def _parse(code: str) -> _Program:
         globals_here: dict[str, _Type] = {}
         while parser.peek() != "}":
             if parser.peek() is None:
-                raise ValueError("unbalanced '{' in package body")
+                raise syntax_error(
+                    "unbalanced '{' in package body",
+                    "close the package body with } before its package name and ;",
+                )
             _member(parser, members, globals_here)
         parser.next_token()
         package = parser.next_token()
@@ -614,42 +635,13 @@ def _entry(program: _Program, order: list[str]) -> _Function:
             return candidates[0]
     # A parameterless function anywhere, as the last resort: PlusOrMinus's
     # own function takes a parameter, so such a program has no entry.
-    raise ValueError("program has no parameterless entry function")
-
-
-def _get(store: _Store, name: str) -> object:
-    for slot, value in store:
-        if slot == name:
-            return value
-    raise HaltError(f"undefined variable {name!r}")
-
-
-def _set(store: _Store, name: str, value: object) -> _Store:
-    return tuple((slot, value if slot == name else old) for slot, old in store)
-
-
-def _truth(value: int) -> bool:
-    return value != 0
-
-
-def _node(value: object) -> _Expr:
-    """Narrow a child slot back to an expression node.
-
-    The parser builds heterogeneous tuples -- a tag, then names, ints, and
-    sub-nodes -- so a slot's static type is ``object`` and every recursive
-    call would otherwise need a cast.  This is the one place the shape is
-    re-checked, and a violation is a malformed tree rather than bad input.
-    """
-    if not isinstance(value, tuple):
-        raise HaltError(f"malformed expression node {value!r}")
-    return value
-
-
-def _int(value: object) -> int:
-    """Narrow a literal or a stored scalar to an ``int``."""
-    if isinstance(value, bool) or not isinstance(value, int):
-        raise HaltError(f"expected a number, got {value!r}")
-    return value
+    raise syntax_error(
+        "program has no parameterless entry function",
+        (
+            "define a parameterless main function or a sole "
+            "parameterless function in the last package"
+        ),
+    )
 
 
 def _evaluate(node: _Expr, store: _Store, program: _Program, caller: str) -> int:
@@ -666,12 +658,18 @@ def _evaluate(node: _Expr, store: _Store, program: _Program, caller: str) -> int
     if kind == "var":
         value = _get(store, str(node[1]))
         if isinstance(value, tuple):
-            raise HaltError(f"{node[1]!r} is an array and has no scalar value")
+            raise HaltError(
+                f"{node[1]!r} is an array and has no scalar value",
+                hint="index the array to select a scalar element",
+            )
         return _int(value)
     if kind == "length":
         value = _get(store, str(node[1]))
         if not isinstance(value, tuple):
-            raise HaltError(f"{node[1]!r} is not an array")
+            raise HaltError(
+                f"{node[1]!r} is not an array",
+                hint="use an array variable for indexing",
+            )
         return len(value)
     if kind == "xor":
         left = _evaluate(_node(node[1]), store, program, caller)
@@ -698,12 +696,20 @@ def _apply(node: _Expr, store: _Store, program: _Program, caller: str) -> int:
         raise HaltError(f"unresolved call to {name!r}")
     value = _get(store, name)
     if not isinstance(value, tuple):
-        raise HaltError(f"{name!r} is not an array")
+        raise HaltError(
+            f"{name!r} is not an array", hint="use an array variable for indexing"
+        )
     if len(args) != 1:
-        raise HaltError(f"indexing {name!r} takes exactly one index")
+        raise HaltError(
+            f"indexing {name!r} takes exactly one index",
+            hint="supply exactly one index when accessing an array",
+        )
     index = _evaluate(args[0], store, program, caller)
     if not 0 <= index < len(value):
-        raise HaltError(f"index {index} is outside {name!r}")
+        raise HaltError(
+            f"index {index} is outside {name!r}",
+            hint="keep the index within the bounds stated in the diagnostic",
+        )
     return _int(value[index])
 
 
@@ -798,11 +804,15 @@ def _callee(node: _Expr, program: _Program, caller: str) -> _Function:
     name = str(node[1])
     func = program.functions.get(name)
     if func is None:
-        raise HaltError(f"undefined function {name!r}")
+        raise HaltError(
+            f"undefined function {name!r}",
+            hint="define the function before calling it; check its spelling",
+        )
     if not _visible(func, caller, program):
         raise HaltError(
             f"{caller!r} does not depend on {func.package!r}, "
-            f"so {name!r} is not in scope"
+            f"so {name!r} is not in scope",
+            hint="declare the package dependency before calling its function",
         )
     return func
 
@@ -810,7 +820,10 @@ def _callee(node: _Expr, program: _Program, caller: str) -> _Function:
 def _entered(func: _Function, values: list[int], program: _Program) -> _Frame:
     """Build the frame a call runs in, binding its arguments."""
     if len(values) != len(func.params):
-        raise HaltError(f"{func.name!r} takes {len(func.params)} arguments")
+        raise HaltError(
+            f"{func.name!r} takes {len(func.params)} arguments",
+            hint="pass the number of arguments declared by the function",
+        )
     store = _initial_store(func, program)
     bound = dict(zip(func.params, values, strict=True))
     return _Frame(func, tuple((slot, bound.get(slot, value)) for slot, value in store))
@@ -921,15 +934,23 @@ def _write(
         if index is None:
             if whole is not None:
                 return _set(store, name, whole.zero())
-            raise HaltError(f"{name!r} is an array and needs an index")
+            raise HaltError(
+                f"{name!r} is an array and needs an index",
+                hint="supply an index when assigning an array element",
+            )
         at = _evaluate(_node(index), store, program, caller)
         if not 0 <= at < len(value):
-            raise HaltError(f"index {at} is outside {name!r}")
+            raise HaltError(
+                f"index {at} is outside {name!r}",
+                hint="keep the index within the bounds stated in the diagnostic",
+            )
         row = list(value)
         row[at] = update(_int(row[at]))
         return _set(store, name, tuple(row))
     if index is not None:
-        raise HaltError(f"{name!r} is not an array")
+        raise HaltError(
+            f"{name!r} is not an array", hint="use an array variable for indexing"
+        )
     return _set(store, name, update(_int(value)))
 
 

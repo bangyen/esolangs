@@ -11,6 +11,7 @@ from __future__ import annotations
 from esolangs._drive import drive
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.source_hints import syntax_error
 
 #: ``(head, read, answer, printed)``: program position, leftmost live data-bit,
 #: the final deleted bit, and whether it is printed.  The program is fixed
@@ -23,12 +24,19 @@ def _parse(code: str) -> tuple[tuple[str, ...], str, tuple[int, ...]]:
     kept = [(at, c) for at, c in enumerate(code) if not c.isspace()]
     source = "".join(c for _, c in kept)
     if any(c not in "01;," for c in source) or source.count(",") != 1:
-        raise ValueError(
-            "Cyclic tag requires productions,queue using bits and semicolons"
+        raise syntax_error(
+            "Cyclic tag requires productions,queue using bits and semicolons",
+            (
+                "write semicolon-separated bit productions, then a comma "
+                "and bit queue; for example 1;0,1"
+            ),
         )
     rules, data = source.split(",")
     if ";" in data:
-        raise ValueError("Cyclic tag queue contains a semicolon")
+        raise syntax_error(
+            "Cyclic tag queue contains a semicolon",
+            "put semicolons only before the comma; the queue is a bit string",
+        )
     productions = tuple(rules.split(";"))
     offsets = [kept[0][0]]
     offsets.extend(kept[i + 1][0] for i, (_at, c) in enumerate(kept) if c == ";")

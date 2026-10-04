@@ -14,6 +14,7 @@ from typing import Any, TextIO, cast
 from esolangs import exceptions
 from esolangs._source import InputSource, ProgramSource, read_input
 from esolangs._validate import check_timeout, check_whole
+from esolangs.interpreters.source_hints import with_hint
 from esolangs.raster import Raster
 from esolangs.registry import resolve
 
@@ -40,7 +41,8 @@ def _decode(text: str, *, expired: bool) -> str:
         raise error
     if result is None:
         error = exceptions.InterpreterLimitError(
-            "isolated interpreter exited without a result"
+            "isolated interpreter exited without a result",
+            hint="check the worker exit status and available system resources",
         )
         error.partial_output = partial
         raise error
@@ -52,8 +54,8 @@ def _decode(text: str, *, expired: bool) -> str:
             args = [args[0], tuple(args[1])]
         error = cls(*args)
         error.partial_output = partial
-        for note in result.get("notes", []):
-            error.add_note(note)
+        if "notes" in result:
+            error.__notes__ = list(result["notes"])
         raise error
     return cast("str", result["result"])
 
@@ -80,7 +82,10 @@ def run_isolated(
     if max_output is not None:
         check_whole(max_output, "max_output")
     if timeout is None:
-        raise exceptions.ArgumentError("isolated execution requires a finite timeout")
+        raise with_hint(
+            exceptions.ArgumentError("isolated execution requires a finite timeout"),
+            ("set a positive finite timeout, for example timeout=5.0"),
+        )
     name = resolve(language)
     deadline = monotonic() + timeout
     box: list[str | BaseException] = []
@@ -265,7 +270,10 @@ def _worker() -> None:
             for at in range(0, len(accepted), 4096):
                 send({"output": accepted[at : at + 4096]})
             if len(accepted) != len(text):
-                raise exceptions.InterpreterLimitError("isolated output limit exceeded")
+                raise exceptions.InterpreterLimitError(
+                    "isolated output limit exceeded",
+                    hint="reduce output or raise max_output if the output is needed",
+                )
 
     vars(esolangs)["ScriptedIO"] = StreamingIO
     request = json.load(sys.stdin)
@@ -294,7 +302,7 @@ def _worker() -> None:
         if isinstance(error, exceptions.UnknownLanguageError):
             args = (error.language, error.suggestions)
         elif isinstance(error, exceptions.InputExhaustedError):
-            args = (error.reads, error.supplied)
+            args = (error.reads, error.supplied, error.unit)
         send(
             {
                 "error": type(error).__name__,

@@ -15,6 +15,7 @@ from esolangs._drive import drive
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.brackets import match_brackets
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.source_hints import syntax_error
 
 #: ``(ip, stack)``: an immutable value, rebound per step, and exactly what
 #: ``snapshot`` returns.  The code is a parameter, not a field.
@@ -56,7 +57,10 @@ class _Machine:
     def __init__(self, code: str, io: IO) -> None:
         """Validate ``code``'s brackets and start with an empty stack."""
         if not code:
-            raise ValueError("BF-PDA program cannot be empty")
+            raise syntax_error(
+                "BF-PDA program cannot be empty",
+                "provide a nonempty program; . prints the initial zero bit",
+            )
         # One walk for balance and the jump table (this used to rescan per
         # jump).  An unmatched ``[`` is reported at the innermost waiting
         # one; the old ``rfind`` named a matched bracket in ``[[]``.

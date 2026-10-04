@@ -16,6 +16,7 @@ from esolangs.cli_help import (
     HELP,
 )
 from esolangs.cli_hints import (
+    _cli_error_text,
     _did_you_mean,
 )
 from esolangs.exceptions import EsolangError
@@ -32,6 +33,7 @@ _ARGUMENTS = {
     "encode": ("<language>", "<bits>"),
     "generate": ("<language>", "<truth-table>"),
     "run": ("<language>", "<program-file>"),
+    "suggest": ("<language>", "<program-file>"),
     "debug": ("<language>", "<program-file>"),
     "describe": ("<language>",),
     "read-answer": ("<language>",),
@@ -41,7 +43,9 @@ _ARGUMENTS = {
 }
 
 
-def _fail(message: str, code: int = 2) -> None:
+def _fail(message: str | BaseException, code: int = 2) -> None:
+    if isinstance(message, BaseException):
+        message = _cli_error_text(message)
     sys.stderr.write(message + "\n")
     sys.exit(code)
 
@@ -276,7 +280,7 @@ def _timeout_of(options: dict[str, str]) -> float | None:
     except EsolangError as exc:
         # Re-worded from ``timeout`` to ``--timeout``: the library names the
         # parameter, and this names the flag the reader typed.
-        _fail(str(exc).replace("timeout must", "--timeout must", 1))
+        _fail(_cli_error_text(exc).replace("timeout must", "--timeout must", 1))
     return seconds
 
 
@@ -321,7 +325,7 @@ def _errors(code: int = 2) -> Iterator[None]:
     try:
         yield
     except EsolangError as exc:
-        _fail(str(exc), code)
+        _fail(exc, code)
 
 
 def _integer(

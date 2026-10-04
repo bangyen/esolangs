@@ -26,6 +26,7 @@ from typing import cast
 from esolangs._drive import drive
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.source_hints import syntax_error
 
 #: The registers, as an immutable name->value mapping.
 type _Regs = tuple[tuple[str, int], ...]
@@ -107,7 +108,13 @@ class _Machine:
         for ln in lines:
             m = _LINE.fullmatch(ln)
             if not m:
-                raise ValueError(f"malformed line: {ln!r}")
+                raise syntax_error(
+                    f"malformed line: {ln!r}",
+                    (
+                        "write each line as name = coefficient x + constant, DO "
+                        "PRINT. or NOT PRINT."
+                    ),
+                )
             # Redefining ``input`` is malformed, and malformedness is a
             # property of the program text -- so it is rejected here with
             # the other two malformed cases rather than when the line
@@ -116,7 +123,10 @@ class _Machine:
             # legal, and made acceptance depend on stdin, since a jump
             # target can be read from input.
             if m.group(1) == "input":
-                raise ValueError("input cannot be redefined")
+                raise syntax_error(
+                    "input cannot be redefined",
+                    "assign to a writable register; input is read-only",
+                )
             self.parsed.append(cast("_Line", m.groups()))
         # ``negativeOne`` starts at -1; every other name starts at 0.
         self.state: _State = (1, (("negativeOne", -1),), ())

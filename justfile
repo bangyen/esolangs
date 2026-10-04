@@ -136,7 +136,7 @@ mutate-gen module *args:
 # dominated by linearity and execution at 30s each, then all_generators at 22s
 # and Container at 16s. The runner catches a proof's exception and keeps going,
 # reporting at the end, so
-# linearity's standing Forþ finding does not hide the proofs after it.
+# one failing proof does not hide the proofs after it.
 # Use `python -m tests.proofs.deep --list` to see the bands.
 # run every executable proof: the ledger obligations and all 8 deep proofs
 proofs:

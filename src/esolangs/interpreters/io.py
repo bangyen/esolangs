@@ -13,6 +13,7 @@ import io as _stdlib_io
 
 from esolangs._input import InputSource, read_input
 from esolangs.exceptions import ArgumentError, InputExhaustedError
+from esolangs.interpreters.source_hints import syntax_error
 
 
 class IO:
@@ -123,7 +124,11 @@ class IO:
         try:
             return int(token)
         except ValueError as exc:
-            raise ArgumentError(f"input must be an integer, got {token!r}") from exc
+            raise syntax_error(
+                f"input must be an integer, got {token!r}",
+                "supply a whitespace-separated decimal integer, for example 42",
+                error_type=ArgumentError,
+            ) from exc
 
     def input_bit(self, prompt: str = "Input: ") -> int:
         """Read a 0 or 1 character, ignoring surrounding whitespace."""
@@ -131,7 +136,10 @@ class IO:
         while value.isspace():
             value = chr(self.input_char(prompt))
         if value not in {"0", "1"}:
-            raise ValueError("input must be a bit")
+            raise syntax_error(
+                "input must be a bit",
+                ("supply input characters 0 or 1; surrounding whitespace is allowed"),
+            )
         return int(value)
 
     def input_all(self, prompt: str = "Input: ") -> str:

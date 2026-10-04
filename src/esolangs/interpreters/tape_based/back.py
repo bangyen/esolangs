@@ -50,6 +50,7 @@ from collections.abc import Sequence
 from esolangs._drive import drive
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.source_hints import syntax_error
 
 #: ``(row, col, a, b, tape, cell, done)``: an immutable value, rebound per
 #: step.  ``done`` is state because the beam sits *on* the ``*`` and the
@@ -114,7 +115,10 @@ class _Machine:
     def __init__(self, code: list[str], io: IO) -> None:
         """Pad ``code`` to a rectangle and start the beam at the top-left."""
         if not code or not any(line.strip() for line in code):
-            raise ValueError("Back program cannot be empty")
+            raise syntax_error(
+                "Back program cannot be empty",
+                "provide a nonempty grid; * halts immediately",
+            )
         self.io = io
         self.size = max(len(line) for line in code)
         self.code = tuple(line.ljust(self.size) for line in code)

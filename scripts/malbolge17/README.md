@@ -1,7 +1,7 @@
 # Seventeen-input Malbolge: research artifacts
 
-Research tools for [malbolge-scaling](../../docs/proofs/malbolge-scaling.md)’s
-"Seventeen" sections; these are separate from the shipped generator.
+Unshipped research tools for [malbolge-scaling](../../docs/proofs/malbolge-scaling.md)’s
+"Seventeen" sections.
 
 - `msim.c`, `tables.h` -- a C Malbolge simulator matching
   `esolangs.interpreters.other.malbolge` (checked against it). Build with

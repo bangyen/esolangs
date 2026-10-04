@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from esolangs.interpreters.source_hints import syntax_error
 from esolangs.raster import png
 
 from . import lattice
@@ -31,19 +32,23 @@ def load_binary(path: str) -> Mask:
     with open(path, "rb") as handle:
         data = handle.read()
     if data[:3] == b"\xff\xd8\xff":
-        raise ValueError(
+        raise syntax_error(
             f"{path} is a JPEG; Line drawings must be PNG. JPEG is lossy and "
             "its block quantization erases pixels out of 1px strokes -- "
             "convert with e.g. `sips -s format png in.jpg --out out.png`, "
             "and see render()'s `scale` for drawings that must survive a "
-            "lossy pipeline."
+            "lossy pipeline.",
+            "export the drawing as a lossless PNG with connected dark strokes",
         )
     try:
         grey = png.read_grey(data)
     except Exception as exc:
         # The same decode failures ``Raster.from_png`` wraps; here they used
         # to escape as a bare ``zlib.error``/``struct.error``.
-        raise ValueError(f"cannot read {path}: {exc}") from exc
+        raise syntax_error(
+            f"cannot read {path}: {exc}",
+            "check that the path points to a readable PNG drawing",
+        ) from exc
     return mask_module.from_grey(grey)
 
 
@@ -58,7 +63,13 @@ def crop_to_content(mask: Mask, margin: int = 2) -> Mask:
     """
     bounds = mask.bounds()
     if bounds is None:
-        raise ValueError("image contains no ink")
+        raise syntax_error(
+            "image contains no ink",
+            (
+                "draw dark connected paths and one filled arrowhead cursor "
+                "on a light background"
+            ),
+        )
     y0, x0, y1, x1 = bounds
     height, width = mask.shape
     top, bottom = max(0, y0 - margin), min(height, y1 + 1 + margin)
@@ -142,7 +153,10 @@ def normalize_scale(mask: Mask, scale: int | None = None) -> Mask:
         if bounds is not None:
             top, left, _, _ = bounds
             if not _blocks_uniform([row >> left for row in mask.rows[top:]], scale):
-                raise ValueError("scale requires uniform Line pixel squares")
+                raise syntax_error(
+                    "scale requires uniform Line pixel squares",
+                    "use a uniform integer scale when enlarging the drawing",
+                )
     if scale <= 1:
         return mask
     # One pixel per block, anchored to the first ink pixel (see
@@ -283,20 +297,25 @@ def find_cursor(mask: Mask) -> Cursor:
     """
     thick = mask.erode()
     if not thick.any():
-        raise ValueError("no cursor (thick/filled region) found in image")
+        raise syntax_error(
+            "no cursor (thick/filled region) found in image",
+            "add one filled arrowhead cursor touching the path",
+        )
     candidates = [_cursor_candidate(mask, core) for core in _thick_regions(thick)]
     low, high = _FILL_RATIO_RANGE
     plausible = [c for c in candidates if low <= _fill_ratio(c.blob) <= high]
     if len(plausible) > 1:
-        raise ValueError(
-            f"ambiguous cursor: found {len(plausible)} arrowhead-shaped regions"
+        raise syntax_error(
+            f"ambiguous cursor: found {len(plausible)} arrowhead-shaped regions",
+            "keep exactly one filled arrowhead cursor",
         )
     if plausible:
         return plausible[0]
     ratio = _fill_ratio(candidates[0].blob)
-    raise ValueError(
+    raise syntax_error(
         f"largest thick region does not look like an arrowhead "
-        f"(fill ratio {ratio:.2f}, expected {low:.2f}-{high:.2f})"
+        f"(fill ratio {ratio:.2f}, expected {low:.2f}-{high:.2f})",
+        "draw the cursor as a filled arrowhead at the path entry",
     )
 
 
@@ -322,7 +341,10 @@ def extract_tree(mask: Mask, cursor: Cursor, start_heading: int = 0) -> Stroke:
         default=None,
     )
     if nearest is None:
-        raise ValueError("no path pixels found outside the cursor blob")
+        raise syntax_error(
+            "no path pixels found outside the cursor blob",
+            "connect a path extending beyond the cursor",
+        )
     start = lattice.find_start(stripped, *nearest, start_heading)
     return lattice.walk_tree(stripped, start, start_heading)
 
@@ -571,11 +593,15 @@ def extract_mask(mask: Mask, *, scale: int | None = None) -> Stroke:
     stroke = extract_tree(mask, cursor)
     gap = coverage_gap(mask, cursor, stroke)
     if gap > _ARROWHEAD_TIP_GAP:
-        raise ValueError(
+        raise syntax_error(
             f"extraction left {gap} source pixels unaccounted for "
             f"(expected at most {_ARROWHEAD_TIP_GAP} for a clean drawing) "
             "-- the image may be corrupted, over-compressed, or otherwise "
-            "not a clean drawing"
+            "not a clean drawing",
+            (
+                "redraw stray or disconnected pixels so every dark stroke "
+                "belongs to the cursor or a connected path"
+            ),
         )
     return stroke
 

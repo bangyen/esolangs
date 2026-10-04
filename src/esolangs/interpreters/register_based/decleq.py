@@ -57,7 +57,8 @@ def _written(memory: tuple[int, ...], addr: int, value: int) -> tuple[int, ...]:
             # Was a bare ``IndexError`` (``run("Decleq", "4 -8")`` gave a traceback).
             raise HaltError(
                 f"address {addr} is {-addr - len(memory)} cells past the "
-                f"left end of a {len(memory)}-cell store"
+                f"left end of a {len(memory)}-cell store",
+                hint="keep the address inside the allocated store",
             )
         addr += len(memory)
     elif addr >= len(memory):

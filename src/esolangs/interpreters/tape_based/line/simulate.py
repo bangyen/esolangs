@@ -36,6 +36,8 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from esolangs.interpreters.source_hints import syntax_error
+
 from .extract import DEFAULT_UNIT, OpCall, Stroke, Vertex, classify_ops
 
 if TYPE_CHECKING:
@@ -242,13 +244,18 @@ def _advance(
         pointer -= 1
     elif op == "i":
         if value is None:
-            raise ValueError("input transition requires a value")
+            raise syntax_error(
+                "input transition requires a value",
+                "supply the input value before applying the input transition",
+            )
         tape = _written(tape, pointer, value)
     elif op == "o":
         tape = _written(tape, pointer, cell)
         output = cell
     else:  # pragma: no cover - classification emits only these opcodes
-        raise ValueError(f"unknown opcode {op!r}")
+        raise syntax_error(
+            f"unknown opcode {op!r}", "use an opcode from the extracted Line program"
+        )
     return (node, at + 1, pointer, tape), output
 
 

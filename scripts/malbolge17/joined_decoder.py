@@ -11,7 +11,6 @@ from address17 import group_cells
 from combined_helpers import _Chunk, _room, _route, place_chunks
 from compact_decoder import mask
 from decoder_group import (
-    _LABELS,
     _POS,
     _START,
     _build,
@@ -36,6 +35,7 @@ def build() -> tuple[_Emission, dict[int, int]]:
         external_pointer=True,
         runtime_base=True,
         table_free_hubs=True,
+        low_neighbour=True,
     )
     emission = _build(
         0,
@@ -76,6 +76,19 @@ def build() -> tuple[_Emission, dict[int, int]]:
     tmp = fresh()
     rowword = fresh()
     projection = fresh(53)
+    # Row selection and earlier reads mutate these words before a reader runs.
+    mutable = {
+        *range(34),
+        *cells,
+        tmp,
+        rowword,
+        projection,
+        142,
+        145,
+        139,
+        144,
+        *group.view_cells,
+    }
 
     def decoder(p: _Planner, row: int, state: int) -> None:
         offset = _POS[state][row]
@@ -91,20 +104,25 @@ def build() -> tuple[_Emission, dict[int, int]]:
             compact_mask=(setup.state_masks[state], mask(state)),
         )
 
-    def place(row: int, state: int) -> int:
-        for a, root, turns in candidates:
-            if _char_for("j", a) + 1 not in _LABELS:
-                continue
-            if set(range(a, a + 700)) & blocked:
+    def place(row: int, state: int, preferred: int | None = None) -> int:
+        ordered = sorted(
+            candidates, key=lambda candidate: setup.memory[candidate[1]] != preferred
+        )
+        for a, root, turns in ordered:
+            if a in blocked or a - 1 in blocked:
                 continue
             p = _Planner(a, 0, dict(setup.memory), data)
+            p.mem.update(dict.fromkeys(mutable))
             for op in "jjoojj":
                 p.raw(op)
             p.d = z0
             decoder(p, row, state)
             assert max(p.code) < a + 700
+            if set(p.code) & blocked:
+                continue
             code.update(p.code)
-            blocked.update(range(a, a + 700))
+            blocked.update(p.code)
+            blocked.add(a - 1)
             recipes[a] = (root, turns)
             return a
         raise AssertionError("no decoder continuation window")
@@ -114,19 +132,21 @@ def build() -> tuple[_Emission, dict[int, int]]:
     for root, value in setup.memory.items():
         if root < 130 or root in used or value is None or not 33 <= value <= 126:
             continue
-        seed = value
+        # N labels also return through the initialized neighbour escape.
         for turns in range(10):
-            if turns == 5 and seed + 1 in _LABELS and 7000 <= value + 1 < 40500:
+            if turns == 5 and 7000 <= value + 1 < 40500:
                 candidates.append((value + 1, root, turns))
             value = _rot(value)
     candidates.sort()
-    initial = [place(r, _START[r]) for r in range(8)]
+    initial = [place(r, _START[r], setup.memory[pointer_slots()[r]]) for r in range(8)]
     classes: dict[tuple[int, int], int] = {}
     for state in (3, 4):
         for row in range(8):
             class_key = (state, _POS[state][row])
             if class_key not in classes:
-                classes[class_key] = place(row, state)
+                classes[class_key] = place(
+                    row, state, setup.memory[pointer_slots()[row] + state - 2]
+                )
     assert len(classes) == 5
     records: dict[int, int] = {}
     for row, slot in enumerate(pointer_slots()):
@@ -159,10 +179,18 @@ def build() -> tuple[_Emission, dict[int, int]]:
         chunk([("*", 128), ("p", target), ("p", target)])
     chunk([("*", 129), ("p", 32)])
     chunk([("*", 31), ("p", 33)])
-    for target in records:
-        chunk([("*", 31), ("p", target), ("p", target)])
+    # Retaining matching walked seeds removes 3,621 initializer cells.
+    for target, entry in records.items():
+        record_seed = setup.memory[recipes[entry + 1][0]]
+        assert record_seed is not None
+        if plan.mem[target] != record_seed:
+            chunk([("*", 31), ("p", target), ("p", target)])
     for entry, (root, _turns) in recipes.items():
-        targets = [a for a, v in records.items() if v == entry - 1]
+        targets = [
+            a
+            for a, v in records.items()
+            if v == entry - 1 and plan.mem[a] != setup.memory[root]
+        ]
         if not targets:
             continue
         chunk(
@@ -230,6 +258,7 @@ def build() -> tuple[_Emission, dict[int, int]]:
     plan, emitted, _routes = place_chunks(plan, chunks, blocked, protected)
 
     def select(p: _Planner, field: int) -> None:
+        p.mem.update(dict.fromkeys(mutable))
         # Only the selected record rotates; its unvisited neighbour stays ASCII.
         for _ in range(5):
             p.goto(rowword)
@@ -274,6 +303,8 @@ def build() -> tuple[_Emission, dict[int, int]]:
     for a, op in code.items():
         source[a] = _char_for(op, a)
     for a, v in data.items():
+        if a == 367:
+            continue
         assert a not in code, (a, v)
         source[a] = v
     seeds: dict[int, int] = {}

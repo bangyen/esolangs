@@ -35,12 +35,14 @@ spec does not define their text framing.
 
 import re
 from collections.abc import Callable, Mapping
+from difflib import get_close_matches
 from typing import Never, cast
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.randomness import Randomness, draw
+from esolangs.interpreters.source_hints import keyword_hint, syntax_error, with_hint
 
 #: A command is a bracketed group, which may hold one quoted string.
 _TOKEN = re.compile(r'\[([^\[\]\"]*("[^"]*")?)]')
@@ -66,9 +68,13 @@ def _reject_stray_text(code: str) -> None:
     if tail := code[end:].strip():
         stray.append(tail)
     if stray:
-        raise ValueError(
+        raise syntax_error(
             f"{stray[0]!r} is outside any [command]; Modulous reads only "
-            f"bracketed commands, so this would have been dropped silently"
+            f"bracketed commands, so this would have been dropped silently",
+            (
+                "enclose each command in balanced square brackets; for "
+                "example [PSH INT 1]"
+            ),
         )
 
 
@@ -234,9 +240,16 @@ class _Machine:
             n = int(_operand(arg, 1))
             if n >= 1:
                 if n > _RND_FANOUT:
-                    raise TimeoutError(
-                        f"undecided: one 'RND {n}' exceeds the {_RND_FANOUT}-outcome "
-                        "cap on a single transition"
+                    raise with_hint(
+                        TimeoutError(
+                            f"undecided: one 'RND {n}' exceeds "
+                            f"the {_RND_FANOUT}-outcome "
+                            "cap on a single transition"
+                        ),
+                        (
+                            f"reduce RND to at most {_RND_FANOUT}; limit "
+                            "does not raise this transition cap"
+                        ),
                     )
                 values = tuple(range(n))
 
@@ -317,10 +330,13 @@ class _Machine:
 
 def _reject_unknown(mod: str, command: str) -> Never:
     """Reject a token neither dispatch nor variable arithmetic understands."""
-    raise ValueError(
+    close = get_close_matches(command, sorted(_DISPATCH), n=2, cutoff=0.65)
+    hint = f"; did you mean {close[0]}?" if len(close) == 1 else ""
+    raise syntax_error(
         f"[{mod}] is not a Modulous command: {command!r} is not one of "
         f"{', '.join(sorted(_DISPATCH))}, and a bare VARn+k or VARn-k "
-        f"is the only other thing a command can be"
+        f"is the only other thing a command can be{hint}",
+        "use a listed command keyword, with spaces before its operands",
     )
 
 
@@ -334,14 +350,23 @@ def _print_value(
 def _top(stk: tuple[int, ...]) -> int:
     """Return the top of the stack, halting on an empty stack."""
     if not stk:
-        raise HaltError("the stack is empty, so there is no top value to read")
+        raise HaltError(
+            "the stack is empty, so there is no top value to read",
+            hint="push a value before reading or removing the stack top",
+        )
     return stk[-1]
 
 
 def _operand(arg: list[str], n: int) -> str:
     """Return the ``n``-th token of a command, rejecting a missing operand."""
     if n >= len(arg):
-        raise ValueError(f"missing operand in {' '.join(arg)}")
+        raise syntax_error(
+            f"missing operand in {' '.join(arg)}",
+            (
+                "supply the required operand; for example [PSH INT 1], [ADD "
+                "1] or [JMP F 1]"
+            ),
+        )
     return arg[n]
 
 
@@ -349,7 +374,12 @@ def _named(var: Mapping[str, int], name: str) -> int:
     """Return the value of ``name``, halting when it is not a variable."""
     if name not in var:
         known = ", ".join(sorted(var)) or "none are defined yet"
-        raise HaltError(f"{name} is not a defined variable ({known})")
+        raise HaltError(
+            f"{name} is not a defined variable ({known})",
+            hint=keyword_hint(
+                name, var, "define the variable before reading it; check its spelling"
+            ),
+        )
     return var[name]
 
 
@@ -402,7 +432,10 @@ def _psh(core: _Core, mod: str, arg: list[str], _value: str | int | None) -> _Co
         if len(parts) < 3:
             # ``[PSH STR hello]`` has no quoted section, so ``split`` had no
             # second element and the raw IndexError escaped ``run``.
-            raise ValueError(f"missing quoted string in {' '.join(arg)}")
+            raise syntax_error(
+                f'missing quoted string in {" ".join(arg)}; expected [PSH STR "text"]',
+                ('enclose the string in double quotes, for example [PSH STR "text"]'),
+            )
         m = parts[1]
         return ((*stk, *[ord(c) for c in m][::-1]), var, ind)
     if "VAR" in mod:
@@ -430,7 +463,10 @@ def _swp(core: _Core, _mod: str, _arg: list[str], _value: str | int | None) -> _
     stk, var, ind = core
     if len(stk) < 2:
         were = "is 1" if len(stk) == 1 else f"are {len(stk)}"
-        raise HaltError(f"SWP needs two values on the stack and there {were}")
+        raise HaltError(
+            f"SWP needs two values on the stack and there {were}",
+            hint="push two values before SWP",
+        )
     return ((*stk[:-2], stk[-1], stk[-2]), var, ind)
 
 
@@ -475,7 +511,10 @@ def _rnd(core: _Core, _mod: str, arg: list[str], value: str | int | None) -> _Co
     stk, var, ind = core
     n = int(_operand(arg, 1))
     if n < 1:
-        raise HaltError(f"RND needs an upper bound of at least 1, got {n}")
+        raise HaltError(
+            f"RND needs an upper bound of at least 1, got {n}",
+            hint="give RND an upper bound of at least 1",
+        )
     return ((*stk, int(value) if value is not None else 0), var, ind)
 
 

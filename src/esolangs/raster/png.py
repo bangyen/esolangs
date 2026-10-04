@@ -10,6 +10,7 @@ from collections.abc import Iterator, Sequence
 from typing import TYPE_CHECKING, Any
 
 from esolangs.exceptions import MissingDependencyError
+from esolangs.interpreters.source_hints import syntax_error
 
 if TYPE_CHECKING:
     from esolangs.raster import Pixel, Rows
@@ -55,19 +56,34 @@ _COLOUR_NAMES = {
 def _chunks(data: bytes) -> Iterator[tuple[bytes, bytes]]:
     """Yield ``(type, body)`` for each chunk, checking the signature first."""
     if data[:8] != _SIGNATURE:
-        raise ValueError("not a PNG file (bad signature)")
+        raise syntax_error(
+            "not a PNG file (bad signature)",
+            "export the image as PNG instead of renaming another image format",
+        )
     pos = 8
     while pos + 8 <= len(data):
         (length,) = struct.unpack(">I", data[pos : pos + 4])
         kind = data[pos + 4 : pos + 8]
         body = data[pos + 8 : pos + 8 + length]
         if len(body) != length:
-            raise ValueError(f"truncated {kind.decode('ascii', 'replace')} chunk")
+            raise syntax_error(
+                f"truncated {kind.decode('ascii', 'replace')} chunk",
+                ("restore or re-export the complete PNG file; this chunk is truncated"),
+            )
         crc = data[pos + 8 + length : pos + 12 + length]
         if len(crc) != 4:
-            raise ValueError(f"truncated {kind.decode('ascii', 'replace')} chunk CRC")
+            raise syntax_error(
+                f"truncated {kind.decode('ascii', 'replace')} chunk CRC",
+                ("restore or re-export the complete PNG file including its checksums"),
+            )
         if struct.unpack(">I", crc)[0] != zlib.crc32(kind + body) & 0xFFFFFFFF:
-            raise ValueError(f"invalid {kind.decode('ascii', 'replace')} chunk CRC")
+            raise syntax_error(
+                f"invalid {kind.decode('ascii', 'replace')} chunk CRC",
+                (
+                    "restore or re-export the PNG; its chunk checksum does not "
+                    "match the data"
+                ),
+            )
         yield kind, body
         pos += 12 + length  # length + type + body + CRC
 
@@ -129,9 +145,10 @@ def _validate_png(
             # ``ValueError`` from ``bytes.translate``) while ``read_rgb``
             # silently ignored the extra.  Refuse it once, here.
             if not body or len(body) % 3 or len(body) > 768:
-                raise ValueError(
+                raise syntax_error(
                     f"malformed PLTE chunk: {len(body)} bytes "
-                    f"(want 3..768, a multiple of 3)"
+                    f"(want 3..768, a multiple of 3)",
+                    "re-export as an 8-bit RGB PNG with a valid colour palette",
                 )
             palette = body
         elif kind == b"IDAT":
@@ -139,39 +156,65 @@ def _validate_png(
         elif kind == b"IEND":
             break
     if header is None:
-        raise ValueError("PNG has no IHDR chunk")
+        raise syntax_error(
+            "PNG has no IHDR chunk",
+            ("re-export the image with a PNG encoder so it includes the image header"),
+        )
     width, height, depth, colour, compression, filter_method, interlace = header
 
     if compression != 0 or filter_method != 0:
-        raise ValueError("unsupported PNG compression or filter method")
+        raise syntax_error(
+            "unsupported PNG compression or filter method",
+            (
+                "re-export as a standard PNG with deflate compression and "
+                "standard filters"
+            ),
+        )
     if interlace not in (0, 1):
-        raise ValueError(f"unknown PNG interlace method {interlace}")
+        raise syntax_error(
+            f"unknown PNG interlace method {interlace}",
+            "re-export with no interlacing or standard Adam7 interlacing",
+        )
     if colour not in _CHANNELS:
-        raise ValueError(
+        raise syntax_error(
             f"unsupported PNG colour type {colour} "
-            f"({_COLOUR_NAMES.get(colour, 'unknown')})"
+            f"({_COLOUR_NAMES.get(colour, 'unknown')})",
+            "re-export as an 8-bit RGB PNG",
         )
     if depth not in (1, 2, 4, 8, 16):
-        raise ValueError(f"unsupported PNG bit depth {depth}")
+        raise syntax_error(
+            f"unsupported PNG bit depth {depth}", "re-export as an 8-bit PNG"
+        )
 
     channels = _CHANNELS[colour]
     if channels > 1 and depth < 8:
         # Sub-byte samples only occur in single-channel images per the spec.
-        raise ValueError(f"unsupported PNG bit depth {depth} for {channels} channels")
+        raise syntax_error(
+            f"unsupported PNG bit depth {depth} for {channels} channels",
+            "use 8-bit channels for RGB or RGBA images",
+        )
     if colour == _PALETTE and depth == 16:
-        raise ValueError("palette PNGs cannot be 16-bit")
+        raise syntax_error(
+            "palette PNGs cannot be 16-bit", "use an 8-bit palette or export as RGB"
+        )
 
     data_stream = zlib.decompress(bytes(idat))
     needed = _expected_stream_size(width, height, channels, depth, interlace)
     if len(data_stream) != needed:
         # Reject before any allocation grows with the IHDR numbers.
-        raise ValueError(
+        raise syntax_error(
             f"IDAT holds {len(data_stream)} bytes but {width}x{height} at "
             f"depth {depth} needs {needed}; the image is truncated or its "
-            f"IHDR is corrupt"
+            f"IHDR is corrupt",
+            (
+                "restore or re-export the PNG so the pixel data matches its "
+                "declared dimensions"
+            ),
         )
     if colour == _PALETTE and palette is None:
-        raise ValueError("palette PNG has no PLTE chunk")
+        raise syntax_error(
+            "palette PNG has no PLTE chunk", "include a colour palette or export as RGB"
+        )
     offset = 0
     passes = (
         [_pass_size(width, height, i) for i in range(7)]
@@ -184,7 +227,10 @@ def _validate_png(
         stride = (pass_width * channels * depth + 7) // 8
         for _ in range(pass_height):
             if data_stream[offset] > 4:
-                raise ValueError(f"unknown PNG row filter {data_stream[offset]}")
+                raise syntax_error(
+                    f"unknown PNG row filter {data_stream[offset]}",
+                    "re-export the PNG using standard row filters 0 through 4",
+                )
             offset += stride + 1
     return width, depth, colour, palette or b""
 
@@ -195,7 +241,10 @@ def _read(data: bytes, mode: str) -> tuple[bytes, int]:
     with image.open(io.BytesIO(data), formats=["PNG"]) as opened:
         opened.load()
         if colour == _PALETTE and max(opened.tobytes()) >= len(palette) // 3:
-            raise ValueError("palette index outside PLTE chunk")
+            raise syntax_error(
+                "palette index outside PLTE chunk",
+                ("re-export the PNG so every palette index has a corresponding colour"),
+            )
         if colour == _GREY and depth == 16:
             # I;16 -> L clips; taking the high byte preserves dark strokes.
             raw = opened.tobytes("raw", "I;16B")
@@ -263,8 +312,9 @@ def write_grey(pixels: list[bytearray]) -> bytes:
     height = len(pixels)
     width = len(pixels[0]) if height else 0
     if not height or not width or any(len(row) != width for row in pixels):
-        raise ValueError(
-            "expected a non-empty 2-D greyscale image with equal-length rows"
+        raise syntax_error(
+            "expected a non-empty 2-D greyscale image with equal-length rows",
+            "provide nonempty, equal-width rows of greyscale pixels",
         )
     return _write("L", width, height, b"".join(pixels))
 
@@ -281,7 +331,10 @@ def write_rgb(pixels: Sequence[Sequence[tuple[int, int, int]]]) -> bytes:
     height = len(pixels)
     width = len(pixels[0]) if height else 0
     if not height or not width or any(len(row) != width for row in pixels):
-        raise ValueError("expected a non-empty 2-D RGB image")
+        raise syntax_error(
+            "expected a non-empty 2-D RGB image",
+            "provide nonempty, equal-width rows of RGB pixels",
+        )
     packed_rows: dict[int, tuple[Sequence[tuple[int, int, int]], bytes]] = {}
     packed_pixels: dict[int, tuple[tuple[int, int, int], bytes]] = {}
     cache_pixels = True
@@ -311,7 +364,10 @@ def write_rgb(pixels: Sequence[Sequence[tuple[int, int, int]]]) -> bytes:
                     repeats = 1
                     continue
             if len(pixel) != 3 or any(not 0 <= value <= 255 for value in pixel):
-                raise ValueError(f"invalid RGB pixel {pixel!r}")
+                raise syntax_error(
+                    f"invalid RGB pixel {pixel!r}",
+                    "use three integer RGB channels from 0 through 255",
+                )
             raw.extend(pixel)
             if type(pixel) is tuple:
                 if cache_pixels:

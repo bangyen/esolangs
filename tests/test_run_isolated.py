@@ -424,4 +424,4 @@ def test_isolated_row_timeout_stays_undecided(language, monkeypatch):
     with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
         evaluate_generated(language, "0110", isolated=True)
     assert caught.value.partial_output == "prefix"
-    assert "row 0" in caught.value.__notes__[0]
+    assert any("row 0" in note for note in caught.value.__notes__)

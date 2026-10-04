@@ -65,7 +65,7 @@ def _answer(rest: list[str]) -> None:
         # No ``TemplateError`` clause: this command generates the template
         # and fills it in the same breath, so it never hands an unfilled one
         # on.
-        _fail(str(exc), _exit_code(exc))
+        _fail(exc, _exit_code(exc))
 
 
 def _evaluate(rest: list[str]) -> None:
@@ -102,7 +102,7 @@ def _evaluate(rest: list[str]) -> None:
                 isolated=not hasattr(signal, "SIGALRM"),
             )
     except EsolangError as exc:
-        _fail(str(exc), _exit_code(exc))
+        _fail(exc, _exit_code(exc))
     if table is not None and computed != table:
         differing = [
             i for i, (a, b) in enumerate(zip(computed, table, strict=True)) if a != b

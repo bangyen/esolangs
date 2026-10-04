@@ -21,9 +21,12 @@ commands:
                               print how that language reads its input and
                               where it puts the answer (--spec prints the
                               interpreter's own description of it)
-  run [--timeout S] [--judge] [--table T] [--seed N] [--scale N] <language> <file>
+  run [--timeout S] [--isolated] [--max-output N] [--judge] [--table T]
+      [--seed N] [--scale N] <language> <file>
                               run a program through its interpreter
                               (--judge prints the answer bit instead)
+  suggest <language> <program-file>
+                              preview unambiguous command spelling edits
   check-stdin [--table T] <language>
                               judge stdin against what that language reads,
                               without running anything
@@ -65,6 +68,27 @@ examples:
 
 
 HELP = {
+    "suggest": """usage: esolangs suggest <language> <program-file>
+
+Preview command spelling corrections with 1-based line and column numbers.
+Accepts every language; spelling edits cover Modulous, Bitdeque, Packlang,
+BrainIf, Grapheme and Collatz Multiverse. Other languages explain why no edits
+are offered. Edits fix keyword case or a unique
+one-edit match (insertion, deletion, substitution or adjacent swap).
+Modulous and Bitdeque preview commands; Bitdeque skips GOTO targets.
+Packlang previews required package, datatype, Then and Do keywords. Variable
+and function names, comments and speculative declarations are untouched.
+Ambiguous matches and operands receive no proposed edit.
+BrainIf previews required command words; Grapheme previews letter case throughout
+the source, including literals; Collatz Multiverse previews DO/NOT PRINT after
+a valid assignment.
+
+The program is neither run nor modified. Apply chosen edits yourself, then
+run the program to check its behavior. No suggestions does not mean valid.
+
+example:
+  esolangs suggest Modulous program.mod
+""",
     "encode": """usage: esolangs encode <language> <bits>
 
 Print the stdin that feeds <bits> to a <language> program, so it can be
@@ -141,8 +165,9 @@ examples:
   esolangs generate brainfuck 0110
   esolangs generate --bits 10 Minifuck 0110
 """,
-    "run": """usage: esolangs run [--timeout S] [--judge] [--table T] [--seed N]
-                    [--scale N] <language> <program-file>
+    "run": """usage: esolangs run [--timeout S] [--isolated] [--max-output N]
+                    [--judge] [--table T] [--seed N] [--scale N]
+                    <language> <program-file>
 
 Run a program through its interpreter and print what it writes.
 
@@ -163,6 +188,8 @@ exit codes: 0 ran, 1 the program broke while running, 2 the ask was wrong
 out, 130 interrupted.
 
 options:
+  --isolated         run in a subprocess; portable deadline, default 30 seconds.
+  --max-output N     cap isolated output in Unicode characters (including zero).
   --timeout SECONDS  stop the run after this long rather than hanging.
                      Unbounded by default.  Four languages answer 1 by
                      *not* terminating -- 123, ArrowQueue, Crement and

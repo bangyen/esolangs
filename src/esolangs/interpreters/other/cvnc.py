@@ -23,10 +23,13 @@ floors; an invalid function is inert but division by zero raises
 :class:`~esolangs.exceptions.HaltError`, as does popping an empty deque;
 subtraction and ``s`` floor at zero; unbalanced loops, an empty program
 or an unsyllabifiable source raise :class:`ValueError`; ``s`` reads junk
-as zero, while EOF raises :class:`EOFError`; ASCII ``g`` folds to ``ɡ``
-because the wiki's example uses it.  Spec deviation: LF is discarded
-before tokenization, syllabification and character-offset calculation;
-spaces, tabs and CR remain invalid.
+as zero, while EOF raises :class:`EOFError`.
+
+Compatibility extensions: ASCII ``g`` folds to the command table's ``ɡ`` to
+accept the wiki's Hello, world! spelling. LF is discarded before tokenization,
+syllabification and character-offset calculation so line-wrapped generated
+programs run. These extend the IPA-source rule; spaces, tabs and CR remain
+invalid.
 """
 
 from __future__ import annotations
@@ -38,6 +41,7 @@ from esolangs._drive import drive
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.source_hints import syntax_error
 
 __all__ = ["run"]
 
@@ -125,7 +129,13 @@ def _tokenize(code: str) -> list[str]:
         if char == "g":
             char = _SCRIPT_G
         if char not in _CONSONANTS and char not in _NASALS and char not in _VOWELS:
-            raise ValueError(f"not a CV(N)(C) symbol: {char!r}")
+            raise syntax_error(
+                f"not a CV(N)(C) symbol: {char!r}",
+                (
+                    "use IPA command symbols in CV(N)(C) syllables; spaces and "
+                    "tabs are not separators"
+                ),
+            )
         tokens.append(char)
         index += 1
     return tokens
@@ -138,10 +148,19 @@ def _syllabify(tokens: list[str]) -> list[int]:
     while index < len(tokens):
         starts.append(index)
         if tokens[index] not in _CONSONANTS:
-            raise ValueError(f"syllable must start with a consonant: {tokens[index]!r}")
+            raise syntax_error(
+                f"syllable must start with a consonant: {tokens[index]!r}",
+                (
+                    "start each syllable with a non-nasal consonant followed by "
+                    "a vowel, for example si"
+                ),
+            )
         index += 1
         if index >= len(tokens) or tokens[index] not in _VOWELS:
-            raise ValueError("syllable must have a vowel after its consonant")
+            raise syntax_error(
+                "syllable must have a vowel after its consonant",
+                "follow the consonant with i, ə, æ, o or u",
+            )
         index += 1
         if index < len(tokens) and tokens[index] in _NASALS:
             index += 1
@@ -165,12 +184,17 @@ def _match_loops(tokens: list[str]) -> dict[int, int]:
             stack.append(index)
         elif token == _LOOP_END:
             if not stack:
-                raise ValueError("loop end with no matching start")
+                raise syntax_error(
+                    "loop end with no matching start",
+                    "place a matching ɰ or ɰ̊ loop opener before ʋ",
+                )
             start = stack.pop()
             pairs[start] = index
             pairs[index] = start
     if stack:
-        raise ValueError("loop start with no matching end")
+        raise syntax_error(
+            "loop start with no matching end", "close each ɰ or ɰ̊ loop with ʋ"
+        )
     return pairs
 
 
@@ -219,7 +243,10 @@ class _Parser:
                 value *= right
                 continue
             if right == 0:
-                raise HaltError("division by zero in the function")
+                raise HaltError(
+                    "division by zero in the function",
+                    hint="ensure the divisor is nonzero before dividing",
+                )
             value //= right
         return value
 
@@ -262,7 +289,10 @@ type _State = tuple[int, tuple[int, ...], tuple[str, ...], int]
 def _popped(deque: tuple[int, ...], *, front: bool) -> tuple[tuple[int, ...], int]:
     """Pop one end of the deque, refusing an empty one."""
     if not deque:
-        raise HaltError("pop from an empty deque")
+        raise HaltError(
+            "pop from an empty deque",
+            hint="append a value before removing one from the deque",
+        )
     return (deque[1:], deque[0]) if front else (deque[:-1], deque[-1])
 
 
@@ -392,7 +422,10 @@ class _Machine:
         """Parse ``code`` into commands and syllables, ready to step."""
         self.tokens = _tokenize(code.replace("\n", ""))
         if not self.tokens:
-            raise ValueError("program is empty")
+            raise syntax_error(
+                "program is empty",
+                "provide at least one CV(N)(C) syllable, for example si",
+            )
         self.starts = _syllabify(self.tokens)
         self.pairs = _match_loops(self.tokens)
         # ``ɹ`` indexes the source by codepoint, so the token that each

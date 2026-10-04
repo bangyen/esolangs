@@ -30,6 +30,7 @@ from __future__ import annotations
 from esolangs._drive import drive
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.source_hints import syntax_error
 
 #: ``(head, read, answer, printed)``: program position, leftmost live data-bit,
 #: the bit the last ``0`` took, and whether it is printed.  The program is fixed
@@ -46,17 +47,19 @@ def _parse(code: str) -> tuple[str, str, tuple[int, ...]]:
     kept = [(at, c) for at, c in enumerate(code) if not c.isspace()]
     stray = next((c for _at, c in kept if c not in "01,"), None)
     if stray is not None:
-        raise ValueError(
+        raise syntax_error(
             f"{stray!r} is not a Bitwise Cyclic Tag bit; a source is 0s and "
-            f"1s, with one ',' between the program and the data-string"
+            f"1s, with one ',' between the program and the data-string",
+            "write program,data using only bits; for example 0,1",
         )
     commas = [i for i, (_at, c) in enumerate(kept) if c == ","]
     if len(commas) > 1:
         # Almost always three fields, a syntax this language does not have;
         # the count beats an offset the reader then has to count to.
-        raise ValueError(
+        raise syntax_error(
             f"a Bitwise Cyclic Tag source has one ',' at most, got "
-            f"{len(commas)}: the program, then the data-string"
+            f"{len(commas)}: the program, then the data-string",
+            "keep at most one comma separating the program from its data",
         )
     split = commas[0] if commas else len(kept)
     program = "".join(c for _at, c in kept[:split])

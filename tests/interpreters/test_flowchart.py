@@ -1,11 +1,8 @@
 """Unit tests for the Flowchart interpreter.
 
-The wiki page carries three worked examples -- a truth machine, a cat, and a
-Kolakoski-sequence generator -- and they are the ground truth here, because
-the spec leaves the switch's orientation, the re-entry rule, the empty
-register's I/O, and the pointer interleaving unstated.  See the module
-docstring of ``esolangs.interpreters.grid_based.flowchart`` for how each of
-those gaps is resolved and which example pins it down.
+The command table takes precedence over the examples: empty-register output
+is zero, so the wiki's cat appends a spurious bit. Other routing gaps follow
+the worked examples; see the interpreter's module docstring.
 """
 
 import pytest
@@ -122,34 +119,18 @@ class TestCat:
         "bits",
         ["1", "0", "101", "1101", "000", "111"],
     )
-    def test_echoes_its_input(self, bits: str) -> None:
-        """Every bit read is printed back, in order, and the program ends."""
-        assert run_program(CAT, "\n".join(bits)) == bits
+    def test_wiki_cat_appends_zero(self, bits: str) -> None:
+        """The final empty-deque pop causes the wiki cat to append zero."""
+        assert run_program(CAT, "\n".join(bits)) == bits + "0"
 
-    def test_no_input_prints_nothing(self) -> None:
-        """With no bits to read the deque stays empty and nothing is output."""
-        assert run_program(CAT, "") == ""
+    def test_no_input_prints_zero(self) -> None:
+        """The wiki cat still outputs its empty register once."""
+        assert run_program(CAT, "") == "0"
 
     def test_halts_rather_than_looping(self) -> None:
         """The exhausted read sends the pointer forward to the end node."""
         machine = _Machine(CAT, ScriptedIO("1\n0\n1"))
         assert run_until_halt_or_cycle(machine) is True
-
-    def test_no_trailing_zero_from_the_empty_register(self) -> None:
-        """The final lap's empty register prints nothing.
-
-        The spec's table says "empty is zero", but the last lap of this very
-        program pops an exhausted deque and reaches the output node with an
-        empty register -- printing a zero there would append a bit the cat
-        never read.
-
-        This pins a judgment call, not a fact the wiki states outright: the
-        page's diagrams were never run, so the cat may simply be buggy and
-        the prose may mean what it says.  See the interpreter's module
-        docstring for why the example won here, and flip both together if
-        that call is ever revisited.
-        """
-        assert not run_program(CAT, "\n".join("101")).endswith("1010")
 
 
 class TestKolakoski:
@@ -188,8 +169,7 @@ class TestKolakoski:
         east branch's first bit).  The repeating ``100110011001`` tail is
         identical under every policy tried, and also under every combination
         of the two contested semantic rules (1 turns left/right x empty
-        prints nothing/is zero; only the shipped combination passes the
-        truth machine and the cat at all), so it
+        prints nothing/is zero), so it
         is neither an interleaving nor a routing artifact.
 
         The east pointer in fact emits one bit and halts eleven nodes in:
@@ -421,9 +401,9 @@ class TestNodes:
         """``\\ \\`` writes the register as a character."""
         assert run_program(["( )─[ }─\\ \\─(( ))"]) == "1"
 
-    def test_output_of_an_empty_register_prints_nothing(self) -> None:
-        """An empty register writes no character at all."""
-        assert run_program(["( )─\\ \\─(( ))"]) == ""
+    def test_output_of_an_empty_register_prints_zero(self) -> None:
+        """The command table defines empty-register output as zero."""
+        assert run_program(["( )─\\ \\─(( ))"]) == "0"
 
     def test_input_reads_one_bit_per_line(self) -> None:
         """``/ /`` takes one bit from each line of input."""
@@ -431,7 +411,7 @@ class TestNodes:
 
     def test_exhausted_input_leaves_the_register_empty(self) -> None:
         """Reading past the end of the input empties the register."""
-        assert run_program(["( )─/ /─\\ \\─(( ))"], "") == ""
+        assert run_program(["( )─/ /─\\ \\─(( ))"], "") == "0"
 
 
 class TestPointersStop:
@@ -524,7 +504,7 @@ class TestAmbiguousExits:
         The switch is entered from above and its only exits are sideways, so
         ``{ }`` (which clears the register, choosing "carry on") asks for a
         direction that is not there.  The pointer leaves by the first exit
-        instead, and the register is empty, so nothing is printed.
+        instead, and the empty register prints zero.
         """
         grid = [
             "                   ( )",
@@ -539,7 +519,7 @@ class TestAmbiguousExits:
         ]
         io = ScriptedIO("")
         run(grid, io)
-        assert io.getvalue() == ""
+        assert io.getvalue() == "0"
 
     def test_a_set_register_still_turns_at_that_switch(self) -> None:
         """The same grid, with the turn available: the switch does turn.

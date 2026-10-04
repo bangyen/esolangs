@@ -1,6 +1,6 @@
 # Architecture
 
-The API and CLI resolve generators and interpreters through the registry:
+The registry connects the API and CLI to generators and interpreters:
 
 ```text
 language name
@@ -16,9 +16,9 @@ interpreter module ◄──── source + encoded stdin ◄──┘
     └── make_vm() ──► step-and-inspect state
 ```
 
-`src/esolangs/registry/` is the integration source of truth. Each `Language`
-records its names, interpreter, source shape, and optional generator. `resolve`
-normalizes spelling; `RUNNERS` selects whole-source or split-line input.
+`src/esolangs/registry/` owns integration. `Language` records names,
+interpreter, source shape and optional generator; `resolve` normalizes
+spelling, and `RUNNERS` selects whole-source or split-line input.
 
 `generate` calls the registered generator. Most return runnable source;
 input-embedding languages return a `$`-placeholder template for `instantiate`.
@@ -30,17 +30,16 @@ the shared scripted I/O object, and calls its `run(code, io)` entry point.
 `make_vm` exposes the interpreter’s step-capable machine to the debugger
 and hang proofs.
 
-Interpreters are grouped by execution model. Each language owns a module or
-a package containing its helpers; generators follow the same ownership rule.
+Interpreters are grouped by execution model. Each interpreter and generator
+owns a module or helper package.
 `tests/interpreters/` and `tests/tools/` hold language suites and shared
 contract checks. Line and Piet use the same verification and mutation
 workflows as text languages. `scripts/` holds verification, mutation, and
 documentation tools.
 
-Languages print a bit, dump state, or answer by halting. `read_answer` uses
-example metadata for printed and state-dump answers; `evaluate` also handles
-termination answers. It runs a supplied program through optional
-instantiation, input encoding, execution, and extraction on every row.
+`read_answer` uses example metadata for printed and state-dump answers.
+`evaluate` also handles termination answers, applying instantiation, input
+encoding, execution and extraction to every row.
 CLI `evaluate --table` compares the observed table with the expected one.
 
 To add a language, implement its interpreter and generator, register its

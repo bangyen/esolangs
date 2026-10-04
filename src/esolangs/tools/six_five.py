@@ -14,6 +14,7 @@ import string
 from collections.abc import Callable
 
 from esolangs.exceptions import GeneratorCapError
+from esolangs.interpreters.source_hints import with_hint
 from esolangs.tools.helpers import (
     _ASCII_ZERO,
     _GREEDY_ORDER_MAX_ARITY,
@@ -649,9 +650,15 @@ def _six_five_stream_ordered(truth_table: str, *, share: bool = False) -> str:
     n = _validate_truth_table(truth_table)
     labels = _six_five_markers(truth_table)
     if labels > 35:
-        raise GeneratorCapError(
-            "the 6-5 decision tree has 35 branch labels, but this table needs "
-            f"{labels} after folding its constant subtrees (n == {n})"
+        raise with_hint(
+            GeneratorCapError(
+                "the 6-5 decision tree has 35 branch labels, but this table needs "
+                f"{labels} after folding its constant subtrees (n == {n})"
+            ),
+            (
+                "check another generator's limits for this "
+                "table; formatting cannot add branch labels"
+            ),
         )
     constant = constant_span_test(truth_table)
     ids = subtree_ids(truth_table)

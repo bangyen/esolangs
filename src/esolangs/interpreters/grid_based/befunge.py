@@ -21,6 +21,7 @@ from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.randomness import Randomness, draw
+from esolangs.interpreters.source_hints import syntax_error
 
 #: ``?`` picks one, in the order the shell's draw maps to: right, down, left, up.
 _DIRECTIONS = ((1, 0), (0, 1), (-1, 0), (0, -1))
@@ -89,7 +90,10 @@ def _advance(
         elif command == "/":
             if not a:
                 if number_input is None:
-                    raise HaltError("'/' divides by zero and needs a result")
+                    raise HaltError(
+                        "'/' divides by zero and needs a result",
+                        hint="ensure the divisor is nonzero before dividing",
+                    )
                 stack = (*stack, number_input)
             else:
                 quotient = abs(b) // abs(a)
@@ -97,7 +101,10 @@ def _advance(
         else:
             if not a:
                 if number_input is None:
-                    raise HaltError("'%' divides by zero and needs a result")
+                    raise HaltError(
+                        "'%' divides by zero and needs a result",
+                        hint="ensure the divisor is nonzero before dividing",
+                    )
                 stack = (*stack, number_input)
             else:
                 quotient = abs(b) // abs(a)
@@ -121,7 +128,10 @@ def _advance(
         dx, dy = 0, 1
     elif command == "?":
         if random_dir is None:
-            raise HaltError("'?' needs a random draw and none was supplied")
+            raise HaltError(
+                "'?' needs a random draw and none was supplied",
+                hint="supply a randomness source for this operation",
+            )
         dx, dy = _DIRECTIONS[random_dir]
     elif command == "_":
         a, stack = _pop(stack)
@@ -163,11 +173,17 @@ def _advance(
             grid = tuple(rows)
     elif command == "&":
         if number_input is None:
-            raise HaltError("'&' reads a number and there is no input left")
+            raise HaltError(
+                "'&' reads a number and there is no input left",
+                hint="supply another input value or stop reading at end of input",
+            )
         stack = _push(stack, number_input)
     elif command == "~":
         if char_input is None:
-            raise HaltError("'~' reads a character and there is no input left")
+            raise HaltError(
+                "'~' reads a character and there is no input left",
+                hint="supply another input value or stop reading at end of input",
+            )
         stack = _push(stack, char_input)
     elif command == "@":
         done = True
@@ -185,9 +201,15 @@ class _Machine:
         self, code: Sequence[str], io: IO, rng: Randomness | None = None
     ) -> None:
         if not code or not (width := max(map(len, code), default=0)):
-            raise ValueError("Befunge program cannot be empty")
+            raise syntax_error(
+                "Befunge program cannot be empty",
+                "provide a nonempty grid; @ halts immediately",
+            )
         if width > _WIDTH or len(code) > _HEIGHT:
-            raise ValueError("Befunge program exceeds its 80x25 playfield")
+            raise syntax_error(
+                "Befunge program exceeds its 80x25 playfield",
+                "keep each row at most 80 characters and the grid at most 25 rows",
+            )
         rows = [row.ljust(_WIDTH) for row in code]
         rows.extend(" " * _WIDTH for _ in range(_HEIGHT - len(rows)))
         self.grid = tuple(tuple(row) for row in rows)
