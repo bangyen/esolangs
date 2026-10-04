@@ -12,7 +12,6 @@ block on end to meet a width.
 from functools import cache
 from typing import NamedTuple
 
-from esolangs._laserfuck import LaserfuckDialect
 from esolangs.tools.helpers import (
     _validate_truth_table,
     constant_span_test,
@@ -698,7 +697,7 @@ def _laserfuck_build(
     return grid.render()
 
 
-def laserfuck(truth_table: str, width: int | None = None, *, eof: str = "error") -> str:
+def laserfuck(truth_table: str, width: int | None = None) -> str:
     """Build a LaserFuck program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
@@ -727,7 +726,6 @@ def laserfuck(truth_table: str, width: int | None = None, *, eof: str = "error")
     against columns, so the narrowest program is often not the shortest,
     and the choice has to be made over the whole pool.
     """
-    LaserfuckDialect(eof)
     _validate_truth_table(truth_table)
     if width is None and len(truth_table) > 16:
         return _laserfuck_weighted(truth_table)

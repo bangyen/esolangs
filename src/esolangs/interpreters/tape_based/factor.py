@@ -19,7 +19,6 @@ import math
 import re
 import sys
 
-from esolangs._brainfuck import BrainfuckDialect
 from esolangs._drive import drive
 from esolangs.factor_primes import prime_segments
 from esolangs.interpreters._entry import script_main
@@ -164,31 +163,12 @@ class _Machine:
     ``halted`` and the snapshot are the underlying machine's.
     """
 
-    def __init__(
-        self,
-        code: str,
-        io: IO,
-        *,
-        cell_modulus: int | None = 256,
-        tape_size: int | None = None,
-        boundary: str = "clamp",
-        eof: str = "error",
-    ) -> None:
+    def __init__(self, code: str, io: IO) -> None:
         """Decode ``code`` and reset the underlying brainfuck machine."""
-        BrainfuckDialect(cell_modulus, tape_size, boundary, eof)
-        self.eof_is_a_value = eof != "error"
-        self.supports_tape_growth = tape_size is None
         self.io = io
         digits = re.sub(r"[^0-9]", "", code)
         number = _parse(digits) if digits else 1
-        self.state: _State = _BFMachine(
-            decode(number),
-            io,
-            cell_modulus=cell_modulus,
-            tape_size=tape_size,
-            boundary=boundary,
-            eof=eof,
-        )
+        self.state: _State = _BFMachine(decode(number), io)
 
     @property
     def bf(self) -> _State:
@@ -239,24 +219,9 @@ class _Machine:
         return self.bf.snapshot()
 
 
-def run(
-    code: str,
-    io: IO,
-    *,
-    cell_modulus: int | None = 256,
-    tape_size: int | None = None,
-    boundary: str = "clamp",
-    eof: str = "error",
-) -> None:
+def run(code: str, io: IO) -> None:
     """Run a Factor program, executing the brainfuck it decodes to."""
-    machine = _Machine(
-        code,
-        io,
-        cell_modulus=cell_modulus,
-        tape_size=tape_size,
-        boundary=boundary,
-        eof=eof,
-    )
+    machine = _Machine(code, io)
     drive(machine)
 
 

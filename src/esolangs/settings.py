@@ -4,46 +4,19 @@ import inspect
 from dataclasses import dataclass
 from typing import Any, TypedDict, cast
 
-from esolangs._brainfuck import EOF_POLICIES, BrainfuckDialect
 from esolangs._dialects import (
-    DEQUE_CURSORS,
     EXPRESSION_SYNTAXES,
-    INDEX_BASES,
-    JUNCTION_TIE_BREAKS,
     LITERAL_POLICIES,
-    SCHEDULINGS,
-    TAPE_BOUNDARIES,
-    UNKNOWN_POLICIES,
-    UNSET_POLICIES,
-    FalseDialect,
-    FlowchartDialect,
-    LineDialect,
     PacklangLiterals,
     expression_syntax,
-    index_base,
 )
-from esolangs._framing import INPUT_FRAMINGS, InputFraming
 from esolangs._grapheme import INTEGER_CONVERSIONS, GraphemeDialect
-from esolangs._jaune import UNDEFINED_TARGETS, JauneDialect
-from esolangs._laserfuck import LaserfuckDialect
 from esolangs._mammalian import MODULI, MammalianModuli
 from esolangs.exceptions import ArgumentError
 from esolangs.registry import LANGUAGES, resolve
 
 _VALIDATORS: dict[str, Any] = {
-    "brainfuck": BrainfuckDialect,
-    "factor": BrainfuckDialect,
-    "unary": BrainfuckDialect,
-    "line": LineDialect,
-    "jaune": JauneDialect,
-    "laserfuck": LaserfuckDialect,
     "grapheme": GraphemeDialect,
-    "unsquare": InputFraming,
-    "decleq": InputFraming,
-    "addsubjump": InputFraming,
-    "minifuck": InputFraming,
-    "false": FalseDialect,
-    "flowchart": FlowchartDialect,
     "slow_acv_mammalian": MammalianModuli,
 }
 
@@ -56,21 +29,8 @@ class DialectSettings:
 
     def __init__(self, **choices: int | str | None) -> None:
         """Copy typed overrides; language-specific validation precedes use."""
-        integer = {"cell_modulus", "io_modulus", "tape_size", "index_base", "pick_base"}
-        text = {
-            "boundary",
-            "eof",
-            "expression_syntax",
-            "literal_policy",
-            "unset_variables",
-            "unknown_commands",
-            "scheduling",
-            "deque_cursor",
-            "junction_tie_break",
-            "undefined_targets",
-            "integer_conversion",
-            "input_framing",
-        }
+        integer = {"cell_modulus", "io_modulus"}
+        text = {"expression_syntax", "literal_policy", "integer_conversion"}
         for key, value in choices.items():
             if key not in integer | text:
                 raise ArgumentError(f"unknown dialect setting: {key}")
@@ -89,9 +49,7 @@ class DialectSettings:
         language_id = LANGUAGES[name].id
         values: dict[str, Any] = dict(self._items)
         try:
-            if language_id == "bitdeque":
-                _single(values, "index_base", index_base, 0)
-            elif language_id == "alight":
+            if language_id == "alight":
                 _single(values, "expression_syntax", expression_syntax, "infix")
             elif language_id == "packlang":
                 PacklangLiterals(
@@ -139,7 +97,7 @@ def effective_settings(
         return settings
     if settings is None:
         return retained
-    # Dependent overrides (wrap + retained tape_size) validate only after merging.
+    # Validate the combined choices after explicit fields replace retained fields.
     merged = DialectSettings(**(dict(retained._items) | dict(settings._items)))  # noqa: SLF001
     dialect_options(language, merged)
     return merged
@@ -152,7 +110,7 @@ def _single(values: dict[str, Any], key: str, validator: Any, default: Any) -> N
 
 
 class DialectOption(TypedDict):
-    """Runtime choices with non-null dependencies; generation may need more storage."""
+    """Supported resolutions of conflicting rules within one specification."""
 
     default: int | str | None
     choices: tuple[int | str, ...] | None
@@ -167,11 +125,7 @@ def dialect_choices(language: str) -> dict[str, DialectOption]:
 
     name = resolve(language)
     language_id = LANGUAGES[name].id
-    singles = {
-        "bitdeque": "index_base",
-        "alight": "expression_syntax",
-        "packlang": "literal_policy",
-    }
+    singles = {"alight": "expression_syntax", "packlang": "literal_policy"}
     if language_id in singles:
         keys = [singles[language_id]]
     elif language_id in _VALIDATORS:
@@ -179,37 +133,21 @@ def dialect_choices(language: str) -> dict[str, DialectOption]:
     else:
         return {}
     choices: dict[str, tuple[int | str, ...]] = {
-        "index_base": INDEX_BASES,
-        "pick_base": INDEX_BASES,
         "expression_syntax": EXPRESSION_SYNTAXES,
         "literal_policy": LITERAL_POLICIES,
-        "unset_variables": UNSET_POLICIES,
-        "unknown_commands": UNKNOWN_POLICIES,
-        "boundary": TAPE_BOUNDARIES,
-        "eof": EOF_POLICIES,
-        "scheduling": SCHEDULINGS,
-        "deque_cursor": DEQUE_CURSORS,
-        "junction_tie_break": JUNCTION_TIE_BREAKS,
-        "undefined_targets": UNDEFINED_TARGETS,
         "integer_conversion": INTEGER_CONVERSIONS,
-        "input_framing": INPUT_FRAMINGS,
+        "cell_modulus": MODULI,
+        "io_modulus": MODULI,
     }
-    if language_id == "slow_acv_mammalian":
-        choices.update(cell_modulus=MODULI, io_modulus=MODULI)
     machine = interpreter_module(name)._Machine  # noqa: SLF001 - interpreter adapter
     parameters = inspect.signature(machine).parameters
-    result: dict[str, DialectOption] = {}
-    for key in keys:
-        dependencies: dict[str, tuple[str, ...]] = {}
-        if key == "boundary":
-            dependencies["wrap"] = ("tape_size",)
-            if language_id == "line":
-                dependencies["clamp"] = ("tape_size",)
-        result[key] = {
+    return {
+        key: {
             "default": cast("int | str | None", parameters[key].default),
-            "choices": choices.get(key),
-            "minimum": None if key in choices else 2 if key == "cell_modulus" else 1,
-            "nullable": key not in choices,
-            "requires": dependencies,
+            "choices": choices[key],
+            "minimum": None,
+            "nullable": False,
+            "requires": {},
         }
-    return result
+        for key in keys
+    }

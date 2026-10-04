@@ -10,8 +10,8 @@ so line-wrapped generated programs run. Spaces, tabs and CR remain malformed.
 ``integer_conversion="between_letters"`` keeps existing programs and generators:
 ``FAFY`` prints 1. ``"after_each_letter"`` follows the prose and prints 10;
 int mode and string-to-integer conversion share this rule. Numeric and function
-conversions are unchanged. ``unset_variables="zero"`` returns zero for missing
-numeric or string names; the default ``"error"`` halts.
+conversions are unchanged. Reading an unset variable halts; the spec leaves
+initial variable values unspecified.
 
 Gaps decided: underflow, math or ``Y`` on a function, a negative ``N``
 integer (alphabet ``A``-``J``), a function as a variable name, an
@@ -281,12 +281,12 @@ def _advance(
                 "a function cannot name a variable",
                 hint="use a string or numeric name for the variable",
             )
-        if name not in variables and dialect.unset_variables == "error":
+        if name not in variables:
             raise HaltError(
                 f"undeclared variable {name!r}",
                 hint="declare the variable before reading it; check its spelling",
             )
-        pushes = (variables.get(name, 0),)
+        pushes = (variables[name],)
     elif c in _OPENS:
         mode, buf = _OPENS[c], ()
     elif c == "G":
@@ -406,11 +406,10 @@ class _Machine:
         code: str,
         io: IO,
         *,
-        unset_variables: str = "error",
         integer_conversion: str = "between_letters",
     ) -> None:
         """Build a machine running ``code`` as its top-level frame."""
-        self.dialect = GraphemeDialect(unset_variables, integer_conversion)
+        self.dialect = GraphemeDialect(integer_conversion)
         code = code.replace("\n", "")
         if any(c not in "ABCDEFGHIJKLMNOPQRSTUVWXYZ" for c in code):
             raise syntax_error(
@@ -534,13 +533,10 @@ def run(
     code: str,
     io: IO,
     *,
-    unset_variables: str = "error",
     integer_conversion: str = "between_letters",
 ) -> None:
     """Run a Grapheme program to completion."""
-    machine = _Machine(
-        code, io, unset_variables=unset_variables, integer_conversion=integer_conversion
-    )
+    machine = _Machine(code, io, integer_conversion=integer_conversion)
     drive(machine)
 
 

@@ -13,7 +13,6 @@ import heapq
 import sys
 from collections.abc import Iterator
 
-from esolangs._brainfuck import BrainfuckDialect
 from esolangs.factor_primes import prime_segments
 from esolangs.tools.helpers import (
     _ASCII_ZERO,
@@ -132,14 +131,7 @@ def _program(truth_table: str) -> str:
     return build + reads + dedent + body + move_text(pos, result, ">", "<") + "."
 
 
-def factor(
-    truth_table: str,
-    *,
-    cell_modulus: int | None = 256,
-    tape_size: int | None = None,
-    boundary: str = "clamp",
-    eof: str = "error",
-) -> str:
+def factor(truth_table: str) -> str:
     """Build a Factor program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
@@ -148,8 +140,6 @@ def factor(
     ``sys.get_int_max_str_digits()`` is raised to a bit-length estimate
     (``log10(2) < 0.30103``, never under-counting) and put back.
     """
-    n = _validate_truth_table(truth_table)
-    BrainfuckDialect(cell_modulus, tape_size, boundary, eof).require_cells(2 * n + 2)
     number = _encode(_program(truth_table))
     digits = int(number.bit_length() * 0.30103) + 1
     limit = sys.get_int_max_str_digits()

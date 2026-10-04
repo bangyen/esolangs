@@ -49,7 +49,7 @@ def test_generated_settings_are_reused(language, settings, balance):
 
 
 @pytest.mark.medium
-@pytest.mark.parametrize("language", ["Alight", "Bitdeque", "Line"])
+@pytest.mark.parametrize("language", ["Alight", "Packlang", "Grapheme"])
 def test_isolation_retains_settings(language):
     settings = dict(CASES)[language]
     program = esolangs.generate(language, "0110", settings=settings, balance=True)
@@ -58,7 +58,7 @@ def test_isolation_retains_settings(language):
 
 @pytest.mark.parametrize("template", [False, True])
 def test_text_pickle_retains_settings(template):
-    settings = DialectSettings(index_base=1)
+    settings = DialectSettings()
     source = esolangs.generate("Bitdeque", "0110", settings=settings)
     if not template:
         source = esolangs.instantiate("Bitdeque", source, [1, 0])
@@ -72,7 +72,7 @@ def test_text_pickle_retains_settings(template):
 
 @pytest.mark.parametrize("balance", [False, True])
 def test_raster_scaling_retains_settings(balance):
-    settings = DialectSettings(cell_modulus=2, tape_size=2, boundary="wrap")
+    settings = DialectSettings()
     source = esolangs.generate(
         "Line", "01", scale=2, balance=balance, settings=settings
     )
@@ -85,41 +85,37 @@ def test_raster_scaling_retains_settings(balance):
     assert source.tagged("Piet").settings is None
 
 
-def test_partial_overrides_merge_and_validate_dependencies():
-    settings = DialectSettings(cell_modulus=2, tape_size=1, eof="unchanged")
-    source = _Tagged("+>,+.", "brainfuck", settings)
-    assert (
-        esolangs.run("Brainfuck", source, settings=DialectSettings(boundary="wrap"))
-        == "\x00"
-    )
-    assert (
-        esolangs.run("Brainfuck", source, settings=DialectSettings(eof="zero"))
-        == "\x01"
-    )
+def test_partial_overrides_merge_and_validate():
+    settings = DialectSettings(cell_modulus=256, io_modulus=255)
+    source = _Tagged("SEED " * 255 + "DIGEST PRONOUNCE", "SLOW ACV MAMMALIAN", settings)
+    assert esolangs.run("SLOW ACV MAMMALIAN", source) == chr(0)
+    assert esolangs.run(
+        "SLOW ACV MAMMALIAN", source, settings=DialectSettings(io_modulus=256)
+    ) == chr(255)
     assert source.settings is settings
-    with pytest.raises(esolangs.ArgumentError, match="wrap requires"):
+    with pytest.raises(esolangs.ArgumentError):
         esolangs.run(
-            "Brainfuck",
-            source,
-            settings=DialectSettings(boundary="wrap", tape_size=None),
+            "SLOW ACV MAMMALIAN", source, settings=DialectSettings(cell_modulus=257)
         )
     with pytest.raises(esolangs.ArgumentError, match="DialectSettings"):
-        esolangs.run("Brainfuck", source, settings={})
+        esolangs.run("SLOW ACV MAMMALIAN", source, settings={})
 
 
 @pytest.mark.parametrize("isolated", [False, True])
 def test_loaded_text_tag_is_respected(isolated):
-    source = _Tagged("+,.", "brainfuck", DialectSettings(eof="unchanged"))
+    source = _Tagged(
+        "FAFY", "Grapheme", DialectSettings(integer_conversion="after_each_letter")
+    )
     stream = StringIO()
     stream.read = lambda: source
-    assert esolangs.run("Brainfuck", stream, isolated=isolated) == "\x01"
+    assert esolangs.run("Grapheme", stream, isolated=isolated) == "10"
     stream = StringIO()
     stream.read = lambda: source
-    assert complete_vm(make_vm("Brainfuck", stream), 10) == "\x01"
+    assert complete_vm(make_vm("Grapheme", stream), 10) == "10"
 
 
 def test_plain_text_needs_explicit_settings():
-    settings = DialectSettings(index_base=1)
+    settings = DialectSettings()
     template = esolangs.generate("Bitdeque", "0110", settings=settings)
     assert not hasattr(str(template), "settings")
     filled = esolangs.instantiate("Bitdeque", str(template), [1, 0], settings=settings)
@@ -138,11 +134,8 @@ def test_foreign_language_guard_precedes_retained_choices():
 def test_empty_tag_metadata_and_template_override():
     source = esolangs.generate("Brainfuck", "01")
     assert source.settings is None
-    assert (
-        esolangs.run("Brainfuck", source, "1", settings=DialectSettings(eof="zero"))
-        == "1"
-    )
-    settings = DialectSettings(index_base=1)
+    assert esolangs.run("Brainfuck", source, "1", settings=DialectSettings()) == "1"
+    settings = DialectSettings()
     template = esolangs.generate("Bitdeque", "0110", settings=settings)
     filled = esolangs.instantiate(
         "Bitdeque", template, [1, 0], settings=DialectSettings()
@@ -154,16 +147,20 @@ def test_empty_tag_metadata_and_template_override():
 def test_inherited_choices_are_checked_before_input():
     from tests.test_public_dialects import Unreadable
 
-    source = _Tagged("+.", "brainfuck", DialectSettings(tape_size=0))
-    with pytest.raises(esolangs.ArgumentError, match="tape_size"):
+    source = _Tagged("+.", "brainfuck", DialectSettings(cell_modulus=255))
+    with pytest.raises(esolangs.ArgumentError, match="dialect settings"):
         esolangs.run("Brainfuck", source, Unreadable())
 
 
 def test_evaluation_inherits_loaded_metadata():
-    source = _Tagged(",.", "brainfuck", DialectSettings(cell_modulus=256, eof="zero"))
+    source = esolangs.generate(
+        "Grapheme",
+        "01",
+        settings=DialectSettings(integer_conversion="after_each_letter"),
+    )
     stream = StringIO()
     stream.read = lambda: source
-    assert esolangs.evaluate("Brainfuck", stream, inputs=1) == "01"
+    assert esolangs.evaluate("Grapheme", stream, inputs=1) == "01"
 
 
 def test_default_pickle_has_no_retained_choices():

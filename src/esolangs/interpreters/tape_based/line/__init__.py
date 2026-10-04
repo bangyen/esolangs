@@ -15,7 +15,6 @@ from __future__ import annotations
 from functools import lru_cache
 from typing import TYPE_CHECKING, cast
 
-from esolangs._dialects import DEFAULT_LINE, LineDialect
 from esolangs._source import raster_source as load_source
 from esolangs.interpreters.io import IO
 from esolangs.raster import Pixel, Raster, Rows
@@ -108,27 +107,17 @@ class _Machine:
     """A Line run: immutable code and state with I/O handled by the shell."""
 
     @staticmethod
-    def run_node(node: Node, io: IO, dialect: LineDialect = DEFAULT_LINE) -> None:
+    def run_node(node: Node, io: IO) -> None:
         """Execute the graph retained by a generated raster."""
         from .simulate import run_node
 
-        run_node(node, _LINE_IO(read=io.input_num, write=io.print_num), dialect=dialect)
+        run_node(node, _LINE_IO(read=io.input_num, write=io.print_num))
 
     ip_shape = "grid"
 
-    def __init__(
-        self,
-        program: Raster,
-        io: IO,
-        *,
-        scale: int | None = None,
-        cell_modulus: int | None = None,
-        tape_size: int | None = None,
-        boundary: str = "error",
-    ) -> None:
+    def __init__(self, program: Raster, io: IO, *, scale: int | None = None) -> None:
         from .simulate import _freeze_program
 
-        self.dialect = LineDialect(cell_modulus, tape_size, boundary)
         self.program = _freeze_program(_compiled(program, scale))
         self.state: _State = (0, 0, 0, ())
         self.io = io
@@ -174,27 +163,17 @@ class _Machine:
             if at < len(frame.ops) and frame.ops[at][0] == "i"
             else None
         )
-        self.state, output = _advance(self.state, self.program, value, self.dialect)
+        self.state, output = _advance(self.state, self.program, value)
         if output is not None:
             self.io.print_num(output)
 
 
-def run(
-    program: Raster,
-    io: IO,
-    *,
-    scale: int | None = None,
-    cell_modulus: int | None = None,
-    tape_size: int | None = None,
-    boundary: str = "error",
-) -> None:
+def run(program: Raster, io: IO, *, scale: int | None = None) -> None:
     """Execute a Line raster, writing decimal outputs through ``io``."""
-    dialect = LineDialect(cell_modulus, tape_size, boundary)
     if program._payload is not None and scale is None:  # noqa: SLF001 - language-owned payload
-        _Machine.run_node(cast("Node", program._payload), io, dialect)  # noqa: SLF001
+        _Machine.run_node(cast("Node", program._payload), io)  # noqa: SLF001
         return
     _run_compiled(
         _compiled(program, scale),
         _LINE_IO(read=io.input_num, write=io.print_num),
-        dialect=dialect,
     )

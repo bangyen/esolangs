@@ -2,7 +2,6 @@
 
 from itertools import pairwise
 
-from esolangs._framing import InputFraming
 from esolangs.tools.helpers import (
     _ASCII_ONE,
     _ASCII_ZERO,
@@ -13,7 +12,7 @@ from esolangs.tools.helpers import (
 __all__ = ["decleq"]
 
 
-def decleq(truth_table: str, *, input_framing: str = "characters") -> str:
+def decleq(truth_table: str) -> str:
     """Return a Decleq program for a binary, MSB-first ``2**n`` truth table.
 
     Decrement-and-branch normalizes bytes 48/49 to 1/2 in 47 steps; zero
@@ -32,7 +31,6 @@ def decleq(truth_table: str, *, input_framing: str = "characters") -> str:
     the counter and read cells. Code starts at the next multiple of three;
     cell 0 supplies every unconditional decrement and END is one past memory.
     """
-    InputFraming(input_framing)
     n = _validate_truth_table(truth_table)
     # The table depth: the fewest low inputs whose lookup pays for the
     # tree above it, ``2**k >= 2 n``, and never more inputs than there are.

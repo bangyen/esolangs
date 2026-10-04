@@ -10,7 +10,8 @@ See [Polynomial](proofs/polynomial.md) for its size lower bound.
   runtime failure raises `HaltError`, unless the language says otherwise.
 - Character input consumes Unicode characters, including newlines. Integer
   input consumes whitespace-delimited signed decimal tokens. Unsquare, Decleq,
-  AddSubJump and Minifuck expose `input_framing`; characters remain the default.
+  AddSubJump and Minifuck use Unicode character codes where input framing is
+  unspecified; Decleq’s optional memory-mapped I/O is enabled.
 - Explicit frame stacks are uncapped. Forbin expression calls retain their
   documented host-recursion limit.
 - Streetcode's four-way junction is an implementation convention: the source
@@ -284,7 +285,7 @@ and 4.000 (///). The constructions supply the bounds; these ratios are measureme
   decoded Brainfuck, but sources of length at most L supply at most L+1
   functions. Covering all 2**T truth tables requires L >= 2**T - 1 somewhere,
   precluding an O(T) generator. Decoded Brainfuck uses wrapping bytes,
-  a left-clamped tape and EOF errors.
+  a left-clamped tape and zero at EOF, as its cat example requires.
 - [大白话](https://esolangs.org/wiki/大白话) (134): deferred. The command table is
   explicitly partial; expression precedence, complete block grammar, library
   semantics, and embedded-language dispatch are unspecified. A restricted
@@ -338,26 +339,43 @@ languages remain rejected from the same image-source screen.
   current character unchanged. `v` absorbs its arguments, so the failure arm cannot execute
   its own code.
 - Bitdeque `GOTO n` is zero-based: it lands on command index `n`, where the
-  wiki's "Nth operation" reads one-based.  The generator's labels match this.
+  wiki leaves the counting origin unstated. The generator’s labels match this.
+- Brainfuck uses wrapping bytes, a right-growing tape, a clamped left edge and
+  EOF errors. Its page describes implementation conventions rather than
+  conflicting requirements. Factor retains these defaults: its cell range
+  and right growth are explicit, while its left edge and EOF are unspecified.
+- Line leaves cell width and tape boundaries unspecified: cells are unbounded
+  integers and the sparse tape extends in both directions.
+- Flowchart leaves scheduling, cursor ownership and equal-distance junctions
+  unspecified. Pointers run in creation-order rounds with separate cursors;
+  junctions prefer straight, right, then left.
+- LaserFuck inherits Brainfuck commands without defining EOF: exhausted input
+  raises `EOFError`.
 - BrainIf rejects unknown commands, including those under a false guard.
   `inc`, `left` and `right` remain aliases for the canonical commands.
 - SLOW ACV MAMMALIAN rejects unknown words; commands are uppercase and
   whitespace-delimited. The Hello World fixture omits prose annotations.
-- Jaune dispatch to an undefined marker is unspecified. `undefined_targets`
-  selects `error` (default), `halt` or `ignore`. Tape, cell and EOF policies
-  are configurable; `v` reads signed integer tokens.
+  Its storage range is `0..255`, but EXCRETE and PRONOUNCE say modulo 255;
+  `cell_modulus` and `io_modulus` select 255 or 256, both defaulting to 256.
+- Jaune leaves unresolved markers, cell bounds, tape bounds and EOF unspecified.
+  Unresolved markers raise `HaltError`; cells are unbounded, the tape grows
+  right and clamps left, and EOF raises. `v` reads signed integer tokens.
 - Alight retains infix, left-to-right expressions for compatibility with
   existing programs and generators, despite the explicit postfix rule.
-  Three-argument `at` returns a copy; the wiki reversed cat discards it.
+  Its cat examples use infix expressions; `expression_syntax="postfix"` follows
+  the conflicting Operations section. Three-argument `at` returns a copy;
+  the wiki reversed cat discards it.
 - CV(N)(C) accepts ASCII `g` as an alias for `ɡ` to run the wiki greeting.
   CV(N)(C), Grapheme and NoComment discard LF to run line-wrapped generated
   programs; these are source-rule deviations, not specification gaps.
 - Grapheme defaults to `integer_conversion="between_letters"`: `FAFY` prints
   1. `"after_each_letter"` includes the prose's final multiplication and prints
   10. Both integer mode and string conversion follow this setting; generators
-  adapt their literals. `unset_variables` selects `error` (default) or `zero`.
+  adapt their literals. The same page’s truth machine requires 1 rather than
+  the prose’s 10. Unset variables raise `HaltError`; initialization is unspecified.
 - Packlang literals default to decimal; `literal_policy="binary_digits"`
-  treats literals containing only `0` and `1` as binary. Character input
-  preserves newlines; EOF supplies newline to `charGet`.
+  treats literals containing only `0` and `1` as binary. The same page uses
+  decimal `101` in Hello World and binary digits in PlusOrMinus and dependency
+  examples. Character input preserves newlines; EOF supplies newline to `charGet`.
 - Pinyin is rejected: its spelling rule contradicts its examples and its
   input-1 truth-machine example has no deterministic reading.

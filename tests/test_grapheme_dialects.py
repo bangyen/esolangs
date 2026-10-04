@@ -75,20 +75,14 @@ def test_string_skip_count_uses_conversion():
 
 
 @pytest.mark.parametrize("source", ["FAFDY", "EABEDY", "HEABEDYHI"])
-@pytest.mark.parametrize("unset", ["error", "zero"])
-def test_unset_names(source, unset):
-    settings = DialectSettings(unset_variables=unset)
-    if unset == "error":
-        with pytest.raises(esolangs.HaltError, match="undeclared variable"):
-            esolangs.run("Grapheme", source, settings=settings)
-    else:
-        assert esolangs.run("Grapheme", source, settings=settings) == "0"
+def test_unset_names(source):
+    with pytest.raises(esolangs.HaltError, match="undeclared variable"):
+        esolangs.run("Grapheme", source)
 
 
-@pytest.mark.parametrize("unset", ["error", "zero"])
-def test_function_names_still_fail(unset):
+def test_function_names_still_fail():
     with pytest.raises(esolangs.HaltError, match="function cannot name"):
-        esolangs.run("Grapheme", "HHD", settings=DialectSettings(unset_variables=unset))
+        esolangs.run("Grapheme", "HHD")
 
 
 @pytest.mark.parametrize(
@@ -122,9 +116,8 @@ def test_generator_literals_are_exact(mode):
 
 @pytest.mark.medium
 @pytest.mark.parametrize("mode", ["between_letters", "after_each_letter"])
-@pytest.mark.parametrize("unset", ["error", "zero"])
-def test_generated_corpus(mode, unset):
-    settings = DialectSettings(integer_conversion=mode, unset_variables=unset)
+def test_generated_corpus(mode):
+    settings = DialectSettings(integer_conversion=mode)
     for n in range(1, 4):
         for value in range(1 << (1 << n)):
             table = format(value, f"0{1 << n}b")
@@ -149,23 +142,21 @@ def test_prose_conversion_at_six_inputs():
 @pytest.mark.medium
 @pytest.mark.parametrize("isolated", [False, True])
 def test_portable_settings_vm_and_override(isolated):
-    settings = DialectSettings(
-        integer_conversion="after_each_letter", unset_variables="zero"
-    )
-    source = _Tagged("FAFYFAFDY", "Grapheme", settings)
+    settings = DialectSettings(integer_conversion="after_each_letter")
+    source = _Tagged("FAFY", "Grapheme", settings)
     restored = esolangs.load_program(
         "Grapheme", esolangs.dump_program("Grapheme", source)
     )
-    assert esolangs.run("Grapheme", restored, isolated=isolated) == "100"
-    assert esolangs.run("Grapheme", restored, max_steps=20) == "100"
-    assert complete_vm(make_vm("Grapheme", restored), 20) == "100"
+    assert esolangs.run("Grapheme", restored, isolated=isolated) == "10"
+    assert esolangs.run("Grapheme", restored, max_steps=20) == "10"
+    assert complete_vm(make_vm("Grapheme", restored), 20) == "10"
     assert (
         esolangs.run(
             "Grapheme",
             restored,
             settings=DialectSettings(integer_conversion="between_letters"),
         )
-        == "10"
+        == "1"
     )
     assert source.settings == settings
 
@@ -176,7 +167,7 @@ def test_cli_portable_settings(tmp_path, capsys):
             "generate",
             "--portable",
             "--settings",
-            '{"integer_conversion":"after_each_letter","unset_variables":"zero"}',
+            '{"integer_conversion":"after_each_letter"}',
             "Grapheme",
             "0110",
         ],
@@ -197,4 +188,4 @@ def test_metadata():
         "between_letters",
         "after_each_letter",
     )
-    assert settings["unset_variables"]["choices"] == ("error", "zero")
+    assert set(settings) == {"integer_conversion"}

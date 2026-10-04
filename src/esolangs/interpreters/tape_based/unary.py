@@ -9,14 +9,24 @@ left-clamped pointer. Exhausted character input stores zero, as in the
 wiki's cat example.
 """
 
-from esolangs._brainfuck import BrainfuckDialect
 from esolangs._drive import drive
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.source_hints import syntax_error
 from esolangs.interpreters.tape_based.brainfuck import _Machine as _BFMachine
 
-type _State = _BFMachine
+
+class _UnaryBFMachine(_BFMachine):
+    def step(self) -> None:
+        try:
+            super().step()
+        except EOFError:
+            # Only comma reads input; it has no jump and replaces the cell.
+            ind, ptr, tape, _acc, _dirty = self.state
+            self.state = (ind + 1, ptr, tape, 0, True)
+
+
+type _State = _UnaryBFMachine
 
 
 def decode(code: str) -> str:
@@ -49,30 +59,9 @@ def decode(code: str) -> str:
 class _Machine:
     """The decoded Brainfuck machine."""
 
-    eof_is_a_value = True
-
-    def __init__(
-        self,
-        code: str,
-        io: IO,
-        *,
-        cell_modulus: int | None = 256,
-        tape_size: int | None = None,
-        boundary: str = "clamp",
-        eof: str = "zero",
-    ) -> None:
-        BrainfuckDialect(cell_modulus, tape_size, boundary, eof)
-        self.eof_is_a_value = eof != "error"
-        self.supports_tape_growth = tape_size is None
+    def __init__(self, code: str, io: IO) -> None:
         self.io = io
-        self.state: _State = _BFMachine(
-            decode(code),
-            io,
-            cell_modulus=cell_modulus,
-            tape_size=tape_size,
-            boundary=boundary,
-            eof=eof,
-        )
+        self.state: _State = _UnaryBFMachine(decode(code), io)
 
     @property
     def halted(self) -> bool:
@@ -108,26 +97,9 @@ class _Machine:
         self.state.step()
 
 
-def run(
-    code: str,
-    io: IO,
-    *,
-    cell_modulus: int | None = 256,
-    tape_size: int | None = None,
-    boundary: str = "clamp",
-    eof: str = "zero",
-) -> None:
+def run(code: str, io: IO) -> None:
     """Decode Unary and run its Brainfuck program."""
-    drive(
-        _Machine(
-            code,
-            io,
-            cell_modulus=cell_modulus,
-            tape_size=tape_size,
-            boundary=boundary,
-            eof=eof,
-        )
-    )
+    drive(_Machine(code, io))
 
 
 if __name__ == "__main__":

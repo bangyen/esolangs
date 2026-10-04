@@ -1,7 +1,7 @@
 """Interpreter for Jaune.
 
 A brainfuck-like cell array with a hold cell.  ``^`` prints the cell as a
-decimal, ``v`` reads an integer, ``>``/``<`` move, ``#`` copies to the hold,
+decimal, ``v`` reads a digit, ``>``/``<`` move, ``#`` copies to the hold,
 ``&`` adds it back, ``%`` zeroes, ``+``/``-`` with an optional count
 adjust.  ``(number):`` labels, ``?``/``!`` jump when nonzero/zero, ``$``
 defines a subroutine, ``@`` calls it, ``;`` returns, ``.`` ends the main
@@ -14,16 +14,10 @@ clamps (the wiki says only "previous cell"; see Streetcode's ``_``);
 cells are plain integers, as JauneJS's ``+=`` is; a read operand is
 consumed whether or not the branch is taken and may name any integer;
 ``v:`` and ``v$`` define nothing and are dropped at parse, as the
-compiler's ``prep`` does; by default an undefined label or subroutine, or ``;`` with
+compiler's ``prep`` does; an undefined label or subroutine, or ``;`` with
 no active call, raises :class:`~esolangs.exceptions.HaltError`; a
 command missing its required number is :class:`ValueError`; an infinite
 loop is bounded by the caller's ``timeout``.
-
-Optional cells wrap modulo ``cell_modulus``; finite tapes use error, wrap or
-clamp boundaries. EOF can supply zero or minus one, or skip the read command
-(``unchanged``), including a runtime operand. ``undefined_targets`` chooses
-error, clean halt or ignoring the command; target validation still precedes
-conditional guards. Defaults preserve existing programs.
 """
 
 from __future__ import annotations
@@ -33,7 +27,6 @@ from dataclasses import dataclass
 from typing import Literal
 
 from esolangs._drive import drive
-from esolangs._jaune import DEFAULT_JAUNE, JauneDialect
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
@@ -215,7 +208,6 @@ def _advance(
     commands: Sequence[_Command],
     marks: dict[tuple[str, int | None], int],
     value: int | None = None,
-    dialect: JauneDialect = DEFAULT_JAUNE,
 ) -> _State:
     """Return the state after executing ``cmd``.
 
@@ -229,36 +221,41 @@ def _advance(
     cmd = commands[pos]
     c = cmd.op
 
-    def store(value: int) -> Chunked[int]:
-        return _set(cells, ptr, dialect.cell(value))
-
     if c == "^":
         pass  # printed by the caller; the cell is unchanged
     elif c == "v":
-        cells = store(value if value is not None else 0)
+        cells = _set(cells, ptr, value if value is not None else 0)
     elif c in ("v+", "v-"):
         val = value if value is not None else 0
-        cells = store(get(cells, ptr) + (val if c == "v+" else -val))
-    elif c in (">", "<"):
-        ptr = dialect.pointer(ptr + (1 if c == ">" else -1))
-        while ptr >= length(cells):
+        cells = _set(cells, ptr, get(cells, ptr) + (val if c == "v+" else -val))
+    elif c == ">":
+        ptr += 1
+        if ptr == length(cells):
             cells = append(cells, 0)
+    elif c == "<":
+        # Clamped at cell 0, as brainfuck clamps its own ``<``.  This used
+        # to insert a fresh cell and leave the pointer where it was, which
+        # grew the tape leftward; the wiki says only "Moves pointer to the
+        # previous cell" and nothing about bounds, so both readings filled a
+        # gap, and clamping is the one the rest of this package uses.
+        ptr = max(0, ptr - 1)
     elif c == "#":
         hold = get(cells, ptr)
     elif c == "&":
-        cells = store(get(cells, ptr) + hold)
+        cells = _set(cells, ptr, get(cells, ptr) + hold)
     elif c == "%":
-        cells = store(0)
+        cells = _set(cells, ptr, 0)
     elif c == "+":
-        cells = store(get(cells, ptr) + (cmd.arg if cmd.arg is not None else 1))
+        cells = _set(
+            cells, ptr, get(cells, ptr) + (cmd.arg if cmd.arg is not None else 1)
+        )
     elif c == "-":
-        cells = store(get(cells, ptr) - (cmd.arg if cmd.arg is not None else 1))
+        cells = _set(
+            cells, ptr, get(cells, ptr) - (cmd.arg if cmd.arg is not None else 1)
+        )
     elif c == "?":
         target = marks.get((":", cmd.arg))
         if target is None:
-            if dialect.undefined_targets != "error":
-                end = len(commands) if dialect.undefined_targets == "halt" else pos + 1
-                return (cells, ptr, hold, end, calls)
             raise HaltError(
                 f"jump to undefined label {cmd.arg}",
                 hint="define the destination label or correct the jump target",
@@ -268,9 +265,6 @@ def _advance(
     elif c == "!":
         target = marks.get((":", cmd.arg))
         if target is None:
-            if dialect.undefined_targets != "error":
-                end = len(commands) if dialect.undefined_targets == "halt" else pos + 1
-                return (cells, ptr, hold, end, calls)
             raise HaltError(
                 f"jump to undefined label {cmd.arg}",
                 hint="define the destination label or correct the jump target",
@@ -280,9 +274,6 @@ def _advance(
     elif c == "@":
         target = marks.get(("$", cmd.arg))
         if target is None:
-            if dialect.undefined_targets != "error":
-                end = len(commands) if dialect.undefined_targets == "halt" else pos + 1
-                return (cells, ptr, hold, end, calls)
             raise HaltError(
                 f"call to undefined subroutine {cmd.arg}",
                 hint="define the subroutine or correct the call target",
@@ -296,9 +287,6 @@ def _advance(
         num = value if value is not None else 0
         target = marks.get((":", num))
         if target is None:
-            if dialect.undefined_targets != "error":
-                end = len(commands) if dialect.undefined_targets == "halt" else pos + 1
-                return (cells, ptr, hold, end, calls)
             raise HaltError(
                 f"jump to undefined label {num}",
                 hint="define the destination label or correct the jump target",
@@ -311,9 +299,6 @@ def _advance(
         num = value if value is not None else 0
         target = marks.get(("$", num))
         if target is None:
-            if dialect.undefined_targets != "error":
-                end = len(commands) if dialect.undefined_targets == "halt" else pos + 1
-                return (cells, ptr, hold, end, calls)
             raise HaltError(
                 f"call to undefined subroutine {num}",
                 hint="define the subroutine or correct the call target",
@@ -337,20 +322,7 @@ def _advance(
 class _Machine:
     """One Jaune run: cells, pointer, hold cell, and parsed commands."""
 
-    def __init__(
-        self,
-        code: str,
-        io: IO,
-        *,
-        cell_modulus: int | None = None,
-        tape_size: int | None = None,
-        boundary: str = "clamp",
-        eof: str = "error",
-        undefined_targets: str = "error",
-    ) -> None:
-        self.dialect = JauneDialect(
-            cell_modulus, tape_size, boundary, eof, undefined_targets
-        )
+    def __init__(self, code: str, io: IO) -> None:
         self.io = io
         self.commands = _parse(code)
         # Label and subroutine targets, matched once: the program is parsed
@@ -444,41 +416,15 @@ class _Machine:
         if cmd.op == "^":
             self.io.print_num(get(self.cells, self.ptr))
         elif cmd.op in ("v", "v+", "v-", "v?", "v!", "v@"):
-            try:
-                value = int(self.io.input_token())
-            except EOFError:
-                if self.dialect.eof == "error":
-                    raise
-                if self.dialect.eof == "unchanged":
-                    self.pos += 1
-                    return
-                value = -1 if self.dialect.eof == "minus_one" else 0
+            ch = self.io.input_token()
+            value = int(ch)
 
-        self._restore(
-            _advance(self._state, self.commands, self.marks, value, self.dialect)
-        )
+        self._restore(_advance(self._state, self.commands, self.marks, value))
 
 
-def run(
-    code: str,
-    io: IO,
-    *,
-    cell_modulus: int | None = None,
-    tape_size: int | None = None,
-    boundary: str = "clamp",
-    eof: str = "error",
-    undefined_targets: str = "error",
-) -> None:
+def run(code: str, io: IO) -> None:
     """Run a Jaune program."""
-    machine = _Machine(
-        code,
-        io,
-        cell_modulus=cell_modulus,
-        tape_size=tape_size,
-        boundary=boundary,
-        eof=eof,
-        undefined_targets=undefined_targets,
-    )
+    machine = _Machine(code, io)
     drive(machine)
 
 

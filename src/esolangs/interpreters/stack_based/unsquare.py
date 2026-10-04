@@ -14,15 +14,11 @@ cross-check exits 3); ``i`` raises :class:`EOFError` when exhausted.
 
 The spec leaves input representation unspecified; i reads the next Unicode
 character code, including whitespace.
-``input_framing="integer_tokens"`` reads whitespace-delimited signed integers
-instead of Unicode character codes. EOF raises EOFError in either mode.
-
 """
 
 from __future__ import annotations
 
 from esolangs._drive import drive
-from esolangs._framing import InputFraming
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
@@ -117,9 +113,8 @@ def _advance(
 class _Machine:
     """Per-run Unsquare state: the stack, jump stack, accumulator, cursor."""
 
-    def __init__(self, code: str, io: IO, *, input_framing: str = "characters") -> None:
+    def __init__(self, code: str, io: IO) -> None:
         """Start with empty stacks, a zero accumulator, at the first token."""
-        self.framing = InputFraming(input_framing)
         self.io = io
         self.code = code
         # ``halted`` is read twice per command -- once by ``run``'s loop and
@@ -218,13 +213,13 @@ class _Machine:
             else:
                 self.io.print_num(value)
         elif char == "i":
-            byte = self.framing.read(self.io)
+            byte = self.io.input_char()
         self.state = _advance(self.state, self.code, byte, target)
 
 
-def run(code: str, io: IO, *, input_framing: str = "characters") -> None:
+def run(code: str, io: IO) -> None:
     """Run an Unsquare program."""
-    machine = _Machine(code, io, input_framing=input_framing)
+    machine = _Machine(code, io)
     drive(machine)
 
 

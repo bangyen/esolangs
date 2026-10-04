@@ -1,6 +1,5 @@
 """Boolean-function generator for Flowchart."""
 
-from esolangs._dialects import FlowchartDialect
 from esolangs.tools.helpers import (
     _validate_truth_table,
     constant_span_test,
@@ -184,31 +183,21 @@ def _flowchart_stacked(truth_table: str) -> dict[tuple[int, int], str]:
     return cells
 
 
-def flowchart(
-    truth_table: str,
-    width: int | None = None,
-    *,
-    scheduling: str = "creation",
-    deque_cursor: str = "pointer",
-    junction_tie_break: str = "right_first",
-) -> str:
+def flowchart(truth_table: str, width: int | None = None) -> str:
     """Build a Flowchart program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n``, MSB first.
-    Default unconstrained programs preload paired answers into deques.
-    Other layouts draw a decision tree, stacking branches when necessary.
-    Left-first junctions use the tree to avoid the deque merge's right turn.
-    Node connections include a path cell; adjacent leaves have a blank gutter.
-    Folded leaves still read the skipped inputs.
+    Unconstrained programs preload paired answers into deques and select
+    one with the input bits. Width-constrained programs draw a decision
+    tree, stacking branches when necessary. Every node connection includes
+    a path cell; adjacent leaves have a blank gutter. Folded leaves still
+    read the skipped inputs.
     """
-    FlowchartDialect(scheduling, deque_cursor, junction_tie_break)
     _validate_truth_table(truth_table)
-    if width is None and junction_tie_break == "right_first":
+    if width is None:
         return _flowchart_deque(truth_table)
     flat = _flowchart_render(_flowchart_cells(truth_table))
-    # The deque merge turns right when arriving from its upper arm.
-    # The decision tree has no tied junctions and supports either policy.
-    if width is None or grid_width(flat) <= width:
+    if grid_width(flat) <= width:
         return flat
     stacked = _flowchart_render(_flowchart_stacked(truth_table))
     return narrowest_grid(flat, stacked)

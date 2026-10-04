@@ -1,6 +1,5 @@
 """Build brainfuck Boolean programs with a folded decision tree."""
 
-from esolangs._brainfuck import BrainfuckDialect
 from esolangs.tools.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
@@ -12,21 +11,12 @@ from esolangs.tools.helpers import (
 __all__ = ["bf_tree", "brainfuck"]
 
 
-def brainfuck(
-    truth_table: str,
-    *,
-    cell_modulus: int | None = 256,
-    tape_size: int | None = None,
-    boundary: str = "clamp",
-    eof: str = "error",
-) -> str:
+def brainfuck(truth_table: str) -> str:
     """Return the folded tree for a binary, MSB-first ``2**n`` truth table.
 
     It beats minterm sums through n=4 except constants: 277 vs 253 chars
     (1.1x, formerly 2.5x), insufficient to retain a second construction.
     """
-    n = _validate_truth_table(truth_table)
-    BrainfuckDialect(cell_modulus, tape_size, boundary, eof).require_cells(2 * n + 1)
     return bf_tree(truth_table)
 
 

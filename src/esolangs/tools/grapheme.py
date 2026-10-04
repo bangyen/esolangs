@@ -52,7 +52,6 @@ def _grapheme_table(table: str) -> int:
 def grapheme(
     truth_table: str,
     *,
-    unset_variables: str = "error",
     integer_conversion: str = "between_letters",
 ) -> str:
     """Build a Grapheme program computing the given truth table.
@@ -61,7 +60,7 @@ def grapheme(
     ``'0'`` or ``'1'``.  The table is one int-mode literal, ~0.302 letters an
     entry, indexed by Horner's rule run on the complemented input bits.
     """
-    dialect = GraphemeDialect(unset_variables, integer_conversion)
+    dialect = GraphemeDialect(integer_conversion)
     n = _validate_truth_table(truth_table)
     used = essential_inputs(truth_table, n) or [0]
     table = truth_table if len(used) == n else read_at(truth_table, used, n)
