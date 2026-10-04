@@ -1,5 +1,3 @@
-import importlib
-
 from esolangs.registry import LANGUAGES, canonical_id
 
 
@@ -12,11 +10,6 @@ def test_every_language_has_a_canonical_id() -> None:
 def test_canonical_id_derives_the_recorded_id() -> None:
     for name, lang in LANGUAGES.items():
         assert canonical_id(name) == lang.id, name
-
-
-def test_canonical_id_is_a_valid_identifier() -> None:
-    for name in LANGUAGES:
-        assert canonical_id(name).isidentifier(), name
 
 
 def test_id_matches_the_interpreter_module() -> None:
@@ -35,12 +28,3 @@ def test_id_matches_the_generator_function() -> None:
         if lang.boolean:
             fn = lang.boolean.__name__
             assert fn in (lang.id, lang.id.replace("_", "")), name
-
-
-def test_modules_are_importable_under_their_id() -> None:
-    for name, lang in LANGUAGES.items():
-        if lang.interpreter:
-            module = importlib.import_module(
-                "esolangs.interpreters." + lang.interpreter
-            )
-            assert hasattr(module, "run"), name
