@@ -8,8 +8,9 @@ See [Polynomial](proofs/polynomial.md) for its size lower bound.
 - Empty input is a no-op unless a language requires a seed or grid.
 - Exhausted input raises `EOFError`; malformed programs raise `ValueError`;
   runtime failure raises `HaltError`, unless the language says otherwise.
-- Character input is line-delimited; a blank line means `0` by package
-  convention, not language inference.
+- Character input consumes Unicode characters, including newlines. Integer
+  input consumes whitespace-delimited signed decimal tokens. Unsquare, Decleq,
+  AddSubJump and Minifuck expose `input_framing`; characters remain the default.
 - Explicit frame stacks are uncapped. Forbin expression calls retain their
   documented host-recursion limit.
 - Streetcode's four-way junction is an implementation convention: the source
@@ -332,11 +333,9 @@ languages remain rejected from the same image-source screen.
   the answer; `tests/tools/test_boolean_classics.py` asserts that over every
   table to three inputs, and checks the answer under three seeds and the
   unseeded draw.
-- Unlambda's `@` reads a line and takes its first character, an empty line
-  giving a newline, since the package has no character stream.
-  At EOF, `@` catches the port’s `EOFError` (also caught by nine other
-  interpreters), hands its argument `v`, and leaves the current character
-  unchanged. `v` absorbs its arguments, so the failure arm cannot execute
+- Unlambda's `@` consumes the next Unicode character, including newlines.
+  At EOF, it catches `EOFError`, hands its argument `v`, and leaves the
+  current character unchanged. `v` absorbs its arguments, so the failure arm cannot execute
   its own code.
 - Bitdeque `GOTO n` is zero-based: it lands on command index `n`, where the
   wiki's "Nth operation" reads one-based.  The generator's labels match this.
@@ -344,17 +343,21 @@ languages remain rejected from the same image-source screen.
   `inc`, `left` and `right` remain aliases for the canonical commands.
 - SLOW ACV MAMMALIAN rejects unknown words; commands are uppercase and
   whitespace-delimited. The Hello World fixture omits prose annotations.
-- Jaune dispatch to an undefined marker is unspecified.
+- Jaune dispatch to an undefined marker is unspecified. `undefined_targets`
+  selects `error` (default), `halt` or `ignore`. Tape, cell and EOF policies
+  are configurable; `v` reads signed integer tokens.
 - Alight retains infix, left-to-right expressions for compatibility with
   existing programs and generators, despite the explicit postfix rule.
   Three-argument `at` returns a copy; the wiki reversed cat discards it.
 - CV(N)(C) accepts ASCII `g` as an alias for `ɡ` to run the wiki greeting.
   CV(N)(C), Grapheme and NoComment discard LF to run line-wrapped generated
   programs; these are source-rule deviations, not specification gaps.
-- Grapheme shifts integer digits only between letters for compatibility with
-  existing programs and generators. The prose's final multiplication is
-  omitted; the wiki truth machine prints 1 rather than 10.
-- Packlang literals are decimal; its cat cannot receive byte 10 under
-  line-oriented input.
+- Grapheme defaults to `integer_conversion="between_letters"`: `FAFY` prints
+  1. `"after_each_letter"` includes the prose's final multiplication and prints
+  10. Both integer mode and string conversion follow this setting; generators
+  adapt their literals. `unset_variables` selects `error` (default) or `zero`.
+- Packlang literals default to decimal; `literal_policy="binary_digits"`
+  treats literals containing only `0` and `1` as binary. Character input
+  preserves newlines; EOF supplies newline to `charGet`.
 - Pinyin is rejected: its spelling rule contradicts its examples and its
   input-1 truth-machine example has no deterministic reading.
