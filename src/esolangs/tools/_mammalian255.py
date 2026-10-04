@@ -8,28 +8,52 @@ class _State:
     head: int = 0
     rest: int = 0
     acc: int = 0
+    io_modulus: int = 255
 
     def seed(self, count: int) -> list[str]:
         self.head = (self.head + count) % 255
         return ["SEED"] * count
 
     def clear(self) -> list[str]:
-        self.rest += self.acc % 255
+        self.rest += self.acc % self.io_modulus
         self.acc = 0
         return ["EXCRETE"]
 
+    def load(self, value: int) -> list[str]:
+        head = (value - self.rest) % self.io_modulus
+        tokens = []
+        if head == 255:
+            # Adjacent sums crossing 127/128 (or 255/256) XOR to 255
+            # in the low byte.  The final head is 254-2*value mod 256,
+            # hence even and reachable despite the missing head 255.
+            first = (127 - self.rest) % 256
+            if first >= 254:
+                first = (255 - self.rest) % 256
+            tokens += self.seed((first - self.head) % 255)
+            self.acc = self.head + self.rest
+            tokens += ["DIGEST"]
+            tokens += self.seed(1)
+            self.acc ^= self.head + self.rest
+            tokens += ["DIGEST"]
+            head = ((value ^ 255) - self.rest) % 256
+        tokens += self.seed((head - self.head) % 255)
+        self.acc ^= self.head + self.rest
+        return [*tokens, "DIGEST"]
+
     def append(self, value: int) -> list[str]:
-        tokens = self.seed(((value - self.rest) % 255 - self.head) % 255)
-        self.rest += value
-        return [*tokens, "DIGEST", "EXCRETE"]
+        tokens = self.load(value)
+        return tokens + self.clear()
 
     def raise_to(self, target: int) -> list[str]:
         if target < self.rest:
             raise AssertionError("target precedes the running sum")
-        chunks, tail = divmod(target - self.rest, 254)
         tokens = []
-        for _ in range(chunks):
-            tokens += self.append(254)
+        while target - self.rest >= 254:
+            # A 253 chunk skips the missing head and makes the sum even;
+            # subsequent 254 chunks cannot need head 255 again.
+            chunk = 253 if self.io_modulus == 256 and self.rest % 256 == 255 else 254
+            tokens += self.append(chunk)
+        tail = target - self.rest
         if tail:
             tokens += self.append(tail)
         return tokens
@@ -45,23 +69,23 @@ class _State:
         return [*tokens, "DIGEST", "LEAPFROG"]
 
 
-def decision_tree(table: str, inputs: int) -> str:
-    """Emit a fixed-layout tree for cell and I/O modulus 255."""
-    sizes, blocks = [512], [512]
+def decision_tree(table: str, inputs: int, *, io_modulus: int = 255) -> str:
+    """Emit a fixed-layout tree for cell modulus 255 and either I/O modulus."""
+    leaf_size = 512 if io_modulus == 255 else 1024
+    overhead = 2048 if io_modulus == 255 else 4096
+    sizes, blocks = [leaf_size], [leaf_size]
     for _ in range(inputs):
-        # A jump costs at most four tokens per 254 added to the sum,
-        # plus two head solves.  1/32 reserves more than twice that slope.
-        block = 2048 + (sizes[-1] + 31) // 32
+        # Bulk chunks cost at most five tokens per 253 added to the sum;
+        # 1/32 exceeds that slope.  The overhead covers the head solves.
+        block = overhead + (sizes[-1] + 31) // 32
         blocks.append(block)
         sizes.append(block + 2 * sizes[-1])
 
     def build(rows: str, depth: int, pos: int, state: _State) -> list[str]:
         if not depth:
             tokens = state.clear()
-            tokens += state.seed(
-                ((48 + int(rows) - state.rest) % 255 - state.head) % 255
-            )
-            tokens += ["DIGEST", "PRONOUNCE", "EXCRETE", "LEAPFROG"]
+            tokens += state.load(48 + int(rows))
+            tokens += ["PRONOUNCE", "EXCRETE", "LEAPFROG"]
             # EXCRETE clears acc and leaves a nonzero last cell: the final
             # LEAPFROG has a negative target and halts on both output digits.
             return tokens + ["SEED"] * (sizes[0] - len(tokens))
@@ -90,4 +114,4 @@ def decision_tree(table: str, inputs: int) -> str:
         tokens += build(rows[:middle], depth - 1, zero_pos, zero)
         return tokens
 
-    return " ".join(build(table, inputs, 0, _State()))
+    return " ".join(build(table, inputs, 0, _State(io_modulus=io_modulus)))

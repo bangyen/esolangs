@@ -937,18 +937,14 @@ def slow_acv_mammalian(
     One read node per input (``ACCEPT``), one dispatch jump, one
     leaf slot per entry: O(T) text. Modulo-255 I/O uses 255-token slots
     above five inputs so solved weights remain multiples of 255.
-    With both moduli 255, emit a separate fixed-layout decision tree.
+    With cell modulus 255, emit a separate fixed-layout decision tree.
     """
     moduli = MammalianModuli(cell_modulus, io_modulus)
     n = _validate_truth_table(truth_table)
     if moduli.cell_modulus == 255:
-        if moduli.io_modulus != 255:
-            raise ValueError(
-                "Mammalian generator with cell_modulus 255 needs io_modulus 255"
-            )
         from esolangs.tools._mammalian255 import decision_tree
 
-        return decision_tree(truth_table, n)
+        return decision_tree(truth_table, n, io_modulus=moduli.io_modulus)
     unit = _LEAF_UNIT
     if moduli.io_modulus == 255 and n > _FREE:
         # Every solved weight must vanish modulo 255; use that as the leaf stride.
