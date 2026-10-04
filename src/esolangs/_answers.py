@@ -138,10 +138,18 @@ def check_stdin(language: str, stdin: str, truth_table: str | None = None) -> No
             # both pass).  The bit reading is offered only when the digits
             # are bits: ``int('02', 2)`` crashed the refusal.
             if not set(lines[0]) - {"0", "1"}:
+                try:
+                    index_hint = str(int(lines[0], 2))
+                except ValueError as exc:
+                    raise ArgumentError(
+                        f"{name} reads one decimal row index; {len(lines[0])} "
+                        "input bits have a leading zero and their index is "
+                        "too large to print"
+                    ) from exc
                 raise ArgumentError(
                     f"{name} reads one decimal row index, and {lines[0]!r} "
                     f"has a leading zero -- if those are the input bits, the "
-                    f"index is {int(lines[0], 2)}: "
+                    f"index is {index_hint}: "
                     f"`esolangs encode {name} {lines[0]}`"
                 )
             raise ArgumentError(
