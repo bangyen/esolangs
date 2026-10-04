@@ -15,7 +15,6 @@ number.
 """
 
 import importlib.util
-import os
 import subprocess
 import sys
 from pathlib import Path
@@ -334,6 +333,7 @@ class TestPrepare:
         assert 'paths_to_mutate = ["esolangs/tools/wrap.py"]' in config
 
 
+@pytest.mark.medium  # Full package preparation measured 1.12--1.25s under coverage.
 @pytest.mark.parametrize("selection", [None, "suffolk"])
 def test_config_isolates_xdist_and_applies_selection_to_every_pass(
     tmp_path: Path,
@@ -431,9 +431,13 @@ def test_raster_suites_kill_wrong_answers_in_the_copied_package(
         in (proj / "pyproject.toml").read_text()
     )
     command = [sys.executable, "-m", "pytest", "-q", node]
-    child_env = os.environ | {"PYTEST_ADDOPTS": ""}
     baseline = subprocess.run(
-        command, cwd=proj, capture_output=True, text=True, timeout=30, env=child_env
+        command,
+        cwd=proj,
+        env=script._pytest_environment(),  # noqa: SLF001
+        capture_output=True,
+        text=True,
+        timeout=30,
     )
     assert baseline.returncode == 0, baseline.stdout + baseline.stderr
     target = proj / script._KINDS[family].rel_target(module)  # noqa: SLF001
@@ -441,7 +445,12 @@ def test_raster_suites_kill_wrong_answers_in_the_copied_package(
     assert old in source
     target.write_text(source.replace(old, new))
     mutant = subprocess.run(
-        command, cwd=proj, capture_output=True, text=True, timeout=30, env=child_env
+        command,
+        cwd=proj,
+        env=script._pytest_environment(),  # noqa: SLF001
+        capture_output=True,
+        text=True,
+        timeout=30,
     )
     assert mutant.returncode == 1, mutant.stdout + mutant.stderr
     assert "AssertionError" in mutant.stdout
@@ -516,15 +525,34 @@ def test_interpreter_mutation_discovery_includes_nested_packages(
     assert kind.rel_target("ops.step") == "esolangs/interpreters/demo/ops/step.py"
 
 
-def test_forwarded_generators_include_their_independent_oracles() -> None:
+@pytest.mark.parametrize(
+    ("target", "included", "excluded"),
+    [
+        (
+            "brainfuck",
+            [
+                "tests/interpreters/test_brainfuck_semantics.py",
+                "tests/interpreters/test_semantic_oracles.py",
+            ],
+            ["tests/interpreters/test_rotfuck_semantics.py"],
+        ),
+        (
+            "helpers",
+            [
+                "tests/interpreters/test_factor_semantics.py",
+                "tests/line/test_pixel_semantics.py",
+            ],
+            [],
+        ),
+    ],
+)
+def test_forwarded_generators_include_their_independent_oracles(
+    target, included, excluded
+) -> None:
     script = load_script()
-    selected = script._generator_oracles("brainfuck")  # noqa: SLF001
-    assert Path("tests/interpreters/test_brainfuck_semantics.py") in selected
-    assert Path("tests/interpreters/test_semantic_oracles.py") in selected
-    assert Path("tests/interpreters/test_rotfuck_semantics.py") not in selected
-    shared = script._generator_oracles("helpers")  # noqa: SLF001
-    assert Path("tests/interpreters/test_factor_semantics.py") in shared
-    assert Path("tests/line/test_pixel_semantics.py") in shared
+    selected = script._generator_oracles(target)  # noqa: SLF001
+    assert all(Path(path) in selected for path in included)
+    assert all(Path(path) not in selected for path in excluded)
 
 
 def test_oracle_support_follows_reference_imports_without_selecting_them() -> None:
@@ -547,12 +575,17 @@ def test_oracle_support_follows_reference_imports_without_selecting_them() -> No
     ],
 )
 def test_independent_oracle_runs_and_kills_wrong_output_in_copy(
-    target: str, node: str, producer: str, tmp_path: Path
+    target: str,
+    node: str,
+    producer: str,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     import ast
     import shlex
     import tomllib
 
+    monkeypatch.setenv("PYTEST_ADDOPTS", "-n 2 -k inherited_filter_matches_nothing")
     script = load_script()
     proj, tests = script._prepare("tools", target, tmp_path, slow=True)  # noqa: SLF001
     config = tomllib.loads((proj / "pyproject.toml").read_text())
@@ -563,9 +596,15 @@ def test_independent_oracle_runs_and_kills_wrong_output_in_copy(
     assert f"../interpreters/test_{target}_semantics.py" in tests
     command = [sys.executable, "-m", "pytest", "-q", f"{oracle}::{node}"]
     baseline = subprocess.run(
-        command, cwd=proj, capture_output=True, text=True, timeout=15
+        command,
+        cwd=proj,
+        env=script._pytest_environment(),  # noqa: SLF001
+        capture_output=True,
+        text=True,
+        timeout=15,
     )
     assert baseline.returncode == 0, baseline.stdout + baseline.stderr
+    assert "bringing up nodes" not in baseline.stdout
     path = proj / script._KINDS["tools"].rel_target(target)  # noqa: SLF001
     lines = path.read_text().splitlines(keepends=True)
     function = next(
@@ -579,7 +618,12 @@ def test_independent_oracle_runs_and_kills_wrong_output_in_copy(
     )
     path.write_text("".join(lines))
     mutant = subprocess.run(
-        command, cwd=proj, capture_output=True, text=True, timeout=15
+        command,
+        cwd=proj,
+        env=script._pytest_environment(),  # noqa: SLF001
+        capture_output=True,
+        text=True,
+        timeout=15,
     )
     assert mutant.returncode == 1, mutant.stdout + mutant.stderr
     assert "AssertionError" in mutant.stdout
@@ -602,7 +646,12 @@ def test_oracle_markers_apply_to_collection_and_execution(
     collection = ["tests/tools/test_balance.py", *paths[1:]]
     command = [sys.executable, "-m", "pytest", "--collect-only", "-q", *collection]
     collected = subprocess.run(
-        command, cwd=proj, capture_output=True, text=True, timeout=15
+        command,
+        cwd=proj,
+        env=script._pytest_environment(),  # noqa: SLF001
+        capture_output=True,
+        text=True,
+        timeout=15,
     )
     assert collected.returncode == 0, collected.stdout + collected.stderr
     assert (
