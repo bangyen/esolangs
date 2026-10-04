@@ -16,6 +16,7 @@ from esolangs.cli_args import (
     _pop_options,
     _scale_of,
     _seed_of,
+    _settings_of,
     _split_positional,
     _table_of,
     _timeout_of,
@@ -39,6 +40,7 @@ from esolangs.cli_io import (
     _write_output,
 )
 from esolangs.exceptions import EsolangError, ExecutionTimeoutError, TemplateError
+from esolangs.settings import dialect_options
 
 
 def _judge(language: str, output: str, mode: object) -> str:
@@ -57,7 +59,8 @@ def _judge(language: str, output: str, mode: object) -> str:
 def _run(rest: list[str]) -> None:
     """Run a program through its interpreter and write its output."""
     rest, options = _pop_options(
-        rest, {"--timeout", "--table", "--seed", "--scale", "--max-output"}
+        rest,
+        {"--timeout", "--table", "--seed", "--scale", "--max-output", "--settings"},
     )
     # The value is checked here, before the positionals are counted.  It ran
     # after, so `run --timeout brainfuck prog.txt` -- a forgotten number --
@@ -86,12 +89,14 @@ def _run(rest: list[str]) -> None:
             "--table",
             "--seed",
             "--scale",
+            "--settings",
             "--isolated",
             "--max-output",
         },
     )
     seed = _seed_of(options)
     scale = _scale_of(options)
+    settings = _settings_of(options)
     judge = "--judge" in flags
     # Refused like every value-taking option is.  `--judge --judge` was
     # accepted in silence while `--timeout 5 --timeout 9` was refused, and
@@ -107,6 +112,7 @@ def _run(rest: list[str]) -> None:
     # without ever saying the language was unknown -- the one thing it could
     # have answered without reading a byte.
     with _errors():
+        dialect_options(language, settings)
         facts = describe(language)
         mode = facts["answer_mode"]
         name = facts["name"]
@@ -168,9 +174,18 @@ def _run(rest: list[str]) -> None:
                     scale=scale,
                     isolated=True,
                     max_output=max_output,
+                    settings=settings,
                 )
             else:
-                output = run(language, program, stdin, timeout, seed, scale=scale)
+                output = run(
+                    language,
+                    program,
+                    stdin,
+                    timeout,
+                    seed,
+                    scale=scale,
+                    settings=settings,
+                )
         for entry in caught:
             _note(str(entry.message))
         # The count and range checks ``--table`` buys; the library judges

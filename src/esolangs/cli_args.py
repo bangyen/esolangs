@@ -7,6 +7,7 @@ are written once rather than per command.
 
 from __future__ import annotations
 
+import json
 import sys
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -20,6 +21,7 @@ from esolangs.cli_hints import (
     _did_you_mean,
 )
 from esolangs.exceptions import EsolangError
+from esolangs.settings import DialectSettings
 from esolangs.tools.wrap import DEFAULT_WIDTH
 
 #: Flags every subcommand accepts, so a near miss on one of them is
@@ -376,3 +378,17 @@ def _scale_of(options: dict[str, str]) -> int | None:
     except (ValueError, ArgumentError):
         _fail(f"--scale must be a positive integer, got {options['--scale']!r}")
         raise  # pragma: no cover - _fail exits
+
+
+def _settings_of(options: dict[str, str]) -> DialectSettings | None:
+    """Parse explicit dialect overrides from one JSON object."""
+    if "--settings" not in options:
+        return None
+    try:
+        values = json.loads(options["--settings"])
+    except ValueError:
+        _fail("--settings must be a JSON object")
+    if not isinstance(values, dict):
+        _fail("--settings must be a JSON object")
+    with _errors():
+        return DialectSettings(**values)

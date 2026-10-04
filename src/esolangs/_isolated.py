@@ -17,6 +17,7 @@ from esolangs._validate import check_timeout, check_whole
 from esolangs.interpreters.source_hints import with_hint
 from esolangs.raster import Raster
 from esolangs.registry import resolve
+from esolangs.settings import DialectSettings, dialect_options
 
 
 def _decode(text: str, *, expired: bool) -> str:
@@ -69,6 +70,7 @@ def run_isolated(
     seed: int | None = None,
     scale: int | None = None,
     max_output: int | None = None,
+    settings: DialectSettings | None = None,
 ) -> str:
     """Return output from a subprocess; the deadline includes loading and startup.
 
@@ -87,6 +89,7 @@ def run_isolated(
             ("set a positive finite timeout, for example timeout=5.0"),
         )
     name = resolve(language)
+    choices = dialect_options(name, settings)
     deadline = monotonic() + timeout
     box: list[str | BaseException] = []
 
@@ -96,6 +99,13 @@ def run_isolated(
             box.append(
                 json.dumps(
                     {
+                        "settings": {
+                            key: hex(value) if type(value) is int else value
+                            for key, value in choices.items()
+                        },
+                        "integer_settings": [
+                            key for key, value in choices.items() if type(value) is int
+                        ],
                         "language": name,
                         "program": source.rows
                         if isinstance(source, Raster)
@@ -305,6 +315,14 @@ def _worker() -> None:
                 if request.get("integer_seed", False)
                 else request["seed"],
                 scale=request.get("scale"),
+                settings=DialectSettings(
+                    **{
+                        key: int(value, 16)
+                        if key in request.get("integer_settings", [])
+                        else value
+                        for key, value in request.get("settings", {}).items()
+                    }
+                ),
             )
     except exceptions.EsolangError as error:
         args: tuple[object, ...] = error.args

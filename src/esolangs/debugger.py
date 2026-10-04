@@ -16,6 +16,7 @@ from typing import Literal, get_args
 from esolangs._source import InputSource, ProgramSource
 from esolangs._validate import check_timeout, check_whole
 from esolangs.exceptions import ArgumentError
+from esolangs.settings import DialectSettings
 from esolangs.vm import VM, complete_vm, make_vm, run_until_halt
 
 __all__ = [
@@ -348,6 +349,7 @@ def make_debugger(
     stdin: InputSource = "",
     *,
     scale: int | None = None,
+    settings: DialectSettings | None = None,
 ) -> Debugger:
     """Return a :class:`Debugger` over a fresh :class:`VM` for ``language``.
 
@@ -358,4 +360,4 @@ def make_debugger(
     raises :class:`~esolangs.exceptions.InputExhaustedError` here rather
     than at :meth:`Debugger.run`.
     """
-    return Debugger(make_vm(language, program, stdin, scale=scale))
+    return Debugger(make_vm(language, program, stdin, scale=scale, settings=settings))
