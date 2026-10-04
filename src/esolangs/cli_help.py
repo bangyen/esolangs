@@ -37,7 +37,7 @@ commands:
                               generate, feed those bits, run, and print the
                               one answer bit
   evaluate [--timeout S] [--total-timeout S] [--max-rows N]
-           [--inputs N | --table T] <language> <program-file>
+           [--inputs N | --table T] [--settings JSON] <language> <program-file>
                               run every input row and print the observed
                               table; --table also checks the expected result
   debug [--steps N] [--timeout S] [--watch-cell I] [--stdin S] [--tui]
@@ -245,6 +245,7 @@ options:
 """,
     "evaluate": """usage: esolangs evaluate [--timeout S] [--total-timeout S]
                           [--max-rows N] [--inputs N | --table T]
+                          [--settings JSON]
                           <language> <program-file>
 
 Run the supplied program on every Boolean input row and print its observed
@@ -261,6 +262,7 @@ options:
                      the deadline is a backstop for growth, not an answer.
   --total-timeout S  bound the whole evaluation in seconds.
   --max-rows N       refuse larger tables; defaults to 1,048,576 rows.
+  --settings JSON    dialect overrides shared with generate and run.
 
 examples:
   esolangs evaluate --inputs 2 brainfuck program.txt

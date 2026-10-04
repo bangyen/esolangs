@@ -12,6 +12,7 @@ from esolangs.registry import (
     resolve,
     wiki_url,
 )
+from esolangs.settings import DialectOption, dialect_choices
 from esolangs.tools.wrap import WRAPPERS
 from esolangs.tools.wrap import takes_width as _takes_width
 from esolangs.vm import machine_traits
@@ -63,12 +64,14 @@ class LanguageInfo(TypedDict):
     eof_is_a_value: bool
     examples: list[str]
     wiki_url: str
+    dialect_settings: dict[str, DialectOption]
 
 
 def describe(language: str) -> LanguageInfo:
     """Return a structured description of ``language``.
 
     ``spec`` contains the interpreter docstring; missing docstrings raise.
+    ``dialect_settings`` gives runtime defaults, choices, bounds and dependencies.
     Identity: ``name``, ``id``, ``source_kind``, ``state_model``,
     ``interpreter``, ``wiki_url``.
     Generation: ``generator_max_inputs`` is an explicit arity cap (None means
@@ -108,6 +111,7 @@ def describe(language: str) -> LanguageInfo:
     example = _example_for(lang.id)
     return {
         "name": name,
+        "dialect_settings": dialect_choices(name),
         "spec": _spec(name),
         "id": lang.id,
         "source_kind": lang.source_kind.value,

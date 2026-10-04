@@ -27,6 +27,7 @@ from esolangs.exceptions import (
 )
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.source_hints import with_hint
+from esolangs.settings import DialectSettings, dialect_options
 from esolangs.tools.helpers import MOST_INPUTS
 from esolangs.vm import make_vm
 
@@ -131,6 +132,7 @@ def iter_evaluate(
     scale: int | None = None,
     max_rows: int | None = _DEFAULT_MAX_ROWS,
     total_timeout: float | None = None,
+    settings: DialectSettings | None = None,
 ) -> Iterator[str]:
     """Yield answer bits in MSB-first row order without retaining the table.
 
@@ -138,7 +140,9 @@ def iter_evaluate(
     the full table (None opts out); ``total_timeout`` includes loading and pauses
     between yields. Row timeouts default to 30 seconds, 5 for termination.
     A timeout never proves divergence. Paths load once; templates fill per row.
+    ``settings`` applies to template filling and every execution path.
     """
+    dialect_options(language, settings)
     started = monotonic()
     check_timeout(total_timeout)
     # Checked here, not only inside ``run``: the termination path drives the
@@ -189,12 +193,15 @@ def iter_evaluate(
         encoding = list(facts["answer_encoding"])
         diverges_is = str(encoding.index("diverges"))
         halts_is = str(encoding.index("halts"))
+    instantiator = esolangs.instantiate
+    if settings is not None:
+        instantiator = partial(instantiator, settings=settings)
     for row in range(rows):
         bits = [(row >> (inputs - 1 - i)) & 1 for i in range(inputs)]
 
         def prepare_row(bits: list[int] = bits) -> tuple[Program, str]:
             if facts["parameterized"]:
-                return esolangs.instantiate(name, cast("str", program), bits), ""
+                return instantiator(name, cast("str", program), bits), ""
             return program, encode_inputs(name, bits)
 
         try:
@@ -205,7 +212,12 @@ def iter_evaluate(
                 if isolated:
                     from esolangs._isolated import termination_isolated
 
-                    answer = termination_isolated(
+                    termination_runner = termination_isolated
+                    if settings is not None:
+                        termination_runner = partial(
+                            termination_runner, settings=settings
+                        )
+                    answer = termination_runner(
                         name,
                         source,
                         stdin,
@@ -214,11 +226,16 @@ def iter_evaluate(
                         diverges_is,
                     )
                 else:
-                    answer = _terminates(
+                    terminator = _terminates
+                    if settings is not None:
+                        terminator = partial(terminator, settings=settings)
+                    answer = terminator(
                         name, source, stdin, row_bound, halts_is, diverges_is
                     )
             else:
                 runner = esolangs.run
+                if settings is not None:
+                    runner = partial(runner, settings=settings)
                 if scale is not None:
                     runner = partial(runner, scale=scale)
                 if isolated:
@@ -252,6 +269,7 @@ def evaluate(
     scale: int | None = None,
     max_rows: int | None = _DEFAULT_MAX_ROWS,
     total_timeout: float | None = None,
+    settings: DialectSettings | None = None,
 ) -> str:
     """Return the table computed over ``inputs`` bits, collecting iter_evaluate.
 
@@ -270,6 +288,7 @@ def evaluate(
             scale=scale,
             max_rows=max_rows,
             total_timeout=total_timeout,
+            settings=settings,
         ):
             answers.append(answer)
     except EsolangError as exc:
@@ -285,6 +304,8 @@ def _terminates(
     bound: float | None,
     halts: str,
     diverges: str,
+    *,
+    settings: DialectSettings | None = None,
 ) -> str:
     """Return this row's answer for a language that answers by terminating.
 
@@ -292,12 +313,15 @@ def _terminates(
     """
     from esolangs.vm import run_until_halt_or_cycle
 
+    dialect_options(name, settings)
+
     # A box, because ``_run`` exists to apply the timeout and discards what
     # it drove -- which is right for ``run``, whose result is the io buffer.
     verdict: list[bool] = []
 
     def _drive(*_args: object) -> None:
-        machine = make_vm(name, source, stdin)
+        factory = make_vm if settings is None else partial(make_vm, settings=settings)
+        machine = factory(name, source, stdin)
         verdict.append(run_until_halt_or_cycle(machine))
 
     esolangs._run(_drive, source, ScriptedIO(""), bound)  # noqa: SLF001

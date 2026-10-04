@@ -1,10 +1,19 @@
 """Immutable specification choices for generation and execution."""
 
+import inspect
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, TypedDict, cast
 
-from esolangs._brainfuck import BrainfuckDialect
+from esolangs._brainfuck import EOF_POLICIES, BrainfuckDialect
 from esolangs._dialects import (
+    DEQUE_CURSORS,
+    EXPRESSION_SYNTAXES,
+    INDEX_BASES,
+    LITERAL_POLICIES,
+    SCHEDULINGS,
+    TAPE_BOUNDARIES,
+    UNKNOWN_POLICIES,
+    UNSET_POLICIES,
     FalseDialect,
     FlowchartDialect,
     LineDialect,
@@ -12,9 +21,19 @@ from esolangs._dialects import (
     expression_syntax,
     index_base,
 )
-from esolangs._mammalian import MammalianModuli
+from esolangs._mammalian import MODULI, MammalianModuli
 from esolangs.exceptions import ArgumentError
 from esolangs.registry import LANGUAGES, resolve
+
+_VALIDATORS: dict[str, Any] = {
+    "brainfuck": BrainfuckDialect,
+    "factor": BrainfuckDialect,
+    "unary": BrainfuckDialect,
+    "line": LineDialect,
+    "false": FalseDialect,
+    "flowchart": FlowchartDialect,
+    "slow_acv_mammalian": MammalianModuli,
+}
 
 
 @dataclass(frozen=True, init=False)
@@ -52,15 +71,6 @@ class DialectSettings:
         """Return validated overrides supported by ``language``."""
         name = resolve(language)
         language_id = LANGUAGES[name].id
-        validators: dict[str, Any] = {
-            "brainfuck": BrainfuckDialect,
-            "factor": BrainfuckDialect,
-            "unary": BrainfuckDialect,
-            "line": LineDialect,
-            "false": FalseDialect,
-            "flowchart": FlowchartDialect,
-            "slow_acv_mammalian": MammalianModuli,
-        }
         values: dict[str, Any] = dict(self._items)
         try:
             if language_id == "bitdeque":
@@ -74,8 +84,8 @@ class DialectSettings:
                         for key, value in values.items()
                     }
                 )
-            elif language_id in validators:
-                validators[language_id](**values)
+            elif language_id in _VALIDATORS:
+                _VALIDATORS[language_id](**values)
             elif values:
                 raise ArgumentError(f"{name} supports no dialect settings")
         except (TypeError, ValueError) as error:
@@ -98,3 +108,63 @@ def _single(values: dict[str, Any], key: str, validator: Any, default: Any) -> N
     if values.keys() - {key}:
         raise TypeError(f"supported dialect setting: {key}")
     validator(values.get(key, default))
+
+
+class DialectOption(TypedDict):
+    """Runtime choices with non-null dependencies; generation may need more storage."""
+
+    default: int | str | None
+    choices: tuple[int | str, ...] | None
+    minimum: int | None
+    nullable: bool
+    requires: dict[str, tuple[str, ...]]
+
+
+def dialect_choices(language: str) -> dict[str, DialectOption]:
+    """Return fresh choices and defaults drawn from the interpreter signature."""
+    from esolangs._execution import interpreter_module
+
+    name = resolve(language)
+    language_id = LANGUAGES[name].id
+    singles = {
+        "bitdeque": "index_base",
+        "alight": "expression_syntax",
+        "packlang": "literal_policy",
+    }
+    if language_id in singles:
+        keys = [singles[language_id]]
+    elif language_id in _VALIDATORS:
+        keys = list(inspect.signature(_VALIDATORS[language_id]).parameters)
+    else:
+        return {}
+    choices: dict[str, tuple[int | str, ...]] = {
+        "index_base": INDEX_BASES,
+        "pick_base": INDEX_BASES,
+        "expression_syntax": EXPRESSION_SYNTAXES,
+        "literal_policy": LITERAL_POLICIES,
+        "unset_variables": UNSET_POLICIES,
+        "unknown_commands": UNKNOWN_POLICIES,
+        "boundary": TAPE_BOUNDARIES,
+        "eof": EOF_POLICIES,
+        "scheduling": SCHEDULINGS,
+        "deque_cursor": DEQUE_CURSORS,
+    }
+    if language_id == "slow_acv_mammalian":
+        choices.update(cell_modulus=MODULI, io_modulus=MODULI)
+    machine = interpreter_module(name)._Machine  # noqa: SLF001 - interpreter adapter
+    parameters = inspect.signature(machine).parameters
+    result: dict[str, DialectOption] = {}
+    for key in keys:
+        dependencies: dict[str, tuple[str, ...]] = {}
+        if key == "boundary":
+            dependencies["wrap"] = ("tape_size",)
+            if language_id == "line":
+                dependencies["clamp"] = ("tape_size",)
+        result[key] = {
+            "default": cast("int | str | None", parameters[key].default),
+            "choices": choices.get(key),
+            "minimum": None if key in choices else 2 if key == "cell_modulus" else 1,
+            "nullable": key not in choices,
+            "requires": dependencies,
+        }
+    return result

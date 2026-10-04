@@ -248,8 +248,11 @@ def termination_isolated(
     timeout: float,
     halts: str,
     diverges: str,
+    *,
+    settings: DialectSettings | None = None,
 ) -> str:
     """Prove halt or cycle in a child; deadline never means divergence."""
+    choices = dialect_options(name, settings)
     return _launch(
         json.dumps(
             {
@@ -258,6 +261,7 @@ def termination_isolated(
                 "stdin": stdin,
                 "raster": False,
                 "termination": [halts, diverges],
+                "settings": choices,
             }
         ),
         timeout,
@@ -298,12 +302,26 @@ def _worker() -> None:
     if request["raster"]:
         program = Raster(tuple(tuple(tuple(pixel) for pixel in row) for row in program))
     try:
+        settings = DialectSettings(
+            **{
+                key: int(value, 16)
+                if key in request.get("integer_settings", [])
+                else value
+                for key, value in request.get("settings", {}).items()
+            }
+        )
         if "termination" in request:
             from esolangs._evaluate import _terminates
 
             halts, diverges = request["termination"]
             output = _terminates(
-                request["language"], program, request["stdin"], None, halts, diverges
+                request["language"],
+                program,
+                request["stdin"],
+                None,
+                halts,
+                diverges,
+                settings=settings,
             )
         else:
             output = esolangs.run(
@@ -315,14 +333,7 @@ def _worker() -> None:
                 if request.get("integer_seed", False)
                 else request["seed"],
                 scale=request.get("scale"),
-                settings=DialectSettings(
-                    **{
-                        key: int(value, 16)
-                        if key in request.get("integer_settings", [])
-                        else value
-                        for key, value in request.get("settings", {}).items()
-                    }
-                ),
+                settings=settings,
             )
     except exceptions.EsolangError as error:
         args: tuple[object, ...] = error.args
