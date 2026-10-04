@@ -900,3 +900,31 @@ def test_short_routing_is_earliest(modulus: int, step: int) -> None:
             earliest.setdefault(want, count)
         for want, count in earliest.items():
             assert _routing_seeds(head, step, want, modulus) == count
+
+
+@pytest.mark.parametrize("head", [0, 254])
+@pytest.mark.parametrize("rest", [0, 1, 254, 255, 256, 511, 512])
+@pytest.mark.parametrize("remaining", [256, 511, 512, 65_536])
+def test_missing_head_raise_uses_reachable_nonfinal_chunks(
+    head: int, rest: int, remaining: int
+) -> None:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
+    from esolangs.tools._mammalian_compact import _Chain, _State
+
+    chain = _Chain(255, io_modulus=256)
+    state = _State(head=head)
+    state.rest[0] = rest
+    tokens = chain.raise_to(state, rest + remaining)
+    machine = _Machine(" ".join(tokens), ScriptedIO(), cell_modulus=255, io_modulus=256)
+    machine.lst = [[(array + 1) * head % 255] for array in range(23)]
+    chunks, tail = divmod(rest, 254)
+    machine.lst[0].extend([254] * chunks + [tail])
+    while not machine.halted:
+        machine.step()
+    assert sum(machine.lst[0][1:]) == state.rest[0] == rest + remaining
+    assert machine.acc == state.acc == 0
+    for array, cells in enumerate(machine.lst):
+        assert cells[0] == (array + 1) * state.head % 255
+    if rest % 256 == 0:
+        assert machine.lst[0][chunks + 2] == 254
