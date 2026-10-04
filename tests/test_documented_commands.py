@@ -20,6 +20,7 @@ import re
 import shutil
 import subprocess
 import sys
+from functools import cache
 
 import pytest
 
@@ -76,6 +77,17 @@ def _language_in(command: str) -> str | None:
     return None
 
 
+@cache
+def _setup_command(*args: str) -> subprocess.CompletedProcess[str]:
+    """Reuse identical fixture generation and input encoding across documents."""
+    return subprocess.run(
+        [sys.executable, "-m", "esolangs", *args],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+
 @pytest.mark.slow
 @pytest.mark.parametrize("where", sorted(_documents()))
 def test_every_documented_command_runs(where: str, tmp_path: pathlib.Path) -> None:
@@ -100,29 +112,12 @@ def test_every_documented_command_runs(where: str, tmp_path: pathlib.Path) -> No
         # line here created, is stood up so the command has something real.
         for filename in re.findall(r"\b[\w.-]+\.txt\b", command):
             if filename not in produced and language is not None:
-                (work / filename).write_text(
-                    subprocess.run(
-                        [
-                            sys.executable,
-                            "-m",
-                            "esolangs",
-                            "generate",
-                            language,
-                            "0110",
-                        ],
-                        capture_output=True,
-                        text=True,
-                        check=True,
-                    ).stdout
-                )
+                generated = _setup_command("generate", language, "0110")
+                generated.check_returncode()
+                (work / filename).write_text(generated.stdout)
         stdin_text = ""
         if language is not None and "|" not in command:
-            encoded = subprocess.run(
-                [sys.executable, "-m", "esolangs", "encode", language, "10"],
-                capture_output=True,
-                text=True,
-                check=False,
-            )
+            encoded = _setup_command("encode", language, "10")
             stdin_text = encoded.stdout if encoded.returncode == 0 else ""
         shell = command.replace("esolangs ", f"{sys.executable} -m esolangs ")
         result = subprocess.run(

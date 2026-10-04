@@ -1014,21 +1014,16 @@ class _Machine:
     def __init__(self, code: list[str], io: IO) -> None:
         """Parse ``code`` and read the input its ``-n-`` ports call for."""
         self.io = io
-        main, definitions = _split_definitions(code)
-        grid = _Grid(main)
-        parsed = _Parser(grid, definitions)
-        self.grid = grid
-        self.wirings = parsed.wirings
-        self.gates = parsed.gates
+        (
+            self.grid,
+            self.wirings,
+            self.gates,
+            self.index,
+            self._by_cell,
+        ) = _compile(tuple(code))
         self.halted = False
-        # The value on each wiring and each gate's remembered inputs, both
-        # indexed by position rather than by ``id``: the wirings and gates
-        # are fixed once parsed, so a position is a stable name and the
-        # whole state is two tuples.
-        self.index = {id(w): i for i, w in enumerate(self.wirings)}
-        self._by_cell = {
-            cell: wiring for wiring in self.wirings for cell in wiring.cells
-        }
+        # Static topology is shared; values and remembered gate inputs stay
+        # per-machine tuples indexed by topology position.
         self.values: tuple[tuple[int, ...] | None, ...] = (None,) * len(self.wirings)
         self.latches: tuple[tuple[tuple[int, ...] | None, ...], ...] = tuple(
             (None,) * len(gate.inputs) for gate in self.gates
@@ -1039,21 +1034,7 @@ class _Machine:
     @classmethod
     def _for_run(cls, code: list[str], io: IO) -> "_Machine":
         """Return fresh state over the source's cached static topology."""
-        machine = cls.__new__(cls)
-        machine.io = io
-        (
-            machine.grid,
-            machine.wirings,
-            machine.gates,
-            machine.index,
-            machine._by_cell,  # noqa: SLF001 -- alternate constructor
-        ) = _compile(tuple(code))
-        machine.halted = False
-        machine.values = (None,) * len(machine.wirings)
-        machine.latches = tuple((None,) * len(gate.inputs) for gate in machine.gates)
-        machine._load_inputs()  # noqa: SLF001 -- alternate constructor
-        machine._load_sources()  # noqa: SLF001 -- alternate constructor
-        return machine
+        return cls(code, io)
 
     def _load_inputs(self) -> None:
         """Drive every input wiring with the bits read from stdin.
