@@ -33,7 +33,7 @@ commands:
                               without running anything
   read-answer <language>      read a program's output on stdin and print
                               the answer bit it carries
-  answer [--timeout S] <language> <truth-table> <bits>
+  answer [--timeout S] [--settings JSON] <language> <truth-table> <bits>
                               generate, feed those bits, run, and print the
                               one answer bit
   evaluate [--timeout S] [--total-timeout S] [--max-rows N]
@@ -42,7 +42,7 @@ commands:
                               table; --table also checks the expected result
   debug [--steps N] [--timeout S] [--watch-cell I] [--stdin S] [--tui]
         [--break-at N] [--break-on-cell I=V] [--break-on-output S]
-        [--table T] <language> <file>
+        [--table T] [--settings JSON] <language> <file>
                               run under the debugger and report where it
                               stopped, plus any watched cell's history;
                               --tui steps interactively instead, showing the
@@ -146,7 +146,7 @@ options:
                by hand does not work: each language spells a set-input its
                own way, and a 0/1 in the slot is a different program.
   --scale N    enlarge raster pixels by N after layout (default 1).
-  --settings JSON  dialect overrides, e.g. '{{"index_base":1}}'; excludes --balance.
+  --settings JSON  dialect overrides, e.g. '{{"index_base":1}}'.
   --balance    minimize the rendered width/height difference across supported
                layouts. Ties prefer shorter source, then smaller width. Tokens
                and routing can prevent a square; excludes --width.
@@ -218,7 +218,8 @@ examples:
   printf '1\n0\n' | esolangs run brainfuck prog.txt
   printf '1\n0\n' | esolangs run --judge --timeout 5 brainfuck prog.txt
 """,
-    "answer": """usage: esolangs answer [--timeout S] <language> <truth-table> <bits>
+    "answer": """usage: esolangs answer [--timeout S] [--settings JSON]
+                       <language> <truth-table> <bits>
 
 Generate a program for <truth-table>, feed it <bits>, run it, and print the
 single answer bit.
@@ -239,6 +240,7 @@ answer by not terminating -- for those a bound is needed, and the default
 below is applied.
 
 options:
+  --settings JSON    dialect overrides shared with generate and run.
   --timeout SECONDS  bound the run.  Defaults to 5 seconds for the four
                      languages whose answer for a 1 is that the program
                      never stops, and to none for the rest.
@@ -374,6 +376,7 @@ options:
                        The only way to give a debugged program
                        input, since the Python API cannot feed a live
                        debugger either.
+  --settings JSON      dialect overrides shared with generate and run.
   --table T            check the stdin against the shape and alphabet T's
                        arity implies, before running.
   --tui                step through the program in an interactive

@@ -158,14 +158,21 @@ def test_scaled_raster_keeps_dialect_settings():
     assert esolangs.run("Line", program, "1", settings=settings) == "1"
 
 
-def test_settings_and_balance_are_refused_explicitly():
-    with pytest.raises(esolangs.ArgumentError, match="balance"):
-        esolangs.generate(
-            "Alight",
-            "0110",
-            balance=True,
-            settings=DialectSettings(expression_syntax="postfix"),
-        )
+@pytest.mark.parametrize(("language", "settings"), CASES)
+def test_balanced_settings_compute_every_row(language, settings):
+    table = "0110"
+    program = esolangs.generate(language, table, balance=True, settings=settings)
+    assert esolangs.evaluate(language, program, inputs=2, settings=settings) == table
+
+
+@pytest.mark.parametrize("inputs", [1, 3, 6])
+def test_balanced_postfix_chunks_execute(inputs):
+    table = "01" * (1 << (inputs - 1))
+    settings = DialectSettings(expression_syntax="postfix")
+    program = esolangs.generate("Alight", table, balance=True, settings=settings)
+    assert (
+        esolangs.evaluate("Alight", program, inputs=inputs, settings=settings) == table
+    )
 
 
 @pytest.mark.medium

@@ -68,7 +68,9 @@ class TestATimeoutHasOneExitCode:
             return
         # Validation warms Polynomial's parse cache before the deadline starts.
         # A diverging program makes this independent of cold-parse timing.
-        monkeypatch.setattr("esolangs.cli_round_trip.generate", lambda *_args: "+[]")
+        monkeypatch.setattr(
+            "esolangs.cli_round_trip.generate", lambda *_args, **_kwargs: "+[]"
+        )
         with pytest.raises(SystemExit) as exc:
             call_main([command, "--timeout", "0.001", "brainfuck", *rest], capsys)
         assert exc.value.code == 124
