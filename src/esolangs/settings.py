@@ -104,6 +104,31 @@ def dialect_options(language: str, settings: DialectSettings | None) -> dict[str
     return settings.options(language)
 
 
+def effective_settings(
+    language: str, program: object, settings: DialectSettings | None
+) -> DialectSettings | None:
+    """Merge explicit choices over retained same-language source provenance."""
+    from esolangs.raster import Raster
+    from esolangs.tagged import _Tagged
+
+    if settings is not None and not isinstance(settings, DialectSettings):
+        raise ArgumentError("settings must be a DialectSettings object")
+    if not isinstance(program, (_Tagged, Raster)) or program.language != resolve(
+        language
+    ):
+        return settings
+    retained = program.settings
+    dialect_options(language, retained)
+    if retained is None:
+        return settings
+    if settings is None:
+        return retained
+    # Dependent overrides (wrap + retained tape_size) validate only after merging.
+    merged = DialectSettings(**(dict(retained._items) | dict(settings._items)))  # noqa: SLF001
+    dialect_options(language, merged)
+    return merged
+
+
 def _single(values: dict[str, Any], key: str, validator: Any, default: Any) -> None:
     if values.keys() - {key}:
         raise TypeError(f"supported dialect setting: {key}")
