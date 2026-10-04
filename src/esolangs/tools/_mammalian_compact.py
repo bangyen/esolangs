@@ -138,14 +138,46 @@ class _Chain:
         state.acc = state.head + state.rest[0]
         return [*tokens, "DIGEST", "LEAPFROG"], hop
 
+    def regions(
+        self, state: _State, weight: int, pos: int, pool: int | None
+    ) -> tuple[int, int]:
+        """Bound node regions, including residue wraps and missing-head XORs."""
+        maximum = self.io_modulus - 1
+        missing = self.modulus < self.io_modulus
+        append = 2 * self.modulus + 3 if missing else self.modulus + 1
+        # Two arbitrary end chunks; full middle chunks cost 3/4 tokens.
+        # Missing head 255 adds at most 257 once per 256 full chunks.
+        raise_base = 2 * append + (self.modulus + 2 if missing else 0)
+        slope = 5 if missing else 3 + int(self.modulus != self.io_modulus)
+
+        def reserve(fixed: int) -> int:
+            # x = fixed + slope*q <= maximum*q, so ceil(x/maximum) <= q.
+            return fixed + slope * (-(-fixed // (maximum - slope)))
+
+        bank = 3
+        if pool is None:
+            minimum = self.io_modulus - self.step
+            tail_append = append
+            if missing:
+                tail_append += pow(self.step, -1, self.modulus) - 1
+            # One initial greedy solve, four-token continuations, two tails.
+            bank = self.modulus + 1 + 4 * (-(-weight // minimum)) + 2 * tail_append
+        arm = reserve(4 + 2 * self.modulus + bank + 2 * append + raise_base)
+        distance = max(0, pos + 15 - state.rest[0] - state.acc % self.io_modulus)
+        # Reset/read overhead is modulus+84; the closing jump adds three.
+        prefix = reserve(
+            self.modulus
+            + 87
+            + 2 * raise_base
+            + append
+            + slope * (-(-arm // maximum) + -(-distance // maximum))
+        )
+        return prefix, arm
+
     def level(
         self, state: _State, weight: int, pos: int, pool: int | None
     ) -> tuple[list[str], _State]:
-        # Greedy banking costs at most four tokens per 252 added. These
-        # slopes also cover jump chunks; the constants cover head solves.
-        mixed = self.io_modulus != self.modulus
-        arm_size = (6144 if mixed else 4096) + (weight + 15) // 16
-        prefix_size = (4096 if mixed else 2048) + (arm_size + 31) // 32
+        prefix_size, arm_size = self.regions(state, weight, pos, pool)
         landing = pos + prefix_size
         cont = landing + arm_size
         tokens = self.clear(state)
