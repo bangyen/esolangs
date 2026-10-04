@@ -9,6 +9,7 @@ from esolangs._evaluate import _DEFAULT, _DEFAULT_MAX_ROWS, _Default
 from esolangs._program import Program
 from esolangs._source import InputSource, ProgramSource
 from esolangs.registry import resolve
+from esolangs.settings import DialectSettings
 
 
 @dataclass(frozen=True, slots=True)
@@ -28,10 +29,16 @@ class Language:
         *,
         balance: bool = False,
         scale: int = 1,
+        settings: DialectSettings | None = None,
     ) -> Program:
         """Return a program computing ``truth_table``."""
         return esolangs.generate(
-            self.name, truth_table, width, balance=balance, scale=scale
+            self.name,
+            truth_table,
+            width,
+            balance=balance,
+            scale=scale,
+            settings=settings,
         )
 
     def instantiate(
@@ -40,9 +47,13 @@ class Language:
         bits: list[int] | tuple[int, ...],
         width: int | None = None,
         truth_table: str | None = None,
+        *,
+        settings: DialectSettings | None = None,
     ) -> str:
         """Fill a parameterized template with ``bits``."""
-        return esolangs.instantiate(self.name, template, bits, width, truth_table)
+        return esolangs.instantiate(
+            self.name, template, bits, width, truth_table, settings=settings
+        )
 
     def run(
         self,
@@ -53,6 +64,7 @@ class Language:
         *,
         isolated: bool = False,
         max_steps: int | None = None,
+        settings: DialectSettings | None = None,
         scale: int | None = None,
     ) -> str:
         """Execute source using the same bounds as :func:`esolangs.run`."""
@@ -64,6 +76,7 @@ class Language:
             seed,
             isolated=isolated,
             max_steps=max_steps,
+            settings=settings,
             scale=scale,
         )
 

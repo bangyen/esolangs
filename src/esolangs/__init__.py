@@ -76,6 +76,7 @@ from esolangs.registry import (
     template_body,
     template_char,
 )
+from esolangs.settings import DialectSettings, dialect_options
 from esolangs.tagged import _Tagged, _Template
 from esolangs.tools.balance import BALANCERS as _BALANCERS
 from esolangs.tools.helpers import mark_runs, unmark
@@ -115,6 +116,7 @@ def __getattr__(name: str) -> str:
 #: from the outside which was which.
 __all__ = [
     "ArgumentError",
+    "DialectSettings",
     "EsolangError",
     "ExecutionTimeoutError",
     "GeneratorCapError",
@@ -160,6 +162,7 @@ def generate(
     *,
     balance: bool = False,
     scale: int = 1,
+    settings: DialectSettings | None = None,
 ) -> Program:
     """Return a program in ``language`` computing ``truth_table``.
 
@@ -179,7 +182,9 @@ def generate(
     layouts, breaking ties by source length (raster pixel area), then width.
     Token and routing constraints can prevent a square layout.
     Raster ``scale`` replicates pixels after layout; 1 preserves native output.
+    ``settings`` supplies dialect overrides shared with execution; excludes balance.
     """
+    options = dialect_options(language, settings)
     check_scale(scale)
     if scale != 1:
         if LANGUAGES[resolve(language)].source_kind is not SourceKind.RASTER:
@@ -187,8 +192,12 @@ def generate(
                 ArgumentError("scale is only supported for raster generators"),
                 ("omit scale for text languages; apply it only to raster source"),
             )
-        source = generate(language, truth_table, width, balance=balance)
+        source = generate(
+            language, truth_table, width, balance=balance, settings=settings
+        )
         return cast(Raster, source).upscaled(scale)
+    if balance and options:
+        raise ArgumentError("balance does not support explicit dialect settings")
     if balance and width is not None:
         raise with_hint(
             ArgumentError("balance and width are mutually exclusive"),
@@ -239,7 +248,16 @@ def generate(
         )
     check_width(width)
     laid_out = width is not None and _takes_width(fn)
-    generated = fn(truth_table, width) if laid_out else fn(truth_table)
+    try:
+        generated = (
+            fn(truth_table, width, **options)
+            if laid_out
+            else fn(truth_table, **options)
+        )
+    except EsolangError:
+        raise
+    except ValueError as error:
+        raise ArgumentError(str(error)) from error
     if lang.source_kind is SourceKind.RASTER:
         if not isinstance(generated, Raster):  # pragma: no cover - registry invariant
             raise ProgramError(f"{resolved}'s generator did not return a Raster")
@@ -255,16 +273,20 @@ def generate(
     # that, wrapped with every run whole (see render_template).
     inputs = len(truth_table).bit_length() - 1
     wrap_to = None if laid_out else width
-    text, char, pairs = render_template(lang.id, slots, inputs, wrap_to)
+    text, char, pairs = render_template(
+        lang.id, slots, inputs, wrap_to, settings=settings
+    )
     return _Template(text, resolved, char, pairs)
 
 
-def _is_template_for(template: str, name: str, truth_table: str) -> bool:
+def _is_template_for(
+    template: str, name: str, truth_table: str, settings: DialectSettings | None = None
+) -> bool:
     """Return whether ``template`` is what ``name`` generates for the table.
 
     Compare wrapping using the language's whitespace rules.
     """
-    plain = generate(name, truth_table)
+    plain = generate(name, truth_table, settings=settings)
     if not isinstance(plain, str):
         return False
     if template == plain:
@@ -276,7 +298,7 @@ def _is_template_for(template: str, name: str, truth_table: str) -> bool:
 
     @cache
     def layout(width: int) -> Program:
-        return generate(name, truth_table, width)
+        return generate(name, truth_table, width, settings=settings)
 
     def same_tokens(program: Program) -> bool:
         return isinstance(program, str) and template.split() == program.split()
@@ -347,6 +369,8 @@ def instantiate(
     bits: list[int] | tuple[int, ...],
     width: int | None = None,
     truth_table: str | None = None,
+    *,
+    settings: DialectSettings | None = None,
 ) -> str:
     """Fill a parameterized generator's template with ``bits``.
 
@@ -357,6 +381,7 @@ def instantiate(
     A template :func:`generate` returned carries its setters; a plain string
     has them recovered from the language's own.
     """
+    dialect_options(language, settings)
     check_width(width)
     name = resolve(language)
     if not isinstance(template, str):
@@ -372,7 +397,9 @@ def instantiate(
                 "then supply integer bits to instantiate()"
             ),
         )
-    if truth_table is not None and not _is_template_for(template, name, truth_table):
+    if truth_table is not None and not _is_template_for(
+        template, name, truth_table, settings
+    ):
         # The provenance check a tag cannot make: a hand-written string is
         # untagged by design (a tag cannot survive a file), and
         # `instantiate("Minifuck", "hello $$", [1])` filled it happily.
@@ -427,7 +454,7 @@ def instantiate(
                 ),
             )
         try:
-            pairs = recover_setters(LANGUAGES[name].id, template)
+            pairs = recover_setters(LANGUAGES[name].id, template, settings=settings)
         except ValueError as exc:
             raise with_hint(
                 TemplateError(f"not a {name} template: {exc}"),
@@ -569,6 +596,7 @@ def _run_bounded(
     stdin: InputSource = "",
     *,
     max_steps: int,
+    settings: DialectSettings | None = None,
     timeout: float | None = None,
     scale: int | None = None,
 ) -> str:
@@ -584,7 +612,7 @@ def _run_bounded(
     check_timeout(timeout)
     from esolangs.debugger import make_debugger
 
-    debugger = make_debugger(language, program, stdin, scale=scale)
+    debugger = make_debugger(language, program, stdin, scale=scale, settings=settings)
     try:
         reason = debugger.run(max_steps=max_steps, timeout=timeout)
     except EsolangError as exc:
@@ -608,10 +636,12 @@ def run(
     max_steps: int | None = None,
     scale: int | None = None,
     max_output: int | None = None,
+    settings: DialectSettings | None = None,
 ) -> str:
     """Execute ``program`` and return its output.
 
     Raster scale is detected unless ``scale`` supplies an explicit factor.
+    ``settings`` supplies dialect overrides shared with generation.
     ``program`` is source or a :class:`~pathlib.Path`; a string shaped like a
     filename is refused.  A Path and its text are
     not quite the same argument: a file loses one trailing newline, a
@@ -645,6 +675,7 @@ def run(
     languages that draw.  An unloadable program raises
     :class:`~esolangs.exceptions.ProgramError`.
     """
+    dialect = dialect_options(language, settings)
     check_scale_for(language, scale)
     if isinstance(timeout, _Default):
         timeout = 30.0 if isolated else None
@@ -678,6 +709,17 @@ def run(
                 seed=seed,
                 scale=scale,
                 max_output=max_output,
+                settings=settings,
+            )
+        if settings is not None:
+            return _run_isolated(
+                language,
+                program,
+                stdin,
+                timeout,
+                seed=seed,
+                scale=scale,
+                settings=settings,
             )
         if scale is None:
             return _run_isolated(language, program, stdin, timeout, seed=seed)
@@ -692,7 +734,13 @@ def run(
                 ),
             )
         return _run_bounded(
-            language, program, stdin, max_steps=max_steps, timeout=timeout, scale=scale
+            language,
+            program,
+            stdin,
+            max_steps=max_steps,
+            timeout=timeout,
+            scale=scale,
+            settings=settings,
         )
     # Before ``_run``, so every ValueError from the run is the
     # interpreter's.  The message names both routes out for a worker
@@ -712,6 +760,7 @@ def run(
     program = check_program(name, program, stdin)
     run_fn = interpreter_module(name).run
     program_args, options = prepare_call(name, program, run_fn, scale=scale, seed=seed)
+    options.update(dialect)
     if options:
         run_fn = partial(run_fn, **options)
     io_obj = ScriptedIO(stdin)

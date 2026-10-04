@@ -32,6 +32,7 @@ from esolangs._vm_views import (
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.source_hints import with_hint
 from esolangs.registry import resolve
+from esolangs.settings import DialectSettings, dialect_options
 
 
 @runtime_checkable
@@ -809,6 +810,7 @@ class _DelegatingVM:
         stdin: InputSource = "",
         *,
         scale: int | None = None,
+        settings: DialectSettings | None = None,
     ) -> None:
         self.language = language
         self._io = ScriptedIO(stdin)
@@ -816,6 +818,7 @@ class _DelegatingVM:
         code, options = prepare_call(
             language, program, state, scale=scale, reproducible=True
         )
+        options.update(dialect_options(language, settings))
         self._machine = state(code, self._io, **options)
 
     @property
@@ -902,6 +905,7 @@ def make_vm(
     stdin: InputSource = "",
     *,
     scale: int | None = None,
+    settings: DialectSettings | None = None,
 ) -> VM:
     """Return a step-and-inspect wrapper around ``language``'s interpreter.
 
@@ -916,6 +920,7 @@ def make_vm(
     from esolangs import check_program
 
     name = resolve(language)
+    dialect_options(name, settings)
     source = check_program(name, program, stdin)
     check_scale_for(name, scale)
     with interpreter_errors(
@@ -923,4 +928,4 @@ def make_vm(
         "limit allows while loading this program while parsing its source",
         language=name,
     ):
-        return _DelegatingVM(name, source, stdin, scale=scale)
+        return _DelegatingVM(name, source, stdin, scale=scale, settings=settings)
