@@ -15,6 +15,18 @@ _LINUX = sys.platform == "linux"
 _BUDGET = 96 * 1024 * 1024
 
 
+def _growing_template(doublings: int) -> str:
+    return esolangs.generate("Underload", "01") + "(x)" + ":*" * doublings
+
+
+@pytest.mark.medium
+def test_memory_probe_template_reaches_execution() -> None:
+    assert (
+        esolangs.evaluate("Underload", _growing_template(3), inputs=1, isolated=True)
+        == "01"
+    )
+
+
 @pytest.mark.parametrize("limit", [0, -1, True, 1.5, "1", 1 << 63])
 def test_invalid_memory_budget_precedes_source_reads(limit: object) -> None:
     with pytest.raises(esolangs.ArgumentError, match="max_memory"):
@@ -75,9 +87,14 @@ def test_growing_state_fails_and_worker_is_reaped(monkeypatch) -> None:
 def test_memory_failure_during_evaluation_is_not_an_answer() -> None:
     with pytest.raises(esolangs.InterpreterLimitError, match="memory limit") as caught:
         esolangs.evaluate(
-            "Underload", "(x)" + ":*" * 29, inputs=1, isolated=True, max_memory=_BUDGET
+            "Underload",
+            _growing_template(29),
+            inputs=1,
+            isolated=True,
+            max_memory=_BUDGET,
         )
     assert "row 0" in " ".join(caught.value.__notes__)
+    assert caught.value.partial_output == "0"
 
 
 @pytest.mark.medium
