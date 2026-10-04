@@ -937,18 +937,23 @@ def slow_acv_mammalian(
     One read node per input (``ACCEPT``), one dispatch jump, one
     leaf slot per entry: O(T) text. Modulo-255 I/O uses 255-token slots
     above five inputs so solved weights remain multiples of 255.
-    Cell modulus 255 uses coprime-array chains for equal-modulus tables
-    above three inputs, and a decision tree otherwise.
+    Cell modulus 255 uses coprime-array chains above three inputs with
+    I/O modulus 255, or above two with 256; smaller tables use a tree.
     """
     moduli = MammalianModuli(cell_modulus, io_modulus)
     n = _validate_truth_table(truth_table)
     if moduli.cell_modulus == 255:
-        # At four inputs: 157678 characters vs the tree's 204981;
-        # below four, the tree is smaller.
-        if moduli.io_modulus == 255 and n >= 4:
+        # Chain/tree characters: 157678/204981 at n=4 with I/O 255;
+        # 177576/191028 at n=3 with I/O 256. Smaller trees win below these.
+        if n >= (4 if moduli.io_modulus == 255 else 3):
             from esolangs.tools._mammalian_compact import compact_chain
 
-            return compact_chain(truth_table, n, modulus=moduli.cell_modulus)
+            return compact_chain(
+                truth_table,
+                n,
+                modulus=moduli.cell_modulus,
+                io_modulus=moduli.io_modulus,
+            )
         from esolangs.tools._mammalian255 import decision_tree
 
         return decision_tree(truth_table, n, io_modulus=moduli.io_modulus)

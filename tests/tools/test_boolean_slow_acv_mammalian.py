@@ -526,37 +526,44 @@ def test_moduli_generate_asymmetric_tables(
 
 
 @pytest.mark.parametrize("modulus", [255, 256])
+@pytest.mark.parametrize("io_modulus", [255, 256])
 @pytest.mark.parametrize(
     "table",
     [f"{value:0{1 << n}b}" for n in range(1, 4) for value in range(1 << (1 << n))],
 )
-def test_coprime_chain_generates_every_small_table(table: str, modulus: int) -> None:
+def test_coprime_chain_generates_every_small_table(
+    table: str, modulus: int, io_modulus: int
+) -> None:
     from esolangs.interpreters.io import ScriptedIO
     from esolangs.interpreters.tape_based.slow_acv_mammalian import run
     from esolangs.tools._mammalian_compact import compact_chain
 
     n = len(table).bit_length() - 1
-    source = compact_chain(table, n, modulus=modulus)
+    source = compact_chain(table, n, modulus=modulus, io_modulus=io_modulus)
     for row, expected in enumerate(table):
         io = ScriptedIO(f"{row:0{n}b}")
-        run(source, io, cell_modulus=modulus, io_modulus=modulus)
+        run(source, io, cell_modulus=modulus, io_modulus=io_modulus)
         assert io.getvalue() == expected
         assert io.reads == n
 
 
 @pytest.mark.medium
 @pytest.mark.parametrize("n", [4, 5, 6, 7])
-def test_coprime_chain_generates_asymmetric_modulo_256_tables(n: int) -> None:
+@pytest.mark.parametrize("modulus", [255, 256])
+@pytest.mark.parametrize("io_modulus", [255, 256])
+def test_coprime_chain_generates_asymmetric_tables(
+    n: int, modulus: int, io_modulus: int
+) -> None:
     from esolangs.interpreters.io import ScriptedIO
     from esolangs.interpreters.tape_based.slow_acv_mammalian import run
     from esolangs.tools._mammalian_compact import compact_chain
 
     rng = random.Random(20261003 + n)
     table = "".join(str(rng.getrandbits(1)) for _ in range(1 << n))
-    source = compact_chain(table, n, modulus=256)
+    source = compact_chain(table, n, modulus=modulus, io_modulus=io_modulus)
     for row, expected in enumerate(table):
         io = ScriptedIO(f"{row:0{n}b}")
-        run(source, io)
+        run(source, io, cell_modulus=modulus, io_modulus=io_modulus)
         assert io.getvalue() == expected
         assert io.reads == n
 
@@ -571,17 +578,69 @@ def test_coprime_chain_rejects_backward_targets() -> None:
         chain.jump(_State(), 0)
 
 
+@pytest.mark.parametrize(("modulus", "io_modulus"), [(255, 256), (256, 255)])
+def test_mixed_chain_greedy_chunks_keep_their_short_continuation(
+    modulus: int, io_modulus: int
+) -> None:
+    from esolangs.tools._mammalian_compact import _Chain, _State
+
+    chain = _Chain(modulus, io_modulus=io_modulus)
+    for head in range(modulus):
+        for rest in range(io_modulus):
+            state = _State(head=head, ptr=chain.weight)
+            state.rest[chain.weight] = rest
+            chain.seed(state, chain.greedy_seeds(state))
+            value = (chain.head(state) + rest) % io_modulus
+            assert value >= io_modulus - chain.step
+            state.rest[chain.weight] += value
+            assert chain.greedy_seeds(state) <= 2
+
+
+@pytest.mark.parametrize("ptr", [0, 1])
+@pytest.mark.parametrize("head", [0, 254])
+@pytest.mark.parametrize("extra", [0, 512])
+def test_mixed_chain_appends_all_missing_head_values(
+    ptr: int, head: int, extra: int
+) -> None:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
+    from esolangs.tools._mammalian_compact import _Chain, _State
+
+    chain = _Chain(255, io_modulus=256)
+    for value in range(256):
+        rest = value + 1 + extra
+        state = _State(head=head, ptr=ptr)
+        state.rest[ptr] = rest
+        tokens = chain.append(state, value)
+        machine = _Machine(
+            " ".join(tokens), ScriptedIO(), cell_modulus=255, io_modulus=256
+        )
+        arrays = [((array + 1) * head % 255,) for array in range(23)]
+        chunks, tail = divmod(rest, 254)
+        arrays[ptr] += (*[254] * chunks, tail)
+        machine.lst, machine.ptr = tuple(arrays), ptr
+        for _ in tokens:
+            machine.step()
+        assert machine.lst[ptr][-1] == value
+        assert sum(machine.lst[ptr][1:]) == state.rest[ptr] == rest + value
+        assert machine.lst[ptr][0] == chain.head(state)
+        assert machine.acc == state.acc == 0
+
+
 @pytest.mark.parametrize("modulus", [255, 256])
-def test_coprime_chain_runs_in_stepped_interpreter(modulus: int) -> None:
+@pytest.mark.parametrize("io_modulus", [255, 256])
+def test_coprime_chain_runs_in_stepped_interpreter(
+    modulus: int, io_modulus: int
+) -> None:
     from esolangs.interpreters.io import ScriptedIO
     from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
     from esolangs.tools._mammalian_compact import compact_chain
 
     table = "0010110101110001"
-    source = compact_chain(table, 4, modulus=modulus)
+    source = compact_chain(table, 4, modulus=modulus, io_modulus=io_modulus)
     for row, expected in enumerate(table):
         io = ScriptedIO(f"{row:04b}")
-        machine = _Machine(source, io, cell_modulus=modulus, io_modulus=modulus)
+        machine = _Machine(source, io, cell_modulus=modulus, io_modulus=io_modulus)
         for _ in range(len(source.split())):
             if machine.halted:
                 break
