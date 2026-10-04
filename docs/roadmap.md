@@ -3,12 +3,6 @@
 Open work only. See [limitations](limitations.md) for standing contracts
 and proved limits; completed work is recorded in its commit.
 
-## Engineering priorities
-
-1. **Verification timing refresh.** Refresh slow-shard durations from the next
-   scheduled CI artifact. Done when the fixture matches that run and shard
-   estimates are reported. Budget: reuse scheduled measurements; no extra suite.
-
 ## Research follow-up
 
 - **Piet++ specification and generator audit.** The language is tagged
