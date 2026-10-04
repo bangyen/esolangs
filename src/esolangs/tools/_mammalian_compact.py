@@ -126,6 +126,13 @@ class _Chain:
                 remaining -= added
         while remaining:
             chunk = min(remaining, maximum)
+            # A non-final 254 write avoids synthesizing unreachable head 255.
+            if (
+                remaining > maximum
+                and self.modulus < self.io_modulus
+                and (chunk - state.rest[state.ptr]) % self.io_modulus >= self.modulus
+            ):
+                chunk -= 1
             tokens += self.append(state, chunk)
             remaining -= chunk
         return tokens
