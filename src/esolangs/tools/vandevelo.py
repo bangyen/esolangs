@@ -56,7 +56,8 @@ loses; the sparse tail costs a constant per point.  Two terms sit
 outside that: the proof's exact fallback -- when no scored direction
 reaches the pigeonhole average on a dense working set, the most popular
 one is found by quotient autocorrelation: a d-dimensional chain span
-needs O(n*|S|) projection and O((n-d)*2**(n-d)) transform work per call.
+needs O(|S| + (n-d)*|S|/2**d) selection and
+O((n-d)*2**(n-d)) transform work per call.
 The original full-space transform took ``n * 2**n`` a call, none on random
 dense tables to n=14 and one at n=15 -- and the dual-basis core below,
 at most ``sqrt(2**(dim + 1))`` inputs, so under ``sqrt(n)`` per clause
@@ -274,9 +275,9 @@ def _best(node: _Node) -> tuple[int | None, int]:
 
 
 def _quotient_popularities(node: _Node, n: int) -> list[tuple[int, int]]:
-    """Return exact direction counts on S/span, with O(n*|S|) projection.
+    """Return exact direction counts using one canonical point per span coset.
 
-    S is invariant under the d-dimensional span. Each quotient pair lifts
+    Selection costs O(|S| + (n-d)*|S|/2**d). S is span-invariant. Each pair lifts
     to 2**d pairs; the transform uses n-d dimensions, not n.
     """
     pivots: dict[int, int] = {}
@@ -289,12 +290,14 @@ def _quotient_popularities(node: _Node, n: int) -> list[tuple[int, int]]:
         if value:
             pivots[value.bit_length() - 1] = value
     free = [bit for bit in range(n) if bit not in pivots]
-    quotient: set[int] = set()
-    for point in node.points:
-        for bit in range(n - 1, -1, -1):
-            if bit in pivots and point >> bit & 1:
-                point ^= pivots[bit]
-        quotient.add(sum((point >> bit & 1) << index for index, bit in enumerate(free)))
+    # Span invariance supplies one representative with all pivot bits zero
+    # in every coset; projecting every member repeats the same work 2**d times.
+    pivot_mask = sum(1 << bit for bit in pivots)
+    quotient = {
+        sum((point >> bit & 1) << index for index, bit in enumerate(free))
+        for point in node.points
+        if not point & pivot_mask
+    }
     counts = _popularities(quotient, len(free))
     return [
         (
