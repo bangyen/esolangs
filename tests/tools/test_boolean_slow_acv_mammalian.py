@@ -655,6 +655,25 @@ def test_coprime_chain_runs_in_stepped_interpreter(
     assert io.reads == inputs
 
 
+@pytest.mark.parametrize("row", range(64))
+def test_native_255_pooled_blocks_in_stepped_interpreter(row: int) -> None:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
+
+    rng = random.Random(20261009)
+    table = "".join(str(rng.getrandbits(1)) for _ in range(64))
+    source = boolean.slow_acv_mammalian(table, io_modulus=255)
+    io = ScriptedIO(f"{row:06b}")
+    machine = _Machine(source, io, io_modulus=255)
+    for _ in range(len(source.split())):
+        if machine.halted:
+            break
+        machine.step()
+    assert machine.halted
+    assert io.getvalue() == table[row]
+    assert io.reads == 6
+
+
 def test_cell_255_tree_rejects_backward_sum_targets() -> None:
     from esolangs.tools._mammalian255 import _State
 
