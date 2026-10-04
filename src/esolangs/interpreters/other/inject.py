@@ -111,9 +111,18 @@ def _replaced(state: _State, name: str, body: list[str]) -> _State:
     begin, end = _span(spans, name)
     grown = [*lines[: begin + 1], *body, *lines[end:]]
     shift = len(body) - (end - begin - 1)
+    if shift and any(
+        begin < boundary < end
+        for label, endpoints in spans.items()
+        if label != name
+        for boundary in endpoints
+    ):
+        raise HaltError("a rewrite cannot remove another block's delimiters")
     if not shift:
         return (grown, spans, ind, done)
     if begin < ind:
+        if ind + shift + 1 < 0:
+            raise HaltError("rewrite would move the pointer before the program")
         ind += shift
     # Only positions strictly after the opening delimiter move: an
     # overlapping block that begins earlier keeps its own start and has its
@@ -184,7 +193,10 @@ def _injected(state: _State, rest: str) -> _State:
             f"invalid regex: {pattern}",
             hint="correct the regex syntax before executing the substitution",
         ) from exc
-    body = [compiled.sub(replacement, line) for line in _contents(state, name)]
+    try:
+        body = [compiled.sub(replacement, line) for line in _contents(state, name)]
+    except (re.error, IndexError) as exc:
+        raise HaltError(f"invalid replacement: {replacement}") from exc
     return _replaced(state, name, body)
 
 
@@ -256,6 +268,7 @@ class _Machine:
         self.lines = code.split("\n") if isinstance(code, str) else list(code)
         self.spans = _spans(self.lines)
         self.io = io
+        self._input_reads = 0
         self.ind = 0
         self.done = False
 
@@ -289,7 +302,14 @@ class _Machine:
         # The program text is the memory, so it has to go in whole: a loop
         # that keeps rewriting a block is not a repeat.  The input cursor
         # separates a re-read from a genuine cycle.
-        return (self.ind, self.done, tuple(self.lines), self.io.position())
+        return (
+            self.ind,
+            self.done,
+            tuple(self.lines),
+            self.io.position(),
+            self._input_reads,
+            frozenset(self.spans.items()),
+        )
 
     @property
     def _state(self) -> _State:
@@ -318,7 +338,10 @@ class _Machine:
         # ``readto`` is the one command that needs its input before the
         # transition can run, and it must be read even at EOF: the port
         # raises there, which is the language's documented halt for it.
-        line_in = self.io.input_str() if command == "readto" else None
+        line_in = None
+        if command == "readto":
+            line_in = self.io.input_str()
+            self._input_reads += 1
 
         state, output = _advance(self._state, line_in)
         self._restore(state)
