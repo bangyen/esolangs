@@ -21,6 +21,7 @@ from esolangs._dialects import (
     expression_syntax,
     index_base,
 )
+from esolangs._framing import INPUT_FRAMINGS, InputFraming
 from esolangs._grapheme import INTEGER_CONVERSIONS, GraphemeDialect
 from esolangs._jaune import UNDEFINED_TARGETS, JauneDialect
 from esolangs._mammalian import MODULI, MammalianModuli
@@ -34,6 +35,10 @@ _VALIDATORS: dict[str, Any] = {
     "line": LineDialect,
     "jaune": JauneDialect,
     "grapheme": GraphemeDialect,
+    "unsquare": InputFraming,
+    "decleq": InputFraming,
+    "addsubjump": InputFraming,
+    "minifuck": InputFraming,
     "false": FalseDialect,
     "flowchart": FlowchartDialect,
     "slow_acv_mammalian": MammalianModuli,
@@ -60,6 +65,7 @@ class DialectSettings:
             "deque_cursor",
             "undefined_targets",
             "integer_conversion",
+            "input_framing",
         }
         for key, value in choices.items():
             if key not in integer | text:
@@ -181,6 +187,7 @@ def dialect_choices(language: str) -> dict[str, DialectOption]:
         "deque_cursor": DEQUE_CURSORS,
         "undefined_targets": UNDEFINED_TARGETS,
         "integer_conversion": INTEGER_CONVERSIONS,
+        "input_framing": INPUT_FRAMINGS,
     }
     if language_id == "slow_acv_mammalian":
         choices.update(cell_modulus=MODULI, io_modulus=MODULI)

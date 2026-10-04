@@ -147,7 +147,13 @@ def _abridge(history: Sequence[object]) -> str:
     return f"[{head}, ... {len(history) - _HISTORY_SHOWN} more ..., {tail}]"
 
 
-def _shape_warning(facts: LanguageInfo, stdin: str, table: str | None = None) -> str:
+def _shape_warning(
+    facts: LanguageInfo,
+    stdin: str,
+    table: str | None = None,
+    *,
+    settings: DialectSettings | None = None,
+) -> str:
     """Return the library's complaint about ``stdin``, or ``''``.
 
     The checks live in :func:`esolangs.check_stdin`; two copies drifted
@@ -156,7 +162,7 @@ def _shape_warning(facts: LanguageInfo, stdin: str, table: str | None = None) ->
     if not facts["reads_input"]:
         return ""
     try:
-        check_stdin(str(facts["name"]), stdin, table)
+        check_stdin(str(facts["name"]), stdin, table, settings=settings)
     except EsolangError as exc:
         # Some of these already name the exact command; appending the
         # generic pointer to those said "esolangs encode" twice in one line.

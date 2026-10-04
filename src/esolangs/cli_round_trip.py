@@ -65,7 +65,7 @@ def _answer(rest: list[str]) -> None:
                 "",
             )
         else:
-            source, stdin = program, encode_inputs(name, row, table)
+            source, stdin = program, encode_inputs(name, row, table, settings=settings)
         if facts["answer_mode"] == "termination":
             if not isinstance(source, str):  # pragma: no cover - inconsistent metadata
                 raise TypeError("a raster language cannot answer by termination")

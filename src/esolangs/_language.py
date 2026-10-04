@@ -157,10 +157,14 @@ class Language:
         return esolangs.describe(self.name)
 
     def encode_inputs(
-        self, bits: list[int] | tuple[int, ...], truth_table: str | None = None
+        self,
+        bits: list[int] | tuple[int, ...],
+        truth_table: str | None = None,
+        *,
+        settings: DialectSettings | None = None,
     ) -> str:
         """Return the stdin encoding for ``bits``."""
-        return esolangs.encode_inputs(self.name, bits, truth_table)
+        return esolangs.encode_inputs(self.name, bits, truth_table, settings=settings)
 
     def read_answer(self, output: str) -> str:
         """Extract the answer bit from raw output."""
@@ -170,6 +174,12 @@ class Language:
         """Load and validate runnable source."""
         return esolangs.check_program(self.name, program, stdin)
 
-    def check_stdin(self, stdin: str, truth_table: str | None = None) -> None:
+    def check_stdin(
+        self,
+        stdin: str,
+        truth_table: str | None = None,
+        *,
+        settings: DialectSettings | None = None,
+    ) -> None:
         """Refuse stdin that contradicts this language's input convention."""
-        esolangs.check_stdin(self.name, stdin, truth_table)
+        esolangs.check_stdin(self.name, stdin, truth_table, settings=settings)

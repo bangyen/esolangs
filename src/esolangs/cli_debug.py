@@ -32,7 +32,7 @@ from esolangs.cli_io import _null_context, _read_program, _read_stdin, _Unbounde
 from esolangs.debugger import make_debugger
 from esolangs.exceptions import EsolangError, TemplateError
 from esolangs.interpreters.source_hints import error_text
-from esolangs.settings import DialectSettings, dialect_options
+from esolangs.settings import DialectSettings, dialect_options, effective_settings
 from esolangs.tui import breakpoint_for, run_tui
 
 
@@ -186,7 +186,14 @@ def _debug(rest: list[str]) -> None:
     fault = None
     reason = None
     warning = (
-        _shape_warning(describe(language), stdin, table) if table is not None else ""
+        _shape_warning(
+            describe(language),
+            stdin,
+            table,
+            settings=effective_settings(language, program, settings),
+        )
+        if table is not None
+        else ""
     )
     if warning:
         sys.stderr.write(f"{warning}\n")

@@ -15,22 +15,27 @@ from esolangs.exceptions import (
 )
 from esolangs.interpreters.source_hints import with_hint
 from esolangs.registry import LANGUAGES, resolve
+from esolangs.settings import DialectSettings, dialect_options
 
 
 def encode_inputs(
     language: str,
     bits: list[int] | tuple[int, ...],
     truth_table: str | None = None,
+    *,
+    settings: DialectSettings | None = None,
 ) -> str:
     """Return the stdin that feeds ``bits`` to a ``language`` program.
 
     Character readers take adjacent digits; numeric readers take tokens.
+    Integer-token framing spells character codes as decimal tokens.
     Grapheme spells ``%``/``A``, Fargo takes a row index, Taglate pads odd counts --
     each answering the obvious guess with a wrong bit.  ``truth_table`` is
     needed only where the encoding depends on arity.  A language that embeds
     its inputs is refused; use :func:`instantiate`.
     """
     name = resolve(language)
+    options = dialect_options(name, settings)
     contract = LANGUAGES[name].contract
     if contract.parameterized:
         raise ArgumentError(
@@ -77,6 +82,8 @@ def encode_inputs(
     zero, one = contract.alphabet
     padded = [0, *bits] if contract.ghost_digit and len(bits) % 2 and bits[1:] else bits
     digits = [one if bit else zero for bit in padded]
+    if options.get("input_framing") == "integer_tokens":
+        return "".join(f"{ord(digit)}\n" for digit in digits)
     if contract.input_shape in {
         "char_stream",
         "char_stream_padded",
@@ -86,7 +93,13 @@ def encode_inputs(
     return "".join(f"{digit}\n" for digit in digits)
 
 
-def check_stdin(language: str, stdin: str, truth_table: str | None = None) -> None:
+def check_stdin(
+    language: str,
+    stdin: str,
+    truth_table: str | None = None,
+    *,
+    settings: DialectSettings | None = None,
+) -> None:
     """Refuse ``stdin`` that cannot be what ``language`` wants to read.
 
     The CLI's judge, for Python callers: a wrong alphabet, unexpected
@@ -96,6 +109,7 @@ def check_stdin(language: str, stdin: str, truth_table: str | None = None) -> No
     the registered Boolean I/O contract.
     """
     name = resolve(language)
+    options = dialect_options(name, settings)
     lang = LANGUAGES[name]
     contract = lang.contract
     if lang.boolean is None or contract.parameterized:
@@ -120,6 +134,24 @@ def check_stdin(language: str, stdin: str, truth_table: str | None = None) -> No
             # the shape, which is where that fact already lives.
             wanted += 1
 
+    if options.get("input_framing") == "integer_tokens":
+        tokens = stdin.split()
+        try:
+            values = [int(token) for token in tokens]
+        except ValueError as exc:
+            raise ArgumentError(
+                f"{name} reads whitespace-delimited integer tokens"
+            ) from exc
+        if any(value not in (ord(zero), ord(one)) for value in values):
+            raise ArgumentError(
+                f"{name} spells Boolean input values {ord(zero)} and {ord(one)}"
+            )
+        if wanted is not None and len(values) != wanted:
+            raise ArgumentError(
+                f"{name} reads {wanted} tokens for this table, "
+                f"but stdin has {len(values)}"
+            )
+        return
     if shape == "row_index":
         # ``isdecimal``, not ``isdigit``: a superscript like ``²`` passes
         # ``isdigit`` and then ``int`` rejects it with a bare ValueError.

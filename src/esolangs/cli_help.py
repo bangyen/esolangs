@@ -13,7 +13,7 @@ USAGE = """usage: esolangs <command> [...]
 
 commands:
   list [--details] [--json]   list the supported languages
-  encode <language> <bits>    print the stdin that feeds those bits
+  encode [--settings JSON] <language> <bits>    print the stdin that feeds those bits
   generate [--width [N] | --balance] [--bits BITS] [--scale N]
            [--settings JSON] [--portable] <language> <truth-table>
                               print a program computing a truth table
@@ -29,7 +29,7 @@ commands:
                               (--judge prints the answer bit instead)
   suggest <language> <program-file>
                               preview unambiguous command spelling edits
-  check-stdin [--table T] <language>
+  check-stdin [--table T] [--settings JSON] <language>
                               judge stdin against what that language reads,
                               without running anything
   read-answer <language>      read a program's output on stdin and print
@@ -94,7 +94,7 @@ example:
   esolangs generate Modulous 0110 > program.txt
   esolangs suggest Modulous program.txt
 """,
-    "encode": """usage: esolangs encode <language> <bits>
+    "encode": """usage: esolangs encode [--settings JSON] <language> <bits>
 
 Print the stdin that feeds <bits> to a <language> program, so it can be
 piped straight into `esolangs run`:
@@ -105,7 +105,8 @@ Character readers take adjacent 0/1 characters. Numeric readers take
 whitespace-delimited tokens; string readers take lines. Grapheme spells
 its bits %/A, Fargo takes one decimal row index, and Taglate pads an odd
 input count with a leading zero character. `esolangs describe <language>`
-prints the encoding.
+prints the default encoding. Integer-token framing spells 0/1 as 48/49;
+pass the same --settings JSON to encode and run.
 
 A language whose generator embeds the inputs in the program reads no stdin
 at all; `esolangs generate --bits` builds those.
@@ -283,7 +284,8 @@ examples:
   esolangs evaluate --inputs 2 brainfuck program.txt
   esolangs evaluate --table 0110 brainfuck program.txt
 """,
-    "check-stdin": """usage: esolangs check-stdin [--table T] <language>
+    "check-stdin": """usage: esolangs check-stdin [--table T] [--settings JSON]
+                            <language>
 
 Read stdin and say whether it is what <language> wants, without running a
 program.
