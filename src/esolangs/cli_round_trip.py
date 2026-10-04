@@ -29,6 +29,7 @@ from esolangs.cli_args import (
     _fail,
     _integer,
     _pop_options,
+    _pop_portable,
     _settings_of,
     _split_positional,
     _table_of,
@@ -101,6 +102,7 @@ def _evaluate(rest: list[str]) -> None:
             "--settings",
         },
     )
+    rest, portable = _pop_portable(rest)
     timeout = _timeout_of(options)
     rest = _split_positional(
         rest,
@@ -114,6 +116,7 @@ def _evaluate(rest: list[str]) -> None:
             "--max-memory",
             "--total-timeout",
             "--settings",
+            "--portable",
         },
     )
     _check_count("evaluate", rest, 2)
@@ -158,12 +161,17 @@ def _evaluate(rest: list[str]) -> None:
         from esolangs._isolated import check_memory
 
         check_memory(max_memory, isolated=isolated)
-        dialect_options(language, settings)
+        if not portable:
+            dialect_options(language, settings)
+        else:
+            describe(language)
         _evaluation_rows(inputs, max_rows)
         if max_output is not None:
             check_whole(max_output, "max_output")
         program = _prepare(
-            lambda: _read_program(path, timeout, language=language),
+            lambda: _read_program(
+                path, timeout, language=language, portable=portable, settings=settings
+            ),
             deadline,
             isolated=isolated,
         )

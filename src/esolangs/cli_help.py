@@ -15,7 +15,7 @@ commands:
   list [--details] [--json]   list the supported languages
   encode <language> <bits>    print the stdin that feeds those bits
   generate [--width [N] | --balance] [--bits BITS] [--scale N]
-           [--settings JSON] <language> <truth-table>
+           [--settings JSON] [--portable] <language> <truth-table>
                               print a program computing a truth table
                               (--width wraps it; --bits fills a template)
   describe [--json] [--spec] <language>
@@ -23,7 +23,8 @@ commands:
                               where it puts the answer (--spec prints the
                               interpreter's own description of it)
   run [--timeout S] [--isolated] [--max-output N] [--max-memory BYTES]
-      [--judge] [--table T] [--seed N] [--scale N] [--settings JSON] <language> <file>
+      [--judge] [--table T] [--seed N] [--scale N] [--settings JSON]
+      [--portable] <language> <file>
                               run a program through its interpreter
                               (--judge prints the answer bit instead)
   suggest <language> <program-file>
@@ -38,12 +39,12 @@ commands:
                               one answer bit
   evaluate [--timeout S] [--total-timeout S] [--max-rows N]
            [--max-output N] [--max-memory BYTES] [--inputs N | --table T]
-           [--settings JSON] <language> <program-file>
+           [--settings JSON] [--portable] <language> <program-file>
                               run every input row and print the observed
                               table; --table also checks the expected result
   debug [--steps N] [--timeout S] [--watch-cell I] [--stdin S] [--tui]
         [--break-at N] [--break-on-cell I=V] [--break-on-output S]
-        [--table T] [--settings JSON] <language> <file>
+        [--table T] [--settings JSON] [--portable] <language> <file>
                               run under the debugger and report where it
                               stopped, plus any watched cell's history;
                               --tui steps interactively instead, showing the
@@ -126,7 +127,8 @@ options:
               booleans, so nobody has to parse the marker column.
 """,
     "generate": f"""usage: esolangs generate [--width [N] | --balance] [--bits BITS]
-                         [--scale N] [--settings JSON] <language> <truth-table>
+                         [--scale N] [--settings JSON] [--portable]
+                         <language> <truth-table>
 
 Print a program in <language> computing <truth-table>.
 
@@ -146,6 +148,7 @@ options:
                per input, and print the runnable program.  Substituting them
                by hand does not work: each language spells a set-input its
                own way, and a 0/1 in the slot is a different program.
+  --portable   write JSON retaining source, dialect choices, and template setters.
   --scale N    enlarge raster pixels by N after layout (default 1).
   --settings JSON  dialect overrides, e.g. '{{"index_base":1}}'.
   --balance    minimize the rendered width/height difference across supported
@@ -169,10 +172,11 @@ options:
 examples:
   esolangs generate brainfuck 0110
   esolangs generate --bits 10 Minifuck 0110
+  esolangs generate --portable --settings '{{"index_base":1}}' Bitdeque 0110 > p.json
 """,
     "run": """usage: esolangs run [--timeout S] [--isolated] [--max-output N]
                     [--max-memory BYTES] [--judge] [--table T] [--seed N]
-                    [--scale N] [--settings JSON]
+                    [--scale N] [--settings JSON] [--portable]
                     <language> <program-file>
 
 Run a program through its interpreter and print what it writes.
@@ -203,6 +207,8 @@ options:
                      Vandevelo -- so a timeout there is the answer, not a
                      failure.
   --scale N          override detected raster scale; 1 preserves native pixels.
+  --portable         load JSON saved by generate --portable.
+                     --settings overrides individual saved choices.
   --settings JSON    dialect overrides, e.g. '{"eof":"zero"}'.
   --seed N           fix the random draws so the run repeats.  Eight
                      languages draw: Befunge, Fish, LaserFuck, Modulous,
@@ -250,7 +256,7 @@ options:
 """,
     "evaluate": """usage: esolangs evaluate [--timeout S] [--total-timeout S]
                           [--max-rows N] [--max-output N] [--max-memory BYTES]
-                          [--inputs N | --table T] [--settings JSON]
+                          [--inputs N | --table T] [--settings JSON] [--portable]
                           <language> <program-file>
 
 Run the supplied program on every Boolean input row and print its observed
@@ -269,6 +275,8 @@ options:
   --total-timeout S  bound the whole evaluation in seconds.
   --max-rows N       refuse larger tables; defaults to 1,048,576 rows.
   --max-output N     cap each row in Unicode characters; enables isolation.
+  --portable         load JSON saved by generate --portable.
+                     --settings overrides individual saved choices.
   --settings JSON    dialect overrides shared with generate and run.
 
 examples:
@@ -381,6 +389,8 @@ options:
                        The only way to give a debugged program
                        input, since the Python API cannot feed a live
                        debugger either.
+  --portable           load JSON saved by generate --portable.
+                       --settings overrides individual saved choices.
   --settings JSON      dialect overrides shared with generate and run.
   --table T            check the stdin against the shape and alphabet T's
                        arity implies, before running.

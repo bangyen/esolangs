@@ -14,6 +14,7 @@ from esolangs.cli_args import (
     _nonnegative,
     _pop_flags,
     _pop_options,
+    _pop_portable,
     _scale_of,
     _seed_of,
     _settings_of,
@@ -76,6 +77,7 @@ def _run(rest: list[str]) -> None:
     # "missing <program-file>", sending the reader to look at the one
     # argument that was not the problem.
     timeout = _timeout_of(options)
+    rest, portable = _pop_portable(rest)
     rest, flags = _pop_flags(rest, {"--judge", "--isolated"})
     isolated = "--isolated" in flags
     if isolated and timeout is None:
@@ -105,6 +107,7 @@ def _run(rest: list[str]) -> None:
             "--seed",
             "--scale",
             "--settings",
+            "--portable",
             "--isolated",
             "--max-output",
             "--max-memory",
@@ -128,7 +131,8 @@ def _run(rest: list[str]) -> None:
     # without ever saying the language was unknown -- the one thing it could
     # have answered without reading a byte.
     with _errors():
-        dialect_options(language, settings)
+        if not portable:
+            dialect_options(language, settings)
         facts = describe(language)
         mode = facts["answer_mode"]
         name = facts["name"]
@@ -150,7 +154,9 @@ def _run(rest: list[str]) -> None:
             f"program with that answer will run until you stop it; pass "
             f"--timeout SECONDS to bound it\n"
         )
-    program = _read_program(path, timeout, language=language)
+    program = _read_program(
+        path, timeout, language=language, portable=portable, settings=settings
+    )
     stdin = _read_stdin(timeout, _stdin_hint(facts))
     warning = _shape_warning(facts, stdin, table) if judge or table is not None else ""
     if warning and judge:
