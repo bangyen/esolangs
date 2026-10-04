@@ -31,10 +31,10 @@ from esolangs.tools.helpers import (
     _validate_truth_table,
 )
 
-#: ``@`` reads a line and applies its argument -- the promise of everything
+#: ``@`` reads a character and applies its argument -- the promise of everything
 #: after the read -- to ``i``, or to ``v`` at end of input.
 _READ = "`@`d"
-#: One unread input at a collapsed leaf: read a line, drop the flag.
+#: One unread input at a collapsed leaf: read a character, drop the flag.
 _SKIP = "``k`@i"
 #: Keep a collapsed leaf's value ``v``, not the read's flag.
 _INERT = "``kv"
@@ -162,7 +162,7 @@ def _shared(truth_table: str) -> str:
 def unlambda(truth_table: str) -> str:
     """Return an Unlambda program computing ``truth_table``.
 
-    Reads ``n`` lines, one ``0``/``1`` per input in table order, and prints
+    Reads ``n`` characters, one ``0``/``1`` per input in table order, and prints
     the answer digit.
     """
     return _shared(truth_table)

@@ -336,10 +336,9 @@ languages remain rejected from the same image-source screen.
   the answer; `tests/tools/test_boolean_classics.py` asserts that over every
   table to three inputs, and checks the answer under three seeds and the
   unseeded draw.
-- Unlambda's `@` consumes the next Unicode character, including newlines.
-  At EOF, it catches `EOFError`, hands its argument `v`, and leaves the
-  current character unchanged. `v` absorbs its arguments, so the failure arm cannot execute
-  its own code.
+- Unlambda's `@` reads a Unicode character, including newlines. At EOF,
+  it hands its argument `v` and clears the current character; `?x` and `|`
+  then take their no-character branch.
 - Bitdeque `GOTO n` is zero-based: it lands on command index `n`, where the
   wiki leaves the counting origin unstated. The generator’s labels match this.
 - Brainfuck uses wrapping bytes, a right-growing tape, a clamped left edge and
