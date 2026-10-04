@@ -1,7 +1,11 @@
 """Interpreter for Brainfuck.
 
 8-bit wrapping tape growing rightward, ``<`` clamped at the left edge,
-matching-bracket loops.  Unbalanced brackets raise :class:`ValueError`;
+matching-bracket loops. ``cell_modulus=None`` uses unbounded integers; finite
+``tape_size`` supports clamp, wrap or error boundaries. Unbounded tapes
+allow clamp or error at the left edge. EOF may error, store zero or minus
+one, or preserve the cell. Output is the cell's Unicode code point.
+Unbalanced brackets raise :class:`ValueError`;
 ``,`` raises :class:`EOFError` on exhausted input (the spec leaves EOF
 undefined), so ``,[.,]`` ends with an error.  :func:`_advance` is pure
 over an immutable ``_State`` and ``snapshot`` returns it directly; the
@@ -12,6 +16,8 @@ from __future__ import annotations
 
 from functools import lru_cache
 
+from esolangs._brainfuck import DEFAULT_DIALECT, BrainfuckDialect
+from esolangs._drive import drive
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.brackets import match_brackets as matches
 from esolangs.interpreters.io import IO
@@ -59,7 +65,12 @@ def _committed(state: _State) -> tuple[int, ...]:
     return _written(tape, ptr, acc) if dirty else tape
 
 
-def _advance(state: _State, code: str, brackets: dict[int, int]) -> _State:
+def _advance(
+    state: _State,
+    code: str,
+    brackets: dict[int, int],
+    dialect: BrainfuckDialect = DEFAULT_DIALECT,
+) -> _State:
     """Return the state after executing the command at the code position.
 
     Pure; ``,``'s value arrives already written.  Fields are unpacked and one
@@ -70,25 +81,19 @@ def _advance(state: _State, code: str, brackets: dict[int, int]) -> _State:
     char = code[ind]
     if char == "+":
         # Buffered; the tape is untouched.
-        acc = (acc + 1) % 256
+        acc = dialect.cell(acc + 1)
         dirty = True
     elif char == "-":
-        acc = (acc - 1) % 256
+        acc = dialect.cell(acc - 1)
         dirty = True
-    elif char == ">":
-        # Leaving the cell: commit first.  Past the right end grows by one.
-        tape = _committed(state)
-        dirty = False
-        ptr += 1
-        if ptr == len(tape):
-            tape = (*tape, 0)
-        acc = tape[ptr]
-    elif char == "<":
-        # Clamped at the left edge; a clamped move stays, so no commit.
-        if ptr:
+    elif char in "><":
+        target = dialect.pointer(ptr + (1 if char == ">" else -1))
+        if target != ptr:
             tape = _committed(state)
             dirty = False
-            ptr -= 1
+            ptr = target
+            if ptr >= len(tape):
+                tape = (*tape, *((0,) * (ptr + 1 - len(tape))))
             acc = tape[ptr]
     elif (char == "[" and acc == 0) or (char == "]" and acc != 0):
         # Tests ``acc`` (the truth).  Lands on the partner; +1 steps past it.
@@ -99,7 +104,19 @@ def _advance(state: _State, code: str, brackets: dict[int, int]) -> _State:
 class _Machine:
     """A Brainfuck run: one immutable ``_State``, rebound per step."""
 
-    def __init__(self, code: str, io: IO) -> None:
+    def __init__(
+        self,
+        code: str,
+        io: IO,
+        *,
+        cell_modulus: int | None = 256,
+        tape_size: int | None = None,
+        boundary: str = "clamp",
+        eof: str = "error",
+    ) -> None:
+        self.dialect = BrainfuckDialect(cell_modulus, tape_size, boundary, eof)
+        self.eof_is_a_value = eof != "error"
+        self.supports_tape_growth = tape_size is None
         self.code = code
         self.io = io
         self.brackets = matches(code)
@@ -170,8 +187,14 @@ class _Machine:
         elif char == ",":
             # ``input_char`` is a whole code point.  Unreduced, ``,.`` echoed
             # an emoji while ``,+.`` printed ``\x01``.  CVNC does the same.
-            state = (ind, ptr, tape, self.io.input_char() % 256, True)
-        self.state = _advance(state, self.code, self.brackets)
+            try:
+                value = self.dialect.cell(self.io.input_char())
+            except EOFError:
+                if self.dialect.eof == "error":
+                    raise
+                value = self.dialect.exhausted(acc)
+            state = (ind, ptr, tape, value, True)
+        self.state = _advance(state, self.code, self.brackets, self.dialect)
 
 
 @lru_cache(maxsize=16)
@@ -223,8 +246,32 @@ def _compile(code: str) -> tuple[_Op, ...]:
     return tuple(ops)
 
 
-def run(code: str, io: IO) -> None:
-    """Run compact operations over mutable local state."""
+def run(
+    code: str,
+    io: IO,
+    *,
+    cell_modulus: int | None = 256,
+    tape_size: int | None = None,
+    boundary: str = "clamp",
+    eof: str = "error",
+) -> None:
+    """Run the selected dialect; byte defaults retain the compact executor.
+
+    Other dialects step literally: unbounded ``[+]`` must not become a clear.
+    """
+    dialect = BrainfuckDialect(cell_modulus, tape_size, boundary, eof)
+    if dialect != DEFAULT_DIALECT:
+        drive(
+            _Machine(
+                code,
+                io,
+                cell_modulus=cell_modulus,
+                tape_size=tape_size,
+                boundary=boundary,
+                eof=eof,
+            )
+        )
+        return
     ops = _compile(code)
     tape = bytearray(1)
     ptr = 0
