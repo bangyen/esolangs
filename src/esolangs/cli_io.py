@@ -10,7 +10,7 @@ import sys
 import threading
 from contextlib import AbstractContextManager, nullcontext
 
-from esolangs import _read_source
+from esolangs import _read_source, load_program
 from esolangs._program import Program
 from esolangs._source import _FileSource
 from esolangs.cli_args import (
@@ -20,7 +20,8 @@ from esolangs.cli_hints import (
     _TIMEOUT_EXIT,
     _decode_note,
 )
-from esolangs.exceptions import EsolangError
+from esolangs.exceptions import EsolangError, ProgramError
+from esolangs.settings import DialectSettings, dialect_options, effective_settings
 
 
 def _null_context() -> AbstractContextManager[None]:
@@ -84,10 +85,25 @@ class _UnboundedNotice:
         self._timer.cancel()
 
 
-def _read_program(path: str, timeout: float | None = None, *, language: str) -> Program:
-    """Read a bounded file and let its interpreter decode the snapshot."""
+def _read_program(
+    path: str,
+    timeout: float | None = None,
+    *,
+    language: str,
+    portable: bool = False,
+    settings: DialectSettings | None = None,
+) -> Program:
+    """Read bounded source or portable JSON; validate overrides before stdin."""
     content = _bounded_read(path, timeout)
     try:
+        if portable:
+            try:
+                document = content.decode("utf-8")
+            except UnicodeDecodeError as exc:
+                raise ProgramError("portable program must be UTF-8 JSON") from exc
+            program = load_program(language, document)
+            dialect_options(language, effective_settings(language, program, settings))
+            return program
         return _read_source(language, _FileSource(path, content))
     except EsolangError as exc:
         _fail(exc)

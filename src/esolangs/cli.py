@@ -47,6 +47,7 @@ from esolangs import (
     __version__,
     check_stdin,
     describe,
+    dump_program,
     encode_inputs,
     generate,
     instantiate,
@@ -58,6 +59,7 @@ from esolangs.cli_args import (
     _fail,
     _pop_flags,
     _pop_options,
+    _pop_portable,
     _pop_width,
     _scale_of,
     _settings_of,
@@ -168,6 +170,7 @@ def _list(rest: list[str]) -> None:
 def _generate(rest: list[str]) -> None:
     """Print a program computing a truth table."""
     rest, options = _pop_options(rest, {"--bits", "--scale", "--settings"})
+    rest, portable = _pop_portable(rest)
     rest, flags = _pop_flags(rest, {"--balance"})
     balance = "--balance" in flags
     scale = _scale_of(options)
@@ -177,7 +180,9 @@ def _generate(rest: list[str]) -> None:
     if balance and width is not None:
         _fail("--balance and --width are mutually exclusive")
     rest = _split_positional(
-        rest, set(), {"--bits", "--width", "--balance", "--scale", "--settings"}
+        rest,
+        set(),
+        {"--bits", "--width", "--balance", "--scale", "--settings", "--portable"},
     )
     # `--width` takes an *optional* N, so a truth table typed straight after
     # it is consumed as the width and the report lands on the table being
@@ -215,6 +220,8 @@ def _generate(rest: list[str]) -> None:
             program = instantiate(
                 rest[0], program, [int(b) for b in bits], width, settings=settings
             )
+        if portable:
+            program = dump_program(rest[0], program)
     except EsolangError as exc:
         _fail(_generate_hint(exc, rest[0], rest[1]))
     if (

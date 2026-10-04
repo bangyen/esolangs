@@ -15,6 +15,7 @@ from esolangs.cli_args import (
     _pop_cell,
     _pop_flags,
     _pop_options,
+    _pop_portable,
     _settings_of,
     _split_positional,
     _table_of,
@@ -89,13 +90,14 @@ def _debug(rest: list[str]) -> None:
     # consumed cannot tell one from a flag -- it answered that with
     # "unknown option: -inf" instead of "must be finite".
     rest, options = _pop_options(rest, options_taken)
+    rest, portable = _pop_portable(rest)
     rest, flags = _pop_flags(rest, {"--tui"})
     tui = "--tui" in flags
     # Before the positional count, matching ``run``: a forgotten number made
     # the language the timeout's value and the complaint landed on the file.
     limit = _timeout_of(options)
     table = _table_of(options)
-    rest = _split_positional(rest, set(), options_taken | {"--tui"})
+    rest = _split_positional(rest, set(), options_taken | {"--tui", "--portable"})
     _check_count("debug", rest, 2)
     language, path = rest[0], rest[1]
     numbers = {
@@ -112,9 +114,12 @@ def _debug(rest: list[str]) -> None:
             _nonnegative(numbers[name], name, options[name])
     settings = _settings_of(options)
     with _errors():
-        dialect_options(language, settings)
+        if not portable:
+            dialect_options(language, settings)
         facts = describe(language)
-    program = _read_program(path, limit, language=language)
+    program = _read_program(
+        path, limit, language=language, portable=portable, settings=settings
+    )
     # The key loop owns the terminal's stdin, so a piped stream cannot also
     # be the program's input: the two would race for the same descriptor.
     # ``--stdin`` is how a TUI run feeds its program instead.

@@ -216,6 +216,14 @@ def _pop_flags(rest: list[str], names: set[str]) -> tuple[list[str], list[str]]:
     return args + rest[boundary:], flags
 
 
+def _pop_portable(rest: list[str]) -> tuple[list[str], bool]:
+    """Remove one portable-format flag before the positional separator."""
+    rest, flags = _pop_flags(rest, {"--portable"})
+    if len(flags) > 1:
+        _fail("--portable given more than once")
+    return rest, bool(flags)
+
+
 def _refuse_repeat(found: dict[str, str], name: str) -> None:
     """Refuse a second copy of an option that takes a value.
 
