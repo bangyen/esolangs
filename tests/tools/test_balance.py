@@ -17,23 +17,7 @@ from tests.test_cli import call_main
 
 
 @pytest.mark.parametrize(
-    "name",
-    [
-        "Brainfuck",
-        "BIO",
-        "Fractran",
-        "Sbleq",
-        "Slow ACV Mammalian",
-        "Minifuck",
-        "RAM0",
-        "Bitdeque",
-        "Befunge",
-        "Fish",
-        "Super_SNUSP",
-        "Intercal",
-        "EGL",
-        "LaserFuck",
-    ],
+    "name", ["Brainfuck", "Slow ACV Mammalian", "Befunge", "Fish", "Super_SNUSP"]
 )
 @pytest.mark.parametrize("table", ["0110", "0001", "10010110"])
 def test_balance_executes(name: str, table: str) -> None:

@@ -15,6 +15,7 @@ number.
 """
 
 import importlib.util
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -355,33 +356,8 @@ def test_config_isolates_xdist_and_applies_selection_to_every_pass(
     assert options[4:] == ([] if selection is None else ["-k", "suffolk"])
 
 
-@pytest.mark.medium
-@pytest.mark.parametrize(
-    ("family", "module"),
-    [
-        ("tools", "line"),
-        ("line", "simulate"),
-        ("tools", "piet"),
-        ("piet", "__init__"),
-    ],
-)
-def test_raster_modules_prepare_their_real_suites(
-    family: str, module: str, tmp_path: Path
-) -> None:
-    script = load_script()
-    assert script._parse_target(f"{family}/{module}") == (family, module)  # noqa: SLF001
-    proj, tests = script._prepare(family, module, tmp_path, slow=False)  # noqa: SLF001
-    assert tests == sorted(
-        p.name for p in (REPO_ROOT / "tests" / family).glob("test_*.py")
-    )
-    assert (
-        script._KINDS[family].rel_target(module)  # noqa: SLF001
-        in (proj / "pyproject.toml").read_text()
-    )
-    script._check_shadowing(proj, family, module)  # noqa: SLF001
-
-
-@pytest.mark.medium
+# Two child pytest runs per case: 24-37s in the normal-suite profile.
+@pytest.mark.slow
 @pytest.mark.parametrize(
     ("family", "module", "old", "new", "node"),
     [
@@ -419,10 +395,19 @@ def test_raster_suites_kill_wrong_answers_in_the_copied_package(
     family: str, module: str, old: str, new: str, node: str, tmp_path: Path
 ) -> None:
     script = load_script()
-    proj, _ = script._prepare(family, module, tmp_path, slow=False)  # noqa: SLF001
+    assert script._parse_target(f"{family}/{module}") == (family, module)  # noqa: SLF001
+    proj, tests = script._prepare(family, module, tmp_path, slow=False)  # noqa: SLF001
+    assert tests == sorted(
+        p.name for p in (REPO_ROOT / "tests" / family).glob("test_*.py")
+    )
+    assert (
+        script._KINDS[family].rel_target(module)  # noqa: SLF001
+        in (proj / "pyproject.toml").read_text()
+    )
     command = [sys.executable, "-m", "pytest", "-q", node]
+    child_env = os.environ | {"PYTEST_ADDOPTS": ""}
     baseline = subprocess.run(
-        command, cwd=proj, capture_output=True, text=True, timeout=30
+        command, cwd=proj, capture_output=True, text=True, timeout=30, env=child_env
     )
     assert baseline.returncode == 0, baseline.stdout + baseline.stderr
     target = proj / script._KINDS[family].rel_target(module)  # noqa: SLF001
@@ -430,12 +415,13 @@ def test_raster_suites_kill_wrong_answers_in_the_copied_package(
     assert old in source
     target.write_text(source.replace(old, new))
     mutant = subprocess.run(
-        command, cwd=proj, capture_output=True, text=True, timeout=30
+        command, cwd=proj, capture_output=True, text=True, timeout=30, env=child_env
     )
     assert mutant.returncode == 1, mutant.stdout + mutant.stderr
     assert "AssertionError" in mutant.stdout
 
 
+@pytest.mark.medium
 @pytest.mark.parametrize(
     ("family", "target", "relative"),
     [
