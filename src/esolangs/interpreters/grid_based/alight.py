@@ -8,22 +8,15 @@ terminates it.  ``turn`` pivots *at that semicolon's cell* and the next
 command begins one cell beyond it in the new heading; the program stops when
 it reaches ``end`` travelling in its current direction.
 
-Commands: ``var x``, ``set x <expr>``, ``skip <expr>`` (skip the next command
-if true), ``turn <expr>`` (left if true, else right), ``inp x``, ``out x``,
-``wait <expr>``, and the empty command as a nop.  Values are numbers, lists,
-and the four specials ``nil``/``eof``/``left``/``right`` (``left`` is true).
-Lists index from 0.5: ``at{l, 0.5}`` is the first element.  Functions are
-defined with ``func name{a, b}`` in place of ``begin`` and return via
-``end <value>``, each call getting its own variable namespace.
+Values are exact rationals, homogeneous lists, and ``nil``/``eof``/``left``/
+``right``. Lists index from 0.5. Functions use ``func name{a, b}`` headers,
+return via ``end <value>``, and have separate variable namespaces. Each
+``inp`` reads one Unicode character; each ``out`` writes one.
 
-Input is the next Unicode character per ``inp``, including newlines; output is
-one character per ``out``.  Run a program with ``python -m
-esolangs.interpreters.grid_based.alight prog.al``.
-
-The wiki leaves several points open; this interpreter decides them as
-follows, and raises :class:`ValueError` for a structurally malformed program
-and :class:`~esolangs.exceptions.HaltError` for an invalid runtime
-operation.
+The wiki has conflicting prose and examples; this interpreter follows the
+examples for operator order and list mutation. The profile choices follow.
+Structurally malformed programs raise :class:`ValueError`; invalid runtime
+operations raise :class:`~esolangs.exceptions.HaltError`.
 
 * **Operator order.**  The prose says operators are postfix, but every
   example on the page is infix -- ``turn c = eof``, ``set x len{l}-0.5``,
@@ -36,8 +29,7 @@ operation.
   The reversed-cat example discards that copy and fails on nonempty input.
   Bare calls are accepted and their return values discarded.
 * **EOF.**  ``inp`` past the end of input stores ``eof``, which is what the
-  cat examples' ``c = eof`` guard tests.  An empty line is a real line and
-  reads as 0, following the repo's ``input_char`` convention.
+  cat examples' ``c = eof`` guard tests.  An empty line supplies its newline character.
 * **Off-grid walking.**  Walking off the grid mid-command is a ``HaltError``.
   Walking off it having just completed ``end`` is a *halt*: both cat
   examples end their program at a grid edge with no trailing ``;``, so an
@@ -58,28 +50,24 @@ operation.
 * **Multiple ``begin``s.**  The first in row-major order wins; the rest are
   ordinary grid text, which is what the Evil Hack already makes of any
   overlap.
-* **No step cap.**  A walk runs until it halts.  A program that loops over
-  a fixed grid revisits its whole state, so
-  :func:`esolangs.vm.run_until_halt_or_cycle` *proves* the hang instead of
-  a counter guessing at one; a walk that never repeats a state is what
-  ``esolangs.run``'s wall-clock ``timeout`` is for.  ``grapheme.py``
-  documents removing exactly such a budget, as duplicating that timeout.
+* **No step or call-depth cap.**  Calls push heap walkers. Complete snapshots
+  prove cycles inside callers and callees; nonperiodic growth is left to
+  ``esolangs.run``'s wall-clock timeout.
 
-  That holds inside a called function too: a call *pushes* a walker rather
-  than running the callee in the caller's step, so a callee that rings
-  forever reaches ``snapshot`` on every command and is proved the same
-  way.  ``lamfunc.py`` frames calls for the same reason.
 """
 
+from fractions import Fraction
 from typing import Literal, TypeGuard, cast
 
 from esolangs._dialects import expression_syntax as validate_expression_syntax
 from esolangs._drive import drive
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
-from esolangs.interpreters.grid_based._alight_helpers import _freeze, _grid
+from esolangs.interpreters.grid_based._alight_helpers import _grid
 from esolangs.interpreters.grid_based._alight_hints import Hint
+from esolangs.interpreters.grid_based._alight_state import _equal, _freeze
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.memory import parse_integer
 from esolangs.interpreters.source_hints import keyword_hint, syntax_error
 
 #: Headings as ``(drow, dcol)`` in screen coordinates -- row grows downward,
@@ -104,7 +92,7 @@ type _Special = Literal["nil", "eof", "left", "right"]
 _SPECIALS: tuple[_Special, ...] = ("nil", "eof", "left", "right")
 
 #: A value: a number, a list of values, or one of the four specials.
-type _Value = float | list["_Value"] | _Special
+type _Value = Fraction | int | list["_Value"] | _Special
 
 #: Reserved words a variable may not be named.  The wiki says variable names
 #: are alphanumeric and "not reserved words" without listing them; these are
@@ -133,12 +121,6 @@ _RESERVED = frozenset(
 #: names is a ``func`` on the grid, which ``step`` runs by pushing a
 #: walker rather than by evaluating it in place.
 _BUILTINS = ("at", "len", "trunc", "sign")
-
-# There is no call-depth cap.  A call pushes a walker rather than running
-# the callee inside the caller's step, so a runaway program grows the
-# walker list on the heap and never touches Python's stack.  That class
-# revisits no state, so it is what ``esolangs.run``'s wall-clock
-# ``timeout`` is for -- the reasoning ``grapheme.py`` records.
 
 
 class _Walker:
@@ -173,14 +155,14 @@ class _Walker:
         self.returned: _Value | None = None
 
     def key(self) -> tuple[object, ...]:
-        """Return the walker as a hashable value for :meth:`snapshot`."""
+        """Return the walker fields for the shared snapshot graph."""
         return (
             self.row,
             self.col,
             self.heading,
-            _freeze(self.vars),
-            _freeze(self.pending),
-            _freeze(self.returned),
+            self.vars,
+            self.pending,
+            self.returned,
         )
 
 
@@ -246,7 +228,7 @@ def _scan(
         c = grid[row][col]
         if escape:
             escape = False
-        elif c == "'":
+        elif c == "'" and not quoted:
             escape = True
         elif c == '"':
             quoted = not quoted
@@ -271,7 +253,7 @@ class _Parser:
         self.pos = 0
 
     def skip_space(self) -> None:
-        while self.pos < len(self.text) and self.text[self.pos] == " ":
+        while self.pos < len(self.text) and self.text[self.pos].isspace():
             self.pos += 1
 
     def peek(self) -> str:
@@ -351,12 +333,12 @@ def _parse_operand(p: _Parser) -> "_Expr":
             # ``_parse_operand`` is also called on hand-built text.
             raise Hint.CHARACTER_LITERAL.error("character literal ends early")
         p.pos += 1
-        return ("num", float(ord(p.text[p.pos - 1])))
+        return ("num", Fraction(ord(p.text[p.pos - 1])))
     if c == '"':
         p.pos += 1
         chars: list[_Expr] = []
         while p.pos < len(p.text) and p.text[p.pos] != '"':
-            chars.append(("num", float(ord(p.text[p.pos]))))
+            chars.append(("num", Fraction(ord(p.text[p.pos]))))
             p.pos += 1
         if p.pos >= len(p.text):  # pragma: no cover - _scan catches it first
             # Unreachable from a real program, like the ``'`` guard above:
@@ -370,7 +352,13 @@ def _parse_operand(p: _Parser) -> "_Expr":
     if c == "[":
         p.pos += 1
         return ("list", _parse_args(p, "]"))
-    if c.isdigit() or c == ".":
+    start = p.pos
+    name = p.word()
+    if name and p.peek() == "{":
+        p.pos += 1
+        return ("call", name, _parse_args(p, "}"))
+    p.pos = start
+    if (c.isdecimal() and name.isdecimal()) or c == ".":
         return ("num", _parse_number(p))
     name = p.word()
     if not name:
@@ -383,14 +371,18 @@ def _parse_operand(p: _Parser) -> "_Expr":
     return ("var", name)
 
 
-def _parse_number(p: _Parser) -> float:
+def _parse_number(p: _Parser) -> Fraction:
     """Read a decimal literal, which may be fractional (indices are ``k+0.5``)."""
     p.skip_space()
     start = p.pos
-    while p.pos < len(p.text) and (p.text[p.pos].isdigit() or p.text[p.pos] == "."):
+    while p.pos < len(p.text) and (p.text[p.pos].isdecimal() or p.text[p.pos] == "."):
         p.pos += 1
+    text = p.text[start : p.pos]
+    whole, dot, tail = text.partition(".")
     try:
-        return float(p.text[start : p.pos])
+        if "." in tail:
+            raise ValueError("multiple decimal points")
+        return Fraction(parse_integer(whole + tail), 10 ** len(tail) if dot else 1)
     except ValueError:
         raise Hint.NUMBER.error(
             f"bad number literal {p.text[start : p.pos]!r}"
@@ -425,9 +417,9 @@ type _Expr = tuple[object, ...]
 #: run rather than state, and holding it here would make every snapshot carry
 #: a copy of the source.
 #:
-#: ``vars`` is frozen to nested tuples by :func:`_freeze` before a snapshot
-#: stores it, because a variable may hold a list; snapshots must contain values,
-#: not live references.
+#: ``vars`` is frozen to an alias-preserving graph by :func:`_freeze` before a snapshot
+#: stores it because lists can be aliased. A live reference would let a later
+#: command mutate a snapshot the cycle detector had already banked.
 type _State = tuple[int, int, _Heading, tuple[object, ...]]
 
 
@@ -456,7 +448,7 @@ def _boolean(flag: bool) -> _Special:  # noqa: FBT001 - a conversion, not a mode
     return "left" if flag else "right"
 
 
-def _is_num(value: _Value) -> TypeGuard[float]:
+def _is_num(value: _Value) -> TypeGuard[Fraction | int]:
     """Whether a value is a number.
 
     A ``TypeGuard`` rather than a plain ``bool`` so that a caller's branch
@@ -464,7 +456,7 @@ def _is_num(value: _Value) -> TypeGuard[float]:
     narrowing each one needed an ``assert isinstance`` afterwards purely to
     restate what the test had already established.
     """
-    return isinstance(value, float | int) and not isinstance(value, bool)
+    return isinstance(value, Fraction | int) and not isinstance(value, bool)
 
 
 def _compare(op: str, left: _Value, right: _Value) -> _Special:
@@ -478,10 +470,18 @@ def _compare(op: str, left: _Value, right: _Value) -> _Special:
     if op == "=":
         if _is_num(left) != _is_num(right):
             return "right"
-        return _boolean(left == right)
+        return _boolean(_equal(left, right))
     if not (_is_num(left) and _is_num(right)):
         return "right"
     return _boolean(left < right if op == "<" else left > right)
+
+
+def _list_value(values: list[_Value]) -> list[_Value]:
+    """Validate homogeneous list elements; specials belong to either kind."""
+    kinds = {isinstance(value, list) for value in values if not isinstance(value, str)}
+    if len(kinds) > 1:
+        raise HaltError("list contains the wrong type of value")
+    return values
 
 
 def _arith(op: str, left: _Value, right: _Value) -> _Value:
@@ -494,7 +494,7 @@ def _arith(op: str, left: _Value, right: _Value) -> _Value:
     if isinstance(left, list) and isinstance(right, list):
         if op != "+":
             raise Hint.OPERAND_TYPES.halt(f"cannot apply {op!r} to two lists")
-        return [*left, *right]
+        return _list_value([*left, *right])
     if isinstance(left, list):
         return _repeat(op, left, right)
     if isinstance(right, list):
@@ -502,7 +502,10 @@ def _arith(op: str, left: _Value, right: _Value) -> _Value:
         # ``"ab" * 3`` are the same list.
         return _repeat(op, right, left)
     if not (_is_num(left) and _is_num(right)):
-        raise Hint.OPERAND_TYPES.halt(f"cannot apply {op!r} to {left!r} and {right!r}")
+        specials = ", ".join(value for value in (left, right) if isinstance(value, str))
+        raise Hint.OPERAND_TYPES.halt(
+            f"cannot apply {op!r} to these values: {specials}"
+        )
     if op == "+":
         return left + right
     if op == "-":
@@ -511,17 +514,15 @@ def _arith(op: str, left: _Value, right: _Value) -> _Value:
         return left * right
     if right == 0:
         raise Hint.DIVISOR.halt("division by zero")
-    return left / right
+    return Fraction(left) / right
 
 
 def _repeat(op: str, seq: list[_Value], count: _Value) -> _Value:
     """Repeat a list by a count, the only list-and-number operation there is."""
     if op != "*" or not _is_num(count):
-        raise Hint.OPERAND_TYPES.halt(f"cannot apply {op!r} to a list and {count!r}")
+        raise Hint.OPERAND_TYPES.halt(f"cannot apply {op!r} to a list and a scalar")
     if count != int(count) or count < 0:
-        raise Hint.REPEAT_COUNT.halt(
-            f"list repeat count is not a whole number: {count!r}"
-        )
+        raise Hint.REPEAT_COUNT.halt("list repeat count is not a whole number")
     return seq * int(count)
 
 
@@ -544,7 +545,7 @@ def _index(value: _Value) -> int:
     """
     if not _is_num(value):
         raise Hint.NUMERIC_INDEX.halt(f"list index is not a number: {value!r}")
-    slot = value - 0.5
+    slot = value - Fraction(1, 2)
     if slot != int(slot) or slot < 0:
         raise Hint.INDEX_FORM.halt(f"list index is not 0.5 + k: {value!r}")
     return int(slot)
@@ -637,7 +638,7 @@ class _Machine:
         # caller standing somewhere else is a different state, and a lap
         # that consumed a line is not a repeat.
         return (
-            tuple(walker.key() for walker in self.walkers),
+            _freeze(tuple(walker.key() for walker in self.walkers)),
             self.halted,
             self.io.position(),
         )
@@ -664,7 +665,7 @@ class _Machine:
         return [
             int(v)
             for _, v in sorted(self.vars.items())
-            if isinstance(v, float | int) and not isinstance(v, bool)
+            if isinstance(v, Fraction | int) and not isinstance(v, bool)
         ]
 
     @property
@@ -686,22 +687,25 @@ class _Machine:
         builtin is evaluated once even when a command resumes after a
         user call.
 
-        Left to right, innermost first, which is ``_eval``'s own order --
-        so which ``HaltError`` fires first, and the order of any output a
-        callee prints, are both unchanged.
+        Resolved operands and operators are retained too: ``1/0+at{l,.5,66}``
+        must fail before the setter changes ``l``.
         """
         tag = expr[0]
-        if tag in ("num", "special", "var", "val"):
+        if tag in ("num", "special", "val"):
             return expr, None
+        if tag == "var":
+            return ("val", self._eval(expr)), None
         if tag == "not":
             inner, pending = self._reduce(cast(_Expr, expr[1]))
-            return ("not", inner), pending
+            node: _Expr = ("not", inner)
+            return (node, pending) if pending else (("val", self._eval(node)), None)
         if tag == "bin":
             left, pending = self._reduce(cast(_Expr, expr[2]))
             if pending is not None:
                 return ("bin", expr[1], left, expr[3]), pending
             right, pending = self._reduce(cast(_Expr, expr[3]))
-            return ("bin", expr[1], left, right), pending
+            node = ("bin", expr[1], left, right)
+            return (node, pending) if pending else (("val", self._eval(node)), None)
         if tag == "list":
             items: list[_Expr] = []
             rest = list(cast(list[_Expr], expr[1]))
@@ -710,7 +714,7 @@ class _Machine:
                 items.append(item)
                 if pending is not None:
                     return ("list", [*items, *rest]), pending
-            return ("list", items), None
+            return ("val", self._eval(("list", items))), None
         args: list[_Expr] = []
         rest = list(cast(list[_Expr], expr[2]))
         while rest:
@@ -740,6 +744,12 @@ class _Machine:
             expr = _command_expr(text, word, self.expression_syntax)
             if expr is None:
                 return False
+            if word == "set":
+                p = _Parser(text)
+                p.word()
+                target_name = p.word()
+                if target_name not in self.vars:
+                    raise HaltError(f"no such variable: {target_name!r}")
             walker.pending = expr
         if walker.returned is not None:
             walker.pending = _replace_first(walker.pending, walker.returned)[0]
@@ -769,15 +779,15 @@ class _Machine:
         if word == "end":
             if self._resolve(text, word):
                 return
-            self._finish(text)
+            self._finish()
             return
         if self._resolve(text, word):
             return
         heading = self.heading
         if word == "turn":
-            heading = _turned(heading, left=_truth(self._eval_rest(text, "turn")))
+            heading = _turned(heading, left=_truth(self._eval_rest()))
         elif word == "skip":
-            if _truth(self._eval_rest(text, "skip")):
+            if _truth(self._eval_rest()):
                 # Consume the next command without running it, from just
                 # past this one's pivot.
                 drow, dcol = heading
@@ -791,9 +801,9 @@ class _Machine:
         if not self._in_bounds(self.row, self.col):
             raise Hint.GRID_PATH.halt("walked off the grid")
 
-    def _finish(self, text: str) -> None:
+    def _finish(self) -> None:
         """Run an ``end``: halt the program, or return from a call."""
-        value = self._return_value(text)
+        value = self._return_value()
         if len(self.walkers) == 1:
             self.halted = True
             return
@@ -803,21 +813,9 @@ class _Machine:
     def _in_bounds(self, row: int, col: int) -> bool:
         return 0 <= row < len(self.grid) and 0 <= col < len(self.grid[0])
 
-    def _eval_rest(self, text: str, word: str) -> _Value:
-        """Evaluate the expression following a keyword.
-
-        The parse still happens, so a trailing-text error is raised where
-        it always was; the *value* comes from ``pending``, which holds the
-        same expression with its calls already resolved.
-        """
-        p = _Parser(text, self.expression_syntax)
-        p.word()
-        expr = _parse_expr(p)
-        if not p.at_end():
-            raise Hint.EXPRESSION.error(
-                f"trailing text after {word!r} expression: {text!r}"
-            )
-        return self._eval(self.walker.pending or expr)
+    def _eval_rest(self) -> _Value:
+        """Evaluate the expression already validated and reduced by step."""
+        return self._eval(cast(_Expr, self.walker.pending))
 
     def _exec(self, text: str, word: str) -> None:
         """Run one non-control command."""
@@ -837,16 +835,8 @@ class _Machine:
             self.vars[name] = "nil"
             return
         if word == "set":
-            p = _Parser(text, self.expression_syntax)
-            p.word()
-            name = p.word()
-            self._check_name(name)
-            if name not in self.vars:
-                raise Hint.VARIABLE_REFERENCE.halt(f"no such variable: {name!r}")
-            expr = _parse_expr(p)
-            if not p.at_end():
-                raise Hint.ASSIGNMENT.error(f"trailing text in set: {text!r}")
-            self.vars[name] = self._eval(self.walker.pending or expr)
+            name = _Parser(text.removeprefix("set")).word()
+            self.vars[name] = self._eval(cast(_Expr, self.walker.pending))
             return
         if word == "inp":
             self.vars[self._existing(text)] = self._read()
@@ -857,25 +847,15 @@ class _Machine:
         if word == "wait":
             # Evaluated for its errors and discarded: a sleep is unobservable
             # through this repo's IO and would only hang the suite.
-            self._eval_rest(text, "wait")
+            self._eval_rest()
             return
         # A bare *call* is a command, run for its effect and its value
         # discarded.
         # Only a call, not any expression: the example shows no other kind,
         # and a call is the only expression that can have an effect at all.
-        p = _Parser(text, self.expression_syntax)
-        p.word()
-        if p.peek() == "{":
-            p.pos += 1
-            args = _parse_args(p, "}")
-            if p.at_end():
-                # ``pending`` already holds this call resolved -- including
-                # the builtin's own effect, run once by ``_reduce``.
-                if self.walker.pending is not None:
-                    self._eval(self.walker.pending)
-                else:
-                    self._call(word, [self._eval(a) for a in args])
-                return
+        if _is_call(text, word):
+            self._eval(cast(_Expr, self.walker.pending))
+            return
         raise syntax_error(
             f"unknown command {word!r} in {text!r}",
             keyword_hint(
@@ -913,13 +893,15 @@ class _Machine:
             value = self.io.input_char()
         except EOFError:
             return "eof"
-        return float(value)
+        return Fraction(value)
 
     def _write(self, value: _Value) -> None:
         if not _is_num(value):
-            raise Hint.CHARACTER_OUTPUT.halt(f"cannot output {value!r} as a character")
+            raise Hint.CHARACTER_OUTPUT.halt(
+                "cannot output a nonnumeric value as a character"
+            )
         if value != int(value) or not 0 <= value < 0x110000:
-            raise Hint.CHARACTER_OUTPUT.halt(f"not a character code: {value!r}")
+            raise Hint.CHARACTER_OUTPUT.halt("not a character code")
         self.io.print_char(chr(int(value)))
 
     def _eval(self, expr: _Expr) -> _Value:
@@ -932,7 +914,7 @@ class _Machine:
         """
         tag = expr[0]
         if tag == "num":
-            return cast(float, expr[1])
+            return cast(Fraction | int, expr[1])
         if tag == "val":
             # A call ``_reduce`` already ran, carrying its value so that a
             # re-entry of this command does not run it a second time.
@@ -945,7 +927,7 @@ class _Machine:
                 raise Hint.VARIABLE_REFERENCE.halt(f"no such variable: {name!r}")
             return self.vars[name]
         if tag == "list":
-            return [self._eval(e) for e in cast(list[_Expr], expr[1])]
+            return _list_value([self._eval(e) for e in cast(list[_Expr], expr[1])])
         if tag == "not":
             return _boolean(not _truth(self._eval(cast(_Expr, expr[1]))))
         if tag == "bin":
@@ -957,21 +939,8 @@ class _Machine:
             if op in "&|^":
                 return _logic(op, left, right)
             return _arith(op, left, right)
-        args = [self._eval(a) for a in cast(list[_Expr], expr[2])]
-        return self._call(cast(str, expr[1]), args)
-
-    def _call(self, name: str, args: list[_Value]) -> _Value:
-        """Apply a builtin.  A user call never reaches here.
-
-        ``step`` resolves every user call by pushing a walker for it and
-        rewriting its value into the expression, so what survives to
-        evaluation is builtins alone.
-        """
-        if name in _BUILTINS:
-            return _builtin(name, args)
-        raise HaltError(  # pragma: no cover - step resolves every user call
-            f"unresolved call to {name!r}"
-        )
+        # _reduce replaces every call before evaluation.
+        raise HaltError("unresolved expression")  # pragma: no cover
 
     def _push_call(self, name: str, args: list[_Value]) -> None:
         """Start a user call by pushing a walker for its body.
@@ -993,21 +962,15 @@ class _Machine:
             _Walker(row, col, heading, dict(zip(params, args, strict=True)))
         )
 
-    def _return_value(self, text: str) -> _Value:
+    def _return_value(self) -> _Value:
         """Evaluate the expression an ``end <value>`` returns, or ``nil``.
 
         Like the other commands, the value comes from ``pending`` when
         there is one -- ``end inner{n}+1`` holds a call, and that call is
         resolved by a pushed walker before this runs.
         """
-        p = _Parser(text, self.expression_syntax)
-        p.word()
-        if p.at_end():
-            return "nil"
-        expr = _parse_expr(p)
-        if not p.at_end():
-            raise Hint.RETURN_VALUE.error(f"trailing text after end value: {text!r}")
-        return self._eval(self.walker.pending or expr)
+        pending = self.walker.pending
+        return "nil" if pending is None else self._eval(pending)
 
 
 def _builtin(name: str, args: list[_Value]) -> _Value:
@@ -1017,21 +980,19 @@ def _builtin(name: str, args: list[_Value]) -> _Value:
             raise Hint.BUILTIN_NUMBER.halt(f"{name} takes one number")
         value = args[0]
         if name == "trunc":
-            return float(int(value))
-        return float((value > 0) - (value < 0))
+            return Fraction(int(value))
+        return Fraction((value > 0) - (value < 0))
     if len(args) < 1 or not isinstance(args[0], list):
         raise Hint.BUILTIN_LIST.halt(f"{name} takes a list")
     seq = args[0]
     if name == "len":
         if len(args) == 1:
-            return float(len(seq))
+            return Fraction(len(seq))
         if len(args) != 2 or not _is_num(args[1]):
             raise Hint.LEN_ARGUMENTS.halt("len takes a list and optionally a count")
         count = args[1]
         if count != int(count) or count < 0:
-            raise Hint.PADDING_COUNT.halt(
-                f"len pad count is not a whole number: {count!r}"
-            )
+            raise Hint.PADDING_COUNT.halt("len pad count is not a whole number")
         padding: list[_Value] = ["nil"] * int(count)
         return [*seq, *padding]
     if len(args) == 2:
@@ -1119,7 +1080,11 @@ def _is_call(text: str, word: str) -> bool:
     """Whether a command is a bare call, run for its effect."""
     p = _Parser(text)
     p.word()
-    return bool(word) and word not in _RESERVED and p.peek() == "{"
+    return (
+        bool(word)
+        and (word not in _RESERVED or word in (*_BUILTINS, *_SPECIALS))
+        and p.peek() == "{"
+    )
 
 
 def _command_expr(
@@ -1134,14 +1099,25 @@ def _command_expr(
     p = _Parser(text, expression_syntax)
     p.word()
     if word == "set":
-        p.word()
+        name = p.word()
+        if not name or not name.isalnum() or name in _RESERVED:
+            raise ValueError(f"bad variable name {name!r}")
     elif word not in ("turn", "skip", "wait", "end"):
         if not _is_call(text, word):
             return None
         p = _Parser(text, expression_syntax)  # a bare call: parse the whole command
     if word == "end" and p.at_end():
         return None
-    return _parse_expr(p)
+    expr = _parse_expr(p)
+    if not p.at_end():
+        if word == "set":
+            raise ValueError(f"trailing text in set: {text!r}")
+        if word == "end":
+            raise ValueError(f"trailing text after end value: {text!r}")
+        if word in ("turn", "skip", "wait"):
+            raise ValueError(f"trailing text after {word!r} expression: {text!r}")
+        raise ValueError(f"unknown command {word!r} in {text!r}")
+    return expr
 
 
 def _replace_first(expr: "_Expr", value: "_Value") -> tuple["_Expr", bool]:

@@ -170,29 +170,36 @@ def test_independent_small_generated_truth_tables(n):
         check_generated(table)
 
 
-def check_generated(table):
+def check_generated(table, start=0, stop=None):
     n = len(table).bit_length() - 1
     code = unlambda(table)
-    for row, answer in enumerate(table):
+    for row in range(start, len(table) if stop is None else min(stop, len(table))):
         reference = check(code, f"{row:0{n}b}", states=False)
-        assert reference.output == answer
+        assert reference.output == table[row]
         assert reference.offset == n
         assert reference.past_end == 0
 
 
 @pytest.mark.medium
 @pytest.mark.parametrize(
-    "table",
-    five_input_sample()[::10]
-    + [
-        f"{value % 2 ** (2**n):0{2**n}b}"
-        for n in (4, 6)
-        for value in (0x6996, 0x1234ABCD5678EF01)
-    ]
-    + [f"{random.Random(seed).getrandbits(512):0512b}" for seed in (0, 1)],
+    ("table", "start"),
+    [
+        (table, start)
+        for table in (
+            five_input_sample()[::10]
+            + [
+                f"{value % 2 ** (2**n):0{2**n}b}"
+                for n in (4, 6)
+                for value in (0x6996, 0x1234ABCD5678EF01)
+            ]
+            + [f"{random.Random(seed).getrandbits(512):0512b}" for seed in (0, 1)]
+        )
+        for start in range(0, len(table), 64)
+    ],
 )
-def test_shared_generated_programs(table):
-    check_generated(table)
+def test_shared_generated_programs(table, start):
+    # Whole 512-row cases measured 5.03--6.07s under the referee's coverage.
+    check_generated(table, start, start + 64)
 
 
 @pytest.mark.parametrize(

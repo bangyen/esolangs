@@ -704,6 +704,14 @@ if _budget and not _STATS_PASS:
 _SITECUSTOMIZE = "import sys\n\nsys.setrecursionlimit(50000)\n"
 
 
+def _pytest_environment() -> dict[str, str]:
+    """Return a child environment whose selection belongs to the copied config."""
+    env = dict(os.environ)
+    # Inherited -n/-m/-k override the serial, shared selection in addopts.
+    env.pop("PYTEST_ADDOPTS", None)
+    return env
+
+
 def _pytest_args(kind: _Kind, tests: list[str]) -> list[str]:
     """Return the pytest arguments, as a list, that the runs share.
 
@@ -982,6 +990,7 @@ def main() -> int:
             baseline = subprocess.run(
                 [sys.executable, "-m", "pytest", *_pytest_args(_KINDS[family], tests)],
                 cwd=proj,
+                env=_pytest_environment(),
                 capture_output=True,
                 text=True,
                 check=False,
@@ -1018,7 +1027,7 @@ def main() -> int:
         mutation = subprocess.run(
             [sys.executable, "-m", "mutmut", "run", "--max-children", str(args.jobs)],
             cwd=proj,
-            env={**os.environ, **env},
+            env={**_pytest_environment(), **env},
             capture_output=True,
             text=True,
             check=False,
