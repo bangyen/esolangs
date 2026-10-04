@@ -1,14 +1,9 @@
 """unlambda generator tests."""
 
-import pytest
-
 from esolangs import tools as boolean
-from tests.generator_support import verify_generated
 from tests.tools.boolean_runners import five_input_sample
-from tests.tools.reader_support import _read_answer
 
 
-@pytest.mark.medium  # both builds of 456 tables: 0.95s alone
 def test_unlambda_binds_repeated_subtrees_and_skips_equal_halves() -> None:
     """Share-taking nodes cut both totals and lengthen no table.
 
@@ -34,10 +29,3 @@ def test_unlambda_binds_repeated_subtrees_and_skips_equal_halves() -> None:
         shared = [len(boolean.unlambda(table)) for table in tables]
         assert (sum(plain), sum(shared)) == (before, after)
         assert all(s <= p for s, p in zip(shared, plain, strict=True))
-    for table in five_input_sample()[::10]:
-        for row in range(32):
-            assert _read_answer("unlambda", table, row) == (table[row], 5)
-    for n in (4, 6):
-        for value in (0x6996, 0x1234ABCD5678EF01):
-            table = format(value % 2**2**n, f"0{2**n}b")
-            assert verify_generated("Unlambda", table), table

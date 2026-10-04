@@ -28,8 +28,7 @@ input ``@`` hands its argument ``v``, which the
 shell reaches by catching the ``EOFError`` the port raises, as nine other
 interpreters here catch it and carry on with their language's value; letting
 it escape would make ``@``'s failure branch unreachable and every
-read-until-EOF program a crash.  The current character is then left as it
-was, since a read that found nothing replaced nothing.
+read-until-EOF program a crash.  A read at EOF clears the current character.
 """
 
 from __future__ import annotations
@@ -58,7 +57,7 @@ class _Print:
 
 @dataclass(frozen=True)
 class _Query:
-    """``?x``, which applies its argument to ``k`` or to ``v``."""
+    """``?x``, which applies its argument to ``i`` or to ``v``."""
 
     char: str
 
@@ -252,7 +251,7 @@ def _combinator(
     """Return the state after applying a combinator or a partial one.
 
     ``read_ok`` is whether ``@``'s read found a line; it is the spec's
-    success flag and decides which of ``k`` and ``v`` ``@`` hands over.
+    success flag and decides which of ``i`` and ``v`` ``@`` hands over.
     """
     name = value.name
     held = value.args if isinstance(value, _Partial) else ()
@@ -278,7 +277,7 @@ def _combinator(
         return (_Ret(_Promise(_Val(argument))), kont, char, False)
     if name == "@":
         # The read happened in the shell.  Both of the spec's branches are
-        # live: ``k`` when a line arrived, ``v`` at end of input.
+        # live: ``i`` when a character arrived, ``v`` at end of input.
         return (_Apply(argument, _SUCCESS if read_ok else _FAILURE), kont, char, False)
     if name == "|":
         held_char = _Print(char) if char is not None else _FAILURE
@@ -333,11 +332,9 @@ def _advance(
             return (_Ret(term.value), kont, char, False), None
         return (_Ret(term), kont, char, False), None
     if isinstance(task, _Apply):
-        if task.f == _Cmd("@") and not at_eof:
-            char = line[0] if line else "\n"
-        # At end of input the current character is left as it was: the read
-        # found nothing, so it replaced nothing, and ``|`` still reports the
-        # last character taken.
+        if task.f == _Cmd("@"):
+            # The specification makes both ?x and | see no character at EOF.
+            char = None if at_eof else line[0] if line else "\n"
         return _apply(task.f, task.a, kont, char, read_ok=not at_eof)
     if not kont:
         return (task, kont, char, True), None
@@ -399,7 +396,7 @@ class _Machine:
                 line = chr(self.io.input_char())
             except EOFError:
                 # The spec's end-of-input branch: ``@`` hands its argument
-                # ``v`` rather than ``k``.  Nine interpreters here already
+                # ``v`` rather than ``i``.  Nine interpreters here already
                 # catch this raise and carry on with the value their language
                 # defines; letting it escape instead would make the branch
                 # unreachable and break every read-until-EOF program.
