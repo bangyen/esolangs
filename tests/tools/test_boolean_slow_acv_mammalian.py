@@ -757,7 +757,7 @@ def test_compact_pool_retrieves_weight_and_routes(
     assert sum(machine.lst[pool][1:]) == (chain.weight - pool) % 23
 
 
-@pytest.mark.parametrize(("modulus", "budget"), [(255, 64_835), (256, 67_425)])
+@pytest.mark.parametrize(("modulus", "budget"), [(255, 63_845), (256, 62_600)])
 def test_pool_compaction_preserves_three_input_size(modulus: int, budget: int) -> None:
     from esolangs.interpreters.io import ScriptedIO
     from esolangs.interpreters.tape_based.slow_acv_mammalian import run

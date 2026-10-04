@@ -264,7 +264,7 @@ class _Chain:
     def plant_pool(
         self, state: _State, weight: int, pool: int, *, compact: bool = True
     ) -> list[str]:
-        tokens = self.route(state, pool)
+        tokens = self.route(state, pool, short=True)
         hop = (self.weight - pool) % 23
         if compact and self.modulus == self.io_modulus:
             inverse = pow(pool + 1, -1, self.modulus)
@@ -274,9 +274,10 @@ class _Chain:
                 a = (first - rest) % self.modulus
                 b = (second - rest - first) % self.modulus
                 end = (-pool) % 23
-                return sum(
-                    (delta * inverse) % self.modulus
-                    for delta in (a - head, b - a, end - b)
+                return (
+                    ((a - head) * inverse) % self.modulus
+                    + ((b - a) * inverse) % self.modulus
+                    + _routing_seeds(b, pool + 1, end, self.modulus)
                 )
 
             # Reversing the writes can add a whole seed cycle; avoid paying
@@ -293,25 +294,25 @@ class _Chain:
                 tokens += self.append(state, hop)
             else:
                 tokens += self.clear(state)
-        return tokens + self.route(state, 0)
+        return tokens + self.route(state, 0, short=True)
 
     def emit(self, plan: list[tuple[int, int | None]], base: int) -> list[str]:
         state = _State()
         tokens = []
         for digit, array in enumerate(self.prints):
-            tokens += self.route(state, array)
+            tokens += self.route(state, array, short=True)
             tokens += self.append(state, 48 + digit)
             tokens += self.clear(state)
-            tokens += self.route(state, 0)
+            tokens += self.route(state, 0, short=True)
         for weight, pool in plan:
             if pool is not None:
                 # Shorter pools shifted base calibration at n=3: 255/255
                 # grew 1900 characters, 256/256 grew 690. Preserve those.
                 compact = self.modulus != self.io_modulus or len(plan) != 3
                 tokens += self.plant_pool(state, weight, pool, compact=compact)
-        tokens += self.route(state, self.weight)
+        tokens += self.route(state, self.weight, short=True)
         tokens += self.raise_to(state, base)
-        tokens += self.route(state, 0)
+        tokens += self.route(state, 0, short=True)
         for weight, pool in plan:
             level, state = self.level(state, weight, len(tokens), pool)
             tokens += level
