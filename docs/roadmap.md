@@ -5,15 +5,17 @@ and proved limits; completed work is recorded in its commit.
 
 ## Research follow-up
 
-- **Piet++ specification and generator audit.** The language is tagged
-  [Unimplemented](https://esolangs.org/wiki/Piet%2B%2B). Nested-stack cofactor
-  descent adds a data-tree selection mechanism: a strict raster subset ran
-  309 generated tables across 3,352 rows, including every table through three
-  inputs. Pin Read/Write operands, invalid typed operations, and image/block
-  updates before implementing the full language. Verify that no implementation
-  exists, derive the loop-less O(T) generator, and execute it through three
-  inputs and sampled larger tables under the input conventions. The subset
-  probe establishes feasibility, not full-language correctness or admission.
+- **Piet++ specification and generator audit.** The wiki still tags the language
+  [Unimplemented](https://esolangs.org/wiki/Piet%2B%2B), but a
+  [partial executor](https://github.com/Esolang-NET/Piet/blob/14d1533cc46e27463b4baa6957137f5af6c83380/Processor/PietPlusPlusExecutor.cs) exists:
+  Read, Write and Roll-Context are no-ops, and Dup aliases nested stacks.
+  Nested-stack cofactor descent adds a data-tree selection mechanism; the
+  strict subset executed 309 tables across 3,352 rows, including every table
+  through three inputs. This establishes feasibility, not full-language
+  correctness or admission. Next: pin Read/Write operand consumption and
+  coordinate origin, invalid typed operations, and image/block updates before
+  implementing the full language. Then execute the loop-less O(T) generator
+  through three inputs and sampled larger tables under the input conventions.
 
 - **Linear Boolean generators.**  Make build time and emitted size O(T), where
   T is the truth-table length.  For each remaining generator, either add a
