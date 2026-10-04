@@ -94,6 +94,8 @@ def _to_str(value: _Value) -> str:
         return value
     if isinstance(value, tuple):  # function -> its body
         return value[1]
+    if value < 0:
+        raise HaltError("N cannot encode a negative integer")
     digits = "JABCDEFGHI"  # J = 0, A = 1, ..., I = 9
     if value == 0:
         return "J"
@@ -128,9 +130,9 @@ def _truthy(value: _Value) -> bool:
 #:
 #: A tuple rather than a record, so the whole call stack is a value that
 #: :meth:`_Machine.snapshot` can hash -- Eval's frames are tuples for the
-#: same reason.  ``repeat`` carries ``Z``'s body: a frame holding one is
+#: same reason.  ``repeat`` marks a ``Z`` body: a frame holding one is
 #: rewound instead of popped while the stack is non-empty.
-type _Frame = tuple[str, int, str, tuple[str, ...], int, str]
+type _Frame = tuple[str, int, str, tuple[str, ...], int, bool]
 
 #: The part of a run the pure layer owns: the variables and the call stack.
 #: The value stack is deliberately absent; see the module docstring.
@@ -154,7 +156,7 @@ _OPENS: Final = {"E": "string", "F": "int", "H": "func"}
 _CLOSES: Final = {mode: char for char, mode in _OPENS.items()}
 
 
-def _frame(code: str, repeat: str = "") -> _Frame:
+def _frame(code: str, *, repeat: bool = False) -> _Frame:
     """Build a fresh frame for ``code``, at the start and in no mode."""
     return (code, 0, "", (), -1, repeat)
 
@@ -243,7 +245,7 @@ def _advance(
         return (variables, (*frames[:-1], grown)), (pops, pushes, reverse), None
 
     body: str | None = None
-    call_repeat = ""
+    call_repeat = False
     output: _Value | None = None
     if c == "A":
         pops, b = _pop(view, pops)
@@ -367,7 +369,7 @@ def _advance(
             and len(view) - pops + len(pushes) > 0
         ):
             body = value[1]
-            call_repeat = value[1]
+            call_repeat = True
     else:
         # a string read from input and executed via G/I may carry any
         # character; reject it like the top-level program validation would
@@ -384,7 +386,7 @@ def _advance(
     frames = (*frames[:-1], (code, pc, mode, buf, pending_at, repeat))
 
     if body is not None:
-        frames = (*frames, _frame(body, call_repeat))
+        frames = (*frames, _frame(body, repeat=call_repeat))
 
     # a command that left the current frame finished (the program ended or
     # a call returned) is completed now, so a caller sees ``halted`` as
@@ -394,6 +396,8 @@ def _advance(
     while frames and frames[-1][1] >= len(frames[-1][0]):
         state, fx = _finished(state, view, fx, dialect)
         frames = state[1]
+        if frames and frames[-1][5] and not frames[-1][0]:
+            break  # an empty Z body repeats as one observable step
 
     return state, fx, output
 
@@ -419,6 +423,7 @@ class _Machine:
         self.stack: list[_Value] = []
         self.vars: _Vars = {}
         self.io = io
+        self._input_reads = 0
         self.frames: tuple[_Frame, ...] = (_frame(code),)
         # Where the top-level frame ends, so ``ip`` can still report a
         # position once every frame has been popped.
@@ -458,6 +463,7 @@ class _Machine:
             frozenset(self.vars.items()),
             self.frames,
             self.io.position(),
+            self._input_reads,
         )
 
     def frame_entry_key(self, frame: _Frame) -> tuple[object, ...]:
@@ -473,6 +479,7 @@ class _Machine:
             tuple(self.stack),
             frozenset(self.vars.items()),
             self.io.position(),
+            self._input_reads,
         )
 
     def _apply(self, fx: _StackFx) -> None:
@@ -511,6 +518,7 @@ class _Machine:
         line_in = None
         if mode == "" and code[pc] == "W":
             line_in = self.io.input_str()
+            self._input_reads += 1
 
         (self.vars, self.frames), fx, output = _advance(
             (self.vars, self.frames), self.stack, line_in, self.dialect
