@@ -2,12 +2,11 @@
 
 :func:`encode_inputs` builds the stdin for one row, :func:`check_stdin`
 refuses a stdin the language cannot read, :func:`read_answer` turns output
-into a bit.  Every judgement is a :func:`~esolangs.describe` fact applied.
+into a bit.  Every judgement applies the registered Boolean I/O contract.
 """
 
 import re
 
-from esolangs._describe import _example_for, describe
 from esolangs._validate import check_bits
 from esolangs.exceptions import (
     ArgumentError,
@@ -31,14 +30,9 @@ def encode_inputs(
     needed only where the encoding depends on arity.  A language that embeds
     its inputs is refused; use :func:`instantiate`.
     """
-    # Every registered language has a committed example, so the lookup
-    # always finds one; ``example_stems`` covers them all and a test pins that.
     name = resolve(language)
-    example = _example_for(LANGUAGES[name].id)
-    if example is None:
-        bits = check_bits(bits, "bits")
-        return "".join(f"{bit}\n" for bit in bits)
-    if example.fill is not None:
+    contract = LANGUAGES[name].contract
+    if contract.parameterized:
         raise ArgumentError(
             f"{name} embeds its inputs in the program and reads no stdin, so "
             f"there is nothing to encode; pass the bits to instantiate() "
@@ -49,7 +43,7 @@ def encode_inputs(
     # a different row of the table, which is the wrong answer arriving with
     # no sign that anything went astray.
     bits = check_bits(bits, "bits")
-    if truth_table is not None:
+    if truth_table is not None and LANGUAGES[name].boolean is not None:
         from esolangs.tools.helpers import _validate_truth_table
 
         if not isinstance(truth_table, str):
@@ -67,7 +61,7 @@ def encode_inputs(
                 f"but {len(bits)} bit{' was' if len(bits) == 1 else 's were'} "
                 f"given; a {name} program built from it reads {arity}"
             )
-    if example.input_shape == "row_index":
+    if contract.input_shape == "row_index":
         row = sum(bit << (len(bits) - 1 - i) for i, bit in enumerate(bits))
         try:
             return f"{row}\n"
@@ -80,10 +74,10 @@ def encode_inputs(
                 f"{name} reads a decimal row index, and {len(bits)} bits name "
                 f"an integer too large to render as one: {exc}"
             ) from exc
-    zero, one = example.alphabet
-    padded = [0, *bits] if example.ghost_digit and len(bits) % 2 and bits[1:] else bits
+    zero, one = contract.alphabet
+    padded = [0, *bits] if contract.ghost_digit and len(bits) % 2 and bits[1:] else bits
     digits = [one if bit else zero for bit in padded]
-    if example.input_shape in {
+    if contract.input_shape in {
         "char_stream",
         "char_stream_padded",
         "char_stream_cyclic",
@@ -99,19 +93,20 @@ def check_stdin(language: str, stdin: str, truth_table: str | None = None) -> No
     character, or non-number row index.  Raises
     :class:`~esolangs.exceptions.ArgumentError`; :func:`run` does not validate it.
     ``truth_table`` adds the count, catching surplus inputs.  Every check reads
-    a :func:`describe` field.
+    the registered Boolean I/O contract.
     """
-    facts = describe(language)
-    name = str(facts["name"])
-    if not facts["reads_input"]:
+    name = resolve(language)
+    lang = LANGUAGES[name]
+    contract = lang.contract
+    if lang.boolean is None or contract.parameterized:
         raise ArgumentError(
             f"{name} embeds its inputs in the program and reads no stdin; "
             f"there is nothing to check"
         )
     if not isinstance(stdin, str):
         raise ArgumentError(f"stdin must be a string, got {type(stdin).__name__}")
-    shape = str(facts["input_shape"])
-    zero, one = facts["input_encoding"]
+    shape = contract.input_shape
+    zero, one = contract.alphabet
     # ``splitlines``, as :class:`ScriptedIO` cuts it.  ``strip().split``
     # dropped a leading/trailing blank line the interpreter still read:
     # ``run("brainfuck", xor, "\n\n")`` answered 1 unwarned.
@@ -211,32 +206,24 @@ def read_answer(language: str, output: str) -> str:
     ``describe(language)["answer_pattern"]`` is the same fact as data (a
     verifier that hardcoded two dumps and forgot a third reported a passing
     language as broken).  A termination-answer language (123, ArrowQueue,
-    Crement, Vandevelo) raises :class:`~esolangs.exceptions.ArgumentError`: bound
-    the run and catch :class:`~esolangs.exceptions.ExecutionTimeoutError`.
+    Crement, Vandevelo) raises :class:`~esolangs.exceptions.ArgumentError`: use
+    :func:`~esolangs.evaluate` to prove halt or divergence; a timeout is undecided.
     """
     name = resolve(language)
     if not isinstance(output, str):
         raise ProgramError(f"output must be a string, got {type(output).__name__}")
-    example = _example_for(LANGUAGES[name].id)
-    if example is None:
-        raw = output.strip()[-1:]
-        if raw in {"0", "1"}:
-            return raw
-        raise ProgramError(
-            f"{name} produced no answer this could read: expected '0' or '1' "
-            f"as the last character, got {output[-40:]!r}"
-        )
-    if example.answer_mode == "termination":
+    contract = LANGUAGES[name].contract
+    if contract.answer_mode == "termination":
         raise ArgumentError(
-            f"{name} answers by terminating, not by printing: run it under a "
-            f"timeout and read a caught ExecutionTimeoutError as the 1"
+            f"{name} answers by terminating, not by printing: use evaluate() "
+            "to prove halt or divergence; a timeout is undecided"
         )
-    if example.answer_pattern:
-        found = re.findall(example.answer_pattern, output)
+    if contract.answer_pattern:
+        found = re.findall(contract.answer_pattern, output)
         raw = found[-1] if found else ""
     else:
         raw = output.strip()[-1:]
-    zero, one = example.answer_values
+    zero, one = contract.answer_values
     if raw == one:
         return "1"
     if raw == zero:
@@ -246,14 +233,14 @@ def read_answer(language: str, output: str) -> str:
     # hand a reader wondering where the answer was supposed to be.  The note
     # is the plain-language half and already exists; the pattern follows it
     # in parentheses, so neither reader loses.
-    where = "in its final state" if example.answer_pattern else "as the last character"
+    where = "in its final state" if contract.answer_pattern else "as the last character"
     # The note whenever there is one, not just for the two pattern
     # languages: Back, Minsky Swap and LaserFuck dump their state and are
     # read by last character, so "as the last character" is a true account
     # of the mechanism and no account at all of where the answer lives.
-    detail = f" -- {example.note}" if example.note else ""
-    if example.answer_pattern:
-        detail += f" (matched with {example.answer_pattern!r})"
+    detail = f" -- {contract.note}" if contract.note else ""
+    if contract.answer_pattern:
+        detail += f" (matched with {contract.answer_pattern!r})"
     raise ProgramError(
         f"{name} produced no answer this could read: expected {zero!r} or "
         f"{one!r} {where}, got {output[-40:]!r}{detail}"

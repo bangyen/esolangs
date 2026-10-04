@@ -14,7 +14,6 @@ from esolangs._answers import (
     encode_inputs,
     read_answer,
 )
-from esolangs._describe import describe
 from esolangs._execution import check_signal_timeout
 from esolangs._program import Program
 from esolangs._source import ProgramSource, check_scale_for
@@ -27,6 +26,7 @@ from esolangs.exceptions import (
 )
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.source_hints import with_hint
+from esolangs.registry import LANGUAGES, resolve
 from esolangs.settings import DialectSettings, dialect_options
 from esolangs.tools.helpers import MOST_INPUTS
 from esolangs.vm import make_vm
@@ -152,11 +152,11 @@ def iter_evaluate(
     # answering a different table depending on which kind of language it was.
     if not isinstance(timeout, _Default):
         check_timeout(timeout)
-    facts = describe(language)
-    name = str(facts["name"])
+    name = resolve(language)
+    contract = LANGUAGES[name].contract
     check_scale_for(name, scale)
     rows = _evaluation_rows(inputs, max_rows)
-    terminating = facts["answer_mode"] == "termination"
+    terminating = contract.answer_mode == "termination"
     bound: float | None
     if isinstance(timeout, _Default):
         bound = _TERMINATION_TIMEOUT if terminating else _ROW_TIMEOUT
@@ -190,7 +190,7 @@ def iter_evaluate(
         # Which of halting and diverging means 1, as data.  It is
         # ``("halts", "diverges")`` for all four, but reading the order
         # rather than assuming it is what keeps this branch language-free.
-        encoding = list(facts["answer_encoding"])
+        encoding = list(contract.answer_values)
         diverges_is = str(encoding.index("diverges"))
         halts_is = str(encoding.index("halts"))
     instantiator = esolangs.instantiate
@@ -200,7 +200,7 @@ def iter_evaluate(
         bits = [(row >> (inputs - 1 - i)) & 1 for i in range(inputs)]
 
         def prepare_row(bits: list[int] = bits) -> tuple[Program, str]:
-            if facts["parameterized"]:
+            if contract.parameterized:
                 return instantiator(name, cast("str", program), bits), ""
             return program, encode_inputs(name, bits)
 
