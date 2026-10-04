@@ -7,12 +7,15 @@ pushed when the mode ends.
 
 Repository deviations: loading removes LF before validation, modes and indexing
 so line-wrapped generated programs run. Spaces, tabs and CR remain malformed.
-Integer conversion shifts between letters for existing programs and generators;
-the truth-machine body ``FAFY`` prints 1 rather than the prose rule's 10.
+``integer_conversion="between_letters"`` keeps existing programs and generators:
+``FAFY`` prints 1. ``"after_each_letter"`` follows the prose and prints 10;
+int mode and string-to-integer conversion share this rule. Numeric and function
+conversions are unchanged. ``unset_variables="zero"`` returns zero for missing
+numeric or string names; the default ``"error"`` halts.
 
 Gaps decided: underflow, math or ``Y`` on a function, a negative ``N``
 integer (alphabet ``A``-``J``), a function as a variable name, an
-undeclared ``D`` variable and division by zero halt
+undeclared ``D`` variable by default and division by zero halt
 (:class:`~esolangs.exceptions.HaltError`); a character outside
 ``A``-``Z`` is malformed (:class:`ValueError`); ``G``/``I``/``Q``/``Z``
 run a function in a fresh normal-mode context sharing stack and
@@ -45,6 +48,7 @@ from collections.abc import Mapping, Sequence
 from typing import Final, Literal
 
 from esolangs._drive import drive
+from esolangs._grapheme import DEFAULT_GRAPHEME, GraphemeDialect
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
@@ -62,15 +66,15 @@ _Function = tuple[Literal["func"], str]
 _Value = int | str | _Function
 
 
-def _int_from(buf: list[str]) -> int:
-    """Parse an intmode buffer, shifting only between letters."""
+def _int_from(buf: list[str], dialect: GraphemeDialect = DEFAULT_GRAPHEME) -> int:
+    """Parse an intmode buffer under the selected multiplication rule."""
     res = 0
     for c in buf:
         res = res * 10 + (ord(c) - 64 if c != "Z" else 0)
-    return res
+    return dialect.finish_integer(res)
 
 
-def _to_int(value: _Value) -> int:
+def _to_int(value: _Value, dialect: GraphemeDialect = DEFAULT_GRAPHEME) -> int:
     """Convert a value to an integer (the ``J`` command)."""
     if isinstance(value, int):
         return value
@@ -81,7 +85,7 @@ def _to_int(value: _Value) -> int:
         if c == "F":
             break
         res = res * 10 + (ord(c) - 64 if c != "Z" else 0)
-    return res
+    return dialect.finish_integer(res)
 
 
 def _to_str(value: _Value) -> str:
@@ -168,19 +172,26 @@ def _pop(view: _StackView, pops: int) -> tuple[int, _Value]:
     return pops + 1, view[-1 - pops]
 
 
-def _flush_of(frame: _Frame) -> tuple[_Value, ...]:
+def _flush_of(
+    frame: _Frame, dialect: GraphemeDialect = DEFAULT_GRAPHEME
+) -> tuple[_Value, ...]:
     """Return what an unterminated mode leaves behind, as at end of program."""
     _, _, mode, buf, _, _ = frame
     if mode == "string":
         return ("".join(buf),)
     if mode == "int":
-        return (_int_from(list(buf)),)
+        return (_int_from(list(buf), dialect),)
     if mode == "func":
         return ((_FUNC, "".join(buf)),)
     return ()
 
 
-def _finished(state: _State, view: _StackView, fx: _StackFx) -> tuple[_State, _StackFx]:
+def _finished(
+    state: _State,
+    view: _StackView,
+    fx: _StackFx,
+    dialect: GraphemeDialect = DEFAULT_GRAPHEME,
+) -> tuple[_State, _StackFx]:
     """Flush the top frame's mode and pop it -- or rewind it, for ``Z``.
 
     ``Z``'s emptiness test reads the *virtual* depth.
@@ -188,7 +199,7 @@ def _finished(state: _State, view: _StackView, fx: _StackFx) -> tuple[_State, _S
     variables, frames = state
     frame = frames[-1]
     pops, pushes, reverse = fx
-    pushes = (*pushes, *_flush_of(frame))
+    pushes = (*pushes, *_flush_of(frame, dialect))
     fx = (pops, pushes, reverse)
 
     code, _, _, _, _, repeat = frame
@@ -199,7 +210,10 @@ def _finished(state: _State, view: _StackView, fx: _StackFx) -> tuple[_State, _S
 
 
 def _advance(
-    state: _State, view: _StackView, line_in: str | None = None
+    state: _State,
+    view: _StackView,
+    line_in: str | None = None,
+    dialect: GraphemeDialect = DEFAULT_GRAPHEME,
 ) -> tuple[_State, _StackFx, _Value | None]:
     """Execute one command: the new state, the stack effects, any output.
 
@@ -222,7 +236,7 @@ def _advance(
     if mode in _CLOSES:
         grown: _Frame
         if c == _CLOSES[mode]:
-            pushes = _flush_of(frame)
+            pushes = _flush_of(frame, dialect)
             grown = (code, pc + 1, "", (), pending_at, repeat)
         else:
             grown = (code, pc + 1, mode, (*buf, c), pending_at, repeat)
@@ -267,12 +281,12 @@ def _advance(
                 "a function cannot name a variable",
                 hint="use a string or numeric name for the variable",
             )
-        if name not in variables:
+        if name not in variables and dialect.unset_variables == "error":
             raise HaltError(
                 f"undeclared variable {name!r}",
                 hint="declare the variable before reading it; check its spelling",
             )
-        pushes = (variables[name],)
+        pushes = (variables.get(name, 0),)
     elif c in _OPENS:
         mode, buf = _OPENS[c], ()
     elif c == "G":
@@ -292,7 +306,7 @@ def _advance(
             pushes = (value,)
     elif c == "J":
         pops, value = _pop(view, pops)
-        pushes = (_to_int(value),)
+        pushes = (_to_int(value, dialect),)
     elif c == "K":
         pops, value = _pop(view, pops)
         pushes = (value, value)
@@ -326,7 +340,7 @@ def _advance(
         pops, a = _pop(view, pops)
         pops, b = _pop(view, pops)
         if not _truthy(a):
-            pc += _to_int(b)
+            pc += _to_int(b, dialect)
     elif c == "W":
         pushes = (line_in if line_in is not None else "",)
     elif c == "X":
@@ -378,7 +392,7 @@ def _advance(
     state = (variables, frames)
     fx = (pops, pushes, reverse)
     while frames and frames[-1][1] >= len(frames[-1][0]):
-        state, fx = _finished(state, view, fx)
+        state, fx = _finished(state, view, fx, dialect)
         frames = state[1]
 
     return state, fx, output
@@ -387,8 +401,16 @@ def _advance(
 class _Machine:
     """Shared stack, variables, step counter, and call stack for a run."""
 
-    def __init__(self, code: str, io: IO) -> None:
+    def __init__(
+        self,
+        code: str,
+        io: IO,
+        *,
+        unset_variables: str = "error",
+        integer_conversion: str = "between_letters",
+    ) -> None:
         """Build a machine running ``code`` as its top-level frame."""
+        self.dialect = GraphemeDialect(unset_variables, integer_conversion)
         code = code.replace("\n", "")
         if any(c not in "ABCDEFGHIJKLMNOPQRSTUVWXYZ" for c in code):
             raise syntax_error(
@@ -483,7 +505,7 @@ class _Machine:
         # only flushes and pops, which the transition does.
         if pc >= len(code):
             (self.vars, self.frames), fx = _finished(
-                (self.vars, self.frames), self.stack, (0, (), False)
+                (self.vars, self.frames), self.stack, (0, (), False), self.dialect
             )
             self._apply(fx)
             return
@@ -497,7 +519,7 @@ class _Machine:
             line_in = self.io.input_str()
 
         (self.vars, self.frames), fx, output = _advance(
-            (self.vars, self.frames), self.stack, line_in
+            (self.vars, self.frames), self.stack, line_in, self.dialect
         )
         self._apply(fx)
 
@@ -508,9 +530,17 @@ class _Machine:
                 self.io.print_value(output)
 
 
-def run(code: str, io: IO) -> None:
+def run(
+    code: str,
+    io: IO,
+    *,
+    unset_variables: str = "error",
+    integer_conversion: str = "between_letters",
+) -> None:
     """Run a Grapheme program to completion."""
-    machine = _Machine(code, io)
+    machine = _Machine(
+        code, io, unset_variables=unset_variables, integer_conversion=integer_conversion
+    )
     drive(machine)
 
 
