@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import random
 import sys
 from pathlib import Path
 from typing import Any
@@ -40,13 +41,22 @@ import esolangs  # noqa: E402
 
 BASELINE = REPO_ROOT / "tests" / "fixtures" / "generator_sizes.json"
 
-#: One table per arity, 2 through 4.  Each is the parity function on its
-#: inputs, which no generator special-cases: a constant or a single-variable
-#: table would let a route that collapses dependencies look linear.  Four is
-#: the ceiling because the whole sweep stays under ten seconds there, and the
-#: registry-wide growth contract (``tests/proofs/deep/linearity.py``) is what
-#: measures to n=12.
-TABLES = ("0110", "01101001", "0110100110010110")
+
+def benchmark_tables() -> tuple[str, ...]:
+    """Return parity, sparse, asymmetric and seeded dense construction controls."""
+    rng = random.Random(1847)
+    return (
+        "0110",
+        "01101001",
+        "0110100110010110",
+        "00000001",
+        "11111110",
+        "00110110",
+        *(format(rng.getrandbits(1 << n), f"0{1 << n}b") for n in (3, 4)),
+    )
+
+
+TABLES = benchmark_tables()
 
 #: Far below ``benchmark.py``'s default.  Every language that halts on this
 #: corpus does so in well under this many steps. Non-steppable languages
@@ -65,7 +75,7 @@ def boundary_tables(name: str) -> tuple[str, ...]:
     )
 
 
-SCHEMA = 2
+SCHEMA = 3
 
 
 def sweep(*, repeat: int = 1) -> list[dict[str, Any]]:
@@ -77,6 +87,7 @@ def sweep(*, repeat: int = 1) -> list[dict[str, Any]]:
             repeat=repeat,
             row=(1 << (len(table).bit_length() - 1)) - 1,
             step_cap=STEP_CAP,
+            all_rows=True,
         )
         # A language with no generator has no size to record; Deadfish is
         # carried for its fame and marked ``int``.
@@ -133,8 +144,7 @@ def baseline(records: list[dict[str, Any]]) -> dict[str, Any]:
                         str(row["row"]): row["commands"] for row in record["executions"]
                     }
                 }
-                if record["language"] in BOUNDARIES
-                and record["truth_table"] in boundary_tables(record["language"])
+                if "executions" in record
                 else {}
             ),
         }

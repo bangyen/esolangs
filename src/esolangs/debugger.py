@@ -309,7 +309,8 @@ class Debugger:
                 # and three idle ``run()`` calls on a halted Minsky Swap
                 # grew ``watch_cell`` by three.
                 self._dumped = True
-                self.step()
+                complete_vm(self.vm, max_steps=0)
+                self._record()
                 if self._at_breakpoint():
                     self._suppressed = set(self._hits)
                     return "breakpoint"
