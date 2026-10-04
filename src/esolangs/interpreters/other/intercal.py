@@ -2,7 +2,7 @@ r"""Interpreter for the C-INTERCAL core used by the Boolean generator.
 
 Supports scalar calculation with mingle, select, and unary logic; numeric
 ``WRITE IN``/``READ OUT``; ``NEXT``, ``RESUME``, ``FORGET``; and ``GIVE UP``.
-EOF while reading and invalid programs raise ``HaltError``. The compiler's
+EOF raises ``EOFError``; invalid programs raise ``HaltError``. The compiler's
 politeness bounds count logical statements; LF is whitespace between tokens.
 
 A number is read as one line of spelled-out digit words; the spec leaves its
@@ -40,7 +40,7 @@ _DIGITS = {
 
 def _unary(value: int, width: int, operator: str) -> int:
     mask = (1 << width) - 1
-    rotated = ((value << 1) | (value >> (width - 1))) & mask
+    rotated = ((value >> 1) | (value << (width - 1))) & mask
     if operator == "&":
         return value & rotated
     if operator == "V":
@@ -81,7 +81,7 @@ def _expression(
             operator = text[at]
             (right, right_width), at = _expression(text, variables, at + 1)
             if operator == "$":
-                if width != 16 or right_width != 16:
+                if not 0 <= left <= 65535 or not 0 <= right <= 65535:
                     raise HaltError(
                         "INTERCAL mingle needs two onespot values",
                         hint="use two 16-bit onespot values as mingle operands",
@@ -99,7 +99,7 @@ def _expression(
                     if (right >> bit) & 1
                 ]
                 left = sum(bit << i for i, bit in enumerate(selected))
-                width = 16 if len(selected) <= 16 else 32
+                width = right_width
         while at < len(text) and text[at].isspace():
             at += 1
         if at >= len(text) or text[at] != delimiter:
@@ -108,41 +108,55 @@ def _expression(
                 hint="balance the expression grouping marks",
             )
         return ((_unary(left, width, unary) if unary else left), width), at + 1
-    match = re.match(r"([.#])(\d+)", text[at:])
+    match = re.match(r"([.#])([&V?]?)([0-9]+)", text[at:])
     if match is None:
         raise HaltError(
             "invalid INTERCAL operand",
             hint="use an INTERCAL constant, variable or grouped expression",
         )
-    sigil, number = match.groups()
+    sigil, unary, number = match.groups()
+    number = number.lstrip("0") or "0"
+    if len(number) > 5 or int(number) > 65535:
+        raise HaltError("INTERCAL operand out of range")
     value = int(number)
-    return ((variables.get(value, 0) if sigil == "." else value), 16), at + len(
-        match[0]
-    )
+    if sigil == ".":
+        if value == 0:
+            raise HaltError("invalid INTERCAL variable number")
+        value = variables.get(value, 0)
+    if unary:
+        value = _unary(value, 16, unary)
+    return (value, 16), at + len(match[0])
 
 
 def _roman(value: int) -> str:
-    """Return the ordinary range of butchered Roman output."""
-    numerals = (
-        (1000, "M"),
-        (900, "CM"),
-        (500, "D"),
-        (400, "CD"),
-        (100, "C"),
-        (90, "XC"),
-        (50, "L"),
-        (40, "XL"),
-        (10, "X"),
-        (9, "IX"),
-        (5, "V"),
-        (4, "IV"),
-        (1, "I"),
-    )
-    out = []
-    for amount, glyph in numerals:
-        count, value = divmod(value, amount)
-        out.append(glyph * count)
-    return "".join(out)
+    """Return Roman output; emit a separate overbar line when needed."""
+    if not 0 <= value < 2**32:
+        raise HaltError("INTERCAL output out of range")
+    chunks: list[tuple[str, str]] = []
+    place = 0
+    while value:
+        value, digit = divmod(value, 10)
+        group, column = divmod(place, 3)
+        one, five, ten = ("IVX", "XLC", "CDM")[column]
+        if column == 0 and group and digit <= 3:
+            text = "M" * digit
+            group -= 1
+        elif digit <= 3:
+            text = one * digit
+        elif digit == 4:
+            text = one + five
+        elif digit <= 8:
+            text = five + one * (digit - 5)
+        else:
+            text = one + ten
+        if group >= 2:
+            text = text.lower()
+        chunks.append((text, ("_" if group % 2 else " ") * len(text)))
+        place += 1
+    body = "".join(text for text, _bars in reversed(chunks))
+    bars = "".join(bars for _text, bars in reversed(chunks))
+    # Keep the repository's empty zero and ordinary single-line output.
+    return bars + "\n" + body if "_" in bars else body
 
 
 _START = re.compile(
@@ -177,11 +191,22 @@ def _statements(code: str) -> list[str]:
     return statements
 
 
+def _variable(token: str) -> int:
+    match = re.fullmatch(r"\.([0-9]+)", token)
+    if match is None:
+        raise HaltError("invalid INTERCAL variable")
+    number = match[1].lstrip("0") or "0"
+    if len(number) > 5 or not 1 <= int(number) <= 65535:
+        raise HaltError("invalid INTERCAL variable number")
+    return int(number)
+
+
 class _Machine:
     """Parsed INTERCAL statements, variables, and NEXT stack."""
 
     def __init__(self, code: str, io: IO) -> None:
         self.io = io
+        self._input_reads = 0
         self.lines = _statements(code)
         polite = sum(
             bool(re.match(r"(?:\(\d+\)\s+)?PLEASE", line)) for line in self.lines
@@ -199,7 +224,13 @@ class _Machine:
         for i, line in enumerate(self.lines):
             found = re.match(r"\((\d+)\)", line)
             if found:
-                self.labels[int(found.group(1))] = i
+                number = found.group(1).lstrip("0") or "0"
+                if len(number) > 5 or not 1 <= int(number) <= 65535:
+                    raise HaltError("invalid INTERCAL label number")
+                label = int(number)
+                if label in self.labels:
+                    raise HaltError(f"duplicate INTERCAL label: {label}")
+                self.labels[label] = i
         self.state: _State = (0, (), ())
 
     @property
@@ -219,7 +250,13 @@ class _Machine:
         return list(self.state[2])
 
     def snapshot(self) -> tuple[object, ...]:
-        return (*self.state, self.io.position())
+        return (
+            *self.state,
+            self.io.position(),
+            self._input_reads,
+            tuple(self.lines),
+            tuple(sorted(self.labels.items())),
+        )
 
     def step(self) -> None:
         if self.halted:
@@ -241,7 +278,10 @@ class _Machine:
                     "invalid INTERCAL calculation",
                     hint="use a valid INTERCAL expression as the assignment value",
                 )
-            variables[int(target[1:])] = value & 0xFFFF
+            name = _variable(target)
+            if not 0 <= value <= 65535:
+                raise HaltError("INTERCAL onespot assignment overflow")
+            variables[name] = value
         elif line.startswith("READ OUT "):
             (value, _width), end = _expression(line[9:], variables)
             if end != len(line[9:]):
@@ -251,21 +291,33 @@ class _Machine:
                 )
             self.io.print_str(_roman(value) + "\n")
         elif line.startswith("WRITE IN ."):
-            words = self.io.input_str().upper().split()
+            name = _variable(line[9:])
+            line_in = self.io.input_str()
+            self._input_reads += 1
+            words = line_in.upper().split()
             if not words or any(word not in _DIGITS for word in words):
                 raise HaltError(
                     "invalid INTERCAL numeric input",
                     hint="supply decimal numeric input",
                 )
-            variables[int(line[10:])] = int("".join(_DIGITS[word] for word in words))
+            value = 0
+            for word in words:
+                value = value * 10 + int(_DIGITS[word])
+                if value > 65535:
+                    raise HaltError("INTERCAL onespot input overflow")
+            variables[name] = value
         elif line.endswith(" NEXT") and line.startswith("("):
             label = int(line[1 : line.index(")")])
+            if len(stack) >= 80:
+                raise HaltError("INTERCAL NEXT stack overflow")
+            if label not in self.labels:
+                raise HaltError(f"unknown INTERCAL label: {label}")
             stack = (*stack, ind)
             ind = self.labels[label]
         elif line.startswith(("RESUME ", "FORGET ")):
             command, source = line.split(" ", 1)
             (count, _width), end = _expression(source, variables)
-            if end != len(source) or count == 0:
+            if end != len(source) or (command == "RESUME" and count == 0):
                 raise HaltError(
                     "invalid INTERCAL stack count", hint="use a nonnegative stack count"
                 )
