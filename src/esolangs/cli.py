@@ -121,6 +121,8 @@ def _list(rest: list[str]) -> None:
                         # The three the marker column encodes, spelled out.
                         "boolean_generator": facts["boolean_generator"],
                         "parameterized": facts["parameterized"],
+                        "generator_max_inputs": facts["generator_max_inputs"],
+                        "generator_restrictions": facts["generator_restrictions"],
                         "has_example": bool(facts["examples"]),
                     }
                     for name, facts in (
@@ -154,7 +156,12 @@ def _list(rest: list[str]) -> None:
                 ),
             )
         )
-        print(f"{name.ljust(width)}  {marks}")
+        limit = facts["generator_max_inputs"]
+        restriction = facts["generator_restrictions"]
+        suffix = f" max-inputs={limit}" if limit is not None else ""
+        if restriction:
+            suffix += f" ({restriction})"
+        print(f"{name.ljust(width)}  {marks}{suffix}")
 
 
 def _generate(rest: list[str]) -> None:

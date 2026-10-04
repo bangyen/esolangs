@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import signal
+from time import monotonic
 
 from esolangs import (
     Raster,
@@ -15,6 +16,7 @@ from esolangs import (
     run,
 )
 from esolangs._answers import _validate_shape_for_evaluate
+from esolangs._evaluate import _DEFAULT_MAX_ROWS, _prepare, _remaining
 from esolangs._program import Program
 from esolangs.cli_args import (
     _check_count,
@@ -70,9 +72,15 @@ def _answer(rest: list[str]) -> None:
 
 def _evaluate(rest: list[str]) -> None:
     """Print a supplied program's table, optionally checking the expected one."""
-    rest, options = _pop_options(rest, {"--timeout", "--inputs", "--table"})
+    rest, options = _pop_options(
+        rest, {"--timeout", "--inputs", "--table", "--max-rows", "--total-timeout"}
+    )
     timeout = _timeout_of(options)
-    rest = _split_positional(rest, set(), {"--timeout", "--inputs", "--table"})
+    rest = _split_positional(
+        rest,
+        set(),
+        {"--timeout", "--inputs", "--table", "--max-rows", "--total-timeout"},
+    )
     _check_count("evaluate", rest, 2)
     table = _table_of(options)
     if "--inputs" in options and table is not None:
@@ -83,15 +91,34 @@ def _evaluate(rest: list[str]) -> None:
         inputs = _integer(options["--inputs"], "--inputs", show_value=False)
     else:
         _fail("evaluate requires --inputs N or --table TABLE")
+    max_rows = (
+        _integer(options["--max-rows"], "--max-rows")
+        if "--max-rows" in options
+        else _DEFAULT_MAX_ROWS
+    )
+    total_timeout = (
+        _timeout_of(options, option="--total-timeout")
+        if "--total-timeout" in options
+        else None
+    )
     language, path = rest
-    program = _read_program(path, timeout, language=language)
+    isolated = not hasattr(signal, "SIGALRM")
+    deadline = None if total_timeout is None else monotonic() + total_timeout
     try:
+        program = _prepare(
+            lambda: _read_program(path, timeout, language=language),
+            deadline,
+            isolated=isolated,
+        )
+        total_timeout = _remaining(deadline, None)
         if timeout is None:
             computed = evaluate(
                 language,
                 program,
                 inputs=inputs,
-                isolated=not hasattr(signal, "SIGALRM"),
+                max_rows=max_rows,
+                total_timeout=total_timeout,
+                isolated=isolated,
             )
         else:
             computed = evaluate(
@@ -99,7 +126,9 @@ def _evaluate(rest: list[str]) -> None:
                 program,
                 timeout,
                 inputs=inputs,
-                isolated=not hasattr(signal, "SIGALRM"),
+                max_rows=max_rows,
+                total_timeout=total_timeout,
+                isolated=isolated,
             )
     except EsolangError as exc:
         _fail(exc, _exit_code(exc))

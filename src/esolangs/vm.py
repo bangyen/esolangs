@@ -659,6 +659,26 @@ def run_until_halt(
     return True
 
 
+def complete_vm(vm: VM, max_steps: int | None = 100_000) -> str:
+    """Return finalized raw output after a proved halt, including a final dump.
+
+    Raises on exhausted steps or an active machine that never self-halts. Repeated
+    completion is safe: the post-halt step is idempotent by the VM contract.
+    """
+    from esolangs._validate import check_whole
+    from esolangs.exceptions import ArgumentError, InterpreterLimitError
+
+    if max_steps is not None:
+        check_whole(max_steps, "max_steps")
+    if not vm.self_halts and not vm.halted:
+        raise ArgumentError("completion requires a machine that self-halts")
+    if not run_until_halt(vm, max_steps):
+        raise InterpreterLimitError("VM completion exhausted max_steps")
+    if vm.dumps_on_the_post_halt_step:
+        vm.step()
+    return vm.output
+
+
 @runtime_checkable
 class VM(Protocol):
     """A step-capable interpreter wrapper.

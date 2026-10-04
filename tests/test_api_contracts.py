@@ -504,6 +504,8 @@ class TestDescribeHasANameableType:
                 elif expected == tuple[str, str]:
                     assert isinstance(value, tuple), (name, key)
                     assert len(value) == 2, (name, key)
+                elif expected == int | None:
+                    assert value is None or type(value) is int, (name, key)
                 else:  # the two that may be None
                     assert value is None or isinstance(value, str), (name, key)
 

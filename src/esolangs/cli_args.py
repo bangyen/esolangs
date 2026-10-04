@@ -259,7 +259,7 @@ def _pop_options(rest: list[str], names: set[str]) -> tuple[list[str], dict[str,
     return args, found
 
 
-def _timeout_of(options: dict[str, str]) -> float | None:
+def _timeout_of(options: dict[str, str], *, option: str = "--timeout") -> float | None:
     """Return the ``--timeout`` seconds, or None, refusing a bad value.
 
     The *value* checks are :func:`esolangs.check_stdin`'s neighbour
@@ -269,12 +269,12 @@ def _timeout_of(options: dict[str, str]) -> float | None:
     A ``--timeout 1e10`` therefore got past here and overflowed the C
     timer three calls later, as a raw ``OverflowError``.
     """
-    if "--timeout" not in options:
+    if option not in options:
         return None
     try:
-        seconds = float(options["--timeout"])
+        seconds = float(options[option])
     except ValueError:
-        _fail(f"--timeout must be a number, got {options['--timeout']!r}")
+        _fail(f"{option} must be a number, got {options[option]!r}")
     try:
         check_timeout(seconds)
     except EsolangError as exc:

@@ -1,7 +1,8 @@
 """Generate programs, run source, evaluate truth tables, and describe languages.
 
 ``generate`` builds source; ``instantiate`` fills templates; ``run`` executes;
-``evaluate`` returns a table. ``encode_inputs`` and ``read_answer`` handle rows.
+``evaluate`` returns a table; ``iter_evaluate`` streams it.
+``encode_inputs`` and ``read_answer`` handle rows.
 ``check_program`` and ``check_stdin`` validate; ``describe`` and ``list_languages``
 provide registry facts. Stepping and debugging live in :mod:`esolangs.debugger`.
 ``Language(name)`` binds these functions to one language.
@@ -27,7 +28,7 @@ from esolangs._describe import (
     describe,
     list_languages,
 )
-from esolangs._evaluate import _DEFAULT, _Default, evaluate
+from esolangs._evaluate import _DEFAULT, _Default, evaluate, iter_evaluate
 from esolangs._execution import (
     check_signal_timeout,
     interpreter_errors,
@@ -140,6 +141,7 @@ __all__ = [
     "evaluate",
     "generate",
     "instantiate",
+    "iter_evaluate",
     "list_languages",
     "read_answer",
     "run",

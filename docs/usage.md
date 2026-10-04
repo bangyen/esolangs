@@ -116,9 +116,10 @@ measured row to answer correctly.
 - `esolangs.check_stdin` -- refuse `stdin` that cannot be what `language` wants to read
 - `esolangs.describe` -- return a structured description of `language`
 - `esolangs.encode_inputs` -- return the stdin that feeds `bits` to a `language` program
-- `esolangs.evaluate` -- return the table a supplied program computes over `inputs` bits
+- `esolangs.evaluate` -- return the table computed over `inputs` bits, collecting iter_evaluate
 - `esolangs.generate` -- return a program in `language` computing `truth_table`
 - `esolangs.instantiate` -- fill a parameterized generator's template with `bits`
+- `esolangs.iter_evaluate` -- yield answer bits in MSB-first row order without retaining the table
 - `esolangs.list_languages` -- return the supported language names, sorted
 - `esolangs.read_answer` -- return the answer bit a `language` program's `output` carries
 - `esolangs.run` -- execute `program` and return its output

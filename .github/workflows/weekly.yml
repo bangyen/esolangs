@@ -91,6 +91,9 @@ jobs:
   timings:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    concurrency:
+      group: weekly-generator-timings
+      cancel-in-progress: false
     steps:
     - uses: actions/checkout@v7
 
@@ -105,12 +108,24 @@ jobs:
     - name: Install dependencies
       run: uv sync --extra dev --python 3.14
 
+    - name: Restore timing history
+      uses: actions/cache@v6
+      with:
+        path: .generator-timing-history.json
+        key: generator-timings-${{ runner.os }}-${{ runner.arch }}-py314-${{ github.run_id }}-${{ github.run_attempt }}
+        restore-keys: generator-timings-${{ runner.os }}-${{ runner.arch }}-py314-
+
     # `--timings` writes the full sweep; the run still fails if the exact
     # fields drifted, which on `main` would mean the gate was bypassed.
     - name: Sweep every generator
       run: >
         uv run python scripts/check_generator_sizes.py
         --repeat 5 --timings generator-timings.json
+
+    - name: Report sustained generation slowdowns
+      run: >
+        uv run python scripts/report_generator_timings.py generator-timings.json
+        --history .generator-timing-history.json --summary "$GITHUB_STEP_SUMMARY"
 
     - name: Upload the timings
       uses: actions/upload-artifact@v7

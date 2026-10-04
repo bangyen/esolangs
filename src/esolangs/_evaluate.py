@@ -3,7 +3,10 @@
 ``esolangs.run`` is reached through the package at call time (patchable).
 """
 
+from collections.abc import Callable, Iterator
 from functools import partial
+from threading import Thread
+from time import monotonic
 from typing import cast
 
 import esolangs
@@ -15,10 +18,12 @@ from esolangs._describe import describe
 from esolangs._execution import check_signal_timeout
 from esolangs._program import Program
 from esolangs._source import ProgramSource, check_scale_for
-from esolangs._validate import check_timeout
+from esolangs._validate import _TIMEOUT_FLOOR, check_timeout, check_whole
 from esolangs.exceptions import (
     ArgumentError,
     EsolangError,
+    ExecutionTimeoutError,
+    InterpreterLimitError,
 )
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.source_hints import with_hint
@@ -48,9 +53,48 @@ _TERMINATION_TIMEOUT = 5.0
 #: The bound on an ordinary row.  Generous: it exists to stop a hang, not
 #: to hold anything to a schedule.
 _ROW_TIMEOUT = 30.0
+_DEFAULT_MAX_ROWS = 1_048_576
 
 
-def evaluate(
+def _remaining(deadline: float | None, bound: float | None) -> float | None:
+    """Clamp a row bound to the remaining total deadline."""
+    if deadline is None:
+        return bound
+    remaining = deadline - monotonic()
+    if remaining < _TIMEOUT_FLOOR:
+        raise ExecutionTimeoutError("evaluation exceeded its total deadline")
+    return remaining if bound is None else min(bound, remaining)
+
+
+def _prepare[T](call: Callable[[], T], deadline: float | None, *, isolated: bool) -> T:
+    """Bound acquisition; an isolated caller's blocked stream may finish later."""
+    if deadline is None:
+        return call()
+    values: list[T] = []
+    errors: list[BaseException] = []
+
+    def capture(*_args: object) -> None:
+        try:
+            values.append(call())
+        except BaseException as exc:
+            errors.append(exc)
+
+    bound = _remaining(deadline, None)
+    if isolated:
+        reader = Thread(target=capture, daemon=True)
+        reader.start()
+        reader.join(bound)
+        if reader.is_alive():
+            raise ExecutionTimeoutError("evaluation timed out during preparation")
+    else:
+        esolangs._run(capture, "", ScriptedIO(""), bound)  # noqa: SLF001
+    _remaining(deadline, None)
+    if errors:
+        raise errors[0]
+    return values[0]
+
+
+def iter_evaluate(
     language: str,
     program: ProgramSource,
     timeout: float | _Default | None = _DEFAULT,
@@ -58,16 +102,20 @@ def evaluate(
     inputs: int,
     isolated: bool = False,
     scale: int | None = None,
-) -> str:
-    """Return the table a supplied program computes over ``inputs`` bits.
+    max_rows: int | None = _DEFAULT_MAX_ROWS,
+    total_timeout: float | None = None,
+) -> Iterator[str]:
+    """Yield answer bits in MSB-first row order without retaining the table.
 
-    Inputs range from 1 to 64, in MSB-first row order. Parameterized languages
-    require a template, filled separately for each row. Paths load text or PNG
-    source. No program is generated.
-    The default bounds each row to 30 seconds (5 for termination answers).
-    Repeated states prove divergence; a timeout raises rather than counting as 1.
-    ``None`` disables the deadline; ``isolated=True`` needs a finite deadline.
+    Validation and source loading begin on first iteration. ``max_rows`` bounds
+    the full table (None opts out); ``total_timeout`` includes loading and pauses
+    between yields. Row timeouts default to 30 seconds, 5 for termination.
+    A timeout never proves divergence. Paths load once; templates fill per row.
     """
+    started = monotonic()
+    check_timeout(total_timeout)
+    if max_rows is not None:
+        check_whole(max_rows, "max_rows")
     # Checked here, not only inside ``run``: the termination path drives the
     # machine itself and never reaches ``run``, so a bound too small to
     # service was refused for the languages that halt and silently read as
@@ -90,8 +138,14 @@ def evaluate(
                 "valid for a two-input program"
             ),
         )
-    program = esolangs._read_source(name, program)  # noqa: SLF001
     rows = 1 << inputs
+    if max_rows is not None and rows > max_rows:
+        raise with_hint(
+            InterpreterLimitError(
+                f"evaluation needs {rows} rows, exceeding max_rows={max_rows}"
+            ),
+            "raise max_rows deliberately or use fewer inputs",
+        )
     terminating = facts["answer_mode"] == "termination"
     bound: float | None
     if isinstance(timeout, _Default):
@@ -100,7 +154,7 @@ def evaluate(
         # ``None`` is unbounded, as in :func:`run`, and the thread escape
         # hatch (the guard is ``SIGALRM``).
         bound = timeout
-    if isolated and bound is None:
+    if isolated and bound is None and total_timeout is None:
         raise with_hint(
             ArgumentError("isolated evaluation requires a finite timeout"),
             ("set a positive finite timeout, for example timeout=5.0"),
@@ -111,11 +165,17 @@ def evaluate(
         # bare ValueError.  ``timeout=None`` is the route out, as for
         # :func:`run`; the divergers are settled by a repeated state.
         check_signal_timeout(
-            bound,
+            bound if total_timeout is None else total_timeout,
             "evaluate's timeout guard uses SIGALRM and needs a Unix main "
             "thread; off it, pass timeout=None -- a diverging row is "
             "settled by a repeated machine state rather than waited for",
         )
+    deadline = None if total_timeout is None else started + total_timeout
+    program = _prepare(
+        lambda: esolangs._read_source(name, program),  # noqa: SLF001
+        deadline,
+        isolated=isolated,
+    )
     if terminating:
         # Which of halting and diverging means 1, as data.  It is
         # ``("halts", "diverges")`` for all four, but reading the order
@@ -123,49 +183,92 @@ def evaluate(
         encoding = list(facts["answer_encoding"])
         diverges_is = str(encoding.index("diverges"))
         halts_is = str(encoding.index("halts"))
-    answers = []
     for row in range(rows):
         bits = [(row >> (inputs - 1 - i)) & 1 for i in range(inputs)]
-        source: Program
-        if facts["parameterized"]:
-            source, stdin = esolangs.instantiate(name, cast("str", program), bits), ""
-        else:
-            source, stdin = program, encode_inputs(name, bits)
+
+        def prepare_row(bits: list[int] = bits) -> tuple[Program, str]:
+            if facts["parameterized"]:
+                return esolangs.instantiate(name, cast("str", program), bits), ""
+            return program, encode_inputs(name, bits)
+
         try:
+            source, stdin = _prepare(prepare_row, deadline, isolated=isolated)
+            row_bound = _remaining(deadline, bound)
             if terminating:
                 source = cast("str", source)
                 if isolated:
                     from esolangs._isolated import termination_isolated
 
                     answer = termination_isolated(
-                        name, source, stdin, cast("float", bound), halts_is, diverges_is
+                        name,
+                        source,
+                        stdin,
+                        cast("float", row_bound),
+                        halts_is,
+                        diverges_is,
                     )
                 else:
                     answer = _terminates(
-                        name, source, stdin, bound, halts_is, diverges_is
+                        name, source, stdin, row_bound, halts_is, diverges_is
                     )
-                answers.append(answer)
             else:
                 runner = esolangs.run
                 if scale is not None:
                     runner = partial(runner, scale=scale)
                 if isolated:
                     output = runner(
-                        name, source, stdin, cast("float", bound), isolated=True
+                        name, source, stdin, cast("float", row_bound), isolated=True
                     )
                 else:
-                    output = runner(name, source, stdin, bound)
-                answers.append(read_answer(name, output))
+                    output = runner(name, source, stdin, row_bound)
+                answer = read_answer(name, output)
+            if deadline is not None and monotonic() >= deadline:
+                raise ExecutionTimeoutError("evaluation exceeded its total deadline")
         except EsolangError as exc:
             # The row and its bits as a note (the classes share no
             # constructor); a 1024-row failure otherwise names no row.
             exc.add_note(
                 f"while evaluating row {row} of {rows} "
                 f"(inputs {''.join(str(b) for b in bits)}), after "
-                f"{len(answers)} row{'' if len(answers) == 1 else 's'} "
-                f"answered {''.join(answers) or '(none)'}"
+                f"{row} row{'' if row == 1 else 's'} completed"
             )
             raise
+        yield answer
+
+
+def evaluate(
+    language: str,
+    program: ProgramSource,
+    timeout: float | _Default | None = _DEFAULT,
+    *,
+    inputs: int,
+    isolated: bool = False,
+    scale: int | None = None,
+    max_rows: int | None = _DEFAULT_MAX_ROWS,
+    total_timeout: float | None = None,
+) -> str:
+    """Return the table computed over ``inputs`` bits, collecting iter_evaluate.
+
+    Repeated states prove divergence; a timeout raises rather than counting as 1.
+    Row timeouts default to 30 seconds (5 for termination). ``max_rows`` defaults
+    to 1,048,576; None opts out. ``total_timeout`` optionally bounds the whole run.
+    """
+    answers = []
+    try:
+        for answer in iter_evaluate(
+            language,
+            program,
+            timeout,
+            inputs=inputs,
+            isolated=isolated,
+            scale=scale,
+            max_rows=max_rows,
+            total_timeout=total_timeout,
+        ):
+            answers.append(answer)
+    except EsolangError as exc:
+        exc.add_note(f"answered {''.join(answers) or '(none)'}")
+        raise
     return "".join(answers)
 
 

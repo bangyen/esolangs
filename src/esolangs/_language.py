@@ -1,10 +1,11 @@
 """The public API with one language bound."""
 
+from collections.abc import Iterator
 from dataclasses import dataclass
 
 import esolangs
 from esolangs._describe import LanguageInfo
-from esolangs._evaluate import _DEFAULT, _Default
+from esolangs._evaluate import _DEFAULT, _DEFAULT_MAX_ROWS, _Default
 from esolangs._program import Program
 from esolangs._source import InputSource, ProgramSource
 from esolangs.registry import resolve
@@ -66,6 +67,29 @@ class Language:
             scale=scale,
         )
 
+    def iter_evaluate(
+        self,
+        program: ProgramSource,
+        timeout: float | _Default | None = _DEFAULT,
+        *,
+        inputs: int,
+        isolated: bool = False,
+        scale: int | None = None,
+        max_rows: int | None = _DEFAULT_MAX_ROWS,
+        total_timeout: float | None = None,
+    ) -> Iterator[str]:
+        """Yield this program's table one answer bit at a time."""
+        return esolangs.iter_evaluate(
+            self.name,
+            program,
+            timeout,
+            inputs=inputs,
+            isolated=isolated,
+            scale=scale,
+            max_rows=max_rows,
+            total_timeout=total_timeout,
+        )
+
     def evaluate(
         self,
         program: ProgramSource,
@@ -74,10 +98,19 @@ class Language:
         inputs: int,
         isolated: bool = False,
         scale: int | None = None,
+        max_rows: int | None = _DEFAULT_MAX_ROWS,
+        total_timeout: float | None = None,
     ) -> str:
         """Return the table computed over ``inputs`` bits."""
         return esolangs.evaluate(
-            self.name, program, timeout, inputs=inputs, isolated=isolated, scale=scale
+            self.name,
+            program,
+            timeout,
+            inputs=inputs,
+            isolated=isolated,
+            scale=scale,
+            max_rows=max_rows,
+            total_timeout=total_timeout,
         )
 
     def describe(self) -> LanguageInfo:
