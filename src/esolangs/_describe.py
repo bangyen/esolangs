@@ -44,6 +44,8 @@ class LanguageInfo(TypedDict):
     source_kind: str
     state_model: str | None
     interpreter: str | None
+    generator_max_inputs: int | None
+    generator_restrictions: str
     boolean_generator: bool
     parameterized: bool
     reads_input: bool
@@ -69,7 +71,10 @@ def describe(language: str) -> LanguageInfo:
     ``spec`` contains the interpreter docstring; missing docstrings raise.
     Identity: ``name``, ``id``, ``source_kind``, ``state_model``,
     ``interpreter``, ``wiki_url``.
-    Generation: ``boolean_generator``; ``parameterized`` (a template, filled by
+    Generation: ``generator_max_inputs`` is an explicit arity cap (None means
+    none declared, or no generator); ``generator_restrictions`` names additional
+    table-dependent budgets. ``boolean_generator``; ``parameterized`` (a template,
+    filled by
     :func:`instantiate`, ``reads_input`` false).  Width: ``width_effect`` is
     ``"layout"`` (a shape built to fit; a hint), ``"wrap"`` (reflowed between
     tokens) or ``"none"`` (newlines are semantic); ``width_aware`` is the
@@ -109,6 +114,8 @@ def describe(language: str) -> LanguageInfo:
         "state_model": _STATE_MODELS.get(family) if family else None,
         "interpreter": lang.interpreter,
         "boolean_generator": lang.boolean is not None,
+        "generator_max_inputs": lang.generator_max_inputs,
+        "generator_restrictions": lang.generator_restrictions,
         "parameterized": parameterized,
         "reads_input": (lang.boolean is not None) and not parameterized,
         # Derived, not recomputed: this was a second copy of the very

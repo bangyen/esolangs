@@ -9,6 +9,12 @@ from enum import StrEnum
 from esolangs import tools as _boolean
 from esolangs._program import Program
 from esolangs.registry._slug import canonical_id
+from esolangs.tools.befunge import MAX_INPUTS as BEFUNGE_MAX_INPUTS
+from esolangs.tools.malbolge import MAX_INPUTS as MALBOLGE_MAX_INPUTS
+from esolangs.tools.polynomial import (
+    _POLYNOMIAL_MAX_ESTIMATED_CHARS,
+    _POLYNOMIAL_MAX_INSTRS,
+)
 
 # A generator: ``generator(truth_table)`` returns a program computing it.
 # Most take only the table; the few that lay their program out in two
@@ -36,6 +42,8 @@ class Language:
     id: str = ""
     boolean: Generator | None = None
     source_kind: SourceKind = SourceKind.TEXT
+    generator_max_inputs: int | None = None
+    generator_restrictions: str = ""
 
 
 LANGUAGES: dict[str, Language] = {
@@ -374,7 +382,12 @@ LANGUAGES: dict[str, Language] = {
     ),
     "Polynomial": Language(
         "Polynomial",
-        "register_based.polynomial",
+        generator_restrictions=(
+            f"at most {_POLYNOMIAL_MAX_INSTRS} instructions and "
+            f"{_POLYNOMIAL_MAX_ESTIMATED_CHARS} estimated characters; "
+            "table dependent"
+        ),
+        interpreter="register_based.polynomial",
         boolean=_boolean.polynomial,
         id="polynomial",
     ),
@@ -469,7 +482,8 @@ LANGUAGES: dict[str, Language] = {
     ),
     "Befunge": Language(
         "Befunge",
-        "grid_based.befunge",
+        generator_max_inputs=BEFUNGE_MAX_INPUTS,
+        interpreter="grid_based.befunge",
         boolean=_boolean.befunge,
         id="befunge",
         split=True,
@@ -501,7 +515,8 @@ LANGUAGES: dict[str, Language] = {
     ),
     "Malbolge": Language(
         "Malbolge",
-        "other.malbolge",
+        generator_max_inputs=MALBOLGE_MAX_INPUTS,
+        interpreter="other.malbolge",
         boolean=_boolean.malbolge,
         id="malbolge",
     ),

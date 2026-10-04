@@ -35,7 +35,8 @@ commands:
   answer [--timeout S] <language> <truth-table> <bits>
                               generate, feed those bits, run, and print the
                               one answer bit
-  evaluate [--timeout S] [--inputs N | --table T] <language> <program-file>
+  evaluate [--timeout S] [--total-timeout S] [--max-rows N]
+           [--inputs N | --table T] <language> <program-file>
                               run every input row and print the observed
                               table; --table also checks the expected result
   debug [--steps N] [--timeout S] [--watch-cell I] [--stdin S] [--tui]
@@ -239,7 +240,8 @@ options:
                      languages whose answer for a 1 is that the program
                      never stops, and to none for the rest.
 """,
-    "evaluate": """usage: esolangs evaluate [--timeout S] [--inputs N | --table T]
+    "evaluate": """usage: esolangs evaluate [--timeout S] [--total-timeout S]
+                          [--max-rows N] [--inputs N | --table T]
                           <language> <program-file>
 
 Run the supplied program on every Boolean input row and print its observed
@@ -254,6 +256,8 @@ options:
   --timeout SECONDS  bound each row. Defaults to 30 seconds, or 5 for
                      termination answers. Repeated states prove divergence;
                      the deadline is a backstop for growth, not an answer.
+  --total-timeout S  bound the whole evaluation in seconds.
+  --max-rows N       refuse larger tables; defaults to 1,048,576 rows.
 
 examples:
   esolangs evaluate --inputs 2 brainfuck program.txt

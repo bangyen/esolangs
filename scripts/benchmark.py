@@ -155,10 +155,9 @@ def _execute(
             result["execution_status"] = "halted"
             result["actual_answer"] = str(list(facts["answer_encoding"]).index("halts"))
         else:
-            if facts["dumps_on_the_post_halt_step"]:
-                vm.step()
+            output = debugger_api.complete_vm(vm, max_steps=0)
             result["execution_status"] = "halted"
-            result["actual_answer"] = esolangs.read_answer(language, vm.output)
+            result["actual_answer"] = esolangs.read_answer(language, output)
 
     try:
         # Cover VM construction too: a step cap cannot bound factoring.
