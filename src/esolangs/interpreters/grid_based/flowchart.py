@@ -65,7 +65,9 @@ rather than invented, and every one of the three examples on the page
   genuine ambiguity: which way to leave a junction (a ``T``-shaped fork in
   the line) or a node whose semantics do not name an exit.  The 180deg
   clause then means the remembered direction is declined whenever taking
-  it would reverse the pointer.
+  it would reverse the pointer. On a path, ``junction_tie_break`` chooses
+  right_first (default) or left_first only after memory and straight travel
+  leave a tie. Node exit rules are unchanged.
 
 * **An empty register outputs zero, as the command table specifies.**
   The wiki's cat reaches output after popping an exhausted deque, so it
@@ -362,9 +364,10 @@ class _Machine:
         *,
         scheduling: str = "creation",
         deque_cursor: str = "pointer",
+        junction_tie_break: str = "right_first",
     ) -> None:
         """Parse ``code``'s nodes and start on the first ``( )``."""
-        self.dialect = FlowchartDialect(scheduling, deque_cursor)
+        self.dialect = FlowchartDialect(scheduling, deque_cursor, junction_tie_break)
         self.io = io
         rows = [line.rstrip("\n") for line in code]
         self.width = max((len(r) for r in rows), default=0)
@@ -659,7 +662,10 @@ class _Machine:
                 allowed = [remembered]
             elif p.d in allowed:
                 allowed = [p.d]
-        d = next(d for d in (p.d, _turn_right(p.d), _turn_left(p.d)) if d in allowed)
+        turns = (_turn_right(p.d), _turn_left(p.d))
+        if self.dialect.junction_tie_break == "left_first":
+            turns = turns[::-1]
+        d = next(d for d in (p.d, *turns) if d in allowed)
         self._put(i, p.remembering(self._anchor(p.row, p.col), d))
         self._move(i, d)
 
@@ -871,9 +877,16 @@ def run(
     *,
     scheduling: str = "creation",
     deque_cursor: str = "pointer",
+    junction_tie_break: str = "right_first",
 ) -> None:
     """Execute a Flowchart program."""
-    machine = _Machine(code, io, scheduling=scheduling, deque_cursor=deque_cursor)
+    machine = _Machine(
+        code,
+        io,
+        scheduling=scheduling,
+        deque_cursor=deque_cursor,
+        junction_tie_break=junction_tie_break,
+    )
     drive(machine)
 
 
