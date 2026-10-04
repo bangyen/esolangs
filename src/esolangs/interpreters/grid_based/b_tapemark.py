@@ -4,8 +4,9 @@ B-tapemark has two unbounded sparse grids, one direction shared by their
 position markers, and commands that can swap which grid is executing.  Quoted
 comments and the unique direction marker become blank cells when loaded.
 
-The wiki does not define missing or repeated starts, unmatched quotes, or
-invalid source symbols; this interpreter raises :class:`ValueError` for them.
+Invalid source symbols raise :class:`ValueError`, as the wiki requires.
+Missing or repeated starts and unmatched quotes also raise :class:`ValueError`.
+Source rows use LF, CRLF or CR; other characters occupy a column.
 Exhausted input raises :class:`EOFError`, following the package convention.
 
 Input symbols are consecutive Unicode characters, including newlines; the spec
@@ -124,7 +125,9 @@ def _load(source: str) -> _State:
     cells: dict[tuple[int, int], str] = {}
     starts: list[tuple[_Point, int]] = []
     quoted = False
-    for y, line in enumerate(source.splitlines()):
+    for y, line in enumerate(
+        source.replace("\r\n", "\n").replace("\r", "\n").split("\n")
+    ):
         for x, char in enumerate(line):
             if char == '"':
                 quoted = not quoted
