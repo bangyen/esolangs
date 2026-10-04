@@ -1,4 +1,4 @@
-"""Equal-modulus Mammalian chains with coprime array assignments."""
+"""Mammalian chains with coprime array assignments."""
 
 from dataclasses import dataclass, field, replace
 from math import gcd
@@ -18,8 +18,9 @@ class _State:
 
 
 class _Chain:
-    def __init__(self, modulus: int) -> None:
-        self.modulus = MammalianModuli(modulus, modulus).cell_modulus
+    def __init__(self, modulus: int, *, io_modulus: int | None = None) -> None:
+        moduli = MammalianModuli(modulus, modulus if io_modulus is None else io_modulus)
+        self.modulus, self.io_modulus = moduli.cell_modulus, moduli.io_modulus
         units = [array for array in range(23) if gcd(array + 1, modulus) == 1]
         self.weight = units[1]
         self.step = self.weight + 1
@@ -50,16 +51,34 @@ class _Chain:
         return ((state.ptr + 1) * state.head) % self.modulus
 
     def clear(self, state: _State) -> list[str]:
-        state.rest[state.ptr] += state.acc % self.modulus
+        state.rest[state.ptr] += state.acc % self.io_modulus
         state.acc = 0
         return ["EXCRETE"]
 
     def append(self, state: _State, value: int) -> list[str]:
-        head = (value - state.rest[state.ptr]) % self.modulus
-        count = (head - self.head(state)) * pow(state.ptr + 1, -1, self.modulus)
-        tokens = self.seed(state, count % self.modulus)
-        state.acc = self.head(state) + state.rest[state.ptr]
+        rest = state.rest[state.ptr]
+        head = (value - rest) % self.io_modulus
+        tokens = []
+        if head >= self.modulus:
+            # For 255-cell/256-I/O arithmetic, synthesize low byte 255
+            # before the final DIGEST; no SEED can make head 255.
+            first = (127 - rest) % 256
+            if first >= 254:
+                first = (255 - rest) % 256
+            tokens += self.set_head(state, first)
+            state.acc = self.head(state) + rest
+            tokens += ["DIGEST"]
+            tokens += self.set_head(state, first + 1)
+            state.acc ^= self.head(state) + rest
+            tokens += ["DIGEST"]
+            head = ((value ^ 255) - rest) % 256
+        tokens += self.set_head(state, head)
+        state.acc ^= self.head(state) + rest
         return [*tokens, "DIGEST", *self.clear(state)]
+
+    def set_head(self, state: _State, head: int) -> list[str]:
+        count = (head - self.head(state)) * pow(state.ptr + 1, -1, self.modulus)
+        return self.seed(state, count % self.modulus)
 
     def route(self, state: _State, dest: int) -> list[str]:
         tokens = self.clear(state) if state.acc else []
@@ -74,14 +93,12 @@ class _Chain:
         if remaining < 0:
             raise ValueError("target precedes the running sum")
         tokens = []
-        maximum = self.modulus - 1
+        maximum = self.io_modulus - 1
         if state.ptr == self.weight:
             while remaining > 2 * maximum:
-                residue = (self.head(state) + state.rest[state.ptr]) % self.modulus
-                seeds = max(0, -(-(self.modulus - self.step - residue) // self.step))
-                tokens += self.seed(state, seeds)
+                tokens += self.seed(state, self.greedy_seeds(state))
                 state.acc = self.head(state) + state.rest[state.ptr]
-                added = state.acc % self.modulus
+                added = state.acc % self.io_modulus
                 tokens += ["DIGEST", *self.clear(state)]
                 remaining -= added
         while remaining:
@@ -90,11 +107,27 @@ class _Chain:
             remaining -= chunk
         return tokens
 
+    def greedy_seeds(self, state: _State) -> int:
+        if self.io_modulus == self.modulus:
+            residue = (self.head(state) + state.rest[state.ptr]) % self.modulus
+            return max(0, -(-(self.modulus - self.step - residue) // self.step))
+        counts = []
+        for value in range(self.io_modulus - self.step, self.io_modulus):
+            head = (value - state.rest[state.ptr]) % self.io_modulus
+            # Head 255 duplicates head zero with 256 cells and 255 I/O;
+            # include both representatives, or the short continuation fails.
+            for reachable in range(head, self.modulus, self.io_modulus):
+                count = (reachable - self.head(state)) * pow(
+                    self.step, -1, self.modulus
+                )
+                counts.append(count % self.modulus)
+        return min(counts)
+
     def jump(self, state: _State, target: int) -> tuple[list[str], int]:
         tokens = self.clear(state)
         if target <= state.rest[0]:
             raise ValueError("jump precedes the running sum")
-        tokens += self.raise_to(state, max(state.rest[0], target - self.modulus + 1))
+        tokens += self.raise_to(state, max(state.rest[0], target - self.io_modulus + 1))
         hop = target - state.rest[0]
         tokens += self.append(state, hop)
         state.acc = state.head + state.rest[0]
@@ -103,8 +136,9 @@ class _Chain:
     def level(self, state: _State, weight: int, pos: int) -> tuple[list[str], _State]:
         # Greedy banking costs at most four tokens per 252 added. These
         # slopes also cover jump chunks; the constants cover head solves.
-        arm_size = 4096 + (weight + 15) // 16
-        prefix_size = 2048 + (arm_size + 31) // 32
+        mixed = self.io_modulus != self.modulus
+        arm_size = (6144 if mixed else 4096) + (weight + 15) // 16
+        prefix_size = (4096 if mixed else 2048) + (arm_size + 31) // 32
         landing = pos + prefix_size
         cont = landing + arm_size
         tokens = self.clear(state)
@@ -131,9 +165,9 @@ class _Chain:
         gap = cont - one.rest[0] - hop
         if gap < 0:  # pragma: no cover - arm region includes all head solves
             raise AssertionError("merge precedes the one-branch sum")
-        # Both paths close with head = (2*hop-cont) mod modulus.
-        # Matching the hop works for even and odd moduli without division.
-        arm += self.append(one, gap % (self.modulus - 1))
+        # Equal tails leave equal pre-append sums, so even the missing-head
+        # XOR construction closes with the same head on both paths.
+        arm += self.append(one, gap % (self.io_modulus - 1))
         closing, _ = self.jump(one, cont)
         arm += closing
         expected = zero.clone()
@@ -158,7 +192,7 @@ class _Chain:
         tokens += self.raise_to(state, base)
         tokens += self.route(state, 0)
         for bit in range(inputs):
-            weight = self.modulus * (1 << (inputs - bit - 1))
+            weight = self.io_modulus * (1 << (inputs - bit - 1))
             level, state = self.level(state, weight, len(tokens))
             tokens += level
         tokens += self.route(state, self.weight)
@@ -188,10 +222,12 @@ class _Chain:
                 "EXCRETE",
                 "LEAPFROG",
             ]
-            tokens += leaf + ["SEED"] * (self.modulus - len(leaf))
+            tokens += leaf + ["SEED"] * (self.io_modulus - len(leaf))
         return " ".join(tokens)
 
 
-def compact_chain(table: str, inputs: int, *, modulus: int) -> str:
-    """Emit an equal-modulus chain using coprime head steps and full-modulus slots."""
-    return _Chain(modulus).build(table, inputs)
+def compact_chain(
+    table: str, inputs: int, *, modulus: int, io_modulus: int | None = None
+) -> str:
+    """Emit a coprime-step chain whose weights vanish under I/O reduction."""
+    return _Chain(modulus, io_modulus=io_modulus).build(table, inputs)
