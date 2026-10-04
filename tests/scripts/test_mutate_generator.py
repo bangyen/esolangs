@@ -395,8 +395,8 @@ def test_raster_modules_prepare_their_real_suites(
         (
             "line",
             "simulate",
-            "tape = _written(tape, pointer, value)",
-            "tape = _written(tape, pointer, 1 - value)",
+            "tape = _written(tape, pointer, dialect.cell(value))",
+            "tape = _written(tape, pointer, dialect.cell(1 - value))",
             "tests/line/test_raster.py::test_line_consumes_the_public_raster",
         ),
         (

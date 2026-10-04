@@ -73,6 +73,7 @@ operation.
 
 from typing import Literal, TypeGuard, cast
 
+from esolangs._dialects import expression_syntax as validate_expression_syntax
 from esolangs._drive import drive
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
@@ -262,16 +263,10 @@ def _scan(
 
 
 class _Parser:
-    """A recursive-descent reader for one Alight expression.
+    """Read infix (examples' ``len{l}-0.5``) or postfix (the prose's rule)."""
 
-    Infix, strictly left to right, no precedence: the examples are all
-    infix (``len{l}-0.5``, ``sign{x} > 0``) though the prose says postfix,
-    retained as a compatibility deviation. An expression is one operand
-    followed by any number of ``<operator> <operand>`` pairs, each folded
-    into the accumulated left-hand side as it is read.
-    """
-
-    def __init__(self, text: str) -> None:
+    def __init__(self, text: str, expression_syntax: str = "infix") -> None:
+        self.expression_syntax = validate_expression_syntax(expression_syntax)
         self.text = text
         self.pos = 0
 
@@ -303,6 +298,8 @@ _BINARY = frozenset("+-*/=<>&|^")
 
 def _parse_expr(p: _Parser) -> "_Expr":
     """Parse an expression: an operand, then ``op operand`` pairs, left to right."""
+    if p.expression_syntax == "postfix":
+        return _parse_postfix(p)
     node = _parse_operand(p)
     while True:
         c = p.peek()
@@ -314,6 +311,26 @@ def _parse_expr(p: _Parser) -> "_Expr":
         # unary minus, so there is no ambiguity to resolve.
         p.pos += 1
         node = ("bin", c, node, _parse_operand(p))
+
+
+def _parse_postfix(p: _Parser) -> "_Expr":
+    """Parse one postfix expression, stopping at an argument delimiter."""
+    stack: list[_Expr] = []
+    while (char := p.peek()) and char not in ",}]":
+        if char in _BINARY or char == "!":
+            p.pos += 1
+            needed = 1 if char == "!" else 2
+            if len(stack) < needed:
+                raise Hint.OPERAND.error("postfix operator lacks operands")
+            right = stack.pop()
+            stack.append(
+                ("not", right) if char == "!" else ("bin", char, stack.pop(), right)
+            )
+        else:
+            stack.append(_parse_operand(p))
+    if len(stack) != 1:
+        raise Hint.EXPRESSION.error("postfix expression must leave one value")
+    return stack[0]
 
 
 def _parse_operand(p: _Parser) -> "_Expr":
@@ -561,7 +578,10 @@ class _Machine:
     #: out which.
     eof_is_a_value = True
 
-    def __init__(self, code: list[str] | str, io: IO) -> None:
+    def __init__(
+        self, code: list[str] | str, io: IO, *, expression_syntax: str = "infix"
+    ) -> None:
+        self.expression_syntax = validate_expression_syntax(expression_syntax)
         lines = code.splitlines() if isinstance(code, str) else list(code)
         self.grid = _grid(lines)
         self.io = io
@@ -717,7 +737,7 @@ class _Machine:
         ):
             return False
         if walker.pending is None:
-            expr = _command_expr(text, word)
+            expr = _command_expr(text, word, self.expression_syntax)
             if expr is None:
                 return False
             walker.pending = expr
@@ -745,7 +765,7 @@ class _Machine:
         if self.halted:
             return
         text, row, col = _scan(self.grid, self.row, self.col, self.heading)
-        word = _Parser(text).word()
+        word = _Parser(text, self.expression_syntax).word()
         if word == "end":
             if self._resolve(text, word):
                 return
@@ -790,7 +810,7 @@ class _Machine:
         it always was; the *value* comes from ``pending``, which holds the
         same expression with its calls already resolved.
         """
-        p = _Parser(text)
+        p = _Parser(text, self.expression_syntax)
         p.word()
         expr = _parse_expr(p)
         if not p.at_end():
@@ -817,7 +837,7 @@ class _Machine:
             self.vars[name] = "nil"
             return
         if word == "set":
-            p = _Parser(text)
+            p = _Parser(text, self.expression_syntax)
             p.word()
             name = p.word()
             self._check_name(name)
@@ -843,7 +863,7 @@ class _Machine:
         # discarded.
         # Only a call, not any expression: the example shows no other kind,
         # and a call is the only expression that can have an effect at all.
-        p = _Parser(text)
+        p = _Parser(text, self.expression_syntax)
         p.word()
         if p.peek() == "{":
             p.pos += 1
@@ -867,7 +887,7 @@ class _Machine:
 
     def _name(self, text: str) -> str:
         """Read the single variable name a ``var``/``inp``/``out`` names."""
-        p = _Parser(text)
+        p = _Parser(text, self.expression_syntax)
         p.word()
         name = p.word()
         self._check_name(name)
@@ -980,7 +1000,7 @@ class _Machine:
         there is one -- ``end inner{n}+1`` holds a call, and that call is
         resolved by a pushed walker before this runs.
         """
-        p = _Parser(text)
+        p = _Parser(text, self.expression_syntax)
         p.word()
         if p.at_end():
             return "nil"
@@ -1102,21 +1122,23 @@ def _is_call(text: str, word: str) -> bool:
     return bool(word) and word not in _RESERVED and p.peek() == "{"
 
 
-def _command_expr(text: str, word: str) -> "_Expr | None":
+def _command_expr(
+    text: str, word: str, expression_syntax: str = "infix"
+) -> "_Expr | None":
     """Return the expression a command evaluates, or None if it has none.
 
     ``var``/``inp``/``out`` name a variable and evaluate nothing; ``set``
     names one and then evaluates; the rest are a keyword and an
     expression, or a bare call which is itself the expression.
     """
-    p = _Parser(text)
+    p = _Parser(text, expression_syntax)
     p.word()
     if word == "set":
         p.word()
     elif word not in ("turn", "skip", "wait", "end"):
         if not _is_call(text, word):
             return None
-        p = _Parser(text)  # a bare call: parse the whole command
+        p = _Parser(text, expression_syntax)  # a bare call: parse the whole command
     if word == "end" and p.at_end():
         return None
     return _parse_expr(p)
@@ -1167,9 +1189,9 @@ def _first_call_or_none(expr: "_Expr", name: str) -> "_Expr | None":
     return expr if tag == "call" and expr[1] == name else None
 
 
-def run(code: list[str] | str, io: IO) -> None:
+def run(code: list[str] | str, io: IO, *, expression_syntax: str = "infix") -> None:
     """Run an Alight program to its ``end``."""
-    machine = _Machine(code, io)
+    machine = _Machine(code, io, expression_syntax=expression_syntax)
     drive(machine)
 
 
