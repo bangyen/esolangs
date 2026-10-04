@@ -32,7 +32,7 @@ from esolangs._vm_views import (
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.source_hints import with_hint
 from esolangs.registry import resolve
-from esolangs.settings import DialectSettings, dialect_options
+from esolangs.settings import DialectSettings, dialect_options, effective_settings
 
 
 @runtime_checkable
@@ -920,8 +920,10 @@ def make_vm(
     from esolangs import check_program
 
     name = resolve(language)
+    settings = effective_settings(name, program, settings)
     dialect_options(name, settings)
     source = check_program(name, program, stdin)
+    settings = effective_settings(name, source, settings)
     check_scale_for(name, scale)
     with interpreter_errors(
         f"the {name} interpreter recursed deeper than CPython's stack "

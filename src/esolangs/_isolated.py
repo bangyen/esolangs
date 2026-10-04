@@ -17,7 +17,7 @@ from esolangs._validate import check_timeout, check_whole
 from esolangs.interpreters.source_hints import with_hint
 from esolangs.raster import Raster
 from esolangs.registry import resolve
-from esolangs.settings import DialectSettings, dialect_options
+from esolangs.settings import DialectSettings, dialect_options, effective_settings
 
 
 def _decode(text: str, *, expired: bool) -> str:
@@ -89,13 +89,15 @@ def run_isolated(
             ("set a positive finite timeout, for example timeout=5.0"),
         )
     name = resolve(language)
-    choices = dialect_options(name, settings)
+    dialect_options(name, settings)
     deadline = monotonic() + timeout
     box: list[str | BaseException] = []
 
     def prepare() -> None:
         try:
             source = esolangs.check_program(name, program, stdin)
+            retained = effective_settings(name, source, settings)
+            choices = dialect_options(name, retained)
             box.append(
                 json.dumps(
                     {

@@ -27,7 +27,7 @@ from esolangs.exceptions import (
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.source_hints import with_hint
 from esolangs.registry import LANGUAGES, resolve
-from esolangs.settings import DialectSettings, dialect_options
+from esolangs.settings import DialectSettings, dialect_options, effective_settings
 from esolangs.tools.helpers import MOST_INPUTS
 from esolangs.vm import make_vm
 
@@ -142,8 +142,10 @@ def iter_evaluate(
     between yields. Row timeouts default to 30 seconds, 5 for termination.
     A timeout never proves divergence. Paths load once; templates fill per row.
     ``max_output`` caps each isolated row in Unicode characters.
-    ``settings`` applies to template filling and every execution path.
+    Retained dialect choices apply to filling and execution; explicit ``settings``
+    overrides individual choices.
     """
+    settings = effective_settings(language, program, settings)
     dialect_options(language, settings)
     if max_output is not None:
         check_whole(max_output, "max_output")
@@ -202,6 +204,7 @@ def iter_evaluate(
         encoding = list(contract.answer_values)
         diverges_is = str(encoding.index("diverges"))
         halts_is = str(encoding.index("halts"))
+    settings = effective_settings(name, program, settings)
     instantiator = esolangs.instantiate
     if settings is not None:
         instantiator = partial(instantiator, settings=settings)

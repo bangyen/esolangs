@@ -76,7 +76,7 @@ from esolangs.registry import (
     template_body,
     template_char,
 )
-from esolangs.settings import DialectSettings, dialect_options
+from esolangs.settings import DialectSettings, dialect_options, effective_settings
 from esolangs.tagged import _Tagged, _Template
 from esolangs.tools.balance import BALANCERS as _BALANCERS
 from esolangs.tools.helpers import mark_runs, unmark
@@ -182,7 +182,7 @@ def generate(
     layouts, breaking ties by source length (raster pixel area), then width.
     Token and routing constraints can prevent a square layout.
     Raster ``scale`` replicates pixels after layout; 1 preserves native output.
-    ``settings`` supplies dialect overrides shared with execution.
+    Tagged results retain ``settings`` for execution.
     """
     options = dialect_options(language, settings)
     check_scale(scale)
@@ -212,7 +212,9 @@ def generate(
             if balancer is None:
                 return default
             raster_balance = cast(Callable[[str, Raster], Raster], balancer)
-            return raster_balance(truth_table, default).tagged(resolve(language))
+            return raster_balance(truth_table, default).tagged(
+                resolve(language), settings=settings
+            )
         if balancer is not None:
             # Only these dialects change a balancer's reconstructed instructions.
             balance_options = options if lang.id in {"alight", "bitdeque"} else {}
@@ -223,16 +225,18 @@ def generate(
                 text, char, pairs = render_template(
                     lang.id, text, default.inputs, settings=settings
                 )
-                return _Template(text, default.language, char, pairs)
-            return _Tagged(text, resolve(language))
+                return _Template(text, default.language, char, pairs, settings=settings)
+            return _Tagged(text, resolve(language), settings=settings)
         if isinstance(default, _Template):
             marked = mark_runs(default, default.char, default.setters)
             text = unmark(
                 balance_program(marked, lang.id), default.char, default.inputs
             )
-            return _Template(text, default.language, default.char, default.setters)
+            return _Template(
+                text, default.language, default.char, default.setters, settings=settings
+            )
         text = balance_program(default, lang.id)
-        return _Tagged(text, resolve(language))
+        return _Tagged(text, resolve(language), settings=settings)
     resolved = resolve(language)
     lang = LANGUAGES[resolved]
     fn = lang.boolean
@@ -268,11 +272,11 @@ def generate(
         # Tagged the way a text program is ``_Tagged``: a Line raster fed to
         # Piet otherwise passed ``check_program`` and answered '', a
         # confident garbage result rather than a refusal.
-        return generated.tagged(resolved)
+        return generated.tagged(resolved, settings=settings)
     slots = str(generated)
     if lang.id not in parameterized_ids():
         program = slots if laid_out else wrap_program(slots, lang.id, width)
-        return _Tagged(program, resolved)
+        return _Tagged(program, resolved, settings=settings)
     # The generator spells each input as a run; the public template is
     # that, wrapped with every run whole (see render_template).
     inputs = len(truth_table).bit_length() - 1
@@ -280,7 +284,7 @@ def generate(
     text, char, pairs = render_template(
         lang.id, slots, inputs, wrap_to, settings=settings
     )
-    return _Template(text, resolved, char, pairs)
+    return _Template(text, resolved, char, pairs, settings=settings)
 
 
 def _is_template_for(
@@ -383,8 +387,10 @@ def instantiate(
     a template from a different language, raises
     :class:`~esolangs.exceptions.TemplateError`.  ``width`` applies here too.
     A template :func:`generate` returned carries its setters; a plain string
-    has them recovered from the language's own.
+    has them recovered from the language's own. Retained dialect choices follow
+    the filled program; explicit settings overrides individual choices.
     """
+    settings = effective_settings(language, template, settings)
     dialect_options(language, settings)
     check_width(width)
     name = resolve(language)
@@ -467,7 +473,7 @@ def instantiate(
                     "manually editing its placeholder runs"
                 ),
             ) from exc
-        tagged = _Template(template, name, char, pairs)
+        tagged = _Template(template, name, char, pairs, settings=settings)
     if len(bits) != tagged.inputs:
         given = (
             f"{len(bits)} bit was given"
@@ -483,7 +489,9 @@ def instantiate(
             "one per input",
         )
     program = template_body(LANGUAGES[name].id, tagged.fill(bits))
-    return _Tagged(wrap_program(program, LANGUAGES[name].id, width), name)
+    return _Tagged(
+        wrap_program(program, LANGUAGES[name].id, width), name, settings=settings
+    )
 
 
 #: Characters a filename is made of, and a program mostly is not.
@@ -645,7 +653,8 @@ def run(
     """Execute ``program`` and return its output.
 
     Raster scale is detected unless ``scale`` supplies an explicit factor.
-    ``settings`` supplies dialect overrides shared with generation.
+    Tagged source retains dialect choices; explicit ``settings`` overrides
+    individual retained choices. Plain source uses the supplied settings.
     ``program`` is source or a :class:`~pathlib.Path`; a string shaped like a
     filename is refused.  A Path and its text are
     not quite the same argument: a file loses one trailing newline, a
@@ -679,6 +688,7 @@ def run(
     languages that draw.  An unloadable program raises
     :class:`~esolangs.exceptions.ProgramError`.
     """
+    settings = effective_settings(language, program, settings)
     dialect = dialect_options(language, settings)
     check_scale_for(language, scale)
     if isinstance(timeout, _Default):
@@ -762,6 +772,8 @@ def run(
     )
     name = resolve(language)
     program = check_program(name, program, stdin)
+    settings = effective_settings(name, program, settings)
+    dialect = dialect_options(name, settings)
     run_fn = interpreter_module(name).run
     program_args, options = prepare_call(name, program, run_fn, scale=scale, seed=seed)
     options.update(dialect)
