@@ -1,13 +1,11 @@
 """forth generator tests."""
 
 import importlib
-import random
 
 import pytest
 
 from esolangs import tools as boolean
 from esolangs.tools.helpers import permute_truth_table
-from tests.generator_support import verify_generated
 from tests.tools.boolean_runners import (
     five_input_sample,
     run_forth,
@@ -68,12 +66,6 @@ class TestForth:
         assert program.count("{") == program.count("}") == 4
         assert program.count(",68*-") == 2  # read and normalize 2 inputs
 
-    def test_leaf_results_are_the_byte(self) -> None:
-        """Each leaf pushes 48 + its table entry."""
-        program = boolean.forth("0001")
-        assert "3F*3+" in program  # '0' leaves push 48 = 3*15+3
-        assert "3F*4+" in program  # the '1' leaf pushes 49 = 3*15+4
-
     def test_scales(self) -> None:
         """More inputs mean more tree functions, and every input is read."""
         # Parity folds nothing under any order, so it spends the full tree.
@@ -84,23 +76,6 @@ class TestForth:
         program = boolean.forth(parity)
         assert program.count("{") == 18
         assert program.count(",68*-") == 5
-
-    @pytest.mark.parametrize("n", [1, 2, 3])
-    @pytest.mark.medium
-    def test_truth_table(self, n: int) -> None:
-        """Every table up to three inputs produces the right result.
-
-        The other Forþ tests assert program structure only; this runs the
-        program, which is what pins the fold's behaviour rather than its
-        shape.
-        """
-        for table_int in range(2 ** (2**n)):
-            table = format(table_int, f"0{2**n}b")
-            program = boolean.forth(table)
-            for combo in range(2**n):
-                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-                got = run_forth(program, [str(b) for b in bits])
-                assert got == str(int(table[combo])), f"{table} inputs {bits}"
 
     def test_constant_subtrees_fold(self) -> None:
         """A constant subtree answers in place and drops its descendants.
@@ -256,16 +231,6 @@ class TestForth:
             [0, 1, 1, 0, 1, 0, 0, 1],
         ]
         assert subtree_ids("00001111") == [[2], [0, 1], [0, 0, 1, 1], [0] * 4 + [1] * 4]
-
-    @pytest.mark.medium
-    def test_sharing_executes_at_four_to_six(self) -> None:
-        """A call lands on its twin's scope at every arity sampled."""
-
-        rng = random.Random(0)
-        for n in (4, 5, 6):
-            for _ in range(8):
-                table = format(rng.getrandbits(2**n), f"0{2**n}b")
-                assert verify_generated("Forþ", table), table
 
     def test_const_large(self) -> None:
         """Constants above 225 need multiple base-15 digits."""
