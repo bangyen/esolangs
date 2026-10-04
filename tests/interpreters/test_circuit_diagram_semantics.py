@@ -22,7 +22,7 @@ def inputs(width):
     return map("".join, itertools.product("01", repeat=width))
 
 
-@pytest.mark.parametrize("n", [1, 2, 3])
+@pytest.mark.parametrize("n", [1, 2, pytest.param(3, marks=pytest.mark.medium)])
 @pytest.mark.parametrize("width", [None, 1, 13, 100])
 def test_all_small_generated_tables(n, width):
     for outputs in itertools.product("01", repeat=1 << n):
