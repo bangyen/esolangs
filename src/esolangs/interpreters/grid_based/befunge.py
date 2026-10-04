@@ -3,7 +3,10 @@ r"""Interpreter for Befunge.
 Befunge is a two-dimensional grid language: the instruction pointer carries a
 stack and a heading, wraps at the edges, and ``p`` edits the grid in place.
 ``,`` and ``.`` print, ``~`` and ``&`` read, and string mode pushes cells as
-bytes.  EOF propagates.  The playfield is the specified 80x25 torus; division
+bytes. Values must fit the platform C signed long; overflow raises HaltError.
+Source cells are bytes; character input, storage and output use unsigned bytes.
+Unknown bytes are no-ops. EOF propagates. The playfield is the 80x25 torus;
+division
 truncates toward zero, and a zero divisor reads the result from the user.  A
 pop off the empty stack yields 0, ``g`` outside the grid pushes 0, and ``p``
 outside is ignored.  ``.`` prints the integer and a trailing space.  An empty
@@ -14,6 +17,7 @@ to read raises :class:`~esolangs.exceptions.HaltError`.
 from __future__ import annotations
 
 from collections.abc import Sequence
+from ctypes import c_long, sizeof
 from typing import cast
 
 from esolangs._drive import drive
@@ -27,6 +31,9 @@ from esolangs.interpreters.source_hints import syntax_error
 _DIRECTIONS = ((1, 0), (0, 1), (-1, 0), (0, -1))
 _WIDTH = 80
 _HEIGHT = 25
+_LONG_BITS = sizeof(c_long) * 8
+_MIN_VALUE = -(1 << (_LONG_BITS - 1))
+_MAX_VALUE = (1 << (_LONG_BITS - 1)) - 1
 type _Cursor = tuple[int, int, int, int]
 type _Grid = tuple[tuple[str, ...], ...]
 type _Stack = tuple[int, ...] | list[int]
@@ -45,6 +52,8 @@ def _pop(stack: _Stack) -> tuple[int, _Stack]:
 
 def _push(stack: _Stack, *values: int) -> _Stack:
     """Push onto a runtime list or an immutable branching state."""
+    if any(value < _MIN_VALUE or value > _MAX_VALUE for value in values):
+        raise HaltError("Befunge integer exceeds signed-long range")
     if isinstance(stack, list):
         stack.extend(values)
         return stack
@@ -76,7 +85,7 @@ def _advance(
         )
     if command == '"':
         string = not string
-    elif command.isdigit():
+    elif command in "0123456789":
         stack = _push(stack, int(command))
     elif command in "+-*/%":
         a, stack = _pop(stack)
@@ -94,10 +103,10 @@ def _advance(
                         "'/' divides by zero and needs a result",
                         hint="ensure the divisor is nonzero before dividing",
                     )
-                stack = (*stack, number_input)
+                stack = _push(stack, number_input)
             else:
                 quotient = abs(b) // abs(a)
-                stack = (*stack, -quotient if (a < 0) != (b < 0) else quotient)
+                stack = _push(stack, -quotient if (a < 0) != (b < 0) else quotient)
         else:
             if not a:
                 if number_input is None:
@@ -105,12 +114,12 @@ def _advance(
                         "'%' divides by zero and needs a result",
                         hint="ensure the divisor is nonzero before dividing",
                     )
-                stack = (*stack, number_input)
+                stack = _push(stack, number_input)
             else:
                 quotient = abs(b) // abs(a)
                 if (a < 0) != (b < 0):
                     quotient = -quotient
-                stack = (*stack, b - quotient * a)
+                stack = _push(stack, b - quotient * a)
     elif command == "!":
         a, stack = _pop(stack)
         stack = _push(stack, 0 if a else 1)
@@ -184,7 +193,7 @@ def _advance(
                 "'~' reads a character and there is no input left",
                 hint="supply another input value or stop reading at end of input",
             )
-        stack = _push(stack, char_input)
+        stack = _push(stack, char_input & 0xFF)
     elif command == "@":
         done = True
     col, row = (col + dx) % width, (row + dy) % height
@@ -210,6 +219,8 @@ class _Machine:
                 "Befunge program exceeds its 80x25 playfield",
                 "keep each row at most 80 characters and the grid at most 25 rows",
             )
+        if any(ord(char) > 0xFF for row in code for char in row):
+            raise ValueError("Befunge source cells must be bytes")
         rows = [row.ljust(_WIDTH) for row in code]
         rows.extend(" " * _WIDTH for _ in range(_HEIGHT - len(rows)))
         self.grid = tuple(tuple(row) for row in rows)
@@ -260,9 +271,13 @@ class _Machine:
             return (current,)
         col, row, _dx, _dy = current[0]
         command = current[1][row][col]
-        if command in "~&":
+        interpreting = not current[3]
+        if interpreting and command in "~&":
             return None
-        if command == "?":
+        if interpreting and command in "/%" and (not current[2] or current[2][-1] == 0):
+            # Zero divisors read a result too; predicting a halt loses that input.
+            return None
+        if interpreting and command == "?":
             return tuple(_advance(current, random_dir=d)[0] for d in range(4))
         return (_advance(current)[0],)
 
@@ -271,12 +286,14 @@ class _Machine:
             return
         (col, row, _dx, _dy), grid, _stack, _string, _done = self.state
         command = grid[row][col]
-        char_input = self.io.input_char() if command == "~" else None
+        interpreting = not _string
+        char_input = self.io.input_char() if interpreting and command == "~" else None
         # An empty stack pops as 0, so it is a zero divisor like any other and
         # must read a result too.  Guarding on a non-empty stack instead made
         # `0/` read while `/` halted, on the same divisor.
-        needs_number = command == "&" or (
-            command in "/%" and (not self.state[2] or self.state[2][-1] == 0)
+        needs_number = interpreting and (
+            command == "&"
+            or (command in "/%" and (not self.state[2] or self.state[2][-1] == 0))
         )
         number_input = None
         if needs_number:
@@ -289,7 +306,7 @@ class _Machine:
                 # unreachable through `run`.  Hand it the missing result.
                 if command == "&":
                     raise
-        random_dir = draw(self._rng, 4) if command == "?" else None
+        random_dir = draw(self._rng, 4) if interpreting and command == "?" else None
         self.state, effect = _advance(self.state, char_input, number_input, random_dir)
         if effect:
             kind, value = effect

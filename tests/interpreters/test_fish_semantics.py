@@ -297,6 +297,7 @@ def test_generated_small_tables(n, width):
         program = fish(table, width)
         for row, answer in enumerate(table):
             ref = check(program.splitlines(), f"{row:0{n}b}", full=False)
+            assert ref.done
             assert (ref.output, ref.offset, ref.past_end) == (answer, n, 0)
 
 
@@ -334,6 +335,7 @@ def test_generated_wider_tables(n, width):
         )
         for row in selected:
             ref = check(program.splitlines(), f"{row:0{n}b}", full=False)
+            assert ref.done
             assert (ref.output, ref.offset, ref.past_end) == (table[row], n, 0)
 
 
