@@ -248,6 +248,7 @@ class _Machine:
         self.stack: tuple[int, ...] = ()
         self.table: dict[int, str] = {}
         self.frames: tuple[_Frame, ...] = (_Frame(code),)
+        self._input_reads = 0
         self.error = False  # the top-level scope aborted (status 3)
         # Where the top-level frame ends, kept because ``ip`` still has to
         # report a position after that frame has been popped.
@@ -284,6 +285,7 @@ class _Machine:
             frozenset(self.table.items()),
             tuple((f.code, f.pc, f.loop) for f in self.frames),
             self.io.position(),
+            self._input_reads,
         )
 
     def frame_entry_key(self, frame: _Frame) -> tuple[object, ...]:
@@ -299,6 +301,7 @@ class _Machine:
             self.stack,
             frozenset(self.table.items()),
             self.io.position(),
+            self._input_reads,
         )
 
     @property
@@ -348,6 +351,7 @@ class _Machine:
         line = None
         if char == ",":
             line = self.io.input_str()
+            self._input_reads += 1
         elif char == "." and stack:
             value = stack[-1]
             self.io.print_char(
