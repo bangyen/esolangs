@@ -40,8 +40,8 @@ Choices checked against the page's 4-bit prime tester over all sixteen inputs:
   its three right ones, under the spec's rule that **one wiring may not
   touch both a gate's inputs and its output**.  ``<`` drives only its two
   right diagonals ("from the upper right or lower right"), ``~`` takes
-  only the level cell (``.~.``), and one wiring may feed both slots of a
-  gate (the constant-output circuit), so ports count per cell.
+  the level cell when other wirings pass diagonally. One wiring may feed
+  both slots of a gate (the constant-output circuit), so ports count per cell.
 
 The page's prime tester omits five characters: two OR inputs are undriven.
 ``tests/interpreters/test_circuit_diagram.py`` carries ``PRIME_TESTER``
@@ -76,9 +76,21 @@ from esolangs._drive import drive
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.grid_based._circuit_definitions import split_definitions
 from esolangs.interpreters.grid_based._circuit_diagram_hints import Hint
-from esolangs.interpreters.io import IO, ScriptedIO
+from esolangs.interpreters.grid_based._circuit_functions import (
+    _ClockStream,
+    _evaluate_function,
+)
+from esolangs.interpreters.io import IO
 
 type _Definitions = dict[str, tuple[str, ...]]
+
+
+def _width_integer(text: str) -> int:
+    """Return an ASCII decimal width without Python's literal-digit limit."""
+    value = 0
+    for digit in text:
+        value = value * 10 + ord(digit) - ord("0")
+    return value
 
 
 def _split_definitions(code: list[str]) -> tuple[list[str], _Definitions]:
@@ -440,7 +452,8 @@ class _Parser:
                         )
                     continue  # pragma: no cover - validation rejects this label
                 terms: tuple[str | int, ...] = tuple(
-                    int(part) if part.isdigit() else part for part in text.split("+")
+                    _width_integer(part) if part.isdigit() else part
+                    for part in text.split("+")
                 )
                 width = (
                     sum(term for term in terms if isinstance(term, int))
@@ -596,15 +609,16 @@ class _Parser:
                         f"':' at ({col}, {row}) requires '-' directly to its left"
                     )
                 if char == "~" and len(incoming) > 1:
-                    # NOT takes exactly one input, drawn level with it (the
+                    # NOT prefers the level input when other ports touch it (the
                     # spec's sample is ``.~.``), so a diagonal neighbour is
                     # some other wiring routed past the gate, not an input.
                     level = self._ports(row, col, -1, offsets=(0,))
                     if len(level) == 1:
                         incoming = level
-                inputs = [w for w in incoming if w not in outputs]
-                gate.inputs = inputs
-                gate.outputs = [w for w in outputs if w not in inputs]
+                if any(wiring in outputs for wiring in incoming):
+                    raise ValueError("wiring feeds both input and output of a gate")
+                gate.inputs = incoming
+                gate.outputs = outputs
                 self._check_arity(gate)
                 gates.append(gate)
         return gates
@@ -657,6 +671,9 @@ class _Parser:
                     wiring.width = width
                     changed = True
             if not changed:
+                for gate in self.gates:
+                    if gate.kind == _SPLIT and gate.inputs[0].width < 2:
+                        raise ValueError("split creates an empty output bundle")
                 return
         # Each pass fixes at least one wiring's width or stops, so the
         # fixpoint is reached within one pass per wiring; this catches a
@@ -734,7 +751,9 @@ class _Parser:
             return [(gate.outputs[0], total)]
         if gate.body is not None:
             inputs = tuple((0,) * wiring.width for wiring in gate.inputs)
-            return [(gate.outputs[0], len(_evaluate_function(gate, inputs)))]
+            return [
+                (gate.outputs[0], len(_evaluate_function(gate, inputs, type_only=True)))
+            ]
         return [(gate.outputs[0], 1)]
 
 
@@ -785,7 +804,7 @@ def _apply_gate(kind: _LogicGate, inputs: list[tuple[int, ...]]) -> tuple[int, .
 
 
 def _drive(
-    gate: "_Gate", inputs: list[tuple[int, ...]]
+    gate: "_Gate", inputs: list[tuple[int, ...]], clock: _ClockStream | None = None
 ) -> list[tuple["_Wiring", tuple[int, ...]]]:
     """Return the values ``gate`` writes to each of its outputs."""
     if gate.kind == _SPLIT:
@@ -800,7 +819,7 @@ def _drive(
     if gate.kind == _REMOVE:
         return [(gate.outputs[0], inputs[1][len(inputs[0]) :])]
     if gate.body is not None:
-        return [(gate.outputs[0], _evaluate_function(gate, tuple(inputs)))]
+        return [(gate.outputs[0], _evaluate_function(gate, tuple(inputs), clock))]
     if gate.kind == _OUTPUT:
         # An output gate drives nothing by definition, and ``step``
         # skips them before firing, so this is a shape rather than a
@@ -815,98 +834,6 @@ def _seconds_since_2000() -> int:
     """Return the current UTC second counted from 2000-01-01."""
     epoch = datetime(2000, 1, 1, tzinfo=UTC)
     return int((datetime.now(UTC) - epoch).total_seconds()) & 0xFFFFFFFF
-
-
-def _evaluate_function(
-    gate: _Gate, inputs: tuple[tuple[int, ...], ...]
-) -> tuple[int, ...]:
-    """Evaluate one custom gate atomically for ``inputs``."""
-    if gate.body is None:  # pragma: no cover - callers select custom gates
-        raise Hint.FUNCTION_BODY.error(f"{gate.kind!r} has no function body")
-    bindings: dict[str, int] = {}
-    input_rows = [line for line in gate.body if line.lstrip().startswith("-")]
-    if len(input_rows) != len(inputs):  # pragma: no cover - arity checked earlier
-        raise Hint.FUNCTION_ARITY.error(
-            f"function {gate.kind!r} input count changed while running"
-        )
-    for line, value in zip(input_rows, inputs, strict=True):
-        labels = [
-            match
-            for match in _LABEL_RUN.finditer(line)
-            if match.start() > 0
-            and line[match.start() - 1] in _WIRES
-            and match.end() < len(line)
-            and line[match.end()] in _WIRES
-        ]
-        if not labels:
-            if len(value) != 1:
-                raise Hint.SINGLE_INPUT_WIRE.error(
-                    f"function {gate.kind!r} expects a one-wire input, "
-                    f"received {len(value)}"
-                )
-            continue
-        terms = labels[0].group().split("+")
-        if all(term.isdigit() for term in terms):
-            expected = sum(int(term) for term in terms)
-            if expected != len(value):
-                raise Hint.INPUT_WIDTH.error(
-                    f"function {gate.kind!r} expects {expected} input wires, "
-                    f"received {len(value)}"
-                )
-        elif len(terms) == 1 and terms[0].isalpha():
-            old = bindings.setdefault(terms[0], len(value))
-            if old != len(value):
-                raise Hint.BOUND_WIDTH.error(
-                    f"function {gate.kind!r} binds {terms[0]!r} "
-                    f"to both {old} and {len(value)}"
-                )
-        else:
-            raise Hint.INPUT_LABEL.error(
-                f"function {gate.kind!r} input label must be a number or one name"
-            )
-
-    expanded = []
-    for line in gate.body:
-        pieces: list[str] = []
-        end = 0
-        for match in _LABEL_RUN.finditer(line):
-            if not (
-                match.start() > 0
-                and line[match.start() - 1] in _WIRES
-                and match.end() < len(line)
-                and line[match.end()] in _WIRES
-            ):
-                continue
-            pieces.append(line[end : match.start()])
-            terms = match.group().split("+")
-            pieces.append("+".join(str(bindings.get(term, term)) for term in terms))
-            end = match.end()
-        pieces.append(line[end:])
-        expanded.append("".join(pieces))
-
-    declarations = [
-        line
-        for name, body in gate.definitions.items()
-        for line in (f"{{{name}", *body, "}")
-    ]
-    stdin = "".join(f"{bit}\n" for value in inputs for bit in value)
-    io = ScriptedIO(stdin)
-    machine = _Machine(declarations + expanded, io)
-    seen: set[tuple[object, ...]] = set()
-    emitted: list[str] = []
-    while not machine.halted:
-        snapshot = machine.snapshot()
-        if snapshot in seen:
-            raise Hint.SETTLED_FUNCTION.error(f"function {gate.kind!r} does not settle")
-        seen.add(snapshot)
-        emitted.extend(
-            _emitted((machine.values, machine.latches), machine.wirings, machine.gates)
-        )
-        machine.step()
-    output = "".join(emitted)
-    if not output or set(output) - {"0", "1"}:
-        raise Hint.RETURN_BITS.error(f"function {gate.kind!r} did not return bits")
-    return tuple(int(bit) for bit in output)
 
 
 def _merge(driven: list[tuple[int, ...]]) -> tuple[int, ...]:
@@ -949,7 +876,10 @@ def _emitted(
 
 
 def _generation(
-    state: _State, wirings: list["_Wiring"], gates: list["_Gate"]
+    state: _State,
+    wirings: list["_Wiring"],
+    gates: list["_Gate"],
+    clock: _ClockStream | None = None,
 ) -> tuple[_State, bool]:
     """Return the state after one generation, and whether the run went quiet.
 
@@ -977,7 +907,7 @@ def _generation(
             continue
         fired = True
         inputs = [slot for slot in slots if slot is not None]
-        for wiring, value in _drive(gate, inputs):
+        for wiring, value in _drive(gate, inputs, clock):
             pending.setdefault(index[id(wiring)], []).append(value)
 
     quiet = not fired and all(value is None for value in values)
@@ -1011,8 +941,11 @@ class _Machine:
     #: out which.
     eof_is_a_value = True
 
-    def __init__(self, code: list[str], io: IO) -> None:
+    def __init__(
+        self, code: list[str], io: IO, *, clock: _ClockStream | None = None
+    ) -> None:
         """Parse ``code`` and read the input its ``-n-`` ports call for."""
+        self.clock = clock if clock is not None else _ClockStream()
         self.io = io
         (
             self.grid,
@@ -1034,7 +967,22 @@ class _Machine:
     @classmethod
     def _for_run(cls, code: list[str], io: IO) -> "_Machine":
         """Return fresh state over the source's cached static topology."""
-        return cls(code, io)
+        machine = cls.__new__(cls)
+        machine.clock = _ClockStream()
+        machine.io = io
+        (
+            machine.grid,
+            machine.wirings,
+            machine.gates,
+            machine.index,
+            machine._by_cell,  # noqa: SLF001 -- alternate constructor
+        ) = _compile(tuple(code))
+        machine.halted = False
+        machine.values = (None,) * len(machine.wirings)
+        machine.latches = tuple((None,) * len(gate.inputs) for gate in machine.gates)
+        machine._load_inputs()  # noqa: SLF001 -- alternate constructor
+        machine._load_sources()  # noqa: SLF001 -- alternate constructor
+        return machine
 
     def _load_inputs(self) -> None:
         """Drive every input wiring with the bits read from stdin.
@@ -1049,18 +997,17 @@ class _Machine:
                 continue
             col = len(line) - len(stripped)
             wiring = self._wiring_at((row, col))
-            # A row opening on "-" always has its own unvalued wiring: the
-            # wirings are built from those very cells, and each input row is
-            # read once.
+            # Every leading dash belongs to a wiring. Connected input rows
+            # still consume separate bundles before their drivers are XORed.
             if wiring is None:  # pragma: no cover - see above
                 continue
             position = self.index[id(wiring)]
-            if self.values[position] is not None:  # pragma: no cover - see above
-                continue
             value = tuple(self._read_bit() for _ in range(wiring.width))
+            old = self.values[position]
+            driven = [value] if old is None else [old, value]
             self.values = (
                 *self.values[:position],
-                value,
+                _merge(driven),
                 *self.values[position + 1 :],
             )
 
@@ -1078,7 +1025,9 @@ class _Machine:
 
     def _load_sources(self) -> None:
         """Drive constants and the clock in generation zero."""
-        seconds = _seconds_since_2000()
+        seconds = (
+            self.clock.read() if any(gate.kind == _CLOCK for gate in self.gates) else 0
+        )
         for gate in self.gates:
             if gate.kind not in (_ZERO, _ONE, _CLOCK):
                 continue
@@ -1127,16 +1076,16 @@ class _Machine:
         for text in _emitted((self.values, self.latches), self.wirings, self.gates):
             self.io.print_str(text)
         (self.values, self.latches), halted = _generation(
-            (self.values, self.latches), self.wirings, self.gates
+            (self.values, self.latches), self.wirings, self.gates, self.clock
         )
         if halted:
             self.halted = True
 
     def snapshot(self) -> tuple[object, ...]:
-        """Return the machine's state, hashable for cycle detection."""
+        """Return events, latches, halt and the runtime clock-read cursor."""
         # The two halves of the state are already the tuples this wants,
         # which is what freezing them bought: no per-call rebuild.
-        return (self.values, self.latches, self.halted)
+        return (self.values, self.latches, self.halted, self.clock.position)
 
 
 def run(code: list[str], io: IO) -> None:

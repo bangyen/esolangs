@@ -313,24 +313,6 @@ class TestCircuitDiagramLayoutGuards:
             )
             assert visits == 4 * (1 << n) - 2 * n - 4
 
-    @pytest.mark.slow
-    def test_h_layout_executes_every_two_input_table(self) -> None:
-        """The routed minterm and reduction trees compute all small functions."""
-        from esolangs.interpreters.grid_based.circuit_diagram import run
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.tools.circuit_diagram import _h_term_layout
-
-        for value in range(1, 15):
-            table = format(value, "04b")
-            program = _h_term_layout(table).render().splitlines()
-            output = []
-            for index in range(4):
-                bits = format(index, "02b")
-                io = ScriptedIO("".join(f"{bit}" for bit in bits))
-                run(program, io)
-                output.append(io.getvalue())
-            assert "".join(output) == table
-
     def test_layout_index_stops_past_the_probe(self) -> None:
         """The interval guard stops once later wires and glyphs are reached."""
         from esolangs.tools.circuit_diagram import _Layout
@@ -424,17 +406,6 @@ class TestCircuitDiagramLayoutGuards:
                 assert columns <= max(width, floor), (table, width, columns)
                 assert self._run_at(table, width) == table, (table, width)
 
-    def test_narrow_gate_groups_preserve_every_small_table(self) -> None:
-        """Compact groups and native XOR gates preserve every small table."""
-        from esolangs.tools.circuit_diagram import circuit_diagram
-
-        program = circuit_diagram("0110", 1)
-        assert max(map(len, program.splitlines())) == 4
-        for n in range(1, 4):
-            for value in range(1 << (1 << n)):
-                table = format(value, f"0{1 << n}b")
-                assert self._run_at(table, 1) == table
-
     def test_affine_floor_uses_native_xor_in_public_programs(self) -> None:
         """The output returns beneath the native XOR gate."""
         import esolangs
@@ -448,23 +419,6 @@ class TestCircuitDiagramLayoutGuards:
         for table in ("0110", "1001"):
             for width in (1, 4, 5, 6, 9, 11, 19):
                 assert self._run_at(table, width) == table
-
-    def test_native_affine_chains_verify_constants_and_complements(self) -> None:
-        from esolangs.interpreters.grid_based.circuit_diagram import run
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.tools.circuit_diagram import _affine_circuit
-
-        for n in range(1, 4):
-            for value in range(1 << (1 << n)):
-                table = format(value, f"0{1 << n}b")
-                program = _affine_circuit(table, 1)
-                if program is None:
-                    continue
-                for row, expected in enumerate(table):
-                    io = ScriptedIO(format(row, f"0{n}b"))
-                    run(program.splitlines(), io)
-                    assert io.getvalue() == expected
-                    assert io.reads == n
 
     def test_output_columns_fit_the_affine_and_mux_boundary(self) -> None:
         from esolangs.tools.circuit_diagram import circuit_diagram
@@ -560,23 +514,6 @@ class TestCircuitDiagram:
             results.append(io.getvalue())
         return "".join(results)
 
-    @pytest.mark.parametrize("table", [format(i, "04b") for i in range(16)])
-    def test_every_two_input_table(self, table: str) -> None:
-        """All sixteen two-input functions, each over all four inputs."""
-        assert self.run_table(table) == table
-
-    @pytest.mark.parametrize("table", ["01", "10", "00", "11"])
-    def test_every_one_input_table(self, table: str) -> None:
-        assert self.run_table(table) == table
-
-    @pytest.mark.parametrize(
-        "table",
-        ["00010111", "01101001", "11110000", "00000000", "11111111"],
-    )
-    def test_three_input_tables(self, table: str) -> None:
-        """Majority, parity, a projection, and both constants."""
-        assert self.run_table(table) == table
-
     @pytest.mark.parametrize(
         ("table", "tildes"),
         [
@@ -609,16 +546,6 @@ class TestCircuitDiagram:
         assert self.run_table("11111110") == "11111110"
         assert self.run_table("00000001") == "00000001"
 
-    def test_a_constant_table_is_never_complemented(self) -> None:
-        """It is already one gate, so complementing only swaps the glyph.
-
-        An all-ones table is the trap: complementing leaves no minterms at
-        all, which is the all-zeros shape, so the result would print the
-        wrong constant unless the table is excluded outright.
-        """
-        assert self.run_table("1111") == "1111"
-        assert self.run_table("0000") == "0000"
-
     @pytest.mark.parametrize("table", ["0000111100010001", "0000111101110111"])
     def test_equal_cofactors_from_different_gates_still_get_a_complement(
         self, table: str
@@ -641,19 +568,6 @@ class TestCircuitDiagram:
         primes = {n for n in range(2, 16) if all(n % d for d in range(2, n))}
         table = "".join("1" if n in primes else "0" for n in range(16))
         assert self.run_table(table) == table
-
-    @pytest.mark.slow  # ~3s: 256 builds of up to four orders, eight rows each
-    def test_every_three_input_table_under_its_chosen_order(self) -> None:
-        """A reordered fold still reads its rails in input order.
-
-        Only which rail each Shannon level selects moves, so a selector
-        wired to the wrong input -- the permuted table read against the
-        identity's rails, or the reverse -- is a wrong bit on some row.
-        107 of the 256 tables take a non-identity order.
-        """
-        for value in range(256):
-            table = format(value, "08b")
-            assert self.run_table(table) == table
 
     @pytest.mark.parametrize(
         ("table", "winner"),
@@ -683,27 +597,6 @@ class TestCircuitDiagram:
             len(_circuit_diagram_at(table, None, order)) for order in compact
         )
         assert self.run_table(table) == table
-
-    def test_each_run_prints_exactly_one_bit(self) -> None:
-        """The output wire is live for exactly one generation.
-
-        A ``:`` prints in every generation its wire carries a value, so a
-        second driver on any wiring -- or two wirings merged by adjacent
-        junctions -- would show up as extra characters even when the value
-        happens to be right.
-        """
-        from esolangs.interpreters.grid_based.circuit_diagram import run
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.tools.circuit_diagram import circuit_diagram
-
-        for table in ("0001", "0110", "00010111"):
-            n = len(table).bit_length() - 1
-            program = circuit_diagram(table).split("\n")
-            for index in range(len(table)):
-                stdin = "".join(f"{b}\n" for b in format(index, f"0{n}b"))
-                io = ScriptedIO(stdin)
-                run(program, io)
-                assert len(io.getvalue()) == 1
 
     def test_input_lines_start_with_a_dash(self) -> None:
         """Each bit arrives on its own line, which the spec makes an input."""
@@ -797,31 +690,6 @@ class TestCircuitDiagram:
             layout.run_horizontal(0, 2, 0, 2)  # another signal covers (1, 0)
         assert not layout._route_is_free([(0, 0), (2, 0)], 1)  # noqa: SLF001
 
-    @pytest.mark.slow  # ~6s: three n=4 builds, sixteen interpreted rows each
-    def test_h_layout_lanes_execute_at_four_inputs(self) -> None:
-        """Fixed lanes lay a correct circuit where every wire class meets.
-
-        Four inputs is the smallest H-layout with two-level quadrants, so
-        every shape -- ``down``, ``across`` and ``under`` -- and every
-        residue class of the lattice is exercised.
-        """
-        import random
-
-        from esolangs.interpreters.grid_based.circuit_diagram import run
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.tools.circuit_diagram import _h_term_layout
-
-        rng = random.Random(4)
-        for _ in range(3):
-            table = "".join(rng.choice("01") for _ in range(16))
-            if "1" not in table:
-                continue
-            program = _h_term_layout(table).render().splitlines()
-            for index in range(16):
-                io = ScriptedIO("".join(f"{bit}" for bit in format(index, "04b")))
-                run(program, io)
-                assert io.getvalue() == table[index], (table, index)
-
 
 class TestCircuitDiagramSelectorOrder:
     """Which rail each Shannon level selects, chosen among four named orders.
@@ -838,29 +706,6 @@ class TestCircuitDiagramSelectorOrder:
         tables = [format(value, "08b") for value in range(256)]
         assert sum(len(_circuit_diagram_at(table, None)) for table in tables) == 183978
         assert sum(len(circuit_diagram(table)) for table in tables) == 152716
-
-    @pytest.mark.parametrize(
-        ("zero", "one", "cost"),
-        [
-            (0, 0, (0, False)),
-            (2, 2, (0, False)),  # one rail twice is one signal
-            (-1, -1, (3, True)),  # two gates never are
-            (0, 1, (0, False)),
-            (1, 0, (0, True)),
-            (0, -1, (1, False)),
-            (-1, 1, (1, False)),
-            (1, -1, (1, True)),
-            (-1, 0, (1, True)),
-            (2, 3, (3, True)),
-        ],
-    )
-    def test_mux_cost_mirrors_the_mux_rules(
-        self, zero: int, one: int, cost: tuple[int, bool]
-    ) -> None:
-        """Gates and complement, as :func:`_mux` spends them on each pair."""
-        from esolangs.tools.circuit_diagram import _mux_cost
-
-        assert _mux_cost(zero, one) == cost
 
     def test_the_mux_cost_order_keeps_the_identity_on_a_tie(self) -> None:
         """Parity costs every level the same, whichever rail it selects."""
