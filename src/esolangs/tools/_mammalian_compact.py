@@ -243,15 +243,36 @@ class _Chain:
         pools: list[int | None] = [None] * (fixed + 1) + list(self.pools[: free - 1])
         return list(zip(weights, pools, strict=True)), free, stride, unit
 
-    def plant_pool(self, state: _State, weight: int, pool: int) -> list[str]:
-        # CONSUME removes index weight+1; the hop stays at index weight
-        # for SPRINT. The array has 2*weight+3 cells including its head.
+    def plant_pool(
+        self, state: _State, weight: int, pool: int, *, compact: bool = True
+    ) -> list[str]:
         tokens = self.route(state, pool)
-        for cell in range(2 * weight + 2):
-            if cell == weight - 1:
-                tokens += self.append(state, (self.weight - pool) % 23)
-            elif cell == weight:
+        hop = (self.weight - pool) % 23
+        if compact and self.modulus == self.io_modulus:
+            inverse = pow(pool + 1, -1, self.modulus)
+            head, rest = self.head(state), state.rest[pool]
+
+            def seeds(first: int, second: int) -> int:
+                a = (first - rest) % self.modulus
+                b = (second - rest - first) % self.modulus
+                end = (-pool) % 23
+                return sum(
+                    (delta * inverse) % self.modulus
+                    for delta in (a - head, b - a, end - b)
+                )
+
+            # Reversing the writes can add a whole seed cycle; avoid paying
+            # more seeds than the compact layout saves in filler cells.
+            compact = seeds(weight, hop) - seeds(hop, weight) <= weight + 1
+        # Minimal layout shifts the last cell to index weight after CONSUME.
+        count = weight + 1 if compact else 2 * weight + 2
+        middle = (weight - 1) // 2 if compact else weight
+        ride = weight if compact else weight - 1
+        for cell in range(count):
+            if cell == middle:
                 tokens += self.append(state, weight)
+            elif cell == ride:
+                tokens += self.append(state, hop)
             else:
                 tokens += self.clear(state)
         return tokens + self.route(state, 0)
@@ -266,7 +287,10 @@ class _Chain:
             tokens += self.route(state, 0)
         for weight, pool in plan:
             if pool is not None:
-                tokens += self.plant_pool(state, weight, pool)
+                # Shorter pools shifted base calibration at n=3: 255/255
+                # grew 1900 characters, 256/256 grew 690. Preserve those.
+                compact = self.modulus != self.io_modulus or len(plan) != 3
+                tokens += self.plant_pool(state, weight, pool, compact=compact)
         tokens += self.route(state, self.weight)
         tokens += self.raise_to(state, base)
         tokens += self.route(state, 0)

@@ -723,6 +723,55 @@ def test_chain_regions_cover_distant_nodes_and_large_weights(
         assert sum(cells[1:]) == expected.rest[array]
 
 
+@pytest.mark.parametrize("modulus", [255, 256])
+@pytest.mark.parametrize("io_modulus", [255, 256])
+@pytest.mark.parametrize("pool_index", range(4))
+@pytest.mark.parametrize("weight", [1, 2, 7, 14, 16, 28, 32, 56, 64, 112, 128, -1])
+@pytest.mark.parametrize("compact", [False, True])
+def test_compact_pool_retrieves_weight_and_routes(
+    modulus: int, io_modulus: int, pool_index: int, weight: int, *, compact: bool
+) -> None:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
+    from esolangs.tools._mammalian_compact import _Chain, _State
+
+    chain = _Chain(modulus, io_modulus=io_modulus)
+    pool = chain.pools[pool_index]
+    if weight == -1:
+        weight = io_modulus - 1
+    state = _State()
+    tokens = chain.plant_pool(state, weight, pool, compact=compact)
+    tokens += chain.route(state, pool)
+    tokens += ["CONSUME", "SPRINT", "EXCRETE"]
+    machine = _Machine(
+        " ".join(tokens), ScriptedIO(), cell_modulus=modulus, io_modulus=io_modulus
+    )
+    for _ in tokens:
+        machine.step()
+    assert machine.ptr == chain.weight
+    assert machine.acc == 0
+    assert sum(machine.lst[chain.weight][1:]) == weight
+    assert len(machine.lst[pool]) in (weight + 1, 2 * weight + 2)
+    assert machine.lst[pool][0] == (pool + 1) * state.head % modulus
+    assert sum(machine.lst[pool][1:]) == (chain.weight - pool) % 23
+
+
+@pytest.mark.parametrize(("modulus", "budget"), [(255, 64_835), (256, 67_425)])
+def test_pool_compaction_preserves_three_input_size(modulus: int, budget: int) -> None:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.tape_based.slow_acv_mammalian import run
+    from esolangs.tools._mammalian_compact import compact_chain
+
+    table = "00101101"
+    source = compact_chain(table, 3, modulus=modulus)
+    assert len(source) <= budget
+    for row, expected in enumerate(table):
+        io = ScriptedIO(f"{row:03b}")
+        run(source, io, cell_modulus=modulus, io_modulus=modulus)
+        assert io.getvalue() == expected
+        assert io.reads == 3
+
+
 def test_cell_255_tree_rejects_backward_sum_targets() -> None:
     from esolangs.tools._mammalian255 import _State
 
