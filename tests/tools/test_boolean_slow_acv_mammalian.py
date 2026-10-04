@@ -953,3 +953,27 @@ def test_read_calibration_reaches_earliest_safe_head(modulus: int) -> None:
                     assert (48 ^ (second + bit)) - (calibrated + 16) == (
                         total + carry - 16 + bit
                     )
+
+
+@pytest.mark.parametrize("row", [0, 1, 1024, 2046, 2047])
+def test_equal_modulus_eleven_input_read_calibration(row: int) -> None:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
+    from esolangs.tools.slow_acv_mammalian import slow_acv_mammalian
+
+    rng = random.Random(20261014)
+    table = "".join(str(rng.getrandbits(1)) for _ in range(2048))
+    source = slow_acv_mammalian(table, cell_modulus=255, io_modulus=255)
+    io = ScriptedIO(f"{row:011b}")
+    machine = _Machine(source, io, cell_modulus=255, io_modulus=255)
+    steps, peak = 0, 23
+    while not machine.halted:
+        machine.step()
+        steps += 1
+        peak = max(peak, sum(map(len, machine.lst)))
+    assert io.getvalue() == table[row]
+    assert io.reads == 11
+    # Pre-setup fastest sampled path took 11,148 steps; peak was 731 cells.
+    assert steps < 11_148
+    assert peak <= 731
+    assert len(source) <= 345_354

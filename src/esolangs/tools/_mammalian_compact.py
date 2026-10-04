@@ -219,7 +219,7 @@ class _Chain:
         tokens = self.clear(state)
         tokens += self.raise_to(state, landing + 15)
         start = state.rest[0]
-        if self.modulus < self.io_modulus:
+        if self.modulus == 255:
             seeds = _read_seeds(state.head, start, self.modulus)
         else:
             tokens += self.seed(state, (-state.head) % self.modulus)
