@@ -394,7 +394,9 @@ def _scoped_coverage(cmd: list[str], changed: list[str]) -> list[str]:
     return [*without, "--cov", f"--cov-config={rc}", "--cov-report="]
 
 
-def _parse_only_skip() -> tuple[set[str] | None, set[str] | None, bool, bool, bool]:
+def _parse_only_skip() -> tuple[
+    set[str] | None, set[str] | None, bool, bool, bool, bool
+]:
     parser = argparse.ArgumentParser(description="Run the local verification stack")
     parser.add_argument(
         "--only",
@@ -431,6 +433,11 @@ def _parse_only_skip() -> tuple[set[str] | None, set[str] | None, bool, bool, bo
         help="run every step over the whole tree instead of scoping the run "
         "to the files this branch touched",
     )
+    parser.add_argument(
+        "--allow-incomplete",
+        action="store_true",
+        help="skip unavailable tools and report incomplete verification",
+    )
     args = parser.parse_args()
     if args.list:
         for name, _ in STEPS:
@@ -449,7 +456,7 @@ def _parse_only_skip() -> tuple[set[str] | None, set[str] | None, bool, bool, bo
                 f"{flag}: unknown step(s) {', '.join(unknown)}; "
                 f"--list prints the {len(known)} names"
             )
-    return only, skip, args.full, args.quiet, args.verbose
+    return only, skip, args.full, args.quiet, args.verbose, args.allow_incomplete
 
 
 # The step that mutates the working tree.  pre-commit's ruff/ruff-format and
@@ -669,7 +676,7 @@ def _run_steps(
 
 def main() -> int:
     """Compile and run every example, reporting failures."""
-    only, skip, full, quiet, verbose = _parse_only_skip()
+    only, skip, full, quiet, verbose, allow_incomplete = _parse_only_skip()
 
     # `--list` exits inside the parse, so this never slows it down.
     _ensure_dev_deps()
@@ -701,6 +708,7 @@ def main() -> int:
     # the two apart lets the runner overlap the long step with the short ones
     # without the skip logic having to care.
     runnable: list[tuple[str, list[str], dict[str, str]]] = []
+    unavailable: list[str] = []
     for name, cmd in STEPS:
         if only is not None and name not in only:
             continue
@@ -756,12 +764,21 @@ def main() -> int:
             # own expression excluding all three deferred bands.
             cmd = [*cmd, "-m", FULL_PYTEST_MARKS if full else LOCAL_PYTEST_MARKS]
         if shutil.which("uv") is None and ("bandit" in name or "(uv)" in name):
-            print(f"[skip] {name}: uv not installed")
+            unavailable.append(f"{name}: uv not installed")
             continue
         if not have_pylint and "(pylint)" in name:
-            print(f"[skip] {name}: pylint not installed (pip install pylint)")
+            unavailable.append(f"{name}: pylint not installed (pip install pylint)")
             continue
         runnable.append((name, cmd, step_env))
+
+    if unavailable:
+        for reason in unavailable:
+            print(f"[unavailable] {reason}")
+        if not allow_incomplete:
+            print(
+                "verification failed: install required tools or use --allow-incomplete"
+            )
+            return 1
 
     # The gate speaks only for the suite that actually ran.  A default local
     # run deselects the `slow` tests, so a line covered only by one of those
@@ -808,7 +825,12 @@ def main() -> int:
     if failures:
         print(f"{failures} check(s) failed")
         return 1
-    print("all local checks passed")
+    if unavailable:
+        print(
+            "incomplete verification: available checks passed; required tools missing"
+        )
+    else:
+        print("all local checks passed")
     return 0
 
 

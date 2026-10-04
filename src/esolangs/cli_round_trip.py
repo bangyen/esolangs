@@ -23,6 +23,7 @@ from esolangs._evaluate import (
     _remaining,
 )
 from esolangs._program import Program
+from esolangs._validate import check_whole
 from esolangs.cli_args import (
     _check_count,
     _fail,
@@ -94,6 +95,7 @@ def _evaluate(rest: list[str]) -> None:
             "--inputs",
             "--table",
             "--max-rows",
+            "--max-output",
             "--total-timeout",
             "--settings",
         },
@@ -107,6 +109,7 @@ def _evaluate(rest: list[str]) -> None:
             "--inputs",
             "--table",
             "--max-rows",
+            "--max-output",
             "--total-timeout",
             "--settings",
         },
@@ -126,6 +129,11 @@ def _evaluate(rest: list[str]) -> None:
         if "--max-rows" in options
         else _DEFAULT_MAX_ROWS
     )
+    max_output = (
+        _integer(options["--max-output"], "--max-output")
+        if "--max-output" in options
+        else None
+    )
     total_timeout = (
         _timeout_of(options, option="--total-timeout")
         if "--total-timeout" in options
@@ -133,11 +141,13 @@ def _evaluate(rest: list[str]) -> None:
     )
     language, path = rest
     settings = _settings_of(options)
-    isolated = not hasattr(signal, "SIGALRM")
+    isolated = max_output is not None or not hasattr(signal, "SIGALRM")
     deadline = None if total_timeout is None else monotonic() + total_timeout
     try:
         dialect_options(language, settings)
         _evaluation_rows(inputs, max_rows)
+        if max_output is not None:
+            check_whole(max_output, "max_output")
         program = _prepare(
             lambda: _read_program(path, timeout, language=language),
             deadline,
@@ -150,6 +160,7 @@ def _evaluate(rest: list[str]) -> None:
                 program,
                 inputs=inputs,
                 max_rows=max_rows,
+                max_output=max_output,
                 total_timeout=total_timeout,
                 isolated=isolated,
                 settings=settings,
@@ -161,6 +172,7 @@ def _evaluate(rest: list[str]) -> None:
                 timeout,
                 inputs=inputs,
                 max_rows=max_rows,
+                max_output=max_output,
                 total_timeout=total_timeout,
                 isolated=isolated,
                 settings=settings,

@@ -475,3 +475,29 @@ def test_worker_decodes_large_integer_seed_and_output_cap(monkeypatch, capsys):
     _worker()
     messages = [json.loads(line) for line in capsys.readouterr().out.splitlines()]
     assert messages[-1] == {"result": "\x02"}
+
+
+def test_capped_termination_worker_reports_overflow_instead_of_divergence(
+    monkeypatch, capsys
+):
+    import io
+    import sys
+
+    from esolangs import vm
+
+    payload = {
+        "language": "123",
+        "program": "112",
+        "raster": False,
+        "stdin": "",
+        "termination": ["0", "1"],
+        "max_output": 0,
+    }
+    monkeypatch.setattr(esolangs, "ScriptedIO", esolangs.ScriptedIO)
+    monkeypatch.setattr(vm, "ScriptedIO", vm.ScriptedIO)
+    monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(payload)))
+    _worker()
+    messages = [json.loads(line) for line in capsys.readouterr().out.splitlines()]
+    assert messages[-1]["error"] == "InterpreterLimitError"
+    assert messages[-1]["output_limit"] is True
+    assert "result" not in messages[-1]

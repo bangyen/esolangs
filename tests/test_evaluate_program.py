@@ -134,3 +134,68 @@ def test_termination_input_exhaustion_is_a_fault(
     with pytest.raises(esolangs.InputExhaustedError) as exc:
         esolangs.evaluate("ArrowQueue", program, inputs=1)
     assert any("row 0" in note for note in exc.value.__notes__)
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("streaming", [False, True])
+@pytest.mark.parametrize("bound", [False, True])
+def test_isolated_row_output_limit_resets_per_row(streaming, bound):
+    source = "+" * 48 + "."
+    api = esolangs.Language("brainfuck") if bound else esolangs
+    evaluate = api.iter_evaluate if streaming else api.evaluate
+    args = (source,) if bound else ("brainfuck", source)
+    assert "".join(evaluate(*args, inputs=1, isolated=True, max_output=1)) == "00"
+
+
+@pytest.mark.medium
+def test_evaluation_output_overflow_retains_partial_output_and_row():
+    with pytest.raises(esolangs.InterpreterLimitError, match="output limit") as caught:
+        esolangs.evaluate(
+            "brainfuck", "+" * 48 + "..", inputs=1, isolated=True, max_output=1
+        )
+    assert caught.value.partial_output == "0"
+    assert any("row 0" in note for note in caught.value.__notes__)
+    assert any("answered (none)" in note for note in caught.value.__notes__)
+
+
+@pytest.mark.medium
+def test_termination_output_limit_is_not_a_divergence_verdict():
+    with pytest.raises(esolangs.InterpreterLimitError, match="output limit"):
+        esolangs.evaluate(
+            "123",
+            esolangs.generate("123", "0110"),
+            inputs=2,
+            isolated=True,
+            max_output=0,
+        )
+    source = esolangs.generate("Vandevelo", "01")
+    assert (
+        esolangs.evaluate("Vandevelo", source, inputs=1, isolated=True, max_output=0)
+        == "01"
+    )
+
+
+@pytest.mark.parametrize("limit", [-1, True, 1.0])
+def test_evaluation_rejects_invalid_output_limit_before_loading(limit, tmp_path):
+    with pytest.raises(esolangs.ArgumentError, match="max_output"):
+        esolangs.evaluate(
+            "brainfuck", tmp_path / "missing", inputs=1, isolated=True, max_output=limit
+        )
+
+
+def test_evaluation_output_limit_requires_isolation():
+    with pytest.raises(esolangs.ArgumentError, match="isolated=True"):
+        esolangs.evaluate("brainfuck", "", inputs=1, max_output=1)
+
+
+@pytest.mark.medium
+def test_cli_evaluation_output_limit_enables_isolation(tmp_path, capsys):
+    path = tmp_path / "source.bf"
+    path.write_text("+" * 48 + ".")
+    args = ["evaluate", "--inputs", "1", "--max-output", "1", "brainfuck", str(path)]
+    assert call_main(args, capsys).strip() == "00"
+    path.write_text("+" * 48 + "..")
+    with pytest.raises(SystemExit) as caught:
+        call_main(args, capsys)
+    assert caught.value.code == 1
+    assert "output limit" in capsys.readouterr().err
