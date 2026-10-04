@@ -16,6 +16,18 @@ def test_input_num() -> None:
         assert IO().input_num() == 42
 
 
+@pytest.mark.parametrize(
+    "token",
+    ["0" * 5000 + "17", "-" + "\u0660" * 5000 + "\u0661\u0667", "0_" * 5000 + "17"],
+)
+def test_numeric_padding_does_not_change_the_value_or_cursor(token: str) -> None:
+    source = ScriptedIO(token + " X")
+    assert source.input_num() == (-17 if token.startswith("-") else 17)
+    assert source.position() == len(token)
+    assert source.input_char() == ord(" ")
+    assert source.input_char() == ord("X")
+
+
 def test_input_char() -> None:
     """Return the next Unicode character code."""
     with patch("builtins.input", return_value="X"):
