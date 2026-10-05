@@ -88,10 +88,6 @@ class _Machine:
     def memory(self) -> list[int]:
         return [int(c) for c in self.live]
 
-    @property
-    def stack(self) -> list[object]:
-        return []
-
     def snapshot(self) -> tuple[object, ...]:
         # Deleted prefixes cannot affect a later transition.
         return (self.head, self.live, self.state[2:], self.io.position())

@@ -261,10 +261,6 @@ class _Machine:
         return self.state.ind
 
     @property
-    def memory(self) -> list[int]:
-        return []
-
-    @property
     def stack(self) -> list[object]:
         return list(self.state.stack)
 

@@ -64,7 +64,7 @@ def test_whitespace_separates_fields_and_comments_are_spaces() -> None:
     assert not _halts("+J\n0\n1")
     run("+J\n0\n0", IO())
     machine = _Machine("")
-    assert machine.stack == []
+    assert not hasattr(machine, "stack")
     assert _advance(machine.state) == machine.state
 
 

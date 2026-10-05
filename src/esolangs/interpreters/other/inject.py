@@ -266,11 +266,6 @@ class _Machine:
     # The VM's language-shaped view.
 
     @property
-    def ip(self) -> int:
-        """The line cursor."""
-        return self.ind
-
-    @property
     def memory(self) -> list[int]:
         """Each labelled block's line count, in label order.
 

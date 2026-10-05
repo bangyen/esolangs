@@ -24,8 +24,8 @@ def test_empty_source_has_one_output_transition() -> None:
     assert machine.halted
     assert machine.snapshot() != before
     assert machine.ip == 1
-    assert machine.memory == []
-    assert machine.stack == []
+    assert not hasattr(machine, "memory")
+    assert not hasattr(machine, "stack")
     after = machine.snapshot()
     machine.step()
     assert machine.snapshot() == after

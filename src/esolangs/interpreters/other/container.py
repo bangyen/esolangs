@@ -178,11 +178,6 @@ class _Machine:
         # The values are kept in name order, so this is already sorted.
         return [value for _name, value in self.state[0]]
 
-    @property
-    def stack(self) -> list[object]:
-        """No stack in this language."""
-        return []
-
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         variables, queue, exit_code, _tick_count = self.state

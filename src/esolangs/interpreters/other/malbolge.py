@@ -178,10 +178,6 @@ class _Machine:
     def ip(self) -> int | None:
         return None if self.halted else self.state[1]
 
-    @property
-    def stack(self) -> list[object]:
-        return []
-
     def snapshot(self) -> tuple[object, ...]:
         return (*self.state, tuple(self.memory), self.io.position())
 

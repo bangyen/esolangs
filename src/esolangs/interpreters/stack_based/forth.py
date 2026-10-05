@@ -277,11 +277,6 @@ class _Machine:
         frames = self.frames
         return tuple(f.pc for f in frames) if frames else (self._length,)
 
-    @property
-    def memory(self) -> list[int]:
-        """No addressable cells; the store is the stack."""
-        return []
-
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         return (

@@ -582,11 +582,6 @@ class _Machine:
         """
         return [v for key in sorted(self.deques) for v in self.deques[key]]
 
-    @property
-    def stack(self) -> list[object]:
-        """No stack in this language."""
-        return []
-
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         return (

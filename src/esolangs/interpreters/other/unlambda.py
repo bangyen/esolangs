@@ -378,11 +378,6 @@ class _Machine:
         return (len(kont), kinds.index(type(task)))
 
     @property
-    def memory(self) -> list[int]:
-        """No addressable cells; Unlambda has no store at all."""
-        return []
-
-    @property
     def stack(self) -> list[object]:
         """The continuation, outermost frame first: what waits on a value."""
         return list(self.state[1])

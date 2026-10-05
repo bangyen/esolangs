@@ -139,11 +139,6 @@ class _Machine:
         """The addressable cells."""
         return list(self.state[3])
 
-    @property
-    def stack(self) -> list[object]:
-        """No stack in this language."""
-        return []
-
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection.
 

@@ -67,6 +67,9 @@ Start from `src/esolangs/interpreters/_template.py`. Every interpreter:
 - Exposes `_Machine.step()`, `halted` and a complete `snapshot()`, including
   the input cursor. Tests look up that exact name; `dimensional.py` was
   silently skipped when it named something else.
+- Declares the VM views `ip`, `memory` and `stack` only where they say
+  something: the VM defaults `ip` to `ind` and the other two to empty, so a
+  language with no stack writes no `stack`.
 - Writes the language as a pure transition (`_advance`) over an immutable
   state, with `step` as the shell doing the I/O; a store that cannot be
   threaded cheaply returns effects instead (`grapheme.py`).

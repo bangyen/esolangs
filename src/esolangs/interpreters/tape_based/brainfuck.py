@@ -142,11 +142,6 @@ class _Machine:
         """The addressable cells."""
         return list(self.tape)
 
-    @property
-    def stack(self) -> list[object]:
-        """No stack in this language."""
-        return []
-
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         # Committed tape plus input cursor (a repeat that ignores consumed

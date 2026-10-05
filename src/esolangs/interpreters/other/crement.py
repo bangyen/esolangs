@@ -207,11 +207,6 @@ class _Machine:
         """Return the self-modifying instruction store."""
         return list(self.state.program)
 
-    @property
-    def stack(self) -> list[object]:
-        """Return Crement's empty stack."""
-        return []
-
     def snapshot(self) -> _State:
         """Return the complete immutable execution state."""
         return self.state

@@ -164,11 +164,6 @@ class _Machine:
         """The addressable cells."""
         return [self.byte()]
 
-    @property
-    def stack(self) -> list[object]:
-        """No stack in this language."""
-        return []
-
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         # A frozenset is already canonical and hashable; sorting it at every

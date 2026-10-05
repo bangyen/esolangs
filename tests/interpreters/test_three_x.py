@@ -276,11 +276,9 @@ class TestContract(SnapshotContract, CycleContract, StateViewContract):
     stepping_program = "3"
     halting_program = "3!"
     looping_program = "3()"
-    state_views = ("ind", "variables", "ip", "memory")
-    # Assigns a variable, so `variables` moves.  `memory` stays empty
-    # for every program in this file.
+    state_views = ("ind", "variables", "ip")
+    # Assigns a variable, so `variables` moves.
     viewing_program = "3333xv3^!"
-    constant_views = frozenset({"memory"})
 
 
 class TestStateViewValues:
@@ -298,4 +296,4 @@ class TestStateViewValues:
         while not machine.halted:
             machine.step()
         assert machine.variables == {Fraction(3): Fraction(0)}
-        assert machine.memory == []
+        assert not hasattr(machine, "memory")

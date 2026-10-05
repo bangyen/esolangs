@@ -240,11 +240,6 @@ class _Machine:
     # the acc.
 
     @property
-    def ip(self) -> int:
-        """The current instruction position."""
-        return self.ind
-
-    @property
     def memory(self) -> list[int]:
         """The addressable cells."""
         return [self.acc]

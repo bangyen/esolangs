@@ -190,11 +190,6 @@ class _Machine:
         """The addressable cells."""
         return list(self.state[2])
 
-    @property
-    def stack(self) -> list[object]:
-        """No stack in this language."""
-        return []
-
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         # The tape is already a tuple, so it goes in as it stands, in the

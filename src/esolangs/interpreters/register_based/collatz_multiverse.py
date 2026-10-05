@@ -163,11 +163,6 @@ class _Machine:
         # The registers are kept in name order, so this is already sorted.
         return [value for _name, value in self.state[1]]
 
-    @property
-    def stack(self) -> list[object]:
-        """No stack in this language."""
-        return []
-
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         # Frozensets, as this always returned, built from stores that are

@@ -166,7 +166,7 @@ class TestContract(SnapshotContract, CycleContract, StateViewContract):
     # `rendered` guards the end-of-run deque dump, so it only flips on the
     # step past the halt; it is read either side here, and `ip`/`memory` are
     # what the run moves.
-    state_views = ("rendered", "ip", "memory")
+    state_views = ("rendered", "ind", "memory")
     viewing_program = "INVERT PUSH"
     # `rendered` latches on the step *past* the halt, and the check
     # stops at the halt, so no program can move it here.

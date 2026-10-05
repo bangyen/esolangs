@@ -165,11 +165,6 @@ class _Machine:
         # documented as address-ordered and is read by the VM, not printed.
         return [z, n, *(value for _addr, value in sorted(flatten(ram)))]
 
-    @property
-    def stack(self) -> list[object]:
-        """No stack in this language."""
-        return []
-
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         # The four fields this returned before ``dumped`` joined the state.

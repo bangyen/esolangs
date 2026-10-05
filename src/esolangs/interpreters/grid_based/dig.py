@@ -205,11 +205,6 @@ class _Machine:
         """The value the mole is carrying."""
         return [self.mole]
 
-    @property
-    def stack(self) -> list[object]:
-        """Dig has no stack."""
-        return []
-
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection.
 

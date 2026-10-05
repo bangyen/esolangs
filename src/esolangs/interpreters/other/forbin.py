@@ -798,11 +798,6 @@ class _Machine:
             return []
         return [v for v in self.frames[-1].locals.values() if type(v) is int]
 
-    @property
-    def stack(self) -> list[object]:
-        """No stack in this language; calls use explicit frames."""
-        return []
-
     def frame_entry_key(self, frame: _Frame) -> tuple[object, ...]:
         """Return what ``frame`` is about to run, for the ancestor check.
 

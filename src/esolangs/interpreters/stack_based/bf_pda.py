@@ -89,13 +89,6 @@ class _Machine:
         """Whether the cursor has reached the end of the code."""
         return self.state[0] >= self.size
 
-    # VM view: the store is the stack, so ``memory`` is empty.
-
-    @property
-    def memory(self) -> list[int]:
-        """No addressable cells; the store is the stack."""
-        return []
-
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         # The state is already the hashable (ip, stack) pair.

@@ -367,19 +367,9 @@ class _Machine:
     # the register.
 
     @property
-    def ip(self) -> int:
-        """The current instruction position."""
-        return self.ind
-
-    @property
     def memory(self) -> list[int]:
         """The addressable cells."""
         return [self.reg]
-
-    @property
-    def stack(self) -> list[object]:
-        """No stack in this language."""
-        return []
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

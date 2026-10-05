@@ -202,7 +202,7 @@ class TestVMViews:
         assert machine.ip == machine.ind == 3
         assert machine.ptr == 1
         assert machine.memory == machine.tape == [0, 1, 1, 0, 0, 0, 0, 0]
-        assert machine.stack == []
+        assert not hasattr(machine, "stack")
 
     def test_the_tape_views_hand_back_copies(self) -> None:
         """A caller cannot write through ``tape`` or ``memory``."""
@@ -295,9 +295,8 @@ class TestContract(
     steps_to_read = 1
     position_after_read = 1
 
-    state_views = ("tape", "ptr", "ind", "ip", "memory", "stack", "halted")
+    state_views = ("tape", "ptr", "ind", "ip", "memory", "halted")
     viewing_program = "[.<"
-    constant_views = frozenset({"stack"})
 
 
 @pytest.mark.parametrize("code", ["<", "[[<[[", "[[[[[[[<<<[<.", ".", "comment"])

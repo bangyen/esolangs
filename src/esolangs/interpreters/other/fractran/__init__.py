@@ -192,16 +192,6 @@ class _Machine:
         index = self._next()
         return None if index is None else self.offsets[index + 1]
 
-    @property
-    def memory(self) -> list[int]:
-        """No addressable cells; the store is the value's factorization."""
-        return []
-
-    @property
-    def stack(self) -> list[object]:
-        """No stack in this language."""
-        return []
-
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         return (

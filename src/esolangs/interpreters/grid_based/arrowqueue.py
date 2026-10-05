@@ -131,11 +131,6 @@ class _Machine:
         return (row, col, d)
 
     @property
-    def memory(self) -> list[int]:
-        """No addressable cells; the store is elsewhere."""
-        return []
-
-    @property
     def stack(self) -> list[object]:
         """The stack."""
         return list(self.state[3])

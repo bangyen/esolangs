@@ -155,11 +155,6 @@ class _Machine:
         """The code cursor."""
         return self.state[0]
 
-    @property
-    def memory(self) -> list[int]:
-        """No addressable cells; the store is the stack."""
-        return []
-
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         # All three stores are already tuples, and the variables are kept
