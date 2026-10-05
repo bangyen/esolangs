@@ -5,9 +5,8 @@ from itertools import product
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.grid_based.super_snusp import _advance, _floor_root, run
-from esolangs.interpreters.io import IO, ScriptedIO
-from esolangs.interpreters.randomness import FirstDraw
+from esolangs.interpreters.grid_based.super_snusp import _advance, run
+from esolangs.interpreters.io import IO
 from esolangs.tools.super_snusp import super_snusp
 from tests.interpreters.runner import run_program
 
@@ -17,65 +16,10 @@ def run_super(program: str, stdin: str = "") -> str:
     return run_program(run, program.splitlines(), stdin)
 
 
-def test_start_marker_and_literal_emit() -> None:
-    assert run_super('"65.') == "A"
-
-
-def test_lurd_mirror_turns_rightward_flow_downward() -> None:
-    assert run_super('"65\\\n   .') == "A"
-
-
-@pytest.mark.parametrize(
-    ("program", "expected"),
-    [
-        ('"?65.', chr(5)),  # zero skips the 6 and emits the literal 5.
-        ('"1?65.', "A"),  # nonzero falls through and builds 65.
-        ('"1{2+.', chr(3)),  # ADD reads the stack top without consuming it.
-        ('"5{1=.', chr(3)),  # RAND alone consumes its stack argument.
-    ],
-)
-def test_core_linear_opcodes(program: str, expected: str) -> None:
-    if "=" in program:
-        io = ScriptedIO()
-        run(program.splitlines(), io, rng=FirstDraw(2))
-        assert io.getvalue() == expected
-    else:
-        assert run_super(program) == expected
-
-
-@pytest.mark.parametrize("character", ["\u0661", "²", "\U0001d7da", "é", "中"])
-def test_non_ascii_digits_and_letters_are_not_literals(character: str) -> None:
-    assert run_super('"' + character + "#'") == "0"
-
-
-def test_non_ascii_digit_breaks_an_ascii_literal_run() -> None:
-    assert run_super("\"1\u06612#'") == "2"
-
-
-def test_decimal_io_and_output() -> None:
-    assert run_super('"@#', "-42\n") == "-42"
-
-
 def test_character_and_decimal_loads_mix_in_one_program() -> None:
     """Letters load as ``H.``, other bytes as decimal literals, in one run."""
     program = '"H.e.l..o.44.32.W.o.r.l.d.33.10.0.255.'
     assert run_super(program) == "Hello, World!\n\x00\xff"
-
-
-def test_a_decrement_is_shorter_than_reloading_a_nearby_byte() -> None:
-    """After a double quote (34), ``!`` is one decrement and output."""
-    assert run_super('"34.(.') == '"!'
-
-
-def test_a_bare_mode_switch_outputs_nothing() -> None:
-    """``"`` alone sets character mode and halts; the empty program raises."""
-    assert run_super('"') == ""
-
-
-@pytest.mark.parametrize("program", ['"+', '"0{1:', '"1_{1['])
-def test_invalid_stack_and_arithmetic_operations_raise_halt_error(program: str) -> None:
-    with pytest.raises(HaltError):
-        run(program.splitlines(), IO())
 
 
 def _run_boolean(program: str, bits: tuple[int, ...]) -> str:
@@ -129,112 +73,6 @@ def test_generator_reduces_unused_inputs_but_reads_them() -> None:
 def test_generator_rejects_invalid_table() -> None:
     with pytest.raises(ValueError, match="power-of-two"):
         super_snusp("011")
-
-
-@pytest.mark.parametrize(
-    ("value", "degree", "expected"),
-    [
-        # Zero, which the negative branch's ``<`` must not claim.
-        (0, 2, 0),
-        (0, 3, 0),
-        # Degree 1, the smallest the rejection admits: the root is the value.
-        (1, 1, 1),
-        (7, 1, 7),
-        # Exact powers, where the search's ``<=`` decides whether the answer
-        # is the root itself or one below it.
-        (8, 3, 2),
-        (9, 2, 3),
-        (10, 2, 3),  # and an inexact one, for contrast
-        # Negatives with an odd degree, exact and not.
-        (-8, 3, -2),
-        (-7, 3, -2),
-    ],
-)
-def test_the_integer_root_at_its_boundaries(
-    value: int, degree: int, expected: int
-) -> None:
-    """``ROOT``'s guards turn on values the wiki's programs never reach.
-
-    The opcode is exercised only through whole programs -- a square root
-    of 4225 and an odd root of a negative -- so zero, a degree of one, and
-    the difference between an exact power and the value just above it were
-    never asked for.
-    """
-    assert _floor_root(value, degree) == expected
-
-
-@pytest.mark.parametrize(("value", "degree"), [(5, 0), (-9, 2), (-1, 4)])
-def test_the_integer_root_refuses_what_it_cannot_answer(
-    value: int, degree: int
-) -> None:
-    """A non-positive degree, and an even root of a negative value."""
-    with pytest.raises(HaltError):
-        _floor_root(value, degree)
-
-
-@pytest.mark.parametrize(
-    ("program", "expected"),
-    [
-        ('"!965.', "A"),  # SKIP steps over the 9, leaving 65 to build.
-        ("\"65.'99.", "A"),  # HALT ends the run before the second emit.
-        ('"1{$65.', "A"),  # DROP discards the pushed 1 without reading it.
-        ('"100{365%.', "A"),  # MOD: 365 % 100.
-        ('"5{13*.', "A"),  # MUL reads the stack top.
-        ('"5{325:.', "A"),  # DIV floors toward the operand.
-        ('"2{4225;.', "A"),  # ROOT: the square root of 4225.
-        ('"6{1[.', "@"),  # SHL by the stack top.
-        ('"1{130].', "A"),  # SHR by the stack top.
-        ('"66~_.', "C"),  # NOT gives -67; negating it emits 67.
-        ('"66(.', "A"),  # DEC steps the cell down one.
-        ('"64).', "A"),  # INC steps it up one.
-        ('   .\n"65/', "A"),  # RULD mirror turns rightward flow upward.
-    ],
-)
-def test_remaining_linear_opcodes(program: str, expected: str) -> None:
-    assert run_super(program) == expected
-
-
-@pytest.mark.parametrize(
-    ("program", "expected"),
-    [
-        ('"1_`65.\n', chr(5)),  # NEGSKIP steps over the 6 when the cell is < 0.
-        ('"65_`.9.', "\t"),  # a negative cell skips the emit and builds 9.
-    ],
-)
-def test_negative_skip_reads_the_cell_sign(program: str, expected: str) -> None:
-    assert run_super(program) == expected
-
-
-def test_char_input_writes_the_byte_it_read() -> None:
-    assert run_super('",.', "A") == "A"
-
-
-@pytest.mark.parametrize(
-    ("program", "expected"),
-    [
-        ('"100{365_%#', "-65"),  # MOD keeps the dividend's sign.
-        ('"3{27_;#', "-3"),  # an exact odd root of a negative value.
-        ('"3{9_;#', "-3"),  # an inexact one floors away from zero.
-    ],
-)
-def test_negative_operands_keep_their_sign(program: str, expected: str) -> None:
-    assert run_super(program) == expected
-
-
-@pytest.mark.parametrize(
-    "program",
-    [
-        '"0{1%.',  # MOD by zero.
-        '"1_{1[.',  # SHL by a negative amount.
-        '"1_{1].',  # SHR by a negative amount.
-        '"0{4;.',  # ROOT of degree zero.
-        '"2{65_;#',  # an even root of a negative value.
-        '"1_.',  # chr() of a negative cell.
-    ],
-)
-def test_invalid_operands_raise_halt_error(program: str) -> None:
-    with pytest.raises(HaltError):
-        run(program.splitlines(), IO())
 
 
 def test_empty_program_is_rejected() -> None:

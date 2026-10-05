@@ -11,6 +11,7 @@ import re
 import pytest
 
 import esolangs.debugger as debugger_api
+from tests.interpreters.views import view as vm_view
 
 
 def _painfuck_source(targets: str) -> str:
@@ -279,7 +280,7 @@ class TestRunUntilHaltOrCycle:
             run_until_halt_or_all_branches_cycle(_Machine(["o,"], ScriptedIO("A\n")))
 
     def test_super_snusp_mirror_ring_loops_under_every_draw(self) -> None:
-        """A ``/`` ring circulates forever, and no draw escapes it."""
+        """A mirror ring circulates forever, and no draw escapes it."""
         from esolangs.interpreters.grid_based.super_snusp import _Machine
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.vm import (
@@ -287,7 +288,7 @@ class TestRunUntilHaltOrCycle:
             run_until_halt_or_cycle,
         )
 
-        code = ["///", '/"/', "///"]
+        code = ['/"\\', "\\ /"]
         assert (
             run_until_halt_or_all_branches_cycle(
                 _Machine(code, ScriptedIO()), limit=3000
@@ -920,8 +921,8 @@ class TestGrowthDetectorAcrossLanguages:
         # same point in the program, and comparing them as if they were
         # would compare configurations that never replay each other.
         machine = _Machine([">"], ScriptedIO())
-        assert isinstance(machine.ip, tuple)
-        assert len(machine.ip) == 4
+        assert isinstance(vm_view(machine, "ip"), tuple)
+        assert len(vm_view(machine, "ip")) == 4
         assert run_until_halt_or_growth(machine) is False
 
 

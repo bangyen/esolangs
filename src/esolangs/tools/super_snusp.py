@@ -243,10 +243,9 @@ def _super_snusp_folded(program: str, width: int) -> str:
     r"""Fold ``program`` into a boustrophedon inside ``width`` columns.
 
     SNUSP's mirrors are what make this the cheapest fold of any generator
-    here: ``\\`` sends an eastward pointer down and a downward one west, so
-    two stacked turn a row round in **one row and one column**.
-    ``/`` does the mirror image, sending a westward pointer down and a
-    downward one east, and brings it back.
+    here: ``\\`` sends an eastward pointer down and ``/`` sends a downward
+    one west, so the pair stacked turns a row round in **one row and one
+    column**.  At the west edge ``/`` then ``\\`` bring it back east.
 
     A westward row is written in the order the pointer meets its cells,
     which is right to left on the page.  Nothing is reversed; the row is.
@@ -269,7 +268,7 @@ def _super_snusp_folded(program: str, width: int) -> str:
     # Each row consumes a token; the final row leaves through the break.
     while True:
         edge = limit - 1 if step == 1 else 0
-        mirror = "\\" if step == 1 else "/"
+        mirror, under = ("\\", "/") if step == 1 else ("/", "\\")
         room = abs(edge - col)
         taken: list[str] = []
         used = 0
@@ -285,7 +284,7 @@ def _super_snusp_folded(program: str, width: int) -> str:
         if index == len(tokens):
             break
         cells[row, edge] = mirror
-        cells[row + 1, edge] = mirror
+        cells[row + 1, edge] = under
         row += 1
         step = -step
         col = edge + step
