@@ -29,6 +29,17 @@ def test_a_halted_state_advances_to_itself() -> None:
     assert _advance(done, _load("Q")) == (done, (), None)
 
 
+def test_both_pointers_wrap_past_the_last_cell() -> None:
+    # 52 at cell 59048 deciphers to 'o', a no-op, so the step only advances
+    # c and d, and both leave the last cell for cell 0.  No stepped program
+    # in the oracle's corpus runs long enough to reach the end of memory.
+    last = len(_load("Q")) - 1
+    memory = [0] * last + [52]
+    assert _op(memory[last], last) == "o"
+    (_a, c, d, halted), _writes, _effect = _advance((0, last, last, False), memory)
+    assert (c, d, halted) == (0, 0, False)
+
+
 def test_a_read_with_no_input_is_the_eof_value() -> None:
     # 'q' at cell 4 deciphers to '/', the input instruction; an absent input
     # leaves the EOF sentinel in ``a`` rather than raising.
