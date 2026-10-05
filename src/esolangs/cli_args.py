@@ -21,7 +21,7 @@ from esolangs.cli_hints import (
     _did_you_mean,
 )
 from esolangs.exceptions import EsolangError
-from esolangs.settings import DialectSettings
+from esolangs.settings import DialectSettings, dialect_choices
 from esolangs.tools.wrap import DEFAULT_WIDTH
 
 #: Flags every subcommand accepts, so a near miss on one of them is
@@ -42,6 +42,7 @@ _ARGUMENTS = {
     "check-stdin": ("<language>",),
     "answer": ("<language>", "<truth-table>", "<bits>"),
     "evaluate": ("<language>", "<program-file>"),
+    "verify": ("<language>", "<truth-table>"),
 }
 
 
@@ -50,6 +51,80 @@ def _fail(message: str | BaseException, code: int = 2) -> None:
         message = _cli_error_text(message)
     sys.stderr.write(message + "\n")
     sys.exit(code)
+
+
+#: Long options that consume the next token, across every subcommand.  The
+#: short-option expansion skips the token after one of these: it is a value,
+#: even when it happens to spell ``-p``.
+_VALUE_OPTIONS = {
+    "--bits",
+    "--scale",
+    "--settings",
+    "--set",
+    "--timeout",
+    "--total-timeout",
+    "--max-rows",
+    "--max-output",
+    "--max-memory",
+    "--inputs",
+    "--table",
+    "--seed",
+    "--steps",
+    "--watch-cell",
+    "--break-at",
+    "--break-on-cell",
+    "--break-on-output",
+    "--stdin",
+}
+
+_SHORT_OPTIONS = {"-p": "--portable", "-s": "--settings", "-t": "--table"}
+
+
+def _expand_short_options(rest: list[str]) -> list[str]:
+    """Expand the three short options before the positional separator."""
+    expanded: list[str] = []
+    i = 0
+    while i < len(rest):
+        arg = rest[i]
+        if arg == "--":
+            expanded.extend(rest[i:])
+            break
+        if expanded and expanded[-1] in _VALUE_OPTIONS:
+            expanded.append(arg)
+            i += 1
+            continue
+        name, sep, inline = arg.partition("=")
+        if name in _SHORT_OPTIONS:
+            expanded.append(_SHORT_OPTIONS[name] + (sep + inline if sep else ""))
+        else:
+            expanded.append(arg)
+        i += 1
+    return expanded
+
+
+def _pop_set_pairs(rest: list[str]) -> tuple[list[str], list[str]]:
+    """Remove repeatable ``--set KEY=VALUE`` options before ``--``."""
+    args: list[str] = []
+    pairs: list[str] = []
+    i = 0
+    while i < len(rest):
+        arg = rest[i]
+        if arg == "--":
+            args.extend(rest[i:])
+            break
+        name, sep, inline = arg.partition("=")
+        if name != "--set":
+            args.append(arg)
+            i += 1
+        elif sep:
+            pairs.append(inline)
+            i += 1
+        elif i + 1 < len(rest):
+            pairs.append(rest[i + 1])
+            i += 2
+        else:
+            _fail("--set needs a value")
+    return args, pairs
 
 
 def _is_int(value: str) -> bool:
@@ -388,15 +463,52 @@ def _scale_of(options: dict[str, str]) -> int | None:
         raise  # pragma: no cover - _fail exits
 
 
-def _settings_of(options: dict[str, str]) -> DialectSettings | None:
-    """Parse explicit dialect overrides from one JSON object."""
-    if "--settings" not in options:
+def _set_value(key: str, raw: str) -> int | str | None:
+    """Read one ``--set`` value; the two modulus settings are integers."""
+    if raw == "null":
+        return None
+    if key in {"cell_modulus", "io_modulus"}:
+        try:
+            return int(raw, 0)
+        except ValueError:
+            _fail(f"--set {key} needs an integer, got {raw!r}")
+    return raw
+
+
+def _settings_of(
+    options: dict[str, str],
+    set_pairs: list[str] | tuple[str, ...] = (),
+    *,
+    language: str | None = None,
+) -> DialectSettings | None:
+    """Parse dialect overrides from JSON and/or ``--set KEY=VALUE`` pairs."""
+    values: dict[str, object] = {}
+    if "--settings" in options:
+        try:
+            parsed = json.loads(options["--settings"])
+        except ValueError:
+            _fail("--settings must be a JSON object")
+        if not isinstance(parsed, dict):
+            _fail("--settings must be a JSON object")
+        values.update(parsed)
+    for pair in set_pairs:
+        key, sep, raw = pair.partition("=")
+        if not sep or not key:
+            _fail(f"--set needs KEY=VALUE, got {pair!r}")
+        values[key] = _set_value(key, raw)
+    if not values and "--settings" not in options and not set_pairs:
         return None
     try:
-        values = json.loads(options["--settings"])
-    except ValueError:
-        _fail("--settings must be a JSON object")
-    if not isinstance(values, dict):
-        _fail("--settings must be a JSON object")
-    with _errors():
-        return DialectSettings(**values)
+        return DialectSettings(**values)  # type: ignore[arg-type]
+    except EsolangError as exc:
+        message = str(exc)
+        if language is not None and message.startswith("unknown dialect setting:"):
+            try:
+                choices = dialect_choices(language)
+            except EsolangError:
+                choices = None
+            if choices is not None:
+                accepted = ", ".join(choices) if choices else "no dialect settings"
+                message += f"; {language} accepts: {accepted}"
+        _fail(message)
+        raise  # pragma: no cover - _fail exits

@@ -43,6 +43,7 @@ import sys
 from typing import cast
 
 from esolangs import (
+    LanguageInfo,
     Raster,
     __version__,
     check_stdin,
@@ -56,10 +57,12 @@ from esolangs import (
 )
 from esolangs.cli_args import (
     _check_count,
+    _expand_short_options,
     _fail,
     _pop_flags,
     _pop_options,
     _pop_portable,
+    _pop_set_pairs,
     _pop_width,
     _scale_of,
     _settings_of,
@@ -82,7 +85,7 @@ from esolangs.cli_hints import (
 from esolangs.cli_io import (
     _read_stdin,
 )
-from esolangs.cli_round_trip import _answer, _evaluate
+from esolangs.cli_round_trip import _answer, _evaluate, _verify
 from esolangs.cli_run import _run
 from esolangs.cli_suggest import _suggest
 from esolangs.exceptions import (
@@ -169,12 +172,12 @@ def _list(rest: list[str]) -> None:
 
 def _generate(rest: list[str]) -> None:
     """Print a program computing a truth table."""
+    rest, set_pairs = _pop_set_pairs(rest)
     rest, options = _pop_options(rest, {"--bits", "--scale", "--settings"})
     rest, portable = _pop_portable(rest)
     rest, flags = _pop_flags(rest, {"--balance"})
     balance = "--balance" in flags
     scale = _scale_of(options)
-    settings = _settings_of(options)
     before = list(rest)
     rest, width, bare = _pop_width(rest)
     if balance and width is not None:
@@ -182,7 +185,15 @@ def _generate(rest: list[str]) -> None:
     rest = _split_positional(
         rest,
         set(),
-        {"--bits", "--width", "--balance", "--scale", "--settings", "--portable"},
+        {
+            "--bits",
+            "--width",
+            "--balance",
+            "--scale",
+            "--settings",
+            "--set",
+            "--portable",
+        },
     )
     # `--width` takes an *optional* N, so a truth table typed straight after
     # it is consumed as the width and the report lands on the table being
@@ -197,6 +208,7 @@ def _generate(rest: list[str]) -> None:
                     f"truth table; put the table after the language"
                 )
     _check_count("generate", rest, 2, bare_width=bare, eaten=eaten)
+    settings = _settings_of(options, set_pairs, language=rest[0])
     try:
         # Widthed at both ends, and that is not a mistake.  ``generate``
         # wraps the template (or hands the width to a *layout* language,
@@ -240,6 +252,51 @@ def _generate(rest: list[str]) -> None:
         print(program)
 
 
+def _answer_sentence(facts: LanguageInfo) -> str:
+    """State where the answer bit lives, in the terms a shell user needs."""
+    zero, one = facts["answer_encoding"]
+    mode = facts["answer_mode"]
+    if mode == "termination":
+        text = f"termination ({zero} for 0, {one} for 1)"
+    elif mode == "dump":
+        text = f"final-state dump ({zero} for 0, {one} for 1)"
+    else:
+        text = f"printed output ({zero} for 0, {one} for 1)"
+    if facts["answer_convention"]:
+        text += f"; {facts['answer_convention']}"
+    return text
+
+
+def _generator_sentence(facts: LanguageInfo) -> str:
+    """State what generation offers before the reader reaches the fields."""
+    if not facts["boolean_generator"]:
+        return "none (interpreter only)"
+    parts = ["yes"]
+    if facts["parameterized"]:
+        parts.append("template; fill inputs with generate --bits")
+    elif facts["reads_input"]:
+        parts.append("reads input bits from stdin")
+    if facts["generator_max_inputs"] is not None:
+        parts.append(f"max {facts['generator_max_inputs']} inputs")
+    if facts["generator_restrictions"]:
+        parts.append(str(facts["generator_restrictions"]))
+    return "; ".join(parts)
+
+
+def _settings_sentence(facts: LanguageInfo) -> str:
+    """Spell dialect choices as names and defaults, not a Python dict."""
+    settings = facts["dialect_settings"]
+    if not settings:
+        return "none"
+    rendered = []
+    for key, option in settings.items():
+        text = f"{key}={option['default']}"
+        if option["choices"]:
+            text += f" (choices: {', '.join(str(c) for c in option['choices'])})"
+        rendered.append(text)
+    return "; ".join(rendered)
+
+
 def _describe(rest: list[str]) -> None:
     """Print a language's input shape, answer location and capabilities."""
     rest, flags = _pop_flags(rest, {"--json", "--spec"})
@@ -261,41 +318,55 @@ def _describe(rest: list[str]) -> None:
         # it is empty is the thing that makes a schema unusable.
         print(json.dumps(facts, indent=2))
         return
-    # A template language reads no stdin, so its shape and alphabet are
-    # noise.  Hidden here, not dropped from ``describe()``, whose keys stay
-    # uniform across every language.
+    # The contract first: how bits go in, where the answer comes out, and
+    # whether a generator exists.  The field list below keeps the facts
+    # that decide how to drive a program; ``--json`` keeps every key.
     hidden = set()
     if not facts["reads_input"] and facts["parameterized"]:
         hidden = {"input_shape", "input_encoding"}
-    width = max(len(key) for key in facts)
-    for key, value in facts.items():
-        if value is None or value == "" or key in hidden:
-            continue
-        shown = "\n".join(str(v) for v in value) if isinstance(value, list) else value
-        if isinstance(value, tuple):
-            shown = " ".join(str(v) for v in value)
-        print(f"{key.ljust(width)}  {shown}")
+    name = str(facts["name"])
+    print(name)
     if hidden:
         print(
-            f"{'input'.ljust(width)}  none -- this generator embeds the bits "
-            f"in the program: esolangs generate --bits <bits> "
-            f"{_as_argument(str(facts['name']))} <table>"
+            "input: none -- this generator embeds the bits in the program: "
+            f"esolangs generate --bits <bits> {_as_argument(name)} <table>"
         )
     else:
-        # The symmetric row.  A reader had ``input_encoding`` and
-        # ``input_shape`` and had to compose them, while the template
-        # languages got a sentence -- so the languages where getting it
-        # wrong is possible were the ones told least plainly.
-        print(f"{'input'.ljust(width)}  {_input_sentence(facts)}")
-    # Every field above is about driving a *generated* program.  Someone
-    # writing their own needs the language's command table, which this
-    # package ships as the interpreter's module docstring and used to name
-    # only as ``interpreter: stack_based.unsquare`` -- an import path, with
-    # no hint that importing it is the point.
-    print(
-        f"{'spec'.ljust(width)}  esolangs describe --spec "
-        f"{_as_argument(str(facts['name']))}"
-    )
+        print(f"input: {_input_sentence(facts)}")
+    print(f"answer: {_answer_sentence(facts)}")
+    print(f"generator: {_generator_sentence(facts)}")
+    print(f"settings: {_settings_sentence(facts)}")
+    print(f"spec: esolangs describe --spec {_as_argument(name)}")
+    print()
+    print("details:")
+    details = [
+        ("source_kind", facts["source_kind"]),
+        ("state_model", facts["state_model"]),
+        ("boolean_generator", facts["boolean_generator"]),
+        ("parameterized", facts["parameterized"]),
+        ("reads_input", facts["reads_input"]),
+        ("width_effect", facts["width_effect"]),
+        ("generator_max_inputs", facts["generator_max_inputs"]),
+        ("generator_restrictions", facts["generator_restrictions"]),
+        ("input_shape", facts["input_shape"]),
+        ("input_encoding", facts["input_encoding"]),
+        ("answer_mode", facts["answer_mode"]),
+        ("answer_encoding", facts["answer_encoding"]),
+        ("answer_pattern", facts["answer_pattern"]),
+        ("answer_convention", facts["answer_convention"]),
+        ("self_halts", facts["self_halts"]),
+        ("dumps_on_the_post_halt_step", facts["dumps_on_the_post_halt_step"]),
+        ("steppable_to_answer", facts["steppable_to_answer"]),
+        ("eof_is_a_value", facts["eof_is_a_value"]),
+        ("examples", f"{len(facts['examples'])} committed (paths in --json)"),
+        ("wiki_url", facts["wiki_url"]),
+    ]
+    width = max(len(key) for key, _value in details)
+    for key, value in details:
+        if value is None or value == "" or key in hidden:
+            continue
+        shown = " ".join(str(v) for v in value) if isinstance(value, tuple) else value
+        print(f"  {key.ljust(width)}  {shown}")
 
 
 def _check_stdin(rest: list[str]) -> None:
@@ -423,6 +494,7 @@ def _dispatch() -> None:
         sys.stdout.write(HELP[cmd])
         sys.exit(0)
 
+    rest = _expand_short_options(rest)
     {
         "list": _list,
         "describe": _describe,
@@ -434,6 +506,7 @@ def _dispatch() -> None:
         "check-stdin": _check_stdin,
         "answer": _answer,
         "evaluate": _evaluate,
+        "verify": _verify,
         "debug": _debug,
     }[cmd](rest)
 
