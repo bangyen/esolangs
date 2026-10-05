@@ -2,8 +2,6 @@
 
 from pathlib import Path
 
-import pytest
-
 import esolangs
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.stack_based.piet import _command, _Machine, run
@@ -34,110 +32,6 @@ def execute(program: Raster, stdin: str = "") -> str:
     io = ScriptedIO(stdin)
     run(program, io)
     return io.getvalue()
-
-
-def test_push_and_output_number() -> None:
-    # Three light-red codels push 3; red -> dark magenta outputs it.
-    program = raster(
-        (LIGHT_RED, BLACK, BLACK, DARK_MAGENTA),
-        (LIGHT_RED, LIGHT_RED, RED, DARK_MAGENTA),
-        (BLACK, BLACK, BLACK, DARK_MAGENTA),
-    )
-    assert execute(program) == "3"
-
-
-def test_arithmetic_and_output() -> None:
-    # push 3, push 1, add, output number
-    program = raster(
-        (LIGHT_RED, BLACK, BLACK, BLACK, BLACK, LIGHT_RED),
-        (
-            LIGHT_RED,
-            LIGHT_RED,
-            RED,
-            DARK_RED,
-            DARK_YELLOW,
-            LIGHT_RED,
-        ),
-        (BLACK, BLACK, BLACK, BLACK, BLACK, LIGHT_RED),
-    )
-    assert execute(program) == "4"
-
-
-def test_white_slide_executes_no_transition() -> None:
-    program = raster(
-        (LIGHT_RED, BLACK, BLACK, YELLOW),
-        (LIGHT_RED, LIGHT_RED, WHITE, YELLOW),
-        (BLACK, BLACK, BLACK, YELLOW),
-    )
-    assert execute(program) == ""
-
-
-def test_white_slide_crosses_more_than_one_codel() -> None:
-    from esolangs.interpreters.stack_based.piet import _slide
-
-    program = raster((WHITE, WHITE, LIGHT_RED))
-    assert _slide(program.rows, (0, 0), 0, -1) == ((2, 0), 0, -1)
-
-
-def test_nonstandard_colour_is_white() -> None:
-    program = raster(
-        (LIGHT_RED, BLACK, BLACK, YELLOW),
-        (LIGHT_RED, LIGHT_RED, (1, 2, 3), YELLOW),
-        (BLACK, BLACK, BLACK, YELLOW),
-    )
-    assert execute(program) == ""
-
-
-def test_white_turns_at_a_restriction() -> None:
-    from esolangs.interpreters.stack_based.piet import _slide
-
-    program = raster(
-        (LIGHT_RED, WHITE, BLACK),
-        (LIGHT_YELLOW, LIGHT_YELLOW, LIGHT_YELLOW),
-    )
-    assert _slide(program.rows, (1, 0), 0, -1) == ((1, 1), 1, 1)
-
-
-def test_enclosed_white_terminates() -> None:
-    from esolangs.interpreters.stack_based.piet import _slide
-
-    program = raster(
-        (BLACK, BLACK, BLACK),
-        (BLACK, WHITE, BLACK),
-        (BLACK, BLACK, BLACK),
-    )
-    assert _slide(program.rows, (1, 1), 0, -1) is None
-
-
-def test_black_start_terminates() -> None:
-    assert execute(raster((BLACK,))) == ""
-
-
-def test_white_start_with_no_exit_terminates() -> None:
-    assert execute(raster((WHITE,))) == ""
-
-
-def test_white_start_and_trapped_slide_terminate(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    import esolangs.interpreters.stack_based.piet as piet
-
-    slides = iter([((1, 0), 0, -1), None])
-    monkeypatch.setattr(piet, "_slide", lambda *_args: next(slides))
-    assert execute(raster((WHITE, LIGHT_RED))) == ""
-
-
-@pytest.mark.parametrize("character", ["Z", "\n", "\0", "ā"])
-@pytest.mark.parametrize("scale", [1, 3])
-def test_input_character_and_output_character(character: str, scale: int) -> None:
-    # in(char), then out(char)
-    program = raster(
-        (LIGHT_RED, BLACK, BLACK, DARK_BLUE),
-        (LIGHT_RED, LIGHT_RED, LIGHT_MAGENTA, DARK_BLUE),
-        (BLACK, BLACK, BLACK, DARK_BLUE),
-    )
-    loaded = Raster.from_png(program.upscaled(scale).to_png())
-    assert execute(loaded, character) == character
 
 
 def test_input_number_skips_whitespace_until_eof() -> None:
@@ -174,109 +68,6 @@ def test_public_api_loads_a_png(tmp_path: Path) -> None:
     assert esolangs.run("Piet", path) == "3"
 
 
-@pytest.mark.parametrize(
-    ("dp", "cc", "expected"),
-    [
-        (0, -1, (1, 0)),
-        (0, 1, (1, 1)),
-        (1, -1, (1, 1)),
-        (1, 1, (0, 1)),
-        (2, -1, (0, 1)),
-        (2, 1, (0, 0)),
-        (3, -1, (0, 0)),
-        (3, 1, (1, 0)),
-    ],
-)
-def test_codel_chooser_selects_the_documented_edge(
-    dp: int, cc: int, expected: tuple[int, int]
-) -> None:
-    from esolangs.interpreters.stack_based.piet import _exit
-
-    block = {(0, 0), (0, 1), (1, 0), (1, 1)}
-    assert _exit(block, dp, cc) == expected
-
-
-@pytest.mark.parametrize(
-    ("change", "before", "after"),
-    [
-        ((0, 1), [], [7]),
-        ((0, 2), [1], []),
-        ((1, 0), [8, 3], [11]),
-        ((1, 1), [8, 3], [5]),
-        ((1, 2), [8, 3], [24]),
-        ((2, 0), [-8, 3], [-3]),
-        ((2, 1), [-8, 3], [1]),
-        ((2, 2), [9], [0]),
-        ((2, 2), [0], [1]),
-        ((3, 0), [8, 3], [1]),
-        ((4, 0), [8], [8, 8]),
-        ((4, 1), [1, 2, 3, 3, 1], [3, 1, 2]),
-    ],
-)
-def test_stack_commands(
-    change: tuple[int, int], before: list[int], after: list[int]
-) -> None:
-    io = ScriptedIO()
-    stack = before.copy()
-    assert _execute_command(change, 7, stack, io) == (0, 0)
-    assert stack == after
-
-
-def test_pointer_and_switch_return_control_changes() -> None:
-    io = ScriptedIO()
-    stack = [-1, 3]
-    assert _execute_command((3, 1), 1, stack, io) == (3, 0)
-    assert _execute_command((3, 2), 1, stack, io) == (0, -1)
-
-
-def test_empty_pointer_and_switch_are_ignored() -> None:
-    io = ScriptedIO()
-    assert _execute_command((3, 1), 1, [], io) == (0, 0)
-    assert _execute_command((3, 2), 1, [], io) == (0, 0)
-
-
-def test_invalid_commands_leave_the_stack_unchanged() -> None:
-    io = ScriptedIO()
-    for change, stack in [((1, 0), [1]), ((2, 0), [4, 0]), ((4, 1), [1, -2])]:
-        before = stack.copy()
-        _execute_command(change, 1, stack, io)
-        assert stack == before
-
-
-@pytest.mark.parametrize("change", [(0, 2), (2, 2), (4, 0), (5, 1), (5, 2)])
-def test_empty_unary_commands_are_ignored(change: tuple[int, int]) -> None:
-    stack: list[int] = []
-    _execute_command(change, 1, stack, ScriptedIO())
-    assert stack == []
-
-
-def test_zero_roll_and_shallow_roll_are_ignored() -> None:
-    io = ScriptedIO()
-    zero = [1, 2, 2, 0]
-    _execute_command((4, 1), 1, zero, io)
-    assert zero == [1, 2]
-    shallow = [1]
-    _execute_command((4, 1), 1, shallow, io)
-    assert shallow == [1]
-
-
-def test_switch_transition_changes_the_run_codel_chooser() -> None:
-    program = raster(
-        (LIGHT_RED, BLACK, BLACK, LIGHT_CYAN),
-        (LIGHT_RED, LIGHT_RED, RED, LIGHT_CYAN),
-        (BLACK, BLACK, BLACK, LIGHT_CYAN),
-    )
-    assert execute(program) == ""
-
-
-def test_number_input_and_output() -> None:
-    io = ScriptedIO("42\n")
-    stack: list[int] = []
-    _execute_command((4, 2), 1, stack, io)
-    _execute_command((5, 1), 1, stack, io)
-    assert io.getvalue() == "42"
-
-
 def test_invalid_and_exhausted_input_are_ignored() -> None:
     stack: list[int] = []
     _execute_command((4, 2), 1, stack, ScriptedIO("no\n"))
@@ -289,23 +80,7 @@ def _execute_command(change, size, stack, io):
     after, dp, cc, effect = _command(change, size, before)
     assert before == tuple(stack)
     stack[:] = _Machine.perform_io(after, effect, io)
-    return dp, cc
-
-
-def test_commands_are_repeatable_and_only_request_io() -> None:
-    stack = (3, 5)
-    assert _command((1, 0), 1, stack) == ((8,), 0, 0, None)
-    assert _command((1, 0), 1, stack) == ((8,), 0, 0, None)
-    assert _command((5, 1), 1, stack) == ((3,), 0, 0, ("write_num", 5))
-    assert _command((4, 2), 1, stack) == (stack, 0, 0, ("read_num", 0))
-    assert stack == (3, 5)
-
-
-def test_halted_transition_preserves_state() -> None:
-    from esolangs.interpreters.stack_based.piet import _advance
-
-    state = ((0, 0), 0, -1, (3, 5), True)
-    assert _advance(state, ((BLACK,),)) == (state, None)
+    return (dp, cc)
 
 
 def test_numeric_and_character_commands_share_the_input_cursor() -> None:

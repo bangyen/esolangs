@@ -372,6 +372,10 @@ def test_raster_modules_prepare_their_real_suites(
     if family == "tools" and module == "line":
         assert "../line/test_pixel_semantics.py" in tests
         assert (proj / "tests/line/reference_pixels.py").is_file()
+    if family == "tools" and module == "piet":
+        assert "../piet/test_piet_semantics.py" in tests
+        assert "../piet/test_piet_wide_semantics.py" in tests
+        assert (proj / "tests/piet/piet_reference.py").is_file()
     assert (
         script._KINDS[family].rel_target(module)  # noqa: SLF001
         in (proj / "pyproject.toml").read_text()
@@ -406,14 +410,14 @@ def test_raster_modules_prepare_their_real_suites(
             "piet",
             "_Operation(_MULTIPLY)",
             "_Operation(_ADD)",
-            "tests/tools/test_boolean_piet.py::test_every_row_executes[0001]",
+            "tests/piet/test_piet_semantics.py::test_generated_png_scale[2-1-None-1]",
         ),
         (
             "piet",
             "__init__",
             "left * right",
             "left + right",
-            "tests/piet/test_piet.py::test_stack_commands",
+            "tests/piet/test_piet_semantics.py::test_command_arithmetic[0]",
         ),
     ],
 )
