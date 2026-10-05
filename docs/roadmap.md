@@ -83,6 +83,30 @@ history; standing rules and proved limits are in [limitations](limitations.md).
   n=11,13,15. Parity tables read no higher. All sit inside the measured
   4.4 contract; that is a measurement, not a proof of linearity.
 
+## Engineering
+
+- **Brainfuck dialect settings.** Brainfuck fixes 8-bit wrapping cells, an
+  error at EOF and a left-clamped tape; Unary inherits all three. These are
+  the best-known implementation splits, and each is one rule, so they fit
+  `DialectSettings`. Next: add `cell_bits` (8, 16, 32 or unbounded),
+  `eof` (error, 0, -1 or unchanged) and `left_edge` (clamp, error or
+  unbounded), defaulting to today's behaviour. Then route Unary's decoded
+  program through the same settings and check that the generators still
+  emit valid programs under the defaults.
+
+- **Befunge-98.** `Befunge` is Befunge-93: a fixed 80x25 torus whose finite
+  source space forces the totality exception above. Funge-98's unbounded
+  Funge-space has no such count, so a Befunge-98 generator could be total
+  and O(T). Next: implement the Funge-98 core (no fingerprints or
+  concurrency) as a separate registry entry. Then check admission and, if
+  it is admitted, give it an audit row.
+
+- **Malbolge Unshackled.** Unbounded memory lifts the fixed 59,049-cell
+  store behind Malbolge's 16-input cap. It does not settle the 17-input
+  question below, which concerns Malbolge itself. Next: implement it as a
+  separate entry. Then check whether the packing construction extends past
+  sixteen inputs.
+
 ## Open problems
 
 Each item names its next executable step. When an item is answered, record
