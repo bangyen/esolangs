@@ -135,13 +135,11 @@ def test_isolated_error_keeps_the_hint():
 
 
 @pytest.mark.medium
-@pytest.mark.parametrize("command", ["run", "debug", "evaluate"])
+@pytest.mark.parametrize("command", ["run", "debug"])
 def test_cli_prints_runtime_hints(command, tmp_path: Path, capsys):
     source = tmp_path / "bad.mod"
     source.write_text("[JMP F]", encoding="utf-8")
     args = [command, "--timeout", "1", "Modulous", str(source)]
-    if command == "evaluate":
-        args += ["--inputs", "1"]
     with pytest.raises(SystemExit):
         call_both(args, capsys)
     streams = capsys.readouterr()

@@ -1,6 +1,8 @@
-"""Evaluate a supplied program on every Boolean input row.
+"""Private Boolean evaluation harness for supplied programs.
 
-``esolangs.run`` is reached through the package at call time (patchable).
+This machinery certifies generators and exercises interpreters in tests.
+It is deliberately not exported as public API.  ``esolangs.run`` is reached
+through the package at call time (patchable).
 """
 
 from collections.abc import Callable, Iterator
@@ -33,7 +35,7 @@ from esolangs.vm import make_vm
 
 
 class _Default:
-    """The "argument was not given" marker for :func:`evaluate`.
+    """The "argument was not given" marker for :func:`_evaluate`.
 
     ``None`` already means *unbounded* in :func:`run`, and meaning "default"
     here too left no value that turned the alarm off from a thread.
@@ -47,7 +49,7 @@ class _Default:
 _DEFAULT = _Default()
 
 #: A termination-answering language proves a 1 by *not* halting, so
-#: :func:`evaluate` pays this once for every such row.  Four languages
+#:  :func:`_evaluate` pays this once for every such row.  Four languages
 #: carry that convention, so the floor is real and small.
 _TERMINATION_TIMEOUT = 5.0
 
@@ -122,7 +124,7 @@ def _evaluation_rows(inputs: int, max_rows: int | None) -> int:
     return rows
 
 
-def iter_evaluate(
+def _iter_evaluate(
     language: str,
     program: ProgramSource,
     timeout: float | _Default | None = _DEFAULT,
@@ -192,7 +194,7 @@ def iter_evaluate(
         # :func:`run`; the divergers are settled by a repeated state.
         check_signal_timeout(
             bound if total_timeout is None else total_timeout,
-            "evaluate's timeout guard uses SIGALRM and needs a Unix main "
+            "evaluation's timeout guard uses SIGALRM and needs a Unix main "
             "thread; off it, pass timeout=None -- a diverging row is "
             "settled by a repeated machine state rather than waited for",
         )
@@ -288,7 +290,7 @@ def iter_evaluate(
         yield answer
 
 
-def evaluate(
+def _evaluate(
     language: str,
     program: ProgramSource,
     timeout: float | _Default | None = _DEFAULT,
@@ -302,7 +304,7 @@ def evaluate(
     total_timeout: float | None = None,
     settings: DialectSettings | None = None,
 ) -> str:
-    """Return the table computed over ``inputs`` bits, collecting iter_evaluate.
+    """Return the table computed over ``inputs`` bits, collecting ``_iter_evaluate``.
 
     Repeated states prove divergence; a timeout raises rather than counting as 1.
     Row timeouts default to 30 seconds (5 for termination). ``max_rows`` defaults
@@ -312,7 +314,7 @@ def evaluate(
     """
     answers = []
     try:
-        for answer in iter_evaluate(
+        for answer in _iter_evaluate(
             language,
             program,
             timeout,

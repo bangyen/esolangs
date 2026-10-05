@@ -6,6 +6,7 @@ from itertools import product
 import pytest
 
 import esolangs
+from esolangs._evaluate import _evaluate
 from esolangs.tools.fish import balance_fish, fish
 from esolangs.tools.token_balance import balanced_token_width
 from esolangs.tools.wrap import balance_program, balance_score, wrap_program
@@ -147,7 +148,7 @@ def test_fractran_parity_representation_omits_empty_width_regimes():
     assert balanced in [
         esolangs.generate("FRACTRAN", "0110", width) for width in range(1, 9)
     ]
-    assert esolangs.evaluate("FRACTRAN", balanced, inputs=2) == "0110"
+    assert _evaluate("FRACTRAN", balanced, inputs=2) == "0110"
 
 
 def test_bio_balance_keeps_source_that_does_not_tile_commands():
@@ -176,7 +177,7 @@ def test_bio_padding_caps_match_every_width(inputs):
     ]
     assert balanced in layouts
     assert balance_score(balanced) == min(map(balance_score, layouts))
-    assert esolangs.evaluate("BIO", balanced, inputs=inputs) == table
+    assert _evaluate("BIO", balanced, inputs=inputs) == table
 
 
 @pytest.mark.medium
@@ -221,8 +222,7 @@ def test_polynomial_balanced_folds_compute_the_table(table):
     assert balanced in layouts
     assert balance_score(balanced) == min(map(balance_score, layouts))
     assert (
-        esolangs.evaluate("Polynomial", balanced, inputs=len(table).bit_length() - 1)
-        == table
+        _evaluate("Polynomial", balanced, inputs=len(table).bit_length() - 1) == table
     )
 
 
@@ -237,10 +237,7 @@ def test_aligned_balanced_programs_compute_the_table(language, table):
         key=balance_score,
     )
     assert balance_score(balanced) == balance_score(optimum)
-    assert (
-        esolangs.evaluate(language, balanced, inputs=len(table).bit_length() - 1)
-        == table
-    )
+    assert _evaluate(language, balanced, inputs=len(table).bit_length() - 1) == table
 
 
 def _fish_tables():
@@ -272,9 +269,7 @@ def test_fish_balance_matches_all_power_of_two_folds(table):
     optimum = min(layouts, key=balance_score)
     assert balance_score(balanced) == balance_score(optimum)
     assert esolangs.generate("Fish", table, balance=True) == balanced
-    assert (
-        esolangs.evaluate("Fish", balanced, inputs=len(table).bit_length() - 1) == table
-    )
+    assert _evaluate("Fish", balanced, inputs=len(table).bit_length() - 1) == table
 
 
 def _regime_tables():
@@ -368,10 +363,7 @@ def test_discrete_regimes_reach_the_supported_minimum(language, table):
     optimum = min(layouts, key=balance_score)
     assert balanced in layouts
     assert balance_score(balanced) == balance_score(optimum)
-    assert (
-        esolangs.evaluate(language, balanced, inputs=len(table).bit_length() - 1)
-        == table
-    )
+    assert _evaluate(language, balanced, inputs=len(table).bit_length() - 1) == table
 
 
 @pytest.mark.medium
@@ -390,7 +382,7 @@ def test_larger_token_and_setter_regimes(language):
     ]
     assert balanced in layouts
     assert balance_score(balanced) == min(map(balance_score, layouts))
-    assert esolangs.evaluate(language, balanced, inputs=6) == table
+    assert _evaluate(language, balanced, inputs=6) == table
 
 
 @pytest.mark.medium
@@ -407,10 +399,7 @@ def test_grammar_and_marked_run_fits_execute(language, table):
     ]
     assert balanced in layouts
     assert balance_score(balanced) == min(map(balance_score, layouts))
-    assert (
-        esolangs.evaluate(language, balanced, inputs=len(table).bit_length() - 1)
-        == table
-    )
+    assert _evaluate(language, balanced, inputs=len(table).bit_length() - 1) == table
 
 
 @pytest.mark.medium
@@ -522,7 +511,7 @@ def test_streetcode_indexed_regimes_are_balanced_and_execute(table):
         key=balance_score,
     )
     assert balance_score(balanced) == balance_score(optimum)
-    assert esolangs.evaluate("Streetcode", balanced, inputs=6) == table
+    assert _evaluate("Streetcode", balanced, inputs=6) == table
 
 
 @pytest.mark.medium
@@ -589,8 +578,7 @@ def test_packlang_reduced_indent_crossing(indent):
         assert balanced in layouts
         assert balance_score(balanced) == min(map(balance_score, layouts))
         assert (
-            esolangs.evaluate("Packlang", balanced, inputs=len(table).bit_length() - 1)
-            == table
+            _evaluate("Packlang", balanced, inputs=len(table).bit_length() - 1) == table
         )
 
 
@@ -628,7 +616,7 @@ def test_minifuck_larger_paired_token_fits():
     ]
     assert balanced in layouts
     assert balance_score(balanced) == min(map(balance_score, layouts))
-    assert esolangs.evaluate("Minifuck", balanced, inputs=inputs) == table
+    assert _evaluate("Minifuck", balanced, inputs=inputs) == table
 
 
 @pytest.mark.slow
@@ -652,7 +640,7 @@ def test_apl_larger_frame_budget_transitions():
     ]
     assert balanced in layouts
     assert balance_score(balanced) == min(map(balance_score, layouts))
-    assert esolangs.evaluate(language, balanced, inputs=inputs) == table
+    assert _evaluate(language, balanced, inputs=inputs) == table
 
 
 @pytest.mark.medium
@@ -687,9 +675,7 @@ def test_larger_setter_and_header_regimes(language, inputs):
     assert balanced in layouts
     assert balance_score(balanced) == min(map(balance_score, layouts))
     if language == "Crement":
-        assert (
-            esolangs.evaluate(language, balanced, inputs=inputs, timeout=None) == table
-        )
+        assert _evaluate(language, balanced, inputs=inputs, timeout=None) == table
         return
     for row in (0, 1, len(table) // 2, len(table) - 1):
         bits = tuple(map(int, format(row, f"0{inputs}b")))
@@ -773,7 +759,7 @@ def test_laserfuck_reader_tree_and_funnel_fits(inputs):
 @pytest.mark.parametrize("language", ["Alight", "Qoibl"])
 def test_native_balance_preserves_answers(language):
     program = esolangs.generate(language, "0110", balance=True)
-    assert esolangs.evaluate(language, program, inputs=2) == "0110"
+    assert _evaluate(language, program, inputs=2) == "0110"
 
 
 def test_qoibl_affine_row_envelope_minima():
@@ -852,7 +838,7 @@ def test_alight_planned_layouts_render_and_execute():
 
     for plan in _plans(2):
         program = _emit("0110", 2, plan)
-        assert esolangs.evaluate("Alight", program, inputs=2) == "0110"
+        assert _evaluate("Alight", program, inputs=2) == "0110"
 
 
 def test_alight_model_drift_aborts(monkeypatch):

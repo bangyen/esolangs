@@ -1,12 +1,12 @@
 """Evaluation and discovery use the same specification choices as execution."""
 
 import json
-from unittest.mock import patch
 
 import pytest
 
 import esolangs
 from esolangs import DialectSettings
+from esolangs._evaluate import _evaluate, _iter_evaluate
 from tests.cli_support import call_both
 from tests.test_public_dialects import CASES, Unreadable
 
@@ -16,18 +16,21 @@ from tests.test_public_dialects import CASES, Unreadable
 def test_evaluation_keeps_generation_settings(language, settings):
     table = "0110"
     program = esolangs.generate(language, table, settings=settings)
-    assert esolangs.evaluate(language, program, inputs=2, settings=settings) == table
+    assert _evaluate(language, program, inputs=2, settings=settings) == table
     assert (
         "".join(
-            esolangs.iter_evaluate(
+            _iter_evaluate(
                 language, program, inputs=2, settings=settings, isolated=True
             )
         )
         == table
     )
     bound = esolangs.Language(language)
-    assert bound.evaluate(program, inputs=2, settings=settings) == table
-    assert "".join(bound.iter_evaluate(program, inputs=2, settings=settings)) == table
+    assert _evaluate(bound.name, program, inputs=2, settings=settings) == table
+    assert (
+        "".join(_iter_evaluate(bound.name, program, inputs=2, settings=settings))
+        == table
+    )
 
 
 @pytest.mark.parametrize("isolated", [False, True])
@@ -42,7 +45,7 @@ def test_evaluation_keeps_generation_settings(language, settings):
 def test_evaluation_refuses_settings_before_source_reads(
     language, settings, streaming, isolated
 ):
-    runner = esolangs.iter_evaluate if streaming else esolangs.evaluate
+    runner = _iter_evaluate if streaming else _evaluate
     with pytest.raises(esolangs.ArgumentError):
         list(
             runner(
@@ -56,7 +59,7 @@ def test_evaluation_refuses_settings_before_source_reads(
 def test_empty_settings_survive_termination_evaluation(isolated):
     source = esolangs.generate("123", "01")
     assert (
-        esolangs.evaluate(
+        _evaluate(
             "123", source, inputs=1, settings=DialectSettings(), isolated=isolated
         )
         == "01"
@@ -90,28 +93,6 @@ def test_metadata_is_a_fresh_copy():
     info["integer_conversion"]["default"] = "after_each_letter"
     again = esolangs.describe("Grapheme")["dialect_settings"]
     assert again["integer_conversion"]["default"] == "between_letters"
-
-
-def test_cli_evaluation_rejects_settings_before_io(capsys):
-    with (
-        patch(
-            "esolangs.cli_round_trip._read_program", side_effect=AssertionError("read")
-        ),
-        pytest.raises(SystemExit) as caught,
-    ):
-        call_both(
-            [
-                "evaluate",
-                "--settings",
-                '{"boundary":"wrap"}',
-                "--inputs",
-                "1",
-                "Brainfuck",
-                "missing",
-            ],
-            capsys,
-        )
-    assert caught.value.code == 2
 
 
 def test_cli_json_describes_dialect_choices(capsys):

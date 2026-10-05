@@ -1,7 +1,8 @@
-"""Generate programs, run source, evaluate truth tables, and describe languages.
+"""Generate programs, run supplied source, and describe languages.
 
-``generate`` builds source; ``instantiate`` fills templates; ``run`` executes;
-``evaluate`` returns a table; ``iter_evaluate`` streams it.
+``generate`` builds source; ``instantiate`` fills templates; ``run`` executes
+caller-supplied source.  Boolean evaluation is private certification
+machinery, not public API.
 ``encode_inputs`` and ``read_answer`` handle rows.
 ``dump_program`` and ``load_program`` preserve source provenance in portable JSON.
 ``check_program`` and ``check_stdin`` validate; ``describe`` and ``list_languages``
@@ -29,7 +30,7 @@ from esolangs._describe import (
     describe,
     list_languages,
 )
-from esolangs._evaluate import _DEFAULT, _Default, evaluate, iter_evaluate
+from esolangs._evaluate import _DEFAULT, _Default
 from esolangs._execution import (
     check_signal_timeout,
     interpreter_errors,
@@ -143,10 +144,8 @@ __all__ = [
     "describe",
     "dump_program",
     "encode_inputs",
-    "evaluate",
     "generate",
     "instantiate",
-    "iter_evaluate",
     "list_languages",
     "load_program",
     "read_answer",
@@ -773,9 +772,7 @@ def run(
         "off it, either bound the run cooperatively with "
         "esolangs.debugger.make_debugger(language, program, stdin)"
         ".run(timeout=...), "
-        "which steps and so needs no signal, or use evaluate "
-        "with timeout=None -- they settle a diverging row by proving "
-        "the loop rather than waiting for it",
+        "which steps and so needs no signal",
     )
     name = resolve(language)
     program = check_program(name, program, stdin)

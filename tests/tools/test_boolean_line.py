@@ -21,6 +21,7 @@ from pathlib import Path
 
 import pytest
 
+from esolangs._evaluate import _evaluate
 from esolangs.interpreters.tape_based.line.extract import extract
 from esolangs.interpreters.tape_based.line.simulate import (
     IO,
@@ -246,7 +247,7 @@ def test_line_generator_entry_points() -> None:
     from esolangs.tools.line import line as generate
 
     source = generate("01", scale=2)
-    assert esolangs.evaluate("Line", source, inputs=1) == "01"
+    assert _evaluate("Line", source, inputs=1) == "01"
     balanced = balance("01", generate("01"))
     assert balanced.to_png() == esolangs.generate("Line", "01", balance=True).to_png()
-    assert esolangs.evaluate("Line", balanced.to_png(), inputs=1) == "01"
+    assert _evaluate("Line", balanced.to_png(), inputs=1) == "01"

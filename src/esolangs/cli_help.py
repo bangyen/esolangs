@@ -35,12 +35,6 @@ commands:
                               without running anything
   read-answer <language>      read a program's output on stdin and print
                               the answer bit it carries
-  evaluate [--timeout S] [--total-timeout S] [--max-rows N]
-           [--max-output N] [--max-memory BYTES] [--inputs N | --table T]
-           [--settings JSON] [--set KEY=VALUE] [--portable]
-           <language> <program-file>
-                              run every input row and print the observed
-                              table; --table also checks the expected result
   debug [--steps N] [--timeout S] [--watch-cell I] [--stdin S] [--tui]
         [--break-at N] [--break-on-cell I=V] [--break-on-output S]
         [--table T] [--settings JSON] [--set KEY=VALUE] [--portable]
@@ -66,7 +60,6 @@ examples:
   esolangs generate --bits 10 Minifuck 0110
   esolangs run Circlefuck hello.txt
   esolangs generate Fargo 10010110 > fargo.txt
-  esolangs evaluate --table 10010110 Fargo fargo.txt
   esolangs encode LaserFuck 10 | esolangs run --judge LaserFuck prog.txt
   esolangs debug --steps 20 --watch-cell 0 brainfuck prog.txt
 """
@@ -110,6 +103,9 @@ prints the encoding.
 
 A language whose generator embeds the inputs in the program reads no stdin
 at all; `esolangs generate --bits` builds those.
+
+example:
+  esolangs encode brainfuck 10 -> 10
 """,
     "list": """usage: esolangs list [--details] [--json]
 
@@ -237,41 +233,6 @@ examples:
   printf '1\n0\n' | esolangs run --judge --timeout 5 brainfuck prog.txt
   esolangs generate --portable --set expression_syntax=postfix Alight 0110 > p.json
   esolangs encode Alight 10 | esolangs run --portable --judge --table 0110 p.json
-""",
-    "evaluate": """usage: esolangs evaluate [--timeout S] [--total-timeout S]
-                          [--max-rows N] [--max-output N] [--max-memory BYTES]
-                          [--inputs N | --table T] [--settings JSON]
-                          [--set KEY=VALUE] [--portable]
-                          <language> <program-file>
-
-Run the supplied program on every Boolean input row and print its observed
-truth table. No program is generated. Text, PNG sources, and parameterized
-templates are supported; templates are filled separately for every row.
-
-options:
-  --max-memory BYTES cap Linux worker address space per row; implies isolation.
-  --inputs N        enumerate N inputs, from 1 to 64, MSB first.
-  -t, --table TABLE     infer the input count and compare the observed table with
-                     TABLE. Exits 1 on mismatch and names the differing rows.
-                     Mutually exclusive with --inputs; one is required.
-  --timeout SECONDS  bound each row. Defaults to 30 seconds, or 5 for
-                     termination answers. Repeated states prove divergence;
-                     the deadline is a backstop for growth, not an answer.
-  --total-timeout S  bound the whole evaluation in seconds.
-  --max-rows N       refuse larger tables; defaults to 1,048,576 rows.
-  --max-output N     cap each row in Unicode characters; enables isolation.
-  -p, --portable         load JSON saved by generate --portable.  The language
-                     may be omitted because the JSON names it.
-                     --settings overrides individual saved choices.
-  -s, --settings JSON    dialect overrides shared with generate and run.
-  --set KEY=VALUE    one dialect override without JSON, repeatable and applied
-                     after --settings.
-
-examples:
-  esolangs evaluate --inputs 2 brainfuck program.txt
-  esolangs evaluate --table 0110 brainfuck program.txt -> 0110
-  esolangs generate --portable --set expression_syntax=postfix Alight 0110 > p.json
-  esolangs evaluate --portable --table 0110 p.json
 """,
     "check-stdin": """usage: esolangs check-stdin [--table T] <language>
 

@@ -29,9 +29,8 @@ is the program's own failure (it read past its input, halted on an invalid
 operation, was a template), and **124** is a run stopped by ``--timeout``,
 after timeout(1) -- from every command that takes one, not only ``run`` and
 ``debug``.  That last one used to be 1 as well, which left the three
-languages whose answer *is* a timeout indistinguishable from a crash, and
-then stayed 1 in ``evaluate`` and ``answer`` after the other
-two were fixed, which left a script unable to use one code for the event.  Only
+languages whose answer *is* a timeout indistinguishable from a crash.
+Only
 an unexpected error still reaches the terminal as a traceback, which is what
 a traceback should mean.
 """
@@ -85,7 +84,6 @@ from esolangs.cli_hints import (
 from esolangs.cli_io import (
     _read_stdin,
 )
-from esolangs.cli_round_trip import _evaluate
 from esolangs.cli_run import _run
 from esolangs.cli_suggest import _suggest
 from esolangs.exceptions import (
@@ -504,7 +502,6 @@ def _dispatch() -> None:
         "suggest": _suggest,
         "read-answer": _read_answer,
         "check-stdin": _check_stdin,
-        "evaluate": _evaluate,
         "debug": _debug,
     }[cmd](rest)
 

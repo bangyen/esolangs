@@ -40,7 +40,6 @@ _ARGUMENTS = {
     "describe": ("<language>",),
     "read-answer": ("<language>",),
     "check-stdin": ("<language>",),
-    "evaluate": ("<language>", "<program-file>"),
 }
 
 
@@ -60,11 +59,8 @@ _VALUE_OPTIONS = {
     "--settings",
     "--set",
     "--timeout",
-    "--total-timeout",
-    "--max-rows",
     "--max-output",
     "--max-memory",
-    "--inputs",
     "--table",
     "--seed",
     "--steps",

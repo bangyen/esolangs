@@ -50,8 +50,14 @@ def test_short_settings_and_portable_flags(capsys, tmp_path):
     assert json.loads(output)["language"] == "Alight"
     path = tmp_path / "program.json"
     path.write_text(output, encoding="utf-8")
-    output, error = call_both(["evaluate", "-p", "-t", "0110", str(path)], capsys)
-    assert (output, error) == ("0110\n", "")
+    output, error = call_both(["generate", "-p", "brainfuck", "0110"], capsys)
+    assert error == ""
+    path.write_text(output, encoding="utf-8")
+    stdin = esolangs.encode_inputs("brainfuck", [1, 0], "0110")
+    output, error = call_both(
+        ["run", "-p", "-t", "0110", "--judge", str(path)], capsys, stdin
+    )
+    assert (output, error) == ("1\n", "")
 
 
 def test_unknown_settings_key_suggests_the_fix(capsys):
@@ -72,17 +78,13 @@ def test_unknown_settings_key_suggests_the_fix(capsys):
     assert "Alight accepts: expression_syntax" in error
 
 
-@pytest.mark.parametrize("command", ["run", "evaluate", "debug"])
+@pytest.mark.parametrize("command", ["run", "debug"])
 def test_portable_language_can_be_omitted(command, capsys, tmp_path):
     path = _portable(tmp_path)
     stdin = esolangs.encode_inputs("brainfuck", [1, 0], "0110")
     if command == "run":
         args = ["run", "--portable", "--judge", "--table", "0110", str(path)]
         expected = "1\n"
-    elif command == "evaluate":
-        args = ["evaluate", "--portable", "--table", "0110", str(path)]
-        expected = "0110\n"
-        stdin = ""
     else:
         args = ["debug", "--portable", "--steps", "100000", str(path)]
         expected = "halted: yes"

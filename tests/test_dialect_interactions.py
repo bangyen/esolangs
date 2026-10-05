@@ -4,6 +4,7 @@ import pytest
 
 import esolangs
 from esolangs import DialectSettings
+from esolangs._evaluate import _evaluate
 
 
 @pytest.mark.medium
@@ -23,6 +24,4 @@ def test_postfix_chunk_boundaries_across_sizes(inputs, layout):
     settings = DialectSettings(expression_syntax="postfix")
     options = {"balance": True} if layout == "balanced" else {"width": layout}
     source = esolangs.generate("Alight", table, settings=settings, **options)
-    assert (
-        esolangs.evaluate("Alight", source, inputs=inputs, settings=settings) == table
-    )
+    assert _evaluate("Alight", source, inputs=inputs, settings=settings) == table

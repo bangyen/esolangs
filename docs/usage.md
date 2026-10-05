@@ -2,18 +2,21 @@
 
 The API handles language I/O conventions using [`describe`](#describe) metadata.
 
-## Evaluate a program
+## Run a program
 
-`evaluate` returns the observed table for a supplied program and input count:
+Generate a program, feed one row, and read its answer bit:
 
 ```python
 import esolangs
 
 program = esolangs.generate("A Painter Ant", "0110")
-esolangs.evaluate("A Painter Ant", program, inputs=2)  # -> '0110'
+stdin = esolangs.encode_inputs("A Painter Ant", [0, 1])
+output = esolangs.run("A Painter Ant", program, stdin)
+assert esolangs.read_answer("A Painter Ant", output) == "1"
 ```
 
-It handles input formats, templates and termination answers.
+Boolean evaluation over every row is private certification machinery, not
+public API.
 
 ## Work with one language
 
@@ -22,7 +25,6 @@ It handles input formats, templates and termination answers.
 ```python
 bf = esolangs.Language("brainfuck")
 program = bf.generate("0110", balance=True)
-assert bf.evaluate(program, inputs=2) == "0110"
 output = bf.run(program, bf.encode_inputs([0, 1]))
 assert bf.read_answer(output) == "1"
 info = bf.describe()
@@ -55,7 +57,6 @@ program = esolangs.generate("brainfuck", table)
 stdin = esolangs.encode_inputs("brainfuck", [0, 1])
 output = esolangs.run("brainfuck", program, stdin)
 assert esolangs.read_answer("brainfuck", output) == "1"
-assert esolangs.evaluate("brainfuck", program, inputs=2) == table
 ```
 
 Some languages embed inputs in their source instead:
@@ -73,7 +74,8 @@ Raster languages return an image source:
 raster = esolangs.generate("Piet", table)
 assert isinstance(raster, esolangs.Raster)
 raster.to_png()
-assert esolangs.evaluate("Piet", raster, inputs=2) == table
+stdin = esolangs.encode_inputs("Piet", [0, 1])
+assert esolangs.read_answer("Piet", esolangs.run("Piet", raster, stdin)) == "1"
 ```
 
 To step through a text program and inspect its state:
@@ -117,10 +119,8 @@ measured row to answer correctly.
 - `esolangs.describe` -- return a structured description of `language`
 - `esolangs.dump_program` -- return version-1 JSON preserving source, choices, and template setters
 - `esolangs.encode_inputs` -- return the stdin that feeds `bits` to a `language` program
-- `esolangs.evaluate` -- return the table computed over `inputs` bits, collecting iter_evaluate
 - `esolangs.generate` -- return a program in `language` computing `truth_table`
 - `esolangs.instantiate` -- fill a parameterized generator's template with `bits`
-- `esolangs.iter_evaluate` -- yield answer bits in MSB-first row order without retaining the table
 - `esolangs.list_languages` -- return the supported language names, sorted
 - `esolangs.load_program` -- restore version-1 JSON as tagged source for the requested language
 - `esolangs.read_answer` -- return the answer bit a `language` program's `output` carries
@@ -204,17 +204,11 @@ including the 15 languages that ignore width because newlines are semantic.
 `run(language, program, stdin, isolated=True, timeout=30)` bounds subprocess startup,
 loading and execution on Windows and worker threads. Timeout kills and reaps
 the child; errors retain their class and `partial_output`.
-`evaluate(..., isolated=True)` applies a finite
-deadline per row; a timeout remains undecided, including termination answers.
 `max_memory=BYTES` bounds a Linux isolated worker's virtual address space,
 including Python overhead. `run` requires `isolated=True`; CLI
-`evaluate --max-memory BYTES` enables isolation. Other platforms refuse the
+`run --isolated --max-memory BYTES` bounds the worker. Other platforms refuse the
 option. Parent source loading is outside the cap; exhaustion raises
 `InterpreterLimitError`, never a Boolean answer.
-
-`evaluate(..., isolated=True, max_output=N)` caps each row in Unicode characters;
-CLI `evaluate --max-output N` enables isolation. Overflow raises
-`InterpreterLimitError` with partial output and the failing row.
 
 `run(language, program, stdin, max_steps=100_000, timeout=1)`
 returns output on halt and raises `ExecutionTimeoutError` with

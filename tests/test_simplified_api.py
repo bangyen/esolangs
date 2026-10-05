@@ -6,6 +6,7 @@ import pytest
 
 import esolangs
 from esolangs import debugger
+from esolangs._evaluate import _evaluate
 
 
 @pytest.mark.parametrize(
@@ -32,7 +33,7 @@ def test_evaluate_loads_source_once_from_path(language, tmp_path):
         path.write_bytes(program.to_png())
     else:
         path.write_text(program + "\n", encoding="utf-8")
-    assert esolangs.evaluate(language, path, inputs=2) == "0110"
+    assert _evaluate(language, path, inputs=2) == "0110"
 
 
 def test_isolated_execution_loads_a_path_in_worker_thread(tmp_path):

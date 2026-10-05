@@ -6,6 +6,7 @@ import pytest
 
 import esolangs
 from esolangs import DialectSettings, Raster
+from esolangs._evaluate import _evaluate
 from esolangs.tagged import _Tagged, _Template
 from tests.test_public_dialects import CASES
 
@@ -27,7 +28,7 @@ def test_disk_round_trip_executes_every_row(tmp_path, language, settings, balanc
     if isinstance(source, _Template):
         assert restored.char == source.char
         assert restored.setters == source.setters
-    assert esolangs.evaluate(language, restored, inputs=2) == "0110"
+    assert _evaluate(language, restored, inputs=2) == "0110"
 
 
 @pytest.mark.medium
@@ -35,7 +36,7 @@ def test_disk_round_trip_executes_every_row(tmp_path, language, settings, balanc
 def test_restored_isolated_execution(language):
     source = esolangs.generate(language, "01", settings=dict(CASES)[language])
     restored = esolangs.load_program(language, esolangs.dump_program(language, source))
-    assert esolangs.evaluate(language, restored, inputs=1, isolated=True) == "01"
+    assert _evaluate(language, restored, inputs=1, isolated=True) == "01"
 
 
 @pytest.mark.medium
@@ -97,7 +98,7 @@ def test_raw_png_round_trip_executes(scale):
         "Line", esolangs.dump_program("Line", raw, settings=settings)
     )
     assert restored.rows == source.rows
-    assert esolangs.evaluate("Line", restored, inputs=1) == "01"
+    assert _evaluate("Line", restored, inputs=1) == "01"
 
 
 @pytest.mark.medium
@@ -216,7 +217,7 @@ def test_bound_language_round_trip():
     source = language.generate("0110", settings=DialectSettings())
     document = language.dump_program(source)
     restored = language.load_program(document)
-    assert language.evaluate(restored, inputs=2) == "0110"
+    assert _evaluate(language.name, restored, inputs=2) == "0110"
     filled = language.instantiate(source, [1, 0])
     document = language.dump_program(filled, settings=DialectSettings())
     assert language.run(language.load_program(document)) == "1"

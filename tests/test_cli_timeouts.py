@@ -23,8 +23,8 @@ from tests.test_cli import _program, call_main
 class TestATimeoutHasOneExitCode:
     """124 wherever the bound runs out, not two codes for one event.
 
-    ``run`` and ``debug`` exited 124 and ``evaluate`` exited 1 on the
-    same event, so a script could not test for it -- and 124 is the only
+    ``run`` and ``debug`` exit 124 on the same event, so a script can test
+    for it -- and 124 is the only
     exit code this CLI documents a meaning for.  The four languages whose
     answer *is* a timeout make the distinction load-bearing rather than
     tidy.
@@ -40,18 +40,7 @@ class TestATimeoutHasOneExitCode:
         path = tmp_path / "loop.bf"
         path.write_text("+[]")
         with pytest.raises(SystemExit) as exc:
-            call_main(
-                [
-                    "evaluate",
-                    "--timeout",
-                    "0.001",
-                    "--inputs",
-                    "1",
-                    "brainfuck",
-                    str(path),
-                ],
-                capsys,
-            )
+            call_main(["run", "--timeout", "0.001", "brainfuck", str(path)], capsys)
         assert exc.value.code == 124
         capsys.readouterr()
 
@@ -61,7 +50,7 @@ class TestATimeoutHasOneExitCode:
     ) -> None:
         """The other two codes are unchanged, so 124 narrowed only the timeout."""
         with pytest.raises(SystemExit) as exc:
-            call_main(["evaluate", "brainfuck", "011"], capsys)
+            call_main(["run", "brainfuck"], capsys)
         assert exc.value.code == 2
         capsys.readouterr()
         path = tmp_path / "p.txt"
@@ -385,12 +374,6 @@ class TestTheTimeoutIsABackstopNotAPerRowCost:
             f"{language} took {elapsed:.1f}s for {ones} 1-rows at a 30s bound, "
             f"so the bound is being waited out rather than proved"
         )
-
-    def test_the_help_no_longer_says_it_is_paid(self) -> None:
-        """The specific retired sentence, so a fourth copy cannot creep back."""
-        help_text = HELP["evaluate"]
-        assert "pay this on every" not in help_text
-        assert "backstop" in help_text
 
 
 class TestEvaluationProvesRatherThanWaits:

@@ -5,6 +5,7 @@ import itertools
 import pytest
 
 import esolangs
+from esolangs._evaluate import _evaluate
 from esolangs.raster import Raster, png
 from esolangs.tools.line import line_boolean
 from esolangs.tools.line.render import Node, render
@@ -43,7 +44,7 @@ def test_piet_balance_matches_rendered_width_oracle(table: str) -> None:
     assert isinstance(balanced, Raster)
     assert score(balanced) == min(score(image) for image in candidates)
     assert (
-        esolangs.evaluate(
+        _evaluate(
             "Piet",
             Raster.from_png(balanced.to_png()),
             inputs=len(table).bit_length() - 1,
@@ -94,7 +95,7 @@ def test_line_balance_matches_rendered_orders(table: str) -> None:
     assert score(image) == expected
     assert score(image)[1] <= min(previous)[1]
     assert (
-        esolangs.evaluate(
+        _evaluate(
             "Line", Raster.from_png(image.to_png()), inputs=len(table).bit_length() - 1
         )
         == table
@@ -152,9 +153,7 @@ def test_piet_keeps_an_already_better_layout() -> None:
     source = esolangs.generate("Piet", "0001", balance=True)
     assert isinstance(source, Raster)
     assert balance("0001", source) is source
-    assert (
-        esolangs.evaluate("Piet", Raster.from_png(source.to_png()), inputs=2) == "0001"
-    )
+    assert _evaluate("Piet", Raster.from_png(source.to_png()), inputs=2) == "0001"
 
 
 def test_line_fast_path_avoids_subtree_walks(monkeypatch: pytest.MonkeyPatch) -> None:

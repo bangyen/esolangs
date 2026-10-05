@@ -43,16 +43,12 @@ The Polynomial interpreter needs the optional mathematics extra:
 ```python
 import esolangs
 
-program = esolangs.generate("Fargo", "10010110")
-esolangs.evaluate("Fargo", program, timeout=None, inputs=3)  # -> '10010110'
+program = esolangs.generate("brainfuck", "0110")
+stdin = esolangs.encode_inputs("brainfuck", [0, 1])
+assert esolangs.read_answer("brainfuck", esolangs.run("brainfuck", program, stdin)) == "1"
 ```
 
-Compare the result with the expected table, or use CLI `evaluate --table TABLE`.
-Termination answers require a proved halt or cycle; a timeout raises
-`ExecutionTimeoutError`.
 Use `isolated=True` for a bounded run on Windows or worker threads.
-The default in-process row timeout requires a Unix main thread;
-`timeout=None` disables that bound.
 
 Use the intended language: Suffolk source may run as brainfuck with a wrong
 answer. Use

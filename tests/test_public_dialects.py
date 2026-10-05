@@ -9,6 +9,7 @@ import pytest
 
 import esolangs
 from esolangs import DialectSettings
+from esolangs._evaluate import _evaluate
 from esolangs.debugger import make_debugger
 from esolangs.vm import complete_vm, make_vm
 from tests.cli_support import call_both
@@ -125,7 +126,7 @@ def test_settings_require_the_public_object():
 def test_balanced_settings_compute_every_row(language, settings):
     table = "0110"
     program = esolangs.generate(language, table, balance=True, settings=settings)
-    assert esolangs.evaluate(language, program, inputs=2, settings=settings) == table
+    assert _evaluate(language, program, inputs=2, settings=settings) == table
 
 
 @pytest.mark.parametrize("inputs", [1, 3, 6])
@@ -133,9 +134,7 @@ def test_balanced_postfix_chunks_execute(inputs):
     table = "01" * (1 << (inputs - 1))
     settings = DialectSettings(expression_syntax="postfix")
     program = esolangs.generate("Alight", table, balance=True, settings=settings)
-    assert (
-        esolangs.evaluate("Alight", program, inputs=inputs, settings=settings) == table
-    )
+    assert _evaluate("Alight", program, inputs=inputs, settings=settings) == table
 
 
 @pytest.mark.medium

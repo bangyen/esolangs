@@ -4,6 +4,7 @@ import pytest
 
 import esolangs
 from esolangs import DialectSettings
+from esolangs._evaluate import _evaluate
 from esolangs._grapheme import GraphemeDialect
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.stack_based.grapheme import _Machine, run
@@ -125,7 +126,7 @@ def test_generated_corpus(mode):
                 source = esolangs.generate(
                     "Grapheme", table, settings=settings, balance=balance
                 )
-                assert esolangs.evaluate("Grapheme", source, inputs=n) == table
+                assert _evaluate("Grapheme", source, inputs=n) == table
 
 
 @pytest.mark.medium
@@ -136,7 +137,7 @@ def test_prose_conversion_at_six_inputs():
         table,
         settings=DialectSettings(integer_conversion="after_each_letter"),
     )
-    assert esolangs.evaluate("Grapheme", source, inputs=6) == table
+    assert _evaluate("Grapheme", source, inputs=6) == table
 
 
 @pytest.mark.medium
@@ -175,10 +176,8 @@ def test_cli_portable_settings(tmp_path, capsys):
     )
     path = tmp_path / "grapheme.json"
     path.write_text(document)
-    output, _ = call_both(
-        ["evaluate", "--portable", "--inputs", "2", "Grapheme", str(path)], capsys
-    )
-    assert output.strip() == "0110"
+    restored = esolangs.load_program("Grapheme", path.read_text())
+    assert _evaluate("Grapheme", restored, inputs=2) == "0110"
 
 
 def test_metadata():

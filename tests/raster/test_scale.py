@@ -3,6 +3,7 @@
 import pytest
 
 import esolangs
+from esolangs._evaluate import _evaluate
 from esolangs.exceptions import ArgumentError, ProgramError
 from esolangs.interpreters.tape_based.line.extract import detect_scale as line_scale
 from esolangs.interpreters.tape_based.line.mask import Mask
@@ -22,7 +23,7 @@ def test_piet_scaled_png_computes_every_row(scale: int, *, balanced: bool) -> No
     assert len(enlarged.rows) == len(native.rows) * scale
     decoded = Raster.from_png(enlarged.to_png())
     assert detect_scale(decoded.rows) == scale
-    assert language.evaluate(decoded, inputs=2) == "0001"
+    assert _evaluate(language.name, decoded, inputs=2) == "0001"
     assert language.run(decoded, "1\n1\n", scale=scale) == "1"
 
 
@@ -81,7 +82,7 @@ def test_scale_validation_and_uniformity() -> None:
     with pytest.raises(ArgumentError, match="raster"):
         esolangs.run("Brainfuck", "+.", scale=1)
     with pytest.raises(ArgumentError, match="raster"):
-        esolangs.evaluate("Brainfuck", "+.", inputs=1, scale=1)
+        _evaluate("Brainfuck", "+.", inputs=1, scale=1)
     with pytest.raises(ProgramError, match="uniform"):
         esolangs.run("Line", image, scale=2)
 
@@ -162,8 +163,8 @@ def test_explicit_scale_validates_lazy_line_pixels() -> None:
 @pytest.mark.medium
 def test_explicit_scale_evaluation_including_isolation() -> None:
     source = esolangs.generate("Piet", "0001", scale=2)
-    assert esolangs.evaluate("Piet", source, inputs=2, scale=2) == "0001"
-    assert esolangs.evaluate("Piet", source, inputs=2, scale=2, isolated=True) == "0001"
+    assert _evaluate("Piet", source, inputs=2, scale=2) == "0001"
+    assert _evaluate("Piet", source, inputs=2, scale=2, isolated=True) == "0001"
 
 
 def test_partial_blank_line_scale_group_is_allowed() -> None:

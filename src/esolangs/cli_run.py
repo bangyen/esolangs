@@ -26,7 +26,6 @@ from esolangs.cli_args import (
 from esolangs.cli_hints import (
     _TIMEOUT_EXIT,
     _UNCOUNTABLE_SHAPES,
-    _as_argument,
     _exit_code,
     _shape_warning,
     _stdin_hint,
@@ -187,9 +186,7 @@ def _run(rest: list[str]) -> None:
         )
         _fail(
             f"{name} reads {reads}, so the bit count cannot be checked from "
-            f"stdin alone -- pass --table <truth-table> with --judge, or "
-            f"check a saved program with: esolangs evaluate --table "
-            f"<truth-table> {_as_argument(name)} <program-file>"
+            f"stdin alone -- pass --table <truth-table> with --judge"
         )
     try:
         with (

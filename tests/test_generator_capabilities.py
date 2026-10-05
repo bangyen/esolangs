@@ -5,6 +5,7 @@ import json
 import pytest
 
 import esolangs
+from esolangs._evaluate import _evaluate
 from tests.test_cli import call_main
 
 
@@ -18,7 +19,7 @@ def test_declared_arity_cap_is_enforced(name, cap):
 @pytest.mark.medium
 @pytest.mark.parametrize("name", ["Befunge", "Malbolge", "6-5", "Polynomial"])
 def test_restricted_generators_have_executed_positive_controls(name):
-    assert esolangs.evaluate(name, esolangs.generate(name, "0110"), inputs=2) == "0110"
+    assert _evaluate(name, esolangs.generate(name, "0110"), inputs=2) == "0110"
 
 
 def test_internal_route_budget_is_not_a_generator_restriction():

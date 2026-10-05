@@ -9,6 +9,7 @@ from typing import Any
 import pytest
 
 import esolangs
+from esolangs._evaluate import _evaluate
 from esolangs.debugger import make_debugger
 from esolangs.registry import LANGUAGES, SourceKind
 
@@ -50,7 +51,7 @@ def test_streams_work_with_bound_api_debugging_and_evaluation(language: str) -> 
     data = (
         program.to_png() if isinstance(program, esolangs.Raster) else program.encode()
     )
-    assert api.evaluate(io.BytesIO(data), inputs=1) == "01"
+    assert _evaluate(api.name, io.BytesIO(data), inputs=1) == "01"
     debugger = make_debugger(language, io.BytesIO(data), io.StringIO("1"))
     assert debugger.run(max_steps=10000) == "halted"
     assert debugger.output == "1"

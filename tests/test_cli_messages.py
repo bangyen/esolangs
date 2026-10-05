@@ -284,11 +284,6 @@ class TestTheAdvisoryNotesAreRenderedOnce:
         )
         assert "did not exist yet" in out
 
-    def test_evaluate_says_it_runs_a_supplied_program(self) -> None:
-        """So nobody mistakes it for a checker of a file they wrote."""
-        assert "supplied program" in cli.HELP["evaluate"]
-        assert "No program is generated" in cli.HELP["evaluate"]
-
 
 class TestAMultiWordNameSuggestsQuoting:
     """`describe A Painter Ant` blamed the third word."""
