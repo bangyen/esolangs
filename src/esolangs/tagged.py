@@ -22,7 +22,7 @@ __all__ = ["_Tagged", "_Template"]
 class _Tagged(str):
     """A generated program, tagged with the language it is written in.
 
-    :func:`check_program` -- shared by :func:`run` and
+    :func:`_check_program` -- shared by :func:`run` and
     :func:`~esolangs.vm.make_vm` -- refuses it under any other language,
     since a permissive interpreter reads foreign text as no-ops and answers
     plausibly and wrongly.  A hand-written ``str`` is accepted unchecked;

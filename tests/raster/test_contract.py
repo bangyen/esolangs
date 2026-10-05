@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 import esolangs
+from esolangs import _check_program
 from esolangs._evaluate import _evaluate
 from esolangs.raster import Raster
 from esolangs.registry import LANGUAGES, SourceKind
@@ -97,7 +98,7 @@ def test_a_malformed_png_is_a_program_error(language: str, tmp_path: Path) -> No
     path = tmp_path / f"bad-{language.lower()}.png"
     path.write_bytes(truncated)
     with pytest.raises(esolangs.ProgramError):
-        esolangs.check_program(language, path)
+        _check_program(language, path)
 
 
 def test_raster_detaches_mutable_pixels() -> None:

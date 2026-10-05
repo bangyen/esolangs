@@ -5,6 +5,7 @@ import warnings
 import pytest
 
 import esolangs
+from esolangs._answers import _check_stdin
 from tests.generator_support import evaluate_generated
 
 
@@ -26,7 +27,7 @@ class TestTheStdinJudgeIsReachableFromPython:
             for table, bits in (("0110", [1, 0]), ("00010111", [1, 0, 1])):
                 stdin = esolangs.encode_inputs(name, bits, table)
                 try:
-                    esolangs.check_stdin(name, stdin, table)
+                    _check_stdin(name, stdin, table)
                 except esolangs.EsolangError as exc:
                     wrong.append(f"{name} n={len(bits)}: {exc}")
         assert not wrong, "\n".join(wrong)
@@ -34,7 +35,7 @@ class TestTheStdinJudgeIsReachableFromPython:
     def test_it_catches_the_wrong_alphabet(self) -> None:
         """0/1 lines into Grapheme, the sharpest edge in the package."""
         with pytest.raises(esolangs.ArgumentError, match="spells its bits"):
-            esolangs.check_stdin("Grapheme", "0\n1\n")
+            _check_stdin("Grapheme", "0\n1\n")
 
     @pytest.mark.parametrize("stdin", ["999", "abc", "   ", "%%%", "ZZZ"])
     def test_it_catches_the_wrong_alphabet_on_one_line_too(self, stdin: str) -> None:
@@ -48,11 +49,11 @@ class TestTheStdinJudgeIsReachableFromPython:
         either guard the documentation promises.
         """
         with pytest.raises(esolangs.ArgumentError, match="spells its bits"):
-            esolangs.check_stdin("Clockwise", stdin, "10010110")
+            _check_stdin("Clockwise", stdin, "10010110")
 
     def test_a_good_one_line_stdin_is_still_accepted(self) -> None:
         """A guard that refused the correct input would be worse."""
-        esolangs.check_stdin("Clockwise", "101", "10010110")
+        _check_stdin("Clockwise", "101", "10010110")
         assert evaluate_generated("Clockwise", "10010110", timeout=30) == "10010110"
 
     def test_the_run_path_warns_about_it_as_well(self) -> None:
@@ -69,17 +70,17 @@ class TestTheStdinJudgeIsReachableFromPython:
     def test_it_catches_a_surplus_line(self) -> None:
         """Six lines into a three-input program answered the first three."""
         with pytest.raises(esolangs.ArgumentError, match="reads 3 characters"):
-            esolangs.check_stdin("brainfuck", "110011", "00010111")
+            _check_stdin("brainfuck", "110011", "00010111")
 
     def test_it_catches_a_missing_line(self) -> None:
         """The direction that already errored at run time, now before it."""
         with pytest.raises(esolangs.ArgumentError, match="reads 3 characters"):
-            esolangs.check_stdin("brainfuck", "10", "00010111")
+            _check_stdin("brainfuck", "10", "00010111")
 
     def test_it_catches_an_out_of_range_row_index(self) -> None:
         """What `run` could not check, because it does not know the arity."""
         with pytest.raises(esolangs.ArgumentError, match="out of range"):
-            esolangs.check_stdin("Fargo", "8\n", "00010111")
+            _check_stdin("Fargo", "8\n", "00010111")
 
     def test_a_superscript_digit_is_refused_not_int_parsed(self) -> None:
         """``"\\u00b2".isdigit()`` is true, but ``int`` rejects it.
@@ -88,17 +89,17 @@ class TestTheStdinJudgeIsReachableFromPython:
         escaped as a bare ``ValueError``.
         """
         with pytest.raises(esolangs.ArgumentError, match="decimal row index"):
-            esolangs.check_stdin("Fargo", "\u00b2", "01")
+            _check_stdin("Fargo", "\u00b2", "01")
 
     def test_it_catches_taglates_pad(self) -> None:
         """Its odd input count costs an extra line, and the shape says so."""
-        esolangs.check_stdin(
+        _check_stdin(
             "Taglate",
             esolangs.encode_inputs("Taglate", [1, 0, 1], "00010111"),
             "00010111",
         )
         with pytest.raises(esolangs.ArgumentError):
-            esolangs.check_stdin("Taglate", "1\n0\n1\n", "00010111")
+            _check_stdin("Taglate", "1\n0\n1\n", "00010111")
 
     @pytest.mark.parametrize("language", ["thisthat", "Circuit Diagram", "Flowchart"])
     def test_whitespace_passes_where_the_reader_skips_it(self, language: str) -> None:
@@ -107,30 +108,30 @@ class TestTheStdinJudgeIsReachableFromPython:
         ``echo 01 | esolangs run --judge ...`` was refused for a trailing
         newline the plain run happily reads past.
         """
-        esolangs.check_stdin(language, "0 1\n", "0110")
+        _check_stdin(language, "0 1\n", "0110")
         with pytest.raises(esolangs.ArgumentError, match="unexpected character"):
-            esolangs.check_stdin(language, "0x1", "0110")
+            _check_stdin(language, "0x1", "0110")
         with pytest.raises(esolangs.ArgumentError, match="reads 2 characters"):
-            esolangs.check_stdin(language, "0 1 1", "0110")
+            _check_stdin(language, "0 1 1", "0110")
 
     def test_whitespace_still_counts_for_a_reader_that_reads_it(self) -> None:
         """brainfuck reads the space as a character, so it stays refused."""
         with pytest.raises(esolangs.ArgumentError, match="unexpected character"):
-            esolangs.check_stdin("brainfuck", "0 1", "0110")
+            _check_stdin("brainfuck", "0 1", "0110")
 
     def test_it_refuses_a_language_with_no_stdin(self) -> None:
         """A template language reads none, so there is nothing to judge."""
         with pytest.raises(esolangs.ArgumentError, match="reads no stdin"):
-            esolangs.check_stdin("Minifuck", "1\n0\n")
+            _check_stdin("Minifuck", "1\n0\n")
 
     def test_the_table_is_optional(self) -> None:
         """Shape and alphabet are checkable without knowing the arity."""
-        esolangs.check_stdin("brainfuck", "10")
+        _check_stdin("brainfuck", "10")
 
     def test_a_non_string_stdin_is_named(self) -> None:
         """A caller who passes the bit list itself, which is an easy slip."""
         with pytest.raises(esolangs.ArgumentError, match="stdin must be a string"):
-            esolangs.check_stdin("brainfuck", [1, 0], "0110")  # type: ignore[arg-type]
+            _check_stdin("brainfuck", [1, 0], "0110")  # type: ignore[arg-type]
 
     def test_a_one_line_language_has_its_bits_counted(self) -> None:
         """Clockwise's underfeed is a shorter string, not a missing line.
@@ -139,9 +140,9 @@ class TestTheStdinJudgeIsReachableFromPython:
         footgun list for three rounds -- but perfectly detectable *here*,
         because the table says how many bits that one line should hold.
         """
-        esolangs.check_stdin("Clockwise", "101", "00010111")
+        _check_stdin("Clockwise", "101", "00010111")
         with pytest.raises(esolangs.ArgumentError, match="reads 3 characters"):
-            esolangs.check_stdin("Clockwise", "10", "00010111")
+            _check_stdin("Clockwise", "10", "00010111")
 
 
 class TestRunSaysWhenStdinLooksWrong:
@@ -266,4 +267,4 @@ def test_numeric_or_line_input_count_is_checked_for_text_and_raster(
     facts = esolangs.describe(language)
     stdin = facts["input_encoding"][0] + "\n"
     with pytest.raises(esolangs.ArgumentError, match="reads 2 line"):
-        esolangs.check_stdin(language, stdin, "0110")
+        _check_stdin(language, stdin, "0110")

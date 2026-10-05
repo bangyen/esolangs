@@ -14,6 +14,7 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
+from esolangs._answers import _check_stdin
 from esolangs.cli import HELP
 from tests.cli_support import _LOOPS, call_both
 from tests.generator_support import evaluate_generated
@@ -352,7 +353,7 @@ class TestTheTableOptionIsUsedByPlainRun:
     def test_an_out_of_range_row_is_warned_about(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        """`check-stdin --table` refused this and `run --table` answered it."""
+        """The private stdin check refused this and `run --table` answered it."""
         path = tmp_path / "f.txt"
         path.write_text(esolangs.generate("Fargo", "0110"))
         out, err = call_both(
@@ -399,18 +400,15 @@ class TestTheTableOptionIsUsedByPlainRun:
     def test_the_three_routes_agree(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        """`check-stdin --table`, `run --judge --table` and `run --table`.
+        """`run --judge --table` and `run --table`.
 
-        They disagreed about the same stdin: two refused it and the third
+        They disagreed about the same stdin: one refused it and the other
         answered a row that does not exist.  They need not have the same
-        *severity* -- plain `run` warns by design -- but they must all
+        *severity* -- plain `run` warns by design -- but they must both
         notice.
         """
         path = tmp_path / "f.txt"
         path.write_text(esolangs.generate("Fargo", "0110"))
-        with pytest.raises(SystemExit):
-            call_main(["check-stdin", "--table", "0110", "Fargo"], capsys, stdin="9\n")
-        assert "out of range" in capsys.readouterr().err
         with pytest.raises(SystemExit):
             call_main(
                 ["run", "--judge", "--table", "0110", "Fargo", str(path)],
@@ -698,22 +696,22 @@ class TestALeadingZeroIndexNeverCrashes:
     def test_a_non_binary_leading_zero_is_refused_cleanly(self, value: str) -> None:
         """`int('02', 2)` raises, so the friendly message threw a traceback."""
         with pytest.raises(esolangs.ArgumentError, match="leading zero"):
-            esolangs.check_stdin("Fargo", f"{value}\n")
+            _check_stdin("Fargo", f"{value}\n")
 
     @pytest.mark.parametrize("value", ["00", "01", "010", "011"])
     def test_a_binary_one_still_offers_the_index(self, value: str) -> None:
         """The helpful half must survive the fix to the crashing half."""
         with pytest.raises(esolangs.ArgumentError, match="if those are the input bits"):
-            esolangs.check_stdin("Fargo", f"{value}\n")
+            _check_stdin("Fargo", f"{value}\n")
 
     def test_the_suggested_index_is_right(self) -> None:
         """`010` as bits is row 2, and the message says so."""
         with pytest.raises(esolangs.ArgumentError, match="the index is 2"):
-            esolangs.check_stdin("Fargo", "010\n")
+            _check_stdin("Fargo", "010\n")
 
     def test_a_large_binary_index_is_refused_without_rendering_it(self) -> None:
         with pytest.raises(esolangs.ArgumentError, match="15001 input bits") as caught:
-            esolangs.check_stdin("Fargo", "0" + "1" * 15000)
+            _check_stdin("Fargo", "0" + "1" * 15000)
         assert "leading zero" in str(caught.value)
         assert len(str(caught.value)) < 200
 

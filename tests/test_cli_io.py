@@ -13,7 +13,8 @@ from unittest.mock import patch
 import pytest
 
 import esolangs
-from esolangs.cli import HELP, main
+from esolangs._answers import _check_stdin
+from esolangs.cli import main
 from esolangs.cli_args import _table_of
 from esolangs.cli_hints import _shape_warning
 from esolangs.cli_io import (
@@ -669,72 +670,25 @@ class TestProgramFilesLoad:
         assert out
 
 
-class TestCheckStdinIsASubcommand:
-    """The judge, usable without spending a run."""
-
-    def test_it_accepts_a_correct_encoding(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """Silence and exit 0."""
-        out, err = call_both(
-            ["check-stdin", "Grapheme"],
-            capsys,
-            stdin=esolangs.encode_inputs("Grapheme", [1, 0]),
-        )
-        assert out == ""
-        assert err == ""
-
-    def test_it_refuses_a_wrong_count_with_a_table(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """The arity check, reachable without running a program."""
-        with pytest.raises(SystemExit) as exc:
-            call_main(
-                ["check-stdin", "--table", "0110", "brainfuck"],
-                capsys,
-                stdin="101",
-            )
-        assert exc.value.code == 2
-        assert "reads 2 characters" in capsys.readouterr().err
-
-    def test_it_reports_an_unknown_language_before_reading(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """Resolved first, so a bad name does not wait on input either."""
-        with pytest.raises(SystemExit) as exc:
-            call_main(["check-stdin", "NotALang"], capsys, stdin="1\n")
-        assert exc.value.code == 2
-        assert "unknown language" in capsys.readouterr().err
-
-    def test_it_is_suggested_on_a_typo(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """The new command has to be in the set the did-you-mean searches."""
-        with pytest.raises(SystemExit) as exc:
-            call_main(["check-stdn", "brainfuck"], capsys)
-        assert exc.value.code == 2
-        assert "did you mean check-stdin" in capsys.readouterr().err
-
-
-class TestCheckStdinSaysWhatItCanActuallyCheck:
+class TestPrivateStdinCheckSaysWhatItCanActuallyCheck:
     """Its help listed "the wrong number of lines" among what it catches
     without ``--table``.  For most languages it cannot.
 
     Without a table it judges *shape*, and for a line-per-bit language a
     shape is not a count: one line, three lines and none at all are
-    equally well formed.  An empty stdin passing ``check-stdin brainfuck``
-    is the trap, and the help now names it.
+    equally well formed.  An empty stdin passing the private check
+    is the trap.
     """
 
     def test_a_line_per_bit_language_accepts_any_count(self) -> None:
         """Not a bug -- a count needs an arity, and only ``--table`` has one."""
         for stdin in ("", "1", "101"):
-            esolangs.check_stdin("brainfuck", stdin)
+            _check_stdin("brainfuck", stdin)
 
     def test_the_table_is_what_catches_the_count(self) -> None:
         """The other half of the claim: with one, the count is checked."""
         with pytest.raises(esolangs.ArgumentError):
-            esolangs.check_stdin("brainfuck", "1\n0\n1\n", "0110")
+            _check_stdin("brainfuck", "1\n0\n1\n", "0110")
 
     def test_the_two_shape_languages_are_the_two_named(self) -> None:
         """The help names Clockwise and Fargo, so the data must agree.
@@ -760,20 +714,14 @@ class TestCheckStdinSaysWhatItCanActuallyCheck:
     def test_a_one_line_language_does_catch_a_stray_line(self) -> None:
         """Which is why the help can still claim a shape check at all."""
         with pytest.raises(esolangs.ArgumentError, match="unexpected character"):
-            esolangs.check_stdin("Clockwise", "1\n0\n")
-
-    def test_the_help_no_longer_overstates(self) -> None:
-        """The retired phrase, so it cannot come back."""
-        text = " ".join(HELP["check-stdin"].split())
-        assert "the wrong number of lines" not in text
-        assert "only --table knows how many bits the program wanted" in text
+            _check_stdin("Clockwise", "1\n0\n")
 
 
 class TestTheTableOptionIsValidated:
     """A malformed ``--table`` warned and ran; every other bad option refused.
 
     ``run --table 0120`` exited 0 with the complaint on stderr, where
-    ``check-stdin --table 0120`` exited 2.  An option's value is a usage
+    ``--table 0120`` elsewhere exited 2.  An option's value is a usage
     error, so ``_table_of`` judges it once for both commands.
     """
 
@@ -788,7 +736,7 @@ class TestTheTableOptionIsValidated:
     def test_a_malformed_table_exits_two(
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        """Exit 2, like ``check-stdin`` and every other bad option value."""
+        """Exit 2, like every other bad option value."""
         with pytest.raises(SystemExit) as exc:
             _table_of({"--table": "0120"})
         assert exc.value.code == 2

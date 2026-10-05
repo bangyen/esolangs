@@ -5,7 +5,7 @@ caller-supplied source.  Boolean evaluation is private certification
 machinery, not public API.
 ``encode_inputs`` and ``read_answer`` handle rows.
 ``dump_program`` and ``load_program`` preserve source provenance in portable JSON.
-``check_program`` and ``check_stdin`` validate; ``describe`` and ``list_languages``
+``describe`` and ``list_languages``
 provide registry facts. Stepping and debugging live in :mod:`esolangs.debugger`.
 ``Language(name)`` binds these functions to one language.
 Names resolve case-insensitively; deliberate errors derive from EsolangError.
@@ -20,7 +20,7 @@ from functools import cache, partial
 from typing import Any, TypedDict, cast
 
 from esolangs._answers import (
-    check_stdin,
+    _check_stdin,
     encode_inputs,
     read_answer,
 )
@@ -139,8 +139,6 @@ __all__ = [
     "TemplateError",
     "TruthTableError",
     "UnknownLanguageError",
-    "check_program",
-    "check_stdin",
     "describe",
     "dump_program",
     "encode_inputs",
@@ -271,7 +269,7 @@ def generate(
         if not isinstance(generated, Raster):  # pragma: no cover - registry invariant
             raise ProgramError(f"{resolved}'s generator did not return a Raster")
         # Tagged the way a text program is ``_Tagged``: a Line raster fed to
-        # Piet otherwise passed ``check_program`` and answered '', a
+        # Piet otherwise passed ``_check_program`` and answered '', a
         # confident garbage result rather than a refusal.
         return generated.tagged(resolved, settings=settings)
     slots = str(generated)
@@ -573,17 +571,17 @@ def _read_source(language: str, program: ProgramSource) -> Program:
     return program
 
 
-def check_program(
+def _check_program(
     language: str, program: ProgramSource, stdin: InputSource = ""
 ) -> Program:
     """Return ``program`` as source, having checked what can be checked here.
 
     Not a load check: it refuses the wrong *kind* of thing (a path as a
     string, an unfilled template, an unsupported container, an unreadable file, an
-    unknown name) and type-checks ``stdin``, but ``check_program("brainfuck",
+    unknown name) and type-checks ``stdin``, but ``_check_program("brainfuck",
     "[")`` returns the program and :func:`make_vm` raises ``ProgramError``.
     :func:`make_vm` calls this, so it cannot build a machine to check.
-    :func:`check_stdin` judges ``stdin``'s shape.  A :class:`~pathlib.Path`
+    :func:`_check_stdin` judges ``stdin``'s shape.  A :class:`~pathlib.Path`
     is read here with one trailing newline stripped (CV(N)(C), Grapheme and
     NoComment reject one), so the whole call is::
 
@@ -679,7 +677,7 @@ def run(
     Boolean validation. Reading past
     the end usually raises :class:`~esolangs.exceptions.InputExhaustedError`;
     ``describe(language)["eof_is_a_value"]`` marks languages supplying a value.
-    Some halt instead. Use :func:`check_stdin`
+    Some halt instead. Use the private stdin check
     explicitly to validate input for a Boolean-generated program.
 
     ``timeout`` is wall-clock seconds and raises
@@ -775,7 +773,7 @@ def run(
         "which steps and so needs no signal",
     )
     name = resolve(language)
-    program = check_program(name, program, stdin)
+    program = _check_program(name, program, stdin)
     settings = effective_settings(name, program, settings)
     dialect = dialect_options(name, settings)
     run_fn = interpreter_module(name).run

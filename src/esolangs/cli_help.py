@@ -30,9 +30,6 @@ commands:
                               (--judge prints the answer bit instead)
   suggest <language> <program-file>
                               preview unambiguous command spelling edits
-  check-stdin [--table T] <language>
-                              judge stdin against what that language reads,
-                              without running anything
   read-answer <language>      read a program's output on stdin and print
                               the answer bit it carries
   debug [--steps N] [--timeout S] [--watch-cell I] [--stdin S] [--tui]
@@ -233,29 +230,6 @@ examples:
   printf '1\n0\n' | esolangs run --judge --timeout 5 brainfuck prog.txt
   esolangs generate --portable --set expression_syntax=postfix Alight 0110 > p.json
   esolangs encode Alight 10 | esolangs run --portable --judge --table 0110 p.json
-""",
-    "check-stdin": """usage: esolangs check-stdin [--table T] <language>
-
-Read stdin and say whether it is what <language> wants, without running a
-program.
-
-Exits 0 and says nothing when it is fine.  Otherwise it names what is wrong
-and exits 2 -- the wrong alphabet, a shape the language cannot read, a row
-index with a leading zero, and with --table the wrong bit count or an index
-out of range.
-
-Without --table it judges only the input alphabet and encoding. An empty
-stdin passes `check-stdin brainfuck`: only --table knows how many bits the
-program wanted. Character readers preserve newlines, so use adjacent bit
-characters rather than inserting line separators. Fargo takes one decimal
-row index.
-
-This checks Boolean input explicitly. `run --judge` applies it as a refusal;
-plain `run` accepts arbitrary input.
-
-examples:
-  esolangs encode Grapheme 10 | esolangs check-stdin Grapheme
-  printf '1\\n0\\n1\\n' | esolangs check-stdin --table 0110 brainfuck
 """,
     "describe": """usage: esolangs describe [--json] [--spec] <language>
 

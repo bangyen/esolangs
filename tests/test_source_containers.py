@@ -9,6 +9,7 @@ from typing import Any
 import pytest
 
 import esolangs
+from esolangs import _check_program
 from esolangs._evaluate import _evaluate
 from esolangs.debugger import make_debugger
 from esolangs.registry import LANGUAGES, SourceKind
@@ -69,7 +70,7 @@ def test_nonseekable_streams_are_read_once_from_the_current_position() -> None:
             return self.value
 
     program, stdin = Stream(b",.,."), Stream("\n\x00")
-    assert esolangs.check_program("brainfuck", program, stdin) == ",.,."
+    assert _check_program("brainfuck", program, stdin) == ",.,."
     assert stdin.reads == 0
     assert esolangs.run("brainfuck", ",.,.", stdin) == "\n\x00"
     assert (program.reads, stdin.reads) == (1, 1)
@@ -101,7 +102,7 @@ def test_raster_interpreter_owns_loading_and_scale_support(
 def test_path_loading_retains_existing_newline_normalization(tmp_path: Path) -> None:
     path = tmp_path / "source.txt"
     path.write_bytes(b"+,\r\n.\r\n")
-    assert esolangs.check_program("brainfuck", path) == "+,\n."
+    assert _check_program("brainfuck", path) == "+,\n."
     assert esolangs.run("brainfuck", path, "Q") == "Q"
 
 

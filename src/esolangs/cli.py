@@ -45,7 +45,6 @@ from esolangs import (
     LanguageInfo,
     Raster,
     __version__,
-    check_stdin,
     describe,
     dump_program,
     encode_inputs,
@@ -367,25 +366,6 @@ def _describe(rest: list[str]) -> None:
         print(f"  {key.ljust(width)}  {shown}")
 
 
-def _check_stdin(rest: list[str]) -> None:
-    """Judge stdin against a language's declared shape, running nothing."""
-    rest, options = _pop_options(rest, {"--table"})
-    rest = _split_positional(rest, set(), {"--table"})
-    _check_count("check-stdin", rest, 1)
-    language = rest[0]
-    try:
-        facts = describe(language)
-    except EsolangError as exc:
-        _fail(exc)
-        raise  # pragma: no cover - unreachable; _fail exits
-    stdin = _read_stdin(hint="; pipe the input in, or close stdin")
-    table = options.get("--table")
-    try:
-        check_stdin(str(facts["name"]), stdin, table)
-    except EsolangError as exc:
-        _fail(exc)
-
-
 def _read_answer(rest: list[str]) -> None:
     """Read a program's output on stdin and print the answer bit in it."""
     rest = _split_positional(rest, set())
@@ -501,7 +481,6 @@ def _dispatch() -> None:
         "run": _run,
         "suggest": _suggest,
         "read-answer": _read_answer,
-        "check-stdin": _check_stdin,
         "debug": _debug,
     }[cmd](rest)
 

@@ -30,8 +30,7 @@ assert bf.read_answer(output) == "1"
 info = bf.describe()
 ```
 
-It also binds `instantiate`, `check_program` and `check_stdin`; use the package
-functions across languages.
+It also binds `instantiate`; use the package functions across languages.
 `balance=True` minimizes the rendered width/height difference across supported
 layouts, breaking ties by source length (raster pixel area), then width.
 It excludes `width`. Line compares forward and reverse input-test orders;
@@ -114,8 +113,6 @@ measured row to answer correctly.
 
 <!-- PUBLIC-API:START -->
 
-- `esolangs.check_program` -- return `program` as source, having checked what can be checked here
-- `esolangs.check_stdin` -- refuse `stdin` that cannot be what `language` wants to read
 - `esolangs.describe` -- return a structured description of `language`
 - `esolangs.dump_program` -- return version-1 JSON preserving source, choices, and template setters
 - `esolangs.encode_inputs` -- return the stdin that feeds `bits` to a `language` program
@@ -174,8 +171,8 @@ Use `encode_inputs` to build stdin; it and this table use `describe`.
 [`MANIFEST.md`](../src/esolangs/examples/MANIFEST.md) lists each example’s
 input row and encoding.
 
-`esolangs run` warns about invalid stdin; `--judge` rejects it.
-`check_stdin(language, stdin, truth_table)` also checks the input bit count.
+`esolangs run` warns about invalid stdin; `--judge` rejects it and can
+check the input bit count against a truth table.
 
 ## Templates
 

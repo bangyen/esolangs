@@ -12,7 +12,6 @@ from unittest.mock import patch
 import pytest
 
 import esolangs
-from esolangs import cli
 from esolangs.cli import main
 from esolangs.cli_io import _emit_partial, _smuggled_bytes, _write_output
 from tests.cli_support import _LOOPS, call_both
@@ -351,18 +350,6 @@ class TestSmallerReportsFromRoundFifteen:
         """So a long table does not have to be diffed by eye."""
         with pytest.raises(esolangs.TruthTableError, match="at position 2"):
             esolangs.generate("brainfuck", "01x1")
-
-    def test_check_stdin_admits_it_checked_only_the_shape(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """The dedicated checker was weaker than `run` and did not say so."""
-        # No note: it printed one whenever `--table` was absent, which is
-        # every plain shape check, and advice on correct input is what this
-        # CLI has spent rounds removing.  `check-stdin --help` says what the
-        # flag adds.
-        _out, err = call_both(["check-stdin", "brainfuck"], capsys, stdin="10")
-        assert err == ""
-        assert "--table" in cli.HELP["check-stdin"]
 
     def test_a_never_written_cell_reports_a_verdict_not_a_wall(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]

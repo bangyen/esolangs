@@ -912,12 +912,12 @@ def make_vm(
     unfilled template otherwise runs to a confident ``'0'``), and the checked
     value is what reaches the interpreter (:mod:`esolangs._validate`).
     """
-    from esolangs import check_program
+    from esolangs import _check_program
 
     name = resolve(language)
     settings = effective_settings(name, program, settings)
     dialect_options(name, settings)
-    source = check_program(name, program, stdin)
+    source = _check_program(name, program, stdin)
     settings = effective_settings(name, source, settings)
     check_scale_for(name, scale)
     with interpreter_errors(

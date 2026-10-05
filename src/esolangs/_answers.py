@@ -1,6 +1,6 @@
 """Feeding a program and judging what it printed.
 
-:func:`encode_inputs` builds the stdin for one row, :func:`check_stdin`
+:func:`encode_inputs` builds the stdin for one row, :func:`_check_stdin`
 refuses a stdin the language cannot read, :func:`read_answer` turns output
 into a bit.  Every judgement applies the registered Boolean I/O contract.
 """
@@ -86,7 +86,7 @@ def encode_inputs(
     return "".join(f"{digit}\n" for digit in digits)
 
 
-def check_stdin(language: str, stdin: str, truth_table: str | None = None) -> None:
+def _check_stdin(language: str, stdin: str, truth_table: str | None = None) -> None:
     """Refuse ``stdin`` that cannot be what ``language`` wants to read.
 
     The CLI's judge, for Python callers: a wrong alphabet, unexpected

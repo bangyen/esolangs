@@ -139,7 +139,7 @@ class Raster:
         """The language :func:`esolangs.generate` tagged this for, if any.
 
         A PNG read back from disk carries no tag, exactly as a text program
-        written to a file stops being a ``_Tagged``.  ``check_program`` reads
+        written to a file stops being a ``_Tagged``.  ``_check_program`` reads
         this to refuse a cross-language run, which text programs already do.
         """
         return self._language

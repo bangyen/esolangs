@@ -5,7 +5,8 @@ from __future__ import annotations
 from collections.abc import Iterable, Sequence
 from difflib import get_close_matches
 
-from esolangs import LanguageInfo, check_stdin
+from esolangs import LanguageInfo
+from esolangs._answers import _check_stdin
 from esolangs._evaluate import _terminates
 from esolangs.exceptions import EsolangError, ExecutionTimeoutError, TemplateError
 from esolangs.interpreters.source_hints import error_text
@@ -150,13 +151,13 @@ def _abridge(history: Sequence[object]) -> str:
 def _shape_warning(facts: LanguageInfo, stdin: str, table: str | None = None) -> str:
     """Return the library's complaint about ``stdin``, or ``''``.
 
-    The checks live in :func:`esolangs.check_stdin`; two copies drifted
+    The checks live in :func:`esolangs._answers._check_stdin`; two copies drifted
     twice before.
     """
     if not facts["reads_input"]:
         return ""
     try:
-        check_stdin(str(facts["name"]), stdin, table)
+        _check_stdin(str(facts["name"]), stdin, table)
     except EsolangError as exc:
         # Some of these already name the exact command; appending the
         # generic pointer to those said "esolangs encode" twice in one line.
@@ -190,7 +191,7 @@ def _stdin_hint(facts: LanguageInfo) -> str:
     # No note about ``--table`` here.  The first draft printed one whenever
     # it was absent, which is every call that is simply checking a shape --
     # advice on correct input, which is the thing this CLI has spent several
-    # rounds removing.  ``check-stdin --help`` says what the flag adds.
+    # rounds removing.  The private stdin check says what the flag adds.
 
 
 def _input_sentence(facts: LanguageInfo) -> str:

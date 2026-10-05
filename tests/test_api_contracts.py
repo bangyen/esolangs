@@ -21,6 +21,8 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
+from esolangs import _check_program
+from esolangs._answers import _check_stdin
 from esolangs.exceptions import (
     ArgumentError,
     EsolangError,
@@ -276,7 +278,7 @@ class TestPackageSurface:
     def test_check_runnable_refuses_a_non_source(self, language: str) -> None:
         """An int leaked a TypeError for a template language and passed elsewhere."""
         with pytest.raises(esolangs.ProgramError, match="string of source"):
-            esolangs.check_program(language, 5)  # type: ignore[arg-type]
+            _check_program(language, 5)  # type: ignore[arg-type]
 
     def test_stdlib_imports_are_not_advertised(self) -> None:
         for leaked in ("importlib", "pathlib", "signal", "threading", "Any"):
@@ -627,7 +629,7 @@ class TestAMissingFileIsAFileNotFoundError:
                 return 5
 
         with pytest.raises(esolangs.ProgramError) as caught:
-            esolangs.check_program("brainfuck", Bad())
+            _check_program("brainfuck", Bad())
         assert "cannot read" in str(caught.value)
 
     def test_version_is_not_star_imported(self) -> None:
@@ -669,7 +671,7 @@ class TestAMistypedPathIsNotRunAsAProgram:
         """All four take a program, so all four have to refuse the same thing."""
         for call in (
             lambda: esolangs.run("brainfuck", "nope.txt", "", 5),
-            lambda: esolangs.check_program("brainfuck", "nope.txt", ""),
+            lambda: _check_program("brainfuck", "nope.txt", ""),
             lambda: debugger_api.make_vm("brainfuck", "nope.txt", ""),
             lambda: debugger_api.make_debugger("brainfuck", "nope.txt", ""),
         ):
@@ -731,9 +733,8 @@ class TestTheThreadRefusalNamesAWayThrough:
     """A worker thread had two options and no third.
 
     Timeouts are SIGALRM, so ``timeout=`` raised and ``timeout=None`` ran
-    forever.  Both routes out already existed -- the debugger's cooperative
-    bound, and ``evaluate``/``verify``'s divergence proof -- and the
-    message mentioned neither.
+    forever.  The debugger's cooperative bound already existed, and the
+    message mentioned it not.
 
     Deliberately not a silent fallback to the stepping path: two execution
     paths for one function is how the two came to disagree before, which
@@ -757,13 +758,12 @@ class TestTheThreadRefusalNamesAWayThrough:
         assert not thread.is_alive(), "the worker never finished"
         return box["value"]
 
-    def test_the_message_names_both_routes(self) -> None:
-        """Naming a route is a claim; the two tests below run it."""
+    def test_the_message_names_the_debugger_route(self) -> None:
+        """Naming a route is a claim; the test below runs it."""
         outcome = self._off_thread(lambda: esolangs.run("brainfuck", "+++.", "", 5))
         assert isinstance(outcome, esolangs.ArgumentError)
         message = str(outcome)
         assert "make_debugger" in message
-        assert "timeout=None" in message
 
     def test_the_debugger_route_bounds_a_diverging_program(self) -> None:
         """The one that matters: a program that never halts, on a thread."""
@@ -775,12 +775,11 @@ class TestTheThreadRefusalNamesAWayThrough:
 
         assert self._off_thread(work) == "timeout"
 
-    def test_the_evaluate_route_works_on_a_thread(self) -> None:
-        """``timeout=None`` is unbounded for ``run`` and settled here.
+    def test_the_private_evaluation_route_works_on_a_thread(self) -> None:
+        """The private harness settles diverging rows off the main thread.
 
         The four diverging languages are proved by a repeated state, so
-        ``None`` terminates rather than hanging -- which is what makes it a
-        real answer to "how do I do this off the main thread".
+        ``timeout=None`` terminates rather than hanging there.
         """
         for language in ("123", "ArrowQueue"):
             outcome = self._off_thread(
@@ -1051,7 +1050,7 @@ class TestAHugeRowIndexIsRefusedNotCrashed:
     def test_check_stdin_refuses_a_row_index_past_the_digit_cap(self) -> None:
         """``isdecimal`` passes for 4301 nines; ``int`` is what refuses them."""
         with pytest.raises(ArgumentError):
-            esolangs.check_stdin("Fargo", "9" * 4301, "01")
+            _check_stdin("Fargo", "9" * 4301, "01")
 
     def test_encode_inputs_refuses_a_row_index_past_the_digit_cap(self) -> None:
         """Fargo reads a decimal row index, and 15000 bits name too many digits."""
@@ -1065,7 +1064,7 @@ def test_evaluate_refuses_a_timeout_off_the_main_thread() -> None:
     ``evaluate`` bounds a row with ``SIGALRM``; off the main thread
     ``signal.signal`` raised its bare ``ValueError`` instead of the
     package's ``ArgumentError``.  ``timeout=None`` is the route out, and is
-    checked by ``TestTheThreadRefusalNamesAWayThrough``.
+    checked by ``TestTheThreadRefusalNamesAWayThrough`` for the debugger route.
     """
     box: list[BaseException] = []
 

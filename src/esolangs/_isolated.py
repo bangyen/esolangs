@@ -121,7 +121,7 @@ def run_isolated(
 
     def prepare() -> None:
         try:
-            source = esolangs.check_program(name, program, stdin)
+            source = esolangs._check_program(name, program, stdin)  # noqa: SLF001
             retained = effective_settings(name, source, settings)
             choices = dialect_options(name, retained)
             box.append(

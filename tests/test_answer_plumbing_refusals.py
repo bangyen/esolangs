@@ -18,6 +18,8 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
+from esolangs import _check_program
+from esolangs._answers import _check_stdin
 from esolangs._evaluate import _evaluate
 from esolangs.cli_hints import _did_you_mean
 from esolangs.registry import _BY_ID, SUGGESTION_CUTOFF, canonical_id
@@ -502,10 +504,10 @@ class TestABadStdinIsAnArgumentFault:
         "call",
         [
             lambda: esolangs.run("brainfuck", ",.", ["0"]),
-            lambda: esolangs.check_program("brainfuck", ",.", ["0"]),
+            lambda: _check_program("brainfuck", ",.", ["0"]),
             lambda: debugger_api.make_vm("brainfuck", ",.", ["0"]),
             lambda: debugger_api.make_debugger("brainfuck", ",.", ["0"]),
-            lambda: esolangs.check_stdin("brainfuck", ["0"]),
+            lambda: _check_stdin("brainfuck", ["0"]),
         ],
     )
     def test_every_entry_point_agrees(self, call: object) -> None:
