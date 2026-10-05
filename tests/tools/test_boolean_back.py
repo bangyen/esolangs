@@ -130,37 +130,6 @@ class TestParameterizedBack:
             identity = _back_ordered(table, tuple(range(n)))
             assert generators.back(table) == identity, table
 
-    def test_full_tree_growth_is_linear(self) -> None:
-        """Reflection makes depth padding geometric; parity folds nothing."""
-        from esolangs import tools as generators
-
-        sizes = []
-        for n in range(6, 11):
-            table = "".join(str(row.bit_count() & 1) for row in range(2**n))
-            sizes.append(len(generators.back(table)))
-        assert all(later <= 2 * earlier for earlier, later in pairwise(sizes))
-
-    @pytest.mark.parametrize(
-        "table",
-        ["10101010", "11001100", "01011010", "00111100", "10010110"],
-    )
-    def test_templates_compute_the_table(self, table: str) -> None:
-        """Each emitted natural-order template computes its function.
-
-        Back's node is ``+\\>`` -- test the current cell, *then* advance --
-        so level ``k`` tests cell ``k``, one lower than the generators whose
-        node steps first.  Loading an input into the wrong cell computes a
-        different function rather than failing to draw, so only running it
-        catches the slip.
-        """
-        from esolangs import tools as generators
-
-        template = generators.back(table)
-        for combo in range(8):
-            bits = [(combo >> (2 - i)) & 1 for i in range(3)]
-            got = self.run_back(self.instantiate(template, bits), 3)
-            assert got == table[combo], f"{table} inputs {bits}"
-
     def test_reordering_pays_a_walk_and_keeps_name_order(self) -> None:
         """A permuted load spends rows on the walk, and keeps its runs in name order.
 

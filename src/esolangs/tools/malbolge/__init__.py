@@ -488,7 +488,8 @@ def _thirteen_program(truth_table: str) -> str:
 # main code under the level-3 region.
 _FOURTEEN_N = 14
 #: Fifteen and sixteen inputs: :mod:`esolangs.tools.malbolge.digits`.
-_DIGITS_N = 16
+MAX_INPUTS = 16
+_DIGITS_N = MAX_INPUTS
 #: ``g`` values of the extra state cells 5, 6 and 7.
 _F_EXTRA = (57, 75, 119)
 #: The readout ops, in three segments run after the eleven-bit post-map:

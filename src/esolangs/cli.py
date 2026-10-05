@@ -47,6 +47,7 @@ from esolangs import (
     __version__,
     check_stdin,
     describe,
+    dump_program,
     encode_inputs,
     generate,
     instantiate,
@@ -58,8 +59,10 @@ from esolangs.cli_args import (
     _fail,
     _pop_flags,
     _pop_options,
+    _pop_portable,
     _pop_width,
     _scale_of,
+    _settings_of,
     _split_positional,
 )
 from esolangs.cli_debug import _debug
@@ -121,6 +124,8 @@ def _list(rest: list[str]) -> None:
                         # The three the marker column encodes, spelled out.
                         "boolean_generator": facts["boolean_generator"],
                         "parameterized": facts["parameterized"],
+                        "generator_max_inputs": facts["generator_max_inputs"],
+                        "generator_restrictions": facts["generator_restrictions"],
                         "has_example": bool(facts["examples"]),
                     }
                     for name, facts in (
@@ -154,20 +159,31 @@ def _list(rest: list[str]) -> None:
                 ),
             )
         )
-        print(f"{name.ljust(width)}  {marks}")
+        limit = facts["generator_max_inputs"]
+        restriction = facts["generator_restrictions"]
+        suffix = f" max-inputs={limit}" if limit is not None else ""
+        if restriction:
+            suffix += f" ({restriction})"
+        print(f"{name.ljust(width)}  {marks}{suffix}")
 
 
 def _generate(rest: list[str]) -> None:
     """Print a program computing a truth table."""
-    rest, options = _pop_options(rest, {"--bits", "--scale"})
+    rest, options = _pop_options(rest, {"--bits", "--scale", "--settings"})
+    rest, portable = _pop_portable(rest)
     rest, flags = _pop_flags(rest, {"--balance"})
     balance = "--balance" in flags
     scale = _scale_of(options)
+    settings = _settings_of(options)
     before = list(rest)
     rest, width, bare = _pop_width(rest)
     if balance and width is not None:
         _fail("--balance and --width are mutually exclusive")
-    rest = _split_positional(rest, set(), {"--bits", "--width", "--balance", "--scale"})
+    rest = _split_positional(
+        rest,
+        set(),
+        {"--bits", "--width", "--balance", "--scale", "--settings", "--portable"},
+    )
     # `--width` takes an *optional* N, so a truth table typed straight after
     # it is consumed as the width and the report lands on the table being
     # missing -- which is baffling when you did type one.
@@ -186,7 +202,14 @@ def _generate(rest: list[str]) -> None:
         # wraps the template (or hands the width to a *layout* language,
         # which lays it out), and ``instantiate`` wraps a program
         # filled from an unwrapped template; a wrapped one fills in place.
-        program = generate(rest[0], rest[1], width, balance=balance, scale=scale or 1)
+        program = generate(
+            rest[0],
+            rest[1],
+            width,
+            balance=balance,
+            scale=scale or 1,
+            settings=settings,
+        )
         if "--bits" in options:
             bits = options["--bits"]
             if set(bits) - {"0", "1"} or not bits:
@@ -194,7 +217,11 @@ def _generate(rest: list[str]) -> None:
             if isinstance(program, Raster):
                 _fail("raster programs read bits from stdin and cannot be instantiated")
             program = cast(str, program)
-            program = instantiate(rest[0], program, [int(b) for b in bits], width)
+            program = instantiate(
+                rest[0], program, [int(b) for b in bits], width, settings=settings
+            )
+        if portable:
+            program = dump_program(rest[0], program)
     except EsolangError as exc:
         _fail(_generate_hint(exc, rest[0], rest[1]))
     if (

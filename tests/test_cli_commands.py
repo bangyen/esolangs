@@ -801,6 +801,12 @@ class TestALeadingZeroIndexNeverCrashes:
         with pytest.raises(esolangs.ArgumentError, match="the index is 2"):
             esolangs.check_stdin("Fargo", "010\n")
 
+    def test_a_large_binary_index_is_refused_without_rendering_it(self) -> None:
+        with pytest.raises(esolangs.ArgumentError, match="15001 input bits") as caught:
+            esolangs.check_stdin("Fargo", "0" + "1" * 15000)
+        assert "leading zero" in str(caught.value)
+        assert len(str(caught.value)) < 200
+
 
 class TestTheWidthFlagDoesNotEatTheTable:
     """`--width` takes an optional N, so it swallowed the truth table."""

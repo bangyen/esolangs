@@ -168,10 +168,8 @@ NEVER_SELF_HALTS = frozenset({"A Painter Ant", "Suffolk"})
 # because the check was written per file instead of swept.
 #
 # All nine now carry the ``if self.halted: return`` guard the other fifty
-# interpreters already had.  ``test_the_post_halt_step_raises_only_where
-# _recorded`` compares this set against what actually raises, in both
-# directions, so a language that regressed would fail rather than quietly
-# rejoining a list nobody rechecks.
+# interpreters already had.  The shared execution check steps each halted
+# machine again and fails on an exception; this set must stay empty.
 RAISES_ON_THE_POST_HALT_STEP: frozenset[str] = frozenset()
 
 # LaserFuck's ``run`` draws the laser's initial heading at random when it

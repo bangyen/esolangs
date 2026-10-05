@@ -17,6 +17,7 @@ from esolangs._validate import check_timeout, check_whole
 from esolangs.interpreters.source_hints import with_hint
 from esolangs.raster import Raster
 from esolangs.registry import resolve
+from esolangs.settings import DialectSettings, dialect_options, effective_settings
 
 
 def _decode(text: str, *, expired: bool) -> str:
@@ -60,6 +61,30 @@ def _decode(text: str, *, expired: bool) -> str:
     return cast("str", result["result"])
 
 
+def check_memory(max_memory: int | None, *, isolated: bool) -> None:
+    """Validate a Linux worker address-space budget in bytes before acquisition."""
+    if max_memory is None:
+        return
+    check_whole(max_memory, "max_memory")
+    if max_memory == 0:
+        raise exceptions.ArgumentError("max_memory must be positive")
+    if not isolated:
+        raise exceptions.ArgumentError("max_memory requires isolated=True")
+    if max_memory >= 1 << 63:
+        raise exceptions.ArgumentError("max_memory exceeds the platform limit")
+    if sys.platform != "linux":
+        raise exceptions.ArgumentError("max_memory is supported only on Linux")
+
+
+def _limit_memory(max_memory: int) -> None:
+    """Lower the worker's virtual address-space ceiling without raising a hard cap."""
+    import resource
+
+    _, hard = resource.getrlimit(resource.RLIMIT_AS)
+    ceiling = max_memory if hard == resource.RLIM_INFINITY else min(max_memory, hard)
+    resource.setrlimit(resource.RLIMIT_AS, (ceiling, hard))
+
+
 def run_isolated(
     language: str,
     program: ProgramSource,
@@ -69,6 +94,8 @@ def run_isolated(
     seed: int | None = None,
     scale: int | None = None,
     max_output: int | None = None,
+    max_memory: int | None = None,
+    settings: DialectSettings | None = None,
 ) -> str:
     """Return output from a subprocess; the deadline includes loading and startup.
 
@@ -78,6 +105,7 @@ def run_isolated(
     """
     import esolangs
 
+    check_memory(max_memory, isolated=True)
     check_timeout(timeout)
     if max_output is not None:
         check_whole(max_output, "max_output")
@@ -87,24 +115,40 @@ def run_isolated(
             ("set a positive finite timeout, for example timeout=5.0"),
         )
     name = resolve(language)
+    dialect_options(name, settings)
     deadline = monotonic() + timeout
     box: list[str | BaseException] = []
 
     def prepare() -> None:
         try:
             source = esolangs.check_program(name, program, stdin)
+            retained = effective_settings(name, source, settings)
+            choices = dialect_options(name, retained)
             box.append(
                 json.dumps(
                     {
+                        "settings": {
+                            key: hex(value) if type(value) is int else value
+                            for key, value in choices.items()
+                        },
+                        "integer_settings": [
+                            key for key, value in choices.items() if type(value) is int
+                        ],
                         "language": name,
                         "program": source.rows
                         if isinstance(source, Raster)
                         else source,
                         "raster": isinstance(source, Raster),
                         "stdin": read_input(stdin),
-                        "seed": seed,
+                        # Decimal JSON rendering rejects valid 4301-digit seeds.
+                        "seed": hex(seed) if isinstance(seed, int) else seed,
+                        "integer_seed": isinstance(seed, int),
+                        "max_memory": max_memory,
                         "scale": scale,
-                        "max_output": max_output,
+                        "max_output": hex(max_output)
+                        if max_output is not None
+                        else None,
+                        "integer_max_output": max_output is not None,
                     }
                 )
             )
@@ -233,8 +277,14 @@ def termination_isolated(
     timeout: float,
     halts: str,
     diverges: str,
+    *,
+    settings: DialectSettings | None = None,
+    max_output: int | None = None,
+    max_memory: int | None = None,
 ) -> str:
     """Prove halt or cycle in a child; deadline never means divergence."""
+    check_memory(max_memory, isolated=True)
+    choices = dialect_options(name, settings)
     return _launch(
         json.dumps(
             {
@@ -242,10 +292,15 @@ def termination_isolated(
                 "program": source,
                 "stdin": stdin,
                 "raster": False,
+                "max_memory": max_memory,
                 "termination": [halts, diverges],
+                "settings": choices,
+                "max_output": hex(max_output) if max_output is not None else None,
+                "integer_max_output": max_output is not None,
             }
         ),
         timeout,
+        max_output=max_output,
     )
 
 
@@ -277,16 +332,47 @@ def _worker() -> None:
 
     vars(esolangs)["ScriptedIO"] = StreamingIO
     request = json.load(sys.stdin)
-    program = request["program"]
-    if request["raster"]:
-        program = Raster(tuple(tuple(tuple(pixel) for pixel in row) for row in program))
+    if request.get("integer_max_output", False):
+        request["max_output"] = int(request["max_output"], 16)
+    # Release a small reserve before reporting allocation failure under RLIMIT_AS.
+    reserve = bytearray(65_536)
     try:
+        if request.get("max_memory") is not None:
+            try:
+                _limit_memory(request["max_memory"])
+            except (OSError, OverflowError, ValueError) as error:
+                raise exceptions.InterpreterLimitError(
+                    f"cannot enforce memory limit: {error}"
+                ) from error
+        program = request["program"]
+        if request["raster"]:
+            program = Raster(
+                tuple(tuple(tuple(pixel) for pixel in row) for row in program)
+            )
+        settings = DialectSettings(
+            **{
+                key: int(value, 16)
+                if key in request.get("integer_settings", [])
+                else value
+                for key, value in request.get("settings", {}).items()
+            }
+        )
         if "termination" in request:
+            from esolangs import vm
             from esolangs._evaluate import _terminates
+
+            if request.get("max_output") is not None:
+                vars(vm)["ScriptedIO"] = StreamingIO
 
             halts, diverges = request["termination"]
             output = _terminates(
-                request["language"], program, request["stdin"], None, halts, diverges
+                request["language"],
+                program,
+                request["stdin"],
+                None,
+                halts,
+                diverges,
+                settings=settings,
             )
         else:
             output = esolangs.run(
@@ -294,9 +380,20 @@ def _worker() -> None:
                 program,
                 request["stdin"],
                 timeout=None,
-                seed=request["seed"],
+                seed=int(request["seed"], 16)
+                if request.get("integer_seed", False)
+                else request["seed"],
                 scale=request.get("scale"),
+                settings=settings,
             )
+    except MemoryError:
+        del reserve
+        send(
+            {
+                "error": "InterpreterLimitError",
+                "args": ["isolated memory limit exceeded"],
+            }
+        )
     except exceptions.EsolangError as error:
         args: tuple[object, ...] = error.args
         if isinstance(error, exceptions.UnknownLanguageError):

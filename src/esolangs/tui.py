@@ -21,6 +21,7 @@ from typing import TypeGuard, cast
 from esolangs._program import Program
 from esolangs.debugger import Debugger, make_debugger
 from esolangs.interpreters.source_hints import error_text
+from esolangs.settings import DialectSettings
 
 #: Back to the terminal's own attributes, which ends every marked run.
 _OFF = "\x1b[0m"
@@ -377,14 +378,21 @@ def render(
     return "\n".join(out)
 
 
-def replay(language: str, program: Program, stdin: str, step: int) -> Frame:
+def replay(
+    language: str,
+    program: Program,
+    stdin: str,
+    step: int,
+    *,
+    settings: DialectSettings | None = None,
+) -> Frame:
     """Return the frame ``step`` commands into a fresh run.
 
     Exact because every VM is deterministic (seeded sources for the random
     instructions).  The fallback for a step :class:`History` has dropped,
     and the reference the tests check that lookup against.
     """
-    dbg = make_debugger(language, program, stdin)
+    dbg = make_debugger(language, program, stdin, settings=settings)
     fault = None
     taken = 0
     for _ in range(step):
@@ -426,11 +434,19 @@ class History:
     #: What the retained frames may occupy before the oldest are dropped.
     budget = 64 << 20
 
-    def __init__(self, language: str, program: Program, stdin: str = "") -> None:
+    def __init__(
+        self,
+        language: str,
+        program: Program,
+        stdin: str = "",
+        *,
+        settings: DialectSettings | None = None,
+    ) -> None:
         """Start a history at step 0 of a fresh run."""
+        self._settings = settings
         self._language = language
         self._source = program
-        self._dbg = make_debugger(language, program, stdin)
+        self._dbg = make_debugger(language, program, stdin, settings=settings)
         self._program = _display_source(program, language)
         self._stdin = stdin
         self._fault: str | None = None
@@ -458,7 +474,9 @@ class History:
         if step < self._base:
             # Rewound past what is still held; the run is deterministic, so
             # replaying reaches the same state the dropped frame held.
-            return replay(self._language, self._source, self._stdin, step)
+            return replay(
+                self._language, self._source, self._stdin, step, settings=self._settings
+            )
         while self._top < step and not self._dbg.halted and self._fault is None:
             self._advance()
         return self._frames[-1]
@@ -683,6 +701,8 @@ def run_tui(
     stop: Callable[[Frame], bool] | None = None,
     at: tuple[int | tuple[int, ...], ...] = (),
     watch: int | None = None,
+    *,
+    settings: DialectSettings | None = None,
 ) -> None:  # pragma: no cover - the raw-terminal wrapper; the loop is tested
     """Step ``program`` interactively on this terminal.
 
@@ -706,7 +726,7 @@ def run_tui(
     # Built before the terminal is touched, so an unknown language is a clean
     # raise for the caller to report rather than a failure part-way into raw
     # mode with the screen already taken over.
-    history = History(language, program, stdin)
+    history = History(language, program, stdin, settings=settings)
 
     fd = sys.stdin.fileno()
     saved = termios.tcgetattr(fd)

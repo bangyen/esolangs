@@ -1,17 +1,22 @@
 """Registry facts as data: :func:`describe`, :func:`_spec`, :func:`list_languages`."""
 
+import json
 import pathlib
-from typing import Any, TypedDict
+from functools import cache
+from typing import TypedDict
 
 from esolangs._execution import interpreter_module
 from esolangs.exceptions import ProgramError
 from esolangs.registry import (
     LANGUAGES,
+    Language,
     example_stems,
     parameterized_ids,
     resolve,
     wiki_url,
 )
+from esolangs.registry._contracts import AnswerMode, InputShape, WidthEffect
+from esolangs.settings import DialectOption, dialect_choices
 from esolangs.tools.wrap import WRAPPERS
 from esolangs.tools.wrap import takes_width as _takes_width
 from esolangs.vm import machine_traits
@@ -30,6 +35,64 @@ _STATE_MODELS = {
 }
 
 
+class ScalingStatus(TypedDict):
+    """Manifest verdicts; None means the axis has no explicit audit row."""
+
+    totality: str | None
+    generation_time: str | None
+    output_size: str | None
+    execution_time: str | None
+    evidence: str | None
+
+
+class ProofStatus(TypedDict):
+    """A ledger description and independent audited scaling verdicts."""
+
+    labels: list[str]
+    qualification: str
+    scaling: str
+    evidence: str
+    audit: ScalingStatus
+
+
+@cache
+def _proof_manifest() -> dict[str, ProofStatus]:
+    """Index the packaged, generated manifest without inferring missing verdicts."""
+    data = json.loads(
+        pathlib.Path(__file__)
+        .with_name("proof_status.json")
+        .read_text(encoding="utf-8")
+    )
+    audits = {row["generator"]: row for row in data["audit"]}
+    return {
+        row["generator"]: {
+            "labels": row["labels"],
+            "qualification": row["qualification"],
+            "scaling": row["scaling"],
+            "evidence": row["evidence"],
+            "audit": {
+                "totality": audits.get(row["generator"], {}).get("totality"),
+                "generation_time": audits.get(row["generator"], {}).get(
+                    "generation_time"
+                ),
+                "output_size": audits.get(row["generator"], {}).get("output_size"),
+                "execution_time": audits.get(row["generator"], {}).get(
+                    "execution_time"
+                ),
+                "evidence": audits.get(row["generator"], {}).get("evidence"),
+            },
+        }
+        for row in data["ledger"]
+    }
+
+
+def _proof_for(name: str) -> ProofStatus | None:
+    """Return independent mutable metadata, including caller-owned nested values."""
+    from copy import deepcopy
+
+    return deepcopy(_proof_manifest().get(name))
+
+
 class LanguageInfo(TypedDict):
     """What :func:`describe` returns, as a type a caller can annotate with.
 
@@ -44,14 +107,16 @@ class LanguageInfo(TypedDict):
     source_kind: str
     state_model: str | None
     interpreter: str | None
+    generator_max_inputs: int | None
+    generator_restrictions: str
     boolean_generator: bool
     parameterized: bool
     reads_input: bool
     width_aware: bool
-    width_effect: str
+    width_effect: WidthEffect
     input_encoding: tuple[str, str]
-    input_shape: str
-    answer_mode: str
+    input_shape: InputShape
+    answer_mode: AnswerMode
     answer_pattern: str
     answer_encoding: tuple[str, str]
     answer_convention: str | None
@@ -61,15 +126,24 @@ class LanguageInfo(TypedDict):
     eof_is_a_value: bool
     examples: list[str]
     wiki_url: str
+    dialect_settings: dict[str, DialectOption]
+    proof_status: ProofStatus | None
 
 
 def describe(language: str) -> LanguageInfo:
     """Return a structured description of ``language``.
 
+    ``proof_status`` separates ledger prose from explicit four-axis audits;
+    absent audit verdicts are None, not guarantees. Measured denotes an empirical
+    regression, not a proof. Evidence is repo-relative.
     ``spec`` contains the interpreter docstring; missing docstrings raise.
+    ``dialect_settings`` gives runtime defaults, choices, bounds and dependencies.
     Identity: ``name``, ``id``, ``source_kind``, ``state_model``,
     ``interpreter``, ``wiki_url``.
-    Generation: ``boolean_generator``; ``parameterized`` (a template, filled by
+    Generation: ``generator_max_inputs`` is an explicit arity cap (None means
+    none declared, or no generator); ``generator_restrictions`` names additional
+    table-dependent budgets. ``boolean_generator``; ``parameterized`` (a template,
+    filled by
     :func:`instantiate`, ``reads_input`` false).  Width: ``width_effect`` is
     ``"layout"`` (a shape built to fit; a hint), ``"wrap"`` (reflowed between
     tokens) or ``"none"`` (newlines are semantic); ``width_aware`` is the
@@ -100,15 +174,19 @@ def describe(language: str) -> LanguageInfo:
     examples = sorted(str(p) for p in _EXAMPLES.glob(f"{stem}{suffix}"))
     traits = machine_traits(name)
     parameterized = lang.id in parameterized_ids()
-    example = _example_for(lang.id)
+    contract = lang.contract
     return {
         "name": name,
+        "proof_status": _proof_for(name),
+        "dialect_settings": dialect_choices(name),
         "spec": _spec(name),
         "id": lang.id,
         "source_kind": lang.source_kind.value,
         "state_model": _STATE_MODELS.get(family) if family else None,
         "interpreter": lang.interpreter,
         "boolean_generator": lang.boolean is not None,
+        "generator_max_inputs": lang.generator_max_inputs,
+        "generator_restrictions": lang.generator_restrictions,
         "parameterized": parameterized,
         "reads_input": (lang.boolean is not None) and not parameterized,
         # Derived, not recomputed: this was a second copy of the very
@@ -116,12 +194,12 @@ def describe(language: str) -> LanguageInfo:
         # disagreeing about the same language.
         "width_aware": _width_effect(lang) == "layout",
         "width_effect": _width_effect(lang),
-        "input_encoding": example.alphabet if example else ("0", "1"),
-        "input_shape": example.input_shape if example else "line_per_bit",
-        "answer_mode": example.answer_mode if example else "output",
-        "answer_pattern": example.answer_pattern if example else "",
-        "answer_encoding": example.answer_values if example else ("0", "1"),
-        "answer_convention": (example.note or None) if example else None,
+        "input_encoding": contract.alphabet,
+        "input_shape": contract.input_shape,
+        "answer_mode": contract.answer_mode,
+        "answer_pattern": contract.answer_pattern,
+        "answer_encoding": contract.answer_values,
+        "answer_convention": contract.note or None,
         # Spelled out rather than ``**machine_traits(name)``: that returns
         # a ``dict[str, bool]``, which a TypedDict cannot verify a
         # ``**``-expansion of, so the merge would have silently accepted a
@@ -136,11 +214,8 @@ def describe(language: str) -> LanguageInfo:
     }
 
 
-def _width_effect(lang: Any) -> str:
+def _width_effect(lang: Language) -> WidthEffect:
     """Return ``"layout"`` (a shape built to fit), ``"wrap"`` or ``"none"``."""
-    # One expression rather than an early return for the generator-less
-    # case: every registered language has a generator, so that return was a
-    # line no input could reach.
     generator = lang.boolean
     if generator is not None and _takes_width(generator):
         return "layout"
@@ -168,17 +243,6 @@ def _spec(language: str) -> str:
             f"PYTHONOPTIMIZE=2), which strips them"
         )
     return text
-
-
-def _example_for(language_id: str) -> Any:
-    """Return the committed boolean example for ``language_id``, or None.
-
-    Deferred: ``examples`` imports the registry.
-    """
-    from esolangs.tools.examples import BOOLEAN_EXAMPLES
-
-    stem = example_stems().get(language_id)
-    return BOOLEAN_EXAMPLES.get(stem) if stem is not None else None
 
 
 def list_languages() -> list[str]:

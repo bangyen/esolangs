@@ -1,21 +1,4 @@
-"""The touched-file gate holds branches to the rule it holds lines to.
-
-``scripts/check_diff_coverage.py`` fails a branch that leaves a statement no
-test runs in a file it touched.  It does the same for a *branch* that only
-ever goes one way, which is a different failure: the line executed, so the
-line check passes, and only the arc records that the other side was never
-taken.
-
-The unit is the file, not the hunk: the diff picks which files are judged and
-the whole file is then judged, so an uncovered line or one-sided arc anywhere
-in a touched file fails.  That is deliberate -- checking only the added lines
-let a fix land beside uncovered code and pass, which is how a file drifts
-while every individual change looks clean.
-
-Fail-open still matters as much as the check itself: a run that collected no
-branch data must skip the arc check rather than fail every file for lacking
-it.
-"""
+"""Touched files and partial-run additions meet the same 90% coverage floor."""
 
 import importlib.util
 import json
@@ -235,7 +218,7 @@ class TestPartial:
         code, out = run_gate(tmp_path, files, {PATH: {10}}, partial=True)
         assert code == 1
         assert "never taken" in out
-        assert "must be covered by the fast suite" in out
+        assert "require at least 90%" in out
 
     def test_partial_does_not_fail_on_a_gap_outside_the_diff(
         self, tmp_path: Path
@@ -253,7 +236,7 @@ class TestPartial:
         files = {PATH: record([10], [11])}
         code, out = run_gate(tmp_path, files, {PATH: {10, 11}}, partial=True)
         assert code == 1
-        assert "must be covered by the fast suite" in out
+        assert "require at least 90%" in out
 
 
 class TestTheGateRuns:
@@ -356,3 +339,32 @@ def test_strict_gate_allows_a_diff_without_measured_files(
     monkeypatch.setattr(gate, "_added_lines", lambda _base: {"README.md": {1}})
     monkeypatch.setattr(sys, "argv", [str(SCRIPT), "--strict"])
     assert gate.main() == 0
+
+
+@pytest.mark.parametrize("partial", [False, True])
+@pytest.mark.parametrize("kind", ["statements", "branches"])
+@pytest.mark.parametrize(("covered", "expected"), [(8, 1), (9, 0)])
+def test_per_file_coverage_floor(tmp_path, partial, kind, covered, expected):
+    lines = list(range(1, 11))
+    if kind == "statements":
+        data = record(lines[:covered], lines[covered:])
+    else:
+        arcs = [[1, target] for target in range(2, 12)]
+        data = record(
+            [1],
+            [],
+            branches=10,
+            executed_branches=arcs[:covered],
+            missing_branches=arcs[covered:],
+        )
+    code, _ = run_gate(tmp_path, {PATH: data}, {PATH: set(lines)}, partial=partial)
+    assert code == expected
+
+
+def test_one_well_covered_file_cannot_hide_another(tmp_path):
+    files = {
+        PATH: record([1], [2]),
+        "src/esolangs/large.py": record(list(range(100)), []),
+    }
+    code, _ = run_gate(tmp_path, files, {path: {1, 2} for path in files})
+    assert code == 1

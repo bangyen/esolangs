@@ -115,11 +115,14 @@ measured row to answer correctly.
 - `esolangs.check_program` -- return `program` as source, having checked what can be checked here
 - `esolangs.check_stdin` -- refuse `stdin` that cannot be what `language` wants to read
 - `esolangs.describe` -- return a structured description of `language`
+- `esolangs.dump_program` -- return version-1 JSON preserving source, choices, and template setters
 - `esolangs.encode_inputs` -- return the stdin that feeds `bits` to a `language` program
-- `esolangs.evaluate` -- return the table a supplied program computes over `inputs` bits
+- `esolangs.evaluate` -- return the table computed over `inputs` bits, collecting iter_evaluate
 - `esolangs.generate` -- return a program in `language` computing `truth_table`
 - `esolangs.instantiate` -- fill a parameterized generator's template with `bits`
+- `esolangs.iter_evaluate` -- yield answer bits in MSB-first row order without retaining the table
 - `esolangs.list_languages` -- return the supported language names, sorted
+- `esolangs.load_program` -- restore version-1 JSON as tagged source for the requested language
 - `esolangs.read_answer` -- return the answer bit a `language` program's `output` carries
 - `esolangs.run` -- execute `program` and return its output
 
@@ -203,6 +206,15 @@ loading and execution on Windows and worker threads. Timeout kills and reaps
 the child; errors retain their class and `partial_output`.
 `evaluate(..., isolated=True)` applies a finite
 deadline per row; a timeout remains undecided, including termination answers.
+`max_memory=BYTES` bounds a Linux isolated worker's virtual address space,
+including Python overhead. `run` requires `isolated=True`; CLI
+`evaluate --max-memory BYTES` enables isolation. Other platforms refuse the
+option. Parent source loading is outside the cap; exhaustion raises
+`InterpreterLimitError`, never a Boolean answer.
+
+`evaluate(..., isolated=True, max_output=N)` caps each row in Unicode characters;
+CLI `evaluate --max-output N` enables isolation. Overflow raises
+`InterpreterLimitError` with partial output and the failing row.
 
 `run(language, program, stdin, max_steps=100_000, timeout=1)`
 returns output on halt and raises `ExecutionTimeoutError` with

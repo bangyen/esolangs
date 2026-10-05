@@ -35,22 +35,10 @@ grows the frame list rather than Python's stack; that class revisits no
 state, so it is what ``esolangs.run``'s wall-clock ``timeout`` is for,
 exactly as ``grapheme.py`` records.
 
-**Numeric literals are decimal.**  The wiki's examples disagree, and this
-is the gap the roadmap flags.  ``charPut(72)`` (Hello, World!),
-``charPut(48)``/``charPut(49)`` (truth-machine) and ``c ^ 10`` with
-``Array(Char, 100)`` (cat) only work read as decimal; PlusOrMinus's
-``101011``/``101101`` and the dependency example's ``110000``/``101``/
-``011``/``001`` only work read as *binary* character codes.  A pure binary
-reading is refuted outright -- four of the five examples contain literals
-that are not binary at all, including PlusOrMinus's own ``Integer(0, 255,
-255, 0)``.  That leaves decimal against a hybrid ("all-0/1 digits mean
-binary"), 3 examples each; decimal wins because a literal's base must not
-depend on its digit inventory, and because the two examples it declares
-wrong carry the author's own error markers: the comment ``48 (1100000)``
-mis-writes 48, whose binary is ``110000``, and ``equals(101, 011)`` uses
-leading zeros, a binary-writing habit.  So PlusOrMinus and the dependency
-example are declared wrong here and print mojibake rather than ``+-`` and
-``0110``; the tests pin both readings so the decision is visible.
+Numeric literals default to decimal. ``literal_policy="binary_digits"`` reads
+all-0/1 digit strings as binary and every other number as decimal; this makes
+the dependency example's ``110000`` mean 48. Generation uses the same policy
+for expression literals, type bounds and array lengths.
 
 Further decisions for gaps the wiki leaves open:
 
@@ -89,6 +77,7 @@ Further decisions for gaps the wiki leaves open:
 
 from collections.abc import Callable
 
+from esolangs._dialects import PacklangLiterals
 from esolangs._drive import drive
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
@@ -238,7 +227,8 @@ class _Parser:
     with jumps resolved, so nothing in the run has to walk a tree.
     """
 
-    def __init__(self, tokens: list[str]) -> None:
+    def __init__(self, tokens: list[str], literal_policy: str = "decimal") -> None:
+        self.literals = PacklangLiterals(literal_policy)
         self.tokens = tokens
         self.pos = 0
 
@@ -331,7 +321,7 @@ class _Parser:
                 f"expected a number, got {word!r}",
                 "write a nonnegative decimal integer",
             )
-        return int(word)
+        return self.literals.parse(word)
 
     def expression(self) -> tuple[object, ...]:
         """Parse ``a ^ b`` (left-associative) into a postfix tuple."""
@@ -354,7 +344,7 @@ class _Parser:
             self.expect(")")
             return node
         if word.isdigit():
-            return ("lit", int(word))
+            return ("lit", self.literals.parse(word))
         if not word[:1].isalpha() and word[:1] != "_":
             raise syntax_error(
                 f"unexpected token {word!r} in an expression",
@@ -518,10 +508,10 @@ class _Program:
         self.entry: _Function | None = None
 
 
-def _parse(code: str) -> _Program:
+def _parse(code: str, literal_policy: str = "decimal") -> _Program:
     """Parse a whole program into its packages and functions."""
     tokens = _tokenize(_strip_comments(code))
-    return _parse_packages(_Parser(tokens))
+    return _parse_packages(_Parser(tokens, literal_policy))
 
 
 def _parse_packages(parser: _Parser) -> _Program:
@@ -1008,9 +998,9 @@ class _Machine:
 
     eof_is_a_value = True
 
-    def __init__(self, code: str, io: IO) -> None:
+    def __init__(self, code: str, io: IO, *, literal_policy: str = "decimal") -> None:
         self.io = io
-        self.program = _parse(code)
+        self.program = _parse(code, literal_policy)
         entry = self.program.entry
         # _parse raises when a program has no entry, so this cannot be None.
         if entry is None:
@@ -1145,9 +1135,9 @@ class _Machine:
             self.frames[-1].returned = frame.result
 
 
-def run(code: str, io: IO) -> None:
+def run(code: str, io: IO, *, literal_policy: str = "decimal") -> None:
     """Run a Packlang program to completion."""
-    machine = _Machine(code, io)
+    machine = _Machine(code, io, literal_policy=literal_policy)
     drive(machine)
 
 

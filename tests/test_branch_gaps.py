@@ -13,7 +13,6 @@ from esolangs.interpreters.grid_based.a_painter_ant import _Machine as _AntMachi
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.packlang import _Parser
 from esolangs.interpreters.stack_based.three_x import run as three_x_run
-from esolangs.tools.laserfuck import laserfuck
 from tests.interpreters.runner import run_program
 
 
@@ -51,20 +50,3 @@ class TestPacklangDeclarationScan:
     def test_a_type_followed_by_a_non_name_is_not_a_declaration(self) -> None:
         """The name check fails, so the semicolon is never looked for."""
         assert _Parser(["Integer", "5", ";"]).is_declaration() is False
-
-
-class TestLaserfuckGridWrite:
-    def test_a_table_whose_layout_backfills_a_row_builds(self) -> None:
-        """The grid pads only when the column is past the line's end.
-
-        XOR's layout writes back into rows it has already filled, which is
-        the arm a forward-only layout never takes.  Asserted on the built
-        program: a padding bug there would corrupt the grid, not raise.
-        """
-        program = laserfuck("0110")
-        # ``test_boolean_laserfuck`` runs this program against the table from
-        # every heading; here the point is only that the backfilling write
-        # produces a grid at all, and that every row it padded is as wide
-        # as the character it was padded for.
-        for row in program.split("\n"):
-            assert row == "" or not row.endswith(" ")

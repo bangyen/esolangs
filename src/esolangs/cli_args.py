@@ -7,6 +7,7 @@ are written once rather than per command.
 
 from __future__ import annotations
 
+import json
 import sys
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -20,6 +21,7 @@ from esolangs.cli_hints import (
     _did_you_mean,
 )
 from esolangs.exceptions import EsolangError
+from esolangs.settings import DialectSettings
 from esolangs.tools.wrap import DEFAULT_WIDTH
 
 #: Flags every subcommand accepts, so a near miss on one of them is
@@ -214,6 +216,14 @@ def _pop_flags(rest: list[str], names: set[str]) -> tuple[list[str], list[str]]:
     return args + rest[boundary:], flags
 
 
+def _pop_portable(rest: list[str]) -> tuple[list[str], bool]:
+    """Remove one portable-format flag before the positional separator."""
+    rest, flags = _pop_flags(rest, {"--portable"})
+    if len(flags) > 1:
+        _fail("--portable given more than once")
+    return rest, bool(flags)
+
+
 def _refuse_repeat(found: dict[str, str], name: str) -> None:
     """Refuse a second copy of an option that takes a value.
 
@@ -259,7 +269,7 @@ def _pop_options(rest: list[str], names: set[str]) -> tuple[list[str], dict[str,
     return args, found
 
 
-def _timeout_of(options: dict[str, str]) -> float | None:
+def _timeout_of(options: dict[str, str], *, option: str = "--timeout") -> float | None:
     """Return the ``--timeout`` seconds, or None, refusing a bad value.
 
     The *value* checks are :func:`esolangs.check_stdin`'s neighbour
@@ -269,18 +279,22 @@ def _timeout_of(options: dict[str, str]) -> float | None:
     A ``--timeout 1e10`` therefore got past here and overflowed the C
     timer three calls later, as a raw ``OverflowError``.
     """
-    if "--timeout" not in options:
+    if option not in options:
         return None
     try:
-        seconds = float(options["--timeout"])
+        seconds = float(options[option])
     except ValueError:
-        _fail(f"--timeout must be a number, got {options['--timeout']!r}")
+        _fail(f"{option} must be a number, got {options[option]!r}")
     try:
         check_timeout(seconds)
     except EsolangError as exc:
         # Re-worded from ``timeout`` to ``--timeout``: the library names the
         # parameter, and this names the flag the reader typed.
-        _fail(_cli_error_text(exc).replace("timeout must", "--timeout must", 1))
+        _fail(
+            _cli_error_text(exc)
+            .replace("timeout must", f"{option} must", 1)
+            .replace("--timeout 5.0", f"{option} 5.0")
+        )
     return seconds
 
 
@@ -372,3 +386,17 @@ def _scale_of(options: dict[str, str]) -> int | None:
     except (ValueError, ArgumentError):
         _fail(f"--scale must be a positive integer, got {options['--scale']!r}")
         raise  # pragma: no cover - _fail exits
+
+
+def _settings_of(options: dict[str, str]) -> DialectSettings | None:
+    """Parse explicit dialect overrides from one JSON object."""
+    if "--settings" not in options:
+        return None
+    try:
+        values = json.loads(options["--settings"])
+    except ValueError:
+        _fail("--settings must be a JSON object")
+    if not isinstance(values, dict):
+        _fail("--settings must be a JSON object")
+    with _errors():
+        return DialectSettings(**values)

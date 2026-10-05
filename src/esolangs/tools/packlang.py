@@ -24,6 +24,7 @@ time, so the two alternate and no copy is ever needed.
 import re
 from itertools import pairwise
 
+from esolangs._dialects import PacklangLiterals
 from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table
 from esolangs.tools.wrap import (
     _PACKLANG_LEXEME,
@@ -46,13 +47,20 @@ _FILL_COST = 3
 _WIDTH = 72
 
 
-def packlang(truth_table: str, width: int | None = None) -> str:
+def packlang(
+    truth_table: str, width: int | None = None, *, literal_policy: str = "decimal"
+) -> str:
     """Build a linear-size Packlang program; narrow layouts floor at one token.
 
     The unused package name shortens below ten columns; keywords floor at seven.
     """
+    literals = PacklangLiterals(literal_policy)
     n = _validate_truth_table(truth_table)
     program = _painted(truth_table, n)
+    if literal_policy != "decimal":
+        program = re.sub(
+            r"\b\d+\b", lambda match: literals.emit(int(match[0])), program
+        )
     if width is None or width <= 0:
         return program
     # The package is never named by its own body or the IO dependency.

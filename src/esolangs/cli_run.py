@@ -14,8 +14,10 @@ from esolangs.cli_args import (
     _nonnegative,
     _pop_flags,
     _pop_options,
+    _pop_portable,
     _scale_of,
     _seed_of,
+    _settings_of,
     _split_positional,
     _table_of,
     _timeout_of,
@@ -39,6 +41,7 @@ from esolangs.cli_io import (
     _write_output,
 )
 from esolangs.exceptions import EsolangError, ExecutionTimeoutError, TemplateError
+from esolangs.settings import dialect_options
 
 
 def _judge(language: str, output: str, mode: object) -> str:
@@ -57,7 +60,16 @@ def _judge(language: str, output: str, mode: object) -> str:
 def _run(rest: list[str]) -> None:
     """Run a program through its interpreter and write its output."""
     rest, options = _pop_options(
-        rest, {"--timeout", "--table", "--seed", "--scale", "--max-output"}
+        rest,
+        {
+            "--timeout",
+            "--table",
+            "--seed",
+            "--scale",
+            "--max-output",
+            "--max-memory",
+            "--settings",
+        },
     )
     # The value is checked here, before the positionals are counted.  It ran
     # after, so `run --timeout brainfuck prog.txt` -- a forgotten number --
@@ -65,6 +77,7 @@ def _run(rest: list[str]) -> None:
     # "missing <program-file>", sending the reader to look at the one
     # argument that was not the problem.
     timeout = _timeout_of(options)
+    rest, portable = _pop_portable(rest)
     rest, flags = _pop_flags(rest, {"--judge", "--isolated"})
     isolated = "--isolated" in flags
     if isolated and timeout is None:
@@ -77,6 +90,13 @@ def _run(rest: list[str]) -> None:
             options["--max-output"], "--max-output", kind="a non-negative integer"
         )
         _nonnegative(max_output, "--max-output", options["--max-output"])
+    max_memory = None
+    if "--max-memory" in options:
+        max_memory = _integer(options["--max-memory"], "--max-memory")
+        with _errors():
+            from esolangs._isolated import check_memory
+
+            check_memory(max_memory, isolated=isolated)
     rest = _split_positional(
         rest,
         set(),
@@ -86,12 +106,16 @@ def _run(rest: list[str]) -> None:
             "--table",
             "--seed",
             "--scale",
+            "--settings",
+            "--portable",
             "--isolated",
             "--max-output",
+            "--max-memory",
         },
     )
     seed = _seed_of(options)
     scale = _scale_of(options)
+    settings = _settings_of(options)
     judge = "--judge" in flags
     # Refused like every value-taking option is.  `--judge --judge` was
     # accepted in silence while `--timeout 5 --timeout 9` was refused, and
@@ -101,16 +125,17 @@ def _run(rest: list[str]) -> None:
             _fail(f"{flag} given more than once")
     _check_count("run", rest, 2)
     language, path = rest[0], rest[1]
-    program = _read_program(path, timeout, language=language)
+    table = _table_of(options)
     # Resolved *before* stdin is read.  It was after, so
     # `esolangs run NotALang prog.txt` with stdin held open blocked forever
     # without ever saying the language was unknown -- the one thing it could
     # have answered without reading a byte.
     with _errors():
+        if not portable:
+            dialect_options(language, settings)
         facts = describe(language)
         mode = facts["answer_mode"]
         name = facts["name"]
-    stdin = _read_stdin(timeout, _stdin_hint(facts))
     if mode == "termination" and timeout is None:
         if judge:
             # Judging needs the bound, so this is a refusal rather than the
@@ -129,7 +154,10 @@ def _run(rest: list[str]) -> None:
             f"program with that answer will run until you stop it; pass "
             f"--timeout SECONDS to bound it\n"
         )
-    table = _table_of(options)
+    program = _read_program(
+        path, timeout, language=language, portable=portable, settings=settings
+    )
+    stdin = _read_stdin(timeout, _stdin_hint(facts))
     warning = _shape_warning(facts, stdin, table) if judge or table is not None else ""
     if warning and judge:
         # ``--judge`` wants one answer bit, so a bad stdin is a usage error
@@ -168,9 +196,19 @@ def _run(rest: list[str]) -> None:
                     scale=scale,
                     isolated=True,
                     max_output=max_output,
+                    max_memory=max_memory,
+                    settings=settings,
                 )
             else:
-                output = run(language, program, stdin, timeout, seed, scale=scale)
+                output = run(
+                    language,
+                    program,
+                    stdin,
+                    timeout,
+                    seed,
+                    scale=scale,
+                    settings=settings,
+                )
         for entry in caught:
             _note(str(entry.message))
         # The count and range checks ``--table`` buys; the library judges
