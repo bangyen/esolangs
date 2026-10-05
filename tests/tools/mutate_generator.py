@@ -112,6 +112,8 @@ from esolangs.registry import LANGUAGES  # noqa: E402
 _TOOLS_SUPPORT = (
     Path("tests/source_support.py"),
     Path("tests/generator_support.py"),
+    # ``generator_support`` validates tables through this oracle.
+    Path("tests/stdin_check.py"),
     Path("tests/__init__.py"),
     Path("tests/divergence.py"),
     Path("tests/raises.py"),
