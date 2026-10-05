@@ -500,65 +500,6 @@ class TestDebugMakesTheSameRefusals:
         assert "not in your program" in err
 
 
-class TestTheAnswerCommandDoesOneRow:
-    """Nothing did one row, so a reader wrote a wrapper."""
-
-    @pytest.mark.parametrize(
-        ("bits", "expected"), [("00", "0"), ("01", "1"), ("10", "1"), ("11", "0")]
-    )
-    def test_it_answers_each_row_of_xor(
-        self, bits: str, expected: str, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """Both polarities, so a command that always printed 1 would fail."""
-        out = call_main(["answer", "brainfuck", "0110", bits], capsys)
-        assert out.strip() == expected
-
-    @pytest.mark.parametrize(
-        "name", ["Fargo", "Grapheme", "Clockwise", "Taglate", "Minifuck", "RAM0"]
-    )
-    def test_it_encodes_the_odd_shapes_for_you(
-        self, name: str, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """Which is the point: the encoding step is the one people get wrong."""
-        assert call_main(["answer", name, "0110", "10"], capsys).strip() == "1"
-
-    def test_it_supplies_a_bound_for_a_diverging_language(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """A one-liner that needs a flag for a diverging language is not one."""
-        assert call_main(["answer", "123", "0110", "01"], capsys).strip() == "1"
-        assert call_main(["answer", "123", "0110", "00"], capsys).strip() == "0"
-
-    @pytest.mark.slow
-    def test_it_agrees_with_evaluate_everywhere(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """Row by row against the whole-table command, for every language."""
-        table = "0110"
-        for name in esolangs.list_languages():
-            if not esolangs.describe(name)["boolean_generator"]:
-                continue
-            for row, bits in enumerate(("00", "01", "10", "11")):
-                got = call_main(["answer", name, table, bits], capsys).strip()
-                assert got == table[row], f"{name} row {bits}"
-
-    def test_bad_bits_are_refused(self, capsys: pytest.CaptureFixture[str]) -> None:
-        """Same refusal `encode` makes on the same argument."""
-        with pytest.raises(SystemExit) as exc:
-            call_main(["answer", "brainfuck", "0110", "1x"], capsys)
-        assert exc.value.code == 2
-        assert "bits must be a string of 0s and 1s" in capsys.readouterr().err
-
-    def test_a_missing_argument_is_named(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """Three positionals, so the shared machinery has to know about it."""
-        with pytest.raises(SystemExit) as exc:
-            call_main(["answer", "brainfuck", "0110"], capsys)
-        assert exc.value.code == 2
-        assert "missing <bits>" in capsys.readouterr().err
-
-
 class TestTheTableOptionClosesTheArityGap:
     """`run` has no arity of its own; the table supplies one."""
 
@@ -720,37 +661,6 @@ class TestJudgeAdmitsWhatItCannotCheck:
             stdin="10",
         )
         assert err == ""
-
-
-class TestTheAnswerCommandsFailurePaths:
-    """What it does when the language or the table is wrong."""
-
-    def test_an_unknown_language_is_named(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """Resolved through the same suggester as everything else."""
-        with pytest.raises(SystemExit) as exc:
-            call_main(["answer", "NotALang", "0110", "10"], capsys)
-        assert exc.value.code == 2
-        assert "unknown language" in capsys.readouterr().err
-
-    def test_a_malformed_table_is_named(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """And named as a table, at the usage exit code."""
-        with pytest.raises(SystemExit) as exc:
-            call_main(["answer", "brainfuck", "011", "10"], capsys)
-        assert exc.value.code == 2
-        assert "power-of-two" in capsys.readouterr().err
-
-    def test_a_wrong_bit_count_is_named(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """The table is right there, so the arity is always checkable here."""
-        with pytest.raises(SystemExit) as exc:
-            call_main(["answer", "brainfuck", "0110", "101"], capsys)
-        assert exc.value.code == 2
-        assert "3 bits were given" in capsys.readouterr().err
 
 
 class TestEvaluateNeedsNoSeed:

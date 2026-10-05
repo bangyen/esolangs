@@ -35,10 +35,6 @@ commands:
                               without running anything
   read-answer <language>      read a program's output on stdin and print
                               the answer bit it carries
-  answer [--timeout S] [--settings JSON] [--set KEY=VALUE]
-         <language> <truth-table> <bits>
-                              generate, feed those bits, run, and print the
-                              one answer bit
   evaluate [--timeout S] [--total-timeout S] [--max-rows N]
            [--max-output N] [--max-memory BYTES] [--inputs N | --table T]
            [--settings JSON] [--set KEY=VALUE] [--portable]
@@ -69,7 +65,6 @@ examples:
   esolangs generate --width brainfuck 10010110
   esolangs generate --bits 10 Minifuck 0110
   esolangs run Circlefuck hello.txt
-  esolangs answer brainfuck 0110 10
   esolangs generate Fargo 10010110 > fargo.txt
   esolangs evaluate --table 10010110 Fargo fargo.txt
   esolangs encode LaserFuck 10 | esolangs run --judge LaserFuck prog.txt
@@ -243,35 +238,6 @@ examples:
   esolangs generate --portable --set expression_syntax=postfix Alight 0110 > p.json
   esolangs encode Alight 10 | esolangs run --portable --judge --table 0110 p.json
 """,
-    "answer": """usage: esolangs answer [--timeout S] [--settings JSON]
-                       [--set KEY=VALUE] <language> <truth-table> <bits>
-
-Generate a program for <truth-table>, feed it <bits>, run it, and print the
-single answer bit.
-
-This generates and runs one row. Everything it does was
-already possible -- generate to a file, encode the bits, pipe them in, judge
-the output -- but that is four commands and a temporary file, and the
-encoding step is the one people get wrong.  Nothing here can be
-mis-encoded: the bits go in as bits.
-
-  esolangs answer brainfuck 0110 10        -> 1
-  esolangs answer Fargo 10010110 101       -> 1
-  esolangs answer "A Painter Ant" 0110 01  -> 1
-
-Works for every language, including those whose generators embed
-their inputs, those that dump their whole final state, and the four that
-answer by not terminating -- for those a bound is needed, and the default
-below is applied.
-
-options:
-  -s, --settings JSON    dialect overrides shared with generate and run.
-  --set KEY=VALUE    one dialect override without JSON, repeatable and applied
-                     after --settings.
-  --timeout SECONDS  bound the run.  Defaults to 5 seconds for the four
-                     languages whose answer for a 1 is that the program
-                     never stops, and to none for the rest.
-""",
     "evaluate": """usage: esolangs evaluate [--timeout S] [--total-timeout S]
                           [--max-rows N] [--max-output N] [--max-memory BYTES]
                           [--inputs N | --table T] [--settings JSON]
@@ -303,7 +269,7 @@ options:
 
 examples:
   esolangs evaluate --inputs 2 brainfuck program.txt
-  esolangs evaluate --table 0110 brainfuck program.txt
+  esolangs evaluate --table 0110 brainfuck program.txt -> 0110
   esolangs generate --portable --set expression_syntax=postfix Alight 0110 > p.json
   esolangs evaluate --portable --table 0110 p.json
 """,

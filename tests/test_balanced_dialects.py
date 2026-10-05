@@ -21,10 +21,17 @@ from tests.cli_support import call_both
         ("Packlang", '{"literal_policy":"binary_digits"}'),
     ],
 )
-def test_cli_answer_uses_settings(language, choices, capsys):
+def test_cli_evaluate_uses_settings(language, choices, capsys, tmp_path):
+    program, error = call_both(
+        ["generate", "--settings", choices, language, "0110"], capsys
+    )
+    assert error == ""
+    path = tmp_path / "program.txt"
+    path.write_text(program)
     assert call_both(
-        ["answer", "--settings", choices, language, "0110", "10"], capsys
-    ) == ("1\n", "")
+        ["evaluate", "--settings", choices, "--table", "0110", language, str(path)],
+        capsys,
+    ) == ("0110\n", "")
 
 
 def test_cli_debug_uses_settings(tmp_path: Path, capsys):
@@ -44,19 +51,18 @@ def test_cli_debug_uses_settings(tmp_path: Path, capsys):
     assert "output: '10'" in output
 
 
-@pytest.mark.parametrize("command", ["answer", "debug"])
-def test_cli_settings_rejected_before_work(command, capsys):
-    rest = ["Fargo", "01", "0"] if command == "answer" else ["Fargo", "missing"]
+def test_cli_settings_rejected_before_work(capsys):
     with (
         patch("esolangs.cli_debug._read_program", side_effect=AssertionError("read")),
         pytest.raises(SystemExit) as exc,
     ):
         call_both(
             [
-                command,
+                "debug",
                 "--settings",
                 '{"integer_conversion":"after_each_letter"}',
-                *rest,
+                "Fargo",
+                "missing",
             ],
             capsys,
         )
@@ -125,9 +131,14 @@ def test_cli_tui_uses_settings(tmp_path: Path, capsys):
     )
 
 
-@pytest.mark.parametrize("bit", ["0", "1"])
-def test_cli_answer_empty_settings_preserve_termination(bit, capsys):
-    assert call_both(["answer", "--settings", "{}", "123", "01", bit], capsys) == (
-        bit + "\n",
+def test_cli_evaluate_empty_settings_preserve_termination(capsys, tmp_path):
+    program, error = call_both(["generate", "--settings", "{}", "123", "01"], capsys)
+    assert error == ""
+    path = tmp_path / "program.txt"
+    path.write_text(program)
+    assert call_both(
+        ["evaluate", "--settings", "{}", "--table", "01", "123", str(path)], capsys
+    ) == (
+        "01\n",
         "",
     )

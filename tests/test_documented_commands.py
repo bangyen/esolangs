@@ -67,7 +67,8 @@ def _logical_lines(text: str) -> list[str]:
 def _commands(text: str) -> list[tuple[str, str | None]]:
     """Return the concrete commands in ``text``, with any stated output.
 
-    Some examples are written ``esolangs answer brainfuck 0110 10 -> 1``.
+    Some examples are written ``esolangs evaluate --table 0110 brainfuck
+    program.txt -> 0110``.
     The arrow is a claim about what the command prints, so it is parsed and
     checked rather than stripped: an example that says what it produces is
     the most falsifiable kind there is.

@@ -23,56 +23,35 @@ from tests.test_cli import _program, call_main
 class TestATimeoutHasOneExitCode:
     """124 wherever the bound runs out, not two codes for one event.
 
-    ``run`` and ``debug`` exited 124 and ``evaluate``, ``verify`` and
-    ``answer`` exited 1 on the same event, so a script could not test for
-    it -- and 124 is the only exit code this CLI documents a meaning for.
-    The four languages whose answer *is* a timeout make the distinction
-    load-bearing rather than tidy.
+    ``run`` and ``debug`` exited 124 and ``evaluate`` exited 1 on the
+    same event, so a script could not test for it -- and 124 is the only
+    exit code this CLI documents a meaning for.  The four languages whose
+    answer *is* a timeout make the distinction load-bearing rather than
+    tidy.
     """
 
     @pytest.mark.medium
-    @pytest.mark.parametrize(
-        "args",
-        [
-            ["evaluate", "10010110"],
-            ["answer", "10010110", "101"],
-        ],
-    )
     def test_the_bound_running_out_is_124(
         self,
-        args: list[str],
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
-        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Both commands report 124 when an executed program never halts."""
-        command, rest = args[0], args[1:]
-        if command == "evaluate":
-            path = tmp_path / "loop.bf"
-            path.write_text("+[]")
-            with pytest.raises(SystemExit) as exc:
-                call_main(
-                    [
-                        command,
-                        "--timeout",
-                        "0.001",
-                        "--inputs",
-                        "1",
-                        "brainfuck",
-                        str(path),
-                    ],
-                    capsys,
-                )
-            assert exc.value.code == 124
-            capsys.readouterr()
-            return
-        # Validation warms Polynomial's parse cache before the deadline starts.
-        # A diverging program makes this independent of cold-parse timing.
-        monkeypatch.setattr(
-            "esolangs.cli_round_trip.generate", lambda *_args, **_kwargs: "+[]"
-        )
+        """A never-halting executed program reports 124."""
+        path = tmp_path / "loop.bf"
+        path.write_text("+[]")
         with pytest.raises(SystemExit) as exc:
-            call_main([command, "--timeout", "0.001", "brainfuck", *rest], capsys)
+            call_main(
+                [
+                    "evaluate",
+                    "--timeout",
+                    "0.001",
+                    "--inputs",
+                    "1",
+                    "brainfuck",
+                    str(path),
+                ],
+                capsys,
+            )
         assert exc.value.code == 124
         capsys.readouterr()
 
@@ -414,14 +393,11 @@ class TestTheTimeoutIsABackstopNotAPerRowCost:
         assert "backstop" in help_text
 
 
-class TestAnswerProvesRatherThanWaits:
-    """``answer --timeout 20`` took twenty seconds; raising a bound made it
-    strictly slower, which is the opposite of what a bound means.
+class TestEvaluationProvesRatherThanWaits:
+    """A generous bound must not be paid per diverging row.
 
-    ``answer --help`` calls itself "``verify`` for one row instead of all of
-    them", and ``verify`` settles four rows of the same language in a fifth
-    of a second -- the repeated-state proof had reached ``evaluate`` and
-    ``verify`` and never reached here.
+    The repeated-state proof settles those rows quickly; the timeout is
+    only the backstop for a program that diverges by growing.
     """
 
     @pytest.mark.parametrize("language", ["123", "ArrowQueue"])
@@ -432,16 +408,6 @@ class TestAnswerProvesRatherThanWaits:
         elapsed = time.perf_counter() - start
         assert answer == "0110"
         assert elapsed < 20, f"{language} waited {elapsed:.1f}s out of a 20s bound"
-
-    def test_the_cli_answer_agrees_row_by_row(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """The proof must not have changed any answer, only the wait."""
-        for bits, expected in (("00", "0"), ("01", "1"), ("10", "1"), ("11", "0")):
-            out, _err = call_both(
-                ["answer", "--timeout", "20", "123", "0110", bits], capsys
-            )
-            assert out.strip() == expected, bits
 
 
 class TestAnInterruptIsNotATraceback:
