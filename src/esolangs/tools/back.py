@@ -166,7 +166,7 @@ def _back_ordered(
     template *is* input k: the harness fills the runs in order, so a
     cell-order load would have to carry its permutation some other way.
     The choice costs 2.85 points.  The walk is cheap in absolute
-    terms -- ``4n - 2`` pointer moves, 10 of the 220 characters Back's
+    terms -- ``4n - 2`` pointer moves, 10 of the 236 characters Back's
     programs average at n=3 -- but visible because the programs are short.
 
     Keeping the ``-``/run pairs intact preserves the equal-width

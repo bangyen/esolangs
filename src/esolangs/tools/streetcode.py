@@ -206,9 +206,9 @@ def _streetcode_tree_uncached(table: str) -> list[str]:
     """Build the binary decision tree: one T-junction turn per input bit.
 
     Halves are joined by a hall that advances CP one ``=`` and forks on the
-    bit.  A constant subtree folds to a leaf (428 chars vs 1439 at three
-    inputs); the reads happen before the tree, so a folded program consumes
-    its input unchanged.  Siblings are padded to a common width.
+    bit.  A constant subtree folds to a leaf (389 chars for the constant table
+    at three inputs); the reads happen before the tree, so a folded program
+    consumes its input unchanged.  Siblings are padded to a common width.
     """
     size = len(table)
     if size == 1:

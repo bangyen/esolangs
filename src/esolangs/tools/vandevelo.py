@@ -64,8 +64,8 @@ at most ``sqrt(2**(dim + 1))`` inputs, so under ``sqrt(n)`` per clause
 at the peel's dimensions and 2% of the build at n=15.  The per-cube peel
 this replaces rescanned the remainder for every cube, ``Theta(T**2 /
 word)``; this one measures x1.7--2.3 per added input over n=10..15 at
-0.93--1.02 of its size.  Dense random tables measure 8.4--9.5 characters
-per entry at n=8..13.
+0.93--1.02 of its size.  Dense tables measure 7.3--8.7 characters
+per entry at n=8..11.
 The exact calls lack an aggregate amortization bound, and the dual-basis
 core still needs a build-work bound. These measurements prove neither.
 
