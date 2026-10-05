@@ -11,7 +11,21 @@ Interpreters and Boolean generators for 81 esoteric languages: 79 text and 2 ras
 
 <!-- PACKAGE-COUNT:END -->
 
-`generate` builds a truth-table program; `evaluate` returns its observed table.
+`generate` builds a truth-table program; `run` executes it on one input row.
+
+## Quickstart
+
+A table lists outputs for inputs `00, 01, 10, 11` in order, so `0110` is XOR:
+
+```bash
+pip install esolangs
+esolangs generate brainfuck 0110 > xor.bf
+for i in 00 01 10 11; do printf $i | esolangs run brainfuck xor.bf; echo " <- $i"; done
+# 0 <- 00
+# 1 <- 01
+# 1 <- 10
+# 0 <- 11
+```
 
 Start with the [CLI](#command-line) or [Python API](#python-api).
 The [usage guide](https://github.com/bangyen/esolangs/blob/main/docs/usage.md)
