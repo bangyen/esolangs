@@ -217,7 +217,7 @@ class _Frame:
 
     def key(self) -> tuple[object, ...]:
         """Return the frame as a hashable value for :meth:`snapshot`."""
-        return (self.func.name, self.pc, self.store, self.result)
+        return (self.func.package, self.func.name, self.pc, self.store, self.result)
 
 
 class _Parser:
@@ -266,13 +266,24 @@ class _Parser:
             )
         return kind
 
+    def identifier(self) -> str:
+        word = self.next_token()
+        if re.fullmatch(r"[A-Za-z_][A-Za-z_0-9]*", word) is None:
+            raise ValueError(f"expected an identifier, got {word!r}")
+        return word
+
     def parse_type(self) -> _Type:
         """Parse a datatype, including its parenthesized parameters."""
         name = self.next_token()
         if name == "Integer" and self.peek() == "(":
             self.next_token()
-            args = [self.number() for _ in self.commas(4)]
+            args = [self.number()]
+            for _ in range(3):
+                self.expect(",")
+                args.append(self.number())
             self.expect(")")
+            if args[0] > args[1]:
+                raise ValueError("integer minimum exceeds maximum")
             return _Type(args[0], args[1], args[2], args[3])
         if name == "Array":
             self.expect("(")
@@ -307,15 +318,9 @@ class _Parser:
             ),
         )
 
-    def commas(self, count: int) -> range:
-        """Yield ``count`` slots, consuming the commas between them."""
-        return range(count)
-
     def number(self) -> int:
         """Parse a decimal integer literal; see the module docstring."""
         word = self.next_token()
-        if word == ",":
-            word = self.next_token()
         if not word.isdigit():
             raise syntax_error(
                 f"expected a number, got {word!r}",
@@ -428,7 +433,7 @@ class _Parser:
         # A declaration inside a function body: a type followed by a name.
         if word is not None and word in _DATATYPES and self.is_declaration():
             declared = self.parse_type()
-            name = self.next_token()
+            name = self.identifier()
             self.expect(";")
             local_types[name] = declared
             return
@@ -465,7 +470,9 @@ class _Parser:
                 slots = target[2]
                 if not isinstance(slots, tuple):
                     raise AssertionError("isinstance(slots, tuple)")
-                index = slots[0] if slots else None
+                if len(slots) != 1:
+                    raise ValueError("charGet array target takes exactly one index")
+                index = slots[0]
             out.append([_READ, name, index])
             return
         out.append([_VALUE, expr])
@@ -501,10 +508,10 @@ class _Program:
     __slots__ = ("dependencies", "entry", "functions", "globals", "types")
 
     def __init__(self) -> None:
-        self.functions: dict[str, _Function] = {}
-        self.globals: dict[str, _Type] = {}
+        self.functions: dict[tuple[str, str], _Function] = {}
+        self.globals: dict[tuple[str, str], _Type] = {}
         self.dependencies: dict[str, frozenset[str]] = {}
-        self.types: dict[str, _Type] = {}
+        self.types: dict[tuple[str, str], _Type] = {}
         self.entry: _Function | None = None
 
 
@@ -528,10 +535,10 @@ def _parse_packages(parser: _Parser) -> _Program:
         deps = []
         if parser.peek() == ":":
             parser.next_token()
-            deps.append(parser.next_token())
+            deps.append(parser.identifier())
             while parser.peek() == ",":
                 parser.next_token()
-                deps.append(parser.next_token())
+                deps.append(parser.identifier())
         parser.expect("{")
         members: list[tuple[str, _Function]] = []
         globals_here: dict[str, _Type] = {}
@@ -543,14 +550,21 @@ def _parse_packages(parser: _Parser) -> _Program:
                 )
             _member(parser, members, globals_here)
         parser.next_token()
-        package = parser.next_token()
+        package = parser.identifier()
         parser.expect(";")
         program.dependencies[package] = frozenset(deps)
-        program.globals.update(globals_here)
-        program.types.update(globals_here)
+        program.globals.update(
+            ((package, name), kind) for name, kind in globals_here.items()
+        )
+        program.types.update(
+            ((package, name), kind) for name, kind in globals_here.items()
+        )
         for name, func in members:
             func.package = package
-            program.functions[name] = func
+            key = (package, name)
+            if key in program.functions:
+                raise ValueError(f"duplicate function {name!r} in {package!r}")
+            program.functions[key] = func
         order.append(package)
     program.entry = _entry(program, order)
     return program
@@ -563,7 +577,7 @@ def _member(
 ) -> None:
     """Parse one package member: a variable declaration or a function."""
     declared = parser.parse_type()
-    name = parser.next_token()
+    name = parser.identifier()
     if parser.peek() == ";":
         parser.next_token()
         globals_here[name] = declared
@@ -580,11 +594,11 @@ def _member(
             # spelled differently on the wiki and mean different things.
             if parser.peek() in _DATATYPES:
                 param_type = parser.parse_type()
-                param = parser.next_token()
+                param = parser.identifier()
                 local_types[param] = param_type
                 params.append(param)
             else:
-                uses.append(parser.next_token())
+                uses.append(parser.identifier())
             if parser.peek() != ",":
                 break
             parser.next_token()
@@ -612,9 +626,15 @@ def _entry(program: _Program, order: list[str]) -> _Function:
     parameterless function.  The wiki names no entry point at all, and
     every example but PlusOrMinus calls its function ``main``.
     """
-    main = program.functions.get("main")
-    if main is not None and not main.params:
-        return main
+    mains = [
+        func
+        for func in program.functions.values()
+        if func.name == "main" and not func.params
+    ]
+    if len(mains) > 1:
+        raise ValueError("program has multiple parameterless main functions")
+    if mains:
+        return mains[0]
     for package in reversed(order):
         candidates = [
             f
@@ -792,19 +812,25 @@ def _substitute(node: _Expr, target: _Expr, value: int) -> _Expr:
 def _callee(node: _Expr, program: _Program, caller: str) -> _Function:
     """Resolve the function a pending call names, checking visibility."""
     name = str(node[1])
-    func = program.functions.get(name)
-    if func is None:
+    local = program.functions.get((caller, name))
+    if local is not None:
+        return local
+    named = [func for func in program.functions.values() if func.name == name]
+    if not named:
         raise HaltError(
             f"undefined function {name!r}",
             hint="define the function before calling it; check its spelling",
         )
-    if not _visible(func, caller, program):
+    visible = [func for func in named if _visible(func, caller, program)]
+    if not visible:
         raise HaltError(
-            f"{caller!r} does not depend on {func.package!r}, "
+            f"{caller!r} does not depend on {named[0].package!r}, "
             f"so {name!r} is not in scope",
             hint="declare the package dependency before calling its function",
         )
-    return func
+    if len(visible) != 1:
+        raise HaltError(f"ambiguous function {name!r} in {caller!r}")
+    return visible[0]
 
 
 def _entered(func: _Function, values: list[int], program: _Program) -> _Frame:
@@ -821,13 +847,17 @@ def _entered(func: _Function, values: list[int], program: _Program) -> _Frame:
 
 def _initial_store(func: _Function, program: _Program) -> _Store:
     """Build a function's store: the globals it sees, plus its own locals."""
-    types = dict(program.globals)
+    types = {
+        name: kind
+        for (package, name), kind in program.globals.items()
+        if package == func.package
+    }
     types.update(func.locals)
     return tuple((name, kind.zero()) for name, kind in sorted(types.items()))
 
 
 def _type_of(name: str, func: _Function, program: _Program) -> _Type:
-    return func.locals.get(name) or program.types.get(name) or _Type()
+    return func.locals.get(name) or program.types.get((func.package, name)) or _Type()
 
 
 def _advance(
@@ -1001,6 +1031,41 @@ class _Machine:
     def __init__(self, code: str, io: IO, *, literal_policy: str = "decimal") -> None:
         self.io = io
         self.program = _parse(code, literal_policy)
+        self._input_reads = 0
+        self._program_key = (
+            tuple(
+                sorted(
+                    (
+                        name,
+                        func.package,
+                        func.params,
+                        func.body,
+                        func.uses,
+                        tuple(
+                            sorted(
+                                (
+                                    slot,
+                                    kind.low,
+                                    kind.high,
+                                    kind.under,
+                                    kind.over,
+                                    kind.length,
+                                )
+                                for slot, kind in func.locals.items()
+                            )
+                        ),
+                    )
+                    for name, func in self.program.functions.items()
+                )
+            ),
+            tuple(sorted(self.program.dependencies.items())),
+            tuple(
+                sorted(
+                    (key, kind.low, kind.high, kind.under, kind.over, kind.length)
+                    for key, kind in self.program.globals.items()
+                )
+            ),
+        )
         entry = self.program.entry
         # _parse raises when a program has no entry, so this cannot be None.
         if entry is None:
@@ -1058,6 +1123,8 @@ class _Machine:
                 for frame in self.frames
             ),
             self.io.position(),
+            self._input_reads,
+            self._program_key,
         )
 
     def step(self) -> None:
@@ -1088,6 +1155,7 @@ class _Machine:
             # exception here rather than changing the shared input port.
             try:
                 byte = self.io.input_char()
+                self._input_reads += 1
             except EOFError:
                 byte = 10
             result, out, _ = _advance(frame, self.program, byte, prepared)
