@@ -5,6 +5,8 @@ from concurrent.futures import ThreadPoolExecutor
 import pytest
 
 import esolangs
+from esolangs import _check_program
+from esolangs._answers import _check_stdin
 from esolangs._evaluate import _evaluate
 
 
@@ -14,8 +16,8 @@ def test_bound_language_runs_a_boolean_workflow():
     assert language.describe()["name"] == language.name
     program = language.generate("0110", balance=True)
     stdin = language.encode_inputs([0, 1], "0110")
-    language.check_stdin(stdin, "0110")
-    assert language.check_program(program, stdin) == program
+    _check_stdin(language.name, stdin, "0110")
+    assert _check_program(language.name, program, stdin) == program
     assert language.read_answer(language.run(program, stdin)) == "1"
     assert _evaluate(language.name, program, inputs=2) == "0110"
 

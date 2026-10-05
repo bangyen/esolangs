@@ -106,11 +106,3 @@ class Language:
     def read_answer(self, output: str) -> str:
         """Extract the answer bit from raw output."""
         return esolangs.read_answer(self.name, output)
-
-    def check_program(self, program: ProgramSource, stdin: InputSource = "") -> Program:
-        """Load and validate runnable source."""
-        return esolangs.check_program(self.name, program, stdin)
-
-    def check_stdin(self, stdin: str, truth_table: str | None = None) -> None:
-        """Refuse stdin that contradicts this language's input convention."""
-        esolangs.check_stdin(self.name, stdin, truth_table)

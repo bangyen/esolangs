@@ -67,6 +67,17 @@ def test_evaluate_is_removed(capsys: pytest.CaptureFixture[str]) -> None:
     assert "unknown command" in capsys.readouterr().err
 
 
+def test_checks_are_removed(capsys: pytest.CaptureFixture[str]) -> None:
+    assert not hasattr(esolangs, "check_program")
+    assert not hasattr(esolangs, "check_stdin")
+    assert not hasattr(esolangs.Language("brainfuck"), "check_program")
+    assert not hasattr(esolangs.Language("brainfuck"), "check_stdin")
+    with pytest.raises(SystemExit) as exc:
+        call_main(["check-stdin", "brainfuck"], capsys)
+    assert exc.value.code == 2
+    assert "unknown command" in capsys.readouterr().err
+
+
 @pytest.mark.parametrize("inputs", [True, 0, -1, 65, 2.5, "2"])
 def test_api_refuses_bad_inputs(inputs: object) -> None:
     with pytest.raises(esolangs.ArgumentError, match="inputs must"):

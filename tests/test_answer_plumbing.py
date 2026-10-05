@@ -15,6 +15,7 @@ import pytest
 import esolangs
 import esolangs.debugger as debugger_api
 from esolangs import cli
+from esolangs._answers import _check_stdin
 from esolangs.cli import HELP
 from tests.generator_support import evaluate_generated, verify_generated
 
@@ -861,17 +862,17 @@ class TestARowIndexNeverHasALeadingZero:
     def test_a_bit_string_typed_as_an_index_is_caught(self) -> None:
         """No table needed: the leading zero alone decides it."""
         with pytest.raises(esolangs.ArgumentError, match="leading zero"):
-            esolangs.check_stdin("Fargo", "0010\n")
+            _check_stdin("Fargo", "0010\n")
 
     def test_the_message_gives_the_index_they_meant(self) -> None:
         """`0010` as bits is row 2, and saying so is the whole fix."""
         with pytest.raises(esolangs.ArgumentError, match="the index is 2"):
-            esolangs.check_stdin("Fargo", "0010\n")
+            _check_stdin("Fargo", "0010\n")
 
     def test_a_real_index_passes(self) -> None:
         """Including a single zero, which has no *leading* zero to speak of."""
-        esolangs.check_stdin("Fargo", "0\n")
-        esolangs.check_stdin("Fargo", "15\n")
+        _check_stdin("Fargo", "0\n")
+        _check_stdin("Fargo", "15\n")
 
 
 class TestAPaintersMarkMustBeInAGrid:

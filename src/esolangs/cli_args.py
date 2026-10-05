@@ -39,7 +39,6 @@ _ARGUMENTS = {
     "debug": ("<language>", "<program-file>"),
     "describe": ("<language>",),
     "read-answer": ("<language>",),
-    "check-stdin": ("<language>",),
 }
 
 
@@ -341,7 +340,7 @@ def _pop_options(rest: list[str], names: set[str]) -> tuple[list[str], dict[str,
 def _timeout_of(options: dict[str, str], *, option: str = "--timeout") -> float | None:
     """Return the ``--timeout`` seconds, or None, refusing a bad value.
 
-    The *value* checks are :func:`esolangs.check_stdin`'s neighbour
+    The *value* checks are the private stdin check's neighbour
     :func:`esolangs._validate.check_timeout`, not a second copy: this had
     its own rules for zero, negatives and non-finite values, and the
     library then grew a floor and a ceiling that this did not know about.
@@ -371,7 +370,7 @@ def _table_of(options: dict[str, str]) -> str | None:
     """Return the ``--table`` value, refusing a malformed truth table.
 
     ``run`` and ``debug`` used to warn about a bad table and run anyway,
-    while ``check-stdin`` refused it; an option's value is a usage error,
+    while the private stdin check refused it; an option's value is a usage error,
     so it is judged here once for every command that takes the flag.
     """
     if "--table" not in options:
