@@ -13,9 +13,12 @@ history; standing rules and proved limits are in [limitations](limitations.md).
   descent adds a data-tree selection mechanism, and the subset executed 309
   tables across 3,352 rows, including every table through three inputs. That
   shows the approach is feasible; it does not yet prove full-language
-  correctness or admission. Next: pin down how Read/Write consume operands,
-  the coordinate origin, invalid typed operations, and image/block updates.
-  Then run the loop-less O(T) generator through three inputs and sampled
+  correctness or admission. The executor cannot arbitrate the open
+  conventions: its Read/Write are no-ops and its arithmetic reads a stack
+  operand as 0, so operand consumption, the coordinate origin and image
+  updates are unobservable there. Next: fix those conventions from the wiki
+  text alone, audit invalid typed operations and image/block updates, then
+  run the loop-less O(T) generator through three inputs and sampled
   larger tables under the chosen input conventions.
 
 - **Linear Boolean generators: make generation and output grow only with
@@ -107,19 +110,23 @@ the answer in the linked proof and remove the item.
   error), the growth constant is bracketed:
   `4.2420 <= liminf B(C)**(1/C) <= limsup <= 7.0347`. The limit itself, and
   any sub-7 upper bound, remain open. The 11,673-state certificate covers
-  balanced bodies only to bracket depth one. Next: count unrestricted
-  sound print-rotation and forced-divergence bodies, preserving the
-  cell-preservation condition (`+[-[]].` halts and prints NUL, while
-  `+[].` diverges). Certificates, withdrawn bounds and the loop-free
-  comparison: [brainfuck-count](proofs/brainfuck-count.md#3-upper-bound-theorem-1).
+  balanced bodies only to bracket depth one, and no finite monitor can
+  count the unrestricted sound print-rotation and forced-divergence bodies:
+  they match brackets across any depth. Next: count them with the
+  context-free system `B0, B1, L0, L1, R, P` or a depth-indexed transfer
+  matrix, preserving the cell-preservation condition (`+[-[]].` halts and
+  prints NUL, while `+[].` diverges). Certificates, withdrawn bounds and
+  the loop-free comparison: [brainfuck-count](proofs/brainfuck-count.md#3-upper-bound-theorem-1).
 
 - **Malbolge's first unreachable arity.** The shipped cap is 16 inputs.
   Counting excludes some 18-input tables; 17 remains undecided, and a
   build needs more than two table bits per cell across almost the whole
   store. Packing uses 49,152 cells, and the five-state decoder executes
-  all 2,744 one-group cases. Next: share setup between the address fold,
-  row selector and decoder around an arbitrary table; placement alone
-  does not make them fit. See [the construction
+  all 2,744 one-group cases. Neither placement nor sharing setup
+  between the address fold, row selector and decoder fits them: the
+  shared union is 10,324 cells against a 9,897-cell complement, and the
+  decoder's 1,173 conflicting overlaps are the binding term. Next: shrink
+  the decoder or share more of its common initialization. See [the construction
   record](proofs/malbolge-scaling.md#seventeen-navigation-is-linear-in-address-so-packing-helps-measured).
   Proving impossibility instead needs a density lemma: cut the count by
   `2**46076`, or bound a normal-form representative's dependence by
@@ -154,9 +161,11 @@ the answer in the linked proof and remove the item.
   counts weighted exponent compositions after local normalization and
   first-output pruning; the upper side prices a traveling counter, fixed
   signed-ball blocks, and an almost-all prime-window covering bound. Parity
-  encodings executed through five inputs determine neither limit. Next:
-  count only semantically distinct decoded programs to raise the lower
-  coefficient, or construct a cheaper weighted command stream to lower
+  encodings executed through five inputs determine neither limit.
+  On the executed corpus, semantic deduplication only halves the count (a
+  constant factor), and the tempting `<>` deletion is unsound at the
+  clamped edge. Next: find a sound local rewrite that lowers the lower
+  side's Perron root, or construct a cheaper weighted command stream to lower
   the upper one. Whether the limit exists, and its value, remain open.
 
 - **Vandevelo structural scaling.** Register upkeep is bounded at O(T)
@@ -172,7 +181,9 @@ the answer in the linked proof and remove the item.
   seeded n=12 source by only 1.01%, below the shipping threshold;
   `scripts/profile_vandevelo.py` records its executed controls. Next:
   remove the identifier factor, amortize projection and fallback calls,
-  and bound the dual-basis core's aggregate work. Neither remaining gap is
+  and bound the dual-basis core's aggregate work. The fallback is not
+  amortized now: one seeded 15-input table spends `60*T` in it
+  ([proofs](proofs/index.md)). Neither remaining gap is
   a language-wide lower bound; measured scaling does not settle them.
 
 - **FRACTRAN order encoding.** One unchanged multiset of eight fractions
@@ -184,9 +195,12 @@ the answer in the linked proof and remove the item.
   orders on four rows and realizes exactly fourteen tables, missing XOR
   and XNOR. See [the order
   bound](proofs/fractran.md#order-only-decoding-with-one-priority-consultation).
-  Next: use repeated priority consultations with an admissible
-  uniform-embed router, encoding the table solely by ordering a fixed
-  `O(T)`-text multiset. (The indexed threshold route already achieves
+  Two consultations escape the one-consultation cap: a `2k`-fraction
+  pair-decoded router realizes every table on up to 13 rows at `k=6`, but
+  its checked maxima grow linearly in `k`, so text stays `Theta(T log T)`
+  ([pair router](proofs/fractran.md#pair-decoded-two-priority-consultations)).
+  Next: exhibit a `Theta(k log k)`-row family a fixed pair decoder
+  shatters, or prove the router caps at `O(k)` rows. (The indexed threshold route already achieves
   linear text by magnitudes.)
 
 - **Brainfuck on bounded inputs.** The finite-set upper bound is now
@@ -195,9 +209,10 @@ the answer in the linked proof and remove the item.
   adjacency matrix. [Theorem 6](proofs/brainfuck-count.md#7b-bounded-input-upper-bound-theorem-6)
   also covers varying input sets with total read budget `o(C)`, including
   byte-input lengths at most `(1-eps)*log_256(C)`. The lower bound remains
-  `3.366148`. Next: establish the limit or sharpen either side, and
-  derive a nontrivial bound when input length is proportional to source
-  length.
+  `3.366148`. For input length proportional to source length, Theorem 6's
+  counting improves on `7.0347` only while the proportion stays below
+  about 0.021, and never on `6.584428341`. Next: establish
+  the limit or sharpen either side.
 
 Controls are in `tests/proofs/test_research_tracks.py`. The linked proofs
 close ordered input-forgetting construction, generated-family loading

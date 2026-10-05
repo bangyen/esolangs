@@ -2,6 +2,7 @@
 
 import itertools
 import random
+import sys
 from collections import Counter
 
 import pytest
@@ -274,3 +275,273 @@ def test_bounded_input_census_distinguishes_read_observations() -> None:
             for m in range(3):
                 seen[m].add(tuple(behavior[: 2 ** (m + 1) - 1]))
     assert [len(values) for values in seen] == [13, 23, 27]
+
+
+@pytest.mark.medium
+def test_proportional_read_budget_rate() -> None:
+    """Rate of Theorem 6's bound when the read budget is `R = p*C`.
+
+    Stirling on the dominant term `r = pC` of
+    `(C+1) sum_r binom(C,r) K^(r+1) lambda^(C-r)` gives
+    `binom(C,pC)^(1/C) -> 2^H(p) = 1/(p^p (1-p)^(1-p))`, so that term's C-th
+    root tends to `K^p lambda^(1-p)/(p^p (1-p)^(1-p))`.  The sum's root is the
+    max of that expression over `t <= p`; it increases on `[0, t*]`, peaks at
+    `K + lambda` at `t* = K/(K+lambda)`, and decreases after.
+    """
+    alphabet = "><+-.[]"
+    matrix = sympy.Matrix(
+        [[int(a + b not in {"+-", "-+", "><"}) for b in alphabet] for a in alphabet]
+    )
+    x = sympy.Symbol("x")
+    assert matrix.charpoly(x).as_expr() == sympy.expand(
+        x**3 * (x - 1) * (x**3 - 6 * x**2 - 4 * x + 1)
+    )
+    # Exact right Perron vector over Q(lambda), lambda a root of the cubic:
+    # A v = lambda v with v_> = (lambda-1)/lambda, v_+ = v_- =
+    # (lambda^2 - 5 lambda + 1)/(2 lambda), v_< = v_. = v_[ = v_] = 1.
+    lam_sym = sympy.Symbol("lam", positive=True)
+    cubic = lam_sym**3 - 6 * lam_sym**2 - 4 * lam_sym + 1
+    half = (lam_sym**2 - 5 * lam_sym + 1) / (2 * lam_sym)
+    vector = sympy.Matrix([(lam_sym - 1) / lam_sym, 1, half, half, 1, 1, 1])
+    for entry in matrix * vector - lam_sym * vector:
+        numerator = sympy.together(entry).as_numer_denom()[0]
+        assert sympy.rem(sympy.expand(numerator), cubic, lam_sym) == 0
+    # v_> is the smallest entry and 1 the largest, so 1^T A^l 1 <=
+    # 7 lam^(l+1)/(lam-1), i.e. segments of length l <= K lam^l for the
+    # certified K = 7/(lambda-1) <= 7/(6.5844-1) = 1.25349.
+    lam_low, lam_high = sympy.Rational(65844, 10000), sympy.Rational(65845, 10000)
+    k_high = sympy.Rational(7) / (lam_low - 1)
+    assert k_high >= 1  # forced: the empty segment needs K >= 1
+    assert 1 + lam_low > sympy.Rational(70347, 10000)  # beats the all-input 7.0347
+    # v_> = (lambda-1)/lambda is the smallest entry and 1 the largest.
+    assert lam_low**2 - 7 * lam_low + 3 > 0  # a <= c
+    assert -(lam_high**2) + 7 * lam_high - 1 > 0  # c <= 1
+    cubic_expr = x**3 - 6 * x**2 - 4 * x + 1
+    lam: float = float(
+        sympy.N(max(sympy.real_roots(cubic_expr), key=lambda r: r.evalf()), 50)
+    )
+    k: float = 7 / (lam - 1)
+    t_star = k / (k + lam)
+
+    def term_rate(t: float) -> float:
+        return float(k**t * lam ** (1 - t) / (t**t * (1 - t) ** (1 - t)))
+
+    def rate(p: float) -> float:
+        return term_rate(p) if p <= t_star else k + lam
+
+    # Positive control: at p -> 0 the term rate is exactly lambda.
+    p_sym = sympy.Symbol("p", positive=True)
+    k_sym, lam0 = sympy.symbols("K lambda", positive=True)
+    term = (
+        k_sym**p_sym * lam0 ** (1 - p_sym) / (p_sym**p_sym * (1 - p_sym) ** (1 - p_sym))
+    )
+    assert sympy.simplify(term.subs(p_sym, 0) - lam0) == 0
+    assert abs(term_rate(1e-8) - lam) < 1e-4
+
+    def direct_root(c: int, p: float) -> float:
+        total = sympy.Rational(0)
+        for r in range(int(p * c) + 1):
+            total += sympy.binomial(c, r) * k_high ** (r + 1) * lam_high ** (c - r)
+        return float(float(total) ** (1 / c))
+
+    for p in (0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9):
+        assert rate(p) > lam  # no positive read fraction preserves lambda
+        assert abs(direct_root(200, p) - rate(p)) < 0.09
+    # Small budgets approach the term rate from below; saturated ones from above.
+    assert direct_root(50, 0.1) < direct_root(200, 0.1) < rate(0.1)
+    assert rate(0.5) < direct_root(200, 0.5) < direct_root(50, 0.5)
+    # The rate is nondecreasing in p, saturating at K + lambda.
+    grid = [i / 100 for i in range(1, 101)]
+    assert all(rate(a) <= rate(b) + 1e-12 for a, b in itertools.pairwise(grid))
+    assert rate(t_star) == pytest.approx(k + lam)
+    # Best tested budget is the smallest, and even it exceeds lambda: proportional
+    # reads cannot preserve the fixed-set bound.  Since K >= 1, the saturation
+    # K + lambda >= 1 + lambda > 7.0347 is worse than the all-input bound too.
+    tested = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+    assert min(tested, key=rate) == 0.1
+    assert rate(0.1) > lam
+    assert k + lam > 7.0347 > lam
+
+
+@pytest.mark.medium
+def test_two_priority_consultations_shatter_a_guard_cycle() -> None:
+    # Controls: the four-fraction cycle still tops out at fourteen tables, and
+    # the independent pairs still realize all sixteen.
+    test_one_priority_consultation_cannot_shatter_a_guard_cycle()
+    test_fraction_order_encodes_four_independent_answers()
+
+    from esolangs.interpreters.other.fractran import _Machine
+
+    # Round one consumes phase 13 and one feature and produces 17; the run
+    # then consults the same priority list again and round two consumes 17 and
+    # a remaining feature.  This escapes the one-consultation linear
+    # dependence because the second selection sees a changed feature set.
+    router = ("17/39", "17/65", "17/91", "17/143", "2/51", "2/85", "1/187")
+    first = set(router[:4])  # 17/(13*f) consumes 13 and f
+    second = set(router[4:])  # (1 or 2)/(17*f) consumes 17 and f
+    cleanup = ("1/3", "1/5", "1/7", "1/11", "1/17")
+    # Table-independent seeds: features (3,11), (3,7,11), (5,7,11), (5,11).
+    seeds = (13 * 3 * 11, 13 * 3 * 7 * 11, 13 * 5 * 7 * 11, 13 * 5 * 11)
+
+    observed = set()
+    for order in itertools.permutations(router):
+        assert Counter(order) == Counter(router)
+        answers = []
+        for seed in seeds:
+            tokens = [str(seed), *order, *cleanup]
+            io = ScriptedIO("")
+            run(" ".join(tokens), io)
+            answer = io.getvalue().strip()
+            assert answer in {"1", "2"}
+            answers.append(str(int(answer) - 1))
+            # Every run selects exactly one round-one and one round-two rule.
+            io = ScriptedIO("")
+            machine = _Machine(" ".join(tokens), io)
+            offset_token = dict(zip(machine.offsets, tokens, strict=True))
+            fired = []
+            while not machine.halted:
+                offset = machine.ip
+                if offset is not None:
+                    fired.append(offset_token[offset])
+                machine.step()
+            assert sum(fraction in first for fraction in fired) == 1
+            assert sum(fraction in second for fraction in fired) == 1
+        observed.add("".join(answers))
+    assert observed == {format(i, "04b") for i in range(16)}
+
+
+def _pair_router(
+    features: tuple[int, ...],
+) -> tuple[dict[int, str], dict[int, str], list[str]]:
+    """Round-one and round-two marker fractions for the pair-decoded router."""
+    phase, marker = 13, 17
+    a_mark = (37, 41, 43, 47, 53, 59)
+    b_mark = (61, 67, 71, 73, 79, 83)
+    a = dict(zip(features, a_mark[: len(features)], strict=True))
+    b = dict(zip(features, b_mark[: len(features)], strict=True))
+    round1 = {f: f"{marker * a[f]}/{phase * f}" for f in features}
+    round2 = {g: f"{b[g]}/{marker * g}" for g in features}
+    cleanup = [*(f"1/{f}" for f in features), f"1/{marker}"]
+    return round1, round2, cleanup
+
+
+@pytest.mark.medium
+def test_pair_decoded_router_reads_both_selections() -> None:
+    # Round one consumes phase 13 and a feature f, emitting marker 17*A_f;
+    # round two consumes 17 and a feature g, emitting B_g.  Squared features in
+    # the seed let round two reselect the round-one feature, so the final value
+    # A_f*B_g depends on both selections.  A fixed decoder on that pair then
+    # realizes all 2^T tables: 64/64 at four features and six pair rows.
+    features = (3, 5, 7, 11)
+    round1, round2, cleanup = _pair_router(features)
+    a = {3: 37, 5: 41, 7: 43, 11: 47}
+    b = {3: 61, 5: 67, 7: 71, 11: 73}
+    rows = list(itertools.combinations(features, 2))
+    tables = set()
+    for order1 in itertools.permutations(features):
+        for order2 in itertools.permutations(features):
+            labels = []
+            for x, y in rows:
+                seed = 13 * x * x * y * y
+                tokens = [
+                    str(seed),
+                    *(round1[f] for f in order1),
+                    *(round2[g] for g in order2),
+                    *cleanup,
+                ]
+                io = ScriptedIO("")
+                run(" ".join(tokens), io)
+                first = min((x, y), key=order1.index)
+                second = min((x, y), key=order2.index)
+                assert int(io.getvalue().strip()) == a[first] * b[second]
+                labels.append("1" if first == second and first != 11 else "0")
+            tables.add("".join(labels))
+    assert tables == {format(i, "06b") for i in range(64)}
+
+
+@pytest.mark.medium
+def test_pair_decoded_router_reaches_one_row_per_fraction() -> None:
+    # Five features give ten pair rows and ten router fractions; a decoder
+    # found by exhaustive search over the pair labels realizes 1024/1024.
+    # A sample of orderings is executed to pin the program's final value to
+    # A_f*B_g; the remaining tables are then pure enumeration of that map.
+    features = (3, 5, 7, 11, 19)
+    round1, round2, cleanup = _pair_router(features)
+    a = {3: 37, 5: 41, 7: 43, 11: 47, 19: 53}
+    b = {3: 61, 5: 67, 7: 71, 11: 73, 19: 79}
+    rows = list(itertools.combinations(features, 2))
+    rank = {f: i for i, f in enumerate(features)}
+    ones = {
+        (0, 0),
+        (0, 3),
+        (1, 0),
+        (1, 2),
+        (1, 3),
+        (1, 4),
+        (2, 0),
+        (2, 1),
+        (2, 3),
+        (2, 4),
+        (3, 1),
+        (3, 2),
+        (3, 4),
+        (4, 0),
+        (4, 1),
+        (4, 2),
+        (4, 3),
+    }
+    orders = list(itertools.permutations(features))
+    rng = random.Random(20261004)
+    for _ in range(200):
+        order1, order2 = rng.choice(orders), rng.choice(orders)
+        for x, y in rows:
+            seed = 13 * x * x * y * y
+            tokens = [
+                str(seed),
+                *(round1[f] for f in order1),
+                *(round2[g] for g in order2),
+                *cleanup,
+            ]
+            io = ScriptedIO("")
+            run(" ".join(tokens), io)
+            first = min((x, y), key=order1.index)
+            second = min((x, y), key=order2.index)
+            assert int(io.getvalue().strip()) == a[first] * b[second]
+    tables = set()
+    for order1 in orders:
+        for order2 in orders:
+            labels = []
+            for x, y in rows:
+                first = min((x, y), key=order1.index)
+                second = min((x, y), key=order2.index)
+                labels.append("1" if (rank[first], rank[second]) in ones else "0")
+            tables.add("".join(labels))
+    assert tables == {format(i, "010b") for i in range(1024)}
+
+
+@pytest.mark.slow
+def test_vandevelo_fallback_is_not_amortized(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The exact fallback costs ``60*T`` on one seeded 15-input table.
+
+    ``docs/proofs/index.md`` cites this as the executed counterexample to an
+    ``O(T)`` fallback aggregate: two full-dimension ``_popularities`` calls at
+    ``2*n*2**n`` visits each.
+    """
+    from esolangs.tools.vandevelo import _popularities, vandevelo
+
+    calls: list[int] = []
+
+    def counted(points: set[int], n: int) -> list[int]:
+        calls.append(n)
+        return _popularities(points, n)
+
+    # ``esolangs.tools.vandevelo`` names the generator function as an attribute,
+    # so patch the module object itself.
+    module = sys.modules[vandevelo.__module__]
+    monkeypatch.setattr(module, "_popularities", counted)
+    n = 15
+    rng = random.Random(0)
+    table = "".join(rng.choice("01") for _ in range(2**n))
+    vandevelo(table)
+    assert calls == [n, n]
+    assert sum(2 * k * 2**k for k in calls) == 60 * 2**n

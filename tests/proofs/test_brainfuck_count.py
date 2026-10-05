@@ -202,6 +202,173 @@ def test_clear_suffix_uses_byte_residue() -> None:
     assert _observe("+[++[-]" + "+" * 256 + "]", "") == _observe("+[-]", "")
 
 
+# The depth-one monitors state `[.Y]. <-> .[Y.]`, `[W[Z]D] -> []` and
+# `[P0[]G] -> []` for bodies of bracket depth at most one.  These controls
+# execute the same rules with depth-two and depth-three bodies, so the side
+# conditions hold below and above the stated bound.  A `,` in `Y` exercises
+# the EOF convention; read-free W, Z, P0 cannot reach EOF by construction.
+_DEPTH_ROTATION_BODIES = (
+    "[-[+]]",  # depth 2, read-free
+    ",[-[]]",  # depth 2, reads
+    "[[[+]]]",  # depth 3, read-free
+    "[[-],]",  # depth 2, reads
+    "[[+[]]]",  # depth 3, diverges on a nonzero tested cell
+    "[[--]]",  # depth 2, a left-hand side the depth-one monitor accepts
+)
+# `[W[Z]D] -> []`: W and Z are read-free balanced bodies, D holds a `+`/`-`.
+_DEPTH_DIVERGENCE_BODIES = (
+    ("", "[>+<]", "+.."),
+    ("[+<-]", "", "..-"),
+    ("[[+]]", "[-]", ".-"),
+    ("", "[[-][+]]", "..+"),
+    ("[+><-]", "[[-]]", "..-"),
+    ("[[+][-]]", "", "+"),
+    ("[-[+]]", "", ".-"),
+    ("", "[[[-]]]", "..+"),
+    ("[--]", "[[+]]", "+"),
+    ("[[-]]", "[+]", "..+"),
+)
+# `[P0[]G] -> []`: P0 is a sequence of prints and read-free excursions that
+# return to, and preserve, a nonzero tested cell; G is arbitrary balanced.
+_DEPTH_PRESERVED_BODIES = (
+    (".", ""),
+    (">[-[+]]<", ""),
+    (">[[-][+]]<", "+"),
+    (".>[[-]]<", "[]"),
+    (">[[[-]]]<", "[+[]]"),
+    (">[-[+]]<.", "[[-[]]]"),
+)
+# The tested cell is zero in the first two contexts and nonzero or 255 in the
+# rest; the pointer sits at 0 or 1 and the reads may reach EOF.
+_DEPTH_OBSERVATION_CONTEXTS = (
+    ("", ""),
+    (">", ""),
+    (",>,>,>,<<<", "\x00\x01\x00\x00"),
+    (",>,>,>,<<<", "\x01\x00\x00\x00"),
+    ("+", ""),
+    ("-", ""),
+)
+
+
+@pytest.mark.medium
+def test_depth_two_and_three_side_conditions_execute() -> None:
+    for prefix, stdin in _DEPTH_OBSERVATION_CONTEXTS:
+        for body in _DEPTH_ROTATION_BODIES:
+            left = _observe(prefix + "[." + body + "].", stdin)
+            right = _observe(prefix + ".[" + body + ".]", stdin)
+            assert left == right, (body, prefix, stdin, left, right)
+        for w, z, d in _DEPTH_DIVERGENCE_BODIES:
+            loop = "[" + w + "[" + z + "]" + d + "]"
+            assert _observe(prefix + loop, stdin) == _observe(prefix + "[]", stdin)
+        for p0, g in _DEPTH_PRESERVED_BODIES:
+            loop = "[" + p0 + "[]" + g + "]"
+            assert _observe(prefix + loop, stdin) == _observe(prefix + "[]", stdin)
+    # The documented counterexample pair: read-freedom without cell
+    # preservation is unsound.
+    assert _observe("+[-[]].", "")[0:2] == ("halt", "\x00")
+    assert _observe("+[].", "")[0] == "diverge"
+
+
+@pytest.mark.medium
+def test_depth_bodies_agree_on_read_positions() -> None:
+    from tests.proofs.test_research_tracks import _trace_reads
+
+    prefix = ",>,>,>,<<< "
+    for body in _DEPTH_ROTATION_BODIES:
+        for bits in ((0, 1, 0, 0), (1, 0, 0, 0), ()):
+            assert _trace_reads(prefix + "[." + body + "].", bits) == _trace_reads(
+                prefix + ".[" + body + ".]", bits
+            )
+
+
+def _rotation_congruence_classes(length: int, tail_length: int = 5) -> int:
+    """Count Moore classes of the balanced `[.Y].`-avoidance specification.
+
+    A word's signature is its residual over balanced tails plus the classes its
+    one-character extensions reach.  A stable count certifies a finite monitor;
+    growth shows the class is not regular.
+    """
+    import itertools
+
+    alphabet = ".[]"
+
+    def balance(word: str) -> int | None:
+        depth = 0
+        for char in word:
+            if char == "[":
+                depth += 1
+            elif char == "]":
+                depth -= 1
+                if depth < 0:
+                    return None
+        return depth
+
+    def has_lhs(word: str) -> bool:
+        stack: list[int] = []
+        pairs: list[tuple[int, int]] = []
+        for index, char in enumerate(word):
+            if char == "[":
+                stack.append(index)
+            elif char == "]" and stack:
+                pairs.append((stack.pop(), index))
+        return any(
+            i + 1 < len(word)
+            and word[i + 1] == "."
+            and j + 1 < len(word)
+            and word[j + 1] == "."
+            for i, j in pairs
+        )
+
+    tails = [
+        "".join(chars)
+        for n in range(tail_length + 1)
+        for chars in itertools.product(alphabet, repeat=n)
+        if balance("".join(chars)) == 0
+    ]
+    valid = [""]
+    for n in range(1, length + 1):
+        for chars in itertools.product(alphabet, repeat=n):
+            word = "".join(chars)
+            if balance(word) is not None:
+                valid.append(word)
+    signatures = {
+        word: tuple(has_lhs(word + "]" * (balance(word) or 0) + t) for t in tails)
+        for word in valid
+    }
+    classes = dict(signatures)
+    while True:
+        refined = {
+            word: (
+                signatures[word],
+                tuple(classes.get(word + char, -1) for char in alphabet),
+            )
+            for word in valid
+        }
+        groups: dict[tuple[object, ...], int] = {}
+        next_classes = {
+            word: groups.setdefault(refined[word], len(groups)) for word in valid
+        }
+        if next_classes == classes:
+            return len(set(classes.values()))
+        classes = next_classes
+
+
+@pytest.mark.medium
+def test_unbounded_body_classes_are_not_regular() -> None:
+    from tests.proofs._brainfuck_count import accepts, certificate
+
+    rows, _ = certificate()
+    # The depth-one monitor accepts a left-hand side at every depth k >= 2, so
+    # it does not forbid the unrestricted rotation or divergence classes.
+    for depth in range(2, 8):
+        nested = "[" * depth + "--" + "]" * depth
+        assert accepts(rows, "[." + nested + "].")
+        assert accepts(rows, "[" + "[" + nested + "]" + "--]")
+    # The balanced-avoidance specification is not a finite right congruence:
+    # its Moore classes grow with the observation window.
+    assert [_rotation_congruence_classes(w) for w in (4, 6, 8)] == [15, 39, 86]
+
+
 @pytest.mark.medium
 def test_regular_certificate() -> None:
     from tests.proofs._brainfuck_count import accepts, certificate, check_certificate

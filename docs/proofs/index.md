@@ -463,3 +463,13 @@ execute under both spellings and match the table. Reproduce with
 `--min-inputs 12 --max-inputs 12 --random-cases 1 --sample-rows 16`.
 The rule misses the 5% shipping threshold and retains growing identifier
 lengths, so it remains an experiment. Neither gap is closed by this audit.
+
+The exact fallback is not amortized to `O(T)`. `_popularities` visits
+`2*n*2**n` elements a call. On the 15-input table whose rows are
+`random.Random(0).choice("01")` in order, it fires twice at full dimension
+during one generation: 1,966,080 visits, `60*T`. Seed 2 fires once
+(`30*T`); seeds 0--2 at n=10..14 never fire it.
+`test_vandevelo_fallback_is_not_amortized` pins the counts. No invariant
+charges a call to a removed point, so this is an executed counterexample to
+an `O(T)` aggregate for the current peel, not a language lower bound; the
+generation-time cell stays Open.

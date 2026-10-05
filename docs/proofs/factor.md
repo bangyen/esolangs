@@ -282,6 +282,23 @@ encodings of every one-input table execute, and a prefix-pruned Factor
 control executes with a first-output trap. Clamp, nonhalting, and repeated
 output controls delimit the two rewrite contracts.
 
+The count treats distinct normalized words as distinct behaviours; the corpus
+does not. On the 276 exhaustive tables through three inputs plus parity through
+six (279 tables), the 558 raw and prefix-normal descriptions reach only 279
+behaviours, ratio 0.5: each table's two forms are one behaviour.
+`test_normalization_collapse_corpus` executes all 558 on every row, so prefix
+normalization is behavior-preserving there and the collapse is a constant
+factor two, not a gain in `lambda`.
+
+One further local pair fails. `<>` is absent from the forbidden set and appears
+in 275 of the 279 prefix-normal forms; deleting every occurrence preserves the
+executed corpus and would leave `x**2 (x-1)**2 (x+1)(x**3 - 6x**2 + 1)`, Perron
+root 5.971960768 and coefficient 0.11675954. But at the clamped left edge it
+ends one cell to the right, so the rewrite is unsound: `,<>.` prints NUL while
+`,.` prints the input read into cell 0.
+`test_pointer_pair_rule_is_rejected_by_clamp` runs both, and the lower
+coefficient stays 0.11528442.
+
 For the upper bound, use the signed-ball block construction in
 `tests/proofs/_factor_blocks.py`. For `n >= 5`, split the truth table into
 `M = T/32` consecutive 32-bit words. Encode each word's integer rank as
