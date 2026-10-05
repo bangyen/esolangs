@@ -86,6 +86,7 @@ stack    (empty)
 output   ''
 views    deques={0: [0, 1], 1: [1]}  pointers=[_Pointer(row=1, col=57, d=(
 hjkl move | t break | space step | c continue | r run | b back | q quit
+R restart | w/W watch | G to ip | 0-9 count | p play | +/- speed
 ```
 
 See [debugging](https://github.com/bangyen/esolangs/blob/main/docs/usage.md#debugging) for controls.

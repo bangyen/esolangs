@@ -311,10 +311,14 @@ options:
   --set KEY=VALUE      one dialect override without JSON, repeatable and
                        applied after --settings.
   --tui                step through the program in an interactive
-                       full-screen view.  hjkl move the selector, t marks
-                       a breakpoint under it, space steps, b steps back, c
+                       full-screen view.  hjkl move the selector (a
+                       leading count walks it further, g prompts for a
+                       place, G returns it to the run), t marks a
+                       breakpoint under it, space steps, b steps back, c
                        continues to the next breakpoint or the halt, r runs
-                       to the end, q leaves.  Needs a terminal to read keys
+                       to the end, R restarts on new stdin, w/W add and
+                       drop a watched cell, p plays with +/- setting the
+                       speed, q leaves.  Needs a terminal to read keys
                        from.
 
 Every flag above is also listed by `esolangs --help`.  This text used to
