@@ -203,11 +203,11 @@ class TestRunUntilHaltOrCycle:
 
         (at_hash,) = machine.branching_successors(rightward, 100) or ()
         assert at_hash[2] == ((0, 1, 3),)
-        assert at_hash[4] is True, "'#' arms the skip"
+        assert at_hash[4] == frozenset({0}), "'#' arms this beam's skip"
 
         (skipped,) = machine.branching_successors(at_hash, 100) or ()
         assert skipped[2] == ((0, 2, 3),), "'{' was passed over, not executed"
-        assert skipped[4] is False, "the skip disarms itself"
+        assert skipped[4] == frozenset(), "the skip disarms itself"
 
     def test_laserfuck_a_placed_beam_starts_the_search_unplaced(self) -> None:
         """The complement: a grid *with* an ``o`` does use the sentinel."""

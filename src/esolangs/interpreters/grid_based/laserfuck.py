@@ -47,12 +47,12 @@ from esolangs.interpreters.randomness import Randomness, draw
 #: step is handed it rather than carrying it.
 type _Beams = tuple[tuple[int, int, int], ...]
 type _Tape = Chunked[tuple[int, int]]
-type _State = tuple[_Tape, int, _Beams, int, bool, tuple[int, int, int]]
+type _State = tuple[_Tape, int, _Beams, int, frozenset[int], tuple[int, int, int]]
 
 #: One instant as the all-outcomes search sees it: ``_State`` without the
 #: reported position, and with ``None`` beams standing for a laser whose
 #: heading has not been drawn yet.
-type _BranchState = tuple[_Tape, int, _Beams | None, int, bool]
+type _BranchState = tuple[_Tape, int, _Beams | None, int, frozenset[int]]
 
 #: The position handed to a transition during a branching search.  Every
 #: caller strips the result's copy, so the value only has to be constant.
@@ -83,21 +83,10 @@ def _write(tape: _Tape, ptr: int, value: int, touched: int) -> _Tape:
     return put(tape, ptr, (_cell_value(value), touched))
 
 
-def _move(row: int, col: int, d: int, rows: int) -> tuple[int, int]:
-    """Return the cell one step along heading ``d``.
-
-    Off the top or left edge is spelled as a row past the bottom, so a
-    leaving beam dies rather than wraps.
-    """
-    if (row == 0 and d == 0) or (col == 0 and d == 2):
-        return (rows, col)
-    if d == 0:
-        return (row - 1, col)
-    if d == 1:
-        return (row + 1, col)
-    if d == 2:
-        return (row, col - 1)
-    return (row, col + 1)
+def _move(row: int, col: int, d: int, _rows: int) -> tuple[int, int]:
+    """Move without folding a skipped edge back into the grid."""
+    delta = ((-1, 0), (1, 0), (0, -1), (0, 1))[d]
+    return (row + delta[0], col + delta[1])
 
 
 def _advance(
@@ -130,6 +119,7 @@ def _advance(
     elif op == ",":
         tape = _write(tape, ptr, byte if byte is not None else 0, 1)
     elif op == "x":
+        jmp = frozenset(i - (i > ind) for i in jmp if i != ind)
         lsrs = (*lsrs[:ind], *lsrs[ind + 1 :])
         if lsrs:
             ind %= len(lsrs)
@@ -153,7 +143,7 @@ def _advance(
     elif op == "-":
         tape = _write(tape, ptr, get(tape, ptr)[0] - 1, 1)
     elif op == "#":
-        jmp = True
+        jmp = jmp | {ind}
 
     lsrs = (*lsrs[:ind], (row, col, d), *lsrs[ind + 1 :])
     return (tape, ptr, lsrs, (ind + 1) % len(lsrs), jmp, pos)
@@ -194,6 +184,8 @@ class _Machine:
         """
         self.io = io
         self._rng = rng
+        self._input_reads = 0
+        self._draws = 0
         text = [list(ln) for ln in code]
         size = max(len(ln) for ln in text) if text else 0
         self.text = tuple((*ln, *[" "] * (size - len(ln))) for ln in text)
@@ -201,7 +193,7 @@ class _Machine:
 
         self.ptr = 0
         self.tape: _Tape = chunked(((0, 0),))  # value, touched
-        self.jmp = False
+        self.jmp: frozenset[int] = frozenset()
         self.ind = 0
         self.pos = (0, 0, 0)
         self._second_start = False
@@ -228,6 +220,7 @@ class _Machine:
                     # The random heading is part of LaserFuck's spec, not a
                     # secret.
                     d = draw(rng, 4)
+                    self._draws += 1
                     self.start = (row, col)
                     self.lsrs.append((row, col, d))
                     self.pos = (row, col, d)
@@ -265,6 +258,11 @@ class _Machine:
             self.ind,
             tuple(self.lsrs),
             self.io.position(),
+            self._input_reads,
+            self._draws,
+            self.text,
+            self._second_start,
+            self._dumped,
         )
 
     # The all-random-outcomes search.  Its state deliberately drops ``pos``
@@ -280,7 +278,7 @@ class _Machine:
         grid that never placed a laser reports its own empty beams instead,
         so the ordinary emptiness test halts it.
         """
-        unplaced = None if self.lsrs else ()
+        unplaced = None if self.lsrs and not self._second_start else ()
         return (self.tape, self.ptr, unplaced, self.ind, self.jmp)
 
     def branching_halted(self, state: object) -> bool:
@@ -312,9 +310,9 @@ class _Machine:
         row, col, d = lsrs[ind]
         row, col = _move(row, col, d, self.rows)
 
-        if jmp:
+        if ind in jmp:
             moved = (*lsrs[:ind], (row, col, d), *lsrs[ind + 1 :])
-            return ((tape, ptr, moved, (ind + 1) % len(moved), False),)
+            return ((tape, ptr, moved, (ind + 1) % len(moved), jmp - {ind}),)
 
         op = (
             self.text[row][col]
@@ -377,8 +375,8 @@ class _Machine:
         row, col = _move(row, col, d, self.rows)
         self.pos = (row, col, d)
 
-        if self.jmp:
-            self.jmp = False
+        if self.ind in self.jmp:
+            self.jmp = self.jmp - {self.ind}
             self.lsrs[self.ind] = (row, col, d)
             self.ind = (self.ind + 1) % len(self.lsrs)
             return
@@ -392,7 +390,10 @@ class _Machine:
         byte = None
         if op == ",":
             byte = self.io.input_char()
+            self._input_reads += 1
         split = draw(self._rng, 2) if op == "*" else 0
+        if op == "*":
+            self._draws += 1
 
         self._restore(_advance(self._state, op, row, col, d, byte, split))
 

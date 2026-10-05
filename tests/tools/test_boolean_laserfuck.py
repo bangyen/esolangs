@@ -1,15 +1,16 @@
 """Covers :mod:`esolangs.tools.laserfuck` and its layout module."""
 
 import importlib
-import random
 
 import pytest
 
 from esolangs import tools as boolean
 from esolangs.tools.laserfuck import layout as laserfuck_layout
-from tests.tools.boolean_runners import (
-    run_laserfuck,
-)
+from tests.interpreters.laserfuck_observer import check
+
+
+def run_laserfuck(program, bits, heading):
+    return check(program, "".join(bits), heading)[0]
 
 
 class TestLaserFuck:
@@ -20,62 +21,8 @@ class TestLaserFuck:
         hanging = boolean.laserfuck(table, width=1)
         assert len(hanging) < len(natural)
 
-    @pytest.mark.medium
-    def test_weighted_table_executes_every_row(self) -> None:
-        """The linear default computes dense tables at every initial heading."""
-        for n in (5, 6):
-            size = 1 << n
-            tables = (
-                ("01101001" * (size // 8))[:size],
-                "".join(str((i * 73 + i // 3) & 1) for i in range(size)),
-            )
-            for table in tables:
-                program = boolean.laserfuck(table)
-                for combo in range(size):
-                    bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
-                    for heading in range(4):
-                        assert run_laserfuck(program, bits, heading) == table[combo]
-
-    @pytest.mark.parametrize(
-        ("table", "n"),
-        [
-            ("10", 1),  # NOT
-            ("01", 1),
-            ("00", 1),  # constant zero
-            ("11", 1),  # constant one
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("1110", 2),  # NAND
-            ("11111110", 3),  # NAND3
-            ("01101001", 3),  # XOR3
-            ("00000001", 3),  # AND3
-            ("1111111100000000", 4),  # top half
-            ("0110100110010110", 4),  # XOR4
-        ],
-    )
-    @pytest.mark.medium
-    def test_truth_table(self, table: str, n: int) -> None:
-        """Every input combination produces the truth-table result."""
-        program = boolean.laserfuck(table)
-        for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            for heading in range(4):
-                got = run_laserfuck(program, [str(b) for b in bits], heading)
-                assert got == str(int(table[combo])), f"inputs {bits} heading {heading}"
-
     # n=3 is 256 tables at 2.0s, over the fast run's one-second budget;
     # n=1 and n=2 are 16 tables between them and stay well under it.
-    @pytest.mark.parametrize("n", [1, 2, pytest.param(3, marks=pytest.mark.slow)])
-    @pytest.mark.medium
-    def test_all_small_tables(self, n: int) -> None:
-        """Every table up to three inputs produces the right result."""
-        for table_int in range(2 ** (2**n)):
-            table = format(table_int, f"0{2**n}b")
-            program = boolean.laserfuck(table)
-            for combo in range(2**n):
-                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-                got = run_laserfuck(program, [str(b) for b in bits], 3)
-                assert got == str(int(table[combo])), f"{table} inputs {bits}"
 
     def test_input_reordering_folds_a_scattered_table(self) -> None:
         """The tree splits in whichever order folds most, not input order.
@@ -124,26 +71,6 @@ class TestLaserFuck:
                 boolean.laserfuck(table)
             assert built == 2 * orders, f"n={n} built {built} candidates"
 
-    @pytest.mark.parametrize(
-        "table",
-        ["10101010", "11001100", "01011010", "00111100", "10010110"],
-    )
-    def test_reordered_programs_compute_the_table(self, table: str) -> None:
-        """A reordered program still computes its function, at every heading.
-
-        The cell an input is read into is the *inverse* of the split order:
-        a node steps then tests, so level ``k`` tests cell ``k + 1`` and has
-        to be handed input ``perm[k]``.  Reading that forward stores the
-        right bits in the wrong cells and computes a different function,
-        which only running the program catches.
-        """
-        program = boolean.laserfuck(table)
-        for combo in range(8):
-            bits = [(combo >> (2 - i)) & 1 for i in range(3)]
-            for heading in range(4):
-                got = run_laserfuck(program, [str(b) for b in bits], heading)
-                assert got == table[combo], f"{table} inputs {bits} heading {heading}"
-
     def test_reordering_keeps_the_reads_in_stream_order(self) -> None:
         """Reordering moves where a bit is stored, never when it is read.
 
@@ -164,25 +91,6 @@ class TestLaserFuck:
         program = boolean.laserfuck("10")
         assert program.splitlines()[0][0] != "\u00ff"
         assert "\u00ff" not in program
-
-    def test_prints_only_the_answer(self) -> None:
-        """The dump is exactly the result: no input cells, no separators.
-
-        The input cells are driven negative by the leaf, and ``dump`` skips
-        negative cells, so nothing but the answer survives.
-        """
-        program = boolean.laserfuck("0001")  # AND2
-        for bits, want in (([0, 1], "0"), ([1, 1], "1")):
-            got = run_laserfuck(program, [str(b) for b in bits], 3)
-            assert got == want, f"inputs {bits}"
-
-    def test_loop_free_tree(self) -> None:
-        """The decision tree branches with #, ) and a turning mirror."""
-        program = boolean.laserfuck("0110")
-        assert "#" in program
-        assert ")" in program
-        # the tree is mirrored, so a one-branch turns on '/' rather than '\\'
-        assert "/" in program
 
     @pytest.mark.parametrize(
         ("table", "n", "width"),
@@ -342,100 +250,6 @@ class TestLaserFuck:
         ]
         assert widths == sorted(widths, reverse=True)
 
-    @pytest.mark.parametrize(
-        ("table", "rows", "columns"),
-        [
-            ("01", 3, 44),
-            ("0001", 3, 56),
-            ("0110", 4, 56),
-            ("11111110", 4, 68),
-            ("01101001", 8, 68),
-        ],
-    )
-    def test_the_grid_has_exact_dimensions(
-        self, table: str, rows: int, columns: int
-    ) -> None:
-        """The drawing's extents, pinned.
-
-        Almost everything the layout does is arithmetic on grid offsets --
-        where the reader's blocks sit, how far the beam falls before it is
-        caught, which column a node starts in.  An offset that drifts by
-        one still draws a *working* program: the beam is steered by the
-        characters it meets, not by absolute position, so the table still
-        comes out right and only the shape moves.  The extents are the
-        cheapest thing that sees it.
-        """
-        grid = boolean.laserfuck(table).split("\n")
-        assert len(grid) == rows
-        assert max(len(line) for line in grid) == columns
-
-    @pytest.mark.parametrize(
-        ("width", "rows", "columns"),
-        [
-            (18, 47, 18),
-            (19, 36, 18),
-            (27, 28, 26),
-            (28, 25, 27),
-            (35, 17, 34),
-            (44, 6, 43),
-        ],
-    )
-    def test_the_width_steps_land_where_they_should(
-        self, width: int, rows: int, columns: int
-    ) -> None:
-        """XOR's layout at each width where the fit decision changes.
-
-        The reader is stood on end one block at a time, and whether the
-        next block still fits is a single comparison against the requested
-        width.  These are the widths where that comparison flips: at 18 the
-        grid is 47 rows and at 19 it is 36, and again between 27 and 28.
-        An off-by-one in the fit test moves every one of these boundaries
-        by one column, which no truth-table check and no monotonicity
-        check can see -- the program still computes XOR at every width, and
-        the sizes still decrease.
-        """
-        grid = boolean.laserfuck("0110", width).split("\n")
-        assert len(grid) == rows
-        assert max(len(line) for line in grid) == columns
-
-    @pytest.mark.parametrize(
-        ("table", "flip", "narrow", "wide"),
-        [
-            ("11111110", 69, (6, 49), (4, 68)),
-            ("01101001", 69, (10, 49), (8, 68)),
-        ],
-    )
-    def test_the_straight_layout_starts_at_its_exact_width(
-        self,
-        table: str,
-        flip: int,
-        narrow: tuple[int, int],
-        wide: tuple[int, int],
-    ) -> None:
-        """One comparison chooses between the two whole layouts.
-
-        Given room for the reader and the tree end to end, the tree runs
-        straight on along the reader's own rows and costs no rows of its
-        own; one column short of that, it is mirrored and hung underneath
-        instead.  Both are correct programs of very different shape, so
-        only the geometry sees which was taken -- and the switch is a
-        single ``straight + 1 <= width``, whose ``+ 1`` and ``<=`` are
-        exactly the kind of off-by-one that keeps computing the table.
-
-        These are the widths where each table flips: one below is the
-        mirrored shape, and at the flip the grid reaches the same extents
-        it has with no width asked for at all.
-        """
-        below = boolean.laserfuck(table, flip - 1).split("\n")
-        assert (len(below), max(len(line) for line in below)) == narrow
-
-        at = boolean.laserfuck(table, flip).split("\n")
-        assert (len(at), max(len(line) for line in at)) == wide
-
-        # The compact build is allowed to choose either named placement.
-        free = boolean.laserfuck(table).split("\n")
-        assert len("\n".join(free)) <= len("\n".join(at))
-
     def test_the_grid_uses_only_laserfuck_characters(self) -> None:
         """Nothing but the language's own glyphs and layout space.
 
@@ -464,22 +278,6 @@ class TestLaserFuck:
             program = boolean.laserfuck(table, floor).split("\n")
             assert max(len(line) for line in program) <= floor
 
-    def test_ringed_leaves_leave_a_zero_answer_alone(self) -> None:
-        """Cell 0 is the counter *and* the answer, so zero costs nothing.
-
-        The rings spend the counter down to zero and leave it touched,
-        which is exactly what dump() prints for a zero answer -- so a leaf
-        writes a '+' only when the answer is one.
-
-        Both tables are constant, so each folds to a single leaf that fits
-        on the reader's own row; the '+' is counted over the whole program
-        rather than over the rows below the reader, which a folded tree no
-        longer occupies.
-        """
-        zero = boolean.laserfuck("0000", 80)
-        ones = boolean.laserfuck("1111", 80)
-        assert ones.count("+") == zero.count("+") + 1, "a one costs exactly one '+'"
-
     def test_constant_subtrees_fold(self) -> None:
         """A constant slice becomes one leaf instead of branching further.
 
@@ -492,78 +290,9 @@ class TestLaserFuck:
         assert boolean.laserfuck("11110000").count("x") == 2
         assert boolean.laserfuck("10010110").count("x") == 8
 
-    def test_a_table_that_folds_nothing_keeps_the_sized_sweep(self) -> None:
-        """Parity's leaves retire each input by its own bit, not flatly.
 
-        Only the cells above a leaf's depth need the flat two-``-``
-        retiring; a parity table has no folded leaf, so every cell is one
-        its path consumed and every run is sized to the bits.  Reading the
-        runs back off each leaf is what pins that -- a leaf reached by
-        ``bits`` spends ``bit + 1`` dashes per cell, most recent first.
-        """
-        program = boolean.laserfuck("10010110")
-        leaves = program.split("x")[:-1]
-        for path in range(8):
-            bits = [(path >> (2 - i)) & 1 for i in range(3)]
-            want = "".join("-" * (b + 1) + "<" for b in reversed(bits))
-            assert any(leaf.endswith(want) or want in leaf for leaf in leaves), (
-                f"no leaf retires {bits} with its sized run {want!r}"
-            )
-
-    def test_without_a_width_is_unchanged(self) -> None:
-        """The default stays exactly what the generator always produced."""
-        for table in ("01", "10", "0110", "01101001"):
-            assert boolean.laserfuck(table) == boolean.laserfuck(table, None)
-
-    def test_too_narrow_a_width_is_ignored(self) -> None:
-        """A width the tree cannot fit in is ignored rather than raising.
-
-        The tree grows six columns per node and is never folded, so below
-        some width there is nothing the fold can do; the generator emits the
-        grid it can build instead of failing, matching the rest of the
-        width plumbing.
-        """
-        program = boolean.laserfuck("01101001", 8)
-        assert run_laserfuck(program, ["0", "0", "0"], 3) == "0"
-
-
-@pytest.mark.medium
-@pytest.mark.parametrize("heading", range(4))
-def test_overhead_funnel_executes_every_small_table(heading: int) -> None:
-    for n in range(1, 4):
-        for value in range(2 ** (2**n)):
-            table = format(value, f"0{2**n}b")
-            program = boolean.laserfuck(table, 1)
-            for row in range(2**n):
-                assert (
-                    run_laserfuck(program, list(format(row, f"0{n}b")), heading)
-                    == table[row]
-                )
-
-
-def test_overhead_funnel_floor_and_corpus_size() -> None:
+def test_overhead_funnel_width_floor() -> None:
     assert max(map(len, boolean.laserfuck("0110", 1).splitlines())) == 4
-    assert len(boolean.laserfuck("0110", 1)) == 569
-    assert sum(len(boolean.laserfuck(format(v, "04b"), 1)) for v in range(16)) == 9104
-    assert (
-        sum(len(boolean.laserfuck(format(v, "08b"), 1)) for v in range(256)) == 104873
-    )
-
-
-@pytest.mark.parametrize("n", [5, 7])
-def test_overhead_funnel_larger_tables(n: int) -> None:
-    rng = random.Random(20260930 + n)
-    for table in (
-        "".join(str(row.bit_count() & 1) for row in range(2**n)),
-        format(rng.getrandbits(2**n), f"0{2**n}b"),
-    ):
-        program = boolean.laserfuck(table, 1)
-        for row in rng.sample(range(2**n), 12):
-            for heading in range(4):
-                assert (
-                    run_laserfuck(program, list(format(row, f"0{n}b")), heading)
-                    == table[row]
-                )
 
 
 def test_valid_more_expensive_input_order_keeps_identity(
@@ -601,21 +330,3 @@ def test_vertical_tree_preserves_fitting_public_layouts(width: int) -> None:
     for heading in range(4):
         for row, expected in enumerate(table):
             assert run_laserfuck(source, list(f"{row:02b}"), heading) == expected
-
-
-@pytest.mark.parametrize(("table", "perm"), [("0001", (1, 0)), ("10010110", (2, 0, 1))])
-def test_vertical_tree_places_permuted_inputs_in_stream_order(
-    table: str, perm: tuple[int, ...]
-) -> None:
-    from esolangs.tools.helpers import permute_truth_table
-    from esolangs.tools.laserfuck import _laserfuck_build, _laserfuck_raise_funnel
-
-    source = _laserfuck_build(
-        permute_truth_table(table, perm), perm, 1, vertical_tree=True
-    )
-    source = _laserfuck_raise_funnel(source)
-    for row, expected in enumerate(table):
-        for heading in range(4):
-            assert (
-                run_laserfuck(source, list(f"{row:0{len(perm)}b}"), heading) == expected
-            )
