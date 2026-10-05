@@ -8,6 +8,7 @@ import pytest
 import esolangs
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.tape_based.minifuck import _Machine, run
+from tests.interpreters.views import view as vm_view
 
 
 def reference(code, stdin, cap):
@@ -55,19 +56,19 @@ def observe(code, stdin, cap):
         for _ in range(cap):
             if machine.halted:
                 break
-            before = machine.ip
+            before = vm_view(machine, "ip")
             machine.step()
-            assert machine.ip > before
+            assert vm_view(machine, "ip") > before
     except EOFError:
         error = "EOFError"
-    assert machine.tape == machine.memory
-    assert machine.ind == machine.ip
-    assert machine.stack == []
+    assert machine.tape == vm_view(machine, "memory")
+    assert machine.ind == vm_view(machine, "ip")
+    assert vm_view(machine, "stack") == []
     result = (
         io.getvalue(),
-        tuple(machine.memory),
+        tuple(vm_view(machine, "memory")),
         machine.ptr,
-        machine.ip,
+        vm_view(machine, "ip"),
         io.position(),
         machine.halted,
         error,

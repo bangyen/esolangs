@@ -10,6 +10,7 @@ import esolangs
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.stack_based.three_x import _Machine, run
+from tests.interpreters.views import view as vm_view
 
 
 def number(token):
@@ -79,23 +80,24 @@ def reference(code, stdin, cap):
             right, left = stack.pop(), stack.pop()
             stack.extend((right, left))
         elif char == "(":
+            # Matchedness is settled on entry, whichever way the top goes.
+            depth = 0
+            matching = None
+            for index in range(pc, len(code)):
+                if code[index] == "(":
+                    depth += 1
+                elif code[index] == ")":
+                    depth -= 1
+                    if depth == 0:
+                        matching = index
+                        break
+            if matching is None:
+                pc = len(code)
+                error = ("HaltError", "unmatched (")
+                break
             if stack[-1]:
                 loops.append(pc)
             else:
-                depth = 0
-                matching = None
-                for index in range(pc, len(code)):
-                    if code[index] == "(":
-                        depth += 1
-                    elif code[index] == ")":
-                        depth -= 1
-                        if depth == 0:
-                            matching = index
-                            break
-                if matching is None:
-                    pc = len(code)
-                    error = ("HaltError", "unmatched (")
-                    break
                 following = matching + 1
         elif char == ")":
             if stack[-1]:
@@ -140,8 +142,8 @@ def observe(code, stdin, cap):
                 else (type(exc).__name__, str(exc))
             )
             break
-    assert machine.ip == machine.ind
-    assert machine.memory == []
+    assert vm_view(machine, "ip") == machine.ind
+    assert vm_view(machine, "memory") == []
     if machine.halted:
         before = machine.snapshot(), io.getvalue(), io.position()
         machine.step()
@@ -149,10 +151,10 @@ def observe(code, stdin, cap):
         assert (machine.snapshot(), io.getvalue(), io.position()) == before
     return (
         io.getvalue(),
-        tuple(machine.stack),
+        tuple(vm_view(machine, "stack")),
         tuple(machine.jumps),
         tuple(sorted(machine.variables.items())),
-        machine.ip,
+        vm_view(machine, "ip"),
         io.position(),
         machine.halted,
         error,
@@ -313,6 +315,10 @@ def test_input_progress_prevents_false_cycle():
     before = machine.snapshot()
     for _ in range(4):
         machine.step()
-    assert (machine.ip, machine.stack, machine.jumps) == (2, (3,), (1,))
+    assert (vm_view(machine, "ip"), vm_view(machine, "stack"), machine.jumps) == (
+        2,
+        (3,),
+        (1,),
+    )
     assert machine.variables == {3: 3}
     assert machine.snapshot() != before

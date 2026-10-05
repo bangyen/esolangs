@@ -9,6 +9,7 @@ from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.tape_based.rotfuck import _Machine, run
 from esolangs.tools.rotfuck import rotfuck
+from tests.interpreters.views import view as vm_view
 
 
 class Reference:
@@ -92,9 +93,9 @@ def compare(code, stdin="", cap=40):
         elif ref.pc < len(code):
             assert machine.prog.at(ref.pc) == ref.text[ref.pc]
         assert io.getvalue() == ref.output
-        assert machine.memory == ref.cells
-        assert machine.ip == ref.pc
-        assert machine.stack == []
+        assert vm_view(machine, "memory") == ref.cells
+        assert vm_view(machine, "ip") == ref.pc
+        assert vm_view(machine, "stack") == []
         if machine.halted:
             before = machine.snapshot()
             machine.step()

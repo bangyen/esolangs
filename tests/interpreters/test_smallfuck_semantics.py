@@ -7,6 +7,7 @@ import pytest
 import esolangs
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.tape_based.smallfuck import _Machine, run
+from tests.interpreters.views import view as vm_view
 
 
 def reference(code, cap):
@@ -66,9 +67,15 @@ def observe(code, cap):
         assert io.getvalue() == output
         assert machine.snapshot() == snapshot
     assert io.position() == 0
-    assert machine.stack == []
-    assert tuple(machine.memory) == machine.tape
-    return io.getvalue(), tuple(machine.memory), machine.ptr, machine.ip, machine.halted
+    assert vm_view(machine, "stack") == []
+    assert tuple(vm_view(machine, "memory")) == machine.tape
+    return (
+        io.getvalue(),
+        tuple(vm_view(machine, "memory")),
+        machine.ptr,
+        vm_view(machine, "ip"),
+        machine.halted,
+    )
 
 
 def corpus():

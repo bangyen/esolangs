@@ -2,6 +2,7 @@
 
 from esolangs.interpreters.io import ScriptedIO
 from tests.interpreters.flowchart_reference import Reference, coordinate
+from tests.interpreters.views import view as vm_view
 
 
 def compare(machine, ref, io):
@@ -9,11 +10,13 @@ def compare(machine, ref, io):
     assert machine.snapshot() == ref.snapshot()
     assert machine.width == ref.width
     live = [p for p in ref.pointers if not p.done]
-    assert machine.ip == (
+    assert vm_view(machine, "ip") == (
         (*coordinate(live[0].point), *coordinate(live[0].heading)) if live else None
     )
-    assert machine.memory == [v for k in sorted(ref.tapes) for v in ref.tapes[k]]
-    assert machine.stack == []
+    assert vm_view(machine, "memory") == [
+        v for k in sorted(ref.tapes) for v in ref.tapes[k]
+    ]
+    assert vm_view(machine, "stack") == []
     assert (io.getvalue(), io.position(), io.reads, io.past_end) == (
         ref.output,
         ref.offset,

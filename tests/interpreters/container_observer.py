@@ -2,6 +2,7 @@
 
 from esolangs.interpreters.io import ScriptedIO
 from tests.interpreters.container_reference import Reference
+from tests.interpreters.views import view as vm_view
 
 
 def check(code, stdin, machine_type, answer=None, limit=10000):
@@ -16,9 +17,11 @@ def check(code, stdin, machine_type, answer=None, limit=10000):
         assert machine.queue == list(ref.queue)
         assert machine.exit_code == ref.exit_code
         assert machine.tick == ref.tick
-        assert machine.ip == ref.tick
-        assert machine.memory == [ref.values[name] for name in sorted(ref.values)]
-        assert machine.stack == []
+        assert vm_view(machine, "ip") == ref.tick
+        assert vm_view(machine, "memory") == [
+            ref.values[name] for name in sorted(ref.values)
+        ]
+        assert vm_view(machine, "stack") == []
         assert machine.snapshot() == ref.snapshot()
         assert io.position() == ref.offset
         assert io.reads == ref.reads
@@ -41,7 +44,7 @@ def check(code, stdin, machine_type, answer=None, limit=10000):
         old = machine.snapshot()
         recorded = repr(old)
         values_view = machine.var
-        memory_view = machine.memory
+        memory_view = vm_view(machine, "memory")
         expected_values = dict(ref.values)
         expected_memory = [ref.values[name] for name in sorted(ref.values)]
         machine.step()

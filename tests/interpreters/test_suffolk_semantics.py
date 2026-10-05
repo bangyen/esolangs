@@ -8,6 +8,7 @@ import pytest
 import esolangs
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.tape_based.suffolk import _Machine, run
+from tests.interpreters.views import view as vm_view
 from tests.raises import raises_message
 
 
@@ -64,9 +65,9 @@ class Reference:
 
 
 def inspect(machine):
-    assert machine.ip == machine.ind
-    assert machine.memory == list(machine.tape)
-    assert machine.stack == []
+    assert vm_view(machine, "ip") == machine.ind
+    assert vm_view(machine, "memory") == list(machine.tape)
+    assert vm_view(machine, "stack") == []
     assert machine.key == (machine.ind, machine.ptr, len(machine.tape))
     assert machine.values == (machine.acc, *machine.tape)
     assert machine.input_position() == machine.io.position()

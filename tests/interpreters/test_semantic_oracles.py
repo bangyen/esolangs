@@ -16,6 +16,7 @@ from tests.interpreters.semantic_oracles import (
     smallfuck,
     subleq,
 )
+from tests.interpreters.views import view as vm_view
 
 ORACLES = {
     "Boolfuck": boolfuck,
@@ -35,11 +36,11 @@ def observed(language, code, stdin, cap):
         machine.step()
     if machine.halted and getattr(machine, "dumps_on_the_post_halt_step", False):
         machine.step()
-    assert machine.stack == []
+    assert vm_view(machine, "stack") == []
     return Observation(
         io.getvalue(),
-        tuple(machine.memory),
-        machine.ip,
+        tuple(vm_view(machine, "memory")),
+        vm_view(machine, "ip"),
         io.position(),
         machine.halted,
         machine.state if language == "Boolfuck" else None,
@@ -295,9 +296,9 @@ def test_cyclic_tag_snapshot_distinguishes_growth_at_equal_program_position():
     machine = module._Machine("11,1", ScriptedIO())  # noqa: SLF001
     machine.step()
     before = machine.snapshot()
-    cursor = machine.ip
+    cursor = vm_view(machine, "ip")
     machine.step()
-    assert machine.ip == cursor
+    assert vm_view(machine, "ip") == cursor
     assert machine.live == "111"
     assert machine.snapshot() != before
 
@@ -380,7 +381,7 @@ def test_subleq_snapshot_distinguishes_memory_at_equal_instruction_pointer():
     before = machine.snapshot()
     machine.step()
     assert machine.pc == 0
-    assert machine.memory[-1] == -1
+    assert vm_view(machine, "memory")[-1] == -1
     assert machine.snapshot() != before
 
 
@@ -388,9 +389,9 @@ def test_subleq_snapshot_distinguishes_consumed_input_at_equal_memory_and_pointe
     module = importlib.import_module(INTERPRETERS["Subleq"])
     machine = module._Machine("-1 9 3 9 9 0 0 0 -1 0", ScriptedIO("A"))  # noqa: SLF001
     before = machine.snapshot()
-    state = machine.pc, machine.memory
+    state = machine.pc, vm_view(machine, "memory")
     machine.step()
     machine.step()
-    assert (machine.pc, machine.memory) == state
+    assert (machine.pc, vm_view(machine, "memory")) == state
     assert machine.io.position() == 1
     assert machine.snapshot() != before

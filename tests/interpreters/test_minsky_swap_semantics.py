@@ -8,6 +8,7 @@ import pytest
 import esolangs
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.register_based.minsky_swap import _Machine, run
+from tests.interpreters.views import view as vm_view
 
 
 def parse(code):
@@ -89,9 +90,9 @@ def observe(code, cap):
         machine.step()
     assert io.getvalue() == ""
     assert io.position() == 0
-    assert machine.stack == []
-    assert machine.reg == tuple(machine.memory)
-    assert machine.ind == machine.ip
+    assert vm_view(machine, "stack") == []
+    assert machine.reg == tuple(vm_view(machine, "memory"))
+    assert machine.ind == vm_view(machine, "ip")
     if machine.halted:
         machine.step()
         output = io.getvalue()
@@ -101,7 +102,13 @@ def observe(code, cap):
         machine.step()
         assert io.getvalue() == output
         assert machine.snapshot() == snapshot
-    return io.getvalue(), tuple(machine.memory), machine.ptr, machine.ip, machine.halted
+    return (
+        io.getvalue(),
+        tuple(vm_view(machine, "memory")),
+        machine.ptr,
+        vm_view(machine, "ip"),
+        machine.halted,
+    )
 
 
 def readable(program, targets):
@@ -217,7 +224,7 @@ def test_cycle_and_growth_controls_distinguish_registers_at_equal_cursor():
     before = machine.snapshot()
     for _ in range(4):
         machine.step()
-    assert machine.ip == machine.ptr == 0
+    assert vm_view(machine, "ip") == machine.ptr == 0
     assert machine.reg == (0, 1)
     assert machine.snapshot() != before
     assert observe("*+*~\n1", 80) == ("", (0, 20), 0, 0, False)
@@ -228,7 +235,7 @@ def test_snapshot_distinguishes_pointer_at_equal_cursor_and_registers():
     before = machine.snapshot()
     machine.step()
     machine.step()
-    assert machine.ip == 0
+    assert vm_view(machine, "ip") == 0
     assert machine.reg == (0, 0)
     assert machine.ptr == 1
     assert machine.snapshot() != before

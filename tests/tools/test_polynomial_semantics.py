@@ -8,6 +8,7 @@ from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.register_based.polynomial import _Machine
 from tests.interpreters.polynomial_generated import decode, generate_with_witness
 from tests.interpreters.polynomial_reference import Reference
+from tests.interpreters.views import view as vm_view
 
 
 def check(source, factors, table):
@@ -27,7 +28,12 @@ def check(source, factors, table):
                 reference.reads,
                 instructions,
             )
-            assert (machine.ip, machine.memory, machine.stack, machine.halted) == (
+            assert (
+                vm_view(machine, "ip"),
+                vm_view(machine, "memory"),
+                vm_view(machine, "stack"),
+                machine.halted,
+            ) == (
                 reference.cursor,
                 [reference.register],
                 [],

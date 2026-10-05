@@ -10,6 +10,7 @@ from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.stack_based.bfstack import _Machine
 from tests.interpreters.semantic_oracles import StackObservation, bfstack
+from tests.interpreters.views import view as vm_view
 
 
 def observed(code, stdin, cap):
@@ -29,10 +30,10 @@ def observed(code, stdin, cap):
         error = "ValueError"
     return StackObservation(
         io.getvalue(),
-        tuple(machine.stack),
+        tuple(vm_view(machine, "stack")),
         tuple(machine.lst),
-        tuple(machine.memory),
-        machine.ip,
+        tuple(vm_view(machine, "memory")),
+        vm_view(machine, "ip"),
         io.position(),
         machine.halted,
         error,

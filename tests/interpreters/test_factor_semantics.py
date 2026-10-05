@@ -10,6 +10,7 @@ import pytest
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.tape_based.factor import _Machine, decode
 from tests.interpreters.test_brainfuck_semantics import reference
+from tests.interpreters.views import view as vm_view
 
 
 def factors(number):
@@ -69,18 +70,23 @@ def compare(source, stdin, cap):
         io.getvalue(),
         actual.tape,
         actual.ptr,
-        actual.ip,
+        vm_view(actual, "ip"),
         io.position(),
         actual.halted,
         error,
     ) == expected
-    assert actual.memory == list(actual.tape)
+    assert vm_view(actual, "memory") == list(actual.tape)
     assert actual.input_position() == io.position()
-    assert actual.stack == []
-    view = actual.memory
+    assert vm_view(actual, "stack") == []
+    view = vm_view(actual, "memory")
     view.append(99)
-    assert actual.memory == list(actual.tape)
-    assert actual.snapshot() == (actual.ip, actual.ptr, actual.tape, io.position())
+    assert vm_view(actual, "memory") == list(actual.tape)
+    assert actual.snapshot() == (
+        vm_view(actual, "ip"),
+        actual.ptr,
+        actual.tape,
+        io.position(),
+    )
     if actual.halted:
         before = actual.snapshot()
         actual.step()
@@ -148,7 +154,7 @@ def generated_row(code, machine, stdin, answer):
         io.getvalue(),
         machine.tape,
         machine.ptr,
-        machine.ip,
+        vm_view(machine, "ip"),
         io.position(),
         machine.halted,
         None,

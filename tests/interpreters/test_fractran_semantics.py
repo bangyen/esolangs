@@ -11,6 +11,7 @@ import pytest
 import esolangs
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.fractran import _Machine, run
+from tests.interpreters.views import view as vm_view
 from tests.raises import raises_message
 
 PRIMEGAME = (
@@ -109,13 +110,19 @@ def observe(code, cap, threshold_n=None, max_steps=None):
         assert steps <= 4 * threshold_n + 4
         assert machine.inspections <= 16 * (threshold_n + 1) ** 2
     assert io.position() == 0
-    assert machine.memory == machine.stack == []
+    assert vm_view(machine, "memory") == vm_view(machine, "stack") == []
     if machine.halted:
         before = machine.snapshot(), io.getvalue()
         machine.step()
         machine.step()
         assert (machine.snapshot(), io.getvalue()) == before
-    return io.getvalue(), machine.value, machine.ip, machine.printed, machine.halted
+    return (
+        io.getvalue(),
+        machine.value,
+        vm_view(machine, "ip"),
+        machine.printed,
+        machine.halted,
+    )
 
 
 def corpus():
@@ -246,7 +253,7 @@ def test_primegame_matches_independent_rational_stream():
         assert machine.value == value
         chosen, following = selection(value, fractions)
         assert chosen is not None
-        assert machine.ip == offsets[chosen + 1]
+        assert vm_view(machine, "ip") == offsets[chosen + 1]
         if value & (value - 1) == 0 and value.bit_length() > 2:
             seen.append(value.bit_length() - 1)
         value = following
@@ -261,7 +268,7 @@ def test_snapshot_distinguishes_value_and_final_output_step():
     assert machine.value == 3
     assert machine.snapshot() != before
     before = machine.snapshot()
-    assert machine.ip is None
+    assert vm_view(machine, "ip") is None
     assert not machine.halted
     machine.step()
     assert machine.snapshot() != before

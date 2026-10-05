@@ -11,6 +11,7 @@ import esolangs
 from esolangs.exceptions import HaltError, ProgramError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.crement import _Machine, run
+from tests.interpreters.views import view as vm_view
 from tests.raises import raises_message
 
 _LETTERS = string.ascii_letters + "_"
@@ -183,14 +184,21 @@ def observe(code, cap):
             break
     assert io.getvalue() == ""
     assert io.position() == 0
-    assert machine.stack == []
-    assert machine_store(machine.memory) == machine_store(machine.state.program)
+    assert vm_view(machine, "stack") == []
+    assert machine_store(vm_view(machine, "memory")) == machine_store(
+        machine.state.program
+    )
     if machine.halted:
         before = machine.snapshot()
         machine.step()
         machine.step()
         assert machine.snapshot() == before
-    return machine.ip, machine_store(machine.memory), machine.halted, error
+    return (
+        vm_view(machine, "ip"),
+        machine_store(vm_view(machine, "memory")),
+        machine.halted,
+        error,
+    )
 
 
 def corpus():
@@ -312,7 +320,7 @@ def test_self_modification_is_part_of_cycle_certificate():
     before = machine.snapshot()
     machine.step()
     machine.step()
-    assert machine.ip == 0
+    assert vm_view(machine, "ip") == 0
     assert machine.snapshot() != before
     assert observe(code, 2) == reference(code, 2)
 
@@ -339,7 +347,10 @@ def test_every_small_generated_table_with_full_state_certificate(n, width):
                 actual.step()
                 if position + 1 == entry:
                     first = actual.snapshot()
-            assert (actual.ip, machine_store(actual.memory)) == state
+            assert (
+                vm_view(actual, "ip"),
+                machine_store(vm_view(actual, "memory")),
+            ) == state
             assert actual.halted is (kind == "halt")
             if kind == "cycle":
                 assert actual.snapshot() == first

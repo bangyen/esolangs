@@ -12,6 +12,7 @@ from esolangs.exceptions import InputExhaustedError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.persistent import chunked
 from esolangs.interpreters.tape_based.brainif import _Machine, run
+from tests.interpreters.views import view as vm_view
 
 
 def number(token):
@@ -109,11 +110,11 @@ def normalized(snapshot):
 
 
 def inspect(machine):
-    assert machine.ip == machine.ind == machine.state[0]
+    assert vm_view(machine, "ip") == machine.ind == machine.state[0]
     assert machine.ptr == machine.state[1]
-    assert machine.memory == list(machine.cells)
+    assert vm_view(machine, "memory") == list(machine.cells)
     assert machine.tape == machine.cells
-    assert machine.stack == []
+    assert vm_view(machine, "stack") == []
     assert machine.input_position() == machine.io.position()
     assert normalized(machine.snapshot()) == (
         machine.cells,

@@ -9,6 +9,7 @@ import esolangs
 from esolangs.exceptions import HaltError, InputExhaustedError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.register_based.qoibl import _Machine, run, tokenize
+from tests.interpreters.views import view as vm_view
 
 
 @pytest.mark.parametrize("suffix", ["w", "q", "t", "r", "qt"])
@@ -48,7 +49,7 @@ def test_large_binary_operand_preserves_halt_diagnostic(operation: str) -> None:
     with pytest.raises(HaltError) as raised:
         machine.step()
     assert str(raised.value) == expected
-    assert machine.ip == 1
+    assert vm_view(machine, "ip") == 1
     assert machine.var == {}
 
 
@@ -207,15 +208,17 @@ class Reference:
 
 
 def inspect(machine):
-    assert machine.memory == [machine.var.get(index, 0) for index in range(256)]
-    assert machine.stack == []
+    assert vm_view(machine, "memory") == [
+        machine.var.get(index, 0) for index in range(256)
+    ]
+    assert vm_view(machine, "stack") == []
     assert machine.snapshot() == (
-        machine.ip,
+        vm_view(machine, "ip"),
         tuple(sorted(machine.var.items())),
         machine.io.position(),
     )
     return (
-        machine.ip,
+        vm_view(machine, "ip"),
         dict(machine.var),
         machine.io.position(),
         machine.io.past_end,

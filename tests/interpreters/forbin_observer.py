@@ -4,6 +4,7 @@ from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from tests.interpreters.forbin_reference import Function, InvalidError
 from tests.interpreters.forbin_stepped_reference import SteppedReference
+from tests.interpreters.views import view as vm_view
 
 
 class SyntaxPair:
@@ -133,12 +134,12 @@ def compare(machine, ref, io, pair):
         ref.past_end,
         ref.output,
     )
-    assert machine.ip == (
+    assert vm_view(machine, "ip") == (
         tuple(active.index for active in ref.activations)
         if ref.activations
         else (ref.length,)
     )
-    assert machine.memory == (
+    assert vm_view(machine, "memory") == (
         [
             value
             for value in ref.activations[-1].scope.values.values()
@@ -147,7 +148,7 @@ def compare(machine, ref, io, pair):
         if ref.activations
         else []
     )
-    assert machine.stack == []
+    assert vm_view(machine, "stack") == []
     reverse = {function: native for native, function in pair.functions.items()}
 
     def native_value(value):

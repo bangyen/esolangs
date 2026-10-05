@@ -8,6 +8,7 @@ import pytest
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.tape_based.bit_tilde import _Machine, run
 from esolangs.tools.bit_tilde import bit_tilde
+from tests.interpreters.views import view as vm_view
 
 
 class Reference:
@@ -80,10 +81,10 @@ def compare(code, stdin="", cap=40):
         assert machine.state == expected, (code, step, machine.state, expected)
         assert machine.snapshot() == (expected[2], ref.ptr, ref.pc, ref.offset)
         assert io.getvalue() == ref.output
-        assert machine.memory == list(expected[2])
-        assert machine.ip == ref.pc
+        assert vm_view(machine, "memory") == list(expected[2])
+        assert vm_view(machine, "ip") == ref.pc
         assert machine.cell == ref.ptr
-        assert machine.stack == []
+        assert vm_view(machine, "stack") == []
         if machine.halted:
             old = machine.snapshot()
             machine.step()

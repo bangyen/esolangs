@@ -6,6 +6,7 @@ import pytest
 
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.register_based.deadfish import _Machine, run
+from tests.interpreters.views import view as vm_view
 
 
 def reference(code, cap):
@@ -59,11 +60,11 @@ def observe(code, cap):
         if machine.halted:
             break
         machine.step()
-    assert machine.memory == [machine.value]
-    assert machine.stack == []
-    assert machine.ind == machine.ip
+    assert vm_view(machine, "memory") == [machine.value]
+    assert vm_view(machine, "stack") == []
+    assert machine.ind == vm_view(machine, "ip")
     assert io.position() == 0
-    result = io.getvalue(), machine.ip, machine.value, machine.halted
+    result = io.getvalue(), vm_view(machine, "ip"), machine.value, machine.halted
     if machine.halted:
         snapshot = machine.snapshot()
         machine.step()

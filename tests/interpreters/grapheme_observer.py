@@ -3,6 +3,7 @@ from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.stack_based.grapheme import _Machine
 from tests.interpreters.grapheme_reference import Function, InvalidError
 from tests.interpreters.grapheme_stepped_reference import Stepped
+from tests.interpreters.views import view as vm_view
 
 
 def value(v):
@@ -15,7 +16,7 @@ def check(source, text):
     io = ScriptedIO(text)
     vm = _Machine(source, io)
     for _ in range(10000):
-        assert vm.stack == list(map(value, ref.evaluator.stack)), source
+        assert vm_view(vm, "stack") == list(map(value, ref.evaluator.stack)), source
         assert dict(vm.vars) == {
             value(k): value(v) for k, v in ref.evaluator.variables.items()
         }, source
@@ -34,8 +35,8 @@ def check(source, text):
         expected_ip = tuple(frame.cursor for frame in ref.frames) or (
             len(source.replace("\n", "")),
         )
-        assert vm.ip == expected_ip
-        assert vm.memory == []
+        assert vm_view(vm, "ip") == expected_ip
+        assert vm_view(vm, "memory") == []
         assert vm.snapshot() == (
             tuple(map(value, ref.evaluator.stack)),
             frozenset((value(k), value(v)) for k, v in ref.evaluator.variables.items()),

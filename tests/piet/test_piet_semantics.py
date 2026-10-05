@@ -8,6 +8,7 @@ from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.stack_based.piet import _advance, _command, _Machine
 from esolangs.raster import Raster
 from esolangs.tools.piet import piet
+from tests.interpreters.views import view as vm_view
 from tests.piet.piet_cases import raster_case, stacks
 from tests.piet.piet_commands import command
 from tests.piet.piet_raster import BLACK, advance
@@ -72,12 +73,12 @@ def compare_execution(program, text, requested, limit=100):
             ref.reads,
             ref.output,
         )
-        assert vm.ip == (
+        assert vm_view(vm, "ip") == (
             None
             if ref.state[4]
             else (ref.state[0][1], ref.state[0][0], ref.state[1], ref.state[2])
         )
-        assert vm.memory == ()
+        assert vm_view(vm, "memory") == []
         if ref.state[4]:
             return ref
         if generation == limit:

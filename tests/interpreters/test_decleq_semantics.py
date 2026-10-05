@@ -9,6 +9,7 @@ import esolangs
 from esolangs.exceptions import HaltError, InterpreterLimitError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.register_based.decleq import _Machine, run
+from tests.interpreters.views import view as vm_view
 
 
 class Reference:
@@ -80,12 +81,12 @@ def image(memory):
 
 
 def inspect(machine):
-    assert machine.pc == machine.ip
-    assert machine.state == (machine.pc, tuple(machine.memory))
-    assert machine.stack == []
+    assert machine.pc == vm_view(machine, "ip")
+    assert machine.state == (machine.pc, tuple(vm_view(machine, "memory")))
+    assert vm_view(machine, "stack") == []
     return (
         machine.pc,
-        tuple(machine.memory),
+        tuple(vm_view(machine, "memory")),
         machine.io.getvalue(),
         machine.io.position(),
         machine.io.past_end,

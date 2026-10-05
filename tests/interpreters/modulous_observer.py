@@ -2,6 +2,7 @@ from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.stack_based.modulous import _Machine
 from tests.interpreters.modulous_reference import InvalidError, Reference
+from tests.interpreters.views import view as vm_view
 
 
 class Draw:
@@ -26,9 +27,9 @@ def check(source, text="", limit=100, draw=0):
         assert list(vm.stk) == ref.stack
         assert vm.var == ref.variables
         assert vm.halted == ref.halted
-        assert vm.memory == []
-        assert vm.stack == ref.stack
-        assert vm.ip == ref.cursor
+        assert vm_view(vm, "memory") == []
+        assert vm_view(vm, "stack") == ref.stack
+        assert vm_view(vm, "ip") == ref.cursor
         assert io.position() == ref.position
         assert io.getvalue() == ref.output
         assert rng.count == ref.draws

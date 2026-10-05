@@ -5,6 +5,7 @@ from contextlib import contextmanager
 from esolangs.interpreters.grid_based.b_tapemark import _Grid, _Machine
 from esolangs.interpreters.io import ScriptedIO
 from tests.interpreters.b_tapemark_reference import Reference
+from tests.interpreters.views import view as vm_view
 
 
 class Cells(dict):
@@ -123,10 +124,10 @@ def check(code, stdin, answer, *, consume_all=True):
                 ref.past_end,
                 ref.stdout,
             )
-            assert machine.ip == coordinate(ref.points[ref.active])
-            assert machine.stack == []
+            assert vm_view(machine, "ip") == coordinate(ref.points[ref.active])
+            assert vm_view(machine, "stack") == []
             assert io.reads == ref.offset
-            assert machine.memory == [
+            assert vm_view(machine, "memory") == [
                 state.grids,
                 tuple(map(coordinate, ref.points)),
                 ref.active,

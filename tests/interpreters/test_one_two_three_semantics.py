@@ -8,6 +8,7 @@ import pytest
 import esolangs
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.tape_based.one_two_three import _Machine, run
+from tests.interpreters.views import view as vm_view
 
 
 def reference(code, stdin, cap, initial=None, *, detect_cycle=False):
@@ -90,13 +91,13 @@ def observe(code, stdin, cap, initial=None):
         error = "EOFError"
     byte = sum(2**bit for bit in range(8) if bit in machine.bits)
     assert machine.byte() == byte
-    assert machine.memory == [byte]
-    assert machine.stack == []
+    assert vm_view(machine, "memory") == [byte]
+    assert vm_view(machine, "stack") == []
     result = (
         io.getvalue(),
         tuple(sorted(machine.bits)),
         machine.pos,
-        machine.ip,
+        vm_view(machine, "ip"),
         io.position(),
         machine.halted,
         error,

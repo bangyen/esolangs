@@ -9,6 +9,7 @@ import esolangs
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.tape_based.six_five import _Machine, run
+from tests.interpreters.views import view as vm_view
 
 
 def lex(code):
@@ -97,16 +98,16 @@ def observe(code, stdin, cap):
         error = "EOFError"
     except HaltError:
         error = "HaltError"
-    assert machine.ind == machine.ip
+    assert machine.ind == vm_view(machine, "ip")
     assert machine.cell == machine.ptr
-    assert machine.memory == list(machine.tape)
+    assert vm_view(machine, "memory") == list(machine.tape)
     assert machine.input_position() == io.position()
-    assert machine.stack == []
+    assert vm_view(machine, "stack") == []
     result = (
         io.getvalue(),
-        tuple(machine.memory),
+        tuple(vm_view(machine, "memory")),
         machine.ptr,
-        machine.ip,
+        vm_view(machine, "ip"),
         io.position(),
         machine.halted,
         error,
@@ -322,11 +323,11 @@ def test_snapshot_distinguishes_equal_cursors_with_different_data_or_input():
     machine = _Machine("4581", ScriptedIO())
     machine.step()
     before = machine.snapshot()
-    cursor = machine.ip, machine.ptr
+    cursor = vm_view(machine, "ip"), machine.ptr
     machine.step()
     machine.step()
-    assert (machine.ip, machine.ptr) == cursor
-    assert machine.memory == [5]
+    assert (vm_view(machine, "ip"), machine.ptr) == cursor
+    assert vm_view(machine, "memory") == [5]
     assert machine.snapshot() != before
     io = ScriptedIO("AA")
     reader = _Machine("4B81", io)

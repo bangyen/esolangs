@@ -8,6 +8,7 @@ import pytest
 import esolangs
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.tape_based.home_row import _Machine, run
+from tests.interpreters.views import view as vm_view
 
 
 class Reference:
@@ -62,11 +63,11 @@ class Reference:
 
 
 def inspect(machine):
-    assert machine.ip == machine.ind == machine.state[0]
+    assert vm_view(machine, "ip") == machine.ind == machine.state[0]
     assert machine.ptr == machine.state[1]
     assert machine.grid == machine.state[2]
-    assert machine.memory == list(machine.grid)
-    assert machine.stack == []
+    assert vm_view(machine, "memory") == list(machine.grid)
+    assert vm_view(machine, "stack") == []
     assert machine.io.position() == machine.io.past_end == 0
     assert machine.snapshot() == machine.state
     return machine.state, machine.halted, machine.io.getvalue()

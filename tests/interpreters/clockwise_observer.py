@@ -5,15 +5,16 @@ import copy
 from esolangs.interpreters.grid_based.clockwise import _Machine
 from esolangs.interpreters.io import ScriptedIO
 from tests.interpreters.clockwise_reference import Reference
+from tests.interpreters.views import view as vm_view
 
 
 def compare(ref, native, io, code):
     state = ref.state()
     assert native.state == state
     assert native.halted is ref.halted
-    assert native.ip == state[:3]
-    assert native.memory == [ref.accumulator]
-    assert native.stack == []
+    assert vm_view(native, "ip") == state[:3]
+    assert vm_view(native, "memory") == [ref.accumulator]
+    assert vm_view(native, "stack") == []
     assert (
         native.row,
         native.col,
