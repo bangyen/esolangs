@@ -1359,3 +1359,18 @@ fixed mixed-operation sequence, not Boolean-table queries. Variable-address
 read returns and integration with the address producer and complete decoder
 remain unresolved. These controls establish neither a seventeen-input
 generator nor an impossibility result.
+
+Sharing setup does not close that placement gap either.
+`scripts/malbolge17/join_budget.py --shared-setup` prices the address fold,
+the `dispatch3` row selector and the five-state decoder at the source-map
+level, counting identical cells once. The unguarded fold occupies 8,377, the
+selector 1,520 and the decoder 5,343 (code plus data); the naive sum is
+15,240, the shared union 10,324, collapsing 4,916 cells, and 1,173 cells
+require disagreeing characters. The shared union exceeds the 9,897-cell
+complement by 427, or 1,600 once the conflicting overlaps are separated. The
+guarded fold the decoder consumers read occupies 10,449 (10,420
+instructions), for a 12,434-cell union and a 2,537-cell deficit (3,762 with
+conflicts). No shared setup of the current fold, selector and decoder fits
+the store, so a placement search is deferred. The decoder's 1,173
+unshareable overlaps are the binding term: only more sharing of the common
+initialization, or a smaller decoder, closes the gap.

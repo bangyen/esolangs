@@ -206,6 +206,12 @@ proved by repeated complete state. Negative controls preserve the distinctions
 between EOF and divergence, cell preservation and merely read-free bodies,
 and clipped and unclipped pointer cancellation. These finite controls check
 the stated side conditions; the general soundness arguments remain above.
+The rotation and forced-divergence rules are also executed with
+bracket-depth-two and depth-three bodies at the same configurations, including
+divergence as the observation and reads that reach EOF
+(`test_depth_two_and_three_side_conditions_execute`,
+`test_depth_bodies_agree_on_read_positions`). The depth-one bound is therefore
+not a soundness boundary.
 
 Each replacement shortens the program or decreases lexicographic order under `. , - + < > [ ]`. The checker rebuilds the finite factors with `L = 6`, excursion-body limits 6 (silent) and
 5 (I/O), and clipped-cancellation limit 4. It intersects their avoidance DFA with the fifteen
@@ -240,6 +246,19 @@ and `L1` a read-containing loop. The read-free sequence series `R` must include 
 These bodies exclude a sole loop, but permit an empty loop after a prefix that may
 zero the tested cell. The executed counterexample is pinned in
 `tests/proofs/test_brainfuck_count.py`.
+
+No finite monitor counts the unrestricted bodies. A regular class needs finite,
+depth-agnostic forbidden factors, but `[.Y].` with `Y` balanced pairs its `[`
+with the matching `]` across arbitrary depth. The 11,673-state monitor accepts
+`[.[[--]]].` and, for every `k >= 2`, the word `[.` + `[`^k + `--` + `]`^k +
+`].`, and it accepts the forced-divergence word `[[` + `[`^k + `--` + `]`^k +
+`]--]`; each is a sound left-hand side, so the class is uncounted. The balanced
+avoidance specification is not a finite right congruence: Moore refinement gives
+15, 39, 86, 173 classes at observation windows 4, 6, 8, 10. The next model is the
+context-free/algebraic system `B0, B1, L0, L1, R, P` above, or a depth-indexed
+transfer matrix, not a larger finite-factor monitor.
+`test_unbounded_body_classes_are_not_regular` pins the accepted families and the
+class counts through window 8.
 
 ## 4. Loop-free programs (Theorem 3)
 
@@ -624,8 +643,24 @@ The limit and sharp rate remain unproved.
 The upper bound also holds for varying sets `I_C` whenever `R(I_C)=o(C)`:
 the binomial term and `K**R` then contribute `exp(o(C))`. For all byte inputs
 of length at most `m`, it suffices that `(m+1)*256**m=o(C)`; in particular
-`m <= (1-eps)*log_256(C)` for fixed positive `eps`. This does not cover
-input lengths proportional to `C`.
+`m <= (1-eps)*log_256(C)` for fixed positive `eps`.
+
+For `R=pC`, fixed `p in (0,1]`, the same bound is still finite, with
+exponential rate `f(min(p,t*))` where
+`f(t) = K^t lambda_I^(1-t) / (t^t (1-t)^(1-t))` and `t* = K/(K+lambda_I)`
+maximizes `f` at `f(t*)=K+lambda_I`; `f` increases on `[0,t*]`, so
+`rate(p)=f(p)` for `p<=t*` and `rate(p)=K+lambda_I` afterwards. Every `p>0`
+gives `rate(p)>lambda_I`, so proportional reads do not preserve `6.584428341`;
+`lambda_I` returns only as `p->0`. The proof leaves `K` only "a fixed"
+constant; the exact right Perron vector of the segment matrix (entries
+`(lambda_I-1)/lambda_I`, `1`, `(lambda_I^2-5lambda_I+1)/(2lambda_I)` repeated)
+certifies `K=7/(lambda_I-1)<=1.25349`, so `rate(p)<=7.8380`. The empty
+segment forces `K>=1`, hence the saturation `K+lambda_I>=1+lambda_I=7.58443`
+is above the all-input `7.0347`: the proportional extension cannot beat
+Theorem 1, and it beats the fixed-set bound for no `p>0` (it improves on
+Theorem 1 only while `p<~0.021`). This is a rate of the summed expression, an
+upper bound only. `test_proportional_read_budget_rate` checks the rate, the
+`p->0` control against `lambda_I`, and the exact sum through `C=200`.
 
 `tests/proofs/test_research_tracks.py` checks the exact matrix polynomial
 and a rational Perron upper certificate at `1317/200`. Executed pruning
@@ -652,9 +687,12 @@ equivalence is confined to the chosen input set.
   dead-at-birth reads needs an extra type and gets worse (`x mu^2 + x mu + x`).  Whether a
   read could be moved depends on the future, so no local rule captures it.
 * **Upper bound.** Extended regular rules certify 7.0347. The 7.0341 and 7.0194 improvements
-  used the unsound read-free-prefix rule above. Next: count the unrestricted sound print
-  rotation and forced-divergence families in the corrected balanced-body grammar. A potentially
-  diverging excursion cannot commute across a read at EOF; excursions with output cannot commute across prints.
+  used the unsound read-free-prefix rule above. The unrestricted sound print rotation and
+  forced-divergence bodies are not regular (section 3): a finite-factor monitor accepts
+  depth-`k` left-hand sides for every `k >= 2`, and the balanced avoidance specification
+  has unbounded Moore class count. Next: the context-free/algebraic system `B0, B1, L0, L1,
+  R, P` (section 3), or a depth-indexed transfer matrix. A potentially diverging excursion
+  cannot commute across a read at EOF; excursions with output cannot commute across prints.
   Two tried and dead: (i) the event encoding of section 4 applied to each bracket-free segment between
   brackets must also charge the positions of the segment's final increments, and the resulting series
   is worse than counting words (radius near `1/8`); (ii) the segment-quotient transfer matrix of the
@@ -663,8 +701,11 @@ equivalence is confined to the chosen input set.
   convention (it reads the timing of reads from where the run stops); the rules `[S] -> []` with `.` in
   `S`, `[S[T]X] -> []` and `[]. -> .[]` need that a diverging run's output is not observed.
 * **Finite input sets.** Theorem 6 brackets every fixed nonempty finite
-  `I` between `3.366148` and `6.584428341`. The limit, sharp rate and
-  bounds for input lengths proportional to source length remain open.
+  `I` between `3.366148` and `6.584428341`. The limit and sharp rate remain
+  open. For input length proportional to source length, `R=pC`, Theorem 6's
+  own bound has rate `f(min(p,t*))`, already `>lambda_I` for `p>0` and
+  `>=1+lambda_I>7.0347` at `p>=t*~0.1599`, so that counting method cannot
+  sharpen the all-input bound (section 7b).
 
 ## 9. Reproduction
 
