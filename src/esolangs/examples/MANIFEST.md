@@ -98,7 +98,7 @@ Row gives the logical bits; Input gives their language-specific encoding.
 - **bitdeque** -- Bitdeque has no output instruction and dumps its deque at halt; the generator leaves exactly one bit on it, so the whole dump is the answer and there is no position to name
 - **bitwise-cyclic-tag** -- Bitwise Cyclic Tag has no I/O vocabulary at all: the inputs are bits of the initial data-string, and the answer is the bit the last 0 deletes, which the interpreter prints alone -- so the output is the answer and there is no position to name
 - **clockwise** -- Clockwise reads all its input bits in one go, so they go on one line -- one character per bit, not a line per bit, and not seven bits packed into a character: that packing is real but is on the output side. A line per bit, or a packed one, is read as a different row and answered wrongly
-- **container** -- The printed bit is the answer; module.run returns the EXIT code.
+- **container** -- Container prints the answer; module.run returns the EXIT code.
 - **crement** -- Crement answers by termination: the tree's nodes patch a per-input tester's jump targets, and the row lands past the end (halts, 0) or on a self-jump (diverges, 1)
 - **cyclic-tag** -- Inputs fill the initial queue; the final deleted bit is the answer.
 - **fargo** -- Fargo reads one number whose bits are the inputs, so the committed input is the row index rather than a bit per line

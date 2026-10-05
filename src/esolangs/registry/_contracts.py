@@ -98,9 +98,7 @@ CONTRACTS: dict[str, BooleanContract] = {
         note="an executed line prints its result, so the answer ends in a newline",
     ),
     "other.container": BooleanContract(
-        note="Container prints the answer like any other reader; it "
-        "also ends by calling sys.exit(0) rather than returning, which "
-        "matters to a harness driving it but not to reading the result",
+        note="Container prints the answer; module.run returns the EXIT code.",
         input_shape="char_stream",
     ),
     "other.crement": BooleanContract(

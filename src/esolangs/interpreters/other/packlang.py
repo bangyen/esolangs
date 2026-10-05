@@ -75,6 +75,7 @@ Further decisions for gaps the wiki leaves open:
   returns 0.
 """
 
+import re
 from collections.abc import Callable
 
 from esolangs._dialects import PacklangLiterals
@@ -83,6 +84,7 @@ from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.other._packlang_lex import _strip_comments, _tokenize
+from esolangs.interpreters.other._packlang_scope import _visible
 from esolangs.interpreters.other._packlang_values import (
     _get,
     _int,
@@ -721,29 +723,6 @@ def _apply(node: _Expr, store: _Store, program: _Program, caller: str) -> int:
             hint="keep the index within the bounds stated in the diagnostic",
         )
     return _int(value[index])
-
-
-def _visible(func: _Function, caller: str, program: _Program) -> bool:
-    """Whether ``caller``'s package may call ``func``.
-
-    A package reaches its own functions and those of the packages it
-    depends on.  The wiki says dependencies may themselves have
-    dependencies, so the relation is followed transitively rather than one
-    level deep.
-    """
-    if func.package == caller:
-        return True
-    seen: set[str] = set()
-    frontier = [caller]
-    while frontier:
-        package = frontier.pop()
-        if package in seen:
-            continue
-        seen.add(package)
-        if package == func.package:
-            return True
-        frontier.extend(program.dependencies.get(package, frozenset()))
-    return func.package in seen
 
 
 def _pending_call(

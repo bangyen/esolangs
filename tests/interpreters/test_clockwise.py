@@ -1,7 +1,5 @@
 from typing import ClassVar
 
-import pytest
-
 from esolangs.interpreters.grid_based.clockwise import run
 from tests.interpreters.contract import (
     EmptyProgramContract,

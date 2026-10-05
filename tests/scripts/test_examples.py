@@ -73,7 +73,15 @@ HALT_CONVENTION = {"123", "arrowqueue"}
 _NO_EXAMPLE: set[str] = set()
 
 
-@pytest.mark.parametrize("name", sorted(BOOLEAN_GENERATED))
+@pytest.mark.parametrize(
+    "name",
+    [
+        pytest.param(name, marks=pytest.mark.medium)
+        if name in {"circuit_diagram", "vandevelo"}
+        else name
+        for name in sorted(BOOLEAN_GENERATED)
+    ],
+)
 def test_boolean_example_matches_generator(name: str) -> None:
     """Each committed boolean program is what its generator produces today.
 

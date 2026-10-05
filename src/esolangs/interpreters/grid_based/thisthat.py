@@ -11,7 +11,8 @@ this interpreter refuses a move exactly when its destination cell holds a bit.
 EOF makes ``◇`` send an empty transfer; printing an empty transfer produces no
 text. Malformed input, connections, or source
 raise :class:`~esolangs.exceptions.HaltError`. ``◘`` uses the shared randomness
-hook, so callers may inject a reproducible source.
+hook, so callers may inject a reproducible source. A branch from another
+program is rejected with :class:`ValueError`.
 
 External bits are consecutive 0 or 1 characters, ignoring whitespace; the spec
 does not define stdin framing.

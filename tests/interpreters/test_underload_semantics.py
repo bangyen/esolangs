@@ -11,8 +11,6 @@ from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.stack_based.underload import _Machine, run
 
-_ERROR = "invalid Underload program or stack underflow"
-
 
 def reference(code, cap, initial=()):
     pending = deque(code)
@@ -36,12 +34,19 @@ def reference(code, cap, initial=()):
                         closing = index
                         break
             if closing is None:
-                error = _ERROR
+                error = "unmatched Underload '('"
                 break
         elif not command.isspace():
             count = 2 if command in "~*" else 1
-            if command not in "~:!*a^S" or len(stack) < count:
-                error = _ERROR
+            if command not in "~:!*a^S":
+                error = (
+                    "unmatched Underload ')'"
+                    if command == ")"
+                    else f"unknown Underload command {command!r}"
+                )
+                break
+            if len(stack) < count:
+                error = "Underload stack underflow"
                 break
         executed.append(pending.popleft())
         if command == "(":

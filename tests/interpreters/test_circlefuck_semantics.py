@@ -10,6 +10,7 @@ import esolangs
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.tape_based.circlefuck import _Machine, parse
+from tests.raises import raises_message
 
 
 @pytest.mark.parametrize("value", range(256))
@@ -410,7 +411,7 @@ def test_generated_programs_used_for_size_growth(n):
 def test_empty_decoded_program_is_rejected():
     for source in ("", " \n\t", "\u0101"):
         assert decode(source) == []
-        with pytest.raises(ValueError, match=r"^Circlefuck program cannot be empty$"):
+        with raises_message(ValueError, "Circlefuck program cannot be empty"):
             _Machine(source, ScriptedIO())
 
 

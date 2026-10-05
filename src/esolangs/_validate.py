@@ -181,11 +181,9 @@ def check_address(addr: int, language: str) -> int:
     from esolangs.exceptions import InterpreterLimitError
 
     if addr >= _MAX_CELLS:
-        from esolangs.interpreters.memory import format_integer
-
         raise InterpreterLimitError(
             f"{language} would have to grow its store to "
-            f"{format_integer(addr + 1)} cells, "
+            f"{_argument_repr(addr + 1)} cells, "
             f"past the {_MAX_CELLS}-cell limit this interpreter allocates",
             hint="use smaller memory addresses to fit the interpreter allocation limit",
         )

@@ -1,5 +1,7 @@
 """Covers :mod:`esolangs.tools.eval_lang`."""
 
+import pytest
+
 from esolangs import tools as boolean
 from esolangs.tools.eval_lang import PAIR
 from esolangs.tools.helpers import TEMPLATE_CHAR
@@ -156,6 +158,7 @@ class TestEvalBoolean:
         # The free arrangement is the one staging produces, and costs nothing.
         assert _eval_stack_programs(3)[(0, 1, 2)] == ""
 
+    @pytest.mark.medium
     def test_reorder_catalog_invariants(self) -> None:
         """The built words are capped, deduplicated and (length, ~<*<=)-sorted.
 

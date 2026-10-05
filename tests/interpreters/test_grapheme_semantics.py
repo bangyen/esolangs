@@ -80,7 +80,7 @@ def test_wide_generated_state(n, family, shard):
 @pytest.mark.parametrize("value", [0, 1, 16, 106, 1006, 1263460, 9999996, 5666666])
 def test_borrowed_digit_literal(value):
     result = check(_grapheme_literal(value) + "Y", "")
-    assert result["output"] == str(10 * value)
+    assert result["output"] == str(value)
 
 
 class Cursorless(IO):

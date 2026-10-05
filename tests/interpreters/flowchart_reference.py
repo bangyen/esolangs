@@ -274,8 +274,7 @@ class Reference:
         elif kind == "/ /":
             pointer.value = self.read()
         elif kind == "\\ \\":
-            if pointer.value is not None:
-                self.output += str(pointer.value)
+            self.output += str(0 if pointer.value is None else pointer.value)
         elif kind in ("\\[ ]/", "/[ ]\\"):
             if pointer.value is not None:
                 cells = self.tapes.setdefault(pointer.tape, deque())

@@ -278,8 +278,8 @@ class _Machine:
         if ind < 0:
             # A backwards jump past the start wraps to the end: Python's own
             # negative indexing did that for a jump of at most one program
-            # length (``[JMP B 1][END]`` lands on END, which
-            # ``test_backward_jump`` pins) and raised IndexError beyond it.
+            # length (``[JMP B 1][END]`` lands on END) and raised IndexError
+            # beyond it.
             # The wrap is total here, so the same mistake cannot leak a
             # Python error for the sake of its size.
             ind %= len(self.tokens)

@@ -255,6 +255,7 @@ def _marked(text: str, start: str, end: str) -> str:
     return text[text.index(start) : text.index(end) + len(end)]
 
 
+@pytest.mark.medium
 def test_usage_input_shapes_table_is_in_sync() -> None:
     """Regenerating the stdin table leaves it unchanged.
 

@@ -45,7 +45,7 @@ class Reference:
         for token in value:
             if token == "F":
                 break
-            total = (total + (0 if token == "Z" else ord(token) - 64)) * 10
+            total = total * 10 + (0 if token == "Z" else ord(token) - 64)
         return total
 
     def string(self, value):
@@ -128,9 +128,13 @@ class Reference:
                 elif op == "C":
                     key = self.pop()
                     value = self.pop()
+                    if isinstance(key, Function):
+                        raise InvalidError("function variable")
                     self.variables[key] = value
                 elif op == "D":
                     key = self.pop()
+                    if isinstance(key, Function):
+                        raise InvalidError("function variable")
                     if key not in self.variables:
                         raise InvalidError("name")
                     self.stack.append(self.variables[key])
