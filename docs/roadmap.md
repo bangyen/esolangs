@@ -85,15 +85,6 @@ history; standing rules and proved limits are in [limitations](limitations.md).
 
 ## Engineering
 
-- **Brainfuck dialect settings.** Brainfuck fixes 8-bit wrapping cells, an
-  error at EOF and a left-clamped tape; Unary inherits all three. These are
-  the best-known implementation splits, and each is one rule, so they fit
-  `DialectSettings`. Next: add `cell_bits` (8, 16, 32 or unbounded),
-  `eof` (error, 0, -1 or unchanged) and `left_edge` (clamp, error or
-  unbounded), defaulting to today's behaviour. Then route Unary's decoded
-  program through the same settings and check that the generators still
-  emit valid programs under the defaults.
-
 - **Befunge-98.** `Befunge` is Befunge-93: a fixed 80x25 torus whose finite
   source space forces the totality exception above. Funge-98's unbounded
   Funge-space has no such count, so a Befunge-98 generator could be total
