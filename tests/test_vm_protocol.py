@@ -46,13 +46,17 @@ import contextlib
 import io
 from pathlib import Path
 from typing import cast
+from unittest.mock import patch
 
 import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
+from esolangs import vm as vm_module
+from esolangs.debugger import complete_vm
+from esolangs.exceptions import InterpreterLimitError, ProgramError
 from esolangs.registry import INTERPRETERS
-from esolangs.vm import VM, make_vm, run_until_halt
+from esolangs.vm import VM, _climbs_forever, make_vm, run_until_halt
 
 from .samples import (
     DUMPS_ON_THE_POST_HALT_STEP,
@@ -403,3 +407,379 @@ class TestPathAndTextTrailingNewline:
         assert esolangs.run("CV(N)(C)", path, stdin, 5) == esolangs.run(
             "CV(N)(C)", path.read_text(), stdin, 5
         )
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("name", sorted(set(SAMPLES) - NONDETERMINISTIC_AGAINST_RUN))
+def test_completion_agrees_with_running(name):
+    source, stdin = SAMPLES[name]
+    vm = make_vm(name, source, stdin)
+    if not vm.self_halts:
+        with pytest.raises(esolangs.ArgumentError, match="self-halts"):
+            complete_vm(vm)
+        return
+    expected = esolangs.run(name, source, stdin)
+    assert complete_vm(vm) == expected
+    state = vm.snapshot()
+    assert complete_vm(vm, max_steps=0) == expected
+    assert vm.snapshot() == state
+
+
+@pytest.mark.medium
+def test_exhaustion_keeps_partial_state_and_can_resume():
+    vm = make_vm("brainfuck", "+.")
+    with pytest.raises(esolangs.InterpreterLimitError):
+        complete_vm(vm, max_steps=1)
+    assert vm.output == ""
+    assert complete_vm(vm, max_steps=2) == "\x01"
+
+
+@pytest.mark.parametrize("budget", [-1, True, 1.5])
+def test_completion_rejects_invalid_budgets(budget):
+    with pytest.raises(esolangs.ArgumentError):
+        complete_vm(make_vm("brainfuck", "+."), max_steps=budget)
+
+
+@pytest.mark.medium
+def test_completion_can_opt_out_of_the_step_budget():
+    assert complete_vm(make_vm("brainfuck", "+."), max_steps=None) == "\x01"
+
+
+@pytest.mark.medium
+def test_a_non_self_halting_machine_can_already_be_finished():
+    from esolangs.vm import run_until_halt
+
+    vm = make_vm("Suffolk", ",", "1")
+    assert not vm.self_halts
+    assert run_until_halt(vm, 2)
+    assert complete_vm(vm, max_steps=0) == esolangs.run("Suffolk", ",", "1")
+
+
+# Three visits, ten steps apart, whose values climb by a constant 1 with
+# the input cursor never moving: the shape the certificate accepts.
+CLIMBING = [(0, (0,), 0), (10, (1,), 0), (20, (2,), 0)]
+
+
+class TestClimbsForever:
+    def test_a_constant_positive_step_with_held_clamps_is_certified(self) -> None:
+        assert _climbs_forever(CLIMBING, [None] * 21) is True
+
+    def test_a_moving_input_cursor_is_not_certified(self) -> None:
+        """Consuming input between visits means the laps are not alike."""
+        visits = [(0, (0,), 0), (10, (1,), 1), (20, (2,), 1)]
+        assert _climbs_forever(visits, [None] * 21) is False
+
+    def test_a_changing_value_count_is_not_certified(self) -> None:
+        visits = [(0, (0,), 0), (10, (1, 1), 0), (20, (2, 2), 0)]
+        assert _climbs_forever(visits, [None] * 21) is False
+
+    def test_two_different_steps_are_not_certified(self) -> None:
+        """The second lap climbs by 2 where the first climbed by 1."""
+        visits = [(0, (0,), 0), (10, (1,), 0), (20, (3,), 0)]
+        assert _climbs_forever(visits, [None] * 21) is False
+
+    def test_a_step_that_stands_still_is_not_certified(self) -> None:
+        visits = [(0, (5,), 0), (10, (5,), 0), (20, (5,), 0)]
+        assert _climbs_forever(visits, [None] * 21) is False
+
+    def test_a_descending_step_is_not_certified(self) -> None:
+        """Falling values reach a floor rather than climbing forever."""
+        visits = [(0, (5,), 0), (10, (4,), 0), (20, (3,), 0)]
+        assert _climbs_forever(visits, [None] * 21) is False
+
+    def test_a_drifting_clamp_is_not_certified(self) -> None:
+        """The step repeats, but a slack sinking toward zero will flip."""
+        slacks: list[int | None] = [5] * 10 + [3] * 11
+        assert _climbs_forever(CLIMBING, slacks) is False
+
+
+class TestTheArmsThatTranslateWhatAnInterpreterRaises:
+    """``make_vm`` and ``step`` promise every deliberate failure is ours.
+
+    Each arm here is reached only when an interpreter raises something the
+    wrapper has to restate, so none of them is on a path an ordinary
+    program takes.  Patched rather than provoked: a language that raises
+    ``ProgramError`` from its constructor today may not tomorrow, and a
+    test that silently stops exercising the arm is worse than one that
+    says what it is doing.
+    """
+
+    @staticmethod
+    def _adapter(fault: BaseException) -> object:
+        def build(*_args: object, **_kwargs: object) -> object:
+            raise fault
+
+        return build
+
+    def test_a_program_error_from_the_loader_passes_through(self) -> None:
+        """Already ours, so it is re-raised rather than wrapped twice."""
+        planted = ProgramError("unmatched something")
+        with (
+            patch.object(
+                vm_module.interpreter_module("brainfuck"),
+                "_Machine",
+                self._adapter(planted),
+            ),
+            pytest.raises(ProgramError) as exc,
+        ):
+            debugger_api.make_vm("brainfuck", "+")
+        assert exc.value is planted
+
+    def test_a_recursion_error_from_the_loader_becomes_a_limit(self) -> None:
+        """A loader that recurses past CPython's stack is a limit, not a bug."""
+        with (
+            patch.object(
+                vm_module.interpreter_module("brainfuck"),
+                "_Machine",
+                self._adapter(RecursionError()),
+            ),
+            pytest.raises(InterpreterLimitError, match="recursed deeper"),
+        ):
+            debugger_api.make_vm("brainfuck", "+")
+
+    def test_a_program_error_from_a_step_passes_through(self) -> None:
+        """The same promise one layer down, where the machine is running."""
+        machine = debugger_api.make_vm("brainfuck", "+++")
+        planted = ProgramError("bad instruction")
+
+        def boom() -> None:
+            raise planted
+
+        with (
+            patch.object(machine._machine, "step", boom),  # noqa: SLF001 - the arm
+            pytest.raises(ProgramError) as exc,
+        ):
+            machine.step()
+        assert exc.value is planted
+
+
+class TestRunUntilHalt:
+    """The plain bounded drive the four consumers now share.
+
+    Not a hang detector: it proves nothing and returns a verdict about one
+    bounded run.  What is worth pinning is the part each caller silently
+    depended on when it wrote the loop itself -- how many steps a budget
+    buys, and that a ``stop`` fires *before* the step it stops.  A helper
+    that ran one step too many, or checked the predicate after stepping,
+    would leave every caller's tests green and change what a breakpoint
+    means.
+    """
+
+    @staticmethod
+    def _counter(halt_after: int) -> object:
+        """A machine that halts after exactly ``halt_after`` steps."""
+
+        class _Counter:
+            def __init__(self) -> None:
+                self.steps = 0
+
+            @property
+            def halted(self) -> bool:
+                return self.steps >= halt_after
+
+            def step(self) -> None:
+                self.steps += 1
+
+        return _Counter()
+
+    def test_a_machine_that_halts_within_budget_reports_true(self) -> None:
+        from esolangs.vm import run_until_halt
+
+        machine = self._counter(3)
+        assert run_until_halt(machine, 10) is True  # type: ignore[arg-type]
+        assert machine.steps == 3  # type: ignore[attr-defined]
+
+    def test_the_budget_buys_exactly_that_many_steps(self) -> None:
+        """A limit of ``n`` executes ``n`` commands, not ``n - 1`` or ``n + 1``.
+
+        ``Debugger.run(max_steps=10)`` is documented as stopping "once that
+        many commands have executed", so a caller escalating a cap relies on
+        a run at cap ``n`` having really covered ``n`` steps.
+        """
+        from esolangs.vm import run_until_halt
+
+        machine = self._counter(100)
+        assert run_until_halt(machine, 10) is False  # type: ignore[arg-type]
+        assert machine.steps == 10  # type: ignore[attr-defined]
+
+    def test_no_limit_runs_to_the_halt(self) -> None:
+        """``None`` is unbounded, which is what a known-halting run wants."""
+        from esolangs.vm import run_until_halt
+
+        machine = self._counter(500)
+        assert run_until_halt(machine) is True  # type: ignore[arg-type]
+        assert machine.steps == 500  # type: ignore[attr-defined]
+
+    def test_an_already_halted_machine_takes_no_step(self) -> None:
+        from esolangs.vm import run_until_halt
+
+        machine = self._counter(0)
+        assert run_until_halt(machine, 10) is True  # type: ignore[arg-type]
+        assert machine.steps == 0  # type: ignore[attr-defined]
+
+    def test_stop_is_checked_before_the_step_it_stops(self) -> None:
+        """The predicate fires with the state it watched still intact.
+
+        This is the whole meaning of a breakpoint: ``break_on_cell`` must
+        stop while the cell still holds the value, not after the step that
+        moved past it.  A helper that stepped first and asked afterwards
+        would report the state one command too late.
+        """
+        from esolangs.vm import run_until_halt
+
+        machine = self._counter(100)
+        assert (
+            run_until_halt(
+                machine,  # type: ignore[arg-type]
+                50,
+                stop=lambda: machine.steps == 4,  # type: ignore[attr-defined]
+            )
+            is False
+        )
+        assert machine.steps == 4  # type: ignore[attr-defined]
+
+    def test_stop_true_at_the_start_takes_no_step(self) -> None:
+        """A breakpoint on the initial position fires without executing it."""
+        from esolangs.vm import run_until_halt
+
+        machine = self._counter(100)
+        assert (
+            run_until_halt(machine, 50, stop=lambda: True)  # type: ignore[arg-type]
+            is False
+        )
+        assert machine.steps == 0  # type: ignore[attr-defined]
+
+    def test_a_halt_beats_a_stop_that_would_also_fire(self) -> None:
+        """The halt check comes first, so a halted machine is never a stop.
+
+        Returning ``False`` here would tell a caller its program did not
+        finish when it did -- and the leak sweep would rerun it at every
+        larger cap forever.
+        """
+        from esolangs.vm import run_until_halt
+
+        machine = self._counter(0)
+        assert (
+            run_until_halt(machine, 10, stop=lambda: True)  # type: ignore[arg-type]
+            is True
+        )
+
+    def test_it_drives_a_real_vm(self) -> None:
+        """The callers pass a ``VM``, so the surface has to fit one."""
+        from esolangs.vm import run_until_halt
+
+        vm = debugger_api.make_vm("brainfuck", "++++++++[>++++++++<-]>+.")
+        assert run_until_halt(vm, 10_000) is True
+        assert vm.output == "A"
+
+    def test_a_budget_short_of_the_halt_reports_false(self) -> None:
+        from esolangs.vm import run_until_halt
+
+        vm = debugger_api.make_vm("brainfuck", "++++++++[>++++++++<-]>+.")
+        assert run_until_halt(vm, 5) is False
+        assert vm.output == ""
+
+    def test_a_negative_budget_stops_rather_than_running_free(self) -> None:
+        """A cap below zero is still a cap.
+
+        The test was ``steps == limit`` against a count rising from zero, so
+        a negative limit never matched and the bound switched itself off --
+        turning the one detector meant to stop a runaway into the runaway.
+        Checked on a program that never halts, so a regression hangs the
+        suite rather than passing quietly.
+        """
+        from esolangs.vm import run_until_halt
+
+        for limit in (-1, -1000):
+            assert (
+                run_until_halt(debugger_api.make_vm("brainfuck", "+[]"), limit) is False
+            )
+
+    def test_a_zero_budget_still_takes_no_step(self) -> None:
+        """The positive control: the boundary the ``>=`` must not move."""
+        from esolangs.vm import run_until_halt
+
+        vm = debugger_api.make_vm("brainfuck", "++++++++[>++++++++<-]>+.")
+        assert run_until_halt(vm, 0) is False
+        assert vm.output == ""
+
+
+class TestViews:
+    """The machine's own named state, found rather than listed."""
+
+    def test_it_finds_the_names_the_machine_gives_its_state(self) -> None:
+        vm = debugger_api.make_vm("brainfuck", "+++")
+        vm.step()
+        assert dict(vm.views)["ptr"] == "0"
+        assert dict(vm.views)["ind"] == "1"
+
+    def test_it_leaves_out_what_every_language_already_offers(self) -> None:
+        vm = debugger_api.make_vm("brainfuck", "+++")
+        named = dict(vm.views)
+        for standard in ("ip", "memory", "stack", "output", "halted"):
+            assert standard not in named
+
+    def test_it_leaves_out_the_traits_and_the_snapshot_hooks(self) -> None:
+        vm = debugger_api.make_vm("brainfuck", "+++")
+        named = dict(vm.views)
+        for machinery in ("snapshot", "self_halts", "ip_shape"):
+            assert machinery not in named
+
+    def test_a_language_whose_state_is_all_standard_names_nothing(self) -> None:
+        # Not every machine keeps anything beyond the common five, and an
+        # empty result is the right answer rather than a failure.
+        assert debugger_api.make_vm("Sophie", "").views == ()
+
+    def test_a_long_sequence_is_cut_before_it_is_formatted(self) -> None:
+        # A tape can be thousands of cells; the view has to be short, and
+        # cheap to produce, at every step.
+        from esolangs._vm_views import _abbreviate
+
+        text = _abbreviate(list(range(4096)))
+        assert len(text) < 80
+        assert "+4088 more" in text
+
+    def test_a_sequence_of_exactly_the_limit_is_shown_whole(self) -> None:
+        """The cut is one *past* the limit, not at it.
+
+        Pinned at the edge because that is the only length where the two
+        readings differ; a sweep found a widened comparison here passing
+        every other test in this class.
+        """
+        from esolangs._vm_views import _VIEW_ITEMS, _abbreviate
+
+        assert "more" not in _abbreviate(list(range(_VIEW_ITEMS)))
+        assert "more" in _abbreviate(list(range(_VIEW_ITEMS + 1)))
+
+    def test_the_scalar_cut_is_pinned_at_its_edge(self) -> None:
+        """Sixty characters survive whole; sixty-one is cut.
+
+        The length measured is the *repr*, not the value -- a 58-character
+        string reprs to 60 with its quotes -- and asserting only that a
+        500-character value comes back short says nothing about where the
+        edge is, which a sweep found free to move either way.
+        """
+        from esolangs._vm_views import _abbreviate
+
+        assert _abbreviate("x" * 58) == repr("x" * 58)
+        assert len(repr("x" * 58)) == 60
+        cut = _abbreviate("x" * 59)
+        assert cut.endswith("...")
+        assert len(cut) == 60
+
+    def test_a_view_that_raises_is_skipped_rather_than_fatal(self) -> None:
+        """One broken property must not take the whole screen down."""
+        from esolangs.vm import _DelegatingVM
+
+        class _Machine:
+            @property
+            def fine(self) -> int:
+                return 7
+
+            @property
+            def broken(self) -> int:
+                raise RuntimeError("no")
+
+        vm = debugger_api.make_vm("brainfuck", "+")
+        object.__setattr__(vm, "_machine", _Machine())
+        assert _DelegatingVM.views.fget(vm) == (("fine", "7"),)
