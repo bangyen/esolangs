@@ -252,10 +252,12 @@ gate. Neither has established an intrinsic axis.
 
 The 2026-10-01 fame audit covered eight census candidates:
 
-- [Boolfuck](https://samuelhughes.com/boof/) (76): integrated with the
-  author's fixed Brainfuck lowering. Little-endian bit I/O supplies zero at
-  EOF and pads partial output bytes. Constant-size command replacements
-  preserve the Brainfuck generator's O(T) build and rendered-size bounds.
+- [Boolfuck](https://samuelhughes.com/boof/) (76): integrated with a
+  native decision tree over single-bit cells. Each input byte's low bit is
+  read onto its own cell and tested in place, with one flag interleaved
+  beside each bit, so every node costs O(1) commands and rendered size
+  stays linear in T. Little-endian bit I/O supplies zero at EOF and pads
+  partial output bytes.
 - [Subleq](https://esolangs.org/wiki/Subleq) (83): integrated with unbounded
   integers, direct jumps, `-1 B C` byte input (EOF raises), `A -1 C` byte
   output, and negative jumps halting. The shared packed decoder stores
@@ -268,7 +270,7 @@ The 2026-10-01 fame audit covered eight census candidates:
   exactly 20T + n + 53 characters; build work is O(T).
 
 Each uses the same 309-table, 3,352-row corpus as Cyclic tag. Dense size-difference
-ratios at n=8,10,12 are 3.997 (Cyclic tag), 3.854 (Boolfuck), 2.926 (Subleq)
+ratios at n=8,10,12 are 3.997 (Cyclic tag), 3.903 (Boolfuck), 2.926 (Subleq)
 and 4.000 (///). The constructions supply the bounds; these ratios are measurements.
 
 - [HQ9+](https://esolangs.org/wiki/HQ9%2B) (136): interpreter-only.
