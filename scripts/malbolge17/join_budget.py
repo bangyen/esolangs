@@ -6,14 +6,13 @@ import argparse
 import itertools
 from collections import defaultdict
 
-from address17 import ALL2, group_word
+from address17 import table_cells
 from address_gadget import build as build_address
 from decoder_group import _build as build_decoder
 from decoder_group import _setup as setup_decoder
 
 from esolangs.interpreters.other.malbolge import (
     _advance,
-    _crazy,
     _initial_memory,
     _op,
 )
@@ -64,7 +63,15 @@ def main(
     )
     assert groups[-1] == (145, 139, 144)
     address_cells.update(range(10, 18))  # startup precedes the emitted parts
-    assert len(address_cells) == count
+    emitted = set().union(*(cells for _, cells in address_parts))
+    # The returned count covers the eight startup cells and the emitted
+    # parts; the occupied set additionally reserves the cell before each
+    # emitted instruction, which executing an `i` enciphers, so the two
+    # counts differ by the guard cells rather than agreeing.
+    assert count == len(emitted) + len(range(10, 18))
+    assert address_cells == (
+        emitted | {a - 1 for a in emitted if a > 0} | set(range(10, 18))
+    )
     decoder = build_decoder(
         0,
         setup_decoder(frozenset({142, 145, 139, 144}), external_pointer=True),
@@ -74,11 +81,9 @@ def main(
     assert not {142, 145, 139, 144} & decoder.code.keys()
     assert not {142, 145, 139, 144} & decoder.data.keys()
     decoder_cells = set(decoder.code)
-    table = {
-        _crazy(ALL2 - 2 + offset, group_word(list(bits))) + 1
-        for bits in itertools.product(range(2), repeat=14)
-        for offset in range(3)
-    }
+    # The cells the emitted fold actually reads (its pointer+1..+3), not
+    # a re-derived approximation: the two conventions differ in 640 cells.
+    table = table_cells()
     assert len(table) == 49_152
     overlap = address_cells & decoder_cells
     conflicts = {
