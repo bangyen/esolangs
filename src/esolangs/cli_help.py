@@ -12,35 +12,40 @@ from esolangs.tools.wrap import DEFAULT_WIDTH
 USAGE = """usage: esolangs <command> [...]
 
 commands:
-  list [--details] [--json]   list the supported languages
-  encode <language> <bits>    print the stdin that feeds those bits
-  generate [--width [N] | --balance] [--bits BITS] [--scale N]
-           [--settings JSON] [--set KEY=VALUE] [--portable]
-           <language> <truth-table>
-                              print a program computing a truth table
-                              (--width wraps it; --bits fills a template)
-  describe [--json] [--spec] <language>
-                              print how that language reads its input and
-                              where it puts the answer (--spec prints the
-                              interpreter's own description of it)
-  run [--timeout S] [--isolated] [--max-output N] [--max-memory BYTES]
-      [--seed N] [--scale N] [--settings JSON]
-      [--set KEY=VALUE] [--portable] <language> <file>
-                              run a program through its interpreter
-  suggest <language> <program-file>
-                              preview unambiguous command spelling edits
-  read-answer <language>      read a program's output on stdin and print
-                              the answer bit it carries
-  debug [--steps N] [--timeout S] [--watch-cell I] [--stdin S] [--tui]
-        [--break-at N] [--break-on-cell I=V] [--break-on-output S]
-        [--settings JSON] [--set KEY=VALUE] [--portable]
-        <language> <file>
-                              run under the debugger and report where it
-                              stopped, plus any watched cell's history;
-                              --tui steps interactively instead, showing the
-                              program with the current op highlighted; its
-                              own footer lists the keys, and `esolangs debug
-                              --help` names them
+  Generator-made (the API invents source from a truth table):
+    generate [--width [N] | --balance] [--bits BITS] [--scale N]
+             [--settings JSON] [--set KEY=VALUE] [--portable]
+             <language> <truth-table>
+                                print a program computing a truth table
+                                (--width wraps it; --bits fills a template)
+  Caller-supplied (you supply the program):
+    run [--timeout S] [--isolated] [--max-output N] [--max-memory BYTES]
+        [--seed N] [--scale N] [--settings JSON]
+        [--set KEY=VALUE] [--portable] <language> <file>
+                                run a program through its interpreter
+    debug [--steps N] [--timeout S] [--watch-cell I] [--stdin S] [--tui]
+          [--break-at N] [--break-on-cell I=V] [--break-on-output S]
+          [--settings JSON] [--set KEY=VALUE] [--portable]
+          <language> <file>
+                                run under the debugger and report where it
+                                stopped, plus any watched cell's history;
+                                --tui steps interactively instead, showing the
+                                program with the current op highlighted; its
+                                own footer lists the keys, and `esolangs debug
+                                --help` names them
+    suggest <language> <program-file>
+                                preview unambiguous command spelling edits;
+                                the program is neither run nor modified
+  Contract adapters (your data in, checked data out):
+    encode <language> <bits>    print the stdin that feeds those bits
+    read-answer <language>      read a program's output on stdin and print
+                                the answer bit it carries
+  Catalog:
+    list [--details] [--json]   list the supported languages
+    describe [--json] [--spec] <language>
+                                print how that language reads its input and
+                                where it puts the answer (--spec prints the
+                                interpreter's own description of it)
 
 Language names are case-insensitive.  `esolangs <command> --help` describes
 one command in full; `--version` prints the version.  Short forms: -p is

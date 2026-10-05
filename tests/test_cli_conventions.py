@@ -301,6 +301,23 @@ class TestTheTopLevelUsageKeepsUp:
         for command in HELP:
             assert self._entry(command)
 
+    def test_commands_are_grouped_by_who_supplies_the_program(self) -> None:
+        """The first-touch split, not a docs-only taxonomy."""
+        generator = USAGE.index("Generator-made")
+        caller = USAGE.index("Caller-supplied")
+        adapters = USAGE.index("Contract adapters")
+        catalog = USAGE.index("Catalog:")
+        assert generator < caller < adapters < catalog
+        assert generator < USAGE.index("generate ") < caller
+        assert caller < USAGE.index("run ") < adapters
+        assert caller < USAGE.index("debug ") < adapters
+        assert caller < USAGE.index("suggest ") < adapters
+        assert adapters < USAGE.index("encode ") < catalog
+        assert adapters < USAGE.index("read-answer ") < catalog
+        assert catalog < USAGE.index("list ")
+        assert catalog < USAGE.index("describe ")
+        assert "Boolean measurement" not in USAGE
+
     @pytest.mark.parametrize("command", sorted(HELP))
     def test_every_documented_flag_is_summarised(self, command: str) -> None:
         """Read off each subcommand's own usage line, so it cannot drift.
