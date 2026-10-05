@@ -36,8 +36,8 @@ def test_truth_table_hint_and_corrected_cli_program(bad, good, hint, tmp_path, c
     bits = "01" if len(good) == 4 else "0"
     stdin, err = call_both(["encode", "brainfuck", bits], capsys)
     assert err == ""
-    answer, err = call_both(["run", "--judge", "brainfuck", str(path)], capsys, stdin)
-    assert answer == "1\n"
+    answer, err = call_both(["run", "brainfuck", str(path)], capsys, stdin)
+    assert answer.strip() == "1"
     assert err == ""
 
 
@@ -49,8 +49,8 @@ def test_template_hint_names_cli_bits_and_correction_runs(tmp_path, capsys):
     assert err == ""
     path = tmp_path / "generated.mini"
     path.write_text(program)
-    answer, err = call_both(["run", "--judge", "Minifuck", str(path)], capsys)
-    assert answer == "1\n"
+    answer, err = call_both(["run", "Minifuck", str(path)], capsys)
+    assert answer.strip() == "1"
     assert err == ""
 
 

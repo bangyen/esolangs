@@ -15,7 +15,6 @@ import pytest
 import esolangs
 from esolangs._answers import _check_stdin
 from esolangs.cli import main
-from esolangs.cli_args import _table_of
 from esolangs.cli_hints import _shape_warning
 from esolangs.cli_io import (
     _bounded_read,
@@ -446,29 +445,13 @@ class TestStdinIsCheckedAgainstTheDeclaredAlphabet:
         )
         assert "spells its bits" not in err
 
-    @pytest.mark.parametrize("line", [" 1", "2", "true"])
-    def test_judge_refuses_it(
-        self, line: str, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """--judge asks for an answer bit, so a bad encoding is a usage error."""
-        path = tmp_path / "p.txt"
-        path.write_text(esolangs.generate("brainfuck", "0101"))
-        with pytest.raises(SystemExit) as exc:
-            call_main(
-                ["run", "--judge", "brainfuck", str(path)], capsys, stdin=f"0\n{line}\n"
-            )
-        assert exc.value.code == 2
-        assert "spells its bits" in capsys.readouterr().err
-
     def test_a_correct_encoding_is_silent_and_right(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """Doing it right must stay quiet, or the check is noise."""
         path = tmp_path / "p.txt"
         path.write_text(esolangs.generate("brainfuck", "0101"))
-        out, err = call_both(
-            ["run", "--judge", "brainfuck", str(path)], capsys, stdin="01"
-        )
+        out, err = call_both(["run", "brainfuck", str(path)], capsys, stdin="01")
         assert out.strip() == "1"
         assert err == ""
 
@@ -525,7 +508,7 @@ class TestReadingTheProgramFileIsBounded:
         """The guard is worth nothing if it costs the normal path."""
         path = tmp_path / "p.txt"
         path.write_text(esolangs.generate("brainfuck", "0110"))
-        result = run_cli("run", "--judge", "brainfuck", str(path), stdin="10")
+        result = run_cli("run", "brainfuck", str(path), stdin="10")
         assert result.returncode == 0
         assert result.stdout.strip() == "1"
 
@@ -672,7 +655,7 @@ class TestProgramFilesLoad:
 
 class TestPrivateStdinCheckSaysWhatItCanActuallyCheck:
     """Its help listed "the wrong number of lines" among what it catches
-    without ``--table``.  For most languages it cannot.
+    without a table.  For most languages it cannot.
 
     Without a table it judges *shape*, and for a line-per-bit language a
     shape is not a count: one line, three lines and none at all are
@@ -681,7 +664,7 @@ class TestPrivateStdinCheckSaysWhatItCanActuallyCheck:
     """
 
     def test_a_line_per_bit_language_accepts_any_count(self) -> None:
-        """Not a bug -- a count needs an arity, and only ``--table`` has one."""
+        """Not a bug -- a count needs an arity, and only a table has one."""
         for stdin in ("", "1", "101"):
             _check_stdin("brainfuck", stdin)
 
@@ -715,32 +698,6 @@ class TestPrivateStdinCheckSaysWhatItCanActuallyCheck:
         """Which is why the help can still claim a shape check at all."""
         with pytest.raises(esolangs.ArgumentError, match="unexpected character"):
             _check_stdin("Clockwise", "1\n0\n")
-
-
-class TestTheTableOptionIsValidated:
-    """A malformed ``--table`` warned and ran; every other bad option refused.
-
-    ``run --table 0120`` exited 0 with the complaint on stderr, where
-    ``--table 0120`` elsewhere exited 2.  An option's value is a usage
-    error, so ``_table_of`` judges it once for both commands.
-    """
-
-    def test_no_table_is_none(self) -> None:
-        """``run`` and ``debug`` may be called without the flag."""
-        assert _table_of({}) is None
-
-    def test_a_valid_table_is_returned_unchanged(self) -> None:
-        """The gate must not drop the arity the later checks need."""
-        assert _table_of({"--table": "0110"}) == "0110"
-
-    def test_a_malformed_table_exits_two(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """Exit 2, like every other bad option value."""
-        with pytest.raises(SystemExit) as exc:
-            _table_of({"--table": "0120"})
-        assert exc.value.code == 2
-        assert "truth table" in capsys.readouterr().err
 
 
 @pytest.mark.parametrize("filename", ["--timeout", "--judge", "--help", "--version"])
@@ -795,8 +752,8 @@ def test_width_after_separator_is_positional() -> None:
 @pytest.mark.parametrize(
     ("arguments", "diagnostic"),
     [
-        (["--table", "xyz", "brainfuck"], "truth table"),
-        (["--judge", "123"], "--judge needs --timeout"),
+        (["--table", "xyz", "brainfuck"], "unknown option"),
+        (["--judge", "123"], "unknown option"),
     ],
 )
 def test_run_rejects_bad_options_before_acquiring_source_or_stdin(

@@ -24,17 +24,16 @@ commands:
                               where it puts the answer (--spec prints the
                               interpreter's own description of it)
   run [--timeout S] [--isolated] [--max-output N] [--max-memory BYTES]
-      [--judge] [--table T] [--seed N] [--scale N] [--settings JSON]
+      [--seed N] [--scale N] [--settings JSON]
       [--set KEY=VALUE] [--portable] <language> <file>
                               run a program through its interpreter
-                              (--judge prints the answer bit instead)
   suggest <language> <program-file>
                               preview unambiguous command spelling edits
   read-answer <language>      read a program's output on stdin and print
                               the answer bit it carries
   debug [--steps N] [--timeout S] [--watch-cell I] [--stdin S] [--tui]
         [--break-at N] [--break-on-cell I=V] [--break-on-output S]
-        [--table T] [--settings JSON] [--set KEY=VALUE] [--portable]
+        [--settings JSON] [--set KEY=VALUE] [--portable]
         <language> <file>
                               run under the debugger and report where it
                               stopped, plus any watched cell's history;
@@ -45,7 +44,7 @@ commands:
 
 Language names are case-insensitive.  `esolangs <command> --help` describes
 one command in full; `--version` prints the version.  Short forms: -p is
---portable, -s is --settings, and -t is --table.  A truth table is 2^n bits,
+--portable and -s is --settings.  A truth table is 2^n bits,
 most significant first; its length sets the input count (0110 is two-input XOR).
 
 examples:
@@ -57,7 +56,8 @@ examples:
   esolangs generate --bits 10 Minifuck 0110
   esolangs run Circlefuck hello.txt
   esolangs generate Fargo 10010110 > fargo.txt
-  esolangs encode LaserFuck 10 | esolangs run --judge LaserFuck prog.txt
+  esolangs encode LaserFuck 10 | esolangs run LaserFuck prog.txt \
+    | esolangs read-answer LaserFuck
   esolangs debug --steps 20 --watch-cell 0 brainfuck prog.txt
 """
 
@@ -174,7 +174,7 @@ examples:
   esolangs generate --set expression_syntax=postfix Alight 0110
 """,
     "run": """usage: esolangs run [--timeout S] [--isolated] [--max-output N]
-                    [--max-memory BYTES] [--judge] [--table T] [--seed N]
+                    [--max-memory BYTES] [--seed N]
                     [--scale N] [--settings JSON] [--set KEY=VALUE]
                     [--portable] <language> <program-file>
 
@@ -183,8 +183,7 @@ Run a program through its interpreter and print what it writes.
 The program is read from <program-file>; its input is this command's stdin.
 Input is consumed verbatim using the language's character, number, or
 string reads. For generated Boolean programs, `esolangs encode` spells the
-input characters, numeric tokens, or lines. `--table` checks that encoding;
-`--judge` refuses incorrect input.
+input characters, numeric tokens, or lines.
 
     esolangs encode Taglate 101 | esolangs run Taglate prog.txt
 
@@ -216,20 +215,12 @@ options:
                      languages draw: Befunge, Fish, LaserFuck, Modulous,
                      Painfuck, Super SNUSP, Thue and thisthat.  A seed for a language
                      that draws nothing is refused rather than ignored.
-  -t, --table TABLE      the truth table the program was generated from.  Adds
-                     the bit *count* to the stdin check, which a shape
-                     check cannot do alone: three lines fed to a two-input
-                     program is only wrong relative to an arity.
-  --judge            print the answer bit instead of the raw output.  Ten
-                     languages do not simply print it -- six dump their
-                     whole final state, four answer by terminating -- and
-                     those four need `--timeout`.
-
 examples:
   printf '1\n0\n' | esolangs run brainfuck prog.txt
-  printf '1\n0\n' | esolangs run --judge --timeout 5 brainfuck prog.txt
+  printf '1\n0\n' | esolangs run --timeout 5 brainfuck prog.txt
   esolangs generate --portable --set expression_syntax=postfix Alight 0110 > p.json
-  esolangs encode Alight 10 | esolangs run --portable --judge --table 0110 p.json
+  esolangs encode Alight 10 | esolangs run --portable Alight p.json \
+    | esolangs read-answer Alight
 """,
     "describe": """usage: esolangs describe [--json] [--spec] <language>
 
@@ -272,13 +263,13 @@ for 1).  Working that out by hand meant generating all four rows and
 diffing them.
 
 The four languages that answer by terminating have no output to read, so
-they are refused here and named: use `run --judge --timeout S` instead.
+they are refused here and named: run with `--timeout S` and observe whether it halts.
 
 examples:
   esolangs encode LaserFuck 10 | esolangs run LaserFuck p.txt \
     | esolangs read-answer LaserFuck
-  esolangs generate --bits 01 123 0110 > p123.txt
-  esolangs run --judge --timeout 10 123 p123.txt
+  esolangs generate --bits 00 123 0110 > p123.txt
+  esolangs run --timeout 10 123 p123.txt
 """,
     "debug": """usage: esolangs debug [options] <language> <program-file>
 
@@ -314,8 +305,6 @@ options:
   -s, --settings JSON  dialect overrides shared with generate and run.
   --set KEY=VALUE      one dialect override without JSON, repeatable and
                        applied after --settings.
-  -t, --table T        check the stdin against the shape and alphabet T's
-                       arity implies, before running.
   --tui                step through the program in an interactive
                        full-screen view.  hjkl move the selector, t marks
                        a breakpoint under it, space steps, b steps back, c

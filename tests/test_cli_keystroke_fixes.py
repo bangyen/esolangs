@@ -54,10 +54,9 @@ def test_short_settings_and_portable_flags(capsys, tmp_path):
     assert error == ""
     path.write_text(output, encoding="utf-8")
     stdin = esolangs.encode_inputs("brainfuck", [1, 0], "0110")
-    output, error = call_both(
-        ["run", "-p", "-t", "0110", "--judge", str(path)], capsys, stdin
-    )
-    assert (output, error) == ("1\n", "")
+    output, error = call_both(["run", "-p", str(path)], capsys, stdin)
+    assert output.strip() == "1"
+    assert error == ""
 
 
 def test_unknown_settings_key_suggests_the_fix(capsys):
@@ -83,8 +82,8 @@ def test_portable_language_can_be_omitted(command, capsys, tmp_path):
     path = _portable(tmp_path)
     stdin = esolangs.encode_inputs("brainfuck", [1, 0], "0110")
     if command == "run":
-        args = ["run", "--portable", "--judge", "--table", "0110", str(path)]
-        expected = "1\n"
+        args = ["run", "--portable", str(path)]
+        expected = "1"
     else:
         args = ["debug", "--portable", "--steps", "100000", str(path)]
         expected = "halted: yes"

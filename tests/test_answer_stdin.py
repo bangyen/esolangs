@@ -59,8 +59,8 @@ class TestTheStdinJudgeIsReachableFromPython:
     def test_the_run_path_warns_about_it_as_well(self) -> None:
         """Both documented routes, since both were silent.
 
-        The README promises ``run`` warns and ``run --judge`` refuses; the
-        refusal is the test above, and this is the warning.
+        The README promises ``run`` warns; the private refusal is the test
+        above, and this is the warning.
         """
         program = esolangs.generate("Clockwise", "10010110")
         with warnings.catch_warnings():
@@ -105,8 +105,8 @@ class TestTheStdinJudgeIsReachableFromPython:
     def test_whitespace_passes_where_the_reader_skips_it(self, language: str) -> None:
         """Their bit reader ignores whitespace; the judge now does too.
 
-        ``echo 01 | esolangs run --judge ...`` was refused for a trailing
-        newline the plain run happily reads past.
+        A trailing newline was refused by the private check even though
+        the reader happily reads past it.
         """
         _check_stdin(language, "0 1\n", "0110")
         with pytest.raises(esolangs.ArgumentError, match="unexpected character"):
