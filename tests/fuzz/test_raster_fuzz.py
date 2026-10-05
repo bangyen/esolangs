@@ -9,6 +9,7 @@ import pytest
 from PIL import Image, ImageEnhance, ImageFilter
 
 import esolangs
+from esolangs._evaluate import _evaluate
 from esolangs.exceptions import EsolangError
 from esolangs.raster import Raster
 from esolangs.registry import LANGUAGES, SourceKind
@@ -34,7 +35,7 @@ def raster_seed(request: pytest.FixtureRequest) -> tuple[str, Raster]:
     language, balanced = request.param
     source = esolangs.generate(language, "0110", balance=balanced)
     seed = Raster.from_png(source.to_png())
-    assert esolangs.evaluate(language, seed, inputs=2) == "0110"
+    assert _evaluate(language, seed, inputs=2) == "0110"
     return language, seed
 
 

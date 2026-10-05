@@ -1,5 +1,6 @@
 """Balanced layouts and CLI sessions retain explicit dialect choices."""
 
+import json
 from pathlib import Path
 from unittest.mock import patch
 
@@ -7,6 +8,7 @@ import pytest
 
 import esolangs
 from esolangs import DialectSettings
+from esolangs._evaluate import _evaluate
 from esolangs.cli_debug import _run_tui_session
 from esolangs.tools.alight.balance import _balance_postfix
 from esolangs.tui import History, replay
@@ -21,17 +23,13 @@ from tests.cli_support import call_both
         ("Packlang", '{"literal_policy":"binary_digits"}'),
     ],
 )
-def test_cli_evaluate_uses_settings(language, choices, capsys, tmp_path):
+def test_settings_reach_evaluation(language, choices, capsys):
     program, error = call_both(
         ["generate", "--settings", choices, language, "0110"], capsys
     )
     assert error == ""
-    path = tmp_path / "program.txt"
-    path.write_text(program)
-    assert call_both(
-        ["evaluate", "--settings", choices, "--table", "0110", language, str(path)],
-        capsys,
-    ) == ("0110\n", "")
+    settings = DialectSettings(**json.loads(choices))
+    assert _evaluate(language, program, inputs=2, settings=settings) == "0110"
 
 
 def test_cli_debug_uses_settings(tmp_path: Path, capsys):
@@ -131,14 +129,7 @@ def test_cli_tui_uses_settings(tmp_path: Path, capsys):
     )
 
 
-def test_cli_evaluate_empty_settings_preserve_termination(capsys, tmp_path):
+def test_empty_settings_preserve_termination(capsys):
     program, error = call_both(["generate", "--settings", "{}", "123", "01"], capsys)
     assert error == ""
-    path = tmp_path / "program.txt"
-    path.write_text(program)
-    assert call_both(
-        ["evaluate", "--settings", "{}", "--table", "01", "123", str(path)], capsys
-    ) == (
-        "01\n",
-        "",
-    )
+    assert _evaluate("123", program, inputs=1, settings=DialectSettings()) == "01"

@@ -213,8 +213,8 @@ def read_answer(language: str, output: str) -> str:
     ``describe(language)["answer_pattern"]`` is the same fact as data (a
     verifier that hardcoded two dumps and forgot a third reported a passing
     language as broken).  A termination-answer language (123, ArrowQueue,
-    Crement, Vandevelo) raises :class:`~esolangs.exceptions.ArgumentError`: use
-    :func:`~esolangs.evaluate` to prove halt or divergence; a timeout is undecided.
+    Crement, Vandevelo) raises :class:`~esolangs.exceptions.ArgumentError`:
+    its answer is whether it halts, not anything printed.
     """
     name = resolve(language)
     if not isinstance(output, str):
@@ -222,8 +222,7 @@ def read_answer(language: str, output: str) -> str:
     contract = LANGUAGES[name].contract
     if contract.answer_mode == "termination":
         raise ArgumentError(
-            f"{name} answers by terminating, not by printing: use evaluate() "
-            "to prove halt or divergence; a timeout is undecided"
+            f"{name} answers by terminating, not by printing; a timeout is undecided"
         )
     if contract.answer_pattern:
         found = re.findall(contract.answer_pattern, output)

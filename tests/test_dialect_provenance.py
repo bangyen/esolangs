@@ -7,6 +7,7 @@ import pytest
 
 import esolangs
 from esolangs import DialectSettings, Raster
+from esolangs._evaluate import _evaluate, _iter_evaluate
 from esolangs.tagged import _Tagged
 from esolangs.vm import complete_vm, make_vm
 from tests.test_public_dialects import CASES
@@ -18,10 +19,10 @@ from tests.test_public_dialects import CASES
 def test_generated_settings_are_reused(language, settings, balance):
     source = esolangs.generate(language, "0110", balance=balance, settings=settings)
     assert source.settings is settings
-    assert esolangs.evaluate(language, source, inputs=2) == "0110"
-    assert "".join(esolangs.iter_evaluate(language, source, inputs=2)) == "0110"
+    assert _evaluate(language, source, inputs=2) == "0110"
+    assert "".join(_iter_evaluate(language, source, inputs=2)) == "0110"
     bound = esolangs.Language(language)
-    assert bound.evaluate(source, inputs=2) == "0110"
+    assert _evaluate(bound.name, source, inputs=2) == "0110"
     for row, expected in enumerate("0110"):
         bits = tuple(map(int, format(row, "02b")))
         if esolangs.describe(language)["parameterized"]:
@@ -53,7 +54,7 @@ def test_generated_settings_are_reused(language, settings, balance):
 def test_isolation_retains_settings(language):
     settings = dict(CASES)[language]
     program = esolangs.generate(language, "0110", settings=settings, balance=True)
-    assert esolangs.evaluate(language, program, inputs=2, isolated=True) == "0110"
+    assert _evaluate(language, program, inputs=2, isolated=True) == "0110"
 
 
 @pytest.mark.parametrize("template", [False, True])
@@ -160,7 +161,7 @@ def test_evaluation_inherits_loaded_metadata():
     )
     stream = StringIO()
     stream.read = lambda: source
-    assert esolangs.evaluate("Grapheme", stream, inputs=1) == "01"
+    assert _evaluate("Grapheme", stream, inputs=1) == "01"
 
 
 def test_default_pickle_has_no_retained_choices():

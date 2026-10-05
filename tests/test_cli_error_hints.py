@@ -150,20 +150,3 @@ def test_template_rewording_keeps_notes_and_quotes_language():
         "unfilled slots; fill them with: esolangs generate --bits <bits> "
         '"A Painter Ant" <table>\nhint: keep the original template'
     )
-
-
-def test_total_timeout_hint_names_the_supplied_flag(capsys):
-    _, err = _failure(
-        [
-            "evaluate",
-            "brainfuck",
-            "never-read.txt",
-            "--inputs",
-            "1",
-            "--total-timeout",
-            "0",
-        ],
-        capsys,
-    )
-    assert err.startswith("--total-timeout must be positive, got 0.0\n")
-    assert "for example --total-timeout 5.0" in err

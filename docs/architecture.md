@@ -42,7 +42,7 @@ Examples derive those fields from the registry; execution does not need docstrin
 `read_answer` uses the contract for printed and state-dump answers.
 `evaluate` also handles termination answers, applying instantiation, input
 encoding, execution and extraction to every row.
-CLI `evaluate --table` compares the observed table with the expected one.
+The private evaluation harness compares a supplied program's observed table with the expected one.
 
 To add a language, implement its interpreter and generator, register its
 `Language` and example metadata, and execute every generated input row. Follow

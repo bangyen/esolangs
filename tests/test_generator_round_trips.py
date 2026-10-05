@@ -5,6 +5,7 @@ import random
 import pytest
 
 import esolangs
+from esolangs._evaluate import _evaluate
 from esolangs.raster import Raster
 from esolangs.registry import LANGUAGES
 
@@ -27,7 +28,7 @@ def test_generated_program_obeys_its_table(language: str) -> None:
         program = (
             Raster.from_png(first.to_png()) if isinstance(first, Raster) else first
         )
-        assert esolangs.evaluate(language, program, inputs=2) == table
+        assert _evaluate(language, program, inputs=2) == table
 
 
 @pytest.mark.parametrize("language", GENERATORS)

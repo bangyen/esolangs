@@ -2,7 +2,7 @@
 
 import esolangs
 from esolangs._answers import _validate_shape_for_evaluate
-from esolangs._evaluate import _DEFAULT, _Default
+from esolangs._evaluate import _DEFAULT, _Default, _evaluate
 
 
 def evaluate_generated(
@@ -16,9 +16,7 @@ def evaluate_generated(
     """Generate a table's program, then evaluate its observed answers."""
     inputs = _validate_shape_for_evaluate(table)
     program = esolangs.generate(language, table, width)
-    return esolangs.evaluate(
-        language, program, timeout, inputs=inputs, isolated=isolated
-    )
+    return _evaluate(language, program, timeout, inputs=inputs, isolated=isolated)
 
 
 def verify_generated(

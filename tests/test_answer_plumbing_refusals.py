@@ -18,6 +18,7 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
+from esolangs._evaluate import _evaluate
 from esolangs.cli_hints import _did_you_mean
 from esolangs.registry import _BY_ID, SUGGESTION_CUTOFF, canonical_id
 from tests.generator_support import evaluate_generated, verify_generated
@@ -910,7 +911,7 @@ class TestEvaluateNoLongerClaimsToPayTheTimeout:
 
     def test_the_docstring_says_the_proof_is_the_mechanism(self) -> None:
         """Prose, checked, because it was prose that had gone stale."""
-        doc = esolangs.evaluate.__doc__
+        doc = _evaluate.__doc__
         assert doc is not None
         assert "Repeated states prove divergence" in doc
         assert "a timeout raises" in doc

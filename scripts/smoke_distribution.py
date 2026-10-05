@@ -12,6 +12,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import esolangs
+from esolangs._evaluate import _evaluate
 
 
 def _cli(args: list[str], stdin: str = "") -> str:
@@ -44,7 +45,9 @@ def smoke(*, math_extra: bool, image_extra: bool = False) -> None:
     assert "brainfuck" in _cli(["list"])
     bound = esolangs.Language("BRAINFUCK")
     program = bound.generate("0110", balance=True)
-    assert bound.evaluate(program, inputs=2, isolated=True, max_output=1) == "0110"
+    assert (
+        _evaluate(bound.name, program, inputs=2, isolated=True, max_output=1) == "0110"
+    )
     assert bound.read_answer(bound.run(program, bound.encode_inputs([0, 1]))) == "1"
     assert esolangs.run("brainfuck", "+.", max_steps=2) == "\x01"
     assert esolangs.run("brainfuck", "+.", timeout=1, isolated=True) == "\x01"
@@ -74,10 +77,9 @@ def smoke(*, math_extra: bool, image_extra: bool = False) -> None:
             if image_extra and isinstance(generated, esolangs.Raster):
                 generated = esolangs.Raster.from_png(generated.to_png())
             try:
-                assert (
-                    esolangs.evaluate(name, generated, inputs=2, isolated=True)
-                    == "0110"
-                ), name
+                assert _evaluate(name, generated, inputs=2, isolated=True) == "0110", (
+                    name
+                )
             except esolangs.MissingDependencyError:
                 assert not math_extra, name
             assert facts["examples"], name
@@ -103,10 +105,7 @@ def smoke(*, math_extra: bool, image_extra: bool = False) -> None:
                 )
                 == "0110"[row]
             )
-        assert (
-            _cli(["evaluate", "--table", "0110", "brainfuck", str(source)]).strip()
-            == "0110"
-        )
+        assert _evaluate("brainfuck", source, inputs=2) == "0110"
         for program, options, code, output, diagnostic in (
             (",.+[]", ["--timeout", "2"], 124, "A\n", "deadline"),
             (",[.]", ["--max-output", "3"], 1, "AAA\n", "output limit exceeded"),
@@ -134,10 +133,7 @@ def smoke(*, math_extra: bool, image_extra: bool = False) -> None:
             assert result.stdout == output, result
             assert diagnostic in result.stderr, result
         source.write_text(",>,<.", encoding="utf-8")
-        assert (
-            _cli(["evaluate", "--inputs", "2", "brainfuck", str(source)]).strip()
-            == "0011"
-        )
+        assert _evaluate("brainfuck", source, inputs=2) == "0011"
     for language in ("Line", "Piet"):
         raster = esolangs.generate(language, "0110")
         assert isinstance(raster, esolangs.Raster)
@@ -161,7 +157,7 @@ def smoke(*, math_extra: bool, image_extra: bool = False) -> None:
             assert esolangs.read_answer(language, output) == "0110"[row]
     if hasattr(signal, "SIGALRM"):
         assert (
-            esolangs.evaluate(
+            _evaluate(
                 "brainfuck", esolangs.generate("brainfuck", "0110"), timeout=1, inputs=2
             )
             == "0110"
@@ -179,7 +175,7 @@ def smoke(*, math_extra: bool, image_extra: bool = False) -> None:
     with ThreadPoolExecutor(max_workers=1) as pool:
         assert (
             pool.submit(
-                esolangs.evaluate,
+                _evaluate,
                 "Suffolk",
                 esolangs.generate("Suffolk", "0110"),
                 inputs=2,
@@ -188,9 +184,7 @@ def smoke(*, math_extra: bool, image_extra: bool = False) -> None:
             == "0110"
         )
     assert (
-        esolangs.evaluate(
-            "123", esolangs.generate("123", "01"), inputs=1, isolated=True
-        )
+        _evaluate("123", esolangs.generate("123", "01"), inputs=1, isolated=True)
         == "01"
     )
     try:
@@ -200,14 +194,13 @@ def smoke(*, math_extra: bool, image_extra: bool = False) -> None:
     else:
         raise AssertionError("isolated timeout did not stop a loop")
     assert (
-        esolangs.evaluate("123", esolangs.generate("123", "01"), timeout=None, inputs=1)
-        == "01"
+        _evaluate("123", esolangs.generate("123", "01"), timeout=None, inputs=1) == "01"
     )
     assert (importlib.util.find_spec("PIL") is not None) == image_extra
     if math_extra:
         assert importlib.util.find_spec("sympy") is not None
         assert (
-            esolangs.evaluate(
+            _evaluate(
                 "Polynomial",
                 esolangs.generate("Polynomial", "01"),
                 timeout=None,
