@@ -89,11 +89,12 @@ def test_cli_rejects_bad_shape(
     capsys.readouterr()
 
 
-def test_verify_lives_only_in_the_cli(capsys: pytest.CaptureFixture[str]) -> None:
-    """No ``esolangs.verify`` API; the CLI command does the fused check."""
+def test_verify_is_removed(capsys: pytest.CaptureFixture[str]) -> None:
     assert not hasattr(esolangs, "verify")
-    out = call_main(["verify", "brainfuck", "0110"], capsys)
-    assert "0110" in out
+    with pytest.raises(SystemExit) as exc:
+        call_main(["verify", "brainfuck", "0110"], capsys)
+    assert exc.value.code == 2
+    assert "unknown command" in capsys.readouterr().err
 
 
 @pytest.mark.parametrize("inputs", [True, 0, -1, 65, 2.5, "2"])

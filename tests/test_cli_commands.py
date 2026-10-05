@@ -1,6 +1,6 @@
 """The subcommands that run a program and judge what it printed.
 
-run, debug, answer, evaluate and verify, plus the options they share --
+run, debug, answer and evaluate, plus the options they share --
 ``--judge``, ``--table``, ``--seed``, ``--json`` and ``--width``.
 """
 
@@ -501,7 +501,7 @@ class TestDebugMakesTheSameRefusals:
 
 
 class TestTheAnswerCommandDoesOneRow:
-    """`verify` does every row; nothing did one, so a reader wrote a wrapper."""
+    """Nothing did one row, so a reader wrote a wrapper."""
 
     @pytest.mark.parametrize(
         ("bits", "expected"), [("00", "0"), ("01", "1"), ("10", "1"), ("11", "0")]
@@ -754,7 +754,7 @@ class TestTheAnswerCommandsFailurePaths:
 
 
 class TestEvaluateNeedsNoSeed:
-    """``run`` takes a seed and ``evaluate``/``verify`` do not, which looks
+    """``run`` takes a seed and ``evaluate`` does not, which looks
     like a half-migration and is not.
 
     ``evaluate`` only ever runs programs this package *generated*, and
