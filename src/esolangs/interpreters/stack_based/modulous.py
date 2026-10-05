@@ -45,7 +45,7 @@ from esolangs.interpreters.randomness import Randomness, draw
 from esolangs.interpreters.source_hints import keyword_hint, syntax_error, with_hint
 
 #: A command is a bracketed group, which may hold one quoted string.
-_TOKEN = re.compile(r'\[([^\[\]\"]*("[^"]*")?)]')
+_TOKEN = re.compile(r'\[([^\[\]\"]*("[^"]*")?\s*)]')
 
 
 def _reject_stray_text(code: str) -> None:
@@ -142,6 +142,8 @@ class _Machine:
         _reject_stray_text(code)
         self._halted = False
         self.rng = rng
+        self._input_reads = 0
+        self._draws = 0
 
     @property
     def halted(self) -> bool:
@@ -164,6 +166,9 @@ class _Machine:
             tuple(sorted(self.var.items())),
             self.io.position(),
             self._halted,
+            self.tokens,
+            self._input_reads,
+            self._draws,
         )
 
     # The all-random-outcomes search.  ``_Core`` holds ``var`` as a dict,
@@ -302,10 +307,12 @@ class _Machine:
             self._print(mod, arg)
         elif arg[0] == "INP":
             value = self.io.input_token() if "INT" in mod else self.io.input_str()
+            self._input_reads += 1
         elif arg[0] == "RND":
             n = int(_operand(arg, 1))
             if n >= 1:
                 value = draw(self.rng, n)
+                self._draws += 1
         core, halted = self._state
         self._restore((handler(core, mod, arg, value), halted or arg[0] == "END"))
 
@@ -415,9 +422,10 @@ def _rst(core: _Core, _mod: str, _arg: list[str], _value: str | int | None) -> _
 def _psh(core: _Core, mod: str, arg: list[str], _value: str | int | None) -> _Core:
     """Push a literal, the characters of a string, or store into a variable."""
     stk, var, ind = core
-    if "INT" in mod:
+    kind = _operand(arg, 1)
+    if kind == "INT":
         return ((*stk, int(_operand(arg, 2))), var, ind)
-    if "STR" in mod:
+    if kind == "STR":
         parts = mod.split('"')
         if len(parts) < 3:
             # ``[PSH STR hello]`` has no quoted section, so ``split`` had no
@@ -428,7 +436,7 @@ def _psh(core: _Core, mod: str, arg: list[str], _value: str | int | None) -> _Co
             )
         m = parts[1]
         return ((*stk, *[ord(c) for c in m][::-1]), var, ind)
-    if "VAR" in mod:
+    if kind.startswith("VAR"):
         # The store names its target the same way every other variable op
         # does, so it rejects an unknown name the same way too: ``PRT`` and
         # the ``VARn+k`` arithmetic both halt on one, and letting the store
@@ -438,7 +446,7 @@ def _psh(core: _Core, mod: str, arg: list[str], _value: str | int | None) -> _Co
         name = _operand(arg, 1)
         _named(var, name)
         return (stk, {**var, name: _top(stk)}, ind)
-    return core
+    raise ValueError(f"invalid PSH operand {kind!r}")
 
 
 def _pop(core: _Core, _mod: str, _arg: list[str], _value: str | int | None) -> _Core:
@@ -511,12 +519,12 @@ def _rnd(core: _Core, _mod: str, arg: list[str], value: str | int | None) -> _Co
 def _var_arith(core: _Core, mod: str) -> _Core:
     """Add to or subtract from a named variable, in place in the token."""
     stk, var, ind = core
-    if "+" in mod:
-        lhs, rhs = mod.split("+")
+    if "+" in mod and ("-" not in mod or mod.index("+") < mod.index("-")):
+        lhs, rhs = mod.split("+", 1)
         return (stk, {**var, lhs: _named(var, lhs) + int(rhs)}, ind)
     # The caller only routes a token here when it holds a ``+`` or a ``-``,
     # so the one that is not a ``+`` is a ``-``.
-    lhs, rhs = mod.split("-")
+    lhs, rhs = mod.split("-", 1)
     return (stk, {**var, lhs: _named(var, lhs) - int(rhs)}, ind)
 
 
