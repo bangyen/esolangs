@@ -121,7 +121,7 @@ proof and remove the completed item.
   [the construction record](proofs/malbolge-scaling.md#seventeen-navigation-is-linear-in-address-so-packing-helps-measured).
   An impossibility proof instead needs a density lemma: reduce the count by
   `2**46076`, or bound a normal-form representative's dependence by 24,434
-  cells. A per-program dependence cut is false: `'o'*59046 + '/<v'` computes
+  cells. A per-program dependence cut is false: `'o'*59046 + '/<v'` computes the one-input
   identity and depends on all 59,049 cells. Length and alphabet cuts are also
   closed; [limitations](limitations.md#boolean-generators) records the controls.
 
