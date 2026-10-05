@@ -7,10 +7,10 @@ from dataclasses import replace
 import pytest
 
 import esolangs
-from esolangs._answers import _check_stdin
 from esolangs._evaluate import _evaluate
 from esolangs.registry import LANGUAGES, parameterized_ids, resolve
 from esolangs.tools.examples import BOOLEAN_EXAMPLES
+from tests.stdin_check import _check_stdin
 
 
 def test_examples_derive_the_registered_io_contract() -> None:
@@ -57,7 +57,7 @@ def test_stripped_docstrings_preserve_all_answer_mechanisms() -> None:
     code = """
 import esolangs
 from esolangs._evaluate import _evaluate
-from esolangs._answers import _check_stdin
+from tests.stdin_check import _check_stdin
 for name in (
     'brainfuck', 'Fargo', 'Grapheme', 'Taglate',
     'RAM0', 'INTERCAL', '123', 'Vandevelo',

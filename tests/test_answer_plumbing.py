@@ -15,9 +15,9 @@ import pytest
 import esolangs
 import esolangs.debugger as debugger_api
 from esolangs import cli
-from esolangs._answers import _check_stdin
 from esolangs.cli import HELP
 from tests.generator_support import evaluate_generated, verify_generated
+from tests.stdin_check import _check_stdin
 
 ROOT = pathlib.Path(__file__).parents[1]
 

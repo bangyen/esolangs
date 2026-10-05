@@ -6,12 +6,9 @@ from collections.abc import Iterable, Sequence
 from difflib import get_close_matches
 
 from esolangs import LanguageInfo
-from esolangs._answers import _check_stdin
-from esolangs._evaluate import _terminates
 from esolangs.exceptions import EsolangError, ExecutionTimeoutError, TemplateError
 from esolangs.interpreters.source_hints import error_text
 from esolangs.registry import SUGGESTION_CUTOFF
-from esolangs.settings import DialectSettings
 
 # A watched cell's history longer than this is printed abridged: the whole
 # thing was one line of 486 comma-separated values for a 486-step program,
@@ -35,14 +32,6 @@ def _exit_code(exc: EsolangError) -> int:
     if isinstance(exc, ExecutionTimeoutError):
         return _TIMEOUT_EXIT
     return 2 if isinstance(exc, ValueError) else 1
-
-
-#: The two input shapes whose bit count cannot be recovered from stdin.
-#: Every other language reads a line per bit, so a run can compare what it
-#: took against what it was given; these two read a single line -- all the
-#: bits at once, or a row index -- and a wrong count is indistinguishable
-#: from a right one without knowing the arity.
-_UNCOUNTABLE_SHAPES = ("row_index", "char_stream_cyclic")
 
 
 def _cli_error_text(exc: BaseException) -> str:
@@ -148,28 +137,6 @@ def _abridge(history: Sequence[object]) -> str:
     return f"[{head}, ... {len(history) - _HISTORY_SHOWN} more ..., {tail}]"
 
 
-def _shape_warning(facts: LanguageInfo, stdin: str, table: str | None = None) -> str:
-    """Return the library's complaint about ``stdin``, or ``''``.
-
-    The checks live in :func:`esolangs._answers._check_stdin`; two copies drifted
-    twice before.
-    """
-    if not facts["reads_input"]:
-        return ""
-    try:
-        _check_stdin(str(facts["name"]), stdin, table)
-    except EsolangError as exc:
-        # Some of these already name the exact command; appending the
-        # generic pointer to those said "esolangs encode" twice in one line.
-        tail = (
-            ""
-            if "esolangs encode" in str(exc)
-            else ("; `esolangs encode` builds the right stdin")
-        )
-        return f"{exc}{tail}"
-    return ""
-
-
 def _decode_note(exc: UnicodeDecodeError) -> str:
     """Describe where a decode failed, without the codec's full sentence."""
     return f"invalid UTF-8 at byte {exc.start}"
@@ -210,32 +177,6 @@ def _input_sentence(facts: LanguageInfo) -> str:
         )
     lines = f"{one}\\n{zero}"
     return f'one line per bit, e.g. "{lines}"'
-
-
-def _diverging_answer(
-    name: str,
-    source: str,
-    stdin: str,
-    bound: float,
-    facts: LanguageInfo,
-    *,
-    settings: DialectSettings | None = None,
-) -> str:
-    """Return the answer bit for a language that answers by terminating.
-
-    By repeated-state proof, not by waiting.  The clock stays as the
-    backstop for unbounded growth.
-    """
-    encoding = facts["answer_encoding"]
-    return _terminates(
-        name,
-        source,
-        stdin,
-        bound,
-        str(encoding.index("halts")),
-        str(encoding.index("diverges")),
-        settings=settings,
-    )
 
 
 def _as_argument(language: str) -> str:

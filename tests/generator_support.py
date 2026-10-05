@@ -1,8 +1,8 @@
 """Generator round-trip checks for the development suite."""
 
 import esolangs
-from esolangs._answers import _validate_shape_for_evaluate
 from esolangs._evaluate import _DEFAULT, _Default, _evaluate
+from tests.stdin_check import _validate_shape_for_evaluate
 
 
 def evaluate_generated(

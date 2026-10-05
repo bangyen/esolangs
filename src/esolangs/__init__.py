@@ -19,11 +19,7 @@ from collections.abc import Callable, Sequence
 from functools import cache, partial
 from typing import Any, TypedDict, cast
 
-from esolangs._answers import (
-    _check_stdin,
-    encode_inputs,
-    read_answer,
-)
+from esolangs._answers import encode_inputs, read_answer
 from esolangs._describe import (
     _EXAMPLES,
     LanguageInfo,
@@ -581,7 +577,7 @@ def _check_program(
     unknown name) and type-checks ``stdin``, but ``_check_program("brainfuck",
     "[")`` returns the program and :func:`make_vm` raises ``ProgramError``.
     :func:`make_vm` calls this, so it cannot build a machine to check.
-    :func:`_check_stdin` judges ``stdin``'s shape.  A :class:`~pathlib.Path`
+    A :class:`~pathlib.Path`
     is read here with one trailing newline stripped (CV(N)(C), Grapheme and
     NoComment reject one), so the whole call is::
 

@@ -13,9 +13,7 @@ from unittest.mock import patch
 import pytest
 
 import esolangs
-from esolangs._answers import _check_stdin
 from esolangs.cli import main
-from esolangs.cli_hints import _shape_warning
 from esolangs.cli_io import (
     _bounded_read,
     _read_program,
@@ -24,6 +22,7 @@ from esolangs.cli_io import (
     _WaitingNotice,
 )
 from tests.cli_support import EXAMPLES, call_both
+from tests.stdin_check import _check_stdin
 from tests.test_cli import call_main, run_cli
 
 
@@ -464,18 +463,20 @@ class TestStdinIsCheckedAgainstTheDeclaredAlphabet:
             if esolangs.describe(name)["parameterized"]:
                 continue
             stdin = esolangs.encode_inputs(name, [1, 0], "0110")
-            if _shape_warning(esolangs.describe(name), stdin):
+            try:
+                _check_stdin(name, stdin, "0110")
+            except esolangs.EsolangError:
                 noisy.append(name)
         assert not noisy, noisy
 
     def test_the_alphabet_check_reads_the_declared_alphabet(self) -> None:
         """Grapheme's own bits are %/A, so 0/1 is what is wrong there."""
-        facts = esolangs.describe("Grapheme")
-        assert _shape_warning(facts, "%\nA\n") == ""
+        _check_stdin("Grapheme", "%\nA\n")
         # 0/1 is wrong *here*, and the specific message is the one that
         # fires: the general stray-line rule runs last so a language with
         # something better to say keeps saying it.
-        assert "spells its bits" in _shape_warning(facts, "0\n1\n")
+        with pytest.raises(esolangs.ArgumentError, match="spells its bits"):
+            _check_stdin("Grapheme", "0\n1\n")
 
 
 # 8.5s over 9 tests: drives the CLI as a subprocess.

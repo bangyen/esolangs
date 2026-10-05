@@ -22,7 +22,6 @@ import pytest
 import esolangs
 import esolangs.debugger as debugger_api
 from esolangs import _check_program
-from esolangs._answers import _check_stdin
 from esolangs.exceptions import (
     ArgumentError,
     EsolangError,
@@ -35,6 +34,7 @@ from esolangs.exceptions import (
 from esolangs.registry import LANGUAGES, parameterized_ids, template_char
 from esolangs.tools.wrap import takes_width
 from tests.generator_support import evaluate_generated, verify_generated
+from tests.stdin_check import _check_stdin
 
 XOR = "0110"
 ROOT = pathlib.Path(__file__).parents[1]

@@ -14,10 +14,10 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
-from esolangs._answers import _check_stdin
 from esolangs.cli import HELP
 from tests.cli_support import _LOOPS, call_both
 from tests.generator_support import evaluate_generated
+from tests.stdin_check import _check_stdin
 from tests.test_cli import _program, call_main
 
 

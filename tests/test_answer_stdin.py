@@ -5,8 +5,8 @@ import warnings
 import pytest
 
 import esolangs
-from esolangs._answers import _check_stdin
 from tests.generator_support import evaluate_generated
+from tests.stdin_check import _check_stdin
 
 
 class TestTheStdinJudgeIsReachableFromPython:
