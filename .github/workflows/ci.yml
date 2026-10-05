@@ -62,11 +62,15 @@ jobs:
     - name: Check generator sizes against the baseline
       run: uv run python scripts/check_generator_sizes.py
 
+    # Same scope as the local gate in scripts/verify.py: tests/ is left
+    # out because shared test scaffolding is not what this check is for,
+    # and including it roughly quadrupled the file pairs the O(files^2)
+    # comparison walks (141s of this job's 218s in run 37334678602).
     - name: Check for duplicated code blocks
       run: >
         uv run --with pylint python -m pylint --disable=all
         --enable=duplicate-code --min-similarity-lines=10
-        --ignore-imports=yes src/esolangs scripts tests
+        --ignore-imports=yes src/esolangs scripts
 
     # Every deep proof in the `ci` band and cheaper: the ArrowQueue and BIO
     # lemmas, and the registry-wide battery. ~14s. Which proofs those are is
@@ -93,11 +97,43 @@ jobs:
       run: uv run python scripts/verify_no_exception_leaks.py --all
 
   test:
+    # The fast band on the non-coverage interpreters, sharded in two.
+    # Measured in run 37334678602, the plain legs set the wall clock
+    # (3.12: 496s of pytest, 3.13: 353s) while the 3.14 coverage leg
+    # below took 297s, so these shard and it does not: coverage writes
+    # one data file and the changed-line gate reads it whole, so
+    # splitting that leg would split the arcs it judges.  The `slow`
+    # job's sharder partitions the band; with no recorded durations
+    # for this band it balances by test count, which the band limits
+    # keep honest (fast <= 1s, medium <= 5s on a local machine).
     runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:
+      fail-fast: false
       matrix:
-        python-version: ["3.12", "3.13", "3.14"]
+        python-version: ["3.12", "3.13"]
+        shard: [0, 1]
+
+    steps:
+    - uses: actions/checkout@v7
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v7
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v7
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install dependencies
+      run: uv sync --extra dev --python ${{ matrix.python-version }}
+
+    - name: Test with pytest (shard ${{ matrix.shard }} of 2)
+      run: uv run python scripts/pytest_shard.py --marker "not slow and not weekly" --shard ${{ matrix.shard }} --shards 2 -- -n auto
+
+  coverage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
     - uses: actions/checkout@v7
@@ -111,13 +147,13 @@ jobs:
     - name: Install uv
       uses: astral-sh/setup-uv@v7
 
-    - name: Set up Python ${{ matrix.python-version }}
+    - name: Set up Python 3.14
       uses: actions/setup-python@v7
       with:
-        python-version: ${{ matrix.python-version }}
+        python-version: "3.14"
 
     - name: Install dependencies
-      run: uv sync --extra dev --python ${{ matrix.python-version }}
+      run: uv sync --extra dev --python 3.14
 
     # Coverage is consumed from one leg only (the changed-line gate below),
     # and that leg is now 3.14, because which interpreter measures it
@@ -131,11 +167,11 @@ jobs:
     #     3.14  --cov (line, sysmon)     17.81s
     #     3.14  --cov --cov-branch       17.89s  <- free
     #
-    # The other legs just run the tests.  3.12 stays in the matrix because
-    # `requires-python` promises it -- the floor has to keep being tested even
-    # though it is no longer where coverage is measured.
+    # The other legs just run the tests, sharded in the `test` job above.
+    # 3.12 stays tested on every push because `requires-python` promises
+    # it -- the floor has to keep being tested even though it is no longer
+    # where coverage is measured.
     - name: Test with pytest (with coverage)
-      if: matrix.python-version == '3.14'
       # The local default is a fixed, modest worker count so developer laptops
       # keep cores free; CI has the box to itself, so ask for all of them.
       # `-n auto` is already every vCPU the runner has -- xdist falls back to
@@ -164,12 +200,7 @@ jobs:
     # Added executable lines and branches are still this PR's responsibility
     # and fail the job; the weekly suite retains the expensive evidence.
     - name: Check changed-line and changed-branch coverage
-      if: matrix.python-version == '3.14'
       run: uv run python scripts/check_diff_coverage.py --partial --strict
-
-    - name: Test with pytest
-      if: matrix.python-version != '3.14'
-      run: uv run pytest -n auto -m "not slow and not weekly"
 
 
   slow:
