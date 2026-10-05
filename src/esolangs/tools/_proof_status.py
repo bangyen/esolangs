@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
-MANIFEST = ROOT / "docs" / "proofs" / "status.json"
+MANIFEST = ROOT / "src" / "esolangs" / "proof_status.json"
 
 
 @dataclass(frozen=True)
@@ -128,9 +128,6 @@ def load(path: Path = MANIFEST) -> tuple[tuple[ProofRow, ...], tuple[ScalingRow,
 def update_docs() -> None:
     """Render both status tables without changing surrounding prose."""
     proofs, audits = load()
-    packaged = ROOT / "src/esolangs/proof_status.json"
-    packaged.parent.mkdir(parents=True, exist_ok=True)
-    packaged.write_bytes(MANIFEST.read_bytes())
     tables = (
         (
             ROOT / "docs/proofs/index.md",

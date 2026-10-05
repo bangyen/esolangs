@@ -6,12 +6,8 @@ from pathlib import Path
 import esolangs
 
 
-def test_packaged_status_matches_authoritative_manifest() -> None:
+def test_packaged_status_reaches_describe() -> None:
     package = Path(esolangs.__file__).parent
-    root = Path(__file__).parents[1]
-    assert (package / "proof_status.json").read_bytes() == (
-        root / "docs/proofs/status.json"
-    ).read_bytes()
     data = json.loads((package / "proof_status.json").read_text())
     for row in data["audit"]:
         public = esolangs.describe(row["generator"])["proof_status"]
