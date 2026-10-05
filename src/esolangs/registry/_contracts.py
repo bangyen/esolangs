@@ -26,6 +26,7 @@ class BooleanContract:
     answer_pattern: str = ""
     answer_values: tuple[str, str] = ("0", "1")
     note: str = ""
+    ignores_whitespace: bool = False
 
 
 # Only departures from the default line-input, printed-bit contract.
@@ -57,6 +58,7 @@ CONTRACTS: dict[str, BooleanContract] = {
     ),
     "grid_based.circuit_diagram": BooleanContract(
         input_shape="char_stream",
+        ignores_whitespace=True,
     ),
     "grid_based.clockwise": BooleanContract(
         input_shape="char_stream_cyclic",
@@ -74,6 +76,7 @@ CONTRACTS: dict[str, BooleanContract] = {
     ),
     "grid_based.flowchart": BooleanContract(
         input_shape="char_stream",
+        ignores_whitespace=True,
     ),
     "grid_based.laserfuck": BooleanContract(
         answer_mode="dump",
@@ -89,6 +92,7 @@ CONTRACTS: dict[str, BooleanContract] = {
     ),
     "grid_based.thisthat": BooleanContract(
         input_shape="char_stream",
+        ignores_whitespace=True,
     ),
     "other.algebraic_programming_language": BooleanContract(
         note="an executed line prints its result, so the answer ends in a newline",

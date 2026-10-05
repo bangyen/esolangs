@@ -169,7 +169,7 @@ def _parse(code: str) -> list[_Command]:
             # a bare operator with no number: malformed
             raise syntax_error(
                 f"command {c!r} requires a number",
-                "put the required decimal number immediately after the command",
+                "put the required decimal number immediately before the command",
             )
         else:
             i += 1  # ignore anything else

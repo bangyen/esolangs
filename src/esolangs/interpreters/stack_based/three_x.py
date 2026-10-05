@@ -190,9 +190,12 @@ class _Machine:
             )
         value = None
         target = None
-        if char == "(" and stack[-1] == 0:
-            target = _forward(self.code, ind)
-            if target is None:
+        if char == "(":
+            # Matchedness is settled on entry, whichever way the top goes:
+            # a loop entered on a nonzero top otherwise ran off the end of
+            # the code and halted as if its body had finished.
+            match = _forward(self.code, ind)
+            if match is None:
                 # The original's scan walked the cursor to the end before
                 # noticing, so a caller catching the error sees that.
                 self.state = (len(self.code), stack, jumps, variables)
@@ -200,6 +203,8 @@ class _Machine:
                     "unmatched (",
                     hint="pair each loop or group opener with its corresponding closer",
                 )
+            if stack[-1] == 0:
+                target = match
         elif char == "?":
             line = self.io.input_token().strip()
             if not _RATIONAL.fullmatch(line):

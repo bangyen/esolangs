@@ -91,6 +91,16 @@ def test_short_tree_executes_one_and_two_input_tables() -> None:
     assert len(thue("0110", 1)) == 90
 
 
+def test_thue_proof_text_counts_the_emitted_rules() -> None:
+    """The ledger says nineteen fixed rules; the program carries nineteen."""
+    import esolangs
+
+    lines = boolean.thue("0110").splitlines()
+    assert len(lines[: lines.index("::=")]) == 19
+    scaling = esolangs.describe("Thue")["proof_status"]["scaling"]
+    assert "nineteen fixed rules" in scaling
+
+
 def test_thue_spells_the_table_once_and_its_rules_are_fixed() -> None:
     """Its emission is the table plus a constant: ``T + 187`` characters.
 

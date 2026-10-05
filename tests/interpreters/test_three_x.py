@@ -111,6 +111,7 @@ class Test3x:
             (")", "", "empty stack"),  # and the loop tail's
             ("333x33x!", "", "division by zero"),
             ("333x(", "", "unmatched ("),
+            ("3(", "", "unmatched ("),  # entered on a nonzero top, too
             ("3)", "", "unmatched )"),
         ):
             with pytest.raises(HaltError) as caught:
@@ -138,6 +139,8 @@ class Test3x:
     def test_error_unmatched_bracket(self) -> None:
         with pytest.raises(HaltError):
             run_program("333x(")
+        with pytest.raises(HaltError):
+            run_program("3(")
         with pytest.raises(HaltError):
             run_program("33)")
 

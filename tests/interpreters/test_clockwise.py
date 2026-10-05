@@ -232,11 +232,17 @@ class TestStepMachine:
 
 
 def test_reading_with_no_input_is_eof() -> None:
-    """Bits are read up front, so an empty queue is exhausted input."""
+    """Bits are read up front, so an empty queue is exhausted input.
+
+    The count is characters, the unit the bits arrive in -- "lines" sent
+    the reader looking for a second line the language never wanted.
+    """
     from esolangs.interpreters.io import ScriptedIO
 
-    with pytest.raises(EOFError):
+    with pytest.raises(EOFError) as caught:
         run(".", ScriptedIO(""))
+    assert "0 characters supplied, read 1" in str(caught.value)
+    assert any("1 input character" in note for note in caught.value.__notes__)
 
 
 def _machine(code: object) -> object:
