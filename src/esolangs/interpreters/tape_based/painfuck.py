@@ -9,18 +9,18 @@ round-trip.
 Tape of unbounded integers from one 0 cell.  ``p``/``s`` add 2/subtract
 1; ``r``/``l`` move two right/one left (``l`` clamps at 0); ``i``/``j``
 read a number/byte; ``o``/``u`` print number/byte; ``a``/``b`` loop while
-nonzero; ``k`` squares, ``z`` zeroes, ``h`` halves toward zero; ``w``/``q``
+nonzero; ``k`` squares, ``z`` zeroes, ``h`` halves rounded down; ``w``/``q``
 copy from right/left neighbour; ``c`` repeats the next command
 ``7**run``; ``y`` skips the next command (with probability 1/2, per the
 wiki); ``v`` executes it only when the cell is zero; ``d`` resets the pointer;
 ``t`` repeats the previous command ``3**run``; ``e`` halts.
 
-A run is one count: ``ccc`` is ``7**3``.  ``cp`` runs ``p`` seven times;
-``pt`` four (once itself, three from ``t``); ``ct`` is ``7 ** 4``.  Both
-runs are read at dispatch, the only reading that makes ``pt`` and ``ct``
-both right; the wiki specifies neither, and no generated program pairs
-them.  A repeated ``y`` is each its own flip, so ``cyp`` spans
-``{0, 2, ..., 14}`` weighted ``Binomial(7, 1/2)``.
+A ``c`` run is one count: ``ccc`` is ``7**3``. ``cp`` runs ``p``
+seven times; ``pt`` four, and ``ptt`` thirteen (the author's ``ptto``
+prints 26). Each successive ``t`` contributes the next power of three.
+``ct`` is four ``c``s, ``7**4``; ``ctt`` thirteen, ``7**13``. A repeated
+``y`` is each its own flip, so ``cyp`` spans ``{0, 2, ..., 14}`` weighted
+``Binomial(7, 1/2)``.
 
 Divergences from the retired cross-check (written alongside this
 interpreter, so never independent evidence): repeated ``y`` rebound and
@@ -69,9 +69,9 @@ def _translate(code: str) -> str:
     return "".join(prog)
 
 
-def _trunc2(n: int) -> int:
-    """Half of ``n``, truncating toward zero (C++ ``/= 2`` semantics)."""
-    return n // 2 if n >= 0 else -((-n) // 2)
+def _half(n: int) -> int:
+    """Half of ``n``, rounded down per the author clarification."""
+    return n // 2
 
 
 #: ``(tape, loop, ptr, ind, rep)``: cells, loop-entry stack, pointer,
@@ -98,10 +98,16 @@ class _NeedRead(Exception):  # noqa: N818 - a control signal, not an error
     The shell reads one and re-runs the pure step with the reads so far.
     """
 
-    def __init__(self, *, line: bool) -> None:
+    def __init__(
+        self,
+        *,
+        line: bool,
+        state: _State | None = None,
+    ) -> None:
         """Record whether a whole line is wanted, or one character."""
         super().__init__()
         self.line = line
+        self.state = state
 
 
 class _NeedCoin(Exception):  # noqa: N818 - a control signal, not an error
@@ -227,12 +233,9 @@ def _advance(
                 ptr, rep = max(0, ptr - rep), 0
                 continue
             if c == "h":
-                # Halving ``rep`` times is one shift, but ``_trunc2``
-                # truncates toward zero rather than flooring, so a bare
-                # ``//`` is wrong for every negative not dividing exactly.
-                cell = tape[ptr]
-                shifted = cell // (1 << rep) if cell >= 0 else -((-cell) // (1 << rep))
-                tape, rep = _set(tape, ptr, shifted), 0
+                # Repeated floor division by two is an arithmetic shift.
+                # The author specifies rounding negative odd values down.
+                tape, rep = _set(tape, ptr, tape[ptr] >> rep), 0
                 continue
             if c == "k" and -1 <= tape[ptr] <= 1:
                 # Squaring has a closed form -- ``x ** (2 ** rep)`` -- but
@@ -272,7 +275,10 @@ def _advance(
             if ptr:
                 ptr -= 1
         elif c == "i":
-            line = reader.take(line=True)
+            try:
+                line = reader.take(line=True)
+            except _NeedRead as want:
+                raise _NeedRead(line=True, state=(tape, loop, ptr, ind, rep)) from want
             try:
                 tape = _set(tape, ptr, int(str(line)))
             except ValueError:
@@ -283,7 +289,11 @@ def _advance(
                 ) from None
         elif c == "j":
             # ``j`` is answered with a character code, so this is already an int.
-            tape = _set(tape, ptr, int(str(reader.take(line=False))))
+            try:
+                byte = reader.take(line=False)
+            except _NeedRead as want:
+                raise _NeedRead(line=False, state=(tape, loop, ptr, ind, rep)) from want
+            tape = _set(tape, ptr, int(str(byte)))
             # The cross-check's discard-to-end-of-line loop leaves the main
             # command variable holding '\n', so a ``c``/``t``-repeated ``j``
             # only reads once and then no-ops.
@@ -314,7 +324,7 @@ def _advance(
         elif c == "z":
             tape = _set(tape, ptr, 0)
         elif c == "h":
-            tape = _set(tape, ptr, _trunc2(tape[ptr]))
+            tape = _set(tape, ptr, _half(tape[ptr]))
         elif c == "w":
             tape = _set(tape, ptr, tape[ptr + 1] if ptr + 1 < len(tape) else 0)
         elif c == "q":
@@ -337,7 +347,7 @@ def _advance(
                     ind += 1
                     adds += 1
             if adds:
-                rep **= 1 + 3**adds
+                rep **= (3 ** (adds + 1) - 1) // 2
                 c = prog[ind] if ind < n else _NUL
                 ind += 1
         elif c == "y":
@@ -362,13 +372,8 @@ def _advance(
         elif c == "d":
             ptr = 0
         elif c == "t":
-            # The whole run is one count of ``3 ** len``, so the cursor has
-            # to clear all of it: stopping just past the first ``t`` made
-            # each later one a step of its own that walked back over its
-            # predecessors, so ``ptt`` repeated its ``p`` three *then* nine
-            # times instead of nine.
-            while ind < n and prog[ind] == "t":
-                ind += 1
+            # Each t contributes another power of three. The author's
+            # ptto example is 2 * (1 + 3 + 9) = 26.
             val = ind
             rep = 1
             found = False
@@ -397,6 +402,8 @@ class _Machine:
         ``rng`` overrides ``y``'s coin flip; ``None`` draws for real.
         """
         self.io = io
+        self._input_reads = 0
+        self._random_draws = 0
         self._rng = rng
         self.prog = _translate(code)
         self.n = len(self.prog)
@@ -433,6 +440,9 @@ class _Machine:
             self.ind,
             self.rep,
             self.io.position(),
+            self.prog,
+            self._input_reads,
+            self._random_draws,
         )
 
     def branching_snapshot(self) -> _State:
@@ -513,16 +523,17 @@ class _Machine:
                 try:
                     value = self.io.input_token() if want.line else self.io.input_char()
                 except EOFError:
-                    # The port raises in the shell, before the core has run
-                    # a thing -- but the original had already advanced the
-                    # cursor and spent a repeat, so write that much back.
-                    tape, loop, ptr, ind, rep = start
-                    self._restore((tape, loop, ptr, ind + 1, max(rep - 1, 0)))
+                    # Keep completed repeated reads and the core's cursor.
+                    if want.state is None:
+                        raise AssertionError("read suspension has no state") from None
+                    self._restore(want.state)
                     raise
+                self._input_reads += 1
                 reads = (*reads, value)
                 continue
             except _NeedCoin:
                 coins = (*coins, draw(self._rng, 2))
+                self._random_draws += 1
                 continue
             except _Halted as halt:
                 # Preserve partial output across a fault.  Unreachable
