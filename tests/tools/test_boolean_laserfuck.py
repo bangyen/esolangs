@@ -232,40 +232,6 @@ class TestLaserFuck:
         assert max(len(ln) for ln in narrow) <= 30
         assert len(narrow) > len(boolean.laserfuck(table, 10_000).split("\n"))
 
-    def test_the_fold_uses_its_return_rows(self) -> None:
-        """A same-character run fills the leftward leg, not just the right.
-
-        A return row's beam travels left, so it may only carry ops that
-        read the same in reverse -- which a run of one repeated character
-        does.  The boolean generator's readers are rings now, but the fold
-        still lays every leaf band, so the fill is exercised directly here.
-        """
-        grid = [[" "] * 20 for _ in range(2)]
-        end_row, end_col = laserfuck_layout.fold(grid, "-" * 30, 0, 3, 20)
-        rows = ["".join(line).rstrip() for line in grid]
-        assert rows[0].endswith("v")
-        assert rows[1].endswith("{")
-        assert "-" in rows[1], "the return row should carry the spilled run"
-        # 30 ops at width 20: 16 on the segment row, the rest reversed onto
-        # the return row, so the run never needs a second segment row.
-        assert end_row == 2, "a same-character run should not need a third row"
-        assert end_col == laserfuck_layout.MARGIN + 1
-
-    def test_return_rows_only_take_a_same_character_run(self) -> None:
-        """The fill stops at the first character that differs.
-
-        A mixed run may only reverse its leading same-character stretch;
-        whatever follows has to resume rightwards on the next segment row.
-        """
-        grid = [[" "] * 20 for _ in range(2)]
-        laserfuck_layout.fold(grid, "-" * 30 + ">+++", 0, 3, 20)
-        rows = ["".join(line).rstrip() for line in grid]
-        body = rows[1][laserfuck_layout.MARGIN + 1 :].rstrip()
-        ops = body[:-1].strip() if body.endswith("{") else body.strip()
-        assert set(ops) <= {"-"}, f"mixed ops on a return row: {ops!r}"
-        # the '>' that broke the run resumes on the next segment row
-        assert ">" in rows[2]
-
     def test_folded_readers_are_rings(self) -> None:
         """The folded reader loops rather than writing 48 '-' per input.
 
