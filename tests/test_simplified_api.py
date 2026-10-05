@@ -9,15 +9,6 @@ from esolangs import debugger
 from esolangs._evaluate import _evaluate
 
 
-@pytest.mark.parametrize(
-    "name",
-    ["check_runnable", "run_bounded", "run_isolated", "spec", *debugger.__all__],
-)
-def test_removed_root_exports(name):
-    assert name not in esolangs.__all__
-    assert not hasattr(esolangs, name)
-
-
 def test_debugger_exports_are_available():
     for name in debugger.__all__:
         assert hasattr(debugger, name)

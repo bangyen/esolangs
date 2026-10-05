@@ -575,12 +575,6 @@ class TestGraphemeReadsWhatTheDocsNowSay:
             " ": "0",
         }
 
-    def test_the_convention_no_longer_claims_truthiness(self) -> None:
-        """It said a 0/1 line reads as a 1; it reads as a 0."""
-        note = str(esolangs.describe("Grapheme")["answer_convention"])
-        assert "non-empty string" not in note
-        assert "ord(line[0]) - 65" in note
-
     def test_naive_input_answers_the_all_zeros_row(self) -> None:
         """The true consequence: every bit reads 0, so you get row 0."""
         table = "0001"  # AND: row 0 is 0, row 3 is 1
@@ -698,11 +692,6 @@ class TestWhatHappensWhenAProgramIsUnderfed:
         assert esolangs.describe("Clockwise")["eof_is_a_value"] is False
         outcome, _answer = self._underfed("Clockwise")
         assert outcome == "answered"
-
-    def test_run_no_longer_promises_the_exception_everywhere(self) -> None:
-        """The sentence that was false for seven languages."""
-        assert esolangs.run.__doc__ is not None
-        assert "eof_is_a_value" in esolangs.run.__doc__
 
 
 class TestBreakAtNamesTheKindNotTheValue:

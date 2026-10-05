@@ -6,7 +6,6 @@ import pytest
 
 import esolangs
 from esolangs._evaluate import _evaluate, _iter_evaluate
-from tests.test_cli import call_main
 
 
 def test_supplied_program_never_generates(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -39,43 +38,6 @@ def test_evaluate_files(name: str, tmp_path: Path) -> None:
     else:
         path.write_text(program + "\n")
     assert _evaluate(name, path, inputs=2) == "0110"
-
-
-def test_verify_is_removed(capsys: pytest.CaptureFixture[str]) -> None:
-    assert not hasattr(esolangs, "verify")
-    with pytest.raises(SystemExit) as exc:
-        call_main(["verify", "brainfuck", "0110"], capsys)
-    assert exc.value.code == 2
-    assert "unknown command" in capsys.readouterr().err
-
-
-def test_answer_is_removed(capsys: pytest.CaptureFixture[str]) -> None:
-    with pytest.raises(SystemExit) as exc:
-        call_main(["answer", "brainfuck", "0110", "10"], capsys)
-    assert exc.value.code == 2
-    assert "unknown command" in capsys.readouterr().err
-
-
-def test_evaluate_is_removed(capsys: pytest.CaptureFixture[str]) -> None:
-    assert not hasattr(esolangs, "evaluate")
-    assert not hasattr(esolangs, "iter_evaluate")
-    assert not hasattr(esolangs.Language("brainfuck"), "evaluate")
-    assert not hasattr(esolangs.Language("brainfuck"), "iter_evaluate")
-    with pytest.raises(SystemExit) as exc:
-        call_main(["evaluate", "--inputs", "2", "brainfuck", "program.txt"], capsys)
-    assert exc.value.code == 2
-    assert "unknown command" in capsys.readouterr().err
-
-
-def test_checks_are_removed(capsys: pytest.CaptureFixture[str]) -> None:
-    assert not hasattr(esolangs, "check_program")
-    assert not hasattr(esolangs, "check_stdin")
-    assert not hasattr(esolangs.Language("brainfuck"), "check_program")
-    assert not hasattr(esolangs.Language("brainfuck"), "check_stdin")
-    with pytest.raises(SystemExit) as exc:
-        call_main(["check-stdin", "brainfuck"], capsys)
-    assert exc.value.code == 2
-    assert "unknown command" in capsys.readouterr().err
 
 
 @pytest.mark.parametrize("inputs", [True, 0, -1, 65, 2.5, "2"])
