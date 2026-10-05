@@ -213,11 +213,6 @@ class _Machine:
     # stack all 23.
 
     @property
-    def ip(self) -> int:
-        """The current instruction position."""
-        return self.ind
-
-    @property
     def memory(self) -> list[int]:
         """The addressable cells."""
         return list(self.lst[self.ptr])

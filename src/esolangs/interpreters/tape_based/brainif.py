@@ -191,11 +191,6 @@ class _Machine:
         """The addressable cells."""
         return list(flatten(self.state[2]))
 
-    @property
-    def stack(self) -> list[object]:
-        """No stack in this language."""
-        return []
-
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         # The cells are already a tuple, so they go in as they stand.  The

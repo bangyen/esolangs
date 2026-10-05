@@ -383,7 +383,7 @@ class TestStateView(StateViewContract):
     machine = staticmethod(_machine)
     # Inject's cursor is a *line* index and its memory is each labelled
     # block's line count, so the two are different shapes over one program.
-    state_views: ClassVar[tuple[str, ...]] = ("ip", "memory")
+    state_views: ClassVar[tuple[str, ...]] = ("ind", "memory")
     # HELLO_WORLD moves only the cursor; this one writes the store too.
     viewing_program: ClassVar[list[str]] = [
         "data;",

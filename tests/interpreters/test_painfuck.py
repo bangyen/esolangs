@@ -223,7 +223,7 @@ class TestStepMachine:
         assert machine.ind == 2
 
     def test_the_vm_view_reports_the_tape_and_the_loop_stack(self) -> None:
-        """``ip``/``memory``/``stack`` are the shared names over painfuck's state.
+        """``ind``/``memory``/``stack`` are what the VM shows over painfuck's state.
 
         ``stack`` is the loop stack here, which is the one that actually
         carries something -- so an open loop is stepped into to see it fill
@@ -235,13 +235,13 @@ class TestStepMachine:
         from esolangs.interpreters.tape_based.painfuck import _Machine
 
         machine = _Machine(_encode("pabe"), ScriptedIO())
-        assert (machine.ip, machine.memory, machine.stack) == (0, [0], [])
+        assert (machine.ind, machine.memory, machine.stack) == (0, [0], [])
         machine.step()  # p adds 2, so the loop is entered rather than skipped
         assert machine.memory == [2]
         machine.step()  # a pushes the loop's return point
-        assert (machine.ip, machine.stack) == (2, [1])
+        assert (machine.ind, machine.stack) == (2, [1])
         machine.step()  # b jumps back to it, draining the stack
-        assert (machine.ip, machine.stack) == (1, [])
+        assert (machine.ind, machine.stack) == (1, [])
 
     def test_an_eof_read_still_writes_back_what_the_step_spent(self) -> None:
         """EOF propagates, but the cursor the step already moved is kept.

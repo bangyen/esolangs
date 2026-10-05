@@ -410,19 +410,9 @@ class _Machine:
     # zero, which is what the language says an unset variable holds.
 
     @property
-    def ip(self) -> int:
-        """The expression cursor."""
-        return self.ind
-
-    @property
     def memory(self) -> list[int]:
         """The 256 variables, unset ones reading as zero."""
         return [self.var.get(k, 0) for k in range(256)]
-
-    @property
-    def stack(self) -> list[object]:
-        """No stack in this language."""
-        return []
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

@@ -168,16 +168,6 @@ class _Machine:
         found = _matches(self.state, self.rules)
         return found[0] if found else ()
 
-    @property
-    def memory(self) -> list[int]:
-        """No addressable cells; the store is the state string."""
-        return []
-
-    @property
-    def stack(self) -> list[object]:
-        """No stack in this language."""
-        return []
-
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         return (self.state, self.io.position())

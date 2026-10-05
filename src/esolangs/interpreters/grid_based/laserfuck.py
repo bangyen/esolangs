@@ -256,11 +256,6 @@ class _Machine:
         """The tape's cell values, without their paint flags."""
         return [v for v, _ in flatten(self.tape)]
 
-    @property
-    def stack(self) -> list[object]:
-        """No stack in this language."""
-        return []
-
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         return (

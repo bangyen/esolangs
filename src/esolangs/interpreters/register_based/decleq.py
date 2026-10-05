@@ -132,11 +132,6 @@ class _Machine:
         # A list, as before the memory became a tuple; the VM copies it.
         return list(self.state[1])
 
-    @property
-    def stack(self) -> list[object]:
-        """No stack in this language."""
-        return []
-
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         # Plus the input cursor: a repeat ignoring consumed input is not a cycle.

@@ -504,15 +504,6 @@ class _Machine:
         (_cells, length), ip = self.state[0], self.state[1]
         return ip < 0 or ip >= length
 
-    # The VM's language-shaped view: self-modifying memory + instruction
-    # pointer.  ``ip`` and ``memory`` above already *are* the view, so only
-    # the empty stack needs saying.
-
-    @property
-    def stack(self) -> list[object]:
-        """No stack in this language."""
-        return []
-
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         # The state as it stands plus the input cursor: a repeat that

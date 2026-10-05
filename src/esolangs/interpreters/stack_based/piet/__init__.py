@@ -297,10 +297,6 @@ class _Machine:
             else (self.current[1], self.current[0], self.dp, self.cc)
         )
 
-    @property
-    def memory(self) -> tuple[int, ...]:
-        return ()
-
     def snapshot(self) -> tuple[object, ...]:
         return (
             self.current,

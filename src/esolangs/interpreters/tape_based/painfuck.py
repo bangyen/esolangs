@@ -415,11 +415,6 @@ class _Machine:
     # the tape.
 
     @property
-    def ip(self) -> int:
-        """The current instruction position."""
-        return self.ind
-
-    @property
     def memory(self) -> list[int]:
         """The addressable cells."""
         return list(self.tape)

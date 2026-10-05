@@ -275,11 +275,6 @@ class _Machine:
     # cursor.
 
     @property
-    def ip(self) -> int:
-        """The current instruction position."""
-        return self.ind
-
-    @property
     def memory(self) -> list[int]:
         """The addressable cells."""
         return [self.number, self.output]

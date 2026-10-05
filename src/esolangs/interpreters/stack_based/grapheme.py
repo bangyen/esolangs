@@ -448,11 +448,6 @@ class _Machine:
             return tuple(f[1] for f in self.frames)
         return (self._top_length,)
 
-    @property
-    def memory(self) -> list[int]:
-        """No addressable cells; the store is the stack."""
-        return []
-
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         # A frame is already a tuple of its six fields, so the call stack

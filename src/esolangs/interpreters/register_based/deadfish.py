@@ -96,11 +96,6 @@ class _Machine:
         """The accumulator, as the one cell there is."""
         return [self.state[1]]
 
-    @property
-    def stack(self) -> list[object]:
-        """No stack in this language."""
-        return []
-
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         return (self.code, *self.state, self.stopped, self.io.position())

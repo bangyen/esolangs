@@ -1119,11 +1119,6 @@ class _Machine:
         """
         return [bit for value in self.values if value is not None for bit in value]
 
-    @property
-    def stack(self) -> list[object]:
-        """Circuit Diagram has no stack."""
-        return []
-
     def step(self) -> None:
         """Advance one generation: latch arrivals, fire, then re-drive wires.
 

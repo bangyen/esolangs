@@ -519,9 +519,9 @@ class TestStepMachine:
         # The three flags this program never disturbs stay clear, so the
         # accessors are not all reading one field.
         assert (machine.cf, machine.nf, machine.vf) == (0, 0, 0)
-        # AddSubJump has no stack, and the shared VM view says so with an
-        # empty one rather than by omitting the name.
-        assert machine.stack == []
+        # AddSubJump has no stack, so it declares none and the VM's
+        # default empty one stands.
+        assert not hasattr(machine, "stack")
 
 
 # The wiki's assembler ships an ``IFZ`` macro; this repo's dialect has the

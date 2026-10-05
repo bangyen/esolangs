@@ -230,11 +230,6 @@ class _Machine:
         return None if self.halted else (row, col, dx, dy)
 
     @property
-    def memory(self) -> list[int]:
-        """Befunge's ``p`` edits the grid, not a separate store."""
-        return []
-
-    @property
     def stack(self) -> list[object]:
         return list(self.state[2])
 

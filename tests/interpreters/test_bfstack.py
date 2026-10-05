@@ -189,7 +189,7 @@ class TestStepMachine:
         machine = _Machine(">+", ScriptedIO())
         for _ in range(2):
             machine.step()
-        assert machine.memory == []
+        assert not hasattr(machine, "memory")
         assert machine.stack == [1]
 
     def test_an_unmatched_bracket_leaves_the_machine_halted(self) -> None:
@@ -234,12 +234,10 @@ class TestContract(CycleContract, InputCursorContract, StateViewContract):
     machine = staticmethod(_machine)
     halting_program = ">+."
     looping_program = ">+[]"
-    state_views = ("lst", "ip", "memory")
+    state_views = ("lst", "ip")
     # The loop test's own program: it enters a loop, so the loop stack
-    # moves.  `memory` is empty by design here -- BFStack addresses no
-    # cells, its store is `stack` -- so it cannot move and says so.
+    # moves.
     viewing_program = ">+[>+<-]>+."
-    constant_views = frozenset({"memory"})
     reader = staticmethod(_reader)
     reading_program = ">,"  # > pushes 0, then , reads the first byte
     reading_stdin = "A\nB"

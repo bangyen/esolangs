@@ -149,11 +149,6 @@ class _Machine:
         """The cells that have been touched, in address order."""
         return [v for _, v in sorted(self.cells.items())]
 
-    @property
-    def stack(self) -> list[object]:
-        """No stack in this language."""
-        return []
-
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         return (

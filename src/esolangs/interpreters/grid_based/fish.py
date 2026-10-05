@@ -70,10 +70,6 @@ class _Machine:
         return None if self.halted else (self.y, self.x, self.dx, self.dy)
 
     @property
-    def memory(self) -> list[int]:
-        return []
-
-    @property
     def stack(self) -> list[object]:
         return list(self.stacks[-1])
 

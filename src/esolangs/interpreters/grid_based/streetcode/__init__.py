@@ -137,11 +137,6 @@ class _Machine:
             return []
         return [cells.get(i, 0) for i in range(max(cells) + 1)]
 
-    @property
-    def stack(self) -> list[object]:
-        """No stack in this language."""
-        return []
-
     # Read-only views onto the one record that holds the car: a caller
     # that wants to *move* it states the whole position at once through
     # :meth:`place`, so the three coordinates cannot come from two places.
