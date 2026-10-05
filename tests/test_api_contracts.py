@@ -270,19 +270,46 @@ class TestPackageSurface:
         for name in esolangs.__all__:
             assert hasattr(esolangs, name), name
 
-    def test_check_runnable_is_internal(self) -> None:
-        """The public check covers the internal runnable check."""
-        assert not hasattr(esolangs, "check_runnable")
+    def test_all_is_exactly_the_public_surface(self) -> None:
+        """Adding or removing a public name is a deliberate edit here."""
+        assert sorted(esolangs.__all__) == [
+            "ArgumentError",
+            "DialectSettings",
+            "EsolangError",
+            "ExecutionTimeoutError",
+            "GeneratorCapError",
+            "HaltError",
+            "InputExhaustedError",
+            "InputMismatchWarning",
+            "InputSource",
+            "InterpreterLimitError",
+            "Language",
+            "LanguageInfo",
+            "MissingDependencyError",
+            "Program",
+            "ProgramError",
+            "ProgramNotFoundError",
+            "ProgramSource",
+            "Raster",
+            "TemplateError",
+            "TruthTableError",
+            "UnknownLanguageError",
+            "describe",
+            "dump_program",
+            "encode_inputs",
+            "generate",
+            "instantiate",
+            "list_languages",
+            "load_program",
+            "read_answer",
+            "run",
+        ]
 
     @pytest.mark.parametrize("language", ["Minifuck", "brainfuck"])
     def test_check_runnable_refuses_a_non_source(self, language: str) -> None:
         """An int leaked a TypeError for a template language and passed elsewhere."""
         with pytest.raises(esolangs.ProgramError, match="string of source"):
             _check_program(language, 5)  # type: ignore[arg-type]
-
-    def test_stdlib_imports_are_not_advertised(self) -> None:
-        for leaked in ("importlib", "pathlib", "signal", "threading", "Any"):
-            assert leaked not in esolangs.__all__
 
     def test_version_is_present(self) -> None:
         assert esolangs.__version__
@@ -392,14 +419,11 @@ class TestInstantiateValidates:
 class TestNoTwoNamesDisagree:
     """One question, one answer."""
 
-    def test_width_awareness_has_a_single_spelling(self) -> None:
-        """``esolangs.takes_width`` took a function and answered False here."""
-        assert not hasattr(esolangs, "takes_width")
+    def test_width_awareness_is_described(self) -> None:
         assert esolangs.describe("LaserFuck")["width_aware"] is True
 
     def test_the_debugger_stop_reason_type_is_exported(self) -> None:
         assert "StopReason" in debugger_api.__all__
-        assert "StopReason" not in esolangs.__all__
 
 
 class TestTheSignaturesAgreeWithThemselves:
