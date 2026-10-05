@@ -1,74 +1,117 @@
-"""Boolfuck Boolean generator via the author's fixed Brainfuck lowering.
+"""Native Boolfuck Boolean generator over single-bit cells.
 
-The decision tree is the Brainfuck tree lowered command by command, but
-the reads and the print are specialized at the bit level. A lowered ``,``
-reads one input character as a byte at offsets 1..8 of a cell (head
-resting on the separator at offset 0); under the Boolean input contract
-that byte is ``'0'`` or ``'1'``, so the input bit is its low bit, and
-clearing the upper seven bits leaves the byte 0 or 1 -- exactly the
-state the Brainfuck prologue's 48 decrements per read would produce, at
-61 lowered commands per read instead of 2,328. The print likewise sets
-the two ASCII bits of the 0/1 result byte directly instead of adding 48.
+Tape layout (head starts on cell 0, all cells start 0):
+
+- cells ``2i`` / ``2i+1``  input bit ``x_i`` and its per-level flag,
+  interleaved so every test moves the head at most a couple of cells
+- cell  ``2n``             result bit R
+- cell  ``-1``             read scratch (the 7 non-value bits of each
+  input byte)
+
+Reads: under the Boolean input contract each input byte is ``'0'`` or
+``'1'``, and the interpreter streams bytes little-endian, so the first
+bit read from a byte is its value bit; it lands on the byte's own cell
+and the other seven bits are read into the scratch cell and forgotten
+(every input byte is consumed whole).
+
+Tree: a decision tree re-choreographed for flip-only bit cells. Node
+``i`` sets ``flag_i``, then ``[+`` on the bit cell clears a set bit and
+runs the one-side (which clears the flag); ``[+`` on the flag then runs
+the zero-side only when the flag survived (the bit was 0). Both sides
+clear what they test, so every flag is 0 again when the node returns.
+Constant subtrees fold to a leaf, exactly as in
+``helpers.decision_tree_body``; a ``"1"`` leaf flips R, and only one
+leaf ever executes, so R flips at most once.
+
+Print: R prints as bit 0 of the answer byte; bits 1..3 print from a
+cleared flag cell, bits 4..5 after flipping it, bits 6..7 cleared
+again -- the ASCII ``'0'``/``'1'`` byte in exactly 8 prints.
 """
 
-from esolangs.tools.helpers import (
-    _validate_truth_table,
-    decision_tree_body,
-    in_input_order,
-    move_text,
-)
+from esolangs.tools.helpers import _validate_truth_table
 
-_LOWER = {
-    "+": ">[>]+<[+<]>>>>>>>>>[+]<<<<<<<<<",
-    "-": ">>>>>>>>>+<<<<<<<<+[>+]<[<]>>>>>>>>>[+]<<<<<<<<<",
-    "<": "<<<<<<<<<",
-    ">": ">>>>>>>>>",
-    ",": ">,>,>,>,>,>,>,>,<<<<<<<<",
-    ".": ">;>;>;>;>;>;>;>;<<<<<<<<",
-    "[": ">>>>>>>>>+<<<<<<<<+[>+]<[<]>>>>>>>>>[+<<<<<<<<[>]+<[+<]",
-    "]": ">>>>>>>>>+<<<<<<<<+[>+]<[<]>>>>>>>>>]<[+<]",
-}
-
-# After a lowered read, keep the byte's low bit (offset 1) and clear the
-# bits at offsets 2..8 (``[+]`` clears a bit whether or not it was set),
-# leaving the head back on the separator.
-_EXTRACT_BIT = ">" + ">[+]" * 7 + "<" * 8
-
-# Turn a result byte of 0 or 1 into '0' or '1' by setting bits 4 and 5
-# (offsets 5 and 6); each ``[+]+`` sets a bit whether or not it was set.
-_ASCIIFY = ">>>>>" + "[+]+" + ">" + "[+]+" + "<<<<<<"
-
-
-def _lower(program: str) -> str:
-    """Lower Brainfuck source with the fixed per-command replacements."""
-    return "".join(_LOWER.get(c, "") for c in program)
-
-
-def _boolfuck_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
-    """Emit a permuted table; node i tests cell 2*perm[i], reads stay ordered.
-
-    Mirrors the Brainfuck builder's choreography (bits at cells 2i, flag
-    cells 2i+1 left zero, head left on cell 2(n-1)) with bit-level reads.
-    """
-    n = _validate_truth_table(truth_table)
-
-    parts: list[str] = []
-    pos = 0
-    for i in range(n):
-        parts.append(_LOWER[","])
-        parts.append(_EXTRACT_BIT)
-        if i < n - 1:
-            parts.append(_LOWER[">"] * 2)
-            pos += 2
-
-    body, pos = decision_tree_body(truth_table, ">", "<", perm, pos)
-    parts.append(_lower(body))
-    parts.append(_lower(move_text(pos, 2 * n, ">", "<")))
-    parts.append(_ASCIIFY)
-    parts.append(_LOWER["."])
-    return "".join(parts)
+_SCRATCH = -1
 
 
 def boolfuck(truth_table: str) -> str:
-    """Return the lowered decision tree for an MSB-first truth table."""
-    return in_input_order(truth_table, _boolfuck_ordered)
+    """Return a native Boolfuck program for an MSB-first truth table."""
+    n = _validate_truth_table(truth_table)
+    if n < 1:  # _validate_truth_table already refuses n == 0; keep mypy honest
+        raise AssertionError("unreachable")
+
+    result = 2 * n
+
+    def bit(i: int) -> int:
+        return 2 * i
+
+    def flag(i: int) -> int:
+        return 2 * i + 1
+
+    parts: list[str] = []
+    pos = 0  # cell the head is known to rest on
+
+    def move(target: int) -> None:
+        nonlocal pos
+        if target > pos:
+            parts.append(">" * (target - pos))
+        elif target < pos:
+            parts.append("<" * (pos - target))
+        pos = target
+
+    def constant(i: int, combo: int) -> str | None:
+        """Shared value of the level-``i`` subtree at ``combo``, else None."""
+        span = 1 << (n - i)
+        rows = truth_table[combo : combo + span]
+        return rows[0] if rows == rows[0] * span else None
+
+    def branch(i: int, combo: int) -> None:
+        """Emit one side of node ``i``: a folded leaf or the child subtree."""
+        value = constant(i + 1, combo)
+        if value is None:
+            node(i + 1, combo)
+        elif value == "1":
+            move(result)
+            parts.append("+")
+        # value == "0": the leaf emits nothing
+
+    def node(i: int, combo: int) -> None:
+        """Emit node ``i``: test bit ``i``, run one side, leave flag_i = 0."""
+        bit_cell = bit(i)
+        flg = flag(i)
+        one = combo | (1 << (n - 1 - i))
+        move(flg)
+        parts.append("+")  # flag_i = 1 (it is 0 by invariant)
+        move(bit_cell)
+        parts.append("[+")  # a set bit clears itself and enters the one-side
+        move(flg)
+        parts.append("+")  # the one-side ran: flag_i = 0
+        branch(i, one)
+        move(bit_cell)
+        parts.append("]")  # bit is 0 now, so this exits
+        move(flg)
+        parts.append("[+")  # the flag survived only when the bit was 0
+        branch(i, combo)
+        move(flg)
+        parts.append("]")
+
+    # Read phase: value bit of byte i to cell 2i, other 7 bits to scratch.
+    for i in range(n):
+        move(bit(i))
+        parts.append(",")
+        move(_SCRATCH)
+        parts.append("," * 7)
+
+    # Decision tree over the stored bits.
+    node(0, 0)
+
+    # Print the ASCII answer byte: R, 0,0,0, 1,1, 0,0 (little-endian).
+    move(result)
+    parts.append(";")
+    move(flag(0))  # every flag is 0 again here
+    parts.append(";;;")
+    parts.append("+")
+    parts.append(";;")
+    parts.append("+")
+    parts.append(";;")
+
+    return "".join(parts)
