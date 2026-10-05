@@ -47,12 +47,10 @@ class TestRunUntilHaltOrCycle:
             run_until_halt_or_all_branches_cycle(_Machine(code, ScriptedIO())) is False
         )
         for coin in (0, 1):
-            assert (
+            with pytest.raises(TimeoutError, match="undecided after 64 steps"):
                 run_until_halt_or_cycle(
-                    _Machine(code, ScriptedIO(), FirstDraw(coin, rest=coin))
+                    _Machine(code, ScriptedIO(), FirstDraw(coin, rest=coin)), limit=64
                 )
-                is False
-            )
 
     def test_painfuck_one_halting_coin_refutes_an_all_branches_hang(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
@@ -70,10 +68,29 @@ class TestRunUntilHaltOrCycle:
         assert (
             run_until_halt_or_cycle(_Machine(code, ScriptedIO(), FirstDraw(1))) is True
         )
-        assert (
-            run_until_halt_or_cycle(_Machine(code, ScriptedIO(), FirstDraw(0, rest=0)))
-            is False
-        )
+        with pytest.raises(TimeoutError, match="undecided after 64 steps"):
+            run_until_halt_or_cycle(
+                _Machine(code, ScriptedIO(), FirstDraw(0, rest=0)), limit=64
+            )
+
+    def test_painfuck_later_coin_can_escape_repeated_visible_state(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.painfuck import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        class DelayedEscape:
+            def __init__(self) -> None:
+                self.draws = 0
+
+            def randbelow(self, upper: int) -> int:
+                assert upper == 2
+                self.draws += 1
+                return int(self.draws == 5)
+
+        coins = DelayedEscape()
+        machine = _Machine(_painfuck_source("payb"), ScriptedIO(), coins)
+        assert run_until_halt_or_cycle(machine, limit=64) is True
+        assert coins.draws == 5
 
     def test_painfuck_a_malformed_loop_is_a_terminal_branch(self) -> None:
         """An unmatched ``b`` ends its branch instead of escaping the search.
