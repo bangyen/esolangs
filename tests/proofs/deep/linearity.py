@@ -421,9 +421,9 @@ def exempt_generators() -> dict[str, str]:
     for row in load_ledger().rows:
         for label in ("cap", "exception"):
             if label in row.labels:
-                reasons[row.generator] = f"proofs/status.json {label} row"
+                reasons[row.generator] = f"proof_status.json {label} row"
     for name in sorted(load_audit().unsettled):
-        reasons[name] = "proofs/status.json scaling audit: open"
+        reasons[name] = "proof_status.json scaling audit: open"
     return reasons
 
 
