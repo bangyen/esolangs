@@ -17,31 +17,6 @@ def _portable(tmp_path, language="brainfuck", table="0110", settings=None):
     return path
 
 
-def test_verify_generates_and_checks_every_row(capsys):
-    output, error = call_both(["verify", "Fargo", "10010110"], capsys)
-    assert (output, error) == ("10010110\n", "")
-
-
-def test_verify_accepts_set_pairs(capsys):
-    output, error = call_both(
-        ["verify", "--set", "expression_syntax=postfix", "Alight", "0110"], capsys
-    )
-    assert (output, error) == ("0110\n", "")
-
-
-def test_verify_reports_a_mismatch(capsys, monkeypatch):
-    monkeypatch.setattr(
-        "esolangs.cli_round_trip.generate", lambda *_args, **_kwargs: "+."
-    )
-    monkeypatch.setattr(
-        "esolangs.cli_round_trip.evaluate", lambda *_args, **_kwargs: "0000"
-    )
-    with pytest.raises(SystemExit) as caught:
-        call_both(["verify", "brainfuck", "0110"], capsys)
-    assert caught.value.code == 1
-    assert "row(s) disagree" in capsys.readouterr().err
-
-
 def test_set_pairs_match_settings_json(capsys):
     by_set, _ = call_both(
         ["generate", "--set", "expression_syntax=postfix", "Alight", "0110"], capsys

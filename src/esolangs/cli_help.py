@@ -45,10 +45,6 @@ commands:
            <language> <program-file>
                               run every input row and print the observed
                               table; --table also checks the expected result
-  verify [--timeout S] [--total-timeout S] [--max-rows N]
-         [--max-output N] [--max-memory BYTES] [--settings JSON]
-         [--set KEY=VALUE] <language> <truth-table>
-                              generate a program and check every row
   debug [--steps N] [--timeout S] [--watch-cell I] [--stdin S] [--tui]
         [--break-at N] [--break-on-cell I=V] [--break-on-output S]
         [--table T] [--settings JSON] [--set KEY=VALUE] [--portable]
@@ -76,7 +72,6 @@ examples:
   esolangs answer brainfuck 0110 10
   esolangs generate Fargo 10010110 > fargo.txt
   esolangs evaluate --table 10010110 Fargo fargo.txt
-  esolangs verify Fargo 10010110
   esolangs encode LaserFuck 10 | esolangs run --judge LaserFuck prog.txt
   esolangs debug --steps 20 --watch-cell 0 brainfuck prog.txt
 """
@@ -311,31 +306,6 @@ examples:
   esolangs evaluate --table 0110 brainfuck program.txt
   esolangs generate --portable --set expression_syntax=postfix Alight 0110 > p.json
   esolangs evaluate --portable --table 0110 p.json
-""",
-    "verify": """usage: esolangs verify [--timeout S] [--total-timeout S]
-                       [--max-rows N] [--max-output N] [--max-memory BYTES]
-                       [--settings JSON] [--set KEY=VALUE]
-                       <language> <truth-table>
-
-Generate a program for <truth-table>, run it on every input row, and print
-the observed table.  This is the generate-and-evaluate loop with no program
-file to name, and no language or table to type twice.  It exits 1 when the
-observed table differs, naming the rows that disagree.
-
-options:
-  --timeout SECONDS  bound each row.  Defaults follow evaluate: 30 seconds,
-                     or 5 for termination answers.
-  --total-timeout S  bound generation and the whole evaluation in seconds.
-  --max-rows N       refuse larger tables; defaults to 1,048,576 rows.
-  --max-output N     cap each row in Unicode characters; enables isolation.
-  --max-memory BYTES cap Linux worker address space per row; implies isolation.
-  -s, --settings JSON  dialect overrides shared with generate and evaluate.
-  --set KEY=VALUE    one dialect override without JSON, repeatable and applied
-                     after --settings.
-
-examples:
-  esolangs verify Fargo 10010110
-  esolangs verify --set expression_syntax=postfix Alight 0110
 """,
     "check-stdin": """usage: esolangs check-stdin [--table T] <language>
 
