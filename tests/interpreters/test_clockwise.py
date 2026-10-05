@@ -1,5 +1,7 @@
 from typing import ClassVar
 
+import pytest
+
 from esolangs.interpreters.grid_based.clockwise import run
 from tests.interpreters.contract import (
     EmptyProgramContract,
@@ -26,6 +28,20 @@ class TestClockwise:
         """
         with raises_message(ValueError, "Clockwise ring is not closed"):
             run_and_capture(["  ?", "R  "])
+
+
+def test_reading_with_no_input_is_eof() -> None:
+    """Bits are read up front, so an empty queue is exhausted input.
+
+    The count is characters, the unit the bits arrive in -- "lines" sent
+    the reader looking for a second line the language never wanted.
+    """
+    from esolangs.interpreters.io import ScriptedIO
+
+    with pytest.raises(EOFError) as caught:
+        run(".", ScriptedIO(""))
+    assert "0 characters supplied, read 1" in str(caught.value)
+    assert any("1 input character" in note for note in caught.value.__notes__)
 
 
 class TestMove:

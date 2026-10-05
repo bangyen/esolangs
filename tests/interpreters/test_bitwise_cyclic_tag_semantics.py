@@ -8,6 +8,7 @@ import pytest
 import esolangs
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.queue_based.bitwise_cyclic_tag import _Machine, run
+from tests.interpreters.views import view as vm_view
 
 
 def parse(code):
@@ -65,15 +66,15 @@ def observe(code, cap):
         assert io.getvalue() == output
         assert machine.snapshot() == snapshot
     assert io.position() == 0
-    assert machine.stack == []
-    assert machine.memory == list(map(int, machine.live))
+    assert vm_view(machine, "stack") == []
+    assert vm_view(machine, "memory") == list(map(int, machine.live))
     return (
         io.getvalue(),
         machine.live,
         machine.head,
         machine.read,
         machine.answer,
-        machine.ip,
+        vm_view(machine, "ip"),
         machine.halted,
     )
 

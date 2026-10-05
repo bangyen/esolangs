@@ -8,6 +8,7 @@ import pytest
 import esolangs
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.stack_based.bf_pda import _Machine, run
+from tests.interpreters.views import view as vm_view
 
 
 def rejection(code):
@@ -88,9 +89,9 @@ class Reference:
 
 
 def inspect(machine):
-    assert machine.ip == machine.state[0]
-    assert machine.stack == machine.state[1]
-    assert machine.memory == []
+    assert vm_view(machine, "ip") == machine.state[0]
+    assert vm_view(machine, "stack") == machine.state[1]
+    assert vm_view(machine, "memory") == []
     assert machine.io.position() == machine.io.past_end == 0
     return machine.state, machine.halted, machine.io.getvalue()
 

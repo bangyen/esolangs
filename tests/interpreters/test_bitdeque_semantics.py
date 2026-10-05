@@ -8,6 +8,7 @@ import pytest
 import esolangs
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.queue_based.bitdeque import _Machine, run
+from tests.interpreters.views import view as vm_view
 
 
 def parse(code):
@@ -72,10 +73,16 @@ def observe(code, cap):
         assert io.getvalue() == output
         assert machine.snapshot() == snapshot
     assert io.position() == 0
-    assert machine.memory == list(machine.deq)
-    assert machine.stack == [machine.reg]
-    assert machine.ind == machine.ip
-    return io.getvalue(), tuple(machine.memory), machine.reg, machine.ip, machine.halted
+    assert vm_view(machine, "memory") == list(machine.deq)
+    assert vm_view(machine, "stack") == [machine.reg]
+    assert machine.ind == vm_view(machine, "ip")
+    return (
+        io.getvalue(),
+        tuple(vm_view(machine, "memory")),
+        machine.reg,
+        vm_view(machine, "ip"),
+        machine.halted,
+    )
 
 
 def corpus():
@@ -186,10 +193,10 @@ def test_snapshot_distinguishes_growth_at_equal_register_and_cursor():
     machine = _Machine("INVERT PUSH GOTO 1", ScriptedIO())
     machine.step()
     before = machine.snapshot()
-    cursor = machine.ip, machine.reg
+    cursor = vm_view(machine, "ip"), machine.reg
     machine.step()
     machine.step()
-    assert (machine.ip, machine.reg) == cursor
+    assert (vm_view(machine, "ip"), machine.reg) == cursor
     assert machine.deq == (1,)
     assert machine.snapshot() != before
     loop = reference("INVERT GOTO 1", 80)

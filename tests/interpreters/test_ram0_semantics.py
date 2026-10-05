@@ -8,6 +8,7 @@ import pytest
 import esolangs
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.register_based.ram0 import _Machine, run
+from tests.interpreters.views import view as vm_view
 
 
 def parse(code):
@@ -74,9 +75,9 @@ def observe(code, cap):
         machine.step()
     assert io.getvalue() == ""
     assert io.position() == 0
-    assert machine.stack == []
-    assert machine.ind == machine.ip
-    assert machine.memory == [
+    assert vm_view(machine, "stack") == []
+    assert machine.ind == vm_view(machine, "ip")
+    assert vm_view(machine, "memory") == [
         machine.z,
         machine.n,
         *(value for _, value in sorted(machine.ram.items())),
@@ -95,7 +96,7 @@ def observe(code, cap):
         machine.z,
         machine.n,
         tuple(machine.ram.items()),
-        machine.ip,
+        vm_view(machine, "ip"),
         machine.halted,
     )
 
@@ -182,7 +183,7 @@ def test_snapshot_distinguishes_store_at_equal_registers_and_cursor():
     before = machine.snapshot()
     for _ in range(4):
         machine.step()
-    assert (machine.ip, machine.z, machine.n) == (0, 0, 0)
+    assert (vm_view(machine, "ip"), machine.z, machine.n) == (0, 0, 0)
     assert machine.ram == {0: 1}
     assert machine.snapshot() != before
     assert observe("Z1", 80) == ("", 0, 0, (), 0, False)

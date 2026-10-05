@@ -10,6 +10,7 @@ import esolangs
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.stack_based.underload import _Machine, run
+from tests.interpreters.views import view as vm_view
 
 
 def reference(code, cap, initial=()):
@@ -95,7 +96,7 @@ def observe(code, cap, initial=()):
         except HaltError as exc:
             error = str(exc)
             break
-    assert machine.memory == []
+    assert vm_view(machine, "memory") == []
     assert machine.code == code
     assert io.position() == 0
     if machine.halted:
@@ -106,8 +107,8 @@ def observe(code, cap, initial=()):
     return (
         io.getvalue(),
         machine.state[0],
-        machine.ip,
-        tuple(machine.stack),
+        vm_view(machine, "ip"),
+        tuple(vm_view(machine, "stack")),
         machine.halted,
         error,
     )

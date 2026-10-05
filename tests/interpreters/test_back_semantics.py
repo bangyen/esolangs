@@ -8,6 +8,7 @@ import pytest
 import esolangs
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.tape_based.back import _Machine, run
+from tests.interpreters.views import view as vm_view
 
 
 def reference(code, cap):
@@ -64,10 +65,10 @@ def observe(code, cap):
             break
         machine.step()
     assert io.getvalue() == ""
-    assert machine.stack == []
-    assert machine.tape == tuple(machine.memory)
+    assert vm_view(machine, "stack") == []
+    assert machine.tape == tuple(vm_view(machine, "memory"))
     assert machine.cell == machine.ptr
-    assert machine.ip == (machine.row, machine.col, machine.a, machine.b)
+    assert vm_view(machine, "ip") == (machine.row, machine.col, machine.a, machine.b)
     assert io.position() == machine.input_position() == 0
     if machine.halted:
         machine.step()
@@ -78,7 +79,13 @@ def observe(code, cap):
         machine.step()
         assert machine.snapshot() == before
         assert io.getvalue() == output
-    return io.getvalue(), tuple(machine.memory), machine.ptr, machine.ip, machine.halted
+    return (
+        io.getvalue(),
+        tuple(vm_view(machine, "memory")),
+        machine.ptr,
+        vm_view(machine, "ip"),
+        machine.halted,
+    )
 
 
 def corpus():
@@ -179,9 +186,9 @@ def test_snapshot_distinguishes_growing_and_flipped_tape_at_equal_beam_position(
     for code in ([">"], ["-"]):
         machine = _Machine(code, ScriptedIO())
         before = machine.snapshot()
-        beam = machine.ip
+        beam = vm_view(machine, "ip")
         machine.step()
-        assert machine.ip == beam
+        assert vm_view(machine, "ip") == beam
         assert machine.snapshot() != before
     assert observe([">"], 80) == ("", (0,) * 81, 80, (0, 0, 0, 1), False)
     assert observe(["-"], 80) == ("", (0,), 0, (0, 0, 0, 1), False)

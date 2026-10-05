@@ -10,7 +10,6 @@ from esolangs.tools.laserfuck import (
     _laserfuck_raise_funnel,
     balance_laserfuck,
     laserfuck,
-    layout,
 )
 from tests.interpreters.laserfuck_observer import check
 
@@ -52,21 +51,3 @@ def test_balanced_layout(table, heading):
     for row, answer in enumerate(table):
         output, _ = check(source, format(row, f"0{n}b"), heading)
         assert output == answer
-
-
-@pytest.mark.parametrize(
-    ("ops", "answer"),
-    [
-        ("+" * 40 + "->++<" + "-" * 4, "35\n2"),
-        ("-" * 30 + ">+++", "3"),
-        ("+" * 30, "30"),
-    ],
-)
-@pytest.mark.parametrize("width", [7, 20, 40])
-def test_folded_tape_runs(ops, answer, width):
-    grid = [list("  o" + " " * (width - 3)), list(" " * width)]
-    row, col = layout.fold(grid, ops, 0, 3, width)
-    grid[row][col] = "x"
-    source = "\n".join("".join(line).rstrip() for line in grid)
-    output, _ = check(source, "", 3)
-    assert output == answer

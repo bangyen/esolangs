@@ -6,6 +6,7 @@ import copy
 
 from esolangs.interpreters.io import ScriptedIO
 from tests.interpreters.circuit_diagram_reference import ClockTape, NamedReference
+from tests.interpreters.views import view as vm_view
 
 
 class Factory:
@@ -119,9 +120,9 @@ class Factory:
                 ref.offset,
                 ref.past_end,
             )
-            assert native.ip is None
-            assert native.stack == []
-            assert native.memory == [
+            assert vm_view(native, "ip") is None
+            assert vm_view(native, "stack") == []
+            assert vm_view(native, "memory") == [
                 bit for bundle in values if bundle is not None for bit in bundle
             ]
             state = (values, latches, ref.halted, ref.clock.position)

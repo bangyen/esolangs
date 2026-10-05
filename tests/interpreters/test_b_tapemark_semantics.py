@@ -15,6 +15,7 @@ from esolangs.interpreters.io import ScriptedIO
 from esolangs.tools.b_tapemark import b_tapemark
 from tests.interpreters.b_tapemark_observer import cells, check
 from tests.interpreters.b_tapemark_reference import Point, Reference
+from tests.interpreters.views import view as vm_view
 
 COMMANDS = " \\/!+-*|?%0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZλ\n"
 SEPARATORS = ("\v", "\f", "\x1c", "\x1d", "\x1e", "\x85", "\u2028", "\u2029")
@@ -36,16 +37,16 @@ def view(machine):
 
 def compare(machine, reference):
     assert view(machine) == reference.native_view()
-    assert machine.ip == (
+    assert vm_view(machine, "ip") == (
         reference.points[reference.active].real,
         -reference.points[reference.active].imag,
     )
-    assert machine.memory == [
+    assert vm_view(machine, "memory") == [
         machine.state.grids,
         machine.state.positions,
         reference.active,
     ]
-    assert machine.stack == []
+    assert vm_view(machine, "stack") == []
     assert machine.io.reads == reference.offset
     assert machine.halted == reference.halted
 

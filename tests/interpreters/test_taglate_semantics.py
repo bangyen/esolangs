@@ -11,6 +11,7 @@ import esolangs
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.queue_based.taglate import _Machine, run
+from tests.interpreters.views import view as vm_view
 
 
 def reference(code, stdin, cap):
@@ -114,13 +115,13 @@ def observe(code, stdin, cap):
         except ValueError:
             error = "syntax"
             break
-    assert machine.memory == list(machine.queue)
-    assert machine.stack == []
-    assert machine.ind == machine.ip
+    assert vm_view(machine, "memory") == list(machine.queue)
+    assert vm_view(machine, "stack") == []
+    assert machine.ind == vm_view(machine, "ip")
     result = (
         io.getvalue(),
-        tuple(machine.memory),
-        machine.ip,
+        tuple(vm_view(machine, "memory")),
+        vm_view(machine, "ip"),
         io.position(),
         machine.halted,
         error,
@@ -241,10 +242,10 @@ def test_snapshot_distinguishes_queue_changes_at_equal_cursor():
     machine = _Machine(["\x02", "gyjgz"], ScriptedIO())
     machine.step()
     before = machine.snapshot()
-    cursor = machine.ip
+    cursor = vm_view(machine, "ip")
     machine.step()
     machine.step()
-    assert machine.ip == cursor
+    assert vm_view(machine, "ip") == cursor
     assert machine.queue == (1,)
     assert machine.snapshot() != before
 
@@ -253,10 +254,10 @@ def test_snapshot_distinguishes_consumed_input_at_equal_queue_and_cursor():
     machine = _Machine(["1", "gyhfgz"], ScriptedIO("11"))
     machine.step()
     before = machine.snapshot()
-    state = machine.queue, machine.ip
+    state = machine.queue, vm_view(machine, "ip")
     for _ in range(3):
         machine.step()
-    assert (machine.queue, machine.ip) == state
+    assert (machine.queue, vm_view(machine, "ip")) == state
     assert machine.io.position() == 1
     assert machine.snapshot() != before
 

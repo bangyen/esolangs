@@ -10,6 +10,7 @@ import esolangs
 from esolangs.exceptions import HaltError, InputExhaustedError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.register_based.sophie import _Machine, find, matches, run
+from tests.interpreters.views import view as vm_view
 
 
 def number(text):
@@ -178,9 +179,9 @@ class Reference:
 
 
 def inspect(actual):
-    assert actual.ip == actual.ind
-    assert actual.memory == [actual.acc]
-    assert actual.stack == list(actual.stk)
+    assert vm_view(actual, "ip") == actual.ind
+    assert vm_view(actual, "memory") == [actual.acc]
+    assert vm_view(actual, "stack") == list(actual.stk)
     assert actual.skp is False
     assert actual.snapshot() == (
         actual.ind,

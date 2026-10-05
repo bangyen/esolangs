@@ -2,14 +2,15 @@
 
 from esolangs.interpreters.io import ScriptedIO
 from tests.interpreters.egl_reference import Reference
+from tests.interpreters.views import view as vm_view
 
 
 def compare(machine, ref, io):
     assert machine.halted == ref.done
     assert machine.snapshot() == ref.snapshot()
-    assert machine.ip == (ref.point[1], ref.point[0])
-    assert machine.memory == list(ref.values)
-    assert machine.stack == []
+    assert vm_view(machine, "ip") == (ref.point[1], ref.point[0])
+    assert vm_view(machine, "memory") == list(ref.values)
+    assert vm_view(machine, "stack") == []
     assert (io.position(), io.reads, io.past_end, io.getvalue()) == (
         ref.offset,
         ref.reads,

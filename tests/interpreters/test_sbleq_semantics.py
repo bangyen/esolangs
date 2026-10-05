@@ -9,6 +9,7 @@ import esolangs
 from esolangs.exceptions import InterpreterLimitError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.tape_based.sbleq import _Machine, run
+from tests.interpreters.views import view as vm_view
 
 
 class Reference:
@@ -99,17 +100,17 @@ def image(memory):
 
 
 def inspect(machine):
-    assert machine.memory == list(machine.mem)
-    assert machine.stack == []
+    assert vm_view(machine, "memory") == list(machine.mem)
+    assert vm_view(machine, "stack") == []
     assert machine.eof_is_a_value is True
     assert machine._state == (  # noqa: SLF001
-        tuple(machine.memory),
-        machine.ip,
+        tuple(vm_view(machine, "memory")),
+        vm_view(machine, "ip"),
         machine._halted,  # noqa: SLF001
     )
     return (
-        tuple(machine.memory),
-        machine.ip,
+        tuple(vm_view(machine, "memory")),
+        vm_view(machine, "ip"),
         machine._halted,  # noqa: SLF001
         machine.io.getvalue(),
         machine.io.position(),

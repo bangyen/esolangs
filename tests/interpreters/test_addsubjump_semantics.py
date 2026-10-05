@@ -9,6 +9,7 @@ import esolangs
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.register_based.addsubjump import _Machine, _program, run
+from tests.interpreters.views import view as vm_view
 
 
 class Reference:
@@ -85,16 +86,16 @@ def image(memory):
 
 
 def inspect(machine):
-    assert machine.stack == []
+    assert vm_view(machine, "stack") == []
     flags = (machine.cf, machine.zf, machine.nf, machine.vf, machine.fum)
     cells, length = machine.state[0]
-    assert length == len(machine.memory)
+    assert length == len(vm_view(machine, "memory"))
     assert all(value != 0 for value in cells.values())
     assert all(0 <= address < length for address in cells)
-    assert tuple(machine.state[1:]) == (machine.ip, *flags)
+    assert tuple(machine.state[1:]) == (vm_view(machine, "ip"), *flags)
     return (
-        machine.ip,
-        tuple(machine.memory),
+        vm_view(machine, "ip"),
+        tuple(vm_view(machine, "memory")),
         flags,
         machine.io.getvalue(),
         machine.io.position(),
@@ -135,7 +136,7 @@ def compare(memory, stdin, cap, code=None, flags=None):
         assert actual.snapshot() == (
             tuple(sorted(cells.items())),
             length,
-            actual.ip,
+            vm_view(actual, "ip"),
             *expected.flags,
             expected.cursor,
         )

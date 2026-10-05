@@ -12,6 +12,7 @@ from esolangs.interpreters.io import ScriptedIO
 from esolangs.tools.a_painter_ant import a_painter_ant
 from esolangs.tools.helpers import TEMPLATE_CHAR
 from tests.interpreters.a_painter_ant_reference import Reference
+from tests.interpreters.views import view as vm_view
 
 
 class ObservedGrid(MutableMapping):
@@ -65,7 +66,7 @@ def transition(native, reference, grid, io):
     native.step()
     assert native.grid is grid
     assert grid.writes == expected
-    assert (native.x, native.y, native.ip) == (
+    assert (native.x, native.y, vm_view(native, "ip")) == (
         *view(reference.position),
         reference.cursor,
     )
@@ -77,10 +78,10 @@ def boundary(native, reference):
     assert native.snapshot() == reference.native_view()
     assert native.visited == {view(p) for p in reference.visited}
     assert native.render() == reference.render()
-    assert native.memory == [
+    assert vm_view(native, "memory") == [
         value for _, value in sorted(dict(reference.native_view()[0]).items())
     ]
-    assert native.stack == []
+    assert vm_view(native, "stack") == []
 
 
 @pytest.mark.parametrize("command", "nNeEsSwWpP")

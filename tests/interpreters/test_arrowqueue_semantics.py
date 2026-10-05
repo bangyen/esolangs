@@ -9,6 +9,7 @@ import pytest
 import esolangs
 from esolangs.interpreters.grid_based.arrowqueue import _Machine, run
 from esolangs.interpreters.io import ScriptedIO
+from tests.interpreters.views import view as vm_view
 
 _HEADINGS = {1: 0, 1j: 1, -1: 2, -1j: 3}
 
@@ -76,9 +77,9 @@ def observe(code, cap, placed=None):
         machine.step()
     assert io.getvalue() == ""
     assert io.position() == 0
-    assert machine.memory == []
-    assert machine.stack == list(machine.queue)
-    assert machine.ip == (machine.row, machine.col, machine.d)
+    assert vm_view(machine, "memory") == []
+    assert vm_view(machine, "stack") == list(machine.queue)
+    assert vm_view(machine, "ip") == (machine.row, machine.col, machine.d)
     if machine.halted:
         snapshot = machine.snapshot()
         machine.step()
@@ -93,7 +94,7 @@ def observe(code, cap, placed=None):
         machine.row,
         machine.col,
         machine.d,
-        tuple(machine.stack),
+        tuple(vm_view(machine, "stack")),
         machine.halted,
     )
 
@@ -196,10 +197,10 @@ def test_cycle_certificate_requires_the_full_queue():
     machine = _Machine(growing, ScriptedIO())
     machine.place(0, 1)
     before = machine.snapshot()
-    cursor = machine.ip
+    cursor = vm_view(machine, "ip")
     for _ in range(8):
         machine.step()
-    assert machine.ip == cursor
+    assert vm_view(machine, "ip") == cursor
     assert len(machine.queue) == 4
     assert machine.snapshot() != before
 

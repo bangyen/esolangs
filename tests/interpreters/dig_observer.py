@@ -10,6 +10,7 @@ from tests.interpreters.dig_reference import (
     Reference,
     ZeroDivisorError,
 )
+from tests.interpreters.views import view as vm_view
 
 
 def compare(machine, ref, io):
@@ -27,9 +28,9 @@ def compare(machine, ref, io):
         ref._code = machine.code
     assert machine.snapshot() == ref.snapshot()
     assert machine.size == ref.width
-    assert machine.ip == ref.snapshot()[:3]
-    assert machine.memory == [ref.value]
-    assert machine.stack == []
+    assert vm_view(machine, "ip") == ref.snapshot()[:3]
+    assert vm_view(machine, "memory") == [ref.value]
+    assert vm_view(machine, "stack") == []
     assert io.position() == ref.offset
     assert io.reads == ref.reads
     assert io.past_end == ref.past_end

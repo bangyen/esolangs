@@ -8,6 +8,7 @@ import pytest
 import esolangs
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.tape_based.brainfuck import _Machine, run
+from tests.interpreters.views import view as vm_view
 
 
 def reference(code, stdin, cap):
@@ -69,15 +70,15 @@ def observe(code, stdin, cap):
             machine.step()
     except EOFError:
         error = "EOFError"
-    assert machine.memory == list(machine.tape)
-    assert machine.ind == machine.ip
+    assert vm_view(machine, "memory") == list(machine.tape)
+    assert machine.ind == vm_view(machine, "ip")
     assert machine.input_position() == io.position()
-    assert machine.stack == []
+    assert vm_view(machine, "stack") == []
     result = (
         io.getvalue(),
-        tuple(machine.memory),
+        tuple(vm_view(machine, "memory")),
         machine.ptr,
-        machine.ip,
+        vm_view(machine, "ip"),
         io.position(),
         machine.halted,
         error,
@@ -212,12 +213,12 @@ def test_equal_cells_at_different_input_positions_have_different_snapshots():
     machine.step()
     machine.step()
     before = machine.snapshot()
-    memory = machine.memory
-    position = machine.ip
+    memory = vm_view(machine, "memory")
+    position = vm_view(machine, "ip")
     machine.step()
     machine.step()
-    assert machine.ip == position
-    assert machine.memory == memory
+    assert vm_view(machine, "ip") == position
+    assert vm_view(machine, "memory") == memory
     assert machine.snapshot() != before
 
 

@@ -3,6 +3,7 @@ from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.stack_based.forth import _Machine
 from tests.interpreters.forth_reference import EmptyError, ExhaustedError
 from tests.interpreters.forth_stepped_reference import Stepped
+from tests.interpreters.views import view as vm_view
 
 
 def check(source, text):
@@ -11,7 +12,7 @@ def check(source, text):
     io = ScriptedIO(text)
     vm = _Machine(source, io)
     for _ in range(10000):
-        assert vm.stack == tuple(ref.evaluator.stack)
+        assert vm_view(vm, "stack") == tuple(ref.evaluator.stack)
         assert vm.table == ref.evaluator.functions
         assert [(f.code, f.pc, f.loop) for f in vm.frames] == [
             tuple(f) for f in ref.frames
@@ -29,8 +30,8 @@ def check(source, text):
         )
         assert vm.snapshot() == expected_snapshot
         expected_ip = tuple(frame[1] for frame in ref.frames) or (len(source),)
-        assert vm.ip == expected_ip
-        assert vm.memory == []
+        assert vm_view(vm, "ip") == expected_ip
+        assert vm_view(vm, "memory") == []
         if vm.halted:
             break
         try:
@@ -52,7 +53,7 @@ def check(source, text):
         assert actual == expected, (source, actual, expected)
         generations += 1
         if actual:
-            assert vm.stack == tuple(ref.evaluator.stack)
+            assert vm_view(vm, "stack") == tuple(ref.evaluator.stack)
             assert [(f.code, f.pc, f.loop) for f in vm.frames] == [
                 tuple(f) for f in ref.frames
             ]

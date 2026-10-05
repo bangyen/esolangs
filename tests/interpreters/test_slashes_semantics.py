@@ -9,6 +9,7 @@ import pytest
 import esolangs
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.slashes import _Machine, run
+from tests.interpreters.views import view as vm_view
 
 _RULE = re.compile(r"/((?:\\[\s\S]|[^/\\])*)/((?:\\[\s\S]|[^/\\])*)/")
 _ESCAPE = re.compile(r"\\([\s\S])")
@@ -61,10 +62,10 @@ class Reference:
 
 
 def inspect(machine):
-    assert machine.ip is None
+    assert vm_view(machine, "ip") is None
     assert machine.ip_shape == "opaque"
-    assert machine.stack == []
-    assert machine.memory == [ord(char) for char in machine.state[0]]
+    assert vm_view(machine, "stack") == []
+    assert vm_view(machine, "memory") == [ord(char) for char in machine.state[0]]
     assert machine.io.position() == machine.io.past_end == 0
     return machine.state, machine.halted, machine.io.getvalue()
 

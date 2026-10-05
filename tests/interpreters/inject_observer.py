@@ -2,6 +2,7 @@ from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.inject import _Machine
 from tests.interpreters.inject_reference import InvalidError, Reference
+from tests.interpreters.views import view as vm_view
 
 
 def check(source, text="", limit=10000):
@@ -28,7 +29,7 @@ def check(source, text="", limit=10000):
             ref.reads,
             frozenset(spans.items()),
         )
-        assert vm.memory == [
+        assert vm_view(vm, "memory") == [
             spans[name][1] - spans[name][0] - 1 for name in sorted(spans)
         ]
         inside = [
@@ -37,8 +38,8 @@ def check(source, text="", limit=10000):
         expected_stack = list(
             reversed(sorted(inside, key=lambda name: spans[name][1] - spans[name][0]))  # noqa: C413 - reverse equal-width ties too
         )
-        assert vm.stack == expected_stack
-        assert vm.ip == ref.cursor
+        assert vm_view(vm, "stack") == expected_stack
+        assert vm_view(vm, "ip") == ref.cursor
         if vm.halted or actual:
             break
         frozen = vm.snapshot()
