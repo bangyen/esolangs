@@ -49,6 +49,10 @@ class _Machine:
         return self.state[0]
 
     @property
+    def ptr(self) -> int:
+        return self.state[1]
+
+    @property
     def memory(self) -> list[int]:
         lo = min(self.ones | {self.state[1], 0})
         hi = max(self.ones | {self.state[1], 0})

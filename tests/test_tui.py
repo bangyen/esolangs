@@ -990,33 +990,34 @@ class TestWatch:
         assert history.trace(0, 3, 10) == ()
 
     def test_the_row_shows_the_values(self) -> None:
-        screen = render(_frame("+", 0), watch=(0, (0, 1, 2, 3)))
+        screen = render(_frame("+", 0), watches=((0, (0, 1, 2, 3)),))
         assert "cell 0: 0 1 2 3" in screen
 
     def test_no_row_when_nothing_is_watched(self) -> None:
-        assert "watch" not in render(_frame("+", 0))
+        # The footer names the key, so the check is for the row itself.
+        assert "watch    cell" not in render(_frame("+", 0))
 
     def test_an_absent_value_is_shown_as_a_dash(self) -> None:
-        assert "- - 1" in render(_frame("+", 0), watch=(0, (None, None, 1)))
+        assert "- - 1" in render(_frame("+", 0), watches=((0, (None, None, 1)),))
 
     def test_the_newest_values_survive_a_narrow_row(self) -> None:
         # A tape is read from cell zero outwards, but a trace is read from
         # now backwards, so the *end* is what must not be dropped.
-        screen = render(_frame("+", 0), watch=(0, tuple(range(100))), width=40)
+        screen = render(_frame("+", 0), watches=((0, tuple(range(100))),), width=40)
         assert "99" in screen
         assert all(len(line) <= 40 for line in _plain(screen).splitlines())
 
     def test_a_trimmed_trace_says_so(self) -> None:
-        screen = render(_frame("+", 0), watch=(0, tuple(range(100))), width=40)
+        screen = render(_frame("+", 0), watches=((0, tuple(range(100))),), width=40)
         assert "..." in screen
 
     def test_an_empty_trace_says_so_rather_than_showing_nothing(self) -> None:
-        assert "(none yet)" in render(_frame("+", 0), watch=(0, ()))
+        assert "(none yet)" in render(_frame("+", 0), watches=((0, ()),))
 
     def test_the_row_costs_the_program_pane_one_line(self) -> None:
         program = "\n".join("x" for _ in range(40))
         without = render(_frame(program, 0), height=20)
-        with_watch = render(_frame(program, 0), height=20, watch=(0, (1, 2)))
+        with_watch = render(_frame(program, 0), height=20, watches=((0, (1, 2)),))
         assert len(with_watch.splitlines()) == len(without.splitlines())
 
     def test_the_loop_shows_the_trace_growing(self) -> None:
@@ -1030,6 +1031,188 @@ class TestWatch:
         drive(History("brainfuck", "+++", ""), keyboard.read, keyboard.write, watch=0)
         assert "cell 0: 0 1 2" in keyboard.screens[-1]
         assert "cell 0: 0 1 2 3" not in keyboard.screens[-1]
+
+
+class TestRestartKey:
+    """``R``: a fresh run without leaving the screen."""
+
+    def test_r_alone_restarts_on_the_same_stdin(self) -> None:
+        keyboard = _Keys("rR\rq")
+        drive(History("brainfuck", ",.", "A"), keyboard.read, keyboard.write)
+        # After the run the prompt offers the running stdin back; Enter
+        # takes it, and the repaint is step 0 with nothing written yet.
+        assert "restarted" in _plain(keyboard.screens[-1])
+        assert "step 0" in keyboard.headers()[-1]
+
+    def test_the_stdin_can_be_edited_before_restarting(self) -> None:
+        keyboard = _Keys("R\x7fB\rrq")
+        drive(History("brainfuck", ",.", "A"), keyboard.read, keyboard.write)
+        assert "'B'" in _plain(keyboard.screens[-1])
+
+    def test_escape_keeps_the_run_being_debugged(self) -> None:
+        keyboard = _Keys(" R\x1bq")
+        drive(History("brainfuck", "+++", ""), keyboard.read, keyboard.write)
+        assert "step 1" in keyboard.headers()[-1]
+
+    def test_a_refused_stdin_is_a_notice_not_a_crash(self) -> None:
+        keyboard = _Keys("R\rq")
+        history = History("brainfuck", "+++", "")
+        with patch("esolangs.tui.make_debugger", side_effect=ValueError("nope")):
+            drive(history, keyboard.read, keyboard.write)
+        assert "restart failed" in _plain(keyboard.screens[-1])
+
+    def test_restart_rewinds_the_history(self) -> None:
+        history = History("brainfuck", "+++", "")
+        history.at(3)
+        history.restart("")
+        assert history.top == 0
+        assert history.at(0).step == 0
+        assert history.stdin == ""
+
+
+class TestWatchKeys:
+    """``w``/``W``: the watched set is editable from inside the screen."""
+
+    def test_w_adds_a_cell_and_the_row_appears(self) -> None:
+        keyboard = _drive("+++", "w0\r q")
+        # The notice is read on the repaint the Enter earns; it is gone by
+        # the next key, the way a status line should be.
+        assert any("watching cell 0" in _plain(s) for s in keyboard.screens)
+        assert "cell 0: 0 1" in _plain(keyboard.screens[-1])
+
+    def test_several_cells_can_be_watched(self) -> None:
+        keyboard = _drive("+>+", "w0\rw1\rq")
+        screen = _plain(keyboard.screens[-1])
+        assert "cell 0:" in screen
+        assert "cell 1:" in screen
+
+    def test_big_w_removes_one(self) -> None:
+        keyboard = _drive("+++", "w0\rW0\rq")
+        screen = _plain(keyboard.screens[-1])
+        assert "no longer watched" in screen
+        assert "watch    cell" not in screen
+
+    def test_a_non_number_is_a_notice(self) -> None:
+        keyboard = _drive("+++", "wx\rq")
+        assert "not a cell index" in _plain(keyboard.screens[-1])
+
+
+class TestCountAndGoto:
+    """Digits, ``g`` and ``G``: getting the selector somewhere in one go."""
+
+    def test_a_count_prefix_walks_the_selector(self) -> None:
+        keyboard = _drive("+>-<", "3lq")
+        assert _selected(keyboard.screens[-1]) == ["<"]
+
+    def test_a_count_prefix_steps_that_far(self) -> None:
+        assert "step 3" in _drive("+++++", "3 q").headers()[-1]
+
+    def test_big_g_returns_the_selector_to_the_run(self) -> None:
+        keyboard = _drive("+>-<", "llGq")
+        assert _selected(keyboard.screens[-1]) == ["+"]
+
+    def test_g_prompts_for_a_place(self) -> None:
+        keyboard = _drive("+>-<", "g3\rq")
+        assert _selected(keyboard.screens[-1]) == ["<"]
+
+    def test_g_to_nowhere_is_a_notice(self) -> None:
+        keyboard = _drive("+>-<", "g99\rq")
+        assert "no such place" in _plain(keyboard.screens[-1])
+
+
+class TestHaltPosition:
+    """The halted frame rests on the last op, not the start of the file."""
+
+    def test_the_last_op_is_the_highlighted_one(self) -> None:
+        frame = replay("brainfuck", "+++", "", 100)
+        assert frame.halted
+        assert _highlighted(render(frame)) == "+"
+
+    def test_the_pane_stays_at_the_end_of_a_tall_program(self) -> None:
+        program = "\n".join("+" for _ in range(100))
+        frame = replay("brainfuck", program, "", 10_000)
+        plain = _plain(render(frame))
+        assert "100 |" in plain
+        assert "  1 |" not in plain
+
+
+class TestPointerFallback:
+    """A tape machine that names no state still shows where it points."""
+
+    def test_boolfuck_frames_carry_a_pointer(self) -> None:
+        history = History("Boolfuck", "+>", "")
+        assert history.at(0).views == (("ptr", "0"),)
+        frame = history.at(2)
+        assert frame.views == (("ptr", "1"),)
+        assert "ptr=1" in render(frame)
+
+    def test_brainfucks_own_views_are_untouched(self) -> None:
+        frame = replay("brainfuck", "+", "", 0)
+        names = [name for name, _ in frame.views]
+        assert "ind" in names
+        assert len(names) > 1
+
+    def test_the_debugger_mirrors_the_pointer(self) -> None:
+        dbg = debugger_api.make_debugger("brainfuck", ">>,", "")
+        assert dbg.ptr == 0
+        dbg.step()
+        assert dbg.ptr == 1
+
+
+class TestPlayMode:
+    """``p``: the loop repaints on a timer until stopped or halted."""
+
+    @staticmethod
+    def _poll(answers: list[str | None]) -> object:
+        queue = list(answers)
+        return lambda _timeout: queue.pop(0) if queue else "q"
+
+    def test_play_advances_on_quiet_timeouts(self) -> None:
+        keyboard = _Keys("pq")
+        drive(
+            History("brainfuck", "+++++", ""),
+            keyboard.read,
+            keyboard.write,
+            poll=self._poll([None, None, "q"]),  # type: ignore[arg-type]
+        )
+        assert "playing 8/s" in _plain(keyboard.screens[1])
+        assert "step 2" in keyboard.headers()[-1]
+
+    def test_play_stops_at_a_breakpoint(self) -> None:
+        keyboard = _Keys("pq")
+        drive(
+            History("brainfuck", "+++++", ""),
+            keyboard.read,
+            keyboard.write,
+            stop=breakpoint_for(cell=(0, 2)),
+            poll=self._poll([None, None, None, "q"]),  # type: ignore[arg-type]
+        )
+        assert "step 2" in keyboard.headers()[-1]
+
+    def test_plus_speeds_play_up(self) -> None:
+        keyboard = _Keys("pq")
+        drive(
+            History("brainfuck", "+++++", ""),
+            keyboard.read,
+            keyboard.write,
+            poll=self._poll(["+", None, "q"]),  # type: ignore[arg-type]
+        )
+        assert "playing 16/s" in _plain(keyboard.screens[-2])
+
+
+class TestChangedFlash:
+    """The cell the last step touched flashes in the memory row."""
+
+    def test_a_changed_cell_is_styled(self) -> None:
+        frame = _frame("+", 0, memory=(1, 2))
+        assert _runs(render(frame, changed=frozenset({0})), "33") == ["1"]
+
+    def test_no_flash_without_a_change(self) -> None:
+        assert _runs(render(_frame("+", 0, memory=(1, 2))), "33") == []
+
+    def test_stepping_flashes_the_cell_it_wrote(self) -> None:
+        keyboard = _drive("++", " q")
+        assert "\x1b[1;33m" in keyboard.screens[-1]
 
 
 class TestRawTerminal:

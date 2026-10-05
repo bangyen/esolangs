@@ -263,10 +263,13 @@ assert len(debug.output) > 2
 ```
 
 `--tui` highlights the next operation and shows the tape, stack, output,
-named state, and watch history. Controls are `hjkl` to move, `t` to toggle a
-breakpoint, `c` to continue, `space` to step, `b` to step back, `r` to finish,
-and `q` to quit. Use `--stdin`; keyboard commands and program input cannot
-share a stream.
+named state, and watch history. Controls are `hjkl` to move (a leading
+count walks further, `g` prompts for a place, `G` returns to the run), `t`
+to toggle a breakpoint, `c` to continue, `space` to step, `b` to step back,
+`r` to finish, `R` to restart on new stdin, `w`/`W` to add and drop a
+watched cell, `p` to play with `+`/`-` setting the speed, and `q` to quit.
+The cell the last step changed flashes. Use `--stdin`; keyboard commands
+and program input cannot share a stream.
 
 Call-stack and 3-D positions show raw `ip` without source highlighting.
 

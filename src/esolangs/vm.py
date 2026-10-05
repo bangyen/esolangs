@@ -727,6 +727,16 @@ class VM(Protocol):
         """The addressable cells, or ``[]`` where there is no such store."""
 
     @property
+    def ptr(self) -> int | None:
+        """The tape pointer, where the machine has one.
+
+        ``None`` where there is no such thing to point with: a stack, a
+        grid, a register file.  Not every tape machine spells it the same
+        way (a property here, a plain attribute there), so the adapter
+        reads it by ``getattr`` and the protocol only promises the read.
+        """
+
+    @property
     def stack(self) -> list[object]:
         """The stack, or ``[]`` where the language has none."""
 
@@ -849,6 +859,11 @@ class _DelegatingVM:
     @property
     def memory(self) -> list[int]:
         return list(self._machine.memory)
+
+    @property
+    def ptr(self) -> int | None:
+        value = getattr(self._machine, "ptr", None)
+        return value if isinstance(value, int) and not isinstance(value, bool) else None
 
     @property
     def stack(self) -> list[object]:
