@@ -62,11 +62,16 @@ def record_key(keys, machine, reference):
 )
 @pytest.mark.parametrize("direction", range(4))
 @pytest.mark.parametrize("active", range(2))
-def test_local_transitions(active, direction, origin):
+@pytest.mark.parametrize("shard", range(4))
+@pytest.mark.medium
+def test_local_transitions(active, direction, origin, shard):
     keys = {}
-    for opcode, datum, skipped, stdin in itertools.product(
+    cases = itertools.product(
         COMMANDS, (" ", "0", "A", "λ"), (" ", "/", "!", "λ"), ("Z", " ", "\n", "")
-    ):
+    )
+    for case, (opcode, datum, skipped, stdin) in enumerate(cases):
+        if case % 4 != shard:
+            continue
         ref = Reference(">", stdin)
         ref.active = active
         ref.heading = (1, -1j, -1, 1j)[direction]

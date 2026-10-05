@@ -8,6 +8,7 @@ import pytest
 import esolangs
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.tape_based.suffolk import _Machine, run
+from tests.raises import raises_message
 
 
 class Reference:
@@ -172,7 +173,7 @@ def test_empty_source_exact_error_and_eof_snapshot_distinction():
         lambda code: _Machine(code, ScriptedIO()),
         lambda code: run(code, ScriptedIO()),
     ):
-        with pytest.raises(ValueError, match=r"^Suffolk program cannot be empty$"):
+        with raises_message(ValueError, "Suffolk program cannot be empty"):
             factory("")
     machine = _Machine(",", ScriptedIO())
     before = machine.snapshot()

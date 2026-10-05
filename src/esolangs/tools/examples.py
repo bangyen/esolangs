@@ -381,8 +381,6 @@ def _register() -> None:
             b.container,
             "other.container",
             split=True,
-            note="The printed bit is the answer; module.run returns the EXIT code.",
-            input_shape="char_stream",
         ),
         # ``send`` terminates every line it writes, so the answer arrives
         # with a newline after it -- there is no other output command.

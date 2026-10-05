@@ -47,7 +47,7 @@ def parse(source):
     elif len(operation) <= 1:
         command = operation[0] if operation else ""
         if command not in ("inc", "increment", "left", "right", "input", "output"):
-            command = ""
+            raise ValueError(f"unknown BrainIf command {command!r}")
         return value, command, None
     raise ValueError("malformed BrainIf line: " + source.strip())
 

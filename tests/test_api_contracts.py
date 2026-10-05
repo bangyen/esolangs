@@ -903,7 +903,8 @@ class TestTheVmPathRefusesLikeRunDoes:
         with pytest.raises(esolangs.ProgramError, match="unmatched"):
             getattr(debugger_api, entry)("brainfuck", "]")
 
-    def test_no_language_leaks_anything_else(self) -> None:
+    @pytest.mark.parametrize("shard", range(4))
+    def test_no_language_leaks_anything_else(self, shard: int) -> None:
         """Every language against six kinds of junk, both entry points.
 
         Swept rather than sampled because the leak was *per interpreter* --
@@ -911,7 +912,7 @@ class TestTheVmPathRefusesLikeRunDoes:
         are is not something a caller can predict.
         """
         escapes = []
-        for name in esolangs.list_languages():
+        for name in esolangs.list_languages()[shard::4]:
             for junk in self.JUNK:
                 for entry in ("make_vm", "make_debugger"):
                     try:

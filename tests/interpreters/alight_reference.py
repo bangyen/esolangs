@@ -223,8 +223,9 @@ class Evaluation:
                     if slot >= len(sequence):
                         raise AlightFaultError("setter bounds")
                     homogeneous([*sequence, args[2]])
-                    sequence[slot] = args[2]
-                    self.values.append(sequence)
+                    copied = list(sequence)
+                    copied[slot] = args[2]
+                    self.values.append(copied)
             else:
                 operator = instruction[1]
                 b = self.values.pop()

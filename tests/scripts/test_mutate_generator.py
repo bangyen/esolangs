@@ -536,9 +536,11 @@ def test_interpreter_mutation_discovery_includes_nested_packages(
             "brainfuck",
             [
                 "tests/interpreters/test_brainfuck_semantics.py",
+            ],
+            [
+                "tests/interpreters/test_rotfuck_semantics.py",
                 "tests/interpreters/test_semantic_oracles.py",
             ],
-            ["tests/interpreters/test_rotfuck_semantics.py"],
         ),
         (
             "helpers",

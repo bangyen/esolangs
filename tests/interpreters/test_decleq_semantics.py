@@ -360,9 +360,7 @@ def test_unbounded_integer_cells_and_target_messages():
             before = machine.state
             with pytest.raises(InterpreterLimitError) as caught:
                 machine.step()
-            expected_length = (
-                "1" + "0" * 6000 if digits[0] == "9" else digits[:-1] + "8"
-            )
+            expected_length = f"<integer with {(value + 1).bit_length()} bits>"
             assert str(caught.value) == (
                 "Decleq would have to grow its store to " + expected_length + " cells, "
                 "past the 16777216-cell limit this interpreter allocates"

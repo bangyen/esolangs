@@ -434,7 +434,7 @@ def _truth(value: _Value) -> bool:
         return True
     if value == "right":
         return False
-    raise Hint.BOOLEAN_GUARD.halt(f"guard is not a boolean: {value!r}")
+    raise Hint.BOOLEAN_GUARD.halt("guard is not a boolean")
 
 
 def _boolean(flag: bool) -> _Special:  # noqa: FBT001 - a conversion, not a mode
@@ -1006,11 +1006,8 @@ def _builtin(name: str, args: list[_Value]) -> _Value:
         )
     slot = _index(args[1])
     if slot >= len(seq):
-        raise Hint.INDEXED_WRITE.halt(
-            f"at index {args[1]!r} past the end of a {len(seq)}-list"
-        )
-    if seq and isinstance(seq[0], list) != isinstance(args[2], list):
-        raise Hint.ELEMENT_TYPE.halt("at would put the wrong type of value in a list")
+        raise Hint.INDEXED_WRITE.halt(f"at index past the end of a {len(seq)}-list")
+    _list_value([*seq, args[2]])
     result = seq.copy()
     result[slot] = args[2]
     return result

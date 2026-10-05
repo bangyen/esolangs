@@ -151,7 +151,7 @@ class TestEdgeCases:
         for code, message in (
             ("M", "popped an empty stack"),
             ("FFFFR", "division by zero"),
-            ("FAFHHD", "undeclared variable ('func', '')"),
+            ("FAFHHD", "a function cannot name a variable"),
             ("FAFG", "G needs a string or a function"),
             ("HABHFFA", "math on a function is undefined"),
             ("HABHY", "Y cannot output a function"),

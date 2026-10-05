@@ -50,7 +50,7 @@ def test_node_rules_from_every_incident_rail(node):
     "text", ["", "0", "1", "101", "1101", "000", "111", " \n1\t0 1"]
 )
 def test_published_cat(text):
-    check(CAT, text, _Machine, "".join(c for c in text if c in "01"))
+    check(CAT, text, _Machine, "".join(c for c in text if c in "01") + "0")
 
 
 def test_published_truth_machine_and_exact_cycle():

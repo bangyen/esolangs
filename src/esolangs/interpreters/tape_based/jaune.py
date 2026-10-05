@@ -8,9 +8,9 @@ defines a subroutine, ``@`` calls it, ``;`` returns, ``.`` ends the main
 program. Repeated ``+``/``-`` combine into a count; ``v`` as an operand
 reads an integer as the count or the label/subroutine name.
 
-Gaps decided: ``v`` reads whitespace-delimited signed integer tokens and raises :class:`EOFError`
-at end of input; the tape is unbounded to the right and ``<`` at cell 0
-clamps (the wiki says only "previous cell"; see Streetcode's ``_``);
+Gaps decided: ``v`` reads whitespace-delimited signed integer tokens and raises
+:class:`EOFError` at end of input. The tape grows right; ``<`` at cell 0 clamps
+(the wiki says only "previous cell"; see Streetcode's ``_``).
 cells are plain integers, as JauneJS's ``+=`` is; a read operand is
 consumed whether or not the branch is taken and may name any integer;
 ``v:`` and ``v$`` define nothing and are dropped at parse, as the

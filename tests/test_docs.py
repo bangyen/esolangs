@@ -214,7 +214,8 @@ def test_every_test_a_docstring_names_still_exists() -> None:
         f"{name} (in {', '.join(where)})" for name, where in sorted(missing.items())
     )
     # A regex that stopped matching would make the check above vacuous.
-    assert len(cited) >= 10, f"only {len(cited)} citations found"
+    assert _CITATION.findall("``test_positive_control``") == ["test_positive_control"]
+    assert cited
 
 
 #: A fully-qualified reference into this package.
