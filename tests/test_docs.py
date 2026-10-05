@@ -1,16 +1,4 @@
-"""Every command shown in the docs is a claim; this runs them.
-
-Four documented claims have been falsified by execution over this
-package's QA history -- Fargo's input shape, a count of "four languages"
-that was seven, Grapheme's truthiness rule, and the exception ``run``
-promised for all sixty-five.  Each was fixed where it was found.  This is
-the same class caught at the source instead: a command that appears in the
-README, in ``docs/``, or in any ``--help`` output has to work.
-
-Only *concrete* commands run.  A line containing ``<`` or ``>`` in angle
-form is a template (``esolangs run <language> <file>``) and is skipped, as
-is anything that is not a command at all.
-"""
+"""Documented commands, links and the README example execute as written."""
 
 from __future__ import annotations
 
@@ -21,9 +9,11 @@ import shutil
 import subprocess
 import sys
 from functools import cache
+from urllib.parse import unquote
 
 import pytest
 
+from esolangs import generate, run
 from esolangs.cli import HELP, USAGE
 from esolangs.registry import LANGUAGES
 
@@ -274,3 +264,59 @@ def test_every_qualified_reference_resolves() -> None:
     )
     # A regex that stopped matching would make the check above vacuous.
     assert len(targets) >= 30, f"only {len(targets)} qualified references found"
+
+
+_LINK = re.compile(r"(?<!!)\[[^]]*\]\(([^ )]+)(?:\s+[^)]*)?\)")
+_DOCUMENTS = (
+    ROOT / "README.md",
+    *sorted((ROOT / "docs").rglob("*.md")),
+    *sorted((ROOT / "src" / "esolangs" / "examples").glob("*.md")),
+)
+
+
+def test_every_local_markdown_link_resolves() -> None:
+    """Check shipped documentation, including package example guides."""
+    missing: list[str] = []
+    for document in _DOCUMENTS:
+        for target in _LINK.findall(document.read_text(encoding="utf-8")):
+            path, _, _fragment = unquote(target).partition("#")
+            if not path or "://" in path or path.startswith("mailto:"):
+                continue
+            if not (document.parent / path).exists():
+                missing.append(f"{document.relative_to(ROOT)} -> {target}")
+    assert not missing, "broken local Markdown links:\n" + "\n".join(missing)
+
+
+_README = pathlib.Path(__file__).resolve().parents[1] / "README.md"
+
+_LANGUAGE = "Sophie"
+_TABLE = "0110"  # XOR
+
+
+def _readme_program() -> str:
+    """Return the first fenced block under the Examples heading."""
+    text = _README.read_text(encoding="utf-8")
+    body = text[text.index("## Examples") :]
+    match = re.search(r"```\n(.*?)\n```", body, re.DOTALL)
+    assert match is not None, "no fenced program under ## Examples"
+    return match.group(1)
+
+
+def test_readme_program_is_what_the_generator_emits() -> None:
+    assert _readme_program() == generate(_LANGUAGE, _TABLE)
+
+
+def test_readme_program_computes_xor_on_every_row() -> None:
+    """All four rows, not just one: a program that printed a constant
+    would pass a single-row check."""
+    program = _readme_program()
+    for row, expected in enumerate(_TABLE):
+        stdin = "".join(f"{bit}" for bit in format(row, "02b"))
+        assert run(_LANGUAGE, program, stdin) == expected
+
+
+def test_readme_states_the_real_length() -> None:
+    """The prose says 51 characters; the program has to be that long."""
+    program = _readme_program()
+    body = _README.read_text(encoding="utf-8")
+    assert f"emits {len(program)} characters" in body

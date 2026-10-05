@@ -8,7 +8,7 @@ import esolangs
 from esolangs import DialectSettings, Raster
 from esolangs._evaluate import _evaluate
 from esolangs.tagged import _Tagged, _Template
-from tests.test_public_dialects import CASES
+from tests.test_dialects import CASES
 
 
 @pytest.mark.medium

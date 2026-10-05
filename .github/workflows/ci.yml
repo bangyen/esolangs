@@ -351,7 +351,7 @@ jobs:
     - name: Exercise paths, deadlines, output limits and worker cleanup
       run: >
         uv run pytest -q -o addopts=""
-        tests/test_execution_portable.py tests/test_memory_budget.py
+        tests/test_run_bounded.py tests/test_memory_budget.py
         tests/test_run_isolated.py::test_output_limit_stops_an_infinite_writer_and_reaps
         tests/test_run_isolated.py::test_capped_timeout_retains_output_and_reaps
         tests/test_run_isolated.py::test_input_error_retains_counts_and_output

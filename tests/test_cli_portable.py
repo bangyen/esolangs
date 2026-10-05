@@ -14,7 +14,7 @@ from esolangs.tagged import _Tagged
 from esolangs.tui import History, replay
 from tests.cli_support import call_both
 from tests.test_cli import _FakeStdin
-from tests.test_public_dialects import CASES
+from tests.test_dialects import CASES
 
 
 def save_generated(tmp_path, capsys, language, settings, *options, table="0110"):
