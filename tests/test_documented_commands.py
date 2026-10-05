@@ -48,6 +48,22 @@ def _documents() -> dict[str, str]:
     return found
 
 
+def _logical_lines(text: str) -> list[str]:
+    """Join backslash-continued lines, as the shell would."""
+    lines: list[str] = []
+    pending = ""
+    for raw in text.splitlines():
+        line = raw.rstrip()
+        if line.endswith("\\"):
+            pending += line[:-1].rstrip() + " "
+            continue
+        lines.append(pending + line)
+        pending = ""
+    if pending:
+        lines.append(pending)
+    return lines
+
+
 def _commands(text: str) -> list[tuple[str, str | None]]:
     """Return the concrete commands in ``text``, with any stated output.
 
@@ -57,7 +73,7 @@ def _commands(text: str) -> list[tuple[str, str | None]]:
     the most falsifiable kind there is.
     """
     out: list[tuple[str, str | None]] = []
-    for line in text.splitlines():
+    for line in _logical_lines(text):
         command = line.strip().removeprefix("$ ").strip()
         expected: str | None = None
         if "->" in command:
