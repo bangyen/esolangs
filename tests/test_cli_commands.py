@@ -148,7 +148,7 @@ class TestASeedMakesARunRepeat:
         with pytest.raises(esolangs.ArgumentError):
             esolangs.run("LaserFuck", self.PROGRAM, "", 5, seed="\ud800")
 
-    def test_the_seven_that_draw_are_the_seven_named(self) -> None:
+    def test_the_languages_that_draw_are_the_ones_named(self) -> None:
         """The message lists them, so the list has to be right."""
         drawing = [
             name
@@ -164,6 +164,7 @@ class TestASeedMakesARunRepeat:
         ]
         assert drawing == [
             "Befunge",
+            "Befunge-98",
             "Fish",
             "LaserFuck",
             "Modulous",

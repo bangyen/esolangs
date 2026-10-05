@@ -168,7 +168,7 @@ Each route is total on its own domain and the lookup
 carries the universal claim, so the tree below the crossover is a size
 optimization rather than part of the proof.  A width-constrained build may take
 the tree at any arity.  A Painter Ant, Alight, BIO, B-tapemark,
-bit~, Bitwise Cyclic Tag, Circlefuck, Clockwise, Collatz Multiverse,
+Befunge-98, bit~, Bitwise Cyclic Tag, Circlefuck, Clockwise, Collatz Multiverse,
 Cyclic tag, ///, Subleq, Dimensional, EGL, Eval, Fish,
 Forbin, Minsky Swap, Modulous, NoComment, Packlang, Qoibl, SLOW ACV MAMMALIAN,
 Suffolk, Thue and Unsquare keep no tree route at all: A Painter
@@ -177,7 +177,7 @@ answer strip is smaller than a tree at every arity, Alight indexes a string
 literal, bit~ lands the pointer on one tape cell an entry and walks the
 bit it finds home, Bitwise Cyclic Tag has no branch to fold a tree into --
 the commands it runs are a fixed cyclic sequence, so every table of a given
-arity emits the same length, Befunge and Fish read one grid cell per table
+arity emits the same length, Befunge, Befunge-98 and Fish read one grid cell per table
 entry with `g`, BIO's
 telescope is one nested level per row whatever the table says (a degenerate
 table only spares it the flat edges' adjustments, under the fold threshold
@@ -244,6 +244,7 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | B-tapemark | finite lookup | the blank grid is the table, one mark per row copied by `*`; a stage per input walks the mark pointer by that input's weight and `+` prints the mark it lands on | linear: 3T copy cells, T pointer steps, one stage per input |
 | Back | parameterized tree | — | linear: leaf moves sum geometrically, sparse row render |
 | Befunge | exception | six-bit ASCII lookup ships through thirteen inputs; finite source space excludes some sixteen-input tables | linear: T table cells, one g at the index |
+| Befunge-98 | finite lookup | inputs folded into a row index by Horner's rule; `g` reads the answer from a table in unbounded Funge-space below the header, so the program has no branches and no arity cap | linear: T table cells, O(n) Horner reads |
 | Bitwise Cyclic Tag | parameterized lookup | the table is the program, one four-bit cell per row; each embedded bit appends two walk zeros per unit of its place value, and a cell consumes exactly two, so the zeros carry the program pointer to the indexed cell and the held-back sentinel arrives there to fire it; the cell's second `0` consumes the answer it just appended, without which a 1 would cascade into the rows below | linear: 4T table cells, 4T walk appends, 5T + n steps |
 | BF-PDA | parameterized tree | — | linear: span walk, leaf drains sum geometrically |
 | BFStack | minterms | — | linear: zero-row walk telescopes to T |
@@ -388,7 +389,7 @@ construction.  Parity at thirteen inputs is 966568 digits, built in
 three seconds with the prime powers multiplied as a balanced tree, and
 the interpreter decodes it to the tree the generator encoded.
 
-Accordingly, this ledger records 75 theoretical totality arguments and two
+Accordingly, this ledger records 76 theoretical totality arguments and two
 proved language exceptions under the source-embedded contract.
 Every other row is `Total` or theoretically total past a resource ceiling.
 

@@ -88,13 +88,6 @@ history; standing rules and proved limits are in [limitations](limitations.md).
 
 ## Engineering
 
-- **Befunge-98.** `Befunge` is Befunge-93: a fixed 80x25 torus whose finite
-  source space forces the totality exception above. Funge-98's unbounded
-  Funge-space has no such count, so a Befunge-98 generator could be total
-  and O(T). Next: implement the Funge-98 core (no fingerprints or
-  concurrency) as a separate registry entry. Then check admission and, if
-  it is admitted, give it an audit row.
-
 - **Malbolge Unshackled.** Unbounded memory lifts the fixed 59,049-cell
   store behind Malbolge's 16-input cap. It does not settle the 17-input
   question below, which concerns Malbolge itself. Next: implement it as a

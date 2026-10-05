@@ -97,6 +97,7 @@ UNWRAPPABLE = {
     "arrowqueue": "the queue and decision tree occupy fixed grid coordinates",
     "back": "the beam path and embedded input occupy fixed grid coordinates",
     "befunge": "a row is a grid row and the lookup table is indexed by column",
+    "befunge_98": "a row is a grid row and the lookup table is indexed by column",
     "fish": "a row is a codebox row and the lookup table is indexed by column",
     "underload": "a break inside a pushed element changes the string it contains",
     "brainif": "each line is one instruction and goto targets are line numbers",

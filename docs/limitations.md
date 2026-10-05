@@ -171,7 +171,7 @@ the 1792 level-0 rows.
 
 ## Curation
 
-The collection has 81 languages; its floor is 31. All ten classics have
+The collection has 82 languages; its floor is 31. All ten classics have
 generators. Removed: unused ordinary imperative entries with shared-shim
 generators; Nopstacle for incompatible embeds; ZTOALC L for a searched
 syntax-level lookup table. The 2D screen intersected
@@ -315,6 +315,14 @@ languages remain rejected from the same image-source screen.
 ## Specification decisions
 
 - 6-5 accepts operands beyond its specification; generators use `0..35`.
+- Befunge-98 implements the Funge-98 core without fingerprints, concurrency
+  or file I/O: `A`-`Z`, `t i o = h l m`, and `(` `)` after their operands act
+  like `r`.  `&` reads one whitespace-delimited integer token, the shared
+  numeric convention, rather than skipping non-digits.  `,` writes the low
+  byte.  `k` runs its target in place `n` times and the IP then meets it once
+  more, the wiki's "0 or n+1 times".  `y` reports a sandbox: unbounded cells
+  (0 bytes), no command line or environment, zero date and time.  The
+  bounding box only grows.
 - FALSE's `ø` pick counts from zero, so `0ø` is `$`; the description ("dup
   the nth stack item") does not say where the count starts.  Reading a
   variable before storing it raises rather than inventing a value, and a

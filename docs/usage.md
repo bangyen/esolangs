@@ -149,6 +149,7 @@ esolangs.encode_inputs("Taglate", [1, 0, 1])  # -> '0101'
 | 3x | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Algebraic Programming Language | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Befunge | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
+| Befunge-98 | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | CV(N)(C) | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Clockwise | `char_stream_cyclic` | `0`/`1` | `'101'` |
 | Collatz Multiverse | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
