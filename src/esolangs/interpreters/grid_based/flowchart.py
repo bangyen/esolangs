@@ -116,6 +116,7 @@ External bits are consecutive 0 or 1 characters, ignoring whitespace; the spec
 does not define stdin framing.
 """
 
+from bisect import bisect_left
 from dataclasses import dataclass, field, replace
 from typing import Literal, assert_never
 
@@ -223,12 +224,13 @@ class _Memory:
     that is cheap to keep and a value ought to be.
     """
 
-    __slots__ = ("_digest", "_exits")
+    __slots__ = ("_digest", "_exits", "_sorted")
 
     def __init__(self, exits: dict[tuple[int, int], tuple[int, int]]) -> None:
         """Take ownership of ``exits``; callers must not keep a reference."""
         self._exits = exits
         self._digest: int | None = None
+        self._sorted: tuple[tuple[object, ...], ...] | None = None
 
     def exit_from(self, cell: tuple[int, int]) -> tuple[int, int] | None:
         """Return the heading this pointer last left ``cell`` on."""
@@ -236,13 +238,22 @@ class _Memory:
 
     def leaving(self, cell: tuple[int, int], d: tuple[int, int]) -> "_Memory":
         """Return this memory with ``cell``'s exit heading recorded."""
+        if self._exits.get(cell) == d:
+            return self
         exits = dict(self._exits)
         exits[cell] = d
-        return _Memory(exits)
+        memory = _Memory(exits)
+        items = self.sorted_items()
+        index = bisect_left(items, (cell,))
+        stop = index + int(index < len(items) and items[index][0] == cell)
+        memory._sorted = (*items[:index], (cell, d), *items[stop:])
+        return memory
 
     def sorted_items(self) -> tuple[tuple[object, ...], ...]:
         """Return the exits in a fixed order, for the snapshot."""
-        return tuple(sorted(self._exits.items()))
+        if self._sorted is None:
+            self._sorted = tuple(sorted(self._exits.items()))
+        return self._sorted
 
     def __eq__(self, other: object) -> bool:
         """Memories are equal when they record the same exits."""
@@ -353,6 +364,7 @@ class _Machine:
     def __init__(self, code: list[str], io: IO) -> None:
         """Parse ``code``'s nodes and start on the first ``( )``."""
         self.io = io
+        self._input_reads = 0
         rows = [line.rstrip("\n") for line in code]
         self.width = max((len(r) for r in rows), default=0)
         self.grid = tuple(r.ljust(self.width) for r in rows)
@@ -588,6 +600,7 @@ class _Machine:
             tuple(p.state() for p in self.pointers),
             tuple(sorted((k, tuple(v)) for k, v in self.deques.items() if v)),
             self.io.position(),
+            self._input_reads,
         )
 
     def step(self) -> None:
@@ -826,6 +839,7 @@ class _Machine:
             value = self.io.input_bit()
         except (EOFError, IndexError):
             return None
+        self._input_reads += 1
         return value
 
 
