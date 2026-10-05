@@ -6,8 +6,8 @@ import pytest
 
 import esolangs
 from esolangs import _check_program
-from esolangs._answers import _check_stdin
 from esolangs._evaluate import _evaluate
+from tests.stdin_check import _check_stdin
 
 
 def test_bound_language_runs_a_boolean_workflow():
