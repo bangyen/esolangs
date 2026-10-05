@@ -170,6 +170,18 @@ def test_the_documents_really_do_contain_commands() -> None:
     assert [c for c in parsed if c[1] is not None]
 
 
+def test_the_usage_guide_names_every_command() -> None:
+    """A command reachable only from ``--help`` is one a reader does not find.
+
+    ``encode`` and ``suggest`` shipped with no mention in ``docs/``.  The
+    table in ``docs/usage.md`` names each command, and this keeps a new one
+    from arriving documented only in the usage block.
+    """
+    text = (ROOT / "docs" / "usage.md").read_text()
+    missing = [command for command in HELP if f"`{command}`" not in text]
+    assert not missing, f"docs/usage.md never names: {', '.join(sorted(missing))}"
+
+
 #: A ``\`\`test_name\`\`\`` citation in the source.
 _CITATION = re.compile(r"``(test_[a-z_0-9]+)``")
 

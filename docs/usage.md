@@ -2,6 +2,30 @@
 
 The API handles language I/O conventions using [`describe`](#describe) metadata.
 
+## Command line
+
+`esolangs --help` lists every command; `esolangs <command> --help` describes one:
+
+| Command | Does |
+| --- | --- |
+| `generate` | print a program computing a truth table |
+| `run` | run a program through its interpreter |
+| `debug` | run under the breakpoint/watch VM, or `--tui` to step interactively |
+| `suggest` | preview unambiguous command-spelling fixes; runs and edits nothing |
+| `encode` | print the stdin that feeds a bit string |
+| `read-answer` | print the answer bit a program's output carries |
+| `list` | list the languages; `--details` adds the generator, template and example markers |
+| `describe` | how one language reads input and where its answer lands |
+
+`encode` and `read-answer` wrap `run` for one input row:
+
+```bash
+esolangs generate LaserFuck 0110 > prog.txt
+esolangs encode LaserFuck 10 | esolangs run LaserFuck prog.txt | esolangs read-answer LaserFuck -> 1
+esolangs generate Modulous 0110 > modulous.txt
+esolangs suggest Modulous modulous.txt
+```
+
 ## Run a program
 
 Generate a program, feed one row, and read its answer bit:
