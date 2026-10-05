@@ -40,9 +40,8 @@ documentation tools.
 `Language.contract` owns typed Boolean input encodings and answer conventions.
 Examples derive those fields from the registry; execution does not need docstrings.
 `read_answer` uses the contract for printed and state-dump answers.
-`evaluate` also handles termination answers, applying instantiation, input
-encoding, execution and extraction to every row.
-The private evaluation harness compares a supplied program's observed table with the expected one.
+Termination answers (halt or diverge) are read by the private evaluation
+harness, which runs every row and compares the observed table with the expected one.
 
 To add a language, implement its interpreter and generator, register its
 `Language` and example metadata, and execute every generated input row. Follow

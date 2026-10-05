@@ -60,10 +60,8 @@ jobs:
     #
     # Bare `pytest` is also what makes this the *only* runner that sees the
     # `weekly` marker.  `scripts/verify.py` appends `-m "not weekly"` on a
-    # --full run and `-m "not slow"` otherwise, so the two high-arity probes
-    # -- the twelve-input escape contract and `%^2^-1`'s thirteen-input fold,
-    # 142.6s between them -- reach a machine here and nowhere else.  Deleting
-    # this step's plainness silently retires both.
+    # --full run and `-m "not slow"` otherwise, so the `weekly` probes run
+    # here and nowhere else.
     #
     # No coverage gate here.  `check_diff_coverage.py` is diff-scoped -- it
     # judges the files a *branch* touches -- and a scheduled run on `main`

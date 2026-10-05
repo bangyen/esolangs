@@ -26,22 +26,6 @@ esolangs generate Modulous 0110 > modulous.txt
 esolangs suggest Modulous modulous.txt
 ```
 
-## Run a program
-
-Generate a program, feed one row, and read its answer bit:
-
-```python
-import esolangs
-
-program = esolangs.generate("A Painter Ant", "0110")
-stdin = esolangs.encode_inputs("A Painter Ant", [0, 1])
-output = esolangs.run("A Painter Ant", program, stdin)
-assert esolangs.read_answer("A Painter Ant", output) == "1"
-```
-
-Boolean evaluation over every row is private certification machinery, not
-public API.
-
 ## Work with one language
 
 `Language(name)` binds the same functions to one canonical language name:
@@ -69,7 +53,8 @@ comparable in area to native Line (680×800).
 
 ## Run XOR
 
-XOR's table is `0110`, ordered by rows `00`, `01`, `10`, `11`.
+Truth tables are binary strings of length `2**n`, most-significant input
+first. XOR's table is `0110`, ordered by rows `00`, `01`, `10`, `11`.
 Run one stdin-driven row:
 
 ```python
@@ -149,9 +134,6 @@ measured row to answer correctly.
 
 <!-- PUBLIC-API:END -->
 
-Truth tables are binary strings of length `2**n`, most-significant input first;
-their length determines `n`.
-
 ## Feeding a program
 
 Build language-specific stdin with `encode_inputs`:
@@ -209,8 +191,8 @@ refused. `esolangs list --details` marks them `tmpl`.
 
 Most languages print the answer; six dump their final state, and four answer
 by termination: halt for 0, loop forever for 1. `read_answer` handles printed
-and state-dump answers. Use `evaluate` for termination answers;
-they require a proved halt or cycle. A timeout remains undecided.
+and state-dump answers and refuses termination answers: run those with
+`max_steps` and treat a halt as 0. A timeout remains undecided.
 
 Their `answer_encoding` is `("halts", "diverges")`; its index gives the bit.
 
