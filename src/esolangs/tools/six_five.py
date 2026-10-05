@@ -639,7 +639,7 @@ def _six_five_stream_ordered(truth_table: str, *, share: bool = False) -> str:
 
     Reads with ``B`` at the node and normalizes in place, so no pointer moves
     (competitive on shallow tables).  Splits in stream order: one candidate.
-    A constant subtree folds (17 chars vs 226 at n == 3, 19 vs 946 at n == 5)
+    A constant subtree folds (14 chars at n == 3, 16 at n == 5 for a constant table)
     but still spends its reads, so a folded leaf reads them two cells on and
     steps back to its tested cell.  Raises :class:`ValueError` past 35 labels.
 
