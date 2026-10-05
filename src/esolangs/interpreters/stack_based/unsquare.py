@@ -106,7 +106,9 @@ def _advance(
         else:
             jumps = (*jumps, ind - 1)
     elif char == "<":
-        ind, jumps = jumps[-1], jumps[:-1]
+        opening, jumps = jumps[-1], jumps[:-1]
+        if acc not in (0, 1):
+            ind = opening
     return (ind + 1, acc, stack, jumps)
 
 
@@ -121,6 +123,7 @@ class _Machine:
         # once by ``step``'s guard -- so the length is taken once here.
         self.size = len(code)
         self.state: _State = (0, 0, (), ())
+        self._input_reads = 0
 
     # The language's own names.  They are views on the current state rather
     # than fields of their own, so there is one place a step can change.
@@ -173,7 +176,15 @@ class _Machine:
         # Both stacks are already tuples, so they go in as they stand, in
         # the order this returned before the fields moved into a state.
         ind, acc, stack, jumps = self.state
-        return (ind, acc, stack, jumps, self.io.position())
+        return (
+            ind,
+            acc,
+            stack,
+            jumps,
+            self.io.position(),
+            self.code,
+            self._input_reads,
+        )
 
     def step(self) -> None:
         """Execute one command, advancing the cursor.
@@ -197,7 +208,7 @@ class _Machine:
             )
         target = None
         byte = None
-        if char == ">" and acc in (0, 1):
+        if char == ">":
             target = _forward(self.code, ind)
             if target is None:
                 self.state = (self.size, acc, stack, jumps)
@@ -214,6 +225,7 @@ class _Machine:
                 self.io.print_num(value)
         elif char == "i":
             byte = self.io.input_char()
+            self._input_reads += 1
         self.state = _advance(self.state, self.code, byte, target)
 
 
