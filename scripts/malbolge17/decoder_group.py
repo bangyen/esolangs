@@ -708,11 +708,12 @@ def _build(
         d=planner.d,
         accumulator=planner.accumulator,
     )
-    cleared = {
-        a
-        for a in range(_ENTRY)
-        if planner.mem.get(a) is None or (compact and planner.mem.get(a) != _g(a))
-    }
+    # Branch blocks run after the setup, so a walked cell may only be
+    # trusted at its startup value _g(a): every cell the setup wrote, or
+    # whose value is unknown, is re-marked unknown. The value-tracking
+    # research planner records concrete writes, so "differs from _g(a)"
+    # subsumes the forgetful planner's "is None" and covers both modes.
+    cleared = {a for a in range(_ENTRY) if planner.mem.get(a) != _g(a)}
     fresh: dict[int, int | None] = {a: _g(a) for a in range(_ENTRY)}
     planner.mem = fresh
     for address in cleared:

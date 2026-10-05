@@ -1295,12 +1295,21 @@ its table collisions from 5,151 to 4,837. All 16,384 address paths and
 three-cell group read. Reserving cell 142 in the decoder moves one label seed
 and leaves that cell untouched after startup. The decoder's external-pointer
 mode uses it for every group read and omits the separate `z` value chain.
-All 2,744 decoder cases pass with the pointer injected after startup. The
-raw address/decoder union is now 13,014 instruction addresses, leaving a
-3,117-address placement and sharing deficit. The decoder still constructs its
+All 2,744 decoder cases pass with the pointer injected after startup. With
+`decoder_group.py`'s branch-block memory reset repaired and the budget
+measured against the table cells the fold actually reads, the raw
+address/decoder union is now 10,263 instruction addresses. Of those, 4,049
+land on table cells and 902 cells carry conflicting opcodes between the
+two emitters, so the separate emitters still cannot co-locate even though
+their 6,214 off-table cells would fit the 9,897-cell complement by count;
+the deficit is one of placement and sharing, not of raw size. (The
+13,014-address union and 3,117-address deficit quoted in this sequence
+came from the broken budget harness: a table convention 640 cells off the
+fold's real read addresses and a decoder build the value-tracking planner
+change had silently invalidated.) The decoder still constructs its
 own parity words and reducer. The
-`join_budget.py --live` trace visits all 9,280 address instructions; a
-one-path positive control leaves 4,185 unvisited.
+`join_budget.py --live` trace visits all but 28 of the fold's 8,377
+occupied cells; a one-path positive control leaves 2,857 unvisited.
 The existing decoder cannot retain the address fold's low parity outputs at
 cells `51,46,56`: even after replacing their label duties, row 0 on meaning
 triple `(1,0,1)` routes through cell 51 via the neighbouring group character.
