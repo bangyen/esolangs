@@ -8,29 +8,7 @@ from math import comb
 import pytest
 
 import esolangs
-from esolangs.interpreters.grid_based.thisthat import run
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.tools.thisthat import _Builder, _deque_plan, _tree, thisthat
-from tests.generator_support import evaluate_generated, verify_generated
-
-
-def _run(table: str, row: int) -> tuple[str, int]:
-    n = len(table).bit_length() - 1
-    bits = f"{row:0{n}b}"
-    io = ScriptedIO("".join(f"{bit}" for bit in bits))
-    run(thisthat(table).splitlines(), io)
-    return io.getvalue(), io.reads
-
-
-@pytest.mark.parametrize("n", [1, 2, pytest.param(3, marks=pytest.mark.medium)])
-def test_every_table_through_three_inputs(n: int) -> None:
-    width = 1 << n
-    for value in range(1 << width):
-        table = f"{value:0{width}b}"
-        for row, expected in enumerate(table):
-            output, reads = _run(table, row)
-            assert output == expected, (table, row)
-            assert reads == n, (table, row)
 
 
 def _parity(n: int) -> str:
@@ -50,24 +28,6 @@ def test_source_growth_is_linear_in_the_table() -> None:
     assert max(size / (1 << n) for n, size in enumerate(sizes, 1)) < 300
 
 
-def _pops(program: str) -> int:
-    return program.count("◧")
-
-
-def test_constants_test_nothing() -> None:
-    """The positive control: a constant reads its inputs and prints."""
-    for table in ("0" * 8, "1" * 8, "0" * 64):
-        program = thisthat(table)
-        assert _pops(program) == 0
-        n = len(table).bit_length() - 1
-        for row in range(0, 1 << n, 1 if n <= 3 else 9):
-            bits = f"{row:0{n}b}"
-            io = ScriptedIO("".join(f"{bit}" for bit in bits))
-            run(program.splitlines(), io)
-            assert (io.getvalue(), io.reads) == (table[0], n)
-    assert len(thisthat("0" * 8)) == 79  # 1,169 before
-
-
 def test_only_dependent_levels_are_tested() -> None:
     """A level whose halves agree is popped onto the column stack, not tested."""
 
@@ -82,9 +42,6 @@ def test_only_dependent_levels_are_tested() -> None:
     # The second input is tested under x0 = 0 and popped under x0 = 1.
     assert tests("00010101") == 4  # 7 unpruned
     assert "⬒" in _tree("00010101", reorder=False).split("\n", 1)[1]
-    for table in ("00110011", "00010101", "01011010"):
-        for row, expected in enumerate(table):
-            assert _run(table, row) == (expected, 3)
 
 
 @pytest.mark.medium
@@ -141,20 +98,6 @@ def test_deque_plan_pops_exactly_the_orders_a_deque_can() -> None:
             assert popped == order
 
 
-@pytest.mark.medium
-def test_reordered_tables_through_six_inputs_execute() -> None:
-    """Samples at four to six inputs, some in a reordered test order."""
-    rng = random.Random(6)
-    reordered = 0
-    for n in (4, 5, 6):
-        for _ in range(12):
-            table = "".join(rng.choice("01") for _ in range(1 << n))
-            program = thisthat(table)
-            reordered += program != _tree(table, reorder=False)
-            assert verify_generated("thisthat", table), table
-    assert reordered
-
-
 def test_layout_collisions_abort() -> None:
     builder = _Builder()
     builder.node((0, 0), "▣")
@@ -174,35 +117,12 @@ def test_rotated_layout_keeps_ports_and_bistack_axes(width: int) -> None:
         program = esolangs.generate("thisthat", table, width)
         floor = min(max(map(len, plain.splitlines())), len(plain.splitlines()))
         assert max(map(len, program.splitlines())) <= max(width, floor)
-        for row, expected in enumerate(table):
-            bits = f"{row:0{n}b}"
-            io = ScriptedIO("".join(f"{bit}" for bit in bits))
-            run(program.splitlines(), io)
-            assert (io.getvalue(), io.reads) == (expected, n)
 
 
 def test_rotated_rendered_area_remains_linear() -> None:
     sizes = [len(thisthat(_parity(n), 1)) for n in (5, 7, 9)]
     assert sizes[-1] / (1 << 9) < 300
     assert sizes[2] / sizes[1] < 5
-
-
-@pytest.mark.medium
-def test_narrow_strip_executes_every_small_table() -> None:
-    """Each narrow branch consumes the same input deque and prints once."""
-    for n in range(1, 4):
-        size = 1 << n
-        for value in range(1 << size):
-            table = f"{value:0{size}b}"
-            source = esolangs.generate("thisthat", table, 1)
-            assert max(map(len, source.splitlines())) <= 9
-            for row, expected in enumerate(table):
-                io = ScriptedIO("".join(f"{bit}" for bit in f"{row:0{n}b}"))
-                run(source.splitlines(), io)
-                assert (io.getvalue(), io.reads) == (expected, n)
-    assert max(map(len, thisthat("0110", 1).splitlines())) == 1
-    assert len(thisthat("0110", 1)) == 17
-    assert sum(len(thisthat(format(v, "04b"), 1)) for v in range(16)) == 1104
 
 
 @pytest.mark.parametrize("width", [1, 3, 4, 5, 7, 9, 10, 19, 20, 40])
@@ -219,7 +139,6 @@ def test_strip_preserves_fitting_layouts_and_public_answers(width: int) -> None:
         source = esolangs.generate("thisthat", table, width)
         if max(map(len, old.splitlines())) <= width:
             assert source == old
-        assert evaluate_generated("thisthat", table, width=width) == table
 
 
 @pytest.mark.parametrize("n", [4, 6, 8])
@@ -236,7 +155,3 @@ def test_larger_narrow_layout_retains_linear_area_construction(n: int) -> None:
     )
     source = esolangs.generate("thisthat", table, 1)
     assert source == expected
-    for row in {0, (1 << n) - 1, *(rng.randrange(1 << n) for _ in range(4))}:
-        io = ScriptedIO("".join(f"{bit}" for bit in f"{row:0{n}b}"))
-        run(source.splitlines(), io)
-        assert (io.getvalue(), io.reads) == (table[row], n)

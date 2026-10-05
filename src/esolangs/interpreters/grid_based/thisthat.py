@@ -82,7 +82,13 @@ class _Pointer:
 
 
 type _State = tuple[
-    tuple[_Pointer, ...], tuple[tuple[_Point, int], ...], _Point, bool, int
+    tuple[_Pointer, ...],
+    tuple[tuple[_Point, int], ...],
+    _Point,
+    bool,
+    int,
+    int,
+    tuple[str, ...],
 ]
 
 
@@ -135,6 +141,7 @@ class _Machine:
         self.cells: dict[_Point, int] = {}
         self.cursor: _Point = (0, 0)
         self._halted = False
+        self._input_reads = 0
 
     def _char(self, point: _Point) -> str:
         x, y = point
@@ -197,8 +204,11 @@ class _Machine:
         vertical = axis == "column"
         points = self._stack_axis(axis)
         if value is None:
-            result = self.cells.pop(points[0], None) if points else None
-            for point in points[1:]:
+            head = (x, y + 1) if vertical else (x - 1, y)
+            result = self.cells.pop(head, None)
+            for point in points:
+                if point == head:
+                    continue
                 bit = self.cells.pop(point)
                 shifted = (
                     (point[0], point[1] - 1) if vertical else (point[0] + 1, point[1])
@@ -252,6 +262,8 @@ class _Machine:
             self.cursor,
             self._halted,
             self.io.position(),
+            self._input_reads,
+            self.grid,
         )
 
     def branching_snapshot(self) -> _State:
@@ -262,25 +274,30 @@ class _Machine:
             self.cursor,
             self._halted,
             self.io.position(),
+            self._input_reads,
+            self.grid,
         )
 
     def branching_halted(self, state: object) -> bool:
         """Report whether a branch halted or lost every pointer."""
-        if not isinstance(state, tuple) or len(state) != 5:
+        if not isinstance(state, tuple) or len(state) != 7:
             return False
         return bool(state[3]) or not state[0]
 
     def _restore(self, state: _State) -> None:
+        if state[6] != self.grid:
+            raise ValueError("branch belongs to another thisthat program")
         self.pointers = state[0]
         self.cells = dict(state[1])
         self.cursor = state[2]
         self._halted = state[3]
+        self._input_reads = state[5]
 
     def branching_successors(
         self, state: object, limit: int
     ) -> tuple[_State, ...] | None:
         """Return every random-merge successor, or ``None`` before input."""
-        if not isinstance(state, tuple) or len(state) != 5:
+        if not isinstance(state, tuple) or len(state) != 7:
             raise TypeError("invalid thisthat branch state")
         current: _State = state
         if self.branching_halted(current):
@@ -295,7 +312,14 @@ class _Machine:
         for pointer in pointers:
             groups[pointer.position].append(pointer)
         radices: list[int] = []
-        for position, arrived in groups.items():
+        for position, arrived in sorted(
+            groups.items(),
+            key=lambda item: (
+                _PRIORITY.get(self._char(item[0]), 1),
+                item[0][1],
+                item[0][0],
+            ),
+        ):
             if self._char(position) != "◘":
                 continue
             for channel in ("execution", "data"):
@@ -468,6 +492,7 @@ class _Machine:
                     ) from None
                 else:
                     value = bit
+                    self._input_reads += 1
                 self._emit(
                     following, pointer, self._exits(pointer, "data"), "data", value
                 )
