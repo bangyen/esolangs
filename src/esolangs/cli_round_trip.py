@@ -6,14 +6,8 @@ import signal
 from time import monotonic
 
 from esolangs import (
-    Raster,
     describe,
-    encode_inputs,
     evaluate,
-    generate,
-    instantiate,
-    read_answer,
-    run,
 )
 from esolangs._answers import _validate_shape_for_evaluate
 from esolangs._evaluate import (
@@ -22,7 +16,6 @@ from esolangs._evaluate import (
     _prepare,
     _remaining,
 )
-from esolangs._program import Program
 from esolangs._validate import check_whole
 from esolangs.cli_args import (
     _check_count,
@@ -37,57 +30,10 @@ from esolangs.cli_args import (
     _table_of,
     _timeout_of,
 )
-from esolangs.cli_hints import _diverging_answer, _exit_code
+from esolangs.cli_hints import _exit_code
 from esolangs.cli_io import _portable_language, _read_program
 from esolangs.exceptions import EsolangError
 from esolangs.settings import dialect_options
-
-
-def _answer(rest: list[str]) -> None:
-    """Generate, feed one row's bits, run, and print the answer bit."""
-    rest, set_pairs = _pop_set_pairs(rest)
-    rest, options = _pop_options(rest, {"--timeout", "--settings"})
-    timeout = _timeout_of(options)
-    rest = _split_positional(rest, set(), {"--timeout", "--settings", "--set"})
-    _check_count("answer", rest, 3)
-    language, table, bits = rest
-    settings = _settings_of(options, set_pairs, language=language)
-    if set(bits) - {"0", "1"} or not bits:
-        _fail(f"bits must be a string of 0s and 1s, got {bits!r}")
-    try:
-        facts = describe(language)
-        name = str(facts["name"])
-        row = [int(bit) for bit in bits]
-        program = generate(name, table, settings=settings)
-        source: Program
-        if facts["parameterized"]:
-            if isinstance(program, Raster):  # pragma: no cover - inconsistent metadata
-                raise TypeError("a raster generator cannot be parameterized")
-            source, stdin = (
-                instantiate(name, program, row, truth_table=table, settings=settings),
-                "",
-            )
-        else:
-            source, stdin = program, encode_inputs(name, row, table)
-        if facts["answer_mode"] == "termination":
-            if not isinstance(source, str):  # pragma: no cover - inconsistent metadata
-                raise TypeError("a raster language cannot answer by termination")
-            # A bound is the answer here rather than a safeguard, so one is
-            # supplied: this command exists to be a one-liner, and making a
-            # reader discover that the termination-answer languages need a
-            # flag would defeat that.
-            print(
-                _diverging_answer(
-                    name, source, stdin, timeout or 5.0, facts, settings=settings
-                )
-            )
-            return
-        print(read_answer(name, run(name, source, stdin, timeout, settings=settings)))
-    except EsolangError as exc:
-        # No ``TemplateError`` clause: this command generates the template
-        # and fills it in the same breath, so it never hands an unfilled one
-        # on.
-        _fail(exc, _exit_code(exc))
 
 
 def _evaluate(rest: list[str]) -> None:

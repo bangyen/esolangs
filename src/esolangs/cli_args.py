@@ -40,7 +40,6 @@ _ARGUMENTS = {
     "describe": ("<language>",),
     "read-answer": ("<language>",),
     "check-stdin": ("<language>",),
-    "answer": ("<language>", "<truth-table>", "<bits>"),
     "evaluate": ("<language>", "<program-file>"),
 }
 

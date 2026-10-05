@@ -97,6 +97,13 @@ def test_verify_is_removed(capsys: pytest.CaptureFixture[str]) -> None:
     assert "unknown command" in capsys.readouterr().err
 
 
+def test_answer_is_removed(capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(SystemExit) as exc:
+        call_main(["answer", "brainfuck", "0110", "10"], capsys)
+    assert exc.value.code == 2
+    assert "unknown command" in capsys.readouterr().err
+
+
 @pytest.mark.parametrize("inputs", [True, 0, -1, 65, 2.5, "2"])
 def test_api_refuses_bad_inputs(inputs: object) -> None:
     with pytest.raises(esolangs.ArgumentError, match="inputs must"):

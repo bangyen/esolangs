@@ -187,8 +187,9 @@ def _run(rest: list[str]) -> None:
         )
         _fail(
             f"{name} reads {reads}, so the bit count cannot be checked from "
-            f"stdin alone -- pass --table <truth-table> with --judge, or use: "
-            f"esolangs answer {_as_argument(name)} <truth-table> <bits>"
+            f"stdin alone -- pass --table <truth-table> with --judge, or "
+            f"check a saved program with: esolangs evaluate --table "
+            f"<truth-table> {_as_argument(name)} <program-file>"
         )
     try:
         with (

@@ -85,7 +85,7 @@ from esolangs.cli_hints import (
 from esolangs.cli_io import (
     _read_stdin,
 )
-from esolangs.cli_round_trip import _answer, _evaluate
+from esolangs.cli_round_trip import _evaluate
 from esolangs.cli_run import _run
 from esolangs.cli_suggest import _suggest
 from esolangs.exceptions import (
@@ -504,7 +504,6 @@ def _dispatch() -> None:
         "suggest": _suggest,
         "read-answer": _read_answer,
         "check-stdin": _check_stdin,
-        "answer": _answer,
         "evaluate": _evaluate,
         "debug": _debug,
     }[cmd](rest)
