@@ -403,8 +403,5 @@ def _polynomial_drained_dag_cost(truth_table: str) -> int | None:
 
 
 def _polynomial_hybrid_cost(truth_table: str, k: int) -> int:
-    """Return :func:`_polynomial_hybrid`'s instruction count.
-
-    Counted by building; ``test_polynomial_hybrid_cost_mirrors_build``.
-    """
+    """Return the emitted hybrid instruction count."""
     return len(_polynomial_hybrid(truth_table, k))

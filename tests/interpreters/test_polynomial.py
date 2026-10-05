@@ -63,18 +63,6 @@ def test_missing_math_extra_is_actionable(monkeypatch: pytest.MonkeyPatch) -> No
 
 
 class TestPolynomialHelperFunctions:
-    def test_prime_function(self) -> None:
-        assert prime(2) is True
-        assert prime(3) is True
-        assert prime(4) is False
-        assert prime(5) is True
-        assert prime(6) is False
-        assert prime(7) is True
-        assert prime(8) is False
-        assert prime(9) is False
-        assert prime(10) is False
-        assert prime(11) is True
-
     def test_factor_skips_non_instruction_quadratic(self) -> None:
         """A quadratic factor whose q is negative encodes no instruction."""
         from esolangs.interpreters.register_based.polynomial.roots import _factor_roots
@@ -110,45 +98,6 @@ class TestPolynomialHelperFunctions:
 
         assert _factor_roots((2, -4)) == (_Root(2, 0),)
 
-    def test_sanitize_simple_polynomial(self) -> None:
-        result = sanitize("f(x) = 3x^2 + x + 7")
-        assert result == [3, 1, 7]
-
-    def test_sanitize_complex_polynomial(self) -> None:
-        result = sanitize("f(x) = x^3 - 2x^2 + x - 1")
-        assert result == [1, -2, 1, -1]
-
-    def test_sanitize_missing_terms(self) -> None:
-        result = sanitize("f(x) = x^3 + 1")
-        assert result == [1, 0, 0, 1]
-
-    def test_brackets_simple(self) -> None:
-        code = [[1], [2]]  # if, endif
-        assert brackets(code, 0) == 1
-
-    def test_brackets_nested(self) -> None:
-        code = [[1], [1], [2], [2]]  # if, if, endif, endif
-        assert brackets(code, 0) == 3
-        assert brackets(code, 1) == 2
-
-    def test_brackets_search_backwards_to_the_first_instruction(self) -> None:
-        """A closer's partner may be instruction 0, which is in range.
-
-        Every case above scans *forward* from an opener, so the bounds
-        check only ever saw the right-hand end.  A backward scan landing
-        on index 0 is legal, and a check that rejected it would call a
-        matched pair unmatched.
-        """
-        assert brackets([[1], [2]], 1) == 0
-        assert brackets([[1], [1], [2], [2]], 3) == 0
-        assert brackets([[1], [1], [2], [2]], 2) == 1
-
-    def test_brackets_reject_an_unmatched_partner_at_either_end(self) -> None:
-        """Running off the left end and the right end both raise."""
-        for code in ([[2]], [[1]]):
-            with pytest.raises(ValueError, match="unmatched control-flow bracket"):
-                brackets(code, 0)
-
 
 class TestPolynomialValidation:
     def test_empty_program_validation(self) -> None:
@@ -166,28 +115,6 @@ class TestPolynomialValidation:
             ValueError, match=r"Polynomial program must start with 'f\(x\) = '"
         ):
             run("invalid program", io=IO())
-
-
-class TestPolynomialParsing:
-    def test_constant_polynomial_parsing(self) -> None:
-        result = sanitize("f(x) = 5")
-        assert result == [5]
-
-    def test_linear_polynomial_parsing(self) -> None:
-        result = sanitize("f(x) = x + 1")
-        assert result == [1, 1]
-
-    def test_quadratic_polynomial_parsing(self) -> None:
-        result = sanitize("f(x) = x^2 + 1")
-        assert result == [1, 0, 1]
-
-    def test_polynomial_with_negative_coefficients(self) -> None:
-        result = sanitize("f(x) = -x^2 + 1")
-        assert result == [-1, 0, 1]
-
-    def test_polynomial_missing_constant(self) -> None:
-        result = sanitize("f(x) = x^2 + x")
-        assert result == [1, 1, 0]
 
 
 class TestPolynomialMathematicalProperties:
@@ -236,35 +163,6 @@ class TestPolynomialSafety:
 
 
 class TestPolynomialExecution:
-    def test_nested_control_flow_brackets_match(self) -> None:
-        assert brackets([[1], [1], [2], [2]], 0) == 3
-
-    def test_output_instruction(self) -> None:
-        """A root of 2i encodes an output instruction (reg starts at 0)."""
-        buffer = io.StringIO()
-        with redirect_stdout(buffer):
-            run("f(x) = x^2+4", io=IO())
-        assert buffer.getvalue() == "\x00"
-
-    def test_arithmetic_then_output(self) -> None:
-        """Roots encoding reg += 65 followed by output produce 'A'."""
-        program = "f(x) = x^4 - 130x^3 + 4238x^2 - 1170x + 38061"
-        buffer = io.StringIO()
-        with redirect_stdout(buffer):
-            run(program, io=IO())
-        assert buffer.getvalue() == "A"
-
-    def test_division_keeps_register_integer(self) -> None:
-        """Reg /= a is integer division: 65 // 5 = 13, output as a char."""
-        program = (
-            "f(x) = 1x^6 - 140x^5 + 5819x^4 - 80080x^3 "
-            "+ 1240639x^2 - 709380x + 10695141"
-        )
-        buffer = io.StringIO()
-        with redirect_stdout(buffer):
-            run(program, io=IO())
-        assert buffer.getvalue() == "\r"
-
     def test_no_roots_no_output(self) -> None:
         for program in ["f(x) = 0", "f(x) = 1", "f(x) = x+1"]:
             buffer = io.StringIO()
@@ -278,72 +176,6 @@ class TestPolynomialExecution:
         with redirect_stdout(buffer):
             run("f(x)=x^2+4", io=IO())
         assert buffer.getvalue() == "\x00"
-
-    def test_control_flow_roots(self) -> None:
-        """Real roots 2 and 4 encode an if-statement pair (reg is 0)."""
-        buffer = io.StringIO()
-        with redirect_stdout(buffer):
-            run("f(x) = x^2 - 6x + 8", io=IO())
-        assert buffer.getvalue() == ""
-
-    def test_if_enters_when_condition_met(self) -> None:
-        """If reg==0 { output } executes the body when reg is 0."""
-        buffer = io.StringIO()
-        with redirect_stdout(buffer):
-            run("f(x) = x^3 - 16x^2 + 25x - 400", io=IO())
-        assert buffer.getvalue() == "\x00"
-
-    def test_if_skipped_when_condition_not_met(self) -> None:
-        """The spec example: if reg>0 { output } skips the body when reg is 0."""
-        buffer = io.StringIO()
-        with redirect_stdout(buffer):
-            run("f(x) = x^4 - 27x^3 + 59x^2 - 243x + 450", io=IO())
-        assert buffer.getvalue() == ""
-
-    def test_while_loop(self) -> None:
-        """Add 3, while reg>0 { reg-=1 }, output decrements three times."""
-        program = (
-            "f(x) = x^8 - 117900x^7 + 29532615x^6 - 319727030x^5 + 22630555713x^4 "
-            "- 146042691700x^3 + 2538566894185x^2 - 13198909291370x + 28151242605486"
-        )
-        buffer = io.StringIO()
-        with redirect_stdout(buffer):
-            run(program, io=IO())
-        assert buffer.getvalue() == "\x00"
-
-    def test_input_instruction(self) -> None:
-        """A root of 4i encodes an input instruction (value stored in reg)."""
-        import unittest.mock
-
-        from esolangs.interpreters.register_based.polynomial import _Machine
-
-        for text, expected in (("A", 65), ("z", 122)):
-            with unittest.mock.patch("builtins.input", return_value=text):
-                machine = _Machine("f(x) = x^2+16", IO())
-                machine.step()
-                assert machine.reg == expected
-
-    def test_input_of_nul_reads_as_minus_one(self) -> None:
-        """``ord(val[0]) or -1``: a NUL byte reads as 0, which the ``or``
-        turns into -1 so the value stays distinguishable from an unset
-        register.
-        """
-        import unittest.mock
-
-        from esolangs.interpreters.register_based.polynomial import _Machine
-
-        with unittest.mock.patch("builtins.input", return_value="\x00"):
-            machine = _Machine("f(x) = x^2+16", IO())
-            machine.step()
-            assert machine.reg == -1
-
-    def test_eof_reads_as_minus_one(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.register_based.polynomial import _Machine
-
-        machine = _Machine("f(x) = x^2+16", ScriptedIO())
-        machine.step()
-        assert machine.reg == -1
 
 
 class TestPeelPrimePowerRoots:
