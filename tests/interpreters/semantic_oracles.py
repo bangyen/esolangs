@@ -98,3 +98,40 @@ def subleq(code: str, stdin: str, cap: int) -> Observation:
     return Observation(
         "".join(output), tuple(cells), pc, consumed, pc < 0 or pc >= len(cells)
     )
+
+
+def smallfuck(code: str, _stdin: str, cap: int) -> Observation:
+    """Model source-sized tape, boundary halts and the repo's final-cell answer."""
+    depth = 0
+    for command in code:
+        depth += (command == "[") - (command == "]")
+        if depth < 0:
+            raise ValueError("unmatched close")
+    if depth:
+        raise ValueError("unmatched open")
+    tape = [0] * len(code)
+    pc = pointer = 0
+    for _ in range(cap):
+        if pc >= len(code):
+            break
+        command = code[pc]
+        if command == "*":
+            tape[pointer] ^= 1
+        elif command in "<>":
+            pointer += 1 if command == ">" else -1
+            if not 0 <= pointer < len(tape):
+                pc = len(code)
+                break
+        elif command in "[]" and tape[pointer] == (command == "]"):
+            direction = 1 if command == "[" else -1
+            nesting = 1
+            while nesting:
+                pc += direction
+                if code[pc] == command:
+                    nesting += 1
+                elif code[pc] == ("]" if command == "[" else "["):
+                    nesting -= 1
+        pc += 1
+    halted = pc >= len(code)
+    output = str(tape[2] if len(tape) > 2 else 0) if halted else ""
+    return Observation(output, tuple(tape), pc, 0, halted)

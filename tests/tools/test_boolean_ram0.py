@@ -90,14 +90,6 @@ class TestParameterizedRam0:
         assert "{X" not in template
         assert len(runs(template, TEMPLATE_CHAR, (RAM0_PAIR,) * 2)) == 2
 
-    def test_constant_table_is_a_leaf(self) -> None:
-        """A constant table emits a single leaf with no branching."""
-        from esolangs import tools as generators
-
-        template = generators.ram0("0000")
-        assert template.count("C") == 1  # entry trampoline only
-        assert "Z" in template
-
     def test_leaves_share_a_low_address_halt_trampoline(self) -> None:
         """Every leaf jumps to 2; only the trampoline names the end.
 

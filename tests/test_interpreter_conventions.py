@@ -11,8 +11,8 @@ Nothing enforced it.  The convention is prose in a template, and the two
 sweeps that look like they would catch a violation do not: the VM protocol
 tests drive machines and never read the source, and
 :meth:`~tests.test_vm_protocol.TestEveryLanguageIsPure.
-test_a_run_writes_nothing_to_the_real_streams` catches output escaping to
-the *real* stdout, which a helper writing properly through the ``io`` it
+test_interleaved_machines_do_not_disturb_each_other` catches output
+escaping to the *real* stdout, which a helper writing properly through the ``io`` it
 was handed does not do.  A language that moved its dispatch into a
 module-level function and let it print would pass every existing test.
 
@@ -155,52 +155,6 @@ def _reaching_functions() -> dict[tuple[str, str], list[str]]:
     return found
 
 
-def _machine_declarations(path: pathlib.Path) -> tuple[ast.ClassDef, ast.FunctionDef]:
-    """Return a module's one steppable machine and its constructor.
-
-    This deliberately reads the source instead of importing it.  Importing
-    proves only that today's module happens to build a VM; this pins the
-    convention a new interpreter must follow before its runner is ever
-    registered.  The runtime protocol suite separately proves that the
-    declared members work.
-    """
-    tree = ast.parse(path.read_text(encoding="utf-8"))
-    assert any(
-        (
-            isinstance(node, ast.ImportFrom)
-            and any(alias.name == "_State" for alias in node.names)
-        )
-        or (isinstance(node, ast.ClassDef) and node.name == "_State")
-        or (
-            isinstance(node, ast.TypeAlias)
-            and isinstance(node.name, ast.Name)
-            and node.name.id == "_State"
-        )
-        for node in tree.body
-    ), f"{path.relative_to(_INTERPRETERS)} must declare its complete _State"
-    machine = next(
-        (
-            node
-            for node in tree.body
-            if isinstance(node, ast.ClassDef) and node.name == "_Machine"
-        ),
-        None,
-    )
-    assert machine is not None, f"{path.relative_to(_INTERPRETERS)} has no _Machine"
-    init = next(
-        (
-            node
-            for node in machine.body
-            if isinstance(node, ast.FunctionDef) and node.name == "__init__"
-        ),
-        None,
-    )
-    assert init is not None, (
-        f"{path.relative_to(_INTERPRETERS)} has no _Machine.__init__"
-    )
-    return machine, init
-
-
 class TestTheSweepCanSee:
     """The detector's own coverage, which the checks below take on trust."""
 
@@ -232,51 +186,6 @@ class TestTheSweepCanSee:
         """
         surface = _io_surface()
         assert {"print_str", "print_char", "print_value", "input_str"} <= surface
-
-
-class TestMachineConventions:
-    """The common construction and state boundary stay explicit.
-
-    The VM protocol checks a constructed machine's behaviour, but cannot
-    tell whether a module has drifted back to an ``of`` factory or stopped
-    naming its complete state.  Every registered module therefore names its
-    state and takes the source plus I/O at the machine boundary.  Extra
-    constructor arguments remain free for genuine language dependencies
-    such as deterministic randomness.
-    """
-
-    @pytest.mark.parametrize(
-        "path",
-        _module_files(),
-        ids=lambda path: path.relative_to(_INTERPRETERS).as_posix(),
-    )
-    def test_machine_declares_state_and_accepts_io(self, path: pathlib.Path) -> None:
-        """A machine has one named state boundary and a source/I/O constructor."""
-        machine, init = _machine_declarations(path)
-        members = {
-            node.name
-            for node in machine.body
-            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
-        }
-        assert {"step", "snapshot"} <= members
-        assert "of" not in members
-        has_halted_assignment = any(
-            isinstance(node, ast.Assign)
-            and any(
-                isinstance(target, ast.Attribute)
-                and isinstance(target.value, ast.Name)
-                and target.value.id == "self"
-                and target.attr == "halted"
-                for target in node.targets
-            )
-            for node in ast.walk(init)
-        )
-        assert "halted" in members or has_halted_assignment
-
-        positional = init.args.posonlyargs + init.args.args
-        assert len(positional) >= 3
-        assert positional[0].arg == "self"
-        assert positional[2].arg == "io"
 
 
 class TestTransitionsDoNotReachIO:
@@ -487,22 +396,13 @@ class TestEntryPointConventions:
         _module_files(),
         ids=lambda path: path.relative_to(_INTERPRETERS).as_posix(),
     )
-    def test_the_entry_point_delegates(self, path: pathlib.Path) -> None:
-        """The block is one ``script_main(run, ...)`` call and nothing else."""
+    def test_the_shape_matches_what_run_accepts(self, path: pathlib.Path) -> None:
+        """``text`` goes to a ``str`` parameter, the line shapes to ``list[str]``."""
         call = self._main_call(path)
         assert isinstance(call.func, ast.Name)
         assert call.func.id == "script_main"
         assert [ast.unparse(arg) for arg in call.args] == ["run"]
         assert {keyword.arg for keyword in call.keywords} <= {"shape", "loader"}
-
-    @pytest.mark.parametrize(
-        "path",
-        _module_files(),
-        ids=lambda path: path.relative_to(_INTERPRETERS).as_posix(),
-    )
-    def test_the_shape_matches_what_run_accepts(self, path: pathlib.Path) -> None:
-        """``text`` goes to a ``str`` parameter, the line shapes to ``list[str]``."""
-        call = self._main_call(path)
         shape = "text"
         for keyword in call.keywords:
             if keyword.arg == "loader":

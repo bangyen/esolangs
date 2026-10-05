@@ -33,6 +33,17 @@ def _routing_seeds(head: int, step: int, want: int, modulus: int) -> int:
     raise AssertionError("no routing head")  # pragma: no cover - coprime steps
 
 
+def _read_seeds(head: int, total: int, modulus: int) -> int:
+    """Reach the earliest nonwrapping head whose two DIGEST sums XOR to 48."""
+    offset = (total + head - 16) % 64
+    count = offset % 2 if offset <= 14 else 64 - offset
+    if head + count > modulus - 17:
+        offset = (total - 16) % 64
+        first = offset % 2 if offset <= 14 else 64 - offset
+        count = modulus - head + first
+    return count
+
+
 class _Chain:
     def __init__(self, modulus: int, *, io_modulus: int | None = None) -> None:
         moduli = MammalianModuli(modulus, modulus if io_modulus is None else io_modulus)
@@ -126,6 +137,13 @@ class _Chain:
                 remaining -= added
         while remaining:
             chunk = min(remaining, maximum)
+            # A non-final 254 write avoids synthesizing unreachable head 255.
+            if (
+                remaining > maximum
+                and self.modulus < self.io_modulus
+                and (chunk - state.rest[state.ptr]) % self.io_modulus >= self.modulus
+            ):
+                chunk -= 1
             tokens += self.append(state, chunk)
             remaining -= chunk
         return tokens
@@ -200,12 +218,15 @@ class _Chain:
         cont = landing + arm_size
         tokens = self.clear(state)
         tokens += self.raise_to(state, landing + 15)
-        tokens += self.seed(state, (-state.head) % self.modulus)
         start = state.rest[0]
-        offset = (start - 16) % 64
-        seeds = start % 2 if offset <= 14 else 64 - offset
-        first = start + seeds
+        if self.modulus == 255:
+            seeds = _read_seeds(state.head, start, self.modulus)
+        else:
+            tokens += self.seed(state, (-state.head) % self.modulus)
+            offset = (start - 16) % 64
+            seeds = start % 2 if offset <= 14 else 64 - offset
         tokens += self.seed(state, seeds)
+        first = start + state.head
         tokens += ["DIGEST"]
         tokens += self.seed(state, 16)
         tokens += ["DIGEST", "ACCEPT", "DIGEST", "LEAPFROG"]
@@ -264,7 +285,7 @@ class _Chain:
     def plant_pool(
         self, state: _State, weight: int, pool: int, *, compact: bool = True
     ) -> list[str]:
-        tokens = self.route(state, pool)
+        tokens = self.route(state, pool, short=True)
         hop = (self.weight - pool) % 23
         if compact and self.modulus == self.io_modulus:
             inverse = pow(pool + 1, -1, self.modulus)
@@ -274,9 +295,10 @@ class _Chain:
                 a = (first - rest) % self.modulus
                 b = (second - rest - first) % self.modulus
                 end = (-pool) % 23
-                return sum(
-                    (delta * inverse) % self.modulus
-                    for delta in (a - head, b - a, end - b)
+                return (
+                    ((a - head) * inverse) % self.modulus
+                    + ((b - a) * inverse) % self.modulus
+                    + _routing_seeds(b, pool + 1, end, self.modulus)
                 )
 
             # Reversing the writes can add a whole seed cycle; avoid paying
@@ -293,25 +315,25 @@ class _Chain:
                 tokens += self.append(state, hop)
             else:
                 tokens += self.clear(state)
-        return tokens + self.route(state, 0)
+        return tokens + self.route(state, 0, short=True)
 
     def emit(self, plan: list[tuple[int, int | None]], base: int) -> list[str]:
         state = _State()
         tokens = []
         for digit, array in enumerate(self.prints):
-            tokens += self.route(state, array)
+            tokens += self.route(state, array, short=True)
             tokens += self.append(state, 48 + digit)
             tokens += self.clear(state)
-            tokens += self.route(state, 0)
+            tokens += self.route(state, 0, short=True)
         for weight, pool in plan:
             if pool is not None:
                 # Shorter pools shifted base calibration at n=3: 255/255
                 # grew 1900 characters, 256/256 grew 690. Preserve those.
                 compact = self.modulus != self.io_modulus or len(plan) != 3
                 tokens += self.plant_pool(state, weight, pool, compact=compact)
-        tokens += self.route(state, self.weight)
+        tokens += self.route(state, self.weight, short=True)
         tokens += self.raise_to(state, base)
-        tokens += self.route(state, 0)
+        tokens += self.route(state, 0, short=True)
         for weight, pool in plan:
             level, state = self.level(state, weight, len(tokens), pool)
             tokens += level

@@ -116,7 +116,18 @@ def main(argv: list[str] | None = None) -> int:
     """Collect the band, run this shard's slice, return pytest's exit code."""
     args, rest = _parse_args(argv)
     durations = load_durations(args.durations) if args.durations else None
-    ids = shard_ids(collect_ids(args.marker), args.shard, args.shards, durations)
+    collected = collect_ids(args.marker)
+    ids = shard_ids(collected, args.shard, args.shards, durations)
+    if durations:
+        known = [durations[node] for node in collected if node in durations]
+        fallback = statistics.median(known) if known else 1.0
+        estimate = sum(durations.get(node, fallback) for node in ids)
+        missing = sum(node not in durations for node in ids)
+        print(
+            f"estimated serial duration: {estimate:.1f}s "
+            f"({missing} tests use median fallback {fallback:.3f}s)",
+            flush=True,
+        )
     if not ids:
         print(f"shard {args.shard}/{args.shards} of -m {args.marker}: no tests")
         return 0

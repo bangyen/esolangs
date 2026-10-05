@@ -150,3 +150,19 @@ def test_boundary_rows_are_pinned_and_corpus_drift_fails():
     }
     stale = {**measured, "boundaries": {}}
     assert differences(stale, measured) == ["baseline boundary corpus changed"]
+
+
+def test_sweep_checks_and_pins_every_small_table_row(monkeypatch):
+    from scripts import check_generator_sizes as sizes
+
+    monkeypatch.setattr(sizes.esolangs, "list_languages", lambda: ["brainfuck"])
+    monkeypatch.setattr(sizes, "BOUNDARIES", {})
+    records = sizes.sweep()
+    pinned = sizes.baseline(records)["records"]["brainfuck"]
+    assert len(records) == 8
+    for record in records:
+        table = record["truth_table"]
+        executions = record["executions"]
+        assert [row["row"] for row in executions] == list(range(len(table)))
+        assert all(row["matches"] is True for row in executions)
+        assert len(pinned[table]["commands_by_row"]) == len(table)

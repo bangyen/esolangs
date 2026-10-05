@@ -60,8 +60,8 @@ Start from `src/esolangs/interpreters/_template.py`. Every interpreter:
   Most grids receive lines via registry `split=True`; A Painter Ant,
   B-tapemark and EGL receive whole source.
 - Raises `ValueError` for a malformed program and `HaltError` for an
-  invalid runtime operation, and terminates by construction: the fuzz
-  suites feed random and empty programs.
+  invalid runtime operation. Divergence is legal; fuzz tests bound execution
+  of random and empty programs rather than requiring termination.
 - Guards an input line before indexing it (`if val:`); an empty line is
   legal, and running out raises `EOFError` either way.
 - Exposes `_Machine.step()`, `halted` and a complete `snapshot()`, including

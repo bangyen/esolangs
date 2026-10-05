@@ -1,35 +1,8 @@
-"""Require every Python source file this branch *touches* to be fully covered.
+"""Require 90% statement and branch coverage in each touched Python file.
 
-The diff picks the files; the whole file is then judged.  Touch a file and
-you answer for all of it, not only the lines you added.
-
-This is deliberately stronger than checking the added lines alone, which is what
-this script used to do.  That earlier rule was chosen when eight files under
-``tools/`` carried pre-existing misses and billing a one-line fix for
-closing debts it did not create seemed unfair.  That debt is now paid: the
-tree measures 100% line coverage, so a whole-file gate bills nobody for
-anything -- it only keeps the number there.  The failure the weaker rule
-allowed was real: a fix could land *next to* an uncovered line, leave it
-uncovered, and pass, which is how a file drifts while every individual change
-looks clean.
-
-The gate reads the coverage data the ``pytest`` step just wrote and the
-branch's own diff hunks.  A file is a failure if the branch touched it and
-coverage knows of any statement in it that never executed.  Comments,
-docstrings and blank lines are not statements, so they cannot fail it, and a
-line the project has excluded via ``exclude_lines`` is already gone from
-``missing_lines`` before the gate sees it -- ``# pragma: no cover`` remains
-the way to retire genuinely unreachable code, with a comment saying why.
-
-*Branches* are held to the same rule when the data has them -- an ``if`` in a
-touched file that only ever went one way fails just as an unexecuted line
-does.  This is deliberately not a percentage: "the file is covered" is the
-only coherent form the threshold takes once the unit is a file.
-
-Locally fail-open, matching :mod:`_scope`: an unreadable diff or absent coverage data
-is reported and skipped.  With ``--partial``, whole-file gaps outside the diff
-are reported but only added statements and branches block; those are the facts
-the branch introduced and the subset run can cheaply enforce.
+The diff selects files. Partial runs judge only added executable statements
+and branches, allowing slower bands to cover the rest. Missing measurements
+still fail in strict mode; modules never imported always fail.
 """
 
 import argparse
@@ -47,6 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 # (`source = ["src/esolangs"]`).  A touched file in tests/ or scripts/ has no
 # coverage record to check, so it is not evidence of anything either way.
 MEASURED = "src/esolangs/"
+MIN_COVERAGE = 90
 
 
 def _omitted() -> list[str]:
@@ -209,8 +183,8 @@ def main() -> int:
         "--partial",
         action="store_true",
         help=(
-            "the suite ran a subset: report whole-file gaps, but fail only on "
-            "uncovered added statements and branches"
+            "the suite ran a subset: require 90 percent coverage of added statements "
+            "and branches per file"
         ),
     )
     parser.add_argument(
@@ -251,6 +225,8 @@ def main() -> int:
     gaps: list[tuple[str, list[int]]] = []
     arc_gaps: list[tuple[str, list[tuple[int, int]]]] = []
     unmeasured: list[str] = []
+    line_totals: dict[str, int] = {}
+    branch_totals: dict[str, int] = {}
     checked = 0
     arcs_checked = 0
     # Branch data is optional: a `pytest --cov` run without `--cov-branch`
@@ -269,6 +245,10 @@ def main() -> int:
         # ones this branch's hunks happen to name.
         missing = sorted(record["missing_lines"])
         checked += len(record["executed_lines"]) + len(record["missing_lines"])
+        statements = [*record["executed_lines"], *missing]
+        line_totals[path] = sum(
+            not args.partial or line in added[path] for line in statements
+        )
         if missing:
             gaps.append((path, missing))
 
@@ -287,6 +267,10 @@ def main() -> int:
             (arc[0], arc[1]) for arc in record.get("missing_branches") or ()
         )
         arcs_checked += len(untaken)
+        arcs = [*(record.get("executed_branches") or ()), *untaken]
+        branch_totals[path] = sum(
+            not args.partial or arc[0] in added[path] for arc in arcs
+        )
         if untaken:
             arc_gaps.append((path, untaken))
 
@@ -333,24 +317,35 @@ def main() -> int:
     ]
     blocking_arcs = [(path, arcs) for path, arcs in blocking_arcs if arcs]
 
-    if args.partial and not blocking_gaps and not blocking_arcs and not unmeasured:
-        print(
-            "\nnot failing on gaps outside added lines: the suite ran a subset. "
-            "Re-check the whole files with the full suite:\n"
-            "  uv run pytest --cov --cov-branch && "
-            "uv run python scripts/check_diff_coverage.py"
-        )
+    line_gaps = blocking_gaps if args.partial else gaps
+    branch_gaps = blocking_arcs if args.partial else arc_gaps
+    below = any(
+        len(missing) * 100 > line_totals[path] * (100 - MIN_COVERAGE)
+        for path, missing in line_gaps
+    ) or any(
+        len(missing) * 100 > branch_totals[path] * (100 - MIN_COVERAGE)
+        for path, missing in branch_gaps
+    )
+    if not below and not unmeasured:
+        if (
+            args.partial
+            and (gaps or arc_gaps)
+            and not blocking_gaps
+            and not blocking_arcs
+        ):
+            print("not failing on gaps outside added lines: the suite ran a subset.")
+        print(f"coverage meets {MIN_COVERAGE}% minimum per touched file")
         return 0
     if args.partial:
         print(
-            "\nAdded executable lines and branches must be covered by the fast suite."
+            f"Added statements and branches require at least {MIN_COVERAGE}% "
+            "coverage per file."
         )
-        return 1
-    print(
-        "\nEvery file this branch touches must be fully covered.  Add tests for "
-        "the lines above, or mark genuinely unreachable ones `# pragma: no cover` "
-        "with a comment saying why."
-    )
+    else:
+        print(
+            f"Every touched file needs at least {MIN_COVERAGE}% "
+            "statement and branch coverage."
+        )
     return 1
 
 

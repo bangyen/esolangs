@@ -2,7 +2,8 @@
 
 One program per language whose generator can be verified end to end;
 :class:`BooleanExample` records generator, table, inputs and invocation,
-and ``scripts/generate.py examples`` and ``tests/scripts/test_examples.py``
+deriving Boolean I/O fields from the registry.
+``scripts/generate.py examples`` and ``tests/scripts/test_examples.py``
 both derive from :data:`BOOLEAN_EXAMPLES`.  Parameterized generators carry
 a ``fill``.  A language qualifies when its answer is recoverable from what
 it prints, including a fixed position in a state dump (Minsky Swap's
@@ -25,6 +26,7 @@ from typing import cast
 from esolangs._program import Program
 from esolangs.raster import Raster
 from esolangs.registry import LANGUAGES, SourceKind, canonical_id, resolve
+from esolangs.registry._contracts import AnswerMode, BooleanContract, InputShape
 from esolangs.tools.a_painter_ant import PAIR as APA_PAIR
 from esolangs.tools.arrowqueue import PAIR as ARROWQUEUE_PAIR
 from esolangs.tools.back import PAIR as BACK_PAIR
@@ -83,12 +85,12 @@ class BooleanExample:
     expected_compared: bool = True
     #: How the answer reaches the caller.  ``output`` is the usual: the
     #: program prints it.  ``termination`` means the program *halts* for a 0
-    #: and loops forever for a 1, so a timeout is the 1.  ``dump`` means the
+    #: and a proved cycle gives a 1; a timeout is undecided.  ``dump`` means the
     #: program prints its whole final state and the answer sits at a fixed
     #: place in it, which ``note`` names.  Carried as a field because the
     #: prose alone cannot be branched on: a sweep that hardcoded two of the
     #: dumps and forgot a third reported a passing language as broken.
-    answer_mode: str = "output"
+    answer_mode: AnswerMode = "output"
     #: Where the answer sits in the output, as a regex whose first group is
     #: it.  Empty means the last non-whitespace character, which is right
     #: for every language that prints its answer and for four of the six
@@ -125,7 +127,7 @@ class BooleanExample:
     alphabet: tuple[str, str] = ("0", "1")
     #: Boolean input encoding: adjacent characters, numeric/string lines,
     #: a row index, or the padded character stream Taglate requires.
-    input_shape: str = "line_per_bit"
+    input_shape: InputShape = "line_per_bit"
     #: Whether an odd input count is padded with a leading zero the program
     #: reads like any other digit.  Taglate's slot stride has to land on a
     #: separator, so its n=3 program reads four digits; feeding three is an
@@ -201,6 +203,13 @@ class BooleanExample:
         return "".join(f"{line}\n" for line in self.inputs)
 
 
+def _contract_for(interpreter: str) -> BooleanContract:
+    """Return the registered Boolean I/O contract for an interpreter."""
+    return next(
+        lang.contract for lang in LANGUAGES.values() if lang.interpreter == interpreter
+    )
+
+
 def _reader(
     generator: Callable[[str], Program],
     interpreter: str,
@@ -210,32 +219,26 @@ def _reader(
     expected: str = "0",
     split: bool = False,
     kwargs: tuple[tuple[str, int], ...] = (),
-    note: str = "",
-    alphabet: tuple[str, str] = ("0", "1"),
-    input_shape: str = "line_per_bit",
-    ghost_digit: bool = False,
-    answer_mode: str = "output",
-    answer_pattern: str = "",
-    answer_values: tuple[str, str] = ("0", "1"),
 ) -> BooleanExample:
     """Build an input-reading example, whose bits are read from stdin."""
-    if input_shape in {"char_stream", "char_stream_padded"}:
+    contract = _contract_for(interpreter)
+    if contract.input_shape in {"char_stream", "char_stream_padded"}:
         inputs = ("".join(inputs),)
     return BooleanExample(
-        answer_mode=answer_mode,
-        answer_pattern=answer_pattern,
-        answer_values=answer_values,
+        answer_mode=contract.answer_mode,
+        answer_pattern=contract.answer_pattern,
+        answer_values=contract.answer_values,
         generator=generator,
         table=table,
         interpreter=interpreter,
         expected=expected,
         inputs=inputs,
-        alphabet=alphabet,
-        input_shape=input_shape,
-        ghost_digit=ghost_digit,
+        alphabet=contract.alphabet,
+        input_shape=contract.input_shape,
+        ghost_digit=contract.ghost_digit,
         split=split,
         kwargs=kwargs,
-        note=note,
+        note=contract.note,
     )
 
 
@@ -253,10 +256,6 @@ def _embedded(
     expected_compared: bool = True,
     split: bool = False,
     kwargs: tuple[tuple[str, int], ...] = (),
-    note: str = "",
-    answer_mode: str = "output",
-    answer_pattern: str = "",
-    answer_values: tuple[str, str] = ("0", "1"),
 ) -> BooleanExample:
     """Build a parameterized example, whose bits are embedded in the text.
 
@@ -267,10 +266,14 @@ def _embedded(
         raise TypeError("exactly one of pair and setters")
     if setters is None:
         setters = uniform(pair)
+    contract = _contract_for(interpreter)
     return BooleanExample(
-        answer_mode=answer_mode,
-        answer_pattern=answer_pattern,
-        answer_values=answer_values,
+        answer_mode=contract.answer_mode,
+        answer_pattern=contract.answer_pattern,
+        answer_values=contract.answer_values,
+        alphabet=contract.alphabet,
+        input_shape=contract.input_shape,
+        ghost_digit=contract.ghost_digit,
         generator=generator,
         table=table,
         interpreter=interpreter,
@@ -284,7 +287,7 @@ def _embedded(
         body=body,
         split=split,
         kwargs=kwargs,
-        note=note,
+        note=contract.note,
     )
 
 
@@ -323,7 +326,8 @@ def _register() -> None:
 
     reading = {
         "addsubjump": _reader(
-            b.addsubjump, "register_based.addsubjump", input_shape="char_stream"
+            b.addsubjump,
+            "register_based.addsubjump",
         ),
         # An executed line prints its result and nothing else, so the
         # answer arrives with the newline that ends that line.
@@ -331,13 +335,15 @@ def _register() -> None:
             b.algebraic_programming_language,
             "other.algebraic_programming_language",
             expected="0\n",
-            note="an executed line prints its result, so the answer ends in a newline",
         ),
         "alight": _reader(
-            b.alight, "grid_based.alight", split=True, input_shape="char_stream"
+            b.alight,
+            "grid_based.alight",
+            split=True,
         ),
         "b-tapemark": _reader(
-            b.b_tapemark, "grid_based.b_tapemark", input_shape="char_stream"
+            b.b_tapemark,
+            "grid_based.b_tapemark",
         ),
         # ``.`` writes the digit and a trailing space, so the committed
         # answer carries it and the sweep strips it.
@@ -347,16 +353,26 @@ def _register() -> None:
             expected="0 ",
             split=True,
         ),
-        "bfstack": _reader(b.bfstack, "stack_based.bfstack", input_shape="char_stream"),
-        "bit~": _reader(b.bit_tilde, "tape_based.bit_tilde", input_shape="char_stream"),
+        "bfstack": _reader(
+            b.bfstack,
+            "stack_based.bfstack",
+        ),
+        "bit~": _reader(
+            b.bit_tilde,
+            "tape_based.bit_tilde",
+        ),
         "brainfuck": _reader(
-            b.brainfuck, "tape_based.brainfuck", input_shape="char_stream"
+            b.brainfuck,
+            "tape_based.brainfuck",
         ),
         "brainif": _reader(
-            b.brainif, "tape_based.brainif", split=True, input_shape="char_stream"
+            b.brainif,
+            "tape_based.brainif",
+            split=True,
         ),
         "circlefuck": _reader(
-            b.circlefuck, "tape_based.circlefuck", input_shape="char_stream"
+            b.circlefuck,
+            "tape_based.circlefuck",
         ),
         "collatz-multiverse": _reader(
             b.collatz_multiverse, "register_based.collatz_multiverse"
@@ -365,10 +381,6 @@ def _register() -> None:
             b.container,
             "other.container",
             split=True,
-            note="Container prints the answer like any other reader; it "
-            "also ends by calling sys.exit(0) rather than returning, which "
-            "matters to a harness driving it but not to reading the result",
-            input_shape="char_stream",
         ),
         # ``send`` terminates every line it writes, so the answer arrives
         # with a newline after it -- there is no other output command.
@@ -376,38 +388,46 @@ def _register() -> None:
             b.inject,
             "other.inject",
             expected="0\n",
-            note="send terminates each line, so the answer ends in a newline",
         ),
         "circuit_diagram": _reader(
             b.circuit_diagram,
             "grid_based.circuit_diagram",
-            input_shape="char_stream",
             split=True,
         ),
         "clockwise": _reader(
             b.clockwise,
             "grid_based.clockwise",
             inputs=("01",),
-            input_shape="char_stream_cyclic",
             split=True,
-            note="Clockwise reads all its input bits in one go, so they go "
-            "on one line -- one character per bit, not a line per bit, and "
-            "not seven bits packed into a character: that packing is real "
-            "but is on the output side. A line per bit, or a packed one, "
-            "is read as a different row and answered wrongly",
         ),
         "cvnc": _reader(b.cvnc, "other.cvnc"),
-        "decleq": _reader(b.decleq, "register_based.decleq", input_shape="char_stream"),
+        "decleq": _reader(
+            b.decleq,
+            "register_based.decleq",
+        ),
         "dig": _reader(b.dig, "grid_based.dig", split=True),
         "dimensional": _reader(b.dimensional, "tape_based.dimensional"),
-        "egl": _reader(b.egl, "grid_based.egl", input_shape="char_stream"),
-        "factor": _reader(b.factor, "tape_based.factor", input_shape="char_stream"),
-        "false": _reader(b.false, "stack_based.false", input_shape="char_stream"),
+        "egl": _reader(
+            b.egl,
+            "grid_based.egl",
+        ),
+        "factor": _reader(
+            b.factor,
+            "tape_based.factor",
+        ),
+        "false": _reader(
+            b.false,
+            "stack_based.false",
+        ),
         "fish": _reader(
-            b.fish, "grid_based.fish", split=True, input_shape="char_stream"
+            b.fish,
+            "grid_based.fish",
+            split=True,
         ),
         "thisthat": _reader(
-            b.thisthat, "grid_based.thisthat", split=True, input_shape="char_stream"
+            b.thisthat,
+            "grid_based.thisthat",
+            split=True,
         ),
         # Fargo reads one *number* before the program starts, not a bit per
         # line, and ``@ k`` indexes that number's bits.  The boolean
@@ -418,120 +438,118 @@ def _register() -> None:
             b.fargo,
             "other.fargo",
             inputs=("1",),
-            input_shape="row_index",
-            note="Fargo reads one number whose bits are the inputs, so the "
-            "committed input is the row index rather than a bit per line",
         ),
         "flowchart": _reader(
-            b.flowchart, "grid_based.flowchart", split=True, input_shape="char_stream"
+            b.flowchart,
+            "grid_based.flowchart",
+            split=True,
         ),
-        "forbin": _reader(b.forbin, "other.forbin", input_shape="char_stream"),
+        "forbin": _reader(
+            b.forbin,
+            "other.forbin",
+        ),
         "forþ": _reader(b.forth, "stack_based.forth"),
         "grapheme": _reader(
             b.grapheme,
             "stack_based.grapheme",
             inputs=("%", "A"),
-            alphabet=("%", "A"),
-            note=(
-                "Grapheme's generator normalizes each input line with "
-                "ord(line[0]) - 65 and then maps zero to 1, so its input "
-                "bits are spelled % and A: 'A' is a 1 and every other "
-                "first character is a 0, which means a 0/1 line reads as 0 "
-                "and the program answers the all-zeros row. The second "
-                "step is not optional prose -- ord('A') - 65 is 0, so the "
-                "subtraction alone says the opposite"
-            ),
         ),
         "jaune": _reader(b.jaune, "tape_based.jaune"),
         "laserfuck": _reader(
             b.laserfuck,
             "grid_based.laserfuck",
-            answer_mode="dump",
             split=True,
             expected="0",
             kwargs=(("seed", 0),),
-            note=(
-                "the initial heading is random by spec, so the example pins "
-                "the source it is drawn from: seed 0 draws heading 3"
-            ),
-            input_shape="char_stream",
         ),
         "malbolge": _reader(
             b.malbolge,
             "other.malbolge",
-            note="the answer is one character and is printed with no newline",
-            input_shape="char_stream",
         ),
         "modulous": _reader(b.modulous, "stack_based.modulous"),
-        "packlang": _reader(b.packlang, "other.packlang", input_shape="char_stream"),
+        "packlang": _reader(
+            b.packlang,
+            "other.packlang",
+        ),
         "painfuck": _reader(b.painfuck, "tape_based.painfuck"),
         "polynomial": _reader(
-            b.polynomial, "register_based.polynomial", input_shape="char_stream"
+            b.polynomial,
+            "register_based.polynomial",
         ),
         "qoibl": _reader(
-            b.qoibl, "register_based.qoibl", split=True, input_shape="char_stream"
+            b.qoibl,
+            "register_based.qoibl",
+            split=True,
         ),
-        "rotfuck": _reader(b.rotfuck, "tape_based.rotfuck", input_shape="char_stream"),
+        "rotfuck": _reader(
+            b.rotfuck,
+            "tape_based.rotfuck",
+        ),
         "boolfuck": _reader(
-            b.boolfuck, "tape_based.boolfuck", input_shape="char_stream"
+            b.boolfuck,
+            "tape_based.boolfuck",
         ),
-        "subleq": _reader(b.subleq, "tape_based.subleq", input_shape="char_stream"),
-        "sbleq": _reader(b.sbleq, "tape_based.sbleq", input_shape="char_stream"),
+        "subleq": _reader(
+            b.subleq,
+            "tape_based.subleq",
+        ),
+        "sbleq": _reader(
+            b.sbleq,
+            "tape_based.sbleq",
+        ),
         "slow-acv-mammalian": _reader(
             b.slow_acv_mammalian,
             "tape_based.slow_acv_mammalian",
-            input_shape="char_stream",
         ),
-        "sophie": _reader(b.sophie, "register_based.sophie", input_shape="char_stream"),
+        "sophie": _reader(
+            b.sophie,
+            "register_based.sophie",
+        ),
         "streetcode": _reader(
-            b.streetcode, "grid_based.streetcode", split=True, input_shape="char_stream"
+            b.streetcode,
+            "grid_based.streetcode",
+            split=True,
         ),
         "super-snusp": _reader(
             b.super_snusp,
             "grid_based.super_snusp",
             split=True,
-            input_shape="char_stream",
         ),
-        "suffolk": _reader(b.suffolk, "tape_based.suffolk", input_shape="char_stream"),
+        "suffolk": _reader(
+            b.suffolk,
+            "tape_based.suffolk",
+        ),
         "taglate": _reader(
             b.taglate,
             "queue_based.taglate",
             split=True,
-            input_shape="char_stream_padded",
-            ghost_digit=True,
-            note="Taglate reads adjacent characters, but an "
-            "odd input count above 1 is padded with a leading zero it reads "
-            "like any other digit: an n=3 program wants four characters. Feeding "
-            "three exhausts its input; padding at the end instead answers "
-            "every row whose top bit is set wrongly",
         ),
         "thue": _reader(
             b.thue,
             "other.thue",
-            note="Thue draws which rewrite to make, by spec, and the "
-            "interpreter draws too; this program's rules are written so that "
-            "every state it reaches has exactly one, leaving the draw nothing "
-            "to change",
         ),
-        "unlambda": _reader(b.unlambda, "other.unlambda", input_shape="char_stream"),
+        "unlambda": _reader(
+            b.unlambda,
+            "other.unlambda",
+        ),
         "unsquare": _reader(
-            b.unsquare, "stack_based.unsquare", input_shape="char_stream"
+            b.unsquare,
+            "stack_based.unsquare",
         ),
         "vandevelo": _reader(
             b.vandevelo,
             "other.vandevelo",
-            answer_mode="termination",
-            answer_values=("halts", "diverges"),
             expected="",
-            note="Vandevelo answers by terminating: nil halts and not nil loops",
         ),
         "3d-brainfuck": _reader(
             b.three_d_brainfuck,
             "tape_based.three_d_brainfuck",
-            input_shape="char_stream",
         ),
         "3x": _reader(b.three_x, "stack_based.three_x"),
-        "6-5": _reader(b.six_five, "tape_based.six_five", input_shape="char_stream"),
+        "6-5": _reader(
+            b.six_five,
+            "tape_based.six_five",
+        ),
     }
 
     embedded = {
@@ -539,27 +557,14 @@ def _register() -> None:
             b.a_painter_ant,
             "grid_based.a_painter_ant",
             pair=APA_PAIR,
-            answer_mode="dump",
-            answer_pattern=r"(?m)^[.#o@]*([o@])[.#o@]*$",
-            answer_values=("o", "@"),
             expected="....\n####\n.o.#",
-            note=(
-                "A Painter Ant has no output: it paints a grid and the answer "
-                "is the answer cell the ant rests on below its white corridor, "
-                "shown by 'o' (on black, a zero) or '@' (on white, a one)"
-            ),
         ),
         "back": _embedded(
             b.back,
             "tape_based.back",
             pair=BACK_PAIR,
-            answer_mode="dump",
             split=True,
             expected="0 1 0",
-            note=(
-                "Back has no output instruction and dumps its tape at halt; "
-                "the answer is cell n, past the n input cells"
-            ),
         ),
         "bf-pda": _embedded(b.bfpda, "stack_based.bf_pda", pair=BFPDA_PAIR),
         "bio": _embedded(b.bio, "register_based.bio", pair=BIO_PAIR),
@@ -567,49 +572,28 @@ def _register() -> None:
             b.bitdeque,
             "queue_based.bitdeque",
             setters=bitdeque_setters,
-            answer_mode="dump",
-            note=(
-                "Bitdeque has no output instruction and dumps its deque at "
-                "halt; the generator leaves exactly one bit on it, so the "
-                "whole dump is the answer and there is no position to name"
-            ),
         ),
         "slashes": _embedded(
             b.slashes,
             "other.slashes",
             pair=("a", "b"),
-            note="Inputs fill the binary row index before unary table selection.",
         ),
         "cyclic-tag": _embedded(
             b.cyclic_tag,
             "queue_based.cyclic_tag",
             pair=BCT_PAIR,
-            note="Inputs fill the initial queue; the final deleted bit is the answer.",
         ),
         "bitwise-cyclic-tag": _embedded(
             b.bitwise_cyclic_tag,
             "queue_based.bitwise_cyclic_tag",
             pair=BCT_PAIR,
-            note=(
-                "Bitwise Cyclic Tag has no I/O vocabulary at all: the inputs "
-                "are bits of the initial data-string, and the answer is the "
-                "bit the last 0 deletes, which the interpreter prints alone -- "
-                "so the output is the answer and there is no position to name"
-            ),
         ),
         "eval": _embedded(b.eval, "stack_based.eval", pair=EVAL_PAIR),
         "fractran": _embedded(
             b.fractran,
             "other.fractran",
             setters=fractran_setters,
-            answer_mode="dump",
-            answer_values=("1", "2"),
             expected="1",
-            note=(
-                "FRACTRAN has neither input nor output: the inputs are the "
-                "exponents of n primes in the starting value, and the answer "
-                "is the value the run stops on -- 1 for a zero and 2 for a one"
-            ),
         ),
         "home-row": _embedded(b.home_row, "tape_based.home_row", pair=HOME_ROW_PAIR),
         "intercal": _embedded(
@@ -618,9 +602,6 @@ def _register() -> None:
             pair=INTERCAL_PAIR,
             char=INTERCAL_CHAR,
             expected="\n",
-            answer_pattern=r"(?s)^([I]?)\n$",
-            answer_values=("", "I"),
-            note="INTERCAL READ OUT prints blank for zero and I for one",
         ),
         "minifuck": _embedded(
             b.minifuck, "tape_based.minifuck", setters=minifuck_setters
@@ -629,12 +610,7 @@ def _register() -> None:
             b.minsky_swap,
             "register_based.minsky_swap",
             setters=minsky_swap_setters,
-            answer_mode="dump",
             expected="1 0",
-            note=(
-                "Minsky Swap has no output instruction and dumps its "
-                "registers at halt; the answer is the second one"
-            ),
         ),
         "nocomment": _embedded(
             b.nocomment, "tape_based.nocomment", pair=NOCOMMENT_PAIR
@@ -643,19 +619,12 @@ def _register() -> None:
             b.ram0,
             "register_based.ram0",
             pair=RAM0_PAIR,
-            answer_mode="dump",
-            answer_pattern=r"z: (\d+)",
             expected="z: 0\nn: 0\nram: {\n    1: 0,\n    0: 1\n}",
-            note=(
-                "RAM0 has no output instruction and dumps its whole state "
-                "at halt; the answer is the 'z' register"
-            ),
         ),
         "smallfuck": _embedded(
             b.smallfuck,
             "tape_based.smallfuck",
             setters=smallfuck_setters,
-            note="Smallfuck defines no I/O; this implementation prints final cell 2",
         ),
         "underload": _embedded(
             b.underload,
@@ -671,46 +640,21 @@ def _register() -> None:
             b.one_two_three,
             "tape_based.one_two_three",
             pair=ONE_TWO_THREE_PAIR,
-            answer_mode="termination",
-            answer_values=("halts", "diverges"),
             expected="",
             expected_compared=False,
-            note=(
-                "123 answers by terminating: it halts for a 0 result and loops "
-                "forever for a 1, so only the halting branch is committed. Its "
-                "output is not the answer and is not compared -- the merge pops "
-                "through location -2 and prints whatever that cell holds, which "
-                "for this program is the two bytes 'VO with a diaeresis'"
-            ),
         ),
         "arrowqueue": _embedded(
             b.arrowqueue,
             "grid_based.arrowqueue",
             pair=ARROWQUEUE_PAIR,
-            answer_mode="termination",
-            answer_values=("halts", "diverges"),
             expected="1 0 0 1 2 3",
             split=True,
-            note=(
-                "ArrowQueue answers by termination -- it halts for a 0 result "
-                "and loops forever for a 1, so only the halting branch is "
-                "committed.  The headings printed are its interpreter-only "
-                "queue dump, which the verdict does not read: the answer is "
-                "that the program halted at all"
-            ),
         ),
         "crement": _embedded(
             b.crement,
             "other.crement",
             setters=crement_setters,
-            answer_mode="termination",
-            answer_values=("halts", "diverges"),
             expected="",
-            note=(
-                "Crement answers by termination: the tree's nodes patch a "
-                "per-input tester's jump targets, and the row lands past the "
-                "end (halts, 0) or on a self-jump (diverges, 1)"
-            ),
         ),
     }
 
@@ -724,7 +668,6 @@ def _register() -> None:
     reading["piet"] = replace(
         _reader(piet, "stack_based.piet"),
         scale=80,
-        note="80 pixels per codel, comparable in area to Line",
     )
     for stem, example in {**reading, **embedded}.items():
         BOOLEAN_EXAMPLES[stem] = replace(example, stem=stem)

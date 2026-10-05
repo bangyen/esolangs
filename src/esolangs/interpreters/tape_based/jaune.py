@@ -8,7 +8,7 @@ defines a subroutine, ``@`` calls it, ``;`` returns, ``.`` ends the main
 program.  A repeated command like ``^^`` is a counted command; ``v`` as an
 operand reads a digit as the count or the label/subroutine name.
 
-Gaps decided: ``v`` stores ``ord(c) - 48`` and raises :class:`EOFError`
+Gaps decided: ``v`` reads signed integer tokens and raises :class:`EOFError`
 at end of input; the tape is unbounded to the right and ``<`` at cell 0
 clamps (the wiki says only "previous cell"; see Streetcode's ``_``);
 cells are plain integers, as JauneJS's ``+=`` is; a read operand is

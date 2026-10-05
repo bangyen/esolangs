@@ -31,9 +31,6 @@ def _run_all(vm: VM) -> str:
 
 
 class TestProtocol:
-    def test_implements_vm_protocol(self) -> None:
-        assert isinstance(debugger_api.make_vm("brainfuck", "+"), VM)
-
     @pytest.mark.medium
     @pytest.mark.parametrize("language", ["Line", "Piet"])
     def test_raster_languages_step_their_pixels(self, language: str) -> None:

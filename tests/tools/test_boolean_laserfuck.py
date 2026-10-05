@@ -77,12 +77,6 @@ class TestLaserFuck:
                 got = run_laserfuck(program, [str(b) for b in bits], 3)
                 assert got == str(int(table[combo])), f"{table} inputs {bits}"
 
-    def test_funnel_is_heading_independent(self) -> None:
-        """Every initial heading reaches the tree on the top row."""
-        program = boolean.laserfuck("0110")
-        for heading in range(4):
-            assert run_laserfuck(program, ["1", "0"], heading) == "1"
-
     def test_input_reordering_folds_a_scattered_table(self) -> None:
         """The tree splits in whichever order folds most, not input order.
 

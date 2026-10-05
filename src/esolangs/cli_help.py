@@ -14,15 +14,17 @@ USAGE = """usage: esolangs <command> [...]
 commands:
   list [--details] [--json]   list the supported languages
   encode <language> <bits>    print the stdin that feeds those bits
-  generate [--width [N] | --balance] [--bits BITS] [--scale N] <language> <truth-table>
+  generate [--width [N] | --balance] [--bits BITS] [--scale N]
+           [--settings JSON] [--portable] <language> <truth-table>
                               print a program computing a truth table
                               (--width wraps it; --bits fills a template)
   describe [--json] [--spec] <language>
                               print how that language reads its input and
                               where it puts the answer (--spec prints the
                               interpreter's own description of it)
-  run [--timeout S] [--isolated] [--max-output N] [--judge] [--table T]
-      [--seed N] [--scale N] <language> <file>
+  run [--timeout S] [--isolated] [--max-output N] [--max-memory BYTES]
+      [--judge] [--table T] [--seed N] [--scale N] [--settings JSON]
+      [--portable] <language> <file>
                               run a program through its interpreter
                               (--judge prints the answer bit instead)
   suggest <language> <program-file>
@@ -32,15 +34,17 @@ commands:
                               without running anything
   read-answer <language>      read a program's output on stdin and print
                               the answer bit it carries
-  answer [--timeout S] <language> <truth-table> <bits>
+  answer [--timeout S] [--settings JSON] <language> <truth-table> <bits>
                               generate, feed those bits, run, and print the
                               one answer bit
-  evaluate [--timeout S] [--inputs N | --table T] <language> <program-file>
+  evaluate [--timeout S] [--total-timeout S] [--max-rows N]
+           [--max-output N] [--max-memory BYTES] [--inputs N | --table T]
+           [--settings JSON] [--portable] <language> <program-file>
                               run every input row and print the observed
                               table; --table also checks the expected result
   debug [--steps N] [--timeout S] [--watch-cell I] [--stdin S] [--tui]
         [--break-at N] [--break-on-cell I=V] [--break-on-output S]
-        [--table T] <language> <file>
+        [--table T] [--settings JSON] [--portable] <language> <file>
                               run under the debugger and report where it
                               stopped, plus any watched cell's history;
                               --tui steps interactively instead, showing the
@@ -87,7 +91,8 @@ The program is neither run nor modified. Apply chosen edits yourself, then
 run the program to check its behavior. No suggestions does not mean valid.
 
 example:
-  esolangs suggest Modulous program.mod
+  esolangs generate Modulous 0110 > program.txt
+  esolangs suggest Modulous program.txt
 """,
     "encode": """usage: esolangs encode <language> <bits>
 
@@ -122,7 +127,8 @@ options:
               booleans, so nobody has to parse the marker column.
 """,
     "generate": f"""usage: esolangs generate [--width [N] | --balance] [--bits BITS]
-                         [--scale N] <language> <truth-table>
+                         [--scale N] [--settings JSON] [--portable]
+                         <language> <truth-table>
 
 Print a program in <language> computing <truth-table>.
 
@@ -142,7 +148,9 @@ options:
                per input, and print the runnable program.  Substituting them
                by hand does not work: each language spells a set-input its
                own way, and a 0/1 in the slot is a different program.
+  --portable   write JSON retaining source, dialect choices, and template setters.
   --scale N    enlarge raster pixels by N after layout (default 1).
+  --settings JSON  dialect overrides, e.g. '{{"expression_syntax":"postfix"}}'.
   --balance    minimize the rendered width/height difference across supported
                layouts. Ties prefer shorter source, then smaller width. Tokens
                and routing can prevent a square; excludes --width.
@@ -164,9 +172,12 @@ options:
 examples:
   esolangs generate brainfuck 0110
   esolangs generate --bits 10 Minifuck 0110
+  esolangs generate --portable --settings '{{"expression_syntax":"postfix"}}' \\
+      Alight 0110 > p.json
 """,
     "run": """usage: esolangs run [--timeout S] [--isolated] [--max-output N]
-                    [--judge] [--table T] [--seed N] [--scale N]
+                    [--max-memory BYTES] [--judge] [--table T] [--seed N]
+                    [--scale N] [--settings JSON] [--portable]
                     <language> <program-file>
 
 Run a program through its interpreter and print what it writes.
@@ -190,12 +201,16 @@ out, 130 interrupted.
 options:
   --isolated         run in a subprocess; portable deadline, default 30 seconds.
   --max-output N     cap isolated output in Unicode characters (including zero).
+  --max-memory BYTES cap Linux worker address space; requires --isolated.
   --timeout SECONDS  stop the run after this long rather than hanging.
                      Unbounded by default.  Four languages answer 1 by
                      *not* terminating -- 123, ArrowQueue, Crement and
                      Vandevelo -- so a timeout there is the answer, not a
                      failure.
   --scale N          override detected raster scale; 1 preserves native pixels.
+  --portable         load JSON saved by generate --portable.
+                     --settings overrides individual saved choices.
+  --settings JSON    dialect overrides, e.g. '{"eof":"zero"}'.
   --seed N           fix the random draws so the run repeats.  Eight
                      languages draw: Befunge, Fish, LaserFuck, Modulous,
                      Painfuck, Super SNUSP, Thue and thisthat.  A seed for a language
@@ -213,7 +228,8 @@ examples:
   printf '1\n0\n' | esolangs run brainfuck prog.txt
   printf '1\n0\n' | esolangs run --judge --timeout 5 brainfuck prog.txt
 """,
-    "answer": """usage: esolangs answer [--timeout S] <language> <truth-table> <bits>
+    "answer": """usage: esolangs answer [--timeout S] [--settings JSON]
+                       <language> <truth-table> <bits>
 
 Generate a program for <truth-table>, feed it <bits>, run it, and print the
 single answer bit.
@@ -234,11 +250,14 @@ answer by not terminating -- for those a bound is needed, and the default
 below is applied.
 
 options:
+  --settings JSON    dialect overrides shared with generate and run.
   --timeout SECONDS  bound the run.  Defaults to 5 seconds for the four
                      languages whose answer for a 1 is that the program
                      never stops, and to none for the rest.
 """,
-    "evaluate": """usage: esolangs evaluate [--timeout S] [--inputs N | --table T]
+    "evaluate": """usage: esolangs evaluate [--timeout S] [--total-timeout S]
+                          [--max-rows N] [--max-output N] [--max-memory BYTES]
+                          [--inputs N | --table T] [--settings JSON] [--portable]
                           <language> <program-file>
 
 Run the supplied program on every Boolean input row and print its observed
@@ -246,6 +265,7 @@ truth table. No program is generated. Text, PNG sources, and parameterized
 templates are supported; templates are filled separately for every row.
 
 options:
+  --max-memory BYTES cap Linux worker address space per row; implies isolation.
   --inputs N        enumerate N inputs, from 1 to 64, MSB first.
   --table TABLE     infer the input count and compare the observed table with
                      TABLE. Exits 1 on mismatch and names the differing rows.
@@ -253,6 +273,12 @@ options:
   --timeout SECONDS  bound each row. Defaults to 30 seconds, or 5 for
                      termination answers. Repeated states prove divergence;
                      the deadline is a backstop for growth, not an answer.
+  --total-timeout S  bound the whole evaluation in seconds.
+  --max-rows N       refuse larger tables; defaults to 1,048,576 rows.
+  --max-output N     cap each row in Unicode characters; enables isolation.
+  --portable         load JSON saved by generate --portable.
+                     --settings overrides individual saved choices.
+  --settings JSON    dialect overrides shared with generate and run.
 
 examples:
   esolangs evaluate --inputs 2 brainfuck program.txt
@@ -364,6 +390,9 @@ options:
                        The only way to give a debugged program
                        input, since the Python API cannot feed a live
                        debugger either.
+  --portable           load JSON saved by generate --portable.
+                       --settings overrides individual saved choices.
+  --settings JSON      dialect overrides shared with generate and run.
   --table T            check the stdin against the shape and alphabet T's
                        arity implies, before running.
   --tui                step through the program in an interactive

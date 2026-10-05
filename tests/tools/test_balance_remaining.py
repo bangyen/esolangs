@@ -280,13 +280,33 @@ def test_fish_balance_matches_all_power_of_two_folds(table):
 def _regime_tables():
     tables = [
         format(value, f"0{1 << inputs}b")
-        for inputs in range(1, 4)
+        for inputs in (1, 2)
         for value in range(1 << (1 << inputs))
     ]
+    # Layout witnesses: constant, each dependency orientation, parity, sparse,
+    # and majority. The primitive fit oracles cover the exhaustive geometry.
+    tables.extend(
+        (
+            "00000000",
+            "11111111",
+            "00001111",
+            "11110000",
+            "00110011",
+            "11001100",
+            "01010101",
+            "10101010",
+            "01101001",
+            "10010110",
+            "00000001",
+            "11111110",
+            "00010111",
+            "11101000",
+        )
+    )
     rng = random.Random(1003)
     tables.extend(
         "".join(rng.choice("01") for _ in range(1 << inputs))
-        for inputs in (4, 5)
+        for inputs in (3, 4, 5)
         for _ in range(2)
     )
     return tables

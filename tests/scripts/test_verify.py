@@ -307,18 +307,8 @@ class TestOutputIsReplayedNotStreamed:
         assert verify._should_stream(5, quiet=False, verbose=True)  # noqa: SLF001
 
 
-class TestASkippableToolIsStillDeclared:
-    """A step that skips itself must have its tool in the dev extra.
-
-    ``_run_steps`` drops the duplicate-code step when ``python -m pylint``
-    does not import, and the run still ends "all local checks passed".
-    pylint was in no dependency list -- not the dev extra, not the
-    pre-commit config, not ``just install-dev`` -- and only CI's
-    ``uv run --with pylint`` supplied it.  So a fresh checkout reported a
-    clean gate with the check never run.  ``verify.py`` syncs the dev extra
-    itself, which makes declaring it there the whole fix; this keeps it
-    declared.
-    """
+class TestRequiredToolsAreDeclared:
+    """Verification dependencies belong in the dev extra."""
 
     @staticmethod
     def _dev_extra() -> list[str]:
@@ -330,15 +320,6 @@ class TestASkippableToolIsStillDeclared:
     def test_pylint_is_a_dev_dependency(self) -> None:
         names = {re.split(r"[<>=!\[ ]", entry)[0] for entry in self._dev_extra()}
         assert "pylint" in names
-
-    def test_the_skip_still_names_pylint(self) -> None:
-        """The positive control: the test above guards a skip that exists.
-
-        If the step stopped skipping itself the assertion would be guarding
-        nothing, and would keep passing.
-        """
-        source = SCRIPT.read_text(encoding="utf-8")
-        assert 'if not have_pylint and "(pylint)" in name:' in source
 
 
 class TestZeroStepsIsNotAPass:
@@ -401,3 +382,43 @@ class TestZeroStepsIsNotAPass:
         out = capsys.readouterr().out
         assert "all local checks passed" not in out
         assert "zero steps" in out
+
+
+@pytest.mark.parametrize("tool", ["uv", "pylint"])
+@pytest.mark.parametrize("allow", [False, True])
+def test_missing_tools_never_report_complete_verification(
+    tool, allow, monkeypatch, capsys
+):
+    verify = load_script()
+    step = "bandit" if tool == "uv" else "duplicate-code check (pylint)"
+    monkeypatch.setattr(
+        verify, "STEPS", [(step, ["unused"]), ("available", ["unused"])]
+    )
+    monkeypatch.setenv("VERIFY_NO_SYNC", "1")
+    argv = ["verify.py", "--only", f"{step},available"]
+    if allow:
+        argv.append("--allow-incomplete")
+    monkeypatch.setattr(sys, "argv", argv)
+    monkeypatch.setattr(
+        verify.shutil, "which", lambda _: None if tool == "uv" else "/uv"
+    )
+    monkeypatch.setattr(
+        verify.subprocess,
+        "run",
+        lambda *_args, **_kwargs: subprocess.CompletedProcess(
+            [], int(tool == "pylint")
+        ),
+    )
+    runs = []
+
+    def run_steps(steps, **_kwargs):
+        runs.extend(name for name, _, _ in steps)
+        return 0, [], 0.0
+
+    monkeypatch.setattr(verify, "_run_steps", run_steps)
+    assert verify.main() == (0 if allow else 1)
+    text = capsys.readouterr().out
+    assert "all local checks passed" not in text
+    assert f"{tool} not installed" in text
+    assert runs == (["available"] if allow else [])
+    assert ("incomplete verification" if allow else "verification failed") in text

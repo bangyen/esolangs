@@ -37,7 +37,9 @@ contract checks. Line and Piet use the same verification and mutation
 workflows as text languages. `scripts/` holds verification, mutation, and
 documentation tools.
 
-`read_answer` uses example metadata for printed and state-dump answers.
+`Language.contract` owns typed Boolean input encodings and answer conventions.
+Examples derive those fields from the registry; execution does not need docstrings.
+`read_answer` uses the contract for printed and state-dump answers.
 `evaluate` also handles termination answers, applying instantiation, input
 encoding, execution and extraction to every row.
 CLI `evaluate --table` compares the observed table with the expected one.

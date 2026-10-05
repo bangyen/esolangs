@@ -16,9 +16,18 @@ from typing import Literal, get_args
 from esolangs._source import InputSource, ProgramSource
 from esolangs._validate import check_timeout, check_whole
 from esolangs.exceptions import ArgumentError
-from esolangs.vm import VM, make_vm, run_until_halt
+from esolangs.settings import DialectSettings
+from esolangs.vm import VM, complete_vm, make_vm, run_until_halt
 
-__all__ = ["STOP_REASONS", "VM", "Debugger", "StopReason", "make_debugger", "make_vm"]
+__all__ = [
+    "STOP_REASONS",
+    "VM",
+    "Debugger",
+    "StopReason",
+    "complete_vm",
+    "make_debugger",
+    "make_vm",
+]
 
 #: Why a :meth:`Debugger.run` returned.
 StopReason = Literal["halted", "breakpoint", "max_steps", "timeout"]
@@ -301,7 +310,8 @@ class Debugger:
                 # and three idle ``run()`` calls on a halted Minsky Swap
                 # grew ``watch_cell`` by three.
                 self._dumped = True
-                self.step()
+                complete_vm(self.vm, max_steps=0)
+                self._record()
                 if self._at_breakpoint():
                     self._suppressed = set(self._hits)
                     return "breakpoint"
@@ -339,6 +349,7 @@ def make_debugger(
     stdin: InputSource = "",
     *,
     scale: int | None = None,
+    settings: DialectSettings | None = None,
 ) -> Debugger:
     """Return a :class:`Debugger` over a fresh :class:`VM` for ``language``.
 
@@ -349,4 +360,4 @@ def make_debugger(
     raises :class:`~esolangs.exceptions.InputExhaustedError` here rather
     than at :meth:`Debugger.run`.
     """
-    return Debugger(make_vm(language, program, stdin, scale=scale))
+    return Debugger(make_vm(language, program, stdin, scale=scale, settings=settings))

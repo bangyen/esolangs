@@ -21,6 +21,9 @@ _ASCII_ZERO = "68*"
 _END = ".@"
 
 
+MAX_INPUTS = 13
+
+
 def befunge(truth_table: str, width: int | None = None) -> str:
     """Return a Befunge grid computing ``truth_table``.
 
@@ -34,7 +37,7 @@ def befunge(truth_table: str, width: int | None = None) -> str:
     """
     n = _validate_truth_table(truth_table)
     count = 1 << n
-    if n > 13:
+    if n > MAX_INPUTS:
         raise with_hint(
             GeneratorCapError(
                 "Befunge supports at most thirteen inputs on its 80x25 grid"
@@ -169,7 +172,7 @@ def balance_befunge(truth_table: str, default: str) -> str:
     """
     n = _validate_truth_table(truth_table)
     count = 1 << n
-    if n > 13:
+    if n > MAX_INPUTS:
         raise with_hint(
             GeneratorCapError(
                 "Befunge supports at most thirteen inputs on its 80x25 grid"

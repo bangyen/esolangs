@@ -44,7 +44,7 @@ def smoke(*, math_extra: bool, image_extra: bool = False) -> None:
     assert "brainfuck" in _cli(["list"])
     bound = esolangs.Language("BRAINFUCK")
     program = bound.generate("0110", balance=True)
-    assert bound.evaluate(program, inputs=2, isolated=True) == "0110"
+    assert bound.evaluate(program, inputs=2, isolated=True, max_output=1) == "0110"
     assert bound.read_answer(bound.run(program, bound.encode_inputs([0, 1]))) == "1"
     assert esolangs.run("brainfuck", "+.", max_steps=2) == "\x01"
     assert esolangs.run("brainfuck", "+.", timeout=1, isolated=True) == "\x01"
@@ -69,6 +69,7 @@ def smoke(*, math_extra: bool, image_extra: bool = False) -> None:
     for name in esolangs.list_languages():
         facts = esolangs.describe(name)
         if facts["boolean_generator"]:
+            assert facts["proof_status"] is not None, name
             generated = esolangs.generate(name, "0110")
             if image_extra and isinstance(generated, esolangs.Raster):
                 generated = esolangs.Raster.from_png(generated.to_png())
@@ -106,6 +107,32 @@ def smoke(*, math_extra: bool, image_extra: bool = False) -> None:
             _cli(["evaluate", "--table", "0110", "brainfuck", str(source)]).strip()
             == "0110"
         )
+        for program, options, code, output, diagnostic in (
+            (",.+[]", ["--timeout", "2"], 124, "A\n", "deadline"),
+            (",[.]", ["--max-output", "3"], 1, "AAA\n", "output limit exceeded"),
+        ):
+            source.write_text(program, encoding="utf-8")
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    "-I",
+                    "-m",
+                    "esolangs",
+                    "run",
+                    "--isolated",
+                    *options,
+                    "brainfuck",
+                    str(source),
+                ],
+                input="A",
+                capture_output=True,
+                text=True,
+                timeout=30,
+                check=False,
+            )
+            assert result.returncode == code, result
+            assert result.stdout == output, result
+            assert diagnostic in result.stderr, result
         source.write_text(",>,<.", encoding="utf-8")
         assert (
             _cli(["evaluate", "--inputs", "2", "brainfuck", str(source)]).strip()

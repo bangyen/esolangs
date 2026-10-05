@@ -9,6 +9,7 @@ sits in the contract test's ``_UNSHAPED`` list: a 0%
 fold is the construction working.  The reads are unconditional and first.
 """
 
+from esolangs._dialects import expression_syntax as validate_expression_syntax
 from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table
 
 __all__ = ["alight"]
@@ -189,16 +190,62 @@ def _alight_balanced(truth_table: str, n: int, width: int) -> str:
     return select_alight(truth_table, n, width)
 
 
-def alight(truth_table: str, width: int | None = None) -> str:
+def alight(
+    truth_table: str, width: int | None = None, *, expression_syntax: str = "infix"
+) -> str:
     """Return an Alight program printing ``truth_table``'s entry for its input.
 
     Reads ``n`` characters, folds them into the row by Horner, prints the
     table character: a branch-free single line, ``O(2**n)`` literal plus
     ``O(n)`` reads.  ``width`` is a hard bound; the layout minimizing
-    ``max(width, height)`` wins, ties preferring less area.
+    ``max(width, height)`` wins for infix, ties preferring less area.
+    Postfix folds commands or rotates them into one column.
     """
     n = _validate_truth_table(truth_table)
+    validate_expression_syntax(expression_syntax)
+    if expression_syntax == "postfix":
+        units = _postfix_units(
+            truth_table,
+            n,
+            len(truth_table)
+            if width is None
+            else _alight_chunk(len(truth_table), width),
+        )
+        flat = ";".join(command for unit in units for command in unit) + ";"
+        if width is None:
+            return flat
+        if width < 1:
+            raise ValueError("width must be at least 1")
+        program = _alight_folded(units, width)
+        if _dimensions(program)[0] > width:
+            return "\n".join(flat)
+        return program
     flat = _alight_flat_compact(truth_table, n)
     if width is None:
         return flat
     return _alight_balanced(truth_table, n, width)
+
+
+def _postfix_units(table: str, n: int, chunk: int) -> list[list[str]]:
+    """Emit the same row fold and guarded lookups in postfix notation."""
+    units = [["begin"], ["var a"], ["var i"], ["var r"]]
+    for step in range(n):
+        units.append(["inp a"])
+        units.append(
+            [
+                f"set i a {_ASCII_ZERO} -"
+                if step == 0
+                else f"set i i 2 * a + {_ASCII_ZERO} -"
+            ]
+        )
+    for start in range(0, len(table), chunk):
+        piece = table[start : start + chunk]
+        index = "i 0.5 +" if start == 0 else f"i {_half_before(start)} -"
+        lookup = f'set r at{{"{piece}", {index}}}'
+        if chunk >= len(table):
+            units.append([lookup])
+        elif start == 0:
+            units.append([f"skip i {_half_before(len(piece))} >", lookup])
+        else:
+            units.append([f"skip i {_half_before(start)} <", lookup])
+    return [*units, ["out r"], ["end"]]

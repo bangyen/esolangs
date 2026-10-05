@@ -32,6 +32,7 @@ from esolangs._vm_views import (
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.source_hints import with_hint
 from esolangs.registry import resolve
+from esolangs.settings import DialectSettings, dialect_options, effective_settings
 
 
 @runtime_checkable
@@ -659,6 +660,26 @@ def run_until_halt(
     return True
 
 
+def complete_vm(vm: VM, max_steps: int | None = 100_000) -> str:
+    """Return finalized raw output after a proved halt, including a final dump.
+
+    Raises on exhausted steps or an active machine that never self-halts. Repeated
+    completion is safe: the post-halt step is idempotent by the VM contract.
+    """
+    from esolangs._validate import check_whole
+    from esolangs.exceptions import ArgumentError, InterpreterLimitError
+
+    if max_steps is not None:
+        check_whole(max_steps, "max_steps")
+    if not vm.self_halts and not vm.halted:
+        raise ArgumentError("completion requires a machine that self-halts")
+    if not run_until_halt(vm, max_steps):
+        raise InterpreterLimitError("VM completion exhausted max_steps")
+    if vm.dumps_on_the_post_halt_step:
+        vm.step()
+    return vm.output
+
+
 @runtime_checkable
 class VM(Protocol):
     """A step-capable interpreter wrapper.
@@ -784,6 +805,7 @@ class _DelegatingVM:
         stdin: InputSource = "",
         *,
         scale: int | None = None,
+        settings: DialectSettings | None = None,
     ) -> None:
         self.language = language
         self._io = ScriptedIO(stdin)
@@ -791,6 +813,7 @@ class _DelegatingVM:
         code, options = prepare_call(
             language, program, state, scale=scale, reproducible=True
         )
+        options.update(dialect_options(language, settings))
         self._machine = state(code, self._io, **options)
 
     @property
@@ -877,6 +900,7 @@ def make_vm(
     stdin: InputSource = "",
     *,
     scale: int | None = None,
+    settings: DialectSettings | None = None,
 ) -> VM:
     """Return a step-and-inspect wrapper around ``language``'s interpreter.
 
@@ -891,11 +915,14 @@ def make_vm(
     from esolangs import check_program
 
     name = resolve(language)
+    settings = effective_settings(name, program, settings)
+    dialect_options(name, settings)
     source = check_program(name, program, stdin)
+    settings = effective_settings(name, source, settings)
     check_scale_for(name, scale)
     with interpreter_errors(
         f"the {name} interpreter recursed deeper than CPython's stack "
         "limit allows while loading this program while parsing its source",
         language=name,
     ):
-        return _DelegatingVM(name, source, stdin, scale=scale)
+        return _DelegatingVM(name, source, stdin, scale=scale, settings=settings)

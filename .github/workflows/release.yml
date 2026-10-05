@@ -60,8 +60,25 @@ jobs:
           exit 1
         fi
 
-  build:
+  verify:
     needs: check-version
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+    - uses: actions/checkout@v7
+    - uses: astral-sh/setup-uv@v7
+    - uses: actions/setup-python@v7
+      with:
+        python-version: "3.14"
+    - name: Install verification dependencies
+      run: uv sync --extra dev --python 3.14
+    - name: Verify the release commit
+      env:
+        PYTEST_ADDOPTS: "-n auto"
+      run: uv run python scripts/verify.py --full
+
+  build:
+    needs: verify
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -91,6 +108,14 @@ jobs:
         uv pip install --python /tmp/relcheck/bin/python "${wheels[0]}[math]"
         /tmp/relcheck/bin/python -I scripts/smoke_distribution.py --math
         uv pip install --python /tmp/relcheck/bin/python "${wheels[0]}[image]"
+        /tmp/relcheck/bin/python -I scripts/smoke_distribution.py --math --image
+
+    - name: Rebuild and test the sdist independently
+      run: |
+        mkdir /tmp/sdist-source
+        tar -xzf dist/*.tar.gz -C /tmp/sdist-source --strip-components=1
+        uv build --wheel /tmp/sdist-source --out-dir /tmp/sdist-wheel
+        uv pip install --python /tmp/relcheck/bin/python --reinstall /tmp/sdist-wheel/*.whl
         /tmp/relcheck/bin/python -I scripts/smoke_distribution.py --math --image
 
     - uses: actions/upload-artifact@v7

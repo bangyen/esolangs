@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -41,6 +42,33 @@ def _text(row: dict[str, object], key: str) -> str:
     return value
 
 
+def _check_evidence(reference: str, *, precise: bool) -> None:
+    """Check a local Markdown heading; audit evidence must name one."""
+    relative, separator, anchor = reference.partition("#")
+    target = (ROOT / relative).resolve()
+    if not target.is_relative_to(ROOT.resolve()) or not target.is_file():
+        raise ValueError(f"missing evidence: {reference}")
+    if precise and (not separator or not anchor):
+        raise ValueError(f"invalid audit evidence: {reference}")
+    if separator:
+        anchors = set()
+        counts: dict[str, int] = {}
+        fenced = False
+        for line in target.read_text(encoding="utf-8").splitlines():
+            if line.startswith(("```", "~~~")):
+                fenced = not fenced
+            if fenced:
+                continue
+            heading = re.match(r"^#{1,6} +(.+?)(?: +#+)?$", line)
+            if heading:
+                slug = re.sub(r"[^\w\- ]", "", heading[1].lower()).replace(" ", "-")
+                count = counts.get(slug, 0)
+                counts[slug] = count + 1
+                anchors.add(f"{slug}-{count}" if count else slug)
+        if anchor not in anchors:
+            raise ValueError(f"missing evidence anchor: {reference}")
+
+
 def load(path: Path = MANIFEST) -> tuple[tuple[ProofRow, ...], tuple[ScalingRow, ...]]:
     """Return validated proof and audit rows from the manifest."""
     data = json.loads(path.read_text(encoding="utf-8"))
@@ -74,7 +102,7 @@ def load(path: Path = MANIFEST) -> tuple[tuple[ProofRow, ...], tuple[ScalingRow,
             )
         )
         if totality not in {"Total", "Cap", "Exception"} or any(
-            cost not in {"Linear", "O(T)", "Open", "Language lower bound"}
+            cost not in {"Linear", "O(T)", "Measured", "Open", "Language lower bound"}
             for cost in costs
         ):
             raise ValueError("unknown scaling verdict")
@@ -93,14 +121,16 @@ def load(path: Path = MANIFEST) -> tuple[tuple[ProofRow, ...], tuple[ScalingRow,
         if len(names) != len(set(names)):
             raise ValueError("duplicate proof status generator")
         for row in rows:
-            if not (ROOT / row.evidence.split("#", 1)[0]).is_file():
-                raise ValueError(f"missing evidence: {row.evidence}")
+            _check_evidence(row.evidence, precise=isinstance(row, ScalingRow))
     return tuple(proofs), tuple(audits)
 
 
 def update_docs() -> None:
     """Render both status tables without changing surrounding prose."""
     proofs, audits = load()
+    packaged = ROOT / "src/esolangs/proof_status.json"
+    packaged.parent.mkdir(parents=True, exist_ok=True)
+    packaged.write_bytes(MANIFEST.read_bytes())
     tables = (
         (
             ROOT / "docs/proofs/index.md",

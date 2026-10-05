@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Self
+from typing import TYPE_CHECKING, Self
+
+if TYPE_CHECKING:
+    from esolangs.settings import DialectSettings
 
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
@@ -28,16 +31,20 @@ class _Tagged(str):
     """
 
     language: str
+    settings: DialectSettings | None
 
-    def __new__(cls, text: str, language: str) -> Self:
+    def __new__(
+        cls, text: str, language: str, settings: DialectSettings | None = None
+    ) -> Self:
         """Return ``text`` tagged as a ``language`` program."""
         program = super().__new__(cls, text)
         program.language = language
+        program.settings = settings
         return program
 
     def __reduce__(self) -> tuple[object, ...]:
-        """Pickle as (class, text, language): the tag survives a worker."""
-        return (type(self), (str(self), self.language))
+        """Pickle with language and dialect provenance for workers."""
+        return (type(self), (str(self), self.language, self.settings))
 
 
 class _Template(_Tagged):
@@ -65,9 +72,10 @@ class _Template(_Tagged):
         language: str,
         char: str = TEMPLATE_CHAR,
         setters: Sequence[tuple[str, str]] = (),
+        settings: DialectSettings | None = None,
     ) -> Self:
         """Return ``text`` tagged as ``language``'s template."""
-        template = super().__new__(cls, text, language)
+        template = super().__new__(cls, text, language, settings)
         template.char = char
         template.setters = check_setters(setters)
         runs(text, char, template.setters)
@@ -84,4 +92,7 @@ class _Template(_Tagged):
 
     def __reduce__(self) -> tuple[object, ...]:
         """Pickle with the character and the setters."""
-        return (type(self), (str(self), self.language, self.char, self.setters))
+        return (
+            type(self),
+            (str(self), self.language, self.char, self.setters, self.settings),
+        )

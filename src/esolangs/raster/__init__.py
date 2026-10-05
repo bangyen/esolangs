@@ -7,7 +7,10 @@ from dataclasses import dataclass, field
 from functools import partial
 from itertools import takewhile
 from operator import is_not
-from typing import cast
+from typing import TYPE_CHECKING, cast
+
+if TYPE_CHECKING:
+    from esolangs.settings import DialectSettings
 
 from esolangs.exceptions import MissingDependencyError, ProgramError
 from esolangs.interpreters.source_hints import syntax_error
@@ -92,6 +95,7 @@ class Raster:
     )
     _payload: object | None = field(default=None, repr=False, compare=False)
     _language: str | None = field(default=None, repr=False, compare=False)
+    _settings: DialectSettings | None = field(default=None, repr=False, compare=False)
 
     def __init__(
         self,
@@ -100,6 +104,7 @@ class Raster:
         _materialize: Callable[[], Rows] | None = None,
         _payload: object | None = None,
         language: str | None = None,
+        settings: DialectSettings | None = None,
     ) -> None:
         """Create a raster from pixels or a lazy language-owned renderer."""
         object.__setattr__(self, "_rows", rows)
@@ -107,6 +112,7 @@ class Raster:
         object.__setattr__(self, "_materialize", _materialize)
         object.__setattr__(self, "_payload", _payload)
         object.__setattr__(self, "_language", language)
+        object.__setattr__(self, "_settings", settings)
         self.__post_init__()
 
     def __post_init__(self) -> None:
@@ -138,13 +144,21 @@ class Raster:
         """
         return self._language
 
-    def tagged(self, language: str) -> Raster:
+    @property
+    def settings(self) -> DialectSettings | None:
+        """The retained dialect choices, absent on decoded PNGs."""
+        return self._settings
+
+    def tagged(self, language: str, settings: DialectSettings | None = None) -> Raster:
         """Return this raster tagged as generated for ``language``."""
         return Raster(
             self._rows,
             _materialize=self._materialize,
             _payload=self._payload,
             language=language,
+            settings=self.settings
+            if settings is None and language == self.language
+            else settings,
         )
 
     @property
@@ -182,7 +196,10 @@ class Raster:
             return tuple(row for row in rows for _ in range(scale))
 
         return Raster(
-            _materialize=materialize, _payload=self._payload, language=self.language
+            _materialize=materialize,
+            _payload=self._payload,
+            language=self.language,
+            settings=self.settings,
         )
 
     @classmethod

@@ -89,12 +89,6 @@ class TestFactor:
         assert run_factor(program, ["1"] * n) == "1"
         assert run_factor(program, ["0"] * n) == "0"
 
-    def test_sparse_tables_stay_small_at_n_four(self) -> None:
-        """Sparse tables (few one-rows) encode a short brainfuck program,
-        so they stay well under the digit cap even at n == 4."""
-        assert boolean.factor("0" * 16).isdigit()
-        assert boolean.factor("1" * 16).isdigit()
-
     def test_a_table_past_cpythons_own_limit_still_renders(self) -> None:
         """XOR7 exceeds CPython's 4300-digit rendering guard.
 

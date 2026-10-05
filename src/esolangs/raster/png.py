@@ -5,6 +5,7 @@ from __future__ import annotations
 import io
 import re
 import struct
+import sys
 import zlib
 from collections.abc import Iterator, Sequence
 from typing import TYPE_CHECKING, Any
@@ -198,8 +199,11 @@ def _validate_png(
             "palette PNGs cannot be 16-bit", "use an 8-bit palette or export as RGB"
         )
 
-    data_stream = zlib.decompress(bytes(idat))
     needed = _expected_stream_size(width, height, channels, depth, interlace)
+    decoder = zlib.decompressobj()
+    # A 1x1 RGB header needs four bytes; a 39-byte IDAT expanded to 16,384
+    # before its size was rejected. One surplus byte proves the mismatch.
+    data_stream = decoder.decompress(bytes(idat), min(needed + 1, sys.maxsize))
     if len(data_stream) != needed:
         # Reject before any allocation grows with the IHDR numbers.
         raise syntax_error(
@@ -210,6 +214,11 @@ def _validate_png(
                 "restore or re-export the PNG so the pixel data matches its "
                 "declared dimensions"
             ),
+        )
+    if not decoder.eof:
+        raise syntax_error(
+            "truncated PNG compressed stream",
+            "restore or re-export the complete PNG including its compressed checksum",
         )
     if colour == _PALETTE and palette is None:
         raise syntax_error(

@@ -1,13 +1,15 @@
 """The public API with one language bound."""
 
+from collections.abc import Iterator
 from dataclasses import dataclass
 
 import esolangs
 from esolangs._describe import LanguageInfo
-from esolangs._evaluate import _DEFAULT, _Default
+from esolangs._evaluate import _DEFAULT, _DEFAULT_MAX_ROWS, _Default
 from esolangs._program import Program
 from esolangs._source import InputSource, ProgramSource
 from esolangs.registry import resolve
+from esolangs.settings import DialectSettings
 
 
 @dataclass(frozen=True, slots=True)
@@ -27,10 +29,16 @@ class Language:
         *,
         balance: bool = False,
         scale: int = 1,
+        settings: DialectSettings | None = None,
     ) -> Program:
         """Return a program computing ``truth_table``."""
         return esolangs.generate(
-            self.name, truth_table, width, balance=balance, scale=scale
+            self.name,
+            truth_table,
+            width,
+            balance=balance,
+            scale=scale,
+            settings=settings,
         )
 
     def instantiate(
@@ -39,9 +47,23 @@ class Language:
         bits: list[int] | tuple[int, ...],
         width: int | None = None,
         truth_table: str | None = None,
+        *,
+        settings: DialectSettings | None = None,
     ) -> str:
         """Fill a parameterized template with ``bits``."""
-        return esolangs.instantiate(self.name, template, bits, width, truth_table)
+        return esolangs.instantiate(
+            self.name, template, bits, width, truth_table, settings=settings
+        )
+
+    def dump_program(
+        self, program: Program, *, settings: DialectSettings | None = None
+    ) -> str:
+        """Return portable JSON retaining source and dialect choices."""
+        return esolangs.dump_program(self.name, program, settings=settings)
+
+    def load_program(self, document: str) -> Program:
+        """Restore portable JSON as this language's tagged source."""
+        return esolangs.load_program(self.name, document)
 
     def run(
         self,
@@ -52,6 +74,9 @@ class Language:
         *,
         isolated: bool = False,
         max_steps: int | None = None,
+        max_output: int | None = None,
+        max_memory: int | None = None,
+        settings: DialectSettings | None = None,
         scale: int | None = None,
     ) -> str:
         """Execute source using the same bounds as :func:`esolangs.run`."""
@@ -63,7 +88,39 @@ class Language:
             seed,
             isolated=isolated,
             max_steps=max_steps,
+            max_output=max_output,
+            max_memory=max_memory,
+            settings=settings,
             scale=scale,
+        )
+
+    def iter_evaluate(
+        self,
+        program: ProgramSource,
+        timeout: float | _Default | None = _DEFAULT,
+        *,
+        inputs: int,
+        isolated: bool = False,
+        scale: int | None = None,
+        max_rows: int | None = _DEFAULT_MAX_ROWS,
+        max_output: int | None = None,
+        max_memory: int | None = None,
+        total_timeout: float | None = None,
+        settings: DialectSettings | None = None,
+    ) -> Iterator[str]:
+        """Yield this program's table one answer bit at a time."""
+        return esolangs.iter_evaluate(
+            self.name,
+            program,
+            timeout,
+            inputs=inputs,
+            isolated=isolated,
+            scale=scale,
+            max_rows=max_rows,
+            max_output=max_output,
+            max_memory=max_memory,
+            total_timeout=total_timeout,
+            settings=settings,
         )
 
     def evaluate(
@@ -74,10 +131,25 @@ class Language:
         inputs: int,
         isolated: bool = False,
         scale: int | None = None,
+        max_rows: int | None = _DEFAULT_MAX_ROWS,
+        max_output: int | None = None,
+        max_memory: int | None = None,
+        total_timeout: float | None = None,
+        settings: DialectSettings | None = None,
     ) -> str:
         """Return the table computed over ``inputs`` bits."""
         return esolangs.evaluate(
-            self.name, program, timeout, inputs=inputs, isolated=isolated, scale=scale
+            self.name,
+            program,
+            timeout,
+            inputs=inputs,
+            isolated=isolated,
+            scale=scale,
+            max_rows=max_rows,
+            max_output=max_output,
+            max_memory=max_memory,
+            total_timeout=total_timeout,
+            settings=settings,
         )
 
     def describe(self) -> LanguageInfo:

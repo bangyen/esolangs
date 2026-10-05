@@ -15,6 +15,8 @@ from esolangs.cli_args import (
     _pop_cell,
     _pop_flags,
     _pop_options,
+    _pop_portable,
+    _settings_of,
     _split_positional,
     _table_of,
     _timeout_of,
@@ -30,6 +32,7 @@ from esolangs.cli_io import _null_context, _read_program, _read_stdin, _Unbounde
 from esolangs.debugger import make_debugger
 from esolangs.exceptions import EsolangError, TemplateError
 from esolangs.interpreters.source_hints import error_text
+from esolangs.settings import DialectSettings, dialect_options
 from esolangs.tui import breakpoint_for, run_tui
 
 
@@ -39,6 +42,7 @@ def _run_tui_session(
     stdin: str,
     options: dict[str, str],
     cell: tuple[int, int] | None,
+    settings: DialectSettings | None = None,
 ) -> None:
     """Hand the run to the step-through screen, with what it can draw.
 
@@ -52,7 +56,18 @@ def _run_tui_session(
     stop = breakpoint_for(cell=cell, output=options.get("--break-on-output"))
     watch = int(options["--watch-cell"]) if "--watch-cell" in options else None
     try:
-        run_tui(language, program, stdin, stop=stop, at=at, watch=watch)
+        if settings is None:
+            run_tui(language, program, stdin, stop=stop, at=at, watch=watch)
+        else:
+            run_tui(
+                language,
+                program,
+                stdin,
+                stop=stop,
+                at=at,
+                watch=watch,
+                settings=settings,
+            )
     except ValueError as exc:
         _fail(exc)
 
@@ -68,19 +83,21 @@ def _debug(rest: list[str]) -> None:
         "--stdin",
         "--timeout",
         "--table",
+        "--settings",
     }
     # Options first, then the stray-flag check: a *value* can begin with a
     # dash (``--timeout -inf``), and a check that runs before the pairs are
     # consumed cannot tell one from a flag -- it answered that with
     # "unknown option: -inf" instead of "must be finite".
     rest, options = _pop_options(rest, options_taken)
+    rest, portable = _pop_portable(rest)
     rest, flags = _pop_flags(rest, {"--tui"})
     tui = "--tui" in flags
     # Before the positional count, matching ``run``: a forgotten number made
     # the language the timeout's value and the complaint landed on the file.
     limit = _timeout_of(options)
     table = _table_of(options)
-    rest = _split_positional(rest, set(), options_taken | {"--tui"})
+    rest = _split_positional(rest, set(), options_taken | {"--tui", "--portable"})
     _check_count("debug", rest, 2)
     language, path = rest[0], rest[1]
     numbers = {
@@ -95,9 +112,14 @@ def _debug(rest: list[str]) -> None:
     for name in ("--watch-cell", "--steps", "--break-at"):
         if name in numbers:
             _nonnegative(numbers[name], name, options[name])
-    program = _read_program(path, limit, language=language)
+    settings = _settings_of(options)
     with _errors():
+        if not portable:
+            dialect_options(language, settings)
         facts = describe(language)
+    program = _read_program(
+        path, limit, language=language, portable=portable, settings=settings
+    )
     # The key loop owns the terminal's stdin, so a piped stream cannot also
     # be the program's input: the two would race for the same descriptor.
     # ``--stdin`` is how a TUI run feeds its program instead.
@@ -127,9 +149,12 @@ def _debug(rest: list[str]) -> None:
         if tui:
             # Built through the same refusals, then handed to the screen --
             # which owns the stepping from here, so nothing below runs.
-            _run_tui_session(language, program, stdin, options, cell)
+            if settings is None:
+                _run_tui_session(language, program, stdin, options, cell)
+            else:
+                _run_tui_session(language, program, stdin, options, cell, settings)
             return
-        dbg = make_debugger(language, program, stdin)
+        dbg = make_debugger(language, program, stdin, settings=settings)
     except TemplateError as exc:
         _fail(_template_hint(exc, language))
     except EsolangError as exc:

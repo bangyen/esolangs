@@ -75,10 +75,7 @@ def test_runnable_guard_refuses_non_source_values():
         _check_runnable("brainfuck", 7)
 
 
-def test_answer_fallback_reads_the_final_bit(monkeypatch):
-    from esolangs import _answers
-
-    monkeypatch.setattr(_answers, "_example_for", lambda _language: None)
+def test_default_answer_contract_reads_the_final_bit():
     assert esolangs.read_answer("brainfuck", "answer: 1\n") == "1"
     with pytest.raises(esolangs.ProgramError, match="expected '0' or '1'"):
         esolangs.read_answer("brainfuck", "answer: unknown\n")

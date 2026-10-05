@@ -2,6 +2,8 @@
 
 from dataclasses import dataclass
 
+MODULI = (255, 256)
+
 
 @dataclass(frozen=True)
 class MammalianModuli:
@@ -11,9 +13,9 @@ class MammalianModuli:
     io_modulus: int = 256
 
     def __post_init__(self) -> None:
-        if type(self.cell_modulus) is not int or self.cell_modulus not in (255, 256):
+        if type(self.cell_modulus) is not int or self.cell_modulus not in MODULI:
             raise ValueError("Mammalian cell_modulus must be 255 or 256")
-        if type(self.io_modulus) is not int or self.io_modulus not in (255, 256):
+        if type(self.io_modulus) is not int or self.io_modulus not in MODULI:
             raise ValueError("Mammalian io_modulus must be 255 or 256")
 
 

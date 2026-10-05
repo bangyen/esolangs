@@ -172,11 +172,17 @@ def test_nearest_neighbor_scaling_preserves_output(
     encoded = BytesIO()
     image.save(encoded, format="PNG")
     enlarged = Raster.from_png(encoded.getvalue())
+    # CI normalization exceeded 0.5s; valid-image equivalence uses a step bound.
     for first, second in ((0, 0), (0, 1), (1, 0), (1, 1)):
         stdin = f"{first}\n{second}\n"
         expected = str(first ^ second)
-        assert esolangs.run(language, seed, stdin, timeout=0.5) == expected
         assert (
-            esolangs.run(language, enlarged, stdin, scale=scale, timeout=0.5)
+            esolangs.run(language, seed, stdin, timeout=None, max_steps=1000)
+            == expected
+        )
+        assert (
+            esolangs.run(
+                language, enlarged, stdin, scale=scale, timeout=None, max_steps=1000
+            )
             == expected
         )

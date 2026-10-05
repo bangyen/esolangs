@@ -117,6 +117,18 @@ class TestPrimeTester:
         assert output_for(PRIME_TESTER, bits_of(4)) == "0"
         assert _compile.cache_info().hits == 1
 
+    def test_cached_topology_keeps_debugger_state_isolated(self) -> None:
+        _compile.cache_clear()
+        first = _Machine(PRIME_TESTER, ScriptedIO(bits_of(2)))
+        second = _Machine(PRIME_TESTER, ScriptedIO(bits_of(4)))
+        initial = second.snapshot()
+        assert run_until_halt_or_cycle(first) is True
+        assert second.snapshot() == initial
+        assert run_until_halt_or_cycle(second) is True
+        assert first.io.getvalue() == "1"
+        assert second.io.getvalue() == "0"
+        assert _compile.cache_info().hits == 1
+
     def test_it_halts_rather_than_looping(self) -> None:
         machine = _Machine(PRIME_TESTER, ScriptedIO(bits_of(7)))
         assert run_until_halt_or_cycle(machine) is True

@@ -87,3 +87,24 @@ def test_identifier_charge_on_a_rendered_wide_program() -> None:
         machine = _Machine(program, ScriptedIO(stdin))
         actual = "0" if run_until_halt_or_cycle(machine, limit=100_000) else "1"
         assert actual == table[row]
+
+
+def test_projection_only_compacts_one_point_per_coset():
+    shifts = []
+
+    class CountedPoint(int):
+        def __rshift__(self, bits):
+            shifts.append(bits)
+            return int(self) >> bits
+
+    span = _span([3, 24, 36])
+    points = {CountedPoint(base ^ value) for base in (0, 4) for value in span}
+    node = _Node(0, points, span, None)
+    expected = _popularities(set(map(int, points)), 6)
+    counts = dict(_quotient_popularities(node, 6))
+    assert counts == {
+        value: expected[value]
+        for value in range(1, 64)
+        if value == min(value ^ offset for offset in span)
+    }
+    assert len(shifts) == 2 * 3

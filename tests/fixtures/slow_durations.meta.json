@@ -1,0 +1,20 @@
+{
+  "source": "local one-off measurement authorized in place of scheduled CI",
+  "measured_at_utc": "2026-10-04T13:24:51.548863+00:00",
+  "commit": "915b109b3970ea0285b2fe11e367ec3d10cbad47",
+  "python": "3.14.7",
+  "platform": "macOS-15.6.1-arm64-arm-64bit-Mach-O",
+  "workers": 4,
+  "marker": "slow and not weekly",
+  "elapsed_seconds": 335.16,
+  "passed": 743,
+  "skipped": 15,
+  "recorded_nodes": 758,
+  "estimated_serial_shard_seconds": [
+    194.1094205569825,
+    194.10941984684905,
+    194.10941341193393,
+    194.10959736575023
+  ],
+  "fallback_nodes": 0
+}

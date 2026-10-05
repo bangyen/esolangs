@@ -3,30 +3,42 @@
 Open work only. See [limitations](limitations.md) for standing contracts
 and proved limits; completed work is recorded in its commit.
 
-## Engineering priorities
+## Execution order and budgets
 
-1. **Portable CLI regression coverage.** Exercise isolated deadlines and output
-   limits in the Windows distribution job. Done when both failure paths retain
-   partial output and their documented exit codes. Budget: existing CI job;
-   one short subprocess per case, no search.
-2. **Proof evidence references.** Add precise proof anchors or test node IDs to
-   `proofs/status.json`, then validate their targets. Done when every open audit
-   row has a checked evidence reference. Budget: file reads only; no generators.
-3. **Verification timing refresh.** Refresh slow-shard durations from the next
-   scheduled CI artifact. Done when the fixture matches that run and shard
-   estimates are reported. Budget: reuse scheduled measurements; no extra suite.
+Priorities below order the existing next steps. Ceilings are proposed CPU-time
+budgets, not measured runtimes or additional compute authorization. Price each
+run first; a ceiling never overrides the standing remaining budget. Run the
+cheapest positive control before a negative sweep, and stop at the ceiling.
+
+| Priority | Track | First experiment | CPU ceiling | Stop condition |
+| --- | --- | --- | --- | --- |
+| 1 | Vandevelo | Instrument identifier characters, projection visits and fallback calls on the existing corpus; test one uniform naming or amortization rule. | 10 min | Stop after one rule if output differs or the extra factor remains unbounded. |
+| 2 | Linear generators | Audit the status rows against their executed controls; select one unproved axis for a loop-less construction. | 10 min | Stop when the control fails, the ceiling is reached, or no named construction emerges. |
+| 3 | FRACTRAN order encoding | Build one repeated-consultation router; execute small order families with the existing XOR/XNOR control. | 15 min | Stop if the router cannot represent the control or needs super-linear text. |
+| 4 | Brainfuck behaviour count | Extend the certified automaton with one sound unrestricted body class. | 15 min | Stop if cell preservation fails or certified counting exceeds the ceiling. |
+| 5 | Brainfuck bounded inputs | Price one source-length-proportional read-budget counting model. | 10 min | Stop if no finite certified model follows; do not launch enumeration. |
+| 6 | Factor leading constant | Price one semantic normalization rule on the existing decoded corpus. | 10 min | Stop on a changed output or no improvement to the counted class. |
+| 7 | Polynomial constant | Derive and check one stronger coefficient-mass charge on the existing small witnesses. | 10 min | Stop on a parity counterexample or if arbitrary multipliers remain untreated. |
+| 8 | Piet++ audit | Resolve one listed specification gap and test it against the pinned executor. | 5 min | Stop if operand or update semantics remain contradictory; defer admission. |
+| 9 | Malbolge arity 17 | Price a symbolic shared-setup layout before generating any dense table. | 5 min | Stop if decoder, selector and address fold do not fit the store; defer a search. |
+
+A failed experiment records its counterexample in the linked proof. A measured
+improvement needs emitted-size measurements and executed output; a scaling
+measurement alone does not close a proof obligation.
 
 ## Research follow-up
 
-- **Piet++ specification and generator audit.** The language is tagged
-  [Unimplemented](https://esolangs.org/wiki/Piet%2B%2B). Nested-stack cofactor
-  descent adds a data-tree selection mechanism: a strict raster subset ran
-  309 generated tables across 3,352 rows, including every table through three
-  inputs. Pin Read/Write operands, invalid typed operations, and image/block
-  updates before implementing the full language. Verify that no implementation
-  exists, derive the loop-less O(T) generator, and execute it through three
-  inputs and sampled larger tables under the input conventions. The subset
-  probe establishes feasibility, not full-language correctness or admission.
+- **Piet++ specification and generator audit.** The wiki still tags the language
+  [Unimplemented](https://esolangs.org/wiki/Piet%2B%2B), but a
+  [partial executor](https://github.com/Esolang-NET/Piet/blob/14d1533cc46e27463b4baa6957137f5af6c83380/Processor/PietPlusPlusExecutor.cs) exists:
+  Read, Write and Roll-Context are no-ops, and Dup aliases nested stacks.
+  Nested-stack cofactor descent adds a data-tree selection mechanism; the
+  strict subset executed 309 tables across 3,352 rows, including every table
+  through three inputs. This establishes feasibility, not full-language
+  correctness or admission. Next: pin Read/Write operand consumption and
+  coordinate origin, invalid typed operations, and image/block updates before
+  implementing the full language. Then execute the loop-less O(T) generator
+  through three inputs and sampled larger tables under the input conventions.
 
 - **Linear Boolean generators.**  Make build time and emitted size O(T), where
   T is the truth-table length.  For each remaining generator, either add a
@@ -46,6 +58,7 @@ and proved limits; completed work is recorded in its commit.
   size by same-parity successive differences through n=12. Timings use the
   top five arities, best of three, and exclude loading; runs under 10 ms do not
   establish an exponent. Closure requires a language-wide lower bound.
+  `Measured` retains the empirical regression gate without asserting a proof.
   Edit `proofs/status.json` and run `python scripts/generate.py docs` to update
   both status tables. Current status:
 
@@ -57,6 +70,7 @@ and proved limits; completed work is recorded in its commit.
   | Factor | Total | Language lower bound | Language lower bound | Linear |
   | Malbolge | Exception | Open | Linear | Linear |
   | Polynomial | Cap | Language lower bound | Language lower bound | Linear |
+  | Vandevelo | Total | Open | Measured | Measured |
 
   <!-- SCALING-STATUS:END -->
 
@@ -107,7 +121,7 @@ proof and remove the completed item.
   [the construction record](proofs/malbolge-scaling.md#seventeen-navigation-is-linear-in-address-so-packing-helps-measured).
   An impossibility proof instead needs a density lemma: reduce the count by
   `2**46076`, or bound a normal-form representative's dependence by 24,434
-  cells. A per-program dependence cut is false: `'o'*59046 + '/<v'` computes
+  cells. A per-program dependence cut is false: `'o'*59046 + '/<v'` computes the one-input
   identity and depends on all 59,049 cells. Length and alphabet cuts are also
   closed; [limitations](limitations.md#boolean-generators) records the controls.
 
@@ -150,7 +164,10 @@ proof and remove the completed item.
   280 generated programs retain identical source and all 2,536 rows execute.
   Affine-coset complements use direct violation guards: the n=12 one-zero
   table drops 40,938,391 candidate visits and shrinks from 333 to 277 characters.
-  Next: remove the identifier factor, amortize projection and fallback calls,
+  The occurrence-weighted naming audit shrinks a seeded n=12 source by 1.01%,
+  below the shipping threshold; `scripts/profile_vandevelo.py` records its
+  executed controls. Next: remove the identifier factor, amortize projection
+  and fallback calls,
   and bound the dual-basis core's aggregate work. Neither remaining gap is a
   language-wide lower bound; measured scaling does not settle them.
 
