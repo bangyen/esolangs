@@ -1,13 +1,18 @@
 """Generate programs, run supplied source, and describe languages.
 
-``generate`` builds source; ``instantiate`` fills templates; ``run`` executes
-caller-supplied source.  Boolean evaluation is private certification
-machinery, not public API.
-``encode_inputs`` and ``read_answer`` handle rows.
-``dump_program`` and ``load_program`` preserve source provenance in portable JSON.
-``describe`` and ``list_languages``
-provide registry facts. Stepping and debugging live in :mod:`esolangs.debugger`.
-``Language(name)`` binds these functions to one language.
+Public operations split by who supplies the program:
+
+* Generator-made: ``generate`` builds source from a truth table and
+  ``instantiate`` fills a generator-made template.
+* Caller-supplied: ``run`` executes source the caller supplies.
+  Stepping and debugging live in :mod:`esolangs.debugger`.
+* Contract adapters: ``encode_inputs`` spells input bits as stdin,
+  ``read_answer`` extracts an answer bit from output, and
+  ``dump_program``/``load_program`` preserve source in portable JSON.
+* Catalog: ``describe`` and ``list_languages`` provide registry facts.
+
+Boolean evaluation over every row is private certification machinery,
+not public API.  ``Language(name)`` binds these functions to one language.
 Names resolve case-insensitively; deliberate errors derive from EsolangError.
 """
 

@@ -13,7 +13,14 @@ from esolangs.settings import DialectSettings
 
 @dataclass(frozen=True, slots=True)
 class Language:
-    """Bind a canonical language name to the package's existing functions."""
+    """Bind a canonical language name to the package's existing functions.
+
+    Methods follow the package split by who supplies the program:
+    ``generate``/``instantiate`` are generator-made, ``run`` executes
+    caller-supplied source, ``encode_inputs``/``read_answer`` and
+    ``dump_program``/``load_program`` are contract adapters, and
+    ``describe`` is catalog.  Boolean evaluation is private machinery.
+    """
 
     name: str
 
