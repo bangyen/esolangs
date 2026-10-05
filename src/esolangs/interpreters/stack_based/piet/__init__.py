@@ -241,7 +241,12 @@ class _Machine:
     ip_shape = "grid"
 
     @staticmethod
-    def perform_io(stack: tuple[int, ...], effect: _Effect, io: IO) -> tuple[int, ...]:
+    def perform_io(
+        stack: tuple[int, ...],
+        effect: _Effect,
+        io: IO,
+        read_succeeded: Callable[[], None] | None = None,
+    ) -> tuple[int, ...]:
         """Perform a transition's I/O and return the resulting immutable stack."""
         if effect is None:
             return stack
@@ -252,11 +257,19 @@ class _Machine:
             except EOFError:
                 pass
             else:
+                if read_succeeded is not None:
+                    read_succeeded()
                 with suppress(ValueError):
                     return (*stack, int(line))
         elif action == "read_char":
-            with suppress(EOFError):
-                return (*stack, io.input_char())
+            try:
+                value = io.input_char()
+            except EOFError:
+                pass
+            else:
+                if read_succeeded is not None:
+                    read_succeeded()
+                return (*stack, value)
         elif action == "write_num":
             io.print_num(value)
         else:
@@ -266,7 +279,13 @@ class _Machine:
 
     def __init__(self, program: Raster, io: IO, *, scale: int | None = None) -> None:
         self.rows = program._normalized(scale)  # noqa: SLF001
+        self._program_key = (
+            len(self.rows[0]),
+            len(self.rows),
+            bytes(channel for row in self.rows for pixel in row for channel in pixel),
+        )
         self.io = io
+        self._input_reads = 0
         self.state: _State = ((0, 0), 0, -1, (), _colour(self.rows[0][0]) == BLACK)
 
     @property
@@ -305,11 +324,16 @@ class _Machine:
             self.stack,
             self.io.position(),
             self.halted,
+            self._program_key,
+            self._input_reads,
         )
+
+    def _read_succeeded(self) -> None:
+        self._input_reads += 1
 
     def step(self) -> None:
         state, effect = _advance(self.state, self.rows)
-        stack = self.perform_io(state[3], effect, self.io)
+        stack = self.perform_io(state[3], effect, self.io, self._read_succeeded)
         self.state = (*state[:3], stack, state[4])
 
 

@@ -501,8 +501,8 @@ def _generator_oracles(module: str) -> list[Path]:
         affected.add(language.name)
         stem = language.interpreter.rsplit(".", 1)[-1]
         selected.update(ROOT.glob(f"tests/interpreters/test_{stem}_*semantics.py"))
-        if stem == "line":
-            selected.update(ROOT.glob("tests/line/test_*semantics.py"))
+        if stem in {"line", "piet"}:
+            selected.update(ROOT.glob(f"tests/{stem}/test_*semantics.py"))
     # Early audits share a suite whose parameter literals name the languages.
     for path in ROOT.glob("tests/interpreters/test_*semantic*.py"):
         names = {
