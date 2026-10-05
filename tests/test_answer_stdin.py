@@ -100,6 +100,24 @@ class TestTheStdinJudgeIsReachableFromPython:
         with pytest.raises(esolangs.ArgumentError):
             esolangs.check_stdin("Taglate", "1\n0\n1\n", "00010111")
 
+    @pytest.mark.parametrize("language", ["thisthat", "Circuit Diagram", "Flowchart"])
+    def test_whitespace_passes_where_the_reader_skips_it(self, language: str) -> None:
+        """Their bit reader ignores whitespace; the judge now does too.
+
+        ``echo 01 | esolangs run --judge ...`` was refused for a trailing
+        newline the plain run happily reads past.
+        """
+        esolangs.check_stdin(language, "0 1\n", "0110")
+        with pytest.raises(esolangs.ArgumentError, match="unexpected character"):
+            esolangs.check_stdin(language, "0x1", "0110")
+        with pytest.raises(esolangs.ArgumentError, match="reads 2 characters"):
+            esolangs.check_stdin(language, "0 1 1", "0110")
+
+    def test_whitespace_still_counts_for_a_reader_that_reads_it(self) -> None:
+        """brainfuck reads the space as a character, so it stays refused."""
+        with pytest.raises(esolangs.ArgumentError, match="unexpected character"):
+            esolangs.check_stdin("brainfuck", "0 1", "0110")
+
     def test_it_refuses_a_language_with_no_stdin(self) -> None:
         """A template language reads none, so there is nothing to judge."""
         with pytest.raises(esolangs.ArgumentError, match="reads no stdin"):

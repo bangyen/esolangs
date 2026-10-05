@@ -169,16 +169,23 @@ def check_stdin(language: str, stdin: str, truth_table: str | None = None) -> No
                 )
         return
     if shape in {"char_stream", "char_stream_padded", "char_stream_cyclic"}:
-        astray = [char for char in stdin if char not in (zero, one)]
+        # A reader that skips whitespace (``input_bit``) takes its bits
+        # wherever they sit, so the check reads the same text it will.
+        checked = (
+            "".join(char for char in stdin if not char.isspace())
+            if contract.ignores_whitespace
+            else stdin
+        )
+        astray = [char for char in checked if char not in (zero, one)]
         if astray:
             raise ArgumentError(
                 f"{name} spells its bits {zero!r} and {one!r}, and "
                 f"stdin contains an unexpected character {astray[0]!r}"
             )
-        if wanted is not None and len(stdin) != wanted:
+        if wanted is not None and len(checked) != wanted:
             raise ArgumentError(
                 f"{name} reads {wanted} characters for this table, "
-                f"but stdin has {len(stdin)}"
+                f"but stdin has {len(checked)}"
             )
         return
     stray = [line for line in lines if line not in (zero, one)]

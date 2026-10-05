@@ -628,7 +628,7 @@
         "linear lookup"
       ],
       "qualification": "the table is the starting state, one character an entry, and the bit read rewrites every adjacent pair to one of its two members, so the state halves per input and the last character is the answer; the rules never overlap, so the language's random rule choice has nothing to choose",
-      "scaling": "linear: T state characters, twenty-one fixed rules",
+      "scaling": "linear: T state characters, nineteen fixed rules",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {

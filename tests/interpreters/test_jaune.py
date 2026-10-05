@@ -233,6 +233,14 @@ class TestParsing:
         with pytest.raises(ValueError, match="requires a number"):
             run_program("?")
 
+    def test_bare_operator_hint_puts_the_number_first(self) -> None:
+        """The count precedes its command (``9:``), whatever the hint said."""
+        with pytest.raises(ValueError, match="requires a number") as caught:
+            run_program(":")
+        assert any(
+            "immediately before the command" in note for note in caught.value.__notes__
+        )
+
     def test_runs_of_an_operator_carry_their_length(self) -> None:
         """``++`` is one command repeated twice, not two commands.
 
