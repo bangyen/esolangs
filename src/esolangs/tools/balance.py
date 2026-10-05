@@ -12,6 +12,7 @@ from esolangs.tools.arrowqueue import arrowqueue
 from esolangs.tools.b_tapemark import b_tapemark
 from esolangs.tools.back import back
 from esolangs.tools.befunge import balance_befunge
+from esolangs.tools.befunge_98 import befunge_98
 from esolangs.tools.bitdeque import bitdeque
 from esolangs.tools.brainif import _brainif_tree, brainif
 from esolangs.tools.circuit_diagram.balance import balance_circuit_diagram
@@ -256,6 +257,17 @@ def _egl(table: str, default: str) -> str:
     return min(default, *(egl(table, width) for width in widths), key=balance_score)
 
 
+def _befunge_98(table: str, default: str) -> str:
+    """Compare the default with the widths around the square crossing.
+
+    Width W costs about L/(W-2) header rows plus T/W table rows, so the
+    square sits near sqrt(L + T); the score settles the neighbours.
+    """
+    side = isqrt(len(default)) + 1
+    widths = range(max(1, side - 2), side + 3)
+    return min(default, *(befunge_98(table, w) for w in widths), key=balance_score)
+
+
 def _smallfuck(table: str, default: str) -> str:
     """Balance four-character setters and the one-character narrow setters."""
     n = _validate_truth_table(table)
@@ -445,6 +457,7 @@ BALANCERS: dict[str, Callable[[str, str], str] | Callable[[str, Raster], Raster]
     "back": _back,
     "b_tapemark": _tapemark,
     "befunge": balance_befunge,
+    "befunge_98": _befunge_98,
     "bitdeque": _bitdeque,
     "brainif": _brainif,
     "circuit_diagram": balance_circuit_diagram,

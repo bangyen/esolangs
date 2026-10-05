@@ -22,6 +22,7 @@ Row gives the logical bits; Input gives their language-specific encoding.
 | `b-tapemark.txt` | B-tapemark | `0001` | `01` | 01 | '0' |
 | `back.txt` | Back | `0001` | `01` | embedded 01 | '0 1 0' |
 | `befunge.txt` | Befunge | `0001` | `01` | 0 1 | '0 ' |
+| `befunge-98.txt` | Befunge-98 | `0001` | `01` | 0 1 | '0 ' |
 | `bf-pda.txt` | BF-PDA | `0001` | `01` | embedded 01 | '0' |
 | `bfstack.txt` | BFStack | `0001` | `01` | 01 | '0' |
 | `bio.txt` | BIO | `0001` | `01` | embedded 01 | '0' |
