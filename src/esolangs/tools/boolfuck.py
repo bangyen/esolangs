@@ -2,17 +2,15 @@
 
 Tape layout (head starts on cell 0, all cells start 0):
 
-- cells ``2i`` / ``2i+1``  input bit ``x_i`` and its per-level flag,
-  interleaved so every test moves the head at most a couple of cells
-- cell  ``2n``             result bit R
-- cell  ``-1``             read scratch (the 7 non-value bits of each
-  input byte)
+- cells ``2i`` / ``2i+1``: input bit ``x_i`` and its per-level flag
+  (interleaved, so tests move the head only a couple of cells)
+- cell ``2n``: result bit R; cell ``-1``: read scratch for the 7
+  non-value bits of each input byte
 
 Reads: under the Boolean input contract each input byte is ``'0'`` or
 ``'1'``, and the interpreter streams bytes little-endian, so the first
-bit read from a byte is its value bit; it lands on the byte's own cell
-and the other seven bits are read into the scratch cell and forgotten
-(every input byte is consumed whole).
+bit read is the value bit; it lands on the byte's own cell and the
+other seven are read into scratch and forgotten (bytes consumed whole).
 
 Tree: a decision tree re-choreographed for flip-only bit cells. Node
 ``i`` sets ``flag_i``, then ``[+`` on the bit cell clears a set bit and
