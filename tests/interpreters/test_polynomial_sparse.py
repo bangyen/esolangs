@@ -61,7 +61,9 @@ def _oracle_convert(roots: list[tuple[int, int]]) -> list[list[int]]:
                 for val in exponents:
                     if target == num**val:
                         ordered.remove(root)
-                        post.append([real, val] if imag else [val])
+                        # Only read/write roots may have a zero real part.
+                        if not imag or real != 0 or val in (1, 2):
+                            post.append([real, val] if imag else [val])
                         break
         num += 1
     return post

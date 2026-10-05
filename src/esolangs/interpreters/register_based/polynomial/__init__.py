@@ -2,10 +2,8 @@
 
 Polynomial programs are polynomial functions ``f(x) = ...``; real zeroes
 are control flow and complex zeroes register operations on a single
-integer register, in ascending-prime order.  The wiki's cat notes output
-ignores negatives; this clamps to zero (a NUL), and EOF stores -1 as
-specified -- as does reading a NUL byte, which keeps the register
-distinguishable from an unset one.
+integer register, in ascending-prime order. Division and remainder
+truncate toward zero; output ignores negatives and EOF stores -1.
 Malformed programs raise :class:`ValueError`.  No instruction cap: a
 growing register never repeats, and ``esolangs.run``'s ``timeout`` is
 the guard.
@@ -27,6 +25,7 @@ import functools
 import re
 import sys
 from collections.abc import Callable, Sequence
+from typing import cast
 
 from esolangs._drive import drive
 from esolangs.interpreters.io import IO
@@ -107,7 +106,7 @@ def convert(pre: Sequence[complex | _Root]) -> list[list[int]]:
         real, imag = round(root.real), round(root.imag)
         if imag:
             match = _prime_power(imag, _PEEL_MAX_IMAGINARY_EXPONENT)
-            if match is not None:
+            if match is not None and (real != 0 or match[1] in (1, 2)):
                 keyed.append((match[0], imag, real, [real, match[1]]))
         else:
             match = _prime_power(real, _PEEL_MAX_EXPONENT)
@@ -254,13 +253,30 @@ def _parse_program(code: str) -> tuple[tuple[int, ...], ...]:
 #: The arithmetic instructions, in the order their codes select them.
 #: Each is a function of the register and the instruction's operand, so
 #: none of them reaches the machine the way the old bound lambdas did.
+def _quotient(register: int, operand: int) -> int:
+    """Return C integer division without converting through float."""
+    magnitude = abs(register) // abs(operand)
+    return -magnitude if (register < 0) != (operand < 0) else magnitude
+
+
+def _power(register: int, exponent: int) -> int:
+    """Return the integer assignment of the specified power."""
+    if exponent >= 0:
+        return cast(int, register**exponent)
+    if register == 0:
+        raise ZeroDivisionError("zero register to negative power")
+    if abs(register) == 1:
+        return -1 if register == -1 and exponent % 2 else 1
+    return 0
+
+
 _ARITH: tuple[Callable[[int, int], int], ...] = (
     lambda r, a: r + a,  # +=
     lambda r, a: r - a,  # -=
     lambda r, a: r * a,  # *=
-    lambda r, a: r // a,  # /=
-    lambda r, a: r % a,  # %=
-    lambda r, a: r**a,  # ^
+    lambda r, a: _quotient(r, a),  # /=
+    lambda r, a: r - a * _quotient(r, a),  # %=
+    lambda r, a: _power(r, a),  # ^
 )
 
 #: The branch conditions, keyed by ``(code - 1) % 4`` the way the
@@ -322,11 +338,9 @@ def _advance(
         if one:
             reg = _ARITH[two - 1](reg, one)
         elif two - 1:
-            reg = byte if byte else -1
+            reg = byte if byte is not None else -1
         else:
-            # Negative registers print as NUL: the wiki says output ignores
-            # them, and clamping is this interpreter's documented reading.
-            output = chr(max(0, reg))
+            output = chr(reg) if reg >= 0 else None
     elif one in [2, 6]:
         # One lookup, not two: the partner was being found twice over to
         # read its code and then to jump to it.
@@ -355,6 +369,8 @@ class _Machine:
         self.instructions = [list(instr) for instr in _parse_program(code)]
         # Bracket partners, paired once instead of scanned for per jump.
         self._pairs = _bracket_pairs(self.instructions)
+        self._input_reads = 0
+        self._program_key = tuple(tuple(instr) for instr in self.instructions)
         self.ind = 0
         self.reg = 0
 
@@ -373,7 +389,13 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return (self.ind, self.reg, self.io.position())
+        return (
+            self.ind,
+            self.reg,
+            self.io.position(),
+            self._input_reads,
+            self._program_key,
+        )
 
     def step(self) -> None:
         """Execute one instruction, advancing the cursor.
@@ -390,8 +412,9 @@ class _Machine:
         if two and not one and two - 1:
             try:
                 byte = self.io.input_char()
+                self._input_reads += 1
             except EOFError:
-                byte = 0
+                byte = None
 
         (self.reg, self.ind), output = _advance(
             (self.reg, self.ind), self.instructions, byte, self._pairs
