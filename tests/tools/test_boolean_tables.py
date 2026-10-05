@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import pytest
 
-from esolangs import evaluate
+from esolangs._evaluate import _evaluate
 from esolangs.registry import GENERATORS, resolve
 from esolangs.tools.examples import BOOLEAN_EXAMPLES
 from tests.raises import raises_message
@@ -54,7 +54,7 @@ def test_the_generated_program_computes_its_table(name: str) -> None:
             # A generator may document an arity or shape it refuses; the
             # refusal itself is its own module's to pin.
             continue
-        got = evaluate(name, program, inputs=n)
+        got = _evaluate(name, program, inputs=n)
         assert got == table, f"{name} {table} gave {got!r}"
 
 

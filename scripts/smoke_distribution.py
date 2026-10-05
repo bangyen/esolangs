@@ -105,7 +105,7 @@ def smoke(*, math_extra: bool, image_extra: bool = False) -> None:
                 )
                 == "0110"[row]
             )
-        assert _evaluate("brainfuck", source, inputs=2) == "0110"
+        assert _evaluate("brainfuck", source, timeout=None, inputs=2) == "0110"
         for program, options, code, output, diagnostic in (
             (",.+[]", ["--timeout", "2"], 124, "A\n", "deadline"),
             (",[.]", ["--max-output", "3"], 1, "AAA\n", "output limit exceeded"),
@@ -133,7 +133,7 @@ def smoke(*, math_extra: bool, image_extra: bool = False) -> None:
             assert result.stdout == output, result
             assert diagnostic in result.stderr, result
         source.write_text(",>,<.", encoding="utf-8")
-        assert _evaluate("brainfuck", source, inputs=2) == "0011"
+        assert _evaluate("brainfuck", source, timeout=None, inputs=2) == "0011"
     for language in ("Line", "Piet"):
         raster = esolangs.generate(language, "0110")
         assert isinstance(raster, esolangs.Raster)
