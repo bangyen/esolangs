@@ -251,6 +251,7 @@ class _Machine:
         )
         self.io = io
         self.state = _State(0, 0, (("Nil", False),))
+        self._input_reads = 0
 
     @property
     def halted(self) -> bool:
@@ -266,7 +267,7 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete evaluator state."""
-        return (self.state, self.io.position())
+        return (self.state, self.io.position(), self._input_reads, self.statements)
 
     def step(self) -> None:
         """Advance one expression-evaluation operation."""
@@ -275,6 +276,7 @@ class _Machine:
         input_value = None
         if _needs_input(self.state, self.statements):
             input_value = self.io.input_str() not in {"", "0", " "}
+            self._input_reads += 1
         self.state = _advance(self.state, self.statements, input_value=input_value)
 
 

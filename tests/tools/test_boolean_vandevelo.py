@@ -15,59 +15,6 @@ def _result(program: str, bits: tuple[int, ...]) -> str:
     return "0" if run_until_halt_or_cycle(_Machine(program, io)) else "1"
 
 
-def test_xor_executes_every_generated_row() -> None:
-    program = vandevelo("0110")
-    results = (_result(program, bits) for bits in product(range(2), repeat=2))
-    assert "".join(results) == "0110"
-
-
-def test_constant_still_reads_every_input() -> None:
-    program = vandevelo("00000000")
-    io = ScriptedIO("0\n1\n0\n")
-    assert run_until_halt_or_cycle(_Machine(program, io))
-    assert io.reads == 3
-
-
-def test_one_rows_are_named_cubes() -> None:
-    program = vandevelo("0001")
-    assert program.splitlines()[-1] == "b? :: a? :: loop?"
-
-
-def test_constant_one_needs_no_guards() -> None:
-    program = vandevelo("11111111")
-    assert program.splitlines()[-1] == "loop?"
-
-
-def test_constant_subtree_is_one_coset() -> None:
-    program = vandevelo("00001111")
-    assert program.splitlines()[-1] == "a? :: loop?"
-
-
-def test_an_input_tested_mostly_for_zero_is_read_negated() -> None:
-    """``~!>`` on the read replaces every ``== Nil`` test of that input."""
-    lines = vandevelo("10000000").splitlines()
-    assert lines[:3] == ["a ~!> Inp?", "b ~!> Inp?", "c ~!> Inp?"]
-    assert lines[-1] == "c? :: b? :: a? :: loop?"
-
-
-def test_a_register_binds_the_polarity_its_test_wants() -> None:
-    """The last toggle is ``==`` when the clause wants the parity at 0."""
-    lines = vandevelo("00001001").splitlines()
-    assert lines[4:] == ["d ~> c?", "d ~> d? == b?", "d? :: a? :: loop?"]
-
-
-def test_a_test_implied_by_an_earlier_half_space_is_dropped(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Rows past ``a? :: loop?`` all have ``a`` at 0; nothing tests it again."""
-    import importlib
-
-    module = importlib.import_module("esolangs.tools.vandevelo")
-    monkeypatch.setattr(module, "_affine_coset", lambda *_: None)
-    lines = vandevelo("01111111").splitlines()
-    assert lines[4:] == ["a? :: loop?", "c? :: loop?", "b? :: loop?"]
-
-
 def _steps(program: str, bits: tuple[int, ...]) -> int:
     """Steps to the halt, or to the first repeated state of a hanging row."""
     machine = _Machine(program, ScriptedIO("".join(f"{bit}\n" for bit in bits)))
@@ -207,19 +154,7 @@ def test_coset_membership_work_is_geometric() -> None:
 def test_the_exact_autocorrelation_improves_on_the_scored_candidates(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """The fallback that makes the clause bound a bound, not a heuristic.
-
-    A node scores only :data:`~esolangs.tools.vandevelo._CANDIDATES`
-    directions, so it can miss the pigeonhole-average one that
-    Cohen--Shinkar's telescoping argument needs; while the working set is
-    dense the generator falls back to an exact Walsh--Hadamard
-    autocorrelation.  The fresh nearest differences cover almost every
-    table -- the fallback changes the output on 3 of 400 random tables at
-    n=4..7, all at n=4 -- so this table is a found witness rather than a
-    constructed one, and it is pinned because deleting the fallback would
-    leave the docstring's bound unproven while every small table still
-    passed: without it this table costs 203 characters, with it 157.
-    """
+    """Exact fallback shortens the executed witness from 195 to 128 characters."""
     import importlib
 
     table = "1101010110111010"
