@@ -19,13 +19,11 @@ from esolangs.cli_args import (
     _pop_set_pairs,
     _settings_of,
     _split_positional,
-    _table_of,
     _timeout_of,
 )
 from esolangs.cli_hints import (
     _TIMEOUT_EXIT,
     _abridge,
-    _shape_warning,
     _stdin_hint,
     _template_hint,
 )
@@ -89,7 +87,6 @@ def _debug(rest: list[str]) -> None:
         "--break-on-output",
         "--stdin",
         "--timeout",
-        "--table",
         "--settings",
         "--set",
     }
@@ -105,7 +102,6 @@ def _debug(rest: list[str]) -> None:
     # Before the positional count, matching ``run``: a forgotten number made
     # the language the timeout's value and the complaint landed on the file.
     limit = _timeout_of(options)
-    table = _table_of(options)
     rest = _split_positional(rest, set(), options_taken | {"--tui", "--portable"})
     if not (portable and len(rest) == 1):
         _check_count("debug", rest, 2)
@@ -200,11 +196,6 @@ def _debug(rest: list[str]) -> None:
     # state up to the fault is the thing they asked to see.
     fault = None
     reason = None
-    warning = (
-        _shape_warning(describe(language), stdin, table) if table is not None else ""
-    )
-    if warning:
-        sys.stderr.write(f"{warning}\n")
     # ``run`` gained this last round and ``debug`` did not, so `debug 123
     # prog.txt` -- the command you reach for precisely when something is
     # not stopping -- still hung with nothing on screen.  ``--steps`` counts

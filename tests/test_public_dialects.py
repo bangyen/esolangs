@@ -147,7 +147,7 @@ def test_cli_generate_and_run_share_settings(tmp_path: Path, capsys):
     path.write_text(generated)
     for isolated in ([], ["--isolated"]):
         output, _ = call_both(
-            ["run", "--settings", choices, "--judge", *isolated, "Alight", str(path)],
+            ["run", "--settings", choices, *isolated, "Alight", str(path)],
             capsys,
             stdin="10",
         )

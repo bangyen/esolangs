@@ -14,7 +14,7 @@ from tests.cli_support import call_both
         (",[.]", ["--max-output", "0"], 1, "", "output limit exceeded"),
         # Includes worker startup; 0.5s lost output in two full-suite runs.
         (",.+[]", ["--timeout", "2"], 124, "A\n", "deadline"),
-        (",.", ["--judge"], 0, "1\n", ""),
+        (",.", [], 0, "1", ""),
     ],
 )
 def test_isolated_cli_retains_output_and_verdict(
@@ -29,7 +29,7 @@ def test_isolated_cli_retains_output_and_verdict(
     path = tmp_path / "program.txt"
     path.write_text(source)
     args = ["run", "--isolated", *options, "brainfuck", str(path)]
-    stdin = "1" if "--judge" in options else "A"
+    stdin = "1" if output == "1" else "A"
     if code:
         with pytest.raises(SystemExit, match=f"^{code}$"):
             call_both(args, capsys, stdin)

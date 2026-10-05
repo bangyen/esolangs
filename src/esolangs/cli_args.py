@@ -60,7 +60,6 @@ _VALUE_OPTIONS = {
     "--timeout",
     "--max-output",
     "--max-memory",
-    "--table",
     "--seed",
     "--steps",
     "--watch-cell",
@@ -70,7 +69,7 @@ _VALUE_OPTIONS = {
     "--stdin",
 }
 
-_SHORT_OPTIONS = {"-p": "--portable", "-s": "--settings", "-t": "--table"}
+_SHORT_OPTIONS = {"-p": "--portable", "-s": "--settings"}
 
 
 def _expand_short_options(rest: list[str]) -> list[str]:
@@ -364,25 +363,6 @@ def _timeout_of(options: dict[str, str], *, option: str = "--timeout") -> float 
             .replace("--timeout 5.0", f"{option} 5.0")
         )
     return seconds
-
-
-def _table_of(options: dict[str, str]) -> str | None:
-    """Return the ``--table`` value, refusing a malformed truth table.
-
-    ``run`` and ``debug`` used to warn about a bad table and run anyway,
-    while the private stdin check refused it; an option's value is a usage error,
-    so it is judged here once for every command that takes the flag.
-    """
-    if "--table" not in options:
-        return None
-    table = options["--table"]
-    # Imported at call time: ``esolangs._answers`` reaches the registry,
-    # and this module is imported while the package is still assembling.
-    from esolangs._answers import _validate_shape_for_evaluate
-
-    with _errors():
-        _validate_shape_for_evaluate(table)
-    return table
 
 
 def _pop_cell(options: dict[str, str]) -> tuple[int, int] | None:

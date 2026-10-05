@@ -62,9 +62,6 @@ def test_run_and_debug_restored_program(tmp_path, capsys, language, settings):
         [
             "run",
             "--portable",
-            "--judge",
-            "--table",
-            "0110",
             "--timeout",
             "10",
             language,
@@ -73,7 +70,8 @@ def test_run_and_debug_restored_program(tmp_path, capsys, language, settings):
         capsys,
         stdin,
     )
-    assert (output, error) == ("1\n", "")
+    assert esolangs.read_answer(language, output) == "1"
+    assert error == ""
     output, error = call_both(
         [
             "debug",
@@ -123,16 +121,14 @@ def test_portable_isolated_cli(tmp_path, capsys, language):
             "run",
             "--portable",
             "--isolated",
-            "--judge",
-            "--table",
-            "01",
             language,
             str(path),
         ],
         capsys,
         stdin,
     )
-    assert (output, error) == ("1\n", "")
+    assert esolangs.read_answer(language, output) == "1"
+    assert error == ""
 
 
 @pytest.mark.medium

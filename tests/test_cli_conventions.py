@@ -278,8 +278,8 @@ class TestTheTopLevelUsageKeepsUp:
     the one that costs a reader something: it is the flag the three
     diverging languages need, and its absence reads as "cannot be bounded".
 
-    Drifting the other way too -- the top level advertised ``run --table``
-    while ``run``'s own usage line did not.
+    Drifting the other way too -- the top level once advertised flags
+    ``run``'s own usage line did not.
     """
 
     @staticmethod

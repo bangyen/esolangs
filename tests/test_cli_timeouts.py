@@ -190,7 +190,7 @@ class TestTimeoutValuesAreCheckedOnce:
         path = tmp_path / "p.txt"
         path.write_text(esolangs.generate("brainfuck", "0110"))
         out = call_main(
-            ["run", "--judge", "--timeout", "100000", "brainfuck", str(path)],
+            ["run", "--timeout", "100000", "brainfuck", str(path)],
             capsys,
             stdin="10",
         )

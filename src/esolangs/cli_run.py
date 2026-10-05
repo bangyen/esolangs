@@ -1,11 +1,11 @@
-"""``esolangs run``: one program through its interpreter, judged on request."""
+"""``esolangs run``: one program through its interpreter."""
 
 from __future__ import annotations
 
 import sys
 import warnings
 
-from esolangs import describe, read_answer, run
+from esolangs import describe, run
 from esolangs.cli_args import (
     _check_count,
     _errors,
@@ -20,14 +20,11 @@ from esolangs.cli_args import (
     _seed_of,
     _settings_of,
     _split_positional,
-    _table_of,
     _timeout_of,
 )
 from esolangs.cli_hints import (
     _TIMEOUT_EXIT,
-    _UNCOUNTABLE_SHAPES,
     _exit_code,
-    _shape_warning,
     _stdin_hint,
     _template_hint,
 )
@@ -45,19 +42,6 @@ from esolangs.exceptions import EsolangError, ExecutionTimeoutError, TemplateErr
 from esolangs.settings import dialect_options
 
 
-def _judge(language: str, output: str, mode: object) -> str:
-    """Return the answer bit for a finished run, or exit explaining why not."""
-    if mode == "termination":
-        # It halted, and halting is this group's 0.  The 1 is the timeout,
-        # which never reaches here -- ``_run`` reports it before judging.
-        return "0"
-    try:
-        return read_answer(language, output)
-    except EsolangError as exc:
-        _fail(exc, 1)
-        raise  # pragma: no cover - unreachable; _fail exits
-
-
 def _run(rest: list[str]) -> None:
     """Run a program through its interpreter and write its output."""
     rest, set_pairs = _pop_set_pairs(rest)
@@ -65,7 +49,6 @@ def _run(rest: list[str]) -> None:
         rest,
         {
             "--timeout",
-            "--table",
             "--seed",
             "--scale",
             "--max-output",
@@ -80,7 +63,7 @@ def _run(rest: list[str]) -> None:
     # argument that was not the problem.
     timeout = _timeout_of(options)
     rest, portable = _pop_portable(rest)
-    rest, flags = _pop_flags(rest, {"--judge", "--isolated"})
+    rest, flags = _pop_flags(rest, {"--isolated"})
     isolated = "--isolated" in flags
     if isolated and timeout is None:
         timeout = 30.0
@@ -104,8 +87,6 @@ def _run(rest: list[str]) -> None:
         set(),
         {
             "--timeout",
-            "--judge",
-            "--table",
             "--seed",
             "--scale",
             "--settings",
@@ -118,13 +99,8 @@ def _run(rest: list[str]) -> None:
     )
     seed = _seed_of(options)
     scale = _scale_of(options)
-    judge = "--judge" in flags
-    # Refused like every value-taking option is.  `--judge --judge` was
-    # accepted in silence while `--timeout 5 --timeout 9` was refused, and
-    # the inconsistency is the finding rather than either policy.
-    for flag in ("--judge", "--isolated"):
-        if flags.count(flag) > 1:
-            _fail(f"{flag} given more than once")
+    if flags.count("--isolated") > 1:
+        _fail("--isolated given more than once")
     if not (portable and len(rest) == 1):
         _check_count("run", rest, 2)
     if portable and len(rest) == 1:
@@ -134,7 +110,6 @@ def _run(rest: list[str]) -> None:
     else:
         language, path = rest[0], rest[1]
     settings = _settings_of(options, set_pairs, language=language)
-    table = _table_of(options)
     # Resolved *before* stdin is read.  It was after, so
     # `esolangs run NotALang prog.txt` with stdin held open blocked forever
     # without ever saying the language was unknown -- the one thing it could
@@ -146,14 +121,6 @@ def _run(rest: list[str]) -> None:
         mode = facts["answer_mode"]
         name = facts["name"]
     if mode == "termination" and timeout is None:
-        if judge:
-            # Judging needs the bound, so this is a refusal rather than the
-            # warning below -- and only one of the two is printed.
-            _fail(
-                f"--judge needs --timeout for {name}: its answer for a 1 is "
-                f"that the program never stops, so there is nothing to wait "
-                f"for without a bound"
-            )
         # The default path for these four is an unbounded run of a program
         # written to loop forever, which is a hang with no output and no
         # explanation.  Not refused -- a program whose answer is 0 halts,
@@ -167,27 +134,6 @@ def _run(rest: list[str]) -> None:
         path, timeout, language=language, portable=portable, settings=settings
     )
     stdin = _read_stdin(timeout, _stdin_hint(facts))
-    warning = _shape_warning(facts, stdin, table) if judge or table is not None else ""
-    if warning and judge:
-        # ``--judge`` wants one answer bit, so a bad stdin is a usage error
-        # (the output would be one wrong digit); plain ``run`` only warns,
-        # since an arbitrary program may want that shape.
-        _fail(f"{warning}\n(refused because --judge asks for an answer bit)")
-    if judge and table is None and facts["input_shape"] in _UNCOUNTABLE_SHAPES:
-        # Last: put first it swallowed the specific diagnoses (``abc`` to
-        # Fargo said "pass --table" instead of "reads one decimal row
-        # index").  A refusal, only for these two single-line shapes, which
-        # never run off an end for ``run`` to count; a note on every
-        # table-less ``--judge`` fired on correct input.
-        reads = (
-            "a stream of bit characters"
-            if facts["input_shape"] == "char_stream_cyclic"
-            else "one row index"
-        )
-        _fail(
-            f"{name} reads {reads}, so the bit count cannot be checked from "
-            f"stdin alone -- pass --table <truth-table> with --judge"
-        )
     try:
         with (
             _UnboundedNotice("run") if timeout is None else _null_context(),
@@ -219,29 +165,14 @@ def _run(rest: list[str]) -> None:
                 )
         for entry in caught:
             _note(str(entry.message))
-        # The count and range checks ``--table`` buys; the library judges
-        # only shape and alphabet, so ``run --table`` used the table for
-        # nothing while the other two routes refused.  Skipped when the
-        # library already said it.
-        said = {str(entry.message) for entry in caught}
-        if (
-            warning
-            and warning not in said
-            and not any(warning.startswith(one.rstrip(".")) for one in said)
-        ):
-            _note(warning)
     except TemplateError as exc:
         _fail(_template_hint(exc, language))
     except ExecutionTimeoutError as exc:
         if mode == "termination":
             # The timeout *is* the answer here, so it is not a failure.
-            if judge:
-                print("1")
-                return
             sys.stderr.write(
                 f"{exc}\nnote: {name} answers 1 by not terminating, so for a "
-                f"generated truth-table program this timeout is the answer 1"
-                f" -- `--judge` prints it as one\n"
+                f"generated truth-table program this timeout is the answer 1\n"
             )
             sys.exit(_TIMEOUT_EXIT)
         # Distinct from a program error's 1, following timeout(1), so a
@@ -255,9 +186,6 @@ def _run(rest: list[str]) -> None:
         # program itself did is the program's failure, and exits 1.
         _emit_partial(exc)
         _fail(exc, _exit_code(exc))
-    if judge:
-        print(_judge(language, output, mode))
-        return
     _write_output(output)
     # Piped output stays byte-exact -- it gets compared and diffed -- but a
     # result with no trailing newline runs into the next shell prompt.

@@ -124,23 +124,6 @@ class TestTheHintsStayQuietWhenTheyDoNotApply:
         assert exc.value.code == 2
         assert "no answer this could read" in capsys.readouterr().err
 
-    def test_judge_reports_an_unreadable_output_as_the_programs_failure(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """Exit 1: the program ran and produced something unjudgeable."""
-        with pytest.raises(SystemExit) as exc:
-            call_main(
-                [
-                    "run",
-                    "--judge",
-                    "brainfuck",
-                    _program(tmp_path, "++++++++[>++++++++<-]>."),
-                ],
-                capsys,
-            )
-        assert exc.value.code == 1
-        assert "no answer this could read" in capsys.readouterr().err
-
     def test_a_non_table_run_of_digits_is_not_called_a_swap(
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
@@ -244,22 +227,6 @@ class TestTheAdvisoryNotesAreRenderedOnce:
         path.write_text(esolangs.generate("Grapheme", "0110"))
         _out, err = call_both(["run", "Grapheme", str(path)], capsys, stdin="0\n1\n")
         assert err.count("spells its bits") == 0
-
-    def test_judge_refuses_a_surplus_line_once(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """The arity mismatch `--judge` exists to catch."""
-        path = tmp_path / "p.txt"
-        path.write_text(esolangs.generate("brainfuck", "00010111"))
-        with pytest.raises(SystemExit) as exc:
-            call_main(
-                ["run", "--judge", "--table", "00010111", "brainfuck", str(path)],
-                capsys,
-                stdin="110011",
-            )
-        assert exc.value.code == 2
-        err = capsys.readouterr().err
-        assert err.count("reads 3 characters") == 1
 
     def test_an_empty_program_file_is_noted(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
@@ -394,7 +361,7 @@ class TestTheSmallInconsistencies:
         assert exc.value.code == 2
         assert "did you mean list" in capsys.readouterr().err
 
-    def test_a_repeated_judge_is_refused(
+    def test_a_repeated_isolated_is_refused(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """Every value-taking option refused a repeat; this flag did not."""
@@ -402,12 +369,12 @@ class TestTheSmallInconsistencies:
         path.write_text(esolangs.generate("brainfuck", "0110"))
         with pytest.raises(SystemExit) as exc:
             call_main(
-                ["run", "--judge", "--judge", "brainfuck", str(path)],
+                ["run", "--isolated", "--isolated", "brainfuck", str(path)],
                 capsys,
                 stdin="0\n1\n",
             )
         assert exc.value.code == 2
-        assert "--judge given more than once" in capsys.readouterr().err
+        assert "--isolated given more than once" in capsys.readouterr().err
 
     @pytest.mark.medium
     def test_a_no_op_width_says_so(

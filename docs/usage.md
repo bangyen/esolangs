@@ -171,8 +171,8 @@ Use `encode_inputs` to build stdin; it and this table use `describe`.
 [`MANIFEST.md`](../src/esolangs/examples/MANIFEST.md) lists each example’s
 input row and encoding.
 
-`esolangs run` warns about invalid stdin; `--judge` rejects it and can
-check the input bit count against a truth table.
+`esolangs run` warns about invalid stdin through the interpreter; pipe its
+output to `read-answer` when an answer bit is wanted.
 
 ## Templates
 

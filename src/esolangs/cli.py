@@ -8,7 +8,6 @@ Subcommands:
     esolangs generate <language> <table>  print a program computing a table
                                           (``--width N`` wraps it to N columns)
     esolangs run <language> <file>        run a program through its interpreter
-                                          (``--judge`` prints the answer bit)
     esolangs read-answer <language>       print the answer bit in a program's
                                           output, read from stdin
     esolangs debug <language> <file>      run under the breakpoint/watch VM
@@ -381,8 +380,9 @@ def _read_answer(rest: list[str]) -> None:
         zero, one = polarity
         _fail(
             f"{facts['name']} answers by {zero} for a 0 and {one} for a 1, so "
-            f"there is no output to read; use: esolangs run --judge "
-            f"--timeout <seconds> {facts['name']} <program-file>"
+            f"there is no output to read; use: esolangs run "
+            f"--timeout <seconds> {facts['name']} <program-file> and observe "
+            f"whether it halts"
         )
     output = _read_stdin(hint="; pipe a program's output in, or close stdin")
     if not output.strip():
