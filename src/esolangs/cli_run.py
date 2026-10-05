@@ -15,6 +15,7 @@ from esolangs.cli_args import (
     _pop_flags,
     _pop_options,
     _pop_portable,
+    _pop_set_pairs,
     _scale_of,
     _seed_of,
     _settings_of,
@@ -35,6 +36,7 @@ from esolangs.cli_io import (
     _emit_partial,
     _note,
     _null_context,
+    _portable_language,
     _read_program,
     _read_stdin,
     _UnboundedNotice,
@@ -59,6 +61,7 @@ def _judge(language: str, output: str, mode: object) -> str:
 
 def _run(rest: list[str]) -> None:
     """Run a program through its interpreter and write its output."""
+    rest, set_pairs = _pop_set_pairs(rest)
     rest, options = _pop_options(
         rest,
         {
@@ -107,6 +110,7 @@ def _run(rest: list[str]) -> None:
             "--seed",
             "--scale",
             "--settings",
+            "--set",
             "--portable",
             "--isolated",
             "--max-output",
@@ -115,7 +119,6 @@ def _run(rest: list[str]) -> None:
     )
     seed = _seed_of(options)
     scale = _scale_of(options)
-    settings = _settings_of(options)
     judge = "--judge" in flags
     # Refused like every value-taking option is.  `--judge --judge` was
     # accepted in silence while `--timeout 5 --timeout 9` was refused, and
@@ -123,8 +126,15 @@ def _run(rest: list[str]) -> None:
     for flag in ("--judge", "--isolated"):
         if flags.count(flag) > 1:
             _fail(f"{flag} given more than once")
-    _check_count("run", rest, 2)
-    language, path = rest[0], rest[1]
+    if not (portable and len(rest) == 1):
+        _check_count("run", rest, 2)
+    if portable and len(rest) == 1:
+        path = rest[0]
+        with _errors():
+            language = _portable_language(path, timeout)
+    else:
+        language, path = rest[0], rest[1]
+    settings = _settings_of(options, set_pairs, language=language)
     table = _table_of(options)
     # Resolved *before* stdin is read.  It was after, so
     # `esolangs run NotALang prog.txt` with stdin held open blocked forever

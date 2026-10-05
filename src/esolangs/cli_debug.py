@@ -16,6 +16,7 @@ from esolangs.cli_args import (
     _pop_flags,
     _pop_options,
     _pop_portable,
+    _pop_set_pairs,
     _settings_of,
     _split_positional,
     _table_of,
@@ -28,7 +29,13 @@ from esolangs.cli_hints import (
     _stdin_hint,
     _template_hint,
 )
-from esolangs.cli_io import _null_context, _read_program, _read_stdin, _UnboundedNotice
+from esolangs.cli_io import (
+    _null_context,
+    _portable_language,
+    _read_program,
+    _read_stdin,
+    _UnboundedNotice,
+)
 from esolangs.debugger import make_debugger
 from esolangs.exceptions import EsolangError, TemplateError
 from esolangs.interpreters.source_hints import error_text
@@ -84,11 +91,13 @@ def _debug(rest: list[str]) -> None:
         "--timeout",
         "--table",
         "--settings",
+        "--set",
     }
     # Options first, then the stray-flag check: a *value* can begin with a
     # dash (``--timeout -inf``), and a check that runs before the pairs are
     # consumed cannot tell one from a flag -- it answered that with
     # "unknown option: -inf" instead of "must be finite".
+    rest, set_pairs = _pop_set_pairs(rest)
     rest, options = _pop_options(rest, options_taken)
     rest, portable = _pop_portable(rest)
     rest, flags = _pop_flags(rest, {"--tui"})
@@ -98,8 +107,14 @@ def _debug(rest: list[str]) -> None:
     limit = _timeout_of(options)
     table = _table_of(options)
     rest = _split_positional(rest, set(), options_taken | {"--tui", "--portable"})
-    _check_count("debug", rest, 2)
-    language, path = rest[0], rest[1]
+    if not (portable and len(rest) == 1):
+        _check_count("debug", rest, 2)
+    if portable and len(rest) == 1:
+        path = rest[0]
+        with _errors():
+            language = _portable_language(path, limit)
+    else:
+        language, path = rest[0], rest[1]
     numbers = {
         name: _integer(options[name], name)
         for name in ("--steps", "--watch-cell", "--break-at")
@@ -112,7 +127,7 @@ def _debug(rest: list[str]) -> None:
     for name in ("--watch-cell", "--steps", "--break-at"):
         if name in numbers:
             _nonnegative(numbers[name], name, options[name])
-    settings = _settings_of(options)
+    settings = _settings_of(options, set_pairs, language=language)
     with _errors():
         if not portable:
             dialect_options(language, settings)

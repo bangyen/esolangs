@@ -6,6 +6,7 @@ carries a size and a deadline, and two notices say why nothing happened.
 
 from __future__ import annotations
 
+import json
 import sys
 import threading
 from contextlib import AbstractContextManager, nullcontext
@@ -21,6 +22,7 @@ from esolangs.cli_hints import (
     _decode_note,
 )
 from esolangs.exceptions import EsolangError, ProgramError
+from esolangs.registry import resolve
 from esolangs.settings import DialectSettings, dialect_options, effective_settings
 
 
@@ -108,6 +110,22 @@ def _read_program(
     except EsolangError as exc:
         _fail(exc)
         raise  # pragma: no cover - _fail exits
+
+
+def _portable_language(path: str, timeout: float | None = None) -> str:
+    """Return the language a portable document names, before it is loaded."""
+    content = _bounded_read(path, timeout)
+    try:
+        document = content.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise ProgramError("portable program must be UTF-8 JSON") from exc
+    try:
+        value = json.loads(document)
+    except ValueError as exc:
+        raise ProgramError(f"invalid portable program: {exc}") from exc
+    if not isinstance(value, dict) or not isinstance(value.get("language"), str):
+        raise ProgramError("invalid portable program: language must be a string")
+    return resolve(value["language"])
 
 
 def _note(message: str) -> None:
