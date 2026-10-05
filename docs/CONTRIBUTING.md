@@ -65,8 +65,7 @@ Start from `src/esolangs/interpreters/_template.py`. Every interpreter:
 - Guards an input line before indexing it (`if val:`); an empty line is
   legal, and running out raises `EOFError` either way.
 - Exposes `_Machine.step()`, `halted` and a complete `snapshot()`, including
-  the input cursor. Tests look up that exact name; `dimensional.py` was
-  silently skipped when it named something else.
+  the input cursor; tests look up that exact name.
 - Declares the VM views `ip`, `memory` and `stack` only where they say
   something: the VM defaults `ip` to `ind` and the other two to empty, so a
   language with no stack writes no `stack`.

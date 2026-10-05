@@ -752,11 +752,8 @@ def main() -> int:
             # (ci.yml:28), so the hook still guards the config itself.
             step_env = dict(step_env, SKIP="mypy")
         if only is None and name == "pytest":
-            # A default run leaves the whole slow band to CI.  A --full run
-            # takes the band but not the `weekly` probes inside it,
-            # which are 142.6s of its ~182s and are sampled once a week by
-            # `.github/workflows/weekly.yml` -- which runs bare `pytest`
-            # rather than this script, so it is unaffected by either flag.
+            # A default run leaves the slow band to CI; --full takes it but
+            # not the `weekly` probes, which only weekly.yml runs.
             #
             # Appended to argv rather than set in `addopts`, because pytest
             # *prepends* addopts: a default there would sit before the

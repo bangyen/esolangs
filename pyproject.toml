@@ -205,37 +205,12 @@ addopts = [
 ]
 markers = [
     "cost_evidence(regression): unique regression bought by a weekly test",
-    # The top tier.  353 of 10865 tests that cost 289s locally at two
-    # workers against the 81s the other 10314 take, so per-PR CI runs them
-    # sharded across four `slow` jobs (`-m "slow and not weekly"` -- the
-    # `weekly` probes stay weekly) and `.github/workflows/weekly.yml`
-    # keeps the whole suite on a schedule.
-    # `just test` and `just test-full` deselect it locally.
+    # Most of the suite's runtime; per-PR CI shards it, local runs skip it.
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
-    # A tier above `slow`, and a cost tier rather than a kind: two tests are
-    # 142.6s of the slow band's ~182s at four workers, and the other 347 are
-    # ~40s between them.  Measured with `--durations=0`, not estimated.
-    #
-    # Each is a high-arity probe of a claim documented elsewhere -- every
-    # generator raising only `EsolangError` at twelve inputs, and Factor's
-    # thirteen-input program decoding past its retired digit budget -- so
-    # they are evidence for
-    # `docs/proofs/index.md` and `limitations.md` and are not deletable.  What they are
-    # not is *per-run* evidence: none has ever failed on a change that
-    # the rest of the band passed, and each probes an arity nothing else in
-    # the suite reaches, so a week is the right sampling interval.
-    #
-    # `just test-full` and per-PR CI deselect this; `.github/workflows/
-    # weekly.yml` runs bare `pytest -n auto` and so picks it up by
-    # deselecting nothing.  Run one by hand with `-m weekly`.
+    # High-arity probes backing docs/proofs and limitations.md.  Too slow
+    # per PR; only the weekly workflow (bare `pytest`) runs them.
     "weekly: the high-arity probes, left to the weekly workflow",
-    # The middle tier.  The rule is behavioural, not a stopwatch reading: a
-    # test is `medium` if it runs a generated program through an interpreter
-    # or drives the CLI (or git) as a subprocess.  That is what costs whole
-    # seconds -- the inner loop keeps every generator's structural assertion
-    # and every interpreter's own unit tests, and pays for execution once a
-    # commit is in sight.  `just test-quick` deselects it; `just test` and CI
-    # do not -- CI stops at the `slow` band above.
+    # Runs a generated program or a subprocess; `just test-quick` skips it.
     "medium: runs a generated program or a subprocess (deselect for the inner loop)",
     "integration: marks tests as integration tests",
     "interpreter: marks tests for specific interpreters",

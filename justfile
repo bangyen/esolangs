@@ -12,15 +12,8 @@ PYTHON := `command -v uv >/dev/null 2>&1 && echo "uv run python" || echo "python
 help:
     @just --list
     @echo ""
-    @echo "  Four tiers, by what a test does rather than by a stopwatch"
-    @echo "  (except the last, which is purely cost):"
-    @echo "    fast   - unmarked; no interpreter run, no subprocess"
-    @echo "    medium - runs a generated program, or drives the CLI/git"
-    @echo "    slow   - the long tail, left to CI by a default 'just test'"
-    @echo "    weekly - the two high-arity probes, 142.6s of the slow band's"
-    @echo "             ~182s; even 'just test-full' skips them, and the"
-    @echo "             weekly workflow is what runs them ('-m weekly' by hand)"
-    @echo ""
+    @echo "  Tiers: fast (unmarked), medium (runs a program or a subprocess),"
+    @echo "  slow (left to CI), weekly (high-arity probes, weekly workflow only)."
     @echo "  Use 'just test-quick' for inner loop, 'just test-mid' before a commit,"
     @echo "  'just test-full' before a release."
 
@@ -63,11 +56,11 @@ test *args:
 test-full *args:
     {{PYTHON}} scripts/verify.py --full {{args}}
 
-# tier 1 — inner loop: pre-commit + pytest, fast band only, quiet by default
+# inner loop: pre-commit + pytest, fast band only, quiet by default
 test-quick *args:
     PYTEST_ADDOPTS="-m 'not slow and not medium and not weekly' -n 8" {{PYTHON}} scripts/verify.py --quiet --only pre-commit,pytest {{args}}
 
-# tier 2 — before a commit: everything but the long tail
+# before a commit: everything but the long tail
 test-mid *args:
     PYTEST_ADDOPTS="-m 'not slow'" {{PYTHON}} scripts/verify.py --only pytest {{args}}
 
@@ -105,40 +98,21 @@ sizes *args:
 new-language name *args:
     {{PYTHON}} scripts/new_language.py "{{name}}" {{args}}
 
-# Not part of `just test` -- it is a few minutes per language.
-# `language` is quoted below: nine of the sixty-four display names contain
-# a space ("A Painter Ant", "Minsky Swap", ...), and unquoted they split
-# into two arguments -- `just mutate "A Painter Ant"` failed with
-# `unrecognized arguments: Painter Ant`, for every one of the nine.
+# Not part of `just test`: a few minutes per language.
+# `language` is quoted: display names like "A Painter Ant" contain spaces,
+# and unquoted they split into two arguments.
 # mutation-test one interpreter: what its tests would NOT have caught
 mutate language *args:
     {{PYTHON}} scripts/mutate.py interpreter "{{language}}" {{args}}
 
-# `module` is family/module after where it lives under src/esolangs/tools
-# (e.g. just mutate-gen tools/register).  A bare name works where only one
-# family defines it, and no name is shared today, so in practice every bare
-# name resolves.  Every suite in tests/tools runs; slow tests are deselected
-# unless --slow is passed, since a mutation run pays the suite's cost once
-# per mutant.
-#
-# The `core` family is the package root -- `just mutate-gen core/tui`,
-# `core/vm`, `core/debug`, `core/cli`.  Those are the modules mutate_one
-# cannot reach: it mutates a dependency-closed bundle, and they sit at the
-# top of the stack rather than at a leaf.
+# `module` is family/module, e.g. tools/register or core/vm; pass --slow to
+# include slow tests.
 # the same for one generator
 mutate-gen module *args:
     {{PYTHON}} scripts/mutate.py generator {{module}} {{args}}
 
-# The ledger obligations under tests/proofs are collected by pytest and gate
-# every push. The proofs under deep/ are not, and the runner selects them by
-# the band each one declares rather than by a list kept here: `verify` is what
-# scripts/verify.py runs, `ci` what the workflow runs, `all` everything. ~2m,
-# dominated by linearity and execution at 30s each, then all_generators at 22s
-# and Container at 16s. The runner catches a proof's exception and keeps going,
-# reporting at the end, so
-# one failing proof does not hide the proofs after it.
-# Use `python -m tests.proofs.deep --list` to see the bands.
-# run every executable proof: the ledger obligations and all 8 deep proofs
+# `python -m tests.proofs.deep --list` shows which proofs CI and verify run.
+# run every executable proof: the ledger obligations and the deep proofs
 proofs:
     {{PYTHON}} -m pytest tests/proofs -q
     {{PYTHON}} -m tests.proofs.deep all
@@ -153,17 +127,11 @@ proofs-pdf:
     }
     tectonic --outdir docs/proofs docs/proofs/polynomial.tex
 
-# Not in `just test` or CI: what it guards moves only when APA's head, body,
-# or routing does, so run it then. L2's foreign-leaf sweep at n=9 is 57s of
-# the cost; the table enumeration is cheap.
-# re-check the A Painter Ant uniform-in-n proof (15s, single-threaded)
+# Not in `just test` or CI; run it when A Painter Ant's generator changes.
+# re-check the A Painter Ant uniform-in-n proof
 apa-proof:
     {{PYTHON}} tests/proofs/deep/a_painter_ant.py
 
-# `find -delete` refuses a non-empty directory, so removal goes through
-# `rm -rf`: bytecode, build metadata, and verifier reports.  `.venv` and
-# `.worktrees` are pruned -- a linked worktree carries its own environment,
-# and reaching into it would strip that checkout's install.
 # clean generated files
 clean:
     #!/usr/bin/env bash

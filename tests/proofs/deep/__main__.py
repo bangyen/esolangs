@@ -145,8 +145,8 @@ def main(argv: list[str] | None = None) -> int:
             code = proof.module.main()
         except Exception as exc:  # report and keep going
             # Proofs use bare ``assert``; without this a single failure would
-            # abort the band and hide every proof after it, which the justfile
-            # comment promises cannot happen.
+            # abort the band and hide every proof after it, which this runner
+            # promises cannot happen.
             code = 1
             print(f"    raised {type(exc).__name__}: {exc}")
         finally:
