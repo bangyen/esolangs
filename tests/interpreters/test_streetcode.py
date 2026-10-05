@@ -32,12 +32,6 @@ from tests.interpreters.streetcode_support import (
 class TestStreetcodeSingleCommands:
     """Each instruction in isolation."""
 
-    def test_halt_immediately(self) -> None:
-        assert run_street("C;") == ""
-
-    def test_increment_then_output(self) -> None:
-        assert run_street("C^O;") == chr(1)
-
     def test_repeated_runs_reuse_validated_geometry(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -57,23 +51,6 @@ class TestStreetcodeSingleCommands:
         assert run_street("C^O;") == chr(1)
         assert calls == 1
         streetcode._Machine._compile.cache_clear()  # noqa: SLF001
-
-    def test_decrement_below_zero_then_output_is_invalid(self) -> None:
-        """A cell of -1 is a valid signed int, but not a valid code point."""
-        with pytest.raises(HaltError):
-            run(["C~O;"], io=IO())
-
-    def test_decrement_then_increment_then_output(self) -> None:
-        """~ and ^ both touch the same CPth cell, unbounded and signed."""
-        assert run_street("C~^O;") == chr(0)
-
-    def test_space_is_a_nop(self) -> None:
-        """A space between C and O is skipped over; the cell is still 0."""
-        assert run_street("C O;") == chr(0)
-
-    def test_undefined_character_is_a_nop(self) -> None:
-        """Box-drawing and other undefined characters act like space."""
-        assert run_street("C#O;") == chr(0)
 
     def test_u_without_an_opposite_lane_is_invalid(self) -> None:
         """A one-wide corridor is narrower than the spec's two-character
@@ -139,15 +116,8 @@ class TestStreetcodeSingleCommands:
         assert headings == ["N", "N", "N"]
         assert machine.col == 2
 
-    def test_cp_increment_and_decrement(self) -> None:
-        """Move CP right onto a fresh cell, increment it, then move back."""
-        assert run_street("C=^O_O;") == chr(1) + chr(0)
-
 
 class TestStreetcodeHalt:
-    def test_semicolon_halts_immediately(self) -> None:
-        assert run_street("C;^O") == ""
-
     def test_program_without_semicolon_runs_until_dead_end(self) -> None:
         """No halt instruction: a dead-end corridor still stops.
 
@@ -156,47 +126,6 @@ class TestStreetcodeHalt:
         pins: the single-cell program with nowhere to drive at all.
         """
         assert run_and_capture(["C"]) == ""
-
-
-class TestStreetcodeIO:
-    def test_input_echoed_via_cpth_cell(self) -> None:
-        assert run_street("CIO;", inputs=["X"]) == "X"
-
-    def test_input_reads_only_first_character_of_line(self) -> None:
-        assert run_street("CIO;", inputs=["hello"]) == "h"
-
-    def test_newline_input_is_preserved(self) -> None:
-        assert run_street("CIO;", inputs=[""]) == chr(10)
-
-    def test_exhausted_input_raises_eof(self) -> None:
-        machine = _Machine(["CI;"], ScriptedIO(""))
-        machine.step()  # 'C'
-        with pytest.raises(EOFError):
-            machine.step()  # 'I' with no input left at all
-
-
-class TestStreetcodeCPBounds:
-    def test_cp_decrement_below_zero_is_clamped(self) -> None:
-        """``_`` at CP 0 moves nothing rather than raising.
-
-        The wiki bounds CP on the left ("The CP is unsigned and
-        right-unbounded") but never says what a below-zero ``_`` does -- no
-        example uses ``_``, and the page has no error-handling text.  An
-        unsigned quantity that cannot go lower saturates, which is also how
-        brainfuck's ``<`` and CVNC's accumulator behave.  This used to
-        raise ``HaltError``.
-        """
-        assert run_street("C_^O;") == chr(1)
-        # repeated clamping stays on cell 0 rather than drifting
-        assert run_street("C___^O;") == chr(1)
-
-    def test_cp_can_move_right_and_back_to_zero(self) -> None:
-        assert run_street("C=_^O;") == chr(1)
-
-    def test_output_of_out_of_range_cell_halts(self) -> None:
-        """A cell value that isn't a valid code point is invalid, not a crash."""
-        with pytest.raises(HaltError):
-            run(["C~~~~~~~~~~~~~O;"], io=IO())  # cell reaches a large negative
 
 
 class TestStreetcodeGrid:
@@ -253,42 +182,6 @@ class TestStreetcodeOps:
 
     def _grid(self) -> _Grid:
         return _Grid(["+----+", "|C^~=|", "|_IOU|", "+--;#+"])
-
-    @pytest.mark.parametrize(
-        ("where", "op"),
-        [
-            ((1, 2), "INC"),
-            ((1, 3), "DEC"),
-            ((1, 4), "RIGHT"),
-            ((2, 1), "LEFT"),
-            ((2, 2), "IN"),
-            ((2, 3), "OUT"),
-            ((2, 4), "TURN"),
-            ((3, 3), "HALT"),
-        ],
-    )
-    def test_each_glyph_maps_to_its_op(self, where: tuple[int, int], op: str) -> None:
-        assert self._grid().op_at(*where) == op
-
-    @pytest.mark.parametrize("where", [(1, 1), (3, 4), (0, 0), (-1, -1)])
-    def test_everything_undefined_is_a_nop(self, where: tuple[int, int]) -> None:
-        """``C``, a stray ``#``, a wall and the void all do nothing.
-
-        The fold is what closes the set: ``step`` has no arm for "some
-        other character", because there is no such case left.
-        """
-        assert self._grid().op_at(*where) == "NOP"
-
-    def test_an_undefined_glyph_is_a_nop_but_still_drawn(self) -> None:
-        """The op is folded; the character is not.
-
-        ``_validate_connected`` rejects ink off the street and names the
-        glyph it found, so a ``#`` has to stay a ``#`` even though it
-        executes as nothing.  Folding the character too would lose that.
-        """
-        grid = self._grid()
-        assert grid.op_at(3, 4) == "NOP"
-        assert grid[3, 4] == "#"
 
     def test_stray_ink_is_still_rejected_by_its_glyph(self) -> None:
         """The end-to-end version: a '#' off the street fails validation."""

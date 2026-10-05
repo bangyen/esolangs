@@ -4,11 +4,9 @@ A car drives a 2D network of two-way, two-character-wide streets, running
 the instruction under it at every cell; memory is an unbounded list of
 signed integer cells under an unsigned cell pointer (CP).
 
-``the implementation`` is the spec of record: the `wiki page
-<https://esolangs.org/wiki/Streetcode>`_ never spells out "drive on the
-right-hand side" or its leftmost/second-leftmost "ambiguous turn" rule, so
-the movement interpretation lives there with the wiki examples
-corroborating each rule.
+The author's Streetcode revision 78016 specifies right-hand driving and
+leftmost/second-leftmost junction choices. Multi-stage merge timing is
+an implementation convention corroborated by the wiki examples.
 
 Movement is pure and lives in :mod:`.geometry`; the mutable run
 lives in :class:`_Machine`.  :func:`_drive` is the whole of movement in one
@@ -103,6 +101,7 @@ class _Machine:
         # it per write is a constant.
         self.cells: Mapping[int, int] = {}
         self._done = False
+        self._input_reads = 0
         # The enumerated drive-state graph, or ``None`` for a program whose
         # geometry is not a street or whose validation a fixture patched
         # out.  ``step`` then calls :func:`_drive` directly -- the same
@@ -176,6 +175,8 @@ class _Machine:
             tuple(sorted(self.cells.items())),
             self.io.position(),
             self._done,
+            self._input_reads,
+            tuple(self.grid),
         )
 
     def _cell(self) -> int:
@@ -554,6 +555,7 @@ class _Machine:
             self.cp = max(0, self.cp - 1)
         elif op == "IN":
             self._set_cell(self.io.input_char())
+            self._input_reads += 1
         elif op == "OUT":
             try:
                 self.io.print_char(chr(self._cell()))
@@ -637,6 +639,7 @@ class _Machine:
         machine.cp = 0
         machine.cells = {}
         machine._done = False  # noqa: SLF001
+        machine._input_reads = 0  # noqa: SLF001
         machine._graph = graph  # noqa: SLF001
         return machine
 
