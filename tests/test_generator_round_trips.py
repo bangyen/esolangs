@@ -19,7 +19,8 @@ pytestmark = pytest.mark.medium
 def test_generated_program_obeys_its_table(language: str) -> None:
     rng = random.Random(20261001)
     dense = "".join(rng.choice("01") for _ in range(4))
-    for table in ("0000", dense):
+    # Two 2-input tables and 3-input parity, which nothing can fold.
+    for table in ("0000", dense, "01101001"):
         random.seed(0)
         first = esolangs.generate(language, table)
         random.seed(0)
@@ -28,7 +29,8 @@ def test_generated_program_obeys_its_table(language: str) -> None:
         program = (
             Raster.from_png(first.to_png()) if isinstance(first, Raster) else first
         )
-        assert _evaluate(language, program, inputs=2) == table
+        inputs = len(table).bit_length() - 1
+        assert _evaluate(language, program, inputs=inputs) == table
 
 
 #: A bad table of each kind, and the start of the shared validator's message.
