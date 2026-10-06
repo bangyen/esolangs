@@ -9,9 +9,10 @@ raise :class:`ValueError`; a `*` break with no enclosing loop is an
 invalid operation and halts the program with
 :class:`~esolangs.exceptions.HaltError`.
 
-Exhausted input raises :class:`EOFError` (the repo-wide convention; the
-page names no value, so the wiki cat ``[;@$0{&}{,}]`` stops at EOF, or
-cleanly at a NUL).  ``#$n``/``@$n`` take unsigned decimals; ``#$`` before
+Exhausted input reads as 0, for ``;`` and ``:`` alike.  A judgment call:
+the page names no EOF value, but its Cat ``[;@$0{&}{,}]`` halts cleanly
+only if ``;`` yields 0 at EOF, and examples outrank prose (as for Inject).
+``:`` mirrors it.  ``#$n``/``@$n`` take unsigned decimals; ``#$`` before
 anything else is ``#c`` with c ``$``.  Gaps decided: other characters are
 NOPs, an else block must touch its ``}`` (after a space it is a comment),
 and comment text still counts toward bracket matching.
@@ -165,6 +166,8 @@ def _branch(
 class _Machine:
     """Per-run Sophie state: the code, accumulator, loop stack, and cursor."""
 
+    eof_is_a_value = True
+
     def __init__(self, code: str, io: IO) -> None:
         """Validate ``code``'s brackets and start with a zero accumulator.
 
@@ -240,16 +243,19 @@ class _Machine:
         c = self.code[self.ind]
 
         value: int | None = None
-        if c == ".":
-            self.io.print_str(format_integer(self.acc))
-        elif c == ",":
-            self.io.print_char(chr(self.acc))
-        elif c == ":":
-            num = self.io.input_token()
-            if num.isdigit():
-                value = parse_integer(num)
-        elif c == ";":
-            value = self.io.input_char()
+        try:
+            if c == ".":
+                self.io.print_str(format_integer(self.acc))
+            elif c == ",":
+                self.io.print_char(chr(self.acc))
+            elif c == ":":
+                num = self.io.input_token()
+                if num.isdigit():
+                    value = parse_integer(num)
+            elif c == ";":
+                value = self.io.input_char()
+        except EOFError:
+            value = 0
 
         self._restore(_advance(self._state, self.code, self._partners, value))
 

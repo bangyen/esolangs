@@ -247,6 +247,21 @@ class TestSophieExamples:
         run("[;@$0{&}{,}]", io=source)
         assert source.getvalue() == ""
 
+    def test_cat_program_halts_at_eof(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+
+        source = ScriptedIO("ab")
+        run("[;@$0{&}{,}]", io=source)
+        assert source.getvalue() == "ab"
+
+    @pytest.mark.parametrize("read", [";", ":"])
+    def test_a_read_at_eof_is_zero(self, read: str) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+
+        source = ScriptedIO("")
+        run(f"#$42{read}.&", io=source)
+        assert source.getvalue() == "0"
+
     def test_cat_program_with_input(self) -> None:
         with (
             patch("builtins.input", return_value="H"),

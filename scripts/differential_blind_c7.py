@@ -286,15 +286,13 @@ def sophie_valid(program: str) -> bool:
 
 
 #: Our readings: ``,`` writes a code point as UTF-8 (as ``ours_utf8``
-#: encodes ours); ``;`` and ``:`` at EOF raise; ``:`` takes a whitespace
-#: token and leaves the accumulator alone unless it is all digits.
+#: encodes ours); ``:`` takes a whitespace token and leaves the
+#: accumulator alone unless it is all digits.
 SOPHIE_PATCHES = (
     (
         'bytes([a]) if a < 256 else chr(a).encode("utf-8")',
         'chr(a).encode("utf-8")',
     ),
-    ("self.acc = 0  # EOF -> 0 (the wiki Cat relies on it)", "raise EOFError"),
-    ("return 0  # EOF -> 0, as for ';'", "raise EOFError"),
     (
         "        j = i\n",
         "        k = i\n"
