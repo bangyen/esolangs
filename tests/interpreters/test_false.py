@@ -14,8 +14,56 @@ from esolangs.interpreters.stack_based.false import (
 from tests.interpreters.runner import run_program
 
 
-def test_a_string_is_printed_verbatim() -> None:
-    assert run_program(run, '"Hello, world!"') == "Hello, world!"
+@pytest.mark.parametrize(
+    ("program", "expected"),
+    [
+        pytest.param(
+            '"Hello, world!"', "Hello, world!", id="a_string_is_printed_verbatim"
+        ),
+        pytest.param(
+            "{[}1.", "1", id="a_comment_is_skipped_and_its_brackets_do_not_nest"
+        ),
+        pytest.param(
+            "2147483647 1+.", "-2147483648", id="arithmetic_wraps_to_signed_32_bits"
+        ),
+        pytest.param(
+            "0" * 5000 + "4294967297.",
+            "1",
+            id="a_long_literal_does_not_hit_the_python_decimal_limit",
+        ),
+        # B flushes a buffer this package has not got, so it is a no-op
+        pytest.param("1.B", "1", id="an_unknown_character_is_ignored"),
+    ],
+)
+def test_prints(program: str, expected: str) -> None:
+    assert run_program(run, program) == expected
+
+
+@pytest.mark.parametrize(
+    ("program", "message"),
+    [
+        pytest.param(
+            "a;.", "read before it was stored", id="reading_an_unset_variable_halts"
+        ),
+        pytest.param("1 0/.", "divides by zero", id="dividing_by_zero_halts"),
+        pytest.param("1[]+.", "is a lambda", id="computing_on_a_lambda_halts"),
+        pytest.param(
+            "1 99:", "26 variable references", id="a_bad_variable_reference_halts"
+        ),
+        pytest.param(
+            "1 2?",
+            "the top of the stack is a number",
+            id="a_conditional_needs_a_lambda",
+        ),
+        pytest.param(
+            "[1] 2#", "one of these is a number", id="a_loop_needs_two_lambdas"
+        ),
+        pytest.param("1!", "'!' runs a lambda", id="a_bang_needs_a_lambda"),
+    ],
+)
+def test_halts(program: str, message: str) -> None:
+    with pytest.raises(HaltError, match=message):
+        run_program(run, program)
 
 
 def test_arithmetic_prints_a_number() -> None:
@@ -28,11 +76,6 @@ def test_comparison_is_minus_one_for_true() -> None:
     assert run_program(run, "2 1>.") == "-1"
     assert run_program(run, "1 2>.") == "0"
     assert run_program(run, "3 3=.") == "-1"
-
-
-def test_reading_an_unset_variable_halts() -> None:
-    with pytest.raises(HaltError, match="read before it was stored"):
-        run_program(run, "a;.")
 
 
 def test_a_lambda_runs_on_demand() -> None:
@@ -60,10 +103,6 @@ def test_a_read_past_the_end_is_the_specs_minus_one() -> None:
     assert run_program(run, "[^$1_=~][,]#%", "A\nB\n", suppress_eof=False) == "A\nB\n"
 
 
-def test_a_comment_is_skipped_and_its_brackets_do_not_nest() -> None:
-    assert run_program(run, "{[}1.") == "1"
-
-
 @pytest.mark.parametrize(
     ("program", "message"),
     [
@@ -79,25 +118,6 @@ def test_a_malformed_program_is_refused(program: str, message: str) -> None:
         run_program(run, program)
 
 
-def test_dividing_by_zero_halts() -> None:
-    with pytest.raises(HaltError, match="divides by zero"):
-        run_program(run, "1 0/.")
-
-
-def test_computing_on_a_lambda_halts() -> None:
-    with pytest.raises(HaltError, match="is a lambda"):
-        run_program(run, "1[]+.")
-
-
-def test_a_bad_variable_reference_halts() -> None:
-    with pytest.raises(HaltError, match="26 variable references"):
-        run_program(run, "1 99:")
-
-
-def test_arithmetic_wraps_to_signed_32_bits() -> None:
-    assert run_program(run, "2147483647 1+.") == "-2147483648"
-
-
 @pytest.mark.parametrize(
     ("literal", "expected"),
     [
@@ -111,10 +131,6 @@ def test_literals_wrap_to_signed_32_bits(literal: str, expected: str) -> None:
     assert run_program(run, literal + ".") == expected
 
 
-def test_a_long_literal_does_not_hit_the_python_decimal_limit() -> None:
-    assert run_program(run, "0" * 5000 + "4294967297.") == "1"
-
-
 def test_the_pointer_stays_a_source_offset_inside_a_lambda() -> None:
     """A lambda is a span, so ``ip`` indexes the text the caller handed in."""
     program = "1[2.]!"
@@ -125,11 +141,6 @@ def test_the_pointer_stays_a_source_offset_inside_a_lambda() -> None:
         machine.step()
     assert all(at is not None and 0 <= at <= len(program) for at in seen)
     assert 2 in seen  # the body's '2', reached through '!'
-
-
-def test_an_unknown_character_is_ignored() -> None:
-    """``B`` flushes a buffer this package has not got, so it is a no-op."""
-    assert run_program(run, "1.B") == "1"
 
 
 def test_only_ascii_digits_make_a_literal() -> None:
@@ -146,16 +157,6 @@ def test_a_finished_loop_has_consumed_its_flag() -> None:
     assert machine.stack == []
 
 
-def test_a_conditional_needs_a_lambda() -> None:
-    with pytest.raises(HaltError, match="the top of the stack is a number"):
-        run_program(run, "1 2?")
-
-
-def test_a_loop_needs_two_lambdas() -> None:
-    with pytest.raises(HaltError, match="one of these is a number"):
-        run_program(run, "[1] 2#")
-
-
 def test_advancing_a_finished_state_is_a_no_op() -> None:
     """No frames left is answered, not indexed: ``_advance`` is pure, so a
     caller stepping past the end gets the state back."""
@@ -167,8 +168,3 @@ def test_bitwise_or_and_pick_beyond_the_stack() -> None:
     assert run_program(run, "5 2|.") == "7"
     with pytest.raises(HaltError, match="which is not there"):
         run_program(run, "1 5ø")
-
-
-def test_a_bang_needs_a_lambda() -> None:
-    with pytest.raises(HaltError, match="'!' runs a lambda"):
-        run_program(run, "1!")
