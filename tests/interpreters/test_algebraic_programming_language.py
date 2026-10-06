@@ -1,5 +1,6 @@
 """Unit tests for the Algebraic Programming Language interpreter."""
 
+from functools import partial
 from typing import ClassVar
 
 import pytest
@@ -41,9 +42,7 @@ WHILE = "WHILE(x, c) = x() & ((c() | 1) & WHILE(x, c))"
 IF = "IF(x, c) = x & c()"
 
 
-def run_and_capture(program: str, stdin: str = "") -> str:
-    """Run a program and return everything it wrote."""
-    return run_program(run, program, stdin)
+run_and_capture = partial(run_program, run)
 
 
 def machine(program: str, stdin: str = "") -> _Machine:

@@ -2,6 +2,7 @@
 
 import io
 from contextlib import redirect_stdout
+from functools import partial
 
 import pytest
 
@@ -12,6 +13,7 @@ from tests.interpreters.contract import (
     SnapshotContract,
     StateViewContract,
 )
+from tests.interpreters.runner import run_program
 from tests.raises import raises_message
 
 
@@ -23,11 +25,7 @@ def run_and_capture(code: str) -> str:
     return buffer.getvalue()
 
 
-def run_scripted(code: str, stdin: str = "") -> str:
-    """Run ``code`` with ``stdin`` as input, returning the captured output."""
-    io_obj = ScriptedIO(stdin)
-    run(code, io_obj)
-    return io_obj.getvalue()
+run_scripted = partial(run_program, run, suppress_eof=False)
 
 
 _BIT_TILDE_RESULTS = {
