@@ -1,9 +1,10 @@
 """Interpreter for Bitdeque.
 
 PUSH/INJECT append the register to the deque, POP/EJECT pop it (0 when
-empty), INVERT flips the register, GOTO jumps to a 0-based command when
-it is nonzero (GOTO 2 lands on the third command); a target past the
-last command ends the run, which the wiki leaves open.  The wiki has no I/O,
+empty), INVERT flips the register, GOTO N jumps to the Nth command,
+counting from 1 as "the Nth operation" reads, when it is nonzero; a
+target past the last command ends the run and a taken GOTO 0 raises
+:class:`HaltError` (the wiki leaves both open).  The wiki has no I/O,
 so the deque is printed space-separated when the program ends -- the
 repo's convention.  A word that is not one of the six upper-case commands
 raises :class:`ValueError` (the old tokenizer ran a lower-case program
@@ -16,6 +17,7 @@ from __future__ import annotations
 import re
 
 from esolangs._drive import drive
+from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.source_hints import keyword_hint, syntax_error
@@ -42,8 +44,9 @@ _COMMANDS = ("INJECT", "PUSH", "EJECT", "POP", "INVERT", "GOTO")
 def _advance(state: _State, sym: str) -> _State:
     """Return the state after executing one token.
 
-    PUSH/POP work the back, INJECT/EJECT the front -- a deque.  GOTO lands
-    on ``num - 1`` so the shared increment carries it to ``num``.
+    PUSH/POP work the back, INJECT/EJECT the front -- a deque.  GOTO N
+    lands on index ``N - 2`` so the shared increment carries it to the Nth
+    command; a taken ``GOTO 0`` names no command and raises.
     """
     ind, reg, deq, rendered = state
     if sym == "PUSH":
@@ -57,7 +60,12 @@ def _advance(state: _State, sym: str) -> _State:
     elif sym == "INVERT":
         reg ^= 1
     elif reg:
-        ind = int(sym[4:]) - 1
+        if not (target := int(sym[4:])):
+            raise HaltError(
+                "GOTO 0 names no command; commands count from 1",
+                hint="GOTO 1 jumps to the first command",
+            )
+        ind = target - 2
     return (ind + 1, reg, deq, rendered)
 
 

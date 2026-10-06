@@ -87,8 +87,8 @@ class TestParameterizedBitdeque:
         from esolangs import tools as generators
 
         template = generators.bitdeque("01101001")
-        assert template.startswith("GOTO 3 INVERT GOTO 4 GOTO ")
-        assert template.count("GOTO 0") == 8
+        assert template.startswith("GOTO 4 INVERT GOTO 5 GOTO ")
+        assert f"{template} ".count("GOTO 1 ") == 8
 
     def test_linear_discard_executes_wide_rows(self) -> None:
         """Head/tail discards leave sampled six-input answers."""
@@ -168,7 +168,7 @@ def test_bitdeque_short_load_rejects_changed_prefix() -> None:
     pair = bitdeque_setters(template, 2)
     assert pair == (("POP  ", "EJECT"),) * 2
     with pytest.raises(ValueError, match="shorter than"):
-        bitdeque_setters(template.replace("GOTO 16", "GOTO 17"), 2)
+        bitdeque_setters(template.replace("GOTO 17", "GOTO 18"), 2)
 
 
 def test_bitdeque_short_load_rejects_wrong_table_provenance() -> None:

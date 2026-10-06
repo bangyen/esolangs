@@ -3,6 +3,7 @@ from contextlib import redirect_stdout
 
 import pytest
 
+from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.queue_based.bitdeque import run
 from tests.fixtures import text
@@ -28,9 +29,12 @@ class TestBitdeque:
         """GOTO is conditional, and nothing else here reaches the false arm."""
         assert run_and_capture("GOTO 2 PUSH PUSH") == "0 0"
 
-    def test_goto_target_is_zero_based(self) -> None:
-        """GOTO N lands on the Nth command counting from zero."""
-        assert run_and_capture("INVERT GOTO 3 PUSH PUSH") == "1"
+    def test_goto_target_counts_from_one(self) -> None:
+        """GOTO 3 lands on the first PUSH; 0-based it would skip to the second."""
+        assert run_and_capture("INVERT GOTO 3 PUSH PUSH") == "1 1"
+        assert run_and_capture("GOTO 0 PUSH") == "0"
+        with pytest.raises(HaltError, match="GOTO 0 names no command"):
+            run_and_capture("INVERT GOTO 0 PUSH")
 
     @pytest.mark.parametrize(
         "code", ["INVERTPUSH", "PUSHPOP", "GOTO12", "INVERT GOTO 2PUSH"]
@@ -117,7 +121,7 @@ class TestContract(SnapshotContract, CycleContract, StateViewContract):
     machine = staticmethod(_machine)
     stepping_program = "PUSH"
     halting_program = "INVERT PUSH"
-    looping_program = "INVERT GOTO 1"
+    looping_program = "INVERT GOTO 2"
     # `rendered` guards the end-of-run deque dump, so it only flips on the
     # step past the halt; it is read either side here, and `ip`/`memory` are
     # what the run moves.

@@ -58,7 +58,8 @@ def _bitdeque_short_load(n: int) -> list[str]:
     """Bracket stored inputs with head one/tail zero before each setter."""
     tokens: list[str] = []
     for i in range(n):
-        at = 5 + 15 * i
+        # The block's first command, counted from 1 as ``GOTO`` counts.
+        at = 6 + 15 * i
         # POP/EJECT selects zero/one. Both branches remove the other
         # sentinel, append the selected bit, and restore register zero.
         tokens.extend(
@@ -86,7 +87,7 @@ def _bitdeque_short_load(n: int) -> list[str]:
 def bitdeque_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
     """Resolve the five-character load only from its exact fixed prefix."""
     normalized = " ".join(template.split())
-    header = re.match(r"GOTO 3 INVERT GOTO 4 GOTO [0-9]+ INVERT ", normalized)
+    header = re.match(r"GOTO 4 INVERT GOTO 5 GOTO [0-9]+ INVERT ", normalized)
     short_count = template.count(TEMPLATE_CHAR) // 5
     short_load = " ".join(_bitdeque_short_load(short_count))
     short = header is not None and normalized[header.end() :].startswith(
@@ -119,12 +120,13 @@ def _bitdeque_linear(truth_table: str) -> str:
         tokens.append("PUSH")
     if register:
         tokens.append("INVERT")
-    at = len(tokens)
+    # Command numbers count from 1, as ``GOTO`` does.
+    at = len(tokens) + 1
     for i, run in enumerate([TEMPLATE_CHAR * len(BITDEQUE_PAIR[0])] * n):
         k = 2 ** (n - 1 - i)
         # ``run`` is one token of text but two commands once filled.
         at += 2
-        # Command indices, with ``at`` the ``POP`` that reads the bit back:
+        # Command numbers, with ``at`` the ``POP`` that reads the bit back:
         # the zero block spans ``at + 2 .. at + k + 1``, its exit ``at + k +
         # 2 .. at + k + 4``, the one block ``at + k + 5 .. at + 2k + 4`` and
         # the shared reset begins at ``at + 2k + 5``.
@@ -171,7 +173,7 @@ def _bitdeque_ordered(
         out.append("PUSH")
         if answer == "0":
             out.append("INVERT")
-        out.append("GOTO 0")
+        out.append("GOTO 1")
         return out
 
     # Simulate the deque per level: the tail (``POP``) is input ``n - 1``,
@@ -202,12 +204,13 @@ def _bitdeque_ordered(
 
     # Each input's run fills to two commands, which is what ``start`` below
     # counts; see the docstring for why the load is byte-identical per order.
-    # Initially command 0 falls through on zero and commands 1/2 skip the
-    # trampoline.  A leaf returns with one, so ``GOTO 0`` reaches command 3;
-    # only that command carries the widening end address.
-    prelude = ["GOTO 3", "INVERT", "GOTO 4", "GOTO@END", "INVERT"]
+    # Commands count from 1.  Initially command 1 falls through on zero and
+    # commands 2/3 skip the trampoline.  A leaf returns with one, so ``GOTO
+    # 1`` reaches command 4; only that command carries the widening end
+    # address.
+    prelude = ["GOTO 4", "INVERT", "GOTO 5", "GOTO@END", "INVERT"]
     # The setters read the route off the template's prefix, so they are
-    # handed the prelude, whose opening ``GOTO 3`` names this one.
+    # handed the prelude, whose opening ``GOTO 4`` names this one.
     load_block_in_name_order = (
         _bitdeque_short_load(n)
         if short
@@ -218,7 +221,7 @@ def _bitdeque_ordered(
     # subtree, so the walker's ``at`` lands on this node and ``at +
     # width(level)`` on the zero subtree.  The load block occupies ``2n``
     # commands ahead of the tree, which is where the indices start, so the
-    # ``GOTO`` operands are right after substitution.
+    # ``GOTO`` operands are right after substitution; ``start`` is 1-based.
     def leaf_tokens(_level: int, row: int) -> list[str]:
         return leaf(seen[row])
 
@@ -230,9 +233,9 @@ def _bitdeque_ordered(
         leaf_tokens,
         node,
         parent_width=width,
-        start=len(prelude) + (15 * n if short else 2 * n),
+        start=len(prelude) + (15 * n if short else 2 * n) + 1,
         collapse=True,
     )
-    end = len(prelude) + (15 * n if short else 2 * n) + len(tree)
+    end = len(prelude) + (15 * n if short else 2 * n) + len(tree) + 1
     tokens = prelude + load_block_in_name_order + tree
     return " ".join("GOTO " + str(end) if t == "GOTO@END" else t for t in tokens)

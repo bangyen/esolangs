@@ -354,7 +354,7 @@ def test_new_previews_do_not_execute_or_read_stdin(
     monkeypatch.setattr(BitdequeMachine, "step", forbidden)
     monkeypatch.setattr(_FakeStdin, "read", forbidden)
     source = (
-        "INVERT GOTO 0"
+        "INVERT GOTO 2"
         if language == "Bitdeque"
         else "Package : IO { Integer main { While 1 Do { charPut(65); } } } app;"
     )

@@ -409,18 +409,9 @@ def bitdeque_program(rng: random.Random) -> str:
             ("PUSH", "PUSH", "INJECT", "EJECT", "POP", "INVERT", "INVERT", "GOTO")
         )
         if word == "GOTO":
-            word += f" {rng.randint(1, count + 1)}"
+            word += f" {rng.randint(0, count + 1)}"
         words.append(word)
     return rng.choice((" ", "\n")).join(words)
-
-
-def bitdeque_ours(language: str, program: str, stdin: str, max_steps: int) -> Any:
-    """Run ours with ``GOTO n`` as ``GOTO n-1``.
-
-    Its targets are 0-based and the blind's 1-based (a recorded ambiguity).
-    """
-    shifted = re.sub(r"GOTO (\d+)", lambda m: f"GOTO {max(int(m[1]) - 1, 0)}", program)
-    return _d.run_ours(language, shifted, stdin, max_steps)
 
 
 def _blind_spec(
@@ -474,7 +465,6 @@ SPECS = {
         "Bitdeque",
         bitdeque_program,
         ref_outcome=_converted(_bits),
-        ours=bitdeque_ours,
         split=lambda p: re.findall(r"GOTO \d+|\S+", p),
         join=" ".join,
     ),
