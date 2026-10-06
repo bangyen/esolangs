@@ -66,7 +66,6 @@
  "tests/test_docs.py::test_every_documented_command_runs[describe --help]": 1.5288604590168688,
  "tests/test_docs.py::test_every_documented_command_runs[docs/CONTRIBUTING.md]": 0.0022624159755650908,
  "tests/test_docs.py::test_every_documented_command_runs[docs/SECURITY.md]": 0.0017012500029522926,
- "tests/test_docs.py::test_every_documented_command_runs[docs/architecture.md]": 0.0016209179884754121,
  "tests/test_docs.py::test_every_documented_command_runs[docs/limitations.md]": 0.002141709002899006,
  "tests/test_docs.py::test_every_documented_command_runs[docs/proofs/brainfuck-count.md]": 0.0020425420079845935,
  "tests/test_docs.py::test_every_documented_command_runs[docs/proofs/factor.md]": 0.0018882500007748604,

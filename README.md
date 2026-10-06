@@ -261,7 +261,5 @@ for input conventions and benchmarking.
 ## Contributing
 
 See [contributing](https://github.com/bangyen/esolangs/blob/main/docs/CONTRIBUTING.md)
-for setup and verification, and
-[architecture](https://github.com/bangyen/esolangs/blob/main/docs/architecture.md)
-for the execution path.
+for setup, verification and the execution path.
 The project is GPL v3; see [LICENSE](https://github.com/bangyen/esolangs/blob/main/LICENSE).
