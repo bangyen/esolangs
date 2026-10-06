@@ -22,6 +22,17 @@ class TestBrainIfBasicCommands:
         # The output line is only executed when the cell holds 1
         assert run_and_capture(["if 1 output"]) == ""
 
+    def test_cells_are_wrapping_bytes_in_both_engines(self) -> None:
+        """brainfuck's tape ("identical memory tape"): 255 + 1 is 0."""
+        from esolangs.vm import make_vm
+
+        code = "\n".join(f"if {k} increment" for k in range(256)) + "\nif 0 output"
+        assert run_and_capture(code.splitlines()) == "\x00"
+        vm = make_vm("BrainIf", code, "")
+        while not vm.halted:
+            vm.step()
+        assert vm.output == "\x00"
+
     def test_input_preserves_newlines(self) -> None:
         """Input stores a newline rather than skipping it."""
         assert run_and_capture(["if 0 input", "if 10 output"], inputs=["", "A"]) == "\n"

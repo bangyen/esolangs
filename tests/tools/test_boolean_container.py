@@ -179,7 +179,7 @@ class TestContainer:
         for table in ("0" * 8, "1" * 8, "0" * 16):
             program = boolean.container(table)
             assert "IN>=" not in program
-            assert "IN<=" not in program
+            assert ">=IN" not in program
             n = len(table).bit_length() - 1
             for combo in range(2**n):
                 bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
@@ -191,7 +191,7 @@ class TestContainer:
 
         def tests(table: str) -> int:
             program = boolean.container(table)
-            return program.count("IN>=") + program.count("IN<=")
+            return program.count("IN>=") + program.count(">=IN")
 
         assert tests("00001111") == 1  # the first input alone
         assert tests("01010101") == 1  # the last input alone

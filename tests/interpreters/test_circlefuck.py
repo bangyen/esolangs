@@ -100,10 +100,11 @@ class TestStepMachine:
     def test_result(self, code, expected) -> None:
         assert run_and_capture(code) == expected
 
-    def test_named_space_and_invalid_escapes(self) -> None:
-        assert parse("\\space") == [32]
+    def test_space_and_invalid_escapes(self) -> None:
+        assert parse("\\ ") == [32]
         assert parse("\\\\") == [92]
-        for source in ("\\", "\\q", "\\o89", "\\xg0", "\\999"):
+        # The page's ``\''space''`` is the space character, not the word.
+        for source in ("\\", "\\q", "\\o89", "\\xg0", "\\999", "\\space"):
             with pytest.raises(ValueError, match="invalid Circlefuck escape"):
                 parse(source)
 

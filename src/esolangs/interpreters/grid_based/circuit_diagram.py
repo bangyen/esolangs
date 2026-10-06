@@ -10,7 +10,8 @@ inputs from the left and drive one output right.  ``<`` splits a
 multi-wire in half, ``>`` appends its second input to its first, and ``%``
 removes a leading slice.  Numeric and letter expressions label widths;
 ``(``, ``)``, and ``t`` source zeroes, ones, and the 32-bit clock.
-A leading ``-`` reads input and ``:`` prints the wire to its left.
+A leading ``-`` reads input ("at the beginning of a line", read past
+any indentation) and ``:`` prints the wire to its left.
 
 A *wiring* is a group of wires connected without passing a gate and
 holds one value (Null, 0, 1, or a tuple).  Wires connect only when they
