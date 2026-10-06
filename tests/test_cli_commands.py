@@ -164,7 +164,6 @@ class TestASeedMakesARunRepeat:
         ]
         assert drawing == [
             "Befunge",
-            "Befunge-98",
             "Fish",
             "LaserFuck",
             "Modulous",

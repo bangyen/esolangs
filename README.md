@@ -7,7 +7,7 @@
 
 <!-- PACKAGE-COUNT:START -->
 
-Interpreters and Boolean generators for 82 esoteric languages: 80 text and 2 raster.
+Interpreters and Boolean generators for 81 esoteric languages: 79 text and 2 raster.
 
 <!-- PACKAGE-COUNT:END -->
 
@@ -109,7 +109,7 @@ See [debugging](https://github.com/bangyen/esolangs/blob/main/docs/usage.md#debu
 
 <!-- EXAMPLES:START -->
 
-Ready-to-run programs for each of the 78
+Ready-to-run programs for each of the 77
 languages with a boolean generator live in
 [`examples/`](https://github.com/bangyen/esolangs/tree/main/src/esolangs/examples).
 
@@ -125,7 +125,7 @@ Familiar languages include [brainfuck](https://esolangs.org/wiki/brainfuck),
 <details>
 <!-- IMPLEMENTED:START -->
 
-<summary>Show all 82 languages</summary>
+<summary>Show all 81 languages</summary>
 
 ### Grid-based Languages
 
@@ -136,7 +136,6 @@ Languages that move a pointer or beam across a 2D grid.
 - [ArrowQueue](https://esolangs.org/wiki/ArrowQueue) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/arrowqueue.py))
 - [B-tapemark](https://esolangs.org/wiki/B-tapemark) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/b_tapemark.py))
 - [Befunge](https://esolangs.org/wiki/Befunge) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/befunge.py))
-- [Befunge-98](https://esolangs.org/wiki/Befunge-98) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/befunge_98.py))
 - [Circuit Diagram](https://esolangs.org/wiki/Circuit_Diagram) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/circuit_diagram.py))
 - [Clockwise](https://esolangs.org/wiki/Clockwise) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/clockwise.py))
 - [Dig](https://esolangs.org/wiki/Dig) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/dig.py))
@@ -249,7 +248,7 @@ Languages that don't fit into the above categories.
 <!-- BOOLEAN-COUNT:START -->
 
 The truth table is a binary string of length `2**n`, most-significant input
-first; its length implies `n`, so it isn't passed separately.  78 of the
+first; its length implies `n`, so it isn't passed separately.  77 of the
 languages have such a generator, some covering only a documented subset of
 tables.
 

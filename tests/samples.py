@@ -177,7 +177,6 @@ SAMPLES: dict[str, tuple[Program, str]] = {
     "BFStack": (">+.", ""),
     "Back": ("-*", ""),
     "Befunge": ("99*.@", ""),
-    "Befunge-98": ("'Q.@", ""),
     "B-tapemark": (">OK!", ""),
     "BIO": ("0ox;0ix{1ox;};1ix;", ""),
     "bit~": ("~(", ""),

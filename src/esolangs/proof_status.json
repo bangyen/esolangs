@@ -73,15 +73,6 @@
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
-      "generator": "Befunge-98",
-      "labels": [
-        "finite lookup"
-      ],
-      "qualification": "inputs folded into a row index by Horner's rule; `g` reads the answer from a table in unbounded Funge-space below the header, so the program has no branches and no arity cap",
-      "scaling": "linear: T table cells, O(n) Horner reads",
-      "evidence": "docs/proofs/index.md#generator-ledger"
-    },
-    {
       "generator": "Bitwise Cyclic Tag",
       "labels": [
         "parameterized lookup"

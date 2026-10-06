@@ -8,7 +8,6 @@ from esolangs.tools.arrowqueue import arrowqueue
 from esolangs.tools.b_tapemark import b_tapemark
 from esolangs.tools.back import back
 from esolangs.tools.befunge import befunge
-from esolangs.tools.befunge_98 import befunge_98
 from esolangs.tools.bfpda import bfpda
 from esolangs.tools.bfstack import bfstack
 from esolangs.tools.bio import bio
@@ -89,7 +88,6 @@ __all__ = [
     "b_tapemark",
     "back",
     "befunge",
-    "befunge_98",
     "bf_tree",
     "bfpda",
     "bfstack",

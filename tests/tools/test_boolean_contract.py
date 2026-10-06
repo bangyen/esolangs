@@ -440,7 +440,6 @@ _REDUCING = {
 _UNSHAPED = {
     "a_painter_ant",
     "befunge",
-    "befunge_98",
     "fish",
     "bio",
     "alight",
