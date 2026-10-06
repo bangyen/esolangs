@@ -515,3 +515,19 @@ misaligns every later read. Alignment survives only if each row passes
 at most one reading gate, and then each gate class gets one prefix
 pattern. Neither route is a lower bound: no language-wide `Omega(T log
 n)` is proved, and counting gives only `Omega(T)`.
+
+Both routes meet an open problem. A guard is one term of a DNF of
+parities, so the minimum term count is Cohen and Shinkar's `DNF+(f)`
+([ECCC TR14-099](https://eccc.weizmann.ac.il/report/2014/099/)). They
+prove `DNF+(f) <= O(2**n/n)` for every `f`, tight only up to `O(log n)`.
+A random `f` has `2**n/(n*log n)` w.h.p., and no function is known to
+need more. Take tables whose cubes have dimension at most
+`2*log2(n) - 2*log2(log2(n))`. A term there costs about `n - k` distinct
+names, about `log65(n)` characters each. The short-relation basis keeps
+its upkeep at `O(n)` names from `O(n**2)` identifiers. So a coset program
+costs `Theta(DNF+(f) * n * log n)` characters. Linear output for every
+table therefore needs `DNF+ = O(2**n/(n log n))` for all `f`. A
+super-linear lower bound on any such table needs `DNF+(f) = omega(2**n/(n
+log n))`. Either one settles the open factor. Guards that read `Inp` only
+add programs, so they make a lower bound harder, not easier. The size
+cell stays `Measured`.
