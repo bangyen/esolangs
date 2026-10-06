@@ -2,6 +2,7 @@ r"""Unit tests for the Circuit Diagram interpreter."""
 
 import time
 from collections import OrderedDict
+from functools import partial
 
 import pytest
 
@@ -20,6 +21,7 @@ from esolangs.interpreters.grid_based.circuit_diagram import (
 )
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
+from tests.interpreters.runner import run_program
 
 # The wiki's 4-bit prime tester, exactly as the page draws it.  Two of its
 # OR gates have an input no gate ever drives, so it prints nothing; see
@@ -78,11 +80,7 @@ CONSTANT = [
 PRIMES = frozenset({2, 3, 5, 7, 11, 13})
 
 
-def output_for(code: list[str], stdin: str) -> str:
-    """Run ``code`` on ``stdin`` and return everything it printed."""
-    io = ScriptedIO(stdin)
-    run(code, io)
-    return io.getvalue()
+output_for = partial(run_program, run, suppress_eof=False)
 
 
 def bits_of(value: int) -> str:
