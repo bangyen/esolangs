@@ -179,13 +179,26 @@ def test_forget_zero_is_a_no_op() -> None:
         # Variables and constants run 1..65535 and 0..65535.
         (".0 <- #1", "", "variable number"),
         ("READ OUT #65536", "", "out of range"),
-        # E123: the NEXT stack is bounded (79 per the manual, 80 in C-INTERCAL).
+        # E123: the NEXT stack is bounded.
         ("(1) NEXT\n(1) DO (1) NEXT", "", "stack overflow"),
     ],
 )
 def test_manual_limits_raise(statement: str, stdin: str, error: str) -> None:
     with pytest.raises(HaltError, match=error):
         _run(f"PLEASE {statement}\nDO GIVE UP\nDO GIVE UP", stdin)
+
+
+def test_the_next_stack_holds_exactly_eighty_entries() -> None:
+    """E123 fires on the 81st NEXT: every compiler's hard limit is 80 entries."""
+    machine = _Machine("PLEASE (1) NEXT\n(1) DO (1) NEXT\nDO GIVE UP", ScriptedIO(""))
+
+    def drive() -> None:
+        while not machine.halted:
+            machine.step()
+
+    with pytest.raises(HaltError, match="stack overflow"):
+        drive()
+    assert len(machine.stack) == 80
 
 
 def test_values_from_4000_print_an_overbar_line() -> None:
