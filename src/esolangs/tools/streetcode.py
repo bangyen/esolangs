@@ -683,7 +683,10 @@ def streetcode(truth_table: str, width: int | None = None) -> str:
     # seeds avoids that.  It is built once per input order, identity first,
     # so a table no reorder improves keeps the program it already emitted.
     programs.extend(_streetcode_shared_programs(truth_table, n, tree))
-    if width is not None and n == 5:
+    # At five the flat lookup wins on dense and parity tables and loses on
+    # one that folds, so it is compared; without it parity at five costs
+    # 3251 against 2534 and the odd rungs stop growing linearly.
+    if n == 5:
         programs.append(_streetcode_flat(truth_table, n))
     if width is not None:
         fitting = [p for p in programs if _streetcode_columns(p) <= width]

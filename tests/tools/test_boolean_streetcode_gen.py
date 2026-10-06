@@ -52,12 +52,11 @@ class TestStreetcode:
         assert boolean.streetcode(table) == rotated
 
     def test_default_uses_only_shared_layouts(self) -> None:
-        """Through five inputs, defaults choose only shared layouts."""
+        """Per-input loops are width fallbacks, never default candidates."""
         module = import_module("esolangs.tools.streetcode")
 
-        for n in (1, 2, 3, 5):
-            values = (0x9466E472,) if n == 5 else range(1 << (1 << n))
-            for value in values:
+        for n in range(1, 4):
+            for value in range(1 << (1 << n)):
                 table = format(value, f"0{1 << n}b")
                 tree = module._streetcode_tree(table)  # noqa: SLF001
                 shared = module._streetcode_shared_programs(table, n, tree)  # noqa: SLF001
