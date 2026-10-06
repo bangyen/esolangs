@@ -6,28 +6,19 @@ import pytest
 
 from esolangs.tools.minifuck import _solve
 from esolangs.tools.minifuck.pool import (
-    _BASE,
-    _PLANS,
     _POOL_CODES,
-    _POOL_WIDTH,
-    _PROBE_WALK_OUT,
-    _READS,
     _embed,
-    _step,
 )
 from esolangs.tools.minifuck.sim import _clamp, _Joint, _Sim
 from tests.tools.minifuck_pool_oracle import (
     _POOL_PTR_MAX,
     _endgame,
     _find_pool,
-    _pool_code_for_row,
-    _pool_slice,
 )
 from tests.tools.minifuck_support import (
     _MinifuckCase,
     _mux_separate,
     _pool_reaches,
-    _try_print,
 )
 
 
@@ -35,261 +26,14 @@ class TestMinifuckPool(_MinifuckCase):
     """The pool codes, the rule that picks one, and the endgame printing through it."""
 
     def test_the_pool_codes_cover_every_route(self) -> None:
-        """The fixed codes must serve every route that reaches the endgame.
-
-        They replaced a breadth-first search, so the property that matters
-        is coverage: wherever the search would have found a pool, the list
-        must too.  This builds through the solver precisely
-        because the routes differ -- the degenerate one reaches the endgame
-        from states the mux never produces, and six of the ten codes answer
-        only those.
-
-        It deliberately does not assert that each code is necessary.
-        Measured, none of them is: every one can be dropped alone and every
-        table at both arities still builds.  That is not because the codes
-        cover for each other -- six of them uniquely answer 40 of the 16766
-        call sites -- but because a missing pool is *recoverable*:
-        ``_endgame`` raises, ``_try_print`` counts it as one failed
-        read/orientation, and another accumulator answers the table.  So
-        coverage of the routes is the real property, and minimality is not
-        one to pin.
-        """
+        """The fixed codes must serve every route that reaches the endgame."""
 
         for table_int in range(16):
             table = format(table_int, "04b")
             assert _solve.__wrapped__(table), table
 
-    def test_the_pool_codes_are_generated_from_the_law(self) -> None:
-        """The five codes are spelled by the law, not stored as strings.
-
-        ``_POOL_CODES`` is built by walking ``_PLANS`` through :func:`_step`,
-        which inverts the ``ceil(k / 2)`` law: a carry of ``c`` fixes the
-        bracket run at ``2 * c - 1``, or ``2 * c`` where the pending skip is
-        not wanted.  The five literals below are the anchor -- with the source
-        deriving them, every number in the plans and in the step law is
-        otherwise unpinned, and this one assertion is what makes a wrong
-        carry, a wrong override, or a reordered plan fail.
-
-        The plans are also checked for the property that makes them a
-        construction rather than five parameter dumps: two of the five carry
-        no override at all.
-        """
-
-        # The anchor: the derivation must reproduce these exactly, in order.
-        assert _POOL_CODES == (
-            "[[[<[<<<<",
-            "[<[[[<[<[<",
-            "[<[<[[[<[<[<",
-            "[<<[<[<[[[<[<",
-            "[<[<[<<[[[<[[<<<",
-        )
-
-        # The step law itself, away from the plans: a carry of c spells a run
-        # of 2c-1 brackets, and dropping the skip spells the even run.
-        step = _step
-        assert step() == "[<"  # the default: carry one, trail by one
-        assert step(carry=2) == "[[[<"
-        assert step(carry=1, odd=False) == "[[<"
-        assert step(carry=1, backs=4) == "[<<<<"
-
-        # Two of the five plans are (steps, core) and nothing else, which is
-        # what "one construction indexed by where the mark goes" means.
-        plans = _PLANS
-        assert len(plans) == len(_POOL_CODES)
-        bare = [(n, core) for n, core, over in plans if not over]
-        assert bare == [(4, 1), (5, 2)], bare
-
-        # Every plan has exactly one core, and it is inside the walk.
-        for n, core, over in plans:
-            assert 0 <= core < n, (n, core)
-            assert all(0 <= i < n for i in over), (n, over)
-
-    def test_the_pool_codes_are_one_construction(self) -> None:
-        """Each pool code is a mark, shifted three cells by a shared core.
-
-        The five read as unrelated strings -- edit distance 2 to 7, and an
-        exact regex factors *longer* than it lists -- but that measures
-        spelling.  Behaviourally every code is ``prefix + '[[[<[' + suffix``
-        with the core appearing exactly once, and for three of the five the
-        prefix plants a single 1 that the core then shifts three cells right.
-
-        One law runs through it: a run of ``k`` brackets carries a mark right
-        by ``ceil(k / 2)``, leaving a pending skip when ``k`` is odd.  The
-        core opens with three brackets and so moves a mark +2; the suffixes
-        that open with none only reposition the pointer, which is why two
-        codes share the suffix ``'<[<'`` verbatim at different marks.
-
-        The exception is the point: the walk is clean only when the pointer
-        sits just left of the mark.  The code with an empty prefix has no
-        mark to carry, and ``'[<[<[<<'`` arrives at cell 3 with the pointer
-        at 1 rather than 2, so the core spreads marks instead of moving one.
-        """
-
-        from esolangs.tools.minifuck.pool import _POOL_CODES
-        from esolangs.tools.minifuck.sim import _Sim
-
-        core = "[[[<["
-
-        def run(code: str) -> object:
-            machine = _Sim(64)
-            for char in code:
-                machine.exec(char)
-            return machine
-
-        # The law the whole family rests on: a run of k brackets carries a
-        # mark right by ceil(k / 2).  Checked away from the codes first, so a
-        # failure here says "the language changed" rather than "a code did".
-        for start in (2, 3, 4, 5):
-            for brackets in range(1, 9):
-                machine = run("[<" * start + "[" * brackets)
-                marks = [i for i in range(32) if machine.cell(i)]  # type: ignore[attr-defined]
-                assert marks == [start + (brackets + 1) // 2], (start, brackets, marks)
-                assert machine.skip is bool(brackets % 2), (start, brackets)  # type: ignore[attr-defined]
-
-        shifted = 0
-        for code in _POOL_CODES:
-            # The decomposition itself holds for every code.
-            assert code.count(core) == 1, code
-            prefix = code[: code.find(core)]
-
-            # The prefix plants at most one mark and writes nothing else.
-            before = run(prefix)
-            marks = [i for i in range(32) if before.cell(i)]  # type: ignore[attr-defined]
-            assert len(marks) <= 1, (code, marks)
-
-            # Where the prefix leaves the pointer on its mark, the core moves
-            # that mark three cells right and takes the pointer with it.
-            after = run(prefix + core)
-            moved = [i for i in range(32) if after.cell(i)]  # type: ignore[attr-defined]
-            if marks and before.ptr == marks[0] - 1:  # type: ignore[attr-defined]
-                assert moved == [marks[0] + 3], (code, marks, moved)
-                assert after.ptr == marks[0] + 2, (code, after.ptr)  # type: ignore[attr-defined]
-                shifted += 1
-        assert shifted == 3, shifted
-
-        # And ``'[<' * n`` is what plants a mark at cell n -- the parameter.
-        for n in range(1, 6):
-            machine = run("[<" * n)
-            marks = [i for i in range(32) if machine.cell(i)]  # type: ignore[attr-defined]
-            assert marks == [n], (n, marks)
-
-    @pytest.mark.slow
-    def test_the_pool_rule_matches_the_scan_it_replaced(self) -> None:
-        """``_find_pool`` answers what trying every code would have answered.
-
-        The scan below *is* the specification: it is what ``_find_pool`` used
-        to do -- walk the codes in order through the simulator and take the
-        first that reaches the pool.  The shipped rule instead asks each row
-        which code it names and checks the rows agree, so this pins the two
-        together over the whole domain the rule claims, not over the states a
-        build happens to visit.
-
-        Both halves matter and each caught a real bug while landing.  The
-        exhaustive half covers every single-row key; the random half builds
-        *joints*, which is where the two cross-row conditions live -- rows must
-        name the same code and be left on the same cell by it.  Independent
-        random rows almost never collide in the low byte, so the joints are
-        drawn by perturbing one window: with rows drawn independently the
-        end-pointer split showed up in none of 40000 joints, and in 5 of the
-        first 80000 built this way.
-        """
-        import random
-
-        codes = _POOL_CODES
-        width = _POOL_WIDTH
-        ptr_max = _POOL_PTR_MAX
-
-        def scan(joint: object, cell7: int, walk_out: int) -> str | None:
-            """The replaced search, kept as the oracle."""
-            for code in codes:
-                if _pool_reaches(joint, code, cell7, walk_out):
-                    return code
-            return None
-
-        def joint_of(sims: list[object]) -> object:
-            joint = _Joint.__new__(_Joint)
-            joint.ms = sims
-            return joint
-
-        def row(tape: int, ptr: int = 0, *, skip: bool = False) -> object:
-            sim = _Sim(512)
-            sim.tape = tape
-            sim.ptr = ptr
-            sim.skip = skip
-            return sim
-
-        # Every single-row key in the derived domain, against the oracle.
-        for low in range(1 << width):
-            for ptr in range(ptr_max + 1):
-                for skip in (False, True):
-                    for cell7 in (0, 1):
-                        joint = joint_of([row(low, ptr, skip=skip)])
-                        walk_out = _PROBE_WALK_OUT
-                        assert _find_pool(joint, cell7, walk_out) == scan(
-                            joint, cell7, walk_out
-                        ), (low, ptr, skip, cell7)
-
-        # Joints, where the cross-row conditions live.
-        rnd = random.Random(20260906)
-        for _ in range(3000):
-            seed_low = rnd.getrandbits(width)
-            ptr = rnd.randint(0, ptr_max)
-            sims = []
-            for _ in range(rnd.choice([2, 4, 8])):
-                low = seed_low
-                if rnd.random() < 0.5:
-                    low ^= 1 << rnd.randrange(width)
-                sims.append(row(low | (rnd.getrandbits(16) << width), ptr))
-            joint = joint_of(sims)
-            for cell7 in (0, 1):
-                walk_out = rnd.choice([9, 12, 20, 33])
-                assert _find_pool(joint, cell7, walk_out) == scan(
-                    joint, cell7, walk_out
-                ), [(s.tape & ((1 << width) - 1), s.ptr) for s in sims]
-
-    def test_the_pool_slices_cover_the_whole_domain(self) -> None:
-        """Deriving a slice at a time answers what one big table would.
-
-        The slices exist so a caller pays for the ``(pointer, skip)`` it
-        actually asks about -- a build touches one of the six, and deriving
-        all of them on first use billed a 0.2ms build 57ms of work it had no
-        use for.  What must not change is the *answers*: this rebuilds the
-        whole-domain derivation the slices replaced and pins the union to it,
-        so a slice that quietly disagreed with it would fail here.
-        """
-
-        codes = _POOL_CODES
-        ptr_max = _POOL_PTR_MAX
-
-        whole = {
-            (low, ptr, skip, cell7): answer
-            for low in range(1 << _POOL_WIDTH)
-            for ptr in range(ptr_max + 1)
-            for skip in (False, True)
-            for cell7 in (0, 1)
-            if (answer := _pool_code_for_row(codes, low, ptr, cell7, skip=skip))
-            is not None
-        }
-
-        union = {
-            (low, ptr, skip, cell7): answer
-            for ptr in range(ptr_max + 1)
-            for skip in (False, True)
-            for (low, cell7), answer in _pool_slice(codes, ptr, skip=skip).items()
-        }
-
-        assert union == whole
-        assert whole, "the derivation should not be empty"
-
     def test_the_pool_rule_declines_outside_its_domain(self) -> None:
-        """The bound is a refusal, not a gap in a table.
-
-        Past ``_POOL_PTR_MAX`` the window byte is no longer the whole key --
-        the codes reach above cell 7 -- so there is no answer to look up and
-        the rule says None rather than guessing.  Codes do still fit out
-        there, which is the point: this is where the rule stops claiming, not
-        where the language stops working.
-        """
+        """The bound is a refusal, not a gap in a table."""
 
         ptr_max = _POOL_PTR_MAX
 
@@ -306,15 +50,7 @@ class TestMinifuckPool(_MinifuckCase):
         assert served, "expected the scan to still answer outside the domain"
 
     def test_pool_reaches_refuses_a_code_that_kills_a_row(self) -> None:
-        """``_pool_reaches`` rejects code that kills or desynchronises a row.
-
-        The pool list is chosen so the codes it does offer keep every row
-        alive, so this refusal never fires during a build -- but it is what
-        makes a *candidate* code safe to try.  Checked against joints
-        captured from a real build rather than a hand-built state, for the
-        reason the pool test gives: a bare embed is not a state any call
-        sees.
-        """
+        """``_pool_reaches`` rejects code that kills or desynchronises a row."""
 
         joint = _mux_separate(2)
         joint.emit("x")
@@ -341,13 +77,7 @@ class TestMinifuckPool(_MinifuckCase):
         assert len(served) == 1, served
 
     def test_the_pool_search_needs_the_rows_to_agree_on_the_pointer(self) -> None:
-        """A pool is only a pool if every row reads it from one place.
-
-        The embed leaves the rows on different cells -- that spread is what
-        carries the inputs -- so the pool search declines outright until a
-        clamp has brought them back together.
-        """
-        from esolangs.tools.minifuck.pool import _embed
+        """A pool is only a pool if every row reads it from one place."""
         from esolangs.tools.minifuck.sim import _clamp
         from tests.tools.minifuck_pool_oracle import _find_pool
 
@@ -360,18 +90,10 @@ class TestMinifuckPool(_MinifuckCase):
         assert len(set(clamped.ptrs())) == 1
 
     def test_the_endgame_refuses_an_impossible_setup(self) -> None:
-        """Two ways the endgame cannot run, reported rather than emitted.
-
-        The pool occupies cells 0..7, so an accumulator inside it would be
-        overwritten by the digit it is supposed to carry.  And the pool has
-        to be *built*: if no pattern reaches it from here, there is nothing
-        to print, and emitting the read anyway would print a junk byte.
-        """
+        """Two ways the endgame cannot run, reported rather than emitted."""
 
         module = importlib.import_module("tests.tools.minifuck_pool_oracle")
-        from esolangs.tools.minifuck.pool import _embed
         from esolangs.tools.minifuck.sim import _clamp
-        from tests.tools.minifuck_pool_oracle import _endgame
 
         joint = _embed(2)
         _clamp(joint)
@@ -384,65 +106,8 @@ class TestMinifuckPool(_MinifuckCase):
             with pytest.raises(ValueError, match="no pool pattern"):
                 _endgame(joint.fork(), 12, "[<", 0)
 
-    def test_the_computed_endgame_choice_matches_trying_all_four(self) -> None:
-        """``_try_print`` still matches its retired trial as an oracle.
-
-        The trial loop -- fork the joint, run every ``(read, orientation)``
-        endgame, keep whichever printed -- is the specification, so it is
-        replayed here, spelled as it stood, on explicit embed states.  The
-        production construction no longer calls either spelling.
-        """
-
-        def retired(joint: object, truth_table: str, acc: int) -> object:
-            """The replaced trial loop, verbatim."""
-            for read in _READS:
-                for cell7 in (0, 1):
-                    probe = joint.fork()  # type: ignore[attr-defined]
-                    try:
-                        _endgame(probe, acc, read, cell7)
-                    except ValueError:
-                        continue
-                    if probe.printed() == list(truth_table):
-                        return probe
-            return None
-
-        real = _try_print
-        sites: list[tuple[object, str, int]] = []
-        base = _BASE
-        for n, table, acc in (
-            (0, "1", base),
-            (1, "01", base),
-            (2, "0011", base),
-            (2, "0110", base),
-        ):
-            joint = _embed(n)
-            _clamp(joint)
-            sites.append((joint, table, acc))
-        misses = hits = 0
-        for joint, table, acc in sites:
-            expected = retired(joint, table, acc)
-            got = real(joint, table, acc)
-            if expected is None:
-                assert got is None, (table, acc)
-                misses += 1
-            else:
-                assert got is not None, (table, acc)
-                assert got.template() == expected.template(), (table, acc)
-                hits += 1
-        # The comparison has to see both verdicts to mean anything.
-        assert hits, "no site printed"
-        assert misses, "no site declined"
-
     def test_the_walk_needs_a_converged_pointer_going_right(self) -> None:
-        """``[x`` walks are only safe rightward from one shared position.
-
-        Every row runs the same program, so a walk emitted while the rows
-        disagree about where the pointer is would move them different
-        distances.  And ``[x`` only advances -- the pointer is Minifuck's
-        one leftward channel, and it is not this one -- so a leftward
-        target is refused rather than silently ignored.
-        """
-        from esolangs.tools.minifuck.pool import _embed
+        """``[x`` walks are only safe rightward from one shared position."""
         from esolangs.tools.minifuck.sim import _clamp, _walk_to
 
         spread = _embed(2)

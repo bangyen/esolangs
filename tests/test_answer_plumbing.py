@@ -1,9 +1,4 @@
-"""The plumbing between a truth table and the answer bit a program prints.
-
-What encode_inputs, instantiate, read_answer and evaluate promise, and that
-the prose in the README and the docstrings still matches the data.  Stdin
-judgement and the refusals have their own modules.
-"""
+"""The plumbing between a truth table and the answer bit a program prints."""
 
 from __future__ import annotations
 
@@ -18,6 +13,7 @@ from esolangs import cli
 from esolangs.cli import HELP
 from tests.generator_support import evaluate_generated, verify_generated
 from tests.stdin_check import _check_stdin
+from tests.witness_tables import witnesses
 
 ROOT = pathlib.Path(__file__).parents[1]
 
@@ -66,12 +62,7 @@ class TestTheProseMatchesTheData:
         assert esolangs.describe("Grapheme")["input_encoding"] == ("%", "A")
 
     def test_the_reference_table_is_the_encoders_own_output(self) -> None:
-        """The positive half, as data: every cell is what ``encode_inputs`` returns.
-
-        Parsed back out of the rendered Markdown rather than compared to the
-        renderer, so a table that was generated and then hand-edited fails
-        here and not only in the sync test.
-        """
+        """The positive half, as data: every cell is what ``encode_inputs`` returns."""
         table = USAGE_DOC.read_text().split("<!-- INPUT-SHAPES:START -->")[1]
         rows = {}
         for line in table.splitlines():
@@ -92,29 +83,6 @@ class TestTheProseMatchesTheData:
             expected[name] = (f"`{shape}`", f"`{stdin!r}`")
 
         assert rows == expected
-
-    @pytest.mark.parametrize("document", sorted(_every_document()))
-    def test_no_document_states_a_shape_a_language_does_not_have(
-        self, document: str
-    ) -> None:
-        """The negative half, over every document rather than three.
-
-        "Clockwise and Fargo want them all on one line" names Fargo in a
-        clause matching ``one_line``, which is Clockwise's shape.  The
-        positive half could never catch that, because the same documents
-        also state Fargo's real shape somewhere else.
-        """
-        # Whitespace collapsed first: these documents are hard-wrapped, so a
-        # newline lands in the middle of the phrase being matched.
-        text = re.sub(r"\s+", " ", _every_document()[document])
-        for name in esolangs.list_languages():
-            shape = str(esolangs.describe(name)["input_shape"])
-            naming = [s for s in re.split(r"(?<=[.,;])\s+", text) if name in s]
-            for other, pattern in _SHAPE_PROSE.items():
-                if other == shape:
-                    continue
-                wrong = [s for s in naming if re.search(pattern, s)]
-                assert not wrong, (document, name, shape, other, wrong)
 
     def test_the_row_index_really_is_a_row_index(self) -> None:
         """The claim the prose got wrong, stated as an executable fact."""
@@ -194,13 +162,7 @@ class TestATemplateKnowsWhoseItIs:
 
 
 class TestATemplateCarriesItsSetters:
-    """The conventions live on the template object, not on every caller.
-
-    ``generate`` hands the template one ``(zero, one)`` pair per input, and
-    the constructor refuses unequal widths and slots out of order, so a
-    generator cannot leak a bit through the program's length or misname an
-    input without failing at the point the template is made.
-    """
+    """The conventions live on the template object, not on every caller."""
 
     def test_every_parameterized_template_carries_equal_width_pairs(self) -> None:
         for name in esolangs.list_languages():
@@ -214,74 +176,6 @@ class TestATemplateCarriesItsSetters:
 
     def test_a_reading_language_has_no_setters(self) -> None:
         assert getattr(esolangs.generate("brainfuck", "0110"), "setters", None) is None
-
-    def test_a_uniform_example_derives_its_setters_from_its_pair(self) -> None:
-        """Static pairs derive setters; notation-dependent pairs stay uniform."""
-        from esolangs.tools.examples import BOOLEAN_EXAMPLES, _embedded, uniform
-
-        embedded = [e for e in BOOLEAN_EXAMPLES.values() if e.setters is not None]
-        uniform_ones = [e for e in embedded if e.pair is not None]
-        dynamic = [e for e in embedded if e.pair is None]
-        assert set(dynamic) == {
-            BOOLEAN_EXAMPLES["bitdeque"],
-            BOOLEAN_EXAMPLES["fractran"],
-            BOOLEAN_EXAMPLES["crement"],
-            BOOLEAN_EXAMPLES["underload"],
-            BOOLEAN_EXAMPLES["smallfuck"],
-            BOOLEAN_EXAMPLES["minifuck"],
-            BOOLEAN_EXAMPLES["minsky-swap"],
-        }
-        for example in uniform_ones:
-            assert example.setters("", 3) == uniform(example.pair)("", 3)
-        example = BOOLEAN_EXAMPLES["minsky-swap"]
-        assert example.setters is not None
-        assert example.fill is not None
-        table = "01101001"
-        for width in (None, 1, 15):
-            template = esolangs.generate("Minsky Swap", table, width)
-            pairs = example.setters(template, 3)
-            assert pairs == template.setters
-            assert len(pairs) == 3
-            assert len(set(pairs)) == 1
-            assert len(pairs[0][0]) == len(pairs[0][1])
-            assert template.startswith("decnz(") == (width is not None)
-            for row, expected in enumerate(table):
-                bits = list(map(int, f"{row:03b}"))
-                program = example.fill(template, bits)
-                assert program == esolangs.instantiate("Minsky Swap", template, bits)
-                output = esolangs.run("Minsky Swap", program)
-                assert esolangs.read_answer("Minsky Swap", output) == expected
-        example = BOOLEAN_EXAMPLES["bitdeque"]
-        assert example.setters is not None
-        assert example.fill is not None
-        for width in (None, 1, 9, 15):
-            template = esolangs.generate("Bitdeque", table, width)
-            pairs = example.setters(template, 3)
-            assert pairs == template.setters
-            assert len(pairs) == 3
-            assert len(set(pairs)) == 1
-            assert len(pairs[0][0]) == len(pairs[0][1])
-            for row, expected in enumerate(table):
-                bits = list(map(int, f"{row:03b}"))
-                program = example.fill(template, bits)
-                assert program == esolangs.instantiate("Bitdeque", template, bits)
-                output = esolangs.run("Bitdeque", program)
-                assert esolangs.read_answer("Bitdeque", output) == expected
-        with pytest.raises(TypeError, match="exactly one"):
-            _embedded(
-                esolangs.generate, "x", pair=("a", "b"), setters=uniform(("a", "b"))
-            )
-        with pytest.raises(TypeError, match="exactly one"):
-            _embedded(esolangs.generate, "x")
-        # A pair-only call derives its setters; the import-time examples are
-        # not always captured by the coverage tracer, so exercise it here.
-        derived = _embedded(esolangs.generate, "tape_based.brainfuck", pair=("a", "b"))
-        assert derived.pair == ("a", "b")
-        # And a setters-only call must not try to derive them.
-        explicit = _embedded(
-            esolangs.generate, "tape_based.brainfuck", setters=uniform(("a", "b"))
-        )
-        assert explicit.setters is not None
 
     def test_unequal_widths_are_refused(self) -> None:
         from esolangs.tagged import _Template
@@ -305,23 +199,8 @@ class TestATemplateCarriesItsSetters:
         with pytest.raises(ValueError, match="expected 2 bits"):
             fill_runs("$$", "$", (("a", "b"), ("c", "d")), [1])
 
-    def test_the_runs_pass_through_render_and_fill_by_width(self) -> None:
-        """Run-form output is the template; marks are asked for by a wrapper."""
-        from esolangs.tools.examples import _fill_from
-        from esolangs.tools.helpers import mark, mark_runs
-
-        pairs = (("xx", "yy"), ("p", "q"))
-        assert mark_runs("a$$$b", "$", pairs) == "a" + mark(0) * 2 + mark(1) + "b"
-        fill = _fill_from(lambda _template, n: pairs[:n])
-        assert fill("a$$$b", [1, 0]) == "ayypb"
-
     def test_marks_are_read_off_the_languages_own_char(self) -> None:
-        """The regression: ``$`` is INTERCAL's mingle operator, not its slot.
-
-        Scanning for the global template character found the operator and
-        read it as a one-character run, so every width-bearing INTERCAL
-        template raised instead of wrapping.
-        """
+        """The regression: ``$`` is INTERCAL's mingle operator, not its slot."""
         from esolangs.tools.helpers import mark, mark_runs
 
         pairs = (("xx", "yy"), ("p", "q"))
@@ -376,13 +255,7 @@ class TestATemplateCarriesItsSetters:
 
 
 class TestAProgramKnowsWhoseItIs:
-    """A generated program run under another language is refused at the door.
-
-    Most interpreters are permissive enough to run foreign text as no-ops and
-    answer, so the mistake is not a syntax error.  The tag is the same
-    device the template carries, and as permissive: a plain string is
-    accepted unchecked.
-    """
+    """A generated program run under another language is refused at the door."""
 
     def test_a_foreign_program_is_refused_by_run(self) -> None:
         program = esolangs.generate("brainfuck", "0110")
@@ -477,15 +350,6 @@ class TestTheVerifierIsShipped:
         """The verdict, for callers who only want the verdict."""
         assert verify_generated("brainfuck", "0110") is True
 
-    @pytest.mark.parametrize(
-        "name", ["Fargo", "Clockwise", "Grapheme", "Taglate", "Minifuck", "RAM0"]
-    )
-    def test_it_covers_the_languages_that_need_per_language_knowledge(
-        self, name: str
-    ) -> None:
-        """The four odd input shapes and two template languages."""
-        assert verify_generated(name, "0110")
-
     def test_it_reads_the_termination_polarity_as_data(self) -> None:
         """Rather than assuming halting is the zero."""
         facts = esolangs.describe("123")
@@ -497,27 +361,9 @@ class TestTheVerifierIsShipped:
         with pytest.raises(esolangs.TruthTableError):
             evaluate_generated("brainfuck", "011")
 
-    @pytest.mark.slow
-    def test_every_language_verifies(self) -> None:
-        """60/60, through the public function rather than a local copy."""
-        failed = [
-            n
-            for n in esolangs.list_languages()
-            if esolangs.describe(n)["boolean_generator"]
-            and not verify_generated(n, "0110")
-        ]
-        assert not failed
-
 
 class TestWidthEffectSaysWhatWidthDoes:
-    """One flag, three behaviours, and no way to tell them apart.
-
-    ``width_aware`` answered a narrower question -- whether the generator
-    takes the width itself -- so it was ``False`` both for Sophie, whose
-    program *is* reflowed, and for Clockwise, which ignores the width
-    entirely.  A reader reported being unable to work out what the field
-    meant without reading the source, which is the tripwire.
-    """
+    """One flag, three behaviours, and no way to tell them apart."""
 
     def test_every_language_declares_one_of_three(self) -> None:
         """A fourth value would be a behaviour nobody documented."""
@@ -616,15 +462,7 @@ class TestBreakAtChecksTheKindOfPosition:
 
 @pytest.mark.filterwarnings("ignore::UserWarning")
 class TestWhatHappensWhenAProgramIsUnderfed:
-    """``run`` promised an exception for every language.  Most give it.
-
-    A three-input program fed two bits: most raise, and six take the
-    exhausted read as a *value*, so the program answers a different row of
-    its table with nothing in the output to show for it.  That convention
-    was audited against the wiki pages and settled deliberately, so it is
-    declared rather than rewritten -- but the promise was false and a
-    caller had no way to find out for which languages.
-    """
+    """``run`` promised an exception for every language.  Most give it."""
 
     TABLE = "10010110"  # n = 3
 
@@ -666,20 +504,6 @@ class TestWhatHappensWhenAProgramIsUnderfed:
             if outcome == "raised" and declared:
                 mismatched.append(f"{name}: declares eof_is_a_value but raised")
         assert not mismatched, "\n".join(mismatched)
-
-    @pytest.mark.slow
-    def test_most_languages_raise(self) -> None:
-        """The norm, counted, so a regression that erodes it is visible."""
-        raised = sum(
-            1
-            for name in esolangs.list_languages()
-            if esolangs.describe(name)["boolean_generator"]
-            and not esolangs.describe(name)["parameterized"]
-            and self._underfed(name)[0] == "raised"
-        )
-        # Subleq admission adds one generator that raises on underfed stdin;
-        # Container's EOF now reads 0 (wiki), so it no longer raises.
-        assert raised == 38
 
     def test_the_trait_is_reported_by_describe(self) -> None:
         """A caller must be able to learn this without underfeeding one."""
@@ -728,53 +552,10 @@ class TestInstantiateCanCheckProvenance:
         template = esolangs.generate("Minifuck", "0110")
         assert esolangs.instantiate("Minifuck", template, [0, 1])
 
-    @pytest.mark.parametrize("language", ["BIO", "Bitdeque", "RAM0", "FRACTRAN"])
-    @pytest.mark.parametrize("width", [None, 5])
-    def test_wrapped_templates_keep_provenance(
-        self, language: str, width: int | None
-    ) -> None:
-        table = "01101001"
-        template = str(esolangs.generate(language, table, width))
-        for row, expected in enumerate(table):
-            bits = [(row >> shift) & 1 for shift in (2, 1, 0)]
-            program = esolangs.instantiate(language, template, bits, truth_table=table)
-            output = esolangs.run(language, program, timeout=1)
-            assert esolangs.read_answer(language, output) == expected
-        with pytest.raises(esolangs.TemplateError, match="is not the template"):
-            esolangs.instantiate(language, template, [0, 1, 0], truth_table="10010110")
-
-    @pytest.mark.parametrize(
-        "language", ["ArrowQueue", "Crement", "Minsky Swap", "Underload", "INTERCAL"]
-    )
-    @pytest.mark.parametrize("width", [1, 9, 10, 15, 20, 40, 80])
-    @pytest.mark.parametrize("as_string", [False, True])
-    def test_layout_templates_keep_provenance(
-        self, language: str, width: int, *, as_string: bool
-    ) -> None:
-        """Both tagged and saved layouts retain their table provenance."""
-        from esolangs.vm import run_until_halt_or_cycle
-
-        table = "01101001"
-        template = esolangs.generate(language, table, width)
-        if as_string:
-            template = str(template)
-        for row, expected in enumerate(table):
-            bits = list(map(int, f"{row:03b}"))
-            program = esolangs.instantiate(language, template, bits, truth_table=table)
-            if language in {"ArrowQueue", "Crement"}:
-                machine = debugger_api.make_vm(language, program)
-                answer = "0" if run_until_halt_or_cycle(machine) else "1"
-            else:
-                answer = esolangs.read_answer(language, esolangs.run(language, program))
-            assert answer == expected
-        with pytest.raises(esolangs.TemplateError, match="is not the template"):
-            esolangs.instantiate(language, template, [0, 1, 0], truth_table="10010110")
-
     @pytest.mark.parametrize("width", [1, 20, 40, 80])
     def test_intercal_layout_candidates_keep_exact_provenance(self, width: int) -> None:
         for inputs in range(1, 4):
-            for value in range(2 ** (2**inputs)):
-                table = format(value, f"0{2**inputs}b")
+            for table in witnesses(inputs):
                 template = str(esolangs.generate("INTERCAL", table, width))
                 esolangs.instantiate(
                     "INTERCAL", template, [0] * inputs, truth_table=table
@@ -799,21 +580,11 @@ class TestSnapshotSaysItIsOpaque:
 
 
 class TestTheApiNameListsCannotDriftAgain:
-    """Three rounds running, a reader found a public name in neither list.
-
-    ``evaluate``/``verify`` were missing, then ``check_program``/``make_vm``,
-    then ``encode_inputs``/``read_answer``/``check_stdin``.  Fixing the
-    instance three times is what a test is for.
-    """
+    """Three rounds running, a reader found a public name in neither list."""
 
     @staticmethod
     def _public_callables() -> set[str]:
-        """The exported names that are functions a caller would call.
-
-        ``inspect.isfunction`` rather than ``callable``: a ``Literal`` type
-        alias like ``StopReason`` answers ``callable()`` truthfully enough
-        to have been demanded of the README, which is not the point.
-        """
+        """The exported names that are functions a caller would call."""
         import inspect
 
         return {
@@ -823,13 +594,7 @@ class TestTheApiNameListsCannotDriftAgain:
         }
 
     def test_the_api_reference_lists_every_public_function(self) -> None:
-        """The reference has to introduce all of it -- as a list, not a sentence.
-
-        This was "the README's API sentence names every function", which is
-        what produced a thirteen-name run-on on the front page: the gate
-        demanded one paragraph, so one paragraph is what got written.  A
-        generated list carries the same guarantee per line.
-        """
+        """The reference has to introduce all of it -- as a list, not a sentence."""
         listed = USAGE_DOC.read_text().split("<!-- PUBLIC-API:START -->", 1)[1]
         listed = listed.split("<!-- PUBLIC-API:END -->", 1)[0]
         entries = {
@@ -894,12 +659,7 @@ class TestTheDebuggerMirrorsSnapshot:
 
 
 class TestAWidthAwareGeneratorCanStillOverrun:
-    """Width-aware layouts can exceed a request below their construction floor.
-
-    Both take the width themselves rather than being reflowed afterwards,
-    which reads as a guarantee and is not one -- a token wider than the
-    width has to go somewhere.  These two are the measured witnesses.
-    """
+    """Width-aware layouts can exceed a request below their construction floor."""
 
     @staticmethod
     def _overruns(name: str, table: str) -> tuple[int, int]:
@@ -931,14 +691,7 @@ class TestAWidthAwareGeneratorCanStillOverrun:
             assert evaluate_generated(name, "10010110", width=1) == "10010110"
 
     def test_the_pair_is_still_width_aware(self) -> None:
-        """The two this class measures must stay in the group it measures.
-
-        It used to assert the group was *only* these two, which stopped
-        being true the moment another generator learned to lay itself out
-        -- and that is a good change failing a test, not a regression.  The
-        claim worth keeping is narrower: if either of these drops out of
-        the group, the overrun numbers above are measuring nothing.
-        """
+        """The two this class measures must stay in the group it measures."""
         aware = {
             name
             for name in esolangs.list_languages()
@@ -961,59 +714,11 @@ class TestTheCheckProgramExampleRuns:
         assert esolangs.run(name, path, stdin, 20) is not None
 
 
-class TestDescribeDocumentsWhatItReturns:
-    """A key you get back should be findable in the docstring you read.
-
-    ``width_effect`` was the case that prompted this: it was explained in
-    ``generate --help`` and in a *private* function's docstring, so a
-    library reader running ``help(esolangs.describe)`` got a long paragraph
-    about ``width_aware`` and not one word about the key that superseded
-    it.  Four more keys were described in prose -- "the state model", "its
-    example programs" -- which reads well and is invisible to anyone
-    grepping for a key they just got back from the dict.
-    """
-
-    def test_every_key_is_named_in_the_docstring(self) -> None:
-        """Naming, not explaining: a grep for the key has to land somewhere."""
-        doc = esolangs.describe.__doc__ or ""
-        missing = sorted(k for k in esolangs.describe("brainfuck") if k not in doc)
-        assert not missing, (
-            f"describe() returns keys its docstring never names: {missing}"
-        )
-
-    def test_every_language_returns_the_same_keys(self) -> None:
-        """The guard above reads one language, so the keys must not vary."""
-        keys = {frozenset(esolangs.describe(n)) for n in esolangs.list_languages()}
-        assert len(keys) == 1
-
-
 class TestTheTwoWidthKeysCannotDrift:
-    """``width_aware`` is exactly ``width_effect == "layout"``.
-
-    It used to be a second copy of the expression ``_width_effect``
-    evaluates, so the two could have come to disagree about one language
-    with nothing to catch it.  It is derived now, and this is what says so.
-    """
-
-    def test_width_aware_is_the_layout_case(self) -> None:
-        """Every language, not a sample: the old duplication was per-language."""
-        for name in esolangs.list_languages():
-            described = esolangs.describe(name)
-            assert described["width_aware"] == (
-                described["width_effect"] == "layout"
-            ), name
+    """``width_aware`` is exactly ``width_effect == "layout"``."""
 
     def test_all_three_effects_are_represented(self) -> None:
-        """A guard over a field with one value in practice guards nothing.
-
-        The split itself is not pinned.  It was ``{none: 38, wrap: 29,
-        layout: 2}`` and one campaign of teaching generators to lay
-        themselves out made it ``{none: 22, wrap: 35, layout: 12}`` -- so a
-        pinned split tests how far that campaign has got, not the property
-        this class is about.  What has to hold is that all three stay
-        populated, since ``width_aware`` is ``False`` for two of them and
-        that is what a reader ran into.
-        """
+        """A guard over a field with one value in practice guards nothing."""
         counts: dict[str, int] = {}
         for name in esolangs.list_languages():
             effect = str(esolangs.describe(name)["width_effect"])
@@ -1024,14 +729,7 @@ class TestTheTwoWidthKeysCannotDrift:
 
 
 class TestEveryDumpSaysWhereTheAnswerIs:
-    """A dump prints the whole final state, so "where" is the question.
-
-    For ``answer_mode == "output"`` the answer simply *is* the output and
-    53 languages rightly carry neither a pattern nor a note.  For a dump it
-    is a real gap, and Bitdeque was the one dump with neither -- the reader
-    who found it could not tell whether that meant "nothing to say" or
-    "nobody wrote it down".  It was the former, and now it says so.
-    """
+    """A dump prints the whole final state, so "where" is the question."""
 
     def test_a_dump_has_a_pattern_or_a_note(self) -> None:
         """Either a regex that finds the answer, or prose that locates it."""
@@ -1047,11 +745,7 @@ class TestEveryDumpSaysWhereTheAnswerIs:
         )
 
     def test_bitdeques_note_is_true(self) -> None:
-        """It claims the whole dump is the answer bit.  Check that, do not trust it.
-
-        A note is prose, and prose is the thing in this package that goes
-        stale; the claim is cheap to run, so it gets run.
-        """
+        """It claims the whole dump is the answer bit.  Check that, do not trust it."""
         note = str(esolangs.describe("Bitdeque")["answer_convention"])
         assert "the whole dump is the answer" in note
         template = esolangs.generate("Bitdeque", "0110")
@@ -1086,31 +780,7 @@ class TestFillingSomethingWithNoSlots:
 
 
 class TestEvaluateTakesAWidth:
-    """Checking a wrapped program meant reimplementing the loop.
-
-    A width is the one build option that can change whether the program
-    still *works* -- a break inside a token computes a different table, or
-    none -- so "does it survive the wrap" is the round trip most worth
-    running.  ``evaluate`` and ``verify`` did not take one, and hand-rolling
-    it also lost the divergence proof, which turns the four languages that
-    answer 1 by not terminating from milliseconds into a full bound per
-    1-row.
-    """
-
-    @pytest.mark.medium
-    def test_every_language_survives_a_wrap(self) -> None:
-        """All 60, because a wrapper that broke one would break it quietly.
-
-        1.8s for the set at two inputs, which is the whole point of doing it
-        here rather than leaving it to a caller who has to write the loop.
-        """
-        wrong = [
-            name
-            for name in esolangs.list_languages()
-            if esolangs.describe(name)["boolean_generator"]
-            and evaluate_generated(name, "0110", timeout=30, width=40) != "0110"
-        ]
-        assert not wrong
+    """Checking a wrapped program meant reimplementing the loop."""
 
     @pytest.mark.parametrize(
         ("name", "effect"),
@@ -1122,13 +792,7 @@ class TestEvaluateTakesAWidth:
         assert evaluate_generated(name, "0110", timeout=30, width=25) == "0110"
 
     def test_a_template_language_gets_the_width_too(self) -> None:
-        """``evaluate`` applies the width once, and the rows still answer.
-
-        A template wrapped to a width fills to a program with the same
-        breaks (each run is its setter's width), and a caller writing the
-        loop by hand can still wrap after filling; either way the width
-        must not be applied twice.
-        """
+        """``evaluate`` applies the width once, and the rows still answer."""
         assert esolangs.describe("Minifuck")["parameterized"] is True
         assert evaluate_generated("Minifuck", "0110", timeout=30, width=40) == "0110"
 

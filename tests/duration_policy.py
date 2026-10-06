@@ -41,10 +41,7 @@ def evidence_violation(markers: set[str], evidence: tuple[object, ...]) -> str |
 
 
 def limits() -> tuple[float, float]:
-    """Return the ``(fast, medium)`` ceilings for this machine.
-
-    ``CI`` is set by GitHub Actions on every runner.
-    """
+    """Return the ``(fast, medium)`` ceilings for this machine."""
     if os.environ.get("CI", "") in ("", "0", "false"):
         return FAST_LIMIT, MEDIUM_LIMIT
     return FAST_LIMIT * CI_SCALE, MEDIUM_LIMIT * CI_SCALE
@@ -57,11 +54,7 @@ _STARVED_SLACK = CI_SCALE
 def violation(
     markers: set[str], duration: float, cpu: float | None = None
 ) -> str | None:
-    """Return the cost-band violation for ``duration``, if any.
-
-    A measured ``cpu`` only excuses an overrun, never causes one, because
-    ``process_time`` sums threads: a pool reads a multiple of its own wall.
-    """
+    """Return the cost-band violation for ``duration``, if any."""
     if markers & {"slow", "weekly"}:
         return None
     fast_limit, medium_limit = limits()

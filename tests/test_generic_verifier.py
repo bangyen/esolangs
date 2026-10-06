@@ -1,17 +1,4 @@
-"""The API carries enough to use a language it has never heard of.
-
-This is the whole point of ``describe``, ``encode_inputs``, ``instantiate``
-and ``read_answer``: a caller should be able to generate a program, feed it,
-and judge its answer **without a single per-language branch**.  Five rounds
-of blind usability testing kept finding the same failure -- a fact that
-existed only in this test suite, so a reader outside it got a confident
-wrong answer -- and each fix moved one more fact into the package.
-
-The verifier below is the measure of that.  It knows no language names, no
-alphabets, no dump layouts, no halting conventions.  It reached 58 of 60
-when ``answer_mode`` said only *that* a language dumps its state; the last
-two needed ``read_answer`` to say *where* in the dump the answer sits.
-"""
+"""The API carries enough to use a language it has never heard of."""
 
 from __future__ import annotations
 
@@ -51,40 +38,12 @@ _CYCLE_STEPS = 100_000
 
 
 def _terminates(name: str, source: str, stdin: str) -> str:
-    """``"0"`` if ``source`` halts, ``"1"`` if it provably does not.
-
-    A termination-answering language proves a 1 by looping forever, and the
-    obvious way to read that is a stopwatch: run it, and call a timeout a
-    loop.  That is not evidence.  A timeout says the program had not
-    finished yet, which is also what a slow run says, so the bound has to be
-    guessed high enough to be safe and then paid on every 1-row -- ~42s
-    across the four tables here, all of it spent waiting for a clock rather
-    than deciding anything.
-
-    :func:`~esolangs.vm.run_until_halt_or_cycle` decides it instead: a
-    repeated snapshot *proves* the machine can never halt.  Over 123,
-    ArrowQueue, Crement and Vandevelo -- every termination language with a
-    boolean generator -- it returns the right answer for all four tables in
-    0.014s total, with no row over 0.3ms.
-
-    This stays free of per-language knowledge, which is the point of the
-    file: the choice is on ``answer_mode`` and on whether the machine
-    offers a snapshot, never on a name.  A language whose divergence is
-    unbounded *growth* rather than a cycle would not repeat a state, so the
-    detector would not return; that is the band's hard ceiling in
-    `tests/duration_policy.py`, which fails such a row by name instead of
-    letting it hang unattributed.  A language with no snapshot protocol at
-    all falls back to the clock below.
-    """
+    """``"0"`` if ``source`` halts, ``"1"`` if it provably does not."""
     return "0" if terminates(name, source, stdin, _TERMINATION_TIMEOUT) else "1"
 
 
 def _verify(name: str, table: str) -> str:
-    """Return what ``name``'s program answers on every row of ``table``.
-
-    Deliberately free of per-language knowledge: every branch below is on a
-    value :func:`esolangs.describe` reports, never on a language name.
-    """
+    """Return what ``name``'s program answers on every row of ``table``."""
     facts = esolangs.describe(name)
     inputs = len(table).bit_length() - 1
     program = esolangs.generate(name, table)

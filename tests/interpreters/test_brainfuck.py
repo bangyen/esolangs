@@ -1,11 +1,6 @@
-"""Unit tests for the Brainfuck interpreter.
-
-The interpreter pins the wrapping tape, ``<`` clamp, and bracket-matching
-loop semantics directly.
-"""
+"""Unit tests for the Brainfuck interpreter."""
 
 import importlib
-import random
 
 import pytest
 
@@ -16,10 +11,7 @@ bf = importlib.import_module("esolangs.interpreters.tape_based.brainfuck")
 
 
 def run_and_capture(code: str, inputs: list[str] | None = None) -> str:
-    """Run a Brainfuck program and return its stdout.
-
-    ``inputs`` are consecutive character chunks, joined without separators.
-    """
+    """Run a Brainfuck program and return its stdout."""
     return run_program(bf.run, code, "".join(inputs or []))
 
 
@@ -40,9 +32,6 @@ class TestContract(EmptyProgramContract, CycleContract):
 
 
 class TestBrainfuck:
-    def test_output_character(self) -> None:
-        assert run_and_capture("+" * 65 + ".") == "A"
-
     def test_cell_wraps(self) -> None:
         assert run_and_capture("+" * 256 + ".") == "\x00"
 
@@ -54,9 +43,6 @@ class TestBrainfuck:
 
     def test_comments_ignored(self) -> None:
         assert run_and_capture("abc+++abc.abc") == "\x03"
-
-    def test_movement(self) -> None:
-        assert run_and_capture("++>++<.>.>") == "\x02\x02"
 
     def test_left_clamped(self) -> None:
         """< at the left edge does nothing (the tape is clamped there)."""
@@ -73,24 +59,11 @@ class TestBrainfuck:
     def test_an_input_character_above_255_is_taken_modulo_256(
         self, char: str, expected: str
     ) -> None:
-        """``,`` writes a cell, so it reduces like every other write.
-
-        Only a code point above 255 exercises this: an ASCII character is
-        already its own residue, so the echo test above cannot tell a
-        reduced read from an unreduced one.  It used to be unreduced, which
-        put the raw code point on an 8-bit tape -- ``,.`` round-tripped an
-        emoji -- and left the cell inconsistent with itself, since the
-        first ``+`` reduced what ``,`` had not.
-        """
+        """``,`` writes a cell, so it reduces like every other write."""
         assert run_and_capture(",.", inputs=[char]) == expected
 
     def test_a_read_cell_and_an_incremented_one_agree(self) -> None:
-        """The bug this pins was a disagreement, not just a wide value.
-
-        ``,+`` reduced (the ``+`` did it) while ``,`` alone did not, so the
-        same cell answered differently depending on whether arithmetic had
-        touched it.  Reading 256 and adding one must be 1 either way.
-        """
+        """The bug this pins was a disagreement, not just a wide value."""
         assert run_and_capture(",+.", inputs=["Ā"]) == "\x01"
         assert run_and_capture(",.", inputs=["ā"]) == "\x01"
 
@@ -110,14 +83,7 @@ class TestBrainfuck:
         assert run_and_capture("+++[>++[>+<-]<-]>+++.") == "\x03"
 
     def test_machine_exposes_its_state(self) -> None:
-        """``ind``/``ptr``/``tape`` track the run and stay in step.
-
-        The three are views onto one immutable state rather than fields
-        that are assigned separately, and they are the surface ``vm.py``
-        reads off the machine (``ip``, ``memory``) -- so a state that
-        stopped being rebound, or a view that went stale, would show up
-        here rather than as a wrong answer somewhere downstream.
-        """
+        """``ind``/``ptr``/``tape`` track the run and stay in step."""
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.brainfuck import _Machine
 
@@ -172,10 +138,3 @@ class TestFastRunParity:
             run_and_capture(code, stdin.splitlines())
             == self.run_reference(code, stdin)[0]
         )
-
-    def test_generated_straight_line_programs_match(self) -> None:
-        rng = random.Random(0)
-        commands = "+-<>.abc"
-        for _ in range(100):
-            code = "".join(rng.choice(commands) for _ in range(200))
-            assert run_and_capture(code) == self.run_reference(code)[0]

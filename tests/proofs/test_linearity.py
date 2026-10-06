@@ -1,18 +1,4 @@
-"""``docs/roadmap.md``'s scaling audit must agree with the registry and the suite.
-
-The measured half of the scaling contract lives in
-``tests/proofs/deep/linearity.py``: it builds every generator at rising arity
-and costs around thirty seconds, so it runs from ``just proofs`` rather than
-from pytest.  This file is the cheap half.  Parsing a table and comparing name
-sets runs no generator, so it stays in the fast band and gates every push.
-
-What it is for: the audit's contents are duplicated in
-``tests/tools/test_boolean_contract.py`` as three hand-maintained sets, and a
-duplicated list is free to drift.  That is not hypothetical here -- the same
-file's ``_DOCUMENTED_SIZES`` kept COD at 942,692 characters for n=8 through the
-commit that linearized it down to 294, and nothing failed, because the test
-holding it carries the ``slow`` marker and PR CI does not run it.
-"""
+"""``docs/roadmap.md``'s scaling audit must agree with the registry and the suite."""
 
 from __future__ import annotations
 
@@ -66,23 +52,13 @@ def test_every_audit_verdict_is_a_known_one(audit: Audit) -> None:
 
 
 def test_the_audit_holds_only_unresolved_rows(audit: Audit) -> None:
-    """Rows leave the table when they close, so every row left is open.
-
-    This is what lets the contract treat "absent from the table" as "held to
-    the bound" rather than needing a second list of closed generators.  Open
-    means open on *some* axis; the size contract's own exemption set is the
-    narrower ``unsettled``.
-    """
+    """Rows leave the table when they close, so every row left is open."""
     assert all(row.is_open for row in audit.rows)
     assert audit.unsettled <= {row.generator for row in audit.rows}
 
 
 def test_the_totality_column_is_the_ledger(audit: Audit) -> None:
-    """A ``Cap`` or ``Exception`` cell is ``proofs/index.md``'s label, spelled twice.
-
-    Every ledger row carrying one of those labels must appear here with the
-    same verdict, and no row here may claim one the ledger does not.
-    """
+    """A ``Cap`` or ``Exception`` cell is ``proofs/index.md``'s label, spelled twice."""
     ledger = {
         row.generator: next(lab for lab in ("cap", "exception") if lab in row.labels)
         for row in load_ledger().rows
@@ -97,25 +73,14 @@ def test_the_totality_column_is_the_ledger(audit: Audit) -> None:
 
 
 def test_the_suites_hand_kept_sets_match_the_audit(audit: Audit) -> None:
-    """The contract suite's scaling sets are the audit, spelled twice.
-
-    ``_OPEN_SCALING`` and ``_LANGUAGE_SUPERLINEAR_SCALING`` together are the
-    audit's rows; ``_LINEAR_SCALING`` is disjoint from them.  Whichever copy is
-    edited, the other has to follow.
-    """
+    """The contract suite's scaling sets are the audit, spelled twice."""
     unresolved = _display(_OPEN_SCALING | _LANGUAGE_SUPERLINEAR_SCALING)
     assert unresolved == audit.unsettled
     assert _display(_LINEAR_SCALING) & audit.unsettled == set()
 
 
 def test_the_scaling_column_is_the_audit(audit: Audit) -> None:
-    """A ledger row is ``open``, ``lower bound`` or ``measured`` iff it is audited.
-
-    The proofs ledger's Scaling column and the roadmap's audit table state
-    the same thing twice: a row whose generation time or output size is not
-    settled in the audit carries one of those classes, and no other row
-    does.  ``lower bound`` is the audit's ``Language lower bound`` cell.
-    """
+    """A ledger row is ``open``, ``lower bound`` or ``measured`` iff it is audited."""
     ledger = load_ledger()
     unsettled = {
         row.generator for row in ledger.rows if row.scaling_class in UNSETTLED_SCALING
@@ -137,12 +102,7 @@ def test_the_scaling_column_is_the_audit(audit: Audit) -> None:
 
 
 def test_the_exempt_set_is_read_from_both_documents(audit: Audit) -> None:
-    """The bound's exemptions come from the roadmap and from ``proofs/index.md``.
-
-    Pinned here because the measured half is not collected by pytest: if the
-    exemption source silently narrowed to one document, the only signal would
-    be a generator quietly ceasing to be checked.
-    """
+    """The bound's exemptions come from the roadmap and from ``proofs/index.md``."""
     exempt = exempt_generators()
     ledger = load_ledger()
     qualified = {
@@ -157,12 +117,7 @@ def test_the_exempt_set_is_read_from_both_documents(audit: Audit) -> None:
 
 
 def test_the_execution_exempt_set_is_read_from_both_documents(audit: Audit) -> None:
-    """The command-count bound's exemptions come from the same two documents.
-
-    Its own hand-kept set is the one generator that answers by never
-    halting; everything else is a ``proofs/index.md`` cap row or an audit row
-    whose execution cell is open, so a row closing there arms the band.
-    """
+    """The command-count bound's exemptions come from the same two documents."""
     exempt = execution_exempt()
     ledger = load_ledger()
     qualified = {
@@ -176,21 +131,7 @@ def test_the_execution_exempt_set_is_read_from_both_documents(audit: Audit) -> N
 
 
 def test_the_contract_covers_generators_the_original_queue_missed() -> None:
-    """The point of the registry-wide contract: it is wider than the queue.
-
-    The roadmap's scaling item enumerated twenty-five languages, and the
-    suite's existing linearity test covered exactly those.  Thirty-seven
-    generators were never checked, which is why this exists.
-
-    (ZTOALC L, Nopstacle and COD entered the same way and left with their
-    languages.)  FRACTRAN is the twenty-sixth.  It entered reading as Factor
-    does, a language lower bound, and now reads open: the wall holds for
-    every program that addresses rows, and the language itself is
-    `Theta(T)`, because a program that packs a block of entries into one
-    exponent does not address rows -- it pays steps instead
-    (`docs/proofs/fractran.md`).  Growing this number is the contract doing
-    its job, so the gap is asserted against the registry rather than fixed.
-    """
+    """The point of the registry-wide contract: it is wider than the queue."""
     queue = _LINEAR_SCALING | _LANGUAGE_SUPERLINEAR_SCALING | _OPEN_SCALING
     assert len(queue) == 26
     assert len(BY_BOOLEAN) - len(queue) == 51

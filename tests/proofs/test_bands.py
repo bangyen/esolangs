@@ -1,20 +1,4 @@
-"""Every deep proof declares a cost band, and every band keeps its bargain.
-
-``tests/proofs/deep/__main__.py`` selects proofs by a ``BAND`` they declare
-rather than by the paths its three consumers used to hardcode.  That is a
-better arrangement only while the declarations stay honest: a band is a claim
-about cost, and an indirection that decides what runs is also an easy way to
-stop running something.
-
-The failure being guarded against is not hypothetical.  ``_DOCUMENTED_SIZES``
-pinned COD at 942,692 characters through the commit that linearized it to 294,
-and nothing failed, because the test holding it carries the ``slow`` marker and
-PR CI does not run it.  A mislabelled band would look exactly the same: green,
-fast, and not checking anything.
-
-These are cheap -- importing six modules and reading two constants runs no
-proof -- so the file stays in the fast band and gates every push.
-"""
+"""Every deep proof declares a cost band, and every band keeps its bargain."""
 
 from __future__ import annotations
 
@@ -45,13 +29,7 @@ def test_every_deep_proof_declares_a_band(proofs: list[Proof]) -> None:
 
 
 def test_the_directory_has_no_unregistered_proof(proofs: list[Proof]) -> None:
-    """Every plainly-named file under deep/ is a registered proof.
-
-    Discovery treats a leading underscore as "helper".  That convention is
-    what stops a new support module from failing the run, and this is the
-    other half of it: a file without an underscore is a proof, and a proof
-    the runner does not know about is one nothing runs.
-    """
+    """Every plainly-named file under deep/ is a registered proof."""
     from pathlib import Path
 
     import tests.proofs.deep as package
@@ -65,11 +43,7 @@ def test_the_directory_has_no_unregistered_proof(proofs: list[Proof]) -> None:
 
 
 def test_each_band_stays_inside_its_budget() -> None:
-    """A band is a cost claim, so the claim is checked.
-
-    Cumulative, matching how the runner selects: the ``ci`` budget covers the
-    ``verify`` proofs it also runs.
-    """
+    """A band is a cost claim, so the claim is checked."""
     for band in BANDS:
         total = sum(proof.cost for proof in selected(band))
         assert total <= BUDGET[band], (
@@ -91,11 +65,7 @@ def test_bands_are_cumulative(proofs: list[Proof]) -> None:
 
 
 def test_every_proof_is_callable_with_no_arguments(proofs: list[Proof]) -> None:
-    """The runner calls ``main()`` bare, so a required parameter would break it.
-
-    ArrowQueue takes flags of its own and read ``sys.argv`` directly, which
-    made argparse reject the band name and exit 2 before a lemma ran.
-    """
+    """The runner calls ``main()`` bare, so a required parameter would break it."""
     import inspect
 
     for proof in proofs:

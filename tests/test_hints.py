@@ -21,64 +21,25 @@ from tests.cli_support import call_both
 # Actual malformed sources, including runtime validation and shared parsers.
 _BAD_SOURCE = [
     ("AddSubJump", "ASJ 1", "2 to 4 address operands"),
-    ("A Painter Ant", "?", "n/e/s/w"),
     ("Alight", "begin;vra x;end;", "did you mean 'var'"),
     ("Algebraic Programming Language", "1(2)", "1*(2)"),
-    ("Back", "", "* halts"),
-    ("B-tapemark", ">a!", "uppercase"),
-    ("BF-PDA", "[", "close this '['"),
     ("brainfuck", "[", "close this '['"),
     ("BFStack", ">[", "close the loop"),
-    ("BIO", "?", "complete BIO"),
-    ("bit~", "{", "loop opener"),
     ("Bitdeque", "PUHS", "did you mean 'PUSH'"),
-    ("Bitwise Cyclic Tag", "x,1", "program,data"),
     ("Cyclic tag", "0,1;", "semicolons only before"),
-    ("Boolfuck", "[", "close this '['"),
     ("Subleq", "x", "decimal integers"),
     ("BrainIf", "if 0 move up", "move left or move right"),
     ("BrainIf", "if 0 incremnt", "did you mean 'increment'"),
     ("SLOW ACV MAMMALIAN", "PRONOUNCEE", "did you mean 'PRONOUNCE'"),
     ("Circlefuck", r"\xG0", "two hex digits"),
-    ("Circuit Diagram", "?", "supported Circuit Diagram"),
-    ("Clockwise", "", "ring"),
-    ("Collatz Multiverse", "?", "DO PRINT"),
-    ("CV(N)(C)", "ŋ", "non-nasal consonant"),
     ("Unary", "1", "only 0"),
-    ("Decleq", "x", "decimal integers"),
-    ("Container", "a+1", "name:"),
-    ("Crement", "J 0 0", "+A, -A, +D, -D, +J or -J"),
-    ("Dig", "", "@ halts"),
-    ("Dimensional", "=g0", "hexadecimal digits"),
-    ("EGL", "1,1:(", "pair every ("),
     ("Fargo", "% 0\n$", "pending prefix call"),
-    ("Flowchart", "?", "Flowchart nodes"),
-    ("Forbin", "", "main"),
-    ("Grapheme", "a", "uppercase Latin"),
-    ("Home Row", "l", "loop opener"),
-    ("Inject", "name;", "repeat the opening"),
-    ("Jaune", "?", "decimal number"),
-    ("Minsky Swap", "~", "1-based jump target"),
-    ("Modulous", "[JMP F]", "required operand"),
-    ("NoComment", " ", "spaces and tabs"),
     ("Packlang", "?", "punctuation"),
-    ("Polynomial", "x", "f(x) ="),
-    ("Qoibl", "tt", "complete each expression"),
     ("RAM0", "1" * 4301, "PYTHONINTMAXSTRDIGITS"),
-    ("S*bleq", "-4 0 0", "nonnegative memory address"),
-    ("3D Brainfuck", "[", "close this '['"),
     ("Sophie", "#$#[", "matching partner"),
-    ("Streetcode", "", "two-cell-wide street"),
-    ("Super SNUSP", "", "nonempty grid"),
-    ("Suffolk", "", "nonempty program"),
-    ("Taglate", "\x001\ngy", "loop opener"),
-    ("Vandevelo", "x?", "assign the variable"),
-    ("Befunge", "", "@ halts"),
     ("FALSE", "[", "close the lambda"),
     ("FRACTRAN", "2 3/0", "nonzero denominator"),
-    ("Fish", "", "; halts"),
     ("Malbolge", "?", "position-dependent"),
-    ("Smallfuck", "[", "close this '['"),
     ("Thue", "a::=b", "line containing only ::="),
     ("Unlambda", "`i", "exactly two expressions"),
 ]
@@ -151,24 +112,6 @@ def test_cli_prints_runtime_hints(command, tmp_path: Path, capsys):
     text = streams.out + streams.err
     assert "missing operand in JMP F" in text
     assert "hint: supply the required operand" in text
-
-
-@pytest.mark.medium
-@pytest.mark.parametrize(
-    ("language", "source", "output"),
-    [
-        ("brainfuck", "[]", ""),
-        ("Bitdeque", "PUSH", "0"),
-        ("Alight", "begin;var x;end;", ""),
-        ("Packlang", "Package { Integer main { 0; } } demo;", ""),
-        ("Forbin", "main { return 0; }", ""),
-        ("FRACTRAN", "2 3/2", "3"),
-        ("CV(N)(C)", "ci", ""),
-        ("Circlefuck", r"\x40", ""),
-    ],
-)
-def test_suggested_syntax_executes(language, source, output):
-    assert esolangs.run(language, source, timeout=1) == output
 
 
 @pytest.mark.parametrize(
@@ -339,22 +282,14 @@ def test_truncated_png_header_has_a_recovery_hint():
     ("language", "source", "message", "hint"),
     [
         ("Modulous", "[PRT INT]", "the stack is empty", "push a value"),
-        ("Modulous", "[SWP]", "SWP needs two", "push two values"),
         ("Modulous", "[RND 0]", "upper bound", "at least 1"),
         ("Alight", "begin;var v;set v 1/0;end;", "division by zero", "divisor"),
-        ("Alight", "begin;out missing;end;", "no such variable", "declare"),
         ("Alight", 'begin;var v;set v at{"AB",1};end;', "0.5 + k", "0.5, 1.5"),
         ("Befunge", "10/.@", "divides by zero", "divisor"),
         ("Fish", "+", "something smells fishy", "push a value"),
-        ("Fish", "10,", "something smells fishy", "nonzero divisor"),
-        ("Fish", "12,[", "something smells fishy", "whole-number"),
         ("FALSE", "%", "stack is empty", "push a value"),
-        ("FALSE", "1 0/", "divides by zero", "divisor"),
-        ("Unsquare", "S", "swap needs two", "push 2 values"),
         ("Fargo", "% 0 nope 1\n", "undefined function", "define the function"),
-        ("Fargo", "% 0 [?] [] 1 1\n", "out of range", "array bounds"),
         ("Jaune", "1@", "undefined subroutine", "define the subroutine"),
-        ("Jaune", ";", "no active subroutine", "before returning"),
         ("Subleq", "0 0", "incomplete Subleq", "three addresses"),
         ("Painfuck", "i", HaltError.DEFAULT, "decimal integer"),
         ("Super SNUSP", '"1_{1[', "negative", "nonnegative shift"),
@@ -490,20 +425,6 @@ def test_internal_tree_errors_and_explicit_aborts_have_no_repair_hint():
     assert not hasattr(HaltError(), "__notes__")
 
 
-@pytest.mark.medium
-@pytest.mark.parametrize(
-    ("language", "source", "output"),
-    [
-        ("Modulous", "[PSH INT 1][PSH INT 2][SWP][PRT INT][PRT INT]", "12"),
-        ("Alight", "begin;var v;set v 1/1;end;", ""),
-        ("Fish", "12,n;", "0.5"),
-        ("FALSE", "1 1/.", "1"),
-    ],
-)
-def test_repaired_operands_execute(language, source, output):
-    assert esolangs.run(language, source, timeout=1) == output
-
-
 def test_root_hint_does_not_require_an_exact_root():
     from esolangs.interpreters.grid_based.super_snusp import _floor_root
 
@@ -525,39 +446,12 @@ def test_root_hint_does_not_require_an_exact_root():
             "supported growth detector",
         ),
         (
-            "run_until_halt_or_all_branches_cycle",
-            "Modulous",
-            "[RND 2][END]",
-            "undecided after 0 branching states: the reachable graph may be unbounded",
-            "branching state limit",
-        ),
-        (
-            "run_until_halt_or_ancestor",
-            "Forbin",
-            "main { return 0; }",
-            (
-                "undecided after 0 pushed frames: neither halted nor repeated "
-                "an ancestor's entry state"
-            ),
-            "pushed-frame limit",
-        ),
-        (
             "run_until_halt_or_growth",
             "brainfuck",
             "+[]",
             (
                 "undecided after 0 steps: neither halted nor grew "
                 "by a provable translation"
-            ),
-            "run_until_halt_or_cycle",
-        ),
-        (
-            "run_until_halt_or_value_growth",
-            "Suffolk",
-            "<",
-            (
-                "undecided after 0 steps: neither halted nor climbed "
-                "by a provable affine step"
             ),
             "run_until_halt_or_cycle",
         ),

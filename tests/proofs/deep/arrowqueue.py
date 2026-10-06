@@ -1,17 +1,5 @@
 #!/usr/bin/env python3
-"""Executed lemma checks behind ``the relevant generator tests``.
-
-The proof there is total over every arity, so nothing in this file
-enumerates truth tables to establish the claim -- each check pins one
-*finite* lemma the induction rests on.  One named lemma per output line.
-
-Default run is a few seconds.  ``--deep`` adds the high-arity composition
-runs (``n = 12`` alone is ~96s), and ``--tree-sweep`` adds the exhaustive
-65536-table tree-only sweep (~3 minutes) that certifies leaf-index
-routing rather than merely the verdict.
-
-Exit status is non-zero if any lemma fails.
-"""
+"""Executed lemma checks behind ``the relevant generator tests``."""
 
 from __future__ import annotations
 
@@ -98,10 +86,7 @@ def _glyph_rows(block: list[str]) -> set[int]:
 
 
 def _header_rows(bits: list[int]) -> list[str]:
-    """The tree route's header filled with ``bits``, one cell each.
-
-    Input ``i``'s cell is on row ``1 + 2i``, so the row says which bit.
-    """
+    """The tree route's header filled with ``bits``, one cell each."""
     return [
         row.replace(TEMPLATE_CHAR, "~" if bits[(r - 1) // 2] else ".") if r else row
         for r, row in enumerate(_header(len(bits)))
@@ -175,12 +160,7 @@ def check_h2_h3_handoff() -> None:
 
 
 def check_s_stage() -> None:
-    """S: a cascade stage maps ``m`` markers and a bit to ``2m + bit``.
-
-    Horner's rule is the whole of the weight argument: the stage never
-    sees the arity, so the count after the last stage is the table index
-    by induction on the stages, and the lemma is one stage.
-    """
+    """S: a cascade stage maps ``m`` markers and a bit to ``2m + bit``."""
     bad = 0
     cases = 0
     for m in range(40):
@@ -201,12 +181,7 @@ def check_s_stage() -> None:
 
 
 def check_d_drain() -> None:
-    """D: the cascade's drained ring sustains for every marker count.
-
-    The folded ``1`` tail rests on it: entered heading down with ``m``
-    markers, the stop heading and the loop components queued, the one
-    ``+`` pops every marker and the ring then finds ``R, D, L, U``.
-    """
+    """D: the cascade's drained ring sustains for every marker count."""
     bad = 0
     for m in range(40):
         state = (0, 1, 1, (*([1] * m), 0, *RDLU))
@@ -220,13 +195,7 @@ def check_d_drain() -> None:
 
 
 def check_g_geometry() -> None:
-    """G1/G2/G3: row disjointness, blank right corridor, and the entry column.
-
-    G1 compares the *actual* glyph rows of the two placed subtrees in the
-    composed grid rather than restating ``_connect``'s own arithmetic --
-    an assertion built from ``yb = len(t0)`` would be true by definition
-    and would check nothing.
-    """
+    """G1/G2/G3: row disjointness, blank right corridor, and the entry column."""
     plus = [
         (r, c)
         for r, row in enumerate(_TREE_BRANCH_0)
@@ -280,13 +249,7 @@ def check_g_geometry() -> None:
 
 
 def check_b_branches() -> None:
-    """B2/B3/B3': branch routing, reflection, and entry-column sensitivity.
-
-    B2 is checked under *both* entry styles: the top-level tree is entered
-    heading down at (0, 1), while every recursive subtree is entered
-    heading right at its own (0, 0).  The induction uses both, so both are
-    executed here.
-    """
+    """B2/B3/B3': branch routing, reflection, and entry-column sensitivity."""
     down_exits = {}
     right_exits = {}
     for bit in (0, 1):
@@ -501,13 +464,7 @@ def check_deep_composition() -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Run the lemma checks and return a process exit status.
-
-    ``argv`` is explicit so the band runner can call this without its own
-    arguments leaking in -- ``parse_args(None)`` reads ``sys.argv``, which
-    under ``python -m tests.proofs.deep verify`` made argparse reject the band
-    name and exit 2 before a single lemma ran.
-    """
+    """Run the lemma checks and return a process exit status."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--deep",

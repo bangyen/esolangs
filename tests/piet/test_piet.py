@@ -322,12 +322,7 @@ def test_numeric_and_character_commands_share_the_input_cursor() -> None:
 
 
 def test_a_read_loop_on_a_cursorless_port_runs_to_eof() -> None:
-    """A port with no cursor reports position 0; the snapshot counts reads.
-
-    The two blocks alternate in(number) and an ignored mod, and ``x`` is no
-    number, so only the read count changes.  The cycle was declared after
-    the first read; now only once EOF stops the count (adfec3d9).
-    """
+    """A port with no cursor reports position 0; the snapshot counts reads."""
     from esolangs.vm import run_until_halt_or_cycle
 
     class _Cursorless(ScriptedIO):

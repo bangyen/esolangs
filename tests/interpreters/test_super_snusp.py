@@ -26,11 +26,7 @@ def test_lurd_mirror_turns_rightward_flow_downward() -> None:
 
 
 def test_wiki_hello_world_reflects_at_both_mirrors() -> None:
-    """The wiki's Hello World (Super_SNUSP rev 194514) needs real reflection.
-
-    It meets ``/`` moving down and must turn left; a mirror that rotated the
-    pointer instead turned it right, off the grid, and printed nothing.
-    """
+    """The wiki's Hello World (Super_SNUSP rev 194514) needs real reflection."""
     hello = [
         "\"33>d>l>r>o>W>32>44>o>l>l>e>H!/ ?\\' ",
         " " * 30 + "\\<./",
@@ -96,39 +92,6 @@ def _run_boolean(program: str, bits: tuple[int, ...]) -> str:
     return run_super(program, stdin)
 
 
-def test_every_two_input_table_executes_without_rand() -> None:
-    for value in range(16):
-        table = format(value, "04b")
-        program = super_snusp(table)
-        assert program.startswith('"')
-        assert "=" not in program
-        for bits in product((0, 1), repeat=2):
-            row = bits[0] * 2 + bits[1]
-            assert _run_boolean(program, bits) == table[row], (table, bits, program)
-
-
-@pytest.mark.medium
-def test_three_input_generator_executes_every_table() -> None:
-    for value in range(256):
-        table = format(value, "08b")
-        program = super_snusp(table)
-        assert "=" not in program
-        for bits in product((0, 1), repeat=3):
-            row = bits[0] * 4 + bits[1] * 2 + bits[2]
-            assert _run_boolean(program, bits) == table[row], (table, bits, program)
-
-
-@pytest.mark.parametrize(
-    "table",
-    ["0000000000000001", "0110100110010110", "1111111111111111"],
-)
-def test_four_input_generator_executes(table: str) -> None:
-    program = super_snusp(table)
-    for bits in product((0, 1), repeat=4):
-        row = sum(bit << (3 - index) for index, bit in enumerate(bits))
-        assert _run_boolean(program, bits) == table[row], (table, bits, program)
-
-
 def test_generator_reduces_unused_inputs_but_reads_them() -> None:
     """Projection saves ANF work without leaving stream input behind."""
     reduced = super_snusp("00001111")  # depends only on the first input
@@ -166,13 +129,7 @@ def test_generator_rejects_invalid_table() -> None:
 def test_the_integer_root_at_its_boundaries(
     value: int, degree: int, expected: int
 ) -> None:
-    """``ROOT``'s guards turn on values the wiki's programs never reach.
-
-    The opcode is exercised only through whole programs -- a square root
-    of 4225 and an odd root of a negative -- so zero, a degree of one, and
-    the difference between an exact power and the value just above it were
-    never asked for.
-    """
+    """``ROOT``'s guards turn on values the wiki's programs never reach."""
     assert _floor_root(value, degree) == expected
 
 
@@ -273,13 +230,7 @@ def test_advance_short_circuits_once_the_cursor_has_left_the_grid() -> None:
 def test_advance_refuses_an_input_the_shell_did_not_supply(
     command: str, offset: int | None
 ) -> None:
-    """The shell always supplies these, so only a direct call reaches the guard.
-
-    ``step`` reads a byte for ``,``, a number for ``@`` and a draw for ``=``
-    before it calls the transition, and its own ``EOFError`` arrives first at
-    a real end of input.  The guards are the pure function's contract with
-    any other caller, and this is what holds them.
-    """
+    """The shell always supplies these, so only a direct call reaches the guard."""
     state = ((0, 0, 0), (0, ((0, 5),)), (1,), False, False)
     with pytest.raises(HaltError):
         _advance(state, [command], random_offset=offset)

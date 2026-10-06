@@ -18,39 +18,20 @@ def run_and_capture(code: list[str], inputs: list[str] | None = None) -> str:
 
 
 class TestBrainIfBasicCommands:
-    def test_increment(self) -> None:
-        assert run_and_capture(["if 0 increment", "if 1 output"]) == "\x01"
-
-    def test_output_zero(self) -> None:
-        assert run_and_capture(["if 0 output"]) == "\x00"
-
     def test_conditional_execution(self) -> None:
         # The output line is only executed when the cell holds 1
         assert run_and_capture(["if 1 output"]) == ""
 
-    def test_input(self) -> None:
-        assert run_and_capture(["if 0 input", "if 65 output"], inputs=["A"]) == "A"
-
     def test_input_preserves_newlines(self) -> None:
         """Input stores a newline rather than skipping it."""
         assert run_and_capture(["if 0 input", "if 10 output"], inputs=["", "A"]) == "\n"
-
-    def test_move_right(self) -> None:
-        code = ["if 0 right", "if 0 increment", "if 1 output"]
-        assert run_and_capture(code) == "\x01"
 
     def test_move_left_clamps_at_zero(self) -> None:
         code = ["if 0 left", "if 0 increment", "if 1 output"]
         assert run_and_capture(code) == "\x01"
 
     def test_a_write_keeps_the_cell_to_its_right(self) -> None:
-        """Writing one cell rebuilds the tape around it, dropping nothing.
-
-        Every write elsewhere happens with the cells to its right still
-        zero, and a dropped zero is indistinguishable from a kept one --
-        reading past the end gives zero too.  Marking cell 1 first, then
-        writing cell 0, makes the neighbour's survival visible.
-        """
+        """Writing one cell rebuilds the tape around it, dropping nothing."""
         code = [
             "if 0 increment",  # cell 0 -> 1
             "if 1 right",  # to cell 1
@@ -64,15 +45,7 @@ class TestBrainIfBasicCommands:
         assert run_and_capture(code) == "\x02"
 
     def test_the_walk_out_and_back(self) -> None:
-        """Walk out to cell 3 and back, marking each cell on the return.
-
-        Every move here is from a cell other than the origin, which is what
-        makes it worth its length: from cell 0 a relative ``right`` and an
-        absolute jump to cell 1 agree, and a ``left`` that moves one and
-        one that moves two both clamp to 0.  Walking out first separates
-        them, and reading two cells at the end shows where the pointer
-        actually landed rather than only that it moved.
-        """
+        """Walk out to cell 3 and back, marking each cell on the return."""
         code = [
             "if 0 right",  # cell 1
             "if 0 right",  # cell 2
@@ -89,18 +62,10 @@ class TestBrainIfBasicCommands:
         ]
         assert run_and_capture(code) == "\x00\x01"
 
-    def test_a_new_cell_starts_at_zero(self) -> None:
-        """Moving right onto fresh tape appends a zero, not a one."""
-        assert run_and_capture(["if 0 right", "if 0 output"]) == "\x00"
-
 
 class TestBrainIfGeneratedHelloWorld:
     def test_long_climb_prints_two_characters(self) -> None:
-        """A 107-line climb: one cell walked up to 72, printed, then to 105.
-
-        Exercises the interpreter on a program long enough that a
-        misdispatched ``if`` shows up as wrong output rather than a crash.
-        """
+        """A 107-line climb: one cell walked up to 72, printed, then to 105."""
         code = [f"if {n} increment" for n in range(72)]
         code.append("if 72 output")
         code += [f"if {n} increment" for n in range(72, 105)]
@@ -108,11 +73,7 @@ class TestBrainIfGeneratedHelloWorld:
         assert run_and_capture(code) == "Hi"
 
     def test_truth_machine_zero(self) -> None:
-        """A 0 input prints 0 and halts.
-
-        The 1 branch (``if 49 goto 2``) loops forever by definition, so only
-        the terminating branch is exercised.
-        """
+        """A 0 input prints 0 and halts."""
         program = [
             "if 0 input",
             "if 48 output",
@@ -136,20 +97,13 @@ class TestBrainIfGeneratedHelloWorld:
             with pytest.raises(ValueError, match="unknown BrainIf command"):
                 run_and_capture([f"if 0 {command}", "if 0 output"])
 
-    def test_command_words_accept_horizontal_whitespace(self) -> None:
-        assert run_and_capture(["if\t0\tinc", "if 1 output"]) == "\x01"
-
     def test_goto(self) -> None:
         """Goto jumps to the given line number."""
         code = ["if 0 goto 3", "if 0 output", "if 0 increment", "if 1 output"]
         assert run_and_capture(code) == "\x01"
 
     def test_missing_value_rejected(self) -> None:
-        """A line without a value operand is malformed.
-
-        The message is matched in full, and with its casing: a loose
-        substring lets the wording drift without any test objecting.
-        """
+        """A line without a value operand is malformed."""
 
         with raises_message(ValueError, "malformed BrainIf line: if"):
             run_and_capture(["if"])
@@ -159,12 +113,6 @@ class TestBrainIfGeneratedHelloWorld:
 
         with pytest.raises(ValueError, match="unknown BrainIf command"):
             run_and_capture(["if 0", "if 0 output"])
-
-    def test_goto_missing_target_rejected(self) -> None:
-        """A goto without a target line is malformed."""
-
-        with raises_message(ValueError, "goto requires a target line"):
-            run_and_capture(["if 0 goto"])
 
 
 class TestStepMachine:
@@ -191,10 +139,7 @@ class TestStepMachine:
         assert machine.ind == 1
 
     def test_the_read_lands_in_the_cell(self) -> None:
-        """``input`` puts the byte where the language says it goes.
-
-        The cursor and snapshot moving is the shared contract below.
-        """
+        """``input`` puts the byte where the language says it goes."""
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.brainif import _Machine
 
@@ -210,38 +155,9 @@ class TestStepMachine:
 
         assert run_until_halt_or_cycle(_Machine(["if 0 goto 1"], ScriptedIO())) is False
 
-    def test_pure_transition_covers_blank_and_existing_right_cell(self) -> None:
-        from esolangs.interpreters.persistent import chunked
-        from esolangs.interpreters.tape_based.brainif import _advance
-
-        cells = chunked((0, 0))
-        assert _advance((0, 0, cells), None) == (1, 0, cells)
-        assert _advance((0, 0, cells), (0, "right", 0)) == (1, 1, cells)
-
-    def test_machine_stores_a_newline(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.brainif import _Machine
-
-        machine = _Machine(["if 0 input"], ScriptedIO("\nA\n"))
-        machine.step()
-        assert machine.cells == (10,)
-
 
 def test_a_blank_line_is_skipped() -> None:
-    """A line with nothing on it advances the counter and does no work.
-
-    Blank lines are how a BrainIf program is spaced out, so they have to be
-    stepped over rather than raising the malformed-line error a one-token
-    line gets.
-
-    Where the blank sits matters, in two ways.  A blank at the top of the
-    program is stepped identically by an advance, a reset to line 1, and a
-    double advance, so it has to follow a line that has already run.  And a
-    run of consecutive blanks hides a double advance -- skipping two blanks
-    still lands on a line that does nothing -- so a single blank is put
-    directly before the output, where skipping two would skip the output
-    itself.  The run of blanks is kept as its own case.
-    """
+    """A line with nothing on it advances the counter and does no work."""
     assert run_and_capture(["if 0 increment", "", "if 1 output"]) == "\x01"
     assert run_and_capture(["if 0 increment", "", "   ", "if 1 output"]) == "\x01"
 

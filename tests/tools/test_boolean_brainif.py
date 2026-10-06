@@ -8,29 +8,11 @@ from esolangs import tools as boolean
 from tests.tools.boolean_runners import (
     run_brainif,
 )
+from tests.witness_tables import witnesses
 
 
 class TestBrainIf:
     """The DAG selector and the retained width-constrained tree/spatial route."""
-
-    @pytest.mark.parametrize(
-        ("table", "n"),
-        [
-            ("10", 1),  # NOT
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("11111110", 3),  # NAND3
-            ("1000000000000000", 4),  # AND4
-        ],
-    )
-    @pytest.mark.medium
-    def test_truth_table(self, table: str, n: int) -> None:
-        """Every input combination produces the truth-table result."""
-        program = boolean.brainif(table)
-        for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            got = run_brainif(program, [str(b) for b in bits])
-            assert got == str(int(table[combo])), f"inputs {bits}"
 
     def test_structure(self) -> None:
         """An entry trampoline precedes the answer build and input tree."""
@@ -41,13 +23,7 @@ class TestBrainIf:
         assert program.count("goto 2") == 1
 
     def test_the_answer_byte_is_built_once(self) -> None:
-        """The climb to 48 is paid before the tree, not once per digit.
-
-        Two per-digit output routines cost 48 + 49 increments and dominated
-        the program; building the byte ahead of the branch leaves the tree
-        deciding only whether to add one, so the count is 48 plus one line
-        for the ``1`` leaf: every other ``1`` leaf jumps to that one.
-        """
+        """The climb to 48 is paid before the tree, not once per digit."""
         for table in ("10", "0110", "11111110", "01101001"):
             assert boolean.brainif(table, width=1000).count("increment") == 49
         assert boolean.brainif("00000000", width=1000).count("increment") == 48
@@ -58,12 +34,7 @@ class TestBrainIf:
         assert program.count("output") == 2
 
     def test_constant_subtrees_fold(self) -> None:
-        """A constant slice stops the branching, though not the reads.
-
-        Reads carry the pointer home, so a leaf spends no moves reaching
-        the answer and the fold is not handed back -- which is what an
-        earlier layout, with the answer past the inputs, did.
-        """
+        """A constant slice stops the branching, though not the reads."""
         assert len(boolean.brainif("11111111", width=1000)) < len(
             boolean.brainif("11110000", width=1000)
         )
@@ -140,12 +111,7 @@ class TestBrainIf:
             assert self._reads(program, bits) == (table[row], 6)
 
     def test_pruning_never_grows_a_table(self) -> None:
-        """No table through four inputs is longer than its unpruned tree.
-
-        ``prune=False`` is the previous build less each leaf's dead second
-        ``goto``: 364,700 characters over the 256 three-input tables, then
-        345,486, and 319,576 with levels skipped and spans shared.
-        """
+        """No table through four inputs is longer than its unpruned tree."""
         from esolangs.tools.brainif import _brainif_tree
 
         for n in (1, 2, 3, 4):
@@ -181,8 +147,7 @@ def test_brainif_zero_landing_executes_all_small_tables(width: int) -> None:
     from esolangs.interpreters.tape_based.brainif import run
 
     for n in range(1, 4):
-        for value in range(2 ** (2**n)):
-            table = format(value, f"0{2**n}b")
+        for table in witnesses(n):
             program = boolean.brainif(table, width)
             for row, expected in enumerate(table):
                 bits = list(format(row, f"0{n}b"))

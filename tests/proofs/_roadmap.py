@@ -54,13 +54,7 @@ class Audit:
 
     @property
     def unsettled(self) -> frozenset[str]:
-        """Generators exempt from the measured size regression.
-
-        These are the expected failures of the linearity contract, which
-        measures emitted size and nothing else. Measured rows retain the
-        regression without claiming a proof; rows open only on other axes
-        remain checked too.
-        """
+        """Generators exempt from the measured size regression."""
         return frozenset(
             row.generator
             for row in self.rows
@@ -69,12 +63,7 @@ class Audit:
 
     @property
     def execution_unsettled(self) -> frozenset[str]:
-        """Generators exempt from the measured command-count regression.
-
-        The execution contract's expected failures, read the same way the
-        size contract reads :attr:`unsettled`: a row open only on size or
-        build time is still held to the command-count bound.
-        """
+        """Generators exempt from the measured command-count regression."""
         return frozenset(
             row.generator
             for row in self.rows

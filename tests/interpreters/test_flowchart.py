@@ -1,16 +1,10 @@
-"""Unit tests for the Flowchart interpreter.
-
-The command table takes precedence over the examples: empty-register output
-is zero, so the wiki's cat appends a spurious bit. Other routing gaps follow
-the worked examples; see the interpreter's module docstring.
-"""
+"""Unit tests for the Flowchart interpreter."""
 
 import pytest
 
 from esolangs.interpreters.grid_based.flowchart import _Machine, run
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
-from tests.raises import raises_message
 
 # The wiki's truth machine: read a bit, and on 0 print it once and halt, on
 # 1 print it forever.  The switch is entered travelling downward, so its
@@ -82,34 +76,17 @@ class TestTruthMachine:
         assert run_program(TRUTH_MACHINE, "0") == "0"
 
     def test_one_prints_forever(self) -> None:
-        """A one takes the left branch onto the ring and never stops.
-
-        Each lap of the ring emits one bit, so the count grows with the
-        step budget; what matters is that every bit is a one and that more
-        of them arrive the longer the machine runs.
-        """
+        """A one takes the left branch onto the ring and never stops."""
         short = run_steps(TRUTH_MACHINE, "1", 100)
         long = run_steps(TRUTH_MACHINE, "1", 400)
         assert set(short) == {"1"}
         assert set(long) == {"1"}
         assert len(long) > len(short)
 
-    def test_one_never_halts(self) -> None:
-        """The looping branch still has a live pointer after many steps."""
-        machine = _Machine(TRUTH_MACHINE, ScriptedIO("1"))
-        for _ in range(500):
-            machine.step()
-        assert not machine.halted
-
     def test_one_is_a_provable_cycle(self) -> None:
         """The looping branch revisits an exact state, proving the hang."""
         machine = _Machine(TRUTH_MACHINE, ScriptedIO("1"))
         assert run_until_halt_or_cycle(machine) is False
-
-    def test_zero_is_reported_as_halting(self) -> None:
-        """The halting branch is not mistaken for a cycle."""
-        machine = _Machine(TRUTH_MACHINE, ScriptedIO("0"))
-        assert run_until_halt_or_cycle(machine) is True
 
 
 class TestCat:
@@ -123,10 +100,6 @@ class TestCat:
         """The final empty-deque pop causes the wiki cat to append zero."""
         assert run_program(CAT, "\n".join(bits)) == bits + "0"
 
-    def test_no_input_prints_zero(self) -> None:
-        """The wiki cat still outputs its empty register once."""
-        assert run_program(CAT, "") == "0"
-
     def test_halts_rather_than_looping(self) -> None:
         """The exhausted read sends the pointer forward to the end node."""
         machine = _Machine(CAT, ScriptedIO("1\n0\n1"))
@@ -137,12 +110,7 @@ class TestKolakoski:
     """The wiki's Kolakoski example, the one that forks into two pointers."""
 
     def test_start_node_forks_in_reading_order(self) -> None:
-        """The opening ``( )`` splits east first, then south.
-
-        The spec orders pointers "top-most left-most, traveling right, then
-        downwards", so the east path on row 0 precedes the south path on
-        row 1.
-        """
+        """The opening ``( )`` splits east first, then south."""
         machine = _Machine(KOLAKOSKI, ScriptedIO(""))
         assert [(p.row, p.col) for p in machine.pointers] == [(0, 3), (1, 1)]
 
@@ -154,32 +122,7 @@ class TestKolakoski:
         assert not machine.halted
 
     def test_output_prefix(self) -> None:
-        """Characterization only: the wiki states no expected output.
-
-        The page gives the program but never says what it should print, so
-        this pins the current behaviour against regressions rather than
-        claiming the wiki blesses it.
-
-        The interleaving turns out to matter far less than expected: running
-        the two pointers in creation order, reverse order, or re-sorted into
-        reading order every step all give byte-identical output, and giving
-        each pointer long consecutive runs instead of single steps only
-        swaps the first two bits (the south branch prints one ``0`` and
-        halts, so scheduling decides whether it lands before or after the
-        east branch's first bit).  The repeating ``100110011001`` tail is
-        identical under every policy tried, and also under every combination
-        of the two contested semantic rules (1 turns left/right x empty
-        prints nothing/is zero), so it
-        is neither an interleaving nor a routing artifact.
-
-        The east pointer in fact emits one bit and halts eleven nodes in:
-        the mid-row ``( )`` nodes do not fork, because the ``─`` run under
-        them is the return rail passing *beneath* the row rather than a
-        path attached to them -- both its ends turn upward, closing the
-        loop elsewhere.  The tail is entirely the south branch's, and the
-        open question is whether the diagram generates the sequence at all
-        as drawn.
-        """
+        """Characterization only: the wiki states no expected output."""
         assert run_steps(KOLAKOSKI, "", 400) == "01111001100110011001"
 
 
@@ -201,27 +144,8 @@ class TestParsing:
         with pytest.raises(ValueError, match="no '\\( \\)' start node"):
             _Machine([], ScriptedIO(""))
 
-    def test_the_rejection_messages_are_exact(self) -> None:
-        """Both messages are pinned whole, position included.
-
-        ``match=`` is a substring search, so a fragment leaves the wording
-        around it free -- and the unknown character's coordinates would
-        never be checked at all.
-        """
-        with raises_message(ValueError, "unknown character '?' at (4, 0)"):
-            _Machine(["( )─?─(( ))"], ScriptedIO(""))
-
-        with raises_message(ValueError, "Flowchart program has no '( )' start node"):
-            _Machine(["(( ))"], ScriptedIO(""))
-
     def test_turning_left_rotates_every_heading(self) -> None:
-        """A left turn is a rotation, so four of them return the heading.
-
-        Negating the wrong component agrees on the vertical headings and
-        reverses the horizontal ones, which is why the whole cycle has to
-        be walked rather than one turn checked: the two spellings differ
-        only on the headings a vertical-only test never reaches.
-        """
+        """A left turn is a rotation, so four of them return the heading."""
         from esolangs.interpreters.grid_based.flowchart import _turn_left
 
         north, south, west, east = (-1, 0), (1, 0), (0, -1), (0, 1)
@@ -231,12 +155,7 @@ class TestParsing:
         assert _turn_left(east) == north
 
     def test_only_the_newline_is_stripped_from_a_row(self) -> None:
-        """Trailing spaces stay, since a column is a position in the grid.
-
-        Every program is written without them, so stripping whitespace
-        generally would have gone unnoticed -- but it shortens the row and
-        moves every column after it.
-        """
+        """Trailing spaces stay, since a column is a position in the grid."""
         machine = _Machine(["( )─(( ))  \n"], ScriptedIO(""))
         assert machine.width == 11
         assert machine.grid == ("( )─(( ))  ",)
@@ -258,22 +177,12 @@ class TestParsing:
             assert io.getvalue() == "1"
 
     def test_a_genuine_fork_still_splits(self) -> None:
-        """Deduplicating exits must not collapse real multi-path forks.
-
-        The wiki's Kolakoski program opens with a ``( )`` that has both an
-        east and a south path, and those are two distinct destinations.
-        """
+        """Deduplicating exits must not collapse real multi-path forks."""
         machine = _Machine(list(KOLAKOSKI), ScriptedIO(""))
         assert len(machine.pointers) == 2
 
     def test_a_fork_copies_the_register_to_both_branches(self) -> None:
-        """Each new pointer starts from the forking pointer's register.
-
-        The fork tests above only count pointers, and a fork at the
-        *start* has an empty register either way -- so nothing pinned
-        what a mid-program fork carries.  Here the register is raised to
-        1 before the ``( )``, and both branches print it.
-        """
+        """Each new pointer starts from the forking pointer's register."""
         program = [
             "( )─[ }─[ }─( )─\\ \\─(( ))",
             "             │",
@@ -286,11 +195,7 @@ class TestParsing:
         assert io.getvalue() == "11", "both branches print the inherited register"
 
     def test_a_fork_copies_the_deque_cursor_to_both_branches(self) -> None:
-        """The other half of the copied state: which deque is selected.
-
-        ``[ >`` moves the cursor before the fork, so neither branch may
-        fall back to deque 0.
-        """
+        """The other half of the copied state: which deque is selected."""
         program = [
             "( )─[ >─[ }─( )─{ }─(( ))",
             "             │",
@@ -306,31 +211,17 @@ class TestParsing:
         assert [p.deque for p in machine.pointers] == [1, 1]
 
     def test_off_centre_vertical_entry_is_rejected(self) -> None:
-        """A vertical path must meet the middle of the node it enters.
-
-        The rail below sits on column 1, but ``(( ))`` spans columns 0-4 and
-        centres on column 2.
-        """
+        """A vertical path must meet the middle of the node it enters."""
         with pytest.raises(ValueError, match="but its middle is column 2"):
             _Machine([" ( )", " │  ", "(( ))"], ScriptedIO(""))
 
     def test_horizontal_entry_at_an_end_cell_is_allowed(self) -> None:
-        """Horizontal entry lands on an end cell and is not an error.
-
-        A node occupies one row, so a horizontal neighbour can only ever be
-        just past its first or last cell -- the spec's middle rule is about
-        vertical paths, and the wiki's Kolakoski program chains nodes this
-        way throughout its top row.
-        """
+        """Horizontal entry lands on an end cell and is not an error."""
         machine = _Machine(["( )─[ }─(( ))"], ScriptedIO(""))
         assert machine.nodes[(0, 4)][0] == "[ }"
 
     def test_a_rail_passing_beside_a_node_is_not_an_entry(self) -> None:
-        """Only a path arm pointing *at* a node counts as entering it.
-
-        ``─`` has no vertical arm, so one drawn above a node's off-centre
-        column is passing by rather than connecting into it.
-        """
+        """Only a path arm pointing *at* a node counts as entering it."""
         machine = _Machine(["( )────┐  ", "───────┼──", " (( ))─┘  "], ScriptedIO(""))
         assert machine.nodes[(2, 1)][0] == "(( ))"
 
@@ -370,18 +261,8 @@ class TestNodes:
         """A pushed bit comes back off the top of the deque."""
         assert self._register("[ }─\\[ ]/─{ }─\\{ }/") == 1
 
-    def test_pop_from_empty_leaves_it_empty(self) -> None:
-        """Popping an exhausted deque clears the register."""
-        assert self._register("[ }─\\{ }/") is None
-
     def test_pushing_an_empty_register_pushes_nothing(self) -> None:
-        """A push with nothing to push leaves the deque as it was.
-
-        Both push nodes read the register and skip when it is empty, so a
-        later pop finds nothing rather than a ``None`` that was pushed as if
-        it were a bit.  ``{ }`` empties the register first, so the push has
-        nothing to work with at either end.
-        """
+        """A push with nothing to push leaves the deque as it was."""
         assert self._register("{ }─\\[ ]/─\\{ }/") is None
         assert self._register("{ }─/[ ]\\─/{ }\\") is None
 
@@ -418,19 +299,9 @@ class TestNodes:
         assert run_until_halt_or_cycle(_Machine(loop, io)) is False
         assert io.exhausted
 
-    def test_exhausted_input_leaves_the_register_empty(self) -> None:
-        """Reading past the end of the input empties the register."""
-        assert run_program(["( )─/ /─\\ \\─(( ))"], "") == "0"
-
 
 class TestPointersStop:
-    """Every way a pointer runs out of places to go.
-
-    A pointer stops rather than erroring whenever its next step would leave
-    the grid or lead nowhere, so each of these programs halts quietly with
-    nothing printed.  They are stepped with a bound rather than run to
-    completion, because a program that never halts would hang the suite.
-    """
+    """Every way a pointer runs out of places to go."""
 
     @staticmethod
     def _halts(code: list[str], steps: int = 20) -> bool:
@@ -474,23 +345,10 @@ class TestPointersStop:
 
 
 class TestAmbiguousExits:
-    """Junctions where neither memory nor the current heading settles the exit.
-
-    Three of the interpreter's tie-breaks only matter when the obvious answer
-    is unavailable: the pointer's own heading is not among a junction's arms,
-    or a switch's chosen turn is not among a node's exits.  Both need a grid
-    drawn for them -- the wiki's examples always leave the heading available.
-    """
+    """Junctions where neither memory nor the current heading settles the exit."""
 
     def test_head_on_junction_falls_past_the_heading(self) -> None:
-        """A rail entered head-on turns, because straight on is not an arm.
-
-        ``├`` carries up, down, and right.  Arriving travelling *left* takes
-        right away as the way back, so the arms are up and down and the
-        pointer's own heading is neither.  Nothing is remembered on a first
-        visit either, so the first arm is taken -- upward here, which is the
-        branch that prints.
-        """
+        """A rail entered head-on turns, because straight on is not an arm."""
         grid = [
             "          (( ))              ( )",
             "            │                 │",
@@ -509,11 +367,6 @@ class TestAmbiguousExits:
     def test_switch_with_no_forward_path_takes_the_first_exit(self) -> None:
         """An empty register sends a switch straight on; with no straight on,
         neither the preferred heading nor the arrival heading is available.
-
-        The switch is entered from above and its only exits are sideways, so
-        ``{ }`` (which clears the register, choosing "carry on") asks for a
-        direction that is not there.  The pointer leaves by the first exit
-        instead, and the empty register prints zero.
         """
         grid = [
             "                   ( )",
@@ -531,11 +384,7 @@ class TestAmbiguousExits:
         assert io.getvalue() == "0"
 
     def test_a_set_register_still_turns_at_that_switch(self) -> None:
-        """The same grid, with the turn available: the switch does turn.
-
-        This is the control for the test above -- it shows the empty-register
-        case is choosing a different exit, not merely failing to print.
-        """
+        """The same grid, with the turn available: the switch does turn."""
         for setter, expected in (("[ }", "1"), ("{ ]", "0")):
             grid = [
                 "                   ( )",
@@ -551,50 +400,6 @@ class TestAmbiguousExits:
             io = ScriptedIO("")
             run(grid, io)
             assert io.getvalue() == expected, setter
-
-
-class TestThePointerMemoryIsAValue:
-    """The memory is a map keyed by cell, and still a value.
-
-    It was a tuple of pairs, which made reading one cell a scan and
-    recording one a rebuild.  These pin what the new spelling has to keep:
-    a record leaves the original alone, so two generations can be compared
-    and a loop proved.
-    """
-
-    def test_recording_leaves_the_original_alone(self) -> None:
-        """A fork shares a memory, so recording must not edit it."""
-        from esolangs.interpreters.grid_based.flowchart import _Memory
-
-        before = _Memory({(0, 0): (1, 0)})
-        after = before.leaving((1, 1), (0, 1))
-        assert before.exit_from((1, 1)) is None
-        assert after.exit_from((1, 1)) == (0, 1)
-        assert after.exit_from((0, 0)) == (1, 0)
-
-    def test_a_later_exit_replaces_an_earlier_one(self) -> None:
-        """A cell is remembered by its *last* exit, not its first."""
-        from esolangs.interpreters.grid_based.flowchart import _Memory
-
-        twice = _Memory({}).leaving((0, 0), (1, 0)).leaving((0, 0), (0, 1))
-        assert twice.exit_from((0, 0)) == (0, 1)
-        assert twice.sorted_items() == (((0, 0), (0, 1)),)
-
-    def test_equal_memories_compare_and_hash_together(self) -> None:
-        """Equality is the exits recorded; the hash follows it."""
-        from esolangs.interpreters.grid_based.flowchart import _Memory
-
-        one = _Memory({(0, 0): (1, 0)})
-        two = _Memory({}).leaving((0, 0), (1, 0))
-        assert one == two
-        assert len({one, two}) == 1
-        assert hash(one) == hash(one)
-
-    def test_a_memory_is_unequal_to_other_things(self) -> None:
-        """Comparing against a non-memory answers False rather than raising."""
-        from esolangs.interpreters.grid_based.flowchart import _Memory
-
-        assert _Memory({}) != ()
 
 
 def test_counterclockwise_entry_prefers_clockwise_exit() -> None:

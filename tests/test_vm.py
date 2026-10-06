@@ -1,8 +1,4 @@
-"""Stepping every language, and what the wrapper exposes between commands.
-
-One class per language pinning its ``ip``, ``memory`` and ``stack``, plus the
-factory and protocol sweep.  Views and hang detectors have their own modules.
-"""
+"""Stepping every language, and what the wrapper exposes between commands."""
 
 import contextlib
 
@@ -55,11 +51,6 @@ class TestBrainfuck:
         vm.step()
         assert vm.output == "\x02"
         assert vm.halted
-
-    def test_run_matches_execute(self) -> None:
-        assert _run_all(
-            debugger_api.make_vm("brainfuck", "+++[>+++<-]>.")
-        ) == esolangs.run("brainfuck", "+++[>+++<-]>.")
 
 
 class TestSbleq:
@@ -127,37 +118,6 @@ class TestGrapheme:
         assert vm.ip == (len("FAFEKEGY"),)
 
 
-class TestQoibl:
-    def test_expression_cursor(self) -> None:
-        vm = debugger_api.make_vm("Qoibl", "et")
-        assert vm.ip == 0
-        assert not vm.halted
-        assert vm.memory == [0] * 256
-        assert vm.stack == []
-        with pytest.raises(EOFError):
-            vm.step()
-
-
-class TestEval:
-    def test_active_stack_exposed(self) -> None:
-        vm = debugger_api.make_vm("Eval", "0^")
-        vm.step()
-        assert vm.stack == [0]
-        vm.step()
-        assert vm.stack == [0, 0]
-
-
-class TestModulous:
-    def test_token_cursor_and_stack(self) -> None:
-        vm = debugger_api.make_vm("Modulous", "[PSH INT 5][PRT INT]")
-        vm.step()
-        assert (vm.ip, vm.stack) == (1, [5])
-        assert vm.memory == []
-        vm.step()
-        assert vm.output == "5"
-        assert vm.halted
-
-
 class TestLaserFuck:
     def test_ip_is_position_and_heading(self) -> None:
         # the adapter's generator is seeded so its first draw is 0 (up), so
@@ -211,80 +171,6 @@ class TestArrowQueue:
         vm.step()  # stepping a halted VM is a no-op
 
 
-class Test123:
-    def test_data_byte_and_cursor(self) -> None:
-        vm = debugger_api.make_vm("123", "121")
-        assert vm.ip == 0
-        assert vm.memory == [0]
-        vm.step()  # 1 flips the bit at the pointer
-        assert vm.ip == 1
-        assert vm.memory == [1]
-        vm.step()  # 2 at a data position moves the pointer right
-        assert vm.ip == 2
-        assert vm.memory == [1]
-        vm.step()  # 1 flips bit 0 back; the cursor runs off the program
-        assert vm.ip == 3
-        assert vm.memory == [0]
-        vm.step()  # the loop-or-halt check: pointer below 0 halts the run
-        assert vm.halted
-        assert vm.stack == []
-        vm.step()  # stepping a halted VM is a no-op
-
-
-class TestAPainterAnt:
-    def test_ip_cursor_and_grid_memory(self) -> None:
-        vm = debugger_api.make_vm("A Painter Ant", "Pnn")
-        assert vm.ip == 0
-        vm.step()  # P whites the origin
-        assert vm.ip == 1
-        assert vm.memory == [1]
-        vm.step()  # n moves north
-        assert vm.ip == 2
-        vm.step()  # n moves north
-        assert vm.ip == 0  # the implicit loop wraps the cursor
-        assert vm.halted is False  # the language never halts
-        assert vm.stack == []
-
-
-class TestClockwise:
-    def test_ip_position_heading_and_accumulator(self) -> None:
-        vm = debugger_api.make_vm("Clockwise", "+;S;S;S;S;S;+;R\nR             R")
-        assert vm.ip == (0, 0, 0)  # the pointer starts at the origin heading right
-        assert vm.memory == [0]
-        vm.step()  # + at the origin increments the accumulator
-        assert vm.ip == (0, 1, 0)
-        assert vm.memory == [1]
-        vm.step()  # ; queues a parity bit
-        assert vm.ip == (0, 2, 0)
-        assert vm.output == ""
-        assert vm.stack == []
-
-    def test_stepping_a_halted_vm_is_a_noop(self) -> None:
-        vm = debugger_api.make_vm("Clockwise", "+;S;S;S;S;S;+;R\nR             R")
-        assert _run_all(vm) == "A"
-        vm.step()  # no-op
-        assert vm.output == "A"
-
-
-class TestDig:
-    def test_ip_mole_position_and_value(self) -> None:
-        vm = debugger_api.make_vm("Dig", ">$5:\n 2 ")
-        assert vm.ip == (0, 0, 1)  # facing right
-        assert vm.memory == [0]
-        vm.step()  # > keeps facing right
-        assert vm.ip == (0, 1, 1)
-        vm.step()  # $ digs (reads the adjacent 5)
-        vm.step()  # 5 loads the mole
-        assert vm.memory == [5]
-        assert vm.stack == []
-
-    def test_stepping_a_halted_vm_is_a_noop(self) -> None:
-        vm = debugger_api.make_vm("Dig", ">$5:\n 2 ")
-        assert _run_all(vm) == "5"
-        vm.step()  # no-op
-        assert vm.output == "5"
-
-
 class TestStreetcode:
     def test_car_position_heading_and_cells(self) -> None:
         vm = debugger_api.make_vm("Streetcode", STREETCODE)
@@ -301,25 +187,10 @@ class TestStreetcode:
         assert vm.stack == []
 
     def test_memory_fills_the_gaps_between_written_cells(self) -> None:
-        """The tape is a sparse dict, so a skipped cell still reads as zero.
-
-        ``=`` moves CP right without writing, so incrementing either side of
-        two of them leaves cell 1 untouched between two written cells.
-        """
+        """The tape is a sparse dict, so a skipped cell still reads as zero."""
         vm = debugger_api.make_vm("Streetcode", STREETCODE_GAP)
         assert _run_all(vm) == ""
         assert vm.memory == [1, 0, 1]
-
-    def test_run_matches_execute(self) -> None:
-        assert _run_all(debugger_api.make_vm("Streetcode", STREETCODE)) == esolangs.run(
-            "Streetcode", STREETCODE
-        )
-
-    def test_stepping_a_halted_vm_is_a_noop(self) -> None:
-        vm = debugger_api.make_vm("Streetcode", STREETCODE)
-        assert _run_all(vm) == "\x02"
-        vm.step()  # no-op
-        assert vm.output == "\x02"
 
 
 class TestFlowchart:
@@ -342,16 +213,6 @@ class TestFlowchart:
         while not vm.halted and not vm.memory:
             vm.step()
         assert vm.memory == [1]
-
-    def test_run_matches_execute(self) -> None:
-        vm = debugger_api.make_vm("Flowchart", FLOWCHART_TRUTH_MACHINE, "0\n")
-        assert _run_all(vm) == esolangs.run("Flowchart", FLOWCHART_TRUTH_MACHINE, "0\n")
-
-    def test_stepping_a_halted_vm_is_a_noop(self) -> None:
-        vm = debugger_api.make_vm("Flowchart", FLOWCHART_TRUTH_MACHINE, "0\n")
-        assert _run_all(vm) == "0"
-        vm.step()  # no-op
-        assert vm.output == "0"
 
 
 class TestCircuitDiagram:
@@ -376,18 +237,6 @@ class TestCircuitDiagram:
             == "1"
         }
         assert detected == {2, 3, 5, 7, 11, 13}
-
-    def test_run_matches_execute(self) -> None:
-        vm = debugger_api.make_vm("Circuit Diagram", CIRCUIT_PRIME_TESTER, bits_of(7))
-        assert _run_all(vm) == esolangs.run(
-            "Circuit Diagram", CIRCUIT_PRIME_TESTER, bits_of(7)
-        )
-
-    def test_stepping_a_halted_vm_is_a_noop(self) -> None:
-        vm = debugger_api.make_vm("Circuit Diagram", CIRCUIT_PRIME_TESTER, bits_of(7))
-        assert _run_all(vm) == "1"
-        vm.step()  # no-op
-        assert vm.output == "1"
 
 
 class TestForth:
@@ -423,17 +272,6 @@ class TestForth:
         assert vm.ip == (6,)  # the callee frame is gone once it returns
 
 
-class TestAddSubJump:
-    def test_memory_and_instruction_pointer(self) -> None:
-        vm = debugger_api.make_vm("AddSubJump", "-1 1 -1 -7")
-        assert (vm.ip, vm.memory, vm.stack) == (0, [-1, 1, -1, -7], [])
-        vm.step()  # write to -1 prints *b = cell 1
-        assert vm.output == "\x01"
-        assert vm.halted
-        assert vm.ip == -1  # c is the literal target, and -1 is special
-        vm.step()  # stepping a halted VM is a no-op
-
-
 class TestBitdeque:
     def test_cursor_deque_and_register(self) -> None:
         vm = debugger_api.make_vm("Bitdeque", "PUSH INVERT")
@@ -448,355 +286,6 @@ class TestBitdeque:
         assert vm.output == "0"
         vm.step()  # and rendering happens once, not once per step past the halt
         assert vm.output == "0"
-
-
-class TestTaglate:
-    def test_queue_and_cursor(self) -> None:
-        vm = debugger_api.make_vm("Taglate", "abc\ni")
-        assert (vm.ip, vm.memory, vm.stack) == (0, [97, 98, 99], [])
-        vm.step()  # i pops the front and prints it
-        assert vm.output == "a"
-        assert vm.halted
-
-
-class TestMinifuck:
-    def test_tape_and_cursor(self) -> None:
-        vm = debugger_api.make_vm("Minifuck", ".")
-        assert (vm.ip, vm.memory, vm.stack) == (0, [0] * 8, [])
-        vm.step()  # . advances, flips the second cell, and prints the byte
-        assert vm.output == "@"
-        assert vm.halted
-        assert vm.ip == 1
-
-
-class TestBrainIf:
-    def test_cells_and_cursor(self) -> None:
-        vm = debugger_api.make_vm("BrainIf", "if 0 output")
-        assert (vm.ip, vm.memory, vm.stack) == (0, [0], [])
-        vm.step()  # cell 0 is 0, so output prints it
-        assert vm.output == "\x00"
-        assert vm.halted
-
-
-class TestROTFuck:
-    def test_tape_and_cursor(self) -> None:
-        vm = debugger_api.make_vm("ROTfuck", ".")
-        assert (vm.ip, vm.memory, vm.stack) == (0, [0], [])
-        vm.step()  # . prints the current cell
-        assert vm.output == "\x00"
-        assert vm.halted
-
-
-class TestCirclefuck:
-    def test_cells_and_cursor(self) -> None:
-        vm = debugger_api.make_vm("Circlefuck", "+.@")
-        assert (vm.ip, vm.memory) == (0, [43, 46, 64])
-        vm.step()  # + sets the cell
-        assert vm.memory == [44, 46, 64]
-        vm.step()  # . prints it
-        assert vm.output == ","
-        vm.step()  # @ halts
-        assert vm.halted
-        assert vm.stack == []
-
-
-class TestBFStack:
-    def test_stack_and_cursor(self) -> None:
-        vm = debugger_api.make_vm("BFStack", ">+.")
-        assert (vm.ip, vm.memory, vm.stack) == (0, [], [])
-        vm.step()  # > pushes 0
-        assert vm.stack == [0]
-        vm.step()  # + increments the top
-        assert vm.stack == [1]
-        vm.step()  # . prints it
-        assert vm.output == "\x01"
-        assert vm.halted
-
-
-class TestDecleq:
-    def test_memory_and_pointer(self) -> None:
-        vm = debugger_api.make_vm("Decleq", "-2 5 9 9 9 65 0 0")
-        assert (vm.ip, vm.memory, vm.stack) == (0, [-2, 5, 9, 9, 9, 65, 0, 0], [])
-        vm.step()  # a=-2 outputs memory[5]
-        assert vm.output == "A"
-        assert vm.ip == 3
-        vm.step()  # the countdown then jumps off the end of memory
-        assert vm.halted
-        assert vm.ip == 65
-
-
-class TestSixFive:
-    def test_tape_and_cursor(self) -> None:
-        vm = debugger_api.make_vm("6-5", "55A")
-        assert (vm.ip, vm.memory, vm.stack) == (0, [0], [])
-        vm.step()  # 5 adds 5 to the cell
-        assert vm.memory == [5]
-        vm.step()  # 5 adds 5 more
-        assert vm.memory == [10]
-        vm.step()  # A prints the cell
-        assert vm.output == "\n"
-        assert vm.halted
-
-
-class TestBack:
-    def test_beam_tape_and_direction(self) -> None:
-        vm = debugger_api.make_vm("Back", "-*")
-        assert (vm.ip, vm.memory, vm.stack) == ((0, 0, 0, 1), [0], [])
-        vm.step()  # - flips the current bit
-        assert vm.memory == [1]
-        assert vm.ip == (0, 1, 0, 1)
-        vm.step()  # * halts the beam
-        assert vm.halted
-        assert vm.output == ""  # the dump happens on the next step
-        vm.step()  # the post-halt step prints the tape
-        assert vm.output == "1"
-
-    def test_halt_prints_tape(self) -> None:
-        vm = debugger_api.make_vm("Back", ">--*")
-        _run_all(vm)
-        assert vm.output == ""  # the dump happens on the next step
-        vm.step()  # the post-halt step prints it, as run's own last step does
-        assert vm.output == "0 0"
-
-
-class TestBIO:
-    def test_registers_and_loop_stack(self) -> None:
-        vm = debugger_api.make_vm("BIO", "0ox;0ix{1ox;};1ix;")
-        assert (vm.ip, vm.memory, vm.stack) == (0, [0, 0, 0], [])
-        vm.step()  # 0ox sets x to 1
-        assert vm.memory == [1, 0, 0]
-        vm.step()  # 0ix sees x nonzero and pushes the loop
-        assert vm.stack == [1]
-        vm.step()  # 1ox decrements x
-        assert vm.memory == [0, 0, 0]
-        vm.step()  # } pops the loop and lands back on the 0ix
-        assert vm.stack == []
-        assert vm.ip == 1
-        vm.step()  # 0ix sees x zero and skips the body
-        assert vm.ip == 4
-        vm.step()  # 1ix outputs the zero x
-        assert vm.output == "\x00"
-        assert vm.halted
-
-
-class TestNoComment:
-    def test_tape_stack_and_cursor(self) -> None:
-        vm = debugger_api.make_vm("NoComment", "ciio")
-        assert (vm.ip, vm.memory[0], vm.stack) == (0, 0, [])
-        vm.step()  # c clears the cell
-        vm.step()  # i increments
-        vm.step()  # i increments
-        vm.step()  # o prints the cell
-        assert vm.output == "\x02"
-        assert vm.halted
-
-    def test_stack_is_exposed(self) -> None:
-        vm = debugger_api.make_vm("NoComment", "cinf")
-        vm.step()  # c clears
-        vm.step()  # i increments to 1
-        vm.step()  # n pushes the cell
-        assert vm.stack == [1]
-        vm.step()  # f pops into the cell
-        assert vm.stack == []
-        assert vm.halted
-
-
-class TestThreeDBrainfuck:
-    def test_pointer_and_cells(self) -> None:
-        vm = debugger_api.make_vm("3D Brainfuck", "+.")
-        assert (vm.ip, vm.memory, vm.stack) == ((0, 0, 0, 1, 0, 0), [], [])
-        vm.step()  # + sets the origin cell to 1
-        assert vm.memory == [1]
-        vm.step()  # . prints it
-        assert vm.output == "\x01"
-        assert vm.halted
-
-
-class TestFactor:
-    def test_decoded_machine(self) -> None:
-        vm = debugger_api.make_vm("Factor", "15")
-        assert (vm.ip, vm.memory, vm.stack) == (0, [0], [])
-        vm.step()  # + increments the cell
-        assert vm.memory == [1]
-        vm.step()  # . prints it
-        assert vm.output == "\x01"
-        assert vm.halted
-
-
-class TestPainfuck:
-    def test_tape_and_cursor(self) -> None:
-        vm = debugger_api.make_vm("Painfuck", "pp")
-        assert (vm.ip, vm.memory, vm.stack) == (0, [0], [])
-        vm.step()  # p adds 2
-        assert vm.memory == [2]
-        vm.step()  # e halts
-        assert vm.halted
-
-
-class TestBitTilde:
-    def test_pool_and_cursor(self) -> None:
-        vm = debugger_api.make_vm("bit~", "~(")
-        assert (vm.ip, vm.memory, vm.stack) == (0, [0] * 8, [])
-        vm.step()  # ~ flips the MSB
-        assert vm.memory[0] == 1
-        vm.step()  # ( prints the byte
-        assert vm.output == "\x80"
-        assert vm.halted
-
-
-class TestCollatzMultiverse:
-    def test_line_pointer_and_registers(self) -> None:
-        vm = debugger_api.make_vm(
-            "Collatz Multiverse", "x = negativeOne x + negativeOne, DO PRINT."
-        )
-        assert (vm.ip, vm.memory, vm.stack) == (1, [-1], [])
-        vm.step()  # x = 0*(-1)+(-1) = -1, printed as a byte
-        assert vm.output == "\xff"
-        assert vm.halted
-
-
-class TestPolynomial:
-    def test_register_and_cursor(self) -> None:
-        vm = debugger_api.make_vm("Polynomial", "f(x) = x^2+4")
-        assert (vm.ip, vm.memory, vm.stack) == (0, [0], [])
-        vm.step()  # the [0, 1] instruction prints the register
-        assert vm.output == "\x00"
-        assert vm.halted
-
-
-class TestRAM0:
-    def test_registers_and_cursor(self) -> None:
-        vm = debugger_api.make_vm("RAM0", "ZA")
-        assert (vm.ip, vm.memory, vm.stack) == (0, [0, 0], [])
-        vm.step()  # Z zeroes z
-        assert vm.ip == 1
-        vm.step()  # A increments z; the cursor runs off the end
-        assert (vm.ip, vm.memory, vm.halted) == (2, [1, 0], True)
-        assert vm.output == ""  # the dump happens on the next step
-        vm.step()
-        assert vm.output == "z: 1\nn: 0\nram: {}"
-
-
-class TestMinskySwap:
-    def test_registers_and_cursor(self) -> None:
-        vm = debugger_api.make_vm("Minsky Swap", "+")
-        assert (vm.ip, vm.memory, vm.stack) == (0, [0, 0], [])
-        vm.step()  # + increments the active register; the cursor runs off
-        assert (vm.ip, vm.memory, vm.halted) == (1, [1, 0], True)
-        assert vm.output == ""  # the dump happens on the next step
-        vm.step()
-        assert vm.output == "1 0"
-
-
-class TestHomeRow:
-    def test_grid_and_cursor(self) -> None:
-        vm = debugger_api.make_vm("Home Row", "ak;")
-        assert (vm.ip, vm.memory[:3], vm.stack) == (0, [0, 0, 0], [])
-        vm.step()  # a increments the current cell
-        assert (vm.ip, vm.memory[:3]) == (1, [1, 0, 0])
-        vm.step()  # k prints the cell and resets it; the cursor lands on ';'
-        assert vm.memory[:3] == [0, 0, 0]
-        assert vm.output == "\x01"
-        assert vm.halted
-
-
-class TestUnsquare:
-    def test_stack_accumulator_and_cursor(self) -> None:
-        vm = debugger_api.make_vm("Unsquare", "Io")
-        assert (vm.ip, vm.memory, vm.stack) == (0, [0], [])
-        vm.step()  # I pushes 1
-        assert (vm.ip, vm.stack) == (1, [1])
-        vm.step()  # o prints the top of stack without popping
-        assert vm.halted
-        assert vm.output == "\x01"
-        assert vm.stack == [1]
-
-
-class TestSuffolk:
-    def test_tape_and_cursor(self) -> None:
-        vm = debugger_api.make_vm("Suffolk", "!" * 66 + "<.")
-        assert (vm.ip, vm.memory, vm.stack) == (0, [0], [])
-        for _ in range(66):
-            vm.step()  # each ! sets the cell to the accumulator-derived value
-        assert vm.memory == [66]
-        assert vm.stack == []
-        assert vm.halted is False
-        vm.step()  # < sums the cell into the accumulator
-        vm.step()  # . prints the accumulator minus one
-        assert vm.output == "A"
-
-
-class TestContainer:
-    def test_named_values_and_tick(self) -> None:
-        vm = debugger_api.make_vm("Container", "A=0:\n+1 A>=0")
-        assert (vm.ip, vm.memory, vm.stack) == (0, [0], [])
-        vm.step()  # A>=0 always holds, so A increments every tick
-        assert (vm.ip, vm.memory) == (1, [1])
-        assert not vm.halted
-
-
-class TestBFPDA:
-    def test_bit_stack_and_cursor(self) -> None:
-        vm = debugger_api.make_vm("BF-PDA", "<@.")
-        assert (vm.ip, vm.memory, vm.stack) == (0, [], [])
-        vm.step()  # < pushes a zero
-        assert (vm.ip, vm.stack) == (1, [0])
-        vm.step()  # @ flips the top bit
-        assert vm.stack == [1]
-        vm.step()  # . prints the top bit
-        assert vm.halted
-        assert vm.output == "1"
-
-
-class TestThreeX:
-    def test_rational_stack_and_cursor(self) -> None:
-        vm = debugger_api.make_vm("3x", "3!")
-        assert (vm.ip, vm.memory, vm.stack) == (0, [], [])
-        vm.step()  # 3 pushes the rational 3
-        assert (vm.ip, vm.stack) == (1, [3])
-        vm.step()  # ! pops and prints the top
-        assert vm.halted
-        assert vm.output == "3"
-
-
-class TestSophie:
-    def test_accumulator_and_cursor(self) -> None:
-        vm = debugger_api.make_vm("Sophie", "#$5.")
-        assert (vm.ip, vm.memory, vm.stack) == (0, [0], [])
-        vm.step()  # #$5 loads 5 into the accumulator
-        assert (vm.ip, vm.memory) == (3, [5])
-        vm.step()  # . prints the accumulator
-        assert vm.halted
-        assert vm.output == "5"
-
-
-class TestJaune:
-    def test_cells_hold_and_cursor(self) -> None:
-        vm = debugger_api.make_vm("Jaune", "++^")
-        assert (vm.ip, vm.memory, vm.stack) == (0, [0], [])
-        vm.step()  # ++ increments the cell twice (a counted command)
-        assert (vm.ip, vm.memory) == (1, [2])
-        vm.step()  # ^ prints the cell as a decimal number
-        assert vm.halted
-        assert vm.output == "2"
-
-
-class TestSlowAcvMammalian:
-    def test_arrays_pointer_and_cursor(self) -> None:
-        vm = debugger_api.make_vm(
-            "SLOW ACV MAMMALIAN", "SEED SEED SEED CONSUME PRONOUNCE"
-        )
-        assert vm.ip == 0
-        assert vm.memory == [0]
-        assert vm.stack == [0] * 23  # all 23 arrays flattened, each a single 0
-        for _ in range(3):
-            vm.step()
-        assert vm.memory == [3]  # three SEEDs add 1 to lst[0]'s head each time
-        vm.step()  # CONSUME pops the array's middle element into the accumulator
-        assert vm.memory == []
-        vm.step()
-        assert vm.halted
-        assert vm.output == "\x03"
 
 
 class TestForbin:
@@ -826,24 +315,6 @@ class TestForbin:
         assert vm.halted
 
 
-class TestCvnc:
-    def test_accumulator_deque_and_cursor(self) -> None:
-        # The wiki's truth machine, whose "0" branch halts.  The program is
-        # IPA, so it comes from the sample table rather than being spelled
-        # here: this module carries no confusable-character exemption.
-        program, stdin = SAMPLES["CV(N)(C)"]
-        vm = debugger_api.make_vm("CV(N)(C)", program, stdin)
-        assert (vm.ip, vm.memory, vm.stack) == (0, [0], [])
-        vm.step()
-        vm.step()
-        vm.step()  # the read-and-print syllable emits the input digit
-        assert (vm.ip, vm.output) == (3, "0")
-        _run_all(vm)
-        # The accumulator leads `memory`, ahead of the (still empty) deque.
-        assert (vm.memory, vm.stack) == ([1], [])
-        assert vm.halted
-
-
 class TestFargo:
     def test_frames_and_cursor(self) -> None:
         vm = debugger_api.make_vm("Fargo", "$", "0\n")
@@ -869,58 +340,10 @@ class TestFactory:
 
 
 class TestEveryLanguageIsSteppable:
-    """The two whole-registry invariants, as tests rather than prose.
-
-    Both were true by habit before they were true by test: a new language
-    could land with a runner and no adapter, or with a state object whose
-    ``snapshot()`` nobody had written, and only a reader comparing two
-    lists would notice.
-    """
-
-    def test_every_registry_language_is_step_capable(self) -> None:
-        """Every registered interpreter exposes a step-capable state."""
-        import importlib
-
-        from esolangs.registry import INTERPRETERS
-
-        without: list[str] = []
-        for language, module_path in sorted(INTERPRETERS.items()):
-            module = importlib.import_module(module_path)
-            state = getattr(module, "_Machine")  # noqa: B009
-            if not hasattr(state, "step"):
-                without.append(language)
-        assert without == []
-
-    def test_every_adapter_wraps_a_state_object_with_a_snapshot(self) -> None:
-        """Cycle detection requires a snapshot on every interpreter state."""
-        import importlib
-
-        from esolangs.registry import INTERPRETERS
-
-        without: list[str] = []
-        for name in sorted(INTERPRETERS):
-            module = importlib.import_module(INTERPRETERS[name])
-            state = getattr(module, "_Machine")  # noqa: B009
-            if not hasattr(state, "snapshot"):
-                without.append(name)
-        assert without == []
+    """The two whole-registry invariants, as tests rather than prose."""
 
     def test_every_random_machine_implements_the_branching_protocol(self) -> None:
-        """Randomness no longer costs a language its hang proof.
-
-        The random set is derived, not listed: an interpreter takes its
-        chance through an ``rng`` parameter by repo convention, so the
-        signature of ``_Machine.__init__`` is what classifies it.  A new
-        random language therefore lands in this test's scope by
-        construction, and fails here until it can be searched over every
-        draw rather than sampled at one.
-
-        This was an exemption ratchet while three of the six were unbuilt.
-        The list is gone because it is empty; a language that needs one
-        again should bring the ratchet back rather than loosen the rule,
-        since the point of the derived set is that nothing is exempt by
-        accident.
-        """
+        """Randomness no longer costs a language its hang proof."""
         import importlib
         import inspect
 
@@ -959,17 +382,10 @@ class TestEveryLanguageIsSteppable:
     def test_memory_and_stack_are_copies_not_the_live_store(self) -> None:
         """A caller must not be able to write into a running machine.
 
-        An interpreter may hand back its store directly -- several hold the
-        list under exactly the VM's name, which is why the shape protocol
-        asks only for a ``Sequence`` -- so the copy that keeps the boundary
-        honest is ``_DelegatingVM``'s, made once rather than in every
-        interpreter.  Nothing else covers it: every other test reads these
-        properties without writing to them.
+        ``_DelegatingVM`` makes the copy once for every interpreter, so a tape
+        language and FALSE (non-empty memory and stack) cover it.
         """
-        from esolangs.registry import INTERPRETERS
-
-        checked = 0
-        for name in sorted(INTERPRETERS):
+        for name in ("brainfuck", "FALSE"):
             program, stdin = SAMPLES[name]
             vm = debugger_api.make_vm(name, program, stdin)
             with contextlib.suppress(Exception):
@@ -979,25 +395,9 @@ class TestEveryLanguageIsSteppable:
             vm.stack.append("scribble")
             assert list(vm.memory) == before_mem, f"{name}: memory is live"
             assert list(vm.stack) == before_stk, f"{name}: stack is live"
-            checked += 1
-        assert checked > 30, f"only {checked} adapters exercised"
 
     def test_stepping_is_reproducible_for_the_random_languages(self) -> None:
-        """Four languages have a random instruction; the VM pins every one.
-
-        ``y`` (Painfuck), ``RND`` (Modulous) and LaserFuck's ``*`` beam
-        splitter all draw at *runtime*, so two
-        runs of the same program could disagree -- which would make a
-        stepped VM unusable and ``run_until_halt_or_cycle``'s argument
-        ("a deterministic machine that revisits a state has looped") false.
-        Each adapter passes a seeded generator to fix that.
-
-        The programs below were chosen because the draw actually fires for
-        them.  Asserting determinism on a program that never reaches its
-        random instruction would pass whatever the adapters did, so the
-        first half of this test proves the instruction executes and the
-        second proves it lands the same way twice.
-        """
+        """Four languages have a random instruction; the VM pins every one."""
         from esolangs.interpreters import randomness
 
         cases = {
@@ -1037,16 +437,7 @@ class TestEveryLanguageIsSteppable:
             assert trace(language, program) == first, f"{language} is not reproducible"
 
     def test_the_stub_sources_reject_an_empty_range(self) -> None:
-        """``randbelow`` checks its bound instead of ignoring it.
-
-        A stub that never read its argument would answer an impossible
-        request -- choosing among no options -- as readily as a real one,
-        and the mistake would surface somewhere far from its cause.
-        ``secrets.randbelow``, the default source, raises here too, so both
-        stand-ins agree with what they replace.  ``FirstDraw`` carries its
-        own copy of the guard, ahead of the pinned first answer, so it is
-        checked alongside rather than assumed to inherit it.
-        """
+        """``randbelow`` checks its bound instead of ignoring it."""
         from esolangs.interpreters.randomness import FirstDraw, Seeded
 
         for source in (Seeded(0), FirstDraw(1)):

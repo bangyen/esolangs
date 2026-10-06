@@ -1,87 +1,4 @@
-"""The registry-wide execution contract: commands run against table length.
-
-Run:  just proofs   (or python tests/proofs/deep/execution.py)
-
-``linearity.py`` prices what a generator *emits*.  This prices what the
-emitted program *does*: it builds each generator at rising arity, steps the
-resulting program through its interpreter, and measures how the worst row's
-command count grows.  The two are independent, in both directions -- a
-Theta(T) source can execute in O(n) commands, and a fourteen-command program
-can do Theta(T) work -- so neither bound implies the other and the registry
-needs both measured.
-
-What is asserted
-----------------
-A program that walks its table once doubles its command count when the table
-doubles, so its ratio per added input tends to two; one that walks the table
-per row tends to four.  ``MAX_GROWTH`` is the same 2.15 ``linearity.py``
-uses, and for the same reason: it sits above every construction that reads
-its table once and below every construction that reads it per row.
-
-Where the bound sits, measured on both sides:
-
-* the held cohort runs from x1.11 (Alight, Fargo -- programs that never
-  look at most of the table, brainfuck's count being an arithmetic
-  progression in the input count rather than the table's; Crement's
-  ``5 n + 2`` tree walk measures x1.15 for the same reason) up to x2.06
-  (AddSubJump), with 123, S*bleq, Bitdeque and Collatz Multiverse all
-  within a percent of x2.00 -- a single pass over the table;
-* it has caught one construction for real.  Minsky Swap measured x2.29,
-  with commands per table entry of 4.5, 4.0, 3.9, 4.5, 5.2, 6.1, 7.1, 8.0,
-  9.0, 10.0 at n=1..10 -- the input count rather than a constant, so
-  Theta(T log T).  It padded every input's setter block to the table's
-  length when only that bit's weight was needed; sized to the weight, the
-  blocks sum to ``2**n + 2``, per-entry commands settle at 2.01, and it
-  measured x1.98.  The weight has since moved out of the embed into the
-  template (every run is ``++`` or ``**``, and the stage after it adds the
-  weight), which reads x1.83; it is held to the bound like everything else.
-
-The gap between x2.06 and the x2.29 that was caught is narrow, which is the
-honest reading: the statistic separates a single pass over the table from a
-pass per entry, and nothing finer.
-
-Steps, not seconds
-------------------
-The measurement is the command count, which stepping counts exactly, rather
-than wall-clock.  A clock would make the verdict depend on machine load, and
-this repository has already had a contended run invert a performance verdict.
-The cost of a command is real and is *not* constant -- it is what makes BIO
-quadratic on a linear command count -- but it belongs to the interpreter,
-where ``docs/limitations.md`` records it, not to a contract on the generator.
-
-So passing this is not a claim that a program is *fast*: Container runs
-fourteen commands at six inputs and each divides a T-digit integer.  It is
-the claim that the program does not issue more commands than a single pass
-over its table.
-
-Parity only
------------
-``linearity.py`` measures both table shapes because a route change moves
-emitted size. Execution is measured on parity alone, which is the expensive
-shape: checked against dense and against pseudo-random tables, those cost the
-same or less, so parity bounds them.  That halves a budget this band does not
-have to spare.
-
-Rows are sampled
-----------------
-The worst row is what matters, but stepping all ``T`` rows at twelve inputs
-is minutes, not seconds.  ``ROW_SAMPLE`` rows are taken per arity, evenly
-spaced and always including the last, which is where these constructions do
-their most work.  The sample is deterministic, so the *growth* it measures is
-honest even where the absolute worst row is missed.
-
-Rows that never halt
---------------------
-Four languages answer by *not* halting (ArrowQueue, 123, Crement,
-Vandevelo), so half their rows have no command count at all.  Those rows are
-identified from ``answer_encoding`` and skipped rather than stepped: letting
-them run to ``STEP_CAP`` cost 461 seconds of a 489-second run, to learn what
-the truth table already said.  A row that caps anyway is dropped rather than
-counted, so a truncated measurement can never pass as a small one.
-
-A Painter Ant halts on no row at all -- its answer is a proven cycle in an
-unconditional loop -- so it is exempt and not stepped.
-"""
+"""The registry-wide execution contract: commands run against table length."""
 
 from __future__ import annotations
 
@@ -191,14 +108,7 @@ class Growth:
 
 
 def _rows(table: str, halts: str | None) -> list[int]:
-    """Which rows of ``table`` to step, the last candidate always included.
-
-    ``halts`` is the answer bit that means "this row terminates", for the
-    languages that answer by halting or not; rows spelling the other bit are
-    skipped rather than stepped into the cap.  Those six were 461 seconds of
-    a 489-second run before this -- every diverging row paying ``STEP_CAP``
-    to tell us what the table already said.
-    """
+    """Which rows of ``table`` to step, the last candidate always included."""
     candidates = [
         row for row in range(len(table)) if halts is None or table[row] == halts
     ]
@@ -210,12 +120,7 @@ def _rows(table: str, halts: str | None) -> list[int]:
 
 
 def _commands(name: str, table: str) -> int | None:
-    """Worst sampled row's command count, or ``None`` if none finished.
-
-    A row that reaches ``STEP_CAP`` is dropped rather than counted: for the
-    languages that answer by not halting it is the answer, and for anything
-    else it is a measurement this contract cannot make.
-    """
+    """Worst sampled row's command count, or ``None`` if none finished."""
     facts = describe(name)
     halts = None
     if facts["answer_mode"] == "termination":
@@ -256,16 +161,7 @@ def _series(name: str, top: int) -> list[tuple[int, int]]:
 
 
 def _growth(window: list[tuple[int, int]]) -> float:
-    """Per-added-input growth, as the fitted slope over ``window``.
-
-    A least-squares line through ``log2(commands)`` against arity, rather
-    than a ratio between two of them.  Every construction here wobbles --
-    see ``MIN_RUNGS`` -- and a fit uses all five rungs instead of letting
-    two endpoints decide.  Measured on this registry, it reads Taglate at
-    x1.93 and S*bleq at x2.00 where an endpoint pair read x2.30 and x2.21,
-    and still reads Minsky Swap at x2.29, whose commands per table entry
-    are the input count rather than a constant.
-    """
+    """Per-added-input growth, as the fitted slope over ``window``."""
     xs = [float(arity) for arity, _ in window]
     ys = [log2(count) for _, count in window]
     mx = sum(xs) / len(xs)
@@ -276,13 +172,7 @@ def _growth(window: list[tuple[int, int]]) -> float:
 
 
 def _self_check() -> tuple[float, float, float]:
-    """Run the fit on known-linear, ``T log T`` and quadratic command series.
-
-    The bound separates a single pass over the table from a pass per entry, so
-    the probe has to be shown to do both: a linear series must stay inside and
-    the two super-linear series must exceed it.  Without this the contract
-    could report a wall that is not there.  Returns the three fitted ratios.
-    """
+    """Run the fit on known-linear, ``T log T`` and quadratic command series."""
     window = list(range(5, 5 + WINDOW))
     linear = _growth([(n, 2**n) for n in window])
     linearithmic = _growth([(n, 2**n * n) for n in window])

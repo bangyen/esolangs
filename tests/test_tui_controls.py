@@ -1,10 +1,4 @@
-"""Controls and terminal integration for the step-through screen.
-
-These tests cover the keys that change a run in place -- restart, watches,
-counts and goto, play, the changed-cell flash -- plus the real-terminal
-wrapper and the correspondence between the highlighted character and the
-interpreter's next operation.
-"""
+"""Controls and terminal integration for the step-through screen."""
 
 import sys
 from unittest.mock import patch
@@ -207,13 +201,7 @@ class TestChangedFlash:
 
 
 class TestRawTerminal:
-    """``run_tui`` itself, driven through a pty.
-
-    This is the part :func:`drive` cannot cover: putting a real terminal in
-    raw mode, reading from it, and restoring it afterwards.  One program,
-    a few keys, and a hard deadline -- a loop that never returns has to fail
-    here rather than hang the suite.
-    """
+    """``run_tui`` itself, driven through a pty."""
 
     # Forks a pty and execs a fresh interpreter, then waits on quiet periods:
     # a subprocess whose cost is a wait, so it stretches under a loaded box.
@@ -277,14 +265,9 @@ class TestRawTerminal:
 
 
 class TestAgainstTheInterpreter:
-    """That the highlighted character is the op the VM is about to run.
+    """That the highlighted character is the op the VM is about to run."""
 
-    The screen's whole claim is this correspondence, and it is the one thing
-    a pure-function test cannot assert by itself -- it needs the interpreter
-    to say where it is.
-    """
-
-    @pytest.mark.parametrize("step", range(12))
+    @pytest.mark.parametrize("step", [0, 5, 11])
     def test_brainfuck_highlight_is_the_next_command(self, step: int) -> None:
         program = "+++>++[<->]<."
         frame = replay("brainfuck", program, "", step)

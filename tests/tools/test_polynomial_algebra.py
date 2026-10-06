@@ -1,19 +1,4 @@
-"""The packed polynomial multiplication agrees with the incremental one.
-
-:func:`~esolangs.tools.polynomial.algebra.render_product` has two paths over the
-same factors -- an incremental ``multiply`` loop below
-``_PACKED_MIN_FACTORS`` and Kronecker substitution above it -- and its
-docstring's claim is that both "render the same bytes".  That claim is the
-oracle here: the incremental loop is simple enough to trust, so the packed
-path is checked against it rather than against a frozen string.
-
-These paths lost their exerciser when the text generators went.  A boolean
-table's factors are short and uniformly signed, so nothing in the suite
-reached the packed path's signed branches -- the bias/unbias slicing, the
-two-operand subtraction in :func:`_pack`, or a merge of a normalised side
-with a signed one.  They are real numeric edge cases rather than dead code,
-so they are driven directly.
-"""
+"""The packed polynomial multiplication agrees with the incremental one."""
 
 import pytest
 
@@ -39,14 +24,7 @@ def _incremental(factors: list[list[int]]) -> str:
 
 
 def _mixed_factors(break_at: int) -> list[list[int]]:
-    """Enough factors to force the packed path, with the signs broken once.
-
-    ``[1, -k]`` is the shape Polynomial's own factors have, and a product of
-    them alternates.  One factor with a *positive* index-1 coefficient
-    breaks that, which is what pushes the merge onto its signed branches --
-    :func:`_normalise` returns False for the node holding it, and the merge
-    then has to bias its slots to keep them sliceable.
-    """
+    """Enough factors to force the packed path, with the signs broken once."""
     factors = [[1, -(3 + i)] for i in range(_PACKED_MIN_FACTORS + 8)]
     factors[break_at] = [1, 7]
     return factors
@@ -59,12 +37,7 @@ class TestPackedAgainstIncremental:
         assert render_product(factors) == _incremental(factors)
 
     def test_a_normalised_side_merges_with_a_signed_one(self) -> None:
-        """Breaking the signs late leaves one merge operand still normalised.
-
-        The two sides then disagree about their form, so the merge has to
-        put the signs back on the normalised one before multiplying; with
-        the break early both sides are signed and that path is never taken.
-        """
+        """Breaking the signs late leaves one merge operand still normalised."""
         factors = _mixed_factors(-3)
         assert render_product(factors) == _incremental(factors)
 
@@ -78,13 +51,7 @@ class TestPackedAgainstIncremental:
 class TestResourceEstimate:
     @pytest.mark.medium
     def test_generated_root_merge_exceeds_fnt_cutoff(self, monkeypatch) -> None:
-        """A generated balanced root sends two wide operands to libmpdec.
-
-        Libmpdec stores 19 decimal digits per 64-bit word and dispatches away
-        from base multiplication once the smaller operand exceeds 256 words.
-        The asymptotic proof uses the same padding shape beyond its maximum
-        direct transform; this is the execution-gate positive control.
-        """
+        """A generated balanced root sends two wide operands to libmpdec."""
         import decimal
         import importlib
 
@@ -179,11 +146,7 @@ class TestNormalise:
         assert _normalise(["1", "-2", "3"]) == (["1", "2", "3"], True)
 
     def test_a_list_whose_signs_do_not_alternate_is_left_alone(self) -> None:
-        """A positive odd-index coefficient breaks the pattern.
-
-        The pair is returned unchanged with the flag clear, which is what
-        tells :func:`_merge` its slots may go negative.
-        """
+        """A positive odd-index coefficient breaks the pattern."""
         assert _normalise(["1", "2"]) == (["1", "2"], False)
 
 
@@ -220,12 +183,7 @@ class TestFormatCoeffs:
 
 
 class TestBranchesTheGeneratorNoLongerReaches:
-    """The generator now parks negative operands, so its products are signed.
-
-    Two branches the old all-alternating builds exercised for free are still
-    live code -- a widest coefficient past CPython's 4300-digit cap, and a
-    merge of two non-negative sides -- so they are driven directly.
-    """
+    """The generator now parks negative operands, so its products are signed."""
 
     def test_the_digit_cap_is_lifted_and_restored(self) -> None:
         import sys

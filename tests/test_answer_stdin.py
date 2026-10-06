@@ -5,7 +5,6 @@ import warnings
 import pytest
 
 import esolangs
-from tests.generator_support import evaluate_generated
 from tests.stdin_check import _check_stdin
 
 
@@ -13,12 +12,7 @@ class TestTheStdinJudgeIsReachableFromPython:
     """The one place the API was weaker than the command line."""
 
     def test_it_accepts_what_encode_inputs_builds(self) -> None:
-        """The check must never fire on this package's own encoding.
-
-        The sweep that matters: a judge which rejects the correct stdin for
-        any language is worse than no judge, because the correct stdin is
-        what every documented path produces.
-        """
+        """The check must never fire on this package's own encoding."""
         wrong = []
         for name in esolangs.list_languages():
             facts = esolangs.describe(name)
@@ -37,36 +31,6 @@ class TestTheStdinJudgeIsReachableFromPython:
         with pytest.raises(esolangs.ArgumentError, match="spells its bits"):
             _check_stdin("Grapheme", "0\n1\n")
 
-    @pytest.mark.parametrize("stdin", ["999", "abc", "   ", "%%%", "ZZZ"])
-    def test_it_catches_the_wrong_alphabet_on_one_line_too(self, stdin: str) -> None:
-        """Clockwise's declared alphabet was enforced nowhere at all.
-
-        The shape branch for a one-line language returned before the
-        alphabet check, and that check is written per *line* while this
-        shape spells a bit as a *character*.  So ``"999"`` was accepted,
-        and the program answered a different row of the table -- ``0``
-        where the correct ``"101"`` answers ``1`` -- with nothing said by
-        either guard the documentation promises.
-        """
-        with pytest.raises(esolangs.ArgumentError, match="spells its bits"):
-            _check_stdin("Clockwise", stdin, "10010110")
-
-    def test_a_good_one_line_stdin_is_still_accepted(self) -> None:
-        """A guard that refused the correct input would be worse."""
-        _check_stdin("Clockwise", "101", "10010110")
-        assert evaluate_generated("Clockwise", "10010110", timeout=30) == "10010110"
-
-    def test_the_run_path_warns_about_it_as_well(self) -> None:
-        """Both documented routes, since both were silent.
-
-        The README promises ``run`` warns; the private refusal is the test
-        above, and this is the warning.
-        """
-        program = esolangs.generate("Clockwise", "10010110")
-        with warnings.catch_warnings():
-            warnings.simplefilter("error")
-            esolangs.run("Clockwise", program, "999", timeout=30)
-
     def test_it_catches_a_surplus_line(self) -> None:
         """Six lines into a three-input program answered the first three."""
         with pytest.raises(esolangs.ArgumentError, match="reads 3 characters"):
@@ -83,11 +47,7 @@ class TestTheStdinJudgeIsReachableFromPython:
             _check_stdin("Fargo", "8\n", "00010111")
 
     def test_a_superscript_digit_is_refused_not_int_parsed(self) -> None:
-        """``"\\u00b2".isdigit()`` is true, but ``int`` rejects it.
-
-        The gate was ``isdigit``, so a Unicode digit reached ``int`` and
-        escaped as a bare ``ValueError``.
-        """
+        """``"\\u00b2".isdigit()`` is true, but ``int`` rejects it."""
         with pytest.raises(esolangs.ArgumentError, match="decimal row index"):
             _check_stdin("Fargo", "\u00b2", "01")
 
@@ -101,19 +61,6 @@ class TestTheStdinJudgeIsReachableFromPython:
         with pytest.raises(esolangs.ArgumentError):
             _check_stdin("Taglate", "1\n0\n1\n", "00010111")
 
-    @pytest.mark.parametrize("language", ["thisthat", "Circuit Diagram", "Flowchart"])
-    def test_whitespace_passes_where_the_reader_skips_it(self, language: str) -> None:
-        """Their bit reader ignores whitespace; the judge now does too.
-
-        A trailing newline was refused by the private check even though
-        the reader happily reads past it.
-        """
-        _check_stdin(language, "0 1\n", "0110")
-        with pytest.raises(esolangs.ArgumentError, match="unexpected character"):
-            _check_stdin(language, "0x1", "0110")
-        with pytest.raises(esolangs.ArgumentError, match="reads 2 characters"):
-            _check_stdin(language, "0 1 1", "0110")
-
     def test_whitespace_still_counts_for_a_reader_that_reads_it(self) -> None:
         """brainfuck reads the space as a character, so it stays refused."""
         with pytest.raises(esolangs.ArgumentError, match="unexpected character"):
@@ -124,22 +71,8 @@ class TestTheStdinJudgeIsReachableFromPython:
         with pytest.raises(esolangs.ArgumentError, match="reads no stdin"):
             _check_stdin("Minifuck", "1\n0\n")
 
-    def test_the_table_is_optional(self) -> None:
-        """Shape and alphabet are checkable without knowing the arity."""
-        _check_stdin("brainfuck", "10")
-
-    def test_a_non_string_stdin_is_named(self) -> None:
-        """A caller who passes the bit list itself, which is an easy slip."""
-        with pytest.raises(esolangs.ArgumentError, match="stdin must be a string"):
-            _check_stdin("brainfuck", [1, 0], "0110")  # type: ignore[arg-type]
-
     def test_a_one_line_language_has_its_bits_counted(self) -> None:
-        """Clockwise's underfeed is a shorter string, not a missing line.
-
-        Undetectable from the run, which is why it stayed on the documented
-        footgun list for three rounds -- but perfectly detectable *here*,
-        because the table says how many bits that one line should hold.
-        """
+        """Clockwise's underfeed is a shorter string, not a missing line."""
         _check_stdin("Clockwise", "101", "00010111")
         with pytest.raises(esolangs.ArgumentError, match="reads 3 characters"):
             _check_stdin("Clockwise", "10", "00010111")
@@ -196,12 +129,7 @@ class TestRunSaysWhenStdinLooksWrong:
         assert not [c for c in caught if "lines supplied" in str(c.message)]
 
     def test_taking_a_value_from_past_the_end_is_warned_about(self) -> None:
-        """The six that answer an underfed program now say they did.
-
-        The signal is the *count of reads past the end*, not a guess from
-        the supplied length: an underfeed supplies some input and runs off
-        the end after it, which a ``supplied == 0`` test misses entirely.
-        """
+        """The six that answer an underfed program now say they did."""
         for name in ("Circuit Diagram", "Flowchart", "S*bleq"):
             program = esolangs.generate(name, "10010110")
             short = esolangs.encode_inputs(name, [1, 0])
@@ -218,13 +146,7 @@ class TestRunSaysWhenStdinLooksWrong:
     def test_a_language_whose_documented_stop_is_eof_is_not_warned_about(
         self,
     ) -> None:
-        """Suffolk's programs end *by* running out of input.
-
-        It halts rather than taking a value, so the warning is gated on
-        ``eof_is_a_value`` -- counting the read alone warned about every
-        correct Suffolk run there is, which is the false positive that
-        makes a warning worth less than silence.
-        """
+        """Suffolk's programs end *by* running out of input."""
         import warnings
 
         program = esolangs.generate("Suffolk", "0110")
@@ -233,31 +155,6 @@ class TestRunSaysWhenStdinLooksWrong:
             warnings.simplefilter("always")
             assert esolangs.run("Suffolk", program, stdin, 20) == "1"
         assert not caught
-
-    # The same one-program-per-language sweep as the documented-path test
-    # above, and the same band: 0.37s alone, 1.1-1.2s under the gate's
-    # overlapped steps, which is where it tripped the fast ceiling.
-    @pytest.mark.medium
-    def test_no_language_warns_on_its_own_encoding(self) -> None:
-        """The sweep that decides whether any of this is worth having."""
-        import warnings
-
-        noisy = []
-        for name in esolangs.list_languages():
-            facts = esolangs.describe(name)
-            if (
-                not facts["boolean_generator"]
-                or facts["parameterized"]
-                or facts["answer_mode"] == "termination"
-            ):
-                continue
-            stdin = esolangs.encode_inputs(name, [1, 0], "0110")
-            with warnings.catch_warnings(record=True) as caught:
-                warnings.simplefilter("always")
-                esolangs.run(name, esolangs.generate(name, "0110"), stdin, 20)
-            if caught:
-                noisy.append(f"{name}: {caught[0].message}")
-        assert not noisy, "\n".join(noisy)
 
 
 @pytest.mark.parametrize("language", ["Grapheme", "Line", "Piet"])

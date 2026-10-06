@@ -1,7 +1,4 @@
-"""Shared block thresholds: linear text and O(n) fraction firings.
-
-List inspections remain a separate cost; see docs/proofs/fractran.md.
-"""
+"""Shared block thresholds: linear text and O(n) fraction firings."""
 
 from __future__ import annotations
 

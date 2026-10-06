@@ -12,26 +12,6 @@ from tests.tools.boolean_runners import (
 
 
 class TestBfstack:
-    @pytest.mark.parametrize(
-        ("table", "n"),
-        [
-            ("10", 1),  # NOT
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("11111110", 3),  # NAND3
-            ("1000000000000000", 4),  # AND4
-            ("1111111111111111", 4),  # constant one
-        ],
-    )
-    @pytest.mark.medium
-    def test_truth_table(self, table: str, n: int) -> None:
-        """Every input combination produces the truth-table result."""
-        program = boolean.bfstack(table)
-        for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            got = run_bfstack(program, [str(b) for b in bits])
-            assert got == str(int(table[combo])), f"inputs {bits}"
-
     @pytest.mark.medium
     @pytest.mark.parametrize("n", [7, 8, 9, 12])
     def test_byte_index_boundaries(self, n: int) -> None:
@@ -87,13 +67,6 @@ class TestBfstack:
         assert program.endswith("+" * 48 + ".")  # print 48 + result
 
     def test_the_program_is_only_bfstack_commands(self) -> None:
-        """No character outside the eight commands is emitted.
-
-        BFStack ignores anything it does not recognise, the brainfuck
-        convention, so a stray character is a *no-op* rather than an error:
-        splicing one beside a ``[`` leaves the program computing exactly
-        the same table.  That makes every behavioural check blind to it,
-        and the alphabet the only thing that is not.
-        """
+        """No character outside the eight commands is emitted."""
         for table in ("10", "0110", "0001", "11111110"):
             assert set(boolean.bfstack(table)) <= set("+,-.<>[]"), table

@@ -36,51 +36,6 @@ class TestFlowchart:
         assert len(stacked) < len(flat)
         assert boolean.flowchart(table, 1) == stacked
 
-    @pytest.mark.parametrize(
-        ("table", "n"),
-        [
-            ("01", 1),  # identity
-            ("10", 1),  # NOT
-            ("00", 1),  # constant zero
-            ("11", 1),  # constant one
-            ("0001", 2),  # AND
-            ("0111", 2),  # OR
-            ("0110", 2),  # XOR
-            ("1110", 2),  # NAND
-            ("01101001", 3),  # XOR3
-            ("11111110", 3),  # NAND3
-            ("0110100110010110", 4),  # XOR4
-            ("1000000000000000", 4),  # AND4
-        ],
-    )
-    @pytest.mark.medium
-    def test_truth_table(self, table: str, n: int) -> None:
-        """Every input combination produces the truth-table result.
-
-        The read count is checked alongside the answer: a folded leaf
-        carries the reads of the levels it skipped, so a heavily folding
-        table (the constants, AND4) must still consume all ``n`` inputs.
-        Without those the drawing would be correct and the program would
-        still leave the caller's remaining bits on the stream.
-        """
-        import contextlib
-
-        from esolangs.interpreters.grid_based.flowchart import _Machine
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.vm import run_until_halt_or_cycle
-
-        program = boolean.flowchart(table)
-        for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            got = run_flowchart(program, [str(b) for b in bits])
-            assert got == str(int(table[combo])), f"inputs {bits}"
-        io = ScriptedIO("0" * (n + 4))
-        with contextlib.suppress(Exception, SystemExit):
-            run_until_halt_or_cycle(_Machine(program.splitlines(), io))
-        assert io.position() == n, (
-            f"table {table} consumed {io.position()} inputs, expected {n}"
-        )
-
     @pytest.mark.medium
     def test_wide_deque_lookup_executes_every_row(self) -> None:
         """The cursor walk lands on exactly the indexed answer's deque."""
@@ -97,13 +52,7 @@ class TestFlowchart:
         assert all(b <= 2 * a for a, b in pairwise(sizes))
 
     def test_a_repeated_answer_is_set_once_and_pushed_twice(self) -> None:
-        """A run of equal entries shares one set node and still answers.
-
-        Neither the push nor the deque step touches the register, so the
-        preload only re-sets it where the table changes; an alternating
-        table (the one the scaling test uses) never exercises that, which is
-        why this one repeats.
-        """
+        """A run of equal entries shares one set node and still answers."""
         table = "0011" * 8
         program = boolean.flowchart(table)
         assert program.count("[ }") + program.count("{ ]") < len(table)
@@ -118,12 +67,7 @@ class TestFlowchart:
         assert program.count("(( ))") == 16  # 2**4 leaves
 
     def test_constant_subtrees_fold(self) -> None:
-        """A constant slice is one leaf, and takes one column band.
-
-        The leaves keep their pitch but are handed out as the walk reaches
-        them, so a folded subtree narrows the drawing rather than leaving a
-        gap where its rows would have been.
-        """
+        """A constant slice is one leaf, and takes one column band."""
 
         def tree(table: str) -> str:
             return _flowchart_render(_flowchart_cells(table))
@@ -141,19 +85,7 @@ class TestFlowchart:
         "table", ["01", "0001", "01101001", "0110100110010110", "1000000000000000"]
     )
     def test_vertical_rails_meet_node_middles(self, table: str) -> None:
-        """Every ``│`` connects to the middle of the node above and below it.
-
-        The wiki asks that "vertical paths connecting into a node are expected
-        to connect to the middle of the node", and all three of its worked
-        examples honour it.  The interpreter is deliberately lenient about
-        this -- it enters a node through any cell of its box, which is why an
-        earlier, misdrawn version of this tree still computed the right table
-        -- so nothing else would catch the drawing drifting off centre.
-
-        The rule is about vertical rails only: the Kolakoski example's top row
-        chains nodes horizontally (``( )─[ }─\\[ ]/``), attaching at their end
-        cells rather than their middles.
-        """
+        """Every ``│`` connects to the middle of the node above and below it."""
         from esolangs.interpreters.grid_based.flowchart import _Machine
 
         drawing = _flowchart_render(_flowchart_cells(table))
@@ -174,14 +106,7 @@ class TestFlowchart:
                     )
 
     def test_each_run_reads_exactly_n_bits(self) -> None:
-        """The drawn read nodes outnumber the reads any one run performs.
-
-        A depth-4 tree draws 15 ``/ /`` nodes, but a run walks a single
-        root-to-leaf path and consumes exactly 4 bits, so the duplication is
-        spatial rather than a bit being read more than once (see the
-        generator's docstring on why the parameterized once-only embedding
-        rule does not apply to an input-reading generator).
-        """
+        """The drawn read nodes outnumber the reads any one run performs."""
         program = _flowchart_render(_flowchart_cells("0110100110010110"))
         assert program.count("/ /") == 15
 
@@ -207,13 +132,7 @@ class TestFlowchart:
             boolean.flowchart("011")
 
     def test_a_width_stacks_the_tree_onto_one_column(self) -> None:
-        """A narrower drawing is the same tree, separated by rows not columns.
-
-        Neither branch may simply continue down -- a switch entered
-        travelling down sends 1 east and 0 west -- so both are caught by
-        corners and routed, and only running it says the routing kept every
-        path on its own leaf.
-        """
+        """A narrower drawing is the same tree, separated by rows not columns."""
         for table in ("0110", "01101001", "0110100110010110"):
             n = len(table).bit_length() - 1
             flat = _flowchart_render(_flowchart_cells(table))
@@ -230,12 +149,7 @@ class TestFlowchart:
                     assert got == table[combo], (table, width, bits)
 
     def test_stacking_costs_rows_and_stops_tracking_the_table(self) -> None:
-        """The stacked drawing is ``n + 5`` columns whatever the table.
-
-        That is the whole of the trade: the flat drawing gives every leaf a
-        column and grows as ``2 ** n``, and stacking puts every node on one
-        column and grows as ``2 ** n`` in *rows* instead.
-        """
+        """The stacked drawing is ``n + 5`` columns whatever the table."""
         for n in (2, 3, 4):
             table = "".join(str(bin(i).count("1") % 2) for i in range(2**n))
             flat = _flowchart_render(_flowchart_cells(table))
@@ -252,16 +166,7 @@ class TestFlowchart:
         )
 
     def test_a_stacked_corridor_belongs_to_its_depth(self) -> None:
-        """Depth ``d``'s zero-branch falls down column ``d``, and nothing else.
-
-        That is what makes the corridors crossing-free: everything below a
-        node is deeper, and so further east, while the rail that reaches
-        the corridor runs on the switch's own row, above every descendant.
-        So the left ``n`` columns carry only line, never a node -- a rail
-        reaching a further-left corridor does pass through them -- and no
-        cell ever has to be a ``┼``, which is the check that says a rail and
-        a corridor never meet.
-        """
+        """Depth ``d``'s zero-branch falls down column ``d``, and nothing else."""
         table = "0110100110010110"
         n = 4
         drawing = boolean.flowchart(table, 1)

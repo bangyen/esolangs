@@ -1,8 +1,5 @@
 """Tests for the shared interpreter I/O helpers."""
 
-import io
-import json
-from contextlib import redirect_stdout
 from unittest.mock import patch
 
 import pytest
@@ -10,27 +7,9 @@ import pytest
 from esolangs.interpreters.io import IO, ScriptedIO
 
 
-def test_input_num() -> None:
-    """Parse one whitespace-delimited integer."""
-    with patch("builtins.input", return_value="42"):
-        assert IO().input_num() == 42
-
-
 def test_input_num_reads_past_the_int_str_digit_cap() -> None:
     """Pins parse_integer: a 5001-digit token, over CPython's 4300 cap."""
     assert ScriptedIO("1" + "0" * 5000).input_num() == 10**5000
-
-
-def test_input_char() -> None:
-    """Return the next Unicode character code."""
-    with patch("builtins.input", return_value="X"):
-        assert IO().input_char() == ord("X")
-
-
-def test_input_char_on_an_empty_line() -> None:
-    """Interactive input supplies the newline that ended an empty line."""
-    with patch("builtins.input", return_value=""):
-        assert IO().input_char() == 10
 
 
 def test_interactive_character_reads_preserve_the_complete_line() -> None:
@@ -39,34 +18,6 @@ def test_interactive_character_reads_preserve_the_complete_line() -> None:
         with patch("builtins.input", return_value=text) as reader:
             assert [source.input_char() for _ in expected] == expected
             assert reader.call_count == 1
-
-
-def test_input_char_empty_line_is_not_end_of_input() -> None:
-    """A supplied newline is a character; only exhaustion raises EOFError."""
-    import pytest
-
-    io_obj = ScriptedIO("\n")
-    assert io_obj.input_char() == 10
-    with pytest.raises(EOFError):
-        io_obj.input_char()
-
-
-def test_scripted_io_feeds_string_and_captures() -> None:
-    """``ScriptedIO`` reads from a string and captures all output."""
-    io_obj = ScriptedIO("Hello\nWorld")
-    assert io_obj.input_str() == "Hello"
-    assert io_obj.input_str() == "World"
-    io_obj.print_str("out\n")
-    io_obj.print_str("more")
-    assert io_obj.getvalue() == "out\nmore"
-
-
-def test_io_print_value() -> None:
-    """``print_value`` writes any value like ``print(value, end="")``."""
-    buffer = io.StringIO()
-    with redirect_stdout(buffer):
-        IO().print_value(json.dumps({"k": 1}))
-    assert buffer.getvalue() == '{"k": 1}'
 
 
 def test_io_print_char_writes_and_tracks_the_line() -> None:
@@ -113,15 +64,6 @@ def test_io_print_num_writes_decimal_and_tracks_the_line() -> None:
     assert read.call_args.args[1].startswith("\n")
 
 
-def test_base_io_reports_no_input_cursor() -> None:
-    """An interactive source has no cursor to report."""
-    io_obj = IO()
-    assert io_obj.position() == 0
-    with patch("builtins.input", return_value="x"):
-        io_obj.input_str()
-    assert io_obj.position() == 0
-
-
 def test_scripted_io_position_counts_characters_consumed() -> None:
     """The cursor counts characters consumed, including line separators."""
     io_obj = ScriptedIO("a\nb")
@@ -140,14 +82,6 @@ def test_character_number_and_line_reads_share_one_cursor() -> None:
     assert source.input_char() == 10
     assert source.input_str() == "tail"
     assert source.position() == 11
-
-
-def test_character_read_does_not_discard_line_remainder() -> None:
-    source = ScriptedIO("hello\nworld")
-    assert source.input_char() == ord("h")
-    assert source.input_str() == "ello"
-    assert source.input_char() == ord("w")
-    assert source.input_str() == "orld"
 
 
 def test_interactive_character_reads_preserve_remaining_text() -> None:

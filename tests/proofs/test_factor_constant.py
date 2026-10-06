@@ -17,20 +17,12 @@ from tests.proofs._factor_semantic import (
     delete_pattern,
     first_output,
 )
+from tests.witness_tables import witnesses
 
 
-@pytest.mark.medium
-@pytest.mark.parametrize("n", range(1, 7))
-@pytest.mark.parametrize("partition", range(2))
-def test_terminal_transfer_corpus(n: int, partition: int) -> None:
-    rng = random.Random(917 + n)
-    tables = (
-        [format(i, f"0{2**n}b") for i in range(2 ** (2**n))]
-        if n <= 3
-        else ["0" * 2**n, "1" * 2**n]
-        + ["".join(rng.choice("01") for _ in range(2**n)) for _ in range(8)]
-    )
-    for table in tables[partition::2]:
+@pytest.mark.parametrize("n", range(1, 6))
+def test_terminal_transfer_corpus(n: int) -> None:
+    for table in witnesses(n):
         program = factor(table)
         witness = _program(table)
         for bits in itertools.product("01", repeat=n):

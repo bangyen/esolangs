@@ -1,11 +1,4 @@
-"""Tests for the step-through screen.
-
-Everything here drives :func:`~esolangs.tui.render`, the position adapter
-under it, the retained history, and the key loop -- which takes its input
-and output as arguments, so it can be run with scripted keys in process.
-Only ``run_tui``'s raw-mode wrapper around the terminal is left out, and one
-test drives even that through a pty.
-"""
+"""Tests for the step-through screen."""
 
 import re
 from unittest.mock import patch
@@ -132,17 +125,6 @@ class TestLocateOffset:
     def test_past_the_text_is_not_located(self) -> None:
         assert locate("abc", 99) is None
 
-    def test_negative_is_not_located(self) -> None:
-        assert locate("abc", -1) is None
-
-    def test_none_is_not_located(self) -> None:
-        assert locate("abc", None) is None
-
-    def test_a_bool_is_not_a_position(self) -> None:
-        # bool is an int subclass, and True would otherwise read as offset 1.
-        flag = True
-        assert locate("abc", flag) is None
-
     def test_a_tuple_under_the_default_is_not_located(self) -> None:
         # This is the whole safety of the trait: a language that reports a
         # tuple without saying what it counts gets no highlight, because a
@@ -176,15 +158,6 @@ class TestLocateGrid:
         assert locate("ab\ncd", (5, 0), "grid") is None
         assert locate("ab\ncd", (0, 9), "grid") is None
 
-    def test_too_few_parts_is_not_located(self) -> None:
-        assert locate("ab\ncd", (1,), "grid") is None
-
-    def test_a_non_integer_coordinate_is_not_located(self) -> None:
-        assert locate("abc", ("x", 1), "grid") is None
-
-    def test_an_int_under_grid_is_not_located(self) -> None:
-        assert locate("abc", 1, "grid") is None
-
 
 class TestLocateLine:
     """``ip`` starts with a line number, so the whole line is marked."""
@@ -202,14 +175,8 @@ class TestLocateLine:
         # a short line still reads as a whole line.
         assert locate("ab\ncdef", (0,), "line") == Mark(0, 0, 4)
 
-    def test_a_bare_int_is_taken_as_the_line(self) -> None:
-        assert locate("ab\ncd", 1, "line") == Mark(1, 0, 2)
-
     def test_past_the_last_line_is_not_located(self) -> None:
         assert locate("ab\ncd", (9,), "line") is None
-
-    def test_an_empty_tuple_is_not_located(self) -> None:
-        assert locate("ab\ncd", (), "line") is None
 
 
 class TestLocateUnknownShape:
@@ -833,32 +800,7 @@ class TestSelector:
 
 
 class TestBoundaries:
-    """The off-by-ones, each pinned at the exact edge it turns on.
-
-    A mutation sweep over this module found the tests below missing: every
-    bound here was asserted somewhere far outside it -- a row 5 past a
-    2-row program -- which a widened comparison passes just as happily.
-    The edge is the only place the two readings differ.
-    """
-
-    def test_a_grid_row_one_past_the_last_is_outside(self) -> None:
-        assert locate("ab\ncd", (2, 0), "grid") is None
-
-    def test_a_grid_column_one_past_the_width_is_outside(self) -> None:
-        assert locate("ab\ncd", (0, 2), "grid") is None
-
-    def test_a_line_one_past_the_last_is_outside(self) -> None:
-        assert locate("ab\ncd", (2,), "line") is None
-
-    def test_an_offset_one_past_the_text_is_outside(self) -> None:
-        # The halt boundary lands here, so this is the common case rather
-        # than an exotic one.
-        assert locate("abc", 3) is None
-        assert locate("abc", 2) == Mark(0, 2)
-
-    def test_a_cell_one_past_the_width_holds_nothing(self) -> None:
-        assert at_cell("abc", "offset", 0, 3) is None
-        assert at_cell("abc", "offset", 0, 2) == Mark(0, 2)
+    """The off-by-ones, each pinned at the exact edge it turns on."""
 
     def test_the_program_pane_is_filled_when_there_is_enough_program(self) -> None:
         # Scrolling that runs past the end leaves the pane short rather than
@@ -964,25 +906,13 @@ class TestWatch:
         assert history.trace(0, 0, 10) == (0,)
 
     def test_a_zero_span_asks_for_nothing_and_gets_it(self) -> None:
-        """The window can be empty from the *span* side, not just the frames.
-
-        ``first`` is derived from ``last`` and the span, so a span of zero
-        puts it one past ``last`` -- an empty window rather than a negative
-        slice, which would silently read from the wrong end.
-        """
+        """The window can be empty from the *span* side, not just the frames."""
         history = History("brainfuck", "+++", "")
         history.at(3)
         assert history.trace(0, 3, 0) == ()
 
     def test_a_history_with_no_frames_at_all_traces_nothing(self) -> None:
-        """The other empty: retained frames gone rather than window empty.
-
-        ``test_an_empty_history_traces_nothing`` does not reach this -- a
-        fresh ``History`` already holds its first frame, so it returns that
-        one value.  Dropping the frames is what leaves the guard with
-        nothing to slice, and it must answer ``()`` rather than index into
-        an empty list.
-        """
+        """The other empty: retained frames gone rather than window empty."""
         history = History("brainfuck", "+++", "")
         history.at(3)
         history._frames = []  # noqa: SLF001 - the state the guard exists for

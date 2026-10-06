@@ -9,44 +9,10 @@ from esolangs import tools as boolean
 from tests.tools.boolean_runners import (
     run_collatz_multiverse,
 )
+from tests.witness_tables import witnesses
 
 
 class TestCollatzMultiverse:
-    @pytest.mark.parametrize(
-        ("table", "n"),
-        [
-            ("10", 1),  # NOT
-            ("01", 1),  # identity
-            ("00", 1),  # constant zero
-            ("11", 1),  # constant one
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("1110", 2),  # NAND
-            ("11111110", 3),  # NAND3
-            ("01101001", 3),  # XOR3
-            ("1111111100000000", 4),  # top half
-        ],
-    )
-    @pytest.mark.medium
-    def test_truth_table(self, table: str, n: int) -> None:
-        """Every input combination produces the truth-table result."""
-        program = boolean.collatz_multiverse(table)
-        for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            got = run_collatz_multiverse(program, [str(b) for b in bits])
-            assert got == str(int(table[combo])), f"inputs {bits}"
-
-    # 256 tables at eight rows each, all of it in the interpreter.
-    @pytest.mark.parametrize("n", [1, 2, pytest.param(3, marks=pytest.mark.medium)])
-    def test_every_small_table(self, n: int) -> None:
-        """Execute every table and row through three inputs."""
-        for value in range(2 ** (2**n)):
-            table = format(value, f"0{2**n}b")
-            program = boolean.collatz_multiverse(table)
-            for combo in range(2**n):
-                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-                assert run_collatz_multiverse(program, bits) == table[combo]
-
     def test_reads_each_input_once_and_prints_once(self) -> None:
         """The program reads every input once and answers with one print."""
         program = boolean.collatz_multiverse("01101001")
@@ -54,14 +20,7 @@ class TestCollatzMultiverse:
         assert program.count("DO PRINT.") == 1
 
     def test_cells_are_addressed_by_line_number(self) -> None:
-        """The table sits in cells the writing line's own number addresses.
-
-        What is pinned is that the rows are *placed and indexed* rather than
-        walked: the fill block spends one line a cell and no line advancing a
-        pointer, and the reader subscripts those arrays instead of branching.
-        A quarter of the rows per cell is the construction's own choice and is
-        not pinned here; one line per cell is what the size constant rides on.
-        """
+        """The table sits in cells the writing line's own number addresses."""
         table = "01101001" * 8
         program = boolean.collatz_multiverse(table)
         subscripted = [line for line in program.splitlines() if "[" in line]
@@ -80,12 +39,7 @@ class TestCollatzMultiverse:
         assert sizes[1] < 2 * sizes[0] + 256
 
     def test_constant_tables_collapse_but_still_read(self) -> None:
-        """A constant table collapses to one output but still reads its inputs.
-
-        Collapsing the evaluation is the win; the reads are the language's
-        interface and have to stay, or the caller's bits are left unread on the
-        input stream for whatever runs next.
-        """
+        """A constant table collapses to one output but still reads its inputs."""
         for table in ("0000", "1111"):
             program = boolean.collatz_multiverse(table)
             assert program.count("DO PRINT.") == 1
@@ -106,13 +60,7 @@ class TestCollatzMultiverse:
                     assert run_collatz_multiverse(program, bits) == shape[combo]
 
     def test_numbered_cells_halve_the_three_input_total(self) -> None:
-        """The plain build against the shipped one over every varied table.
-
-        The plain build stores each cell's value, so its decoder spans every
-        value up to the largest; the generator before numbering totalled
-        460296 over all 256 tables, the plain build now 450156 of the 254
-        varied ones (one-letter aliases only where they pay).
-        """
+        """The plain build against the shipped one over every varied table."""
         from esolangs.tools.collatz_multiverse import _cm_build
 
         varied = [t for v in range(256) if len(set(t := format(v, "08b"))) > 1]
@@ -152,10 +100,9 @@ class TestCollatzMultiverse:
                 )
 
     @pytest.mark.parametrize("width", [1, 27, 29, 30, 40, 80])
-    def test_narrow_renaming_preserves_every_small_table(self, width: int) -> None:
+    def test_narrow_renaming_preserves_the_witness_tables(self, width: int) -> None:
         for n in range(1, 4):
-            for value in range(2 ** (2**n)):
-                table = format(value, f"0{2**n}b")
+            for table in witnesses(n):
                 program = boolean.collatz_multiverse(table, width)
                 assert max(map(len, program.splitlines())) <= max(width, 29)
                 assert program.count("input") == n

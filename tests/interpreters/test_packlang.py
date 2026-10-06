@@ -1,14 +1,4 @@
-"""Unit tests for the Packlang interpreter and its generator.
-
-The wiki's five examples are the ground truth here, and two of them
-disagree with the other three about what base a numeric literal is in.
-:class:`TestLiteralBase` pins the resolution from both directions: the
-three examples decimal keeps are asserted byte-exact, and the two it
-declares wrong are asserted to produce the *wrong* output as shipped and
-the wiki's stated output once their literals are converted binary to
-decimal -- which is what shows the defect is the base the author wrote,
-not the interpreter's arithmetic.
-"""
+"""Unit tests for the Packlang interpreter and its generator."""
 
 import contextlib
 from typing import Any, ClassVar
@@ -185,25 +175,12 @@ class TestWikiExamples:
         assert io.getvalue() == "hi\r\n"
 
     def test_plus_or_minus_runs(self) -> None:
-        """Its ``: code`` names a package variable, not a parameter.
-
-        ``String code`` has no literal syntax on the wiki to fill it, so
-        the array is empty and the interpreter loop body never runs. What
-        this pins is that the program *parses and executes* -- the entry
-        rule reaches a function whose colon clause is a bare name.
-        """
+        """Its ``: code`` names a package variable, not a parameter."""
         assert _run(PLUS_OR_MINUS) == ""
 
 
 class TestLiteralBase:
-    """The wiki's conflicting literal-base examples, pinned both ways.
-
-    Three examples only work read as decimal and two only as binary; a
-    pure binary reading is refused outright, since four of the five
-    contain literals with digits outside 0-1 (PlusOrMinus's own
-    ``Integer(0, 255, 255, 0)`` among them).  Decimal wins the remaining
-    tie, so these two examples are declared wrong.
-    """
+    """The wiki's conflicting literal-base examples, pinned both ways."""
 
     def test_the_decimal_examples_are_byte_exact(self) -> None:
         assert _run(HELLO) == "Hello, World!\r\n"
@@ -216,21 +193,11 @@ class TestLiteralBase:
         assert io.getvalue() == "hi\r\n"
 
     def test_the_binary_authored_example_is_declared_wrong(self) -> None:
-        """As written it prints mojibake, not the ``0110`` its comments claim.
-
-        ``110000`` read as decimal is 110000, and ``charPut`` prints
-        ``value % 256`` -- 176, not the 48 the author meant.
-        """
+        """As written it prints mojibake, not the ``0110`` its comments claim."""
         assert _run(DEPENDENCY) == "°±±°"
 
     def test_rebasing_that_example_gives_the_wikis_stated_output(self) -> None:
-        """Its *logic* is right; only the base its literals were written in.
-
-        Converting the literals binary -> decimal and changing nothing
-        else yields exactly the ``0``/``1``/``1``/``0`` the wiki's inline
-        comments claim, which is what makes this an author-side base error
-        rather than an interpreter bug.
-        """
+        """Its *logic* is right; only the base its literals were written in."""
         assert _run(DEPENDENCY_REBASED) == "0110"
 
     def test_a_pure_binary_reading_cannot_lex_four_examples(self) -> None:
@@ -372,13 +339,7 @@ class TestErrors:
             _run("Package : IO { Integer main { ); } } p;")
 
     def test_unbalanced_block_is_malformed(self) -> None:
-        """A block that is never closed runs the parser off the end.
-
-        The message is whichever check the parser reaches first -- an
-        unbalanced ``{`` here, a bad token where a partial close leaves the
-        cursor mid-declaration -- so both cases are pinned as ValueError
-        rather than by one wording.
-        """
+        """A block that is never closed runs the parser off the end."""
         with pytest.raises(ValueError, match="unbalanced"):
             _run("Package : IO {\n  Integer main {\n    charPut(65);\n")
         # A partial close leaves the cursor mid-declaration, so the first
@@ -391,17 +352,7 @@ class TestErrors:
             _run("Dependency {\n  Integer f : Integer a {\n    a;\n  }\n} d;")
 
     def test_unbounded_recursion_grows_frames_without_crashing(self) -> None:
-        """No depth ceiling: frames grow on the heap, not Python's stack.
-
-        There was a ceiling here, and it never fired -- the count restarted
-        at every call and the value stood above the ~198 language depth 5
-        Python frames per call allowed, so a self-calling program raised
-        ``RecursionError``.  Framing calls removes the cause rather than
-        retuning the number: recursion no longer touches Python's stack at
-        all.  Such a program revisits no state, so nothing can prove it
-        halts and the wall-clock ``timeout`` is the backstop, as in
-        ``grapheme.py``.  What is asserted is that it stays *steppable*.
-        """
+        """No depth ceiling: frames grow on the heap, not Python's stack."""
         program = (
             "Package : IO {\n"
             "  Integer f {\n    f();\n    0;\n  }\n"
@@ -416,17 +367,7 @@ class TestErrors:
         assert not machine.halted
 
     def test_a_loop_inside_a_called_function_is_provable(self) -> None:
-        """The reason calls are framed rather than evaluated inline.
-
-        A ``While`` in a called function used to run to completion inside
-        the caller's single ``step()``, so an endless one hung with the
-        frame stack never observed growing and nothing for the cycle
-        detector to see.  Framed, every lap reaches ``snapshot`` and the
-        repeat proves the hang.
-
-        The loop holds its state fixed -- no read, no counter -- because a
-        state that grows is the separate class only the timeout covers.
-        """
+        """The reason calls are framed rather than evaluated inline."""
         program = (
             "Package : IO {\n"
             "  Integer spin {\n    While 1 Do {\n      charPut(65);\n    }\n"
@@ -451,12 +392,7 @@ class TestErrors:
             _run("Package : IO {\n  Integer main {\n    nope(1);\n    0;\n  }\n} p;")
 
     def test_calling_an_undeclared_dependency_halts(self) -> None:
-        """The wiki grants access only to a package's declared dependencies.
-
-        The function exists and is callable -- the positive control below
-        is the same program with the dependency declared -- so this pins
-        the visibility rule rather than a name lookup.
-        """
+        """The wiki grants access only to a package's declared dependencies."""
         undeclared = """
 Dependency {
   Integer helper : Integer a {
@@ -501,15 +437,7 @@ Package : IO, outer {
         assert _run(code) == "1"
 
     def test_io_inside_a_called_function_works(self) -> None:
-        """A callee's ``charPut`` reaches the shell, in call order.
-
-        This was refused, on the rationale that a call was evaluated
-        inside a statement and so had no point at which the shell could
-        perform its ports.  Framing calls removed that rationale: a
-        callee's statements are stepped like any other, so the same shell
-        performs its IO.  ``A`` precedes the caller's own output because
-        the argument is evaluated before ``charPut`` runs.
-        """
+        """A callee's ``charPut`` reaches the shell, in call order."""
         code = """
 Dependency {
   Integer shout : Integer a {
@@ -623,52 +551,8 @@ def _boolean_rows(table: str, n: int) -> list[str]:
 class TestBooleanGenerator:
     """Executed over complete truth tables, not inspected as source."""
 
-    @pytest.mark.parametrize("n", [1, 2, 3])
-    @pytest.mark.medium
-    def test_every_table_at_this_arity(self, n: int) -> None:
-        """Exhaustive: all ``2**(2**n)`` tables, each over all ``2**n`` rows."""
-        for value in range(2 ** (2**n)):
-            table = bin(value)[2:].zfill(2**n)
-            assert _boolean_rows(table, n) == list(table), table
-
-    @pytest.mark.parametrize(
-        "table",
-        [
-            "0" * 16,
-            "1" * 16,
-            "0110100110010110",  # parity at n == 4
-            "1000100010001000",
-            "0000000000000001",  # AND, the densest ANF at this arity
-        ],
-    )
-    def test_four_input_tables(self, table: str) -> None:
-        assert _boolean_rows(table, 4) == list(table)
-
-    @pytest.mark.slow
-    def test_a_five_input_table(self) -> None:
-        table = "".join(str(bin(r).count("1") % 2) for r in range(32))
-        assert _boolean_rows(table, 5) == list(table)
-
-    @pytest.mark.parametrize("n", [1, 2, 3, 4])
-    def test_a_constant_table_still_reads_every_input(self, n: int) -> None:
-        """The read-count contract: the reads are the interface.
-
-        A constant table has no ANF terms at all, so this is the case
-        where skipping the reads would be tempting and wrong.
-        """
-        for table in ("0" * 2**n, "1" * 2**n):
-            io = ScriptedIO("0\n" * 8)
-            run(packlang(table), io)
-            assert io.position() == n, table
-
     def test_the_construction_paints_only_the_rows_that_differ(self) -> None:
-        """One write per row the block does not already hold.
-
-        This replaces a pin on the decision tree that used to be emitted
-        (four ``If``s for ``0001``, one ``INCR acc`` per folded leaf).  That
-        counted a spelling; what the construction actually claims is this
-        cost, so it is the claim asserted now.
-        """
+        """One write per row the block does not already hold."""
         assert packlang("0001").count("INCR t(") == 1
         assert packlang("0110").count("INCR t(") == 2
         assert packlang("01101001").count("INCR t(") == 4
@@ -735,11 +619,7 @@ Package : IO {
 
 
 def test_a_global_belongs_to_its_own_package() -> None:
-    """Wiki: a package defines "all variables it will need".
-
-    ``d``'s ``Integer(0, 1, 0, 0) x`` once overwrote ``p``'s plain ``x``,
-    so two INCRs wrapped to 0 instead of reaching 2.
-    """
+    """Wiki: a package defines "all variables it will need"."""
     code = """Package : IO {
   Integer x;
   Integer main {

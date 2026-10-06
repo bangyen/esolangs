@@ -1,9 +1,4 @@
-"""Test oracle for the stdin half of the Boolean I/O contract.
-
-Production code builds stdin with ``encode_inputs`` and extracts answers
-with ``read_answer``; this checker lives with the suite because nothing in
-``src/`` judges arbitrary stdin after the public check surface was cut.
-"""
+"""Test oracle for the stdin half of the Boolean I/O contract."""
 
 from esolangs.exceptions import ArgumentError, TruthTableError
 from esolangs.interpreters.source_hints import with_hint
@@ -25,14 +20,7 @@ def _validate_shape_for_evaluate(truth_table: str) -> int:
 
 
 def _check_stdin(language: str, stdin: str, truth_table: str | None = None) -> None:
-    """Refuse ``stdin`` that cannot be what ``language`` wants to read.
-
-    A wrong alphabet, unexpected character, or non-number row index.
-    Raises :class:`~esolangs.exceptions.ArgumentError`; :func:`run` does
-    not validate arbitrary stdin this way.
-    ``truth_table`` adds the count, catching surplus inputs.  Every check reads
-    the registered Boolean I/O contract.
-    """
+    """Refuse ``stdin`` that cannot be what ``language`` wants to read."""
     name = resolve(language)
     lang = LANGUAGES[name]
     contract = lang.contract

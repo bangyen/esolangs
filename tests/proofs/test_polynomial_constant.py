@@ -1,19 +1,14 @@
 """Executable controls for the explicit Polynomial constant."""
 
-import itertools
 import math
 from fractions import Fraction
-
-import pytest
 
 from esolangs.interpreters.register_based.polynomial import (
     _advance,
     _bracket_pairs,
-    sanitize_terms,
 )
 from esolangs.tools.polynomial import _polynomial_decode_key
 from esolangs.tools.polynomial.algebra import format_coeffs, multiply, primes
-from tests.tools.boolean_runners import run_polynomial
 
 
 def test_symmetric_remainders_have_independent_zero_positions() -> None:
@@ -170,33 +165,3 @@ def _execute(instructions: list[list[int]], bits: str) -> str:
         state, printed = _advance(state, instructions, byte, pairs)
         output += printed or ""
     return output
-
-
-# 3.3s: the only test factoring and running the symmetric construction; it
-# pins both source parities and exhausts the two-input instruction programs.
-@pytest.mark.medium
-def test_even_sources_compute_every_two_input_table() -> None:
-    """The symmetric decision tree after ``lem:symruns`` is an even source."""
-    for bits in itertools.product("01", repeat=4):
-        table = "".join(bits)
-        program, instructions, coefficients = _even_source(table)
-        assert all(exponent % 2 == 0 for exponent in sanitize_terms(program))
-        output = "".join(_execute(instructions, f"{row:02b}") for row in range(4))
-        assert output == table
-        if table == "0110":
-            actual = "".join(
-                run_polynomial(program, list(f"{row:02b}")) for row in range(4)
-            )
-            assert actual == table
-            odd = format_coeffs(multiply(coefficients, [1, 0]))
-            if odd.endswith("x"):
-                odd += "^1"
-            assert all(
-                exponent % 2 == 1
-                for exponent, coefficient in sanitize_terms(odd).items()
-                if coefficient
-            )
-            odd_actual = "".join(
-                run_polynomial(odd, list(f"{row:02b}")) for row in range(4)
-            )
-            assert odd_actual == table

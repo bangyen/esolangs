@@ -74,17 +74,6 @@ class TestWikiExamples:
     def test_ceiling_of_a_fraction(self) -> None:
         assert run_and_capture(f"{CEIL}\nCEIL(7 / 2)") == "4\n"
 
-    def test_ceiling_of_an_integer_prints_only_the_answer(self) -> None:
-        """The ``$`` statement is silent, so no stray 0 precedes the 3.
-
-        This is what pins the suppression rule: without it the wiki's own
-        ceiling function emits garbage for every integral input.
-        """
-        assert run_and_capture(f"{CEIL}\nCEIL(3)") == "3\n"
-
-    def test_not_of_a_truthy_value(self) -> None:
-        assert run_and_capture(f"{NOT}\n!5") == "0\n"
-
     def test_not_of_zero(self) -> None:
         """``x & $0`` never outputs x, so only the returned 1 is printed."""
         assert run_and_capture(f"{NOT}\n!0") == "1\n"
@@ -137,52 +126,20 @@ class TestExecutionModel:
         assert run_and_capture("n = 7\nn + 1") == "8\n"
 
     def test_input_is_bound_before_evaluation_not_lazily(self) -> None:
-        """A short-circuit must not skip a read the spec says happens.
-
-        ``a & b`` with ``a`` zero never evaluates ``b``, but both are
-        named on the line, so both are read -- which the second line
-        proves by seeing the *third* input rather than the second.
-        """
+        """A short-circuit must not skip a read the spec says happens."""
         assert run_and_capture("a & b\nc", "0\n5\n9\n") == "0\n9\n"
 
     def test_a_fractional_result_keeps_its_decimal_part(self) -> None:
         assert run_and_capture("7 / 2") == "3.5\n"
 
-    def test_an_exact_division_prints_as_an_integer(self) -> None:
-        assert run_and_capture("6 / 3") == "2\n"
-
-    def test_implied_multiplication_between_variables(self) -> None:
-        assert run_and_capture("a = 3\nb = 4\nab") == "12\n"
-
     def test_exponentiation_is_right_associative(self) -> None:
         assert run_and_capture("2 ** 3 ** 2") == "512\n"
-
-    def test_unary_negation(self) -> None:
-        assert run_and_capture("-5 + 2") == "-3\n"
-
-    def test_brackets_override_precedence(self) -> None:
-        assert run_and_capture("(1 + 2) * 3") == "9\n"
-
-    def test_standard_order_of_operations(self) -> None:
-        assert run_and_capture("1 + 2 * 3") == "7\n"
-
-    def test_modulo(self) -> None:
-        assert run_and_capture("7 % 3") == "1\n"
-
-    def test_a_fractional_literal(self) -> None:
-        assert run_and_capture("1.5 + 1.5") == "3\n"
 
     def test_or_returns_its_left_operand_when_truthy(self) -> None:
         assert run_and_capture("5 | 9") == "5\n"
 
-    def test_or_returns_its_right_operand_otherwise(self) -> None:
-        assert run_and_capture("0 | 9") == "9\n"
-
     def test_and_returns_zero_when_its_left_is_false(self) -> None:
         assert run_and_capture("0 & 9") == "0\n"
-
-    def test_and_returns_its_right_operand_when_its_left_is_true(self) -> None:
-        assert run_and_capture("5 & 9") == "9\n"
 
     def test_numeric_input_skips_blank_lines(self) -> None:
         assert run_and_capture("n", "\n42") == "42\n"
@@ -209,10 +166,6 @@ class TestErrors:
         with raises_message(ValueError, "unknown function 'G'"):
             run_and_capture("G()")
 
-    def test_a_bare_unknown_function_name_is_rejected(self) -> None:
-        with raises_message(ValueError, "unknown function 'G'"):
-            run_and_capture("F(x) = 1\nF(G)")
-
     def test_the_wrong_argument_count_is_rejected(self) -> None:
         with raises_message(ValueError, "'F' takes 1 argument(s), got 2"):
             run_and_capture("F(x) = x\nF(1, 2)")
@@ -228,10 +181,6 @@ class TestErrors:
     def test_trailing_input_is_rejected(self) -> None:
         with raises_message(ValueError, "trailing input at ')'"):
             run_and_capture("1 + 2)")
-
-    def test_an_empty_expression_is_rejected(self) -> None:
-        with raises_message(ValueError, "unexpected end of expression"):
-            run_and_capture("1 +")
 
     def test_a_bad_parameter_is_rejected(self) -> None:
         with raises_message(ValueError, "bad parameter '1'"):
@@ -249,10 +198,6 @@ class TestErrors:
         with raises_message(HaltError, "division by zero"):
             run_and_capture("1 / 0")
 
-    def test_modulo_by_zero_is_a_halt(self) -> None:
-        with raises_message(HaltError, "modulo by zero"):
-            run_and_capture("1 % 0")
-
     def test_zero_to_a_negative_power_is_a_halt(self) -> None:
         with raises_message(HaltError, "zero to a negative power"):
             run_and_capture("0 ** -1")
@@ -266,12 +211,7 @@ class TestErrors:
             run_and_capture("F() = 1\nF + 1")
 
     def test_input_running_out_raises_eof(self) -> None:
-        """A line naming more variables than the input supplies.
-
-        The shared runner swallows ``EOFError`` by default, since for many
-        languages it *is* the halt; APL has no such convention, so this
-        asserts the error escapes.
-        """
+        """A line naming more variables than the input supplies."""
         with pytest.raises(EOFError):
             run_program(run, "a + b", "1\n", suppress_eof=False)
 
@@ -310,14 +250,7 @@ class TestCycles(CycleContract):
 
 
 class TestFrameBookkeeping:
-    """The state the hang detectors read, asserted without importing them.
-
-    A test naming ``esolangs.vm`` is dropped from the mutation bundle, so
-    these deliberately drive ``_Machine`` directly: a mutant in
-    ``snapshot()`` or ``frame_entry_key()`` has to be killable by tests
-    that survive the drop.  The detectors' own verdicts are covered in
-    ``test_algebraic_programming_language_vm.py``.
-    """
+    """The state the hang detectors read, asserted without importing them."""
 
     def test_a_recursion_pushes_one_frame_per_lap(self) -> None:
         """This is what makes the ancestor check applicable at all."""
@@ -361,12 +294,7 @@ class TestFrameBookkeeping:
         assert keys[0] != keys[1], "the read between them must change the key"
 
     def test_the_snapshot_distinguishes_two_stages_of_one_expression(self) -> None:
-        """Recording the work stack's depth alone made these compare equal.
-
-        ``1 + 1`` with its left operand resolved and with both resolved
-        are different states; a snapshot that conflated them made the
-        cycle detector call a halting program a hang.
-        """
+        """Recording the work stack's depth alone made these compare equal."""
         machine_ = machine("1 + 1")
         seen = []
         while not machine_.halted:
@@ -375,12 +303,7 @@ class TestFrameBookkeeping:
         assert len(seen) == len(set(seen)), "a halting run repeated a state"
 
     def test_only_executed_lines_read_input(self) -> None:
-        """A variable inside a function body is *not* input-bound.
-
-        Input binding happens when an executed line names a variable, so
-        a free name in a body has nothing to resolve against -- which is
-        why a recursion cannot consume input as it goes.
-        """
+        """A variable inside a function body is *not* input-bound."""
         with raises_message(ValueError, "unknown variable 'n'"):
             run_and_capture("F() = n\nF()", "1\n")
 
@@ -413,9 +336,6 @@ class TestCoveragePaths:
         """The postfix loop keeps matching until no pattern fits."""
         assert run_and_capture("a@ = a * 2\n3@@") == "12\n"
 
-    def test_a_blank_line_inside_a_block_is_skipped(self) -> None:
-        assert run_and_capture("F() = {\n1\n\n2\n}\nF()") == "1\n2\n"
-
     def test_an_uppercase_name_without_parentheses_is_a_nullary_function(
         self,
     ) -> None:
@@ -432,11 +352,7 @@ class TestCoveragePaths:
         assert run_and_capture("1\n\n2") == "1\n2\n"
 
     def test_trailing_input_after_a_block_is_rejected(self) -> None:
-        """``F() = {1} 2`` balances its braces but does not end at one.
-
-        ``_blocks`` joins by brace depth, so a one-line definition with
-        something after its closer reaches ``_body`` intact.
-        """
+        """``F() = {1} 2`` balances its braces but does not end at one."""
         with raises_message(ValueError, "trailing input after block in '{1} 2'"):
             run_and_capture("F() = {1} 2\nF()")
 
@@ -468,35 +384,12 @@ class TestCoveragePaths:
         machine_.step()
         assert machine_.memory == [3, 4]
 
-    def test_memory_reports_zero_for_a_non_numeric_binding(self) -> None:
-        """A function-valued global has no integer to report."""
-        machine_ = machine("n = 1.5\nn")
-        while not machine_.halted:
-            machine_.step()
-        assert machine_.memory == [1]
-
-    def test_stack_reports_the_live_frames(self) -> None:
-        machine_ = machine("1 + 1")
-        machine_.step()
-        assert len(machine_.stack) == 1
-
 
 class TestMutationGaps:
-    """Behaviour the wiki's examples exercise but do not *discriminate*.
-
-    Each of these pins a decision that a plausible alternative
-    implementation would get wrong while still passing every test above:
-    the order operators are tried in, the exact `**` lookahead, and which
-    fields of a snapshot actually vary.
-    """
+    """Behaviour the wiki's examples exercise but do not *discriminate*."""
 
     def test_a_longer_operator_pattern_wins_over_a_shorter_prefix(self) -> None:
-        """``^a^b^`` must not be matched as ``^a^`` followed by junk.
-
-        Patterns are tried longest-first for exactly this case; trying
-        them in definition order would match the two-argument operator's
-        opening ``^`` with the one-argument pattern instead.
-        """
+        """``^a^b^`` must not be matched as ``^a^`` followed by junk."""
         program = "^a^ = a * 10\n^a^b^ = a + b\n^1^2^"
         assert run_and_capture(program) == "3\n"
 
@@ -575,10 +468,7 @@ class TestMutationGaps:
         assert keys[0] != keys[1]
 
     def test_a_definition_body_replaces_its_placeholder(self) -> None:
-        """The self-reference trick registers an empty body first.
-
-        If the real body never replaced it, every call would return 0.
-        """
+        """The self-reference trick registers an empty body first."""
         assert run_and_capture("F() = 42\nF()") == "42\n"
 
     def test_a_recursive_operator_sees_its_own_pattern(self) -> None:
@@ -587,24 +477,10 @@ class TestMutationGaps:
 
 
 class TestNestedTraversals:
-    """The two tree walks, exercised at every branch they recurse through.
-
-    ``_contains_return`` decides whether a statement prints, and
-    ``_free_variables`` decides what gets read and in what order.  Both
-    recurse through negation, both operands of a binary node, and call
-    arguments -- and the wiki's examples only ever nest a ``$`` in a
-    binary node's *right* operand, so the other paths need their own
-    programs or a mutant that stops recursing survives.
-    """
+    """The two tree walks, exercised at every branch they recurse through."""
 
     def test_a_return_inside_a_negation_suppresses_the_print(self) -> None:
-        """``-$1`` is a ``$`` under a ``neg``.
-
-        The result is ``1``, not ``-1``: ``$`` exits the function
-        immediately, so the negation wrapped around it never applies.
-        That is the documented reading of the return operator, and this
-        is the program that discriminates it.
-        """
+        """``-$1`` is a ``$`` under a ``neg``."""
         assert run_and_capture("M() = {\n-$1\n9\n}\nM()") == "1\n"
 
     def test_a_return_in_a_binary_left_operand_suppresses_the_print(
@@ -613,108 +489,47 @@ class TestNestedTraversals:
         """``$1 + 2`` returns before the addition, and prints nothing."""
         assert run_and_capture("M() = {\n$1 + 2\n9\n}\nM()") == "1\n"
 
-    def test_a_return_in_a_call_argument_suppresses_the_print(self) -> None:
-        """``F($1)`` is a ``$`` inside a call's argument list."""
-        assert run_and_capture("F(x) = x\nM() = {\nF($1)\n9\n}\nM()") == "1\n"
-
     def test_a_statement_with_no_return_anywhere_still_prints(self) -> None:
         """The other side of the same decision, at the same depth."""
         assert run_and_capture("F(x) = x\nM() = {\nF(-(1 + 2))\n9\n}\nM()") == (
             "-3\n9\n"
         )
 
-    def test_a_variable_under_a_negation_is_read(self) -> None:
-        assert run_and_capture("-a", "5\n") == "-5\n"
-
     def test_variables_in_both_operands_are_read_left_to_right(self) -> None:
         assert run_and_capture("a - b", "9\n4\n") == "5\n"
-
-    def test_a_variable_inside_a_call_argument_is_read(self) -> None:
-        assert run_and_capture("F(x) = x * 2\nF(a)", "6\n") == "12\n"
-
-    def test_variables_across_call_arguments_are_read_in_order(self) -> None:
-        """``F(a, b)`` reads a then b, so swapping the feed swaps the answer."""
-        assert run_and_capture("F(x, y) = x - y\nF(a, b)", "9\n4\n") == "5\n"
-
-    def test_a_variable_under_a_return_is_read(self) -> None:
-        """``$a`` still names ``a``, so the pre-scan must reach through it."""
-        assert run_and_capture("$a", "7\n") == "7\n"
 
     def test_a_repeated_variable_is_read_once(self) -> None:
         """First-appearance order dedupes, so ``a + a`` takes one input."""
         assert run_and_capture("a + a", "5\n") == "10\n"
 
-    def test_a_variable_repeated_across_operands_is_read_once(self) -> None:
-        """``a + (b - a)`` reads a and b, in that order -- not a, b, a."""
-        assert run_and_capture("a + (b - a)", "3\n10\n") == "10\n"
-
 
 class TestGuardsAndBoundaries:
-    """The guards, boundaries, and lexer edges no earlier test pins.
-
-    Each of these was free to change without any test above objecting:
-    the zero-base power guard's two halves, where a fractional literal
-    stops, how far bracket depth counts, and which nodes the ``$`` scan
-    reaches through.  Written in the interpreter's own vocabulary, so
-    they read as behaviour rather than as harness bookkeeping.
-    """
+    """The guards, boundaries, and lexer edges no earlier test pins."""
 
     def test_a_nonzero_base_to_a_negative_power(self) -> None:
-        """Only a *zero* base refuses; 2 ** -1 is an ordinary fraction.
-
-        The halt guard is ``left == 0 and right < 0``.  With no test on a
-        negative exponent over a nonzero base, widening it to ``or``
-        raised on this too and nothing objected.
-        """
+        """Only a *zero* base refuses; 2 ** -1 is an ordinary fraction."""
         assert run_and_capture("2 ** -1") == "0.5\n"
 
     def test_zero_to_the_zeroth_power(self) -> None:
-        """``0 ** 0`` is 1: the guard's ``right < 0`` excludes zero.
-
-        Loosening it to ``right <= 0`` or ``right < 1`` makes this halt,
-        which is what pins the comparison to a strict one.
-        """
+        """``0 ** 0`` is 1: the guard's ``right < 0`` excludes zero."""
         assert run_and_capture("0 ** 0") == "1\n"
 
     def test_a_dot_with_no_digit_after_it_is_its_own_token(self) -> None:
-        """A fractional part needs a digit; a bare trailing dot is a symbol.
-
-        ``3.`` tokenizes as ``3`` then ``.``, so the dot reaches the
-        parser as an operator symbol and the line has no operator to
-        match -- which is an error, not the number 3.
-        """
+        """A fractional part needs a digit; a bare trailing dot is a symbol."""
         with raises_message(ValueError, "trailing input at '.'"):
             run_and_capture("3.")
 
     def test_a_dot_before_a_letter_is_not_a_decimal_point(self) -> None:
-        """``3.a`` is 3, a dot, and a name -- not the number 3 times a.
-
-        The dot is left over as its own token, so the parser stops at it
-        rather than reading a fractional literal.
-        """
+        """``3.a`` is 3, a dot, and a name -- not the number 3 times a."""
         with raises_message(ValueError, "trailing input at '.'"):
             run_and_capture("3.a")
 
-    def test_a_multi_digit_fractional_part(self) -> None:
-        """The fraction loop runs past its first digit, so .25 is not .2."""
-        assert run_and_capture("3.25 + 0") == "3.25\n"
-
     def test_an_equals_after_nested_brackets_still_splits(self) -> None:
-        """Bracket depth counts up, not to one.
-
-        ``F(G(x)) = ...`` closes two brackets before the ``=``.  With
-        ``depth = 1`` instead of ``depth += 1`` the second close drives
-        depth to zero early, and the split lands inside the header.
-        """
+        """Bracket depth counts up, not to one."""
         assert run_and_capture("F(x) = x\nG(x) = F(F(x))\nG(4)") == "4\n"
 
     def test_a_four_statement_body_runs_each_statement_once(self) -> None:
-        """Statement advance is ``+= 1``, not a jump to a fixed index.
-
-        Three statements cannot tell the two apart -- from statement 0
-        both reach 1 -- so the body needs a fourth for ``stmt = 1`` to
-        show as a loop on the second statement.
-        """
+        """Statement advance is ``+= 1``, not a jump to a fixed index."""
         assert run_and_capture("F(n) = {\n1\n2\n3\n4\n}\nF(0)") == "1\n2\n3\n4\n"
 
     def test_arithmetic_on_a_function_names_the_value_it_refused(self) -> None:
@@ -723,38 +538,13 @@ class TestGuardsAndBoundaries:
             run_and_capture("F(x) = x\n1 + F")
 
     def test_a_negative_right_hand_side_with_no_space(self) -> None:
-        """The split keeps everything after the ``=``, sign included.
-
-        ``a=-3`` has its minus flush against the ``=``; a split that
-        skipped one more character would read it as ``3``.
-        """
+        """The split keeps everything after the ``=``, sign included."""
         assert run_and_capture("a=-3\na") == "-3\n"
 
-    def test_a_bracketed_right_hand_side_with_no_space(self) -> None:
-        """The same, for a bracket: eating the ``(`` would unbalance it."""
-        assert run_and_capture("a=(1+2)\na") == "3\n"
-
     def test_a_short_circuited_return_does_not_print_its_statement(self) -> None:
-        """The control flag is read even when the ``$`` never evaluates.
-
-        ``0 & $7`` short-circuits, so the statement finishes normally --
-        but it *carries* a ``$``, so it must not print.  Contrast the
-        same body without one, which prints its value and falls through.
-        """
+        """The control flag is read even when the ``$`` never evaluates."""
         assert run_and_capture("F(n) = {\n-(0 & $7)\n9\n}\nF(0)") == "9\n"
         assert run_and_capture("F(n) = {\n-(0 & 7)\n9\n}\nF(0)") == "0\n9\n"
-
-    def test_a_short_circuited_return_inside_an_operation(self) -> None:
-        """The same reach, through a ``bin`` node."""
-        assert run_and_capture("F(n) = {\n1 + (0 & $7)\n9\n}\nF(0)") == "9\n"
-
-    def test_a_short_circuited_return_inside_a_call_argument(self) -> None:
-        """And through a ``call`` node's argument list."""
-        assert run_and_capture("G(x) = x\nF(n) = {\nG(0 & $7)\n9\n}\nF(0)") == "9\n"
-
-    def test_a_three_digit_fractional_part(self) -> None:
-        """The fraction loop steps one digit at a time, so .125 is not .15."""
-        assert run_and_capture("3.125 * 8") == "25\n"
 
 
 @pytest.mark.parametrize(

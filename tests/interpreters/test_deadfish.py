@@ -1,12 +1,4 @@
-"""Tests for the Deadfish interpreter.
-
-The wiki calls three programs mandatory for an implementation -- it threatens
-to delist interpreters that fail them -- so they are asserted verbatim rather
-than paraphrased.  All three turn on the same trap: the accumulator resets
-only on exactly ``-1`` and exactly ``256``, so the range check the C
-original's own comment describes would pass the first case and fail the other
-two.
-"""
+"""Tests for the Deadfish interpreter."""
 
 from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.interpreters.register_based.deadfish import _Machine, run
@@ -33,11 +25,7 @@ class TestTheMandatoryCases:
         assert run_program(run, "iissso") == "0\n"
 
     def test_two_hundred_eighty_nine_sails_past_the_trap(self) -> None:
-        """``diissisdo``: the leading ``d`` traps at -1, and 17*17 does not.
-
-        A ``value > 256`` check -- the one the C comment claims -- would zero
-        the 289 here and print 0 instead of 288.
-        """
+        """``diissisdo``: the leading ``d`` traps at -1, and 17*17 does not."""
         assert run_program(run, "diissisdo") == "288\n"
 
     def test_the_trap_fires_on_the_way_down_too(self) -> None:
@@ -83,12 +71,7 @@ class TestDeadfish:
         assert run_program(run, "sso") == "0\n"
 
     def test_every_program_halts(self) -> None:
-        """The position only ever advances, so there is no loop to detect.
-
-        Asserted because it is why this file carries no ``CycleContract``:
-        Deadfish has no jump of any kind, so no program can revisit a state
-        and the hang detector has nothing to find.
-        """
+        """The position only ever advances, so there is no loop to detect."""
         for program in ("", "i", _HELLO, "iissso", "h", "xyz"):
             machine = _Machine(program, ScriptedIO())
             steps = 0
@@ -103,11 +86,7 @@ def _machine(code: object) -> object:
 
 
 class TestContract(SnapshotContract, StateViewContract):
-    """The shared shapes, with this language's own programs.
-
-    No ``CycleContract``: it wants a program that revisits a snapshot, and
-    ``test_every_program_halts`` shows none exists.
-    """
+    """The shared shapes, with this language's own programs."""
 
     machine = staticmethod(_machine)
     stepping_program = "iso"

@@ -1,41 +1,4 @@
-"""Run the deep proofs of one cost band.
-
-    python -m tests.proofs.deep verify    # the local gate, ~2s
-    python -m tests.proofs.deep ci        # CI, ~25s
-    python -m tests.proofs.deep all       # everything, ~2m  (`just proofs`)
-    python -m tests.proofs.deep --list    # the registry, run nothing
-
-Why this exists
----------------
-The proofs under ``deep/`` are scripts rather than pytest tests on purpose:
-each one prints a report meant to be *read*, and pytest would swallow it.  The
-cost of that choice was that every consumer had to name them by path.  Six
-proofs were spelled out across fourteen references in four files -- the
-justfile, ``ci.yml``, and ``scripts/verify.py`` twice -- and the rule deciding
-which of them gate, "cheap ones do", was re-argued as prose in each.  Adding a
-seventh meant four edits and a fourth copy of the argument.
-
-So the rule moved next to the proofs.  Each module declares ``BAND`` and
-``COST``, this runner selects on them, and the three consumers each invoke one
-band.
-
-The bands are cumulative, ordered by how often they run:
-
-``verify``   also runs in CI and by hand.  Cheap and narrowly scoped, so
-             ``scripts/verify.py`` can afford it on every local run.
-``ci``       also runs by hand.  Too broad or too slow to re-run on every local
-             edit -- ``all_generators`` touches every generator, so scoping it
-             would mean running it almost always -- but cheap enough that CI
-             should never skip it.
-``by-hand``  ``just proofs`` only.  Measured in tens of seconds.
-
-A band is a claim about cost, so ``tests/proofs/test_bands.py`` holds each one
-to a ceiling and checks that every module here is in exactly one.  Without that
-check this indirection would be a way to silently stop running a proof, which
-is precisely the failure it was built to prevent: the ``slow`` marker kept
-``_DOCUMENTED_SIZES`` green while COD's pinned size was wrong by a factor of
-3,200, straight through the commit that changed it.
-"""
+"""Run the deep proofs of one cost band."""
 
 from __future__ import annotations
 

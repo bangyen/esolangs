@@ -1,13 +1,4 @@
-"""``scripts/mutate_one.py`` repoints imports at the bundled interpreter.
-
-The mutation harness rewrites a language's test suite so it exercises the
-single bundled module rather than the installed package -- otherwise no
-mutant is visible and the run aborts before scoring anything.  These tests
-pin which imports that rewrite may touch, because the failure mode is
-quiet: a wrongly-rewritten import does not raise at rewrite time, it makes
-the *bundled* suite fail in a way that looks like the interpreter's own
-tests are broken.
-"""
+"""``scripts/mutate_one.py`` repoints imports at the bundled interpreter."""
 
 import importlib.util
 from pathlib import Path
@@ -30,11 +21,7 @@ def load_script() -> object:
 
 class TestRewriteImports:
     def test_the_interpreter_module_import_becomes_the_bundle(self) -> None:
-        """``import <interp> as m`` is an alias for the module being mutated.
-
-        This is the case the module-alias rule exists for: the suite wants
-        the interpreter *module*, and the bundle is that module.
-        """
+        """``import <interp> as m`` is an alias for the module being mutated."""
         script = load_script()
         out = script._rewrite_imports(  # noqa: SLF001
             "from esolangs.interpreters.grid_based import streetcode as module\n",
@@ -44,16 +31,7 @@ class TestRewriteImports:
         assert out.strip() == "import bundled as module"
 
     def test_a_generator_sharing_the_interpreters_name_is_left_alone(self) -> None:
-        """A ``tools`` import is not the interpreter, even spelled alike.
-
-        Several languages name their generator after the interpreter, so
-        ``from esolangs.tools import streetcode as gen`` has the
-        same leaf as ``grid_based.streetcode``.  The module-alias rule used
-        to match it and bind ``gen`` to the bundled interpreter; the suite
-        then called ``gen("00110100")`` and died with "'module' object is
-        not callable" before a single mutant ran.  ``tools`` is on the
-        skip list for exactly this reason, and the rule has to honour it.
-        """
+        """A ``tools`` import is not the interpreter, even spelled alike."""
         script = load_script()
         for line, module in (
             ("from esolangs.tools import streetcode as gen", "streetcode"),
@@ -112,14 +90,7 @@ class TestRewriteImports:
 
 
 class TestDropUnbundledTests:
-    """What counts as reaching past the bundle, and what only looks like it.
-
-    A dropped test is invisible in the score: it does not fail, it stops
-    existing, and the mutants only it could kill read as survivors.  So
-    both directions matter -- dropping a test that would have run costs
-    coverage silently, and keeping one that cannot run marks every mutant
-    killed for the wrong reason.
-    """
+    """What counts as reaching past the bundle, and what only looks like it."""
 
     def test_a_reach_is_dropped_however_it_is_spelled(self) -> None:
         """Every syntax that actually leaves the bundle still cuts the test."""
@@ -141,18 +112,7 @@ class TestDropUnbundledTests:
             assert "test_reaches" not in out, reach
 
     def test_naming_a_module_in_prose_is_not_a_reach(self) -> None:
-        """A comment or docstring must not cut the test that carries it.
-
-        This is a real regression, not a hypothetical.  The check used to
-        be a substring scan over the test's text, which cannot tell an
-        import from a mention of one -- so a test whose docstring
-        explained *why* it copies a shared helper was dropped whole, and
-        the mutants only its programs catch went quietly missing.
-
-        The last case is the other half: a module named inside a *string*
-        is data, not an import, and this suite really does carry program
-        text spelled that way.
-        """
+        """A comment or docstring must not cut the test that carries it."""
         script = load_script()
         mentions = (
             "# unlike esolangs.vm, this one needs no shared walk",

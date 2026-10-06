@@ -1,17 +1,4 @@
-"""``docs/proofs/index.md`` must agree with the registry and with itself.
-
-Nothing read the ledger before this file.  It is prose, so every claim in it
--- which generators it covers, which proof schemes exist, how many rows are
-capped, how many exceptions remain -- was maintained by hand and verified by
-hand.  The failure that motivates these tests is not hypothetical: thirteen
-rows sat on a `tree` scheme for twenty-three commits after their generators
-had been linearized onto lookups, and a fourteenth (Alight) did not match its
-construction at all until the commit that added this file.
-
-These are cheap on purpose.  Parsing a document and comparing name sets does
-not run a generator, so the whole file stays in the fast band and gates every
-push; the obligations that cost something live in ``test_schemes.py``.
-"""
+"""``docs/proofs/index.md`` must agree with the registry and with itself."""
 
 from __future__ import annotations
 
@@ -37,14 +24,7 @@ def ledger() -> Ledger:
 
 
 def test_the_ledger_covers_exactly_the_registered_generators(ledger: Ledger) -> None:
-    """One row per callable in ``BY_BOOLEAN``, and no row without one.
-
-    Compared on the *display* name (``Language.name``), not the registry key:
-    the keys are snake_case ids (``cvnc``) while the ledger
-    names languages as they are written (``CV(N)(C)``).  Comparing the wrong one
-    reports all of them as missing in both directions, which reads like a parser
-    bug rather than the naming mismatch it is.
-    """
+    """One row per callable in ``BY_BOOLEAN``, and no row without one."""
     registered = {lang.name for lang in BY_BOOLEAN.values()}
     listed = {row.generator for row in ledger.rows}
     assert listed == registered, (
@@ -67,13 +47,7 @@ def test_every_proof_label_is_defined(ledger: Ledger) -> None:
 
 
 def test_every_definition_is_a_label_or_declared_not_to_be(ledger: Ledger) -> None:
-    """A ``**Heading.**`` in Proof schemes is a label, or is listed as not one.
-
-    Checked in this direction only.  A defined scheme with no rows is fine --
-    ``Reduction`` is defined and currently cited by qualifications rather than
-    by the Proof column -- but a heading that is *neither* a label nor
-    declared a note means the mapping has fallen behind a renamed definition.
-    """
+    """A ``**Heading.**`` in Proof schemes is a label, or is listed as not one."""
     accounted = set(SCHEME_LABELS) | NOT_A_LABEL
     assert ledger.defined_schemes <= accounted, (
         f"defined but unaccounted: {sorted(ledger.defined_schemes - accounted)}"
@@ -81,13 +55,7 @@ def test_every_definition_is_a_label_or_declared_not_to_be(ledger: Ledger) -> No
 
 
 def test_every_row_carries_exactly_one_scheme(ledger: Ledger) -> None:
-    """A row proves its generator one way, or is an open exception.
-
-    ``cap`` qualifies a scheme rather than replacing it, so a capped row still
-    names one.  ``exception`` is the one label that stands alone: the row
-    exists precisely because no scheme covers the generator yet, so demanding
-    a scheme there would be demanding the gap be papered over.
-    """
+    """A row proves its generator one way, or is an open exception."""
     for row in ledger.rows:
         expected = 0 if "exception" in row.labels else 1
         assert len(row.schemes) == expected, (
@@ -126,13 +94,7 @@ def test_exception_rows_match_the_exceptions_section(ledger: Ledger) -> None:
 
 
 def test_the_ledger_totals_itself_correctly(ledger: Ledger) -> None:
-    """The closing sentence's arithmetic must survive adding a language.
-
-    It states a count of totality arguments and a count of open exceptions.
-    Adding a generator moves both the row count and, usually, only the first
-    number -- so this is the assertion that catches a new language landing
-    without the prose being revisited.
-    """
+    """The closing sentence's arithmetic must survive adding a language."""
     assert ledger.claimed_exceptions == len(ledger.labelled("exception"))
     assert ledger.claimed_arguments + ledger.claimed_exceptions == len(ledger.rows), (
         f"{ledger.claimed_arguments} + {ledger.claimed_exceptions} "
@@ -141,14 +103,7 @@ def test_the_ledger_totals_itself_correctly(ledger: Ledger) -> None:
 
 
 def test_every_row_carries_a_scaling_cell(ledger: Ledger) -> None:
-    """The Scaling column is checked like the Proof column: a class, then a clause.
-
-    A row whose cell is missing fails in the parser (four cells or nothing);
-    a row whose class is not one of :data:`SCALING_CLASSES` fails here, so a
-    typo cannot read as settled.  Every class carries a clause: ``linear``
-    names its argument in :data:`LINEAR_CLAUSE_WORDS` words or fewer, the
-    others name the term or the bound.
-    """
+    """The Scaling column is checked like the Proof column: a class, then a clause."""
     for row in ledger.rows:
         assert row.scaling_class in SCALING_CLASSES, (
             f"{row.generator}: unknown scaling class {row.scaling_class!r}"

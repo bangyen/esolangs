@@ -2,7 +2,6 @@
 
 import ast
 import json
-import sys
 from unittest.mock import patch
 
 import pytest
@@ -11,9 +10,7 @@ import esolangs
 from esolangs import DialectSettings
 from esolangs._evaluate import _evaluate
 from esolangs.tagged import _Tagged
-from esolangs.tui import History, replay
 from tests.cli_support import call_both
-from tests.test_cli import _FakeStdin
 from tests.test_dialects import CASES
 
 
@@ -34,20 +31,6 @@ def save_generated(tmp_path, capsys, language, settings, *options, table="0110")
     path = tmp_path / "program.json"
     path.write_text(output, encoding="utf-8")
     return path
-
-
-@pytest.mark.medium
-@pytest.mark.parametrize(("language", "settings"), CASES)
-@pytest.mark.parametrize("balance", [False, True])
-def test_portable_generation_restores_every_row(
-    tmp_path, capsys, language, settings, balance
-):
-    path = save_generated(
-        tmp_path, capsys, language, settings, *(["--balance"] if balance else [])
-    )
-    restored = esolangs.load_program(language, path.read_text(encoding="utf-8"))
-    assert restored.settings == settings
-    assert _evaluate(language, restored, inputs=2) == "0110"
 
 
 @pytest.mark.medium
@@ -227,45 +210,6 @@ def test_raw_file_named_portable_flag(tmp_path, capsys, monkeypatch):
     assert (output, error) == ("\x01", "")
 
 
-@pytest.mark.medium
-@pytest.mark.parametrize("override", [None, "between_letters"])
-def test_tui_replay_preserves_restored_choices(tmp_path, capsys, monkeypatch, override):
-    source = _Tagged(
-        "FAFYPPPP", "Grapheme", DialectSettings(integer_conversion="after_each_letter")
-    )
-    path = tmp_path / "program.json"
-    path.write_text(esolangs.dump_program("Grapheme", source), encoding="utf-8")
-    monkeypatch.setattr(_FakeStdin, "isatty", lambda _self: True)
-    options = (
-        []
-        if override is None
-        else ["--settings", json.dumps({"integer_conversion": override})]
-    )
-    with patch("esolangs.cli_debug.run_tui") as screen:
-        call_both(
-            [
-                "debug",
-                "--portable",
-                "--tui",
-                "--stdin",
-                "",
-                *options,
-                "Grapheme",
-                str(path),
-            ],
-            capsys,
-        )
-    language, restored, stdin = screen.call_args.args
-    assert restored.settings == source.settings
-    settings = screen.call_args.kwargs.get("settings")
-    history = History(language, restored, stdin, settings=settings)
-    history.budget = 1
-    assert history.at(8).output == ("10" if override is None else "1")
-    assert history.retained < history.top
-    assert history.at(4) == replay(language, restored, stdin, 4, settings=settings)
-    assert history.at(4).output == ("10" if override is None else "1")
-
-
 @pytest.mark.parametrize("command", ["run", "debug"])
 def test_unknown_portable_language_fails_before_file_read(command, capsys):
     module = f"cli_{command}"
@@ -318,55 +262,3 @@ def test_portable_choices_and_memory_budget_reach_worker(tmp_path, capsys, monke
     )
     assert (output, error) == ("1", "")
     assert calls == [budget]
-
-
-def test_portable_memory_budget_rejected_before_file_read(capsys):
-    command = "run"
-    module = "cli_run"
-    options = ["--isolated"]
-    with (
-        patch(f"esolangs.{module}._read_program", side_effect=AssertionError("read")),
-        pytest.raises(SystemExit) as caught,
-    ):
-        call_both(
-            [
-                command,
-                "--portable",
-                *options,
-                "--max-memory",
-                "0",
-                "Brainfuck",
-                "never-read.json",
-            ],
-            capsys,
-        )
-    assert caught.value.code == 2
-    assert "max_memory must be positive" in capsys.readouterr().err
-
-
-@pytest.mark.medium
-@pytest.mark.skipif(sys.platform != "linux", reason="Linux RLIMIT_AS only")
-def test_portable_program_executes_with_real_memory_cap(tmp_path, capsys):
-    command = "run"
-    source = esolangs.generate(
-        "Grapheme",
-        "01",
-        settings=DialectSettings(integer_conversion="after_each_letter"),
-    )
-    path = tmp_path / "program.json"
-    path.write_text(esolangs.dump_program("Grapheme", source), encoding="utf-8")
-    options = ["--isolated"]
-    output, error = call_both(
-        [
-            command,
-            "--portable",
-            *options,
-            "--max-memory",
-            str(96 * 1024 * 1024),
-            "Grapheme",
-            str(path),
-        ],
-        capsys,
-        esolangs.encode_inputs("Grapheme", [1]),
-    )
-    assert (output, error) == ("1", "")

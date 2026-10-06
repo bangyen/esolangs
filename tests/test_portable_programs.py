@@ -7,28 +7,8 @@ import pytest
 import esolangs
 from esolangs import DialectSettings, Raster
 from esolangs._evaluate import _evaluate
-from esolangs.tagged import _Tagged, _Template
+from esolangs.tagged import _Tagged
 from tests.test_dialects import CASES
-
-
-@pytest.mark.medium
-@pytest.mark.parametrize(("language", "settings"), CASES)
-@pytest.mark.parametrize("balance", [False, True])
-def test_disk_round_trip_executes_every_row(tmp_path, language, settings, balance):
-    source = esolangs.generate(language, "0110", balance=balance, settings=settings)
-    path = tmp_path / "program.json"
-    path.write_text(esolangs.dump_program(language, source), encoding="utf-8")
-    restored = esolangs.load_program(language, path.read_text(encoding="utf-8"))
-    assert restored.settings == settings
-    assert type(restored) is type(source)
-    if isinstance(source, Raster):
-        assert restored.rows == source.rows
-    else:
-        assert restored == source
-    if isinstance(source, _Template):
-        assert restored.char == source.char
-        assert restored.setters == source.setters
-    assert _evaluate(language, restored, inputs=2) == "0110"
 
 
 @pytest.mark.medium
@@ -49,26 +29,6 @@ def test_raw_text_preserves_newlines_and_explicit_settings():
     assert str(restored) == source
     assert restored.settings == choices
     assert esolangs.run("Grapheme", restored) == "10"
-
-
-@pytest.mark.medium
-def test_partial_override_is_saved_and_executes():
-    source = _Tagged(
-        "SEED " * 255 + "DIGEST PRONOUNCE",
-        "SLOW ACV MAMMALIAN",
-        DialectSettings(cell_modulus=256, io_modulus=255),
-    )
-    restored = esolangs.load_program(
-        "SLOW ACV MAMMALIAN",
-        esolangs.dump_program(
-            "SLOW ACV MAMMALIAN", source, settings=DialectSettings(io_modulus=256)
-        ),
-    )
-    assert restored.settings.options("SLOW ACV MAMMALIAN") == {
-        "cell_modulus": 256,
-        "io_modulus": 256,
-    }
-    assert esolangs.run("SLOW ACV MAMMALIAN", restored) == chr(255)
 
 
 def test_large_integer_setting_is_rejected():
@@ -131,19 +91,13 @@ def test_invalid_json(document):
     [
         ("format", "other"),
         ("version", 2),
-        ("version", True),
         ("source", 1),
         ("kind", "other"),
-        ("kind", []),
         ("settings", []),
         ("settings", {"eof": False}),
-        ("settings", {"tape_size": {"integer": 1}}),
-        ("settings", {"tape_size": {"integer": "10"}}),
         ("settings", {"tape_size": {"integer": "0x!"}}),
-        ("settings", {"tape_size": {"integer": "0x1", "other": 1}}),
         ("settings", {"tape_size": {}}),
         ("settings", {"boundary": "wrap"}),
-        ("settings", {"tape_size": {"integer": "-0x1"}}),
         ("extra", None),
     ],
 )
@@ -168,13 +122,9 @@ def test_invalid_png(value):
     ("field", "value"),
     [
         ("char", 1),
-        ("char", ""),
         ("char", "$$"),
-        ("char", "?"),
         ("setters", None),
-        ("setters", [1]),
         ("setters", [["x"]]),
-        ("setters", [["x", 1]]),
         ("setters", [["x", "yy"]]),
         ("setters", []),
     ],

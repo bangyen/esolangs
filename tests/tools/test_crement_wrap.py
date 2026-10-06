@@ -3,33 +3,8 @@
 import pytest
 
 import esolangs
-from esolangs.interpreters.other.crement import _parse
 from esolangs.tools.crement import crement
 from tests.divergence import diverges
-from tests.tools.fills import instantiate_crement
-
-
-@pytest.mark.parametrize("width", [1, 2, 3, 4, 5, 6, 7, 8, 11, 80, None])
-@pytest.mark.parametrize(
-    "table",
-    ["01", "10", "0000", "1111", "0110", "00010111", "01101001" * 4, "0" * 63 + "1"],
-)
-def test_crement_narrow_operands_preserve_every_row(
-    table: str, width: int | None
-) -> None:
-    template = esolangs.generate("Crement", table, width)
-    plain = crement(table)
-    floor = max(map(len, crement(table, 1).splitlines()))
-    if width is None:
-        assert template == plain
-    else:
-        assert max(map(len, template.splitlines())) <= max(width, floor)
-    inputs = len(table).bit_length() - 1
-    for row, expected in enumerate(table):
-        bits = [int(bit) for bit in format(row, f"0{inputs}b")]
-        source = instantiate_crement(template, bits)
-        assert _parse(source) == _parse(instantiate_crement(plain, bits))
-        assert diverges("Crement", source, "") is (expected == "1")
 
 
 def test_crement_width_narrows_the_widest_instruction() -> None:

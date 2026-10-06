@@ -55,13 +55,7 @@ def _logical_lines(text: str) -> list[str]:
 
 
 def _commands(text: str) -> list[tuple[str, str | None]]:
-    """Return the concrete commands in ``text``, with any stated output.
-
-    Some examples are written ``esolangs encode brainfuck 10 -> 10``.
-    The arrow is a claim about what the command prints, so it is parsed and
-    checked rather than stripped: an example that says what it produces is
-    the most falsifiable kind there is.
-    """
+    """Return the concrete commands in ``text``, with any stated output."""
     out: list[tuple[str, str | None]] = []
     for line in _logical_lines(text):
         command = line.strip().removeprefix("$ ").strip()
@@ -97,14 +91,7 @@ def _setup_command(*args: str) -> subprocess.CompletedProcess[str]:
 @pytest.mark.slow
 @pytest.mark.parametrize("where", sorted(_documents()))
 def test_every_documented_command_runs(where: str, tmp_path: pathlib.Path) -> None:
-    """Run one document's commands, in order, in a scratch directory.
-
-    In order and in one directory because the examples are sequences: a
-    ``generate ... > prog.txt`` line sets up the ``run ... prog.txt`` line
-    under it.  Getting that wrong is what made a hand-run of this report a
-    false failure -- the setup file was regenerated from scratch between
-    the two lines and arrived as an unfilled template.
-    """
+    """Run one document's commands, in order, in a scratch directory."""
     commands = _commands(_documents()[where])
     if not commands:
         pytest.skip(f"{where} shows no concrete commands")
@@ -161,12 +148,7 @@ def test_the_documents_really_do_contain_commands() -> None:
 
 
 def test_the_usage_guide_names_every_command() -> None:
-    """A command reachable only from ``--help`` is one a reader does not find.
-
-    ``encode`` and ``suggest`` shipped with no mention in ``docs/``.  The
-    table in ``docs/usage.md`` names each command, and this keeps a new one
-    from arriving documented only in the usage block.
-    """
+    """A command reachable only from ``--help`` is one a reader does not find."""
     text = (ROOT / "docs" / "usage.md").read_text()
     missing = [command for command in HELP if f"`{command}`" not in text]
     assert not missing, f"docs/usage.md never names: {', '.join(sorted(missing))}"
@@ -182,24 +164,7 @@ _ROOT = pathlib.Path(__file__).parents[1]
 
 
 def test_every_test_a_docstring_names_still_exists() -> None:
-    """A citation to a renamed or deleted test is worse than none.
-
-    Docstrings in ``src/`` back a claim by naming the test that
-    proves it -- that a constant is derived rather than frozen, that a
-    selection rule is pinned, that two structures cannot drift apart.  A
-    reader who goes looking and finds nothing cannot tell whether the test
-    moved or the claim stopped being true, and the *writer* gets no signal
-    at all: renaming a test is a one-file change and the prose citing it
-    lives somewhere else entirely.
-
-    Three had already gone stale when this was written.  One was a rename
-    the citation had not followed (``test_separation_law_is_least_mean``,
-    backing the claim that Streetcode's separation laws are re-derived
-    rather than frozen -- the most load-bearing of the three).  One named a
-    test that is simply gone.  The third described a *deleted* test in the
-    past tense, correctly, but spelled its name the same way a live
-    citation is spelled, so it read like the other two.
-    """
+    """A citation to a renamed or deleted test is worse than none."""
     cited: dict[str, list[str]] = {}
     for path in sorted((_ROOT / "src").rglob("*.py")):
         for name in _CITATION.findall(path.read_text()):
@@ -224,20 +189,7 @@ _QUALIFIED_REF = re.compile(
 
 
 def test_every_qualified_reference_resolves() -> None:
-    """A ``:func:`esolangs.a.b.c`` pointing at nothing.
-
-    Only the *fully qualified* references are checked.  A bare
-    ``:class:`ScriptedIO`` is resolved by Sphinx against whatever the citing
-    module imported, and reimplementing that here produced 460 accusations
-    out of 510 -- a guard that cries wolf is worse than no guard, so it
-    checks the subset it can judge exactly.  That subset is also the one
-    most likely to rot, because it names a path that moves when code does.
-
-    One was broken when this was written:
-    ``esolangs.tools.examples.bio``, for a generator that lives at
-    ``esolangs.tools.bio`` -- the reader is sent to the module that
-    registers the examples rather than the one with the function in it.
-    """
+    """A ``:func:`esolangs.a.b.c`` pointing at nothing."""
     targets: dict[str, set[str]] = {}
     for path in sorted((_ROOT / "src").rglob("*.py")):
         for target in _QUALIFIED_REF.findall(path.read_text()):

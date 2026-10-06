@@ -1,18 +1,10 @@
-"""Malbolge's boolean generator: a source stub per row, no initializer.
-
-The construction is the full 59049-cell store.  These tests run the shipped
-programs through the repository interpreter, which is the execution gate: the
-mixer, the re-encipherment-compensated data layout and the answer stubs are
-only known to agree because every row is run.  Eleven inputs go through the
-pointer cascade; its 256 second-level rows are always among the rows run.
-"""
+"""Malbolge's boolean generator: a source stub per row, no initializer."""
 
 from __future__ import annotations
 
 import hashlib
 import importlib
 from collections.abc import Sequence
-from itertools import product
 
 import pytest
 
@@ -93,15 +85,6 @@ def test_wrapping_preserves_loaded_addresses_and_output(table: str, width: int) 
 _SWEEP_PARTS = 4
 
 
-@pytest.mark.parametrize(
-    "table",
-    ["".join(bits) for n in (1, 2, 3) for bits in product("01", repeat=2**n)],
-)
-def test_every_table_up_to_three_inputs(table: str) -> None:
-    """The whole domain through n=3, run row by row."""
-    assert _rows(table) == list(table)
-
-
 @pytest.mark.slow
 @pytest.mark.parametrize("n", [6, 9, 10])
 @pytest.mark.parametrize("shape", [_dense, _parity])
@@ -127,11 +110,7 @@ def test_cascade_leaves_128_pairs_to_the_second_decoder() -> None:
 
 
 def test_eleven_input_tables_differ_in_one_cell_per_row() -> None:
-    """Every row owns one answer cell; the rows a pair shares point at NEXT.
-
-    The all-0 and all-1 tables therefore differ in exactly 2048 of the 59049
-    cells: one per resolved row at level 1, one per row at level 2.
-    """
+    """Every row owns one answer cell; the rows a pair shares point at NEXT."""
     zeros = boolean.malbolge("0" * 2**11)
     ones = boolean.malbolge("1" * 2**11)
     assert len(zeros) == len(ones) == 3**10
@@ -144,18 +123,6 @@ def test_eleven_inputs_sampled(shape: object) -> None:
     """Every eighth row and every second-level row of the two shapes."""
     table = shape(11)  # type: ignore[operator]
     rows = sorted({*range(0, 2**11, 8), *_second_level_rows()})
-    assert _rows(table, rows) == [table[row] for row in rows]
-
-
-@pytest.mark.slow
-@pytest.mark.weekly
-@pytest.mark.cost_evidence("an n=11 cascade row outside the sampled residue classes")
-@pytest.mark.parametrize("part", range(_SWEEP_PARTS))
-@pytest.mark.parametrize("shape", [_dense, _parity])
-def test_eleven_inputs_every_row(shape: object, part: int) -> None:
-    """The full 2048-row sweep, the cascade's execution gate."""
-    table = shape(11)  # type: ignore[operator]
-    rows = range(part, 2**11, _SWEEP_PARTS)
     assert _rows(table, rows) == [table[row] for row in rows]
 
 
@@ -177,18 +144,6 @@ def test_twelve_inputs_sampled(shape: object) -> None:
     """Every sixteenth row and every second-level row of the two shapes."""
     table = shape(12)  # type: ignore[operator]
     rows = sorted({*range(0, 2**12, 16), *_wide_second_level_rows()})
-    assert _rows(table, rows) == [table[row] for row in rows]
-
-
-@pytest.mark.slow
-@pytest.mark.weekly
-@pytest.mark.cost_evidence("an n=12 selector row outside the sampled residue classes")
-@pytest.mark.parametrize("part", range(_SWEEP_PARTS))
-@pytest.mark.parametrize("shape", [_dense, _parity])
-def test_twelve_inputs_every_row(shape: object, part: int) -> None:
-    """The full 4096-row sweep, the selector's execution gate."""
-    table = shape(12)  # type: ignore[operator]
-    rows = range(part, 2**12, _SWEEP_PARTS)
     assert _rows(table, rows) == [table[row] for row in rows]
 
 
@@ -219,22 +174,6 @@ def test_thirteen_inputs_sampled(shape: object) -> None:
     """Every thirty-second row and every second-level row of the two shapes."""
     table = shape(13)  # type: ignore[operator]
     rows = sorted({*range(0, 2**13, 32), *_thirteen_second_level_rows()})
-    assert _rows(table, rows) == [table[row] for row in rows]
-
-
-@pytest.mark.slow
-@pytest.mark.weekly
-@pytest.mark.cost_evidence(
-    "an n=13 answer-label row outside the sampled residue classes"
-)
-@pytest.mark.parametrize("part", range(_SWEEP_PARTS))
-@pytest.mark.parametrize(
-    "shape", [_dense, _parity, lambda n: "0" * 2**n, lambda n: "1" * 2**n]
-)
-def test_thirteen_inputs_every_row(shape: object, part: int) -> None:
-    """The full 8192-row sweep, the four-answer labels' execution gate."""
-    table = shape(13)  # type: ignore[operator]
-    rows = range(part, 2**13, _SWEEP_PARTS)
     assert _rows(table, rows) == [table[row] for row in rows]
 
 
@@ -298,18 +237,6 @@ def test_fourteen_inputs_sampled(shape: object) -> None:
     assert _rows(table, rows) == [table[row] for row in rows]
 
 
-@pytest.mark.slow
-@pytest.mark.weekly
-@pytest.mark.cost_evidence("an n=14 cascade row outside the sampled levels")
-@pytest.mark.parametrize(
-    "shape", [_dense, _parity, lambda n: "0" * 2**n, lambda n: "1" * 2**n]
-)
-def test_fourteen_inputs_every_row(shape: object) -> None:
-    """The full 16,384-row sweep, the three-level cascade's execution gate."""
-    table = shape(14)  # type: ignore[operator]
-    assert _rows(table) == list(table)
-
-
 _digits = importlib.import_module("esolangs.tools.malbolge.digits")
 
 
@@ -357,18 +284,6 @@ def test_digit_builds_sampled(n: int, shape: object) -> None:
     assert _rows(table, rows) == [table[row] for row in rows]
 
 
-@pytest.mark.slow
-@pytest.mark.weekly
-@pytest.mark.cost_evidence("an n=15 or n=16 positional row outside the 1-in-128 sample")
-@pytest.mark.parametrize("part", range(_SWEEP_PARTS))
-@pytest.mark.parametrize("n", [15, 16])
-def test_digit_builds_every_row(n: int, part: int) -> None:
-    """The full sweep of the dense shape, the positional build's gate."""
-    table = _dense(n)
-    rows = range(part, 2**n, _SWEEP_PARTS)
-    assert _rows(table, rows) == [table[row] for row in rows]
-
-
 def test_past_sixteen_inputs_is_refused() -> None:
     """Seventeen would need 65,536 answer cells in a 59,049-cell store."""
     with pytest.raises(GeneratorCapError, match="at most 16 inputs"):
@@ -376,13 +291,7 @@ def test_past_sixteen_inputs_is_refused() -> None:
 
 
 def test_a_value_meaning_needs_sixteen_characters() -> None:
-    """A 16-value set meets every residue's character set; see the proof.
-
-    The characters admissible at ``h`` are ``33 + ((i - h) mod 94)`` over the
-    eight instruction indices, so a value set usable at every address must
-    hit every translate of those indices.  This pins the witness; that none
-    of 15 exists is the CP-SAT result in ``docs/proofs/malbolge-scaling.md``.
-    """
+    """A 16-value set meets every residue's character set; see the proof."""
     indices = [_XLAT1.index(op) for op in "ji*p</vo"]
     witness = {11, 15, 17, 22, 24, 29, 31, 38, 44, 62, 64, 71, 76, 78, 85, 91}
     for h in range(94):

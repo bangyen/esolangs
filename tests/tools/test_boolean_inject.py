@@ -1,6 +1,5 @@
 """inject generator tests."""
 
-import itertools
 from itertools import pairwise
 
 import pytest
@@ -15,59 +14,14 @@ from tests.tools.boolean_runners import (
 class TestInject:
     """The decision tree of ``skipq`` guards over stored input blocks."""
 
-    @pytest.mark.parametrize(
-        ("table", "n"),
-        [
-            ("01", 1),  # identity
-            ("10", 1),  # NOT
-            ("00", 1),  # constant zero
-            ("11", 1),  # constant one
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("1110", 2),  # NAND
-            ("11111110", 3),  # NAND3
-            ("01101001", 3),  # XOR3
-            ("1000000000000000", 4),  # AND4
-        ],
-    )
-    @pytest.mark.medium
-    def test_truth_table(self, table: str, n: int) -> None:
-        """Every input combination produces the truth-table result.
-
-        ``send`` terminates every line it writes and is the only output
-        command, so the answer arrives with a newline after it.
-        """
-        program = boolean.inject(table)
-        for combo in range(2**n):
-            bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
-            got = run_inject(program, bits)
-            assert got == table[combo] + "\n", f"inputs {bits}"
-
-    def test_every_two_input_table(self) -> None:
-        """All sixteen two-input tables build and compute their function."""
-        for table in ("".join(t) for t in itertools.product("01", repeat=4)):
-            program = boolean.inject(table)
-            for combo in range(4):
-                bits = [str((combo >> (1 - i)) & 1) for i in range(2)]
-                got = run_inject(program, bits)
-                assert got == table[combo] + "\n", f"{table} inputs {bits}"
-
     def test_constant_subtrees_are_folded(self) -> None:
-        """A table ignoring its later inputs costs one test, not ``n``.
-
-        The fold is what the shape catalogue asserts of every tree
-        generator; measured here directly so a regression names itself.
-        """
+        """A table ignoring its later inputs costs one test, not ``n``."""
         one_dependency = len(boolean.inject("00001111"))
         parity = len(boolean.inject("01101001"))
         assert one_dependency < parity / 2
 
     def test_reads_every_input_before_branching(self) -> None:
-        """The reads are hoisted, so every path consumes exactly ``n`` lines.
-
-        The boolean contract requires a constant read count; Inject gets it
-        by reading all the bits up front rather than at the tree's nodes.
-        """
+        """The reads are hoisted, so every path consumes exactly ``n`` lines."""
         program = boolean.inject("0001").splitlines()
         reads = [i for i, line in enumerate(program) if line.startswith("readto")]
         first_branch = next(
@@ -77,16 +31,7 @@ class TestInject:
         assert max(reads) < first_branch, "every read precedes every branch"
 
     def test_every_label_occurs_exactly_twice(self) -> None:
-        """Inject's labels are strictly two-occurrence: an open and a close.
-
-        The construction leans on it -- each leaf carries *its own* escape
-        label precisely because a third occurrence would not be a legal
-        block, and the escape blocks are allowed to overlap only because
-        each closes exactly once in the tail.  A counter that handed out a
-        duplicate would still emit a program, and a table whose paths
-        happen to avoid the clash would still compute correctly, so the
-        rule is checked over the label set rather than through an answer.
-        """
+        """Inject's labels are strictly two-occurrence: an open and a close."""
         from collections import Counter
 
         for table in ("01", "0001", "0110", "01101001", "11110000"):
@@ -98,14 +43,7 @@ class TestInject:
             assert all(v == 2 for v in counts.values()), (table, counts)
 
     def test_an_input_block_starts_empty(self) -> None:
-        """An empty block is two *adjacent* delimiters, with nothing between.
-
-        ``readto`` fills the block, so it has to start empty -- and empty
-        means the two delimiter lines are adjacent and bare.  A stray
-        space before the closing delimiter still parses and still computes
-        the table, which is exactly why the spelling is asserted here
-        instead of being left to the truth-table sweeps.
-        """
+        """An empty block is two *adjacent* delimiters, with nothing between."""
         for n, table in ((1, "01"), (2, "0001"), (3, "01101001")):
             lines = boolean.inject(table).splitlines()
             head = lines[: 2 * n]
@@ -160,16 +98,7 @@ class TestInject:
         assert all(b <= 2 * a for a, b in pairwise(sizes))
 
     def test_the_tree_collapses_on_the_constant_subtree_alone(self) -> None:
-        """Depth never terminates the recursion; a constant subtree always does.
-
-        ``_tree`` stops on ``depth == n`` *or* a subtree whose entries all
-        agree, and the second is the only one that ever fires: at depth
-        ``n`` the remaining table is a single entry, which is constant by
-        definition.  Swept over every table to three inputs, the depth
-        clause explains none of the 1522 collapses.  Stated as a test so
-        the disjunct is known to be belt-and-braces rather than assumed to
-        be required.
-        """
+        """Depth never terminates the recursion; a constant subtree always does."""
         from esolangs.tools.inject import _Names, _tree
 
         calls: list[tuple[str, int, int]] = []

@@ -1,25 +1,4 @@
-"""One tiny program per registry language, and the stdin it needs.
-
-The per-language test files each grew their own copy of the same protocol
-checks -- a snapshot can be hashed, a step past the halt is a no-op,
-stepping to completion matches ``run``, and a halting program is proven to
-halt.  Those checks say nothing about the language; they say that the
-language's adapter honours the VM protocol.  Written once per file they
-are sixty-odd near-identical bodies differing only in which ``_Machine``
-to import and which program to hand it -- the shape a table plus a sweep
-replaces.
-
-:data:`SAMPLES` is that table: for every name in
-:data:`~esolangs.registry.INTERPRETERS`, the smallest program that reaches the
-language's halt, and the stdin it reads on the way (``""`` for the ones
-that read nothing).  The programs are *tiny* deliberately -- a generated
-one is the wrong input here, since the sweep runs each entry to completion
-and some languages take tens of thousands of steps.
-
-``TestSamplesCoverEveryLanguage`` locks the table against the registry, so
-a language added without an entry fails there rather than being silently
-skipped.
-"""
+"""One tiny program per registry language, and the stdin it needs."""
 
 from esolangs._program import Program
 from esolangs.raster import Raster

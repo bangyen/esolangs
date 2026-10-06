@@ -1,11 +1,4 @@
-"""Executed first-output semantics for the Factor normalization corpus.
-
-The leading-constant count treats prefix-normalized words as descriptions of
-behaviours.  This module decodes the proof witnesses, runs them to the first
-printed character on every input, and reports how many descriptions share a
-behaviour.  A behaviour is the per-input tuple ``("out", char, cursor)``; the
-cursor is the input position at that first output, the consumption signature.
-"""
+"""Executed first-output semantics for the Factor normalization corpus."""
 
 from __future__ import annotations
 
@@ -48,12 +41,7 @@ class _FirstOutput(IO):
 
 
 def first_output(code: str, bits: str, limit: int = _STEP_LIMIT) -> tuple[object, ...]:
-    """Run ``code`` on one input to its first print.
-
-    Returns ``("out", char, cursor)``, or the status ``("bad-brackets",)``,
-    ``("exhausted",)``, ``("nonhalting",)``, or ``("halt",)`` when no print
-    precedes it.  ``limit`` bounds only the undecided runs.
-    """
+    """Run ``code`` on one input to its first print."""
     io = _FirstOutput(bits)
     try:
         machine = _Machine(code, io)
@@ -83,11 +71,7 @@ def behaviour(
 
 
 def corpus(nmax: int = 3, parity_to: int = 7) -> list[tuple[int, str]]:
-    """Return exhaustive tables through ``nmax`` inputs, then parity tables.
-
-    Parity beyond the exhaustive range extends the sample without a search;
-    its tables are ``sum of input bits`` modulo two over the ``2**n`` rows.
-    """
+    """Return exhaustive tables through ``nmax`` inputs, then parity tables."""
     tables = [
         (n, format(value, f"0{2**n}b"))
         for n in range(1, nmax + 1)

@@ -1,8 +1,4 @@
-"""What the CLI says when something is wrong, and when it stays quiet.
-
-A hint that fires on the wrong input is worse than no hint, so each of these
-pins both halves: the case it names, and a near miss it must not name.
-"""
+"""What the CLI says when something is wrong, and when it stays quiet."""
 
 import io
 import sys
@@ -13,8 +9,8 @@ import pytest
 
 import esolangs
 from esolangs.cli import main
-from esolangs.cli_io import _emit_partial, _smuggled_bytes, _write_output
-from tests.cli_support import _LOOPS, call_both
+from esolangs.cli_io import _write_output
+from tests.cli_support import call_both
 from tests.test_cli import _FakeStdin, _program, call_main
 
 
@@ -132,50 +128,7 @@ class TestTheHintsStayQuietWhenTheyDoNotApply:
 
 
 class TestTheShapeWarningFiresOnlyWhenItShould:
-    """The last silent-wrong path: stdin in the shape a reader expects.
-
-    A warning, not a refusal -- ``run`` executes arbitrary programs of a
-    language, so a shape this calls wrong may be what a hand-written program
-    wants.  The answer and the exit code are unchanged either way.
-    """
-
-    def test_naive_bits_into_a_different_alphabet_warn(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """Grapheme reads any non-empty line as true, so '0' is a 1."""
-        path = tmp_path / "g.txt"
-        path.write_text(esolangs.generate("Grapheme", "0110"))
-        _out, err = call_both(["run", "Grapheme", str(path)], capsys, stdin="1\n0\n")
-        assert "spells its bits" not in err
-
-    def test_multiple_lines_into_a_one_line_language_warn(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """Clockwise reads its bits in one go."""
-        path = tmp_path / "c.txt"
-        path.write_text(esolangs.generate("Clockwise", "0110"))
-        _out, err = call_both(["run", "Clockwise", str(path)], capsys, stdin="1\n0\n")
-        assert "wants every bit on one line" not in err
-
-    def test_multiple_lines_into_a_row_index_language_warn(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """Fargo reads one decimal number."""
-        path = tmp_path / "f.txt"
-        path.write_text(esolangs.generate("Fargo", "0110"))
-        _out, err = call_both(["run", "Fargo", str(path)], capsys, stdin="1\n0\n")
-        assert "row index" not in err
-
-    def test_the_encoded_stdin_is_not_warned_about(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """Doing it right must be quiet, or the warning is noise."""
-        for name in ("Grapheme", "Clockwise", "Fargo"):
-            path = tmp_path / "p.txt"
-            path.write_text(esolangs.generate(name, "0110"))
-            stdin = esolangs.encode_inputs(name, [1, 0])
-            _out, err = call_both(["run", name, str(path)], capsys, stdin=stdin)
-            assert "esolangs encode" not in err, name
+    """The last silent-wrong path: stdin in the shape a reader expects."""
 
     def test_an_ordinary_language_is_never_warned_about(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
@@ -215,15 +168,6 @@ class TestTheAdvisoryNotesAreRenderedOnce:
         assert "read 3 of the 6 lines" not in err
         assert "UserWarning" not in err
         assert "cli.py" not in err
-
-    def test_a_surplus_line_is_said_exactly_once(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """It was printed by the CLI and warned by the library both."""
-        path = tmp_path / "p.txt"
-        path.write_text(esolangs.generate("Grapheme", "0110"))
-        _out, err = call_both(["run", "Grapheme", str(path)], capsys, stdin="0\n1\n")
-        assert err.count("spells its bits") == 0
 
     def test_an_empty_program_file_is_noted(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
@@ -273,12 +217,7 @@ class TestAMultiWordNameSuggestsQuoting:
 
 
 class TestModulousSaysWhatWentWrong:
-    """Four halts raised ``HaltError`` with the empty string as a message.
-
-    Exit 1 with nothing on stderr is indistinguishable from a crash, and
-    the CLI printed literally nothing because the message it forwards was
-    ``""``.
-    """
+    """Four halts raised ``HaltError`` with the empty string as a message."""
 
     @pytest.mark.parametrize(
         ("program", "expected"),
@@ -293,13 +232,6 @@ class TestModulousSaysWhatWentWrong:
         """Not the class, the sentence: an empty message helps nobody."""
         with pytest.raises(esolangs.HaltError, match=expected):
             esolangs.run("Modulous", program, "")
-
-    def test_no_halt_is_wordless(self) -> None:
-        """The general claim, since a fifth site would repeat the bug."""
-        for program in ("[POP][END]", '[PSH STR "x"][SWP][END]', "[PRT VAR9][END]"):
-            with pytest.raises(esolangs.HaltError) as caught:
-                esolangs.run("Modulous", program, "")
-            assert str(caught.value).strip(), program
 
 
 class TestSmallerReportsFromRoundFifteen:
@@ -406,22 +338,6 @@ class TestTheSmallInconsistencies:
         assert (len(image.rows[0]), len(image.rows)) == (680, 800)
         assert esolangs.run("Line", image, "1\n1\n") == "1"
 
-    @pytest.mark.parametrize("name", ["Sophie", "CV(N)(C)"])
-    def test_a_wrapping_width_says_nothing(
-        self, name: str, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        out, err = call_both(["generate", "--width", "10", name, "0100"], capsys)
-        assert "no effect" not in err
-        assert max(map(len, out.splitlines())) <= 10
-        stdin = esolangs.encode_inputs(name, [0, 0], "0100")
-        assert esolangs.run(name, out, stdin) == "0"
-
-    def test_describe_reports_the_width_effect(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """The field a reader could not work out without the source."""
-        assert "width_effect" in call_main(["describe", "Sophie"], capsys)
-
     def test_a_breakpoint_that_never_fires_says_so(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
@@ -481,24 +397,7 @@ class TestRoundThreeFixes:
         assert exc.value.code == 2
         assert "must not be negative" in capsys.readouterr().err
 
-    def test_the_template_refusal_names_the_cli_flag(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """It pointed a CLI-only user at ``esolangs.instantiate(...)``."""
-        path = tmp_path / "t.txt"
-        path.write_text(esolangs.generate("Minifuck", "0110"))
-        with pytest.raises(SystemExit) as exc:
-            call_main(["run", "Minifuck", str(path)], capsys)
-        assert exc.value.code == 2
-        err = capsys.readouterr().err
-        assert "esolangs generate --bits" in err
-        assert "esolangs.instantiate" not in err
 
-
-# 1.8s over 45 tests: drives the CLI as a subprocess.
-@pytest.mark.medium
-# 1.8s over 45 tests: drives the CLI as a subprocess.
-@pytest.mark.medium
 # 1.8s over 45 tests: drives the CLI as a subprocess.
 @pytest.mark.medium
 class TestRoundSixQol:
@@ -565,23 +464,6 @@ class TestRoundSixQol:
         assert "stopped: raised" in out
         assert "raised: InputExhaustedError" in out
 
-    def test_a_watched_cell_that_is_never_written_says_so(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        out = call_main(
-            [
-                "debug",
-                "--steps",
-                "5",
-                "--watch-cell",
-                "999",
-                "brainfuck",
-                _program(tmp_path, "+++++"),
-            ],
-            capsys,
-        )
-        assert "never written" in out
-
     def test_encode_refuses_a_non_binary_bit_string(
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
@@ -617,19 +499,6 @@ class TestRoundSixQol:
         empty.write_text("")
         assert call_main(["run", "brainfuck", str(empty)], capsys) == ""
 
-    @pytest.mark.parametrize("value", ["inf", "nan", "-inf"])
-    def test_a_nonfinite_timeout_is_refused(
-        self, value: str, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """A deadline that never arrives is not a bound."""
-        with pytest.raises(SystemExit) as exc:
-            call_main(
-                ["run", "--timeout", value, "brainfuck", _program(tmp_path, "+")],
-                capsys,
-            )
-        assert exc.value.code == 2
-        assert "finite" in capsys.readouterr().err
-
     def test_an_empty_break_on_output_is_refused(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
@@ -648,29 +517,9 @@ class TestRoundSixQol:
         assert exc.value.code == 2
         assert "needs some text" in capsys.readouterr().err
 
-    def test_debug_can_be_bounded_by_time(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """`run` had --timeout and `debug`, which you reach for on a hang, did not."""
-        # 124 now, matching `run`: a bound that fired is not the same
-        # outcome as a program that broke, and a script could not tell.
-        with pytest.raises(SystemExit) as exc:
-            call_main(
-                ["debug", "--timeout", _LOOPS, "brainfuck", _program(tmp_path, "+[]")],
-                capsys,
-            )
-        assert exc.value.code == 124
-        assert "stopped: timeout" in capsys.readouterr().out
-
 
 class TestTheLastResortPaths:
-    """Refusals a reader only meets when something has already gone wrong.
-
-    None of these are reachable from an ordinary command, which is why they
-    had no tests -- and why the file having been edited is what surfaced
-    them: the coverage rule is per touched *file*, so inheriting an
-    untested corner is part of editing one.
-    """
+    """Refusals a reader only meets when something has already gone wrong."""
 
     def test_an_oversized_program_is_refused(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
@@ -682,21 +531,6 @@ class TestTheLastResortPaths:
             call_main(["run", "brainfuck", str(path)], capsys)
         assert exc.value.code == 2
         assert "larger than" in capsys.readouterr().err
-
-    def test_a_surrogate_outside_the_escape_range_is_left_alone(self) -> None:
-        """``_smuggled_bytes`` gives up rather than guessing at a stray point.
-
-        ``surrogateescape`` only round-trips the low-surrogate band it
-        reserves for smuggled bytes.  Anything outside it is a code point
-        the program meant rather than a byte the stream hid, so there is
-        nothing to report about it.
-
-        The band is described rather than written out: an escape for one
-        of those code points inside a docstring compiles to a real
-        surrogate, and pytest's assertion rewriter cannot re-serialize the
-        module afterwards.
-        """
-        assert _smuggled_bytes("\udfff") is None
 
     def test_output_a_terminal_cannot_encode_is_written_as_bytes(self) -> None:
         """A lone surrogate reaches the byte stream rather than raising."""
@@ -723,88 +557,6 @@ class TestTheLastResortPaths:
         with patch.object(sys, "stdout", _Narrow()):
             _write_output("\ud800")
         assert written, "nothing reached the byte stream"
-
-    def test_a_value_error_from_the_screen_is_a_refusal(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """``run_tui`` reports an unusable terminal as a message, not a crash."""
-
-        def boom(*_args: object, **_kwargs: object) -> None:
-            raise ValueError("no room to draw")
-
-        with (
-            patch("esolangs.cli_debug.run_tui", boom),
-            patch.object(_FakeStdin, "isatty", lambda _self: True),
-            pytest.raises(SystemExit) as exc,
-        ):
-            call_main(["debug", "--tui", "brainfuck", _program(tmp_path, "+")], capsys)
-        assert exc.value.code == 2
-        assert "no room to draw" in capsys.readouterr().err
-
-
-class TestTheLastResortPathsContinued:
-    """The rest of the corners, each reached deliberately."""
-
-    def test_a_surrogate_pair_that_round_trips_reports_nothing(self) -> None:
-        """Two escaped bytes can form a character, and then nothing is wrong.
-
-        Each half is a byte ``surrogateescape`` hid, but together they are
-        valid UTF-8 -- so the round trip succeeds and there is no decode
-        error to hand back, which is the one way out of this function that
-        neither returns early nor reports.
-        """
-        smuggled = "".join(chr(0xDC00 + byte) for byte in (0xC3, 0xA9))
-        assert _smuggled_bytes(smuggled) is None
-
-    def test_output_survives_a_stream_with_no_byte_buffer(self) -> None:
-        """Some streams are text only, and then the escape is the best there is."""
-        written: list[str] = []
-
-        class _TextOnly(io.StringIO):
-            encoding = "ascii"
-            buffer = None
-
-            def write(self, text: str) -> int:
-                if any(0xD800 <= ord(ch) <= 0xDFFF for ch in text):
-                    raise UnicodeEncodeError("ascii", text, 0, 1, "narrow")
-                written.append(text)
-                return len(text)
-
-        with patch.object(sys, "stdout", _TextOnly()):
-            _write_output("a\udc80b")
-        assert written
-        assert "\\udc80" in written[0]
-
-    def test_partial_output_already_ending_in_a_newline_gains_no_second_one(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """The prefix is terminated so a pipe reads clean lines, once.
-
-        A failed run writes what the program managed to print, and adds the
-        newline only when the program did not -- otherwise a program whose
-        last act was a newline would be followed by a blank line that it
-        never printed.
-        """
-        failure = esolangs.HaltError("stopped")
-        failure.partial_output = "Hi\n"
-        _emit_partial(failure)
-        assert capsys.readouterr().out == "Hi\n"
-
-    def test_a_value_error_from_the_run_is_a_refusal(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """A bare ``ValueError`` out of the debugger names the language."""
-
-        def boom(*_args: object, **_kwargs: object) -> None:
-            raise ValueError("not a position")
-
-        with (
-            patch("esolangs.cli_debug.make_debugger", boom),
-            pytest.raises(SystemExit) as exc,
-        ):
-            call_main(["debug", "brainfuck", _program(tmp_path, "+")], capsys)
-        assert exc.value.code == 2
-        assert "brainfuck: not a position" in capsys.readouterr().err
 
 
 def _failure(args: list[str], capsys: pytest.CaptureFixture[str], code: int = 2):

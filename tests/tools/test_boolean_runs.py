@@ -1,10 +1,4 @@
-"""The run form of six parameterized generators' templates.
-
-Each generator here emits its public template itself -- every input as a
-run of :data:`~esolangs.tools.helpers.TEMPLATE_CHAR` exactly as wide as
-that input's setter, one run per input in name order -- with no ``{Xi}``
-mark left for :func:`~esolangs.registry.render_template` to render.
-"""
+"""The run form of six parameterized generators' templates."""
 
 import pytest
 

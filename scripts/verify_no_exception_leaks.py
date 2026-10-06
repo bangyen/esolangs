@@ -170,7 +170,7 @@ STDINS = ["", "\n", "0\n1\n", "abc"]
 # Factor does unbounded work before its first VM step when a one-character
 # mutation turns its deliberately factorable example into a huge semiprime.
 # Twelve digits still exercise the same parser and factorization paths and
-# are the measured safe bound used by the interpreter fuzzer too.
+# are the measured safe bound.
 _MAX_OPERAND_DIGITS = 12
 
 

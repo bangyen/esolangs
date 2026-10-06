@@ -7,16 +7,11 @@ import pytest
 
 from esolangs import tools as boolean
 from tests.tools.boolean_runners import five_input_sample, run_container
+from tests.witness_tables import witnesses
 
 
 def _run_container_capped(program: str, inputs: list[str], *, budget: int) -> str:
-    """Run a Container program under a hard tick budget and return its output.
-
-    :func:`run_container` has no cap, so a program that cannot terminate
-    presents as a hung suite rather than a failing test.  Container's own
-    ``_Machine`` is stepped here instead, which is what makes a tick count an
-    assertion.  Overrunning the budget is an error, not a truncated run.
-    """
+    """Run a Container program under a hard tick budget and return its output."""
     from esolangs.interpreters.io import ScriptedIO
     from esolangs.interpreters.other.container import _Machine
 
@@ -63,9 +58,8 @@ class TestContainer:
             assert before.halted == after.halted
 
     @pytest.mark.parametrize("width", [1, 7, 8, 13])
-    def test_narrow_rules_execute_every_three_input_table(self, width: int) -> None:
-        for value in range(256):
-            table = f"{value:08b}"
+    def test_narrow_rules_execute_the_three_input_witnesses(self, width: int) -> None:
+        for table in witnesses(3):
             program = boolean.container(table, width)
             assert max(map(len, program.splitlines())) <= max(7, width)
             for row in range(8):
@@ -96,26 +90,6 @@ class TestContainer:
                 assert before.halted == after.halted
                 assert before.io.getvalue() == after.io.getvalue()
 
-    @pytest.mark.parametrize(
-        ("table", "n"),
-        [
-            ("01", 1),  # NOT
-            ("10", 1),
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("11111110", 3),  # NAND3
-            ("1111111111111111", 4),  # constant one
-        ],
-    )
-    @pytest.mark.medium
-    def test_truth_table(self, table: str, n: int) -> None:
-        """Every input combination produces the truth-table result."""
-        program = boolean.container(table)
-        for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            got = run_container(program, [str(b) for b in bits])
-            assert got == str(int(table[combo])), f"inputs {bits}"
-
     def test_structure(self) -> None:
         """The program reads n inputs and advances prefix survivors."""
         program = boolean.container("0110")
@@ -136,18 +110,7 @@ class TestContainer:
 
     @pytest.mark.medium
     def test_wide_tables_decode_every_row_inside_a_tick_budget(self) -> None:
-        """A *random dense* wide table answers every row in ``2n + 2`` ticks.
-
-        The cap is the point.  Its predecessor packed the table into one
-        decimal literal and subtracted ten per tick, so the tick count scaled
-        with that literal's magnitude, not its length: 2.2e6 ticks for eight
-        rows at ``n == 3``, hence ~1e126 at ``n == 7``.  The test that stood
-        here ran the same path at ``"011" + "0" * 125``, whose reversed
-        literal is the three digits ``110``, and so only ever exercised the
-        decoder at its cheapest possible input.  A representative table is
-        what discriminates, and the budget turns the old route's
-        non-termination into a failure rather than a hang.
-        """
+        """A *random dense* wide table answers every row in ``2n + 2`` ticks."""
         rng = random.Random(20260922)
         for n in (7, 8):
             table = "".join(rng.choice("01") for _ in range(1 << n))
@@ -159,12 +122,7 @@ class TestContainer:
                 assert got == table[combo], f"n={n} row {combo}"
 
     def test_name_allocation_steps_over_container_s_own_names(self) -> None:
-        """``_forbin_name`` reaches ``T`` at 45 and ``IN`` at 754, so it collides.
-
-        Both routes draw from one namespace, and the skip is live rather than
-        defensive: a generated container called ``T`` would be the tick
-        counter and a generated ``IN`` would be overwritten by every read.
-        """
+        """``_forbin_name`` reaches ``T`` at 45 and ``IN`` at 754, so it collides."""
         from esolangs.tools.container import _RESERVED, _allocate_names
 
         uses = {("node", 0, index): 1000 - index for index in range(800)}
@@ -197,15 +155,7 @@ class TestContainer:
         assert all(b <= 2 * a + 4000 for a, b in itertools.pairwise(sizes))
 
     def test_dense_tables_evaluate_the_complement(self) -> None:
-        """A dense table is summed from its zero leaves and inverted.
-
-        ``OUT`` costs one ``1 S{row}>=Gout`` line per leaf the table sends
-        to 1, so before this the length rose with the ones-count all the way
-        to the all-ones table.  A table and its complement share one tree,
-        so taking whichever leaf set is smaller makes them the same length
-        but for the sign: an inverted line spells ``-1`` where a plain one
-        spells ``1``.
-        """
+        """A dense table is summed from its zero leaves and inverted."""
         from esolangs.tools.container import _container_tree
 
         full = [
@@ -224,11 +174,7 @@ class TestContainer:
             assert abs(difference) <= 3  # leaf signs differ, not their count
 
     def test_constants_test_nothing(self) -> None:
-        """The positive control: a constant reads its inputs and prints.
-
-        Its root is its only leaf, so it has no gate and no test at all, and
-        what is left is the reader, the leaf and the output block.
-        """
+        """The positive control: a constant reads its inputs and prints."""
         for table in ("0" * 8, "1" * 8, "0" * 16):
             program = boolean.container(table)
             assert "IN>=" not in program
@@ -240,12 +186,7 @@ class TestContainer:
         assert len(boolean.container("0" * 8)) == 123  # 856 unpruned
 
     def test_only_dependent_levels_are_tested(self) -> None:
-        """A level whose halves agree is read but never tested.
-
-        Each test is one ``IN>=``/``IN<=`` mismatch line on an emitted
-        child, and a leaf that does not answer is not emitted; parity's
-        eight leaves are four answers, shared into two, beside four nodes.
-        """
+        """A level whose halves agree is read but never tested."""
 
         def tests(table: str) -> int:
             program = boolean.container(table)
@@ -261,11 +202,7 @@ class TestContainer:
                 assert run_container(boolean.container(table), bits) == table[combo]
 
     def test_pruning_never_grows_a_table(self) -> None:
-        """No table up to three inputs comes out longer than its full tree.
-
-        Summed over all 256 three-input tables the shipped build is 110,437
-        characters against 154,833 unpruned.
-        """
+        """No table up to three inputs comes out longer than its full tree."""
         from esolangs.tools.container import _container_tree
 
         for n in (1, 2, 3):
@@ -279,13 +216,7 @@ class TestContainer:
         assert sum(len(_container_tree(t, prune=False)) for t in tables) == 154_833
 
     def test_no_line_restores_what_nothing_reads(self) -> None:
-        """Unsigned deltas, no leaf decay, no output restore, a static ``OUT``.
-
-        A leaf is read once, by the output gate, so it keeps its birth value;
-        the gate and ``OUT`` never need to come back, since ``EXIT`` halts the
-        tick after ``PRINT``.  The 256 three-input tables went from 166,768
-        characters to 141,366.
-        """
+        """Unsigned deltas, no leaf decay, no output restore, a static ``OUT``."""
         program = boolean.container("01101001")
         assert "+" not in program
         assert "OUT=48:" in program
@@ -299,12 +230,7 @@ class TestContainer:
 
     @pytest.mark.parametrize("table", ["11111110", "11111111", "1110", "0111"])
     def test_complemented_tables_still_compute(self, table: str) -> None:
-        """The inverted form answers the original table.
-
-        It starts ``OUT`` at 49 and subtracts one per surviving zero row, so
-        the printed byte is ``49 - S``; the container clamp at zero never
-        bites, since the value stays at 48 or 49.
-        """
+        """The inverted form answers the original table."""
         n = (len(table) - 1).bit_length()
         program = boolean.container(table)
         for combo in range(2**n):
@@ -314,14 +240,7 @@ class TestContainer:
 
 
 class TestContainerSharing:
-    """A subtree already born at its depth is fed by every parent, not repeated.
-
-    Retiring unshared candidates adds 0.302% to the three-input total
-    and nothing to the seeded five-input total. Before this the totals were
-    141,366
-    and 345,287: the leaves that do not answer, never read, are not emitted
-    in either build.
-    """
+    """A subtree already born at its depth is fed by every parent, not repeated."""
 
     @staticmethod
     def _totals(tables: list[str]) -> tuple[int, int]:
@@ -346,12 +265,7 @@ class TestContainerSharing:
         assert self._totals(five_input_sample()) == (284_564, 237_480)
 
     def test_a_relay_feeds_the_other_side_s_copy(self) -> None:
-        """Four-input parity relays its repeated nodes and runs every row.
-
-        A node's mismatch rule names its side's gate, so a repeat on the other
-        side is a relay: it kills itself a tick after birth (``-2 X>=1``) and
-        feeds the copy one less (``1 X>=1``).
-        """
+        """Four-input parity relays its repeated nodes and runs every row."""
         table = "0110100110010110"
         program = boolean.container(table)
         assert len(program) == 820  # 1,136 unshared

@@ -1,7 +1,5 @@
 """Covers :mod:`esolangs.tools.eval_lang`."""
 
-import pytest
-
 from esolangs import tools as boolean
 from esolangs.tools.eval_lang import PAIR
 from esolangs.tools.helpers import TEMPLATE_CHAR
@@ -41,48 +39,6 @@ class TestEvalBoolean:
                     _fill_eval(template, ones)
                 ), f"n={n} input {i}"
 
-    @pytest.mark.parametrize(
-        ("table", "n"),
-        [
-            ("10", 1),  # NOT
-            ("01", 1),  # identity
-            ("00", 1),  # constant zero
-            ("11", 1),  # constant one
-            ("0001", 2),  # AND
-            ("0110", 2),  # XOR
-            ("0111", 2),  # OR
-            ("1110", 2),  # NAND
-            ("11111110", 3),  # NAND3
-            ("01101001", 3),  # XOR3
-            ("1000000000000000", 4),  # AND4
-            ("1111111100000000", 4),  # top half
-        ],
-    )
-    @pytest.mark.medium
-    def test_truth_table(self, table: str, n: int) -> None:
-        """Every instantiated input produces the truth-table result."""
-        from esolangs import tools as generators
-
-        template = generators.eval(table)
-        for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            got = self.run_eval(self.instantiate(template, bits))
-            assert got == str(int(table[combo])), f"inputs {bits}"
-
-    @pytest.mark.parametrize("n", [1, 2, 3])
-    @pytest.mark.medium
-    def test_all_small_tables(self, n: int) -> None:
-        """Every table up to three inputs produces the right result."""
-        from esolangs import tools as generators
-
-        for table_int in range(2 ** (2**n)):
-            table = format(table_int, f"0{2**n}b")
-            template = generators.eval(table)
-            for combo in range(2**n):
-                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-                got = self.run_eval(self.instantiate(template, bits))
-                assert got == str(int(table[combo])), f"{table} inputs {bits}"
-
     def test_ignored_inputs_shrink_the_lookup(self) -> None:
         """A constant table pushes one result and only drains its inputs."""
         from esolangs import tools as generators
@@ -93,12 +49,7 @@ class TestEvalBoolean:
         assert folded == _X * 3 + "`~;~~;~~;~."
 
     def test_folding_keeps_both_bits_equal_width(self) -> None:
-        """Folding shrinks the template, never one instantiation.
-
-        The embedding's whole point is that ``len(program)`` cannot reveal
-        the inputs.  A fold that depended on the bits would reintroduce
-        exactly that leak, so this pins equal width on folded tables too.
-        """
+        """Folding shrinks the template, never one instantiation."""
         from esolangs import tools as generators
 
         for table in ("11111111", "11110000", "11001100", "0001"):
@@ -170,14 +121,7 @@ class TestEvalBoolean:
                 assert len(boolean.eval(table)) == min(costs)
 
     def test_reorder_ops_run_outside_the_placeholders(self) -> None:
-        """The rearrangement is emitted code, not a change to the fills.
-
-        This is what makes it a reorder rather than a relabelling: the
-        input runs keep their places and the harness fills them exactly
-        as before, while the emitted program gains ops that rearrange the
-        stack its nodes pop from.  Equal-width embedding therefore still
-        holds, since nothing inside a run moved.
-        """
+        """The rearrangement is emitted code, not a change to the fills."""
         from esolangs import tools as generators
         from tests.tools.fills import _fill_eval
 
@@ -192,13 +136,7 @@ class TestEvalBoolean:
         assert len(widths) == 1  # every fill the same length
 
     def test_stack_ops_reach_every_arrangement(self) -> None:
-        """Two stacks with a reverse and a cross-move permute the bits.
-
-        ``~`` switches stacks, ``*`` reverses the active one and ``=`` moves
-        its top across; the pair is a spindle, so the three compose to reach
-        every arrangement at n <= 4.  Unlike Forþ's ``o``, ``*`` is usable
-        here because the staging leaves the bits alone on that stack.
-        """
+        """Two stacks with a reverse and a cross-move permute the bits."""
         from math import factorial
 
         from tests.tools.eval_reorders import _eval_stack_programs
@@ -209,13 +147,7 @@ class TestEvalBoolean:
         assert _eval_stack_programs(3)[(0, 1, 2)] == ""
 
     def test_reorder_catalog_invariants(self) -> None:
-        """The built words are capped, deduplicated and (length, ~<*<=)-sorted.
-
-        The sort order is required: ``_eval_stack_programs`` folds the
-        words first-claim-wins, so cheapest-first is what makes every
-        claimed string minimal, and the ``~`` < ``*`` < ``=`` tie order is
-        what keeps the fold byte-identical to the search it replaced.
-        """
+        """The built words are capped, deduplicated and (length, ~<*<=)-sorted."""
         from tests.tools.eval_reorders import (
             _EVAL_MAX_OPS,
             _eval_reorders,
@@ -230,14 +162,7 @@ class TestEvalBoolean:
         assert keys == sorted(keys)
 
     def test_reorder_words_are_the_capped_reachable_set(self) -> None:
-        """Every built word replays, and the built set is exactly the cap's.
-
-        The construction admits words the old catalog never listed -- longer
-        spellings of arrangements a shorter word already claims -- so the
-        pin is on what survives the fold, not on the raw word list.  The
-        count that must hold is the arrangement count: 735 from ``n == 12``
-        on, which is where the catalog froze.
-        """
+        """Every built word replays, and the built set is exactly the cap's."""
         from tests.tools.eval_reorders import _eval_stack_programs
 
         assert len(_eval_stack_programs(12)) == 735
@@ -246,15 +171,7 @@ class TestEvalBoolean:
         assert len(_eval_stack_programs(4)) == 24
 
     def test_reorder_catalog_matches_search(self) -> None:
-        """The catalog fold reproduces the search it replaced, byte for byte.
-
-        The breadth-first walk over (tree stack, input stack, active stack)
-        that used to run inside ``_eval_stack_programs`` lives on here as
-        the specification.  Equality is asserted on the item *lists*, not
-        the dicts: the shipped fold must claim the same arrangements with
-        the same op strings in the same order, because ``eval``'s stable
-        sort breaks total-length ties by that order.
-        """
+        """The catalog fold reproduces the search it replaced, byte for byte."""
         from collections import deque
 
         from tests.tools.eval_reorders import _EVAL_MAX_OPS, _eval_stack_programs

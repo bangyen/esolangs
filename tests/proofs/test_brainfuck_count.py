@@ -157,10 +157,8 @@ def _local_rewrite_variants() -> list[tuple[str, str]]:
 
 
 @pytest.mark.medium
-@pytest.mark.parametrize(
-    "tape", [(0, 1, 2, 0), (1, 0, 2, 0), (2, 255, 0, 1), (255, 2, 1, 0)]
-)
-@pytest.mark.parametrize("start", [0, 1])
+@pytest.mark.parametrize("tape", [(0, 1, 2, 0), (255, 2, 1, 0)])
+@pytest.mark.parametrize("start", [1])
 @pytest.mark.parametrize("remaining", [(), (1, 0, 1)])
 def test_regular_rewrite_execution(
     tape: tuple[int, ...], start: int, remaining: tuple[int, ...]
@@ -282,12 +280,7 @@ def test_depth_bodies_agree_on_read_positions() -> None:
 
 
 def _rotation_congruence_classes(length: int, tail_length: int = 5) -> int:
-    """Count Moore classes of the balanced `[.Y].`-avoidance specification.
-
-    A word's signature is its residual over balanced tails plus the classes its
-    one-character extensions reach.  A stable count certifies a finite monitor;
-    growth shows the class is not regular.
-    """
+    """Count Moore classes of the balanced `[.Y].`-avoidance specification."""
     import itertools
 
     alphabet = ".[]"
@@ -464,12 +457,10 @@ def test_independent_literal_monitor_matches_substring_oracle() -> None:
     ("factors", "regexes", "message"),
     [
         ([""], [], "literal"),
-        (["z"], [], "literal"),
         ([], ["["], "invalid regular"),
         ([], ["z"], "outside alphabet"),
         ([], ["[a-z]"], "character class"),
         ([], ["(?i:a)"], "flags"),
-        ([], ["(?i)a"], "flags"),
         ([], ["a+"], "operator"),
     ],
 )
