@@ -508,3 +508,29 @@ def test_c_intercal_test2_multiplies_with_its_library_copy() -> None:
     """
     path = Path(__file__).parents[1] / "fixtures" / "intercal_test2.i"
     assert _run(path.read_text(encoding="utf-8"), "FIVE\nSEVEN\n") == "XXXV\n"
+
+
+@pytest.mark.parametrize(
+    ("words", "out"), [("BAT BI", "XII\n"), ("NULI EKA", "I\n"), ('J\\"OL', "VIII\n")]
+)
+def test_digits_in_the_manuals_other_languages_are_read(words: str, out: str) -> None:
+    # Basque, Georgian + Sanskrit, Volapuk (TeX spelling); C-INTERCAL's numerals.c.
+    source = "PLEASE WRITE IN .1\nDO READ OUT .1\nDO GIVE UP"
+    assert _run(source, words + "\n") == out
+
+
+def test_a_label_after_the_coming_from_gerund_starts_a_statement() -> None:
+    # Was one statement, ABSTAIN FROM COMING FROM (1), and E000.
+    assert (
+        _program("PLEASE ABSTAIN FROM COMING FROM", "(1) DO READ OUT #1", "DO GIVE UP")
+        == "I\n"
+    )
+
+
+@pytest.mark.parametrize("target", ["(1)", "COMING FROM"])
+def test_a_come_from_finishing_fires_what_comes_from_it(target: str) -> None:
+    """The manual: DO COME FROM COMING FROM is an infinite loop; so is (1)'s."""
+    source = f"(1) PLEASE COME FROM {target}\nDO GIVE UP\nDO GIVE UP"
+    assert (
+        run_until_halt_or_all_branches_cycle(_Machine(source, ScriptedIO(""))) is False
+    )

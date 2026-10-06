@@ -323,8 +323,10 @@ def _parse_expression(text: str, at: int = 0) -> tuple[_Node, int]:
 _START = re.compile(
     r"(?:\(\s*\d[\d\s]*\)\s*)?(?P<id>PLEASE(?:\s*DO)?|DO)(?:\s*(?:NOT|N'T))?"
 )
-# A label after these words is the command's target, not the next statement's.
+# A label after these words is the command's target, not the next statement's;
+# not after the gerunds COMING FROM and NEXTING FROM, which take none.
 _TARGETING = ("FROM", "REINSTATE")
+_GERUND_FROM = re.compile(r"(?:COMING|NEXTING)\s*FROM\Z")
 _HEADER = re.compile(
     r"\s*(?:\(\s*(\d[\d\s]*)\)\s*)?(?:(PLEASE)(?:\s*DO)?|DO)(\s*(?:NOT|N'T))?"
     r"(?:\s*%\s*(\d[\d\s]*))?"
@@ -336,12 +338,11 @@ _BARE = re.compile(
 
 def _statements(code: str) -> list[str]:
     """Assemble statements at identifiers, retaining bare core fixtures."""
-    starts = [
-        match.start("id")
-        if code[: match.start()].rstrip().endswith(_TARGETING)
-        else match.start()
-        for match in _START.finditer(code)
-    ]
+    starts = []
+    for match in _START.finditer(code):
+        before = code[: match.start()].rstrip()
+        targeted = before.endswith(_TARGETING) and not _GERUND_FROM.search(before)
+        starts.append(match.start("id") if targeted else match.start())
     bounds = [0, *starts, len(code)]
     statements: list[str] = []
     for left, right in pairwise(bounds):

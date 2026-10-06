@@ -29,6 +29,9 @@ Judgment calls where the manual or C-INTERCAL leave a gap:
   always prints an overbar line first.
 * Whitespace may split a number from its sigil and its own digits, as
   C-INTERCAL's lexer allows, though the manual says it cannot.
+* Digit words read in any case, split at any whitespace; C-INTERCAL wants
+  upper case split at spaces.  Of two errors in one statement, the
+  right-hand side's is raised before the target subscript's.
 * ``READ OUT`` takes any expression; a subscript list holds bare operands, and
   a subscripted element may be the left operand of a binary operator.
 * Array elements start at 0, where C-INTERCAL leaves them uninitialised;
@@ -67,20 +70,26 @@ from esolangs.interpreters.randomness import Randomness, draw
 type _Value = tuple[int, int]
 type _Array = tuple[tuple[int, ...], dict[int, int]]
 
+# Digit words 0-9: English and, as the manual says C-INTERCAL accepts
+# (src/numerals.c), Sanskrit, Basque, Tagalog, Classical Nahuatl, Georgian,
+# Kwakiutl, Volapuk and Latin.
+_DIGIT_WORDS = (
+    "ZERO ONE TWO THREE FOUR FIVE SIX SEVEN EIGHT NINE",
+    "SUTYA EKA DVI TRI CHATUR PANCHAN SHASH SAPTAM ASHTAN NAVAN",
+    "ZEROA BAT BI HIRO LAU BORTZ SEI ZAZPI ZORTZI BEDERATZI",
+    "WALA ISA DALAWA TATLO APAT LIMA ANIM PITO WALO SIYAM",
+    "AHTLE CE OME IEI NAUI NACUILI CHIQUACE CHICOME CHICUE CHICUNAUI",
+    "NULI ERTI ORI SAMI OTXI XUTI EKSVI SHVIDI RVA CXRA",
+    "KE'YOS 'NEM MAL'H YUDEXW MU SEK'A Q'ETL'A ETLEBU MALHGWENALH 'NA'NE'MA",
+    "NOS BAL TEL KIL FOL LUL MÄL VEL JÖL ZÜL",
+    "NIL UNUS DUO TRES QUATTUOR QUINQUE SEX SEPTEM OCTO NOVEM",
+)
 _DIGITS = {
-    "ZERO": 0,
-    "OH": 0,
-    "ONE": 1,
-    "TWO": 2,
-    "THREE": 3,
-    "FOUR": 4,
-    "FIVE": 5,
-    "SIX": 6,
-    "SEVEN": 7,
-    "EIGHT": 8,
-    "NINE": 9,
-    "NINER": 9,
-}
+    word: digit for line in _DIGIT_WORDS for digit, word in enumerate(line.split())
+} | {
+    "OH": 0, "NINER": 9, "SHUTYA": 0, 'M\\"AL': 6, 'J\\"OL': 8, 'Z\\"UL': 9,
+    "NIHIL": 0, "UNA": 1, "UNUM": 1, "DUAE": 2, "QUATUOR": 4,
+}  # fmt: skip
 
 _WIDTH = {".": 16, ":": 32, ",": 16, ";": 32}
 _ONESPOT_MAX = 0xFFFF
@@ -435,7 +444,9 @@ class _Machine:
         if taken:
             if self._program[taken[0]].kind == "next from":
                 self._push(i + 1, -1)
-            self.ind = taken[0] + 1
+            # Control passes to the COME FROM, which then finishes in turn:
+            # the manual's DO COME FROM COMING FROM is an infinite loop.
+            self.ind = taken[0]
 
     def _push(self, resume: int, origin: int) -> None:
         if len(self._next) >= _NEXT_LIMIT:
