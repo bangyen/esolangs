@@ -363,9 +363,6 @@ def _parse_operand(p: _Parser) -> "_Expr":
     name = p.word()
     if not name:
         raise Hint.OPERAND_KIND.error(f"cannot parse operand at {p.text[p.pos :]!r}")
-    if p.peek() == "{":
-        p.pos += 1
-        return ("call", name, _parse_args(p, "}"))
     if name in _SPECIALS:
         return ("special", name)
     return ("var", name)
@@ -1089,9 +1086,9 @@ def _command_expr(
 ) -> "_Expr | None":
     """Return the expression a command evaluates, or None if it has none.
 
-    ``var``/``inp``/``out`` name a variable and evaluate nothing; ``set``
-    names one and then evaluates; the rest are a keyword and an
-    expression, or a bare call which is itself the expression.
+    The caller passes only commands that evaluate: ``set`` names a variable
+    and then evaluates; ``turn``/``skip``/``wait``/``end`` are a keyword and
+    an expression; a bare call is itself the expression.
     """
     p = _Parser(text, expression_syntax)
     p.word()
@@ -1100,8 +1097,6 @@ def _command_expr(
         if not name or not name.isalnum() or name in _RESERVED:
             raise ValueError(f"bad variable name {name!r}")
     elif word not in ("turn", "skip", "wait", "end"):
-        if not _is_call(text, word):
-            return None
         p = _Parser(text, expression_syntax)  # a bare call: parse the whole command
     if word == "end" and p.at_end():
         return None

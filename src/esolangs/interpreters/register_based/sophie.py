@@ -76,20 +76,6 @@ def _partners(code: str) -> dict[int, int]:
     return table
 
 
-def find(code: str, ind: int) -> int:
-    """Return the literal-aware closing position, or source length if unmatched."""
-    opener = code[ind]
-    closer = chr(ord(opener) + 2)
-    depth = 1
-    for index, glyph in _brackets(code):
-        if index <= ind:
-            continue
-        depth += (glyph == opener) - (glyph == closer)
-        if not depth:
-            return index
-    return len(code)
-
-
 #: One instant of a run: ``(acc, ind, skp, stk, halted)`` -- the
 #: accumulator, the cursor, the break flag, the stack of loop-entry
 #: positions, and whether ``&`` fired.  A value :func:`_advance` maps

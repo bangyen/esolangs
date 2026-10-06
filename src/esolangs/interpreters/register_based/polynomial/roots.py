@@ -440,8 +440,6 @@ def _divide_quadratic_mod(
     b1 = -2 * real % modulus
     b0 = (real * real + square) % modulus
     size = len(coefficients)
-    if size < 3:
-        return None
     quotient: list[int] = []
     for index in range(size - 2):
         value = coefficients[index]
