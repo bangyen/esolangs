@@ -11,7 +11,9 @@ it reaches ``end`` travelling in its current direction.
 Values are exact rationals, homogeneous lists, and ``nil``/``eof``/``left``/
 ``right``. Lists index from 0.5. Functions use ``func name{a, b}`` headers,
 return via ``end <value>``, and have separate variable namespaces. Each
-``inp`` reads one Unicode character; each ``out`` writes one.
+``inp`` reads one Unicode character; each ``out`` writes one.  ``out x``
+names a variable, as ``inp x`` does: the wiki writes ``<expr>`` only for
+``set``/``skip``/``turn``/``wait``.
 
 The wiki has conflicting prose and examples; this interpreter follows the
 examples for operator order and list mutation. The profile choices follow.
