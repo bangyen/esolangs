@@ -73,17 +73,22 @@ class TestStepMachine:
         assert machine.io.getvalue() == "1"
         assert machine.row == 0
 
-    def test_moving_left_from_cell_zero_stays_put(self) -> None:
-        """``<`` at the leftmost cell is a no-op, not an underflow."""
+    def test_moving_left_from_cell_zero_grows_the_tape_left(self) -> None:
+        """``<`` at the leftmost cell adds a zero cell there, not an underflow."""
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.back import _Machine
 
-        machine = _Machine(["<-*"], ScriptedIO())
-        assert machine.cell == 0
-        machine.step()  # "<" with nowhere to go
-        assert machine.cell == 0
-        machine.step()  # "-" flips the cell the pointer stayed on
-        assert machine.tape[0] == 1, "the flip landed on cell 0"
+        machine = _Machine(["-<-*"], ScriptedIO())
+        machine.step()  # "-" flips the start cell
+        machine.step()  # "<" grows a new cell 0 and lands on it
+        assert (machine.cell, machine.tape) == (0, (0, 1))
+        machine.step()  # "-" flips the new cell, not the start cell
+        assert machine.tape == (1, 1)
+
+    def test_left_of_zero_and_back_keeps_both_cells(self) -> None:
+        """The grown cell is distinct from the start cell, and both dump."""
+        assert run_and_capture(["-<<>>-*"]) == "0 0 0"
+        assert run_and_capture(["-<>*"]) == "0 1"
 
     def test_moving_right_grows_the_tape_only_at_its_end(self) -> None:
         """``>`` appends a cell when it steps past the last one, once."""

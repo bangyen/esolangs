@@ -308,10 +308,11 @@ class _TapeMachine(Protocol):
     ``ip`` is ``Hashable``: a 2D position includes its heading.
     Opting in claims the language reads and writes only the cell under
     the pointer, is translation-invariant for ``ptr >= 1``, and grows
-    rightward by fresh zeros.  Brainfuck, BrainIf, Back, 6-5 and Factor
-    qualify; absolute addresses (Suffolk, Minifuck), wrapping or fixed
-    tapes (Circlefuck, NoComment, Home Row) and leftward growth (Jaune)
-    must not declare it.
+    rightward by fresh zeros (growing leftward only from ``ptr == 0``,
+    which the certificate's ``m >= 1`` excludes).  Brainfuck, BrainIf,
+    Back, 6-5 and Factor qualify; absolute addresses (Suffolk,
+    Minifuck), wrapping or fixed tapes (Circlefuck, NoComment, Home Row)
+    and leftward growth away from ``ptr == 0`` (Jaune) must not declare it.
     """
 
     def step(self) -> None:
@@ -347,7 +348,7 @@ def run_until_halt_or_growth(machine: _TapeMachine | VM, limit: int = 100_000) -
 
     - the input cursor did not move,
     - ``d > 0`` and the tape grew by exactly ``d`` fresh cells,
-    - ``m >= 1``, so the period never touched the clamped left edge,
+    - ``m >= 1``, so the period never touched the left edge,
     - ``tape2[i + d] == tape1[i]`` for every ``m <= i < len(tape1)``.
 
     Then the second visit is the first translated by ``d`` on the cells
@@ -377,7 +378,7 @@ def run_until_halt_or_growth(machine: _TapeMachine | VM, limit: int = 100_000) -
     # proves a steady wave after its first full phase, while ``waves`` is
     # Brent's O(1)-per-position checkpoint for a phase that begins after a
     # transient.  Both minima are updated on every step because the proof
-    # is invalid if the period ever reached the clamped left edge.
+    # is invalid if the period ever reached the left edge.
     last: dict[Hashable, tuple[int, tuple[int, ...], int]] = {}
     lowest: dict[Hashable, int] = {}
     origins: dict[Hashable, tuple[tuple[int, tuple[int, ...], int], int]] = {}

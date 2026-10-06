@@ -12,6 +12,10 @@ this interpreter's.  (LaserFuck uses line breaks between values instead, but
 that is not a divergence from this convention -- its spec asks for them by
 name.)
 
+The tape is unbounded both ways: ``<`` at the leftmost cell adds a zero cell
+on the left (the dump prints it).  The spec says nothing about the left
+edge, and brainfuck's page allows cells left of the start.
+
 The interpreter runs on a :class:`_Machine` (the beam's position and
 direction, the bit tape, and the tape pointer), so it is step-capable:
 ``step()`` executes one cell, setting ``halted`` when the beam reaches a
@@ -19,10 +23,10 @@ direction, the bit tape, and the tape pointer), so it is step-capable:
 the other interpreter-only languages here share.
 
 A program with no ``*`` bounces the beam forever.  The beam itself lives in
-a finite grid, so a loop that never moves the tape pointer right revisits a
-snapshot and ``esolangs.vm.run_until_halt_or_cycle`` proves it.  A loop that
-crosses ``>`` does not: the pointer advances and the tape grows a cell to
-meet it, so the snapshot is new every step and no repeat exists to find.
+a finite grid, so a loop that never grows the tape revisits a snapshot and
+``esolangs.vm.run_until_halt_or_cycle`` proves it.  A loop that grows it --
+``>`` past the right end, or ``<`` at the left -- does not: the snapshot is
+new every lap and no repeat exists to find.
 That is the unbounded-growth case the detector documents itself as unable to
 catch, and only the wall-clock timeout stops it.  (The empty program is
 rejected outright, so the fuzz suite's empty-program invariant is unaffected.)
@@ -82,9 +86,11 @@ def _advance(state: _State, code: Sequence[str], size: int) -> _State:
     elif char == "/":
         a, b = -b, -a
     elif char == "<":
-        # Clamped at the origin.
+        # At cell 0 the tape grows left, and index 0 is the new cell.
         if cell:
             cell -= 1
+        else:
+            tape = (0, *tape)
     elif char == ">":
         cell += 1
         # Grows to meet the pointer.
@@ -155,7 +161,8 @@ class _Machine:
 
     # ``_TapeMachine`` view: ``cell`` aliased to the pointer name; ``ip``
     # carries direction (same square, different heading is a different
-    # point).  Back qualifies: ``>`` appends one zero, ``<`` clamps at 0,
+    # point).  Back qualifies: ``>`` appends one zero, ``<`` at cell 0
+    # prepends one (a period doing so has ``m == 0``, never certified),
     # the code wrap moves the beam not the tape, and ``*`` (the only
     # whole-tape read) halts, so it is never inside a compared period.
 

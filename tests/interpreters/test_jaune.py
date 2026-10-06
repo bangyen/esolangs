@@ -42,16 +42,16 @@ class TestInput:
 
 
 class TestMemory:
-    def test_pointer_left_of_zero_is_clamped(self) -> None:
-        # '<' at cell 0 moves nothing, as brainfuck's own '<' does
-        assert run_program("<^.") == "0"
+    def test_left_of_cell_zero_is_a_fresh_zero_cell(self) -> None:
+        """``<`` at cell 0 grows the tape left onto a new zero cell."""
+        assert run_program("5+<^.") == "0"
+        assert run_program("5+<<<^.") == "0"
 
-    def test_a_clamped_left_move_stays_on_the_same_cell(self) -> None:
-        """``<`` at cell 0 leaves the pointer on the cell it was already on."""
-        assert run_program("5+<^.") == "5"
-        assert run_program("5+<<<^.") == "5"
-        # and a clamped move is not a lost one: '>' still finds a fresh cell
-        assert run_program("5+<>^.") == "0"
+    def test_left_of_zero_and_back_keeps_both_cells(self) -> None:
+        """The grown cell and the start cell are distinct and both kept."""
+        assert run_program("5+<3+>^.") == "5"
+        assert run_program("5+<3+>^<^.") == "53"
+        assert run_program("5+<<>>^.") == "5"
 
     def test_the_hold_cell_starts_at_zero(self) -> None:
         """``&`` before any ``#`` adds nothing."""

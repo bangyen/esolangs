@@ -97,6 +97,20 @@ class TestSixFive:
         """``3`` steps back one, rather than landing on a fixed cell."""
         assert run_and_capture("1366666666113A0") == "\x00"
 
+    def test_left_of_cell_zero_is_a_fresh_zero_cell(self) -> None:
+        """``3`` at cell 0 grows the tape left; ``1`` then lands past start."""
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.six_five import _Machine
+
+        # 8 on the start cell, then 3 grows a zero cell and prints it
+        assert run_and_capture("66666666366666666A0") == "0"
+        # 3 3 grows two cells; 1 moves two right, back onto the start cell
+        machine = _Machine("66666666331A0", ScriptedIO())
+        while not machine.halted:
+            machine.step()
+        assert machine.io.getvalue() == "0"
+        assert (machine.cell, machine.tape) == (2, (0, 0, 48))
+
     def test_a_marker_jump_with_no_operand_does_nothing(self) -> None:
         """A trailing ``8`` has no operand, so its target count is zero."""
         assert run_and_capture("4A8") == "\x00"

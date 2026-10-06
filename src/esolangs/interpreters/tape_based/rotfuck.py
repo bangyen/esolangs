@@ -4,7 +4,9 @@ Brainfuck whose program rotates: every executed command advances all
 non-comment characters one step along ``+-><,.[]``.  A comment is passed
 over without rotating: only executed commands advance the rotation.
 Tape as plain
-Brainfuck: 8-bit, ``<`` clamped, :class:`EOFError` on exhausted input.
+Brainfuck: 8-bit, :class:`EOFError` on exhausted input, and ``<`` at the
+leftmost cell grows the tape a zero cell on the left (the spec says nothing
+about the left edge, and brainfuck's page allows cells left of the start).
 Brackets match dynamically: a jumping bracket rotates first, then seeks
 its partner in the rotated program; a partnerless bracket that fires
 raises :class:`~esolangs.exceptions.HaltError`, and unbalanced sources
@@ -128,8 +130,12 @@ def _advance(state: _State, chars: tuple[str, ...], byte: int | None = None) -> 
         if ptr == len(tape):
             tape = (*tape, 0)
     elif char == "<":
+        # At cell 0 the tape grows a zero cell on the left, and index 0 is
+        # now that cell; see the module docstring.
         if ptr:
             ptr -= 1
+        else:
+            tape = (0, *tape)
     elif char == "+":
         tape = (*tape[:ptr], (tape[ptr] + 1) % 256, *tape[ptr + 1 :])
     elif char == "-":
@@ -261,8 +267,13 @@ def run(code: str, io: IO) -> None:
             if ptr == len(tape):
                 tape.append(0)
         elif char == "<":
-            if ptr:
-                ptr -= 1
+            if not ptr:
+                # Grow left as ``_advance`` does, but by doubling, so a
+                # long leftward walk stays linear; the extra cells are zero
+                # and nothing here reads an absolute index.
+                ptr = len(tape)
+                tape[:0] = bytes(ptr)
+            ptr -= 1
         elif char == "+":
             tape[ptr] = (tape[ptr] + 1) % 256
         elif char == "-":

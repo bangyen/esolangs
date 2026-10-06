@@ -26,9 +26,30 @@ class TestBrainIfBasicCommands:
         """Input stores a newline rather than skipping it."""
         assert run_and_capture(["if 0 input", "if 10 output"], inputs=["", "A"]) == "\n"
 
-    def test_move_left_clamps_at_zero(self) -> None:
-        code = ["if 0 left", "if 0 increment", "if 1 output"]
+    def test_move_left_of_cell_zero_is_a_fresh_zero_cell(self) -> None:
+        code = ["if 0 increment", "if 1 left", "if 0 output", "if 1 output"]
+        assert run_and_capture(code) == "\x00"
+
+    def test_left_of_zero_and_back_keeps_both_cells(self) -> None:
+        """The grown cell and the start cell are distinct, in both engines."""
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.brainif import _Machine
+
+        code = [
+            "if 0 increment",  # start cell -> 1
+            "if 1 left",  # grow: a new cell 0
+            "if 0 left",  # grow again
+            "if 0 increment",
+            "if 1 increment",  # leftmost -> 2
+            "if 2 right",
+            "if 0 right",  # back on the start cell
+            "if 1 output",
+        ]
         assert run_and_capture(code) == "\x01"
+        machine = _Machine(code, ScriptedIO())
+        while not machine.halted:
+            machine.step()
+        assert (machine.tape, machine.ptr) == ((2, 0, 1), 2)
 
     def test_a_write_keeps_the_cell_to_its_right(self) -> None:
         """Writing one cell rebuilds the tape around it, dropping nothing."""

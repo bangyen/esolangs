@@ -3,11 +3,13 @@
 Line-based: ``if <value> <command>`` runs when the cell equals the
 value; commands increment, move, goto a line, read a byte, or output.
 A line missing its operands raises :class:`ValueError`; exhausted input
-raises :class:`EOFError`.  The guard reads the cell as it stands, so
-``if 0 increment`` / ``if 1 increment`` both fire in one pass -- the
-language's behaviour, and a reorder was reverted.  :func:`_advance` is
-pure over an immutable ``_State``; :func:`_parse`, the I/O and the
-malformed-line rejection are the shell's.
+raises :class:`EOFError`.  ``move left`` at the leftmost cell grows the
+tape a zero cell on the left: the spec says nothing about the left edge,
+and brainfuck's page allows cells left of the start.  The guard reads the
+cell as it stands, so ``if 0 increment`` / ``if 1 increment`` both fire in
+one pass -- the language's behaviour, and a reorder was reverted.
+:func:`_advance` is pure over an immutable ``_State``; :func:`_parse`, the
+I/O and the malformed-line rejection are the shell's.
 """
 
 from __future__ import annotations
@@ -22,6 +24,7 @@ from esolangs.interpreters.persistent import (
     flatten,
     get,
     length,
+    prepend,
     put,
 )
 from esolangs.interpreters.source_hints import keyword_hint, syntax_error
@@ -120,8 +123,13 @@ def _advance(state: _State, line: _Line, byte: int | None = None) -> _State:
             if ptr == length(cells):
                 cells = append(cells, 0)
         elif command == "left":
-            # ``left`` at the origin is clamped rather than an error.
-            ptr = max(0, ptr - 1)
+            # At cell 0 the tape grows a zero cell on the left, and index 0
+            # is now that cell.  The spec says nothing about the left edge,
+            # and brainfuck's page allows cells left of the start.
+            if ptr:
+                ptr -= 1
+            else:
+                cells = prepend(cells, 0)
         elif command == "goto":
             ind = target - 2
         elif command == "input":
@@ -162,8 +170,10 @@ class _Machine:
         return self.state[1]
 
     # ``_TapeMachine`` view (no write buffer here).  BrainIf qualifies:
-    # ``right`` appends one zero, ``left`` clamps at 0, everything else
-    # touches only ``cells[ptr]``.
+    # ``right`` appends one zero; ``left`` at 0 prepends one, so ``ptr``
+    # counts from the leftmost cell and a period that grows left passes
+    # ``ptr == 0``, which the certificate's ``m >= 1`` rejects; everything
+    # else touches only ``cells[ptr]``.
 
     @property
     def tape(self) -> tuple[int, ...]:
@@ -247,7 +257,13 @@ def run(code: list[str], io: IO) -> None:
             if ptr == len(cells):
                 cells.append(0)
         elif command == "left":
-            ptr = max(0, ptr - 1)
+            if not ptr:
+                # Grow left as ``_advance`` does, but by doubling, so a
+                # long leftward walk stays linear; the extra cells are zero
+                # and nothing here reads an absolute index.
+                ptr = len(cells)
+                cells[:0] = [0] * ptr
+            ptr -= 1
         elif command == "goto":
             ind = target - 1
             continue
