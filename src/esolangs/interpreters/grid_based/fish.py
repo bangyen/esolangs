@@ -7,7 +7,9 @@ it modulo the box's size; the spec leaves this open, and fish.py instead walks
 the empty cells to the edge. Character input returns -1 at EOF. Division
 uses Python's true division, matching the specification's floating result.
 ``o`` needs an integral codepoint. Only a space and an empty cell are no-ops:
-a tab, or a control character ``p`` writes, is an invalid instruction.
+a tab, or a control character ``p`` writes, is an invalid instruction. A
+string pushes an empty cell (past a short row) as 0, its ``g`` value; fish.py
+pushes a space, as it stores spaces as 0.
 Invalid instructions, stack underflow, and division by zero raise
 :class:`~esolangs.exceptions.HaltError`; an empty program raises
 :class:`ValueError`.

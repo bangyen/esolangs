@@ -131,6 +131,11 @@ def test_a_missing_codebox_cell_is_a_nop() -> None:
     machine.step()
     machine.step()
     assert machine.ip == (0, 0, 0, 1)
+    # a string pushes a missing cell as 0, its 'g' value (fish.py: a space)
+    machine = _Machine(['"', "ab"], ScriptedIO(""))
+    machine.step()
+    machine.step()
+    assert machine.stack == [0]
 
 
 def test_empty_program_is_rejected() -> None:

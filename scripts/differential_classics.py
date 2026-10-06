@@ -342,8 +342,10 @@ FISH_PATCHES: tuple[tuple[str, str], ...] = (
         "count = self._pop()\n"
         "            assert count == int(count) and 0 <= count <= len(self._stack)",
     ),
-    # A negative cell is an invalid instruction, not the empty cell.
-    ("chr(instruction) if instruction > 0", "chr(instruction) if instruction != 0"),
+    # A negative cell is an invalid instruction, and an empty cell (0) is
+    # a NOP that a string pushes as 0, not as a space (ours).
+    ('chr(instruction) if instruction > 0 else " "', "chr(instruction)"),
+    ('elif instruction == " ":', 'elif instruction in " \\0":'),
     # A surrogate codepoint is output like any other (ours), not a
     # failure to encode it; errors exit 71.
     (
