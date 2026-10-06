@@ -1,4 +1,4 @@
-"""Measure Vandevelo identifier and exact-fallback work; execute one naming rule."""
+"""Measure Vandevelo identifier and sampled-fallback work; execute one naming rule."""
 
 from __future__ import annotations
 
@@ -21,6 +21,7 @@ from esolangs.vm import run_until_halt_or_cycle
 _MODULE = importlib.import_module("esolangs.tools.vandevelo")
 _NAMES = re.compile(r"[A-Za-z0-9_&*$]+")
 _RESERVED = {"Inp", "Nil", "loop", "l"}
+_LAST_DRAW: list[object] = [None]
 
 
 @dataclass
@@ -28,26 +29,23 @@ class Work:
     """Exact call counts and element visits, excluding timing conclusions."""
 
     fallback_calls: int = 0
-    projection_visits: int = 0
-    projection_bit_visits: int = 0
-    transform_element_visits: int = 0
+    pair_draws: int = 0
+    draw_visits: int = 0
 
 
 def _profile(frame: FrameType, event: str, _arg: Any, work: Work) -> None:
     if event != "call":
         return
-    if frame.f_code is _MODULE._quotient_popularities.__code__:  # noqa: SLF001
-        node = frame.f_locals["node"]
-        n = frame.f_locals["n"]
-        dimension = len(node.span).bit_length() - 1
-        work.fallback_calls += 1
-        work.projection_visits += len(node.points)
-        work.projection_bit_visits += (
-            (n - dimension) * len(node.points) // len(node.span)
-        )
-    elif frame.f_code is _MODULE._popularities.__code__:  # noqa: SLF001
-        n = frame.f_locals["n"]
-        work.transform_element_visits += 2 * n * (1 << n)
+    caller = frame.f_back
+    fallback = _MODULE._ensure_popular.__code__  # noqa: SLF001
+    if frame.f_code is _MODULE._pairs.__code__ and caller.f_code is fallback:  # noqa: SLF001
+        # Each sampling call lists its points afresh; holding the list keeps
+        # its identity from being reused by a later call.
+        if caller.f_locals["pts"] is not _LAST_DRAW[0]:
+            _LAST_DRAW[0] = caller.f_locals["pts"]
+            work.fallback_calls += 1
+        work.pair_draws += 1
+        work.draw_visits += len(frame.f_locals["pts"])
 
 
 def frequency_names(program: str) -> str:
@@ -106,8 +104,8 @@ def execute(
 
 
 def positive_control() -> Work:
-    """Force exact selection on a span-invariant set; verify the chosen count."""
-    # Six-input span {0,1,2,3}; the quotient is {0,1,2}, with two pairs.
+    """Force the sampled fallback on a span-invariant set; verify the chosen count."""
+    # Six-input span {0,1,2,3} over three cosets; no candidate is scored yet.
     points = {base ^ offset for base in (0, 4, 8) for offset in range(4)}
     node = _MODULE._Node(0, points, set(range(4)), None)  # noqa: SLF001
     work = Work()
@@ -122,9 +120,8 @@ def positive_control() -> Work:
     assert count == 8
     assert count == sum((point ^ direction) in points for point in points)
     assert work.fallback_calls == 1
-    assert work.projection_visits == 12
-    assert work.projection_bit_visits == 12
-    assert work.transform_element_visits == 128
+    assert 1 <= work.pair_draws <= _MODULE._SAMPLES  # noqa: SLF001
+    assert work.draw_visits == 12 * work.pair_draws
     return work
 
 

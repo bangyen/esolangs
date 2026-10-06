@@ -2,7 +2,6 @@
 
 import itertools
 import random
-import sys
 from collections import Counter
 
 import pytest
@@ -494,26 +493,3 @@ def test_pair_decoded_router_reaches_one_row_per_fraction() -> None:
                 labels.append("1" if (rank[first], rank[second]) in ones else "0")
             tables.add("".join(labels))
     assert tables == {format(i, "010b") for i in range(1024)}
-
-
-@pytest.mark.slow
-def test_vandevelo_fallback_is_not_amortized(monkeypatch: pytest.MonkeyPatch) -> None:
-    """The exact fallback costs ``60*T`` on one seeded 15-input table."""
-    from esolangs.tools.vandevelo import _popularities, vandevelo
-
-    calls: list[int] = []
-
-    def counted(points: set[int], n: int) -> list[int]:
-        calls.append(n)
-        return _popularities(points, n)
-
-    # ``esolangs.tools.vandevelo`` names the generator function as an attribute,
-    # so patch the module object itself.
-    module = sys.modules[vandevelo.__module__]
-    monkeypatch.setattr(module, "_popularities", counted)
-    n = 15
-    rng = random.Random(0)
-    table = "".join(rng.choice("01") for _ in range(2**n))
-    vandevelo(table)
-    assert calls == [n, n]
-    assert sum(2 * k * 2**k for k in calls) == 60 * 2**n

@@ -312,7 +312,7 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | Underload | parameterized tree | equal-width input programs leave one selector apiece; each node stores both branches as strings and the selector evaluates exactly one, while a constant leaf discards the unused selectors; a repeated subtree is pushed once and carried above the next selector, and the plain tree stays a candidate | linear: 7n input characters plus at most 11T - 4 tree characters |
 | Unlambda | tree | each half is a `d` promise, forced by the `?` test that selects it, since an argument spelled inline would be evaluated before the application; the shipped node instead returns `s` over its selected promises, so a repeated subtree bound once as a promise reaches every half below, and the plain tree stays a candidate | linear: 29 characters an internal node, four a leaf |
 | Unsquare | linear lookup | the table is one `O`/`I` push per row, reversed, and each read pops its bit's weight in cells off the top of it | linear: `2**n` cells and `2**n - 1` pops, two bytes a row |
-| Vandevelo | minterms | an affine-cube peel emits one guard line per coset of an affine cover of the 1-set | open: O(T) upkeep lines, O(T log n) identifier text; exact fallback and dual-basis aggregate work unproved |
+| Vandevelo | minterms | an affine-cube peel emits one guard line per coset of an affine cover of the 1-set | open: O(T) upkeep lines, O(T log n) identifier text; sampled fallback within the candidate charge; the charge and dual-basis core work unproved |
 
 <!-- PROOF-STATUS:END -->
 
@@ -440,19 +440,19 @@ the next read. The controls are in `tests/proofs/test_research_tracks.py`.
 ## Vandevelo identifier and fallback audit
 
 The construction bounds register upkeep by `O(T)` lines, but identifiers
-cost `O(log n)` characters per occurrence. Exact quotient fallback calls
-and dual-basis core work still lack aggregate amortization bounds. The audit
-marks size and command count `Measured`: both retain their existing
-regression gates without claiming an asymptotic proof.
+cost `O(log n)` characters per occurrence. The candidate charge in the
+generator's docstring is a proposal, and dual-basis core work lacks an
+aggregate bound. The audit marks size and command count `Measured`: both
+retain their existing regression gates without claiming an asymptotic
+proof.
 
-`scripts/profile_vandevelo.py` counts identifier characters, exact fallback
-calls, projection element and bit visits, and transform element visits.
-A forced six-input span-invariant control invokes the fallback once:
-12 projection elements, 12 projection bit visits and 128 transform element
-visits. Its selected direction has exactly eight pairs, checked directly.
-The default corpus executes 66 tables through six inputs and 2,772 rows
-across original and renamed programs. Nine fallback calls visit 64 points,
-37 projection bits and 220 transform elements.
+`scripts/profile_vandevelo.py` counts identifier characters, sampled
+fallback calls, pair draws and the points each draw visits. A forced
+six-input span-invariant control fires the fallback once: four draws of
+12 points each. Its selected direction has exactly eight pairs, checked
+directly. The default corpus executes 66 tables through six inputs and
+2,772 rows across original and renamed programs; one fallback call draws
+four times and visits 48 points.
 
 The tested naming rule assigns the shortest existing names to the most
 frequent identifiers, replacing tokens simultaneously. On `Random(0)`'s
@@ -464,12 +464,16 @@ execute under both spellings and match the table. Reproduce with
 The rule misses the 5% shipping threshold and retains growing identifier
 lengths, so it remains an experiment. Neither gap is closed by this audit.
 
-The exact fallback is not amortized to `O(T)`. `_popularities` visits
-`2*n*2**n` elements a call. On the 15-input table whose rows are
-`random.Random(0).choice("01")` in order, it fires twice at full dimension
-during one generation: 1,966,080 visits, `60*T`. Seed 2 fires once
-(`30*T`); seeds 0--2 at n=10..14 never fire it.
-`test_vandevelo_fallback_is_not_amortized` pins the counts. No invariant
-charges a call to a removed point, so this is an executed counterexample to
-an `O(T)` aggregate for the current peel, not a language lower bound; the
-generation-time cell stays Open.
+The fallback draws `_SAMPLES` uniform pair differences and scores the
+best, `_SAMPLES * |S|` work a call: the same charge as that many more
+candidates. A draw clears half the pigeonhole average with probability at
+least `1/2 - 2**d/|S|`, which costs the clause bound a factor near two,
+not correctness. The exact quotient transform it replaced took
+`2*n*2**n` visits at full dimension, `60*T` on the 15-input table whose
+rows are `random.Random(0).choice("01")`. Output through n=14 is
+unchanged on seeds 0--2, and the three n=15 tables shrink by 0 to
+0.6%. That removes the executed counterexample, but the candidate charge
+is still a proposal and the dual-basis core has no build-work bound, so
+the generation-time cell stays Open. Scoring work measures about `700*T`
+for one full pool scan plus 10--170 `T` per later phase, flat from n=16
+to n=17; that is a measurement, not a bound.
