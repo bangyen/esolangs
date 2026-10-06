@@ -484,7 +484,7 @@ if _budget:
 _SITECUSTOMIZE = "import sys\n\nsys.setrecursionlimit(50000)\n"
 
 
-def _split_inlined(bundle: Path, module: str) -> int:
+def _split_inlined(bundle: Path, module: str) -> tuple[int, list[str]]:
     """Move the bundle's inlined prefix into a module the mutants import.
 
     ``bundle_one`` inlines ``esolangs.exceptions`` and
@@ -498,8 +498,11 @@ def _split_inlined(bundle: Path, module: str) -> int:
 
     The prefix moves to ``_inlined.py``, which the bundle imports with a
     star import, leaving executable code identical and the interpreter's
-    own definitions the only thing left to mutate.  Returns the number of
-    lines moved.
+    own definitions the only thing left to mutate.  The interpreter's own
+    private siblings (``other/_packlang_parse.py`` beside ``other/packlang.py``)
+    stay behind: they are its code split across files, and moving them out
+    would leave a parser unmutated just for living in its own module.
+    Returns the number of lines moved and the siblings kept.
     """
     text = bundle.read_text()
     marker = (
@@ -517,9 +520,23 @@ def _split_inlined(bundle: Path, module: str) -> int:
         (i for i, line in enumerate(lines) if line.startswith("# --- inlined from")),
         len(lines),
     )
-    preamble, inlined = "".join(lines[:first_inline]), "".join(lines[first_inline:])
+    preamble = "".join(lines[:first_inline])
+    home = f"interpreters/{module.rpartition('.')[0].replace('.', '/')}/_"
+    moved_parts: list[str] = []
+    kept_parts: list[str] = []
+    siblings: list[str] = []
+    sections = re.split(r"(?m)^(?=# --- inlined from )", "".join(lines[first_inline:]))
+    for section in sections:
+        found = re.match(r"# --- inlined from esolangs/(\S+)\.py ---", section)
+        path = found[1] if found else ""
+        if path.startswith(home) and "/" not in path.removeprefix(home):
+            kept_parts.append(section)
+            siblings.append("esolangs." + path.replace("/", "."))
+        else:
+            moved_parts.append(section)
+    inlined, kept = "".join(moved_parts), "".join(kept_parts)
     if not inlined.strip():
-        return 0
+        return 0, siblings
 
     # ``from _inlined import *`` skips underscore-prefixed names unless the
     # module says otherwise, and the names bundled alongside an interpreter
@@ -530,9 +547,9 @@ def _split_inlined(bundle: Path, module: str) -> int:
     export = '\n\n__all__ = [_n for _n in dir() if not _n.startswith("__")]\n'
     (bundle.parent / "_inlined.py").write_text(preamble + inlined + export)
     bundle.write_text(
-        preamble + "from _inlined import *  # noqa: F403\n\n" + sep + tail
+        preamble + "from _inlined import *  # noqa: F403\n\n" + kept + sep + tail
     )
-    return inlined.count("\n")
+    return inlined.count("\n"), siblings
 
 
 def _prepare(language: str, work: Path) -> tuple[Path, str, int, set[str]]:
@@ -549,7 +566,7 @@ def _prepare(language: str, work: Path) -> tuple[Path, str, int, set[str]]:
     (proj / "tests").mkdir(parents=True)
     out = bundle(language, Source(None), proj / "bundled.py")
     stem = out.stem
-    moved = _split_inlined(out, module)
+    moved, siblings = _split_inlined(out, module)
     if moved:
         print(f"[note] moved {moved} inlined lines out of the mutation target")
 
@@ -602,7 +619,7 @@ def _prepare(language: str, work: Path) -> tuple[Path, str, int, set[str]]:
             f"[note] applied {', '.join(moved_classes)} after the class body "
             "so mutmut can see it"
         )
-    return proj, stem, dropped, _own_classes(module)
+    return proj, stem, dropped, _own_classes(module).union(*map(_classes_of, siblings))
 
 
 # A decorator line on a class, and the class statement it applies to.
