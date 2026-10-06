@@ -251,7 +251,7 @@ def _container_tree(
             lines.append(f"{value} {names[key(parent)]}>=1")
             lines.append(f"-{value} {names[key(parent)]}>=2")
         gate = names[("high" if key(i)[2] & 1 else "low", born - 1, 0)]
-        mismatch = f"IN<={gate}" if key(i)[2] & 1 else f"IN>={gate}"
+        mismatch = f"{gate}>=IN" if key(i)[2] & 1 else f"IN>={gate}"
         lines.append(f"-{value} {mismatch}")
         if i in relays:  # alive one tick after its birth, then gone
             lines.append(f"-{value} {child}>=1")
@@ -414,7 +414,8 @@ def _narrow_rule_parts(program: str, width: int) -> list[str | tuple[int, str]]:
                 occupied.add(name)
                 constants[right] = name
             name = constants[right]
-            replacement = left + operator + name
+            # ``Container<=Constant`` only: a named bound flips to ``>=``.
+            replacement = f"{left}>={name}" if operator == ">=" else f"{name}>={left}"
             declaration = f"{name}={right}:"
             if max(len(declaration), len(f"{delta} {replacement}")) < len(line):
                 condition = replacement

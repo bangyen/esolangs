@@ -41,6 +41,10 @@ def test_grid_output() -> None:
 
 
 def test_reflections() -> None:
+    """A reflection negates modulo the grid, as the page's stated grid needs."""
+    stated = ["|0|0|0|0|0|0|0|0|0|0|\n"] * 9 + ["|0|0|2|0|0|0|0|0|0|0|\n"]
+    assert execute("10,10:v>>_++#") == "".join(stated)
+    assert execute("2,3:+|=%=_=") == "111"
     assert execute("1,4:v+_=") == "0"
     assert execute("4,1:>+|=") == "0"
     assert execute("4,4:v>+%=") == "0"

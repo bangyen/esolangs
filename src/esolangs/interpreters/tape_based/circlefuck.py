@@ -1,11 +1,13 @@
-"""Interpreter for Circlefuck.
+r"""Interpreter for Circlefuck.
 
 The tape is the program: cells wrap, ``+``/``-`` adjust, ``,`` reads,
 ``.`` prints, ``[``/``]`` jump to matching brackets, ``@`` halts,
 ``{``/``}`` insert and remove cells. An empty program raises
 :class:`ValueError`; an unmatched taken bracket suspends forever.
 Deleting the last cell halts with
-:class:`~esolangs.exceptions.HaltError`; EOF is a no-op.
+:class:`~esolangs.exceptions.HaltError`; EOF is a no-op.  Three digits
+past 255 (``\256``) are a malformed ``\NNN`` ("between 000 and 255"),
+not ``\2`` then ``56``: the page does not say which.
 
 :func:`_advance` is pure and *reports* one cell's edit and cursors,
 wrapping against the length its own edit produces.  :class:`_Machine`
@@ -66,11 +68,9 @@ def parse(code: str) -> list[int]:
                 "invalid Circlefuck escape",
                 "follow the backslash with an escape such as n, space or x41",
             )
-        tail = code[ind:]
-        if tail.startswith("space"):
-            cells.append(32)
-            ind += 5
-        elif code[ind] == " ":
+        # ``\''space''`` is the space character, the one whitespace "allowed
+        # inside escape sequences"; the word ``space`` is no escape.
+        if code[ind] == " ":
             cells.append(32)
             ind += 1
         elif code[ind] in "nrtb":
@@ -122,7 +122,7 @@ def parse(code: str) -> list[int]:
         else:
             raise syntax_error(
                 "invalid Circlefuck escape",
-                "use a supported escape such as \\n, \\space or \\x41",
+                "use a supported escape such as \\n, a backslash-space or \\x41",
             )
     return cells
 

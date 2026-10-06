@@ -2,7 +2,10 @@
 
 Line-based: ``if <value> <command>`` runs when the cell equals the
 value; commands increment, move, goto a line, read a byte, or output.
-A line missing its operands raises :class:`ValueError`; exhausted input
+Cells are wrapping bytes: the page gives BrainIf "an identical memory
+tape" to brainfuck, whose bytes wrap here (so ``if 256 ...`` never fires).
+A line missing its operands, or ``goto 0`` ("line numbers starting at
+1"), raises :class:`ValueError` when reached, guard or not; exhausted input
 raises :class:`EOFError`.  ``move left`` at the leftmost cell grows the
 tape a zero cell on the left: the spec says nothing about the left edge,
 and brainfuck's page allows cells left of the start.  The guard reads the
@@ -116,7 +119,7 @@ def _advance(state: _State, line: _Line, byte: int | None = None) -> _State:
         if command in ("increment", "inc"):
             # The tape is chunked (:mod:`esolangs.interpreters.persistent`),
             # so a write rebuilds one chunk rather than the whole tape.
-            cells = put(cells, ptr, current + 1)
+            cells = put(cells, ptr, (current + 1) % 256)
         elif command == "right":
             ptr += 1
             # A move past the right end grows the tape by one zero cell.
@@ -133,7 +136,7 @@ def _advance(state: _State, line: _Line, byte: int | None = None) -> _State:
         elif command == "goto":
             ind = target - 2
         elif command == "input":
-            cells = put(cells, ptr, byte or 0)
+            cells = put(cells, ptr, (byte or 0) % 256)
     return (ind + 1, ptr, cells)
 
 
@@ -251,7 +254,7 @@ def run(code: list[str], io: IO) -> None:
             ind += 1
             continue
         if command in ("increment", "inc"):
-            cells[ptr] += 1
+            cells[ptr] = (cells[ptr] + 1) % 256
         elif command == "right":
             ptr += 1
             if ptr == len(cells):
@@ -268,7 +271,7 @@ def run(code: list[str], io: IO) -> None:
             ind = target - 1
             continue
         elif command == "input":
-            cells[ptr] = io.input_char()
+            cells[ptr] = io.input_char() % 256
         elif command == "output":
             io.print_char(chr(value))
         ind += 1

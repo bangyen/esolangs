@@ -6,20 +6,19 @@ from esolangs.tools.helpers import _validate_truth_table
 def egl(truth_table: str, width: int | None = None) -> str:
     """Build an EGL program computing ``truth_table``.
 
-    The grid is two rows of ``T`` cells.  Row 1 is painted with the table,
-    one cell an entry, and ``%`` folds the painter back to the origin.  Row 0
-    is a scratch track: each input is read onto the cell under the pointer and
-    its ``(-...)`` guard, which runs once exactly when the bit is 1, walks the
-    pointer right by that input's Horner weight.  The guard leaves the pointer
-    wherever its body stopped, so the weights accumulate into the row index
-    with no branch per level, and ``v=`` prints the cell below.
+    Row 1 of a two-row grid holds the table, one cell an entry; ``%`` sends
+    ``(1, T - 1)`` to ``(1, 1)`` and ``^<`` on to the origin.  Row 0 is
+    scratch: each input is read under the pointer and its ``(-...)`` guard,
+    run once exactly when the bit is 1, walks right by the input's Horner
+    weight, so the weights accumulate into the index with no branch per
+    level, and ``v=`` prints the cell below.
     """
     n = _validate_truth_table(truth_table)
     size = len(truth_table)
 
     # Paint row 1 left to right, then fold both axes back to the origin.
     cells = ["+" if bit == "1" else "" for bit in truth_table]
-    pieces = [f"{size},2:", "v", ">".join(cells), "%"]
+    pieces = [f"{size},2:", "v", ">".join(cells), "%^<"]
 
     # One read and one weighted guard an input; the weights sum to T - 1.
     pieces += [f"x{'-' * 48}(-{'>' * (1 << (n - 1 - index))})" for index in range(n)]
