@@ -562,3 +562,19 @@ better than random. So at n=7 and 8 the extremal sets sit a dimension
 below random, the side that would make `Omega(2**n/n)` the truth. These
 sizes cannot separate `log n` from `log n + log log n`, and the SAT sets
 (degree 6 and 7, no translation symmetry) suggest no family.
+
+The lower side has better constants than the chain. Bastioni, Giannoni and
+Lobillo-Olmedo (arXiv 2605.05455, section 6) count affine 2-planes by
+Fourier, at least `(s**4/2**n - 3s**2 + 2s)/24`, and quotient by the most
+popular 2-dimensional direction. Mixing that step with the chain's
+one-dimensional step, from the Sidon base `s(s-1)/2 <= 2**n - 1`, forces
+a 3-flat in every half-density set from n=7, a 4-flat from n=12, a 5-flat
+from n=21 and a 6-flat from n=38. That is about `log2(n) + 0.2` against the
+chain's `log2(n) - 2`, the same rate with a better constant. With the
+SAT-exact bases above a 3-flat is forced from n=6. Since `D` cannot drop
+as `n` grows (one hyperplane half keeps density `1/2`), this pins
+`D(6, 1/2) = D(7, 1/2) = D(8, 1/2) = 3`. There the extremal value sits on
+the density-increment bound, a dimension below random. The bound stays at
+3 through n=11, so a half-density set at n=9..11 with no 4-flat would
+keep `D` on it. The `n=9` SAT model has about `10**8` clauses, beyond the
+standing budget.
