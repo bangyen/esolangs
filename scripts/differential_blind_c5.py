@@ -298,7 +298,7 @@ def taglate_program(rng: random.Random) -> str:
 def taglate_balanced(program: str) -> bool:
     """Whether the loops pair up (ours only notices an unpaired one it jumps)."""
     body = program.partition("\n")[2].replace("gy", "[").replace("gz", "]")
-    return balanced(body.replace("g", ""))
+    return bool(balanced(body.replace("g", "")))
 
 
 #: The reference brought to our recorded readings: an empty queue reads as
@@ -316,7 +316,9 @@ TAGLATE_PATCHES = (
 #: thisthat in ASCII, since the harness hands the reference Latin-1: ours
 #: translates back (``thisthat_ours``), the reference through a wrapper that
 #: does the same before running ``blind/thisthat.py``.
-THISTHAT_ASCII = dict(zip("SHopinyxLDldu", "▣◉◯◔◇□■▦◧⬓◨⬒◹", strict=True))
+THISTHAT_ASCII: dict[str, str | int | None] = dict(
+    zip("SHopinyxLDldu", "▣◉◯◔◇□■▦◧⬓◨⬒◹", strict=True)
+)
 THISTHAT_ASCII |= {"v": "◺", ">": "▶", ")": "▷", "-": "─", "|": "║"}
 
 
@@ -439,7 +441,7 @@ def vandevelo_input(rng: random.Random, _program: str) -> str:
     return "".join(rng.choice(pool) + "\n" for _ in range(rng.choice((3, 30))))
 
 
-SPECS: dict[str, Spec] = {
+SPECS: dict[str, Any] = {
     "SLOW ACV MAMMALIAN": Spec(
         "SLOW ACV MAMMALIAN",
         mammalian_program,
