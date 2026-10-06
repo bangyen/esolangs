@@ -292,9 +292,11 @@ def test_number_input_and_output() -> None:
     assert io.getvalue() == "42"
 
 
-def test_invalid_and_exhausted_input_are_ignored() -> None:
+@pytest.mark.parametrize("token", ["no", "1_0", "١٢"])
+def test_invalid_and_exhausted_input_are_ignored(token: str) -> None:
+    # Python's int reads "1_0" and Arabic-Indic digits; npiet reads neither.
     stack: list[int] = []
-    _execute_command((4, 2), 1, stack, ScriptedIO("no\n"))
+    _execute_command((4, 2), 1, stack, ScriptedIO(token + "\n"))
     _execute_command((5, 0), 1, stack, ScriptedIO())
     assert stack == []
 

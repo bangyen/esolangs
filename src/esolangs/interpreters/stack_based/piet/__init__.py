@@ -16,17 +16,21 @@ Spec gaps, decided here: a command that cannot be performed (too few values,
 division by zero, a negative or too-deep roll) leaves the stack untouched;
 npiet pops a failed roll's two values.  A roll of depth 0 is not a failure:
 it pops both and moves nothing.  An output char outside Unicode is popped and
-not printed.
+not printed.  Division floors, as the spec's mod does (npiet truncates).  A
+numeric read consumes a token that is not an integer and ignores it; npiet's
+scanf leaves it unread.
 """
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable
 from contextlib import suppress
 
 from esolangs._drive import drive
 from esolangs._source import raster_source as load_source
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.memory import parse_integer
 from esolangs.raster import Raster
 
 __all__ = ["load_source", "run"]
@@ -60,6 +64,8 @@ _COLOURS: dict[Pixel, tuple[int, int]] = {
     (0, 0, 192): (4, 2),
     (192, 0, 192): (5, 2),
 }
+
+_INTEGER = re.compile(r"[+-]?[0-9]+")
 
 # right, down, left, up
 _DIRECTIONS: tuple[Point, ...] = ((1, 0), (0, 1), (-1, 0), (0, -1))
@@ -266,8 +272,9 @@ class _Machine:
             else:
                 if read_succeeded is not None:
                     read_succeeded()
-                with suppress(ValueError):
-                    return (*stack, int(line))
+                # Not ``int``: it takes ``1_0`` and non-ASCII digits.
+                if _INTEGER.fullmatch(line):
+                    return (*stack, parse_integer(line))
         elif action == "read_char":
             try:
                 value = io.input_char()
