@@ -80,6 +80,14 @@ class TestRegressions:
         big, small = "1" + "0" * 5000, "1" + "0" * 4999
         assert _run([f"begin;var x;set x {big}/{small}+55;out x;end;"]) == "A"
 
+    def test_len_pads_with_nil_and_accepts_a_zero_count(self) -> None:
+        """``len{l, n}`` appends n nils; 0, outside "positive", pads nothing."""
+        program = [
+            'begin;var l;set l len{"A", 0};set l len{l, 2};var c;'
+            "set c len{l}+62;skip at{l, 2.5} = nil;out l;out c;end;"
+        ]
+        assert _run(program) == "A"
+
     def test_a_list_mixing_numbers_and_lists_halts(self) -> None:
         # Wiki: lists "may contain either numbers or other lists (but not both)".
         with pytest.raises(HaltError, match="wrong type"):
