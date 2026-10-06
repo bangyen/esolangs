@@ -8,6 +8,7 @@ import pytest
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.algebraic_programming_language import _Machine, run
+from tests.fixtures import text
 from tests.interpreters.contract import (
     CycleContract,
     EmptyProgramContract,
@@ -17,23 +18,7 @@ from tests.interpreters.runner import run_program
 from tests.raises import raises_message
 
 # The wiki's own examples, which are the specification's ground truth.
-HELLO_WORLD = "\n".join(
-    [
-        "72",
-        "101",
-        "108",
-        "108",
-        "111",
-        "44",
-        "32",
-        "87",
-        "111",
-        "114",
-        "108",
-        "100",
-        "33",
-    ]
-)
+HELLO_WORLD = text("algebraic_programming_language/hello_world.txt")
 TRUTH_MACHINE = "x? = x & x?\nn?"
 NOT = "!x = {\nx & $0\n$1\n}"
 CEIL = "CEIL(n) = {\nn % 1 & $(n - n % 1 + 1)\nn\n}"

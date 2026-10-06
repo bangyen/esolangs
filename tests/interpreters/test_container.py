@@ -8,37 +8,11 @@ import pytest
 
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.other.container import run
+from tests.fixtures import grid
 from tests.interpreters.contract import SnapshotContract, StateViewContract
 from tests.raises import raises_message
 
-HELLO_WORLD = [
-    "A:",
-    "+1 EXIT>=1",
-    "",
-    "PRINT:",
-    "+1 PRINT<=0",
-    "-1 PRINT>=1",
-    "",
-    "OUT:",
-    "+72 A>=0",
-    "-115 A>=2",
-    "+93 A>=4",
-    "-100 A>=6",
-    "+103 A>=8",
-    "-173 A>=10",
-    "+114 A>=11",
-    "+0 A>=12",
-    "+99 A>=14",
-    "-194 A>=16",
-    "+205 A>=18",
-    "-214 A>=20",
-    "+106 A>=21",
-    "+0 A>=22",
-    "-59 A>=24",
-    "",
-    "EXIT=1:",
-    "-1 A>=24",
-]
+HELLO_WORLD = grid("container/hello_world.txt")
 
 
 class TestContainer:

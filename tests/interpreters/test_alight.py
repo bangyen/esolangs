@@ -9,115 +9,20 @@ from esolangs.interpreters.grid_based.alight import _Machine, run
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.tools.alight import alight
 from esolangs.vm import run_until_halt_or_cycle
+from tests.fixtures import grid
 from tests.interpreters.contract import (
     CycleContract,
     SnapshotContract,
 )
 from tests.interpreters.runner import run_program
 
-# --- the wiki's three examples, transcribed from the page source ---------
-#
-# Written as explicit lists of strings rather than a dedented block so that
-# the interior columns survive an editor or a hook that trims trailing
-# whitespace: the vertical ``turn right`` in each sits at a fixed column,
-# and the row that is blank in the middle of one is a legal in-command
-# space, not padding.
-
-CAT_TURN = [
-    "                              d",
-    "                              n",
-    "                              e",
-    "begin;var c;inp c;turn c = eof;",
-    "           t                  t",
-    "           h                  u",
-    "           g                  r",
-    "           i                  n",
-    "           r                   ",
-    "                              r",
-    "           n                  i",
-    "           r                  g",
-    "           u                  h",
-    "           t                  t",
-    "           ;thgir nrut;;;c tuo;",
-]
-
-CAT_SKIP = [
-    "begin;var c;inp c;skip c = eof;turn right;end",
-    "           t                             t",
-    "           h                             u",
-    "           g                             r",
-    "           i                             n",
-    "           r                              ",
-    "                                         r",
-    "           n                             i",
-    "           r                             g",
-    "           u                             h",
-    "           t                             t",
-    "           ;thgir nrut;;;;;;;;;;;;;;c tuo;",
-]
-
-REVERSED_CAT = [
-    (
-        "begin;var c;var l;set l [];inp c;;;;;;;;;;;;;;;;;;;skip c = eof;tu"
-        "rn right;var x;set x len{l}-0.5;;;;;;;;;;;skip sign{x} > 0;end;tur"
-        "n right;"
-    ),
-    (
-        "                          t                                       "
-        "        t                      t                                  "
-        "       t"
-    ),
-    (
-        "                          h                                       "
-        "        u                      h                                  "
-        "       u"
-    ),
-    (
-        "                          g                                       "
-        "        r                      g                                  "
-        "       r"
-    ),
-    (
-        "                          i                                       "
-        "        n                      i                                  "
-        "       n"
-    ),
-    (
-        "                          r                                       "
-        "                               r                                  "
-        "        "
-    ),
-    (
-        "                                                                  "
-        "        r                                                         "
-        "       r"
-    ),
-    (
-        "                          n                                       "
-        "        i                      n                                  "
-        "       i"
-    ),
-    (
-        "                          r                                       "
-        "        g                      r                                  "
-        "       g"
-    ),
-    (
-        "                          u                                       "
-        "        h                      u                                  "
-        "       h"
-    ),
-    (
-        "                          t                                       "
-        "        t                      t                                  "
-        "       t"
-    ),
-    (
-        "                          ;thgir nrut;}c ,5.0-}l{nel ,l{ta;}1 ,l{n"
-        "el l tes;                      ;thgir nrut;1-x x tes;c tuo;}x ,l{t"
-        "a c tes;"
-    ),
-]
+# The wiki's three examples, transcribed from the page source.  Trailing
+# spaces matter (each vertical ``turn right`` sits at a fixed column, and a
+# blank row is a legal in-command space), so tests/fixtures is exempt from
+# the whitespace hooks.
+CAT_TURN = grid("alight/cat_turn.txt")
+CAT_SKIP = grid("alight/cat_skip.txt")
+REVERSED_CAT = grid("alight/reversed_cat.txt")
 
 
 def _run(code: list[str], stdin: str = "") -> str:

@@ -1,0 +1,31 @@
+
+Package : IO {
+  Array(Char, 100) input;
+  Char c;
+  Integer i;
+  Integer j;
+  Integer main {
+    While 1 Do {
+      INIT input;
+      INIT c;
+      INIT i;
+      INIT j;
+      charGet(c);
+      While c ^ 10 Do {
+        While c Do {
+          INCR input(i);
+          DECR c;
+        }
+        INCR i;
+        charGet(c);
+      }
+      While j ^ i Do {
+        charPut(input(j));
+        INCR j;
+      }
+      charPut(13);
+      charPut(10);
+    }
+    0;
+  }
+} cat;

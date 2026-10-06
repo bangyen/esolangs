@@ -12,6 +12,7 @@ from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.packlang import _Machine, run
 from esolangs.tools.packlang import packlang
 from esolangs.vm import run_until_halt_or_cycle
+from tests.fixtures import text
 from tests.interpreters.contract import (
     CycleContract,
     EmptyProgramContract,
@@ -19,119 +20,11 @@ from tests.interpreters.contract import (
 )
 from tests.interpreters.runner import run_program
 
-HELLO = """
-Package : IO {
-  Integer main {
-    charPut(72);
-    charPut(101);
-    charPut(108);
-    charPut(108);
-    charPut(111);
-    charPut(44);
-    charPut(32);
-    charPut(87);
-    charPut(111);
-    charPut(114);
-    charPut(108);
-    charPut(100);
-    charPut(33);
-    charPut(13);
-    charPut(10);
-    0;
-  }
-} helloWorld;
-"""
-
-TRUTH_MACHINE = """
-Package : IO {
-  Char input;
-  Integer main {
-    charGet(input);
-    If input ^ 48 Then {
-      While 1 Do {
-        charPut(49);
-      }
-    }
-    charPut(48);
-  }
-} truthMachine;
-"""
-
-CAT = """
-Package : IO {
-  Array(Char, 100) input;
-  Char c;
-  Integer i;
-  Integer j;
-  Integer main {
-    While 1 Do {
-      INIT input;
-      INIT c;
-      INIT i;
-      INIT j;
-      charGet(c);
-      While c ^ 10 Do {
-        While c Do {
-          INCR input(i);
-          DECR c;
-        }
-        INCR i;
-        charGet(c);
-      }
-      While j ^ i Do {
-        charPut(input(j));
-        INCR j;
-      }
-      charPut(13);
-      charPut(10);
-    }
-    0;
-  }
-} cat;
-"""
-
-PLUS_OR_MINUS = """
-Package : IO {
-  String code;
-  Integer i;
-  Integer(0, 255, 255, 0) acc;
-  Integer plusOrMinus : code {
-    INIT i;
-    INIT acc;
-    While i ^ code(length) Do {
-      If !(code(i) ^ 101011) Then {
-        INCR acc;
-      }
-      If !(code(i) ^ 101101) Then {
-        charPut(acc);
-        DECR acc;
-      }
-      INCR i;
-    }
-    0;
-  }
-} plusOrMinus;
-"""
-
-DEPENDENCY = """
-Dependency {
-  Integer equals : Integer a, Integer b {
-    !(a ^ b);
-  }
-  Integer nequals : Integer a, Integer b {
-    !!(a ^ b);
-  }
-} myDependency;
-Package : IO, myDependency {
-  Integer main {
-    charPut(110000 ^ equals(101, 011));
-    charPut(110000 ^ equals(001, 001));
-    charPut(110000 ^ nequals(101, 011));
-    charPut(110000 ^ nequals(001, 001));
-    0;
-  }
-} myPackage;
-"""
+# The wiki's five example programs, verbatim.
+HELLO, TRUTH_MACHINE, CAT, PLUS_OR_MINUS, DEPENDENCY = (
+    text(f"packlang/{name}.txt")
+    for name in ("hello", "truth_machine", "cat", "plus_or_minus", "dependency")
+)
 
 # The dependency example with every literal rewritten binary -> decimal,
 # and nothing else changed.
