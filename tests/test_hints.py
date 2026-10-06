@@ -75,9 +75,7 @@ def test_rejected_source_retains_a_repair_hint(language, source, hint):
 
 
 @pytest.mark.medium
-@pytest.mark.parametrize(
-    "language", ["brainfuck", "BF-PDA", "Boolfuck", "3D Brainfuck"]
-)
+@pytest.mark.parametrize("language", ["brainfuck", "BF-PDA", "Boolfuck"])
 def test_vm_load_retains_the_delimiter_and_position(language):
     with pytest.raises(esolangs.ProgramError, match="unmatched") as caught:
         make_vm(language, "[", "")

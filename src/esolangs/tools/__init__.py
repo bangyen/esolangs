@@ -70,7 +70,6 @@ from esolangs.tools.suffolk import suffolk
 from esolangs.tools.super_snusp import super_snusp
 from esolangs.tools.taglate import taglate
 from esolangs.tools.thisthat import thisthat
-from esolangs.tools.three_d_brainfuck import three_d_brainfuck
 from esolangs.tools.three_x import three_x
 from esolangs.tools.thue import thue
 from esolangs.tools.underload import underload
@@ -151,7 +150,6 @@ __all__ = [
     "super_snusp",
     "taglate",
     "thisthat",
-    "three_d_brainfuck",
     "three_x",
     "thue",
     "underload",

@@ -11,7 +11,7 @@ from esolangs.interpreters.io import IO, ScriptedIO
 
 @pytest.mark.parametrize(
     ("language", "program"),
-    [("brainfuck", ",."), ("3D Brainfuck", "su+dn,."), ("BFStack", ",.")],
+    [("brainfuck", ",."), ("BFStack", ",.")],
 )
 def test_character_input_preserves_newline(language, program):
     assert esolangs.run(language, program, stdin="\n") == "\n"

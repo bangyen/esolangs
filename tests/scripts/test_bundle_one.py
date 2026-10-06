@@ -210,7 +210,6 @@ def test_install_one_downloads_and_runs_a_bundle() -> None:
     cases = {
         "brainfuck": ("++++++++[>++++++++<-]>.", "@"),
         "Factor": ("21666143160021789415877957258569906604219402892572113", "A"),
-        "3D Brainfuck": ("+" * 72 + ".", "H"),
     }
     try:
         for language, (program, expected) in cases.items():

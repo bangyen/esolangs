@@ -165,7 +165,6 @@ SAMPLES: dict[str, tuple[Program, str]] = {
     "Cyclic tag": (",1", ""),
     "Subleq": ("6 -1 3 0 0 -1 65", ""),
     "123": ("3231", ""),
-    "3D Brainfuck": ("+.", ""),
     "3x": ("3!", ""),
     "6-5": ("55A", ""),
     "A Painter Ant": ("Pnn", ""),

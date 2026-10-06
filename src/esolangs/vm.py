@@ -694,9 +694,9 @@ class VM(Protocol):
         shrinking), so size nothing to
         the initial arity; :meth:`~esolangs.debugger.Debugger.break_at`
         checks kind, not arity.  For the ten grid languages the leading
-        components are row then column, never x then y; nine more report
-        a tuple without being grids (3D Brainfuck, Back, Eval, Forþ,
-        Grapheme, APL, Forbin, ``function x(y)``) and
+        components are row then column, never x then y; seven more report
+        a tuple without being grids (Back, Eval, Forþ, Grapheme, APL,
+        Forbin, ``function x(y)``) and
         ``describe(...)["state_model"]`` separates them.
         """
 
@@ -727,8 +727,8 @@ class VM(Protocol):
         a real position that is not a place in the source.  Every tuple
         ``ip`` declares one of the last three
         (``test_a_positional_ip_says_what_it_counts``): a frame stack
-        (Forth, Grapheme, Forbin), a depth and cursor (Eval) or a 3-D point
-        (3D Brainfuck) all look like ``(row, col)``.
+        (Forth, Grapheme, Forbin) or a depth and cursor (Eval) all look like
+        ``(row, col)``.
         """
 
     @property

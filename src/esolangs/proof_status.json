@@ -641,15 +641,6 @@
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
-      "generator": "3D Brainfuck",
-      "labels": [
-        "tree"
-      ],
-      "qualification": "decision tree laid out on three axes, one per role; the 48 offset is built once on the scratch axis and folded into the reads",
-      "scaling": "linear: decision tree with single-step axis moves",
-      "evidence": "docs/proofs/index.md#generator-ledger"
-    },
-    {
       "generator": "3x",
       "labels": [
         "tree"

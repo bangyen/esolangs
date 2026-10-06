@@ -183,11 +183,9 @@ def test_boolean_set_lists_exactly_the_exported_generators() -> None:
 def _reordering_generators() -> list[object]:
     from esolangs.tools.bitdeque import _bitdeque_ordered
     from esolangs.tools.painfuck import _painfuck_ordered
-    from esolangs.tools.three_d_brainfuck import _three_d_ordered
 
     entries: list[tuple[str, object, object]] = [
         ("painfuck", boolean.painfuck, _painfuck_ordered),
-        ("three_d_brainfuck", boolean.three_d_brainfuck, _three_d_ordered),
         ("bitdeque", boolean.bitdeque, _bitdeque_ordered),
     ]
     return [

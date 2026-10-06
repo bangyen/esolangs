@@ -171,7 +171,7 @@ the 1792 level-0 rows.
 
 ## Curation
 
-The collection has 81 languages; its floor is 31. All ten classics have
+The collection has 80 languages; its floor is 31. All ten classics have
 generators. Removed: unused ordinary imperative entries with shared-shim
 generators; Nopstacle for incompatible embeds; ZTOALC L for a searched
 syntax-level lookup table. The 2D screen intersected
@@ -227,12 +227,18 @@ Existing fame exceptions must still clear the bar. Whitespace was removed at
 58 backlinks.
 
 The 2026-10-06 census (`tests/fixtures/curation.json`) records each
-language's backlinks and route: 21 clear the fame gate and 54 are first
+language's backlinks and route: 21 clear the fame gate and 53 are first
 implementations. Six were implemented elsewhere when added, all before the
 rule was written down on 2026-09-27, and are grandfathered: BIO (ais523),
 BF-PDA (Madk, 2010), 123 (a 2012 VB.NET interpreter), NoComment, Sophie
 (their authors') and Jaune (two others'). Befunge-98 (Funge-98, 31, two
 dozen implementations) came after and was removed on 2026-10-06.
+
+A route admits a language only when its specification fixes the core
+semantics. 3D Brainfuck was removed on 2026-10-06: its page never says how
+a linear source places blocks in the grid or what the generation pointer
+does, so its interpreter invented the core, the invented semantics the
+大白话 deferral rules out.
 
 Bitwise Cyclic Tag (181) also adds the cyclic-schedule axis. Deadfish (315)
 is interpreter-only because it has no input vocabulary.

@@ -177,7 +177,7 @@ class TestPrintedCommandsCanBePasted:
     ) -> None:
         """Every name, since one unquoted survivor is the whole bug again."""
         spaced = [n for n in esolangs.list_languages() if " " in n]
-        assert len(spaced) == 11
+        assert len(spaced) == 10
         for name in spaced:
             out, _err = call_both(["describe", name], capsys)
             assert f'--spec "{name}"' in out, name
