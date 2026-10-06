@@ -11,8 +11,9 @@
    "id": "cat-as-published",
    "source": "   ,!/ ?\\'\n     \\,./",
    "stdin": "abc",
-   "expected": "",
-   "note": "no \" marker, so the IP enters at the bottom right as the spec says and leaves the grid at once"
+   "expected": "abc",
+   "stop": "eof",
+   "note": "no \" marker, so the IP starts rightward at the bottom right, the last line's last character, and the cat runs"
   },
   {
    "id": "cat-with-start-marker",

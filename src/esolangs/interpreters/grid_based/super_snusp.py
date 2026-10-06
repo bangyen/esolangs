@@ -1,8 +1,11 @@
 r"""Interpreter for Super SNUSP.
 
 Super SNUSP is a grid language with a signed sparse tape and value stack.
-``\"`` starts rightward; absent a marker, this interpreter enters the bottom
-right moving left. EOF propagates. Invalid stack/arithmetic operations raise
+``\"`` starts rightward.  Absent one, the page says "Starts at bottom
+right": the IP starts rightward on the last line's last non-space character,
+the one reading under which the wiki's Cat (no ``\"``) copies its input.
+EOF propagates.  ``@`` ("Input decimal number") reads a whitespace-delimited
+token and refuses one that is not an integer. Invalid stack/arithmetic operations raise
 :class:`~esolangs.exceptions.HaltError`; an empty program raises
 :class:`ValueError`.
 
@@ -250,9 +253,10 @@ class _Machine:
             for c, char in enumerate(line)
             if char == '"'
         ]
-        row, col, heading = (
-            (*starts[0], 0) if starts else (len(self.code) - 1, width - 1, 2)
-        )
+        if not starts:
+            lines = [r for r, line in enumerate(code) if line.strip()] or [0]
+            starts = [(lines[-1], len(code[lines[-1]].rstrip()) - 1)]
+        row, col, heading = (*starts[0], 0)
         self.state: _State = ((row, col, heading), (0, ()), (), False, False)
 
     @property

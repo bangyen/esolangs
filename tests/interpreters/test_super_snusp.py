@@ -45,6 +45,15 @@ def test_output(program: str, expected: str) -> None:
     assert run_super(program) == expected
 
 
+def test_without_a_start_marker_the_ip_starts_rightward_on_the_last_character() -> None:
+    """The page's "Starts at bottom right" is the last line's last non-space
+    cell, heading right: what makes the wiki's marker-less Cat copy input.
+    The ``/`` turns the IP up to ``#``; from the padded corner it would
+    meet ``/`` moving left and leave downward, printing nothing.
+    """
+    assert run_super("#\n/  ") == "0"
+
+
 def test_wiki_hello_world_reflects_at_both_mirrors() -> None:
     """The wiki's Hello World (Super_SNUSP rev 194514) needs real reflection."""
     hello = [
