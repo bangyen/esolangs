@@ -16,8 +16,6 @@ def _visible(func: _Function, caller: str, program: _Program) -> bool:
     dependencies, so the relation is followed transitively rather than one
     level deep.
     """
-    if func.package == caller:
-        return True
     seen: set[str] = set()
     frontier = [caller]
     while frontier:
