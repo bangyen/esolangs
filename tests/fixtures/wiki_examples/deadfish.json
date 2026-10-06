@@ -1,0 +1,9 @@
+{
+ "language": "Deadfish",
+ "oldid": 196539,
+ "examples": [
+  {"id": "exact-trap", "source": "iissso", "expected": "0\n"},
+  {"id": "past-trap", "source": "diissisdo", "expected": "288\n"},
+  {"id": "underflow", "source": "iissisdddddddddddddddddddddddddddddddddo", "expected": "0\n"}
+ ]
+}
