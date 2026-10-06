@@ -65,18 +65,6 @@ def _observe(vm: VM) -> _Observed:
     return (vm.output, vm.ip, vm.memory, vm.stack)
 
 
-def _settle(vm: VM, language: str) -> _Observed:
-    """Drive ``vm`` as far as it goes and return its observable state."""
-    if language in NEVER_SELF_HALTS:
-        for _ in range(_PREFIX_STEPS):
-            vm.step()
-        return _observe(vm)
-    _drive(vm)
-    if language in DUMPS_ON_THE_POST_HALT_STEP:
-        vm.step()
-    return _observe(vm)
-
-
 def _machine_of(vm: VM) -> object | None:
     """Return the interpreter state object an adapter wraps, if it has one."""
     for value in vars(vm).values():
@@ -110,6 +98,36 @@ class TestSamplesCoverEveryLanguage:
         assert sorted(exceptions - set(INTERPRETERS)) == []
 
 
+def _check_protocol(language: str, program: str, stdin: str) -> _Observed:
+    """Run the halt and snapshot contract on one machine; return where it settled."""
+    vm = make_vm(language, program, stdin)
+    assert vm.self_halts == (language not in NEVER_SELF_HALTS)
+    assert vm.dumps_on_the_post_halt_step == (language in DUMPS_ON_THE_POST_HALT_STEP)
+    machine = _machine_of(vm)
+    assert machine is not None, f"{language}'s adapter wraps no state object"
+    hash(machine.snapshot())  # type: ignore[attr-defined]
+    if language in NEVER_SELF_HALTS:
+        for _ in range(_PREFIX_STEPS):
+            vm.step()
+        return _observe(vm)
+
+    at_halt = _drive(vm)
+    assert vm.halted
+    vm.step()
+    assert (vm.output != at_halt) == vm.dumps_on_the_post_halt_step
+    if language not in NONDETERMINISTIC_AGAINST_RUN:
+        assert vm.output == esolangs.run(language, program, stdin=stdin)
+
+    settled = _observe(vm)
+    state = vm.snapshot()
+    hash(machine.snapshot())  # type: ignore[attr-defined]
+    vm.step()
+    assert vm.halted
+    assert _observe(vm) == settled
+    assert vm.snapshot() == state
+    return settled
+
+
 @pytest.mark.parametrize(("language", "program", "stdin"), _PARAMS)
 class TestEveryLanguageHonoursTheProtocol:
     """Execute each sample once for the shared halt and snapshot contract."""
@@ -117,31 +135,33 @@ class TestEveryLanguageHonoursTheProtocol:
     def test_execution_and_post_halt_state(
         self, language: str, program: str, stdin: str
     ) -> None:
-        vm = make_vm(language, program, stdin)
-        assert vm.self_halts == (language not in NEVER_SELF_HALTS)
-        assert vm.dumps_on_the_post_halt_step == (
-            language in DUMPS_ON_THE_POST_HALT_STEP
-        )
-        machine = _machine_of(vm)
-        assert machine is not None, f"{language}'s adapter wraps no state object"
-        hash(machine.snapshot())  # type: ignore[attr-defined]
-        if language in NEVER_SELF_HALTS:
-            return
+        """Then two interleaved machines must land on the same state, silently.
 
-        at_halt = _drive(vm)
-        assert vm.halted
-        vm.step()
-        assert (vm.output != at_halt) == vm.dumps_on_the_post_halt_step
-        if language not in NONDETERMINISTIC_AGAINST_RUN:
-            assert vm.output == esolangs.run(language, program, stdin=stdin)
-
-        settled = _observe(vm)
-        state = vm.snapshot()
-        hash(machine.snapshot())  # type: ignore[attr-defined]
-        vm.step()
-        assert vm.halted
-        assert _observe(vm) == settled
-        assert vm.snapshot() == state
+        Interleaving catches state shared between machines of one language
+        (a module-level tape, say); the redirect catches a stray ``print``.
+        """
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            settled = _check_protocol(language, program, stdin)
+            pair = [make_vm(language, program, stdin) for _ in range(2)]
+            if language in NEVER_SELF_HALTS:
+                for _ in range(_PREFIX_STEPS):
+                    for vm in pair:
+                        vm.step()
+            else:
+                for _ in range(_STEP_BUDGET):
+                    if all(vm.halted for vm in pair):
+                        break
+                    for vm in pair:
+                        if not vm.halted:
+                            vm.step()
+                else:
+                    raise AssertionError(f"no halt within {_STEP_BUDGET} steps")
+                for vm in pair:
+                    vm.step()  # the post-halt step ``settled`` was taken after
+            assert [_observe(vm) for vm in pair] == [settled, settled]
+        assert out.getvalue() == ""
+        assert err.getvalue() == ""
 
 
 @pytest.mark.parametrize(("language", "program", "stdin"), _PARAMS)
@@ -166,44 +186,6 @@ class TestEveryLanguageImplementsTheSameInterface:
                 vm.step()
         if tuple in shapes:
             assert shape != "offset", f"{language} reports a tuple ip as an offset"
-
-
-@pytest.mark.parametrize(("language", "program", "stdin"), _PARAMS)
-class TestEveryLanguageIsPure:
-    """Interleaved runs stay deterministic and write only through their IO."""
-
-    def test_interleaved_machines_do_not_disturb_each_other(
-        self, language: str, program: str, stdin: str
-    ) -> None:
-        """Two live machines of one language stay independent."""
-        out, err = io.StringIO(), io.StringIO()
-        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
-            expected = _settle(make_vm(language, program, stdin), language)
-            first = make_vm(language, program, stdin)
-            second = make_vm(language, program, stdin)
-            if language in NEVER_SELF_HALTS:
-                for _ in range(_PREFIX_STEPS):
-                    first.step()
-                    second.step()
-            else:
-                for _ in range(_STEP_BUDGET):
-                    if first.halted and second.halted:
-                        break
-                    if not first.halted:
-                        first.step()
-                    if not second.halted:
-                        second.step()
-                else:
-                    raise AssertionError(
-                        f"no halt within {_STEP_BUDGET} interleaved steps"
-                    )
-                if language in DUMPS_ON_THE_POST_HALT_STEP:
-                    first.step()
-                    second.step()
-            assert _observe(first) == expected
-            assert _observe(second) == expected
-        assert out.getvalue() == ""
-        assert err.getvalue() == ""
 
 
 class TestTheCoordinateOrderIsRowThenColumn:

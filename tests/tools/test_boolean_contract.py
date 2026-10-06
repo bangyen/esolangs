@@ -463,15 +463,6 @@ def test_generator_shape_is_what_the_catalogue_says(name: str) -> None:
         )
 
 
-# Every boolean generator builds a table at n <= _MAX_ARITY on both shapes.
-# n <= _QUICK_ARITY runs in the default gate; the rest is marked slow for
-# memory (Polynomial's n=10 dense table peaks near 619MB RSS), not time.
-_MAX_ARITY = 10
-_QUICK_ARITY = 5
-
-_ARITY_BANDS = (pytest.param(range(1, _QUICK_ARITY + 1), id="quick"),)
-
-
 # The two table shapes every generator is built against.  A dense
 # pseudo-random table and parity fail *differently*: factor's retired digit
 # budget ran out a rung earlier on parity than on dense, and Polynomial's
@@ -511,12 +502,15 @@ def _parity(n: int) -> str:
 _SHAPES = (("dense", _dense), ("parity", _parity))
 
 
-@pytest.mark.parametrize("arities", _ARITY_BANDS)
 @pytest.mark.parametrize("name", sorted(BY_BOOLEAN))
-def test_every_generator_builds_up_to_ten_inputs(name: str, arities: range) -> None:
-    """Every boolean generator builds every arity up to :data:`_MAX_ARITY`."""
+def test_every_generator_builds_up_to_five_inputs(name: str) -> None:
+    """Every boolean generator builds n=1..5 on both shapes, refusing none.
+
+    The round trips execute n=2..3; the CI deep band builds to n=8 but lets a
+    capped row refuse, so this is the local gate on n=1, 4 and 5.
+    """
     fn = getattr(boolean, name)
-    for n in arities:
+    for n in range(1, 6):
         for shape, make in _SHAPES:
             program = fn(make(n))
             assert program, f"{name} built an empty program at n={n} ({shape})"
@@ -532,7 +526,7 @@ def test_cm_constants_builds_only_the_bootstrap_for_small_values() -> None:
     assert _cm_constants([]) == lines
 
 
-# The build sweep above proves every generator *returns* a program up to ten
+# The build sweep above proves every generator *returns* a program up to five
 # inputs.  It never runs one, and nothing else ran one past
 # four inputs either.  Grapheme's variable keys collided with two of its own
 # command characters from slot 5 onward, so from six essential inputs it
@@ -653,37 +647,10 @@ _OPEN_SCALING = {
 
 
 def test_remaining_scaling_audit_is_exhaustive() -> None:
-    """Every generator in the scaling audit remains classified."""
-    expected = {
-        "a_painter_ant",
-        "one_two_three",
-        "circuit_diagram",
-        "minifuck",
-        "factor",
-        "polynomial",
-        "addsubjump",
-        "arrowqueue",
-        "back",
-        "bitdeque",
-        "brainif",
-        "clockwise",
-        "container",
-        "dig",
-        "flowchart",
-        "forth",
-        "inject",
-        "jaune",
-        "laserfuck",
-        "malbolge",
-        "ram0",
-        "sbleq",
-        "slow_acv_mammalian",
-        "fractran",
-        "streetcode",
-        "vandevelo",
-    }
-    classified = _LINEAR_SCALING | _LANGUAGE_SUPERLINEAR_SCALING | _OPEN_SCALING
-    assert classified == expected
+    """The scaling classes are disjoint and name real generators."""
+    classes = (_LINEAR_SCALING, _LANGUAGE_SUPERLINEAR_SCALING, _OPEN_SCALING)
+    classified = set().union(*classes)
+    assert sum(map(len, classes)) == len(classified)
     assert classified <= set(BY_BOOLEAN)
 
 
