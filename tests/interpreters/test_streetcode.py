@@ -67,6 +67,10 @@ class TestStreetcodeSingleCommands:
         """Box-drawing and other undefined characters act like space."""
         assert run_street("C#O;") == chr(0)
 
+    def test_angle_brackets_do_not_move_cp(self) -> None:
+        """Only the proof sentence names ``<``/``>``; the table moves CP by ``=_``."""
+        assert run_street("C>^<O;") == chr(1)
+
     def test_u_without_an_opposite_lane_is_invalid(self) -> None:
         """A one-wide corridor is narrower than the spec's two-character
         streets, so a 'U' there has nowhere legal to end its turn: that is
@@ -233,6 +237,13 @@ class TestStreetcodeWikiExamples:
         scripted = ScriptedIO("A\nB\nC")
         with pytest.raises(EOFError):
             run(code, io=scripted)
+        assert scripted.getvalue() == "A\nB\nC"
+
+    def test_infinite_cat_runs_with_its_us_replaced_by_spaces(self) -> None:
+        """The wiki: "The Us can be replaced with spaces" -- dead ends turn."""
+        scripted = ScriptedIO("A\nB\nC")
+        with pytest.raises(EOFError):
+            run([" OI ", "CIO "], io=scripted)
         assert scripted.getvalue() == "A\nB\nC"
 
     def test_a_cursorless_cat_is_not_a_cycle(self) -> None:

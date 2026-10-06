@@ -145,6 +145,21 @@ class TestPolynomialExecution:
             run("f(x) = x^4 - 27x^3 + 59x^2 - 243x + 450", io=IO())
         assert buffer.getvalue() == ""
 
+    def test_wiki_cat_echoes_and_stops_at_eof(self) -> None:
+        """EOF reads -1, which the loop's ``while (reg > 0)`` exits on."""
+        program = (
+            "f(x) = x^10 - 4827056x^9 + 1192223600x^8 - 8577438158x^7"
+            " + 958436165464x^6 - 4037071023854x^5 + 141614997956730x^4"
+            " - 365830453724082x^3 + 5225367261446055x^2"
+            " - 9213984708801250x + 21911510628393750"
+        )
+        assert esolangs.run("Polynomial", program, "hi\nyo") == "hi\nyo"
+
+    def test_wiki_hello_world(self) -> None:
+        """Enedil's degree-50 program: 25 instructions, alternating += and print."""
+        path = Path(__file__).parents[1] / "fixtures" / "polynomial_hello.txt"
+        assert esolangs.run("Polynomial", path.read_text()) == "Hello World!\n"
+
     def test_while_loop(self) -> None:
         """Add 3, while reg>0 { reg-=1 }, output decrements three times."""
         program = (
