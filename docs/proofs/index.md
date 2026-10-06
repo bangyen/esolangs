@@ -477,3 +477,24 @@ is still a proposal and the dual-basis core has no build-work bound, so
 the generation-time cell stays Open. Scoring work measures about `700*T`
 for one full pool scan plus 10--170 `T` per later phase, flat from n=16
 to n=17; that is a measurement, not a bound.
+
+The dual-basis completion's other terms charge to the output. Column
+extraction costs `n*dim` a clause and the echelon reduction at most `n` a
+dual, while the clause's guard alone writes `n - dim` parts of `O(log n)`
+characters. Cubes of dimension above `2*log2(n)` pay from their own
+`2**dim` points. So these terms are linear in `T` plus the output, and the
+character-level time gap coincides with the identifier gap. Measured on
+seed 0, n=12..16: 2.0--2.5 `T` for columns and 0.75--0.91 `T` for
+reduction.
+
+The core build, `|core|**3/3` a clause, is the one term that charges to
+neither. A core with no relation of weight four or less can hold all `n`
+inputs: the extended-BCH columns `(1, x, x**3)` over GF(16) do, with
+`dim = 9`. Half the cosets of that subspace at n=16 reach a 16-input core,
+but the peel merges coset pairs into cubes of dimension 10--12. That gives
+12 clauses and `0.13*T` core work. Any two cosets of a subspace form a
+cube of one dimension more. Blocking that merge leaves a Sidon set of
+cosets, too sparse to matter, and globally popular directions do not see
+planted cubes. On random tables the greedy core stops at about
+`(6*2**dim)**(1/3)` inputs: at most 6 to n=16, and a flat `0.43*T`. The
+proved bound is still `O(T*n)`; no executed table exceeds a constant.
