@@ -373,7 +373,9 @@ languages remain rejected from the same image-source screen.
 - Flowchart leaves path timing, cursor ownership and equal-distance junctions
   unspecified. Paths take no time, as the wiki's eight-pointer Hello World
   requires, so a step runs one node per pointer in the spec's order; cursors
-  are per pointer; junctions prefer straight, right, then left.
+  are per pointer; junctions prefer straight, right, then left. I/O is
+  Boolfuck's bytes, low bit first, as the spec says; EOF reads empty, and the
+  wiki cat's final empty pop pads to a trailing NUL.
 - LaserFuck inherits Brainfuck commands without defining EOF: exhausted input
   raises `EOFError`.
 - BrainIf rejects unknown commands, including those under a false guard.

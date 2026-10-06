@@ -204,7 +204,7 @@ class TestFlowchart:
     def test_ip_is_none_once_every_pointer_has_stopped(self) -> None:
         """``ip`` reports the first live pointer, so a finished run has none."""
         vm = debugger_api.make_vm("Flowchart", FLOWCHART_TRUTH_MACHINE, "0\n")
-        assert _run_all(vm) == "0"
+        assert _run_all(vm) == "\x00"  # one zero bit, padded at halt
         assert vm.ip is None
 
     def test_the_deque_holds_what_the_pointers_read(self) -> None:

@@ -76,7 +76,6 @@ CONTRACTS: dict[str, BooleanContract] = {
     ),
     "grid_based.flowchart": BooleanContract(
         input_shape="char_stream",
-        ignores_whitespace=True,
     ),
     "grid_based.laserfuck": BooleanContract(
         answer_mode="dump",

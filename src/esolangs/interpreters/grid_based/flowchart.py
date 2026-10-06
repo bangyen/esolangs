@@ -42,17 +42,16 @@ rather than invented, and every one of the three examples on the page
   left/right is the only reading that puts 1 on the looping branch, so the
   example pins the orientation down even though the prose does not.
 
-* **Bits are read and written as characters, not packed into bytes.**  The
-  Boolfuck convention buffers eight bits and emits one byte, but
-  that convention cannot express Flowchart's own truth machine: given
-  ``0`` it reads a single bit, writes a single bit, and halts, so an
-  eight-bit output buffer would never flush and the program would print
-  nothing at all. ``/ /`` therefore reads a ``0`` or ``1`` character,
-  ignoring whitespace, and ``\ \`` prints a literal
-  ``'0'`` or ``'1'``.  EOF leaves the register empty rather than raising,
-  which is exactly the "empty if there are no more bits to read" the spec
-  asks for; a pointer reading past the end simply carries an empty
-  register onward, and ``\ \`` then prints zero.
+* **I/O is Boolfuck's, as the spec says: bytes, low bit first.**  ``/ /``
+  takes the next bit of the current input byte and ``\ \`` buffers one
+  bit of an output byte; a partial byte is zero-padded and written at
+  halt, as in :mod:`esolangs.interpreters.tape_based.boolfuck`.  Both wiki
+  Hello Worlds then print ``Hello, world!`` itself, and the truth machine
+  given ``0`` prints one zero bit, padded to a NUL byte.  EOF leaves the
+  register empty rather than raising -- the spec's "empty if there are no
+  more bits to read" -- where Boolfuck supplies zeros; ``\ \`` then prints
+  zero.  The wiki's cat pushes that empty and pops it last, so it echoes
+  its input plus one zero bit, which pads to a trailing NUL.
 
 * **Re-entry memory disambiguates paths; it never suppresses a node.**
   The spec says a pointer re-entering a node or path it has already
@@ -119,10 +118,8 @@ node with no onward path) raise :class:`ValueError`.
 At EOF a ``/ /`` read leaves the register **empty** rather than raising,
 which is the same state ``{ }`` clears it to. Output prints zero for that
 state, and a push puts it on the deque as an empty cell. A program reading
-past EOF keeps running without a :class:`HaltError`.
-
-External bits are consecutive 0 or 1 characters, ignoring whitespace; the spec
-does not define stdin framing.
+past EOF keeps running without a :class:`HaltError`.  Unicode input is
+reduced modulo 256, as in Boolfuck.
 """
 
 from bisect import bisect_left
@@ -374,6 +371,10 @@ class _Machine:
         """Parse ``code``'s nodes and start on the first ``( )``."""
         self.io = io
         self._input_reads = 0
+        # Boolfuck's byte buffers: the input byte's unread bits and how many
+        # remain, and the output bits gathered so far and how many.
+        self._incoming = self._remaining = 0
+        self._outgoing = self._used = 0
         rows = [line.rstrip("\n") for line in code]
         self.width = max((len(r) for r in rows), default=0)
         self.grid = tuple(r.ljust(self.width) for r in rows)
@@ -641,6 +642,10 @@ class _Machine:
             tuple(sorted((k, tuple(v)) for k, v in self.deques.items() if v)),
             self.io.position(),
             self._input_reads,
+            self._incoming,
+            self._remaining,
+            self._outgoing,
+            self._used,
         )
 
     def step(self) -> None:
@@ -659,6 +664,10 @@ class _Machine:
         ready = [i for i in live if self._on_node(self.pointers[i])]
         for i in sorted(ready, key=self._order):
             self._execute(i)
+        # Spelled out: mypy narrows ``self.halted`` to False after the guard.
+        if self._used and all(p.done for p in self.pointers):
+            self.io.print_char(chr(self._outgoing))
+            self._outgoing = self._used = 0
 
     def _on_node(self, p: _Pointer) -> bool:
         """Whether ``p`` is live and standing on a node."""
@@ -856,7 +865,7 @@ class _Machine:
         elif spelling == "/ /":
             reg = self._read_bit()
         elif spelling == "\\ \\":
-            self.io.print_str(str(0 if reg is None else reg))
+            self._write_bit(reg or 0)
         elif spelling == "\\[ ]/":
             self._deque(p).append(reg)
         elif spelling == "/[ ]\\":
@@ -899,13 +908,26 @@ class _Machine:
         self._leave(i, prefer)
 
     def _read_bit(self) -> int | None:
-        """Read one bit of input, or ``None`` once the input is exhausted."""
-        try:
-            value = self.io.input_bit()
-        except (EOFError, IndexError):
-            return None
-        self._input_reads += 1
-        return value
+        """Read the next input bit, low bit first, or ``None`` at EOF."""
+        if not self._remaining:
+            try:
+                self._incoming = self.io.input_char() % 256
+            except (EOFError, IndexError):
+                return None
+            self._input_reads += 1
+            self._remaining = 8
+        bit = self._incoming & 1
+        self._incoming >>= 1
+        self._remaining -= 1
+        return bit
+
+    def _write_bit(self, bit: int) -> None:
+        """Buffer one output bit, writing the byte once it holds eight."""
+        self._outgoing |= bit << self._used
+        self._used += 1
+        if self._used == 8:
+            self.io.print_char(chr(self._outgoing))
+            self._outgoing = self._used = 0
 
 
 def run(code: list[str], io: IO) -> None:

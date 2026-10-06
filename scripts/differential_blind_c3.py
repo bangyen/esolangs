@@ -8,8 +8,7 @@ written from the wiki text alone (``blind_outcome``'s exit codes)::
 with ``factor``, ``fargo``, ``forbin``, ``grapheme`` and ``home_row``
 likewise; Flowchart, Forþ and Inject prefix ``env BLIND_STEP_LIMIT=30000``,
 ``200000`` and ``100000`` so that the reference's own limit comes before the
-wall clock.  Flowchart's reference reads and writes Boolfuck bytes, ours
-``0``/``1`` characters, so the Spec converts.  ``differential.py`` registers
+wall clock.  ``differential.py`` registers
 ``SPECS``.
 """
 
@@ -784,24 +783,12 @@ def flowchart_split(program: str) -> list[str]:
 
 
 def flowchart_input(rng: random.Random, _program: str) -> str:
-    """Return bits, eight per ASCII byte, least significant first."""
-    data = [rng.randrange(128) for _ in range(rng.choice((0, 1, 2, 4)))]
-    return "".join(str(byte >> k & 1) for byte in data for k in range(8))
-
-
-def pack_bits(bits: str, *, pad: bool) -> bytes:
-    """Pack ``0``/``1`` characters into bytes, least significant bit first."""
-    if pad and len(bits) % 8:
-        bits += "0" * (8 - len(bits) % 8)
-    return bytes(int(bits[i : i + 8][::-1], 2) for i in range(0, len(bits) // 8 * 8, 8))
+    """Return a few ASCII bytes; both sides read them low bit first."""
+    return "".join(chr(rng.randrange(128)) for _ in range(rng.choice((0, 1, 2, 4))))
 
 
 def flowchart_ours(d: Any) -> Callable[[str, str, str, int], Any]:
-    """Return a ``Spec.ours`` that packs our ``0``/``1`` output into bytes.
-
-    Ours writes each bit as a character; the reference follows Boolfuck,
-    padding a partial byte only at a normal halt.
-    """
+    """Return a ``Spec.ours`` that runs the UTF-8 grid the reference got as Latin-1."""
 
     def ours(language: str, program: str, stdin: str, max_steps: int) -> Any:
         program = latin1_as_utf8(program)
@@ -812,17 +799,9 @@ def flowchart_ours(d: Any) -> Callable[[str, str, str, int], Any]:
                 got.status == "halt" and fast.output != got.output
             ):
                 return d.Outcome("crash:fastpath", b"", f"{got} vs {fast}")
-        bits = got.output.decode()
-        return dataclasses.replace(
-            got, output=pack_bits(bits, pad=got.status == "halt")
-        )
+        return got
 
     return ours
-
-
-def flowchart_stdin(_program: str, bits: str) -> str:
-    """Our input bits as the bytes the reference reads."""
-    return pack_bits(bits, pad=False).decode("ascii")
 
 
 # --- shared ---------------------------------------------------------------
@@ -922,7 +901,6 @@ SPECS: dict[str, Any] = {
         flowchart_program,
         flowchart_input,
         max_steps=3_000,
-        ref_stdin=flowchart_stdin,
         ref_outcome=blind_outcome,
         join=_d.befunge_join,
         blank=" ",

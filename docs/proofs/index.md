@@ -169,7 +169,7 @@ carries the universal claim, so the tree below the crossover is a size
 optimization rather than part of the proof.  A width-constrained build may take
 the tree at any arity.  A Painter Ant, Alight, BIO, B-tapemark,
 bit~, Bitwise Cyclic Tag, Circlefuck, Clockwise, Collatz Multiverse,
-Cyclic tag, ///, Subleq, Dimensional, EGL, Eval, Fish,
+Cyclic tag, ///, Subleq, Dimensional, EGL, Eval, Fish, Flowchart,
 Forbin, Minsky Swap, Modulous, NoComment, Packlang, Qoibl, SLOW ACV MAMMALIAN,
 Suffolk, Thue and Unsquare keep no tree route at all: A Painter
 Ant's
@@ -191,8 +191,9 @@ Multiverse writes one cell per four table rows at every arity, Dimensional
 paints one cell an entry along dimension 1 and a bare `>` displaces the
 pointer onto it by the bit it is standing on, EGL paints one
 cell an entry and walks a pointer to it, Eval is one linear
-lookup at every arity, Forbin paints a 128-entry block as one call's argument
-list at every arity and its branches above seven inputs choose a block rather
+lookup at every arity, Flowchart pushes one deque entry a row and walks
+the cursor to it (its tree is the width-constrained route), Forbin paints a
+128-entry block as one call's argument list at every arity and its branches above seven inputs choose a block rather
 than route a table, Packlang paints one array block and indexes it at every
 arity, Minsky Swap's `~`
 cascade routes the index to one of two shared leaves with a one-digit target
