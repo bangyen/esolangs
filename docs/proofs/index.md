@@ -498,3 +498,20 @@ cosets, too sparse to matter, and globally popular directions do not see
 planted cubes. On random tables the greedy core stops at about
 `(6*2**dim)**(1/3)` inputs: at most 6 to n=16, and a flat `0.43*T`. The
 proved bound is still `O(T*n)`; no executed table exceeds a constant.
+
+What linear text would take. While no guard part reads `Inp`, every value
+is affine and a guard hangs on one coset. A coset of codimension `c` needs
+`c` parts with independent values, so at least `c` distinct live names
+and at least `c*(log65(c) - 1)` characters. `O(T)` text therefore needs
+cubes of `Omega(n log n)` points on average. A random set of density 1/2
+holds cosets only up to `2**d ~ (d+1)*(n-d)`, about `n*log2(n)` points
+(first moment). So the cover must stay within a constant factor of the
+largest coset, where the chain above finds `n/(4*log2(1/eps))`. That is
+the greedy-versus-maximum gap of cliques in random graphs, and no
+polynomial search is known to close it. The one way to repeat a name
+within a line is a lazy `r -> Inp?`, which reads afresh on each access.
+A guard that fails midway has then consumed a data-dependent prefix and
+misaligns every later read. Alignment survives only if each row passes
+at most one reading gate, and then each gate class gets one prefix
+pattern. Neither route is a lower bound: no language-wide `Omega(T log
+n)` is proved, and counting gives only `Omega(T)`.
