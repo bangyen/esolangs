@@ -24,10 +24,10 @@
   },
   {
    "id": "cat",
-   "note": "an empty line ends it",
+   "note": "a blank line is copied; EOF ends it",
    "source": "loop;\nreadto data\nsend data\nskipif data\nloop;\ndata;\ndata;\n",
-   "stdin": "abc\ndef\n\n",
-   "expected": "abc\ndef\n"
+   "stdin": "abc\n\ndef\n",
+   "expected": "abc\n\ndef\n"
   }
  ]
 }

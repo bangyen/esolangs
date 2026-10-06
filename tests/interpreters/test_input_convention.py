@@ -72,6 +72,8 @@ _EOF_IS_A_HALT: dict[str, str] = {
     "thisthat": "an exhausted '◇' sends the spec's empty transfer",
     # Wiki: the empty container sets IN "with EOF returning 0".
     "container": "an exhausted read sets IN to the spec's 0",
+    # The wiki cat's only clean exit is a ``readto`` that gets no line.
+    "inject": "an exhausted readto empties the block",
 }
 
 

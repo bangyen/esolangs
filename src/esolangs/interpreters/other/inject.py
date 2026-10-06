@@ -8,10 +8,12 @@ jump to the innermost enclosing block's start, else exit.  ``skipif X``
 (at least one line) and ``skipq X Y`` (equal) are conditional skips.
 
 Decisions: blocks are lists of lines and ``send`` terminates each with a
-newline (the cat program needs it).  ``readto`` at EOF raises
-:class:`EOFError`; an empty line stores an empty block (cat terminates
-on empty input).  A label, blank line or non-command line is a no-op
-(the truth machine falls through a bare ``0``).  Block structure is
+newline (the cat program needs it).  ``readto`` stores the line it reads
+as one line, even an empty one, and at EOF empties the block: the wiki
+cat loops while ``skipif`` sees "at least one line", so EOF is its only
+clean exit, and it copies blank lines.  A label, blank line or
+non-command line is a no-op (the truth machine falls through a bare
+``0``).  Block structure is
 fixed at parse; a written-in ``foo;`` is inert.  The innermost block is
 the shortest span.  ``inject`` uses :mod:`re` line by line ("Replaces the
 label-block ... according to the regex" names no text form), so an emptied
@@ -223,12 +225,8 @@ def _advance(state: _State, line_in: str | None = None) -> tuple[_State, list[st
     if command == "send":
         output = [text + "\n" for text in _contents(state, rest)]
     elif command == "readto":
-        # An empty line stores an *empty* block rather than one empty line:
-        # the cat example loops on ``skipif`` ("at least one line") and
-        # terminates on empty input, which only happens if a blank line
-        # leaves nothing behind.
-        value = line_in or ""
-        state = _replaced(state, rest, [value] if value else [])
+        # EOF (``None``) empties the block; a blank line is one empty line.
+        state = _replaced(state, rest, [] if line_in is None else [line_in])
         lines, spans, ind, done = state
     elif command == "inject":
         state = _injected(state, rest)
@@ -339,11 +337,13 @@ class _Machine:
         command, _, _ = line.partition(" ")
 
         # ``readto`` is the one command that needs its input before the
-        # transition can run, and it must be read even at EOF: the port
-        # raises there, which is the language's documented halt for it.
+        # transition can run; EOF arrives as ``None``.
         line_in = None
         if command == "readto":
-            line_in = self.io.input_str()
+            try:
+                line_in = self.io.input_str()
+            except EOFError:
+                line_in = None
             self._input_reads += 1
 
         state, output = _advance(self._state, line_in)
