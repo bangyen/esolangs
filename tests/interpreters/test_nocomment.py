@@ -203,6 +203,47 @@ class TestNoComment:
         assert esolangs.run("NoComment", program) == "Hello, World!"
 
 
+class TestTheWikiExamples:
+    def test_hello_world(self) -> None:
+        program = (
+            "iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii"
+            "iiiiiioiiiiiiiiiiiiiiiiiiiiiiiiiiiiioiiiiiiiooiiioriiiiiiiiiiiiiii"
+            "iiiiiiiiiiiiiiiiiolnnddddddddddddddddddddddddofoiiiofdddoddddddddo"
+            "rioriiiiiiiiiio"
+        )
+        assert run_and_capture(program) == "Hello World!\n"
+
+    @pytest.mark.parametrize(
+        ("body", "a", "b", "expected"),
+        [
+            ("lnciiiiiiiirrdlilnrrbllfr", 5, 7, 12),
+            ("lnciiiiiiiirrdlilnrrbllfr", 200, 100, 44),
+            ("lnciiiiiiiirrdlilnrrbllfr", 3, 0, 3),  # the slow 256-round case
+            ("lnciiiiiiiirrdldlnrrbllfr", 5, 7, 254),
+        ],
+    )
+    def test_add_and_subtract_two_cells(
+        self, body: str, a: int, b: int, expected: int
+    ) -> None:
+        """Cells n and n+1 combine into n, n+1 cleared, the pointer back on n."""
+        from esolangs.interpreters.tape_based.nocomment import _Machine
+
+        machine = _Machine("r" + "i" * a + "r" + "i" * b + "l" + body, IO())
+        while not machine.halted:
+            machine.step()
+        assert (machine.ptr, machine.tape[1:3]) == (1, (expected, 0))
+
+    @pytest.mark.parametrize(("value", "expected"), [(0, 1), (1, 0), (7, 0)])
+    def test_logical_not(self, value: int, expected: int) -> None:
+        """The result lands in the pointer's cell; the stack ends empty."""
+        from esolangs.interpreters.tape_based.nocomment import _Machine
+
+        machine = _Machine("rrr" + "i" * value + "rnciiinclsrilrnlfrffl", IO())
+        while not machine.halted:
+            machine.step()
+        assert (machine.tape[3], machine.stack) == (expected, ())
+
+
 class TestStepMachine:
     def test_step_tracks_tape_stack_and_cursor(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
