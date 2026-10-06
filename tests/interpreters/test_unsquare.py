@@ -13,6 +13,7 @@ from tests.interpreters.contract import (
     InputCursorContract,
     StateViewContract,
 )
+from tests.interpreters.cursorless_io import PositionlessIO
 from tests.raises import raises_message
 
 run_program = partial(runner.run_program, run, suppress_eof=False)
@@ -148,11 +149,7 @@ class TestStepMachine:
         from esolangs.interpreters.stack_based.unsquare import _Machine
         from esolangs.vm import run_until_halt_or_cycle
 
-        class _Cursorless(ScriptedIO):
-            def position(self) -> int:
-                return 0
-
-        machine = _Machine("+>iA+<", _Cursorless("\x00" * 10))
+        machine = _Machine("+>iA+<", PositionlessIO("\x00" * 10))
         with pytest.raises(EOFError):
             run_until_halt_or_cycle(machine, limit=100)
 

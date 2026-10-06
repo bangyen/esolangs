@@ -10,9 +10,9 @@ from esolangs import tools as boolean
 from esolangs.tools.helpers import best_input_order
 from tests.generator_support import verify_generated
 from tests.tools.boolean_runners import (
-    five_input_sample,
     run_algebraic_programming_language,
 )
+from tests.tools.sample_tables import five_input_sample
 from tests.witness_tables import witnesses
 
 

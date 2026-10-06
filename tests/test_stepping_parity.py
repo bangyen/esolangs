@@ -196,13 +196,3 @@ _WIDER_ARITY = 6
 #: row that reached the broken construct -- so sampling buys the arity and
 #: the second shape for a sixteenth of the cost.
 _WIDER_ROWS = (0, 1, 32, 63)
-
-
-def _one_hot(n: int) -> str:
-    """1 exactly where one input is set."""
-    return "".join(str(int(bin(row).count("1") == 1)) for row in range(2**n))
-
-
-def _one_minterm(n: int) -> str:
-    """A single 1, which makes every input essential at minimum size."""
-    return "1" + "0" * (2**n - 1)

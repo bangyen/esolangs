@@ -3,21 +3,14 @@
 import importlib
 import io
 import random
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import redirect_stdout
 
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.randomness import FirstDraw
 from tests.interpreters.runner import run_program
 
-
-def five_input_sample(count: int = 200, seed: int = 0) -> list[str]:
-    """Return the seeded five-input tables a sharing gain is measured on."""
-    rng = random.Random(seed)
-    found: set[str] = set()
-    while len(found) < count:
-        found.add(format(rng.getrandbits(32), "032b"))
-    return sorted(found)
+Runner = Callable[[str, list[str]], str]
 
 
 def _stdin(inputs: list[str]) -> str:
@@ -25,16 +18,54 @@ def _stdin(inputs: list[str]) -> str:
     return "".join(f"{line}\n" for line in inputs)
 
 
-def run_dig(program: str, inputs: list[str]) -> str:
-    from esolangs.interpreters.grid_based.dig import run
+def _runner(module: str, *, lines: bool = False, newline: bool = False) -> Runner:
+    """Build ``run_X(program, inputs)`` for ``esolangs.interpreters.<module>``.
 
-    return run_program(run, program.splitlines(), _stdin(inputs))
+    ``lines`` hands the program over as rows; ``newline`` feeds one input per
+    line instead of joining them.  The module is imported on first run.
+    """
+
+    def run_language(program: str, inputs: list[str]) -> str:
+        run = importlib.import_module(f"esolangs.interpreters.{module}").run
+        code = program.splitlines() if lines else program
+        return run_program(run, code, _stdin(inputs) if newline else "".join(inputs))
+
+    return run_language
 
 
-def run_six_five(program: str, inputs: list[str]) -> str:
-
-    run = importlib.import_module("esolangs.interpreters.tape_based.six_five").run
-    return run_program(run, program, "".join(inputs))
+run_dig = _runner("grid_based.dig", lines=True, newline=True)
+run_six_five = _runner("tape_based.six_five")
+run_algebraic_programming_language = _runner(
+    "other.algebraic_programming_language", newline=True
+)
+run_inject = _runner("other.inject", newline=True)
+run_dimensional = _runner("tape_based.dimensional", newline=True)
+run_bf = _runner("tape_based.brainfuck")
+run_factor = _runner("tape_based.factor")
+run_suffolk = _runner("tape_based.suffolk")
+run_painfuck = _runner("tape_based.painfuck", newline=True)
+run_rotfuck = _runner("tape_based.rotfuck")
+run_forth = _runner("stack_based.forth", newline=True)
+run_circlefuck = _runner("tape_based.circlefuck")
+run_bit_tilde = _runner("tape_based.bit_tilde")
+run_123 = _runner("tape_based.one_two_three", newline=True)
+run_collatz_multiverse = _runner("register_based.collatz_multiverse", newline=True)
+run_decleq = _runner("register_based.decleq")
+run_cvnc = _runner("other.cvnc", newline=True)
+run_forbin_boolean = _runner("other.forbin")
+run_addsubjump = _runner("register_based.addsubjump")
+run_qoibl = _runner("register_based.qoibl", lines=True)
+run_polynomial = _runner("register_based.polynomial")
+run_bfstack = _runner("stack_based.bfstack")
+run_unsquare = _runner("stack_based.unsquare")
+run_slow_acv_mammalian = _runner("tape_based.slow_acv_mammalian")
+run_streetcode = _runner("grid_based.streetcode", lines=True)
+run_flowchart = _runner("grid_based.flowchart", lines=True)
+run_sophie = _runner("register_based.sophie")
+run_sbleq = _runner("tape_based.sbleq")
+run_modulous = _runner("stack_based.modulous", newline=True)
+run_brainif = _runner("tape_based.brainif", lines=True)
+run_container = _runner("other.container", lines=True)
 
 
 def _run_from(module: str, program: str, feed: Iterator[str]) -> str:
@@ -66,72 +97,6 @@ def run_sophie_from(program: str, feed: Iterator[str]) -> str:
     return _run_from("esolangs.interpreters.register_based.sophie", program, feed)
 
 
-def run_algebraic_programming_language(program: str, inputs: list[str]) -> str:
-    from esolangs.interpreters.other.algebraic_programming_language import run
-
-    return run_program(run, program, _stdin(inputs))
-
-
-def run_inject(program: str, inputs: list[str]) -> str:
-    from esolangs.interpreters.other.inject import run
-
-    return run_program(run, program, _stdin(inputs))
-
-
-def run_dimensional(program: str, inputs: list[str]) -> str:
-    from esolangs.interpreters.tape_based.dimensional import run
-
-    return run_program(run, program, _stdin(inputs))
-
-
-def run_bf(program: str, inputs: list[str]) -> str:
-    from esolangs.interpreters.tape_based.brainfuck import run
-
-    return run_program(run, program, "".join(inputs))
-
-
-def run_factor(program: str, inputs: list[str]) -> str:
-    from esolangs.interpreters.tape_based.factor import run
-
-    return run_program(run, program, "".join(inputs))
-
-
-def run_suffolk(program: str, inputs: list[str]) -> str:
-    from esolangs.interpreters.tape_based.suffolk import run
-
-    return run_program(run, program, "".join(inputs))
-
-
-def run_painfuck(program: str, inputs: list[str]) -> str:
-    from esolangs.interpreters.tape_based.painfuck import run
-
-    return run_program(run, program, _stdin(inputs))
-
-
-def run_rotfuck(program: str, inputs: list[str]) -> str:
-    from esolangs.interpreters.tape_based.rotfuck import run
-
-    return run_program(run, program, "".join(inputs))
-
-
-def run_forth(program: str, inputs: list[str]) -> str:
-    from esolangs.interpreters.stack_based.forth import run
-
-    return run_program(run, program, _stdin(inputs))
-
-
-def run_circlefuck(program: str, inputs: list[str]) -> str:
-    from esolangs.interpreters.tape_based.circlefuck import run
-
-    return run_program(run, program, "".join(inputs))
-
-
-def run_bit_tilde(program: str, inputs: list[str]) -> str:
-    from esolangs.interpreters.tape_based.bit_tilde import run
-
-    return run_program(run, program, "".join(inputs))
-
-
 def run_jaune(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.io import ScriptedIO
     from esolangs.interpreters.tape_based.jaune import run
@@ -139,31 +104,6 @@ def run_jaune(program: str, inputs: list[str]) -> str:
     io = ScriptedIO("\n".join(inputs) + "\n")
     run(program, io)
     return io.getvalue()
-
-
-def run_123(program: str, inputs: list[str]) -> str:
-
-    run = importlib.import_module("esolangs.interpreters.tape_based.one_two_three").run
-    return run_program(run, program, _stdin(inputs))
-
-
-def run_collatz_multiverse(program: str, inputs: list[str]) -> str:
-    from esolangs.interpreters.register_based.collatz_multiverse import run
-
-    return run_program(run, program, _stdin(inputs))
-
-
-def run_decleq(program: str, inputs: list[str]) -> str:
-    from esolangs.interpreters.register_based.decleq import run
-
-    return run_program(run, program, "".join(inputs))
-
-
-def run_cvnc(program: str, inputs: list[str]) -> str:
-    """Run a CV(N)(C) program, feeding one input line per bit."""
-    from esolangs.interpreters.other.cvnc import run
-
-    return run_program(run, program, _stdin(inputs))
 
 
 def run_fargo(program: str, inputs: list[str]) -> str:
@@ -174,81 +114,9 @@ def run_fargo(program: str, inputs: list[str]) -> str:
     return run_program(run, program, f"{number}\n")
 
 
-def run_forbin_boolean(program: str, inputs: list[str]) -> str:
-    from esolangs.interpreters.other.forbin import run
-
-    return run_program(run, program, "".join(inputs))
-
-
-def run_addsubjump(program: str, inputs: list[str]) -> str:
-    from esolangs.interpreters.register_based.addsubjump import run
-
-    return run_program(run, program, "".join(inputs))
-
-
-def run_qoibl(program: str, inputs: list[str]) -> str:
-    from esolangs.interpreters.register_based.qoibl import run
-
-    return run_program(run, program.splitlines(), "".join(inputs))
-
-
-def run_polynomial(program: str, inputs: list[str]) -> str:
-    from esolangs.interpreters.register_based.polynomial import run
-
-    return run_program(run, program, "".join(inputs))
-
-
 def run_polynomial_from(program: str, feed: Iterator[str]) -> str:
     """Run a Polynomial program against an iterator; see :func:`_run_from`."""
     return _run_from("esolangs.interpreters.register_based.polynomial", program, feed)
-
-
-def run_bfstack(program: str, inputs: list[str]) -> str:
-    from esolangs.interpreters.stack_based.bfstack import run
-
-    return run_program(run, program, "".join(inputs))
-
-
-def run_unsquare(program: str, inputs: list[str]) -> str:
-    from esolangs.interpreters.stack_based.unsquare import run
-
-    return run_program(run, program, "".join(inputs))
-
-
-def run_slow_acv_mammalian(program: str, inputs: list[str]) -> str:
-    from esolangs.interpreters.tape_based.slow_acv_mammalian import run
-
-    return run_program(run, program, "".join(inputs))
-
-
-def run_streetcode(program: str, inputs: list[str]) -> str:
-    from esolangs.interpreters.grid_based.streetcode import run
-
-    return run_program(run, program.splitlines(), "".join(inputs))
-
-
-def run_flowchart(program: str, inputs: list[str]) -> str:
-    from esolangs.interpreters.grid_based.flowchart import run
-
-    return run_program(run, program.splitlines(), "".join(inputs))
-
-
-def run_sophie(program: str, inputs: list[str]) -> str:
-    from esolangs.interpreters.register_based.sophie import run
-
-    return run_program(run, program, "".join(inputs))
-
-
-def run_sbleq(program: str, inputs: list[str]) -> str:
-    from esolangs.interpreters.tape_based.sbleq import run
-
-    return run_program(run, program, "".join(inputs))
-
-
-def run_modulous(program: str, inputs: list[str]) -> str:
-    from esolangs.interpreters.stack_based.modulous import run
-
-    return run_program(run, program, _stdin(inputs))
 
 
 def run_grapheme(program: str, inputs: list[str]) -> str:
@@ -257,18 +125,6 @@ def run_grapheme(program: str, inputs: list[str]) -> str:
 
     alphabet = {"0": "%", "1": "A"}
     return run_program(run, program, _stdin([alphabet[i] for i in inputs]))
-
-
-def run_brainif(program: str, inputs: list[str]) -> str:
-    from esolangs.interpreters.tape_based.brainif import run
-
-    return run_program(run, program.splitlines(), "".join(inputs))
-
-
-def run_container(program: str, inputs: list[str]) -> str:
-    from esolangs.interpreters.other.container import run
-
-    return run_program(run, program.splitlines(), "".join(inputs))
 
 
 def run_taglate(program: str, inputs: list[str]) -> str:

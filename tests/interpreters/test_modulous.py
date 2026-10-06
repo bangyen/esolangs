@@ -5,6 +5,7 @@ import pytest
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.interpreters.stack_based.modulous import run
+from tests.interpreters.cursorless_io import PositionlessIO
 from tests.interpreters.runner import run_program
 from tests.raises import raises_message
 
@@ -254,11 +255,7 @@ class TestStepMachine:
         from esolangs.interpreters.stack_based.modulous import _Machine
         from esolangs.vm import run_until_halt_or_cycle
 
-        class _Cursorless(ScriptedIO):
-            def position(self) -> int:
-                return 0
-
-        machine = _Machine("[INP STR][POP][RST]", _Cursorless("a\na\n"))
+        machine = _Machine("[INP STR][POP][RST]", PositionlessIO("a\na\n"))
         with pytest.raises(EOFError):
             run_until_halt_or_cycle(machine, limit=100)
 

@@ -6,7 +6,8 @@ import random
 import pytest
 
 from esolangs import tools as boolean
-from tests.tools.boolean_runners import five_input_sample, run_container
+from tests.tools.boolean_runners import run_container
+from tests.tools.sample_tables import five_input_sample
 from tests.witness_tables import witnesses
 
 

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import itertools
 import sys
 from dataclasses import dataclass
 from math import log2
@@ -16,6 +15,7 @@ from esolangs.debugger import make_vm
 from esolangs.registry import BY_BOOLEAN
 from tests.proofs._ledger import load as load_ledger
 from tests.proofs._roadmap import load as load_audit
+from tests.proofs.deep.linearity import _regime_start
 from tests.tools.test_boolean_contract import _parity
 
 #: Cost band; see ``__main__.py``.  It steps every generator's program at
@@ -26,11 +26,6 @@ COST = 30.0
 #: Most per-added-input growth in commands a settled generator may show.
 #: Shared with ``linearity.py``: a single pass over the table doubles.
 MAX_GROWTH = 2.15
-
-#: A step outside this band is a route change rather than growth, exactly as
-#: in ``linearity.py`` -- generators dispatch, and a switch moves the command
-#: count by a factor that says nothing about asymptotics.
-REGIME_BAND = (0.5, 4.0)
 
 #: Rungs needed after the last route change before a ratio means anything,
 #: and the window the slope is fitted over.  Five, because the wobble these
@@ -181,16 +176,6 @@ def _self_check() -> tuple[float, float, float]:
     assert linearithmic > MAX_GROWTH, f"T log T control read x{linearithmic}"
     assert quadratic > MAX_GROWTH, f"quadratic control read x{quadratic}"
     return linear, linearithmic, quadratic
-
-
-def _regime_start(series: list[tuple[int, int]]) -> int:
-    """The arity after the last route change."""
-    lo, hi = REGIME_BAND
-    start = series[0][0]
-    for (_a, before), (b, after) in itertools.pairwise(series):
-        if before and not lo <= after / before <= hi:
-            start = b
-    return start
 
 
 def measure(key: str, name: str) -> Growth:

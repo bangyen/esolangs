@@ -63,25 +63,22 @@ def test_roundtrip_through_a_file(tmp_path: Path) -> None:
     assert png.read_grey(path.read_bytes()) == original
 
 
+def _chunk(kind: bytes, body: bytes) -> bytes:
+    crc = struct.pack(">I", zlib.crc32(kind + body) & 0xFFFFFFFF)
+    return struct.pack(">I", len(body)) + kind + body + crc
+
+
 def _encode(
     rows: list[bytes], width: int, height: int, depth: int = 8, colour: int = 0
 ) -> bytes:
     """Build a PNG from already-filtered rows (each prefixed by its filter byte)."""
 
-    def chunk(kind: bytes, body: bytes) -> bytes:
-        return (
-            struct.pack(">I", len(body))
-            + kind
-            + body
-            + struct.pack(">I", zlib.crc32(kind + body) & 0xFFFFFFFF)
-        )
-
     ihdr = struct.pack(">IIBBBBB", width, height, depth, colour, 0, 0, 0)
     return (
         png._SIGNATURE  # noqa: SLF001 - building a PNG by hand
-        + chunk(b"IHDR", ihdr)
-        + chunk(b"IDAT", zlib.compress(b"".join(rows)))
-        + chunk(b"IEND", b"")
+        + _chunk(b"IHDR", ihdr)
+        + _chunk(b"IDAT", zlib.compress(b"".join(rows)))
+        + _chunk(b"IEND", b"")
     )
 
 
@@ -141,24 +138,16 @@ def test_sub_byte_depths_unpack_and_scale(
 def test_palette_is_resolved_through_plte() -> None:
     """A palette image maps indices through PLTE, not straight to greyscale."""
 
-    def chunk(kind: bytes, body: bytes) -> bytes:
-        return (
-            struct.pack(">I", len(body))
-            + kind
-            + body
-            + struct.pack(">I", zlib.crc32(kind + body) & 0xFFFFFFFF)
-        )
-
     # Index 0 -> white, index 1 -> black: the fixtures' own palette.
     blob = (
         png._SIGNATURE  # noqa: SLF001 - building a PNG by hand
-        + chunk(
+        + _chunk(
             b"IHDR",
             struct.pack(">IIBBBBB", 2, 1, 1, png._PALETTE, 0, 0, 0),  # noqa: SLF001
         )
-        + chunk(b"PLTE", bytes([255, 255, 255, 0, 0, 0]))
-        + chunk(b"IDAT", zlib.compress(bytes([0, 0b01000000])))
-        + chunk(b"IEND", b"")
+        + _chunk(b"PLTE", bytes([255, 255, 255, 0, 0, 0]))
+        + _chunk(b"IDAT", zlib.compress(bytes([0, 0b01000000])))
+        + _chunk(b"IEND", b"")
     )
     assert png.read_grey(blob) == [bytearray([255, 0])]
     assert png.read_rgb(blob) == [[(255, 255, 255), (0, 0, 0)]]
@@ -210,18 +199,6 @@ def test_multi_channel_filters_step_by_a_whole_pixel() -> None:
     assert png.read_grey(blob) == [expected]
 
 
-def test_rejects_a_sixteen_bit_palette() -> None:
-    """Palette indices are at most 8 bits, so 16-bit palette is malformed."""
-    with pytest.raises(ValueError, match="palette"):
-        png.read_grey(_encode([bytes([0, 0, 0])], 1, 1, depth=16, colour=png._PALETTE))  # noqa: SLF001
-
-
-def test_rejects_sub_byte_depth_on_a_colour_image() -> None:
-    """Sub-byte samples are single-channel only, per the spec."""
-    with pytest.raises(ValueError, match="bit depth"):
-        png.read_grey(_encode([bytes([0, 0])], 1, 1, depth=4, colour=png._RGB))  # noqa: SLF001
-
-
 def _adam7_encode(pixels: list[list[int]], width: int, height: int) -> bytes:
     """Encode 8-bit greyscale as an interlaced PNG, filter 0 throughout."""
     raw = bytearray()
@@ -235,19 +212,11 @@ def _adam7_encode(pixels: list[list[int]], width: int, height: int) -> bytes:
             raw += bytes(pixels[y][x] for x in cols)
     ihdr = struct.pack(">IIBBBBB", width, height, 8, png._GREY, 0, 0, 1)  # noqa: SLF001
 
-    def chunk(kind: bytes, body: bytes) -> bytes:
-        return (
-            struct.pack(">I", len(body))
-            + kind
-            + body
-            + struct.pack(">I", zlib.crc32(kind + body) & 0xFFFFFFFF)
-        )
-
     return (
         png._SIGNATURE  # noqa: SLF001
-        + chunk(b"IHDR", ihdr)
-        + chunk(b"IDAT", zlib.compress(bytes(raw)))
-        + chunk(b"IEND", b"")
+        + _chunk(b"IHDR", ihdr)
+        + _chunk(b"IDAT", zlib.compress(bytes(raw)))
+        + _chunk(b"IEND", b"")
     )
 
 
@@ -287,12 +256,6 @@ def test_sixteen_bit_colour_reduces_through_luma() -> None:
     assert png.read_rgb(blob) == [[(255, 0, 0)]]
 
 
-def test_rejects_a_non_png() -> None:
-    """Bytes that are not a PNG at all are refused up front."""
-    with pytest.raises(ValueError, match="signature"):
-        png.read_grey(b"not a png at all")
-
-
 def test_a_jpeg_is_refused_with_a_usable_message(tmp_path: Path) -> None:
     """A JPEG names itself and the fix, rather than failing on the signature."""
     from esolangs.interpreters.tape_based.line import extract
@@ -312,23 +275,6 @@ def test_rejects_an_unknown_interlace_method() -> None:
     _repair_ihdr_crc(blob)
     with pytest.raises(ValueError, match="interlace method"):
         png.read_grey(bytes(blob))
-
-
-def test_rejects_an_unknown_colour_type_by_number() -> None:
-    """A colour type outside the spec is refused rather than guessed at."""
-    with pytest.raises(ValueError, match="colour type 5"):
-        png.read_grey(_encode([bytes([0, 0])], 1, 1, colour=5))
-
-
-def test_rejects_a_missing_header() -> None:
-    with pytest.raises(ValueError, match="no IHDR"):
-        png.read_rgb(png._SIGNATURE)  # noqa: SLF001
-
-
-def test_rejects_a_truncated_chunk() -> None:
-    blob = png._SIGNATURE + struct.pack(">I", 4) + b"IHDR" + b"x"  # noqa: SLF001
-    with pytest.raises(ValueError, match="truncated IHDR"):
-        png.read_rgb(blob)
 
 
 def test_rejects_an_unknown_compression_method() -> None:
@@ -353,20 +299,12 @@ def test_rgb_rejects_a_palette_without_entries() -> None:
 
 
 def test_rgb_rejects_an_index_outside_the_palette() -> None:
-    def chunk(kind: bytes, body: bytes) -> bytes:
-        return (
-            struct.pack(">I", len(body))
-            + kind
-            + body
-            + struct.pack(">I", zlib.crc32(kind + body) & 0xFFFFFFFF)
-        )
-
     blob = (
         png._SIGNATURE  # noqa: SLF001
-        + chunk(b"IHDR", struct.pack(">IIBBBBB", 1, 1, 8, png._PALETTE, 0, 0, 0))  # noqa: SLF001
-        + chunk(b"PLTE", bytes([255, 255, 255]))
-        + chunk(b"IDAT", zlib.compress(bytes([0, 1])))
-        + chunk(b"IEND", b"")
+        + _chunk(b"IHDR", struct.pack(">IIBBBBB", 1, 1, 8, png._PALETTE, 0, 0, 0))  # noqa: SLF001
+        + _chunk(b"PLTE", bytes([255, 255, 255]))
+        + _chunk(b"IDAT", zlib.compress(bytes([0, 1])))
+        + _chunk(b"IEND", b"")
     )
     for reader in (png.read_rgb, png.read_grey):
         with pytest.raises(ValueError, match="outside PLTE"):
@@ -376,21 +314,13 @@ def test_rgb_rejects_an_index_outside_the_palette() -> None:
 def test_rejects_a_malformed_palette_length() -> None:
     """A PLTE is 1..256 RGB triples; 257 made only one reader complain."""
 
-    def chunk(kind: bytes, body: bytes) -> bytes:
-        return (
-            struct.pack(">I", len(body))
-            + kind
-            + body
-            + struct.pack(">I", zlib.crc32(kind + body) & 0xFFFFFFFF)
-        )
-
     def blob(plte: bytes) -> bytes:
         return (
             png._SIGNATURE  # noqa: SLF001
-            + chunk(b"IHDR", struct.pack(">IIBBBBB", 1, 1, 8, png._PALETTE, 0, 0, 0))  # noqa: SLF001
-            + chunk(b"PLTE", plte)
-            + chunk(b"IDAT", zlib.compress(bytes([0, 0])))
-            + chunk(b"IEND", b"")
+            + _chunk(b"IHDR", struct.pack(">IIBBBBB", 1, 1, 8, png._PALETTE, 0, 0, 0))  # noqa: SLF001
+            + _chunk(b"PLTE", plte)
+            + _chunk(b"IDAT", zlib.compress(bytes([0, 0])))
+            + _chunk(b"IEND", b"")
         )
 
     for plte in (b"", bytes([0, 0, 0]) * 257, bytes([0, 0])):
@@ -407,18 +337,6 @@ def test_a_corrupt_ihdr_dimension_is_refused_before_allocating() -> None:
     for reader in (png.read_grey, png.read_rgb):
         with pytest.raises(ValueError, match="IHDR is corrupt"):
             reader(bytes(data))
-
-
-def test_rejects_an_unknown_row_filter() -> None:
-    """A filter byte outside 0-4 is corruption, not something to guess at."""
-    with pytest.raises(ValueError, match="row filter"):
-        png.read_grey(_encode([bytes([9, 0])], 1, 1))
-
-
-def test_rejects_ragged_rows_on_write() -> None:
-    """Rows of differing lengths are not an image; the writer must say so."""
-    with pytest.raises(ValueError, match="equal-length rows"):
-        png.write_grey([bytearray([0, 0]), bytearray([0])])
 
 
 def test_rgb_writer_rejects_empty_ragged_and_invalid_pixels() -> None:
@@ -539,8 +457,7 @@ def test_png_rejects_missing_compressed_checksum() -> None:
     for kind, body in png._chunks(blob):  # noqa: SLF001
         if kind == b"IDAT":
             body = body[:-1]
-        chunks.extend(struct.pack(">I", len(body)) + kind + body)
-        chunks.extend(struct.pack(">I", zlib.crc32(kind + body)))
+        chunks.extend(_chunk(kind, body))
     with pytest.raises(ValueError, match="truncated PNG compressed stream"):
         png.read_rgb(bytes(chunks))
 
@@ -549,3 +466,50 @@ def test_png_rejects_dimensions_beyond_platform_size() -> None:
     blob = _encode([bytes(4)], 0xFFFFFFFF, 0xFFFFFFFF, depth=16, colour=6)
     with pytest.raises(ValueError, match="IHDR"):
         png.read_rgb(blob)
+
+
+#: (call, argument, what the refusal says) for one-call refusals.
+_REFUSED = {
+    # Palette indices are at most 8 bits, so 16-bit palette is malformed.
+    "rejects_a_sixteen_bit_palette": (
+        png.read_grey,
+        _encode([bytes([0, 0, 0])], 1, 1, depth=16, colour=png._PALETTE),  # noqa: SLF001
+        "palette",
+    ),
+    # Sub-byte samples are single-channel only, per the spec.
+    "rejects_sub_byte_depth_on_a_colour_image": (
+        png.read_grey,
+        _encode([bytes([0, 0])], 1, 1, depth=4, colour=png._RGB),  # noqa: SLF001
+        "bit depth",
+    ),
+    "rejects_a_non_png": (png.read_grey, b"not a png at all", "signature"),
+    "rejects_an_unknown_colour_type_by_number": (
+        png.read_grey,
+        _encode([bytes([0, 0])], 1, 1, colour=5),
+        "colour type 5",
+    ),
+    "rejects_a_missing_header": (png.read_rgb, png._SIGNATURE, "no IHDR"),  # noqa: SLF001
+    "rejects_a_truncated_chunk": (
+        png.read_rgb,
+        png._SIGNATURE + struct.pack(">I", 4) + b"IHDR" + b"x",  # noqa: SLF001
+        "truncated IHDR",
+    ),
+    # A filter byte outside 0-4 is corruption, not something to guess at.
+    "rejects_an_unknown_row_filter": (
+        png.read_grey,
+        _encode([bytes([9, 0])], 1, 1),
+        "row filter",
+    ),
+    "rejects_ragged_rows_on_write": (
+        png.write_grey,
+        [bytearray([0, 0]), bytearray([0])],
+        "equal-length rows",
+    ),
+}
+
+
+@pytest.mark.parametrize("case", _REFUSED.values(), ids=list(_REFUSED))
+def test_refused(case: tuple[Callable[[object], object], object, str]) -> None:
+    call, argument, match = case
+    with pytest.raises(ValueError, match=match):
+        call(argument)

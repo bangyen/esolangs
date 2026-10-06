@@ -8,6 +8,7 @@ import esolangs
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.stack_based.piet import _command, _Machine, run
 from esolangs.raster import Raster
+from tests.interpreters.cursorless_io import PositionlessIO
 
 LIGHT_RED = (255, 192, 192)
 RED = (255, 0, 0)
@@ -339,11 +340,7 @@ def test_a_read_loop_on_a_cursorless_port_runs_to_eof() -> None:
     """A port with no cursor reports position 0; the snapshot counts reads."""
     from esolangs.vm import run_until_halt_or_cycle
 
-    class _Cursorless(ScriptedIO):
-        def position(self) -> int:
-            return 0
-
-    io = _Cursorless("x " * 10)
+    io = PositionlessIO("x " * 10)
     machine = _Machine(raster((LIGHT_RED, DARK_BLUE)), io)
     assert not run_until_halt_or_cycle(machine, limit=1000)
     assert ScriptedIO.position(io) == 20  # every token was read

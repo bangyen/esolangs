@@ -32,6 +32,7 @@ from esolangs.interpreters.register_based.polynomial.roots import (
     prime,
 )
 from tests.interpreters.contract import CycleContract, SnapshotContract
+from tests.interpreters.cursorless_io import PositionlessIO
 
 # Programs whose roots span orders of magnitude or repeat a wide delta -- the
 # cases where a float64 solver rounds a root and drops or corrupts a
@@ -227,20 +228,15 @@ class TestPolynomialExecution:
 
     def test_a_read_loop_on_a_cursorless_port_is_not_a_cycle(self) -> None:
         """A port with no cursor reports position 0; the snapshot counts reads."""
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.register_based.polynomial import _Machine
         from esolangs.vm import run_until_halt_or_cycle
-
-        class _Cursorless(ScriptedIO):
-            def position(self) -> int:
-                return 0
 
         # Roots 1 + 2i, 3^5, 5^2 i, 7^6: reg += 1; while reg > 0 { read }.
         program = (
             "f(x) = x^6 - 117894x^5 + 28825121x^4 - 131450624x^3 "
             "+ 18158253535x^2 - 36104296250x + 89339709375"
         )
-        machine = _Machine(program, _Cursorless("A" * 10))
+        machine = _Machine(program, PositionlessIO("A" * 10))
         assert machine.instructions == [[1, 1], [5], [0, 2], [6]]
         assert run_until_halt_or_cycle(machine, limit=100)
         assert machine.reg == -1  # left the loop on EOF, not as a "cycle"
