@@ -13,8 +13,15 @@ whether the special addresses apply before or after that indirection; here
 or ``-3``, and an ``a`` that is already negative raises :class:`ValueError`.
 
 Programs are whitespace-separated integers loaded at address zero; reads
-past the end are zero.  Execution halts off the end of the program or on
-a negative jump target.  Malformed programs raise :class:`ValueError`.
+past the end are zero.  Execution halts off the end of the program (fewer
+than three cells left at the pointer) or on a negative jump target; the
+wiki names no halt.  Malformed programs raise :class:`ValueError`.
+
+Other readings of the bare "-1 IP", "-2 returns next byte of user input"
+and "none of which could be in ``c``": writing ``-1`` moves the pointer
+and a result above zero then advances three from there; ``-2`` in both
+operands is one read, not two; any negative ``c`` raises when its
+instruction runs, jump taken or not (after a ``-3`` print).
 """
 
 from esolangs._validate import check_address

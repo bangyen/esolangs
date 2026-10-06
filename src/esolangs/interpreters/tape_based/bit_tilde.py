@@ -4,9 +4,8 @@ An 8-cell bit pool with a pointer: ``~`` flips, ``>``/``<`` move (``>``
 extends the pool when the window would run past the end; ``<`` is a
 no-op at cell 0), ``)`` reads a byte and XORs it, MSB first, into the
 8-bit window -- the spec says it "flip[s] the current bit and the next 7
-bits ... according to the ASCII character code", and the wiki has no
-example to say otherwise -- ``(`` prints
-the 8-bit window (fewer if the pool ends), ``{``/``}`` loop on the
+bits ... according to the ASCII character code" -- ``(`` prints that
+window ("the current bit and the next 7 bits"), ``{``/``}`` loop on the
 current bit.  Other characters are ignored.  ``)`` raises
 :class:`EOFError` on exhausted input (the cross-check exits 3); an
 unmatched bracket raises :class:`ValueError` when it would jump (the
@@ -82,10 +81,9 @@ def _advance(
     if char == "~":
         tape = (*tape[:cell], tape[cell] ^ 1, *tape[cell + 1 :])
     elif char == ">":
-        # The window is eight cells wide, so the pool grows to keep one.
-        if cell + 8 > len(tape):
-            tape = (*tape, 0)
+        # ``(`` reads eight cells, so the pool keeps them under the new cell.
         cell += 1
+        tape = _grown(tape, cell + 8)
     elif char == "<":
         # ``<`` at the first cell is a no-op rather than an error.
         if cell:
