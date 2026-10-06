@@ -365,7 +365,7 @@ def _wiki_run(code: str, stdin: str, heading: int) -> str:
 @pytest.mark.parametrize("heading", range(4))
 def test_the_wiki_hello_world_prints_its_spent_counter(heading: int) -> None:
     """Every used cell prints, so the loop counter left at 0 comes out as NUL."""
-    code = (FIXTURES / "laserfuck_hello.txt").read_text(encoding="utf-8")
+    code = (FIXTURES / "laserfuck_hello.txt").read_text(encoding="utf-8").rstrip("\n")
     assert _wiki_run(code, "", heading) == "\x00Hello, world!"
 
 

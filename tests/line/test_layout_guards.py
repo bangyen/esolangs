@@ -21,6 +21,14 @@ def test_arrowhead_without_a_path_is_refused() -> None:
         extract.extract_tree(square, cursor)
 
 
+def test_stray_specks_outside_the_cursor_are_not_a_path() -> None:
+    """Ink made only of tip-sized specks leaves no path to follow."""
+    rows = [0, 1 << 1, 0, 0, 0, 1 << 5, 0, 0]
+    cursor = extract.Cursor(0, 0, Mask(8, 8))
+    with pytest.raises(ValueError, match="no path pixels"):
+        extract.extract_tree(Mask(8, 8, rows), cursor)
+
+
 def test_trailing_noise_does_not_complete_a_kink() -> None:
     vertices = [
         extract.Vertex(0, 0, 0),

@@ -62,6 +62,22 @@ class TestMalformedPrograms:
         with pytest.raises(ValueError, match="charGet takes exactly one variable"):
             _run(_wrap("    charGet(65 ^ 1);"))
 
+    def test_a_dependency_must_be_named_by_an_identifier(self) -> None:
+        with pytest.raises(ValueError, match="expected an identifier"):
+            _run("Package : 5 {\n  Integer main {\n    0;\n  }\n} p;")
+
+    def test_charget_into_an_element_takes_one_index(self) -> None:
+        with pytest.raises(ValueError, match="takes exactly one index"):
+            _run(_wrap("    charGet(row(0, 1));", "Array(Char, 2) row;"))
+
+    def test_a_malformed_local_declaration_is_refused(self) -> None:
+        with pytest.raises(ValueError, match="expected ';'"):
+            _run(_wrap("    Array(Integer, xyz) r;"))
+
+    def test_a_type_without_a_name_is_not_a_declaration(self) -> None:
+        with pytest.raises(ValueError, match="expected ';'"):
+            _run(_wrap("    Integer 5;"))
+
     def test_an_assignment_target_must_be_a_name(self) -> None:
         with pytest.raises(ValueError, match="expected a variable name"):
             _run(_wrap("    INCR 5;"))
@@ -85,6 +101,14 @@ class TestArrayRuntime:
     def test_an_index_outside_the_row_halts(self) -> None:
         with pytest.raises(HaltError, match="is outside"):
             _run(_wrap("    charPut(row(9));", "Array(Integer, 2) row;"))
+
+    def test_length_of_a_scalar_halts(self) -> None:
+        with pytest.raises(HaltError, match="is not an array"):
+            _run(_wrap("    charPut(cell(length));", "Integer cell;"))
+
+    def test_indexing_with_two_arguments_halts(self) -> None:
+        with pytest.raises(HaltError, match="exactly one index"):
+            _run(_wrap("    charPut(row(0, 1));", "Array(Integer, 2) row;"))
 
     def test_writing_a_scalar_with_an_index_halts(self) -> None:
         with pytest.raises(HaltError, match="is not an array"):
@@ -125,6 +149,61 @@ Package : lib, IO {
             _run(program)
 
 
+class TestVisibility:
+    def test_a_shared_dependency_does_not_leak_a_stranger(self) -> None:
+        program = """
+Dependency {
+  Integer stranger : Integer a {
+    a;
+  }
+} far;
+Dependency {
+  Integer base : Integer a {
+    a;
+  }
+} shared;
+Dependency : shared {
+  Integer left : Integer a {
+    a;
+  }
+} l;
+Dependency : shared {
+  Integer right : Integer a {
+    a;
+  }
+} r;
+Package : IO, l, r {
+  Integer main {
+    charPut(stranger(65));
+    0;
+  }
+} p;
+"""
+        with pytest.raises(HaltError, match="does not depend on"):
+            _run(program)
+
+
+class TestNestedCalls:
+    def test_calls_nest_inside_arguments_negation_and_indices(self) -> None:
+        program = """
+Dependency {
+  Integer id : Integer a {
+    a;
+  }
+} lib;
+Package : lib, IO {
+  Array(Integer, 70) row;
+  Integer main {
+    INCR row(66);
+    charPut(id(id(65)));
+    charPut(row(id(66)) ^ !id(0) ^ 66);
+    0;
+  }
+} p;
+"""
+        assert _run(program) == "AB"
+
+
 class TestMachineMemory:
     def test_memory_flattens_an_array_into_its_cells(self) -> None:
         program = _wrap("    INCR row(1);\n    0;", "Array(Integer, 3) row;")
@@ -143,3 +222,29 @@ class TestMachineMemory:
         machine = _Machine(_wrap("    0;"), ScriptedIO(""))
         machine.frames.clear()
         assert machine.memory == []
+
+    def test_ip_is_zero_once_the_frames_are_gone(self) -> None:
+        machine = _Machine(_wrap("    0;"), ScriptedIO(""))
+        machine.frames.clear()
+        assert machine.ip == 0
+
+    def test_stack_lists_the_callers_waiting_on_a_call(self) -> None:
+        program = """
+Dependency {
+  Integer id : Integer a {
+    a;
+  }
+} lib;
+Package : lib, IO {
+  Integer main {
+    charPut(id(65));
+    0;
+  }
+} p;
+"""
+        machine = _Machine(program, ScriptedIO(""))
+        depths = set()
+        while not machine.halted:
+            machine.step()
+            depths.add(len(machine.stack))
+        assert depths == {0, 1}

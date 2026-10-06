@@ -117,6 +117,16 @@ class TestStepMachine:
             machine.step()
         assert machine.exit_code == 0
 
+    def test_tick_counts_the_steps_taken(self) -> None:
+        from esolangs.interpreters.other.container import _Machine
+
+        machine = _Machine(HELLO_WORLD, IO())
+        steps = 0
+        while not machine.halted:
+            machine.step()
+            steps += 1
+        assert machine.tick == steps
+
     def test_loop_is_detected_as_a_cycle(self) -> None:
         # A oscillates 0 -> 1 -> 0 forever with no EXIT rule: a genuine
         # state cycle since the containers' values repeat exactly.

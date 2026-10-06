@@ -21,9 +21,15 @@ from esolangs.interpreters.register_based.polynomial import (
 )
 from esolangs.interpreters.register_based.polynomial import roots as roots_module
 from esolangs.interpreters.register_based.polynomial.roots import (
+    _TRIAL_MODULUS,
+    _dense_gaussian_roots,
+    _divide_out_quadratics,
     _divide_quadratic,
     _factor_roots,
+    _remainder_roots,
     _Root,
+    _squarefree_mod,
+    prime,
 )
 from tests.interpreters.contract import CycleContract, SnapshotContract
 
@@ -184,6 +190,19 @@ class TestPolynomialExecution:
         assert apply(-7, 2, 5) == -1  # %=
         assert apply(2, -1, 6) == 0  # pow(2, -1) = 0.5, stored as an int
         assert apply(-1, -3, 6) == -1
+
+    def test_a_nonnegative_power_is_exact_pow(self) -> None:
+        """``register = pow(register, a)`` with ``a >= 0`` is ordinary pow."""
+        from esolangs.interpreters.register_based.polynomial import _advance
+
+        assert _advance((3, 0), [[2, 6]])[0][0] == 9
+
+    def test_zero_to_a_negative_power_is_refused(self) -> None:
+        """``pow(0, -1)`` is infinite, so it has no integer register value."""
+        from esolangs.interpreters.register_based.polynomial import _advance
+
+        with pytest.raises(ZeroDivisionError):
+            _advance((0, 0), [[-1, 6]])
 
     def test_a_negative_register_prints_nothing(self) -> None:
         """Wiki (Cat): "negative values of output are ignored"."""
@@ -370,6 +389,45 @@ class TestPeelQuadraticsFallback:
         coefficients = [1, 0, 1, 0, 1]
         peeled = mod._peel_instruction_quadratics(coefficients)  # noqa: SLF001
         assert peeled == ([], coefficients)
+
+
+class TestSanitizeShapes:
+    def test_a_bare_minus_x_power_has_coefficient_minus_one(self) -> None:
+        assert sanitize("f(x) = -x^2") == [-1, 0, 0]
+
+    def test_an_empty_polynomial_is_the_zero_polynomial(self) -> None:
+        assert sanitize("f(x) = ") == [0]
+
+
+class TestRootsHelpers:
+    """Small pure helpers behind the root search, at their edges."""
+
+    def test_numbers_below_two_are_not_prime(self) -> None:
+        assert not prime(1)
+
+    def test_a_modular_screen_false_positive_fails_exact_division(self) -> None:
+        """``x^2 + 1 + M`` divides by ``x^2 + 1`` mod ``M`` but not exactly."""
+        modulus = _TRIAL_MODULUS
+        coefficients = [1, 0, 1 + modulus]
+        found, rest = _divide_out_quadratics(coefficients, {(0, 1)})
+        assert (found, rest) == ([], coefficients)
+
+    def test_a_lead_divisible_by_the_prime_is_not_squarefree_mod_it(self) -> None:
+        assert not _squarefree_mod([5, 1, 1], 5)
+
+    def test_a_vanishing_derivative_is_not_squarefree(self) -> None:
+        """``x^5 + 1 = (x + 1)^5`` mod 5, whose derivative is zero."""
+        assert not _squarefree_mod([1, 0, 0, 0, 0, 1], 5)
+
+    def test_a_constant_has_no_gaussian_roots(self) -> None:
+        assert _dense_gaussian_roots([7]) == set()
+
+    def test_a_constant_remainder_has_no_roots(self) -> None:
+        assert _remainder_roots([5]) == []
+
+    def test_trailing_zero_coefficients_are_zero_roots(self) -> None:
+        """``x^2`` (written with a leading zero) is the root 0 twice."""
+        assert _remainder_roots([0, 1, 0, 0]) == [_Root(0, 0)] * 2
 
 
 class TestWideCoefficientParsing:
@@ -713,6 +771,9 @@ class TestPolynomialHighPrecisionRoots:
 
 
 class TestStepMachine:
+    def test_memory_is_the_register(self) -> None:
+        assert _machine("f(x) = x^2+4").memory == [0]
+
     def test_step_tracks_register_and_cursor(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.register_based.polynomial import _Machine

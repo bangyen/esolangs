@@ -185,6 +185,12 @@ class TestFactorint:
         assert number.bit_length() >= _BATCH_BITS, "would not reach the batch"
         assert _factorint(number) == sympy.factorint(number)
 
+    def test_a_large_prime_residue_is_certified_after_one_barren_chunk(self) -> None:
+        """2**61 - 1 outlives the first chunk, then the exact screen accepts it."""
+        from esolangs.interpreters.tape_based.factor import _factorint
+
+        assert _factorint(2**61 - 1) == {2**61 - 1: 1}
+
     def test_does_not_strand_a_large_composite_on_sympy(self) -> None:
         """The residue handed to sympy must never be a large composite."""
         import re

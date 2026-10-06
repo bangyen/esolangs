@@ -41,6 +41,13 @@ def test_halted_step_dumps_once() -> None:
     assert io.getvalue() == "1"
 
 
+def test_machine_exposes_pointer_and_tape() -> None:
+    machine = _Machine(">*", ScriptedIO(""))
+    machine.step()
+    machine.step()
+    assert (machine.ptr, machine.tape) == (1, (0, 1))
+
+
 @pytest.mark.parametrize("source", ["[", "]"])
 def test_unbalanced_loops_are_rejected(source: str) -> None:
     with pytest.raises(ValueError, match="unmatched"):

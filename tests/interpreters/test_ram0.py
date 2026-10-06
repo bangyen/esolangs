@@ -250,6 +250,15 @@ class TestDumpFormat:
 
 
 class TestStepMachine:
+    def test_the_dump_flag_is_set_by_the_step_past_the_end(self) -> None:
+        from esolangs.interpreters.register_based.ram0 import _Machine
+
+        machine = _Machine("A", IO())
+        machine.step()
+        assert not machine.dumped
+        machine.step()
+        assert machine.dumped
+
     def test_load_reads_the_address_in_z(self) -> None:
         """L loads RAM at the address z holds, not at a fixed one."""
         from esolangs.interpreters.register_based.ram0 import _Machine

@@ -113,6 +113,22 @@ class TestQoiblConditionals:
             run(code, IO())
         assert f.getvalue() == chr(1)  # True
 
+    def test_inequality_condition(self) -> None:
+        """``yr yy yr`` is ``!=``: 1 for 7 vs 3, 0 for 3 vs 3."""
+        for big, expected in (("yyy", 1), ("yy", 0)):
+            code: list[str] = [
+                f"we y we {big} we",  # var[1]
+                "we ye we yy we",  # var[2] = 3
+                "tt qe y qe yr yy yr qe ye qe tt",
+            ]
+            with redirect_stdout(io.StringIO()) as f:
+                run(code, IO())
+            assert f.getvalue() == chr(expected), big
+
+    def test_a_trailing_fragment_after_a_statement_is_malformed(self) -> None:
+        with pytest.raises(ValueError, match="malformed Qoibl expression"):
+            run(["tt y tt w"], IO())
+
     def test_the_orderings_are_strict(self) -> None:
         """``ye`` and ``ey`` are false when the two operands are equal."""
         for op in ("ye", "ey"):
