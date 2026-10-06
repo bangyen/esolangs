@@ -21,6 +21,7 @@ import re
 import sys
 import tempfile
 from pathlib import Path
+from typing import Any
 
 if __name__ != "__main__":
     # Imported by ``differential.py`` (as ``__main__`` or as a module).
@@ -340,7 +341,7 @@ def egl_program(rng: random.Random) -> str:
 
 _LINES = {"split": lambda program: program.split("\n"), "join": "\n".join}
 
-SPECS: dict[str, Spec] = {}
+SPECS: dict[str, Any] = {}
 if __name__ != "__main__":
     SPECS = {
         "BrainIf": Spec(
@@ -390,7 +391,7 @@ if __name__ != "__main__":
 
 if __name__ == "__main__":
     # CV(N)(C) reference shim: ``REFERENCE PROGRAM``, the program in ASCII.
-    text = Path(sys.argv[2]).read_text("latin-1").translate(str.maketrans(CVNC_IPA))
+    text = Path(sys.argv[2]).read_text("latin-1").translate(_CVNC_TO_IPA)
     with tempfile.NamedTemporaryFile(
         "w", suffix=".cvnc", delete=False, encoding="utf-8"
     ) as handle:
