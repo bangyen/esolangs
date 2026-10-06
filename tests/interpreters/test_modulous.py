@@ -28,6 +28,11 @@ class TestModulous:
         with pytest.raises(ValueError, match="invalid PSH operand '9'"):
             run("[PSH INT 5][PSH 9][PRT INT][END]", IO())
 
+    def test_the_wiki_hello_world_with_its_typographic_quotes(self) -> None:
+        """The wiki writes its Hello World with “ ”, not straight quotes."""
+        program = "[PSH STR “Hello, World!”][PRT STR][JMP B 1 NIF 0]"
+        assert run_and_capture(program) == "Hello, World!"
+
     def test_push_dispatches_on_its_type_word(self) -> None:
         """``INT`` inside a quoted string is data, not the push type."""
         assert run_and_capture('[PSH STR "INT"][PRT STR][END]') == "I"

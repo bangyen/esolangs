@@ -2,7 +2,10 @@
 
 An 8-cell bit pool with a pointer: ``~`` flips, ``>``/``<`` move (``>``
 extends the pool when the window would run past the end; ``<`` is a
-no-op at cell 0), ``)`` reads a byte as 8 bits MSB first, ``(`` prints
+no-op at cell 0), ``)`` reads a byte and XORs it, MSB first, into the
+8-bit window -- the spec says it "flip[s] the current bit and the next 7
+bits ... according to the ASCII character code", and the wiki has no
+example to say otherwise -- ``(`` prints
 the 8-bit window (fewer if the pool ends), ``{``/``}`` loop on the
 current bit.  Other characters are ignored.  ``)`` raises
 :class:`EOFError` on exhausted input (the cross-check exits 3); an
@@ -90,7 +93,8 @@ def _advance(
     elif char == ")":
         bits = tuple(int(b) for b in f"{byte if byte is not None else 0:08b}")
         tape = _grown(tape, cell + 8)
-        tape = (*tape[:cell], *bits, *tape[cell + 8 :])
+        window = tuple(a ^ b for a, b in zip(tape[cell : cell + 8], bits, strict=True))
+        tape = (*tape[:cell], *window, *tape[cell + 8 :])
     elif target is not None:
         # Both brackets, once the shell has decided a jump happens.
         ind = target

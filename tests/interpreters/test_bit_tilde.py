@@ -68,8 +68,12 @@ class TestBitTilde:
             machine.step()
         assert len(machine.tape) == 10  # two moves right, eight bits of window
 
+    def test_input_flips_rather_than_overwrites(self) -> None:
+        """The spec says ``)`` flips its window by the code: ``A ^ B`` is 3."""
+        assert run_scripted("))(", "AB") == "\x03"
+
     def test_input_replaces_exactly_eight_cells(self) -> None:
-        """``)`` overwrites the eight bits of its window and no more."""
+        """``)`` on a clear window writes its eight bits and no more."""
         from esolangs.interpreters.tape_based.bit_tilde import _Machine
 
         machine = _Machine(">><<)", ScriptedIO("A"))

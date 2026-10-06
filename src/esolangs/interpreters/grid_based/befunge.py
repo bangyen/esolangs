@@ -7,11 +7,12 @@ bytes. Values must fit the platform C signed long; overflow raises HaltError.
 Source cells are bytes; storage and output use unsigned bytes.
 Unknown bytes are no-ops. EOF propagates. The playfield is the 80x25 torus;
 division
-truncates toward zero, and a zero divisor reads the result from the user.  A
-pop off the empty stack yields 0, ``g`` outside the grid pushes 0, and ``p``
-outside is ignored.  ``.`` prints the integer and a trailing space.  An empty
-or oversized program raises :class:`ValueError`; a zero divisor with no result
-to read raises :class:`~esolangs.exceptions.HaltError`.
+truncates toward zero, and a zero divisor reads the result from the user.
+(The wiki says "rounded down", but the C reference interpreter truncates, so
+-7 / 2 is -3.)  A pop off the empty stack yields 0, ``g`` outside the grid
+pushes 0, and ``p`` outside is ignored.  ``.`` prints the integer and a
+trailing space.  An empty or oversized program raises :class:`ValueError`;
+a zero divisor with no result to read raises :class:`~esolangs.exceptions.HaltError`.
 """
 
 from __future__ import annotations
