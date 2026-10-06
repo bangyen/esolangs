@@ -27,7 +27,8 @@ Judgment calls where the manual or C-INTERCAL leave a gap:
   running off the end halts quietly instead of E633.
 * Zero prints an empty line and a value below 4000 prints one line; C-INTERCAL
   always prints an overbar line first.
-* No whitespace inside a number; C-INTERCAL's lexer allowed it.
+* Whitespace may split a number from its sigil and its own digits, as
+  C-INTERCAL's lexer allows, though the manual says it cannot.
 * ``READ OUT`` takes any expression; a subscript list holds bare operands, and
   a subscripted element may be the left operand of a binary operator.
 * Array elements start at 0, where C-INTERCAL leaves them uninitialised;
@@ -145,14 +146,15 @@ def _select(value: int, mask: int) -> int:
 
 
 def _number(digits: str, low: int, high: int, code: str, what: str) -> int:
-    digits = digits.lstrip("0") or "0"
+    digits = re.sub(r"\s", "", digits).lstrip("0") or "0"
     if len(digits) > 10 or not low <= int(digits) <= high:
         raise _fail(code, what)
     return int(digits)
 
 
-_LITERAL = re.compile(r"([.:#,;])([&V?]?)([0-9]+)")
-_LABEL = re.compile(r"\(([0-9]+)\)")
+# C-INTERCAL's lexer skips whitespace between tokens and inside numbers.
+_LITERAL = re.compile(r"([.:#,;])\s*([&V?]?)\s*([0-9][0-9\s]*)")
+_LABEL = re.compile(r"\(\s*(\d[\d\s]*)\)")
 _KEYWORDS: dict[str, re.Pattern[str]] = {}
 
 
@@ -497,14 +499,17 @@ def _roman(value: int) -> str:
     return bars + "\n" + body if "_" in bars else body
 
 
-_START = re.compile(r"(?:\(\d+\)\s*)?(?P<id>PLEASE(?:\s*DO)?|DO)(?:\s*(?:NOT|N'T))?")
+_START = re.compile(
+    r"(?:\(\s*\d[\d\s]*\)\s*)?(?P<id>PLEASE(?:\s*DO)?|DO)(?:\s*(?:NOT|N'T))?"
+)
 # A label after these words is the command's target, not the next statement's.
 _TARGETING = ("FROM", "REINSTATE")
 _HEADER = re.compile(
-    r"\s*(?:\((\d+)\)\s*)?(?:(PLEASE)(?:\s*DO)?|DO)(\s*(?:NOT|N'T))?(?:\s*%\s*(\d+))?"
+    r"\s*(?:\(\s*(\d[\d\s]*)\)\s*)?(?:(PLEASE)(?:\s*DO)?|DO)(\s*(?:NOT|N'T))?"
+    r"(?:\s*%\s*(\d[\d\s]*))?"
 )
 _BARE = re.compile(
-    r"(?:\.\d+\s*<-|READ\s+OUT|WRITE\s+IN|GIVE\s+UP|RESUME\b|FORGET\b|\(\d+\)\s+NEXT)"
+    r"(?:\.\d+\s*<-|READ\s+OUT|WRITE\s+IN|GIVE\s+UP|RESUME\b|FORGET\b|\(\s*\d[\d\s]*\)\s+NEXT)"
 )
 
 
@@ -590,7 +595,7 @@ def _load(text: str) -> _Statement:
         polite = header[2]
         abstained = header[3] is not None
         if header[4] is not None:
-            chance = int(header[4])
+            chance = int(re.sub(r"\s", "", header[4]))
         body = text[header.end() :]
     after = 0
     try:

@@ -1,5 +1,7 @@
 """C-INTERCAL expression, I/O, and NEXT-stack semantics."""
 
+from pathlib import Path
+
 import pytest
 
 from esolangs.exceptions import HaltError
@@ -134,19 +136,19 @@ def test_bare_core_lines_remain_separate_statements() -> None:
     assert _run(source) == "I\n"
 
 
-@pytest.mark.parametrize(
-    "statement",
-    [
-        "RE\nAD OUT #1",
-        "READ OUT #1\n2",
-        ".1 <- #1\n2",
-        ".1 <- #\n1",
-        ".1 <\n- #1",
-    ],
-)
-def test_newlines_cannot_split_keyword_number_or_operator(statement: str) -> None:
+@pytest.mark.parametrize("statement", ["RE\nAD OUT #1", ".1 <\n- #1"])
+def test_newlines_cannot_split_keyword_or_operator(statement: str) -> None:
+    """C-INTERCAL's lexer matches READ{W}OUT and <- whole."""
     with pytest.raises(HaltError):
         _run(f"PLEASE {statement}\nDO GIVE UP\nDO GIVE UP")
+
+
+@pytest.mark.parametrize(
+    "statement", ["READ OUT #1\n2", ".1 <- #1\n2\nDO READ OUT .1", "READ OUT #\n1 2"]
+)
+def test_numbers_may_span_whitespace_as_in_the_c_lexer(statement: str) -> None:
+    """lexer.l: a number is [0-9][ \\t\\n0-9]* and whitespace separates tokens."""
+    assert _run(f"PLEASE {statement}\nDO GIVE UP\nDO GIVE UP") == "XII\n"
 
 
 def test_empty_lines_do_not_count_toward_politeness() -> None:
@@ -499,3 +501,12 @@ def test_branch_search_explores_both_chance_outcomes(last: str, *, halts: bool) 
 def test_branch_search_cannot_fork_input() -> None:
     machine = _Machine("PLEASE WRITE IN .1\nDO GIVE UP\nDO GIVE UP", ScriptedIO(""))
     assert machine.branching_successors(machine.branching_snapshot(), 10) is None
+
+
+def test_c_intercal_test2_multiplies_with_its_library_copy() -> None:
+    """C-INTERCAL's pit/tests/test2.i (gitlab.com/esr/intercal, GPL-2.0+).
+
+    Its library copy splits ``#`` from ``0`` across a line; test2.chk is XXXV.
+    """
+    path = Path(__file__).parents[1] / "fixtures" / "intercal_test2.i"
+    assert _run(path.read_text(encoding="utf-8"), "FIVE\nSEVEN\n") == "XXXV\n"
