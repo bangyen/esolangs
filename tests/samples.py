@@ -92,7 +92,7 @@ def bits_of(value: int) -> str:
 #
 # **Do not derive this set from that flag.**  Importing every ``_Machine``
 # and reading the attribute reproduces these names exactly, which is the
-# reason not to: ``test_the_dump_convention_matches_what_the_vm_reports``
+# reason not to: ``_check_protocol`` in ``test_vm_protocol.py``
 # compares the declaration against the *behaviour*, driving a machine to
 # its halt and stepping once more, and it compares this set against the
 # flag in both directions.  A derived set would make that test compare the
@@ -131,7 +131,7 @@ DUMPS_ON_THE_POST_HALT_STEP = frozenset(
 # How each one is stopped from outside is recorded next to the trait, which
 # is where the machine that does it lives.  The set stays for the same two
 # reasons the one above does, and
-# ``test_the_halting_convention_matches_what_the_vm_reports`` locks it
+# ``_check_protocol`` in ``test_vm_protocol.py`` locks it
 # against the traits in both directions.
 NEVER_SELF_HALTS = frozenset({"A Painter Ant", "Suffolk"})
 
