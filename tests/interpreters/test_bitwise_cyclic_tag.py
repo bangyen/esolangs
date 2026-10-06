@@ -49,6 +49,46 @@ class TestTheWikiExample:
         assert heads == [0, 1, 2, 4, 1, 2, 4, 1, 2, 4, 1, 2]
 
 
+class TestTheOtherWikiExamples:
+    def test_the_cyclic_tag_emulation_passes_the_starred_strings(self) -> None:
+        """``011;10;101;`` translated, on ``1``: the data after each deletion."""
+        machine = _Machine("10 11 11 0 11 10 0 11 10 11 0,1", ScriptedIO())
+        starred = []
+        for _ in range(23):
+            read = machine.read
+            machine.step()
+            if machine.read != read:
+                starred.append(machine.live)
+        assert starred == ["011", "11", "1101", "101011", "0101110", "101110"]
+
+    def test_the_arithmetic_trace_halts_after_ten_steps(self) -> None:
+        """Program ``110100`` on ``10``: deletion sequence ``10110``, then halt."""
+        machine = _Machine("110100,10", ScriptedIO())
+        deleted = ""
+        for _ in range(10):
+            read = machine.read
+            bit = machine.data[read]
+            machine.step()
+            deleted += bit if machine.read != read else ""
+        assert machine.halted
+        assert deleted == "10110"
+        assert run_program(run, "110100,10") == "0"
+
+    def test_the_collatz_program_walks_3_5_8_4_2_1(self) -> None:
+        """Data at each 24-command cycle start, from the published table."""
+        program = "10 11 10 10 10 11 0 11 10 10 0 11 10 10 11 10 10 11 10 10 0 0 0 0"
+        machine = _Machine(program + ",100100100", ScriptedIO())
+        starts = []
+        for _ in range(29):
+            starts.append(machine.live)
+            for _ in range(24):
+                machine.step()
+        terms = [s.count("1") for s in starts if s == "100" * s.count("1")]
+        assert terms == [3, 5, 8, 4, 2, 1, 2, 1]
+        assert starts[1:4] == ["100010001", "001010001", "001100100100"]
+        assert starts[14] == "010001010001010001010001"
+
+
 class TestBitwiseCyclicTag:
     def test_a_lone_delete_answers_the_bit_it_took(self) -> None:
         assert run_program(run, "0,1") == "1"

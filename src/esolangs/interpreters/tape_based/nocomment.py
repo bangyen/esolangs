@@ -7,6 +7,11 @@ peeked stack top when the cell is nonzero, ``o`` prints.  Per the wiki, a
 non-command character is malformed (:class:`ValueError`) and popping or
 peeking an empty stack halts (:class:`~esolangs.exceptions.HaltError`).
 
+Spec gaps, decided here.  A jump landing exactly one past the last command
+is "outside of code space" and halts; the C reference lets it end the run.
+A non-command is refused when reached, as in the reference.  The stack is
+not static, so it never overflows.
+
 Repository deviation: loading removes LF before command indexing so
 line-wrapped generated programs run. Spaces, tabs and CR remain malformed.
 

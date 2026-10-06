@@ -58,6 +58,33 @@ class TestBitdeque:
         assert run_and_capture("INVERT EJECT PUSH") == "0"
 
 
+#: The wiki's Hello, world!, its ``[c] bits:`` labels dropped.
+_WIKI_HELLO = """
+INVERT PUSH INVERT PUSH PUSH INVERT PUSH INVERT PUSH PUSH PUSH
+INVERT PUSH PUSH INVERT PUSH PUSH INVERT PUSH INVERT PUSH INVERT PUSH
+PUSH PUSH INVERT PUSH INVERT PUSH PUSH INVERT PUSH PUSH
+INVERT PUSH PUSH INVERT PUSH INVERT PUSH PUSH INVERT PUSH PUSH
+INVERT PUSH PUSH INVERT PUSH INVERT PUSH PUSH PUSH PUSH
+INVERT PUSH INVERT PUSH INVERT PUSH INVERT PUSH PUSH INVERT PUSH PUSH
+PUSH INVERT PUSH INVERT PUSH PUSH PUSH PUSH PUSH
+INVERT PUSH PUSH PUSH INVERT PUSH INVERT PUSH PUSH PUSH
+PUSH PUSH INVERT PUSH INVERT PUSH PUSH PUSH PUSH
+PUSH PUSH PUSH INVERT PUSH PUSH INVERT PUSH INVERT PUSH
+INVERT PUSH PUSH INVERT PUSH INVERT PUSH PUSH INVERT PUSH PUSH
+INVERT PUSH PUSH INVERT PUSH PUSH INVERT PUSH INVERT PUSH PUSH
+PUSH INVERT PUSH INVERT PUSH PUSH PUSH PUSH INVERT PUSH
+"""
+
+
+class TestTheWikiExample:
+    def test_hello_world_leaves_its_seven_bit_codes_in_the_deque(self) -> None:
+        bits = run_and_capture(_WIKI_HELLO).replace(" ", "")
+        assert bits == "".join(format(ord(c), "07b") for c in "Hello, world!")
+
+    def test_a_goto_past_the_last_command_ends_the_run(self) -> None:
+        assert run_and_capture("INVERT GOTO 9 PUSH") == ""
+
+
 class TestStepMachine:
     def test_step_tracks_cursor_register_and_deque(self) -> None:
         from esolangs.interpreters.io import IO

@@ -2,7 +2,8 @@
 
 PUSH/INJECT append the register to the deque, POP/EJECT pop it (0 when
 empty), INVERT flips the register, GOTO jumps to a 0-based command when
-it is nonzero (GOTO 2 lands on the third command).  The wiki has no I/O,
+it is nonzero (GOTO 2 lands on the third command); a target past the
+last command ends the run, which the wiki leaves open.  The wiki has no I/O,
 so the deque is printed space-separated when the program ends -- the
 repo's convention.  A word that is not one of the six upper-case commands
 raises :class:`ValueError` (the old tokenizer ran a lower-case program
