@@ -27,7 +27,8 @@ operations raise :class:`~esolangs.exceptions.HaltError`.
   as prefix, the only reading that does not need an operand it lacks.
 * **Three-argument ``at`` returns a shallow copy**, per the explicit rule.
   The reversed-cat example discards that copy and fails on nonempty input.
-  Bare calls are accepted and their return values discarded.
+  Bare calls are accepted and their return values discarded.  ``len``'s
+  pad count, "a positive integer" in the prose, may also be 0 (no pad).
 * **EOF.**  ``inp`` past the end of input stores ``eof``, which is what the
   cat examples' ``c = eof`` guard tests.  An empty line supplies its newline character.
 * **Off-grid walking.**  Walking off the grid mid-command is a ``HaltError``.

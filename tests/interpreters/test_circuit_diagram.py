@@ -262,6 +262,20 @@ class TestMultiWire:
         assert output_for(circuit, "0\n1\n0\n0\n") == "1"
         assert output_for(circuit, "1\n1\n0\n0\n") == "0"
 
+    @pytest.mark.parametrize(
+        ("kind", "ones"),
+        [("A", {0, 1, 2, 3}), ("O", {0}), ("X", {0, 2, 3, 4})],
+    )
+    def test_the_negated_gates_read_many_wires_as_the_wiki_says(
+        self, kind: str, ones: set[int]
+    ) -> None:
+        """NAND: not all 1; NOR: no 1; XNOR: only 0s or more than one 1."""
+        circuit = ["-2-.", f"    {kind}.-:", "-2-."]
+        for row in range(16):
+            bits = f"{row:04b}"
+            want = "1" if bits.count("1") in ones else "0"
+            assert output_for(circuit, "\n".join(bits) + "\n") == want, bits
+
     def test_not_preserves_width(self) -> None:
         assert output_for(["-3-~.-:"], "1\n0\n1\n") == "010"
 
