@@ -120,10 +120,6 @@ def _empty_machine(module: str, io: IO) -> object:
         from esolangs.interpreters.tape_based.nocomment import _Machine
 
         return _Machine("", io)
-    if module == "esolangs.interpreters.tape_based.three_d_brainfuck":
-        from esolangs.interpreters.tape_based.three_d_brainfuck import _Machine
-
-        return _Machine("", io)
     if module == "esolangs.interpreters.tape_based.factor":
         from esolangs.interpreters.tape_based.factor import _Machine
 
@@ -237,7 +233,6 @@ _STEP_MACHINES = {
     "esolangs.interpreters.tape_based.back",
     "esolangs.interpreters.register_based.bio",
     "esolangs.interpreters.tape_based.nocomment",
-    "esolangs.interpreters.tape_based.three_d_brainfuck",
     "esolangs.interpreters.tape_based.factor",
     "esolangs.interpreters.tape_based.bit_tilde",
     "esolangs.interpreters.register_based.collatz_multiverse",

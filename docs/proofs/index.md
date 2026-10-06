@@ -307,7 +307,6 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | Taglate | tree | — | linear: bounded dependency scan and canonical residual IDs |
 | Thue | linear lookup | the table is the starting state, one character an entry, and the bit read rewrites every adjacent pair to one of its two members, so the state halves per input and the last character is the answer; the rules never overlap, so the language's random rule choice has nothing to choose | linear: T state characters, nineteen fixed rules |
 | thisthat | tree | inputs go to either end of one bistack row, an ignored one to the column; each end pop drives the next alternating-axis decision node, or goes to the column where the halves agree, in an order the row can pop | linear: the planar H-tree has `O(sqrt(T))` width and height |
-| 3D Brainfuck | tree | decision tree laid out on three axes, one per role; the 48 offset is built once on the scratch axis and folded into the reads | linear: decision tree with single-step axis moves |
 | 3x | tree | — | linear, time n log: greedy order scoring, capped |
 | Underload | parameterized tree | equal-width input programs leave one selector apiece; each node stores both branches as strings and the selector evaluates exactly one, while a constant leaf discards the unused selectors; a repeated subtree is pushed once and carried above the next selector, and the plain tree stays a candidate | linear: 7n input characters plus at most 11T - 4 tree characters |
 | Unlambda | tree | each half is a `d` promise, forced by the `?` test that selects it, since an argument spelled inline would be evaluated before the application; the shipped node instead returns `s` over its selected promises, so a repeated subtree bound once as a promise reaches every half below, and the plain tree stays a candidate | linear: 29 characters an internal node, four a leaf |
@@ -388,7 +387,7 @@ construction.  Parity at thirteen inputs is 966568 digits, built in
 three seconds with the prime powers multiplied as a balanced tree, and
 the interpreter decodes it to the tree the generator encoded.
 
-Accordingly, this ledger records 75 theoretical totality arguments and two
+Accordingly, this ledger records 74 theoretical totality arguments and two
 proved language exceptions under the source-embedded contract.
 Every other row is `Total` or theoretically total past a resource ceiling.
 

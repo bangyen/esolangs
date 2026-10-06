@@ -310,9 +310,6 @@ CONTRACTS: dict[str, BooleanContract] = {
     "tape_based.suffolk": BooleanContract(
         input_shape="char_stream",
     ),
-    "tape_based.three_d_brainfuck": BooleanContract(
-        input_shape="char_stream",
-    ),
     "stack_based.piet": BooleanContract(
         note="80 pixels per codel, comparable in area to Line"
     ),

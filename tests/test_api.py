@@ -87,11 +87,10 @@ def test_run_timeout_halts_runaway_program() -> None:
         esolangs.run("brainfuck", "+[]", timeout=0.1)
 
 
-def test_run_timeout_halts_growing_3d_brainfuck_program() -> None:
-    """The signal interrupts a 3D Brainfuck loop whose state never repeats."""
-    program = "N+n+S"
+def test_run_timeout_halts_a_growing_program() -> None:
+    """The signal interrupts a loop whose state never repeats."""
     with pytest.raises(esolangs.ExecutionTimeoutError, match="timeout"):
-        esolangs.run("3D Brainfuck", program, timeout=0.01)
+        esolangs.run("brainfuck", "+[>+]", timeout=0.01)
 
 
 def test_run_timeout_lets_fast_program_finish() -> None:

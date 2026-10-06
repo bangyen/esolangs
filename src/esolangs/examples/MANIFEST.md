@@ -11,7 +11,6 @@ Row gives the logical bits; Input gives their language-specific encoding.
 | Program | Language | Table | Row | Input | Expected output |
 | --- | --- | --- | --- | --- | --- |
 | `123.txt` | 123 | `0001` | `01` | embedded 01 | not the answer -- see note |
-| `3d-brainfuck.txt` | 3D Brainfuck | `0001` | `01` | 01 | '0' |
 | `3x.txt` | 3x | `0001` | `01` | 0 1 | '0' |
 | `6-5.txt` | 6-5 | `0001` | `01` | 01 | '0' |
 | `a-painter-ant.txt` | A Painter Ant | `0001` | `01` | embedded 01 | '....\n####\n.o.#' |
