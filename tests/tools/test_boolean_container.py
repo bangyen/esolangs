@@ -1,14 +1,34 @@
 """Container's tree route (``n <= 6``) and its wide threshold route."""
 
 import itertools
+import random
 
 import pytest
 
 from esolangs import tools as boolean
-from esolangs.interpreters.other.container import _Machine
-from tests.interpreters.container_observer import check
-from tests.interpreters.container_reference import Reference
-from tests.tools.boolean_runners import five_input_sample
+from tests.tools.boolean_runners import five_input_sample, run_container
+
+
+def _run_container_capped(program: str, inputs: list[str], *, budget: int) -> str:
+    """Run a Container program under a hard tick budget and return its output.
+
+    :func:`run_container` has no cap, so a program that cannot terminate
+    presents as a hung suite rather than a failing test.  Container's own
+    ``_Machine`` is stepped here instead, which is what makes a tick count an
+    assertion.  Overrunning the budget is an error, not a truncated run.
+    """
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.other.container import _Machine
+
+    stream = ScriptedIO("".join(f"{line}" for line in inputs))
+    machine = _Machine(program.splitlines(), stream)
+    for _ in range(budget):
+        if machine.halted:
+            return stream.getvalue()
+        machine.step()
+    if not machine.halted:
+        raise AssertionError(f"still running after {budget} ticks")
+    return stream.getvalue()
 
 
 class TestContainer:
@@ -22,10 +42,8 @@ class TestContainer:
         )
         for row in (0, 1, 63, 64, 127):
             assert (
-                check(program.splitlines(), f"{row:07b}", _Machine, table[row])[
-                    "generations"
-                ]
-                <= 2 * n + 2
+                _run_container_capped(program, list(f"{row:07b}"), budget=2 * n + 2)
+                == table[row]
             )
 
     @pytest.mark.parametrize(
@@ -36,20 +54,25 @@ class TestContainer:
         from esolangs.interpreters.other.container import _Machine
         from esolangs.tools.container import _narrow_rules
 
-        before = Reference(original.splitlines())
+        before = _Machine(original.splitlines(), ScriptedIO(""))
         after = _Machine(_narrow_rules(original, 1).splitlines(), ScriptedIO(""))
         for _ in range(4):
             before.step()
             after.step()
-            assert before.values == {key: after.var[key] for key in before.values}
+            assert before.var == {key: after.var[key] for key in before.var}
             assert before.halted == after.halted
 
     @pytest.mark.parametrize("width", [1, 7, 8, 13])
-    def test_narrow_rules_respect_every_three_input_width(self, width: int) -> None:
+    def test_narrow_rules_execute_every_three_input_table(self, width: int) -> None:
         for value in range(256):
             table = f"{value:08b}"
             program = boolean.container(table, width)
             assert max(map(len, program.splitlines())) <= max(7, width)
+            for row in range(8):
+                assert (
+                    _run_container_capped(program, list(f"{row:03b}"), budget=8)
+                    == (table[row])
+                )
 
     @pytest.mark.medium
     def test_factored_rules_preserve_synchronous_state(self) -> None:
@@ -63,15 +86,77 @@ class TestContainer:
         assert max(map(len, original.splitlines())) > 7
         for row in range(8):
             inputs = f"{row:03b}"
-            before = Reference(original.splitlines(), inputs)
+            before = _Machine(original.splitlines(), ScriptedIO(inputs))
             after = _Machine(narrow.splitlines(), ScriptedIO(inputs))
-            keys = before.values.keys()
+            keys = before.var.keys()
             for _ in range(8):
                 before.step()
                 after.step()
-                assert before.values == {key: after.var[key] for key in keys}
+                assert before.var == {key: after.var[key] for key in keys}
                 assert before.halted == after.halted
-                assert before.output == after.io.getvalue()
+                assert before.io.getvalue() == after.io.getvalue()
+
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("01", 1),  # NOT
+            ("10", 1),
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("11111110", 3),  # NAND3
+            ("1111111111111111", 4),  # constant one
+        ],
+    )
+    @pytest.mark.medium
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every input combination produces the truth-table result."""
+        program = boolean.container(table)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = run_container(program, [str(b) for b in bits])
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    def test_structure(self) -> None:
+        """The program reads n inputs and advances prefix survivors."""
+        program = boolean.container("0110")
+        assert program.startswith("T:\n1 T>=T")
+        assert ":" in program.splitlines()[:4]  # the empty-named reader
+        declarations = [
+            line[:-1].split("=", 1)[0]
+            for line in program.splitlines()
+            if line.endswith(":")
+        ]
+        generated = [
+            name
+            for name in declarations
+            if name not in {"", "T", "IN", "OUT", "PRINT", "EXIT"}
+        ]
+        assert len(generated) == len(set(generated))
+        assert program.count("PRINT:") == 1
+
+    @pytest.mark.medium
+    def test_wide_tables_decode_every_row_inside_a_tick_budget(self) -> None:
+        """A *random dense* wide table answers every row in ``2n + 2`` ticks.
+
+        The cap is the point.  Its predecessor packed the table into one
+        decimal literal and subtracted ten per tick, so the tick count scaled
+        with that literal's magnitude, not its length: 2.2e6 ticks for eight
+        rows at ``n == 3``, hence ~1e126 at ``n == 7``.  The test that stood
+        here ran the same path at ``"011" + "0" * 125``, whose reversed
+        literal is the three digits ``110``, and so only ever exercised the
+        decoder at its cheapest possible input.  A representative table is
+        what discriminates, and the budget turns the old route's
+        non-termination into a failure rather than a hang.
+        """
+        rng = random.Random(20260922)
+        for n in (7, 8):
+            table = "".join(rng.choice("01") for _ in range(1 << n))
+            assert table.count("1") > (1 << n) // 4, "not a dense table"
+            program = boolean.container(table)
+            for combo in range(1 << n):
+                bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
+                got = _run_container_capped(program, bits, budget=2 * n + 2)
+                assert got == table[combo], f"n={n} row {combo}"
 
     def test_name_allocation_steps_over_container_s_own_names(self) -> None:
         """``_forbin_name`` reaches ``T`` at 45 and ``IN`` at 754, so it collides.
@@ -88,6 +173,12 @@ class TestContainer:
         assert len(set(names.values())) == len(uses)
         # Descending use counts, so the allocation order is the key order.
         assert [names[key] for key in list(uses)[:3]] == ["a", "b", "c"]
+
+    def test_wide_tables_read_exactly_n_inputs(self) -> None:
+        """The latch-and-gate route still reads one line per input."""
+        program = boolean.container("0110100110010110" * 8)
+        assert program.count("IN>=") == 7  # one latch per input, no rescan
+        assert program.count("PRINT:") == 1
 
     def test_small_tree_uses_one_character_generated_names(self) -> None:
         """Gates and survivors share one compact identifier namespace."""
@@ -142,7 +233,10 @@ class TestContainer:
             program = boolean.container(table)
             assert "IN>=" not in program
             assert "IN<=" not in program
-            len(table).bit_length() - 1
+            n = len(table).bit_length() - 1
+            for combo in range(2**n):
+                bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
+                assert run_container(program, bits) == table[0]
         assert len(boolean.container("0" * 8)) == 123  # 856 unpruned
 
     def test_only_dependent_levels_are_tested(self) -> None:
@@ -161,6 +255,10 @@ class TestContainer:
         assert tests("01010101") == 1  # the last input alone
         assert tests("00010011") == 5  # four nodes test, not seven
         assert tests("01101001") == 8
+        for table in ("00001111", "01010101", "00010011", "00110000"):
+            for combo in range(8):
+                bits = [str((combo >> (2 - i)) & 1) for i in range(3)]
+                assert run_container(boolean.container(table), bits) == table[combo]
 
     def test_pruning_never_grows_a_table(self) -> None:
         """No table up to three inputs comes out longer than its full tree.
@@ -195,6 +293,24 @@ class TestContainer:
         # two a level, since the level above the leaves is two distinct.
         decays = [line for line in program.split("\n") if line.endswith(">=1")]
         assert sum(line.startswith("-1 ") for line in decays) == 1 + 2 + 2
+        for combo in range(8):
+            bits = [str((combo >> (2 - i)) & 1) for i in range(3)]
+            assert run_container(program, bits) == "01101001"[combo]
+
+    @pytest.mark.parametrize("table", ["11111110", "11111111", "1110", "0111"])
+    def test_complemented_tables_still_compute(self, table: str) -> None:
+        """The inverted form answers the original table.
+
+        It starts ``OUT`` at 49 and subtracts one per surviving zero row, so
+        the printed byte is ``49 - S``; the container clamp at zero never
+        bites, since the value stays at 48 or 49.
+        """
+        n = (len(table) - 1).bit_length()
+        program = boolean.container(table)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = run_container(program, [str(b) for b in bits])
+            assert got == str(int(table[combo])), f"inputs {bits}"
 
 
 class TestContainerSharing:
@@ -241,3 +357,6 @@ class TestContainerSharing:
         assert len(program) == 820  # 1,136 unshared
         kills = [line for line in program.splitlines() if line.endswith(">=1")]
         assert sum(line.startswith("-2 ") and "T" not in line for line in kills) == 4
+        for combo in range(16):
+            bits = [str((combo >> (3 - i)) & 1) for i in range(4)]
+            assert run_container(program, bits) == table[combo]

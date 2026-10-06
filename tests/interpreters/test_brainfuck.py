@@ -5,6 +5,7 @@ loop semantics directly.
 """
 
 import importlib
+import random
 
 import pytest
 
@@ -39,6 +40,31 @@ class TestContract(EmptyProgramContract, CycleContract):
 
 
 class TestBrainfuck:
+    def test_output_character(self) -> None:
+        assert run_and_capture("+" * 65 + ".") == "A"
+
+    def test_cell_wraps(self) -> None:
+        assert run_and_capture("+" * 256 + ".") == "\x00"
+
+    def test_cell_wraps_below_zero(self) -> None:
+        # The upward wrap above lands on zero for any modulus, so it pins
+        # neither the wrap's direction nor its width.  Decrementing from
+        # zero does: it is 255 only under a modulus of exactly 256.
+        assert run_and_capture("-.") == "\xff"
+
+    def test_comments_ignored(self) -> None:
+        assert run_and_capture("abc+++abc.abc") == "\x03"
+
+    def test_movement(self) -> None:
+        assert run_and_capture("++>++<.>.>") == "\x02\x02"
+
+    def test_left_clamped(self) -> None:
+        """< at the left edge does nothing (the tape is clamped there)."""
+        assert run_and_capture("<<.") == "\x00"
+
+    def test_input_echo(self) -> None:
+        assert run_and_capture(",>,<.>.", inputs=["A", "B"]) == "AB"
+
     @pytest.mark.parametrize(
         ("char", "expected"),
         [("Ā", "\x00"), ("ā", "\x01"), ("\U0001f600", "\x00")],
@@ -68,6 +94,44 @@ class TestBrainfuck:
         assert run_and_capture(",+.", inputs=["Ā"]) == "\x01"
         assert run_and_capture(",.", inputs=["ā"]) == "\x01"
 
+    def test_loop_zeroing(self) -> None:
+        """+[-] enters a loop, zeroes the cell, and exits."""
+        assert run_and_capture("+[-].") == "\x00"
+
+    def test_loop_skipped_when_zero(self) -> None:
+        assert run_and_capture("[.]") == ""
+
+    def test_loop_iterates_while_nonzero(self) -> None:
+        """++[>+<-] moves 2 from cell 0 to cell 1."""
+        assert run_and_capture("++[>+<-]>.>.") == "\x02\x00"
+
+    def test_nested_loop(self) -> None:
+        """A doubly-nested loop leaves a known value in the printed cell."""
+        assert run_and_capture("+++[>++[>+<-]<-]>+++.") == "\x03"
+
+    def test_machine_exposes_its_state(self) -> None:
+        """``ind``/``ptr``/``tape`` track the run and stay in step.
+
+        The three are views onto one immutable state rather than fields
+        that are assigned separately, and they are the surface ``vm.py``
+        reads off the machine (``ip``, ``memory``) -- so a state that
+        stopped being rebound, or a view that went stale, would show up
+        here rather than as a wrong answer somewhere downstream.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.brainfuck import _Machine
+
+        machine = _Machine(">+>++", ScriptedIO())
+        assert (machine.ind, machine.ptr, machine.tape) == (0, 0, (0,))
+
+        for _ in range(3):  # ">+>" -- grow, write, grow again
+            machine.step()
+        assert (machine.ind, machine.ptr, machine.tape) == (3, 2, (0, 1, 0))
+
+        while not machine.halted:
+            machine.step()
+        assert (machine.ind, machine.ptr, machine.tape) == (5, 2, (0, 1, 2))
+
     def test_unmatched_bracket_rejected(self) -> None:
         """Unbalanced brackets are a malformed program, not a halt."""
         import pytest
@@ -78,3 +142,40 @@ class TestBrainfuck:
             run_and_capture("]")
         with pytest.raises(ValueError, match="unmatched"):
             run_and_capture("+]")
+
+
+class TestFastRunParity:
+    @staticmethod
+    def run_reference(code: str, stdin: str = "") -> tuple[str, int]:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.brainfuck import _Machine
+
+        io_obj = ScriptedIO(stdin)
+        machine = _Machine(code, io_obj)
+        while not machine.halted:
+            machine.step()
+        return io_obj.getvalue(), io_obj.reads
+
+    @pytest.mark.parametrize(
+        ("code", "stdin"),
+        [
+            ("+++>++++<[>++<-]>. ", ""),
+            ("[>++++<-]>. ", ""),
+            ("-[>+<-]>. ", ""),
+            ("++[+].", ""),
+            (",+.", "Ā\n"),
+            ("+++[>++[>+<-]<-]>+++.", ""),
+        ],
+    )
+    def test_curated_programs_match(self, code: str, stdin: str) -> None:
+        assert (
+            run_and_capture(code, stdin.splitlines())
+            == self.run_reference(code, stdin)[0]
+        )
+
+    def test_generated_straight_line_programs_match(self) -> None:
+        rng = random.Random(0)
+        commands = "+-<>.abc"
+        for _ in range(100):
+            code = "".join(rng.choice(commands) for _ in range(200))
+            assert run_and_capture(code) == self.run_reference(code)[0]

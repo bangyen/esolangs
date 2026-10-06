@@ -106,7 +106,7 @@ def convert(pre: Sequence[complex | _Root]) -> list[list[int]]:
         real, imag = round(root.real), round(root.imag)
         if imag:
             match = _prime_power(imag, _PEEL_MAX_IMAGINARY_EXPONENT)
-            if match is not None and (real != 0 or match[1] in (1, 2)):
+            if match is not None:
                 keyed.append((match[0], imag, real, [real, match[1]]))
         else:
             match = _prime_power(real, _PEEL_MAX_EXPONENT)

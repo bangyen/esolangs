@@ -18,6 +18,101 @@ class TestRotfuck:
     the even cells, a variable-distance pointer walk over the odd ones.
     """
 
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("01", 1),  # identity
+            ("10", 1),  # NOT
+            ("00", 1),  # constant zero
+            ("11", 1),  # constant one
+            ("0001", 2),  # AND
+            ("0111", 2),  # OR
+            ("0110", 2),  # XOR
+            ("1110", 2),  # NAND
+            ("11111110", 3),  # NAND3
+            ("01101001", 3),  # XOR3
+            ("1111111100000000", 4),  # high half
+        ],
+    )
+    @pytest.mark.medium
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every input combination produces the truth-table result."""
+        program = boolean.rotfuck(table)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = run_rotfuck(program, [str(b) for b in bits])
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    def test_program_round_trips_every_table_at_n_2(self) -> None:
+        """Every two-input table produces the right result."""
+        for table_int in range(2 ** (2**2)):
+            table = format(table_int, "04b")
+            program = boolean.rotfuck(table)
+            for combo in range(4):
+                bits = [(combo >> (1 - i)) & 1 for i in range(2)]
+                got = run_rotfuck(program, [str(b) for b in bits])
+                assert got == str(int(table[combo])), f"{table} inputs {bits}"
+
+    @pytest.mark.parametrize("n", [6, 7, 8])
+    def test_a_second_index_digit_still_selects_the_right_entry(self, n: int) -> None:
+        """The arity where the index stops fitting in one walk.
+
+        A cell is a byte, so the index is carried six bits at a time: one
+        walk per digit, each read only once the walk before it has landed.
+        Six inputs still fit in one digit and seven do not, so this brackets
+        the boundary -- and it is not a boundary any smaller table can
+        reach, which is why the truth-table sweeps above cannot see it.
+        """
+        table = "".join(str(bin(row).count("1") & 1) for row in range(2**n))
+        program = boolean.rotfuck(table)
+        for combo in (0, 1, 2**n - 1, 2**n - 2, 2 ** (n - 1), 2 ** (n - 1) - 1):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = run_rotfuck(program, [str(b) for b in bits])
+            assert got == table[combo], f"n={n} inputs {bits}"
+
+    def test_the_rotation_cycle_is_the_documented_one(self) -> None:
+        """``+ -> - -> > -> < -> , -> . -> [ -> ] -> +``, and it is a cycle.
+
+        Everything else here is arithmetic on this order: which commands a
+        body may use at an offset, which character encodes a phantom ``]``,
+        and how far a pad shifts the rest of a block.  A rotation that is
+        off by one, or runs backwards, still emits a program -- one whose
+        every command means something else.
+        """
+        from esolangs.tools.rotfuck import _ROTFUCK_CHAIN, _rotfuck_rot
+
+        assert _ROTFUCK_CHAIN == "+-><,.[]"
+        for i, char in enumerate(_ROTFUCK_CHAIN):
+            forward = _ROTFUCK_CHAIN[(i + 1) % 8]
+            assert _rotfuck_rot(char, 1) == forward, char
+            assert _rotfuck_rot(forward, -1) == char, char
+            assert _rotfuck_rot(char, 8) == char, char
+            assert _rotfuck_rot(char, 0) == char, char
+
+    def test_a_command_never_shows_as_a_bracket_inside_a_seek(self) -> None:
+        """A command's rotation, seen from a seek's, must not be a bracket.
+
+        A seek reads the whole program at one fixed rotation, so a command
+        that executes ``d`` steps after that rotation shows there as
+        ``rot^-d`` of itself.  Showing as a bracket moves the seek's depth
+        count and pairs the loop with the wrong character, which leaves a
+        program that still runs and computes something else.  The two
+        offsets that matter most are 2 and 3, where only two of the four
+        commands survive -- and they exclude *different* ones, which is what
+        makes the padding necessary rather than cosmetic.
+        """
+        from esolangs.tools.rotfuck import _rotfuck_rot, _shows
+
+        for seek in range(8):
+            for rot in range(8):
+                for cmd in "+-><":
+                    assert _shows(cmd, seek, rot) == (
+                        _rotfuck_rot(cmd, seek - rot) in "[]"
+                    ), (cmd, seek, rot)
+        assert [c for c in "+-><" if not _shows(c, 0, 2)] == [">", "<"]
+        assert [c for c in "+-><" if not _shows(c, 0, 3)] == ["+", "<"]
+        assert [c for c in "+-><" if not _shows(c, 0, 4)] == ["+", "-"]
+
     def test_every_pad_is_invisible_and_they_are_shortest_first(self) -> None:
         """Padding shifts the rotation without shifting anything else.
 

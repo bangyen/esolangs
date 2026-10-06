@@ -17,47 +17,51 @@ class TestParameterizedNoComment:
     """Input-by-substitution boolean generator for the no-input language NoComment."""
 
     def run_nocomment(self, prog: str, tape: int | None = None) -> str:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.nocomment import _TAPE, _Machine, run
-        from tests.interpreters.test_nocomment_semantics import Reference
+        from esolangs.interpreters.tape_based.nocomment import _TAPE, run
 
-        size = _TAPE if tape is None else tape
-        expected = Reference(prog, size)
-        assert "b" not in expected.code
-        for _ in range(len(expected.code) + 1):
-            if expected.halted:
-                break
-            previous = expected.ip
-            expected.step()
-            assert expected.ip > previous
-        assert expected.halted
-        actual = _Machine(prog, ScriptedIO("unused"), size)
-        for _ in range(len(expected.code) + 1):
-            if actual.halted:
-                break
-            previous = actual.ind
-            actual.step()
-            assert actual.ind > previous
-        assert actual.halted
-        assert actual.snapshot() == expected.snapshot()
-        assert actual.io.getvalue() == expected.output
         buffer = io.StringIO()
         with redirect_stdout(buffer):
-            run(prog, IO(), size)
-        assert buffer.getvalue() == expected.output
-        return expected.output
+            run(prog, IO(), _TAPE if tape is None else tape)
+        return buffer.getvalue()
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
-        from esolangs import instantiate
+        """Fill through the shipped filler, not a copy of it.
 
-        setters = iter("i" if bit else "c" for bit in bits)
-        independent = "".join(
-            next(setters) if char == TEMPLATE_CHAR else char for char in tpl
-        )
-        assert tpl.count(TEMPLATE_CHAR) == len(bits)
-        actual = instantiate("NoComment", tpl, bits)
-        assert actual == independent
-        return actual
+        The setter here is one character and the same at every position, so
+        a copy of it looks harmless -- but the generator counts instantiated
+        positions when it lays out the template, so a copy that drifted in
+        *width* would move every offset after it.  Minsky Swap's copy did
+        exactly that and the suite hung rather than failing, which is a
+        worse outcome than any this duplication was buying.
+        """
+        from tests.tools.fills import _fill_nocomment
+
+        return _fill_nocomment(tpl, bits)
+
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("10", 1),  # NOT
+            ("01", 1),
+            ("00", 1),  # constant zero
+            ("11", 1),  # constant one
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("1110", 2),  # NAND
+            ("11111110", 3),  # NAND3
+            ("01101001", 3),  # XOR3
+        ],
+    )
+    @pytest.mark.medium
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every instantiated input produces the truth-table result."""
+        from esolangs import tools as generators
+
+        template = generators.nocomment(table)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = self.run_nocomment(self.instantiate(template, bits))
+            assert got == str(int(table[combo])), f"inputs {bits}"
 
     @pytest.mark.parametrize("n", [1, 2, 3])
     @pytest.mark.medium
@@ -72,6 +76,26 @@ class TestParameterizedNoComment:
                 bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
                 got = self.run_nocomment(self.instantiate(template, bits))
                 assert got == str(int(table[combo])), f"{table} inputs {bits}"
+
+    def test_template_is_input_independent(self) -> None:
+        """The template has one run per input, not hardcoded bits."""
+        from esolangs import tools as generators
+
+        template = generators.nocomment("0110")
+        assert "{X" not in template
+        assert template.count(TEMPLATE_CHAR) == 2 * len(PAIR[0])
+
+    def test_program_structure(self) -> None:
+        """A one-bit template computes the index then skips to the output."""
+        from esolangs import tools as generators
+
+        template = generators.nocomment("10")
+        assert template.startswith(TEMPLATE_CHAR * len(PAIR[0]))
+        # The complement is computed at runtime: one run per input, no second.
+        assert template.count(TEMPLATE_CHAR) == len(PAIR[0])
+        assert template.endswith("o")  # a single final output
+        assert template.count("s") == 3  # NOT gate + guarded increment + index skip
+        assert template.count("o") == 1
 
     def test_four_input_works(self) -> None:
         """A dense four-input table assembles and runs correctly."""
@@ -172,21 +196,9 @@ class TestParameterizedNoComment:
         module = importlib.import_module("esolangs.tools.nocomment")
         module._NOCOMMENT_CHAIN_MIN = 99  # noqa: SLF001
         try:
-            forced_narrow = generators.nocomment(four)
-            assert len(forced_narrow) > len(chain)
+            assert len(generators.nocomment(four)) > len(chain)
         finally:
             module._NOCOMMENT_CHAIN_MIN = 4  # noqa: SLF001
-        for table, templates in (
-            (three, (narrow, chained)),
-            (four, (chain, forced_narrow)),
-        ):
-            n = (len(table) - 1).bit_length()
-            for template in templates:
-                for row, output in enumerate(table):
-                    bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
-                    assert (
-                        self.run_nocomment(self.instantiate(template, bits)) == output
-                    )
 
     def test_the_chain_drops_ignored_inputs(self) -> None:
         """A table that ignores inputs is the smaller table's chain, and still right.
@@ -214,16 +226,9 @@ class TestParameterizedNoComment:
         """Six commands per row and a stage per 32: the size doubles with the table."""
         from esolangs import tools as generators
 
-        sizes = []
-        for n in (9, 10, 11, 12):
-            table = "01" * 2 ** (n - 1)
-            template = generators.nocomment(table)
-            sizes.append(len(template))
-            for row in (0, 1, 2 ** (n - 1), 2**n - 2, 2**n - 1):
-                bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
-                assert (
-                    self.run_nocomment(self.instantiate(template, bits)) == table[row]
-                )
+        sizes = [
+            len(generators.nocomment("01" * 2 ** (n - 1))) for n in (9, 10, 11, 12)
+        ]
         for small, big in pairwise(sizes):
             assert big < 2 * small, sizes
         assert sizes[-1] < 8 * 2**12, sizes

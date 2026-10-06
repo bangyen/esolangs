@@ -32,8 +32,9 @@ class _Expr:
             left, right = self.children
             return f"{outer}{left.render()}${right.render()}{outer}"
         if self.op == "select":
-            operand = self.children[0].render()
-            return f"{outer}{inner}{'&V?'[self.value]}{operand}{inner}~#1{outer}"
+            # The manual places a unary between the spot and the number.
+            (operand,) = self.children
+            return f"{outer}.{'&V?'[self.value]}{operand.value + 1}~#1{outer}"
         if self.op == "not":
             children, operator = (*self.children, _Expr("constant", 1)), "?"
         else:
@@ -75,7 +76,7 @@ def intercal(truth_table: str, width: int | None = None) -> str:
     return _wrap_intercal(chosen, width)
 
 
-_TOKEN = re.compile(r"[A-Z]+|[.#][0-9]+|<-|@+|[0-9]+|[^\s]")
+_TOKEN = re.compile(r"[A-Z]+|[.#][&V?]?[0-9]+|<-|@+|[0-9]+|[^\s]")
 
 
 def _intercal_tokens(program: str) -> list[str]:

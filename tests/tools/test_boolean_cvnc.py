@@ -45,6 +45,31 @@ def _stored_candidate(truth_table: str, perm: tuple[int, ...]) -> str:
 
 
 class TestCvnc:
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("01", 1),  # identity
+            ("10", 1),  # NOT
+            ("00", 1),  # constant zero
+            ("11", 1),  # constant one
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("1110", 2),  # NAND
+            ("11111110", 3),  # NAND3
+            ("01101001", 3),  # XOR3
+            ("1000000000000000", 4),  # AND4
+            ("1111111111111111", 4),  # constant one
+        ],
+    )
+    @pytest.mark.medium
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every input combination produces the truth-table result."""
+        program = boolean.cvnc(table)
+        for combo in range(2**n):
+            bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
+            got = run_cvnc(program, bits)
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
     def test_a_table_that_folds_nothing_is_a_full_tree(self) -> None:
         """Parity folds nowhere, so its plain tree keeps a leaf per row.
 
@@ -197,6 +222,15 @@ class TestCvnc:
         assert program.count("cuŋ") + program.count("cuɲ") == 1
 
     # 256 tables at eight rows each, all of it in the interpreter.
+    @pytest.mark.parametrize("n", [1, 2, pytest.param(3, marks=pytest.mark.medium)])
+    def test_every_table_computes_its_function(self, n: int) -> None:
+        """Exhaustive over the stream and reordered paths."""
+        for value in range(2 ** (2**n)):
+            table = bin(value)[2:].zfill(2**n)
+            program = boolean.cvnc(table)
+            for combo in range(2**n):
+                bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
+                assert run_cvnc(program, bits) == table[combo], f"{table} {bits}"
 
     def test_choosing_between_the_builds_never_grows_a_program(self) -> None:
         """The hoist has a price, so it is a candidate and not a replacement.
@@ -404,3 +438,16 @@ class TestCvncSharing:
             for combo in range(2**n):
                 bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
                 assert run_cvnc(program, bits) == table[combo], f"{table} {bits}"
+
+
+@pytest.mark.parametrize("n", [1, 2, 3])
+@pytest.mark.parametrize("width", [1, 3, 11])
+@pytest.mark.medium
+def test_lf_wrapped_generators_execute_every_small_table(n: int, width: int) -> None:
+    for value in range(1 << (1 << n)):
+        table = format(value, f"0{1 << n}b")
+        raw = boolean.cvnc(table)
+        wrapped = "\n".join(raw[at : at + width] for at in range(0, len(raw), width))
+        for row, expected in enumerate(table):
+            inputs = list(format(row, f"0{n}b"))
+            assert run_cvnc(wrapped, inputs) == expected

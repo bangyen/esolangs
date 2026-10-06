@@ -15,9 +15,70 @@ from esolangs.interpreters.stack_based.false import (
 from tests.interpreters.runner import run_program
 
 
+def test_a_string_is_printed_verbatim() -> None:
+    assert run_program(run, '"Hello, world!"') == "Hello, world!"
+
+
+def test_arithmetic_prints_a_number() -> None:
+    assert run_program(run, "1 2+.") == "3"
+    assert run_program(run, "7 2/.") == "3"
+    assert run_program(run, "7_ 2/.") == "-3"  # truncates toward zero
+
+
+def test_comparison_is_minus_one_for_true() -> None:
+    assert run_program(run, "2 1>.") == "-1"
+    assert run_program(run, "1 2>.") == "0"
+    assert run_program(run, "3 3=.") == "-1"
+
+
+def test_a_variable_round_trips() -> None:
+    assert run_program(run, "5a:a;a;*.") == "25"
+
+
 def test_reading_an_unset_variable_halts() -> None:
     with pytest.raises(HaltError, match="read before it was stored"):
         run_program(run, "a;.")
+
+
+def test_a_lambda_runs_on_demand() -> None:
+    assert run_program(run, "[1+]f:3f;!.") == "4"
+    assert run_program(run, '1["yes"]?0["no"]?') == "yes"
+
+
+def test_the_while_loop_counts_down() -> None:
+    assert run_program(run, "5[$0=~][$.1-]#%") == "54321"
+
+
+def test_the_stack_shufflers() -> None:
+    assert run_program(run, "1 2 3@...") == "132"  # rot: a b c -> b c a
+    assert run_program(run, "1 2\\..") == "12"
+    assert run_program(run, "7 8 0O.") == "8"  # pick counts from zero
+    assert run_program(run, "7 8 1O.") == "7"
+    assert run_program(run, "1 2%.") == "1"  # '%' drops
+
+
+def test_a_character_is_pushed_and_printed() -> None:
+    assert run_program(run, "'A,") == "A"
+
+
+def test_a_read_preserves_newline() -> None:
+    assert run_program(run, "^'0-.", "1\n") == "1"
+    assert run_program(run, "^.", "\n") == "10"
+
+
+def test_a_read_past_the_end_is_the_specs_minus_one() -> None:
+    """``^`` answers -1 at end of input rather than letting EOF escape.
+
+    ``suppress_eof=False`` so a leaked ``EOFError`` fails here instead of
+    being swallowed into an empty output.
+    """
+    assert run_program(run, "^.", suppress_eof=False) == "-1"
+    # The reference's cat loop: read until -1, printing each character.
+    assert run_program(run, "[^$1_=~][,]#%", "A\nB\n", suppress_eof=False) == "A\nB\n"
+
+
+def test_a_comment_is_skipped_and_its_brackets_do_not_nest() -> None:
+    assert run_program(run, "{[}1.") == "1"
 
 
 @pytest.mark.parametrize(
@@ -60,6 +121,31 @@ def test_a_bad_variable_reference_halts() -> None:
         run_program(run, "1 99:")
 
 
+def test_arithmetic_wraps_to_signed_32_bits() -> None:
+    assert run_program(run, "2147483647 1+.") == "-2147483648"
+
+
+@pytest.mark.parametrize(
+    ("literal", "expected"),
+    [
+        ("2147483647", "2147483647"),
+        ("2147483648", "-2147483648"),
+        ("4294967295", "-1"),
+        ("4294967296", "0"),
+    ],
+)
+def test_literals_wrap_to_signed_32_bits(literal: str, expected: str) -> None:
+    assert run_program(run, literal + ".") == expected
+
+
+def test_literal_wrapping_applies_before_comparison() -> None:
+    assert run_program(run, "2147483648 0>.") == "0"
+
+
+def test_a_long_literal_does_not_hit_the_python_decimal_limit() -> None:
+    assert run_program(run, "0" * 5000 + "4294967297.") == "1"
+
+
 def test_the_pointer_stays_a_source_offset_inside_a_lambda() -> None:
     """A lambda is a span, so ``ip`` indexes the text the caller handed in."""
     program = "1[2.]!"
@@ -74,6 +160,41 @@ def test_the_pointer_stays_a_source_offset_inside_a_lambda() -> None:
 
 def test_closers_pairs_every_bracket() -> None:
     assert _closers("[[]]") == {1: 2, 0: 3}
+
+
+def test_an_empty_program_halts_at_once() -> None:
+    assert run_program(run, "") == ""
+
+
+def test_an_unknown_character_is_ignored() -> None:
+    """``B`` flushes a buffer this package has not got, so it is a no-op."""
+    assert run_program(run, "1.B") == "1"
+
+
+def test_only_ascii_digits_make_a_literal() -> None:
+    """``²`` and ``٣`` pass ``str.isdigit`` but are unknown, so ignored.
+
+    ``1².`` crashed in ``int('²')`` and ``1٣.`` printed 13 (8828287e).
+    """
+    assert run_program(run, "1\u00b2.") == "1"
+    assert run_program(run, "1\u0663.") == "1"
+
+
+def test_a_finished_loop_has_consumed_its_flag() -> None:
+    """The stack view retires a spent ``#``, as ``halted`` already did.
+
+    ``[0][]#`` showed the false flag ``[0]`` until a trailing space was
+    added (8828287e).
+    """
+    machine = _Machine("[0][]#", ScriptedIO())
+    while not machine.halted:
+        machine.step()
+    assert machine.stack == []
+
+
+def test_bitwise_operators_wrap_to_32_bits() -> None:
+    assert run_program(run, "12 10&.") == "8"
+    assert run_program(run, "12 10|.") == "14"
 
 
 def test_picking_past_the_stack_halts() -> None:

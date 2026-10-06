@@ -14,10 +14,53 @@ from tests.tools.boolean_runners import (
 class TestFargo:
     """The Fargo boolean generator: a recursively factored ANF, arms chosen."""
 
+    @pytest.mark.parametrize("n", [1, 2, 3])
+    @pytest.mark.medium
+    def test_every_table_at_small_arity(self, n: int) -> None:
+        """Exhaustive: every table, every input combination."""
+        for value in range(2 ** (2**n)):
+            table = format(value, f"0{2**n}b")
+            program = boolean.fargo(table)
+            for combo in range(2**n):
+                bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
+                got = run_fargo(program, bits)
+                assert got == table[combo], f"table {table} inputs {bits}"
+
+    @pytest.mark.parametrize("n", [4, 5, 8])
+    def test_higher_arity_tables(self, n: int) -> None:
+        """The construction is uncapped: no arity limit, no search."""
+        rng = random.Random(20260830 + n)
+        for _ in range(4):
+            table = "".join(rng.choice("01") for _ in range(2**n))
+            program = boolean.fargo(table)
+            for _ in range(10):
+                combo = rng.randrange(2**n)
+                bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
+                assert run_fargo(program, bits) == table[combo]
+
     def test_constant_tables_need_no_reads(self) -> None:
         """A constant table is its degree-zero coefficient alone."""
         assert boolean.fargo("00000000") == "% 0 0\n$\n"
         assert boolean.fargo("11111111") == "% 0 1\n$\n"
+
+    def test_an_all_zero_table_wraps_to_a_constant(self) -> None:
+        """No terms to combine: the factored path indexed an empty list.
+
+        ``width`` below the compact program's 5 columns routes to the
+        factored builder, which ``combine``d an empty term list for the
+        all-zero table.
+        """
+        for width in (1, 2, 3, 4):
+            assert boolean.fargo("0000", width=width) == "% 0 0\n$\n"
+            assert boolean.fargo("00000000", width=width) == "% 0 0\n$\n"
+
+    def test_narrow_dense_anf_keeps_constant_and_long_names(self) -> None:
+        """Wrapping NOR needs the constant coefficient and more than 26 labels."""
+        table = "1" + "0" * 31
+        program = boolean.fargo(table, width=1)
+        assert "aa " in program
+        for row in range(32):
+            assert run_fargo(program, list(format(row, "05b"))) == table[row]
 
     def test_parity_is_one_term_per_input(self) -> None:
         """Parity's ANF is the sum of the single-variable terms."""

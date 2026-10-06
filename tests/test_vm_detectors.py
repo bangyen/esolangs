@@ -11,7 +11,6 @@ import re
 import pytest
 
 import esolangs.debugger as debugger_api
-from tests.interpreters.views import view as vm_view
 
 
 def _painfuck_source(targets: str) -> str:
@@ -47,6 +46,8 @@ class TestRunUntilHaltOrCycle:
         assert (
             run_until_halt_or_all_branches_cycle(_Machine(code, ScriptedIO())) is False
         )
+        # A single path's snapshot counts its coin draws (a later draw could
+        # escape), so it never repeats: undecided, not a false cycle.
         for coin in (0, 1):
             with pytest.raises(TimeoutError, match="undecided after 64 steps"):
                 run_until_halt_or_cycle(
@@ -75,6 +76,8 @@ class TestRunUntilHaltOrCycle:
             )
 
     def test_painfuck_later_coin_can_escape_repeated_visible_state(self) -> None:
+        """Pins the draw count in the snapshot: tape/cursor repeat, yet the
+        fifth coin halts ``payb``, so a single path must not report a cycle."""
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.painfuck import _Machine
         from esolangs.vm import run_until_halt_or_cycle
@@ -204,7 +207,7 @@ class TestRunUntilHaltOrCycle:
 
         (at_hash,) = machine.branching_successors(rightward, 100) or ()
         assert at_hash[2] == ((0, 1, 3),)
-        assert at_hash[4] == frozenset({0}), "'#' arms this beam's skip"
+        assert at_hash[4] == frozenset({0}), "'#' arms beam 0's skip"
 
         (skipped,) = machine.branching_successors(at_hash, 100) or ()
         assert skipped[2] == ((0, 2, 3),), "'{' was passed over, not executed"
@@ -263,6 +266,8 @@ class TestRunUntilHaltOrCycle:
 
         machine = _Machine(["oo"], ScriptedIO())
         assert machine.halted is True
+        # the search's start state is halted too, not an unplaced beam
+        assert machine.branching_halted(machine.branching_snapshot()) is True
         assert run_until_halt_or_all_branches_cycle(machine) is True
 
     def test_laserfuck_declines_a_reachable_input_command(self) -> None:
@@ -921,8 +926,8 @@ class TestGrowthDetectorAcrossLanguages:
         # same point in the program, and comparing them as if they were
         # would compare configurations that never replay each other.
         machine = _Machine([">"], ScriptedIO())
-        assert isinstance(vm_view(machine, "ip"), tuple)
-        assert len(vm_view(machine, "ip")) == 4
+        assert isinstance(machine.ip, tuple)
+        assert len(machine.ip) == 4
         assert run_until_halt_or_growth(machine) is False
 
 

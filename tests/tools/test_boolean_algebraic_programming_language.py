@@ -1,20 +1,171 @@
-"""Algebraic source budgets, width behavior, and public integration."""
+"""algebraic_programming_language generator tests."""
+
+import itertools
+import random
 
 import pytest
 
 import esolangs
 from esolangs import tools as boolean
 from esolangs.tools.helpers import best_input_order
-from tests.tools.boolean_runners import five_input_sample
+from tests.generator_support import verify_generated
+from tests.tools.boolean_runners import (
+    five_input_sample,
+    run_algebraic_programming_language,
+)
 
 
 class TestAlgebraicProgrammingLanguage:
+    """The folded-tree generator, whose whole program is one executed line."""
+
+    @staticmethod
+    def _run(program: str, n: int, combo: int) -> str:
+        bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
+        return run_algebraic_programming_language(program, bits)
+
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("01", 1),  # identity
+            ("10", 1),  # not
+            ("0001", 2),  # AND2
+            ("0111", 2),  # OR2
+            ("0110", 2),  # XOR2
+            ("01101001", 3),  # parity
+            ("1000000000000000", 4),  # AND4
+        ],
+    )
+    @pytest.mark.medium
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every input combination produces the truth-table result.
+
+        An executed line prints its result, so the answer arrives with the
+        newline that ends the line.
+        """
+        program = boolean.algebraic_programming_language(table)
+        for combo in range(2**n):
+            got = self._run(program, n, combo)
+            assert got == table[combo] + "\n", f"table {table} combo {combo}"
+
+    def test_every_one_and_two_input_table(self) -> None:
+        """All 4 one-input and 16 two-input tables build and compute."""
+        for n in (1, 2):
+            for table in ("".join(t) for t in itertools.product("01", repeat=2**n)):
+                program = boolean.algebraic_programming_language(table)
+                for combo in range(2**n):
+                    got = self._run(program, n, combo)
+                    assert got == table[combo] + "\n", f"{table} combo {combo}"
+
+    @pytest.mark.medium
+    def test_every_three_input_table(self) -> None:
+        """All 256 three-input tables build and compute their function."""
+        for table in ("".join(t) for t in itertools.product("01", repeat=8)):
+            program = boolean.algebraic_programming_language(table)
+            for combo in range(8):
+                got = self._run(program, 3, combo)
+                assert got == table[combo] + "\n", f"{table} combo {combo}"
+
+    def test_the_constant_zero_table_still_reads_every_input(self) -> None:
+        """A table with no minterms names each input so the reads still happen.
+
+        The boolean contract requires a constant read count, and APL reads
+        by *naming*, so the constant-0 program has to name every variable
+        even though none of them can change the answer.
+        """
+        program = boolean.algebraic_programming_language("0000")
+        for name in ("a", "b"):
+            assert name in program
+        for combo in range(4):
+            assert self._run(program, 2, combo) == "0\n"
+
+    def test_reads_are_in_ascending_name_order(self) -> None:
+        """A variable is read when the line first names it.
+
+        So the emitted line must name ``a`` before ``b`` before ``c``, or
+        the harness's inputs would arrive in the wrong slots.
+        """
+        program = boolean.algebraic_programming_language("01101001")
+        line = program.splitlines()[-1]
+        firsts = [min(line.index(n) for n in (v,)) for v in "abc"]
+        assert firsts == sorted(firsts)
+
+    def test_every_value_stays_zero_or_one(self) -> None:
+        """The program prints a bit, not an arbitrary truth value.
+
+        ``!`` returns exactly 0 or 1 and the connectives pass those
+        through, so nothing rests on how APL spells a non-zero truth.
+        """
+        program = boolean.algebraic_programming_language("0110")
+        for combo in range(4):
+            assert self._run(program, 2, combo).strip() in {"0", "1"}
+
+    def test_the_complement_operator_is_the_wikis_own(self) -> None:
+        """The header is the wiki's ``!x`` definition, verbatim."""
+        program = boolean.algebraic_programming_language("0001")
+        assert program.startswith("!x = {\nx & $0\n$1\n}\n")
+
     def test_a_one_entry_table_is_refused(self) -> None:
+        """A nullary table is a constant, not a function of any input."""
         with pytest.raises(ValueError, match="a one-entry table is a constant"):
             boolean.algebraic_programming_language("0")
 
+    def test_a_width_spreads_the_sum_over_definitions(self) -> None:
+        """A narrower program is the same sum, named a piece at a time.
+
+        The language prints *every* executed line, so the sum cannot be
+        split across several; what it can be split across is definitions,
+        which are not executed.  The answer is what says the pieces still
+        add up.
+        """
+        for table in ("0110", "01101001", "0110100110010110"):
+            n = len(table).bit_length() - 1
+            flat = boolean.algebraic_programming_language(table)
+            wide = max(len(row) for row in flat.splitlines())
+            floor = max(
+                len(row)
+                for row in boolean.algebraic_programming_language(table, 1).splitlines()
+            )
+            for width in (1, 25, 40, 60, wide):
+                narrow = boolean.algebraic_programming_language(table, width)
+                columns = max(len(row) for row in narrow.splitlines())
+                assert columns <= max(width, floor), (table, width, columns)
+                for combo in range(2**n):
+                    got = self._run(narrow, n, combo)
+                    assert got == table[combo] + "\n", (table, width, combo)
+
+    def test_the_executed_line_still_names_every_input(self) -> None:
+        """Naming a term moves it off the one line that reads.
+
+        A variable is read by appearing on an executed line, and the
+        interpreter binds every unbound one there before evaluating.  A
+        term hoisted into a definition therefore takes its variables out of
+        the reading, and the prefix is what puts them back -- in order, and
+        contributing nothing, since ``a & ... & 0`` is 0 either way.
+        """
+        table = "0110100110010110"
+        narrow = boolean.algebraic_programming_language(table, 30)
+        # the ``!x`` header is the first four lines and its body sits inside
+        # braces; past it, a line without an ``=`` is one that runs, and
+        # there must be exactly one however much was hoisted
+        lines = narrow.splitlines()
+        assert lines[:4] == ["!x={", "x&$0", "$1", "}"], lines[:4]
+        executed = [line for line in lines[4:] if "=" not in line]
+        assert len(executed) == 1, executed
+        line = executed[0]
+        assert line.startswith("(a&b&c&d&0)|"), line
+        # and every input is still read exactly once, in order
+        assert sorted({ch for ch in line if ch in "abcd"}) == ["a", "b", "c", "d"]
+        for row, output in enumerate(table):
+            assert self._run(narrow, 4, row) == output + "\n"
+
     def test_narrowing_below_the_floor_does_not_widen(self) -> None:
-        # Unclamped folding made width 1 wider than width 20.
+        """Asking for less than it can do returns its narrowest, not a worse one.
+
+        Splitting below the floor lengthens the names rather than the
+        lines, and the executed line carries two names -- so an unclamped
+        fold made width 1 come out *wider* than width 20.  The floor is
+        what a smaller request is raised to.
+        """
         for table in ("11111111", "0110100110010110", "01111111"):
             widths = [
                 max(
@@ -27,8 +178,30 @@ class TestAlgebraicProgrammingLanguage:
             ]
             assert widths == sorted(widths), (table, widths)
 
+    def test_compact_narrow_tree_executes_every_small_table(self) -> None:
+        """Operator definitions preserve binding and reduce the XOR floor to four."""
+        program = boolean.algebraic_programming_language("0110", 1)
+        assert max(map(len, program.splitlines())) == 4
+        for n in range(1, 4):
+            for value in range(1 << (1 << n)):
+                table = format(value, f"0{1 << n}b")
+                program = boolean.algebraic_programming_language(table, 1)
+                for row, output in enumerate(table):
+                    assert self._run(program, n, row) == output + "\n"
+
+    def test_narrow_tree_keeps_asymmetric_large_input_bindings(self) -> None:
+        """Hoisting a prefix would leave variables unbound inside definitions."""
+
+        rng = random.Random(42)
+        for n in range(4, 7):
+            table = "".join(rng.choice("01") for _ in range(1 << n))
+            for width in (1, 18, 30):
+                program = boolean.algebraic_programming_language(table, width)
+                for row, output in enumerate(table):
+                    assert self._run(program, n, row) == output + "\n"
+
     def test_default_full_tree_growth_is_linear(self) -> None:
-        # Parity folds no subtree, so source doubles with each input.
+        """Parity folds no subtree, but its source only doubles per input."""
         sizes = []
         for n in (7, 8):
             table = "".join(str(row.bit_count() & 1) for row in range(1 << n))
@@ -37,18 +210,94 @@ class TestAlgebraicProgrammingLanguage:
 
 
 class TestAlgebraicProgrammingLanguageShapes:
-    def test_inline_three_input_corpus_size(self) -> None:
+    """The structural corners of the decision tree, at four inputs.
+
+    The exhaustive n<=3 sweep above already covers every shape the
+    construction can take -- empty minterm set, full set, and everything
+    between -- and the expansion is mechanical rather than searched, so
+    sweeping all 65536 four-input tables costs about eight minutes to
+    re-cover the same ground.  These four pin the corners instead: the
+    two constants, a single selected row, and the fully branching parity.
+    """
+
+    @staticmethod
+    def _check(table: str, n: int = 4) -> None:
+        program = boolean.algebraic_programming_language(table)
+        for combo in range(2**n):
+            bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
+            got = run_algebraic_programming_language(program, bits)
+            assert got == table[combo] + "\n", f"{table} inputs {bits}"
+
+    def test_the_all_zero_table(self) -> None:
+        """No minterms at all: the constant-zero branch."""
+        self._check("0" * 16)
+
+    def test_the_all_one_table(self) -> None:
+        """Every row set, so the sum carries all sixteen terms."""
+        self._check("1" * 16)
+
+    def test_a_single_minterm(self) -> None:
+        """One term, which is the fewest a non-constant table can have."""
+        self._check("0000000000000001")
+
+    def test_four_input_parity(self) -> None:
+        """Eight terms and no constant subtree anywhere -- nothing folds."""
+        self._check("0110100110010110")
+
+    def test_the_all_zero_table_still_reads_every_input(self) -> None:
+        """The constant needs its reads: the contract wants ``n`` of them."""
+        program = boolean.algebraic_programming_language("0" * 16)
+        for name in "abcd":
+            assert name in program
+
+    def test_the_name_alphabet_is_codepoint_ascending(self) -> None:
+        """``_order_key`` sorts literals by name to keep reads in order.
+
+        That only puts the reads in *input* order if the alphabet itself
+        ascends, so a name appended out of sequence would silently swap
+        two inputs rather than fail.
+        """
+        from esolangs.tools.algebraic_programming_language import _NAMES
+
+        assert list(_NAMES) == sorted(_NAMES)
+        assert len(set(_NAMES)) == len(_NAMES)
+
+    def test_constant_arms_need_no_guard(self) -> None:
+        """A node over a constant arm is one literal and one operator.
+
+        Inputs arrive as 0 or 1, so ``b`` needs no ``!!``, and a node whose
+        arms are both constant is its literal.  Over every three-input table
+        the program falls from 31,190 characters to 16,303 (the inline tree,
+        which the shared diagram now undercuts).
+        """
         from esolangs.tools.algebraic_programming_language import _apl_tree_ordered
 
+        tail = {
+            "0110": "((!a & b) | (a & !b))",
+            "0001": "(a & b)",
+            "0111": "(a | b)",
+            "1101": "(!a | b)",
+        }
+        for table, expression in tail.items():
+            program = boolean.algebraic_programming_language(table)
+            assert program.endswith(f"(a & b & 0) | {expression}")
+            self._check(table, 2)
         total = sum(
             len(best_input_order(f"{value:08b}", _apl_tree_ordered))
             for value in range(256)
         )
         assert total == 16303
 
-    def test_retained_source_corpus_sizes(self) -> None:
+    def test_the_reduced_diagram_skips_idle_tests_and_complements(self) -> None:
+        """The fixed-order reduced diagram stays within the retirement budget."""
         from esolangs.tools.algebraic_programming_language import _apl_tree_ordered
 
+        assert boolean.algebraic_programming_language("00011110").endswith(
+            "(a & b & c & 0) | ((!a & (b & c)) | (a & !(b & c)))"
+        )
+        assert boolean.algebraic_programming_language("0101010100110011").endswith(
+            "(a & b & c & d & 0) | ((!a & d) | (a & c))"
+        )
         three = [f"{value:08b}" for value in range(256)]
         for tables, before, after in (
             (three, 16303, 16599),
@@ -59,6 +308,23 @@ class TestAlgebraicProgrammingLanguageShapes:
             assert (sum(inline), sum(reduced)) == (before, after)
             previous = 16067 if len(tables) == 256 else 40684
             assert sum(reduced) * 100 < previous * 105
+        for n in (4, 5, 6):
+            for value in (0x6996, 0x1234ABCD5678EF01, 0xF0F0CCCC5A5A3C3C):
+                table = format(value % 2**2**n, f"0{2**n}b")
+                assert verify_generated("Algebraic Programming Language", table)
+
+
+@pytest.mark.parametrize("width", [1, 7, 9, 10, 17, 40, 80])
+def test_apl_elementary_definitions_compute_every_small_table(width: int) -> None:
+    for n in range(1, 4):
+        for value in range(2 ** (2**n)):
+            table = format(value, f"0{2**n}b")
+            program = esolangs.generate("Algebraic Programming Language", table, width)
+            for row, expected in enumerate(table):
+                bits = list(format(row, f"0{n}b"))
+                assert (
+                    run_algebraic_programming_language(program, bits) == expected + "\n"
+                )
 
 
 def test_apl_elementary_floor_and_corpus_size() -> None:

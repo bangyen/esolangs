@@ -8,7 +8,8 @@ from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.fractran import run as run_fractran
 from esolangs.tools.fractran import PAIR as FRACTRAN_PAIR
 from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
-from tests.tools.reader_support import _bits
+from tests.generator_support import evaluate_generated
+from tests.tools.reader_support import _TABLES, _bits
 
 
 def _fractran_answer(table: str, row: int) -> str:
@@ -21,12 +22,22 @@ def _fractran_answer(table: str, row: int) -> str:
     return io.getvalue()
 
 
-@pytest.mark.parametrize("table", ["1000000000000000"])
-def test_fractran_answers_four_input_and(table: str) -> None:
+@pytest.mark.parametrize("table", _TABLES)
+def test_fractran_answers_every_row(table: str) -> None:
     n = len(table).bit_length() - 1
     for row in range(2**n):
         answer = "2" if table[row] == "1" else "1"
         assert _fractran_answer(table, row) == answer, (table, row)
+
+
+@pytest.mark.slow
+def test_fractran_answers_every_table_to_three_inputs() -> None:
+    for n in (1, 2, 3):
+        for value in range(2 ** (2**n)):
+            table = bin(value)[2:].zfill(2**n)
+            for row in range(2**n):
+                answer = "2" if table[row] == "1" else "1"
+                assert _fractran_answer(table, row) == answer, (table, row)
 
 
 def test_fractran_spends_nothing_a_run_never_divides() -> None:
@@ -110,6 +121,15 @@ def test_fractran_runs_inside_the_block_it_reads() -> None:
                 machine.step()
                 steps += 1
             assert steps <= ceiling, (n, row, steps, ceiling)
+
+
+@pytest.mark.parametrize("width", [1, 4, 9, 40, 80])
+def test_fractran_phase_parity_all_small_tables(width: int) -> None:
+
+    for n in range(1, 4):
+        for value in range(2 ** (2**n)):
+            table = format(value, f"0{2**n}b")
+            assert evaluate_generated("FRACTRAN", table, width=width) == table
 
 
 @pytest.mark.parametrize("width", [1, 4, 5, 8, 9, 80])

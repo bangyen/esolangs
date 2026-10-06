@@ -63,6 +63,33 @@ class TestTheWikiExample:
 
 
 class TestBitwiseCyclicTag:
+    def test_a_lone_delete_answers_the_bit_it_took(self) -> None:
+        assert run_program(run, "0,1") == "1"
+        assert run_program(run, "0,0") == "0"
+
+    def test_the_answer_is_the_last_deletion_not_the_first(self) -> None:
+        """Two deletions, and the second one is what is reported."""
+        assert run_program(run, "00,10") == "0"
+        assert run_program(run, "00,01") == "1"
+
+    def test_a_one_appends_its_operand_only_on_a_one(self) -> None:
+        """``10`` after a ``1`` extends the data, so a third bit is deleted."""
+        assert run_program(run, "1000,11") == "0"  # the appended 0 is last out
+        assert run_program(run, "1000,01") == "1"  # no append, so 1 is last out
+
+    def test_an_empty_data_string_halts_with_no_answer(self) -> None:
+        """The wiki's first sentence, and nothing was ever deleted."""
+        assert run_program(run, "0011,") == ""
+        assert run_program(run, "0011") == ""
+
+    def test_an_empty_program_halts_however_much_data_there_is(self) -> None:
+        """No command exists and none will appear, so the data survives."""
+        assert run_program(run, ",1011") == ""
+
+    def test_whitespace_is_not_part_of_the_program(self) -> None:
+        """A long program may be broken across lines and mean the same."""
+        assert run_program(run, "0 0\n,\t1 0") == "0"
+
     def test_a_non_bit_is_refused(self) -> None:
         with pytest.raises(ValueError, match="not a Bitwise Cyclic Tag bit"):
             run_program(run, "0012,1")
@@ -70,6 +97,19 @@ class TestBitwiseCyclicTag:
     def test_a_second_comma_is_refused(self) -> None:
         with pytest.raises(ValueError, match="one ',' at most, got 2"):
             run_program(run, "00,1,1")
+
+    def test_the_answer_prints_once_however_far_it_is_stepped(self) -> None:
+        """The post-halt step prints it, and only the first one does."""
+        io_obj = ScriptedIO()
+        machine = _Machine("0,1", io_obj)
+        while not machine.halted:
+            machine.step()
+        assert io_obj.getvalue() == ""  # nothing until the step past the halt
+        machine.step()
+        assert io_obj.getvalue() == "1"
+        for _ in range(3):
+            machine.step()
+        assert io_obj.getvalue() == "1"
 
     def test_a_deleted_prefix_is_not_part_of_the_state(self) -> None:
         """Two runs that differ only in what they have already deleted agree.

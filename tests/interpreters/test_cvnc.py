@@ -110,6 +110,79 @@ class TestSyllables:
         assert _syllabify(_tokenize("fifi")) == [0, 2]
 
 
+class TestFricatives:
+    def test_print_integer(self) -> None:
+        assert run_program("cicθi") == "1"
+
+    def test_print_character(self) -> None:
+        assert run_program("ci" * 65 + "fu") == "A"
+
+    def test_character_output_is_modulo_256(self) -> None:
+        assert run_program("ci" * 321 + "fu") == "A"  # 321 % 256 == 65
+
+    def test_input_integer(self) -> None:
+        assert run_program("su" + "θi", "7\n") == "7"
+
+    def test_input_character(self) -> None:
+        assert run_program("ʒu" + "θi", "A\n") == "65"
+
+    @pytest.mark.parametrize(
+        ("char", "expected"),
+        [("\u0100", "0"), ("\u0101", "1"), ("\u4e2d", "45")],
+        ids=["256", "257", "cjk"],
+    )
+    def test_a_unicode_input_character_is_taken_modulo_256(
+        self, char: str, expected: str
+    ) -> None:
+        """The spec's own "if Unicode, then modulo it by 256".
+
+        Only a codepoint above 255 exercises the modulus at all: every
+        ASCII character is already its own residue, so an ASCII-only test
+        cannot tell 256 from any other divisor above 127.
+        """
+        assert run_program("ʒu" + "θi", char + "\n") == expected
+
+    def test_a_nul_input_character_reads_as_zero(self) -> None:
+        """A NUL byte is 0, not the fallback for a missing one.
+
+        The read is written ``(byte or 0) % 256``, and the only value
+        that reaches the ``or`` is a genuine NUL -- an exhausted stdin
+        raises instead.  So the fallback and the real answer are the same
+        number, and nothing pinned it: any other fallback passes every
+        test above, where the character read is always printable.
+        """
+        assert run_program("ʒu" + "θi", "\x00\n") == "0"
+
+    def test_an_unparseable_input_line_reads_as_zero(self) -> None:
+        assert run_program("su" + "θi", "banana\n") == "0"
+        with pytest.raises(EOFError):
+            run_program("su" + "θi", "\n")
+
+    def test_a_negative_input_floors_at_zero(self) -> None:
+        """The accumulator is unsigned."""
+        assert run_program("su" + "θi", "-5\n") == "0"
+
+    def test_running_out_of_input_raises(self) -> None:
+        with pytest.raises(EOFError):
+            run_program("su" + "θi", "")
+
+
+class TestVowels:
+    def test_increment_and_decrement(self) -> None:
+        """Three increments then one decrement leaves 2."""
+        assert run_program("cicici" + "cə" + "θi") == "2"
+
+    def test_decrement_floors_at_zero(self) -> None:
+        """Two decrements from 0 stay at 0 rather than going negative."""
+        assert run_program("cəcə" + "θi") == "0"
+
+    def test_square(self) -> None:
+        assert run_program("ci" * 5 + "cæ" + "θu") == "25"
+
+    def test_square_root_floors(self) -> None:
+        assert run_program("ci" * 10 + "co" + "θu") == "3"
+
+
 class TestDeque:
     """A nasal is the ``N`` of CV(N)(C), so it can never open a syllable.
 
@@ -177,6 +250,113 @@ class TestDeque:
         with pytest.raises(HaltError) as caught:
             run_program(program)
         assert str(caught.value) == "pop from an empty deque"
+
+
+class TestFunction:
+    """The function is built while the accumulator is 0, then applied by ``su``.
+
+    Every plosive appends to the function, and ``c`` -- the one consonant
+    that does not -- *resets* it, so there is no way to climb the
+    accumulator with a run of ``ci`` once a function is live.  The idiom
+    instead is to build first, when the accumulator is still 0 and the
+    ``o`` partnering each build token is the identity, and then let ``su``
+    read the argument and apply the function in a single syllable.
+    """
+
+    def test_apply_the_identity(self) -> None:
+        assert run_program("do" + "su" + "θi", "5\n") == "5"
+
+    def test_multiplication_binds_tighter_than_addition(self) -> None:
+        """``a + a * a`` at a == 3 is 12, not 18."""
+        program = "do" + "bo" + "do" + "ɡo" + "do" + "su" + "θi"
+        assert run_program(program, "3\n") == "12"
+
+    def test_parentheses_override_precedence(self) -> None:
+        """``(a + a) * a`` at a == 3 is 18."""
+        program = "ʔo" + "do" + "bo" + "do" + "ʡo" + "ɡo" + "do" + "su" + "θi"
+        assert run_program(program, "3\n") == "18"
+
+    def test_division_floors(self) -> None:
+        """``a / 2`` at a == 7 is 3, with the 2 popped off the deque."""
+        program = "cicin" + "do" + "qo" + "po" + "su" + "θi"
+        assert run_program(program, "7\n") == "3"
+
+    def test_dividing_by_zero_halts(self) -> None:
+        program = "con" + "do" + "qo" + "po" + "su" + "θi"
+        with pytest.raises(HaltError) as caught:
+            run_program(program, "7\n")
+        assert str(caught.value) == "division by zero in the function"
+
+    def test_subtraction_floors_at_zero(self) -> None:
+        """The accumulator is unsigned, so ``2 - a`` at a == 5 is 0."""
+        program = "cicin" + "po" + "to" + "do" + "su" + "θi"
+        assert run_program(program, "5\n") == "0"
+
+    def test_subtraction_that_stays_positive_is_ordinary(self) -> None:
+        """The floor is a floor, not a clamp to zero: ``a - 2`` at 5 is 3."""
+        program = "cicin" + "do" + "to" + "po" + "su" + "θi"
+        assert run_program(program, "5\n") == "3"
+
+    def test_a_popped_literal_comes_from_the_named_end(self) -> None:
+        """``p`` takes the front and ``k`` the back, so they differ."""
+        stage = "cim" + "cicicin"  # front 1, back 4
+        # a - 1 == 4 taking the front, a - 4 == 1 taking the back
+        assert run_program(stage + "do" + "to" + "po" + "su" + "θi", "5\n") == "4"
+        assert run_program(stage + "do" + "to" + "ko" + "su" + "θi", "5\n") == "1"
+
+    @pytest.mark.parametrize(
+        "build",
+        [
+            "",  # empty
+            "ʔo",  # a lone open paren, with nothing to open
+            "ʔo" + "do",  # "(a" -- an operand, but the paren never closes
+            "ʡo",  # a lone close paren
+            "do" + "bo",  # a trailing operator
+            "do" + "do",  # two adjacent operands
+            "bo",  # a leading operator
+        ],
+        ids=[
+            "empty",
+            "open",
+            "unclosed",
+            "close",
+            "trailing",
+            "adjacent",
+            "leading",
+        ],
+    )
+    def test_an_invalid_function_does_nothing(self, build: str) -> None:
+        """The spec's own "if the function is valid, else do nothing"."""
+        assert run_program(build + "su" + "θi", "5\n") == "5"
+
+    def test_reset_clears_the_function(self) -> None:
+        """``c`` empties it, and an empty function is invalid, so ``u`` is
+        inert -- which is what makes ``ci``/``fu`` a safe no-op pairing."""
+        assert run_program("do" + "ɡo" + "do" + "co" + "su" + "θi", "5\n") == "5"
+
+    @pytest.mark.parametrize(
+        ("build", "stage", "stdin", "expected"),
+        [
+            ("do" + "\u0261o" + "do" + "\u0261o" + "do", "", "2\n", "8"),
+            ("do" + "\u0261o" + "do" + "qo" + "po", "cici" + "n", "6\n", "18"),
+        ],
+        ids=["a*a*a", "a*a/2"],
+    )
+    def test_a_chain_of_same_precedence_operators_keeps_going(
+        self, build: str, stage: str, stdin: str, expected: str
+    ) -> None:
+        """The term loop consumes *every* multiplicative operator, not one.
+
+        A two-operand function exercises the loop's body but not its
+        repetition, so stopping after the first factor looks identical
+        there; three operands is the shortest case that separates them.
+        """
+        assert run_program(stage + build + "su" + "\u03b8i", stdin) == expected
+
+    def test_the_function_survives_until_it_is_reset(self) -> None:
+        """It is applied twice, to two different arguments: 3 and then 9."""
+        program = "do" + "ɡo" + "do" + "su" + "su" + "θi"
+        assert run_program(program, "3\n9\n") == "81"
 
 
 class TestControlFlow:
@@ -361,3 +541,13 @@ class TestIgnoredLF:
         io = ScriptedIO("1\n")
         assert run_until_halt_or_cycle(_Machine("\n".join(TRUTH_MACHINE), io)) is False
         assert set(io.getvalue()) == {"1"}
+
+
+def test_an_invalid_function_is_inert_even_after_a_division_by_zero() -> None:
+    """``a/0+`` is invalid, so it leaves the accumulator; ``a/0`` halts."""
+    from esolangs.exceptions import HaltError
+    from esolangs.interpreters.other.cvnc import _applied
+
+    assert _applied(5, ("a", "/", "0", "+")) == 5
+    with pytest.raises(HaltError, match="division by zero"):
+        _applied(5, ("a", "/", "0"))

@@ -652,6 +652,7 @@ class _State:
     globals: dict[str, object]
     frames: list[_Frame]
     line: int
+    steps: int = 0
 
 
 class _Machine:
@@ -662,6 +663,12 @@ class _Machine:
     executed line binds its free variables from input, then evaluates on
     the frame stack, printing the result when the stack empties.
     """
+
+    #: The wiki gives no bound; this caps *one* line's evaluation so a
+    #: runaway expression cannot allocate without limit while still
+    #: leaving the hang detectors room to prove a loop.  Reset per line,
+    #: so a long program of short lines is not cut off.
+    _WORK_LIMIT = 1 << 20
 
     def __init__(self, code: str, io: IO) -> None:
         self.io = io
@@ -787,6 +794,7 @@ class _Machine:
         """Consume one logical line: define a name, or begin evaluating."""
         text = self.lines[self.line]
         self.line += 1
+        self.state.steps = 0
         split = _split_definition(text)
         if split is None:
             node = _Parser(_tokens(text), self.defs).parse()
@@ -848,6 +856,12 @@ class _Machine:
 
     def _step_frame(self, frame: _Frame) -> None:
         """Resolve one node of ``frame``'s current expression."""
+        self.state.steps += 1
+        if self.state.steps > self._WORK_LIMIT:
+            raise HaltError(
+                "expression exceeded the evaluation budget",
+                hint="reduce nesting or repeated evaluation to fit the budget",
+            )
         if not frame.work:
             self._advance(frame)
             return

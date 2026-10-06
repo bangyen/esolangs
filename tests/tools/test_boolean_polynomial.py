@@ -11,6 +11,7 @@ from tests.tools.boolean_oracles import (
 )
 from tests.tools.boolean_runners import (
     run_polynomial,
+    run_polynomial_from,
 )
 
 
@@ -65,6 +66,25 @@ class TestPolynomial:
             bits = [(row >> (3 - i)) & 1 for i in range(4)]
             assert run_polynomial(program, [str(bit) for bit in bits]) == table[row]
 
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("10", 1),  # NOT
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("00000001", 3),  # AND-3
+            ("10000000", 3),  # OR-3
+        ],
+    )
+    @pytest.mark.medium
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every input combination produces the truth-table result."""
+        program = boolean.polynomial(table)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = run_polynomial(program, [str(b) for b in bits])
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
     def test_wide_table_rejected(self) -> None:
         """The gate is the instruction count, not the input count.
 
@@ -80,6 +100,7 @@ class TestPolynomial:
         the 1934 the NTT screens bought, so a stale body silently stops
         exercising the gate.
         """
+
         random.seed(0)
         scattered = "".join(random.choice("01") for _ in range(2**11))
         with pytest.raises(ValueError, match="groups instructions onto primes"):
@@ -108,6 +129,50 @@ class TestPolynomial:
             worst <= _POLYNOMIAL_MAX_INSTRS == 7 * sum(states[:10]) + 5 * states[10] - 1
         )
 
+    @pytest.mark.slow  # 4.5s: one NTT factorization, then 256 cached rows
+    def test_a_dense_eight_input_table_runs_every_row(self) -> None:
+        """The arity the old cap refused now builds, and every row answers.
+
+        Dense n == 8 is 462 instructions -- past the old 328, and past
+        ``_NTT_MIN_DEGREE`` once rendered, so this is the suite's
+        execution-gate witness for the NTT recovery path *and* for the
+        per-program parse cache: the first row pays the factorization
+        (~3.4s) and the other 255 amortize to under a millisecond each,
+        which is what made the cap raisable at all.
+        """
+        from tests.tools.test_boolean_contract import _dense
+
+        table = _dense(8)
+        program = boolean.polynomial(table)
+        for row in range(256):
+            bits = [(row >> (7 - i)) & 1 for i in range(8)]
+            got = run_polynomial(program, [str(b) for b in bits])
+            assert got == table[row], f"row {row}"
+
+    @pytest.mark.slow  # 2.3s
+    def test_state_machine_renders_past_the_old_input_gate(self) -> None:
+        """Tables the ``n <= 4`` gate refused outright now render and run.
+
+        The gate was on ``n`` because a decision tree doubles with it.  The
+        state machine merges prefixes with equal residual subfunctions, so a
+        table that collapses is cheap at any width: AND-5 was rejected and
+        now builds, and parity -- the tree's worst case, 2553 instructions
+        at n == 8 -- is linear here, 11 per input, and renders through
+        n == 8.
+        """
+        and5 = "0" * 31 + "1"
+        program = boolean.polynomial(and5)
+        assert program.startswith("f(x) = ")
+        for combo in range(2**5):
+            bits = [(combo >> (4 - i)) & 1 for i in range(5)]
+            got = run_polynomial(program, [str(b) for b in bits])
+            assert got == and5[combo], f"inputs {bits}"
+
+        for n in (6, 8):
+            parity = "".join(str(bin(row).count("1") % 2) for row in range(2**n))
+            assert len(_polynomial_dag(parity)) == 11 * n + 3
+            assert boolean.polynomial(parity).startswith("f(x) = ")
+
     def test_state_machine_merges_what_the_tree_cannot(self) -> None:
         """A subtable that is not constant can still collapse to one state.
 
@@ -124,6 +189,46 @@ class TestPolynomial:
         for combo in range(8):
             bits = [(combo >> (2 - i)) & 1 for i in range(3)]
             assert run_polynomial(program, [str(b) for b in bits]) == table[combo]
+
+    def test_polynomial_hybrid_cost_mirrors_build(self) -> None:
+        """The hybrid's cost function is a deliberate mirror of its emitter.
+
+        The dispatch screens on the cost before rendering, so a drift here
+        silently skips a table the emitter would have shortened.
+        """
+        from esolangs.tools.polynomial import (
+            _polynomial_hybrid,
+            _polynomial_hybrid_cost,
+        )
+
+        for n in range(1, 4):
+            for value in range(1 << (1 << n)):
+                table = format(value, f"0{1 << n}b")
+                for level in range(n + 1):
+                    assert _polynomial_hybrid_cost(table, level) == len(
+                        _polynomial_hybrid(table, level)
+                    ), f"{table} k={level}"
+
+    def test_hybrid_endpoints_are_the_two_old_constructions(self) -> None:
+        """``k == n`` is the tree and ``k == 0`` is the machine.
+
+        The family is not a third construction beside two others -- it
+        contains both, which is what let the separate emitters go.  The
+        machine's identity holds except on a constant table, where the
+        hybrid collapses to a leaf before reaching it and comes out
+        shorter (4 instructions against 5 at n == 1).
+        """
+        from esolangs.tools.polynomial import _polynomial_hybrid
+
+        for n in range(1, 4):
+            for value in range(1 << (1 << n)):
+                table = format(value, f"0{1 << n}b")
+                assert _polynomial_hybrid(table, n) == _polynomial_tree(table), table
+                machine = _polynomial_hybrid(table, 0)
+                if len(set(table)) == 1:
+                    assert len(machine) < len(_polynomial_dag(table)), table
+                else:
+                    assert machine == _polynomial_dag(table), table
 
     @pytest.mark.slow
     def test_polynomial_screen_slack(self) -> None:
@@ -160,6 +265,45 @@ class TestPolynomial:
         assert worst == 1
         assert worst <= _POLYNOMIAL_SCREEN_SLACK
 
+    @pytest.mark.parametrize(
+        "table",
+        ["00000101", "00001010", "01010000", "01011111", "10100000", "11111010"],
+    )
+    def test_hybrid_shortens_and_still_computes(self, table: str) -> None:
+        """A split whose halves merge separately beats both parents.
+
+        ``00000101`` is 45 instructions as a tree and 36 as a state machine,
+        but 28 when the first bit branches and each half runs its own
+        machine: the residuals merge *within* the top split and not across
+        it, so neither parent construction sees the merge.
+        """
+        from esolangs.tools.polynomial import _polynomial_hybrid
+
+        assert len(_polynomial_hybrid(table, 1)) < len(_polynomial_tree(table))
+        program = boolean.polynomial(table)
+        for combo in range(8):
+            bits = [(combo >> (2 - i)) & 1 for i in range(3)]
+            assert run_polynomial(program, [str(b) for b in bits]) == table[combo]
+
+    def test_drained_machine_survives_a_one_in_the_drained_bit(self) -> None:
+        """The reduction reaches the machine, not just the tree.
+
+        A drain is a bare read and the machine's root level opens with a
+        read of its own, so the drained byte is overwritten unlooked-at.
+        The previous chain tested for zero and a drained ``1`` fell past
+        every state test; the rows with a 1 in the drained bit are still
+        the ones that matter here.
+        """
+        from esolangs.tools.polynomial import _polynomial_drained_dag
+
+        table = "0000010100000101"  # ignores its first input
+        assert _polynomial_drained_dag(table) is not None
+        program = boolean.polynomial(table)
+        for combo in range(16):
+            bits = [(combo >> (3 - i)) & 1 for i in range(4)]
+            got = run_polynomial(program, [str(b) for b in bits])
+            assert got == table[combo], f"inputs {bits}"
+
     @pytest.mark.parametrize("table", ["00100000", "11011111", "00000010"])
     def test_machine_losing_on_characters_does_not_ship(self, table: str) -> None:
         """Fewer instructions is not fewer characters.
@@ -180,3 +324,22 @@ class TestPolynomial:
         assert len(_polynomial_hybrid(table, 0)) < len(_polynomial_tree(table))
         assert len(machine) > len(tree)
         assert boolean.polynomial(table) == tree
+
+    def test_every_path_reads_each_input_once(self) -> None:
+        """Whichever construction wins, a run consumes exactly ``n`` inputs.
+
+        The reads are the interface: a caller feeding several programs from
+        one stream desyncs if a path leaves bits unconsumed.  The tree
+        drains the reads a folded leaf skipped; the state machine reads once
+        inside the single branch each level's chain fires, so the count is
+        structural.  Feeding an exhaustible iterator proves both directions
+        -- an over-read raises, and a leftover proves an under-read.
+        """
+        for table, n in (("0110", 2), ("10101010", 3), ("00001111", 3)):
+            program = boolean.polynomial(table)
+            for combo in range(2**n):
+                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                feed = iter([str(b) for b in bits])
+                got = run_polynomial_from(program, feed)
+                assert got == table[combo], f"{table} inputs {bits}"
+                assert not list(feed), f"{table} inputs {bits} left input unread"
