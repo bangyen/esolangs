@@ -118,7 +118,7 @@ def _packlang_corrections(source: str) -> tuple[_Correction, ...]:
         _strip_comments,
         _tokenize,
     )
-    from esolangs.interpreters.other.packlang import (
+    from esolangs.interpreters.other._packlang_parse import (
         _DATATYPES,
         _parse_packages,
         _Parser,
