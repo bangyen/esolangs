@@ -7,8 +7,8 @@ the 8-bit window (fewer if the pool ends), ``{``/``}`` loop on the
 current bit.  Other characters are ignored.  ``)`` raises
 :class:`EOFError` on exhausted input (the cross-check exits 3); an
 unmatched bracket raises :class:`ValueError` when it would jump (the
-Ruby port looped); an empty line reads 0, the repo-wide convention, not
-the newline it used to claim.
+Ruby port looped). Input consumes consecutive characters, including
+newlines.
 :func:`_advance` is pure over an immutable ``_State``; the shell reads,
 prints and resolves the jump via :func:`_match`, the one part that can
 fail.  A loop that keeps extending the pool never repeats; ``run()``'s
@@ -132,19 +132,9 @@ class _Machine:
     # The VM's language-shaped view: Bit pool + pointer; ip the cursor, memory the pool.
 
     @property
-    def ip(self) -> int:
-        """The current instruction position."""
-        return self.ind
-
-    @property
     def memory(self) -> list[int]:
         """The addressable cells."""
         return list(self.state[2])
-
-    @property
-    def stack(self) -> list[object]:
-        """No stack in this language."""
-        return []
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

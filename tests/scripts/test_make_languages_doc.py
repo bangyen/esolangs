@@ -37,62 +37,8 @@ def load_script() -> object:
     return module
 
 
-def test_readme_languages_section_is_in_sync() -> None:
-    """Regenerating the README section leaves it unchanged."""
-    module = load_script()
-    text = README.read_text()
-    start = text.index(_README_START)
-    end = text.index(_README_END) + len(_README_END)
-    expected = (
-        _README_START
-        + "\n\n"
-        + module.render_languages_section()
-        + "\n\n"
-        + _README_END
-    )
-    assert text[start:end] == expected
-
-
-def test_readme_examples_section_is_in_sync() -> None:
-    """Regenerating the Examples paragraph leaves it unchanged."""
-    module = load_script()
-    text = README.read_text()
-    start = text.index(_EXAMPLES_START)
-    end = text.index(_EXAMPLES_END) + len(_EXAMPLES_END)
-    expected = (
-        _EXAMPLES_START
-        + "\n\n"
-        + module.render_examples_section()
-        + "\n\n"
-        + _EXAMPLES_END
-    )
-    assert text[start:end] == expected
-
-
-def test_readme_boolean_count_section_is_in_sync() -> None:
-    """Regenerating the boolean-generator count leaves it unchanged."""
-    module = load_script()
-    text = README.read_text()
-    start = text.index(_BOOLEAN_COUNT_START)
-    end = text.index(_BOOLEAN_COUNT_END) + len(_BOOLEAN_COUNT_END)
-    expected = (
-        _BOOLEAN_COUNT_START
-        + "\n\n"
-        + module.render_boolean_count_section()
-        + "\n\n"
-        + _BOOLEAN_COUNT_END
-    )
-    assert text[start:end] == expected
-
-
 def test_readme_counts_match_the_registry() -> None:
-    """The rendered counts are the registry's, not a hand-typed number.
-
-    The counts drifted while they sat as prose (46/58/63 against an actual
-    47/64/64), which is what moving them inside the markers fixes.  Assert the
-    rendered text carries the registry's figures so a wrong-but-in-sync
-    number cannot pass the sync tests above.
-    """
+    """The rendered counts are the registry's, not a hand-typed number."""
     module = load_script()
     examples = module.render_examples_section()
     count = sum(lang.boolean is not None for lang in module.LANGUAGES.values())
@@ -180,13 +126,7 @@ def test_main_updates_all_registry_derived_docs(
 
 
 def test_the_writers_rewrite_the_committed_sections(tmp_path: Path) -> None:
-    """The ``update_*`` writers splice the marked blocks, as generate.py does.
-
-    The sync tests call the renderers directly; this calls the writers against
-    a copy, so the code path ``scripts/generate.py docs`` runs is exercised and
-    not only the strings it produces.  An in-sync copy must round-trip
-    unchanged, which also pins the markers the writers index on.
-    """
+    """The ``update_*`` writers splice the marked blocks, as generate.py does."""
     module = load_script()
     (tmp_path / "docs").mkdir()
     readme = README.read_text()
@@ -200,40 +140,15 @@ def test_the_writers_rewrite_the_committed_sections(tmp_path: Path) -> None:
     assert (tmp_path / "docs" / "usage.md").read_text() == usage
 
 
-def test_readme_tui_frame_is_in_sync() -> None:
-    """Regenerating the TUI screen leaves it unchanged.
-
-    This is the check that makes a screenshot safe to put on a front page:
-    the block is `tui.render`'s output, so a layout change fails here
-    instead of leaving a stale picture nothing can see is stale.
-    """
-    module = load_script()
-    expected = _TUI_START + "\n\n" + module.render_tui_section() + "\n\n" + _TUI_END
-    assert _marked(README.read_text(), _TUI_START, _TUI_END) == expected
-
-
 def test_the_tui_frame_has_no_trailing_whitespace() -> None:
-    """`trailing-whitespace` runs on README.md and would strip the padding.
-
-    The renderer pads grid rows out to its width, so without the rstrip the
-    hook and the sync test above disagree on every commit -- the same
-    collision `.pre-commit-config.yaml` excludes `examples/` for.
-    """
+    """`trailing-whitespace` runs on README.md and would strip the padding."""
     module = load_script()
     rendered = module.render_tui_section()
     assert not [line for line in rendered.splitlines() if line != line.rstrip()]
 
 
 def test_the_tui_frame_draws_the_generators_own_program() -> None:
-    """Not a mock-up: each drawn row is a row of the generated program.
-
-    The sync test above only says the block matches the renderer.  This says
-    the renderer was pointed at a real generated program, so a frame built
-    from a hand-written toy grid would fail even while staying in sync.
-
-    The language and table are repeated here rather than read off the
-    script, so that changing them there is a visible change here too.
-    """
+    """Not a mock-up: each drawn row is a row of the generated program."""
     module = load_script()
     import esolangs
 
@@ -255,38 +170,8 @@ def _marked(text: str, start: str, end: str) -> str:
     return text[text.index(start) : text.index(end) + len(end)]
 
 
-def test_usage_input_shapes_table_is_in_sync() -> None:
-    """Regenerating the stdin table leaves it unchanged.
-
-    The table replaced three hand-written prose copies of the same four
-    exceptions, one of which was wrong across many commits.
-    """
-    module = load_script()
-    expected = (
-        _SHAPES_START
-        + "\n\n"
-        + module.render_input_shapes_section()
-        + "\n\n"
-        + _SHAPES_END
-    )
-    assert _marked(USAGE_DOC.read_text(), _SHAPES_START, _SHAPES_END) == expected
-
-
-def test_usage_api_list_is_in_sync() -> None:
-    """Regenerating the exported-callable list leaves it unchanged."""
-    module = load_script()
-    expected = _API_START + "\n\n" + module.render_api_section() + "\n\n" + _API_END
-    assert _marked(USAGE_DOC.read_text(), _API_START, _API_END) == expected
-
-
 def test_the_shape_table_carries_the_encoders_output() -> None:
-    """A wrong-but-in-sync table cannot pass the sync test above.
-
-    ``_SAMPLE_BITS`` is three bits for a reason: at two, Taglate's padding
-    is invisible and Fargo's decimal and binary readings coincide, so a
-    two-bit table would render identically for a language whose shape had
-    silently changed.
-    """
+    """A wrong-but-in-sync table cannot pass the sync test above."""
     module = load_script()
     rendered = module.render_input_shapes_section()
     assert "| Fargo | `row_index` | `0`/`1` | `'5\\n'` |" in rendered

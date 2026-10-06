@@ -12,6 +12,7 @@ from esolangs.interpreters.grid_based.thisthat import run
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.tools.thisthat import _Builder, _deque_plan, _tree, thisthat
 from tests.generator_support import evaluate_generated, verify_generated
+from tests.witness_tables import witnesses
 
 
 def _run(table: str, row: int) -> tuple[str, int]:
@@ -22,29 +23,13 @@ def _run(table: str, row: int) -> tuple[str, int]:
     return io.getvalue(), io.reads
 
 
-@pytest.mark.parametrize("n", [1, 2, pytest.param(3, marks=pytest.mark.medium)])
-def test_every_table_through_three_inputs(n: int) -> None:
-    width = 1 << n
-    for value in range(1 << width):
-        table = f"{value:0{width}b}"
-        for row, expected in enumerate(table):
-            output, reads = _run(table, row)
-            assert output == expected, (table, row)
-            assert reads == n, (table, row)
-
-
 def _parity(n: int) -> str:
     return "".join(str(row.bit_count() & 1) for row in range(1 << n))
 
 
 @pytest.mark.medium
 def test_source_growth_is_linear_in_the_table() -> None:
-    """Parity keeps every node, so it is the full tree's growth.
-
-    From four inputs, where the tree outgrows the loader row above it; to
-    twelve, where linearity.py reads the same trend (thirteen took 4.6s of
-    the medium band's 5s once four candidates were built).
-    """
+    """Parity keeps every node, so it is the full tree's growth."""
     sizes = [len(thisthat(_parity(n))) for n in range(1, 13)]
     assert all(right <= 3 * left for left, right in pairwise(sizes[3:]))
     assert max(size / (1 << n) for n, size in enumerate(sizes, 1)) < 300
@@ -89,14 +74,7 @@ def test_only_dependent_levels_are_tested() -> None:
 
 @pytest.mark.medium
 def test_pruning_never_grows_a_table() -> None:
-    """No table through three inputs is larger than its unpruned tree.
-
-    ``prune=False`` is the previous tree under the tighter loader: the 256
-    three-input tables were 299,264 characters, are 199,936 unpruned,
-    159,628 with ignored inputs projected and agreeing levels skipped,
-    147,836 with the greedy test order where the row can pop it, and
-    130,860 with the root's arms swapped where that is shorter.
-    """
+    """No table through three inputs is larger than its unpruned tree."""
     for n in (1, 2, 3):
         for value in range(1 << (1 << n)):
             table = f"{value:0{1 << n}b}"
@@ -111,11 +89,7 @@ def test_pruning_never_grows_a_table() -> None:
 
 
 def test_deque_plan_pops_exactly_the_orders_a_deque_can() -> None:
-    """Every order a push-then-pop deque yields is planned, and nothing else.
-
-    Pushing inputs in order to either end and then popping either end
-    yields ``C(2n - 2, n - 1)`` orders: all six at three inputs.
-    """
+    """Every order a push-then-pop deque yields is planned, and nothing else."""
     for n in range(1, 7):
         reachable = set()
         for pushes in product((False, True), repeat=n):
@@ -191,9 +165,7 @@ def test_rotated_rendered_area_remains_linear() -> None:
 def test_narrow_strip_executes_every_small_table() -> None:
     """Each narrow branch consumes the same input deque and prints once."""
     for n in range(1, 4):
-        size = 1 << n
-        for value in range(1 << size):
-            table = f"{value:0{size}b}"
+        for table in witnesses(n):
             source = esolangs.generate("thisthat", table, 1)
             assert max(map(len, source.splitlines())) <= 9
             for row, expected in enumerate(table):

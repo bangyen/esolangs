@@ -1,48 +1,4 @@
-"""Reusable lemmas every generator's deep proof instantiates.
-
-These are *not* a substitute for the hand-derived proofs beside them.  The
-bespoke files -- ``a_painter_ant.py``, ``arrowqueue.py``, ``container.py``,
-``bio.py`` -- mechanize one construction's own argument: where its leaves sit,
-what its literal spells, which adjustment sits at which nesting level.  Nothing
-generic can reach that, and this module does not pretend to.
-
-What it does reach is the part of each scheme's argument that is about
-*counting*, and that part is uniform.  Every scheme in ``docs/proofs/index.md``
-proves totality the same way: the construction is a finite object whose size is
-bounded by a function of the arity, and every row of the table participates in
-it.  Both halves are falsifiable per generator:
-
-``rows``      flipping any single table entry must change the emitted program.
-              A construction that ignores a row cannot be computing the table,
-              so this is the coverage half of every scheme's claim, and at the
-              arities it enumerates it is exhaustive rather than sampled.
-
-``ladder``    the construction completes at every arity of the ladder, on both
-              of the suite's table shapes.  This is the totality claim itself,
-              carried past the arities the exhaustive lemma can reach.
-
-              It deliberately asserts nothing about *size*.  Two size
-              formulations were tried and both are false for sound reasons.  A
-              per-step doubling bound breaks on legitimate regime changes: 123
-              jumps x5.80 at n=4 when its geometry switches, then settles at
-              x1.96.  Monotonicity breaks at every dispatch crossover, where
-              the wide route is *smaller* than the tree it replaces --
-              Container drops 5674 chars to 1200 at n=7, and A Painter Ant
-              dropped 405 to 244 at n=5 until its strip took every arity.
-              Neither is a defect, and no ledger scheme claims a
-              character count: the schemes bound nodes and entries, and size
-              claims live in `docs/limitations.md`.  The crossover is reported
-              as a note instead of asserted.
-
-``coverage``  every table of a small arity builds, enumerated exhaustively.
-
-``determinism`` the same table twice gives the same program.  Cheap, and every
-              inductive argument above silently assumes it.
-
-A lemma that does not apply to a generator must be recorded as inapplicable
-*with its reason*, never skipped quietly -- :class:`UnprovenError` is how, and the
-runner counts those separately from passes.
-"""
+"""Reusable lemmas every generator's deep proof instantiates."""
 
 from __future__ import annotations
 
@@ -56,11 +12,7 @@ from tests.tools.test_boolean_contract import _dense, _parity
 
 
 class UnprovenError(Exception):
-    """A lemma does not apply here, and this is why.
-
-    Raised rather than returned so that a lemma cannot be silently skipped by
-    a caller that forgets to inspect a result.
-    """
+    """A lemma does not apply here, and this is why."""
 
 
 @dataclass
@@ -97,12 +49,7 @@ def tables_at(n: int, limit: int | None = None) -> Iterator[str]:
 
 
 def build(fn: Builder, table: str) -> object | None:
-    """Build ``table``, or ``None`` where the generator refuses it.
-
-    A ``ValueError`` is the documented refusal for a table outside a
-    generator's domain, and is information rather than failure; anything else
-    propagates, because a crash is not a refusal.
-    """
+    """Build ``table``, or ``None`` where the generator refuses it."""
     try:
         return fn(table)
     except ValueError:
@@ -110,14 +57,7 @@ def build(fn: Builder, table: str) -> object | None:
 
 
 def check_coverage(fn: Builder, max_n: int = 3, *, allow_refusals: bool = False) -> str:
-    """Every table of every arity up to ``max_n`` builds, enumerated.
-
-    A refusal is a failure here: the scheme's coverage claim is that the
-    construction handles every table, so a ``ValueError`` on one of them is the
-    lemma failing, not a domain edge.  Only a ledger row marked ``cap`` or
-    ``exception`` may refuse (``allow_refusals``), and even then something must
-    build.
-    """
+    """Every table of every arity up to ``max_n`` builds, enumerated."""
     built = refused = 0
     for n in range(1, max_n + 1):
         for table in tables_at(n):
@@ -151,12 +91,7 @@ def check_determinism(fn: Builder, max_n: int = 4) -> str:
 
 
 def check_rows(fn: Builder, max_n: int = 4) -> str:
-    """Flipping any single table entry changes the emitted program.
-
-    This is the coverage half of every scheme's argument.  A construction that
-    leaves a row out of its tree, its sum or its stored table would answer that
-    row wrongly, and the emitted text would not move when the row moved.
-    """
+    """Flipping any single table entry changes the emitted program."""
     checked = blind = 0
     for n in range(1, max_n + 1):
         size = 1 << n
@@ -190,20 +125,7 @@ def check_ladder(
     *,
     allow_refusals: bool = False,
 ) -> str:
-    """The construction completes at every arity, on both table shapes.
-
-    Both shapes, because a generator can cover one and refuse the other: the
-    suite's own sweep is keyed by ``(name, shape)`` for exactly that reason,
-    and a single-shape ladder reports the wrong ceiling.  Every arity up to
-    ``max_n`` must build unless the row is ``cap``/``exception``; only the
-    counts are reported then.
-
-    Size is not asserted -- see the module docstring for the two formulations
-    that were tried and why both are false.  The crossover a dispatching
-    generator shows, where the wide route comes in smaller than the tree it
-    replaces, is reported because it is informative, not because it is
-    required.
-    """
+    """The construction completes at every arity, on both table shapes."""
     built: dict[str, list[tuple[int, int]]] = {}
     refused = 0
     for name, make in shapes:  # type: ignore[misc]
@@ -251,14 +173,7 @@ def _language_of(fn: Builder) -> str | None:
 
 
 def check_embedding(fn: Builder, max_n: int = 4) -> str:
-    """Each input embeds exactly once, at a width independent of the bit.
-
-    Only meaningful for the parameterized generators: an input-reading language
-    has no runs to count.  The public template spells each input as one run
-    of the language's character, as wide as its setter, and :func:`runs`
-    accounts for every occurrence of the character, so a template with
-    ``n`` spans embeds each of its ``n`` inputs exactly once.
-    """
+    """Each input embeds exactly once, at a width independent of the bit."""
     import esolangs
     from esolangs.registry import canonical_id, parameterized_ids
     from esolangs.tools.helpers import runs

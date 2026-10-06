@@ -10,6 +10,7 @@ from esolangs.interpreters.other.thue import run as run_thue
 from esolangs.interpreters.randomness import Seeded
 from esolangs.tools.thue import thue
 from tests.tools.reader_support import _TABLES, _bits
+from tests.witness_tables import witnesses
 
 
 def _execute(table: str, row: int, width: int) -> None:
@@ -29,8 +30,7 @@ def _execute(table: str, row: int, width: int) -> None:
 @pytest.mark.medium
 @pytest.mark.parametrize("width", [1, 7, 8, 9, 10, 13, 40])
 def test_narrow_sources_execute_every_three_input_table(width: int) -> None:
-    for value in range(256):
-        table = f"{value:08b}"
+    for table in witnesses(3):
         floor = max(map(len, thue(table, 1).splitlines()))
         assert max(map(len, thue(table, width).splitlines())) <= max(width, floor)
         for row in range(8):
@@ -91,13 +91,18 @@ def test_short_tree_executes_one_and_two_input_tables() -> None:
     assert len(thue("0110", 1)) == 90
 
 
-def test_thue_spells_the_table_once_and_its_rules_are_fixed() -> None:
-    """Its emission is the table plus a constant: ``T + 187`` characters.
+def test_thue_proof_text_counts_the_emitted_rules() -> None:
+    """The ledger says nineteen fixed rules; the program carries nineteen."""
+    import esolangs
 
-    ``T + 199`` before the line read became the marker itself: the rules
-    ``0::=P`` and ``1::=Q`` only renamed it, so every three-input table
-    sheds twelve characters, 52,992 to 49,920 over all 256.
-    """
+    lines = boolean.thue("0110").splitlines()
+    assert len(lines[: lines.index("::=")]) == 19
+    scaling = esolangs.describe("Thue")["proof_status"]["scaling"]
+    assert "nineteen fixed rules" in scaling
+
+
+def test_thue_spells_the_table_once_and_its_rules_are_fixed() -> None:
+    """Its emission is the table plus a constant: ``T + 187`` characters."""
     sizes = [len(boolean.thue("01" * (2 ** (n - 1)))) for n in (1, 2, 3, 4)]
     assert sizes == [2**n + 187 for n in (1, 2, 3, 4)]
     total = sum(len(boolean.thue(f"{value:08b}")) for value in range(256))
@@ -106,13 +111,7 @@ def test_thue_spells_the_table_once_and_its_rules_are_fixed() -> None:
 
 @pytest.mark.parametrize("table", _TABLES)
 def test_thue_never_leaves_the_draw_a_choice(table: str) -> None:
-    """Every state a generated program reaches offers exactly one rewrite.
-
-    Thue picks the rewrite at random, by spec, and the interpreter draws.
-    What makes these programs reproducible anyway is this invariant, so it is
-    asserted by running them rather than argued in a docstring: one applicable
-    rule at one position, in every state, on every row.
-    """
+    """Every state a generated program reaches offers exactly one rewrite."""
     from esolangs.interpreters.other.thue import _Machine, _matches
 
     n = len(table).bit_length() - 1

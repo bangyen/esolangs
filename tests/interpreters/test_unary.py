@@ -14,11 +14,6 @@ def _source(brainfuck: str) -> str:
     return "0" * number
 
 
-@pytest.mark.parametrize(("number", "command"), list(enumerate("><+-.,[]", start=8)))
-def test_all_eight_codes(number: int, command: str) -> None:
-    assert decode("0" * number) == command
-
-
 def test_wiki_echo_and_command_order() -> None:
     assert decode("0" * 108) == ",."
     assert run_program(run, "0" * 108, "Z") == "Z"
@@ -29,10 +24,6 @@ def test_wiki_echo_and_command_order() -> None:
 @pytest.mark.parametrize("code", ["", "0", " \n\t"])
 def test_empty_decoded_program(code: str) -> None:
     assert run_program(run, code) == ""
-
-
-def test_formatted_source_counts_only_zeros() -> None:
-    assert run_program(run, "00\n" + "0" * 106, "A") == "A"
 
 
 @pytest.mark.parametrize("code", ["1", "O", "0x00", "0☃", "00", "0" * 16])

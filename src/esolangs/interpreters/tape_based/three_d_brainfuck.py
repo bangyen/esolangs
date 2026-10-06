@@ -97,7 +97,7 @@ def _advance(
     elif char == ".":
         pass  # printed by the caller; the cell is unchanged
     elif char == ",":
-        cells = {**cells, ap: byte if byte is not None else 0}
+        cells = {**cells, ap: byte % 256 if byte is not None else 0}
     elif char == "[":
         if cells.get(ap, 0) == 0:
             return (cells, ap, (match[pos[0]] + 1, 0, 0), heading)
@@ -148,11 +148,6 @@ class _Machine:
     def memory(self) -> list[int]:
         """The cells that have been touched, in address order."""
         return [v for _, v in sorted(self.cells.items())]
-
-    @property
-    def stack(self) -> list[object]:
-        """No stack in this language."""
-        return []
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

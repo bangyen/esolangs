@@ -12,48 +12,45 @@ from esolangs.tools.wrap import DEFAULT_WIDTH
 USAGE = """usage: esolangs <command> [...]
 
 commands:
-  list [--details] [--json]   list the supported languages
-  encode <language> <bits>    print the stdin that feeds those bits
-  generate [--width [N] | --balance] [--bits BITS] [--scale N]
-           [--settings JSON] [--portable] <language> <truth-table>
-                              print a program computing a truth table
-                              (--width wraps it; --bits fills a template)
-  describe [--json] [--spec] <language>
-                              print how that language reads its input and
-                              where it puts the answer (--spec prints the
-                              interpreter's own description of it)
-  run [--timeout S] [--isolated] [--max-output N] [--max-memory BYTES]
-      [--judge] [--table T] [--seed N] [--scale N] [--settings JSON]
-      [--portable] <language> <file>
-                              run a program through its interpreter
-                              (--judge prints the answer bit instead)
-  suggest <language> <program-file>
-                              preview unambiguous command spelling edits
-  check-stdin [--table T] <language>
-                              judge stdin against what that language reads,
-                              without running anything
-  read-answer <language>      read a program's output on stdin and print
-                              the answer bit it carries
-  answer [--timeout S] [--settings JSON] <language> <truth-table> <bits>
-                              generate, feed those bits, run, and print the
-                              one answer bit
-  evaluate [--timeout S] [--total-timeout S] [--max-rows N]
-           [--max-output N] [--max-memory BYTES] [--inputs N | --table T]
-           [--settings JSON] [--portable] <language> <program-file>
-                              run every input row and print the observed
-                              table; --table also checks the expected result
-  debug [--steps N] [--timeout S] [--watch-cell I] [--stdin S] [--tui]
-        [--break-at N] [--break-on-cell I=V] [--break-on-output S]
-        [--table T] [--settings JSON] [--portable] <language> <file>
-                              run under the debugger and report where it
-                              stopped, plus any watched cell's history;
-                              --tui steps interactively instead, showing the
-                              program with the current op highlighted; its
-                              own footer lists the keys, and `esolangs debug
-                              --help` names them
+  Generator-made (the API invents source from a truth table):
+    generate [--width [N] | --balance] [--bits BITS] [--scale N]
+             [--settings JSON] [--set KEY=VALUE] [--portable]
+             <language> <truth-table>
+                                print a program computing a truth table
+                                (--width wraps it; --bits fills a template)
+  Caller-supplied (you supply the program):
+    run [--timeout S] [--isolated] [--max-output N] [--max-memory BYTES]
+        [--seed N] [--scale N] [--settings JSON]
+        [--set KEY=VALUE] [--portable] <language> <file>
+                                run a program through its interpreter
+    debug [--steps N] [--timeout S] [--watch-cell I] [--stdin S] [--tui]
+          [--break-at N] [--break-on-cell I=V] [--break-on-output S]
+          [--settings JSON] [--set KEY=VALUE] [--portable]
+          <language> <file>
+                                run under the debugger and report where it
+                                stopped, plus any watched cell's history;
+                                --tui steps interactively instead, showing the
+                                program with the current op highlighted; its
+                                own footer lists the keys, and `esolangs debug
+                                --help` names them
+    suggest <language> <program-file>
+                                preview unambiguous command spelling edits;
+                                the program is neither run nor modified
+  Contract adapters (your data in, checked data out):
+    encode <language> <bits>    print the stdin that feeds those bits
+    read-answer <language>      read a program's output on stdin and print
+                                the answer bit it carries
+  Catalog:
+    list [--details] [--json]   list the supported languages
+    describe [--json] [--spec] <language>
+                                print how that language reads its input and
+                                where it puts the answer (--spec prints the
+                                interpreter's own description of it)
 
 Language names are case-insensitive.  `esolangs <command> --help` describes
-one command in full; `--version` prints the version.
+one command in full; `--version` prints the version.  Short forms: -p is
+--portable and -s is --settings.  A truth table is 2^n bits,
+most significant first; its length sets the input count (0110 is two-input XOR).
 
 examples:
   esolangs list
@@ -63,10 +60,9 @@ examples:
   esolangs generate --width brainfuck 10010110
   esolangs generate --bits 10 Minifuck 0110
   esolangs run Circlefuck hello.txt
-  esolangs answer brainfuck 0110 10
   esolangs generate Fargo 10010110 > fargo.txt
-  esolangs evaluate --table 10010110 Fargo fargo.txt
-  esolangs encode LaserFuck 10 | esolangs run --judge LaserFuck prog.txt
+  esolangs encode LaserFuck 10 | esolangs run LaserFuck prog.txt \
+    | esolangs read-answer LaserFuck
   esolangs debug --steps 20 --watch-cell 0 brainfuck prog.txt
 """
 
@@ -109,6 +105,9 @@ prints the encoding.
 
 A language whose generator embeds the inputs in the program reads no stdin
 at all; `esolangs generate --bits` builds those.
+
+example:
+  esolangs encode brainfuck 10 -> 10
 """,
     "list": """usage: esolangs list [--details] [--json]
 
@@ -127,15 +126,16 @@ options:
               booleans, so nobody has to parse the marker column.
 """,
     "generate": f"""usage: esolangs generate [--width [N] | --balance] [--bits BITS]
-                         [--scale N] [--settings JSON] [--portable]
-                         <language> <truth-table>
+                         [--scale N] [--settings JSON] [--set KEY=VALUE]
+                         [--portable] <language> <truth-table>
 
 Print a program in <language> computing <truth-table>.
 
 The table is a binary string of length 2**n indexed by the inputs, most
 significant first, so its length sets the input count: 0110 is two-input
-XOR, 10010110 is three-input.  The program reads one input per line and
-prints the result.
+XOR, 10010110 is three-input.  How the program takes its inputs and
+prints the result depends on the language; `esolangs describe <language>`
+says (one input per line, adjacent bit characters, and so on).
 
 Some languages instead return a *template*: their generators embed the
 inputs in the code rather than reading them, leaving a run of `$` per input
@@ -148,9 +148,11 @@ options:
                per input, and print the runnable program.  Substituting them
                by hand does not work: each language spells a set-input its
                own way, and a 0/1 in the slot is a different program.
-  --portable   write JSON retaining source, dialect choices, and template setters.
+  -p, --portable   write JSON retaining source, dialect choices, and template setters.
   --scale N    enlarge raster pixels by N after layout (default 1).
-  --settings JSON  dialect overrides, e.g. '{{"expression_syntax":"postfix"}}'.
+  -s, --settings JSON  dialect overrides, e.g. '{{"expression_syntax":"postfix"}}'.
+  --set KEY=VALUE  one dialect override without JSON, repeatable and applied
+               after --settings, e.g. --set expression_syntax=postfix.
   --balance    minimize the rendered width/height difference across supported
                layouts. Ties prefer shorter source, then smaller width. Tokens
                and routing can prevent a square; excludes --width.
@@ -174,19 +176,19 @@ examples:
   esolangs generate --bits 10 Minifuck 0110
   esolangs generate --portable --settings '{{"expression_syntax":"postfix"}}' \\
       Alight 0110 > p.json
+  esolangs generate --set expression_syntax=postfix Alight 0110
 """,
     "run": """usage: esolangs run [--timeout S] [--isolated] [--max-output N]
-                    [--max-memory BYTES] [--judge] [--table T] [--seed N]
-                    [--scale N] [--settings JSON] [--portable]
-                    <language> <program-file>
+                    [--max-memory BYTES] [--seed N]
+                    [--scale N] [--settings JSON] [--set KEY=VALUE]
+                    [--portable] <language> <program-file>
 
 Run a program through its interpreter and print what it writes.
 
 The program is read from <program-file>; its input is this command's stdin.
 Input is consumed verbatim using the language's character, number, or
 string reads. For generated Boolean programs, `esolangs encode` spells the
-input characters, numeric tokens, or lines. `--table` checks that encoding;
-`--judge` refuses incorrect input.
+input characters, numeric tokens, or lines.
 
     esolangs encode Taglate 101 | esolangs run Taglate prog.txt
 
@@ -208,116 +210,35 @@ options:
                      Vandevelo -- so a timeout there is the answer, not a
                      failure.
   --scale N          override detected raster scale; 1 preserves native pixels.
-  --portable         load JSON saved by generate --portable.
+  -p, --portable         load JSON saved by generate --portable.  The language
+                     may be omitted because the JSON names it.
                      --settings overrides individual saved choices.
-  --settings JSON    dialect overrides, e.g. '{"eof":"zero"}'.
-  --seed N           fix the random draws so the run repeats.  Eight
-                     languages draw: Befunge, Fish, LaserFuck, Modulous,
-                     Painfuck, Super SNUSP, Thue and thisthat.  A seed for a language
-                     that draws nothing is refused rather than ignored.
-  --table TABLE      the truth table the program was generated from.  Adds
-                     the bit *count* to the stdin check, which a shape
-                     check cannot do alone: three lines fed to a two-input
-                     program is only wrong relative to an arity.
-  --judge            print the answer bit instead of the raw output.  Ten
-                     languages do not simply print it -- six dump their
-                     whole final state, four answer by terminating -- and
-                     those four need `--timeout`.
-
+  -s, --settings JSON    dialect overrides, e.g. '{"eof":"zero"}'.
+  --set KEY=VALUE    one dialect override without JSON, repeatable and applied
+                     after --settings.
+  --seed N           fix the random draws so the run repeats.  Nine
+                     languages draw: Befunge, Befunge-98, Fish, LaserFuck,
+                     Modulous, Painfuck, Super SNUSP, Thue and thisthat.
+                     A seed for a language that draws nothing is refused
+                     rather than ignored.
 examples:
   printf '1\n0\n' | esolangs run brainfuck prog.txt
-  printf '1\n0\n' | esolangs run --judge --timeout 5 brainfuck prog.txt
-""",
-    "answer": """usage: esolangs answer [--timeout S] [--settings JSON]
-                       <language> <truth-table> <bits>
-
-Generate a program for <truth-table>, feed it <bits>, run it, and print the
-single answer bit.
-
-This generates and runs one row. Everything it does was
-already possible -- generate to a file, encode the bits, pipe them in, judge
-the output -- but that is four commands and a temporary file, and the
-encoding step is the one people get wrong.  Nothing here can be
-mis-encoded: the bits go in as bits.
-
-  esolangs answer brainfuck 0110 10        -> 1
-  esolangs answer Fargo 10010110 101       -> 1
-  esolangs answer "A Painter Ant" 0110 01  -> 1
-
-Works for every language, including those whose generators embed
-their inputs, those that dump their whole final state, and the four that
-answer by not terminating -- for those a bound is needed, and the default
-below is applied.
-
-options:
-  --settings JSON    dialect overrides shared with generate and run.
-  --timeout SECONDS  bound the run.  Defaults to 5 seconds for the four
-                     languages whose answer for a 1 is that the program
-                     never stops, and to none for the rest.
-""",
-    "evaluate": """usage: esolangs evaluate [--timeout S] [--total-timeout S]
-                          [--max-rows N] [--max-output N] [--max-memory BYTES]
-                          [--inputs N | --table T] [--settings JSON] [--portable]
-                          <language> <program-file>
-
-Run the supplied program on every Boolean input row and print its observed
-truth table. No program is generated. Text, PNG sources, and parameterized
-templates are supported; templates are filled separately for every row.
-
-options:
-  --max-memory BYTES cap Linux worker address space per row; implies isolation.
-  --inputs N        enumerate N inputs, from 1 to 64, MSB first.
-  --table TABLE     infer the input count and compare the observed table with
-                     TABLE. Exits 1 on mismatch and names the differing rows.
-                     Mutually exclusive with --inputs; one is required.
-  --timeout SECONDS  bound each row. Defaults to 30 seconds, or 5 for
-                     termination answers. Repeated states prove divergence;
-                     the deadline is a backstop for growth, not an answer.
-  --total-timeout S  bound the whole evaluation in seconds.
-  --max-rows N       refuse larger tables; defaults to 1,048,576 rows.
-  --max-output N     cap each row in Unicode characters; enables isolation.
-  --portable         load JSON saved by generate --portable.
-                     --settings overrides individual saved choices.
-  --settings JSON    dialect overrides shared with generate and run.
-
-examples:
-  esolangs evaluate --inputs 2 brainfuck program.txt
-  esolangs evaluate --table 0110 brainfuck program.txt
-""",
-    "check-stdin": """usage: esolangs check-stdin [--table T] <language>
-
-Read stdin and say whether it is what <language> wants, without running a
-program.
-
-Exits 0 and says nothing when it is fine.  Otherwise it names what is wrong
-and exits 2 -- the wrong alphabet, a shape the language cannot read, a row
-index with a leading zero, and with --table the wrong bit count or an index
-out of range.
-
-Without --table it judges only the input alphabet and encoding. An empty
-stdin passes `check-stdin brainfuck`: only --table knows how many bits the
-program wanted. Character readers preserve newlines, so use adjacent bit
-characters rather than inserting line separators. Fargo takes one decimal
-row index.
-
-This checks Boolean input explicitly. `run --judge` applies it as a refusal;
-plain `run` accepts arbitrary input.
-
-examples:
-  esolangs encode Grapheme 10 | esolangs check-stdin Grapheme
-  printf '1\\n0\\n1\\n' | esolangs check-stdin --table 0110 brainfuck
+  printf '1\n0\n' | esolangs run --timeout 5 brainfuck prog.txt
+  esolangs generate --portable --set expression_syntax=postfix Alight 0110 > p.json
+  esolangs encode Alight 10 | esolangs run --portable Alight p.json \
+    | esolangs read-answer Alight
 """,
     "describe": """usage: esolangs describe [--json] [--spec] <language>
 
 Print what a language does with its input bits and where it puts the answer.
 
-The fields are the ones the Python API returns from `esolangs.describe`:
-its state model and interpreter, whether it has a truth-table generator and
-whether that generator embeds the bits (`--bits`) or reads them from stdin,
-the input shape and alphabet, and how to find the answer in the output.
-
-This exists because those facts decided every wrong answer anyone got out
-of this tool, and the only place they were readable was a Python session.
+The default layout is contract-first: how the bits go in, where the answer
+comes out, whether a truth-table generator exists and whether it embeds the
+bits (`--bits`) or reads them from stdin, and any dialect choices.  A details
+section follows with the fields that decide how to drive a generated
+program.  This exists because those facts decided every wrong answer anyone
+got out of this tool, and the only place they were readable was a Python
+session.
 
 options:
   --spec      print the interpreter's own description of the language: its
@@ -325,16 +246,10 @@ options:
               wiki page.  Every language carries one, they run to a
               few thousand characters, and they are the best documentation
               here for *writing* a program rather than generating one.
-  --json      print `esolangs.describe` verbatim as JSON.  The default
-              layout is for reading and loses things on the way: a pair
-              prints as `0 1` with no way back to two values, an empty
-              field is dropped rather than shown as empty, the closing
-              `input` line is a sentence this command composes and not a
-              key at all, and for template languages
-              `input_shape` and `input_encoding` are left out entirely --
-              they describe an stdin those programs never read, and the
-              `input` line says so instead.  --json is the dict, exactly,
-              those two included.
+  --json      print `esolangs.describe` verbatim as JSON: every key the
+              Python API returns, including the interpreter path, the full
+              spec text, proof metadata, and example paths that the default
+              layout summarizes or omits.
 
 examples:
   esolangs describe Fargo
@@ -354,13 +269,13 @@ for 1).  Working that out by hand meant generating all four rows and
 diffing them.
 
 The four languages that answer by terminating have no output to read, so
-they are refused here and named: use `run --judge --timeout S` instead.
+they are refused here and named: run with `--timeout S` and observe whether it halts.
 
 examples:
   esolangs encode LaserFuck 10 | esolangs run LaserFuck p.txt \
     | esolangs read-answer LaserFuck
-  esolangs generate --bits 01 123 0110 > p123.txt
-  esolangs run --judge --timeout 10 123 p123.txt
+  esolangs generate --bits 00 123 0110 > p123.txt
+  esolangs run --timeout 10 123 p123.txt
 """,
     "debug": """usage: esolangs debug [options] <language> <program-file>
 
@@ -390,16 +305,21 @@ options:
                        The only way to give a debugged program
                        input, since the Python API cannot feed a live
                        debugger either.
-  --portable           load JSON saved by generate --portable.
+  -p, --portable       load JSON saved by generate --portable.  The language
+                       may be omitted because the JSON names it.
                        --settings overrides individual saved choices.
-  --settings JSON      dialect overrides shared with generate and run.
-  --table T            check the stdin against the shape and alphabet T's
-                       arity implies, before running.
+  -s, --settings JSON  dialect overrides shared with generate and run.
+  --set KEY=VALUE      one dialect override without JSON, repeatable and
+                       applied after --settings.
   --tui                step through the program in an interactive
-                       full-screen view.  hjkl move the selector, t marks
-                       a breakpoint under it, space steps, b steps back, c
+                       full-screen view.  hjkl move the selector (a
+                       leading count walks it further, g prompts for a
+                       place, G returns it to the run), t marks a
+                       breakpoint under it, space steps, b steps back, c
                        continues to the next breakpoint or the halt, r runs
-                       to the end, q leaves.  Needs a terminal to read keys
+                       to the end, R restarts on new stdin, w/W add and
+                       drop a watched cell, p plays with +/- setting the
+                       speed, q leaves.  Needs a terminal to read keys
                        from.
 
 Every flag above is also listed by `esolangs --help`.  This text used to

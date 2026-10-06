@@ -60,13 +60,15 @@ Start from `src/esolangs/interpreters/_template.py`. Every interpreter:
   Most grids receive lines via registry `split=True`; A Painter Ant,
   B-tapemark and EGL receive whole source.
 - Raises `ValueError` for a malformed program and `HaltError` for an
-  invalid runtime operation. Divergence is legal; fuzz tests bound execution
-  of random and empty programs rather than requiring termination.
+  invalid runtime operation. Divergence is legal; tests bound execution of
+  empty programs rather than requiring termination.
 - Guards an input line before indexing it (`if val:`); an empty line is
   legal, and running out raises `EOFError` either way.
 - Exposes `_Machine.step()`, `halted` and a complete `snapshot()`, including
-  the input cursor. Tests look up that exact name; `dimensional.py` was
-  silently skipped when it named something else.
+  the input cursor; tests look up that exact name.
+- Declares the VM views `ip`, `memory` and `stack` only where they say
+  something: the VM defaults `ip` to `ind` and the other two to empty, so a
+  language with no stack writes no `stack`.
 - Writes the language as a pure transition (`_advance`) over an immutable
   state, with `step` as the shell doing the I/O; a store that cannot be
   threaded cheaply returns effects instead (`grapheme.py`).

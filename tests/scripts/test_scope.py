@@ -1,12 +1,4 @@
-"""The scoping rule narrows a check without ever narrowing what it proves.
-
-``scripts/_scope.py`` decides which files a branch touched, and every local
-check consults it to skip work that branch could not have broken.  That makes
-two properties worth pinning: the file list it hands a checker must be usable
-(no repeats -- mypy rejects a repeated path as a duplicate module), and every
-"widen back to everything" escape hatch must actually fire, since a missed one
-silently turns a correctness gate off.
-"""
+"""The scoping rule narrows a check without ever narrowing what it proves."""
 
 import importlib.util
 from pathlib import Path
@@ -33,14 +25,7 @@ class TestChangedFiles:
     """The list handed to a checker has to be one a checker can accept."""
 
     def test_paths_are_not_repeated(self) -> None:
-        """A file both committed and dirty appears once, not twice.
-
-        ``changed_files`` unions the branch diff with ``git status``, so a file
-        that is committed *and* has uncommitted edits comes back from both.
-        Passing the repeat through to mypy fails the run outright ("Duplicate
-        module named ..."), which would turn a scoped pre-commit into a hard
-        error rather than a faster check.
-        """
+        """A file both committed and dirty appears once, not twice."""
         scope = load_script()
         names = scope.changed_files()  # type: ignore[attr-defined]
         assert len(names) == len(set(names))

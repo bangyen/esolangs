@@ -106,6 +106,11 @@ class Debugger:
         return self.vm.memory
 
     @property
+    def ptr(self) -> int | None:
+        """The wrapped VM's tape pointer, or ``None`` where it has none."""
+        return self.vm.ptr
+
+    @property
     def stack(self) -> list[object]:
         """The wrapped VM's stack."""
         return self.vm.stack

@@ -58,28 +58,6 @@ class _StepMachine(Protocol):
 
 
 @runtime_checkable
-class _StepMachineWithShape(_StepMachine, Protocol):
-    """A step-capable machine that also describes its own VM shape.
-
-    Wrapped by :class:`_DelegatingVM` with no per-language code here.
-    ``Sequence``, not ``list``: ``list`` is invariant, so ``list[int]``
-    could never satisfy ``list[object]``; the VM materializes the copy.
-    """
-
-    @property
-    def ip(self) -> int | tuple[int, ...] | None:
-        """The current code/instruction position."""
-
-    @property
-    def memory(self) -> Sequence[int]:
-        """The addressable cells, or empty where there is no such store."""
-
-    @property
-    def stack(self) -> Sequence[object]:
-        """The stack, or empty where the language has none."""
-
-
-@runtime_checkable
 class _BranchingStepMachine(Protocol):
     """A machine whose next random choice can be enumerated exactly.
 
@@ -727,6 +705,16 @@ class VM(Protocol):
         """The addressable cells, or ``[]`` where there is no such store."""
 
     @property
+    def ptr(self) -> int | None:
+        """The tape pointer, where the machine has one.
+
+        ``None`` where there is no such thing to point with: a stack, a
+        grid, a register file.  Not every tape machine spells it the same
+        way (a property here, a plain attribute there), so the adapter
+        reads it by ``getattr`` and the protocol only promises the read.
+        """
+
+    @property
     def stack(self) -> list[object]:
         """The stack, or ``[]`` where the language has none."""
 
@@ -796,7 +784,7 @@ class VM(Protocol):
 class _DelegatingVM:
     """Wrap a registered interpreter, copying its exposed memory and stack."""
 
-    _machine: _StepMachineWithShape
+    _machine: _StepMachine
 
     def __init__(
         self,
@@ -842,17 +830,30 @@ class _DelegatingVM:
         """Return the underlying machine's complete state."""
         return self._machine.snapshot()
 
+    # The views come off the machine by ``getattr`` too, so a language
+    # with no stack or no addressable cells says nothing, and one whose
+    # position is a plain ``ind`` need not repeat it as ``ip``.
+
     @property
     def ip(self) -> int | tuple[int, ...] | None:
-        return self._machine.ip
+        """The current code position: ``ip``, else ``ind``, else ``None``."""
+        machine = self._machine
+        return getattr(machine, "ip", getattr(machine, "ind", None))
 
     @property
     def memory(self) -> list[int]:
-        return list(self._machine.memory)
+        """The addressable cells, or empty where there is no such store."""
+        return list(getattr(self._machine, "memory", ()))
+
+    @property
+    def ptr(self) -> int | None:
+        value = getattr(self._machine, "ptr", None)
+        return value if isinstance(value, int) and not isinstance(value, bool) else None
 
     @property
     def stack(self) -> list[object]:
-        return list(self._machine.stack)
+        """The stack, or empty where the language has none."""
+        return list(getattr(self._machine, "stack", ()))
 
     # The traits come off the machine by ``getattr``, the way
     # ``reproducible_seed`` does: they are facts about the language, so the
@@ -912,12 +913,12 @@ def make_vm(
     unfilled template otherwise runs to a confident ``'0'``), and the checked
     value is what reaches the interpreter (:mod:`esolangs._validate`).
     """
-    from esolangs import check_program
+    from esolangs import _check_program
 
     name = resolve(language)
     settings = effective_settings(name, program, settings)
     dialect_options(name, settings)
-    source = check_program(name, program, stdin)
+    source = _check_program(name, program, stdin)
     settings = effective_settings(name, source, settings)
     check_scale_for(name, scale)
     with interpreter_errors(

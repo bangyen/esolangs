@@ -32,7 +32,7 @@ Construction (``n <= 3``; wider tables go unchanged to
 The suite's exhaustive ``n <= 3`` sweep on the real interpreter is what
 pins the schedules.  Retired stored plans (see git history) averaged
 5.75/11.44/19.97 characters at one/two/three inputs; the constructed
-route averages 20.0/48.1/135.3 (3.5x/4.2x/6.8x) because 102 of the 256
+route averages 20.0/48.1/136.1 (3.5x/4.2x/6.8x) because 102 of the 256
 three-input plans were search-found witnesses with no rule.  Every
 template loops by a proven state revisit, never unbounded growth, or
 the harness would hang instead of reporting a 1; the suite checks it.

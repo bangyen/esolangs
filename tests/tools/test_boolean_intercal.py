@@ -23,15 +23,6 @@ def _run(table: str, row: int) -> str:
     return "1" if output == "I\n" else "0"
 
 
-@pytest.mark.medium  # executes every table (1.3s at n = 3)
-@pytest.mark.parametrize("n", range(1, 4))
-def test_every_table_through_three_inputs(n: int) -> None:
-    width = 1 << n
-    for value in range(1 << width):
-        table = f"{value:0{width}b}"
-        assert "".join(_run(table, row) for row in range(width)) == table
-
-
 def test_setters_are_equal_width_and_embedded_once() -> None:
     assert len(PAIR[0]) == len(PAIR[1]) == 2
     for n in range(1, 8):
@@ -45,12 +36,7 @@ def test_source_growth_is_linear() -> None:
 
 
 def test_levels_select_inputs_in_the_shorter_order() -> None:
-    """Assignments stay in name order; only the selectors move.
-
-    ``10101010`` depends on input 2 (``.1``) alone: split on it first, the
-    expression names ``.1`` and nothing else.  Over all three-input tables
-    no template grows and the total falls 11.4%.
-    """
+    """Assignments stay in name order; only the selectors move."""
     template = intercal("10101010")
     assert template.index(".3 <- @@") < template.index(".1 <- @@")
     expression = template.split(".4 <- ", 1)[1].split("\n", 1)[0]

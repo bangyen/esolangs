@@ -76,10 +76,6 @@ class _Machine:
         return self.state.memory
 
     @property
-    def stack(self) -> list[object]:
-        return self.state.stack
-
-    @property
     def ptr(self) -> int:
         return self.state.ptr
 

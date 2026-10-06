@@ -173,11 +173,6 @@ class _Machine:
         return self.tape
 
     @property
-    def stack(self) -> list[object]:
-        """Minifuck has no stack."""
-        return []
-
-    @property
     def halted(self) -> bool:
         """Whether the cursor has reached the end of the code."""
         return self.state[4] >= len(self.state[0])

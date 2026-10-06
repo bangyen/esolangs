@@ -29,20 +29,10 @@ class TestMuxUsesOneRule:
 
 
 class TestProbeFrameAndColumns:
-    """The summaries' own refusals, reached by constructed keys.
-
-    Each is a guard on the frame being a function of the pool byte alone.
-    The construction never offers these states, so every one is built here
-    rather than waited for.
-    """
+    """The summaries' own refusals, reached by constructed keys."""
 
     def test_a_code_that_writes_above_the_pool_has_no_frame(self) -> None:
-        """The frame summarises the low byte, so a carry out of it refuses.
-
-        Found by enumerating the ``<[.x`` alphabet: ``.[[...[<`` from byte
-        242 leaves the region's cells alone but changes what sits above it,
-        which the frame cannot describe.
-        """
+        """The frame summarises the low byte, so a carry out of it refuses."""
         assert _probe_frame(".[[...[<", 242) is None
 
 

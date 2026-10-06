@@ -24,24 +24,14 @@ class TestThreeX:
             assert len(boolean.three_x(table)) <= len(identity)
 
     def test_unimproved_tables_keep_their_emission(self) -> None:
-        """A table no reorder helps emits exactly what it emitted before.
-
-        ``best_input_order`` tries the identity first and keeps it on a tie,
-        so reordering can only shrink a program, never churn one.  A constant
-        table has no override blocks at all, so no order can beat it.
-        """
+        """A table no reorder helps emits exactly what it emitted before."""
         from esolangs.tools.three_x import _three_x_ordered
 
         for table in ("0" * 8, "1" * 8):
             assert boolean.three_x(table) == _three_x_ordered(table, (0, 1, 2))
 
     def test_reads_stay_in_stream_order(self) -> None:
-        """Only the store target moves, so the input stream is consumed the same.
-
-        The reorder is spelled in which variable each ``?`` stores into, not
-        in when the reads happen: every build reads its ``n`` inputs up front,
-        one ``?`` each, whatever order the tree tests them in.
-        """
+        """Only the store target moves, so the input stream is consumed the same."""
         from esolangs.tools.three_x import _three_x_ordered
 
         table = "00010111"

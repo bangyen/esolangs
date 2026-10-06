@@ -1,11 +1,10 @@
 """The public API with one language bound."""
 
-from collections.abc import Iterator
 from dataclasses import dataclass
 
 import esolangs
 from esolangs._describe import LanguageInfo
-from esolangs._evaluate import _DEFAULT, _DEFAULT_MAX_ROWS, _Default
+from esolangs._evaluate import _DEFAULT, _Default
 from esolangs._program import Program
 from esolangs._source import InputSource, ProgramSource
 from esolangs.registry import resolve
@@ -14,7 +13,14 @@ from esolangs.settings import DialectSettings
 
 @dataclass(frozen=True, slots=True)
 class Language:
-    """Bind a canonical language name to the package's existing functions."""
+    """Bind a canonical language name to the package's existing functions.
+
+    Methods follow the package split by who supplies the program:
+    ``generate``/``instantiate`` are generator-made, ``run`` executes
+    caller-supplied source, ``encode_inputs``/``read_answer`` and
+    ``dump_program``/``load_program`` are contract adapters, and
+    ``describe`` is catalog.  Boolean evaluation is private machinery.
+    """
 
     name: str
 
@@ -94,64 +100,6 @@ class Language:
             scale=scale,
         )
 
-    def iter_evaluate(
-        self,
-        program: ProgramSource,
-        timeout: float | _Default | None = _DEFAULT,
-        *,
-        inputs: int,
-        isolated: bool = False,
-        scale: int | None = None,
-        max_rows: int | None = _DEFAULT_MAX_ROWS,
-        max_output: int | None = None,
-        max_memory: int | None = None,
-        total_timeout: float | None = None,
-        settings: DialectSettings | None = None,
-    ) -> Iterator[str]:
-        """Yield this program's table one answer bit at a time."""
-        return esolangs.iter_evaluate(
-            self.name,
-            program,
-            timeout,
-            inputs=inputs,
-            isolated=isolated,
-            scale=scale,
-            max_rows=max_rows,
-            max_output=max_output,
-            max_memory=max_memory,
-            total_timeout=total_timeout,
-            settings=settings,
-        )
-
-    def evaluate(
-        self,
-        program: ProgramSource,
-        timeout: float | _Default | None = _DEFAULT,
-        *,
-        inputs: int,
-        isolated: bool = False,
-        scale: int | None = None,
-        max_rows: int | None = _DEFAULT_MAX_ROWS,
-        max_output: int | None = None,
-        max_memory: int | None = None,
-        total_timeout: float | None = None,
-        settings: DialectSettings | None = None,
-    ) -> str:
-        """Return the table computed over ``inputs`` bits."""
-        return esolangs.evaluate(
-            self.name,
-            program,
-            timeout,
-            inputs=inputs,
-            isolated=isolated,
-            scale=scale,
-            max_rows=max_rows,
-            max_output=max_output,
-            max_memory=max_memory,
-            total_timeout=total_timeout,
-            settings=settings,
-        )
-
     def describe(self) -> LanguageInfo:
         """Return this language's registry metadata and interpreter description."""
         return esolangs.describe(self.name)
@@ -165,11 +113,3 @@ class Language:
     def read_answer(self, output: str) -> str:
         """Extract the answer bit from raw output."""
         return esolangs.read_answer(self.name, output)
-
-    def check_program(self, program: ProgramSource, stdin: InputSource = "") -> Program:
-        """Load and validate runnable source."""
-        return esolangs.check_program(self.name, program, stdin)
-
-    def check_stdin(self, stdin: str, truth_table: str | None = None) -> None:
-        """Refuse stdin that contradicts this language's input convention."""
-        esolangs.check_stdin(self.name, stdin, truth_table)

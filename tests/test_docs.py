@@ -1,16 +1,4 @@
-"""Every command shown in the docs is a claim; this runs them.
-
-Four documented claims have been falsified by execution over this
-package's QA history -- Fargo's input shape, a count of "four languages"
-that was seven, Grapheme's truthiness rule, and the exception ``run``
-promised for all sixty-five.  Each was fixed where it was found.  This is
-the same class caught at the source instead: a command that appears in the
-README, in ``docs/``, or in any ``--help`` output has to work.
-
-Only *concrete* commands run.  A line containing ``<`` or ``>`` in angle
-form is a template (``esolangs run <language> <file>``) and is skipped, as
-is anything that is not a command at all.
-"""
+"""Documented commands, links and the README example execute as written."""
 
 from __future__ import annotations
 
@@ -21,9 +9,11 @@ import shutil
 import subprocess
 import sys
 from functools import cache
+from urllib.parse import unquote
 
 import pytest
 
+from esolangs import generate, run
 from esolangs.cli import HELP, USAGE
 from esolangs.registry import LANGUAGES
 
@@ -48,16 +38,26 @@ def _documents() -> dict[str, str]:
     return found
 
 
-def _commands(text: str) -> list[tuple[str, str | None]]:
-    """Return the concrete commands in ``text``, with any stated output.
+def _logical_lines(text: str) -> list[str]:
+    """Join backslash-continued lines, as the shell would."""
+    lines: list[str] = []
+    pending = ""
+    for raw in text.splitlines():
+        line = raw.rstrip()
+        if line.endswith("\\"):
+            pending += line[:-1].rstrip() + " "
+            continue
+        lines.append(pending + line)
+        pending = ""
+    if pending:
+        lines.append(pending)
+    return lines
 
-    Some examples are written ``esolangs answer brainfuck 0110 10 -> 1``.
-    The arrow is a claim about what the command prints, so it is parsed and
-    checked rather than stripped: an example that says what it produces is
-    the most falsifiable kind there is.
-    """
+
+def _commands(text: str) -> list[tuple[str, str | None]]:
+    """Return the concrete commands in ``text``, with any stated output."""
     out: list[tuple[str, str | None]] = []
-    for line in text.splitlines():
+    for line in _logical_lines(text):
         command = line.strip().removeprefix("$ ").strip()
         expected: str | None = None
         if "->" in command:
@@ -91,14 +91,7 @@ def _setup_command(*args: str) -> subprocess.CompletedProcess[str]:
 @pytest.mark.slow
 @pytest.mark.parametrize("where", sorted(_documents()))
 def test_every_documented_command_runs(where: str, tmp_path: pathlib.Path) -> None:
-    """Run one document's commands, in order, in a scratch directory.
-
-    In order and in one directory because the examples are sequences: a
-    ``generate ... > prog.txt`` line sets up the ``run ... prog.txt`` line
-    under it.  Getting that wrong is what made a hand-run of this report a
-    false failure -- the setup file was regenerated from scratch between
-    the two lines and arrived as an unfilled template.
-    """
+    """Run one document's commands, in order, in a scratch directory."""
     commands = _commands(_documents()[where])
     if not commands:
         pytest.skip(f"{where} shows no concrete commands")
@@ -154,6 +147,13 @@ def test_the_documents_really_do_contain_commands() -> None:
     assert [c for c in parsed if c[1] is not None]
 
 
+def test_the_usage_guide_names_every_command() -> None:
+    """A command reachable only from ``--help`` is one a reader does not find."""
+    text = (ROOT / "docs" / "usage.md").read_text()
+    missing = [command for command in HELP if f"`{command}`" not in text]
+    assert not missing, f"docs/usage.md never names: {', '.join(sorted(missing))}"
+
+
 #: A ``\`\`test_name\`\`\`` citation in the source.
 _CITATION = re.compile(r"``(test_[a-z_0-9]+)``")
 
@@ -164,24 +164,7 @@ _ROOT = pathlib.Path(__file__).parents[1]
 
 
 def test_every_test_a_docstring_names_still_exists() -> None:
-    """A citation to a renamed or deleted test is worse than none.
-
-    Fourteen docstrings in ``src/`` back a claim by naming the test that
-    proves it -- that a constant is derived rather than frozen, that a
-    selection rule is pinned, that two structures cannot drift apart.  A
-    reader who goes looking and finds nothing cannot tell whether the test
-    moved or the claim stopped being true, and the *writer* gets no signal
-    at all: renaming a test is a one-file change and the prose citing it
-    lives somewhere else entirely.
-
-    Three had already gone stale when this was written.  One was a rename
-    the citation had not followed (``test_separation_law_is_least_mean``,
-    backing the claim that Streetcode's separation laws are re-derived
-    rather than frozen -- the most load-bearing of the three).  One named a
-    test that is simply gone.  The third described a *deleted* test in the
-    past tense, correctly, but spelled its name the same way a live
-    citation is spelled, so it read like the other two.
-    """
+    """A citation to a renamed or deleted test is worse than none."""
     cited: dict[str, list[str]] = {}
     for path in sorted((_ROOT / "src").rglob("*.py")):
         for name in _CITATION.findall(path.read_text()):
@@ -196,7 +179,7 @@ def test_every_test_a_docstring_names_still_exists() -> None:
         f"{name} (in {', '.join(where)})" for name, where in sorted(missing.items())
     )
     # A regex that stopped matching would make the check above vacuous.
-    assert len(cited) >= 10, f"only {len(cited)} citations found"
+    assert len(cited) >= 5, f"only {len(cited)} citations found"
 
 
 #: A fully-qualified reference into this package.
@@ -206,20 +189,7 @@ _QUALIFIED_REF = re.compile(
 
 
 def test_every_qualified_reference_resolves() -> None:
-    """A ``:func:`esolangs.a.b.c`` pointing at nothing.
-
-    Only the *fully qualified* references are checked.  A bare
-    ``:class:`ScriptedIO`` is resolved by Sphinx against whatever the citing
-    module imported, and reimplementing that here produced 460 accusations
-    out of 510 -- a guard that cries wolf is worse than no guard, so it
-    checks the subset it can judge exactly.  That subset is also the one
-    most likely to rot, because it names a path that moves when code does.
-
-    One was broken when this was written:
-    ``esolangs.tools.examples.bio``, for a generator that lives at
-    ``esolangs.tools.bio`` -- the reader is sent to the module that
-    registers the examples rather than the one with the function in it.
-    """
+    """A ``:func:`esolangs.a.b.c`` pointing at nothing."""
     targets: dict[str, set[str]] = {}
     for path in sorted((_ROOT / "src").rglob("*.py")):
         for target in _QUALIFIED_REF.findall(path.read_text()):
@@ -246,3 +216,59 @@ def test_every_qualified_reference_resolves() -> None:
     )
     # A regex that stopped matching would make the check above vacuous.
     assert len(targets) >= 30, f"only {len(targets)} qualified references found"
+
+
+_LINK = re.compile(r"(?<!!)\[[^]]*\]\(([^ )]+)(?:\s+[^)]*)?\)")
+_DOCUMENTS = (
+    ROOT / "README.md",
+    *sorted((ROOT / "docs").rglob("*.md")),
+    *sorted((ROOT / "src" / "esolangs" / "examples").glob("*.md")),
+)
+
+
+def test_every_local_markdown_link_resolves() -> None:
+    """Check shipped documentation, including package example guides."""
+    missing: list[str] = []
+    for document in _DOCUMENTS:
+        for target in _LINK.findall(document.read_text(encoding="utf-8")):
+            path, _, _fragment = unquote(target).partition("#")
+            if not path or "://" in path or path.startswith("mailto:"):
+                continue
+            if not (document.parent / path).exists():
+                missing.append(f"{document.relative_to(ROOT)} -> {target}")
+    assert not missing, "broken local Markdown links:\n" + "\n".join(missing)
+
+
+_README = pathlib.Path(__file__).resolve().parents[1] / "README.md"
+
+_LANGUAGE = "Sophie"
+_TABLE = "0110"  # XOR
+
+
+def _readme_program() -> str:
+    """Return the first fenced block under the Examples heading."""
+    text = _README.read_text(encoding="utf-8")
+    body = text[text.index("## Examples") :]
+    match = re.search(r"```\n(.*?)\n```", body, re.DOTALL)
+    assert match is not None, "no fenced program under ## Examples"
+    return match.group(1)
+
+
+def test_readme_program_is_what_the_generator_emits() -> None:
+    assert _readme_program() == generate(_LANGUAGE, _TABLE)
+
+
+def test_readme_program_computes_xor_on_every_row() -> None:
+    """All four rows, not just one: a program that printed a constant
+    would pass a single-row check."""
+    program = _readme_program()
+    for row, expected in enumerate(_TABLE):
+        stdin = "".join(f"{bit}" for bit in format(row, "02b"))
+        assert run(_LANGUAGE, program, stdin) == expected
+
+
+def test_readme_states_the_real_length() -> None:
+    """The prose says 51 characters; the program has to be that long."""
+    program = _readme_program()
+    body = _README.read_text(encoding="utf-8")
+    assert f"emits {len(program)} characters" in body

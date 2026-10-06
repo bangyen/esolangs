@@ -1,17 +1,10 @@
-"""The 123 replay oracle: re-execute an emitted program and judge it.
-
-Test-only.  The generator emits by rule; this replays the emitted code
-against every row so a construction that spells the wrong thing fails.
-"""
+"""The 123 replay oracle: re-execute an emitted program and judge it."""
 
 from esolangs.tools.one_two_three.construction import _ONE, _RING, ConstructError
 
 
 def _jump_tables(code: str) -> tuple[list[int], list[int]]:
-    """Per ``3`` position, where a backward and a forward jump land.
-
-    Computed once; the interpreter rescans per jump.
-    """
+    """Per ``3`` position, where a backward and a forward jump land."""
     threes = [i for i, c in enumerate(code) if c == "3"]
     back = [0] * len(code)
     fwd = [0] * len(code)
@@ -27,10 +20,7 @@ def _jump_tables(code: str) -> tuple[list[int], list[int]]:
 
 
 def _code_runs(code: str) -> tuple[list[int], list[str], list[int]]:
-    """Index ``code`` into maximal ``1``/``2`` runs.
-
-    ``(run_id_at, char_of_run, end_of_run)``, so a run is one step.
-    """
+    """Index ``code`` into maximal ``1``/``2`` runs."""
     run_at = [-1] * len(code)
     chars: list[str] = []
     ends: list[int] = []
@@ -52,11 +42,7 @@ def _code_runs(code: str) -> tuple[list[int], list[str], list[int]]:
 
 
 def _replay_ones(pos: int, tape: int, w: int) -> tuple[int, int]:
-    """Apply ``"1"*w``, per the interpreter's rule for ``1``.
-
-    Above the ring one XOR; inside, laps of period 4 are a parity and
-    ``w % 4`` steps remain.
-    """
+    """Apply ``"1"*w``, per the interpreter's rule for ``1``."""
     while w > 0:
         if pos >= 0:
             head = min(w, pos + 1)
@@ -84,11 +70,7 @@ def _replay_ones(pos: int, tape: int, w: int) -> tuple[int, int]:
 
 
 def _replay_twos(pos: int, tape: int, w: int) -> tuple[int, int]:
-    """Apply ``"2"*w``; the first step decides whether the ring is left.
-
-    ``2`` at -3 raises where the interpreter raises :class:`EOFError`; -1
-    and -2 land on 0.
-    """
+    """Apply ``"2"*w``; the first step decides whether the ring is left."""
     if w <= 0:
         return pos, tape
     if pos == -3:
@@ -100,14 +82,7 @@ def _replay_twos(pos: int, tape: int, w: int) -> tuple[int, int]:
 
 
 def _replay_verdict(code: str) -> str:
-    """Execute one instantiated program: ``"0"`` halts, ``"1"`` loops.
-
-    Written against the interpreter's rules, not the builder's model.
-    Per-command stepping cost 95s per five-input table; runs are closed
-    form.  Cycle detection stays exact: ``ip`` strictly increases within a
-    run and across a forward jump, so sampling at backward jumps and the
-    loopback witnesses every loop, with Brent's method.
-    """
+    """Execute one instantiated program: ``"0"`` halts, ``"1"`` loops."""
     if not any(c in "123" for c in code):
         return "0"  # a command-less program halts with no output
     back, fwd = _jump_tables(code)

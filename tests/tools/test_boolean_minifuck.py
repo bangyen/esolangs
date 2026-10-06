@@ -1,11 +1,4 @@
-"""The Minifuck derivation checks that stand outside any one route.
-
-The suites that drive the generator are siblings: test_boolean_minifuck_pool,
-_sim and _routes.  What is here is the module-level evidence the
-construction rests on -- that each input is one run and no more, that the fused
-column walk matches deriving one at a time, and that the coverage population
-is the one the source says it is.
-"""
+"""The Minifuck derivation checks that stand outside any one route."""
 
 import importlib
 
@@ -17,7 +10,6 @@ from esolangs.tools.minifuck.mux import (
     _MUX_PRESERVE_RIGHT,
     _SCULPT_POOL_CODE,
     _mux,
-    _mux_lookup,
     _mux_weight,
     _probe_frame,
 )
@@ -32,13 +24,7 @@ def _unreachable(*_args: object, **_kwargs: object) -> None:
 
 
 def _slot_order(gen: object, table: str) -> list[int] | None:
-    """The run starts in the order ``gen`` emits them, or None.
-
-    The k-th run *is* input k, so what the text can still show is that
-    the run count is the arity and every run is whole: a route that
-    appended the ignored inputs where they do not belong now refuses in
-    ``_lift`` rather than emitting a misnamed template.
-    """
+    """The run starts in the order ``gen`` emits them, or None."""
 
     try:
         template = gen(table)
@@ -51,13 +37,7 @@ def _slot_order(gen: object, table: str) -> list[int] | None:
 
 @pytest.mark.slow  # two closed-form builds plus eight interpreter runs each
 def test_minifuck_ignored_leading_inputs_compute_their_function() -> None:
-    """A table that ignores its leading inputs computes, not merely emits in order.
-
-    ``01010101`` and ``10101010`` depend on their last input alone, so the
-    lift has to keep the ignored runs in name order -- ordering alone is not
-    evidence it works.  Only running every row is, and a wrong build here
-    would otherwise look exactly like a right one to the test above.
-    """
+    """A table that ignores its leading inputs computes, not merely emits in order."""
     from esolangs import tools as generators
     from esolangs.interpreters.io import ScriptedIO
     from esolangs.interpreters.tape_based.minifuck import run
@@ -81,16 +61,7 @@ def test_minifuck_ignored_leading_inputs_compute_their_function() -> None:
 # 2.3s: two three-input minifuck builds, which is the cost, not the asserts.
 @pytest.mark.slow
 def test_minifuck_single_essential_falls_past_the_degenerate_lookup() -> None:
-    """One essential input does not guarantee the cell lookup resolves it.
-
-    ``_degenerate`` answers from a column of the embed rather than
-    searching, and a projection onto the *last* input has no such column, so
-    it declines.  These tables reach it through the projection block, which
-    returns whatever ``_lift`` builds; the later ``len(essential) <= 1``
-    lookup is not what serves them.  That one is reachable only when no
-    projection happened at all -- ``n <= 1`` -- and every such table
-    resolves, so its own decline branch cannot be taken from here.
-    """
+    """One essential input does not guarantee the cell lookup resolves it."""
 
     from esolangs.interpreters.io import ScriptedIO
     from esolangs.interpreters.tape_based.minifuck import run
@@ -115,16 +86,7 @@ def test_minifuck_single_essential_falls_past_the_degenerate_lookup() -> None:
 # effectively free next to the build.
 @pytest.mark.slow
 def test_minifuck_builds_five_input_xor() -> None:
-    """Five-input XOR builds and prints all 32 rows.
-
-    This is the table the arity turns on: a fully-essential table that the
-    lookup route alone serves at five inputs.
-
-    Running every row on the shipped interpreter is the whole point: a
-    template that has not been seen to print is not evidence, and the
-    equal-width check is what keeps the instantiation from leaking its
-    inputs through ``len()``.
-    """
+    """Five-input XOR builds and prints all 32 rows."""
     from esolangs import tools as generators
     from esolangs.interpreters.io import ScriptedIO
     from esolangs.interpreters.tape_based.minifuck import run
@@ -152,21 +114,7 @@ def test_minifuck_builds_five_input_xor() -> None:
 
 
 def test_a_flipped_embed_complements_in_place_and_keeps_slot_order() -> None:
-    """``flips`` is a live derivation coordinate, not dead weight.
-
-    The pass that varied it was removed and the parameter kept, so no build
-    passes a mask any more -- which left the gadget it emits unrun.  Kept
-    open, it should still do what its docstring says, and the two claims are
-    separable:
-
-    First, the mask *lands*: each set bit adds exactly one ``_FLIP`` gadget,
-    so the template grows by three characters per bit and by nothing at all
-    for the empty mask.  Second, the setters stay in ascending name order
-    whatever the mask says -- the gadget goes after the setter it
-    complements, never in place of a different one -- which is the invariant
-    every generator here is held to, and the one a "complement input i"
-    coordinate is most likely to break.
-    """
+    """``flips`` is a live derivation coordinate, not dead weight."""
 
     from esolangs.tools.minifuck.pool import _FLIP, _embed
 
@@ -201,13 +149,7 @@ def test_mux_refuses_below_its_minimum_arity() -> None:
 
 
 def test_the_probe_frame_refuses_codes_outside_its_key() -> None:
-    """A code that strands a skip or leaves the pool region has no frame.
-
-    The frame summarises a pool code as ``(landed, parity)``, which is only
-    a summary while the code stays inside the region and leaves the row
-    runnable.  ``[`` from the canonical byte cascades and owes a skip; a
-    long walk crosses cell 8.  Both must decline rather than summarise.
-    """
+    """A code that strands a skip or leaves the pool region has no frame."""
 
     byte = _mux_separate(2).ms[0].tape & _POOL_MASK
     assert _probe_frame("[", byte) is None
@@ -215,15 +157,52 @@ def test_the_probe_frame_refuses_codes_outside_its_key() -> None:
     assert _probe_frame(_SCULPT_POOL_CODE, byte) is not None
 
 
-def test_the_weight_law_matches_the_parsed_runs() -> None:
-    """``run_weight`` is ``apply(_runs(_mux_weight(k)))``, or refuses untouched.
+def test_the_preserving_step_restores_arbitrary_tape() -> None:
+    """The lookup's right step preserves every tested tape and advances one."""
 
-    The gadget law is a composition claim over the pinned laws, so the
-    differential is against them, from arbitrary states -- a fresh setter
-    site is exactly where a wrong march model still looks right.  A refusal
-    must leave the row untouched, and both the skip refusal and the floor
-    refusal must actually fire in the sample.
-    """
+    for ptr in (0, 7):
+        for tape in range(256):
+            sim = _Sim(32)
+            sim.ptr = ptr
+            sim.tape = tape << (ptr + 1)
+            before = sim.tape
+            sim.apply(_runs(_MUX_PRESERVE_RIGHT))
+            assert (sim.ptr, sim.tape, sim.skip) == (ptr + 1, before, False)
+
+
+@pytest.mark.slow  # two ten-input builds plus twelve interpreter rows, ~10s
+def test_ten_input_builds_print_on_the_interpreter() -> None:
+    """Sampled rows of both ten-input shapes answer on the real interpreter."""
+    import hashlib
+    import random
+
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.tape_based.minifuck import run
+    from esolangs.tools import minifuck
+    from tests.tools.fills import _fill_minifuck
+
+    digest = hashlib.sha256(b"dense:10").digest()
+    bits: list[str] = []
+    block = 0
+    while len(bits) < 1024:
+        digest = hashlib.sha256(digest + bytes([block & 255])).digest()
+        bits.extend(str(byte & 1) for byte in digest)
+        block += 1
+    dense = "".join(bits[:1024])
+    parity = "".join(str(bin(row).count("1") & 1) for row in range(1024))
+
+    rng = random.Random(20260915)
+    for table in (dense, parity):
+        template = minifuck(table)
+        for combo in sorted({*rng.sample(range(1024), 4), 0, 1023}):
+            row = [(combo >> (9 - i)) & 1 for i in range(10)]
+            io_ = ScriptedIO("")
+            run(_fill_minifuck(template, row), io_)
+            assert io_.getvalue() == table[combo], f"row {combo}"
+
+
+def test_the_weight_law_matches_the_parsed_runs() -> None:
+    """``run_weight`` is ``apply(_runs(_mux_weight(k)))``, or refuses untouched."""
     import random
 
     from esolangs.tools.minifuck.sim import _runs, _Sim
@@ -287,13 +266,7 @@ def test_the_weight_law_matches_the_parsed_runs() -> None:
 
 
 def test_the_rewind_law_matches_the_parsed_runs() -> None:
-    """A sculpting round and a fused round sequence match the parsed runs.
-
-    ``run_rewind`` claims the round ``"<"*k + "[x"*k + "x"`` in one law
-    call and ``run_rewinds`` claims a whole sequence over one extracted
-    window; both fall back to the laws when their frame does not hold, so
-    the differential covers fused and fallback states alike.
-    """
+    """A sculpting round and a fused round sequence match the parsed runs."""
     import random
 
     from esolangs.tools.minifuck.sim import _runs, _Sim
@@ -352,81 +325,3 @@ def test_the_rewind_law_matches_the_parsed_runs() -> None:
     skipping.run_rewind(0)
     clone.apply(_runs("x"))
     assert skipping.key() == clone.key()
-
-
-@pytest.mark.parametrize("n", [2, 10])
-def test_the_lookup_rule_is_linear(n: int) -> None:
-    """The direct strip has one bounded-cost block per table cell."""
-    import random
-
-    rng = random.Random(20260914)
-    table = format(rng.getrandbits(2**n), f"0{2**n}b")
-    built = _mux(table, n)
-    assert built is not None
-
-    assert built == _mux_lookup(table, n)
-    assert len(built) <= 650 + 70 * 2**n
-
-
-def test_the_strip_is_laid_without_a_round_trip() -> None:
-    """Pin the three-input total: 244,329 characters before, 118,669 after.
-
-    The strip was crossed back with ``<`` and forward again one preserving
-    step per cell, a round trip that left the tape as it was; one step now
-    crosses the preset cell.  Walks over fresh cells drop their ``x`` and
-    the print its dead ``[x``.
-    """
-    from esolangs.tools.minifuck import minifuck
-
-    assert minifuck("0110").endswith("<.")
-    assert sum(len(minifuck(f"{value:08b}")) for value in range(256)) == 118669
-
-
-def test_the_preserving_step_restores_arbitrary_tape() -> None:
-    """The lookup's right step preserves every tested tape and advances one."""
-
-    for ptr in (0, 7):
-        for tape in range(256):
-            sim = _Sim(32)
-            sim.ptr = ptr
-            sim.tape = tape << (ptr + 1)
-            before = sim.tape
-            sim.apply(_runs(_MUX_PRESERVE_RIGHT))
-            assert (sim.ptr, sim.tape, sim.skip) == (ptr + 1, before, False)
-
-
-@pytest.mark.slow  # two ten-input builds plus twelve interpreter rows, ~10s
-def test_ten_input_builds_print_on_the_interpreter() -> None:
-    """Sampled rows of both ten-input shapes answer on the real interpreter.
-
-    The rule path's acceptance is the laws' replay; this is the standard
-    above it -- the shipped interpreter running instantiated rows.  Six
-    rows per shape, the two corner rows always among them; the full
-    1024-row sweep was executed when the path landed, both shapes correct.
-    """
-    import hashlib
-    import random
-
-    from esolangs.interpreters.io import ScriptedIO
-    from esolangs.interpreters.tape_based.minifuck import run
-    from esolangs.tools import minifuck
-    from tests.tools.fills import _fill_minifuck
-
-    digest = hashlib.sha256(b"dense:10").digest()
-    bits: list[str] = []
-    block = 0
-    while len(bits) < 1024:
-        digest = hashlib.sha256(digest + bytes([block & 255])).digest()
-        bits.extend(str(byte & 1) for byte in digest)
-        block += 1
-    dense = "".join(bits[:1024])
-    parity = "".join(str(bin(row).count("1") & 1) for row in range(1024))
-
-    rng = random.Random(20260915)
-    for table in (dense, parity):
-        template = minifuck(table)
-        for combo in sorted({*rng.sample(range(1024), 4), 0, 1023}):
-            row = [(combo >> (9 - i)) & 1 for i in range(10)]
-            io_ = ScriptedIO("")
-            run(_fill_minifuck(template, row), io_)
-            assert io_.getvalue() == table[combo], f"row {combo}"

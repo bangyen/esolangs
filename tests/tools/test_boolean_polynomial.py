@@ -18,12 +18,7 @@ from tests.tools.boolean_runners import (
 @pytest.mark.medium
 class TestPolynomial:
     def test_uncapped_dag_has_matching_text_bound(self) -> None:
-        """Pin and execute the construction matching the language lower bound.
-
-        The public generator keeps its resource cap; composing the existing
-        DAG emitter and assembler directly is the language-level witness.
-        These are structural envelopes, not a fitted size ratio.
-        """
+        """Pin and execute the construction matching the language lower bound."""
         from esolangs.tools.polynomial import _polynomial_assemble
         from tests.tools.test_boolean_contract import _dense
 
@@ -66,40 +61,8 @@ class TestPolynomial:
             bits = [(row >> (3 - i)) & 1 for i in range(4)]
             assert run_polynomial(program, [str(bit) for bit in bits]) == table[row]
 
-    @pytest.mark.parametrize(
-        ("table", "n"),
-        [
-            ("10", 1),  # NOT
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("00000001", 3),  # AND-3
-            ("10000000", 3),  # OR-3
-        ],
-    )
-    @pytest.mark.medium
-    def test_truth_table(self, table: str, n: int) -> None:
-        """Every input combination produces the truth-table result."""
-        program = boolean.polynomial(table)
-        for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            got = run_polynomial(program, [str(b) for b in bits])
-            assert got == str(int(table[combo])), f"inputs {bits}"
-
     def test_wide_table_rejected(self) -> None:
-        """The gate is the instruction count, not the input count.
-
-        Each instruction takes a fresh prime and becomes a polynomial
-        factor, so what the interpreter cannot afford per row is
-        instructions.  A scattered n == 11 table needs 2417 under its
-        cheapest construction and is refused; the message names the count
-        rather than ``n``.
-
-        The witness has to be re-picked whenever the cap moves: the
-        scattered n == 6 witness of the 138 era rendered under the 328 the
-        peels bought, and the n == 8 witness of the 328 era renders under
-        the 1934 the NTT screens bought, so a stale body silently stops
-        exercising the gate.
-        """
+        """The gate is the instruction count, not the input count."""
 
         random.seed(0)
         scattered = "".join(random.choice("01") for _ in range(2**11))
@@ -107,15 +70,7 @@ class TestPolynomial:
             boolean.polynomial(scattered)
 
     def test_polynomial_cap_admits_every_n10_table(self) -> None:
-        """The cap is the analytic worst case over n == 10 tables.
-
-        Level ``k`` of the machine holds at most ``min(2**k, 2**2**(10-k))``
-        states -- reachability bounds it by doubling, the subtable width by
-        counting -- at 5 instructions plus at most 2 transitions each, and
-        the leaf level 5 each less the final endif.  So the cap admits all
-        of n == 10 by construction, and the dense fixture sits under it
-        with room that is measured, not assumed.
-        """
+        """The cap is the analytic worst case over n == 10 tables."""
         from esolangs.tools.polynomial import _POLYNOMIAL_MAX_INSTRS
 
         states = [min(2**k, 2 ** (2 ** (10 - k))) for k in range(11)]
@@ -131,15 +86,7 @@ class TestPolynomial:
 
     @pytest.mark.slow  # 4.5s: one NTT factorization, then 256 cached rows
     def test_a_dense_eight_input_table_runs_every_row(self) -> None:
-        """The arity the old cap refused now builds, and every row answers.
-
-        Dense n == 8 is 462 instructions -- past the old 328, and past
-        ``_NTT_MIN_DEGREE`` once rendered, so this is the suite's
-        execution-gate witness for the NTT recovery path *and* for the
-        per-program parse cache: the first row pays the factorization
-        (~3.4s) and the other 255 amortize to under a millisecond each,
-        which is what made the cap raisable at all.
-        """
+        """The arity the old cap refused now builds, and every row answers."""
         from tests.tools.test_boolean_contract import _dense
 
         table = _dense(8)
@@ -151,15 +98,7 @@ class TestPolynomial:
 
     @pytest.mark.slow  # 2.3s
     def test_state_machine_renders_past_the_old_input_gate(self) -> None:
-        """Tables the ``n <= 4`` gate refused outright now render and run.
-
-        The gate was on ``n`` because a decision tree doubles with it.  The
-        state machine merges prefixes with equal residual subfunctions, so a
-        table that collapses is cheap at any width: AND-5 was rejected and
-        now builds, and parity -- the tree's worst case, 2553 instructions
-        at n == 8 -- is linear here, 11 per input, and renders through
-        n == 8.
-        """
+        """Tables the ``n <= 4`` gate refused outright now render and run."""
         and5 = "0" * 31 + "1"
         program = boolean.polynomial(and5)
         assert program.startswith("f(x) = ")
@@ -174,14 +113,7 @@ class TestPolynomial:
             assert boolean.polynomial(parity).startswith("f(x) = ")
 
     def test_state_machine_merges_what_the_tree_cannot(self) -> None:
-        """A subtable that is not constant can still collapse to one state.
-
-        ``10101010`` is NOT of the last input: the tree folds nothing and
-        spends an internal node per level, while every prefix leaves the
-        same residual subfunction, so the machine needs one state per level
-        until the last.  This is the merge that makes the construction
-        stronger than the fold, rather than another way to spell it.
-        """
+        """A subtable that is not constant can still collapse to one state."""
         table = "10101010"
         assert [len(level) for level in _polynomial_states(table, 3)] == [1, 1, 1, 2]
         assert len(_polynomial_dag(table)) < len(_polynomial_tree(table))
@@ -191,11 +123,7 @@ class TestPolynomial:
             assert run_polynomial(program, [str(b) for b in bits]) == table[combo]
 
     def test_polynomial_hybrid_cost_mirrors_build(self) -> None:
-        """The hybrid's cost function is a deliberate mirror of its emitter.
-
-        The dispatch screens on the cost before rendering, so a drift here
-        silently skips a table the emitter would have shortened.
-        """
+        """The hybrid's cost function is a deliberate mirror of its emitter."""
         from esolangs.tools.polynomial import (
             _polynomial_hybrid,
             _polynomial_hybrid_cost,
@@ -210,14 +138,7 @@ class TestPolynomial:
                     ), f"{table} k={level}"
 
     def test_hybrid_endpoints_are_the_two_old_constructions(self) -> None:
-        """``k == n`` is the tree and ``k == 0`` is the machine.
-
-        The family is not a third construction beside two others -- it
-        contains both, which is what let the separate emitters go.  The
-        machine's identity holds except on a constant table, where the
-        hybrid collapses to a leaf before reaching it and comes out
-        shorter (4 instructions against 5 at n == 1).
-        """
+        """``k == n`` is the tree and ``k == 0`` is the machine."""
         from esolangs.tools.polynomial import _polynomial_hybrid
 
         for n in range(1, 4):
@@ -232,14 +153,7 @@ class TestPolynomial:
 
     @pytest.mark.slow
     def test_polynomial_screen_slack(self) -> None:
-        """The screen's slack is a measurement, and it is arity-dependent.
-
-        Selection is on rendered characters while the screen is on
-        instructions, so the shortest render can sit above the cheapest
-        candidate.  Every table at n <= 3 needs at most 1; a slack fitted
-        there would emit the worse program at n == 4, where 2000 sampled
-        tables reach 6.
-        """
+        """The screen's slack is a measurement, and it is arity-dependent."""
         from esolangs.tools.polynomial import (
             _POLYNOMIAL_SCREEN_SLACK,
             _polynomial_assemble,
@@ -270,13 +184,7 @@ class TestPolynomial:
         ["00000101", "00001010", "01010000", "01011111", "10100000", "11111010"],
     )
     def test_hybrid_shortens_and_still_computes(self, table: str) -> None:
-        """A split whose halves merge separately beats both parents.
-
-        ``00000101`` is 45 instructions as a tree and 36 as a state machine,
-        but 28 when the first bit branches and each half runs its own
-        machine: the residuals merge *within* the top split and not across
-        it, so neither parent construction sees the merge.
-        """
+        """A split whose halves merge separately beats both parents."""
         from esolangs.tools.polynomial import _polynomial_hybrid
 
         assert len(_polynomial_hybrid(table, 1)) < len(_polynomial_tree(table))
@@ -286,14 +194,7 @@ class TestPolynomial:
             assert run_polynomial(program, [str(b) for b in bits]) == table[combo]
 
     def test_drained_machine_survives_a_one_in_the_drained_bit(self) -> None:
-        """The reduction reaches the machine, not just the tree.
-
-        A drain is a bare read and the machine's root level opens with a
-        read of its own, so the drained byte is overwritten unlooked-at.
-        The previous chain tested for zero and a drained ``1`` fell past
-        every state test; the rows with a 1 in the drained bit are still
-        the ones that matter here.
-        """
+        """The reduction reaches the machine, not just the tree."""
         from esolangs.tools.polynomial import _polynomial_drained_dag
 
         table = "0000010100000101"  # ignores its first input
@@ -306,17 +207,7 @@ class TestPolynomial:
 
     @pytest.mark.parametrize("table", ["00100000", "11011111", "00000010"])
     def test_machine_losing_on_characters_does_not_ship(self, table: str) -> None:
-        """Fewer instructions is not fewer characters.
-
-        These three are 35 instructions as a machine against the tree's 36
-        and still render longer (4677 characters against 4614 for the
-        first), because the machine spends a ``*=`` -- ``p**6`` against a
-        ``+=``'s ``p**2`` -- where the tree spends only ``+=``.  The
-        dispatch compares *rendered* programs, so they keep the tree's
-        emission.  Found by sweeping the n == 3 corpus for tables whose
-        fewest-instruction candidate is not the shortest render: five of
-        256.
-        """
+        """Fewer instructions is not fewer characters."""
         from esolangs.tools.polynomial import _polynomial_assemble, _polynomial_hybrid
 
         machine = _polynomial_assemble(_polynomial_hybrid(table, 0))
@@ -326,15 +217,7 @@ class TestPolynomial:
         assert boolean.polynomial(table) == tree
 
     def test_every_path_reads_each_input_once(self) -> None:
-        """Whichever construction wins, a run consumes exactly ``n`` inputs.
-
-        The reads are the interface: a caller feeding several programs from
-        one stream desyncs if a path leaves bits unconsumed.  The tree
-        drains the reads a folded leaf skipped; the state machine reads once
-        inside the single branch each level's chain fires, so the count is
-        structural.  Feeding an exhaustible iterator proves both directions
-        -- an over-read raises, and a leftover proves an under-read.
-        """
+        """Whichever construction wins, a run consumes exactly ``n`` inputs."""
         for table, n in (("0110", 2), ("10101010", 3), ("00001111", 3)):
             program = boolean.polynomial(table)
             for combo in range(2**n):

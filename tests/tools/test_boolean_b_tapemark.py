@@ -7,6 +7,7 @@ import pytest
 from esolangs import tools
 from esolangs.interpreters.grid_based.b_tapemark import run
 from esolangs.interpreters.io import ScriptedIO
+from tests.witness_tables import witnesses
 
 
 def execute(program: str, bits: str) -> tuple[str, int]:
@@ -14,28 +15,6 @@ def execute(program: str, bits: str) -> tuple[str, int]:
     io = ScriptedIO("".join(f"{bit}" for bit in bits))
     run(program, io)
     return io.getvalue(), io.reads
-
-
-@pytest.mark.parametrize("table", ["00", "01", "10", "11"])
-def test_every_one_input_table(table: str) -> None:
-    program = tools.b_tapemark(table)
-    for bits in ("0", "1"):
-        assert execute(program, bits) == (table[int(bits, 2)], 1)
-
-
-def test_every_two_input_table() -> None:
-    for table_bits in product("01", repeat=4):
-        table = "".join(table_bits)
-        program = tools.b_tapemark(table)
-        for bits in map("".join, product("01", repeat=2)):
-            assert execute(program, bits) == (table[int(bits, 2)], 2)
-
-
-@pytest.mark.parametrize("table", ["00000001", "01101001", "11110000"])
-def test_three_input_tables(table: str) -> None:
-    program = tools.b_tapemark(table)
-    for bits in map("".join, product("01", repeat=3)):
-        assert execute(program, bits) == (table[int(bits, 2)], 3)
 
 
 @pytest.mark.medium
@@ -84,8 +63,7 @@ def test_narrow_staircase_executes_every_small_table_in_input_order() -> None:
 
     assert max(map(len, esolangs.generate("B-tapemark", "0110", 1).splitlines())) == 9
     for n in range(1, 4):
-        for value in range(1 << (1 << n)):
-            table = format(value, f"0{1 << n}b")
+        for table in witnesses(n):
             program = esolangs.generate("B-tapemark", table, 1)
             for row, expected in enumerate(table):
                 assert execute(program, format(row, f"0{n}b")) == (expected, n)

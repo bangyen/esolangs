@@ -1,21 +1,4 @@
-"""The numbered citations of the coefficient-mass papers name the right results.
-
-``polynomial.tex`` imports its coefficient-mass bound from a companion paper
-by number -- ``\\cite[Corollary~3.4]{coefficient-mass}`` -- and the Markdown
-companion and the ledger cite it and its siblings the same way.  A number is
-not a link: reordering or inserting a result renumbers everything after it,
-leaving a citation pointing at the wrong statement -- or at no statement --
-silently and while still compiling.
-
-The papers live in `bangyen/coefficient-mass`_ and are cited at a tag, so the
-numbering those citations rely on is pinned here as :data:`PINNED`, generated
-by that repo's ``just pin``.  This test holds every numbered citation to a
-pinned result and the label it is supposed to name, and holds every citation
-to the pinned tag.  Moving to a newer tag means regenerating :data:`PINNED`
-and changing :data:`TAG` together; the labels are the part that must not move.
-
-.. _bangyen/coefficient-mass: https://github.com/bangyen/coefficient-mass
-"""
+"""The numbered citations of the coefficient-mass papers name the right results."""
 
 from __future__ import annotations
 
@@ -97,13 +80,7 @@ _COMPANION_LINK = re.compile(re.escape(REPO) + r"([^/]+)/")
 
 
 def _cited(name: str) -> set[tuple[str, str, str]]:
-    """The ``(word, paper, number)`` references to a companion ``name`` makes.
-
-    The paper is the key the line's own ``\\cite`` names, or the ``.tex`` link
-    target in Markdown.  A numbered reference on a line that names neither is
-    the file's reference to itself; one whose key is not a companion is
-    somebody else's.
-    """
+    """The ``(word, paper, number)`` references to a companion ``name`` makes."""
     found: set[tuple[str, str, str]] = set()
     for line in (PROOFS / name).read_text().splitlines():
         cite = _CITE_KEY.search(line) or _LINK_KEY.search(line)

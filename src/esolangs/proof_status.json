@@ -73,6 +73,15 @@
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
+      "generator": "Befunge-98",
+      "labels": [
+        "finite lookup"
+      ],
+      "qualification": "inputs folded into a row index by Horner's rule; `g` reads the answer from a table in unbounded Funge-space below the header, so the program has no branches and no arity cap",
+      "scaling": "linear: T table cells, O(n) Horner reads",
+      "evidence": "docs/proofs/index.md#generator-ledger"
+    },
+    {
       "generator": "Bitwise Cyclic Tag",
       "labels": [
         "parameterized lookup"
@@ -138,10 +147,10 @@
     {
       "generator": "Boolfuck",
       "labels": [
-        "reduction"
+        "tree"
       ],
-      "qualification": "fixed command substitutions lower the Brainfuck tree, consuming and emitting complete bytes",
-      "scaling": "linear: constant-size lowering of the linear Brainfuck tree",
+      "qualification": "each input byte's low bit is read onto its own cell and tested in place by a flip-only decision tree, one flag interleaved beside each bit, consuming and emitting complete bytes",
+      "scaling": "linear: constant cost per node, difference ratio ~3.9 at n=8..12",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -491,8 +500,8 @@
       "labels": [
         "tree"
       ],
-      "qualification": "Brainfuck tree transliteration",
-      "scaling": "linear: brainfuck tree, O(L) transliteration",
+      "qualification": "decision tree emitted directly in Painfuck's own commands; numeric I/O pays no ASCII offset, and `d` resets the pointer to the answer cell",
+      "scaling": "linear: brainfuck-shaped decision tree; `d` reset keeps leaf returns O(1)",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -628,7 +637,7 @@
         "linear lookup"
       ],
       "qualification": "the table is the starting state, one character an entry, and the bit read rewrites every adjacent pair to one of its two members, so the state halves per input and the last character is the answer; the rules never overlap, so the language's random rule choice has nothing to choose",
-      "scaling": "linear: T state characters, twenty-one fixed rules",
+      "scaling": "linear: T state characters, nineteen fixed rules",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -645,8 +654,8 @@
       "labels": [
         "tree"
       ],
-      "qualification": "Brainfuck tree transliteration",
-      "scaling": "linear: brainfuck tree, O(L) transliteration",
+      "qualification": "decision tree laid out on three axes, one per role; the 48 offset is built once on the scratch axis and folded into the reads",
+      "scaling": "linear: decision tree with single-step axis moves",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {

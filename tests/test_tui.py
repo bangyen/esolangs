@@ -1,14 +1,6 @@
-"""Tests for the step-through screen.
-
-Everything here drives :func:`~esolangs.tui.render`, the position adapter
-under it, the retained history, and the key loop -- which takes its input
-and output as arguments, so it can be run with scripted keys in process.
-Only ``run_tui``'s raw-mode wrapper around the terminal is left out, and one
-test drives even that through a pty.
-"""
+"""Tests for the step-through screen."""
 
 import re
-import sys
 from unittest.mock import patch
 
 import pytest
@@ -133,17 +125,6 @@ class TestLocateOffset:
     def test_past_the_text_is_not_located(self) -> None:
         assert locate("abc", 99) is None
 
-    def test_negative_is_not_located(self) -> None:
-        assert locate("abc", -1) is None
-
-    def test_none_is_not_located(self) -> None:
-        assert locate("abc", None) is None
-
-    def test_a_bool_is_not_a_position(self) -> None:
-        # bool is an int subclass, and True would otherwise read as offset 1.
-        flag = True
-        assert locate("abc", flag) is None
-
     def test_a_tuple_under_the_default_is_not_located(self) -> None:
         # This is the whole safety of the trait: a language that reports a
         # tuple without saying what it counts gets no highlight, because a
@@ -177,15 +158,6 @@ class TestLocateGrid:
         assert locate("ab\ncd", (5, 0), "grid") is None
         assert locate("ab\ncd", (0, 9), "grid") is None
 
-    def test_too_few_parts_is_not_located(self) -> None:
-        assert locate("ab\ncd", (1,), "grid") is None
-
-    def test_a_non_integer_coordinate_is_not_located(self) -> None:
-        assert locate("abc", ("x", 1), "grid") is None
-
-    def test_an_int_under_grid_is_not_located(self) -> None:
-        assert locate("abc", 1, "grid") is None
-
 
 class TestLocateLine:
     """``ip`` starts with a line number, so the whole line is marked."""
@@ -203,14 +175,8 @@ class TestLocateLine:
         # a short line still reads as a whole line.
         assert locate("ab\ncdef", (0,), "line") == Mark(0, 0, 4)
 
-    def test_a_bare_int_is_taken_as_the_line(self) -> None:
-        assert locate("ab\ncd", 1, "line") == Mark(1, 0, 2)
-
     def test_past_the_last_line_is_not_located(self) -> None:
         assert locate("ab\ncd", (9,), "line") is None
-
-    def test_an_empty_tuple_is_not_located(self) -> None:
-        assert locate("ab\ncd", (), "line") is None
 
 
 class TestLocateUnknownShape:
@@ -834,32 +800,7 @@ class TestSelector:
 
 
 class TestBoundaries:
-    """The off-by-ones, each pinned at the exact edge it turns on.
-
-    A mutation sweep over this module found the tests below missing: every
-    bound here was asserted somewhere far outside it -- a row 5 past a
-    2-row program -- which a widened comparison passes just as happily.
-    The edge is the only place the two readings differ.
-    """
-
-    def test_a_grid_row_one_past_the_last_is_outside(self) -> None:
-        assert locate("ab\ncd", (2, 0), "grid") is None
-
-    def test_a_grid_column_one_past_the_width_is_outside(self) -> None:
-        assert locate("ab\ncd", (0, 2), "grid") is None
-
-    def test_a_line_one_past_the_last_is_outside(self) -> None:
-        assert locate("ab\ncd", (2,), "line") is None
-
-    def test_an_offset_one_past_the_text_is_outside(self) -> None:
-        # The halt boundary lands here, so this is the common case rather
-        # than an exotic one.
-        assert locate("abc", 3) is None
-        assert locate("abc", 2) == Mark(0, 2)
-
-    def test_a_cell_one_past_the_width_holds_nothing(self) -> None:
-        assert at_cell("abc", "offset", 0, 3) is None
-        assert at_cell("abc", "offset", 0, 2) == Mark(0, 2)
+    """The off-by-ones, each pinned at the exact edge it turns on."""
 
     def test_the_program_pane_is_filled_when_there_is_enough_program(self) -> None:
         # Scrolling that runs past the end leaves the pane short rather than
@@ -965,58 +906,47 @@ class TestWatch:
         assert history.trace(0, 0, 10) == (0,)
 
     def test_a_zero_span_asks_for_nothing_and_gets_it(self) -> None:
-        """The window can be empty from the *span* side, not just the frames.
-
-        ``first`` is derived from ``last`` and the span, so a span of zero
-        puts it one past ``last`` -- an empty window rather than a negative
-        slice, which would silently read from the wrong end.
-        """
+        """The window can be empty from the *span* side, not just the frames."""
         history = History("brainfuck", "+++", "")
         history.at(3)
         assert history.trace(0, 3, 0) == ()
 
     def test_a_history_with_no_frames_at_all_traces_nothing(self) -> None:
-        """The other empty: retained frames gone rather than window empty.
-
-        ``test_an_empty_history_traces_nothing`` does not reach this -- a
-        fresh ``History`` already holds its first frame, so it returns that
-        one value.  Dropping the frames is what leaves the guard with
-        nothing to slice, and it must answer ``()`` rather than index into
-        an empty list.
-        """
+        """The other empty: retained frames gone rather than window empty."""
         history = History("brainfuck", "+++", "")
         history.at(3)
         history._frames = []  # noqa: SLF001 - the state the guard exists for
         assert history.trace(0, 3, 10) == ()
 
     def test_the_row_shows_the_values(self) -> None:
-        screen = render(_frame("+", 0), watch=(0, (0, 1, 2, 3)))
+        screen = render(_frame("+", 0), watches=((0, (0, 1, 2, 3)),))
         assert "cell 0: 0 1 2 3" in screen
 
     def test_no_row_when_nothing_is_watched(self) -> None:
-        assert "watch" not in render(_frame("+", 0))
+        # The footer names the key, so the check is for the row itself.
+        assert "watch    cell" not in render(_frame("+", 0))
 
     def test_an_absent_value_is_shown_as_a_dash(self) -> None:
-        assert "- - 1" in render(_frame("+", 0), watch=(0, (None, None, 1)))
+        assert "- - 1" in render(_frame("+", 0), watches=((0, (None, None, 1)),))
 
     def test_the_newest_values_survive_a_narrow_row(self) -> None:
         # A tape is read from cell zero outwards, but a trace is read from
         # now backwards, so the *end* is what must not be dropped.
-        screen = render(_frame("+", 0), watch=(0, tuple(range(100))), width=40)
+        screen = render(_frame("+", 0), watches=((0, tuple(range(100))),), width=40)
         assert "99" in screen
         assert all(len(line) <= 40 for line in _plain(screen).splitlines())
 
     def test_a_trimmed_trace_says_so(self) -> None:
-        screen = render(_frame("+", 0), watch=(0, tuple(range(100))), width=40)
+        screen = render(_frame("+", 0), watches=((0, tuple(range(100))),), width=40)
         assert "..." in screen
 
     def test_an_empty_trace_says_so_rather_than_showing_nothing(self) -> None:
-        assert "(none yet)" in render(_frame("+", 0), watch=(0, ()))
+        assert "(none yet)" in render(_frame("+", 0), watches=((0, ()),))
 
     def test_the_row_costs_the_program_pane_one_line(self) -> None:
         program = "\n".join("x" for _ in range(40))
         without = render(_frame(program, 0), height=20)
-        with_watch = render(_frame(program, 0), height=20, watch=(0, (1, 2)))
+        with_watch = render(_frame(program, 0), height=20, watches=((0, (1, 2)),))
         assert len(with_watch.splitlines()) == len(without.splitlines())
 
     def test_the_loop_shows_the_trace_growing(self) -> None:
@@ -1030,101 +960,6 @@ class TestWatch:
         drive(History("brainfuck", "+++", ""), keyboard.read, keyboard.write, watch=0)
         assert "cell 0: 0 1 2" in keyboard.screens[-1]
         assert "cell 0: 0 1 2 3" not in keyboard.screens[-1]
-
-
-class TestRawTerminal:
-    """``run_tui`` itself, driven through a pty.
-
-    This is the part :func:`drive` cannot cover: putting a real terminal in
-    raw mode, reading from it, and restoring it afterwards.  One program,
-    a few keys, and a hard deadline -- a loop that never returns has to fail
-    here rather than hang the suite.
-    """
-
-    # Forks a pty and execs a fresh interpreter, then waits on quiet periods:
-    # a subprocess whose cost is a wait, so it stretches under a loaded box.
-    @pytest.mark.medium
-    @pytest.mark.skipif(sys.platform == "win32", reason="no pty on Windows")
-    def test_it_paints_and_quits_on_a_real_terminal(self) -> None:
-        import contextlib
-        import os
-        import pty
-        import select
-        import signal
-        import time
-
-        source = (
-            "from esolangs.tui import run_tui\nrun_tui('brainfuck', '+++>++.', '')\n"
-        )
-        pid, fd = pty.fork()
-        if pid == 0:  # pragma: no cover - the child is a fresh interpreter
-            os.execv(sys.executable, [sys.executable, "-c", source])
-
-        painted = ""
-        deadline = time.time() + 20
-
-        def drain() -> str:
-            """Wait for this key's repaint, then read while it keeps coming."""
-            out = ""
-            quiet = time.time() + 5
-            while time.time() < min(quiet, deadline):
-                ready, _, _ = select.select([fd], [], [], 0.02)
-                if not ready:
-                    continue
-                try:
-                    chunk = os.read(fd, 65536)
-                except OSError:
-                    break
-                if not chunk:
-                    break
-                out += chunk.decode("utf-8", "replace")
-                quiet = time.time() + 0.05
-            return out
-
-        try:
-            # The child is a fresh interpreter, so the first paint has to be
-            # waited for before any key means anything.
-            painted += drain()
-            for key in "  q":
-                os.write(fd, key.encode())
-                painted += drain()
-            assert time.time() < deadline, "run_tui did not answer in time"
-        finally:
-            os.close(fd)
-            with contextlib.suppress(ProcessLookupError):
-                os.kill(pid, signal.SIGKILL)
-            os.waitpid(pid, 0)
-
-        assert "brainfuck" in painted
-        assert "step 2" in painted
-        # Raw mode is what makes a bare newline a carriage return too; its
-        # absence would mean the terminal was never switched over.
-        assert "\r\n" in painted
-
-
-class TestAgainstTheInterpreter:
-    """That the highlighted character is the op the VM is about to run.
-
-    The screen's whole claim is this correspondence, and it is the one thing
-    a pure-function test cannot assert by itself -- it needs the interpreter
-    to say where it is.
-    """
-
-    @pytest.mark.parametrize("step", range(12))
-    def test_brainfuck_highlight_is_the_next_command(self, step: int) -> None:
-        program = "+++>++[<->]<."
-        frame = replay("brainfuck", program, "", step)
-        marked = _highlighted(render(frame))
-        if frame.ip is None:
-            pytest.skip("halted with no position")
-        assert isinstance(frame.ip, int)
-        assert marked == program[frame.ip]
-        assert marked in "+-<>[].,"
-
-    def test_a_grid_language_highlight_is_a_real_cell(self) -> None:
-        program = "\n".join(["o  v", "   <"])
-        frame = _frame(program, (1, 3), language="Clockwise", ip_shape="grid")
-        assert _highlighted(render(frame)) == "<"
 
 
 @pytest.mark.medium

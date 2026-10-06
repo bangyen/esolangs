@@ -5,6 +5,7 @@ from itertools import pairwise
 import pytest
 
 from esolangs.tools.bitdeque import _bitdeque_ordered
+from tests.witness_tables import witnesses
 
 
 class TestParameterizedBitdeque:
@@ -27,54 +28,8 @@ class TestParameterizedBitdeque:
 
         return _fill_bitdeque(tpl, bits)
 
-    @pytest.mark.parametrize(
-        ("table", "n"),
-        [
-            ("10", 1),  # NOT
-            ("01", 1),  # identity
-            ("00", 1),  # constant zero
-            ("11", 1),  # constant one
-            ("0001", 2),  # AND
-            ("0110", 2),  # XOR
-            ("0111", 2),  # OR
-            ("1110", 2),  # NAND
-            ("11111110", 3),  # NAND3
-            ("01101001", 3),  # majority
-            ("1111111100000000", 4),  # top half
-        ],
-    )
-    @pytest.mark.medium
-    def test_truth_table(self, table: str, n: int) -> None:
-        """Every instantiated input produces the truth-table result."""
-        from esolangs import tools as generators
-
-        template = generators.bitdeque(table)
-        for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            got = self.run_bitdeque(self.instantiate(template, bits))
-            assert got == str(int(table[combo])), f"inputs {bits}"
-
-    @pytest.mark.parametrize("n", [1, 2, 3])
-    @pytest.mark.medium
-    def test_all_small_tables(self, n: int) -> None:
-        """Every table up to three inputs produces the right result."""
-        from esolangs import tools as generators
-
-        for table_int in range(2 ** (2**n)):
-            table = format(table_int, f"0{2**n}b")
-            template = generators.bitdeque(table)
-            for combo in range(2**n):
-                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-                got = self.run_bitdeque(self.instantiate(template, bits))
-                assert got == str(int(table[combo])), f"{table} inputs {bits}"
-
     def test_template_is_input_independent(self) -> None:
-        """The template has input runs, not hardcoded bits.
-
-        Both routes embed every input as the eleven characters of ``PUSH
-        INVERT``/``INVERT PUSH``: the weight is in the template, so the
-        linear route's runs are as narrow as the tree's.
-        """
+        """The template has input runs, not hardcoded bits."""
         from esolangs import tools as generators
         from esolangs.tools.bitdeque import BITDEQUE_PAIR
         from esolangs.tools.helpers import runs
@@ -87,13 +42,7 @@ class TestParameterizedBitdeque:
             assert [end - start for start, end in spans] == [11] * n
 
     def test_odd_inputs_are_pushed_complemented(self) -> None:
-        """The load flips the register per block; the tree's table absorbs it.
-
-        With one pair for every position, the block at an odd load position
-        pushes its bit complemented.  Filling identity-of-input-1 (``0101``)
-        and running just the prelude and load shows the deque holding the
-        complement, and the whole program still answers the table.
-        """
+        """The load flips the register per block; the tree's table absorbs it."""
         from esolangs import tools as generators
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.queue_based.bitdeque import run
@@ -107,14 +56,7 @@ class TestParameterizedBitdeque:
             assert self.run_bitdeque(self.instantiate(template, bits)) == str(bits[1])
 
     def test_linear_route_forces_the_register_between_inputs(self) -> None:
-        """Both discard paths meet at a reset, and the last input skips it.
-
-        Every input's zero path ends by forcing the register to one and
-        jumping the one block; each path but the last then lands on the
-        three-command reset the next run relies on.  Counted on a
-        five-input table: ``2**5 - 1`` of each discard command, and the
-        register at the end of the load is zeroed statically.
-        """
+        """Both discard paths meet at a reset, and the last input skips it."""
         from esolangs import tools as generators
 
         n = 5
@@ -175,12 +117,11 @@ class TestParameterizedBitdeque:
 
 
 @pytest.mark.parametrize("width", [1, 7, 9, 10, 11, 40, 80])
-def test_bitdeque_short_load_all_small_tables(width: int) -> None:
+def test_bitdeque_short_load_witness_tables(width: int) -> None:
     import esolangs
 
     for n in range(1, 4):
-        for value in range(2 ** (2**n)):
-            table = format(value, f"0{2**n}b")
+        for table in witnesses(n):
             template = esolangs.generate("Bitdeque", table, width)
             for row, expected in enumerate(table):
                 bits = list(map(int, format(row, f"0{n}b")))

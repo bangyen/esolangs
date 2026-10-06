@@ -8,6 +8,7 @@ still fail in strict mode; modules never imported always fail.
 import argparse
 import fnmatch
 import json
+import os
 import subprocess
 import sys
 import tomllib
@@ -176,7 +177,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--data-file",
-        default=str(ROOT / ".coverage"),
+        default=os.environ.get("COVERAGE_FILE", str(ROOT / ".coverage")),
         help="coverage data file written by the pytest step",
     )
     parser.add_argument(

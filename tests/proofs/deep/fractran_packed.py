@@ -1,29 +1,4 @@
-"""Why FRACTRAN's generator packs blocks, and what that cost and bought.
-
-Run:  just proofs   (or python tests/proofs/deep/fractran_packed.py)
-
-``docs/proofs/fractran.md`` proves an address budget: live fractions have
-pairwise distinct guards, so ``m`` of them cost ``(1 + o(1)) m log m``
-characters, and the ``k`` primes a text spells cost ``(1 + o(1)) k log10 k``.
-Any program that gives each of ``T`` rows its own guard or its own prime
-therefore needs ``Omega(T log T)``.  That was read as a wall for the
-language.  It is not one -- a program need not address rows -- and the
-generator that used to hit it is kept here, as ``row_addressed``, because the
-comparison is the evidence.
-
-The legacy builder stops the tree ``v`` levels early, at ``T / w`` blocks of
-``w = 2**v`` entries, and loads each block as a single exponent: ``w`` bits of
-table for ``w log10 2`` characters, since this port parses ``p^e``.  One
-fixed decoder shifts that exponent right by the offset -- the low ``v`` input
-bits, in unary -- and answers with the parity of what is left.
-
-What it costs is the clock, and that is the real content of the wall: the
-block sits in an exponent, so a run traverses ``O(2**w)`` of it.  Hence
-``w <= n / 2``, which keeps a run under ``2.5 * sqrt(T)`` steps while leaving
-the text linear -- ``2**v = Omega(n)`` is all linearity asks.  Both halves
-are measured below, against the tree that pays ``Theta(T log T)`` characters
-to answer in ``2n + 1`` steps.
-"""
+"""Why FRACTRAN's generator packs blocks, and what that cost and bought."""
 
 from __future__ import annotations
 
@@ -55,13 +30,7 @@ def legacy_packed(truth_table: str) -> str:
 
 
 def row_addressed(truth_table: str) -> str:
-    """Return the tree this generator used to be: one prime a row.
-
-    Kept because the budget is proved about *this* shape and attained by it,
-    so the lemmas in ``tests/proofs/test_fractran_bound.py`` need a program
-    that addresses rows, and the size comparison needs the other end of the
-    trade.  Same contract, and ``2n + 1`` steps a run.
-    """
+    """Return the tree this generator used to be: one prime a row."""
     n = len(truth_table).bit_length() - 1
     constant = constant_span_test(truth_table)
     nodes: list[tuple[int, int, int]] = []
@@ -105,11 +74,7 @@ def run(code: str) -> tuple[int, int, int]:
 
 
 def rows(template: str, truth_table: str) -> tuple[int, int]:
-    """Run every row; return the worst step count and widest value.
-
-    The only claim that needs every row is correctness, and it is the one
-    claim a spot check would not make.
-    """
+    """Run every row; return the worst step count and widest value."""
     n = len(truth_table).bit_length() - 1
     worst = widest = 0
     for row in range(len(truth_table)):

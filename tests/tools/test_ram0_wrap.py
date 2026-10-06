@@ -3,17 +3,18 @@
 import pytest
 
 import esolangs
+from esolangs._evaluate import _evaluate
 from esolangs.tools.ram0 import ram0
 from esolangs.tools.wrap import wrap_space_delimited
+from tests.witness_tables import witnesses
 
 
 @pytest.mark.parametrize("n", [1, 2, pytest.param(3, marks=pytest.mark.medium)])
 def test_one_column_circuits_execute_every_small_table(n: int) -> None:
-    for value in range(1 << (1 << n)):
-        table = format(value, f"0{1 << n}b")
+    for table in witnesses(n):
         template = esolangs.generate("RAM0", table, 1)
         assert max(map(len, template.splitlines())) == 1
-        assert esolangs.evaluate("RAM0", template, inputs=n) == table
+        assert _evaluate("RAM0", template, inputs=n) == table
         for width in (2, 5, 80):
             assert ram0(table, width) == wrap_space_delimited(ram0(table), width)
 

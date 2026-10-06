@@ -64,7 +64,7 @@ def test_whitespace_separates_fields_and_comments_are_spaces() -> None:
     assert not _halts("+J\n0\n1")
     run("+J\n0\n0", IO())
     machine = _Machine("")
-    assert machine.stack == []
+    assert not hasattr(machine, "stack")
     assert _advance(machine.state) == machine.state
 
 
@@ -114,3 +114,15 @@ def test_a_negative_pointer_halts() -> None:
     state = _State(ip=-1, program=(_Instruction("J", 1, 0, 0),))
     with pytest.raises(HaltError, match="negative address"):
         _advance(state)
+
+
+def test_a_literal_past_the_host_digit_cap_is_exact() -> None:
+    """Operands are unbounded; Python's int() refuses 4300+ digits."""
+    assert _number("1" + "0" * 5000, {}, 0) == 10**5000
+
+
+def test_a_huge_negative_jump_reports_its_address() -> None:
+    """The message formats 5001 digits rather than tripping str()'s cap."""
+    machine = _Machine("+J -1" + "0" * 5000 + " 1")
+    with pytest.raises(HaltError, match=r"negative address -10{5000}(?!0)"):
+        machine.step()

@@ -1,11 +1,4 @@
-"""Tests for the emitted-size and step-count baseline gate.
-
-The gate's own failure path is what matters here: a check that cannot report
-a difference passes for the wrong reason, and this one exists precisely
-because nothing was measuring these numbers.  ``differences`` is exercised
-directly rather than through a sweep, which keeps the suite off the ~3s the
-full 192 measurements take -- the gate step in ``just test`` pays that.
-"""
+"""Tests for the emitted-size and step-count baseline gate."""
 
 import json
 from typing import Any

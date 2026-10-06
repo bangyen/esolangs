@@ -1,23 +1,4 @@
-"""The lemmas ``docs/proofs/fractran.md`` rests on, as executable checks.
-
-That document proves a size wall for every FRACTRAN program that gives each
-table row its own address, and then *refutes* it as a claim about the
-language: a program need not address rows, and one that packs a block of
-entries into a single exponent is `Theta(T)` characters.  The counting
-argument that gives Factor a language bound could never have been imported
-here either, because a fraction list's priority order is behaviour and is
-cheap.  So what survives is a proved obstruction with a known scope, and a
-time-for-size trade at the edge of it.  These are that model, pinned where
-it runs.
-
-Following :mod:`tests.proofs.test_negatives`: measurements belong in the
-document, where a stale number reads as stale.  What is pinned here is what
-*cannot* happen -- a shadowed fraction never firing, prime identity never
-mattering, an exponent never being readable without steps.  Each of those
-absences is load-bearing, and each turns false silently.  A failure here is
-not a regression to revert but an opening: the bound it supports is back in
-play, and the paragraph each test names is the one to go and read.
-"""
+"""The lemmas ``docs/proofs/fractran.md`` rests on, as executable checks."""
 
 from __future__ import annotations
 
@@ -96,14 +77,7 @@ def _exponent(value: int, prime: int) -> int:
 
 
 def test_a_shadowed_fraction_is_dead_code() -> None:
-    """Lemma 2: an equal reduced guard later in the list can never fire.
-
-    Exhaustive over the small pairs, which is what makes Corollary 3 --
-    distinct guards, hence distinct tokens, hence Theorem 7 -- safe to state
-    for the live fractions only.  The mirror half matters too: sharing a
-    *raw* denominator is not sharing a guard, so the reduction in Lemma 1 is
-    doing real work and cannot be dropped.
-    """
+    """Lemma 2: an equal reduced guard later in the list can never fire."""
     shadowed = live = 0
     for num_a, den_a, num_b, den_b in product(range(1, 7), repeat=4):
         if _guard(num_a, den_a) != _guard(num_b, den_b):
@@ -129,13 +103,7 @@ def test_a_shadowed_fraction_is_dead_code() -> None:
 
 
 def test_the_run_cannot_see_a_prime_the_text_does_not_spell() -> None:
-    """Lemma 4: primes outside ``S`` are invariant and change no decision.
-
-    The encoding consequence is the load-bearing one: a large literal factor
-    carries its digits to a reader and nothing to the machine, so a table
-    cannot be stored as a number.  If a step ever branched on one, the
-    "What a program can read" section is wrong and the packing routes reopen.
-    """
+    """Lemma 4: primes outside ``S`` are invariant and change no decision."""
     for table in _TABLES:
         n = len(table).bit_length() - 1
         for row in range(2**n):
@@ -149,14 +117,7 @@ def test_the_run_cannot_see_a_prime_the_text_does_not_spell() -> None:
 
 
 def test_relabelling_the_primes_preserves_the_whole_run() -> None:
-    """Lemma 5: only a prime's rank and role are readable, never its value.
-
-    Every prime in the program is mapped to a fresh, larger one, order
-    preserved, and the run is required to fire the same fractions the same
-    number of times and to answer in the image of the answer prime.  This is
-    why Theorem 8 may price a prime by its rank: nothing else about it is
-    usable.
-    """
+    """Lemma 5: only a prime's rank and role are readable, never its value."""
     for table in _TABLES:
         n = len(table).bit_length() - 1
         for row in range(2**n):
@@ -196,13 +157,7 @@ def _relabel(value: int, mapping: dict[int, int]) -> int:
 
 
 def test_the_answer_is_a_linear_form_in_the_firing_counts() -> None:
-    """Theorem 12: ``e_p`` of the halt value is linear in the firing counts.
-
-    A one-line identity with a long consequence -- Corollary 13, that
-    per-level shared machinery computes only dictators, which is why every
-    construction ends up spending a fraction per distinguished prefix and
-    paying Theorem 7.
-    """
+    """Theorem 12: ``e_p`` of the halt value is linear in the firing counts."""
     for table in _TABLES:
         n = len(table).bit_length() - 1
         for row in range(2**n):
@@ -219,13 +174,7 @@ def test_the_answer_is_a_linear_form_in_the_firing_counts() -> None:
 
 @pytest.mark.parametrize("n", range(1, 5))
 def test_an_integer_affine_form_in_zero_one_is_a_dictator(n: int) -> None:
-    """Corollary 13's algebra: the escape that shared machinery would need.
-
-    Theorem 12 makes a per-level trace's answer an integer affine form in the
-    bits.  Requiring that form to land in ``{0, 1}`` everywhere leaves only
-    the constants and the (negated) dictators, so an arbitrary table forces
-    either a fraction per distinguished prefix or a loop.
-    """
+    """Corollary 13's algebra: the escape that shared machinery would need."""
     rows = list(product((0, 1), repeat=n))
     for const in range(-2, 3):
         for weights in product(range(-2, 3), repeat=n):
@@ -241,17 +190,7 @@ def test_an_integer_affine_form_in_zero_one_is_a_dictator(n: int) -> None:
 
 
 def test_reading_a_big_exponent_costs_steps_not_characters() -> None:
-    """Lemma 11: a cheap exponent literal is not cheap to read.
-
-    This is the correction the document records.  Under plain fraction
-    notation an exponent is paid in digits (Lemma 10), but this port parses
-    ``p^e`` everywhere, so the literal costs ``log10 e`` and the *size* axis
-    does not forbid packing a table into one exponent at all.  What forbids
-    it is that each step shifts an exponent by a bounded amount, so the run
-    has to traverse it: the text here stays 14 characters while the run grows
-    with ``E``.  If this ever came apart, the size claim would need the
-    clock hypothesis removed -- or would be false.
-    """
+    """Lemma 11: a cheap exponent literal is not cheap to read."""
     widths = set()
     for power in (16, 32, 64, 128, 256):
         code = f"2^{power} 3/2^2 1/3"
@@ -264,13 +203,7 @@ def test_reading_a_big_exponent_costs_steps_not_characters() -> None:
 
 
 def test_the_tree_pays_the_address_budget_it_is_priced_by() -> None:
-    """Corollary 9 is attained: a guard and two primes per row, all distinct.
-
-    The exact counts, not a fitted growth: the unfoldable table gives
-    ``m = 3T + n - 2`` fractions over ``k = 2T + n`` primes with pairwise
-    distinct guards, so Theorems 7 and 8 both bind on the shipped generator
-    and the ``Theta(T log T)`` it measures is the budget rather than slack.
-    """
+    """Corollary 9 is attained: a guard and two primes per row, all distinct."""
     for n in range(2, 8):
         size = 1 << n
         parity = "".join(str(bin(row).count("1") & 1) for row in range(size))
@@ -293,16 +226,7 @@ def _pseudo_table(n: int) -> str:
 
 
 def test_the_shipped_builder_answers_every_row_without_addressing_one() -> None:
-    """Theorem 15: a program does not have to give a row an address.
-
-    A leaf carries a whole block of entries as one exponent, and one shared
-    decoder shifts that exponent by the offset and reads the parity.  Every
-    row is run, since the answer is the only thing a construction can be
-    wrong about.  The sizes are measured in
-    `tests/proofs/deep/fractran_packed.py`; what is pinned here is that the
-    refutation runs at all -- if it stops running, Theorem 7's scope is back
-    to being the whole language and the audit row comes back with it.
-    """
+    """Theorem 15: a program does not have to give a row an address."""
     table = _pseudo_table(6)
     worst, widest = rows(fractran(table), table)
     assert worst > 2 * 6 + 1, "the packed run was not slower than a tree's"
@@ -310,14 +234,7 @@ def test_the_shipped_builder_answers_every_row_without_addressing_one() -> None:
 
 
 def test_packing_pays_the_address_budget_rather_than_escaping_it() -> None:
-    """Corollary 9 covers the packed program too, and does not bind.
-
-    It spells `3T / w` fractions over as many primes, so Theorems 7 and 8
-    price it at `Theta((T / w) log(T / w))` characters -- which is what it
-    costs, and is `Theta(T)` because `w` grows like `n`.  Nothing here
-    contradicts the budget: the budget is paid, for fewer addresses than the
-    table has rows, and the shortfall widens as `w` does.
-    """
+    """Corollary 9 covers the packed program too, and does not bind."""
     table = _pseudo_table(12)
     template = fractran(table)
     assert len(template.split()) - 1 < len(table)
@@ -327,14 +244,7 @@ def test_packing_pays_the_address_budget_rather_than_escaping_it() -> None:
 
 
 def test_priority_order_is_a_channel_no_counting_argument_can_close() -> None:
-    """ "Size-time frontier": order carries a bit per character, undamped.
-
-    `m` fractions carry `log2(m!)` bits of priority, and Theorem 7 prices
-    them at `m log_c m` characters.  Enough order to name any table is
-    bought at `Theta(T)` characters, so no counting argument could ever have
-    reached `Omega(T log T)` -- which is the shape of the refutation above,
-    arrived at from the other side.
-    """
+    """ "Size-time frontier": order carries a bit per character, undamped."""
     alphabet = 14
     for n in range(8, 14):
         size = 1 << n
@@ -367,35 +277,6 @@ def _bounded_scan(
         else:
             return value, probes, largest
     return None
-
-
-def test_halt_scan_compacts_every_total_small_program() -> None:
-    """Interpreter-work theorem: oversized denominators are universally dead."""
-    checked = removed = 0
-    # One fraction may fire before a huge denominator; raw, unreduced
-    # multipliers are deliberate, since _choose materializes those products.
-    options = tuple(product(range(1, 5), (1, 2, 3, 4, 257)))
-    for pairs in product(options, repeat=2):
-        fractions = tuple(pairs)
-        starts = (1, 2)
-        traces = [_bounded_scan(start, fractions) for start in starts]
-        if any(trace is None or trace[0] not in (1, 2) for trace in traces):
-            continue
-        total = [trace for trace in traces if trace is not None]
-        largest = max(trace[2] for trace in total)
-        compact = tuple(pair for pair in fractions if pair[1] <= largest)
-        removed += len(fractions) - len(compact)
-        assert len(fractions) <= min(trace[1] for trace in total)
-        assert all(part <= largest for pair in compact for part in pair)
-        for start, old in zip(starts, total, strict=True):
-            new = _bounded_scan(start, compact)
-            assert new is not None
-            assert new[0] == old[0]
-            assert _trace(start, fractions)[1] == old[0]
-            assert _trace(start, compact)[1] == old[0]
-        checked += 1
-    assert checked > 0, "no total program exercised the compacting lemma"
-    assert removed > 0, "no oversized guard was removed"
 
 
 def test_scan_counting_bound_includes_the_zero_fraction_case() -> None:

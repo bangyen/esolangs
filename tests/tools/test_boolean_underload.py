@@ -12,6 +12,7 @@ from esolangs.tools.underload import PAIR, underload, underload_setters
 from tests.generator_support import verify_generated
 from tests.tools.boolean_runners import five_input_sample
 from tests.tools.plain_oracles import underload_plain as _plain
+from tests.witness_tables import witnesses
 
 
 def _run(table: str, row: int, width: int | None = None) -> str:
@@ -27,8 +28,7 @@ def _run(table: str, row: int, width: int | None = None) -> str:
 @pytest.mark.medium
 @pytest.mark.parametrize("width", [1, 3, 7, 8, 13, 40, 80])
 def test_wrapped_templates_execute_every_three_input_table(width: int) -> None:
-    for value in range(256):
-        table = f"{value:08b}"
+    for table in witnesses(3):
         template = underload(table, width)
         assert max(map(len, template.split("\n"))) <= max(7, width)
         if width >= 5:
@@ -71,14 +71,7 @@ def test_source_growth_is_linear() -> None:
 
 @pytest.mark.medium
 def test_repeated_subtrees_are_carried_and_no_table_grows() -> None:
-    """The reduced, carrying tree cuts both totals and lengthens no table.
-
-    A repeated subtree is pushed once and run by ``^`` where it recurs, a
-    node whose halves agree is ``!`` and the half, and one ``S`` prints the
-    leaf's bit.  21,032 characters over the 256 three-input tables fall to
-    17,850 (15.1%), and 58,565 over the seeded five-input sample to 44,756
-    (23.6%).
-    """
+    """The reduced, carrying tree cuts both totals and lengthens no table."""
     assert underload("01101001")[21:] == (
         "((((0))~((1))~^)~(~(^)~(!((1))~((0))~^)~^)~(~(!((1))~((0))~^)~(^)~^)~^)^S"
     )

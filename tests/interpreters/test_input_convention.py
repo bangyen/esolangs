@@ -50,6 +50,7 @@ def test_numeric_readers_accept_tokens_on_the_same_line(language):
 #: statement about them, not a list of exceptions to ignore.
 _EOF_IS_A_HALT: dict[str, str] = {
     "boolfuck": "EOF supplies zero bits",
+    "befunge-98": "an exhausted '&' or '~' reflects the IP, as Funge-98 specifies",
     "piet": "an exhausted input command is ignored, as the spec requires",
     # Reads until the input runs out and treats that as its stop, which is
     # how its generated programs terminate at all.
@@ -70,17 +71,14 @@ _EOF_IS_A_HALT: dict[str, str] = {
     "fish": "an exhausted 'i' is the spec's -1",
     "unlambda": "an exhausted '@' hands its argument v, the spec's branch",
     "thisthat": "an exhausted '◇' sends the spec's empty transfer",
+    # Wiki: the empty container sets IN "with EOF returning 0".
+    "container": "an exhausted read sets IN to the spec's 0",
 }
 
 
 @pytest.mark.parametrize("name", sorted(_EOF_IS_A_HALT))
 def test_every_eof_exemption_names_a_real_language(name: str) -> None:
-    """An exemption whose language is gone must not linger unnoticed.
-
-    The roster is hard-coded, which is exactly the shape that silently
-    deselects; comparing it against the registry is what stops an entry
-    outliving the language it describes.
-    """
+    """An exemption whose language is gone must not linger unnoticed."""
     from esolangs.tools.examples import BOOLEAN_EXAMPLES
 
     assert name in BOOLEAN_EXAMPLES
@@ -109,12 +107,7 @@ def _reading_languages() -> list[str]:
 
 @pytest.mark.parametrize("name", _reading_languages())
 def test_running_out_of_input_reaches_the_caller(name: str) -> None:
-    """A program that reads, handed nothing, raises rather than inventing.
-
-    This is what makes the blank-line convention above meaningful: a
-    language that swallowed the EOF would answer a missing line with the
-    same byte as an empty one, and the two would stop being distinct.
-    """
+    """A program that reads, handed nothing, raises rather than inventing."""
     from esolangs.tools.examples import BOOLEAN_EXAMPLES
 
     example = BOOLEAN_EXAMPLES[name]

@@ -2,18 +2,16 @@
 
 import ast
 import json
-import sys
 from unittest.mock import patch
 
 import pytest
 
 import esolangs
 from esolangs import DialectSettings
+from esolangs._evaluate import _evaluate
 from esolangs.tagged import _Tagged
-from esolangs.tui import History, replay
 from tests.cli_support import call_both
-from tests.test_cli import _FakeStdin
-from tests.test_public_dialects import CASES
+from tests.test_dialects import CASES
 
 
 def save_generated(tmp_path, capsys, language, settings, *options, table="0110"):
@@ -37,23 +35,6 @@ def save_generated(tmp_path, capsys, language, settings, *options, table="0110")
 
 @pytest.mark.medium
 @pytest.mark.parametrize(("language", "settings"), CASES)
-@pytest.mark.parametrize("balance", [False, True])
-def test_portable_generation_evaluates_every_row(
-    tmp_path, capsys, language, settings, balance
-):
-    path = save_generated(
-        tmp_path, capsys, language, settings, *(["--balance"] if balance else [])
-    )
-    restored = esolangs.load_program(language, path.read_text(encoding="utf-8"))
-    assert restored.settings == settings
-    output, error = call_both(
-        ["evaluate", "--portable", "--table", "0110", language, str(path)], capsys
-    )
-    assert (output, error) == ("0110\n", "")
-
-
-@pytest.mark.medium
-@pytest.mark.parametrize(("language", "settings"), CASES)
 def test_run_and_debug_restored_program(tmp_path, capsys, language, settings):
     embedded = esolangs.describe(language)["parameterized"]
     path = save_generated(
@@ -64,9 +45,6 @@ def test_run_and_debug_restored_program(tmp_path, capsys, language, settings):
         [
             "run",
             "--portable",
-            "--judge",
-            "--table",
-            "0110",
             "--timeout",
             "10",
             language,
@@ -75,7 +53,8 @@ def test_run_and_debug_restored_program(tmp_path, capsys, language, settings):
         capsys,
         stdin,
     )
-    assert (output, error) == ("1\n", "")
+    assert esolangs.read_answer(language, output) == "1"
+    assert error == ""
     output, error = call_both(
         [
             "debug",
@@ -103,10 +82,8 @@ def test_run_and_debug_restored_program(tmp_path, capsys, language, settings):
 def test_cli_scaled_raster(tmp_path, capsys, scale):
     settings = DialectSettings()
     path = save_generated(tmp_path, capsys, "Line", settings, "--scale", str(scale))
-    output, error = call_both(
-        ["evaluate", "--portable", "--table", "0110", "Line", str(path)], capsys
-    )
-    assert (output, error) == ("0110\n", "")
+    restored = esolangs.load_program("Line", path.read_text(encoding="utf-8"))
+    assert _evaluate("Line", restored, inputs=2) == "0110"
 
 
 @pytest.mark.medium
@@ -114,21 +91,8 @@ def test_cli_scaled_raster(tmp_path, capsys, scale):
 def test_portable_isolated_cli(tmp_path, capsys, language):
     settings = dict(CASES)[language]
     path = save_generated(tmp_path, capsys, language, settings, table="01")
-    output, error = call_both(
-        [
-            "evaluate",
-            "--portable",
-            "--max-output",
-            "16",
-            "--table",
-            "01",
-            language,
-            str(path),
-        ],
-        capsys,
-    )
-    assert (output, error) == ("01\n", "")
     source = esolangs.load_program(language, path.read_text(encoding="utf-8"))
+    assert _evaluate(language, source, inputs=1, isolated=True, max_output=16) == "01"
     if esolangs.describe(language)["parameterized"]:
         source = esolangs.instantiate(language, source, [1])
         stdin = ""
@@ -140,16 +104,14 @@ def test_portable_isolated_cli(tmp_path, capsys, language):
             "run",
             "--portable",
             "--isolated",
-            "--judge",
-            "--table",
-            "01",
             language,
             str(path),
         ],
         capsys,
         stdin,
     )
-    assert (output, error) == ("1\n", "")
+    assert esolangs.read_answer(language, output) == "1"
+    assert error == ""
 
 
 @pytest.mark.medium
@@ -217,23 +179,22 @@ def test_invalid_overrides_fail_before_stdin(tmp_path, capsys, command, choices)
     assert "dialect setting" in capsys.readouterr().err
 
 
-@pytest.mark.parametrize("command", ["run", "debug", "evaluate"])
+@pytest.mark.parametrize("command", ["run", "debug"])
 @pytest.mark.parametrize("content", [b"\xff", b"{}", b"not json"])
 def test_bad_portable_files_report_without_traceback(
     tmp_path, capsys, command, content
 ):
     path = tmp_path / "program.json"
     path.write_bytes(content)
-    extra = ["--inputs", "1"] if command == "evaluate" else []
     with pytest.raises(SystemExit) as caught:
-        call_both([command, "--portable", *extra, "Brainfuck", str(path)], capsys)
+        call_both([command, "--portable", "Brainfuck", str(path)], capsys)
     assert caught.value.code == 2
     error = capsys.readouterr().err
     assert "portable program" in error
     assert "Traceback" not in error
 
 
-@pytest.mark.parametrize("command", ["generate", "run", "debug", "evaluate"])
+@pytest.mark.parametrize("command", ["generate", "run", "debug"])
 def test_duplicate_portable_flag(command, capsys):
     with pytest.raises(SystemExit) as caught:
         call_both([command, "--portable", "--portable"], capsys)
@@ -249,65 +210,21 @@ def test_raw_file_named_portable_flag(tmp_path, capsys, monkeypatch):
     assert (output, error) == ("\x01", "")
 
 
-@pytest.mark.medium
-@pytest.mark.parametrize("override", [None, "between_letters"])
-def test_tui_replay_preserves_restored_choices(tmp_path, capsys, monkeypatch, override):
-    source = _Tagged(
-        "FAFYPPPP", "Grapheme", DialectSettings(integer_conversion="after_each_letter")
-    )
-    path = tmp_path / "program.json"
-    path.write_text(esolangs.dump_program("Grapheme", source), encoding="utf-8")
-    monkeypatch.setattr(_FakeStdin, "isatty", lambda _self: True)
-    options = (
-        []
-        if override is None
-        else ["--settings", json.dumps({"integer_conversion": override})]
-    )
-    with patch("esolangs.cli_debug.run_tui") as screen:
-        call_both(
-            [
-                "debug",
-                "--portable",
-                "--tui",
-                "--stdin",
-                "",
-                *options,
-                "Grapheme",
-                str(path),
-            ],
-            capsys,
-        )
-    language, restored, stdin = screen.call_args.args
-    assert restored.settings == source.settings
-    settings = screen.call_args.kwargs.get("settings")
-    history = History(language, restored, stdin, settings=settings)
-    history.budget = 1
-    assert history.at(8).output == ("10" if override is None else "1")
-    assert history.retained < history.top
-    assert history.at(4) == replay(language, restored, stdin, 4, settings=settings)
-    assert history.at(4).output == ("10" if override is None else "1")
-
-
-@pytest.mark.parametrize("command", ["run", "debug", "evaluate"])
+@pytest.mark.parametrize("command", ["run", "debug"])
 def test_unknown_portable_language_fails_before_file_read(command, capsys):
-    module = "cli_round_trip" if command == "evaluate" else f"cli_{command}"
-    extra = ["--inputs", "1"] if command == "evaluate" else []
+    module = f"cli_{command}"
     with (
         patch(f"esolangs.{module}._read_program", side_effect=AssertionError("read")),
         pytest.raises(SystemExit) as caught,
     ):
-        call_both(
-            [command, "--portable", *extra, "NotALang", "never-read.json"], capsys
-        )
+        call_both([command, "--portable", "NotALang", "never-read.json"], capsys)
     assert caught.value.code == 2
     assert "unknown language" in capsys.readouterr().err
 
 
 @pytest.mark.medium
-@pytest.mark.parametrize("command", ["run", "evaluate"])
-def test_portable_choices_and_memory_budget_reach_worker(
-    tmp_path, capsys, monkeypatch, command
-):
+def test_portable_choices_and_memory_budget_reach_worker(tmp_path, capsys, monkeypatch):
+    command = "run"
     from esolangs import _isolated
 
     budget = 96 * 1024 * 1024
@@ -329,7 +246,7 @@ def test_portable_choices_and_memory_budget_reach_worker(
         return runner(*args, **kwargs)
 
     monkeypatch.setattr(esolangs, "_run_isolated", capture)
-    options = ["--isolated"] if command == "run" else ["--inputs", "1"]
+    options = ["--isolated"]
     output, error = call_both(
         [
             command,
@@ -343,57 +260,5 @@ def test_portable_choices_and_memory_budget_reach_worker(
         capsys,
         esolangs.encode_inputs("Grapheme", [1]),
     )
-    assert (output, error) == (("1" if command == "run" else "01\n"), "")
-    assert calls == [budget] * (1 if command == "run" else 2)
-
-
-@pytest.mark.parametrize("command", ["run", "evaluate"])
-def test_portable_memory_budget_rejected_before_file_read(command, capsys):
-    module = "cli_run" if command == "run" else "cli_round_trip"
-    options = ["--isolated"] if command == "run" else ["--inputs", "1"]
-    with (
-        patch(f"esolangs.{module}._read_program", side_effect=AssertionError("read")),
-        pytest.raises(SystemExit) as caught,
-    ):
-        call_both(
-            [
-                command,
-                "--portable",
-                *options,
-                "--max-memory",
-                "0",
-                "Brainfuck",
-                "never-read.json",
-            ],
-            capsys,
-        )
-    assert caught.value.code == 2
-    assert "max_memory must be positive" in capsys.readouterr().err
-
-
-@pytest.mark.medium
-@pytest.mark.skipif(sys.platform != "linux", reason="Linux RLIMIT_AS only")
-@pytest.mark.parametrize("command", ["run", "evaluate"])
-def test_portable_program_executes_with_real_memory_cap(tmp_path, capsys, command):
-    source = esolangs.generate(
-        "Grapheme",
-        "01",
-        settings=DialectSettings(integer_conversion="after_each_letter"),
-    )
-    path = tmp_path / "program.json"
-    path.write_text(esolangs.dump_program("Grapheme", source), encoding="utf-8")
-    options = ["--isolated"] if command == "run" else ["--inputs", "1"]
-    output, error = call_both(
-        [
-            command,
-            "--portable",
-            *options,
-            "--max-memory",
-            str(96 * 1024 * 1024),
-            "Grapheme",
-            str(path),
-        ],
-        capsys,
-        esolangs.encode_inputs("Grapheme", [1]),
-    )
-    assert (output, error) == (("1" if command == "run" else "01\n"), "")
+    assert (output, error) == ("1", "")
+    assert calls == [budget]

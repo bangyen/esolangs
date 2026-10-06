@@ -90,7 +90,7 @@ class _Program:
         return True
 
     def _terminates(self, source: str, stdin: str) -> str:
-        """Return a termination-answer row's bit, as ``esolangs.evaluate``."""
+        """Return a termination-answer row's bit, as the private evaluation harness."""
         from esolangs._evaluate import _terminates
 
         try:

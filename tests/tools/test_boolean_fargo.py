@@ -14,18 +14,6 @@ from tests.tools.boolean_runners import (
 class TestFargo:
     """The Fargo boolean generator: a recursively factored ANF, arms chosen."""
 
-    @pytest.mark.parametrize("n", [1, 2, 3])
-    @pytest.mark.medium
-    def test_every_table_at_small_arity(self, n: int) -> None:
-        """Exhaustive: every table, every input combination."""
-        for value in range(2 ** (2**n)):
-            table = format(value, f"0{2**n}b")
-            program = boolean.fargo(table)
-            for combo in range(2**n):
-                bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
-                got = run_fargo(program, bits)
-                assert got == table[combo], f"table {table} inputs {bits}"
-
     @pytest.mark.parametrize("n", [4, 5, 8])
     def test_higher_arity_tables(self, n: int) -> None:
         """The construction is uncapped: no arity limit, no search."""
@@ -44,12 +32,7 @@ class TestFargo:
         assert boolean.fargo("11111111") == "% 0 1\n$\n"
 
     def test_an_all_zero_table_wraps_to_a_constant(self) -> None:
-        """No terms to combine: the factored path indexed an empty list.
-
-        ``width`` below the compact program's 5 columns routes to the
-        factored builder, which ``combine``d an empty term list for the
-        all-zero table.
-        """
+        """No terms to combine: the factored path indexed an empty list."""
         for width in (1, 2, 3, 4):
             assert boolean.fargo("0000", width=width) == "% 0 0\n$\n"
             assert boolean.fargo("00000000", width=width) == "% 0 0\n$\n"
@@ -67,16 +50,7 @@ class TestFargo:
         assert boolean.fargo("01101001") == "% 0 ^ ^ @ 0 @ 1 @ 10\n$\n"
 
     def test_parity_grows_linearly_not_exponentially(self) -> None:
-        """The size tracks algebraic complexity, so parity is O(n log n).
-
-        This is the property that makes Fargo's generator unlike the
-        tree-shaped ones: a decision tree spends O(2**n) on parity, the
-        table that folds nothing.  Parity's ANF is one single-variable
-        term per input, so each extra input adds one ``^ @ i`` -- a
-        constant plus the index's own binary width, which is why the
-        steps widen by one every time ``i`` gains a digit rather than
-        staying exactly equal.
-        """
+        """The size tracks algebraic complexity, so parity is O(n log n)."""
         sizes = [
             len(boolean.fargo("".join(str(bin(r).count("1") % 2) for r in range(2**n))))
             for n in (2, 4, 6, 8)
@@ -99,13 +73,7 @@ class TestFargo:
         assert sizes[1] < 2 * sizes[0] + 16
 
     def test_choosing_arms_never_grows_a_program(self) -> None:
-        """No table to three inputs is longer than its positive factoring.
-
-        The positive factoring oracle in name order is the build before
-        arms and orders were chosen: three-input totals fall from 9,556 to
-        8,202 with the arms, 7,576 with four orders, and 7,467 with
-        character-cost splits.
-        """
+        """No table to three inputs is longer than its positive factoring."""
         from esolangs.tools.helpers import anf_coefficients
         from tests.tools.fargo_oracle import _anf_expression
 

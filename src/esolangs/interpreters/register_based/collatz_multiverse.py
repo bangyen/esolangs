@@ -163,11 +163,6 @@ class _Machine:
         # The registers are kept in name order, so this is already sorted.
         return [value for _name, value in self.state[1]]
 
-    @property
-    def stack(self) -> list[object]:
-        """No stack in this language."""
-        return []
-
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         # Frozensets, as this always returned, built from stores that are
@@ -235,7 +230,8 @@ def _operand(state: _State, spec: _Operand, pending: list[int]) -> tuple[int, in
         return pending.pop(0), idx
     if name == "lineNumber":
         return state[0], idx
-    if index is not None:
+    # Cell zero shares the bare register, including negativeOne's initial value.
+    if index is not None and idx != 0:
         return _arr_get(state[2], name, idx), idx
     return _reg_get(state[1], name), idx
 
@@ -262,7 +258,7 @@ def _advance(
     next_ip = ip + 1
     if var1 == "lineNumber":
         next_ip = value
-    elif idx1 is not None:
+    elif idx1 is not None and target_index != 0:
         arrays = _arr_set(arrays, var1, target_index, value)
     else:
         regs = _reg_set(regs, var1, value)

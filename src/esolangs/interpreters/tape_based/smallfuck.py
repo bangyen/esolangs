@@ -48,10 +48,6 @@ class _Machine:
     def memory(self) -> list[int]:
         return list(self.state[2])
 
-    @property
-    def stack(self) -> list[object]:
-        return []
-
     def snapshot(self) -> tuple[object, ...]:
         ind, ptr, tape, _dumped = self.state
         return (ind, ptr, tape)

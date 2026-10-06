@@ -62,7 +62,7 @@ def prepare_call(
         raise with_hint(
             ArgumentError(
                 f"{name} draws no random values, so a seed has nothing to fix; "
-                "the languages that draw are Befunge, Fish, LaserFuck, "
+                "the languages that draw are Befunge, Befunge-98, Fish, LaserFuck, "
                 "Modulous, Painfuck, Super SNUSP, Thue and thisthat"
             ),
             ("omit seed when running a deterministic language"),

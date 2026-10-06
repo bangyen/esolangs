@@ -1,16 +1,4 @@
-"""The decoder's guards against images that are not Line programs.
-
-``extract.py``'s happy path is covered by the round trips in
-``test_bf_to_line.py``, which draw a real program and read it back.  What
-that can never reach is what the decoder does with a *degenerate* input: a
-blank canvas, a blob that is not an arrowhead, a stroke whose legs are not
-whole units.  Those arms are the ones a caller actually meets when handed
-an arbitrary PNG, and every one of them here was unexecuted.
-
-The unit helpers are called directly.  They take plain runs and lengths,
-so reaching them through a drawing would mean constructing the pixels that
-happen to produce the run -- a far less direct statement of the same fact.
-"""
+"""The decoder's guards against images that are not Line programs."""
 
 from __future__ import annotations
 
@@ -88,13 +76,7 @@ class TestClassifyingNothing:
 
 
 def _vertices(runs: list[tuple[int, int]]) -> list:
-    """Return vertices whose ``_direction_runs`` are exactly ``runs``.
-
-    A run is ``(heading, length)``, and ``_direction_runs`` reads the
-    heading off the first vertex and the length as the Chebyshev distance
-    to the next -- so advancing along one axis produces any run list, which
-    is what lets the scanner's rejection arms be stated as data.
-    """
+    """Return vertices whose ``_direction_runs`` are exactly ``runs``."""
     from esolangs.interpreters.tape_based.line.lattice import Vertex
 
     out = []
@@ -107,13 +89,7 @@ def _vertices(runs: list[tuple[int, int]]) -> list:
 
 
 class TestTheScannerRejects:
-    """Runs that are not kink legs.
-
-    The round trips in ``test_bf_to_line.py`` are the positive control:
-    they draw real opcodes and read them back, so what is left to state is
-    what the scanner does with a leg it cannot use.  Each case below is a
-    different way to fail, and none was executed.
-    """
+    """Runs that are not kink legs."""
 
     def test_a_stray_pixel_between_legs_is_skipped(self) -> None:
         """A run rounding to zero units advances without changing heading."""

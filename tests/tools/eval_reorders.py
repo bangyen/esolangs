@@ -1,10 +1,4 @@
-"""Eval's reorder catalog: the test-only oracle that ``eval`` needs no reorder.
-
-``eval`` emits the natural order.  These enumerate every reorder word the
-op cap admits and the arrangement each reaches, so a test can price every
-candidate against the emitted template.  Test-only: a generator may not
-search (docs/limitations.md), and nothing shipped reads this.
-"""
+"""Eval's reorder catalog: the test-only oracle that ``eval`` needs no reorder."""
 
 from functools import cache
 from math import factorial
@@ -37,11 +31,7 @@ _EVAL_OP_RANK = {"~": 0, "*": 1, "=": 2}
 
 
 def _eval_skeletons(max_ops: int) -> list[str]:
-    """Reorder-word skeletons, ``E`` marking an ``=``-run of unfixed length.
-
-    Starts with ``~``; no ``~~``, ``**`` or adjacent runs, which shorter
-    skeletons already spell.
-    """
+    """Reorder-word skeletons, ``E`` marking an ``=``-run of unfixed length."""
     out: list[str] = []
 
     def grow(skeleton: str, last: str, cost: int) -> None:
@@ -80,13 +70,7 @@ def _eval_fill_runs(
     budget: int,
     words: set[str],
 ) -> None:
-    """Add every word spelling ``skeleton`` whose runs balance within budget.
-
-    Runs fill left to right against the cap; ``balance`` is out-mass minus
-    in-mass and must land at zero.  The last run is an in-run whose length
-    is forced to ``balance``, which cuts the walk from 1091320 calls to
-    690617; the caller's skip takes it to 348053.
-    """
+    """Add every word spelling ``skeleton`` whose runs balance within budget."""
     count = len(directions)
     last = count - 1
 
@@ -145,19 +129,7 @@ def _eval_reorders(max_ops: int = _EVAL_MAX_OPS) -> tuple[str, ...]:
 
 @cache
 def _eval_stack_programs(n: int) -> dict[tuple[int, ...], str]:
-    """Shortest ops rearranging the staged bits into each arrangement.
-
-    Maps each input stack (bottom to top, by input index) to the ops
-    producing it: every catalog program is replayed cheapest first and the
-    first to reach an arrangement claims it.  Programs that underflow or
-    leave the tree stack dirty are skipped; through ``n == 4`` the reachable
-    arrangements are 1, 2, 6 and 24, and from ``n == 12`` all 735 programs
-    claim distinct ones.
-
-    **A runtime reorder, not a relabelling**: the input runs keep their
-    places and the nodes name no input, so the arrangement alone decides
-    which input a level tests.
-    """
+    """Shortest ops rearranging the staged bits into each arrangement."""
     reached: dict[tuple[int, ...], str] = {}
     # Arrangements are permutations, so ``n!`` claimed is exhaustive, not
     # a heuristic.  Fires at n <= 4; from n = 5 reach is 119 of 120.

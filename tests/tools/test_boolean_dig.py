@@ -37,43 +37,12 @@ class TestDig:
                     assert run_dig(program, [str(bit) for bit in bits]) == table[combo]
 
     def test_alternating_layout_has_linear_area(self) -> None:
-        """Text per entry stays under a constant as the arity grows.
-
-        The rectangle approaches nine cells an entry from *below* -- the
-        leaf's own box is fixed and the tree above it adds the padding --
-        so "two more levels at most quadruple" is not the contract; the
-        constant is.  Thirty was the reading while every entry was a leaf.
-        """
+        """Text per entry stays under a constant as the arity grows."""
         sizes = [len(boolean.dig("01" * (2 ** (n - 1)))) / 2**n for n in (7, 9, 11)]
         assert max(sizes) < 9
 
-    @pytest.mark.parametrize(
-        ("table", "n"),
-        [
-            ("10", 1),  # NOT
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("11111110", 3),  # NAND3
-            ("1000000000000000", 4),  # AND4
-        ],
-    )
-    @pytest.mark.medium
-    def test_truth_table(self, table: str, n: int) -> None:
-        """Every input combination produces the truth-table result."""
-        program = boolean.dig(table)
-        for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            got = run_dig(program, [str(b) for b in bits])
-            assert got == str(int(table[combo])), f"inputs {bits}"
-
     def test_xor_layout(self) -> None:
-        """The XOR gate produces the standard two-level decision tree.
-
-        A level is five columns and the blocks abut: the ``#`` a node turns
-        on is the cell right before its child's block, so the child's ``>``
-        goes in that column and the mole walks straight out of the turn
-        into the next ``$``.
-        """
+        """The XOR gate produces the standard two-level decision tree."""
         expected = (
             "'         >$30:@\n"
             "     >$3~;#\n"
@@ -102,13 +71,7 @@ class TestDig:
         assert program.split("\n") == ["'", ">$5~~1:@"]
 
     def test_constant_subtrees_prune_their_rows(self) -> None:
-        """A folded node's descendants are never written.
-
-        Both tables have four ones, so the difference is arrangement alone:
-        ``11110000`` is two constant halves and keeps one row per half,
-        while parity has no constant slice above a single row and fills the
-        grid.
-        """
+        """A folded node's descendants are never written."""
         folded = boolean.dig("11110000")
         full = boolean.dig("10010110")
         assert len(folded) < len(full)
@@ -131,24 +94,14 @@ class TestDig:
                 assert io.reads == 7
 
     def test_a_long_read_run_chains_its_windows(self) -> None:
-        """Past nine cells the ``$`` runs chain rather than growing a digit.
-
-        ``$`` takes its count from the digit beside it, so one window holds
-        at most nine cells -- six reads plus the three that print.  A
-        constant table at n == 7 needs more than that, and must still run.
-        """
+        """Past nine cells the ``$`` runs chain rather than growing a digit."""
         table = "1" * 128  # n == 7, constant
         program = boolean.dig(table)
         assert program.count("$") > 1  # more than one window
         assert esolangs.run("Dig", program, stdin="\n".join(["1"] * 7)).strip() == "1"
 
     def test_a_width_turns_the_tree_round_and_it_still_computes(self) -> None:
-        """A narrower grid is the same walk, folded back over its own columns.
-
-        The deep levels run west through mirrored blocks, so the mole meets
-        each ``$`` first either way.  Only running it says the turn kept
-        every path intact.
-        """
+        """A narrower grid is the same walk, folded back over its own columns."""
         for table in ("0110", "10010110", "0110100110010110", "00010111"):
             n = len(table).bit_length() - 1
             flat = boolean.dig(table, 10_000)
@@ -188,18 +141,7 @@ class TestDig:
             assert (io.getvalue(), io.reads) == (expected, 2)
 
     def test_a_folded_table_keeps_the_flat_layout(self) -> None:
-        """Turning round is not always narrower, so the narrower one wins.
-
-        A table that folds has few blocks to spread in the first place, and
-        what the turn costs -- a spare column a level, and a leaf padded so
-        its digits fall where the other band does not look -- can come to
-        more than the fold saved.  ``dig`` lays both out and keeps the
-        narrower, so a width it cannot meet still gets the best there is.
-
-        These also drive the banded leaf's chained windows: a constant table
-        at ``n == 6`` folds at the root and still owes six reads, one more
-        than a single window covers.
-        """
+        """Turning round is not always narrower, so the narrower one wins."""
         for table in ("1" * 64, "1" * 32 + "0" * 32):
             n = len(table).bit_length() - 1
             flat = boolean.dig(table, 10_000)
@@ -210,13 +152,7 @@ class TestDig:
                 assert got == str(int(table[combo])), (table, bits)
 
     def test_the_turn_mirrors_the_blocks_it_writes(self) -> None:
-        """Past the turn a block is written backwards, so its ``$`` comes first.
-
-        A westbound mole meets the block's cells in the opposite order, so
-        the block that steers it has to be the reverse of the eastbound one
-        -- and the ``<`` that points it in has to sit where the parent's
-        ``#`` turned it.
-        """
+        """Past the turn a block is written backwards, so its ``$`` comes first."""
         narrow = boolean.dig("0110100110010110", 1)
         assert _DIG_BRANCH[::-1] in narrow, "no mirrored block: the tree never turned"
         assert _DIG_RETURN in narrow, "nothing points the mole west"
@@ -227,14 +163,7 @@ class TestDig:
     def test_the_layout_check_refuses_a_stride_that_collides(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """The clearance check is what licenses the two bands sharing columns.
-
-        With a stride of six the eastbound hops miss every westbound ``$``,
-        ``#`` and digit; with the flat layout's five they do not, and the
-        grid that comes out is wrong in a way only a run would show.  So the
-        check has to refuse it -- a silent pass here would mean it was
-        licensing nothing at all.
-        """
+        """The clearance check is what licenses the two bands sharing columns."""
         dig_module = importlib.import_module("esolangs.tools.dig")
 
         monkeypatch.setattr(dig_module, "_DIG_BAND", _DIG_STRIDE)

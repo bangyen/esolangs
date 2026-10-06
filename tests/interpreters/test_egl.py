@@ -23,6 +23,22 @@ def test_character_input() -> None:
     assert execute("1,1:x=", "42\n") == "52"
 
 
+def test_dimensions_past_the_host_digit_limit_parse() -> None:
+    """A 5001-digit width (leading zeros) is still the valid width 1."""
+    assert execute("0" * 5000 + "1,1:+=") == "1"
+
+
+def test_a_cursorless_read_loop_is_not_a_cycle() -> None:
+    """Reads count in the snapshot: ``(x)`` runs to EOF, not a false cycle."""
+    from esolangs.interpreters.grid_based.egl import _Machine
+    from esolangs.vm import run_until_halt_or_cycle
+    from tests.interpreters.cursorless_io import CursorlessIO
+
+    machine = _Machine("1,1:+(x)", CursorlessIO("aaaaaaaa"))
+    with pytest.raises(EOFError):
+        run_until_halt_or_cycle(machine)
+
+
 def test_grid_output() -> None:
     assert execute("2,2:+>++v+++#") == "|1|2|\n|0|3|\n"
 

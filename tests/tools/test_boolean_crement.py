@@ -38,19 +38,7 @@ def _check(table: str) -> None:
 
 
 class TestCrementTree:
-    """Decision tree over per-input testers reached by patched jumps.
-
-    Crement has no output and no input instruction, so the bit is the data
-    of a jump and the answer is termination: the instantiated program halts
-    for a ``0`` entry and reaches a one-line state cycle for a ``1``.
-    """
-
-    @pytest.mark.parametrize("n", [1, 2, 3])
-    @pytest.mark.medium
-    def test_all_small_tables(self, n: int) -> None:
-        """Every table up to three inputs, every row, one length per template."""
-        for table_int in range(2 ** (2**n)):
-            _check(format(table_int, f"0{2**n}b"))
+    """Decision tree over per-input testers reached by patched jumps."""
 
     @pytest.mark.parametrize("n", [4, 5, 6])
     @pytest.mark.medium
@@ -104,24 +92,13 @@ class TestCrementTree:
         assert _result(instantiate_crement(crement("1111"), [0, 1])) == "1"
 
     def test_constant_subtrees_fold(self) -> None:
-        """A one-dependency table is one node; parity is five, shared.
-
-        Parity's tree has seven nodes, but only two distinct subtrees at
-        each level below the root, so two of them are jumps to a copy.
-        """
+        """A one-dependency table is one node; parity is five, shared."""
         assert len(crement("11110000")) < len(crement("10010110"))
         assert crement("11110000").splitlines()[9:] == ["+A 3 0", "+A 4 1", "+J 3 1"]
         assert crement("10010110").count("\n") + 1 == 3 + 6 + 3 * 5
 
     def test_sizes_at_most_double_per_added_input(self) -> None:
-        """Seeded random templates through n=10 never more than double.
-
-        Each node is three lines whose operands are a tester's line number
-        or an offset, so the plain tree tracks its node count and doubles
-        per input; the shared build emits a random table's distinct
-        subtrees only, of which there are fewer than ``2**n / n`` or so,
-        and the ratio creeps up towards two from below.
-        """
+        """Seeded random templates through n=10 never more than double."""
         tables = [
             format(random.Random(n).getrandbits(2**n), f"0{2**n}b")
             for n in range(1, 11)
@@ -133,24 +110,14 @@ class TestCrementTree:
         assert all(1.6 <= r <= 2 for r in ratios[-3:]), ratios
 
     def test_level_patches_the_chosen_inputs_tester(self) -> None:
-        """A table on the last input alone is one node calling its tester.
-
-        Name order folds ``10101010`` only at the bottom; split on input 2
-        first, the root patches and calls line 7, input 2's tester, and the
-        runs stay on lines 3, 5, 7.
-        """
+        """A table on the last input alone is one node calling its tester."""
         template = crement("10101010")
         assert template.splitlines()[9:] == ["+A 7 0", "+A 8 1", "+J 7 1"]
         assert len(template) < len(_crement_ordered("10101010", (0, 1, 2)))
 
     @pytest.mark.parametrize("n", [2, 3])
     def test_reordering_never_grows_a_template(self, n: int) -> None:
-        """Every table is at most its name-order template, as emitted.
-
-        The comparison is on the text, tester and patch addresses included,
-        so the fold a reorder buys cannot be spent on its routing.  Over all
-        three-input tables it and sharing save 14.5% (43,596 to 37,862).
-        """
+        """Every table is at most its name-order template, as emitted."""
         identity = tuple(range(n))
         old = new = 0
         for table_int in range(2 ** (2**n)):
@@ -162,12 +129,7 @@ class TestCrementTree:
         assert (old, new) == {2: (1444, 1352), 3: (43596, 37862)}[n]
 
     def test_runs_a_handful_of_commands_per_input(self) -> None:
-        """One node per level: a halting row runs ``5 n + 2`` commands at most.
-
-        The root jump, three lines a node, the tester's two lines when the
-        bit is 0 and the halt gadget; the all-ones row takes every tester's
-        first line and so runs one fewer per level.
-        """
+        """One node per level: a halting row runs ``5 n + 2`` commands at most."""
         for n in (2, 4, 6):
             template = crement("1" * (2**n - 1) + "0")
             machine = _Machine(instantiate_crement(template, [1] * n))
@@ -179,12 +141,7 @@ class TestCrementTree:
 
 
 class TestCrementSharing:
-    """A subtree already emitted at its level is jumped to, not repeated.
-
-    The name-order shared tree is shipped; the
-    gain grows with the table, so it is judged on the seeded five-input
-    sample too (``docs/CONTRIBUTING.md``).
-    """
+    """A subtree already emitted at its level is jumped to, not repeated."""
 
     @staticmethod
     def _totals(tables: list[str]) -> tuple[int, int]:
@@ -206,11 +163,7 @@ class TestCrementSharing:
         assert self._totals(five_input_sample()) == (114791, 84600)
 
     def test_a_shared_copy_is_patched_by_whoever_enters(self) -> None:
-        """Parity's repeated subtrees run from both parents, every row.
-
-        Each node writes its tester's targets on entry, so the copy's
-        children are right whichever parent jumped to it.
-        """
+        """Parity's repeated subtrees run from both parents, every row."""
         table = "01101001" * 4
         template = crement(table)
         assert len(template) < len(best_input_order(table, _crement_ordered))

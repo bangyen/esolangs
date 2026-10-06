@@ -182,11 +182,6 @@ class _Machine:
         """The addressable cells."""
         return [self.state[3]]
 
-    @property
-    def stack(self) -> list[object]:
-        """No stack in this language."""
-        return []
-
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         # The six live fields plus the input cursor, in the order this
@@ -207,10 +202,10 @@ class _Machine:
             if move(row, col, r, self.code, self.state[3])[3] == ".":
                 # ``InputExhaustedError`` (an ``EOFError`` too), not the
                 # bare one: a sweep on ``except EsolangError`` crashed here.
-                # Counts via ``getattr``: the base ``IO`` does not keep them.
-                raise InputExhaustedError(
-                    getattr(self.io, "reads", 0), getattr(self.io, "supplied", 0)
-                )
+                # Bits, not lines: the input was read up front as
+                # characters, so the failed read is the first and the
+                # supply is the character cursor.
+                raise InputExhaustedError(0, self.io.position(), "character")
         self.state, byte = _advance(self.state, self.code)
         if byte is not None:
             self.io.print_char(chr(byte))

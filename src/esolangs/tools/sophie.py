@@ -39,8 +39,8 @@ def sophie(truth_table: str) -> str:
 #: ``1`` (48/49), so a block labelled either would fire on an ordinary bit.
 _SOPHIE_RESERVED = frozenset({_ASCII_ZERO, _ASCII_ONE})
 
-#: Values spelled as one character, ``#c``/``@c{``: not ``$``, brackets
-#: (``_partners`` ignores loads), ``#`` (``matches`` misreads ``@#{``) or space.
+#: Stable printable label alphabet, excluding syntax markers; other values
+#: use numeric spelling.
 _SOPHIE_CHARACTERS = frozenset(range(33, 127)) - {ord(c) for c in "#$[]{}"}
 
 

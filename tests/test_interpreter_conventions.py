@@ -1,26 +1,4 @@
-"""Source-shape conventions the interpreters share, swept over the tree.
-
-``_template.py`` asks every interpreter to be written as a *pure
-transition* over an immutable state: the module-level helpers take a state
-and return the next one, reaching no ``IO``, and ``_Machine.step`` is the
-thin shell that performs the reads and writes.  That split is what lets a
-test call a transition on a hand-built state, and it keeps the effects in
-one place instead of scattered through the dispatch.
-
-Nothing enforced it.  The convention is prose in a template, and the two
-sweeps that look like they would catch a violation do not: the VM protocol
-tests drive machines and never read the source, and
-:meth:`~tests.test_vm_protocol.TestEveryLanguageIsPure.
-test_interleaved_machines_do_not_disturb_each_other` catches output
-escaping to the *real* stdout, which a helper writing properly through the ``io`` it
-was handed does not do.  A language that moved its dispatch into a
-module-level function and let it print would pass every existing test.
-
-So this file asks the source-shape question the runtime cannot: which
-functions call an IO effect outside the public ``run``/``_Machine`` shell.
-The answer is a closed, deliberate set -- there is no drift to fix, which
-is the point.  The sweep is a net that fails when it grows.
-"""
+"""Source-shape conventions the interpreters share, swept over the tree."""
 
 import ast
 import inspect
@@ -68,15 +46,7 @@ _MAY_REACH_IO = frozenset(
 
 
 def _io_surface() -> frozenset[str]:
-    """Return the IO effect method names, read off the ``IO`` classes.
-
-    Derived rather than listed.  A hand-written list is a second thing to
-    keep in step with ``io.py``, and the first draft of this sweep proved
-    the cost: it omitted ``print_value``, so an evaluator that prints
-    through exactly that looked pure.  A detector with a
-    hole in it reports a clean tree because it is not looking, which is the
-    failure this whole file exists to prevent.
-    """
+    """Return the IO effect method names, read off the ``IO`` classes."""
     return frozenset(
         name
         for cls in (IO, ScriptedIO)
@@ -86,14 +56,7 @@ def _io_surface() -> frozenset[str]:
 
 
 def _module_files() -> list[pathlib.Path]:
-    """Return every interpreter module, read off the tree.
-
-    Globbed rather than listed by category. The retired docstring checker
-    walked a hard-coded four-name category tuple that predated
-    ``grid_based`` and ``queue_based``, so twelve of the sixty-three
-    interpreters were exempt from it and three real violations sat behind
-    the omission.  A walk that discovers the tree cannot acquire that hole.
-    """
+    """Return every interpreter module, read off the tree."""
     return sorted(
         [path for path in _INTERPRETERS.glob("*/*.py") if not path.name.startswith("_")]
         + list(_INTERPRETERS.glob("*/*/__init__.py"))
@@ -101,14 +64,7 @@ def _module_files() -> list[pathlib.Path]:
 
 
 def _is_io_receiver(node: ast.expr) -> bool:
-    """Whether ``node`` is the ``io`` object an effect is called through.
-
-    A method named ``position`` is not necessarily :meth:`IO.position`:
-    code cursors use the same ordinary word.  The original module-level
-    sweep happened not to see that collision; walking methods makes the
-    receiver part of the question.  Ports are either a local ``io`` or an
-    attribute such as ``self.io``/``reader.io``.
-    """
+    """Whether ``node`` is the ``io`` object an effect is called through."""
     return (isinstance(node, ast.Name) and node.id == "io") or (
         isinstance(node, ast.Attribute) and node.attr == "io"
     )
@@ -159,11 +115,7 @@ class TestTheSweepCanSee:
     """The detector's own coverage, which the checks below take on trust."""
 
     def test_every_registered_interpreter_is_walked(self) -> None:
-        """The glob reaches every module the registry names.
-
-        Without this the sweep could pass by walking the wrong directory,
-        or by missing a category the way the docstring checker missed two.
-        """
+        """The glob reaches every module the registry names."""
         walked = {
             path.relative_to(_INTERPRETERS)
             .as_posix()
@@ -179,11 +131,7 @@ class TestTheSweepCanSee:
         assert sorted(registered - walked) == []
 
     def test_the_io_surface_is_not_empty(self) -> None:
-        """``IO`` still has effect methods under the names this reads.
-
-        A rename in ``io.py`` that emptied the derived surface would make
-        every check below vacuous -- passing because it detects nothing.
-        """
+        """``IO`` still has effect methods under the names this reads."""
         surface = _io_surface()
         assert {"print_str", "print_char", "print_value", "input_str"} <= surface
 
@@ -192,12 +140,7 @@ class TestTransitionsDoNotReachIO:
     """The convention itself, pinned in both directions."""
 
     def test_no_unlisted_module_function_calls_io(self) -> None:
-        """Only ``run`` and the pinned exceptions reach the ports.
-
-        A language that moved its dispatch to a module-level helper and
-        printed from it -- abandoning the transition/shell split without
-        anybody noticing -- fails here and nowhere else.
-        """
+        """Only ``run`` and the pinned exceptions reach the ports."""
         unexpected = {
             where: calls
             for where, calls in _reaching_functions().items()
@@ -213,13 +156,7 @@ class TestTransitionsDoNotReachIO:
     def test_each_listed_exception_still_reaches_io(
         self, module: str, function: str
     ) -> None:
-        """The exception list is exact, so it cannot become a stale roster.
-
-        An entry whose function was renamed, deleted, or refactored back
-        into a shell stops excusing anything.  Left unchecked the list
-        would slowly fill with names nobody had reconfirmed, which is how
-        an exception set turns into a place violations hide.
-        """
+        """The exception list is exact, so it cannot become a stale roster."""
         assert (module, function) in _reaching_functions()
 
 
@@ -271,12 +208,7 @@ def test_a_bare_halt_still_says_something() -> None:
 
 
 def test_no_interpreter_halts_without_saying_why() -> None:
-    """The inventory only shrinks.
-
-    Pinned per file rather than as a total, so a file that gains one while
-    another loses one is still a failure -- that trade is not progress, and
-    a single number would hide it.
-    """
+    """The inventory only shrinks."""
     found = _wordless_halts()
     grew = {
         name: (count, _WORDLESS_HALTS.get(name, 0))
@@ -357,20 +289,7 @@ def test_interpreter_docstrings_follow_the_template() -> None:
 
 
 class TestEntryPointConventions:
-    """The shared ``__main__`` body stays shared, and declares the right shape.
-
-    Before ``interpreters/_entry.py`` each module carried its own copy of
-    this block, in nine variants; coverage excludes ``if __name__`` blocks,
-    so nothing measured any of them and the variants were invisible.  Two
-    assertions keep that from growing back.
-
-    The second is the one that catches a real mistake.  ``shape`` decides
-    whether ``run`` is handed the whole text or a list of lines, and a wrong
-    value is silent at import, silent under the test suite -- which calls
-    ``run`` directly -- and wrong only for someone running the module or a
-    bundle.  ``run``'s own annotation already says which it takes, so the
-    two are cross-checked here rather than left to agree by luck.
-    """
+    """The shared ``__main__`` body stays shared, and declares the right shape."""
 
     @staticmethod
     def _main_call(path: pathlib.Path) -> ast.Call:

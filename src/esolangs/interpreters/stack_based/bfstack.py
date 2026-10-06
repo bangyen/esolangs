@@ -138,11 +138,6 @@ class _Machine:
         return self.state[0]
 
     @property
-    def memory(self) -> list[int]:
-        """BFStack addresses no cells; its store is the stack."""
-        return []
-
-    @property
     def stack(self) -> list[int]:
         """The data stack, bottom first."""
         # A list, because that is the shape the VM's view is defined in.

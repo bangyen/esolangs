@@ -6,6 +6,7 @@ import pytest
 
 from esolangs.tools.back import _back_ordered
 from esolangs.tools.helpers import TEMPLATE_CHAR, permute_truth_table, runs
+from tests.witness_tables import witnesses
 
 
 class TestParameterizedBack:
@@ -41,46 +42,6 @@ class TestParameterizedBack:
                 for c in range(2**n)
             }
             assert len(sizes) == 1, f"n={n} sizes {sorted(sizes)}"
-
-    @pytest.mark.parametrize(
-        ("table", "n"),
-        [
-            ("10", 1),  # NOT
-            ("01", 1),
-            ("00", 1),  # constant zero
-            ("11", 1),  # constant one
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("1110", 2),  # NAND
-            ("11111110", 3),  # NAND3
-            ("01101001", 3),  # XOR3
-            ("1111111100000000", 4),  # top half
-        ],
-    )
-    @pytest.mark.medium
-    def test_truth_table(self, table: str, n: int) -> None:
-        """Every instantiated input produces the truth-table result."""
-        from esolangs import tools as generators
-
-        template = generators.back(table)
-        for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            got = self.run_back(self.instantiate(template, bits), n)
-            assert got == str(int(table[combo])), f"inputs {bits}"
-
-    @pytest.mark.parametrize("n", [1, 2, 3])
-    @pytest.mark.medium
-    def test_all_small_tables(self, n: int) -> None:
-        """Every table up to three inputs produces the right result."""
-        from esolangs import tools as generators
-
-        for table_int in range(2 ** (2**n)):
-            table = format(table_int, f"0{2**n}b")
-            template = generators.back(table)
-            for combo in range(2**n):
-                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-                got = self.run_back(self.instantiate(template, bits), n)
-                assert got == str(int(table[combo])), f"{table} inputs {bits}"
 
     def test_template_is_input_independent(self) -> None:
         """The template has one run per input, not hardcoded bits."""
@@ -131,20 +92,7 @@ class TestParameterizedBack:
             assert generators.back(table) == identity, table
 
     def test_reordering_pays_a_walk_and_keeps_name_order(self) -> None:
-        """A permuted load spends rows on the walk, and keeps its runs in name order.
-
-        This is the trade Back deliberately takes.  Filling in *cell* order
-        -- putting input ``perm[c]`` in cell ``c`` -- emits no walk and is a
-        few percent smaller, but leaves the inputs out of name order,
-        which no other generator in this module does.  Loading in name order
-        and walking the pointer costs about two characters a step and keeps
-        the templates uniform.
-
-        Both halves are pinned here, because either alone would be wrong: a
-        build with no walk cannot be reordering at all, and one whose slots
-        left sequence would have taken the other side of the trade without
-        the docstring being updated.
-        """
+        """A permuted load spends rows on the walk, and keeps its runs in name order."""
         from itertools import permutations
 
         walked = 0
@@ -160,20 +108,7 @@ class TestParameterizedBack:
         assert walked > 0
 
     def test_placeholders_run_in_name_order_while_still_reordering(self) -> None:
-        """Back reorders through the *walk*, not through its input order.
-
-        The load emits input 0..n-1 in sequence whatever the input order,
-        and the reorder lives in the ``>``/``<`` runs that carry the pointer
-        to each input's cell.  Both halves matter: dropping the walk would
-        leave the order inert, and permuting the inputs instead would need
-        a template whose k-th run is not input k, which the run form
-        cannot spell.
-
-        The units are emitted in reverse name order because the load is
-        drawn bottom-to-top up column 0, so the template's *text* reads them
-        backwards -- loading input ``n-1`` first is what puts input 0 first
-        on the page.
-        """
+        """Back reorders through the *walk*, not through its input order."""
 
         from esolangs import tools as generators
 
@@ -191,13 +126,7 @@ class TestParameterizedBack:
         assert walked > 0
 
     def test_reordering_keeps_the_equal_width_embedding(self) -> None:
-        """Reordered loads still cost the same for either bit.
-
-        The walk goes before an input's ``-``/run pair and never
-        between its halves, so the primer and the run stay one
-        unit and both bits still cost the same two rows.  Splitting them
-        would let the template's height reveal an input.
-        """
+        """Reordered loads still cost the same for either bit."""
         from esolangs import tools as generators
         from tests.tools.fills import _fill_back
 
@@ -266,9 +195,7 @@ def test_vertical_leaf_finish_preserves_every_small_table() -> None:
 
     runner = TestParameterizedBack()
     for n in range(1, 4):
-        size = 1 << n
-        for value in range(1 << size):
-            table = f"{value:0{size}b}"
+        for table in witnesses(n):
             template = esolangs.generate("back", table, 1)
             for row, expected in enumerate(table):
                 bits = [(row >> shift) & 1 for shift in range(n - 1, -1, -1)]

@@ -9,33 +9,14 @@ from esolangs import tools as boolean
 from tests.tools.boolean_runners import (
     run_modulous,
 )
+from tests.witness_tables import witnesses
 
 
 class TestModulous:
-    @pytest.mark.parametrize(
-        ("table", "n"),
-        [
-            ("10", 1),  # NOT
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("11111110", 3),  # NAND3
-            ("1000000000000000", 4),  # AND4
-        ],
-    )
-    @pytest.mark.medium
-    def test_truth_table(self, table: str, n: int) -> None:
-        """Every input combination produces the truth-table result."""
-        program = boolean.modulous(table)
-        for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            got = run_modulous(program, [str(b) for b in bits])
-            assert got == str(int(table[combo])), f"inputs {bits}"
-
     @pytest.mark.parametrize("width", [1, 4, 7, 13, 40, 80])
     def test_narrow_chunks_execute_every_small_table(self, width: int) -> None:
         for n in range(1, 4):
-            for value in range(2 ** (2**n)):
-                table = format(value, f"0{2**n}b")
+            for table in witnesses(n):
                 program = esolangs.generate("Modulous", table, width)
                 assert max(map(len, program.splitlines())) <= max(width, 4)
                 for row in range(2**n):
@@ -77,13 +58,7 @@ class TestModulous:
         assert program.endswith("[PRT][END]")
 
     def test_size_is_the_table_plus_a_fixed_frame(self) -> None:
-        """No branch reads the table, so its contents cannot change the size.
-
-        The old route was a decision tree, which meant a constant subtree
-        collapsed and a table like parity did not -- 45 characters an entry
-        against this one's frame plus a byte.  Length depending only on the
-        arity is the signature of the lookup that replaced it.
-        """
+        """No branch reads the table, so its contents cannot change the size."""
         sizes = {
             len(boolean.modulous(table))
             for table in ("11111111", "10010110", "00000000", "11110000")

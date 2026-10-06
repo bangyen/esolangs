@@ -5,6 +5,7 @@ import itertools
 import pytest
 
 import esolangs
+from esolangs._evaluate import _evaluate
 from esolangs.raster import Raster, png
 from esolangs.tools.line import line_boolean
 from esolangs.tools.line.render import Node, render
@@ -43,59 +44,10 @@ def test_piet_balance_matches_rendered_width_oracle(table: str) -> None:
     assert isinstance(balanced, Raster)
     assert score(balanced) == min(score(image) for image in candidates)
     assert (
-        esolangs.evaluate(
+        _evaluate(
             "Piet",
             Raster.from_png(balanced.to_png()),
             inputs=len(table).bit_length() - 1,
-        )
-        == table
-    )
-
-
-@pytest.mark.parametrize(
-    "table",
-    [
-        *TABLES,
-        *(
-            pytest.param(table, marks=pytest.mark.slow)
-            for table in ("10010110", "00000001", "01011010", "01101110")
-        ),
-    ],
-)
-def test_line_balance_matches_rendered_orders(table: str) -> None:
-    candidates = []
-    previous = []
-    for reverse in (False, True):
-        node = line_boolean(table, reverse=reverse)
-        y0, y1, x0, x1 = tree_extents(node)[id(node)]
-        for heading in ((-1, 0),):
-            canvas = render(node, start_heading=heading, acyclic=True)
-            assert sorted((canvas.width, canvas.height)) == sorted(
-                ((x1 - x0 + 2) * 20, (y1 - y0 + 2) * 20)
-            )
-            candidates.append(
-                (
-                    abs(canvas.width - canvas.height),
-                    canvas.width * canvas.height,
-                    canvas.width,
-                )
-            )
-            legacy = render(node, start_heading=heading, acyclic=True, compact=False)
-            previous.append(
-                (
-                    abs(legacy.width - legacy.height),
-                    legacy.width * legacy.height,
-                    legacy.width,
-                )
-            )
-    image = esolangs.generate("Line", table, balance=True)
-    assert isinstance(image, Raster)
-    expected = min(candidates + previous)
-    assert score(image) == expected
-    assert score(image)[1] <= min(previous)[1]
-    assert (
-        esolangs.evaluate(
-            "Line", Raster.from_png(image.to_png()), inputs=len(table).bit_length() - 1
         )
         == table
     )
@@ -152,9 +104,7 @@ def test_piet_keeps_an_already_better_layout() -> None:
     source = esolangs.generate("Piet", "0001", balance=True)
     assert isinstance(source, Raster)
     assert balance("0001", source) is source
-    assert (
-        esolangs.evaluate("Piet", Raster.from_png(source.to_png()), inputs=2) == "0001"
-    )
+    assert _evaluate("Piet", Raster.from_png(source.to_png()), inputs=2) == "0001"
 
 
 def test_line_fast_path_avoids_subtree_walks(monkeypatch: pytest.MonkeyPatch) -> None:

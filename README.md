@@ -7,11 +7,25 @@
 
 <!-- PACKAGE-COUNT:START -->
 
-Interpreters and Boolean generators for 81 esoteric languages: 79 text and 2 raster.
+Interpreters and Boolean generators for 82 esoteric languages: 80 text and 2 raster.
 
 <!-- PACKAGE-COUNT:END -->
 
-`generate` builds a truth-table program; `evaluate` returns its observed table.
+`generate` builds a truth-table program; `run` executes it on one input row.
+
+## Quickstart
+
+A table lists outputs for inputs `00, 01, 10, 11` in order, so `0110` is XOR:
+
+```bash
+pip install esolangs
+esolangs generate brainfuck 0110 > xor.bf
+for i in 00 01 10 11; do printf $i | esolangs run brainfuck xor.bf; echo " <- $i"; done
+# 0 <- 00
+# 1 <- 01
+# 1 <- 10
+# 0 <- 11
+```
 
 Start with the [CLI](#command-line) or [Python API](#python-api).
 The [usage guide](https://github.com/bangyen/esolangs/blob/main/docs/usage.md)
@@ -43,16 +57,14 @@ The Polynomial interpreter needs the optional mathematics extra:
 ```python
 import esolangs
 
-program = esolangs.generate("Fargo", "10010110")
-esolangs.evaluate("Fargo", program, timeout=None, inputs=3)  # -> '10010110'
+program = esolangs.generate("brainfuck", "0110")
+stdin = esolangs.encode_inputs("brainfuck", [0, 1])
+assert (
+    esolangs.read_answer("brainfuck", esolangs.run("brainfuck", program, stdin)) == "1"
+)
 ```
 
-Compare the result with the expected table, or use CLI `evaluate --table TABLE`.
-Termination answers require a proved halt or cycle; a timeout raises
-`ExecutionTimeoutError`.
 Use `isolated=True` for a bounded run on Windows or worker threads.
-The default in-process row timeout requires a Unix main thread;
-`timeout=None` disables that bound.
 
 Use the intended language: Suffolk source may run as brainfuck with a wrong
 answer. Use
@@ -88,6 +100,7 @@ stack    (empty)
 output   ''
 views    deques={0: [0, 1], 1: [1]}  pointers=[_Pointer(row=1, col=57, d=(
 hjkl move | t break | space step | c continue | r run | b back | q quit
+R restart | w/W watch | G to ip | 0-9 count | p play | +/- speed
 ```
 
 See [debugging](https://github.com/bangyen/esolangs/blob/main/docs/usage.md#debugging) for controls.
@@ -96,7 +109,7 @@ See [debugging](https://github.com/bangyen/esolangs/blob/main/docs/usage.md#debu
 
 <!-- EXAMPLES:START -->
 
-Ready-to-run programs for each of the 77
+Ready-to-run programs for each of the 78
 languages with a boolean generator live in
 [`examples/`](https://github.com/bangyen/esolangs/tree/main/src/esolangs/examples).
 
@@ -112,7 +125,7 @@ Familiar languages include [brainfuck](https://esolangs.org/wiki/brainfuck),
 <details>
 <!-- IMPLEMENTED:START -->
 
-<summary>Show all 81 languages</summary>
+<summary>Show all 82 languages</summary>
 
 ### Grid-based Languages
 
@@ -123,6 +136,7 @@ Languages that move a pointer or beam across a 2D grid.
 - [ArrowQueue](https://esolangs.org/wiki/ArrowQueue) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/arrowqueue.py))
 - [B-tapemark](https://esolangs.org/wiki/B-tapemark) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/b_tapemark.py))
 - [Befunge](https://esolangs.org/wiki/Befunge) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/befunge.py))
+- [Befunge-98](https://esolangs.org/wiki/Befunge-98) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/befunge_98.py))
 - [Circuit Diagram](https://esolangs.org/wiki/Circuit_Diagram) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/circuit_diagram.py))
 - [Clockwise](https://esolangs.org/wiki/Clockwise) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/clockwise.py))
 - [Dig](https://esolangs.org/wiki/Dig) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/dig.py))
@@ -235,7 +249,7 @@ Languages that don't fit into the above categories.
 <!-- BOOLEAN-COUNT:START -->
 
 The truth table is a binary string of length `2**n`, most-significant input
-first; its length implies `n`, so it isn't passed separately.  77 of the
+first; its length implies `n`, so it isn't passed separately.  78 of the
 languages have such a generator, some covering only a documented subset of
 tables.
 

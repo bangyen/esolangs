@@ -13,6 +13,7 @@ import io as _stdlib_io
 
 from esolangs._input import InputSource, read_input
 from esolangs.exceptions import ArgumentError, InputExhaustedError
+from esolangs.interpreters.memory import parse_integer
 from esolangs.interpreters.source_hints import syntax_error
 
 
@@ -122,7 +123,7 @@ class IO:
         """Read a whitespace-delimited integer from the shared cursor."""
         token = self.input_token(prompt)
         try:
-            return int(token)
+            return parse_integer(token)
         except ValueError as exc:
             raise syntax_error(
                 f"input must be an integer, got {token!r}",

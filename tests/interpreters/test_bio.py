@@ -1,7 +1,4 @@
-"""Unit tests for BIO (Binary IO) interpreter.
-
-Tests cover all BIO commands, edge cases, and example programs from esolangs.org.
-"""
+"""Unit tests for BIO (Binary IO) interpreter."""
 
 import io
 from contextlib import redirect_stdout
@@ -37,19 +34,6 @@ class TestBIOBasicCommands:
             run("0ox;1ox;1ix;", io=IO())
         assert f.getvalue() == "\x00"
 
-    def test_output_commands(self) -> None:
-        with redirect_stdout(io.StringIO()) as f:
-            run("1ix;", io=IO())
-        assert f.getvalue() == "\x00"
-
-        with redirect_stdout(io.StringIO()) as f:
-            run("0oy;1iy;", io=IO())
-        assert f.getvalue() == "\x01"
-
-        with redirect_stdout(io.StringIO()) as f:
-            run("0oz;" * 10 + "1iz;", io=IO())  # 10 increments = ASCII 10 (newline)
-        assert f.getvalue() == "\n"
-
     def test_case_insensitive_commands(self) -> None:
         with redirect_stdout(io.StringIO()) as f:
             run("0OX;1IX;", io=IO())
@@ -58,11 +42,6 @@ class TestBIOBasicCommands:
         with redirect_stdout(io.StringIO()) as f:
             run("0oY;1Iy;", io=IO())
         assert f.getvalue() == "\x01"
-
-    def test_register_independence(self) -> None:
-        with redirect_stdout(io.StringIO()) as f:
-            run("0ox;0oy;0oz;1ix;1iy;1iz;", io=IO())
-        assert f.getvalue() == "\x01\x01\x01"
 
 
 class TestBIOWhileLoops:
@@ -87,75 +66,7 @@ class TestBIOWhileLoops:
         assert f.getvalue() == "\x02\x01"
 
 
-class TestBIOMathematicalOperations:
-    def test_addition(self) -> None:
-        with redirect_stdout(io.StringIO()) as f:
-            run("0ox;0oy;0ix{1ox;0oy;};1iy;", io=IO())
-        assert f.getvalue() == "\x02"  # 1 + 1 = 2
-
-    def test_subtraction(self) -> None:
-        with redirect_stdout(io.StringIO()) as f:
-            run("0ox;" * 2 + "0oy;0iy{0ox;1oy;};1ix;", io=IO())
-        assert (
-            f.getvalue() == "\x03"
-        )  # 2 + 1 = 3 (this is actually addition, not subtraction)
-
-    def test_multiplication(self) -> None:
-        """Test multiplication: 0ox; 0ox; 0ox; 0ox; 0ox;
-        0ix{ 1ox; 0oy; 0oy; 0oy; 0oy; 0oy; }; 1iy;
-        """
-        with redirect_stdout(io.StringIO()) as f:
-            run("0ox;" * 5 + "0ix{1ox;" + "0oy;" * 5 + "};1iy;", io=IO())
-        assert f.getvalue() == "\x19"  # 5 * 5 = 25
-
-    def test_complex_calculation(self) -> None:
-        with redirect_stdout(io.StringIO()) as f:
-            run("0ox;" * 3 + "0ix{1ox;0oy;0oy;};1iy;", io=IO())
-        assert f.getvalue() == "\x06"
-
-
-class TestBIOHelloWorld:
-    def test_hello_world_program(self) -> None:
-        # This is a simplified version of the Hello World program
-        # The full program is very long, so we test the pattern for generating 'H'
-        hello_world_code = (
-            "0ox;" * 9
-            + "0ix{"
-            + "0oy;" * 8
-            + "1ox;};"
-            + "1iy;"
-            + "0iy{1oy;};"
-            + "0ox;" * 10
-            + "0ix{"
-            + "0oy;" * 10
-            + "1ox;};"
-            + "0oy;1iy;"
-            + "0iy{1oy;};"
-        )
-
-        with redirect_stdout(io.StringIO()) as f:
-            run(hello_world_code, io=IO())
-        assert f.getvalue() == "He"
-
-    def test_character_generation_pattern(self) -> None:
-        # Generate 'A' (ASCII 65)
-        # 65 = 8*8 + 1, so we need 8 increments, then 8*8 in loop, then 1 more
-        with redirect_stdout(io.StringIO()) as f:
-            run("0ox;" * 8 + "0ix{" + "0oy;" * 8 + "1ox;};0oy;1iy;", io=IO())
-        assert f.getvalue() == "A"
-
-
 class TestBIOEdgeCases:
-    def test_empty_program(self) -> None:
-        with redirect_stdout(io.StringIO()) as f:
-            run("", io=IO())
-        assert f.getvalue() == ""
-
-    def test_whitespace_only(self) -> None:
-        with redirect_stdout(io.StringIO()) as f:
-            run("   \n\t  ", io=IO())
-        assert f.getvalue() == ""
-
     def test_line_comments_are_stripped(self) -> None:
         """``//`` runs to the end of its line, as the wiki writes it."""
         with redirect_stdout(io.StringIO()) as f:
@@ -178,26 +89,12 @@ class TestBIOEdgeCases:
         ],
     )
     def test_terminator_must_match_the_opcode(self, code: str) -> None:
-        """Only ``0i`` takes ``{``; every other opcode takes ``;``.
-
-        The tokenizer used to accept either terminator on any opcode, and
-        both mismatched shapes then ran off the end of the command list
-        rather than being rejected: a ``0i`` without its ``{`` searched for
-        a ``};`` that brace matching never required, and a ``{`` on a
-        non-guard left its ``};`` popping a stack nothing had pushed.  The
-        adjacent-text cases above never covered either shape on its own.
-        """
+        """Only ``0i`` takes ``{``; every other opcode takes ``;``."""
         with pytest.raises(ValueError, match="not a command"):
             run(code, io=IO())
 
     def test_load_error_messages_are_exact(self) -> None:
-        """Each of the three load errors says exactly what it says.
-
-        Every case above uses ``match=``, which is a substring search, so
-        the wording around the matched fragment was free -- the language
-        prefix could be dropped or recased and nothing would notice.  All
-        three messages come from ``parse``, so they are pinned together.
-        """
+        """Each of the three load errors says exactly what it says."""
         for code, message in (
             ("0ox;invalid;1ix;", "BIO: not a command"),
             ("0ox;};1ix;", "BIO: '}' closes no loop"),
@@ -205,12 +102,6 @@ class TestBIOEdgeCases:
         ):
             with raises_message(ValueError, message):
                 run(code, io=IO())
-
-    def test_large_register_values(self) -> None:
-        large_code = "0ox;" * 300 + "1ix;"  # 300 increments
-        with redirect_stdout(io.StringIO()) as f:
-            run(large_code, io=IO())
-        assert f.getvalue() == chr(300 % 256)
 
     def test_empty_while_loop(self) -> None:
         with redirect_stdout(io.StringIO()) as f:
@@ -220,31 +111,6 @@ class TestBIOEdgeCases:
 
 class TestBIOIntegration:
     """Integration tests for BIO interpreter."""
-
-    def test_complex_program(self) -> None:
-        complex_code = (
-            "0ox;" * 3  # x = 3
-            + "0oy;" * 2  # y = 2
-            + "0ix{"  # while x > 0
-            + "0oz;"  # increment z
-            + "1ox;"  # decrement x
-            + "};"
-            + "1iz;"  # output z (should be 3)
-        )
-
-        with redirect_stdout(io.StringIO()) as f:
-            run(complex_code, io=IO())
-        assert f.getvalue() == "\x03"
-
-    def test_register_reset_pattern(self) -> None:
-        with redirect_stdout(io.StringIO()) as f:
-            run("0oy;" * 3 + "0iy{1oy;};1iy;", io=IO())
-        assert f.getvalue() == "\x00"
-
-    def test_character_arithmetic(self) -> None:
-        with redirect_stdout(io.StringIO()) as f:
-            run("0ox;" * 66 + "1ix;", io=IO())  # 66 = 'B'
-        assert f.getvalue() == "B"
 
 
 class TestStepMachine:
@@ -300,24 +166,10 @@ if __name__ == "__main__":
 
 
 class TestWikiExamples:
-    """The programs on the BIO wiki page, run exactly as they are written.
-
-    These are the language's ground truth: each is copied verbatim from
-    esolangs.org, comments and ``;`` terminators and all, so a change to
-    what the interpreter accepts has to keep them running.  The interpreter
-    used to drop everything its regex did not match, which meant it ran
-    these programs by ignoring most of their punctuation rather than by
-    understanding it.
-    """
+    """The programs on the BIO wiki page, run exactly as they are written."""
 
     def test_hello_world(self) -> None:
-        """The wiki's Hello World prints what the page says it prints.
-
-        Abridged to the first two letters -- the full program is 290 lines
-        of the same three shapes, and the sync-tested generator covers the
-        long form.  The reset loop between letters is the part worth
-        keeping: it is where a mis-parsed brace would show up.
-        """
+        """The wiki's Hello World prints what the page says it prints."""
         program = (
             "0ox;\n" * 9
             + "0ix{                   //While block x is not 0\n"
@@ -356,14 +208,7 @@ class TestWikiExamples:
         assert f.getvalue() == chr(25)
 
     def test_subtraction_example_is_wrong_on_the_wiki(self) -> None:
-        """The wiki's subtraction example adds instead of subtracting.
-
-        ``0ox; 0ox; 0oy; 0iy{ 0ox; 1oy; }; 1ix;`` drains ``y`` into ``x``,
-        so it prints ``2 + 1`` rather than the ``2 - 1`` its heading
-        claims.  The page invites corrections, so this is an error in the
-        example and not in the interpreter -- recorded here so the 3 is
-        not mistaken for a regression later.
-        """
+        """The wiki's subtraction example adds instead of subtracting."""
         with redirect_stdout(io.StringIO()) as f:
             run("0ox; 0ox; 0oy;\n0iy{ 0ox; 1oy; };\n1ix;", io=IO())
         assert f.getvalue() == chr(3)

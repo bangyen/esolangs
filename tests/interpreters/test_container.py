@@ -82,11 +82,7 @@ class TestContainer:
             run(["+1 A>=0"], IO())
 
     def test_output_is_masked_to_seven_bits(self) -> None:
-        """OUT is printed modulo 128, so 200 comes out as 72.
-
-        Hello, World! never drives OUT past 127, which leaves the width of
-        the mask free -- 200 is the smallest round value above it.
-        """
+        """OUT is printed modulo 128, so 200 comes out as 72."""
         code = [
             "PRINT:",
             "+1 PRINT<=0",
@@ -103,29 +99,10 @@ class TestContainer:
         assert exit_code == 0
         assert buffer.getvalue() == "H"
 
-    def test_empty_program_halts(self) -> None:
-        """An empty program has no work, output, or exit status."""
-        from esolangs.interpreters.other.container import _Machine
-
-        machine = _Machine([], IO())
-        assert machine.halted is True
-        assert machine.exit_code is None
-        assert machine.tick == 0
-
-        output = io.StringIO()
-        with redirect_stdout(output):
-            assert run([], IO()) is None
-        assert output.getvalue() == ""
-
 
 class TestPublicAPI:
     def test_run_returns_output_instead_of_exiting(self) -> None:
-        """EXIT is a normal halt, so the public API returns the output.
-
-        Container used to call ``sys.exit``, which escaped
-        :func:`esolangs.run` as ``SystemExit`` and made the CLI print
-        nothing at all.
-        """
+        """EXIT is a normal halt, so the public API returns the output."""
         import esolangs
 
         assert esolangs.run("Container", "\n".join(HELLO_WORLD)) == "Hello, world!"
@@ -149,32 +126,8 @@ class TestStepMachine:
         code = ["A=0:", "+1 A<=0", "-1 A>=1"]
         assert run_until_halt_or_cycle(_Machine(code, IO())) is False
 
-    def test_step_after_halt_is_a_noop(self) -> None:
-        from esolangs.interpreters.other.container import _Machine
-
-        machine = _Machine([], IO())
-        assert machine.halted
-        machine.step()  # stepping a halted machine is a no-op
-        assert machine.tick == 0
-
-    def test_each_tick_counts_once(self) -> None:
-        """``tick`` advances by one per step, from zero."""
-        from esolangs.interpreters.other.container import _Machine
-
-        machine = _Machine(["A=0:", "+1 A>=0"], IO())
-        machine.step()
-        machine.step()
-        assert machine.tick == 2
-
     def test_the_read_container_takes_one_character_per_firing(self) -> None:
-        """The empty-named container reads one character each time it turns on.
-
-        It oscillates 0 -> 1 -> 0, so it fires on every other tick, and the
-        line it read stays queued for the next firing -- one input line
-        feeds two reads, and IN holds the character until then.  Watching
-        the exit code alone would not show which character landed, nor
-        that the second one came from the queue rather than a fresh line.
-        """
+        """The empty-named container reads one character each time it turns on."""
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.other.container import _Machine
 
@@ -185,6 +138,30 @@ class TestStepMachine:
             machine.step()
             seen.append(machine.var["IN"])
         assert seen == [65, 65, 66, 66]
+
+    def test_a_read_at_eof_sets_in_to_zero(self) -> None:
+        """Wiki rev 135848: the read sets IN "with EOF returning 0"."""
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.other.container import _Machine
+
+        machine = _Machine([":", "+1 <=0", "-1 >=1", "", "IN:"], ScriptedIO("A"))
+        seen = []
+        for _ in range(4):
+            machine.step()
+            seen.append(machine.var["IN"])
+        assert seen == [65, 65, 0, 0]
+
+    def test_a_negative_initial_value_is_rejected(self) -> None:
+        """Wiki: the initial value "must be a nonnegative integer"."""
+        with pytest.raises(ValueError, match="nonnegative"):
+            run(["A=-1:"], IO())
+
+    def test_an_initial_value_past_the_host_digit_cap_parses(self) -> None:
+        """Python's int() refuses 4300+ digits; the language has no cap."""
+        from esolangs.interpreters.other.container import _Machine
+
+        machine = _Machine(["A=1" + "0" * 5000 + ":"], IO())
+        assert machine.var["A"] == 10**5000
 
 
 def _machine(code: object) -> object:

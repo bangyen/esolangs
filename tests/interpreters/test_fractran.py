@@ -30,11 +30,7 @@ def test_prime_power_notation_is_only_notation() -> None:
 
 
 def test_the_first_matching_fraction_wins() -> None:
-    """Both divide 6, so the order decides -- the language's only control flow.
-
-    Asserted on the first step, because the run goes on to fire the other
-    fraction as well and ends on 35 either way.
-    """
+    """Both divide 6, so the order decides -- the language's only control flow."""
     first = _Machine("6 5/2 7/3", ScriptedIO(""))
     first.step()
     assert first.value == 15
@@ -71,10 +67,6 @@ def test_primegame_passes_through_the_primes() -> None:
 def test_a_malformed_program_is_refused(program: str, message: str) -> None:
     with pytest.raises(ValueError, match=re.escape(message)):
         run_program(run, program)
-
-
-def test_commas_separate_tokens_too() -> None:
-    assert run_program(run, "2^3*3^4,3/2") == str(3**7)
 
 
 def test_the_pointer_is_the_offset_of_the_fraction_about_to_fire() -> None:

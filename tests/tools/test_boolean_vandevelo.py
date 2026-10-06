@@ -81,12 +81,7 @@ def _steps(program: str, bits: tuple[int, ...]) -> int:
 
 
 def test_three_input_steps_and_sizes() -> None:
-    """Negated reads, register polarity and pruning, over all 256 tables.
-
-    Charged as ``scripts/screens/steps.py`` charges a termination row.
-    Before them the totals were 26,438 characters and 30,476 steps; no
-    table grew in either.
-    """
+    """Negated reads, register polarity and pruning, over all 256 tables."""
     size = steps = 0
     for index in range(256):
         program = vandevelo(format(index, "08b"))
@@ -207,19 +202,7 @@ def test_coset_membership_work_is_geometric() -> None:
 def test_the_exact_autocorrelation_improves_on_the_scored_candidates(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """The fallback that makes the clause bound a bound, not a heuristic.
-
-    A node scores only :data:`~esolangs.tools.vandevelo._CANDIDATES`
-    directions, so it can miss the pigeonhole-average one that
-    Cohen--Shinkar's telescoping argument needs; while the working set is
-    dense the generator falls back to an exact Walsh--Hadamard
-    autocorrelation.  The fresh nearest differences cover almost every
-    table -- the fallback changes the output on 3 of 400 random tables at
-    n=4..7, all at n=4 -- so this table is a found witness rather than a
-    constructed one, and it is pinned because deleting the fallback would
-    leave the docstring's bound unproven while every small table still
-    passed: without it this table costs 203 characters, with it 157.
-    """
+    """The fallback that makes the clause bound a bound, not a heuristic."""
     import importlib
 
     table = "1101010110111010"
@@ -232,13 +215,7 @@ def test_the_exact_autocorrelation_improves_on_the_scored_candidates(
 
 
 def test_the_peel_partitions_the_one_set_into_cubes() -> None:
-    """Every harvested cube lies in the 1-set, and together they tile it.
-
-    The peel keeps its working sets across cubes and removes points from
-    every set holding them; a stale set would either miss a point or hand
-    the same point to two cubes.  Sparse and dense tables both, since the
-    sparse tail is a different rule.
-    """
+    """Every harvested cube lies in the 1-set, and together they tile it."""
     import random
 
     from esolangs.tools.vandevelo import _Peel
@@ -262,15 +239,7 @@ def test_the_peel_partitions_the_one_set_into_cubes() -> None:
 
 
 def test_registers_are_reused_and_morphed_on_a_wide_table() -> None:
-    """Wide tables drive register reuse, morphing, and back-substitution.
-
-    Below n=6 every constraint is one input wide or its cube is small
-    enough that the bank never has a second live parity to reuse, so the
-    three paths that make upkeep sublinear -- exact reuse, one-toggle
-    morphing, and the reduced-elimination back-substitution behind the
-    ``dim + 1`` width bound -- are unreachable.  This is the smallest
-    shape that exercises all three.
-    """
+    """Wide tables drive register reuse, morphing, and back-substitution."""
     table = "0011110011110111100001000000010001110110010000001111000111000111"
     program = vandevelo(table)
     lines = program.splitlines()
@@ -281,11 +250,7 @@ def test_registers_are_reused_and_morphed_on_a_wide_table() -> None:
 
 
 def _spread_cube(n: int, dim: int) -> list[int]:
-    """Directions whose columns run through every nonzero value of F2^dim.
-
-    The worst shape for the echelon basis: each free coordinate's dual
-    picks up about half the pivots, so the basis weighs ``n * dim / 2``.
-    """
+    """Directions whose columns run through every nonzero value of F2^dim."""
     return [
         sum(((j % (2**dim - 1) + 1) >> i & 1) << j for j in range(n))
         for i in range(dim)
@@ -309,12 +274,7 @@ def _check_basis(dirs: list[int], n: int) -> list[int]:
 
 
 def test_constraints_weigh_four_per_input_plus_a_core() -> None:
-    """The O(T) upkeep bound rests on the per-clause constraint weight.
-
-    On a spread cube the echelon basis weighs ``n * dim / 2``; the short
-    relation basis stays under ``4 * n + (dim + 1) * (1 + 2**((dim+1)/2))``
-    with at most ``core - dim`` constraints wider than four inputs.
-    """
+    """The O(T) upkeep bound rests on the per-clause constraint weight."""
     from esolangs.tools.vandevelo import _echelon
 
     n, dim = 16, 4
@@ -349,13 +309,7 @@ def test_constraint_bound_holds_on_random_cubes() -> None:
 
 
 def test_a_full_bank_respells_its_least_recently_used_register(monkeypatch) -> None:
-    """The cap that keeps register names as short as input names.
-
-    ``n**2`` never binds at sizes this suite builds, so the cap is forced
-    down to ``n`` here: the bank must stay at ``n`` names, every clause
-    must still find a free register, and the program must still compute
-    the table.
-    """
+    """The cap that keeps register names as short as input names."""
     import importlib
 
     module = importlib.import_module("esolangs.tools.vandevelo")

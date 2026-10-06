@@ -1,10 +1,4 @@
-"""Fast geometry tests for the shared wire-routing layout.
-
-The Circuit Diagram construction tests are ``medium`` because they execute
-programs.  These touch ``_RoutingLayout`` directly -- no interpreter, no
-build -- so the interval runs and the junction/reservation indexes stay
-covered by the fast band, which is the band the touched-file gate reads.
-"""
+"""Fast geometry tests for the shared wire-routing layout."""
 
 # ruff: noqa: SLF001 - the layout's indexes are the observable here.
 from __future__ import annotations

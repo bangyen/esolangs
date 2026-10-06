@@ -1,80 +1,4 @@
-"""Machine checks backing the A Painter Ant uniform-in-n correctness proof.
-
-Run:  just apa-proof   (or python tests/proofs/deep/a_painter_ant.py)
-
-**Run it by hand when A Painter Ant's head or routing changes** -- that is
-what invalidates the motif table, and re-running this is how it is caught.
-It is a few seconds now; it was 1m20s when the generator had a tree route
-whose head lemmas needed a foreign-leaf sweep at n=9.
-
-It sits beside ``arrowqueue.py``, its opposite number for ArrowQueue,
-under ``tests/proofs/deep/``: both are hand-derived uniform-in-n arguments
-rather than the registry-wide obligations one directory up.  Neither can
-live in ``scripts/`` -- this one shares ``tests.tools.a_painter_ant_trace``
-with ``test_boolean_grid.py``, and a ``scripts/`` module importing from
-``tests/`` would invert that dependency, since mypy checks ``scripts`` but
-not ``tests``.
-
-What it buys over the suite is the *uniform-in-n* half.  The checked-in
-tests cover the shipped behaviour at the arities they can enumerate; this
-reduces "all tables at every arity" to a finite computation: the
-arity-dependent part is arithmetic over sums of distinct powers of two,
-saturated at the corridor's end (L1),
-and the behavioural part is confined to a three-row window whose vocabulary
-does not grow with n (L2, L3, L4).
-
-The construction (see the generator's module comment): row ``-1`` is the
-*lane*, never painted; row ``0`` is the corridor, white cells ``0..c``
-where ``c`` starts the table's trailing run of equal answers (``c = 2**n -
-1`` when the last two differ); row ``+1`` holds the answers, cell ``x <= c``
-white iff ``table[x] == "1"``.  The head paints that on pass 1 and walks back to the
-origin.  Each input is one character, ``n`` (zero: step into the lane) or
-``N`` (one: blocked, stay), followed by the template's ``E * 2**(n-1-i)``
-walk and ``SN`` return.  A final ``s`` steps onto a black answer; a
-white one leaves the ant on the white corridor cell above it.
-
-L1  *Arithmetic.*  A one's walk of ``w`` from column ``x <= c`` ends at
-    ``min(x + w, c)`` (L3), so the ant's column after input ``i`` is
-    ``min(p_i, c)`` for the partial index ``p_i = sum(bit_k * 2**(n-1-k),
-    k <= i)``: ``min(min(p, c) + w, c) = min(p + w, c)`` for ``w >= 0``.
-    The final column is ``min(index, c)``, and ``table[min(index, c)] ==
-    table[index]`` because every index past ``c`` lies in the run ``c``
-    starts.  The partial index never exceeds ``2**n - 1``, checked to n=64
-    (the all-ones prefix is the worst, and the bound is arity-monotone past
-    it); the saturated recurrence is checked against ``min(index, c)`` for
-    every ``c`` and every index to n=8, an identity with no dependence on n.
-
-L2  *The head is what it says.*  After pass 1's head (up to the first run)
-    the white cells are exactly the corridor ``0..c`` and its one-answers,
-    the ant is at the origin, and ``c`` is where the trailing run starts.
-    Traced for every table at n=3 and on a ladder of shaped and random tables
-    to n=10.
-
-L3  *Magnitude collapse.*  A zero's walk is blocked at every step because
-    the lane is black at every cell, so the walk's length is irrelevant: the
-    gadget with ``E * w`` and the gadget with ``E * 1`` leave the ant on the
-    same cell for a zero, and a one's walk moves exactly ``w`` on a corridor
-    long enough.  On a shorter one it stops at ``c``, blocked at every later
-    step because ``(c + 1, 0)`` is black -- the lane's per-step argument
-    again, checked for every power-of-two ``c`` and ``w`` through ``2**9``.
-    Checked by
-    tracing each gadget in isolation on the built grid, every ``w`` that is a
-    power of two through ``2**9``.  A zero's separation of column ``w`` from
-    the corridor end telescopes the powers to every integer ``2**9`` and
-    under, the range the real ladder (n=10) reaches; a walk past it belongs
-    to an arity this proof does not exercise, and the collapse is a per-step
-    property of a black lane rather than a function of ``w``.
-
-L4  *Motif table.*  Every step of pass 1 and pass 2 is one of a fixed set
-    of ``(cycle, phase, command, colour ahead, action)`` motifs, where
-    ``cycle`` is the pass number and ``phase`` is the template phase the
-    step ran in.  The set is learned at n=5 and replayed at n=6..10: a step
-    whose motif is not in the table is a vocabulary growth the finite check
-    would have missed.  The same pass also asserts the fixed point (pass 2's
-    grid and rest cell equal pass 1's) and the answer.  ``cycle`` replaces an
-    earlier ``index // span + 1`` field that was constant ``1`` -- step
-    indices repeat per cycle, so pass 2 was never distinguished.
-"""
+"""Machine checks backing the A Painter Ant uniform-in-n correctness proof."""
 
 from __future__ import annotations
 
@@ -130,13 +54,7 @@ def ladder(n: int, rng: random.Random, extra: int = 6) -> list[str]:
 
 
 def check_l1(max_n: int = 64, max_saturated: int = 8) -> list[str]:
-    """Partial indices stay in the table; the saturated walk lands on ``min``.
-
-    The all-ones prefix is the worst partial index at each step, and past it
-    the bound is arity-monotone, so the identity at every n to 64 certifies
-    the arithmetic for every arity the ladder exercises.  The saturated
-    recurrence is checked against ``min(index, c)`` exhaustively to n=8.
-    """
+    """Partial indices stay in the table; the saturated walk lands on ``min``."""
     for n in range(1, max_n + 1):
         top = (1 << n) - 1
         partial = 0
@@ -182,13 +100,7 @@ def check_l2(max_n: int = 10) -> list[str]:
 
 
 def check_l3(max_w: int = 10) -> list[str]:
-    """A zero's walk collapses to nothing; a one's is its exact length.
-
-    Every power-of-two ``w`` through ``2**max_w - 1`` is traced, which the
-    alternating template telescopes to every integer the real ladder reaches;
-    the collapse is a per-step property of the black lane, so the check is a
-    witness of the mechanism rather than a finite ceiling.
-    """
+    """A zero's walk collapses to nothing; a one's is its exact length."""
     size = 1 << max_w
     # A last answer unlike the one before it keeps the whole corridor.
     build = a_painter_ant("1" * (size - 1) + "0")
@@ -241,13 +153,7 @@ Motif = tuple[int, str, str, int | None, str]
 
 
 def motifs_of(table: str, idx: int, n: int) -> tuple[set[Motif], bool, bool]:
-    """Every motif of passes 1 and 2, the fixed-point verdict, and the answer.
-
-    The pass number is ``step_index // len(program) + 1`` over the *concatenated
-    two-cycle* step list, which is what distinguishes pass 1 from pass 2;
-    ``Step.index`` alone is the within-cycle index (``i % length``) and so is
-    constant ``0..length-1`` on both passes.
-    """
+    """Every motif of passes 1 and 2, the fixed-point verdict, and the answer."""
     template = a_painter_ant(table)
     names = phases(template)
     program = _instantiate_apa(template, bits_of(idx, n))

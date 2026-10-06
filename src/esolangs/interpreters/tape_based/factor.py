@@ -191,11 +191,6 @@ class _Machine:
         """The addressable cells."""
         return list(self.bf.tape)
 
-    @property
-    def stack(self) -> list[object]:
-        """No stack in this language."""
-        return []
-
     # Forwarded: Factor inherits brainfuck's ``_TapeMachine`` eligibility.
 
     @property
