@@ -97,6 +97,11 @@ class Test3x:
         assert run_program("333x(3()3)3!") == "3"
         assert run_program("333x(())3!") == "3"
 
+    def test_a_skipped_loop_does_not_count_brackets_in_a_literal(self) -> None:
+        # ``[(]`` prints "(" when run, so skipping over it is no nesting
+        assert run_program("333x([(]3!)3!") == "3"
+        assert run_program("333x([)]3!)3!") == "3"
+
     def test_error_unmatched_bracket(self) -> None:
         with pytest.raises(HaltError):
             run_program("333x(")
