@@ -4,6 +4,8 @@ import io
 from contextlib import redirect_stdout
 from typing import ClassVar
 
+import pytest
+
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.tape_based.back import run
 from tests.interpreters.contract import CycleContract, SnapshotContract
@@ -18,27 +20,25 @@ def run_and_capture(code: list[str]) -> str:
 
 
 class TestBack:
-    def test_halt_prints_tape(self) -> None:
-        assert run_and_capture(["*"]) == "0"
-
-    def test_flip_bit(self) -> None:
-        assert run_and_capture(["-*"]) == "1"
-
-    def test_skip_instruction_on_zero(self) -> None:
-        """+ skips the next cell when the current bit is 0."""
-        assert run_and_capture([">+-*"]) == "0 0"
-
-    def test_reflect_backslash(self) -> None:
-        """\\ reflects the direction."""
-        assert run_and_capture(["\\-*"]) == "1"
-
-    def test_move_left(self) -> None:
-        """< moves the tape head left when it is not at zero."""
-        assert run_and_capture([">>-<*"]) == "0 0 1"
-
-    def test_beam_travels_down_a_column(self) -> None:
-        """The beam moves by rows too, not only along one line."""
-        assert run_and_capture(["\\", "-", "*"]) == "1"
+    @pytest.mark.parametrize(
+        ("code", "expected"),
+        [
+            pytest.param(["*"], "0", id="halt_prints_tape"),
+            pytest.param(["-*"], "1", id="flip_bit"),
+            # + skips the next cell when the current bit is 0.
+            pytest.param([">+-*"], "0 0", id="skip_instruction_on_zero"),
+            # \ reflects the direction.
+            pytest.param(["\\-*"], "1", id="reflect_backslash"),
+            # < moves the tape head left when it is not at zero.
+            pytest.param([">>-<*"], "0 0 1", id="move_left"),
+            # The beam moves by rows too, not only along one line.
+            pytest.param(["\\", "-", "*"], "1", id="beam_travels_down_a_column"),
+            # A short row keeps its content at the left, and the pad goes right.
+            pytest.param(["\\", "\\-*"], "1", id="a_short_line_is_padded_on_the_right"),
+        ],
+    )
+    def test_result(self, code, expected) -> None:
+        assert run_and_capture(code) == expected
 
     def test_blank_only_program_is_empty(self) -> None:
         """Programs of only blank lines are rejected, not crashed on."""
@@ -48,10 +48,6 @@ class TestBack:
             run_and_capture(["\n"])
         with raises_message(ValueError, message):
             run_and_capture(["   ", "\t"])
-
-    def test_a_short_line_is_padded_on_the_right(self) -> None:
-        r"""A short row keeps its content at the left, and the pad goes right."""
-        assert run_and_capture(["\\", "\\-*"]) == "1"
 
 
 class TestStepMachine:

@@ -23,45 +23,37 @@ class TestCirclefuck:
         program = "," + "-" * 48 + "[[-]" + "+" * 49 + ".]" + "+" * 48 + ".@"
         assert run_and_capture(program, inputs=["0"]) == "0"
 
-    def test_halt(self) -> None:
-        assert run_and_capture("++@") == ""
-
-    def test_output_cell_value(self) -> None:
-        """. outputs the cell under the data pointer (self-modified)."""
-        assert run_and_capture("+.@") == ","
-
-    def test_skip_passes_over_exactly_one_instruction(self) -> None:
-        """# steps over the next cell and no further."""
-        assert run_and_capture("#..@") == "#"
-
-    def test_increment_wraps_at_two_hundred_fifty_six(self) -> None:
-        """255 + 1 comes back to zero, which no smaller cell can show."""
-        assert run_and_capture("\\xFF+.@") == "\x00"
-
-    def test_decrement_wraps_at_zero(self) -> None:
-        """0 - 1 comes back as 255, the other end of the same wrap."""
-        assert run_and_capture("\\0-.@") == "\xff"
-
-    def test_a_letter_is_not_a_bracket(self) -> None:
-        """Only ``[`` and ``]`` jump; every other letter is inert."""
-        assert run_and_capture("+X@") == ""
-
-    def test_exhausted_input_is_a_no_op(self) -> None:
-        assert run_and_capture(",@") == ""
+    @pytest.mark.parametrize(
+        ("code", "expected"),
+        [
+            pytest.param("++@", "", id="halt"),
+            # . outputs the cell under the data pointer (self-modified).
+            pytest.param("+.@", ",", id="output_cell_value"),
+            # # steps over the next cell and no further.
+            pytest.param("#..@", "#", id="skip_passes_over_exactly_one_instruction"),
+            # 255 + 1 comes back to zero, which no smaller cell can show.
+            pytest.param(
+                "\\xFF+.@", "\x00", id="increment_wraps_at_two_hundred_fifty_six"
+            ),
+            # 0 - 1 comes back as 255, the other end of the same wrap.
+            pytest.param("\\0-.@", "\xff", id="decrement_wraps_at_zero"),
+            # Only ``[`` and ``]`` jump; every other letter is inert.
+            pytest.param("+X@", "", id="a_letter_is_not_a_bracket"),
+            pytest.param(",@", "", id="exhausted_input_is_a_no_op"),
+            # { inserts a new zero cell before the current one.
+            pytest.param("{+.@", "\x01", id="insert_cell"),
+            # } deletes the current cell.
+            pytest.param("+}.@", "}", id="delete_cell"),
+        ],
+    )
+    def test_result(self, code, expected) -> None:
+        assert run_and_capture(code) == expected
 
     def test_an_input_character_above_255_is_taken_modulo_256(self) -> None:
         """``,`` writes a cell, so it reduces exactly as ``+`` and ``-`` do."""
         assert run_and_capture(",.@", inputs=["Ā"]) == "\x00"
         assert run_and_capture(",.@", inputs=["ā"]) == "\x01"
         assert run_and_capture(",+.@", inputs=["Ā"]) == "\x01"
-
-    def test_insert_cell(self) -> None:
-        """{ inserts a new zero cell before the current one."""
-        assert run_and_capture("{+.@") == "\x01"
-
-    def test_delete_cell(self) -> None:
-        """} deletes the current cell."""
-        assert run_and_capture("+}.@") == "}"
 
 
 class TestStepMachine:
@@ -80,16 +72,33 @@ class TestStepMachine:
         machine.step()  # stepping a halted machine is a no-op
         assert machine.ind == 2
 
-    def test_decimal_escape(self) -> None:
-        """:math:`\\NNN` escape sequences decode to a single byte."""
-        assert run_and_capture("\\065.@") == "A"
-
-    def test_hex_escape(self) -> None:
-        assert run_and_capture("\\x41.@") == "A"
-
-    def test_bare_hex_digit_escape_is_uppercase(self) -> None:
-        """A lone ``\\F`` is a hex digit; the lowercase run is not one."""
-        assert run_and_capture("\\F.@") == "\x0f"
+    @pytest.mark.parametrize(
+        ("code", "expected"),
+        [
+            # :math:`\NNN` escape sequences decode to a single byte.
+            pytest.param("\\065.@", "A", id="decimal_escape"),
+            pytest.param("\\x41.@", "A", id="hex_escape"),
+            # A lone ``\F`` is a hex digit; the lowercase run is not one.
+            pytest.param("\\F.@", "\x0f", id="bare_hex_digit_escape_is_uppercase"),
+            # ``\o101`` names the same octal byte as ``\101``.
+            pytest.param("\\o101.@", "A", id="a_leading_o_is_dropped_from_an_escape"),
+            # ``\065`` reads the same whichever digit the decode starts at.
+            pytest.param(
+                "\\165.@", "\xa5", id="decimal_escape_keeps_its_leading_digit"
+            ),
+            # Cells below the space are stripped, so only the ``.`` remains.
+            pytest.param("\x1f.@", ".", id="the_unit_separator_is_not_a_command"),
+            # 127 is stripped too, so the printable range is open at both ends.
+            pytest.param("\x7f.@", ".", id="delete_is_not_a_command"),
+            # ``[`` on a zero cell jumps to its own ``]``, not a bracket behind it.
+            pytest.param(
+                "\\0[.].[.]@", "\x00", id="a_skipped_loop_scans_forward_for_its_partner"
+            ),
+            pytest.param("\\n.@", "\n", id="newline_escape"),
+        ],
+    )
+    def test_result(self, code, expected) -> None:
+        assert run_and_capture(code) == expected
 
     def test_named_space_and_invalid_escapes(self) -> None:
         assert parse("\\space") == [32]
@@ -97,29 +106,6 @@ class TestStepMachine:
         for source in ("\\", "\\q", "\\o89", "\\xg0", "\\999"):
             with pytest.raises(ValueError, match="invalid Circlefuck escape"):
                 parse(source)
-
-    def test_a_leading_o_is_dropped_from_an_escape(self) -> None:
-        """``\\o101`` names the same octal byte as ``\\101``."""
-        assert run_and_capture("\\o101.@") == "A"
-
-    def test_decimal_escape_keeps_its_leading_digit(self) -> None:
-        """``\\065`` reads the same whichever digit the decode starts at."""
-        assert run_and_capture("\\165.@") == "\xa5"
-
-    def test_the_unit_separator_is_not_a_command(self) -> None:
-        """Cells below the space are stripped, so only the ``.`` remains."""
-        assert run_and_capture("\x1f.@") == "."
-
-    def test_delete_is_not_a_command(self) -> None:
-        """127 is stripped too, so the printable range is open at both ends."""
-        assert run_and_capture("\x7f.@") == "."
-
-    def test_a_skipped_loop_scans_forward_for_its_partner(self) -> None:
-        """``[`` on a zero cell jumps to its own ``]``, not a bracket behind it."""
-        assert run_and_capture("\\0[.].[.]@") == "\x00"
-
-    def test_newline_escape(self) -> None:
-        assert run_and_capture("\\n.@") == "\n"
 
     def test_unmatched_taken_brackets_suspend(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
