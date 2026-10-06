@@ -43,82 +43,72 @@ def run_bounded(program: str, stdin: str = "", store: str = "a") -> str:
 class TestCoreInstruction:
     """The single subtract-and-branch instruction."""
 
-    def test_conditional_jump_on_zero(self) -> None:
-        """A zero result jumps to the address stored in ``c``."""
-        # ip0: 0 - 0 = 0 -> jump to mem[2]=9, past the end.
-        assert run_bounded("0 0 2 9 0") == ""
-
-    def test_conditional_jump_on_negative(self) -> None:
-        """A negative result also jumps."""
-        # ip0: 0 - 5 = -5 -> jump to mem[2]=9, past the end.
-        assert run_bounded("0 5 2 9 0") == ""
-
-    def test_negative_target_halts(self) -> None:
-        """A ``c`` address holding a negative value stops execution."""
-        # ip0: 0 - 0 = 0 -> jump to mem[2]; mem[2] holds -1, a negative
-        # target, so execution stops.
-        assert run_bounded("0 0 2 -1") == ""
+    @pytest.mark.parametrize(
+        ("program", "expected"),
+        [
+            # 0 - 0 = 0 jumps to mem[2]=9, past the end.
+            pytest.param("0 0 2 9 0", "", id="conditional_jump_on_zero"),
+            # 0 - 5 = -5 jumps too.
+            pytest.param("0 5 2 9 0", "", id="conditional_jump_on_negative"),
+            # The jump target mem[2] holds -1, a negative target, so it stops.
+            pytest.param("0 0 2 -1", "", id="negative_target_halts"),
+            # The branch is on ``<= 0``, so a difference of exactly 1 does not.
+            pytest.param(
+                "9 10 11  -3 12 0  0 0 13  5 4 99 67 99",
+                "C",
+                id="a_difference_of_one_falls_through",
+            ),
+        ],
+    )
+    def test_output(self, program: str, expected: str) -> None:
+        assert run_bounded(program) == expected
 
     def test_special_addresses_are_not_branch_operands(self) -> None:
         """``c`` is an address, not an operand port."""
         with pytest.raises(ValueError, match="invalid S\\*bleq branch address"):
             run_bounded("0 0 -1")
 
-    def test_a_difference_of_one_falls_through(self) -> None:
-        """The branch is on ``<= 0``, so a difference of exactly 1 does not
-        take it.
-        """
-        assert run_bounded("9 10 11  -3 12 0  0 0 13  5 4 99 67 99") == "C"
-
 
 class TestSpecialAddresses:
     """The -1 (IP), -2 (input), and -3 (output) addresses."""
 
-    def test_output_via_a_negative_three(self) -> None:
-        """``-3`` in ``a`` outputs the value at ``b``."""
-        # ip0: a=-3, b=6 -> output mem[6]=65 'A'; ip3: 0-0=0 -> jump to
-        # mem[5]=9 (mem[5] is 9, past the end) -> halt.
-        assert run_bounded("-3 6 3 0 0 7 65 9") == "A"
-
-    def test_output_via_b_negative_three(self) -> None:
-        """``-3`` in ``b`` outputs the value at ``a``."""
-        # ip0: a=6, b=-3 -> output mem[6]=66 'B'; ip3: 0-0=0 -> jump to
-        # mem[5]=9 -> halt.
-        assert run_bounded("6 -3 3 0 0 7 66 9") == "B"
-
-    def test_input_reads_byte(self) -> None:
-        """``-2`` as ``a`` supplies the next input byte in the subtraction."""
-        # ip0: a=-2 (input 'A'=65), b=0 (mem[0] is -2): 65 - (-2) = 67 (>0,
-        # no jump) -> ip3.  ip3: 0-0=0 -> jump to mem[5]=9 -> halt.
-        assert run_bounded("-2 0 3 0 0 5 9", stdin="A") == ""
-
-    def test_input_eof_reads_zero(self) -> None:
-        """``-2`` on exhausted input reads as zero."""
-        # Same program with no input: the subtraction uses 0 in place of EOF.
-        assert run_bounded("-2 0 3 0 0 5 9", stdin="") == ""
-
-    def test_read_instruction_pointer(self) -> None:
-        """``-1`` as an operand reads the current instruction pointer."""
-        # ip0: a=2, b=-1 (the ip, currently 0): 2 - 0 = 2 > 0, falls through;
-        # ip3: 0-0=0 -> jump to mem[5]=9, past the end.
-        assert run_bounded("2 -1 3 0 0 5 9") == ""
-
-    def test_write_instruction_pointer(self) -> None:
-        """Storing to ``-1`` moves the instruction pointer."""
-        # ip0: a=-1: diff = ip(0) - mem[0](-1) = 1, written back to the ip;
-        # the positive result falls through and the program ends off the end.
-        assert run_bounded("-1 0 3 6 0 0 0") == ""
-
-    def test_write_past_end_extends_memory_and_breaks(self) -> None:
-        """Writing past the program end extends memory; a negative target
-        (here held in mem[3]) halts execution.
-        """
-        assert run_bounded("10 0 3 -1 0 0 0") == ""
+    @pytest.mark.parametrize(
+        ("program", "stdin", "expected"),
+        [
+            # a=-3 outputs mem[6]=65; then 0-0=0 jumps to mem[5]=9 and halts.
+            pytest.param(
+                "-3 6 3 0 0 7 65 9", "", "A", id="output_via_a_negative_three"
+            ),
+            # b=-3 outputs the value at a, mem[6]=66.
+            pytest.param(
+                "6 -3 3 0 0 7 66 9", "", "B", id="output_via_b_negative_three"
+            ),
+            # a=-2 reads 'A'=65: 65 - (-2) = 67 > 0 falls through, then halts.
+            pytest.param("-2 0 3 0 0 5 9", "A", "", id="input_reads_byte"),
+            # Exhausted input reads as zero in the subtraction.
+            pytest.param("-2 0 3 0 0 5 9", "", "", id="input_eof_reads_zero"),
+            # b=-1 reads the ip (0): 2 - 0 = 2 > 0 falls through, then halts.
+            pytest.param("2 -1 3 0 0 5 9", "", "", id="read_instruction_pointer"),
+            # a=-1: ip(0) - mem[0](-1) = 1 is written to the ip and falls through.
+            pytest.param("-1 0 3 6 0 0 0", "", "", id="write_instruction_pointer"),
+            # Memory grows past the end; the negative target in mem[3] halts.
+            pytest.param(
+                "10 0 3 -1 0 0 0", "", "", id="write_past_end_extends_memory_and_breaks"
+            ),
+            # Storing to -1 moves the pointer, not the address 1.
+            pytest.param(
+                "-1 12 0  0 0 12  0 0 0  -3 13 0  -6 67",
+                "",
+                "C",
+                id="a_write_to_the_pointer_redirects_the_fall_through",
+            ),
+        ],
+    )
+    def test_output(self, program: str, stdin: str, expected: str) -> None:
+        assert run_bounded(program, stdin=stdin) == expected
 
     def test_invalid_address_rejected(self) -> None:
         """An address below -3 is an invalid operation."""
-        import pytest
-
         with pytest.raises(ValueError, match="invalid address"):
             run_bounded("-4 0 3 0 0 5 9")
 
@@ -126,10 +116,6 @@ class TestSpecialAddresses:
         """A ``-3`` instruction moves on three cells from where it stands."""
         assert run_bounded("0 0 9  -3 10 0  0 0 11  3 67 99") == "C"
         assert run_bounded("0 0 9  10 -3 0  0 0 11  3 67 99") == "C"
-
-    def test_a_write_to_the_pointer_redirects_the_fall_through(self) -> None:
-        """Storing to ``-1`` is what moves the pointer, not the address 1."""
-        assert run_bounded("-1 12 0  0 0 12  0 0 0  -3 13 0  -6 67") == "C"
 
 
 class TestMemoryState:
@@ -245,17 +231,17 @@ class TestVariants:
         run("9 10 3  -3 10 6  0 0 11  5 3 99", _IO())
         assert buffer.getvalue() == "\x03"
 
-    def test_sblq_stores_in_both(self) -> None:
-        """``store="ab"`` writes the difference to both a and b."""
-        # ip0: a=6, b=7: mem[6]=5 - mem[7]=3 = 2, stored in both mem[6] and
-        # mem[7]; a positive result falls through to ip3 where 0-0=0 jumps to
-        # mem[5]=9 -> halt.
-        assert run_bounded("6 7 3 0 0 5 9 5 3", store="ab") == ""
-
-    def test_subleq_store_in_b(self) -> None:
-        """``store="b"`` writes the difference to b only."""
-        # Same program; store="b" writes only to mem[7], leaving mem[6]=9.
-        assert run_bounded("6 7 3 0 0 5 9 5 3", store="b") == ""
+    @pytest.mark.parametrize(
+        "store",
+        [
+            # 5 - 3 = 2 is stored in both a and b, falls through, then halts.
+            pytest.param("ab", id="sblq_stores_in_both"),
+            # The same program writes only mem[7], leaving mem[6]=9.
+            pytest.param("b", id="subleq_store_in_b"),
+        ],
+    )
+    def test_store_variant_runs_silently(self, store: str) -> None:
+        assert run_bounded("6 7 3 0 0 5 9 5 3", store=store) == ""
 
     def test_the_default_variant_stores_in_a(self) -> None:
         """``run`` defaults to the base language, which writes to a alone."""
@@ -282,13 +268,20 @@ class TestSnapshot:
 class TestProgramText:
     """Comments and whitespace, via the shared ``parse_int_memory``."""
 
-    def test_comment_is_ignored(self) -> None:
-        """``#`` starts a comment that runs to the end of its line."""
-        program = "-3 6 3 # print, then halt\n0 0 7 65 9"
-        assert run_bounded(program) == "A"
-
-    def test_comment_only_program_is_empty(self) -> None:
-        assert run_bounded("# nothing but a comment") == ""
+    @pytest.mark.parametrize(
+        ("program", "expected"),
+        [
+            # ``#`` starts a comment that runs to the end of its line.
+            pytest.param(
+                "-3 6 3 # print, then halt\n0 0 7 65 9", "A", id="comment_is_ignored"
+            ),
+            pytest.param(
+                "# nothing but a comment", "", id="comment_only_program_is_empty"
+            ),
+        ],
+    )
+    def test_output(self, program: str, expected: str) -> None:
+        assert run_bounded(program) == expected
 
     def test_malformed_token_raises_package_error(self) -> None:
         """A non-integer token is a ``ValueError`` naming the token."""
