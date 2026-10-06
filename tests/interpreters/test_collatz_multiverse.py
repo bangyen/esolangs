@@ -153,26 +153,27 @@ class TestLineNumber:
         # line 1 -> a = 1, line 2 -> b = 2
         assert run_program(program) == "\x01\x02"
 
-    def test_assignment_jumps(self) -> None:
+    def test_assignment_skips_the_target_line(self) -> None:
+        """Wiki: "moves it to that line number, but doesn't execute it"."""
         program = CONSTANTS + "\n".join(
             [
                 "",
-                "lineNumber = one x + two, NOT PRINT.",
+                "lineNumber = one x + one, NOT PRINT.",
                 "x = negativeOne x + zero, DO PRINT.",
                 "x = negativeOne x + one, DO PRINT.",
             ]
         )
-        # line 7 (odd) -> 7*1+2 = 9, jumping over line 8
+        # line 7 (odd) -> 7*1+1 = 8; line 8 is skipped, line 9 runs
         assert run_program(program) == "\x01"
 
-    def test_jump_off_program_halts(self) -> None:
+    def test_moving_to_the_last_line_halts(self) -> None:
         program = "\n".join(
             [
-                "lineNumber = negativeOne x + negativeOne, NOT PRINT.",
-                "x = negativeOne x + one, DO PRINT.",
+                "lineNumber = lineNumber x + lineNumber, NOT PRINT.",
+                "x = negativeOne x + negativeOne, DO PRINT.",
             ]
         )
-        # line 1 (odd) -> 1*(-1)+(-1) = -2, out of range, halts
+        # line 1 (odd) -> 1*1+1 = 2, the last line; advancing leaves
         assert run_program(program) == ""
 
 
