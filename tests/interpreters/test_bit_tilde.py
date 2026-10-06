@@ -31,8 +31,9 @@ run_scripted = partial(run_program, run, suppress_eof=False)
 _BIT_TILDE_RESULTS = {
     # Cell 0 is the MSB, so one toggle prints 0x80.
     "single_toggle_prints_most_significant_bit": ("~(", "\x80"),
-    # ``<`` at cell 0 is a no-op, so the toggle hits the MSB.
-    "left_pointer_clamps_at_cell_zero": ("<<~(", "\x80"),
+    # ``<`` at cell 0 grows the pool left, so the flipped bit prints two
+    # places down (a clamp would print 0x80).
+    "left_grows_the_pool": ("~<<(", "\x20"),
     # ``(`` reads "the current bit and the next 7 bits", so ``>`` grows the pool
     # under the cell it moves to: the toggle is the MSB of a full byte, not of
     # a 7-bit window (it printed "@" until the blind differential).
