@@ -5,8 +5,8 @@ import signal
 
 import pytest
 
-from esolangs.interpreters.io import IO
-from esolangs.interpreters.tape_based.sbleq import run
+from esolangs.interpreters.io import IO, ScriptedIO
+from esolangs.interpreters.tape_based.sbleq import _Machine, run
 
 
 class _TimeoutError(Exception):
@@ -139,9 +139,6 @@ class TestMemoryState:
         self, program: str, stdin: str = "", steps: int = 200
     ) -> tuple[list[int], int]:
         """Run at most ``steps`` instructions; S*bleq programs may not halt."""
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.sbleq import _Machine
-
         machine = _Machine(program, ScriptedIO(stdin))
         for _ in range(steps):
             if machine.halted:
@@ -196,9 +193,6 @@ class TestVariants:
         self, store: str, ip: int
     ) -> None:
         """Pins b=-1 writes: ``5 -1 0`` stores 6-0 into the IP, then +3 -> 9."""
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.sbleq import _Machine
-
         machine = _Machine("5 -1 0 0 0 6", ScriptedIO(""), store=store)
         machine.step()
         assert machine.ip == ip
@@ -225,9 +219,6 @@ class TestVariants:
 
     def mem(self, program: str, store: str = "a", steps: int = 200) -> list[int]:
         """Return the memory ``program`` leaves under the ``store`` variant."""
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.sbleq import _Machine
-
         machine = _Machine(program, ScriptedIO(""), store=store)
         for _ in range(steps):
             if machine.halted:
@@ -238,9 +229,6 @@ class TestVariants:
     @pytest.mark.parametrize("store", ["a", "ab", "b"])
     def test_documented_store_targets_are_accepted(self, store: str) -> None:
         """The three wiki variants stay constructible."""
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.sbleq import _Machine
-
         assert _Machine("0 0 0", ScriptedIO(""), store=store).store == store
 
     def test_runs_own_default_is_the_base_language(self) -> None:
@@ -278,18 +266,12 @@ class TestVariants:
     @pytest.mark.parametrize("store", ["A", "AB", "B", "c", "", "bb", "abc"])
     def test_unknown_store_target_is_rejected(self, store: str) -> None:
         """A store outside the three variants raises rather than running."""
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.sbleq import _Machine
-
         with pytest.raises(ValueError, match="unknown store target"):
             _Machine("0 0 0", ScriptedIO(""), store=store)
 
 
 class TestSnapshot:
     def test_snapshot_is_hashable_and_tracks_progress(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.sbleq import _Machine
-
         machine = _Machine("3 4 6 1 1 0 0 0 0", ScriptedIO(""))
         before = machine.snapshot()
         hash(before)  # must not raise
@@ -312,3 +294,26 @@ class TestProgramText:
         """A non-integer token is a ``ValueError`` naming the token."""
         with pytest.raises(ValueError, match="malformed memory token: 'x'"):
             run_bounded("0 0 x")
+
+
+class TestIndirectFamily:
+    """S**bleq and kin: ``a`` and ``b`` become ``*a`` and ``*b``."""
+
+    def test_s_star_star_bleq_subtracts_through_the_named_cells(self) -> None:
+        """Step one: mem[5] - mem[6] = 7 > 0, kept at cell 5; step two:
+        mem[7] - mem[3] = -5, kept at cell 7, then a jump to mem[7] < 0 halts."""
+        machine = _Machine("3 4 8 5 6 10 3 0 9", ScriptedIO(""), indirect=True)
+        while not machine.halted:
+            machine.step()
+        assert machine.mem[5] == 7
+        assert machine.mem[7] == -5
+
+    def test_an_indirect_operand_may_name_the_output_address(self) -> None:
+        """``*a`` is -3, so the instruction prints the cell ``*b`` names."""
+        out = ScriptedIO("")
+        run("4 3 72 2 -3", out, indirect=True)
+        assert out.getvalue() == "H"
+
+    def test_a_negative_operand_names_no_cell_to_read_through(self) -> None:
+        with pytest.raises(ValueError, match="names no cell"):
+            run("-1 0 0", ScriptedIO(""), indirect=True)
