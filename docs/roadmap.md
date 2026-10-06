@@ -86,6 +86,31 @@ history; standing rules and proved limits are in [limitations](limitations.md).
   n=11,13,15. Parity tables read no higher. All sit inside the measured
   4.4 contract; that is a measurement, not a proof of linearity.
 
+## Candidate languages
+
+Screened 2026-10-05 from 54 Category:Unimplemented pages. Each is a first
+implementation (unique backlinks measured 2026-10-06); add with
+`/new-language`, ranked.
+
+- **[Smu](https://esolangs.org/wiki/Smu)** (4 backlinks). Zzo38's minimal
+  Smurf: a string stack over `()=|+`, four commands, and a run that ends by
+  outputting the top string and running the next one. Bit I/O per run.
+  Generator: one node `(c0)(|)=(c1)(+)=()+(=)` stores both children under
+  the input bit's names and runs the selected one on the next bit; a leaf
+  is `()=` then its bit. O(T), hand-traced, not executed. Gaps: an unset
+  variable's value (the cat example implies empty), `=` at EOF, and the
+  byte-to-bit input convention. The cat program is the only stated output.
+- **[SStack](https://esolangs.org/wiki/SStack)** (4 backlinks). Seven
+  unsigned stacks `a`-`g`, empty reads 0, byte I/O, and a loop
+  `[x\y/...]` while two tops are equal. Generator: nested one-shot ifs,
+  O(T). Gaps: EOF, decrementing an empty stack. The page's brainfuck
+  interpreter is untested, so it is not ground truth.
+- **[Transistor](https://esolangs.org/wiki/Transistor)** (2 backlinks).
+  Tri-state values (true, false, floating), N/P transistors and pull
+  resistors as the only primitives, plus `circuit`, `let` and `while`.
+  Generator: a mux fold with inputs as `let` lines, O(T). Gaps: no grammar,
+  no I/O (output would be a chosen variable), computational class unstated.
+
 ## Open problems
 
 Each item names its next executable step. When an item is answered, record
