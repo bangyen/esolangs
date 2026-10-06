@@ -12,8 +12,10 @@ used to be the exception, creating whatever name it was given, which made
 ``[PSH VAR VAR1]`` (the keyword spelling; the syntax is ``[PSH VAR1]``)
 store into a phantom ``VAR`` and silently leave ``VAR1`` alone.
 
-Operations that act on an empty stack, an undefined variable, or a missing
-operand are invalid: they halt the program with
+A ``JMP`` condition reads an empty stack's top as 0, and a backward jump
+past the start wraps to the end; the wiki says neither.  Other operations
+that act on an empty stack, an undefined variable, or a missing operand
+are invalid: they halt the program with
 :class:`~esolangs.exceptions.HaltError`, and a malformed token (a missing
 required argument) is rejected with :class:`ValueError`.
 

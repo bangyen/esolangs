@@ -4,7 +4,12 @@ A binary tape: ``[`` flips the current bit and skips the next instruction
 when it became 0, ``.`` prints cells 0-7 as a byte or *reads* one when
 they are zero, ``<`` moves left but stays at cell 0 (the tape is
 right-infinite, and the wiki cat ``<[<.[<.`` opens with that ``<``).  Not
-implicitly looped (the talk page leaves it open).  Exhausted input raises
+implicitly looped (the talk page leaves it open), and printing leaves the
+window as it is (the page says only "output letter stored in first 8
+bits"); a looping reading must also clear it, or the cat repeats its first
+letter.  The page names no comments, so any other character is a no-op
+instruction that a collapsed ``[`` ("skip next instruction") skips; the
+generator's ``[x`` walks rely on that.  Exhausted input raises
 :class:`EOFError`.  :func:`_advance` is a pure function from :class:`_State`
 to the next state plus an :class:`_Effect` naming what the shell owes;
 :func:`_load` is the pure half of a read.
@@ -22,13 +27,9 @@ _WIDTH = 8
 #: Mask of the print window, cells 0-7.
 _WINDOW = (1 << _WIDTH) - 1
 
-#: ``(code, tape, length, ptr, ind)``: an immutable value, rebound per step.
-#: The tape is an ``int`` bitvector, cell *i* at bit *i*: a flip is
-#: ``tape ^ (1 << ptr)``, O(1) and immutable (a tuple rebuilt per flip was
-#: 152x slower by tape 20000).  ``length`` is carried because trailing zeros
-#: are invisible in the int.  A plain tuple: ``NamedTuple`` construction is
-#: Python-level and this is built once per step (plain measured ~1.15x faster
-#: end-to-end on a 300k-step run).
+#: ``(code, tape, length, ptr, ind)``, rebound per step.  The tape is an
+#: ``int`` bitvector, cell *i* at bit *i*, so a flip is O(1) (a tuple rebuilt
+#: per flip was 152x slower); ``length`` keeps the invisible trailing zeros.
 type _State = tuple[str, int, int, int, int]
 
 #: What a pure step owes the outside world: ``(char, reads)``, ``char`` the
@@ -58,11 +59,7 @@ def _pool(tape: int) -> int:
 
 
 def _load(state: _State, byte: int) -> _State:
-    """Splice ``byte`` into the print window, keeping the tape past it.
-
-    The ``& ~_WINDOW`` is defensive (the window is already zero when this is
-    called, 6016 calls checked); a mutant dropping it is equivalent, not a gap.
-    """
+    """Splice ``byte`` into the (already zero) print window; the mask is defensive."""
     code, tape, length, ptr, ind = state
     bits = sum(((byte >> (_WIDTH - 1 - i)) & 1) << i for i in range(_WIDTH))
     return (code, (tape & ~_WINDOW) | bits, length, ptr, ind)

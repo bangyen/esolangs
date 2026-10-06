@@ -3,7 +3,9 @@
 Polynomial programs are polynomial functions ``f(x) = ...``; real zeroes
 are control flow and complex zeroes register operations on a single
 integer register, in ascending-prime order. Division and remainder
-truncate toward zero; output ignores negatives and EOF stores -1.
+truncate toward zero; output ignores negatives and EOF stores -1; ``^``
+of a zero register by a negative power raises
+:class:`~esolangs.exceptions.HaltError`.
 Malformed programs raise :class:`ValueError`.  Spec gaps, decided here:
 an imaginary zero ``3i``..``6i`` reads input like ``2i`` (the wiki names
 only ``i`` and ``2i``); any closer (2 or 6) closes the innermost opener,
@@ -31,6 +33,7 @@ from collections.abc import Callable, Sequence
 from typing import cast
 
 from esolangs._drive import drive
+from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.register_based.polynomial.roots import (
     _PEEL_MAX_EXPONENT,
@@ -267,7 +270,10 @@ def _power(register: int, exponent: int) -> int:
     if exponent >= 0:
         return cast(int, register**exponent)
     if register == 0:
-        raise ZeroDivisionError("zero register to negative power")
+        raise HaltError(
+            "zero register to negative power",
+            hint="keep the register nonzero before a negative ^",
+        )
     if abs(register) == 1:
         return -1 if register == -1 and exponent % 2 else 1
     return 0

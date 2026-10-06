@@ -6,8 +6,10 @@ A laser starts at ``o`` with a random heading.  ``>``/``<``/``+``/``-``/
 heading, ``#`` skips, ``x`` deletes the laser, ``*`` splits it
 perpendicular at random.  When no lasers remain the tape is printed:
 decimal by default, byte mode (no separators) when the first grid cell is
-``\xff``; negative cells are excluded.  Cells are signed 32-bit values, so
-writes wrap in two's-complement order.
+``\xff``; negative cells are excluded.  Readings of gaps: "used cells" are
+the cells a command wrote; ragged rows pad with spaces to a rectangle; a
+second ``o`` halts the run at once (every example has one start).  Cells
+are signed 32-bit values, so writes wrap in two's-complement order.
 
 The initial heading and every ``*`` split are drawn from ``rng``, so one
 argument makes a run reproducible; ``None`` draws for real, as the
