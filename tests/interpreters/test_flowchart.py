@@ -49,6 +49,21 @@ KOLAKOSKI = [
     "              \\[ ]/─────[ ]",
 ]
 
+# The Kolakoski program on the current wiki page.  Bits 0 and 1 stand for 1
+# and 2, so its output is the Kolakoski sequence, which the page names.
+WIKI_KOLAKOSKI = [
+    "( )─{ ]─\\[ ]/   ┌────< >────┐",
+    " │        │     │     │     │",
+    "{ ]─\\ \\ \\[ ]/  \\ \\  \\{ }/ \\{ }/",
+    " ┌───┘    │     │     │     │ ",
+    "[ }─\\ \\  ( )  /{ }\\ \\[ ]/ \\[ ]/",
+    "     │    │     │     │     │   ",
+    "    \\ \\   │     │    [ ]   [ ]",
+    "     │    │     │     │     │   ",
+    "   (( ))  │     ├───\\[ ]/─\\[ ]/",
+    "          └─────┘",
+]
+
 
 def run_program(code: list[str], stdin: str = "") -> str:
     """Run ``code`` to completion and return everything it printed."""
@@ -122,8 +137,17 @@ class TestKolakoski:
         assert not machine.halted
 
     def test_output_prefix(self) -> None:
-        """Characterization only: the wiki states no expected output."""
-        assert run_steps(KOLAKOSKI, "", 400) == "01111001100110011001"
+        """Characterization only: this older layout prints no stated output.
+
+        It pushes empty registers, so the pin moved when pushing empty
+        stopped being a no-op (it was ``01111001100110011001``).
+        """
+        assert run_steps(KOLAKOSKI, "", 400) == "01101100110011001100"
+
+    def test_the_current_wiki_program_prints_the_kolakoski_sequence(self) -> None:
+        """1221121221221121122121121221121121221221121 as bits 0 and 1."""
+        expected = "0110010110110010011010010110010010110110010"
+        assert run_steps(WIKI_KOLAKOSKI, "", 1500)[: len(expected)] == expected
 
 
 class TestParsing:
@@ -261,10 +285,11 @@ class TestNodes:
         """A pushed bit comes back off the top of the deque."""
         assert self._register("[ }─\\[ ]/─{ }─\\{ }/") == 1
 
-    def test_pushing_an_empty_register_pushes_nothing(self) -> None:
-        """A push with nothing to push leaves the deque as it was."""
-        assert self._register("{ }─\\[ ]/─\\{ }/") is None
-        assert self._register("{ }─/[ ]\\─/{ }\\") is None
+    def test_pushing_an_empty_register_pushes_an_empty(self) -> None:
+        """The spec lets a deque hold empty, so it covers the bit beneath."""
+        assert self._register("[ }─\\[ ]/─{ }─\\[ ]/─\\{ }/") is None
+        assert self._register("[ }─/[ ]\\─{ }─/[ ]\\─/{ }\\") is None
+        assert self._register("[ }─\\[ ]/─{ }─\\[ ]/─\\{ }/─\\{ }/") == 1
 
     def test_push_bottom_pop_bottom(self) -> None:
         """``/[ ]\\`` and ``/{ }\\`` use the other end of the deque."""

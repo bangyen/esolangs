@@ -52,7 +52,7 @@ rather than invented, and every one of the three examples on the page
   ``'0'`` or ``'1'``.  EOF leaves the register empty rather than raising,
   which is exactly the "empty if there are no more bits to read" the spec
   asks for; a pointer reading past the end simply carries an empty
-  register onward, and ``\ \`` then prints nothing.
+  register onward, and ``\ \`` then prints zero.
 
 * **Re-entry memory disambiguates paths; it never suppresses a node.**
   The spec says a pointer re-entering a node or path it has already
@@ -67,11 +67,16 @@ rather than invented, and every one of the three examples on the page
   clause then means the remembered direction is declined whenever taking
   it would reverse the pointer.
 
-* **An empty register outputs zero, as the command table specifies.**
-  The wiki's cat reaches output after popping an exhausted deque, so it
-  appends a spurious zero (``101`` in, ``1010`` out). The explicit rule
-  takes precedence over that faulty example. Pushing an empty register
-  remains a no-op because deques hold bits, not empty values.
+* **Empty is a value: it outputs zero and it is pushed like a bit.**  The
+  spec says "bits in a register and deque are also able to be an 'empty'
+  value" and "outputting empty is the same as outputting zero", so a push
+  of an empty register puts an empty on the deque and popping it empties
+  the register again.  No wiki example forces the other reading (a push of
+  empty being a no-op): the truth machine, cat and both Hello Worlds never
+  touch a deque, and the Kolakoski program prints the Kolakoski sequence
+  either way.  An earlier revision of the wiki's cat popped an exhausted
+  deque before its last output and so appended a zero (``101`` in,
+  ``1010`` out); the explicit output rule takes precedence over that.
 
 * **Pointers run in lock-step, round-robin, in creation order.**  The
   spec fixes the starting order (top-most, left-most) and says pointers
@@ -109,8 +114,8 @@ onward path) raise :class:`ValueError`.
 
 At EOF a ``/ /`` read leaves the register **empty** rather than raising,
 which is the same state ``{ }`` clears it to. Output prints zero for that
-state; pushes onto a deque skip it. A program reading past EOF keeps running
-without a :class:`HaltError`.
+state, and a push puts it on the deque as an empty cell. A program reading
+past EOF keeps running without a :class:`HaltError`.
 
 External bits are consecutive 0 or 1 characters, ignoring whitespace; the spec
 does not define stdin framing.
@@ -330,7 +335,7 @@ class _State:
     """
 
     pointers: list[_Pointer]
-    deques: dict[int, list[int]]
+    deques: dict[int, list[int | None]]
 
 
 class _Machine:
@@ -389,7 +394,7 @@ class _Machine:
         self.state.pointers = pointers
 
     @property
-    def deques(self) -> dict[int, list[int]]:
+    def deques(self) -> dict[int, list[int | None]]:
         """The shared deques, retained as a convenience for step helpers."""
         return self.state.deques
 
@@ -590,9 +595,13 @@ class _Machine:
     def memory(self) -> list[int]:
         """The shared tape of deques, concatenated in index order.
 
-        This is what the pointers read and write between them.
+        This is what the pointers read and write between them.  The view
+        holds bits only, so an empty cell is left out of it; the snapshot
+        keeps it.
         """
-        return [v for key in sorted(self.deques) for v in self.deques[key]]
+        return [
+            v for key in sorted(self.deques) for v in self.deques[key] if v is not None
+        ]
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
@@ -748,7 +757,7 @@ class _Machine:
         n_row, n_col, d = exits[0]
         self._step_to(i, n_row, n_col, d)
 
-    def _deque(self, p: _Pointer) -> list[int]:
+    def _deque(self, p: _Pointer) -> list[int | None]:
         """Return ``p``'s currently selected deque, creating it if needed."""
         return self.deques.setdefault(p.deque, [])
 
@@ -791,11 +800,9 @@ class _Machine:
         elif spelling == "\\ \\":
             self.io.print_str(str(0 if reg is None else reg))
         elif spelling == "\\[ ]/":
-            if reg is not None:
-                self._deque(p).append(reg)
+            self._deque(p).append(reg)
         elif spelling == "/[ ]\\":
-            if reg is not None:
-                self._deque(p).insert(0, reg)
+            self._deque(p).insert(0, reg)
         elif spelling == "\\{ }/":
             cells = self._deque(p)
             reg = cells.pop() if cells else None
