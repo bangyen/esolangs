@@ -2,12 +2,13 @@
 
 import io
 from contextlib import redirect_stdout
+from pathlib import Path
 from typing import ClassVar
 
 import pytest
 
 from esolangs.interpreters.grid_based.laserfuck import run
-from esolangs.interpreters.io import IO
+from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.interpreters.randomness import FirstDraw
 from tests.interpreters.contract import SnapshotContract
 
@@ -349,3 +350,25 @@ class TestContract(SnapshotContract):
 
     machine = staticmethod(_machine)
     stepping_program: ClassVar[list[str]] = ["ÿ}o+x\n x"]
+
+
+#: The wiki's Hello world rows are wider than a source line.
+FIXTURES = Path(__file__).parents[1] / "fixtures"
+
+
+def _wiki_run(code: str, stdin: str, heading: int) -> str:
+    io_ = ScriptedIO(stdin)
+    run(code.split("\n"), io_, rng=FirstDraw(heading))
+    return io_.getvalue()
+
+
+@pytest.mark.parametrize("heading", range(4))
+def test_the_wiki_hello_world_prints_its_spent_counter(heading: int) -> None:
+    """Every used cell prints, so the loop counter left at 0 comes out as NUL."""
+    code = (FIXTURES / "laserfuck_hello.txt").read_text(encoding="utf-8")
+    assert _wiki_run(code, "", heading) == "\x00Hello, world!"
+
+
+def test_the_wiki_cat_prints_the_nul_it_stopped_on() -> None:
+    """The NUL was read into a cell, so it is a used cell and prints too."""
+    assert _wiki_run("ÿ/\\\n|o},#/)x\n _\\> /", "hi\x00", 0) == "hi\x00"

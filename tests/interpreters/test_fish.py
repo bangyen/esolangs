@@ -169,3 +169,50 @@ def test_movement_mirrors_jump_and_trampolines() -> None:
         machine.dx, machine.dy = start
         machine.step()
         assert (machine.dx, machine.dy) == expected
+
+
+#: The wiki's four Hello, world! programs, its one-space indent removed.
+_WIKI_HELLO = (
+    '>"Hello, world!"0r>o:?v;\n                  ^   <',
+    '"!dlrow ,olleH"l?!;oe0.',
+    "98*oaa*1+o9c*o9c*oba*\\\n1+ob4*o84*of2+7*oba*1\\\n+of4+6*oc9*oaa*ob3*o;\\",
+    "98*ob3*aa*:1+o9c*:\\\no;!*4b*48+8o::-3:+\\!6o:|ooo",
+)
+
+
+@pytest.mark.parametrize("source", _WIKI_HELLO)
+def test_the_wiki_hello_worlds(source: str) -> None:
+    assert _run(source) == "Hello, world!"
+
+
+def test_the_wiki_fizzbuzz_counts_to_one_hundred() -> None:
+    source = (
+        "0voa                            ~/?=0:\\\n"
+        " voa            oooo'Buzz'~<     /\n"
+        " >1+:aa*1+=?;::5%:{3%:@*?\\?/'zziF'oooo/\n"
+        " ^oa                 n:~~/"
+    )
+    lines = _run(source).splitlines()
+    assert len(lines) == 100
+    assert lines[:5] == ["1", "2", "Fizz", "4", "Buzz"]
+    assert lines[14] == "FizzBuzz"
+    assert lines[-2:] == ["Fizz", "Buzz"]
+
+
+def test_the_wiki_quines_print_their_source() -> None:
+    """The multi-line quine reads 24 columns a row.
+
+    The wiki copy lost its last row's trailing space, so the quine then reads
+    an empty cell (0) there; restoring that one space is the only repair.
+    """
+    assert _run('"r00gol?!;40.') == '"r00gol?!;40.'
+    quine = (
+        "0>:a$f8+$p1+:5-?vv     \n"
+        " ^              <>~0v  \n"
+        "v             <     <  \n"
+        ">0v          ;^?-6:+1~<\n"
+        "v <                  < \n"
+        ">$:{:}$go$   1+:f9+-?^^ "
+    )
+    assert _run(quine) == quine
+    assert _run(quine.rstrip(" ")).endswith("^^\x00")
