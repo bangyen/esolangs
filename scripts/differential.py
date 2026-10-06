@@ -130,6 +130,10 @@ slashes -- the Perl interpreter in section "Implementations" of
 
         export ESOLANGS_REF_SLASHES="perl $PWD/slashes.pl {program}"
 
+Smallfuck, Minsky Swap, Collatz Multiverse, ArrowQueue, the six S*bleq
+    variants, BF-PDA, BFStack, bit~ -- no other implementation exists, so
+    clean-room ones from the wiki alone; see ``differential_tarpits.py``.
+
 Adding a language: write a program generator (grammar-aware, biased to short
 halting programs and the edge cases), an input generator, and register a
 ``Spec`` in ``SPECS``.  Override ``split``/``join``/``blank`` when deleting
@@ -1042,6 +1046,84 @@ SPECS["thue"] = Spec(
     patches=_strings.THUE_PATCHES,
 )
 SPECS["slashes"] = Spec("slashes", _strings.slashes_program, lambda _rng, _p: "")
+
+
+# --- the eight tarpits checked against clean-room references ---------------
+import differential_tarpits as _tarpits  # noqa: E402
+
+_HARNESS = (Outcome, _bytes, _ours_status)
+
+_NO_INPUT = lambda _rng, _program: ""  # noqa: E731
+# Ours sizes the tape to the source and prints cell 2; the reference prints
+# the tape, sized by its input bits (fed as zeros) at SMALLFUCK_TAPE_LEN=1.
+SPECS["Smallfuck"] = Spec(
+    "Smallfuck",
+    _tarpits.bf_like(bf_program, {"+": "*", "-": "*", ".": "", ",": " "}),
+    _NO_INPUT,
+    ref_stdin=lambda program, _stdin: "0" * len(program),
+    ref_outcome=blind_outcome,
+    valid=balanced,
+    ours=final_state(_tarpits.tape),
+)
+SPECS["Minsky Swap"] = Spec(
+    "Minsky Swap",
+    _tarpits.minsky_program,
+    _NO_INPUT,
+    ref_outcome=_tarpits.converted(blind_outcome, _tarpits.strip_newline),
+)
+# Ours reads ``input`` as integer tokens, the reference as bytes.
+SPECS["Collatz Multiverse"] = Spec(
+    "Collatz Multiverse",
+    _tarpits.collatz_program,
+    _tarpits.collatz_input,
+    max_steps=20_000,
+    ref_stdin=lambda _program, stdin: "".join(map(chr, map(int, stdin.split()))),
+    ref_outcome=_tarpits.converted(blind_outcome, _tarpits.utf8_to_latin1),
+    split=lambda program: program.split("\n"),
+    join="\n".join,
+)
+SPECS["ArrowQueue"] = Spec(
+    "ArrowQueue",
+    _tarpits.arrowqueue_program,
+    _NO_INPUT,
+    ref_outcome=_tarpits.converted(blind_outcome, _tarpits.headings),
+    join=befunge_join,
+    blank=" ",
+)
+for _name, (_store, _indirect) in _tarpits.SBLEQ_VARIANTS.items():
+    SPECS[_name] = Spec(
+        _name,
+        _tarpits.sbleq_program,
+        _tarpits.ascii_input_long,
+        max_steps=20_000,
+        ref_outcome=blind_outcome,
+        split=str.split,
+        join=" ".join,
+        ours=None
+        if _name == "S*bleq"
+        else _tarpits.sbleq_variant(_store, indirect=_indirect, harness=_HARNESS),
+    )
+SPECS["BF-PDA"] = Spec(
+    "BF-PDA",
+    _tarpits.bf_like(bf_program, {"+": "@", "-": "@", ",": "."}),
+    _NO_INPUT,
+    ref_outcome=blind_outcome,
+    valid=balanced,
+)
+SPECS["BFStack"] = Spec(
+    "BFStack",
+    bf_program,
+    _tarpits.ascii_input_long,
+    ref_outcome=blind_outcome,
+    valid=balanced,
+)
+SPECS["bit~"] = Spec(
+    "bit~",
+    _tarpits.bf_like(bf_program, dict(zip("+-.,[]", "~~(){}", strict=True))),
+    _tarpits.ascii_input_long,
+    ref_outcome=blind_outcome,
+    valid=lambda program: balanced(program.translate(str.maketrans("{}", "[]"))),
+)
 
 
 def _env_name(language: str) -> str:
