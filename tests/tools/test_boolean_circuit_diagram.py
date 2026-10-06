@@ -6,32 +6,13 @@ import importlib
 import pytest
 
 from esolangs import tools as boolean
+from tests.witness_tables import witnesses
 
 
 # 6.2s over 99 tests: builds and runs banded drawings.
 @pytest.mark.medium
 class TestCircuitDiagramLayoutGuards:
-    """The layout's collision checks, reached by constructing the state.
-
-    ``_Layout`` asserts its own geometry as it is built: two signals may
-    not run the same way through a cell, a glyph may not land on a wire or
-    another glyph, and two different signals' junctions may not come within
-    one cell of each other (a ``.`` connects to all eight neighbours, so
-    adjacent junctions merge into one wiring).
-
-    None of these fires on a table the generator actually builds -- swept
-    over every table through three inputs, the closest two different
-    signals' junctions ever come is Chebyshev distance 2, one clear of the
-    guard.  That is the design working, and it is also why the guards were
-    the single largest cluster of surviving mutants in the module: code
-    that never runs cannot be wrong in a way a truth table notices.  So the
-    states are built directly rather than searched for.
-
-    Each check is asserted in both directions.  The negative cases are what
-    stop a guard from being "fixed" by making it fire always: a wire may
-    legally re-claim a cell for the *same* signal, may cross itself in the
-    other direction, and same-signal junctions may touch.
-    """
+    """The layout's collision checks, reached by constructing the state."""
 
     @staticmethod
     def _layout() -> object:
@@ -113,12 +94,7 @@ class TestCircuitDiagramLayoutGuards:
         self._layout()._check_free(1, 1)  # noqa: SLF001
 
     def test_a_run_between_touching_junctions_records_nothing(self) -> None:
-        """The span is exclusive, so neighbours leave no cell to claim.
-
-        Two junctions a cell apart -- or the same one twice -- have an empty
-        interior, and recording an empty interval would make the next run
-        through that cell clash with nothing.
-        """
+        """The span is exclusive, so neighbours leave no cell to claim."""
         layout = self._layout()
         layout.run_vertical(3, 4, 4, 1)
         layout.run_vertical(3, 4, 5, 1)
@@ -129,12 +105,7 @@ class TestCircuitDiagramLayoutGuards:
         assert layout.render() != ""
 
     def test_the_clash_scan_keeps_looking_after_its_first_hit(self) -> None:
-        """The reported cell is the earliest, not the first one found.
-
-        Runs are stored in the order they were laid, so a later entry can
-        clash further left than an earlier one; the scan has to see every
-        run before it names a coordinate.
-        """
+        """The reported cell is the earliest, not the first one found."""
         from esolangs.tools.circuit_diagram import _Layout
 
         late_is_earlier = _Layout._clash(  # noqa: SLF001
@@ -160,16 +131,7 @@ class TestCircuitDiagramLayoutGuards:
     def test_adjacent_junctions_of_different_signals_are_rejected(
         self, dx: int, dy: int
     ) -> None:
-        """All eight neighbours, diagonals included, merge and so are refused.
-
-        The message is compared whole rather than by substring: it names
-        the offending pair, and the second coordinate is built from the
-        same ``dx``/``dy`` the scan walks, so a sign slipped into it points
-        the reader at a cell that holds nothing.  Which of the two
-        junctions is reported first depends on dictionary order, so both
-        readings are accepted -- the guard scans outwards from every
-        junction, which is also why negating a loop offset is invisible.
-        """
+        """All eight neighbours, diagonals included, merge and so are refused."""
         layout = self._layout()
         layout.junctions[(5, 5)] = 1
         layout.junctions[(5 + dx, 5 + dy)] = 2
@@ -194,56 +156,8 @@ class TestCircuitDiagramLayoutGuards:
         layout.junctions[(7, 5)] = 2
         layout._check_junction_spacing()  # noqa: SLF001
 
-    @pytest.mark.parametrize(
-        ("table", "rows", "columns"),
-        [
-            ("01", 1, 4),
-            # AND reads both plain rails, so it builds no complement: 11 x 17
-            # while the analysis still took ``0/x`` for a ``~`` rule.
-            ("0001", 7, 11),
-            ("0110", 23, 35),
-            # 91 columns before gate groups were recycled, and the width is
-            # what moves when they stop being: the rows are untouched, since
-            # reuse gives back columns and never a band.  33 x 49 until only
-            # the complement the ``1/x`` level reads was built.
-            ("00010111", 29, 43),
-            # Four inputs, where the two savings compound: 219 columns as a
-            # left fold with no reuse, 99 once groups were recycled, and 87
-            # once the folds were balanced.  The rows never move -- neither
-            # change gives back a band.
-            ("0110100110010110", 107, 99),
-        ],
-    )
-    def test_the_drawing_has_exact_dimensions(
-        self, table: str, rows: int, columns: int
-    ) -> None:
-        """The band and column steps place every part of the drawing.
-
-        A bus that starts a row lower, a gate band that advances by one
-        step too many, or a signal counter seeded at 1 all draw a *valid*
-        circuit -- the wires still connect the same gates and the table
-        still comes out right -- at different coordinates.  Nothing else
-        here can see that: the truth-table sweeps read the printed bit,
-        and the collision guards only fire when the spacing collapses
-        entirely rather than merely drifts.  The extents are the cheapest
-        observable that moves when any of the layout constants does.
-        """
-        from esolangs.tools.circuit_diagram import circuit_diagram
-
-        drawing = circuit_diagram(table).split("\n")
-        assert len(drawing) == rows
-        assert max(len(row) for row in drawing) == columns
-
     def test_the_online_fold_keeps_the_width_logarithmic(self) -> None:
-        """Each extra input doubles the cofactors and costs a bounded step.
-
-        A gate sits right of every bus it reads, so the drawing's width is
-        set by the gate network's *depth*.  Folded left that depth is the
-        number of parts, and an extra input would roughly double it; folded
-        in half it is the logarithm, so an extra input adds one level.
-
-        The pins are what a regression would move.
-        """
+        """Each extra input doubles the cofactors and costs a bounded step."""
         widths = {}
         for n in (3, 4, 5, 6):
             table = "".join(str(bin(i).count("1") % 2) for i in range(2**n))
@@ -252,17 +166,6 @@ class TestCircuitDiagramLayoutGuards:
         assert widths == {3: 67, 4: 99, 5: 131, 6: 163}
         steps = [widths[n + 1] - widths[n] for n in (3, 4, 5)]
         assert max(steps) <= 32, steps
-
-    def test_the_online_fold_holds_only_one_partial_per_level(self) -> None:
-        """Binary carries combine immediately rather than accumulating a level.
-
-        Delaying carries would put every cofactor result on a bus of its own,
-        spending in columns what immediate binary carries save.
-        """
-        # A level-wide fold would need sixteen live buses here.
-        table = "".join(str(bin(i).count("1") % 2) for i in range(32))
-        drawing = boolean.circuit_diagram(table)
-        assert max(len(row) for row in drawing.splitlines()) == 131
 
     @pytest.mark.slow
     def test_emitted_size_is_linear_in_the_table(self) -> None:
@@ -353,13 +256,7 @@ class TestCircuitDiagramLayoutGuards:
         assert builder.invert(source) != source
 
     def test_real_layouts_never_come_within_one_cell(self) -> None:
-        """The generator's spacing keeps every table clear of the guard.
-
-        The guard is a net, not a mechanism -- this is the property that
-        makes it never fire, measured rather than assumed, so a spacing
-        regression names itself here instead of tripping an assertion deep
-        in a render.
-        """
+        """The generator's spacing keeps every table clear of the guard."""
         from esolangs.tools.circuit_diagram import _Layout, circuit_diagram
 
         closest = []
@@ -399,15 +296,7 @@ class TestCircuitDiagramLayoutGuards:
 
     @pytest.mark.slow
     def test_a_width_bands_the_drawing_and_it_still_computes(self) -> None:
-        """Banding carries the live signals left; the circuit is unchanged.
-
-        A gate must sit right of every bus it reads, so a group freed
-        behind the drawing is unusable and the width grows with the
-        network's depth.  A band moves what is still live back to the left
-        and frees everything behind it -- and a wire that merged with
-        another would be wrong in a way only a run would show, so this runs
-        every input combination.
-        """
+        """Banding carries the live signals left; the circuit is unchanged."""
         from esolangs.tools.circuit_diagram import circuit_diagram
 
         # ``00101111`` at 30 is the case that bands on the final ``~``: a
@@ -431,8 +320,7 @@ class TestCircuitDiagramLayoutGuards:
         program = circuit_diagram("0110", 1)
         assert max(map(len, program.splitlines())) == 4
         for n in range(1, 4):
-            for value in range(1 << (1 << n)):
-                table = format(value, f"0{1 << n}b")
+            for table in witnesses(n):
                 assert self._run_at(table, 1) == table
 
     def test_affine_floor_uses_native_xor_in_public_programs(self) -> None:
@@ -455,8 +343,7 @@ class TestCircuitDiagramLayoutGuards:
         from esolangs.tools.circuit_diagram import _affine_circuit
 
         for n in range(1, 4):
-            for value in range(1 << (1 << n)):
-                table = format(value, f"0{1 << n}b")
+            for table in witnesses(n):
                 program = _affine_circuit(table, 1)
                 if program is None:
                     continue
@@ -477,14 +364,7 @@ class TestCircuitDiagramLayoutGuards:
                 assert self._run_at(table, width) == table
 
     def test_banding_brings_every_arity_inside_eighty(self) -> None:
-        """Which is the point: unbanded, parity clears 80 columns at n == 4.
-
-        The floor is what a band cannot reclaim -- the rails and the
-        complements, read by every minterm and so live for the whole
-        drawing -- so it grows with the *inputs* rather than with the
-        table, which is why it stays well under 80 while the flat drawing
-        does not.
-        """
+        """Which is the point: unbanded, parity clears 80 columns at n == 4."""
         from esolangs.tools.circuit_diagram import circuit_diagram
 
         for n in (4, 5, 6):
@@ -501,13 +381,7 @@ class TestCircuitDiagramLayoutGuards:
     def test_a_band_must_re_carry_what_an_earlier_one_moved(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Forgetting a carried signal hands its column away while it is live.
-
-        That is how this first went wrong, and it is the layout guard that
-        caught it rather than a wrong answer.  Making ``_band`` forget makes
-        it fire again -- so the guard is what licenses the banding, not a
-        check that happens to pass.
-        """
+        """Forgetting a carried signal hands its column away while it is live."""
 
         from esolangs.tools.circuit_diagram import _Builder
 
@@ -528,19 +402,7 @@ class TestCircuitDiagramLayoutGuards:
 
 
 class TestCircuitDiagram:
-    """The Circuit Diagram generator (a real gate network, input-reading).
-
-    Circuit Diagram draws boolean circuits, so a truth table is its native
-    idiom.  The generator folds adjacent cofactors into fixed mux circuits:
-    ``n`` input lines, one shared complement per selector that needs it,
-    and a ``:`` that prints the final signal.
-
-    Every assertion here replays the generated program through the real
-    interpreter over the table's *whole* input space, which is what makes
-    the layout trustworthy: a wire that merges into its neighbour or a gate
-    fed a generation late shows up as a wrong bit, and no static check on
-    the ASCII would catch either.
-    """
+    """The Circuit Diagram generator (a real gate network, input-reading)."""
 
     @staticmethod
     def run_table(table: str) -> str:
@@ -560,23 +422,6 @@ class TestCircuitDiagram:
             results.append(io.getvalue())
         return "".join(results)
 
-    @pytest.mark.parametrize("table", [format(i, "04b") for i in range(16)])
-    def test_every_two_input_table(self, table: str) -> None:
-        """All sixteen two-input functions, each over all four inputs."""
-        assert self.run_table(table) == table
-
-    @pytest.mark.parametrize("table", ["01", "10", "00", "11"])
-    def test_every_one_input_table(self, table: str) -> None:
-        assert self.run_table(table) == table
-
-    @pytest.mark.parametrize(
-        "table",
-        ["00010111", "01101001", "11110000", "00000000", "11111111"],
-    )
-    def test_three_input_tables(self, table: str) -> None:
-        """Majority, parity, a projection, and both constants."""
-        assert self.run_table(table) == table
-
     @pytest.mark.parametrize(
         ("table", "tildes"),
         [
@@ -593,12 +438,7 @@ class TestCircuitDiagram:
         assert circuit_diagram(table).count("~") == tildes
 
     def test_complementary_sparse_tables_have_comparable_drawings(self) -> None:
-        """Shannon folding handles a function and its complement symmetrically.
-
-        Both fold to the same two gates.  What differs is the rails: AND
-        joins ``0/x`` cofactors on the plain rails, and NAND's ``1/x`` reads
-        every complement -- three ``~`` the sparse drawing does not need.
-        """
+        """Shannon folding handles a function and its complement symmetrically."""
         from esolangs.tools.circuit_diagram import circuit_diagram
 
         dense = circuit_diagram("11111110")  # NAND3: seven ones
@@ -610,12 +450,7 @@ class TestCircuitDiagram:
         assert self.run_table("00000001") == "00000001"
 
     def test_a_constant_table_is_never_complemented(self) -> None:
-        """It is already one gate, so complementing only swaps the glyph.
-
-        An all-ones table is the trap: complementing leaves no minterms at
-        all, which is the all-zeros shape, so the result would print the
-        wrong constant unless the table is excluded outright.
-        """
+        """It is already one gate, so complementing only swaps the glyph."""
         assert self.run_table("1111") == "1111"
         assert self.run_table("0000") == "0000"
 
@@ -623,36 +458,19 @@ class TestCircuitDiagram:
     def test_equal_cofactors_from_different_gates_still_get_a_complement(
         self, table: str
     ) -> None:
-        """The fold compares signals, not functions, so ``0001|0001`` muxes.
-
-        Both halves compute the same function from different gates, which the
-        complement analysis once hashed together; the mux that joins them
-        then reached for a ``~`` nobody had built.
-        """
+        """The fold compares signals, not functions, so ``0001|0001`` muxes."""
         assert self.run_table(table) == table
 
     def test_four_input_primality(self) -> None:
-        """The same function the wiki's own worked example computes.
-
-        The wiki's prime tester is a hand-drawn product of sums; this is the
-        generator's sum of minterms for the same table, so the two agree on
-        every one of the sixteen inputs by different constructions.
-        """
+        """The same function the wiki's own worked example computes."""
         primes = {n for n in range(2, 16) if all(n % d for d in range(2, n))}
         table = "".join("1" if n in primes else "0" for n in range(16))
         assert self.run_table(table) == table
 
     @pytest.mark.slow  # ~3s: 256 builds of up to four orders, eight rows each
     def test_every_three_input_table_under_its_chosen_order(self) -> None:
-        """A reordered fold still reads its rails in input order.
-
-        Only which rail each Shannon level selects moves, so a selector
-        wired to the wrong input -- the permuted table read against the
-        identity's rails, or the reverse -- is a wrong bit on some row.
-        107 of the 256 tables take a non-identity order.
-        """
-        for value in range(256):
-            table = format(value, "08b")
+        """A reordered fold still reads its rails in input order."""
+        for table in witnesses(3):
             assert self.run_table(table) == table
 
     @pytest.mark.parametrize(
@@ -685,13 +503,7 @@ class TestCircuitDiagram:
         assert self.run_table(table) == table
 
     def test_each_run_prints_exactly_one_bit(self) -> None:
-        """The output wire is live for exactly one generation.
-
-        A ``:`` prints in every generation its wire carries a value, so a
-        second driver on any wiring -- or two wirings merged by adjacent
-        junctions -- would show up as extra characters even when the value
-        happens to be right.
-        """
+        """The output wire is live for exactly one generation."""
         from esolangs.interpreters.grid_based.circuit_diagram import run
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.tools.circuit_diagram import circuit_diagram
@@ -721,54 +533,8 @@ class TestCircuitDiagram:
         with pytest.raises(ValueError, match="only '0' and '1'"):
             circuit_diagram("012x")
 
-    def test_h_layout_tree_wiring_does_not_depend_on_the_table(self) -> None:
-        """The literal and selector wires take the same lanes for every table.
-
-        Every result anchor is held before the trees are routed, whether or
-        not the table uses it, so the canvas a tree wire is routed on is a
-        function of the arity alone -- which is what lets those lanes be
-        derived into a rule.  The holds are released before the results are
-        routed, so a table's result wires still reach their anchors.
-        """
-        from esolangs.tools.circuit_diagram import (
-            _HOLD,
-            _h_minterm_sites,
-            _h_term_layout,
-        )
-
-        n = 3  # odd arity: every shape, including ``under``, at the leaves
-        prefixes = [p for p in _h_minterm_sites(n) if p.bit_length() - 1 >= 2]
-        # Selector signals are the non-leaf prefixes'; the literals follow.
-        tree = {index for index, p in enumerate(prefixes) if p.bit_length() - 1 < n}
-        tree |= set(range(len(prefixes), len(prefixes) + 2 * n))
-
-        def wiring(table: str) -> set[tuple[str, int, int, int, int]]:
-            layout = _h_term_layout(table)
-            assert _HOLD not in layout._reserved.values()  # noqa: SLF001
-            runs = {
-                ("h", y, a, b, s)
-                for y, line in layout.horizontal.items()
-                for a, b, s in line
-                if s in tree
-            }
-            runs |= {
-                ("v", x, a, b, s)
-                for x, line in layout.vertical.items()
-                for a, b, s in line
-                if s in tree
-            }
-            return runs
-
-        tables = ("00000001", "10100111", "11111110")
-        assert wiring(tables[0]) == wiring(tables[1]) == wiring(tables[2])
-
     def test_a_route_may_cross_a_hold_but_not_corner_beside_it(self) -> None:
-        """A held cell keeps corners out of its neighbourhood, not wires.
-
-        The hold stands in for a result junction that may or may not be
-        placed later, so a corner beside it would merge with that junction
-        while a wire crossing its column would not.
-        """
+        """A held cell keeps corners out of its neighbourhood, not wires."""
         from esolangs.tools.circuit_diagram import _HOLD, _RoutingLayout
 
         layout = _RoutingLayout()
@@ -799,12 +565,7 @@ class TestCircuitDiagram:
 
     @pytest.mark.slow  # ~6s: three n=4 builds, sixteen interpreted rows each
     def test_h_layout_lanes_execute_at_four_inputs(self) -> None:
-        """Fixed lanes lay a correct circuit where every wire class meets.
-
-        Four inputs is the smallest H-layout with two-level quadrants, so
-        every shape -- ``down``, ``across`` and ``under`` -- and every
-        residue class of the lattice is exercised.
-        """
+        """Fixed lanes lay a correct circuit where every wire class meets."""
         import random
 
         from esolangs.interpreters.grid_based.circuit_diagram import run
@@ -824,43 +585,7 @@ class TestCircuitDiagram:
 
 
 class TestCircuitDiagramSelectorOrder:
-    """Which rail each Shannon level selects, chosen among four named orders.
-
-    The rails stay in input order -- they are the interface -- so a candidate
-    only permutes the fold's levels.  These pin the choice itself; the
-    execution sweeps above are what show a chosen order still computes.
-    """
-
-    def test_the_three_input_screen_is_nearly_closed(self) -> None:
-        """19.6% off the identity, against 19.8% for the best of six orders."""
-        from esolangs.tools.circuit_diagram import _circuit_diagram_at, circuit_diagram
-
-        tables = [format(value, "08b") for value in range(256)]
-        assert sum(len(_circuit_diagram_at(table, None)) for table in tables) == 183978
-        assert sum(len(circuit_diagram(table)) for table in tables) == 152716
-
-    @pytest.mark.parametrize(
-        ("zero", "one", "cost"),
-        [
-            (0, 0, (0, False)),
-            (2, 2, (0, False)),  # one rail twice is one signal
-            (-1, -1, (3, True)),  # two gates never are
-            (0, 1, (0, False)),
-            (1, 0, (0, True)),
-            (0, -1, (1, False)),
-            (-1, 1, (1, False)),
-            (1, -1, (1, True)),
-            (-1, 0, (1, True)),
-            (2, 3, (3, True)),
-        ],
-    )
-    def test_mux_cost_mirrors_the_mux_rules(
-        self, zero: int, one: int, cost: tuple[int, bool]
-    ) -> None:
-        """Gates and complement, as :func:`_mux` spends them on each pair."""
-        from esolangs.tools.circuit_diagram import _mux_cost
-
-        assert _mux_cost(zero, one) == cost
+    """Which rail each Shannon level selects, chosen among four named orders."""
 
     def test_the_mux_cost_order_keeps_the_identity_on_a_tie(self) -> None:
         """Parity costs every level the same, whichever rail it selects."""

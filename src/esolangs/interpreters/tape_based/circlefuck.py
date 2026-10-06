@@ -33,8 +33,7 @@ from esolangs.interpreters.source_hints import syntax_error
 #: pointer reaching an ``@`` -- rather than a position the cursor passes:
 #: the tape is circular, so there is no end to run off.
 #:
-#: ``done`` stays out of ``snapshot``, which reports the three live fields
-#: plus the input cursor, in the order it always returned them.
+#: ``snapshot`` includes ``done``: executing ``@`` changes only that field.
 type _State = tuple[int, int, tuple[int, ...], bool]
 
 #: The one change a cell makes to the tape: ``("set", i, value)`` writes a
@@ -82,7 +81,11 @@ def parse(code: str) -> list[int]:
             ind += 1
         elif code[ind] == "o":
             digits = code[ind + 1 : ind + 4]
-            if len(digits) != 3 or any(d not in "01234567" for d in digits):
+            if (
+                len(digits) != 3
+                or any(d not in "01234567" for d in digits)
+                or int(digits, 8) > 255
+            ):
                 raise syntax_error(
                     "invalid Circlefuck escape",
                     "give \\o exactly three octal digits, for example \\o101",
@@ -100,9 +103,9 @@ def parse(code: str) -> list[int]:
                 )
             cells.append(int(digits, 16))
             ind += 3
-        elif code[ind].isdigit():
+        elif code[ind] in "0123456789":
             digits = code[ind : ind + 3]
-            if len(digits) == 3 and digits.isdigit():
+            if len(digits) == 3 and all(d in "0123456789" for d in digits):
                 if int(digits) > 255:
                     raise syntax_error(
                         "invalid Circlefuck escape",
@@ -281,18 +284,17 @@ class _Machine:
         """The addressable cells."""
         return list(self._cells)
 
-    @property
-    def stack(self) -> list[object]:
-        """No stack in this language."""
-        return []
-
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        # A tuple copy of the tape, not the list itself: the detector holds
-        # snapshots across steps, and a live reference would mutate under
-        # it and make a real repeat compare unequal to itself.  The order
-        # is the one this returned before ``done`` joined the state.
-        return (tuple(self._cells), self._ind, self._ptr, self.io.position())
+        # Copy the tape so later self-modification cannot rewrite history.
+        # The halt flag distinguishes the two states on the same ``@`` cell.
+        return (
+            tuple(self._cells),
+            self._ind,
+            self._ptr,
+            self.io.position(),
+            self._done,
+        )
 
     def step(self) -> None:
         """Execute one cell, advancing the pointers."""

@@ -67,11 +67,7 @@ def unlambda_plain(truth_table: str) -> str:
 
 
 def intercal_plain(truth_table: str, perm: tuple[int, ...]) -> str:
-    """Emit one order's template; level ``k`` selects input ``perm[k]``.
-
-    ``truth_table`` is already permuted.  The assignments stay in name
-    order, input ``i`` in ``.{n - i}``.
-    """
+    """Emit one order's template; level ``k`` selects input ``perm[k]``."""
     from esolangs.tools.intercal import _Expr, _mux, _program
 
     n = _validate_truth_table(truth_table)
@@ -101,21 +97,7 @@ def separated_tree_text(
     one_first: bool = False,
     pair: Callable[[int, int], str] | None = None,
 ) -> str:
-    """Return a folded decision tree as text, with a separator between halves.
-
-    ``head`` opens a node and its first half, ``between`` closes that half
-    and opens the other, and ``close`` ends the node; ``leaf(level, row)``
-    writes a leaf, which a collapsed subtable reaches early.  ``one_first``
-    lays the one-half before the zero-half, and ``pair(level, mid)`` writes
-    a node whose halves are two different constants, split at row ``mid``.
-
-    :func:`decision_tree_tokens` deliberately cannot act *between* the
-    children, and a language whose branch is a delimited body -- FALSE's
-    ``[...]?`` lambda, Unlambda's ``d`` promise -- needs exactly that: one
-    delimiter per half, in the text, between the two.  One pre-order pass
-    with an explicit stack, so a node's text is appended once rather than
-    copied into its parent's: O(len(result)).
-    """
+    """Return a folded decision tree as text, with a separator between halves."""
     n = _validate_truth_table(truth_table)
     constant = constant_span_test(truth_table)
     pieces: list[str] = []

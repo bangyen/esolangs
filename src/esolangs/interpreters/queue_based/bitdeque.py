@@ -143,11 +143,6 @@ class _Machine:
     # register reads as a stack of one.
 
     @property
-    def ip(self) -> int:
-        """The token cursor."""
-        return self.ind
-
-    @property
     def memory(self) -> list[int]:
         """The deque, front first."""
         return list(self.state[2])

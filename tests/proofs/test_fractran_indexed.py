@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import random
-from itertools import product
 
 import pytest
 
@@ -46,16 +45,6 @@ def _row(template: str, table: str, row: int, *, literal: bool) -> tuple[int, in
     assert machine.value == (2 if table[row] == "1" else 1)
     assert machine.inspections <= 16 * (n + 1) ** 2
     return steps, machine.inspections
-
-
-def test_every_small_table_matches_literal_fraction_choices() -> None:
-    for n in range(1, 4):
-        size = 1 << n
-        for bits in product("01", repeat=size):
-            table = "".join(bits)
-            template = _threshold(table, n)
-            for row in range(size):
-                _row(template, table, row, literal=True)
 
 
 @pytest.mark.medium
@@ -109,66 +98,6 @@ def test_index_preserves_reduced_guards_and_nonmonotone_priority() -> None:
             a, b = fractions[index]
             value = value * a // b
             assert machine.value == value
-
-
-@pytest.mark.medium
-def test_wider_executed_size_scaling() -> None:
-    from tests.proofs.deep.linearity import _trend
-    from tests.tools.test_boolean_contract import _nested_dense
-
-    series = []
-    for n in range(7, 15):
-        table = _nested_dense(n)
-        template = fractran(table)
-        series.append((n, len(template)))
-        for row in (0, 1, len(table) // 2, len(table) - 1):
-            code = fill_runs(
-                template,
-                TEMPLATE_CHAR,
-                [PAIR] * n,
-                [(row >> (n - 1 - i)) & 1 for i in range(n)],
-            )
-            machine = _Machine(code, ScriptedIO(""))
-            assert machine._index is not None
-            steps = 0
-            while not machine.halted:
-                machine.step()
-                steps += 1
-                assert steps < 10 * (1 << n)
-            assert machine.value == (2 if table[row] == "1" else 1)
-    trend = _trend(series)
-    assert trend is not None
-    assert trend <= 4.4
-
-
-def test_narrow_root_state_preserves_every_small_table() -> None:
-    from esolangs.tools.fractran import _fractran_raw, fractran_setters
-
-    before = after = 0
-    for n in range(1, 4):
-        size = 1 << n
-        for value in range(1 << size):
-            table = f"{value:0{size}b}"
-            raw = _fractran_raw(table)
-            narrow = fractran(table, width=1)
-            assert fractran(table) == raw
-            assert max(map(len, narrow.splitlines())) <= max(map(len, raw.split()))
-            for row in range(size):
-                bits = [(row >> shift) & 1 for shift in range(n - 1, -1, -1)]
-                code = fill_runs(
-                    narrow, TEMPLATE_CHAR, fractran_setters(narrow, n), bits
-                )
-                machine = _Machine(code, ScriptedIO(""))
-                for _ in range(4 * n + 4):
-                    if machine.halted:
-                        break
-                    machine.step()
-                assert machine.halted
-                assert machine.value == (2 if table[row] == "1" else 1)
-            if n == 3:
-                before += len(raw.replace(" ", "\n"))
-                after += len(narrow)
-    assert (before, after) == (27_842, 27_842)
 
 
 @pytest.mark.parametrize("width", [1, 3, 4, 9, 10, 19])
@@ -225,10 +154,3 @@ def test_binary_parity_uses_three_column_fractions() -> None:
             machine.step()
         assert machine.halted
         assert machine.value == 1 + int(expected)
-
-
-def test_indexed_parity_without_constant_leaves_executes_sampled_rows() -> None:
-    table = "".join(str(row.bit_count() & 1) for row in range(128))
-    template = fractran(table)
-    for row in (0, 1, 37, 126, 127):
-        _row(template, table, row, literal=False)

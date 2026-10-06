@@ -103,9 +103,8 @@ def _loaded(
     return Fraction(_UNSET)
 
 
-# Ruby's Rational() string parser accepts integers and "a/b" fractions only,
-# not decimals; the interpreter rejects the same inputs.
-_RATIONAL = re.compile(r"^[+-]?\d+(?:/[+-]?\d+)?$")
+# Input tokens are integers or fractions with an unsigned denominator.
+_RATIONAL = re.compile(r"^[+-]?\d+(?:/\d+)?$")
 
 
 class _Machine:
@@ -155,16 +154,11 @@ class _Machine:
         """The code cursor."""
         return self.state[0]
 
-    @property
-    def memory(self) -> list[int]:
-        """No addressable cells; the store is the stack."""
-        return []
-
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        # All three stores are already tuples, and the variables are kept
-        # in key order, so the state goes in as it stands.
-        return self.state
+        # ?(!?)! can revisit this state while consuming 1 1 0; the input
+        # cursor separates the repeat from the later zero that ends the loop.
+        return (*self.state, self.io.position())
 
     def step(self) -> None:
         """Execute one command, advancing (or jumping) the cursor."""
@@ -190,9 +184,12 @@ class _Machine:
             )
         value = None
         target = None
-        if char == "(" and stack[-1] == 0:
-            target = _forward(self.code, ind)
-            if target is None:
+        if char == "(":
+            # Matchedness is settled on entry, whichever way the top goes:
+            # a loop entered on a nonzero top otherwise ran off the end of
+            # the code and halted as if its body had finished.
+            match = _forward(self.code, ind)
+            if match is None:
                 # The original's scan walked the cursor to the end before
                 # noticing, so a caller catching the error sees that.
                 self.state = (len(self.code), stack, jumps, variables)
@@ -200,6 +197,8 @@ class _Machine:
                     "unmatched (",
                     hint="pair each loop or group opener with its corresponding closer",
                 )
+            if stack[-1] == 0:
+                target = match
         elif char == "?":
             line = self.io.input_token().strip()
             if not _RATIONAL.fullmatch(line):

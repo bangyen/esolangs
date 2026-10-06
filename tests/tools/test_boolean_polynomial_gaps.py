@@ -1,9 +1,4 @@
-"""The drained-DAG builder's refusals.
-
-Draining pays one bare read per ignored leading input, so the builder
-declines a table that ignores none -- there is nothing to drain, and the
-plain DAG already spells it.
-"""
+"""The drained-DAG builder's refusals."""
 
 from esolangs.tools.polynomial import (
     _polynomial_drained_dag,

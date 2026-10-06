@@ -8,6 +8,7 @@ import pytest
 
 import esolangs
 from esolangs import _isolated
+from esolangs._evaluate import _evaluate
 from esolangs._isolated import _decode, _worker
 from tests.cli_support import call_both
 
@@ -21,10 +22,7 @@ def _growing_template(doublings: int) -> str:
 
 @pytest.mark.medium
 def test_memory_probe_template_reaches_execution() -> None:
-    assert (
-        esolangs.evaluate("Underload", _growing_template(3), inputs=1, isolated=True)
-        == "01"
-    )
+    assert _evaluate("Underload", _growing_template(3), inputs=1, isolated=True) == "01"
 
 
 @pytest.mark.parametrize("limit", [0, -1, True, 1.5, "1", 1 << 63])
@@ -42,7 +40,7 @@ def test_memory_budget_requires_isolation() -> None:
 def test_unsupported_platform_refuses_before_acquisition(monkeypatch, platform) -> None:
     monkeypatch.setattr(_isolated.sys, "platform", platform)
     with pytest.raises(esolangs.ArgumentError, match="Linux"):
-        esolangs.evaluate(
+        _evaluate(
             "Underload", Path("missing"), inputs=1, isolated=True, max_memory=_BUDGET
         )
 
@@ -55,9 +53,7 @@ def test_budget_allows_answers_and_bound_language() -> None:
     for language in ("brainfuck", "Vandevelo"):
         source = esolangs.generate(language, "0110")
         assert (
-            esolangs.evaluate(
-                language, source, inputs=2, isolated=True, max_memory=_BUDGET
-            )
+            _evaluate(language, source, inputs=2, isolated=True, max_memory=_BUDGET)
             == "0110"
         )
 
@@ -86,7 +82,7 @@ def test_growing_state_fails_and_worker_is_reaped(monkeypatch) -> None:
 @pytest.mark.skipif(not _LINUX, reason="Linux RLIMIT_AS only")
 def test_memory_failure_during_evaluation_is_not_an_answer() -> None:
     with pytest.raises(esolangs.InterpreterLimitError, match="memory limit") as caught:
-        esolangs.evaluate(
+        _evaluate(
             "Underload",
             _growing_template(29),
             inputs=1,
@@ -99,7 +95,7 @@ def test_memory_failure_during_evaluation_is_not_an_answer() -> None:
 
 @pytest.mark.medium
 @pytest.mark.skipif(not _LINUX, reason="Linux RLIMIT_AS only")
-def test_cli_budget_runs_and_evaluates(tmp_path, capsys) -> None:
+def test_cli_budget_runs(tmp_path, capsys) -> None:
     path = tmp_path / "source.bf"
     path.write_text("+.")
     output, _ = call_both(
@@ -107,20 +103,6 @@ def test_cli_budget_runs_and_evaluates(tmp_path, capsys) -> None:
         capsys,
     )
     assert output == "\x01"
-    path.write_text(esolangs.generate("brainfuck", "0110"))
-    output, _ = call_both(
-        [
-            "evaluate",
-            "--table",
-            "0110",
-            "--max-memory",
-            str(_BUDGET),
-            "brainfuck",
-            str(path),
-        ],
-        capsys,
-    )
-    assert output == "0110\n"
 
 
 def test_worker_memory_failure_retains_protocol(monkeypatch, capsys) -> None:
@@ -137,9 +119,9 @@ def test_worker_memory_failure_retains_protocol(monkeypatch, capsys) -> None:
         _decode(capsys.readouterr().out, expired=False)
 
 
-@pytest.mark.parametrize("command", ["run", "evaluate"])
-def test_cli_invalid_budget_precedes_path_reads(command, capsys) -> None:
-    options = ["--isolated"] if command == "run" else ["--inputs", "1"]
+def test_cli_invalid_budget_precedes_path_reads(capsys) -> None:
+    command = "run"
+    options = ["--isolated"]
     with pytest.raises(SystemExit, match=r"^2$"):
         call_both(
             [command, *options, "--max-memory", "0", "brainfuck", "missing"], capsys
@@ -206,8 +188,12 @@ def test_evaluation_forwards_budget_without_changing_answers(
     monkeypatch.setattr(target, attribute, capture)
     bound = esolangs.Language(language)
     assert (
-        bound.evaluate(
-            bound.generate("0110"), inputs=2, isolated=True, max_memory=_BUDGET
+        _evaluate(
+            bound.name,
+            bound.generate("0110"),
+            inputs=2,
+            isolated=True,
+            max_memory=_BUDGET,
         )
         == "0110"
     )

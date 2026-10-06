@@ -142,10 +142,6 @@ class _Machine:
             for i in range(min(tape, default=0), max(tape, default=0) + 1)
         )
 
-    @property
-    def stack(self) -> tuple[object, ...]:
-        return ()
-
     def snapshot(self) -> tuple[object, ...]:
         node, at, pointer, tape = self.state
         cells = tuple((cell, value) for cell, value in tape if value)

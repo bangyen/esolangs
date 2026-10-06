@@ -16,7 +16,7 @@ lines.
 Since a child is only an address, a subtree equal to one already emitted at
 its level is not emitted again: the patch names the earlier copy, and a node
 whose halves are equal is skipped for its child.  Over the 256 three-input
-tables that is 39,156 to 37,278 characters (4.8%); over 200 seeded
+tables that is 39,156 to 37,862 characters (3.3%); over 200 seeded
 five-input tables, 114,791 to 83,070 (27.6%).
 """
 

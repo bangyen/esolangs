@@ -7,8 +7,10 @@ from dataclasses import replace
 import pytest
 
 import esolangs
+from esolangs._evaluate import _evaluate
 from esolangs.registry import LANGUAGES, parameterized_ids, resolve
 from esolangs.tools.examples import BOOLEAN_EXAMPLES
+from tests.stdin_check import _check_stdin
 
 
 def test_examples_derive_the_registered_io_contract() -> None:
@@ -45,28 +47,30 @@ def test_execution_does_not_require_examples_or_docstrings(monkeypatch) -> None:
     monkeypatch.setattr(_describe, "_spec", refuse_documentation)
     monkeypatch.setattr(examples, "BOOLEAN_EXAMPLES", {})
     assert esolangs.encode_inputs("brainfuck", [0, 1]) == "01"
-    esolangs.check_stdin("brainfuck", "01", "0110")
+    _check_stdin("brainfuck", "01", "0110")
     assert esolangs.read_answer("RAM0", "z: 1\nn: 0") == "1"
-    assert esolangs.evaluate("brainfuck", program, inputs=2) == "0110"
+    assert _evaluate("brainfuck", program, inputs=2) == "0110"
 
 
 @pytest.mark.medium
 def test_stripped_docstrings_preserve_all_answer_mechanisms() -> None:
     code = """
 import esolangs
+from esolangs._evaluate import _evaluate
+from tests.stdin_check import _check_stdin
 for name in (
     'brainfuck', 'Fargo', 'Grapheme', 'Taglate',
     'RAM0', 'INTERCAL', '123', 'Vandevelo',
 ):
     program = esolangs.generate(name, '0110')
-    result = esolangs.evaluate(name, program, inputs=2)
+    result = _evaluate(name, program, inputs=2)
     if result != '0110':
         raise AssertionError((name, result))
 for name, stdin in (
     ('brainfuck', '01'), ('Fargo', '1\\n'),
     ('Grapheme', '%\\nA\\n'), ('Taglate', '01'),
 ):
-    esolangs.check_stdin(name, stdin, '0110')
+    _check_stdin(name, stdin, '0110')
 try:
     esolangs.describe('brainfuck')
 except esolangs.ProgramError as exc:
@@ -97,7 +101,7 @@ def test_termination_polarity_comes_from_the_registry(monkeypatch) -> None:
             contract=replace(language.contract, answer_values=("diverges", "halts")),
         ),
     )
-    assert esolangs.evaluate("Vandevelo", program, inputs=2) == "1001"
+    assert _evaluate("Vandevelo", program, inputs=2) == "1001"
 
 
 def test_termination_diagnostic_does_not_score_a_timeout() -> None:

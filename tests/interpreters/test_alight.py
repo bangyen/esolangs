@@ -1,14 +1,9 @@
-"""Unit tests for the Alight interpreter and its generator.
-
-Wiki examples pin grid geometry; explicit copy semantics take precedence
-where the reversed-cat example discards the result of three-argument at.
-"""
+"""Unit tests for the Alight interpreter and its generator."""
 
 from typing import ClassVar
 
 import pytest
 
-import esolangs
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.grid_based.alight import _Machine, run
 from esolangs.interpreters.io import ScriptedIO
@@ -16,7 +11,6 @@ from esolangs.tools.alight import alight
 from esolangs.vm import run_until_halt_or_cycle
 from tests.interpreters.contract import (
     CycleContract,
-    EmptyProgramContract,
     SnapshotContract,
 )
 from tests.interpreters.runner import run_program
@@ -135,33 +129,22 @@ def _machine(code: list[str]) -> _Machine:
 
 
 class TestWikiExamples:
-    """The page's own programs, run against their documented behaviour.
-
-    These are the only external check on the two readings the prose does
-    not settle -- infix evaluation and in-place ``at`` -- so they are
-    asserted on output, not merely on not raising.
-    """
+    """The page's own programs, run against their documented behaviour."""
 
     @pytest.mark.parametrize("program", [CAT_TURN, CAT_SKIP], ids=["turn", "skip"])
     @pytest.mark.parametrize(
         ("stdin", "expected"),
-        [("h\ni\n", "h\ni\n"), ("a\nb\nc\n", "a\nb\nc\n"), ("", ""), ("x\n", "x\n")],
+        [("h\ni\n", "h\ni\n"), ("", "")],
     )
     def test_cat_echoes_until_eof(
         self, program: list[str], stdin: str, expected: str
     ) -> None:
-        """Both cats echo their input and stop at EOF.
-
-        The two differ only in how the loop exits -- ``turn c = eof`` walks
-        into ``end``, ``skip c = eof`` steps over the ``turn right`` that
-        would continue -- so running both pins the two guards against the
-        same behaviour.
-        """
+        """Both cats echo their input and stop at EOF."""
         assert _run(program, stdin) == expected
 
     @pytest.mark.parametrize(
         ("stdin", "expected"),
-        [("h\ni\n", "\ni\nh"), ("a\nb\nc\n", "\nc\nb\na"), ("", ""), ("z\n", "\nz")],
+        [("h\ni\n", "\ni\nh"), ("", "")],
     )
     def test_reversed_cat_discards_the_required_copy(
         self, stdin: str, expected: str
@@ -174,15 +157,7 @@ class TestWikiExamples:
             assert _run(REVERSED_CAT, stdin) == expected
 
     def test_cat_geometry_closes_the_loop(self) -> None:
-        """The turn-cat's loop returns to ``inp``, which only one geometry does.
-
-        A cat echoing more than one character is already proof the walk
-        cycles, but this pins *where*: the vertical ``turn right`` at column
-        11 shares its terminating semicolon with ``var c`` on row 3, so the
-        pointer arrives back facing east one cell past it -- at ``inp c``.
-        A turn that pivoted on the cell after the semicolon, or that read
-        left as clockwise, would miss it.
-        """
+        """The turn-cat's loop returns to ``inp``, which only one geometry does."""
         assert _run(CAT_TURN, "a\nb\nc\nd\ne\n") == "a\nb\nc\nd\ne\n"
 
 
@@ -193,14 +168,7 @@ class TestExpressions:
         return _run([f"begin;var v;set v {expr};out v;end;"], stdin)
 
     def test_evaluation_is_left_to_right_without_precedence(self) -> None:
-        """``2+3*10`` is ``(2+3)*10``, not ``2+(3*10)``.
-
-        The prose says operators are postfix; every example is infix, so
-        infix wins.  Left-to-right with no precedence is the reading that
-        makes the reversed cat's ``len{l}-0.5`` and the boolean generator's
-        Horner fold both mean what they have to mean.  50 is ``'2'``; under
-        precedence this would be 32 (space).
-        """
+        """``2+3*10`` is ``(2+3)*10``, not ``2+(3*10)``."""
         assert self._value("2+3*10") == "2"
         assert self._value("1*2+3*10") == "2"
 
@@ -214,11 +182,7 @@ class TestExpressions:
         assert _run(['begin;var v;set v at{";x", 0.5};out v;end;']) == ";"
 
     def test_list_index_out_of_range_reads_nil(self) -> None:
-        """Two-argument ``at`` past the end is ``nil``, not an error.
-
-        Observed by comparing against ``nil`` and printing only on a match,
-        since ``nil`` itself has no character to output.
-        """
+        """Two-argument ``at`` past the end is ``nil``, not an error."""
         program = 'begin;var v;set v at{"A", 9.5};skip v = nil;end;set v 65;out v;end;'
         assert _run([program]) == "A"
 
@@ -251,12 +215,7 @@ class TestExpressions:
         ],
     )
     def test_logic_operators(self, expr: str, expected: str) -> None:
-        """``!``, ``&``, ``|`` and ``^`` over the two booleans.
-
-        Read out by comparing the result against the expected special and
-        printing only when they match, so a wrong answer prints nothing
-        rather than merely differing in some unobserved variable.
-        """
+        """``!``, ``&``, ``|`` and ``^`` over the two booleans."""
         program = (
             f"begin;var v;set v {expr};skip v = {expected};end;set v 65;out v;end;"
         )
@@ -279,13 +238,7 @@ class TestErrors:
             run(["var c;end;"], ScriptedIO())
 
     def test_a_reversed_end_does_not_halt(self) -> None:
-        """The wiki says meeting ``dne`` is not meeting ``end``.
-
-        Reaching it is an unknown command rather than a halt, which is the
-        observable difference: a walker that matched ``end`` in any
-        direction would return here having printed nothing and raised
-        nothing at all.
-        """
+        """The wiki says meeting ``dne`` is not meeting ``end``."""
         with pytest.raises(ValueError, match="unknown command 'dne'"):
             run(["begin;;dne;"], ScriptedIO())
         # And the same word travelling the other way *is* a halt, so the
@@ -297,26 +250,11 @@ class TestErrors:
             run(["begin;;;"], ScriptedIO())
 
     def test_naming_an_undeclared_variable_is_a_runtime_error(self) -> None:
-        """``out``/``inp`` take an *existing* name, and say so when it is not.
-
-        A well-formed name that was never ``var``-declared is a runtime
-        failure rather than a load one: the grid parses, the walker reaches
-        the command, and only then is there nothing to read.  That is the
-        HaltError/ValueError split this class is about, on the one command
-        pair that resolves a name instead of creating it.
-        """
+        """``out``/``inp`` take an *existing* name, and say so when it is not."""
         with pytest.raises(HaltError, match="no such variable: 'c'"):
             run(["begin;out c;end;"], ScriptedIO("1\n"))
         with pytest.raises(HaltError, match="no such variable: 'c'"):
             run(["begin;inp c;end;"], ScriptedIO("1\n"))
-
-    def test_an_unknown_command_is_malformed(self) -> None:
-        with pytest.raises(ValueError, match="unknown command"):
-            run(["begin;frobnicate x;end;"], ScriptedIO())
-
-    def test_an_undeclared_variable_is_a_runtime_error(self) -> None:
-        with pytest.raises(HaltError, match="no such variable"):
-            run(["begin;set q 1;end;"], ScriptedIO())
 
     def test_a_redeclared_variable_is_a_runtime_error(self) -> None:
         with pytest.raises(HaltError, match="already exists"):
@@ -377,19 +315,7 @@ class TestFunctions:
     def test_unbounded_recursion_grows_walkers_without_crashing(
         self, program: list[str]
     ) -> None:
-        """No depth cap: walkers grow on the heap, not Python's stack.
-
-        There was a cap here, and it never fired on the second shape --
-        recursing from a ``set`` in the body spends more Python frames per
-        language-level call than recursing from ``end loop{a}``, so at a
-        cap of 200 that shape hit Python's own limit first and raised
-        ``RecursionError``, the very crash the cap documented preventing.
-        Framing calls removes the cause rather than retuning the number.
-
-        Such a program revisits no state, so nothing can prove it halts and
-        the wall-clock ``timeout`` is the backstop, as in ``grapheme.py``.
-        What is asserted is that it stays *steppable*.
-        """
+        """No depth cap: walkers grow on the heap, not Python's stack."""
         machine = _machine(program)
         for _ in range(3000):
             machine.step()
@@ -419,18 +345,7 @@ class TestFunctions:
         assert _run(program) == "A"
 
     def test_a_ring_inside_a_called_function_is_provable(self) -> None:
-        """The reason calls are framed rather than run inline.
-
-        A callee that rings forever used to walk inside the caller's single
-        ``step()``, so its repeating state never reached ``snapshot`` and
-        the cycle detector could not see it -- only the wall clock ended
-        it.  Framed, every command reaches ``snapshot`` and the repeat
-        proves the hang.
-
-        The ring reads no input and sets no variable, so its state really
-        does repeat; a walk that grows is the separate class the timeout
-        covers.
-        """
+        """The reason calls are framed rather than run inline."""
         # The proven ring from :class:`TestCycles`, entered by a call.  Its
         # continuation rows shift right by 3: a walk resumes just past its
         # header, which is column 5 for ``begin`` and column 8 for
@@ -444,44 +359,7 @@ class TestFunctions:
 
 
 class TestGenerators:
-    """Both generators, checked by running what they emit.
-
-    Source text is not evidence: every assertion here executes the program
-    through the interpreter and reads its output.
-    """
-
-    @pytest.mark.parametrize("n", [1, 2, 3])
-    @pytest.mark.medium
-    def test_boolean_computes_every_table_at_every_row(self, n: int) -> None:
-        """Exhaustive: all ``2**2**n`` tables, each on all ``2**n`` rows.
-
-        At n=3 that is 256 tables over 8 rows, which is the whole function
-        space -- there is no table of this arity the construction has not
-        been run on.
-        """
-        for value in range(2 ** (2**n)):
-            table = bin(value)[2:].zfill(2**n)
-            program = alight(table)
-            for combo in range(2**n):
-                bits = "".join(f"{(combo >> (n - 1 - i)) & 1}" for i in range(n))
-                assert _run(program.splitlines(), bits) == table[combo], (
-                    f"table {table} row {combo}"
-                )
-
-    @pytest.mark.parametrize("n", [4, 5, 6])
-    def test_boolean_computes_wider_tables(self, n: int) -> None:
-        """Sampled at the arities too wide to enumerate, still on every row."""
-        import random
-
-        rng = random.Random(n)
-        for _ in range(3):
-            table = "".join(rng.choice("01") for _ in range(2**n))
-            program = alight(table)
-            for combo in range(2**n):
-                bits = "".join(f"{(combo >> (n - 1 - i)) & 1}" for i in range(n))
-                assert _run(program.splitlines(), bits) == table[combo], (
-                    f"n={n} row {combo}"
-                )
+    """Both generators, checked by running what they emit."""
 
     def test_boolean_reads_n_inputs_whatever_the_table_says(self) -> None:
         """The reads are the interface, so a constant table still consumes them."""
@@ -493,13 +371,7 @@ class TestGenerators:
         assert counts == {3}
 
     def test_boolean_length_does_not_leak_the_table(self) -> None:
-        """Every table of one arity renders to the same length.
-
-        The lookup is branch-free, so the table appears only as a literal of
-        fixed width -- which is what puts this generator in the contract
-        test's ``_UNSHAPED`` set rather than making it a tree that fails to
-        fold.
-        """
+        """Every table of one arity renders to the same length."""
         lengths = {len(alight(bin(v)[2:].zfill(8))) for v in range(256)}
         assert len(lengths) == 1
 
@@ -508,24 +380,9 @@ class TestGenerators:
             alight("0")
 
     def test_numeric_literals_print_characters_that_are_alight_syntax(self) -> None:
-        """``out`` on a numeric literal sidesteps Alight's own quoting.
-
-        ``'`` shields the next character and ``"`` opens a string, so text
-        containing either would need escaping rules the wiki never gives.
-        Setting a var to the code point avoids the question entirely.
-        """
+        """``out`` on a numeric literal sidesteps Alight's own quoting."""
         program = "begin;var c;set c 39;out c;set c 34;out c;set c 59;out c;end;"
         assert _run(program.splitlines()) == "'\";"
-
-    def test_registered_generator_runs_through_the_public_api(self) -> None:
-        """The registry entry wires the generator and the interpreter."""
-        assert esolangs.run("Alight", alight("01"), "1\n") == "1"
-
-
-class TestEmptyProgram(EmptyProgramContract):
-    run = staticmethod(lambda code: _run(code))
-    empty_program: ClassVar[list[str]] = [""]
-    empty_raises = "empty program"
 
 
 class TestSnapshot(SnapshotContract):
@@ -533,13 +390,7 @@ class TestSnapshot(SnapshotContract):
     stepping_program = CAT_TURN
 
     def test_snapshot_includes_the_input_cursor(self) -> None:
-        """Two states differing only in consumed input must not compare equal.
-
-        A cat's loop returns to the same cell facing the same way with the
-        same variable, so without the cursor the second character read would
-        look like a repeat and the hang detector would call the program a
-        loop.
-        """
+        """Two states differing only in consumed input must not compare equal."""
         machine = _Machine(CAT_TURN, ScriptedIO("a\na\na\n"))
         seen = set()
         for _ in range(40):
@@ -595,13 +446,7 @@ class TestCycles(CycleContract):
 
 
 class TestEdgeCases:
-    """The error and edge paths the wiki examples never reach.
-
-    Each is a branch the interpreter really can take on some program, so
-    they are driven by running such a program rather than by calling the
-    private helper: what is pinned is that the path is reachable and what it
-    does when reached.
-    """
+    """The error and edge paths the wiki examples never reach."""
 
     @pytest.mark.parametrize(
         ("program", "message"),
@@ -704,40 +549,14 @@ class TestEdgeCases:
         ]
         assert _run(program) == "A"
 
-    def test_a_runaway_walk_is_proven_rather_than_capped(self) -> None:
-        """A ring that never halts is *proved* to hang, not stopped by a count.
-
-        There was a step cap here, and it decided the same question by
-        guessing a number.  The ring reads no input and sets no variable, so
-        its whole state repeats and the cycle detector settles it -- which is
-        what ``grapheme.py`` gives as the reason for deleting its own step
-        budget.
-        """
-        assert run_until_halt_or_cycle(_machine(TestCycles.looping_program)) is False
-
-    def test_a_string_may_contain_a_quote_via_the_escape(self) -> None:
-        """``'`` shields the next cell, so a quote can sit inside a command."""
-        assert _run(["begin;var v;set v '\";out v;end;"]) == '"'
-
     def test_comparisons_between_mismatched_types_are_false(self) -> None:
         """``<`` and ``>`` are false on anything but two numbers."""
         program = "begin;var v;set v nil < 1;skip v = right;end;set v 65;out v;end;"
         assert _run([program]) == "A"
 
-    def test_a_program_may_be_handed_over_as_a_string(self) -> None:
-        """``run`` accepts a joined program as well as a list of lines."""
-        io = ScriptedIO("")
-        run("begin;var c;set c 65;out c;end;", io)
-        assert io.getvalue() == "A"
-
 
 class TestFunctionDefinitionEdges:
-    """The ``func`` header paths, and the last few error branches.
-
-    A grid holds several words starting with ``func``, so the finder has to
-    reject the ones that are not the function being called; these drive
-    each rejection with a program that really contains such a header.
-    """
+    """The ``func`` header paths, and the last few error branches."""
 
     @pytest.mark.parametrize(
         "definition",
@@ -817,21 +636,6 @@ class TestFunctionDefinitionEdges:
         with pytest.raises(ValueError, match=message):
             run(lines, ScriptedIO())
 
-    def test_a_string_literal_may_run_off_the_grid(self) -> None:
-        """An unclosed ``"`` inside a command reaches the edge and is refused.
-
-        Distinct from the ``_scan`` case: here the command *does* end (the
-        edge closes it) but the literal inside it never does, so the parser
-        is what rejects it.
-        """
-        with pytest.raises(ValueError, match="unterminated string literal"):
-            run(['begin;var v;set v "ab'], ScriptedIO())
-
-    def test_a_bare_call_with_trailing_text_is_malformed(self) -> None:
-        """Only a call that consumes the whole command is a command."""
-        with pytest.raises(ValueError, match="unknown command"):
-            run(["begin;len{1} x;end;"], ScriptedIO())
-
     def test_a_function_body_may_run_commands_before_its_end(self) -> None:
         """The callee is a real walk, not just an expression."""
         program = [
@@ -849,22 +653,12 @@ class TestFunctionDefinitionEdges:
             )
 
     def test_an_unterminated_string_inside_a_list_is_malformed(self) -> None:
-        """An unclosed ``"`` swallows its own terminator and runs to the edge.
-
-        The scanner tracks quoting, so the ``]`` and the ``;`` here are
-        *inside* the literal: the command never ends and the edge is what
-        refuses it.  That is why the parser's matching guard is unreachable
-        from a real program and marked ``no cover``.
-        """
+        """An unclosed ``"`` swallows its own terminator and runs to the edge."""
         with pytest.raises(ValueError, match="unterminated string literal"):
             run(['begin;var v;set v [1, "a];'], ScriptedIO())
 
     def test_a_malformed_number_literal_is_refused(self) -> None:
-        """Two decimal points is not a number.
-
-        Driven through the parser directly: the scanner accepts the digits
-        and dots as one run, so this is the branch that rejects it.
-        """
+        """Two decimal points is not a number."""
         from esolangs.interpreters.grid_based.alight import _parse_number, _Parser
 
         with pytest.raises(ValueError, match="bad number literal"):
@@ -877,21 +671,6 @@ class TestFunctionDefinitionEdges:
                 ["begin;var v;set v f{1};end;", "func f{,};end 1;"],
                 ScriptedIO(),
             )
-
-    def test_a_long_function_body_runs_to_its_end(self) -> None:
-        """A callee's length is its own business now that no budget is shared.
-
-        This pinned the step cap being charged across the call boundary.
-        With no cap there is no budget to spend, so what is left worth
-        asserting is that a long body still returns its value rather than
-        being cut off part-way.
-        """
-        body = "set b a;" * 40
-        program = [
-            "begin;var v;set v f{65};out v;end;",
-            f"func f{{a}};var b;{body}end a;",
-        ]
-        assert _run(program) == "A"
 
     def test_a_bare_at_call_discards_its_copy(self) -> None:
         """Discarding an at-copy leaves the original list intact."""

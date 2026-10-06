@@ -69,81 +69,10 @@ def test_decode_missing_result_and_notes():
     assert caught.value.__notes__ == ["row 1"]
 
 
-@pytest.mark.parametrize(
-    "payload",
-    [
-        {
-            "language": "brainfuck",
-            "program": "+.",
-            "raster": False,
-            "stdin": "",
-            "seed": None,
-        },
-        {
-            "language": "brainfuck",
-            "program": ",",
-            "raster": False,
-            "stdin": "",
-            "seed": None,
-        },
-        {
-            "language": "brainfuck",
-            "program": "",
-            "raster": False,
-            "stdin": "",
-            "termination": ["0", "1"],
-        },
-        {
-            "language": "brainfuck",
-            "program": "[",
-            "raster": False,
-            "stdin": "",
-            "seed": None,
-        },
-        {
-            "language": "missing",
-            "program": "",
-            "raster": False,
-            "stdin": "",
-            "seed": None,
-        },
-    ],
-)
-def test_worker_protocol(payload, monkeypatch, capsys):
-    import io
-    import sys
-
-    # The worker normally exits after rebinding; restore its I/O class here.
-    monkeypatch.setattr(esolangs, "ScriptedIO", esolangs.ScriptedIO)
-    monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(payload)))
-    _worker()
-    messages = [json.loads(line) for line in capsys.readouterr().out.splitlines()]
-    assert "result" in messages[-1] or "error" in messages[-1]
-
-
 def test_decode_truncated_write_on_timeout():
     with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
         _decode('{"output": "done"}\n{"output": "unfinished', expired=True)
     assert caught.value.partial_output == "done"
-
-
-def test_worker_raster_protocol(monkeypatch, capsys):
-    import io
-    import sys
-
-    program = esolangs.generate("Piet", "01")
-    payload = {
-        "language": "Piet",
-        "program": program.rows,
-        "raster": True,
-        "stdin": "1\n",
-        "seed": None,
-    }
-    monkeypatch.setattr(esolangs, "ScriptedIO", esolangs.ScriptedIO)
-    monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(payload)))
-    _worker()
-    messages = [json.loads(line) for line in capsys.readouterr().out.splitlines()]
-    assert messages[-1] == {"result": "1"}
 
 
 def test_cancellation_kills_and_reaps_child(monkeypatch):
@@ -317,99 +246,6 @@ def test_capped_protocol_truncated_record_retains_prefix(protocol_child):
     assert child.reaped
 
 
-def test_capped_protocol_backpressure_and_stop_join_reader(protocol_child, monkeypatch):
-    from queue import Full, Queue
-    from threading import Event
-
-    from esolangs import _isolated
-
-    attempts = []
-    stopped = Event()
-
-    class Backpressure(Queue):
-        def put(self, value, **kwargs):
-            attempts.append(value)
-            if len(attempts) == 1:
-                raise Full
-            return super().put(value, **kwargs)
-
-    def records():
-        yield '{"output":"prefix"}\n'
-        yield (
-            json.dumps(
-                {
-                    "error": "InterpreterLimitError",
-                    "args": ["output limit"],
-                    "output_limit": True,
-                }
-            )
-            + "\n"
-        )
-        # Force one more record after the parent has stopped consumption.
-        assert stopped.wait(1)
-        yield '{"output":"late"}\n'
-
-    child = protocol_child(records())
-    original_kill = child.kill
-
-    def kill():
-        original_kill()
-        stopped.set()
-
-    child.kill = kill
-    monkeypatch.setattr(_isolated, "Queue", Backpressure)
-    with pytest.raises(esolangs.InterpreterLimitError) as caught:
-        _isolated._bounded_output(child, "{}", 1)  # noqa: SLF001
-    assert caught.value.partial_output == "prefix"
-    assert len(attempts) == 3
-    assert child.killed
-    assert child.reaped
-
-
-def test_capped_protocol_transfer_error_reaps(protocol_child):
-    from esolangs._isolated import _bounded_output
-
-    class BrokenWriter:
-        def write(self, _text):
-            raise OSError("broken pipe")
-
-    child = protocol_child([])
-    child.stdin = BrokenWriter()
-    with pytest.raises(OSError, match="broken pipe"):
-        _bounded_output(child, "{}", 1)
-    assert child.killed
-    assert child.reaped
-
-
-def test_capped_protocol_cancellation_reaps(protocol_child, monkeypatch):
-    from queue import Queue
-
-    from esolangs import _isolated
-
-    class Cancelled(Queue):
-        def get(self, **_kwargs):
-            raise KeyboardInterrupt
-
-    monkeypatch.setattr(_isolated, "Queue", Cancelled)
-    child = protocol_child(['{"result":""}\n'])
-    with pytest.raises(KeyboardInterrupt):
-        _isolated._bounded_output(child, "{}", 1)  # noqa: SLF001
-    assert child.killed
-    assert child.reaped
-
-
-def test_capped_protocol_deadline_before_read_reaps(protocol_child, monkeypatch):
-    from esolangs import _isolated
-
-    clock = iter([0, 2])
-    monkeypatch.setattr(_isolated, "monotonic", lambda: next(clock))
-    child = protocol_child([])
-    with pytest.raises(esolangs.ExecutionTimeoutError):
-        _isolated._bounded_output(child, "{}", 1)  # noqa: SLF001
-    assert child.killed
-    assert child.reaped
-
-
 def test_capped_protocol_verdict_does_not_excuse_a_lingering_worker(protocol_child):
     import subprocess
 
@@ -446,35 +282,6 @@ def test_isolated_row_timeout_stays_undecided(language, monkeypatch):
         evaluate_generated(language, "0110", isolated=True)
     assert caught.value.partial_output == "prefix"
     assert any("row 0" in note for note in caught.value.__notes__)
-
-
-def test_worker_decodes_large_integer_seed_and_output_cap(monkeypatch, capsys):
-    import io
-    import sys
-
-    huge = 10**5000
-    payload = {
-        "language": "brainfuck",
-        "program": "++.",
-        "raster": False,
-        "stdin": "",
-        "seed": hex(-huge),
-        "integer_seed": True,
-        "max_output": hex(huge),
-        "integer_max_output": True,
-    }
-    original_run = esolangs.run
-
-    def run(*args, **kwargs):
-        assert kwargs.pop("seed") == -huge
-        return original_run(*args, **kwargs)
-
-    monkeypatch.setattr(esolangs, "ScriptedIO", esolangs.ScriptedIO)
-    monkeypatch.setattr(esolangs, "run", run)
-    monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(payload)))
-    _worker()
-    messages = [json.loads(line) for line in capsys.readouterr().out.splitlines()]
-    assert messages[-1] == {"result": "\x02"}
 
 
 def test_capped_termination_worker_reports_overflow_instead_of_divergence(

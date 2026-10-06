@@ -1,12 +1,4 @@
-"""Feeding a language its input bits is answerable without reading source.
-
-Four languages do not take one ``0``/``1`` line per bit, and every one of
-them was found the same way: a reader fed digits a line at a time and got a
-plausible wrong answer -- or, for Taglate at three inputs, an
-input-exhausted error.  The facts existed in a table in the test suite,
-where no caller could reach them.  :func:`esolangs.encode_inputs` is that
-table, shipped; these tests hold it to the interpreters.
-"""
+"""Feeding a language its input bits is answerable without reading source."""
 
 from __future__ import annotations
 
@@ -66,12 +58,7 @@ class TestTheExceptionalLanguages:
         assert esolangs.describe("brainfuck")["input_shape"] == "char_stream"
 
     def test_every_reading_language_has_an_encoding(self) -> None:
-        """``encode_inputs`` indexes the example table, which must cover all.
-
-        The parameterized languages read no stdin at all, and asking for
-        theirs is refused rather than answered -- ``instantiate`` is where
-        their bits go.
-        """
+        """``encode_inputs`` indexes the example table, which must cover all."""
         assert set(example_stems()) == {
             lang.id for lang in LANGUAGES.values() if lang.boolean is not None
         }
@@ -154,12 +141,7 @@ class TestAnswerMode:
 
     @pytest.mark.slow
     def test_output_mode_means_the_printed_answer_is_the_table(self) -> None:
-        """The classification is held to the interpreters, not just asserted.
-
-        A structured field that lies is worse than the prose it replaces, so
-        every language claiming ``output`` is run: the last non-whitespace
-        character of each row must be that row of the table.
-        """
+        """The classification is held to the interpreters, not just asserted."""
         wrong = []
         for name in esolangs.list_languages():
             facts = esolangs.describe(name)

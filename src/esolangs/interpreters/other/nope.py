@@ -31,14 +31,6 @@ class _Machine:
     def ip(self) -> int:
         return int(self.state)
 
-    @property
-    def memory(self) -> list[int]:
-        return []
-
-    @property
-    def stack(self) -> list[object]:
-        return []
-
     def snapshot(self) -> tuple[object, ...]:
         return (self.state, self.io.position())
 

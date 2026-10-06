@@ -30,23 +30,14 @@ def test_division_and_modulo_truncate_toward_zero() -> None:
 
 
 def test_an_empty_stack_is_a_zero_divisor_like_any_other() -> None:
-    """The implicit 0 and an explicit one take the same path.
-
-    ``step`` used to ask for a result only when the stack was non-empty, so
-    ``0/`` read while ``/`` -- popping the very same 0 -- halted instead.
-    """
+    """The implicit 0 and an explicit one take the same path."""
     assert run_befunge("/.@", "7\n") == "7 "
     assert run_befunge("%.@", "8\n") == "8 "
     assert run_befunge("0/.@", "7\n") == run_befunge("/.@", "7\n")
 
 
 def test_a_zero_divisor_with_nothing_to_read_halts() -> None:
-    """The documented HaltError, through ``run`` rather than ``_advance``.
-
-    ``step`` reads the result before ``_advance`` runs, so the exhausted
-    input raised ``InputExhaustedError`` first and the HaltError below was
-    unreachable from outside.  ``&`` is a plain read and still propagates.
-    """
+    """The documented HaltError, through ``run`` rather than ``_advance``."""
     for program in ("10/.@", "/.@", "10%.@"):
         with pytest.raises(HaltError, match="needs a result"):
             run_befunge(program)
@@ -198,3 +189,42 @@ def test_advance_refuses_input_the_shell_did_not_supply() -> None:
     empty = ((0, 0, 1, 0), (("&",),), (), False, False)
     with pytest.raises(HaltError, match="no input left"):
         _advance(empty)
+
+
+def test_string_mode_pushes_read_and_random_cells_as_characters() -> None:
+    """Inside ``"``, ``/ ~ & ?`` are pushed, never read or drawn (Befunge-93)."""
+    assert run_befunge('"?&~/",,,,@') == "/~&?"
+
+
+def test_only_ascii_digits_push() -> None:
+    """``²`` passes ``str.isdigit`` but is not a Befunge-93 digit: a no-op."""
+    assert run_befunge("².@") == "0 "
+
+
+def test_a_non_byte_source_cell_is_rejected() -> None:
+    """Befunge-93 playfield cells are bytes; ``Ā`` (U+0100) cannot be one."""
+    with pytest.raises(ValueError, match="bytes"):
+        run_befunge("Ā@")
+
+
+def test_a_value_past_signed_long_aborts() -> None:
+    """81**16 overflows the reference's C long (UB there): abort, not a bignum."""
+    with pytest.raises(HaltError, match="signed-long"):
+        run_befunge("99*:*:*:*:*.@")
+
+
+def test_the_branch_search_refuses_a_zero_divisor_read() -> None:
+    """``/`` on an empty stack reads its result, so it cannot be forked."""
+    machine = _Machine(["/"], IO())
+    assert machine.branching_successors(machine.branching_snapshot(), 4) is None
+
+
+def test_division_keeps_the_mutable_runtime_stack() -> None:
+    """``/`` and ``%`` push onto the list, not a rebuilt tuple (O(1) per push)."""
+    machine = _Machine(["42/1%"], IO())
+    for _ in range(3):
+        machine.step()
+    assert isinstance(machine.state[2], list)
+    for _ in range(2):
+        machine.step()
+    assert isinstance(machine.state[2], list)

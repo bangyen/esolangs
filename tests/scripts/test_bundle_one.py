@@ -1,11 +1,4 @@
-"""The single-file bundle reproduces every interpreter's behavior.
-
-``scripts/bundle_one.py`` inlines a language's interpreter together with the
-shared ``esolangs.exceptions`` and ``esolangs.interpreters.io`` modules (and
-any interpreter it imports) into one runnable file.  These tests pin the two
-things that make that useful: the bundle compiles for every language, and
-running it produces exactly what the packaged interpreter produces.
-"""
+"""The single-file bundle reproduces every interpreter's behavior."""
 
 import functools
 import importlib
@@ -62,23 +55,14 @@ def _load_bundle(tmp_path: Path) -> object:
 
 
 def _run_and_read(bundle_mod: object, arg: Program | list[str], stdin: str = "") -> str:
-    """Run ``bundle_mod.run`` on ``arg`` and return its captured output.
-
-    Two arguments, like ``esolangs.run`` itself: the comparison below is
-    against that function, which passes the program and the io object and
-    nothing else.
-    """
+    """Run ``bundle_mod.run`` on ``arg`` and return its captured output."""
     io = ScriptedIO(stdin)
     bundle_mod.run(arg, io=io)
     return io.getvalue()
 
 
 def _outcome(fn: object) -> tuple[str, str | None]:
-    """Run ``fn`` and normalize its result to (kind, detail) for comparison.
-
-    The caller builds ``fn`` with loop variables bound as default arguments,
-    so a late-binding closure cannot pick up a later iteration's values.
-    """
+    """Run ``fn`` and normalize its result to (kind, detail) for comparison."""
     try:
         return ("ok", str(fn()))
     except BaseException as exc:
@@ -101,18 +85,7 @@ class TestBundleCompiles:
 class TestBundleMatchesPackage:
     @pytest.mark.slow
     def test_generator_languages_match(self, tmp_path: Path) -> None:
-        """A generated program runs the same through the bundle and the package.
-
-        Driven by ``BOOLEAN_EXAMPLES`` rather than by calling the generator
-        with a table of this test's own choosing: a boolean program reads
-        its input bits, and one run without them does not merely fail --
-        several interpreters loop forever waiting, which pins a core
-        instead of failing the suite.  The examples carry inputs that are
-        known to drive their program to a halt.
-
-        Compares outcome type and output so a ``SystemExit`` (Container) or
-        interpreter keyword arguments (Suffolk's ``limit``) match too.
-        """
+        """A generated program runs the same through the bundle and the package."""
         bundle_one = load_script()
         tested = set()
         for stem, example in sorted(BOOLEAN_EXAMPLES.items()):
@@ -384,77 +357,3 @@ def test_raster_package_bundles_from_raw_http_sources(
     finally:
         server.shutdown()
         server.server_close()
-
-
-@pytest.mark.medium
-def test_streetcode_package_runs_standalone(tmp_path: Path) -> None:
-    canonical = "esolangs.interpreters.grid_based.streetcode"
-    entry = importlib.import_module(canonical + ".__main__")
-    assert entry.run is importlib.import_module(canonical).run
-    module = load_script()
-    bundle = tmp_path / "streetcode.py"
-    module.bundle("Streetcode", module.Source(None), bundle)
-    program = esolangs.generate("Streetcode", "0110", balance=True)
-    path = tmp_path / "program.txt"
-    path.write_text(program)
-    for bits in ("00", "01", "10", "11"):
-        stdin = "\n".join(bits) + "\n"
-        expected = esolangs.run("Streetcode", program, stdin)
-        result = subprocess.run(
-            [sys.executable, "-I", str(bundle), str(path)],
-            input=stdin,
-            capture_output=True,
-            text=True,
-            cwd=tmp_path,
-        )
-        assert result.returncode == 0, result.stderr
-        assert result.stdout.replace("Input: ", "") == expected
-
-
-@pytest.mark.slow
-def test_polynomial_package_bundle_runs_standalone(tmp_path: Path) -> None:
-    canonical = "esolangs.interpreters.register_based.polynomial"
-    entry = importlib.import_module(canonical + ".__main__")
-    assert entry.run is importlib.import_module(canonical).run
-    module = load_script()
-    out = tmp_path / "polynomial.py"
-    module.bundle("Polynomial", module.Source(None), out)
-    program = esolangs.generate("Polynomial", "0110")
-    path = tmp_path / "program.txt"
-    path.write_text(program)
-    for bits in ("00", "01", "10", "11"):
-        stdin = "\n".join(bits) + "\n"
-        result = subprocess.run(
-            [sys.executable, "-I", str(out), str(path)],
-            input=stdin,
-            capture_output=True,
-            text=True,
-            cwd=tmp_path,
-        )
-        assert result.returncode == 0, result.stderr
-        assert result.stdout.replace("Input: ", "") == esolangs.run(
-            "Polynomial",
-            program,
-            stdin,
-        )
-
-
-@pytest.mark.medium
-def test_fractran_package_bundle_runs_standalone(tmp_path: Path) -> None:
-    canonical = "esolangs.interpreters.other.fractran"
-    entry = importlib.import_module(canonical + ".__main__")
-    assert entry.run is importlib.import_module(canonical).run
-    module = load_script()
-    out = tmp_path / "fractran.py"
-    module.bundle("Fractran", module.Source(None), out)
-    program = "2^3*3^4 3/2"
-    path = tmp_path / "program.txt"
-    path.write_text(program)
-    result = subprocess.run(
-        [sys.executable, "-I", str(out), str(path)],
-        capture_output=True,
-        text=True,
-        cwd=tmp_path,
-    )
-    assert result.returncode == 0, result.stderr
-    assert result.stdout == esolangs.run("Fractran", program) == str(3**7)

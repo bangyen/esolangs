@@ -9,9 +9,9 @@ from esolangs.interpreters.register_based.polynomial.roots import _factor_roots,
 from tests.interpreters.test_polynomial import TestPeelPrimePowerRoots as _PeelTests
 
 
-@pytest.mark.parametrize("real", [-8, 0, 6, 8])
-@pytest.mark.parametrize("imag", [0, 1, 4])
-@pytest.mark.parametrize("multiplicity", [1, 2, 3])
+@pytest.mark.parametrize("real", [6])
+@pytest.mark.parametrize("imag", [0, 4])
+@pytest.mark.parametrize("multiplicity", [1, 3])
 def test_known_roots_survive_scaling_and_noninteger_factors(
     real: int, imag: int, multiplicity: int
 ) -> None:

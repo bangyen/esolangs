@@ -22,6 +22,7 @@ from collections.abc import Callable, Mapping, Sequence
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.memory import format_integer
 from esolangs.interpreters.source_hints import syntax_error
 
 INSTRUCTIONS = frozenset({"tt", "we", "qe", "et", "yr", "ry", "rr"})
@@ -33,7 +34,7 @@ def _variable(index: int) -> int:
     """Return a valid Qoibl variable index, rejecting an out-of-range one."""
     if not 0 <= index < _VARIABLES:
         raise HaltError(
-            f"variable index {index} is outside 0..{_VARIABLES - 1}",
+            f"variable index {format_integer(index)} is outside 0..{_VARIABLES - 1}",
             hint="keep the index within the bounds stated in the diagnostic",
         )
     return index
@@ -89,7 +90,7 @@ def _scan(line: str, accept: Callable[[list[str]], bool]) -> list[str]:
             if fused and (head := _steal(tokens, "e")) is not None:
                 branches.append(([*head, "et"], i + 1))
         elif char == "r":
-            if nxt in "ry":
+            if nxt and nxt in "ry":
                 branches.append(([*tokens, "rr" if nxt == "r" else "ry"], i + 2))
             if fused and (head := _steal(tokens, "y")) is not None:
                 branches.append(([*head, "yr"], i + 1))
@@ -198,7 +199,14 @@ def _tokenized(source: str) -> tuple[tuple[str, ...], ...]:
 
     # Nothing parses; hand the greedy reading to `_parse` so a malformed
     # program still fails there with its usual diagnostics.
-    return (tuple(_scan(cleaned, lambda _: True)),)
+    reading = _scan(cleaned, lambda _: True)
+    if not reading and (
+        any(char in "ey" for char in cleaned)
+        or any(marker in cleaned for marker in INSTRUCTIONS)
+    ):
+        # A failed scan must not erase a complete statement ("tt y tt w").
+        raise ValueError("malformed Qoibl expression")
+    return (tuple(reading),)
 
 
 def tokenize(source: str) -> list[list[str]]:
@@ -261,7 +269,7 @@ type _Emit = Callable[[str], None]
 
 
 def _eval(expr: list[str], var: _Vars, read: _Read, emit: _Emit) -> tuple[int, _Vars]:
-    """Return ``expr``'s value and the variables it leaves behind.
+    """Return a validated expression's value and resulting variables.
 
     ``we`` evaluates its target before its value; ``rr`` re-evaluates its
     condition against the variables its body returned.
@@ -296,14 +304,8 @@ def _eval(expr: list[str], var: _Vars, read: _Read, emit: _Emit) -> tuple[int, _
         return var.get(_variable(key), 0), var
     if op == "et":
         return read(), var
-    # ``tokenize`` only accepts a split under which every statement parses,
-    # so the tokens that reach here are the keywords above, a binary
-    # ``[ey]+`` literal, or ``yr``/``ry`` -- and those two are taken by the
-    # ``in expr`` arms before the keyword tests run.  The fallback stays for
-    # a hand-built expression list.
-    if re.fullmatch("[ey]+", op):  # pragma: no branch - see above
-        return int(op.replace("e", "0").replace("y", "1"), 2), var
-    return 0, var
+    # Loading validates literals; unreachable hand-built tokens need no arm.
+    return int(op.replace("e", "0").replace("y", "1"), 2), var
 
 
 def _operands(
@@ -360,7 +362,7 @@ def _arithmetic(
     if num == "yy":
         if y == 0:
             raise HaltError(
-                f"division by zero: {x} divided by {y}",
+                f"division by zero: {format_integer(x)} divided by {format_integer(y)}",
                 hint="ensure the divisor is nonzero before dividing",
             )
         return x // y, var
@@ -410,19 +412,9 @@ class _Machine:
     # zero, which is what the language says an unset variable holds.
 
     @property
-    def ip(self) -> int:
-        """The expression cursor."""
-        return self.ind
-
-    @property
     def memory(self) -> list[int]:
         """The 256 variables, unset ones reading as zero."""
         return [self.var.get(k, 0) for k in range(256)]
-
-    @property
-    def stack(self) -> list[object]:
-        """No stack in this language."""
-        return []
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

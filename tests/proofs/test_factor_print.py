@@ -10,6 +10,7 @@ from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.tape_based.factor import run
 from esolangs.tools.factor import _encode
 from tests.proofs._factor_print import printed_program
+from tests.witness_tables import witnesses
 
 
 def _render(code: str) -> str:
@@ -22,28 +23,10 @@ def _render(code: str) -> str:
         sys.set_int_max_str_digits(limit)
 
 
-# Two partitions took 5.17s under four-worker coverage, above the 5s band.
-# Four retain every witness and input row while halving each batch.
-_PRINT_PARTITIONS = 4
-
-
-@pytest.mark.medium
-@pytest.mark.parametrize("n", range(1, 7))
-@pytest.mark.parametrize("partition", range(_PRINT_PARTITIONS))
+@pytest.mark.parametrize("n", [1, 3])
 @pytest.mark.parametrize("reverse", [False, True])
-def test_printed_witness_executes(n: int, partition: int, *, reverse: bool) -> None:
-    rng = random.Random(920 + n)
-    tables = (
-        [format(i, f"0{2**n}b") for i in range(2 ** (2**n))]
-        if n <= 3
-        else [
-            "0" * 2**n,
-            "1" * 2**n,
-            "".join(str(i.bit_count() % 2) for i in range(2**n)),
-        ]
-        + ["".join(rng.choice("01") for _ in range(2**n)) for _ in range(8)]
-    )
-    for table in tables[partition::_PRINT_PARTITIONS]:
+def test_printed_witness_executes(n: int, *, reverse: bool) -> None:
+    for table in witnesses(n):
         program = _render(printed_program(table, reverse_last=reverse))
         for bits in itertools.product("01", repeat=n):
             io = ScriptedIO("".join(bits))

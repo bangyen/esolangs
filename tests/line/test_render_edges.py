@@ -1,10 +1,4 @@
-"""The renderer's empty and absent cases.
-
-``test_bf_to_line.py`` draws real programs, so every helper here is reached
-with something to draw.  What none of it reaches is the degenerate call --
-no opcodes, no subtree, no arm -- and those are the arms a hand-built graph
-meets first.
-"""
+"""The renderer's empty and absent cases."""
 
 from __future__ import annotations
 

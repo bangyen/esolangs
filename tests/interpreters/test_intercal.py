@@ -14,7 +14,8 @@ def _run(source: str, stdin: str = "") -> str:
 
 
 def test_calculate_mingle_select_unary_and_output() -> None:
-    source = 'PLEASE .1 <- \'"&#1$#1"~"#65535$#0"\'\nDO READ OUT .1\nDO GIVE UP'
+    # Unary rotates right (manual s3.4.3, #&77 = 4): &3 keeps bit0, not bit1.
+    source = 'PLEASE .1 <- \'"&#1$#1"~"#0$#65535"\'\nDO READ OUT .1\nDO GIVE UP'
     assert _run(source) == "I\n"
 
 
@@ -45,7 +46,8 @@ def test_vm_views_are_copies() -> None:
 
 @pytest.mark.parametrize(
     "expression",
-    ["", "'#1", "\"'#1$#1'$#1\""],
+    # E533 limits mingle by value (manual s9), so '#1$#1'$#1 is legal.
+    ["", "'#1", "\"'#65535$#65535'$#1\""],
 )
 def test_invalid_expressions_raise(expression: str) -> None:
     with pytest.raises(HaltError):
@@ -64,7 +66,7 @@ def test_inactive_statement_is_skipped() -> None:
         ("READ OUT #1#1", ""),
         ("WRITE IN .1", "\n"),
         ("WRITE IN .1", "TEN\n"),
-        ("FORGET #0", ""),
+        ("RESUME #0", ""),
         ("FORGET #1#1", ""),
         ("IGNORE .1", ""),
     ],
@@ -104,7 +106,8 @@ def test_politeness_and_stack_errors(source: str) -> None:
 @pytest.mark.parametrize(
     "source",
     [
-        "PLEASE\n.1\n<-\n'\n?\n.2\n$\n#1\n'\nDO\nREAD\nOUT\n.1\nDO\nGIVE\nUP",
+        # '?.2$#1' sets bit31 (right rotation), overflowing .1 (E275).
+        "PLEASE\n.1\n<-\n'\n?\n#1\n$\n.2\n'\nDO\nREAD\nOUT\n.1\nDO\nGIVE\nUP",
         "PLEASE\nDO\n.1 <- '#0 $ #1' DO READ OUT .1 DO GIVE UP",
     ],
 )
@@ -150,3 +153,56 @@ def test_empty_lines_do_not_count_toward_politeness() -> None:
 def test_truncated_group_after_whitespace_is_rejected() -> None:
     with pytest.raises(HaltError, match="incomplete INTERCAL expression"):
         _expression("'\n ", {})
+
+
+def test_manual_unary_example_and_operand_placement() -> None:
+    """Manual s3.4.3: ``#&77`` is 4; the unary sits after the mesh."""
+    assert _run("PLEASE READ OUT #&77\nDO GIVE UP\nDO GIVE UP") == "IV\n"
+
+
+def test_forget_zero_is_a_no_op() -> None:
+    """Only RESUME #0 is an error (manual s4.4.4); FORGET #0 discards nothing."""
+    assert _run("PLEASE FORGET #0\nDO READ OUT #1\nDO GIVE UP") == "I\n"
+
+
+@pytest.mark.parametrize(
+    ("statement", "stdin", "error"),
+    [
+        # E275: a 32-bit value assigned to a onespot is not masked.
+        (".1 <- '#65535$#1'", "", "assignment overflow"),
+        # Manual s4.4.7: 65536 into a 16-bit variable is DON'T BYTE OFF.
+        ("WRITE IN .1", "SIX FIVE FIVE THREE SIX\n", "input overflow"),
+        # E182: a label defined twice.
+        ("GIVE UP\n(1) DO GIVE UP\n(1) DO GIVE UP", "", "duplicate"),
+        # E129: a NEXT to a missing label.
+        ("(2) NEXT", "", "unknown"),
+        # Variables and constants run 1..65535 and 0..65535.
+        (".0 <- #1", "", "variable number"),
+        ("READ OUT #65536", "", "out of range"),
+        # E123: the NEXT stack is bounded.
+        ("(1) NEXT\n(1) DO (1) NEXT", "", "stack overflow"),
+    ],
+)
+def test_manual_limits_raise(statement: str, stdin: str, error: str) -> None:
+    with pytest.raises(HaltError, match=error):
+        _run(f"PLEASE {statement}\nDO GIVE UP\nDO GIVE UP", stdin)
+
+
+def test_the_next_stack_holds_exactly_eighty_entries() -> None:
+    """E123 fires on the 81st NEXT: every compiler's hard limit is 80 entries."""
+    machine = _Machine("PLEASE (1) NEXT\n(1) DO (1) NEXT\nDO GIVE UP", ScriptedIO(""))
+
+    def drive() -> None:
+        while not machine.halted:
+            machine.step()
+
+    with pytest.raises(HaltError, match="stack overflow"):
+        drive()
+    assert len(machine.stack) == 80
+
+
+def test_values_from_4000_print_an_overbar_line() -> None:
+    """Manual s4.4.8: #4000 is IV with overbars; #3999 stays on one line."""
+    assert _run("PLEASE READ OUT #4000\nDO READ OUT #3999\nDO GIVE UP") == (
+        "__\nIV\nMMMCMXCIX\n"
+    )

@@ -23,7 +23,8 @@ from esolangs._drive import drive
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
-from esolangs.interpreters.memory import parse_int_memory as _parse
+from esolangs.interpreters.memory import format_integer
+from esolangs.interpreters.memory import parse_integer as _integer
 from esolangs.interpreters.source_hints import syntax_error
 
 # The largest memory a run will grow.  Cell values are unbounded, but the
@@ -271,7 +272,7 @@ def _assembly(code: str) -> list[int]:
         if token == "?":  # nosec B105 - assembly punctuation, not a password
             return next_ip
         try:
-            return int(token)
+            return _integer(token)
         except ValueError:
             pass
         if not _LABEL.fullmatch(token):
@@ -290,7 +291,7 @@ def _assembly(code: str) -> list[int]:
             raise syntax_error(
                 f"undefined label {name!r}", "define the label before using its address"
             )
-        return labels[name] + (int(offset) if offset else 0)
+        return labels[name] + (_integer(offset) if offset else 0)
 
     memory: list[int] = []
     for at, data, operands in parsed:
@@ -308,7 +309,11 @@ def _assembly(code: str) -> list[int]:
 def _program(code: str) -> list[int]:
     """Parse raw integer memory, or assemble source using symbolic syntax."""
     try:
-        return list(_parse(code))
+        return [
+            _integer(token)
+            for line in code.splitlines()
+            for token in line.split("#", 1)[0].split()
+        ]
     except ValueError:
         return _assembly(code)
 
@@ -504,15 +509,6 @@ class _Machine:
         (_cells, length), ip = self.state[0], self.state[1]
         return ip < 0 or ip >= length
 
-    # The VM's language-shaped view: self-modifying memory + instruction
-    # pointer.  ``ip`` and ``memory`` above already *are* the view, so only
-    # the empty stack needs saying.
-
-    @property
-    def stack(self) -> list[object]:
-        """No stack in this language."""
-        return []
-
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         # The state as it stands plus the input cursor: a repeat that
@@ -543,7 +539,7 @@ class _Machine:
         a, b, _c, d = _operands(self.state)
         if _too_large(self.state, a):
             raise HaltError(
-                f"memory address {a} is too large",
+                f"memory address {format_integer(a)} is too large",
                 hint="keep memory addresses within the interpreter allocation limit",
             )
         reads = tuple(

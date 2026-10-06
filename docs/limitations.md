@@ -19,7 +19,7 @@ See [Polynomial](proofs/polynomial.md) for its size lower bound.
 - Line and Piet carry a raster source: `generate` returns an
   `esolangs.raster.Raster`, `run` takes it or a PNG path through the shared
   codec, and `describe` reports `source_kind="raster"`. Text and raster share
-  VM, step, and fuzz contracts; `RUNNERS` describes text bundling only. Line
+  VM and step contracts; `RUNNERS` describes text bundling only. Line
   retains its graph for repeated generated rows; stepping parses pixels. Piet
   emits and executes pixels.
 
@@ -171,7 +171,7 @@ the 1792 level-0 rows.
 
 ## Curation
 
-The collection has 81 languages; its floor is 31. All ten classics have
+The collection has 82 languages; its floor is 31. All ten classics have
 generators. Removed: unused ordinary imperative entries with shared-shim
 generators; Nopstacle for incompatible embeds; ZTOALC L for a searched
 syntax-level lookup table. The 2D screen intersected
@@ -252,10 +252,12 @@ gate. Neither has established an intrinsic axis.
 
 The 2026-10-01 fame audit covered eight census candidates:
 
-- [Boolfuck](https://samuelhughes.com/boof/) (76): integrated with the
-  author's fixed Brainfuck lowering. Little-endian bit I/O supplies zero at
-  EOF and pads partial output bytes. Constant-size command replacements
-  preserve the Brainfuck generator's O(T) build and rendered-size bounds.
+- [Boolfuck](https://samuelhughes.com/boof/) (76): integrated with a
+  native decision tree over single-bit cells. Each input byte's low bit is
+  read onto its own cell and tested in place, with one flag interleaved
+  beside each bit, so every node costs O(1) commands and rendered size
+  stays linear in T. Little-endian bit I/O supplies zero at EOF and pads
+  partial output bytes.
 - [Subleq](https://esolangs.org/wiki/Subleq) (83): integrated with unbounded
   integers, direct jumps, `-1 B C` byte input (EOF raises), `A -1 C` byte
   output, and negative jumps halting. The shared packed decoder stores
@@ -268,7 +270,7 @@ The 2026-10-01 fame audit covered eight census candidates:
   exactly 20T + n + 53 characters; build work is O(T).
 
 Each uses the same 309-table, 3,352-row corpus as Cyclic tag. Dense size-difference
-ratios at n=8,10,12 are 3.997 (Cyclic tag), 3.854 (Boolfuck), 2.926 (Subleq)
+ratios at n=8,10,12 are 3.997 (Cyclic tag), 3.903 (Boolfuck), 2.926 (Subleq)
 and 4.000 (///). The constructions supply the bounds; these ratios are measurements.
 
 - [HQ9+](https://esolangs.org/wiki/HQ9%2B) (136): interpreter-only.
@@ -313,6 +315,14 @@ languages remain rejected from the same image-source screen.
 ## Specification decisions
 
 - 6-5 accepts operands beyond its specification; generators use `0..35`.
+- Befunge-98 implements the Funge-98 core without fingerprints, concurrency
+  or file I/O: `A`-`Z`, `t i o = h l m`, and `(` `)` after their operands act
+  like `r`.  `&` reads one whitespace-delimited integer token, the shared
+  numeric convention, rather than skipping non-digits.  `,` writes the low
+  byte.  `k` runs its target in place `n` times and the IP then meets it once
+  more, the wiki's "0 or n+1 times".  `y` reports a sandbox: unbounded cells
+  (0 bytes), no command line or environment, zero date and time.  The
+  bounding box only grows.
 - FALSE's `ø` pick counts from zero, so `0ø` is `$`; the description ("dup
   the nth stack item") does not say where the count starts.  Reading a
   variable before storing it raises rather than inventing a value, and a
@@ -334,10 +344,9 @@ languages remain rejected from the same image-source screen.
   the answer; `tests/tools/test_boolean_classics.py` asserts that over every
   table to three inputs, and checks the answer under three seeds and the
   unseeded draw.
-- Unlambda's `@` consumes the next Unicode character, including newlines.
-  At EOF, it catches `EOFError`, hands its argument `v`, and leaves the
-  current character unchanged. `v` absorbs its arguments, so the failure arm cannot execute
-  its own code.
+- Unlambda's `@` reads a Unicode character, including newlines. At EOF,
+  it hands its argument `v` and clears the current character; `?x` and `|`
+  then take their no-character branch.
 - Bitdeque `GOTO n` is zero-based: it lands on command index `n`, where the
   wiki leaves the counting origin unstated. The generator’s labels match this.
 - Brainfuck uses wrapping bytes, a right-growing tape, a clamped left edge and

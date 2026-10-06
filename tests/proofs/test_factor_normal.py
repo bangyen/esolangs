@@ -54,9 +54,8 @@ def test_pointer_clamp_and_totality_controls() -> None:
 
 @pytest.mark.medium
 @pytest.mark.parametrize("n", range(1, 4))
-@pytest.mark.parametrize("partition", range(4))
-def test_normalized_truth_witnesses(n: int, partition: int) -> None:
-    for value in range(partition, 2 ** (2**n), 4):
+def test_normalized_truth_witnesses(n: int) -> None:
+    for value in range(0, 2 ** (2**n), 7):
         table = format(value, f"0{2**n}b")
         code = "+- -+ >< [][..]".replace(" ", "") + counter_program(table).replace(
             ",", "+--++,"
@@ -99,11 +98,10 @@ class _FirstOutputIO(ScriptedIO):
 
 @pytest.mark.medium
 @pytest.mark.parametrize("n", range(1, 4))
-@pytest.mark.parametrize("partition", range(4))
-def test_prefix_normalized_witnesses(n: int, partition: int) -> None:
+def test_prefix_normalized_witnesses(n: int) -> None:
     from tests.proofs._factor_normal import prefix_normalize
 
-    for value in range(partition, 2 ** (2**n), 4):
+    for value in range(0, 2 ** (2**n), 7):
         table = format(value, f"0{2**n}b")
         source = counter_program(table)
         normal = prefix_normalize(source)

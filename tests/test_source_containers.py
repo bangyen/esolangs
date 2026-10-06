@@ -9,13 +9,24 @@ from typing import Any
 import pytest
 
 import esolangs
+from esolangs import _check_program
+from esolangs._evaluate import _evaluate
 from esolangs.debugger import make_debugger
 from esolangs.registry import LANGUAGES, SourceKind
 
 
 @pytest.mark.parametrize("language", ["brainfuck", "Piet", "Line"])
-@pytest.mark.parametrize("container", ["bytes", "text_stream", "binary_stream"])
-@pytest.mark.parametrize("mode", ["normal", "steps", "isolated"])
+# Isolation forwards whatever the container held, so one container covers it;
+# each isolated case spawns a worker.
+@pytest.mark.parametrize(
+    ("container", "mode"),
+    [
+        ("bytes", "normal"),
+        ("text_stream", "normal"),
+        ("binary_stream", "normal"),
+        pytest.param("bytes", "isolated", marks=pytest.mark.medium),
+    ],
+)
 def test_execution_container_parity(language: str, container: str, mode: str) -> None:
     program = esolangs.generate(language, "01")
     data = (
@@ -50,7 +61,7 @@ def test_streams_work_with_bound_api_debugging_and_evaluation(language: str) -> 
     data = (
         program.to_png() if isinstance(program, esolangs.Raster) else program.encode()
     )
-    assert api.evaluate(io.BytesIO(data), inputs=1) == "01"
+    assert _evaluate(api.name, io.BytesIO(data), inputs=1) == "01"
     debugger = make_debugger(language, io.BytesIO(data), io.StringIO("1"))
     assert debugger.run(max_steps=10000) == "halted"
     assert debugger.output == "1"
@@ -68,7 +79,7 @@ def test_nonseekable_streams_are_read_once_from_the_current_position() -> None:
             return self.value
 
     program, stdin = Stream(b",.,."), Stream("\n\x00")
-    assert esolangs.check_program("brainfuck", program, stdin) == ",.,."
+    assert _check_program("brainfuck", program, stdin) == ",.,."
     assert stdin.reads == 0
     assert esolangs.run("brainfuck", ",.,.", stdin) == "\n\x00"
     assert (program.reads, stdin.reads) == (1, 1)
@@ -100,7 +111,7 @@ def test_raster_interpreter_owns_loading_and_scale_support(
 def test_path_loading_retains_existing_newline_normalization(tmp_path: Path) -> None:
     path = tmp_path / "source.txt"
     path.write_bytes(b"+,\r\n.\r\n")
-    assert esolangs.check_program("brainfuck", path) == "+,\n."
+    assert _check_program("brainfuck", path) == "+,\n."
     assert esolangs.run("brainfuck", path, "Q") == "Q"
 
 
@@ -144,7 +155,10 @@ def test_stream_failures_keep_public_error_types(mode: str) -> None:
             esolangs.run("brainfuck", ",.", stream, **bounds)  # type: ignore[arg-type]
 
 
-@pytest.mark.parametrize("mode", ["normal", "steps", "isolated"])
+# Isolated cases spawn a worker: the medium band, like test_run_isolated.
+@pytest.mark.parametrize(
+    "mode", ["normal", "steps", pytest.param("isolated", marks=pytest.mark.medium)]
+)
 def test_invalid_numeric_input_is_not_mislabeled_as_a_program_error(mode: str) -> None:
     bounds: dict[str, Any] = {}
     if mode == "steps":

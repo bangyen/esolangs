@@ -1,17 +1,4 @@
-"""No file grows past the cap, and the ones already over it only shrink.
-
-The cap is on raw lines, which is what ``wc -l`` and a reviewer's scrollbar
-see.  1200 leaves only a small set of existing outliers, which the ratchet
-keeps shrinking without making their comments and docstrings the cheapest
-way under the cap.
-
-``_RATCHET`` pins every file already over the cap at the size it had when
-this test landed, so nothing had to be split up front.  Three rules keep it
-converging: a new file over the cap fails, a pinned file that grows fails,
-and a pinned file that has fallen under the cap must be removed from the
-table -- otherwise a split would quietly leave its old budget behind for the
-next file to spend.
-"""
+"""No file grows past the cap, and the ones already over it only shrink."""
 
 import pathlib
 
@@ -68,11 +55,7 @@ def test_a_ratcheted_file_only_shrinks(name: str, ceiling: int) -> None:
 
 
 def test_the_ratchet_holds_nothing_under_the_cap() -> None:
-    """A file that has come under the cap leaves the ratchet.
-
-    Otherwise the entry survives its own split and the budget it was granted
-    is left lying around for the next file to grow into.
-    """
+    """A file that has come under the cap leaves the ratchet."""
     sizes = _sizes()
     retired = {
         name: sizes[name]

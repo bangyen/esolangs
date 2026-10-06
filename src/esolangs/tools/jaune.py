@@ -16,7 +16,7 @@ def jaune(truth_table: str) -> str:
     """Build a Jaune program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n``, MSB first.  All
-    bits are read up front (``v``, ``ord-48``), then ``?`` jumps route the
+    bits are read up front (``v``), then ``?`` jumps route the
     tree; each leaf prints with ``^`` and terminates.  Only inputs the tree
     branches on get a cell (``>`` after the read), so the tree navigates a
     span as wide as the real dependencies, and a leaf prints from its
@@ -154,7 +154,7 @@ def _jaune_ordered(
         if reads.endswith(">"):
             reads = reads[:-1]
             scratch = slot - 1
-    elif n and (n - 1) not in stored:
+    else:
         reads += ">"
         scratch = slot + 1
 

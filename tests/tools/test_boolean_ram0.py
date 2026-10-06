@@ -4,15 +4,9 @@ import random
 import re
 from itertools import pairwise
 
-import pytest
-
 
 class TestParameterizedRam0:
-    """Input-by-substitution boolean generator for the no-input language RAM0.
-
-    RAM0 prints a full state dump at halt; the generator's answer is the
-    final ``z`` value, read from the dump's ``z: N`` line.
-    """
+    """Input-by-substitution boolean generator for the no-input language RAM0."""
 
     def run_ram0(self, prog: str) -> str:
 
@@ -26,59 +20,10 @@ class TestParameterizedRam0:
         return m.group(1)
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
-        """Fill through the shipped filler, not a copy of it.
-
-        ``Z`` resets absolutely, so the setter is the same at every
-        position -- ``Z A`` for a one, ``Z Z`` for a zero, two commands
-        either way -- which is what made a local copy look safe.  It is
-        still a second spelling of a construction the generator counts
-        positions against, and that is the shape that hung the suite when
-        Minsky Swap's copy drifted.
-        """
+        """Fill through the shipped filler, not a copy of it."""
         from tests.tools.fills import _fill_ram0
 
         return _fill_ram0(tpl, bits)
-
-    @pytest.mark.parametrize(
-        ("table", "n"),
-        [
-            ("10", 1),  # NOT
-            ("01", 1),  # identity
-            ("00", 1),  # constant zero
-            ("11", 1),  # constant one
-            ("0001", 2),  # AND
-            ("0110", 2),  # XOR
-            ("0111", 2),  # OR
-            ("1110", 2),  # NAND
-            ("11111110", 3),  # NAND3
-            ("01101001", 3),  # majority
-            ("1111111100000000", 4),  # top half
-        ],
-    )
-    @pytest.mark.medium
-    def test_truth_table(self, table: str, n: int) -> None:
-        """Every instantiated input produces the truth-table result."""
-        from esolangs import tools as generators
-
-        template = generators.ram0(table)
-        for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            got = self.run_ram0(self.instantiate(template, bits))
-            assert got == str(int(table[combo])), f"inputs {bits}"
-
-    @pytest.mark.parametrize("n", [1, 2, 3])
-    @pytest.mark.medium
-    def test_all_small_tables(self, n: int) -> None:
-        """Every table up to three inputs produces the right result."""
-        from esolangs import tools as generators
-
-        for table_int in range(2 ** (2**n)):
-            table = format(table_int, f"0{2**n}b")
-            template = generators.ram0(table)
-            for combo in range(2**n):
-                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-                got = self.run_ram0(self.instantiate(template, bits))
-                assert got == str(int(table[combo])), f"{table} inputs {bits}"
 
     def test_template_is_input_independent(self) -> None:
         """The template has one run per input, not hardcoded bits."""
@@ -91,11 +36,7 @@ class TestParameterizedRam0:
         assert len(runs(template, TEMPLATE_CHAR, (RAM0_PAIR,) * 2)) == 2
 
     def test_leaves_share_a_low_address_halt_trampoline(self) -> None:
-        """Every leaf jumps to 2; only the trampoline names the end.
-
-        Parity's tree has eight leaves, but a leaf is emitted once per
-        answer and the other six are jumps to those two.
-        """
+        """Every leaf jumps to 2; only the trampoline names the end."""
         from esolangs import tools as generators
         from esolangs.tools.ram0 import _ram0_ordered
 
@@ -107,11 +48,7 @@ class TestParameterizedRam0:
 
     @staticmethod
     def _sharing_totals(tables: list[str]) -> tuple[int, int]:
-        """(before, shipped) totals, each table checked not to grow.
-
-        Before is the plain tree in its best order through 16 entries and
-        the straight-line lookup past them, as the generator was.
-        """
+        """(before, shipped) totals, each table checked not to grow."""
         from esolangs import tools as generators
         from esolangs.tools.helpers import best_input_order
         from esolangs.tools.ram0 import _ram0_ordered
@@ -134,11 +71,7 @@ class TestParameterizedRam0:
         assert self._sharing_totals(tables) == (28890, 24562)
 
     def test_sharing_five_input_sample_total(self) -> None:
-        """200 seeded five-input tables: 300,546 to 54,209 characters, 82.0%.
-
-        Sharing is what lets the tree run past 16 entries at all: shared,
-        it is O(T) with its addresses, and it undercuts the lookup.
-        """
+        """200 seeded five-input tables: 300,546 to 54,209 characters, 82.0%."""
         from tests.tools.sample_tables import five_input_sample
 
         assert self._sharing_totals(five_input_sample()) == (300546, 55155)

@@ -319,3 +319,17 @@ def test_numeric_and_character_commands_share_the_input_cursor() -> None:
     assert source.position() == 6
     _execute_command((5, 0), 1, stack, source)
     assert stack == [65, -7, 10, 66]
+
+
+def test_a_read_loop_on_a_cursorless_port_runs_to_eof() -> None:
+    """A port with no cursor reports position 0; the snapshot counts reads."""
+    from esolangs.vm import run_until_halt_or_cycle
+
+    class _Cursorless(ScriptedIO):
+        def position(self) -> int:
+            return 0
+
+    io = _Cursorless("x " * 10)
+    machine = _Machine(raster((LIGHT_RED, DARK_BLUE)), io)
+    assert not run_until_halt_or_cycle(machine, limit=1000)
+    assert ScriptedIO.position(io) == 20  # every token was read

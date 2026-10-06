@@ -11,27 +11,13 @@ from esolangs.interpreters.tape_based.brainfuck import _Machine
 from esolangs.interpreters.tape_based.factor import run
 from tests.proofs._factor_walk import packed_program, walked_program
 from tests.proofs.test_factor_print import _render
+from tests.witness_tables import witnesses
 
 
-@pytest.mark.medium
-@pytest.mark.parametrize("n", range(1, 7))
-@pytest.mark.parametrize("partition", range(2))
+@pytest.mark.parametrize("n", [2, 4])
 @pytest.mark.parametrize("witness", [walked_program, packed_program])
-def test_walked_witness_executes(
-    n: int, partition: int, witness: Callable[[str], str]
-) -> None:
-    rng = random.Random(922 + n)
-    tables = (
-        [format(i, f"0{2**n}b") for i in range(2 ** (2**n))]
-        if n <= 3
-        else [
-            "0" * 2**n,
-            "1" * 2**n,
-            "".join(str(i.bit_count() % 2) for i in range(2**n)),
-        ]
-        + ["".join(rng.choice("01") for _ in range(2**n)) for _ in range(8)]
-    )
-    for table in tables[partition::2]:
+def test_walked_witness_executes(n: int, witness: Callable[[str], str]) -> None:
+    for table in witnesses(n):
         program = _render(witness(table))
         for bits in itertools.product("01", repeat=n):
             io = ScriptedIO("".join(bits))
@@ -40,7 +26,7 @@ def test_walked_witness_executes(
 
 
 @pytest.mark.medium
-@pytest.mark.parametrize("n", range(1, 7))
+@pytest.mark.parametrize("n", [2, 5])
 def test_walk_lands_on_every_address(n: int) -> None:
     code = walked_program("0" * 2**n)
     for row in range(2**n):

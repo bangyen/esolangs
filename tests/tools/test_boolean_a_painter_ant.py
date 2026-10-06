@@ -15,18 +15,7 @@ from tests.tools.fills import _instantiate_apa
 # 2.0s over 45 tests: runs the generated program.
 @pytest.mark.medium
 class TestAPainterAnt:
-    """The A Painter Ant generator (a no-I/O grid language, parameterized convention).
-
-    The interpreter prints the visited-cell bounding box (which carries no
-    coordinates), so the Boolean answer is read from a small semantic grid
-    model: the colour of the cell the ant lands on at the end of a cycle
-    (white is one, black is zero), read after any whole number of cycles
-    since every instantiated program is a cycle-stable fixed point.  One
-    construction serves every arity: a white corridor of up to ``2**n``
-    cells (it ends where the trailing run of equal answers starts) with the
-    answers in the row below, each input one character (``n`` or ``N``) and
-    its weight the ``E`` walk the template spells after it.
-    """
+    """The A Painter Ant generator: a no-I/O grid language, parameterized."""
 
     _MOVE: ClassVar[dict[str, tuple[int, int]]] = {
         "n": (0, -1),
@@ -37,12 +26,7 @@ class TestAPainterAnt:
 
     @staticmethod
     def _landing_after(program: str, cycles: int = 6) -> int:
-        """Landing cell colour (1 white, 0 black) after ``cycles`` cycles.
-
-        Whitespace is ignored (the interpreter strips it), and the ant runs
-        the program in an implicit loop; after each whole cycle the ant rests
-        on its output leaf, whose colour is the Boolean answer.
-        """
+        """Landing cell colour (1 white, 0 black) after ``cycles`` cycles."""
         prog = [c for c in program if not c.isspace()]
         grid: dict[tuple[int, int], int] = {}
         x = y = 0
@@ -61,14 +45,7 @@ class TestAPainterAnt:
 
     @staticmethod
     def _cycle_stable(program: str) -> bool:
-        """``run()``'s auto-detected render agrees with a render pinned to ten cycles.
-
-        ``run()`` renders at the first pass boundary whose state repeats;
-        pinning a second render to ten cycles by hand and comparing is a
-        stronger check than trusting the auto-detection alone, since it is
-        an independent computation of the same claim -- that whichever pass
-        the repeat is found at, every later pass renders identically.
-        """
+        """``run()``'s auto-detected render agrees with one pinned to ten cycles."""
         from esolangs.interpreters.io import ScriptedIO
 
         io = ScriptedIO()
@@ -83,12 +60,7 @@ class TestAPainterAnt:
 
     @pytest.mark.slow  # 1.2s: builds and runs all sixteen tables on four rows
     def test_all_two_input_functions(self) -> None:
-        """Every two-input table is exact and cycle-stable for every input.
-
-        ``test_xor`` and ``test_nand`` below spot-check the same builder in
-        milliseconds, so the fast run still covers this path; this is the
-        exhaustive sweep.
-        """
+        """Every two-input table is exact and cycle-stable for every input."""
         for value in range(16):
             table = format(value, "04b")
             for row in range(4):
@@ -125,12 +97,7 @@ class TestAPainterAnt:
         assert len(runs(template, TEMPLATE_CHAR, setters)) == 2
 
     def test_zero_answers_are_not_painted(self) -> None:
-        """A one answer is painted ``P``; a zero answer is left black.
-
-        The generator never paints a cell black (no ``p``), which is what
-        keeps every instantiated program a monotone, cycle-stable fixed
-        point.
-        """
+        """A one answer is painted ``P``; a zero answer is left black."""
         template = a_painter_ant("0110")
         assert template.count("P") < a_painter_ant("1110").count("P")
         # no paint-black anywhere in any instantiated program
@@ -163,13 +130,7 @@ class TestAPainterAnt:
             ), f"AND3 bits {bits}"
 
     def test_every_input_is_the_one_pair(self) -> None:
-        """Uniform: the same ``(n, N)`` pair for every input at every arity.
-
-        The conventions audit reads this off the programs; here it is
-        pinned at the source, on both of its table shapes, so that a route
-        that spelled an input's weight into its embed again would fail
-        here before it failed there.
-        """
+        """Uniform: the same ``(n, N)`` pair for every input at every arity."""
         for n in range(1, 7):
             for table in _shapes(n):
                 template = a_painter_ant(table)
@@ -177,11 +138,7 @@ class TestAPainterAnt:
                 assert template.count(TEMPLATE_CHAR) == n
 
     def test_the_template_carries_each_weight(self) -> None:
-        """Input ``i``'s run is followed by ``2**(n-1-i)`` ``E`` and ``SN``.
-
-        The walk is the weight and the ``SN`` is the return to the
-        corridor; the ``s`` after the last one steps onto a black answer.
-        """
+        """Input ``i``'s run is followed by ``2**(n-1-i)`` ``E`` and ``SN``."""
         template = a_painter_ant("01" * 16)  # n = 5
         head, *tails = template.split(TEMPLATE_CHAR)
         assert head.endswith("W" * 31)
@@ -194,12 +151,7 @@ class TestAPainterAnt:
         ]
 
     def test_each_input_moves_the_ant_by_its_weight(self) -> None:
-        """After input ``i``'s gadget the ant stands at the partial index.
-
-        Traced on the semantic model: a one walks the corridor by the
-        weight, a zero steps into the black lane and is walked nowhere,
-        and both end the gadget back on the corridor row.
-        """
+        """After input ``i``'s gadget the ant stands at the partial index."""
         from tests.tools.a_painter_ant_trace import run
 
         n = 4
@@ -234,23 +186,13 @@ class TestAPainterAnt:
                     ), f"n={n} table {table} bits {bits}"
 
     def test_size_growth(self) -> None:
-        """Wide dense tables grow no faster than their table size.
-
-        The two ``W`` walks cost two characters per entry, the corridor and
-        its answers six, the walks one per entry, and each input three more:
-        doubling the table doubles the size and adds that constant back.  The
-        last answer differs from the one before, so the corridor is whole.
-        """
+        """Wide dense tables grow no faster than their table size."""
         sizes = [len(a_painter_ant("1" * (2**n - 1) + "0")) for n in range(6, 10)]
         assert all(b <= 2 * a + 3 for a, b in pairwise(sizes))
         assert sizes[0] == 1 + (63 + 63) + (6 * 64 - 5) + 63 + 3 * 6 + 1
 
     def test_the_corridor_stops_where_the_trailing_run_starts(self) -> None:
-        """Answers equal to the one before them to the end get no cell.
-
-        A walk east stops at the corridor's last cell, so every index past it
-        lands there and reads its answer, which is theirs too.
-        """
+        """Answers equal to the one before them to the end get no cell."""
         for table, cells in (("0000", 1), ("0111", 2), ("01101111", 5)):
             head = a_painter_ant(table).split(TEMPLATE_CHAR)[0]
             assert head.startswith("N" + "W" * (cells - 1) + "P")
@@ -261,13 +203,7 @@ class TestAPainterAnt:
                 assert self._check(table, list(bits)) == int(table[index])
 
     def test_three_input_total(self) -> None:
-        """The 256 three-input templates total 15,245 characters.
-
-        19,200 before the head's ``W`` walk stopped at the corridor's last
-        cell, each corridor cell dropped its second ``P``, and the closing
-        ``S`` went (a white answer reads off the white corridor above it);
-        16,896 before the corridor stopped where the trailing run starts.
-        """
+        """The 256 three-input templates total 15,245 characters."""
         total = sum(len(a_painter_ant(f"{value:08b}")) for value in range(256))
         assert total == 15245
 
@@ -319,15 +255,7 @@ def _shapes(n: int) -> tuple[str, str]:
 
 
 def _render_after_passes(program: str, passes: int) -> str:
-    """Render after exactly ``passes`` whole cycles, stepped by hand.
-
-    ``run()`` no longer takes a pass count -- it steps until the state
-    repeats at a boundary and renders there -- so this is what ``cycles=``
-    used to give directly: a render pinned to a specific pass count, for
-    comparing against ``run()``'s own auto-detected one.  Shared by both
-    test classes below, so it lives at module scope rather than as a
-    private method one borrows from the other.
-    """
+    """Render after exactly ``passes`` whole cycles, stepped by hand."""
     machine = _APAMachine(program)
     span = len(machine.prog)
     for _ in range(passes * span):
@@ -336,14 +264,7 @@ def _render_after_passes(program: str, passes: int) -> str:
 
 
 class TestAPainterAntTrace:
-    """The A Painter Ant step tracer and cycle-stability checker.
-
-    The tracer exposes the semantic grid model the generator reads its
-    answer from, with per-instruction step records so a diverging cycle can
-    be pinned to the exact instruction.  Its bounding-box renderer must
-    agree with the interpreter's, and its stability verdict must agree with
-    the interpreter's box across cycle counts.
-    """
+    """The A Painter Ant step tracer and cycle-stability checker."""
 
     def test_run_records_moves_blocks_and_paints(self) -> None:
         from tests.tools.a_painter_ant_trace import run

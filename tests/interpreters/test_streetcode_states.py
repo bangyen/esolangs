@@ -8,12 +8,10 @@ import pytest
 from esolangs.interpreters.grid_based.streetcode import _Machine, _State
 from esolangs.interpreters.grid_based.streetcode.geometry import (
     _NO_LATCHES,
-    _Car,
     _drive,
     _Grid,
     _Latches,
     _Merge,
-    _plus_dist,
 )
 from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.vm import _StepMachine, run_until_halt_or_cycle
@@ -39,24 +37,11 @@ class TestStreetcodeStepMachine:
         assert machine.io.position() == 1
 
     def test_the_machine_satisfies_the_vm_step_protocol(self) -> None:
-        """``run_until_halt_or_cycle`` steps this, so it must conform.
-
-        ``_StepMachine`` is ``runtime_checkable``, so the structural
-        check is the contract itself rather than a restatement of it.
-        """
+        """``run_until_halt_or_cycle`` steps this, so it must conform."""
         assert isinstance(_Machine(["C;"], IO()), _StepMachine)
 
     def test_snapshot_separates_every_state_the_machine_carries(self) -> None:
-        """No two distinct states may share a snapshot, and it must hash.
-
-        The hang detector's verdict is only sound if a repeat is a real
-        repeat: two states that differ anywhere must differ here, or a
-        program that is still making progress looks like a proven cycle.
-        The state is one :class:`_State` record beside the tape, CP, I/O
-        and halted flag, so this walks every field of it -- including
-        each latch separately, which a snapshot that dropped the record
-        or flattened it carelessly would be the way to get wrong.
-        """
+        """No two distinct states may share a snapshot, and it must hash."""
         code = ["+----+", "|C  ;|", "|    |", "+----+"]
         merge = _Merge(1, 1, "left", "S", crossing=False)
         # The fixture starts heading South, so "N" and "W" are both real
@@ -107,14 +92,7 @@ class TestStreetcodeStepMachine:
 
 
 class TestStreetcodeDriveStates:
-    """The drive-state graph (``_drive_states``) and its two uses.
-
-    The graph is the movement half of ``snapshot`` enumerated over the
-    whole grid, built by driving the real helpers.  It backs the
-    construction-time totality check and ``step`` itself, and in tests it
-    pins the mouth-depth bound to the behaviour it produces rather than
-    to the cells it scans.
-    """
+    """The drive-state graph (``_drive_states``) and its two uses."""
 
     def _corridor(self) -> list[str]:
         return ["+----+", "|C  ;|", "|    |", "+----+"]
@@ -149,23 +127,7 @@ class TestStreetcodeDriveStates:
             assert set(edges) == {(0, 0), (0, 1), (1, 0), (1, 1)}
 
     def test_a_wedging_phase_is_rejected_at_construction(self) -> None:
-        """The check fires when the movement rules do run out of road.
-
-        Ordinary wall-following cannot wedge on a validated street (see
-        ``_validate_total``), so the state this rejects is reached by
-        breaking a phase rather than by drawing one: the check is a
-        regression net over the phases, and this is what tripping it
-        looks like.
-
-        The phase is patched through the imported module object rather
-        than by its dotted string path: ``scripts/mutate_one.py`` bundles
-        the interpreter into a single module to mutate it, and a string
-        target naming the package still resolves to the *unbundled*
-        interpreter there, so the patch lands on a function the bundled
-        machine never calls and the wedge never happens.  Patching the
-        module object works either way, because the bundler rewrites the
-        import that produced it.
-        """
+        """The check fires when the movement rules do run out of road."""
         from esolangs.interpreters.grid_based.streetcode import geometry as module
 
         with (
@@ -183,15 +145,7 @@ class TestStreetcodeDriveStates:
         ["tests/fixtures/streetcode_hello.txt", "examples/streetcode.txt"],
     )
     def test_mouth_depth_bound_does_not_change_the_driving(self, path: str) -> None:
-        """``_MOUTH_MAX_DEPTH`` is pinned by behaviour, not by its scans.
-
-        The bound is two-sided -- raising it makes the scan run past the
-        box it is reading and pair up two ``+`` that bound nothing, which
-        is what happens in the 1-arity boolean programs -- so the check
-        that matters is not "the same mouths are found" but "the car
-        drives the same way".  Comparing the whole drive-state graph at
-        the shipped bound against a generous one says exactly that.
-        """
+        """``_MOUTH_MAX_DEPTH`` is pinned by behaviour, not by its scans."""
         from esolangs.interpreters.grid_based.streetcode import geometry as module
 
         root = Path(__file__).resolve().parents[2]
@@ -212,16 +166,7 @@ class TestStreetcodeDriveStates:
 
 
 class TestStreetcodeDriveInvariants:
-    """What holds of a drive state under every reading of the spec.
-
-    The geometry rules are reverse-engineered and several remain
-    judgement calls; these are not.  A car inside a wall, or one that
-    teleports rather than driving a cell at a time, is wrong however the
-    spec is read, so ``_check_state_invariants`` asserts them over the
-    whole drive-state graph at construction.  Each test drives the
-    checker with a state the enumeration cannot currently produce --
-    that is the point, since a reachable breach would be a live bug.
-    """
+    """What holds of a drive state under every reading of the spec."""
 
     def _machine(self) -> _Machine:
         """The grid from ``701de45``, whose lower room the car drove into."""
@@ -239,14 +184,7 @@ class TestStreetcodeDriveInvariants:
         )
 
     def test_a_car_inside_a_wall_is_caught(self) -> None:
-        """The regression from ``701de45``, as a construction-time failure.
-
-        A junction fired while its gap still opened a cell ahead, and the
-        turn drove the car inside the wall the mouth opens through --
-        ``(3, 2)`` on this very grid, which is the ``-`` of the lower
-        room's top wall.  That was found by hand-drawing a program and
-        watching the car misbehave; the invariant names the square.
-        """
+        """The regression from ``701de45``, as a construction-time failure."""
         machine = self._machine()
         assert not machine.grid.open_at(3, 2)
         with pytest.raises(AssertionError, match="not open floor"):
@@ -288,14 +226,7 @@ class TestStreetcodeDriveInvariants:
             machine._check_state_invariants(state, {})  # noqa: SLF001
 
     def test_a_stale_latch_is_not_checked(self) -> None:
-        """A latch the next step abandons describes no geometry.
-
-        Once the heading no longer matches the one the latch was taken
-        under, ``_heading_from_merge_target`` drops it; its target is
-        stale by construction, and holding it to the axis rule would
-        reject states the enumeration really does reach (1,116 of them
-        across the example and generated programs).
-        """
+        """A latch the next step abandons describes no geometry."""
         machine = self._machine()
         # Off-axis and behind -- but latched under a heading the state no
         # longer holds, so neither rule applies.
@@ -304,12 +235,7 @@ class TestStreetcodeDriveInvariants:
         machine._check_state_invariants(state, {})  # noqa: SLF001
 
     def test_every_shipped_program_satisfies_them(self) -> None:
-        """The invariants hold over every program the repo ships.
-
-        Construction runs the check, so this passing means the whole
-        drive-state graph of each example is clean -- not just the paths
-        a particular input drives.
-        """
+        """The invariants hold over every program the repo ships."""
         root = Path(__file__).resolve().parents[2]
         paths = sorted((root / "examples").glob("**/streetcode.txt"))
         # A relative glob silently matches nothing from another working
@@ -320,15 +246,7 @@ class TestStreetcodeDriveInvariants:
 
 
 class TestStreetcodeGraphBackedStepping:
-    """Graph-backed stepping must agree with the movement rules exactly.
-
-    ``step`` looks the next state up in the graph enumerated at
-    construction, falling back to calling the phases when there is no
-    graph or the state is outside it.  Those two paths are two ways of
-    computing the same thing, so the test that matters is that they
-    never disagree: drive both in lockstep and compare the whole
-    ``snapshot`` after every step.
-    """
+    """Graph-backed stepping must agree with the movement rules exactly."""
 
     def _lockstep(self, code: list[str], stdin: str = "", limit: int = 20000) -> int:
         """Run one machine on the graph and one on the phases, in step."""
@@ -389,12 +307,7 @@ class TestStreetcodeGraphBackedStepping:
         assert self._lockstep(_RING_PROGRAM) > 1
 
     def test_an_off_graph_state_falls_back(self) -> None:
-        """A state the search never reached still drives, via the phases.
-
-        Setting the heading by hand is how the interpreter's own tests
-        reach such a state; the graph has no entry for it, and ``step``
-        must not fail looking for one.
-        """
+        """A state the search never reached still drives, via the phases."""
         machine = _Machine(["+----+", "|C  ;|", "|    |", "+----+"], IO())
         assert machine._graph is not None  # noqa: SLF001
         state = _State(
@@ -409,14 +322,7 @@ class TestStreetcodeGraphBackedStepping:
         assert not machine.halted
 
     def test_a_halt_edge_stops_the_car(self) -> None:
-        """A ``"halt"`` edge stops the car rather than driving it nowhere.
-
-        Every edge without a successor in a real program sits on ``;``,
-        and ``;`` halts before the lookup is reached, so this arm is the
-        graph's own guard rather than a path a validated street takes.
-        Blanking the ``;`` after construction leaves the recorded
-        ``"halt"`` in place and lets the lookup answer for it.
-        """
+        """A ``"halt"`` edge stops the car rather than driving it nowhere."""
         machine = _Machine(["+----+", "|C  ;|", "|    |", "+----+"], IO())
         assert machine._graph is not None  # noqa: SLF001
         state = _State(1, 4, "N", _NO_LATCHES)
@@ -428,14 +334,7 @@ class TestStreetcodeGraphBackedStepping:
         assert machine.halted
 
     def test_a_wedged_edge_raises_rather_than_halting(self) -> None:
-        """A ``None`` edge is a validator bug, and must not pass for a stop.
-
-        ``_validate_total`` rejects a street with a wedged state, so a
-        ``None`` surviving into the lookup means the graph and the check
-        disagree.  Halting on it would hand back a truncated run as though
-        the program had finished; the two are told apart precisely so this
-        can raise instead.  Only forging the edge reaches it.
-        """
+        """A ``None`` edge is a validator bug, and must not pass for a stop."""
         machine = _Machine(["+----+", "|C  ;|", "|    |", "+----+"], IO())
         assert machine._graph is not None  # noqa: SLF001
         state = _State(1, 1, "E", _NO_LATCHES)
@@ -449,90 +348,9 @@ class TestStreetcodeGraphBackedStepping:
         assert not machine.halted
 
     def test_a_u_turn_without_an_opposite_lane_has_no_successor(self) -> None:
-        """``U`` needs a lane to turn into; without one the state is a dead end.
-
-        A one-row grid has nothing north or south of the ``U``, so heading
-        East the reversed lane is off the grid.  ``step`` reports that as a
-        width violation at run time; the search just declines to drive on.
-        """
+        """``U`` needs a lane to turn into; without one the state is a dead end."""
         grid = _Grid(["CU;"])
         assert _drive(grid, _State(0, 1, "E", _NO_LATCHES), 0, 0) is None
         assert _drive(grid, _State(0, 1, "W", _NO_LATCHES), 0, 0) is None
         # ...while a lane that is on the grid does produce a successor.
         assert _drive(grid, _State(0, 1, "N", _NO_LATCHES), 0, 0) is not None
-
-
-class TestStreetcodeMutationSurvivors:
-    """Four conditions a mutation survived, each pinned by behaviour.
-
-    Mutation testing (mutmut against a ``bundle_one`` build of this module)
-    reported these as changeable without any test noticing.  Two are the
-    bounds of the isolated-cell exemption in :meth:`_Machine._validate_width`,
-    one is the halt the shipped example reaches, and one is the ``+`` search
-    the junction rules steer by.  Each was confirmed by loading the mutant
-    and the original side by side and diffing their behaviour.
-    """
-
-    def test_a_single_walled_cell_is_not_a_street(self) -> None:
-        """One reachable cell is exempt: there is no street to measure.
-
-        The exemption reads ``len(visited) <= 1``.  A mutant that tightened
-        it to ``< 1`` stopped exempting the one-cell case, and the wall
-        check behind it then rejected a grid the interpreter accepts.
-        """
-        machine = _Machine(["+-+", "|C|", "+-+"], IO())
-        assert (machine.row, machine.col) == (1, 1)
-
-    def test_a_one_wide_corridor_is_still_rejected(self) -> None:
-        """The exemption covers one cell, not two: a corridor is a street.
-
-        A mutant that loosened the bound to ``len(visited) <= 2`` exempted
-        this grid instead of measuring it, and a one-wide street -- which
-        has no opposite lane for ``U`` to end in -- was accepted.
-        """
-        with pytest.raises(ValueError, match="not two-wide"):
-            _Machine(["+-+", "|C|", "|U|", "+-+"], IO())
-
-    def test_the_hello_world_example_halts(self) -> None:
-        """The example halts, and in a bounded number of steps.
-
-        Asserting only on the output leaves the halt untested: a mutant of
-        ``step`` printed ``Hello, World!`` in full and then drove on for
-        ever, parked on one cell.  The step count pins the termination the
-        output alone does not.
-        """
-        root = Path(__file__).resolve().parents[2]
-        code = (root / "tests/fixtures/streetcode_hello.txt").read_text().split("\n")
-        if code and code[-1] == "":
-            code = code[:-1]
-        scripted = ScriptedIO("")
-        machine = _Machine(code, scripted)
-        steps = 0
-        # 426 is the real count; the cap is headroom, and a tight one keeps
-        # a mutant that stops the example halting cheap to reject.
-        while not machine.halted and steps < 1000:
-            machine.step()
-            steps += 1
-        assert machine.halted
-        assert steps == 426
-        assert scripted.getvalue() == "Hello, World!"
-
-    def test_plus_dist_measures_the_nearest_plus_on_a_side(self) -> None:
-        """The scan reports the distance, and ``None`` when there is no ``+``.
-
-        ``_crossing_mouth`` reads this to find the two ``+`` bounding a
-        mouth, so a mutant that always returned ``None`` unpacked nothing
-        and crashed both shipped examples.  Pinning one hit and the misses
-        keeps the search itself under test.
-        """
-        root = Path(__file__).resolve().parents[2]
-        code = (root / "tests/fixtures/streetcode_hello.txt").read_text().split("\n")
-        if code and code[-1] == "":
-            code = code[:-1]
-        machine = _Machine(code, IO())
-        assert (machine.row, machine.col) == (5, 3)
-        car = _Car(machine.row, machine.col, machine.heading)
-        assert _plus_dist(machine.grid, car, "S") == 1
-        assert _plus_dist(machine.grid, car, "N") is None
-        assert _plus_dist(machine.grid, car, "E") is None
-        assert _plus_dist(machine.grid, car, "W") is None

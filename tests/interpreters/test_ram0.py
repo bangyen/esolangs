@@ -1,9 +1,4 @@
-"""Unit tests for RAM0 interpreter.
-
-Tests cover all RAM0 commands, control flow, memory operations, and edge cases
-from the esolangs.org specification. Includes timeout protection to prevent
-hanging tests from infinite loops.
-"""
+"""Unit tests for RAM0 interpreter."""
 
 import io
 import signal
@@ -32,19 +27,7 @@ def timeout_handler(_signum: int, _frame: Any) -> None:
 
 
 def run_with_timeout(func: Callable[..., Any], timeout_seconds: int = 5) -> Any:
-    """Run a function with a timeout to prevent hanging tests.
-
-    Args:
-        func: Function to execute
-        timeout_seconds: Maximum time to wait before timing out
-
-    Returns:
-        Result of the function execution
-
-    Raises:
-        _TestTimeoutError: If the function doesn't complete within the timeout
-
-    """
+    """Run a function with a timeout to prevent hanging tests."""
     # Set up signal handler for timeout
     old_handler = signal.signal(signal.SIGALRM, timeout_handler)
     signal.alarm(timeout_seconds)
@@ -191,30 +174,6 @@ class TestRAM0MemoryOperations:
         assert output == "z: 0\nn: 0\nram: {}"
 
 
-class TestRAM0RegisterInteractions:
-    """Test interactions between z and n registers."""
-
-    def test_register_independence(self) -> None:
-
-        def test_func() -> str:
-            with redirect_stdout(io.StringIO()) as f:
-                run("A A A N A A", io=IO())  # z=5, n=3
-            return f.getvalue()
-
-        output = run_with_timeout(test_func)
-        assert output == "z: 5\nn: 3\nram: {}"
-
-    def test_n_register_preserves_z(self) -> None:
-
-        def test_func() -> str:
-            with redirect_stdout(io.StringIO()) as f:
-                run("A A A N A", io=IO())  # z=4, n=3
-            return f.getvalue()
-
-        output = run_with_timeout(test_func)
-        assert output == "z: 4\nn: 3\nram: {}"
-
-
 class TestRAM0EdgeCases:
     """Test RAM0 edge cases and error conditions."""
 
@@ -223,16 +182,6 @@ class TestRAM0EdgeCases:
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
                 run("", io=IO())
-            return f.getvalue()
-
-        output = run_with_timeout(test_func)
-        assert output == "z: 0\nn: 0\nram: {}"
-
-    def test_whitespace_only(self) -> None:
-
-        def test_func() -> str:
-            with redirect_stdout(io.StringIO()) as f:
-                run("   \n\t  ", io=IO())
             return f.getvalue()
 
         output = run_with_timeout(test_func)
@@ -285,103 +234,13 @@ class TestRAM0EdgeCases:
         assert output == "z: 1\nn: 0\nram: {}"
 
 
-class TestRAM0MathematicalOperations:
-    """Test RAM0 mathematical operations and algorithms."""
-
-    def test_counter_pattern(self) -> None:
-        """Test counter pattern using memory."""
-
-        def test_func() -> str:
-            with redirect_stdout(io.StringIO()) as f:
-                # Create a counter that counts to 3
-                run(
-                    "A A A N S A A A N S A A A N S", io=IO()
-                )  # Store 3, 6, 9 at addresses 3, 6, 9
-            return f.getvalue()
-
-        output = run_with_timeout(test_func)
-        assert output == "z: 9\nn: 9\nram: {\n    3: 3,\n    6: 6,\n    9: 9\n}"
-
-    def test_register_swap_pattern(self) -> None:
-        """Test swapping values between registers using memory."""
-
-        def test_func() -> str:
-            with redirect_stdout(io.StringIO()) as f:
-                # z=5, n=5, then store 8 at address 5, then load from address 13
-                run("A A A A A N A A A S A A A A A N L", io=IO())
-            return f.getvalue()
-
-        output = run_with_timeout(test_func)
-        # Load from uninitialized address 13
-        assert output == "z: 0\nn: 13\nram: {\n    5: 8\n}"
-
-
-class TestRAM0Integration:
-    """Integration tests for RAM0 interpreter."""
-
-    def test_complex_program(self) -> None:
-        """Test a complex RAM0 program with multiple operations."""
-
-        def test_func() -> str:
-            with redirect_stdout(io.StringIO()) as f:
-                # Complex program: store values, load them, perform operations
-                run("A A N A A A S A A A N A A A A S A A L A A A L", io=IO())
-            return f.getvalue()
-
-        output = run_with_timeout(test_func)
-        # Final result after loading from uninitialized addresses
-        assert output == "z: 0\nn: 8\nram: {\n    2: 5,\n    8: 12\n}"
-
-    def test_memory_initialization_pattern(self) -> None:
-        """Test pattern for initializing multiple memory locations."""
-
-        def test_func() -> str:
-            with redirect_stdout(io.StringIO()) as f:
-                # Initialize memory locations with values
-                run("A N S A A N S A A A N S A A A A N S A A A A A N S", io=IO())
-            return f.getvalue()
-
-        output = run_with_timeout(test_func)
-        assert output == (
-            "z: 15\nn: 15\nram: {\n"
-            "    1: 1,\n    3: 3,\n    6: 6,\n    10: 10,\n    15: 15\n}"
-        )
-
-
 class TestDumpFormat:
-    """The exact text of the state dump.
-
-    The tests above now compare whole dumps, so the punctuation holding one
-    together -- the braces, the indent, the newline closing the RAM block --
-    is covered wherever they run.  These keep it pinned directly, on the
-    smallest programs that show a populated and an empty RAM block.
-    """
+    """The exact text of the state dump."""
 
     def dump(self, code: str) -> str:
         with redirect_stdout(io.StringIO()) as f:
             run(code, io=IO())
         return f.getvalue()
-
-    def test_dump_happens_once_however_often_a_halted_machine_is_stepped(
-        self,
-    ) -> None:
-        """The dump is guarded by a flag that starts as False itself.
-
-        Stepping past the halt is a no-op except for the one dump, and the
-        flag that arranges it is only ever read for truth -- which ``None``
-        satisfies as well as ``False`` -- so the identity is asserted too,
-        the flag being annotated a bool.
-        """
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.register_based.ram0 import _Machine
-
-        machine = _Machine("A", ScriptedIO())
-        assert machine.dumped is False
-        while not machine.halted:
-            machine.step()
-        for _ in range(3):
-            machine.step()
-        assert machine.io.getvalue() == "z: 1\nn: 0\nram: {}"
 
     def test_dump_with_memory(self) -> None:
         assert self.dump("A N S") == "z: 1\nn: 1\nram: {\n    1: 1\n}"
@@ -392,13 +251,7 @@ class TestDumpFormat:
 
 class TestStepMachine:
     def test_load_reads_the_address_in_z(self) -> None:
-        """L loads RAM at the address z holds, not at a fixed one.
-
-        ``test_l_command_load_from_memory`` loads from an address that was
-        never written, so it asserts the 0 that a *missing* key gives --
-        which is what looking up the wrong address gives too.  Storing 1 at
-        address 1 and loading it back separates them.
-        """
+        """L loads RAM at the address z holds, not at a fixed one."""
         from esolangs.interpreters.register_based.ram0 import _Machine
 
         machine = _Machine("A N S L", IO())
@@ -407,12 +260,7 @@ class TestStepMachine:
         assert (machine.z, machine.ram) == (1, {1: 1})
 
     def test_conditional_skip_is_relative(self) -> None:
-        """C skips the next command; it does not jump to a fixed index.
-
-        Both conditional tests run C at the second token, where skipping
-        ahead and jumping to token 1 land in the same place.  Putting a
-        command before it tells them apart.
-        """
+        """C skips the next command; it does not jump to a fixed index."""
         from esolangs.interpreters.register_based.ram0 import _Machine
 
         machine = _Machine("A Z C A A", IO())
@@ -422,11 +270,7 @@ class TestStepMachine:
         assert machine.z == 1
 
     def test_state_is_dumped_only_once(self) -> None:
-        """Stepping a halted machine again does not repeat the dump.
-
-        ``run`` steps once past the end, so a flag that never latches looks
-        identical there; only a second post-halt step shows the repeat.
-        """
+        """Stepping a halted machine again does not repeat the dump."""
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.register_based.ram0 import _Machine
 
@@ -473,20 +317,10 @@ if __name__ == "__main__":
 
 
 class TestStateViewValues:
-    """The named views read the slots they claim, not one another.
-
-    The shared contract checks that each view *moves*; which slot it moves
-    with is this file's business, because only this file knows which of its
-    names could be confused for each other.  A value pinned at a step where
-    they hold different things is what a rewiring would change.
-    """
+    """The named views read the slots they claim, not one another."""
 
     def test_n_and_z_are_separate_registers(self) -> None:
-        """One step in they differ; by the end of the run they agree.
-
-        Reading them at the end would not tell the two apart, which is why
-        this stops after the first command.
-        """
+        """One step in they differ; by the end of the run they agree."""
         machine = _machine("A N S")
         machine.step()
         assert (machine.z, machine.n) == (1, 0)

@@ -168,7 +168,7 @@ Each route is total on its own domain and the lookup
 carries the universal claim, so the tree below the crossover is a size
 optimization rather than part of the proof.  A width-constrained build may take
 the tree at any arity.  A Painter Ant, Alight, BIO, B-tapemark,
-bit~, Bitwise Cyclic Tag, Circlefuck, Clockwise, Collatz Multiverse,
+Befunge-98, bit~, Bitwise Cyclic Tag, Circlefuck, Clockwise, Collatz Multiverse,
 Cyclic tag, ///, Subleq, Dimensional, EGL, Eval, Fish,
 Forbin, Minsky Swap, Modulous, NoComment, Packlang, Qoibl, SLOW ACV MAMMALIAN,
 Suffolk, Thue and Unsquare keep no tree route at all: A Painter
@@ -177,7 +177,7 @@ answer strip is smaller than a tree at every arity, Alight indexes a string
 literal, bit~ lands the pointer on one tape cell an entry and walks the
 bit it finds home, Bitwise Cyclic Tag has no branch to fold a tree into --
 the commands it runs are a fixed cyclic sequence, so every table of a given
-arity emits the same length, Befunge and Fish read one grid cell per table
+arity emits the same length, Befunge, Befunge-98 and Fish read one grid cell per table
 entry with `g`, BIO's
 telescope is one nested level per row whatever the table says (a degenerate
 table only spares it the flat edges' adjustments, under the fold threshold
@@ -244,6 +244,7 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | B-tapemark | finite lookup | the blank grid is the table, one mark per row copied by `*`; a stage per input walks the mark pointer by that input's weight and `+` prints the mark it lands on | linear: 3T copy cells, T pointer steps, one stage per input |
 | Back | parameterized tree | — | linear: leaf moves sum geometrically, sparse row render |
 | Befunge | exception | six-bit ASCII lookup ships through thirteen inputs; finite source space excludes some sixteen-input tables | linear: T table cells, one g at the index |
+| Befunge-98 | finite lookup | inputs folded into a row index by Horner's rule; `g` reads the answer from a table in unbounded Funge-space below the header, so the program has no branches and no arity cap | linear: T table cells, O(n) Horner reads |
 | Bitwise Cyclic Tag | parameterized lookup | the table is the program, one four-bit cell per row; each embedded bit appends two walk zeros per unit of its place value, and a cell consumes exactly two, so the zeros carry the program pointer to the indexed cell and the held-back sentinel arrives there to fire it; the cell's second `0` consumes the answer it just appended, without which a 1 would cascade into the rows below | linear: 4T table cells, 4T walk appends, 5T + n steps |
 | BF-PDA | parameterized tree | — | linear: span walk, leaf drains sum geometrically |
 | BFStack | minterms | — | linear: zero-row walk telescopes to T |
@@ -251,7 +252,7 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | bit~ | linear lookup | one tape cell an entry, and each input's one-shot loop jumps the pointer left by that input's weight, so the reads chain into a Horner index and a self-erasing walk carries the landed bit to one of two print windows | linear: bounded dependency scan and canonical residual IDs |
 | Bitdeque | parameterized lookup | head/tail discards leave the indexed entry in the deque | linear: 2T commands, discard blocks sum to T |
 | brainfuck | tree | `decision_tree_program` | linear: decision_tree_program, span walk, leaf moves geometric |
-| Boolfuck | reduction | fixed command substitutions lower the Brainfuck tree, consuming and emitting complete bytes | linear: constant-size lowering of the linear Brainfuck tree |
+| Boolfuck | tree | each input byte's low bit is read onto its own cell and tested in place by a flip-only decision tree, one flag interleaved beside each bit, consuming and emitting complete bytes | linear: constant cost per node, difference ratio ~3.9 at n=8..12 |
 | Cyclic tag | parameterized lookup | weighted zero padding advances the cyclic rule pointer to the indexed answer; the next empty rule deletes it | linear: 5T + 2n + 1 characters, weighted padding |
 | /// | parameterized lookup | binary-to-unary substitutions form the row index; T escaped sweeps consume indexed entries before decoding one answer and deleting the suffix | linear: T fixed-size sweeps and 2T table characters |
 | Subleq | finite lookup | direct-jump packed decoder with byte reads and self-modifying chunk selection | linear: T/n packed chunks of n bits, O(n) decoder |
@@ -290,7 +291,7 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | NoComment | finite lookup | from 4 inputs the index is a run of byte-sized skips on the stack and the rows are code: a chain of uniform groups lands on the row, and the rows after it telescope to `table[index]` on six tape cells | linear: bounded dependency scan and canonical residual IDs |
 | 123 | parameterized construction | table-independent separation plus verdict; failed tight geometry falls back to doubling geometry | linear: geometric paint per input, one-pass endgame |
 | Packlang | linear lookup | one 128-row array block, painted inside the `If` that selects it | linear: one write per differing row, block-bounded index digits |
-| Painfuck | tree | Brainfuck tree transliteration | linear: brainfuck tree, O(L) transliteration |
+| Painfuck | tree | decision tree emitted directly in Painfuck's own commands; numeric I/O pays no ASCII offset, and `d` resets the pointer to the answer cell | linear: brainfuck-shaped decision tree; `d` reset keeps leaf returns O(1) |
 | Piet | finite lookup | each table entry is pushed and an input index selects its output; literal products replace conjunction tables | linear: one bounded-width strip with O(T) codels |
 | Polynomial | tree, cap | each finite instruction list has a finite prime-product encoding; every program for a maximal-width table needs Omega(T/log T) distinct real roots ([polynomial](polynomial.md)) | lower bound: coefficient mass is Omega(T**2 / log T), matching the uncapped residual-DAG construction; equal-root blocks force Omega(T/log T) distinct real roots and the slack certificate prices every multiple ([polynomial](polynomial.md)) |
 | Qoibl | linear lookup | the table is one binary literal, divided by the power of two the reads build | linear: T-bit literal, one squaring statement per input |
@@ -305,9 +306,9 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | Suffolk | linear lookup | a countdown built from the row index reads zero exactly on the rows below it, so counting the table's rising and falling steps against it telescopes to the indexed entry | linear: bounded dependency scan and canonical residual IDs |
 | Super SNUSP | tree | each folding pass removes at least one pending unit | linear: one `*` per entry; ANF only below five inputs |
 | Taglate | tree | — | linear: bounded dependency scan and canonical residual IDs |
-| Thue | linear lookup | the table is the starting state, one character an entry, and the bit read rewrites every adjacent pair to one of its two members, so the state halves per input and the last character is the answer; the rules never overlap, so the language's random rule choice has nothing to choose | linear: T state characters, twenty-one fixed rules |
+| Thue | linear lookup | the table is the starting state, one character an entry, and the bit read rewrites every adjacent pair to one of its two members, so the state halves per input and the last character is the answer; the rules never overlap, so the language's random rule choice has nothing to choose | linear: T state characters, nineteen fixed rules |
 | thisthat | tree | inputs go to either end of one bistack row, an ignored one to the column; each end pop drives the next alternating-axis decision node, or goes to the column where the halves agree, in an order the row can pop | linear: the planar H-tree has `O(sqrt(T))` width and height |
-| 3D Brainfuck | tree | Brainfuck tree transliteration | linear: brainfuck tree, O(L) transliteration |
+| 3D Brainfuck | tree | decision tree laid out on three axes, one per role; the 48 offset is built once on the scratch axis and folded into the reads | linear: decision tree with single-step axis moves |
 | 3x | tree | — | linear, time n log: greedy order scoring, capped |
 | Underload | parameterized tree | equal-width input programs leave one selector apiece; each node stores both branches as strings and the selector evaluates exactly one, while a constant leaf discards the unused selectors; a repeated subtree is pushed once and carried above the next selector, and the plain tree stays a candidate | linear: 7n input characters plus at most 11T - 4 tree characters |
 | Unlambda | tree | each half is a `d` promise, forced by the `?` test that selects it, since an argument spelled inline would be evaluated before the application; the shipped node instead returns `s` over its selected promises, so a repeated subtree bound once as a promise reaches every half below, and the plain tree stays a candidate | linear: 29 characters an internal node, four a leaf |
@@ -388,7 +389,7 @@ construction.  Parity at thirteen inputs is 966568 digits, built in
 three seconds with the prime powers multiplied as a balanced tree, and
 the interpreter decodes it to the tree the generator encoded.
 
-Accordingly, this ledger records 75 theoretical totality arguments and two
+Accordingly, this ledger records 76 theoretical totality arguments and two
 proved language exceptions under the source-embedded contract.
 Every other row is `Total` or theoretically total past a resource ceiling.
 
@@ -463,3 +464,13 @@ execute under both spellings and match the table. Reproduce with
 `--min-inputs 12 --max-inputs 12 --random-cases 1 --sample-rows 16`.
 The rule misses the 5% shipping threshold and retains growing identifier
 lengths, so it remains an experiment. Neither gap is closed by this audit.
+
+The exact fallback is not amortized to `O(T)`. `_popularities` visits
+`2*n*2**n` elements a call. On the 15-input table whose rows are
+`random.Random(0).choice("01")` in order, it fires twice at full dimension
+during one generation: 1,966,080 visits, `60*T`. Seed 2 fires once
+(`30*T`); seeds 0--2 at n=10..14 never fire it.
+`test_vandevelo_fallback_is_not_amortized` pins the counts. No invariant
+charges a call to a removed point, so this is an executed counterexample to
+an `O(T)` aggregate for the current peel, not a language lower bound; the
+generation-time cell stays Open.

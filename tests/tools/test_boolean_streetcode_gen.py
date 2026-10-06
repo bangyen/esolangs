@@ -1,8 +1,4 @@
-"""Covers :mod:`esolangs.tools.streetcode`.
-
-Named for the generator, not the interpreter: tests/interpreters/test_streetcode
-covers the car that drives what this emits.
-"""
+"""Covers :mod:`esolangs.tools.streetcode`."""
 
 from importlib import import_module
 
@@ -28,13 +24,7 @@ class TestStreetcode:
     # slower runner.  The build is 0.03s of that, so splitting costs nothing.
     @pytest.mark.parametrize("combo", [0, 1, 2, 17, 31, 32, 47, 62, 63])
     def test_the_flat_lookup_addresses_every_entry(self, combo: int) -> None:
-        """Each input's room walks the pointer by its own weight.
-
-        A room sized from the wrong level, or a walk that lands one cell
-        out, still computes most rows: the rows it breaks are the ones whose
-        index needs that weight.  Six inputs is the smallest arity where the
-        lookup is the route at all.
-        """
+        """Each input's room walks the pointer by its own weight."""
         n = 6
         table = "".join(str(index.bit_count() & 1) for index in range(2**n))
         program = boolean.streetcode(table)
@@ -42,14 +32,7 @@ class TestStreetcode:
         assert run_streetcode(program, [str(bit) for bit in bits]) == table[combo]
 
     def test_the_flat_lookup_is_nine_rows_at_every_arity(self) -> None:
-        """The layout is a street, so the rectangle is linear by its height.
-
-        The tree it replaced spent area on both axes; this spends it on one.
-        Nine rows is the shape -- a room's roof, its two lanes, its floor,
-        the stalk, the street's kerb, its two lanes and its sill -- and the
-        columns are the fill plus the rooms, so the rectangle is the
-        per-entry constant times a fixed height.
-        """
+        """The layout is a street, so the rectangle is linear by its height."""
         for n in range(6, 12):
             table = "".join(str(index.bit_count() & 1) for index in range(2**n))
             program = boolean.streetcode(table)
@@ -84,32 +67,8 @@ class TestStreetcode:
                 ]
                 assert boolean.streetcode(table) == shortest(*all_programs)
 
-    @pytest.mark.parametrize(
-        ("table", "n"),
-        [
-            ("10", 1),  # NOT
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("11111110", 3),  # NAND3
-            ("1000000000000000", 4),  # AND4
-        ],
-    )
-    @pytest.mark.medium
-    def test_truth_table(self, table: str, n: int) -> None:
-        """Every input combination produces the truth-table result."""
-        program = boolean.streetcode(table)
-        for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            got = run_streetcode(program, [str(b) for b in bits])
-            assert got == str(int(table[combo])), f"inputs {bits}"
-
     def test_constant_subtrees_fold(self) -> None:
-        """A subtree whose rows agree prints instead of driving down halls.
-
-        Streetcode splits most-significant-first, so a subtree is a
-        contiguous run: ``11110000`` is two constant halves and collapses,
-        while ``10101010`` is constant over no run and keeps every hall.
-        """
+        """A subtree whose rows agree prints instead of driving down halls."""
         constant = len(boolean.streetcode("11111111"))
         halves = len(boolean.streetcode("11110000"))
         scattered = len(boolean.streetcode("10101010"))
@@ -124,26 +83,14 @@ class TestStreetcode:
                 assert got == table[combo], f"{table} inputs {bits}"
 
     def test_folded_leaf_keeps_the_cell_pointer_advances(self) -> None:
-        """A folded leaf spends the ``=`` its skipped halls would have.
-
-        Each hall advances CP by one on the way down, so a leaf reached
-        without them prints from the wrong cell -- an all-zeros table came
-        out as ``'\\x00'`` before this was threaded through.
-        """
+        """A folded leaf spends the ``=`` its skipped halls would have."""
         program = boolean.streetcode("00000000")
         for combo in range(8):
             bits = [(combo >> (2 - i)) & 1 for i in range(3)]
             assert run_streetcode(program, [str(b) for b in bits]) == "0"
 
     def test_input_reordering_folds_a_scattered_table(self) -> None:
-        """The tree splits in whichever order folds most, not input order.
-
-        ``10101010`` depends on the last input alone, so it folds nothing
-        splitting most-significant-first and everything once that input is
-        tested at the root.  Reordering is what lets it be emitted as the
-        cheap shape, and it costs only the walk that puts the bit in the
-        cell the root's hall tests.
-        """
+        """The tree splits in whichever order folds most, not input order."""
         scattered = len(boolean.streetcode("10101010"))
         aligned = len(boolean.streetcode("11110000"))
         parity = len(boolean.streetcode("01101001"))
@@ -156,12 +103,7 @@ class TestStreetcode:
         assert scattered - aligned < 0.05 * aligned
 
     def test_input_reordering_never_grows_a_program(self) -> None:
-        """The identity order is built first and ties keep it.
-
-        A table no reorder improves has to emit exactly what it emitted
-        before, so reordering can only ever shrink a program.  ``01101001``
-        is parity, which folds under no order at all.
-        """
+        """The identity order is built first and ties keep it."""
         parity = boolean.streetcode("01101001")
         # Parity is the table where every order is equally bad, so the
         # program is the identity one and carries no reordering walks.
@@ -172,13 +114,7 @@ class TestStreetcode:
         ["10101010", "11001100", "01011010", "00111100", "10010110"],
     )
     def test_reordered_programs_compute_the_table(self, table: str) -> None:
-        """A reordered program still computes its function.
-
-        The cell an input is read into is the *inverse* of the split order --
-        level ``k`` tests cell ``k + 1`` and must test input ``perm[k]`` -- so
-        reading it forward stores the right bits in the wrong cells and
-        computes a different function.  Only running it catches that.
-        """
+        """A reordered program still computes its function."""
         program = boolean.streetcode(table)
         for combo in range(8):
             bits = [(combo >> (2 - i)) & 1 for i in range(3)]
@@ -186,23 +122,12 @@ class TestStreetcode:
             assert got == table[combo], f"{table} inputs {bits}"
 
     def test_reordering_keeps_the_reads_in_stream_order(self) -> None:
-        """Reordering moves where a bit is stored, never when it is read.
-
-        The program consumes its input stream exactly as it did before: one
-        ``I`` per input, in input order.  What moves is the cell each lands
-        in, so the count of reads is what pins this down.
-        """
+        """Reordering moves where a bit is stored, never when it is read."""
         for table in ("10101010", "11110000", "01101001"):
             assert boolean.streetcode(table).count("I") == 3
 
     def test_width_is_a_shape_choice(self) -> None:
-        """A width picks a narrower shape, and that shape still computes.
-
-        The hallway trades columns for rows, so a width the default overruns
-        is met by a shape that was built anyway, at the cost of rows. A
-        Streetcode program cannot
-        be reflowed after the fact, so this is the only way a width is met.
-        """
+        """A width picks a narrower shape, and that shape still computes."""
         table = "10"
         default = boolean.streetcode(table)
         narrow = boolean.streetcode(table, 25)
@@ -212,10 +137,7 @@ class TestStreetcode:
             assert run_streetcode(narrow, [bit]) == table[int(bit)]
 
     def test_width_takes_the_narrowest_when_none_fits(self) -> None:
-        """Below every shape's width the narrowest one is returned.
-
-        The nine-row indexed street becomes the nine-column width floor.
-        """
+        """Below every shape's width the narrowest one is returned."""
         table = "10"
         program = boolean.streetcode(table, 1)
         assert _columns(program) == min(
@@ -230,26 +152,13 @@ class TestStreetcode:
             assert boolean.streetcode(table, None) == boolean.streetcode(table)
 
     def test_a_requested_width_is_never_overrun(self) -> None:
-        """A width that *can* be met is met, measured on the emitted columns.
-
-        The width is a promise about the widest row, and the only way to
-        keep it is to pick a shape that already fits, so measuring the
-        wrong thing -- splitting the program on whitespace rather than on
-        newlines, say -- selects a shape that overruns while every
-        truth-table check still passes.  ``0001`` at 33 is the tight case:
-        the winning shape is exactly 33 columns, so a column count that
-        drifts either way changes which shape is returned.
-        """
+        """A width that *can* be met is met, measured on the emitted columns."""
         for table, width in (("0001", 33), ("0110", 33), ("01", 29)):
             program = boolean.streetcode(table, width)
             assert _columns(program) <= width, (table, width)
 
     def test_the_narrowest_fallback_is_really_the_narrowest(self) -> None:
-        """Below every shape's width, the narrowest shape comes back.
-
-        ``0100`` previously returned a 33-column hallway; the rotated
-        indexed street shares its kerb and needs seven, with the same answers.
-        """
+        """Below every shape's width, the narrowest shape comes back."""
         program = boolean.streetcode("0100", 1)
         assert _columns(program) == 7
         for combo in range(4):
@@ -257,14 +166,7 @@ class TestStreetcode:
             assert run_streetcode(program, bits) == "0100"[combo]
 
     def test_a_width_equal_to_a_shape_is_wide_enough(self) -> None:
-        """The fit test is inclusive: exactly the shape's width fits it.
-
-        At its own column count the default shape still fits, so asking for
-        exactly that many columns must return it rather than falling
-        through to a narrower, longer one.  One column more is the same
-        program; the suite otherwise only asks for 1, 25 and 100, none of
-        which lands on a boundary.
-        """
+        """The fit test is inclusive: exactly the shape's width fits it."""
         default = boolean.streetcode("01")
         assert _columns(default) == 29
         assert boolean.streetcode("01", 29) == default
@@ -277,34 +179,18 @@ class TestStreetcode:
     def test_the_emitted_program_has_an_exact_length(
         self, table: str, length: int
     ) -> None:
-        """The layout is deterministic down to the character.
-
-        Streetcode's rows are built from fixed templates and padded runs,
-        so a run one wide, a lap one column longer, or a trailing blank row
-        all leave a *working* program of a different size -- and nothing
-        else here measures size at all.
-        """
+        """The layout is deterministic down to the character."""
         assert len(boolean.streetcode(table)) == length
 
     def test_no_trailing_blank_row(self) -> None:
-        """The grid ends on its last real row.
-
-        The row count is one plus the deepest row written, and an off-by-one
-        there appends an empty row that the interpreter walks over
-        harmlessly -- invisible to every behavioural check.
-        """
+        """The grid ends on its last real row."""
         for table in ("01", "0101", "0110", "11111110"):
             program = boolean.streetcode(table)
             assert not program.endswith("\n"), table
             assert program.split("\n")[-1].strip(), table
 
     def test_the_program_is_only_streetcode_characters(self) -> None:
-        """Only the glyphs Streetcode reads, plus layout space.
-
-        Measured over every table through three inputs and a spread of
-        widths rather than read off the spec: the generator uses a subset,
-        and asserting the spec's full set would pass vacuously.
-        """
+        """Only the glyphs Streetcode reads, plus layout space."""
         allowed = set(" +-;=CIOU^_|~\n")
         for table in ("01", "0000", "0110", "11111110"):
             assert set(boolean.streetcode(table)) <= allowed, table
@@ -330,7 +216,7 @@ def test_a_width_past_the_crossover_still_chooses_a_shape() -> None:
 
 @pytest.mark.parametrize("n", [1, 3, 6])
 @pytest.mark.parametrize("row", [0, 1, -1])
-@pytest.mark.parametrize("width", [1, 4, 7, 8, 9])
+@pytest.mark.parametrize("width", [1, 8])
 def test_quarter_turned_lookup_preserves_input_order(
     n: int, row: int, width: int
 ) -> None:

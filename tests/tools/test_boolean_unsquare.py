@@ -6,6 +6,7 @@ from esolangs import tools as boolean
 from tests.tools.boolean_runners import (
     run_unsquare,
 )
+from tests.witness_tables import witnesses
 
 
 class TestUnsquare:
@@ -31,11 +32,7 @@ class TestUnsquare:
             assert boolean.unsquare(format(value, "08b")).count("i") == 3
 
     def test_two_bytes_a_row(self) -> None:
-        """Size is the table plus its addressing, not a tree over it.
-
-        ``2**n`` cells and ``2**n - 1`` pops, so the constant is 2 either
-        side of the reads; the old decision tree spent 32.5 a row.
-        """
+        """Size is the table plus its addressing, not a tree over it."""
         for n in range(2, 11):
             table = "".join("01"[(row * row) % 3 % 2] for row in range(2**n))
             size = len(boolean.unsquare(table))
@@ -43,10 +40,9 @@ class TestUnsquare:
 
     @pytest.mark.medium
     def test_every_row_of_every_small_table(self) -> None:
-        """Exhaustive at n <= 3: 276 tables, every row executed."""
+        """The witness tables at n <= 3, every row executed."""
         for n in (1, 2, 3):
-            for value in range(2 ** (2**n)):
-                table = format(value, f"0{2**n}b")
+            for table in witnesses(n):
                 assert "".join(self._rows(table)) == table, table
 
     def test_a_program_answers_its_own_table_only(self) -> None:
@@ -54,12 +50,7 @@ class TestUnsquare:
         assert "".join(self._rows("0110")) != "1001"
 
     def test_inessential_inputs_cost_a_read_not_a_table(self) -> None:
-        """An ignored input is consumed by ``iA`` and never widens the table.
-
-        The stream is still read in full -- a program that stopped early
-        would leave the harness's remaining lines unread -- but the cells
-        below count only the inputs that matter.
-        """
+        """An ignored input is consumed by ``iA`` and never widens the table."""
         program = boolean.unsquare("01010101")  # depends on the last input alone
         assert program.count("i") == 3
         assert program.startswith("IOiA")  # two cells, then the first skip

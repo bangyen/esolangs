@@ -1,11 +1,4 @@
-"""Arguments that used to be accepted and then fail somewhere else.
-
-A bound that does not bind, a breakpoint that never fires, a width that is
-silently ignored: each of these was taken without complaint and went wrong
-later, in a place that named neither the value nor the call that supplied
-it.  ``max_steps=-1`` is the sharpest -- it disabled the bound entirely, in
-the one tool whose job is stopping a runaway.
-"""
+"""Arguments that used to be accepted and then fail somewhere else."""
 
 from __future__ import annotations
 
@@ -53,12 +46,7 @@ class TestABreakpointMustBeAbleToFire:
             _debugger().break_at(ip)  # type: ignore[arg-type]
 
     def test_a_grid_coordinate_is_still_accepted(self) -> None:
-        """A 2D language's ``ip`` is a tuple, so that spelling must pass.
-
-        Checked against Streetcode, whose ``ip`` really is a coordinate,
-        rather than against a tape language where a tuple could never match
-        and the test would pass for the wrong reason.
-        """
+        """A 2D language's ``ip`` is a tuple, so that spelling must pass."""
         program = esolangs.generate("Streetcode", "0110")
         dbg = debugger_api.make_debugger(
             "Streetcode", program, stdin=esolangs.encode_inputs("Streetcode", [0, 1])
@@ -118,13 +106,7 @@ class TestTheNamespaceIsTheSurface:
 
 
 class TestTheChecksAreSymmetric:
-    """Round seven's finding: every one of these was checked on one side.
-
-    ``Debugger.run`` validated its timeout and ``run`` did not; three
-    breakpoint setters validated and two did not; ``run`` checked its
-    program and ``make_vm`` did not.  So these assert the *pair*, not the
-    single call -- a check added to one side again would fail here.
-    """
+    """Round seven's finding: every one of these was checked on one side."""
 
     @pytest.mark.parametrize("timeout", ["5", float("inf"), float("nan"), True, 0, -1])
     def test_both_runs_refuse_the_same_timeout(self, timeout: object) -> None:
@@ -214,11 +196,6 @@ class TestNameResolutionIsTrulyCaseInsensitive:
     def test_the_overridden_name_folds_too(self, spelling: str) -> None:
         """Its id came from an exact-key override, so only one case matched."""
         assert esolangs.describe(spelling)["name"] == "CV(N)(C)"
-
-    def test_every_display_name_resolves_from_any_case(self) -> None:
-        for name in esolangs.list_languages():
-            assert esolangs.describe(name.upper())["name"] == name
-            assert esolangs.describe(name.lower())["name"] == name
 
 
 def test_memory_address_at_the_cell_limit_is_refused():

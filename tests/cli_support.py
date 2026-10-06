@@ -1,9 +1,4 @@
-"""What the CLI suites share: the examples directory, a bound, and both streams.
-
-Split out of test_cli_conventions when that file became five, so the five do
-not each carry a copy of the wait a non-terminating program is given or the
-one read that returns stdout and stderr together.
-"""
+"""What the CLI suites share: the examples directory, a bound, and both streams."""
 
 import sys
 from pathlib import Path
@@ -30,13 +25,7 @@ _LOOPS = "0.5"
 def call_both(
     args: list[str], capsys: pytest.CaptureFixture[str], stdin: str = ""
 ) -> tuple[str, str]:
-    """Run ``main`` and return both streams.
-
-    ``call_main`` reads ``capsys`` itself and hands back only stdout, so a
-    test that then reached for ``.err`` found an empty string and passed
-    while asserting nothing.  These tests are *about* stderr, so they need
-    the one read to return both.
-    """
+    """Run ``main`` and return both streams."""
     with (
         patch.object(sys, "argv", ["esolangs", *args]),
         patch.object(sys, "stdin", _FakeStdin(stdin)),

@@ -23,8 +23,8 @@ from esolangs.interpreters.randomness import Randomness, draw
 from esolangs.interpreters.source_hints import syntax_error, with_hint
 
 _DIRECTIONS = ((0, 1), (1, 0), (0, -1), (-1, 0))
-_RULD = (3, 0, 1, 2)
-_LURD = (1, 2, 3, 0)
+_RULD = (3, 2, 1, 0)
+_LURD = (1, 0, 3, 2)
 type _Cursor = tuple[int, int, int]
 type _Tape = tuple[int, tuple[tuple[int, int], ...]]
 type _State = tuple[_Cursor, _Tape, tuple[int, ...], bool, bool]

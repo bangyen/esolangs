@@ -4,22 +4,10 @@ import pytest
 
 
 class TestConstructorWorkBudget:
-    """Two paths that lost their exerciser with the text generators.
-
-    The constructor's work budget and its per-row fill resolution were
-    reached by the exhaustive four-input sweep, which was a one-shot script
-    rather than a suite entry.  Both are live code, so they are driven
-    directly here.
-    """
+    """Two paths that lost their exerciser with the text generators."""
 
     def test_a_fill_token_resolves_to_the_row_own_bit(self) -> None:
-        """A tuple token is an input fill: the row decides its character.
-
-        ``_row_runs`` resolves it once per row rather than on every replay,
-        so the bit it reads has to be the row's own -- a fill resolved
-        against the wrong row spells the wrong program for that row alone,
-        which no aggregate length check would catch.
-        """
+        """A tuple token is an input fill: the row decides its character."""
         from esolangs.tools.one_two_three.construction import (
             _ONE,
             _ZERO,
@@ -44,12 +32,7 @@ class TestConstructorWorkBudget:
         assert _row_runs(row, [_ONE * 2, ("x", 0)]) == [(_ONE, 3)]
 
     def test_painting_past_the_budget_is_refused(self) -> None:
-        """``_paint_all`` prices its whole paint before writing any of it.
-
-        The budget is what stops a construction running away; charging for
-        the paint up front is what makes the refusal cheap rather than
-        something noticed a million commands later.
-        """
+        """``_paint_all`` prices its whole paint before writing any of it."""
         from esolangs.tools.one_two_three.construction import (
             _Builder,
             _paint_all,

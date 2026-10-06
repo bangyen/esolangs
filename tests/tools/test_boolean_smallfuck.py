@@ -43,11 +43,7 @@ def test_source_growth_is_linear() -> None:
 
 
 def test_levels_test_inputs_in_the_shorter_order() -> None:
-    """Only the tested bit moves; over three inputs no template grows.
-
-    ``10101010`` depends on input 2 alone: split on it first it is one
-    node, and the total over every three-input table falls 12.5%.
-    """
+    """Only the tested bit moves; over three inputs no template grows."""
     assert len(smallfuck("10101010")) < len(_smallfuck_ordered("10101010", (0, 1, 2)))
     old = new = 0
     for value in range(256):
@@ -59,12 +55,7 @@ def test_levels_test_inputs_in_the_shorter_order() -> None:
 
 
 def test_constant_arms_and_banded_results_shrink_the_tree() -> None:
-    """Pin the three-input total: 57,894 characters before, 19,830 after.
-
-    A constant lower arm drops the flag (AND is two nested bit loops), a
-    band of three levels shares one result cell instead of transferring
-    at every level, and the moves among the closing brackets go.
-    """
+    """Pin the three-input total: 57,894 characters before, 19,830 after."""
     assert smallfuck("0001") == TEMPLATE_CHAR * 8 + "<<<<<<[*>>>[*<*>]]"
     assert smallfuck("0110").endswith("<<<]>[*>>[*<*>]]")
     assert sum(len(smallfuck(f"{value:08b}")) for value in range(256)) == 19830

@@ -10,14 +10,7 @@ from tests.tools.reader_support import _read_answer
 
 @pytest.mark.medium  # both builds of 456 tables: 0.95s alone
 def test_unlambda_binds_repeated_subtrees_and_skips_equal_halves() -> None:
-    """Share-taking nodes cut both totals and lengthen no table.
-
-    A node returns ``s`` over its selected promises, so a repeated subtree
-    bound once as ```` `N`dX ```` is ``i`` wherever it recurs below, and a
-    node whose halves agree reads and runs the half.  41,074 characters over
-    the 256 three-input tables fall to 32,522 (20.8%), and 144,722 over the
-    seeded five-input sample to 100,963 (30.2%).
-    """
+    """Share-taking nodes cut both totals and lengthen no table."""
     from tests.tools.plain_oracles import unlambda_plain as _plain
 
     three = [format(value, "08b") for value in range(256)]

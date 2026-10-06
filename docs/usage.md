@@ -2,18 +2,29 @@
 
 The API handles language I/O conventions using [`describe`](#describe) metadata.
 
-## Evaluate a program
+## Command line
 
-`evaluate` returns the observed table for a supplied program and input count:
+`esolangs --help` lists every command; `esolangs <command> --help` describes one:
 
-```python
-import esolangs
+| Command | Does |
+| --- | --- |
+| `generate` | print a program computing a truth table |
+| `run` | run a program through its interpreter |
+| `debug` | run under the breakpoint/watch VM, or `--tui` to step interactively |
+| `suggest` | preview unambiguous command-spelling fixes; runs and edits nothing |
+| `encode` | print the stdin that feeds a bit string |
+| `read-answer` | print the answer bit a program's output carries |
+| `list` | list the languages; `--details` adds the generator, template and example markers |
+| `describe` | how one language reads input and where its answer lands |
 
-program = esolangs.generate("A Painter Ant", "0110")
-esolangs.evaluate("A Painter Ant", program, inputs=2)  # -> '0110'
+`encode` and `read-answer` wrap `run` for one input row:
+
+```bash
+esolangs generate LaserFuck 0110 > prog.txt
+esolangs encode LaserFuck 10 | esolangs run LaserFuck prog.txt | esolangs read-answer LaserFuck -> 1
+esolangs generate Modulous 0110 > modulous.txt
+esolangs suggest Modulous modulous.txt
 ```
-
-It handles input formats, templates and termination answers.
 
 ## Work with one language
 
@@ -22,14 +33,12 @@ It handles input formats, templates and termination answers.
 ```python
 bf = esolangs.Language("brainfuck")
 program = bf.generate("0110", balance=True)
-assert bf.evaluate(program, inputs=2) == "0110"
 output = bf.run(program, bf.encode_inputs([0, 1]))
 assert bf.read_answer(output) == "1"
 info = bf.describe()
 ```
 
-It also binds `instantiate`, `check_program` and `check_stdin`; use the package
-functions across languages.
+It also binds `instantiate`; use the package functions across languages.
 `balance=True` minimizes the rendered width/height difference across supported
 layouts, breaking ties by source length (raster pixel area), then width.
 It excludes `width`. Line compares forward and reverse input-test orders;
@@ -44,7 +53,8 @@ comparable in area to native Line (680×800).
 
 ## Run XOR
 
-XOR's table is `0110`, ordered by rows `00`, `01`, `10`, `11`.
+Truth tables are binary strings of length `2**n`, most-significant input
+first. XOR's table is `0110`, ordered by rows `00`, `01`, `10`, `11`.
 Run one stdin-driven row:
 
 ```python
@@ -55,7 +65,6 @@ program = esolangs.generate("brainfuck", table)
 stdin = esolangs.encode_inputs("brainfuck", [0, 1])
 output = esolangs.run("brainfuck", program, stdin)
 assert esolangs.read_answer("brainfuck", output) == "1"
-assert esolangs.evaluate("brainfuck", program, inputs=2) == table
 ```
 
 Some languages embed inputs in their source instead:
@@ -73,7 +82,8 @@ Raster languages return an image source:
 raster = esolangs.generate("Piet", table)
 assert isinstance(raster, esolangs.Raster)
 raster.to_png()
-assert esolangs.evaluate("Piet", raster, inputs=2) == table
+stdin = esolangs.encode_inputs("Piet", [0, 1])
+assert esolangs.read_answer("Piet", esolangs.run("Piet", raster, stdin)) == "1"
 ```
 
 To step through a text program and inspect its state:
@@ -112,24 +122,17 @@ measured row to answer correctly.
 
 <!-- PUBLIC-API:START -->
 
-- `esolangs.check_program` -- return `program` as source, having checked what can be checked here
-- `esolangs.check_stdin` -- refuse `stdin` that cannot be what `language` wants to read
 - `esolangs.describe` -- return a structured description of `language`
 - `esolangs.dump_program` -- return version-1 JSON preserving source, choices, and template setters
 - `esolangs.encode_inputs` -- return the stdin that feeds `bits` to a `language` program
-- `esolangs.evaluate` -- return the table computed over `inputs` bits, collecting iter_evaluate
 - `esolangs.generate` -- return a program in `language` computing `truth_table`
 - `esolangs.instantiate` -- fill a parameterized generator's template with `bits`
-- `esolangs.iter_evaluate` -- yield answer bits in MSB-first row order without retaining the table
 - `esolangs.list_languages` -- return the supported language names, sorted
 - `esolangs.load_program` -- restore version-1 JSON as tagged source for the requested language
 - `esolangs.read_answer` -- return the answer bit a `language` program's `output` carries
 - `esolangs.run` -- execute `program` and return its output
 
 <!-- PUBLIC-API:END -->
-
-Truth tables are binary strings of length `2**n`, most-significant input first;
-their length determines `n`.
 
 ## Feeding a program
 
@@ -146,6 +149,7 @@ esolangs.encode_inputs("Taglate", [1, 0, 1])  # -> '0101'
 | 3x | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Algebraic Programming Language | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Befunge | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
+| Befunge-98 | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | CV(N)(C) | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Clockwise | `char_stream_cyclic` | `0`/`1` | `'101'` |
 | Collatz Multiverse | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
@@ -174,8 +178,8 @@ Use `encode_inputs` to build stdin; it and this table use `describe`.
 [`MANIFEST.md`](../src/esolangs/examples/MANIFEST.md) lists each example’s
 input row and encoding.
 
-`esolangs run` warns about invalid stdin; `--judge` rejects it.
-`check_stdin(language, stdin, truth_table)` also checks the input bit count.
+`esolangs run` warns about invalid stdin through the interpreter; pipe its
+output to `read-answer` when an answer bit is wanted.
 
 ## Templates
 
@@ -188,8 +192,8 @@ refused. `esolangs list --details` marks them `tmpl`.
 
 Most languages print the answer; six dump their final state, and four answer
 by termination: halt for 0, loop forever for 1. `read_answer` handles printed
-and state-dump answers. Use `evaluate` for termination answers;
-they require a proved halt or cycle. A timeout remains undecided.
+and state-dump answers and refuses termination answers: run those with
+`max_steps` and treat a halt as 0. A timeout remains undecided.
 
 Their `answer_encoding` is `("halts", "diverges")`; its index gives the bit.
 
@@ -204,17 +208,11 @@ including the 15 languages that ignore width because newlines are semantic.
 `run(language, program, stdin, isolated=True, timeout=30)` bounds subprocess startup,
 loading and execution on Windows and worker threads. Timeout kills and reaps
 the child; errors retain their class and `partial_output`.
-`evaluate(..., isolated=True)` applies a finite
-deadline per row; a timeout remains undecided, including termination answers.
 `max_memory=BYTES` bounds a Linux isolated worker's virtual address space,
 including Python overhead. `run` requires `isolated=True`; CLI
-`evaluate --max-memory BYTES` enables isolation. Other platforms refuse the
+`run --isolated --max-memory BYTES` bounds the worker. Other platforms refuse the
 option. Parent source loading is outside the cap; exhaustion raises
 `InterpreterLimitError`, never a Boolean answer.
-
-`evaluate(..., isolated=True, max_output=N)` caps each row in Unicode characters;
-CLI `evaluate --max-output N` enables isolation. Overflow raises
-`InterpreterLimitError` with partial output and the failing row.
 
 `run(language, program, stdin, max_steps=100_000, timeout=1)`
 returns output on halt and raises `ExecutionTimeoutError` with
@@ -272,10 +270,13 @@ assert len(debug.output) > 2
 ```
 
 `--tui` highlights the next operation and shows the tape, stack, output,
-named state, and watch history. Controls are `hjkl` to move, `t` to toggle a
-breakpoint, `c` to continue, `space` to step, `b` to step back, `r` to finish,
-and `q` to quit. Use `--stdin`; keyboard commands and program input cannot
-share a stream.
+named state, and watch history. Controls are `hjkl` to move (a leading
+count walks further, `g` prompts for a place, `G` returns to the run), `t`
+to toggle a breakpoint, `c` to continue, `space` to step, `b` to step back,
+`r` to finish, `R` to restart on new stdin, `w`/`W` to add and drop a
+watched cell, `p` to play with `+`/`-` setting the speed, and `q` to quit.
+The cell the last step changed flashes. Use `--stdin`; keyboard commands
+and program input cannot share a stream.
 
 Call-stack and 3-D positions show raw `ip` without source highlighting.
 

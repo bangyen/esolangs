@@ -662,6 +662,78 @@ XOR and XNOR are missing because the four feature rows are dependent.
 The eight-fraction independent-pair control realizes all sixteen tables.
 Both controls live in `tests/proofs/test_research_tracks.py`.
 
+### Order-only decoding with two priority consultations
+
+Repeating the consultation breaks the one-consultation argument: the second
+selection sees a different feature set. A seven-fraction
+router executes all sixteen four-row tables for one fixed multiset. Phase 13
+is consumed by round one, which also consumes one feature and produces 17;
+the run then consults the same priority list again and round two consumes 17
+and a remaining feature. Table-independent seeds carry the feature sets
+`3*11`, `3*7*11`, `5*7*11`, `5*11`, and the router
+
+    17/39 17/65 17/91 17/143 2/51 2/85 1/187
+
+with cleanup `1/3 1/5 1/7 1/11 1/17` (40 and 21 characters) realizes all
+sixteen; every run selects exactly one round-one and one round-two rule. The
+control is `test_two_priority_consultations_shatter_a_guard_cycle`.
+
+The escape is bounded. The family spells `m+|S|` fractions over `m`
+features and, with a fixed decoder reading only the second selection, no
+exhaustive or randomized search up to `m=6` shatters more rows than there
+are features. Exhaustion gives 16 of 16 at `m=4,T=4`, 7 of 16 at `m=3,T=4` and
+28 of 32 at `m=4,T=5`; randomized search gives 58 of 64 at `m=5,T=6` and 112
+of 128 at `m=6,T=7`. The `m`-th prime costs `Theta(log m)` characters, so a
+`T=Theta(m)`-row table costs `Theta(m log m)=Theta(T log T)`. The text floor
+survives; the linear-dependence obstruction moves from the first selection's
+feature vectors to a decoder that reads only the second.
+
+Next: make the decoder depend on both selections, or prove that repeated
+consultations retain an `Omega(T log T)` text floor.
+
+### Pair-decoded two priority consultations
+
+Giving round one distinct marker primes makes the final value depend on both
+selections. With distinct primes `A_f`, `B_g` the router
+
+    round one:  17*A_f/(13*f)   for each feature f
+    round two:  B_g/(17*g)      for each feature g
+    cleanup:    1/f, 1/17
+
+emits `17*A_f` then `B_g`, so the run ends at `A_{f*}*B_{g*}`. Squaring the
+seed features (`13*prod f**2`) lets round two reselect the round-one feature,
+so the two selections are independent: `f* = min_S pi1` and `g* = min_S pi2`
+for the round-one and round-two block orders. A fixed decoder `h(A_f*B_g)`
+reads the pair. The router is `2k` fractions for `k` features.
+
+All orderings of the router, every row run through the interpreter
+(`test_pair_decoded_router_reads_both_selections`,
+`test_pair_decoded_router_reaches_one_row_per_fraction`):
+
+    k   d=2k   C(k,2)   realized
+    3    6       3       8/8
+    4    8       6      64/64
+    5   10      10    1024/1024
+    6   12      15    8192/8192 at T=13; T=14 16096/16384; T=15 30644/32768
+
+Router text is `Theta(k log k)` (2k tokens, primes to `O(k log k)`), and at
+`k=6` the realized `T=13` exceeds `d=12`, breaking the one-consultation
+`d >= T-1` cap.
+
+The escape is still bounded. The pair map has at most `(k!)**2` entries, so
+full shattering of `T` rows needs `2**T <= (k!)**2`, i.e.
+`T <= 2 log2(k!) ~ 2k log2(k/e)`. A checked sweep gives `T_max(k) = 3,6,10,13`
+for `k=3..6`; the maxima are fit by `T_max ~ 3.4k - 7.3 = 1.7d - 7.3`, linear
+in `d`, so `text = Theta(k log k) = Theta(T log T)` and the floor survives.
+This is checked, not proved: the pigeonhole allows up to `~2k log k`, so a
+proof must exclude a `Theta(k log k)`-row shattering family. `T=14,15` at
+`k=6` are unattained in long searches but not excluded.
+
+Next: either exhibit a `Theta(k log k)`-row family a fixed pair decoder
+shatters for all `k` (edges of a sparse graph, whose acyclic orientations
+supply the two orders, are the candidate), or prove the pair router caps at
+`O(k)` rows.
+
 ## The other end: the row-addressing tree
 
 The generator that shipped before this was a decision tree with one prime

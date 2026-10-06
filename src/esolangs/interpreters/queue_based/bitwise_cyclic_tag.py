@@ -135,11 +135,6 @@ class _Machine:
         """The live data-string, leftmost first."""
         return [int(bit) for bit in self.data[self.state[1] :]]
 
-    @property
-    def stack(self) -> list[object]:
-        """No stack in this language."""
-        return []
-
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection.
 

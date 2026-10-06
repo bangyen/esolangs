@@ -1,21 +1,4 @@
-"""Every embedding generator holds the embed conventions.
-
-The measured half builds every embedding generator, fills every row, and reads
-the two measured conventions -- no spaces, uniform -- off the programs; each
-generator must hold both.  The other three -- single embed, constant width,
-slot order -- are the template object's shape and are checked by its
-constructor, which ``generate`` runs for every template; a test here pins that
-they hold for every embedding generator at every arity measured.
-
-Every convention is about the *embed*, the text a fill substitutes for one
-input's run.  It is read off the programs rather than off the fill, since four
-fills are not plain substitutions: for one input, the two fills that differ
-only in that bit are compared and the span on which they differ is the
-embed pair.  A blank in it is a delimiter when it stands alone between two
-non-blank characters (Bitdeque's ``INVERT PUSH``) and content otherwise --
-a bit spelled as a blank cell, or a blank pad.  The embed is *uniform* when
-that pair is the same pair for every input of every table.
-"""
+"""Every embedding generator holds the embed conventions."""
 
 from __future__ import annotations
 
@@ -53,12 +36,7 @@ def _tables(n: int) -> tuple[str, str]:
 
 
 def _span(a: str, b: str) -> tuple[str, str]:
-    """The stretches on which two equal-length programs differ, as a pair.
-
-    Taken row by row and joined with newlines, so a grid fill that writes
-    one input's cells on two rows yields those
-    cells and not the untouched rows between them.
-    """
+    """The stretches on which two equal-length programs differ, as a pair."""
     zero, one = [], []
     for x, y in zip(a.split("\n"), b.split("\n"), strict=True):
         if x == y:
@@ -104,13 +82,7 @@ def _measure(example: BooleanExample) -> dict[str, bool]:
 
 
 def test_the_structural_conventions_hold_where_the_template_is_made() -> None:
-    """Single embed, constant width and slot order are the template's shape.
-
-    ``generate`` builds the template object for every embedding generator,
-    and its constructor refuses a pair of unequal width or runs that do not
-    fit the pairs; so building every template at every measured arity is
-    the check, and the audit table has no column for these three.
-    """
+    """Single embed, constant width and slot order are the template's shape."""
     import esolangs
 
     for name in _embedding():
@@ -123,12 +95,7 @@ def test_the_structural_conventions_hold_where_the_template_is_made() -> None:
 
 @pytest.mark.slow  # builds and fills every embedding generator at n=2, 3 and 5
 def test_every_embedding_generator_holds_both_conventions() -> None:
-    """No open cell is left: both measured conventions hold everywhere.
-
-    The audit that tracked the open set closed, so this reads as one claim
-    over the whole set rather than against a table; a regression is a
-    generator that stops holding one.
-    """
+    """No open cell is left: both measured conventions hold everywhere."""
     for name, example in _embedding().items():
         measured = _measure(example)
         failing = [column for column, ok in measured.items() if not ok]
@@ -136,14 +103,7 @@ def test_every_embedding_generator_holds_both_conventions() -> None:
 
 
 def test_bitdeque_linear_route_is_one_width() -> None:
-    """The route the equal-width test misses stays at one length.
-
-    Its ``EJECT ``/``POP `` units once left 32 lengths for 32 five-input
-    rows; block pads closed that, and now the weight is the template's
-    (the discard blocks) and every input is the one eleven-character
-    pair, so the row has left the audit.  This pins the arity where the
-    route begins.
-    """
+    """The route the equal-width test misses stays at one length."""
     example = _embedding()["Bitdeque"]
     assert example.fill is not None
     for n in (4, 5):

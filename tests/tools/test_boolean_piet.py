@@ -6,6 +6,7 @@ from itertools import pairwise, product
 import pytest
 
 import esolangs
+from esolangs._evaluate import _evaluate
 from esolangs.raster import Raster
 from esolangs.tools.helpers import essential_inputs, read_at
 from esolangs.tools.piet import piet as generate
@@ -69,7 +70,7 @@ def test_larger_functions_execute_through_png() -> None:
             for balanced in (False, True):
                 image = esolangs.generate("Piet", table, balance=balanced)
                 decoded = Raster.from_png(image.to_png())
-                assert esolangs.evaluate("Piet", decoded, inputs=inputs) == table
+                assert _evaluate("Piet", decoded, inputs=inputs) == table
 
 
 def test_public_generate_returns_a_piet_raster() -> None:

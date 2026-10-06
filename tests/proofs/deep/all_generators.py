@@ -1,34 +1,4 @@
-"""A deep proof for every boolean generator in the registry.
-
-Run:  just proofs   (or python tests/proofs/deep/all_generators.py)
-
-Every row in ``docs/proofs/index.md`` gets the lemma battery in
-:mod:`tests.proofs.deep._lemmas` instantiated against its own construction and
-its own ledger scheme.  Four generators additionally have a hand-derived proof
-of their *specific* argument in the files beside this one; those are deeper,
-and this does not replace them.
-
-Read the depth honestly.  What is established here, per generator, is the
-counting half of its scheme: (a) the construction builds every table of a
-small arity and every arity of the ladder on both shapes -- a refusal is a
-*failure* unless the ledger marks the row ``cap`` or ``exception``; (b) every
-row of the enumerated tables participates, since flipping any single entry
-moves the emitted program; and (c) the same table builds the same program.
-Size is deliberately not asserted: no ledger scheme claims a character count,
-the two size formulations tried both failed on legitimate regime changes (see
-``_lemmas``), and emitted-size claims live in ``docs/limitations.md`` and the
-measured contract in ``tests/proofs/deep/linearity.py``.  What it also does
-*not* establish is that the construction computes the right answer -- the
-execution sweeps in ``tests/tools/test_boolean_contract.py`` are that evidence,
-and the bespoke files are where a particular construction's own reasoning gets
-mechanized.
-
-Where a lemma does not apply, it is recorded as UNPROVEN with its reason and
-counted separately.  A silent skip would let this file grow into exactly the
-kind of green-but-vacuous check the ledger work was about; the battery's own
-positive controls are in :func:`_assert_the_lemmas_bite`, run before any
-generator is scored.
-"""
+"""A deep proof for every boolean generator in the registry."""
 
 from __future__ import annotations
 
@@ -103,14 +73,7 @@ def _flip_flops(table: str) -> str:
 
 
 def _assert_the_lemmas_bite() -> None:
-    """Each counting lemma must fail on a builder that breaks it.
-
-    A lemma that cannot fail is not a check.  These builders break the exact
-    property each lemma asserts, so a green battery run means the lemmas had
-    teeth on this run, not only on the one they were written against.  The
-    last case is the control in the other direction: a genuinely capped row
-    must report its refusals, not fail.
-    """
+    """Each counting lemma must fail on a builder that breaks it."""
     _flip_flop_state[0] = 0
     cases = [
         ("coverage refuses everything", check_coverage, _refuses_everything, {}),

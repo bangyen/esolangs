@@ -229,3 +229,44 @@ def test_unreachable_bad_cell_still_aborts() -> None:
     machine.grid = ("▣x",)
     with pytest.raises(HaltError, match="unsupported thisthat cell"):
         machine._advance_one(_Pointer((1, 0), (0, 0)), [])
+
+
+def test_popping_an_empty_head_shifts_the_stack_back() -> None:
+    """Wiki: a pop removes the beginning element, even an empty one, and shifts."""
+    machine = _Machine(["▣"], ScriptedIO(""))
+    machine.cells = {(-2, 0): 1}
+    assert machine._head("row", None) is None
+    assert machine.cells == {(-1, 0): 1}
+
+
+def test_branch_choices_follow_the_update_order() -> None:
+    """Merges draw in priority/row/column order, not pointer order: 2*3 outcomes."""
+    machine = _Machine(["▣═◘═◘═◇"], ScriptedIO(""))
+    machine.pointers = (
+        _Pointer((4, 0), (3, 0), "data", 1),
+        _Pointer((4, 0), (5, 0), "data", 1),
+        _Pointer((4, 0), (4, 1), "data", 1),
+        _Pointer((2, 0), (1, 0), "data", 1),
+        _Pointer((2, 0), (3, 0), "data", 1),
+    )
+    successors = machine.branching_successors(machine.branching_snapshot(), 100)
+    assert len(set(successors or ())) == 6
+
+
+def test_a_branch_from_another_program_is_rejected() -> None:
+    """A state carries its grid, so it cannot be resumed on a different program."""
+    other = _Machine(["▣─◯"], ScriptedIO(""))
+    machine = _Machine(["▣─◉"], ScriptedIO(""))
+    with pytest.raises(ValueError, match="another thisthat program"):
+        machine.branching_successors(other.branching_snapshot(), 10)
+
+
+def test_a_cursorless_read_loop_halts_at_eof() -> None:
+    """Reads count in the snapshot: the 1-loop runs to EOF, not a false cycle."""
+    from esolangs.vm import run_until_halt_or_cycle
+    from tests.interpreters.cursorless_io import CursorlessIO
+
+    io = CursorlessIO("11111111")
+    loop = ["▣─▶─◇═◒", "  │   │", "  └───┘"]
+    assert run_until_halt_or_cycle(_Machine(loop, io)) is True
+    assert io.exhausted

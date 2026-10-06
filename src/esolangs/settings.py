@@ -2,6 +2,7 @@
 
 import inspect
 from dataclasses import dataclass
+from difflib import get_close_matches
 from typing import Any, TypedDict, cast
 
 from esolangs._dialects import (
@@ -33,7 +34,13 @@ class DialectSettings:
         text = {"expression_syntax", "literal_policy", "integer_conversion"}
         for key, value in choices.items():
             if key not in integer | text:
-                raise ArgumentError(f"unknown dialect setting: {key}")
+                known = sorted(integer | text)
+                close = get_close_matches(key, known, n=1, cutoff=0.6)
+                suggestion = f" (did you mean {close[0]}?)" if close else ""
+                raise ArgumentError(
+                    f"unknown dialect setting: {key}{suggestion}; "
+                    f"known settings: {', '.join(known)}"
+                )
             valid = (
                 (type(value) is int or value is None)
                 if key in integer

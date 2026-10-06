@@ -1,25 +1,4 @@
-"""Machine checks backing the BIO telescoping-lookup proof.
-
-Run:  just proofs   (or python tests/proofs/deep/bio.py)
-
-The ledger row is `finite lookup`, qualified "nested loops telescope from
-``table[0]`` to ``table[index]``".  The generator's own docstring states the
-identity it relies on::
-
-    y = table[0] + sum_{j=1}^{V} (table[j] - table[j-1]) = table[V]
-
-which is true for any sequence whatever.  The identity is not what can go
-wrong -- placing the wrong adjustment at the wrong nesting level is.  So these
-lemmas deliberately *parse the emitted program* to recover which adjustment
-sits at which level, rather than rebuilding the nesting from the same rule the
-generator used.  Rebuilding it would restate the source and prove nothing.
-
-L1 recovers the levels and checks the telescope lands on ``table[V]`` for every
-row of every arity it enumerates.  L2 checks the structure the telescope needs:
-``2**n - 1`` levels, strictly nested, the ``j``-th at depth ``j``.  L3 checks
-the embedding is equal-width, which is what keeps program length from becoming
-an extra input.
-"""
+"""Machine checks backing the BIO telescoping-lookup proof."""
 
 from __future__ import annotations
 
@@ -46,24 +25,12 @@ _RISE, _FALL = "0oy;", "1oy;"
 
 
 def lookup(program: str) -> str:
-    """The telescope: everything after the last input run.
-
-    The pack before it is the runs and the doublings between them, which
-    are loops of their own (``0ix{ 1ox; 0oy; 0oy; };`` is a level-shaped
-    text that adjusts nothing) and would be read as levels if the walk
-    started at the top.  Every lemma about the nesting reads from here.
-    """
+    """The telescope: everything after the last input run."""
     return program[program.rfind("$") + 1 :]
 
 
 def levels(program: str) -> list[str]:
-    """Recover the adjustment at each nesting level, outermost first.
-
-    Walks the emitted ``0ix{ 1ox; [adjust] ... };`` chain by hand.  The
-    outermost level is ``j == 1`` -- the generator builds the nesting from the
-    innermost level outwards, so the last one it wraps is the first one entered
-    -- which is what puts the adjustments in increasing ``j`` order at runtime.
-    """
+    """Recover the adjustment at each nesting level, outermost first."""
     out: list[str] = []
     program = lookup(program)
     i = program.find("0ix{")
@@ -85,20 +52,7 @@ def levels(program: str) -> list[str]:
 
 
 def check_l1(max_n: int = 7) -> list[str]:
-    """L1: the recovered adjustments telescope to ``table[V]`` at every row.
-
-    ``y`` starts at ``table[0]`` -- the generator emits a single raise when
-    that entry is one -- and level ``j`` fires for every ``j <= V``.  Folding
-    the recovered adjustments in order must therefore reproduce the table
-    exactly, and it is checked against every row rather than sampled ones.
-
-    The fold's per-edge semantics are also *executed*: the program is run
-    through the shipped interpreter at a low arity (n<=3, where a full walk is
-    cheap) and the register it leaves must equal the folded ``table[index]``.
-    That ties the parse to the machine -- a fold that agreed with a wrong
-    reading of ``0oy;``/``1oy;`` would otherwise pass here while the
-    interpreter disagreed.
-    """
+    """L1: the recovered adjustments telescope to ``table[V]`` at every row."""
     lines = []
     rng = random.Random(19)
     for n in range(1, max_n + 1):
@@ -144,12 +98,7 @@ def check_l1(max_n: int = 7) -> list[str]:
 
 
 def _executed_answer(program: str, n: int, index: int) -> int:
-    """Run ``program`` for input ``index`` and read the register it leaves.
-
-    Uses the shipped interpreter and a scripted input, so the answer comes
-    from the machine rather than the parse.  ``index``'s bits are the input
-    lines, most-significant first.
-    """
+    """Run ``program`` for input ``index`` and read the register it leaves."""
     from esolangs.interpreters.io import ScriptedIO
     from esolangs.interpreters.register_based.bio import _Machine
 
@@ -162,14 +111,7 @@ def _executed_answer(program: str, n: int, index: int) -> int:
 
 
 def check_l2(max_n: int = 9) -> list[str]:
-    """L2: ``2**n - 1`` levels, strictly nested, and flat edges cost nothing.
-
-    Strict nesting is what makes "level ``j`` fires iff ``x >= j``" true: the
-    levels are not a sequence of sibling loops that would each fire on their
-    own test, but one chain, so entering level ``j`` requires having entered
-    every level above it.  Checked from the brace profile, which is also where
-    a sibling would show up as a depth returning to zero early.
-    """
+    """L2: ``2**n - 1`` levels, strictly nested, and flat edges cost nothing."""
     lines = []
     rng = random.Random(23)
     for n in range(1, max_n + 1):
@@ -212,14 +154,7 @@ def check_l2(max_n: int = 9) -> list[str]:
 
 
 def check_l3(max_n: int = 8) -> list[str]:
-    """L3: both bits of an input embed at the same width.
-
-    A one packs ``2**w`` copies of ``0ox`` into ``x``; a zero writes the same
-    count to ``z``, which nothing reads.  Writing to a dead register rather
-    than emitting nothing is the whole point -- it keeps the two branches the
-    same length, so the program's length cannot leak the input, which is the
-    hypothesis the parameterized equal-width argument needs.
-    """
+    """L3: both bits of an input embed at the same width."""
     lines = []
     for n in range(1, max_n + 1):
         table = "01" * ((1 << n) // 2) or "01"
@@ -239,13 +174,7 @@ def check_l3(max_n: int = 8) -> list[str]:
 
 
 def _fill(template: str, bits: str) -> str:
-    """Instantiate through the *shipped* fill, not a local copy of it.
-
-    ``_fill_bio`` is what the suite and the examples actually use.  Writing the
-    replacement out again here would make L3 a statement about this file: any
-    lambda with two symmetric branches is equal-width by construction, so a
-    local copy would pass the lemma however the real one drifted.
-    """
+    """Instantiate through the *shipped* fill, not a local copy of it."""
     from tests.tools.fills import _fill_bio
 
     return _fill_bio(template, [int(b) for b in bits])

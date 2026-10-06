@@ -217,11 +217,6 @@ class _Machine:
         return (len(self.frames), self.ind)
 
     @property
-    def memory(self) -> list[int]:
-        """No addressable cells; the store is the active stack."""
-        return []
-
-    @property
     def stack(self) -> list[int | str]:
         """The active stack, the one ``ptr`` currently selects.
 

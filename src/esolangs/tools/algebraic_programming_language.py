@@ -17,7 +17,7 @@ from esolangs.tools.helpers import (
 
 #: Input variable names in harness order; a variable is bound by being
 #: named on an executed line, so these must be codepoint-ascending
-#: (the interpreter sorts by name).  The wiki allows accented Latin,
+#: (the input prefix names variables in this order).  The wiki allows accented Latin,
 #: Cyrillic and Greek; accented Latin is appended (past any reachable
 #: arity), Cyrillic and Greek left out as confusable (RUF001).
 _NAMES = "abcdefghijklmnopqrstuvwxyzàáâãäåæçèéêëìíîïñòóôõöøùúûüý"

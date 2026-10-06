@@ -1,10 +1,4 @@
-"""The parameterized substitutions by name, for suites that fill a template.
-
-The package keeps one ``PAIR`` per uniform embedding language and
-derives each example's ``fill`` from it (``_fill_from``); the suites
-that exercise a single language's substitution reach it here by name
-rather than through the example table.
-"""
+"""The parameterized substitutions by name, for suites that fill a template."""
 
 from esolangs.tools.a_painter_ant import PAIR as APA_PAIR
 from esolangs.tools.arrowqueue import PAIR as ARROWQUEUE_PAIR
@@ -65,9 +59,5 @@ def instantiate_crement(template: str, bits: list[int]) -> str:
 
 
 def _run_form(pair: tuple[str, str], n: int) -> str:
-    """A bare template of ``n`` runs, one per input, as wide as its setter.
-
-    The synthetic template the width tests fill: nothing but the runs, so
-    the filled length is the setters' alone.
-    """
+    """A bare template of ``n`` runs, one per input, as wide as its setter."""
     return "$" * len(pair[0]) * n
