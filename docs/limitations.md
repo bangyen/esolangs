@@ -394,7 +394,8 @@ languages remain rejected from the same image-source screen.
   1. `"after_each_letter"` includes the prose's final multiplication and prints
   10. Both integer mode and string conversion follow this setting; generators
   adapt their literals. The same page’s truth machine requires 1 rather than
-  the prose’s 10. Unset variables raise `HaltError`; initialization is unspecified.
+  the prose’s 10. An unset variable reads as its own name, which the page’s
+  variables example (`VARIABL`) requires.
 - Packlang literals default to decimal; `literal_policy="binary_digits"`
   treats literals containing only `0` and `1` as binary. The same page uses
   decimal `101` in Hello World and binary digits in PlusOrMinus and dependency
