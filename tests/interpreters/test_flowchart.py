@@ -8,65 +8,25 @@ import pytest
 from esolangs.interpreters.grid_based.flowchart import _Machine, run
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
+from tests.fixtures import grid
 from tests.interpreters.runner import run_program as _run_program
 
 # The wiki's truth machine: read a bit, and on 0 print it once and halt, on
 # 1 print it forever.  The switch is entered travelling downward, so its
 # heading-relative left (grid-east) is the looping branch.
-TRUTH_MACHINE = [
-    "       ( )──┐        ",
-    "           / /       ",
-    "            │        ",
-    "(( ))─\\ \\──< >┬─\\ \\─┐",
-    "              │     │",
-    "              └─────┘",
-]
+TRUTH_MACHINE = grid("flowchart/truth_machine.txt")
 
 # The wiki's cat: the upper loop reads bits onto a deque until the input
 # runs out, and the lower loop pops them back off and prints them.
-CAT = [
-    "( )──┐   ",
-    "  ┌─/ /─┐",
-    "  │  │  │",
-    "  │\\[ ]/│",
-    "  │  │  │",
-    "  └─< >─┘",
-    "     │   ",
-    "  ┌/{ }\\┐",
-    "  │  │  │",
-    "  │ \\ \\ │",
-    "  │  │  │",
-    "  └─< >─┘",
-    "     │   ",
-    "   (( )) ",
-]
+CAT = grid("flowchart/cat.txt")
 
 # The wiki's Kolakoski-sequence generator.  Its opening ``( )`` has both an
 # east and a south path, so it is the one example that forks.
-KOLAKOSKI = [
-    "( )─[ }─\\[ ]/─/{ }\\─\\ \\─( )─< >─( )─( )─( )─{ }─(( ))",
-    " │              │        │   └────────────────────┘",
-    "{ ]─\\ \\         │      \\{ }/",
-    " ┌───┘          │        │",
-    "[ }─\\ \\─(( )) \\[ ]/    \\[ ]/",
-    "                │        │",
-    "              \\[ ]/─────[ ]",
-]
+KOLAKOSKI = grid("flowchart/kolakoski.txt")
 
 # The Kolakoski program on the current wiki page.  Bits 0 and 1 stand for 1
 # and 2, so its output is the Kolakoski sequence, which the page names.
-WIKI_KOLAKOSKI = [
-    "( )─{ ]─\\[ ]/   ┌────< >────┐",
-    " │        │     │     │     │",
-    "{ ]─\\ \\ \\[ ]/  \\ \\  \\{ }/ \\{ }/",
-    " ┌───┘    │     │     │     │ ",
-    "[ }─\\ \\  ( )  /{ }\\ \\[ ]/ \\[ ]/",
-    "     │    │     │     │     │   ",
-    "    \\ \\   │     │    [ ]   [ ]",
-    "     │    │     │     │     │   ",
-    "   (( ))  │     ├───\\[ ]/─\\[ ]/",
-    "          └─────┘",
-]
+WIKI_KOLAKOSKI = grid("flowchart/wiki_kolakoski.txt")
 
 
 run_program = partial(_run_program, run, suppress_eof=False)

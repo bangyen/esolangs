@@ -1,0 +1,12 @@
+begin;var c;inp c;skip c = eof;turn right;end
+           t                             t
+           h                             u
+           g                             r
+           i                             n
+           r                              
+                                         r
+           n                             i
+           r                             g
+           u                             h
+           t                             t
+           ;thgir nrut;;;;;;;;;;;;;;c tuo;
