@@ -9,12 +9,12 @@ raise :class:`ValueError`; a `*` break with no enclosing loop is an
 invalid operation and halts the program with
 :class:`~esolangs.exceptions.HaltError`.
 
-Exhausted input raises :class:`EOFError` (the repo-wide convention).
-
-The interpreter runs on a :class:`_Machine` (the code, accumulator, loop
-stack, and skip flag), so it is step-capable: ``step()`` executes one
-command and ``halted`` is true once ``&`` fires or the cursor reaches the
-end of the code.
+Exhausted input raises :class:`EOFError` (the repo-wide convention; the
+page names no value, so the wiki cat ``[;@$0{&}{,}]`` stops at EOF, or
+cleanly at a NUL).  ``#$n``/``@$n`` take unsigned decimals; ``#$`` before
+anything else is ``#c`` with c ``$``.  Gaps decided: other characters are
+NOPs, an else block must touch its ``}`` (after a space it is a comment),
+and comment text still counts toward bracket matching.
 """
 
 import re
@@ -30,7 +30,7 @@ from esolangs.interpreters.source_hints import syntax_error
 
 def _brackets(code: str) -> Iterator[tuple[int, str]]:
     """Yield structural brackets, skipping literal data in loads and guards."""
-    for token in re.finditer(r"\#(?:\$\d+|\$?.)|@(?:\$\d+|\$?.)\{|[\[\]{}]", code):
+    for token in re.finditer(r"\#(?:\$\d+|.)|@(?:\$\d+|.)\{|[\[\]{}]", code):
         glyph = token[0]
         if glyph.startswith("#"):
             continue
@@ -133,12 +133,12 @@ def _advance(
             ind = _branch(
                 code, partners, ind, m.end() - 1, taken=acc == parse_integer(m[1])
             )
-        elif m := re.match(r"@\$?(.){", val):
+        elif m := re.match(r"@(.){", val):
             ind = _branch(code, partners, ind, m.end() - 1, taken=acc == ord(m[1]))
         elif m := re.match(r"#\$(\d+)", val):
             acc = parse_integer(m[1])
             ind += m.end() - 1
-        elif m := re.match(r"#\$?(.)", val):
+        elif m := re.match(r"#(.)", val):
             acc = ord(m[1])
             ind += m.end() - 1
 
