@@ -367,9 +367,10 @@ languages remain rejected from the same image-source screen.
   and right growth are explicit, while its left edge and EOF are unspecified.
 - Line leaves cell width and tape boundaries unspecified: cells are unbounded
   integers and the sparse tape extends in both directions.
-- Flowchart leaves scheduling, cursor ownership and equal-distance junctions
-  unspecified. Pointers run in creation-order rounds with separate cursors;
-  junctions prefer straight, right, then left.
+- Flowchart leaves path timing, cursor ownership and equal-distance junctions
+  unspecified. Paths take no time, as the wiki's eight-pointer Hello World
+  requires, so a step runs one node per pointer in the spec's order; cursors
+  are per pointer; junctions prefer straight, right, then left.
 - LaserFuck inherits Brainfuck commands without defining EOF: exhausted input
   raises `EOFError`.
 - BrainIf rejects unknown commands, including those under a false guard.

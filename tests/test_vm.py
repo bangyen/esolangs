@@ -199,7 +199,7 @@ class TestFlowchart:
         assert vm.ip == (0, 10, 0, 1)  # on the opening ( ), heading east
         assert vm.stack == []
         vm.step()
-        assert vm.ip == (0, 11, 0, 1)  # moved on, still travelling east
+        assert vm.ip == (2, 12, 1, 0)  # rode the path, read at / /, heading south
 
     def test_ip_is_none_once_every_pointer_has_stopped(self) -> None:
         """``ip`` reports the first live pointer, so a finished run has none."""
