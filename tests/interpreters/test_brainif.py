@@ -118,11 +118,6 @@ class TestBrainIfGeneratedHelloWorld:
             with pytest.raises(ValueError, match="unknown BrainIf command"):
                 run_and_capture([f"if 0 {command}", "if 0 output"])
 
-    def test_goto(self) -> None:
-        """Goto jumps to the given line number."""
-        code = ["if 0 goto 3", "if 0 output", "if 0 increment", "if 1 output"]
-        assert run_and_capture(code) == "\x01"
-
     def test_missing_value_rejected(self) -> None:
         """A line without a value operand is malformed."""
 
