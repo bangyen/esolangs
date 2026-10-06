@@ -1,10 +1,7 @@
 """Unit tests for RAM0 interpreter."""
 
 import io
-import signal
-from collections.abc import Callable
 from contextlib import redirect_stdout
-from typing import Any
 
 import pytest
 
@@ -17,236 +14,65 @@ from tests.interpreters.contract import (
 )
 
 
-class _TestTimeoutError(Exception):
-    """Custom exception for test timeouts."""
-
-
-def timeout_handler(_signum: int, _frame: Any) -> None:
-    """Signal handler for test timeouts."""
-    raise _TestTimeoutError("Test timed out")
-
-
-def run_with_timeout(func: Callable[..., Any], timeout_seconds: int = 5) -> Any:
-    """Run a function with a timeout to prevent hanging tests."""
-    # Set up signal handler for timeout
-    old_handler = signal.signal(signal.SIGALRM, timeout_handler)
-    signal.alarm(timeout_seconds)
-
-    try:
-        return func()
-    finally:
-        # Restore original signal handler and cancel alarm
-        signal.alarm(0)
-        signal.signal(signal.SIGALRM, old_handler)
-
-
-class TestRAM0BasicCommands:
-    """Test basic RAM0 command functionality."""
-
-    def test_z_command_zero_register(self) -> None:
-
-        def test_func() -> str:
-            with redirect_stdout(io.StringIO()) as f:
-                run("A A A Z", io=IO())  # Increment z to 3, then zero it
-            return f.getvalue()
-
-        output = run_with_timeout(test_func)
-        assert output == "z: 0\nn: 0\nram: {}"
-
-    def test_a_command_increment(self) -> None:
-
-        def test_func() -> str:
-            with redirect_stdout(io.StringIO()) as f:
-                run("A A A", io=IO())  # Increment z three times
-            return f.getvalue()
-
-        output = run_with_timeout(test_func)
-        assert output == "z: 3\nn: 0\nram: {}"
-
-    def test_n_command_copy_z_to_n(self) -> None:
-
-        def test_func() -> str:
-            with redirect_stdout(io.StringIO()) as f:
-                run("A A A N", io=IO())  # z=3, then copy to n
-            return f.getvalue()
-
-        output = run_with_timeout(test_func)
-        assert output == "z: 3\nn: 3\nram: {}"
-
-    def test_l_command_load_from_memory(self) -> None:
-
-        def test_func() -> str:
-            with redirect_stdout(io.StringIO()) as f:
-                run(
-                    "A A N A A A S A A L", io=IO()
-                )  # Store 5 at address 2, then load from address 7 (uninitialized)
-            return f.getvalue()
-
-        output = run_with_timeout(test_func)
-        # L loads from uninitialized address, returns 0
-        assert output == "z: 0\nn: 2\nram: {\n    2: 5\n}"
-
-    def test_s_command_store_to_memory(self) -> None:
-
-        def test_func() -> str:
-            with redirect_stdout(io.StringIO()) as f:
-                run("A A N A A A S", io=IO())  # Store 5 at address 2
-            return f.getvalue()
-
-        output = run_with_timeout(test_func)
-        assert output == "z: 5\nn: 2\nram: {\n    2: 5\n}"
-
-    def test_c_command_conditional_skip(self) -> None:
-
-        def test_func() -> str:
-            with redirect_stdout(io.StringIO()) as f:
-                run("C A", io=IO())  # Skip A if z is zero (it is)
-            return f.getvalue()
-
-        output = run_with_timeout(test_func)
-        # A should be skipped
-        assert output == "z: 0\nn: 0\nram: {}"
-
-    def test_c_command_no_skip_when_nonzero(self) -> None:
-
-        def test_func() -> str:
-            with redirect_stdout(io.StringIO()) as f:
-                run(
-                    "A C A", io=IO()
-                )  # z=1, then conditionally skip A (should not skip)
-            return f.getvalue()
-
-        output = run_with_timeout(test_func)
-        # A should not be skipped
-        assert output == "z: 2\nn: 0\nram: {}"
-
-
-class TestRAM0ControlFlow:
-    """Test RAM0 control flow operations."""
-
-    def test_goto_command_jump(self) -> None:
-
-        def test_func() -> str:
-            with redirect_stdout(io.StringIO()) as f:
-                run("A 3 A A", io=IO())  # Jump to instruction 3, skipping second A
-            return f.getvalue()
-
-        output = run_with_timeout(test_func)
-        # All three A commands executed (goto doesn't skip as expected)
-        assert output == "z: 3\nn: 0\nram: {}"
-
-
-class TestRAM0MemoryOperations:
-    """Test RAM0 memory read/write operations."""
-
-    def test_multiple_memory_locations(self) -> None:
-
-        def test_func() -> str:
-            with redirect_stdout(io.StringIO()) as f:
-                run(
-                    "A N A S A A N A A S", io=IO()
-                )  # Store 2 at address 1, 6 at address 4
-            return f.getvalue()
-
-        output = run_with_timeout(test_func)
-        assert output == "z: 6\nn: 4\nram: {\n    1: 2,\n    4: 6\n}"
-
-    def test_memory_overwrite(self) -> None:
-
-        def test_func() -> str:
-            with redirect_stdout(io.StringIO()) as f:
-                run(
-                    "A N A S A A A N S", io=IO()
-                )  # Store 2 at address 1, then store 5 at address 5
-            return f.getvalue()
-
-        output = run_with_timeout(test_func)
-        assert output == "z: 5\nn: 5\nram: {\n    1: 2,\n    5: 5\n}"
-
-    def test_load_from_uninitialized_memory(self) -> None:
-
-        def test_func() -> str:
-            with redirect_stdout(io.StringIO()) as f:
-                run("A A A L", io=IO())  # Load from address 3 (uninitialized)
-            return f.getvalue()
-
-        output = run_with_timeout(test_func)
-        assert output == "z: 0\nn: 0\nram: {}"
-
-
-class TestRAM0EdgeCases:
-    """Test RAM0 edge cases and error conditions."""
-
-    def test_empty_program(self) -> None:
-
-        def test_func() -> str:
-            with redirect_stdout(io.StringIO()) as f:
-                run("", io=IO())
-            return f.getvalue()
-
-        output = run_with_timeout(test_func)
-        assert output == "z: 0\nn: 0\nram: {}"
-
-    def test_invalid_commands_ignored(self) -> None:
-
-        def test_func() -> str:
-            with redirect_stdout(io.StringIO()) as f:
-                run("A invalid B C D E F G H I J K L M O P Q R T U V W X Y Z", io=IO())
-            return f.getvalue()
-
-        output = run_with_timeout(test_func)
-        # Only A command executes, but L command loads from uninitialized address
-        assert output == "z: 0\nn: 0\nram: {}"
-
-    def test_comments_in_code(self) -> None:
-        """Test that comments are properly ignored."""
-
-        def test_func() -> str:
-            with redirect_stdout(io.StringIO()) as f:
-                run("A /* comment */ A // another comment A", io=IO())
-            return f.getvalue()
-
-        output = run_with_timeout(test_func)
-        assert output == "z: 3\nn: 0\nram: {}"
-
-    def test_zero_goto_command(self) -> None:
-        """Test that goto to instruction 0 terminates program."""
-
-        def test_func() -> str:
-            with redirect_stdout(io.StringIO()) as f:
-                run("A A 0 A", io=IO())  # Should terminate before last A
-            return f.getvalue()
-
-        output = run_with_timeout(test_func)
-        # All A commands execute
-        assert output == "z: 3\nn: 0\nram: {}"
-
-    def test_large_goto_number(self) -> None:
-        """Test goto with large instruction numbers."""
-
-        def test_func() -> str:
-            with redirect_stdout(io.StringIO()) as f:
-                run("A 999 A", io=IO())  # Jump to non-existent instruction
-            return f.getvalue()
-
-        output = run_with_timeout(test_func)
-        # Should terminate after first A
-        assert output == "z: 1\nn: 0\nram: {}"
-
-
-class TestDumpFormat:
-    """The exact text of the state dump."""
-
-    def dump(self, code: str) -> str:
-        with redirect_stdout(io.StringIO()) as f:
-            run(code, io=IO())
-        return f.getvalue()
-
-    def test_dump_with_memory(self) -> None:
-        assert self.dump("A N S") == "z: 1\nn: 1\nram: {\n    1: 1\n}"
-
-    def test_dump_without_memory(self) -> None:
-        assert self.dump("A") == "z: 1\nn: 0\nram: {}"
+def dump(code: str) -> str:
+    """Run ``code`` and return the state dump it prints."""
+    with redirect_stdout(io.StringIO()) as f:
+        run(code, io=IO())
+    return f.getvalue()
+
+
+_DUMPS = {
+    # Increment z to 3, then zero it
+    "z_command_zero_register": ("A A A Z", "z: 0\nn: 0\nram: {}"),
+    "a_command_increment": ("A A A", "z: 3\nn: 0\nram: {}"),
+    # z=3, then copy to n
+    "n_command_copy_z_to_n": ("A A A N", "z: 3\nn: 3\nram: {}"),
+    # Store 5 at address 2, then L loads from uninitialized address 7: 0
+    "l_command_load_from_memory": (
+        "A A N A A A S A A L",
+        "z: 0\nn: 2\nram: {\n    2: 5\n}",
+    ),
+    "s_command_store_to_memory": ("A A N A A A S", "z: 5\nn: 2\nram: {\n    2: 5\n}"),
+    # Skip A if z is zero (it is)
+    "c_command_conditional_skip": ("C A", "z: 0\nn: 0\nram: {}"),
+    # z=1, then conditionally skip A (should not skip)
+    "c_command_no_skip_when_nonzero": ("A C A", "z: 2\nn: 0\nram: {}"),
+    # All three A commands executed (goto doesn't skip as expected)
+    "goto_command_jump": ("A 3 A A", "z: 3\nn: 0\nram: {}"),
+    # Store 2 at address 1, 6 at address 4
+    "multiple_memory_locations": (
+        "A N A S A A N A A S",
+        "z: 6\nn: 4\nram: {\n    1: 2,\n    4: 6\n}",
+    ),
+    # Store 2 at address 1, then store 5 at address 5
+    "memory_overwrite": (
+        "A N A S A A A N S",
+        "z: 5\nn: 5\nram: {\n    1: 2,\n    5: 5\n}",
+    ),
+    # Load from address 3 (uninitialized)
+    "load_from_uninitialized_memory": ("A A A L", "z: 0\nn: 0\nram: {}"),
+    "empty_program": ("", "z: 0\nn: 0\nram: {}"),
+    # Only A command executes, but L command loads from uninitialized address
+    "invalid_commands_ignored": (
+        "A invalid B C D E F G H I J K L M O P Q R T U V W X Y Z",
+        "z: 0\nn: 0\nram: {}",
+    ),
+    "comments_in_code": (
+        "A /* comment */ A // another comment A",
+        "z: 3\nn: 0\nram: {}",
+    ),
+    # All A commands execute
+    "zero_goto_command": ("A A 0 A", "z: 3\nn: 0\nram: {}"),
+    # Jump to non-existent instruction: terminates after first A
+    "large_goto_number": ("A 999 A", "z: 1\nn: 0\nram: {}"),
+    "dump_with_memory": ("A N S", "z: 1\nn: 1\nram: {\n    1: 1\n}"),
+    "dump_without_memory": ("A", "z: 1\nn: 0\nram: {}"),
+}
+
+
+@pytest.mark.parametrize(("code", "expected"), _DUMPS.values(), ids=list(_DUMPS))
+def test_dump(code: str, expected: str) -> None:
+    assert dump(code) == expected
 
 
 class TestStepMachine:

@@ -1,20 +1,19 @@
 """Unit tests for the Home Row interpreter."""
 
+from functools import partial
+
 import pytest
 
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.tape_based.home_row import run
+from tests.interpreters import runner
 from tests.interpreters.contract import (
     CycleContract,
     EmptyProgramContract,
     StateViewContract,
 )
 
-
-def run_program(code: str) -> str:
-    io = ScriptedIO("")
-    run(code, io)
-    return io.getvalue()
+run_program = partial(runner.run_program, run, suppress_eof=False)
 
 
 _OUTPUT = {

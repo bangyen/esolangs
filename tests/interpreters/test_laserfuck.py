@@ -21,6 +21,35 @@ def run_and_capture(code: list[str], heading: int | None = 3) -> str:
     return buffer.getvalue()
 
 
+class _CharIO(IO):
+    """Feeds ``code`` to every read and keeps what is printed.
+
+    After ``limit`` reads it raises EOFError: a deflected beam that comes
+    back for more input is out of it.
+    """
+
+    def __init__(self, code: int, limit: int | None = None) -> None:
+        self.buf = io.StringIO()
+        self.code = code
+        self.limit = limit
+        self.reads = 0
+
+    def input_char(self, _prompt: str = "Input: ") -> int:
+        self.reads += 1
+        if self.limit is not None and self.reads > self.limit:
+            raise EOFError
+        return self.code
+
+    def print_char(self, char: str) -> None:
+        self.buf.write(char)
+
+    def print_str(self, text: str) -> None:
+        self.buf.write(text)
+
+    def print_num(self, num: int) -> None:
+        self.buf.write(str(num))
+
+
 _OUTPUT = {
     "no_start_marker_prints_nothing": (["+"], ""),
     # \xff selects byte mode; + touches cell 0 -> prints \x01
@@ -77,25 +106,9 @@ class TestLaserFuck:
         # cell, 'v' turns it down to the 'x' on the bottom row, where it dies.
         # Only the input cell is touched and prints as '1'.
 
-        class TestIO(IO):
-            def __init__(self) -> None:
-                self.buf = io.StringIO()
-
-            def input_char(self, _prompt: str = "Input: ") -> int:
-                return ord("1")
-
-            def print_char(self, char: str) -> None:
-                self.buf.write(char)
-
-            def print_str(self, text: str) -> None:
-                self.buf.write(text)
-
-            def print_num(self, num: int) -> None:
-                self.buf.write(str(num))
-
         prog = ["\u00ff}},#v)x", "|o^", " _ x"]
         for heading in range(4):
-            io_obj = TestIO()
+            io_obj = _CharIO(ord("1"))
             buffer = io.StringIO()
             with redirect_stdout(buffer):
                 run(prog, io_obj, rng=FirstDraw(heading))
@@ -122,23 +135,7 @@ class TestLaserFuck:
     def test_input_reads_whole_line_first_char(self) -> None:
         prog = ["\u00ff}o,x\n   x"]
 
-        class TestIO(IO):
-            def __init__(self) -> None:
-                self.buf = io.StringIO()
-
-            def input_char(self, _prompt: str = "Input: ") -> int:
-                return ord("4")
-
-            def print_char(self, char: str) -> None:
-                self.buf.write(char)
-
-            def print_str(self, text: str) -> None:
-                self.buf.write(text)
-
-            def print_num(self, num: int) -> None:
-                self.buf.write(str(num))
-
-        io_obj = TestIO()
+        io_obj = _CharIO(ord("4"))
         buffer = io.StringIO()
         with redirect_stdout(buffer):
             run(prog, io_obj, rng=FirstDraw(3))
@@ -198,23 +195,7 @@ class TestSurvivorGaps:
     def test_a_mirror_reads_the_value_not_the_written_flag(self) -> None:
         """A supplied NUL marks a zero cell, which the conditional mirror skips."""
 
-        class TestIO(IO):
-            def __init__(self) -> None:
-                self.buf = io.StringIO()
-
-            def input_char(self, _prompt: str = "Input: ") -> int:
-                return 0
-
-            def print_char(self, char: str) -> None:
-                self.buf.write(char)
-
-            def print_str(self, text: str) -> None:
-                self.buf.write(text)
-
-            def print_num(self, num: int) -> None:
-                self.buf.write(str(num))
-
-        io_obj = TestIO()
+        io_obj = _CharIO(0)
         buffer = io.StringIO()
         with redirect_stdout(buffer):
             run(["o,v", "  (", "  x"], io_obj, rng=FirstDraw(3))
@@ -246,27 +227,7 @@ class TestSurvivorGaps:
     def test_a_zero_cell_passes_the_other_conditional_mirror(self) -> None:
         """A supplied NUL writes zero, so the beam passes the mirror straight."""
 
-        class TestIO(IO):
-            def __init__(self) -> None:
-                self.buf = io.StringIO()
-                self.reads = 0
-
-            def input_char(self, _prompt: str = "Input: ") -> int:
-                self.reads += 1
-                if self.reads > 1:  # a deflected beam comes back for more
-                    raise EOFError
-                return 0
-
-            def print_char(self, char: str) -> None:
-                self.buf.write(char)
-
-            def print_str(self, text: str) -> None:
-                self.buf.write(text)
-
-            def print_num(self, num: int) -> None:
-                self.buf.write(str(num))
-
-        io_obj = TestIO()
+        io_obj = _CharIO(0, limit=1)
         buffer = io.StringIO()
         with redirect_stdout(buffer):
             run(["}o,)x", "    x"], io_obj, rng=FirstDraw(3))

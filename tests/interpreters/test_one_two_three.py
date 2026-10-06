@@ -1,10 +1,12 @@
 """Unit tests for the 123 interpreter."""
 
 import importlib
+from functools import partial
 
 import pytest
 
 from esolangs.interpreters.io import ScriptedIO
+from tests.interpreters import runner
 
 run = importlib.import_module("esolangs.interpreters.tape_based.one_two_three").run
 
@@ -13,10 +15,7 @@ run = importlib.import_module("esolangs.interpreters.tape_based.one_two_three").
 WIKI_CAT = "111212112"
 
 
-def run_program(code: str, stdin: str = "") -> str:
-    io = ScriptedIO(stdin)
-    run(code, io)
-    return io.getvalue()
+run_program = partial(runner.run_program, run, suppress_eof=False)
 
 
 class Test123:
