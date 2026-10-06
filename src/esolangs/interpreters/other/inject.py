@@ -265,6 +265,8 @@ def _advance(state: _State, line_in: str | None = None) -> tuple[_State, list[st
 class _Machine:
     """The run state: the program's lines, its label spans, and the pointer."""
 
+    eof_is_a_value = True
+
     def __init__(self, code: str | list[str], io: IO) -> None:
         self.lines = code.split("\n") if isinstance(code, str) else list(code)
         self.spans = _spans(self.lines)
