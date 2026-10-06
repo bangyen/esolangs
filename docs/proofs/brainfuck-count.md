@@ -12,17 +12,19 @@ The limit remains open. Exact rational certificates narrow the former
 
 | model (section 1) | lower bound on `liminf B(C)^(1/C)` | upper bound on `limsup B(C)^(1/C)` |
 |---|---|---|
-| repo model: clipped tape, `,` at EOF is an error, all inputs | **4.24200** (Thm 4) | **7.0347** (Thm 1) |
+| clipped tape, `,` at EOF is an error, all inputs | 4.24200 (Thm 4) | 7.0347 (Thm 1) |
 | clipped tape, EOF stores a constant, all inputs | 3.79003 (Thm 4) | 7.0347 (Thm 1) |
 | clipped tape, EOF leaves the cell, all inputs | 3.79003 (Thm 4) | 7.3339 (Thm 1) |
-| bi-infinite tape, EOF error / keep | 4.24200 / 3.79003 | 6.9133 / 7.1949 |
+| repo model: bi-infinite tape, EOF error / keep | **4.24200** / 3.79003 | **6.9133** / 7.1949 (Thm 1) |
 | any fixed nonempty finite input set `I`, any EOF, any tape | **3.36614** (Thm 5) | as for all inputs |
-| only the empty input (repo model) | 3.36614 | **6.3218** (Thm 1) |
+| only the empty input (clipped tape, EOF error) | 3.36614 | 6.3218 (Thm 1) |
 | loop-free programs, EOF error | **4.06124** (Thm 3) | **2 + sqrt 5 = 4.23607** (Thm 3) |
 | loop-free programs, EOF constant / keep | 3.79003 | 4.23607 / 4.72458 |
 
-For the repository model: **`4.2420 <= liminf B(C)^(1/C) <= limsup B(C)^(1/C) <= 7.0347`**,
-from `[2.414, 7.388]`.  In bits per character: `[2.085, 2.815]`, from `[1.272, 2.885]`.
+For the repository model: **`4.2420 <= liminf B(C)^(1/C) <= limsup B(C)^(1/C) <= 6.9133`**,
+from `[2.414, 7.388]`.  In bits per character: `[2.085, 2.789]`, from `[1.272, 2.885]`.
+The repository tape clipped at cell 0 until 2026-10-06; on that tape the bracket is
+`[4.2420, 7.0347]`.
 The lower bound uses nested loops (section 5c) and exceeds the loop-free upper bound
 `2 + sqrt 5 = 4.23607`.  Loops therefore strictly raise the growth rate.
 
@@ -43,8 +45,8 @@ A *program* is a word over `+ - < > . , [ ]` with balanced brackets; `|P|` is it
 character is an instruction).  Cells hold bytes (`+`,`-` wrap mod 256), all 0 at the start; the pointer
 starts at cell 0.
 
-* Tape: **clip** (the repository interpreter, `src/esolangs/interpreters/tape_based/brainfuck.py`): cells
-  `0, 1, 2, ...`, `<` at cell 0 does nothing.  Variant **bi**: cells indexed by `Z`.
+* Tape: **clip**: cells `0, 1, 2, ...`, `<` at cell 0 does nothing.  Variant **bi** (the repository
+  interpreter, `src/esolangs/interpreters/tape_based/brainfuck.py`, since 2026-10-06): cells indexed by `Z`.
 * Input: a finite byte string `w`, read left to right by `,`.  At end of input: **err** (the repository
   interpreter: the run stops with result `(eof, o)`, `o` the output so far), **const** (the cell is set
   to 0), **keep** (the cell is unchanged).
@@ -60,8 +62,8 @@ behaviours of programs of length exactly `C` is nondecreasing in `C` and lies be
 
 ## 2. Results
 
-**Theorem 1 (upper bound).**  In the repo model (clip/err) and in clip/const,
-`B(C) <= K * 7.0347^C`.  For clip/keep `7.3339`, bi/err `6.9133`, bi/keep `7.1949`.  With only the
+**Theorem 1 (upper bound).**  In clip/err and clip/const, `B(C) <= K * 7.0347^C`.  For
+clip/keep `7.3339`, bi/err (the repo model) `6.9133`, bi/keep `7.1949`.  With only the
 empty input (clip/err), `B_{{eps}}(C) <= K * 6.3218^C`.
 
 **Theorem 2 (the old five adjacencies).**  Words avoiding `+- -+ >< ][ []` grow as `7.38776` (Perron
@@ -77,8 +79,8 @@ Conversely `liminf L(C)^(1/C) >= 4.06124` (err) and `>= 3.79003` (every EOF conv
 by the dead-cell families of section 5b.  These replace `3.87513` and `3.68909`, the limits of
 the pointer-read families of section 5.
 
-**Theorem 4 (lower bound, all inputs).**  `B(C) >= c * (2121/500)^C / C` in the repo model and on
-the bi tape with EOF err, using the nested-loop family `A_err` of section 5c.  (The family
+**Theorem 4 (lower bound, all inputs).**  `B(C) >= c * (2121/500)^C / C` with EOF err on the
+clip tape and on the bi tape (the repo model), using the nested-loop family `A_err` of section 5c.  (The family
 `D^L_err` of section 5b gives 4.06834.)  `B(C) >= L(C)`, so for const and keep
 `B(C) >= c * 3.79003^C / C`.  Hence `liminf B(C)^(1/C) >= 2121/500 = 4.242` (err) and `>= 3.79003`
 (const, keep).
