@@ -281,6 +281,14 @@ class TestStepMachine:
         """
         assert run_program(code) == "\x01"
 
+    def test_wildcard_loop_in_an_expression_position_call(self) -> None:
+        """``(*, 1)`` expands only the wildcard column in the recursive path too."""
+        code = """
+            f { for (i, j):((*, 1)) { out 0,1,0,0,0,0,i,j; } return 1; }
+            main { r = (f 0); }
+        """
+        assert run_program(code) == "AC"
+
     def test_snapshot_is_hashable(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.other.forbin import _Machine

@@ -257,3 +257,20 @@ def test_a_condition_past_the_int_str_digit_cap_parses() -> None:
     """Pins parse_integer: a 5001-digit condition used to raise."""
     big = "1" + "0" * 5000
     assert run_and_capture([f"if {big} output", "if 0 output"]) == "\x00"
+
+
+def test_goto_without_a_target_is_rejected() -> None:
+    import pytest
+
+    with pytest.raises(ValueError, match="goto requires a target line"):
+        run_and_capture(["if 0 goto"])
+
+
+def test_moving_right_over_an_existing_cell_does_not_grow_the_tape() -> None:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.tape_based.brainif import _Machine
+
+    machine = _Machine(["if 0 right", "if 0 left", "if 0 right"], ScriptedIO())
+    for _ in range(3):
+        machine.step()
+    assert (machine.ptr, machine.cells) == (1, (0, 0))

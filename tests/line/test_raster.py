@@ -34,6 +34,19 @@ def test_raster_converts_to_greyscale() -> None:
     assert _grey_rows(raster.rows) == [bytearray([76, 150, 29])]
 
 
+def test_greyscale_stays_correct_past_the_row_cache_limit() -> None:
+    """Rows past the 1024-entry cache are converted uncached, not dropped."""
+    from esolangs.interpreters.tape_based.line import _grey_rows
+
+    rows = [((255, 0, 0), ((i + 3) % 256, 0, 0)) for i in range(1100)]
+    grey = _grey_rows(rows)
+    assert len(grey) == 1100
+    assert all(
+        row == bytearray([76, (((i + 3) % 256) * 19595 + 0x8000) >> 16])
+        for i, row in enumerate(grey)
+    )
+
+
 @pytest.mark.medium
 def test_line_consumes_the_public_raster() -> None:
     canvas = render(line_boolean("01"))

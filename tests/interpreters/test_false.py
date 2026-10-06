@@ -161,3 +161,14 @@ def test_advancing_a_finished_state_is_a_no_op() -> None:
     caller stepping past the end gets the state back."""
     state = ((), (None,) * 26, ())
     assert _advance(state, "", {}) == (state, None)
+
+
+def test_bitwise_or_and_pick_beyond_the_stack() -> None:
+    assert run_program(run, "5 2|.") == "7"
+    with pytest.raises(HaltError, match="which is not there"):
+        run_program(run, "1 5ø")
+
+
+def test_a_bang_needs_a_lambda() -> None:
+    with pytest.raises(HaltError, match="'!' runs a lambda"):
+        run_program(run, "1!")

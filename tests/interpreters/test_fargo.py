@@ -241,6 +241,12 @@ class TestErrors:
         with pytest.raises(HaltError, match="out of range"):
             run_program("% 0 [?] [] 1 1\n")
 
+    def test_shifting_an_array_or_concatenating_numbers_halts(self) -> None:
+        with pytest.raises(HaltError, match="expected a number"):
+            run_program("% 0 < [] 1\n")
+        with pytest.raises(HaltError, match="expected an array"):
+            run_program("% 0 +[] 1 1\n")
+
 
 class TestInput:
     def test_input_is_read_once_before_the_program_begins(self) -> None:

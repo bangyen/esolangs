@@ -156,6 +156,10 @@ class TestPainfuck:
     def test_zero(self) -> None:
         assert run_program("pzue") == "\x00"
 
+    def test_repeated_square_leaves_zero_and_one_fixed(self) -> None:
+        assert run_program("psckue") == "\x01"
+        assert run_program("ckue") == "\x00"
+
 
 class TestStepMachine:
     def test_step_tracks_tape_and_cursor(self) -> None:

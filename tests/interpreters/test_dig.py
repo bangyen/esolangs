@@ -121,6 +121,11 @@ class TestDigStore:
         """12 lands in the ``;`` cell; the ``:`` after it still prints chr(12)."""
         assert run_and_capture([">$6+;:"]) == "\x0c"
 
+    def test_a_stored_value_is_read_back_underground(self) -> None:
+        """Walking a ``;`` cell again, underground, loads what it stored (A)."""
+        grid = ["'   : ", ">2$A;'", "    $ ", "    ^<"]
+        assert run_and_capture(grid) == "A"
+
     def test_a_stored_negative_digging_distance_halts(self) -> None:
         """``;`` stores -5 beside a ``$``; digging -5 tiles is refused."""
         from esolangs.exceptions import HaltError

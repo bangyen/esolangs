@@ -6,6 +6,7 @@ import pytest
 
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.unlambda import (
+    _advance,
     _App,
     _Machine,
     _parse,
@@ -133,3 +134,21 @@ def test_d_applied_as_a_value_promises_what_it_was_given() -> None:
     assert isinstance(machine.state[0].value, _Promise)
     # Applying that promise forces it, and the continuation answers ``i``.
     assert run_program(run, "```cdii") == ""
+
+
+def test_e_ends_the_run_before_a_pending_print() -> None:
+    """``e`` ends the run while the argument is evaluating, so ``.A`` never fires."""
+    assert run_program(run, "`.Ai") == "A"
+    assert run_program(run, "`.A`ei") == ""
+
+
+def test_a_comment_runs_to_the_end_of_the_line_or_the_source() -> None:
+    assert run_program(run, "`.A# ignored `.B\ni") == "A"
+    assert run_program(run, "`.Ai# tail") == "A"
+
+
+def test_advancing_a_finished_state_is_answered_not_stepped() -> None:
+    machine = _Machine("`.Ai", ScriptedIO(""))
+    while not machine.halted:
+        machine.step()
+    assert _advance(machine.state) == (machine.state, None)

@@ -42,6 +42,18 @@ class TestForth:
         # [.] loop prints both and stops at the 0 seed
         assert run_program("0F7*0+F4*C+[.]") == "Hi"
 
+    def test_loop_on_zero_top_is_skipped(self) -> None:
+        assert run_program("0[F.]5.") == "\x05"
+
+    def test_reverse_flips_the_whole_stack(self) -> None:
+        assert run_program("123o...") == "\x01\x02\x03"
+
+    def test_rotate_cycles_three_and_aborts_under_three(self) -> None:
+        """Three rotations restore the stack; two elements abort the run."""
+        assert run_program("123ccc...") == "\x03\x02\x01"
+        with pytest.raises(HaltError):
+            run_program("12c")
+
     def test_store_and_call(self) -> None:
         assert run_program("1{65.}1;") == "\x05"
         assert run_program("1{F4*5+.}1;") == "A"

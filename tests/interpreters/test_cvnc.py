@@ -73,6 +73,10 @@ class TestSyllables:
             run_program("is")
         assert str(caught.value) == "syllable must start with a consonant: 'i'"
 
+    def test_a_consonant_needs_a_vowel_after_it(self) -> None:
+        with pytest.raises(ValueError, match="vowel"):
+            run_program("s")
+
     def test_an_empty_program_is_malformed(self) -> None:
         with pytest.raises(ValueError, match="empty") as caught:
             run_program("")

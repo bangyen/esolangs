@@ -142,6 +142,8 @@ class TestStepMachine:
 
         with pytest.raises(HaltError):
             _advance(((1,), 0, 0, 0), tuple("]"))
+        with pytest.raises(HaltError, match="'\\['"):
+            _advance(((0,), 0, 0, 0), tuple("["))
 
 
 def _machine(code: object) -> object:

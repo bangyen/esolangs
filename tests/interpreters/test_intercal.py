@@ -178,6 +178,9 @@ def test_forget_zero_is_a_no_op() -> None:
         ("(2) NEXT", "", "unknown"),
         # Variables and constants run 1..65535 and 0..65535.
         (".0 <- #1", "", "variable number"),
+        ("READ OUT .0", "", "variable number"),
+        ("(65536) DO GIVE UP", "", "label number"),
+        ("WRITE IN .1x", "", "invalid INTERCAL variable"),
         ("READ OUT #65536", "", "out of range"),
         # E123: the NEXT stack is bounded.
         ("(1) NEXT\n(1) DO (1) NEXT", "", "stack overflow"),
@@ -206,3 +209,10 @@ def test_values_from_4000_print_an_overbar_line() -> None:
     assert _run("PLEASE READ OUT #4000\nDO READ OUT #3999\nDO GIVE UP") == (
         "__\nIV\nMMMCMXCIX\n"
     )
+
+
+def test_roman_digits_five_to_eight_use_the_five_symbol() -> None:
+    """Manual s4.4.8: 5-8 are V plus ones, 4 is IV, 9 is IX."""
+    source = "PLEASE READ OUT #4\nDO READ OUT #6\nDO READ OUT #9\nDO READ OUT #38\n"
+    source += "DO GIVE UP"
+    assert _run(source) == "IV\nVI\nIX\nXXXVIII\n"

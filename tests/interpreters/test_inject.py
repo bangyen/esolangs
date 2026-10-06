@@ -325,3 +325,24 @@ def test_a_rewrite_cannot_erase_a_nested_block_s_delimiters() -> None:
     program = "readto data\nsend in\nskip\ndata;\nin;\nx\nin;\ndata;"
     with pytest.raises(HaltError, match="another block's delimiters"):
         run(program, ScriptedIO("q\n"))
+
+
+def test_skip_as_the_last_line_exits() -> None:
+    """No next line to be a label: the outermost ``skip`` ends the program."""
+    assert _run("send d\nd;\nx\nd;\nskip") == "x\n"
+
+
+def test_inject_needs_a_replacement_and_skip_forms_are_checked() -> None:
+    with pytest.raises(ValueError, match="inject needs a replacement: d=x"):
+        _run("d;\nd;\ninject d=x")
+    with pytest.raises(ValueError, match="skip takes no argument"):
+        _run("skip now")
+    with pytest.raises(ValueError, match="skipq takes two labels"):
+        _run("a;\na;\nskipq a")
+
+
+def test_a_rewrite_cannot_move_the_pointer_before_the_program() -> None:
+    """An empty ``readto`` inside its own block deletes lines around the pointer."""
+    program = "a;\nreadto a\nx\ny\na;"
+    with pytest.raises(HaltError, match="before the program"):
+        run(program, ScriptedIO("\n"))

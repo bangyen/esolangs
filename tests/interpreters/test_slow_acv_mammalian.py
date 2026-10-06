@@ -125,6 +125,11 @@ class TestPartial:
         assert acc == 11
         assert after == (10, 12)
 
+    def test_consume_on_an_empty_array_leaves_the_state_alone(self) -> None:
+        from esolangs.interpreters.tape_based.slow_acv_mammalian import _partial
+
+        assert _partial(3, (), 7) == ((), 7)
+
     def test_fission_splits_the_middle_cell(self) -> None:
         """``FISSION`` halves the same middle cell and hangs it off both ends."""
         from esolangs.interpreters.tape_based.slow_acv_mammalian import _partial

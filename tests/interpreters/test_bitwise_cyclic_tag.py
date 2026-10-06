@@ -69,6 +69,10 @@ class TestBitwiseCyclicTag:
         assert run_program(run, "0011,") == ""
         assert run_program(run, "0011") == ""
 
+    def test_a_second_comma_is_refused(self) -> None:
+        with pytest.raises(ValueError, match="one ',' at most"):
+            run_program(run, "0,1,1")
+
     def test_a_non_bit_is_refused(self) -> None:
         with pytest.raises(ValueError, match="not a Bitwise Cyclic Tag bit"):
             run_program(run, "0012,1")

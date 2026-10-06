@@ -120,3 +120,42 @@ class TestRegressions:
         # Left to right: 1/0 halts before f{65} is called and prints.
         program = ["begin;var x;set x 1/0+f{65};end;", "func f{a};out a;end a;"]
         assert _output_before(HaltError, program) == ""
+
+
+class TestComparisonsAndMalformedCommands:
+    """Equality over lists, a call under ``!``, and commands rejected on parse."""
+
+    def test_equal_lists_compare_equal_and_other_lists_do_not(self) -> None:
+        # ``=`` compares any two values; a guard of left skips the next command.
+        head = "begin;var l;set l [1, 2];var b;set b 66;var a;set a 65;"
+        tail = ";out b;out a;end;"
+        same = head + "skip l = [1, 2]" + tail
+        longer = head + "skip l = [1, 2, 3]" + tail
+        other = head + "skip l = [1, 3]" + tail
+        assert _run([same]) == "A"
+        assert _run([longer]) == "BA"
+        assert _run([other]) == "BA"
+
+    def test_not_negates_a_call_result(self) -> None:
+        # f returns right, so !f{right} is left and the skip passes over out 66.
+        program = [
+            "begin;var b;set b 66;var a;set a 65;skip !f{right};out b;out a;end;",
+            "func f{a};end a;",
+        ]
+        assert _run(program) == "A"
+
+    def test_a_call_after_a_callfree_nested_list_still_runs(self) -> None:
+        program = [
+            "begin;var l;set l [[65], [f{66}]];var m;set m at{l, 1.5};"
+            "var c;set c at{m, 0.5};out c;end;",
+            "func f{a};end a;",
+        ]
+        assert _run(program) == "B"
+
+    def test_set_without_a_variable_name_is_malformed(self) -> None:
+        with pytest.raises(ValueError, match="bad variable name"):
+            _run(["begin;set ;end;"])
+
+    def test_text_after_a_bare_call_is_malformed(self) -> None:
+        with pytest.raises(ValueError, match="unknown command"):
+            _run(["begin;f{65} 3;end;", "func f{a};end a;"])

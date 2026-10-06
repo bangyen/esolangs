@@ -83,6 +83,14 @@ class Test3x:
         with pytest.raises(HaltError):
             run_program(")")
 
+    def test_division_by_a_zero_third_item_halts(self) -> None:
+        with pytest.raises(HaltError, match="division by zero"):
+            run_program("?33x", "0\n")
+
+    def test_a_fraction_input_with_a_zero_denominator_is_rejected(self) -> None:
+        with pytest.raises(ValueError, match="integer or a fraction"):
+            run_program("?", "1/0\n")
+
     def test_loop_jumps_back_on_nonzero_top(self) -> None:
         # pass 1 ends with a 3 on top (jump back), pass 2 with a 0 (exit)
         assert run_program("333(33x#)!") == "0"

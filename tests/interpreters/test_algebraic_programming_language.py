@@ -556,6 +556,8 @@ class TestGuardsAndBoundaries:
         ("ab**2", "2\n3\n", "18\n"),
         # Exact integer division past float precision.
         ("(10**20 + 1) / 1", "", "100000000000000000001\n"),
+        # A float operand divides as a float, exact or not.
+        ("1.5 / 3", "", "0.5\n"),
         # Integers are unbounded, past Python's 4300-digit str limit.
         ("10**4400 + 1", "", "1" + "0" * 4399 + "1\n"),
     ],
@@ -571,6 +573,10 @@ def test_arithmetic_regressions(program: str, stdin: str, expected: str) -> None
         ("F(x, x) = x\nF(1)", "repeats a parameter"),
         ("F(x,) = x\nF(1)", "bad parameter"),
         ("10.0**400", "exceeds the float range"),
+        ("F(x y) = x\nF(1)", "malformed function header"),
+        ("X", "unknown function"),
+        ("1 % 0", "modulo by zero"),
+        ("10.0**308 * 10", "number must be finite"),
     ],
 )
 def test_malformed_headers_and_overflow_raise(program: str, error: str) -> None:
@@ -585,3 +591,11 @@ def test_the_evaluation_budget_resets_each_line() -> None:
     while not machine_.halted:
         machine_.step()
     assert machine_.io.getvalue() == "10\n" * 3
+
+
+def test_snapshot_distinguishes_a_float_input_by_its_bits() -> None:
+    """A read ``1.0`` and a read ``1`` are different states."""
+    one, other = machine("x + 0", "1\n"), machine("x + 0", "1.0\n")
+    one.step()
+    other.step()
+    assert one.snapshot() != other.snapshot()

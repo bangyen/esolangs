@@ -223,3 +223,16 @@ def test_reading_memory_does_not_allocate_a_slot() -> None:
     before = machine.snapshot()
     assert machine.memory == [0]
     assert machine.snapshot() == before
+
+
+def test_memory_view_follows_a_raised_tape() -> None:
+    """On a 3-level tape an unvisited slot reads 0; a written one reads back."""
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.tape_based.dimensional import _Machine
+
+    machine = _Machine("$3>1+", ScriptedIO(""))
+    machine.step()
+    machine.step()
+    assert machine.memory == [0]
+    machine.step()
+    assert machine.memory == [1]

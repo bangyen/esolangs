@@ -224,6 +224,11 @@ def test_arrows_noop_and_cursor_data_behaviors() -> None:
     assert following[0].channel == "execution"
 
 
+def test_an_unknown_cell_aborts_at_load_even_when_unreached() -> None:
+    with pytest.raises(HaltError, match="unsupported thisthat cell: 'x'"):
+        run(["▣◇", "  x"], ScriptedIO(""))
+
+
 def test_unreachable_bad_cell_still_aborts() -> None:
     machine = _Machine(["▣─"], ScriptedIO(""))
     machine.grid = ("▣x",)

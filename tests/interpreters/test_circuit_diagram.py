@@ -1,7 +1,12 @@
 r"""Unit tests for the Circuit Diagram interpreter."""
 
+import time
+from collections import OrderedDict
+
 import pytest
 
+from esolangs.interpreters.grid_based import _circuit_functions
+from esolangs.interpreters.grid_based._circuit_functions import _remember_width
 from esolangs.interpreters.grid_based.circuit_diagram import (
     _OUTPUT,
     _compile,
@@ -10,6 +15,7 @@ from esolangs.interpreters.grid_based.circuit_diagram import (
     _Machine,
     _merge,
     _Parser,
+    _seconds_since_2000,
     run,
 )
 from esolangs.interpreters.io import ScriptedIO
@@ -350,6 +356,10 @@ class TestSpecifiedSourcesAndRemoval:
         )
         assert output_for(["t-32-:"], "") == f"{5:032b}"
 
+    def test_the_real_clock_counts_seconds_since_2000(self) -> None:
+        # 946684800 is the Unix time of 2000-01-01T00:00:00Z.
+        assert abs(_seconds_since_2000() - (int(time.time()) - 946684800)) <= 2
+
     def test_remove_drops_the_first_input_width_from_the_second(self) -> None:
         circuit = [
             "-2-.",
@@ -686,6 +696,27 @@ class TestSpecRepairs:
             machine.step()
         assert machine.io.getvalue() == f"{5:032b}0"
         assert machine.snapshot()[3] == 1
+
+    def test_a_clock_read_before_a_nested_call_is_replayed_not_reread(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        reads = iter(range(1, 10))
+        monkeypatch.setattr(
+            "esolangs.interpreters.grid_based.circuit_diagram._seconds_since_2000",
+            lambda: next(reads),
+        )
+        code = ["{inv", "-.~.-:", "}", "{stamp", "t-32-:", "-inv-:", "}", "-stamp-:"]
+        assert output_for(code, "1\n") == f"{1:032b}0"
+
+    def test_the_width_cache_forgets_its_oldest_entry_past_256(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        widths = OrderedDict((((), str(i), None, ()), 1) for i in range(256))
+        monkeypatch.setattr(_circuit_functions, "_FUNCTION_WIDTHS", widths)
+        _remember_width(((), "new", None, ()), 2)
+        assert len(widths) == 256
+        assert ((), "0", None, ()) not in widths
+        assert widths[((), "new", None, ())] == 2
 
     def test_a_width_label_past_the_int_digit_limit_parses(self) -> None:
         # 5001 digits, value 2: beyond int()'s default 4300-digit cap.
