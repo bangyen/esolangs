@@ -91,6 +91,45 @@ fish -- harpyon's ``fish.py``, the wiki's interpreter,
         python scripts/differential.py fish --patch fish.py
         export ESOLANGS_REF_FISH="python3 $PWD/fish.py {program}"
 
+unlambda -- David Madore's ``c-refcnt/unlambda.c`` from Unlambda 2.0.0,
+    ftp://ftp.madore.org/pub/madore/unlambda/unlambda-2.0.0.tar.gz (sha256
+    a9dbe0a39a928b238cdcf5a71e504e383cea494e4c96a79d3566dea1440c10a9).  Its
+    parser builds ``e`` as ``c`` (a reference bug, fixed by the patch); it
+    also takes upper-case combinators, which ours refuses, so the generator
+    writes none.  Input is ASCII (ours reads characters, it reads bytes)::
+
+        python scripts/differential.py unlambda --patch unlambda.c
+        cc -w -O1 -o unlambda unlambda.c
+        export ESOLANGS_REF_UNLAMBDA="$PWD/unlambda {program}"
+
+underload -- ais523's reference, the JavaScript in ``underload/underload.html``
+    of https://github.com/graue/esofiles at commit 07dce2dbff3325ced047f080
+    b4c9b9f433b3c72b (sha256 af8a88379ef27968cd5dd4e2d0304184b0e2408fc8500f1
+    e7dec851ed8dbc868).  The patch
+    runs the page's own ``step`` under node.  Programs avoid the reserved
+    ``[]<>"`` (its stack is a ``<>``-separated string)::
+
+        sed -n '/^<SCRIPT>$/,/^<.SCRIPT>$/p' underload.html | sed '1d;$d' > ul.js
+        python scripts/differential.py underload --patch ul.js
+        export ESOLANGS_REF_UNDERLOAD="node $PWD/ul.js {program}"
+
+thue -- John Colagioia's ``thue.c`` (rev. 1.5 with Chris Pressey's 2010
+    fixes), https://github.com/catseye/Thue tag rel_1_5_2015_0827 (commit
+    a354936de163ad3fec43ff6fd7a923f129c176f8), ``src/thue.c``.  Rule choice
+    is random on both sides, so the generator keeps only programs whose
+    result no order changes, checked by exhaustive search::
+
+        python scripts/differential.py thue --patch thue.c
+        cc -w -O1 -o thue thue.c
+        export ESOLANGS_REF_THUE="$PWD/thue {program}"
+
+slashes -- the Perl interpreter in section "Implementations" of
+    https://esolangs.org/wiki//// revision 166743 (sha256 of the extracted
+    script, ``<nowiki>`` unwrapped, 5b0bb558d8803081c2d1a9ab82c7e5fcf909ee
+    569c8624459c281b5fc507d40c).  No patch: it agrees with ours as written::
+
+        export ESOLANGS_REF_SLASHES="perl $PWD/slashes.pl {program}"
+
 Adding a language: write a program generator (grammar-aware, biased to short
 halting programs and the edge cases), an input generator, and register a
 ``Spec`` in ``SPECS``.  Override ``split``/``join``/``blank`` when deleting
@@ -974,6 +1013,35 @@ SPECS["fish"] = Spec(
     valid=_classics.fish_valid,
     patches=_classics.FISH_PATCHES,
 )
+
+import differential_strings as _strings  # noqa: E402
+
+SPECS["unlambda"] = Spec(
+    "unlambda",
+    _strings.unl_program,
+    ascii_input,
+    suffix=".unl",
+    valid=_strings.unl_runnable,
+    split=lambda program: re.findall(r"[.?].|.", program, re.S),
+    patches=_strings.UNLAMBDA_PATCHES,
+)
+SPECS["underload"] = Spec(
+    "underload",
+    _strings.underload_program,
+    lambda _rng, _program: "",
+    suffix=".ul",
+    patches=_strings.UNDERLOAD_PATCHES,
+)
+SPECS["thue"] = Spec(
+    "thue",
+    _strings.thue_program,
+    lambda rng, _program: rng.choice(_strings.THUE_INPUTS),
+    max_steps=20_000,
+    suffix=".t",
+    valid=_strings.thue_confluent,
+    patches=_strings.THUE_PATCHES,
+)
+SPECS["slashes"] = Spec("slashes", _strings.slashes_program, lambda _rng, _p: "")
 
 
 def _env_name(language: str) -> str:
