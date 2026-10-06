@@ -185,9 +185,15 @@ across all namespaces, and deduplicate by page ID. Pause at least three seconds
 between requests.
 
 The cutoff is policy, adopted 2026-10-01, not a measured popularity boundary.
-Record resolved title, date and count; missing data means unassessed. Below
-60, only intrinsic axes can admit a language. Low backlinks count against
-only old languages; Wikipedia pageviews are not a gate.
+Record resolved title, date and count; missing data means unassessed. Low
+backlinks count against only old languages; Wikipedia pageviews are not a
+gate.
+
+Below 60, a language is admitted only as a first implementation: when the
+repo adds it, no implementation exists but the maintainer's. Its page is in
+the Unimplemented category, or the edit that first tagged it Implemented is
+User:Bangyen's. An intrinsic axis can choose between such candidates; it
+admits nothing alone.
 
 Recognition sources checked 2026-10-01 supply selections, not admission gates
 or popularity rankings:
@@ -217,8 +223,16 @@ rejected Brainloller and Braincopter score 26 and 14. Piet (65) clears the
 fame gate; Whitespace (58),
 Forth (57), Chicken (55), Shakespeare (54), and LOLCODE (47) do not.
 
-Existing fame exceptions must still clear the bar; intrinsic axes are exempt.
-Whitespace was removed at 58 backlinks with no intrinsic axis.
+Existing fame exceptions must still clear the bar. Whitespace was removed at
+58 backlinks.
+
+The 2026-10-06 census (`tests/fixtures/curation.json`) records each
+language's backlinks and route: 21 clear the fame gate and 54 are first
+implementations. Six were implemented elsewhere when added, all before the
+rule was written down on 2026-09-27, and are grandfathered: BIO (ais523),
+BF-PDA (Madk, 2010), 123 (a 2012 VB.NET interpreter), NoComment, Sophie
+(their authors') and Jaune (two others'). Befunge-98 (Funge-98, 31, two
+dozen implementations) came after and was removed on 2026-10-06.
 
 Bitwise Cyclic Tag (181) also adds the cyclic-schedule axis. Deadfish (315)
 is interpreter-only because it has no input vocabulary.

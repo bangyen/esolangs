@@ -90,9 +90,13 @@ history; standing rules and proved limits are in [limitations](limitations.md).
 
 - **Malbolge Unshackled.** Unbounded memory lifts the fixed 59,049-cell
   store behind Malbolge's 16-input cap. It does not settle the 17-input
-  question below, which concerns Malbolge itself. Next: implement it as a
-  separate entry. Then check whether the packing construction extends past
-  sixteen inputs.
+  question below, which concerns Malbolge itself. It meets neither admission
+  route (15 backlinks; Johansen's and Lutter's interpreters), so it enters
+  only as a named exception, and only with a total generator and a proof
+  that it is correct under every rotation-width history. A rotation-free
+  construction already reaches nineteen inputs. Next: the uncapped
+  construction; if it fails, record the nineteen-input result in
+  [malbolge-scaling](proofs/malbolge-scaling.md) and close this item.
 
 ## Open problems
 
