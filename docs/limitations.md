@@ -405,5 +405,11 @@ languages remain rejected from the same image-source screen.
   treats literals containing only `0` and `1` as binary. The same page uses
   decimal `101` in Hello World and binary digits in PlusOrMinus and dependency
   examples. Character input preserves newlines; EOF supplies newline to `charGet`.
+- ROTfuck defaults to `rotation="backward"` (`+` turns into `]`): the wiki's
+  one-character cat `,[` then echoes; `"forward"` follows the prose (`+` into
+  `-`), under which the cat fires an unmatched `]`. A jump seeks its partner
+  before the rotation ("after the instruction is executed"). The wiki Hello
+  World prints no greeting under any direction or seek timing. The generator
+  targets the default only.
 - Pinyin is rejected: its spelling rule contradicts its examples and its
   input-1 truth-machine example has no deterministic reading.

@@ -1,25 +1,36 @@
 """Interpreter for ROTfuck.
 
-Brainfuck whose program rotates: every executed command advances all
-non-comment characters one step along ``+-><,.[]``.  A comment is passed
+Brainfuck whose program rotates: every executed command turns all
+non-comment characters one step around ``+-><,.[]``.  A comment is passed
 over without rotating: only executed commands advance the rotation.
-Tape as plain
-Brainfuck: 8-bit, :class:`EOFError` on exhausted input, and ``<`` at the
-leftmost cell grows the tape a zero cell on the left (the spec says nothing
-about the left edge, and brainfuck's page allows cells left of the start).
-Brackets match dynamically: a jumping bracket rotates first, then seeks
-its partner in the rotated program; a partnerless bracket that fires
-raises :class:`~esolangs.exceptions.HaltError`, and unbalanced sources
-are legal.  The rotation count is tracked and the effective character
+
+* **Direction** (``rotation``).  The prose turns ``+`` into ``-``, but then
+  the wiki's one-character cat ``,[`` fires a ``]`` with no ``[`` and
+  prints nothing.  Turned the other way (``+`` into ``]``) it reads ``<.``
+  after the ``,`` and echoes one character.  Examples outrank prose, so the
+  default is ``"backward"``; ``"forward"`` follows the prose.  The wiki
+  Hello World prints no greeting in either direction.
+* **Brackets** seek their partner in the program as it stands, then the
+  program rotates: the rotation comes "after the instruction is executed",
+  and the jump is part of executing it.  A jump lands one past the partner.
+  A partnerless bracket that fires raises
+  :class:`~esolangs.exceptions.HaltError` without rotating; unbalanced
+  sources are legal.
+
+Tape as plain Brainfuck: 8-bit, :class:`EOFError` on exhausted input, and
+``<`` at the leftmost cell grows the tape a zero cell on the left (the spec
+says nothing about the left edge, and brainfuck's page allows cells left of
+the start).  The rotation count is tracked and the effective character
 derived, not the text rewritten.
 """
 
+from esolangs._dialects import ROTFUCK_CYCLES as CYCLES
+from esolangs._dialects import rotation as validate_rotation
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 
-_CYCLE = "+-><,.[]"
-_COMMANDS = frozenset(_CYCLE)
+_COMMANDS = frozenset(CYCLES["forward"])
 
 
 #: One instant of a run: ``(tape, ptr, ind, rot)`` -- the cells, the cell
@@ -34,29 +45,28 @@ _COMMANDS = frozenset(_CYCLE)
 type _State = tuple[tuple[int, ...], int, int, int]
 
 
-#: Each command's index in ``_CYCLE``, so the rotation is an addition rather
-#: than a ``str.index`` scan.  A command's effective character after ``rot``
-#: steps is ``_CYCLE[(_OPCODE[ch] + rot) % 8]``; the dict doubles as the
-#: membership test, since a comment is exactly a character it does not hold.
-_OPCODE = {ch: i for i, ch in enumerate(_CYCLE)}
+#: Each command's index in each cycle, so the rotation is an addition rather
+#: than a ``str.index`` scan.  The dict doubles as the membership test,
+#: since a comment is exactly a character it does not hold.
+_OPCODES = {cycle: {ch: i for i, ch in enumerate(cycle)} for cycle in CYCLES.values()}
 
 
-def _at(chars: tuple[str, ...], rot: int, i: int) -> str:
+def _at(chars: tuple[str, ...], rot: int, i: int, cycle: str) -> str:
     """Return the effective command at ``i`` under rotation ``rot``.
 
     Arithmetic on a precomputed opcode: the hottest function, and a cycle
     scan was 46% of a generated program's runtime.
     """
-    code = _OPCODE.get(chars[i], -1)
-    return _CYCLE[(code + rot) % 8] if code >= 0 else chars[i]
+    code = _OPCODES[cycle].get(chars[i], -1)
+    return cycle[(code + rot) % 8] if code >= 0 else chars[i]
 
 
-def _forward(chars: tuple[str, ...], rot: int, i: int) -> int | None:
+def _forward(chars: tuple[str, ...], rot: int, i: int, cycle: str) -> int | None:
     """Return the ``]`` matching the effective ``[`` at ``i``, if any."""
     depth = 1
     j = i + 1
     while j < len(chars):
-        ch = _at(chars, rot, j)
+        ch = _at(chars, rot, j, cycle)
         if ch == "[":
             depth += 1
         elif ch == "]":
@@ -67,12 +77,12 @@ def _forward(chars: tuple[str, ...], rot: int, i: int) -> int | None:
     return None
 
 
-def _backward(chars: tuple[str, ...], rot: int, i: int) -> int | None:
+def _backward(chars: tuple[str, ...], rot: int, i: int, cycle: str) -> int | None:
     """Return the ``[`` matching the effective ``]`` at ``i``, if any."""
     depth = 1
     j = i - 1
     while j >= 0:
-        ch = _at(chars, rot, j)
+        ch = _at(chars, rot, j, cycle)
         if ch == "]":
             depth += 1
         elif ch == "[":
@@ -83,10 +93,23 @@ def _backward(chars: tuple[str, ...], rot: int, i: int) -> int | None:
     return None
 
 
+def _jump(chars: tuple[str, ...], rot: int, ind: int, cycle: str) -> int:
+    """Return the cursor after the firing bracket at ``ind``: one past its partner."""
+    char = _at(chars, rot, ind, cycle)
+    seek = _forward if char == "[" else _backward
+    partner = seek(chars, rot, ind, cycle)
+    if partner is None:
+        raise HaltError(
+            f"an executed '{char}' has no bracket partner",
+            hint="pair each executed [ with a matching ]",
+        )
+    return partner + 1
+
+
 class _Program:
     """A ROTfuck program with an implicit rotation count."""
 
-    def __init__(self, code: str) -> None:
+    def __init__(self, code: str, cycle: str) -> None:
         """Store ``code`` with a zero rotation count."""
         # The source never changes -- only the rotation count does -- so the
         # tuple every caller wants is built once here rather than per
@@ -94,10 +117,7 @@ class _Program:
         # to read one character, which alone was 15% of a run.
         self._chars = tuple(code)
         self._rot = 0
-
-    def rotate(self) -> None:
-        """Advance the rotation count by one (a command executed)."""
-        self._rot += 1
+        self.cycle = cycle
 
     def rotation(self) -> int:
         """Return how many commands have executed (the implicit rotation)."""
@@ -113,17 +133,23 @@ class _Program:
 
     def at(self, i: int) -> str:
         """Return the effective command at ``i`` under the current rotation."""
-        return _at(self._chars, self._rot, i)
+        return _at(self._chars, self._rot, i, self.cycle)
 
 
-def _advance(state: _State, chars: tuple[str, ...], byte: int | None = None) -> _State:
+def _advance(
+    state: _State,
+    chars: tuple[str, ...],
+    byte: int | None = None,
+    cycle: str = CYCLES["backward"],
+) -> _State:
     """Return the state after executing the command under the cursor.
 
-    A bracket rotates *before* seeking, and lands one past the partner.  A
-    comment advances without rotating; a false-guarded bracket does rotate.
+    A firing bracket seeks *before* the rotation and lands one past the
+    partner.  A comment advances without rotating; a false-guarded bracket
+    does rotate.
     """
     tape, ptr, ind, rot = state
-    char = _at(chars, rot, ind)
+    char = _at(chars, rot, ind, cycle)
 
     if char == ">":
         ptr += 1
@@ -151,24 +177,8 @@ def _advance(state: _State, chars: tuple[str, ...], byte: int | None = None) -> 
             (byte if byte is not None else 0) % 256,
             *tape[ptr + 1 :],
         )
-    elif char == "[" and tape[ptr] == 0:
-        rot += 1
-        partner = _forward(chars, rot, ind)
-        if partner is None:
-            raise HaltError(
-                "an executed '[' has no bracket partner",
-                hint="pair each executed [ with a matching ]",
-            )
-        return (tape, ptr, partner + 1, rot)
-    elif char == "]" and tape[ptr] != 0:
-        rot += 1
-        partner = _backward(chars, rot, ind)
-        if partner is None:
-            raise HaltError(
-                "an executed ']' has no bracket partner",
-                hint="pair each executed [ with a matching ]",
-            )
-        return (tape, ptr, partner + 1, rot)
+    elif (char == "[") == (tape[ptr] == 0) and char in "[]":
+        return (tape, ptr, _jump(chars, rot, ind, cycle), rot + 1)
 
     if char in _COMMANDS:
         rot += 1
@@ -181,10 +191,10 @@ class _Machine:
     Rotation, tape and cursor determine the next command, so a revisit is a cycle.
     """
 
-    def __init__(self, code: str, io: IO) -> None:
+    def __init__(self, code: str, io: IO, *, rotation: str = "backward") -> None:
         """Start with an empty tape at the origin and a fresh program."""
         self.io = io
-        self.prog = _Program(code)
+        self.prog = _Program(code, CYCLES[validate_rotation(rotation)])
         self.tape: tuple[int, ...] = (0,)
         self.ptr = 0
         self.ind = 0
@@ -241,27 +251,19 @@ class _Machine:
         elif char == ",":
             byte = self.io.input_char()
 
-        chars = self.prog.chars()
-        try:
-            self._restore(_advance(self._state, chars, byte))
-        except HaltError:
-            # A jumping bracket rotates before it seeks, so a partnerless
-            # one leaves the rotation advanced even though it never moved.
-            # The original mutated the program first and raised second;
-            # keeping that means recording the rotation on the way out.
-            self.prog.rotate()
-            raise
+        self._restore(_advance(self._state, self.prog.chars(), byte, self.prog.cycle))
 
 
-def run(code: str, io: IO) -> None:
+def run(code: str, io: IO, *, rotation: str = "backward") -> None:
     """Run a ROTfuck program."""
+    cycle = CYCLES[validate_rotation(rotation)]
     chars = tuple(code)
     tape = bytearray(1)
     ptr = 0
     ind = 0
     rot = 0
     while ind < len(chars):
-        char = _at(chars, rot, ind)
+        char = _at(chars, rot, ind, cycle)
         if char == ">":
             ptr += 1
             if ptr == len(tape):
@@ -282,25 +284,9 @@ def run(code: str, io: IO) -> None:
             io.print_char(chr(tape[ptr]))
         elif char == ",":
             tape[ptr] = io.input_char() % 256
-        elif char == "[" and tape[ptr] == 0:
+        elif (char == "[") == (tape[ptr] == 0) and char in "[]":
+            ind = _jump(chars, rot, ind, cycle)
             rot += 1
-            partner = _forward(chars, rot, ind)
-            if partner is None:
-                raise HaltError(
-                    "an executed '[' has no bracket partner",
-                    hint="pair each executed [ with a matching ]",
-                )
-            ind = partner + 1
-            continue
-        elif char == "]" and tape[ptr] != 0:
-            rot += 1
-            partner = _backward(chars, rot, ind)
-            if partner is None:
-                raise HaltError(
-                    "an executed ']' has no bracket partner",
-                    hint="pair each executed [ with a matching ]",
-                )
-            ind = partner + 1
             continue
 
         if char in _COMMANDS:

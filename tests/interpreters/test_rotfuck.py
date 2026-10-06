@@ -14,11 +14,16 @@ from tests.interpreters.contract import (
     SnapshotContract,
 )
 
-_CHAIN = "+-><,.[]"
+#: The default (backward) direction's cycle, each character turning into the next.
+_CHAIN = "+][.,<>-"
 
 
 def build(commands: str) -> str:
-    """Encode ``commands`` as a ROTfuck program."""
+    """Encode ``commands`` as a ROTfuck program.
+
+    Rotation equals position, so this also encodes loops whose bodies are
+    seven commands long: both brackets then execute at one phase.
+    """
     return "".join(_CHAIN[(_CHAIN.index(c) - i) % 8] for i, c in enumerate(commands))
 
 
@@ -27,9 +32,18 @@ run_program = partial(runner.run_program, run)
 
 class TestRotation:
     def test_program_rotates_after_every_command(self) -> None:
-        # two raw ','s: the first reads 'A', then the program rotates so the
-        # second ',' is now '.', which prints the cell.
-        assert run_program(",,", "A") == "A"
+        # The first ',' reads 'A'; the program then turns backward, so the
+        # raw '[' is now '.', which prints the cell.
+        assert run_program(",[", "A") == "A"
+
+    def test_forward_rotation_follows_the_prose(self) -> None:
+        """Forward, ``+`` turns into ``-``: a second raw ``,`` reads as ``.``."""
+        assert run_program(",,", "A", rotation="forward") == "A"
+        assert run_program(",,", "A") == ""
+
+    def test_an_unknown_rotation_is_refused(self) -> None:
+        with pytest.raises(ValueError, match="rotation"):
+            run_program("+", rotation="sideways")
 
 
 class TestTape:
@@ -76,12 +90,23 @@ class TestIO:
 
 class TestBrackets:
     def test_wiki_cat_example_runs(self) -> None:
-        """The wiki's `,[` cat no longer errors: the ] finds a [ dynamically."""
-        assert run_program(",[", "x") == ""
+        """The wiki's one-character cat ``,[`` echoes one character.
 
-    def test_backward_jump_fires_in_rotated_program(self) -> None:
-        """A ] fires, rotates, and jumps back to a [ found in the result."""
-        assert run_program("+<.]>", "x") == ""
+        Forward, the ``[`` reads ``]`` with no ``[`` before it.
+        """
+        assert run_program(",[", "x") == "x"
+        assert run_program(",[", "xy") == "x"
+        with pytest.raises(HaltError, match="'\\]'"):
+            run_program(",[", "x", rotation="forward")
+
+    def test_a_jump_seeks_before_the_program_rotates(self) -> None:
+        """Both brackets at one rotation make a loop: three trips, two prints each.
+
+        Seeking after the rotation, the ``]`` would read ``.`` as its partner.
+        """
+        assert run_program(build("+++[++--..-]")) == "\x03\x03\x02\x02\x01\x01"
+        # Forward, a skipped ``[`` finds the raw ``]`` it sees before turning.
+        assert run_program("[.]", rotation="forward") == ""
 
     def test_forward_skip_over_nested_bracket(self) -> None:
         """A skipped ``[`` seeks its partner past a nested ``[``."""
@@ -92,22 +117,23 @@ class TestBrackets:
         assert run_program(build(".[[+-")) == "\x00"
 
     def test_backward_jump_over_nested_bracket(self) -> None:
-        """A fired ``]`` jumps back across a nested ``]`` in the rotation."""
+        """A fired ``]`` jumps back across a whole inner loop.
+
+        Outer counter 4, dropped by two a trip: two trips, each running the
+        inner loop (prints 3 and 1) and then printing the counter.
+        """
         from esolangs.interpreters.tape_based.rotfuck import _Machine
 
-        # Index 4 fires as ``]`` and, rotated, finds its ``[`` at index 1
-        # past the ``]`` at index 3; the replayed ``+``/``>`` leave (2, 1).
-        machine = _Machine("+--><+", ScriptedIO())
+        machine = _Machine(build("++++[>+[++.--.-]<--.]"), ScriptedIO())
         while not machine.halted:
             machine.step()
-        assert (machine.io.getvalue(), machine.tape) == ("\x01", (2, 1))
+        assert machine.io.getvalue() == "\x03\x01\x02\x03\x01\x00"
+        assert machine.tape == (0, 0)
 
     def test_unmatched_bracket_halts_when_executed(self) -> None:
-        """A fired bracket with no partner in the rotated program errors."""
+        """A fired bracket with no partner in the program as it stands errors."""
         with pytest.raises(HaltError):
-            run_program("[.]")
-        with pytest.raises(HaltError):
-            run_program("+[]")
+            run_program("[.")
         with pytest.raises(HaltError):
             run_program(build("+]"))
         with pytest.raises(HaltError):
@@ -120,9 +146,11 @@ class TestBrackets:
     def test_a_nested_opener_is_counted_when_no_partner_exists(self) -> None:
         """The seek counts nesting even on the way to failing."""
         with pytest.raises(HaltError):
-            run_program(build("[[+"))
+            run_program("[[]")
+        # ``+`` ``+`` then ``]`` on 2, reading ``[]`` behind it: the inner
+        # pair closes and nothing is left to match.
         with pytest.raises(HaltError):
-            run_program(build("+>+[<.]"))
+            run_program("+--")
 
     def test_the_partnerless_bracket_message_names_which_one_fired(self) -> None:
         """Each direction reports its own bracket, and the text is pinned."""
@@ -156,7 +184,9 @@ class TestStepMachine:
         chars = tuple("<[]")
         assert _advance(((0, 1), 1, 0, 0), chars) == ((0, 1), 0, 1, 1)
         assert _advance(((7,), 0, 0, 0), tuple("<")) == ((0, 7), 0, 1, 1)
-        assert _advance(((1,), 0, 1, 0), tuple(".]")) == ((1,), 0, 1, 1)
+        assert _advance(((1,), 0, 1, 0), tuple("[]")) == ((1,), 0, 1, 1)
+        with pytest.raises(HaltError):
+            _advance(((1,), 0, 1, 0), tuple(".]"))
 
         with pytest.raises(HaltError):
             _advance(((1,), 0, 0, 0), tuple("]"))

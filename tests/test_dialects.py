@@ -24,6 +24,7 @@ from esolangs.tools.alight import alight as build_alight
 from esolangs.tools.alight.balance import _balance_postfix
 from esolangs.tools.grapheme import _grapheme_literal, _grapheme_push65
 from esolangs.tools.packlang import packlang as build_packlang
+from esolangs.tools.rotfuck import rotfuck as build_rotfuck
 from esolangs.tui import History, replay
 from esolangs.vm import complete_vm, make_vm
 from tests.cli_support import call_both
@@ -33,6 +34,7 @@ from tests.witness_tables import witnesses
 CASES = [
     ("Alight", DialectSettings(expression_syntax="postfix")),
     ("Packlang", DialectSettings(literal_policy="binary_digits")),
+    ("ROTfuck", DialectSettings(rotation="backward")),
     ("Grapheme", DialectSettings(integer_conversion="after_each_letter")),
     ("SLOW ACV MAMMALIAN", DialectSettings(cell_modulus=255, io_modulus=256)),
 ]
@@ -97,6 +99,7 @@ class Unreadable(StringIO):
         ("Brainfuck", DialectSettings(cell_modulus=256)),
         ("Alight", DialectSettings(list_update="deep")),
         ("Packlang", DialectSettings(literal_policy="octal")),
+        ("ROTfuck", DialectSettings(rotation="sideways")),
         ("SLOW ACV MAMMALIAN", DialectSettings(io_modulus=257)),
     ],
 )
@@ -177,7 +180,7 @@ def test_cli_help_shows_literal_settings_json(capsys):
     assert '{"expression_syntax":"postfix"}' in help_text
 
 
-@pytest.mark.parametrize("language", ["Alight", "Packlang"])
+@pytest.mark.parametrize("language", ["Alight", "Packlang", "ROTfuck"])
 def test_single_choice_languages_refuse_other_keys(language):
     with pytest.raises(esolangs.ArgumentError):
         esolangs.run(language, Unreadable(), settings=DialectSettings(cell_modulus=255))
@@ -631,11 +634,28 @@ def test_packlang_hybrid_multiple_blocks(n):
     [
         (build_alight, "01", {"expression_syntax": "mixed"}, "expression_syntax"),
         (build_packlang, "01", {"literal_policy": "binary"}, "literal_policy"),
+        (build_rotfuck, "01", {"rotation": "sideways"}, "rotation"),
     ],
 )
 def test_invalid_dialects_are_rejected(build, table, options, message):
     with pytest.raises(ValueError, match=message):
         build(table, **options)
+
+
+@pytest.mark.parametrize(
+    "isolated", [False, pytest.param(True, marks=pytest.mark.medium)]
+)
+def test_rotfuck_rotation_reaches_every_execution_path(isolated):
+    """The wiki cat ``,[`` echoes backward; forward, ``,,`` does instead."""
+    forward = DialectSettings(rotation="forward")
+    assert esolangs.run("ROTfuck", ",[", "x", isolated=isolated) == "x"
+    assert (
+        esolangs.run("ROTfuck", ",,", "x", settings=forward, isolated=isolated) == "x"
+    )
+    assert complete_vm(make_vm("ROTfuck", ",,", "x", settings=forward), 100) == "x"
+    assert complete_vm(make_vm("ROTfuck", ",,", "x"), 100) == ""
+    with pytest.raises(esolangs.ArgumentError, match="backward"):
+        esolangs.generate("ROTfuck", "01", settings=forward)
 
 
 @pytest.mark.medium
