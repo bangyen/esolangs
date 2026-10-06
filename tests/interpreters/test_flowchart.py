@@ -1,5 +1,6 @@
 """Unit tests for the Flowchart interpreter."""
 
+from functools import partial
 from pathlib import Path
 
 import pytest
@@ -7,6 +8,7 @@ import pytest
 from esolangs.interpreters.grid_based.flowchart import _Machine, run
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
+from tests.interpreters.runner import run_program as _run_program
 
 # The wiki's truth machine: read a bit, and on 0 print it once and halt, on
 # 1 print it forever.  The switch is entered travelling downward, so its
@@ -67,11 +69,7 @@ WIKI_KOLAKOSKI = [
 ]
 
 
-def run_program(code: list[str], stdin: str = "") -> str:
-    """Run ``code`` to completion and return everything it printed."""
-    io = ScriptedIO(stdin)
-    run(code, io)
-    return io.getvalue()
+run_program = partial(_run_program, run, suppress_eof=False)
 
 
 def run_steps(code: list[str], stdin: str, steps: int) -> str:

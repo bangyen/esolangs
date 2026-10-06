@@ -1,6 +1,6 @@
 """Unit tests for the Grapheme interpreter."""
 
-import contextlib
+from functools import partial
 
 import pytest
 
@@ -12,13 +12,9 @@ from tests.interpreters.contract import (
     EmptyProgramContract,
     InputCursorContract,
 )
+from tests.interpreters.runner import run_program as _run_program
 
-
-def run_program(code: str, stdin: str = "") -> str:
-    io = ScriptedIO(stdin)
-    with contextlib.suppress(EOFError):
-        run(code, io)
-    return io.getvalue()
+run_program = partial(_run_program, run)
 
 
 @pytest.mark.parametrize(
