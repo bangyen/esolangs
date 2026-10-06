@@ -6,7 +6,11 @@ the pointer advances by three.  Address ``-1`` is the instruction
 pointer, ``-2`` the next input character (zero at EOF), ``-3``
 outputs the other operand; none appears in ``c``.  ``store`` selects the
 base (``a``), ``S*bl*q`` (``a`` and ``b``) or ``Subl*q`` (``b``)
-variant; the ``S**bleq`` indirection family is not implemented.
+variant, and ``indirect`` the ``S**bleq``/``Subl**q``/``S**bl**q`` family,
+which replaces ``a`` and ``b`` by ``*a`` and ``*b``.  The wiki does not say
+whether the special addresses apply before or after that indirection; here
+``*a`` is the address held at cell ``a``, so it may itself be ``-1``, ``-2``
+or ``-3``, and an ``a`` that is already negative raises :class:`ValueError`.
 
 Programs are whitespace-separated integers loaded at address zero; reads
 past the end are zero.  Execution halts off the end of the program or on
@@ -71,14 +75,34 @@ def _write(state: _State, addr: int, value: int) -> _State:
     return state
 
 
-def _advance(state: _State, store: str, byte: int | None = None) -> _State:
+def _operands(mem: tuple[int, ...], ip: int, *, indirect: bool) -> tuple[int, int]:
+    """Return ``a`` and ``b``, read through the cells they name if indirect."""
+    a, b = mem[ip], mem[ip + 1]
+    if not indirect:
+        return a, b
+    for operand in (a, b):
+        if operand < 0:
+            raise syntax_error(
+                f"indirect S*bleq operand {format_integer(operand)} names no cell",
+                "use a nonnegative cell holding the address in S**bleq variants",
+            )
+    return (
+        mem[a] if a < len(mem) else 0,
+        mem[b] if b < len(mem) else 0,
+    )
+
+
+def _advance(
+    state: _State, store: str, byte: int | None = None, *, indirect: bool = False
+) -> _State:
     """Return the state after executing one ``a b c`` instruction.
 
     Pure; output is the caller's, input arrives as ``byte``.
     The variant selects the destinations, including pointer writes.
     """
     mem, ip, _halted = state
-    a, b, c = mem[ip], mem[ip + 1], mem[ip + 2]
+    a, b = _operands(mem, ip, indirect=indirect)
+    c = mem[ip + 2]
     if c < 0:
         raise syntax_error(
             f"invalid S*bleq branch address {format_integer(c)}",
@@ -119,12 +143,15 @@ class _Machine:
     #: out which.
     eof_is_a_value = True
 
-    def __init__(self, code: str, io: IO, store: str = "a") -> None:
+    def __init__(
+        self, code: str, io: IO, store: str = "a", *, indirect: bool = False
+    ) -> None:
         """Build a machine over the cells ``code`` parses to."""
         self.io = io
         self.mem = tuple(_parse(code))
         self.ip = 0
         self.store = store
+        self.indirect = indirect
         self._halted = False
         if store not in _STORES:
             raise syntax_error(
@@ -177,24 +204,24 @@ class _Machine:
         if self.halted:
             return
         state = self._state
-        mem = state[0]
-        a, b = mem[self.ip], mem[self.ip + 1]
+        a, b = _operands(state[0], self.ip, indirect=self.indirect)
         if a == -3 or b == -3:
             other = b if a == -3 else a
             byte = self.input_byte() if other == -2 else None
             self.output(_read(state, other, byte))
-            self._restore(_advance(state, self.store))
+            self._restore(_advance(state, self.store, indirect=self.indirect))
             return
         byte = self.input_byte() if -2 in (a, b) else None
-        self._restore(_advance(state, self.store, byte))
+        self._restore(_advance(state, self.store, byte, indirect=self.indirect))
 
 
-def run(code: str, io: IO, store: str = "a") -> None:
+def run(code: str, io: IO, store: str = "a", *, indirect: bool = False) -> None:
     """Execute an S*bleq program.
 
-    ``store`` is ``"a"`` (base), ``"ab"`` (S*bl*q) or ``"b"`` (Subl*q).
+    ``store`` is ``"a"`` (base), ``"ab"`` (S*bl*q) or ``"b"`` (Subl*q);
+    ``indirect`` gives S**bleq, S**bl**q and Subl**q respectively.
     """
-    mach = _Machine(code, io, store=store)
+    mach = _Machine(code, io, store=store, indirect=indirect)
 
     while not mach.halted:
         mach.step()
