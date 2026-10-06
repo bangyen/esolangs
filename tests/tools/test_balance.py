@@ -9,7 +9,7 @@ from esolangs.tools.super_snusp import (
     balance_super_snusp,
 )
 from esolangs.tools.wrap import balance_program, balance_score, wrap_program
-from tests.test_cli import call_main
+from tests.cli.test_cli import call_main
 
 
 @pytest.mark.parametrize(

@@ -10,8 +10,8 @@ import pytest
 import esolangs
 from esolangs.cli import main
 from esolangs.cli_io import _write_output
+from tests.cli.test_cli import _FakeStdin, _program, call_main
 from tests.cli_support import _failure, _refused, call_both
-from tests.test_cli import _FakeStdin, _program, call_main
 
 
 class TestMessagesNameTheThingThatIsWrong:

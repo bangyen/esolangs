@@ -10,9 +10,9 @@ import pytest
 import esolangs
 from esolangs import cli, cli_io
 from esolangs.cli import HELP
+from tests.cli.test_cli import _program, call_main
 from tests.cli_support import _LOOPS, call_both
 from tests.generator_support import evaluate_generated
-from tests.test_cli import _program, call_main
 
 
 # 3.0s over 12 tests: waits out a real timeout.

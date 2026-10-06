@@ -10,8 +10,8 @@ import pytest
 
 import esolangs
 from esolangs.cli import HELP, USAGE
+from tests.cli.test_cli import call_main
 from tests.cli_support import call_both
-from tests.test_cli import call_main
 
 
 class TestExamplesShipWithThePackage:
@@ -38,7 +38,7 @@ class TestExamplesShipWithThePackage:
 
     def test_the_packaging_declares_them(self) -> None:
         """The other half: inside the package *and* listed as data."""
-        config = (pathlib.Path(__file__).parents[1] / "pyproject.toml").read_text()
+        config = (pathlib.Path(__file__).parents[2] / "pyproject.toml").read_text()
         declared = re.search(r"^esolangs = \[(.+?)\]", config, re.M)
         assert declared, "no package-data entry for esolangs"
         patterns = declared.group(1)
@@ -140,7 +140,7 @@ class TestWikiUrlsAreUsable:
 
     def test_the_readme_uses_the_same_builder(self) -> None:
         """The second copy of the slug logic is what made this ship twice."""
-        readme = (Path(__file__).parents[1] / "README.md").read_text()
+        readme = (Path(__file__).parents[2] / "README.md").read_text()
         assert "https://esolangs.org/wiki/For%C3%BE" in readme
         assert "https://esolangs.org/wiki/Forþ" not in readme
 
