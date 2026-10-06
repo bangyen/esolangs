@@ -1,12 +1,13 @@
 """Unit tests for the ROTfuck interpreter."""
 
-import contextlib
+from functools import partial
 
 import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.tape_based.rotfuck import run
+from tests.interpreters import runner
 from tests.interpreters.contract import (
     CycleContract,
     EmptyProgramContract,
@@ -21,11 +22,7 @@ def build(commands: str) -> str:
     return "".join(_CHAIN[(_CHAIN.index(c) - i) % 8] for i, c in enumerate(commands))
 
 
-def run_program(code: str, stdin: str = "") -> str:
-    io = ScriptedIO(stdin)
-    with contextlib.suppress(EOFError):
-        run(code, io)
-    return io.getvalue()
+run_program = partial(runner.run_program, run)
 
 
 class TestRotation:

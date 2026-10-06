@@ -1,5 +1,6 @@
 """C-INTERCAL expression, I/O, and NEXT-stack semantics."""
 
+from functools import partial
 from pathlib import Path
 
 import pytest
@@ -9,12 +10,9 @@ from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.intercal import _expression, _Machine, run
 from esolangs.interpreters.randomness import FirstDraw
 from esolangs.vm import run_until_halt_or_all_branches_cycle
+from tests.interpreters.runner import run_program
 
-
-def _run(source: str, stdin: str = "") -> str:
-    io = ScriptedIO(stdin)
-    run(source, io)
-    return io.getvalue()
+_run = partial(run_program, run, suppress_eof=False)
 
 
 def test_calculate_mingle_select_unary_and_output() -> None:

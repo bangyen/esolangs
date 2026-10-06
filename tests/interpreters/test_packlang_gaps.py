@@ -1,5 +1,7 @@
 """Packlang paths the wiki examples never take."""
 
+from functools import partial
+
 import pytest
 
 from esolangs.exceptions import HaltError
@@ -10,9 +12,7 @@ from esolangs.interpreters.other.packlang import (
 )
 from tests.interpreters.runner import run_program
 
-
-def _run(code: str, stdin: str = "") -> str:
-    return run_program(run, code, stdin)
+_run = partial(run_program, run)
 
 
 def _wrap(body: str, decls: str = "") -> str:

@@ -1,17 +1,16 @@
 """Unit tests for the Jaune interpreter."""
 
+from functools import partial
+
 import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.tape_based.jaune import run
+from tests.interpreters import runner
 from tests.interpreters.contract import SnapshotContract
 
-
-def run_program(code: str, stdin: str = "") -> str:
-    io = ScriptedIO(stdin)
-    run(code, io)
-    return io.getvalue()
+run_program = partial(runner.run_program, run, suppress_eof=False)
 
 
 class TestArithmetic:

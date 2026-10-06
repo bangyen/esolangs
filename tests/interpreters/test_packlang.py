@@ -1,6 +1,7 @@
 """Unit tests for the Packlang interpreter and its generator."""
 
 import contextlib
+from functools import partial
 from typing import Any, ClassVar
 
 import pytest
@@ -141,8 +142,7 @@ DEPENDENCY_REBASED = (
 )
 
 
-def _run(code: str, stdin: str = "") -> str:
-    return run_program(run, code, stdin)
+_run = partial(run_program, run)
 
 
 def _machine(code: str) -> _Machine:

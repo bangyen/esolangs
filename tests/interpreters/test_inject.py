@@ -1,5 +1,6 @@
 """Unit tests for the Inject interpreter."""
 
+from functools import partial
 from typing import Any, ClassVar
 
 import pytest
@@ -12,6 +13,7 @@ from tests.interpreters.contract import (
     SnapshotContract,
     StateViewContract,
 )
+from tests.interpreters.runner import run_program
 from tests.raises import raises_message
 
 HELLO_WORLD = "\n".join(
@@ -77,11 +79,7 @@ CAT = "\n".join(
 )
 
 
-def _run(program: str, stdin: str = "") -> str:
-    """Run ``program`` and return everything it printed."""
-    io = ScriptedIO(stdin)
-    run(program, io)
-    return io.getvalue()
+_run = partial(run_program, run, suppress_eof=False)
 
 
 def _machine(program: Any) -> _Machine:

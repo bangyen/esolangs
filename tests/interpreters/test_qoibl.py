@@ -2,11 +2,8 @@
 
 import inspect
 import io
-import signal
 import sys
-from collections.abc import Callable
 from contextlib import redirect_stdout
-from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -14,29 +11,6 @@ import pytest
 import esolangs
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.register_based.qoibl import run, tokenize
-
-
-class _TestTimeoutError(Exception):
-    """Custom timeout exception for test protection."""
-
-
-def timeout_handler(_signum: int, _frame: Any) -> None:
-    """Signal handler for timeout protection."""
-    raise _TestTimeoutError("Test timed out")
-
-
-def run_with_timeout(func: Callable[..., Any], timeout_seconds: int = 2) -> Any:
-    """Run a function with timeout protection."""
-    old_handler = signal.signal(signal.SIGALRM, timeout_handler)
-    signal.alarm(timeout_seconds)
-    try:
-        result = func()
-    except _TestTimeoutError:
-        raise
-    finally:
-        signal.alarm(0)
-        signal.signal(signal.SIGALRM, old_handler)
-    return result
 
 
 class TestQoiblBasicOperations:
@@ -176,16 +150,12 @@ class TestQoiblExamples:
         ]
 
         # Test 2 + 3 = 5
-        def run_adder() -> str:
-            with (
-                patch("builtins.input", side_effect=["23"]),
-                redirect_stdout(io.StringIO()) as f,
-            ):
-                run(code, IO())
-            return f.getvalue()
-
-        result = run_with_timeout(run_adder, timeout_seconds=2)
-        assert result == "5"  # Should print 5
+        with (
+            patch("builtins.input", side_effect=["23"]),
+            redirect_stdout(io.StringIO()) as f,
+        ):
+            run(code, IO())
+        assert f.getvalue() == "5"  # Should print 5
 
     def test_while_loop(self) -> None:
         code: list[str] = [
