@@ -1,5 +1,7 @@
 """Unit tests for the Forþ interpreter."""
 
+from functools import partial
+
 import pytest
 
 from esolangs.exceptions import HaltError
@@ -10,12 +12,9 @@ from tests.interpreters.contract import (
     EmptyProgramContract,
     InputCursorContract,
 )
+from tests.interpreters.runner import run_program as _run_program
 
-
-def run_program(code: str, stdin: str = "") -> str:
-    io = ScriptedIO(stdin)
-    run(code, io)
-    return io.getvalue()
+run_program = partial(_run_program, run, suppress_eof=False)
 
 
 class TestForth:

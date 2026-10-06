@@ -1,5 +1,7 @@
 """Unit tests for the Decleq interpreter."""
 
+from functools import partial
+
 import pytest
 
 from esolangs.exceptions import HaltError
@@ -12,9 +14,7 @@ from tests.interpreters.contract import (
 )
 from tests.interpreters.oisc import memory, run_program
 
-
-def _run(code, stdin=""):
-    return run_program(run, code, stdin=stdin)
+_run = partial(run_program, run)
 
 
 class TestCountdown:

@@ -1,17 +1,14 @@
 """Unit tests for the EGL interpreter."""
 
 import re
+from functools import partial
 
 import pytest
 
 from esolangs.interpreters.grid_based.egl import _advance, run
-from esolangs.interpreters.io import ScriptedIO
+from tests.interpreters.runner import run_program
 
-
-def execute(code: str, stdin: str = "") -> str:
-    io = ScriptedIO(stdin)
-    run(code, io)
-    return io.getvalue()
+execute = partial(run_program, run, suppress_eof=False)
 
 
 def test_documented_examples() -> None:
