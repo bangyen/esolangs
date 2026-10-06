@@ -10,8 +10,8 @@ from esolangs.interpreters.stack_based.underload import run
 from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
 from esolangs.tools.underload import PAIR, underload, underload_setters
 from tests.generator_support import verify_generated
-from tests.tools.boolean_runners import five_input_sample
 from tests.tools.plain_oracles import underload_plain as _plain
+from tests.tools.sample_tables import five_input_sample
 from tests.witness_tables import witnesses
 
 

@@ -1,6 +1,5 @@
 """Covers :mod:`esolangs.tools.six_five`."""
 
-import hashlib
 import importlib
 from itertools import permutations
 
@@ -26,6 +25,7 @@ from tests.tools.boolean_runners import (
     run_six_five_from,
 )
 from tests.tools.sample_tables import five_input_sample
+from tests.tools.test_boolean_contract import _dense
 from tests.witness_tables import witnesses
 
 
@@ -193,21 +193,9 @@ class TestSixFive:
         assert _six_five_dag_cost(parity10) == 20 <= 35
         assert boolean.six_five(parity10)
 
-    @staticmethod
-    def _dense(n: int) -> str:
-        """A hash-derived table with no structure for the trees to exploit."""
-        digest = hashlib.sha256(f"dense:{n}".encode()).digest()
-        bits: list[str] = []
-        block = 0
-        while len(bits) < 2**n:
-            digest = hashlib.sha256(digest + bytes([block & 255])).digest()
-            bits.extend(str(byte & 1) for byte in digest)
-            block += 1
-        return "".join(bits[: 2**n])
-
     def test_a_table_whose_distinct_subtrees_overflow_takes_the_walk(self) -> None:
         """A table past the shared budget goes on the tape instead."""
-        dense7 = self._dense(7)
+        dense7 = _dense(7)
         assert _six_five_dag_cost(dense7) > 35
         program = boolean.six_five(dense7)
         assert program == _six_five_walk(dense7).removesuffix("0")  # halts at its end
@@ -219,7 +207,7 @@ class TestSixFive:
 
     def test_dense_ten_inputs_render_and_run(self) -> None:
         """The generator clears n == 10 on a table with nothing to fold."""
-        dense10 = self._dense(10)
+        dense10 = _dense(10)
         program = boolean.six_five(dense10)
         assert _markers(program) == 10
         assert len(program) == 5308
@@ -331,7 +319,7 @@ class TestSixFive:
     ) -> None:
         """Lower the unreachable 35-input limit and execute its replacement."""
         module = importlib.import_module("esolangs.tools.six_five")
-        table = self._dense(5)
+        table = _dense(5)
         monkeypatch.setattr(module, "_SIX_FIVE_MAX_LABEL", 4)
         program = _six_five_walk(table)
         assert program == _six_five_guarded(table)

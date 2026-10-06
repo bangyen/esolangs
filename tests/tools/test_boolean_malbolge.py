@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import importlib
 from collections.abc import Sequence
 
@@ -14,6 +13,7 @@ from esolangs.exceptions import GeneratorCapError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.malbolge import _XLAT1, _load, run
 from esolangs.tools.malbolge.core import _cascade
+from tests.tools.test_boolean_contract import _dense
 
 _module = importlib.import_module("esolangs.tools.malbolge")
 
@@ -29,18 +29,6 @@ def _rows(table: str, rows: Sequence[int] | None = None) -> list[str]:
         run(program, io)
         outputs.append(io.getvalue())
     return outputs
-
-
-def _dense(n: int) -> str:
-    """The suite's dense shape, rebuilt here so the module stands alone."""
-    digest = hashlib.sha256(f"dense:{n}".encode()).digest()
-    bits: list[str] = []
-    block = 0
-    while len(bits) < 2**n:
-        digest = hashlib.sha256(digest + bytes([block & 255])).digest()
-        bits.extend(str(byte & 1) for byte in digest)
-        block += 1
-    return "".join(bits[: 2**n])
 
 
 def _parity(n: int) -> str:

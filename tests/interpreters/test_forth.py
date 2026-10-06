@@ -12,6 +12,7 @@ from tests.interpreters.contract import (
     EmptyProgramContract,
     InputCursorContract,
 )
+from tests.interpreters.cursorless_io import PositionlessIO
 from tests.interpreters.runner import run_program as _run_program
 
 run_program = partial(_run_program, run, suppress_eof=False)
@@ -206,12 +207,8 @@ def test_a_read_loop_on_a_cursorless_port_is_not_a_cycle() -> None:
     from esolangs.interpreters.stack_based.forth import _Machine
     from esolangs.vm import run_until_halt_or_cycle
 
-    class _Cursorless(ScriptedIO):
-        def position(self) -> int:
-            return 0
-
     with pytest.raises(EOFError):
-        run_until_halt_or_cycle(_Machine("1[,]", _Cursorless("\n" * 10)), limit=100)
+        run_until_halt_or_cycle(_Machine("1[,]", PositionlessIO("\n" * 10)), limit=100)
 
 
 class TestContract(EmptyProgramContract, CycleContract, InputCursorContract):

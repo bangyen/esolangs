@@ -1,6 +1,6 @@
 """An input source with no cursor, for snapshot-progress regressions."""
 
-from esolangs.interpreters.io import IO
+from esolangs.interpreters.io import IO, ScriptedIO
 
 
 class CursorlessIO(IO):
@@ -22,3 +22,10 @@ class CursorlessIO(IO):
     def exhausted(self) -> bool:
         """Whether every character has been read."""
         return not self._lines and not self._pending
+
+
+class PositionlessIO(ScriptedIO):
+    """Scripted input whose ``position()`` stays 0, as a port with no cursor."""
+
+    def position(self) -> int:
+        return 0
