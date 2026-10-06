@@ -531,3 +531,34 @@ super-linear lower bound on any such table needs `DNF+(f) = omega(2**n/(n
 log n))`. Either one settles the open factor. Guards that read `Inp` only
 add programs, so they make a lower bound harder, not easier. The size
 cell stays `Measured`.
+
+The open factor depends on one extremal function. Let `D(n, delta)` be
+the least, over sets of density `delta`, of the largest affine flat
+inside. Cohen and Shinkar's chain gives `D >= log2(n) - log2(log2(1/delta))
+- 2`, and random sets give `D <= log2(n) + log2(log2(n)) + O(1)`. If
+`D(n, 1/2) <= log2(n) + c`, that set's indicator needs `Omega(2**n/n)`
+terms and their upper bound is tight. If `D(n, delta) >= log2(n) +
+log2(log2(n)) - log2(log2(1/delta)) - O(1)` for every `delta`, the peel
+gives `O(2**n/(n log n))` for every table. SAT data (Glucose, every affine
+`d`-flat forbidden, `0` in the set) on the largest density with no
+`d`-flat:
+
+| n | `d=3` | `d=4` |
+| --- | --- | --- |
+| 4 | 11/16, exact | |
+| 5 | 18/32, exact | |
+| 6 | at least 29/64; 32/64 undecided at 300 s | |
+| 7 | at least 44/128 | 64/128 reached |
+| 8 | | 128/256 reached |
+
+An independent recursive flat finder confirms the `n=7` and `n=8`
+half-density sets have largest flat 3. It recovers a planted 3-flat and
+gives 1 on the Sidon set `{0,2,3,4,8,13}`; the same SAT model at `d=2`
+gives the known Sidon maxima 6, 7, 9 and 12 for n=4..7. So `D(7, 1/2) <=
+3` and `D(8, 1/2) <= 3 = log2(8)`. Random half-density sets reach 4 in
+six of ten draws at n=7 and in five of five at n=8. The algebraic set
+`{x : Tr(1/x) = 1}` in GF(2**n) reaches 2, 3, 3, 4 and 4 at n=5..9, no
+better than random. So at n=7 and 8 the extremal sets sit a dimension
+below random, the side that would make `Omega(2**n/n)` the truth. These
+sizes cannot separate `log n` from `log n + log log n`, and the SAT sets
+(degree 6 and 7, no translation symmetry) suggest no family.
