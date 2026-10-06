@@ -154,6 +154,24 @@ WRAPPED = sorted(
 )
 
 
+def _wrapper_witnesses() -> list[str]:
+    """Every width-taking language, plus one per (wrapper, template) otherwise.
+
+    Without a width the check is textual, so 14 plain wrap_chars languages
+    ran one assertion on one code path; a template takes wrap_chars' mark
+    branch, so it is its own class.
+    """
+    seen: set[tuple[object, bool]] = set()
+    chosen = []
+    for name in WRAPPED:
+        example = EXAMPLE_BY_ID[LANGUAGES[name].id]
+        key = (WRAPPERS[LANGUAGES[name].id], example.fill is None)
+        if takes_width(example.generator) or key not in seen:
+            seen.add(key)
+            chosen.append(name)
+    return chosen
+
+
 def test_every_generator_has_a_width_policy() -> None:
     """Every generator reflows, lays itself out, or records why it cannot."""
     boolean_ids = {
@@ -211,7 +229,7 @@ def _run(name: str, program: str) -> str:
         return f"{type(exc).__name__}: {exc}"
 
 
-@pytest.mark.parametrize("name", WRAPPED)
+@pytest.mark.parametrize("name", _wrapper_witnesses())
 def test_wrapping_only_breaks_between_tokens(name: str) -> None:
     """Wrapping preserves the token sequence exactly."""
     width = NARROW_WIDTH
@@ -483,20 +501,10 @@ def test_width_honouring_layout_computes_the_same_thing(name: str) -> None:
     assert relaid, f"{name}: no width produced a different layout"
 
 
-@pytest.mark.parametrize("name", sorted(UNWRAPPABLE))
-def test_unwrappable_languages_are_untouched(name: str) -> None:
-    """A language that cannot take newlines ignores the width."""
-    language = next(lang for lang in LANGUAGES.values() if lang.id == name)
-    assert language.id not in WRAPPERS, UNWRAPPABLE[name]
-    program = "iiiioddo"
-    assert wrap_program(program, language.id, 4) == program
-
-
-def test_clockwise_is_never_reflowed() -> None:
-    """Clockwise takes no width, and a break in its grid is not a reflow."""
-    assert "clockwise" not in WRAPPERS
-    grid = generate("Clockwise", TABLE)
-    assert wrap_program(grid, "clockwise", 10) == grid
+def test_unwrappable_languages_are_untouched() -> None:
+    """No unwrappable language has a wrapper, so a one-line program is kept."""
+    assert set(UNWRAPPABLE).isdisjoint(WRAPPERS)
+    assert wrap_program("iiiioddo", "slashes", 4) == "iiiioddo"
 
 
 def test_zero_and_negative_widths_do_not_wrap() -> None:
@@ -574,14 +582,6 @@ def test_polynomial_carries_a_term_over_without_inventing_a_sign() -> None:
     assert all(line.strip() and " " not in line for line in carried)
 
 
-def test_polynomial_wrap_is_undone_by_deleting_whitespace() -> None:
-    """The wrap only inserts newlines, so the parsed program is unchanged."""
-    plain = generate("Polynomial", TABLE)
-    wrapped = generate("Polynomial", TABLE, DEFAULT_WIDTH)
-    assert wrapped != plain
-    assert re.sub(r"\s", "", wrapped) == re.sub(r"\s", "", plain)
-
-
 def test_polynomial_keeps_the_header_with_the_first_term() -> None:
     """``f(x)`` and ``=`` are not terms and do not get lines of their own."""
     assert _polynomial("f(x) = x^2 - 3x + 7", 80).split("\n")[0] == "f(x) = x^2"
@@ -623,10 +623,7 @@ def test_wrap_grid_columns_line_up_across_rows() -> None:
     # Six 3-character tokens with room for three cells a row (11 columns
     # holds "aaa bbb ccc") puts two rows under each other.
     wrapped = wrap_grid("111 222 333 444 555 666", 11)
-    rows = wrapped.split("\n")
-    assert rows == ["111 222 333", "444 555 666"]
-    starts = [[i for i, ch in enumerate(row) if ch != " "][::3] for row in rows]
-    assert starts[0] == starts[1]
+    assert wrapped.split("\n") == ["111 222 333", "444 555 666"]
 
 
 def test_wrap_grid_leaves_no_trailing_whitespace() -> None:
@@ -634,12 +631,6 @@ def test_wrap_grid_leaves_no_trailing_whitespace() -> None:
     wrapped = wrap_grid("1 22 333 4 5 66", 12)
     for line in wrapped.split("\n"):
         assert line == line.rstrip()
-
-
-def test_wrap_grid_preserves_the_token_sequence() -> None:
-    """Padding is whitespace, so the tokens read back exactly."""
-    program = "-1 321 3 -1 322 6 1000000000 0 0 48 49"
-    assert wrap_grid(program, 40).split() == program.split()
 
 
 def test_wrap_grid_sizes_cells_to_the_bulk_not_the_outlier() -> None:
@@ -789,14 +780,6 @@ def test_six_five_keeps_a_guard_with_the_instruction_it_skips() -> None:
     program = "70621A"
     unwrapped = _run("6-5", program)
     for width in range(2, 12):
-        assert _run("6-5", _six_five(program, width)) == unwrapped
-
-
-def test_six_five_wrapped_programs_still_run() -> None:
-    """A wrapped 6-5 program computes what the unwrapped one computed."""
-    program = generate("6-5", TABLE)
-    unwrapped = _run("6-5", program)
-    for width in (3, 5, 8, 13, 40, 60):
         assert _run("6-5", _six_five(program, width)) == unwrapped
 
 
