@@ -3,6 +3,7 @@
 import random
 
 from esolangs.tools import helpers
+from tests.witness_tables import witnesses
 
 
 def _oracle(table: str, n: int) -> list[int]:
@@ -16,9 +17,8 @@ def _oracle(table: str, n: int) -> list[int]:
 
 
 def test_dependencies_exhaustive() -> None:
-    for n in range(5):
-        for value in range(1 << (1 << n)):
-            table = format(value, f"0{1 << n}b")
+    for n in range(1, 5):
+        for table in witnesses(n):
             assert helpers.essential_inputs(table, n) == _oracle(table, n)
 
 

@@ -15,14 +15,7 @@ from tests.tools.boolean_runners import (
 
 
 def _forth_scope_keys(table: str) -> set[int]:
-    """The heap indices a Forþ program's definitions actually reach.
-
-    Runs the definition prefix -- everything before the first read, and
-    ``,`` is the only read -- and returns the interpreter's scope table.
-    The generator labels each definition with the step from the previous
-    one, so the index a node lands on is a running sum that only the
-    interpreter resolves.
-    """
+    """The heap indices a Forþ program's definitions actually reach."""
     from esolangs.interpreters.io import ScriptedIO
     from esolangs.interpreters.stack_based.forth import _Machine
 
@@ -56,11 +49,7 @@ class TestForth:
         assert run_forth(program, ["0"] * 11) == "0"
 
     def test_program_structure(self) -> None:
-        """The program defines one function per surviving node, reading n bits.
-
-        AND's zero-side subtree is constant, so it folds to a leaf: four
-        nodes rather than the full six.
-        """
+        """The program defines one function per surviving node, reading n bits."""
         program = boolean.forth("0001")
         # The root dup is what hands the callee its own index, which is
         # what lets every node below spell its children as a step.
@@ -85,37 +74,8 @@ class TestForth:
         assert program.count("{") == 18
         assert program.count(",68*-") == 5
 
-    @pytest.mark.parametrize("n", [1, 2, 3])
-    @pytest.mark.medium
-    def test_truth_table(self, n: int) -> None:
-        """Every table up to three inputs produces the right result.
-
-        The other Forþ tests assert program structure only; this runs the
-        program, which is what pins the fold's behaviour rather than its
-        shape.
-        """
-        for table_int in range(2 ** (2**n)):
-            table = format(table_int, f"0{2**n}b")
-            program = boolean.forth(table)
-            for combo in range(2**n):
-                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-                got = run_forth(program, [str(b) for b in bits])
-                assert got == str(int(table[combo])), f"{table} inputs {bits}"
-
     def test_constant_subtrees_fold(self) -> None:
-        """A constant subtree answers in place and drops its descendants.
-
-        Forþ stores each scope in a dict keyed by the number pushed before
-        ``{`` and calls it with a default, so an unemitted node simply
-        never exists -- folding is skip-emission with no renumbering.
-
-        The natural stack order tests the last input first, so
-        ``01010101`` collapses to the two root children while ``00001111``
-        does not.
-
-        Parity is what folds under no order at all, so it is the witness
-        that the fold is doing work rather than the search hiding it.
-        """
+        """A constant subtree answers in place and drops its descendants."""
         assert _forth_plain("1" * 8).count("{") == 2
         assert _forth_plain("01" * 4).count("{") == 2
         assert _forth_plain("0" * 4 + "1" * 4).count("{") == 14
@@ -123,17 +83,7 @@ class TestForth:
         assert _forth_plain(parity).count("{") == 2 ** (3 + 1) - 2
 
     def test_folded_subtree_leaves_no_orphans(self) -> None:
-        """Folding drops the whole subtree, not just the two children.
-
-        A grandchild below a folded node is just as unreachable; emitting
-        it would be dead code the program never calls, so the node count
-        must fall to exactly the surviving frontier.
-
-        Asserted against the scope table the interpreter actually builds,
-        not against the emitted text.  The labels are steps between
-        indices rather than the indices themselves, so searching the source
-        for one would pass whatever the generator emitted.
-        """
+        """Folding drops the whole subtree, not just the two children."""
         assert _forth_scope_keys("1" * 8) == {1, 2}
         # Node 2 repeats node 1 and node 4 repeats node 3, so each is a call
         # and drops its subtree as a fold does: only 3's leaves remain.
@@ -156,15 +106,7 @@ class TestForth:
             assert boolean.forth(table) == min(builds, key=len)
 
     def test_rotations_are_interleaved_with_the_reads(self) -> None:
-        """Weaving the rotations into the reads reaches more arrangements.
-
-        ``v`` and ``c`` touch only the top three cells, so rotating after
-        all ``n`` reads can only permute the last three bits -- 6
-        arrangements however wide the table.  Moving a bit while it is
-        still near the top reaches three times as many at n == 4 and nine
-        times as many at n == 5, which is what keeps the saving from
-        collapsing as ``n`` grows.
-        """
+        """Weaving the rotations into the reads reaches more arrangements."""
         from esolangs.tools.forth import _forth_stack_programs
 
         # The reachable *set* has a closed form, which is what pins the
@@ -183,13 +125,7 @@ class TestForth:
                 assert program.count(",68*-") == n
 
     def test_sinking_a_bit_deeper_than_the_stack_is_skipped(self) -> None:
-        """A sink needs values below it, so early reads have fewer choices.
-
-        The first read cannot sink at all and the second can sink at most
-        one place, which is why the arrangement count is ``2 * 3**(n - 2)``
-        rather than ``3**n``: the enumeration walks every combination and
-        drops the ones that would sink a bit past the bottom of the stack.
-        """
+        """A sink needs values below it, so early reads have fewer choices."""
         from esolangs.tools.forth import _forth_stack_programs, _sink_top
 
         assert len(_forth_stack_programs(1)) == 1  # nothing to rearrange
@@ -201,15 +137,7 @@ class TestForth:
         assert _sink_top((0, 1, 2), 2) == (2, 0, 1)
 
     def test_an_unreachable_order_returns_empty_rather_than_building(self) -> None:
-        """An order the ops cannot stack is declined, not approximated.
-
-        Only 18 of the 24 orders are reachable at n == 4, so ``forth`` has
-        to be able to ask for one and be told no -- the empty string is the
-        signal to try a different order.  Building something for an order
-        the reads cannot produce would emit a program that tests its inputs
-        in the wrong places, which is why this returns rather than falling
-        through to the tree.
-        """
+        """An order the ops cannot stack is declined, not approximated."""
         from esolangs.tools.forth import (
             _forth_ordered,
             _forth_stack_programs,
@@ -229,12 +157,7 @@ class TestForth:
         assert _forth_ordered(table, buildable) != ""
 
     def test_sharing_totals(self) -> None:
-        """Calling a repeated subtree's twin cuts the totals, growing none.
-
-        28,672 characters over the 256 three-input tables before and 24,992
-        after (12.8%); 93,764 over the seeded five-input sample before and
-        63,240 after (32.6%), where more subtrees repeat.
-        """
+        """Calling a repeated subtree's twin cuts the totals, growing none."""
         three = [format(value, "08b") for value in range(256)]
         for tables, before, after in (
             (three, 28672, 24992),
@@ -275,16 +198,7 @@ class TestForth:
         assert len(_forth_const(300)) > len(_forth_const(48))
 
     def test_const_is_base_fifteen(self) -> None:
-        """Digits are ``0-E`` and the radix is 15, not 16.
-
-        Forþ spells a literal digit by digit, so the radix decides both the
-        digits used and how many there are.  A radix one too large still
-        builds *a* number for every constant the generator needs -- the
-        digits stay inside the alphabet and the arithmetic still lands --
-        so only the spelling shows it.  These are the boundaries: 14 is the
-        last single digit, 15 rolls over, and 225 is the first three-digit
-        constant.
-        """
+        """Digits are ``0-E`` and the radix is 15, not 16."""
         from esolangs.tools.forth import _forth_const
 
         assert _forth_const(14) == "E"

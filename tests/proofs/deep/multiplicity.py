@@ -1,41 +1,4 @@
-"""Machine checks backing the confluent slack certificate (Polynomial mass).
-
-Run:  just proofs   (or python tests/proofs/deep/multiplicity.py)
-
-``docs/proofs/polynomial.md`` proves "each leading zero buys one root" for an
-exponential sum on *distinct* nodes.  The language bound is
-``Omega(T**2 / log T)``: the routing lemma ``N* <= 4 + 8 * m_routing`` forces
-``m_routing = Omega(T/log T)``, the block-incidence bound ``m_routing <= 3 *
-L_real`` gives ``L_real = Omega(T/log T)`` distinct root values, and the
-distinct-root theorem prices them.  ``N*`` counts first-essential residuals,
-those that depend on their next input and not on it alone; only the last two
-reads before a routing position can carry one, whatever the read count.
-``_check_essential_reads`` runs that on variable-read programs, where the
-count over all cursors fails.
-Equal real roots form contiguous blocks.
-Contracting those blocks turns the
-noncrossing bracket matching into an outerplanar incidence graph; one opener
-routes per block and one closer per incidence.  ``_check_routing_bound`` pins
-the executed facts, including the counterexample that makes the incidence --
-not merely ``(value, condition)`` -- necessary.
-
-The confluent analogue is::
-
-    u_d = sum_i P_i(d) y_i^d,   deg P_i < e_i,   u_0 = 1,
-    u_z = 0 for z in Z,   |Z| = c - 1,   c = sum e_i,
-
-and the claim is the *same* tail bound with the product read over the expanded
-multiset (each ``y_i`` repeated ``e_i`` times).  This module does not prove the
-limit step -- that is the Hermite interpolation argument in
-``coefficient-mass-attainment.tex`` in bangyen/coefficient-mass (tag v1),
-Proposition 2.1 -- it pins the algebraic
-content: the base case is exact, the general bound holds on every certificate
-here, the slack assembly's threshold really is the product over the top units,
-and the repeated-root mass floor holds on the products and multiples checked.
-The language bound follows from the distinct-root theorem, the routing lemma,
-and the block-incidence lemma; the confluent certificate is not on the
-critical path to it.
-"""
+"""Machine checks backing the confluent slack certificate (Polynomial mass)."""
 
 from __future__ import annotations
 
@@ -84,12 +47,7 @@ def _u(nodes, coeffs, d: int) -> Fraction:
 
 
 def _A(k: int, y: Fraction) -> Fraction:
-    """``sum_{d>=0} d^k y^d``, exactly, for every ``k``.
-
-    Recurrence ``S_k = y (d/dy) S_{k-1}`` kept as
-    ``S_k = N_k(y) / (1 - y)**(k + 1)``.  A closed form stopping at ``k == 3``
-    would silently use the ``k == 3`` branch for a multiplicity above three.
-    """
+    """``sum_{d>=0} d^k y^d``, exactly, for every ``k``."""
     numerator = [Fraction(1)]
     for j in range(1, k + 1):
         derivative = [i * c for i, c in enumerate(numerator)][1:]
@@ -238,14 +196,7 @@ def _check_assembly(failures: list[str]) -> int:
 
 
 def _check_mass(failures: list[str]) -> int:
-    """Spot-check that repeated-root products have quadratic mass.
-
-    ``mass(F) >= m*m/8`` for a monic multiple of ``prod (x - r_i)**e_i`` is a
-    loose diagnostic, not the language bound; the cases use ``m >= 16`` so the
-    floor is above the Descartes ``m + 1`` term and the assertion is not
-    automatic.  A multiple with a small cofactor is checked as well as the
-    product itself.
-    """
+    """Spot-check that repeated-root products have quadratic mass."""
     count = 0
     for roots in ([(2, 16)], [(2, 24)], [(2, 8), (3, 8), (5, 8)]):
         product = [1]
@@ -268,13 +219,7 @@ def _check_mass(failures: list[str]) -> int:
 
 
 def _check_loops(failures: list[str]) -> int:
-    """Pin the loop case covered by the block-incidence argument.
-
-    ``_advance`` jumps a closing bracket back to its opener when the opener's
-    code exceeds 4, so codes 5..8 are loops;
-    ``convert`` maps a real root ``p**v`` to code ``v`` for ``v`` in 1..8, so a
-    real root can be a loop bracket and one real value can serve many reads.
-    """
+    """Pin the loop case covered by the block-incidence argument."""
     from esolangs.interpreters.register_based.polynomial import (
         _advance,
         _bracket_pairs,
@@ -314,24 +259,7 @@ def _check_loops(failures: list[str]) -> int:
 
 
 def _check_routing(failures: list[str]) -> int:
-    """Pin the executed facts behind the routing lemma.
-
-    ``docs/proofs/polynomial.md`` proves ``N'(k+1) <= 2 + 4 * m_routing`` for
-    programs that consume their input: the routing-free continuation from the
-    last routing position is deterministic and has a fixed read count to halt,
-    so the cursor at the ``k``th read is fixed.  The block-incidence bound
-    replaces ``m_routing`` by ``3 * L_real``, giving the language bound.  This
-    check pins the per-instruction facts the lemma rests on:
-
-    * every real instruction has at most two successors, fixed by its bracket
-      and independent of the register;
-    * two same-value positions in one block (a repeated root ``(x - p**v)**r``
-      emits ``r`` copies) see one register per visit and collapse to at most
-      two traces, so multiplicity adds no routing power -- it only helps the
-      mass bound;
-    * on the shipped generator ``N' <= 2 * L_real`` with margin, a positive
-      control that the bound is not vacuous.
-    """
+    """Pin the executed facts behind the routing lemma."""
     from esolangs.interpreters.register_based.polynomial import _advance, _bracket_pairs
     from esolangs.tools.polynomial import polynomial
 
@@ -457,27 +385,7 @@ def _check_routing(failures: list[str]) -> int:
 
 
 def _check_routing_bound(failures: list[str]) -> int:
-    """Pin the facts around the sharpened routing bound.
-
-    The routing lemma gives ``N' <= 2 + 4 * m_routing``, and the block
-    structure gives ``m_routing <= 3 * L_real``, hence ``N' <= 12 * L_real +
-    2``.  A proposed shorter route -- ``m_routing <= 3 * L_real`` via "at most
-    one routing position per (value, condition)" -- is **false**: this check
-    runs the refuting table and confirms two routing closers share one value
-    and one condition.  What holds and is pinned here:
-
-    * a back-edge's target is ``opener + 1``; if that is itself a closer, a
-      condition-true jump self-loops, so a halting program never routes such a
-      closer (positive control: a self-looped closer spins);
-    * loop openers have code only in ``5, 7, 8`` (code ``6`` indexes the
-      absent ``_COND`` slot and would raise), so a value carries at most three
-      conditions;
-    * exact equal roots are contiguous, so their blocks and the noncrossing
-      bracket incidences give ``m_routing <= L_real + (2L_real - 3)``;
-    * the witness refutes the smaller per-(value, condition) charge, while
-      every routing opener block and opener-block/closer-block incidence is
-      charged only once.
-    """
+    """Pin the facts around the sharpened routing bound."""
     from esolangs.interpreters.io import ScriptedIO
     from esolangs.interpreters.register_based.polynomial import (
         _COND,
@@ -682,13 +590,7 @@ def _check_routing_bound(failures: list[str]) -> int:
 
 
 def _residual_cursors(instrs: list[list[int]], n: int):
-    """Return ``(m_routing, all, essential)`` cursor counts per read level.
-
-    ``None`` when some input faults, runs past the step budget, or leaves a
-    bracket unmatched: such a list computes no table.  A read past the input
-    stores -1, as the interpreter does.  ``essential[k]`` counts the cursors
-    of ``k``th reads whose residual is first-essential.
-    """
+    """Return ``(m_routing, all, essential)`` cursor counts per read level."""
     import itertools
 
     from esolangs.interpreters.register_based.polynomial import _advance, _bracket_pairs
@@ -738,15 +640,7 @@ def _residual_cursors(instrs: list[list[int]], n: int):
 
 
 def _check_essential_reads(failures: list[str]) -> int:
-    """Pin the essential-read lemma on variable-read programs.
-
-    ``polynomial.tex`` Lemma 2.2: a ``k``th read (``k <= n-2``) carrying a
-    first-essential residual is one of the last two reads before the next
-    routing position, so ``D*_k <= 2 + 4 * m_routing`` whatever the read count.
-    The counterexample and a seeded slice of its mutants read a variable
-    number of bits; some mutants break the all-cursor ``D_k <= 1 + 2 *
-    m_routing``, and none may break the essential bound.
-    """
+    """Pin the essential-read lemma on variable-read programs."""
     import random
 
     base = [[5, 1], [5], [0, 2], [48, 2], [2], [0, 2], [0, 2], [0, 2], [0, 2]]

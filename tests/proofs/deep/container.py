@@ -1,27 +1,4 @@
-"""Machine checks backing the Container wide-table proof.
-
-Run:  just proofs   (or python tests/proofs/deep/container.py)
-
-The ledger row is `finite lookup`, qualified "the table is the prefix sum of
-its own steps, summed against a one-tick row counter".  That sentence is a
-lemma, and this mechanizes it.
-
-The split is the one the A Painter Ant checks use.  L1 and L2 are
-*arithmetic* -- where a row lands in the prefix sum, and what the input
-weights sum to -- so they reduce to closed forms checkable at every arity
-rather than sampled.  L3 counts the pieces to check they compose.  L4 then
-**executes** every row, which is possible at all only because the route halts
-in ``2n + 2`` ticks: its predecessor packed the table into one decimal
-literal and subtracted ten per tick, so its tick count scaled with the
-literal's *magnitude* (measured 2.2e6 ticks at ``n == 3``, hence ~1e126 at
-``n == 7``) and no arity it shipped at could be run.
-
-Programs are built through :func:`_container_threshold` rather than
-:func:`container`: the shipped entry point dispatches to the tree route at
-``n <= 6``, and this is a proof about the wide route.  Calling the entry
-point would silently check the wrong construction at exactly the small
-arities that are cheap enough to enumerate.
-"""
+"""Machine checks backing the Container wide-table proof."""
 
 from __future__ import annotations
 
@@ -49,13 +26,7 @@ _WEIGHT = re.compile(r"\+(\d+) (\w+)>=(\w+)")
 
 
 def parse(program: str) -> tuple[int, list[int], list[tuple[int, int]]]:
-    """Return ``(base, weights, steps)`` read out of the *emitted* program.
-
-    Reading the emitted text rather than recomputing the generator's rule is
-    the point: a program whose lines disagreed with the rule would otherwise
-    leave every lemma below green while computing the wrong function.
-    ``weights`` is in input order, ``steps`` is ``(row, delta)``.
-    """
+    """Return ``(base, weights, steps)`` read out of the *emitted* program."""
     lines = program.splitlines()
     out_at = next(i for i, line in enumerate(lines) if line.startswith("OUT="))
     print_at = lines.index("PRINT:")
@@ -92,15 +63,7 @@ def tables(n: int, count: int, seed: int) -> list[str]:
 
 
 def check_l1(max_n: int = 12, per_arity: int = 40) -> list[str]:
-    """L1: the prefix sum of the emitted steps is the table, at every row.
-
-    ``OUT`` starts at the base and every ``+-1 C>=r`` line adds its delta
-    exactly when the counter reaches ``r``, so what the program prints for
-    counter value ``v`` is ``base + sum(d for r, d in steps if v >= r)``.
-    That telescopes to the table, which is why the cost is one line per
-    *step* rather than one per row -- and why the printed byte can never
-    leave ``{48, 49}`` and meet the interpreter's clamp at zero.
-    """
+    """L1: the prefix sum of the emitted steps is the table, at every row."""
     lines = []
     for n in range(1, max_n + 1):
         checked = 0
@@ -130,15 +93,7 @@ def check_l1(max_n: int = 12, per_arity: int = 40) -> list[str]:
 
 
 def check_l2(max_n: int = 12) -> list[str]:
-    """L2: the emitted weights are a place-value system, in either order.
-
-    The generator emits one ``+w latch>=gate`` line per input and picks
-    between weight ``2**(n-1-k)`` (the table index itself) and ``2**k`` (its
-    bit-reversal), whichever spells fewer steps.  Either way the map from
-    input vector to counter value must be a *bijection* onto ``0..2**n-1``,
-    or two table rows would share a counter value and one of them would be
-    wrong.  Both orders are checked at every row.
-    """
+    """L2: the emitted weights are a place-value system, in either order."""
     lines = []
     for n in range(1, max_n + 1):
         seen = set()
@@ -155,13 +110,7 @@ def check_l2(max_n: int = 12) -> list[str]:
 
 
 def check_l3(max_n: int = 12) -> list[str]:
-    """L3: the scaling families have the shape L1 and L2 assume.
-
-    One window block, one latch and one weight line per input; the gate dips
-    for tick ``2n`` alone, which is the single tick in which every latch adds
-    its weight; and the read pulse is cancelled at ``2n`` so there is no
-    ``n+1``th read.  Nothing else scales with ``n`` but the step lines.
-    """
+    """L3: the scaling families have the shape L1 and L2 assume."""
     lines = []
     for n in range(1, max_n + 1):
         table = tables(n, 6, seed=4 + n)[-1]
@@ -185,13 +134,7 @@ def check_l3(max_n: int = 12) -> list[str]:
 
 
 def check_l4(arities: tuple[int, ...] = (7, 8, 9)) -> list[str]:
-    """L4: every row of a dense wide table runs, under a hard tick budget.
-
-    The lemma the packed predecessor could not have.  Each run is capped at
-    ``2n + 2`` ticks, so a construction that merely *converges* fails here
-    instead of hanging the band; L1 through L3 are arithmetic about emitted
-    text and cannot see a tick count at all.
-    """
+    """L4: every row of a dense wide table runs, under a hard tick budget."""
     lines = []
     for n in arities:
         budget = 2 * n + 2

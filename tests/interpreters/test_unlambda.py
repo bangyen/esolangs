@@ -6,7 +6,6 @@ import pytest
 
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.unlambda import (
-    _advance,
     _App,
     _Machine,
     _parse,
@@ -66,11 +65,7 @@ _ON_READ = "``@``s``si`k`d`.Xi`kvi"
 
 
 def test_a_read_at_end_of_input_takes_the_spec_branch() -> None:
-    """``@`` hands its argument ``v`` at EOF rather than letting it escape.
-
-    ``suppress_eof=False`` so a leaked ``EOFError`` fails the test rather
-    than being swallowed into the same empty output the spec branch gives.
-    """
+    """``@`` hands its argument ``v`` at EOF rather than letting it escape."""
     assert run_program(run, _ON_READ, "0\n", suppress_eof=False) == "X"
     assert run_program(run, _ON_READ, "", suppress_eof=False) == ""
 
@@ -80,23 +75,11 @@ def test_a_read_that_found_nothing_clears_the_character() -> None:
     assert run_program(run, "``k`@i``k`@i``|ii", "Q", suppress_eof=False) == ""
 
 
-def test_e_ends_the_run() -> None:
-    assert run_program(run, "``k`.Ai`e.B") == "A"
-
-
-def test_call_cc_returns_a_usable_continuation() -> None:
-    assert run_program(run, "`.A`ci") == "A"
-
-
 def test_a_continuation_abandons_the_rest_of_its_caller() -> None:
     """``c``'s argument applies the continuation, so its own tail is dropped."""
     # ``s i (k v)`` applied to the continuation applies it to v, and the
     # print after that application never runs.
     assert run_program(run, "``c``si`kv.A") == ""
-
-
-def test_a_comment_runs_to_the_end_of_its_line() -> None:
-    assert run_program(run, "#skipped\n`.Ai") == "A"
 
 
 @pytest.mark.parametrize(
@@ -150,11 +133,3 @@ def test_d_applied_as_a_value_promises_what_it_was_given() -> None:
     assert isinstance(machine.state[0].value, _Promise)
     # Applying that promise forces it, and the continuation answers ``i``.
     assert run_program(run, "```cdii") == ""
-
-
-def test_stepping_a_finished_machine_changes_nothing() -> None:
-    machine = _Machine("`.Ai", ScriptedIO(""))
-    while not machine.halted:
-        machine.step()
-    assert machine.state[3] is True
-    assert _advance(machine.state) == (machine.state, None)

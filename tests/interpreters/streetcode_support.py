@@ -1,8 +1,4 @@
-"""What the Streetcode suites share: drawing a street, and driving one.
-
-``machine_unvalidated`` is the one that skips ``_validate``, so a test can
-build skeletal geometry that is not a legal street.
-"""
+"""What the Streetcode suites share: drawing a street, and driving one."""
 
 from unittest.mock import patch
 
@@ -15,30 +11,13 @@ from tests.interpreters.runner import run_program
 
 
 def machine_unvalidated(code: list[str]) -> _Machine:
-    """Build a ``_Machine`` from a wall-shape fixture, skipping validation.
-
-    The junction and lane-merge tests probe ``_junction_kind`` and the merge
-    latches directly, on deliberately skeletal geometry -- bare wall arms and
-    gaps, with assertions keyed to exact coordinates.  Such a fixture is not a
-    legal street and is not meant to be one, so it is constructed with
-    ``_validate`` disabled rather than redrawn, which would change what the
-    test measures.  Whole-program tests use the real constructor.
-    """
+    """Build a ``_Machine`` from a wall-shape fixture, skipping validation."""
     with patch.object(_Machine, "_validate", lambda *_: None):
         return _Machine(code, IO())
 
 
 def street(instructions: str) -> list[str]:
-    """Box a one-line program into a street, the way the wiki draws one.
-
-    The spec's streets are two characters wide, so a bare instruction row
-    is not a street: the instructions become the southern lane (the wall
-    below them on the car's right is what sends it East) with a blank
-    oncoming lane above, inside a wall.  This is exactly the shape of the
-    wiki's own "simple example", ``+----+`` / ``|    |`` / ``|CIO;|`` /
-    ``+----+``, and it lets these tests pin instruction semantics on
-    conformant geometry rather than on a one-wide corridor.
-    """
+    """Box a one-line program into a street, the way the wiki draws one."""
     wall = "+" + "-" * len(instructions) + "+"
     return [wall, "|" + " " * len(instructions) + "|", f"|{instructions}|", wall]
 

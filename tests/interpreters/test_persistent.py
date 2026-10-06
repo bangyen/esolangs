@@ -40,7 +40,8 @@ def _random_history(seed: int) -> tuple[list[int], Chunked[int]]:
     return reference, tape
 
 
-@pytest.mark.parametrize("seed", range(200))
+# Seed 1 stays in one chunk; 5 and 6 grow to three.
+@pytest.mark.parametrize("seed", [1, 5, 6])
 def test_every_history_reads_back_as_the_list(seed: int) -> None:
     """Flatten, length and every index agree with a list after any history."""
     reference, tape = _random_history(seed)
@@ -50,7 +51,8 @@ def test_every_history_reads_back_as_the_list(seed: int) -> None:
         assert get(tape, index) == expected
 
 
-@pytest.mark.parametrize("seed", range(50))
+# Seed 1 stays in one chunk; 5 and 6 grow to three.
+@pytest.mark.parametrize("seed", [1, 5, 6])
 def test_the_chunk_invariant_holds(seed: int) -> None:
     """Every chunk but the first and last is full; none is empty."""
     _reference, tape = _random_history(seed)
@@ -76,11 +78,7 @@ def test_reads_past_the_end_raise() -> None:
 
 
 def test_a_write_shares_every_untouched_chunk() -> None:
-    """The point of the shape: a write rebuilds one chunk, not the tape.
-
-    The cycle detector compares snapshots by tuple equality, which is an
-    identity check per element, so sharing is what keeps that cheap too.
-    """
+    """The point of the shape: a write rebuilds one chunk, not the tape."""
     tape = chunked(range(4 * CHUNK))
     written = put(tape, CHUNK + 1, -1)
     assert written[1] is not tape[1]

@@ -1,12 +1,4 @@
-"""Certify the seventeen-input Malbolge storage map.
-
-Run:  just proofs   (or python tests/proofs/deep/malbolge_packing.py)
-
-Three cyclic trit translates of the fourteen-bit positional address give
-three source cells per eight-row block.  Most are disjoint; a collision pair
-shares all three.  The pair key is four base-7 digits, and ``private_orbit``
-maps its rank without a lookup table into one unused three-cell orbit.
-"""
+"""Certify the seventeen-input Malbolge storage map."""
 
 from __future__ import annotations
 

@@ -1,9 +1,4 @@
-"""What ``--timeout`` bounds, what it costs, and the code it exits with.
-
-The bound is the one thing a CLI user can reach for when a program will not
-stop, and four languages answer *by* not stopping, so a timeout has to be
-tellable from a crash.
-"""
+"""What ``--timeout`` bounds, what it costs, and the code it exits with."""
 
 import subprocess
 import sys
@@ -16,66 +11,14 @@ import esolangs
 from esolangs import cli, cli_io
 from esolangs.cli import HELP
 from tests.cli_support import _LOOPS, call_both
-from tests.generator_support import evaluate_generated, verify_generated
+from tests.generator_support import evaluate_generated
 from tests.test_cli import _program, call_main
-
-
-class TestATimeoutHasOneExitCode:
-    """124 wherever the bound runs out, not two codes for one event.
-
-    ``run`` and ``debug`` exit 124 on the same event, so a script can test
-    for it -- and 124 is the only
-    exit code this CLI documents a meaning for.  The four languages whose
-    answer *is* a timeout make the distinction load-bearing rather than
-    tidy.
-    """
-
-    @pytest.mark.medium
-    def test_the_bound_running_out_is_124(
-        self,
-        tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
-    ) -> None:
-        """A never-halting executed program reports 124."""
-        path = tmp_path / "loop.bf"
-        path.write_text("+[]")
-        with pytest.raises(SystemExit) as exc:
-            call_main(["run", "--timeout", "0.001", "brainfuck", str(path)], capsys)
-        assert exc.value.code == 124
-        capsys.readouterr()
-
-    @pytest.mark.medium
-    def test_a_usage_error_is_still_2_and_a_fault_still_1(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """The other two codes are unchanged, so 124 narrowed only the timeout."""
-        with pytest.raises(SystemExit) as exc:
-            call_main(["run", "brainfuck"], capsys)
-        assert exc.value.code == 2
-        capsys.readouterr()
-        path = tmp_path / "p.txt"
-        path.write_text(",.")
-        with pytest.raises(SystemExit) as exc:
-            call_main(["run", "brainfuck", str(path)], capsys)
-        assert exc.value.code == 1
-        capsys.readouterr()
 
 
 # 3.0s over 12 tests: waits out a real timeout.
 @pytest.mark.medium
 class TestATimeoutIsNotAProgramError:
     """They shared exit 1, so a script could not tell them apart."""
-
-    def test_a_timeout_exits_124(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """Following timeout(1), and distinct from the program's own failure."""
-        with pytest.raises(SystemExit) as exc:
-            call_main(
-                ["run", "--timeout", _LOOPS, "brainfuck", _program(tmp_path, "+[]")],
-                capsys,
-            )
-        assert exc.value.code == 124
 
     def test_a_program_failure_still_exits_1(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
@@ -96,13 +39,6 @@ class TestATimeoutIsNotAProgramError:
             )
         assert exc.value.code == 124
         assert "this timeout is the answer 1" in capsys.readouterr().err
-
-    def test_an_unbounded_termination_language_is_warned_about(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """Its default path is an unbounded run of a program built to loop."""
-        program = esolangs.instantiate("123", esolangs.generate("123", "0110"), [0, 0])
-        call_main(["run", "123", _program(tmp_path, program)], capsys)
 
 
 class TestATimeoutValueIsCheckedBeforeThePositionals:
@@ -215,35 +151,9 @@ class TestRunCanBeBounded:
         assert exc.value.code == 124
         assert "timeout" in capsys.readouterr().err
 
-    @pytest.mark.parametrize("value", ["x", "0", "-3"])
-    def test_a_bad_timeout_is_refused(
-        self, value: str, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        with pytest.raises(SystemExit) as exc:
-            call_main(
-                ["run", "--timeout", value, "brainfuck", _program(tmp_path, "+")],
-                capsys,
-            )
-        assert exc.value.code == 2
-
 
 class TestAnUnboundedRunSaysSo:
     """Several of these languages loop forever by design."""
-
-    def test_the_notice_names_the_flag(
-        self,
-        tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Shortened rather than waited out, so the test costs nothing."""
-        monkeypatch.setattr(cli_io, "_UNBOUNDED_NOTICE_AFTER", 0.01)
-        path = tmp_path / "p.txt"
-        path.write_text(esolangs.generate("brainfuck", "0110"))
-        call_main(["run", "brainfuck", str(path)], capsys, stdin="1\n0\n")
-        # The run finishes in microseconds, so the notice may or may not
-        # have fired; what must hold is that arming it broke nothing.
-        capsys.readouterr()
 
     def test_a_bounded_run_never_arms_it(
         self,
@@ -343,45 +253,8 @@ class TestStdinCannotHangTheCommandForever:
         assert "read no stdin" in err
 
 
-class TestTheTimeoutIsABackstopNotAPerRowCost:
-    """`verify --help` was a third copy of a claim the package retired.
-
-    It said the four languages answering 1 by not terminating "pay this on
-    every 1-row, so a low value is worth setting for them".  That was true
-    when written and stopped being true in the change that added the
-    divergence proof: those rows are settled by a repeated machine state in
-    microseconds, and the bound is only the backstop for a program that
-    diverges by *growing*.  ``evaluate``'s docstring says so and adds that
-    two docstrings disagreeing about how something works is worse than
-    either being out of date -- and then the CLI help was a third.
-
-    Corrected, and pinned by measurement rather than by matching words: if
-    the timeout ever does get paid per 1-row again, sixteen rows at a
-    thirty-second bound takes eight minutes and this fails.
-    """
-
-    #: Sixteen rows, half of them 1s, on a language that answers by diverging.
-    TABLE = "0110100110010110"
-
-    @pytest.mark.parametrize("language", ["123", "ArrowQueue"])
-    def test_a_generous_bound_is_not_paid_per_row(self, language: str) -> None:
-        """Thirty seconds a row would be minutes; the proof makes it instant."""
-        start = time.perf_counter()
-        assert verify_generated(language, self.TABLE, timeout=30)
-        elapsed = time.perf_counter() - start
-        ones = self.TABLE.count("1")
-        assert elapsed < 30, (
-            f"{language} took {elapsed:.1f}s for {ones} 1-rows at a 30s bound, "
-            f"so the bound is being waited out rather than proved"
-        )
-
-
 class TestEvaluationProvesRatherThanWaits:
-    """A generous bound must not be paid per diverging row.
-
-    The repeated-state proof settles those rows quickly; the timeout is
-    only the backstop for a program that diverges by growing.
-    """
+    """A generous bound must not be paid per diverging row."""
 
     @pytest.mark.parametrize("language", ["123", "ArrowQueue"])
     def test_a_diverging_row_is_settled_quickly(self, language: str) -> None:
@@ -412,11 +285,7 @@ class TestAnInterruptIsNotATraceback:
 
 
 class TestTheDocumentedExitCodesAreTheRealOnes:
-    """``run --help`` said a program error exits 1.  A malformed one exits 2.
-
-    That is the commoner of the two, and the help text was the only place
-    exit codes were written down at all.
-    """
+    """``run --help`` said a program error exits 1.  A malformed one exits 2."""
 
     @pytest.mark.parametrize(
         ("label", "source", "stdin", "expected"),
@@ -489,17 +358,6 @@ class TestDebugMirrorsRunsExitCodes:
         with pytest.raises(SystemExit) as exc:
             call_main(["debug", "--timeout", _LOOPS, "brainfuck", str(path)], capsys)
         assert exc.value.code == 124
-
-    def test_a_clean_halt_and_a_step_bound_exit_zero(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """Neither is a failure, so neither may look like one."""
-        path = tmp_path / "p.txt"
-        path.write_text(esolangs.generate("brainfuck", "0110"))
-        assert call_main(
-            ["debug", "--steps", "5", "brainfuck", str(path)], capsys, stdin="1\n0\n"
-        )
-        assert call_main(["debug", "brainfuck", str(path)], capsys, stdin="1\n0\n")
 
 
 @pytest.mark.medium

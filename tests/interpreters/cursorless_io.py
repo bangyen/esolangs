@@ -4,11 +4,7 @@ from esolangs.interpreters.io import IO
 
 
 class CursorlessIO(IO):
-    """Reads ``text`` once, then EOF; ``position()`` stays 0 and output is dropped.
-
-    An interactive stream reports no cursor, so a snapshot must count reads
-    itself or a loop re-reading the same character looks like a cycle.
-    """
+    """Reads ``text`` once, then EOF; ``position()`` stays 0 and output is dropped."""
 
     def __init__(self, text: str) -> None:
         super().__init__()

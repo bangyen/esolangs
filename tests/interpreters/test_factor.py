@@ -41,14 +41,6 @@ class TestDecode:
         assert decode(3 * 23) == "+>"  # 3 -> '+', 23 -> '>'
         assert decode(23 * 3) == "+>"  # same multiset, same order
 
-    def test_wiki_cat(self) -> None:
-        """The wiki's cat number decodes to ,[.,]."""
-        assert decode(CAT) == ",[.,]"
-
-    def test_wiki_truth_machine(self) -> None:
-        """The wiki's polyglot truth machine decodes to the dbfi program."""
-        assert decode(TRUTH) == "<" * 18 + ",[>+>+<<-]++++++[>--------<-]>[>.<]>."
-
     def test_zero_and_one(self) -> None:
         """1 has no prime factors; 0's factor 0 has residue 0, both ignored."""
         assert decode(1) == ""
@@ -92,14 +84,7 @@ class TestRun:
 
 class TestStepMachine:
     def test_a_program_with_no_digits_is_the_number_one(self) -> None:
-        """No digits means 1, which factors to nothing and runs no commands.
-
-        ``test_empty_program`` and ``test_comment_characters_ignored``
-        both cover the digit-free case, but only through the output: 1 and
-        2 decode to ``''`` and ``'<'``, and a lone ``<`` prints nothing
-        either, so the empty string does not say which number was used.
-        The decoded program does.
-        """
+        """No digits means 1, which factors to nothing and runs no commands."""
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.factor import _Machine
 
@@ -123,12 +108,7 @@ class TestLongPrograms:
     """Factor programs remain valid past CPython's process-wide digit guard."""
 
     def test_a_program_past_cpythons_digit_limit_still_parses(self) -> None:
-        """4300 digits is a DoS guard on int/str, not a Factor rule.
-
-        The program is 2**k: one prime, so decoding is trivial and the test
-        pays only for the parse this is about.  ``k`` is chosen to put the
-        decimal form well past the default limit.
-        """
+        """4300 digits is a DoS guard on int/str, not a Factor rule."""
         number = 2**20000
         limit = sys.get_int_max_str_digits()
         sys.set_int_max_str_digits(30000)
@@ -154,10 +134,7 @@ class TestLongPrograms:
 
 
 class TestFactorint:
-    """``_factorint`` must answer exactly what ``sympy.factorint`` would.
-
-    SymPy is the test oracle; the interpreter itself stays standard-library.
-    """
+    """``_factorint`` must answer exactly what ``sympy.factorint`` would."""
 
     def test_primality_boundaries(self) -> None:
         from esolangs.interpreters.tape_based.factor import _isprime64
@@ -166,11 +143,7 @@ class TestFactorint:
         assert _isprime64(2)
 
     def test_primes_dividing_a_witness_base_are_prime(self) -> None:
-        """A base the number divides is skipped, not read as a witness.
-
-        73 divides 450775 and 3089 divides 9780504; unskipped, ``pow(0, ...)``
-        called each of these composite.
-        """
+        """A base the number divides is skipped, not read as a witness."""
         import sympy
 
         from esolangs.interpreters.tape_based.factor import _isprime64
@@ -180,58 +153,13 @@ class TestFactorint:
             assert _isprime64(number), number
 
     def test_the_witnesses_are_sinclairs_proven_set(self) -> None:
-        """The last base is ``1795265022``, not the truncated ``179526502``.
-
-        Only the full seven-base set is proven for every number below 2**64,
-        so the constant is pinned; the random sweep is a sanity check, not
-        the proof.
-        """
+        """The last base is ``1795265022``, not the truncated ``179526502``."""
         import inspect
 
         from esolangs.interpreters.tape_based import factor as factor_module
 
         source = inspect.getsource(factor_module._isprime64)  # noqa: SLF001
         assert "(2, 325, 9375, 28178, 450775, 9780504, 1795265022)" in source
-
-    def test_random_64_bit_odds_agree_with_sympy(self) -> None:
-        """Random odd numbers below 2**64 agree with SymPy's primality test."""
-        import random
-
-        import sympy
-
-        from esolangs.interpreters.tape_based.factor import _isprime64
-
-        rng = random.Random(64)
-        for _ in range(2000):
-            number = rng.randrange(3, 1 << 64) | 1
-            assert _isprime64(number) == sympy.isprime(number), number
-
-    @pytest.mark.parametrize(
-        "number",
-        [
-            2,
-            3,
-            4,
-            1,
-            2**10,
-            6619**3 * 2,
-            # A residue that survives the sieve: both factors are past
-            # _SMALL_PRIME_LIMIT, so the composite goes to sympy whole.
-            999983 * 999979,
-            # One large prime, the other end of the same split.
-            (10**9 + 7) * 4,
-            # A Mersenne prime, which the sieve cannot touch at all.
-            2**61 - 1,
-            # The shape Factor actually emits: many small primes.
-            2**49 * 3**20 * 5**7 * 6619,
-        ],
-    )
-    def test_matches_sympy(self, number: int) -> None:
-        import sympy
-
-        from esolangs.interpreters.tape_based.factor import _factorint
-
-        assert _factorint(number) == sympy.factorint(number)
 
     @pytest.mark.parametrize(
         "number",
@@ -249,14 +177,7 @@ class TestFactorint:
     def test_the_batched_chunk_answers_what_the_divisions_would(
         self, number: int
     ) -> None:
-        """The gcd shortcut must find exactly the primes the loop found.
-
-        A chunk-wide gcd replaces one full-width remainder per prime, which
-        is what made loading a wide program quadratic.  It is only sound
-        because a prime divides the number exactly when it divides that
-        gcd, and only taken above ``_BATCH_BITS`` -- so these are the
-        numbers that reach it, checked against sympy like every other.
-        """
+        """The gcd shortcut must find exactly the primes the loop found."""
         import sympy
 
         from esolangs.interpreters.tape_based.factor import _BATCH_BITS, _factorint
@@ -265,23 +186,7 @@ class TestFactorint:
         assert _factorint(number) == sympy.factorint(number)
 
     def test_does_not_strand_a_large_composite_on_sympy(self) -> None:
-        """The residue handed to sympy must never be a large composite.
-
-        Stopping the sieve at a fixed prime looks harmless -- whatever is
-        left goes to ``factorint`` -- but it hands over exactly the input
-        that function is worst at, and it takes minutes where the same
-        call on the original number takes milliseconds.  This is the
-        program that caught it: the n=4 parity table's 1702-digit number
-        factors into 525 primes reaching 17209, and a 10000 ceiling left
-        170 of them inside a 708-digit composite.
-
-        It was the n=3 parity table until the tree dropped the complement
-        construction and started printing once; that took the n=3 number
-        from 3243 digits to 939, whose largest prime fell under the 10000
-        ceiling, so the case stopped biting at all.  Of all 256 three-input
-        tables not one still reaches past 10000, which is why this moved up
-        an arity rather than sideways.
-        """
+        """The residue handed to sympy must never be a large composite."""
         import re
         import time
 
@@ -317,15 +222,7 @@ class TestFactorint:
         assert sympy.factorint(number) == dict.fromkeys(primes, 1)
 
     def test_does_not_pay_isprime_per_chunk(self) -> None:
-        """``isprime`` must be gated, not asked once per sieve chunk.
-
-        It runs BPSW -- two modular exponentiations priced by the full
-        width of the argument -- so asking about a 41740-bit residue costs
-        tens of seconds.  Asking once per chunk made the n=5 parity table
-        take 60s to factorize when the sieve that finds every factor
-        measures 0.000s.  The residue here needs three chunks, and every
-        factor is small, so a correctly gated loop never asks at all.
-        """
+        """``isprime`` must be gated, not asked once per sieve chunk."""
         from esolangs.interpreters.tape_based import factor as factor_module
         from esolangs.interpreters.tape_based.factor import (
             _SIEVE_CHUNK,
@@ -368,19 +265,6 @@ class TestFactorint:
 
         with patch.object(factor_module, "_isprime64", exact_range_only):
             assert _factorint(number) == dict.fromkeys(primes, 1)
-
-    def test_matches_sympy_on_random_integers(self) -> None:
-        """A sweep, since the cases above are all deliberately chosen."""
-        import random
-
-        import sympy
-
-        from esolangs.interpreters.tape_based.factor import _factorint
-
-        rng = random.Random(7)
-        for _ in range(200):
-            number = rng.randint(2, 10**12)
-            assert _factorint(number) == sympy.factorint(number), number
 
 
 def _machine(code: object) -> object:

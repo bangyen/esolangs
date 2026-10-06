@@ -5,10 +5,7 @@ from esolangs.tools.minifuck.sim import _Joint, _Sim
 
 class TestJointEmit:
     def test_an_empty_emission_advances_no_row(self) -> None:
-        """The template is still appended, so the program text is unchanged.
-
-        The rows are left where they stood: there is nothing to apply.
-        """
+        """The template is still appended, so the program text is unchanged."""
         joint = _Joint(2, size=32)
         before = [m.key() for m in joint.ms]
         joint.emit("")

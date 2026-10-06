@@ -1,14 +1,4 @@
-"""Tests for mask.py.
-
-Run via: uv run --with pytest pytest test_mask.py
-
-Mask replaced numpy boolean arrays (see the dependency notes in extract.py).
-The row-bitmask representation makes two things easy to get wrong, and both
-are covered here: Python ints are unbounded, so anything involving ``~`` or a
-left shift can leak bits past the canvas width; and the bit-twiddling
-shortcuts (lowest-set-bit walks, block-uniformity collapses) have edge cases
-at empty rows and at the last, possibly partial, block.
-"""
+"""Tests for mask.py."""
 
 from __future__ import annotations
 
@@ -58,11 +48,7 @@ def test_bounds_is_tight_and_inclusive() -> None:
 
 
 def test_invert_does_not_leak_past_the_width() -> None:
-    """Inverting keeps rows inside the canvas rather than going negative.
-
-    A bare ``~`` on a Python int yields a negative value with unboundedly many
-    leading one-bits, which would make ``sum`` and ``bounds`` nonsense.
-    """
+    """Inverting keeps rows inside the canvas rather than going negative."""
     mask = Mask.from_rows(["#..", "..."])
     flipped = ~mask
     assert all(row >= 0 for row in flipped.rows)
@@ -86,12 +72,7 @@ def test_bitwise_ops_reject_a_shape_mismatch() -> None:
 
 
 def test_erode_keeps_only_fully_surrounded_ink() -> None:
-    """Only a pixel whose whole 8-neighborhood is ink survives.
-
-    The centre of a solid 3x3 block survives; a 1px-wide line does not, which
-    is the property find_cursor relies on to pick the arrowhead out of a
-    drawing made of 1px strokes.
-    """
+    """Only a pixel whose whole 8-neighborhood is ink survives."""
     block = Mask.from_rows(["###", "###", "###"])
     # The centre is the only pixel with all 8 neighbours inside the block.
     assert list(block.erode().nonzero()) == [(1, 1)]

@@ -12,14 +12,14 @@ from esolangs.interpreters.tape_based.subleq import run as run_subleq
 from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
 from esolangs.tools.slashes import slashes
 from esolangs.tools.subleq import subleq
+from tests.witness_tables import witnesses
 
 
 @pytest.mark.medium
 @pytest.mark.parametrize("language", ["slashes", "subleq"])
 def test_all_three_input_tables(language: str) -> None:
     for n in range(1, 4):
-        for value in range(1 << (1 << n)):
-            table = f"{value:0{1 << n}b}"
+        for table in witnesses(n):
             code = slashes(table) if language == "slashes" else subleq(table)
             for row in range(1 << n):
                 bits = [int(c) for c in f"{row:0{n}b}"]

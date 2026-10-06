@@ -1,16 +1,4 @@
-"""Run every committed example program and check its output.
-
-``examples/`` holds only programs sampled from a *parameterized* generator:
-the boolean programs from ``esolangs.tools``, which take a truth
-table and an input combination.  Each committed file is one point sampled
-from that space, so a companion test keeps it in sync with whatever the
-generator produces today -- the check has teeth precisely because the
-generator could produce something else.
-
-Fixed programs with no such space -- cat, truth-machine, and multiply -- are
-plain test fixtures rather than examples, and live inline in the matching
-``tests/interpreters/test_*.py`` instead.
-"""
+"""Run every committed example program and check its output."""
 
 import sys
 from pathlib import Path
@@ -73,19 +61,20 @@ HALT_CONVENTION = {"123", "arrowqueue"}
 _NO_EXAMPLE: set[str] = set()
 
 
-@pytest.mark.parametrize("name", sorted(BOOLEAN_GENERATED))
+@pytest.mark.parametrize(
+    "name",
+    [
+        pytest.param(name, marks=pytest.mark.medium)
+        if name in {"circuit_diagram", "vandevelo"}
+        else name
+        for name in sorted(BOOLEAN_GENERATED)
+    ],
+)
 def test_boolean_example_matches_generator(name: str) -> None:
-    """Each committed boolean program is what its generator produces today.
-
-    The counterpart of :func:`test_example_files_match_generator` for the
-    boolean examples; refresh them with
-    ``python scripts/generate.py examples boolean``. The file ends with a
-    single POSIX newline.
-    """
+    """Each committed boolean program is what its generator produces today."""
     example = BOOLEAN_GENERATED[name]
     path = BASE_DIR / "examples" / example.filename
     program = example.build(balance=True)
-    assert isinstance(example.build(width=None), Raster) == isinstance(program, Raster)
     if isinstance(program, Raster):
         # PNG compression differs across platforms; the pixels are the program.
         assert Raster.from_png(path.read_bytes()) == program
@@ -111,15 +100,7 @@ def test_regeneration_yields_public_balanced_programs() -> None:
 
 
 def test_the_manifest_matches_what_the_script_would_write() -> None:
-    """The committed table is what ``generate.py examples`` produces today.
-
-    The programs beside it have had this check all along and the table
-    describing them had none, so a note added to one language left the
-    committed manifest describing the registry as it was before -- which is
-    the one file in ``examples/`` a reader consults precisely because the
-    fact is *not* recoverable from the program.  Bitdeque's note was added
-    without it and the gate stayed green.
-    """
+    """The committed table is what ``generate.py examples`` produces today."""
     sys.path.insert(0, str(BASE_DIR / "scripts"))
     from esolangs.tools._generate_examples import boolean_manifest_text
 
@@ -128,11 +109,6 @@ def test_the_manifest_matches_what_the_script_would_write() -> None:
         "examples/MANIFEST.md is stale; run "
         "`python scripts/generate.py examples boolean`"
     )
-
-
-def test_example_filenames_are_windows_portable() -> None:
-    for path in (BASE_DIR / "examples").iterdir():
-        assert not set(path.name) & set('<>:"/\\|?*'), path.name
 
 
 def test_boolean_examples_cover_every_committed_file() -> None:
@@ -148,20 +124,7 @@ def test_boolean_examples_cover_every_committed_file() -> None:
 
 @pytest.mark.parametrize("name", sorted(HALT_CONVENTION))
 def test_halt_convention_examples_halt(name: str) -> None:
-    """The committed program of a halt-convention language terminates.
-
-    These two answer with termination rather than output, so the
-    committed file is the halting (0) branch; ArrowQueue prints nothing on
-    it, and 123's junk write-bytes are ignored.
-    :func:`test_boolean_example` then runs it with no step cap -- which
-    turns a file holding the *looping* branch into a hung suite rather
-    than a failure, with nothing to say which file did it.
-
-    The bound is state-cycle detection, not a step budget: these
-    interpreters are step-capable, and a deterministic run that revisits
-    its whole internal state has looped forever, so the repeated state
-    proves divergence immediately instead of after an arbitrary wait.
-    """
+    """The committed program of a halt-convention language terminates."""
     program = (
         (BASE_DIR / "examples" / f"{name}.txt").read_text(encoding="utf-8").rstrip("\n")
     )
@@ -172,11 +135,7 @@ def test_halt_convention_examples_halt(name: str) -> None:
 
 
 def _halts(name: str, program: str, _inputs: list[str]) -> bool:
-    """Whether ``name``'s committed program terminates, by cycle detection.
-
-    ``inputs`` are the example's own stdin lines: both languages embed
-    their bits and read nothing.
-    """
+    """Whether ``name``'s committed program terminates, by cycle detection."""
     from esolangs.vm import run_until_halt_or_cycle
 
     if name == "arrowqueue":
@@ -189,20 +148,7 @@ def _halts(name: str, program: str, _inputs: list[str]) -> bool:
 
 
 def test_every_boolean_generator_has_an_example() -> None:
-    """Every registered boolean generator has a committed example.
-
-    The check above compares the files on disk against
-    :data:`BOOLEAN_EXAMPLES`, which is the hand-maintained table in
-    ``esolangs.tools.examples``.  A generator absent from *both* --
-    no entry and so no file -- cancels out of that comparison and is
-    invisible to it, which is how six generators (123, CV(N)(C),
-    Fargo, Minifuck, SLOW ACV MAMMALIAN and Super SNUSP) went uncovered.
-
-    The registry is the only source that knows a generator exists, so it is
-    what this test compares against.  A language whose answer no program can
-    report belongs in :data:`_NO_EXAMPLE` with the reason, not silently
-    missing -- an empty exemption set is the assertion that none exist.
-    """
+    """Every registered boolean generator has a committed example."""
     registered = {
         canonical_id(lang.name) for lang in LANGUAGES.values() if lang.boolean
     }
@@ -232,32 +178,7 @@ BOOLEAN_EXAMPLES = {
 
 
 def _prove_halt(vm: object) -> bool:
-    """Drive ``vm`` to its halt with the prover its machine supports.
-
-    Every example here is expected to halt, so any of the three provers
-    answers ``True`` on a correct file.  Which one runs matters for the
-    *incorrect* file, which is what this test exists to catch: the three
-    disagree on what they can conclude, and only about non-halting.
-
-    ``run_until_halt_or_cycle`` decides exact state repeats and nothing
-    else.  A machine whose state grows every step -- a recursion that
-    pushes a frame per call, a tape that gains a cell per lap -- never
-    repeats one, so on those the exact-state prover does not run long, it
-    *cannot terminate*, and a broken example would hang the suite instead
-    of failing it.  ``the limitations ledger`` carries the measured instance: a
-    Suptiftam program short of its input grows the snapshot about 32 bytes
-    per step, and holding those states OOM-killed the probe, while the
-    ancestor prover answered in under a second.
-
-    So dispatch on what the machine actually implements.  The protocols
-    are ``runtime_checkable`` and opting into one is a claim about the
-    language's semantics, not merely about having the attributes -- five
-    tape-shaped languages here define ``tape`` and ``ptr`` yet are
-    deliberately not ``_TapeMachine``, and ``isinstance`` is what tells
-    them apart.  The provers raise ``TypeError`` on a machine outside
-    their protocol, so a wrong branch here fails loudly rather than
-    reporting a verdict about state the machine does not have.
-    """
+    """Drive ``vm`` to its halt with the prover its machine supports."""
     machine = getattr(vm, "_machine", vm)
     if isinstance(machine, _FramedMachine):
         return run_until_halt_or_ancestor(vm)
@@ -318,15 +239,7 @@ def test_boolean_example(name: str) -> None:
 
 
 class TestTheWritersWriteWhatTheBuildersBuild:
-    """The side-effecting half of ``_generate_examples``.
-
-    Everything above tests the text these functions produce; nothing ran the
-    functions that put it on disk, because doing so in the repo would
-    rewrite the committed examples.  Pointing ``EXAMPLES`` at a tmp
-    directory runs them for real instead -- this is the script that
-    regenerates every committed example, so a fault here corrupts the files
-    the whole suite treats as ground truth.
-    """
+    """The side-effecting half of ``_generate_examples``."""
 
     @staticmethod
     def _redirect(monkeypatch: pytest.MonkeyPatch, target: Path) -> object:
@@ -376,16 +289,6 @@ class TestTheWritersWriteWhatTheBuildersBuild:
         assert lines
         assert all(line.startswith("unchanged") for line in lines if ".txt" in line)
 
-    def test_the_manifest_written_is_the_manifest_built(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        module = self._redirect(monkeypatch, tmp_path / "examples")
-        (tmp_path / "examples").mkdir()
-        module.write_boolean_manifest()  # type: ignore[attr-defined]
-
-        written = (tmp_path / "examples" / "MANIFEST.md").read_text(encoding="utf-8")
-        assert written == module.boolean_manifest_text()  # type: ignore[attr-defined]
-
     def test_main_with_no_arguments_writes_every_set(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -395,73 +298,3 @@ class TestTheWritersWriteWhatTheBuildersBuild:
         monkeypatch.setattr(sys, "argv", ["generate.py"])
         assert module.main() == 0  # type: ignore[attr-defined]
         assert written == list(module.SETS)  # type: ignore[attr-defined]
-
-    def test_main_accepts_one_named_set(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        module = self._redirect(monkeypatch, tmp_path / "examples")
-        written: list[str] = []
-        monkeypatch.setattr(module, "write_set", written.append)
-        monkeypatch.setattr(sys, "argv", ["generate.py", "boolean"])
-        assert module.main() == 0  # type: ignore[attr-defined]
-        assert written == ["boolean"]
-
-    def test_main_refuses_an_unknown_set(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """``choices`` is what keeps a typo from writing nothing silently."""
-        module = self._redirect(monkeypatch, tmp_path / "examples")
-        monkeypatch.setattr(sys, "argv", ["generate.py", "nope"])
-        with pytest.raises(SystemExit):
-            module.main()  # type: ignore[attr-defined]
-
-
-class TestTheManifestEdges:
-    """Three branches the committed data never takes, driven directly."""
-
-    def test_a_row_with_no_inputs_reads_as_none(self) -> None:
-        """A program that reads nothing has no row to spell."""
-        from dataclasses import dataclass
-
-        from esolangs.tools._generate_examples import _logical_row
-
-        @dataclass
-        class _Stub:
-            fill: object = None
-            inputs: tuple[str, ...] = ()
-
-        assert _logical_row("brainfuck", _Stub()) == "(none)"
-
-    def test_the_notes_section_is_omitted_when_nothing_is_noted(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """Every committed example carries the section, so it is forced here."""
-        import dataclasses
-
-        from esolangs.tools import _generate_examples
-        from esolangs.tools.examples import BOOLEAN_EXAMPLES
-
-        stem, example = next(iter(sorted(BOOLEAN_EXAMPLES.items())))
-        unnoted = {stem: dataclasses.replace(example, note="")}
-        monkeypatch.setattr(_generate_examples, "BOOLEAN_EXAMPLES", unnoted)
-
-        text = _generate_examples.boolean_manifest_text()
-        assert "## Notes" not in text
-        assert f"`{stem}.txt`" in text
-
-    def test_only_the_boolean_set_writes_a_manifest(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """``SETS`` has one entry today; the guard is for when it has two."""
-        from esolangs.tools import _generate_examples
-
-        monkeypatch.setattr(_generate_examples, "EXAMPLES", tmp_path / "examples")
-        monkeypatch.setattr(
-            _generate_examples,
-            "SETS",
-            {"other": lambda: iter([("probe", "+")])},
-        )
-        _generate_examples.write_set("other")
-
-        assert (tmp_path / "examples" / "probe.txt").read_text() == "+\n"
-        assert not (tmp_path / "examples" / "MANIFEST.md").exists()

@@ -10,6 +10,7 @@ from esolangs.tools.fractran import PAIR as FRACTRAN_PAIR
 from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
 from tests.generator_support import evaluate_generated
 from tests.tools.reader_support import _TABLES, _bits
+from tests.witness_tables import witnesses
 
 
 def _fractran_answer(table: str, row: int) -> str:
@@ -41,14 +42,7 @@ def test_fractran_answers_every_table_to_three_inputs() -> None:
 
 
 def test_fractran_spends_nothing_a_run_never_divides() -> None:
-    """No ``p^1``, no clear a block's path spends, no phase on the parity.
-
-    A block's path consumes every input and the offset, so the ``1/p``
-    clears are for a folded leaf alone; and the parity fractions come after
-    every phase prime's own exit, so they need no guard.  The 256
-    three-input tables went from 50,700 characters to 41,010.  Five inputs,
-    since a smaller table ships as the plain tree.
-    """
+    """No ``p^1``, no clear a block's path spends, no phase on the parity."""
     from esolangs.tools.fractran import _packed
 
     parity = str(boolean.fractran("0110100110010110" * 2))
@@ -93,15 +87,7 @@ def test_fractran_ships_the_plain_tree_where_the_decoder_costs_more() -> None:
 
 
 def test_fractran_runs_inside_the_block_it_reads() -> None:
-    """A run is bounded by one block, never by the table.
-
-    The tree spends a step a level and the decoder traverses a single block's
-    exponent, so a run costs ``O(2**w)`` for a block of ``w`` entries -- and
-    ``w = Theta(n)``, which makes the step count polylogarithmic in ``T``.
-    That is what the packed text buys its characters with, and why
-    ``_plan`` holds the width near ``n / 3``: this ceiling is the thing that
-    would grow if it stopped.
-    """
+    """A run is bounded by one block, never by the table."""
     from esolangs.interpreters.other.fractran import _Machine
     from esolangs.tools.fractran import _plan
 
@@ -124,11 +110,10 @@ def test_fractran_runs_inside_the_block_it_reads() -> None:
 
 
 @pytest.mark.parametrize("width", [1, 4, 9, 40, 80])
-def test_fractran_phase_parity_all_small_tables(width: int) -> None:
+def test_fractran_phase_parity_witness_tables(width: int) -> None:
 
     for n in range(1, 4):
-        for value in range(2 ** (2**n)):
-            table = format(value, f"0{2**n}b")
+        for table in witnesses(n):
             assert evaluate_generated("FRACTRAN", table, width=width) == table
 
 

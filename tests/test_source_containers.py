@@ -16,8 +16,17 @@ from esolangs.registry import LANGUAGES, SourceKind
 
 
 @pytest.mark.parametrize("language", ["brainfuck", "Piet", "Line"])
-@pytest.mark.parametrize("container", ["bytes", "text_stream", "binary_stream"])
-@pytest.mark.parametrize("mode", ["normal", "steps", "isolated"])
+# Isolation forwards whatever the container held, so one container covers it;
+# each isolated case spawns a worker.
+@pytest.mark.parametrize(
+    ("container", "mode"),
+    [
+        ("bytes", "normal"),
+        ("text_stream", "normal"),
+        ("binary_stream", "normal"),
+        pytest.param("bytes", "isolated", marks=pytest.mark.medium),
+    ],
+)
 def test_execution_container_parity(language: str, container: str, mode: str) -> None:
     program = esolangs.generate(language, "01")
     data = (
@@ -146,7 +155,10 @@ def test_stream_failures_keep_public_error_types(mode: str) -> None:
             esolangs.run("brainfuck", ",.", stream, **bounds)  # type: ignore[arg-type]
 
 
-@pytest.mark.parametrize("mode", ["normal", "steps", "isolated"])
+# Isolated cases spawn a worker: the medium band, like test_run_isolated.
+@pytest.mark.parametrize(
+    "mode", ["normal", "steps", pytest.param("isolated", marks=pytest.mark.medium)]
+)
 def test_invalid_numeric_input_is_not_mislabeled_as_a_program_error(mode: str) -> None:
     bounds: dict[str, Any] = {}
     if mode == "steps":

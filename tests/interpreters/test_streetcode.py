@@ -1,9 +1,4 @@
-"""Streetcode's instructions, its I/O, and the wiki's own programs.
-
-The larger subjects are siblings: test_streetcode_movement for the steering
-rules, test_streetcode_validation for what a malformed street is, and
-test_streetcode_states for the drive-state graph.
-"""
+"""Streetcode's instructions, its I/O, and the wiki's own programs."""
 
 import io
 import re
@@ -14,9 +9,6 @@ import pytest
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.grid_based.streetcode import _Machine, run
 from esolangs.interpreters.grid_based.streetcode.geometry import (
-    _VOID,
-    _WALLS,
-    _Grid,
     _ReachableCell,
 )
 from esolangs.interpreters.io import IO, ScriptedIO
@@ -149,12 +141,7 @@ class TestStreetcodeHalt:
         assert run_street("C;^O") == ""
 
     def test_program_without_semicolon_runs_until_dead_end(self) -> None:
-        """No halt instruction: a dead-end corridor still stops.
-
-        A *street* with no halt does not -- the car circles it forever --
-        so the dead end has to be a genuine cul-de-sac, which is what this
-        pins: the single-cell program with nowhere to drive at all.
-        """
+        """No halt instruction: a dead-end corridor still stops."""
         assert run_and_capture(["C"]) == ""
 
 
@@ -177,15 +164,7 @@ class TestStreetcodeIO:
 
 class TestStreetcodeCPBounds:
     def test_cp_decrement_below_zero_is_clamped(self) -> None:
-        """``_`` at CP 0 moves nothing rather than raising.
-
-        The wiki bounds CP on the left ("The CP is unsigned and
-        right-unbounded") but never says what a below-zero ``_`` does -- no
-        example uses ``_``, and the page has no error-handling text.  An
-        unsigned quantity that cannot go lower saturates, which is also how
-        brainfuck's ``<`` and CVNC's accumulator behave.  This used to
-        raise ``HaltError``.
-        """
+        """``_`` at CP 0 moves nothing rather than raising."""
         assert run_street("C_^O;") == chr(1)
         # repeated clamping stays on cell 0 rather than drifting
         assert run_street("C___^O;") == chr(1)
@@ -199,124 +178,14 @@ class TestStreetcodeCPBounds:
             run(["C~~~~~~~~~~~~~O;"], io=IO())  # cell reaches a large negative
 
 
-class TestStreetcodeGrid:
-    """The drawing as a total map from coordinates to characters."""
-
-    def _grid(self) -> _Grid:
-        return _Grid(["+--+", "|C;|", "+--+"])
-
-    @pytest.mark.parametrize(
-        "where", [(-1, 0), (0, -1), (3, 0), (0, 4), (-5, -5), (99, 99)]
-    )
-    def test_a_read_off_the_drawing_is_void(self, where: tuple[int, int]) -> None:
-        """Any coordinate at all answers, so no caller range-checks first."""
-        assert self._grid()[where] == _VOID
-
-    def test_void_is_neither_a_wall_nor_a_glyph(self) -> None:
-        """The property the mouth scans depend on.
-
-        A border of real wall characters would have them sight junctions
-        that were never drawn, so what lies off the drawing has to match
-        no rule rather than look like a wall.
-        """
-        assert _VOID not in _WALLS
-        for glyph in "+-|C;^~=_IOU":
-            assert glyph != _VOID
-
-    def test_off_the_grid_is_not_drivable(self) -> None:
-        """``open_at`` reads the bounds, not the character.
-
-        ``_VOID`` is not a wall, so asking "is this a wall?" would call
-        the void open road; there is no road out there at all.
-        """
-        grid = self._grid()
-        assert not grid.open_at(-1, 0)
-        assert not grid.open_at(0, 0)  # a real wall
-        assert grid.open_at(1, 1)  # the 'C'
-
-    def test_a_ragged_program_is_squared_off(self) -> None:
-        """Short rows are padded, so every row is ``width`` long."""
-        grid = _Grid(["+---+", "|C;"])
-        assert grid.width == 5
-        assert grid[1] == "|C;  "
-        assert grid[1, 4] == " "
-
-    def test_a_row_can_be_redrawn(self) -> None:
-        """The fixtures build geometry by assigning whole rows."""
-        grid = self._grid()
-        grid[1] = "|CX|"
-        assert grid[1, 2] == "X"
-
-
-class TestStreetcodeOps:
-    """What a square does, as a closed set rather than a character."""
-
-    def _grid(self) -> _Grid:
-        return _Grid(["+----+", "|C^~=|", "|_IOU|", "+--;#+"])
-
-    @pytest.mark.parametrize(
-        ("where", "op"),
-        [
-            ((1, 2), "INC"),
-            ((1, 3), "DEC"),
-            ((1, 4), "RIGHT"),
-            ((2, 1), "LEFT"),
-            ((2, 2), "IN"),
-            ((2, 3), "OUT"),
-            ((2, 4), "TURN"),
-            ((3, 3), "HALT"),
-        ],
-    )
-    def test_each_glyph_maps_to_its_op(self, where: tuple[int, int], op: str) -> None:
-        assert self._grid().op_at(*where) == op
-
-    @pytest.mark.parametrize("where", [(1, 1), (3, 4), (0, 0), (-1, -1)])
-    def test_everything_undefined_is_a_nop(self, where: tuple[int, int]) -> None:
-        """``C``, a stray ``#``, a wall and the void all do nothing.
-
-        The fold is what closes the set: ``step`` has no arm for "some
-        other character", because there is no such case left.
-        """
-        assert self._grid().op_at(*where) == "NOP"
-
-    def test_an_undefined_glyph_is_a_nop_but_still_drawn(self) -> None:
-        """The op is folded; the character is not.
-
-        ``_validate_connected`` rejects ink off the street and names the
-        glyph it found, so a ``#`` has to stay a ``#`` even though it
-        executes as nothing.  Folding the character too would lose that.
-        """
-        grid = self._grid()
-        assert grid.op_at(3, 4) == "NOP"
-        assert grid[3, 4] == "#"
-
-    def test_stray_ink_is_still_rejected_by_its_glyph(self) -> None:
-        """The end-to-end version: a '#' off the street fails validation."""
-        with pytest.raises(ValueError, match=re.escape("('#')")):
-            _Machine(["+---+", "|C  |", "|   |", "+---+", "  #  "], IO())
-
-
 class TestStreetcodeStatedInvariants:
-    """The invariants the interpreter relies on, as executable checks.
-
-    Each validator's rule is a ``_*_violation`` method returning the
-    offending cell, and the validator raises on whatever it returns; the
-    tests below pin that the two cannot drift apart, and that ``_block``'s
-    precondition really fires rather than being decoration.
-    """
+    """The invariants the interpreter relies on, as executable checks."""
 
     def _street(self) -> list[str]:
         return ["+----+", "|C  ;|", "|    |", "+----+"]
 
     def test_a_border_cell_trips_the_block_precondition(self) -> None:
-        """``_block`` states what it needs rather than trusting the caller.
-
-        ``_ReachableCell`` records that a cell came from the flood fill;
-        it cannot record that the fill never yields a border cell, which
-        is the property the unchecked read actually depends on.  Forging
-        one (the type is erased at run time) must raise rather than read
-        off the grid.
-        """
+        """``_block`` states what it needs rather than trusting the caller."""
         machine = _Machine(self._street(), IO())
         with pytest.raises(AssertionError, match="on the border"):
             machine._block(_ReachableCell((0, 0)))  # noqa: SLF001
@@ -340,11 +209,7 @@ class TestStreetcodeStatedInvariants:
         assert machine._connection_violation(reachable) is None  # noqa: SLF001
 
     def test_a_violation_is_what_the_validator_raises(self) -> None:
-        """The rule and the rejection are one statement, not two.
-
-        A grid whose road runs off the edge: the finder names the cell,
-        and the message it returns is the one construction fails with.
-        """
+        """The rule and the rejection are one statement, not two."""
         code = ["+---", "|C  ", "|   ", "+---"]
         machine = machine_unvalidated(code)
         reachable = machine._validate_width((machine.row, machine.col))  # noqa: SLF001
@@ -363,14 +228,7 @@ class TestStreetcodeWikiExamples:
         assert run_street("CIO;", inputs=["Q"]) == "Q"
 
     def test_infinite_cat_example(self) -> None:
-        """The U-turn cat echoes input characters in order, then hangs on EOF.
-
-        The program never halts on its own (it is a genuine infinite cat),
-        so exhausting the scripted input is what stops the run, via
-        :class:`EOFError` on the next ``I``.  Output collected before that
-        point must be exactly the input, echoed in order with nothing
-        dropped, garbled, or reordered.
-        """
+        """The U-turn cat echoes input characters in order, then hangs on EOF."""
         code = ["UOI ", "CIOU"]
         scripted = ScriptedIO("A\nB\nC")
         with pytest.raises(EOFError):
@@ -422,18 +280,7 @@ class TestStreetcodeWikiExamples:
         assert not machine.halted  # confirmed a genuine cycle above
 
     def test_infinite_loop_example_traces_its_17_cell_lap(self) -> None:
-        """The loop's lap, pinned cell by cell against a hand-checked trace.
-
-        The car's cell is 0 for the whole run (nothing in this program ever
-        increments), so at every junction it takes the leftmost road.  From
-        ``C`` it declines the side road opening south, runs the top corridor
-        east, follows the wall down and back west along row 5, turns north up
-        column 3 -- and meets that same junction again head-on, driving out
-        through the gap between the two ``+`` at ``(3,1)`` and ``(3,4)``.
-        There it merges across to the far lane of the corridor it is joining
-        before turning left, reaching ``(1,3)`` and running west along row 1
-        back to ``C``, where it corners south-then-east and repeats.
-        """
+        """The loop's lap, pinned cell by cell against a hand-checked trace."""
         code = [
             "+-------+",
             "|       |",
@@ -461,14 +308,7 @@ class TestStreetcodeWikiExamples:
         assert len(set(lap)) == 17  # (2, 3) is driven through twice per lap
 
     def test_infinite_cat_for_single_characters_example(self) -> None:
-        """The wiki's rhetorical "Why wouldn't this be a cat?" -- it is one.
-
-        This diagram's outer ring loops back through the same ``I``/``O``
-        pair (never reaching the inner ``+-+IO++``/``|OI++`` branch under
-        plain wall-following), but it still echoes input characters in
-        order with nothing dropped or garbled, hanging on exhausted input
-        like the other infinite-cat example rather than halting cleanly.
-        """
+        """The wiki's rhetorical "Why wouldn't this be a cat?" -- it is one."""
         code = [
             "+--------+",
             "|        |",

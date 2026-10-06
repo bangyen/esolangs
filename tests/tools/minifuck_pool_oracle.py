@@ -20,15 +20,7 @@ _POOL_PTR_MAX = 2
 def _pool_code_for_row(
     codes: tuple[str, ...], low: int, ptr: int, cell7: int, *, skip: bool
 ) -> tuple[int, int] | None:
-    """Return the pool code this row admits and where it leaves it, or None.
-
-    The pointer comes back because a pool must be read from one place
-    (:func:`_find_pool` compares them).  The verdict depends only on cells
-    0..7, the pointer and a pending skip (400 windows x six upper
-    randomisations: no change), composed with :meth:`_Sim.run_walk`'s closed
-    form.  At the origin at most one code answers (512 keys: 36 singletons);
-    across the derived domain 4 keys admit two, settled by index order.
-    """
+    """Return the pool code this row admits and where it leaves it, or None."""
     for index, code in enumerate(codes):
         probe = _Sim(_POOL_WIDTH + _PROBE_WALK_OUT + _POOL_PTR_MAX + 4)
         probe.tape = low
@@ -54,13 +46,7 @@ def _pool_code_for_row(
 def _pool_slice(
     codes: tuple[str, ...], ptr: int, *, skip: bool
 ) -> dict[tuple[int, int], tuple[int, int]]:
-    """Derive the verdict for every window byte at one ``(pointer, skip)``.
-
-    Exhaustive over the 256 bytes and both orientations, a slice at a time:
-    builds ask only at the origin with no skip (1956 of 1956 sites at n=2,3),
-    and whole-domain derivation cost 57ms against a 0.2ms build.  Keyed on
-    the code list because the codes are ablated.
-    """
+    """Derive the verdict for every window byte at one ``(pointer, skip)``."""
     return {
         (low, cell7): answer
         for low in range(1 << _POOL_WIDTH)
@@ -70,13 +56,7 @@ def _pool_slice(
 
 
 def _find_pool(j: _Joint, cell7: int, walk_out: int) -> str | None:
-    """Return the pool code for this orientation, or None if none fits.
-
-    Each row names its code (:data:`_POOL_CODE_OF`) and the joint's verdict is
-    the AND (40000 checks against :func:`_pool_reaches`).  Row uniformity is
-    not required: rows differing at cells 5 and 6 are accepted by the code
-    both name.  ``walk_out`` is invariant (9..39) and kept for the callers.
-    """
+    """Return the pool code for this orientation, or None if none fits."""
     del walk_out
 
     codes = tuple(_POOL_CODES)
@@ -99,11 +79,7 @@ def _find_pool(j: _Joint, cell7: int, walk_out: int) -> str | None:
 
 
 def _endgame(j: _Joint, acc: int, read: str, cell7: int) -> None:
-    """Set the pool, relay ``acc`` into the pointer, and print one digit.
-
-    The walk back is measured from the read's *entry*: a constant-1 column
-    puts the pointer's minimum one cell further right.
-    """
+    """Set the pool, relay ``acc`` into the pointer, and print one digit."""
     if acc < _POOL_WIDTH:
         raise ValueError("accumulator must sit past the pool")
     code = _find_pool(j, cell7, acc - 1)

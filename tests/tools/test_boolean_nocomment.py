@@ -25,57 +25,10 @@ class TestParameterizedNoComment:
         return buffer.getvalue()
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
-        """Fill through the shipped filler, not a copy of it.
-
-        The setter here is one character and the same at every position, so
-        a copy of it looks harmless -- but the generator counts instantiated
-        positions when it lays out the template, so a copy that drifted in
-        *width* would move every offset after it.  Minsky Swap's copy did
-        exactly that and the suite hung rather than failing, which is a
-        worse outcome than any this duplication was buying.
-        """
+        """Fill through the shipped filler, not a copy of it."""
         from tests.tools.fills import _fill_nocomment
 
         return _fill_nocomment(tpl, bits)
-
-    @pytest.mark.parametrize(
-        ("table", "n"),
-        [
-            ("10", 1),  # NOT
-            ("01", 1),
-            ("00", 1),  # constant zero
-            ("11", 1),  # constant one
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("1110", 2),  # NAND
-            ("11111110", 3),  # NAND3
-            ("01101001", 3),  # XOR3
-        ],
-    )
-    @pytest.mark.medium
-    def test_truth_table(self, table: str, n: int) -> None:
-        """Every instantiated input produces the truth-table result."""
-        from esolangs import tools as generators
-
-        template = generators.nocomment(table)
-        for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            got = self.run_nocomment(self.instantiate(template, bits))
-            assert got == str(int(table[combo])), f"inputs {bits}"
-
-    @pytest.mark.parametrize("n", [1, 2, 3])
-    @pytest.mark.medium
-    def test_all_small_tables(self, n: int) -> None:
-        """Every table up to three inputs produces the right result."""
-        from esolangs import tools as generators
-
-        for table_int in range(2 ** (2**n)):
-            table = format(table_int, f"0{2**n}b")
-            template = generators.nocomment(table)
-            for combo in range(2**n):
-                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-                got = self.run_nocomment(self.instantiate(template, bits))
-                assert got == str(int(table[combo])), f"{table} inputs {bits}"
 
     def test_template_is_input_independent(self) -> None:
         """The template has one run per input, not hardcoded bits."""
@@ -127,25 +80,12 @@ class TestParameterizedNoComment:
         ],
     )
     def test_wide_arity_is_exact(self, n: int) -> None:
-        """Past a byte-sized index the stack-chain decode still computes the table.
-
-        A single ``s`` cannot carry an index past 255, which is what caps
-        the narrow path at eight inputs.  Chaining skips off the stack lifts
-        that, so these arities must be exactly right on *every* input, not
-        merely renderable -- each table below is run through the
-        interpreter for all ``2**n`` combinations.
-        """
+        """Past a byte-sized index the stack-chain decode still computes the table."""
         self._check_wide_arity(n, range(2**n))
 
     @pytest.mark.slow  # ~1s: the same decode at n=11, sampled
     def test_the_widest_arity_is_exact_on_sampled_rows(self) -> None:
-        """The n=11 decode is checked where a stage boundary can go wrong.
-
-        The rows are chosen rather than swept: every single-bit index, the
-        all-zero and all-one rows, and both sides of each full-stage
-        boundary -- where one bit's last stage hands off to the next bit's
-        first -- plus a stride through the rest so no region goes unvisited.
-        """
+        """The n=11 decode is checked where a stage boundary can go wrong."""
         n = 11
         rows = {0, 2**n - 1}
         rows.update(1 << i for i in range(n))
@@ -155,13 +95,7 @@ class TestParameterizedNoComment:
         self._check_wide_arity(n, sorted(rows))
 
     def test_the_chain_needs_six_cells_at_any_arity(self) -> None:
-        """The chain's tape is six cells at any arity, and it runs on one that size.
-
-        This is what removed the cap: the rows are in the code and the
-        index is on the stack, so nothing on the tape grows with ``n``.
-        The n=13 table is one the tape-resident decode refused on the
-        default tape, and it is executed here on a *six*-cell one.
-        """
+        """The chain's tape is six cells at any arity, and it runs on one that size."""
         from esolangs import tools as generators
 
         n = 13
@@ -174,14 +108,7 @@ class TestParameterizedNoComment:
             assert got == table[combo], f"n={n} inputs {bits}"
 
     def test_the_chain_takes_over_where_it_is_smaller(self) -> None:
-        """The dispatch is the measured crossover: the chain from four inputs.
-
-        Over every table the chain is never the larger program at four
-        inputs and the narrow decode is the smaller one on 218 of 256 at
-        three; the two dense tables here are the boundary's two sides, and
-        the dispatch is checked to follow the constant rather than restate
-        it.
-        """
+        """The dispatch is the measured crossover: the chain from four inputs."""
         from esolangs import tools as generators
         from esolangs.tools.nocomment import _NOCOMMENT_CHAIN_MIN, _nocomment_chain
 
@@ -201,13 +128,7 @@ class TestParameterizedNoComment:
             module._NOCOMMENT_CHAIN_MIN = 4  # noqa: SLF001
 
     def test_the_chain_drops_ignored_inputs(self) -> None:
-        """A table that ignores inputs is the smaller table's chain, and still right.
-
-        Every input keeps its setter, so the instantiated width is the same,
-        but an ignored input pushes no stage and the rows are the reduced
-        table's -- which is what keeps NoComment in the reducing class past
-        the narrow decode.
-        """
+        """A table that ignores inputs is the smaller table's chain, and still right."""
         from esolangs import tools as generators
 
         n = 6

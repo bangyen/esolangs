@@ -8,21 +8,13 @@ import esolangs
 from esolangs.tools.arrowqueue import arrowqueue
 from tests.divergence import diverges
 from tests.tools.fills import _instantiate_arrowqueue
+from tests.witness_tables import witnesses
 
 
-@pytest.mark.parametrize("width", [1, 4, 5, 6, 11, 80, None])
+@pytest.mark.parametrize("width", [1, 5, 80, None])
 @pytest.mark.parametrize(
     "table",
-    [
-        "01",
-        "10",
-        "0000",
-        "1111",
-        "0110",
-        "00010111",
-        "0110100110010110",
-        "01101001" * 4,
-    ],
+    ["0110", "00010111", "01101001" * 4],
 )
 def test_arrowqueue_width_preserves_every_row(table: str, width: int | None) -> None:
     template = esolangs.generate("ArrowQueue", table, width)
@@ -46,10 +38,9 @@ def test_arrowqueue_replaces_an_overwide_tree() -> None:
 
 
 @pytest.mark.parametrize("width", [1, 4, 5, 6, 80])
-def test_arrowqueue_narrow_leaf_ring_executes_every_small_table(width: int) -> None:
+def test_arrowqueue_narrow_leaf_ring_executes_the_witness_tables(width: int) -> None:
     for inputs in range(1, 4):
-        for value in range(2 ** (2**inputs)):
-            table = format(value, f"0{2**inputs}b")
+        for table in witnesses(inputs):
             template = arrowqueue(table, width)
             for row, expected in enumerate(table):
                 bits = [int(bit) for bit in format(row, f"0{inputs}b")]

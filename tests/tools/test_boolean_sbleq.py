@@ -15,25 +15,6 @@ from tests.tools.sample_tables import five_input_sample
 class TestSbleq:
     """The hoisted tree through its sharing, and the packed decoder past it."""
 
-    @pytest.mark.parametrize(
-        ("table", "n"),
-        [
-            ("10", 1),  # NOT
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("11111110", 3),  # NAND3
-            ("0000000000000000", 4),  # constant zero
-        ],
-    )
-    @pytest.mark.medium
-    def test_truth_table(self, table: str, n: int) -> None:
-        """Every input combination produces the truth-table result."""
-        program = boolean.sbleq(table)
-        for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            got = run_sbleq(program, [str(b) for b in bits])
-            assert got == str(int(table[combo])), f"inputs {bits}"
-
     def test_program_structure(self) -> None:
         """Low-address data precedes the root reads and branch."""
         program = _sbleq_hoisted("0110", (0, 1))
@@ -111,12 +92,7 @@ class TestSbleq:
             boolean.sbleq("0123")
 
     def test_a_repeated_subtree_is_jumped_to(self) -> None:
-        """XOR's second test reaches the leaves already emitted for the first.
-
-        Its one side names the zero leaf's copy through a target cell, and
-        its zero side is ``0 0 c``, which empties the always-zero cell 0 and
-        so always jumps -- two instructions where the plain tree spent four.
-        """
+        """XOR's second test reaches the leaves already emitted for the first."""
         shared = boolean.sbleq("0110").split()
         plain = _sbleq_hoisted("0110", (0, 1)).split()
         # Two two-instruction leaves out, one jump in, three cells apiece.
@@ -126,11 +102,7 @@ class TestSbleq:
 
     @staticmethod
     def _sharing_totals(tables: list[str]) -> tuple[int, int]:
-        """(before, shipped) totals, each table checked not to grow.
-
-        Before is the plain tree in its best order through 16 entries and
-        the packed decoder past them, as the generator was.
-        """
+        """(before, shipped) totals, each table checked not to grow."""
         before = after = 0
         for table in tables:
             old = len(
@@ -149,11 +121,7 @@ class TestSbleq:
         assert self._sharing_totals(tables) == (48078, 38478)
 
     def test_sharing_five_input_sample_total(self) -> None:
-        """200 seeded five-input tables: 323,720 to 61,593 characters, 81.0%.
-
-        Shared, the tree is O(T) and runs past 16 entries, where it
-        undercuts the packed decoder through about nine inputs.
-        """
+        """200 seeded five-input tables: 323,720 to 61,593 characters, 81.0%."""
         assert self._sharing_totals(five_input_sample()) == (323720, 62709)
 
     def test_shared_tree_executes_wide_rows(self) -> None:

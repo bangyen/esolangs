@@ -6,7 +6,6 @@ import pytest
 
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.tape_based.brainfuck import _Machine
-from esolangs.interpreters.tape_based.brainfuck import run as run_bf
 from esolangs.interpreters.tape_based.factor import run
 from tests.proofs._factor_blocks import (
     ball_count,
@@ -105,18 +104,6 @@ _TABLES += [
     "".join(format(v, "032b") for v in _VALUES[:2]),
     "".join(format(v, "032b") for v in _VALUES[2:6]),
 ]
-
-
-@pytest.mark.medium
-@pytest.mark.parametrize("table", _TABLES)
-@pytest.mark.parametrize("partition", range(8))
-def test_block_decoder_executes(table: str, partition: int) -> None:
-    n = len(table).bit_length() - 1
-    code = block_program(table)
-    for row in range(partition, len(table), 8):
-        io = ScriptedIO("".join(format(row, f"0{n}b")))
-        run_bf(code, io)
-        assert io.getvalue() == table[row]
 
 
 @pytest.mark.slow

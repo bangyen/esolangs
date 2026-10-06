@@ -1,18 +1,4 @@
-"""Tests for the Line Boolean generator: render -> extract -> simulate round-trips.
-
-Run via: uv run pytest tests/tools/test_boolean_line.py
-
-Covers n=1 through n=3 across every input combination, plus the specific
-geometry bug this module's development caught: render.py's `_layout` used
-to space sibling fork arms *outward* with absolute nesting depth, which
-looks intuitively safer but is backwards for a tree that turns 90 degrees
-at every fork -- a deeper arm's own children turn back toward the
-*original* heading and, given enough length, cross an ancestor fork's own
-line.  n=1 and n=2 (single fork level) cannot expose this at all; n=3 is
-the first case with a re-converging inward turn, so it is the regression
-test for the fix (`_BRANCH_SPACING` scaling by 2**remaining-depth instead
-of by absolute depth -- see render.py's own comment for the full story).
-"""
+"""Tests for the Line Boolean generator: render -> extract -> simulate round-trips."""
 
 from __future__ import annotations
 
@@ -68,11 +54,7 @@ def _complement(table: str) -> str:
 
 
 def _topology(node: Node | None) -> str:
-    """The fork skeleton of a pruned tree, with straight runs collapsed.
-
-    Two tables share a topology when they nest the same way, whatever their
-    leaves print.  That is the part `render._layout` sizes arms from.
-    """
+    """The fork skeleton of a pruned tree, with straight runs collapsed."""
     if node is None:
         return "."
     if node.op == "?":
@@ -81,11 +63,7 @@ def _topology(node: Node | None) -> str:
 
 
 def _topology_representatives(n: int) -> list[str]:
-    """One table per distinct fork topology over all ``2**2**n`` tables.
-
-    The first table reaching a topology wins it; the enumeration never
-    renders, so covering the whole space here is cheap.
-    """
+    """One table per distinct fork topology over all ``2**2**n`` tables."""
     seen: dict[str, str] = {}
     for encoded in range(1 << (1 << n)):
         table = format(encoded, f"0{1 << n}b")
@@ -118,22 +96,7 @@ class TestLineBoolean:
 
     @pytest.mark.slow  # 5.2s: 32 input combinations through the renderer
     def test_parity_n5(self, tmp_path: Path) -> None:
-        """5-input parity, past the ceiling this generator used to document.
-
-        `line_boolean.py` recorded a practical limit of n<=4, with n=5
-        projected at roughly 35000x17000px and called impractical.  That was
-        an artifact of `render._fork_depth`'s fork-counting arm spacing, not
-        of decision trees: with extent-based spacing n=5 renders at 4000x2620
-        and extracts in about a second.  Pinned here at n=5 rather than the
-        n=7 that also passes, to keep the suite fast (n=7 spends ~9s in
-        extract plus execution) while still covering two levels past where
-        coverage used to stop -- deep enough that a regression in arm sizing
-        shows up as a real failure here rather than only as a larger drawing.
-
-        Parity is the useful table at this depth: every one of the 32 input
-        combinations reaches a distinct leaf, so a mis-sized arm anywhere in
-        the tree changes an answer rather than hiding in an unvisited branch.
-        """
+        """5-input parity, past the ceiling this generator used to document."""
         _check_truth_table("01101001100101101001011001101001", 5, tmp_path)
 
     @pytest.mark.slow  # 7s: all 256 rendered-tree executions
@@ -195,33 +158,7 @@ class TestLineBoolean:
 
     @pytest.mark.slow  # ~8s: one drawing per fork topology, both polarities
     def test_every_pruned_shape_survives(self, tmp_path: Path) -> None:
-        """Every pruned shape survives render -> extract -> simulate.
-
-        This used to render all 256 three-input tables, at ~40s the most
-        expensive test in the suite.  All 256 are distinct *drawings*, so
-        there was no duplicate to delete -- but they carry only 26 fork
-        topologies between them, and the topology (which subtrees survive
-        pruning, how deep the arms nest) is what `_layout` sizes arms from.
-        So the sweep enumerates topologies and renders one representative of
-        each, plus its complement to flip every leaf at once -- leaf values
-        set the length of the `+` run before each `o`, and so an arm's
-        extent.  Enumerating is `line_boolean` alone, which does no drawing;
-        only the 52 representatives pay for render -> extract.  A generator
-        that grows a new topology is covered the day it does, without this
-        test being edited: it pins the contract, not a list of tables.
-
-        What this does *not* buy is arm-spacing coverage, and the exhaustive
-        version did not buy it either.  Against five mutants of the spacing
-        arithmetic (`_BRANCH_SPACING` at 4, 2 and 1; the `reach_back` term
-        dropped and halved) all 256 tables passed every one.  The same
-        mutants are caught -- 31 failures for `_BRANCH_SPACING = 1` -- by
-        `test_parity_n5`/`n8`/`n9_on_boundary_rows` and by the loop-back
-        shapes in `test_bf_to_line.py`.  n=3 drawings are simply too small
-        for a spacing error to close a gap.  Those tests are where the
-        geometry regression in the module docstring is actually pinned; this
-        one pins that the generator answers correctly through the PNG for
-        every shape it can emit.
-        """
+        """Every pruned shape survives render -> extract -> simulate."""
         representatives = _topology_representatives(3)
         assert len(representatives) == 26, (
             f"expected 26 fork topologies at n=3, found {len(representatives)}"

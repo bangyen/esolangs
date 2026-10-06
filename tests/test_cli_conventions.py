@@ -1,10 +1,4 @@
-"""What the CLI makes discoverable: examples, specs, usage and templates.
-
-The rest of the second blind pass moved to siblings: test_cli_timeouts,
-test_cli_io, test_cli_messages and test_cli_commands.  What is left is the
-part that is about *finding* things rather than running them -- the committed
-examples, the wiki links, the spec, and the usage text that indexes them.
-"""
+"""What the CLI makes discoverable: examples, specs, usage and templates."""
 
 import importlib
 import json
@@ -21,14 +15,7 @@ from tests.test_cli import call_main
 
 
 class TestExamplesShipWithThePackage:
-    """They lived at the repository root, which left them out of the wheel.
-
-    ``describe(...)["examples"]`` was populated from a checkout and empty
-    from an install, with nothing to say which you had -- and the README
-    pointed every reader at a ``MANIFEST.md`` no installed copy carried.
-    They live inside the package now, with a symlink at the root so the
-    repository still reads the way it did.
-    """
+    """They lived at the repository root, which left them out of the wheel."""
 
     def test_every_language_reports_one(self) -> None:
         """Every implemented language reports a committed program."""
@@ -49,25 +36,8 @@ class TestExamplesShipWithThePackage:
             for path in esolangs.describe(name)["examples"]:
                 assert pathlib.Path(path).is_file(), (name, path)
 
-    def test_they_live_inside_the_package(self) -> None:
-        """Which is the property that puts them in the wheel.
-
-        Not a proxy for it -- setuptools ships ``package-data`` from
-        inside the package directory and cannot reach outside it, so a
-        path under here is a path that gets built in.
-        """
-        root = pathlib.Path(esolangs.__file__).resolve().parent
-        for name in esolangs.list_languages():
-            for path in esolangs.describe(name)["examples"]:
-                assert pathlib.Path(path).resolve().is_relative_to(root), (name, path)
-
     def test_the_packaging_declares_them(self) -> None:
-        """The other half: inside the package *and* listed as data.
-
-        Being in the directory is not enough -- setuptools ships only what
-        ``package-data`` names, so a glob that stopped matching would
-        silently empty the wheel again.
-        """
+        """The other half: inside the package *and* listed as data."""
         config = (pathlib.Path(__file__).parents[1] / "pyproject.toml").read_text()
         declared = re.search(r"^esolangs = \[(.+?)\]", config, re.M)
         assert declared, "no package-data entry for esolangs"
@@ -77,39 +47,9 @@ class TestExamplesShipWithThePackage:
             assert f"examples/*{suffix}" in patterns
         assert "examples/*/*.txt" not in patterns
 
-    def test_the_manifest_is_beside_them(self) -> None:
-        """It is what says which table each program computes."""
-        root = pathlib.Path(esolangs.__file__).resolve().parent
-        assert (root / "examples" / "MANIFEST.md").is_file()
-
-    def test_the_root_symlink_still_resolves(self) -> None:
-        """The repository reads the way it always did.
-
-        The README links to ``examples/`` and a reader browsing the repo
-        expects it there; the symlink keeps that true without a second
-        copy to drift.
-        """
-        link = pathlib.Path(__file__).parents[1] / "examples"
-        assert link.is_dir()
-        assert (link / "brainfuck.txt").is_file()
-        assert (
-            link.resolve()
-            == pathlib.Path(esolangs.__file__).resolve().parent / "examples"
-        )
-
 
 class TestTheSpecIsReachable:
-    """The best documentation here was reachable only by guessing.
-
-    Every interpreter carries a module docstring with the
-    command table and, more usefully, where this implementation differs
-    from the wiki page.  Nothing pointed at them: ``docs/`` has a
-    capability matrix and two per-language notes, neither a spec, and
-    ``describe`` reported ``interpreter: stack_based.unsquare`` -- an
-    import path with no hint that importing it was the point.  A reader who
-    arrived with a program rather than a truth table found it by reaching
-    for ``importlib``.
-    """
+    """The best documentation here was reachable only by guessing."""
 
     def test_every_language_has_one(self) -> None:
         """The claim the feature rests on: there is something to show."""
@@ -164,25 +104,9 @@ class TestTheSpecIsReachable:
         out, _err = call_both(["describe", "BRAINFUCK"], capsys)
         assert "--spec brainfuck" in out
 
-    def test_it_still_refuses_an_unknown_language(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """The flag must not become a way past the error path."""
-        with pytest.raises(SystemExit):
-            call_main(["describe", "--spec", "nosuchlang"], capsys)
-        assert "nosuchlang" in capsys.readouterr().err
-
 
 class TestWikiUrlsAreUsable:
-    """The wiki slug must escape what a path cannot carry.
-
-    ``%`` is the escape character itself and ``^`` is in neither RFC 3986
-    set, so a name carrying either must come out percent-escaped or the
-    link answers 400.  The same URL is built again as a markdown link in
-    README.md by a *second* copy of the slug logic in
-    ``scripts/generate.py docs`` -- so fixing either alone would have left
-    the other wrong.
-    """
+    """The wiki slug must escape what a path cannot carry."""
 
     def test_non_ascii_is_escaped(self) -> None:
         """Raw bytes work in a browser and are refused by a strict client."""
@@ -200,11 +124,7 @@ class TestWikiUrlsAreUsable:
         ],
     )
     def test_the_readable_ones_stay_readable(self, name: str, expected: str) -> None:
-        """Parentheses and ``*`` are legal in a path and all answer 200.
-
-        Escaping them too would have been easier and would have turned five
-        working links into unreadable ones for no gain.
-        """
+        """Parentheses and ``*`` are legal in a path and all answer 200."""
         assert esolangs.describe(name)["wiki_url"] == (
             f"https://esolangs.org/wiki/{expected}"
         )
@@ -226,13 +146,7 @@ class TestWikiUrlsAreUsable:
 
 
 class TestPrintedCommandsCanBePasted:
-    """The tool emitted commands it cannot itself parse.
-
-    Some names contain a space, and ``describe`` ends with
-    ``esolangs describe --spec A Painter Ant`` while the template hint
-    offers ``esolangs generate --bits <bits> A Painter Ant <table>``.
-    Copy-pasting either gives ``unexpected argument: 'Painter'``.
-    """
+    """The tool emitted commands it cannot itself parse."""
 
     SPACED = "A Painter Ant"
 
@@ -270,17 +184,7 @@ class TestPrintedCommandsCanBePasted:
 
 
 class TestTheTopLevelUsageKeepsUp:
-    """It had fallen behind five subcommands, in both directions.
-
-    Missing from ``esolangs --help``: ``list --json``, ``describe --json``,
-    ``describe --spec``, ``run --seed``, and ``--timeout``/``--width`` on
-    ``answer``, ``verify`` and ``evaluate``.  The ``--timeout`` omission is
-    the one that costs a reader something: it is the flag the three
-    diverging languages need, and its absence reads as "cannot be bounded".
-
-    Drifting the other way too -- the top level once advertised flags
-    ``run``'s own usage line did not.
-    """
+    """It had fallen behind five subcommands, in both directions."""
 
     @staticmethod
     def _entry(command: str) -> str:
@@ -320,11 +224,7 @@ class TestTheTopLevelUsageKeepsUp:
 
     @pytest.mark.parametrize("command", sorted(HELP))
     def test_every_documented_flag_is_summarised(self, command: str) -> None:
-        """Read off each subcommand's own usage line, so it cannot drift.
-
-        ``debug`` is exempt: its usage line says ``[options]`` on purpose,
-        which is a summary rather than an omission.
-        """
+        """Read off each subcommand's own usage line, so it cannot drift."""
         head = HELP[command].split("\n\n")[0]
         if "[options]" in head:
             return

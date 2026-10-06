@@ -19,7 +19,7 @@ See [Polynomial](proofs/polynomial.md) for its size lower bound.
 - Line and Piet carry a raster source: `generate` returns an
   `esolangs.raster.Raster`, `run` takes it or a PNG path through the shared
   codec, and `describe` reports `source_kind="raster"`. Text and raster share
-  VM, step, and fuzz contracts; `RUNNERS` describes text bundling only. Line
+  VM and step contracts; `RUNNERS` describes text bundling only. Line
   retains its graph for repeated generated rows; stepping parses pixels. Piet
   emits and executes pixels.
 

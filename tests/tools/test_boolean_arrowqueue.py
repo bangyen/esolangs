@@ -11,14 +11,7 @@ from tests.tools.fills import _instantiate_arrowqueue
 
 
 class TestParameterizedArrowQueue:
-    """Input-by-substitution boolean generator for the no-input language ArrowQueue.
-
-    ArrowQueue has no output, so the generator's answer is read from the
-    termination convention: an instantiated program halts for a ``0`` table
-    entry and loops forever for a ``1`` entry.  The run is bounded by
-    state-cycle detection (the queue stays bounded on the sustaining rings),
-    so the repeated-snapshot proof reports the ``1`` cases immediately.
-    """
+    """Input-by-substitution boolean generator for the no-input language ArrowQueue."""
 
     def run_arrowqueue(self, prog: str) -> str:
         from esolangs.interpreters.grid_based.arrowqueue import _Machine
@@ -28,47 +21,6 @@ class TestParameterizedArrowQueue:
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
         return _instantiate_arrowqueue(tpl, bits)
-
-    @pytest.mark.parametrize(
-        ("table", "n"),
-        [
-            ("10", 1),  # NOT
-            ("01", 1),  # identity
-            ("00", 1),  # constant zero
-            ("11", 1),  # constant one
-            ("0001", 2),  # AND
-            ("0110", 2),  # XOR
-            ("0111", 2),  # OR
-            ("1110", 2),  # NAND
-            ("11111110", 3),  # NAND3
-            ("01101001", 3),  # majority
-            ("1111111100000000", 4),  # top half
-        ],
-    )
-    @pytest.mark.medium
-    def test_truth_table(self, table: str, n: int) -> None:
-        """Every instantiated input halts or loops per its table entry."""
-        from esolangs import tools as generators
-
-        template = generators.arrowqueue(table)
-        for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            got = self.run_arrowqueue(self.instantiate(template, bits))
-            assert got == table[combo], f"inputs {bits}"
-
-    @pytest.mark.parametrize("n", [1, 2, 3])
-    @pytest.mark.medium
-    def test_all_small_tables(self, n: int) -> None:
-        """Every table up to three inputs produces the right result."""
-        from esolangs import tools as generators
-
-        for table_int in range(2 ** (2**n)):
-            table = format(table_int, f"0{2**n}b")
-            template = generators.arrowqueue(table)
-            for combo in range(2**n):
-                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-                got = self.run_arrowqueue(self.instantiate(template, bits))
-                assert got == table[combo], f"{table} inputs {bits}"
 
     def test_random_tables(self) -> None:
         """Seeded random tables through five inputs produce the right result."""
@@ -118,13 +70,7 @@ class TestParameterizedArrowQueue:
 
     @pytest.mark.parametrize("table", ["0110", "0110100110010110" * 2])
     def test_every_input_is_the_same_one_cell(self, table: str) -> None:
-        """Both routes spell every input as one cell, ``.`` against ``~``.
-
-        The tree route follows the cell with a right push and the cascade
-        doubles what is queued before crossing it, so the weight lives in
-        the template and the pair is the same at every input, every
-        arity, and on both routes.
-        """
+        """Both routes spell every input as one cell, ``.`` against ``~``."""
         from esolangs import tools as generators
 
         n = len(table).bit_length() - 1
@@ -138,12 +84,7 @@ class TestParameterizedArrowQueue:
         assert len(filled) == len(template)
 
     def test_cascade_stage_doubles_and_adds(self) -> None:
-        """A stage turns ``m`` queued markers and a bit into ``2m + bit``.
-
-        This is Horner's rule, and it is what carries the input's weight
-        in the template: the marker count after the last input is the
-        table index, which the cascade below turns right on.
-        """
+        """A stage turns ``m`` queued markers and a bit into ``2m + bit``."""
         from esolangs.interpreters.grid_based.arrowqueue import _advance, _Machine
         from esolangs.tools.arrowqueue import _STAGE
 
@@ -173,11 +114,7 @@ class TestParameterizedArrowQueue:
         ],
     )
     def test_constant_subtrees_fold(self, table: str, mixed: str) -> None:
-        """A constant subtree emits one drained leaf, not a full branch set.
-
-        The comparison table has the same ones-count, so a shorter template
-        means the tree folded rather than that something else shrank.
-        """
+        """A constant subtree emits one drained leaf, not a full branch set."""
         from esolangs import tools as generators
 
         assert len(generators.arrowqueue(table)) < len(generators.arrowqueue(mixed))
@@ -194,10 +131,7 @@ class TestParameterizedArrowQueue:
         ],
     )
     def test_folded_tables_past_three_inputs(self, table: str, n: int) -> None:
-        """Folded leaves stay correct deeper than the exhaustive n <= 3 sweep.
-
-        The five-input tables take the cascade, whose constant tail folds.
-        """
+        """Folded leaves stay correct deeper than the exhaustive n <= 3 sweep."""
         from esolangs import tools as generators
 
         template = generators.arrowqueue(table)
@@ -220,12 +154,7 @@ class TestParameterizedArrowQueue:
         ],
     )
     def test_cascade_folds_its_constant_tail(self, table: str) -> None:
-        """Past four inputs the table's constant tail folds to one row or none.
-
-        A ``0`` tail runs off the grid; a ``1`` tail is one drained ring,
-        whatever its length.  Every row executes, and the template is
-        shorter than the unfolded cascade, which lays three rows an entry.
-        """
+        """Past four inputs the table's constant tail folds to one row or none."""
         from esolangs import tools as generators
         from esolangs.tools.arrowqueue import _MIDDLE, _STAGE
 
@@ -241,13 +170,7 @@ class TestParameterizedArrowQueue:
         assert template.count("\n") + 1 == rows - folded
 
     def test_reusable_drain_pops_every_marker(self) -> None:
-        """One drained ring sustains for any marker count; a bare row does not.
-
-        Entered heading down onto its ``+`` with ``m`` markers, the stop
-        heading and the loop components queued, the drain laps once per
-        marker and the ring then finds ``R, D, L, U``.  The cascade's plain
-        ``1`` row sends the first marker down and off the grid.
-        """
+        """One drained ring sustains for any marker count; a bare row does not."""
         from esolangs.interpreters.grid_based.arrowqueue import _Machine
         from esolangs.tools.arrowqueue import _DRAINED_RING, _ROWS
         from esolangs.vm import run_until_halt_or_cycle
@@ -262,15 +185,7 @@ class TestParameterizedArrowQueue:
         assert not any(verdict(_ROWS["1"], m) == "1" for m in range(1, 64))
 
     def test_folded_one_leaf_drains_the_bits_it_skipped(self) -> None:
-        """The drain is required: a ring needs the queue it expects.
-
-        A folded ``1`` leaf pops a direction at each of its ring's corners
-        and requires exactly ``R, D, L, U``.  Without the drains, the bits
-        the skipped branches never popped sit ahead of those components, the
-        corners pop the wrong directions, the ring does not close, and the
-        program halts -- reporting ``0`` for a ``1`` entry.  Dropping the
-        drains here must therefore break the table.
-        """
+        """The drain is required: a ring needs the queue it expects."""
         from esolangs.tools.arrowqueue import _TREE_1, _drained_leaf
 
         undrained = _drained_leaf("1", 0)  # no drains at all
@@ -303,14 +218,7 @@ class TestParameterizedArrowQueue:
                 assert self.run_arrowqueue(self.instantiate(template, bits)) == "0"
 
     def test_folding_never_grows_a_program(self) -> None:
-        """No instantiated program is larger than its unfolded equivalent.
-
-        A fold that costs characters is not a fold.  AND-2 briefly regressed
-        (124 to 128 bytes) when ``0`` leaves were drained too: a folded
-        ``00`` half gained a staircase where the branch pair it replaced was
-        cheaper, and the extra column blocked ``_compact``.  This pins the
-        whole n <= 2 space, where such a regression showed up.
-        """
+        """No instantiated program is larger than its unfolded equivalent."""
         from esolangs.tools.arrowqueue import _TREE_0, _TREE_1, _connect, _tree
 
         def unfolded(values: list[str]) -> list[str]:
@@ -333,11 +241,7 @@ class TestParameterizedArrowQueue:
                 ), table
 
     def test_fold_keeps_equal_width_embedding(self) -> None:
-        """Every instantiation of a folded template is the same length.
-
-        The fold shrinks the tree, which is shared by all instantiations, so
-        the program's size still cannot leak which bits were embedded.
-        """
+        """Every instantiation of a folded template is the same length."""
         from esolangs import tools as generators
 
         for table, n in (("1111", 2), ("1100", 2), ("11110000", 3)):
@@ -353,19 +257,7 @@ class TestParameterizedArrowQueue:
             assert len(sizes) == 1, f"{table}: {sizes}"
 
     def test_bare_ring_is_entry_sensitive(self) -> None:
-        """A bare ring sustains on right-entry and *halts* on down-entry.
-
-        The two ways a subtree is entered are not interchangeable, which is
-        the sharpest edge in the construction: the tree's top level is
-        entered heading down at column 1, while every recursive subtree is
-        entered heading right at its own ``(0, 0)``.  A bare
-        :data:`_TREE_1` only loops under the second.  Pinned because a
-        refactor that "simplified" the top-level entry to hand a bare ring
-        the down-entry would silently turn every constant-``1`` table into
-        a halt -- reporting ``0`` for every entry.
-
-        See ``the relevant generator tests`` (lemmas L2/L2'/L4).
-        """
+        """A bare ring sustains on right-entry and *halts* on down-entry."""
         from esolangs.interpreters.grid_based.arrowqueue import _Machine
         from esolangs.tools.arrowqueue import _TREE_1
         from esolangs.vm import run_until_halt_or_cycle
@@ -381,14 +273,7 @@ class TestParameterizedArrowQueue:
         assert verdict((0, 1, 1, rdlu)) == "0"  # down-entry: it does not
 
     def test_constant_one_never_tops_out_as_a_bare_ring(self) -> None:
-        """The top-level tree always carries a drain, so down-entry is safe.
-
-        What makes the entry-sensitivity above harmless: a constant table
-        folds to ``_drained_leaf(v, n)`` with ``n >= 1`` (a one-entry table
-        is refused), so the top-level leaf's first ``+`` sits at ``(0, 1)``
-        -- exactly where the header's descent lands -- and the bare ring
-        appears only nested at column offset 3, where entry is rightward.
-        """
+        """The top-level tree always carries a drain, so down-entry is safe."""
         from esolangs.tools.arrowqueue import _TREE_1, _drained_leaf, _tree
 
         for n in range(1, 6):

@@ -14,13 +14,7 @@ from tests.duration_policy import evidence_violation, hard_ceiling, violation
 
 
 def _reject_stale_install() -> None:
-    """Fail fast when ``esolangs`` resolves outside this checkout.
-
-    A stale editable install shadows the repo: plain ``pytest`` then imports a
-    different checkout's package while the tests read this one's files.  Run
-    via ``just test-py`` (or with ``PYTHONPATH=$PWD/src``), or reinstall the
-    editable install.
-    """
+    """Fail fast when ``esolangs`` resolves outside this checkout."""
     try:
         import esolangs
     except ModuleNotFoundError as exc:
@@ -88,15 +82,7 @@ def pytest_runtest_makereport(
 
 @pytest.fixture(autouse=True)
 def _repair_coverage_lock() -> Generator[None, None, None]:
-    """Undo a coverage C-tracer lock leak left by a signal-handler exception.
-
-    The timeout-protection tests use ``signal.alarm`` handlers that raise an
-    exception to interrupt non-terminating interpreters.  If that exception
-    unwinds through coverage's C tracer between ``lock_data`` and
-    ``unlock_data``, the non-reentrant ``data_lock`` stays held and the next
-    traced call event deadlocks.  Repairing the lock between tests keeps a
-    one-off leak from hanging the whole session.
-    """
+    """Undo a coverage C-tracer lock leak left by a signal-handler exception."""
     yield
     cov = coverage.Coverage.current()
     collector = getattr(cov, "_collector", None) if cov is not None else None

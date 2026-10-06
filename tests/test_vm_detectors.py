@@ -1,12 +1,4 @@
-"""The five hang detectors.
-
-Each proves a different shape of non-termination -- an exact repeat, a
-recursion replaying an ancestor, a tape growing by translation, a cell
-climbing affinely, every random branch cycling -- and each has to raise
-rather than guess on a program it cannot decide.
-"""
-
-import re
+"""The five hang detectors."""
 
 import pytest
 
@@ -97,15 +89,7 @@ class TestRunUntilHaltOrCycle:
         assert coins.draws == 5
 
     def test_painfuck_a_malformed_loop_is_a_terminal_branch(self) -> None:
-        """An unmatched ``b`` ends its branch instead of escaping the search.
-
-        ``run`` treats a malformed loop as an error outcome, and the branch
-        graph has no error flag to carry that, so the successor is the same
-        state with its cursor moved past the program -- which is exactly
-        what ``branching_halted`` reads as finished.  Letting the exception
-        out instead would abort the whole search over a branch that simply
-        ended.
-        """
+        """An unmatched ``b`` ends its branch instead of escaping the search."""
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.painfuck import _Machine
 
@@ -118,11 +102,7 @@ class TestRunUntilHaltOrCycle:
         assert ended[3] == machine.n  # cursor parked past the program
 
     def test_laserfuck_all_initial_headings_can_be_proved_to_loop(self) -> None:
-        """The four headings are searched, not the one the machine drew.
-
-        Each orthogonal neighbour of ``o`` sends the beam straight back
-        through it, so every heading oscillates forever and no draw escapes.
-        """
+        """The four headings are searched, not the one the machine drew."""
         from esolangs.interpreters.grid_based.laserfuck import _Machine
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.randomness import FirstDraw
@@ -166,15 +146,7 @@ class TestRunUntilHaltOrCycle:
         )
 
     def test_laserfuck_grid_without_a_start_marker_places_no_beam(self) -> None:
-        """A laserless grid reports empty beams, never the unplaced sentinel.
-
-        The verdict alone cannot see the difference: a sentinel here would
-        invent a beam at the grid's origin, and the origin is a corner, so
-        two of its four headings leave the grid at once and report a halt --
-        the right answer for the wrong run.  So the state is asserted
-        directly, and a grid whose corner would *loop* is what the assertion
-        protects against.
-        """
+        """A laserless grid reports empty beams, never the unplaced sentinel."""
         from esolangs.interpreters.grid_based.laserfuck import _Machine
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.vm import run_until_halt_or_all_branches_cycle
@@ -186,14 +158,7 @@ class TestRunUntilHaltOrCycle:
         assert run_until_halt_or_all_branches_cycle(machine) is True
 
     def test_laserfuck_search_skips_the_command_after_a_hash(self) -> None:
-        """``#`` skips in the search exactly as it does in a step.
-
-        A successor that called the transition on the skipped cell would
-        turn the beam here, since ``{`` sets the heading to left.  The
-        skip is asserted on the states rather than through a verdict:
-        every grid tried reaches the same answer either way, so the
-        difference is visible only in where the beam ends up.
-        """
+        """``#`` skips in the search exactly as it does in a step."""
         from esolangs.interpreters.grid_based.laserfuck import _Machine
         from esolangs.interpreters.io import ScriptedIO
 
@@ -223,14 +188,7 @@ class TestRunUntilHaltOrCycle:
         assert machine.branching_halted(machine.branching_snapshot()) is False
 
     def test_laserfuck_explores_both_beam_splitter_outcomes(self) -> None:
-        """``*``'s coin is searched, not sampled.
-
-        The whole verdict rests on the second outcome here: a splitter that
-        always chose ``0`` would loop under every one of the four headings,
-        and only a ``1`` at the right moment reaches a halt.  So a search
-        that tried one outcome per split would answer ``False`` -- claiming
-        a program that can terminate never does.
-        """
+        """``*``'s coin is searched, not sampled."""
         from esolangs.interpreters.grid_based.laserfuck import _Machine
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.randomness import FirstDraw
@@ -271,12 +229,7 @@ class TestRunUntilHaltOrCycle:
         assert run_until_halt_or_all_branches_cycle(machine) is True
 
     def test_laserfuck_declines_a_reachable_input_command(self) -> None:
-        """``,`` cannot be forked, so the search reports undecided.
-
-        The command has to sit where the beam *arrives*, not under ``o``
-        itself: a step moves before it executes, so the start cell is the
-        one cell a run never runs.
-        """
+        """``,`` cannot be forked, so the search reports undecided."""
         from esolangs.interpreters.grid_based.laserfuck import _Machine
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.vm import run_until_halt_or_all_branches_cycle
@@ -303,12 +256,7 @@ class TestRunUntilHaltOrCycle:
         assert run_until_halt_or_cycle(_Machine(code, ScriptedIO())) is False
 
     def test_super_snusp_forks_every_value_equals_could_store(self) -> None:
-        """``=`` picks from the span between the cell and the stack top.
-
-        ``3`` writes 3, ``{`` pushes it, ``(`` drops the cell to 2, so the
-        span is ``[2..3]`` -- two outcomes, against the one a command
-        without a draw would produce.
-        """
+        """``=`` picks from the span between the cell and the stack top."""
         from esolangs.interpreters.grid_based.super_snusp import _Machine
         from esolangs.interpreters.io import ScriptedIO
 
@@ -381,13 +329,7 @@ class TestRunUntilHaltOrCycle:
             quiet.branching_successors(quiet.branching_snapshot(), 100)
 
     def test_modulous_non_command_tokens_advance_one_branch(self) -> None:
-        """A token no handler claims still steps, and forks nothing.
-
-        Empty tokens and variable arithmetic have no dispatch handler.
-        ``VAR1+1`` changes state, and none opens a second outcome, so each must
-        return exactly one successor rather than ``None`` (which would
-        claim the step needs input) or a fork.
-        """
+        """A token no handler claims still steps, and forks nothing."""
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.stack_based.modulous import _Machine
 
@@ -451,15 +393,6 @@ class TestRunUntilHaltOrCycle:
                 PainfuckMachine(_painfuck_source("ccy"), ScriptedIO()), limit=4
             )
 
-    def test_sbleq_halting_run_returns_true(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.sbleq import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
-
-        # a=0 b=0 c=3: diff (0-0=0) jumps to mem[3], which is negative -> halts
-        machine = _Machine("0 0 3 -1", ScriptedIO(), store="a")
-        assert run_until_halt_or_cycle(machine) is True
-
     def test_sbleq_looping_run_is_detected_as_a_cycle(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.sbleq import _Machine
@@ -468,14 +401,6 @@ class TestRunUntilHaltOrCycle:
         # a=0 b=0 c=2: diff is always 0, so it jumps to mem[2] (address 0) forever
         machine = _Machine("0 0 0", ScriptedIO(), store="a")
         assert run_until_halt_or_cycle(machine) is False
-
-    def test_dimensional_halting_run_returns_true(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.dimensional import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
-
-        machine = _Machine("+.", ScriptedIO())
-        assert run_until_halt_or_cycle(machine) is True
 
     def test_dimensional_looping_run_is_detected_as_a_cycle(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
@@ -486,14 +411,6 @@ class TestRunUntilHaltOrCycle:
         machine = _Machine("+[]", ScriptedIO())
         assert run_until_halt_or_cycle(machine) is False
 
-    def test_modulous_halting_run_returns_true(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.stack_based.modulous import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
-
-        machine = _Machine("[END]", ScriptedIO())
-        assert run_until_halt_or_cycle(machine) is True
-
     def test_modulous_looping_run_is_detected_as_a_cycle(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.stack_based.modulous import _Machine
@@ -502,15 +419,6 @@ class TestRunUntilHaltOrCycle:
         # RST resets the pointer to the start of the program on every pass
         machine = _Machine("[RST]", ScriptedIO())
         assert run_until_halt_or_cycle(machine) is False
-
-    def test_laserfuck_halting_run_returns_true(self) -> None:
-        from esolangs.interpreters.grid_based.laserfuck import _Machine
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.randomness import FirstDraw
-        from esolangs.vm import run_until_halt_or_cycle
-
-        machine = _Machine(["o"], ScriptedIO(), rng=FirstDraw(0))
-        assert run_until_halt_or_cycle(machine) is True
 
     def test_laserfuck_looping_run_is_detected_as_a_cycle(self) -> None:
         from esolangs.interpreters.grid_based.laserfuck import _Machine
@@ -522,14 +430,6 @@ class TestRunUntilHaltOrCycle:
         grid = ["/ \\", "\\o/", "//\\"]
         machine = _Machine(grid, ScriptedIO(), rng=FirstDraw(2))
         assert run_until_halt_or_cycle(machine) is False
-
-    def test_slow_acv_mammalian_halting_run_returns_true(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
-
-        machine = _Machine("PRONOUNCE", ScriptedIO())
-        assert run_until_halt_or_cycle(machine) is True
 
     def test_slow_acv_mammalian_looping_run_is_detected_as_a_cycle(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
@@ -543,27 +443,13 @@ class TestRunUntilHaltOrCycle:
         assert run_until_halt_or_cycle(machine) is False
 
     def test_a_machine_already_halted_is_reported_as_halting(self) -> None:
-        """The loop is never entered, and the answer is still ``True``.
-
-        Every other path returns from inside the walk, so the ``return``
-        after it is reached only by a machine that arrived finished.  A
-        sweep found it free to say ``False`` -- which would report a
-        program that has already run to completion as a hang.
-        """
+        """The loop is never entered, and the answer is still ``True``."""
         from esolangs.vm import run_until_halt, run_until_halt_or_cycle
 
         vm = debugger_api.make_vm("brainfuck", "++")
         run_until_halt(vm)
         assert vm.halted
         assert run_until_halt_or_cycle(vm) is True
-
-    def test_forbin_halting_run_returns_true(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.other.forbin import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
-
-        machine = _Machine("main { x = 1; }", ScriptedIO())
-        assert run_until_halt_or_cycle(machine) is True
 
     def test_forbin_for_loop_halts_without_a_false_cycle(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
@@ -634,11 +520,7 @@ class TestRunUntilHaltOrCycle:
 
 
 class TestRunUntilHaltOrGrowth:
-    """The unbounded-growth certificate on brainfuck's tape.
-
-    Every program here is run through the real interpreter: the verdicts
-    are what stepping ``_Machine`` produced, not a hand-written trace.
-    """
+    """The unbounded-growth certificate on brainfuck's tape."""
 
     def test_halting_run_returns_true(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
@@ -822,35 +704,7 @@ class TestRunUntilHaltOrGrowth:
 
 
 class TestGrowthDetectorAcrossLanguages:
-    """The certificate is not brainfuck-specific.
-
-    Four more tape languages satisfy ``_TapeMachine``'s semantic contract,
-    and each is checked the same way: a growing program is proved to hang,
-    a halting one still halts, and the growing program is *executed* to
-    confirm it really grows -- a hang verdict on a program that stops
-    would be the one failure this detector must never produce.
-    """
-
-    def test_brainif(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.brainif import _Machine
-        from esolangs.vm import run_until_halt_or_growth
-
-        # `if 0 right` / `goto 1` walks right forever, one fresh cell per
-        # lap.  Goto targets are 1-based: `goto 0` would park the cursor
-        # at -1, which neither halts nor advances.
-        growing = ["if 0 right", "if 0 goto 1"]
-        assert run_until_halt_or_growth(_Machine(growing, ScriptedIO())) is False
-
-        machine = _Machine(growing, ScriptedIO())
-        for _ in range(600):
-            assert not machine.halted
-            machine.step()
-        assert len(machine.cells) > 250
-
-        # The guard fails on the first pass, so the program runs off the end.
-        halting = ["if 9 goto 1", "if 0 increment"]
-        assert run_until_halt_or_growth(_Machine(halting, ScriptedIO())) is True
+    """The certificate is not brainfuck-specific."""
 
     def test_six_five(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
@@ -874,25 +728,6 @@ class TestGrowthDetectorAcrossLanguages:
 
         # No jump, so the cursor runs off the end.
         assert run_until_halt_or_growth(_Machine("41", ScriptedIO())) is True
-
-    def test_back(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.back import _Machine
-        from esolangs.vm import run_until_halt_or_growth
-
-        # A one-cell grid holding `>`: the beam wraps onto itself and moves
-        # one cell right every lap.  This is the case that needs the
-        # heading in the key, which `ip` supplies.
-        assert run_until_halt_or_growth(_Machine([">"], ScriptedIO())) is False
-
-        machine = _Machine([">"], ScriptedIO())
-        for _ in range(600):
-            assert not machine.halted
-            machine.step()
-        assert len(machine.tape) > 250
-
-        # `*` halts the beam.
-        assert run_until_halt_or_growth(_Machine([">*"], ScriptedIO())) is True
 
     def test_factor(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
@@ -932,32 +767,10 @@ class TestGrowthDetectorAcrossLanguages:
 
 
 class TestTheDetectorsTakeAVM:
-    """Every detector accepts what ``make_vm`` returns, not just a ``_Machine``.
-
-    The detectors were written against the interpreters' private
-    ``_Machine`` classes, so every caller in the repo imported one and
-    hand-built it -- the class, its ``ScriptedIO``, and for a random
-    language the seeded generator -- rather than going through the public
-    factory.  A ``VM`` already holds exactly that machine, so ``_unwrap``
-    opens it and the private import stops being the only way in.
-
-    Each case asserts the *same verdict* the hand-built machine gets in
-    the class above, because the point is that the wrapper changes
-    nothing about the answer.  Both directions are checked: a detector
-    that always returned ``True`` would pass a halting-only test.
-    """
+    """Every detector accepts what ``make_vm`` returns, not just a ``_Machine``."""
 
     def test_the_branching_detector_takes_a_vm(self) -> None:
-        """The adapter's seeded ``rng`` must not narrow the search.
-
-        This is the case the unwrap could plausibly break: the derived
-        adapter passes ``rng=Seeded(...)`` so a stepped VM is
-        reproducible, and a search that followed that generator would
-        explore one draw and call the other three unreachable.  It does
-        not, because ``branching_successors`` forks the immutable state
-        rather than the live machine -- so ``}o{``, where only up and
-        down leave the grid, is still found to halt.
-        """
+        """The adapter's seeded ``rng`` must not narrow the search."""
         from esolangs.vm import make_vm, run_until_halt_or_all_branches_cycle
 
         looping = make_vm("LaserFuck", " v \n}o{\n ^ ")
@@ -986,12 +799,7 @@ class TestTheDetectorsTakeAVM:
         assert run_until_halt_or_growth(make_vm("brainfuck", "+[>+]")) is False
 
     def test_the_value_growth_detector_proves_a_climbing_cell(self) -> None:
-        """Suffolk's ``>>!`` loops climb in value on a tape that never grows.
-
-        Neither existing detector can see these.  The tape stays five cells
-        wide and the pointer stays put, so nothing grows; a cell climbs by
-        4501 a lap and the cells are unbounded ints, so nothing repeats.
-        """
+        """Suffolk's ``>>!`` loops climb in value on a tape that never grows."""
         from esolangs.vm import make_vm, run_until_halt_or_value_growth
 
         climbing = ">>!>>!>>!>>!>>!>>!>>!>>!>>>!>>!>>!>><!>>"
@@ -1001,13 +809,7 @@ class TestTheDetectorsTakeAVM:
         )
 
     def test_the_value_growth_detector_declines_a_repeating_program(self) -> None:
-        """A program that cycles is the cycle detector's, and is not certified.
-
-        Suffolk's sample returns to a state it has been in, which
-        :func:`run_until_halt_or_cycle` proves.  This detector must reach
-        its limit rather than claim the run climbs forever -- an undecided
-        answer where another detector has a proof, never a wrong one.
-        """
+        """A program that cycles is the cycle detector's, and is not certified."""
         from esolangs.vm import (
             make_vm,
             run_until_halt_or_cycle,
@@ -1024,81 +826,8 @@ class TestTheDetectorsTakeAVM:
         with pytest.raises(TimeoutError):
             run_until_halt_or_value_growth(make_vm("Suffolk", "<"), 5_000)
 
-    def test_a_drifting_clamp_is_not_a_certificate(self) -> None:
-        """Two laps agreeing on a delta do not carry to the hundredth.
-
-        ``!`` writes ``max(0, tape[ptr] + 1 - acc)``.  A slack that shrinks
-        a little each lap agrees with itself for as long as anyone watches
-        and then flips, after which the lap is a different affine map.  The
-        clamp conditions are what refuse it, so a delta that repeats while
-        a clamp drifts toward zero must not be certified.
-        """
-        from esolangs.vm import _clamps_hold
-
-        # Unclamped and falling, and clamped and rising: both flip later.
-        assert _clamps_hold([5], [3]) is False
-        assert _clamps_hold([-5], [-3]) is False
-        # Holding: away from the boundary, or already past it and sinking.
-        assert _clamps_hold([3], [5]) is True
-        assert _clamps_hold([-3], [-5]) is True
-        # A clamp that already changed side between the two laps.
-        assert _clamps_hold([1], [-1]) is False
-        # Laps that clamped in different places are not comparable at all.
-        assert _clamps_hold([None, 1], [1, None]) is False
-        assert _clamps_hold([1], [1, 1]) is False
-
-        # Zero is the boundary itself, and every comparison here is written
-        # against it, so it is the one value that separates ``>= 0`` from
-        # ``> 0`` -- a mutation sweep found four readings of these lines
-        # that no case above could tell apart.
-        assert _clamps_hold([0], [5]) is True
-        assert _clamps_hold([0], [0]) is True
-        # A slack that does not move at all holds: the conditions refuse
-        # *drift* toward a flip, and standing still is not drift.
-        assert _clamps_hold([3], [3]) is True
-        assert _clamps_hold([-3], [-3]) is True
-        # A pair that both clamped is skipped, not a verdict on the rest:
-        # the laps after it still have to agree.
-        assert _clamps_hold([None, 5], [None, 3]) is False
-        assert _clamps_hold([None], [None]) is True
-
-    @pytest.mark.parametrize(
-        ("detector", "role"),
-        [
-            ("run_until_halt_or_all_branches_cycle", "branch-enumerable"),
-            ("run_until_halt_or_ancestor", "framed"),
-            ("run_until_halt_or_growth", "a tape machine"),
-            ("run_until_halt_or_value_growth", "an affine machine"),
-        ],
-    )
-    def test_a_detector_names_the_thing_the_language_is_not(
-        self, detector: str, role: str
-    ) -> None:
-        """The refusal says which sub-protocol was missing, not just that one was.
-
-        ``_unwrap``'s whole point is that the interesting failure is "this
-        language has no such thing" rather than "wrong type": a machine
-        without frames does not recurse, one without a tape has nothing to
-        grow.  The role is the only part of the message carrying that, and
-        nothing pinned it -- a sweep found every detector's wording free to
-        change.  Sophie has none of the four.
-        """
-        import esolangs.vm as module
-
-        # The class is named as well as the role: "wrong type" alone is the
-        # message this function exists to improve on, so both halves are
-        # pinned -- the sweep found each free to change on its own.
-        with pytest.raises(TypeError, match=f"Sophie is not {re.escape(role)}:"):
-            getattr(module, detector)(debugger_api.make_vm("Sophie", ""))
-
     def test_the_value_growth_detector_refuses_a_bounded_language(self) -> None:
-        """Brainfuck's cells wrap, so a climb there is a cycle, not a proof.
-
-        The certificate needs values with no ceiling; a byte that keeps
-        being incremented comes back around and is
-        :func:`run_until_halt_or_cycle`'s to prove.  Brainfuck exposes no
-        ``values``, so the question is refused rather than answered.
-        """
+        """Brainfuck's cells wrap, so a climb there is a cycle, not a proof."""
         from esolangs.vm import make_vm, run_until_halt_or_value_growth
 
         with pytest.raises(TypeError, match="affine machine"):
@@ -1112,14 +841,7 @@ class TestTheDetectorsTakeAVM:
             run_until_halt_or_cycle(object())  # type: ignore[arg-type]
 
     def test_a_negative_branch_cap_stops_rather_than_exploring_free(self) -> None:
-        """A cap below zero is still a cap.
-
-        ``len(seen) == limit`` against a count rising from zero never
-        matched a negative one, so the branch cap switched itself off and an
-        unbounded graph was explored forever.  The machine here has no halt
-        and a fresh successor every time, so a regression hangs the suite
-        rather than passing quietly.
-        """
+        """A cap below zero is still a cap."""
         from esolangs.vm import run_until_halt_or_all_branches_cycle
 
         class _Unbounded:

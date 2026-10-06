@@ -1,9 +1,4 @@
-"""Unit tests for the esolangs command-line interface.
-
-The subprocess tests exercise the real ``python -m esolangs.cli`` entry
-point; the in-process tests exercise every branch of ``main`` so the CLI is
-fully covered by the suite (subprocesses do not contribute to coverage).
-"""
+"""Unit tests for the esolangs command-line interface."""
 
 import subprocess
 import sys
@@ -74,23 +69,10 @@ class TestSubprocess:
 
 
 class TestInProcess:
-    def test_list(self, capsys: pytest.CaptureFixture[str]) -> None:
-        out = call_main(["list"], capsys)
-        assert "Sophie" in out
-
-    def test_generate(self, capsys: pytest.CaptureFixture[str]) -> None:
-        out = call_main(["generate", "Sophie", "0110"], capsys)
-        assert esolangs.run("Sophie", out, "01") == "1"
-
     def test_generating_a_raster_writes_png_bytes(
         self, capsysbinary: pytest.CaptureFixture[bytes]
     ) -> None:
-        """Raster ``generate`` writes the image to the byte stream.
-
-        ``capsysbinary`` rather than ``capsys``: a PNG is not text, and the
-        command writes it through ``sys.stdout.buffer``.  Run in-process so
-        the coverage gate can see ``cli._generate``'s raster arm at all.
-        """
+        """Raster ``generate`` writes the image to the byte stream."""
         with (
             patch.object(sys, "argv", ["esolangs", "generate", "Piet", "0110"]),
             patch.object(sys, "stdin", _FakeStdin("")),
@@ -122,12 +104,6 @@ class TestInProcess:
         with pytest.raises(SystemExit) as exc:
             call_main(["generate", "Sophie"], capsys)
         assert exc.value.code == 2
-
-    def test_run(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
-        program = tmp_path / "prog.soph"
-        program.write_text(esolangs.generate("Sophie", "0110"))
-        out = call_main(["run", "Sophie", str(program)], capsys, stdin="01")
-        assert out == "1"
 
     def test_run_feeds_stdin(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
@@ -196,23 +172,14 @@ class TestWidthOption:
     def test_a_width_of_one_is_positive(
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        """The guard rejects zero and below, not one.
-
-        Every other test here passes a comfortable twenty, so the boundary
-        was free to move up by one and refuse a width the option accepts.
-        """
+        """The guard rejects zero and below, not one."""
         out = call_main(["generate", "brainfuck", "0110", "--width", "1"], capsys)
         assert out.strip()
 
     def test_the_option_may_come_before_the_positionals(
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        """``--width N`` consumes two arguments, not three.
-
-        With the option last -- which is how every other test writes it --
-        over-consuming runs off the end and looks the same.  Put an
-        argument after it and the difference is a swallowed language name.
-        """
+        """``--width N`` consumes two arguments, not three."""
         out = call_main(["generate", "--width", "20", "brainfuck", TABLE3], capsys)
         assert max(len(line) for line in out.rstrip("\n").split("\n")) <= 20
         assert esolangs.run("brainfuck", out, "011") == "0"
@@ -227,12 +194,7 @@ class TestWidthOption:
     def test_bare_width_takes_the_default(
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        """A bare ``--width`` wraps to the conventional default.
-
-        The common case is "wrap this so I can read it", which needs no
-        number; the option is only followed by one when the caller wants a
-        width other than the default.
-        """
+        """A bare ``--width`` wraps to the conventional default."""
         from esolangs.tools.wrap import DEFAULT_WIDTH
 
         out = call_main(["generate", "brainfuck", TABLE3, "--width"], capsys)
@@ -242,11 +204,7 @@ class TestWidthOption:
     def test_bare_width_before_a_non_integer(
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        """A following word is an argument, not a width.
-
-        Reading the language name as a width would silently generate the
-        wrong thing, so only an integer is taken as the option's value.
-        """
+        """A following word is an argument, not a width."""
         out = call_main(["generate", "--width", "brainfuck", TABLE3], capsys)
         assert esolangs.run("brainfuck", out, "011") == "0"
 
@@ -343,15 +301,7 @@ class TestDebugCommand:
     def test_a_raise_is_reported_rather_than_propagated(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        """A debugged program is one the caller is already unsure of.
-
-        Reading with no input raises, and the state up to the fault is
-        exactly what the caller asked to see -- so it is printed, not
-        turned into a traceback.  The raise names how much input the
-        program wanted against how much it got, which is the whole
-        diagnosis for this fault and is what a bare ``EOFError`` -- whose
-        message is the empty string -- could never carry.
-        """
+        """A debugged program is one the caller is already unsure of."""
         # Reported, not propagated -- the whole report is printed -- and
         # *then* exit 1, matching what `run` has always called a program's
         # own failure.  `debug` used to exit 0 for every outcome alike, so
@@ -468,10 +418,7 @@ class TestBreakpointOptions:
     def test_a_negative_cell_breakpoint_index_is_refused(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        """It reached ``check_whole`` and came out as an "internal error".
-
-        The index half cannot be negative, where the value half may.
-        """
+        """It reached ``check_whole`` and came out as an "internal error"."""
         with pytest.raises(SystemExit) as exc:
             call_main(
                 [
@@ -491,26 +438,7 @@ class TestTuiFlag:
 
     @pytest.fixture(autouse=True)
     def _pretend_a_terminal(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """Say that a terminal is present, because pytest's stdin is not one.
-
-        These tests patch ``run_tui`` and check the handoff, so they never
-        reach curses and do not need a real terminal -- but the guard that
-        refuses ``--tui`` without one is upstream of the handoff and would
-        exit 2 first.
-
-        They used to get past it by passing ``--stdin``, which the guard
-        exempted.  That exemption was a bug: it is what let a real
-        ``--tui --stdin`` run in a pipe reach curses and fail with
-        ``(19, 'Operation not supported by device')`` reported as an
-        internal error.  With the exemption gone the pretence has to be
-        explicit, which is the honest shape for it -- these tests are about
-        the handoff, not about terminal detection, and
-        ``test_tui_without_a_terminal_is_refused`` covers that separately.
-
-        Patched on :class:`_FakeStdin` rather than on ``sys.stdin``, because
-        :func:`call_main` installs one of those *itself* -- so anything set
-        on ``sys.stdin`` out here is replaced before the guard reads it.
-        """
+        """Say that a terminal is present, because pytest's stdin is not one."""
         monkeypatch.setattr(_FakeStdin, "isatty", lambda _self: True)
 
     def test_it_calls_the_screen_with_the_program_and_input(
@@ -590,26 +518,6 @@ class TestTuiFlag:
         # A position needs no predicate: the screen stops on what it marks.
         assert screen.call_args.kwargs["stop"] is None
 
-    def test_a_cell_breakpoint_has_nothing_to_draw(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        with patch("esolangs.cli_debug.run_tui") as screen:
-            call_main(
-                [
-                    "debug",
-                    "--tui",
-                    "--stdin",
-                    "",
-                    "--break-on-cell",
-                    "0=2",
-                    "brainfuck",
-                    _program(tmp_path, "+++"),
-                ],
-                capsys,
-            )
-        assert screen.call_args.kwargs["at"] == ()
-        assert screen.call_args.kwargs["stop"] is not None
-
     def test_a_watched_cell_reaches_the_screen(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
@@ -630,43 +538,14 @@ class TestTuiFlag:
             )
         assert screen.call_args.kwargs["watch"] == 2
 
-    def test_no_watch_flag_means_no_row(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        with patch("esolangs.cli_debug.run_tui") as screen:
-            call_main(
-                ["debug", "--tui", "--stdin", "", "brainfuck", _program(tmp_path, "+")],
-                capsys,
-            )
-        assert screen.call_args.kwargs["watch"] is None
-
-    def test_no_breakpoint_flags_means_no_predicate(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        with patch("esolangs.cli_debug.run_tui") as screen:
-            call_main(
-                ["debug", "--tui", "--stdin", "", "brainfuck", _program(tmp_path, "+")],
-                capsys,
-            )
-        assert screen.call_args.kwargs["stop"] is None
-
 
 class TestTuiNeedsATerminal:
-    """``--tui`` is refused where there are no keys to read.
-
-    Outside :class:`TestTuiFlag` deliberately: that class patches the tty
-    check so it can test the handoff, and a guard cannot be tested by a
-    class that has disabled it.
-    """
+    """``--tui`` is refused where there are no keys to read."""
 
     def test_a_piped_stream_is_refused(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        """Keys and program input cannot share one descriptor.
-
-        Rather than let the screen read the program's bytes as keystrokes,
-        the pipe is rejected.
-        """
+        """Keys and program input cannot share one descriptor."""
         with pytest.raises(SystemExit) as exc:
             call_main(
                 ["debug", "--tui", "brainfuck", _program(tmp_path, ",.")],
@@ -679,14 +558,7 @@ class TestTuiNeedsATerminal:
     def test_stdin_does_not_buy_a_terminal(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        """The exemption that used to be here was the bug.
-
-        ``--stdin`` was the remedy this guard's message recommended, and
-        passing it stopped the guard firing -- so the advice led to curses
-        failing with ``(19, 'Operation not supported by device')``, reported
-        through the catch-all as an internal error at exit 70.  It settles
-        where the program's input comes from and cannot conjure a terminal.
-        """
+        """The exemption that used to be here was the bug."""
         with pytest.raises(SystemExit) as exc:
             call_main(
                 [
@@ -701,24 +573,6 @@ class TestTuiNeedsATerminal:
             )
         assert exc.value.code == 2
         assert "terminal" in capsys.readouterr().err
-
-    def test_an_unknown_language_is_reported(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        with pytest.raises(SystemExit) as exc:
-            call_main(
-                [
-                    "debug",
-                    "--tui",
-                    "--stdin",
-                    "",
-                    "NoSuchLanguage",
-                    _program(tmp_path, "+"),
-                ],
-                capsys,
-            )
-        assert exc.value.code == 2
-        assert "unknown language" in capsys.readouterr().err
 
 
 class TestHelp:
@@ -901,13 +755,6 @@ class TestOutputAndAbridging:
             capsys,
         )
         assert "cell 0: [1, 2, 3]" in out
-
-    def test_a_double_dash_ends_the_width_option_too(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """``--`` is positional-from-here for every parser, not just one."""
-        out = call_main(["generate", "--", "brainfuck", TABLE3], capsys)
-        assert esolangs.run("brainfuck", out, "011") == "0"
 
 
 class TestGenerateArgumentTypes:

@@ -32,14 +32,7 @@ _RUN_FORM = {
 
 
 def _embedded_inputs(gen: object, template: str, n: int) -> list[int]:
-    """The inputs ``template`` embeds, in the order it embeds them.
-
-    A generator emits one run of the language's character per input; the
-    runs are read off the example's setters -- :func:`~esolangs.tools.helpers.runs`
-    refuses a run of the wrong width, a stray character or a run left over,
-    so a template that embeds an input twice or out of step with its setters
-    fails here rather than reading as in order.
-    """
+    """The inputs ``template`` embeds, in the order it embeds them."""
     from esolangs.tools.examples import BOOLEAN_EXAMPLES
     from esolangs.tools.helpers import runs
 
@@ -50,12 +43,7 @@ def _embedded_inputs(gen: object, template: str, n: int) -> list[int]:
 
 @pytest.mark.parametrize(("language", "attr"), sorted(_RUN_FORM.items()))
 def test_run_form_generators_spell_their_own_runs(language: str, attr: str) -> None:
-    """The generator emits the public runs itself: no ``{Xi}`` anywhere.
-
-    The public template is the generator's output verbatim, and its runs
-    of ``$`` sum to exactly its setters' widths -- one run per input,
-    each as long as the code that replaces it.
-    """
+    """The generator emits the public runs itself: no ``{Xi}`` anywhere."""
     from esolangs import tools as generators
 
     for table in ("01", "0110", "01101001"):
@@ -69,17 +57,7 @@ def test_run_form_generators_spell_their_own_runs(language: str, attr: str) -> N
 
 @pytest.mark.slow  # ~3s: builds every generator, up to n=4
 def test_parameterized_generators_embed_each_input_once() -> None:
-    """Every no-input generator embeds each input exactly once.
-
-    An input-capable language reads each of its n inputs exactly once per
-    run; a no-input language's parameterized generator should match, so each
-    input is embedded exactly once -- never re-embedded at multiple decision
-    nodes.
-
-    A {Ci} complement placeholder must not appear at all.  instantiate no
-    longer fills one, so a template carrying it would ship the literal text
-    to the interpreter instead of failing, which is worth catching here.
-    """
+    """Every no-input generator embeds each input exactly once."""
 
     checked = 0
     for name, gen in _parameterized_generators():
@@ -109,14 +87,7 @@ _SLOT_ORDER_TABLES = ("0110", "01101001", "10101010", "11110000", "00111100")
 
 
 def _all_derived_plans(derived_plans, staged_arities, n: int) -> dict:
-    """Every staging the enumeration places at ``n``, in one pass.
-
-    ``_derived_plans`` is asked for the tables it should look for, so a test
-    that wants the whole arity has to name them.  The arity guard is checked
-    *first*: naming every table means ``2 ** (2 ** n)`` of them, which is
-    unbuildable past four inputs, and the guard is what the unstaged arities
-    are being tested for anyway.
-    """
+    """Every staging the enumeration places at ``n``, in one pass."""
     if n not in staged_arities:
         return derived_plans(n, ())
     every = tuple(format(v, f"0{2**n}b") for v in range(2 ** (2**n)))
@@ -135,17 +106,7 @@ def _slot_order(gen: object, table: str) -> list[int] | None:
 
 @pytest.mark.slow  # builds every generator over several tables
 def test_slots_run_in_name_order() -> None:
-    """Every template's runs fit its setters, one run per input, in order.
-
-    The k-th run *is* input k, so order cannot be wrong; what can is a run
-    of the wrong width, a stray character or a run left over, which the
-    reader refuses, and a load restructured that way is worth a failure
-    rather than a shrug.
-
-    Every generator is swept, with no exceptions carried -- Minifuck was the
-    last one and is covered in its own test below, which pins the specific
-    tables that used to leave sequence.
-    """
+    """Every template's runs fit its setters, one run per input, in order."""
     checked = 0
     for name, gen in _parameterized_generators():
         for table in _SLOT_ORDER_TABLES:
@@ -158,37 +119,13 @@ def test_slots_run_in_name_order() -> None:
 
 
 def _drawing(template: str) -> str:
-    """The template as the drawing the reorder bar compares.
-
-    Every input is a run of the same character, so a mere relabelling of
-    inputs already leaves the text unchanged: the drawing is the template.
-    """
+    """The template as the drawing the reorder bar compares."""
     return template
 
 
 @pytest.mark.slow  # builds every permuting generator over several tables
 def test_a_permuting_generator_changes_its_drawing() -> None:
-    """A generator that permutes its slots must emit a different *drawing*.
-
-    This is the reorder bar, and it is the one thing that could make a
-    template's slot permutation a redefined benchmark rather than a smaller
-    program.  ``instantiate`` substitutes by name, and ``_fill_back``'s
-    setter is ``lambda _i, b:`` -- it ignores the index -- so if two input
-    orders produced the same drawing they would emit *byte-identical
-    programs* and any "saving" between them would be booked against the
-    harness's fill order alone.
-
-    They do not.  Back's tree is built on the permuted table, so a different
-    order folds differently and draws a different program: at ``10101010``
-    the identity order draws 115 characters and the winning order 44.  The
-    permuted slot names are a consequence of choosing the order, not the
-    source of the saving -- orders that share a drawing measure exactly the
-    same size.
-
-    Asserting that is what gives this teeth.  A future change that made the
-    reorder cosmetic -- permuting names while emitting one drawing -- would
-    still pass every correctness test in this class and fail here.
-    """
+    """A generator that permutes its slots must emit a different *drawing*."""
     from itertools import permutations
 
     from esolangs.tools.helpers import permute_truth_table
@@ -220,19 +157,7 @@ def test_a_permuting_generator_changes_its_drawing() -> None:
 
 @pytest.mark.slow  # 2.6s: every fill of every parameterized generator
 def test_fills_embed_a_zero_and_a_one_at_equal_width() -> None:
-    """No fill may spell a 0 shorter than a 1, or the length leaks the input.
-
-    A program whose length depends on its inputs reveals them without being
-    read: an earlier BIO embedding ran to 236/240/244/248 characters for the
-    four ``n == 2`` instantiations, so ``len(program)`` alone recovered the
-    bits.  Every ``_fill_*`` therefore pads the two sides to equal width, an
-    invariant stated on :func:`~esolangs.tools.helpers.instantiate`
-    and enforced here.
-
-    The check is per-generator rather than global: fills legitimately differ
-    from each other in width, but for one generator and one table every
-    instantiation must come out the same length.
-    """
+    """No fill may spell a 0 shorter than a 1, or the length leaks the input."""
 
     from esolangs.tools import examples as ex
 

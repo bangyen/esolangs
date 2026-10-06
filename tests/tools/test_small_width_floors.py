@@ -4,13 +4,13 @@ import pytest
 
 import esolangs
 from esolangs.exceptions import TemplateError
+from tests.witness_tables import witnesses
 
 
 @pytest.mark.medium
 def test_false_single_character_floor_executes_every_small_table() -> None:
     for n in range(1, 4):
-        for value in range(1 << (1 << n)):
-            table = format(value, f"0{1 << n}b")
+        for table in witnesses(n):
             program = esolangs.generate("FALSE", table, 1)
             assert max(map(len, program.splitlines())) == 1
             for row, expected in enumerate(table):

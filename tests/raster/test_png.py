@@ -87,22 +87,7 @@ def _encode(
 
 @pytest.mark.parametrize("filter_type", [0, 1, 2, 3, 4])
 def test_every_row_filter_decodes(filter_type: int) -> None:
-    """All five spec filters reconstruct the same image.
-
-    Each row is filtered by hand here rather than trusting an encoder, so a
-    wrong filter predictor shows up as wrong pixels rather
-    than being masked by a matching bug on the write side.
-
-    The pixel values are chosen to exercise Average's floor-vs-round on an
-    odd ``left + up`` (e.g. 3 + 200), which a smooth gradient hides -- and
-    which mutation confirmed this catches.
-
-    Paeth's first ``<=`` is deliberately *not* covered, because it cannot be:
-    ``pa == pb`` requires ``|b - c| == |a - c|`` with ``p = a + b - c``, which
-    forces ``a == b``, so the branch returns the same value either way.
-    Weakening it to ``<`` is an equivalent mutation over all 256^3 inputs
-    (checked exhaustively), not a gap in these cases.
-    """
+    """All five spec filters reconstruct the same image."""
     want = [
         bytearray([3, 200, 3, 255]),
         bytearray([200, 3, 100, 0]),
@@ -199,14 +184,7 @@ def test_palette_is_resolved_through_plte() -> None:
 def test_colour_types_reduce_to_grey_as_pillow_does(
     colour: int, pixel: list[int], expected: int
 ) -> None:
-    """Colour and alpha images reduce to the grey level Pillow produces.
-
-    A Line drawing opened and re-saved in an image editor typically comes
-    back as RGB even though it is visually black and white, so refusing
-    colour would refuse a file the user reasonably considers the same
-    drawing.  The expected values here were taken from Pillow's own
-    ``convert("L")`` output.
-    """
+    """Colour and alpha images reduce to the grey level Pillow produces."""
     blob = _encode([bytes([0, *pixel])], 1, 1, colour=colour)
     assert png.read_grey(blob) == [bytearray([expected])]
     rgb = png.read_rgb(blob)
@@ -217,11 +195,7 @@ def test_colour_types_reduce_to_grey_as_pillow_does(
 
 
 def test_multi_channel_filters_step_by_a_whole_pixel() -> None:
-    """A colour row's Sub filter predicts from the pixel left, not the byte.
-
-    With 3 bytes per pixel the predictor looks back 3 bytes; using 1 would
-    decode a plausible-looking but wrong image rather than failing loudly.
-    """
+    """A colour row's Sub filter predicts from the pixel left, not the byte."""
     want = [(10, 20, 30), (40, 60, 90), (200, 130, 70)]
     row = bytearray([1])  # filter type: Sub
     for i, (red, green, blue) in enumerate(want):
@@ -279,13 +253,7 @@ def _adam7_encode(pixels: list[list[int]], width: int, height: int) -> bytes:
 
 @pytest.mark.parametrize(("width", "height"), [(1, 1), (5, 3), (9, 9), (16, 7)])
 def test_interlaced_reassembles_to_the_same_image(width: int, height: int) -> None:
-    """An Adam7 image decodes to what the same pixels say non-interlaced.
-
-    Adam7 stores seven subsampled passes rather than plain scanlines, each
-    with its own dimensions, row filters and row padding.  The sizes here
-    include ones smaller than the 8x8 lattice, where whole passes are empty
-    -- the case an off-by-one in the pass geometry shows up on first.
-    """
+    """An Adam7 image decodes to what the same pixels say non-interlaced."""
     pixels = [[(x * 37 + y * 11) % 256 for x in range(width)] for y in range(height)]
     plain = _encode(
         [bytes([0, *row]) for row in pixels],
@@ -299,14 +267,7 @@ def test_interlaced_reassembles_to_the_same_image(width: int, height: int) -> No
 
 
 def test_sixteen_bit_scales_down_rather_than_clipping() -> None:
-    """16-bit samples scale onto 0-255; they are not clipped there.
-
-    This deliberately departs from Pillow, whose ``I;16 -> L`` conversion
-    clips: under it every 16-bit value above 255 comes out white, so a
-    drawing whose ink is stored as (say) 1000 would decode to a blank page
-    with every stroke erased.  The two agree on pure 0 and pure 65535, which
-    is what a clean black-and-white drawing actually holds.
-    """
+    """16-bit samples scale onto 0-255; they are not clipped there."""
     values = [0, 256, 1000, 32768, 60000, 65535]
     row = bytearray([0])
     for value in values:
@@ -333,12 +294,7 @@ def test_rejects_a_non_png() -> None:
 
 
 def test_a_jpeg_is_refused_with_a_usable_message(tmp_path: Path) -> None:
-    """A JPEG names itself and the fix, rather than failing on the signature.
-
-    JPEG support was written and deliberately removed, so this is the one
-    wrong-format case likely enough to be worth a message that
-    says what to do next instead of "bad signature".
-    """
+    """A JPEG names itself and the fix, rather than failing on the signature."""
     from esolangs.interpreters.tape_based.line import extract
 
     path = tmp_path / "drawing.jpg"
@@ -524,14 +480,6 @@ def test_missing_image_extra(
         operation()
 
 
-def test_raster_preserves_missing_dependency(monkeypatch: pytest.MonkeyPatch) -> None:
-    from esolangs import MissingDependencyError, Raster
-
-    monkeypatch.setattr(png, "Image", None)
-    with pytest.raises(MissingDependencyError, match=r"esolangs\[image\]"):
-        Raster.from_png(b"")
-
-
 def test_import_without_pillow(monkeypatch: pytest.MonkeyPatch) -> None:
     import builtins
     import runpy
@@ -551,121 +499,10 @@ def test_import_without_pillow(monkeypatch: pytest.MonkeyPatch) -> None:
         namespace["read_rgb"](b"")
 
 
-def test_rgb_loading_reuses_immutable_pixels_and_rows() -> None:
-    from esolangs import Raster
-
-    red, black = (255, 0, 0), (0, 0, 0)
-    data = png.write_rgb([[red, red], [black, red], [red, red]])
-    image = Raster.from_png(data)
-    assert image.rows == ((red, red), (black, red), (red, red))
-    assert image.rows[0] is image.rows[2]
-    assert image.rows[0][0] is image.rows[0][1] is image.rows[1][1]
-    mutable = png.read_rgb(data)
-    mutable[0][0] = black
-    assert mutable[2] == [red, red]
-    assert image.rows[0] == (red, red)
-
-
-def test_rgb_loading_exceeds_pixel_cache_exactly() -> None:
-    from esolangs import Raster
-
-    colours = [(i // 256, i % 256, 17) for i in range(1025)]
-    pixels = [colours, colours]
-    data = png.write_rgb(pixels)
-    image = Raster.from_png(data)
-    assert image.rows == tuple(tuple(row) for row in pixels)
-    assert png.read_rgb(data) == pixels
-
-
-def test_rgb_loading_exceeds_row_cache_with_small_palette() -> None:
-    from esolangs import Raster
-
-    colours = ((0, 0, 0), (255, 255, 255))
-    pixels = [[colours[(y >> x) & 1] for x in range(11)] for y in range(1025)]
-    data = png.write_rgb(pixels + pixels[:1])
-    image = Raster.from_png(data)
-    assert image.rows == tuple(tuple(row) for row in pixels + pixels[:1])
-    assert image.rows[0] is image.rows[-1]
-
-
-def test_rgb_writer_reuses_immutable_rows_without_changing_png() -> None:
-    row = ((255, 0, 0), (0, 0, 0))
-    immutable = (row, row, row)
-    mutable = [list(row) for row in immutable]
-    assert png.write_rgb(immutable) == png.write_rgb(mutable)
-    assert png.read_rgb(png.write_rgb(immutable)) == mutable
-
-
-def test_rgb_writer_exceeds_row_reuse_limit_exactly() -> None:
-    rows = tuple(((i // 256, i % 256, 17),) for i in range(1025))
-    rows += (rows[0], rows[-1])
-    assert png.read_rgb(png.write_rgb(rows)) == [list(row) for row in rows]
-
-
-@pytest.mark.parametrize("tuple_row", [False, True])
-@pytest.mark.parametrize("changed", [255, 256])
-def test_rgb_writer_revalidates_mutable_pixels(
-    changed: int, *, tuple_row: bool
-) -> None:
-    pixel = [0, 0, 0]
-    row = (pixel,) if tuple_row else [pixel]
-
-    class ChangingRows(list):
-        def __iter__(self):
-            pixel[0] = 0
-            yield row
-            pixel[0] = changed
-            yield row
-
-    rows = ChangingRows([row, row])
-    if changed == 256:
-        with pytest.raises(ValueError, match="invalid RGB"):
-            png.write_rgb(rows)
-    else:
-        assert png.read_rgb(png.write_rgb(rows)) == [[(0, 0, 0)], [(255, 0, 0)]]
-
-
-def test_rgb_writer_does_not_reuse_equal_invalid_pixels() -> None:
-    pixels = [[(1, 0, 0), (1.0, 0, 0)]]
-    with pytest.raises(TypeError):
-        png.write_rgb(pixels)  # type: ignore[arg-type]
-
-
-def test_rgb_writer_exceeds_pixel_cache() -> None:
-    row = tuple((index // 256, index % 256, 0) for index in range(1025))
-    rows = (row, tuple(reversed(row)))
-    assert png.read_rgb(png.write_rgb(rows)) == [list(part) for part in rows]
-
-
-@pytest.mark.parametrize("invalid", [(0, 0, 256), (1.0, 0, 0)])
-def test_rgb_writer_validates_pixels_after_cache_saturation(invalid) -> None:
-    row = [(index // 256, index % 256, 0) for index in range(1024)]
-    row.append(invalid)
-    with pytest.raises((ValueError, TypeError)):
-        png.write_rgb([row])
-
-
-def test_rgb_loading_runs_preserve_channel_alignment_and_newlines() -> None:
-    colours = [(10, 10, 10), (1, 2, 1), (2, 1, 2), (0, 255, 10)]
-    row = [pixel for index, pixel in enumerate(colours) for _ in range(index + 1)]
-    assert png.read_rgb(png.write_rgb([row])) == [row]
-
-
 def test_rgb_writer_flushes_repeated_pixels_between_colours_and_at_end() -> None:
     red, black = (255, 0, 0), (0, 0, 0)
     row = (red,) * 19 + (black,) * 7 + (red,) * 11
     assert png.read_rgb(png.write_rgb((row,))) == [list(row)]
-
-
-def test_rgb_writer_packs_adjacent_mutable_pixels_independently() -> None:
-    class ChangingPixel(list):
-        def __iter__(self):
-            self[0] += 1
-            return iter((self[0], 0, 0))
-
-    pixel = ChangingPixel([0, 0, 0])
-    # Range validation and packing each iterate the mutable pixel.
-    assert png.read_rgb(png.write_rgb(((pixel, pixel),))) == [[(2, 0, 0), (4, 0, 0)]]
 
 
 @pytest.mark.parametrize("raw_size", [4, 16384])

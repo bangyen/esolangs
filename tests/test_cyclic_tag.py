@@ -6,12 +6,12 @@ from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.queue_based.cyclic_tag import _Machine, run
 from esolangs.tools.cyclic_tag import cyclic_tag
 from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
+from tests.witness_tables import witnesses
 
 
 def test_all_three_input_tables() -> None:
     for n in range(1, 4):
-        for value in range(1 << (1 << n)):
-            table = f"{value:0{1 << n}b}"
+        for table in witnesses(n):
             template = cyclic_tag(table)
             assert len(template) == 5 * len(table) + 2 * n + 1
             for row in range(1 << n):

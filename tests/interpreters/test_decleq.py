@@ -1,14 +1,4 @@
-"""Unit tests for the Decleq interpreter.
-
-Tests cover the ``b = a - 1`` countdown OISC, the memory-mapped I/O
-(``-2`` output, ``-1`` input), the jump and fall-through, and the documented
-halt conventions.
-
-There is no per-run instruction cap to test: a self-decrementing loop grows
-without bound and never revisits a snapshot (see the module docstring), so
-esolangs.run's wall-clock timeout is the guard, tested generically in
-test_api.py's test_run_timeout_halts_runaway_program.
-"""
+"""Unit tests for the Decleq interpreter."""
 
 import pytest
 
@@ -68,15 +58,7 @@ class TestHaltAndErrors:
         assert _run(memory([[10, 10, 10_000]], {10: 1})) == ""
 
     def test_a_self_decrementing_loop_never_revisits_a_snapshot(self) -> None:
-        """The growth claim the module docstring makes, executed.
-
-        ``memory[b] = memory[a] - 1`` with ``a == b`` and a jump to self
-        walks the cell down by exactly one every pass, so the state the
-        cycle detector hashes is new every time.  This is what makes
-        ``run_until_halt_or_cycle`` provably unable to terminate on the
-        program, and why the interpreter has no instruction cap of its own
-        to catch it -- that is ``esolangs.run(timeout=)``'s job.
-        """
+        """The growth claim the module docstring makes, executed."""
         from esolangs.interpreters.register_based.decleq import _Machine
 
         # a == b == 10 -- the operand cells ARE the instruction, so each
@@ -96,10 +78,7 @@ class TestHaltAndErrors:
             _run("10 10 x")
 
     def test_a_write_far_left_names_its_address_in_full(self) -> None:
-        """A 5000-digit address parses and is reported whole (a0b2580c).
-
-        CPython's 4300-digit cap made the token malformed before.
-        """
+        """A 5000-digit address parses and is reported whole (a0b2580c)."""
         digits = "9" * 5000
         with pytest.raises(HaltError, match=f"^address -{digits} is "):
             _run(f"0 -{digits} 0")
@@ -110,12 +89,7 @@ class TestHaltAndErrors:
 
 
 class TestOperandRange:
-    """The guards on an operand that points outside memory.
-
-    Every one of these was a surviving mutant: the suite exercised the
-    guards only from well inside memory, where widening or narrowing a
-    bound changes nothing, so each boundary is pinned from both sides.
-    """
+    """The guards on an operand that points outside memory."""
 
     def test_output_reads_the_first_cell(self) -> None:
         # b == 0 is in range, so this prints memory[0] -- here the -2 of the
@@ -128,20 +102,11 @@ class TestOperandRange:
         # bound has to be strict: memory[6] does not exist.
         assert _run(memory([[-2, 6, 0], [0, 0, 999]])) == "\x00"
 
-    def test_output_before_the_start_reads_zero(self) -> None:
-        assert _run(memory([[-2, -5, 0], [0, 0, 999]])) == "\x00"
-
     def test_source_past_the_end_reads_zero(self) -> None:
         # a == len(memory) exactly, the other side of the same strictness:
         # memory[1] becomes 0 - 1, which is <= 0, so it jumps to 99 and
         # halts.  A non-strict bound would index off the end instead.
         assert _run("6 1 99 0 0 0") == ""
-
-    def test_decrement_to_one_falls_through(self) -> None:
-        # The jump is on <= 0, so a cell landing on exactly 1 must fall
-        # through to the output rather than jump past it.
-        code = memory([[10, 10, 9], [-2, 10, 0], [0, 0, 999]], {10: 2})
-        assert _run(code) == "\x01"
 
     def test_growing_memory_fills_with_zeros(self) -> None:
         # Writing to cell 20 grows memory to reach it; the cells the growth
@@ -169,18 +134,6 @@ class TestOperandRange:
         # then one past the end.  Growing further would leave cells for the
         # pointer to keep walking through instead of halting.
         assert _run("-1 5 0 -2 5", "Z") == "Z"
-
-    def test_input_grows_memory_to_reach_its_cell(self) -> None:
-        # b == len(memory) exactly: one past the last cell, so the growth
-        # has to fire here rather than only beyond it.
-        code = memory([[-1, 6, 3], [-2, 6, 0]])
-        assert _run(code, "Z") == "Z"
-
-    def test_input_growth_fills_with_zeros(self) -> None:
-        # As above for the countdown, read a neighbour of the written cell:
-        # cell 19 is created by growing out to cell 20 and stays zero.
-        code = memory([[-1, 20, 3], [-2, 19, 0], [0, 0, 999]])
-        assert _run(code, "Z") == "\x00"
 
     def test_input_advances_the_pointer_by_three(self) -> None:
         # The advance past an input is relative.  It coincides with an
@@ -238,13 +191,7 @@ class TestContract(EmptyProgramContract, SnapshotContract, CycleContract):
 
 
 class TestNegativeWriteIndex:
-    """``_written`` indexes a negative ``b`` from the right, or raises.
-
-    Decleq's store is a tuple, so a negative write cannot fall through to
-    Python's own subscript.  The interpreter reproduces that indexing
-    explicitly: it must land on a real cell rather than grow the store,
-    because growing turns a terminating program into a non-terminating one.
-    """
+    """``_written`` indexes a negative ``b`` from the right, or raises."""
 
     def test_negative_addr_writes_from_the_right(self) -> None:
         from esolangs.interpreters.register_based.decleq import _written

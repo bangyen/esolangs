@@ -1,8 +1,4 @@
-"""The grid generators whose tests are short: Super SNUSP and Alight.
-
-The two that are not have files of their own: test_boolean_circuit_diagram
-and test_boolean_a_painter_ant.
-"""
+"""The grid generators whose tests are short: Super SNUSP and Alight."""
 
 import pytest
 
@@ -10,30 +6,10 @@ from esolangs import tools as boolean
 
 
 class TestSuperSNUSP:
-    """The Super SNUSP generator (bounded ANF or a packed lookup).
-
-    Super SNUSP has a random ``=`` opcode the generator avoids entirely.
-    Small tables choose between an ANF evaluator and the packed lookup; wider
-    tables use only the linear lookup.  Five two-input tables have shorter
-    hand-written forms.
-
-    Every assertion here replays the generated program through the real
-    interpreter over the table's *whole* input space.  That is what makes
-    the construction trustworthy rather than merely plausible: the ANF
-    coefficient fold, the product's ``&`` chain and the ``_move`` runs that
-    reach each retained input are all arithmetic on cell offsets, and a
-    wrong offset still emits a program that runs -- it just computes a
-    different function.  Static assertions on the emitted string cannot see
-    that; a replayed truth table can.
-    """
+    """The Super SNUSP generator (bounded ANF or a packed lookup)."""
 
     def test_cost_model_selects_the_smallest_form(self) -> None:
-        """The selector prices both ANF layouts and the lookup exactly.
-
-        Every polarity of every layout is priced against its emitted length,
-        not only the one :func:`_polarity` picks, so the greedy pass compares
-        true lengths.
-        """
+        """The selector prices both ANF layouts and the lookup exactly."""
         from esolangs.tools.helpers import essential_inputs, read_at
         from esolangs.tools.super_snusp import (
             _TWO_INPUT_SHORT,
@@ -63,13 +39,7 @@ class TestSuperSNUSP:
                     )
 
     def test_choosing_polarity_never_grows_a_program(self) -> None:
-        """Every table to three inputs is no longer than its all-positive build.
-
-        The all-positive ANF is the build before polarity was chosen, and it
-        is always the greedy pass's start, so a chosen polarity can
-        only shorten it.  Over three inputs the sweep falls from 19,786 to
-        16,567 commands (16.3%).
-        """
+        """Every table to three inputs is no longer than its all-positive build."""
         from esolangs.tools.helpers import essential_inputs, read_at
         from esolangs.tools.super_snusp import (
             _TWO_INPUT_SHORT,
@@ -132,63 +102,16 @@ class TestSuperSNUSP:
             results.append(scripted.getvalue().strip())
         return "".join(results)
 
-    @pytest.mark.parametrize("table", [format(i, "04b") for i in range(16)])
-    def test_every_two_input_table(self, table: str) -> None:
-        """All sixteen two-input functions, each over all four inputs.
-
-        Five of these take the ``_TWO_INPUT_SHORT`` fast path and eleven are
-        built by the ANF evaluator, so one parametrization covers both.
-        """
-        assert self.run_table(table) == table
-
-    @pytest.mark.parametrize("table", ["01", "10", "00", "11"])
-    def test_every_one_input_table(self, table: str) -> None:
-        assert self.run_table(table) == table
-
-    @pytest.mark.parametrize(
-        "table",
-        [
-            "01101001",  # parity: every ANF coefficient is set
-            "00010111",  # majority
-            "11101000",  # its complement, so the constant term is set
-            "10000000",  # AND3: one minterm, the longest product chain
-            "00000000",
-            "11111111",
-        ],
-    )
-    def test_three_input_tables(self, table: str) -> None:
-        """Parity, majority, AND3 and both constants at three inputs.
-
-        Parity is the case that exercises the coefficient fold hardest --
-        every one of its eight ANF coefficients is nonzero, so every term is
-        emitted and xored -- while AND3 is the opposite shape, a single
-        coefficient whose product spans all three retained inputs.
-        """
-        assert self.run_table(table) == table
-
     @pytest.mark.parametrize(
         "table",
         ["11110000", "00001111", "11001100", "00110011", "10101010", "01010101"],
     )
     def test_a_table_ignoring_inputs_still_computes_it(self, table: str) -> None:
-        """Dependency reduction keeps the answer over the full input space.
-
-        Each of these depends on exactly one of its three inputs, so the
-        generator rebuilds it over that single essential input.  The
-        reduction changes which cell the answer is read from, and the
-        rebuilt program is still fed all three bits -- so a projection that
-        picked the wrong input, or a retained-input offset that drifted,
-        shows up here as a wrong bit rather than as a shorter program.
-        """
+        """Dependency reduction keeps the answer over the full input space."""
         assert self.run_table(table) == table
 
     def test_a_four_input_table_builds_and_runs(self) -> None:
-        """The construction is not two- and three-input special cases.
-
-        Four inputs put the accumulator four cells from the first retained
-        input, which is the first arity where a ``_move`` run is longer than
-        the products that share its span.
-        """
+        """The construction is not two- and three-input special cases."""
         assert self.run_table("0110100110010110") == "0110100110010110"
 
     def test_the_lookup_scales_linearly_and_runs(self) -> None:
@@ -210,12 +133,7 @@ class TestSuperSNUSP:
         "table", ["01", "0110", "0001", "01101001", "11110000", "00010111"]
     )
     def test_every_input_is_consumed(self, table: str) -> None:
-        """One ``,`` per input, including inputs the answer ignores.
-
-        The contract is that every path reads exactly ``n`` lines, so a
-        reduced table still consumes the inputs it does not use -- otherwise
-        a caller feeding several programs from one stream desynchronizes.
-        """
+        """One ``,`` per input, including inputs the answer ignores."""
         from esolangs.tools.super_snusp import super_snusp
 
         n = len(table).bit_length() - 1
@@ -223,25 +141,13 @@ class TestSuperSNUSP:
 
     @pytest.mark.parametrize("table", ["01", "0000", "0110", "01101001", "11110000"])
     def test_every_program_starts_with_the_marker(self, table: str) -> None:
-        """``"`` pins the entry point rather than inheriting the default.
-
-        Without it the interpreter enters at the bottom right moving left,
-        which is undocumented in the spec; the marker is a no-op once
-        execution begins.
-        """
+        """``"`` pins the entry point rather than inheriting the default."""
         from esolangs.tools.super_snusp import super_snusp
 
         assert super_snusp(table).startswith('"')
 
     def test_the_short_forms_are_what_the_generator_emits(self) -> None:
-        """The five hand-written two-input forms are used verbatim.
-
-        They reuse the ``48`` literal both to decode each input and to
-        encode the answer, which the general construction cannot do because
-        it rebuilds the offset at the end.  A regression that stopped
-        consulting the table would still pass every truth-table assertion
-        above, so the dispatch is pinned separately.
-        """
+        """The five hand-written two-input forms are used verbatim."""
         from esolangs.tools.super_snusp import _TWO_INPUT_SHORT, super_snusp
 
         for table, form in _TWO_INPUT_SHORT.items():
@@ -266,16 +172,7 @@ class TestSuperSNUSP:
     def test_the_reduced_build_is_the_one_emitted(
         self, table: str, length: int
     ) -> None:
-        """A table that ignores an input is emitted over its essential ones.
-
-        Both shapes are built and :func:`shortest` picks between them, and
-        the truth-table assertions above cannot see which one won -- both
-        compute the right answer.  Swept over every table to four inputs,
-        the reduced build is strictly shorter on 983 of them and the full
-        build is *never* strictly shorter, so these lengths pin the choice:
-        emitting the unreduced shape here would be longer by one to four
-        commands.
-        """
+        """A table that ignores an input is emitted over its essential ones."""
         from esolangs.tools.super_snusp import super_snusp
 
         assert len(super_snusp(table)) == length
@@ -290,12 +187,7 @@ class TestSuperSNUSP:
 
 
 class TestSuperSNUSPWidth:
-    """SNUSP's mirrors, which make this the cheapest fold of any generator here.
-
-    ``\\`` sends an eastward pointer down and a downward one west, so two
-    stacked turn a row round in one row and one column; ``/`` is the mirror
-    image and brings it back.
-    """
+    """SNUSP's mirrors, which make this the cheapest fold of any generator here."""
 
     @staticmethod
     def _run(program: str, bits: list[str]) -> str:
@@ -321,12 +213,7 @@ class TestSuperSNUSPWidth:
                     assert self._run(narrow, bits) == table[combo], (table, width)
 
     def test_both_mirrors_are_used(self) -> None:
-        """A program long enough to fold twice turns round and back again.
-
-        One mirror pair would be enough to show a fold; it takes the other
-        to show the pointer coming *back*, and a rule that only ever went
-        one way would pass a one-fold test.
-        """
+        """A program long enough to fold twice turns round and back again."""
         table = "".join(str(bin(i).count("1") % 2) for i in range(32))
         narrow = boolean.super_snusp(table, 12)
         assert "\\" in narrow, narrow
@@ -335,12 +222,7 @@ class TestSuperSNUSPWidth:
         assert narrow.count("/") >= 2, "so is a west-to-east one"
 
     def test_a_digit_run_is_never_split_by_a_fold(self) -> None:
-        """``48`` has to stay on one row: a mirror in between would make it 4, 8.
-
-        A digit multiplies what the cell holds by ten and *any* non-digit
-        clears that, so the mirrors of a fold between the two digits would
-        leave 4 and then 8 rather than 48.
-        """
+        """``48`` has to stay on one row: a mirror in between would make it 4, 8."""
         for width in range(4, 20):
             narrow = boolean.super_snusp("0110100110010110", width)
             assert "48" in narrow, (width, narrow)

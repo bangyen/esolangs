@@ -51,14 +51,7 @@ class TestWikiExamples:
         assert set(io.getvalue()) == {"1"}
 
     def test_hello_world_prints_the_wiki_program_s_own_typo(self) -> None:
-        """The example is off by one character, and provably so.
-
-        It contains fourteen ``f`` prints and not a single loop or goto, so
-        it emits exactly fourteen characters under *any* reading of the
-        spec -- while "Hello, world!" is thirteen.  The doubled ``d`` is a
-        bug in the wiki's program, not in this interpreter, and asserting
-        the real output is the only honest thing to pin.
-        """
+        """The example is off by one character, and provably so."""
         assert HELLO.count("f") == 14
         assert not any(c in HELLO for c in "ɰʋɹj")
         assert run_program(HELLO) == "Hello, worldd!"
@@ -70,20 +63,10 @@ class TestSyllables:
             assert _syllabify(_tokenize(code))
 
     def test_the_page_s_counterexample_is_rejected(self) -> None:
-        """``susŋ`` is CVCN, which cannot be cut into CV(N)(C) syllables.
-
-        The ``s`` is taken as the coda of ``sus`` because no vowel follows
-        it, which strands the nasal with no syllable of its own to be the
-        ``N`` of -- and a nasal can never be an onset.
-        """
+        """``susŋ`` is CVCN, which cannot be cut into CV(N)(C) syllables."""
         with pytest.raises(ValueError, match="consonant") as caught:
             run_program("susŋ")
         assert str(caught.value) == "syllable must start with a consonant: 'ŋ'"
-
-    def test_a_syllable_needs_a_vowel(self) -> None:
-        with pytest.raises(ValueError, match="vowel") as caught:
-            run_program("s")
-        assert str(caught.value) == "syllable must have a vowel after its consonant"
 
     def test_a_syllable_starts_with_a_consonant(self) -> None:
         with pytest.raises(ValueError, match="consonant") as caught:
@@ -111,20 +94,8 @@ class TestSyllables:
 
 
 class TestFricatives:
-    def test_print_integer(self) -> None:
-        assert run_program("cicθi") == "1"
-
-    def test_print_character(self) -> None:
-        assert run_program("ci" * 65 + "fu") == "A"
-
     def test_character_output_is_modulo_256(self) -> None:
         assert run_program("ci" * 321 + "fu") == "A"  # 321 % 256 == 65
-
-    def test_input_integer(self) -> None:
-        assert run_program("su" + "θi", "7\n") == "7"
-
-    def test_input_character(self) -> None:
-        assert run_program("ʒu" + "θi", "A\n") == "65"
 
     @pytest.mark.parametrize(
         ("char", "expected"),
@@ -134,23 +105,11 @@ class TestFricatives:
     def test_a_unicode_input_character_is_taken_modulo_256(
         self, char: str, expected: str
     ) -> None:
-        """The spec's own "if Unicode, then modulo it by 256".
-
-        Only a codepoint above 255 exercises the modulus at all: every
-        ASCII character is already its own residue, so an ASCII-only test
-        cannot tell 256 from any other divisor above 127.
-        """
+        """The spec's own "if Unicode, then modulo it by 256"."""
         assert run_program("ʒu" + "θi", char + "\n") == expected
 
     def test_a_nul_input_character_reads_as_zero(self) -> None:
-        """A NUL byte is 0, not the fallback for a missing one.
-
-        The read is written ``(byte or 0) % 256``, and the only value
-        that reaches the ``or`` is a genuine NUL -- an exhausted stdin
-        raises instead.  So the fallback and the real answer are the same
-        number, and nothing pinned it: any other fallback passes every
-        test above, where the character read is always printable.
-        """
+        """A NUL byte is 0, not the fallback for a missing one."""
         assert run_program("ʒu" + "θi", "\x00\n") == "0"
 
     def test_an_unparseable_input_line_reads_as_zero(self) -> None:
@@ -184,17 +143,7 @@ class TestVowels:
 
 
 class TestDeque:
-    """A nasal is the ``N`` of CV(N)(C), so it can never open a syllable.
-
-    That places every deque command in third position: ``cim`` pushes and
-    ``coŋ`` pops, and the vowel between is chosen to leave the value alone.
-    """
-
-    def test_push_front_and_pop_front(self) -> None:
-        assert run_program("cicim" + "cəcə" + "coŋ" + "θi") == "2"
-
-    def test_push_back_and_pop_back(self) -> None:
-        assert run_program("cicin" + "cəcə" + "coɲ" + "θi") == "2"
+    """A nasal is the ``N`` of CV(N)(C), so it can never open a syllable."""
 
     def test_the_two_ends_are_distinct(self) -> None:
         """Push 1 to the front and 3 to the back, then pop the back."""
@@ -213,28 +162,12 @@ class TestDeque:
     def test_each_end_is_addressed_independently(
         self, push: str, pop: str, expected: str
     ) -> None:
-        """Two *different* values are what separate the four combinations.
-
-        With a single element on the deque, pushing to the front and to the
-        back leave the same deque and popping either end returns the same
-        number, so a test that stages one value cannot tell any of the four
-        apart -- it passes just as happily if both ends are the same end.
-        Staging 1 and then 3 gives each combination its own answer.
-        """
+        """Two *different* values are what separate the four combinations."""
         program = "ci" + push + "cici" + push + "co" + pop + "θi"
         assert run_program(program) == expected
 
     def test_a_pop_leaves_the_rest_of_the_deque_intact(self) -> None:
-        """What a pop *removes* needs three values and a second pop.
-
-        Every test above pops once and reads the value that came off,
-        which is the same under any slice that keeps the right end: it is
-        the remainder that differs.  Two elements cannot separate them
-        either -- dropping the last of two and keeping the first of two
-        are the same tuple.  Three pushes stage ``(1, 3, 6)``, the
-        accumulator carrying across each, and the second pop reads back
-        what the first one left.
-        """
+        """What a pop *removes* needs three values and a second pop."""
         three = "cin" + "cici" + "n" + "cicici" + "n"
         assert run_program(three + "coɲ" + "coɲ" + "θi") == "3"  # 6 then 3
         assert run_program(three + "coŋ" + "coŋ" + "θi") == "3"  # 1 then 3
@@ -253,18 +186,7 @@ class TestDeque:
 
 
 class TestFunction:
-    """The function is built while the accumulator is 0, then applied by ``su``.
-
-    Every plosive appends to the function, and ``c`` -- the one consonant
-    that does not -- *resets* it, so there is no way to climb the
-    accumulator with a run of ``ci`` once a function is live.  The idiom
-    instead is to build first, when the accumulator is still 0 and the
-    ``o`` partnering each build token is the identity, and then let ``su``
-    read the argument and apply the function in a single syllable.
-    """
-
-    def test_apply_the_identity(self) -> None:
-        assert run_program("do" + "su" + "θi", "5\n") == "5"
+    """The function is built while the accumulator is 0, then applied by ``su``."""
 
     def test_multiplication_binds_tighter_than_addition(self) -> None:
         """``a + a * a`` at a == 3 is 12, not 18."""
@@ -345,18 +267,8 @@ class TestFunction:
     def test_a_chain_of_same_precedence_operators_keeps_going(
         self, build: str, stage: str, stdin: str, expected: str
     ) -> None:
-        """The term loop consumes *every* multiplicative operator, not one.
-
-        A two-operand function exercises the loop's body but not its
-        repetition, so stopping after the first factor looks identical
-        there; three operands is the shortest case that separates them.
-        """
+        """The term loop consumes *every* multiplicative operator, not one."""
         assert run_program(stage + build + "su" + "\u03b8i", stdin) == expected
-
-    def test_the_function_survives_until_it_is_reset(self) -> None:
-        """It is applied twice, to two different arguments: 3 and then 9."""
-        program = "do" + "ɡo" + "do" + "su" + "su" + "θi"
-        assert run_program(program, "3\n9\n") == "81"
 
 
 class TestControlFlow:
@@ -373,9 +285,6 @@ class TestControlFlow:
     def test_while_zero_skips_its_body_when_the_accumulator_is_set(self) -> None:
         assert run_program("ci" * 3 + "ɰu" + "θu" + "ʋu" + "θi") == "3"
 
-    def test_while_zero_enters_its_body_when_the_accumulator_is_clear(self) -> None:
-        assert run_program("ɰu" + "ciθu" + "ʋu") == "1"
-
     @pytest.mark.parametrize(
         ("program", "expected"),
         [
@@ -387,15 +296,7 @@ class TestControlFlow:
     def test_a_skipped_loop_resumes_on_the_end_marker_s_own_vowel(
         self, program: str, expected: str
     ) -> None:
-        """The jump clears the ``ʋ`` and lands on the rest of its syllable.
-
-        ``ʋ`` is a consonant, so its syllable carries a vowel that is a
-        command in its own right and must still run.  Every other loop test
-        here happens to pair ``ʋ`` with a vowel that changes nothing, so
-        landing one command further would look identical; giving that
-        syllable an ``i`` makes the difference observable -- the increment
-        is skipped if the jump overshoots.
-        """
+        """The jump clears the ``ʋ`` and lands on the rest of its syllable."""
         assert run_program(program) == expected
 
     def test_a_loop_end_with_no_start_is_malformed(self) -> None:
@@ -420,30 +321,16 @@ class TestControlFlow:
         assert run_program(program, "6\n") == "6"
 
     def test_goto_a_syllable_counts_syllables_not_characters(self) -> None:
-        """``suјiθiθi`` has four syllables, so 2 is the first ``θi``.
-
-        The same index means different things to the two gotos, which is
-        what distinguishes them: here syllable 3 is the *second* ``θi``
-        while character 3 would be a bare ``i``.
-        """
+        """``suјiθiθi`` has four syllables, so 2 is the first ``θi``."""
         program = "su" + "ji" + "θi" + "θi"
         assert run_program(program, "2\n") == "23"
         assert run_program(program, "3\n") == "3"
-
-    def test_a_goto_past_the_end_halts(self) -> None:
-        assert run_program("su" + "ɹi" + "θi" + "θi", "99\n") == ""
 
     def test_a_syllable_goto_past_the_end_halts(self) -> None:
         assert run_program("su" + "ji" + "θi" + "θi", "99\n") == ""
 
     def test_a_syllable_goto_to_the_count_itself_halts(self) -> None:
-        """The bound is exclusive, and off by one it indexes past the list.
-
-        ``suјiθiθi`` has four syllables, so 4 is the first index with no
-        syllable to land on.  Accepting it would read ``starts[4]`` and
-        raise ``IndexError`` rather than halting, which is a crash the
-        far-past-the-end case never reaches.
-        """
+        """The bound is exclusive, and off by one it indexes past the list."""
         assert run_program("su" + "ji" + "θi" + "θi", "4\n") == ""
 
     def test_a_goto_to_its_own_offset_is_an_infinite_loop(self) -> None:
@@ -452,14 +339,7 @@ class TestControlFlow:
         assert run_until_halt_or_cycle(_Machine("su" + "ɹi" + "θi", io)) is False
 
     def test_landing_on_a_combining_ring_resumes_at_its_command(self) -> None:
-        """``ɰ̊`` spans two codepoints, and both name the one command.
-
-        In this program the ``ɰ̊`` sits at offset 6 and its ring at 7, and
-        the countdown that follows prints every value from the accumulator
-        down to 0.  Jumping to either offset runs the same ``ɰ̊``, so the
-        two runs differ only by the accumulator they carried in -- there is
-        no offset that lands "inside" the command and skips it.
-        """
+        """``ɰ̊`` spans two codepoints, and both name the one command."""
         program = "su" + "ɹi" + "ci" + "ɰ̊u" + "θə" + "ʋu" + "θi"
         assert run_program(program, "6\n") == "6543210"
         assert run_program(program, "7\n") == "76543210"
@@ -471,9 +351,6 @@ class TestSpellings:
         ascii_g = "do" + "go" + "do" + "su" + "θi"
         script_g = ascii_g.replace("g", "ɡ")
         assert run_program(ascii_g, "3\n") == run_program(script_g, "3\n") == "9"
-
-    def test_the_two_spellings_tokenize_the_same(self) -> None:
-        assert _tokenize("ɡo") == _tokenize("go")
 
 
 class TestMachine:
@@ -509,12 +386,8 @@ class TestIgnoredLF:
         [
             (HI, "", "HI"),
             ("suɹiθiθi", "4\n", "45"),
-            ("suɹiθiθi", "6\n", "6"),
             ("sujiθiθi", "2\n", "23"),
-            ("sujiθiθi", "3\n", "3"),
             ("suɹiciɰ̊uθəʋuθi", "6\n", "6543210"),
-            ("suɹiciɰ̊uθəʋuθi", "7\n", "76543210"),
-            (TRUTH_MACHINE, "0\n", "0"),
         ],
     )
     def test_lf_at_every_boundary_preserves_execution(

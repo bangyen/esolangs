@@ -89,11 +89,7 @@ def _step(state: _State, expression: _Expr, **kwargs: object) -> None:
 def test_a_missing_operand_is_refused(
     expression: _Expr, stage: int, *, left: bool | None, message: str
 ) -> None:
-    """``_expr`` cannot build these, so the evaluator's guards are its own.
-
-    They are kept because the fields are optional on the node type: without
-    them a malformed node would read as ``None`` and evaluate silently.
-    """
+    """``_expr`` cannot build these, so the evaluator's guards are its own."""
     with pytest.raises(ValueError, match=message):
         _step(_stacked(expression, stage, left=left), expression)
 

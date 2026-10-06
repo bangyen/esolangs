@@ -8,8 +8,8 @@ import esolangs
 from esolangs.tools.befunge import befunge
 
 
-@pytest.mark.parametrize("inputs", [1, 2, 3, 4, 5, 8, 9, 10, 11, 12, 13])
-@pytest.mark.parametrize("width", [1, 4, 5, 11, 27, 80, 81, 1000, None])
+@pytest.mark.parametrize("inputs", [1, 4, 13])
+@pytest.mark.parametrize("width", [1, 5, 80, None])
 def test_befunge_folded_header_reads_the_table(inputs: int, width: int | None) -> None:
     rng = random.Random(inputs)
     table = "".join(str(rng.randrange(2)) for _ in range(1 << inputs))

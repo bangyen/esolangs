@@ -1,18 +1,4 @@
-"""Robustness properties shared by every interpreter.
-
-The one invariant that holds across all the languages is that an
-interpreter terminates on the empty program: it either halts (possibly
-with no output) or rejects the input, but it never spins forever.
-
-Where the interpreter exposes a step-capable machine, termination is
-decided deterministically by state-cycle detection
-(:func:`esolangs.vm.run_until_halt_or_cycle`): a deterministic machine
-that revisits an exact internal state has looped forever, so the check
-needs no wall-clock bound and is not POSIX-only.  Languages without a
-step-capable machine keep the SIGALRM backstop, which stays for the
-unbounded-growth hang class that cycle detection cannot catch (e.g. a
-Grapheme program that keeps pushing to the stack).
-"""
+"""Robustness properties shared by every interpreter."""
 
 import importlib
 import os
@@ -43,10 +29,7 @@ MODULES = [
 
 
 def _empty_machine(module: str, io: IO) -> object:
-    """Build ``module``'s step-capable machine for the empty program.
-
-    The constructions mirror the VM adapters in :mod:`esolangs.vm`.
-    """
+    """Build ``module``'s step-capable machine for the empty program."""
     if module == "esolangs.interpreters.tape_based.brainfuck":
         from esolangs.interpreters.tape_based.brainfuck import _Machine
 

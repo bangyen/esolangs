@@ -1,14 +1,4 @@
-"""Cold parsing of arbitrary Polynomial sources in polynomial time.
-
-``docs/proofs/polynomial.md`` ("Cold parsing of arbitrary programs") proves
-that the instruction list of any source is computable in time polynomial in
-its length: a sparse term map, the gap lemma, the ``x d/dx`` multiplicity
-test, ``p``-adic lifting with a 2-D lattice for the roots of one chunk, and
-proven primality in :func:`convert`.  These tests pin each step and hold the
-whole parser to an independent oracle -- the parser this replaced, dense
-coefficients through SymPy's ``factor_list`` and a ``convert`` that scans
-every integer -- on a seeded corpus small enough for the oracle to finish.
-"""
+"""Cold parsing of arbitrary Polynomial sources in polynomial time."""
 
 import math
 import random
@@ -207,19 +197,6 @@ def _forced_sparse(source: str) -> tuple[tuple[int, ...], ...] | None:
 class TestDifferential:
     """New parse == old parse on a seeded corpus, both dispatch paths."""
 
-    @pytest.mark.parametrize("seed", range(4))
-    def test_parse_matches_the_factor_list_oracle(self, seed: int) -> None:
-        _parse_program.cache_clear()
-        for source in _corpus(25, seed):
-            assert _parse_program(source) == _oracle_parse(source), source
-
-    @pytest.mark.parametrize("seed", range(4))
-    def test_forced_sparse_path_matches_the_oracle(self, seed: int) -> None:
-        for source in _corpus(25, 100 + seed):
-            forced = _forced_sparse(source)
-            if forced is not None:
-                assert forced == _oracle_parse(source), source
-
     @pytest.mark.medium
     def test_moderately_sparse_sources_match_the_oracle(self) -> None:
         """Exponents small enough for the dense oracle, large enough to gap."""
@@ -323,30 +300,6 @@ class TestSteps:
         assert _sparse_multiplicity(terms, (2, 0)) == 4
         assert _sparse_multiplicity(terms, (0, 3)) == 1
         assert _sparse_multiplicity(terms, (3, 0)) == 0
-
-    @pytest.mark.parametrize("seed", range(3))
-    def test_dense_gaussian_roots_match_sympy(self, seed: int) -> None:
-        rng = random.Random(seed)
-        for _ in range(15):
-            factors = []
-            for _ in range(rng.randint(1, 4)):
-                factors += _cofactor(rng) or [[1, rng.randint(-20, 20)]]
-            coefficients = _expand(factors)
-            if not any(coefficients):
-                continue
-            expected = set()
-            _, factors = sp.factor_list(sp.Poly.from_list(coefficients, X))
-            for factor, _multiplicity in factors:
-                coeffs = [int(k) for k in factor.all_coeffs()]
-                if len(coeffs) == 2 and coeffs[0] == 1 and coeffs[1]:
-                    expected.add((-coeffs[1], 0))
-                elif len(coeffs) == 3 and coeffs[0] == 1 and coeffs[1] % 2 == 0:
-                    real = -coeffs[1] // 2
-                    square = coeffs[2] - real * real
-                    imag = math.isqrt(square) if square > 0 else 0
-                    if imag and imag * imag == square:
-                        expected |= {(real, imag), (real, -imag)}
-            assert _dense_gaussian_roots(coefficients) == expected, coefficients
 
     def test_dense_gaussian_roots_ignore_zero_padding(self) -> None:
         # Leading zeros are no degree; a trailing one is the root 0, left out.

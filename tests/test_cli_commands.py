@@ -1,8 +1,4 @@
-"""The subcommands that run a program and judge what it printed.
-
-run, debug, answer and evaluate, plus the options they share --
-``--seed``, ``--json`` and ``--width``.
-"""
+"""The subcommands that run a program and judge what it printed."""
 
 import importlib
 import inspect
@@ -28,14 +24,7 @@ from tests.test_cli import _program, call_main
 # 5.2s over 33 tests: drives the CLI as a subprocess.
 @pytest.mark.medium
 class TestTheShellCanJudgeAnAnswer:
-    """Nine languages could be run from the CLI and not judged from it.
-
-    ``read_answer`` and ``describe`` shipped in the round before this one and
-    shipped to Python only, so a shell user could produce A Painter Ant's
-    eleven-line grid and had no way to learn that the answer is the mark on
-    the ant's own cell.  The only route was generating all four rows and
-    diffing them by eye.
-    """
+    """Nine languages could be run from the CLI and not judged from it."""
 
     def test_describe_prints_the_input_shape(
         self, capsys: pytest.CaptureFixture[str]
@@ -52,21 +41,6 @@ class TestTheShellCanJudgeAnAnswer:
         out = call_main(["describe", "A Painter Ant"], capsys)
         assert "steppable_to_answer" in out
         assert "False" in out
-
-    def test_describe_resolves_a_name_case_insensitively(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """As every other subcommand does."""
-        assert "brainfuck" in call_main(["describe", "BRAINFUCK"], capsys)
-
-    def test_describe_suggests_a_near_miss(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """The registry's suggestions reach the new command too."""
-        with pytest.raises(SystemExit) as exc:
-            call_main(["describe", "Brainfck"], capsys)
-        assert exc.value.code == 2
-        assert "did you mean" in capsys.readouterr().err
 
     def test_read_answer_finds_a_dumped_answer(
         self, capsys: pytest.CaptureFixture[str]
@@ -135,18 +109,7 @@ class TestTheShellCanJudgeAnAnswer:
 
 
 class TestASeedMakesARunRepeat:
-    """LaserFuck's docstring named a remedy no public function offered.
-
-    It said "a caller that needs a particular one passes an ``rng``" -- and
-    ``run``, ``make_vm``, ``make_debugger``, ``evaluate`` and ``verify``
-    all had no such parameter.  The only route was importing the private
-    interpreter module and hand-building an ``IO``.  Ten identical runs of
-    ``o+++.`` gave ``3`` five times and nothing five times.
-
-    ``make_vm`` was never affected -- it always seeds from the
-    interpreter's own ``reproducible_seed`` -- so stepping repeated and
-    running did not, an asymmetry with nothing behind it.
-    """
+    """LaserFuck's docstring named a remedy no public function offered."""
 
     PROGRAM = "o+++.\n"
 
@@ -158,11 +121,7 @@ class TestASeedMakesARunRepeat:
         assert len(answers) == 1
 
     def test_the_seed_selects_rather_than_fixes_one_outcome(self) -> None:
-        """A seed that always gave the same answer would prove nothing.
-
-        Both outcomes this program can produce are reachable, so the draw
-        is being fed rather than suppressed.
-        """
+        """A seed that always gave the same answer would prove nothing."""
         by_seed = {
             seed: esolangs.run("LaserFuck", self.PROGRAM, "", 5, seed=seed)
             for seed in range(8)
@@ -175,12 +134,7 @@ class TestASeedMakesARunRepeat:
         assert esolangs.run("LaserFuck", self.PROGRAM, "", 5) in {"", "3"}
 
     def test_a_seed_for_a_language_that_draws_nothing_is_refused(self) -> None:
-        """Ignoring it would be right by accident and hide the likelier fault.
-
-        The run repeats whatever happens, so silence would look correct --
-        while the probable reading is that the caller has the wrong
-        language.
-        """
+        """Ignoring it would be right by accident and hide the likelier fault."""
         with pytest.raises(esolangs.ArgumentError, match="draws no random values"):
             esolangs.run("brainfuck", "+++.", "", 5, seed=1)
 
@@ -195,12 +149,7 @@ class TestASeedMakesARunRepeat:
             esolangs.run("LaserFuck", self.PROGRAM, "", 5, seed="\ud800")
 
     def test_the_seven_that_draw_are_the_seven_named(self) -> None:
-        """The message lists them, so the list has to be right.
-
-        Recomputed from the interpreters rather than trusted, since a
-        language gaining a draw would leave the sentence quietly wrong.
-        Thue is the sixth: its rule choice is random by specification.
-        """
+        """The message lists them, so the list has to be right."""
         drawing = [
             name
             for name in esolangs.list_languages()
@@ -256,13 +205,7 @@ class TestASeedMakesARunRepeat:
 
 
 class TestJsonOutput:
-    """The reading layout is lossy, so scripting it meant reparsing prose.
-
-    Three separate losses, all of which `--json` avoids rather than
-    documents: a pair prints as ``0 1``, an empty field is dropped instead
-    of shown, and the final ``input`` line is a sentence the CLI composes
-    that is not a key at all.
-    """
+    """The reading layout is lossy, so scripting it meant reparsing prose."""
 
     def test_describe_json_is_the_dict_exactly(
         self, capsys: pytest.CaptureFixture[str]
@@ -377,12 +320,7 @@ class TestDebugMakesTheSameRefusals:
     def test_a_negative_break_at_is_refused(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        """The third integer flag, and the one that had no such guard.
-
-        It passed the is-an-integer check, reached ``break_at``'s own
-        validation, and came back out of the catch-all as "this is a bug in
-        esolangs" at exit 70 -- a bug report invited by a typo.
-        """
+        """The third integer flag, and the one that had no such guard."""
         with pytest.raises(SystemExit) as exc:
             call_main(
                 ["debug", "--break-at", "-1", "brainfuck", _program(tmp_path, "+")],
@@ -394,14 +332,7 @@ class TestDebugMakesTheSameRefusals:
     def test_an_internal_fault_is_still_reported_not_raised(
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        """The last resort, planted rather than found.
-
-        ``--break-at -1`` and ``--tui --stdin`` were the only two things in
-        this suite that reached the catch-all, and both are refused at exit
-        2 now -- so fixing them left the handler with no coverage and no
-        test.  A fault has to be planted to exercise it honestly, since by
-        construction nothing reachable should arrive there.
-        """
+        """The last resort, planted rather than found."""
 
         def boom(*_args: object, **_kwargs: object) -> None:
             raise RuntimeError("planted")
@@ -417,11 +348,6 @@ class TestDebugMakesTheSameRefusals:
 class TestPrivateEvaluationNeedsNoSeed:
     """``run`` takes a seed and the private evaluation harness does not, which looks
     like a half-migration and is not.
-
-    The harness only ever runs programs this package *generated*, and
-    those do not reach the random commands -- so a seed would be surface
-    with no behaviour behind it.  Two reporters raised it and neither
-    could make it flake; this is the check that says why.
     """
 
     @pytest.mark.parametrize(

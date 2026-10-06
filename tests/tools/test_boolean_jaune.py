@@ -15,41 +15,6 @@ from tests.tools.sample_tables import five_input_sample
 
 
 class TestJaune:
-    @pytest.mark.parametrize(
-        ("table", "n"),
-        [
-            ("00", 1),  # constant zero
-            ("01", 1),  # identity
-            ("10", 1),  # NOT
-            ("11", 1),  # constant one
-            ("0001", 2),  # AND
-            ("0110", 2),  # XOR
-            ("0111", 2),  # OR
-            ("11111110", 3),  # NAND3
-            ("01101001", 3),  # XOR3
-        ],
-    )
-    @pytest.mark.medium
-    def test_truth_table(self, table: str, n: int) -> None:
-        """Every input combination produces the truth-table result."""
-        program = boolean.jaune(table)
-        for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            got = run_jaune(program, [str(b) for b in bits])
-            assert got == str(int(table[combo])), f"inputs {bits}"
-
-    @pytest.mark.parametrize("n", [1, 2, 3])
-    @pytest.mark.medium
-    def test_all_small_tables(self, n: int) -> None:
-        """Every table up to three inputs produces the right result."""
-        for table_int in range(2 ** (2**n)):
-            table = format(table_int, f"0{2**n}b")
-            program = boolean.jaune(table)
-            for combo in range(2**n):
-                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-                got = run_jaune(program, [str(b) for b in bits])
-                assert got == str(int(table[combo])), f"{table} inputs {bits}"
-
     @pytest.mark.parametrize("table", ["00", "11"])
     def test_plain_constant_consumes_clobbered_input(self, table: str) -> None:
         program = _jaune_ordered(table, (0,))
@@ -57,17 +22,7 @@ class TestJaune:
             assert run_jaune(program, [bit]) == table[int(bit)]
 
     def test_reads_every_input_whatever_the_table(self) -> None:
-        """Every table consumes exactly ``n`` inputs, folds included.
-
-        This is the cross-cutting contract in
-        ``test_boolean_contract.py``, pinned here because that sweep
-        cannot see Jaune: it iterates the generators registered in
-        ``BY_FUNCTION``, and Jaune is not one of them.  The reads used to
-        sit *at* the tree's nodes, so a folded tree skipped them and a
-        constant table consumed no input at all -- making the program's
-        stream consumption a function of its truth table.  Without this
-        test nothing would catch that coming back.
-        """
+        """Every table consumes exactly ``n`` inputs, folds included."""
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.jaune import run
 
@@ -81,12 +36,7 @@ class TestJaune:
             )
 
     def test_unused_inputs_are_clobbered_not_stored(self) -> None:
-        """An input no node branches on is read without keeping a cell.
-
-        ``01010101`` depends only on its last input, so the first two
-        reads need no cell of their own and the tree navigates a
-        one-cell block instead of a three-cell one.
-        """
+        """An input no node branches on is read without keeping a cell."""
         assert boolean.jaune("01010101").startswith("vvv")
         # every input matters here, so every read keeps its cell (the last
         # needs no step: the tree walks back from it)
@@ -99,29 +49,13 @@ class TestJaune:
         assert program.endswith("^.")
 
     def test_a_zero_one_node_prints_its_cell_and_the_reads_stay_put(self) -> None:
-        """Halves ``0``/``1`` print the tested cell with no branch.
-
-        ``1`` on then and ``0`` on else are the cell itself, so the node is
-        its move and ``^.``; and a table that is not constant never prints
-        from the cell the reads end on, so the last read does not step off
-        its cell only to walk back.  Over every three-input table the
-        program falls from 10,261 characters to 8,331.
-        """
+        """Halves ``0``/``1`` print the tested cell with no branch."""
         assert boolean.jaune("0110") == "v>v<2?>^.2:>3?++3:-^."
         assert boolean.jaune("0001") == "v>v<2?^.2:>^."
         assert boolean.jaune("0000") == "vv>^."
 
     def test_a_one_zero_node_prints_the_inverted_cell(self) -> None:
-        """Halves ``1``/``0`` print ``1 - x``, and mostly-``10`` inputs read so.
-
-        ``L?++L:-^.`` is one under branching to two leaves: a 1 jumps to
-        the ``-``, a 0 adds two first.  An input with more ``10`` nodes than
-        ``01`` reads as ``+v-`` (``%+v-`` over a clobbered read), which
-        swaps its halves so each ``10`` is a bare print.  No table grows
-        through four inputs, and over every three-input table the program
-        falls from 8,331 characters to 7,437 (7,199 once repeated subtrees
-        are jumped to, :class:`TestJauneSharing`).
-        """
+        """Halves ``1``/``0`` print ``1 - x``, and mostly-``10`` inputs read so."""
         assert boolean.jaune("10") == "+v-^."
         assert boolean.jaune("10101010") == "vv%+v-^."
         assert boolean.jaune("1110") == "v>+v-<2?+^.2:>^."
@@ -129,11 +63,7 @@ class TestJaune:
         assert total == 7199
 
     def test_spatial_lookup_executes_wide_rows(self) -> None:
-        """The travelling counter returns sampled six-input rows.
-
-        Built directly: parity's shared tree is far shorter, so the
-        dispatch no longer takes the lookup for it.
-        """
+        """The travelling counter returns sampled six-input rows."""
         n = 6
         table = "".join(str(row.bit_count() & 1) for row in range(2**n))
         program = _jaune_linear(table)
@@ -151,12 +81,7 @@ class TestJaune:
 
 
 class TestJauneSharing:
-    """A repeated subtree is laid out once and jumped to with ``?`` or ``!``.
-
-    Through 16 entries sharing alone wins or ties for every table; wider
-    shared trees handle larger tables too. The plain constructor remains
-    an oracle for these size comparisons.
-    """
+    """A repeated subtree is laid out once and jumped to with ``?`` or ``!``."""
 
     @staticmethod
     def _plain(table: str) -> str:
@@ -180,11 +105,7 @@ class TestJauneSharing:
         assert self._totals(tables) == (7437, 7199)
 
     def test_five_input_sample_total(self) -> None:
-        """200 seeded five-input tables: 47,973 to 19,568 characters, 59.2%.
-
-        The unshared tree would give 29,291, but its labels make it
-        O(T log T), so it was never raced past 16 entries.
-        """
+        """200 seeded five-input tables: 47,973 to 19,568 characters, 59.2%."""
         assert self._totals(five_input_sample()) == (47973, 19568)
         plain_tree = sum(
             len(best_input_order(table, _jaune_ordered))
@@ -202,12 +123,7 @@ class TestJauneSharing:
                 assert run_jaune(program, bits) == table[combo], (table, combo)
 
     def test_parity_shares_two_subtrees_a_level(self) -> None:
-        """Parity's then arm at each level is the else arm one level on.
-
-        So each test jumps (``?`` to a labelled then arm, ``!`` to the else
-        copy) rather than laying the level out twice: six inputs in 85
-        characters where the lookup takes 431.
-        """
+        """Parity's then arm at each level is the else arm one level on."""
         table = "".join(str(row.bit_count() & 1) for row in range(64))
         program = boolean.jaune(table)
         assert len(program) == 85

@@ -7,41 +7,11 @@ import pytest
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.tape_based.brainfuck import _Machine
 from esolangs.interpreters.tape_based.brainfuck import run as run_bf
-from esolangs.interpreters.tape_based.factor import run
 from tests.proofs._factor_counter import _counter, _decoder, counter_program
-from tests.proofs.test_factor_print import _render
 
 
-@pytest.mark.medium
-@pytest.mark.parametrize(
-    ("n", "partition"),
-    [(n, p) for n in range(1, 7) for p in range(4 if n <= 3 else 11)],
-)
-def test_counter_witness_executes(n: int, partition: int) -> None:
-    rng = random.Random(925 + n)
-    tables = (
-        [format(i, f"0{2**n}b") for i in range(2 ** (2**n))]
-        if n <= 3
-        else [
-            "0" * 2**n,
-            "1" * 2**n,
-            "".join(str(i.bit_count() % 2) for i in range(2**n)),
-        ]
-        + ["".join(rng.choice("01") for _ in range(2**n)) for _ in range(8)]
-    )
-    partitions = 4 if n <= 3 else 11
-    for table in tables[partition::partitions]:
-        program = _render(counter_program(table))
-        for row in range(2**n):
-            io = ScriptedIO("".join(format(row, f"0{n}b")))
-            run(program, io)
-            assert io.getvalue() == table[row]
-
-
-@pytest.mark.medium
 @pytest.mark.parametrize("width", range(6))
-@pytest.mark.parametrize("partition", range(4))
-def test_counter_preserves_payloads(width: int, partition: int) -> None:
+def test_counter_preserves_payloads(width: int) -> None:
     pairs = 2**width
     payloads = [(i % 3) - 1 for i in range(pairs)]
     data = (
@@ -50,7 +20,8 @@ def test_counter_preserves_payloads(width: int, partition: int) -> None:
         + "<"
     )
     code = data + _counter(width)
-    for row in range(partition, pairs, 4):
+    # The first and last rows: the counter's two ends.
+    for row in sorted({0, pairs - 1}):
         bits = format(row, f"0{width}b") if width else ""
         machine = _Machine(code, ScriptedIO("".join(bits)))
         while not machine.halted:

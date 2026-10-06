@@ -1,23 +1,4 @@
-"""The limits ``docs/proofs/polynomial.md`` claims, as executable checks.
-
-Most of that document's content is a measurement -- a ratio, a census, a
-growth exponent.  Those belong in prose, where a stale number reads as a
-stale number.  Pinning one in a rarely-run test hides it instead: the
-suite goes green while the quantity it named has moved.
-
-These are a different kind of claim.  Each says the system *cannot*
-do something, and each of those absences is load-bearing -- an argument in
-the document rests on it.  An absence is exactly what turns false silently
-when someone improves the code, and when one of these does turn false it
-is not a regression but an opening: the bound it supports is back in play.
-
-So a failure here means "go read the paragraph this supports", not "revert
-the change".  Each test names the paragraph.
-
-Each was measured first by a scratch probe.  The probes were not tracked;
-these checks are what the repository keeps of them, which is the point --
-a claim worth relying on belongs somewhere that runs.
-"""
+"""The limits ``docs/proofs/polynomial.md`` claims, as executable checks."""
 
 from __future__ import annotations
 
@@ -52,12 +33,7 @@ from esolangs.tools.polynomial.algebra import format_coeffs, multiply
 
 
 class TestFactoredProgramsAreMisread:
-    """``f(x) = (x-2)(x-3)`` parses, and parses *wrong*.
-
-    If this ever starts raising, or starts agreeing with the expanded form,
-    the compact-encoding escape is open and the `Omega(T^2/(log T)^2)` text
-    bound needs revisiting.
-    """
+    """``f(x) = (x-2)(x-3)`` parses, and parses *wrong*."""
 
     def test_the_expanded_form_is_read_as_written(self) -> None:
         assert sanitize("f(x) = x^2-5x^1+6") == [1, -5, 6]
@@ -82,13 +58,7 @@ class TestFactoredProgramsAreMisread:
 
 
 class TestRepeatedRealRootsDecodeToRepeatedInstructions:
-    """``(x-2)^3`` is a legal program decoding to three copies of ``[1]``.
-
-    ``docs/proofs/polynomial.md`` ("Repeated real roots are legal and do not
-    evade the bound") rests the repeated-root case on this: ``convert`` keeps
-    multiplicity and emits one instruction per root, so a repeated root is a
-    repeated instruction rather than a single one.
-    """
+    """``(x-2)^3`` is a legal program decoding to three copies of ``[1]``."""
 
     def test_a_cubed_root_decodes_to_three_instructions(self) -> None:
         assert _parse_program("f(x) = x^3-6x^2+12x-8") == ((1,), (1,), (1,))
@@ -120,11 +90,7 @@ def _a_printer() -> list[int]:
 
 
 class TestIgnoredRootMultiplesPreserveExecution:
-    """Multiplying by a root that is not an instruction code changes nothing.
-
-    If a cofactor here ever *does* change the decode, the sparse-multiple
-    frontier narrows and the paragraph resting on it needs rereading.
-    """
+    """Multiplying by a root that is not an instruction code changes nothing."""
 
     @pytest.mark.parametrize(
         ("name", "cofactor"),
@@ -199,11 +165,7 @@ def _tail_fits(roots: tuple[int, ...], degree: int, height: int) -> bool:
 
 
 class TestTailHeightIsAPrimorialFraction:
-    """Every non-constant coefficient small: impossible below ~0.4 primorial.
-
-    If the ``unsat`` side ever turns ``sat``, a multiple with a single large
-    coefficient exists at that size and the open row's profile is live.
-    """
+    """Every non-constant coefficient small: impossible below ~0.4 primorial."""
 
     @pytest.mark.parametrize(
         ("roots", "degree", "floor"),
@@ -566,12 +528,6 @@ class TestCountStatementsOnAdversarialWitnesses:
     below the top reach ``prod_{i>u} (p_i - 1)`` (weak) and even
     ``prod_{i>u} p_i / 2`` (strong), the strong count exactly ``u + 1`` at
     ``u = 0`` on the tail-height minimisers.
-
-    The table is frozen deliberately, against the loop-less rule: the vectors
-    are z3 minimisers of an objective no closed form is known for, and a
-    re-run would be slow and solver-version dependent.  Each is re-verified as
-    an exact multiple and against the counts below, so a stale witness fails
-    rather than passes.
     """
 
     WITNESSES: ClassVar = [
@@ -1022,16 +978,7 @@ def _leading_run(zeros: tuple[int, ...]) -> int:
 
 
 class TestLeadingZeroTheoremProof:
-    """``docs/proofs/polynomial.md`` ("The slack certificate"): the peel, exactly.
-
-    With ``z = max Z`` displaced, ``Z' = Z \\ {z}``, ``m = max Z'``, ``F`` the
-    certificate on the ``c - 1`` largest roots with zeros ``Z'`` and ``F_0 =
-    1``, and ``G`` the ``c``-root sum vanishing on ``{0} u Z'`` with ``G_z =
-    1``, the theorem reduces to ``tail(u) <= tail(F)`` and that to a zero
-    count.  Checked here in exact rationals: step 3's identity, step 4's
-    equivalence and the two inequalities (C) and (D), and step 5's structure
-    for ``Delta``.
-    """
+    """``docs/proofs/polynomial.md`` ("The slack certificate"): the peel, exactly."""
 
     HORIZON: ClassVar[int] = 24
 

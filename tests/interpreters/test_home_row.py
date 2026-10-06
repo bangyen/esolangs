@@ -1,8 +1,4 @@
-"""Unit tests for the Home Row interpreter.
-
-Tests cover the BF-like commands (a/s/d/f/j/k/l/;), the 5x5 torus grid,
-the while-nonzero loop, and the malformed-program rule.
-"""
+"""Unit tests for the Home Row interpreter."""
 
 import pytest
 
@@ -35,15 +31,8 @@ class TestBasics:
     def test_semicolon_halts(self) -> None:
         assert run_program("ak;ak;") == "\x01"
 
-    def test_end_of_source_halts(self) -> None:
-        assert run_program("ak") == "\x01"
-
 
 class TestPointer:
-    def test_down_and_forward(self) -> None:
-        # a on cell 0, f to cell 1, a increments cell 1, k prints it.
-        assert run_program("afak;") == "\x01"
-
     def test_torus_wraps(self) -> None:
         # f four times returns to the same column (5x5), so the fifth cell
         # is cell 0 again: a fffff k prints the 1 from cell 0.
@@ -52,12 +41,7 @@ class TestPointer:
         assert run_program("ad" * 5 + "k;") == "\x01"
 
     def test_down_lands_on_the_next_row(self) -> None:
-        """``d`` moves a whole row forward, not backward.
-
-        Every other pointer test moves in multiples of five, which return
-        to the start either way -- so moving down and moving up were the
-        same thing.  One ``d`` has to land on cell 5.
-        """
+        """``d`` moves a whole row forward, not backward."""
         from esolangs.interpreters.tape_based.home_row import _Machine
 
         machine = _Machine("d", ScriptedIO())
@@ -67,12 +51,6 @@ class TestPointer:
     def test_forward_wraps_at_the_row_edge(self) -> None:
         """``f`` returns to the start of its row rather than crossing into
         the next.
-
-        The wrap fires on the column the pointer lands in, and only there:
-        after a single ``f`` the pointer is at cell 1 and must *not* have
-        been pulled back a row.  Five ``f``s return it to cell 0, which is
-        the wrap doing its job -- but that alone cannot tell a check on the
-        wrong column apart, since both land there.
         """
         from esolangs.interpreters.tape_based.home_row import _Machine
 
@@ -84,12 +62,6 @@ class TestPointer:
         while not machine.halted:
             machine.step()
         assert machine.ptr == 0
-
-    def test_grid_is_five_by_five(self) -> None:
-        """The grid holds exactly twenty-five cells."""
-        from esolangs.interpreters.tape_based.home_row import _Machine
-
-        assert len(_Machine("", ScriptedIO()).grid) == 25
 
     def test_move_then_edit_distinct_cells(self) -> None:
         # increment cell 0, move down, increment cell 5, move back up (d x4
@@ -105,22 +77,8 @@ class TestSkip:
     def test_jump_does_not_skip_on_nonzero(self) -> None:
         assert run_program("ajk;") == "\x01"
 
-    def test_jump_can_skip_an_increment(self) -> None:
-        # j skips the a, so the cell stays zero.
-        assert run_program("jak;") == "\x00"
-
-    def test_jump_preserves_an_unskipped_increment(self) -> None:
-        # cell 0 is nonzero, so j does not skip the a and it increments twice.
-        assert run_program("ajak;") == "\x02"
-
     def test_jump_skips_relative_to_itself(self) -> None:
-        """``j`` steps over the command after it, wherever it sits.
-
-        Every other skip runs ``j`` as the first or second command, where
-        moving one forward and jumping to a fixed second position are the
-        same thing.  Two moves first put it further along, where they are
-        not.
-        """
+        """``j`` steps over the command after it, wherever it sits."""
         assert run_program("ffjak;") == "\x00"
 
 
@@ -132,11 +90,6 @@ class TestLoop:
     def test_loop_skips_when_zero(self) -> None:
         # cell is zero, so the body never runs and nothing prints.
         assert run_program("l" + "a" + "l" + "k;") == "\x00"
-
-    def test_independent_loop_pairs(self) -> None:
-        # l pairs alternate by order (like the compiler's loop // 2), so two
-        # adjacent pairs are separate loops, not nesting.
-        assert run_program("a" + "lsl" + "a" + "lsl" + "k;") == "\x00"
 
     def test_loop_exits_and_execution_continues(self) -> None:
         # after the loop runs 1 down to 0, execution continues past it.

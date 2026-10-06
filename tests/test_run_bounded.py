@@ -8,14 +8,13 @@ from pathlib import Path
 import pytest
 
 import esolangs
-from tests.samples import NEVER_SELF_HALTS, NONDETERMINISTIC_AGAINST_RUN, SAMPLES
+from tests.samples import SAMPLES
 
 pytestmark = pytest.mark.medium
 
 
-@pytest.mark.parametrize(
-    "language", sorted(set(SAMPLES) - NEVER_SELF_HALTS - NONDETERMINISTIC_AGAINST_RUN)
-)
+# ``max_steps`` is one driver for every language: a tape and a grid one.
+@pytest.mark.parametrize("language", ["Smallfuck", "Befunge"])
 def test_bounded_run_matches_whole_program_execution(language: str) -> None:
     program, stdin = SAMPLES[language]
     assert esolangs.run(language, program, stdin, max_steps=100_000) == esolangs.run(

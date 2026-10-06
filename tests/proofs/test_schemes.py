@@ -1,20 +1,4 @@
-"""Each ledger row's proof scheme has a consequence you can measure.
-
-``test_ledger.py`` checks the document against itself and the registry.  This
-file checks it against the *generators*: a row claiming a scheme is claiming
-its construction has that scheme's signature, and a signature is executable.
-
-One caution, learned by getting it wrong first.
-
-The fold discriminator is a statement about the route *below* the crossover.
-Many of the twenty-two lookup rows fold a one-dependency table at ``n == 3``,
-which looks like a contradiction until you notice ``n == 3`` sits under every
-crossover -- those rows are measuring the tree route while the ledger names
-the wide one.  Folding therefore cannot be turned into "folds implies `tree`".
-Several rows break the converse as well, and are named in
-:data:`_FOLDS_WITHOUT_TREE` below.  The obligations below are the ones
-that survive it.
-"""
+"""Each ledger row's proof scheme has a consequence you can measure."""
 
 from __future__ import annotations
 
@@ -111,21 +95,7 @@ def _parameterized_rows(ledger: Ledger) -> list[Row]:
 
 
 def test_parameterized_rows_embed_each_input_exactly_once() -> None:
-    """A ``parameterized`` row's proof rests on the per-input embedding.
-
-    Both parameterized schemes say the language "receives each bit through an
-    equal-width replacement" and embeds it *once* -- re-embedding an input at
-    several decision nodes would make program length depend on the input,
-    which is the hypothesis the equal-width argument needs.  So the run count
-    is the scheme's signature, and it is directly countable: the public
-    template spells each input as one run of the language's character, as
-    wide as its setter, and :func:`runs` accounts for every occurrence of
-    the character -- a run of the wrong width, a run left over, or a stray
-    character all refuse.
-
-    The ledger supplies an independent obligation. The former category
-    export roster omitted Home Row despite its parameterized construction.
-    """
+    """A ``parameterized`` row's proof rests on the per-input embedding."""
     rows = _parameterized_rows(load())
     assert rows, "the ledger lists no parameterized rows"
     from esolangs.registry import canonical_id, recover_setters, template_char
@@ -150,20 +120,7 @@ def test_parameterized_rows_embed_each_input_exactly_once() -> None:
 def test_rows_without_a_tree_route_are_the_ones_the_ledger_names(
     ledger: Ledger,
 ) -> None:
-    """Size dispatch names which lookup rows ship no tree route; check it.
-
-    The paragraph claims *some* lookup rows carry a folded tree below a
-    crossover and names the exceptions.  Measuring the fold at ``n == 3``
-    tells you which rows actually have one, so the named list is falsifiable:
-    a row that stops shipping its tree, or a newly linearized generator whose
-    tree was dropped without the prose being revisited, moves out of the
-    measured set and fails here.
-
-    The fold proxy has a known blind spot: :data:`_FOLDS_WITHOUT_TREE` names
-    the rows whose *lookup* route shrinks a degenerate table, so they fold
-    without having a tree.  The equality is stated with them added back, so a
-    new blind-spot row breaks it until it is named.
-    """
+    """Size dispatch names which lookup rows ship no tree route; check it."""
     measured_without = {
         row.generator
         for row in ledger.rows
@@ -184,20 +141,5 @@ def test_the_documented_exemptions_are_real_ledger_rows(ledger: Ledger) -> None:
 
 
 def test_no_minterm_obligation_is_claimed(ledger: Ledger) -> None:
-    """The `minterms` rows carry no measured obligation, and that is recorded.
-
-    Three formulations were tried and all three are unfalsifiable or fitted.
-    "Cannot fold" is false: two of the three rows shrink a one-dependency
-    table sharply, because dependency reduction emits the smaller table a
-    degenerate one really is.  "Size is flat at fixed ones-count" needs a
-    threshold that admits 26.4% variation to pass Vandevelo, which is a
-    number chosen to fit the rows rather than derived from the scheme.  "Size
-    grows with ones-count" is false because complements handle the opposite
-    polarity, so a 7-of-8 table costs what a 1-of-8 one does.
-
-    What remains true is only the coverage claim, which is what the ledger
-    actually asserts and what the arity sweeps already exercise.  This test
-    pins the *absence* so the gap stays visible: if someone derives a real
-    minterm signature later, it belongs here and this goes.
-    """
+    """The `minterms` rows carry no measured obligation, and that is recorded."""
     assert len(ledger.labelled("minterms")) == 3

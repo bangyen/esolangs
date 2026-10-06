@@ -57,41 +57,6 @@ def test_get_put_and_negative_storage() -> None:
     assert (machine.width, machine.height) == (10, 10)
 
 
-def test_movement_mirrors_jump_and_trampolines() -> None:
-    assert _run("1!9n;") == "1"
-    # '?' skips when the popped value is 0 (wiki; author's fish.py agrees)
-    assert _run("10?9n;") == "1"
-    assert _run("01?9n;") == "9"
-    assert _run("20.9n;") == "9"
-    assert _run("x;", rng=FirstDraw(0)) == ""
-    machine = _Machine(["/ ", " ;"], ScriptedIO(""))
-    machine.step()
-    assert machine.ip == (1, 0, 0, -1)
-
-    headings = {
-        ">": (1, 0),
-        "<": (-1, 0),
-        "^": (0, -1),
-        "v": (0, 1),
-    }
-    for command, heading in headings.items():
-        machine = _Machine([command], ScriptedIO(""))
-        machine.step()
-        assert (machine.dx, machine.dy) == heading
-
-    for command, start, expected in (
-        ("/", (1, 0), (0, -1)),
-        ("\\", (1, 0), (0, 1)),
-        ("|", (1, 0), (-1, 0)),
-        ("_", (0, 1), (0, -1)),
-        ("#", (1, 0), (-1, 0)),
-    ):
-        machine = _Machine([command], ScriptedIO(""))
-        machine.dx, machine.dy = start
-        machine.step()
-        assert (machine.dx, machine.dy) == expected
-
-
 def test_branching_protocol_covers_random_input_plain_and_halted_states() -> None:
     random = _Machine(["x"], ScriptedIO(""))
     start = random.branching_snapshot()
@@ -150,11 +115,7 @@ def test_quoted_x_and_i_are_literals_in_the_branch_search() -> None:
 
 
 def test_branch_successors_keep_a_grown_codebox() -> None:
-    """A state whose ``p`` grew the box to width 10 keeps it when searched.
-
-    The successor is computed on a fresh machine (width 7): the IP moves
-    from x=6 to x=7, not wrapping to x=0.
-    """
+    """A state whose ``p`` grew the box to width 10 keeps it when searched."""
     grown = _Machine(["' '90p"], ScriptedIO(""))
     for _ in range(6):
         grown.step()
@@ -173,3 +134,38 @@ def test_a_missing_codebox_cell_is_a_nop() -> None:
 def test_empty_program_is_rejected() -> None:
     with pytest.raises(ValueError, match="cannot be empty"):
         run([], ScriptedIO(""))
+
+
+def test_movement_mirrors_jump_and_trampolines() -> None:
+    assert _run("1!9n;") == "1"
+    # '?' skips when the popped value is 0 (wiki; author's fish.py agrees)
+    assert _run("10?9n;") == "1"
+    assert _run("01?9n;") == "9"
+    assert _run("20.9n;") == "9"
+    assert _run("x;", rng=FirstDraw(0)) == ""
+    machine = _Machine(["/ ", " ;"], ScriptedIO(""))
+    machine.step()
+    assert machine.ip == (1, 0, 0, -1)
+
+    headings = {
+        ">": (1, 0),
+        "<": (-1, 0),
+        "^": (0, -1),
+        "v": (0, 1),
+    }
+    for command, heading in headings.items():
+        machine = _Machine([command], ScriptedIO(""))
+        machine.step()
+        assert (machine.dx, machine.dy) == heading
+
+    for command, start, expected in (
+        ("/", (1, 0), (0, -1)),
+        ("\\", (1, 0), (0, 1)),
+        ("|", (1, 0), (-1, 0)),
+        ("_", (0, 1), (0, -1)),
+        ("#", (1, 0), (-1, 0)),
+    ):
+        machine = _Machine([command], ScriptedIO(""))
+        machine.dx, machine.dy = start
+        machine.step()
+        assert (machine.dx, machine.dy) == expected

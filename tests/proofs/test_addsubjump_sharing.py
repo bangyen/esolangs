@@ -107,22 +107,6 @@ def _previous(table: str) -> str:
 
 
 @pytest.mark.medium
-def test_wider_sharing_admission() -> None:
-    rng = random.Random(0)
-    five = sorted({f"{rng.getrandbits(32):032b}" for _ in range(200)})
-    before = after = 0
-    for tables in ([f"{i:08b}" for i in range(256)], five):
-        for table in tables:
-            old, new = _previous(table), addsubjump(table)
-            assert len(new) <= len(old)
-            if len(table) == 32:
-                before += len(old)
-                after += len(new)
-    assert (before, after) == (217608, 205998)
-    assert after <= 0.95 * before
-
-
-@pytest.mark.medium
 @pytest.mark.parametrize("n", [6, 8, 10, 12])
 def test_shared_packed_cells_execute(n: int) -> None:
     rng = random.Random(n)

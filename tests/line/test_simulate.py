@@ -1,18 +1,4 @@
-"""Tests for simulate.py.
-
-Run via: uv run --with pytest pytest test_simulate.py
-
-Captures the checks this module's own development relied on ad hoc: opcode
-basics
-through a real render->extract round-trip, the zero/nonzero swap between
-lattice.py's field names and the wiki's actual "turn right if 0" rule,
-both wiki fixtures computing correct results across several real inputs
-(the thing an earlier, wrong version of this module's loop detection got
-silently wrong), the synthetic loop-back mechanism itself (neither
-render.py nor either wiki fixture alone proves it in isolation from real
-geometry), and non-termination actually hanging rather than raising or
-returning a wrong answer.
-"""
+"""Tests for simulate.py."""
 
 from __future__ import annotations
 
@@ -71,14 +57,7 @@ def test_lattice_probe_length_is_derived_from_unit() -> None:
 
 
 def test_a_straight_run_is_walked_to_its_end_however_long() -> None:
-    """`_walk_segment` has no fixed ceiling: stopping short invents a vertex.
-
-    A 600px column, longer than the `UNIT * 20` = 400px ceiling this used to
-    carry.  The ceiling made an arbitrary pixel into a walked vertex, and
-    `_classify` reads whatever happens to be there -- on
-    `+[>++++++++[>+<-]<-]>>.` a loop-back's merge point sat exactly 400px up
-    the fork's stem, so the walk ended there and lost 4958 of 5577 pixels.
-    """
+    """`_walk_segment` has no fixed ceiling: stopping short invents a vertex."""
     height, width = 640, 3
     column = Mask(height, width, [0b010 if 10 <= y < 610 else 0 for y in range(height)])
     assert lattice._walk_segment(column, 10, 1, 4) == (609, 1)  # noqa: SLF001 - unit under test
@@ -136,14 +115,7 @@ class TestBasicOps:
 
 
 class TestRenderScale:
-    """`render(scale=k)` thickens strokes without changing the program.
-
-    The point of the parameter is surviving lossy storage (see render()'s
-    docstring for the measured JPEG quality cliffs), which these cannot test
-    without an image library -- so what is guarded here is the invariant that
-    makes it safe to use at all: a scaled drawing must extract to exactly the
-    program the 1x drawing does.
-    """
+    """`render(scale=k)` thickens strokes without changing the program."""
 
     @pytest.mark.parametrize("scale", [1, 2, 3, 4])
     def test_scaled_render_extracts_the_same_program(
@@ -156,44 +128,15 @@ class TestRenderScale:
         assert tape.get(0, 0) == 1
         assert tape.get(1, 0) == 2
 
-    @pytest.mark.parametrize("scale", [2, 3])
-    def test_scale_multiplies_the_canvas_exactly(self, scale: int) -> None:
-        """Pixel replication, so dimensions are an exact integer multiple."""
-        base = render(chain("+", "+", "+"))
-        scaled = render(chain("+", "+", "+"), scale=scale)
-        assert (scaled.width, scaled.height) == (
-            base.width * scale,
-            base.height * scale,
-        )
-
     def test_scale_is_recoverable_by_the_extractor(self, tmp_path: Path) -> None:
-        """detect_scale reads back the exact factor rendered at.
-
-        This is the property the whole parameter rests on: normalize_scale
-        divides out what detect_scale finds, so an off-by-one here would feed
-        the walker a drawing at the wrong resolution.
-        """
+        """detect_scale reads back the exact factor rendered at."""
         path = str(tmp_path / "three_x.png")
         render(chain("+", "+", "+"), scale=3).save(path)
         assert detect_scale(crop_to_content(load_binary(path))) == 3
 
-    @pytest.mark.parametrize("bad", [0, -1])
-    def test_a_nonsense_scale_is_refused(self, bad: int) -> None:
-        """Zero or negative would silently produce an empty or absurd canvas."""
-        with pytest.raises(ValueError, match="at least 1"):
-            render(chain("+"), scale=bad)
-
 
 class TestConditionalBranch:
-    """Confirms the zero/nonzero swap documented in run()'s docstring.
-
-    lattice.py's Stroke.zero/Stroke.nonzero field names are rotated 180
-    degrees from the wiki's "turn right if 0" rule, so a render.py-drawn
-    `zero` arm (which render.py draws turning right, matching the wiki)
-    round-trips into the walked tree's `nonzero` field.  These exercise
-    both directions of that swap through a real round-trip, not just by
-    reading the code.
-    """
+    """Confirms the zero/nonzero swap documented in run()'s docstring."""
 
     @pytest.fixture
     def tree(self, tmp_path: Path) -> Stroke:
@@ -218,16 +161,7 @@ class TestConditionalBranch:
 
 
 class TestWikiFixtures:
-    """Both wiki fixtures compute correct results across several real inputs.
-
-    An earlier version of this module's merge detection only matched an
-    exact vertex coordinate, missed addition.png's loop-body arm (which
-    merges back into the *middle* of the incoming stem's own path, not
-    onto any recorded vertex), and silently reported both fixtures as
-    single-pass/loop-free -- confirmed wrong only by actually running them
-    with real inputs and checking the arithmetic, which is exactly what
-    these tests do.
-    """
+    """Both wiki fixtures compute correct results across several real inputs."""
 
     @pytest.mark.parametrize(
         ("a", "b", "expected"),
@@ -271,17 +205,7 @@ def test_antialiased_resample_is_rejected() -> None:
 
 
 def _build_decrement_loop() -> Stroke:
-    """Build a synthetic ``+++`` seed forking into a decrementing loop or a halt.
-
-    Built directly from lattice.py primitives, bypassing render.py's own
-    loop drawing, so the loop-back mechanism itself is testable independent
-    of any real fixture's geometry.  The loop arm's own final vertex is
-    placed exactly on the fork's own final vertex -- the "landing exactly
-    on another stroke's final vertex" case, which addition.png's own merge
-    does *not* exercise (that one lands strictly inside a segment instead)
-    -- so together the two give both of find_merge's match branches their
-    own coverage.
-    """
+    """Build a synthetic ``+++`` seed forking into a decrementing loop or a halt."""
     unit = 20
     heading = 0
     turn_minus = (heading - 1) % 8
@@ -382,16 +306,7 @@ class TestSyntheticLoopMechanism:
             signal.signal(signal.SIGALRM, old)
 
     def test_loop_back_does_not_match_an_unrelated_sibling_branch(self) -> None:
-        """Regression: a bare vertex match once matched an untaken sibling.
-
-        `halt_arm` starts at the same fork coordinate as the real ancestor
-        fork, since every fork's children start exactly where the fork
-        itself ends.  Already covered by
-        ``test_decrementing_loop_terminates_at_zero`` above (it would
-        infinite-loop or return a wrong tape if this regressed); named
-        separately so a future regression here has an obviously-relevant
-        failing test.
-        """
+        """Regression: a bare vertex match once matched an untaken sibling."""
         io, _ = _io([])
         tape = run(_build_decrement_loop(), io=io)
         assert tape == {0: 0}

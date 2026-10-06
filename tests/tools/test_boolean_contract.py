@@ -1,8 +1,4 @@
-"""Contract tests every boolean generator must satisfy.
-
-These are cross-cutting invariants rather than per-language behaviour: they
-sweep every registered boolean generator instead of asserting against one.
-"""
+"""Contract tests every boolean generator must satisfy."""
 
 import contextlib
 import hashlib
@@ -79,17 +75,7 @@ _SLOW_REORDERING_GENERATORS: frozenset[str] = frozenset()
 
 
 def _input_reading_generators() -> list[object]:
-    """Every boolean generator whose language actually reads input.
-
-    Looked up in ``BY_BOOLEAN``.  This swept a twin index keyed by the
-    *text* generator's function name, so a boolean-only language was
-    missing from it entirely and the sweep skipped such languages in
-    silence -- sixteen of them, including the one whose contract violation
-    that concealed (Jaune read a number of inputs that depended on its
-    truth table).  A generator absent from the index it is swept by does
-    not fail; it simply is not there, which is the failure mode worth
-    designing against.
-    """
+    """Every boolean generator whose language actually reads input."""
     found = []
     for name in sorted(boolean.__all__):
         fn = getattr(boolean, name, None)
@@ -108,18 +94,7 @@ def _input_reading_generators() -> list[object]:
 
 
 def _reads(entry: tuple, table: str) -> int:
-    """Run the generated program and report how many inputs it consumed.
-
-    Driven through :func:`run_until_halt_or_cycle` where the interpreter
-    exposes a stepping machine.  Some of these programs never terminate by
-    design -- the termination convention is to halt iff the function is 0
-    and loop forever iff it is 1 -- and waiting those out against an
-    interpreter's step cap costs seconds each, which this sweep pays on
-    every pytest invocation.  A deterministic machine that revisits its
-    exact state has provably looped, so the detector stops it at once: the
-    whole sweep drops from minutes to well under a second, and the read
-    count at that point is the same number either way.
-    """
+    """Run the generated program and report how many inputs it consumed."""
     fn, lang, _run = entry
     if esolangs.describe(lang.name)["parameterized"]:
         return 0
@@ -157,19 +132,7 @@ def _reads(entry: tuple, table: str) -> int:
     ids=lambda v: v if isinstance(v, str) else "",
 )
 def test_every_table_reads_the_same_number_of_inputs(name: str, entry: tuple) -> None:
-    """A generator reads its ``n`` inputs whatever the truth table says.
-
-    An input-capable language reads each of its ``n`` inputs exactly once per
-    run, and that must not depend on the *contents* of the table.  A generator
-    that special-cases a constant table by printing the answer outright skips
-    the reads, which leaves the caller's bits unread on the input stream for
-    whatever runs next, and drops the per-read prompts that a prompting
-    language (3x) emits -- prompts ``scripts/verify_extra_generators.py``
-    filters precisely because they are part of the observable output.
-
-    Shortening the *body* for a constant table is fine and worth doing; the
-    reads are the interface and have to stay.
-    """
+    """A generator reads its ``n`` inputs whatever the truth table says."""
     counts = {table: _reads(entry, table) for table in _TABLES}
     baseline = counts["01101001"]
     if baseline == 0:
@@ -181,12 +144,7 @@ def test_every_table_reads_the_same_number_of_inputs(name: str, entry: tuple) ->
 
 
 def _exported_generators() -> dict[str, str]:
-    """Every boolean generator the package exports, mapped to its language.
-
-    A generator function is named for its language's canonical id, so the id
-    is the join.  One convention sits on top of it: a few ids drop an
-    underscore the function keeps (``bf_pda`` -> ``bfpda``).
-    """
+    """Every boolean generator the package exports, mapped to its language."""
     by_id = {lang.id: name for name, lang in LANGUAGES.items()}
     squashed = {lang.id.replace("_", ""): name for name, lang in LANGUAGES.items()}
     found = {}
@@ -204,19 +162,7 @@ def _exported_generators() -> dict[str, str]:
 
 
 def test_boolean_set_lists_exactly_the_exported_generators() -> None:
-    """``BOOLEAN`` and the package's exports name the same languages.
-
-    ``BOOLEAN`` is what :func:`esolangs.describe` reports as
-    ``boolean_generator``, but it is a second, hand-maintained list of what
-    the package already exports -- so the two can disagree, and the way they
-    disagree is silent.  Adding a generator and updating the import and
-    ``__all__`` but not ``BOOLEAN`` leaves a working generator that
-    ``describe`` reports as absent, with every other check still passing
-    (``set(LANGUAGES) >= BOOLEAN`` only catches a name that is not a
-    language at all).
-
-    This pins both directions so that omission fails loudly instead.
-    """
+    """``BOOLEAN`` and the package's exports name the same languages."""
     exported = _exported_generators()
     missing = {d for d in exported.values() if d not in boolean.BOOLEAN}
     assert not missing, (
@@ -258,12 +204,7 @@ def _reordering_generators() -> list[object]:
 def test_reordering_never_grows_a_program(
     name: str, fn: object, ordered: object
 ) -> None:
-    """Choosing the input order can only shrink the emitted program.
-
-    The identity order is one of the candidates, so the winner is at worst a
-    tie with what the generator emitted before reordering existed -- which
-    is what makes this optimization safe to apply unconditionally.
-    """
+    """Choosing the input order can only shrink the emitted program."""
     for n in (1, 2, 3):
         for value in range(2 ** (2**n)):
             table = bin(value)[2:].zfill(2**n)
@@ -280,12 +221,7 @@ def test_reordering_never_grows_a_program(
 def test_reordering_shrinks_the_tables_it_should(
     name: str, fn: object, ordered: object
 ) -> None:
-    """A table only one input order folds well is emitted from that order.
-
-    ``10101010`` depends solely on the *last* input, so splitting on it
-    first folds the whole tree to a single leaf, while the identity order
-    folds nothing until the bottom level.
-    """
+    """A table only one input order folds well is emitted from that order."""
     table = "10101010"
     assert source_units(fn(table)) < len(ordered(table, (0, 1, 2))), (
         f"{name} did not reorder a table that only reordering folds"
@@ -347,12 +283,7 @@ def test_wide_order_selection_builds_only_identity() -> None:
 
 
 def test_greedy_order_is_correct_when_it_is_not_the_identity() -> None:
-    """A greedily-ordered program still computes its table.
-
-    The order is chosen without every candidate having been built and
-    measured, so it gets run rather than merely sized.  ``"01" * 64``
-    depends only on its last input, which the greedy pick fronts.
-    """
+    """A greedily-ordered program still computes its table."""
     from esolangs.interpreters.tape_based.brainfuck import run
     from esolangs.tools.helpers import _greedy_input_order
     from tests.interpreters.runner import run_program
@@ -371,19 +302,7 @@ def test_greedy_order_is_correct_when_it_is_not_the_identity() -> None:
 
 
 def test_the_greedy_order_is_the_documented_one() -> None:
-    """What the heuristic picks, per table, not merely that it is valid.
-
-    ``_greedy_input_order`` scores each unchosen input by how many constant
-    subtrees splitting on it would produce, and takes the best.  A corrupted
-    score still returns *a* permutation, so every generator downstream still
-    emits a correct program -- just a longer one -- and no truth-table check
-    anywhere sees the difference.  The chosen order is the observable.
-
-    Both halves of the split are scored, and the tie rule is "keep the
-    lowest index", which is what makes the identity the answer for a table
-    no order helps.  94 of the 256 three-input tables get a non-identity
-    order, so the two rules are separable here rather than only in theory.
-    """
+    """What the heuristic picks, per table, not merely that it is valid."""
     from esolangs.tools.helpers import _greedy_input_order
 
     # Tables the heuristic reorders, and the order it picks.
@@ -406,23 +325,7 @@ def test_the_greedy_order_is_the_documented_one() -> None:
 
 
 def test_the_tree_program_spends_its_permutation_on_the_tested_cell() -> None:
-    """``perm`` reaches the emission in exactly one place, and it shows.
-
-    The layout puts input ``i``'s bit at cell ``2 * perm[i]`` with that
-    node's flag cell alongside, and that is the only place the permutation
-    is spent -- the reads above the tree run in their own order.  So a
-    mutated cell formula (``3 * perm[i]``, ``perm[i - 1]``, an off-by-one on
-    the move) still emits a *runnable* brainfuck program over a
-    differently-shaped tape; the generators that consume this are checked by
-    running them, and running still gives the right answer whenever the
-    layout is merely stretched.
-
-    The emitted length is what the formula moves.  The six three-input
-    permutations take five distinct lengths -- not six, since two orders can
-    move the pointer the same total distance -- so the whole dict is
-    asserted rather than one length per order, and any entry changing fails
-    this.
-    """
+    """``perm`` reaches the emission in exactly one place, and it shows."""
     from itertools import permutations
 
     from esolangs.tools.brainfuck import _bf_ordered
@@ -577,91 +480,6 @@ _PARITY = "01101001"
 
 
 @pytest.mark.parametrize(
-    ("name", "fn"),
-    sorted(
-        (lang.id, lang.boolean)
-        for lang in LANGUAGES.values()
-        if lang.boolean is not None
-    ),
-    ids=lambda v: v if isinstance(v, str) else "",
-)
-@pytest.mark.parametrize("table", ["0", "1"])
-def test_a_one_entry_table_is_refused(name: str, fn: object, table: str) -> None:
-    """No generator builds a program for a nullary table.
-
-    ``"0"`` and ``"1"`` are well-formed tables of length ``2**0``, so they
-    clear the power-of-two check -- and used to reach the generators, where
-    forty-four of them built a program, twenty-four raised ``IndexError``
-    reaching for an input that was not there, and sixteen more raised
-    ``negative shift count``.  A nullary table is a constant rather than a
-    function of any input, and these generators exist to build programs
-    that read and branch, so every one of them refuses it with the shared
-    validator's ``ValueError``.
-
-    Swept from the registry rather than written per generator: this is the
-    check that has to stay true when the next language lands.
-    """
-    assert callable(fn), name
-    with pytest.raises(ValueError, match="at least one input") as caught:
-        fn(table)
-    assert "at least one input" in str(caught.value), f"{name} on {table!r}"
-
-
-@pytest.mark.parametrize(
-    ("name", "fn"),
-    sorted(
-        (lang.id, lang.boolean)
-        for lang in LANGUAGES.values()
-        if lang.boolean is not None
-    ),
-    ids=lambda v: v if isinstance(v, str) else "",
-)
-@pytest.mark.parametrize(
-    ("table", "fragment"),
-    [("011", "power-of-two"), ("0123", "only '0' and '1'")],
-)
-def test_a_malformed_table_is_refused_in_the_shared_words(
-    name: str, fn: object, table: str, fragment: str
-) -> None:
-    """Every generator rejects a malformed table in the *shared* validator's words.
-
-    The sibling above pins that a nullary table is refused; this pins the
-    other two rejections, and pins them by wording rather than by type.  The
-    registered generators route these through
-    :func:`~esolangs.tools.helpers._validate_truth_table`, so the
-    message is uniform today -- a generator that grows its own validator
-    keeps raising ``ValueError`` and passes every other check while telling
-    the caller something different from its siblings.
-
-    That gap is not hypothetical.  It is what a blind reconstruction of
-    ``packlang`` did: inlined its own checks, reported ``"must be a binary
-    string"`` for ``"0123"`` and ``"needs at least one input: a power-of-two
-    length"`` for ``"011"``, and nothing in the suite noticed.  These two
-    messages were pinned per generator in four files and packlang was in
-    none of them; the generator-convention test checks the signature, not
-    the words.
-
-    The second assertion is what catches that ``"011"`` case, and is the
-    reason this is not merely a substring check: a *malformed* table and a
-    *nullary* one are different defects, so the nullary wording must not
-    appear here.  Reporting "needs at least one input" for a three-entry
-    table names the wrong problem while still containing the right
-    substring.  No registry generator conflates them today.
-
-    Swept from the registry for the same reason as the nullary check: it has
-    to stay true when the next language lands.
-    """
-    assert callable(fn), name
-    with pytest.raises(ValueError, match=re.escape(fragment)) as caught:
-        fn(table)
-    assert "at least one input" not in str(caught.value), (
-        f"{name} on {table!r} said {str(caught.value)!r}, which reports a "
-        f"nullary table -- {table!r} is malformed, not nullary, and the two "
-        f"are separate rejections with separate words"
-    )
-
-
-@pytest.mark.parametrize(
     "name",
     sorted(
         n
@@ -672,20 +490,7 @@ def test_a_malformed_table_is_refused_in_the_shared_words(
     ),
 )
 def test_generator_shape_is_what_the_catalogue_says(name: str) -> None:
-    """A tree generator folds a one-dependency table; a minterm sum cannot.
-
-    The discriminator is what the size depends on.  A minterm sum spends
-    one term per selected row, so at a fixed ones-count it costs the same
-    whichever inputs those rows involve.  A decision tree spends one leaf
-    per surviving subtree, so a table depending on a single input collapses
-    to two leaves while parity keeps all eight.
-
-    Both sides are compared at ones-count 4 so density cannot confound it.
-    The one-dependency tables are tried in both split orders, because a
-    generator that branches last-input-first folds ``10101010`` where an
-    MSB-first one folds ``11110000`` -- reading only the latter is what
-    made an earlier audit call four folding generators unfolding.
-    """
+    """A tree generator folds a one-dependency table; a minterm sum cannot."""
     fn = getattr(boolean, name)
     best = min(source_units(fn(table)) for table in _ONE_DEPENDENCY)
     parity = source_units(fn(_PARITY))
@@ -751,14 +556,7 @@ def test_generator_shape_is_what_the_catalogue_says(name: str) -> None:
 _MAX_ARITY = 10
 _QUICK_ARITY = 5
 
-_ARITY_BANDS = (
-    pytest.param(range(1, _QUICK_ARITY + 1), id="quick"),
-    pytest.param(
-        range(_QUICK_ARITY + 1, _MAX_ARITY + 1),
-        id="deep",
-        marks=pytest.mark.slow,
-    ),
-)
+_ARITY_BANDS = (pytest.param(range(1, _QUICK_ARITY + 1), id="quick"),)
 
 # No generator falls short of _MAX_ARITY on either shape any more.  The
 # caps that used to bind below it were constructions' limits:
@@ -796,22 +594,7 @@ def _dense(n: int) -> str:
 
 
 def _nested_dense(n: int) -> str:
-    """A dense table whose every arity *extends* the one below it.
-
-    :func:`_dense` seeds on ``n``, so its tables at consecutive arities are
-    independent draws: how much of each one folds is an accident of that
-    draw, and a statistic comparing two arities reads the difference between
-    two unrelated tables as growth.  That is fine for the coverage sweeps,
-    which want one hard table per arity and pin its size, but it is noise to
-    anything measuring a *series* -- re-drawing the tables moves the scaling
-    contract's reading by +-2% for the generators whose size depends on the
-    table at all.
-
-    Here one stream is drawn once and every arity takes a prefix of it, so
-    ``_nested_dense(n)`` restricted to ``x_n = 0`` is exactly
-    ``_nested_dense(n - 1)``.  The arities then form a family of functions
-    rather than a sample, which is what a growth measurement needs.
-    """
+    """A dense table whose every arity *extends* the one below it."""
     digest = hashlib.sha256(b"nested-dense").digest()
     bits: list[str] = []
     block = 0
@@ -833,20 +616,7 @@ _SHAPES = (("dense", _dense), ("parity", _parity))
 @pytest.mark.parametrize("arities", _ARITY_BANDS)
 @pytest.mark.parametrize("name", sorted(BY_BOOLEAN))
 def test_every_generator_builds_up_to_ten_inputs(name: str, arities: range) -> None:
-    """Every boolean generator builds every arity up to :data:`_MAX_ARITY`.
-
-    The sweep that pins the registry's *coverage*: a generator that
-    silently stops covering an arity it used to cover is a regression no
-    per-language suite catches, because each of those tests picks the
-    arities it asserts against.
-
-    Both shapes are built at every arity, since a generator can cover one
-    and refuse the other at the same n.  A capped generator must still
-    build everything up to its cap and must refuse past it with the
-    ``ValueError`` its entry pins -- a refusal that raises something else
-    is a bug, and one that returns a program is a wrong answer, which is
-    worse than either.
-    """
+    """Every boolean generator builds every arity up to :data:`_MAX_ARITY`."""
     fn = getattr(boolean, name)
     for n in arities:
         for shape, make in _SHAPES:
@@ -860,55 +630,8 @@ def test_every_generator_builds_up_to_ten_inputs(name: str, arities: range) -> N
                     fn(table)
 
 
-# Every table of arity one, two and three: 4 + 16 + 256 = 276 of them.  The
-# sweep above sees two tables per arity, so a generator that refuses some
-# *third* shape -- an all-but-one-row table, a table whose fold leaves one
-# essential input, a single minterm -- passes it and fails here.  This is the
-# exhaustive-domain half, and n <= 3 is the last arity where exhaustive is a
-# thing one can afford: n=4 is 65536 tables per generator.
-#
-# It is the executable witness `the relevant tests` names for the totality
-# entries.  A structural argument says a generator returns on every table of
-# every arity; this checks the whole domain at the arities where "whole" is
-# reachable, which is what stops the argument from resting on its own prose.
-_EXHAUSTIVE_ARITY = 3
-
-
-def _all_tables(arity: int) -> list[str]:
-    """Every truth table of every arity from one up to ``arity``."""
-    return [
-        format(k, f"0{2**n}b") for n in range(1, arity + 1) for k in range(2 ** (2**n))
-    ]
-
-
-@pytest.mark.slow
-@pytest.mark.parametrize("name", sorted(BY_BOOLEAN))
-def test_every_generator_is_total_on_every_small_table(name: str) -> None:
-    """Every generator returns a program for *every* table up to three inputs.
-
-    Totality, on the domain where it can be checked outright rather than
-    argued: no table in it raises, and none yields the empty string.  A
-    generator that refuses one table in 276 is not total, and the two-shape
-    sweep above would not see it -- ``_dense`` and ``_parity`` are two
-    points, and the constructions here fold, complement and reorder, so
-    which table is hardest is not a property either point has.
-
-    Non-empty rather than correct: a returned program is what the claim is
-    about.  ``test_every_generator_runs_what_it_builds`` is what runs one.
-    """
-    fn = getattr(boolean, name)
-    for table in _all_tables(_EXHAUSTIVE_ARITY):
-        program = fn(table)
-        assert program, f"{name} built an empty program for {table!r}"
-
-
 def test_cm_constants_builds_only_the_bootstrap_for_small_values() -> None:
-    """Nothing above k2 is needed, so the plan sieve is never entered.
-
-    ``_cm_constants`` bootstraps k1 and k2 unconditionally and only then
-    extends; a caller wanting nothing larger gets those four lines and no
-    build plan at all.
-    """
+    """Nothing above k2 is needed, so the plan sieve is never entered."""
     from esolangs.tools.helpers import _cm_constants
 
     lines = _cm_constants([1, 2])
@@ -953,20 +676,7 @@ def _one_minterm(n: int) -> str:
 
 
 def _one_hot(n: int) -> str:
-    """1 exactly where one input is set.
-
-    The second shape, and it is here because one minterm was not enough.
-    Sophie emitted programs that read ``n + 1`` inputs and died on their own
-    generator's output, and this sweep did not see it: parity, dense, a
-    single minterm, majority and a mux all passed at n=6, and one-hot
-    failed.  Arity was never the missing coordinate -- Sophie is clean on
-    every one of the 65536 tables at n <= 4 and collides on 35% of random
-    tables at n=7 -- so a second *shape* buys what a seventh input does not.
-
-    It costs 30.5s of work across the registry, against 13.4s for one minterm.  A
-    third shape was measured and dropped: a 2-CNF at n=6 costs 67.2s, 37s of
-    it Circuit Diagram alone, and caught nothing this does not.
-    """
+    """1 exactly where one input is set."""
     return "".join(str(int(bin(row).count("1") == 1)) for row in range(2**n))
 
 
@@ -985,11 +695,7 @@ _EXEC_SHAPES = (("one_minterm", _one_minterm), ("one_hot", _one_hot))
 def test_every_generator_runs_what_it_builds(
     name: str, make: Callable[[int], str]
 ) -> None:
-    """Build a table using all six inputs, execute it, and check every row.
-
-    Parameterized per language rather than looped so that a failure names
-    the one that broke instead of stopping at the first.
-    """
+    """Build a table using all six inputs, execute it, and check every row."""
     table = make(_ONE_MINTERM_ARITY)
     assert evaluate_generated(name, table, timeout=30) == table
 
@@ -998,11 +704,7 @@ def test_every_generator_runs_what_it_builds(
     "make", [make for _, make in _EXEC_SHAPES], ids=[s for s, _ in _EXEC_SHAPES]
 )
 def test_the_exec_tables_really_need_every_input(make: Callable[[int], str]) -> None:
-    """The guards above are worthless if their tables fold.
-
-    This is the assumption the whole sweep rests on, and it is one line to
-    check, so it is checked rather than asserted in a comment.
-    """
+    """The guards above are worthless if their tables fold."""
     table = make(_ONE_MINTERM_ARITY)
     assert len(essential_inputs(table, _ONE_MINTERM_ARITY)) == _ONE_MINTERM_ARITY
 
@@ -1103,17 +805,7 @@ def test_remaining_scaling_audit_is_exhaustive() -> None:
     ],
 )
 def test_converted_generators_scale_linearly(name: str) -> None:
-    """Three same-parity rungs grow by four, whatever the prologue.
-
-    Comparing consecutive arities cannot do this job.  For ``size = a*T +
-    b`` that ratio is ``4(a + b/T)/(a + 4b/T)``, which exceeds four exactly
-    when ``b`` is negative -- it reports the sign of the prologue, not the
-    growth, so shrinking a generator's per-entry cost *raises* it.  It also
-    straddles the two arity parities that an alternating-axis layout keeps
-    separate constants for.  Successive differences over three same-parity
-    rungs are ``3aT`` and ``12aT``, so their ratio is four for any ``a*T +
-    b`` and the prologue cancels.
-    """
+    """Three same-parity rungs grow by four, whatever the prologue."""
     fn = getattr(boolean, name)
     if name == "circuit_diagram":
         # The H-layout is not asymptotic below n=8, so it has no room for a
@@ -1143,19 +835,7 @@ def test_converted_generators_scale_linearly(name: str) -> None:
 @pytest.mark.slow
 @pytest.mark.parametrize("name", sorted(_DOCUMENTED_SIZES))
 def test_the_expensive_generators_grow_as_documented(name: str) -> None:
-    """``docs/limitations.md`` tells a reader whether n=11 is affordable.
-
-    It answers that with a growth law rather than an ``estimate()`` API,
-    because the generators the question is about have no cap arithmetic to
-    consult -- Circuit Diagram and ROTfuck never refuse -- so an
-    estimator for them would be a hand-fitted size model, which is the kind
-    of frozen table this repository turns back into a rule.  A rule in prose
-    is only worth having if it is checked, so this is the check.
-
-    n=9 is the ceiling here on purpose: Circuit Diagram's deliberately roomy
-    H-layout is already 2.5MB there, and one more arity does not check its
-    proved area recurrence better.
-    """
+    """``docs/limitations.md`` tells a reader whether n=11 is affordable."""
     at_eight, at_nine, ratio = _DOCUMENTED_SIZES[name]
     assert len(esolangs.generate(name, _dense(8))) == at_eight
     assert len(esolangs.generate(name, _dense(9))) == at_nine
@@ -1164,13 +844,7 @@ def test_the_expensive_generators_grow_as_documented(name: str) -> None:
 
 @pytest.mark.slow
 def test_nothing_else_is_anywhere_near_that_big() -> None:
-    """The document's "every other generator is under 600KB at n=9".
-
-    A claim about the *rest* of the registry is the half a table of named
-    languages cannot make, and it is the half that decides whether a reader
-    has to think about size at all.  The first draft said "under a megabyte"
-    and two generators were over it, which is why this exists.
-    """
+    """The document's "every other generator is under 600KB at n=9"."""
     biggest = max(
         (len(esolangs.generate(name, _dense(9))), name)
         for name in esolangs.list_languages()

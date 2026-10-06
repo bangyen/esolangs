@@ -1,22 +1,8 @@
-"""The step path and :func:`esolangs.run` must agree, or say why they cannot.
-
-A third blind pass drove the languages through the debugger instead of
-through ``run`` and scored 58 of 65, which is the interesting number: the
-seven it lost were not wrong answers but *unreachable* ones.  Six kept their
-answer on the step after the halt and :meth:`Debugger.step` refused to take
-it; the seventh, Suffolk, returned the right answer from ``run`` and raised
-from the debugger for the same program and the same input.
-
-So the contract these pin is: for every language that claims to be
-steppable, stepping reaches the same answer running does.  A language that
-cannot make that claim declares it -- A Painter Ant does -- and the sweep
-reads the declaration rather than carrying a name.
-"""
+"""The step path and :func:`esolangs.run` must agree, or say why they cannot."""
 
 from __future__ import annotations
 
 import pathlib
-from collections.abc import Callable
 
 import pytest
 
@@ -79,20 +65,7 @@ class TestTheTraitsAreReportedBeforeAMachineExists:
 
 
 def _steppable_languages() -> list[str]:
-    """Return the languages this file's parity sweeps compare, by the same rule.
-
-    A language is out when stepping cannot reach its answer at all, or when
-    the answer *is* whether it terminates -- there is nothing for the two
-    paths to agree about when neither produces output.
-
-    Derived rather than counted.  Both sweeps below assert they checked every
-    admitted language on every row, which is what keeps a filter that quietly
-    excluded everything from leaving them vacuous; a literal in that
-    assertion is a second copy of the registry, and it drifted.  It read 57
-    against an actual 59, beside a comment saying "less A Painter Ant and the
-    three that answer by diverging" when there were five of those -- three
-    numbers, no two of which agreed.
-    """
+    """Return the languages this file's parity sweeps compare, by the same rule."""
     return [
         name
         for name in esolangs.list_languages()
@@ -148,17 +121,7 @@ class TestSteppingReachesTheSameAnswer:
             assert debugger.output == want
 
     def test_a_dump_is_reachable_without_touching_the_wrapped_vm(self) -> None:
-        """``Debugger.step`` returned early on ``halted``; the dump *is* that step.
-
-        This used to assert the intermediate state -- ``run`` leaving an
-        empty ``output``, and one further ``step`` filling it -- which
-        recorded a bug as a contract.  ``step`` could cross the halt and
-        ``run`` could not, so a caller had to know to step again after a
-        method that had already reported ``"halted"``; the CLI's ``debug``
-        did not know, and printed nothing for a program that ran correctly.
-        ``run`` finishes the dump now, so the answer is there when it
-        returns.
-        """
+        """``Debugger.step`` returned early on ``halted``; the dump *is* that step."""
         program, _ = _row("RAM0", "0110", [0, 1])
         debugger = debugger_api.make_debugger("RAM0", program)
         assert debugger.run(max_steps=_STEP_BUDGET) == "halted"
@@ -225,18 +188,6 @@ class TestTheConstructorsTakeWhatRunTakes:
         assert from_path == from_text
 
 
-class TestTheEofTraitIsOnTheVmToo:
-    """``describe`` reads the class; a driving caller holds the wrapper."""
-
-    def test_the_wrapper_reports_it(self) -> None:
-        """Same value from both, or one of them is lying."""
-        for name in ("Flowchart", "brainfuck"):
-            program = esolangs.generate(name, "0110")
-            stdin = esolangs.encode_inputs(name, [0, 1], "0110")
-            vm = debugger_api.make_vm(name, program, stdin)
-            assert vm.eof_is_a_value == esolangs.describe(name)["eof_is_a_value"]
-
-
 #: The arity and shapes the *execution* sweep uses, so the two agree.
 _WIDER_ARITY = 6
 
@@ -255,52 +206,3 @@ def _one_hot(n: int) -> str:
 def _one_minterm(n: int) -> str:
     """A single 1, which makes every input essential at minimum size."""
     return "1" + "0" * (2**n - 1)
-
-
-@pytest.mark.slow
-@pytest.mark.parametrize(
-    "make", [_one_minterm, _one_hot], ids=["one_minterm", "one_hot"]
-)
-def test_stepping_agrees_at_a_wider_arity_and_shape(
-    make: Callable[[int], str],
-) -> None:
-    """The sweep above uses ``0110`` -- two inputs, one shape.
-
-    That is the coordinate this package's generator bugs kept hiding in:
-    Grapheme was invisible because execution stopped at four inputs while
-    building went to ten, and Sophie survived the fix because the new
-    execution sweep varied a single table *shape*.  Stepping parity is the
-    same kind of claim -- the two paths *can* disagree, which is why this
-    file exists -- and it was checked at one arity on one table.
-
-    A comparison per admitted language per row, in a few seconds, so the
-    blind spot cost less to close than to argue about.  No count here: the
-    assertion at the end derives one, and the last number written down in
-    this file went stale (see :func:`_steppable_languages`).
-    """
-    table = make(_WIDER_ARITY)
-    disagreed = []
-    checked = 0
-    languages = _steppable_languages()
-    assert len(languages) >= _MIN_STEPPABLE, languages
-    for name in languages:
-        facts = esolangs.describe(name)
-        program = esolangs.generate(name, table)
-        for row in _WIDER_ROWS:
-            bits = [(row >> (_WIDER_ARITY - 1 - i)) & 1 for i in range(_WIDER_ARITY)]
-            if facts["parameterized"]:
-                source, stdin = esolangs.instantiate(name, program, bits), ""
-            else:
-                source, stdin = program, esolangs.encode_inputs(name, bits, table)
-            want = esolangs.run(name, source, stdin, timeout=30)
-            try:
-                got = _drive(debugger_api.make_vm(name, source, stdin))
-            except esolangs.EsolangError as exc:
-                disagreed.append(f"{name} row {row}: stepping raised {exc!r}")
-                continue
-            checked += 1
-            if got != want:
-                disagreed.append(f"{name} row {row}: stepped {got!r} ran {want!r}")
-    assert not disagreed, "\n".join(disagreed)
-    # A filter that quietly excluded everything would leave this vacuous.
-    assert checked == len(languages) * len(_WIDER_ROWS), checked

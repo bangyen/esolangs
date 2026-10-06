@@ -77,12 +77,7 @@ _EOF_IS_A_HALT: dict[str, str] = {
 
 @pytest.mark.parametrize("name", sorted(_EOF_IS_A_HALT))
 def test_every_eof_exemption_names_a_real_language(name: str) -> None:
-    """An exemption whose language is gone must not linger unnoticed.
-
-    The roster is hard-coded, which is exactly the shape that silently
-    deselects; comparing it against the registry is what stops an entry
-    outliving the language it describes.
-    """
+    """An exemption whose language is gone must not linger unnoticed."""
     from esolangs.tools.examples import BOOLEAN_EXAMPLES
 
     assert name in BOOLEAN_EXAMPLES
@@ -111,12 +106,7 @@ def _reading_languages() -> list[str]:
 
 @pytest.mark.parametrize("name", _reading_languages())
 def test_running_out_of_input_reaches_the_caller(name: str) -> None:
-    """A program that reads, handed nothing, raises rather than inventing.
-
-    This is what makes the blank-line convention above meaningful: a
-    language that swallowed the EOF would answer a missing line with the
-    same byte as an empty one, and the two would stop being distinct.
-    """
+    """A program that reads, handed nothing, raises rather than inventing."""
     from esolangs.tools.examples import BOOLEAN_EXAMPLES
 
     example = BOOLEAN_EXAMPLES[name]

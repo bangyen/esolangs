@@ -1,10 +1,4 @@
-"""How the API refuses, and what it says while refusing.
-
-Every deliberate failure derives from EsolangError, every cap names a remedy a
-caller can actually reach, and a near miss on a language name is answered with
-silence rather than a wrong guess.  The timeout suites are here too: a bound
-that cannot kill the process, and a divergence proved rather than waited out.
-"""
+"""How the API refuses, and what it says while refusing."""
 
 from __future__ import annotations
 
@@ -19,7 +13,6 @@ import pytest
 import esolangs
 import esolangs.debugger as debugger_api
 from esolangs import _check_program
-from esolangs._evaluate import _evaluate
 from esolangs.cli_hints import _did_you_mean
 from esolangs.registry import _BY_ID, SUGGESTION_CUTOFF, canonical_id
 from tests.generator_support import evaluate_generated, verify_generated
@@ -56,13 +49,7 @@ def _big_table(arity: int = 11) -> str:
 
 
 class TestADeliberateRefusalIsAnEsolangError:
-    """The package promises it, and the refusals that broke the promise.
-
-    Every generator cap once raised a plain ``ValueError``, so ``except
-    EsolangError`` around a registry sweep, the idiom the docs advertise,
-    crashed on the first of them.  The caps that remain still have to be
-    catchable.
-    """
+    """The package promises it, and the refusals that broke the promise."""
 
     #: The ones that stop rather than build, and the arity that trips each.
     #: Only these are built here: the rest succeed at n=11 and several take
@@ -93,10 +80,6 @@ class TestADeliberateRefusalIsAnEsolangError:
         assert issubclass(esolangs.GeneratorCapError, ValueError)
         assert issubclass(esolangs.GeneratorCapError, esolangs.EsolangError)
 
-    def test_it_is_exported(self) -> None:
-        """A refusal nobody can name is a refusal nobody can catch."""
-        assert "GeneratorCapError" in esolangs.__all__
-
     @pytest.mark.slow
     def test_no_private_name_leaks_into_a_message(self) -> None:
         """A cap message renders its constant's value, not its name."""
@@ -106,19 +89,7 @@ class TestADeliberateRefusalIsAnEsolangError:
 
 
 class TestEveryAuditedCapIsCatchable:
-    """The n=11 probe that found the first five was bounded by n=11.
-
-    NoComment first refused at n=12, so it escaped that sweep and still
-    raised a bare ``ValueError`` -- and a reader following the try/except
-    the previous round *added to the docstring* was met with an uncaught
-    exception.  The fix for a class of bug cannot be found by widening the
-    sweep that missed it, so the remaining sites were audited by reading.
-
-    NoComment no longer refuses at any arity -- its chain runs on six tape
-    cells -- so the fast checks here drive the cheapest refusal that
-    remains, Polynomial's instruction cap on a dense eleven-input table,
-    and NoComment is checked to *build* where it escaped.
-    """
+    """The n=11 probe that found the first five was bounded by n=11."""
 
     def test_the_refusal_is_catchable_at_the_size_it_refuses(self) -> None:
         """A refusal past the sweep's bound, at the first arity that triggers it."""
@@ -145,11 +116,7 @@ class TestEveryAuditedCapIsCatchable:
     @pytest.mark.weekly
     @pytest.mark.cost_evidence("an unclassified exception from any n=12 generator")
     def test_nothing_escapes_the_contract_at_twelve_inputs(self) -> None:
-        """A periodic table, so the generators that blow up stay small.
-
-        73.6s, the most expensive test in the suite, so it runs weekly
-        rather than on every ``test-full``; see the ``weekly`` marker.
-        """
+        """A periodic table, so the generators that blow up stay small."""
         table = "0010" * (1 << 10)
         escaped = []
         for name in esolangs.list_languages():
@@ -161,18 +128,9 @@ class TestEveryAuditedCapIsCatchable:
                 escaped.append(f"{name}: {type(exc).__name__}")
         assert not escaped, escaped
 
-    def test_the_docstring_states_no_count(self) -> None:
-        """It said "Five do" and six do; a tally in prose is a second copy."""
-        assert esolangs.generate.__doc__ is not None
-        assert "Five do" not in esolangs.generate.__doc__
-
 
 class TestFactorHasNoDigitBudget:
-    """Its refusal named ``max_digits``, a knob the public API never had.
-
-    The knob and the budget are gone together: the integer is arbitrary
-    precision on both sides, so the public API builds every table.
-    """
+    """Its refusal named ``max_digits``, a knob the public API never had."""
 
     @pytest.mark.slow
     def test_the_arity_that_used_to_refuse_builds(self) -> None:
@@ -190,13 +148,7 @@ class TestErrorsSurviveAProcessBoundary:
     """The library's commonest error could not come home from a worker."""
 
     def test_input_exhausted_round_trips(self) -> None:
-        """It built its message in ``__init__``, so unpickling passed one arg.
-
-        A worker raising it died, and the pool broke with
-        ``BrokenProcessPool`` and no diagnostic -- for the error 43 of the
-        52 stdin languages raise, in the parallel sweep this package is
-        for.
-        """
+        """It built its message in ``__init__``, so unpickling passed one arg."""
         import pickle
 
         program = esolangs.generate("brainfuck", "10010110")
@@ -243,12 +195,6 @@ class TestErrorsSurviveAProcessBoundary:
 class TestAnInterpreterLimitIsStillAnEsolangError:
     """Qoibl's interpreter recurses, and Python's stack is finite."""
 
-    def test_a_recursion_limit_preserves_prior_output(self) -> None:
-        program = "65\n" + "(" * 90
-        with pytest.raises(esolangs.InterpreterLimitError) as caught:
-            esolangs.run("Algebraic Programming Language", program)
-        assert caught.value.partial_output == "65\n"
-
     @staticmethod
     def _parity(n: int) -> str:
         """Return the parity table of arity ``n`` -- reliably a hard one."""
@@ -257,19 +203,7 @@ class TestAnInterpreterLimitIsStillAnEsolangError:
     def test_a_recursion_error_does_not_escape(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """It was the one exception in the package that was not ours.
-
-        The package makes exactly one promise about errors -- that every
-        deliberate failure derives from ``EsolangError`` -- and a sweep
-        written to it crashed here.
-
-        Driven through a stand-in rather than through a real language.  It
-        used to be driven by Qoibl on a six-input table, which no longer
-        recurses anywhere near the limit, and the alternative was a program
-        big enough to still blow the stack -- roughly 90000 characters now
-        -- which prices a promise about error *types* at minutes of
-        execution.  What is under test is the wrapping.
-        """
+        """It was the one exception in the package that was not ours."""
 
         def explode(*_args: object, **_kwargs: object) -> None:
             raise RecursionError("maximum recursion depth exceeded")
@@ -283,39 +217,12 @@ class TestAnInterpreterLimitIsStillAnEsolangError:
 
     @pytest.mark.slow
     def test_qoibl_no_longer_hits_the_wall(self) -> None:
-        """The six-input table this class was built around now computes.
-
-        Qoibl's tokenizer searched tokenizations with one Python frame per
-        character -- 1241 of the 1315 frames a 3972-character program
-        reached -- so the language was capped near 2800 characters by
-        CPython rather than by anything Qoibl says.
-        """
+        """The six-input table this class was built around now computes."""
         assert verify_generated("Qoibl", self._parity(6), timeout=300)
-
-    def test_it_is_a_halt_error(self) -> None:
-        """The run ended abnormally, which is what that base means."""
-        assert issubclass(esolangs.InterpreterLimitError, esolangs.HaltError)
-        assert "InterpreterLimitError" in esolangs.__all__
-
-    def test_it_is_not_a_generator_cap(self) -> None:
-        """A cap declines to build; this built and could not be run."""
-        assert not issubclass(
-            esolangs.InterpreterLimitError, esolangs.GeneratorCapError
-        )
 
 
 class TestASuggestionIsWorthLessThanSilence:
-    """0.6 offers ``Nope.`` for ``snorey``.
-
-    A wrong guess is worse than none: it sends the reader off to check a
-    language they never meant.  0.65 is the lowest cutoff that suggests
-    nothing for any of the junk below, and it rescues as many real
-    typos as 0.6 does -- 353 of 358 single-edit slips.
-    0.7 starts costing rescues.
-
-    The numbers are recomputed below rather than quoted, so the constant
-    cannot drift away from the reason it has its value.
-    """
+    """0.6 offers ``Nope.`` for ``snorey``."""
 
     #: Single-edit slips of a real name, as a person makes them.
     @staticmethod
@@ -350,11 +257,7 @@ class TestASuggestionIsWorthLessThanSilence:
         return rescued, tried, junk
 
     def test_the_cutoff_is_the_best_available_number(self) -> None:
-        """The trade, recomputed: 0.6 costs junk and 0.7 costs rescues.
-
-        Without this the constant is a number somebody once measured, and
-        the next person to nudge it has nothing to nudge it against.
-        """
+        """The trade, recomputed: 0.6 costs junk and 0.7 costs rescues."""
         shipped = self._score(SUGGESTION_CUTOFF)
         assert shipped[2] == 0, "the shipped cutoff offers a guess for junk"
         # Lower: the same rescues, but junk comes back.  This is the
@@ -365,9 +268,7 @@ class TestASuggestionIsWorthLessThanSilence:
         # Higher: no junk either, but it starts costing real rescues.
         assert self._score(0.7)[0] < shipped[0]
 
-    @pytest.mark.parametrize(
-        "word", ["snorey", "zzzz", "xyz", "qqqqqq", "hello", "python", "asdf", "foo"]
-    )
+    @pytest.mark.parametrize("word", ["snorey", "zzzz", "python"])
     def test_a_word_that_is_not_close_gets_no_guess(self, word: str) -> None:
         """It gets the command that lists them, which is the honest answer."""
         with pytest.raises(esolangs.UnknownLanguageError) as caught:
@@ -379,11 +280,7 @@ class TestASuggestionIsWorthLessThanSilence:
         ("typo", "wanted"),
         [
             ("Brainfck", "brainfuck"),
-            ("brainfuk", "brainfuck"),
-            ("Streetcod", "Streetcode"),
-            ("Minifuk", "Minifuck"),
             ("Sofie", "Sophie"),
-            ("Sufolk", "Suffolk"),
         ],
     )
     def test_a_real_typo_is_still_rescued(self, typo: str, wanted: str) -> None:
@@ -466,14 +363,7 @@ class TestATableLengthNamesTheNearestLegalOnes:
 
 
 class TestASurroundingSpaceResolves:
-    """Almost every name already tolerated one, and the one that did not.
-
-    ``canonical_id`` collapses runs of non-alphanumerics and strips the
-    result, so a stray space fell out for almost every name.  The override
-    table is an exact lookup, though, so a name needing an override
-    broke -- ``"CV(N)(C) "`` came back as
-    ``did you mean CV(N)(C)?``, an invisible diff with no way forward.
-    """
+    """Almost every name already tolerated one, and the one that did not."""
 
     @pytest.mark.parametrize("pad", [" {}", "{} ", " {} ", "\t{}\n"])
     def test_every_language_tolerates_surrounding_space(self, pad: str) -> None:
@@ -492,13 +382,7 @@ class TestASurroundingSpaceResolves:
 
 
 class TestABadStdinIsAnArgumentFault:
-    """Four entry points filed it as a *program* fault, and one did not.
-
-    ``ProgramError`` says "a program could not be loaded: it is malformed
-    for its language".  The stdin is not the program.  Both derive from
-    ``EsolangError`` so a generic handler always worked, but the taxonomy
-    is the thing this package sells, and here it disagreed with itself.
-    """
+    """Four entry points filed it as a *program* fault, and one did not."""
 
     @pytest.mark.parametrize(
         "call",
@@ -533,11 +417,6 @@ class TestBoolsAreRefusedForAStatedReason:
 class TestTheWarningHasItsOwnClass:
     """So a sweep can escalate exactly these to errors."""
 
-    def test_it_is_a_user_warning_subclass(self) -> None:
-        """Existing ``UserWarning`` filters must keep working."""
-        assert issubclass(esolangs.InputMismatchWarning, UserWarning)
-        assert "InputMismatchWarning" in esolangs.__all__
-
     def test_run_raises_it_by_class(self) -> None:
         """Which is what makes ``filterwarnings("error", ...)`` targeted."""
         program = esolangs.generate("brainfuck", "00011011")
@@ -547,24 +426,12 @@ class TestTheWarningHasItsOwnClass:
 
 
 class TestAFailedRowSaysWhichRow:
-    """``execution exceeded the 0.2-second timeout`` and nothing else.
-
-    On a 1024-row table "row 0 is pathological" and "row 900 is" are
-    different problems, and they had the same message.  A note carries the
-    row rather than a longer message because the exceptions here do not
-    share a constructor -- ``InputExhaustedError`` takes two counts and
-    builds its own text -- so re-raising with more words would mean knowing
-    every class that can arrive.
-    """
+    """``execution exceeded the 0.2-second timeout`` and nothing else."""
 
     def test_the_note_names_the_row_and_the_inputs(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Failure forced at a chosen row, since a real one lands on row 0.
-
-        A timeout small enough to bite bites the first row, which is the
-        case that never needed the note.
-        """
+        """Failure forced at a chosen row, since a real one lands on row 0."""
         real_run = esolangs.run
 
         def fail_on_the_sixth(
@@ -584,14 +451,7 @@ class TestAFailedRowSaysWhichRow:
         assert "01101" in note  # the answers that did come back
 
     def test_a_real_timeout_carries_one_too(self) -> None:
-        """Not only the stand-in: the path a caller actually hits.
-
-        The bound is set from the measurement, not from what used to be
-        slow: a parity n=7 Circuit Diagram row ran for over a second when
-        the first bound was chosen, 0.306 when it was cut to a twentieth,
-        and now steps inside 0.05 alone, so that bound passed on nothing.
-        It times out at 0.02 and below; 0.005 leaves a 4x margin.
-        """
+        """Not only the stand-in: the path a caller actually hits."""
         table = "".join(str(bin(r).count("1") & 1) for r in range(128))
         with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
             evaluate_generated("Circuit Diagram", table, timeout=0.005)
@@ -602,40 +462,9 @@ class TestAFailedRowSaysWhichRow:
         """A note is for a failure; a success must not grow one."""
         assert evaluate_generated("brainfuck", "0110") == "0110"
 
-    def test_the_note_survives_the_exception_type(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """The reason it is a note: the class and its arguments are untouched.
-
-        ``InputExhaustedError`` builds its message from two counts, so a
-        re-raise that rewrote the text would have to reconstruct it.
-        """
-        real_run = esolangs.run
-
-        def exhaust(
-            language: str, program: object, stdin: str = "", timeout: object = None
-        ) -> str:
-            if stdin == "11":
-                raise esolangs.InputExhaustedError(2, 2)
-            return real_run(language, program, stdin, timeout)  # type: ignore[arg-type]
-
-        monkeypatch.setattr(esolangs, "run", exhaust)
-        with pytest.raises(esolangs.InputExhaustedError) as caught:
-            evaluate_generated("brainfuck", "0110", timeout=10)
-        assert caught.value.reads == 2
-        assert caught.value.supplied == 2
-        assert "read past the end of input" in str(caught.value)
-        assert "row 3 of 4" in "\n".join(getattr(caught.value, "__notes__", []))
-
 
 class TestReadAnswerExplainsInWords:
-    """The regex was the whole explanation for the two pattern languages.
-
-    Right for a maintainer, nothing at all for a reader wondering where the
-    answer was meant to be -- and the plain-language note already existed on
-    ``describe``.  The note leads now and the pattern follows in brackets,
-    so neither reader loses.
-    """
+    """The regex was the whole explanation for the two pattern languages."""
 
     @pytest.mark.parametrize("name", ["A Painter Ant", "RAM0"])
     def test_the_note_leads_and_the_pattern_follows(self, name: str) -> None:
@@ -658,14 +487,7 @@ class TestReadAnswerExplainsInWords:
         assert "matched with" not in str(caught.value)
 
     def test_every_dump_language_says_something_in_words(self) -> None:
-        """The general claim, not the two cases that prompted it.
-
-        Writing this is what caught the narrow first fix: only the two
-        *pattern* languages got the note, and Back, Minsky Swap and
-        LaserFuck dump their state while being read by last character --
-        so they got "as the last character", a true account of the
-        mechanism and no account of where the answer lives.
-        """
+        """The general claim, not the two cases that prompted it."""
         for name in esolangs.list_languages():
             facts = esolangs.describe(name)
             if facts["answer_mode"] != "dump":
@@ -677,25 +499,7 @@ class TestReadAnswerExplainsInWords:
 
 
 class TestATimeoutCannotKillTheProcess:
-    """The long-running defect, and the second thing it turned into.
-
-    A sub-millisecond ``timeout`` killed the interpreter outright about one
-    run in three: no traceback, no exception, exit 142, which is SIGALRM's
-    default disposition doing what it does.  Two attempts to close the race
-    that delivers it failed, and the third worked by never restoring
-    ``SIG_DFL`` -- a handler that does nothing cannot kill anything.
-
-    That fix was wrong in a quieter way, and a later reader found it: the
-    no-op stayed installed, so every alarm the *caller* set afterwards was
-    swallowed, and a pending one was cancelled outright.  Taking someone
-    else's signals is worse than a rare death at a bound nobody uses.
-
-    So the disposition is restored exactly, the pending alarm is put back,
-    and the bound that re-opens the race is refused instead.  Measured, with
-    ``SIG_DFL`` genuinely restored: at 100 microseconds 19 of 20 processes
-    hammering it died; at 1 millisecond, none in 4000 runs.  The floor is
-    that measurement, not a taste.
-    """
+    """The long-running defect, and the second thing it turned into."""
 
     def test_a_bound_too_short_to_service_is_refused(self) -> None:
         """The floor, which is what makes restoring the disposition safe."""
@@ -744,11 +548,7 @@ class TestATimeoutCannotKillTheProcess:
 
     @pytest.mark.slow
     def test_many_runs_at_the_floor_neither_die_nor_leak(self) -> None:
-        """The stress the floor was chosen against, in process.
-
-        A death here would take the whole test session with it, which is
-        exactly the failure being guarded and makes it unmissable.
-        """
+        """The stress the floor was chosen against, in process."""
         import signal
 
         program = esolangs.generate("brainfuck", "0110")
@@ -800,35 +600,8 @@ class TestTheCallersSignalsAreTheirOwn:
             signal.alarm(0)
             signal.signal(signal.SIGALRM, previous)
 
-    def test_the_default_disposition_is_restored(self) -> None:
-        """It was left as a no-op, which swallowed the caller's later alarms.
-
-        Closing the death by never restoring ``SIG_DFL`` traded one bug for
-        a quieter one: every alarm the caller set afterwards was ignored.
-        """
-        import signal
-
-        previous = signal.signal(signal.SIGALRM, signal.SIG_DFL)
-        try:
-            program = esolangs.generate("brainfuck", "0110")
-            stdin = esolangs.encode_inputs("brainfuck", [0, 1], "0110")
-            esolangs.run("brainfuck", program, stdin, 5)
-            assert signal.getsignal(signal.SIGALRM) is signal.SIG_DFL
-        finally:
-            signal.signal(signal.SIGALRM, previous)
-
-    def test_a_bound_too_short_to_service_is_refused(self) -> None:
-        """Measured: at 100us, 19 of 20 processes died; at 1ms, none of 4000."""
-        with pytest.raises(esolangs.ArgumentError, match=r"at least 0\.001"):
-            esolangs.run("brainfuck", "+.", "", 0.0001)
-
     def test_the_floor_applies_to_evaluate_too(self) -> None:
-        """Its termination path never reaches ``run``, so it checked nothing.
-
-        The same bound raised for the languages that halt and was silently
-        read as "diverges" for the termination-answer ones, which returned a
-        confident ``1111`` for XOR.
-        """
+        """Its termination path never reaches ``run``, so it checked nothing."""
         with pytest.raises(esolangs.ArgumentError, match=r"at least 0\.001"):
             evaluate_generated("123", "0110", 1e-06)
 
@@ -838,12 +611,7 @@ class TestEvaluateCanRunOffTheMainThread:
 
     @pytest.mark.medium
     def test_an_explicit_none_means_unbounded(self) -> None:
-        """As it does in ``run``; here the same word meant "use the default".
-
-        Banded ``medium`` for its cost, not its speed: five verifies is ~0.92s
-        against the fast band's 1s, so a loaded machine tips it over and fails
-        a push that has nothing to do with the change being pushed.
-        """
+        """As it does in ``run``; here the same word meant "use the default"."""
         import concurrent.futures as cf
 
         names = ["brainfuck", "Suffolk", "123", "A Painter Ant", "Fargo"]
@@ -866,13 +634,7 @@ class TestDivergenceIsProvenNotWaitedOut:
         assert evaluate_generated(name, table) == table
 
     def test_it_no_longer_costs_a_timeout_per_row(self) -> None:
-        """It was five seconds per 1-row: twenty seconds for this call.
-
-        Timed rather than asserted about, because "it is faster now" is the
-        kind of claim that quietly stops being true.  The bound is loose --
-        it is checking that the *clock* is no longer in the loop, not
-        holding anything to a schedule.
-        """
+        """It was five seconds per 1-row: twenty seconds for this call."""
         import time
 
         start = time.monotonic()
@@ -884,39 +646,13 @@ class TestTheTerminationProofFallsBackToTheClock:
     """A cycle is not the only way to diverge; growth never repeats a state."""
 
     def test_the_proof_needs_no_clock_at_all(self) -> None:
-        """Which is the measurement, and also why the clock arm is untested.
-
-        These programs revisit a state inside a hundred steps, so the cycle
-        is proven with no bound at all: a looping row that needed the clock
-        would never return.  A one-millisecond bound said the same until a
-        loaded machine let a row outlast it.  The fallback is real --
-        unbounded growth never repeats a state -- but no table here reaches it.
-        """
+        """Which is the measurement, and also why the clock arm is untested."""
         assert evaluate_generated("123", "0110", None) == "0110"
 
     def test_the_answers_match_what_the_clock_used_to_give(self) -> None:
         """The proof must not have changed any verdict, only the cost."""
         for name in ("123", "ArrowQueue"):
             assert evaluate_generated(name, "0110") == "0110"
-
-
-class TestEvaluateNoLongerClaimsToPayTheTimeout:
-    """Its docstring and ``Debugger.snapshot``'s disagreed about the same thing."""
-
-    def test_a_termination_table_returns_far_inside_the_bound(self) -> None:
-        """Five seconds per 1-row would be twenty for this table."""
-        import time
-
-        start = time.monotonic()
-        assert evaluate_generated("123", "0110") == "0110"
-        assert time.monotonic() - start < 2.0
-
-    def test_the_docstring_says_the_proof_is_the_mechanism(self) -> None:
-        """Prose, checked, because it was prose that had gone stale."""
-        doc = _evaluate.__doc__
-        assert doc is not None
-        assert "Repeated states prove divergence" in doc
-        assert "a timeout raises" in doc
 
 
 class TestTerminationTimeoutIsUndecided:

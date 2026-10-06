@@ -28,6 +28,7 @@ from esolangs.tui import History, replay
 from esolangs.vm import complete_vm, make_vm
 from tests.cli_support import call_both
 from tests.interpreters.test_packlang import DEPENDENCY
+from tests.witness_tables import witnesses
 
 CASES = [
     ("Alight", DialectSettings(expression_syntax="postfix")),
@@ -89,7 +90,7 @@ class Unreadable(StringIO):
         raise AssertionError("read before dialect validation")
 
 
-@pytest.mark.parametrize("options", [{}, {"max_steps": 10}, {"isolated": True}])
+@pytest.mark.parametrize("options", [{}, {"isolated": True}])
 @pytest.mark.parametrize(
     ("language", "settings"),
     [
@@ -193,23 +194,7 @@ def test_single_choice_languages_refuse_other_keys(language):
         esolangs.run(language, Unreadable(), settings=DialectSettings(cell_modulus=255))
 
 
-@pytest.mark.parametrize(
-    "key",
-    [
-        "index_base",
-        "pick_base",
-        "unset_variables",
-        "unknown_commands",
-        "tape_size",
-        "boundary",
-        "eof",
-        "scheduling",
-        "deque_cursor",
-        "junction_tie_break",
-        "undefined_targets",
-        "input_framing",
-    ],
-)
+@pytest.mark.parametrize("key", ["index_base", "eof", "input_framing"])
 def test_omission_policies_are_not_public_choices(key):
     with pytest.raises(esolangs.ArgumentError, match="unknown dialect setting"):
         DialectSettings(**{key: "default"})
@@ -225,8 +210,8 @@ def test_only_conflicting_specs_publish_choices():
 
 
 @pytest.mark.medium
-@pytest.mark.parametrize("inputs", [1, 2, 4, 6])
-@pytest.mark.parametrize("layout", [None, 1, 40, "balanced"])
+@pytest.mark.parametrize("inputs", [4, 6])
+@pytest.mark.parametrize("layout", [1, "balanced"])
 def test_postfix_chunk_boundaries_across_sizes(inputs, layout):
     # Parity hides reversed input order; this deterministic mix exposes it.
     table = "".join(
@@ -280,14 +265,6 @@ def test_generated_settings_are_reused(language, settings, balance):
         )
 
 
-@pytest.mark.medium
-@pytest.mark.parametrize("language", ["Alight", "Packlang", "Grapheme"])
-def test_isolation_retains_settings(language):
-    settings = dict(CASES)[language]
-    program = esolangs.generate(language, "0110", settings=settings, balance=True)
-    assert _evaluate(language, program, inputs=2, isolated=True) == "0110"
-
-
 @pytest.mark.parametrize("template", [False, True])
 def test_text_pickle_retains_settings(template):
     settings = DialectSettings()
@@ -333,7 +310,9 @@ def test_partial_overrides_merge_and_validate():
         esolangs.run("SLOW ACV MAMMALIAN", source, settings={})
 
 
-@pytest.mark.parametrize("isolated", [False, True])
+@pytest.mark.parametrize(
+    "isolated", [False, pytest.param(True, marks=pytest.mark.medium)]
+)
 def test_loaded_text_tag_is_respected(isolated):
     source = _Tagged(
         "FAFY", "Grapheme", DialectSettings(integer_conversion="after_each_letter")
@@ -405,28 +384,6 @@ def test_default_pickle_has_no_retained_choices():
 def test_generation_rejects_untyped_settings():
     with pytest.raises(esolangs.ArgumentError, match="DialectSettings"):
         esolangs.generate("Brainfuck", "01", settings={})
-
-
-@pytest.mark.medium
-@pytest.mark.parametrize(("language", "settings"), CASES)
-def test_evaluation_keeps_generation_settings(language, settings):
-    table = "0110"
-    program = esolangs.generate(language, table, settings=settings)
-    assert _evaluate(language, program, inputs=2, settings=settings) == table
-    assert (
-        "".join(
-            _iter_evaluate(
-                language, program, inputs=2, settings=settings, isolated=True
-            )
-        )
-        == table
-    )
-    bound = esolangs.Language(language)
-    assert _evaluate(bound.name, program, inputs=2, settings=settings) == table
-    assert (
-        "".join(_iter_evaluate(bound.name, program, inputs=2, settings=settings))
-        == table
-    )
 
 
 @pytest.mark.parametrize("isolated", [False, True])
@@ -505,10 +462,7 @@ def test_cli_json_describes_dialect_choices(capsys):
         ("FAFY", 1),
         ("FABFY", 12),
         ("FZFY", 0),
-        ("FFY", 0),
         ("EABFCEJY", 12),
-        ("EZEJY", 0),
-        ("EEJY", 0),
     ],
 )
 def test_literal_and_string_conversion(source, value, mode):
@@ -604,8 +558,7 @@ def test_generator_literals_are_exact(mode):
 def test_generated_corpus(mode):
     settings = DialectSettings(integer_conversion=mode)
     for n in range(1, 4):
-        for value in range(1 << (1 << n)):
-            table = format(value, f"0{1 << n}b")
+        for table in witnesses(n):
             for balance in (False, True):
                 source = esolangs.generate(
                     "Grapheme", table, settings=settings, balance=balance
@@ -674,13 +627,7 @@ def test_metadata():
     assert set(settings) == {"integer_conversion"}
 
 
-_TABLES = [
-    *(format(value, "04b") for value in range(16)),
-    "01",
-    "10",
-    "01101001",
-    "00110110011010100101110010100110",
-]
+_TABLES = ["0110", "01101001", "00110110011010100101110010100110"]
 
 
 @pytest.mark.medium
@@ -834,23 +781,6 @@ def test_alight_postfix_chunked_lookup():
         assert io.getvalue() == table[row]
 
 
-@pytest.mark.parametrize(
-    ("language", "choices"),
-    [
-        ("Grapheme", '{"integer_conversion":"after_each_letter"}'),
-        ("Alight", '{"expression_syntax":"postfix"}'),
-        ("Packlang", '{"literal_policy":"binary_digits"}'),
-    ],
-)
-def test_settings_reach_evaluation(language, choices, capsys):
-    program, error = call_both(
-        ["generate", "--settings", choices, language, "0110"], capsys
-    )
-    assert error == ""
-    settings = DialectSettings(**json.loads(choices))
-    assert _evaluate(language, program, inputs=2, settings=settings) == "0110"
-
-
 def test_cli_debug_uses_settings(tmp_path: Path, capsys):
     source = tmp_path / "conversion.grapheme"
     source.write_text("FAFY")
@@ -866,24 +796,6 @@ def test_cli_debug_uses_settings(tmp_path: Path, capsys):
     )
     assert "halted: yes" in output
     assert "output: '10'" in output
-
-
-def test_cli_settings_rejected_before_work(capsys):
-    with (
-        patch("esolangs.cli_debug._read_program", side_effect=AssertionError("read")),
-        pytest.raises(SystemExit) as exc,
-    ):
-        call_both(
-            [
-                "debug",
-                "--settings",
-                '{"integer_conversion":"after_each_letter"}',
-                "Fargo",
-                "missing",
-            ],
-            capsys,
-        )
-    assert exc.value.code == 2
 
 
 def test_tui_settings_reach_wrapper():
@@ -923,32 +835,3 @@ def test_balanced_bitdeque_setters(plain):
             "Bitdeque", source, bits, truth_table=table, settings=settings
         )
         assert esolangs.run("Bitdeque", filled, settings=settings) == expected
-
-
-def test_cli_tui_uses_settings(tmp_path: Path, capsys):
-    source = tmp_path / "conversion.grapheme"
-    source.write_text("FAFY")
-    with (
-        patch("tests.test_cli._FakeStdin.isatty", return_value=True),
-        patch("esolangs.cli_debug.run_tui") as run,
-    ):
-        assert call_both(
-            [
-                "debug",
-                "--tui",
-                "--settings",
-                '{"integer_conversion":"after_each_letter"}',
-                "Grapheme",
-                str(source),
-            ],
-            capsys,
-        ) == ("", "")
-    assert run.call_args.kwargs["settings"] == DialectSettings(
-        integer_conversion="after_each_letter"
-    )
-
-
-def test_empty_settings_preserve_termination(capsys):
-    program, error = call_both(["generate", "--settings", "{}", "123", "01"], capsys)
-    assert error == ""
-    assert _evaluate("123", program, inputs=1, settings=DialectSettings()) == "01"

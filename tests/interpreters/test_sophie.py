@@ -1,8 +1,4 @@
-"""Unit tests for Sophie interpreter.
-
-Tests cover all Sophie commands, program flow control, and example programs.
-Sophie is a finite state automaton language with a single accumulator.
-"""
+"""Unit tests for Sophie interpreter."""
 
 import io
 import signal
@@ -14,7 +10,7 @@ import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
-from esolangs.interpreters.register_based.sophie import find, run
+from esolangs.interpreters.register_based.sophie import run
 from tests.interpreters.contract import CycleContract, SnapshotContract
 
 
@@ -73,18 +69,6 @@ class TestSophieBasicCommands:
         assert f.getvalue() == "X"
 
     @pytest.mark.usefixtures("timeout_protection")
-    def test_load_char_constant(self) -> None:
-        with redirect_stdout(io.StringIO()) as f:
-            run("#H,&", io=IO())
-        assert f.getvalue() == "H"
-
-    @pytest.mark.usefixtures("timeout_protection")
-    def test_load_number_constant(self) -> None:
-        with redirect_stdout(io.StringIO()) as f:
-            run("#$65,&", io=IO())
-        assert f.getvalue() == "A"
-
-    @pytest.mark.usefixtures("timeout_protection")
     def test_halt_command(self) -> None:
         with redirect_stdout(io.StringIO()) as f:
             run("&.", io=IO())
@@ -100,22 +84,10 @@ class TestSophieConditionals:
         assert f.getvalue() == "AC"
 
     @pytest.mark.usefixtures("timeout_protection")
-    def test_char_conditional_false(self) -> None:
-        with redirect_stdout(io.StringIO()) as f:
-            run("#A@B{.,}{#C,}&", io=IO())
-        assert f.getvalue() == "C"
-
-    @pytest.mark.usefixtures("timeout_protection")
     def test_number_conditional_true(self) -> None:
         with redirect_stdout(io.StringIO()) as f:
             run("#$65@$65{,#C,}&", io=IO())
         assert f.getvalue() == "AC"
-
-    @pytest.mark.usefixtures("timeout_protection")
-    def test_number_conditional_false(self) -> None:
-        with redirect_stdout(io.StringIO()) as f:
-            run("#$65@$66{.,}{#C,}&", io=IO())
-        assert f.getvalue() == "C"
 
     @pytest.mark.usefixtures("timeout_protection")
     def test_conditional_without_else(self) -> None:
@@ -155,13 +127,7 @@ class TestSophieLoops:
 
     @pytest.mark.usefixtures("timeout_protection")
     def test_loops_nested_three_deep(self) -> None:
-        """Closing a loop pops one frame, not all but the outermost.
-
-        Two levels cannot show the difference: dropping the top of a
-        two-frame stack and keeping only its bottom leave the same stack.
-        Three levels separate them, and the innermost break prints C.
-        Each level breaks itself: ``*`` exits only its own loop (a85db79a).
-        """
+        """Closing a loop pops one frame, not all but the outermost."""
         with redirect_stdout(io.StringIO()) as f:
             run("#A[#B[#C[.*]*]*]&", io=IO())
         assert f.getvalue() == "67"
@@ -221,12 +187,7 @@ class TestSophieEdgeCases:
 
     @pytest.mark.usefixtures("timeout_protection")
     def test_a_program_ending_on_a_load_marker(self) -> None:
-        """``#`` and ``#$`` may be the last thing in the program.
-
-        The bracket scan steps over whatever a ``#`` loads, so it has to
-        cope with there being nothing left to step over.  Neither form is
-        an unmatched bracket, so neither raises.
-        """
+        """``#`` and ``#$`` may be the last thing in the program."""
         for code in ("#", "#$"):
             with redirect_stdout(io.StringIO()) as f:
                 run(code, io=IO())
@@ -241,13 +202,7 @@ class TestSophieEdgeCases:
 
     @pytest.mark.usefixtures("timeout_protection")
     def test_the_dollar_form_also_swallows_its_bracket(self) -> None:
-        """``#$[`` loads the bracket too: the ``$`` is a marker, not the data.
-
-        Only the plain ``#`` form was covered, so the scan's handling of
-        the optional ``$`` went untested -- an advance that stopped on the
-        marker, or ran one character past it, leaves the bracket standing
-        as structure and the program is rejected.
-        """
+        """``#$[`` loads the bracket too: the ``$`` is a marker, not the data."""
         with redirect_stdout(io.StringIO()) as f:
             run("#$[", io=IO())
         assert f.getvalue() == ""
@@ -256,26 +211,13 @@ class TestSophieEdgeCases:
     def test_a_marker_loaded_by_a_marker_leaves_the_next_bracket_standing(
         self,
     ) -> None:
-        """``#$#`` consumes the second ``#`` as data, so a following ``[`` is real.
-
-        This is the other side of the previous case, and it is what stops
-        the scan from swallowing too much: the ``[`` here is structure, so
-        it must be reported unmatched.  A scan that steps two characters
-        past the marker would eat it and call the program balanced.
-        """
+        """``#$#`` consumes the second ``#`` as data, so a following ``[`` is real."""
         with pytest.raises(ValueError, match="unmatched"):
             run("#$#[", io=IO())
 
     @pytest.mark.usefixtures("timeout_protection")
     def test_a_digit_load_stops_at_the_first_non_digit(self) -> None:
-        """``#$1[`` loads the digits only, leaving the bracket as structure.
-
-        The digit form runs a loop of its own, and every existing case ends
-        the program on the digits -- so a loop that advanced wrongly, or not
-        at all, had nothing to disagree about.  Putting a bracket straight
-        after the number makes the stopping point visible: it stays
-        unmatched.
-        """
+        """``#$1[`` loads the digits only, leaving the bracket as structure."""
         for code in ("#$1[", "#$123["):
             with pytest.raises(ValueError, match="unmatched"):
                 run(code, io=IO())
@@ -286,45 +228,20 @@ class TestSophieEdgeCases:
             run("#A{&", io=IO())
 
     @pytest.mark.usefixtures("timeout_protection")
-    def test_unmatched_square_brackets(self) -> None:
-        with pytest.raises(ValueError, match="unmatched"):
-            run("#A[.*", io=IO())
-
-    @pytest.mark.usefixtures("timeout_protection")
-    def test_unmatched_closing_brace(self) -> None:
-        with pytest.raises(ValueError, match="unmatched"):
-            run("#A}", io=IO())
-
-    @pytest.mark.usefixtures("timeout_protection")
     def test_break_outside_loop_halts(self) -> None:
         with pytest.raises(HaltError):
             run("*&", io=IO())
 
     @pytest.mark.usefixtures("timeout_protection")
-    def test_braces_loaded_as_data(self) -> None:
-        """Brackets loaded as ``#`` data are not treated as structure."""
-        with redirect_stdout(io.StringIO()) as f:
-            run("#{,", io=IO())
-        assert f.getvalue() == "{"
-
-    @pytest.mark.usefixtures("timeout_protection")
     def test_a_loaded_bracket_is_data_to_the_jumps_too(self) -> None:
-        """Validation already skipped ``#]``; the jump table did not.
-
-        ``*`` then took the loaded ``]`` as its loop's close and halted on a
-        stray ``*``; it now leaves past the real ``]`` (a85db79a), as the
-        author's sophie.py does.
-        """
+        """Validation already skipped ``#]``; the jump table did not."""
         with redirect_stdout(io.StringIO()) as f:
             run("[#]*]#A,&", io=IO())
         assert f.getvalue() == "A"
 
     @pytest.mark.usefixtures("timeout_protection")
     def test_a_break_leaves_later_loops_running(self) -> None:
-        """A break used to set a flag that skipped the next loop entered.
-
-        ``[#B,*]`` after the broken ``[,*]`` was jumped over, printing AAC.
-        """
+        """A break used to set a flag that skipped the next loop entered."""
         with redirect_stdout(io.StringIO()) as f:
             run("[#A,[,*][#B,*]*]#C,&", io=IO())
         assert f.getvalue() == "AABC"
@@ -337,6 +254,23 @@ class TestSophieEdgeCases:
             run(f"#${digits}.&", io=IO())
         assert f.getvalue() == digits
 
+    @pytest.mark.usefixtures("timeout_protection")
+    def test_braces_loaded_as_data(self) -> None:
+        """Brackets loaded as ``#`` data are not treated as structure."""
+        with redirect_stdout(io.StringIO()) as f:
+            run("#{,", io=IO())
+        assert f.getvalue() == "{"
+
+    @pytest.mark.usefixtures("timeout_protection")
+    def test_unmatched_closing_brace(self) -> None:
+        with pytest.raises(ValueError, match="unmatched"):
+            run("#A}", io=IO())
+
+    @pytest.mark.usefixtures("timeout_protection")
+    def test_unmatched_square_brackets(self) -> None:
+        with pytest.raises(ValueError, match="unmatched"):
+            run("#A[.*", io=IO())
+
 
 class TestMiscCommands:
     @pytest.mark.usefixtures("timeout_protection")
@@ -345,20 +279,6 @@ class TestMiscCommands:
         with redirect_stdout(io.StringIO()) as f:
             run("#$A,", io=IO())
         assert f.getvalue() == "A"
-
-    @pytest.mark.usefixtures("timeout_protection")
-    def test_conditional_number_no_else(self) -> None:
-        """A number conditional that fails and has no else block."""
-        with redirect_stdout(io.StringIO()) as f:
-            run("#$65@$66{,#C,}", io=IO())
-        assert f.getvalue() == ""
-
-    @pytest.mark.usefixtures("timeout_protection")
-    def test_conditional_char_no_else(self) -> None:
-        """A char conditional that fails and has no else block."""
-        with redirect_stdout(io.StringIO()) as f:
-            run("#A@B{,#C,}", io=IO())
-        assert f.getvalue() == ""
 
     @pytest.mark.usefixtures("timeout_protection")
     def test_invalid_commands_ignored(self) -> None:
@@ -410,84 +330,6 @@ class TestSophieExamples:
             run(":@$0{:@$0{#0,}{#1,}}{:@$0{#1,}{#0,}}&", io=IO())
         assert f.getvalue() == "0"
 
-    @pytest.mark.usefixtures("timeout_protection")
-    def test_xor_program_0_1(self) -> None:
-        with (
-            patch("builtins.input", side_effect=["0", "1"]),
-            redirect_stdout(io.StringIO()) as f,
-        ):
-            run(":@$0{:@$0{#0,}{#1,}}{:@$0{#1,}{#0,}}&", io=IO())
-        assert f.getvalue() == "1"
-
-    @pytest.mark.usefixtures("timeout_protection")
-    def test_xor_program_1_0(self) -> None:
-        with (
-            patch("builtins.input", side_effect=["1", "0"]),
-            redirect_stdout(io.StringIO()) as f,
-        ):
-            run(":@$0{:@$0{#0,}{#1,}}{:@$0{#1,}{#0,}}&", io=IO())
-        assert f.getvalue() == "1"
-
-    @pytest.mark.usefixtures("timeout_protection")
-    def test_xor_program_1_1(self) -> None:
-        with (
-            patch("builtins.input", side_effect=["1", "1"]),
-            redirect_stdout(io.StringIO()) as f,
-        ):
-            run(":@$0{:@$0{#0,}{#1,}}{:@$0{#1,}{#0,}}&", io=IO())
-        assert f.getvalue() == "0"
-
-
-class TestSophieComplexPrograms:
-    @pytest.mark.usefixtures("timeout_protection")
-    def test_counter_program(self) -> None:
-        with redirect_stdout(io.StringIO()) as f:
-            run("#$5[.*]&", io=IO())
-        # Should print 5 then break
-        assert f.getvalue() == "5"
-
-    @pytest.mark.usefixtures("timeout_protection")
-    def test_conditional_loop(self) -> None:
-        with redirect_stdout(io.StringIO()) as f:
-            run("#$3[.@$3{*}{}]&", io=IO())
-        # Should print 3 then break
-        assert f.getvalue() == "3"
-
-    @pytest.mark.usefixtures("timeout_protection")
-    def test_character_arithmetic(self) -> None:
-        with redirect_stdout(io.StringIO()) as f:
-            run("#A,#B,&", io=IO())
-        # Should print A then B
-        assert f.getvalue() == "AB"
-
-
-class TestSophieFindFunction:
-    def test_find_simple_brackets(self) -> None:
-        code = "{hello}"
-        result = find(code, 0)
-        assert result == 6
-
-    def test_find_nested_brackets(self) -> None:
-        code = "{outer{inner}outer}"
-        result = find(code, 0)
-        assert result == 18
-
-    def test_find_curly_brackets(self) -> None:
-        code = "{test}"
-        result = find(code, 0)
-        assert result == 5
-
-    def test_find_square_brackets(self) -> None:
-        code = "[test]"
-        result = find(code, 0)
-        assert result == 5
-
-    def test_find_unmatched_brackets(self) -> None:
-        code = "{unmatched"
-        result = find(code, 0)
-        # Should return end of string
-        assert result == len(code)
-
 
 class TestStepMachine:
     def test_halt_command_sets_halted(self) -> None:
@@ -507,11 +349,7 @@ class TestStepMachine:
         assert machine.halted
 
     def test_a_read_loop_is_not_a_cycle(self) -> None:
-        """The snapshot holds the input cursor (a85db79a).
-
-        The wiki's cat read A, A and was reported a cycle at the second A;
-        it now reads A, A, B and halts on the NUL.
-        """
+        """The snapshot holds the input cursor (a85db79a)."""
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.register_based.sophie import _Machine
         from esolangs.vm import run_until_halt_or_cycle

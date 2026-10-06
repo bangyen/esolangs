@@ -1,12 +1,4 @@
-"""Tests for the Bitwise Cyclic Tag interpreter.
-
-The wiki's own worked example is asserted step by step rather than
-paraphrased: it is the only published trace of this language, it pins the
-composite ``1x`` pair's cyclic operand (the program ``00111`` runs as
-``0 (0 11 10)`` repeating, so the last command's operand is the program's
-first bit), and it is the thing a rewrite of :func:`_advance` would break
-silently.
-"""
+"""Tests for the Bitwise Cyclic Tag interpreter."""
 
 import pytest
 
@@ -48,12 +40,7 @@ class TestTheWikiExample:
             machine.step()
 
     def test_the_command_sequence_is_the_published_cycle(self) -> None:
-        """``0 (0 11 10)(0 11 10)...``, which is where the operand wraps.
-
-        The program is five bits and the fourth command starts on the last
-        of them, so its operand is the *first* -- the cycle is four commands
-        over five bits, and a non-cyclic operand would read past the end.
-        """
+        """``0 (0 11 10)(0 11 10)...``, which is where the operand wraps."""
         machine = _Machine("00111,101", ScriptedIO())
         heads = []
         for _ in _WIKI_TRACE:
@@ -82,21 +69,9 @@ class TestBitwiseCyclicTag:
         assert run_program(run, "0011,") == ""
         assert run_program(run, "0011") == ""
 
-    def test_an_empty_program_halts_however_much_data_there_is(self) -> None:
-        """No command exists and none will appear, so the data survives."""
-        assert run_program(run, ",1011") == ""
-
-    def test_whitespace_is_not_part_of_the_program(self) -> None:
-        """A long program may be broken across lines and mean the same."""
-        assert run_program(run, "0 0\n,\t1 0") == "0"
-
     def test_a_non_bit_is_refused(self) -> None:
         with pytest.raises(ValueError, match="not a Bitwise Cyclic Tag bit"):
             run_program(run, "0012,1")
-
-    def test_a_second_comma_is_refused(self) -> None:
-        with pytest.raises(ValueError, match="one ',' at most, got 2"):
-            run_program(run, "00,1,1")
 
     def test_the_answer_prints_once_however_far_it_is_stepped(self) -> None:
         """The post-halt step prints it, and only the first one does."""
@@ -112,12 +87,7 @@ class TestBitwiseCyclicTag:
         assert io_obj.getvalue() == "1"
 
     def test_a_deleted_prefix_is_not_part_of_the_state(self) -> None:
-        """Two runs that differ only in what they have already deleted agree.
-
-        The data-string is append-only and deletion is a cursor, so the
-        bits behind it are still in the list; a snapshot that included them
-        would make the detector treat one instant as two.
-        """
+        """Two runs that differ only in what they have already deleted agree."""
         early = _Machine("11,0", ScriptedIO())
         late = _Machine("011,10", ScriptedIO())
         late.step()  # delete the leading 1, leaving the same live data

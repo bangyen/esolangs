@@ -1,94 +1,4 @@
-"""The registry-wide scaling contract: emitted size against table length.
-
-Run:  just proofs   (or python tests/proofs/deep/linearity.py)
-
-``docs/roadmap.md`` asks for "a registry-wide scaling contract" to finish the
-linear-generator item.  ``tests/tools/test_boolean_contract.py`` already has
-one, but it covers only part of the registry; the rest have never had their
-growth checked at all.  This measures every generator.
-
-What is asserted
-----------------
-A linear construction's emitted size is ``a * T + b``: a constant cost per
-table entry plus a fixed prologue.  Measured at three same-parity arities --
-sizes ``s1, s2, s3`` at ``T, 4T, 16T`` -- such a construction satisfies
-
-    (s3 - s2) / (s2 - s1) = 4
-
-*exactly*, because the differences are ``3aT`` and ``12aT`` and the prologue
-cancels out of both.  The contract asserts that difference ratio stays under
-:data:`MAX_DIFF_RATIO`.  A convex construction leaves a residue: ``T log T``
-reads 4.83 and ``T^1.1`` reads 4.59.
-
-Being blind to ``b`` is the point, because ``b`` is what a size *ratio*
-mostly measures.  A table doubles per added input, so a ratio of emitted
-sizes reads
-
-    size(n) / size(n-2) = 4 * (a + b/T) / (a + 4b/T),
-
-which exceeds four exactly when ``b`` is negative -- a statement about the
-prologue, not about growth.  And ``b < 0`` is the *normal* case here: a
-balanced decision tree with per-node cost ``C`` sums to ``2C*T - 2C``.  So
-the retired size ratio ranked generators by how much fixed output they emit.
-AddSubJump is ``0.55*T + 1440`` and read x1.31; the Clockwise decision tree
-its lookup replaced was ``84.8*T - 858`` and read x2.01.  Both were exactly
-linear.  Worse, it
-rewarded the wrong edit: with ``b`` negative and fixed, *reducing* the
-per-entry cost raises the ratio, so a genuine size win read as a regression.
-
-Where the bound sits, measured on both sides:
-
-* the settled cohort's worst is Container at 4.289, still settling after a
-  route change, and thisthat at 4.228, whose pruned subtrees leave blanks
-  inside a fixed H-tree rectangle (8.4% of the nested dense table at n=4,
-  0.7% at n=12); everything else is at or under 4.21;
-* ``T log T`` reads 4.83 and ``T^1.1`` 4.59, and both are rejected.  Factor
-  reads 4.467 and is rejected too -- correctly, since its digit growth is
-  proven super-linear, and it is exempt for that reason.
-
-So it has teeth on both sides.  It is a calibrated regression guard, not a
-proof.  The retired size ratio is kept as :data:`MAX_GROWTH`, a loose
-backstop for the generators whose arity ceiling leaves fewer than three
-same-parity rungs past their last route change.
-
-What is NOT asserted
---------------------
-**Passing this is not evidence of linearity.**  ``T^1.05`` reads 4.289 --
-inside the bound, and level with the worst honest reading -- so a
-construction with a small enough super-linear factor is not distinguishable
-from a line at any arity this suite can reach, and one tuned until it were
-would fail most of the registry.  SLOW ACV MAMMALIAN's retired tree made the
-point concretely, measuring as linear against a proven
-``S(d) >= (2 + 1/255) S(d-1)`` before its linear chain shipped.  That is why
-the expected-failure set is read from the documents rather than discovered
-here, and why a generator's absence from the failure list below means only
-"not caught", never "proved linear".
-
-Regime changes are excluded, not smoothed
------------------------------------------
-Generators dispatch, and a route switch moves size by a factor that has
-nothing to do with asymptotics: Circuit Diagram jumps x35 at n=8 when its
-H-layout takes over, Streetcode x23 at n=6, and Container
-*drops* from 5674 to 1200 at n=7.  A line fitted across one of those measures
-the switch, not the growth.
-
-So a step whose ratio leaves ``REGIME_BAND`` is treated as a route boundary
-and the measurement restarts after it.  The band is a rule rather than a fit:
-a table doubles, so no construction that is even remotely linear can quadruple
-or halve across one added input.  The failure mode is safe -- a generator
-whose every step breaks the band never accumulates the rungs a measurement
-needs and is reported UNPROVEN, never passed.
-
-Why the dense shape is nested
------------------------------
-``_dense`` seeds on the arity, so its tables at consecutive arities are
-independent draws and how much of each folds is an accident of the draw.
-Re-drawing them moves the reading by +-2% -- enough, under the old ratio, to
-decide a pass: 3x, the Algebraic Programming Language and Forbin each read
-above and below x2.00 depending only on the seed.  ``_nested_dense`` draws one
-stream and takes prefixes of it, so each arity extends the one below and the
-series is a family rather than a sample.
-"""
+"""The registry-wide scaling contract: emitted size against table length."""
 
 from __future__ import annotations
 
@@ -227,14 +137,7 @@ def _line(pts: list[tuple[int, int]]) -> tuple[float, float, float]:
 
 
 def _classes(series: list[tuple[int, int]]) -> list[list[tuple[int, int]]]:
-    """The top rungs of each arity parity, past any route change.
-
-    Split by parity because the alternating-axis layouts only grow on every
-    other input -- Taglate emits 5499 characters at both n=7 and n=8, then
-    21025 at both n=9 and n=10 -- so consecutive arities measure the step
-    rather than the growth.  Within one parity those layouts are as regular
-    as any other construction, and a rung is a *quadrupling* of ``T``.
-    """
+    """The top rungs of each arity parity, past any route change."""
     past = _past_regime(series)
     out = []
     for parity in (0, 1):
@@ -245,28 +148,7 @@ def _classes(series: list[tuple[int, int]]) -> list[list[tuple[int, int]]]:
 
 
 def _trend(series: list[tuple[int, int]]) -> float | None:
-    """Successive-difference ratio over three same-parity rungs.
-
-    The statistic, and the reason this file no longer asserts on a size
-    ratio.  For ``size = a * T + b`` at rungs ``T, 4T, 16T`` the differences
-    are ``3aT`` and ``12aT``, so
-
-        (s3 - s2) / (s2 - s1) = 4
-
-    *exactly*, whatever ``b`` is: the prologue cancels in the first
-    difference.  A convex construction leaves a residue -- ``T log T`` reads
-    4.75 to 4.92 and ``T^1.1`` 4.59.
-
-    That blindness to ``b`` is the whole point.  The retired size ratio was
-    a function of the prologue more than of the growth, so it ranked
-    generators by how much fixed output they emit and moved the wrong way
-    when one got leaner; see the module docstring.
-
-    Worst (largest) class reported.  ``None`` when no class has three rungs,
-    or when the series does not grow across them -- a non-increasing series
-    has nothing for this statistic to say, and dividing by its first
-    difference would be meaningless.
-    """
+    """Successive-difference ratio over three same-parity rungs."""
     worst = None
     for rungs in _classes(series):
         (_a, s1), (_b, s2), (_c, s3) = rungs
@@ -279,13 +161,7 @@ def _trend(series: list[tuple[int, int]]) -> float | None:
 
 
 def _fit(series: list[tuple[int, int]]) -> tuple[float, float, float] | None:
-    """Least-squares ``a * T + b`` over the same rungs, for the report.
-
-    Reported rather than asserted on: ``a`` is the per-entry cost and ``b``
-    the prologue, which is what a reader wants to know about a construction,
-    but a residual over three rungs does not discriminate (the honest cohort
-    reaches 0.108 and a ``T^1.05`` control only 0.089).
-    """
+    """Least-squares ``a * T + b`` over the same rungs, for the report."""
     classes = _classes(series)
     if not classes:
         return None
@@ -296,10 +172,7 @@ def _fit(series: list[tuple[int, int]]) -> tuple[float, float, float] | None:
 
 
 def _ratio(series: list[tuple[int, int]]) -> float | None:
-    """Two-step growth of one ``(arity, size)`` series, past any route change.
-
-    The backstop statistic.  ``None`` when the series has too few rungs.
-    """
+    """Two-step growth of one ``(arity, size)`` series, past any route change."""
     if len(series) < MIN_RUNGS:
         return None
     past = _past_regime(series)
@@ -309,12 +182,7 @@ def _ratio(series: list[tuple[int, int]]) -> float | None:
 
 
 def measure(key: str, name: str) -> Growth:
-    """Worst-fitting shape for one generator, past any route change.
-
-    Worst means largest residual where a fit is available, and largest ratio
-    where none is, so a generator is judged by its least linear-looking table
-    shape either way.
-    """
+    """Worst-fitting shape for one generator, past any route change."""
     fn = getattr(boolean, key)
     top = ARITY_OVERRIDE.get(key, MAX_ARITY)
     worst = Growth(generator=name, reason="no shape produced enough rungs")
@@ -385,18 +253,7 @@ _CONTROLS: tuple[tuple[str, bool, Callable[[int], int]], ...] = (
 
 
 def _self_check() -> list[tuple[str, float, float]]:
-    """Run the statistic on linear and on super-linear synthetic series.
-
-    A probe that never fires reports a wall that is not there, so the guard
-    has to be shown to reject something: the super-linear controls must
-    exceed :data:`MAX_DIFF_RATIO` and the linear ones must not.
-
-    The linear controls are asserted *exactly* equal to
-    :data:`LINEAR_DIFF_RATIO`, prologue and all.  That is the defect this
-    statistic exists to fix -- under the retired size ratio the same three
-    series read x1.979, x2.000 and x2.022, so the guard's verdict turned on
-    a construction's fixed overhead rather than on its growth.
-    """
+    """Run the statistic on linear and on super-linear synthetic series."""
     span = range(MAX_ARITY - 2 * MIN_TREND_RUNGS + 1, MAX_ARITY + 1)
     out = []
     for label, superlinear, fn in _CONTROLS:

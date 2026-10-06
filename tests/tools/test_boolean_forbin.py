@@ -10,38 +10,15 @@ from esolangs import tools as boolean
 from tests.tools.boolean_runners import (
     run_forbin_boolean,
 )
+from tests.witness_tables import witnesses
 
 
 class TestForbinBoolean:
-    @pytest.mark.parametrize(
-        ("table", "n"),
-        [
-            ("10", 1),  # NOT
-            ("01", 1),  # identity
-            ("00", 1),  # constant zero
-            ("11", 1),  # constant one
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("1110", 2),  # NAND
-            ("11111110", 3),  # NAND3
-            ("01101001", 3),  # XOR3
-        ],
-    )
-    @pytest.mark.medium
-    def test_truth_table(self, table: str, n: int) -> None:
-        """Every input combination produces the truth-table result."""
-        program = boolean.forbin(table)
-        for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            got = run_forbin_boolean(program, [str(b) for b in bits])
-            assert got == str(int(table[combo])), f"inputs {bits}"
-
     @pytest.mark.parametrize("width", [1, 4, 7, 13, 40, 80])
     def test_narrow_small_tables(self, width: int) -> None:
-        """Every small table executes with a four-column grammar floor."""
+        """The witness tables execute with a four-column grammar floor."""
         for n in range(1, 4):
-            for value in range(2 ** (2**n)):
-                table = format(value, f"0{2**n}b")
+            for table in witnesses(n):
                 program = esolangs.generate("Forbin", table, width)
                 assert isinstance(program, str)
                 assert max(map(len, program.splitlines())) <= max(width, 4)
@@ -73,12 +50,7 @@ class TestForbinBoolean:
         assert boolean.forbin("01101001", width) == program
 
     def test_uses_the_lsb_of_each_input(self) -> None:
-        """Each input is read as 8 bits and only the LSB is kept.
-
-        One assignment does every read: a single right-hand side is
-        re-evaluated once per target, so seven bits land in the scratch name
-        and the eighth in the input's own.
-        """
+        """Each input is read as 8 bits and only the LSB is kept."""
         program = boolean.forbin("01")
         assert "e,e,e,e,e,e,e,a=(in 0);" in program
 

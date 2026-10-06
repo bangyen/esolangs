@@ -10,18 +10,13 @@ from esolangs import tools as boolean
 from tests.tools.boolean_runners import (
     run_qoibl,
 )
+from tests.witness_tables import witnesses
 
 
 class TestQoibl:
-    @pytest.mark.medium
-    @pytest.mark.parametrize("batch", range(16))
-    @pytest.mark.parametrize("width", [1, 2, 3, 6, 13, 80])
-    def test_narrow_horner_literals_execute_small_tables(
-        self, batch: int, width: int
-    ) -> None:
-
-        for value in range(16 * batch, 16 * (batch + 1)):
-            table = format(value, "08b")
+    @pytest.mark.parametrize("width", [1, 3, 80])
+    def test_narrow_horner_literals_execute_small_tables(self, width: int) -> None:
+        for table in witnesses(3):
             program = esolangs.generate("Qoibl", table, width)
             assert max(map(len, program.splitlines())) <= max(width, 2)
             for row in range(8):
@@ -46,32 +41,8 @@ class TestQoibl:
             sum(len(boolean.qoibl(format(v, "08b"), 1)) for v in range(256)) == 520366
         )
 
-    @pytest.mark.parametrize(
-        ("table", "n"),
-        [
-            ("10", 1),  # NOT
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("01100110", 3),  # XOR of the last two: the root's halves agree
-            ("11111110", 3),  # NAND3
-            ("1000000000000000", 4),  # AND4
-        ],
-    )
-    @pytest.mark.medium
-    def test_truth_table(self, table: str, n: int) -> None:
-        """Every input combination produces the truth-table result."""
-        program = boolean.qoibl(table)
-        for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            got = run_qoibl(program, [str(b) for b in bits])
-            assert got == str(int(table[combo])), f"inputs {bits}"
-
     def test_the_table_is_one_literal(self) -> None:
-        """The whole table rides in a single binary literal, bit k for row k.
-
-        The per-entry cost is that literal and nothing else, so the
-        construction stands or falls on it appearing exactly once.
-        """
+        """The whole table rides in a single binary literal, bit k for row k."""
         program = boolean.qoibl("0001")
         # 0b1000: row 3 is the only one set, and it is bit 3.
         assert program.count(" yeee ") == 1

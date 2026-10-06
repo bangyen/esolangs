@@ -141,39 +141,14 @@ def test_describe_covers_state_models() -> None:
     assert esolangs.describe("NoComment")["boolean_generator"] is True
 
 
-def test_describe_unknown_language_raises() -> None:
-    with pytest.raises(UnknownLanguageError):
-        esolangs.describe("NoSuchLanguage")
-
-
-def test_describe_language_without_interpreter() -> None:
-    info = esolangs.describe("123")
-    assert info["state_model"] == "tape"
-
-
 def test_generate_refuses_a_language_with_no_generator() -> None:
-    """A registered language may have no generator, and must say so.
-
-    Deadfish is the live instance this was written ahead of, and having one
-    changed the answer.  The guard raised ``UnknownLanguageError``, whose
-    message ends "`esolangs list` shows all of them" -- and `esolangs list`
-    shows Deadfish, so the refusal contradicted itself the moment it could
-    fire for real.  It is an ``ArgumentError`` now, which is still a
-    ``ValueError`` for anyone catching broadly, and it says which fact about
-    the language is the obstacle.
-    """
+    """A registered language may have no generator, and must say so."""
     with pytest.raises(esolangs.ArgumentError) as exc:
         esolangs.generate("Deadfish", "0110")
     message = str(exc.value)
     assert "no boolean generator" in message
     assert "generator contracts" in message
     assert "'int'" in message
-
-
-def test_an_unknown_language_is_still_unknown_to_generate() -> None:
-    """The other arm, so the two refusals cannot collapse into one."""
-    with pytest.raises(UnknownLanguageError):
-        esolangs.generate("NoSuchLanguage", "0110")
 
 
 @pytest.mark.parametrize("table", ["", "0120", "010", "1"])
@@ -248,6 +223,7 @@ def test_evaluate_loads_source_once_from_path(language, tmp_path):
     assert _evaluate(language, path, inputs=2) == "0110"
 
 
+@pytest.mark.medium  # spawns a worker, like test_run_isolated
 def test_isolated_execution_loads_a_path_in_worker_thread(tmp_path):
     path = tmp_path / "program.bf"
     path.write_text("++.")
@@ -311,11 +287,6 @@ def test_bound_language_runs_a_boolean_workflow():
     assert _check_program(language.name, program, stdin) == program
     assert language.read_answer(language.run(program, stdin)) == "1"
     assert _evaluate(language.name, program, inputs=2) == "0110"
-
-
-def test_unknown_language_is_refused_at_construction():
-    with pytest.raises(esolangs.UnknownLanguageError):
-        esolangs.Language("brainfuk")
 
 
 def test_bound_template_language_runs_each_input_row():

@@ -35,12 +35,7 @@ def test_a_rewrite_reaches_a_state_no_rule_matches() -> None:
 
 
 def test_which_rewrite_runs_is_drawn_and_a_source_fixes_it() -> None:
-    """The choice is the spec's, and random: both outcomes are reachable.
-
-    ``aab`` offers ``b`` at 2 and ``ab`` at 1, so the two rules print
-    different digits depending on the draw.  A pinned interpreter would
-    always answer one of them, which is what this language must not do.
-    """
+    """The choice is the spec's, and random: both outcomes are reachable."""
     program = "b::=~1\nab::=~2\n::=\naab"
     assert run_program(run, program, rng=FirstDraw(0)) == "1"
     assert run_program(run, program, rng=FirstDraw(1)) == "2"

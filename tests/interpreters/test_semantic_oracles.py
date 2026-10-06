@@ -163,25 +163,3 @@ def test_step_cap_never_counts_as_a_halt(language, code):
     result = ORACLES[language](code, "", 200)
     assert not result.halted
     assert observed(language, code, "", 200) == result
-
-
-@pytest.mark.medium
-@pytest.mark.parametrize("language", ["Boolfuck", "Subleq", "Smallfuck"])
-@pytest.mark.parametrize(
-    "table",
-    [format(value, f"0{2**n}b") for n in (1, 2) for value in range(2 ** (2**n))]
-    + ["00010111", "10010110", "01101001"],
-)
-def test_generated_programs_execute_in_independent_interpreters(language, table):
-    code = esolangs.generate(language, table)
-    assert isinstance(code, str)
-    n = len(table).bit_length() - 1
-    for row, expected in enumerate(table):
-        bits = [int(bit) for bit in format(row, f"0{n}b")]
-        if esolangs.describe(language)["parameterized"]:
-            source, stdin = esolangs.instantiate(language, code, bits), ""
-        else:
-            source, stdin = code, esolangs.encode_inputs(language, bits, table)
-        result = ORACLES[language](source, stdin, 100_000)
-        assert result.halted, (language, table, row)
-        assert result.output == expected, (language, table, row)

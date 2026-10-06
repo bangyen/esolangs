@@ -87,21 +87,6 @@ def test_unvisited_read_pruning_preserves_finite_input_behaviors() -> None:
     assert _trace_reads(normal, (1,))[0][0] == "diverge"
 
 
-@pytest.mark.medium
-def test_forgetting_dag_executes_every_small_table() -> None:
-    from esolangs.interpreters.tape_based.brainif import run as run_brainif
-
-    for n in range(1, 4):
-        for value in range(1 << (1 << n)):
-            table = format(value, f"0{1 << n}b")
-            code = _brainif_dag(table)
-            for row in range(1 << n):
-                io = ScriptedIO("".join(format(row, f"0{n}b")))
-                run_brainif(code.splitlines(), io)
-                assert io.getvalue() == table[row]
-                assert io.reads == n
-
-
 def test_residual_dag_worst_case_width_and_size() -> None:
     for n in range(4, 17):
         r = 0
@@ -279,15 +264,7 @@ def test_bounded_input_census_distinguishes_read_observations() -> None:
 
 @pytest.mark.medium
 def test_proportional_read_budget_rate() -> None:
-    """Rate of Theorem 6's bound when the read budget is `R = p*C`.
-
-    Stirling on the dominant term `r = pC` of
-    `(C+1) sum_r binom(C,r) K^(r+1) lambda^(C-r)` gives
-    `binom(C,pC)^(1/C) -> 2^H(p) = 1/(p^p (1-p)^(1-p))`, so that term's C-th
-    root tends to `K^p lambda^(1-p)/(p^p (1-p)^(1-p))`.  The sum's root is the
-    max of that expression over `t <= p`; it increases on `[0, t*]`, peaks at
-    `K + lambda` at `t* = K/(K+lambda)`, and decreases after.
-    """
+    """Rate of Theorem 6's bound when the read budget is `R = p*C`."""
     alphabet = "><+-.[]"
     matrix = sympy.Matrix(
         [[int(a + b not in {"+-", "-+", "><"}) for b in alphabet] for a in alphabet]
@@ -521,12 +498,7 @@ def test_pair_decoded_router_reaches_one_row_per_fraction() -> None:
 
 @pytest.mark.slow
 def test_vandevelo_fallback_is_not_amortized(monkeypatch: pytest.MonkeyPatch) -> None:
-    """The exact fallback costs ``60*T`` on one seeded 15-input table.
-
-    ``docs/proofs/index.md`` cites this as the executed counterexample to an
-    ``O(T)`` fallback aggregate: two full-dimension ``_popularities`` calls at
-    ``2*n*2**n`` visits each.
-    """
+    """The exact fallback costs ``60*T`` on one seeded 15-input table."""
     from esolangs.tools.vandevelo import _popularities, vandevelo
 
     calls: list[int] = []

@@ -5,6 +5,7 @@ import pytest
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.tape_based.one_two_three import _Machine
 from esolangs.tools.one_two_three import _LAWS, _construct_small, _separated
+from tests.witness_tables import witnesses
 
 
 def _instantiate(template: str, bits: str) -> str:
@@ -68,10 +69,7 @@ def test_law_prefix_and_all_row_states_match_the_interpreter(n: int, law: int) -
 
 
 @pytest.mark.medium
-@pytest.mark.parametrize(
-    "table",
-    [format(value, f"0{2**n}b") for n in (1, 2, 3) for value in range(2 ** (2**n))],
-)
+@pytest.mark.parametrize("table", [t for n in (1, 2, 3) for t in witnesses(n)])
 def test_every_law_candidate_executes_every_table(table: str) -> None:
     n = len(table).bit_length() - 1
     for law in range(len(_LAWS[n])):

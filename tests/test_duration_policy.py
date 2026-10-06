@@ -81,12 +81,7 @@ def test_the_excuse_runs_out_past_the_scaled_ceiling() -> None:
 
 
 def test_cpu_time_can_only_excuse_an_overrun_never_cause_one() -> None:
-    """``process_time`` sums threads, so a pool reads a multiple of its wall.
-
-    A rule that failed on CPU alone would fail tests sitting well inside
-    their band, which is why the check is consulted only after the wall
-    time is already past the ceiling.
-    """
+    """``process_time`` sums threads, so a pool reads a multiple of its wall."""
     assert violation(set(), 0.5, 4.0) is None
     assert violation({"medium"}, 2.0, 12.0) is None
 

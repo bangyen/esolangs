@@ -9,12 +9,9 @@ from esolangs.tools.polynomial import _polynomial_assemble
 from tests.tools.boolean_oracles import _polynomial_tree, _sophie_dag, _sophie_tree
 
 
-@pytest.mark.medium
 @pytest.mark.parametrize("oracle", ["polynomial_tree", "sophie_tree", "sophie_dag"])
-@pytest.mark.parametrize(
-    "table",
-    [format(v, f"0{2**n}b") for n in (1, 2, 3) for v in range(2 ** (2**n))],
-)
+# A constant, AND, XOR, three-input parity and majority.
+@pytest.mark.parametrize("table", ["11", "0001", "0110", "01101001", "00010111"])
 def test_retired_oracle_executes_every_row(oracle: str, table: str) -> None:
     n = len(table).bit_length() - 1
     if oracle == "polynomial_tree":

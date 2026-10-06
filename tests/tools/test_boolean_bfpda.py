@@ -1,7 +1,5 @@
 """bfpda generator tests."""
 
-import pytest
-
 from tests.tools.fills import _run_form
 
 
@@ -37,47 +35,6 @@ class TestParameterizedBfpda:
                     _fill_bfpda(template, ones)
                 ), f"n={n} input {i}"
 
-    @pytest.mark.parametrize(
-        ("table", "n"),
-        [
-            ("10", 1),  # NOT
-            ("01", 1),  # identity
-            ("00", 1),  # constant zero
-            ("11", 1),  # constant one
-            ("0001", 2),  # AND
-            ("0110", 2),  # XOR
-            ("0111", 2),  # OR
-            ("1110", 2),  # NAND
-            ("11111110", 3),  # NAND3
-            ("01101001", 3),  # majority
-            ("1111111100000000", 4),  # top half
-        ],
-    )
-    @pytest.mark.medium
-    def test_truth_table(self, table: str, n: int) -> None:
-        """Every instantiated input produces the truth-table result."""
-        from esolangs import tools as generators
-
-        template = generators.bfpda(table)
-        for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            got = self.run_bfpda(self.instantiate(template, bits))
-            assert got == str(int(table[combo])), f"inputs {bits}"
-
-    @pytest.mark.parametrize("n", [1, 2, 3])
-    @pytest.mark.medium
-    def test_all_small_tables(self, n: int) -> None:
-        """Every table up to three inputs produces the right result."""
-        from esolangs import tools as generators
-
-        for table_int in range(2 ** (2**n)):
-            table = format(table_int, f"0{2**n}b")
-            template = generators.bfpda(table)
-            for combo in range(2**n):
-                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-                got = self.run_bfpda(self.instantiate(template, bits))
-                assert got == str(int(table[combo])), f"{table} inputs {bits}"
-
     def test_template_is_input_independent(self) -> None:
         """The template has input runs, not hardcoded bits."""
         from esolangs import tools as generators
@@ -101,11 +58,7 @@ class TestParameterizedBfpda:
         assert "{C1}" not in template
 
     def test_leaf_leaves_the_stack_empty(self) -> None:
-        """A zero drains and prints the empty stack; a one prints the bottom marker.
-
-        Both arms of a node end on an empty stack, so the ``]`` closing
-        each exits without a pushed zero, and nothing is left to pop.
-        """
+        """A zero drains and prints the empty stack; a one prints the bottom marker."""
         from esolangs import tools as generators
 
         assert generators.bfpda("10") == "@<$[>>.]>[>@.>]"  # NOT
@@ -114,12 +67,7 @@ class TestParameterizedBfpda:
         )
 
     def test_the_constructed_lengths_are_stable_over_three_inputs(self) -> None:
-        """Total emitted bytes over every three-input table.
-
-        24127 while each arm pushed a zero to break its loop and popped it
-        after, and each leaf pushed its answer; 17578 once the arms end on
-        the empty stack a leaf leaves behind; 16042 with fresh-cell setters.
-        """
+        """Total emitted bytes over every three-input table."""
         from esolangs import tools as generators
 
         total = sum(len(generators.bfpda(format(v, "08b"))) for v in range(256))

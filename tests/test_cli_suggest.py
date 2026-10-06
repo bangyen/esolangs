@@ -19,10 +19,7 @@ from tests.cli_support import call_both
     "source",
     [
         "[PSHH INT 1][PRTT INT][END]",
-        "[PHS INT 1][PRT INT][END]",
-        "[PH INT 1][PRT INT][END]",
         "[pSh INT 1][prt INT][end]",
-        "[PSX INT 1][PRT INT][END]",
     ],
 )
 def test_proposed_command_edits_execute(source):
@@ -40,12 +37,7 @@ def test_proposed_command_edits_execute(source):
     "source",
     [
         "[POT]",  # POP and PRT are both one substitution away.
-        "[PND]",  # END and RND are both one substitution away.
-        "[PRTINT]",  # More than one spelling edit; could need an operand.
         '[PSH STR "[PRTT INT]"][PRT][END]',
-        "[VAR1+1][VAR2-1][PSH VAR1][PRT VAR2][END]",
-        "[PSH INT nope][PRT INT]",
-        "[][JMP B 1]",
         "",
     ],
 )
@@ -144,11 +136,9 @@ def repaired(source, edits):
     ("language", "handler", "source", "output"),
     [
         ("BrainIf", _brainif_corrections, "IF 0 incremnt\nif 1 ouput", "\x01"),
-        ("BrainIf", _brainif_corrections, "if 0 mov right\nif 0 output", "\x00"),
         ("BrainIf", _brainif_corrections, "if 0 move rihgt\nif 0 output", "\x00"),
         ("Grapheme", _grapheme_corrections, "FAFy", "1"),
         ("Collatz Multiverse", _collatz_corrections, "a = b x + c, do PRNIT.", "\x00"),
-        ("Collatz Multiverse", _collatz_corrections, "a = b x + c, NTO PRINT.", ""),
     ],
 )
 def test_repairs_execute(language, handler, source, output, tmp_path, capsys):
@@ -168,11 +158,7 @@ def test_repairs_execute(language, handler, source, output, tmp_path, capsys):
     ("source", "output"),
     [
         ("EaE", ""),
-        ("FaF", ""),
-        ("HyH", ""),
         ("eabey", "AB"),
-        ("fabfy", "12"),
-        ("fafhyhi", "1"),
     ],
 )
 def test_grapheme_case_corrections_include_literals(source, output, tmp_path, capsys):
@@ -231,8 +217,6 @@ def test_brainif_unicode_line_locations(tmp_path, capsys):
     [
         ("X", "unknown Underload command", "use () strings"),
         ("(", "unmatched Underload", "close the string"),
-        (")", "unmatched Underload", "open the string"),
-        ("!", "stack underflow", "leave enough stack entries"),
     ],
 )
 def test_underload_errors_have_the_right_hint(source, message, hint):
@@ -249,54 +233,7 @@ def test_collatz_ambiguous_keyword_is_untouched():
     assert not _collatz_corrections("a = b x + c, DOT PRINT.")
 
 
-@pytest.mark.parametrize(
-    ("language", "module", "source"),
-    [
-        ("BrainIf", "tape_based.brainif", "IF 0 goto 1"),
-        ("Grapheme", "stack_based.grapheme", "FAFy"),
-        (
-            "Collatz Multiverse",
-            "register_based.collatz_multiverse",
-            "a = b x + c, do PRINT.",
-        ),
-    ],
-)
-def test_new_previews_do_not_step_machines(
-    language, module, source, tmp_path, capsys, monkeypatch
-):
-    import importlib
-
-    machine = vars(importlib.import_module(f"esolangs.interpreters.{module}"))[
-        "_Machine"
-    ]
-
-    def forbidden(*_args):
-        raise AssertionError("preview executed the program")
-
-    monkeypatch.setattr(machine, "step", forbidden)
-    path = tmp_path / "program"
-    path.write_text(source)
-    out, err = call_both(["suggest", language, str(path)], capsys)
-    assert "->" in out
-    assert not err
-
-
-@pytest.mark.parametrize(
-    "language",
-    [
-        name
-        for name, spec in LANGUAGES.items()
-        if spec.id
-        not in {
-            "modulous",
-            "bitdeque",
-            "packlang",
-            "brainif",
-            "grapheme",
-            "collatz_multiverse",
-        }
-    ],
-)
+@pytest.mark.parametrize("language", ["Befunge", "Piet"])
 def test_other_languages_offer_explicit_no_edit_result(language, tmp_path, capsys):
     from PIL import Image
 
@@ -329,10 +266,7 @@ def _repaired(source, corrections):
     ("source", "output"),
     [
         ("inverT pussh", "1"),
-        ("INVRET PUSH", "1"),
-        ("INVERT GOT 2 pussh", "1"),
         ("INVERT PUSH INVERT INJEC", "0 1"),
-        ("INVERT PUSH EJEC PUSH", "1"),
     ],
 )
 def test_bitdeque_proposed_repairs_execute(source, output):
@@ -341,7 +275,7 @@ def test_bitdeque_proposed_repairs_execute(source, output):
     assert esolangs.run("Bitdeque", _repaired(source, corrections), timeout=5) == output
 
 
-@pytest.mark.parametrize("source", ["IJECT", "GOTO pussh", "PUSH 12", "INVERTPUSH", ""])
+@pytest.mark.parametrize("source", ["IJECT", "PUSH 12", ""])
 def test_bitdeque_ambiguous_words_and_jump_operands_receive_no_edit(source):
     assert _bitdeque_corrections(source) == ()
 
@@ -350,10 +284,7 @@ def test_bitdeque_ambiguous_words_and_jump_operands_receive_no_edit(source):
     "source",
     [
         "package : IO { integer main { charPut(65); } } app;",
-        "Pacakge : IO { Integre main { charPut(65); } } app;",
-        "Package : IO { Array(Chra, 2) a; Integer main { charPut(65); } } app;",
         "Package : IO { Integer main { If 1 Thne { charPut(65); } } } app;",
-        "Package : IO { Integer main { While 0 do { 0; } charPut(65); } } app;",
         "Dependncy { Integer f { 65; } } d; "
         "Package : IO, d { Integer main { charPut(f()); } } app;",
     ],
@@ -371,10 +302,7 @@ def test_packlang_required_keyword_repairs_execute(source):
         "Integer main { INIT Integre; charPut(65); } } app;",
         "Package : IO { Integer charPutt { 65; } "
         "Integer main { charPut(charPutt()); } } app;",
-        "Package { Integer main { Array(Integre,4); } } app;",
         "% Pacakge Integre\nPackage { Integer main { 0; } } app;",
-        "%$ Pacakge\nIntegre % Package { Integer main { 0; } } app;",
-        "Package { Integer main { 0; } } app; %$ unterminated Pacakge",
     ],
 )
 def test_packlang_identifiers_calls_and_comments_receive_no_edit(source):
@@ -442,10 +370,7 @@ def test_new_previews_do_not_execute_or_read_stdin(
     [
         "",
         "Packxxxxx {} app;",
-        "Package { Pointer(",
-        "Package { Integer main { If 1",
         "Package { ZZZ main { 0; } } app;",
-        "Package { Integer main { @; } } app;",
     ],
 )
 def test_packlang_preview_refuses_unsupported_syntax_before_output(

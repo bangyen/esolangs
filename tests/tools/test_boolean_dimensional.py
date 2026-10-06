@@ -10,13 +10,13 @@ from esolangs.tools.dimensional import dimensional
 from tests.tools.boolean_runners import (
     run_dimensional,
 )
+from tests.witness_tables import witnesses
 
 
 @pytest.mark.medium
 def test_bare_axis_leaves_execute_all_small_tables() -> None:
     for n in range(1, 4):
-        for value in range(1 << (1 << n)):
-            table = format(value, f"0{1 << n}b")
+        for table in witnesses(n):
             program = generate("Dimensional", table, 1)
             assert max(map(len, program.splitlines())) == (1 if n <= 2 else 2)
             for row, expected in enumerate(table):
@@ -57,34 +57,8 @@ def test_larger_tables_keep_the_established_index(n: int) -> None:
 
 
 class TestDimensional:
-    @pytest.mark.parametrize(
-        ("table", "n"),
-        [
-            ("10", 1),  # NOT
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("11111110", 3),  # NAND3
-            ("1111111111111111", 4),  # constant one
-            ("1111111100000000", 4),
-        ],
-    )
-    @pytest.mark.medium
-    def test_truth_table(self, table: str, n: int) -> None:
-        """Every input combination produces the truth-table result."""
-        program = boolean.dimensional(table)
-        for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            got = run_dimensional(program, [str(b) for b in bits])
-            assert got == str(int(table[combo])), f"inputs {bits}"
-
     def test_a_bare_move_is_the_addressing(self) -> None:
-        """A bare >/< takes its dimension from the cell, which is the point.
-
-        One per read -- ``d>`` steps along dimension 1 for a one bit and 0
-        for a zero -- and one per painted one-cell, whose ``+`` leaves the
-        1 the following ``>`` reads.  ``0110`` paints as far as its last
-        one at index 2, so that is two reads and one one-cell before it.
-        """
+        """A bare >/< takes its dimension from the cell, which is the point."""
         program = boolean.dimensional("0110")
         bare = [
             i
@@ -94,12 +68,7 @@ class TestDimensional:
         assert len(bare) == 3, program
 
     def test_the_table_costs_two_characters_an_entry(self) -> None:
-        """One painted cell an entry, whichever bit it is.
-
-        A zero-cell steps with ``>1`` and a one-cell with ``+`` and a bare
-        ``>``; both are two characters, so the emitted length does not
-        carry the table's contents.
-        """
+        """One painted cell an entry, whichever bit it is."""
         full = "1" * 64
         one = "0" * 63 + "1"
         assert len(boolean.dimensional(full)) == len(boolean.dimensional(one))

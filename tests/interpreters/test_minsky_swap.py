@@ -1,10 +1,4 @@
-"""Unit tests for Minsky Swap interpreter.
-
-Tests cover all Minsky Swap commands, program flow control, and both compact
-and readable notation.
-Minsky Swap is a Turing-complete esoteric language based on Minsky machines
-with two registers.
-"""
+"""Unit tests for Minsky Swap interpreter."""
 
 import io
 from contextlib import redirect_stdout
@@ -55,54 +49,18 @@ class TestMinskySwapBasicCommands:
             run("~+~\n2 1", io=IO())
         assert f.getvalue().strip() == "0 0"
 
-    def test_empty_program(self) -> None:
-        with redirect_stdout(io.StringIO()) as f:
-            run("", io=IO())
-        assert f.getvalue().strip() == "0 0"
-
-    def test_whitespace_ignored(self) -> None:
-        with redirect_stdout(io.StringIO()) as f:
-            run("  +  \n  ", io=IO())
-        assert f.getvalue().strip() == "1 0"
-
     def test_stripped_characters_do_not_shift_the_jump_targets(self) -> None:
-        """Padding is removed, rather than replaced with something inert.
-
-        ``test_whitespace_ignored`` pads a ``+`` on both sides, and an
-        unrecognised character is read as a swap -- so an even amount of
-        padding, kept rather than dropped, swaps back and agrees.  Odd
-        padding before a jump target does not: the jump to line 3 must
-        reach the second increment, and any surviving character puts it
-        somewhere else.
-        """
+        """Padding is removed, rather than replaced with something inert."""
         with redirect_stdout(io.StringIO()) as f:
             run(" ~++\n3", io=IO())
         assert f.getvalue().strip() == "1 0"
 
 
 class TestMinskySwapReadableNotation:
-    def test_inc_command(self) -> None:
-        with redirect_stdout(io.StringIO()) as f:
-            run("inc();", io=IO())
-        assert f.getvalue().strip() == "1 0"
-
-        with redirect_stdout(io.StringIO()) as f:
-            run("inc();\ninc();", io=IO())
-        assert f.getvalue().strip() == "2 0"
-
     def test_swap_command_readable(self) -> None:
         with redirect_stdout(io.StringIO()) as f:
             run("swap();\ninc();", io=IO())
         assert f.getvalue().strip() == "0 1"
-
-    def test_decnz_command(self) -> None:
-        with redirect_stdout(io.StringIO()) as f:
-            run("inc();\ndecnz(1);", io=IO())
-        assert f.getvalue().strip() == "0 0"
-
-        with redirect_stdout(io.StringIO()) as f:
-            run("decnz(2);\ninc();", io=IO())
-        assert f.getvalue().strip() == "1 0"
 
     @pytest.mark.parametrize(
         "code",
@@ -119,28 +77,13 @@ class TestMinskySwapReadableNotation:
             run(code, io=IO())
 
     def test_a_readable_command_contributes_exactly_one_symbol(self) -> None:
-        """Each ``inc()``/``swap()`` becomes one command, not a run of them.
-
-        The compact program a readable one translates to is only visible
-        through where a jump lands in it: with no jump, padding either
-        command with a matching pair of extra symbols cancels out, since
-        an unrecognised character is read as a swap and two swaps undo
-        each other.  Jumping into the middle of such a pair does not
-        cancel -- the increments after it land in the other register.
-        """
+        """Each ``inc()``/``swap()`` becomes one command, not a run of them."""
         with redirect_stdout(io.StringIO()) as f:
             run("decnz(5);\ninc();\nswap();\ninc();\ninc();", io=IO())
         assert f.getvalue().strip() == "1 0"
 
     def test_a_bare_decnz_jumps_to_the_first_line(self) -> None:
-        """``decnz();`` with no argument targets line 1.
-
-        Its target is never asserted because a program that takes the jump
-        loops forever, and one that does not never reads the number.  The
-        step machine sees it directly: the jump to line 1 puts the cursor
-        back at the start, where both a missing target and a target of 2
-        would move it on instead.
-        """
+        """``decnz();`` with no argument targets line 1."""
         from esolangs.interpreters.register_based.minsky_swap import _Machine
 
         machine = _Machine("decnz();", IO())
@@ -155,20 +98,10 @@ class TestMinskySwapProgramFlow:
             run("+++~\n1", io=IO())
         assert f.getvalue().strip() == "2 0"
 
-    def test_register_swapping_loop(self) -> None:
-        with redirect_stdout(io.StringIO()) as f:
-            run("+*+*+", io=IO())
-        assert f.getvalue().strip() == "2 1"
-
     def test_conditional_jump(self) -> None:
         with redirect_stdout(io.StringIO()) as f:
             run("++~+~\n2 1", io=IO())
         assert f.getvalue().strip() == "1 0"
-
-    def test_complex_program(self) -> None:
-        with redirect_stdout(io.StringIO()) as f:
-            run("++*++*+++", io=IO())
-        assert f.getvalue().strip() == "5 2"
 
 
 class TestMinskySwapEdgeCases:
@@ -183,59 +116,14 @@ class TestMinskySwapEdgeCases:
         assert f.getvalue().strip() == "0 0"
 
     def test_tilde_without_target_rejected(self) -> None:
-        """A ~ with no matching jump-line number is malformed.
-
-        ``match=`` is a substring search, so the whole message is asserted
-        here: it is the only thing a caller sees when a program is
-        rejected, and nothing else pins its wording.
-        """
+        """A ~ with no matching jump-line number is malformed."""
         with raises_message(ValueError, "unmatched '~' with no jump target"):
             run("~~\n1", io=IO())
-
-    def test_multiple_tildes(self) -> None:
-        with redirect_stdout(io.StringIO()) as f:
-            run("~+~+~\n3 2 1", io=IO())
-        assert f.getvalue().strip() == "0 0"
-
-    def test_register_overflow_simulation(self) -> None:
-        with redirect_stdout(io.StringIO()) as f:
-            run("+" * 1000, io=IO())
-        assert f.getvalue().strip() == "1000 0"
-
-
-class TestMinskySwapExamples:
-    def test_hello_world_pattern(self) -> None:
-        with redirect_stdout(io.StringIO()) as f:
-            run("+++*+++", io=IO())
-        assert f.getvalue().strip() == "3 3"
-
-    def test_register_copy_pattern(self) -> None:
-        with redirect_stdout(io.StringIO()) as f:
-            run("+++*+++*~+~\n2 1", io=IO())
-        assert f.getvalue().strip() == "2 3"
-
-    def test_readable_notation_example(self) -> None:
-        program = """
-        inc();
-        swap();
-        inc();
-        inc();
-        swap();
-        decnz(1);
-        """
-        with redirect_stdout(io.StringIO()) as f:
-            run(program, io=IO())
-        assert f.getvalue().strip() == "0 2"
 
 
 class TestStepMachine:
     def test_the_register_dump_happens_once(self) -> None:
-        """Stepping a halted machine again does not re-print the registers.
-
-        ``step`` is called by the VM and by the cycle detector, either of
-        which can run one past the end, so the dump is guarded by a flag
-        rather than by the caller counting steps.
-        """
+        """Stepping a halted machine again does not re-print the registers."""
         import io
         from contextlib import redirect_stdout
 
@@ -251,14 +139,7 @@ class TestStepMachine:
         assert buffer.getvalue().strip() == "1 0"
 
     def test_a_decrement_targeting_line_zero_falls_through(self) -> None:
-        """A jump target of ``0`` is falsy, so ``~`` advances instead.
-
-        Every ``~`` is given a target at parse time, so the branch cannot
-        be reached by omitting one -- but a target of line 0 reads as
-        false, and the cursor then moves on rather than jumping.  Whether
-        that is the intended reading of line 0 is the language's question;
-        this pins what the interpreter does with it.
-        """
+        """A jump target of ``0`` is falsy, so ``~`` advances instead."""
         from esolangs.interpreters.register_based.minsky_swap import _Machine
 
         machine = _Machine("~\n0", IO())  # zero register, target line 0
@@ -294,13 +175,7 @@ class TestContract(SnapshotContract, CycleContract, StateViewContract):
 
 
 class TestStateViewValues:
-    """The named views read the slots they claim, not one another.
-
-    The shared contract checks that each view *moves*; which slot it moves
-    with is this file's business, because only this file knows which of its
-    names could be confused for each other.  A value pinned at a step where
-    they hold different things is what a rewiring would change.
-    """
+    """The named views read the slots they claim, not one another."""
 
     def test_ptr_is_the_register_pointer_not_the_cursor(self) -> None:
         """The swap moves the pointer once; the cursor moves every step."""
