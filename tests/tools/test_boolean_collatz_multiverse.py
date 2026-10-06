@@ -30,14 +30,6 @@ class TestCollatzMultiverse:
         # register the inputs summed rather than by a walked pointer.
         assert len(subscripted) - len(placed) == 2
 
-    def test_full_tree_growth_is_linear(self) -> None:
-        """Parity folds nothing, but one line a cell keeps source linear."""
-        sizes = []
-        for n in (7, 8):
-            table = "".join(str(row.bit_count() & 1) for row in range(1 << n))
-            sizes.append(len(boolean.collatz_multiverse(table)))
-        assert sizes[1] < 2 * sizes[0] + 256
-
     def test_constant_tables_collapse_but_still_read(self) -> None:
         """A constant table collapses to one output but still reads its inputs."""
         for table in ("0000", "1111"):

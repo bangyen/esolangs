@@ -68,14 +68,6 @@ class TestInject:
             bits = [str((row >> (n - 1 - i)) & 1) for i in range(n)]
             assert run_inject(program, bits) == table[row] + "\n"
 
-    def test_halving_lookup_growth_is_linear(self) -> None:
-        """Wide parity programs grow by at most the table-size ratio."""
-        sizes = []
-        for n in range(11, 15):
-            table = "".join(str(row.bit_count() & 1) for row in range(2**n))
-            sizes.append(len(boolean.inject(table)))
-        assert all(b <= 2 * a for a, b in pairwise(sizes))
-
     @pytest.mark.parametrize("width", [1, 20, 40, 80])
     def test_chunked_lookup_executes_every_row(self, width: int) -> None:
         """Leaf escapes join one postlude without losing the selected chunk."""

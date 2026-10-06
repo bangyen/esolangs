@@ -2,15 +2,20 @@
 
 import subprocess
 import sys
+from collections.abc import Callable, Iterable
 from dataclasses import replace
+from functools import partial
+from itertools import pairwise
 
 import pytest
 
 import esolangs
+from esolangs import tools as boolean
 from esolangs._evaluate import _evaluate
 from esolangs.registry import LANGUAGES, parameterized_ids, resolve
 from esolangs.tools.examples import BOOLEAN_EXAMPLES
 from tests.stdin_check import _check_stdin
+from tests.tools.plain_oracles import _jaune_linear
 
 
 def test_examples_derive_the_registered_io_contract() -> None:
@@ -107,3 +112,33 @@ def test_termination_polarity_comes_from_the_registry(monkeypatch) -> None:
 def test_termination_diagnostic_does_not_score_a_timeout() -> None:
     with pytest.raises(esolangs.ArgumentError, match="timeout is undecided"):
         esolangs.read_answer("123", "1")
+
+
+def _parity(n: int) -> str:
+    return "".join(str(row.bit_count() & 1) for row in range(2**n))
+
+
+# (generator, arities, slack): a parity table's source at most doubles per
+# added input, plus ``slack`` characters of fixed setup.
+@pytest.mark.parametrize(
+    ("generator", "arities", "slack"),
+    [
+        pytest.param(boolean.addsubjump, range(11, 15), 0, id="addsubjump"),
+        pytest.param(
+            partial(boolean.brainif, width=1000), range(8, 12), 0, id="brainif"
+        ),
+        pytest.param(boolean.inject, range(11, 15), 0, id="inject"),
+        pytest.param(_jaune_linear, range(11, 15), 0, id="jaune"),
+        pytest.param(boolean.ram0, range(11, 15), 0, id="ram0"),
+        pytest.param(boolean.sbleq, range(11, 15), 0, id="sbleq"),
+        pytest.param(boolean.qoibl, range(7, 11), 800, id="qoibl"),
+        pytest.param(boolean.algebraic_programming_language, (7, 8), 31, id="apl"),
+        pytest.param(boolean.bit_tilde, (7, 8), 255, id="bit_tilde"),
+        pytest.param(boolean.collatz_multiverse, (7, 8), 255, id="collatz_multiverse"),
+    ],
+)
+def test_parity_source_at_most_doubles_per_input(
+    generator: Callable[[str], str], arities: Iterable[int], slack: int
+) -> None:
+    sizes = [len(generator(_parity(n))) for n in arities]
+    assert all(b <= 2 * a + slack for a, b in pairwise(sizes)), sizes

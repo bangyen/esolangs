@@ -1,7 +1,6 @@
 """qoibl generator tests."""
 
 import random
-from itertools import pairwise
 
 import pytest
 
@@ -63,11 +62,3 @@ class TestQoibl:
         program = boolean.qoibl("0000")
         assert program.count(" et ") == 2
         assert "we y we e ry yy ry" in program
-
-    def test_dense_growth_is_linear(self) -> None:
-        """A full tree doubles by a bounded additive term."""
-        sizes = [
-            len(boolean.qoibl("".join(str(row.bit_count() & 1) for row in range(2**n))))
-            for n in range(7, 11)
-        ]
-        assert all(b <= 2 * a + 800 for a, b in pairwise(sizes))

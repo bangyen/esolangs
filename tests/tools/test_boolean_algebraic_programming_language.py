@@ -144,14 +144,6 @@ class TestAlgebraicProgrammingLanguage:
                 for row, output in enumerate(table):
                     assert self._run(program, n, row) == output + "\n"
 
-    def test_default_full_tree_growth_is_linear(self) -> None:
-        """Parity folds no subtree, but its source only doubles per input."""
-        sizes = []
-        for n in (7, 8):
-            table = "".join(str(row.bit_count() & 1) for row in range(1 << n))
-            sizes.append(len(boolean.algebraic_programming_language(table)))
-        assert sizes[1] < 2 * sizes[0] + 32
-
 
 class TestAlgebraicProgrammingLanguageShapes:
     """The structural corners of the decision tree, at four inputs."""
