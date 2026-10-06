@@ -322,6 +322,25 @@ THISTHAT_ASCII: dict[str, str | int | None] = dict(
 THISTHAT_ASCII |= {"v": "◺", ">": "▶", ")": "▷", "-": "─", "|": "║"}
 
 
+#: The reference brought to our recorded reading: ``◉`` halts at the end of
+#: its cycle, so an output reached in the same cycle still prints (the wiki
+#: truth machine needs one or the other; the reference instead acts on
+#: arrival in row order, which favours a ``◇`` above the ``◉`` only).
+THISTHAT_PATCHES = (
+    # ASCII anchors: the harness patches the reference as Latin-1.
+    (
+        "            raise Halt(0)\n        if g in ARROWS:",
+        "            self.halting = True\n        if g in ARROWS:",
+    ),
+    (
+        "            ptrs = [q for q in nxt if q.alive]",
+        '            if getattr(self, "halting", False):\n'
+        "                raise Halt(0)\n"
+        "            ptrs = [q for q in nxt if q.alive]",
+    ),
+)
+
+
 def thisthat_program(rng: random.Random) -> str:
     """Return ``▣`` and a chain of nodes on one execution wire, in ASCII.
 
@@ -503,6 +522,7 @@ SPECS: dict[str, Any] = {
         ours=thisthat_ours,
         split=list,
         blank=" ",
+        patches=THISTHAT_PATCHES,
     ),
     "Unsquare": Spec(
         "Unsquare",

@@ -139,12 +139,15 @@ def _stream_tree(table: str) -> str:
     depth = _validate_truth_table(table)
     builder = _Builder()
 
-    def tree(level: int, lo: int, hi: int, point: tuple[int, int]) -> None:
+    def tree(
+        level: int, lo: int, hi: int, point: tuple[int, int], parent: tuple[int, int]
+    ) -> None:
         if level == depth:
             builder.node(point, "■" if table[lo] == "1" else "□")
-            output = (1, point[1])
+            # Past the leaf, away from its router: nodes touching connect nothing.
+            output = (point[0], 2 * point[1] - parent[1])
             builder.node(output, "◇")
-            builder.connect(_path(point, output, "horizontal"), "double")
+            builder.connect(_path(point, output, "vertical"), "double")
             return
         router = (2 - point[0], point[1])
         builder.node(point, "◇")
@@ -162,9 +165,9 @@ def _stream_tree(table: str) -> str:
         for sign, start, end in ((-1, lo, half), (1, half, hi)):
             child = (router[0], router[1] + sign * pitch)
             builder.connect(_path(router, child, "vertical"), "single")
-            tree(level + 1, start, end, child)
+            tree(level + 1, start, end, child, router)
 
-    tree(0, 0, len(table), (0, 0))
+    tree(0, 0, len(table), (0, 0), (0, 1))
     builder.node((1, 1), "▣")
     builder.connect([(1, 1), (0, 1), (0, 0)], "single")
     return builder.render()
@@ -222,17 +225,19 @@ def _strip_tree(truth_table: str) -> str:
 
     tree(0, 0, len(table), (0, 0))
     min_y = min(y for _, y in set(builder.nodes) | set(builder.wires))
-    start = (0, min_y - 4 * n - 2)
+    start = (0, min_y - 2 * n - 2 * len(essential) - 2)
     builder.node(start, "▣")
     previous = start
     for i in range(n):
-        read = (0, start[1] + 2 + 4 * i)
-        push = (0, read[1] + 2)
+        read = (0, previous[1] + 2)
         builder.node(read, "◇")
-        builder.node(push, "◨" if i in essential else "⬒")
         builder.connect(_path(previous, read, "vertical"), "single")
-        builder.connect(_path(read, push, "vertical"), "double")
-        previous = push
+        previous = read
+        if i in essential:
+            push = (0, read[1] + 2)
+            builder.node(push, "◨")
+            builder.connect(_path(read, push, "vertical"), "double")
+            previous = push
     builder.connect(_path(previous, (0, 0), "vertical"), "single")
     return builder.render()
 
@@ -240,10 +245,10 @@ def _strip_tree(truth_table: str) -> str:
 def _tree(truth_table: str, *, prune: bool = True, reorder: bool = True) -> str:
     """Build the tree; ``prune=False`` tests every input at every node.
 
-    Every input is read in order.  An ignored input is pushed onto the column
-    stack, which nothing pops, and the tree is the projected table's; inside
-    it a constant span is a leaf and a node whose halves agree pops its bit
-    onto the column stack too, as Line's tree skips such a level.  The row
+    Every input is read in order.  An ignored input's read sends its bit
+    nowhere, and the tree is the projected table's; inside it a constant span
+    is a leaf and a node whose halves agree pops its bit onto the column
+    stack, which nothing pops, as Line's tree skips such a level.  The row
     is a deque, so the tree may test the kept inputs in the greedy order
     (:func:`~esolangs.tools.helpers.best_input_order`) when
     :func:`_deque_plan` can pop them in it: a read pushes to the head or the
@@ -330,6 +335,9 @@ def _layout(
         if prune and ids[level + 1][2 * index] == ids[level + 1][2 * index + 1]:
             # The halves agree: pop the bit onto the column stack, which
             # nothing pops, and go on into the one half both values share.
+            # Row 0 and column 0 share cell (0, 0); the push lands there only
+            # when the row is empty, and then the half is a leaf.  A loader
+            # discard could land there before the row fills, so it has none.
             builder.node(router, "⬒")
             children = children[:1]
         else:
@@ -349,20 +357,20 @@ def _layout(
     min_x = min(x for x, _ in set(builder.nodes) | set(builder.wires))
     min_y = min(y for _, y in set(builder.nodes) | set(builder.wires))
     loader_y = min_y - 2
-    start_x = min(min_x, root[0] - 4 * n - 2)
+    # An ignored input's read sends its bit nowhere and goes straight on.
+    start_x = min(min_x, root[0] - 2 * n - 2 * len(essential) - 2)
     builder.node((start_x, loader_y), "▣")
     previous = (start_x, loader_y)
     for i in range(n):
-        diamond = (start_x + 2 + 4 * i, loader_y)
-        push = (diamond[0] + 2, loader_y)
+        diamond = (previous[0] + 2, loader_y)
         builder.node(diamond, "◇")
-        if i in essential:
-            builder.node(push, "◧" if head_push[essential.index(i)] else "◨")
-        else:
-            builder.node(push, "⬒")
         builder.connect(_path(previous, diamond, "horizontal"), "single")
-        builder.connect(_path(diamond, push, "horizontal"), "double")
-        previous = push
+        previous = diamond
+        if i in essential:
+            push = (diamond[0] + 2, loader_y)
+            builder.node(push, "◧" if head_push[essential.index(i)] else "◨")
+            builder.connect(_path(diamond, push, "horizontal"), "double")
+            previous = push
     entry = (root[0], root[1] - 1)
     route = _path(previous, (root[0], loader_y), "horizontal")
     route += _path((root[0], loader_y), entry, "vertical")[1:]

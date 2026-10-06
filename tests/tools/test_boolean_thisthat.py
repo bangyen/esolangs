@@ -50,7 +50,7 @@ def test_constants_test_nothing() -> None:
             io = ScriptedIO("".join(f"{bit}" for bit in bits))
             run(program.splitlines(), io)
             assert (io.getvalue(), io.reads) == (table[0], n)
-    assert len(thisthat("0" * 8)) == 79  # 1,169 before
+    assert len(thisthat("0" * 8)) == 49  # 1,169 before
 
 
 def test_only_dependent_levels_are_tested() -> None:
@@ -82,9 +82,9 @@ def test_pruning_never_grows_a_table() -> None:
             assert size <= len(_tree(table, reorder=False))
             assert size <= len(_tree(table, prune=False))
     tables = [f"{value:08b}" for value in range(256)]
-    assert sum(len(thisthat(table)) for table in tables) == 130_860
+    assert sum(len(thisthat(table)) for table in tables) == 129_540
     assert sum("◐" in thisthat(table) for table in tables) == 100
-    assert sum(len(_tree(table, reorder=False)) for table in tables) == 159_628
+    assert sum(len(_tree(table, reorder=False)) for table in tables) == 158_308
     assert sum(len(_tree(table, prune=False)) for table in tables) == 199_936
 
 
@@ -174,7 +174,7 @@ def test_narrow_strip_executes_every_small_table() -> None:
                 assert (io.getvalue(), io.reads) == (expected, n)
     assert max(map(len, thisthat("0110", 1).splitlines())) == 1
     assert len(thisthat("0110", 1)) == 17
-    assert sum(len(thisthat(format(v, "04b"), 1)) for v in range(16)) == 1104
+    assert sum(len(thisthat(format(v, "04b"), 1)) for v in range(16)) == 1150
 
 
 @pytest.mark.parametrize("width", [1, 3, 4, 5, 7, 9, 10, 19, 20, 40])

@@ -7,6 +7,25 @@
    "source_file": "thisthat_truth.txt",
    "stdin": "0",
    "expected": "0"
+  },
+  {
+   "id": "truth-machine-1",
+   "source_file": "thisthat_truth.txt",
+   "stdin": "1",
+   "stop": "steps",
+   "max_steps": 100,
+   "expected": "1111111111"
+  },
+  {
+   "id": "cat",
+   "source_file": "thisthat_cat.txt",
+   "stdin": "1101001110",
+   "expected": "1101001110"
+  },
+  {
+   "id": "cat-empty",
+   "source_file": "thisthat_cat.txt",
+   "expected": ""
   }
  ]
 }
