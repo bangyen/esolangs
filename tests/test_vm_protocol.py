@@ -20,7 +20,6 @@ from .samples import (
     DUMPS_ON_THE_POST_HALT_STEP,
     NEVER_SELF_HALTS,
     NONDETERMINISTIC_AGAINST_RUN,
-    RAISES_ON_THE_POST_HALT_STEP,
     SAMPLES,
 )
 
@@ -89,9 +88,6 @@ def _machine_of(vm: VM) -> object | None:
 class TestSamplesCoverEveryLanguage:
     """The table is the sweep's coverage, so it is the thing to lock."""
 
-    def test_post_halt_exceptions_stay_empty(self) -> None:
-        assert not RAISES_ON_THE_POST_HALT_STEP
-
     def test_every_registry_language_has_a_sample(self) -> None:
         assert sorted(set(INTERPRETERS) - set(SAMPLES)) == []
 
@@ -104,9 +100,8 @@ class TestSamplesCoverEveryLanguage:
             DUMPS_ON_THE_POST_HALT_STEP,
             NEVER_SELF_HALTS,
             NONDETERMINISTIC_AGAINST_RUN,
-            RAISES_ON_THE_POST_HALT_STEP,
         ],
-        ids=["dumps", "never-halts", "nondeterministic", "raises"],
+        ids=["dumps", "never-halts", "nondeterministic"],
     )
     def test_the_named_exceptions_are_real_languages(
         self, exceptions: frozenset[str]

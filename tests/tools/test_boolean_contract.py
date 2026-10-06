@@ -3,7 +3,6 @@
 import contextlib
 import hashlib
 import importlib
-import re
 from collections.abc import Callable
 
 import pytest
@@ -24,54 +23,9 @@ from tests.source_support import source_units
 # per-param `slow` marks below still apply on top.
 pytestmark = pytest.mark.medium
 
-# One constant table against one that folds nothing.  A generator loses reads
-# by *folding*, so the comparison needs a table that folds completely and one
-# that folds not at all; near-constant tables in between produce intermediate
-# counts but never catch a generator these two miss.  This sweep runs every
-# interpreter on every table on every pytest invocation, so cases that add
-# cost without adding detection are not worth carrying -- ``00000001`` and
-# ``11111110`` were dropped for that reason.
-#
-# ``01101001`` is parity, the one table with no constant subtree above a
-# single row, so nothing about it can fold.
+# A generator loses reads by folding, so compare a table that folds
+# completely against parity, which has no constant subtree above one row.
 _TABLES = ["00000000", "01101001"]
-
-
-# Generators marked ``slow`` for a cost that is a *regression*, not the cost
-# the construction ought to carry.  The rule is a one-second budget per entry
-# in this sweep.  The mark keeps the fast run fast; it does not make the cost
-# acceptable, so an entry leaves when the cost is paid for rather than when
-# it stops being noticed.
-#
-# The set is empty.  ``minifuck`` was its last member, at 14.9s of the
-# sweep's 18.0s, and left when the emitter stopped stepping
-# its straight runs one character at a time: the entry now measures 0.03s
-# against the one-second budget.  ``the relevant generator tests`` has the
-# full ledger of what entered and left this set, with the measurement
-# behind each.
-_SEARCHING_GENERATORS_REGRESSED: frozenset[str] = frozenset()
-
-# Naming the languages rather than timing them at collection time is
-# deliberate: a wall-clock threshold evaluated during collection would make
-# the selected test set depend on how loaded the machine is, so a run could
-# silently cover less than the last one.  Re-measure and edit this set when
-# a generator's cost changes.
-_SEARCHING_GENERATORS: frozenset[str] = frozenset()
-
-# The same one-second rule, applied to the two reordering sweeps.  Those call
-# the ``_*_ordered`` builder once per input order for every table up to three
-# inputs, so a generator that *searches* pays that cost repeatedly.
-#
-# ZTOALC L was this set's only member, at 3.0s in
-# test_reordering_never_grows_a_program against 0.02s in the read-count sweep
-# above; it left the set when it stopped reordering and the language has
-# since been dropped.  The next entry down was streetcode at 0.06s,
-# comfortably under budget, which is why the set is empty rather than
-# re-pointed.
-#
-# A generator can be cheap in one sweep and expensive in the other, so this
-# set is maintained independently of the one above.
-_SLOW_REORDERING_GENERATORS: frozenset[str] = frozenset()
 
 
 def _input_reading_generators() -> list[object]:
@@ -82,22 +36,20 @@ def _input_reading_generators() -> list[object]:
         lang = BY_BOOLEAN.get(name)
         if not callable(fn) or lang is None or lang.name not in INTERPRETERS:
             continue
+        # A parameterized program embeds its inputs and reads none.
+        if esolangs.describe(lang.name)["parameterized"]:
+            continue
         try:
             run = importlib.import_module(INTERPRETERS[lang.name]).run
         except Exception:  # pragma: no cover - interpreter lives outside the pkg
             continue
-        if name in _SEARCHING_GENERATORS | _SEARCHING_GENERATORS_REGRESSED:
-            found.append(pytest.param(name, (fn, lang, run), marks=pytest.mark.slow))
-        else:
-            found.append((name, (fn, lang, run)))
+        found.append((name, (fn, lang, run)))
     return found
 
 
 def _reads(entry: tuple, table: str) -> int:
     """Run the generated program and report how many inputs it consumed."""
     fn, lang, _run = entry
-    if esolangs.describe(lang.name)["parameterized"]:
-        return 0
     try:
         emitted = fn(table)
         program = emitted if isinstance(emitted, Raster) else str(emitted)
@@ -135,8 +87,7 @@ def test_every_table_reads_the_same_number_of_inputs(name: str, entry: tuple) ->
     """A generator reads its ``n`` inputs whatever the truth table says."""
     counts = {table: _reads(entry, table) for table in _TABLES}
     baseline = counts["01101001"]
-    if baseline == 0:
-        pytest.skip(f"{name} does not read input in this harness")
+    assert baseline > 0, f"{name} read no input from parity"
     assert set(counts.values()) == {baseline}, (
         f"{name} reads a different number of inputs depending on the table: "
         f"{counts} -- a constant table must still consume all {baseline}"
@@ -180,7 +131,7 @@ def test_boolean_set_lists_exactly_the_exported_generators() -> None:
 
 # The tree generators that pick their input split order by measuring, and the
 # builder that emits one fixed order, so a test can compare the two.
-def _reordering_generators() -> list[object]:
+def _reordering_generators() -> list[tuple[str, object, object]]:
     from esolangs.tools.bitdeque import _bitdeque_ordered
     from esolangs.tools.painfuck import _painfuck_ordered
 
@@ -188,14 +139,7 @@ def _reordering_generators() -> list[object]:
         ("painfuck", boolean.painfuck, _painfuck_ordered),
         ("bitdeque", boolean.bitdeque, _bitdeque_ordered),
     ]
-    return [
-        (
-            pytest.param(name, fn, ordered, marks=pytest.mark.slow)
-            if name in _SLOW_REORDERING_GENERATORS
-            else (name, fn, ordered)
-        )
-        for name, fn, ordered in entries
-    ]
+    return entries
 
 
 @pytest.mark.parametrize(("name", "fn", "ordered"), _reordering_generators())
@@ -519,57 +463,13 @@ def test_generator_shape_is_what_the_catalogue_says(name: str) -> None:
         )
 
 
-# Every boolean generator builds a table at n <= _MAX_ARITY.  Ten inputs:
-# the whole registry was swept at n=1..10 on both shapes.
-#
-# Ten is here because it was made affordable, not because the cost was
-# waved through.  This sweep stopped at five for a long time, then briefly
-# at eight: n<=10 cost 141s of CPU, and n=9 alone was 53s of it.  Three
-# generators were then measured and rewritten:
-#
-#     minifuck        42.8s -> 8.6s     polynomial      28.4s -> 5.5s
-#     one_two_three   17.8s -> 3.7s
-#
-# plus a generic pass on input ordering.  Exhaustive ordering was later
-# removed: its n=6 registry sweep cost 10.7s instead of 0.79s for a 0.06%
-# aggregate size saving.  Generators now compare the identity with at most
-# one greedy order; stack languages without a safe greedy mapping retain
-# their natural order.
-#
-# Across everything here, 1357 of the registry's 1380 programs are
-# byte-identical: the 23 that moved are nine factor arities that used to
-# refuse and one_two_three's n=4..10 both shapes, which the mark respacing
-# cut by 82% overall.  Minifuck's Pascal inverse restored the n=9 contest.
-#
-# Ten still peaks at 619MB RSS on Polynomial's n=10 dense table, 17MB of
-# program text (Circuit Diagram's H-layout, once the peak at 306MB of text,
-# is 8MB and 255MB RSS since it was sized from its lattice).  Of that RSS
-# only 154MB is ever live -- the last merge's 59M-digit product held as a
-# decimal, its C string and its Python copy at once -- and the rest is
-# pages the allocator keeps after freeing them.  That memory, not the
-# time, is what keeps the band split:
-# n <= _QUICK_ARITY runs in the default gate and the rest is marked slow.
-# Both bands assert the same thing; splitting them keeps the fast gate at
-# the whole registry and ~3s it had when this swept to five.
+# Every boolean generator builds a table at n <= _MAX_ARITY on both shapes.
+# n <= _QUICK_ARITY runs in the default gate; the rest is marked slow for
+# memory (Polynomial's n=10 dense table peaks near 619MB RSS), not time.
 _MAX_ARITY = 10
 _QUICK_ARITY = 5
 
 _ARITY_BANDS = (pytest.param(range(1, _QUICK_ARITY + 1), id="quick"),)
-
-# No generator falls short of _MAX_ARITY on either shape any more.  The
-# caps that used to bind below it were constructions' limits:
-# interprogck8's ``DownAccLines`` reach (a long hop needed an express
-# through one-line rungs parked in meadows) left with its language, and
-# factor's digit budget (a size policy rather than anything Factor says)
-# was retired.  If a generator stops building at some arity,
-# ``test_every_generator_builds_up_to_ten_inputs`` fails and the
-# measurement that put the cap here belongs back in this table, with the
-# phrase its own refusal is built around.
-# Malbolge's five-cell mixer is injective with pairwise gap >= 3 through ten
-# inputs, so it now covers the whole sweep; the seventeen-input refusal lives in
-# ``tests/tools/test_boolean_malbolge.py``.  No generator falls short of
-# _MAX_ARITY on either shape any more.
-_ARITY_CAPPED: dict[tuple[str, str], tuple[int, str]] = {}
 
 
 # The two table shapes every generator is built against.  A dense
@@ -618,14 +518,8 @@ def test_every_generator_builds_up_to_ten_inputs(name: str, arities: range) -> N
     fn = getattr(boolean, name)
     for n in arities:
         for shape, make in _SHAPES:
-            cap, pattern = _ARITY_CAPPED.get((name, shape), (_MAX_ARITY, ""))
-            table = make(n)
-            if n <= cap:
-                program = fn(table)
-                assert program, f"{name} built an empty program at n={n} ({shape})"
-            else:
-                with pytest.raises(ValueError, match=re.escape(pattern)):
-                    fn(table)
+            program = fn(make(n))
+            assert program, f"{name} built an empty program at n={n} ({shape})"
 
 
 def test_cm_constants_builds_only_the_bootstrap_for_small_values() -> None:
@@ -657,9 +551,7 @@ def test_cm_constants_builds_only_the_bootstrap_for_small_values() -> None:
 # 60: 13.4s of work in total, no language over 4.3s, and none excluded.
 # Restoring the old key alphabet makes this fail, which is the only
 # evidence that the arity is high enough.
-# There is deliberately no exclusion table here -- an empty one is the
-# finding, and if a language ever needs to be added, it needs a reason and a
-# cost beside it like ``_ARITY_CAPPED`` carries.
+# There is deliberately no exclusion table here.
 #
 # A wider probe backs the choice rather than a hunch: 517 evaluations over
 # the whole registry, both shapes, n=5..8, found zero further failures of this

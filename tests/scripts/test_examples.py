@@ -51,15 +51,6 @@ EXITS = {"container"}
 # program terminates *before* anything runs it unbounded.
 HALT_CONVENTION = {"123", "arrowqueue"}
 
-# Boolean generators deliberately without a committed example, by canonical
-# id, each for a stated reason.  A language qualifies for an example when its
-# answer is recoverable from what its program prints (see
-# ``esolangs.tools.examples``); one whose answer no program can
-# report belongs here rather than silently missing.
-#
-# Empty, and that is the claim: every boolean generator currently has one.
-_NO_EXAMPLE: set[str] = set()
-
 
 @pytest.mark.parametrize(
     "name",
@@ -153,10 +144,8 @@ def test_every_boolean_generator_has_an_example() -> None:
         canonical_id(lang.name) for lang in LANGUAGES.values() if lang.boolean
     }
     covered = {canonical_id(stem.replace("-", " ")) for stem in BOOLEAN_GENERATED}
-    assert registered - covered == _NO_EXAMPLE, (
-        "boolean generators with no committed example: "
-        f"{sorted(registered - covered - _NO_EXAMPLE)}"
-    )
+    missing = sorted(registered - covered)
+    assert not missing, f"boolean generators with no committed example: {missing}"
 
 
 # The boolean examples demonstrate a language's boolean-function capability

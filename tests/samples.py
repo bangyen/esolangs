@@ -135,22 +135,6 @@ DUMPS_ON_THE_POST_HALT_STEP = frozenset(
 # against the traits in both directions.
 NEVER_SELF_HALTS = frozenset({"A Painter Ant", "Suffolk"})
 
-# Languages whose ``step()`` raises when called on an already-halted
-# machine, rather than returning without doing anything.
-#
-# This set is kept, empty, because it is what holds the fix in place.  It
-# once held nine languages -- brainfuck, Eval, Factor, Dimensional,
-# Modulous, Point Break, Qoibl, S*bleq and Grapheme -- each of which
-# indexed off the end of its own program when stepped past its halt.  The
-# fifteen hand-written copies of ``test_step_after_halt_is_a_noop``
-# happened to cover none of them, so the inconsistency survived precisely
-# because the check was written per file instead of swept.
-#
-# All nine now carry the ``if self.halted: return`` guard the other fifty
-# interpreters already had.  The shared execution check steps each halted
-# machine again and fails on an exception; this set must stay empty.
-RAISES_ON_THE_POST_HALT_STEP: frozenset[str] = frozenset()
-
 # LaserFuck's ``run`` draws the laser's initial heading at random when it
 # is not pinned, so its output is not a function of the program alone and
 # cannot be compared against a separately-built VM.  ``test_vm.py``'s
