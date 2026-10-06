@@ -325,7 +325,7 @@ def alight_expr(rng: random.Random, names: list[str]) -> str:
             f"!{atom}",
             "len{l}",
             "at{l, 0.5}",
-            "at{l, 1.5, 66}",
+            "at{l, 1.5, 67}",
             '"hi"',
             "[1, 2]",
         )
@@ -348,7 +348,11 @@ def alight_program(rng: random.Random) -> str:
             other = rng.choice([*_ALIGHT_ATOMS, *names])
             cmds.append(f"skip {rng.choice(names)} {rng.choice('=<>')} {other}")
         elif roll < 0.85:
-            cmds.append(rng.choice(("", "wait 0", "set l at{l, 0.5, a}", "set l l+l")))
+            cmds.append(
+                rng.choice(
+                    ("", "wait 0", "at{l, 0.5, 67};set a at{l, 0.5};out a", "set l l+l")
+                )
+            )
         elif roll < 0.9:
             cmds.append("end")
         else:

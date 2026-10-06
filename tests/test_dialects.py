@@ -95,7 +95,7 @@ class Unreadable(StringIO):
     ("language", "settings"),
     [
         ("Brainfuck", DialectSettings(cell_modulus=256)),
-        ("Alight", DialectSettings(expression_syntax="prefix")),
+        ("Alight", DialectSettings(list_update="deep")),
         ("Packlang", DialectSettings(literal_policy="octal")),
         ("SLOW ACV MAMMALIAN", DialectSettings(io_modulus=257)),
     ],

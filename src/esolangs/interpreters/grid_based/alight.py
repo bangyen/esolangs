@@ -27,9 +27,13 @@ operations raise :class:`~esolangs.exceptions.HaltError`.
   right with no precedence and no grouping:
   ``a+b*c`` is ``(a+b)*c``.  Unary ``!`` appears in no example and is taken
   as prefix, the only reading that does not need an operand it lacks.
-* **Three-argument ``at`` returns a shallow copy**, per the explicit rule.
-  The reversed-cat example discards that copy and fails on nonempty input.
-  Bare calls are accepted and their return values discarded.  ``len``'s
+* **Three-argument ``at`` sets in place** by default (``list_update``).
+  The prose says it "return[s] a copy of the list with that point set to
+  the value", but the Reversed Cat example runs ``at{l, len{l}-0.5, c};``
+  as a bare command and discards the result, so it reverses its input only
+  in place.  In place, lists are references: ``set m l`` aliases, and a
+  callee can mutate a list argument.  ``list_update="copy"`` follows the
+  prose.  Bare calls run for their effect, values discarded.  ``len``'s
   pad count, "a positive integer" in the prose, may also be 0 (no pad).
 * **EOF.**  ``inp`` past the end of input stores ``eof``, which is what the
   cat examples' ``c = eof`` guard tests.  An empty line supplies its newline character.
@@ -63,6 +67,7 @@ from fractions import Fraction
 from typing import Literal, TypeGuard, cast
 
 from esolangs._dialects import expression_syntax as validate_expression_syntax
+from esolangs._dialects import list_update as validate_list_update
 from esolangs._drive import drive
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
@@ -580,9 +585,15 @@ class _Machine:
     eof_is_a_value = True
 
     def __init__(
-        self, code: list[str] | str, io: IO, *, expression_syntax: str = "infix"
+        self,
+        code: list[str] | str,
+        io: IO,
+        *,
+        expression_syntax: str = "infix",
+        list_update: str = "in_place",
     ) -> None:
         self.expression_syntax = validate_expression_syntax(expression_syntax)
+        self.list_update = validate_list_update(list_update)
         lines = code.splitlines() if isinstance(code, str) else list(code)
         self.grid = _grid(lines)
         self.io = io
@@ -727,7 +738,8 @@ class _Machine:
             return ("call", name, args), name
         # A builtin with every argument resolved: run it now and keep the
         # value, so a re-entry never runs it again.
-        return ("val", _builtin(name, [self._eval(a) for a in args])), None
+        values = [self._eval(a) for a in args]
+        return ("val", _builtin(name, values, self.list_update)), None
 
     def _resolve(self, text: str, word: str) -> bool:
         """Push a walker for the command's next unresolved call, if any.
@@ -973,7 +985,7 @@ class _Machine:
         return "nil" if pending is None else self._eval(pending)
 
 
-def _builtin(name: str, args: list[_Value]) -> _Value:
+def _builtin(name: str, args: list[_Value], list_update: str) -> _Value:
     """Apply one of the four builtin functions."""
     if name in ("trunc", "sign"):
         if len(args) != 1 or not _is_num(args[0]):
@@ -1008,7 +1020,7 @@ def _builtin(name: str, args: list[_Value]) -> _Value:
     if slot >= len(seq):
         raise Hint.INDEXED_WRITE.halt(f"at index past the end of a {len(seq)}-list")
     _list_value([*seq, args[2]])
-    result = seq.copy()
+    result = seq if list_update == "in_place" else seq.copy()
     result[slot] = args[2]
     return result
 
@@ -1160,9 +1172,17 @@ def _first_call_or_none(expr: "_Expr", name: str) -> "_Expr | None":
     return expr if tag == "call" and expr[1] == name else None
 
 
-def run(code: list[str] | str, io: IO, *, expression_syntax: str = "infix") -> None:
+def run(
+    code: list[str] | str,
+    io: IO,
+    *,
+    expression_syntax: str = "infix",
+    list_update: str = "in_place",
+) -> None:
     """Run an Alight program to its ``end``."""
-    machine = _Machine(code, io, expression_syntax=expression_syntax)
+    machine = _Machine(
+        code, io, expression_syntax=expression_syntax, list_update=list_update
+    )
     drive(machine)
 
 

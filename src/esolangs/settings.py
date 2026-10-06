@@ -7,15 +7,18 @@ from typing import Any, TypedDict, cast
 
 from esolangs._dialects import (
     EXPRESSION_SYNTAXES,
+    LIST_UPDATES,
     LITERAL_POLICIES,
     PacklangLiterals,
     expression_syntax,
+    list_update,
 )
 from esolangs._grapheme import INTEGER_CONVERSIONS, GraphemeDialect
 from esolangs._mammalian import MODULI, MammalianModuli
 from esolangs.exceptions import ArgumentError
 from esolangs.registry import LANGUAGES, resolve
 
+_ALIGHT = ("expression_syntax", "list_update")
 _VALIDATORS: dict[str, Any] = {
     "grapheme": GraphemeDialect,
     "slow_acv_mammalian": MammalianModuli,
@@ -31,7 +34,7 @@ class DialectSettings:
     def __init__(self, **choices: int | str | None) -> None:
         """Copy typed overrides; language-specific validation precedes use."""
         integer = {"cell_modulus", "io_modulus"}
-        text = {"expression_syntax", "literal_policy", "integer_conversion"}
+        text = {*_ALIGHT, "literal_policy", "integer_conversion"}
         for key, value in choices.items():
             if key not in integer | text:
                 known = sorted(integer | text)
@@ -57,7 +60,10 @@ class DialectSettings:
         values: dict[str, Any] = dict(self._items)
         try:
             if language_id == "alight":
-                _single(values, "expression_syntax", expression_syntax, "infix")
+                if values.keys() - set(_ALIGHT):
+                    raise TypeError(f"supported dialect settings: {', '.join(_ALIGHT)}")
+                expression_syntax(values.get("expression_syntax", "infix"))
+                list_update(values.get("list_update", "in_place"))
             elif language_id == "packlang":
                 PacklangLiterals(
                     **{
@@ -110,12 +116,6 @@ def effective_settings(
     return merged
 
 
-def _single(values: dict[str, Any], key: str, validator: Any, default: Any) -> None:
-    if values.keys() - {key}:
-        raise TypeError(f"supported dialect setting: {key}")
-    validator(values.get(key, default))
-
-
 class DialectOption(TypedDict):
     """Supported resolutions of conflicting rules within one specification."""
 
@@ -132,15 +132,16 @@ def dialect_choices(language: str) -> dict[str, DialectOption]:
 
     name = resolve(language)
     language_id = LANGUAGES[name].id
-    singles = {"alight": "expression_syntax", "packlang": "literal_policy"}
-    if language_id in singles:
-        keys = [singles[language_id]]
+    fixed = {"alight": _ALIGHT, "packlang": ("literal_policy",)}
+    if language_id in fixed:
+        keys = list(fixed[language_id])
     elif language_id in _VALIDATORS:
         keys = list(inspect.signature(_VALIDATORS[language_id]).parameters)
     else:
         return {}
     choices: dict[str, tuple[int | str, ...]] = {
         "expression_syntax": EXPRESSION_SYNTAXES,
+        "list_update": LIST_UPDATES,
         "literal_policy": LITERAL_POLICIES,
         "integer_conversion": INTEGER_CONVERSIONS,
         "cell_modulus": MODULI,
