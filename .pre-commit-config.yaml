@@ -7,11 +7,12 @@ repos:
       # Both paths: the files live under src/ so they ship in the wheel, and
       # `examples/` at the root is a symlink to them.  While this said only
       # `^examples/` the hook stripped the real files and
-      # test_boolean_example_matches_generator caught it.
+      # test_boolean_example_matches_generator caught it.  Wiki examples are
+      # verbatim too: a 2D program's padding and an output's last byte count.
       - id: trailing-whitespace
-        exclude: ^(src/esolangs/)?examples/
+        exclude: ^((src/esolangs/)?examples/|tests/fixtures/wiki_examples/)
       - id: end-of-file-fixer
-        exclude: ^(src/esolangs/)?examples/
+        exclude: ^((src/esolangs/)?examples/|tests/fixtures/wiki_examples/)
       - id: check-yaml
         args: ['--unsafe']  # Allow custom YAML tags
       - id: check-added-large-files

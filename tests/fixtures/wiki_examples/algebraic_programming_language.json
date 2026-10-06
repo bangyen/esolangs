@@ -1,0 +1,95 @@
+{
+ "language": "Algebraic Programming Language",
+ "oldid": 194498,
+ "examples": [
+  {
+   "id": "hello-ascii",
+   "source": "72\n101\n108\n108\n111\n44\n32\n87\n111\n114\n108\n100\n33",
+   "expected": "72\n101\n108\n108\n111\n44\n32\n87\n111\n114\n108\n100\n33\n"
+  },
+  {
+   "id": "numeric-cat",
+   "source": "n",
+   "stdin": "42\n",
+   "expected": "42\n"
+  },
+  {
+   "id": "truth-machine-0",
+   "source": "x? = x & x?\nn?",
+   "stdin": "0\n",
+   "expected": "0\n"
+  },
+  {
+   "id": "truth-machine-1",
+   "note": "Wiki bug: a one-line body prints nothing, so input 1 recurses forever silently.",
+   "source": "x? = x & x?\nn?",
+   "stdin": "1\n",
+   "stop": "steps",
+   "max_steps": 2000,
+   "expected": ""
+  },
+  {
+   "id": "floor-ceiling",
+   "source": "FLOOR(n) = n - n % 1\nCEIL(n) = {\nn % 1 & $(n - n % 1 + 1)\nn\n}\nFLOOR(2.5)\nCEIL(2.5)\nCEIL(3)",
+   "expected": "2\n3\n3\n"
+  },
+  {
+   "id": "if",
+   "source": "IF(x, c) = x & c()\nC() = 5\nIF(1, C)\nIF(0, C)",
+   "expected": "5\n0\n"
+  },
+  {
+   "id": "multiline-prints",
+   "source": "MULTILINE() = {\n123\n456\n}\nMULTILINE()",
+   "expected": "123\n456\n"
+  },
+  {
+   "id": "multiline-return",
+   "source": "MULTILINE() = {\n$123\n456\n}\nMULTILINE()",
+   "expected": "123\n"
+  },
+  {
+   "id": "not",
+   "source": "!x = {\nx & $0\n$1\n}\n!0\n!5",
+   "expected": "1\n0\n"
+  },
+  {
+   "id": "mean",
+   "source": "a ~ b = (a + b) / 2\n3 ~ 4",
+   "expected": "3.5\n"
+  },
+  {
+   "id": "double",
+   "source": "a@ = a * 2\n3@",
+   "expected": "6\n"
+  },
+  {
+   "id": "three-sum",
+   "source": "^a^b^c^ = a + b + c\n^1^2^3^",
+   "expected": "6\n"
+  },
+  {
+   "id": "div-mod",
+   "source": "~a`b``c~ = (a / b) % c\n~7`1``4~",
+   "expected": "3\n"
+  },
+  {
+   "id": "assignment",
+   "source": "n = 123\nn",
+   "expected": "123\n"
+  },
+  {
+   "id": "input-order",
+   "note": "Reads a, b, d, c, e; b is not read twice.",
+   "source": "a + b + d\nc + e + b",
+   "stdin": "1\n2\n3\n4\n5\n",
+   "expected": "6\n11\n"
+  },
+  {
+   "id": "implied-multiplication",
+   "source": "a * b\nab",
+   "stdin": "3\n4\n",
+   "expected": "12\n12\n"
+  }
+ ]
+}

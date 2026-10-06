@@ -1,0 +1,30 @@
+{
+ "language": "Subleq",
+ "oldid": 183200,
+ "examples": [
+  {
+   "id": "trace-loop",
+   "source": "3 4 6\n7 7 7\n3 4 0",
+   "expected": "",
+   "stop": "steps",
+   "max_steps": 1000,
+   "note": "jumps between 0 and 6 forever"
+  },
+  {
+   "id": "hi",
+   "source": "9 -1 3\n10 -1 6\n0 0 -1\n72 105 0",
+   "expected": "Hi"
+  },
+  {
+   "id": "hi-any-halt",
+   "source": "9 -1 3\n10 -1 6\n5 5 -8\n72 105 0",
+   "expected": "Hi"
+  },
+  {
+   "id": "hello-loop",
+   "source": "12 12 3\n36 37 6\n37 12 9\n37 37 12\n0 -1 15\n38 36 18\n12 12 21\n53 37 24\n37 12 27\n37 37 30\n36 12 -1\n37 37 0\n39 0 -1\n72 101 108\n108 111 44\n32 87 111\n114 108 100\n33 10 53\n",
+   "expected": "Hello, World!\n",
+   "note": "the comment says \"Hello, world!\" but the data cell is 87, a capital W"
+  }
+ ]
+}

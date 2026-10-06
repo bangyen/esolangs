@@ -1,0 +1,11 @@
+{
+ "language": "BIO",
+ "oldid": 189080,
+ "examples": [
+  {
+   "id": "hello",
+   "expected": "Hello World!",
+   "source_file": "bio_hello.txt"
+  }
+ ]
+}

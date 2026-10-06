@@ -1,0 +1,19 @@
+{
+ "language": "B-tapemark",
+ "oldid": 170177,
+ "examples": [
+  {
+   "id": "hello",
+   "source": ">HELLO+WORLD!",
+   "expected": "HELLO WORLD",
+   "note": "+ outputs the blank second-grid cell, a space"
+  },
+  {
+   "id": "cat",
+   "source": "/>-+|\\\n\\    /",
+   "stdin": "ab\n",
+   "expected": "ab\n",
+   "stop": "eof"
+  }
+ ]
+}

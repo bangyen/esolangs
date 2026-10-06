@@ -1,0 +1,20 @@
+{
+ "language": "Vandevelo",
+ "oldid": 75287,
+ "examples": [
+  {
+   "id": "truth-machine-0",
+   "source": "0 -!> Nil?\n1 -> Inp? == 0?\n2 -> 2?\n1? :: 2?",
+   "stdin": "0",
+   "expected": ""
+  },
+  {
+   "id": "truth-machine-1",
+   "source": "0 -!> Nil?\n1 -> Inp? == 0?\n2 -> 2?\n1? :: 2?",
+   "stdin": "1",
+   "expected": "",
+   "stop": "steps",
+   "max_steps": 200
+  }
+ ]
+}

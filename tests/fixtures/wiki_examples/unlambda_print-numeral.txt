@@ -1,0 +1,20 @@
+`
+ ``s`k                                    # Actual printing function
+  ```sii ``s `k `s``s``si
+   `k ``s``s``si`kk
+       ``s`k`s``si`k
+        `k``si`k `k``si`k `k``si`k `k``si`k `k``si`k
+         `k``si`k `k``si`k `k``si`k `k``si`k k
+        ``s`kk ``s``s`ks``s`k`s`ks ``s`k`s`kk ``si`k`ki `ki
+       ``s`k`s``s`ks``s`k`sik ``s`kk``s`kk``si`k`ki
+   `ki ``s`kk
+    ``s``s`ks ``s`k`s`ks ``s`k`s`kk
+     `k ``s``si`k.9 `k ``s``si`k.8 `k ``s``si`k.7 `k ``s``si`k.6 `k
+         ``s``si`k.5 `k ``s``si`k.4 `k ``s``si`k.3 `k ``s``si`k.2 `k
+         ``s``si`k.1 `k `k.0
+     ``s`kk
+      ``s``s`ks``s``s`ks
+       `k ``s`kc ``s`k`s`k`k`ki ``s``s`ks``s``s`ksk `k`k``si`ki `kk
+       ``s``s`kskk `ki
+  ``s `k`s``s`ks k i
+ ``s``s`ksk ` ``s``s`kski ``s``s`ksk ``s``s`kski   # Testing with 10

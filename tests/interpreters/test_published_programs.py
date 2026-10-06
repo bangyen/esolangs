@@ -11,7 +11,8 @@ that never halts, whose output after ``max_steps`` must start with
 ``expected``; ``eof`` for one that reads past its input, which these
 interpreters refuse rather than invent a value for.  ``decode`` names a
 converter from our I/O convention to the page's (bits versus bytes, say).
-A halting run is also stepped to completion, unless ``"vm": false``.
+A halting run is also stepped to completion, unless ``"vm": false`` or it
+draws on a ``seed``.  ``settings`` holds dialect choices.
 """
 
 import json
@@ -21,6 +22,7 @@ import pytest
 
 import esolangs
 from esolangs.exceptions import ExecutionTimeoutError, InputExhaustedError
+from esolangs.settings import DialectSettings
 from esolangs.vm import complete_vm, make_vm
 
 _DIR = Path(__file__).parent.parent / "fixtures" / "wiki_examples"
@@ -36,6 +38,9 @@ def _bits(text: str, *, lsb_first: bool) -> str:
 _DECODERS = {
     "bits_lsb": lambda out: _bits(out, lsb_first=True),
     "bits_msb": lambda out: _bits(out, lsb_first=False),
+    "unpad": lambda out: "\n".join(line.strip(" \0") for line in out.split("\n")),
+    "acgt": lambda out: out.translate(str.maketrans("ACGT", "NNNN")),
+    "codes": lambda out: "".join(str(ord(c)) for c in out),
 }
 
 
@@ -64,16 +69,24 @@ def test_wiki_examples(language, page, example, citation):
     stdin = example.get("stdin", "")
     expected = _text(page, example, "expected")
     stop = example.get("stop", "halt")
+    settings = DialectSettings(**example.get("settings", {}))
     if stop == "halt":
-        output = esolangs.run(language, source, stdin, timeout=5)
-        if example.get("vm", True):
-            vm = make_vm(language, source, stdin)
+        output = esolangs.run(
+            language, source, stdin, 5, example.get("seed"), settings=settings
+        )
+        if example.get("vm", "seed" not in example):
+            vm = make_vm(language, source, stdin, settings=settings)
             assert complete_vm(vm, max_steps=None) == output, "stepping parity"
     else:
         error = {"steps": ExecutionTimeoutError, "eof": InputExhaustedError}[stop]
         with pytest.raises(error) as info:
             esolangs.run(
-                language, source, stdin, timeout=5, max_steps=example.get("max_steps")
+                language,
+                source,
+                stdin,
+                timeout=5,
+                max_steps=example.get("max_steps"),
+                settings=settings,
             )
         output = info.value.partial_output
     output = _DECODERS[example["decode"]](output) if "decode" in example else output

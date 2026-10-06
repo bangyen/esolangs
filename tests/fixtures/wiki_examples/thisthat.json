@@ -1,0 +1,12 @@
+{
+ "language": "thisthat",
+ "oldid": 177564,
+ "examples": [
+  {
+   "id": "truth-machine-0",
+   "source_file": "thisthat_truth.txt",
+   "stdin": "0",
+   "expected": "0"
+  }
+ ]
+}

@@ -1,0 +1,32 @@
+{
+ "language": "Forbin",
+ "oldid": 194508,
+ "examples": [
+  {
+   "id": "hello",
+   "source": "main {\n  out 0,1,0,0,1,0,0,0;\n  out 0,1,1,0,0,1,0,1;\n  out 0,1,1,0,1,1,0,0;\n  out 0,1,1,0,1,1,0,0;\n  out 0,1,1,0,1,1,1,1;\n  out 0,0,1,0,0,0,0,0;\n  out 0,1,0,1,0,1,1,1;\n  out 0,1,1,0,1,1,1,1;\n  out 0,1,1,1,0,0,1,0;\n  out 0,1,1,0,1,1,0,0;\n  out 0,1,1,0,0,1,0,0;\n}",
+   "expected": "Hello World"
+  },
+  {
+   "id": "cat",
+   "source": "main {\n  i, shouldLoop = 0;\n  a,b,c,d,e,f,g,h = (in 0);\n  out a,b,c,d,e,f,g,h;\n  for i:(a,b,c,d,e,f,g,h) {\n    for _:!i..i {\n      shouldLoop = 1\n    }\n  }\n  for _:!shouldLoop..shouldLoop {\n    main 0;\n  }\n}",
+   "stdin": "abc",
+   "stop": "eof",
+   "expected": "abc"
+  },
+  {
+   "id": "truth-0",
+   "source": "main {\n  a,b,c,d,e,f,g,h = (in 0);\n  out a,b,c,d,e,f,g,h;\n  for _:!h..h {\n    loop 0;\n  }\n}\nloop {\n  out 0,0,1,1,0,0,0,1;\n  loop 0;\n}",
+   "stdin": "0",
+   "expected": "0"
+  },
+  {
+   "id": "truth-1",
+   "source": "main {\n  a,b,c,d,e,f,g,h = (in 0);\n  out a,b,c,d,e,f,g,h;\n  for _:!h..h {\n    loop 0;\n  }\n}\nloop {\n  out 0,0,1,1,0,0,0,1;\n  loop 0;\n}",
+   "stdin": "1",
+   "stop": "steps",
+   "max_steps": 200,
+   "expected": "1111"
+  }
+ ]
+}
