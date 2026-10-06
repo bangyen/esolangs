@@ -32,6 +32,11 @@ WIKI_KOLAKOSKI = grid("flowchart/wiki_kolakoski.txt")
 run_program = partial(_run_program, run, suppress_eof=False)
 
 
+def bits(text: str) -> str:
+    """Unpack output bytes into the bits written, low bit first."""
+    return "".join(format(ord(char), "08b")[::-1] for char in text)
+
+
 def run_steps(code: list[str], stdin: str, steps: int) -> str:
     """Run ``code`` for at most ``steps`` rounds, for programs that loop."""
     io = ScriptedIO(stdin)
@@ -46,16 +51,21 @@ def run_steps(code: list[str], stdin: str, steps: int) -> str:
 class TestTruthMachine:
     """The wiki's truth machine, which pins the switch's orientation."""
 
-    def test_zero_prints_once_and_halts(self) -> None:
-        """A zero takes the switch's right branch, prints, and ends."""
-        assert run_program(TRUTH_MACHINE, "0") == "0"
+    @pytest.mark.parametrize("byte", ["0", "\x00", "\xfe"])
+    def test_zero_prints_once_and_halts(self, byte: str) -> None:
+        """A low zero bit takes the right branch, prints one bit, and ends.
 
-    def test_one_prints_forever(self) -> None:
-        """A one takes the left branch onto the ring and never stops."""
-        short = run_steps(TRUTH_MACHINE, "1", 100)
-        long = run_steps(TRUTH_MACHINE, "1", 400)
-        assert set(short) == {"1"}
-        assert set(long) == {"1"}
+        Boolfuck pads the partial byte at halt, so that bit is a NUL.
+        """
+        assert run_program(TRUTH_MACHINE, byte) == "\x00"
+
+    @pytest.mark.parametrize("byte", ["1", "\x01"])
+    def test_one_prints_forever(self, byte: str) -> None:
+        """A low one bit takes the left branch onto the ring and never stops."""
+        short = run_steps(TRUTH_MACHINE, byte, 100)
+        long = run_steps(TRUTH_MACHINE, byte, 400)
+        assert set(short) == {"\xff"}
+        assert set(long) == {"\xff"}
         assert len(long) > len(short)
 
     def test_one_is_a_provable_cycle(self) -> None:
@@ -68,12 +78,12 @@ class TestCat:
     """The wiki's cat, which pins the re-entry rule and the empty register."""
 
     @pytest.mark.parametrize(
-        "bits",
-        ["1", "0", "101", "1101", "000", "111"],
+        "text",
+        ["", "A", "Hi!", "hello\nworld", "\x00\xff", "01"],
     )
-    def test_wiki_cat_appends_zero(self, bits: str) -> None:
-        """The final empty-deque pop causes the wiki cat to append zero."""
-        assert run_program(CAT, "\n".join(bits)) == bits + "0"
+    def test_wiki_cat_appends_zero(self, text: str) -> None:
+        """The cat pops the empty it pushed at EOF last: one zero bit, a NUL."""
+        assert run_program(CAT, text) == text + "\x00"
 
     def test_halts_rather_than_looping(self) -> None:
         """The exhausted read sends the pointer forward to the end node."""
@@ -102,12 +112,12 @@ class TestKolakoski:
         It pushes empty registers, so the pin moved when pushing empty
         stopped being a no-op (it was ``01111001100110011001``).
         """
-        assert run_steps(KOLAKOSKI, "", 400)[:20] == "01101100110011001100"
+        assert bits(run_steps(KOLAKOSKI, "", 400))[:20] == "01101100110011001100"
 
     def test_the_current_wiki_program_prints_the_kolakoski_sequence(self) -> None:
         """1221121221221121122121121221121121221221121 as bits 0 and 1."""
         expected = "0110010110110010011010010110010010110110010"
-        assert run_steps(WIKI_KOLAKOSKI, "", 1500)[: len(expected)] == expected
+        assert bits(run_steps(WIKI_KOLAKOSKI, "", 1500))[: len(expected)] == expected
 
 
 class TestParsing:
@@ -150,15 +160,14 @@ class TestParsing:
 
     @pytest.mark.parametrize("name", ["parallel", "serial"])
     def test_the_wiki_hello_worlds(self, name: str) -> None:
-        """Both stack nodes in adjacent rows; bits come out low bit first.
+        """Both stack nodes in adjacent rows; Boolfuck output packs the bytes.
 
         The eight-pointer version also needs the spec's pointer order and
         its left-most start, and paths that take no time.
         """
         path = Path(__file__).parent.parent / "fixtures" / f"flowchart_hello_{name}.txt"
-        bits = run_program(path.read_text(encoding="utf-8").splitlines())
-        chars = [bits[i : i + 8][::-1] for i in range(0, len(bits), 8)]
-        assert "".join(chr(int(c, 2)) for c in chars) == "Hello, world!"
+        program = path.read_text(encoding="utf-8").splitlines()
+        assert run_program(program) == "Hello, world!"
 
     def test_separated_nodes_execute(self) -> None:
         for program in (
@@ -167,7 +176,7 @@ class TestParsing:
         ):
             io = ScriptedIO("")
             run(program, io)
-            assert io.getvalue() == "1"
+            assert io.getvalue() == "\x01"
 
     def test_a_genuine_fork_still_splits(self) -> None:
         """Deduplicating exits must not collapse real multi-path forks."""
@@ -185,7 +194,7 @@ class TestParsing:
         ]
         io = ScriptedIO("")
         run(program, io)
-        assert io.getvalue() == "11", "both branches print the inherited register"
+        assert bits(io.getvalue()) == "11000000", "both branches print the register"
 
     def test_a_fork_copies_the_deque_cursor_to_both_branches(self) -> None:
         """The other half of the copied state: which deque is selected."""
@@ -273,16 +282,41 @@ class TestNodes:
         assert self._register("[ }─\\[ ]/─[ >─< ]─\\{ }/") == 1
 
     def test_output_prints_the_bit(self) -> None:
-        """``\\ \\`` writes the register as a character."""
-        assert run_program(["( )─[ }─\\ \\─(( ))"]) == "1"
+        """``\\ \\`` writes the register as the low bit of a padded byte."""
+        assert run_program(["( )─[ }─\\ \\─(( ))"]) == "\x01"
 
     def test_output_of_an_empty_register_prints_zero(self) -> None:
         """The command table defines empty-register output as zero."""
-        assert run_program(["( )─\\ \\─(( ))"]) == "0"
+        assert run_program(["( )─\\ \\─(( ))"]) == "\x00"
 
-    def test_input_reads_one_bit_per_line(self) -> None:
-        """``/ /`` takes one bit from each line of input."""
-        assert run_program(["( )─/ /─\\ \\─/ /─\\ \\─(( ))"], "1\n0") == "10"
+    def test_eight_outputs_make_one_byte_low_bit_first(self) -> None:
+        """A full byte is written as it fills; nothing is left to pad."""
+        body = "─".join(
+            ["[ }", "\\ \\", "{ ]", *["\\ \\"] * 5, "[ }", "\\ \\", "{ ]", "\\ \\"]
+        )
+        assert run_program([f"( )─{body}─(( ))"]) == "A"
+
+    def test_input_reads_bytes_low_bit_first(self) -> None:
+        """Nine reads copy one byte, then take the next byte's low bit."""
+        body = "─".join(["/ /─\\ \\"] * 9)
+        assert run_program([f"( )─{body}─(( ))"], "AB") == "A\x00"
+        assert run_program([f"( )─{body}─(( ))"], "AC") == "A\x01"
+
+    def test_reads_past_eof_are_empty(self) -> None:
+        """EOF empties the register, rather than supplying Boolfuck's zeros."""
+        machine = _Machine(["( )─/ /─/ /─(( ))"], ScriptedIO(""))
+        while not machine.halted:
+            machine.step()
+        assert machine.pointers[0].reg is None
+        machine = _Machine(["( )─[ }─/ /─(( ))"], ScriptedIO(""))
+        while not machine.halted:
+            machine.step()
+        assert machine.pointers[0].reg is None
+
+    def test_unicode_input_is_reduced_modulo_256(self) -> None:
+        """A code point past 255 is read as its low byte, as in Boolfuck."""
+        body = "─".join(["/ /─\\ \\"] * 8)
+        assert run_program([f"( )─{body}─(( ))"], "Ł") == "A"
 
     def test_a_cursorless_read_loop_cycles_only_after_eof(self) -> None:
         """Reads count in the snapshot: no repeat is seen while bits remain."""
@@ -356,7 +390,7 @@ class TestAmbiguousExits:
         ]
         io = ScriptedIO("")
         run(grid, io)
-        assert io.getvalue() == "1"
+        assert io.getvalue() == "\x01"
 
     def test_switch_with_no_forward_path_takes_the_first_exit(self) -> None:
         """An empty register sends a switch straight on; with no straight on,
@@ -375,11 +409,11 @@ class TestAmbiguousExits:
         ]
         io = ScriptedIO("")
         run(grid, io)
-        assert io.getvalue() == "0"
+        assert io.getvalue() == "\x00"
 
     def test_a_set_register_still_turns_at_that_switch(self) -> None:
         """The same grid, with the turn available: the switch does turn."""
-        for setter, expected in (("[ }", "1"), ("{ ]", "0")):
+        for setter, expected in (("[ }", "\x01"), ("{ ]", "\x00")):
             grid = [
                 "                   ( )",
                 "                    │",

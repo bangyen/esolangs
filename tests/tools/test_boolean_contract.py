@@ -389,6 +389,9 @@ _UNSHAPED = {
     "dimensional",
     "egl",  # one painted grid cell per entry, walked to by weighted guards
     "forbin",  # one painted call argument per entry, halved down to the first
+    # One deque push per entry; equal neighbours share a set node, which is
+    # 16 characters (4.2%) at n == 3 against the byte I/O's fixed overhead.
+    "flowchart",
     "malbolge",
     "minsky_swap",
     "cyclic_tag",
