@@ -5,6 +5,7 @@ from contextlib import redirect_stdout
 
 import pytest
 
+from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.register_based.ram0 import run
 from tests.interpreters.contract import (
@@ -61,8 +62,9 @@ _DUMPS = {
         "A /* comment */ A // another comment A",
         "z: 3\nn: 0\nram: {}",
     ),
-    # All A commands execute
-    "zero_goto_command": ("A A 0 A", "z: 3\nn: 0\nram: {}"),
+    # A skipped goto 0 is harmless; leading zeros are decimal (004 is 4).
+    "skipped_goto_zero": ("C 0 A", "z: 1\nn: 0\nram: {}"),
+    "leading_zero_goto": ("Z 004 A A", "z: 1\nn: 0\nram: {}"),
     # Jump to non-existent instruction: terminates after first A
     "large_goto_number": ("A 999 A", "z: 1\nn: 0\nram: {}"),
     "dump_with_memory": ("A N S", "z: 1\nn: 1\nram: {\n    1: 1\n}"),
@@ -73,6 +75,12 @@ _DUMPS = {
 @pytest.mark.parametrize(("code", "expected"), _DUMPS.values(), ids=list(_DUMPS))
 def test_dump(code: str, expected: str) -> None:
     assert dump(code) == expected
+
+
+def test_goto_zero_names_no_command() -> None:
+    """Digits are not comments ("characters other than ZANCLS and digits")."""
+    with pytest.raises(HaltError, match="count from 1"):
+        dump("A A 0 A")
 
 
 class TestStepMachine:

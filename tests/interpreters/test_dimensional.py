@@ -196,6 +196,14 @@ def test_a_hex_literal_rejects_a_sign() -> None:
         run_and_capture("=+1.")
 
 
+def test_a_malformed_literal_rejects_the_program_before_it_runs() -> None:
+    """``=HEX`` is two hex digits; a skipped ``[=0-]`` used to halt quietly."""
+    with pytest.raises(ValueError, match="invalid hex literal '0-'"):
+        run_and_capture("[=0-]")
+    with pytest.raises(ValueError, match="two hex digits"):
+        _machine(".=")
+
+
 def test_reading_memory_does_not_allocate_a_slot() -> None:
     """Pins ``memory`` as a pure view: an unvisited slot reads 0 and the
     snapshot (which freezes the tape tree) does not change."""

@@ -6,6 +6,15 @@ and ``DATA`` copy their own data plus or minus one into another instruction;
 program halts. Negative instruction addresses are undefined and raise
 :class:`~esolangs.exceptions.HaltError`.
 
+Syntax follows the prose: a label is "a colon and then the name", and a
+term is a sign and a name, a natural number or ``@``.  The page's Minsky
+translation templates write ``label:`` and ``@next+0``, which this parser
+rejects.  Rewritten in the prose syntax they do not run as their comments
+say: DEC1's ``+J @label+4 1`` never disables itself, so a decrement loops,
+and INC1/SWAP's ``+J @next 0`` never jumps ("the condition is if the data
+field ... is positive"), so control falls into whatever follows.  With
+``+J @label+3 1`` and data ``1`` they compute; the page states no outputs.
+
 The execution model is :func:`_advance`, a pure function over an immutable
 program and instruction pointer. The mutable VM shell only replaces that
 state once per step.
