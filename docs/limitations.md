@@ -360,8 +360,9 @@ languages remain rejected from the same image-source screen.
 - Unlambda's `@` reads a Unicode character, including newlines. At EOF,
   it hands its argument `v` and clears the current character; `?x` and `|`
   then take their no-character branch.
-- Bitdeque `GOTO n` is zero-based: it lands on command index `n`, where the
-  wiki leaves the counting origin unstated. The generator’s labels match this.
+- Bitdeque `GOTO n` counts from 1, as the wiki's "the Nth operation" reads;
+  a target past the last command halts and a taken `GOTO 0` raises, both
+  unstated on the wiki. The generator's labels match this.
 - Brainfuck uses wrapping bytes, a tape growing in both directions and EOF
   errors; its page allows cells left of the start, and two of its Hello
   Worlds need them. Its page describes implementation conventions rather than
