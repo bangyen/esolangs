@@ -2,8 +2,106 @@
  "language": "Deadfish",
  "oldid": 196539,
  "examples": [
-  {"id": "exact-trap", "source": "iissso", "expected": "0\n"},
-  {"id": "past-trap", "source": "diissisdo", "expected": "288\n"},
-  {"id": "underflow", "source": "iissisdddddddddddddddddddddddddddddddddo", "expected": "0\n"}
+  {
+   "id": "shell-transcript",
+   "source": "i\n\no\nd",
+   "expected": "1\n"
+  },
+  {
+   "id": "hello-ascii",
+   "source": "iiisdsiiiiiiiioiiiiiiiiiiiiiiiiiiiiiiiiiiiiioiiiiiiiooiiio\ndddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddoddddddddddddo\ndddddddddddddddddddddsddoddddddddoiiioddddddoddddddddo\ndddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddo",
+   "expected": "72\n101\n108\n108\n111\n44\n32\n119\n111\n114\n108\n100\n33\n"
+  },
+  {
+   "id": "xkcd-random",
+   "source": "iiso",
+   "expected": "4\n"
+  },
+  {
+   "id": "shell-transcript",
+   "source": "i\n\no\nd",
+   "expected": "1\n"
+  },
+  {
+   "id": "hello-ascii",
+   "source": "iiisdsiiiiiiiioiiiiiiiiiiiiiiiiiiiiiiiiiiiiioiiiiiiiooiiio\ndddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddoddddddddddddo\ndddddddddddddddddddddsddoddddddddoiiioddddddoddddddddo\ndddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddo",
+   "expected": "72\n101\n108\n108\n111\n44\n32\n119\n111\n114\n108\n100\n33\n"
+  },
+  {
+   "id": "xkcd-random",
+   "source": "iiso",
+   "expected": "4\n"
+  },
+  {
+   "id": "exact-trap",
+   "source": "iissso",
+   "expected": "0\n"
+  },
+  {
+   "id": "past-trap",
+   "source": "diissisdo",
+   "expected": "288\n"
+  },
+  {
+   "id": "underflow",
+   "source": "iissisdddddddddddddddddddddddddddddddddo",
+   "expected": "0\n"
+  },
+  {
+   "id": "complexity-p0",
+   "source": "iissis o",
+   "expected": "289\n",
+   "note": "wiki bug: the page says P(0) prints 17, but iissis already squares 17; P(k) prints pow(17, 2^(k+1))"
+  },
+  {
+   "id": "complexity-p1",
+   "source": "iissis s o",
+   "expected": "83521\n",
+   "note": "the page's value for P(2); see complexity-p0"
+  },
+  {
+   "id": "complexity-p0-repaired",
+   "source": "iissi o",
+   "expected": "17\n",
+   "note": "P(k) with the prefix iissi, which makes the stated 17, 289, 83521 come out"
+  },
+  {
+   "id": "complexity-p1-repaired",
+   "source": "iissi s o",
+   "expected": "289\n"
+  },
+  {
+   "id": "complexity-p2-repaired",
+   "source": "iissi ss o",
+   "expected": "83521\n"
+  },
+  {
+   "id": "complexity-p0",
+   "source": "iissis o",
+   "expected": "289\n",
+   "note": "wiki bug: the page says P(0) prints 17, but iissis already squares 17; P(k) prints pow(17, 2^(k+1))"
+  },
+  {
+   "id": "complexity-p1",
+   "source": "iissis s o",
+   "expected": "83521\n",
+   "note": "the page's value for P(2); see complexity-p0"
+  },
+  {
+   "id": "complexity-p0-repaired",
+   "source": "iissi o",
+   "expected": "17\n",
+   "note": "P(k) with the prefix iissi, which makes the stated 17, 289, 83521 come out"
+  },
+  {
+   "id": "complexity-p1-repaired",
+   "source": "iissi s o",
+   "expected": "289\n"
+  },
+  {
+   "id": "complexity-p2-repaired",
+   "source": "iissi ss o",
+   "expected": "83521\n"
+  }
  ]
 }

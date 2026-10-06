@@ -1,0 +1,31 @@
+{
+ "language": "Super SNUSP",
+ "oldid": 194514,
+ "examples": [
+  {
+   "id": "hello",
+   "source_file": "super_snusp_hello.txt",
+   "expected": "Hello, World!"
+  },
+  {
+   "id": "cat-as-published",
+   "source": "   ,!/ ?\\'\n     \\,./",
+   "stdin": "abc",
+   "expected": "",
+   "note": "no \" marker, so the IP enters at the bottom right as the spec says and leaves the grid at once"
+  },
+  {
+   "id": "cat-with-start-marker",
+   "source": "  \",!/ ?\\'\n     \\,./",
+   "stdin": "abc",
+   "expected": "abc",
+   "stop": "eof"
+  },
+  {
+   "id": "cat-with-start-marker-nul",
+   "source": "  \",!/ ?\\'\n     \\,./",
+   "stdin": "abc\u0000",
+   "expected": "abc"
+  }
+ ]
+}

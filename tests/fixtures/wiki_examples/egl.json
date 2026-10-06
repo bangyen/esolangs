@@ -1,0 +1,17 @@
+{
+ "language": "EGL",
+ "oldid": 46755,
+ "examples": [
+  {
+   "id": "output-value",
+   "source": "10,10:v>>_++=",
+   "expected": "2"
+  },
+  {
+   "id": "loop-sets-cell",
+   "source": "10,1:++(>+++++<-)#",
+   "expected": "|0|10|0|0|0|0|0|0|0|0|\n",
+   "note": "# appended to show the stated cell 2,1 = 10"
+  }
+ ]
+}

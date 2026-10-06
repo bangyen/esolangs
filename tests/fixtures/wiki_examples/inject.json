@@ -1,0 +1,33 @@
+{
+ "language": "Inject",
+ "oldid": 194509,
+ "examples": [
+  {
+   "id": "hello",
+   "source": "send data\nskip\ndata;\nHello, world!\ndata;\n",
+   "expected": "Hello, world!\n"
+  },
+  {
+   "id": "truth-0-as-written",
+   "note": "wiki bug: skipq loops when data equals 0, so the page's truth machine is inverted; the repair is not unique",
+   "source": "readto data\nloop;\nsend data\nskipq data 0\nloop;\nskip\ndata;\ndata;\n0;\n0\n0;\n",
+   "stdin": "0",
+   "stop": "steps",
+   "max_steps": 200,
+   "expected": "0\n0\n0\n"
+  },
+  {
+   "id": "truth-1-as-written",
+   "source": "readto data\nloop;\nsend data\nskipq data 0\nloop;\nskip\ndata;\ndata;\n0;\n0\n0;\n",
+   "stdin": "1",
+   "expected": "1\n"
+  },
+  {
+   "id": "cat",
+   "note": "an empty line ends it",
+   "source": "loop;\nreadto data\nsend data\nskipif data\nloop;\ndata;\ndata;\n",
+   "stdin": "abc\ndef\n\n",
+   "expected": "abc\ndef\n"
+  }
+ ]
+}

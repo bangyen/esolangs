@@ -57,3 +57,13 @@ def test_source_offsets_and_cycle_snapshot() -> None:
     machine.step()
     assert machine.snapshot() == before
     assert not machine.halted
+
+
+def test_the_wiki_evolution() -> None:
+    """Productions (011, 10, 101) on data 1, as tabulated at oldid 156412."""
+    machine = _Machine("011;10;101,1", ScriptedIO())
+    trace = []
+    for _ in range(7):
+        trace.append(machine.live)
+        machine.step()
+    assert trace == ["1", "011", "11", "1101", "101011", "0101110", "101110"]

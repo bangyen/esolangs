@@ -1,0 +1,22 @@
+{
+ "language": "A Painter Ant",
+ "oldid": 189071,
+ "examples": [
+  {
+   "id": "diamond",
+   "note": "Grows forever; no state repeats, so nothing is printed.",
+   "source": "PnPwPsPe",
+   "stop": "steps",
+   "max_steps": 2000,
+   "expected": ""
+  },
+  {
+   "id": "countdown",
+   "note": "Marches south forever after the countdown.",
+   "source": "PePePePePePePePePePePePePePePePePePePePePePePePePePe\nPEpW\nePWsPN\nEpWSpN\nWsPN\nESpNWePW\nsss\nePwPsPN\n",
+   "stop": "steps",
+   "max_steps": 5000,
+   "expected": ""
+  }
+ ]
+}
