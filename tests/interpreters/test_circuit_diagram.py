@@ -8,14 +8,16 @@ import pytest
 
 from esolangs.interpreters.grid_based import _circuit_functions
 from esolangs.interpreters.grid_based._circuit_functions import _remember_width
-from esolangs.interpreters.grid_based.circuit_diagram import (
+from esolangs.interpreters.grid_based._circuit_parse import (
     _OUTPUT,
-    _compile,
     _Connections,
     _Grid,
+    _Parser,
+)
+from esolangs.interpreters.grid_based.circuit_diagram import (
+    _compile,
     _Machine,
     _merge,
-    _Parser,
     _seconds_since_2000,
     run,
 )
