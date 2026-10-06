@@ -10,8 +10,8 @@ have some.  ``env BLIND_STEP_LIMIT=20000`` keeps the references' own limit
 under the wall clock.  References (``P`` the patched copy; escape the
 inner double quotes in a shell)::
 
-    --ref "python3 P {program}"   # Modulous, Packlang, Painfuck, Polynomial, Qoibl
-    --ref "env BLIND_ROT_DIR=forward python3 P {program}"     # ROTfuck
+    --ref "python3 P {program}"   # Modulous, Packlang, Painfuck, Polynomial,
+                                  # Qoibl, ROTfuck (backward, our default)
     --ref "sh -c 'iconv -f latin1 -t utf-8 "$1" > "$1.u8" &&
            exec python3 P "$1.u8"' sh {program}"           # LaserFuck
     --ref "sh -c 'read n; BLIND_STEP_LIMIT=$n exec python3 P "$1"' sh {program}"
@@ -121,14 +121,6 @@ ROTFUCK_PATCHES = (
         "tape[ptr] = 0 if r is None else r",
         "tape[ptr] = sys.exit(4) if r is None else r % 256",
     ),
-)
-#: Ours seeks a jump's partner *after* the rotation, the reference before
-#: ("rotated ... (after the instruction is executed)"); escalated with the
-#: rotation direction, since the generator's loops rest on both.  Exploratory.
-ROTFUCK_SEEK_AFTER = (
-    ("depth = 0\n        j = i\n", "depth = 1\n        j = i + d\n"),
-    ("m = find(ip, 1)", "rot += step; m = find(ip, 1); rot -= step"),
-    ("m = find(ip, -1)", "rot += step; m = find(ip, -1); rot -= step"),
 )
 
 

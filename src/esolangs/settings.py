@@ -9,9 +9,11 @@ from esolangs._dialects import (
     EXPRESSION_SYNTAXES,
     LIST_UPDATES,
     LITERAL_POLICIES,
+    ROTATIONS,
     PacklangLiterals,
     expression_syntax,
     list_update,
+    rotation,
 )
 from esolangs._grapheme import INTEGER_CONVERSIONS, GraphemeDialect
 from esolangs._mammalian import MODULI, MammalianModuli
@@ -34,7 +36,7 @@ class DialectSettings:
     def __init__(self, **choices: int | str | None) -> None:
         """Copy typed overrides; language-specific validation precedes use."""
         integer = {"cell_modulus", "io_modulus"}
-        text = {*_ALIGHT, "literal_policy", "integer_conversion"}
+        text = {*_ALIGHT, "literal_policy", "integer_conversion", "rotation"}
         for key, value in choices.items():
             if key not in integer | text:
                 known = sorted(integer | text)
@@ -71,6 +73,10 @@ class DialectSettings:
                         for key, value in values.items()
                     }
                 )
+            elif language_id == "rotfuck":
+                if values.keys() - {"rotation"}:
+                    raise TypeError("supported dialect setting: rotation")
+                rotation(values.get("rotation", "backward"))
             elif language_id in _VALIDATORS:
                 _VALIDATORS[language_id](**values)
             elif values:
@@ -132,7 +138,11 @@ def dialect_choices(language: str) -> dict[str, DialectOption]:
 
     name = resolve(language)
     language_id = LANGUAGES[name].id
-    fixed = {"alight": _ALIGHT, "packlang": ("literal_policy",)}
+    fixed = {
+        "alight": _ALIGHT,
+        "packlang": ("literal_policy",),
+        "rotfuck": ("rotation",),
+    }
     if language_id in fixed:
         keys = list(fixed[language_id])
     elif language_id in _VALIDATORS:
@@ -143,6 +153,7 @@ def dialect_choices(language: str) -> dict[str, DialectOption]:
         "expression_syntax": EXPRESSION_SYNTAXES,
         "list_update": LIST_UPDATES,
         "literal_policy": LITERAL_POLICIES,
+        "rotation": ROTATIONS,
         "integer_conversion": INTEGER_CONVERSIONS,
         "cell_modulus": MODULI,
         "io_modulus": MODULI,

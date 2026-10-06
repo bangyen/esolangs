@@ -5,6 +5,10 @@ from dataclasses import dataclass
 EXPRESSION_SYNTAXES = ("infix", "postfix")
 LIST_UPDATES = ("in_place", "copy")
 LITERAL_POLICIES = ("decimal", "binary_digits")
+#: ROTfuck's cycle per direction, each read as "turns into the next":
+#: backward is the prose's ``+-><,.[]`` reversed.
+ROTFUCK_CYCLES = {"backward": "+][.,<>-", "forward": "+-><,.[]"}
+ROTATIONS = tuple(ROTFUCK_CYCLES)
 
 
 def expression_syntax(value: str) -> str:
@@ -18,6 +22,13 @@ def list_update(value: str) -> str:
     """Validate what Alight's three-argument ``at`` does to its list."""
     if value not in LIST_UPDATES:
         raise ValueError("list_update must be in_place or copy")
+    return value
+
+
+def rotation(value: str) -> str:
+    """Validate which way ROTfuck's command cycle turns."""
+    if value not in ROTATIONS:
+        raise ValueError("rotation must be backward or forward")
     return value
 
 
