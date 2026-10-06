@@ -33,9 +33,11 @@ _BIT_TILDE_RESULTS = {
     "single_toggle_prints_most_significant_bit": ("~(", "\x80"),
     # ``<`` at cell 0 is a no-op, so the toggle hits the MSB.
     "left_pointer_clamps_at_cell_zero": ("<<~(", "\x80"),
-    # After seven ``>`` the pool holds 14 cells; a toggle at the 8th cell and a print
-    # at the same spot use only the available window.
-    "right_grows_the_pool": (">>>>>>>~(", "@"),
+    # ``(`` reads "the current bit and the next 7 bits", so ``>`` grows the pool
+    # under the cell it moves to: the toggle is the MSB of a full byte, not of
+    # a 7-bit window (it printed "@" until the blind differential).
+    "right_grows_the_pool": (">~(", "\x80"),
+    "right_grows_the_pool_far": (">>>>>>>~(", "\x80"),
     # A body that builds and prints 'A' leaves bit 0 at zero so ``}`` falls through;
     # the loop runs exactly once.
     "loop_runs_while_the_bit_is_nonzero": ("~{~>~>>>>>>~<<<<<<<(}", "A"),
@@ -91,7 +93,7 @@ class TestBitTilde:
         machine = _Machine(">><<)", ScriptedIO("A"))
         while not machine.halted:
             machine.step()
-        assert machine.tape == (0, 1, 0, 0, 0, 0, 0, 1, 0)
+        assert machine.tape == (0, 1, 0, 0, 0, 0, 0, 1, 0, 0)
 
     def test_output_bytes_round_trip_under_latin1(self) -> None:
         """The interpreter emits ``chr(byte)``, so each byte round-trips

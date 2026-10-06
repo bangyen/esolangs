@@ -15,7 +15,17 @@ malformed line, numeric literal or redefinition of ``input`` raises
 :func:`_read` defaults a missing array to zero rather than creating it.
 
 Input numbers are whitespace-delimited integer tokens; the spec does not define
-delimiters.
+delimiters.  Readings of sentences that admit two:
+
+- "input || Takes input, and uses that as a variable": an integer token,
+  not a byte, and every ``input`` a line names is read, even on the even
+  branch that ignores var2 and var3.
+- "if var1s value is 110, and the Boolean says DO, an A will be printed":
+  no code maps 110 to ``A``; ``DO`` prints the new value's low byte, so a
+  value outside 0..255 wraps rather than failing.
+- "changing it moves it to that line number, but doesn't execute it": the
+  assignment does not run that line, the next step does; a jump outside
+  the program halts.  Blank lines are not numbered.
 """
 
 from __future__ import annotations
