@@ -5,7 +5,7 @@ import random
 import pytest
 
 import esolangs
-from esolangs.interpreters.other.packlang import _tokenize
+from esolangs.interpreters.other._packlang_lex import _tokenize
 from esolangs.tools.packlang import packlang
 from esolangs.tools.wrap import wrap_program
 from tests.generator_support import evaluate_generated

@@ -12,7 +12,7 @@ from esolangs._execution import interpreter_errors
 from esolangs._isolated import _decode
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.other.packlang import _Parser
+from esolangs.interpreters.other._packlang_parse import _Parser
 from esolangs.interpreters.source_hints import keyword_hint
 from esolangs.raster import Raster
 from esolangs.vm import make_vm
