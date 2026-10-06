@@ -104,7 +104,7 @@ def rotfuck_program(rng: random.Random) -> str:
     """Return brainfuck-shaped text, which rotation scrambles as it runs."""
     h = _harness()
     if rng.random() < 0.6:
-        return h.bf_program(rng)
+        return str(h.bf_program(rng))
     out = "".join(rng.choice("+-><,.[]") for _ in range(rng.randint(1, 16)))
     if rng.random() < 0.1:
         at = rng.randrange(len(out) + 1)
@@ -492,7 +492,7 @@ def polynomial_source(code: list[tuple[int, ...]]) -> str:
                 out[i + j] += x * y
         coeffs = out
     degree = len(coeffs) - 1
-    terms = []
+    terms: list[str] = []
     for i, c in enumerate(coeffs):
         power = degree - i
         if c == 0:
@@ -571,15 +571,18 @@ def line_program(rng: random.Random) -> str:
     """Return brainfuck our renderer can draw, so both sides read one PNG."""
     h = _harness()
     while True:
-        program = h.bf_program(rng)
+        program = str(h.bf_program(rng))
         if line_drawable(program):
             return program
 
 
 def line_input(rng: random.Random, _program: str) -> str:
-    """Return integer tokens, often too few, to hit EOF."""
+    """Return small naturals, often too few, to hit EOF.
+
+    Cells are unbounded, so a negative one would never count down to 0.
+    """
     count = rng.choice((0, 1, 2, 3, 5))
-    return " ".join(str(rng.randint(-3, 9)) for _ in range(count))
+    return " ".join(str(rng.randint(0, 6)) for _ in range(count))
 
 
 def line_ours(language: str, program: str, stdin: str, max_steps: int) -> Any:
