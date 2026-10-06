@@ -174,8 +174,8 @@ the answer in the linked proof and remove the item.
   signed-ball blocks, and an almost-all prime-window covering bound. Parity
   encodings executed through five inputs determine neither limit.
   On the executed corpus, semantic deduplication only halves the count (a
-  constant factor), and the tempting `<>` deletion is unsound at the
-  clamped edge. Next: find a sound local rewrite that lowers the lower
+  constant factor); `<>` is already in the forbidden set now that the
+  tape grows left. Next: find a sound local rewrite that lowers the lower
   side's Perron root, or construct a cheaper weighted command stream to lower
   the upper one. Whether the limit exists, and its value, remain open.
 

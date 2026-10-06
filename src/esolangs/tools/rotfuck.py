@@ -68,8 +68,8 @@ def _pads() -> tuple[str, ...]:
     """Command runs that change neither the tape nor the pointer.
 
     Shortest first, since padding is pure cost.  A run may step right, which
-    the tape always allows, but never left of where it started: ``<`` clamps
-    at cell zero.
+    the tape always allows, but never left of where it started: ``<`` at
+    cell zero grows the tape, shifting every index.
     """
     out = []
     for length in range(2, _MAX_PAD + 1, 2):
