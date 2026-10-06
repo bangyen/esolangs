@@ -28,6 +28,8 @@ _OUTPUT = {
     "jump_does_not_skip_on_nonzero": ("ajk;", "\x01"),
     # ``j`` steps over the command after it, wherever it sits.
     "jump_skips_relative_to_itself": ("ffjak;", "\x00"),
+    # "Jump over the next instruction": a space is not one, so `a` is skipped.
+    "jump_skips_a_command_not_a_space": ("j\n ak;", "\x00"),
     # aa l s l k; : the body decrements 2 down to 0, so k prints NUL.
     "loop_runs_while_nonzero": ("aa" + "l" + "s" + "l" + "k;", "\x00"),
     # cell is zero, so the body never runs and nothing prints.

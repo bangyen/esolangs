@@ -411,3 +411,9 @@ def test_counterclockwise_entry_prefers_clockwise_exit() -> None:
     machine = _Machine(grid, ScriptedIO())
     machine.step()  # rides west into [ ] and leaves it clockwise, northward
     assert machine.ip == (1, 5, -1, 0)
+
+
+def test_a_fork_keeps_its_own_pointer_on_the_forward_exit() -> None:
+    """The spec's forward-first rule names only ``< >`` as an exception."""
+    machine = _Machine([" ┌─(( ))", "( )─(( ))"], ScriptedIO(""))
+    assert [p.d for p in machine.pointers] == [(0, 1), (-1, 0)]

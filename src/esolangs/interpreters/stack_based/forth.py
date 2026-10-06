@@ -14,7 +14,9 @@ division by zero, unterminated bracket) abort only the innermost scope,
 as the cross-check's discarded status did.  ``,`` raises
 :class:`EOFError` at end of input (the cross-check exits 3) and pushes
 Unicode code points; ``.`` prints Unicode scalars. Values outside that range
-retain the reference's byte fallback.
+retain the reference's byte fallback.  ``;`` on a key no ``{`` stored
+calls an empty scope.  The spec says nothing on errors or EOF; a
+clean-room reading exits on the first invalid operation instead.
 
 :class:`_Machine` has an explicit call stack (one frame per scope);
 ``halted`` is true once no frame remains and a repeated
@@ -361,14 +363,16 @@ class _Machine:
             )
 
         self._restore(_advance(state, line))
+        # Raised here, not in ``run``, so a stepped VM fails as ``run`` does.
+        if self.error:
+            raise HaltError(
+                "the top-level scope aborted, which Forþ reports as status 3"
+            )
 
 
 def run(code: str, io: IO) -> None:
     """Run a Forþ program."""
-    machine = _Machine(code, io)
-    drive(machine)
-    if machine.error:
-        raise HaltError("the top-level scope aborted, which Forþ reports as status 3")
+    drive(_Machine(code, io))
 
 
 if __name__ == "__main__":

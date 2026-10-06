@@ -13,7 +13,10 @@ newline (the cat program needs it).  ``readto`` at EOF raises
 on empty input).  A label, blank line or non-command line is a no-op
 (the truth machine falls through a bare ``0``).  Block structure is
 fixed at parse; a written-in ``foo;`` is inert.  The innermost block is
-the shortest span.  ``inject`` uses :mod:`re`, a malformed regex raising
+the shortest span.  ``inject`` uses :mod:`re` line by line ("Replaces the
+label-block ... according to the regex" names no text form), so an emptied
+line stays a line, and ``R`` is a ``re`` template; a malformed regex, or a
+resize that would delete another block's delimiter, raises
 :class:`~esolangs.exceptions.HaltError`.  A label written a third time,
 left open, unknown, or unparsable raises :class:`ValueError`; invalid
 runtime operations raise ``HaltError``.  Running off the end halts.
