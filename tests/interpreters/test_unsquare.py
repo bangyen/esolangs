@@ -1,10 +1,13 @@
 """Unit tests for the Unsquare interpreter."""
 
+from functools import partial
+
 import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.stack_based.unsquare import run
+from tests.interpreters import runner
 from tests.interpreters.contract import (
     CycleContract,
     InputCursorContract,
@@ -12,11 +15,7 @@ from tests.interpreters.contract import (
 )
 from tests.raises import raises_message
 
-
-def run_program(code: str, stdin: str = "") -> str:
-    io = ScriptedIO(stdin)
-    run(code, io)
-    return io.getvalue()
+run_program = partial(runner.run_program, run, suppress_eof=False)
 
 
 class TestUnsquare:

@@ -1,15 +1,14 @@
 """Smallfuck fixed-tape semantics."""
 
+from functools import partial
+
 import pytest
 
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.tape_based.smallfuck import _Machine, run
+from tests.interpreters.runner import run_program
 
-
-def _run(source: str) -> str:
-    io = ScriptedIO("")
-    run(source, io)
-    return io.getvalue()
+_run = partial(run_program, run, suppress_eof=False)
 
 
 def test_flip_move_loop_and_final_tape() -> None:
