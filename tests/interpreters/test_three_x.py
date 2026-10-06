@@ -21,21 +21,33 @@ def run_program(code: str, stdin: str = "") -> str:
 
 
 class Test3x:
-    def test_literal_skips_past_bracket(self) -> None:
-        # the literal ends at the first ], so trailing commands still run
-        assert run_program("[A]333x!") == "A0"
-
-    def test_push_three(self) -> None:
-        assert run_program("3!") == "3"
+    @pytest.mark.parametrize(
+        ("code", "expected"),
+        [
+            # The literal ends at the first ], so trailing commands still run.
+            pytest.param("[A]333x!", "A0", id="literal_skips_past_bracket"),
+            pytest.param("3!", "3", id="push_three"),
+            # (1-3)/3 = -2/3, printed as a fraction.
+            pytest.param("3333333x3xx!", "-2/3", id="fraction_output"),
+            # Store 0 under 3, then 3 under 0: the final lookup proves the first
+            # binding survived the second, so a binding replaces only its key.
+            pytest.param(
+                "3333xv3333x3v3^!", "0", id="storing_a_second_key_keeps_the_first"
+            ),
+            # The loop body runs while the top is nonzero.
+            pytest.param("3(33x)!", "0", id="loop_repeats"),
+            # Pass 1 ends with a 3 on top (jump back), pass 2 with a 0 (exit).
+            pytest.param("333(33x#)!", "0", id="loop_jumps_back_on_nonzero_top"),
+            pytest.param("[", "", id="unmatched_print_bracket_prints_nothing"),
+        ],
+    )
+    def test_output(self, code: str, expected: str) -> None:
+        assert run_program(code) == expected
 
     def test_x_operation(self) -> None:
         # (3-3)/3 = 0, (3-0)/3 = 1
         assert run_program("333x!") == "0"
         assert run_program("3333x3x!") == "1"
-
-    def test_fraction_output(self) -> None:
-        # (1-3)/3 = -2/3, printed as a fraction
-        assert run_program("3333333x3xx!") == "-2/3"
 
     def test_swap(self) -> None:
         assert run_program("333x3!") == "3"
@@ -54,22 +66,11 @@ class Test3x:
         assert run_program("3^!") == "3"  # default value for an unassigned key
         assert run_program("3333xv3^!") == "0"  # store 0 under 3, recall it
 
-    def test_storing_a_second_key_keeps_the_first(self) -> None:
-        """A binding replaces only its own key, not the whole variable store."""
-        # Store 0 under 3, then 3 under 0.  The final lookup proves the
-        # first binding survived the insertion of the second one.
-        assert run_program("3333xv3333x3v3^!") == "0"
-
     def test_loop(self) -> None:
         # push 1, loop prints 0 then exits on the 0
         assert run_program("3333x3x(33x)!") == "0"
         # push 0, the loop skips
         assert run_program("333x(3)!") == "0"
-
-    def test_loop_repeats(self) -> None:
-        # push 3, loop: 33x -> 0, exit; but with a counter... use input: ? reads n
-        # (3-?)/3 ... instead verify the loop body runs while top nonzero
-        assert run_program("3(33x)!") == "0"
 
     def test_error_empty_stack(self) -> None:
         with pytest.raises(HaltError):
@@ -91,19 +92,12 @@ class Test3x:
         with pytest.raises(ValueError, match="integer or a fraction"):
             run_program("?", "1/0\n")
 
-    def test_loop_jumps_back_on_nonzero_top(self) -> None:
-        # pass 1 ends with a 3 on top (jump back), pass 2 with a 0 (exit)
-        assert run_program("333(33x#)!") == "0"
-
     def test_skipped_loop_counts_nested_brackets(self) -> None:
         # 333x leaves 0 on top, so the outer ( skips its body; the nested
         # () inside must be counted so the skip stops at the *matching* ),
         # not the inner one, leaving the trailing 3 to be printed
         assert run_program("333x(3()3)3!") == "3"
         assert run_program("333x(())3!") == "3"
-
-    def test_unmatched_print_bracket_prints_nothing(self) -> None:
-        assert run_program("[") == ""
 
     def test_error_unmatched_bracket(self) -> None:
         with pytest.raises(HaltError):

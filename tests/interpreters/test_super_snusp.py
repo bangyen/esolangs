@@ -17,12 +17,32 @@ def run_super(program: str, stdin: str = "") -> str:
     return run_program(run, program.splitlines(), stdin)
 
 
-def test_start_marker_and_literal_emit() -> None:
-    assert run_super('"65.') == "A"
-
-
-def test_lurd_mirror_turns_rightward_flow_downward() -> None:
-    assert run_super('"65\\\n   .') == "A"
+@pytest.mark.parametrize(
+    ("program", "expected"),
+    [
+        pytest.param('"65.', "A", id="start_marker_and_literal_emit"),
+        pytest.param(
+            '"65\\\n   .', "A", id="lurd_mirror_turns_rightward_flow_downward"
+        ),
+        pytest.param(
+            "\"1\u06612#'", "2", id="non_ascii_digit_breaks_an_ascii_literal_run"
+        ),
+        # Letters load as ``H.``, other bytes as decimal literals, in one run.
+        pytest.param(
+            '"H.e.l..o.44.32.W.o.r.l.d.33.10.0.255.',
+            "Hello, World!\n\x00\xff",
+            id="character_and_decimal_loads_mix_in_one_program",
+        ),
+        # After a double quote (34), ``!`` is one decrement and output.
+        pytest.param(
+            '"34.(.', '"!', id="a_decrement_is_shorter_than_reloading_a_nearby_byte"
+        ),
+        # ``"`` alone sets character mode and halts; the empty program raises.
+        pytest.param('"', "", id="a_bare_mode_switch_outputs_nothing"),
+    ],
+)
+def test_output(program: str, expected: str) -> None:
+    assert run_super(program) == expected
 
 
 def test_wiki_hello_world_reflects_at_both_mirrors() -> None:
@@ -57,28 +77,8 @@ def test_non_ascii_digits_and_letters_are_not_literals(character: str) -> None:
     assert run_super('"' + character + "#'") == "0"
 
 
-def test_non_ascii_digit_breaks_an_ascii_literal_run() -> None:
-    assert run_super("\"1\u06612#'") == "2"
-
-
 def test_decimal_io_and_output() -> None:
     assert run_super('"@#', "-42\n") == "-42"
-
-
-def test_character_and_decimal_loads_mix_in_one_program() -> None:
-    """Letters load as ``H.``, other bytes as decimal literals, in one run."""
-    program = '"H.e.l..o.44.32.W.o.r.l.d.33.10.0.255.'
-    assert run_super(program) == "Hello, World!\n\x00\xff"
-
-
-def test_a_decrement_is_shorter_than_reloading_a_nearby_byte() -> None:
-    """After a double quote (34), ``!`` is one decrement and output."""
-    assert run_super('"34.(.') == '"!'
-
-
-def test_a_bare_mode_switch_outputs_nothing() -> None:
-    """``"`` alone sets character mode and halts; the empty program raises."""
-    assert run_super('"') == ""
 
 
 @pytest.mark.parametrize("program", ['"+', '"0{1:', '"1_{1['])

@@ -22,8 +22,25 @@ _HELLO_ATOMS = ["r", *(f".{char}" for char in "Hello, world"), "i"]
 HELLO = "`" * (len(_HELLO_ATOMS) - 1) + "".join(_HELLO_ATOMS)
 
 
-def test_the_reference_greeting_prints() -> None:
-    assert run_program(run, HELLO) == "\nHello, world"
+@pytest.mark.parametrize(
+    ("program", "stdin", "expected"),
+    [
+        pytest.param(HELLO, "", "\nHello, world", id="the_reference_greeting_prints"),
+        pytest.param(
+            "`@`d``|ii", "Q\n", "Q", id="the_pipe_hands_over_the_character_read"
+        ),
+        # The spec's no-character branch, which ``@`` cannot reach here.
+        pytest.param("``|ii", "", "", id="the_pipe_before_any_read_is_v"),
+        pytest.param("`@`d``|ii", "\n", "\n", id="an_empty_line_reads_as_a_newline"),
+        # ``s i (k v)`` applied to the continuation applies it to v, and the
+        # print after that application never runs.
+        pytest.param(
+            "``c``si`kv.A", "", "", id="a_continuation_abandons_the_rest_of_its_caller"
+        ),
+    ],
+)
+def test_output(program: str, stdin: str, expected: str) -> None:
+    assert run_program(run, program, stdin) == expected
 
 
 def test_the_combinators() -> None:
@@ -44,19 +61,6 @@ def test_a_read_and_a_test_on_the_character() -> None:
     assert run_program(run, program, "1\n") == ""
 
 
-def test_the_pipe_hands_over_the_character_read() -> None:
-    assert run_program(run, "`@`d``|ii", "Q\n") == "Q"
-
-
-def test_the_pipe_before_any_read_is_v() -> None:
-    """The spec's no-character branch, which ``@`` cannot reach here."""
-    assert run_program(run, "``|ii") == ""
-
-
-def test_an_empty_line_reads_as_a_newline() -> None:
-    assert run_program(run, "`@`d``|ii", "\n") == "\n"
-
-
 #: ``\b. ((b (`d `.Xi)) v)``: ``k`` keeps the promise and ``v`` swallows it,
 #: so forcing the survivor with ``i`` prints X only on ``@``'s success branch.
 #: ``v`` absorbs every argument, so the failure arm cannot run anything of its
@@ -74,13 +78,6 @@ def test_a_read_at_end_of_input_takes_the_spec_branch() -> None:
 def test_a_read_that_found_nothing_clears_the_character() -> None:
     """Wiki: ``|`` applies to ``v`` once EOF has been reached, so Q is gone."""
     assert run_program(run, "``k`@i``k`@i``|ii", "Q", suppress_eof=False) == ""
-
-
-def test_a_continuation_abandons_the_rest_of_its_caller() -> None:
-    """``c``'s argument applies the continuation, so its own tail is dropped."""
-    # ``s i (k v)`` applied to the continuation applies it to v, and the
-    # print after that application never runs.
-    assert run_program(run, "``c``si`kv.A") == ""
 
 
 @pytest.mark.parametrize(
