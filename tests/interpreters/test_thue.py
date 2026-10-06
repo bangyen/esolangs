@@ -73,6 +73,8 @@ def test_the_separator_may_carry_whitespace() -> None:
     rules, state = _parse("a::=b\n  ::=  \naa")
     assert rules == (("a", "b"),)
     assert state == "aa"
+    # A whitespace left side with text on the right is a rule, not the end.
+    assert run_program(run, "  ::=~y\n::=\na  b") == "y"
 
 
 def test_an_empty_output_string_prints_a_newline() -> None:
