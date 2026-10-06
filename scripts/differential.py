@@ -1131,6 +1131,7 @@ SPECS.update(__import__("differential_blind_c4").SPECS)
 SPECS.update(__import__("differential_blind_c5").SPECS)
 SPECS.update(__import__("differential_blind_c6").SPECS)
 SPECS.update(__import__("differential_blind_c7").SPECS)
+SPECS.update(__import__("differential_blind_c8").SPECS)
 
 
 def _env_name(language: str) -> str:
