@@ -116,10 +116,11 @@ implementation (unique backlinks measured 2026-10-06); add with
 Each item names its next executable step. When an item is answered, record
 the answer in the linked proof and remove the item.
 
-- **Brainfuck behaviour count.** In the repo model (clipped tape, EOF
-  error), the growth constant is bracketed:
-  `4.2420 <= liminf B(C)**(1/C) <= limsup <= 7.0347`. The limit itself, and
-  any sub-7 upper bound, remain open. The 11,673-state certificate covers
+- **Brainfuck behaviour count.** With a clipped tape and EOF error (the
+  repo model until 2026-10-06), the growth constant is bracketed:
+  `4.2420 <= liminf B(C)**(1/C) <= limsup <= 7.0347`; the repo's bi-infinite
+  tape has upper bound `6.9133`. The limit itself, and any clipped sub-7
+  upper bound, remain open. The 11,673-state certificate covers
   balanced bodies only to bracket depth one, and no finite monitor can
   count the unrestricted sound print-rotation and forced-divergence bodies:
   they match brackets across any depth. Next: count them with the
