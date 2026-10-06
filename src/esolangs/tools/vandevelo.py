@@ -49,7 +49,8 @@ eps)`` becoming ``1 + log2(1 / eps)``, one dimension at most where ``eps <=
 The pool is rechosen from the remainder's nearest existing
 differences once a fixed fraction of it has gone; below density
 ``1 / max(_CANDIDATES, n)`` the remainder is sparse and each cube is grown
-at its lowest point from that point's nearest differences instead.
+at its lowest point from that point's nearest differences instead,
+filled from its successors in row order when the probes fall short.
 
 The proposed linear-time charge covers candidate upkeep: a node costs its candidate
 count times its size to build, and is either harvested entirely (charged
@@ -58,7 +59,9 @@ its direction (at most the pool's size of them per refresh); removing a
 point updates the pool and every node holding it at the candidate count
 each; a refresh follows a fixed fraction of removals, so the pool's cost
 ``T * ln(_CANDIDATES / 2)`` in all and a node's a constant per point it
-loses; the sparse tail costs a constant per point.  The proof's fallback
+loses; the sparse tail costs a constant per point -- its order is
+threaded once in O(T), and a cube's probes, window and growth are
+bounded by the candidate count.  The proof's fallback
 fits the same charge: when no scored direction reaches the pigeonhole
 average on a dense working set, it scores :data:`_SAMPLES` uniform pair
 differences, ``_SAMPLES * |S|`` work, as many candidates more.  Each draw
@@ -163,7 +166,7 @@ def _points(mask: int) -> list[int]:
 
 
 def _nearest(
-    points: set[int], pivot: int, seen: set[int], n: int, cap: int
+    points: set[int], pivot: int, seen: set[int], n: int, cap: int, *, scan: bool = True
 ) -> list[int]:
     """Return the ``cap`` nearest differences from ``pivot`` inside ``points``.
 
@@ -173,6 +176,7 @@ def _nearest(
     head after about ``cap / density`` probes.  When four times ``cap``
     probes have not filled the list the set is sparse and the whole of it
     is listed instead, at its size; the answer is the same either way.
+    With ``scan`` off the probes' finds are returned as they stand.
     """
     limit = 1 << n
     out: list[int] = []
@@ -193,7 +197,7 @@ def _nearest(
         else:
             continue
         break
-    if len(out) < cap:
+    if scan and len(out) < cap:
         extra = heapq.nsmallest(
             cap - len(out),
             (
@@ -475,11 +479,10 @@ class _Peel:
         sparse_at = (1 << n) // max(_CANDIDATES, n)
         depth_target = n + 1
         tried = self.tried
-        pool: list[int] = []
         while root.points:
             if len(root.points) <= sparse_at:
-                self.sparse(pool)
-                continue
+                self.sparse()
+                break
             if self.since >= _REFRESH * len(root.points):
                 self.since = 0
                 self.refresh(root)
@@ -530,19 +533,49 @@ class _Peel:
             self.take(p)
         return self.cubes
 
-    def sparse(self, pool: list[int]) -> None:
-        """One cube of the sparse tail, grown at the remainder's lowest point."""
+    def sparse(self) -> None:
+        """Peel the sparse tail, one cube at the remainder's lowest point.
+
+        The remainder is threaded in ascending order once, by a walk over
+        the rows, so the lowest point is the head and a removal unlinks in
+        constant time.  When the nearest differences fall short of the
+        candidate count -- a sparse set is where they do -- the pivot's
+        next points in that order fill the list, instead of a scan of the
+        whole remainder per cube.
+        """
         alive = self.root.points
-        pivot = min(alive)
-        cands = list(pool)
-        cands += _nearest(alive, pivot, {0, *pool}, self.n, _CANDIDATES - len(cands))
-        dirs, cube = _grow(alive, pivot, cands)
-        self.cubes.append((pivot, dirs))
-        for q in cube:
-            alive.discard(q)
-        # The last cubes' directions lead the next candidate list, so
-        # consecutive clauses share constraints and the bank morphs.
-        pool[:] = (dirs + [v for v in pool if v not in dirs])[:_INHERIT]
+        # Point ``p`` is slot ``p + 1``; slot 0 heads the list.
+        nxt = [0] * ((1 << self.n) + 2)
+        prv = [0] * ((1 << self.n) + 2)
+        last = 0
+        for p in range(1 << self.n):
+            if p in alive:
+                nxt[last], prv[p + 1] = p + 1, last
+                last = p + 1
+        nxt[last] = 0
+        pool: list[int] = []
+        while nxt[0]:
+            pivot = nxt[0] - 1
+            cands = list(pool)
+            seen = {0, *pool}
+            cands += _nearest(
+                alive, pivot, seen, self.n, _CANDIDATES - len(cands), scan=False
+            )
+            slot = nxt[pivot + 1]
+            while slot and len(cands) < _CANDIDATES:
+                v = pivot ^ (slot - 1)
+                if v not in seen and v not in cands:
+                    cands.append(v)
+                slot = nxt[slot]
+            dirs, cube = _grow(alive, pivot, cands)
+            self.cubes.append((pivot, dirs))
+            for q in cube:
+                alive.discard(q)
+                before, after = prv[q + 1], nxt[q + 1]
+                nxt[before], prv[after] = after, before
+            # The last cubes' directions lead the next candidate list, so
+            # consecutive clauses share constraints and the bank morphs.
+            pool[:] = (dirs + [v for v in pool if v not in dirs])[:_INHERIT]
 
 
 def _echelon(dirs: list[int], n: int) -> list[int]:
