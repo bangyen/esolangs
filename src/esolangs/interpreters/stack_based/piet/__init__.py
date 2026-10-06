@@ -11,6 +11,12 @@ colour exit and no white slide ends the run.
 A colour outside the 18 standard ones is treated as white. Input commands
 share a cursor: character reads preserve newlines; numeric reads consume
 whitespace-delimited integers. Input commands at EOF are ignored.
+
+Spec gaps, decided here: a command that cannot be performed (too few values,
+division by zero, a negative or too-deep roll) leaves the stack untouched;
+npiet pops a failed roll's two values.  A roll of depth 0 is not a failure:
+it pops both and moves nothing.  An output char outside Unicode is popped and
+not printed.
 """
 
 from __future__ import annotations
@@ -166,9 +172,10 @@ def _command(
     elif change == (4, 1):
         if len(stack) >= 2:
             depth, rolls = stack[-2:]
-            if 0 < depth <= len(stack) - 2:
+            if 0 <= depth <= len(stack) - 2:
+                # Depth 0 is a valid roll of nothing: both values still pop.
                 stack = stack[:-2]
-                rolls %= depth
+                rolls = rolls % depth if depth else 0
                 if rolls:
                     stack = (*stack[:-depth], *stack[-rolls:], *stack[-depth:-rolls])
     elif change == (4, 2):

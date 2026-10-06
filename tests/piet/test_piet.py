@@ -260,6 +260,20 @@ def test_zero_roll_and_shallow_roll_are_ignored() -> None:
     assert shallow == [1]
 
 
+def test_a_depth_zero_roll_pops_its_operands() -> None:
+    """The wiki: roll "pops the top two values", then rotates the top 0."""
+    stack = [5, 0, 3]
+    _execute_command((4, 1), 1, stack, ScriptedIO())
+    assert stack == [5]
+
+
+def test_the_wiki_roll_example() -> None:
+    """1,2,3 then push 3 and 1, roll: 3,1,2."""
+    stack = [1, 2, 3, 3, 1]
+    _execute_command((4, 1), 1, stack, ScriptedIO())
+    assert stack == [3, 1, 2]
+
+
 def test_switch_transition_changes_the_run_codel_chooser() -> None:
     program = raster(
         (LIGHT_RED, BLACK, BLACK, LIGHT_CYAN),
@@ -333,3 +347,42 @@ def test_a_read_loop_on_a_cursorless_port_runs_to_eof() -> None:
     machine = _Machine(raster((LIGHT_RED, DARK_BLUE)), io)
     assert not run_until_halt_or_cycle(machine, limit=1000)
     assert ScriptedIO.position(io) == 20  # every token was read
+
+
+_WIKI = Path(__file__).parents[1] / "fixtures" / "piet"
+
+
+def _stepped(name: str, stdin: str, steps: int) -> _Machine:
+    raster_ = Raster.from_png((_WIKI / name).read_bytes())
+    machine = _Machine(raster_, ScriptedIO(stdin))
+    for _ in range(steps):
+        if machine.halted:
+            break
+        machine.step()
+    return machine
+
+
+def test_wiki_hello_world_as_npiet_runs_it() -> None:
+    """The caption says "Hello World!"; the image, under npiet too, prints this."""
+    machine = _stepped("hello_world.png", "", 2000)
+    assert machine.io.getvalue() == "Hello world\x1d"
+    assert not machine.halted
+
+
+def test_wiki_truth_machine_zero_halts() -> None:
+    machine = _stepped("truth_machine.png", "0", 200)
+    assert (machine.io.getvalue(), machine.halted) == ("0", True)
+
+
+def test_wiki_truth_machine_one_repeats() -> None:
+    machine = _stepped("truth_machine.png", "1", 500)
+    assert not machine.halted
+    assert set(machine.io.getvalue()) == {"1"}
+    assert len(machine.io.getvalue()) > 20
+
+
+def test_wiki_looping_counter_draws_its_triangle() -> None:
+    """A 10x10-codel image at 50px per codel: rows of 1s, one longer each."""
+    machine = _stepped("looping_counter.png", "", 3000)
+    lines = machine.io.getvalue().split("\n")[:8]
+    assert lines == ["1" * k for k in range(1, 9)]
