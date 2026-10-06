@@ -181,21 +181,18 @@ the answer in the linked proof and remove the item.
 
 - **Vandevelo structural scaling.** Register upkeep is bounded at O(T)
   lines and O(T log n) characters; the identifier references are the part
-  that still carries the extra factor. The exact fallback now transforms
-  the quotient by a node's `d`-dimensional span: `O(n*|S|)` projection
-  plus `O((n-d)*2**(n-d))` transform work per call. A forced six-input
-  control executes the three-dimensional transform and matches full-space
-  counts; 280 generated programs retain identical source and all 2,536
-  rows execute. Affine-coset complements use direct violation guards: the
-  n=12 one-zero table drops 40,938,391 candidate visits and shrinks from
-  333 to 277 characters. The occurrence-weighted naming audit shrinks a
-  seeded n=12 source by only 1.01%, below the shipping threshold;
+  that still carries the extra factor. The popular-direction fallback now
+  scores a constant number of sampled pair differences, the same charge as
+  that many candidates; the exact transform it replaced spent `60*T` on
+  one seeded 15-input table. Affine-coset complements use direct violation
+  guards: the n=12 one-zero table drops 40,938,391 candidate visits and
+  shrinks from 333 to 277 characters. The occurrence-weighted naming audit
+  shrinks a seeded n=12 source by only 1.01%, below the shipping threshold;
   `scripts/profile_vandevelo.py` records its executed controls. Next:
-  remove the identifier factor, amortize projection and fallback calls,
-  and bound the dual-basis core's aggregate work. The fallback is not
-  amortized now: one seeded 15-input table spends `60*T` in it
-  ([proofs](proofs/index.md)). Neither remaining gap is
-  a language-wide lower bound; measured scaling does not settle them.
+  remove the identifier factor, prove the candidate charge, and bound the
+  dual-basis core's aggregate work ([proofs](proofs/index.md)). Neither
+  remaining gap is a language-wide lower bound; measured scaling does not
+  settle them.
 
 - **FRACTRAN order encoding.** One unchanged multiset of eight fractions
   computes all sixteen four-row tables just by ordering each `1/p, 2/p`

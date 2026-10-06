@@ -682,7 +682,7 @@
         "minterms"
       ],
       "qualification": "an affine-cube peel emits one guard line per coset of an affine cover of the 1-set",
-      "scaling": "open: O(T) upkeep lines, O(T log n) identifier text; exact fallback and dual-basis aggregate work unproved",
+      "scaling": "open: O(T) upkeep lines, O(T log n) identifier text; sampled fallback within the candidate charge; the charge and dual-basis core work unproved",
       "evidence": "docs/proofs/index.md#vandevelo-identifier-and-fallback-audit"
     }
   ],

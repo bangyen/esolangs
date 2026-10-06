@@ -40,7 +40,13 @@ chain is at least ``d`` deep, and drops to ``d - 1`` only when the chain
 from the most popular root direction, brought up to date at every level,
 falls short of ``d`` -- that chain has Cohen--Shinkar's dimension, so the
 phase never drops below ``d(eps)`` while the density is ``eps``, which is
-what the clause bound needs.  The pool is rechosen from the remainder's nearest existing
+what the clause bound needs.  The fallback below supplies, at a dense
+level, a direction of at least half the average popularity rather than
+the most popular one; halving squares into the telescoping as ``log2(1 /
+eps)`` becoming ``1 + log2(1 / eps)``, one dimension at most where ``eps <=
+1/2`` and at least ``log2(n) - 3`` above it, so the bound becomes ``1 + 22 *
+2**n / n`` clauses on the event that every fallback call clears it.
+The pool is rechosen from the remainder's nearest existing
 differences once a fixed fraction of it has gone; below density
 ``1 / max(_CANDIDATES, n)`` the remainder is sparse and each cube is grown
 at its lowest point from that point's nearest differences instead.
@@ -52,22 +58,25 @@ its direction (at most the pool's size of them per refresh); removing a
 point updates the pool and every node holding it at the candidate count
 each; a refresh follows a fixed fraction of removals, so the pool's cost
 ``T * ln(_CANDIDATES / 2)`` in all and a node's a constant per point it
-loses; the sparse tail costs a constant per point.  Two terms sit
-outside that: the proof's exact fallback -- when no scored direction
-reaches the pigeonhole average on a dense working set, the most popular
-one is found by quotient autocorrelation: a d-dimensional chain span
-needs O(|S| + (n-d)*|S|/2**d) selection and
-O((n-d)*2**(n-d)) transform work per call.
-The original full-space transform took ``n * 2**n`` a call, none on random
-dense tables to n=14 and one at n=15 -- and the dual-basis core below,
-at most ``sqrt(2**(dim + 1))`` inputs, so under ``sqrt(n)`` per clause
-at the peel's dimensions and 2% of the build at n=15.  The per-cube peel
-this replaces rescanned the remainder for every cube, ``Theta(T**2 /
-word)``; this one measures x1.7--2.3 per added input over n=10..15 at
-0.93--1.02 of its size.  Dense tables measure 7.3--8.7 characters
-per entry at n=8..11.
-The exact calls lack an aggregate amortization bound, and the dual-basis
-core still needs a build-work bound. These measurements prove neither.
+loses; the sparse tail costs a constant per point.  The proof's fallback
+fits the same charge: when no scored direction reaches the pigeonhole
+average on a dense working set, it scores :data:`_SAMPLES` uniform pair
+differences, ``_SAMPLES * |S|`` work, as many candidates more.  Each draw
+clears half the average with probability at least ``1/2 - 2**d / |S|``
+(pairs inside the span are skipped), so a call fails with probability
+under ``(1/2 + 2**d / |S|) ** _SAMPLES``; a failure costs cover, never
+correctness.  The exact quotient transform it replaces took ``(n - d) *
+2**(n - d)`` a call, ``60 * T`` on one 15-input table.  One term sits
+outside the charge: the dual-basis core below, at most ``sqrt(2**(dim +
+1))`` inputs, so under ``sqrt(n)`` per clause at the peel's dimensions and
+2% of the build at n=15.  The per-cube peel this replaces rescanned the
+remainder for every cube, ``Theta(T**2 / word)``; this one measures
+x1.7--2.3 per added input over n=10..15 at 0.93--1.02 of its size.
+Dense tables measure 7.3--8.7 characters per entry at n=8..11.  Scoring
+work is a full pool scan, about ``700 * T`` when the first phase fails,
+plus 10--170 ``T`` per later phase, flat from n=16 to n=17.  The charge
+above is a proposal, and the core still needs a build-work bound; these
+measurements prove neither.
 
 A cube's guard needs one part per constraint, and any basis of the cube's
 dual space will do.  :func:`_constraints` builds one from short relations:
@@ -99,6 +108,7 @@ characters by ``O(T log n)``, not ``O(T)``. Removing that factor is open.
 from __future__ import annotations
 
 import heapq
+import random
 from itertools import islice
 
 from esolangs.tools.helpers import _validate_truth_table, short_name
@@ -124,6 +134,9 @@ _REFRESH = 0.25
 # bank stays under this to n=13 (about 2**(n/2) live registers), so the
 # cap costs nothing measured; a cap of 48 cost 5--8% there.
 _SCAN = 3 * _CANDIDATES
+# Pair differences drawn when no candidate reaches half the pigeonhole
+# average; each clears it with probability at least a half.
+_SAMPLES = 8
 
 
 def _bank_cap(n: int) -> int:
@@ -193,32 +206,6 @@ def _nearest(
     return out
 
 
-def _popularities(points: set[int], n: int) -> list[int]:
-    """``P[v] = |S & (S ^ v)|`` for every ``v``, one autocorrelation.
-
-    Walsh--Hadamard transform of the indicator, squared pointwise, and
-    transformed back: exact integers throughout, ``n * 2**n`` additions.
-    """
-    size = 1 << n
-    vec = [1 if x in points else 0 for x in range(size)]
-    span = 1
-    while span < size:
-        for start in range(0, size, span * 2):
-            for i in range(start, start + span):
-                low, high = vec[i], vec[i + span]
-                vec[i], vec[i + span] = low + high, low - high
-        span *= 2
-    vec = [value * value for value in vec]
-    span = 1
-    while span < size:
-        for start in range(0, size, span * 2):
-            for i in range(start, start + span):
-                low, high = vec[i], vec[i + span]
-                vec[i], vec[i + span] = low + high, low - high
-        span *= 2
-    return [value >> n for value in vec]
-
-
 class _Node:
     """A working set along a chain, with the pair sets of its candidates.
 
@@ -251,11 +238,16 @@ def _score(node: _Node, dirs: list[int]) -> None:
     for v in dirs:
         if v in node.span or v in node.cands:
             continue
-        count = 0
-        for p in pts:
-            if (p ^ v) in pts:
-                count += 1
-        node.cands[v] = count
+        node.cands[v] = _pairs(pts, v)
+
+
+def _pairs(pts: set[int], v: int) -> int:
+    """Return ``|S & (S ^ v)|``."""
+    count = 0
+    for p in pts:
+        if (p ^ v) in pts:
+            count += 1
+    return count
 
 
 def _pairset(node: _Node, v: int) -> set[int]:
@@ -274,48 +266,16 @@ def _best(node: _Node) -> tuple[int | None, int]:
     return best_v, best_c
 
 
-def _quotient_popularities(node: _Node, n: int) -> list[tuple[int, int]]:
-    """Return exact direction counts using one canonical point per span coset.
-
-    Selection costs O(|S| + (n-d)*|S|/2**d). S is span-invariant. Each pair lifts
-    to 2**d pairs; the transform uses n-d dimensions, not n.
-    """
-    pivots: dict[int, int] = {}
-    dimension = len(node.span).bit_length() - 1
-    candidates = iter(node.span)
-    while len(pivots) < dimension:
-        value = next(candidates)
-        while value and value.bit_length() - 1 in pivots:
-            value ^= pivots[value.bit_length() - 1]
-        if value:
-            pivots[value.bit_length() - 1] = value
-    free = [bit for bit in range(n) if bit not in pivots]
-    # Span invariance supplies one representative with all pivot bits zero
-    # in every coset; projecting every member repeats the same work 2**d times.
-    pivot_mask = sum(1 << bit for bit in pivots)
-    quotient = {
-        sum((point >> bit & 1) << index for index, bit in enumerate(free))
-        for point in node.points
-        if not point & pivot_mask
-    }
-    counts = _popularities(quotient, len(free))
-    return [
-        (
-            sum((value >> index & 1) << bit for index, bit in enumerate(free)),
-            count << dimension,
-        )
-        for value, count in enumerate(counts)
-        if value
-    ]
-
-
 def _ensure_popular(node: _Node, n: int) -> None:
-    """Apply the proof's fallback: score the exact most popular direction.
+    """Apply the proof's fallback: score a sampled half-average direction.
 
     Only on a dense set (``|S| >= 2**n / n``) whose best scored direction
-    misses the pigeonhole average ``|S|**2 / 2**n``, so that the chain
-    takes a direction at least as popular as Cohen--Shinkar's telescoping
-    needs.
+    misses half the pigeonhole average ``|S|**2 / 2**n``.  The difference
+    ``a ^ b`` of a uniform pair is a direction drawn by popularity, and the
+    directions under half the average hold under ``2**n * |S|**2 / 2**(n+1)``
+    of the ``|S|**2`` pairs, so each draw clears half the average with
+    probability at least a half.  :data:`_SAMPLES` draws cost what scoring
+    that many candidates does; the first to clear joins the candidates.
     """
     size = len(node.points)
     total = 1 << n
@@ -324,13 +284,19 @@ def _ensure_popular(node: _Node, n: int) -> None:
     _, best_c = _best(node)
     if best_c * total >= size * size:
         return
-    popular = _quotient_popularities(node, n)
+    pts = list(node.points)
+    # Seeded by the set, so the program is a function of the table.
+    rng = random.Random(size)
     best_v = None
-    for v, count in popular:
-        if count > best_c and v not in node.span and v not in node.cands:
+    for _ in range(_SAMPLES):
+        v = rng.choice(pts) ^ rng.choice(pts)
+        if v in node.span or v in node.cands:
+            continue
+        count = _pairs(node.points, v)
+        if count > best_c:
             best_v, best_c = v, count
     if best_v is not None:
-        _score(node, [best_v])
+        node.cands[best_v] = best_c
 
 
 def _remove(node: _Node, p: int) -> None:
@@ -481,7 +447,7 @@ class _Peel:
         """Bring the chain the proof speaks for up to date and return it.
 
         From the most popular root direction, at each level the most
-        popular candidate of the current set, with the exact fallback at
+        popular candidate of the current set, with the sampled fallback at
         each.  Levels whose direction is still the most popular are kept;
         the chain is rebuilt below the first that is not.
         """
@@ -534,8 +500,8 @@ class _Peel:
             if best is not None:
                 self.harvest(best)
                 continue
-            # 2. score one more pooled direction this phase -- the exact
-            # most popular one first, if the pool has fallen below average
+            # 2. score one more pooled direction this phase -- a sampled
+            # popular one first, if the pool has fallen below average
             _ensure_popular(root, n)
             pick = None
             for v, c in sorted(root.cands.items(), key=lambda kv: (-kv[1], kv[0])):
