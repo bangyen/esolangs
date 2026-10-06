@@ -21,14 +21,17 @@ barriers. Readings the page leaves open, each forced by a wiki example:
   up; ``◺`` fails only at ``k = 0``.  The Cat pushes one bit per column, walks
   down until that fails, then pops row 0 in input order.
 
-EOF makes ``◇`` send an empty transfer; printing an empty transfer produces no
-text. Malformed input, connections, or source
+- Input is newline-separated sets of 0 or 1 characters, other whitespace
+  ignored.  A read past the end of the current set, or at EOF, sends an
+  empty transfer.  An empty transfer into a data-mode ``◇`` prints nothing; it
+  is the page's "flag", which skips the rest of the set and moves reads to the
+  next.  The page says "switching to the next set of input" but not how sets
+  are separated; the Bitwise Cyclic Tag example needs two (program, data).
+
+Malformed input, connections, or source
 raise :class:`~esolangs.exceptions.HaltError`. ``◘`` uses the shared randomness
 hook, so callers may inject a reproducible source. A branch from another
 program is rejected with :class:`ValueError`.
-
-External bits are consecutive 0 or 1 characters, ignoring whitespace; the spec
-does not define stdin framing.
 """
 
 from __future__ import annotations
@@ -103,6 +106,7 @@ type _State = tuple[
     int,
     int,
     tuple[str, ...],
+    bool,
 ]
 
 
@@ -157,6 +161,7 @@ class _Machine:
         self._halted = False
         self._halting = False
         self._input_reads = 0
+        self._set_ended = False
 
     def _char(self, point: _Point) -> str:
         x, y = point
@@ -211,6 +216,31 @@ class _Machine:
         """Send ``value`` down the data wires and go on down the execution ones."""
         self._emit(following, pointer, self._exits(pointer, "data"), "data", value)
         self._emit(following, pointer, self._exits(pointer, "execution"), "execution")
+
+    def _read_char(self) -> str | None:
+        try:
+            char = chr(self.io.input_char())
+        except EOFError:
+            return None
+        # Counted for the snapshot: an IO without a cursor still moves on.
+        self._input_reads += 1
+        return char
+
+    def _read_bit(self) -> int | None:
+        """Return the current set's next bit, or ``None`` past its end."""
+        char = None if self._set_ended else self._read_char()
+        while char is not None and char != "\n" and char.isspace():
+            char = self._read_char()
+        if char == "\n":
+            self._set_ended = True
+        if char in (None, "\n"):
+            return None
+        if char not in "01":
+            raise HaltError(
+                "thisthat input must be a bit",
+                hint="supply input bits as 0 or 1 characters, a set per line",
+            )
+        return int(char)
 
     def _at(self, axis: Literal["row", "column"], index: int) -> _Point:
         return (self.cursor, index) if axis == "column" else (index, self.cursor)
@@ -273,6 +303,7 @@ class _Machine:
             self.io.position(),
             self._input_reads,
             self.grid,
+            self._set_ended,
         )
 
     def branching_snapshot(self) -> _State:
@@ -285,11 +316,12 @@ class _Machine:
             self.io.position(),
             self._input_reads,
             self.grid,
+            self._set_ended,
         )
 
     def branching_halted(self, state: object) -> bool:
         """Report whether a branch halted or lost every pointer."""
-        if not isinstance(state, tuple) or len(state) != 7:
+        if not isinstance(state, tuple) or len(state) != 8:
             return False
         return bool(state[3]) or not state[0]
 
@@ -301,19 +333,21 @@ class _Machine:
         self.cursor = state[2]
         self._halted = state[3]
         self._input_reads = state[5]
+        self._set_ended = state[7]
 
     def branching_successors(
         self, state: object, limit: int
     ) -> tuple[_State, ...] | None:
-        """Return every random-merge successor, or ``None`` before input."""
-        if not isinstance(state, tuple) or len(state) != 7:
+        """Return every random-merge successor, or ``None`` before input or a flag."""
+        if not isinstance(state, tuple) or len(state) != 8:
             raise TypeError("invalid thisthat branch state")
         current: _State = state
         if self.branching_halted(current):
             return (current,)
         pointers = current[0]
         if any(
-            self._char(pointer.position) == "◇" and pointer.channel == "execution"
+            self._char(pointer.position) == "◇"
+            and (pointer.channel == "execution" or pointer.value is None)
             for pointer in pointers
         ):
             return None
@@ -487,21 +521,14 @@ class _Machine:
                 )
         elif cell == "◇":
             if pointer.channel == "execution":
-                try:
-                    bit = self.io.input_bit()
-                except EOFError:
-                    value = None
-                except ValueError:
-                    raise HaltError(
-                        "thisthat input must be a bit",
-                        hint="supply input bits as 0 or 1 characters",
-                    ) from None
-                else:
-                    value = bit
-                    self._input_reads += 1
-                self._send(following, pointer, value)
+                self._send(following, pointer, self._read_bit())
             elif pointer.value is not None:
                 self.io.print_num(pointer.value)
+            elif self._set_ended:
+                self._set_ended = False
+            else:
+                while self._read_char() not in (None, "\n"):
+                    pass
         elif cell in "◧⬓◨⬒":
             axis: Literal["row", "column"] = "column" if cell in "⬓⬒" else "row"
             operation = self._tail if cell in "◨⬒" else self._head
