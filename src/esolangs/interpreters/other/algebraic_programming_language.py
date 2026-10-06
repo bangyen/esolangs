@@ -25,7 +25,11 @@ Decisions for gaps in the wiki spec (documented):
   and consume input in an order the spec's own worked example (``a + b +
   d`` then ``c + e + b`` asking for ``a, b, d, c, e``) contradicts.
   Bindings persist across lines, which is what makes that example ask
-  for ``b`` once.
+  for ``b`` once.  Only executed lines read: an assignment's right side
+  naming an unbound variable is an error ("that variable won't be input"
+  says nothing of the others).
+- **``$`` binds like unary ``-``**, so ``$y * 2`` is ``($y) * 2``: the
+  wiki's own ``CEIL`` writes ``$(n - n % 1 + 1)``.
 - **Truthiness and the value of a short-circuit.**  The wiki pins only
   the false case ("false -> 0 or 0.0").  Zero is false and every other
   number is true; ``&`` returns its right operand when the left is

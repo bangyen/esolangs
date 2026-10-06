@@ -234,7 +234,8 @@ def apl_expr(rng: random.Random, depth: int = 0, names: str = "abc") -> str:
     """Return an expression over numbers, variables, operators and calls."""
     roll = rng.random()
     if depth >= 3 or roll < 0.35:
-        return rng.choice(("0", "1", "2", "3", "7", "10", "0.5", "2.5", *names))
+        atoms: list[str] = ["0", "1", "2", "3", "7", "10", "0.5", "2.5", *names]
+        return rng.choice(atoms)
     if roll < 0.75:
         op = rng.choice(("+", "-", "*", "/", "%", "**", "&", "|", "+", "*", " - "))
         left = apl_expr(rng, depth + 1, names)

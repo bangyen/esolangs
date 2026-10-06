@@ -1124,6 +1124,7 @@ SPECS["bit~"] = Spec(
     ref_outcome=blind_outcome,
     valid=lambda program: balanced(program.translate(str.maketrans("{}", "[]"))),
 )
+SPECS.update(__import__("differential_blind_c1").SPECS)
 
 
 def _env_name(language: str) -> str:
