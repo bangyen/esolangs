@@ -64,7 +64,7 @@ def test_program_uses_the_80_by_25_torus() -> None:
 
 def test_oversized_program_is_rejected() -> None:
     with pytest.raises(ValueError, match="80x25"):
-        _Machine([" " * 81], IO())
+        _Machine([" " * 80 + "@"], IO())
     with pytest.raises(ValueError, match="80x25"):
         _Machine([" "] * 26, IO())
 
