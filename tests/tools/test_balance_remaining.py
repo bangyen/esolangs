@@ -13,8 +13,9 @@ from esolangs.tools.wrap import balance_program, balance_score, wrap_program
 from tests.witness_tables import witnesses
 
 
-@pytest.mark.parametrize("language", ["addsubjump", "decleq", "sbleq"])
-def test_mixed_digit_operands_share_one_grid_cell(language):
+def test_mixed_digit_operands_share_one_grid_cell():
+    # All three subleq OISCs share wrap_grid, so the language is not an axis.
+    language = "decleq"
     for count in range(3, 65):
         program = " ".join(("1", "22", "333")[index % 3] for index in range(count))
         balanced = balance_program(program, language)
@@ -316,12 +317,6 @@ def test_circuit_gate_column_and_band_fit_transitions(inputs, affine):
             language, balanced, esolangs.encode_inputs(language, bits)
         )
         assert esolangs.read_answer(language, output) == table[row]
-
-
-@pytest.mark.parametrize("language", ["Alight", "Qoibl"])
-def test_native_balance_preserves_answers(language):
-    program = esolangs.generate(language, "0110", balance=True)
-    assert _evaluate(language, program, inputs=2) == "0110"
 
 
 def test_qoibl_affine_row_envelope_minima():

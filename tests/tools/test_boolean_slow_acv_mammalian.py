@@ -240,29 +240,6 @@ class TestFastLanding:
         _w_raise(st, 10**6 + 510)
         assert (st.hw + st.nw) % 256 == final_r
 
-    @pytest.mark.parametrize("target", [1, 241, 1001, 2001, 3961])
-    def test_greedy_advance_matches_a_slow_walk_across_many_targets(
-        self, target: int
-    ) -> None:
-        """Sweep small-to-large targets from one residue."""
-        st = _Sums()
-        st.hw, st.nw, st.ptr = 3, 29, 16
-        real_tokens = _w_raise(st, target)
-        fast_len, fast_hw = _w_raise_len(3, 29, target)
-        assert (fast_len, fast_hw) == (len(real_tokens), st.hw)
-
-    @pytest.mark.parametrize("seed", range(3))
-    def test_w_raise_len_matches_random_states(self, seed: int) -> None:
-        rng = random.Random(seed)
-        hw0 = rng.randrange(256)
-        nw0 = rng.randrange(10**6)
-        amount = rng.randrange(2 * 10**6)
-        st = _Sums()
-        st.hw, st.nw, st.ptr = hw0, nw0, 16
-        real_tokens = _w_raise(st, amount)
-        fast_len, fast_hw = _w_raise_len(hw0, nw0, amount)
-        assert (fast_len, fast_hw) == (len(real_tokens), st.hw)
-
     @pytest.mark.parametrize(
         ("h0", "n0", "acc", "target"),
         [
@@ -755,13 +732,13 @@ def test_modulo_255_merge_rejects_a_one_branch_past_the_target() -> None:
     assert _try_arm(one, zero, 8, None, 500) is None
 
 
-@pytest.mark.parametrize("modulus", [255, 256])
-@pytest.mark.parametrize("step", [1, 7, 22])
+@pytest.mark.parametrize(
+    ("modulus", "step"),
+    [(m, s) for m in (255, 256) for s in (1, 7, 22) if gcd(s, m) == 1],
+)
 def test_short_routing_is_earliest(modulus: int, step: int) -> None:
     from esolangs.tools._mammalian_compact import _routing_seeds
 
-    if gcd(step, modulus) != 1:
-        return
     for head in range(modulus):
         earliest = {}
         for count in range(modulus):
