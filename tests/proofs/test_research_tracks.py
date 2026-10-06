@@ -13,7 +13,7 @@ from esolangs.interpreters.other.fractran import run
 from esolangs.interpreters.tape_based.brainfuck import _Machine
 from esolangs.tools.b_tapemark import _Builder
 from esolangs.tools.brainif import _brainif_dag, _residual_layers
-from esolangs.tools.circuit_diagram import _LATTICE, _h_size
+from esolangs.tools.circuit_diagram.hlayout import _LATTICE, _h_size
 from tests.proofs._research_dag import read_prune
 
 
