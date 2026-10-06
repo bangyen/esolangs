@@ -10,51 +10,12 @@ import pytest
 import esolangs
 from esolangs.cli import main
 from esolangs.cli_io import _write_output
-from tests.cli_support import call_both
+from tests.cli_support import _failure, _refused, call_both
 from tests.test_cli import _FakeStdin, _program, call_main
 
 
 class TestMessagesNameTheThingThatIsWrong:
     """Small, and each one sent a reader to the wrong word."""
-
-    def test_a_repeated_width_quotes_its_value(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """It reported `first was '--width'`, which the reader already knew."""
-        with pytest.raises(SystemExit) as exc:
-            call_main(
-                ["generate", "--width", "77", "--width", "33", "brainfuck", "0110"],
-                capsys,
-            )
-        assert exc.value.code == 2
-        assert "first was '77'" in capsys.readouterr().err
-
-    def test_a_missing_argument_is_named(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """The synopsis alone left the reader to diff it against what they typed."""
-        with pytest.raises(SystemExit) as exc:
-            call_main(["generate", "brainfuck"], capsys)
-        assert exc.value.code == 2
-        assert "missing <truth-table>" in capsys.readouterr().err
-
-    def test_swapped_arguments_are_recognized_as_swapped(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """`unknown language: 0110` is true and does not help."""
-        with pytest.raises(SystemExit) as exc:
-            call_main(["generate", "0110", "brainfuck"], capsys)
-        assert exc.value.code == 2
-        assert "looks like a truth table" in capsys.readouterr().err
-
-    def test_a_misspelled_option_is_suggested(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """Language names had suggestions; the flags beside them had none."""
-        with pytest.raises(SystemExit) as exc:
-            call_main(["generate", "--wdith", "40", "brainfuck", "0110"], capsys)
-        assert exc.value.code == 2
-        assert "did you mean --width" in capsys.readouterr().err
 
     def test_encode_points_at_a_flag_not_a_python_call(
         self, capsys: pytest.CaptureFixture[str]
@@ -79,15 +40,6 @@ class TestMessagesNameTheThingThatIsWrong:
 class TestTheHintsStayQuietWhenTheyDoNotApply:
     """Each hint added this round rewrites one message and no others."""
 
-    def test_an_unknown_language_is_not_called_a_swapped_argument(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """The hint fires on a power-of-two run of 0s and 1s, not on any miss."""
-        with pytest.raises(SystemExit) as exc:
-            call_main(["generate", "Nonexistent", "0110"], capsys)
-        assert exc.value.code == 2
-        assert "looks like a truth table" not in capsys.readouterr().err
-
     def test_encode_leaves_an_unrelated_error_alone(
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
@@ -98,33 +50,6 @@ class TestTheHintsStayQuietWhenTheyDoNotApply:
         err = capsys.readouterr().err
         assert "unknown language" in err
         assert "generate --bits" not in err
-
-    def test_read_answer_reports_an_unknown_language(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """The name is resolved before anything is read from stdin."""
-        with pytest.raises(SystemExit) as exc:
-            call_main(["read-answer", "Nonexistent"], capsys, stdin="1")
-        assert exc.value.code == 2
-        assert "unknown language" in capsys.readouterr().err
-
-    def test_read_answer_reports_an_unreadable_output(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """Rather than guessing a bit out of text that carries none."""
-        with pytest.raises(SystemExit) as exc:
-            call_main(["read-answer", "brainfuck"], capsys, stdin="no digits here!")
-        assert exc.value.code == 2
-        assert "no answer this could read" in capsys.readouterr().err
-
-    def test_a_non_table_run_of_digits_is_not_called_a_swap(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """'011' is 0s and 1s but no table's length, so it is just a bad name."""
-        with pytest.raises(SystemExit) as exc:
-            call_main(["generate", "011", "brainfuck"], capsys)
-        assert exc.value.code == 2
-        assert "looks like a truth table" not in capsys.readouterr().err
 
 
 class TestTheShapeWarningFiresOnlyWhenItShould:
@@ -206,15 +131,6 @@ class TestAMultiWordNameSuggestsQuoting:
         assert "quote" in err.lower()
         assert "A Painter Ant" in err
 
-    def test_a_genuine_extra_argument_still_says_so(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """The hint must not swallow a real mistake."""
-        with pytest.raises(SystemExit) as exc:
-            call_main(["describe", "brainfuck", "zzz"], capsys)
-        assert exc.value.code == 2
-        assert "unexpected argument" in capsys.readouterr().err
-
 
 class TestModulousSaysWhatWentWrong:
     """Four halts raised ``HaltError`` with the empty string as a message."""
@@ -280,15 +196,6 @@ class TestSmallerReportsFromRoundFifteen:
 
 class TestTheSmallInconsistencies:
     """Each one was a place this CLI did not do what it does everywhere else."""
-
-    def test_an_unknown_subcommand_is_suggested(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """Languages and options both suggest; the commands did not."""
-        with pytest.raises(SystemExit) as exc:
-            call_main(["lst"], capsys)
-        assert exc.value.code == 2
-        assert "did you mean list" in capsys.readouterr().err
 
     def test_a_repeated_isolated_is_refused(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
@@ -382,22 +289,6 @@ class TestTheSmallInconsistencies:
         assert "no breakpoint matched" not in err
 
 
-class TestRoundThreeFixes:
-    """What the third blind pass hit."""
-
-    def test_a_negative_watch_cell_is_refused(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """It printed cell 0's history under the name -1: a wrong answer."""
-        with pytest.raises(SystemExit) as exc:
-            call_main(
-                ["debug", "--watch-cell", "-1", "brainfuck", _program(tmp_path, "+++")],
-                capsys,
-            )
-        assert exc.value.code == 2
-        assert "must not be negative" in capsys.readouterr().err
-
-
 # 1.8s over 45 tests: drives the CLI as a subprocess.
 @pytest.mark.medium
 class TestRoundSixQol:
@@ -422,14 +313,6 @@ class TestRoundSixQol:
             got += call_main(["run", "Taglate", str(path)], capsys, stdin=stdin)[-1:]
         assert got == "10010110"
 
-    def test_encode_refuses_a_language_that_reads_nothing(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        with pytest.raises(SystemExit) as exc:
-            call_main(["encode", "123", "01"], capsys)
-        assert exc.value.code == 2
-        assert "reads no stdin" in capsys.readouterr().err
-
     def test_version_is_accepted_after_a_subcommand(
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
@@ -438,17 +321,6 @@ class TestRoundSixQol:
             call_main(["list", "--version"], capsys)
         assert exc.value.code == 0
         assert esolangs.__version__ in capsys.readouterr().out
-
-    def test_a_repeated_option_is_refused(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """Last-wins quietly emitted the program for the wrong input row."""
-        with pytest.raises(SystemExit) as exc:
-            call_main(
-                ["generate", "--bits", "10", "--bits", "01", "Minifuck", "0110"], capsys
-            )
-        assert exc.value.code == 2
-        assert "more than once" in capsys.readouterr().err
 
     def test_debug_always_prints_its_stopped_field(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
@@ -463,14 +335,6 @@ class TestRoundSixQol:
         out = capsys.readouterr().out
         assert "stopped: raised" in out
         assert "raised: InputExhaustedError" in out
-
-    def test_encode_refuses_a_non_binary_bit_string(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        with pytest.raises(SystemExit) as exc:
-            call_main(["encode", "brainfuck", "2x"], capsys)
-        assert exc.value.code == 2
-        assert "0s and 1s" in capsys.readouterr().err
 
     def test_a_program_that_prints_nothing_says_so_on_a_terminal(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
@@ -498,24 +362,6 @@ class TestRoundSixQol:
         empty = tmp_path / "empty.txt"
         empty.write_text("")
         assert call_main(["run", "brainfuck", str(empty)], capsys) == ""
-
-    def test_an_empty_break_on_output_is_refused(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """Every output contains '', so it fired before anything ran."""
-        with pytest.raises(SystemExit) as exc:
-            call_main(
-                [
-                    "debug",
-                    "--break-on-output",
-                    "",
-                    "brainfuck",
-                    _program(tmp_path, "+++"),
-                ],
-                capsys,
-            )
-        assert exc.value.code == 2
-        assert "needs some text" in capsys.readouterr().err
 
 
 class TestTheLastResortPaths:
@@ -557,14 +403,6 @@ class TestTheLastResortPaths:
         with patch.object(sys, "stdout", _Narrow()):
             _write_output("\ud800")
         assert written, "nothing reached the byte stream"
-
-
-def _failure(args: list[str], capsys: pytest.CaptureFixture[str], code: int = 2):
-    with pytest.raises(SystemExit) as caught:
-        call_both(args, capsys)
-    assert caught.value.code == code
-    captured = capsys.readouterr()
-    return captured.out, captured.err
 
 
 @pytest.mark.parametrize(
@@ -701,3 +539,80 @@ def test_template_rewording_keeps_notes_and_quotes_language():
         "unfilled slots; fill them with: esolangs generate --bits <bits> "
         '"A Painter Ant" <table>\nhint: keep the original template'
     )
+
+
+#: Commands refused with exit code 2, and what stderr must say.
+#: ``prog:SRC`` is a file holding SRC; a third item is stdin.
+_REFUSALS = {
+    "a_repeated_width_quotes_its_value": (
+        "generate --width 77 --width 33 brainfuck 0110",
+        "first was '77'",
+    ),
+    "a_missing_argument_is_named": ("generate brainfuck", "missing <truth-table>"),
+    "swapped_arguments_are_recognized_as_swapped": (
+        "generate 0110 brainfuck",
+        "looks like a truth table",
+    ),
+    "a_misspelled_option_is_suggested": (
+        "generate --wdith 40 brainfuck 0110",
+        "did you mean --width",
+    ),
+    "read_answer_reports_an_unknown_language": (
+        "read-answer Nonexistent",
+        "unknown language",
+        "1",
+    ),
+    "read_answer_reports_an_unreadable_output": (
+        "read-answer brainfuck",
+        "no answer this could read",
+        "no digits here!",
+    ),
+    "a_genuine_extra_argument_still_says_so": (
+        "describe brainfuck zzz",
+        "unexpected argument",
+    ),
+    "an_unknown_subcommand_is_suggested": ("lst", "did you mean list"),
+    "a_negative_watch_cell_is_refused": (
+        "debug --watch-cell -1 brainfuck prog:+++",
+        "must not be negative",
+    ),
+    "encode_refuses_a_language_that_reads_nothing": ("encode 123 01", "reads no stdin"),
+    "a_repeated_option_is_refused": (
+        "generate --bits 10 --bits 01 Minifuck 0110",
+        "more than once",
+    ),
+    "encode_refuses_a_non_binary_bit_string": ("encode brainfuck 2x", "0s and 1s"),
+    "an_empty_break_on_output_is_refused": (
+        "debug --break-on-output '' brainfuck prog:+++",
+        "needs some text",
+    ),
+}
+
+
+@pytest.mark.parametrize("case", _REFUSALS.values(), ids=list(_REFUSALS))
+def test_a_bad_command_exits_2_and_says_why(
+    case: tuple[str, ...], tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    command, message, *stdin = case
+    assert message in _refused(command, tmp_path, capsys, *stdin)
+
+
+#: Refused, but these hints must stay quiet.
+_QUIET = {
+    "an_unknown_language_is_not_called_a_swapped_argument": (
+        "generate Nonexistent 0110",
+        "looks like a truth table",
+    ),
+    "a_non_table_run_of_digits_is_not_called_a_swap": (
+        "generate 011 brainfuck",
+        "looks like a truth table",
+    ),
+}
+
+
+@pytest.mark.parametrize("case", _QUIET.values(), ids=list(_QUIET))
+def test_a_bad_command_exits_2_without_the_hint(
+    case: tuple[str, ...], tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    command, message, *stdin = case
+    assert message not in _refused(command, tmp_path, capsys, *stdin)

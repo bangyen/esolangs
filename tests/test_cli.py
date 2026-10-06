@@ -9,6 +9,7 @@ import pytest
 
 import esolangs
 from esolangs.cli import main
+from tests.cli_support import _FakeStdin, _program, _refused
 
 # A 3-input parity table.  Parity depends on every input, so the program is
 # long enough to have something to wrap -- an echo-one-input table folds
@@ -23,17 +24,6 @@ def run_cli(*args: str, stdin: str = "") -> subprocess.CompletedProcess[str]:
         text=True,
         input=stdin,
     )
-
-
-class _FakeStdin:
-    def __init__(self, data: str) -> None:
-        self.data = data
-
-    def isatty(self) -> bool:
-        return False
-
-    def read(self) -> str:
-        return self.data
 
 
 def call_main(
@@ -83,23 +73,6 @@ class TestInProcess:
         image = esolangs.Raster.from_png(out)
         assert esolangs.run("Piet", image, "1\n0\n") == "1"
 
-    def test_generate_bits_refuses_a_raster(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """A raster program reads its bits from stdin, so ``--bits`` fills nothing."""
-        with pytest.raises(SystemExit) as exc:
-            call_main(["generate", "Piet", "0110", "--bits", "01"], capsys)
-        assert exc.value.code == 2
-        assert "raster programs read bits" in capsys.readouterr().err
-
-    def test_generate_unknown_language(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        with pytest.raises(SystemExit) as exc:
-            call_main(["generate", "NoSuchLanguage", "01"], capsys)
-        assert exc.value.code == 2
-        assert "unknown language" in capsys.readouterr().err
-
     def test_generate_missing_args(self, capsys: pytest.CaptureFixture[str]) -> None:
         with pytest.raises(SystemExit) as exc:
             call_main(["generate", "Sophie"], capsys)
@@ -115,12 +88,6 @@ class TestInProcess:
         out = call_main(["run", "Circlefuck", str(program)], capsys, stdin="10")
         assert out == "0"
 
-    def test_run_missing_file(self, capsys: pytest.CaptureFixture[str]) -> None:
-        with pytest.raises(SystemExit) as exc:
-            call_main(["run", "Sophie", "/no/such/file"], capsys)
-        assert exc.value.code == 2
-        assert "cannot read" in capsys.readouterr().err
-
     def test_run_missing_args(self, capsys: pytest.CaptureFixture[str]) -> None:
         with pytest.raises(SystemExit) as exc:
             call_main(["run", "Sophie"], capsys)
@@ -135,12 +102,6 @@ class TestInProcess:
             call_main(["run", "NoSuchLanguage", str(program)], capsys)
         assert exc.value.code == 2
         assert "unknown language" in capsys.readouterr().err
-
-    def test_unknown_command(self, capsys: pytest.CaptureFixture[str]) -> None:
-        with pytest.raises(SystemExit) as exc:
-            call_main(["no.such.command"], capsys)
-        assert exc.value.code == 2
-        assert "unknown command" in capsys.readouterr().err
 
     def test_no_arguments(self, capsys: pytest.CaptureFixture[str]) -> None:
         with pytest.raises(SystemExit) as exc:
@@ -208,36 +169,10 @@ class TestWidthOption:
         out = call_main(["generate", "--width", "brainfuck", TABLE3], capsys)
         assert esolangs.run("brainfuck", out, "011") == "0"
 
-    def test_width_rejects_a_non_integer_after_equals(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """``--width=x`` has no integer to parse, so it is refused."""
-        with pytest.raises(SystemExit) as exc:
-            call_main(["generate", "brainfuck", TABLE3, "--width=x"], capsys)
-        assert exc.value.code == 2
-        assert "must be an integer" in capsys.readouterr().err
-
-    @pytest.mark.parametrize("value", ["0", "-5"])
-    def test_width_rejects_a_non_positive_value(
-        self, value: str, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """A width of zero or less bounds nothing."""
-        with pytest.raises(SystemExit) as exc:
-            call_main(["generate", "brainfuck", TABLE3, "--width", value], capsys)
-        assert exc.value.code == 2
-        assert "must be positive" in capsys.readouterr().err
-
 
 # ``+.+.+.`` after an 8x8 loop prints A, B, C -- three separate writes, so a
 # break on the second one has a run to stop in the middle of.
 _ABC = "++++++++[>++++++++<-]>+.+.+."
-
-
-def _program(tmp_path: Path, source: str) -> str:
-    """Write ``source`` to a file and return its path."""
-    path = tmp_path / "prog.b"
-    path.write_text(source)
-    return str(path)
 
 
 class TestDebugCommand:
@@ -314,48 +249,6 @@ class TestDebugCommand:
         assert "0 characters supplied" in out
         assert "halted: no" in out
 
-    def test_unknown_language(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        with pytest.raises(SystemExit) as exc:
-            call_main(["debug", "NoSuchLanguage", _program(tmp_path, "+")], capsys)
-        assert exc.value.code == 2
-        assert "unknown language" in capsys.readouterr().err
-
-    def test_missing_file(self, capsys: pytest.CaptureFixture[str]) -> None:
-        with pytest.raises(SystemExit) as exc:
-            call_main(["debug", "brainfuck", "/no/such/file"], capsys)
-        assert exc.value.code == 2
-        assert "cannot read" in capsys.readouterr().err
-
-    def test_missing_args(self, capsys: pytest.CaptureFixture[str]) -> None:
-        with pytest.raises(SystemExit) as exc:
-            call_main(["debug", "brainfuck"], capsys)
-        assert exc.value.code == 2
-        assert "usage: esolangs debug" in capsys.readouterr().err
-
-    @pytest.mark.parametrize("option", ["--steps", "--watch-cell"])
-    def test_a_non_integer_option_is_refused(
-        self, option: str, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        with pytest.raises(SystemExit) as exc:
-            call_main(
-                ["debug", option, "x", "brainfuck", _program(tmp_path, "+")], capsys
-            )
-        assert exc.value.code == 2
-        assert "must be an integer" in capsys.readouterr().err
-
-    def test_an_option_with_no_value_is_refused(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """The trailing option has nothing to consume, so it is an error
-        rather than a silently missing bound.
-        """
-        with pytest.raises(SystemExit) as exc:
-            call_main(["debug", "brainfuck", "prog.b", "--steps"], capsys)
-        assert exc.value.code == 2
-        assert "--steps needs a value" in capsys.readouterr().err
-
 
 class TestBreakpointOptions:
     """``--break-at`` and ``--break-on-cell`` on the batch debugger."""
@@ -386,51 +279,6 @@ class TestBreakpointOptions:
             capsys,
         )
         assert "cell 0: [1, 2, 3]" in out
-
-    @pytest.mark.parametrize("value", ["3", "x=1", "0=y", ""])
-    def test_a_malformed_cell_breakpoint_is_refused(
-        self, value: str, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        with pytest.raises(SystemExit) as exc:
-            call_main(
-                [
-                    "debug",
-                    f"--break-on-cell={value}",
-                    "brainfuck",
-                    _program(tmp_path, "+"),
-                ],
-                capsys,
-            )
-        assert exc.value.code == 2
-        assert "INDEX=VALUE" in capsys.readouterr().err
-
-    def test_a_non_integer_break_at_is_refused(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        with pytest.raises(SystemExit) as exc:
-            call_main(
-                ["debug", "--break-at", "x", "brainfuck", _program(tmp_path, "+")],
-                capsys,
-            )
-        assert exc.value.code == 2
-        assert "must be an integer" in capsys.readouterr().err
-
-    def test_a_negative_cell_breakpoint_index_is_refused(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """It reached ``check_whole`` and came out as an "internal error"."""
-        with pytest.raises(SystemExit) as exc:
-            call_main(
-                [
-                    "debug",
-                    "--break-on-cell=-1=3",
-                    "brainfuck",
-                    _program(tmp_path, "+"),
-                ],
-                capsys,
-            )
-        assert exc.value.code == 2
-        assert "index must not be negative" in capsys.readouterr().err
 
 
 class TestTuiFlag:
@@ -539,42 +387,6 @@ class TestTuiFlag:
         assert screen.call_args.kwargs["watch"] == 2
 
 
-class TestTuiNeedsATerminal:
-    """``--tui`` is refused where there are no keys to read."""
-
-    def test_a_piped_stream_is_refused(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """Keys and program input cannot share one descriptor."""
-        with pytest.raises(SystemExit) as exc:
-            call_main(
-                ["debug", "--tui", "brainfuck", _program(tmp_path, ",.")],
-                capsys,
-                stdin="Z",
-            )
-        assert exc.value.code == 2
-        assert "terminal" in capsys.readouterr().err
-
-    def test_stdin_does_not_buy_a_terminal(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """The exemption that used to be here was the bug."""
-        with pytest.raises(SystemExit) as exc:
-            call_main(
-                [
-                    "debug",
-                    "--tui",
-                    "--stdin",
-                    "1",
-                    "brainfuck",
-                    _program(tmp_path, ",."),
-                ],
-                capsys,
-            )
-        assert exc.value.code == 2
-        assert "terminal" in capsys.readouterr().err
-
-
 class TestHelp:
     """Every command documents itself, because `--help` is what gets typed."""
 
@@ -613,17 +425,6 @@ class TestHelp:
 class TestArgumentHygiene:
     """A mistyped command is reported where the mistake is."""
 
-    def test_an_unknown_option_is_named(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """It used to be kept as a positional and blamed on the language."""
-        with pytest.raises(SystemExit) as exc:
-            call_main(
-                ["debug", "--frobnicate", "brainfuck", _program(tmp_path, "+")], capsys
-            )
-        assert exc.value.code == 2
-        assert "unknown option: --frobnicate" in capsys.readouterr().err
-
     def test_a_file_named_like_an_option_is_still_reachable(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
@@ -632,15 +433,6 @@ class TestArgumentHygiene:
         path.write_text("+.")
         out = call_main(["run", "--", "brainfuck", str(path)], capsys)
         assert out == "\x01"
-
-    def test_an_extra_argument_is_refused(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """It used to be dropped, making a wrong command a wrong answer."""
-        with pytest.raises(SystemExit) as exc:
-            call_main(["generate", "brainfuck", TABLE3, "extra"], capsys)
-        assert exc.value.code == 2
-        assert "unexpected argument: 'extra'" in capsys.readouterr().err
 
     def test_a_bare_width_explains_the_argument_it_shifted(
         self, capsys: pytest.CaptureFixture[str]
@@ -764,3 +556,88 @@ class TestGenerateArgumentTypes:
         """The CLI parses its width; a Python caller can pass anything."""
         with pytest.raises(ValueError, match="width must be an integer"):
             esolangs.generate("brainfuck", "0110", width="80")  # type: ignore[arg-type]
+
+
+#: Commands refused with exit code 2, and what stderr must say.
+#: ``prog:SRC`` is a file holding SRC; a third item is stdin.
+_REFUSALS = {
+    "generate_bits_refuses_a_raster": (
+        "generate Piet 0110 --bits 01",
+        "raster programs read bits",
+    ),
+    "generate_unknown_language": ("generate NoSuchLanguage 01", "unknown language"),
+    "run_missing_file": ("run Sophie /no/such/file", "cannot read"),
+    "unknown_command": ("no.such.command", "unknown command"),
+    "width_rejects_a_non_integer_after_equals": (
+        f"generate brainfuck {TABLE3} --width=x",
+        "must be an integer",
+    ),
+    "width_rejects_a_non_positive_value-0": (
+        f"generate brainfuck {TABLE3} --width 0",
+        "must be positive",
+    ),
+    "width_rejects_a_non_positive_value--5": (
+        f"generate brainfuck {TABLE3} --width -5",
+        "must be positive",
+    ),
+    "unknown_language": ("debug NoSuchLanguage prog:+", "unknown language"),
+    "missing_file": ("debug brainfuck /no/such/file", "cannot read"),
+    "missing_args": ("debug brainfuck", "usage: esolangs debug"),
+    "a_non_integer_option_is_refused---steps": (
+        "debug --steps x brainfuck prog:+",
+        "must be an integer",
+    ),
+    "a_non_integer_option_is_refused---watch-cell": (
+        "debug --watch-cell x brainfuck prog:+",
+        "must be an integer",
+    ),
+    "an_option_with_no_value_is_refused": (
+        "debug brainfuck prog.b --steps",
+        "--steps needs a value",
+    ),
+    "a_malformed_cell_breakpoint_is_refused-3": (
+        "debug --break-on-cell=3 brainfuck prog:+",
+        "INDEX=VALUE",
+    ),
+    "a_malformed_cell_breakpoint_is_refused-x=1": (
+        "debug --break-on-cell=x=1 brainfuck prog:+",
+        "INDEX=VALUE",
+    ),
+    "a_malformed_cell_breakpoint_is_refused-0=y": (
+        "debug --break-on-cell=0=y brainfuck prog:+",
+        "INDEX=VALUE",
+    ),
+    "a_malformed_cell_breakpoint_is_refused-empty": (
+        "debug --break-on-cell= brainfuck prog:+",
+        "INDEX=VALUE",
+    ),
+    "a_non_integer_break_at_is_refused": (
+        "debug --break-at x brainfuck prog:+",
+        "must be an integer",
+    ),
+    "a_negative_cell_breakpoint_index_is_refused": (
+        "debug --break-on-cell=-1=3 brainfuck prog:+",
+        "index must not be negative",
+    ),
+    "a_piped_stream_is_refused": ("debug --tui brainfuck prog:,.", "terminal", "Z"),
+    "stdin_does_not_buy_a_terminal": (
+        "debug --tui --stdin 1 brainfuck prog:,.",
+        "terminal",
+    ),
+    "an_unknown_option_is_named": (
+        "debug --frobnicate brainfuck prog:+",
+        "unknown option: --frobnicate",
+    ),
+    "an_extra_argument_is_refused": (
+        f"generate brainfuck {TABLE3} extra",
+        "unexpected argument: 'extra'",
+    ),
+}
+
+
+@pytest.mark.parametrize("case", _REFUSALS.values(), ids=list(_REFUSALS))
+def test_a_bad_command_exits_2_and_says_why(
+    case: tuple[str, ...], tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    command, message, *stdin = case
+    assert message in _refused(command, tmp_path, capsys, *stdin)
