@@ -353,12 +353,6 @@ def _register() -> None:
             expected="0 ",
             split=True,
         ),
-        "befunge-98": _reader(
-            b.befunge_98,
-            "grid_based.befunge_98",
-            expected="0 ",
-            split=True,
-        ),
         "bfstack": _reader(
             b.bfstack,
             "stack_based.bfstack",

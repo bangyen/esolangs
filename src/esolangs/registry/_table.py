@@ -490,13 +490,6 @@ LANGUAGES: dict[str, Language] = {
         id="befunge",
         split=True,
     ),
-    "Befunge-98": Language(
-        "Befunge-98",
-        interpreter="grid_based.befunge_98",
-        boolean=_boolean.befunge_98,
-        id="befunge_98",
-        split=True,
-    ),
     "FALSE": Language(
         "FALSE",
         "stack_based.false",
