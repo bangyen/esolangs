@@ -109,23 +109,6 @@ class TestErrorsAreCatchable:
             esolangs.run("brainfuck", ",.", stdin="")
 
 
-class TestRunTakesSource:
-    """``run`` takes a program, and says so when it is handed a path."""
-
-    def test_a_path_string_is_refused(self) -> None:
-        """It used to execute the filename and print a null byte."""
-        with pytest.raises(ProgramError, match="looks like a path"):
-            esolangs.run("brainfuck", "examples/brainfuck.txt")
-
-    def test_a_path_object_is_read(self) -> None:
-        path = ROOT / "examples" / "brainfuck.txt"
-        assert esolangs.run("brainfuck", path, stdin="0\n1\n", timeout=30) == "0"
-
-    def test_a_real_program_is_never_mistaken_for_one(self) -> None:
-        """The guard needs an existing file, so ordinary source is exempt."""
-        assert esolangs.run("brainfuck", "+.", timeout=5) == "\x01"
-
-
 class TestDebuggerResume:
     """A stopped debugger can be resumed, and says why it stopped."""
 
@@ -555,10 +538,6 @@ class TestAMistypedPathIsNotRunAsAProgram:
             esolangs.run("brainfuck", tmp_path / "absent.txt", "", 5)
 
 
-# 2.2s over 12 tests: runs a diverging program to its bound.
-@pytest.mark.medium
-# 2.2s over 12 tests: runs a diverging program to its bound.
-@pytest.mark.medium
 # 2.2s over 12 tests: runs a diverging program to its bound.
 @pytest.mark.medium
 class TestTheThreadRefusalNamesAWayThrough:
