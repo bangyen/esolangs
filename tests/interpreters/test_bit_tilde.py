@@ -30,20 +30,34 @@ def run_scripted(code: str, stdin: str = "") -> str:
     return io_obj.getvalue()
 
 
+_BIT_TILDE_RESULTS = {
+    # Cell 0 is the MSB, so one toggle prints 0x80.
+    "single_toggle_prints_most_significant_bit": ("~(", "\x80"),
+    # ``<`` at cell 0 is a no-op, so the toggle hits the MSB.
+    "left_pointer_clamps_at_cell_zero": ("<<~(", "\x80"),
+    # After seven ``>`` the pool holds 14 cells; a toggle at the 8th cell and a print
+    # at the same spot use only the available window.
+    "right_grows_the_pool": (">>>>>>>~(", "@"),
+    # A body that builds and prints 'A' leaves bit 0 at zero so ``}`` falls through;
+    # the loop runs exactly once.
+    "loop_runs_while_the_bit_is_nonzero": ("~{~>~>>>>>>~<<<<<<<(}", "A"),
+    # A counter in cell 1 lets the outer loop's body run twice: the first pass skips
+    # the sentinel flip (bit 1 was 0) and loops, the second clears bit 0 and falls
+    # through. Both passes print, and the second print sees the counter bit set, so it
+    # is 192.
+    "loop_repeats_until_the_bit_clears": ("~><{(>{<~>~}~<}", "\x80\xc0"),
+    # the outer `{` at bit 0 skips the nested brackets to the matching
+    # outer `}`, printing the untouched (all-zero) pool
+    "nested_loops_match_by_depth": ("{{~~}~}(~", "\x00"),
+}
+
+
 class TestBitTilde:
-    def test_single_toggle_prints_most_significant_bit(self) -> None:
-        """Cell 0 is the MSB, so one toggle prints 0x80."""
-        assert run_and_capture("~(") == "\x80"
-
-    def test_left_pointer_clamps_at_cell_zero(self) -> None:
-        """``<`` at cell 0 is a no-op, so the toggle hits the MSB."""
-        assert run_and_capture("<<~(") == "\x80"
-
-    def test_right_grows_the_pool(self) -> None:
-        """After seven ``>`` the pool holds 14 cells; a toggle at the 8th
-        cell and a print at the same spot use only the available window.
-        """
-        assert run_and_capture(">>>>>>>~(") == "@"
+    @pytest.mark.parametrize(
+        ("code", "expected"), _BIT_TILDE_RESULTS.values(), ids=list(_BIT_TILDE_RESULTS)
+    )
+    def test_result(self, code, expected) -> None:
+        assert run_and_capture(code) == expected
 
     def test_input_reads_first_character_of_a_line(self) -> None:
         assert run_scripted(")(", "hello") == "h"
@@ -80,25 +94,6 @@ class TestBitTilde:
         while not machine.halted:
             machine.step()
         assert machine.tape == (0, 1, 0, 0, 0, 0, 0, 1, 0)
-
-    def test_loop_runs_while_the_bit_is_nonzero(self) -> None:
-        """A body that builds and prints 'A' leaves bit 0 at zero so ``}``
-        falls through; the loop runs exactly once.
-        """
-        assert run_and_capture("~{~>~>>>>>>~<<<<<<<(}") == "A"
-
-    def test_loop_repeats_until_the_bit_clears(self) -> None:
-        """A counter in cell 1 lets the outer loop's body run twice: the
-        first pass skips the sentinel flip (bit 1 was 0) and loops, the
-        second clears bit 0 and falls through.  Both passes print, and the
-        second print sees the counter bit set, so it is 192.
-        """
-        assert run_and_capture("~><{(>{<~>~}~<}") == "\x80\xc0"
-
-    def test_nested_loops_match_by_depth(self) -> None:
-        # the outer `{` at bit 0 skips the nested brackets to the matching
-        # outer `}`, printing the untouched (all-zero) pool
-        assert run_and_capture("{{~~}~}(~") == "\x00"
 
     def test_output_bytes_round_trip_under_latin1(self) -> None:
         """The interpreter emits ``chr(byte)``, so each byte round-trips

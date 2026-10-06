@@ -149,50 +149,51 @@ class TestExecutionModel:
         assert run_and_capture(f"{IF}\nY() = 4\nIF(1, Y)") == "4\n"
 
 
+_VALUE_ERRORS = {
+    # The wiki says ``1(2)`` raises an error.
+    "bracket_multiplication_is_rejected": (
+        "bracket multiplication is invalid syntax",
+        "1(2)",
+    ),
+    # A variable inside a *function* body is not input-bound.
+    "an_unknown_variable_is_rejected": ("unknown variable 'q'", "F() = q\nF()"),
+    "an_unknown_function_is_rejected": ("unknown function 'G'", "G()"),
+    "the_wrong_argument_count_is_rejected": (
+        "'F' takes 1 argument(s), got 2",
+        "F(x) = x\nF(1, 2)",
+    ),
+    "an_unbalanced_bracket_is_rejected": ("expected ')'", "(1 + 2"),
+    "an_unbalanced_brace_is_rejected": ("unbalanced { in program", "F() = {\n1"),
+    "trailing_input_is_rejected": ("trailing input at ')'", "1 + 2)"),
+    "a_bad_parameter_is_rejected": ("bad parameter '1'", "F(1) = 2\nF(3)"),
+    "an_operator_with_no_arguments_is_rejected": (
+        "operator '##' takes no arguments",
+        "## = 2\n1",
+    ),
+    "an_operator_repeating_a_parameter_is_rejected": (
+        "operator 'a#a' repeats a parameter",
+        "a#a = 2\n1",
+    ),
+    "a_definition_with_no_left_hand_side_is_rejected": (
+        "definition has no left-hand side",
+        "= 2",
+    ),
+    "a_malformed_function_header_is_rejected": (
+        "malformed function header 'F1'",
+        "F1 = 2\n1",
+    ),
+}
+
+
 class TestErrors:
     """Malformed programs raise ValueError; bad operations raise HaltError."""
 
-    def test_bracket_multiplication_is_rejected(self) -> None:
-        """The wiki says ``1(2)`` raises an error."""
-        with raises_message(ValueError, "bracket multiplication is invalid syntax"):
-            run_and_capture("1(2)")
-
-    def test_an_unknown_variable_is_rejected(self) -> None:
-        """A variable inside a *function* body is not input-bound."""
-        with raises_message(ValueError, "unknown variable 'q'"):
-            run_and_capture("F() = q\nF()")
-
-    def test_an_unknown_function_is_rejected(self) -> None:
-        with raises_message(ValueError, "unknown function 'G'"):
-            run_and_capture("G()")
-
-    def test_the_wrong_argument_count_is_rejected(self) -> None:
-        with raises_message(ValueError, "'F' takes 1 argument(s), got 2"):
-            run_and_capture("F(x) = x\nF(1, 2)")
-
-    def test_an_unbalanced_bracket_is_rejected(self) -> None:
-        with raises_message(ValueError, "expected ')'"):
-            run_and_capture("(1 + 2")
-
-    def test_an_unbalanced_brace_is_rejected(self) -> None:
-        with raises_message(ValueError, "unbalanced { in program"):
-            run_and_capture("F() = {\n1")
-
-    def test_trailing_input_is_rejected(self) -> None:
-        with raises_message(ValueError, "trailing input at ')'"):
-            run_and_capture("1 + 2)")
-
-    def test_a_bad_parameter_is_rejected(self) -> None:
-        with raises_message(ValueError, "bad parameter '1'"):
-            run_and_capture("F(1) = 2\nF(3)")
-
-    def test_an_operator_with_no_arguments_is_rejected(self) -> None:
-        with raises_message(ValueError, "operator '##' takes no arguments"):
-            run_and_capture("## = 2\n1")
-
-    def test_an_operator_repeating_a_parameter_is_rejected(self) -> None:
-        with raises_message(ValueError, "operator 'a#a' repeats a parameter"):
-            run_and_capture("a#a = 2\n1")
+    @pytest.mark.parametrize(
+        ("message", "program"), _VALUE_ERRORS.values(), ids=list(_VALUE_ERRORS)
+    )
+    def test_raises(self, message, program) -> None:
+        with raises_message(ValueError, message):
+            run_and_capture(program)
 
     def test_division_by_zero_is_a_halt(self) -> None:
         with raises_message(HaltError, "division by zero"):
@@ -214,14 +215,6 @@ class TestErrors:
         """A line naming more variables than the input supplies."""
         with pytest.raises(EOFError):
             run_program(run, "a + b", "1\n", suppress_eof=False)
-
-    def test_a_definition_with_no_left_hand_side_is_rejected(self) -> None:
-        with raises_message(ValueError, "definition has no left-hand side"):
-            run_and_capture("= 2")
-
-    def test_a_malformed_function_header_is_rejected(self) -> None:
-        with raises_message(ValueError, "malformed function header 'F1'"):
-            run_and_capture("F1 = 2\n1")
 
 
 class TestContract(EmptyProgramContract):
