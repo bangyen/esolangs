@@ -219,7 +219,11 @@ def generate(
             )
         if balancer is not None:
             # Alight notation changes a balancer's reconstructed instructions.
-            balance_options = options if lang.id == "alight" else {}
+            balance_options = {
+                key: value
+                for key, value in options.items()
+                if lang.id == "alight" and key == "expression_syntax"
+            }
             text = cast(Callable[..., str], balancer)(
                 truth_table, default, **balance_options
             )

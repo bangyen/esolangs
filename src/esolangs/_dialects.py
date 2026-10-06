@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 
 EXPRESSION_SYNTAXES = ("infix", "postfix")
+LIST_UPDATES = ("in_place", "copy")
 LITERAL_POLICIES = ("decimal", "binary_digits")
 
 
@@ -10,6 +11,13 @@ def expression_syntax(value: str) -> str:
     """Validate Alight expression notation."""
     if value not in EXPRESSION_SYNTAXES:
         raise ValueError("expression_syntax must be infix or postfix")
+    return value
+
+
+def list_update(value: str) -> str:
+    """Validate what Alight's three-argument ``at`` does to its list."""
+    if value not in LIST_UPDATES:
+        raise ValueError("list_update must be in_place or copy")
     return value
 
 

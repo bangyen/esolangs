@@ -388,8 +388,9 @@ languages remain rejected from the same image-source screen.
 - Alight retains infix, left-to-right expressions for compatibility with
   existing programs and generators, despite the explicit postfix rule.
   Its cat examples use infix expressions; `expression_syntax="postfix"` follows
-  the conflicting Operations section. Three-argument `at` returns a copy;
-  the wiki reversed cat discards it.
+  the conflicting Operations section. Three-argument `at` defaults to
+  `list_update="in_place"`, which the reversed cat needs (it discards the
+  result); `"copy"` follows the prose's "return a copy".
 - CV(N)(C) accepts ASCII `g` as an alias for `ɡ` to run the wiki greeting.
   CV(N)(C), Grapheme and NoComment discard LF to run line-wrapped generated
   programs; these are source-rule deviations, not specification gaps.
