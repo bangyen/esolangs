@@ -5,6 +5,8 @@ import pytest
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.intercal import _expression, _Machine, run
+from esolangs.interpreters.randomness import FirstDraw
+from esolangs.vm import run_until_halt_or_all_branches_cycle
 
 
 def _run(source: str, stdin: str = "") -> str:
@@ -68,7 +70,8 @@ def test_inactive_statement_is_skipped() -> None:
         ("WRITE IN .1", "TEN\n"),
         ("RESUME #0", ""),
         ("FORGET #1#1", ""),
-        ("IGNORE .1", ""),
+        # Manual s7.6: GIVE UP has no gerund.
+        ("ABSTAIN FROM GIVING UP", ""),
     ],
 )
 def test_invalid_statements_raise(statement: str, stdin: str) -> None:
@@ -182,6 +185,15 @@ def test_forget_zero_is_a_no_op() -> None:
         ("(65536) DO GIVE UP", "", "label number"),
         ("WRITE IN .1x", "", "invalid INTERCAL variable"),
         ("READ OUT #65536", "", "out of range"),
+        # E533: input above twospot range (4294967296).
+        ("WRITE IN :1", "FOUR TWO NINE FOUR NINE SIX SEVEN TWO NINE SIX\n", "E533"),
+        # Manual s7.3 and s7.6: these bodies parse as no statement (E000).
+        (".1 <- ,1", "", "E000"),
+        ("STASH #1", "", "E000"),
+        ("WRITE IN .&1", "", "E000"),
+        ("WRITE IN #1", "", "E000"),
+        ("(1) GIVE UP", "", "E000"),
+        ("ABSTAIN #1 (1)", "", "E000"),
         # E123: the NEXT stack is bounded.
         ("(1) NEXT\n(1) DO (1) NEXT", "", "stack overflow"),
     ],
@@ -216,3 +228,274 @@ def test_roman_digits_five_to_eight_use_the_five_symbol() -> None:
     source = "PLEASE READ OUT #4\nDO READ OUT #6\nDO READ OUT #9\nDO READ OUT #38\n"
     source += "DO GIVE UP"
     assert _run(source) == "IV\nVI\nIX\nXXXVIII\n"
+
+
+def _program(*statements: str, stdin: str = "", rng: FirstDraw | None = None) -> str:
+    """Run one statement per line; the caller keeps the politeness ratio."""
+    io = ScriptedIO(stdin)
+    run("\n".join(statements), io, rng)
+    return io.getvalue()
+
+
+# Wikipedia's INTERCAL article: thirteen Turing Tape elements, no newline.
+_HELLO = (
+    "DO ,1 <- #13/PLEASE DO ,1 SUB #1 <- #238/DO ,1 SUB #2 <- #108/"
+    "DO ,1 SUB #3 <- #112/DO ,1 SUB #4 <- #0/DO ,1 SUB #5 <- #64/"
+    "DO ,1 SUB #6 <- #194/DO ,1 SUB #7 <- #48/PLEASE DO ,1 SUB #8 <- #22/"
+    "DO ,1 SUB #9 <- #248/DO ,1 SUB #10 <- #168/DO ,1 SUB #11 <- #24/"
+    "DO ,1 SUB #12 <- #16/DO ,1 SUB #13 <- #162/PLEASE READ OUT ,1/PLEASE GIVE UP"
+)
+
+
+def test_wikipedia_hello_world_uses_turing_tape_output() -> None:
+    assert _program(*_HELLO.split("/")) == "Hello, world!"
+
+
+def test_turing_tape_input_stores_differences_and_eof_as_256() -> None:
+    """Manual s7.7.2: the code minus the previous code mod 256; EOF is 256."""
+    out = _program(
+        "PLEASE ,1 <- #3",
+        "DO WRITE IN ,1",
+        "DO READ OUT ,1 SUB #1 + ,1 SUB #2 + ,1 SUB #3",
+        stdin="AB",
+    )
+    assert out == "LXV\nI\nCCLVI\n"
+
+
+def test_manual_array_example_reads_nested_subscripts() -> None:
+    """Manual s6.3.4's sample program: ;1 SUB #1 .1 ends up 1."""
+    assert _program(
+        "PLEASE ,1 <- #2",
+        "DO .1 <- #2",
+        "DO ,1 SUB .1 <- #1",
+        "DO ,1 SUB #1 <- ,1 SUB #2",
+        "PLEASE ;1 <- #2 BY #2",
+        "DO ;1 SUB #1 #2 <- ,1 SUB ,1 SUB .1",
+        "DO READ OUT ;1SUB#1.1",
+        "DO READ OUT ;1 SUB #1 '#2~#3'",
+        "DO GIVE UP",
+    ) == ("I\nI\n")
+
+
+@pytest.mark.parametrize(
+    ("statement", "code"),
+    [
+        ("DO READ OUT ,1 SUB #3", "E241"),
+        ("DO READ OUT ,1 SUB #1 #1", "E241"),
+        ("DO WRITE IN ;2", "E241"),
+        ("DO ,1 <- #0", "E240"),
+    ],
+)
+def test_array_bounds_and_empty_dimensions_raise(statement: str, code: str) -> None:
+    with pytest.raises(HaltError, match=code):
+        _program("PLEASE ,1 <- #2", statement, "DO GIVE UP")
+
+
+def test_mingle_builds_twospot_values() -> None:
+    """Manual s6.3.1: 65536 is #0$#256, too big for a onespot (E275)."""
+    assert _program("PLEASE :1 <- #0$#256", "DO READ OUT :1", "DO GIVE UP") == (
+        "___      \nLXVDXXXVI\n"
+    )
+    with pytest.raises(HaltError, match="E275"):
+        _program("PLEASE .1 <- #0$#256", "DO GIVE UP", "DO GIVE UP")
+
+
+@pytest.mark.parametrize(
+    ("twospot", "expected"),
+    [("ONE THREE ONE ZERO SEVEN ONE", "XXI"), ("THREE ZERO", "X"), ("TWO ONE", "VII")],
+)
+def test_manual_select_examples(twospot: str, expected: str) -> None:
+    """Manual s6.3.2: #21~:1 is 21, 10 or 7 for :1 = 1FFFF hex, 30 or 21.
+
+    The manual's decimal "131061" contradicts its hex 1FFFF (131071).
+    """
+    out = _program(
+        "PLEASE WRITE IN :1", "DO READ OUT #21~:1", "DO GIVE UP", stdin=twospot
+    )
+    assert out == expected + "\n"
+
+
+def test_manual_unary_examples() -> None:
+    """Manual s6.3.3: #V26 is 31 and #?26 is 23.
+
+    Its "#&26 is 16" contradicts those two and C-INTERCAL's ick_and16
+    (n & rotate-right(n)), which gives 8.
+    """
+    out = _program("PLEASE READ OUT #&26 + #V26 + ?#26", "DO GIVE UP", "DO GIVE UP")
+    assert out == "VIII\nXXXI\nXXIII\n"
+
+
+def test_stash_and_retrieve_restore_a_value() -> None:
+    out = _program(
+        "PLEASE .1 <- #1",
+        "DO STASH .1",
+        "DO .1 <- #2",
+        "PLEASE RETRIEVE .1",
+        "DO READ OUT .1",
+        "DO GIVE UP",
+    )
+    assert out == "I\n"
+    with pytest.raises(HaltError, match="E436"):
+        _program("PLEASE RETRIEVE .1", "DO GIVE UP", "DO GIVE UP")
+
+
+def test_ignore_makes_assignments_fail_silently_until_remember() -> None:
+    out = _program(
+        "PLEASE .1 <- #1",
+        "DO IGNORE .1",
+        "DO .1 <- #2",
+        "DO READ OUT .1",
+        "PLEASE REMEMBER .1",
+        "DO .1 <- #3",
+        "DO READ OUT .1",
+        "DO GIVE UP",
+    )
+    assert out == "I\nIII\n"
+
+
+def test_abstain_and_reinstate_by_gerund_and_label() -> None:
+    """Manual s7.6: REINSTATE undoes DO NOT; GIVE UP cannot be reinstated."""
+    out = _program(
+        "PLEASE ABSTAIN FROM CALCULATING",
+        "DO .1 <- #5",
+        "DO REINSTATE (2)",
+        "(1) DON'T GIVE UP",
+        "PLEASE REINSTATE (1)",
+        "(2) DO NOT READ OUT .1",
+        "DO GIVE UP",
+    )
+    assert out == "\n"
+
+
+def test_come_from_takes_control_after_its_label_runs() -> None:
+    out = _program(
+        "(1) PLEASE READ OUT #1",
+        "DO READ OUT #2",
+        "DO COME FROM (1)",
+        "DO READ OUT #3",
+        "DO GIVE UP",
+    )
+    assert out == "I\nIII\n"
+
+
+@pytest.mark.parametrize(("first", "expected"), [(0, "I\n"), (99, "")])
+def test_double_oh_seven_draws_a_percentage(first: int, expected: str) -> None:
+    """Manual s5.4: %50 runs when the draw below 100 is under 50."""
+    out = _program(
+        "PLEASE %50 READ OUT #1", "DO GIVE UP", "DO GIVE UP", rng=FirstDraw(first)
+    )
+    assert out == expected
+
+
+def test_syntax_errors_raise_only_when_executed() -> None:
+    """Manual s5.3: PLEASE NOTE is an abstained comment; DOUBT runs E000."""
+    with pytest.raises(HaltError, match="E000"):
+        _program("PLEASE NOTE THIS IS FINE", "DO READ OUT #1", "DOUBT THIS WILL WORK")
+
+
+def test_millions_print_in_lowercase() -> None:
+    """Manual s7.7.1: lowercase multiplies by a million; 4000000 is iv."""
+    out = _program(
+        "PLEASE WRITE IN :1",
+        "DO READ OUT :1",
+        "DO GIVE UP",
+        stdin="FOUR ZERO ZERO ZERO ZERO ZERO ZERO",
+    )
+    assert out == "iv\n"
+
+
+def test_write_in_an_array_element() -> None:
+    out = _program(
+        "PLEASE ,1 <- #2",
+        "DO WRITE IN ,1 SUB #2",
+        "DO READ OUT ,1 SUB #2",
+        stdin="SEVEN",
+    )
+    assert out == "VII\n"
+
+
+def test_once_and_again_self_abstain_and_self_reinstate() -> None:
+    """Manual s5.5, over two passes of TRY AGAIN (s7.9)."""
+    out = _program(
+        "DO NOT READ OUT #1 ONCE",
+        "PLEASE READ OUT #2 ONCE",
+        "DO READ OUT #3 AGAIN",
+        "DON'T READ OUT #4 AGAIN",
+        "PLEASE DON'T GIVE UP ONCE",
+        "DO TRY AGAIN",
+    )
+    assert out == "II\nIII\nI\nIII\n"
+
+
+def test_computed_abstain_needs_as_many_reinstates() -> None:
+    """Manual s7.6: ABSTAIN #2 double-abstains; one REINSTATE is not enough."""
+    out = _program(
+        "PLEASE ABSTAIN #2 FROM READING OUT",
+        "DO REINSTATE READING OUT",
+        "DO READ OUT #1",
+        "DO GIVE UP",
+    )
+    assert out == ""
+
+
+def test_retrieve_restores_an_array_but_not_an_ignored_scalar() -> None:
+    """Manual s7.4: C-INTERCAL treats a retrieval like an assignment."""
+    out = _program(
+        "PLEASE ,1 <- #1",
+        "DO ,1 SUB #1 <- #5",
+        "DO .1 <- #7",
+        "DO STASH ,1 + .1",
+        "PLEASE .1 <- #8",
+        "DO IGNORE .1",
+        "DO ,1 <- #2",
+        "PLEASE RETRIEVE ,1 + .1",
+        "DO READ OUT ,1 SUB #1 + .1",
+        "DO GIVE UP",
+    )
+    assert out == "V\nVIII\n"
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        # NEXT FROM saves the place after (1); RESUME returns there.
+        "(1) PLEASE READ OUT #1/DO GIVE UP/DO NEXT FROM (1)/DO READ OUT #3/"
+        "DO RESUME #1",
+        # Computed COME FROM: '#1$#0' is 2.
+        "(2) PLEASE READ OUT #1/DO GIVE UP/DO COME FROM '#1$#0'/DO READ OUT #3/"
+        "DO GIVE UP",
+        # Gerund COME FROM; ONCE stops it firing a second time.
+        "PLEASE READ OUT #1/DO GIVE UP/DO COME FROM READING OUT + WRITING IN ONCE/"
+        "DO READ OUT #3/DO GIVE UP",
+    ],
+)
+def test_next_from_computed_and_gerund_come_from(source: str) -> None:
+    assert _program(*source.split("/")) == "I\nIII\n"
+
+
+@pytest.mark.parametrize(
+    ("source", "code"),
+    [
+        ("PLEASE COME FROM (9)/DO GIVE UP/DO GIVE UP", "E444"),
+        ("(1) PLEASE GIVE UP/DO COME FROM (1)/DO COME FROM (1)", "E555"),
+        ("PLEASE TRY AGAIN/DO GIVE UP/DO GIVE UP", "E993"),
+        # Two computed COME FROMs fire together only at run time.
+        ("(1) PLEASE .1 <- #1/DO COME FROM #1/DO COME FROM #1", "E555"),
+    ],
+)
+def test_come_from_and_try_again_errors(source: str, code: str) -> None:
+    with pytest.raises(HaltError, match=code):
+        _program(*source.split("/"))
+
+
+@pytest.mark.parametrize(("last", "halts"), [("GIVE UP", True), (".1 <- #2", False)])
+def test_branch_search_explores_both_chance_outcomes(last: str, *, halts: bool) -> None:
+    """A %30 statement that a COME FROM loops on halts only if it gives up."""
+    source = f"PLEASE ,1 <- #1\nDO STASH ,1 + .1\nDO COME FROM (2)\n(2) DO %30 {last}"
+    machine = _Machine(source, ScriptedIO(""))
+    assert run_until_halt_or_all_branches_cycle(machine) is halts
+
+
+def test_branch_search_cannot_fork_input() -> None:
+    machine = _Machine("PLEASE WRITE IN .1\nDO GIVE UP\nDO GIVE UP", ScriptedIO(""))
+    assert machine.branching_successors(machine.branching_snapshot(), 10) is None
