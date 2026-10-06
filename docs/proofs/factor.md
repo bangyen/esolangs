@@ -380,7 +380,8 @@ check the counting recurrence through 14, and pin actual source lengths
 through twelve inputs. The decoder executes 14 tables on 576 input rows
 through Brainfuck, including every row of twelve 32-bit blocks and one
 table each at six and seven inputs. All 15 prefix addresses through width
-three preserve the stride-15 payloads, clear controls, and avoid clamping.
+three preserve the stride-15 payloads, clear controls, and stay off the
+left edge.
 A real Factor encoding of the five-input table `0xA596B47C` contains
 917,061 digits and executes on input `00000`, returning `1`; its decoded
 source has 148,010 characters. This is a language-level witness with a
