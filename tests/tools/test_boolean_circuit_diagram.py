@@ -184,7 +184,7 @@ class TestCircuitDiagramLayoutGuards:
 
     def test_h_layout_reserves_linear_area(self) -> None:
         """Two input levels quarter recursively without overlapping leaves."""
-        from esolangs.tools.circuit_diagram import _h_blocks, _h_sites, _h_size
+        from esolangs.tools.circuit_diagram.hlayout import _h_blocks, _h_sites, _h_size
 
         for n in range(1, 12):
             blocks = _h_blocks(n)
@@ -202,7 +202,7 @@ class TestCircuitDiagramLayoutGuards:
             assert _h_size(n) ** 2 <= 10_000 * 2**n
 
     def test_h_depth_buckets_bound_literal_anchor_visits(self) -> None:
-        from esolangs.tools.circuit_diagram import _h_term_plan
+        from esolangs.tools.circuit_diagram.hlayout import _h_term_plan
 
         for n in range(2, 13):
             plan = _h_term_plan("01" * (1 << (n - 1)))
@@ -221,7 +221,7 @@ class TestCircuitDiagramLayoutGuards:
         """The routed minterm and reduction trees compute all small functions."""
         from esolangs.interpreters.grid_based.circuit_diagram import run
         from esolangs.interpreters.io import ScriptedIO
-        from esolangs.tools.circuit_diagram import _h_term_layout
+        from esolangs.tools.circuit_diagram.hlayout import _h_term_layout
 
         for value in range(1, 15):
             table = format(value, "04b")
@@ -570,7 +570,7 @@ class TestCircuitDiagram:
 
         from esolangs.interpreters.grid_based.circuit_diagram import run
         from esolangs.interpreters.io import ScriptedIO
-        from esolangs.tools.circuit_diagram import _h_term_layout
+        from esolangs.tools.circuit_diagram.hlayout import _h_term_layout
 
         rng = random.Random(4)
         for _ in range(3):
