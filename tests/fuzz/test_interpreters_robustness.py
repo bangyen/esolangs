@@ -3,7 +3,9 @@
 import importlib
 import os
 import signal
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -28,185 +30,26 @@ MODULES = [
 ]
 
 
+#: Machines whose empty program is not ``_Machine("", io)``.  (Five older
+#: entries here called constructors that no longer exist, so the sweep caught
+#: their TypeError and passed without building a machine.)
+_EMPTY: dict[str, Callable[[Any, IO], object]] = {
+    "tape_based.brainif": lambda machine, io: machine([], io),
+    "queue_based.taglate": lambda machine, io: machine([], io),
+    "tape_based.back": lambda machine, io: machine([], io),
+    "other.container": lambda machine, io: machine([], io),
+    # An empty program is malformed in CV(N)(C), so the stand-in is the
+    # shortest legal one: a single syllable that does nothing observable.
+    "other.cvnc": lambda machine, io: machine("ci", io),
+    "other.forbin": lambda machine, io: machine("main {}", io),
+}
+
+
 def _empty_machine(module: str, io: IO) -> object:
     """Build ``module``'s step-capable machine for the empty program."""
-    if module == "esolangs.interpreters.tape_based.brainfuck":
-        from esolangs.interpreters.tape_based.brainfuck import _Machine
-
-        return _Machine("", io)
-    if module == "esolangs.interpreters.tape_based.sbleq":
-        from esolangs.interpreters.tape_based.sbleq import _Machine
-
-        return _Machine(io=io, mem=())
-    if module == "esolangs.interpreters.tape_based.dimensional":
-        from esolangs.interpreters.tape_based.dimensional import _Machine
-
-        return _Machine("", io)
-    if module == "esolangs.interpreters.tape_based.one_two_three":
-        from esolangs.interpreters.tape_based.one_two_three import _Machine
-
-        return _Machine("", io)
-    if module == "esolangs.interpreters.stack_based.eval":
-        from esolangs.interpreters.stack_based.eval import _Machine
-
-        return _Machine(io=io, sym="")
-    if module == "esolangs.interpreters.stack_based.modulous":
-        from esolangs.interpreters.stack_based.modulous import _Machine
-
-        state = _Machine(var={f"VAR{k}": 0 for k in range(1, 5)}, io=io)
-        state.tokens = []
-        return state
-    if module == "esolangs.interpreters.register_based.qoibl":
-        from esolangs.interpreters.register_based.qoibl import _Machine
-
-        state = _Machine(io=io)
-        state.code = []
-        return state
-
-        return _Machine("", io)
-    if module == "esolangs.interpreters.stack_based.forth":
-        from esolangs.interpreters.stack_based.forth import _Machine
-
-        return _Machine("", io)
-    if module == "esolangs.interpreters.register_based.addsubjump":
-        from esolangs.interpreters.register_based.addsubjump import _Machine
-
-        return _Machine("", io)
-    if module == "esolangs.interpreters.queue_based.bitdeque":
-        from esolangs.interpreters.queue_based.bitdeque import _Machine
-
-        return _Machine("", io)
-    if module == "esolangs.interpreters.tape_based.minifuck":
-        from esolangs.interpreters.tape_based.minifuck import _Machine
-
-        return _Machine("", io)
-    if module == "esolangs.interpreters.tape_based.brainif":
-        from esolangs.interpreters.tape_based.brainif import _Machine
-
-        return _Machine([], io)
-    if module == "esolangs.interpreters.queue_based.taglate":
-        from esolangs.interpreters.queue_based.taglate import _Machine
-
-        return _Machine([], io)
-    if module == "esolangs.interpreters.tape_based.rotfuck":
-        from esolangs.interpreters.tape_based.rotfuck import _Machine
-
-        return _Machine("", io)
-    if module == "esolangs.interpreters.tape_based.circlefuck":
-        from esolangs.interpreters.tape_based.circlefuck import _Machine
-
-        return _Machine("", io)
-    if module == "esolangs.interpreters.stack_based.bfstack":
-        from esolangs.interpreters.stack_based.bfstack import _Machine
-
-        return _Machine("", io)
-    if module == "esolangs.interpreters.register_based.decleq":
-        from esolangs.interpreters.register_based.decleq import _Machine
-
-        return _Machine("", io)
-    if module == "esolangs.interpreters.tape_based.six_five":
-        from esolangs.interpreters.tape_based.six_five import _Machine
-
-        return _Machine("", io)
-    if module == "esolangs.interpreters.tape_based.back":
-        from esolangs.interpreters.tape_based.back import _Machine
-
-        return _Machine([], io)
-    if module == "esolangs.interpreters.register_based.bio":
-        from esolangs.interpreters.register_based.bio import _Machine
-
-        return _Machine("", io)
-    if module == "esolangs.interpreters.tape_based.nocomment":
-        from esolangs.interpreters.tape_based.nocomment import _Machine
-
-        return _Machine("", io)
-    if module == "esolangs.interpreters.tape_based.factor":
-        from esolangs.interpreters.tape_based.factor import _Machine
-
-        return _Machine("", io)
-    if module == "esolangs.interpreters.tape_based.bit_tilde":
-        from esolangs.interpreters.tape_based.bit_tilde import _Machine
-
-        return _Machine("", io)
-    if module == "esolangs.interpreters.register_based.collatz_multiverse":
-        from esolangs.interpreters.register_based.collatz_multiverse import _Machine
-
-        return _Machine("", io)
-    if module == "esolangs.interpreters.register_based.polynomial":
-        from esolangs.interpreters.register_based.polynomial import _Machine
-
-        return _Machine("", io)
-    if module == "esolangs.interpreters.stack_based.grapheme":
-        from esolangs.interpreters.stack_based.grapheme import _frame, _Machine
-
-        machine = _Machine(io, 1_000_000)
-        machine.frames = (_frame("", 0),)
-        return machine
-    if module == "esolangs.interpreters.register_based.ram0":
-        from esolangs.interpreters.register_based.ram0 import _Machine
-
-        return _Machine("", io)
-    if module == "esolangs.interpreters.register_based.minsky_swap":
-        from esolangs.interpreters.register_based.minsky_swap import _Machine
-
-        return _Machine("", io)
-    if module == "esolangs.interpreters.tape_based.home_row":
-        from esolangs.interpreters.tape_based.home_row import _Machine
-
-        return _Machine("", io)
-    if module == "esolangs.interpreters.stack_based.unsquare":
-        from esolangs.interpreters.stack_based.unsquare import _Machine
-
-        return _Machine("", io)
-    if module == "esolangs.interpreters.tape_based.suffolk":
-        from esolangs.interpreters.tape_based.suffolk import _Machine
-
-        return _Machine("", io)
-    if module == "esolangs.interpreters.other.container":
-        from esolangs.interpreters.other.container import _Machine
-
-        return _Machine([], io)
-    if module == "esolangs.interpreters.stack_based.bf_pda":
-        from esolangs.interpreters.stack_based.bf_pda import _Machine
-
-        return _Machine("", io)
-    if module == "esolangs.interpreters.stack_based.three_x":
-        from esolangs.interpreters.stack_based.three_x import _Machine
-
-        return _Machine("", io)
-    if module == "esolangs.interpreters.register_based.sophie":
-        from esolangs.interpreters.register_based.sophie import _Machine
-
-        return _Machine("", io)
-    if module == "esolangs.interpreters.tape_based.jaune":
-        from esolangs.interpreters.tape_based.jaune import _Machine
-
-        return _Machine("", io)
-    if module == "esolangs.interpreters.tape_based.slow_acv_mammalian":
-        from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
-
-        return _Machine("", io)
-
-        return _Machine([], io)
-
-        return _Machine("", io)
-    if module == "esolangs.interpreters.other.cvnc":
-        from esolangs.interpreters.other.cvnc import _Machine
-
-        # An empty program is malformed in CV(N)(C), so the stand-in is the
-        # shortest legal one: a single syllable that does nothing observable.
-        return _Machine("ci", io)
-    if module == "esolangs.interpreters.other.fargo":
-        from esolangs.interpreters.other.fargo import _Machine
-
-        return _Machine("", io)
-    if module == "esolangs.interpreters.other.forbin":
-        from esolangs.interpreters.other.forbin import _Machine
-
-        return _Machine("main {}", io)
-
-        return _Machine("", io)
-    raise KeyError(module)
+    machine = getattr(importlib.import_module(module), "_Machine")  # noqa: B009
+    key = module.removeprefix("esolangs.interpreters.")
+    return _EMPTY.get(key, lambda machine, io: machine("", io))(machine, io)
 
 
 # The interpreter modules whose machine exposes step()/halted/snapshot() and
