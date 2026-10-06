@@ -19,7 +19,9 @@ network, exactly one ``C``); a ``U`` with no opposite lane raises
 :class:`~esolangs.exceptions.HaltError`.  ``_`` at cell 0 clamps (the wiki
 says nothing; brainfuck clamps ``<``); ``O`` on a non-code-point raises
 ``HaltError``.  ``I`` on exhausted input raises :class:`EOFError`; a
-newline stores character code 10.
+newline stores character code 10.  ``I``/``O``'s "Nth register" is the
+CPth cell.  The wiki's Turing-completeness sentence names ``<`` and ``>``;
+the command table's ``=``/``_`` move CP, and ``<``/``>`` are nops.
 """
 
 import functools

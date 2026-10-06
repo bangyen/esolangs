@@ -4,7 +4,10 @@ Polynomial programs are polynomial functions ``f(x) = ...``; real zeroes
 are control flow and complex zeroes register operations on a single
 integer register, in ascending-prime order. Division and remainder
 truncate toward zero; output ignores negatives and EOF stores -1.
-Malformed programs raise :class:`ValueError`.  No instruction cap: a
+Malformed programs raise :class:`ValueError`.  Spec gaps, decided here:
+an imaginary zero ``3i``..``6i`` reads input like ``2i`` (the wiki names
+only ``i`` and ``2i``); any closer (2 or 6) closes the innermost opener,
+and the opener alone decides if or while.  No instruction cap: a
 growing register never repeats, and ``esolangs.run``'s ``timeout`` is
 the guard.
 

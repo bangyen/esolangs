@@ -16,6 +16,13 @@ TRUTH = int(
     "233915737501853959241591127266540514014498928384925170744745"
     "371936977107366667491950094954248611898080571424768"
 )
+HELLO = (
+    "165568126334970152108465968061155171986407140362585967599315"
+    "536018497965087531792407507166301417079639821420008960583725"
+    "657575924647885581598194350616996937817991828503583279278232"
+    "187442387967338114367653866183679008386601675267486870730114"
+    "2092304365222517116382208838942082995905598124019955549"
+)
 
 
 def run_program(number: int, stdin: str = "") -> str:
@@ -75,6 +82,22 @@ class TestRun:
     def test_wiki_truth_machine_zero(self) -> None:
         """Input 0 prints 0 and halts."""
         assert run_program(TRUTH, "0") == "0"
+
+    def test_wiki_truth_machine_one_repeats(self) -> None:
+        """Input 1 prints 1 forever; a bounded run sees only 1s."""
+        from esolangs.interpreters.tape_based.factor import _Machine
+
+        io = ScriptedIO("1")
+        machine = _Machine(str(TRUTH), io)
+        for _ in range(2000):
+            machine.step()
+        assert not machine.halted
+        assert set(io.getvalue()) == {"1"}
+        assert len(io.getvalue()) > 100
+
+    def test_wiki_hello_world(self) -> None:
+        """Its decode ends ``>>.`` on an empty cell, so a NUL follows the text."""
+        assert run_program_text(HELLO) == "Hello World!\x00"
 
     def test_unbalanced_brackets_rejected(self) -> None:
         """7 decodes to '[' alone, which is malformed."""
