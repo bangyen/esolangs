@@ -513,10 +513,11 @@ def test_string_skip_count_uses_conversion():
     assert esolangs.run("Grapheme", source) == "1"
 
 
-@pytest.mark.parametrize("source", ["FAFDY", "EABEDY", "HEABEDYHI"])
-def test_unset_names(source):
-    with pytest.raises(esolangs.HaltError, match="undeclared variable"):
-        esolangs.run("Grapheme", source)
+@pytest.mark.parametrize(
+    ("source", "expected"), [("FAFDY", "1"), ("EABEDY", "AB"), ("HEABEDYHI", "AB")]
+)
+def test_unset_names_read_as_themselves(source, expected):
+    assert esolangs.run("Grapheme", source) == expected
 
 
 def test_function_names_still_fail():

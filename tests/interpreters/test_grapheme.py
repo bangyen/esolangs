@@ -137,9 +137,12 @@ class TestVariables:
     def test_set_and_get(self) -> None:
         assert run_program("EAEKKCDY") == "A"
 
-    def test_undeclared_halts(self) -> None:
-        with pytest.raises(HaltError, match="undeclared"):
-            run_program("EAED")
+    def test_the_wiki_variables_example_prints_variabl(self) -> None:
+        """``D`` of the never-set ``VARIABL`` pushes the name itself."""
+        assert run_program("EVARIABLEEMYVAREKCDY") == "VARIABL"
+
+    def test_a_set_variable_shadows_its_name(self) -> None:
+        assert run_program("EBEEAECEAEDY") == "B"
 
 
 class TestFunctions:
@@ -463,6 +466,20 @@ def test_string_integer_conversion_stops_before_f_without_a_final_shift():
 
 def test_spec_truth_machine_zero_branch():
     assert run_program("HFAFYHWJUZFZFY", "Z") == "0"
+
+
+def test_spec_truth_machine_one_branch_as_drawn_prints_zero():
+    """Z pops the loop body off an empty stack, so the loop never runs."""
+    assert run_program("HFAFYHWJUZFZFY", "A") == "0"
+
+
+def test_spec_cat_echoes_lines_until_eof():
+    from esolangs.interpreters.stack_based.grapheme import run
+
+    io = ScriptedIO("ab\ncd\n")
+    with pytest.raises(EOFError):
+        run("WKYHWYHZ", io)
+    assert io.getvalue() == "abcd"
 
 
 def test_truth_machine_body_repeats_one_with_a_live_stack():
