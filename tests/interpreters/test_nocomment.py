@@ -61,6 +61,17 @@ def test_lf_preserves_jump_range_errors() -> None:
     assert messages[0] == messages[1]
 
 
+_RUNTIME_FAULTS = {
+    # The range check looks at the command the jump lands on.
+    "jump_target_is_checked_one_past_the_jump": "ciinsio",
+    # A backward jump of 0 targets one past the jump, which is off the end.
+    "backward_jump_of_zero_leaves_the_code": "nib",
+    "taken_jump_cannot_peek_an_empty_stack": "iisbinbo",
+    # Popping an empty stack is an invalid operation.
+    "stack_underflow_is_error": "c" + "i" * 65 + "f" + "o",
+}
+
+
 class TestNoComment:
     def test_output_character(self) -> None:
         assert run_and_capture("c" + "i" * 65 + "o") == "A"
@@ -151,19 +162,12 @@ class TestNoComment:
         with pytest.raises(HaltError):
             run_and_capture("cibo")
 
-    def test_jump_target_is_checked_one_past_the_jump(self) -> None:
-        """The range check looks at the command the jump lands on."""
+    @pytest.mark.parametrize(
+        "code", _RUNTIME_FAULTS.values(), ids=list(_RUNTIME_FAULTS)
+    )
+    def test_runtime_faults(self, code) -> None:
         with pytest.raises(HaltError):
-            run_and_capture("ciinsio")
-
-    def test_backward_jump_of_zero_leaves_the_code(self) -> None:
-        """A backward jump of 0 targets one past the jump, which is off the end."""
-        with pytest.raises(HaltError):
-            run_and_capture("nib")
-
-    def test_taken_jump_cannot_peek_an_empty_stack(self) -> None:
-        with pytest.raises(HaltError):
-            run_and_capture("iisbinbo")
+            run_and_capture(code)
 
     def test_every_non_command_character_is_rejected(self) -> None:
         """No character outside the ten commands is executable -- no no-ops exist."""
@@ -177,11 +181,6 @@ class TestNoComment:
         """The wiki allows no comments; a non-command is a malformed program."""
         with pytest.raises(ValueError, match="unrecognized NoComment command"):
             run_and_capture("x" + "c" + "i" * 65 + "o")
-
-    def test_stack_underflow_is_error(self) -> None:
-        """Popping an empty stack is an invalid operation."""
-        with pytest.raises(HaltError):
-            run_and_capture("c" + "i" * 65 + "f" + "o")
 
     def test_jump_out_of_range_is_error(self) -> None:
         """A forward or backward jump leaving the code space is invalid."""

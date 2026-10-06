@@ -17,19 +17,38 @@ def run_program(code: str) -> str:
     return io.getvalue()
 
 
+_OUTPUT = {
+    # cells are unbounded: 0 - 1 = -1, printed as its low byte
+    "subtract": ("sk;", "\xff"),
+    "semicolon_halts": ("ak;ak;", "\x01"),
+    # increment cell 0, move down, increment cell 5, move back up (d x4
+    # wraps), and print cell 0.
+    "move_then_edit_distinct_cells": ("a" + "d" + "a" + "d" * 4 + "k;", "\x01"),
+    # cell 0 is zero, so j skips the k.
+    "jump_skips_next_on_zero": ("jk;", ""),
+    "jump_does_not_skip_on_nonzero": ("ajk;", "\x01"),
+    # ``j`` steps over the command after it, wherever it sits.
+    "jump_skips_relative_to_itself": ("ffjak;", "\x00"),
+    # aa l s l k; : the body decrements 2 down to 0, so k prints NUL.
+    "loop_runs_while_nonzero": ("aa" + "l" + "s" + "l" + "k;", "\x00"),
+    # cell is zero, so the body never runs and nothing prints.
+    "loop_skips_when_zero": ("l" + "a" + "l" + "k;", "\x00"),
+    # after the loop runs 1 down to 0, execution continues past it.
+    "loop_exits_and_execution_continues": ("a" + "lsl" + "a" + "k;", "\x01"),
+}
+
+
+@pytest.mark.parametrize(("code", "expected"), _OUTPUT.values(), ids=list(_OUTPUT))
+def test_output(code, expected) -> None:
+    assert run_program(code) == expected
+
+
 class TestBasics:
     def test_print_and_reset(self) -> None:
         # 65 increments then k prints 'A' and resets the cell to zero.
         assert run_program("a" * 65 + "k;") == "A"
         # the cell is zero again, so a following k prints NUL
         assert run_program("a" * 65 + "k" + "k;") == "A\x00"
-
-    def test_subtract(self) -> None:
-        # cells are unbounded: 0 - 1 = -1, printed as its low byte
-        assert run_program("sk;") == "\xff"
-
-    def test_semicolon_halts(self) -> None:
-        assert run_program("ak;ak;") == "\x01"
 
 
 class TestPointer:
@@ -63,38 +82,8 @@ class TestPointer:
             machine.step()
         assert machine.ptr == 0
 
-    def test_move_then_edit_distinct_cells(self) -> None:
-        # increment cell 0, move down, increment cell 5, move back up (d x4
-        # wraps), and print cell 0.
-        assert run_program("a" + "d" + "a" + "d" * 4 + "k;") == "\x01"
-
-
-class TestSkip:
-    def test_jump_skips_next_on_zero(self) -> None:
-        # cell 0 is zero, so j skips the k.
-        assert run_program("jk;") == ""
-
-    def test_jump_does_not_skip_on_nonzero(self) -> None:
-        assert run_program("ajk;") == "\x01"
-
-    def test_jump_skips_relative_to_itself(self) -> None:
-        """``j`` steps over the command after it, wherever it sits."""
-        assert run_program("ffjak;") == "\x00"
-
 
 class TestLoop:
-    def test_loop_runs_while_nonzero(self) -> None:
-        # aa l s l k; : the body decrements 2 down to 0, so k prints NUL.
-        assert run_program("aa" + "l" + "s" + "l" + "k;") == "\x00"
-
-    def test_loop_skips_when_zero(self) -> None:
-        # cell is zero, so the body never runs and nothing prints.
-        assert run_program("l" + "a" + "l" + "k;") == "\x00"
-
-    def test_loop_exits_and_execution_continues(self) -> None:
-        # after the loop runs 1 down to 0, execution continues past it.
-        assert run_program("a" + "lsl" + "a" + "k;") == "\x01"
-
     def test_unmatched_loop_is_malformed(self) -> None:
         with pytest.raises(ValueError, match="unmatched"):
             run_program("ak;l")

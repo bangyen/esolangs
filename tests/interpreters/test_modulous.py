@@ -13,15 +13,69 @@ def run_and_capture(code: str, inputs: list[str] | None = None) -> str:
     return run_program(run, code, "".join(f"{line}\n" for line in inputs or []))
 
 
+_OUTPUT = {
+    "push_print_int": ("[PSH INT 5][PRT INT][END]", "5"),
+    "push_print_string": ('[PSH STR "A"][PRT][END]', "A"),
+    "push_string_then_pop": ('[PSH STR "AB"][PRT][PRT][END]', "AB"),
+    # ``INT`` inside a quoted string is data, not the push type.
+    "push_dispatches_on_its_type_word": ('[PSH STR "INT"][PRT STR][END]', "I"),
+    # ``[PSH STR "A" ]`` is one command; it was refused as stray text.
+    "a_space_after_the_quoted_string_is_inside_the_command": (
+        '[PSH STR "A" ][PRT STR][END]',
+        "A",
+    ),
+    "swap": ("[PSH INT 1][PSH INT 2][SWP][PRT INT][PRT INT][END]", "12"),
+    # JMP F skips a module.
+    "jump_forward": ("[PSH INT 5][JMP F 1][PRT INT][END]", "5"),
+    # JMP ... IF jumps only when the top matches.
+    "conditional_jump": ("[PSH INT 5][JMP F 1 IF 5][PRT INT][END]", "5"),
+    # JMP ... NIF jumps only when the top does not match.
+    "conditional_jump_nif": ("[PSH INT 5][JMP F 1 NIF 5][PRT INT][END]", "5"),
+    # JMP B jumps backwards, eventually landing on END.
+    "backward_jump": ("[JMP B 1][END]", ""),
+    # POP removes the top of the stack.
+    "pop": ("[PSH INT 5][POP][PSH INT 7][PRT INT][END]", "7"),
+    # ``[PSH VARn]`` stores the top of the stack in a variable.
+    "push_variable": ("[PSH INT 7][PSH VAR1][PRT VAR1 INT][END]", "7"),
+    # RND pushes a random value below the given bound.
+    "random": ("[RND 1][PRT INT][END]", "0"),
+    # ``ADD`` changes the top cell, leaving what is under it alone.
+    "add_targets_the_top_of_the_stack": (
+        "[PSH INT 1][PSH INT 2][PSH INT 3][ADD 4][PRT INT][PRT INT][PRT INT][END]",
+        "721",
+    ),
+}
+
+
+_OUTPUT_WITH_INPUT = {
+    "input": ("[INP INT][PRT INT][END]", ["42"], "42"),
+    # Integer input skips blank lines before reading a token.
+    "integer_input_skips_blank_lines": ("[INP INT][PRT INT][END]", ["", "7"], "7"),
+    # RST restarts from the first module, re-reading input.
+    # After RST the pointer returns to the start, so the second input
+    # line is read; then JMP F 2 IF 0 jumps over RST to PRT/END.
+    "reset": ("[INP INT][JMP F 2 IF 0][RST][PRT INT][END]", ["5", "0"], "0"),
+}
+
+
+_RUNTIME_FAULTS_HALT = {
+    # Arithmetic on an empty stack is an invalid operation.
+    "add_on_empty_stack_halts": "[ADD 1]",
+    "swap_on_short_stack_halts": "[SWP]",
+    "print_on_empty_stack_halts": "[PRT INT]",
+    "print_undefined_variable_halts": "[PRT VAR9 INT]",
+    # Storing into an undeclared variable is invalid, as reading one is.
+    "push_undefined_variable_halts": "[PSH INT 7][PSH VAR9]",
+    # ``[PSH VAR VAR1]`` is not the syntax and does not quietly store.
+    "push_variable_keyword_spelling_halts": "[PSH INT 7][PSH VAR VAR1]",
+    "random_zero_bound_halts": "[RND 0]",
+}
+
+
 class TestModulous:
-    def test_push_print_int(self) -> None:
-        assert run_and_capture("[PSH INT 5][PRT INT][END]") == "5"
-
-    def test_push_print_string(self) -> None:
-        assert run_and_capture('[PSH STR "A"][PRT][END]') == "A"
-
-    def test_push_string_then_pop(self) -> None:
-        assert run_and_capture('[PSH STR "AB"][PRT][PRT][END]') == "AB"
+    @pytest.mark.parametrize(("code", "expected"), _OUTPUT.values(), ids=list(_OUTPUT))
+    def test_output(self, code, expected) -> None:
+        assert run_and_capture(code) == expected
 
     def test_push_without_a_type_is_refused(self) -> None:
         """``PSH`` needs one of ``INT``/``STR``/``VARn`` to know what to push."""
@@ -33,16 +87,13 @@ class TestModulous:
         program = "[PSH STR “Hello, World!”][PRT STR][JMP B 1 NIF 0]"
         assert run_and_capture(program) == "Hello, World!"
 
-    def test_push_dispatches_on_its_type_word(self) -> None:
-        """``INT`` inside a quoted string is data, not the push type."""
-        assert run_and_capture('[PSH STR "INT"][PRT STR][END]') == "I"
-
-    def test_a_space_after_the_quoted_string_is_inside_the_command(self) -> None:
-        """``[PSH STR "A" ]`` is one command; it was refused as stray text."""
-        assert run_and_capture('[PSH STR "A" ][PRT STR][END]') == "A"
-
-    def test_input(self) -> None:
-        assert run_and_capture("[INP INT][PRT INT][END]", inputs=["42"]) == "42"
+    @pytest.mark.parametrize(
+        ("code", "inputs", "expected"),
+        _OUTPUT_WITH_INPUT.values(),
+        ids=list(_OUTPUT_WITH_INPUT),
+    )
+    def test_output_with_input(self, code, inputs, expected) -> None:
+        assert run_and_capture(code, inputs=inputs) == expected
 
     def test_truth_machine_zero(self) -> None:
         """A 0 input prints 0 and halts."""
@@ -55,28 +106,6 @@ class TestModulous:
     def test_input_string(self) -> None:
         assert run_and_capture("[INP][PRT][PRT][END]", inputs=["AB"]) == "AB"
         assert run_and_capture("[INP][PRT][PRT][PRT][END]", inputs=["A B"]) == "A B"
-
-    def test_integer_input_skips_blank_lines(self) -> None:
-        """Integer input skips blank lines before reading a token."""
-        assert run_and_capture("[INP INT][PRT INT][END]", inputs=["", "7"]) == "7"
-
-    def test_swap(self) -> None:
-        assert (
-            run_and_capture("[PSH INT 1][PSH INT 2][SWP][PRT INT][PRT INT][END]")
-            == "12"
-        )
-
-    def test_jump_forward(self) -> None:
-        """JMP F skips a module."""
-        assert run_and_capture("[PSH INT 5][JMP F 1][PRT INT][END]") == "5"
-
-    def test_conditional_jump(self) -> None:
-        """JMP ... IF jumps only when the top matches."""
-        assert run_and_capture("[PSH INT 5][JMP F 1 IF 5][PRT INT][END]") == "5"
-
-    def test_conditional_jump_nif(self) -> None:
-        """JMP ... NIF jumps only when the top does not match."""
-        assert run_and_capture("[PSH INT 5][JMP F 1 NIF 5][PRT INT][END]") == "5"
 
     def test_conditional_jump_nif_takes_the_jump(self) -> None:
         """NIF jumps when the top does *not* match, which is its whole point."""
@@ -91,10 +120,6 @@ class TestModulous:
         program = "[JMP F 2 NIF 1][PSH INT 3][PRT INT][PSH INT 8][PRT INT][END]"
         with pytest.raises(HaltError):
             run_and_capture(program)
-
-    def test_backward_jump(self) -> None:
-        """JMP B jumps backwards, eventually landing on END."""
-        assert run_and_capture("[JMP B 1][END]") == ""
 
     def test_forward_jump_is_relative_and_lands_past_the_skip(self) -> None:
         """``JMP F n`` moves ``n`` modules on from the jump, not to module n."""
@@ -113,34 +138,11 @@ class TestModulous:
             machine.step()
         assert io.getvalue() == "9999"
 
-    def test_pop(self) -> None:
-        """POP removes the top of the stack."""
-        assert run_and_capture("[PSH INT 5][POP][PSH INT 7][PRT INT][END]") == "7"
-
     def test_pop_leaves_the_rest_of_the_stack(self) -> None:
         """It removes one value, not all but the bottom one."""
         staged = "[PSH INT 1][PSH INT 2][PSH INT 3]"
         assert run_and_capture(f"{staged}[POP][PRT INT][END]") == "2"
         assert run_and_capture(f"{staged}[POP][POP][PRT INT][END]") == "1"
-
-    def test_reset(self) -> None:
-        """RST restarts from the first module, re-reading input."""
-        # After RST the pointer returns to the start, so the second input
-        # line is read; then JMP F 2 IF 0 jumps over RST to PRT/END.
-        assert (
-            run_and_capture(
-                "[INP INT][JMP F 2 IF 0][RST][PRT INT][END]", inputs=["5", "0"]
-            )
-            == "0"
-        )
-
-    def test_push_variable(self) -> None:
-        """``[PSH VARn]`` stores the top of the stack in a variable."""
-        assert run_and_capture("[PSH INT 7][PSH VAR1][PRT VAR1 INT][END]") == "7"
-
-    def test_random(self) -> None:
-        """RND pushes a random value below the given bound."""
-        assert run_and_capture("[RND 1][PRT INT][END]") == "0"
 
     def test_variable_arithmetic_takes_a_signed_operand(self) -> None:
         """The first sign is the operator; the rest is the number (b9623084)."""
@@ -160,51 +162,17 @@ class TestModulous:
             with pytest.raises(HaltError):
                 run(f"[{name}+3][PRT {name} INT][END]", IO())
 
-    def test_add_targets_the_top_of_the_stack(self) -> None:
-        """``ADD`` changes the top cell, leaving what is under it alone."""
-        assert (
-            run_and_capture(
-                "[PSH INT 1][PSH INT 2][PSH INT 3][ADD 4]"
-                "[PRT INT][PRT INT][PRT INT][END]"
-            )
-            == "721"
-        )
-
     def test_string_and_input_pushes_keep_the_stack_under_them(self) -> None:
         """``PSH STR`` and ``INP`` extend the stack rather than replacing it."""
         assert run_and_capture('[PSH INT 65][PSH STR "B"][PRT][PRT][END]') == "BA"
         assert run_and_capture("[PSH INT 65][INP][PRT][PRT][END]", inputs=["B"]) == "BA"
 
-    def test_add_on_empty_stack_halts(self) -> None:
-        """Arithmetic on an empty stack is an invalid operation."""
+    @pytest.mark.parametrize(
+        "code", _RUNTIME_FAULTS_HALT.values(), ids=list(_RUNTIME_FAULTS_HALT)
+    )
+    def test_runtime_faults_halt(self, code) -> None:
         with pytest.raises(HaltError):
-            run("[ADD 1]", IO())
-
-    def test_swap_on_short_stack_halts(self) -> None:
-        with pytest.raises(HaltError):
-            run("[SWP]", IO())
-
-    def test_print_on_empty_stack_halts(self) -> None:
-        with pytest.raises(HaltError):
-            run("[PRT INT]", IO())
-
-    def test_print_undefined_variable_halts(self) -> None:
-        with pytest.raises(HaltError):
-            run("[PRT VAR9 INT]", IO())
-
-    def test_push_undefined_variable_halts(self) -> None:
-        """Storing into an undeclared variable is invalid, as reading one is."""
-        with pytest.raises(HaltError):
-            run("[PSH INT 7][PSH VAR9]", IO())
-
-    def test_push_variable_keyword_spelling_halts(self) -> None:
-        """``[PSH VAR VAR1]`` is not the syntax and does not quietly store."""
-        with pytest.raises(HaltError):
-            run("[PSH INT 7][PSH VAR VAR1]", IO())
-
-    def test_random_zero_bound_halts(self) -> None:
-        with pytest.raises(HaltError):
-            run("[RND 0]", IO())
+            run(code, IO())
 
     def test_missing_jump_operand_rejected(self) -> None:
         """A command missing a required operand is malformed."""
