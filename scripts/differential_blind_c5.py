@@ -322,11 +322,42 @@ THISTHAT_ASCII: dict[str, str | int | None] = dict(
 THISTHAT_ASCII |= {"v": "◺", ">": "▶", ")": "▷", "-": "─", "|": "║"}
 
 
-#: The reference brought to our recorded reading: ``◉`` halts at the end of
+#: The reference brought to our recorded readings: ``◉`` halts at the end of
 #: its cycle, so an output reached in the same cycle still prints (the wiki
 #: truth machine needs one or the other; the reference instead acts on
-#: arrival in row order, which favours a ``◇`` above the ``◉`` only).
+#: arrival in row order, which favours a ``◇`` above the ``◉`` only).  And
+#: input sets: a set's end reads as empty until an empty transfer into an
+#: output ``◇`` (the flag) skips to the next set; the reference ends a set
+#: once and ignores the flag (the wiki BCT needs the switch).  Once an empty
+#: transfer is a flag, the reference's ``▣◯◔◈◘`` sending one down a data
+#: wire in execution mode shows; ours sends nothing there.
 THISTHAT_PATCHES = (
+    (
+        "            for dest, arr, is_data, _first in ports.get(d, []):\n",
+        "            for dest, arr, is_data, _first in ports.get(d, []):\n"
+        '                if is_data and p.mode == "x" and self.nodes[p.pos] in '
+        '"\\u25a3\\u25ef\\u25d4\\u25c8\\u25d8":\n'
+        "                    continue\n",
+    ),
+    (
+        "        while self.ip < len(self.inp):\n",
+        '        while not getattr(self, "ended", False)'
+        " and self.ip < len(self.inp):\n",
+    ),
+    (
+        '            if ch == "\\n":\n                return None\n',
+        '            if ch == "\\n":\n                self.ended = True\n',
+    ),
+    (
+        "            if data:\n                self.write_bit(p.data)\n",
+        "            if data and p.data is None:\n"
+        '                if not getattr(self, "ended", False):\n'
+        "                    end = self.inp.find(chr(10), self.ip)\n"
+        "                    self.ip = len(self.inp) if end < 0 else end + 1\n"
+        "                self.ended = False\n"
+        "            elif data:\n"
+        "                self.write_bit(p.data)\n",
+    ),
     # ASCII anchors: the harness patches the reference as Latin-1.
     (
         "            raise Halt(0)\n        if g in ARROWS:",
@@ -364,8 +395,12 @@ def thisthat_ours(language: str, program: str, stdin: str, max_steps: int) -> An
 
 
 def bits_input(rng: random.Random, _program: str) -> str:
-    """Return a few bits, now and then none."""
-    return "".join(rng.choice("01") for _ in range(rng.choice((0, 2, 5))))
+    """Return one or two newline-separated sets of a few bits, now and then none."""
+    sets = rng.choice((1, 1, 2))
+    return "\n".join(
+        "".join(rng.choice("01") for _ in range(rng.choice((0, 2, 5))))
+        for _ in range(sets)
+    )
 
 
 def unsquare_block(rng: random.Random, depth: int = 0) -> str:

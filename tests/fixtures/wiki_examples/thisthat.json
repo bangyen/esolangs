@@ -26,6 +26,20 @@
    "id": "cat-empty",
    "source_file": "thisthat_cat.txt",
    "expected": ""
+  },
+  {
+   "id": "bct-halts",
+   "source_file": "thisthat_bct.txt",
+   "stdin": "01\n101",
+   "expected": ""
+  },
+  {
+   "id": "bct-runs-on",
+   "source_file": "thisthat_bct.txt",
+   "stdin": "1\n1",
+   "stop": "steps",
+   "max_steps": 20000,
+   "expected": ""
   }
  ]
 }

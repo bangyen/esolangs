@@ -145,6 +145,35 @@ def test_eof_is_an_empty_transfer() -> None:
     assert io.getvalue() == ""
 
 
+@pytest.mark.parametrize(
+    ("stdin", "expected"), [("1\n0", "10"), ("10\n1", "11"), ("1", "1")]
+)
+def test_the_flag_switches_input_sets(stdin: str, expected: str) -> None:
+    """``▦``'s empty transfer into ``◇`` skips the set's rest; a set ends at EOL."""
+    flag = ["▣─◇─▦───◇", "  ║ ║   ║", "  ◇ ◇   ◇"]
+    io = ScriptedIO(stdin)
+    run(flag, io)
+    assert io.getvalue() == expected
+    io = ScriptedIO("1\n1")
+    run(["▣─◇─◇", "  ║ ║", "  ◇ ◇"], io)
+    assert io.getvalue() == "1"
+
+
+def test_a_generated_program_reads_the_first_set_only() -> None:
+    """Spaces are ignored, a newline is not: the stdin oracle refuses ``0\\n1``."""
+    from esolangs.exceptions import ArgumentError
+    from tests.stdin_check import _check_stdin
+
+    xor = thisthat("0110").splitlines()
+    for stdin, expected in (("0 1\n", "1"), ("0\n1", "")):
+        io = ScriptedIO(stdin)
+        run(xor, io)
+        assert io.getvalue() == expected
+    _check_stdin("thisthat", "0 1\n", "0110")
+    with pytest.raises(ArgumentError, match="first line"):
+        _check_stdin("thisthat", "0\n1", "0110")
+
+
 def test_branching_protocol_covers_random_input_plain_and_halted() -> None:
     random = _Machine(["▣═◘═◇"], ScriptedIO(""))
     random.pointers = (

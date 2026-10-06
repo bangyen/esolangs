@@ -27,6 +27,8 @@ class BooleanContract:
     answer_values: tuple[str, str] = ("0", "1")
     note: str = ""
     ignores_whitespace: bool = False
+    #: A newline ends the set a program reads; generated programs read one.
+    input_sets: bool = False
 
 
 # Only departures from the default line-input, printed-bit contract.
@@ -92,6 +94,7 @@ CONTRACTS: dict[str, BooleanContract] = {
     "grid_based.thisthat": BooleanContract(
         input_shape="char_stream",
         ignores_whitespace=True,
+        input_sets=True,
     ),
     "other.algebraic_programming_language": BooleanContract(
         note="an executed line prints its result, so the answer ends in a newline",
