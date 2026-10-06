@@ -24,25 +24,24 @@ def test_normal_word_matrix() -> None:
     )
     x = sympy.Symbol("x")
     assert matrix.charpoly(x).as_expr() == sympy.expand(
-        x**3 * (x - 1) * (x + 1) * (x**3 - 7 * x**2 - x + 2)
+        x * (x - 1) ** 2 * (x + 1) ** 2 * (x**3 - 7 * x**2 + 1)
     )
-    assert 7.10 < growth() < 7.11
-    assert abs(growth() ** 3 - 7 * growth() ** 2 - growth() + 2) < 1e-12
+    assert 6.97 < growth() < 6.98
+    assert abs(growth() ** 3 - 7 * growth() ** 2 + 1) < 1e-12
     lower = math.log(2) ** 2 / (math.log(growth()) * math.log(10))
     upper = (435 / 448) * math.log10(2)
-    assert lower == pytest.approx(0.10644418816056818)
-    assert upper / lower == pytest.approx(2.7459906952662383)
+    assert lower == pytest.approx(0.1073911319728899)
+    assert upper / lower == pytest.approx(2.7217773468285684)
 
 
-def test_pointer_clamp_and_totality_controls() -> None:
+def test_pointer_pair_and_totality_controls() -> None:
+    # The tape grows left, so `<>` at cell zero returns to its cell.
     code = "+<>."
-    assert normalize(code) == code
-    io = ScriptedIO("")
-    run_bf(code, io)
-    assert io.getvalue() == "\x00"
-    io = ScriptedIO("")
-    run_bf(code.replace("<>", ""), io)
-    assert io.getvalue() == "\x01"
+    assert normalize(code) == "+."
+    for program in (code, "+."):
+        io = ScriptedIO("")
+        run_bf(program, io)
+        assert io.getvalue() == "\x01"
     # An empty loop may only be deleted on halting inputs.
     machine = _Machine("+[]", ScriptedIO(""))
     for _ in range(30):
@@ -151,6 +150,6 @@ def test_prefix_word_matrix() -> None:
     )
     x = sympy.Symbol("x")
     assert matrix.charpoly(x).as_expr() == sympy.expand(
-        x**4 * (x - 1) * (x**3 - 6 * x**2 - x + 2)
+        x**2 * (x - 1) ** 2 * (x + 1) * (x**3 - 6 * x**2 + 1)
     )
-    assert 6.11 < prefix_growth() < 6.12
+    assert 5.97 < prefix_growth() < 5.98

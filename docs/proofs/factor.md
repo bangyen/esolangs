@@ -225,18 +225,18 @@ tables. The existing witnesses and counting argument can be made explicit:
     (ln 2)**2 / (ln lambda * ln 10) <= liminf C_F(n)/(T*n)
     limsup C_F(n)/(T*n) <= (435/448) log10 2.
 
-Here `lambda = 6.110092071...` is the largest root of
-`x**3 - 6x**2 - x + 2`. The coefficients are 0.11528442 and 0.29229475; neither is claimed sharp.
+Here `lambda = 5.971960768...` is the largest root of
+`x**3 - 6x**2 + 1`. The coefficients are 0.11675954 and 0.29229475; neither is claimed sharp.
 For the lower bound, first normalize every balanced program that halts
-with exactly one output on each valid input. Delete adjacent `+-`, `-+`
-and `><`; the last returns to its origin even at the clamped boundary.
+with exactly one output on each valid input. Delete adjacent `+-`, `-+`,
+`><` and `<>`; the last two return to their origin, since the tape grows
+in both directions.
 Delete `[]`: reaching it on a nonzero cell would prevent halting, so it
 only runs as a no-op on valid inputs. Delete `..`: both outputs would run
 together, so this pair is unreachable on every single-output input.
 Replace `+,` and `-,` by `,`, which overwrites their arithmetic.
 Repeated deletion terminates and preserves the entire valid-input behavior,
-including input consumption. The restriction matters: `+[]` is not halting,
-and `<>` cannot be canceled at the clamped boundary.
+including input consumption. The restriction matters: `+[]` is not halting.
 
 For counting, interpret programs only until their first output. Every
 original Boolean program reaches that output on every valid input. In each
@@ -262,14 +262,14 @@ choices bound these prefixes by `exp(O(r ln(L/r))) = exp(o(L/ln L))`.
 Every later exponent costs at least `ln(r+1)`, so the remaining word has
 length at most `N = floor(L/ln(r+1))`.
 
-The normalized word avoids the seven displayed pairs, `][`, and `].`;
+The normalized word avoids the eight displayed pairs, `][`, and `].`;
 after dot, only a closing bracket is allowed. The corresponding 8-by-8
 transition matrix has characteristic polynomial
 
-    x**4 (x-1)(x**3 - 6x**2 - x + 2).
+    x**2 (x-1)**2 (x+1)(x**3 - 6x**2 + 1).
 
 The matrix is irreducible and has self-loops, so the Perron root is the
-largest cubic root `lambda` in `(6.11,6.12)`; the other two cubic roots
+largest cubic root `lambda` in `(5.97,5.98)`; the other two cubic roots
 are in `(-1,0)` and `(0,1)`. Allowed words of length at most `N` number
 `O(lambda**N)`, uniformly over the prefix's last command. Programs shorter
 than `r` runs are already counted as prefixes. Hence distinct behaviors
@@ -279,8 +279,8 @@ and using `C_F(n) = Theta(T ln T)` gives the displayed lower coefficient.
 executes original, locally normalized, and prefix-normalized witnesses on
 all tables through three inputs (2,120 rows each). Both ordinary Factor
 encodings of every one-input table execute, and a prefix-pruned Factor
-control executes with a first-output trap. Clamp, nonhalting, and repeated
-output controls delimit the two rewrite contracts.
+control executes with a first-output trap. Pointer-pair, nonhalting, and
+repeated output controls delimit the two rewrite contracts.
 
 The count treats distinct normalized words as distinct behaviours; the corpus
 does not. On the 276 exhaustive tables through three inputs plus parity through
@@ -290,14 +290,11 @@ behaviours, ratio 0.5: each table's two forms are one behaviour.
 normalization is behavior-preserving there and the collapse is a constant
 factor two, not a gain in `lambda`.
 
-One further local pair fails. `<>` is absent from the forbidden set and appears
-in 275 of the 279 prefix-normal forms; deleting every occurrence preserves the
-executed corpus and would leave `x**2 (x-1)**2 (x+1)(x**3 - 6x**2 + 1)`, Perron
-root 5.971960768 and coefficient 0.11675954. But at the clamped left edge it
-ends one cell to the right, so the rewrite is unsound: `,<>.` prints NUL while
-`,.` prints the input read into cell 0.
-`test_pointer_pair_rule_is_rejected_by_clamp` runs both, and the lower
-coefficient stays 0.11528442.
+`<>` joined the forbidden set on 2026-10-06, when the Brainfuck tape stopped
+clamping at cell 0. While it clamped, `,<>.` printed NUL where `,.` printed the
+input read into cell 0, so the rewrite was unsound and the root was 6.110092071
+(coefficient 0.11528442). `test_pointer_pair_rule_holds_on_a_growing_tape`
+runs that former counterexample and checks deletion on the executed corpus.
 
 For the upper bound, use the signed-ball block construction in
 `tests/proofs/_factor_blocks.py`. For `n >= 5`, split the truth table into
@@ -376,7 +373,7 @@ gives `ln Q <= (15/14 + eta) ln C + O_eta(1)` for every `eta > 0`.
 Letting `eta` decrease to zero gives
 `(29/32)*(15/14)*log10 2 = (435/448)*log10 2`.
 Against the lower coefficient `ln(2)**2/(ln(lambda)*ln(10))`, the
-asymptotic bracket has gap `(435/448)*log_2(lambda) = 2.535423`.
+asymptotic bracket has gap `(435/448)*log_2(lambda) = 2.503391`.
 
 Tests exhaust the smaller signed balls through dimension and budget four,
 check the counting recurrence through 14, and pin actual source lengths

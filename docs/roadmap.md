@@ -166,8 +166,8 @@ the answer in the linked proof and remove the item.
   close the constant bracket.
 
 - **Factor leading constant.** [factor](proofs/factor.md#leading-constants)
-  brackets worst-case minimum digits divided by `T*n` between 0.11528442
-  and 0.29229475 asymptotically (a 2.535423-fold gap). The lower side
+  brackets worst-case minimum digits divided by `T*n` between 0.11675954
+  and 0.29229475 asymptotically (a 2.503391-fold gap). The lower side
   counts weighted exponent compositions after local normalization and
   first-output pruning; the upper side prices a traveling counter, fixed
   signed-ball blocks, and an almost-all prime-window covering bound. Parity

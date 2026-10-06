@@ -1,7 +1,7 @@
 """Normal forms for total, single-output Factor truth-table programs."""
 
 ALPHABET = "><+-.,[]"
-FORBIDDEN = frozenset({"+-", "-+", "><", "[]", "..", "+,", "-,"})
+FORBIDDEN = frozenset({"+-", "-+", "><", "<>", "[]", "..", "+,", "-,"})
 
 
 def normalize(code: str) -> str:
@@ -19,11 +19,11 @@ def normalize(code: str) -> str:
 
 
 def growth() -> float:
-    """Return the Perron root of x^3 - 7x^2 - x + 2, bracketed in (7.10,7.11)."""
-    lower, upper = 7.10, 7.11
+    """Return the Perron root of x^3 - 7x^2 + 1, bracketed in (6.97,6.98)."""
+    lower, upper = 6.97, 6.98
     for _ in range(60):
         middle = (lower + upper) / 2
-        if middle**3 - 7 * middle**2 - middle + 2 < 0:
+        if middle**3 - 7 * middle**2 + 1 < 0:
             lower = middle
         else:
             upper = middle
@@ -69,11 +69,11 @@ def prefix_normalize(code: str) -> str:
 
 
 def prefix_growth() -> float:
-    """Return the largest root of x^3 - 6x^2 - x + 2 in (6.11,6.12)."""
-    lower, upper = 6.11, 6.12
+    """Return the largest root of x^3 - 6x^2 + 1 in (5.97,5.98)."""
+    lower, upper = 5.97, 5.98
     for _ in range(60):
         middle = (lower + upper) / 2
-        if middle**3 - 6 * middle**2 - middle + 2 < 0:
+        if middle**3 - 6 * middle**2 + 1 < 0:
             lower = middle
         else:
             upper = middle

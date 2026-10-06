@@ -596,18 +596,20 @@ class TestRunUntilHaltOrGrowth:
         with pytest.raises(TimeoutError, match="undecided after"):
             run_until_halt_or_growth(machine, 200)
 
-    def test_a_clamped_loop_is_never_certified(self) -> None:
+    def test_a_left_edge_loop_is_never_certified(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.brainfuck import _Machine
         from esolangs.vm import run_until_halt_or_growth
 
         # `+[<+]` is the reason the certificate demands `m >= 1`.  Its `<`
-        # is clamped at cell 0 every lap, so it does not translate -- and
-        # it in fact halts, once the cell wraps at 256.  Certifying a
-        # left-edge period would have called a halting program a hang.
+        # meets cell 0 every lap and grows the tape leftward, which shifts
+        # every index, so the laps do not translate rightward.  The
+        # detector must decline rather than certify.
         machine = _Machine("+[<+]", ScriptedIO())
-        assert run_until_halt_or_growth(machine) is True
-        assert machine.tape == (0,)
+        with pytest.raises(TimeoutError, match="undecided after"):
+            run_until_halt_or_growth(machine, 300)
+        assert machine.ptr == 0
+        assert len(machine.tape) > 50
 
     def test_in_place_cycles_are_left_to_the_cycle_detector(self) -> None:
         from esolangs.interpreters.io import ScriptedIO

@@ -167,11 +167,12 @@ class TestStreetcodeIO:
 
 
 class TestStreetcodeCPBounds:
-    def test_cp_decrement_below_zero_is_clamped(self) -> None:
-        """``_`` at CP 0 moves nothing rather than raising."""
-        assert run_street("C_^O;") == chr(1)
-        # repeated clamping stays on cell 0 rather than drifting
-        assert run_street("C___^O;") == chr(1)
+    def test_cp_decrement_below_zero_raises(self) -> None:
+        """``_`` at CP 0 aborts: the CP is unsigned, no cell lies left of 0."""
+        with pytest.raises(HaltError, match="unsigned CP below zero"):
+            run_street("C_^O;")
+        with pytest.raises(HaltError, match="unsigned CP below zero"):
+            run_street("C=__^O;")
 
     def test_cp_can_move_right_and_back_to_zero(self) -> None:
         assert run_street("C=_^O;") == chr(1)

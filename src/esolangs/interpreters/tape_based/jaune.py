@@ -9,8 +9,9 @@ program. Repeated ``+``/``-`` combine into a count; ``v`` as an operand
 reads an integer as the count or the label/subroutine name.
 
 Gaps decided: ``v`` reads whitespace-delimited signed integer tokens and raises
-:class:`EOFError` at end of input. The tape grows right; ``<`` at cell 0 clamps
-(the wiki says only "previous cell"; see Streetcode's ``_``).
+:class:`EOFError` at end of input. The tape grows both ways: ``<`` at the leftmost
+cell adds a zero cell on the left (the wiki says only "previous cell", and
+brainfuck's page allows cells left of the start).
 cells are plain integers, as JauneJS's ``+=`` is; a read operand is
 consumed whether or not the branch is taken and may name any integer;
 ``v:`` and ``v$`` define nothing and are dropped at parse, as the
@@ -37,6 +38,7 @@ from esolangs.interpreters.persistent import (
     flatten,
     get,
     length,
+    prepend,
     put,
 )
 from esolangs.interpreters.source_hints import syntax_error
@@ -214,7 +216,7 @@ def _advance(
     ``marks`` is :func:`_markers` for ``commands``, required rather than
     rebuilt per step.  Pure: ``^``'s cell is carried forward and the three
     reading forms arrive as ``value``.  ``>`` past the edge appends a cell;
-    ``<`` at 0 moves nothing.  Taken jumps, calls and returns set the
+    ``<`` at 0 prepends a cell.  Taken jumps, calls and returns set the
     cursor outright and return early.
     """
     cells, ptr, hold, pos, calls = state
@@ -233,12 +235,14 @@ def _advance(
         if ptr == length(cells):
             cells = append(cells, 0)
     elif c == "<":
-        # Clamped at cell 0, as brainfuck clamps its own ``<``.  This used
-        # to insert a fresh cell and leave the pointer where it was, which
-        # grew the tape leftward; the wiki says only "Moves pointer to the
-        # previous cell" and nothing about bounds, so both readings filled a
-        # gap, and clamping is the one the rest of this package uses.
-        ptr = max(0, ptr - 1)
+        # At cell 0 the tape grows a zero cell on the left, and index 0 is
+        # now that cell.  The wiki says only "Moves pointer to the previous
+        # cell" and nothing about the left edge, and brainfuck's page allows
+        # cells left of the start.
+        if ptr:
+            ptr -= 1
+        else:
+            cells = prepend(cells, 0)
     elif c == "#":
         hold = get(cells, ptr)
     elif c == "&":

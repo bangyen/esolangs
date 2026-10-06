@@ -36,9 +36,23 @@ class TestRotation:
 
 
 class TestTape:
-    def test_left_clamped(self) -> None:
-        """< at the left edge does nothing (matches the Brainfuck semantics)."""
-        assert run_program(build("<<.")) == "\x00"
+    def test_left_of_cell_zero_is_a_fresh_zero_cell(self) -> None:
+        """< at the left edge grows the tape onto a new zero cell."""
+        assert run_program(build("+<.")) == "\x00"
+        assert run_program(build("+<<<.")) == "\x00"
+
+    def test_left_of_zero_and_back_keeps_both_cells(self) -> None:
+        """The grown cell and the start cell are distinct and both kept."""
+        assert run_program(build("+<++>.<.")) == "\x01\x02"
+        assert run_program(build("+<<<<>>>>.")) == "\x01"
+
+    def test_the_step_machine_grows_left_as_run_does(self) -> None:
+        from esolangs.interpreters.tape_based.rotfuck import _Machine
+
+        machine = _Machine(build("+<<++>"), ScriptedIO())
+        while not machine.halted:
+            machine.step()
+        assert (machine.tape, machine.ptr) == ((2, 0, 1), 1)
 
     def test_comments_do_not_rotate_the_program(self) -> None:
         """A comment is passed over, not executed, so it does not rotate."""
@@ -82,7 +96,14 @@ class TestBrackets:
 
     def test_backward_jump_over_nested_bracket(self) -> None:
         """A fired ``]`` jumps back across a nested ``]`` in the rotation."""
-        assert run_program("<+..>[]") == "\x01"
+        from esolangs.interpreters.tape_based.rotfuck import _Machine
+
+        # Index 4 fires as ``]`` and, rotated, finds its ``[`` at index 1
+        # past the ``]`` at index 3; the replayed ``+``/``>`` leave (2, 1).
+        machine = _Machine("+--><+", ScriptedIO())
+        while not machine.halted:
+            machine.step()
+        assert (machine.io.getvalue(), machine.tape) == ("\x01", (2, 1))
 
     def test_unmatched_bracket_halts_when_executed(self) -> None:
         """A fired bracket with no partner in the rotated program errors."""
@@ -104,7 +125,7 @@ class TestBrackets:
         with pytest.raises(HaltError):
             run_program(build("[[+"))
         with pytest.raises(HaltError):
-            run_program(build("+[<.]"))
+            run_program(build("+>+[<.]"))
 
     def test_the_partnerless_bracket_message_names_which_one_fired(self) -> None:
         """Each direction reports its own bracket, and the text is pinned."""
@@ -137,7 +158,7 @@ class TestStepMachine:
 
         chars = tuple("<[]")
         assert _advance(((0, 1), 1, 0, 0), chars) == ((0, 1), 0, 1, 1)
-        assert _advance(((0,), 0, 0, 0), tuple("<")) == ((0,), 0, 1, 1)
+        assert _advance(((7,), 0, 0, 0), tuple("<")) == ((0, 7), 0, 1, 1)
         assert _advance(((1,), 0, 1, 0), tuple(".]")) == ((1,), 0, 1, 1)
 
         with pytest.raises(HaltError):

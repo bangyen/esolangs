@@ -307,7 +307,8 @@ and 4.000 (///). The constructions supply the bounds; these ratios are measureme
   decoded Brainfuck, but sources of length at most L supply at most L+1
   functions. Covering all 2**T truth tables requires L >= 2**T - 1 somewhere,
   precluding an O(T) generator. Decoded Brainfuck uses wrapping bytes,
-  a left-clamped tape and zero at EOF, as its cat example requires.
+  a tape growing in both directions and zero at EOF, as its cat example
+  requires.
 - [大白话](https://esolangs.org/wiki/大白话) (134): deferred. The command table is
   explicitly partial; expression precedence, complete block grammar, library
   semantics, and embedded-language dispatch are unspecified. A restricted
@@ -361,8 +362,9 @@ languages remain rejected from the same image-source screen.
   then take their no-character branch.
 - Bitdeque `GOTO n` is zero-based: it lands on command index `n`, where the
   wiki leaves the counting origin unstated. The generator’s labels match this.
-- Brainfuck uses wrapping bytes, a right-growing tape, a clamped left edge and
-  EOF errors. Its page describes implementation conventions rather than
+- Brainfuck uses wrapping bytes, a tape growing in both directions and EOF
+  errors; its page allows cells left of the start, and two of its Hello
+  Worlds need them. Its page describes implementation conventions rather than
   conflicting requirements. Factor retains these defaults: its cell range
   and right growth are explicit, while its left edge and EOF are unspecified.
 - Line leaves cell width and tape boundaries unspecified: cells are unbounded
@@ -381,7 +383,7 @@ languages remain rejected from the same image-source screen.
   `cell_modulus` and `io_modulus` select 255 or 256, both defaulting to 256.
 - Jaune leaves unresolved markers, cell bounds, tape bounds and EOF unspecified.
   Unresolved markers raise `HaltError`; cells are unbounded, the tape grows
-  right and clamps left, and EOF raises. `v` reads signed integer tokens.
+  in both directions, and EOF raises. `v` reads signed integer tokens.
 - Alight retains infix, left-to-right expressions for compatibility with
   existing programs and generators, despite the explicit postfix rule.
   Its cat examples use infix expressions; `expression_syntax="postfix"` follows

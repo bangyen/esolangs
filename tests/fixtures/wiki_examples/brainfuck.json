@@ -18,17 +18,17 @@
    "expected": "Hello World!\n"
   },
   {
-   "id": "primo-hello-shifted",
-   "source": ">>>>--<-<<+[+[<+>--->->->-<<<]>]<<--.<++++++.<<-..<<.<+.>>.>>.<<<.+++.>>.>>-.<<<+.",
+   "id": "primo-hello",
+   "source": "--<-<<+[+[<+>--->->->-<<<]>]<<--.<++++++.<<-..<<.<+.>>.>>.<<<.+++.>>.>>-.<<<+.",
    "expected": "Hello, World!",
    "vm": false,
-   "note": "stepping parity skipped: the VM path is ~10x the run; needs four cells left of the start, which our tape (clamped at 0) lacks; >>>> supplies them, the adjustment the page itself names"
+   "note": "stepping parity skipped: the VM path is ~10x the run; uses four cells left of the start, which the tape grows"
   },
   {
-   "id": "ksab-hello-shifted",
-   "source": ">>>>>+[-->-[>>+>-----<<]<--<---]>-.>>>+.>>..+++[.>]<<<<.+++.------.<<-.>>>>+.",
+   "id": "ksab-hello",
+   "source": "+[-->-[>>+>-----<<]<--<---]>-.>>>+.>>..+++[.>]<<<<.+++.------.<<-.>>>>+.",
    "expected": "Hello, World!",
-   "note": "needs five cells left of the start; >>>>> supplies them"
+   "note": "uses five cells left of the start, which the tape grows"
   },
   {
    "id": "cat-eof-0",

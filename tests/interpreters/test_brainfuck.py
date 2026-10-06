@@ -44,9 +44,10 @@ class TestBrainfuck:
     def test_comments_ignored(self) -> None:
         assert run_and_capture("abc+++abc.abc") == "\x03"
 
-    def test_left_clamped(self) -> None:
-        """< at the left edge does nothing (the tape is clamped there)."""
-        assert run_and_capture("<<.") == "\x00"
+    def test_the_tape_grows_left(self) -> None:
+        """< at the left edge adds a fresh cell; the start cell keeps its value."""
+        assert run_and_capture("+<<+++.>>.") == "\x03\x01"
+        assert run_and_capture("+" + "<" * 100 + ">" * 100 + ".") == "\x01"
 
     def test_input_echo(self) -> None:
         assert run_and_capture(",>,<.>.", inputs=["A", "B"]) == "AB"
