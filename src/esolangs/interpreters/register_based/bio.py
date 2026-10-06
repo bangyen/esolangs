@@ -7,7 +7,9 @@ loop-open carries its ``{`` (:data:`_COMMAND`); the page's untested
 Thutu sketch strips them, and the prose and examples are followed
 instead.  Only ``//`` comments are dropped.  Braces are matched at load,
 so an unmatched ``}``, a ``0i`` without ``{`` or any undefined character
-raises :class:`ValueError` and the loop stack cannot underflow.
+raises :class:`ValueError` and the loop stack cannot underflow.  Gaps
+decided: registers are unbounded and ``1i`` prints the value mod 256; a
+space may separate commands but not split one (``0o z;`` is malformed).
 :func:`_advance` is pure and total over an immutable ``_State``; the one
 print is the shell's.
 """

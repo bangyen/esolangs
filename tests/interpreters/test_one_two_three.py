@@ -26,6 +26,13 @@ class Test123:
 
         assert run_until_halt_or_cycle(_Machine(" \n abc \n", ScriptedIO())) is False
 
+    def test_empty_program_is_refused(self) -> None:
+        """By the page it loops (only a pointer below 0 halts); it used to
+        halt with no output, found against a clean-room reference.
+        """
+        with pytest.raises(ValueError, match="never halts"):
+            run_program("")
+
     def test_wiki_cat_echoes(self) -> None:
         """The cat program echoes input, then EOF raises like the others."""
         io = ScriptedIO("h\ni")

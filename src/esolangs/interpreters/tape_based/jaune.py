@@ -16,7 +16,9 @@ cells are plain integers, as JauneJS's ``+=`` is; a read operand is
 consumed whether or not the branch is taken and may name any integer;
 ``v:`` and ``v$`` define nothing and are dropped at parse, as the
 compiler's ``prep`` does; an undefined label or subroutine, or ``;`` with
-no active call, raises :class:`~esolangs.exceptions.HaltError`; a
+no active call, raises :class:`~esolangs.exceptions.HaltError` (a jump
+even when untaken); labels are program-wide and the first of a repeated
+one wins; text outside the EBNF is skipped and the ``.`` is optional; a
 command missing its required number is :class:`ValueError`; an infinite
 loop is bounded by the caller's ``timeout``.
 """

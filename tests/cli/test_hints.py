@@ -36,7 +36,7 @@ _BAD_SOURCE = [
     ("Fargo", "% 0\n$", "pending prefix call"),
     ("Packlang", "?", "punctuation"),
     ("RAM0", "1" * 4301, "PYTHONINTMAXSTRDIGITS"),
-    ("Sophie", "#$#[", "matching partner"),
+    ("Sophie", "#$[", "matching partner"),
     ("FALSE", "[", "close the lambda"),
     ("FRACTRAN", "2 3/0", "nonzero denominator"),
     ("Malbolge", "?", "position-dependent"),

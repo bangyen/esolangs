@@ -154,18 +154,13 @@ class TestSophieEdgeCases:
             run("#[", io=IO())
         assert f.getvalue() == ""
 
-    def test_the_dollar_form_also_swallows_its_bracket(self) -> None:
-        """``#$[`` loads the bracket too: the ``$`` is a marker, not the data."""
-        with redirect_stdout(io.StringIO()) as f:
-            run("#$[", io=IO())
-        assert f.getvalue() == ""
-
-    def test_a_marker_loaded_by_a_marker_leaves_the_next_bracket_standing(
-        self,
-    ) -> None:
-        """``#$#`` consumes the second ``#`` as data, so a following ``[`` is real."""
+    def test_a_dollar_without_a_number_is_the_loaded_character(self) -> None:
+        """``#c`` with c ``$``: the ``[`` after ``#$`` is structure, not data."""
         with pytest.raises(ValueError, match="unmatched"):
-            run("#$#[", io=IO())
+            run("#$[", io=IO())
+        with redirect_stdout(io.StringIO()) as f:
+            run("#$#[,", io=IO())
+        assert f.getvalue() == "["
 
     def test_a_digit_load_stops_at_the_first_non_digit(self) -> None:
         """``#$1[`` loads the digits only, leaving the bracket as structure."""
@@ -217,10 +212,12 @@ class TestSophieEdgeCases:
 
 class TestMiscCommands:
     def test_dollar_char_loaded_as_data(self) -> None:
-        """A ``#$<char>`` load skips the character as data."""
+        """``#$.`` loads ``$`` and prints it: the page has only ``#c`` and
+        ``#$n``, and the clean-room reference agrees (``$`` was a marker).
+        """
         with redirect_stdout(io.StringIO()) as f:
-            run("#$A,", io=IO())
-        assert f.getvalue() == "A"
+            run("#$.#$A,", io=IO())
+        assert f.getvalue() == "36$"
 
     def test_invalid_commands_ignored(self) -> None:
         with redirect_stdout(io.StringIO()) as f:
