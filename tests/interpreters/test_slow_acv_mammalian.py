@@ -59,18 +59,23 @@ class TestMammalian:
         # so it is what pins the wrap: 321 % 256 is 65, where 257 gives 64.
         assert accepted("Ł\n") == [0, 65], "the fold wraps at 256"
 
-    def test_values_wrap_at_a_byte(self) -> None:
-        """Every stored or printed value is reduced modulo 256, not 257."""
+    @pytest.mark.parametrize(("io_modulus", "printed"), [(None, "\x01"), (256, "\x00")])
+    def test_printed_values_wrap_at_the_io_modulus(
+        self, io_modulus: int | None, printed: str
+    ) -> None:
+        """PRONOUNCE prints ``acc`` modulo 255 ("modulo 255"), or 256 if asked."""
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
 
         # SEED puts 1 in lst[0]; ACCEPT folds 0xff against acc 0 and appends
         # it; DIGEST xors the accumulator with the sum, giving 256.
-        machine = _Machine("SEED ACCEPT DIGEST PRONOUNCE", ScriptedIO("\xff\n"))
+        io = ScriptedIO("\xff\n")
+        settings = {} if io_modulus is None else {"io_modulus": io_modulus}
+        machine = _Machine("SEED ACCEPT DIGEST PRONOUNCE", io, **settings)
         while not machine.halted:
             machine.step()
         assert machine.acc == 256
-        assert machine.io.getvalue() == "\x00"
+        assert machine.io.getvalue() == printed
 
     def test_seed_wraps_its_register_at_a_byte(self) -> None:
         """``SEED``'s addition wraps too, at the same 256."""
@@ -138,14 +143,17 @@ class TestPartial:
         assert acc == 3
         assert after == (6, 10, 14, 6)
 
-    def test_excrete_stores_the_accumulator_modulo_a_byte(self) -> None:
-        """``EXCRETE`` appends ``acc % 256`` and clears the accumulator."""
+    def test_excrete_stores_the_accumulator_modulo_the_io_modulus(self) -> None:
+        """``EXCRETE`` appends ``acc % 255`` by default and clears ``acc``."""
         from esolangs.interpreters.tape_based.slow_acv_mammalian import _partial
 
         after, acc = _partial(2, (), 256)
         assert acc == 0
+        assert after == (1,)
+        after, acc = _partial(2, (), 256, 256)
+        assert acc == 0
         assert after == (0,)
-        after, acc = _partial(2, after, 321)
+        after, acc = _partial(2, after, 321, 256)
         assert acc == 0
         assert after == (0, 65)
 

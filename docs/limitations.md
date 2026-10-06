@@ -381,7 +381,8 @@ languages remain rejected from the same image-source screen.
 - SLOW ACV MAMMALIAN rejects unknown words; commands are uppercase and
   whitespace-delimited. The Hello World fixture omits prose annotations.
   Its storage range is `0..255`, but EXCRETE and PRONOUNCE say modulo 255;
-  `cell_modulus` and `io_modulus` select 255 or 256, both defaulting to 256.
+  `cell_modulus` and `io_modulus` select 255 or 256; cells default to 256
+  and I/O to the page's 255.
 - Jaune leaves unresolved markers, cell bounds, tape bounds and EOF unspecified.
   Unresolved markers raise `HaltError`; cells are unbounded, the tape grows
   in both directions, and EOF raises. `v` reads signed integer tokens.
