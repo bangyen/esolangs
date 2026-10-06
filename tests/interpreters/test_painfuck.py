@@ -52,6 +52,31 @@ def run_program(targets: str, stdin: str = "", coin: int | None = None) -> str:
     return io.getvalue()
 
 
+_OUTPUT = {
+    # pp a (cell 2 nonzero, open), s b (0 -> close), u prints 0
+    "loop": ("ppas b ue".replace(" ", ""), "\x00"),
+    # t repeats the previous command 3 times
+    "repeat_previous": ("ptpue", "\n"),
+    "print_number": ("ppoe", "4"),
+    # q copies the left neighbor into the current cell when ptr > 0
+    "copy_from_left_neighbor": ("pprpplque", "\x04"),
+    "decrement": ("sue", "\xff"),
+    "half": ("pphue", "\x02"),
+    # p at cell 0, r moves right, pp, then d resets and p adds again
+    "pointer_reset": ("prppdpue", "\x04"),
+    "zero": ("pzue", "\x00"),
+    # A zero cell skips to the loop's own 'b', not to a nested one.
+    # cell 0 is zero, so the outer 'a' skips forward; the inner 'a...b'
+    # pair must be consumed as a unit, leaving 'u' to print cell 0.
+    "skipping_a_loop_steps_over_a_nested_one": ("aabbue", "\x00"),
+}
+
+
+@pytest.mark.parametrize(("targets", "expected"), _OUTPUT.values(), ids=list(_OUTPUT))
+def test_output(targets, expected) -> None:
+    assert run_program(targets) == expected
+
+
 class TestPainfuck:
     def test_increment_and_print(self) -> None:
         assert run_program("pue") == "\x02"
@@ -82,19 +107,11 @@ class TestPainfuck:
         with pytest.raises(HaltError):
             run_program("ip", "12x\n")
 
-    def test_loop(self) -> None:
-        # pp a (cell 2 nonzero, open), s b (0 -> close), u prints 0
-        assert run_program("ppas b ue".replace(" ", "")) == "\x00"
-
     def test_repeat_next(self) -> None:
         # c repeats the next command 7 times; s subtracts 1 each -> -5
         assert run_program("pcsu") == "\xfb"
         # c repeating u prints 7 times
         assert run_program("pcue") == "\x02\x02\x02\x02\x02\x02\x02"
-
-    def test_repeat_previous(self) -> None:
-        # t repeats the previous command 3 times
-        assert run_program("ptpue") == "\n"
 
     def test_repeat_previous_with_nothing_before_it(self) -> None:
         """A leading ``t`` has no earlier command, so it repeats nothing."""
@@ -104,13 +121,6 @@ class TestPainfuck:
     def test_halt(self) -> None:
         assert run_program("pe") == ""
         assert run_program("p") == ""
-
-    def test_print_number(self) -> None:
-        assert run_program("ppoe") == "4"
-
-    def test_copy_from_left_neighbor(self) -> None:
-        # q copies the left neighbor into the current cell
-        assert run_program("pprpplque") == "\x04"
 
     def test_conditional_skip(self) -> None:
         # v executes the next command only when the cell is zero.
@@ -139,16 +149,6 @@ class TestPainfuck:
         assert run_program("ppwue") == "\x00"  # copy 0 from the right neighbor
         assert run_program("ppwque") == "\x00"  # copy back
 
-    def test_decrement(self) -> None:
-        assert run_program("sue") == "\xff"  # -1 as a byte
-
-    def test_half(self) -> None:
-        assert run_program("pphue") == "\x02"  # 4 // 2 = 2
-
-    def test_pointer_reset(self) -> None:
-        # p at cell 0, r moves right, pp, then d resets and p adds again
-        assert run_program("prppdpue") == "\x04"
-
     def test_left_of_cell_zero_is_a_fresh_zero_cell(self) -> None:
         """``l`` at the leftmost cell grows the tape onto a new zero cell."""
         assert run_program("ploe") == "0"
@@ -176,9 +176,6 @@ class TestPainfuck:
     def test_square(self) -> None:
         assert run_program("pkue") == "\x04"  # 2*2
         assert run_program("ppkue") == "\x10"  # 4*4
-
-    def test_zero(self) -> None:
-        assert run_program("pzue") == "\x00"
 
     def test_repeated_square_leaves_zero_and_one_fixed(self) -> None:
         assert run_program("psckue") == "\x01"
@@ -258,12 +255,6 @@ class TestStepMachine:
         assert _grow(tape, 0) is tape  # in range, so the same object comes back
         assert _grow(tape, 2) is tape  # the last addressable cell
         assert _grow(tape, 4) == (1, 2, 3, 0, 0)  # past the end, so extended
-
-    def test_skipping_a_loop_steps_over_a_nested_one(self) -> None:
-        """A zero cell skips to the loop's own 'b', not to a nested one."""
-        # cell 0 is zero, so the outer 'a' skips forward; the inner 'a...b'
-        # pair must be consumed as a unit, leaving 'u' to print cell 0.
-        assert run_program("aabbue") == "\x00"
 
 
 class TestRepeatCollapsing:
