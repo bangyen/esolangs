@@ -31,6 +31,7 @@ from tests.interpreters.runner import run_program
             "1",
             id="a_long_literal_does_not_hit_the_python_decimal_limit",
         ),
+        pytest.param("[']]!,", "]", id="a_quoted_bracket_does_not_close_a_lambda"),
         # B flushes a buffer this package has not got, so it is a no-op
         pytest.param("1.B", "1", id="an_unknown_character_is_ignored"),
     ],

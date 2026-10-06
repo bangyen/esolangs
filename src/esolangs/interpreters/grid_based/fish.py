@@ -2,8 +2,12 @@ r"""Interpreter for Fish (``><>``), using the current non-threaded language.
 
 The codebox wraps as a rectangle and stores raw Unicode codepoints; counts
 and coordinates must be integral. ``p`` may expand positive bounds and use
-negative coordinates as storage. Character input returns -1 at EOF. Division
+negative coordinates as storage. An IP that ``.`` sends past the box re-enters
+it modulo the box's size; the spec leaves this open, and fish.py instead walks
+the empty cells to the edge. Character input returns -1 at EOF. Division
 uses Python's true division, matching the specification's floating result.
+``o`` needs an integral codepoint. Only a space and an empty cell are no-ops:
+a tab, or a control character ``p`` writes, is an invalid instruction.
 Invalid instructions, stack underflow, and division by zero raise
 :class:`~esolangs.exceptions.HaltError`; an empty program raises
 :class:`ValueError`.
@@ -28,7 +32,7 @@ type Number = int | float
 type _State = tuple[object, ...]
 
 _DIRECTIONS = ((1, 0), (0, 1), (-1, 0), (0, -1))
-_NOP = " \t\r\n"
+_NOP = " \0"
 
 
 def _integer(value: Number) -> int:
@@ -315,7 +319,7 @@ class _Machine:
         elif command == ";":
             self.halted = True
             return
-        elif command not in _NOP and command != "\0":
+        elif command not in _NOP:
             self._fail("use an instruction documented by esolangs describe --spec Fish")
         self._advance()
 
