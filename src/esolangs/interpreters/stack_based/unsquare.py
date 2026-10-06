@@ -12,6 +12,9 @@ cross-check exits 3); ``i`` raises :class:`EOFError` when exhausted.
 :func:`_needs` lets the shell reject an underflow first and
 :func:`_forward` returns ``None`` for an unmatched ``>``.
 
+``o`` outputs "the top of the stack", so the wiki's Hello, world
+(``OA++...o``, an empty stack at every ``o``) errors here; its ``+`` counts
+miss under any reading (printing the accumulator spells "Heffi, world").
 The spec leaves input representation unspecified; i reads the next Unicode
 character code, including whitespace.
 """

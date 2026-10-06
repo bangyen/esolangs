@@ -6,7 +6,12 @@ signed integer cells under an unsigned cell pointer (CP).
 
 The author's Streetcode revision 78016 specifies right-hand driving and
 leftmost/second-leftmost junction choices. Multi-stage merge timing is
-an implementation convention corroborated by the wiki examples.
+an implementation convention corroborated by the wiki examples.  The page
+gives no geometry, so these are readings: the car starts on the first of
+N, E, S, W with a wall to its right and road ahead (``C`` at a ring's
+corner heads down the side road, not into the turn); a dead end turns the
+car across the street in two steps, and a ``U`` on the cell where that
+turn lands does not reverse it again.
 
 Movement is pure and lives in :mod:`.geometry`; the mutable run
 lives in :class:`_Machine`.  :func:`_drive` is the whole of movement in one
