@@ -13,9 +13,9 @@ from esolangs.cli import main
 from esolangs.cli_io import (
     _bounded_read,
 )
+from tests.cli.test_cli import call_main, run_cli
 from tests.cli_support import EXAMPLES, call_both
 from tests.stdin_check import _check_stdin
-from tests.test_cli import call_main, run_cli
 
 
 class TestTheStdinReaderInProcess:

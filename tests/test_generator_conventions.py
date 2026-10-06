@@ -10,7 +10,7 @@ import pytest
 import esolangs
 import esolangs.tools as boolean
 from esolangs._evaluate import _evaluate
-from tests.test_cli import call_main
+from tests.cli.test_cli import call_main
 
 
 def _public(module: object) -> list[tuple[str, Callable[..., Any]]]:

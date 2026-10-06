@@ -67,7 +67,7 @@ def test_preview_does_not_execute_even_a_loop_or_read_input(
     tmp_path, capsys, monkeypatch
 ):
     from esolangs.interpreters.stack_based.modulous import _Machine
-    from tests.test_cli import _FakeStdin
+    from tests.cli.test_cli import _FakeStdin
 
     def forbidden(*_args, **_kwargs):
         pytest.fail("preview executed a program")
@@ -345,7 +345,7 @@ def test_new_previews_do_not_execute_or_read_stdin(
 ):
     from esolangs.interpreters.other.packlang import _Machine as PacklangMachine
     from esolangs.interpreters.queue_based.bitdeque import _Machine as BitdequeMachine
-    from tests.test_cli import _FakeStdin
+    from tests.cli.test_cli import _FakeStdin
 
     def forbidden(*_args, **_kwargs):
         pytest.fail("preview executed or read stdin")

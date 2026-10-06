@@ -11,10 +11,10 @@ import pytest
 import esolangs
 import esolangs.debugger as debugger_api
 from esolangs.cli import HELP
+from tests.cli.test_cli import _program, call_main
 from tests.cli_support import _LOOPS, _refused, call_both
 from tests.generator_support import evaluate_generated
 from tests.stdin_check import _check_stdin
-from tests.test_cli import _program, call_main
 
 
 # 5.2s over 33 tests: drives the CLI as a subprocess.
