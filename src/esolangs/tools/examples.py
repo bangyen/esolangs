@@ -597,7 +597,7 @@ def _register() -> None:
             "other.intercal",
             pair=INTERCAL_PAIR,
             char=INTERCAL_CHAR,
-            expected="\n",
+            expected="_\n\n",
         ),
         "minifuck": _embedded(
             b.minifuck, "tape_based.minifuck", setters=minifuck_setters
