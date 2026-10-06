@@ -48,6 +48,8 @@ Outcome, Spec = _d.Outcome, _d.Spec
 
 # --- Piet -------------------------------------------------------------------
 
+type _RGB = tuple[int, ...]
+
 _HEX = ("FFC0C0", "FFFFC0", "C0FFC0", "C0FFFF", "C0C0FF", "FFC0FF")
 #: The 18 colours as ``_PIET[lightness][hue]``: light, normal, dark.
 _PIET = tuple(
@@ -63,11 +65,11 @@ _WHITE, _BLACK = (255, 255, 255), (0, 0, 0)
 _ODD = ((255, 128, 0), (128, 64, 0), (1, 2, 3), (192, 192, 192))
 
 
-def _colour(hue: int, light: int) -> tuple[int, int, int]:
+def _colour(hue: int, light: int) -> _RGB:
     return _PIET[light % 3][hue % 6]
 
 
-def _ppm(grid: list[list[tuple[int, int, int]]]) -> str:
+def _ppm(grid: list[list[_RGB]]) -> str:
     """Return ``grid`` as P3 PPM text, one pixel a line."""
     head = f"P3\n{len(grid[0])} {len(grid)}\n255"
     return "\n".join([head] + [f"{r} {g} {b}" for row in grid for r, g, b in row])
@@ -80,7 +82,9 @@ def _from_ppm(program: str) -> Any:
     words = program.split()
     width, height = int(words[1]), int(words[2])
     values = list(map(int, words[4:]))
-    pixels = [tuple(values[i : i + 3]) for i in range(0, len(values), 3)]
+    pixels = [
+        (values[i], values[i + 1], values[i + 2]) for i in range(0, len(values), 3)
+    ]
     return Raster(
         tuple(tuple(pixels[y * width : (y + 1) * width]) for y in range(height))
     )
@@ -132,7 +136,7 @@ def _commands(rng: random.Random) -> list[tuple[int, tuple[int, int]]]:
     return out + [(1, _OUT_NUMBER)] * rng.choice((0, 2, 3, 4))
 
 
-def piet_line(rng: random.Random) -> list[list[tuple[int, int, int]]]:
+def piet_line(rng: random.Random) -> list[list[_RGB]]:
     """Return a three-row program: a run of commands into a cage that halts.
 
     Row 1 carries the blocks left to right; a block of ``size`` codels grows
@@ -140,7 +144,7 @@ def piet_line(rng: random.Random) -> list[list[tuple[int, int, int]]]:
     1).  White codels between blocks slide without a command.  The cage is a
     three-codel column whose only neighbours off its extreme codels are black.
     """
-    columns: list[list[tuple[int, int, int]]] = []
+    columns: list[list[_RGB]] = []
     hue, light = rng.randrange(6), rng.randrange(3)
     for size, (dh, dl) in _commands(rng):
         width = max(-(-(size + 2) // 3), min(size, rng.choice((1, 2, 3))))
@@ -161,7 +165,7 @@ def piet_line(rng: random.Random) -> list[list[tuple[int, int, int]]]:
     return [list(row) for row in zip(*columns, strict=True)]
 
 
-def piet_grid(rng: random.Random) -> list[list[tuple[int, int, int]]]:
+def piet_grid(rng: random.Random) -> list[list[_RGB]]:
     """Return a small random grid: every colour, white, black, off-palette."""
     width, height = rng.randint(1, 7), rng.randint(1, 5)
     pool = [c for row in _PIET for c in row] + [_WHITE] * 4 + [_BLACK] * 3
@@ -180,7 +184,7 @@ def piet_input(rng: random.Random, _program: str) -> str:
     A bad token for a numeric read is a recorded gap (ours consumes it,
     npiet's scanf does not), so a fifth of inputs only carry one.
     """
-    pool = ("7", "12", "-3", "0", "+5", "007")
+    pool: tuple[str, ...] = ("7", "12", "-3", "0", "+5", "007")
     if rng.random() < 0.2:
         pool += ("x", "1_0", "a", "Z", "-")
     words = [rng.choice(pool) for _ in range(rng.choice((0, 1, 2, 4, 6)))]
@@ -399,11 +403,11 @@ def intercal_program(rng: random.Random) -> str:
         polite = rng.choice((0, count // 2 + 1))
     chosen = set(rng.sample(range(count), min(polite, count)))
     out = []
-    for k, (label, command) in enumerate(body):
+    for k, (prefix, command) in enumerate(body):
         head = "PLEASE" if k in chosen else "DO"
         if rng.random() < 0.05:
             head += rng.choice((" NOT", "N'T")) if head == "DO" else " DON'T"
-        out.append(f"{label}{head} {command}")
+        out.append(f"{prefix}{head} {command}")
     return "\n".join(out) + "\n"
 
 
