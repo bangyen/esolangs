@@ -220,6 +220,10 @@ class Spec:
     valid: Callable[[str], bool] = lambda _program: True
     #: ``(old, new)`` source edits applied in order by ``--patch``.
     patches: tuple[tuple[str, str], ...] = field(default=())
+    #: Our side when the reference prints a final state ours does not:
+    #: ``run_ours``'s signature, rendering the halted VM; it does its own
+    #: fast-path check (see ``final_state``).
+    ours: Callable[[str, str, str, int], Outcome] | None = None
 
 
 @dataclass
@@ -245,15 +249,16 @@ class Runner:
     def check(self, program: str, stdin: str) -> Case | None:
         """Return the disagreement on this program, if any."""
         spec = self.spec
-        ours = run_ours(spec.language, program, stdin, spec.max_steps)
+        mine = spec.ours or run_ours
+        ours = mine(spec.language, program, stdin, spec.max_steps)
         ref = run_ref(spec, self.template, program, stdin, self.timeout)
         # A bound is not a verdict: give the side that stopped short more room.
         if ours.status == "timeout" and ref.status not in ("timeout", "limit"):
-            ours = run_ours(spec.language, program, stdin, spec.max_steps * 5)
+            ours = mine(spec.language, program, stdin, spec.max_steps * 5)
         if ref.status == "timeout" and ours.status != "timeout":
             ref = run_ref(spec, self.template, program, stdin, self.timeout * 5)
         self.tally[f"{ours.status}/{ref.status}"] += 1
-        if ours.status != "timeout":
+        if ours.status != "timeout" and spec.ours is None:
             fast = run_ours_fast(spec.language, program, stdin)
             if fast.status != ours.status or (
                 fast.status == "halt" and fast.output != ours.output
@@ -541,6 +546,201 @@ def deadfish_program(rng: random.Random) -> str:
     return "".join(out)
 
 
+# --- clean-room references: Decleq, Crement, Dimensional, RAM0 ------------
+#
+# Each reference is a "blind" interpreter written from the wiki alone:
+# ``--ref "python3 BLIND/<slug>.py {program}"``, exit 0 halt, 2 malformed,
+# 3 runtime error, 4 EOF, 124 its step limit (``BLIND_STEP_LIMIT``).  Crement
+# and RAM0 have no I/O, so the reference prints the final state; ours
+# renders the same text from the halted VM (``final_state``).
+
+
+def blind_outcome(code: int, stdout: bytes, stderr: bytes) -> Outcome:
+    """Map a blind reference's exit status to a status."""
+    detail = stderr.decode("latin-1")[-200:]
+    status = {0: "halt", 4: "eof", 124: "limit"}.get(code, "error")
+    return Outcome(status, stdout, f"exit {code}: {detail}")
+
+
+def final_state(
+    render: Callable[[object], str],
+) -> Callable[[str, str, str, int], Outcome]:
+    """Return a ``Spec.ours`` that steps our VM and renders its final state.
+
+    The output is ``render(machine)`` on a halt and empty otherwise (the
+    references print nothing then).  ``esolangs.run`` must agree with the
+    stepping on status and raw output, else the status is a crash.
+    """
+
+    def ours(language: str, program: str, stdin: str, max_steps: int) -> Outcome:
+        got = run_ours(language, program, stdin, max_steps)
+        if got.status == "timeout":
+            return Outcome("timeout", b"")
+        fast = run_ours_fast(language, program, stdin)
+        if fast.status != got.status or fast.output != got.output:
+            return Outcome("crash:fastpath", b"", f"{got} vs {fast}")
+        if got.status != "halt":
+            return Outcome(got.status, b"", got.detail)
+        vm = make_vm(language, program, stdin)
+        while not vm.halted:
+            vm.step()
+        machine = vm._machine  # type: ignore[attr-defined]  # noqa: SLF001
+        return Outcome("halt", render(machine).encode(), got.detail)
+
+    return ours
+
+
+def decleq_program(rng: random.Random) -> str:
+    """Return Decleq triples: countdowns, I/O, wild jumps and addresses.
+
+    I/O (``-2``/``-1``) jumps next or elsewhere (the readings differ on
+    whether it uses ``c``); addresses sometimes fall past the end or below
+    ``-2``; the last triple is sometimes cut short.
+    """
+    count = rng.randint(1, 5)
+    size = 3 * count + rng.randint(0, 4)
+
+    def address() -> int:
+        roll = rng.random()
+        if roll < 0.9:
+            return rng.randrange(size)
+        return size + rng.randint(0, 3) if roll < 0.96 else -rng.randint(3, 5)
+
+    cells: list[int] = []
+    for pc in range(0, 3 * count, 3):
+        roll = rng.random()
+        if roll < 0.15:
+            a, b = rng.choice((-1, -2)), address()
+        elif roll < 0.4:
+            a = b = address()
+        else:
+            a, b = address(), address()
+        jump = rng.random()
+        c = (
+            pc + 3
+            if jump < 0.5
+            else 3 * rng.randrange(count)
+            if jump < 0.7
+            else -rng.randint(1, 3)
+            if jump < 0.85
+            else size + rng.randint(0, 3)
+        )
+        cells += [a, b, c]
+    cells += [
+        rng.randint(-2, 6) if rng.random() < 0.8 else rng.randint(65, 90)
+        for _ in range(size - len(cells))
+    ]
+    if rng.random() < 0.05:
+        cells = cells[: 3 * (count - 1) + rng.randint(1, 2)]
+    return " ".join(map(str, cells))
+
+
+def crement_program(rng: random.Random) -> str:
+    """Return Crement lines, some labelled and with ``@``/label sums.
+
+    Addresses stray to ``-1`` and past the end; data is small and signed.
+    """
+    count = rng.randint(1, 7)
+    labelled = rng.random() < 0.3
+
+    def number(value: int, here: int) -> str:
+        roll = rng.random() if labelled else 1.0
+        if roll < 0.2:
+            return f"@{value - here:+d}" if value != here else "@"
+        if roll < 0.4 and 0 <= value < count:
+            return f"L{value}"
+        if roll < 0.5:
+            return f"+{value}" if value >= 0 else str(value)
+        return str(value)
+
+    lines = []
+    for here in range(count):
+        opcode = rng.choice("DDDAAJJJJ")
+        roll = rng.random()
+        target = (
+            rng.randrange(count + 1)
+            if roll < 0.85
+            else -1
+            if roll < 0.9
+            else count + rng.randint(1, 2)
+        )
+        data = rng.randint(-2, 3)
+        line = f"{rng.choice('+-')}{opcode} {number(target, here)} {number(data, here)}"
+        if labelled:
+            line = f":L{here} {line}"
+        if rng.random() < 0.08:
+            line += " * a comment +J 0 1"
+        lines.append(line)
+    return "\n".join(lines)
+
+
+def crement_render(machine: object) -> str:
+    """Render the final program as the reference prints it."""
+    program = machine.state.program  # type: ignore[attr-defined]
+    return "".join(
+        f"{'+' if i.polarity > 0 else '-'}{i.opcode} {i.address} {i.data}\n"
+        for i in program
+    )
+
+
+_DIM_ATOMS = re.findall(
+    r"\S+",
+    ">0 <0 >1 <1 >~1 <~1 > < + - - . . , d x ?0 ?1 ?~1 !0 !1 "
+    "$2 $3 $3 $4 $1 $ :A :* :] =4a =7E =zz *c* *",
+)
+
+
+def dimensional_block(rng: random.Random, depth: int = 0) -> str:
+    """Return Dimensional commands, often in loops.
+
+    ``[...-]`` and ``{0...<0}`` halt unless the body moves away, and the
+    atoms include the operand edge cases: missing, negative, low axes.
+    """
+    parts: list[str] = []
+    for _ in range(rng.randint(1, 7 - 2 * depth)):
+        roll = rng.random()
+        if roll < 0.7 or depth >= 2:
+            parts.append(rng.choice(_DIM_ATOMS))
+        elif roll < 0.85:
+            parts.append("[" + dimensional_block(rng, depth + 1) + "-]")
+        else:
+            parts.append(">0>0{0" + dimensional_block(rng, depth + 1) + "<0}")
+    return "".join(parts)
+
+
+def dimensional_input(rng: random.Random, _program: str) -> str:
+    """Return characters or number lines (for ``d``/``x``), often empty."""
+    if rng.random() < 0.5:
+        return ascii_input(rng, _program)
+    words = ["65", "4a", "300", "-1", "0", "ff", "zz"]
+    return "".join(rng.choice(words) + "\n" for _ in range(rng.choice((0, 1, 2, 3))))
+
+
+def ram0_program(rng: random.Random) -> str:
+    """Return RAM0 commands with gotos (mostly forward), comments, ``0``."""
+    count = rng.randint(1, 14)
+    out = []
+    for here in range(1, count + 1):
+        roll = rng.random()
+        if roll < 0.82:
+            out.append(rng.choice("ZAAAANNCCLLSS"))
+        elif roll < 0.95:
+            low = here + 1 if rng.random() < 0.8 else 1
+            out.append(f" {rng.randint(low, count + 2)} ")
+        elif roll < 0.97:
+            out.append(" 0 ")
+        else:
+            out.append(rng.choice((" loop ", "x", "\n")))
+    return "".join(out)
+
+
+def ram0_render(machine: object) -> str:
+    """Render ``z``, ``n`` and the nonzero cells as the reference prints them."""
+    z, n, ram = machine.z, machine.n, machine.ram  # type: ignore[attr-defined]
+    cells = "".join(f"mem[{a}]={v}\n" for a, v in sorted(ram.items()) if v)
+    return f"z={z}\nn={n}\n{cells}"
+
+
 SPECS: dict[str, Spec] = {
     "brainfuck": Spec(
         "brainfuck",
@@ -663,6 +863,40 @@ SPECS: dict[str, Spec] = {
                 "    elif cmd == 'h':\n        break",
             ),
         ),
+    ),
+    "decleq": Spec(
+        "decleq",
+        decleq_program,
+        ascii_input,
+        max_steps=20_000,
+        ref_outcome=blind_outcome,
+        split=str.split,
+        join=" ".join,
+    ),
+    "crement": Spec(
+        "crement",
+        crement_program,
+        lambda _rng, _program: "",
+        max_steps=20_000,
+        ref_outcome=blind_outcome,
+        split=lambda program: program.split("\n"),
+        join="\n".join,
+        ours=final_state(crement_render),
+    ),
+    "dimensional": Spec(
+        "dimensional",
+        lambda rng: dimensional_block(rng),
+        dimensional_input,
+        max_steps=20_000,
+        ref_outcome=blind_outcome,
+    ),
+    "ram0": Spec(
+        "ram0",
+        ram0_program,
+        lambda _rng, _program: "",
+        max_steps=20_000,
+        ref_outcome=blind_outcome,
+        ours=final_state(ram0_render),
     ),
 }
 
