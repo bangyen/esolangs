@@ -91,14 +91,9 @@ class TestWikiExamples:
         """The block is sent, then skipped over rather than executed."""
         assert _run(HELLO_WORLD) == "Hello, world!\n"
 
-    def test_cat_echoes_until_an_empty_line(self) -> None:
-        """Each line is echoed; the empty line empties the block and stops."""
-        assert _run(CAT, "ab\ncd\n\n") == "ab\ncd\n"
-
-    def test_cat_without_a_terminating_blank_line_reads_past_its_input(self) -> None:
-        """Input exhaustion is EOFError, distinct from the empty-line halt."""
-        with pytest.raises(EOFError):
-            _run(CAT, "ab\n")
+    def test_cat_copies_blank_lines_and_stops_at_eof(self) -> None:
+        """A blank line is one empty line; only EOF empties the block."""
+        assert _run(CAT, "ab\n\ncd\n") == "ab\n\ncd\n"
 
     def test_wiki_truth_machine_is_inverted(self) -> None:
         """The wiki's truth machine halts on 1 and loops on 0 -- backwards."""
@@ -340,7 +335,7 @@ def test_inject_needs_a_replacement_and_skip_forms_are_checked() -> None:
 
 
 def test_a_rewrite_cannot_move_the_pointer_before_the_program() -> None:
-    """An empty ``readto`` inside its own block deletes lines around the pointer."""
+    """A ``readto`` at EOF inside its own block deletes lines around the pointer."""
     program = "a;\nreadto a\nx\ny\na;"
     with pytest.raises(HaltError, match="before the program"):
-        run(program, ScriptedIO("\n"))
+        run(program, ScriptedIO(""))

@@ -418,8 +418,8 @@ _INJ_LABELS = ("a", "b", "c", "0")
 _INJ_DATA = ("x", "y", "0", "1", "xy", "hello", "", "a;")
 _INJ_REGEX = ("x", "y", ".", "x|y", "(x)", "x+", "l+", "x*", "y?", ".*", "^", "$")
 _INJ_REPL = ("", "z", "x", "0", "1", "a/b", "q;")
-#: Off: no known-divergent shapes (empty matches, blank input lines, EOF,
-#: written-in labels, loops), to look for causes they would mask.
+#: Off: no edge shapes (empty matches, blank input lines, EOF, written-in
+#: labels, loops), to look for causes they would mask.
 _INJ_EDGES = True
 
 
