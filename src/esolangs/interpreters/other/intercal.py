@@ -25,8 +25,8 @@ Judgment calls where the manual or C-INTERCAL leave a gap:
   no identifier that is a complete core command stays its own statement.
 * Politeness keeps the stricter one-fifth to one-third rule for any length;
   running off the end halts quietly instead of E633.
-* Zero prints an empty line and a value below 4000 prints one line; C-INTERCAL
-  always prints an overbar line first.
+* Zero prints a lone overbar over an empty line, as the manual says; a value
+  below 4000 prints one line, where C-INTERCAL prints an empty overbar line first.
 * Whitespace may split a number from its sigil and its own digits, as
   C-INTERCAL's lexer allows, though the manual says it cannot.
 * Digit words read in any case, split at any whitespace; C-INTERCAL wants
@@ -205,8 +205,8 @@ def _roman(value: int) -> str:
         chunks.append((text, ("_" if group % 2 else " ") * len(text)))
         place += 1
     body = "".join(text for text, _bars in reversed(chunks))
-    bars = "".join(bars for _text, bars in reversed(chunks))
-    # Keep the repository's empty zero and ordinary single-line output.
+    bars = "".join(bars for _text, bars in reversed(chunks)) or "_"
+    # "Zero is indicated by an overline with no character underneath."
     return bars + "\n" + body if "_" in bars else body
 
 

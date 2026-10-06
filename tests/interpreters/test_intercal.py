@@ -58,7 +58,7 @@ def test_invalid_expressions_raise(expression: str) -> None:
 
 def test_inactive_statement_is_skipped() -> None:
     source = "PLEASE .1 <- #0\nDON'T .1 <- #1\nDO READ OUT .1"
-    assert _run(source) == "\n"
+    assert _run(source) == "_\n\n"
 
 
 @pytest.mark.parametrize(
@@ -90,7 +90,7 @@ def test_forget_discards_next_frames_without_resuming() -> None:
             "DO READ OUT #0",
         ]
     )
-    assert _run(source) == "\n"
+    assert _run(source) == "_\n\n"
 
 
 @pytest.mark.parametrize(
@@ -364,7 +364,7 @@ def test_abstain_and_reinstate_by_gerund_and_label() -> None:
         "(2) DO NOT READ OUT .1",
         "DO GIVE UP",
     )
-    assert out == "\n"
+    assert out == "_\n\n"
 
 
 def test_come_from_takes_control_after_its_label_runs() -> None:

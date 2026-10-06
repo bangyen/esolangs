@@ -56,7 +56,7 @@ Row gives the logical bits; Input gives their language-specific encoding.
 | `grapheme.txt` | Grapheme | `0001` | `01` | % A | '0' |
 | `home-row.txt` | Home Row | `0001` | `01` | embedded 01 | '0' |
 | `inject.txt` | Inject | `0001` | `01` | 0 1 | '0\n' |
-| `intercal.txt` | INTERCAL | `0001` | `01` | embedded 01 | '\n' |
+| `intercal.txt` | INTERCAL | `0001` | `01` | embedded 01 | '_\n\n' |
 | `jaune.txt` | Jaune | `0001` | `01` | 0 1 | '0' |
 | `laserfuck.txt` | LaserFuck | `0001` | `01` | 01 | '0' |
 | `line.png` | Line | `0001` | `01` | 0 1 | '0' |
@@ -106,7 +106,7 @@ Row gives the logical bits; Input gives their language-specific encoding.
 - **fractran** -- FRACTRAN has neither input nor output: the inputs are the exponents of n primes in the starting value, and the answer is the value the run stops on -- 1 for a zero and 2 for a one
 - **grapheme** -- Grapheme's generator normalizes each input line with ord(line[0]) - 65 and then maps zero to 1, so its input bits are spelled % and A: 'A' is a 1 and every other first character is a 0, which means a 0/1 line reads as 0 and the program answers the all-zeros row. The second step is not optional prose -- ord('A') - 65 is 0, so the subtraction alone says the opposite
 - **inject** -- send terminates each line, so the answer ends in a newline
-- **intercal** -- INTERCAL READ OUT prints blank for zero and I for one
+- **intercal** -- INTERCAL READ OUT prints a lone overbar for zero and I for one
 - **laserfuck** -- the initial heading is random by spec, so the example pins the source it is drawn from: seed 0 draws heading 3
 - **malbolge** -- the answer is one character and is printed with no newline
 - **minsky-swap** -- Minsky Swap has no output instruction and dumps its registers at halt; the answer is the second one

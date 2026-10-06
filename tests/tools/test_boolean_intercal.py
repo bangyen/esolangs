@@ -19,7 +19,7 @@ def _run(table: str, row: int) -> str:
     io = ScriptedIO("")
     run(program, io)
     output = io.getvalue()
-    assert output in {"\n", "I\n"}
+    assert output in {"_\n\n", "I\n"}
     return "1" if output == "I\n" else "0"
 
 

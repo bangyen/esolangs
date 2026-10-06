@@ -483,13 +483,12 @@ _ICK_PATCHES = (
         "    if (fgets(buf, INTBUFSIZ, ick_cesspoolin) == (char *)NULL)\n"
         "\t{ (void) fflush(stdout); exit(70); }",
     ),
-    # Zero is an empty line, and a numeral without overbars one line.
+    # A numeral without overbars is one line.
     (
         '\tbutcher(val, result);\n\t(void) fprintf(ick_cesspoolout,"%s\\n",result);',
         "\tbutcher(val, result);\n"
         "\t{ char *body = strchr(result, '\\n') + 1, *out = result;\n"
-        "\t  if (val == 0) *result = '\\0';\n"
-        "\t  else if (!memchr(result, '_', (size_t) (body - result))) out = body;\n"
+        "\t  if (!memchr(result, '_', (size_t) (body - result))) out = body;\n"
         '\t  (void) fprintf(ick_cesspoolout,"%s\\n",out); }',
     ),
     # Array elements start at zero (C-INTERCAL: uninitialised).

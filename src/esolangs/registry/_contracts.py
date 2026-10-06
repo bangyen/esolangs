@@ -131,9 +131,9 @@ CONTRACTS: dict[str, BooleanContract] = {
         note="send terminates each line, so the answer ends in a newline",
     ),
     "other.intercal": BooleanContract(
-        answer_pattern=r"(?s)^([I]?)\n$",
-        answer_values=("", "I"),
-        note="INTERCAL READ OUT prints blank for zero and I for one",
+        answer_pattern=r"(?s)^(_\n|I)\n$",
+        answer_values=("_\n", "I"),
+        note="INTERCAL READ OUT prints a lone overbar for zero and I for one",
         parameterized=True,
     ),
     "other.malbolge": BooleanContract(
