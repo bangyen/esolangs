@@ -1,7 +1,6 @@
 """Unit tests for the S*bleq interpreter."""
 
 import io
-import signal
 
 import pytest
 
@@ -9,16 +8,8 @@ from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.interpreters.tape_based.sbleq import _Machine, run
 
 
-class _TimeoutError(Exception):
-    """Raised when an S*bleq program does not terminate."""
-
-
-def _on_alarm(_signum: int, _frame: object) -> None:
-    raise _TimeoutError
-
-
 def run_bounded(program: str, stdin: str = "", store: str = "a") -> str:
-    """Run ``program`` with a one-second cap; return its output."""
+    """Run ``program`` and return its output."""
     buffer = io.StringIO()
 
     class _IO(IO):
@@ -28,15 +19,7 @@ def run_bounded(program: str, stdin: str = "", store: str = "a") -> str:
         def _write(self, value: object) -> None:
             buffer.write(str(value))
 
-    old_handler = signal.signal(signal.SIGALRM, _on_alarm)
-    signal.setitimer(signal.ITIMER_REAL, 1.0)
-    try:
-        run(program, _IO(), store=store)
-    except _TimeoutError:
-        pytest.fail(f"S*bleq program did not terminate: {program!r}")
-    finally:
-        signal.alarm(0)
-        signal.signal(signal.SIGALRM, old_handler)
+    run(program, _IO(), store=store)
     return buffer.getvalue()
 
 

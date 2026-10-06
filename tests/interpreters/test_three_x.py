@@ -1,23 +1,21 @@
 """Unit tests for the 3x interpreter."""
 
 from fractions import Fraction
+from functools import partial
 
 import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.stack_based.three_x import run
+from tests.interpreters import runner
 from tests.interpreters.contract import (
     CycleContract,
     SnapshotContract,
     StateViewContract,
 )
 
-
-def run_program(code: str, stdin: str = "") -> str:
-    io = ScriptedIO(stdin)
-    run(code, io)
-    return io.getvalue()
+run_program = partial(runner.run_program, run, suppress_eof=False)
 
 
 class Test3x:
