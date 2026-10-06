@@ -10,7 +10,7 @@ class MammalianModuli:
     """Separate cell arithmetic from EXCRETE and PRONOUNCE reductions."""
 
     cell_modulus: int = 256
-    io_modulus: int = 256
+    io_modulus: int = 255
 
     def __post_init__(self) -> None:
         if type(self.cell_modulus) is not int or self.cell_modulus not in MODULI:

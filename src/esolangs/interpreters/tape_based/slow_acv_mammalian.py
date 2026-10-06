@@ -9,8 +9,8 @@ counting from 1 and resumes after it, so a count of 0 or past the end
 halts; SEED skips an empty array and CONSUME, FISSION and LEAPFROG ignore
 one; a CONFLAGRATE pair with a zero divisor is left alone.  Exhausted input
 raises :class:`EOFError`.  Cell operations and I/O each accept modulus 255
-or 256, defaulting to 256 (the page says EXCRETE and PRONOUNCE are "modulo
-255").
+or 256.  Cells default to 256 ("any value from 0-255"), I/O to 255 (the
+page says EXCRETE and PRONOUNCE are "modulo 255").
 """
 
 import functools

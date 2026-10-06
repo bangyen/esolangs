@@ -69,7 +69,7 @@ class TestSlowAcvMammalian:
             start = sum([*_seeded(array, wrap), acc % 256])
             assert landing == start - 15
             padded = [*tokens, *["SEED"] * (landing + 2 - len(tokens))]
-            machine = _Machine(" ".join(padded), ScriptedIO("1\n"))
+            machine = _Machine(" ".join(padded), ScriptedIO("1\n"), io_modulus=256)
             machine.lst = (tuple(array), *machine.lst[1:])
             machine.acc = acc
             while not machine.halted and machine.ind < len(tokens):
@@ -89,7 +89,7 @@ class TestSlowAcvMammalian:
             array = [head, 255, 255, 200]
             tokens, out_array, out_acc = _trampoline(list(array), 5000, target)
             padded = [*tokens, *["SEED"] * (target + 2 - len(tokens))]
-            machine = _Machine(" ".join(padded), ScriptedIO(""))
+            machine = _Machine(" ".join(padded), ScriptedIO(""), io_modulus=256)
             machine.lst = (tuple(array), *machine.lst[1:])
             machine.acc = 5000
             while not machine.halted and machine.ind < len(tokens):
@@ -111,6 +111,7 @@ class TestSlowAcvMammalian:
         machine = _Machine(
             " ".join([*tokens, *["SEED"] * (target + 2 - len(tokens))]),
             ScriptedIO(""),
+            io_modulus=256,
         )
         machine.lst = (tuple(array), *machine.lst[1:])
         while not machine.halted and machine.ind < len(tokens):
@@ -159,7 +160,7 @@ class TestSlowAcvMammalian:
         st = module._Sums()  # noqa: SLF001
         st.ptr, st.hw, st.nw = 16, 9, 255
         tokens = module._w_raise(st, amount)  # noqa: SLF001
-        machine = _Machine(" ".join(tokens), ScriptedIO(""))
+        machine = _Machine(" ".join(tokens), ScriptedIO(""), io_modulus=256)
         machine.ptr = 16
         machine.lst = tuple((9, 200, 55) if k == 16 else (0,) for k in range(23))
         while not machine.halted:
@@ -189,9 +190,11 @@ class TestSlowAcvMammalian:
 
     def test_the_emitted_size_is_pinned_and_linear(self) -> None:
         """Exact sizes per arity, and the leaf table is the whole growth."""
+        tables = ("01", "0110", "01101001")
+        sizes = [len(boolean.slow_acv_mammalian(table)) for table in tables]
+        assert sizes == [11_451, 20_253, 26_326]
         sizes = [
-            len(boolean.slow_acv_mammalian(table))
-            for table in ("01", "0110", "01101001")
+            len(boolean.slow_acv_mammalian(table, io_modulus=256)) for table in tables
         ]
         assert sizes == [13_276, 23_330, 28_055]
 
@@ -290,8 +293,8 @@ def test_explicit_default_moduli_preserve_generation() -> None:
     from esolangs.tools.slow_acv_mammalian import slow_acv_mammalian
 
     baseline = slow_acv_mammalian("01")
-    slow_acv_mammalian("01", io_modulus=255)
-    assert slow_acv_mammalian("01", cell_modulus=256, io_modulus=256) == baseline
+    slow_acv_mammalian("01", io_modulus=256)
+    assert slow_acv_mammalian("01", cell_modulus=256, io_modulus=255) == baseline
 
 
 @pytest.mark.parametrize(
