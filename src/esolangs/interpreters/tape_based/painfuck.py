@@ -25,7 +25,9 @@ its left, as ``w`` at the rightmost copies the zero to its right.
 A ``c`` run is one count: ``ccc`` is ``7**3``. ``cp`` runs ``p``
 seven times; ``pt`` four, and ``ptt`` thirteen (the author's ``ptto``
 prints 26). Each successive ``t`` contributes the next power of three.
-``ct`` is four ``c``s, ``7**4``; ``ctt`` thirteen, ``7**13``. A repeated
+``ct`` is four ``c``s, ``7**4``; ``ctt`` thirteen, ``7**13``.  "The last
+command" is the previous character of the program, so ``vpt`` repeats ``p``
+(not ``vp``) and a ``t`` after a jump repeats the text before it. A repeated
 ``y`` is each its own flip, so ``cyp`` spans ``{0, 2, ..., 14}`` weighted
 ``Binomial(7, 1/2)``.
 
@@ -211,7 +213,7 @@ def _advance(
     Pure.  Writes are collected, not performed, because the repeat counter
     can print many times per step; inputs arrive in ``reads`` and ``y``
     coins in ``coins``.  The command is a local, not state: ``c``, ``y``,
-    ``v``, ``t`` refetch mid-repeat and ``j`` rewrites itself to a newline.
+    ``v``, ``t`` refetch mid-repeat, and a repeated ``j`` reads each time.
     """
     tape, loop, ptr, ind, rep, origin = state
     reader = _Reader(reads)
@@ -312,10 +314,6 @@ def _advance(
                     line=False, state=(tape, loop, ptr, ind, rep, origin)
                 ) from want
             tape = _set(tape, ptr, int(str(byte)))
-            # The cross-check's discard-to-end-of-line loop leaves the main
-            # command variable holding '\n', so a ``c``/``t``-repeated ``j``
-            # only reads once and then no-ops.
-            c = "\n"
         elif c == "o":
             effects.append(_Print(tape[ptr], as_char=False))
         elif c == "u":
@@ -382,10 +380,11 @@ def _advance(
                 break
         elif c == "e":
             return ((tape, loop, ptr, n, 0, origin), effects)
-        elif c == "v" and tape[ptr] == 0 and ind < n:
-            c = prog[ind]
+        elif c == "v" and ind < n:
+            # "Do next command if value on tape is zero": else skip it.
+            # Either way the next command is consumed once.
+            c, rep = prog[ind], int(tape[ptr] == 0)
             ind += 1
-            rep = 1
         elif c == "d":
             ptr = origin
         elif c == "t":

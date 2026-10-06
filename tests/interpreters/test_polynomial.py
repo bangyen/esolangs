@@ -215,9 +215,10 @@ class TestPolynomialExecution:
 
     def test_zero_to_a_negative_power_is_refused(self) -> None:
         """``pow(0, -1)`` is infinite, so it has no integer register value."""
+        from esolangs.exceptions import HaltError
         from esolangs.interpreters.register_based.polynomial import _advance
 
-        with pytest.raises(ZeroDivisionError):
+        with pytest.raises(HaltError):
             _advance((0, 0), [[-1, 6]])
 
     def test_a_negative_register_prints_nothing(self) -> None:

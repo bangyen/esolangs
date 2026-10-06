@@ -65,8 +65,9 @@ Further decisions for gaps the wiki leaves open:
   shell no point at which to perform its ports.  Framing calls removed
   that rationale: a callee's statements are stepped like any other, so
   the same shell performs its ``charPut``/``charGet`` in call order.
-* **Bounds.**  A plain ``Integer`` and a ``Char`` are unbounded below at 0
-  and wrap modulo 256 above, matching ``charPut``'s byte output;
+* **Bounds.**  A plain ``Integer`` and a ``Char`` are bytes, 0..255 and
+  wrapping both ways, matching ``charPut``'s byte output (the wiki gives
+  ``Integer`` no range, and charPut prints ``v % 256``);
   ``Integer(min, max, under, over)`` wraps to the named values instead.
   ``INIT`` sets a variable to its type's minimum, and an ``Array`` to a
   row of them, which is what the cat example's ``INIT input`` relies on.

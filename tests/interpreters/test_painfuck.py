@@ -123,9 +123,16 @@ class TestPainfuck:
         assert run_program("p") == ""
 
     def test_conditional_skip(self) -> None:
-        # v executes the next command only when the cell is zero.
+        # v executes the next command only when the cell is zero, else
+        # skips it ("Do next command if value on tape is zero").
         assert run_program("vsu") == "\xff"
-        assert run_program("pvsu") == "\x01"
+        assert run_program("pvsu") == "\x02"
+        assert run_program("pvuu") == "\x02"
+
+    def test_a_repeated_byte_read_reads_each_time(self) -> None:
+        """``c``/``t`` repeat ``j`` itself: 7 or 3 more reads, not one."""
+        assert run_program("cju", "abcdefgh") == "g"
+        assert run_program("jtu", "abcde") == "d"
 
     def test_random_skip(self) -> None:
         """``y`` skips the next command on a coin flip; pin both outcomes."""
