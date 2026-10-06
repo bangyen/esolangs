@@ -6,7 +6,8 @@ from unittest.mock import patch
 import pytest
 
 import esolangs.debugger as debugger_api
-from esolangs.tui import History, breakpoint_for, drive, render, replay
+from esolangs.tui import History, render, replay
+from esolangs.tui_loop import breakpoint_for, drive
 from tests.test_tui import (
     _drive,
     _frame,
@@ -216,7 +217,8 @@ class TestRawTerminal:
         import time
 
         source = (
-            "from esolangs.tui import run_tui\nrun_tui('brainfuck', '+++>++.', '')\n"
+            "from esolangs.tui_loop import run_tui\n"
+            "run_tui('brainfuck', '+++>++.', '')\n"
         )
         pid, fd = pty.fork()
         if pid == 0:  # pragma: no cover - the child is a fresh interpreter

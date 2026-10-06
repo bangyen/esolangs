@@ -38,7 +38,7 @@ from esolangs.debugger import make_debugger
 from esolangs.exceptions import EsolangError, TemplateError
 from esolangs.interpreters.source_hints import error_text
 from esolangs.settings import DialectSettings, dialect_options
-from esolangs.tui import breakpoint_for, run_tui
+from esolangs.tui_loop import breakpoint_for, run_tui
 
 
 def _run_tui_session(
