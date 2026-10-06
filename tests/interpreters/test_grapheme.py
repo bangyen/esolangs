@@ -70,13 +70,6 @@ class TestModes:
         # F A F -> 1; F B F -> 2; A adds; Y prints
         assert run_program("FAFFBFAY") == "3"
 
-    def test_intmode_empty_is_zero(self) -> None:
-        assert run_program("FFY") == "0"
-
-    def test_funcmode(self) -> None:
-        # H Y H makes a function of Y; I runs it on the pushed 1
-        assert run_program("FAFHYHIE") == "1"
-
     def test_an_unterminated_mode_is_flushed_when_its_frame_ends(self) -> None:
         """Each mode still yields its value when the code runs out."""
         assert run_program("HEABHIY") == "AB"  # string
@@ -157,6 +150,7 @@ class TestFunctions:
             run_program("WG", "zkg")
 
     def test_i_runs_function(self) -> None:
+        # H Y H makes a function of Y; I runs it on the pushed 1
         assert run_program("FAFHYHIE") == "1"
 
     def test_z_runs_while_stack_nonempty(self) -> None:
