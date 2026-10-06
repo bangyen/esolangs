@@ -11,12 +11,14 @@ semantics): block ``i`` is at (i, 0, 0); the instruction pointer starts
 at the origin heading +X, executes, then advances, halting on a cell
 with no block; a heading block only changes the heading, so every
 heading but +X/-X halts and ``S`` runs back along the line, so a program
-can bounce forever; the array is unbounded, created on demand; the
-generation pointer is not modelled, so ``^``/``V``/``>``/``<``/``"``/
-``'`` are comments; ``,`` raises :class:`EOFError` at end of input and
-an unbalanced bracket is :class:`ValueError`.  ``halted`` is true once
-the instruction pointer leaves the source line; an exact-state loop is
-proved by the hang detector, unbounded growth by the ``run()`` backstop.
+can bounce forever; the array is unbounded, created on demand;
+``^``/``V``/``>``/``<``/``"``/``'`` set the generation pointer's heading,
+their whole specified effect, but nothing in the wiki reads that pointer,
+so they change no output and are not tracked; ``,`` raises
+:class:`EOFError` at end of input and an unbalanced bracket is
+:class:`ValueError`.  ``halted`` is true once the instruction pointer
+leaves the source line; an exact-state loop is proved by the hang
+detector, unbounded growth by the ``run()`` backstop.
 """
 
 from collections.abc import Mapping
