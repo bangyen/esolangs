@@ -574,7 +574,16 @@ chain's `log2(n) - 2`, the same rate with a better constant. With the
 SAT-exact bases above a 3-flat is forced from n=6. Since `D` cannot drop
 as `n` grows (one hyperplane half keeps density `1/2`), this pins
 `D(6, 1/2) = D(7, 1/2) = D(8, 1/2) = 3`. There the extremal value sits on
-the density-increment bound, a dimension below random. The bound stays at
-3 through n=11, so a half-density set at n=9..11 with no 4-flat would
-keep `D` on it. The `n=9` SAT model has about `10**8` clauses, beyond the
-standing budget.
+the density-increment bound, a dimension below random.
+
+A Delsarte bound moves the 4-flat threshold to n=11. A Sidon set of
+size `N` in `F_2^9` gives the even code of the columns `(1, a)`: dimension
+at least `N - 10` and no words of weight 2 or 4. At `N = 32` an exact
+rational dual certificate bounds such codes by 3,710,516.55, below
+`2**22`, so every 32 points of `F_2^9` hold a 2-flat. A 1024-point set in
+`F_2^11` has a difference `v` with `|S & (S+v)| >= 1024*1023/2047`, so at
+least 512 (the count is even), which leaves 256 cosets in `F_2^10`. The same
+step leaves 32 in `F_2^9`. That 2-flat lifts twice, so `D(11, 1/2) >= 4`.
+`D(9, 1/2)` and `D(10, 1/2)` are 3 or 4. Local search at n=9 stalls near
+530 4-flats, a 63-element field-automorphism group admits no invariant
+set, and the Frobenius-invariant case was undecided at the time limit.
