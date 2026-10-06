@@ -90,15 +90,15 @@ Generate a program with `esolangs generate Flowchart 0110 > flowchart.txt`, then
 Here is Flowchart at step 14:
 
 ```
-Flowchart  step 14  ip (1, 57, 0, -1)  running
+Flowchart  step 14  ip (1, 25, 0, -1)  running
 --------------------------------------------------------------------------
-1 | ───────────┐     ┌< ]──┐
-2 | \ \─\{ }/─< >─/ /┴────< >─/ /─\[ ]/─{ ]─\[ ]/─[ >─\[ ]/─[ }─\[ ]/─{ ]─
+1 | (( ))─\ \─/{ }\──────────────────┐     ┌< ]──┐
+2 |                ─(( ))─\ \─\{ }/─< >─/ /┴────< >─/ /─\[ ]/─{ ]─\[ ]/─[
 --------------------------------------------------------------------------
-memory   0 1 1
+memory   0 1 0
 stack    (empty)
 output   ''
-views    deques={0: [0, 1], 1: [1]}  pointers=[_Pointer(row=1, col=57, d=(
+views    deques={0: [0], 1: [1, 0]}  pointers=[_Pointer(row=1, col=25, d=(
 hjkl move | t break | space step | c continue | r run | b back | q quit
 R restart | w/W watch | G to ip | 0-9 count | p play | +/- speed
 ```

@@ -4,7 +4,7 @@ Nodes drawn as literal flowchart boxes are joined by box-drawing lines, and
 one or more pointers walk those lines, executing the node they land on.
 Each pointer owns a register holding a single bit (``0``, ``1``, or empty)
 and a cursor into a shared, infinite tape of deques; the deques themselves
-are shared by every pointer.  Execution starts on the top-most, left-most
+are shared by every pointer.  Execution starts on the left-most, top-most
 ``( )`` node travelling right, and the program halts once every pointer has
 stopped on an ``(( ))``.
 
@@ -78,14 +78,17 @@ rather than invented, and every one of the three examples on the page
   deque before its last output and so appended a zero (``101`` in,
   ``1010`` out); the explicit output rule takes precedence over that.
 
-* **Pointers run in lock-step, round-robin, in creation order.**  The
-  spec fixes the starting order (top-most, left-most) and says pointers
-  "run in parallel" but never gives an interleaving, and because the deques
-  are shared the choice is observable.  One step per pointer per round keeps
-  the ordering the spec does give, and a fork creates its pointers in the
-  reading order of the cells its paths leave through -- top-most first, then
-  left-most -- which is the same order the spec uses to pick the starting
-  node.  A pointer's deque cursor is likewise unspecified; it is kept
+* **A step runs one node per pointer; paths take no time.**  The spec
+  orders pointers "from the top-most left-most node, traveling right, then
+  down, then finally oldest-to-newest", so each step every pointer rides its
+  path to the next node and the pointers then execute in that order.  The
+  spec never says what a path cell costs, but the wiki's eight-pointer Hello
+  World settles it: its rows start at different distances from the fork,
+  and only node-counted time lines their output bits up.  The same program
+  fixes the start as the *left-most*, then top-most, ``( )`` -- the
+  spec's "left-most top-most" -- since a higher ``( )`` sits to its right.
+  A fork creates its pointers in the reading order of the cells its paths
+  leave through.  A pointer's deque cursor is unspecified; it is kept
   per-pointer here, alongside the register the spec does make per-pointer.
 
 One further rule the spec does state, and this interpreter enforces:
@@ -108,9 +111,9 @@ One further rule the spec does state, and this interpreter enforces:
   inside a node still leaves through whichever cell of the box its exit
   sits on, and a rail may still pass a node by without touching it.
 
-Malformed programs (touching nodes, an unknown node, a vertical path meeting
-a node off its middle, no ``( )`` to start from, or a non-end node with no
-onward path) raise :class:`ValueError`.
+Malformed programs (nodes touching side by side, an unknown node, a vertical
+path meeting a node off its middle, no ``( )`` to start from, or a non-end
+node with no onward path) raise :class:`ValueError`.
 
 At EOF a ``/ /`` read leaves the register **empty** rather than raising,
 which is the same state ``{ }`` clears it to. Output prints zero for that
@@ -424,15 +427,19 @@ class _Machine:
         self._check_alignment()
 
     def _check_separation(self) -> None:
-        """Reject nodes touching without a connecting path."""
+        """Reject nodes touching side by side without a connecting path.
+
+        Nodes may sit in adjacent rows: both wiki Hello Worlds stack their
+        rows of ``{ ]``/``[ }`` boxes with no gap, and a box's exits are path
+        cells, so a node above or below is simply not an exit.
+        """
         for (row, col), node in self.nodes.items():
-            for dr, dc in (_RIGHT, _DOWN):
-                neighbour = self.nodes.get((row + dr, col + dc))
-                if neighbour is not None and (dr or neighbour != node):
-                    raise syntax_error(
-                        f"nodes touch without a path at ({col}, {row})",
-                        "separate the nodes with a connecting path",
-                    )
+            neighbour = self.nodes.get((row, col + 1))
+            if neighbour is not None and neighbour != node:
+                raise syntax_error(
+                    f"nodes touch without a path at ({col}, {row})",
+                    "separate the nodes with a connecting path",
+                )
 
     def _check_alignment(self) -> None:
         """Reject a vertical path that enters a node off its middle.
@@ -465,9 +472,15 @@ class _Machine:
                         )
 
     def _start(self) -> tuple[int, int]:
-        """Return the top-most, left-most ``( )`` node's first cell."""
-        for row in range(len(self.grid)):
-            for col in range(self.width):
+        """Return the left-most, then top-most, ``( )`` node's first cell.
+
+        The spec starts on "the left-most top-most node" -- column first,
+        unlike its top-most-first pointer order -- and the wiki's
+        eight-pointer Hello World needs exactly that: its start sits at the
+        left edge below a higher ``( )`` that only forks.
+        """
+        for col in range(self.width):
+            for row in range(len(self.grid)):
                 node = self.nodes.get((row, col))
                 if node and node[0] == "( )" and node[1] == col:
                     return (row, col)
@@ -536,7 +549,9 @@ class _Machine:
         for c_row, c_col in sorted(cells, key=lambda c: (c[0], c[1])):
             for d in _HEADINGS:
                 n_row, n_col = c_row + d[0], c_col + d[1]
-                if (n_row, n_col) in cells or not self._in_bounds(n_row, n_col):
+                # A neighbouring node is never an exit: the only nodes that
+                # may touch are stacked in adjacent rows, with no path between.
+                if (n_row, n_col) in self.nodes or not self._in_bounds(n_row, n_col):
                     continue
                 if (n_row, n_col) == came_from:
                     continue
@@ -613,12 +628,47 @@ class _Machine:
         )
 
     def step(self) -> None:
-        """Advance every live pointer one cell, in creation order."""
+        """Run one node per live pointer, in the spec's pointer order.
+
+        Paths take no time: every pointer first rides its path to the next
+        node, then the pointers execute ordered by that node -- top-most,
+        then left-most, then oldest first.  Pointers a fork creates join on
+        the next step.
+        """
         if self.halted:
             return
-        for i in range(len(self.pointers)):
-            if not self.pointers[i].done:
-                self._advance(i)
+        live = [i for i, p in enumerate(self.pointers) if not p.done]
+        for i in live:
+            self._ride(i)
+        ready = [i for i in live if self._on_node(self.pointers[i])]
+        for i in sorted(ready, key=self._order):
+            self._execute(i)
+
+    def _on_node(self, p: _Pointer) -> bool:
+        """Whether ``p`` is live and standing on a node."""
+        return not p.done and (p.row, p.col) in self.nodes
+
+    def _order(self, i: int) -> tuple[int, int, int]:
+        """Return pointer ``i``'s sort key: its node's row, first column, then age."""
+        p = self.pointers[i]
+        return (p.row, self.nodes[(p.row, p.col)][1], i)
+
+    def _ride(self, i: int) -> None:
+        """Move pointer ``i`` along its path until it reaches a node or stops.
+
+        A rail that loops back on itself without meeting a node would ride
+        forever, so the ride ends where it repeats; the pointer is left on
+        the rail, every later step repeats it, and the cycle detector reports
+        the program as non-halting.
+        """
+        seen: set[tuple[int, int, tuple[int, int]]] = set()
+        p = self.pointers[i]
+        while not p.done and (p.row, p.col) not in self.nodes:
+            if (p.row, p.col, p.d) in seen:
+                return
+            seen.add((p.row, p.col, p.d))
+            self._follow_path(i)
+            p = self.pointers[i]
 
     def _put(self, i: int, p: _Pointer) -> None:
         """Write ``p`` back as the ``i``th pointer.
@@ -628,14 +678,6 @@ class _Machine:
         count grows with the program rather than with how long it runs.
         """
         self.pointers[i] = p
-
-    def _advance(self, i: int) -> None:
-        """Execute the cell under pointer ``i``, then move it one cell on."""
-        p = self.pointers[i]
-        if (p.row, p.col) in self.nodes:
-            self._execute(i)
-        else:
-            self._follow_path(i)
 
     def _follow_path(self, i: int) -> None:
         """Move pointer ``i`` along the line character it is standing on."""

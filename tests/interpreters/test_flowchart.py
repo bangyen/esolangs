@@ -1,5 +1,7 @@
 """Unit tests for the Flowchart interpreter."""
 
+from pathlib import Path
+
 import pytest
 
 from esolangs.interpreters.grid_based.flowchart import _Machine, run
@@ -142,7 +144,7 @@ class TestKolakoski:
         It pushes empty registers, so the pin moved when pushing empty
         stopped being a no-op (it was ``01111001100110011001``).
         """
-        assert run_steps(KOLAKOSKI, "", 400) == "01101100110011001100"
+        assert run_steps(KOLAKOSKI, "", 400)[:20] == "01101100110011001100"
 
     def test_the_current_wiki_program_prints_the_kolakoski_sequence(self) -> None:
         """1221121221221121122121121221121121221221121 as bits 0 and 1."""
@@ -184,12 +186,21 @@ class TestParsing:
         assert machine.width == 11
         assert machine.grid == ("( )─(( ))  ",)
 
-    @pytest.mark.parametrize(
-        "program", [["( )[ }"], [" ( )", " [ }"], ["( )", "  [ }"]]
-    )
-    def test_touching_nodes_are_rejected(self, program: list[str]) -> None:
+    def test_nodes_touching_side_by_side_are_rejected(self) -> None:
         with pytest.raises(ValueError, match="nodes touch without a path"):
-            _Machine(program, ScriptedIO(""))
+            _Machine(["( )[ }"], ScriptedIO(""))
+
+    @pytest.mark.parametrize("name", ["parallel", "serial"])
+    def test_the_wiki_hello_worlds(self, name: str) -> None:
+        """Both stack nodes in adjacent rows; bits come out low bit first.
+
+        The eight-pointer version also needs the spec's pointer order and
+        its left-most start, and paths that take no time.
+        """
+        path = Path(__file__).parent.parent / "fixtures" / f"flowchart_hello_{name}.txt"
+        bits = run_program(path.read_text(encoding="utf-8").splitlines())
+        chars = [bits[i : i + 8][::-1] for i in range(0, len(bits), 8)]
+        assert "".join(chr(int(c, 2)) for c in chars) == "Hello, world!"
 
     def test_separated_nodes_execute(self) -> None:
         for program in (
@@ -440,6 +451,5 @@ def test_counterclockwise_entry_prefers_clockwise_exit() -> None:
         "   (( ))",
     ]
     machine = _Machine(grid, ScriptedIO())
-    machine.step()
-    machine.step()
+    machine.step()  # rides west into [ ] and leaves it clockwise, northward
     assert machine.ip == (1, 5, -1, 0)
