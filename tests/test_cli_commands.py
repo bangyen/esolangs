@@ -11,7 +11,7 @@ import pytest
 import esolangs
 import esolangs.debugger as debugger_api
 from esolangs.cli import HELP
-from tests.cli_support import _LOOPS, call_both
+from tests.cli_support import _LOOPS, _refused, call_both
 from tests.generator_support import evaluate_generated
 from tests.stdin_check import _check_stdin
 from tests.test_cli import _program, call_main
@@ -62,15 +62,6 @@ class TestTheShellCanJudgeAnAnswer:
         err = capsys.readouterr().err
         assert "--timeout" in err
         assert "observe" in err
-
-    def test_read_answer_says_so_when_given_nothing(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """An empty pipe is a mistake, not an answer of zero."""
-        with pytest.raises(SystemExit) as exc:
-            call_main(["read-answer", "brainfuck"], capsys, stdin="")
-        assert exc.value.code == 2
-        assert "nothing on stdin" in capsys.readouterr().err
 
     def test_run_read_answer_prints_the_bit_for_a_dump(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
@@ -307,29 +298,6 @@ class TestDebugMakesTheSameRefusals:
         assert exc.value.code == 2
         assert "uppercase Latin letters" in capsys.readouterr().err
 
-    def test_a_negative_step_bound_is_refused(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """It was accepted and ran unbounded -- what ``--steps`` exists to stop."""
-        with pytest.raises(SystemExit) as exc:
-            call_main(
-                ["debug", "--steps", "-1", "brainfuck", _program(tmp_path, "+")], capsys
-            )
-        assert exc.value.code == 2
-        assert "must not be negative" in capsys.readouterr().err
-
-    def test_a_negative_break_at_is_refused(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """The third integer flag, and the one that had no such guard."""
-        with pytest.raises(SystemExit) as exc:
-            call_main(
-                ["debug", "--break-at", "-1", "brainfuck", _program(tmp_path, "+")],
-                capsys,
-            )
-        assert exc.value.code == 2
-        assert "--break-at must not be negative" in capsys.readouterr().err
-
     def test_an_internal_fault_is_still_reported_not_raised(
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
@@ -398,15 +366,6 @@ class TestALeadingZeroIndexNeverCrashes:
 
 class TestTheWidthFlagDoesNotEatTheTable:
     """`--width` takes an optional N, so it swallowed the truth table."""
-
-    def test_a_swallowed_table_is_named(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """`generate brainfuck --width 0110` said only "missing <truth-table>"."""
-        with pytest.raises(SystemExit) as exc:
-            call_main(["generate", "brainfuck", "--width", "0110"], capsys)
-        assert exc.value.code == 2
-        assert "--width" in capsys.readouterr().err
 
     def test_a_real_width_still_works(self, capsys: pytest.CaptureFixture[str]) -> None:
         """The hint must not fire where the width is a width."""
@@ -558,3 +517,30 @@ def test_describe_template_still_hides_stdin_fields(capsys):
     output, _error = call_both(["describe", "Minifuck"], capsys)
     assert "input_shape" not in output
     assert "generate --bits" in output
+
+
+#: Commands refused with exit code 2, and what stderr must say.
+#: ``prog:SRC`` is a file holding SRC; a third item is stdin.
+_REFUSALS = {
+    "read_answer_says_so_when_given_nothing": (
+        "read-answer brainfuck",
+        "nothing on stdin",
+    ),
+    "a_negative_step_bound_is_refused": (
+        "debug --steps -1 brainfuck prog:+",
+        "must not be negative",
+    ),
+    "a_negative_break_at_is_refused": (
+        "debug --break-at -1 brainfuck prog:+",
+        "--break-at must not be negative",
+    ),
+    "a_swallowed_table_is_named": ("generate brainfuck --width 0110", "--width"),
+}
+
+
+@pytest.mark.parametrize("case", _REFUSALS.values(), ids=list(_REFUSALS))
+def test_a_bad_command_exits_2_and_says_why(
+    case: tuple[str, ...], tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    command, message, *stdin = case
+    assert message in _refused(command, tmp_path, capsys, *stdin)
