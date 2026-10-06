@@ -1,5 +1,7 @@
 """Tests for the Deadfish interpreter."""
 
+import pytest
+
 from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.interpreters.register_based.deadfish import _Machine, run
 from tests.interpreters.contract import SnapshotContract, StateViewContract
@@ -17,20 +19,40 @@ _HELLO = "".join(
 )
 
 
-class TestTheMandatoryCases:
-    """The three the wiki requires, and what each one catches."""
-
-    def test_the_third_square_overshoots_to_zero(self) -> None:
-        """``iissso``: 2, 4, 16, then 256 exactly, which traps."""
-        assert run_program(run, "iissso") == "0\n"
-
-    def test_two_hundred_eighty_nine_sails_past_the_trap(self) -> None:
-        """``diissisdo``: the leading ``d`` traps at -1, and 17*17 does not."""
-        assert run_program(run, "diissisdo") == "288\n"
-
-    def test_the_trap_fires_on_the_way_down_too(self) -> None:
-        """``iissisd...o``: 289 decremented 33 times passes through 256."""
-        assert run_program(run, "iissisd" + "d" * 32 + "o") == "0\n"
+@pytest.mark.parametrize(
+    ("code", "expected"),
+    [
+        # The three the wiki requires.  2, 4, 16, then 256 exactly, which traps.
+        pytest.param("iissso", "0\n", id="the_third_square_overshoots_to_zero"),
+        # the leading d traps at -1, and 17*17 does not
+        pytest.param(
+            "diissisdo", "288\n", id="two_hundred_eighty_nine_sails_past_the_trap"
+        ),
+        # 289 decremented 33 times passes through 256
+        pytest.param(
+            "iissisd" + "d" * 32 + "o", "0\n", id="the_trap_fires_on_the_way_down_too"
+        ),
+        # the xkcd joke is that the answer is not random
+        pytest.param("iiso", "4\n", id="the_xkcd_random_number_is_four"),
+        # 65 prints as 65; the language has no character output
+        pytest.param("i" * 65 + "o", "65\n", id="output_is_a_number_not_a_character"),
+        # "Errors are not acknowledged", so junk is neither read nor refused
+        pytest.param("i i\nxyz!o", "2\n", id="a_non_command_is_ignored"),
+        pytest.param("", "", id="an_empty_program_prints_nothing"),
+        # the command table carries h as optional; it is honoured
+        pytest.param("iiohiiio", "2\n", id="h_halts_before_the_rest"),
+        # otherwise 1 then 2 and a single 12 are the same output
+        pytest.param("ioio", "1\n2\n", id="each_output_is_its_own_line"),
+        # -1 is a trap value, so the accumulator never shows a negative
+        pytest.param(
+            "do", "0\n", id="decrement_below_zero_traps_rather_than_going_negative"
+        ),
+        # the trap does not fire on 0, and 0 * 0 is not one of its values
+        pytest.param("sso", "0\n", id="squaring_zero_stays_zero"),
+    ],
+)
+def test_prints(code: str, expected: str) -> None:
+    assert run_program(run, code) == expected
 
 
 class TestDeadfish:
@@ -38,37 +60,6 @@ class TestDeadfish:
         """Thirteen ``o``s, whose values are the string's ASCII codes."""
         printed = [int(num) for num in run_program(run, _HELLO).split()]
         assert "".join(map(chr, printed)) == "Hello, world!"
-
-    def test_the_xkcd_random_number_is_four(self) -> None:
-        """``iiso``, whose joke is that the answer is not random."""
-        assert run_program(run, "iiso") == "4\n"
-
-    def test_output_is_a_number_not_a_character(self) -> None:
-        """65 prints as ``65``; the language has no character output."""
-        assert run_program(run, "i" * 65 + "o") == "65\n"
-
-    def test_a_non_command_is_ignored(self) -> None:
-        """ "Errors are not acknowledged", so junk is neither read nor refused."""
-        assert run_program(run, "i i\nxyz!o") == "2\n"
-
-    def test_an_empty_program_prints_nothing(self) -> None:
-        assert run_program(run, "") == ""
-
-    def test_h_halts_before_the_rest(self) -> None:
-        """The command table carries ``h`` as optional; it is honoured."""
-        assert run_program(run, "iiohiiio") == "2\n"
-
-    def test_each_output_is_its_own_line(self) -> None:
-        """Otherwise 1 then 2 and a single 12 are the same output."""
-        assert run_program(run, "ioio") == "1\n2\n"
-
-    def test_decrement_below_zero_traps_rather_than_going_negative(self) -> None:
-        """-1 is a trap value, so the accumulator never shows a negative."""
-        assert run_program(run, "do") == "0\n"
-
-    def test_squaring_zero_stays_zero(self) -> None:
-        """The trap does not fire on 0, and 0 * 0 is not one of its values."""
-        assert run_program(run, "sso") == "0\n"
 
     def test_every_program_halts(self) -> None:
         """The position only ever advances, so there is no loop to detect."""

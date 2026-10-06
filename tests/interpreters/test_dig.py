@@ -16,71 +16,58 @@ def run_and_capture(code: list[str], inputs: list[str] | None = None) -> str:
     return run_program(run, code, "".join(f"{line}\n" for line in inputs or []))
 
 
-class TestDigHaltAndMovement:
-    """Test overground movement commands."""
-
-    def test_work_commands_ignored_overground(self) -> None:
-        assert run_and_capture([">H:@", "  2 "]) == ""
-
-    def test_a_letter_overground_does_not_steer(self) -> None:
-        """Only ``^>'<`` set the heading; the mole keeps going right."""
-        assert run_and_capture(["X$5:", " 2  "]) == "5"
-
-    def test_the_halt_stops_code_that_follows_it(self) -> None:
-        """``@`` ends the run, rather than the mole walking off the end."""
-        assert run_and_capture(["@$5:", " 2  "]) == ""
-
-    def test_the_mole_stops_at_the_bottom_row(self) -> None:
-        """Walking off the bottom ends the run as cleanly as off the side."""
-        assert run_and_capture(["'"]) == ""
-
-    def test_a_right_turn_from_the_last_heading_wraps_to_the_first(self) -> None:
-        """The heading is taken modulo four, the number of headings."""
-        assert run_and_capture([" 1'", " #<"]) == ""
-
-
-class TestDigUndergroundCommands:
-    """Test work commands that only function underground."""
-
-    def test_print_initial_zero(self) -> None:
-        assert run_and_capture([">$:", " 2 "]) == "0"
-
-    def test_last_digit_wins(self) -> None:
-        assert run_and_capture([">$99:", " 3 "]) == "9"
-
-    def test_print_character(self) -> None:
-        assert run_and_capture([">$H:", " 2 "]) == "H"
-
-    def test_a_letter_underground_is_not_an_input_command(self) -> None:
-        """Only ``=`` and ``~`` read; ``X`` is a letter like any other."""
-        assert run_and_capture([">$X:", " 2 "]) == "X"
-
-    def test_printing_clears_the_mole(self) -> None:
-        """``:`` resets the mole to zero, which a second ``:`` reveals."""
-        assert run_and_capture([">$3::", " 3   "]) == "30"
-
-
-class TestDigArithmetic:
-    """Test the arithmetic operators against an adjacent digit."""
-
-    def test_addition(self) -> None:
-        assert run_and_capture([">$ 3+:", " 4  2 "]) == "5"
-
-    def test_subtraction(self) -> None:
-        assert run_and_capture([">$ 7-:", " 4  3 "]) == "4"
-
-    def test_multiplication(self) -> None:
-        assert run_and_capture([">$ 4*:", " 4  2 "]) == "8"
-
-    def test_division(self) -> None:
-        assert run_and_capture([">$ 9/:", " 4  3 "]) == "3"
-
-    def test_division_keeps_the_quotient_not_the_divisor(self) -> None:
-        """9 over 3 is 3 either way, so divide where the two differ."""
-        assert run_and_capture([">$ 8/:", " 4  2 "]) == "4"
-
-    def test_large_result_printed_as_character(self) -> None:
-        assert run_and_capture([">$ 6+:", " 4  5 "]) == "\x0b"
+@pytest.mark.parametrize(
+    ("code", "expected"),
+    [
+        # overground movement
+        pytest.param([">H:@", "  2 "], "", id="work_commands_ignored_overground"),
+        # only ^>'< set the heading; the mole keeps going right
+        pytest.param(["X$5:", " 2  "], "5", id="a_letter_overground_does_not_steer"),
+        # @ ends the run, rather than the mole walking off the end
+        pytest.param(["@$5:", " 2  "], "", id="the_halt_stops_code_that_follows_it"),
+        # walking off the bottom ends the run as cleanly as off the side
+        pytest.param(["'"], "", id="the_mole_stops_at_the_bottom_row"),
+        # the heading is taken modulo four, the number of headings
+        pytest.param(
+            [" 1'", " #<"],
+            "",
+            id="a_right_turn_from_the_last_heading_wraps_to_the_first",
+        ),
+        # work commands, which only function underground
+        pytest.param([">$:", " 2 "], "0", id="print_initial_zero"),
+        pytest.param([">$99:", " 3 "], "9", id="last_digit_wins"),
+        pytest.param([">$H:", " 2 "], "H", id="print_character"),
+        # only = and ~ read; X is a letter like any other
+        pytest.param(
+            [">$X:", " 2 "], "X", id="a_letter_underground_is_not_an_input_command"
+        ),
+        # : resets the mole to zero, which a second : reveals
+        pytest.param([">$3::", " 3   "], "30", id="printing_clears_the_mole"),
+        # arithmetic against an adjacent digit
+        pytest.param([">$ 3+:", " 4  2 "], "5", id="addition"),
+        pytest.param([">$ 7-:", " 4  3 "], "4", id="subtraction"),
+        pytest.param([">$ 4*:", " 4  2 "], "8", id="multiplication"),
+        pytest.param([">$ 9/:", " 4  3 "], "3", id="division"),
+        # 9 over 3 is 3 either way, so divide where the two differ
+        pytest.param(
+            [">$ 8/:", " 4  2 "], "4", id="division_keeps_the_quotient_not_the_divisor"
+        ),
+        pytest.param(
+            [">$ 6+:", " 4  5 "], "\x0b", id="large_result_printed_as_character"
+        ),
+        # ; stores the mole's whole value in one cell (wiki, Lua implementation):
+        # 12 lands in the ; cell; the : after it still prints chr(12)
+        pytest.param([">$6+;:"], "\x0c", id="a_two_digit_store_does_not_shift_the_row"),
+        # walking a ; cell again, underground, loads what it stored (A)
+        pytest.param(
+            ["'   : ", ">2$A;'", "    $ ", "    ^<"],
+            "A",
+            id="a_stored_value_is_read_back_underground",
+        ),
+    ],
+)
+def test_prints(code: list[str], expected: str) -> None:
+    assert run_and_capture(code) == expected
 
 
 class TestDigInput:
@@ -116,15 +103,6 @@ class TestDigInput:
 
 class TestDigStore:
     """``;`` stores the mole's whole value in one cell (wiki, Lua implementation)."""
-
-    def test_a_two_digit_store_does_not_shift_the_row(self) -> None:
-        """12 lands in the ``;`` cell; the ``:`` after it still prints chr(12)."""
-        assert run_and_capture([">$6+;:"]) == "\x0c"
-
-    def test_a_stored_value_is_read_back_underground(self) -> None:
-        """Walking a ``;`` cell again, underground, loads what it stored (A)."""
-        grid = ["'   : ", ">2$A;'", "    $ ", "    ^<"]
-        assert run_and_capture(grid) == "A"
 
     def test_a_stored_negative_digging_distance_halts(self) -> None:
         """``;`` stores -5 beside a ``$``; digging -5 tiles is refused."""
