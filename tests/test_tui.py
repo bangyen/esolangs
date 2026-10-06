@@ -7,19 +7,17 @@ import pytest
 
 import esolangs.debugger as debugger_api
 from esolangs.tui import (
-    CLEAR,
     Frame,
     History,
     Mark,
     _cells,
     at_cell,
-    breakpoint_for,
-    drive,
     grid,
     locate,
     render,
     replay,
 )
+from esolangs.tui_loop import CLEAR, breakpoint_for, drive
 
 #: Any styled run: its SGR parameters, and the text they cover.
 _STYLED = re.compile("\x1b\\[([0-9;]+)m(.*?)\x1b\\[0m")
