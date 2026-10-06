@@ -5,9 +5,12 @@ Per the wiki, ``7n`` skips the next instruction when the cell equals
 parameters, so the program is tokenized with them merged.  Printing a
 cell outside the character range halts with
 :class:`~esolangs.exceptions.HaltError`; exhausted input raises
-:class:`EOFError`.  ``3`` at the leftmost cell grows the tape a zero cell
-on the left: the spec says nothing about the left edge, and brainfuck's
-page allows cells left of the start.
+:class:`EOFError`.  The wiki names no failures: an ``8n`` with no ``n``-th
+``4`` falls through, and characters that are no instruction are ignored
+(not counted by ``7n``'s "skips the next instruction").  ``3`` at the
+leftmost cell grows the tape a zero cell on the left: the spec says
+nothing about the left edge, and brainfuck's page allows cells left of
+the start.
 
 :func:`_advance` is a pure transition over an immutable ``_State`` (tuple
 tape, so hashable) with no ``io`` argument; :class:`_Machine` is the shell
@@ -52,6 +55,8 @@ def _tokens(code: str) -> list[str]:
     """Split a program into instructions, merging each 7/8 with its operand.
 
     A ``C`` not operand to ``7``/``8`` starts a comment to end of line.
+    Whitespace and other non-instructions are dropped, so ``7n`` "skips the
+    next instruction", not a blank (``70 6`` skips the ``6``).
     """
     toks: list[str] = []
     i = 0
@@ -65,6 +70,8 @@ def _tokens(code: str) -> list[str]:
         elif code[i] in "78" and i + 1 < len(code):
             toks.append(code[i : i + 2])
             i += 2
+        elif code[i] not in "0123456789AB":
+            i += 1
         else:
             toks.append(code[i])
             i += 1

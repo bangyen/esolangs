@@ -165,11 +165,15 @@ class TestComments:
         assert _tokens("8") == ["8"]
         assert _tokens("7C1") == ["7C", "1"]
         assert _tokens("6C hidden") == ["6"]
-        # Only 7 and 8 take an operand.  Any other character stands alone,
-        # however the pair is spelled -- a wider set would swallow the
-        # command after it.
-        assert _tokens("X6") == ["X", "6"]
+        # Only 7 and 8 take an operand; a non-instruction is no token at all.
+        assert _tokens("X6") == ["6"]
         assert run_and_capture("X66666666A0") == "0"
+
+    def test_a_skip_passes_over_blanks_to_the_next_instruction(self) -> None:
+        """``7n`` "skips the next instruction"; a blank or comment is none."""
+        assert run_and_capture("70 6A") == "\x00"
+        assert run_and_capture("70C note\n6A") == "\x00"
+        assert run_and_capture("70X6A") == "\x00"
 
 
 class TestStepMachine:
