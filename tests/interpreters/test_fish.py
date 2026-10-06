@@ -74,8 +74,10 @@ def test_branching_protocol_covers_random_input_plain_and_halted_states() -> Non
 
 
 def test_errors_are_fishy() -> None:
-    # a negative jump target and a non-codepoint 'o' are errors (author's fish.py)
-    for source in ("~;", "10,;", "10%;", "};", "{;", "2[;", "z;", "01-0.;", "01-o;"):
+    # a negative jump target and a non-codepoint 'o' are errors (author's fish.py),
+    # and so are a tab and a newline that 'p' writes: only a space is a NOP
+    errors = ("~;", "10,;", "10%;", "};", "{;", "2[;", "z;", "01-0.;", "01-o;")
+    for source in (*errors, "\t;", "1a60p 2n;"):
         with pytest.raises(HaltError, match="fishy"):
             _run(source)
     fractional = _Machine(["p"], ScriptedIO(""))
@@ -142,6 +144,8 @@ def test_movement_mirrors_jump_and_trampolines() -> None:
     assert _run("10?9n;") == "1"
     assert _run("01?9n;") == "9"
     assert _run("20.9n;") == "9"
+    # a jump past the box re-enters it modulo its width (fish.py: wraps to 0)
+    assert _run("1n f0. 2n;") == "12"
     assert _run("x;", rng=FirstDraw(0)) == ""
     machine = _Machine(["/ ", " ;"], ScriptedIO(""))
     machine.step()
