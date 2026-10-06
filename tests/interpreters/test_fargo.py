@@ -195,6 +195,12 @@ class TestWikiExamples:
         with pytest.raises(ValueError, match="no outer call"):
             run_program("myFn\n")
 
+    @pytest.mark.parametrize("line", ["f0 101", "f x x", "f :x :x"])
+    def test_a_body_with_no_call_is_malformed(self, line: str) -> None:
+        """A literal or value argument is no call, like the wiki's ``myFn``."""
+        with pytest.raises(ValueError, match="no outer call"):
+            run_program(line + "\n$\n")
+
     def test_a_body_still_owing_arguments_is_malformed(self) -> None:
         # ``&`` wants two and the body supplies one.
         with pytest.raises(ValueError, match="no outer call"):

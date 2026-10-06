@@ -152,6 +152,15 @@ class TestStepMachine:
         assert machine.halted
         assert machine.error is False  # the nested error is discarded
 
+    def test_a_top_level_abort_raises_from_step(self) -> None:
+        """A stepped run fails as ``run`` does, not as a quiet halt."""
+        from esolangs.interpreters.stack_based.forth import _Machine
+
+        machine = _Machine("0/", ScriptedIO())
+        machine.step()
+        with pytest.raises(HaltError, match="top-level scope aborted"):
+            machine.step()
+
     def test_the_wrap_folds_at_exactly_two_to_the_thirty_first(self) -> None:
         """2**31 is the first value that wraps, and it lands on the floor."""
         from esolangs.interpreters.stack_based.forth import _Machine

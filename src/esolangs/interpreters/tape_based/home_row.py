@@ -8,8 +8,9 @@ Decisions: cells are unbounded (the wiki's Minsky construction needs
 it), so ``k`` prints the low byte and ``s`` on 0 gives -1 (the talk page
 asks, the author never ruled); the end of the source halts; ``l`` pairs
 alternate by order (first with second, third with fourth), and a
-trailing unpaired ``l`` raises :class:`ValueError`.  :func:`_advance` is
-pure over an immutable ``_State``; ``k``'s print is the shell's, its
+trailing unpaired ``l`` raises :class:`ValueError`; other characters
+are dropped before the run, so ``j`` skips the next command.
+:func:`_advance` is pure over an immutable ``_State``; ``k``'s print is the shell's, its
 clearing the transition's.  The 25-cell grid is cheap to rebuild, so no
 write buffer.
 """
@@ -105,7 +106,9 @@ class _Machine:
     def __init__(self, code: str, io: IO) -> None:
         """Match ``code``'s loop pairs and start the grid at all zeros."""
         self.io = io
-        self.code = code
+        # Only the eight commands are instructions, so ``j`` ("Jump over the
+        # next instruction") skips the next command, not a space before it.
+        code = self.code = "".join(filter("asdfjkl;".__contains__, code))
         self.match, self.open_l = _matches(code)
         # ``halted`` is read twice per command -- once by ``run``'s loop and
         # once by ``step``'s guard -- so the length is taken once here.

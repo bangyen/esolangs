@@ -254,6 +254,14 @@ class TestEdgeCases:
         assert run_program("FEZZF" + program) == ""
         assert run_program("FEZZF" + "FFT" + "A" + program) == ""
 
+    def test_v_with_a_negative_count_skips_nothing(self) -> None:
+        """ "skip the next B commands" never moves back to re-run ``V``."""
+        assert run_program("FAFFZFBFZFVFAFY") == "1"
+
+    def test_a_function_names_a_variable(self) -> None:
+        """The map takes "integers/strings/functions" as keys, by body."""
+        assert run_program("FBFHAHCHAHDY") == "2"
+
     def test_the_error_messages_read_in_full(self) -> None:
         """Each message entire, not the fragment the tests match on."""
         import re
@@ -261,8 +269,6 @@ class TestEdgeCases:
         for code, message in (
             ("M", "popped an empty stack"),
             ("FFFFR", "division by zero"),
-            ("FAFHHC", "a function cannot name a variable"),
-            ("FAFHHD", "a function cannot name a variable"),
             ("FAFG", "G needs a string or a function"),
             ("HABHFFA", "math on a function is undefined"),
             ("HABHY", "Y cannot output a function"),

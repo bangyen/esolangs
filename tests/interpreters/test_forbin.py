@@ -520,3 +520,19 @@ class TestSnapshotWithoutTheCycleDetector:
 )
 def test_wiki_syntax_forms(program: str, expected: str) -> None:
     assert run_program(program) == expected
+
+
+class TestScopingIsLexical:
+    """A variable is local "to a function (and its children)"."""
+
+    def test_a_literal_writes_the_enclosing_variable(self) -> None:
+        """Wiki: ``code`` and ``{code} 0;`` "are the same"."""
+        assert run_program("main { x = 0; {x = 1;} 0; out 0,1,0,0,0,0,0,x; }") == "A"
+
+    def test_a_nested_function_reads_its_parents_locals(self) -> None:
+        code = "main { x = 1; g { out 0,1,0,0,0,0,0,x; } g 0; }"
+        assert run_program(code) == "A"
+
+    def test_a_top_level_function_does_not_see_its_callers_locals(self) -> None:
+        with pytest.raises(HaltError, match="undeclared identifier 'x'"):
+            run_program("g { out 0,1,0,0,0,0,0,x; }\nmain { x = 1; g 0; }")

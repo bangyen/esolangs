@@ -19,6 +19,17 @@ Decisions for gaps in the wiki spec (documented):
   cat example writes ``shouldLoop = 1`` with no semicolon);
 - a trailing statement semicolon is otherwise optional, matching the wiki's
   loose examples;
+- scoping is lexical ("local to a function (and its children...)"): a
+  frame's ``parent`` is where its function was written, and an assignment
+  updates the nearest scope holding the name, since ``{code} 0;`` must be
+  "the same" as ``code``;
+- an iteration list's values are evaluated once, before the first pass;
+- ``return`` needs a value ("default is 0" is read as falling off the
+  end) and ``out`` exactly eight; uneven multiple assignments pair by
+  position, and a loop variable that "must first be defined" is bound
+  even if it is not;
+- ``f;`` and ``(f)`` call with no arguments, though the wiki says
+  "something has to be passed to call it" (generated code passes ``0``);
 - a call that resolves to no function is an invalid operation
   (:class:`~esolangs.exceptions.HaltError`), and malformed syntax raises
   :class:`ValueError`.
@@ -79,7 +90,7 @@ class _BitReader:
 
 
 class _Frame:
-    """One function invocation: its function, the caller, and its locals.
+    """One function invocation: its function, defining scope, and locals.
 
     ``body``/``pos`` is the statement list a frame is executing and its
     cursor; ``for_rows``/``for_names``/``for_ind`` track a ``for`` loop in
@@ -136,18 +147,36 @@ class _Frame:
         return copy
 
 
-def _lookup(frame: _Frame | None, name: str, globals_: dict[str, _Function]) -> object:
-    """Resolve a variable, builtin, or function name from ``frame`` outward."""
-    while frame is not None:
-        if name in frame.locals:
-            return frame.locals[name]
-        if name in frame.fn.nested:
-            return frame.fn.nested[name]
-        frame = frame.parent
+@dataclass(frozen=True, eq=False)
+class _Closure:
+    """A function value: its definition and the scope it was written in."""
+
+    fn: _Function
+    env: _Frame
+
+    def __repr__(self) -> str:
+        """Name the function and its scope (a scope is its locals dict)."""
+        return f"<{self.fn.name or 'literal'} {id(self.fn):x}@{id(self.env.locals):x}>"
+
+
+def _lookup(frame: _Frame, name: str, globals_: dict[str, _Function]) -> object:
+    """Resolve a variable, builtin, or function name from ``frame`` outward.
+
+    The chain is lexical: a frame's ``parent`` is the scope its function
+    was defined in, so a top-level function sees globals, not its caller.
+    """
+    scope: _Frame | None = frame
+    root = frame
+    while scope is not None:
+        if name in scope.locals:
+            return scope.locals[name]
+        if name in scope.fn.nested:
+            return _Closure(scope.fn.nested[name], scope)
+        root, scope = scope, scope.parent
     if name in ("in", "out"):
         return name
     if name in globals_:
-        return globals_[name]
+        return _Closure(globals_[name], root)
     raise HaltError(
         f"undeclared identifier {name!r}",
         hint="declare the identifier before using it; check its spelling",
@@ -171,10 +200,10 @@ def _eval(
     if node[0] == "var":
         return _lookup(frame, node[1], globals_)
     if node[0] == "fnlit":
-        return node[1]
+        return _Closure(node[1], frame)
     callee = _eval(node[1], frame, globals_, reader, depth)
     args = [_eval(a, frame, globals_, reader, depth) for a in node[2]]
-    return _call(callee, args, frame, globals_, reader, depth)
+    return _call(callee, args, globals_, reader, depth)
 
 
 def _bound(value: object, which: str) -> int:
@@ -192,22 +221,40 @@ def _bound(value: object, which: str) -> int:
     return value
 
 
+def _enter(callee: _Closure, args: list[object]) -> _Frame:
+    """Return a frame for calling ``callee``; unpassed parameters are 0."""
+    frame = _Frame(callee.fn, callee.env)
+    for name in callee.fn.args:
+        frame.locals[name] = 0
+    for name, value in zip(callee.fn.args, args, strict=False):
+        frame.locals[name] = value
+    return frame
+
+
+def _bind(frame: _Frame, name: str, value: object) -> None:
+    """Assign ``name`` where it lives, else as a new local of ``frame``.
+
+    The wiki makes ``{code} 0;`` the same as ``code``, so a write inside a
+    literal (or a nested function) reaches the enclosing variable.
+    """
+    scope: _Frame | None = frame
+    while scope is not None:
+        if name in scope.locals:
+            scope.locals[name] = value
+            return
+        scope = scope.parent
+    frame.locals[name] = value
+
+
 def _call(
     callee: object,
     args: list[object],
-    caller: _Frame | None,
     globals_: dict[str, _Function],
     reader: _BitReader,
     depth: int,
 ) -> object:
-    if isinstance(callee, _Function):
-        frame = _Frame(callee, caller)
-        # unpassed parameters are set to 0 (per the wiki)
-        for name in callee.args:
-            frame.locals[name] = 0
-        for name, value in zip(callee.args, args, strict=False):
-            frame.locals[name] = value
-        result = _run(frame, globals_, reader, depth + 1)
+    if isinstance(callee, _Closure):
+        result = _run(_enter(callee, args), globals_, reader, depth + 1)
         return result if result is not None else 0
     if isinstance(callee, str):
         if callee == "in":
@@ -283,12 +330,12 @@ def _exec_stmt(
                 if name != "_"
             ]
         for name, value in bindings:
-            frame.locals[name] = value
+            _bind(frame, name, value)
         return None
     if stmt[0] == "call":
         callee = _eval(stmt[1], frame, globals_, reader, depth)
         args = [_eval(a, frame, globals_, reader, depth) for a in stmt[2]]
-        _call(callee, args, frame, globals_, reader, depth)
+        _call(callee, args, globals_, reader, depth)
         return None
     # The three arms above are the other statement kinds, so what is
     # left is a ``for``.
@@ -334,7 +381,7 @@ def _exec_stmt(
     for row in rows:
         for name, bound in zip(names, row, strict=False):
             if name != "_":
-                frame.locals[name] = bound
+                _bind(frame, name, bound)
         got = _exec_block(body, frame, globals_, reader, depth)
         if got is not None:
             return got
@@ -416,16 +463,10 @@ def _start_statement_call(
         return None
     callee = _eval(stmt[1], frame, globals_, reader, 0)
     args = [_eval(a, frame, globals_, reader, 0) for a in stmt[2]]
-    if not isinstance(callee, _Function):
-        _call(callee, args, frame, globals_, reader, 0)
+    if not isinstance(callee, _Closure):
+        _call(callee, args, globals_, reader, 0)
         return False
-    new_frame = _Frame(callee, frame)
-    # unpassed parameters are set to 0 (per the wiki)
-    for name in callee.args:
-        new_frame.locals[name] = 0
-    for name, value in zip(callee.args, args, strict=False):
-        new_frame.locals[name] = value
-    return new_frame
+    return _enter(callee, args)
 
 
 @dataclass
@@ -571,6 +612,28 @@ class _Machine:
                     for name, value in self.global_frame.locals.items()
                 )
             ),
+            self._scopes(),
+        )
+
+    def _scopes(self) -> tuple[object, ...]:
+        """Render every scope a live frame or a closure can reach.
+
+        A closure keeps its defining scope after that frame returns, and a
+        call through it can write there, so those locals are state too.
+        """
+        seen: dict[int, _Frame] = {}
+        todo: list[_Frame | None] = [*self.frames, self.global_frame]
+        while todo:
+            scope = todo.pop()
+            while scope is not None and id(scope.locals) not in seen:
+                seen[id(scope.locals)] = scope
+                todo += [
+                    v.env for v in scope.locals.values() if isinstance(v, _Closure)
+                ]
+                scope = scope.parent
+        return tuple(
+            (key, tuple(sorted((k, repr(v)) for k, v in s.locals.items())))
+            for key, s in sorted(seen.items())
         )
 
     def step(self) -> None:
@@ -658,7 +721,7 @@ class _Machine:
         self.frames[-1] = frame
         for name, value in zip(frame.for_names, row, strict=False):
             if name != "_":
-                frame.locals[name] = value
+                _bind(frame, name, value)
         # This method only runs while the cursor sits on the ``for`` whose
         # rows it is walking, so the statement under it is that ``for``.
         # The tag is checked rather than tested-and-skipped: narrowing the

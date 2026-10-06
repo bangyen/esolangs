@@ -87,9 +87,10 @@ rather than invented, and every one of the three examples on the page
   and only node-counted time lines their output bits up.  The same program
   fixes the start as the *left-most*, then top-most, ``( )`` -- the
   spec's "left-most top-most" -- since a higher ``( )`` sits to its right.
-  A fork creates its pointers in the reading order of the cells its paths
-  leave through.  A pointer's deque cursor is unspecified; it is kept
-  per-pointer here, alongside the register the spec does make per-pointer.
+  A forking pointer keeps its forward-first exit (the spec's rule for any
+  node but ``< >``); new pointers take the others in reading order, an
+  order the spec leaves open.  A pointer's deque cursor is unspecified;
+  it is kept per-pointer here, alongside the register the spec does make per-pointer.
 
 One further rule the spec does state, and this interpreter enforces:
 
@@ -497,7 +498,7 @@ class _Machine:
         """
         p = self.pointers[0]
         here = (p.row, p.col)
-        exits = self._reading_order(self._exits_from_node(p.row, p.col, None))
+        exits = self._forward_first(p, self._exits_from_node(p.row, p.col, None))
         if not exits:
             raise syntax_error(
                 "start node has no exit path", "connect a path leaving the start node"
@@ -521,6 +522,21 @@ class _Machine:
         arriving heading.
         """
         return sorted(exits, key=lambda step: (step[0], step[1]))
+
+    def _forward_first(
+        self, p: _Pointer, exits: list[tuple[int, int, tuple[int, int]]]
+    ) -> list[tuple[int, int, tuple[int, int]]]:
+        """Order a fork's exits: the pointer's own first, then reading order.
+
+        "A pointer will always choose to go forward on a node if given
+        multiple exit paths, followed by clockwise, then counterclockwise"
+        names only ``< >`` as the exception, so the forking pointer keeps
+        that exit and the new pointers take the rest in reading order.
+        """
+        exits = self._reading_order(exits)
+        order = (p.d, _turn_right(p.d), _turn_left(p.d), (-p.d[0], -p.d[1]))
+        own = min(exits, key=lambda step: order.index(step[2]), default=None)
+        return [] if own is None else [own, *(e for e in exits if e != own)]
 
     def _anchor(self, row: int, col: int) -> tuple[int, int]:
         """Return the key a cell's re-entry memory is stored under.
@@ -780,12 +796,12 @@ class _Machine:
     def _fork(self, i: int) -> None:
         """Split pointer ``i`` across every path leaving a ``( )`` node.
 
-        The pointer itself continues along the first exit and a new pointer,
+        The pointer itself continues forward first and a new pointer,
         carrying a copy of the register and deque cursor, is appended for
         each of the others.
         """
         p = self.pointers[i]
-        exits = self._reading_order(self._exits_from_node(p.row, p.col, p.prev))
+        exits = self._forward_first(p, self._exits_from_node(p.row, p.col, p.prev))
         if not exits:
             raise syntax_error(
                 "non-end node has no exit path",
