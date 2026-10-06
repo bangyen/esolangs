@@ -20,9 +20,8 @@ pinning the language, asserted by their suite.
 The separator is the first ``::=`` line with nothing but whitespace on either
 side, and a ``~`` rule whose text is empty prints a newline and nothing else;
 both are the spec's, the second Vogel's convention that the wiki carries.  A
-rule line with no ``::=`` at all is refused rather than skipped, which is a
-decision: the spec does not say whether a blank line or a comment may sit
-there, and a loud rejection beats guessing.
+rule line with no ``::=`` is refused (the spec is silent on comments; a loud
+rejection beats guessing), but a blank one is skipped, as wiki examples use.
 
 A source with no separator line, a rule line without ``::=``, and a rule with
 an empty left-hand side (it would match everywhere, so no run could make
@@ -84,7 +83,7 @@ def _parse(code: str) -> tuple[tuple[_Rule, ...], str]:
             ("insert a line containing only ::= between the rules and starting state"),
         )
     rules = []
-    for line in lines[:cut]:
+    for line in filter(str.strip, lines[:cut]):
         head, found, tail = line.partition(_SEPARATOR)
         if not found:
             raise syntax_error(
