@@ -190,9 +190,12 @@ the answer in the linked proof and remove the item.
   shrinks a seeded n=12 source by only 1.01%, below the shipping threshold;
   `scripts/profile_vandevelo.py` records its executed controls. Next:
   remove the identifier factor, prove the candidate charge, and bound the
-  dual-basis core's aggregate work ([proofs](proofs/index.md)). Neither
-  remaining gap is a language-wide lower bound; measured scaling does not
-  settle them.
+  dual-basis core's aggregate work ([proofs](proofs/index.md)). The
+  identifier factor is Cohen and Shinkar's open `O(log n)` gap in
+  DNF-of-parities size. On tables whose cubes are under `2*log2(n)`
+  dimensions, coset programs cost `Theta(DNF+(f) * n * log n)` characters.
+  So neither linear output nor a super-linear lower bound can be proved
+  without settling that gap.
 
 - **FRACTRAN order encoding.** One unchanged multiset of eight fractions
   computes all sixteen four-row tables just by ordering each `1/p, 2/p`
