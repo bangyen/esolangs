@@ -7,6 +7,7 @@ from contextvars import ContextVar
 from threading import Lock
 from typing import TYPE_CHECKING
 
+from esolangs.interpreters.grid_based._circuit_diagram_hints import Hint
 from esolangs.interpreters.io import ScriptedIO
 
 if TYPE_CHECKING:
@@ -257,11 +258,13 @@ def _evaluate_function_body(
     )
 
     if gate.body is None:  # pragma: no cover - callers select custom gates
-        raise ValueError(f"{gate.kind!r} has no function body")
+        raise Hint.FUNCTION_BODY.error(f"{gate.kind!r} has no function body")
     bindings: dict[str, int] = {}
     input_rows = [line for line in gate.body if line.lstrip().startswith("-")]
     if len(input_rows) != len(inputs):  # pragma: no cover - arity checked earlier
-        raise ValueError(f"function {gate.kind!r} input count changed while running")
+        raise Hint.FUNCTION_ARITY.error(
+            f"function {gate.kind!r} input count changed while running"
+        )
     for line, value in zip(input_rows, inputs, strict=True):
         labels = [
             match
@@ -274,7 +277,7 @@ def _evaluate_function_body(
         ]
         if not labels:
             if len(value) != 1:
-                raise ValueError(
+                raise Hint.SINGLE_INPUT_WIRE.error(
                     f"function {gate.kind!r} expects a one-wire input, "
                     f"received {len(value)}"
                 )
@@ -283,19 +286,19 @@ def _evaluate_function_body(
         if all(term.isdigit() for term in terms):
             expected = sum(_width_integer(term) for term in terms)
             if expected != len(value):
-                raise ValueError(
+                raise Hint.INPUT_WIDTH.error(
                     f"function {gate.kind!r} expects {expected} input wires, "
                     f"received {len(value)}"
                 )
         elif len(terms) == 1 and terms[0].isalpha():
             old = bindings.setdefault(terms[0], len(value))
             if old != len(value):
-                raise ValueError(
+                raise Hint.BOUND_WIDTH.error(
                     f"function {gate.kind!r} binds {terms[0]!r} "
                     f"to both {old} and {len(value)}"
                 )
         else:
-            raise ValueError(
+            raise Hint.INPUT_LABEL.error(
                 f"function {gate.kind!r} input label must be a number or one name"
             )
 
@@ -340,7 +343,7 @@ def _evaluate_function_body(
             ),
         )
         if snapshot in seen:
-            raise ValueError(f"function {gate.kind!r} does not settle")
+            raise Hint.SETTLED_FUNCTION.error(f"function {gate.kind!r} does not settle")
         seen.add(snapshot)
         emitted.extend(
             _emitted((machine.values, machine.latches), machine.wirings, machine.gates)
@@ -348,5 +351,5 @@ def _evaluate_function_body(
         machine.step()
     output = "".join(emitted)
     if not output or set(output) - {"0", "1"}:
-        raise ValueError(f"function {gate.kind!r} did not return bits")
+        raise Hint.RETURN_BITS.error(f"function {gate.kind!r} did not return bits")
     return tuple(int(bit) for bit in output)

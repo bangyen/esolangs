@@ -49,7 +49,6 @@ def test_numeric_readers_accept_tokens_on_the_same_line(language):
 #: answer differently, and each for a reason of its own -- so the set is a
 #: statement about them, not a list of exceptions to ignore.
 _EOF_IS_A_HALT: dict[str, str] = {
-    "container": "EOF supplies zero to IN",
     "boolfuck": "EOF supplies zero bits",
     "piet": "an exhausted input command is ignored, as the spec requires",
     # Reads until the input runs out and treats that as its stop, which is
@@ -71,6 +70,8 @@ _EOF_IS_A_HALT: dict[str, str] = {
     "fish": "an exhausted 'i' is the spec's -1",
     "unlambda": "an exhausted '@' hands its argument v, the spec's branch",
     "thisthat": "an exhausted '◇' sends the spec's empty transfer",
+    # Wiki: the empty container sets IN "with EOF returning 0".
+    "container": "an exhausted read sets IN to the spec's 0",
 }
 
 
@@ -133,14 +134,3 @@ def test_running_out_of_input_reaches_the_caller(name: str) -> None:
     extra = {key: value for key, value in example.kwargs if key != "seed"}
     with pytest.raises(EOFError):
         module.run(argument, io=ScriptedIO(""), **extra)
-
-
-def test_container_eof_supplies_zero() -> None:
-    """The public generated XOR treats both exhausted reads as zero."""
-    program = esolangs.generate("Container", "0110")
-    assert esolangs.describe("Container")["eof_is_a_value"] is True
-    assert esolangs.run("Container", program, "") == "0"
-    module = importlib.import_module("esolangs.interpreters.other.container")
-    io = ScriptedIO("")
-    assert module.run(program.splitlines(), io) == 0
-    assert io.getvalue() == "0"

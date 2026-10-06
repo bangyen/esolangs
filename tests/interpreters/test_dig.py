@@ -1,10 +1,203 @@
-"""Dig parser diagnostics."""
+"""Unit tests for Dig interpreter.
+
+Tests cover Dig commands and example programs from esolangs.org.
+Dig is a 2D esoteric programming language with a mole (pointer) that moves on a
+grid. Movement commands work overground; work commands only function underground
+after digging with ``$``. The value read by ``$``/``#``/``%`` and the operators
+is the first digit adjacent to the command (up, right, down, left).
+"""
+
+from typing import ClassVar
 
 import pytest
 
 from esolangs.interpreters.grid_based.dig import run
-from esolangs.interpreters.io import IO
+from esolangs.interpreters.io import IO, ScriptedIO
+from tests.interpreters.contract import CycleContract, InputCursorContract
+from tests.interpreters.runner import run_program
 from tests.raises import raises_message
+
+
+def run_and_capture(code: list[str], inputs: list[str] | None = None) -> str:
+    """Run a Dig program and return its stdout."""
+    return run_program(run, code, "".join(f"{line}\n" for line in inputs or []))
+
+
+class TestDigHaltAndMovement:
+    """Test overground movement commands."""
+
+    def test_halt_command(self) -> None:
+        assert run_and_capture(["@"]) == ""
+
+    def test_move_right_then_halt(self) -> None:
+        assert run_and_capture([">@"]) == ""
+
+    def test_work_commands_ignored_overground(self) -> None:
+        assert run_and_capture([">H:@", "  2 "]) == ""
+
+    def test_a_letter_overground_does_not_steer(self) -> None:
+        """Only ``^>'<`` set the heading; the mole keeps going right.
+
+        A letter admitted into the heading arm would index the glyph string
+        and miss, so the mole would turn around on the -1 and leave the
+        grid before it ever dug.
+        """
+        assert run_and_capture(["X$5:", " 2  "]) == "5"
+
+    def test_the_halt_stops_code_that_follows_it(self) -> None:
+        """``@`` ends the run, rather than the mole walking off the end.
+
+        Every other program halts by leaving the grid, which hides a ``@``
+        that does nothing -- so put work after it that would print.
+        """
+        assert run_and_capture(["@$5:", " 2  "]) == ""
+
+    def test_the_mole_stops_at_the_bottom_row(self) -> None:
+        """Walking off the bottom ends the run as cleanly as off the side.
+
+        A single ``'`` faces the mole down out of a one-row grid, which is
+        the only exit the row bound guards; every other program here leaves
+        through a column.
+        """
+        assert run_and_capture(["'"]) == ""
+
+    def test_a_right_turn_from_the_last_heading_wraps_to_the_first(self) -> None:
+        """The heading is taken modulo four, the number of headings.
+
+        Steering right while facing left is the one turn that runs off the
+        end of the glyph order, so it is the only program that shows the
+        wrap.
+        """
+        assert run_and_capture([" 1'", " #<"]) == ""
+
+
+class TestDigUndergroundCommands:
+    """Test work commands that only function underground."""
+
+    def test_print_initial_zero(self) -> None:
+        assert run_and_capture([">$:", " 2 "]) == "0"
+
+    def test_print_digit(self) -> None:
+        assert run_and_capture([">$5:", " 2 "]) == "5"
+
+    def test_last_digit_wins(self) -> None:
+        assert run_and_capture([">$99:", " 3 "]) == "9"
+
+    def test_print_character(self) -> None:
+        assert run_and_capture([">$H:", " 2 "]) == "H"
+
+    def test_a_letter_underground_is_not_an_input_command(self) -> None:
+        """Only ``=`` and ``~`` read; ``X`` is a letter like any other.
+
+        With no input queued a stray read would raise instead of printing,
+        so the letter has to stay out of the input arm.
+        """
+        assert run_and_capture([">$X:", " 2 "]) == "X"
+
+    def test_printing_clears_the_mole(self) -> None:
+        """``:`` resets the mole to zero, which a second ``:`` reveals."""
+        assert run_and_capture([">$3::", " 3   "]) == "30"
+
+    def test_newline_output(self) -> None:
+        assert run_and_capture([">$%:", " 21"]) == "\n"
+
+    def test_space_output(self) -> None:
+        assert run_and_capture([">$%:", " 20"]) == " "
+
+
+class TestDigArithmetic:
+    """Test the arithmetic operators against an adjacent digit."""
+
+    def test_addition(self) -> None:
+        assert run_and_capture([">$ 3+:", " 4  2 "]) == "5"
+
+    def test_subtraction(self) -> None:
+        assert run_and_capture([">$ 7-:", " 4  3 "]) == "4"
+
+    def test_multiplication(self) -> None:
+        assert run_and_capture([">$ 4*:", " 4  2 "]) == "8"
+
+    def test_division(self) -> None:
+        assert run_and_capture([">$ 9/:", " 4  3 "]) == "3"
+
+    def test_division_keeps_the_quotient_not_the_divisor(self) -> None:
+        """9 over 3 is 3 either way, so divide where the two differ."""
+        assert run_and_capture([">$ 8/:", " 4  2 "]) == "4"
+
+    def test_large_result_printed_as_character(self) -> None:
+        assert run_and_capture([">$ 6+:", " 4  5 "]) == "\x0b"
+
+
+class TestDigInput:
+    """Test the input commands."""
+
+    def test_integer_input(self) -> None:
+        assert run_and_capture([">$~:", " 2 "], inputs=["7"]) == "7"
+
+    def test_integer_input_keeps_all_digits(self) -> None:
+        """``~`` reads an integer, rather than only its first digit."""
+        from esolangs.interpreters.grid_based.dig import _Machine
+
+        machine = _Machine([">$~:", " 2 "], ScriptedIO("12"))
+        for _ in range(3):  # move over, dig, read
+            machine.step()
+        assert machine.mole == 12
+
+    def test_character_input(self) -> None:
+        assert run_and_capture([">$=:", " 2 "], inputs=["A"]) == "A"
+
+    def test_a_huge_integer_reads_and_prints_whole(self) -> None:
+        """``~`` and ``:`` handle 5000 digits, past Python's str/int limit."""
+        number = "-" + "9" * 5000
+        assert run_and_capture([">$~:", " 2 "], inputs=[number]) == number
+
+    def test_a_cursorless_read_loop_is_not_a_cycle(self) -> None:
+        """Reads count in the snapshot: the loop runs to EOF, not a false cycle."""
+        from esolangs.interpreters.grid_based.dig import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+        from tests.interpreters.cursorless_io import CursorlessIO
+
+        machine = _Machine([">$=:'", "^1  <"], CursorlessIO("aaaaaaaa"))
+        with pytest.raises(EOFError):
+            run_until_halt_or_cycle(machine)
+
+
+class TestDigStore:
+    """``;`` stores the mole's whole value in one cell (wiki, Lua implementation)."""
+
+    def test_a_two_digit_store_does_not_shift_the_row(self) -> None:
+        """12 lands in the ``;`` cell; the ``:`` after it still prints chr(12)."""
+        assert run_and_capture([">$6+;:"]) == "\x0c"
+
+    def test_a_stored_negative_digging_distance_halts(self) -> None:
+        """``;`` stores -5 beside a ``$``; digging -5 tiles is refused."""
+        from esolangs.exceptions import HaltError
+
+        with pytest.raises(HaltError, match="negative digging distance"):
+            run_and_capture([">$ -;$", " 3 5  "])
+
+
+class TestDigExamplePrograms:
+    """Test example programs from esolangs.org."""
+
+    def test_hello_world(self) -> None:
+        hello_world = [">$H:e:l:l:$o:%:W:o:$r:l:d:!:@", " 8        8  0     8"]
+        assert run_and_capture(hello_world) == "Hello World!"
+
+    def test_nand_gate(self) -> None:
+        nand_gate = [
+            "'2  > $~ >$ 1:@",
+            ">$~;#@2   3",
+            "    > $~;#@2",
+            "         > $0:@",
+        ]
+        for a, b, expected in [
+            ("0", "0", "1"),
+            ("0", "1", "1"),
+            ("1", "0", "1"),
+            ("1", "1", "0"),
+        ]:
+            assert run_and_capture(nand_gate, inputs=[a, b]) == expected
 
 
 class TestDigEdgeCases:
@@ -21,3 +214,121 @@ class TestDigEdgeCases:
             run(["\n"], io=IO())
         with pytest.raises(ValueError, match="empty"):
             run(["   ", "\t"], io=IO())
+
+    def test_no_adjacent_digit_halts(self) -> None:
+        """A work command with no adjacent digit is an invalid operation."""
+        from esolangs.exceptions import HaltError
+
+        with pytest.raises(HaltError):
+            run([">$+:", "    "], io=IO())
+
+    def test_divide_by_zero_halts(self) -> None:
+        """Dividing by an adjacent zero is an invalid operation."""
+        from esolangs.exceptions import HaltError
+
+        with pytest.raises(HaltError):
+            run([">$/", " 10"], io=IO())
+
+    def test_newline_input_is_preserved(self) -> None:
+        """A character read preserves the newline."""
+        assert run_and_capture([">$=:", " 2 "], inputs=[""]) == "\n"
+
+    def test_a_steer_digit_outside_zero_and_one_goes_straight(self) -> None:
+        """``#`` turns on 1 and 0; every other digit holds the heading.
+
+        The wiki spells out all three cases -- "Rotates Mole to left when
+        value beside it is 0, and right when 1.  When it's neither of those,
+        keep straight." -- so going straight is specified behaviour, and a
+        change to the two arms above must not quietly take it away.
+        """
+        from esolangs.interpreters.grid_based.dig import _Machine
+        from esolangs.interpreters.io import ScriptedIO
+
+        def heading_after(digit: str) -> int:
+            # "#" steers overground, so no "$" -- the mole starts at (0, 0)
+            # heading right and reads the cell below the "#" at (0, 1).
+            machine = _Machine([" #  ", f" {digit}  "], ScriptedIO(""))
+            machine.step()  # the blank the mole starts on
+            machine.step()  # "#"
+            return machine.move
+
+        straight = heading_after("2")
+        assert heading_after("1") == (straight + 1) % 4, "1 turns right"
+        assert heading_after("0") == (straight - 1) % 4, "0 turns left"
+        for digit in "23456789":
+            assert heading_after(digit) == straight, digit
+
+    def test_a_whitespace_digit_outside_zero_and_one_is_inert(self) -> None:
+        """``%`` loads a newline for 1 and a space for 0, nothing otherwise.
+
+        Unlike ``#``, the wiki gives ``%`` only those two cases, so the rest
+        are a gap it does not fill.  Leaving the mole alone is this
+        interpreter's choice, and pinning it keeps the choice deliberate.
+        """
+        from esolangs.interpreters.grid_based.dig import _Machine
+        from esolangs.interpreters.io import ScriptedIO
+
+        def mole_after(digit: str) -> int:
+            # "%" is a work command, so "$" has to open the underground
+            # budget first; it reads the 1 below it, leaving room for one.
+            machine = _Machine(["$%  ", f"1{digit}  "], ScriptedIO(""))
+            machine.step()  # "$" loads the work budget
+            machine.step()  # "%" selects
+            return machine.mole
+
+        assert mole_after("1") == 10  # newline
+        assert mole_after("0") == 32  # space
+        for digit in "23456789":
+            assert mole_after(digit) == 0, digit
+
+
+class TestStepMachine:
+    def test_step_tracks_position_direction_and_mole(self) -> None:
+        from esolangs.interpreters.grid_based.dig import _Machine
+
+        machine = _Machine([">$5:", " 2 "], IO())
+        assert (machine.row, machine.col, machine.move, machine.mole) == (0, 0, 1, 0)
+        machine.step()  # > keeps facing right
+        assert (machine.row, machine.col, machine.move) == (0, 1, 1)
+        machine.step()  # $ digs: reads the adjacent digit (5) as the count
+        assert machine.num == 5
+        machine.step()  # 5 sets the mole and consumes one count
+        assert (machine.mole, machine.num) == (5, 4)
+
+    def test_the_read_lands_in_the_mole(self) -> None:
+        """``=`` puts the line it read where the language says it goes.
+
+        That the read moves the cursor and the snapshot is the shared
+        contract below; what is Dig's own is *where* the byte ends up.
+        """
+        from esolangs.interpreters.grid_based.dig import _Machine
+
+        machine = _Machine([">$=:", " 2 "], ScriptedIO("A"))
+        for _ in range(3):  # move over, dig, read
+            machine.step()
+        assert machine.mole == ord("A")
+
+
+def _machine(code: object) -> object:
+    from esolangs.interpreters.grid_based.dig import _Machine
+    from esolangs.interpreters.io import IO
+
+    return _Machine(code, IO())
+
+
+def _reader(code: object, stdin: str) -> object:
+    from esolangs.interpreters.grid_based.dig import _Machine
+
+    return _Machine(code, ScriptedIO(stdin))
+
+
+class TestContract(CycleContract, InputCursorContract):
+    """The shared shapes, with this language's own programs."""
+
+    machine = staticmethod(_machine)
+    halting_program: ClassVar[list[str]] = [">@"]
+    looping_program: ClassVar[list[str]] = [">'", "^<"]
+    reader = staticmethod(_reader)
+    reading_program: ClassVar[list[str]] = [">$=:", " 2 "]
+    reading_stdin = "A"
+    steps_before_read = 2  # move over, dig, and only then read

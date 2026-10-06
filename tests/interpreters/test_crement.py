@@ -1,15 +1,71 @@
-"""Direct transition and operand guards for Crement."""
+"""Tests for the pure Crement interpreter."""
 
 import pytest
 
 from esolangs.exceptions import HaltError, ProgramError
+from esolangs.interpreters.io import IO
 from esolangs.interpreters.other.crement import (
     _advance,
     _Instruction,
     _Machine,
     _number,
+    _parse,
     _State,
+    run,
 )
+from esolangs.vm import run_until_halt_or_cycle
+
+
+def _halts(program: str) -> bool:
+    return run_until_halt_or_cycle(_Machine(program))
+
+
+def test_positive_and_negative_jump_conditions() -> None:
+    assert not _halts("+J 0 1")
+    assert _halts("+J 0 0")
+    assert not _halts("-J 0 -1")
+    assert _halts("-J 0 1")
+
+
+def test_data_instruction_rewrites_the_target_data() -> None:
+    machine = _Machine("+D 1 4\n+J 2 0")
+    machine.step()
+    assert machine.state.program[1].data == 5
+    assert machine.state.program[1].address == 2
+    assert _advance(machine.state).ip == 2
+
+
+def test_address_instruction_rewrites_the_target_address() -> None:
+    machine = _Machine("+A 1 0\n+J 2 1")
+    machine.step()
+    assert machine.state.program[1].address == 1
+    assert not run_until_halt_or_cycle(machine)
+
+
+def test_negative_write_and_write_past_end() -> None:
+    machine = _Machine("-D 1 4\n+D 9 7")
+    machine.step()
+    assert machine.state.program[1].data == 3
+    machine.step()
+    assert machine.halted
+
+
+def test_labels_here_and_signed_sums_resolve() -> None:
+    program = _parse(":start +J end-start 0 * forward\n:end -D @-1 start+2")
+    assert (program[0].address, program[0].data) == (1, 0)
+    assert (program[1].address, program[1].data) == (0, 2)
+
+
+def test_whitespace_separates_fields_and_comments_are_spaces() -> None:
+    compact = ":start +J end-start 0 :end -D @-1 start+2"
+    folded = ":start\n+J\nend-start * comment\n0\n:end\n-D\n@-1\nstart+2"
+    assert _parse(compact) == _parse(folded)
+    assert _halts("+J\n0\n0")
+    assert not _halts("+J\n0\n1")
+    run("+J\n0\n0", IO())
+    machine = _Machine("")
+    assert not hasattr(machine, "stack")
+    assert _advance(machine.state) == machine.state
 
 
 def test_transition_is_pure_over_immutable_state() -> None:
@@ -21,6 +77,30 @@ def test_transition_is_pure_over_immutable_state() -> None:
     assert machine.state is initial
     assert initial.program[0].data == 4
     assert advanced.program[0].data == 5
+    assert hash(initial)
+
+
+@pytest.mark.parametrize(
+    ("program", "message"),
+    [
+        (":1bad +J 0 0", "invalid label"),
+        (":x +J 0 0\n:x +J 0 0", "duplicate label"),
+        ("+J nowhere 0", "undefined label"),
+        ("J 0 0", "invalid opcode"),
+        ("+J 0", "three fields"),
+        ("+J 1x 0", "invalid number"),
+    ],
+)
+def test_malformed_source_is_rejected(program: str, message: str) -> None:
+    with pytest.raises(ProgramError, match=message):
+        _Machine(program)
+
+
+@pytest.mark.parametrize("program", ["+J -1 1", "+D -1 0"])
+def test_negative_target_is_an_explicit_undefined_operation(program: str) -> None:
+    machine = _Machine(program)
+    with pytest.raises(HaltError, match="negative address"):
+        machine.step()
 
 
 def test_a_number_with_no_terms_is_rejected() -> None:
@@ -34,3 +114,15 @@ def test_a_negative_pointer_halts() -> None:
     state = _State(ip=-1, program=(_Instruction("J", 1, 0, 0),))
     with pytest.raises(HaltError, match="negative address"):
         _advance(state)
+
+
+def test_a_literal_past_the_host_digit_cap_is_exact() -> None:
+    """Operands are unbounded; Python's int() refuses 4300+ digits."""
+    assert _number("1" + "0" * 5000, {}, 0) == 10**5000
+
+
+def test_a_huge_negative_jump_reports_its_address() -> None:
+    """The message formats 5001 digits rather than tripping str()'s cap."""
+    machine = _Machine("+J -1" + "0" * 5000 + " 1")
+    with pytest.raises(HaltError, match=r"negative address -10{5000}(?!0)"):
+        machine.step()

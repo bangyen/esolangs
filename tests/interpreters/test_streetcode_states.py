@@ -16,7 +16,7 @@ from esolangs.interpreters.grid_based.streetcode.geometry import (
     _plus_dist,
 )
 from esolangs.interpreters.io import IO, ScriptedIO
-from esolangs.vm import run_until_halt_or_cycle
+from esolangs.vm import _StepMachine, run_until_halt_or_cycle
 from tests.interpreters.streetcode_support import _RING_PROGRAM
 
 
@@ -29,8 +29,34 @@ class TestStreetcodeStepMachine:
         machine.step()  # 'C' is a nop; drives onto 'I'
         assert (machine.row, machine.col) == (0, 1)
 
-    def test_snapshot_separates_car_tape_and_latches(self) -> None:
-        """Distinguish car coordinates, tape, halt, and each merge latch."""
+    def test_snapshot_includes_input_cursor(self) -> None:
+        machine = _Machine(["CIO;"], ScriptedIO("A"))
+        before = machine.snapshot()
+        machine.step()  # 'C'
+        machine.step()  # 'I' consumes the input line
+        after = machine.snapshot()
+        assert before != after
+        assert machine.io.position() == 1
+
+    def test_the_machine_satisfies_the_vm_step_protocol(self) -> None:
+        """``run_until_halt_or_cycle`` steps this, so it must conform.
+
+        ``_StepMachine`` is ``runtime_checkable``, so the structural
+        check is the contract itself rather than a restatement of it.
+        """
+        assert isinstance(_Machine(["C;"], IO()), _StepMachine)
+
+    def test_snapshot_separates_every_state_the_machine_carries(self) -> None:
+        """No two distinct states may share a snapshot, and it must hash.
+
+        The hang detector's verdict is only sound if a repeat is a real
+        repeat: two states that differ anywhere must differ here, or a
+        program that is still making progress looks like a proven cycle.
+        The state is one :class:`_State` record beside the tape, CP, I/O
+        and halted flag, so this walks every field of it -- including
+        each latch separately, which a snapshot that dropped the record
+        or flattened it carelessly would be the way to get wrong.
+        """
         code = ["+----+", "|C  ;|", "|    |", "+----+"]
         merge = _Merge(1, 1, "left", "S", crossing=False)
         # The fixture starts heading South, so "N" and "W" are both real
@@ -65,6 +91,7 @@ class TestStreetcodeStepMachine:
             snapshots.append(machine.snapshot())
 
         assert len(set(snapshots)) == len(snapshots)
+        assert all(hash(s) is not None for s in snapshots)
 
     def test_halting_program_is_detected_as_halted(self) -> None:
         assert run_until_halt_or_cycle(_Machine(["C;"], IO())) is True
@@ -92,12 +119,34 @@ class TestStreetcodeDriveStates:
     def _corridor(self) -> list[str]:
         return ["+----+", "|C  ;|", "|    |", "+----+"]
 
+    def test_every_state_has_a_successor(self) -> None:
+        """A validated street is total: no reachable state wedges the car."""
+        machine = _Machine(self._corridor(), IO())
+        graph = machine._drive_states((1, 1))  # noqa: SLF001
+        # ``None`` means only "ran out of road" now -- a deliberate stop at
+        # ``;`` reports itself as ``"halt"`` -- so a wedge needs no check
+        # against the square underneath.
+        wedged = [
+            state
+            for state, edges in graph.items()
+            if any(succ is None for succ in edges.values())
+        ]
+        assert wedged == []
+
     def test_exploring_leaves_the_machine_untouched(self) -> None:
         """``_drive_states`` drives the live machine, so it must restore it."""
         machine = _Machine(self._corridor(), IO())
         before = machine.snapshot()
         machine._drive_states((1, 1))  # noqa: SLF001
         assert machine.snapshot() == before
+
+    def test_each_state_is_keyed_by_both_branch_bits(self) -> None:
+        """Both tape reads a step can make are probed, so all four pairs."""
+        machine = _Machine(self._corridor(), IO())
+        graph = machine._drive_states((1, 1))  # noqa: SLF001
+        assert graph
+        for edges in graph.values():
+            assert set(edges) == {(0, 0), (0, 1), (1, 0), (1, 1)}
 
     def test_a_wedging_phase_is_rejected_at_construction(self) -> None:
         """The check fires when the movement rules do run out of road.

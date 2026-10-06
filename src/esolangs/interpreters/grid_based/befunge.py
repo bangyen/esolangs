@@ -4,7 +4,7 @@ Befunge is a two-dimensional grid language: the instruction pointer carries a
 stack and a heading, wraps at the edges, and ``p`` edits the grid in place.
 ``,`` and ``.`` print, ``~`` and ``&`` read, and string mode pushes cells as
 bytes. Values must fit the platform C signed long; overflow raises HaltError.
-Source cells are bytes; character input, storage and output use unsigned bytes.
+Source cells are bytes; storage and output use unsigned bytes.
 Unknown bytes are no-ops. EOF propagates. The playfield is the 80x25 torus;
 division
 truncates toward zero, and a zero divisor reads the result from the user.  A
@@ -193,7 +193,7 @@ def _advance(
                 "'~' reads a character and there is no input left",
                 hint="supply another input value or stop reading at end of input",
             )
-        stack = _push(stack, char_input & 0xFF)
+        stack = _push(stack, char_input)
     elif command == "@":
         done = True
     col, row = (col + dx) % width, (row + dy) % height

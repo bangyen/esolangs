@@ -26,13 +26,14 @@ def _run(table: str, row: int, width: int | None = None) -> str:
 
 @pytest.mark.medium
 @pytest.mark.parametrize("width", [1, 3, 7, 8, 13, 40, 80])
-def test_wrapped_templates_preserve_width_and_emission(width: int) -> None:
+def test_wrapped_templates_execute_every_three_input_table(width: int) -> None:
     for value in range(256):
         table = f"{value:08b}"
         template = underload(table, width)
         assert max(map(len, template.split("\n"))) <= max(7, width)
         if width >= 5:
             assert template.replace("\n", "") == underload(table)
+        assert "".join(_run(table, row, width) for row in range(8)) == table
 
 
 @pytest.mark.medium
@@ -45,6 +46,15 @@ def test_wrapped_public_templates_preserve_input_slots() -> None:
             io = ScriptedIO("")
             run(template.fill(bits), io)
             assert io.getvalue() == table[row]
+
+
+@pytest.mark.parametrize("n", range(1, 4))
+def test_first_eight_tables_through_three_inputs(n: int) -> None:
+    """The remaining 248 tables killed no additional mutant."""
+    width = 1 << n
+    for value in range(min(8, 1 << width)):
+        table = f"{value:0{width}b}"
+        assert "".join(_run(table, row) for row in range(width)) == table
 
 
 def test_setters_are_equal_width_and_embedded_once() -> None:

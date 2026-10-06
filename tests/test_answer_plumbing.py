@@ -667,6 +667,20 @@ class TestWhatHappensWhenAProgramIsUnderfed:
                 mismatched.append(f"{name}: declares eof_is_a_value but raised")
         assert not mismatched, "\n".join(mismatched)
 
+    @pytest.mark.slow
+    def test_most_languages_raise(self) -> None:
+        """The norm, counted, so a regression that erodes it is visible."""
+        raised = sum(
+            1
+            for name in esolangs.list_languages()
+            if esolangs.describe(name)["boolean_generator"]
+            and not esolangs.describe(name)["parameterized"]
+            and self._underfed(name)[0] == "raised"
+        )
+        # Subleq admission adds one generator that raises on underfed stdin;
+        # Container's EOF now reads 0 (wiki), so it no longer raises.
+        assert raised == 38
+
     def test_the_trait_is_reported_by_describe(self) -> None:
         """A caller must be able to learn this without underfeeding one."""
         assert esolangs.describe("Flowchart")["eof_is_a_value"] is True

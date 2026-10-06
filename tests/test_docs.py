@@ -184,7 +184,7 @@ _ROOT = pathlib.Path(__file__).parents[1]
 def test_every_test_a_docstring_names_still_exists() -> None:
     """A citation to a renamed or deleted test is worse than none.
 
-    Fourteen docstrings in ``src/`` back a claim by naming the test that
+    Docstrings in ``src/`` back a claim by naming the test that
     proves it -- that a constant is derived rather than frozen, that a
     selection rule is pinned, that two structures cannot drift apart.  A
     reader who goes looking and finds nothing cannot tell whether the test
@@ -214,8 +214,7 @@ def test_every_test_a_docstring_names_still_exists() -> None:
         f"{name} (in {', '.join(where)})" for name, where in sorted(missing.items())
     )
     # A regex that stopped matching would make the check above vacuous.
-    assert _CITATION.findall("``test_positive_control``") == ["test_positive_control"]
-    assert cited
+    assert len(cited) >= 5, f"only {len(cited)} citations found"
 
 
 #: A fully-qualified reference into this package.

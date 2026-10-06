@@ -138,7 +138,6 @@ def test_settings_require_the_public_object():
 
 
 @pytest.mark.parametrize(("language", "settings"), CASES)
-@pytest.mark.medium
 def test_balanced_settings_compute_every_row(language, settings):
     table = "0110"
     program = esolangs.generate(language, table, balance=True, settings=settings)

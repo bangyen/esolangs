@@ -357,6 +357,11 @@ class _Machine:
     ) -> None:
         """Require one expression; bound functions supply their arity at invocation."""
         parameters = {_bare_name(parameter) for parameter in definition.params}
+        raw_parameters = {
+            _bare_name(parameter)
+            for parameter in definition.params
+            if _bare_name(parameter) != parameter
+        }
         pending = [False]
         for index, token in enumerate(definition.code):
             if not pending:
@@ -369,6 +374,10 @@ class _Machine:
             if bare != token or _is_literal(bare) or raw:
                 continue
             if bare in parameters:
+                if binds is None and bare not in raw_parameters:
+                    # Wiki: an unmarked argument is a value, so
+                    # ``myFn x y z otherFn x y z anotherFn x`` is malformed.
+                    continue
                 if binds is None:
                     # Each remaining token supplies at most one owed argument.
                     # Extra tokens may belong to this parameter's unknown arity.

@@ -20,6 +20,15 @@ def run_and_capture(code: str) -> str:
 
 
 class TestMammalian:
+    def test_seed_adds_to_each_register(self) -> None:
+        """SEED adds 1..23 to each list head; three SEEDs then CONSUME -> 3."""
+        assert run_and_capture("SEED SEED SEED CONSUME PRONOUNCE") == "\x03"
+
+    @pytest.mark.parametrize("separator", [" ", "\t", "\n", "\r\n", "\v", "\f"])
+    def test_instructions_are_whitespace_delimited(self, separator: str) -> None:
+        program = separator.join(("SEED", "CONSUME", "PRONOUNCE"))
+        assert run_and_capture(program) == "\x01"
+
     @pytest.mark.parametrize("word", ["SEEDSEED", "XSEEDY", "SEED!", "SEED/SEED"])
     def test_embedded_instruction_names_do_not_execute(self, word: str) -> None:
         with pytest.raises(ValueError, match="unknown SLOW ACV MAMMALIAN command"):
@@ -29,13 +38,100 @@ class TestMammalian:
         with pytest.raises(ValueError, match="unknown SLOW ACV MAMMALIAN command"):
             run_and_capture("SEEDCONSUMEPRONOUNCE")
 
+    def test_pronomce_default(self) -> None:
+        assert run_and_capture("PRONOUNCE") == "\x00"
+
     def test_hello_world(self) -> None:
         """Hello World program from the language docs."""
         program = Path(__file__).parents[2] / "tests/fixtures/mammalian.txt"
         assert run_and_capture(program.read_text()) == "Hello, world!\n"
 
+    def test_accept_appends_a_newline(self) -> None:
+        """ACCEPT appends a newline byte, narrowed like other input."""
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
+
+        def accepted(stdin: str) -> list[int]:
+            machine = _Machine("ACCEPT", ScriptedIO(stdin))
+            machine.step()
+            return list(machine.lst[0])
+
+        assert accepted("\n") == [0, 10], "a newline is folded in and appended"
+        assert accepted("A\n") == [0, 65], "a byte is folded in and appended"
+        # A character past U+00FF is the only way the fold exceeds a byte,
+        # so it is what pins the wrap: 321 % 256 is 65, where 257 gives 64.
+        assert accepted("Ł\n") == [0, 65], "the fold wraps at 256"
+
+    def test_values_wrap_at_a_byte(self) -> None:
+        """Every stored or printed value is reduced modulo 256, not 257.
+
+        The two are indistinguishable until something actually reaches 256,
+        which nothing in the suite did -- the accumulator is usually built
+        by ``DIGEST``, an XOR that cannot exceed its operands.  ``SEED``
+        adds and ``ACCEPT`` folds in a byte, and 255 XOR 1 is 254 while
+        255 + 1 is 256: the one value the two moduli disagree about.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
+
+        # SEED puts 1 in lst[0]; ACCEPT folds 0xff against acc 0 and appends
+        # it; DIGEST xors the accumulator with the sum, giving 256.
+        machine = _Machine("SEED ACCEPT DIGEST PRONOUNCE", ScriptedIO("\xff\n"))
+        while not machine.halted:
+            machine.step()
+        assert machine.acc == 256
+        assert machine.io.getvalue() == "\x00"
+
+    def test_seed_wraps_its_register_at_a_byte(self) -> None:
+        """``SEED``'s addition wraps too, at the same 256.
+
+        The head has to be carried to 255 first, which ``ACCEPT`` can do
+        with a 0xff byte: seeding it once more makes 256 and stores 0.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
+
+        machine = _Machine("CONSUME ACCEPT SEED", ScriptedIO("\xff\n"))
+        while not machine.halted:
+            machine.step()
+        assert machine.lst[0] == (0,)
+
+    def test_sprint_needs_a_position_inside_the_array(self) -> None:
+        """``SPRINT`` is a NOP unless the accumulator indexes a real cell.
+
+        The wiki makes a too-large ``x`` do nothing, and the bound is off
+        by one from the length: on an empty array even 0 is too large.
+        Comparing inclusively would index a cell that is not there.
+        """
+        from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
+
+        machine = _Machine("CONSUME SPRINT", IO())
+        while not machine.halted:
+            machine.step()
+        assert machine.lst[0] == ()
+        assert machine.ptr == 0
+
+    def test_fast_run_covers_each_control_branch(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+
+        run(
+            "CONSUME SEED CONFLAGRATE EXCRETE CONSUME FISSION DIGEST SPRINT",
+            ScriptedIO(),
+        )
+        run("CONSUME SPRINT ACCEPT", ScriptedIO("\n"))
+        run("SEED LEAPFROG", ScriptedIO())
+        run("ACCEPT DIGEST LEAPFROG", ScriptedIO("A\n"))
+
 
 class TestStepMachine:
+    def test_step_after_halt_is_a_noop(self) -> None:
+        from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
+
+        machine = _Machine("", IO())
+        assert machine.halted
+        machine.step()  # stepping a halted machine is a no-op
+        assert machine.lst == tuple((0,) for _ in range(23))
+
     def test_the_command_halt_flag_starts_false(self) -> None:
         """The flag is ``False`` to begin with, and ``snapshot`` carries it.
 
@@ -48,6 +144,106 @@ class TestStepMachine:
 
         machine = _Machine("PRONOUNCE", IO())
         assert machine.snapshot()[-1] is False
+
+
+class TestPartial:
+    """``_partial`` applies one array op; two of them need a non-empty array."""
+
+    def test_consume_of_an_empty_array_leaves_the_accumulator(self) -> None:
+        from esolangs.interpreters.tape_based.slow_acv_mammalian import _partial
+
+        after, acc = _partial(3, (), 7)
+        assert acc == 7
+        assert after == ()
+
+    def test_fission_of_an_empty_array_leaves_the_accumulator(self) -> None:
+        from esolangs.interpreters.tape_based.slow_acv_mammalian import _partial
+
+        after, acc = _partial(4, (), 7)
+        assert acc == 7
+        assert after == ()
+
+    def test_consume_takes_the_middle_cell(self) -> None:
+        """``CONSUME`` pops ``(len - 1) // 2``, the lower of the two middles.
+
+        An even length hides which midpoint is meant, since the two
+        candidate expressions agree there; an odd one separates them.  On
+        three cells the middle is index 1, where counting from a shorter
+        length would take the head instead.
+        """
+        from esolangs.interpreters.tape_based.slow_acv_mammalian import _partial
+
+        after, acc = _partial(3, (10, 11, 12), 0)
+        assert acc == 11
+        assert after == (10, 12)
+
+    def test_fission_splits_the_middle_cell(self) -> None:
+        """``FISSION`` halves the same middle cell and hangs it off both ends."""
+        from esolangs.interpreters.tape_based.slow_acv_mammalian import _partial
+
+        after, acc = _partial(4, (10, 12, 14), 3)
+        assert acc == 3
+        assert after == (6, 10, 14, 6)
+
+    def test_excrete_stores_the_accumulator_modulo_a_byte(self) -> None:
+        """``EXCRETE`` appends ``acc % 256`` and clears the accumulator.
+
+        Nothing in the suite fed it a value at or above 256, so the wrap
+        itself was untested and 257 would have done just as well.
+        """
+        from esolangs.interpreters.tape_based.slow_acv_mammalian import _partial
+
+        after, acc = _partial(2, (), 256)
+        assert acc == 0
+        assert after == (0,)
+        after, acc = _partial(2, after, 321)
+        assert acc == 0
+        assert after == (0, 65)
+
+
+class TestTotal:
+    """``total`` is the published mutating shape for the whole-memory ops."""
+
+    def test_seed_adds_each_arrays_index_to_its_head(self) -> None:
+        """``SEED`` adds ``index + 1`` to every array's first cell.
+
+        The offset is what separates the arrays: a shell that dropped the
+        index would give all 23 the same head.  Only the head moves, so a
+        second cell pins that the rest of the array is left alone.
+        """
+        from esolangs.interpreters.tape_based.slow_acv_mammalian import _total
+
+        arrays = _total(0, tuple((10, 0) for _ in range(23)))
+        assert [arr[0] for arr in arrays] == [11 + k for k in range(23)]
+        assert all(arr[1] == 0 for arr in arrays)
+
+    def test_seed_skips_an_empty_array(self) -> None:
+        """An empty array has no head to seed, so it stays empty.
+
+        The arrays still count for the offset, though -- index 5 is seeded
+        with 6, not with whatever a re-numbering over the non-empty ones
+        would have given it.
+        """
+        from esolangs.interpreters.tape_based.slow_acv_mammalian import _total
+
+        before = [() for _ in range(23)]
+        before[5] = (1,)
+        arrays = _total(0, tuple(before))
+        assert arrays[0] == ()
+        assert arrays[5] == (7,)
+
+    def test_conflagrate_pairs_the_flattened_memory(self) -> None:
+        """``CONFLAGRATE`` folds the memory end to end, across array bounds.
+
+        The fold crosses array boundaries, so it cannot be checked array by
+        array: the whole memory goes in and the whole memory comes back.
+        """
+        from esolangs.interpreters.tape_based.slow_acv_mammalian import _total
+
+        before = [() for _ in range(23)]
+        before[0] = (9, 2)
+        arrays = _total(1, tuple(before))
+        assert arrays[0] == (5, 6)
 
 
 class TestSprintIndex:
@@ -68,6 +264,101 @@ class TestSprintIndex:
             _advance((arrays, 0, -2, 0, False), 6)
 
         assert _advance((arrays, 0, -1, 0, False), 6)[1] == 0
+
+
+class TestLeapfrog:
+    """``LEAPFROG`` jumps the cursor, or halts when the target is negative."""
+
+    def test_a_negative_target_halts(self) -> None:
+        from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
+
+        # acc 0 and a head of 0 give target -1, which halts instead of jumping.
+        machine = _Machine("LEAPFROG PRONOUNCE", IO())
+        machine.lst = (
+            *machine.lst[:0],
+            (0, 5),
+            *machine.lst[0 + 1 :],
+        )  # non-empty with a truthy tail: the branch fires
+        machine.step()
+        assert machine.halted
+
+    def test_a_non_negative_target_moves_the_cursor(self) -> None:
+        from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
+
+        # acc 2, head 0 -> target 1; the step's trailing advance then makes
+        # it 2, so the jump is what puts the cursor there rather than at 1.
+        machine = _Machine("LEAPFROG PRONOUNCE PRONOUNCE", IO())
+        machine.lst = (
+            *machine.lst[:0],
+            (0, 5),
+            *machine.lst[0 + 1 :],
+        )
+        machine.acc = 2
+        machine.step()
+        assert not machine.halted
+        assert machine.ind == 2
+
+    def test_a_target_of_zero_is_a_jump_rather_than_a_halt(self) -> None:
+        """Zero is a legal target: only a *negative* one halts.
+
+        The halting case above lands on -1 and the jumping case on 1, so
+        the boundary between them went untested -- a floor of 1, or an
+        inclusive comparison against 0, behaves the same at both.  Here
+        ``acc`` 1 against a head of 0 gives exactly 0, which jumps.
+        """
+        from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
+
+        machine = _Machine("LEAPFROG PRONOUNCE", IO())
+        machine.lst = (
+            *machine.lst[:0],
+            (0, 5),
+            *machine.lst[0 + 1 :],
+        )
+        machine.acc = 1
+        machine.step()
+        assert not machine.halted
+        assert machine.ind == 1
+
+    def test_the_target_subtracts_the_head_from_the_accumulator(self) -> None:
+        """``target`` is ``acc - head - 1``, so a larger head jumps lower.
+
+        Every case above uses a head of 0, where adding and subtracting it
+        agree.  A non-zero head separates them: 5 against an accumulator of
+        8 gives 2, where adding would give 12 and run off the end.
+        """
+        from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
+
+        machine = _Machine("LEAPFROG PRONOUNCE PRONOUNCE PRONOUNCE", IO())
+        machine.lst = (
+            *machine.lst[:0],
+            (5, 7),
+            *machine.lst[0 + 1 :],
+        )
+        machine.acc = 8
+        machine.step()
+        assert not machine.halted
+        assert machine.ind == 3
+
+    def test_leapfrog_reads_the_last_cell_to_decide_whether_to_jump(self) -> None:
+        """The guard is the array's *last* value, not its second.
+
+        On one or two cells the two lookups coincide, so the array needs a
+        third to separate them: here the tail is 0 and the middle is 5, so
+        the jump must not fire.  A guard reading the second cell sees the 5
+        and jumps instead.
+        """
+        from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
+
+        machine = _Machine("LEAPFROG PRONOUNCE", IO())
+        machine.lst = (
+            *machine.lst[:0],
+            (0, 5, 0),
+            *machine.lst[0 + 1 :],
+        )
+        machine.acc = 9
+        machine.step()
+        assert not machine.halted
+        assert machine.ind == 1  # fell through rather than jumping to 8
 
 
 def _machine(code: object) -> object:
@@ -113,6 +404,28 @@ def test_moduli_agree_between_fast_run_and_vm(
     expected = raw_value % cell_modulus
     assert fast.getvalue() == stepped.getvalue() == chr(expected % io_modulus)
     assert fast.reads == stepped.reads == len(stdin)
+
+
+@pytest.mark.parametrize("cell_modulus", [255, 256])
+def test_conflagrate_uses_cell_modulus(cell_modulus: int) -> None:
+    from esolangs.interpreters.tape_based.slow_acv_mammalian import _total
+
+    arrays = ((512, 254),) + ((),) * 22
+    assert _total(1, arrays, cell_modulus)[0] == (510, 256 % cell_modulus)
+
+
+@pytest.mark.parametrize("io_modulus", [255, 256])
+def test_excrete_uses_io_modulus_without_changing_seed(io_modulus: int) -> None:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
+
+    machine = _Machine("EXCRETE SEED", ScriptedIO(), io_modulus=io_modulus)
+    machine.acc = 256
+    machine.step()
+    assert machine.lst[0] == (0, 256 % io_modulus)
+    assert machine.acc == 0
+    machine.step()
+    assert machine.lst[0] == (1, 256 % io_modulus)
 
 
 @pytest.mark.parametrize(

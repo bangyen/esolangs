@@ -233,6 +233,138 @@ class TestLiteralBase:
         """
         assert _run(DEPENDENCY_REBASED) == "0110"
 
+    def test_a_pure_binary_reading_cannot_lex_four_examples(self) -> None:
+        """The literals that refute reading every number as binary."""
+        for literal in ("72", "108", "44", "255", "13", "48", "49"):
+            assert any(c not in "01" for c in literal), literal
+
+    def test_the_wikis_own_binary_for_48_is_a_typo(self) -> None:
+        """The comment says ``48 (1100000)``; 48 is ``110000``, six digits."""
+        assert format(48, "b") == "110000"
+        assert int("1100000", 2) == 96
+
+
+class TestSemantics:
+    def test_xor_is_the_comparison_operator(self) -> None:
+        code = """
+Package : IO {
+  Integer main {
+    If 5 ^ 5 Then { charPut(65); }
+    If 5 ^ 3 Then { charPut(66); }
+    0;
+  }
+} p;
+"""
+        assert _run(code) == "B"
+
+    def test_negation_turns_a_nonzero_into_one(self) -> None:
+        code = """
+Package : IO {
+  Integer main {
+    charPut(48 ^ !(7 ^ 7));
+    charPut(48 ^ !(7 ^ 6));
+    charPut(48 ^ !!(7 ^ 6));
+    0;
+  }
+} p;
+"""
+        assert _run(code) == "101"
+
+    def test_incr_and_decr_walk_a_variable(self) -> None:
+        code = """
+Package : IO {
+  Integer a;
+  Integer main {
+    INIT a;
+    INCR a; INCR a; INCR a; INCR a; INCR a;
+    INCR a; INCR a; INCR a;
+    DECR a;
+    charPut(a ^ 0);
+    0;
+  }
+} p;
+"""
+        assert _run(code) == "\x07"
+
+    def test_bounded_integer_wraps_to_its_named_values(self) -> None:
+        """``Integer(0, 1, 1, 0)``: incrementing past 1 gives the overflow 0."""
+        code = """
+Package : IO {
+  Integer(0, 1, 1, 0) b;
+  Integer main {
+    INIT b;
+    INCR b;
+    charPut(48 ^ b);
+    INCR b;
+    charPut(48 ^ b);
+    0;
+  }
+} p;
+"""
+        assert _run(code) == "10"
+
+    def test_array_length_and_indexing(self) -> None:
+        code = """
+Package : IO {
+  Array(Char, 3) a;
+  Integer main {
+    INIT a;
+    INCR a(1);
+    charPut(48 ^ a(length));
+    charPut(48 ^ a(1));
+    charPut(48 ^ a(0));
+    0;
+  }
+} p;
+"""
+        assert _run(code) == "310"
+
+    def test_init_resets_a_whole_array(self) -> None:
+        code = """
+Package : IO {
+  Array(Char, 2) a;
+  Integer main {
+    INIT a;
+    INCR a(0);
+    INIT a;
+    charPut(48 ^ a(0));
+    0;
+  }
+} p;
+"""
+        assert _run(code) == "0"
+
+    def test_a_dependency_function_is_callable(self) -> None:
+        assert _run(DEPENDENCY_REBASED) == "0110"
+
+    def test_comments_are_stripped(self) -> None:
+        code = """
+% a line comment
+Package : IO {
+  Integer main {
+    %$ a block
+    comment %
+    charPut(65); % trailing
+    0;
+  }
+} p;
+"""
+        assert _run(code) == "A"
+
+    def test_newline_input_is_preserved(self) -> None:
+        """A supplied blank line remains distinct from EOF."""
+        code = """
+Package : IO {
+  Char c;
+  Integer main {
+    charGet(c);
+    charPut(c);
+    0;
+  }
+} p;
+"""
+        assert _run(code, "\n") == "\n"
+
 
 class TestErrors:
     def test_an_operator_cannot_start_an_expression(self) -> None:
@@ -343,6 +475,75 @@ Package : IO {
         # Positive control: declaring the dependency makes the same call work.
         declared = undeclared.replace("Package : IO {", "Package : IO, myDependency {")
         assert _run(declared) == "1"
+
+    def test_a_dependency_of_a_dependency_is_reachable(self) -> None:
+        """The wiki says dependencies may have dependencies; resolution
+        follows the chain rather than stopping one level down.
+        """
+        code = """
+Dependency {
+  Integer deep : Integer a {
+    a;
+  }
+} inner;
+Dependency : inner {
+  Integer middle : Integer a {
+    a;
+  }
+} outer;
+Package : IO, outer {
+  Integer main {
+    charPut(48 ^ deep(1));
+    0;
+  }
+} myPackage;
+"""
+        assert _run(code) == "1"
+
+    def test_io_inside_a_called_function_works(self) -> None:
+        """A callee's ``charPut`` reaches the shell, in call order.
+
+        This was refused, on the rationale that a call was evaluated
+        inside a statement and so had no point at which the shell could
+        perform its ports.  Framing calls removed that rationale: a
+        callee's statements are stepped like any other, so the same shell
+        performs its IO.  ``A`` precedes the caller's own output because
+        the argument is evaluated before ``charPut`` runs.
+        """
+        code = """
+Dependency {
+  Integer shout : Integer a {
+    charPut(65);
+    a;
+  }
+} d;
+Package : IO, d {
+  Integer main {
+    charPut(48 ^ shout(1));
+    0;
+  }
+} p;
+"""
+        assert _run(code) == "A1"
+
+    def test_input_inside_a_called_function_works(self) -> None:
+        """The read port reaches a callee too, not only the entry function."""
+        code = """
+Dependency {
+  Integer echo : Integer a {
+    Char c;
+    charGet(c);
+    c;
+  }
+} d;
+Package : IO, d {
+  Integer main {
+    charPut(echo(0));
+    0;
+  }
+} p;
+"""
+        assert _run(code, "Z\n") == "Z"
 
     def test_index_outside_an_array_halts(self) -> None:
         code = """
@@ -531,3 +732,72 @@ Package : IO {
   }
 } looper;
 """
+
+
+def test_a_global_belongs_to_its_own_package() -> None:
+    """Wiki: a package defines "all variables it will need".
+
+    ``d``'s ``Integer(0, 1, 0, 0) x`` once overwrote ``p``'s plain ``x``,
+    so two INCRs wrapped to 0 instead of reaching 2.
+    """
+    code = """Package : IO {
+  Integer x;
+  Integer main {
+    INCR x;
+    INCR x;
+    charPut(48 ^ x);
+    0;
+  }
+} p;
+Dependency {
+  Integer(0, 1, 0, 0) x;
+  Integer f : Integer a {
+    a;
+  }
+} d;"""
+    assert _run(code) == "2"
+
+
+_TWO_GS = """Dependency {
+  Integer g : Integer a {
+    1;
+  }
+} d1;
+Dependency {
+  Integer g : Integer a {
+    2;
+  }
+} d2;
+Package : IO, d1, d2 {
+  Integer main {
+    charPut(48 ^ g(0));
+    0;
+  }
+} p;"""
+
+
+def test_a_call_two_dependencies_answer_is_ambiguous() -> None:
+    """The last-parsed ``g`` used to win silently."""
+    with pytest.raises(HaltError, match="ambiguous function 'g'"):
+        _run(_TWO_GS)
+
+
+_MAIN = "Package : IO {\n  Integer main {\n    charPut(49);\n    0;\n  }\n} p;"
+_HEAD = "{\n  Integer main"
+
+
+@pytest.mark.parametrize(
+    ("code", "error"),
+    [
+        (_MAIN.replace(_HEAD, "{\n  Integer(5, 1, 0, 0) x;" + _HEAD[1:]), "exceeds"),
+        (
+            _MAIN.replace(_HEAD, "{\n  Integer(0 255 0 0) x;" + _HEAD[1:]),
+            "expected ','",
+        ),
+        (_MAIN + "\n" + _MAIN.replace("} p;", "} q;"), "multiple parameterless"),
+        (_MAIN.replace("} p;", "  Integer main {\n    0;\n  }\n} p;"), "duplicate"),
+    ],
+)
+def test_malformed_declarations_are_rejected(code: str, error: str) -> None:
+    with pytest.raises(ValueError, match=error):
+        _run(code)

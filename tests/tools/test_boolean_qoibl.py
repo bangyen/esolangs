@@ -1,14 +1,70 @@
 """qoibl generator tests."""
 
+import random
+from itertools import pairwise
+
+import pytest
+
+import esolangs
 from esolangs import tools as boolean
+from tests.tools.boolean_runners import (
+    run_qoibl,
+)
 
 
 class TestQoibl:
+    @pytest.mark.medium
+    @pytest.mark.parametrize("batch", range(16))
+    @pytest.mark.parametrize("width", [1, 2, 3, 6, 13, 80])
+    def test_narrow_horner_literals_execute_small_tables(
+        self, batch: int, width: int
+    ) -> None:
+
+        for value in range(16 * batch, 16 * (batch + 1)):
+            table = format(value, "08b")
+            program = esolangs.generate("Qoibl", table, width)
+            assert max(map(len, program.splitlines())) <= max(width, 2)
+            for row in range(8):
+                assert run_qoibl(program, list(format(row, "03b"))) == table[row]
+
+    @pytest.mark.medium
+    @pytest.mark.parametrize("n", [5, 8])
+    @pytest.mark.parametrize("width", [1, 3, 13])
+    def test_narrow_horner_larger_literals(self, n: int, width: int) -> None:
+        rng = random.Random(20260930 + n)
+        for table in (
+            "".join(str(row.bit_count() & 1) for row in range(2**n)),
+            format(rng.getrandbits(2**n), f"0{2**n}b"),
+        ):
+            program = boolean.qoibl(table, width)
+            for row in rng.sample(range(2**n), 4):
+                assert run_qoibl(program, list(format(row, f"0{n}b"))) == table[row]
+
     def test_narrow_horner_floor_and_corpus_size(self) -> None:
         assert max(map(len, boolean.qoibl("0110", 1).splitlines())) == 2
         assert (
             sum(len(boolean.qoibl(format(v, "08b"), 1)) for v in range(256)) == 520366
         )
+
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("10", 1),  # NOT
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("01100110", 3),  # XOR of the last two: the root's halves agree
+            ("11111110", 3),  # NAND3
+            ("1000000000000000", 4),  # AND4
+        ],
+    )
+    @pytest.mark.medium
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every input combination produces the truth-table result."""
+        program = boolean.qoibl(table)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = run_qoibl(program, [str(b) for b in bits])
+            assert got == str(int(table[combo])), f"inputs {bits}"
 
     def test_the_table_is_one_literal(self) -> None:
         """The whole table rides in a single binary literal, bit k for row k.
@@ -36,3 +92,11 @@ class TestQoibl:
         program = boolean.qoibl("0000")
         assert program.count(" et ") == 2
         assert "we y we e ry yy ry" in program
+
+    def test_dense_growth_is_linear(self) -> None:
+        """A full tree doubles by a bounded additive term."""
+        sizes = [
+            len(boolean.qoibl("".join(str(row.bit_count() & 1) for row in range(2**n))))
+            for n in range(7, 11)
+        ]
+        assert all(b <= 2 * a + 800 for a, b in pairwise(sizes))

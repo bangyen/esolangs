@@ -1,15 +1,85 @@
 """Covers :mod:`esolangs.tools.jaune`: the tree, its sharing, the linear lookup."""
 
+import contextlib
+import random
 from itertools import pairwise
+
+import pytest
 
 from esolangs import tools as boolean
 from esolangs.tools.helpers import best_input_order
 from esolangs.tools.jaune import _jaune_ordered
+from tests.tools.boolean_runners import run_jaune
 from tests.tools.plain_oracles import _jaune_linear
 from tests.tools.sample_tables import five_input_sample
 
 
 class TestJaune:
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("00", 1),  # constant zero
+            ("01", 1),  # identity
+            ("10", 1),  # NOT
+            ("11", 1),  # constant one
+            ("0001", 2),  # AND
+            ("0110", 2),  # XOR
+            ("0111", 2),  # OR
+            ("11111110", 3),  # NAND3
+            ("01101001", 3),  # XOR3
+        ],
+    )
+    @pytest.mark.medium
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every input combination produces the truth-table result."""
+        program = boolean.jaune(table)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = run_jaune(program, [str(b) for b in bits])
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    @pytest.mark.parametrize("n", [1, 2, 3])
+    @pytest.mark.medium
+    def test_all_small_tables(self, n: int) -> None:
+        """Every table up to three inputs produces the right result."""
+        for table_int in range(2 ** (2**n)):
+            table = format(table_int, f"0{2**n}b")
+            program = boolean.jaune(table)
+            for combo in range(2**n):
+                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                got = run_jaune(program, [str(b) for b in bits])
+                assert got == str(int(table[combo])), f"{table} inputs {bits}"
+
+    @pytest.mark.parametrize("table", ["00", "11"])
+    def test_plain_constant_consumes_clobbered_input(self, table: str) -> None:
+        program = _jaune_ordered(table, (0,))
+        for bit in ("0", "1"):
+            assert run_jaune(program, [bit]) == table[int(bit)]
+
+    def test_reads_every_input_whatever_the_table(self) -> None:
+        """Every table consumes exactly ``n`` inputs, folds included.
+
+        This is the cross-cutting contract in
+        ``test_boolean_contract.py``, pinned here because that sweep
+        cannot see Jaune: it iterates the generators registered in
+        ``BY_FUNCTION``, and Jaune is not one of them.  The reads used to
+        sit *at* the tree's nodes, so a folded tree skipped them and a
+        constant table consumed no input at all -- making the program's
+        stream consumption a function of its truth table.  Without this
+        test nothing would catch that coming back.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.jaune import run
+
+        n = 3
+        for table in ("11111111", "00000000", "11110000", "10101010", "10010110"):
+            io = ScriptedIO("0\n" * n)
+            with contextlib.suppress(Exception, SystemExit):
+                run(boolean.jaune(table), io=io)
+            assert io.reads == n, (
+                f"{table} consumed {io.position()} inputs, expected {n}"
+            )
+
     def test_unused_inputs_are_clobbered_not_stored(self) -> None:
         """An input no node branches on is read without keeping a cell.
 
@@ -57,6 +127,19 @@ class TestJaune:
         assert boolean.jaune("1110") == "v>+v-<2?+^.2:>^."
         total = sum(len(boolean.jaune(f"{value:08b}")) for value in range(256))
         assert total == 7199
+
+    def test_spatial_lookup_executes_wide_rows(self) -> None:
+        """The travelling counter returns sampled six-input rows.
+
+        Built directly: parity's shared tree is far shorter, so the
+        dispatch no longer takes the lookup for it.
+        """
+        n = 6
+        table = "".join(str(row.bit_count() & 1) for row in range(2**n))
+        program = _jaune_linear(table)
+        for row in (0, 1, 2, 7, 31, 32, 62, 63):
+            bits = [str((row >> (n - 1 - i)) & 1) for i in range(n)]
+            assert run_jaune(program, bits) == table[row]
 
     def test_spatial_lookup_growth_is_linear(self) -> None:
         """Wide parity programs grow by at most the table-size ratio."""
@@ -109,6 +192,15 @@ class TestJauneSharing:
         )
         assert plain_tree == 29291
 
+    @pytest.mark.medium
+    def test_five_input_sample_runs(self) -> None:
+        """Every row of the five-input sample's shared programs computes its bit."""
+        for table in five_input_sample():
+            program = boolean.jaune(table)
+            for combo in range(32):
+                bits = [str((combo >> (4 - i)) & 1) for i in range(5)]
+                assert run_jaune(program, bits) == table[combo], (table, combo)
+
     def test_parity_shares_two_subtrees_a_level(self) -> None:
         """Parity's then arm at each level is the else arm one level on.
 
@@ -120,3 +212,17 @@ class TestJauneSharing:
         program = boolean.jaune(table)
         assert len(program) == 85
         assert len(_jaune_linear(table)) == 431
+        for row in range(64):
+            bits = [str((row >> (5 - i)) & 1) for i in range(6)]
+            assert run_jaune(program, bits) == table[row]
+
+    def test_eight_inputs_run_every_row(self) -> None:
+        """Past 16 entries the shared tree wins on seeded random tables."""
+        rng = random.Random(8)
+        for _ in range(3):
+            table = format(rng.getrandbits(256), "0256b")
+            program = boolean.jaune(table)
+            assert len(program) < len(_jaune_linear(table))
+            for row in range(256):
+                bits = [str((row >> (7 - i)) & 1) for i in range(8)]
+                assert run_jaune(program, bits) == table[row]

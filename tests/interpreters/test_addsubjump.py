@@ -1,9 +1,129 @@
-"""Assembly rejection cases and published AddSubJump programs."""
+"""Unit tests for the AddSubJump interpreter.
+
+Tests cover the self-modifying memory model, the add/sub OISC instruction,
+the special addresses (I/O, flags, constants, flag update mode), the jump,
+and the documented halt conventions.
+
+There is no per-run instruction cap to test: a program that loops without
+halting is esolangs.run's timeout to catch (test_api.py's
+test_run_timeout_halts_runaway_program proves the guard works, generically,
+through brainfuck), not something this interpreter enforces on its own.
+"""
 
 import pytest
 
+from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.register_based.addsubjump import _assembly, run
+from tests.interpreters.contract import (
+    CycleContract,
+    EmptyProgramContract,
+)
+from tests.interpreters.oisc import memory, run_program
+
+
+def _run(code, stdin=""):
+    return run_program(run, code, stdin=stdin)
+
+
+class TestAssembly:
+    def test_labels_offsets_and_question_mark(self) -> None:
+        code = """
+        -1 @A -1 @A+1
+        @A:65 0 @A-1
+        """
+        assert _assembly(code) == [-1, 4, -1, 5, 65, 0, 3, -7]
+
+    def test_sugar_and_data_directive(self) -> None:
+        code = """
+        IO A
+        IO B
+        IO C
+        IO D
+        IO E IO
+        .data A:65 B:66 C:67 D:68 E:69
+        """
+        assert _assembly(code) == [
+            -1,
+            20,
+            4,
+            -7,
+            -1,
+            21,
+            8,
+            -7,
+            -1,
+            22,
+            12,
+            -7,
+            -1,
+            23,
+            16,
+            -7,
+            -1,
+            24,
+            -1,
+            -7,
+            65,
+            66,
+            67,
+            68,
+            69,
+        ]
+
+    def test_macro_example(self) -> None:
+        code = """
+        def macro A {
+          IO A
+        }
+        macro H
+        @0 @0 @0
+        H:.data 72
+        """
+        assert _assembly(code) == [-1, 8, 4, -7, -7, -7, -7, -7, 72]
+
+    def test_comments_and_explicit_asj(self) -> None:
+        code = """
+        /* block */ ASJ IO value end @0 // line
+        value:.data 65 # tail
+        end:
+        """
+        assert _assembly(code) == [-1, 4, 5, -7, 65]
+
+    def test_macro_local_labels_are_private_per_expansion(self) -> None:
+        code = """
+        def skip A {
+          local: @0 @0 A
+        }
+        skip done
+        skip done
+        done:.data 0
+        """
+        assert _assembly(code) == [-7, -7, 8, -7, -7, -7, 8, -7, 0]
+
+    def test_question_mark_also_works_in_data(self) -> None:
+        assert _assembly(".data 1 ?") == [1, 2]
+
+    def test_a_label_can_prefix_an_empty_macro(self) -> None:
+        code = """
+        def nop {
+        }
+        start: nop
+        .data start
+        """
+        assert _assembly(code) == [0]
+
+    def test_a_label_can_prefix_a_nonempty_macro(self) -> None:
+        code = """
+        def one A {
+          .data A
+        }
+        start: one 7
+        """
+        assert _assembly(code) == [7]
+
+    def test_inline_data_label_can_precede_a_separate_value(self) -> None:
+        assert _assembly(".data A: 1") == [1]
 
 
 class TestAssemblyErrors:
@@ -32,9 +152,386 @@ class TestAssemblyErrors:
             _assembly(code)
 
 
-def test_malformed_token() -> None:
-    with pytest.raises(ValueError, match="undefined label 'x'"):
-        run("12 -6 x -7", ScriptedIO())
+class TestInstruction:
+    def test_output_a_memory_cell(self) -> None:
+        # The wiki's example -1 1 0 -7 outputs memory address 1 and then
+        # jumps to the *literal* address 0, which loops; here the value cell
+        # is at address 4 and c = -1 is a special address, so the run ends.
+        assert _run("-1 4 -1 -7 65") == "A"
+
+    def test_adds_through_the_constant_one(self) -> None:
+        # memory[12] += 1 twice (d = -7 is the constant 0, so the += branch),
+        # then output and halt (c = -8 is a special address).
+        code = memory(
+            [
+                [12, -6, 4, -7],
+                [12, -6, 8, -7],
+                [-1, 12, -8, -7],
+            ]
+        )
+        assert _run(code) == "\x02"
+
+    def test_subtracts_when_the_selector_is_positive(self) -> None:
+        # d = -6 is the constant 1, so the -= branch fires: 0 - 1 = -1.
+        code = memory([[12, -6, 4, -6], [-1, 12, -8, -7]])
+        assert _run(code) == "\xff"
+
+    def test_the_jump_target_is_literal(self) -> None:
+        """``c`` is the destination itself, not a cell holding it.
+
+        The increment's c = 8 skips the instruction at ip 4 outright.  Were
+        ``c`` dereferenced the pointer would go to memory[8] = -1 and the run
+        would halt with no output at all, so the two semantics disagree here.
+        """
+        code = memory([[12, -6, 8, -7], [-1, -8, -1, -7], [-1, 12, -8, -7]])
+        assert _run(code) == "\x01"
+
+
+class TestSpecialAddresses:
+    def test_constants(self) -> None:
+        # -6 = 1, -7 = 0, -8 = -1: memory[30] = 1 + 0 + (-1) = 0.
+        code = memory(
+            [
+                [30, -6, 4, -7],
+                [30, -7, 8, -7],
+                [30, -8, 12, -7],
+                [-1, 30, -8, -7],
+            ]
+        )
+        assert _run(code) == "\x00"
+
+    def test_writing_a_reserved_address_is_discarded(self) -> None:
+        """Of the special addresses only ``-1`` and ``-9`` accept a write.
+
+        ``-1`` prints and ``-9`` sets the flag-update mode; the constants at
+        ``-6``..``-8`` and the flags between are read-only, so a write aimed
+        at one is dropped rather than landing in memory or raising.  The
+        program then prints, so the run is observed to continue.
+        """
+        code = memory([[-5, -6, 4, -7], [-1, -7, -8, -7]])
+        assert _run(code) == "\x00"
+
+    def test_input_byte_is_added_to_the_target(self) -> None:
+        # memory[12] starts 0, so reading -1 (as *b) adds the input byte.
+        code = memory([[12, -1, 4, -7], [-1, 12, -8, -7]])
+        assert _run(code, "X") == "X"
+
+    def test_input_running_out_raises_eof(self) -> None:
+        code = memory([[12, -1, 4, -7], [-1, 12, -8, -7]])
+        io = ScriptedIO("")
+        with pytest.raises(EOFError):
+            run(code, io)
+
+    def test_flags_only_update_while_flag_mode_is_set(self) -> None:
+        # Without touching -9 the zero flag stays 0 even after a +0 result.
+        code = memory(
+            [
+                [12, -7, 4, -7],
+                [-1, 12, -8, -7],
+            ]
+        )
+        assert _run(code) == "\x00"
+
+    def test_zero_flag_is_set_under_flag_mode(self) -> None:
+        # Enable flag mode (-9 += 1), produce a zero result, copy the zero
+        # flag (-3) into a cell, and output it.
+        code = memory(
+            [
+                [-9, -6, 4, -7],
+                [30, -7, 8, -7],
+                [31, -3, 12, -7],
+                [-1, 31, -8, -7],
+            ]
+        )
+        assert _run(code) == "\x01"
+
+    def test_negative_flag(self) -> None:
+        # Under flag mode, 0 - 1 = -1 sets the negative flag (-4).
+        code = memory(
+            [
+                [-9, -6, 4, -7],
+                [30, -6, 8, -6],
+                [31, -4, 12, -7],
+                [-1, 31, -8, -7],
+            ]
+        )
+        assert _run(code) == "\x01"
+
+
+class TestTruncatedInstruction:
+    """An instruction running off the end of memory reads zeros for the rest.
+
+    Every other program holds whole four-cell instructions, so the guards
+    that decide whether each operand exists were never false and the zero
+    they fall back to was never used.  These programs stop mid-instruction,
+    one cell shorter each time.
+    """
+
+    @staticmethod
+    def _once(code: str) -> tuple[str, int]:
+        """Run one instruction and return its output and the new pointer.
+
+        A truncated instruction's absent ``c`` reads 0, and 0 is a literal
+        jump back to the start, so these programs loop rather than halt:
+        they are stepped once instead of run.
+        """
+        from esolangs.interpreters.register_based.addsubjump import _Machine
+
+        machine = _Machine(code, ScriptedIO())
+        machine.step()
+        return machine.io.getvalue(), machine.ip
+
+    def test_a_missing_operand_reads_as_zero(self) -> None:
+        # One cell: b, c and d are all absent, so each reads 0. a is -1, so
+        # the instruction prints *b = memory[0] = -1, a byte of 0xff, and
+        # the absent c sends the pointer to 0.
+        assert self._once("-1") == ("\xff", 0)
+
+    def test_the_second_operand_is_the_first_that_can_be_present(self) -> None:
+        # Two cells: b exists (address 4, an absent cell, so 0) while c and
+        # d do not. Printing *b gives NUL rather than the -1 above.
+        assert self._once("-1 4") == ("\x00", 0)
+        # ... and b really is read, not defaulted: -6 is the constant 1.
+        assert self._once("-1 -6") == ("\x01", 0)
+
+    def test_a_present_third_operand_is_the_literal_target(self) -> None:
+        # Three cells: c exists and holds -1, a special address, which
+        # halts. d is still absent and reads 0, so the += branch runs.
+        assert _run("-1 4 -1") == "\x00"
+
+
+class TestFlags:
+    """The flag update mode and the four flags it refreshes.
+
+    Nothing exercised these: the mode starts off, so a suite that never
+    writes ``-9`` leaves the whole update block unreached, and the flags it
+    would have set unread.  Each program here turns the mode on, performs
+    one arithmetic step whose result is known, and prints one flag.
+    """
+
+    @staticmethod
+    def _flag(op: int, flag: int) -> str:
+        """Turn the mode on, apply ``op`` to cell 12, then print ``flag``."""
+        return memory([[-9, -6, 4, -7], [12, op, 8, -6], [-1, flag, -1, -7]])
+
+    def test_negative_flag_follows_the_sign_of_the_result(self) -> None:
+        """``NF`` is set when the result is below zero, and only then."""
+        assert _run(self._flag(-6, -4)) == "\x01"  # 0 - 1 = -1
+        assert _run(self._flag(-7, -4)) == "\x00"  # 0 - 0 =  0
+
+    def test_zero_flag_follows_the_result_being_zero(self) -> None:
+        """``ZF`` is set when the result is exactly zero, and only then."""
+        assert _run(self._flag(-7, -3)) == "\x01"  # 0 - 0 =  0
+        assert _run(self._flag(-6, -3)) == "\x00"  # 0 - 1 = -1
+
+    def test_carry_and_overflow_stay_zero(self) -> None:
+        """Cells are unbounded, so neither flag has anything to report.
+
+        They are still cleared on every update, which is what keeps them
+        from holding a stale value; a mode that set them instead would be
+        reporting a carry that cannot happen.
+        """
+        assert _run(self._flag(-6, -2)) == "\x00"
+        assert _run(self._flag(-6, -5)) == "\x00"
+
+    def test_flags_do_not_update_while_the_mode_is_off(self) -> None:
+        """The mode starts at zero, so a negative result leaves ``NF`` clear."""
+        code = memory([[12, -6, 4, -6], [-1, -4, -1, -7]])
+        assert _run(code) == "\x00"
+
+
+class TestHaltAndErrors:
+    def test_jump_off_the_end_halts(self) -> None:
+        # The jump target is huge, past the memory.
+        code = memory([[12, -6, 1000, -7]])
+        assert _run(code) == ""
+
+    def test_malformed_token(self) -> None:
+        with pytest.raises(ValueError, match="undefined label 'x'"):
+            _run("12 -6 x -7")
+
+    def test_growing_the_memory_zeroes_the_cells_it_skips(self) -> None:
+        """A write past the end pads with zeros, and pads exactly far enough.
+
+        Writing beyond the memory grows it to reach the address, and every
+        cell in between is created by that growth -- so their value is the
+        padding's, and nothing read one.  Cell 19 here is skipped over on
+        the way to 20: it must read as zero, and the memory must stop at
+        21 cells rather than run one over.
+        """
+        code = memory([[20, -6, 4, -7], [-1, 19, -1, -7]])
+        assert _run(code) == "\x00"
+
+    def test_a_write_at_the_first_absent_address_still_grows(self) -> None:
+        """The growth fires when the address equals the length, not past it.
+
+        Fifteen cells make address 15 the first that does not exist, and it
+        is exactly the edge the comparison sits on: a check that waited for
+        the address to exceed the length would index off the end here.
+        """
+        code = memory([[15, -6, 4, -7], [-1, 15, -1, -7]], {14: 0})
+        assert _run(code) == "\x01"
+
+    def test_the_largest_allocatable_address_is_the_last_one_that_works(
+        self,
+    ) -> None:
+        """A write halts only once the address is past the memory ceiling.
+
+        The ceiling itself was never approached, so the comparison deciding
+        it was free to sit a cell either side, and the padding that grows
+        the memory to reach the address was free to be one cell short or
+        long.  Writing to the last legal address succeeds; the next one up
+        halts, and says so.
+        """
+        ceiling = 1 << 24
+        assert _run(memory([[ceiling - 1, -6, -1, -7]])) == ""
+
+        with pytest.raises(HaltError) as caught:
+            _run(memory([[ceiling, -6, -1, -7]]))
+        assert str(caught.value) == f"memory address {ceiling} is too large"
+
+    def test_carry_and_overflow_flags_read_as_zero(self) -> None:
+        # The carry (-2) and overflow (-5) flags are always 0 in this
+        # interpreter, so copying them into cells prints two NUL bytes.
+        code = memory(
+            [
+                [31, -2, 4, -7],
+                [32, -5, 8, -7],
+                [-1, 31, 12, -7],
+                [-1, 32, -8, -7],
+            ]
+        )
+        assert _run(code) == "\x00\x00"
+
+    def test_comments_and_blank_lines_are_ignored(self) -> None:
+        base = memory([[31, -6, 4, -7], [-1, 31, -8, -7]])
+        code = "# a comment\n\n" + base + " # trailing comment\n"
+        assert _run(code) == "\x01"
+
+    def test_unallocatable_address_halts(self) -> None:
+        """Cell values are unbounded; the list holding them is not."""
+        with pytest.raises(HaltError, match="too large"):
+            _run("9" * 40)
+
+    def test_operands_past_the_decimal_digit_cap_parse(self) -> None:
+        """A 5000-digit operand is a number, past CPython's 4300-digit cap.
+
+        It used to fail ``int()``, fall through to the assembler and be
+        refused as a label; it now reaches the address check (f0ac0478).
+        """
+        digits = "9" * 5000
+        with pytest.raises(HaltError, match=f"^memory address {digits} is too large"):
+            _run(digits)
+
+
+class TestStepMachine:
+    def test_step_tracks_ip_and_memory(self) -> None:
+        from esolangs.interpreters.register_based.addsubjump import _Machine
+
+        machine = _Machine("-1 1 -1 -7", ScriptedIO())
+        assert (machine.ip, list(machine.memory)) == (0, [-1, 1, -1, -7])
+        machine.step()  # writes *b to I/O and jumps to c, a special address
+        assert machine.io.getvalue() == "\x01"
+        assert machine.ip == -1
+        assert machine.halted
+        machine.step()  # stepping a halted machine is a no-op
+        assert machine.ip == -1
+
+    def test_snapshot_includes_the_input_cursor(self) -> None:
+        from esolangs.interpreters.register_based.addsubjump import _Machine
+
+        machine = _Machine("0 0 0 0", ScriptedIO("one\n"))
+        before = machine.snapshot()
+        machine.io.input_str()
+        assert machine.snapshot() != before
+
+    def test_a_cell_written_to_zero_matches_one_never_written(self) -> None:
+        """The sparse store must not distinguish a stored zero from no key.
+
+        The memory keeps only its non-zero cells, so a write of 0 has to
+        delete the key rather than store it.  If it did not, two runs that
+        agree on every cell value would still snapshot differently and the
+        cycle detector would miss the repeat -- with nothing else failing.
+        """
+        from esolangs.interpreters.register_based.addsubjump import (
+            _pack,
+            _store,
+        )
+
+        state = (_pack([5, 0, 0]), 0, 0, 0, 0, 0, 0)
+        # Write a non-zero and then zero it again: back to the start.
+        written = _store(_store(state, 1, 7), 1, 0)
+        assert written[0] == state[0], "a zeroed cell left a key behind"
+
+        # And a parsed zero is already absent, so the two agree.
+        cells, length = _pack([5, 0, 0])
+        assert cells == {0: 5}
+        assert length == 3
+
+    def test_snapshot_is_independent_of_write_order(self) -> None:
+        """Equal memories must snapshot equal however they were reached.
+
+        A dict iterates in insertion order, so freezing it without sorting
+        would key two identical memories differently purely by the order
+        their cells were written.
+        """
+        from esolangs.interpreters.register_based.addsubjump import (
+            _Machine,
+            _store,
+        )
+
+        one = _Machine("0 0 0 0", ScriptedIO())
+        other = _Machine("0 0 0 0", ScriptedIO())
+        one.state = _store(_store(one.state, 1, 4), 2, 9)
+        other.state = _store(_store(other.state, 2, 9), 1, 4)
+        assert one.snapshot() == other.snapshot()
+        assert hash(one.snapshot()) == hash(other.snapshot())
+
+    def test_the_flag_registers_are_readable_off_the_machine(self) -> None:
+        """The five flag names report the state fields they are named for.
+
+        ``TestFlags`` above proves the flags through *programs*, which read
+        them back out of memory at ``-3``..``-5``; nothing read them off the
+        machine object.  They are the language's own names on the stepped
+        surface, and ``of`` in particular is required elsewhere: the VM
+        looks up ``of`` on a state class to find an alternative constructor
+        and only accepts it when callable, precisely because AddSubJump
+        spells its overflow flag that way.
+
+        The program enables flag-update mode and then produces a zero
+        result, so ``fum`` and ``zf`` both have to move -- a property wired
+        to a neighbouring tuple slot would stay put.
+        """
+        from esolangs.interpreters.register_based.addsubjump import _Machine
+
+        code = memory(
+            [
+                [-9, -6, 4, -7],
+                [30, -7, 8, -7],
+                [31, -3, 12, -7],
+                [-1, 31, -8, -7],
+            ]
+        )
+        machine = _Machine(code, ScriptedIO())
+        assert (machine.cf, machine.zf, machine.nf, machine.vf, machine.fum) == (
+            0,
+            0,
+            0,
+            0,
+            0,
+        )
+        seen = set()
+        while not machine.halted:
+            machine.step()
+            seen.add((machine.fum, machine.zf))
+        assert machine.fum == 1  # -9 turned the mode on and it stayed on
+        assert (1, 1) in seen  # and the zero result set ZF while it was on
+        # The three flags this program never disturbs stay clear, so the
+        # accessors are not all reading one field.
+        assert (machine.cf, machine.nf, machine.vf) == (0, 0, 0)
+        # AddSubJump has no stack, so it declares none and the VM's
+        # default empty one stands.
+        assert not hasattr(machine, "stack")
 
 
 # The wiki's assembler ships an ``IFZ`` macro; this repo's dialect has the
@@ -138,3 +635,19 @@ class TestWikiPrograms:
 
     def test_hello_world(self) -> None:
         assert _capped(_HELLO_WORLD, "", 10_000) == ("Hello, world!", True, 144)
+
+
+def _machine(code: object) -> object:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.register_based.addsubjump import _Machine
+
+    return _Machine(code, ScriptedIO())
+
+
+class TestContract(EmptyProgramContract, CycleContract):
+    """The shared empty-program shape, with this language's data."""
+
+    run = staticmethod(_run)
+    machine = staticmethod(_machine)
+    halting_program = "-1 1 -1 -7"
+    looping_program = "0 0 0 0"

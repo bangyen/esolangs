@@ -92,6 +92,11 @@ def run_addsubjump_from(program: str, feed: Iterator[str]) -> str:
     return _run_from("esolangs.interpreters.register_based.addsubjump", program, feed)
 
 
+def run_sophie_from(program: str, feed: Iterator[str]) -> str:
+    """Run a Sophie program against an iterator; see :func:`_run_from`."""
+    return _run_from("esolangs.interpreters.register_based.sophie", program, feed)
+
+
 def run_algebraic_programming_language(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.other.algebraic_programming_language import run
 
@@ -116,8 +121,20 @@ def run_bf(program: str, inputs: list[str]) -> str:
     return run_program(run, program, "".join(inputs))
 
 
+def run_three_d_brainfuck(program: str, inputs: list[str]) -> str:
+    from esolangs.interpreters.tape_based.three_d_brainfuck import run
+
+    return run_program(run, program, "".join(inputs))
+
+
 def run_factor(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.tape_based.factor import run
+
+    return run_program(run, program, "".join(inputs))
+
+
+def run_suffolk(program: str, inputs: list[str]) -> str:
+    from esolangs.interpreters.tape_based.suffolk import run
 
     return run_program(run, program, "".join(inputs))
 
@@ -138,6 +155,12 @@ def run_forth(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.stack_based.forth import run
 
     return run_program(run, program, _stdin(inputs))
+
+
+def run_circlefuck(program: str, inputs: list[str]) -> str:
+    from esolangs.interpreters.tape_based.circlefuck import run
+
+    return run_program(run, program, "".join(inputs))
 
 
 def run_bit_tilde(program: str, inputs: list[str]) -> str:
@@ -211,6 +234,12 @@ def run_addsubjump(program: str, inputs: list[str]) -> str:
     return run_program(run, program, "".join(inputs))
 
 
+def run_qoibl(program: str, inputs: list[str]) -> str:
+    from esolangs.interpreters.register_based.qoibl import run
+
+    return run_program(run, program.splitlines(), "".join(inputs))
+
+
 def run_polynomial(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.register_based.polynomial import run
 
@@ -250,6 +279,12 @@ def run_flowchart(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.grid_based.flowchart import run
 
     return run_program(run, program.splitlines(), "".join(inputs))
+
+
+def run_sophie(program: str, inputs: list[str]) -> str:
+    from esolangs.interpreters.register_based.sophie import run
+
+    return run_program(run, program, "".join(inputs))
 
 
 def run_sbleq(program: str, inputs: list[str]) -> str:
