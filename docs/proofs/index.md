@@ -549,7 +549,9 @@ in `extend` only after a node loses three quarters would make the bound
 geometric. Over a 433-table corpus through n=13 that costs 2.5% of
 emitted size, and 4--6% at n=11..13. It also leaves `certify`, which
 refreshes every level on every call and rescores each pairless
-candidate at `q`. `_nearest`'s sparse fallback lists points. Listing
+candidate at `q`; the untried fix keeps a level while its direction holds
+half the average, rebuilding only on a crossing. `_nearest`'s sparse
+fallback lists points. Listing
 representatives costs cosets but moves sizes from -9% to +14% a table,
 +0.9% in total. The fourth term, the core build, is below.
 

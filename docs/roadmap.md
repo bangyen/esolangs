@@ -122,28 +122,6 @@ Each item names its next executable step. When an item is answered, record
 the answer in the linked proof and remove the item. An item that stalls
 for a round moves to [Parked](#parked).
 
-- **Vandevelo structural scaling.** Clause count is under `17*2**n/n`
-  for every table: `_assure` puts a half-average direction on each level
-  of the chains the bound needs. Lines and commands per row are therefore
-  `O(T)`, which closes execution time. Identifier references still carry
-  the extra factor, and generation time, which includes writing the
-  result, cannot close before output size does. Nodes hold coset
-  representatives, so generation measures flat: three zeros take 2,700
-  to 3,200 visits a row at n=10..14, down from 16,800 to 23,600. Not
-  proved even in word operations: child rebuilds in `extend` and
-  `certify` are bounded only by `q**2` a node, `certify` refreshes every
-  level on every call, `_nearest`'s fallback lists points, and the
-  dual-basis core is only `O(T*n)`. A three-quarter-loss rebuild rule
-  costs 2.5% of corpus size and leaves `certify`
-  ([proofs](proofs/index.md)). The identifier factor is Cohen and
-  Shinkar's open `O(log n)` gap in DNF-of-parities size. On tables whose
-  cubes are under `2*log2(n)` dimensions, coset programs cost
-  `Theta(DNF+(f) * n * log n)` characters. So neither linear output nor a
-  super-linear lower bound can be proved without settling that gap.
-  Next: settle that gap; on the build side, a `certify` that keeps a
-  level while its direction holds half the average, so it rebuilds only
-  on a crossing.
-
 - **FRACTRAN order encoding.** One unchanged multiset of eight fractions
   computes all sixteen four-row tables just by ordering each `1/p, 2/p`
   pair; all 64 rows executed. The one-consultation route is closed
@@ -183,3 +161,8 @@ line changes only when its next step does.
 - **Malbolge's first unreachable arity.** Next: shrink the decoder or share
   more of its common initialization
   ([malbolge-scaling](proofs/malbolge-scaling.md#open-problems)).
+- **Vandevelo structural scaling.** Next: settle Cohen and Shinkar's
+  `O(log n)` DNF-of-parities gap, which bounds output and so generation
+  time; on the build side, a `certify` that rebuilds a level only when its
+  direction drops below half the average
+  ([index](proofs/index.md#vandevelo-identifier-and-fallback-audit)).
