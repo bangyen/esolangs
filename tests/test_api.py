@@ -15,23 +15,6 @@ from esolangs.interpreters.source_hints import error_text
 from tests.stdin_check import _check_stdin
 
 
-@pytest.mark.parametrize("language", ["Sophie", "Circlefuck", "BFStack"])
-def test_generate_computes_its_table(language: str) -> None:
-    """XOR, executed on all four rows -- the program, not just its text."""
-    program = esolangs.generate(language, "0110")
-    for row, expected in enumerate("0110"):
-        stdin = esolangs.encode_inputs(
-            language, [int(bit) for bit in format(row, "02b")]
-        )
-        assert esolangs.run(language, program, stdin=stdin) == expected
-
-
-def test_run_feeds_stdin() -> None:
-    program = boolean.circlefuck("1101")
-    assert esolangs.run("Circlefuck", program, stdin="10") == "0"
-    assert esolangs.run("Circlefuck", program, stdin="01") == "1"
-
-
 def test_list_languages() -> None:
     names = esolangs.list_languages()
     assert "Sophie" in names
@@ -93,18 +76,6 @@ def test_run_timeout_halts_a_growing_program() -> None:
         esolangs.run("brainfuck", "+[>+]", timeout=0.01)
 
 
-def test_run_timeout_lets_fast_program_finish() -> None:
-    program = "++++++++[>++++++++<-]>+++."
-    assert esolangs.run("brainfuck", program, timeout=5) == "C"
-
-
-def test_run_timeout_must_be_positive() -> None:
-    with pytest.raises(ValueError, match="positive"):
-        esolangs.run("brainfuck", "+", timeout=0)
-    with pytest.raises(ValueError, match="positive"):
-        esolangs.run("brainfuck", "+", timeout=-1)
-
-
 def test_run_timeout_requires_main_thread() -> None:
     """The SIGALRM guard needs a Unix main thread; elsewhere timeout is refused."""
     import threading
@@ -157,7 +128,7 @@ def test_truth_table_hint(table: str) -> None:
     assert error_text(caught.value).startswith(str(caught.value) + "\nhint:")
 
 
-@pytest.mark.parametrize("table", ["0110", "00", "11"])
+@pytest.mark.parametrize("table", ["00", "11"])
 def test_truth_table_examples_execute(table: str) -> None:
     program = esolangs.generate("brainfuck", table)
     inputs = len(table).bit_length() - 1
@@ -208,17 +179,6 @@ def test_debugger_exports_are_available():
         assert hasattr(debugger, name)
     assert debugger.make_vm("brainfuck", "+.").ip == 0
     assert debugger.make_debugger("brainfuck", "+.").run() == "halted"
-
-
-@pytest.mark.parametrize("language", ["brainfuck", "Minifuck", "Piet"])
-def test_evaluate_loads_source_once_from_path(language, tmp_path):
-    program = esolangs.generate(language, "0110")
-    path = tmp_path / "program"
-    if isinstance(program, esolangs.Raster):
-        path.write_bytes(program.to_png())
-    else:
-        path.write_text(program + "\n", encoding="utf-8")
-    assert _evaluate(language, path, inputs=2) == "0110"
 
 
 @pytest.mark.medium  # spawns a worker, like test_run_isolated

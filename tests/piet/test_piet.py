@@ -128,8 +128,10 @@ def test_white_start_and_trapped_slide_terminate(
     assert execute(raster((WHITE, LIGHT_RED))) == ""
 
 
-@pytest.mark.parametrize("character", ["Z", "\n", "\0", "ā"])
-@pytest.mark.parametrize("scale", [1, 3])
+# The character and the PNG scale do not interact, so scale is varied once.
+@pytest.mark.parametrize(
+    ("character", "scale"), [("Z", 1), ("\n", 1), ("\0", 1), ("ā", 3)]
+)
 def test_input_character_and_output_character(character: str, scale: int) -> None:
     # in(char), then out(char)
     program = raster(

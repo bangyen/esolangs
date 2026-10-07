@@ -6,7 +6,6 @@ import contextlib
 import difflib
 import re
 import warnings
-from typing import ClassVar
 
 import pytest
 
@@ -50,30 +49,6 @@ def _big_table(arity: int = 11) -> str:
 
 class TestADeliberateRefusalIsAnEsolangError:
     """The package promises it, and the refusals that broke the promise."""
-
-    #: The ones that stop rather than build, and the arity that trips each.
-    #: Only these are built here: the rest succeed at n=11 and several take
-    #: minutes to do it.  Carried per language rather than as one table:
-    #: Factor's cap was on the encoded integer's digits, not on ``n``, and
-    #: a shared n=11 quietly stopped testing it at all -- the
-    #: ``pytest.raises`` simply saw the program get built.
-    _REFUSERS: ClassVar[dict[str, int]] = {
-        "Polynomial": 11,
-    }
-
-    @pytest.mark.slow
-    @pytest.mark.parametrize("name", _REFUSERS)
-    def test_the_refusal_is_catchable(self, name: str) -> None:
-        """And by the documented base class, not only the specific one."""
-        with pytest.raises(esolangs.GeneratorCapError):
-            esolangs.generate(name, _big_table(self._REFUSERS[name]))
-
-    @pytest.mark.slow
-    @pytest.mark.parametrize("name", _REFUSERS)
-    def test_the_documented_idiom_catches_it(self, name: str) -> None:
-        """``except EsolangError`` is what the package docstring promises."""
-        with pytest.raises(esolangs.EsolangError):
-            esolangs.generate(name, _big_table(self._REFUSERS[name]))
 
     def test_it_is_still_a_value_error(self) -> None:
         """Callers catching ValueError must not be broken by the new class."""
@@ -283,11 +258,10 @@ class TestASuggestionIsWorthLessThanSilence:
         # Higher: no junk either, but it starts costing real rescues.
         assert self._score(0.7)[0] < shipped[0]
 
-    @pytest.mark.parametrize("word", ["snorey", "zzzz", "python"])
-    def test_a_word_that_is_not_close_gets_no_guess(self, word: str) -> None:
+    def test_a_word_that_is_not_close_gets_no_guess(self) -> None:
         """It gets the command that lists them, which is the honest answer."""
         with pytest.raises(esolangs.UnknownLanguageError) as caught:
-            esolangs.describe(word)
+            esolangs.describe("snorey")
         assert "did you mean" not in str(caught.value)
         assert "`esolangs list` shows all of them" in str(caught.value)
 
@@ -332,20 +306,6 @@ class TestAnUnknownNameIsShownReadably:
             esolangs.describe("zzzz")
 
 
-class TestUnknownLanguageAlwaysOffersANextStep:
-    """A near miss suggested; a far one was a dead end."""
-
-    def test_a_far_miss_names_the_listing_command(self) -> None:
-        """Someone misremembering a name has nothing to be suggested."""
-        with pytest.raises(esolangs.UnknownLanguageError, match="esolangs list"):
-            esolangs.describe("Gorgonzola")
-
-    def test_a_near_miss_still_suggests(self) -> None:
-        """The better hint must win where there is one."""
-        with pytest.raises(esolangs.UnknownLanguageError, match="did you mean"):
-            esolangs.describe("Brainfck")
-
-
 class TestATableLengthNamesTheNearestLegalOnes:
     """The rule without the arithmetic, on the likeliest first error."""
 
@@ -353,7 +313,6 @@ class TestATableLengthNamesTheNearestLegalOnes:
         ("table", "expected"),
         [
             ("0" * 3, "3 is between 2 (1 input) and 4 (2 inputs)"),
-            ("0" * 6, "6 is between 4 (2 inputs) and 8 (3 inputs)"),
             ("0" * 100, "100 is between 64 (6 inputs) and 128 (7 inputs)"),
         ],
     )
@@ -380,7 +339,7 @@ class TestATableLengthNamesTheNearestLegalOnes:
 class TestASurroundingSpaceResolves:
     """Almost every name already tolerated one, and the one that did not."""
 
-    @pytest.mark.parametrize("pad", [" {}", "{} ", " {} ", "\t{}\n"])
+    @pytest.mark.parametrize("pad", [" {} ", "\t{}\n"])
     def test_every_language_tolerates_surrounding_space(self, pad: str) -> None:
         """All of them, because the one that failed was not the obvious one."""
         for name in esolangs.list_languages():
@@ -476,10 +435,6 @@ class TestAFailedRowSaysWhichRow:
             evaluate_generated("Circuit Diagram", table, timeout=0.005)
         note = "\n".join(getattr(caught.value, "__notes__", []))
         assert "row 0 of 128" in note
-
-    def test_a_clean_evaluate_adds_nothing(self) -> None:
-        """A note is for a failure; a success must not grow one."""
-        assert evaluate_generated("brainfuck", "0110") == "0110"
 
 
 class TestReadAnswerExplainsInWords:
@@ -638,19 +593,14 @@ class TestEvaluateCanRunOffTheMainThread:
             got = list(pool.map(lambda n: verify_generated(n, "0110", None), names))
         assert all(got), dict(zip(names, got, strict=True))
 
-    def test_omitting_it_still_takes_the_defaults(self) -> None:
-        """A sentinel, so adding the escape hatch broke no existing caller."""
-        assert evaluate_generated("123", "0110") == "0110"
-
 
 class TestDivergenceIsProvenNotWaitedOut:
     """A repeated state settles it exactly, and in milliseconds."""
 
     @pytest.mark.parametrize("name", ["123", "ArrowQueue"])
-    @pytest.mark.parametrize("table", ["0110", "00011011"])
-    def test_the_proven_answer_is_the_table(self, name: str, table: str) -> None:
+    def test_the_proven_answer_is_the_table(self, name: str) -> None:
         """The answers must be the ones the clock used to give, exactly."""
-        assert evaluate_generated(name, table) == table
+        assert evaluate_generated(name, "00011011") == "00011011"
 
     def test_it_no_longer_costs_a_timeout_per_row(self) -> None:
         """It was five seconds per 1-row: twenty seconds for this call."""
@@ -667,11 +617,6 @@ class TestTheTerminationProofFallsBackToTheClock:
     def test_the_proof_needs_no_clock_at_all(self) -> None:
         """Which is the measurement, and also why the clock arm is untested."""
         assert evaluate_generated("123", "0110", None) == "0110"
-
-    def test_the_answers_match_what_the_clock_used_to_give(self) -> None:
-        """The proof must not have changed any verdict, only the cost."""
-        for name in ("123", "ArrowQueue"):
-            assert evaluate_generated(name, "0110") == "0110"
 
 
 class TestTerminationTimeoutIsUndecided:

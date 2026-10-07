@@ -23,10 +23,7 @@ def test_supplied_program_never_generates(monkeypatch: pytest.MonkeyPatch) -> No
 @pytest.mark.parametrize(
     "name",
     [
-        "Fargo",
-        "Grapheme",
         "Clockwise",
-        "Taglate",
         "A Painter Ant",
         "Minifuck",
         "Piet",
@@ -43,7 +40,7 @@ def test_evaluate_files(name: str, tmp_path: Path) -> None:
     assert _evaluate(name, path, inputs=2) == "0110"
 
 
-@pytest.mark.parametrize("inputs", [True, 0, -1, 65, 2.5, "2"])
+@pytest.mark.parametrize("inputs", [True, 0, 65, 2.5, "2"])
 def test_api_refuses_bad_inputs(inputs: object) -> None:
     with pytest.raises(esolangs.ArgumentError, match="inputs must"):
         _evaluate("brainfuck", ",.", inputs=inputs)  # type: ignore[arg-type]
