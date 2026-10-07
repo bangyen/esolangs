@@ -9,6 +9,7 @@ import pytest
 
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.fractran import _choose, _Machine, _parse, run
+from esolangs.interpreters.other.fractran import index as fractran_index
 from tests.interpreters.runner import run_program
 
 #: Conway's PRIMEGAME.  The powers of two it passes through are the primes.
@@ -139,3 +140,42 @@ def test_indexed_transitions_do_not_materialize_factor_snapshots(
         machine.step()
     assert machine.value == 1
     assert machine._cursor.factor_updates == 120
+
+
+def test_least_prime_sieve_factors_match_literal_arithmetic() -> None:
+    for value in range(1, 513):
+        # Unit factors admit bases through 512 without changing the integer.
+        start = "*".join([str(value), *(["1"] * 22)])
+        source = f"{start} {value}/2 {value}/3 {value}/5"
+        index = fractran_index.compile_index(source)
+        assert index is not None
+        initial, fractions, _offsets = _parse(source)
+        assert fractran_index.integer(index.initial) == initial
+        assert (
+            tuple(
+                (fractran_index.integer(head), fractran_index.integer(tail))
+                for head, tail in index.literal
+            )
+            == fractions
+        )
+
+
+def test_loader_sieve_uses_actual_bases_and_keeps_sparse_fallback(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    original = fractran_index._least_primes
+    limits = []
+
+    def record(limit: int) -> list[int]:
+        limits.append(limit)
+        return original(limit)
+
+    monkeypatch.setattr(fractran_index, "_least_primes", record)
+    dense = "*".join(["2"] * 100) + " 3/2 1/3"
+    machine = _Machine(dense, ScriptedIO(""))
+    assert machine._index is not None
+    assert limits == [3]
+    assert run_program(run, "239 1/239") == "1"
+    assert limits == [3]
+    assert fractran_index.compile_index("257 1/257") is None
+    assert limits == [3]

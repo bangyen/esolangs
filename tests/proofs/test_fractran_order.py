@@ -11,6 +11,7 @@ import pytest
 
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.fractran import _choose, _Machine, _parse
+from esolangs.interpreters.other.fractran import index as fractran_index
 from esolangs.tools.fractran import PAIR, _primes, fractran
 from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
 from tests.proofs._fractran_order import (
@@ -304,3 +305,42 @@ def test_dense_cursor_work_and_sparse_threshold_routing() -> None:
                     assert machine.inspections == steps - 1
                     assert machine._cursor.factor_updates <= 3 * steps
                     assert machine._cursor.guard_updates <= 4 * (steps + k)
+
+
+@pytest.mark.medium
+def test_stream_loading_sieve_and_wider_answers(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    original = fractran_index._least_primes
+    limits = []
+
+    def record(limit: int) -> list[int]:
+        limits.append(limit)
+        return original(limit)
+
+    monkeypatch.setattr(fractran_index, "_least_primes", record)
+    rng = random.Random(20261007)
+    for n, k, base in (
+        (8, 63, 577),
+        (10, 182, 1433),
+        (12, 568, 4523),
+        (14, 1842, 16273),
+        (16, 6143, 61561),
+    ):
+        size = 1 << n
+        table = "".join(str(rng.randrange(2)) for _ in range(size))
+        assert capacity(k - 1) < size <= capacity(k)
+        template = stream_template(table, k)
+        source = fill_runs(template, TEMPLATE_CHAR, [PAIR] * n, [1] * n)
+        io = ScriptedIO("")
+        machine = _Machine(source, io)
+        assert machine._index is not None
+        assert machine._cursor is not None
+        assert limits[-1] == base <= 8 * size
+        steps = 0
+        while not machine.halted:
+            machine.step()
+            steps += 1
+            assert steps < 200 * k + 100
+        assert io.getvalue().strip() == str(1 + int(table[-1]))
+    assert len(limits) == 5

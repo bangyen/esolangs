@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 import re
-from array import array
 from bisect import bisect_left, bisect_right
 from dataclasses import dataclass
 from functools import cache
 from itertools import pairwise
-from math import isqrt, prod
+from math import prod
 
 type Factors = tuple[tuple[int, int], ...]
 type Rule = tuple[Factors, Factors]
@@ -71,15 +70,19 @@ class Index:
         return best, probes
 
 
-def _least_factors(top: int) -> array[int]:
-    """Return each integer's least prime factor, through ``top``.
-
-    Descending ``p`` writes every multiple from ``p * p``; a smaller divisor
-    writes later, so the least one stays.  Composite ``p`` are harmless.
-    """
-    least = array("L", range(top + 1))
-    for p in range(isqrt(top), 1, -1):
-        least[p * p :: p] = array("L", [p]) * len(range(p * p, top + 1, p))
+def _least_primes(limit: int) -> list[int]:
+    """Return least prime factors; Euler's sieve assigns each composite once."""
+    least = [0] * (limit + 1)
+    primes = []
+    for candidate in range(2, limit + 1):
+        if not least[candidate]:
+            least[candidate] = candidate
+            primes.append(candidate)
+        for prime in primes:
+            product = prime * candidate
+            if prime > least[candidate] or product > limit:
+                break
+            least[product] = prime
     return least
 
 
@@ -88,43 +91,64 @@ def compile_index(code: str) -> Index | None:
     tokens = [(m.start(), m.group()) for m in re.finditer(r"[^\s,]+", code)]
     if not tokens:
         return None
-    # A base costs at least its digits, so one no larger than the source is
-    # cheap to factor: a sieve to the largest such base, linear in the source.
-    # Larger literals are left to the literal VM rather than factored.
+    # Shipped generators use small bases; dense initial products admit more.
+    # Keep arbitrary large literals out of indexed factorization.
     limit = max(
         SMALL_BASE,
         len(code),
         (tokens[0][1].count("*") + 1) ** 2,
     )
-    named = (int(m[1]) for m in re.finditer(r"(?:^|[\s,/*])(\d+)", code))
-    least = _least_factors(max((b for b in named if b <= limit), default=1))
+
+    terms: dict[str, tuple[int, int]] = {}
+    maximum = 1
+    for position, (_offset, token) in enumerate(tokens):
+        head, slash, tail = token.partition("/")
+        products = (token,) if position == 0 else (head, tail if slash else "1")
+        for text in products:
+            for term in text.split("*"):
+                if term in terms:
+                    continue
+                match = _POWER.fullmatch(term)
+                if match is None:
+                    return None
+                base = int(match[1])
+                if not 1 <= base <= limit:
+                    return None
+                exponent = 1 if match[2] is None else int(match[2])
+                terms[term] = base, exponent
+                maximum = max(maximum, base)
+    # Sieve actual bases, never the quadratic admission limit. Cap scratch
+    # space by source size; sparse large bases retain cached trial division.
+    least = _least_primes(maximum) if maximum <= 8 * len(code) else None
 
     @cache
     def factor(base: int) -> Factors:
         result: dict[int, int] = {}
-        while base > 1:
-            p = least[base]
-            result[p] = result.get(p, 0) + 1
-            base //= p
+        if least is not None:
+            while base > 1:
+                prime = least[base]
+                result[prime] = result.get(prime, 0) + 1
+                base //= prime
+            return tuple(result.items())
+        p = 2
+        while p * p <= base:
+            while base % p == 0:
+                result[p] = result.get(p, 0) + 1
+                base //= p
+            p += 1
+        if base > 1:
+            result[base] = result.get(base, 0) + 1
         return tuple(result.items())
 
-    def product(text: str) -> Factors | None:
+    def product(text: str) -> Factors:
         result: dict[int, int] = {}
         for term in text.split("*"):
-            match = _POWER.fullmatch(term)
-            if match is None:
-                return None
-            base = int(match[1])
-            if not 1 <= base <= limit:
-                return None
-            exponent = 1 if match[2] is None else int(match[2])
+            base, exponent = terms[term]
             for p, e in factor(base):
                 result[p] = result.get(p, 0) + e * exponent
         return tuple(sorted((p, e) for p, e in result.items() if e))
 
     initial = product(tokens[0][1])
-    if initial is None:
-        return None
     rules: list[Rule] = []
     literal: list[tuple[Factors, Factors]] = []
     groups: dict[int, list[tuple[int, int]]] = {}
@@ -132,8 +156,6 @@ def compile_index(code: str) -> Index | None:
     for index, (_offset, token) in enumerate(tokens[1:]):
         head, slash, tail = token.partition("/")
         numerator, denominator = product(head), product(tail if slash else "1")
-        if numerator is None or denominator is None:
-            return None
         literal.append((numerator, denominator))
         delta = advance(numerator, tuple((p, -e) for p, e in denominator))
         guard = tuple((p, -e) for p, e in delta if e < 0)

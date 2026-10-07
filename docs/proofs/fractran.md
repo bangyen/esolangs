@@ -915,6 +915,84 @@ materialization forbidden. Source lengths and the production comparison
 above remain unchanged; this improves the evaluator rather than replacing
 the shipped generator.
 
+### Loading and end-to-end bit cost for streamed order
+
+The loader first validates and caches prime-power atoms, retaining the
+previous base-admission bound. Let `S` be source characters and `B` the
+largest admitted base. When `B<=8S`, an Euler least-prime-factor sieve
+runs through `B`, assigning each composite once. Cached factorization
+then follows least-prime factors instead of trying candidate divisors.
+When `B>8S`, cached trial division remains available. The allocation uses
+actual bases rather than the initial product's quadratic admission bound;
+its scratch space is always `O(S)` words. No integer prime power is
+materialized during index compilation.
+
+For streaming sources, `c=40+n+k` bounds the feature-prime index. The
+prime estimate used above gives `B=O(k log k)=O(T)`. The sieve branch is
+eventually guaranteed, not assumed: for sufficiently large `k`, `c<=2k`
+and `B<4k*ln(2k)`. Each feature base appears five times (initial product,
+two selectors, live scan and cleanup), so
+`S>=5*floor(k/2)*log10(k/2)`. These inequalities imply `B<=8S` for all
+sufficiently large `k`. The finitely many smaller sources do not change
+the asymptotic bound.
+
+All generated bases are primes, with `O(k+n)` distinct bases. Their cached
+factorizations therefore need one least-prime lookup and division each.
+There are `O(k+n)` bounded-support fractions and one `O(k+n)`-support
+initial product. Atom conversion, sparse normalization, guard bucketing
+and the initial sort cost `O(S+k log k+n**2)=O(T)` word operations.
+Together with the `O(B)` sieve and cursor initialization, loading takes
+`O(T)` word work. One normal query also takes `O(T)` word work by the
+incremental-eligibility bound. Words have `w=Theta(log T)` bits; the
+claim uses the same table/index word model as the generation proof.
+
+In a bit-cost RAM with logarithmic addressing, charge a word comparison,
+copy or address
+`O(w)`, and multiplication or division conservatively `O(w**2)`.
+Decimal conversion costs `O(l**2)` for an `l`-digit literal; since the
+maximum literal length is `O(w)` and total digits are `O(S)`, conversions
+cost `O(S*w)`. Sieve products and cached divisions fit `w` bits, giving
+`O(B*w**2)` bit work. The remaining loading and cursor operations fit
+`O(T*w**2)` as well. Generation has the same `O(T)` word count and
+`w`-bit fields: its prime sieve, Fenwick operations and decimal rendering
+also fit `O(T*w**2)`. Final output is only `1` or `2`. Thus generation,
+source loading, cursor initialization and one normal query satisfy
+
+    Omega(T) <= end-to-end bit work <= O(T*log(T)**2).
+
+The lower bound is this loader's complete source read, since `S=Theta(T)`;
+it is not a language-wide query lower bound. Peak loading scratch is
+`O(T log T)` bits, dominated by the sieve; the persistent compiled index
+and cursor need `O(k log T+n**2)=O(T)` bits. Explicit debug snapshots or
+requests to materialize the large initial integer are outside the normal
+query contract. These are upper bounds, not a proof of linear bit cost;
+tightening their logarithmic gap remains open.
+
+Executed loading controls use seeded tables at six through sixteen inputs,
+three trials per loader, and first/interior/last-row queries. Every answer
+is checked; old and new compiled factors, rules and offsets agree. Counts
+below are independent of timing: trial candidates count the reference
+factorizer's divisor loop, while sieve assignments count composites; the
+sieve additionally visits each integer through `B` once.
+
+| n | k | Source chars | B | Trial candidates | Sieve assignments |
+|---|---|---|---|---|---|
+| 6 | 23 | 6,156 | 311 | 472 | 246 |
+| 8 | 63 | 10,354 | 577 | 1,289 | 470 |
+| 10 | 182 | 23,739 | 1,433 | 4,886 | 1,205 |
+| 12 | 568 | 69,390 | 4,523 | 25,104 | 3,907 |
+| 14 | 1,842 | 230,663 | 16,273 | 150,841 | 14,381 |
+| 16 | 6,143 | 798,659 | 61,561 | 975,857 | 55,366 |
+
+Best-of-three index compilation at sixteen inputs measured 0.330 seconds
+with trial division and 0.296 seconds with the sieve; cursor initialization
+measured 0.085 seconds separately. These timings do not establish an
+exponent. The 4,260-execution, 321,470-firing trace corpus also agrees with
+the pre-change loader. Literal-arithmetic checks cover bases `1..512`,
+and allocation controls verify both a repeated-factor dense product and
+the sparse trial fallback. The wider regression executes last-row queries
+through sixteen inputs and checks the actual sieve limits.
+
 ## The other end: the row-addressing tree
 
 The generator that shipped before this was a decision tree with one prime
