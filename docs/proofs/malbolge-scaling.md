@@ -584,7 +584,7 @@ No value-only build reaches seventeen, and no known parity-aware or
 execution-decoded one does either; neither is a bound on Malbolge programs in general. Lowering the language bound
 instead needs some 17-input table with no program; counting misses by a
 factor `2**46076`, so no such proof is in sight. Seventeen is open in both
-directions.
+directions; see [open problems](#open-problems).
 
 ### Seventeen: the read-count route, corrected
 
@@ -1377,6 +1377,25 @@ conflicts). No shared setup of the current fold, selector and decoder fits
 the store, so a placement search is deferred. The decoder's 1,173
 unshareable overlaps are the binding term: only more sharing of the common
 initialization, or a smaller decoder, closes the gap.
+
+## Open problems
+
+**Malbolge's first unreachable arity.** The shipped cap is 16 inputs.
+Counting excludes some 18-input tables; 17 remains undecided, and a
+build needs more than two table bits per cell across almost the whole
+store. Packing uses 49,152 cells, and the five-state decoder executes
+all 2,744 one-group cases. Neither placement nor sharing setup
+between the address fold, row selector and decoder fits them: the
+shared union is 10,324 cells against a 9,897-cell complement, and the
+decoder's 1,173 conflicting overlaps are the binding term. Next: shrink
+the decoder or share more of its common initialization. See [the construction
+record](#seventeen-navigation-is-linear-in-address-so-packing-helps-measured).
+Proving impossibility instead needs a density lemma: cut the count by
+`2**46076`, or bound a normal-form representative's dependence by
+24,434 cells. A per-program dependence cut is false (`'o'*59046 + '/<v'`
+computes the one-input identity and depends on all 59,049 cells), and
+length and alphabet cuts are closed; [limitations](../limitations.md#boolean-generators)
+records the controls.
 
 ## Malbolge Unshackled: the cap lifts, off the registry
 

@@ -193,7 +193,8 @@ Below 60, a language is admitted only as a first implementation: when the
 repo adds it, no implementation exists but the maintainer's. Its page is in
 the Unimplemented category, or the edit that first tagged it Implemented is
 User:Bangyen's. An intrinsic axis can choose between such candidates; it
-admits nothing alone.
+admits nothing alone and removes nothing. A stalled generator row moves to
+the [roadmap](roadmap.md#parked)'s Parked section; the language stays.
 
 Recognition sources checked 2026-10-01 supply selections, not admission gates
 or popularity rankings:

@@ -29,12 +29,16 @@ history; standing rules and proved limits are in [limitations](limitations.md).
   or its required encoding forces super-linear output, then move on.
   Generation time includes choosing an input order and writing the result.
 
-  A language stays in the repo if its generator is O(T) on all four audit
-  axes below, if its row carries a proved language-wide lower bound, or if
-  tests pin a semantic obstruction that every attempted construction
-  breaks. A syntax-level lookup table does not count as a generator. If one
-  more executed round produces neither a construction nor a bound, that
-  language and its row leave. An unproved wall is not a lookup table.
+  A row closes when its generator is O(T) on every audit axis below, when
+  it carries a proved language-wide lower bound, or when tests pin a
+  semantic obstruction that every attempted construction breaks. A
+  syntax-level lookup table does not count as a generator. If one more
+  executed round produces neither a construction nor a bound, the row
+  moves to [Parked](#parked): one line there, its known state in the
+  language's proof page. The language stays, and its status-table cells
+  keep their vocabulary; [curation](limitations.md#curation) alone admits
+  and removes languages.
+  An unproved wall is not a lookup table.
 
   The three axes are totality (does the generator handle every table it
   claims?), generation time, and output size; execution time and workspace
@@ -115,29 +119,8 @@ implementation (unique backlinks measured 2026-10-06); add with
 ## Open problems
 
 Each item names its next executable step. When an item is answered, record
-the answer in the linked proof and remove the item.
-
-- Brainfuck, Polynomial and Factor growth constants:
-  [brainfuck-count](proofs/brainfuck-count.md#8-what-is-not-settled),
-  [polynomial](proofs/polynomial.md#explicit-constants),
-  [factor](proofs/factor.md#open-problems).
-
-- **Malbolge's first unreachable arity.** The shipped cap is 16 inputs.
-  Counting excludes some 18-input tables; 17 remains undecided, and a
-  build needs more than two table bits per cell across almost the whole
-  store. Packing uses 49,152 cells, and the five-state decoder executes
-  all 2,744 one-group cases. Neither placement nor sharing setup
-  between the address fold, row selector and decoder fits them: the
-  shared union is 10,324 cells against a 9,897-cell complement, and the
-  decoder's 1,173 conflicting overlaps are the binding term. Next: shrink
-  the decoder or share more of its common initialization. See [the construction
-  record](proofs/malbolge-scaling.md#seventeen-navigation-is-linear-in-address-so-packing-helps-measured).
-  Proving impossibility instead needs a density lemma: cut the count by
-  `2**46076`, or bound a normal-form representative's dependence by
-  24,434 cells. A per-program dependence cut is false (`'o'*59046 + '/<v'`
-  computes the one-input identity and depends on all 59,049 cells), and
-  length and alphabet cuts are closed; [limitations](limitations.md#boolean-generators)
-  records the controls.
+the answer in the linked proof and remove the item. An item that stalls
+for a round moves to [Parked](#parked).
 
 - **Vandevelo structural scaling.** Clause count is under `17*2**n/n`
   for every table: `_assure` puts a half-average direction on each level
@@ -174,3 +157,22 @@ the answer in the linked proof and remove the item.
 Controls are in `tests/proofs/test_research_tracks.py`. The linked proofs
 close ordered input-forgetting construction, generated-family loading
 bounds, and the weighted-description theorem.
+
+## Parked
+
+Stalled problems, one line each; detail lives in the linked proof page. A
+line changes only when its next step does.
+
+- **Brainfuck behaviour count.** Next: count balanced bodies by the
+  context-free system or a depth-indexed transfer matrix
+  ([brainfuck-count](proofs/brainfuck-count.md#8-what-is-not-settled)).
+- **Brainfuck on bounded inputs.** Next: establish Theorem 6's limit or
+  sharpen either side ([brainfuck-count](proofs/brainfuck-count.md#8-what-is-not-settled)).
+- **Polynomial's constant.** Next: replace the instruction profile or raise
+  the coefficient-mass bound ([polynomial](proofs/polynomial.md#explicit-constants)).
+- **Factor leading constant.** Next: a sound local rewrite lowering the
+  lower side's Perron root, or a cheaper weighted command stream
+  ([factor](proofs/factor.md#open-problems)).
+- **Malbolge's first unreachable arity.** Next: shrink the decoder or share
+  more of its common initialization
+  ([malbolge-scaling](proofs/malbolge-scaling.md#open-problems)).
