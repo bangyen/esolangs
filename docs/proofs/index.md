@@ -24,7 +24,7 @@ the coverage arguments.
 In `tests/proofs/`, fast-band `test_ledger.py` checks registry consistency,
 and `test_schemes.py` checks lookup and parameterized rows (`tree` and
 `minterms` have no per-row check). Deeper checks live in `tests/proofs/deep/`.
-`all_generators.py` checks all 77 constructions: flipping each table row
+`all_generators.py` checks all 79 constructions: flipping each table row
 changes the emitted program at the tested arities, and each construction
 completes an arity ladder on both table shapes. This checks the counting half
 of each scheme. Four generators -- A Painter Ant, ArrowQueue, Container and
@@ -423,7 +423,7 @@ construction.  Parity at thirteen inputs is 966568 digits, built in
 three seconds with the prime powers multiplied as a balanced tree, and
 the interpreter decodes it to the tree the generator encoded.
 
-Accordingly, this ledger records 75 theoretical totality arguments and two
+Accordingly, this ledger records 76 theoretical totality arguments and two
 proved language exceptions under the source-embedded contract.
 Every other row is `Total` or theoretically total past a resource ceiling.
 

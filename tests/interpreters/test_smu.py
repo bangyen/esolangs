@@ -55,9 +55,17 @@ def test_commands(code: str, stdin: str, expected: str) -> None:
     assert _run(code, stdin) == expected
 
 
-@pytest.mark.parametrize("code", ["(+", ")", "a(b)a", "a(+)"])
-def test_malformed_source(code: str) -> None:
-    with pytest.raises(ValueError):
+@pytest.mark.parametrize(
+    ("code", "match"),
+    [
+        ("(+", r"unmatched '\('"),
+        (")", r"unmatched '\)'"),
+        ("a(b)a", "defined inside macro"),
+        ("a(+)", "never closed"),
+    ],
+)
+def test_malformed_source(code: str, match: str) -> None:
+    with pytest.raises(ValueError, match=match):
         _run(code)
 
 

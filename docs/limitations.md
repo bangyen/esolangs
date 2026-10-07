@@ -229,8 +229,8 @@ Existing fame exceptions must still clear the bar. Whitespace was removed at
 
 The 2026-10-06 census (`tests/fixtures/curation.json`) records each
 language's backlinks and route: 21 clear the fame gate and 54 are first
-implementations, Smu (4, Unimplemented, remeasured 2026-10-07) added
-after. Six were implemented elsewhere when added, all before the rule was
+implementations; SStack (4) and Smu (4, remeasured 2026-10-07), both
+Unimplemented, were added after. Six were implemented elsewhere when added, all before the rule was
 written down on 2026-09-27, and are grandfathered: BIO (ais523),
 BF-PDA (Madk, 2010), 123 (a 2012 VB.NET interpreter), NoComment, Sophie
 (their authors') and Jaune (two others'). Befunge-98 (Funge-98, 31, two
@@ -240,7 +240,9 @@ A route admits a language only when its specification fixes the core
 semantics. 3D Brainfuck was removed on 2026-10-06: its page never says how
 a linear source places blocks in the grid or what the generation pointer
 does, so its interpreter invented the core, the invented semantics the
-大白话 deferral rules out.
+大白话 deferral rules out. Transistor (2) was built and dropped on
+2026-10-07 for the same reason: its page gives no grammar and no I/O, and
+its one loop example calls an undefined `or`.
 
 Bitwise Cyclic Tag (181) also adds the cyclic-schedule axis. Deadfish (315)
 is interpreter-only because it has no input vocabulary.

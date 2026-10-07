@@ -91,18 +91,6 @@ history; standing rules and proved limits are in [limitations](limitations.md).
   n=11,13,15. Parity tables read no higher. All sit inside the measured
   4.4 contract; that is a measurement, not a proof of linearity.
 
-## Candidate languages
-
-Screened 2026-10-05 from 54 Category:Unimplemented pages. Each is a first
-implementation (unique backlinks measured 2026-10-06); add with
-`/new-language`, ranked.
-
-- **[Transistor](https://esolangs.org/wiki/Transistor)** (2 backlinks).
-  Tri-state values (true, false, floating), N/P transistors and pull
-  resistors as the only primitives, plus `circuit`, `let` and `while`.
-  Generator: a mux fold with inputs as `let` lines, O(T). Gaps: no grammar,
-  no I/O (output would be a chosen variable), computational class unstated.
-
 ## Open problems
 
 Each item names its next executable step. When an item is answered, record
