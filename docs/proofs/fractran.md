@@ -1146,6 +1146,77 @@ still agrees, and wider output regressions retain the sixteen-input checks.
 These controls support the implementation invariants; the asymptotic
 bound follows from the arithmetic and rough-number estimates above.
 
+### Direct chunks with exact cleanup
+
+Rank selection is unnecessary if table data may appear in the starting
+exponents and cleanup guards. `tests/proofs/_fractran_chunks.py` gives a
+named construction under the normal sparse-factor execution contract.
+Let `b=max(1,n-bit_length(n))` and `k=ceil(T/b)`. Each consecutive block
+of at most `b` table entries gives a little-endian binary value `a_i`.
+Initialize feature prime `f_i` with exponent `a_i+1`, alongside the input
+primes, mapping flag `29` and decoder constant `103**2`. The extra unit
+keeps every feature present even for a zero table.
+
+The input loaders put row `r` in register `107`. Descending mapping rules
+
+    13**(i+1) / (29*107**(b*i))
+
+choose block `i=floor(r/b)` and leave local bit index `j=r-b*i`. For each
+`i` in descending order, place its transfer before its exit:
+
+    17**(i+1)*7 / (13**(i+1)*f_i),
+    23 / 13**(i+1).
+
+Descending bridges `13**(i+1)/17**(i+1)` restore the selected phase after
+each transfer. Priority therefore drains exactly the selected feature
+into register `7`, then exits. The shared rule `109/(23*7)` removes its
+marker and enters the fixed bit decoder with value `a_i` and index `j`.
+Putting the marker guard on every block exit instead would attach `k`
+secondary guards to register `7`; the shared rule avoids waking them
+during the decoder's repeated divisions. The executed controls retain
+exactly four secondary watchers on register `7`.
+
+After decoding, append `1/f_i**(a_i+1)` for every feature. Unselected
+features still have their exact initial exponents and disappear in one
+firing each; the selected feature is already absent. Every cleanup guard
+is positive, including on a zero block, so none becomes an unconditional
+`1/1` rule. The halt value is precisely `1` or `2`.
+
+Here `b=Theta(n)`, `k=Theta(T/log T)` and `2**b=O(k)`. Transfer, decoding
+and cleanup use `O(k+n)` firings, and the source has exactly
+`5k+n+257` fractions. Its literals have `O(n)` digits, apart from the
+input-exponent total `O(n**2)`, giving `O(T)` characters. Generation
+parses blocks and emits rules directly, with no permutation selector;
+the retained prime sieve and rendering still give `O(T)` word work.
+Loading has the earlier `O(T)` word bound: each feature base occurs three
+times, which already guarantees the actual-base sieve branch eventually.
+All sufficiently large sources use the cursor even on a zero table,
+because initial support is at least `k+2`.
+
+For cursor execution, phase changes use their frequent primary anchors.
+Each feature's secondary live guard crosses once; the mapping flag's
+secondary guards cross once, and decoder register watchers are fixed in
+number. Hence `D+H=O(k+n+F)` and normal execution has `O(T)` word work.
+Generation, loading and execution still fit `O(T log T)` bit work in the
+materialized-word model. The retained generation sieve supplies the same
+matching lower bound. Removing rank selection therefore removes one
+bottleneck, without proving a bit-linear pipeline.
+
+The sparse state occupies `O(T)` bits. The mathematical initial integer
+can instead have `Theta(T**2/log T)` bits on an all-one table: feature
+exponents are `Theta(T/n)` and their primes have `Theta(n)` bits. This
+construction therefore relies on sparse factors; materializing that
+integer is outside its bound. It also does not preserve the earlier
+table-independent starting value or fraction-multiset invariant.
+
+Executed controls cover all 2,122 queries through three inputs, with 74
+independent literal-arithmetic queries through two inputs. Seeded
+first/interior/last-row queries execute through sixteen inputs, with
+zero- and one-table cleanup controls at eight. At sixteen inputs,
+`b=11`, `k=5,958`, the source has 558,000 characters and 30,063 fractions;
+the three queries use 84,912, 103,704 and 31,060 firings. These are
+construction controls, not a claim that it is the practical generator.
+
 ## The other end: the row-addressing tree
 
 The generator that shipped before this was a decision tree with one prime

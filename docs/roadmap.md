@@ -84,10 +84,10 @@ bounds, and the weighted-description theorem.
 Stalled problems, one line each; detail lives in the linked proof page. A
 line changes only when its next step does.
 
-- **FRACTRAN bit-linear pipeline.** Next: amortize selector addressing or
-  replace the Fenwick access schedule; packed counters execute correctly,
-  but rank arithmetic and `Theta(T)` full-word cell visits retain the gap
-  ([fractran](proofs/fractran.md#matched-bit-cost-for-the-materialized-pipeline)).
+- **FRACTRAN bit-linear pipeline.** Next: reduce prime generation, literal
+  conversion and cursor bit cost; direct chunks remove rank selection,
+  but the materialized sieve still forces `Theta(T log T)` generation
+  ([fractran](proofs/fractran.md#direct-chunks-with-exact-cleanup)).
 - **Brainfuck behaviour count.** Next: count balanced bodies by the
   context-free system or a depth-indexed transfer matrix
   ([brainfuck-count](proofs/brainfuck-count.md#8-what-is-not-settled)).
