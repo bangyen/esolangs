@@ -45,11 +45,12 @@ def test_trailing_noise_does_not_complete_a_kink() -> None:
 )
 def test_return_bay_clearance_and_body_axis(spacing, x, possible, monkeypatch):
     target = render.Node("?", nonzero=render.Node("o"))
-    monkeypatch.setattr(render, "_subtree_extent", lambda _node: (0, 10, -2, 2))
-    monkeypatch.setattr(render, "_arm_spacing", lambda _node: spacing)
+    monkeypatch.setattr(render, "_subtree_extent", lambda _node, _plan: (0, 10, -2, 2))
+    monkeypatch.setattr(render, "_arm_spacing", lambda _node, _plan: spacing)
+    plan = render._Plan()  # noqa: SLF001
     # In the body's frame this is the near edge (y=0), strictly between its sides.
     legs = render._loop_return_legs(  # noqa: SLF001 - routing premises under test
-        (-x, spacing), target, {id(target): ((0, 0), (1, 0))}
+        (-x, spacing), target, {id(target): ((0, 0), (1, 0))}, plan
     )
     assert (legs is not None) is possible
 
