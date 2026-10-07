@@ -10,10 +10,9 @@ on:
 # interpreters -- the lint job holds the 3.12 floor `requires-python`
 # promises, and the test matrix spans 3.12/3.13/3.14.  A bare `uv run`
 # re-reads that pin, sees the synced `.venv` does not match it, and *deletes
-# and recreates* the environment -- re-syncing without `--extra dev`, which
-# drops pre-commit, pytest, and mypy and fails with "Failed to spawn".
-# `UV_NO_SYNC` makes the explicit `uv sync` above each run the single
-# authority over the environment.
+# and recreates* the environment on the pinned interpreter instead of the
+# one the job set up.  `UV_NO_SYNC` makes the explicit `uv sync` above each
+# run the single authority over the environment.
 env:
   UV_NO_SYNC: "1"
 
@@ -37,7 +36,7 @@ jobs:
     # it -- which would quietly move this job to whatever dev is on.  The
     # lint job holds the floor `requires-python` promises, so it says so.
     - name: Install dependencies
-      run: uv sync --extra dev --python 3.12
+      run: uv sync --group dev --python 3.12
 
     - name: Run pre-commit
       run: uv run pre-commit run --all-files
@@ -126,7 +125,7 @@ jobs:
         python-version: ${{ matrix.python-version }}
 
     - name: Install dependencies
-      run: uv sync --extra dev --python ${{ matrix.python-version }}
+      run: uv sync --group dev --python ${{ matrix.python-version }}
 
     - name: Test with pytest (shard ${{ matrix.shard }} of 2)
       run: uv run python scripts/pytest_shard.py --marker "not slow and not weekly" --shard ${{ matrix.shard }} --shards 2 -- -n auto
@@ -153,7 +152,7 @@ jobs:
         python-version: "3.14"
 
     - name: Install dependencies
-      run: uv sync --extra dev --python 3.14
+      run: uv sync --group dev --python 3.14
 
     # Coverage is consumed from one leg only (the changed-line gate below),
     # and that leg is now 3.14, because which interpreter measures it
@@ -238,7 +237,7 @@ jobs:
     # Explicit, like every other sync here: with `.python-version`
     # committed, a bare `uv sync` would follow the pin.
     - name: Install dependencies
-      run: uv sync --extra dev --python 3.14
+      run: uv sync --group dev --python 3.14
 
     - name: Test one slow shard
       run: uv run python scripts/pytest_shard.py --marker "slow and not weekly" --durations tests/fixtures/slow_durations.json --shard ${{ matrix.shard }} --shards 4 -- -n auto
@@ -266,7 +265,7 @@ jobs:
     # Explicit, like every other sync here: with `.python-version` committed,
     # a bare `uv sync` would follow the pin rather than the 3.12 set up above.
     - name: Install dependencies
-      run: uv sync --extra dev --python 3.12
+      run: uv sync --group dev --python 3.12
 
     - name: Check generated documentation
       run: uv run python scripts/check_generated_docs.py
@@ -286,7 +285,7 @@ jobs:
         python-version: "3.12"
 
     - name: Install dependencies
-      run: uv sync --extra dev --python 3.12
+      run: uv sync --group dev --python 3.12
 
     - name: Run bandit security check
       run: uv run --with bandit bandit -r src -f json -o bandit-report.json
@@ -301,6 +300,8 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
+        # The floor `requires-python` promises and the newest classifier.
+        python-version: ["3.12", "3.14"]
     defaults:
       run:
         shell: bash
@@ -309,11 +310,11 @@ jobs:
     - uses: astral-sh/setup-uv@v7
     - uses: actions/setup-python@v7
       with:
-        python-version: "3.12"
+        python-version: ${{ matrix.python-version }}
     - name: Build and install the wheel without extras
       run: |
-        uv build --python 3.12
-        uv venv --python 3.12 .artifact-venv
+        uv build --python ${{ matrix.python-version }}
+        uv venv --python ${{ matrix.python-version }} .artifact-venv
         if [ "$RUNNER_OS" = "Windows" ]; then
           artifact_python="$PWD/.artifact-venv/Scripts/python.exe"
         else
@@ -347,7 +348,7 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
     - name: Install test dependencies
-      run: uv sync --extra dev --python ${{ matrix.python-version }}
+      run: uv sync --group dev --python ${{ matrix.python-version }}
     - name: Exercise paths, deadlines, output limits and worker cleanup
       run: >
         uv run pytest -q -o addopts=""

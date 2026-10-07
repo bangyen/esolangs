@@ -3,7 +3,7 @@
 # Not covered here: the hook `rev`s in .pre-commit-config.yaml.  Dependabot
 # has no pre-commit ecosystem, so those are updated by `pre-commit autoupdate`
 # by hand.  Keep the ruff and mypy revs there in step with the exact pins in
-# pyproject.toml's dev extra, which this file does watch.
+# pyproject.toml's dev dependency group, which this file does watch.
 #
 # That rule is now enforced: the check-hook-pins hook fails when a rev and a
 # pin disagree.  So a Dependabot PR that bumps ruff or mypy here will fail

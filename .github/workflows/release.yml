@@ -71,7 +71,7 @@ jobs:
       with:
         python-version: "3.14"
     - name: Install verification dependencies
-      run: uv sync --extra dev --python 3.14
+      run: uv sync --group dev --python 3.14
     - name: Verify the release commit
       env:
         PYTEST_ADDOPTS: "-n auto"
@@ -87,13 +87,25 @@ jobs:
     - name: Install uv
       uses: astral-sh/setup-uv@v7
 
+    # The floor `requires-python` promises and the newest classifier; the
+    # wheel smoke below runs on both.
     - name: Set up Python
       uses: actions/setup-python@v7
       with:
-        python-version: "3.12"
+        python-version: |
+          3.14
+          3.12
 
+    # Wheel timestamps come from the tagged commit, not the clock, so
+    # rebuilding the tag with the same setuptools gives the same wheel bytes.
+    # The sdist stays unreproducible: setuptools ignores the variable for
+    # tar mtimes and the gzip header.  Exported to the job so the sdist
+    # rebuild below is stamped the same way.
     - name: Build the sdist and wheel
-      run: uv build
+      run: |
+        SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
+        echo "SOURCE_DATE_EPOCH=$SOURCE_DATE_EPOCH" >> "$GITHUB_ENV"
+        SOURCE_DATE_EPOCH="$SOURCE_DATE_EPOCH" uv build --python 3.12
 
     # Catches a README that PyPI would reject at upload, after the tag exists.
     - name: Check the distribution metadata
@@ -101,22 +113,25 @@ jobs:
 
     - name: The built wheel installs and runs with and without optional extras
       run: |
-        uv venv --python 3.12 /tmp/relcheck
-        uv pip install --python /tmp/relcheck/bin/python dist/*.whl
-        /tmp/relcheck/bin/python -I scripts/smoke_distribution.py
         wheels=(dist/*.whl)
-        uv pip install --python /tmp/relcheck/bin/python "${wheels[0]}[math]"
-        /tmp/relcheck/bin/python -I scripts/smoke_distribution.py --math
-        uv pip install --python /tmp/relcheck/bin/python "${wheels[0]}[image]"
-        /tmp/relcheck/bin/python -I scripts/smoke_distribution.py --math --image
+        for version in 3.12 3.14; do
+          venv="/tmp/relcheck-$version"
+          uv venv --python "$version" "$venv"
+          uv pip install --python "$venv/bin/python" "${wheels[0]}"
+          "$venv/bin/python" -I scripts/smoke_distribution.py
+          uv pip install --python "$venv/bin/python" "${wheels[0]}[math]"
+          "$venv/bin/python" -I scripts/smoke_distribution.py --math
+          uv pip install --python "$venv/bin/python" "${wheels[0]}[image]"
+          "$venv/bin/python" -I scripts/smoke_distribution.py --math --image
+        done
 
     - name: Rebuild and test the sdist independently
       run: |
         mkdir /tmp/sdist-source
         tar -xzf dist/*.tar.gz -C /tmp/sdist-source --strip-components=1
         uv build --wheel /tmp/sdist-source --out-dir /tmp/sdist-wheel
-        uv pip install --python /tmp/relcheck/bin/python --reinstall /tmp/sdist-wheel/*.whl
-        /tmp/relcheck/bin/python -I scripts/smoke_distribution.py --math --image
+        uv pip install --python /tmp/relcheck-3.12/bin/python --reinstall /tmp/sdist-wheel/*.whl
+        /tmp/relcheck-3.12/bin/python -I scripts/smoke_distribution.py --math --image
 
     - uses: actions/upload-artifact@v7
       with:

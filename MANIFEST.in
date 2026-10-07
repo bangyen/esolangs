@@ -1,0 +1,4 @@
+# setuptools adds tests/test*.py to every sdist by default, which shipped the
+# top-level test files without conftest.py, the subpackages, or the fixtures
+# they need -- a suite that cannot run.  The tests live in the repository.
+prune tests

@@ -514,8 +514,8 @@ def _ensure_dev_deps() -> None:
         return
     if shutil.which("uv") is None:
         return
-    print("dev dependencies missing; running `uv sync --extra dev` ...")
-    subprocess.run(["uv", "sync", "--extra", "dev"], cwd=ROOT, check=False)
+    print("dev dependencies missing; running `uv sync --group dev` ...")
+    subprocess.run(["uv", "sync", "--group", "dev"], cwd=ROOT, check=False)
 
 
 def _should_stream(steps: int, *, quiet: bool, verbose: bool) -> bool:
