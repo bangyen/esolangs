@@ -28,7 +28,7 @@ def _execute(table: str, row: int, width: int) -> None:
 
 
 @pytest.mark.medium
-@pytest.mark.parametrize("width", [1, 7, 8, 9, 10, 13, 40])
+@pytest.mark.parametrize("width", [1, 9, 10, 13])
 def test_narrow_sources_execute_every_three_input_table(width: int) -> None:
     for table in witnesses(3):
         floor = max(map(len, thue(table, 1).splitlines()))

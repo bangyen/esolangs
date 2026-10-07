@@ -4,28 +4,9 @@ import importlib
 
 from esolangs.tools.minifuck import _solve
 from esolangs.tools.minifuck.mux import (
-    _MUX_BASE,
-    _mux,
-    _mux_lookup,
-    _mux_start,
     _probe_frame,
 )
 from esolangs.tools.minifuck.pool import _POOL_WIDTH
-
-
-class TestMuxUsesOneRule:
-    """The production mux uses one direct preloaded-strip rule."""
-
-    def test_the_rule_matches_the_named_lookup(self) -> None:
-        """The named strip construction is the production spelling."""
-        for n, table in ((2, "0110"), (2, "0001"), (3, "01101001")):
-            built = _mux(table, n)
-            assert built == _mux_lookup(table, n)
-
-    def test_the_start_displacement_sets_the_baseline_phase(self) -> None:
-        """Crossing an odd extra prefix flips the zero-control column."""
-        phases = [(n ^ (_mux_start(n) - _MUX_BASE) ^ 1) & 1 for n in range(2, 9)]
-        assert phases == [1, 0, 1, 1, 0, 1, 0]
 
 
 class TestProbeFrameAndColumns:

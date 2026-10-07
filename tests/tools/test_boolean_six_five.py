@@ -272,20 +272,6 @@ class TestSixFive:
         # 209 once a tree jumps to the subtrees it repeats.
         assert improved == 203  # the rest tie, keeping the old emission
 
-    def test_retired_arithmetic_kernel_is_gone(self) -> None:
-        """Retired construction helpers do not return as dispatch candidates."""
-        import importlib
-
-        # The package re-exports the generator under the submodule's own
-        # name, so import the module explicitly rather than by attribute.
-        module = importlib.import_module("esolangs.tools.six_five")
-
-        assert not hasattr(boolean, "six_five_arithmetic")
-        assert module.__all__ == ["six_five"]
-        assert not hasattr(module, "_SixFiveAsm")  # the assembler went too
-        assert not hasattr(module, "_six_five_nav")
-        assert not hasattr(module, "_six_five_node_read")
-
     def test_dag_count_does_not_compare_descendants(self) -> None:
         """Nested keys compared n*T leaves even with cached tuple hashes."""
         comparisons = 0

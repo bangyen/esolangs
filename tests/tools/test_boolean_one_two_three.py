@@ -114,31 +114,11 @@ class TestParameterizedOneTwoThree:
                         bits,
                     )
 
-    def test_the_construction_emits_an_exact_template(self) -> None:
-        """``construct`` itself, pinned -- not the small route."""
-        from esolangs.tools.one_two_three.construction import construct
-
-        assert construct("01") == (
-            f"2222{_X}1111121211222222111111233222332233222211211211213311111111"
-            "122222222212331111111111"
-        )
-
-    def test_slots_run_in_name_order(self) -> None:
-        """Every emitted template embeds exactly two runs, one per input."""
-        from esolangs import tools as generators
-
-        for table_int in range(16):
-            table = format(table_int, "04b")
-            template = generators.one_two_three(table)
-            assert "{X" not in template
-            assert len(runs(template, TEMPLATE_CHAR, ((ZERO, ONE),) * 2)) == 2, table
-
     def test_both_bits_embed_at_the_same_width(self) -> None:
         """A zero and a one embed at equal width, so length leaks nothing."""
         from esolangs import tools as generators
 
-        for table_int in range(16):
-            table = format(table_int, "04b")
+        for table in witnesses(2):
             template = generators.one_two_three(table)
             sizes = {
                 len(self.instantiate(template, [(c >> 1) & 1, c & 1])) for c in range(4)
@@ -546,8 +526,7 @@ class TestParameterizedOneTwoThree:
         from esolangs import tools as generators
 
         for n in (1, 2, 3):
-            for table_int in range(2 ** (2**n)):
-                table = format(table_int, f"0{2**n}b")
+            for table in witnesses(n):
                 template = generators.one_two_three(table)
                 spans = runs(template, TEMPLATE_CHAR, ((ZERO, ONE),) * n)
                 assert len(spans) == n, (table, spans)

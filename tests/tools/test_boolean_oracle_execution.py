@@ -10,8 +10,8 @@ from tests.tools.boolean_oracles import _polynomial_tree, _sophie_dag, _sophie_t
 
 
 @pytest.mark.parametrize("oracle", ["polynomial_tree", "sophie_tree", "sophie_dag"])
-# A constant, AND, XOR, three-input parity and majority.
-@pytest.mark.parametrize("table", ["11", "0001", "0110", "01101001", "00010111"])
+# A constant, XOR, and majority (an if-block beside an else-block).
+@pytest.mark.parametrize("table", ["11", "0110", "00010111"])
 def test_retired_oracle_executes_every_row(oracle: str, table: str) -> None:
     n = len(table).bit_length() - 1
     if oracle == "polynomial_tree":

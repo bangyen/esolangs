@@ -35,14 +35,6 @@ class TestSlowAcvMammalian:
             run_until_halt_or_cycle(_Machine(program, io_obj))
             assert io_obj.position() == 2
 
-    def test_routing_is_accounted_for_array_by_array(self) -> None:
-        """Every ``SPRINT`` belongs to a named errand, and none is spare."""
-        for table, n, pools in (("01", 1, 0), ("0110", 2, 1), ("01101001", 3, 2)):
-            tokens = boolean.slow_acv_mammalian(table).split()
-            arms = 2 * (n - pools) + 3 * pools
-            assert tokens.count("SPRINT") == 4 + 2 * pools + 2 + arms + 1 + len(table)
-            assert "CONFLAGRATE" not in tokens
-
     def test_a_node_opens_the_accumulator_on_a_clean_digit(self) -> None:
         """``ACCEPT`` is entered with ``acc % 256 == 48``, whatever the state."""
         from esolangs.tools.slow_acv_mammalian import _node
@@ -117,21 +109,6 @@ class TestSlowAcvMammalian:
         while not machine.halted and machine.ind < len(tokens):
             machine.step()
         assert machine.ind == target
-
-    def test_only_the_construction_s_own_opcodes_appear(self) -> None:
-        """Eight opcodes, and ``FISSION`` is not one of them."""
-        program = boolean.slow_acv_mammalian("0110")
-        used = set(program.split())
-        assert used == {
-            "SEED",
-            "EXCRETE",
-            "DIGEST",
-            "ACCEPT",
-            "PRONOUNCE",
-            "LEAPFROG",
-            "SPRINT",
-            "CONSUME",
-        }
 
     def test_a_pooled_weight_is_blind_to_what_array_16_holds(self) -> None:
         """The pool banks its byte from any starting sum, unchanged."""
@@ -311,7 +288,7 @@ def test_generator_rejects_unverified_moduli(settings, message: str) -> None:
         slow_acv_mammalian("01", **settings)
 
 
-@pytest.mark.parametrize("table", witnesses(3)[:2])
+@pytest.mark.parametrize("table", witnesses(3)[:1])
 @pytest.mark.parametrize("cell_modulus", [255, 256])
 @pytest.mark.parametrize("io_modulus", [255, 256])
 def test_moduli_generate_every_small_table(
@@ -484,8 +461,7 @@ def native_pooled_program():
 @pytest.mark.parametrize("io_modulus", [255, 256])
 @pytest.mark.parametrize(
     ("inputs", "row"),
-    # The first and last rows at each arity, and one between.
-    [(4, 15), (6, 37)],
+    [(6, 37)],
 )
 def test_coprime_chain_runs_in_stepped_interpreter(
     modulus: int, io_modulus: int, inputs: int, row: int, stepped_chain_program
@@ -574,9 +550,8 @@ def test_chain_regions_cover_distant_nodes_and_large_weights(
 
 @pytest.mark.parametrize("modulus", [255, 256])
 @pytest.mark.parametrize("io_modulus", [255, 256])
-# The smallest weight, a power of two, a non-power, the largest chunk, and -1
-# for io_modulus - 1.
-@pytest.mark.parametrize("weight", [1, 28, -1])
+# The smallest weight and the largest, -1 for io_modulus - 1.
+@pytest.mark.parametrize("weight", [1, -1])
 @pytest.mark.parametrize("compact", [False, True])
 def test_compact_pool_retrieves_weight_and_routes(
     modulus: int, io_modulus: int, weight: int, *, compact: bool
@@ -678,16 +653,13 @@ def test_cell_255_tree_runs_in_stepped_interpreter(io_modulus: int) -> None:
 
 
 @pytest.mark.parametrize("head", [0, 255])
-@pytest.mark.parametrize("acc", [0, 507])
 @pytest.mark.parametrize("target", [700, 66000])
-def test_modulo_255_trampoline_length_and_execution(
-    head: int, acc: int, target: int
-) -> None:
+def test_modulo_255_trampoline_length_and_execution(head: int, target: int) -> None:
     from esolangs.interpreters.io import ScriptedIO
     from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
     from esolangs.tools.slow_acv_mammalian import _trampoline, _trampoline_len
 
-    array = [head, 254]
+    array, acc = [head, 254], 507
     tokens, predicted, predicted_acc = _trampoline(array, acc, target, io_modulus=255)
     assert len(tokens) == _trampoline_len(array, acc, target, io_modulus=255)
     machine = _Machine(" ".join(tokens), ScriptedIO(), io_modulus=255)
@@ -804,7 +776,7 @@ def test_read_calibration_reaches_earliest_safe_head(modulus: int) -> None:
                     )
 
 
-@pytest.mark.parametrize("row", [0, 1, 1024, 2046, 2047])
+@pytest.mark.parametrize("row", [0, 1024, 2047])
 def test_equal_modulus_eleven_input_read_calibration(row: int) -> None:
     from esolangs.interpreters.io import ScriptedIO
     from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine

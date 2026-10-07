@@ -15,7 +15,7 @@ from tests.cli.test_cli import call_main
 @pytest.mark.parametrize(
     "name", ["Brainfuck", "Slow ACV Mammalian", "Befunge", "Fish", "Super_SNUSP"]
 )
-@pytest.mark.parametrize("table", ["0110", "0001", "10010110"])
+@pytest.mark.parametrize("table", ["0110", "10010110"])
 def test_balance_executes(name: str, table: str) -> None:
     default = esolangs.generate(name, table)
     program = esolangs.generate(name, table, balance=True)

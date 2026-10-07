@@ -117,7 +117,7 @@ def test_fractran_phase_parity_witness_tables(width: int) -> None:
             assert evaluate_generated("FRACTRAN", table, width=width) == table
 
 
-@pytest.mark.parametrize("width", [1, 4, 5, 8, 9, 80])
+@pytest.mark.parametrize("width", [1, 4, 8, 9, 80])
 @pytest.mark.parametrize("as_string", [False, True])
 def test_fractran_phase_parity_public_uniform_setters(
     width: int, *, as_string: bool

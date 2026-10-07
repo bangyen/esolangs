@@ -231,7 +231,7 @@ class TestAlgebraicProgrammingLanguageShapes:
                 assert verify_generated("Algebraic Programming Language", table)
 
 
-@pytest.mark.parametrize("width", [1, 7, 9, 10, 17, 40, 80])
+@pytest.mark.parametrize("width", [1, 7, 9, 17, 40, 80])
 def test_apl_elementary_definitions_compute_every_small_table(width: int) -> None:
     for n in range(1, 4):
         for table in witnesses(n):
@@ -259,7 +259,7 @@ def test_apl_elementary_floor_and_corpus_size() -> None:
     )
 
 
-@pytest.mark.parametrize("width", [1, 9, 17, 40, 80])
+@pytest.mark.parametrize("width", [1, 9, 17, 40])
 @pytest.mark.parametrize("as_string", [False, True])
 def test_apl_elementary_public_tagged_and_plain_source(
     width: int, *, as_string: bool

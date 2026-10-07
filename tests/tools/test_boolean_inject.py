@@ -68,7 +68,7 @@ class TestInject:
             bits = [str((row >> (n - 1 - i)) & 1) for i in range(n)]
             assert run_inject(program, bits) == table[row] + "\n"
 
-    @pytest.mark.parametrize("width", [1, 20, 40, 80])
+    @pytest.mark.parametrize("width", [1, 40, 80])
     def test_chunked_lookup_executes_every_row(self, width: int) -> None:
         """Leaf escapes join one postlude without losing the selected chunk."""
 

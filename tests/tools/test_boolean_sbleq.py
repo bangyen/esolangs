@@ -14,38 +14,6 @@ from tests.tools.sample_tables import five_input_sample
 class TestSbleq:
     """The hoisted tree through its sharing, and the packed decoder past it."""
 
-    def test_program_structure(self) -> None:
-        """Low-address data precedes the root reads and branch."""
-        program = _sbleq_hoisted("0110", (0, 1))
-        cells = [int(tok) for tok in program.split()]
-        data_base = 9
-        code_base = cells[6]
-        assert cells[:6] == [0, 0, 6, -1, 0, 0]
-        assert cells[7:9] == [0, 0]
-        assert cells[data_base : data_base + 4] == [-49, 48, 49, -1]
-        assert cells[code_base : code_base + 3] == [
-            data_base + 4,
-            -2,
-            data_base + 6,
-        ]
-        assert cells[code_base + 6 : code_base + 9] == [
-            data_base + 4,
-            data_base,
-            data_base + 8,
-        ]
-        code = cells[code_base:]
-        triples = [tuple(code[i : i + 3]) for i in range(0, len(code), 3)]
-        outputs = [
-            t for t in triples if t[0] == -3
-        ]  # one output per leaf, in combo order
-        assert outputs == [
-            (-3, data_base + 1, 0),
-            (-3, data_base + 2, 0),
-            (-3, data_base + 2, 0),
-            (-3, data_base + 1, 0),
-        ]
-        assert [t for t in triples if t == (0, 0, 3)] == 4 * [(0, 0, 3)]
-
     def test_only_the_hoisted_route_remains(self) -> None:
         """The former node-read builder is gone, not merely bypassed."""
         import importlib

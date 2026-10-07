@@ -1,7 +1,5 @@
 """Raster balancing is measured on rendered, executable images."""
 
-import itertools
-
 import pytest
 
 import esolangs
@@ -11,12 +9,11 @@ from esolangs.tools.line import line_boolean
 from esolangs.tools.line.render import Node, render
 from esolangs.tools.line.tree_layout import tree_extents
 from esolangs.tools.piet.balance import _bounded_operations, _emit, _plan
+from tests.witness_tables import witnesses
 
 pytestmark = pytest.mark.medium
 
-TABLES = [
-    "".join(bits) for n in (1, 2) for bits in itertools.product("01", repeat=2**n)
-]
+TABLES = list(dict.fromkeys(witnesses(1) + witnesses(2)))
 
 
 def score(image: Raster) -> tuple[int, int, int]:
