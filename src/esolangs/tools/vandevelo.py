@@ -54,34 +54,35 @@ gone; below density
 at its lowest point from that point's nearest differences instead,
 filled from its successors in row order when the probes fall short.
 
-The proposed linear-time charge covers candidate upkeep: a node costs its candidate
-count times its size to build, and is either harvested entirely (charged
-to its points, once per level) or dropped when a pool refresh retires
-its direction (at most the pool's size of them per refresh); removing a
-point updates the pool and every node holding it at the candidate count
-each; a refresh follows a fixed fraction of removals, so the pool's cost
-``T * ln(_CANDIDATES / 2)`` in all and a node's a constant per point it
-loses; the sparse tail costs a constant per point -- its order is
-threaded once in O(T), and a cube's probes, window and growth are
-bounded by the candidate count.  The sampled fallback
-fits the same charge: when no scored direction reaches the pigeonhole
-average on a dense working set, it scores :data:`_SAMPLES` uniform pair
-differences, ``_SAMPLES * |S|`` work, as many candidates more.  It is a
-heuristic; :func:`_assure` carries the bound, and on measured tables it
-never has to compute.  The per-cube peel this replaces rescanned the
-remainder for every cube, ``Theta(T**2 / word)``; this one measures
-x1.7--2.3 per added input over n=10..15 at 0.93--1.02 of its size.
-Dense tables measure 7.3--8.7 characters per entry at n=8..11.
+Nodes hold cosets, not points: a node ``l`` levels down is a union of
+cosets of its ``l``-dimensional span, stored as one representative each
+(:class:`_Node`), so building, scoring, removal, refresh and
+:func:`_assure` cost its coset count ``q``, and ``q`` at least halves a
+level.  A chain built in one pass costs a geometric sum even where its
+sizes stay near ``T`` -- with ``k`` zeros, level ``l`` misses at most
+``k * 2**l`` points, and a point per entry cost at least ``T * (n -
+log2(k) - 2)``.  Removal and refresh charge to cosets built: a coset
+leaves each node once, at the candidate count, and a refresh follows the
+loss of a quarter of the node.  The sampled fallback scores
+:data:`_SAMPLES` uniform pair differences, as many candidates more.  It
+is a heuristic; :func:`_assure` carries the bound, and on measured tables
+it never has to compute.  The sparse tail costs a constant per point: its
+order is threaded once in O(T), and a cube's probes, window and growth are
+bounded by the candidate count.
 
-The charge fails on near-full tables.  "Once per level" assumes chains of
-bounded depth.  With ``k`` zeros, level ``l`` of the first chain misses at
-most ``k * 2**l`` points, so it keeps two cosets for ``n - log2(k) - 1``
-levels, and building each visits all of ``|S|``: at least ``T * (n -
-log2(k) - 2)`` work.  Three or eight zeros measure 845--1090 ``n * T`` of
-scoring at n=10..15; random tables of density 0.1 to 0.9 stay flat at
-13--4,500 ``T``.  The dual-basis core below is a second term outside the
-charge, at most ``sqrt(2**(dim + 1))`` inputs a clause and 2% of the build
-at n=15.
+Linear time is not proved; three terms escape the charge.  A child rebuilt
+after it empties scans its parent's ``q`` cosets, and a rebuild need follow
+only one parent coset's removal, so these scans are bounded by ``q**2`` a
+node.  The children built under one node do total at most its cosets, so
+cosets built, with the scoring and removal they pay for, cost at most the
+level above a level, ``O(T * n)`` a chain; halving would need both halves
+of each child coset to leave together, which a cube harvested across the
+chain's span does not do.
+:func:`_nearest`'s sparse fallback lists points.  The dual-basis core
+below costs ``|core|**3 / 3`` a clause, ``O(T * n)`` proved.  Measured,
+element visits per entry are flat at n=10..14 -- three or eight zeros
+2,700--3,800 (17,000--28,000 and rising when nodes held points), density
+0.9 2,400--2,700, dense 500--900, quadratic forms 110--120.
 
 A cube's guard needs one part per constraint, and any basis of the cube's
 dual space will do.  :func:`_constraints` builds one from short relations:
@@ -168,18 +169,24 @@ def _points(mask: int) -> list[int]:
 
 
 def _nearest(
-    points: set[int], pivot: int, seen: set[int], n: int, cap: int, *, scan: bool = True
+    node: _Node, pivot: int, seen: set[int], n: int, cap: int, *, scan: bool = True
 ) -> list[int]:
-    """Return the ``cap`` nearest differences from ``pivot`` inside ``points``.
+    """Return the ``cap`` nearest differences from ``pivot`` inside ``node``.
 
-    Smallest by ``(bit_count, value)``, skipping ``seen``: the differences
-    are walked in that order -- each weight's values ascending, by Gosper's
-    next-permutation step -- testing membership, so a dense set yields its
-    head after about ``cap / density`` probes.  When four times ``cap``
-    probes have not filled the list the set is sparse and the whole of it
-    is listed instead, at its size; the answer is the same either way.
-    With ``scan`` off the probes' finds are returned as they stand.
+    Smallest by ``(bit_count, value)``, skipping ``seen`` and the node's
+    span: the differences are walked in that order -- each weight's values
+    ascending, by Gosper's next-permutation step -- testing membership, so
+    a dense set yields its head after about ``cap / density`` probes.  When
+    four times ``cap`` probes have not filled the list the set is sparse
+    and the whole of it is listed instead, at its size; the answer is the
+    same either way.  This is the one step on a node that costs points,
+    not cosets: listing only the representatives' differences costs
+    cosets but moves emitted size by up to 4% a table, either sign, at
+    n=8..12.  With ``scan`` off the probes' finds are returned as they
+    stand.
     """
+    reps = node.reps
+    reduce = node.reduce
     limit = 1 << n
     out: list[int] = []
     probes = 0
@@ -189,7 +196,8 @@ def _nearest(
             probes += 1
             if probes > 4 * cap:
                 break
-            if (pivot ^ v) in points and v not in seen:
+            cv = reduce(v)
+            if cv and (pivot ^ cv) in reps and v not in seen:
                 out.append(v)
                 if len(out) == cap:
                     return out
@@ -200,12 +208,14 @@ def _nearest(
             continue
         break
     if scan and len(out) < cap:
+        found = set(out)
+        span = node.span()
         extra = heapq.nsmallest(
             cap - len(out),
             (
                 (v.bit_count(), v)
-                for v in (pivot ^ p for p in points)
-                if v and v not in seen and v not in out
+                for v in (pivot ^ r ^ s for r in reps for s in span)
+                if v and reduce(v) and v not in seen and v not in found
             ),
         )
         out.extend(v for _, v in extra)
@@ -213,53 +223,109 @@ def _nearest(
 
 
 class _Node:
-    """A working set along a chain, with the pair sets of its candidates.
+    """A working set along a chain, held as its cosets, with candidate scores.
 
-    ``points`` is ``S``; ``cands[v]`` is ``|S & (S ^ v)|`` for each scored
-    direction ``v`` -- the pair *size*, not the pair set, because a removal
-    only ever drops two entries from it and keeping the set cost two
-    ``discard`` calls a direction a point.  ``span`` is the subspace spanned
-    by the chain's directions down to here; ``child`` is the greedy
-    continuation, kept while it has points; ``removed`` counts points gone
-    since the candidates were chosen.
+    The set ``S`` is a union of cosets of the subspace spanned by the
+    chain's directions down to here; ``reps`` holds one representative per
+    coset, the one zero on every pivot of the reduced basis ``pivots``
+    (``{leading bit: row}``), which is also the coset's least point.  Work
+    on a node is its coset count, not its size, and the count at least
+    halves a level.  ``cands[v]`` is ``|S & (S ^ v)|`` in points for each
+    scored direction ``v`` and ``canon[v]`` its reduction; ``cv`` is the
+    node's own direction reduced by its parent's basis and ``hi`` that
+    reduction's leading bit; ``child`` is the greedy continuation, kept
+    while it has points; ``removed`` counts points gone since the
+    candidates were chosen.
     """
 
-    __slots__ = ("cands", "child", "parent", "points", "removed", "span", "v")
+    __slots__ = (
+        "cands",
+        "canon",
+        "child",
+        "cv",
+        "dim",
+        "hi",
+        "parent",
+        "pivots",
+        "removed",
+        "reps",
+        "v",
+    )
 
     def __init__(
-        self, v: int, points: set[int], span: set[int], parent: _Node | None
+        self,
+        v: int,
+        cv: int,
+        reps: set[int],
+        pivots: dict[int, int],
+        parent: _Node | None,
     ) -> None:
         self.v = v
-        self.points = points
+        self.cv = cv
+        self.hi = cv.bit_length() - 1
+        self.reps = reps
+        self.pivots = pivots
+        self.dim = len(pivots)
         self.cands: dict[int, int] = {}
-        self.span = span
+        self.canon: dict[int, int] = {}
         self.child: _Node | None = None
         self.parent = parent
         self.removed = 0
 
+    @classmethod
+    def root(cls, points: set[int]) -> _Node:
+        """Return a chain's top, where every point is its own coset."""
+        return cls(0, 0, points, {}, None)
+
+    @property
+    def size(self) -> int:
+        """``|S|`` in points."""
+        return len(self.reps) << self.dim
+
+    def span(self) -> list[int]:
+        """Every element of the span, in ``2**dim`` work."""
+        out = [0]
+        for row in self.pivots.values():
+            out += [s ^ row for s in out]
+        return out
+
+    def reduce(self, x: int) -> int:
+        """Return the representative of ``x``'s coset: zero on every pivot."""
+        for bit, row in self.pivots.items():
+            if x >> bit & 1:
+                x ^= row
+        return x
+
+    def below(self, v: int) -> _Node:
+        """Return the node for ``S & (S ^ v)``, in work linear in ``reps``."""
+        cv = self.reduce(v)
+        hi = cv.bit_length() - 1
+        pivots = {b: r ^ cv if r >> hi & 1 else r for b, r in self.pivots.items()}
+        pivots[hi] = cv
+        reps = self.reps
+        pairs = {r ^ cv if r >> hi & 1 else r for r in reps if r ^ cv in reps}
+        return _Node(v, cv, pairs, pivots, self)
+
 
 def _score(node: _Node, dirs: list[int]) -> None:
     """Add the pair size of each direction in ``dirs`` to the node."""
-    pts = node.points
     for v in dirs:
-        if v in node.span or v in node.cands:
+        if v in node.cands:
             continue
-        node.cands[v] = _pairs(pts, v)
+        cv = node.reduce(v)
+        if cv:
+            node.canon[v] = cv
+            node.cands[v] = _pairs(node, cv)
 
 
-def _pairs(pts: set[int], v: int) -> int:
-    """Return ``|S & (S ^ v)|``."""
+def _pairs(node: _Node, cv: int) -> int:
+    """Return ``|S & (S ^ v)|`` in points, for ``v`` reduced to ``cv``."""
+    reps = node.reps
     count = 0
-    for p in pts:
-        if (p ^ v) in pts:
+    for r in reps:
+        if (r ^ cv) in reps:
             count += 1
-    return count
-
-
-def _pairset(node: _Node, v: int) -> set[int]:
-    """Return ``S & (S ^ v)``, recomputed only when a child is built."""
-    pts = node.points
-    return {p for p in pts if (p ^ v) in pts}
+    return count << node.dim
 
 
 def _best(node: _Node) -> tuple[int | None, int]:
@@ -280,28 +346,32 @@ def _ensure_popular(node: _Node, n: int) -> None:
     ``a ^ b`` of a uniform pair is a direction drawn by popularity, and the
     directions under half the average hold under ``2**n * |S|**2 / 2**(n+1)``
     of the ``|S|**2`` pairs, so each draw clears half the average with
-    probability at least a half.  :data:`_SAMPLES` draws cost what scoring
-    that many candidates does; the first to clear joins the candidates.
+    probability at least a half.  A uniform pair of points is a uniform
+    pair of cosets plus a span element that changes no pair count, so the
+    draw is between representatives.  :data:`_SAMPLES` draws cost what
+    scoring that many candidates does; the first to clear joins the
+    candidates.
     """
-    size = len(node.points)
+    size = node.size
     total = 1 << n
     if size * n < total:
         return
     _, best_c = _best(node)
     if best_c * total >= size * size:
         return
-    pts = list(node.points)
+    reps = list(node.reps)
     # Seeded by the set, so the program is a function of the table.
     rng = random.Random(size)  # nosec B311
     best_v = None
     for _ in range(_SAMPLES):
-        v = rng.choice(pts) ^ rng.choice(pts)
-        if v in node.span or v in node.cands:
+        v = rng.choice(reps) ^ rng.choice(reps)
+        if not v or v in node.cands:
             continue
-        count = _pairs(node.points, v)
+        count = _pairs(node, v)
         if count > best_c:
             best_v, best_c = v, count
     if best_v is not None:
+        node.canon[best_v] = best_v
         node.cands[best_v] = best_c
 
 
@@ -312,46 +382,31 @@ def _assure(node: _Node, n: int) -> None:
     in the quotient, of dimension ``m = n - j``, half the average over the
     nonzero directions is ``theta = q * (q - 1) / (2 * (2**m - 1))`` ordered
     pairs.  When no candidate reaches it, one that does is found in
-    ``O(|S| * (j + 1))`` work and joins the candidates.  Canonical coset
-    representatives are zero on the span's pivots; ``U`` is spanned by the
-    lowest ``a`` free coordinates, with ``2**a >= 2**(m + 1) / q``.  Its
-    cosets split the representatives into buckets, and by Cauchy--Schwarz
-    the pairs inside buckets number at least ``q**2 / 2**(m - a) - q >=
-    (2**a - 1) * theta``.  Counting bucket differences until that many are
-    seen -- about ``2 * q`` -- leaves some nonzero ``u`` in ``U`` with at
-    least ``theta`` by pigeonhole.  Only the chains the clause bound speaks
-    for call this, so it is a guarantee, not a search.
+    ``O(q)`` work and joins the candidates.  The representatives are zero
+    on the span's pivots; ``U`` is spanned by the lowest ``a`` free
+    coordinates, with ``2**a >= 2**(m + 1) / q``.  Its cosets split the
+    representatives into buckets, and by Cauchy--Schwarz the pairs inside
+    buckets number at least ``q**2 / 2**(m - a) - q >= (2**a - 1) *
+    theta``.  Counting bucket differences until that many are seen --
+    about ``2 * q`` -- leaves some nonzero ``u`` in ``U`` with at least
+    ``theta`` by pigeonhole.  Only the chains the clause bound speaks for
+    call this, so it is a guarantee, not a search.
     """
-    size = len(node.points)
-    j = len(node.span).bit_length() - 1
-    q = size >> j
+    size = node.size
+    j = node.dim
+    q = len(node.reps)
     if q < 2:
         return
     _, best_c = _best(node)
     if best_c > 1 and 2 * best_c * ((1 << n) - (1 << j)) >= size * (size - (1 << j)):
         return
-    pivots: dict[int, int] = {}
-    cur: _Node | None = node
-    while cur is not None and cur.parent is not None:
-        row = cur.v
-        for bit, prow in pivots.items():
-            if row >> bit & 1:
-                row ^= prow
-        hi = row.bit_length() - 1
-        for bit in pivots:
-            if pivots[bit] >> hi & 1:
-                pivots[bit] ^= row
-        pivots[hi] = row
-        cur = cur.parent
+    pivots = node.pivots
     m = n - j
     a = min(m, (((1 << (m + 1)) - 1) // q).bit_length())
     inside = sum(1 << b for b in [b for b in range(n) if b not in pivots][:a])
-    buckets: dict[int, set[int]] = {}
-    for p in node.points:
-        for bit, prow in pivots.items():
-            if p >> bit & 1:
-                p ^= prow
-        buckets.setdefault(p & ~inside, set()).add(p)
+    buckets: dict[int, list[int]] = {}
+    for p in sorted(node.reps):
+        buckets.setdefault(p & ~inside, []).append(p)
     # Stop at (2**a - 1) * theta ordered pairs, cleared of denominators.
     need = ((1 << a) - 1) * q * (q - 1)
     unit = 2 * ((1 << m) - 1)
@@ -368,25 +423,28 @@ def _assure(node: _Node, n: int) -> None:
         if seen * unit >= need:
             break
     v = min(counts, key=lambda u: (-counts[u], u))
-    node.cands[v] = _pairs(node.points, v)
+    node.canon[v] = v
+    node.cands[v] = _pairs(node, v)
 
 
-def _remove(node: _Node, p: int) -> None:
-    """Take ``p`` out of the node, its pair sets, and its chain below."""
-    if p not in node.points:
+def _remove(node: _Node, c: int) -> None:
+    """Take the coset represented by ``c`` out of the node and its chain below."""
+    reps = node.reps
+    if c not in reps:
         return
-    node.points.discard(p)
-    node.removed += 1
-    # ``cands[w]`` counts ``q`` with ``q`` and ``q ^ w`` both in the set;
-    # dropping ``p`` removes the entries ``q = p`` and ``q = p ^ w`` -- two
-    # exactly when ``p ^ w`` is still present, since neither counts alone.
-    for w in node.cands:
-        if (p ^ w) in node.points:
-            node.cands[w] -= 2
+    reps.discard(c)
+    node.removed += 1 << node.dim
+    # ``cands[w]`` counts points ``q`` with ``q`` and ``q ^ w`` both in the
+    # set; the leaving coset pairs with the one ``w`` away, so the count
+    # drops by both cosets' points exactly when that one is still present.
+    unit = 2 << node.dim
+    cands = node.cands
+    for w, cw in node.canon.items():
+        if (c ^ cw) in reps:
+            cands[w] -= unit
     child = node.child
     if child is not None:
-        _remove(child, p)
-        _remove(child, p ^ child.v)
+        _remove(child, c ^ child.cv if c >> child.hi & 1 else c)
 
 
 def _grow(alive: set[int], pivot: int, cands: list[int]) -> tuple[list[int], list[int]]:
@@ -427,12 +485,12 @@ class _Peel:
 
     def __init__(self, ones: set[int], n: int) -> None:
         self.n = n
-        self.root = _Node(0, ones, {0}, None)
+        self.root = _Node.root(ones)
         self.nodes: dict[int, _Node] = {}  # pooled direction -> its node
         self.tried: set[int] = set()  # directions scored this phase
         self.cubes: list[tuple[int, list[int]]] = []
         self.since = 0  # points removed since the pool was refreshed
-        _score(self.root, _nearest(ones, min(ones), {0}, n, _CANDIDATES))
+        _score(self.root, _nearest(self.root, min(ones), set(), n, _CANDIDATES))
         _ensure_popular(self.root, n)
 
     def make_child(self, parent: _Node, v: int) -> _Node:
@@ -442,13 +500,11 @@ class _Peel:
         best ``_INHERIT`` directions plus fresh nearest differences inside
         it.
         """
-        span = parent.span | {s ^ v for s in parent.span}
-        child = _Node(v, _pairset(parent, v), span, parent)
-        pts = child.points
+        child = parent.below(v)
         ranked = sorted(parent.cands.items(), key=lambda kv: (-kv[1], kv[0]))
         dirs = [w for w, _ in ranked if w != v][:_INHERIT]
         fresh = _nearest(
-            pts, min(pts), set(dirs) | span, self.n, _CANDIDATES - len(dirs)
+            child, min(child.reps), set(dirs), self.n, _CANDIDATES - len(dirs)
         )
         _score(child, dirs + fresh)
         _ensure_popular(child, self.n)
@@ -458,15 +514,14 @@ class _Peel:
         """Replace the node's pairless candidates with fresh nearest differences."""
         node.removed = 0
         for v in [v for v, c in node.cands.items() if c < 2]:
-            del node.cands[v]
+            del node.cands[v], node.canon[v]
             if node is self.root:
                 self.nodes.pop(v, None)
                 self.tried.discard(v)
-        pts = node.points
-        seen = set(node.cands) | node.span
-        _score(
-            node, _nearest(pts, min(pts), seen, self.n, _CANDIDATES - len(node.cands))
+        fresh = _nearest(
+            node, min(node.reps), set(node.cands), self.n, _CANDIDATES - len(node.cands)
         )
+        _score(node, fresh)
         _ensure_popular(node, self.n)
 
     def extend(self, node: _Node, *, certain: bool = False) -> int:
@@ -478,12 +533,12 @@ class _Peel:
         depth = 0
         cur = node
         while True:
-            if cur.child is not None and cur.child.points:
+            if cur.child is not None and cur.child.reps:
                 cur = cur.child
                 depth += 1
                 continue
             cur.child = None
-            if cur is not node and cur.removed >= _REFRESH * len(cur.points):
+            if cur is not node and cur.removed >= _REFRESH * cur.size:
                 self.refresh(cur)
             if certain:
                 _assure(cur, self.n)
@@ -498,28 +553,24 @@ class _Peel:
         """Remove ``p`` from the remainder and every set holding it."""
         _remove(self.root, p)
         for node in self.nodes.values():
-            pts = node.points
-            if p in pts:
-                _remove(node, p)
-            if p ^ node.v in pts:
-                _remove(node, p ^ node.v)
+            _remove(node, p ^ node.cv if p >> node.hi & 1 else p)
         self.since += 1
 
     def harvest(self, node: _Node) -> None:
         """Take every coset at the deepest level of the node's chain."""
         chain = [node]
-        while chain[-1].child is not None and chain[-1].child.points:
+        while chain[-1].child is not None and chain[-1].child.reps:
             chain.append(chain[-1].child)
         leaf = chain[-1]
         dirs = [x.v for x in chain]
-        span = sorted(leaf.span)
-        for p in sorted(leaf.points):
-            if p not in leaf.points:
+        span = leaf.span()
+        # A representative is its coset's least point.
+        for r in sorted(leaf.reps):
+            if r not in leaf.reps:
                 continue
-            coset = [p ^ s for s in span]
-            self.cubes.append((min(coset), list(dirs)))
-            for q in coset:
-                self.take(q)
+            self.cubes.append((r, list(dirs)))
+            for s in span:
+                self.take(r ^ s)
 
     def certify(self) -> _Node | None:
         """Bring the chain the proof speaks for up to date and return it.
@@ -548,7 +599,7 @@ class _Peel:
                 cur.child = None
                 return node
             child = cur.child
-            if child is None or child.v != best_w or not child.points:
+            if child is None or child.v != best_w or not child.reps:
                 child = cur.child = self.make_child(cur, best_w)
             cur = child
 
@@ -559,25 +610,25 @@ class _Peel:
         sparse_at = (1 << n) // max(_CANDIDATES, n)
         depth_target = n + 1
         tried = self.tried
-        while root.points:
-            if len(root.points) <= sparse_at:
+        while root.reps:
+            if len(root.reps) <= sparse_at:
                 self.sparse()
                 break
-            if self.since >= _REFRESH * len(root.points):
+            if self.since >= _REFRESH * len(root.reps):
                 self.since = 0
                 self.refresh(root)
-            for v in [v for v, node in self.nodes.items() if not node.points]:
+            for v in [v for v, node in self.nodes.items() if not node.reps]:
                 del self.nodes[v]
                 tried.discard(v)
             # 1. the deepest chain at least depth_target deep
             best: _Node | None = None
             best_key: tuple[int, int, int] | None = None
             for v, node in self.nodes.items():
-                if node.removed >= _REFRESH * len(node.points):
+                if node.removed >= _REFRESH * node.size:
                     self.refresh(node)
                 depth = self.extend(node) + 1
                 if depth >= depth_target:
-                    key = (depth, len(node.points), -v)
+                    key = (depth, node.size, -v)
                     if best_key is None or key > best_key:
                         best, best_key = node, key
             if best is not None:
@@ -610,7 +661,7 @@ class _Peel:
                 depth_target -= 1
                 tried.clear()
                 continue
-            p = min(root.points)
+            p = min(root.reps)
             self.cubes.append((p, []))
             self.take(p)
         return self.cubes
@@ -625,7 +676,7 @@ class _Peel:
         next points in that order fill the list, instead of a scan of the
         whole remainder per cube.
         """
-        alive = self.root.points
+        alive = self.root.reps
         # Point ``p`` is slot ``p + 1``; slot 0 heads the list.
         nxt = [0] * ((1 << self.n) + 2)
         prv = [0] * ((1 << self.n) + 2)
@@ -641,7 +692,7 @@ class _Peel:
             cands = list(pool)
             seen = {0, *pool}
             cands += _nearest(
-                alive, pivot, seen, self.n, _CANDIDATES - len(cands), scan=False
+                self.root, pivot, seen, self.n, _CANDIDATES - len(cands), scan=False
             )
             slot = nxt[pivot + 1]
             while slot and len(cands) < _CANDIDATES:

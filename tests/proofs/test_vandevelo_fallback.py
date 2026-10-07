@@ -14,12 +14,12 @@ def test_fallback_draws_a_half_average_direction(
     module = importlib.import_module("esolangs.tools.vandevelo")
     span = set(range(4))
     points = {base ^ offset for base in (0, 4, 8) for offset in span}
-    node = _Node(0, points, span, None)
+    node = _Node.root(points).below(1).below(2)
     draws = []
 
-    def counted(pts: set[int], v: int) -> int:
+    def counted(node: _Node, v: int) -> int:
         draws.append(v)
-        return _pairs(pts, v)
+        return _pairs(node, v)
 
     monkeypatch.setattr(module, "_pairs", counted)
     _ensure_popular(node, 6)
@@ -41,16 +41,15 @@ def test_assure_finds_a_half_average_direction() -> None:
     n = 8
     for density, span_dirs in ((0.05, []), (0.6, []), (0.97, []), (0.6, [0b1011])):
         points = {p for p in range(1 << n) if rng.random() < density}
-        root = _Node(0, points, {0}, None)
-        node = root
+        node = _Node.root(points)
         for v in span_dirs:
-            node = _Node(v, {p for p in points if p ^ v in points}, {0, v}, root)
+            node = node.below(v)
         _assure(node, n)
         direction, count = _best(node)
         assert direction is not None
-        assert direction not in node.span
-        assert count == _pairs(node.points, direction)
-        size, span = len(node.points), len(node.span)
+        assert node.reduce(direction)
+        assert count == _pairs(node, node.reduce(direction))
+        size, span = node.size, 1 << node.dim
         assert 2 * count * ((1 << n) - span) >= size * (size - span)
 
 

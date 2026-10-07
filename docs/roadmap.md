@@ -126,12 +126,13 @@ for a round moves to [Parked](#parked).
   for every table: `_assure` puts a half-average direction on each level
   of the chains the bound needs. Lines and commands per row are therefore
   `O(T)`, which closes execution time. Identifier references still carry
-  the extra factor. Generation is not linear as built: with `k` zeros the
-  first chain stays near full for `n - log2(k)` levels, at least `T*(n -
-  log2(k) - 2)` work, and three zeros measure about `860*n*T`. Next:
-  score near-full levels from their complement, whose misses at most
-  double a level, and bound the dual-basis core's aggregate work
-  ([proofs](proofs/index.md)). The identifier factor is Cohen and
+  the extra factor. Nodes hold coset representatives, so near-full
+  chains cost a geometric sum and generation measures flat: three zeros
+  take 2,700 to 3,200 visits a row at n=10..14, down from 16,800 to
+  23,600. Not proved: a child rebuilt after it empties rescans its
+  parent, bounded only by `q**2` a node, and the dual-basis core is only
+  `O(T*n)`. Next: charge rebuilds to the parent's losses, and bound the
+  core's aggregate work ([proofs](proofs/index.md)). The identifier factor is Cohen and
   Shinkar's open `O(log n)` gap in DNF-of-parities size. On tables whose
   cubes are under `2*log2(n)` dimensions, coset programs cost
   `Theta(DNF+(f) * n * log n)` characters. So neither linear output nor a

@@ -832,7 +832,7 @@
         "minterms"
       ],
       "qualification": "an affine-cube peel emits one guard line per coset of an affine cover of the 1-set",
-      "scaling": "open: O(T) lines and commands for every table, O(T log n) identifier text; the build costs at least T*(n - log2 k) with k zeros, and core work is only O(T*n)",
+      "scaling": "open: O(T) lines and commands for every table, O(T log n) identifier text; the build is measured flat, but child-rebuild scans are bounded only by q**2 a node and core work by O(T*n)",
       "execution": "linear: at most Q - G + 3C steps: Q ? reads, C comparisons, G guards' final loop? skipped",
       "workspace": "poly n: at most n * n registers; sqrt T below the cap",
       "evidence": "docs/proofs/index.md#vandevelo-identifier-and-fallback-audit"

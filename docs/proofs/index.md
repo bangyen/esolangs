@@ -334,7 +334,7 @@ and `tests/proofs/test_workspace_formulas.py` run them at small n; Painfuck's
 | Underload | parameterized tree | equal-width input programs leave one selector apiece; each node stores both branches as strings and the selector evaluates exactly one, while a constant leaf discards the unused selectors; a repeated subtree is pushed once and carried above the next selector, and the plain tree stays a candidate | linear: 7n input characters plus at most 11T - 4 tree characters | poly n: at most 14n - 1 commands, one path of n selections | linear: spliced program text plus a branch-string stack |
 | Unlambda | tree | each half is a `d` promise, forced by the `?` test that selects it, since an argument spelled inline would be evaluated before the application; the shipped node instead returns `s` over its selected promises, so a repeated subtree bound once as a promise reaches every half below, and the plain tree stays a candidate | linear: 29 characters an internal node, four a leaf | poly n: only selected d-promises are forced; one path of n | linear: the program term, held in task and continuation frames |
 | Unsquare | linear lookup | the table is one `O`/`I` push per row, reversed, and each read pops its bit's weight in cells off the top of it | linear: `2**n` cells and `2**n - 1` pops, two bytes a row | linear: worst 2T + 79n + 26 commands: T pushes, 76 per input read, weight pops | linear: worst T + 12 + bl(L) + bl(L-33) + 2bl(n) bits: T + 1 table cells on the stack |
-| Vandevelo | minterms | an affine-cube peel emits one guard line per coset of an affine cover of the 1-set | open: O(T) lines and commands for every table, O(T log n) identifier text; the build costs at least T*(n - log2 k) with k zeros, and core work is only O(T*n) | linear: at most Q - G + 3C steps: Q ? reads, C comparisons, G guards' final loop? skipped | poly n: at most n * n registers; sqrt T below the cap |
+| Vandevelo | minterms | an affine-cube peel emits one guard line per coset of an affine cover of the 1-set | open: O(T) lines and commands for every table, O(T log n) identifier text; the build is measured flat, but child-rebuild scans are bounded only by q**2 a node and core work by O(T*n) | linear: at most Q - G + 3C steps: Q ? reads, C comparisons, G guards' final loop? skipped | poly n: at most n * n registers; sqrt T below the cap |
 
 <!-- PROOF-STATUS:END -->
 
@@ -463,18 +463,18 @@ the next read. The controls are in `tests/proofs/test_research_tracks.py`.
 
 The construction bounds register upkeep by `O(T)` lines, but identifiers
 cost `O(log n)` characters per occurrence. Command count is proved linear
-below. The candidate charge in the generator's docstring fails on
-near-full tables, and dual-basis core work lacks an aggregate bound. The
+below. The build's charge leaves child rebuilds unbounded, and
+dual-basis core work lacks an aggregate bound. The
 audit marks size `Measured`, keeping its regression gate without claiming
 an asymptotic proof.
 
 `scripts/profile_vandevelo.py` counts identifier characters, sampled
-fallback calls, pair draws and the points each draw visits. A forced
-six-input span-invariant control fires the fallback once: four draws of
-12 points each. Its selected direction has exactly eight pairs, checked
+fallback calls, pair draws and the cosets each draw visits. A forced
+six-input span-invariant control fires the fallback once: four draws over
+its three cosets. Its selected direction has exactly eight pairs, checked
 directly. The default corpus executes 66 tables through six inputs and
 2,772 rows across original and renamed programs; one fallback call draws
-four times and visits 48 points.
+five times and visits 30 cosets.
 
 The tested naming rule assigns the shortest existing names to the most
 frequent identifiers, replacing tokens simultaneously. On `Random(0)`'s
@@ -513,18 +513,27 @@ and parts are at most `n*C`. With `C <= 17*2**n/n`, a row runs under
 Linear. The affine, coset and complement paths emit at most `n` parts
 in all.
 
-Generation time is not linear as built. The sampled fallback scores
-`_SAMPLES` uniform pair differences, `_SAMPLES * |S|` work, so it fits the
-candidate charge. The charge itself fails: it bills a node's build to
-its points once per level, which assumes chains of bounded depth. With
-`k` zeros, level `l` of the first chain misses at most `k*2**l` points.
-So it keeps two cosets for `n - log2(k) - 1` levels, and each build visits
-all of `|S|`: at least `T*(n - log2(k) - 2)` work. Three and eight zeros
-measure 845 to 1,090 `n*T` of scoring at n=10..15. Random tables of
-density 0.1 to 0.9 stay flat, 13 to 4,500 `T`; so does a planted-cube
-family, and quadratic forms reach 2,660 `T`. A linear build needs
-near-full levels to cost their complement: `S & (S ^ v)` misses `Z | (Z ^
-v)`, so a level's misses at most double while its points stay near `T`.
+Generation time is measured flat but not proved linear. A node holds one
+representative per coset of its span, so its work is its coset count,
+which at least halves a level. That retires the near-full wall: with `k`
+zeros the first chain keeps two cosets for `n - log2(k) - 1` levels, and
+nodes that held points paid at least `T*(n - log2(k) - 2)`. Output is
+byte-identical. Element visits per entry at n=10..14: three zeros
+2,700--3,200 (was 16,800--23,600), eight zeros 3,400--3,800 (was
+19,000--28,400), density 0.9 2,400--2,700 (was 7,700--8,700), dense
+500--900 (was 940--1,920), quadratic forms 110--120 (was 220--320).
+Best-of-three time, three zeros, n=11..15: 290--332 us a row, against
+1,237--1,696 at n=11..14 before; dense 76--108.
+
+Three terms escape the charge. A child rebuilt after it empties scans
+its parent's `q` cosets, and a rebuild need follow only one parent coset's
+removal, so these scans are bounded only by `q**2` a node. The children
+built under one node total at most its cosets, so cosets built cost at
+most the level above a level, `O(T*n)` a chain. Halving needs both halves
+of each child coset to leave together, and a cube harvested across the
+chain's span removes one. `_nearest`'s sparse fallback lists points;
+listing representatives costs cosets but moves sizes up to 4% a table.
+The third, the core build, is below.
 
 The dual-basis completion's other terms charge to the output. Column
 extraction costs `n*dim` a clause and the echelon reduction at most `n` a
