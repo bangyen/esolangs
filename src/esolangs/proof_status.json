@@ -647,6 +647,17 @@
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
+      "generator": "Piet++",
+      "labels": [
+        "finite lookup"
+      ],
+      "qualification": "Piet's lookup recoloured into Piet++ deltas: each table entry is pushed and an input index rolls its output up; literal products replace conjunction tables",
+      "scaling": "linear: one bounded-width strip with O(T) codels",
+      "execution": "linear: worst 2T + 4n + 14 steps past n = 1: one colour block per operation",
+      "workspace": "linear: worst T + 2n + 7 + bl(3T+5n+15) + bl(2n-1) + bl(n) bits past n = 2: the stack",
+      "evidence": "docs/proofs/index.md#generator-ledger"
+    },
+    {
       "generator": "Polynomial",
       "labels": [
         "tree",

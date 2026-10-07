@@ -54,6 +54,7 @@ def test_numeric_readers_accept_tokens_on_the_same_line(language):
 _EOF_IS_A_HALT: dict[str, str] = {
     "boolfuck": "EOF supplies zero bits",
     "piet": "an exhausted input command is ignored, as the spec requires",
+    "piet-plus-plus": "an exhausted In command is ignored, as the page recommends",
     # Reads until the input runs out and treats that as its stop, which is
     # how its generated programs terminate at all.
     "suffolk": "reads to exhaustion, so EOF is the halt",

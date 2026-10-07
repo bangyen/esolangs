@@ -10,6 +10,8 @@ _CANONICAL_OVERRIDES = {
     # The parentheses mark optional CV(N)(C) slots but are part of the name;
     # the slug rule yields "cv_n_c" where the language is written as one word.
     "CV(N)(C)": "cvnc",
+    # The slug rule drops "++" and would collide with Piet.
+    "Piet++": "piet_plus_plus",
 }
 
 _DIGIT_WORDS = {

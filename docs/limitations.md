@@ -229,9 +229,10 @@ Existing fame exceptions must still clear the bar. Whitespace was removed at
 
 The 2026-10-06 census (`tests/fixtures/curation.json`) records each
 language's backlinks and route: 21 clear the fame gate and 54 are first
-implementations; SStack (4) and Smu (4, remeasured 2026-10-07), both
-Unimplemented, were added after. Six were implemented elsewhere when added, all before the rule was
-written down on 2026-09-27, and are grandfathered: BIO (ais523),
+implementations; SStack (4), Smu (4, remeasured 2026-10-07) and Piet++
+(8), all Unimplemented, were added after. Six were implemented elsewhere
+when added, all before the rule was written down on 2026-09-27, and are
+grandfathered: BIO (ais523),
 BF-PDA (Madk, 2010), 123 (a 2012 VB.NET interpreter), NoComment, Sophie
 (their authors') and Jaune (two others'). Befunge-98 (Funge-98, 31, two
 dozen implementations) came after and was removed on 2026-10-06.
@@ -243,6 +244,11 @@ does, so its interpreter invented the core, the invented semantics the
 大白话 deferral rules out. Transistor (2) was built and dropped on
 2026-10-07 for the same reason: its page gives no grammar and no I/O, and
 its one loop example calls an undefined `or`.
+
+Piet++ (8) is a first implementation: the page is in the Unimplemented
+category, and the only other code is a partial C# executor (Esolang-NET/Piet)
+whose Read, Write and Roll-Context are no-ops, so it cannot arbitrate the
+conventions below.
 
 Bitwise Cyclic Tag (181) also adds the cyclic-schedule axis. Deadfish (315)
 is interpreter-only because it has no input vocabulary.
@@ -426,5 +432,11 @@ languages remain rejected from the same image-source screen.
   output `=` prints nothing, `(` or `)` halts, and an unbalanced program
   popped to run halts. The page's expanded cat drops the `=` after `(+=)`
   and forces a leading 1; the compact source fixes the repair.
+- Piet++ settles its open conventions from the page text alone (the module
+  docstring names each): Read and Write pop their x operand and offset from
+  the codel just entered; a Write lands at once and may recolour the running
+  block; invalid or ill-typed commands are ignored without popping, as the
+  page recommends; a codel is one pixel.  XKCD Random Number (`4`) and
+  User:Miui/Nah. (`Nah.`) pin the delta sign.
 - Pinyin is rejected: its spelling rule contradicts its examples and its
   input-1 truth-machine example has no deterministic reading.

@@ -252,6 +252,13 @@ FORMULAS: dict[str, tuple[Callable[[int, str], int], bool, tuple[int, ...]]] = {
         True,
         (3, 5),
     ),
+    "Piet++": (
+        lambda n, _: (
+            2**n + 2 * n + 7 + bl(3 * 2**n + 5 * n + 15) + bl(2 * n - 1) + bl(n)
+        ),
+        True,
+        (3, 5),
+    ),
     "NoComment": (lambda n, p: 32768 + 2**n // 4 + 30 + bl(len(p)), True, (5,)),
     "6-5": (lambda n, _: 2 * 2**n + 7 * n + 9 + bl(n), True, (7,)),
     "S*bleq": (lambda _, p: 3 * len(p), False, (3, 5)),

@@ -24,7 +24,7 @@ the coverage arguments.
 In `tests/proofs/`, fast-band `test_ledger.py` checks registry consistency,
 and `test_schemes.py` checks lookup and parameterized rows (`tree` and
 `minterms` have no per-row check). Deeper checks live in `tests/proofs/deep/`.
-`all_generators.py` checks all 79 constructions: flipping each table row
+`all_generators.py` checks all 80 constructions: flipping each table row
 changes the emitted program at the tested arities, and each construction
 completes an arity ladder on both table shapes. This checks the counting half
 of each scheme. Four generators -- A Painter Ant, ArrowQueue, Container and
@@ -315,6 +315,7 @@ and `tests/proofs/test_workspace_formulas.py` run them at small n; Painfuck's
 | Packlang | linear lookup | one 128-row array block, painted inside the `If` that selects it | linear: one write per differing row, block-bounded index digits | linear: worst 19T/2 - n - 4 steps for n = 2..7, then 3T/64 + 1206 - n | poly n: at most min(T,128) + 2n + min(n,7) + 192 + 16[n>7] + bl(L) + 2bl(n) bits: one frame, array |
 | Painfuck | tree | decision tree emitted directly in Painfuck's own commands; numeric I/O pays no ASCII offset, and `d` resets the pointer to the answer cell | linear: brainfuck-shaped decision tree; `d` reset keeps leaf returns O(1) | poly n: at most ceil(3n^2 / 4) + 20n + 4 commands, one path | poly n: at most 2n + 5 + 3bl(n) + (n+1)bl(L) bits: 2n + 2 cells, loop stack ≤ n |
 | Piet | finite lookup | each table entry is pushed and an input index selects its output; literal products replace conjunction tables | linear: one bounded-width strip with O(T) codels | linear: worst 2T + 4n + 14 steps past n = 1: one colour block per operation | linear: worst T + 2n + 7 + bl(3T+5n+15) + bl(2n-1) + bl(n) bits past n = 2: the stack |
+| Piet++ | finite lookup | Piet's lookup recoloured into Piet++ deltas: each table entry is pushed and an input index rolls its output up; literal products replace conjunction tables | linear: one bounded-width strip with O(T) codels | linear: worst 2T + 4n + 14 steps past n = 1: one colour block per operation | linear: worst T + 2n + 7 + bl(3T+5n+15) + bl(2n-1) + bl(n) bits past n = 2: the stack |
 | Polynomial | tree, cap | each finite instruction list has a finite prime-product encoding; every program for a maximal-width table needs Omega(T/log T) distinct real roots ([polynomial](polynomial.md)) | lower bound: coefficient mass is Omega(T**2 / log T), matching the uncapped residual-DAG construction; equal-root blocks force Omega(T/log T) distinct real roots and the slack certificate prices every multiple ([polynomial](polynomial.md)) | unmeasured: exempt as a cap row | poly n: at most bl(min(10T-7,1934) + 10) + 1 + max(bl(n+3), bl(49(M-1))) + 2bl(n) bits, M = max_k min(2^k, 2^(2^(n-k))) |
 | Qoibl | linear lookup | the table is one binary literal, divided by the power of two the reads build | linear: T-bit literal, one squaring statement per input | poly n: worst n + 2 commands, one statement per input | linear: worst T + 3 + bl(n) + bl(n+2) bits: variables 0 and 1 |
 | RAM0 | parameterized tree | the inputs are stored once and each node loads its bit with `L`; a subtree already emitted is reached by `goto`, so only the distinct subtables are laid out, and the straight-line lookup is kept as a candidate | linear: O(T/n) distinct subtables, O(n) commands each | poly n: worst n^2 + 8n + 5 commands, one root-to-leaf path | poly n: worst n + bl(S) + 2max(1,bl(n-1)) + Σ_{a<n} max(1,bl(a)) bits, S the token count |
@@ -423,7 +424,7 @@ construction.  Parity at thirteen inputs is 966568 digits, built in
 three seconds with the prime powers multiplied as a balanced tree, and
 the interpreter decodes it to the tree the generator encoded.
 
-Accordingly, this ledger records 76 theoretical totality arguments and two
+Accordingly, this ledger records 77 theoretical totality arguments and two
 proved language exceptions under the source-embedded contract.
 Every other row is `Total` or theoretically total past a resource ceiling.
 

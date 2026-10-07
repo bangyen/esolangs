@@ -4,6 +4,7 @@ from esolangs._program import Program
 from esolangs.raster import Raster
 from esolangs.tools.line import line as _line_sample
 from esolangs.tools.piet import piet as _piet_sample
+from esolangs.tools.piet_plus_plus import piet_plus_plus as _pp_sample
 
 # The corrected Inject truth machine lives beside the interpreter's own
 # tests: the mutation bundle does not inline this module, so a test file
@@ -243,4 +244,5 @@ SAMPLES: dict[str, tuple[Program, str]] = {
 # Raster samples are decoded, so VM checks exercise pixel extraction.
 
 SAMPLES["Line"] = (Raster.from_png(_line_sample("01").to_png()), "1\n")
+SAMPLES["Piet++"] = (Raster.from_png(_pp_sample("01").to_png()), "1\n")
 SAMPLES["Piet"] = (Raster.from_png(_piet_sample("01").to_png()), "1\n")

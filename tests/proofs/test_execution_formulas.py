@@ -129,6 +129,7 @@ FORMULAS: dict[str, tuple[Callable[[int, str], float], bool, tuple[int, ...]]] =
     "FRACTRAN": (lambda n, _: n + 2 if n <= 4 else n + 60, True, (3, 5)),
     "Suffolk": (lambda _, p: len(p) + 151, True, (3, 5)),
     "Piet": (lambda n, _: 2 * 2**n + 4 * n + 14, True, (3, 5)),
+    "Piet++": (lambda n, _: 2 * 2**n + 4 * n + 14, True, (3, 5)),
     "Packlang": (
         lambda n, _: 19 * 2**n // 2 - n - 4 if n <= 7 else 3 * 2**n // 64 + 1206 - n,
         True,

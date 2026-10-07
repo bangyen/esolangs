@@ -54,6 +54,7 @@ from esolangs.tools.one_two_three import one_two_three
 from esolangs.tools.packlang import packlang
 from esolangs.tools.painfuck import painfuck
 from esolangs.tools.piet import piet
+from esolangs.tools.piet_plus_plus import piet_plus_plus
 from esolangs.tools.polynomial import polynomial
 from esolangs.tools.qoibl import qoibl
 from esolangs.tools.ram0 import ram0
@@ -136,6 +137,7 @@ __all__ = [
     "packlang",
     "painfuck",
     "piet",
+    "piet_plus_plus",
     "polynomial",
     "qoibl",
     "ram0",

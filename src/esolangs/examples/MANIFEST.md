@@ -68,6 +68,7 @@ Row gives the logical bits; Input gives their language-specific encoding.
 | `packlang.txt` | Packlang | `0001` | `01` | 01 | '0' |
 | `painfuck.txt` | Painfuck | `0001` | `01` | 0 1 | '0' |
 | `piet.png` | Piet | `0001` | `01` | 0 1 | '0' |
+| `piet-plus-plus.png` | Piet++ | `0001` | `01` | 0 1 | '0' |
 | `polynomial.txt` | Polynomial | `0001` | `01` | 01 | '0' |
 | `qoibl.txt` | Qoibl | `0001` | `01` | 01 | '0' |
 | `ram0.txt` | RAM0 | `0001` | `01` | embedded 01 | 'z: 0\nn: 0\nram: {\n    1: 0,\n    0: 1\n}' |

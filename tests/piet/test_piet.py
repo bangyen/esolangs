@@ -74,10 +74,10 @@ def test_white_slide_executes_no_transition() -> None:
 
 
 def test_white_slide_crosses_more_than_one_codel() -> None:
-    from esolangs.interpreters.stack_based.piet import _slide
+    from esolangs.interpreters.stack_based.piet import _colour, slide
 
     program = raster((WHITE, WHITE, LIGHT_RED))
-    assert _slide(program.rows, (0, 0), 0, -1) == ((2, 0), 0, -1)
+    assert slide(program.rows, (0, 0), 0, -1, _colour) == ((2, 0), 0, -1)
 
 
 def test_nonstandard_colour_is_white() -> None:
@@ -90,24 +90,24 @@ def test_nonstandard_colour_is_white() -> None:
 
 
 def test_white_turns_at_a_restriction() -> None:
-    from esolangs.interpreters.stack_based.piet import _slide
+    from esolangs.interpreters.stack_based.piet import _colour, slide
 
     program = raster(
         (LIGHT_RED, WHITE, BLACK),
         (LIGHT_YELLOW, LIGHT_YELLOW, LIGHT_YELLOW),
     )
-    assert _slide(program.rows, (1, 0), 0, -1) == ((1, 1), 1, 1)
+    assert slide(program.rows, (1, 0), 0, -1, _colour) == ((1, 1), 1, 1)
 
 
 def test_enclosed_white_terminates() -> None:
-    from esolangs.interpreters.stack_based.piet import _slide
+    from esolangs.interpreters.stack_based.piet import _colour, slide
 
     program = raster(
         (BLACK, BLACK, BLACK),
         (BLACK, WHITE, BLACK),
         (BLACK, BLACK, BLACK),
     )
-    assert _slide(program.rows, (1, 1), 0, -1) is None
+    assert slide(program.rows, (1, 1), 0, -1, _colour) is None
 
 
 def test_black_start_terminates() -> None:
@@ -124,7 +124,7 @@ def test_white_start_and_trapped_slide_terminate(
     import esolangs.interpreters.stack_based.piet as piet
 
     slides = iter([((1, 0), 0, -1), None])
-    monkeypatch.setattr(piet, "_slide", lambda *_args: next(slides))
+    monkeypatch.setattr(piet, "slide", lambda *_args: next(slides))
     assert execute(raster((WHITE, LIGHT_RED))) == ""
 
 
@@ -193,10 +193,10 @@ def test_public_api_loads_a_png(tmp_path: Path) -> None:
 def test_codel_chooser_selects_the_documented_edge(
     dp: int, cc: int, expected: tuple[int, int]
 ) -> None:
-    from esolangs.interpreters.stack_based.piet import _exit
+    from esolangs.interpreters.stack_based.piet import leave
 
     block = {(0, 0), (0, 1), (1, 0), (1, 1)}
-    assert _exit(block, dp, cc) == expected
+    assert leave(block, dp, cc) == expected
 
 
 @pytest.mark.parametrize(

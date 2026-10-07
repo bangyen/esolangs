@@ -5,22 +5,6 @@ history; standing rules and proved limits are in [limitations](limitations.md).
 
 ## Research follow-up
 
-- **Piet++: finish the specification and generator audit.** The wiki still
-  tags Piet++ as [Unimplemented](https://esolangs.org/wiki/Piet%2B%2B), but a
-  [partial executor](https://github.com/Esolang-NET/Piet/blob/14d1533cc46e27463b4baa6957137f5af6c83380/Processor/PietPlusPlusExecutor.cs)
-  exists. In that executor, Read, Write and Roll-Context are no-ops, and Dup
-  aliases nested stacks. A strict subset already runs: nested-stack cofactor
-  descent adds a data-tree selection mechanism, and the subset executed 309
-  tables across 3,352 rows, including every table through three inputs. That
-  shows the approach is feasible; it does not yet prove full-language
-  correctness or admission. The executor cannot arbitrate the open
-  conventions: its Read/Write are no-ops and its arithmetic reads a stack
-  operand as 0, so operand consumption, the coordinate origin and image
-  updates are unobservable there. Next: fix those conventions from the wiki
-  text alone, audit invalid typed operations and image/block updates, then
-  run the loop-less O(T) generator through three inputs and sampled
-  larger tables under the chosen input conventions.
-
 - **Linear Boolean generators: make generation and output grow only with
   the table.** Here `T` is the truth-table length. The goal is build time
   and emitted size both O(T). For each generator still open, the path to

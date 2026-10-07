@@ -673,6 +673,7 @@ def _register() -> None:
         _reader(piet, "stack_based.piet"),
         scale=80,
     )
+    reading["piet-plus-plus"] = _reader(b.piet_plus_plus, "stack_based.piet_plus_plus")
     for stem, example in {**reading, **embedded}.items():
         BOOLEAN_EXAMPLES[stem] = replace(example, stem=stem)
 

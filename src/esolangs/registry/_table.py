@@ -340,6 +340,13 @@ LANGUAGES: dict[str, Language] = {
         source_kind=SourceKind.RASTER,
         boolean=_boolean.piet,
     ),
+    "Piet++": Language(
+        "Piet++",
+        interpreter="stack_based.piet_plus_plus",
+        id=canonical_id("Piet++"),
+        source_kind=SourceKind.RASTER,
+        boolean=_boolean.piet_plus_plus,
+    ),
     "SLOW ACV MAMMALIAN": Language(
         "SLOW ACV MAMMALIAN",
         "tape_based.slow_acv_mammalian",

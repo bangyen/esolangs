@@ -126,6 +126,7 @@ UNWRAPPABLE = {
 # either mistake in the first place.
 WIDTH_EXCEPTIONS = {
     "slashes": "newlines are literal output and substitution data",
+    "piet_plus_plus": "one fixed three-row strip, like Piet before scaling",
     "line": "tree geometry fixes the width; balance chooses orientation",
 }
 
