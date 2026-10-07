@@ -312,7 +312,7 @@ wide route.  `tests/proofs/test_ledger.py` checks the grammar and
 | Underload | parameterized tree | equal-width input programs leave one selector apiece; each node stores both branches as strings and the selector evaluates exactly one, while a constant leaf discards the unused selectors; a repeated subtree is pushed once and carried above the next selector, and the plain tree stays a candidate | linear: 7n input characters plus at most 11T - 4 tree characters |
 | Unlambda | tree | each half is a `d` promise, forced by the `?` test that selects it, since an argument spelled inline would be evaluated before the application; the shipped node instead returns `s` over its selected promises, so a repeated subtree bound once as a promise reaches every half below, and the plain tree stays a candidate | linear: 29 characters an internal node, four a leaf |
 | Unsquare | linear lookup | the table is one `O`/`I` push per row, reversed, and each read pops its bit's weight in cells off the top of it | linear: `2**n` cells and `2**n - 1` pops, two bytes a row |
-| Vandevelo | minterms | an affine-cube peel emits one guard line per coset of an affine cover of the 1-set | open: O(T) upkeep lines, O(T log n) identifier text; sampled fallback within the candidate charge; the charge and dual-basis core work unproved |
+| Vandevelo | minterms | an affine-cube peel emits one guard line per coset of an affine cover of the 1-set | open: O(T) lines and commands for every table, O(T log n) identifier text; the build costs at least T*(n - log2 k) with k zeros, and core work is only O(T*n) |
 
 <!-- PROOF-STATUS:END -->
 
@@ -440,11 +440,11 @@ the next read. The controls are in `tests/proofs/test_research_tracks.py`.
 ## Vandevelo identifier and fallback audit
 
 The construction bounds register upkeep by `O(T)` lines, but identifiers
-cost `O(log n)` characters per occurrence. The candidate charge in the
-generator's docstring is a proposal, and dual-basis core work lacks an
-aggregate bound. The audit marks size and command count `Measured`: both
-retain their existing regression gates without claiming an asymptotic
-proof.
+cost `O(log n)` characters per occurrence. Command count is proved linear
+below. The candidate charge in the generator's docstring fails on
+near-full tables, and dual-basis core work lacks an aggregate bound. The
+audit marks size `Measured`, keeping its regression gate without claiming
+an asymptotic proof.
 
 `scripts/profile_vandevelo.py` counts identifier characters, sampled
 fallback calls, pair draws and the points each draw visits. A forced
@@ -464,19 +464,42 @@ execute under both spellings and match the table. Reproduce with
 The rule misses the 5% shipping threshold and retains growing identifier
 lengths, so it remains an experiment. Neither gap is closed by this audit.
 
-The fallback draws `_SAMPLES` uniform pair differences and scores the
-best, `_SAMPLES * |S|` work a call: the same charge as that many more
-candidates. A draw clears half the pigeonhole average with probability at
-least `1/2 - 2**d/|S|`, which costs the clause bound a factor near two,
-not correctness. The exact quotient transform it replaced took
-`2*n*2**n` visits at full dimension, `60*T` on the 15-input table whose
-rows are `random.Random(0).choice("01")`. Output through n=14 is
-unchanged on seeds 0--2, and the three n=15 tables shrink by 0 to
-0.6%. That removes the executed counterexample, but the candidate charge
-is still a proposal and the dual-basis core has no build-work bound, so
-the generation-time cell stays Open. Scoring work measures about `700*T`
-for one full pool scan plus 10--170 `T` per later phase, flat from n=16
-to n=17; that is a measurement, not a bound.
+The clause bound holds for every table. Its proof needs one direction
+per level holding half the pigeonhole average, on two chains: the first,
+which sets the opening phase, and the certified one, which alone may drop
+it. `_assure` checks that at every level of both. When no candidate
+qualifies, it finds the most popular direction exactly in the quotient, by
+pair differences or a Walsh--Hadamard transform. Such a direction gives
+quotient density `eps' >= eps**2/4`, so `log2(1/eps) + 2` at most doubles
+a level, and the chain's cubes exceed `n/(2*(log2(1/eps) + 2))` points.
+Over the density bands `(2**-(i+1), 2**-i]` that is under `16*2**n/n`
+dense clauses; the sparse tail, below density `1/max(48, n)`, adds at most
+`2**n/n`. On a corpus through n=13 `_assure` checked 1,712 levels and
+never computed, so output is byte-identical. With candidates and the
+sampled fallback disabled, it alone keeps n=8 and n=10 random tables under
+`T/n` clauses (`tests/proofs/test_vandevelo_fallback.py`).
+
+Commands per row are therefore linear. A halting row fails one part of
+each guard, and every value is a strict boolean. So a register toggle
+costs five commands, a part at most five, and an input read one. Upkeep
+is at most the constraints' total weight, `4*n*C + 4*T` with `C` clauses,
+and parts are at most `n*C`. With `C <= 17*2**n/n`, a row runs under
+`25*n*C + 20*T + n + 1 = O(T)` commands, so the execution-time cell is
+Linear. The affine, coset and complement paths emit at most `n` parts
+in all.
+
+Generation time is not linear as built. The sampled fallback scores
+`_SAMPLES` uniform pair differences, `_SAMPLES * |S|` work, so it fits the
+candidate charge. The charge itself fails: it bills a node's build to
+its points once per level, which assumes chains of bounded depth. With
+`k` zeros, level `l` of the first chain misses at most `k*2**l` points.
+So it keeps two cosets for `n - log2(k) - 1` levels, and each build visits
+all of `|S|`: at least `T*(n - log2(k) - 2)` work. Three and eight zeros
+measure 845 to 1,090 `n*T` of scoring at n=10..15. Random tables of
+density 0.1 to 0.9 stay flat, 13 to 4,500 `T`; so does a planted-cube
+family, and quadratic forms reach 2,660 `T`. A linear build needs
+near-full levels to cost their complement: `S & (S ^ v)` misses `Z | (Z ^
+v)`, so a level's misses at most double while its points stay near `T`.
 
 The dual-basis completion's other terms charge to the output. Column
 extraction costs `n*dim` a clause and the echelon reduction at most `n` a

@@ -137,10 +137,10 @@ def test_the_contract_covers_generators_the_original_queue_missed() -> None:
     assert len(BY_BOOLEAN) - len(queue) == 50
 
 
-def test_measured_vandevelo_remains_held_to_both_regressions(audit: Audit) -> None:
+def test_vandevelo_remains_held_to_both_regressions(audit: Audit) -> None:
     row = audit.by_name()["Vandevelo"]
     assert row.output_size == "Measured"
-    assert row.execution_time == "Measured"
+    assert row.execution_time == "Linear"
     assert not row.size_is_settled
     assert row.is_open
     assert "Vandevelo" not in exempt_generators()
