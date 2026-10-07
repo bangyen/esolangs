@@ -91,6 +91,9 @@ examples:
   corrupt Line program or crash 3x.
 - An in-process `MemoryError` raises `InterpreterLimitError`, as isolated
   execution already did.
+- Unlambda and Thue run in linear time; deep continuations and long Thue
+  states were quadratic (an Unlambda program taking about five minutes now
+  takes about a second).
 
 ### Packaging and docs
 
