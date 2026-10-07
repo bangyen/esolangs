@@ -486,7 +486,13 @@ FORMULAS: dict[str, tuple[Callable[[int, str], int], bool, tuple[int, ...]]] = {
         False,
         (3, 4),
     ),
-    "Circuit Diagram": (lambda n, _: 9 * 2**n + 3 * n - 12, False, (3, 6)),
+    # Latches never clear: 3T - 6 + n flat slots, 6T - 10 + n under the
+    # H-layout. Same-state pulses are an antichain: T/2 + n flat, T + n after.
+    "Circuit Diagram": (
+        lambda n, _: 7 * 2**n // 2 + 2 * n - 5 if n <= 7 else 7 * 2**n + 2 * n - 9,
+        False,
+        (3, 6),
+    ),
     "Collatz Multiverse": (
         lambda n, p: (
             -(-(2**n) // 4) * (bl(len(p) // 17) + 6)

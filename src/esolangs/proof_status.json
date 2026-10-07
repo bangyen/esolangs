@@ -251,7 +251,7 @@
       "qualification": "finite planar routing",
       "scaling": "linear: H-layout side C sqrt(T), area Theta(T)",
       "execution": "poly n: worst 2n + 1 commands; 2n + 2 past n = 7",
-      "workspace": "linear: at most 9T + 3n - 12 bits: one bit per gate latch slot and per live pulse",
+      "workspace": "linear: at most 7T/2 + 2n - 5 bits, n ≤ 7; 7T + 2n - 9 after: latches, pulses",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
