@@ -7,6 +7,9 @@ cannot reach seventeen. See [limitations](../limitations.md) for the contract.
 Results distinguish measurements, interpreter-verified `crazy`/`rot` identities,
 and unbuilt designs. The load law and two fifteen-input cascade
 attempts explain why the generator switched from hashing to positional reads.
+The seventeen-input tools cited below (`msim`, `trace.c`, `slack.c`,
+`sweep17.py`, ...) are archived at commit 09ab2fad (local tag
+`archive/malbolge17`): `git show 09ab2fad:scripts/malbolge17/<file>`.
 
 ## The load law
 
@@ -458,7 +461,7 @@ distinguishable contents, under 256) finds none, and three were already
 excluded. **Five is the minimum**: a search that fixes the states other
 states point to first (each has at most one level below it) and adds rows
 while every output class keeps room finds 5-state codes
-(`scripts/malbolge17/decoder_s5_norepeat.p`, all 256 vectors, no re-read).
+(`09ab2fad:scripts/malbolge17/decoder_s5_norepeat.p`, all 256 vectors, no re-read).
 Three start-only states feed a fourth, which feeds a print-only fifth, so
 transitions still reach only four targets. Its transitions reach only four targets -- two states and the two
 prints -- which is within what one pointer region routes: the shipped
@@ -590,7 +593,7 @@ weigh at most 131,050 bits". **That hypothesis is false**, so the route cannot
 be finished in that form. What survives is a weaker, correct theorem whose
 hypothesis is a statement about tables rather than about programs.
 
-**Counterexample (measured).** `scripts/malbolge17/sweep17.py` builds a real
+**Counterexample (measured).** `09ab2fad:scripts/malbolge17/sweep17.py` builds a real
 source string with `_char_for`. Every one of the 131,072 seventeen-input rows
 prints exactly one character, input 2, and halts (msim over all rows; the
 repo interpreter agrees on sampled rows). Before that output it executes
@@ -1057,7 +1060,7 @@ which shortens their chains (not measured).
 ### Seventeen: the one-group build, measured, and where the cost really is
 
 The five-state decoder on one 3-cell group was built on **real source** and
-run through `msim`: `scripts/malbolge17/prototype/five_esc.py` emits one
+run through `msim`: `09ab2fad:scripts/malbolge17/prototype/five_esc.py.txt` emits one
 program per startup row `s`, patches the three table characters for every
 meaning triple in `7^3`, and checks the printed answer. It is green:
 **2,744 / 2,744** correct across the eight rows. So the mechanism — value
@@ -1102,7 +1105,7 @@ rotates it, so it is consumable; the decoder's maximum path length is three,
 and three copies cover every path.
 
 All five bases, three initial parity words, and the toggle operand have explicit
-chains at distinct cells in `131..165`. `scripts/malbolge17/parity_views.py` executes
+chains at distinct cells in `131..165`. `09ab2fad:scripts/malbolge17/parity_views.py` executes
 the identities and chains through the interpreter's word operations, then
 emits them through the generator's real planner. In ascending-address order,
 the five bases cost **937 cells**; adding the parity words, toggle operand and
@@ -1337,7 +1340,7 @@ Return navigation, complete Boolean decoding and placement around arbitrary
 table contents remain unfinished. This is not a seventeen-input generator.
 
 Separate shared-decoder controls now execute native common initialization and
-the final three-input row selector (`scripts/malbolge17/joined_decoder.py`).
+the final three-input row selector (`09ab2fad:scripts/malbolge17/joined_decoder.py`).
 All 5,488 cases pass: eight row tails, two address parities and 343 meaning
 triples. The current emitted source uses 13,177 instruction cells and 59,049 source
 characters; the earlier 27,032-cell count predates shorter return navigation,
@@ -1361,7 +1364,7 @@ remain unresolved. These controls establish neither a seventeen-input
 generator nor an impossibility result.
 
 Sharing setup does not close that placement gap either.
-`scripts/malbolge17/join_budget.py --shared-setup` prices the address fold,
+`09ab2fad:scripts/malbolge17/join_budget.py --shared-setup` prices the address fold,
 the `dispatch3` row selector and the five-state decoder at the source-map
 level, counting identical cells once. The unguarded fold occupies 8,377, the
 selector 1,520 and the decoder 5,343 (code plus data); the naive sum is
