@@ -218,6 +218,18 @@ class TestAnInterpreterLimitIsStillAnEsolangError:
         assert "recursed deeper" in str(caught.value)
         assert "setrecursionlimit" in str(caught.value)
 
+    def test_a_memory_error_does_not_escape(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """In process, Underload's string doubling reached it raw."""
+
+        def explode(*_args: object, **_kwargs: object) -> None:
+            raise MemoryError
+
+        monkeypatch.setattr(esolangs, "_run", explode)
+        with pytest.raises(esolangs.InterpreterLimitError, match="out of memory"):
+            esolangs.run("brainfuck", "+.", stdin="")
+
     @pytest.mark.slow
     def test_qoibl_no_longer_hits_the_wall(self) -> None:
         """The six-input table this class was built around now computes."""

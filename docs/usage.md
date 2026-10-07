@@ -21,7 +21,7 @@ The API handles language I/O conventions using [`describe`](#describe) metadata.
 
 ```bash
 esolangs generate LaserFuck 0110 > prog.txt
-esolangs encode LaserFuck 10 | esolangs run LaserFuck prog.txt | esolangs read-answer LaserFuck -> 1
+esolangs encode LaserFuck 10 | esolangs run LaserFuck prog.txt | esolangs read-answer LaserFuck  # prints 1
 esolangs generate Modulous 0110 > modulous.txt
 esolangs suggest Modulous modulous.txt
 ```
@@ -31,6 +31,8 @@ esolangs suggest Modulous modulous.txt
 `Language(name)` binds the same functions to one canonical language name:
 
 ```python
+import esolangs
+
 bf = esolangs.Language("brainfuck")
 program = bf.generate("0110", balance=True)
 output = bf.run(program, stdin=bf.encode_inputs([0, 1]))
@@ -189,7 +191,7 @@ refused. `esolangs list --details` marks them `tmpl`.
 
 ## Reading the answer
 
-Most languages print the answer; six dump their final state, and four answer
+Most languages print the answer; some dump their final state (`answer_mode` `"dump"`), and four answer
 by termination: halt for 0, loop forever for 1. `read_answer` handles printed
 and state-dump answers and refuses termination answers: run those with
 `max_steps` and treat a halt as 0. A timeout remains undecided.
@@ -200,7 +202,7 @@ Their `answer_encoding` is `("halts", "diverges")`; its index gives the bit.
 
 `generate` and CLI `--width` bound columns through layout;
 `describe(language)["width_effect"]` identifies the three behaviours,
-including the 15 languages that ignore width because newlines are semantic.
+including the languages it does not affect (`"none"`).
 
 ## Bounded execution
 
@@ -212,6 +214,12 @@ including Python overhead. `run` requires `isolated=True`; CLI
 `run --isolated --max-memory BYTES` bounds the worker. Other platforms refuse the
 option. Parent source loading is outside the cap; exhaustion raises
 `InterpreterLimitError`, never a Boolean answer.
+
+Untrusted programs need all three bounds: `isolated=True`, a `timeout` and,
+on Linux, `max_memory`. A timeout alone does not bound memory, and a program
+can grow faster than any timeout fires (Underload's `(x)(~:*~:^):^` doubles a
+string past a gigabyte in under a second). Elsewhere, cap the process
+yourself.
 
 `run(language, program, stdin=stdin, max_steps=100_000, timeout=1)`
 returns output on halt and raises `ExecutionTimeoutError` with
@@ -291,10 +299,12 @@ shows the `gen`, `tmpl`, and `ex` markers.
 
 ## Compatibility
 
-The package is beta. The public API is `esolangs.__all__` and
-`esolangs.debugger.__all__`, plus the documented CLI; every other module
-(`esolangs.vm`, `esolangs.registry`, `esolangs.tools`, `esolangs.interpreters`,
-...) is internal. Within a major release, compatibility covers:
+The package is beta until 1.0: a 0.x minor release may still break the
+surface below, and [CHANGELOG.md](../CHANGELOG.md) lists every break. The
+public API is `esolangs.__all__` and `esolangs.debugger.__all__`, plus the
+documented CLI; every other module (`esolangs.vm`, `esolangs.registry`,
+`esolangs.tools`, `esolangs.interpreters`, ...) is internal. From 1.0, within
+a major release, compatibility covers:
 
 - public names, their signatures (required arguments positional, optional
   ones keyword-only), and deliberate `EsolangError` exceptions;
