@@ -21,6 +21,7 @@ classifiers = [
     "Programming Language :: Python :: 3.14",
     "Topic :: Software Development :: Interpreters",
     "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
 ]
 keywords = ["esoteric", "programming", "languages", "interpreters", "brainfuck", "esolangs"]
 dependencies = []
@@ -30,6 +31,11 @@ image = ["Pillow>=11.3.0"]
 math = [
     "sympy>=1.12.0",
 ]
+
+# PEP 735: development tooling is not an installable extra, so its exact pins
+# stay out of the published METADATA.  `uv sync` installs this group by
+# default; `uv sync --group dev` says so explicitly.
+[dependency-groups]
 dev = [
     "pytest>=9.0.3",
     "pytest-cov>=4.0.0",

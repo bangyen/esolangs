@@ -219,6 +219,14 @@ version = "0.9.1"
 source = { editable = "." }
 
 [package.optional-dependencies]
+image = [
+    { name = "pillow" },
+]
+math = [
+    { name = "sympy" },
+]
+
+[package.dev-dependencies]
 dev = [
     { name = "click" },
     { name = "mutmut" },
@@ -238,36 +246,34 @@ dev = [
     { name = "urllib3" },
     { name = "z3-solver" },
 ]
-image = [
-    { name = "pillow" },
-]
-math = [
-    { name = "sympy" },
-]
 
 [package.metadata]
 requires-dist = [
-    { name = "click", marker = "extra == 'dev'", specifier = ">=8.3.3" },
-    { name = "mutmut", marker = "extra == 'dev'", specifier = "==3.8.0" },
-    { name = "mypy", marker = "extra == 'dev'", specifier = "==2.3.1" },
-    { name = "pillow", marker = "extra == 'dev'", specifier = ">=11.3.0" },
     { name = "pillow", marker = "extra == 'image'", specifier = ">=11.3.0" },
-    { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=3.0.0" },
-    { name = "pygments", marker = "extra == 'dev'", specifier = ">=2.20.0" },
-    { name = "pylint", marker = "extra == 'dev'", specifier = ">=3.0.0" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=9.0.3" },
-    { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.0.0" },
-    { name = "pytest-timeout", marker = "extra == 'dev'", specifier = ">=2.3" },
-    { name = "pytest-xdist", marker = "extra == 'dev'", specifier = ">=3.8.0" },
-    { name = "ruff", marker = "extra == 'dev'", specifier = "==0.16.9" },
-    { name = "sympy", marker = "extra == 'dev'", specifier = ">=1.12.0" },
     { name = "sympy", marker = "extra == 'math'", specifier = ">=1.12.0" },
-    { name = "types-requests", marker = "extra == 'dev'" },
-    { name = "types-setuptools", marker = "extra == 'dev'" },
-    { name = "urllib3", marker = "extra == 'dev'", specifier = ">=2.7.0" },
-    { name = "z3-solver", marker = "extra == 'dev'", specifier = ">=4.15.0" },
 ]
-provides-extras = ["image", "math", "dev"]
+provides-extras = ["image", "math"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "click", specifier = ">=8.3.3" },
+    { name = "mutmut", specifier = "==3.8.0" },
+    { name = "mypy", specifier = "==2.3.1" },
+    { name = "pillow", specifier = ">=11.3.0" },
+    { name = "pre-commit", specifier = ">=3.0.0" },
+    { name = "pygments", specifier = ">=2.20.0" },
+    { name = "pylint", specifier = ">=3.0.0" },
+    { name = "pytest", specifier = ">=9.0.3" },
+    { name = "pytest-cov", specifier = ">=4.0.0" },
+    { name = "pytest-timeout", specifier = ">=2.3" },
+    { name = "pytest-xdist", specifier = ">=3.8.0" },
+    { name = "ruff", specifier = "==0.16.9" },
+    { name = "sympy", specifier = ">=1.12.0" },
+    { name = "types-requests" },
+    { name = "types-setuptools" },
+    { name = "urllib3", specifier = ">=2.7.0" },
+    { name = "z3-solver", specifier = ">=4.15.0" },
+]
 
 [[package]]
 name = "execnet"
