@@ -77,11 +77,54 @@ class _Promise:
     term: _Term
 
 
+class _Kont:
+    """A non-empty continuation: its innermost frame, and the rest.
+
+    Linked rather than a tuple, so a push, a pop and ``c``'s capture are each
+    O(1): rebuilding a tuple every step made ``` ``*N i*(N+1)`` quadratic
+    (1.8 s at N=16k).  Equal when the frames are, as a tuple would be.
+    """
+
+    __slots__ = ("depth", "frame", "rest")
+
+    def __init__(self, frame: _Frame, rest: _Kont | None) -> None:
+        self.frame = frame
+        self.rest = rest
+        self.depth: int = 1 + (rest.depth if rest is not None else 0)
+
+    def frames(self) -> tuple[_Frame, ...]:
+        """Return the frames, outermost first."""
+        out: list[_Frame] = []
+        node: _Kont | None = self
+        while node is not None:
+            out.append(node.frame)
+            node = node.rest
+        return tuple(reversed(out))
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, _Kont):
+            return NotImplemented
+        if self.depth != other.depth:
+            return False
+        mine: _Kont | None = self
+        theirs: _Kont | None = other
+        # Iterative, and a shared tail ends the walk at once.  Equal depths
+        # run out together.
+        while mine is not None and theirs is not None and mine is not theirs:
+            if mine.frame != theirs.frame:
+                return False
+            mine, theirs = mine.rest, theirs.rest
+        return True
+
+    def __hash__(self) -> int:
+        return hash(self.frames())
+
+
 @dataclass(frozen=True)
 class _Cont:
     """A continuation ``c`` captured; applying it abandons the current one."""
 
-    kont: tuple[_Frame, ...]
+    kont: _Kont | None
 
 
 @dataclass(frozen=True)
@@ -143,9 +186,10 @@ type _Value = _Cmd | _Print | _Query | _Partial | _Promise | _Cont
 type _Frame = _Arg | _Fun
 #: What the machine is doing next.
 type _Task = _Eval | _Apply | _Ret
-#: ``(task, continuation, current character, finished)``.  The flag is what
-#: makes ``halted`` true: an empty continuation, or ``e``.
-type _State = tuple[_Task, tuple[_Frame, ...], str | None, bool]
+#: ``(task, continuation, current character, finished)``, ``None`` the empty
+#: continuation.  The flag is what makes ``halted`` true: an empty
+#: continuation, or ``e``.
+type _State = tuple[_Task, _Kont | None, str | None, bool]
 
 #: What ``@`` and ``?x`` hand their argument.  The spec's words: "applies its
 #: argument to ``i`` if successful or to ``v`` if not".  ``i`` and *not* ``k``
@@ -243,7 +287,7 @@ def _parse(code: str) -> _Term:
 def _combinator(
     value: _Cmd | _Partial,
     argument: _Value,
-    kont: tuple[_Frame, ...],
+    kont: _Kont | None,
     char: str | None,
     *,
     read_ok: bool = True,
@@ -283,13 +327,13 @@ def _combinator(
         held_char = _Print(char) if char is not None else _FAILURE
         return (_Apply(argument, held_char), kont, char, False)
     # ``e``: the run ends, and the argument is its result.
-    return (_Ret(argument), (), char, True)
+    return (_Ret(argument), None, char, True)
 
 
 def _apply(
     value: _Value,
     argument: _Value,
-    kont: tuple[_Frame, ...],
+    kont: _Kont | None,
     char: str | None,
     *,
     read_ok: bool = True,
@@ -327,7 +371,7 @@ def _advance(
     if isinstance(task, _Eval):
         term = task.term
         if isinstance(term, _App):
-            return (_Eval(term.f), (*kont, _Arg(term.a)), char, False), None
+            return (_Eval(term.f), _Kont(_Arg(term.a), kont), char, False), None
         if isinstance(term, _Val):
             return (_Ret(term.value), kont, char, False), None
         return (_Ret(term), kont, char, False), None
@@ -336,14 +380,14 @@ def _advance(
             # The specification makes both ?x and | see no character at EOF.
             char = None if at_eof else line[0] if line else "\n"
         return _apply(task.f, task.a, kont, char, read_ok=not at_eof)
-    if not kont:
+    if kont is None:
         return (task, kont, char, True), None
-    frame, rest = kont[-1], kont[:-1]
+    frame, rest = kont.frame, kont.rest
     if isinstance(frame, _Arg):
         if task.value == _Cmd("d"):
             # The delay: the argument is not evaluated at all.
             return (_Ret(_Promise(frame.term)), rest, char, False), None
-        return (_Eval(frame.term), (*rest, _Fun(task.value)), char, False), None
+        return (_Eval(frame.term), _Kont(_Fun(task.value), rest), char, False), None
     return (_Apply(frame.value, task.value), rest, char, False), None
 
 
@@ -357,7 +401,7 @@ class _Machine:
 
     def __init__(self, code: str, io: IO) -> None:
         self.io = io
-        self.state: _State = (_Eval(_parse(code)), (), None, False)
+        self.state: _State = (_Eval(_parse(code)), None, None, False)
 
     @property
     def halted(self) -> bool:
@@ -372,12 +416,13 @@ class _Machine:
     def ip(self) -> tuple[int, ...]:
         task, kont, _char, _done = self.state
         kinds = (_Eval, _Apply, _Ret)
-        return (len(kont), kinds.index(type(task)))
+        return (kont.depth if kont is not None else 0, kinds.index(type(task)))
 
     @property
     def stack(self) -> list[object]:
         """The continuation, outermost frame first: what waits on a value."""
-        return list(self.state[1])
+        kont = self.state[1]
+        return list(kont.frames()) if kont is not None else []
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

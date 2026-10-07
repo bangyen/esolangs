@@ -120,6 +120,25 @@ def test_stepping_past_the_halt_is_a_no_op() -> None:
     assert machine.snapshot() == before
 
 
+def test_snapshots_compare_continuations_by_their_frames() -> None:
+    """Two runs build distinct linked continuations; the cycle detector
+    needs them equal, and hashed alike, exactly when their frames are."""
+    runs = [
+        _Machine(code, ScriptedIO("")) for code in ("``ci`.Ai", "``ci`.Ai", "``ci`.Bi")
+    ]
+    for _ in range(3):
+        for machine in runs:
+            machine.step()
+    same, twin, other = (machine.snapshot() for machine in runs)
+    assert same == twin
+    assert hash(same) == hash(twin)
+    assert same != other
+    kont = runs[0].state[1]
+    assert kont is not None
+    assert kont != kont.rest
+    assert kont != kont.frames()
+
+
 def test_d_applied_as_a_value_promises_what_it_was_given() -> None:
     """``d`` delays whatever is *written* after it, so reaching it as a plain
     function needs a combinator to hand it an already-evaluated argument.
