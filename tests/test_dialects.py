@@ -54,25 +54,27 @@ def test_generated_rows_match_across_execution_paths(language, settings):
             stdin = ""
         else:
             source = program
-            stdin = esolangs.encode_inputs(language, bits, table)
-        direct = esolangs.run(language, source, stdin, settings=settings)
+            stdin = esolangs.encode_inputs(language, bits, truth_table=table)
+        direct = esolangs.run(language, source, stdin=stdin, settings=settings)
         assert esolangs.read_answer(language, direct) == answer
         assert (
-            esolangs.run(language, source, stdin, settings=settings, max_steps=100_000)
+            esolangs.run(
+                language, source, stdin=stdin, settings=settings, max_steps=100_000
+            )
             == direct
         )
         assert (
             esolangs.run(
                 language,
                 source,
-                stdin,
+                stdin=stdin,
                 settings=settings,
                 isolated=True,
                 max_output=1000,
             )
             == direct
         )
-        vm = make_vm(language, source, stdin, settings=settings)
+        vm = make_vm(language, source, stdin=stdin, settings=settings)
         assert complete_vm(vm, 100_000) == direct
 
 
@@ -105,9 +107,11 @@ class Unreadable(StringIO):
 )
 def test_invalid_settings_fail_before_reading(language, settings, options):
     with pytest.raises(esolangs.ArgumentError):
-        esolangs.run(language, Unreadable(), Unreadable(), settings=settings, **options)
+        esolangs.run(
+            language, Unreadable(), stdin=Unreadable(), settings=settings, **options
+        )
     with pytest.raises(esolangs.ArgumentError):
-        make_vm(language, Unreadable(), Unreadable(), settings=settings)
+        make_vm(language, Unreadable(), stdin=Unreadable(), settings=settings)
     with pytest.raises(esolangs.ArgumentError):
         esolangs.generate(language, "01", settings=settings)
 
@@ -206,7 +210,7 @@ def test_postfix_one_entry_chunks():
     # Width 1 forces 64 one-entry chunks; parity would hide reversed inputs.
     table = "".join(str(((row * 37) ^ (row >> 1)).bit_count() % 2) for row in range(64))
     settings = DialectSettings(expression_syntax="postfix")
-    source = esolangs.generate("Alight", table, 1, settings=settings)
+    source = esolangs.generate("Alight", table, width=1, settings=settings)
     assert _evaluate("Alight", source, inputs=6, settings=settings) == table
 
 
@@ -227,20 +231,24 @@ def test_generated_settings_are_reused(language, settings, balance):
             assert program.settings is settings
             stdin = ""
         else:
-            program, stdin = source, esolangs.encode_inputs(language, bits, "0110")
+            program, stdin = (
+                source,
+                esolangs.encode_inputs(language, bits, truth_table="0110"),
+            )
         assert (
-            esolangs.read_answer(language, esolangs.run(language, program, stdin))
+            esolangs.read_answer(language, esolangs.run(language, program, stdin=stdin))
             == expected
         )
         assert (
             esolangs.read_answer(
-                language, esolangs.run(language, program, stdin, max_steps=100_000)
+                language,
+                esolangs.run(language, program, stdin=stdin, max_steps=100_000),
             )
             == expected
         )
         assert (
             esolangs.read_answer(
-                language, complete_vm(make_vm(language, program, stdin), 100_000)
+                language, complete_vm(make_vm(language, program, stdin=stdin), 100_000)
             )
             == expected
         )
@@ -268,9 +276,9 @@ def test_raster_scaling_retains_settings(balance):
     )
     assert source.settings is settings
     assert source.tagged(source.language).settings is settings
-    assert source.upscaled().settings is settings
+    assert source.upscaled(1).settings is settings
     assert source.upscaled(2).settings is settings
-    assert esolangs.run("Line", source, "1") == "1"
+    assert esolangs.run("Line", source, stdin="1") == "1"
     assert Raster.from_png(source.to_png()).settings is None
     assert source.tagged("Piet").settings is None
 
@@ -326,7 +334,9 @@ def test_foreign_language_guard_precedes_retained_choices():
 def test_empty_tag_metadata_and_template_override():
     source = esolangs.generate("Brainfuck", "01")
     assert source.settings is None
-    assert esolangs.run("Brainfuck", source, "1", settings=DialectSettings()) == "1"
+    assert (
+        esolangs.run("Brainfuck", source, stdin="1", settings=DialectSettings()) == "1"
+    )
     settings = DialectSettings()
     template = esolangs.generate("Bitdeque", "0110", settings=settings)
     filled = esolangs.instantiate(
@@ -339,7 +349,7 @@ def test_empty_tag_metadata_and_template_override():
 def test_inherited_choices_are_checked_before_input():
     source = _Tagged("+.", "brainfuck", DialectSettings(cell_modulus=255))
     with pytest.raises(esolangs.ArgumentError, match="dialect settings"):
-        esolangs.run("Brainfuck", source, Unreadable())
+        esolangs.run("Brainfuck", source, stdin=Unreadable())
 
 
 def test_evaluation_inherits_loaded_metadata():
@@ -357,7 +367,7 @@ def test_default_pickle_has_no_retained_choices():
     source = esolangs.generate("Brainfuck", "01")
     restored = pickle.loads(pickle.dumps(source))
     assert restored.settings is None
-    assert esolangs.run("Brainfuck", restored, "1") == "1"
+    assert esolangs.run("Brainfuck", restored, stdin="1") == "1"
 
 
 def test_generation_rejects_untyped_settings():
@@ -648,12 +658,15 @@ def test_invalid_dialects_are_rejected(build, table, options, message):
 def test_rotfuck_rotation_reaches_every_execution_path(isolated):
     """The wiki cat ``,[`` echoes backward; forward, ``,,`` does instead."""
     forward = DialectSettings(rotation="forward")
-    assert esolangs.run("ROTfuck", ",[", "x", isolated=isolated) == "x"
+    assert esolangs.run("ROTfuck", ",[", stdin="x", isolated=isolated) == "x"
     assert (
-        esolangs.run("ROTfuck", ",,", "x", settings=forward, isolated=isolated) == "x"
+        esolangs.run("ROTfuck", ",,", stdin="x", settings=forward, isolated=isolated)
+        == "x"
     )
-    assert complete_vm(make_vm("ROTfuck", ",,", "x", settings=forward), 100) == "x"
-    assert complete_vm(make_vm("ROTfuck", ",,", "x"), 100) == ""
+    assert (
+        complete_vm(make_vm("ROTfuck", ",,", stdin="x", settings=forward), 100) == "x"
+    )
+    assert complete_vm(make_vm("ROTfuck", ",,", stdin="x"), 100) == ""
     with pytest.raises(esolangs.ArgumentError, match="backward"):
         esolangs.generate("ROTfuck", "01", settings=forward)
 

@@ -120,33 +120,33 @@ class TestOutputSurvivesAFailure:
     def test_a_halt_carries_what_was_printed(self) -> None:
         """The attribute, which is what the CLI reads."""
         with pytest.raises(esolangs.HaltError) as caught:
-            esolangs.run("Modulous", self.PRINTS_THEN_FAILS, "")
+            esolangs.run("Modulous", self.PRINTS_THEN_FAILS, stdin="")
         assert caught.value.partial_output == "Hi"
 
     def test_it_is_in_the_traceback_too(self) -> None:
         """The note, for anyone who only sees the traceback."""
         with pytest.raises(esolangs.HaltError) as caught:
-            esolangs.run("Modulous", self.PRINTS_THEN_FAILS, "")
+            esolangs.run("Modulous", self.PRINTS_THEN_FAILS, stdin="")
         assert "printed 'Hi'" in "\n".join(getattr(caught.value, "__notes__", []))
 
     def test_a_timeout_carries_it(self) -> None:
         """The case that matters most: a loop you meant to be finite."""
         with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
-            esolangs.run("Modulous", self.LOOPS_PRINTING, "", 0.01)
+            esolangs.run("Modulous", self.LOOPS_PRINTING, stdin="", timeout=0.01)
         assert caught.value.partial_output.startswith("999")
 
     def test_an_error_before_the_run_carries_nothing(self) -> None:
         """Empty is the honest answer when the program never started."""
         with pytest.raises(esolangs.UnknownLanguageError) as unknown:
-            esolangs.run("nosuchlang", "+", "")
+            esolangs.run("nosuchlang", "+", stdin="")
         assert unknown.value.partial_output == ""
         with pytest.raises(esolangs.ProgramError) as bad:
-            esolangs.run("brainfuck", "[[[", "")
+            esolangs.run("brainfuck", "[[[", stdin="")
         assert bad.value.partial_output == ""
 
     def test_a_successful_run_is_unchanged(self) -> None:
         """The attribute is for failures; success returns as it always did."""
-        assert esolangs.run("brainfuck", "+++.", "") == "\x03"
+        assert esolangs.run("brainfuck", "+++.", stdin="") == "\x03"
 
     def test_the_cli_prints_it_before_the_error(
         self, capsys: pytest.CaptureFixture[str], tmp_path: Path

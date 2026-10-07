@@ -24,5 +24,5 @@ def test_executed_rendered_scaling(language: str) -> None:
         else:
             source = template
             stdin = esolangs.encode_inputs(language, bits)
-        assert esolangs.run(language, source, stdin) == table[row]
+        assert esolangs.run(language, source, stdin=stdin) == table[row]
     assert (sizes[2] - sizes[1]) / (sizes[1] - sizes[0]) <= 4.4

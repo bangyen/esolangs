@@ -80,7 +80,7 @@ class TestCollatzMultiverse:
         for table in ("0000", "1111", "0110", "01101001", "10101010"):
             n = len(table).bit_length() - 1
             plain = boolean.collatz_multiverse(table)
-            program = esolangs.generate("Collatz Multiverse", table, width)
+            program = esolangs.generate("Collatz Multiverse", table, width=width)
             assert max(map(len, program.splitlines())) <= max(
                 width, max(map(len, plain.splitlines()))
             )

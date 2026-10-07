@@ -20,6 +20,7 @@ from esolangs.registry import LANGUAGES, resolve
 def encode_inputs(
     language: str,
     bits: list[int] | tuple[int, ...],
+    *,
     truth_table: str | None = None,
 ) -> str:
     """Return the stdin that feeds ``bits`` to a ``language`` program.

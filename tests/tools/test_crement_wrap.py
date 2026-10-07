@@ -16,7 +16,7 @@ def test_crement_width_narrows_the_widest_instruction() -> None:
 
 
 def test_crement_data_only_setters_survive_plain_template() -> None:
-    template = esolangs.generate("Crement", "0110", 1)
+    template = esolangs.generate("Crement", "0110", width=1)
     assert max(map(len, template.splitlines())) == 2
     for row, expected in enumerate("0110"):
         source = esolangs.instantiate(
@@ -29,7 +29,7 @@ def test_crement_data_only_setters_survive_plain_template() -> None:
 @pytest.mark.parametrize("width", [4, 6, 7, 8])
 @pytest.mark.parametrize("table", ["0110", "00010111", "01101001" * 4])
 def test_crement_saved_layouts_keep_exact_provenance(table: str, width: int) -> None:
-    template = str(esolangs.generate("Crement", table, width))
+    template = str(esolangs.generate("Crement", table, width=width))
     bits = [0] * (len(table).bit_length() - 1)
     source = esolangs.instantiate("Crement", template, bits, truth_table=table)
     assert diverges("Crement", source, "") is (table[0] == "1")

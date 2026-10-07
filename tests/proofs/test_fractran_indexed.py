@@ -106,7 +106,7 @@ def test_narrow_template_provenance(width: int) -> None:
     from esolangs.exceptions import TemplateError
 
     table = "0110"
-    template = esolangs.generate("fractran", table, width)
+    template = esolangs.generate("fractran", table, width=width)
     for text in (template, str(template)):
         code = esolangs.instantiate("fractran", text, [0, 1], truth_table=table)
         machine = _Machine(code, ScriptedIO(""))
@@ -141,11 +141,11 @@ def test_folded_constant_paths_discard_all_embedded_inputs(n: int, bit: str) -> 
 def test_binary_parity_uses_three_column_fractions() -> None:
     import esolangs
 
-    template = esolangs.generate("FRACTRAN", "0110", 1)
+    template = esolangs.generate("FRACTRAN", "0110", width=1)
     assert max(map(len, template.splitlines())) == 3
     assert len(template) == 14
     for row, expected in enumerate("0110"):
-        code = esolangs.instantiate("FRACTRAN", template, [row >> 1, row & 1], 1)
+        code = esolangs.instantiate("FRACTRAN", template, [row >> 1, row & 1], width=1)
         assert max(map(len, code.splitlines())) == 3
         machine = _Machine(code, ScriptedIO(""))
         for _ in range(8):

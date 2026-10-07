@@ -7,4 +7,4 @@ import esolangs
 
 @pytest.mark.parametrize("language", ["Befunge", "Fish", "Super SNUSP", "thisthat"])
 def test_xor_has_one_column(language: str) -> None:
-    assert max(map(len, esolangs.generate(language, "0110", 1).splitlines())) == 1
+    assert max(map(len, esolangs.generate(language, "0110", width=1).splitlines())) == 1

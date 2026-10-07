@@ -24,7 +24,7 @@ def test_piet_scaled_png_computes_every_row(scale: int, *, balanced: bool) -> No
     decoded = Raster.from_png(enlarged.to_png())
     assert detect_scale(decoded.rows) == scale
     assert _evaluate(language.name, decoded, inputs=2) == "0001"
-    assert language.run(decoded, "1\n1\n", scale=scale) == "1"
+    assert language.run(decoded, stdin="1\n1\n", scale=scale) == "1"
 
 
 @pytest.mark.medium
@@ -37,8 +37,8 @@ def test_line_scaled_png_runs(*, balanced: bool) -> None:
     assert isinstance(enlarged, Raster)
     assert len(enlarged.rows[0]) == len(native.rows[0]) * 2
     decoded = Raster.from_png(enlarged.to_png())
-    assert language.run(decoded, "1\n") == "0"
-    assert language.run(decoded, "0\n", scale=2) == "0"
+    assert language.run(decoded, stdin="1\n") == "0"
+    assert language.run(decoded, stdin="0\n", scale=2) == "0"
 
 
 def test_line_detection_has_no_sixteen_fold_ceiling() -> None:
@@ -65,7 +65,7 @@ def test_piet_explicit_scale_resolves_ambiguous_image() -> None:
 
 def test_scale_validation_and_uniformity() -> None:
     image = Raster((((0, 0, 0), (255, 255, 255)), ((0, 0, 0), (0, 0, 0))))
-    assert image.upscaled() is image
+    assert image.upscaled(1) is image
     assert normalize(image.rows) is image.rows
     assert image.upscaled(2).language is None
     with pytest.raises(ProgramError, match="uniform"):
@@ -99,7 +99,7 @@ def test_native_generator_scales_and_runs(name: str) -> None:
     from esolangs.registry import GENERATORS
 
     image = GENERATORS[name]("00", scale=2)
-    assert esolangs.run(name, Raster.from_png(image.to_png()), "1\n") == "0"
+    assert esolangs.run(name, Raster.from_png(image.to_png()), stdin="1\n") == "0"
 
 
 @pytest.mark.medium
@@ -155,9 +155,9 @@ def test_explicit_line_scale_rejects_partial_ink_blocks() -> None:
 def test_explicit_scale_validates_lazy_line_pixels() -> None:
     image = esolangs.generate("Line", "00", scale=2)
     assert isinstance(image, Raster)
-    assert esolangs.run("Line", image, "1\n", scale=2) == "0"
+    assert esolangs.run("Line", image, stdin="1\n", scale=2) == "0"
     with pytest.raises(ProgramError, match="uniform"):
-        esolangs.run("Line", image, "1\n", scale=3)
+        esolangs.run("Line", image, stdin="1\n", scale=3)
 
 
 @pytest.mark.medium

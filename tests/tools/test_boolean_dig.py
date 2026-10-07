@@ -133,7 +133,7 @@ class TestDig:
         from esolangs.interpreters.grid_based.dig import run
         from esolangs.interpreters.io import ScriptedIO
 
-        program = esolangs.generate("Dig", "0110", width)
+        program = esolangs.generate("Dig", "0110", width=width)
         assert max(map(len, program.splitlines())) == 4
         for row, expected in enumerate("0110"):
             io = ScriptedIO("\n".join(f"{row:02b}") + "\n")

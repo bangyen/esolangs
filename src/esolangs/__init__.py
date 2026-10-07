@@ -31,7 +31,6 @@ from esolangs._describe import (
     describe,
     list_languages,
 )
-from esolangs._evaluate import _DEFAULT, _Default
 from esolangs._execution import (
     check_signal_timeout,
     interpreter_errors,
@@ -44,11 +43,18 @@ from esolangs._program import Program, RunnerProgram
 from esolangs._source import (
     InputSource,
     ProgramSource,
+    _FileSource,
     check_input,
     check_scale_for,
     text_source,
 )
-from esolangs._validate import check_bits, check_scale, check_timeout, check_width
+from esolangs._validate import (
+    check_bits,
+    check_scale,
+    check_seed,
+    check_timeout,
+    check_width,
+)
 from esolangs.exceptions import (
     ArgumentError,
     EsolangError,
@@ -56,7 +62,6 @@ from esolangs.exceptions import (
     GeneratorCapError,
     HaltError,
     InputExhaustedError,
-    InputMismatchWarning,
     InterpreterLimitError,
     MissingDependencyError,
     ProgramError,
@@ -126,7 +131,6 @@ __all__ = [
     "GeneratorCapError",
     "HaltError",
     "InputExhaustedError",
-    "InputMismatchWarning",
     "InputSource",
     "InterpreterLimitError",
     "Language",
@@ -160,8 +164,8 @@ def __dir__() -> list[str]:
 def generate(
     language: str,
     truth_table: str,
-    width: int | None = None,
     *,
+    width: int | None = None,
     balance: bool = False,
     scale: int = 1,
     settings: DialectSettings | None = None,
@@ -195,7 +199,7 @@ def generate(
                 ("omit scale for text languages; apply it only to raster source"),
             )
         source = generate(
-            language, truth_table, width, balance=balance, settings=settings
+            language, truth_table, width=width, balance=balance, settings=settings
         )
         return cast(Raster, source).upscaled(scale)
     if balance and width is not None:
@@ -308,7 +312,7 @@ def _is_template_for(
 
     @cache
     def layout(width: int) -> Program:
-        return generate(name, truth_table, width, settings=settings)
+        return generate(name, truth_table, width=width, settings=settings)
 
     def same_tokens(program: Program) -> bool:
         return isinstance(program, str) and template.split() == program.split()
@@ -375,11 +379,11 @@ def _is_template_for(
 
 def instantiate(
     language: str,
-    template: str,
+    template: Program,
     bits: list[int] | tuple[int, ...],
+    *,
     width: int | None = None,
     truth_table: str | None = None,
-    *,
     settings: DialectSettings | None = None,
 ) -> str:
     """Fill a parameterized generator's template with ``bits``.
@@ -396,6 +400,17 @@ def instantiate(
     dialect_options(language, settings)
     check_width(width)
     name = resolve(language)
+    if isinstance(template, Raster):
+        # Accepted by the annotation so ``instantiate(lang, generate(lang,
+        # table), bits)`` type-checks; no raster generator emits a template.
+        raise with_hint(
+            TemplateError(
+                f"{name} source is a Raster, and raster programs read their "
+                f"inputs rather than embedding them, so there is nothing to "
+                f"instantiate"
+            ),
+            ("run the raster with stdin=encode_inputs(language, bits)"),
+        )
     if not isinstance(template, str):
         # Before the provenance check, which calls ``template.replace`` and
         # so leaked an ``AttributeError`` for a non-string.
@@ -496,6 +511,10 @@ def instantiate(
     )
 
 
+#: ``run(..., isolated=True)``'s deadline when ``timeout`` is None: the
+#: subprocess needs one, and unbounded is what None means everywhere else.
+_ISOLATED_TIMEOUT = 30.0
+
 #: Characters a filename is made of, and a program mostly is not.
 _PATH_CHARS = re.compile(r"^[\w./\\~-]+$")
 
@@ -558,7 +577,7 @@ def _check_runnable(language: str, program: Program) -> None:
         )
 
 
-def _read_source(language: str, program: ProgramSource) -> Program:
+def _read_source(language: str, program: ProgramSource | _FileSource) -> Program:
     """Load source and check its kind and origin, allowing unfilled templates."""
     name = resolve(language)
     module = interpreter_module(name)
@@ -590,8 +609,8 @@ def _check_program(
     is read here with one trailing newline stripped (CV(N)(C), Grapheme and
     NoComment reject one), so the whole call is::
 
-        path = pathlib.Path(describe(lang)["examples"][0])
-        run(lang, path, encode_inputs(lang, [0, 1]))
+        path = importlib.resources.files("esolangs") / describe(lang)["examples"][0]
+        run(lang, path, stdin=encode_inputs(lang, [0, 1]))
 
     Programs may also be UTF-8 text bytes, PNG bytes, or readable streams.
     The interpreter chooses the decoder. Stdin streams are checked without
@@ -626,7 +645,9 @@ def _run_bounded(
     check_timeout(timeout)
     from esolangs.debugger import make_debugger
 
-    debugger = make_debugger(language, program, stdin, scale=scale, settings=settings)
+    debugger = make_debugger(
+        language, program, stdin=stdin, scale=scale, settings=settings
+    )
     try:
         reason = debugger.run(max_steps=max_steps, timeout=timeout)
     except EsolangError as exc:
@@ -642,10 +663,10 @@ def _run_bounded(
 def run(
     language: str,
     program: ProgramSource,
-    stdin: InputSource = "",
-    timeout: float | _Default | None = _DEFAULT,
-    seed: int | None = None,
     *,
+    stdin: InputSource = "",
+    timeout: float | None = None,
+    seed: int | None = None,
     isolated: bool = False,
     max_steps: int | None = None,
     scale: int | None = None,
@@ -669,7 +690,8 @@ def run(
     as text stdin.
 
     ``isolated=True`` uses a subprocess deadline, including startup and loading
-    (30 seconds by default). It works on Windows and worker threads.
+    (``timeout``, or 30 seconds when it is None). It works on Windows and
+    worker threads.
     ``max_steps`` uses cooperative stepping; its optional timeout excludes loading
     and cannot interrupt a single step. Text and raster programs support stepping.
     Isolation and step bounds cannot be combined; stepping does not support seed.
@@ -682,22 +704,21 @@ def run(
     Boolean validation. Reading past
     the end usually raises :class:`~esolangs.exceptions.InputExhaustedError`;
     ``describe(language)["eof_is_a_value"]`` marks languages supplying a value.
-    Some halt instead. Use the private stdin check
-    explicitly to validate input for a Boolean-generated program.
+    Some halt instead. Build a Boolean-generated program's stdin with
+    :func:`encode_inputs`, which validates the bits.
 
-    ``timeout`` is wall-clock seconds and raises
+    ``timeout`` is wall-clock seconds (None: unbounded) and raises
     :class:`~esolangs.exceptions.ExecutionTimeoutError` (a
     :class:`TimeoutError` and a :class:`~esolangs.exceptions.HaltError`; catch
     it, not the base).  It is ``SIGALRM``, so needs a Unix main thread; off it,
-    :meth:`Debugger.run` bounds by stepping.  ``seed`` fixes the five
-    languages that draw.  An unloadable program raises
+    :meth:`Debugger.run` bounds by stepping.  ``seed``, an integer, fixes the
+    nine languages that draw and is refused by the rest.  An unloadable program raises
     :class:`~esolangs.exceptions.ProgramError`.
     """
     settings = effective_settings(language, program, settings)
     dialect = dialect_options(language, settings)
     check_scale_for(language, scale)
-    if isinstance(timeout, _Default):
-        timeout = 30.0 if isolated else None
+    check_seed(seed)
     check_timeout(timeout)
     from esolangs._isolated import check_memory
 
@@ -717,17 +738,13 @@ def run(
                 ArgumentError("isolated and max_steps are mutually exclusive"),
                 ("use isolation with timeout, or use max_steps without isolation"),
             )
-        if timeout is None:
-            raise with_hint(
-                ArgumentError("isolated execution requires a finite timeout"),
-                ("set a positive finite timeout, for example timeout=5.0"),
-            )
+        deadline = _ISOLATED_TIMEOUT if timeout is None else timeout
         if max_output is not None or max_memory is not None:
             return _run_isolated(
                 language,
                 program,
                 stdin,
-                timeout,
+                deadline,
                 seed=seed,
                 scale=scale,
                 max_output=max_output,
@@ -739,14 +756,14 @@ def run(
                 language,
                 program,
                 stdin,
-                timeout,
+                deadline,
                 seed=seed,
                 scale=scale,
                 settings=settings,
             )
         if scale is None:
-            return _run_isolated(language, program, stdin, timeout, seed=seed)
-        return _run_isolated(language, program, stdin, timeout, seed=seed, scale=scale)
+            return _run_isolated(language, program, stdin, deadline, seed=seed)
+        return _run_isolated(language, program, stdin, deadline, seed=seed, scale=scale)
     if max_steps is not None:
         if seed is not None:
             raise with_hint(

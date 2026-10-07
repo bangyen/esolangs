@@ -123,15 +123,15 @@ def _commands(name: str, table: str) -> int | None:
         # assumed: it is ("halts", "diverges") for all four today.
         halts = str(list(facts["answer_encoding"]).index("halts"))
     inputs = len(table).bit_length() - 1
-    program = generate(name, table, None)
+    program = generate(name, table, width=None)
     worst: int | None = None
     for row in _rows(table, halts):
         bits = [(row >> (inputs - 1 - i)) & 1 for i in range(inputs)]
         if facts["parameterized"]:
-            source, stdin = instantiate(name, program, bits, None), ""
+            source, stdin = instantiate(name, program, bits, width=None), ""
         else:
-            source, stdin = program, encode_inputs(name, bits, table)
-        machine = make_vm(name, source, stdin)
+            source, stdin = program, encode_inputs(name, bits, truth_table=table)
+        machine = make_vm(name, source, stdin=stdin)
         steps = 0
         while not machine.halted and steps < STEP_CAP:
             machine.step()

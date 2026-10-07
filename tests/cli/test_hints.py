@@ -80,14 +80,14 @@ def test_rejected_source_retains_a_repair_hint(language, source, hint):
 @pytest.mark.parametrize("language", ["brainfuck", "BF-PDA", "Boolfuck"])
 def test_vm_load_retains_the_delimiter_and_position(language):
     with pytest.raises(esolangs.ProgramError, match="unmatched") as caught:
-        make_vm(language, "[", "")
+        make_vm(language, "[", stdin="")
     assert str(caught.value) == "unmatched '[' at position 0"
     assert caught.value.__notes__ == ["hint: close this '[' with ']'"]
 
 
 @pytest.mark.medium
 def test_vm_runtime_error_keeps_its_hint():
-    vm = make_vm("Modulous", "[JMP F]", "")
+    vm = make_vm("Modulous", "[JMP F]", stdin="")
     with pytest.raises(esolangs.ProgramError, match="missing operand") as caught:
         vm.step()
     assert "required operand" in caught.value.__notes__[0]
@@ -146,7 +146,7 @@ def test_datatype_typo_uses_the_parser_vocabulary():
 )
 def test_builtin_value_errors_get_operand_or_input_hints(language, source, stdin, hint):
     with pytest.raises(ValueError, match=r".+") as caught:
-        esolangs.run(language, source, stdin, timeout=1)
+        esolangs.run(language, source, stdin=stdin, timeout=1)
     assert any(hint in note for note in caught.value.__notes__)
 
 
@@ -332,7 +332,7 @@ def test_runtime_error_keeps_partial_output_and_one_hint(isolated):
 def test_vm_and_tui_display_runtime_hints():
     from esolangs.tui import render, replay
 
-    machine = make_vm("Modulous", "[SWP]", "")
+    machine = make_vm("Modulous", "[SWP]", stdin="")
     with pytest.raises(HaltError) as caught:
         machine.step()
     assert caught.value.__notes__ == ["hint: push two values before SWP"]
@@ -501,7 +501,9 @@ def test_cycle_detector_requires_a_snapshot_machine():
 def test_fixed_input_does_not_make_branch_input_forkable():
     source = "[INP INT][PRT INT][END]"
     with pytest.raises(TimeoutError) as caught:
-        vm.run_until_halt_or_all_branches_cycle(vm.make_vm("Modulous", source, "42\n"))
+        vm.run_until_halt_or_all_branches_cycle(
+            vm.make_vm("Modulous", source, stdin="42\n")
+        )
     assert str(caught.value) == (
         "undecided: a branching transition needs input that cannot be safely forked"
     )

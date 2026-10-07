@@ -14,7 +14,7 @@ _CYCLE_STEPS = 100_000
 def diverges(name: str, source: str, stdin: str) -> bool | None:
     """Whether ``source`` provably never halts, or ``None`` if undecided."""
     try:
-        machine = make_vm(name, source, stdin)
+        machine = make_vm(name, source, stdin=stdin)
     except Exception:
         return None
     try:

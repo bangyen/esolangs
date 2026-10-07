@@ -200,7 +200,7 @@ def run_ours(language: str, program: str, stdin: str, max_steps: int) -> Outcome
     """Step our VM up to ``max_steps``; ``timeout`` if it is still running."""
     vm = None
     try:
-        vm = make_vm(language, program, stdin)
+        vm = make_vm(language, program, stdin=stdin)
         for _ in range(max_steps):
             if vm.halted:
                 break
@@ -219,7 +219,7 @@ def run_ours_fast(language: str, program: str, stdin: str) -> Outcome:
     """Run through ``esolangs.run``, the path users take."""
     try:
         return Outcome(
-            "halt", _bytes(esolangs.run(language, program, stdin, timeout=20))
+            "halt", _bytes(esolangs.run(language, program, stdin=stdin, timeout=20))
         )
     except Exception as exc:
         return Outcome(_ours_status(exc), b"", f"{type(exc).__name__}: {exc}")
@@ -653,7 +653,7 @@ def final_state(
             return Outcome("crash:fastpath", b"", f"{got} vs {fast}")
         if got.status != "halt":
             return Outcome(got.status, b"", got.detail)
-        vm = make_vm(language, program, stdin)
+        vm = make_vm(language, program, stdin=stdin)
         while not vm.halted:
             vm.step()
         machine = vm._machine  # type: ignore[attr-defined]  # noqa: SLF001

@@ -2,19 +2,14 @@
 
 from __future__ import annotations
 
-from typing import Protocol
+from typing import IO
 
 from esolangs.exceptions import ArgumentError
 from esolangs.interpreters.source_hints import with_hint
 
-
-class Reader(Protocol):
-    """A text or binary stream consumed from its current position."""
-
-    def read(self) -> str | bytes: ...
-
-
-type InputSource = str | bytes | Reader
+#: A stream is consumed from its current position.  Spelled with ``typing.IO``
+#: so the public alias names no private type; at runtime any ``.read()`` does.
+type InputSource = str | bytes | IO[str] | IO[bytes]
 
 
 def check_input(source: InputSource) -> None:

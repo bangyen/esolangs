@@ -188,9 +188,9 @@ def test_boolean_example(name: str) -> None:
         else path.read_text(encoding="utf-8").rstrip("\n")
     )
     if isinstance(program, Raster):
-        got = esolangs.run(name, program, stdin)
+        got = esolangs.run(name, program, stdin=stdin)
     else:
-        vm = make_vm(VM_LANGUAGE[_module], program, stdin)
+        vm = make_vm(VM_LANGUAGE[_module], program, stdin=stdin)
     if name == "a-painter-ant":
         # Its implicit loop has no halting state: a repeated snapshot is its
         # language-defined stop.  The public interpreter renders only at a

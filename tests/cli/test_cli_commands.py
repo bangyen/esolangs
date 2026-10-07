@@ -1,6 +1,5 @@
 """The subcommands that run a program and judge what it printed."""
 
-import importlib
 import inspect
 import json
 from pathlib import Path
@@ -10,6 +9,7 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
+from esolangs._execution import interpreter_module
 from esolangs.cli import HELP
 from tests.cli.test_cli import _program, call_main
 from tests.cli_support import _LOOPS, _refused, call_both
@@ -107,14 +107,17 @@ class TestASeedMakesARunRepeat:
     def test_a_seeded_run_repeats(self) -> None:
         """Six runs, one answer."""
         answers = {
-            esolangs.run("LaserFuck", self.PROGRAM, "", 5, seed=0) for _ in range(6)
+            esolangs.run("LaserFuck", self.PROGRAM, stdin="", timeout=5, seed=0)
+            for _ in range(6)
         }
         assert len(answers) == 1
 
     def test_the_seed_selects_rather_than_fixes_one_outcome(self) -> None:
         """A seed that always gave the same answer would prove nothing."""
         by_seed = {
-            seed: esolangs.run("LaserFuck", self.PROGRAM, "", 5, seed=seed)
+            seed: esolangs.run(
+                "LaserFuck", self.PROGRAM, stdin="", timeout=5, seed=seed
+            )
             for seed in range(8)
         }
         assert len(set(by_seed.values())) == 2
@@ -122,36 +125,27 @@ class TestASeedMakesARunRepeat:
 
     def test_no_seed_is_the_language_as_specified(self) -> None:
         """The default has to stay the system's randomness, not a fixed draw."""
-        assert esolangs.run("LaserFuck", self.PROGRAM, "", 5) in {"", "3"}
+        assert esolangs.run("LaserFuck", self.PROGRAM, stdin="", timeout=5) in {"", "3"}
 
     def test_a_seed_for_a_language_that_draws_nothing_is_refused(self) -> None:
         """Ignoring it would be right by accident and hide the likelier fault."""
         with pytest.raises(esolangs.ArgumentError, match="draws no random values"):
-            esolangs.run("brainfuck", "+++.", "", 5, seed=1)
+            esolangs.run("brainfuck", "+++.", stdin="", timeout=5, seed=1)
 
-    def test_a_seed_of_an_unseedable_type_is_an_argument_error(self) -> None:
-        """``random.Random`` raised a bare TypeError through the public API."""
-        with pytest.raises(esolangs.ArgumentError):
-            esolangs.run("LaserFuck", self.PROGRAM, "", 5, seed=object())
-
-    def test_a_surrogate_string_seed_is_an_argument_error(self) -> None:
-        """A surrogate is a ``UnicodeEncodeError``, also not an EsolangError."""
-        with pytest.raises(esolangs.ArgumentError):
-            esolangs.run("LaserFuck", self.PROGRAM, "", 5, seed="\ud800")
+    @pytest.mark.parametrize("seed", ["x", "\ud800", 1.5, True, object()])
+    def test_a_seed_that_is_not_an_integer_is_an_argument_error(
+        self, seed: object
+    ) -> None:
+        """``random.Random`` took ``"x"`` and ``1.5`` and ran; others leaked."""
+        with pytest.raises(esolangs.ArgumentError, match="seed must be an integer"):
+            esolangs.run("LaserFuck", self.PROGRAM, timeout=5, seed=seed)  # type: ignore[arg-type]
 
     def test_the_languages_that_draw_are_the_ones_named(self) -> None:
         """The message lists them, so the list has to be right."""
         drawing = [
             name
             for name in esolangs.list_languages()
-            if esolangs.describe(name)["interpreter"] is not None
-            if "rng"
-            in inspect.signature(
-                importlib.import_module(
-                    "esolangs.interpreters."
-                    + str(esolangs.describe(name)["interpreter"])
-                ).run
-            ).parameters
+            if "rng" in inspect.signature(interpreter_module(name).run).parameters
         ]
         assert drawing == [
             "Befunge",
@@ -165,9 +159,10 @@ class TestASeedMakesARunRepeat:
             "thisthat",
         ]
         with pytest.raises(esolangs.ArgumentError) as caught:
-            esolangs.run("brainfuck", "+++.", "", 5, seed=1)
+            esolangs.run("brainfuck", "+++.", stdin="", timeout=5, seed=1)
         for name in drawing:
             assert name in str(caught.value)
+        assert "nine languages that draw" in str(esolangs.run.__doc__)
 
     def test_the_cli_takes_one(
         self, capsys: pytest.CaptureFixture[str], tmp_path: Path
@@ -211,7 +206,7 @@ class TestJsonOutput:
     ) -> None:
         """The empty and the paired fields, which the columns cannot carry."""
         payload = json.loads(call_both(["describe", "--json", "brainfuck"], capsys)[0])
-        assert payload["answer_pattern"] == ""  # dropped by the reading layout
+        assert payload["answer_pattern"] is None  # dropped by the reading layout
         assert payload["answer_convention"] is None  # dropped as well
         assert payload["input_encoding"] == ["0", "1"]  # not the string "0 1"
         assert "input" not in payload  # the composed sentence is not a key
@@ -333,8 +328,9 @@ class TestPrivateEvaluationNeedsNoSeed:
     def test_run_still_takes_one_because_it_takes_any_program(self) -> None:
         """The distinction: ``run`` executes what a caller wrote."""
         assert {
-            esolangs.run("LaserFuck", "o+++.\n", "", 5, seed=0) for _ in range(4)
-        } == {esolangs.run("LaserFuck", "o+++.\n", "", 5, seed=0)}
+            esolangs.run("LaserFuck", "o+++.\n", stdin="", timeout=5, seed=0)
+            for _ in range(4)
+        } == {esolangs.run("LaserFuck", "o+++.\n", stdin="", timeout=5, seed=0)}
 
 
 class TestALeadingZeroIndexNeverCrashes:
@@ -395,8 +391,8 @@ class TestBreakAtWhereThereIsNoShape:
     def test_a_language_with_no_ip_accepts_either_kind(self) -> None:
         """Circuit Diagram's ip is None, so there is nothing to compare."""
         program = esolangs.generate("Circuit Diagram", "0110")
-        stdin = esolangs.encode_inputs("Circuit Diagram", [0, 1], "0110")
-        debugger = debugger_api.make_debugger("Circuit Diagram", program, stdin)
+        stdin = esolangs.encode_inputs("Circuit Diagram", [0, 1], truth_table="0110")
+        debugger = debugger_api.make_debugger("Circuit Diagram", program, stdin=stdin)
         assert debugger.ip is None
         debugger.break_at(3)
         debugger.break_at((1, 2))
@@ -464,7 +460,7 @@ def test_short_settings_and_portable_flags(capsys, tmp_path):
     output, error = call_both(["generate", "-p", "brainfuck", "0110"], capsys)
     assert error == ""
     path.write_text(output, encoding="utf-8")
-    stdin = esolangs.encode_inputs("brainfuck", [1, 0], "0110")
+    stdin = esolangs.encode_inputs("brainfuck", [1, 0], truth_table="0110")
     output, error = call_both(["run", "-p", str(path)], capsys, stdin)
     assert output.strip() == "1"
     assert error == ""
@@ -491,7 +487,7 @@ def test_unknown_settings_key_suggests_the_fix(capsys):
 @pytest.mark.parametrize("command", ["run", "debug"])
 def test_portable_language_can_be_omitted(command, capsys, tmp_path):
     path = _portable(tmp_path)
-    stdin = esolangs.encode_inputs("brainfuck", [1, 0], "0110")
+    stdin = esolangs.encode_inputs("brainfuck", [1, 0], truth_table="0110")
     if command == "run":
         args = ["run", "--portable", str(path)]
         expected = "1"

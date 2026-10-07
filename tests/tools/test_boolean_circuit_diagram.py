@@ -327,12 +327,12 @@ class TestCircuitDiagramLayoutGuards:
         """The output returns beneath the native XOR gate."""
         import esolangs
 
-        program = esolangs.generate("Circuit Diagram", "0110", 1)
+        program = esolangs.generate("Circuit Diagram", "0110", width=1)
         assert max(map(len, program.splitlines())) == 4
         assert len(program) == 32
         assert "x" in program
         # The old six-column gate already fits this request.
-        assert "x.-:" in str(esolangs.generate("Circuit Diagram", "0110", 6))
+        assert "x.-:" in str(esolangs.generate("Circuit Diagram", "0110", width=6))
         for table in ("0110", "1001"):
             for width in (1, 4, 5, 6, 9, 11, 19):
                 assert self._run_at(table, width) == table

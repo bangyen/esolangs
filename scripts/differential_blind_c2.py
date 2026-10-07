@@ -205,7 +205,7 @@ def _container_ours(language: str, program: str, stdin: str, steps: int) -> obje
     got = run_ours(language, program, stdin, steps)
     if got.status != "halt":
         return got
-    vm = make_vm(language, program, stdin)
+    vm = make_vm(language, program, stdin=stdin)
     while not vm.halted:
         vm.step()
     code = vm._machine.exit_code  # type: ignore[attr-defined]  # noqa: SLF001

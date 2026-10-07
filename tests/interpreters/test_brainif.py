@@ -28,7 +28,7 @@ class TestBrainIfBasicCommands:
 
         code = "\n".join(f"if {k} increment" for k in range(256)) + "\nif 0 output"
         assert run_and_capture(code.splitlines()) == "\x00"
-        vm = make_vm("BrainIf", code, "")
+        vm = make_vm("BrainIf", code, stdin="")
         while not vm.halted:
             vm.step()
         assert vm.output == "\x00"

@@ -59,9 +59,8 @@ import esolangs
 
 program = esolangs.generate("brainfuck", "0110")
 stdin = esolangs.encode_inputs("brainfuck", [0, 1])
-assert (
-    esolangs.read_answer("brainfuck", esolangs.run("brainfuck", program, stdin)) == "1"
-)
+output = esolangs.run("brainfuck", program, stdin=stdin)
+assert esolangs.read_answer("brainfuck", output) == "1"
 ```
 
 Use `isolated=True` for a bounded run on Windows or worker threads.

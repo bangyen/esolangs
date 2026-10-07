@@ -48,7 +48,7 @@ class TestSubprocess:
     def test_generate(self) -> None:
         result = run_cli("generate", "Sophie", "0110")
         assert result.returncode == 0
-        assert esolangs.run("Sophie", result.stdout, "01") == "1"
+        assert esolangs.run("Sophie", result.stdout, stdin="01") == "1"
 
     def test_run(self, tmp_path: Path) -> None:
         program = tmp_path / "prog.soph"
@@ -71,7 +71,7 @@ class TestInProcess:
         out = capsysbinary.readouterr().out
         assert out.startswith(b"\x89PNG\r\n\x1a\n")
         image = esolangs.Raster.from_png(out)
-        assert esolangs.run("Piet", image, "1\n0\n") == "1"
+        assert esolangs.run("Piet", image, stdin="1\n0\n") == "1"
 
     def test_generate_missing_args(self, capsys: pytest.CaptureFixture[str]) -> None:
         with pytest.raises(SystemExit) as exc:
@@ -118,7 +118,7 @@ class TestPackageEntryPoint:
         with patch.object(sys, "argv", ["esolangs", "generate", "Sophie", "0110"]):
             runpy.run_module("esolangs", run_name="__main__")
         out = capsys.readouterr().out
-        assert esolangs.run("Sophie", out, "01") == "1"
+        assert esolangs.run("Sophie", out, stdin="01") == "1"
 
 
 class TestWidthOption:
@@ -128,7 +128,7 @@ class TestWidthOption:
         """``--width N`` bounds the generated program's columns."""
         out = call_main(["generate", "brainfuck", TABLE3, "--width", "20"], capsys)
         assert max(len(line) for line in out.rstrip("\n").split("\n")) <= 20
-        assert esolangs.run("brainfuck", out, "011") == "0"
+        assert esolangs.run("brainfuck", out, stdin="011") == "0"
 
     def test_a_width_of_one_is_positive(
         self, capsys: pytest.CaptureFixture[str]
@@ -143,7 +143,7 @@ class TestWidthOption:
         """``--width N`` consumes two arguments, not three."""
         out = call_main(["generate", "--width", "20", "brainfuck", TABLE3], capsys)
         assert max(len(line) for line in out.rstrip("\n").split("\n")) <= 20
-        assert esolangs.run("brainfuck", out, "011") == "0"
+        assert esolangs.run("brainfuck", out, stdin="011") == "0"
 
     def test_width_with_an_equals_sign(
         self, capsys: pytest.CaptureFixture[str]
@@ -167,7 +167,7 @@ class TestWidthOption:
     ) -> None:
         """A following word is an argument, not a width."""
         out = call_main(["generate", "--width", "brainfuck", TABLE3], capsys)
-        assert esolangs.run("brainfuck", out, "011") == "0"
+        assert esolangs.run("brainfuck", out, stdin="011") == "0"
 
 
 # ``+.+.+.`` after an 8x8 loop prints A, B, C -- three separate writes, so a

@@ -65,7 +65,7 @@ def test_restricted_generators_have_executed_positive_controls(name):
 
 
 def test_internal_route_budget_is_not_a_generator_restriction():
-    assert esolangs.describe("6-5")["generator_restrictions"] == ""
+    assert esolangs.describe("6-5")["generator_restrictions"] is None
     assert esolangs.describe("6-5")["generator_max_inputs"] is None
     assert (
         "1934 instructions" in esolangs.describe("Polynomial")["generator_restrictions"]

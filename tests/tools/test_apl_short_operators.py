@@ -11,7 +11,7 @@ from esolangs.interpreters.other.algebraic_programming_language import _Machine
 @pytest.mark.parametrize("width", [1, 4, 5, 6, 9])
 def test_operator_binding_reads_every_input_once(table: str, width: int) -> None:
     n = len(table).bit_length() - 1
-    program = generate("Algebraic Programming Language", table, width)
+    program = generate("Algebraic Programming Language", table, width=width)
     assert max(map(len, program.splitlines())) <= max(width, 5)
     for row, expected in enumerate(table):
         io = ScriptedIO("\n".join(format(row, f"0{n}b")))
@@ -31,14 +31,14 @@ def test_xor_arithmetic_family_reaches_four_columns() -> None:
         algebraic_programming_language,
     )
 
-    program = generate("Algebraic Programming Language", "0110", 1)
+    program = generate("Algebraic Programming Language", "0110", width=1)
     assert max(map(len, program.splitlines())) == 4
     assert len(program) == 49
     for row, expected in enumerate("0110"):
         stdin = "\n".join(format(row, "02b"))
         for source in (program, str(program)):
             assert (
-                esolangs.run("Algebraic Programming Language", source, stdin)
+                esolangs.run("Algebraic Programming Language", source, stdin=stdin)
                 == expected + "\n"
             )
     assert algebraic_programming_language("0110", 4) == program

@@ -24,7 +24,6 @@ __all__ = [
     "VM",
     "Debugger",
     "StopReason",
-    "complete_vm",
     "make_debugger",
     "make_vm",
 ]
@@ -275,7 +274,7 @@ class Debugger:
         self._record()
 
     def run(
-        self, max_steps: int | None = None, timeout: float | None = None
+        self, *, max_steps: int | None = None, timeout: float | None = None
     ) -> StopReason:
         """Execute until the machine halts, a breakpoint fires, or a bound ends it.
 
@@ -351,8 +350,8 @@ class Debugger:
 def make_debugger(
     language: str,
     program: ProgramSource,
-    stdin: InputSource = "",
     *,
+    stdin: InputSource = "",
     scale: int | None = None,
     settings: DialectSettings | None = None,
 ) -> Debugger:
@@ -365,4 +364,6 @@ def make_debugger(
     raises :class:`~esolangs.exceptions.InputExhaustedError` here rather
     than at :meth:`Debugger.run`.
     """
-    return Debugger(make_vm(language, program, stdin, scale=scale, settings=settings))
+    return Debugger(
+        make_vm(language, program, stdin=stdin, scale=scale, settings=settings)
+    )

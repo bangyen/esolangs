@@ -899,8 +899,8 @@ def machine_traits(language: str) -> dict[str, bool]:
 def make_vm(
     language: str,
     program: ProgramSource,
-    stdin: InputSource = "",
     *,
+    stdin: InputSource = "",
     scale: int | None = None,
     settings: DialectSettings | None = None,
 ) -> VM:

@@ -293,7 +293,7 @@ def _streetcode_lift(rows: list[str]) -> list[str]:
     # Write it into row 1 reversed, ending against the eastern wall, which
     # is found rather than assumed to be the last column: a block hanging
     # below the street can be wider than the street, and ``width`` is the
-    # widest row of the whole grid.  ``generate("Streetcode", "0001", 20)``
+    # widest row of the whole grid.  ``generate("Streetcode", "0001", width=20)``
     # was one of four two-input tables whose prefix landed outside the wall.
     east = "".join(grid[0]).rindex("+") - 1
     for i, char in enumerate(prefix):

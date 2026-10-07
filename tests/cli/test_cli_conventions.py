@@ -1,14 +1,15 @@
 """What the CLI makes discoverable: examples, specs, usage and templates."""
 
-import importlib
 import json
 import pathlib
 import re
+from importlib.resources import files
 from pathlib import Path
 
 import pytest
 
 import esolangs
+from esolangs._execution import interpreter_module
 from esolangs.cli import HELP, USAGE
 from tests.cli.test_cli import call_main
 from tests.cli_support import call_both
@@ -34,7 +35,8 @@ class TestExamplesShipWithThePackage:
         """A path reported and absent is worse than none reported."""
         for name in esolangs.list_languages():
             for path in esolangs.describe(name)["examples"]:
-                assert pathlib.Path(path).is_file(), (name, path)
+                assert not pathlib.Path(path).is_absolute(), (name, path)
+                assert (files("esolangs") / path).is_file(), (name, path)
 
     def test_the_packaging_declares_them(self) -> None:
         """The other half: inside the package *and* listed as data."""
@@ -58,9 +60,7 @@ class TestTheSpecIsReachable:
 
     def test_it_is_the_interpreter_that_is_read(self) -> None:
         """Read, not stored, so it cannot drift from what it describes."""
-        module = importlib.import_module(
-            "esolangs.interpreters." + str(esolangs.describe("Unsquare")["interpreter"])
-        )
+        module = interpreter_module("Unsquare")
         assert esolangs.describe("Unsquare")["spec"] == (module.__doc__ or "").strip()
 
     def test_it_resolves_a_name_like_everything_else(self) -> None:

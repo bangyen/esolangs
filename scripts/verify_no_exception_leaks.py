@@ -245,7 +245,7 @@ def _drive(lang: str, program: Program, stdin: str, cap: int) -> bool:
     its call and the overrun policy -- a cap is not a finding -- is the
     ``False`` this hands straight back.
     """
-    return run_until_halt(make_vm(lang, program, stdin), cap)
+    return run_until_halt(make_vm(lang, program, stdin=stdin), cap)
 
 
 #: Wall-clock a language's worker gets before the parent kills it.

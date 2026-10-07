@@ -40,7 +40,7 @@ def _parity(n: int) -> str:
 @pytest.mark.parametrize("table", ["00", "11", "0110", "01101001", _dense(5)])
 def test_wrapping_preserves_loaded_addresses_and_output(table: str, width: int) -> None:
     plain = boolean.malbolge(table)
-    wrapped = generate("Malbolge", table, width)
+    wrapped = generate("Malbolge", table, width=width)
     assert max(map(len, wrapped.splitlines())) <= width
     assert wrapped.replace("\n", "") == plain
     assert len(wrapped) == len(plain) + (len(plain) - 1) // width

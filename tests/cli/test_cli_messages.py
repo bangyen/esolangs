@@ -147,7 +147,7 @@ class TestModulousSaysWhatWentWrong:
     def test_each_halt_names_its_cause(self, program: str, expected: str) -> None:
         """Not the class, the sentence: an empty message helps nobody."""
         with pytest.raises(esolangs.HaltError, match=expected):
-            esolangs.run("Modulous", program, "")
+            esolangs.run("Modulous", program, stdin="")
 
 
 class TestSmallerReportsFromRoundFifteen:
@@ -226,7 +226,7 @@ class TestTheSmallInconsistencies:
         captured = capsysbinary.readouterr()
         assert b"no effect on Line" in captured.err
         image = esolangs.Raster.from_png(captured.out)
-        assert esolangs.run("Line", image, "0\n0\n") == "0"
+        assert esolangs.run("Line", image, stdin="0\n0\n") == "0"
 
     @pytest.mark.medium
     def test_line_balance_has_no_no_op_warning(
@@ -243,7 +243,7 @@ class TestTheSmallInconsistencies:
         assert b"no effect" not in captured.err
         image = esolangs.Raster.from_png(captured.out)
         assert (len(image.rows[0]), len(image.rows)) == (680, 800)
-        assert esolangs.run("Line", image, "1\n1\n") == "1"
+        assert esolangs.run("Line", image, stdin="1\n1\n") == "1"
 
     def test_a_breakpoint_that_never_fires_says_so(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]

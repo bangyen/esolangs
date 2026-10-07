@@ -501,9 +501,9 @@ class TestTheDetectorsTakeAVM:
     def test_the_ancestor_detector_takes_a_vm(self) -> None:
         """APL's truth machine, the shape the frame stack exists for."""
         truth = "x? = x & x?\nn?"
-        halts = make_vm("Algebraic Programming Language", truth, "0\n")
+        halts = make_vm("Algebraic Programming Language", truth, stdin="0\n")
         assert run_until_halt_or_ancestor(halts) is True
-        hangs = make_vm("Algebraic Programming Language", truth, "1\n")
+        hangs = make_vm("Algebraic Programming Language", truth, stdin="1\n")
         assert run_until_halt_or_ancestor(hangs) is False
 
     def test_the_growth_detector_takes_a_vm(self) -> None:

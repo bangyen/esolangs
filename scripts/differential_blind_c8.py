@@ -198,7 +198,7 @@ def piet_ours(language: str, program: str, stdin: str, max_steps: int) -> Any:
 
     raster, vm, status, detail = _from_ppm(program), None, "timeout", ""
     try:
-        vm = make_vm(language, raster, stdin, scale=1)
+        vm = make_vm(language, raster, stdin=stdin, scale=1)
         machine = vm._machine  # type: ignore[attr-defined]  # noqa: SLF001
         for _ in range(max_steps):
             if vm.halted:
@@ -217,7 +217,7 @@ def piet_ours(language: str, program: str, stdin: str, max_steps: int) -> Any:
     text = vm.output if vm is not None else ""
     if status == "halt":
         try:
-            fast = esolangs.run(language, raster, stdin, timeout=20, scale=1)
+            fast = esolangs.run(language, raster, stdin=stdin, timeout=20, scale=1)
         except Exception as exc:
             fast = f"{type(exc).__name__}: {exc}"
         if fast != text:

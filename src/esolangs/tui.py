@@ -450,7 +450,7 @@ def replay(
     instructions).  The fallback for a step :class:`History` has dropped,
     and the reference the tests check that lookup against.
     """
-    dbg = make_debugger(language, program, stdin, settings=settings)
+    dbg = make_debugger(language, program, stdin=stdin, settings=settings)
     fault = None
     taken = 0
     for _ in range(step):
@@ -504,7 +504,7 @@ class History:
         self._settings = settings
         self._language = language
         self._source = program
-        self._dbg = make_debugger(language, program, stdin, settings=settings)
+        self._dbg = make_debugger(language, program, stdin=stdin, settings=settings)
         self._program = _display_source(program, language)
         self._stdin = stdin
         self._fault: str | None = None
@@ -532,7 +532,7 @@ class History:
         leaves the run being debugged exactly as it stood.
         """
         dbg = make_debugger(
-            self._language, self._source, stdin, settings=self._settings
+            self._language, self._source, stdin=stdin, settings=self._settings
         )
         self._dbg = dbg
         self._stdin = stdin

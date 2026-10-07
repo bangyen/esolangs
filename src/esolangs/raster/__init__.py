@@ -82,6 +82,42 @@ def _freeze_rows(rows: Rows) -> Rows:
     return result
 
 
+def _assign(
+    raster: Raster,
+    rows: Rows | None,
+    materialize: Callable[[], Rows] | None,
+    payload: object | None,
+    language: str | None,
+    settings: DialectSettings | None,
+) -> Raster:
+    """Initialize ``raster``'s fields; the one path both constructors share."""
+    object.__setattr__(raster, "_rows", rows)
+    object.__setattr__(raster, "_normalizations", {})
+    object.__setattr__(raster, "_materialize", materialize)
+    object.__setattr__(raster, "_payload", payload)
+    object.__setattr__(raster, "_language", language)
+    object.__setattr__(raster, "_settings", settings)
+    raster.__post_init__()
+    return raster
+
+
+def lazy_raster(
+    materialize: Callable[[], Rows],
+    payload: object | None = None,
+    *,
+    language: str | None = None,
+    settings: DialectSettings | None = None,
+) -> Raster:
+    """Return a raster whose pixels a language-owned renderer supplies.
+
+    Not a ``Raster`` constructor argument, so the public signature names
+    no renderer internals.
+    """
+    return _assign(
+        Raster.__new__(Raster), None, materialize, payload, language, settings
+    )
+
+
 @dataclass(frozen=True, init=False, eq=False)
 class Raster:
     """An immutable 8-bit RGB image source, stored row by row."""
@@ -99,21 +135,13 @@ class Raster:
 
     def __init__(
         self,
-        rows: Rows | None = None,
+        rows: Rows,
         *,
-        _materialize: Callable[[], Rows] | None = None,
-        _payload: object | None = None,
         language: str | None = None,
         settings: DialectSettings | None = None,
     ) -> None:
-        """Create a raster from pixels or a lazy language-owned renderer."""
-        object.__setattr__(self, "_rows", rows)
-        object.__setattr__(self, "_normalizations", {})
-        object.__setattr__(self, "_materialize", _materialize)
-        object.__setattr__(self, "_payload", _payload)
-        object.__setattr__(self, "_language", language)
-        object.__setattr__(self, "_settings", settings)
-        self.__post_init__()
+        """Create a raster from RGB pixel rows."""
+        _assign(self, rows, None, None, language, settings)
 
     def __post_init__(self) -> None:
         """Validate the rectangular raster shape."""
@@ -149,14 +177,17 @@ class Raster:
         """The retained dialect choices, absent on decoded PNGs."""
         return self._settings
 
-    def tagged(self, language: str, settings: DialectSettings | None = None) -> Raster:
+    def tagged(
+        self, language: str, *, settings: DialectSettings | None = None
+    ) -> Raster:
         """Return this raster tagged as generated for ``language``."""
-        return Raster(
+        return _assign(
+            Raster.__new__(Raster),
             self._rows,
-            _materialize=self._materialize,
-            _payload=self._payload,
-            language=language,
-            settings=self.settings
+            self._materialize,
+            self._payload,
+            language,
+            self.settings
             if settings is None and language == self.language
             else settings,
         )
@@ -181,7 +212,7 @@ class Raster:
             self._normalizations[scale] = normalize(self.rows, scale)
         return self._normalizations[scale]
 
-    def upscaled(self, scale: int = 1) -> Raster:
+    def upscaled(self, scale: int) -> Raster:
         """Replicate pixels into solid squares, preserving language ownership."""
         from esolangs._validate import check_scale
 
@@ -195,9 +226,9 @@ class Raster:
             ]
             return tuple(row for row in rows for _ in range(scale))
 
-        return Raster(
-            _materialize=materialize,
-            _payload=self._payload,
+        return lazy_raster(
+            materialize,
+            self._payload,
             language=self.language,
             settings=self.settings,
         )

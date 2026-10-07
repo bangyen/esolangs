@@ -16,7 +16,7 @@ class TestQoibl:
     @pytest.mark.parametrize("width", [1, 3, 80])
     def test_narrow_horner_literals_execute_small_tables(self, width: int) -> None:
         for table in witnesses(3):
-            program = esolangs.generate("Qoibl", table, width)
+            program = esolangs.generate("Qoibl", table, width=width)
             assert max(map(len, program.splitlines())) <= max(width, 2)
             for row in range(8):
                 assert run_qoibl(program, list(format(row, "03b"))) == table[row]

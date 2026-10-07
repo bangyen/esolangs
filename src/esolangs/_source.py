@@ -5,9 +5,9 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 from pathlib import Path
+from typing import IO
 
 from esolangs._input import InputSource as InputSource
-from esolangs._input import Reader
 from esolangs._input import check_input as check_input
 from esolangs._input import read_input as read_input
 from esolangs._program import Program
@@ -15,7 +15,7 @@ from esolangs.exceptions import ArgumentError, ProgramError, ProgramNotFoundErro
 from esolangs.interpreters.source_hints import syntax_error, with_hint
 from esolangs.raster import Raster
 
-type ProgramSource = Program | bytes | os.PathLike[str] | Reader
+type ProgramSource = Program | bytes | os.PathLike[str] | IO[str] | IO[bytes]
 
 
 @dataclass(frozen=True, slots=True)
@@ -32,7 +32,9 @@ class _FileSource:
         return self.path
 
 
-def _read_container(source: ProgramSource) -> tuple[Program | bytes, bool]:
+def _read_container(
+    source: ProgramSource | _FileSource,
+) -> tuple[Program | bytes, bool]:
     try:
         if isinstance(source, _FileSource):
             return source.read(), True
@@ -64,7 +66,7 @@ def _read_container(source: ProgramSource) -> tuple[Program | bytes, bool]:
     )
 
 
-def text_source(source: ProgramSource) -> str:
+def text_source(source: ProgramSource | _FileSource) -> str:
     """Load UTF-8 source; only Paths lose one trailing newline."""
     value, path = _read_container(source)
     if isinstance(value, bytes):
@@ -89,7 +91,7 @@ def text_source(source: ProgramSource) -> str:
     )
 
 
-def raster_source(source: ProgramSource) -> Raster:
+def raster_source(source: ProgramSource | _FileSource) -> Raster:
     """Load a Raster or lossless PNG bytes from any supported container."""
     value, _path = _read_container(source)
     if isinstance(value, bytes):

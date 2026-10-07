@@ -1,5 +1,6 @@
 """Contracts shared by every registered raster language."""
 
+from importlib.resources import files
 from pathlib import Path
 
 import pytest
@@ -7,7 +8,7 @@ import pytest
 import esolangs
 from esolangs import _check_program
 from esolangs._evaluate import _evaluate
-from esolangs.raster import Raster
+from esolangs.raster import Raster, lazy_raster
 from esolangs.registry import LANGUAGES, SourceKind
 
 RASTER_LANGUAGES = [
@@ -22,7 +23,8 @@ RASTER_LANGUAGES = [
 def test_committed_png_computes_every_row(language: str) -> None:
     examples = esolangs.describe(language)["examples"]
     assert len(examples) == 1
-    assert _evaluate(language, Path(examples[0]), inputs=2) == "0001"
+    path = Path(str(files("esolangs") / examples[0]))
+    assert _evaluate(language, path, inputs=2) == "0001"
 
 
 def test_raster_type_has_neutral_ownership() -> None:
@@ -33,7 +35,7 @@ def test_raster_type_has_neutral_ownership() -> None:
 def test_a_raster_needs_pixels_or_a_materializer() -> None:
     """Both paths absent is a programmer error, not an empty image."""
     with pytest.raises(ValueError, match="pixels or a materializer"):
-        Raster()
+        Raster(None)  # type: ignore[arg-type]
 
 
 def test_a_raster_hashes_by_pixels() -> None:
@@ -57,7 +59,7 @@ def test_every_raster_language_generates_shared_source(language: str) -> None:
     assert program.rows
     assert program.rows[0]
     assert esolangs.describe(language)["source_kind"] == "raster"
-    assert esolangs.run(language, program, "1\n") == "1"
+    assert esolangs.run(language, program, stdin="1\n") == "1"
 
 
 @pytest.mark.parametrize("language", RASTER_LANGUAGES)
@@ -76,7 +78,7 @@ def test_every_raster_language_runs_its_png(language: str, tmp_path: Path) -> No
     assert isinstance(program, Raster)
     path = tmp_path / f"{language.lower()}.png"
     path.write_bytes(program.to_png())
-    assert esolangs.run(language, path, "0\n") == "0"
+    assert esolangs.run(language, path, stdin="0\n") == "0"
 
 
 @pytest.mark.parametrize("language", RASTER_LANGUAGES)
@@ -117,7 +119,7 @@ def test_lazy_raster_freezes_once_on_access() -> None:
         calls += 1
         return pixels
 
-    raster = Raster(_materialize=materialize)  # type: ignore[arg-type]
+    raster = lazy_raster(materialize)  # type: ignore[arg-type]
     assert calls == 0
     assert raster.rows == (((0, 0, 0),),)
     pixels[0][0][0] = 255
@@ -128,7 +130,7 @@ def test_lazy_raster_freezes_once_on_access() -> None:
 
 def test_lazy_raster_does_not_cache_invalid_pixels() -> None:
     pixels = [[[256, 0, 0]]]
-    raster = Raster(_materialize=lambda: pixels)  # type: ignore[arg-type,return-value]
+    raster = lazy_raster(lambda: pixels)  # type: ignore[arg-type,return-value]
     with pytest.raises(ValueError, match="8-bit RGB"):
         _ = raster.rows
     pixels[0][0][0] = 0
@@ -144,12 +146,12 @@ def test_bounded_raster_run_preserves_explicit_scale(language: str) -> None:
     source = esolangs.generate(language, "01", scale=2)
     assert isinstance(source, Raster)
     source = Raster.from_png(source.to_png())
-    assert esolangs.run(language, source, "1\n", scale=2, max_steps=1000) == "1"
-    vm = make_vm(language, source, "0\n", scale=2)
+    assert esolangs.run(language, source, stdin="1\n", scale=2, max_steps=1000) == "1"
+    vm = make_vm(language, source, stdin="0\n", scale=2)
     while not vm.halted:
         vm.step()
     assert vm.output == "0"
-    debugger = make_debugger(language, source, "1\n", scale=2)
+    debugger = make_debugger(language, source, stdin="1\n", scale=2)
     assert debugger.run(max_steps=1000) == "halted"
     assert debugger.output == "1"
     assert esolangs.describe(language)["state_model"] in {"tape", "stack"}

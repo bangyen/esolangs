@@ -378,7 +378,7 @@ def _worker() -> None:
             output = esolangs.run(
                 request["language"],
                 program,
-                request["stdin"],
+                stdin=request["stdin"],
                 timeout=None,
                 seed=int(request["seed"], 16)
                 if request.get("integer_seed", False)

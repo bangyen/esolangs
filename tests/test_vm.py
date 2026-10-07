@@ -32,11 +32,11 @@ class TestProtocol:
     def test_raster_languages_step_their_pixels(self, language: str) -> None:
         source = esolangs.generate(language, "01")
         pixels = esolangs.Raster.from_png(source.to_png())
-        vm = debugger_api.make_vm(language, pixels, "1\n")
+        vm = debugger_api.make_vm(language, pixels, stdin="1\n")
         assert isinstance(vm, VM)
         assert _run_all(vm) == "1"
         assert vm.ip is None
-        debugger = debugger_api.make_debugger(language, pixels, "0\n")
+        debugger = debugger_api.make_debugger(language, pixels, stdin="0\n")
         assert _run_all(debugger.vm) == "0"
 
 
@@ -195,7 +195,7 @@ class TestStreetcode:
 
 class TestFlowchart:
     def test_live_pointer_position_and_heading(self) -> None:
-        vm = debugger_api.make_vm("Flowchart", FLOWCHART_TRUTH_MACHINE, "0\n")
+        vm = debugger_api.make_vm("Flowchart", FLOWCHART_TRUTH_MACHINE, stdin="0\n")
         assert vm.ip == (0, 10, 0, 1)  # on the opening ( ), heading east
         assert vm.stack == []
         vm.step()
@@ -203,13 +203,13 @@ class TestFlowchart:
 
     def test_ip_is_none_once_every_pointer_has_stopped(self) -> None:
         """``ip`` reports the first live pointer, so a finished run has none."""
-        vm = debugger_api.make_vm("Flowchart", FLOWCHART_TRUTH_MACHINE, "0\n")
+        vm = debugger_api.make_vm("Flowchart", FLOWCHART_TRUTH_MACHINE, stdin="0\n")
         assert _run_all(vm) == "\x00"  # one zero bit, padded at halt
         assert vm.ip is None
 
     def test_the_deque_holds_what_the_pointers_read(self) -> None:
         """The cat reads its bits onto the shared tape before printing them."""
-        vm = debugger_api.make_vm("Flowchart", FLOWCHART_CAT, "1\n")
+        vm = debugger_api.make_vm("Flowchart", FLOWCHART_CAT, stdin="1\n")
         while not vm.halted and not vm.memory:
             vm.step()
         assert vm.memory == [1]
@@ -217,7 +217,9 @@ class TestFlowchart:
 
 class TestCircuitDiagram:
     def test_wire_values_are_per_generation_events(self) -> None:
-        vm = debugger_api.make_vm("Circuit Diagram", CIRCUIT_PRIME_TESTER, bits_of(3))
+        vm = debugger_api.make_vm(
+            "Circuit Diagram", CIRCUIT_PRIME_TESTER, stdin=bits_of(3)
+        )
         assert vm.ip is None  # nothing moves through a circuit
         assert vm.stack == []
         vm.step()
@@ -231,7 +233,7 @@ class TestCircuitDiagram:
             for n in range(16)
             if _run_all(
                 debugger_api.make_vm(
-                    "Circuit Diagram", CIRCUIT_PRIME_TESTER, bits_of(n)
+                    "Circuit Diagram", CIRCUIT_PRIME_TESTER, stdin=bits_of(n)
                 )
             )
             == "1"
@@ -317,7 +319,7 @@ class TestForbin:
 
 class TestFargo:
     def test_frames_and_cursor(self) -> None:
-        vm = debugger_api.make_vm("Fargo", "$", "0\n")
+        vm = debugger_api.make_vm("Fargo", "$", stdin="0\n")
         # `memory` is the whole state: the input read and the output built.
         assert (vm.ip, vm.memory, vm.stack) == (0, [0, 0], [])
         vm.step()  # the top-level line pushes its frame
@@ -388,7 +390,7 @@ class TestEveryLanguageIsSteppable:
         """
         for name in ("brainfuck", "FALSE"):
             program, stdin = SAMPLES[name]
-            vm = debugger_api.make_vm(name, program, stdin)
+            vm = debugger_api.make_vm(name, program, stdin=stdin)
             with contextlib.suppress(Exception):
                 vm.step()
             before_mem, before_stk = list(vm.memory), list(vm.stack)

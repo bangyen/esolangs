@@ -14,7 +14,7 @@ import esolangs
 import esolangs.debugger as debugger_api
 from esolangs._validate import check_timeout
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.vm import VM, run_until_halt_or_cycle
+from esolangs.vm import VM, complete_vm, run_until_halt_or_cycle
 
 
 def _bits(row: int, inputs: int) -> list[int]:
@@ -87,7 +87,10 @@ def _execute(
         assert isinstance(program, str)
         source, stdin = esolangs.instantiate(language, program, bits), ""
     else:
-        source, stdin = program, esolangs.encode_inputs(language, bits, table)
+        source, stdin = (
+            program,
+            esolangs.encode_inputs(language, bits, truth_table=table),
+        )
     supported = facts["steppable_to_answer"]
     if track_store and facts["answer_mode"] == "termination":
         raise ValueError("store tracking requires a halting-answer language")
@@ -111,11 +114,11 @@ def _execute(
 
     def drive(*_args: object) -> None:
         if not supported:
-            output = esolangs.run(language, source, stdin)
+            output = esolangs.run(language, source, stdin=stdin)
             result["execution_status"] = "halted"
             result["actual_answer"] = esolangs.read_answer(language, output)
             return
-        vm = debugger_api.make_vm(language, source, stdin)
+        vm = debugger_api.make_vm(language, source, stdin=stdin)
         terminating = facts["answer_mode"] == "termination"
         if terminating:
             halted = run_until_halt_or_cycle(vm, limit=cap)
@@ -127,7 +130,7 @@ def _execute(
                 return
             # The detector unwraps the VM; replay a halt to retain the
             # baseline's wrapper-step count, excluding its post-halt dump.
-            vm = debugger_api.make_vm(language, source, stdin)
+            vm = debugger_api.make_vm(language, source, stdin=stdin)
 
         def sample_store() -> None:
             if track_store:
@@ -155,7 +158,7 @@ def _execute(
             result["execution_status"] = "halted"
             result["actual_answer"] = str(list(facts["answer_encoding"]).index("halts"))
         else:
-            output = debugger_api.complete_vm(vm, max_steps=0)
+            output = complete_vm(vm, max_steps=0)
             result["execution_status"] = "halted"
             result["actual_answer"] = esolangs.read_answer(language, output)
 

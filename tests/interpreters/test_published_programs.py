@@ -72,10 +72,15 @@ def test_wiki_examples(language, page, example, citation):
     settings = DialectSettings(**example.get("settings", {}))
     if stop == "halt":
         output = esolangs.run(
-            language, source, stdin, 5, example.get("seed"), settings=settings
+            language,
+            source,
+            stdin=stdin,
+            timeout=5,
+            seed=example.get("seed"),
+            settings=settings,
         )
         if example.get("vm", "seed" not in example):
-            vm = make_vm(language, source, stdin, settings=settings)
+            vm = make_vm(language, source, stdin=stdin, settings=settings)
             assert complete_vm(vm, max_steps=None) == output, "stepping parity"
     else:
         error = {"steps": ExecutionTimeoutError, "eof": InputExhaustedError}[stop]
@@ -83,7 +88,7 @@ def test_wiki_examples(language, page, example, citation):
             esolangs.run(
                 language,
                 source,
-                stdin,
+                stdin=stdin,
                 timeout=5,
                 max_steps=example.get("max_steps"),
                 settings=settings,

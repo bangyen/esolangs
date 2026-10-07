@@ -271,10 +271,14 @@ def _iter_evaluate(
                     runner = partial(runner, max_memory=max_memory)
                 if isolated:
                     output = runner(
-                        name, source, stdin, cast("float", row_bound), isolated=True
+                        name,
+                        source,
+                        stdin=stdin,
+                        timeout=cast("float", row_bound),
+                        isolated=True,
                     )
                 else:
-                    output = runner(name, source, stdin, row_bound)
+                    output = runner(name, source, stdin=stdin, timeout=row_bound)
                 answer = read_answer(name, output)
             if deadline is not None and monotonic() >= deadline:
                 raise ExecutionTimeoutError("evaluation exceeded its total deadline")
@@ -358,7 +362,7 @@ def _terminates(
 
     def _drive(*_args: object) -> None:
         factory = make_vm if settings is None else partial(make_vm, settings=settings)
-        machine = factory(name, source, stdin)
+        machine = factory(name, source, stdin=stdin)
         verdict.append(run_until_halt_or_cycle(machine))
 
     esolangs._run(_drive, source, ScriptedIO(""), bound)  # noqa: SLF001

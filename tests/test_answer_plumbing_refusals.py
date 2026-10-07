@@ -25,7 +25,7 @@ class TestTheNewChecksRefuseTheirOwnBadInput:
     def test_encode_inputs_names_a_non_string_table(self) -> None:
         """It is a table's *type* that is wrong, not the bit count."""
         with pytest.raises(esolangs.TruthTableError, match="got int"):
-            esolangs.encode_inputs("brainfuck", [1, 0], 110)  # type: ignore[arg-type]
+            esolangs.encode_inputs("brainfuck", [1, 0], truth_table=110)  # type: ignore[arg-type]
 
     def test_evaluate_names_a_non_string_table(self) -> None:
         """Reported before any generator sees it, for the same reason."""
@@ -153,7 +153,7 @@ class TestErrorsSurviveAProcessBoundary:
 
         program = esolangs.generate("brainfuck", "10010110")
         with pytest.raises(esolangs.InputExhaustedError) as caught:
-            esolangs.run("brainfuck", program, "10", 10)
+            esolangs.run("brainfuck", program, stdin="10", timeout=10)
         restored = pickle.loads(pickle.dumps(caught.value))
         assert str(restored) == str(caught.value)
         assert restored.reads == caught.value.reads
@@ -180,9 +180,12 @@ class TestErrorsSurviveAProcessBoundary:
             lambda: esolangs.encode_inputs("brainfuck", [2, 0]),
             lambda: esolangs.instantiate("brainfuck", "x", [0]),
             lambda: esolangs.run("brainfuck", None),  # type: ignore[arg-type]
-            lambda: esolangs.run("brainfuck", "+[]", "", 0.01),
+            lambda: esolangs.run("brainfuck", "+[]", stdin="", timeout=0.01),
             lambda: esolangs.run(
-                "brainfuck", esolangs.generate("brainfuck", "10010110"), "10", 10
+                "brainfuck",
+                esolangs.generate("brainfuck", "10010110"),
+                stdin="10",
+                timeout=10,
             ),
         ]
         for raise_it in raisers:
@@ -210,7 +213,7 @@ class TestAnInterpreterLimitIsStillAnEsolangError:
 
         monkeypatch.setattr(esolangs, "_run", explode)
         with pytest.raises(esolangs.EsolangError) as caught:
-            esolangs.run("brainfuck", "+.", "")
+            esolangs.run("brainfuck", "+.", stdin="")
         assert isinstance(caught.value, esolangs.InterpreterLimitError)
         assert "recursed deeper" in str(caught.value)
         assert "setrecursionlimit" in str(caught.value)
@@ -387,10 +390,10 @@ class TestABadStdinIsAnArgumentFault:
     @pytest.mark.parametrize(
         "call",
         [
-            lambda: esolangs.run("brainfuck", ",.", ["0"]),
+            lambda: esolangs.run("brainfuck", ",.", stdin=["0"]),
             lambda: _check_program("brainfuck", ",.", ["0"]),
-            lambda: debugger_api.make_vm("brainfuck", ",.", ["0"]),
-            lambda: debugger_api.make_debugger("brainfuck", ",.", ["0"]),
+            lambda: debugger_api.make_vm("brainfuck", ",.", stdin=["0"]),
+            lambda: debugger_api.make_debugger("brainfuck", ",.", stdin=["0"]),
             lambda: _check_stdin("brainfuck", ["0"]),
         ],
     )
@@ -402,7 +405,7 @@ class TestABadStdinIsAnArgumentFault:
     def test_a_bad_program_is_still_a_program_error(self) -> None:
         """The change must not blur the distinction the other way."""
         with pytest.raises(esolangs.ProgramError, match="program must be a string"):
-            esolangs.run("brainfuck", 42, "")  # type: ignore[arg-type]
+            esolangs.run("brainfuck", 42, stdin="")  # type: ignore[arg-type]
 
 
 class TestBoolsAreRefusedForAStatedReason:
@@ -422,7 +425,7 @@ class TestTheWarningHasItsOwnClass:
         program = esolangs.generate("brainfuck", "00011011")
         with warnings.catch_warnings():
             warnings.simplefilter("error")
-            esolangs.run("brainfuck", program, "1\n1\n0\n0\n1\n1\n", 10)
+            esolangs.run("brainfuck", program, stdin="1\n1\n0\n0\n1\n1\n", timeout=10)
 
 
 class TestAFailedRowSaysWhichRow:
@@ -439,7 +442,7 @@ class TestAFailedRowSaysWhichRow:
         ) -> str:
             if stdin == "101":  # row 5 of an eight-row table
                 raise esolangs.ExecutionTimeoutError("execution exceeded the bound")
-            return real_run(language, program, stdin, timeout)  # type: ignore[arg-type]
+            return real_run(language, program, stdin=stdin, timeout=timeout)  # type: ignore[arg-type]
 
         monkeypatch.setattr(esolangs, "run", fail_on_the_sixth)
         with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
@@ -508,7 +511,7 @@ class TestATimeoutCannotKillTheProcess:
     def test_a_bound_too_short_to_service_is_refused(self) -> None:
         """The floor, which is what makes restoring the disposition safe."""
         with pytest.raises(esolangs.ArgumentError, match=r"at least 0\.001"):
-            esolangs.run("brainfuck", "+.", "", 0.0001)
+            esolangs.run("brainfuck", "+.", stdin="", timeout=0.0001)
 
     def test_the_caller_gets_their_disposition_back(self) -> None:
         """Including ``SIG_DFL``, which the previous fix kept for itself."""
@@ -517,8 +520,8 @@ class TestATimeoutCannotKillTheProcess:
         previous = signal.signal(signal.SIGALRM, signal.SIG_DFL)
         try:
             program = esolangs.generate("brainfuck", "0110")
-            stdin = esolangs.encode_inputs("brainfuck", [0, 1], "0110")
-            esolangs.run("brainfuck", program, stdin, 5)
+            stdin = esolangs.encode_inputs("brainfuck", [0, 1], truth_table="0110")
+            esolangs.run("brainfuck", program, stdin=stdin, timeout=5)
             assert signal.getsignal(signal.SIGALRM) is signal.SIG_DFL
         finally:
             signal.signal(signal.SIGALRM, previous)
@@ -533,8 +536,8 @@ class TestATimeoutCannotKillTheProcess:
         previous = signal.signal(signal.SIGALRM, _mine)
         try:
             program = esolangs.generate("brainfuck", "0110")
-            stdin = esolangs.encode_inputs("brainfuck", [0, 1], "0110")
-            esolangs.run("brainfuck", program, stdin, 5)
+            stdin = esolangs.encode_inputs("brainfuck", [0, 1], truth_table="0110")
+            esolangs.run("brainfuck", program, stdin=stdin, timeout=5)
             assert signal.getsignal(signal.SIGALRM) is _mine
         finally:
             signal.signal(signal.SIGALRM, previous)
@@ -544,10 +547,10 @@ class TestATimeoutCannotKillTheProcess:
         import signal
 
         program = esolangs.generate("brainfuck", "0110")
-        stdin = esolangs.encode_inputs("brainfuck", [0, 1], "0110")
+        stdin = esolangs.encode_inputs("brainfuck", [0, 1], truth_table="0110")
         for bound in (10, 0.001):
             with contextlib.suppress(esolangs.ExecutionTimeoutError):
-                esolangs.run("brainfuck", program, stdin, bound)
+                esolangs.run("brainfuck", program, stdin=stdin, timeout=bound)
             assert signal.getitimer(signal.ITIMER_REAL) == (0.0, 0.0)
 
     @pytest.mark.slow
@@ -556,12 +559,12 @@ class TestATimeoutCannotKillTheProcess:
         import signal
 
         program = esolangs.generate("brainfuck", "0110")
-        stdin = esolangs.encode_inputs("brainfuck", [0, 1], "0110")
+        stdin = esolangs.encode_inputs("brainfuck", [0, 1], truth_table="0110")
         previous = signal.signal(signal.SIGALRM, signal.SIG_DFL)
         try:
             for _ in range(400):
                 with contextlib.suppress(esolangs.ExecutionTimeoutError):
-                    esolangs.run("brainfuck", program, stdin, 0.001)
+                    esolangs.run("brainfuck", program, stdin=stdin, timeout=0.001)
                 assert signal.getitimer(signal.ITIMER_REAL) == (0.0, 0.0)
                 assert signal.getsignal(signal.SIGALRM) is signal.SIG_DFL
         finally:
@@ -596,8 +599,8 @@ class TestTheCallersSignalsAreTheirOwn:
         try:
             signal.alarm(30)
             program = esolangs.generate("brainfuck", "0110")
-            stdin = esolangs.encode_inputs("brainfuck", [0, 1], "0110")
-            esolangs.run("brainfuck", program, stdin, 5)
+            stdin = esolangs.encode_inputs("brainfuck", [0, 1], truth_table="0110")
+            esolangs.run("brainfuck", program, stdin=stdin, timeout=5)
             remaining = signal.alarm(0)
             assert remaining > 0, "the caller's alarm was cancelled"
         finally:
@@ -679,7 +682,7 @@ class TestTerminationTimeoutIsUndecided:
 
         from esolangs import _evaluate
 
-        def slow_machine(*_args: object) -> None:
+        def slow_machine(*_args: object, **_kwargs: object) -> None:
             time.sleep(1)
             pytest.fail("construction escaped the timeout")
 

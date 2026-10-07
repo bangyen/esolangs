@@ -66,22 +66,22 @@ def test_fresh_setters_lower_the_public_floor() -> None:
     for inputs in (1, 2, 3):
         for value in range(1 << (1 << inputs)):
             table = format(value, f"0{1 << inputs}b")
-            template = esolangs.generate("Smallfuck", table, 1)
+            template = esolangs.generate("Smallfuck", table, width=1)
             assert max(map(len, template.splitlines())) == 1
             for row, expected in enumerate(table):
                 bits = [int(bit) for bit in format(row, f"0{inputs}b")]
-                source = esolangs.instantiate("Smallfuck", template, bits, 1)
+                source = esolangs.instantiate("Smallfuck", template, bits, width=1)
                 assert esolangs.run("Smallfuck", source) == expected
 
 
 @pytest.mark.parametrize("tagged", [False, True])
 def test_narrow_smallfuck_saved_provenance(*, tagged: bool) -> None:
     table = "0110"
-    template = esolangs.generate("Smallfuck", table, 1)
+    template = esolangs.generate("Smallfuck", table, width=1)
     source = template if tagged else str(template)
     for row, expected in enumerate(table):
         program = esolangs.instantiate(
-            "Smallfuck", source, [row >> 1, row & 1], 1, truth_table=table
+            "Smallfuck", source, [row >> 1, row & 1], width=1, truth_table=table
         )
         assert max(map(len, program.splitlines())) == 1
         assert esolangs.run("Smallfuck", program) == expected
@@ -97,7 +97,7 @@ def test_narrow_smallfuck_preserves_fitting_and_large_execution() -> None:
         assert smallfuck(table, len(natural)) == natural
         for row in (0, 1, 2, 3, 2**n - 1):
             bits = [int(bit) for bit in format(row, f"0{n}b")]
-            template = esolangs.generate("Smallfuck", table, 1)
+            template = esolangs.generate("Smallfuck", table, width=1)
             assert (
                 esolangs.run(
                     "Smallfuck", esolangs.instantiate("Smallfuck", template, bits)
