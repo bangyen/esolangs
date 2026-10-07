@@ -15,14 +15,14 @@ The limit remains open. Exact rational certificates narrow the former
 | clipped tape, `,` at EOF is an error, all inputs | 4.24200 (Thm 4) | 7.0347 (Thm 1) |
 | clipped tape, EOF stores a constant, all inputs | 3.79003 (Thm 4) | 7.0347 (Thm 1) |
 | clipped tape, EOF leaves the cell, all inputs | 3.79003 (Thm 4) | 7.3339 (Thm 1) |
-| repo model: bi-infinite tape, EOF error / keep | **4.24200** / 3.79003 | **6.90** / 7.1949 (Thm 1) |
+| repo model: bi-infinite tape, EOF error / keep | **4.24200** / 3.79003 | **6.89** / 7.1949 (Thm 1) |
 | any fixed nonempty finite input set `I`, any EOF, any tape | **3.36614** (Thm 5) | as for all inputs |
 | only the empty input (clipped tape, EOF error) | 3.36614 | 6.3218 (Thm 1) |
 | loop-free programs, EOF error | **4.06124** (Thm 3) | **2 + sqrt 5 = 4.23607** (Thm 3) |
 | loop-free programs, EOF constant / keep | 3.79003 | 4.23607 / 4.72458 |
 
-For the repository model: **`4.2420 <= liminf B(C)^(1/C) <= limsup B(C)^(1/C) <= 6.90`**,
-from `[2.414, 7.388]`.  In bits per character: `[2.085, 2.787]`, from `[1.272, 2.885]`.
+For the repository model: **`4.2420 <= liminf B(C)^(1/C) <= limsup B(C)^(1/C) <= 6.89`**,
+from `[2.414, 7.388]`.  In bits per character: `[2.085, 2.785]`, from `[1.272, 2.885]`.
 The repository tape clipped at cell 0 until 2026-10-06; on that tape the bracket is
 `[4.2420, 7.0347]`.
 The lower bound uses nested loops (section 5c) and exceeds the loop-free upper bound
@@ -63,7 +63,7 @@ behaviours of programs of length exactly `C` is nondecreasing in `C` and lies be
 ## 2. Results
 
 **Theorem 1 (upper bound).**  In clip/err and clip/const, `B(C) <= K * 7.0347^C`.  For
-clip/keep `7.3339`, bi/err (the repo model) `6.90`, bi/keep `7.1949`.  With only the
+clip/keep `7.3339`, bi/err (the repo model) `6.89`, bi/keep `7.1949`.  With only the
 empty input (clip/err), `B_{{eps}}(C) <= K * 6.3218^C`.
 
 **Theorem 2 (the old five adjacencies).**  Words avoiding `+- -+ >< ][ []` grow as `7.38776` (Perron
@@ -152,6 +152,7 @@ set; with transfer matrix `M`, `N_n = e_root^T M^n 1 <= (v_root / min v) * rho^n
 | bi/err, all rules | 9969 | 14814 | 6.9132619 |
 | bi/err, balanced bodies without sole-loop bodies, local factors of length at most six and their mirrors | 1186 | 195 | **6.91** |
 | bi/err, the same local factors and unrestricted print rotation | 1186 | 195 | **6.90** |
+| bi/err, the same factors, rotation and unrestricted read-free nonzero tails | 1186 | 195; 32 atom classes | **6.89** |
 | bi/keep, all rules | 12759 | 17946 | 7.1948872 |
 | clip/err, empty input only, + `,c -> ,` for `c != ]` | 3940 | 6273 | 6.3217970 |
 
@@ -359,15 +360,14 @@ with the matching `]` across arbitrary depth. The 11,673-state monitor accepts
 avoidance specification is not a finite right congruence: Moore refinement gives
 15, 39, 86, 173 classes at observation windows 4, 6, 8, 10. The balanced
 certificates above count sole-loop removal and print rotation at every depth.
-Forced-divergence bodies remain uncounted beyond the finite local factors;
-their next extension needs read-free and tested-cell-preservation classes.
+The nonzero-tail certificate below counts its forced-divergence bodies at every
+depth; tested-cell-preserving prefixes remain uncounted beyond finite factors.
 A larger finite-factor monitor cannot enforce those classes.
 `test_unbounded_body_classes_are_not_regular` pins the accepted families and the
 class counts through window 8.
 
-The unrestricted nonzero-tail rule now has an exact typed coefficient constructor
-in `tests/proofs/_brainfuck_divergence.py`, before intersection with the finite
-factor DFA. Its atom state records whether any read occurs, the first atom,
+The unrestricted nonzero-tail rule has an exact typed coefficient constructor
+in `tests/proofs/_brainfuck_divergence.py`. Its atom state records whether any read occurs, the first atom,
 the atom count capped at two, and four suffix classes: no eligible loop,
 a loop followed by prints, a print-first loop with no following print,
 or a loop followed by prints, one sign, then prints. A new loop resets the
@@ -385,9 +385,41 @@ suffix. This gives 32 reachable sequence classes through size 24. Exhaustion
 over all 299,593 words through size six independently checks sequence totals
 and all four body classes. Execution controls cover depths one through eight;
 `+[,[--]+]` and `+[[,]+]` reach EOF and prevent dropping the read-free condition.
-These coefficients do not improve the certified `6.90` bound. A direct matrix
-lift would allocate up to `(32+4) * 195² = 1,368,900` entries before sparsity;
-its cost and an independent integer checker remain to be established.
+
+Its matrix lift intersects these classes with the same 195-state factor DFA.
+Write `C_q` for the sequence matrix of atom class `q`, and `delta(q,a)` for
+the append transition. Let `Q(r,p)` contain the eligible body classes with
+read flag `r` and first-print flag `p`. The four body and loop matrices are
+
+    B(r,p) = sum(C_q : q in Q(r,p))
+    L(r,p) = x² U B(r,p) V.
+
+The ten atoms are the six literal matrices `x T_a` and these four loop
+matrices. With `E` diagonal at state zero and the four destinations of `[`,
+the positive equations are
+
+    C_q = [q = empty] E + sum(C_s A_a : delta(s,a) = q).
+
+Forward multiplication keeps the initial row fixed. Those five rows suffice:
+every nested body starts at a destination of `[`, and every top-level word
+starts at zero. The unique last-atom decomposition proves the coefficient
+equations by induction on length. Loop products are grouped by the four
+opening destinations and three closing destinations; the checker instead
+uses ordinary sparse matrix multiplication and independently reconstructs
+the atom transitions.
+
+At `x = 100/689` and integer scale `10^6`, upward-rounded iteration freezes
+at a supersolution with 4,523 nonzero entries across 32 sequence matrices.
+`scripts/divergence_certificate.py` checks the polynomial inequalities with
+exact integers and the factor language at 705 state pairs. Summing the
+initial rows gives `K = 7.675935`, hence **`B(C) <= 7.675935 * 6.89^C`**.
+An independent word oracle also checks the matrix coefficients through size
+five; `[[--]+]` is accepted by the finite factors and rejected by the typed
+grammar, a positive control for the added rule. No searched table is committed.
+
+    uv run python -m tests.proofs._brainfuck_divergence --export notes/brainfuck-divergence.json
+    uv run python scripts/divergence_certificate.py notes/brainfuck-divergence.json
+
 The preservation-prefix rule `[P0[]G]` still needs a separate classifier.
 
 ## 4. Loop-free programs (Theorem 3)
@@ -803,7 +835,7 @@ equivalence is confined to the chosen input set.
 
 * **The limit.**  With a clipped tape and EOF error (the repo model until 2026-10-06), the
   growth constant is bracketed: `4.2420 <= liminf B(C)**(1/C) <= limsup <= 7.0347`; the repo's
-  bi-infinite tape has upper bound `6.90`.  The limit itself, and any clipped sub-7 upper
+  bi-infinite tape has upper bound `6.89`.  The limit itself, and any clipped sub-7 upper
   bound, remain open.  Nested loops raise the
   certified lower bound above the loop-free upper bound `4.236` (section 5c), so loops strictly
   raise the growth rate.  The
@@ -824,9 +856,8 @@ equivalence is confined to the chosen input set.
   forced-divergence bodies are not regular (section 3): a finite-factor monitor accepts
   depth-`k` left-hand sides for every `k >= 2`, and the balanced avoidance specification
   has unbounded Moore class count. The 11,673-state certificate covers balanced bodies only
-  to bracket depth one. The balanced-body and rotation certificates give
-  `6.90` on the bi-infinite tape (section 3). The read-free nonzero-tail coefficient
-  counter is verified; next lift it into a matrix certificate and classify
+  to bracket depth one. The balanced-body, rotation and read-free nonzero-tail
+  certificates give `6.89` on the bi-infinite tape (section 3). Next classify
   tested-cell-preserving prefixes
   (`+[-[]].` halts and prints NUL, while `+[].` diverges). A potentially diverging excursion
   cannot commute across a read at EOF; excursions with output cannot commute across prints.

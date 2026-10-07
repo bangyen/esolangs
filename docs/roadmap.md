@@ -89,8 +89,8 @@ line changes only when its next step does.
   enable an earlier failed guard. Prime generation and literal conversion
   remain, with the materialized sieve forcing `Theta(T log T)` generation
   ([fractran](proofs/fractran.md#direct-chunks-with-exact-cleanup)).
-- **Brainfuck behaviour count.** Next: lift the verified read-free nonzero-tail
-  counter into a matrix certificate; classify tested-cell-preserving prefixes
+- **Brainfuck behaviour count.** Next: classify tested-cell-preserving prefixes
+  for the balanced forced-divergence certificate
   ([brainfuck-count](proofs/brainfuck-count.md#8-what-is-not-settled)).
 - **Brainfuck on bounded inputs.** Next: establish Theorem 6's limit or
   sharpen either side ([brainfuck-count](proofs/brainfuck-count.md#8-what-is-not-settled)).
