@@ -15,13 +15,13 @@ The limit remains open. Exact rational certificates narrow the former
 | clipped tape, `,` at EOF is an error, all inputs | 4.24200 (Thm 4) | 7.0347 (Thm 1) |
 | clipped tape, EOF stores a constant, all inputs | 3.79003 (Thm 4) | 7.0347 (Thm 1) |
 | clipped tape, EOF leaves the cell, all inputs | 3.79003 (Thm 4) | 7.3339 (Thm 1) |
-| repo model: bi-infinite tape, EOF error / keep | **4.24200** / 3.79003 | **6.9133** / 7.1949 (Thm 1) |
+| repo model: bi-infinite tape, EOF error / keep | **4.24200** / 3.79003 | **6.91** / 7.1949 (Thm 1) |
 | any fixed nonempty finite input set `I`, any EOF, any tape | **3.36614** (Thm 5) | as for all inputs |
 | only the empty input (clipped tape, EOF error) | 3.36614 | 6.3218 (Thm 1) |
 | loop-free programs, EOF error | **4.06124** (Thm 3) | **2 + sqrt 5 = 4.23607** (Thm 3) |
 | loop-free programs, EOF constant / keep | 3.79003 | 4.23607 / 4.72458 |
 
-For the repository model: **`4.2420 <= liminf B(C)^(1/C) <= limsup B(C)^(1/C) <= 6.9133`**,
+For the repository model: **`4.2420 <= liminf B(C)^(1/C) <= limsup B(C)^(1/C) <= 6.91`**,
 from `[2.414, 7.388]`.  In bits per character: `[2.085, 2.789]`, from `[1.272, 2.885]`.
 The repository tape clipped at cell 0 until 2026-10-06; on that tape the bracket is
 `[4.2420, 7.0347]`.
@@ -63,7 +63,7 @@ behaviours of programs of length exactly `C` is nondecreasing in `C` and lies be
 ## 2. Results
 
 **Theorem 1 (upper bound).**  In clip/err and clip/const, `B(C) <= K * 7.0347^C`.  For
-clip/keep `7.3339`, bi/err (the repo model) `6.9133`, bi/keep `7.1949`.  With only the
+clip/keep `7.3339`, bi/err (the repo model) `6.91`, bi/keep `7.1949`.  With only the
 empty input (clip/err), `B_{{eps}}(C) <= K * 6.3218^C`.
 
 **Theorem 2 (the old five adjacencies).**  Words avoiding `+- -+ >< ][ []` grow as `7.38776` (Perron
@@ -139,7 +139,7 @@ set; with transfer matrix `M`, `N_n = e_root^T M^n 1 <= (v_root / min v) * rho^n
 `v > 0` with `M v <= rho v`.  The check builds such a `v` from the numerical Perron vector and checks
 `max_i (Mv)_i / v_i` exactly with `fractions.Fraction`:
 
-| model | patterns | states | `rho` certified `<=` |
+| model | patterns | states | certified growth rate `<=` |
 |---|---|---|---|
 | clip/err, five old adjacencies (unsound `[]`) | 5 | 6 | 7.3877553 |
 | clip/err, four sound adjacencies | 4 | 5 | 7.4979068 |
@@ -150,6 +150,7 @@ set; with transfer matrix `M`, `N_n = e_root^T M^n 1 <= (v_root / min v) * rho^n
 | withdrawn: unrestricted global bodies | 4354 + regular families | 744 minimized | 7.0194 (unsound rule) |
 | clip/keep, all rules | 7379 | 10410 | 7.3338896 |
 | bi/err, all rules | 9969 | 14814 | 6.9132619 |
+| bi/err, balanced bodies without sole-loop bodies, local factors of length at most six and their mirrors | 1186 | 195 | **6.91** |
 | bi/keep, all rules | 12759 | 17946 | 7.1948872 |
 | clip/err, empty input only, + `,c -> ,` for `c != ]` | 3940 | 6273 | 6.3217970 |
 
@@ -260,12 +261,54 @@ The first positive discriminant zero is the unique solution in `(0, 1/6)`
 of `1-6x = 2x/sqrt(1+x^2)`. The algebraic branch with `P(0)=1` has a
 square-root singularity there, so its word counts have exponential rate
 `7.9844964149...`, certified between `7.98449` and `7.98450` by rational
-sign checks. This exceeds the existing `6.9133` repository bound. The
+sign checks. This exceeds the repository bound. The
 relaxation removes sole-loop bodies at every depth but ignores the other
-local rewrites; counting it alone cannot improve Theorem 1. Intersecting
-balanced bodies with those rewrites remains open. The tests check the
+local rewrites; counting it alone cannot improve Theorem 1. The tests check the
 algebraic identity through degree 40 and independently enumerate all words
 through length five, both read-free and with reads.
+
+**Balanced bodies with local rewrites.** For the bi-infinite tape, retain the
+local factors of length at most six from `local_patterns()` and their
+`<`/`>` mirrors, including `<>`. Each mirror is sound because reflection
+preserves the tape and the EOF convention. Same-length replacements compare
+`-` with `+`, a non-bracket with `[`, or `. , - +` with an excursion's
+first move; reflection preserves each comparison. The other rules shorten.
+Together with `[[Y]] -> [Y]`, these rules terminate in shortlex order.
+
+The rebuilt factor-avoidance DFA has 195 states. Let `A` sum its six
+literal transition matrices, and let `U,V` be its bracket transition
+matrices; rejected transitions contribute zero. Matrix multiplication joins
+paths at their common DFA state. With `N` counting nonempty sequences and
+`B` counting bodies that are not a sole loop, the unambiguous system is
+
+    L = x^2 U B V,
+    N = x A (I+N) + L (I+N),
+    B = I + x A (I+N) + L N.
+
+Every irreducible program is counted by `I+N`: a nonempty sequence starts
+with a literal or a loop, and a body starting with a loop must have a
+nonempty tail. This retains `+[-[]].`; it never substitutes read-freedom
+for preservation of the tested cell.
+
+At `x = 100/691`, rounded-up integer iteration from `N=0, B=I`, with
+denominator `10^6`, reaches a supersolution after 635 updates. Construction
+caps are 256 states, 1,500 updates and 100 per matrix entry; exceeding any
+cap aborts. The two matrices have 26,883 and 26,942 nonzero entries. The
+independent checker evaluates every inequality with integers and verifies
+the factor language by failure links across 705 reachable state pairs.
+Monotonicity bounds the least formal-series solution by this finite
+supersolution. Row zero of `I+N` sums to `K = 7.963437`, so
+`sum_{j<=C} count_j <= K x^-C`, proving `B(C) <= 7.963437 * 6.91^C`.
+No transition or supersolution table is committed; both are rebuilt from
+the named local rules and the matrix equations. The slow regression takes
+about 20 seconds, while independent coefficient checks enumerate all words
+through length five. Execution controls check left mirrors and sole-loop
+removal with EOF, halting and divergence observations.
+
+Reproduce from the repository root:
+
+    uv run python -m tests.proofs._brainfuck_balanced --export notes/brainfuck-balanced.json
+    uv run python scripts/balanced_certificate.py notes/brainfuck-balanced.json
 
 No finite monitor counts the unrestricted bodies. A regular class needs finite,
 depth-agnostic forbidden factors, but `[.Y].` with `Y` balanced pairs its `[`
@@ -274,10 +317,10 @@ with the matching `]` across arbitrary depth. The 11,673-state monitor accepts
 `].`, and it accepts the forced-divergence word `[[` + `[`^k + `--` + `]`^k +
 `]--]`; each is a sound left-hand side, so the class is uncounted. The balanced
 avoidance specification is not a finite right congruence: Moore refinement gives
-15, 39, 86, 173 classes at observation windows 4, 6, 8, 10. The next model is the
-context-free/algebraic system intersected with local rewrite avoidance, or a
-depth-indexed transfer matrix, not the six-series relaxation alone or a larger
-finite-factor monitor.
+15, 39, 86, 173 classes at observation windows 4, 6, 8, 10. The balanced
+certificate above counts sole-loop removal at every depth; its next extension
+must also count unrestricted print rotation and cell-preserving forced
+divergence. A larger finite-factor monitor cannot enforce those classes.
 `test_unbounded_body_classes_are_not_regular` pins the accepted families and the
 class counts through window 8.
 
@@ -694,7 +737,7 @@ equivalence is confined to the chosen input set.
 
 * **The limit.**  With a clipped tape and EOF error (the repo model until 2026-10-06), the
   growth constant is bracketed: `4.2420 <= liminf B(C)**(1/C) <= limsup <= 7.0347`; the repo's
-  bi-infinite tape has upper bound `6.9133`.  The limit itself, and any clipped sub-7 upper
+  bi-infinite tape has upper bound `6.91`.  The limit itself, and any clipped sub-7 upper
   bound, remain open.  Nested loops raise the
   certified lower bound above the loop-free upper bound `4.236` (section 5c), so loops strictly
   raise the growth rate.  The
@@ -715,9 +758,9 @@ equivalence is confined to the chosen input set.
   forced-divergence bodies are not regular (section 3): a finite-factor monitor accepts
   depth-`k` left-hand sides for every `k >= 2`, and the balanced avoidance specification
   has unbounded Moore class count. The 11,673-state certificate covers balanced bodies only
-  to bracket depth one. The isolated six-series relaxation has rate `7.98450`
-  (section 3). Next: intersect balanced-body counting with local rewrite
-  avoidance, preserving the cell-preservation condition
+  to bracket depth one. The balanced-body certificate gives `6.91` on the
+  bi-infinite tape (section 3). Next: include unrestricted print rotation and
+  forced-divergence bodies, preserving the cell-preservation condition
   (`+[-[]].` halts and prints NUL, while `+[].` diverges). A potentially diverging excursion
   cannot commute across a read at EOF; excursions with output cannot commute across prints.
   Two tried and dead: (i) the event encoding of section 4 applied to each bracket-free segment between
