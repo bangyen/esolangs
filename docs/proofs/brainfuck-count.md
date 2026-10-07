@@ -365,6 +365,31 @@ A larger finite-factor monitor cannot enforce those classes.
 `test_unbounded_body_classes_are_not_regular` pins the accepted families and the
 class counts through window 8.
 
+The unrestricted nonzero-tail rule now has an exact typed coefficient constructor
+in `tests/proofs/_brainfuck_divergence.py`, before intersection with the finite
+factor DFA. Its atom state records whether any read occurs, the first atom,
+the atom count capped at two, and four suffix classes: no eligible loop,
+a loop followed by prints, a print-first loop with no following print,
+or a loop followed by prints, one sign, then prints. A new loop resets the
+suffix; a sign takes either loop class to the one-sign class; another sign,
+move or read clears it. Prints preserve the suffix except immediately after
+a print-first loop, where rotation forbids them. The read flag is absorbing
+and includes reads nested inside loop atoms.
+
+For each size, append a literal of width one or a loop of width `w` whose
+four read/first-print body coefficients have size `w-2`. Every coefficient
+is a nonnegative sum of prefix counts times atom counts. Body coefficients
+discard a sole loop and a read-free one-sign suffix; the latter is precisely
+`W[Z].*(+|-).*`, with balanced read-free `W,Z`. Top-level sequences retain that
+suffix. This gives 32 reachable sequence classes through size 24. Exhaustion
+over all 299,593 words through size six independently checks sequence totals
+and all four body classes. Execution controls cover depths one through eight;
+`+[,[--]+]` and `+[[,]+]` reach EOF and prevent dropping the read-free condition.
+These coefficients do not improve the certified `6.90` bound. A direct matrix
+lift would allocate up to `(32+4) * 195² = 1,368,900` entries before sparsity;
+its cost and an independent integer checker remain to be established.
+The preservation-prefix rule `[P0[]G]` still needs a separate classifier.
+
 ## 4. Loop-free programs (Theorem 3)
 
 **Upper bound.**  Run a bracket-free program `w`; its I/O instructions execute once each, in order,
@@ -800,8 +825,9 @@ equivalence is confined to the chosen input set.
   depth-`k` left-hand sides for every `k >= 2`, and the balanced avoidance specification
   has unbounded Moore class count. The 11,673-state certificate covers balanced bodies only
   to bracket depth one. The balanced-body and rotation certificates give
-  `6.90` on the bi-infinite tape (section 3). Next: include forced-divergence
-  bodies, preserving their read-free and cell-preservation conditions
+  `6.90` on the bi-infinite tape (section 3). The read-free nonzero-tail coefficient
+  counter is verified; next lift it into a matrix certificate and classify
+  tested-cell-preserving prefixes
   (`+[-[]].` halts and prints NUL, while `+[].` diverges). A potentially diverging excursion
   cannot commute across a read at EOF; excursions with output cannot commute across prints.
   Two tried and dead: (i) the event encoding of section 4 applied to each bracket-free segment between
