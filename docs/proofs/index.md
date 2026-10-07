@@ -584,6 +584,9 @@ rational dual certificate bounds such codes by 3,710,516.55, below
 `F_2^11` has a difference `v` with `|S & (S+v)| >= 1024*1023/2047`, so at
 least 512 (the count is even), which leaves 256 cosets in `F_2^10`. The same
 step leaves 32 in `F_2^9`. That 2-flat lifts twice, so `D(11, 1/2) >= 4`.
-`D(9, 1/2)` and `D(10, 1/2)` are 3 or 4. Local search at n=9 stalls near
-530 4-flats, a 63-element field-automorphism group admits no invariant
-set, and the Frobenius-invariant case was undecided at the time limit.
+`D(9, 1/2)` and `D(10, 1/2)` are 3 or 4. At n=9 four local searches
+(Metropolis, steepest tabu, noise, clause weighting) all stall at 530 to
+620 4-flats. Every linear group tried with at most 44 orbits admits no
+invariant 256-point set without a 4-flat, 12 groups in all. Groups with
+60 to 80 orbits, Frobenius among them, were undecided at the time
+limit.
