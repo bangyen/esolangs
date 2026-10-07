@@ -132,12 +132,15 @@ for a round moves to [Parked](#parked).
   and XNOR. See [the order
   bound](proofs/fractran.md#order-only-decoding-with-one-priority-consultation).
   Two consultations escape the one-consultation cap: a `2k`-fraction
-  pair-decoded router realizes every table on up to 13 rows at `k=6`, but
-  its checked maxima grow linearly in `k`, so text stays `Theta(T log T)`
+  pair-decoded router realizes every table on up to 13 rows at `k=6`. On
+  pair rows it caps at `9.33*(k-1)` rows by region counting and reaches
+  `13*floor(k/6)` by disjoint blocks, so text stays `Theta(T log T)`; rows
+  of at most `s` features cap at `O(k log s)`
   ([pair router](proofs/fractran.md#pair-decoded-two-priority-consultations)).
-  Next: exhibit a `Theta(k log k)`-row family a fixed pair decoder
-  shatters, or prove the router caps at `O(k)` rows. (The indexed threshold route already achieves
-  linear text by magnitudes.)
+  Next: exhibit a `Theta(k log k)`-row family with rows of `k**Omega(1)`
+  features that a fixed pair decoder shatters, or bound such rows without
+  counting. (The indexed threshold route already achieves linear text by
+  magnitudes.)
 
 Controls are in `tests/proofs/test_research_tracks.py`. The linked proofs
 close ordered input-forgetting construction, generated-family loading

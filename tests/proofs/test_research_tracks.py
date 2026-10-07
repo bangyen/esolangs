@@ -493,3 +493,43 @@ def test_pair_decoded_router_reaches_one_row_per_fraction() -> None:
                 labels.append("1" if (rank[first], rank[second]) in ones else "0")
             tables.add("".join(labels))
     assert tables == {format(i, "010b") for i in range(1024)}
+
+
+@pytest.mark.medium
+def test_pair_decoded_router_shatters_thirteen_rows_at_six_features() -> None:
+    # Six features, the 13 pair rows left after deleting two disjoint pairs:
+    # an annealed decoder realizes 8192/8192, past d=12 fractions.  Every edge
+    # row's (first, second) lies in its own pair, so disjoint copies give
+    # 13*floor(k/6) rows; the region count caps pair rows at 9.33*(k-1).
+    features = (3, 5, 7, 11, 19, 23)
+    round1, round2, cleanup = _pair_router(features)
+    a = dict(zip(features, (37, 41, 43, 47, 53, 59), strict=True))
+    b = dict(zip(features, (61, 67, 71, 73, 79, 83), strict=True))
+    dropped = {(0, 1), (4, 5)}
+    rows = [p for p in itertools.combinations(range(6), 2) if p not in dropped]
+    decoder = ("110000", "100010", "011000", "010100", "000011", "010011")
+    orders = list(itertools.permutations(range(6)))
+    rng = random.Random(20261007)
+    for _ in range(40):
+        order1, order2 = rng.choice(orders), rng.choice(orders)
+        for x, y in rows:
+            fx, fy = features[x], features[y]
+            tokens = [
+                str(13 * fx * fx * fy * fy),
+                *(round1[features[f]] for f in order1),
+                *(round2[features[g]] for g in order2),
+                *cleanup,
+            ]
+            io = ScriptedIO("")
+            run(" ".join(tokens), io)
+            first = features[min((x, y), key=order1.index)]
+            second = features[min((x, y), key=order2.index)]
+            assert int(io.getvalue().strip()) == a[first] * b[second]
+    choices = {tuple(min(row, key=order.index) for row in rows) for order in orders}
+    assert len(choices) == 504  # acyclic orientations of the 13-edge graph
+    tables = {
+        "".join(decoder[p][q] for p, q in zip(c1, c2, strict=True))
+        for c1 in choices
+        for c2 in choices
+    }
+    assert len(tables) == 2**13

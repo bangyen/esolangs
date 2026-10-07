@@ -722,17 +722,41 @@ Router text is `Theta(k log k)` (2k tokens, primes to `O(k log k)`), and at
 
 The escape is still bounded. The pair map has at most `(k!)**2` entries, so
 full shattering of `T` rows needs `2**T <= (k!)**2`, i.e.
-`T <= 2 log2(k!) ~ 2k log2(k/e)`. A checked sweep gives `T_max(k) = 3,6,10,13`
-for `k=3..6`; the maxima are fit by `T_max ~ 3.4k - 7.3 = 1.7d - 7.3`, linear
-in `d`, so `text = Theta(k log k) = Theta(T log T)` and the floor survives.
-This is checked, not proved: the pigeonhole allows up to `~2k log k`, so a
-proof must exclude a `Theta(k log k)`-row shattering family. `T=14,15` at
-`k=6` are unattained in long searches but not excluded.
+`T <= 2 log2(k!) ~ 2k log2(k/e)`. A checked sweep over pair rows gives
+`T_max(k) = 3,6,10,13` for `k=3..6`. `T=14,15` at `k=6` are unattained in
+long searches but not excluded.
 
-Next: either exhibit a `Theta(k log k)`-row family a fixed pair decoder
-shatters for all `k` (edges of a sparse graph, whose acyclic orientations
-supply the two orders, are the candidate), or prove the pair router caps at
-`O(k)` rows.
+On pair rows the cap is linear, proved. Write `pi1`, `pi2` as generic
+points of `R**k`. The selection on row `{u,v}` is the side of the
+hyperplane `x_u = x_v`, so one order's selection vector is constant on each
+region of an arrangement of `T` central hyperplanes of rank at most `k-1`,
+and these regions number at most `R = sum_{i<k} C(T,i) <= (e*T/(k-1))**(k-1)`
+(Zaslavsky; the vectors are the graph's acyclic orientations). Every label is
+a function of the two selection vectors, so shattering needs `2**T <= R**2`.
+With `c = T/(k-1)` this is `c <= 2 log2(e*c)`, so `T <= 9.33*(k-1)`. The
+argument depends on row size only through the hyperplane count: rows of at
+most `s` features give `T*C(s,2)` hyperplanes and `T = O(k log s)`. A
+`Theta(k log k)`-row shattering family therefore needs rows of `k**Omega(1)`
+features, where the region bound meets the pigeonhole's `Theta(k log k)` and
+separates nothing. The sparse-graph candidate is dead.
+
+The pair cap is attained up to a constant. On disjoint feature blocks the
+two orders restrict independently, and an edge row's selections stay inside
+its block, so a block-diagonal decoder shatters the union: `T_max(k) >=
+13*floor(k/6)`. Hence pair rows give `Theta(k) = Theta(d)` rows and text
+`Theta(T log T)`. Controls, executed: the shipped `k=4` and `k=5` decoders
+realize 64/64 and 1024/1024; two disjoint `K4` blocks at `k=8` realize
+4096/4096 from 576 selection vectors; annealing a 6-by-6 decoder (12,000
+evaluations, about 75 s) on `K6` minus two disjoint edges reproduces
+8192/8192 from 504 selection vectors, where plain hill-climbing stalled at
+7552 and 6856. Each selection-vector count is under its region bound (24 of
+42, 120 of 386, 576 of 3302, 504 of 2380). The `T=13` decoder
+is pinned with 40 executed order pairs in
+`test_pair_decoded_router_shatters_thirteen_rows_at_six_features`.
+
+Next: exhibit a `Theta(k log k)`-row family with rows of `k**Omega(1)`
+features that a fixed pair decoder shatters, or bound such rows by a
+non-counting argument.
 
 ## The other end: the row-addressing tree
 
