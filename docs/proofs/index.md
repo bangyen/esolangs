@@ -468,8 +468,11 @@ The clause bound holds for every table. Its proof needs one direction
 per level holding half the pigeonhole average, on two chains: the first,
 which sets the opening phase, and the certified one, which alone may drop
 it. `_assure` checks that at every level of both. When no candidate
-qualifies, it finds the most popular direction exactly in the quotient, by
-pair differences or a Walsh--Hadamard transform. Such a direction gives
+qualifies, it finds one in `O(|S| * (j + 1))` work. Bucket the coset
+representatives by all but `a` free coordinates, with `2**a >= 2**(m+1)/q`
+in a quotient of dimension `m` holding `q` cosets. Cauchy--Schwarz puts
+`(2**a - 1)` times the threshold inside buckets, so about `2*q` pair
+differences reach it by pigeonhole. Such a direction gives
 quotient density `eps' >= eps**2/4`, so `log2(1/eps) + 2` at most doubles
 a level, and the chain's cubes exceed `n/(2*(log2(1/eps) + 2))` points.
 Over the density bands `(2**-(i+1), 2**-i]` that is under `16*2**n/n`

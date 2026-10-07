@@ -308,30 +308,32 @@ def _ensure_popular(node: _Node, n: int) -> None:
 def _assure(node: _Node, n: int) -> None:
     """Make the node's best candidate reach half the pigeonhole average.
 
-    The node's points are a union of ``q`` cosets of its span, of dimension
-    ``j``, and the directions outside the span hold ``|S| * (|S| - 2**j)``
-    of its ordered pairs.  When no candidate reaches half that over the
-    ``2**n - 2**j`` such directions -- or none has a pair while ``q >= 2``
-    -- the most popular one is computed exactly in the quotient and joins
-    the candidates: by pair differences of the coset representatives, or by
-    a Walsh--Hadamard transform when there are more pairs than the
-    transform's ``m * 2**m`` steps (``m = n - j``).  Only the chains the
-    clause bound speaks for call this, so it is a guarantee, not a search.
+    The node's points are ``q`` cosets of its span, of dimension ``j``, so
+    in the quotient, of dimension ``m = n - j``, half the average over the
+    nonzero directions is ``theta = q * (q - 1) / (2 * (2**m - 1))`` ordered
+    pairs.  When no candidate reaches it, one that does is found in
+    ``O(|S| * (j + 1))`` work and joins the candidates.  Canonical coset
+    representatives are zero on the span's pivots; ``U`` is spanned by the
+    lowest ``a`` free coordinates, with ``2**a >= 2**(m + 1) / q``.  Its
+    cosets split the representatives into buckets, and by Cauchy--Schwarz
+    the pairs inside buckets number at least ``q**2 / 2**(m - a) - q >=
+    (2**a - 1) * theta``.  Counting bucket differences until that many are
+    seen -- about ``2 * q`` -- leaves some nonzero ``u`` in ``U`` with at
+    least ``theta`` by pigeonhole.  Only the chains the clause bound speaks
+    for call this, so it is a guarantee, not a search.
     """
     size = len(node.points)
     j = len(node.span).bit_length() - 1
-    if size >> j < 2:
+    q = size >> j
+    if q < 2:
         return
     _, best_c = _best(node)
     if best_c > 1 and 2 * best_c * ((1 << n) - (1 << j)) >= size * (size - (1 << j)):
         return
-    dirs = []
+    pivots: dict[int, int] = {}
     cur: _Node | None = node
     while cur is not None and cur.parent is not None:
-        dirs.append(cur.v)
-        cur = cur.parent
-    pivots: dict[int, int] = {}
-    for row in dirs:
+        row = cur.v
         for bit, prow in pivots.items():
             if row >> bit & 1:
                 row ^= prow
@@ -340,41 +342,33 @@ def _assure(node: _Node, n: int) -> None:
             if pivots[bit] >> hi & 1:
                 pivots[bit] ^= row
         pivots[hi] = row
-    free = [b for b in range(n) if b not in pivots]
-    reps = set()
+        cur = cur.parent
+    m = n - j
+    a = min(m, (((1 << (m + 1)) - 1) // q).bit_length())
+    inside = sum(1 << b for b in [b for b in range(n) if b not in pivots][:a])
+    buckets: dict[int, set[int]] = {}
     for p in node.points:
         for bit, prow in pivots.items():
             if p >> bit & 1:
                 p ^= prow
-        reps.add(sum(1 << i for i, b in enumerate(free) if p >> b & 1))
-    m = len(free)
-    ordered = sorted(reps)
-    if len(ordered) ** 2 <= m << m:
-        pairs: dict[int, int] = {}
-        for i, a in enumerate(ordered):
-            for b in ordered[i + 1 :]:
-                pairs[a ^ b] = pairs.get(a ^ b, 0) + 2
-    else:
-        # Autocorrelation of the indicator: square its transform, invert.
-        f = [0] * (1 << m)
-        for x in ordered:
-            f[x] = 1
-        f = _walsh([c * c for c in _walsh(f)])
-        pairs = {u: c >> m for u, c in enumerate(f) if u}
-    u, count = min(pairs.items(), key=lambda kv: (-kv[1], kv[0]))
-    v = sum(1 << b for i, b in enumerate(free) if u >> i & 1)
-    node.cands[v] = count << j
-
-
-def _walsh(f: list[int]) -> list[int]:
-    """Unnormalised Walsh--Hadamard transform, in place."""
-    h = 1
-    while h < len(f):
-        for start in range(0, len(f), 2 * h):
-            for k in range(start, start + h):
-                f[k], f[k + h] = f[k] + f[k + h], f[k] - f[k + h]
-        h *= 2
-    return f
+        buckets.setdefault(p & ~inside, set()).add(p)
+    # Stop at (2**a - 1) * theta ordered pairs, cleared of denominators.
+    need = ((1 << a) - 1) * q * (q - 1)
+    unit = 2 * ((1 << m) - 1)
+    counts: dict[int, int] = {}
+    seen = 0
+    for reps in buckets.values():
+        ordered = sorted(reps)
+        for i, x in enumerate(ordered):
+            for y in ordered[i + 1 :]:
+                counts[x ^ y] = counts.get(x ^ y, 0) + 2
+                seen += 2
+            if seen * unit >= need:
+                break
+        if seen * unit >= need:
+            break
+    v = min(counts, key=lambda u: (-counts[u], u))
+    node.cands[v] = _pairs(node.points, v)
 
 
 def _remove(node: _Node, p: int) -> None:
