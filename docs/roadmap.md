@@ -90,7 +90,7 @@ line changes only when its next step does.
   remain, with the materialized sieve forcing `Theta(T log T)` generation
   ([fractran](proofs/fractran.md#direct-chunks-with-exact-cleanup)).
 - **Brainfuck behaviour count.** Next: extend the balanced-body certificate
-  to unrestricted print rotation and cell-preserving forced-divergence bodies
+  to forced-divergence bodies with read-free and tested-cell-preservation classes
   ([brainfuck-count](proofs/brainfuck-count.md#8-what-is-not-settled)).
 - **Brainfuck on bounded inputs.** Next: establish Theorem 6's limit or
   sharpen either side ([brainfuck-count](proofs/brainfuck-count.md#8-what-is-not-settled)).
