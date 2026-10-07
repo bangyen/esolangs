@@ -33,10 +33,12 @@ FORMULAS: dict[str, tuple[Callable[[int], int], bool, tuple[int, ...]]] = {
     "Crement": (lambda n: 5 * n + 2, True, (3, 6)),
     "Factor": (lambda n: 265 * n + 231, True, (4,)),
     "brainfuck": (lambda n: 69 * n + 44, True, (3, 6)),
-    "Circuit Diagram": (lambda n: 2 * n + 1 + (n >= 8), True, (3, 6)),
+    "Circuit Diagram": (lambda n: 2 * n + 1 + (n >= 8), True, (3, 8)),
     "Forbin": (lambda n: 2 * max(n - 7, 0) + 2, True, (3, 8)),
     "Inject": (lambda n: 8 * n + 10, True, (5, 6)),
     "BFStack": (lambda n: 60 * n + 475, True, (8,)),
+    # Proved for all n: a path costs at most the all-ones one, and a
+    # level's moves at most max(a, b) + 2 over adjacent input cells a, b.
     "Painfuck": (lambda n: -(-3 * n * n // 4) + 20 * n + 4, False, (3, 6)),
     "Smallfuck": (lambda n: 9 * n * n + 100 * n + 20, False, (3, 6)),
     "Underload": (lambda n: 14 * n - 1, False, (3, 6)),
@@ -56,8 +58,14 @@ _BFSTACK_BLOCK = "0" * 64 + "1" * 60 + "0" + "111"
 
 
 def _tables(name: str, n: int) -> tuple[str, ...]:
-    """Parity, dense, two seeded, the constants, AND, alternating and NAND."""
+    """Parity, dense, two seeded, constants, AND, alternating, NAND, ends."""
     width = 1 << n
+    if name == "Circuit Diagram" and n >= 8:
+        # Its worst, the all-ones H-layout; a wide circuit parses in 0.7s.
+        return ("1" * width,)
+    if name == "LaserFuck" and n >= 5:
+        # Its worst is all zeros; a 3T + 1 cell tape snapshots every step.
+        return (_parity(n), _dense(n), "0" * width)
     tables = (
         _parity(n),
         _dense(n),
@@ -68,6 +76,7 @@ def _tables(name: str, n: int) -> tuple[str, ...]:
         "0" * (width - 1) + "1",
         "10" * (width // 2),
         "1" * (width - 1) + "0",
+        "1" + "0" * (width - 2) + "1",
     )
     if name == "BFStack" and n >= 7:
         tables += (_BFSTACK_BLOCK * (1 << (n - 7)),)

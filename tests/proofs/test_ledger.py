@@ -8,6 +8,7 @@ import esolangs
 from esolangs.registry import BY_BOOLEAN
 from tests.proofs._ledger import (
     EXECUTION_CLASSES,
+    FORMULA_CLAUSE_WORDS,
     LINEAR_CLAUSE_WORDS,
     NOT_A_LABEL,
     QUALIFIERS,
@@ -133,9 +134,12 @@ def test_every_row_carries_a_measured_cell(
         assert kind in classes, f"{row.generator}: unknown {column} class {kind!r}"
         assert clause, f"{row.generator}: {column} cell has no clause"
         words = len(clause.split())
-        assert words <= LINEAR_CLAUSE_WORDS, (
-            f"{row.generator}: {column} clause is {words} words"
+        limit = (
+            FORMULA_CLAUSE_WORDS
+            if clause.startswith(("worst ", "at most "))
+            else LINEAR_CLAUSE_WORDS
         )
+        assert words <= limit, f"{row.generator}: {column} clause is {words} words"
 
 
 def test_unproved_scaling_requires_a_totality_exception(ledger: Ledger) -> None:
