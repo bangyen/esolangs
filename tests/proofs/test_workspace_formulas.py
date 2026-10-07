@@ -13,7 +13,8 @@ import pytest
 import esolangs
 from esolangs.debugger import make_vm
 from esolangs.interpreters.stack_based.sstack import _parse
-from scripts.benchmark import WrittenState
+from esolangs.tools.three_x import _level
+from scripts.benchmark import WrittenState, state_bits
 from tests.proofs._ledger import load as load_ledger
 from tests.proofs.deep.execution import run_to_answer
 from tests.proofs.test_execution_formulas import _tables, _worst
@@ -107,20 +108,21 @@ def _subleq(n: int, _: str) -> int:
     )
 
 
+def _key(i: int) -> int:
+    """K(i), the ledger's bound on the ith 3x key's bits."""
+    return 2 * bl(2 ** (i - 1) * 3 ** (2 * i - 1)) + 1
+
+
 def _three_x(n: int, p: str) -> int:
     """Guard residues, read cursor and the 2n + 1 keys, K a key's bits."""
-
-    def key(i: int) -> int:
-        return 2 * bl(2 ** (i - 1) * 3 ** (2 * i - 1)) + 1
-
     return (
         n * bl(len(p))
         + 3 * 2**n // 2
         + 2 * n
         + 16
         + bl(2 * n - 1)
-        + 2 * key(2 * n + 1)
-        + sum(key(i) + 3 for i in range(1, 2 * n + 2))
+        + 2 * _key(2 * n + 1)
+        + sum(_key(i) + 3 for i in range(1, 2 * n + 2))
     )
 
 
@@ -575,3 +577,14 @@ def test_unlambda_workspace_is_not_linear() -> None:
         per_char.append(state.bits / len(program))
     # Measured 7.58 then 16.60; a linear workspace would hold it flat.
     assert per_char[1] > 1.5 * per_char[0], per_char
+
+
+def test_three_x_keys_fit_their_bound() -> None:
+    """K(i) covers the 41 shortest constants, every key through n = 20."""
+    keys: list = []
+    length = 0
+    while len(keys) < 41:
+        length += 1
+        keys.extend(_level(length))
+    for i, value in enumerate(keys[:41], 1):
+        assert state_bits(value, {}) <= _key(i), (i, value)
