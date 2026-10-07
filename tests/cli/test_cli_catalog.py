@@ -23,7 +23,7 @@ def test_generator_and_interpreter_only_partition_catalog(capsys):
 
 
 def test_raster_filter_has_a_positive_control(capsys):
-    assert _names(["--source=raster"], capsys) == ["Line", "Piet"]
+    assert _names(["--source=raster"], capsys) == ["Line", "Piet", "Piet++"]
     assert _names(["--source", "text", "--interpreter-only"], capsys) == [
         "Deadfish",
         "HQ9+",
@@ -71,13 +71,13 @@ def test_combined_filters_match_in_every_output_format(capsys):
         "4",
     ]
     names = _names(filters, capsys)
-    assert names == ["Line", "Piet"]
+    assert names == ["Line", "Piet", "Piet++"]
     text, error = call_both(["list", *filters], capsys)
     assert text.splitlines() == names
     assert error == ""
     rows = _names([*filters, "--details"], capsys)
     text, error = call_both(["list", *filters, "--details"], capsys)
-    assert len(text.splitlines()) == 3
+    assert len(text.splitlines()) == 1 + len(names)
     for row, line in zip(rows, text.splitlines()[1:], strict=True):
         assert line.startswith(row["name"])
         assert row["source_kind"] == "raster"
