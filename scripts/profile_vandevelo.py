@@ -37,6 +37,8 @@ def _profile(frame: FrameType, event: str, _arg: Any, work: Work) -> None:
     if event != "call":
         return
     caller = frame.f_back
+    if caller is None:
+        return
     fallback = _MODULE._ensure_popular.__code__  # noqa: SLF001
     if frame.f_code is _MODULE._pairs.__code__ and caller.f_code is fallback:  # noqa: SLF001
         # Each sampling call lists its points afresh; holding the list keeps

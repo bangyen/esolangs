@@ -290,7 +290,7 @@ def _ensure_popular(node: _Node, n: int) -> None:
         return
     pts = list(node.points)
     # Seeded by the set, so the program is a function of the table.
-    rng = random.Random(size)
+    rng = random.Random(size)  # nosec B311
     best_v = None
     for _ in range(_SAMPLES):
         v = rng.choice(pts) ^ rng.choice(pts)
