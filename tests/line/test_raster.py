@@ -86,7 +86,7 @@ def test_a_corrupt_png_is_a_value_error(tmp_path: Path) -> None:
 
 def test_verify_finds_its_fixtures() -> None:
     """The old path did not exist, so the script verified nothing and passed."""
-    from esolangs.interpreters.tape_based.line import verify
+    from scripts import verify_line_fixtures as verify
 
     assert verify.FIXTURES.is_dir()
     assert list(verify.FIXTURES.glob("*.png"))
@@ -96,7 +96,7 @@ def test_verify_fails_when_there_is_nothing_to_check(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """An empty sweep is not a pass."""
-    from esolangs.interpreters.tape_based.line import verify
+    from scripts import verify_line_fixtures as verify
 
     assert verify.main(tmp_path) == 1
     assert "no fixtures" in capsys.readouterr().err
@@ -104,7 +104,7 @@ def test_verify_fails_when_there_is_nothing_to_check(
 
 def test_verify_reports_a_fixture_that_does_not_extract(tmp_path: Path) -> None:
     """The pass/fail loop itself, on an image that is not a Line program."""
-    from esolangs.interpreters.tape_based.line import verify
+    from scripts import verify_line_fixtures as verify
 
     (tmp_path / "blank.png").write_bytes(Raster((((0, 0, 0),),)).to_png())
     assert verify.main(tmp_path) == 1
@@ -114,7 +114,7 @@ def test_verify_passes_on_the_committed_fixtures(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """The green path of the fixture sweep, which only its failures had."""
-    from esolangs.interpreters.tape_based.line import verify
+    from scripts import verify_line_fixtures as verify
 
     assert verify.main() == 0
     out = capsys.readouterr().out

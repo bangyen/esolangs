@@ -20,7 +20,7 @@ from esolangs.tools.examples import BOOLEAN_EXAMPLES, BooleanExample
 
 _BY_ID = {lang.id: name for name, lang in LANGUAGES.items()}
 
-ROOT = pathlib.Path(__file__).parents[3]
+ROOT = pathlib.Path(__file__).resolve().parents[1]
 EXAMPLES = ROOT / "src" / "esolangs" / "examples"
 
 
