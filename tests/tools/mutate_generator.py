@@ -31,8 +31,17 @@ from esolangs.registry import LANGUAGES  # noqa: E402
 # support module fails collection, and with ``tests_dir`` pointing at
 # ``tests/tools`` a silently uncollected suite would have scored its
 # generators against the remaining ones alone.
+_CLI_SUPPORT = (
+    Path("tests/cli/__init__.py"),
+    Path("tests/cli/test_cli.py"),
+    Path("tests/cli_support.py"),
+)
+
 _TOOLS_SUPPORT = (
+    # Balance imports call_main; without its CLI helpers collection fails.
+    *_CLI_SUPPORT,
     Path("tests/source_support.py"),
+    Path("tests/witness_tables.py"),
     Path("tests/generator_support.py"),
     # ``generator_support`` validates tables through this oracle.
     Path("tests/stdin_check.py"),
@@ -49,6 +58,7 @@ _TOOLS_SUPPORT = (
 # ``samples`` imports a truth machine out of an interpreter's *test* file,
 # which is why one of those is here rather than only its helpers.
 _CORE_SUPPORT = (
+    *_CLI_SUPPORT,
     Path("tests/interpreters/__init__.py"),
     Path("tests/interpreters/runner.py"),
     Path("tests/interpreters/test_inject.py"),
