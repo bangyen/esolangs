@@ -56,6 +56,7 @@ from esolangs.cli_args import (
     _check_count,
     _expand_short_options,
     _fail,
+    _integer,
     _pop_flags,
     _pop_options,
     _pop_portable,
@@ -104,22 +105,67 @@ def _encode(rest: list[str]) -> None:
         _fail(_shell_hint(_cli_error_text(exc), language))
 
 
+def _catalog_names(options: dict[str, str], flags: list[str]) -> list[str]:
+    """Return candidates by declared capabilities, without generating a table."""
+    if "--generator" in flags and "--interpreter-only" in flags:
+        _fail("--generator and --interpreter-only cannot be combined")
+    if "--inputs" in options and "--interpreter-only" in flags:
+        _fail("--inputs requires a generator; omit --interpreter-only")
+    for option, choices in (
+        ("--source", ("text", "raster")),
+        ("--answer", ("output", "dump", "termination")),
+    ):
+        if option in options and options[option] not in choices:
+            _fail(f"{option} must be one of {', '.join(choices)}")
+    inputs = None
+    if "--inputs" in options:
+        inputs = _integer(options["--inputs"], "--inputs", kind="a positive integer")
+        if inputs < 1:
+            _fail("--inputs must be a positive integer")
+    names = []
+    for name in list_languages():
+        language = LANGUAGES[name]
+        generator = language.boolean is not None
+        if ("--generator" in flags or inputs is not None) and not generator:
+            continue
+        if "--interpreter-only" in flags and generator:
+            continue
+        if "--source" in options and language.source_kind.value != options["--source"]:
+            continue
+        if (
+            "--answer" in options
+            and language.contract.answer_mode != options["--answer"]
+        ):
+            continue
+        limit = language.generator_max_inputs
+        if inputs is not None and limit is not None and inputs > limit:
+            continue
+        names.append(name)
+    return names
+
+
 def _list(rest: list[str]) -> None:
-    """Print the supported languages, optionally with capability markers."""
-    rest, flags = _pop_flags(rest, {"--details", "--json"})
-    rest = _split_positional(rest, set(), {"--details", "--json"})
+    """Print languages matching the requested capabilities."""
+    value_options = {"--source", "--answer", "--inputs"}
+    flag_options = {"--details", "--json", "--generator", "--interpreter-only"}
+    rest, options = _pop_options(rest, value_options)
+    rest, flags = _pop_flags(rest, flag_options)
+    rest = _split_positional(rest, set(), value_options | flag_options)
     details = "--details" in flags
     as_json = "--json" in flags
     _check_count("list", rest, 0)
+    names = _catalog_names(options, flags)
     if as_json:
         if not details:
-            print(json.dumps(list_languages(), indent=2))
+            print(json.dumps(names, indent=2))
             return
         print(
             json.dumps(
                 [
                     {
                         "name": name,
+                        "source_kind": facts["source_kind"],
+                        "answer_mode": facts["answer_mode"],
                         # The three the marker column encodes, spelled out.
                         "boolean_generator": facts["boolean_generator"],
                         "parameterized": facts["parameterized"],
@@ -127,16 +173,14 @@ def _list(rest: list[str]) -> None:
                         "generator_restrictions": facts["generator_restrictions"],
                         "has_example": bool(facts["examples"]),
                     }
-                    for name, facts in (
-                        (name, describe(name)) for name in list_languages()
-                    )
+                    for name, facts in ((name, describe(name)) for name in names)
                 ],
                 indent=2,
             )
         )
         return
     if not details:
-        for name in list_languages():
+        for name in names:
             print(name)
         return
     width = max(len(name) for name in LANGUAGES)
@@ -146,7 +190,7 @@ def _list(rest: list[str]) -> None:
         f"{'language'.ljust(width)}  gen=generator tmpl=template ex=example "
         f"int=interpreter-only"
     )
-    for name in list_languages():
+    for name in names:
         facts = describe(name)
         marks = " ".join(
             filter(
