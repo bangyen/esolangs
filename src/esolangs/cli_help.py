@@ -267,7 +267,7 @@ examples:
 Read a program's output on stdin and print the answer bit it carries.
 
 For most languages the answer is the last thing printed and this is barely
-more than `tail`.  For ten it is not: six dump their entire final machine
+more than `tail`.  For some it is not: several dump their entire final machine
 state, and the answer sits at a fixed place in it -- RAM0's on its `z:`
 line, A Painter Ant's as the mark on the ant's own cell (`o` for 0, `@`
 for 1).  Working that out by hand meant generating all four rows and

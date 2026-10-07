@@ -90,7 +90,7 @@ def encode_inputs(
 def read_answer(language: str, output: str) -> str:
     """Return the answer bit a ``language`` program's ``output`` carries.
 
-    Most print it (last non-whitespace character); six dump their state, and
+    Most print it (last non-whitespace character); some dump their state, and
     two differ -- RAM0's answer is on its ``z:`` line, A Painter Ant marks
     the ant's cell ``o``/``@``.
     ``describe(language)["answer_pattern"]`` is the same fact as data (a
