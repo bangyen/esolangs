@@ -420,6 +420,22 @@ narrow the bracket. Open:
 * a profile below `325/8`;
 * whether even or odd sources can be optimal (lower constant 13/4 or 4).
 
+Next: replace the instruction profile or raise the coefficient-mass bound.
+Four refinements provably cannot improve `325/8` (inline-state tuning,
+narrower decoder operands, local opcode substitution, affine dispatch);
+their proofs are in the paper.  The lower-bound gap is a quadratic mass
+charge for Gaussian instruction roots: the forced factor currently gives
+only `8 log(K!) = Theta(T)`, and residual width alone does not force
+distinct Gaussian roots.  Parity sources are universal and must be priced;
+the argument assumes exact register arithmetic, with float `**` a caveat.
+See the [coefficient-mass
+roadmap](https://github.com/bangyen/coefficient-mass/blob/v1/ROADMAP.md).
+The [common-norm bound](polynomial-common-norm.md) is
+`Lambda(Q) >= K**2 log(R)/16` for the raw forced factor and scaled
+reciprocal or anti-reciprocal integer multiples.  Arbitrary multipliers
+remain open, and register roots need not share a norm, so this does not
+close the constant bracket.
+
 **Measured** (uncapped `_polynomial_dag`, one seeded random table per n):
 
 | n  | chars       | chars n/T**2 | vs `Phi log P / ln 10` |

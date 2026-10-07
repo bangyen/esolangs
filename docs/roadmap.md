@@ -117,18 +117,10 @@ implementation (unique backlinks measured 2026-10-06); add with
 Each item names its next executable step. When an item is answered, record
 the answer in the linked proof and remove the item.
 
-- **Brainfuck behaviour count.** With a clipped tape and EOF error (the
-  repo model until 2026-10-06), the growth constant is bracketed:
-  `4.2420 <= liminf B(C)**(1/C) <= limsup <= 7.0347`; the repo's bi-infinite
-  tape has upper bound `6.9133`. The limit itself, and any clipped sub-7
-  upper bound, remain open. The 11,673-state certificate covers
-  balanced bodies only to bracket depth one, and no finite monitor can
-  count the unrestricted sound print-rotation and forced-divergence bodies:
-  they match brackets across any depth. Next: count them with the
-  context-free system `B0, B1, L0, L1, R, P` or a depth-indexed transfer
-  matrix, preserving the cell-preservation condition (`+[-[]].` halts and
-  prints NUL, while `+[].` diverges). Certificates, withdrawn bounds and
-  the loop-free comparison: [brainfuck-count](proofs/brainfuck-count.md#3-upper-bound-theorem-1).
+- Brainfuck, Polynomial and Factor growth constants:
+  [brainfuck-count](proofs/brainfuck-count.md#8-what-is-not-settled),
+  [polynomial](proofs/polynomial.md#explicit-constants),
+  [factor](proofs/factor.md#open-problems).
 
 - **Malbolge's first unreachable arity.** The shipped cap is 16 inputs.
   Counting excludes some 18-input tables; 17 remains undecided, and a
@@ -146,39 +138,6 @@ the answer in the linked proof and remove the item.
   computes the one-input identity and depends on all 59,049 cells), and
   length and alphabet cuts are closed; [limitations](limitations.md#boolean-generators)
   records the controls.
-
-- **Polynomial's constant.** `prop:bracket` in
-  [polynomial](proofs/polynomial.tex) brackets both limits of
-  `C_P n / T**2` in `[13/4 log10(2), 325/8 log10(2)]` — a factor of 12.5
-  apart. Next: replace the instruction profile or raise the
-  coefficient-mass bound. Four refinements provably cannot improve
-  `325/8` (inline-state tuning, narrower decoder operands, local opcode
-  substitution, affine dispatch); their proofs are in the paper. The
-  lower-bound gap is a quadratic mass charge for Gaussian instruction
-  roots: the forced factor currently gives only `8 log(K!) = Theta(T)`,
-  and residual width alone does not force distinct Gaussian roots. Parity
-  sources are universal and must be priced; the argument assumes exact
-  register arithmetic, with float `**` a caveat. See [explicit
-  constants](proofs/polynomial.md#explicit-constants) and the
-  [coefficient-mass roadmap](https://github.com/bangyen/coefficient-mass/blob/main/ROADMAP.md).
-  The [common-norm bound](proofs/polynomial-common-norm.md) is
-  `Lambda(Q) >= K**2 log(R)/16` for the raw forced factor and scaled
-  reciprocal or anti-reciprocal integer multiples. Arbitrary multipliers
-  remain open, and register roots need not share a norm, so this does not
-  close the constant bracket.
-
-- **Factor leading constant.** [factor](proofs/factor.md#leading-constants)
-  brackets worst-case minimum digits divided by `T*n` between 0.11675954
-  and 0.29229475 asymptotically (a 2.503391-fold gap). The lower side
-  counts weighted exponent compositions after local normalization and
-  first-output pruning; the upper side prices a traveling counter, fixed
-  signed-ball blocks, and an almost-all prime-window covering bound. Parity
-  encodings executed through five inputs determine neither limit.
-  On the executed corpus, semantic deduplication only halves the count (a
-  constant factor); `<>` is already in the forbidden set now that the
-  tape grows left. Next: find a sound local rewrite that lowers the lower
-  side's Perron root, or construct a cheaper weighted command stream to lower
-  the upper one. Whether the limit exists, and its value, remain open.
 
 - **Vandevelo structural scaling.** Clause count is under `17*2**n/n`
   for every table: `_assure` puts a half-average direction on each level
@@ -211,17 +170,6 @@ the answer in the linked proof and remove the item.
   Next: exhibit a `Theta(k log k)`-row family a fixed pair decoder
   shatters, or prove the router caps at `O(k)` rows. (The indexed threshold route already achieves
   linear text by magnitudes.)
-
-- **Brainfuck on bounded inputs.** The finite-set upper bound is now
-  `6.584428341`, below the all-input upper bound `7.0347`: delete
-  unvisited reads, then count seven-command segments by a certified
-  adjacency matrix. [Theorem 6](proofs/brainfuck-count.md#7b-bounded-input-upper-bound-theorem-6)
-  also covers varying input sets with total read budget `o(C)`, including
-  byte-input lengths at most `(1-eps)*log_256(C)`. The lower bound remains
-  `3.366148`. For input length proportional to source length, Theorem 6's
-  counting improves on `7.0347` only while the proportion stays below
-  about 0.021, and never on `6.584428341`. Next: establish
-  the limit or sharpen either side.
 
 Controls are in `tests/proofs/test_research_tracks.py`. The linked proofs
 close ordered input-forgetting construction, generated-family loading
