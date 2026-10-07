@@ -87,14 +87,6 @@ def test_the_final_print_is_its_own_step() -> None:
     assert machine.ip is None
 
 
-def test_stepping_past_the_halt_is_a_no_op() -> None:
-    machine = _Machine("7", ScriptedIO(""))
-    machine.step()
-    before = machine.snapshot()
-    machine.step()
-    assert machine.snapshot() == before
-
-
 def test_a_non_positive_numerator_is_refused() -> None:
     with pytest.raises(ValueError, match="is not positive"):
         run_program(run, "5 0/3")

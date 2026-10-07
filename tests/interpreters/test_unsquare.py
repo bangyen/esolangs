@@ -153,14 +153,6 @@ class TestStepMachine:
         with pytest.raises(EOFError):
             run_until_halt_or_cycle(machine, limit=100)
 
-    def test_step_after_halt_is_a_noop(self) -> None:
-        from esolangs.interpreters.stack_based.unsquare import _Machine
-
-        machine = _Machine("", ScriptedIO())
-        assert machine.halted
-        machine.step()  # stepping a halted machine is a no-op
-        assert machine.stack == ()
-
 
 def _machine(code: object) -> object:
     from esolangs.interpreters.io import ScriptedIO

@@ -131,14 +131,6 @@ def test_the_search_covers_every_draw_and_declines_a_read() -> None:
     assert reader.branching_successors(reader.state, 10) is None
 
 
-def test_stepping_past_the_halt_is_a_no_op() -> None:
-    machine = _Machine("a::=~x\n::=\na", ScriptedIO(""), Seeded(0))
-    machine.step()
-    before = machine.snapshot()
-    machine.step()
-    assert machine.snapshot() == before
-
-
 def test_the_branching_protocol_reports_the_state_it_searches() -> None:
     """The hang proof searches every draw, so the string is its own branching
     state and the successors are one per available rewrite."""

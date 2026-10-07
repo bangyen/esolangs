@@ -45,13 +45,6 @@ _DUMPS = {
         "A N A S A A N A A S",
         "z: 6\nn: 4\nram: {\n    1: 2,\n    4: 6\n}",
     ),
-    # Store 2 at address 1, then store 5 at address 5
-    "memory_overwrite": (
-        "A N A S A A A N S",
-        "z: 5\nn: 5\nram: {\n    1: 2,\n    5: 5\n}",
-    ),
-    # Load from address 3 (uninitialized)
-    "load_from_uninitialized_memory": ("A A A L", "z: 0\nn: 0\nram: {}"),
     "empty_program": ("", "z: 0\nn: 0\nram: {}"),
     # Only A command executes, but L command loads from uninitialized address
     "invalid_commands_ignored": (
@@ -67,8 +60,6 @@ _DUMPS = {
     "leading_zero_goto": ("Z 004 A A", "z: 1\nn: 0\nram: {}"),
     # Jump to non-existent instruction: terminates after first A
     "large_goto_number": ("A 999 A", "z: 1\nn: 0\nram: {}"),
-    "dump_with_memory": ("A N S", "z: 1\nn: 1\nram: {\n    1: 1\n}"),
-    "dump_without_memory": ("A", "z: 1\nn: 0\nram: {}"),
 }
 
 

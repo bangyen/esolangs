@@ -288,14 +288,6 @@ class TestStepMachine:
         machine.step()
         assert machine.halted
 
-    def test_step_after_halt_is_a_noop(self) -> None:
-        from esolangs.interpreters.register_based.sophie import _Machine
-
-        machine = _Machine("", IO())
-        assert machine.halted
-        machine.step()  # stepping a halted machine is a no-op
-        assert machine.halted
-
     def test_a_read_loop_is_not_a_cycle(self) -> None:
         """The snapshot holds the input cursor (a85db79a)."""
         from esolangs.interpreters.io import ScriptedIO

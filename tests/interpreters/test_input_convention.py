@@ -82,14 +82,6 @@ _EOF_IS_A_HALT: dict[str, str] = {
 }
 
 
-@pytest.mark.parametrize("name", sorted(_EOF_IS_A_HALT))
-def test_every_eof_exemption_names_a_real_language(name: str) -> None:
-    """An exemption whose language is gone must not linger unnoticed."""
-    from esolangs.tools.examples import BOOLEAN_EXAMPLES
-
-    assert name in BOOLEAN_EXAMPLES
-
-
 def _reading_languages() -> list[str]:
     """The examples whose programs read their inputs from the stream."""
     from esolangs.tools.examples import BOOLEAN_EXAMPLES

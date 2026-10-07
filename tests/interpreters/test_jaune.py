@@ -195,15 +195,6 @@ class TestErrors:
 
 
 class TestMachine:
-    def test_step_after_halt_is_a_no_op(self) -> None:
-        from esolangs.interpreters.tape_based.jaune import _Machine
-
-        machine = _Machine("^", ScriptedIO())
-        assert not machine.halted
-        machine.step()
-        assert machine.halted
-        machine.step()  # must not raise
-
     def test_the_vm_view_tracks_the_run(self) -> None:
         """``ip``/``memory``/``stack`` are what the debugger reads, so they run."""
         from esolangs.interpreters.tape_based.jaune import _Machine

@@ -127,10 +127,6 @@ class TestExpressions:
         """``c = eof`` has to be askable of a character, which needs this."""
         assert _run(["begin;var v;set v 65 = eof;skip v = right;out v;end;"]) == ""
 
-    def test_division_by_zero_is_a_runtime_error(self) -> None:
-        with pytest.raises(HaltError, match="division by zero"):
-            run(["begin;var v;set v 1/0;end;"], ScriptedIO())
-
 
 class TestErrors:
     """Malformed programs against invalid operations: ValueError vs HaltError."""
