@@ -388,8 +388,10 @@ def _linear_primes(count: int) -> list[int]:
             if len(primes) == count:
                 return primes
         for prime in primes:
+            if prime > least[candidate]:
+                break
             product = prime * candidate
-            if prime > least[candidate] or product > bound:
+            if product > bound:
                 break
             least[product] = prime
     raise AssertionError("explicit prime bound failed")

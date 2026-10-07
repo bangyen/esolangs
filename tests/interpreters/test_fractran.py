@@ -179,3 +179,37 @@ def test_loader_sieve_uses_actual_bases_and_keeps_sparse_fallback(
     assert limits == [3]
     assert fractran_index.compile_index("257 1/257") is None
     assert limits == [3]
+
+
+def test_sieve_products_have_linear_fractional_bit_weight(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    pairs: list[tuple[int, int]] = []
+
+    class Tracked(int):
+        def __mul__(self, other: int) -> int:
+            pairs.append((int(self), int(other)))
+            return int(self) * int(other)
+
+    def tracked_range(*args: int):
+        return (Tracked(value) for value in range(*args))
+
+    monkeypatch.setattr(fractran_index, "range", tracked_range, raising=False)
+    for bound in (0, 1, 2, 8, 64, 256, 1024):
+        pairs.clear()
+        least = fractran_index._least_primes(bound)
+        products = []
+        weight = 0
+        for prime, candidate in pairs:
+            assert prime <= least[candidate]
+            if prime * candidate <= bound:
+                products.append(prime * candidate)
+            # Exact ceiling of bit_length(prime)**(2/3), without floats.
+            amount = 1
+            while amount**3 < prime.bit_length() ** 2:
+                amount += 1
+            weight += amount
+        composites = {value for value in range(2, bound + 1) if least[value] != value}
+        assert set(products) == composites
+        assert len(products) == len(composites)
+        assert weight <= 11 * bound

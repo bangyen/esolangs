@@ -965,8 +965,8 @@ it is not a language-wide query lower bound. Peak loading scratch is
 `O(T log T)` bits, dominated by the sieve; the persistent compiled index
 and cursor need `O(k log T+n**2)=O(T)` bits. Explicit debug snapshots or
 requests to materialize the large initial integer are outside the normal
-query contract. These are upper bounds, not a proof of linear bit cost;
-tightening their logarithmic gap remains open.
+query contract. This schoolbook estimate is conservative; the following
+amortized bound closes its gap for the materialized pipeline.
 
 Executed loading controls use seeded tables at six through sixteen inputs,
 three trials per loader, and first/interior/last-row queries. Every answer
@@ -992,6 +992,91 @@ the pre-change loader. Literal-arithmetic checks cover bases `1..512`,
 and allocation controls verify both a repeated-factor dense product and
 the sparse trial fallback. The wider regression executes last-row queries
 through sixteen inputs and checks the actual sieve limits.
+
+### Matched bit cost for the materialized pipeline
+
+Generation, loading and one streaming query take `Theta(T log T)` bit
+work in the stated bit-cost RAM, using materialized word arrays and
+asymmetric Karatsuba multiplication. This is the cost of this pipeline,
+not a FRACTRAN language lower bound or a lower bound for other sieve
+representations. The linear word-work bounds remain unchanged.
+
+**Arithmetic bound.** Let `a>=b>=1` be operand bit lengths.
+[CPython 3.14's integer multiplication](https://github.com/python/cpython/blob/v3.14.0/Objects/longobject.c#L3750)
+uses three half-width recursive products above a fixed cutoff. Its balanced
+cost is `O(b**alpha)`, `alpha=log2 3`. For unequal operands,
+`k_lopsided_mul` splits the larger operand into smaller-width blocks and
+combines their products with linear total copying and addition. The cost
+is therefore `O(a*b**(alpha-1))`; the fixed schoolbook cutoff changes only
+the constant. Since `alpha-1<2/3`, we may use the simpler upper bound
+`O(a*b**(2/3))`. For a sieve product, `a=O(log B)`.
+
+**Fractional least-prime moment.** Write `p(v)` for the least prime divisor
+of `v>=2`, and `Phi(B,y)` for integers at most `B` with no prime divisor
+at most `y`. [Fan (2022), Theorem (4)](https://math.colgate.edu/~integers/w26/w26.pdf)
+gives `Phi(B,y)<B/ln y` uniformly for `1<y<=B`.
+Let `beta=2/3` and `h(v)=log2 p(v)`. Layer-cake summation gives
+
+    sum_{v=2}^B h(v)**beta
+      = beta * integral_0^log2(B) t**(beta-1) * #{v>=2: h(v)>t} dt
+      <= B + (beta*B/ln 2) * integral_1^infinity t**(beta-2) dt
+      = B * (1 + 2/ln 2).
+
+Because `bit_length(p)<=1+h` and `beta<1`, the ceiling weight satisfies
+
+    sum_{v=2}^B ceil(bit_length(p(v))**(2/3))
+      <= B * (3 + 2/ln 2) < 6B.
+
+This bounds all successful Euler products: each composite `v` is produced
+once, by multiplying `p(v)` with `v/p(v)`. Both generator and loader now
+reject `prime>least[candidate]` before multiplication, so a product either
+assigns that composite or is the first product exceeding `B` for its
+candidate. No discarded nonleast product is charged.
+
+**Overflow products.** For candidate `c`, the first overflowing prime
+satisfies `prime<=2B/c`: if it is `2` this is immediate; otherwise the
+previous prime has product at most `B`, and Bertrand's postulate bounds
+the next prime by twice its predecessor. Thus its bit length is below
+`2+log2(B/c)`. There is at most one overflow per candidate. Concavity and
+`sum_{c=1}^B ln(B/c)<=B` give
+
+    sum_c ceil(bit_length(overflow_prime(c))**(2/3))
+      < 3B + B*(1/ln 2)**(2/3) < 5B.
+
+The successful and overflowing products therefore have total fractional
+weight below `11B`. Their asymmetric multiplication cost is `O(B log B)`;
+all other sieve operations have the same upper bound. Early termination
+of the generation sieve only removes products from this accounting.
+
+**Remaining stages.** Here `B=O(T)` and `w=Theta(log T)`. Cached prime
+factorizations involve `O(k+n)` divisions, even the schoolbook bound for
+which is `O(k*w**2+n*w**2)=O(Tw)`. There are `O(k+n)` numeric atoms, with
+`O(w)` digits each; parsing and rendering likewise cost `O(Tw)`.
+Fenwick selection, sparse normalization, sorting, cursor initialization
+and execution use `O(T)` word operations on `w`-bit fields, with only
+comparisons, copying, addition, shifts and bounded-support updates apart
+from the already charged arithmetic. They also cost `O(Tw)` bits.
+Consequently the whole pipeline is `O(T log T)`.
+
+For the matching implementation lower bound, the generator explicitly
+initializes `L=4*c*bit_length(c)=Theta(k log k)=Theta(T)` least-prime
+word cells. In the materialized-word model, each initialization writes
+`Theta(w)` bits, so generation alone costs `Omega(Tw)`. This does not
+charge a succinct representation or lazy zero allocation the same way.
+It does not rule out a bit-linear alternative pipeline.
+
+Executed arithmetic controls observe the actual sieve multiplications,
+checking unique composite assignment and absence of nonleast products.
+At `B=61,561`, moving the least-prime guard removes 20,269 unused products:
+116,873 become 96,604. The sum of exact integer ceiling weights falls
+from 261,788 to 216,359, below `11B`; at generation count 6,199 and
+allocation 322,348, its weight is 485,711. Balanced and lopsided integer
+multiplication controls at 3,000-by-3,500 and 3,000-by-10,000 bits match
+independent all-ones product identities, exercising sizes above the
+Karatsuba cutoff. The complete 4,260-execution, 321,470-firing trace corpus
+still agrees, and wider output regressions retain the sixteen-input checks.
+These controls support the implementation invariants; the asymptotic
+bound follows from the arithmetic and rough-number estimates above.
 
 ## The other end: the row-addressing tree
 

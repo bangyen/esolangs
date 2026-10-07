@@ -79,8 +79,10 @@ def _least_primes(limit: int) -> list[int]:
             least[candidate] = candidate
             primes.append(candidate)
         for prime in primes:
+            if prime > least[candidate]:
+                break
             product = prime * candidate
-            if prime > least[candidate] or product > limit:
+            if product > limit:
                 break
             least[product] = prime
     return least

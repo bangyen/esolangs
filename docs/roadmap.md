@@ -79,11 +79,6 @@ Controls are in `tests/proofs/test_research_tracks.py`. The linked proofs
 close ordered input-forgetting construction, generated-family loading
 bounds, and the weighted-description theorem.
 
-- **FRACTRAN bit cost.** Sharpen the `Omega(T)`–`O(T log(T)**2)` gap for
-  generation, loading and one streaming query. All three have `O(T)`
-  word-work bounds; linear bit cost remains unproved
-  ([fractran](proofs/fractran.md#loading-and-end-to-end-bit-cost-for-streamed-order)).
-
 ## Parked
 
 Stalled problems, one line each; detail lives in the linked proof page. A
