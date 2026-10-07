@@ -452,7 +452,11 @@ class TestAFailedRowSaysWhichRow:
 
     def test_a_real_timeout_carries_one_too(self) -> None:
         """Not only the stand-in: the path a caller actually hits."""
+        from esolangs.interpreters.grid_based import circuit_diagram
+
         table = "".join(str(bin(r).count("1") & 1) for r in range(128))
+        # A warm compile cache (another test, same worker) beats 5 ms a row.
+        circuit_diagram._compile.cache_clear()  # noqa: SLF001
         with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
             evaluate_generated("Circuit Diagram", table, timeout=0.005)
         note = "\n".join(getattr(caught.value, "__notes__", []))
