@@ -9,6 +9,25 @@ ALPHABET = ".,-+<>[]"
 BOUND = (70347, 10000)
 
 
+def sole_loop_counts(length: int, letters: int = 6) -> list[int]:
+    """Count balanced words with no loop whose body is a sole loop.
+
+    This counts the six-series relaxation, not the local rewrite language.
+    ``letters`` distinguishes all words (six) from read-free words (five).
+    """
+    if length < 0 or letters < 0:
+        raise ValueError("length and letter count must be nonnegative")
+    sequences = [1] + [0] * length
+    loops = [0] * (length + 1)
+    for size in range(1, length + 1):
+        if size >= 2:
+            loops[size] = sequences[size - 2] - loops[size - 2]
+        sequences[size] = letters * sequences[size - 1] + sum(
+            loops[width] * sequences[size - width] for width in range(2, size + 1)
+        )
+    return sequences
+
+
 def local_patterns():
     patterns = {
         "+-",

@@ -235,7 +235,7 @@ cell-preservation hypothesis and are unaffected.
 
 The unrestricted matrix grammar also excluded every empty-loop atom before a read in a
 loop body. The counterexample invalidates that exclusion. Keeping only `[[Y]] -> [Y]`
-gives the following candidate grammar; no numerical upper bound is claimed for it.
+gives the following six-series relaxation.
 Let `O` be a read-free instruction, `C` a read, `E = []`, `L0` a nonempty read-free loop,
 and `L1` a read-containing loop. The read-free sequence series `R` must include `E`:
 
@@ -249,6 +249,24 @@ These bodies exclude a sole loop, but permit an empty loop after a prefix that m
 zero the tested cell. The executed counterexample is pinned in
 `tests/proofs/test_brainfuck_count.py`.
 
+**The six-series relaxation alone is too weak.** Put `O = 5x`, `C = x`,
+`E = x^2`, and let `L = E + L0 + L1` and `B = B0 + B1`. The first two
+equations give `B = P - L`; the loop equations give `L = x^2 B`, hence
+`L = x^2 P/(1+x^2)`. With `P = 1/(1-6x-L)` this reduces to
+
+    x^2 P^2 - (1-6x)(1+x^2) P + 1+x^2 = 0.
+
+The first positive discriminant zero is the unique solution in `(0, 1/6)`
+of `1-6x = 2x/sqrt(1+x^2)`. The algebraic branch with `P(0)=1` has a
+square-root singularity there, so its word counts have exponential rate
+`7.9844964149...`, certified between `7.98449` and `7.98450` by rational
+sign checks. This exceeds the existing `6.9133` repository bound. The
+relaxation removes sole-loop bodies at every depth but ignores the other
+local rewrites; counting it alone cannot improve Theorem 1. Intersecting
+balanced bodies with those rewrites remains open. The tests check the
+algebraic identity through degree 40 and independently enumerate all words
+through length five, both read-free and with reads.
+
 No finite monitor counts the unrestricted bodies. A regular class needs finite,
 depth-agnostic forbidden factors, but `[.Y].` with `Y` balanced pairs its `[`
 with the matching `]` across arbitrary depth. The 11,673-state monitor accepts
@@ -257,8 +275,9 @@ with the matching `]` across arbitrary depth. The 11,673-state monitor accepts
 `]--]`; each is a sound left-hand side, so the class is uncounted. The balanced
 avoidance specification is not a finite right congruence: Moore refinement gives
 15, 39, 86, 173 classes at observation windows 4, 6, 8, 10. The next model is the
-context-free/algebraic system `B0, B1, L0, L1, R, P` above, or a depth-indexed
-transfer matrix, not a larger finite-factor monitor.
+context-free/algebraic system intersected with local rewrite avoidance, or a
+depth-indexed transfer matrix, not the six-series relaxation alone or a larger
+finite-factor monitor.
 `test_unbounded_body_classes_are_not_regular` pins the accepted families and the
 class counts through window 8.
 
@@ -696,8 +715,9 @@ equivalence is confined to the chosen input set.
   forced-divergence bodies are not regular (section 3): a finite-factor monitor accepts
   depth-`k` left-hand sides for every `k >= 2`, and the balanced avoidance specification
   has unbounded Moore class count. The 11,673-state certificate covers balanced bodies only
-  to bracket depth one. Next: count them with the context-free system `B0, B1, L0, L1, R, P`
-  (section 3) or a depth-indexed transfer matrix, preserving the cell-preservation condition
+  to bracket depth one. The isolated six-series relaxation has rate `7.98450`
+  (section 3). Next: intersect balanced-body counting with local rewrite
+  avoidance, preserving the cell-preservation condition
   (`+[-[]].` halts and prints NUL, while `+[].` diverges). A potentially diverging excursion
   cannot commute across a read at EOF; excursions with output cannot commute across prints.
   Two tried and dead: (i) the event encoding of section 4 applied to each bracket-free segment between

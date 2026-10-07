@@ -89,8 +89,8 @@ line changes only when its next step does.
   enable an earlier failed guard. Prime generation and literal conversion
   remain, with the materialized sieve forcing `Theta(T log T)` generation
   ([fractran](proofs/fractran.md#direct-chunks-with-exact-cleanup)).
-- **Brainfuck behaviour count.** Next: count balanced bodies by the
-  context-free system or a depth-indexed transfer matrix
+- **Brainfuck behaviour count.** Next: intersect balanced-body counting with
+  local rewrite avoidance, by an algebraic system or depth-indexed transfer matrix
   ([brainfuck-count](proofs/brainfuck-count.md#8-what-is-not-settled)).
 - **Brainfuck on bounded inputs.** Next: establish Theorem 6's limit or
   sharpen either side ([brainfuck-count](proofs/brainfuck-count.md#8-what-is-not-settled)).
