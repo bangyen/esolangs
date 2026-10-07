@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import itertools
 import random
 import sys
 from collections.abc import Callable
@@ -33,6 +34,11 @@ MAX_GROWTH = 2.15
 #: this splits them; a large constant can still hide a ``T`` term this far
 #: down, which is why a ``poly n`` cell also names its reason.
 POLY_GROWTH = 1.5
+
+#: Most growth the increments of a ``poly n`` row's dense series may show
+#: (``_step_growth``).  ``n**3`` reads x1.25 at n=6..12 and a constant plus
+#: ``T`` x2; NoComment read x1.99 and SLOW ACV MAMMALIAN x1.43.
+STEP_GROWTH = 1.4
 
 #: Rungs needed after the last route change before a ratio means anything,
 #: and the window the slope is fitted over.  Five, because the wobble these
@@ -116,6 +122,7 @@ class Growth:
     regime: int = 0
     commands: int = 0
     reason: str = ""
+    step: float | None = None
 
 
 def _rows(table: str, halts: str | None) -> list[int]:
@@ -190,6 +197,25 @@ def _growth(window: list[tuple[int, int]]) -> float:
     return 2.0**slope
 
 
+def _step_growth(series: list[tuple[int, int]]) -> float | None:
+    """Per-input growth of the increments: summed last window over the one before.
+
+    Differencing cancels a fixed overhead that ``_growth`` cannot see past:
+    NoComment's T/32-byte stack behind a 32,768-bit tape read x1.00 on the
+    ratio and x1.99 here.  Windows of three increments, two when the series is
+    short.  ``None`` (no judgement; the ratio still applies) when too short or
+    when any increment is not positive: a hidden term grows every rung, while
+    CV(N)(C)'s 86 -> 60 -> 81 noise read x1.55 on raw windows.
+    """
+    width = min(3, (len(series) - 1) // 2)
+    if width < 2:
+        return None
+    steps = [b - a for (_, a), (_, b) in itertools.pairwise(series[-2 * width - 1 :])]
+    if min(steps) <= 0:
+        return None
+    return float((sum(steps[width:]) / sum(steps[:width])) ** (1 / width))
+
+
 def _self_check() -> tuple[float, float, float]:
     """Run the fit on known-linear, ``T log T`` and quadratic command series."""
     window = list(range(5, 5 + WINDOW))
@@ -199,6 +225,12 @@ def _self_check() -> tuple[float, float, float]:
     assert linear <= MAX_GROWTH, f"linear control read x{linear}"
     assert linearithmic > MAX_GROWTH, f"T log T control read x{linearithmic}"
     assert quadratic > MAX_GROWTH, f"quadratic control read x{quadratic}"
+    cubic = _step_growth([(n, n**3) for n in range(6, 13)])
+    hidden = _step_growth([(n, 32768 + 2**n // 4) for n in range(6, 13)])
+    assert cubic is not None
+    assert cubic <= STEP_GROWTH, f"n**3 step read x{cubic}"
+    assert hidden is not None
+    assert hidden > STEP_GROWTH, f"hidden T step x{hidden}"
     return linear, linearithmic, quadratic
 
 
@@ -223,7 +255,7 @@ def measure(
     if len(past) < MIN_RUNGS:
         return Growth(name, reason="too few rungs past the last route change")
     ratio = _growth(past[-WINDOW:])
-    return Growth(name, ratio, past[-1][0], start, past[-1][1])
+    return Growth(name, ratio, past[-1][0], start, past[-1][1], step=_step_growth(past))
 
 
 def main() -> int:
@@ -255,6 +287,11 @@ def main() -> int:
             dense = measure(key, row.generator, _dense, DENSE_ARITY)
             if dense.ratio is None or (row.ratio or 0) < dense.ratio:
                 measured[at] = dense
+            if dense.step is not None and dense.step > STEP_GROWTH:
+                measured[at] = Growth(
+                    row.generator,
+                    reason=f"dense increments grow x{dense.step:.3f}, a hidden T",
+                )
 
     print(
         f"Execution contract: {len(measured)} generators, bound x{MAX_GROWTH}, "

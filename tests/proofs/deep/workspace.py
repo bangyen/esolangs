@@ -21,10 +21,12 @@ from tests.proofs.deep.execution import (
     MIN_RUNGS,
     POLY_GROWTH,
     STEP_CAP,
+    STEP_GROWTH,
     WINDOW,
     _dense,
     _growth,
     _rows,
+    _step_growth,
 )
 from tests.proofs.deep.linearity import _regime_start
 from tests.tools.test_boolean_contract import _parity
@@ -38,6 +40,13 @@ COST = 55.0
 LOG_GROWTH = 2.5
 
 BOUND = {"poly n": POLY_GROWTH, "linear": MAX_GROWTH, "T log T": LOG_GROWTH}
+
+#: ``poly n`` rows whose dense increments may grow past ``STEP_GROWTH`` at
+#: these arities, each with the measurement that shows the bound bind later.
+#: Vandevelo's registers grow ~sqrt(T) until the n*n cap binds at n=14:
+#: written bits 2450, 3361, 3872, 4419, 4998 at n=13..17, increments 911,
+#: 511, 547, 579 -- polynomial -- but n=16 alone costs 34s, past the band.
+STEP_EXEMPT = frozenset({"Vandevelo"})
 
 #: Arity ceilings, fixed for the reason ``linearity.py`` gives.  Written
 #: state is recounted every step, so a rung costs ~4x the last: 9 throughout
@@ -74,6 +83,7 @@ class Growth:
     arity: int = 0
     bits: int = 0
     reason: str = ""
+    step: float | None = None
 
 
 def _written(name: str, table: str) -> int | None:
@@ -153,7 +163,14 @@ def measure(
         return Growth(
             name, workspace, reason="too few rungs past the last route change"
         )
-    return Growth(name, workspace, _growth(past[-WINDOW:]), past[-1][0], past[-1][1])
+    return Growth(
+        name,
+        workspace,
+        _growth(past[-WINDOW:]),
+        past[-1][0],
+        past[-1][1],
+        step=_step_growth(past),
+    )
 
 
 def main() -> int:
@@ -178,6 +195,16 @@ def main() -> int:
             )
             if dense.ratio is None or (growth.ratio or 0) < dense.ratio:
                 growth = dense
+            step = dense.step
+            if step is not None and step > STEP_GROWTH:
+                if row.generator in STEP_EXEMPT:
+                    print(f"  {row.generator}: x{step:.3f} steps, exempt below its cap")
+                else:
+                    growth = Growth(
+                        row.generator,
+                        row.workspace_class,
+                        reason=f"dense increments grow x{step:.3f}, a hidden T",
+                    )
         measured.append(growth)
     print(f"Workspace contract: {len(measured)} generators\n")
     print(f"  {'generator':30s} {'class':7s} {'growth':>7s} {'bits':>8s}")

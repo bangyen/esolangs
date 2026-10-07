@@ -242,9 +242,12 @@ most x1.5 an input, `linear` at most x2.15, `T log T` (T cells of `log T`-bit
 values) at most x2.5; `unmeasured` says why.  `tests/proofs/deep/execution.py`
 and `tests/proofs/deep/workspace.py` measure halting rows on parity tables,
 and a `poly n` cell on a seeded dense table too: parity has n ANF terms and
-hid Fargo's, Forþ's, INTERCAL's, Vandevelo's, S\*bleq's and 6-5's `T`.  A
-large constant can still mask a `T` term at these arities, so a `poly n`
-cell names its mechanism.
+hid Fargo's, Forþ's, INTERCAL's, Vandevelo's, S\*bleq's and 6-5's `T`.  That
+dense series runs to n=12 and its increments, which cancel a fixed overhead,
+may grow at most x1.4 an input: NoComment's `T/32`-byte stack read x1.00 on
+the ratio behind a 32,768-bit tape and x1.99 on the increments.  A row capped
+low for cost escapes both (SLOW ACV MAMMALIAN), so a `poly n` cell also names
+its mechanism, read from the generator.
 
 <!-- PROOF-STATUS:START -->
 
