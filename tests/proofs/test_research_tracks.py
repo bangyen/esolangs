@@ -590,3 +590,59 @@ def test_pair_router_dense_complements_have_a_prefix_obstruction() -> None:
         for c2 in control_choices
     }
     assert len(control_tables) == 8192
+
+
+@pytest.mark.medium
+def test_pair_router_is_a_quadratic_sign_family() -> None:
+    # Base four makes the selected product dominate all remaining products,
+    # for every decoder. Warren then bounds arbitrary row sizes by O(k).
+    features = (3, 5, 7, 11)
+    round1, round2, cleanup = _pair_router(features)
+    a = dict(zip(features, (37, 41, 43, 47), strict=True))
+    b = dict(zip(features, (61, 67, 71, 73), strict=True))
+    rows = [
+        row for size in range(1, 5) for row in itertools.combinations(range(4), size)
+    ]
+    tables = set()
+    orders = list(itertools.permutations(range(4)))
+    for order1 in orders:
+        u = {f: 4 ** (3 - i) for i, f in enumerate(order1)}
+        for order2 in orders:
+            v = {f: 4 ** (3 - i) for i, f in enumerate(order2)}
+            pair_labels = []
+            for row in rows:
+                first = min(row, key=order1.index)
+                second = min(row, key=order2.index)
+                selected = u[first] * v[second]
+                remainder = sum(u[i] for i in row) * sum(v[j] for j in row)
+                remainder -= selected
+                assert selected > remainder
+                assert 9 * remainder < 7 * selected
+                value = sum(
+                    (1 if i == j and i != 3 else -1) * u[i] * v[j]
+                    for i in row
+                    for j in row
+                )
+                seed = 13
+                for i in row:
+                    seed *= features[i] ** 2
+                tokens = [
+                    str(seed),
+                    *(round1[features[f]] for f in order1),
+                    *(round2[features[g]] for g in order2),
+                    *cleanup,
+                ]
+                io = ScriptedIO("")
+                run(" ".join(tokens), io)
+                result = int(io.getvalue().strip())
+                assert result == a[features[first]] * b[features[second]]
+                label = first == second and first != 3
+                assert value != 0
+                assert (value > 0) == label
+                if len(row) == 2:
+                    pair_labels.append("1" if label else "0")
+            tables.add("".join(pair_labels))
+    assert len(tables) == 64  # known shattering family, positive control
+    # At T=16k, Warren's base is 64e < 192 < 2**8; above this,
+    # 2**c/c increases for c=T/(2k)>=8, so shattering stays impossible.
+    assert 64 * 3 < 2**8

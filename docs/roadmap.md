@@ -102,7 +102,3 @@ line changes only when its next step does.
   time; on the build side, a `certify` that rebuilds a level only when its
   direction drops below half the average
   ([index](proofs/index.md#vandevelo-identifier-and-fallback-audit)).
-- **FRACTRAN order encoding.** Next: a balanced-row family shattering
-  `Theta(k log k)` labels, or a non-counting obstruction; dense complements
-  depend only on short order prefixes
-  ([pair router](proofs/fractran.md#pair-decoded-two-priority-consultations)).

@@ -572,11 +572,54 @@ dense rows execute through the interpreter (600 runs), checking both
 selected markers. These checks are pinned in
 `test_pair_router_dense_complements_have_a_prefix_obstruction`.
 
-The general dense-row question remains open; this round supplies neither
-an asymptotic construction nor a bound for arbitrary rows. Next: construct
-a balanced-row family (both row size and omitted size proportional to `k`)
-with `Theta(k log k)` independently programmable labels, or give a
-non-counting obstruction for arbitrary row families.
+### Arbitrary rows: the quadratic sign bound
+
+The pair-decoded router cannot shatter `Theta(k log k)` rows, regardless of
+row size. Fix any nonempty feature subsets `S_x` and any decoder
+`h(i,j) in {-1,+1}`. For two priority orders, assign weights
+`u_i = 4**(k-1-rank1(i))` and `v_j = 4**(k-1-rank2(j))`, where rank zero
+is first. On a row with selected pair `(a,b)`, geometric tails give
+
+    sum_{i in S_x, i != a} u_i < u_a/3,
+    sum_{j in S_x, j != b} v_j < v_b/3.
+
+Consequently all products except `u_a*v_b` sum to less than
+`((4/3)**2-1)*u_a*v_b = (7/9)*u_a*v_b`. The selected product dominates
+even when every other decoder sign opposes it. Thus the output is exactly
+
+    sign P_x(u,v),   P_x = sum_{i,j in S_x} h(i,j)*u_i*v_j.
+
+Each `P_x` has degree two in `2k` real variables; its coefficients are
+fixed by the row and decoder. Allowing arbitrary real weights only enlarges
+the class. For `T >= 2k`, Warren's strict-sign theorem bounds its label
+vectors by `(4e*T/k)**(2k)` ([Ronyai, Babai and Ganapathy, Theorem
+2.2](https://people.cs.uchicago.edu/~laci/papers/zero.pdf)).
+This application uses strict signs: the dominance inequality excludes zero
+at every priority-weight witness. Shattering therefore requires
+
+    2**T <= (4e*T/k)**(2k).
+
+Put `c=T/(2k)`. Then `2**c <= 8e*c`, which fails for `c >= 8`: at eight,
+`256 > 64e`, and `2**c/c` increases thereafter. Hence `T < 16k`; when
+`T < 2k` the same bound already holds. Empty rows have a fixed default and
+cannot belong to a shattered family. The proof also permits different
+fixed applicability sets in the two rounds and row-dependent fixed decoder
+signs, since these only change polynomial coefficients.
+
+Together with the disjoint six-feature controls, this gives maximum
+shattering size `Theta(k)` for arbitrary rows. A fixed two-selection router
+needs `k = Omega(T)` features and `Omega(T log T)` fraction text to cover
+every table; the block construction attains that order. This is a bound
+for this router family, not for FRACTRAN programs with state-dependent
+second-round applicability or more consultations. It uses quadratic
+sign-pattern counting rather than a non-counting obstruction, but closes
+the proposed dense-row escape.
+
+The executed control checks every pair of four-feature orders on all
+fifteen nonempty subsets (8,640 runs). It verifies the selected marker
+product, the decoder's quadratic sign, and the decoder-independent
+`7/9` remainder bound; its six pair rows still realize all 64 labelings.
+See `test_pair_router_is_a_quadratic_sign_family`.
 
 ## The other end: the row-addressing tree
 
