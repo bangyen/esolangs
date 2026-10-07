@@ -1065,6 +1065,36 @@ word cells. In the materialized-word model, each initialization writes
 charge a succinct representation or lazy zero allocation the same way.
 It does not rule out a bit-linear alternative pipeline.
 
+The Fenwick selector gives an independent implementation lower bound,
+even if sieve initialization becomes lazy or succinct. Cell `j` counts
+the interval `j-lowbit(j)+1,...,j`; deleting every symbol updates that
+cell exactly `lowbit(j)` times, regardless of deletion order. For
+`k=2**b`, the total is
+
+    sum_{j=1}^k lowbit(j) = k + b*k/2.
+
+For arbitrary `k`, retain the largest power-of-two prefix, of length at
+least `k/2`, to obtain `Omega(k log k)` updates. Each materialized-word
+update costs `Theta(w)` bits in this model, so rank deletion alone costs
+`Omega(k log k*w)=Omega(T log T)`. First-rank, last-rank and seeded
+deletions at `k=64,256,1024,4096` execute exactly 256, 1,280, 6,144 and
+28,672 updates respectively; controls also cover non-power-of-two sizes
+and verify every cell's count. A bit-linear alternative therefore needs
+to replace this selector or its word representation as well as the sieve.
+No lower bound for other order encodings follows from these counts.
+
+A bit-local counter representation remains a possible escape. A cell of
+initial count `s=lowbit(j)` decreases through every integer to zero;
+its decrements flip exactly `2s-1` bits in total. Summing gives
+`2*sum_j lowbit(j)-k`, or `k*(b+1)` for `k=2**b`: only `Theta(T)` flips.
+Those power-of-two cells also need just `sum_j bit_length(lowbit(j))
+=2k-1` counter bits. The same executed controls check the flip identity
+cell by cell. These are storage and bit-change counts, not a running-time
+bound: rank comparisons, subtraction, locating packed cells and generating
+primes still need accounting. The next construction question is whether
+rank selection can use this bit-local representation without reintroducing
+the logarithmic factor elsewhere.
+
 Executed arithmetic controls observe the actual sieve multiplications,
 checking unique composite assignment and absence of nonleast products.
 At `B=61,561`, moving the least-prime guard removes 20,269 unused products:

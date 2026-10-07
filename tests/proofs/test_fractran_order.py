@@ -15,6 +15,7 @@ from esolangs.interpreters.other.fractran import index as fractran_index
 from esolangs.tools.fractran import PAIR, _primes, fractran
 from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
 from tests.proofs._fractran_order import (
+    _Available,
     _linear_primes,
     capacity,
     decoder,
@@ -113,6 +114,40 @@ def test_independent_lehmer_capacity_and_prime_bound() -> None:
         assert _linear_primes(count) == _primes(count)
     with pytest.raises(ValueError, match="not enough"):
         digit_order("0000", 3)
+
+
+def test_rank_deletion_updates_each_fenwick_interval_once_per_symbol() -> None:
+    class Cells(list[int]):
+        def __init__(self, values: list[int]) -> None:
+            super().__init__(values)
+            self.writes = [0] * len(values)
+            self.flips = [0] * len(values)
+
+        def __setitem__(self, index: int, value: int) -> None:
+            self.writes[index] += 1
+            self.flips[index] += (self[index] ^ value).bit_count()
+            super().__setitem__(index, value)
+
+    for k in (1, 3, 64, 255, 256, 1024, 4096):
+        for mode in ("first", "last", "seeded"):
+            available = _Available(k)
+            cells = Cells(available.tree)
+            available.tree = cells
+            rng = random.Random(20261007)
+            order = []
+            for remaining in range(k, 0, -1):
+                rank = (
+                    0
+                    if mode == "first"
+                    else remaining - 1
+                    if mode == "last"
+                    else rng.randrange(remaining)
+                )
+                order.append(available.pop(rank))
+            assert sorted(order) == list(range(k))
+            assert cells.writes == [0, *(i & -i for i in range(1, k + 1))]
+            assert cells.flips == [0, *(2 * (i & -i) - 1 for i in range(1, k + 1))]
+            assert cells == [0] * (k + 1)
 
 
 def _execute_stream(
