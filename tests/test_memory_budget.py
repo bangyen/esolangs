@@ -160,6 +160,28 @@ def test_worker_cannot_silently_drop_an_unenforceable_limit(
         _decode(capsys.readouterr().out, expired=False)
 
 
+def test_worker_reports_a_translated_memory_error_as_the_cap(
+    monkeypatch, capsys
+) -> None:
+    """``run`` turns MemoryError into its own error; the worker must see through it."""
+
+    def explode(*_args: object, **_kwargs: object) -> None:
+        raise MemoryError
+
+    monkeypatch.setattr(esolangs, "_run", explode)
+    monkeypatch.setattr(
+        sys,
+        "stdin",
+        io.StringIO(
+            '{"language":"brainfuck","program":"+","raster":false,'
+            '"stdin":"","seed":null}'
+        ),
+    )
+    _worker()
+    with pytest.raises(esolangs.InterpreterLimitError, match="memory limit"):
+        _decode(capsys.readouterr().out, expired=False)
+
+
 @pytest.mark.medium
 @pytest.mark.parametrize("language", ["brainfuck", "Vandevelo"])
 def test_evaluation_forwards_budget_without_changing_answers(
