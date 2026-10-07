@@ -384,7 +384,7 @@
       "qualification": "Brainfuck tree followed by a total arbitrary-precision segmented-sieve encoding; fixed-modulus short intervals bound its adaptive residue sequence",
       "scaling": "lower bound: tight language and generated Theta(T log T) ([factor](factor.md))",
       "execution": "poly n: worst 265n + 231 commands, after a 247n + 240 prelude",
-      "workspace": "poly n: worst 7n + 12 + bl(2n+1) + bl(n) + bl(27·2^(n-1)+16n+14) bits",
+      "workspace": "poly n: worst 7n + 12 + bl(2n+1) + bl(n) + bl(51·2^(n-2)+16n+14) bits",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {

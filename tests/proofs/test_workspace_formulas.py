@@ -187,7 +187,7 @@ FORMULAS: dict[str, tuple[Callable[[int, str], int], bool, tuple[int, ...]]] = {
     "Minsky Swap": (lambda n, _: n + 3 + bl(2 ** (n + 1) + 6 * n + 5), True, (3, 6)),
     "Factor": (
         lambda n, _: (
-            7 * n + 12 + bl(2 * n + 1) + bl(n) + bl(27 * 2 ** (n - 1) + 16 * n + 14)
+            7 * n + 12 + bl(2 * n + 1) + bl(n) + bl(51 * 2 ** (n - 2) + 16 * n + 14)
         ),
         True,
         (4,),
