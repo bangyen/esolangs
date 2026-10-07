@@ -18,7 +18,7 @@
       ],
       "qualification": "packed `n`-bit cells selected by a self-modified operand",
       "scaling": "linear: T/n packed cells of O(n) digits, O(n) decoder",
-      "execution": "linear: T/n packed cells; the contract lacks rungs past its route change",
+      "execution": "linear: within x2.15 an input, by the execution contract",
       "workspace": "linear: the self-modified program, T/n packed cells",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
@@ -436,7 +436,7 @@
       ],
       "qualification": "the bits are the exponents of `n` primes in the starting value, a tree over the high bits reaches a block of `w` entries carried as one exponent, a fixed decoder shifts the block by the offset the low bits spell, and the first-match rule is the else-branch",
       "scaling": "linear: 3T/w blocks of w = Theta(n) entries, one exponent each",
-      "execution": "linear: O(2**w) commands, w = Theta(n); the contract lacks rungs",
+      "execution": "linear: within x2.15 an input, by the execution contract",
       "workspace": "poly n: one integer of O(n) bits",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
