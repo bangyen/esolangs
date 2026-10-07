@@ -7,8 +7,8 @@
       ],
       "qualification": "each embedded bit keeps the ant on a self-painting corridor or lifts it off, and the template walk after it advances the ant by that bit's weight, stopping at the corridor's end, leaving it over the indexed answer cell or the trailing run's first, which answers alike",
       "scaling": "linear: table walk; corridor weights sum to T",
-      "execution": "unmeasured: halts on no row; a proven cycle answers",
-      "workspace": "unmeasured: halts on no row, so there is no peak",
+      "execution": "linear: worst 2L commands: one pass to the fixed point, one proving the repeat",
+      "workspace": "T log T: painted cells keyed by coordinates along the corridor",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {

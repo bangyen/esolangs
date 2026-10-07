@@ -16,7 +16,7 @@ from esolangs.debugger import make_vm
 from esolangs.tools.one_two_three.construction import _leftover
 from scripts.benchmark import WrittenState
 from tests.proofs._ledger import load as load_ledger
-from tests.proofs.deep.execution import _dense
+from tests.proofs.deep.execution import _dense, run_to_answer
 from tests.tools.test_boolean_contract import _parity
 
 
@@ -42,6 +42,8 @@ FORMULAS: dict[str, tuple[Callable[[int, str], float], bool, tuple[int, ...]]] =
     "Container": (lambda n, _: 2 * n + 2, True, (3, 7)),
     "Fish": (lambda n, _: 9 * n + 9, True, (3, 6)),
     "Line": (lambda n, _: 5 * n, True, (3, 5)),
+    # Two passes of the whitespace-free program, the second proving the repeat.
+    "A Painter Ant": (lambda _, p: 2 * len("".join(p.split())), True, (3, 6)),
     # Capped rows: straight-line headers, the same count on every table.
     "Befunge": (
         lambda n, _: (
@@ -295,12 +297,8 @@ def _worst(name: str, table: str, *, written: bool = False) -> int:
             )
         machine = make_vm(name, source, stdin=stdin)
         state = WrittenState(machine.snapshot())
-        steps = 0
-        while not machine.halted:
-            machine.step()
-            steps += 1
-            if written:
-                state.sample(machine.snapshot())
+        steps = run_to_answer(machine, sample=state.sample if written else None)
+        assert steps is not None  # no cap
         worst = max(worst, state.bits if written else steps)
     return worst
 

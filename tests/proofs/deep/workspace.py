@@ -27,6 +27,7 @@ from tests.proofs.deep.execution import (
     _growth,
     _rows,
     _step_growth,
+    run_to_answer,
 )
 from tests.proofs.deep.linearity import _regime_start
 from tests.tools.test_boolean_contract import _parity
@@ -58,6 +59,9 @@ ARITY_OVERRIDE = {
     "b_tapemark": 7,
     "bfstack": 9,
     "circlefuck": 6,
+    # Below its n=8 route change, which leaves no five rungs in budget past
+    # it; the 9T + 3n - 12 bound holds at n=8 on all ten formula tables.
+    "circuit_diagram": 7,
     "dimensional": 7,
     "factor": 8,
     "false": 9,
@@ -107,12 +111,8 @@ def _written(name: str, table: str) -> int | None:
             source, stdin = program, encode_inputs(name, bits, truth_table=table)
         machine = make_vm(name, source, stdin=stdin)
         state = WrittenState(machine.snapshot())
-        steps = 0
-        while not machine.halted and steps < STEP_CAP:
-            machine.step()
-            steps += 1
-            state.sample(machine.snapshot())
-        if steps < STEP_CAP and (worst is None or state.bits > worst):
+        steps = run_to_answer(machine, STEP_CAP, state.sample)
+        if steps is not None and (worst is None or state.bits > worst):
             worst = state.bits
     return worst
 

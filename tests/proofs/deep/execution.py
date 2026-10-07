@@ -5,7 +5,7 @@ from __future__ import annotations
 import itertools
 import random
 import sys
-from collections.abc import Callable
+from collections.abc import Callable, Hashable
 from dataclasses import dataclass
 from math import log2
 from pathlib import Path
@@ -16,6 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from esolangs import describe, encode_inputs, generate, instantiate
 from esolangs.debugger import make_vm
 from esolangs.registry import BY_BOOLEAN
+from esolangs.vm import VM
 from tests.proofs._ledger import load as load_ledger
 from tests.proofs.deep.linearity import _regime_start
 from tests.tools.test_boolean_contract import _parity
@@ -93,13 +94,9 @@ ARITY_OVERRIDE = {
 #: been a category error that quietly stopped guarding five generators.
 #:
 #: ``main`` asserts every name is a real generator, so a rename cannot
-#: silently deselect one.
-EXEMPT = {
-    "A Painter Ant": (
-        "halts on no row -- an unconditional loop whose answer is a proven "
-        "cycle, so there is no command count to grow"
-    ),
-}
+#: silently deselect one.  Empty since A Painter Ant, which never halts, is
+#: measured to the pass start its ``run`` stops at (:func:`run_to_answer`).
+EXEMPT: dict[str, str] = {}
 
 
 def exempt_generators() -> dict[str, str]:
@@ -137,6 +134,36 @@ def _rows(table: str, halts: str | None) -> list[int]:
     return sorted(keep)
 
 
+def run_to_answer(
+    machine: VM,
+    cap: int | None = None,
+    sample: Callable[[Hashable], None] | None = None,
+) -> int | None:
+    """Steps to the answer, or ``None`` at ``cap``.
+
+    The answer is a halt, except where stepping never reaches it (A Painter
+    Ant): there the run ends as its ``run`` does, at the pass start whose
+    state repeats, found by Brent's over pass starts.  Suffolk's EOF on the
+    wrap to a read is the same kind of end, already spelled ``halted``.
+    """
+    tortoise, power, passes, steps = machine.snapshot(), 1, 0, 0
+    while not machine.halted:
+        if cap is not None and steps >= cap:
+            return None
+        machine.step()
+        steps += 1
+        if sample is not None:
+            sample(machine.snapshot())
+        if not machine.steppable_to_answer and machine.ip == 0:
+            passes += 1
+            state = machine.snapshot()
+            if state == tortoise:
+                return steps
+            if passes == power:
+                tortoise, power, passes = state, power * 2, 0
+    return steps
+
+
 def _commands(name: str, table: str) -> int | None:
     """Worst sampled row's command count, or ``None`` if none finished."""
     facts = describe(name)
@@ -154,12 +181,8 @@ def _commands(name: str, table: str) -> int | None:
             source, stdin = instantiate(name, program, bits, width=None), ""
         else:
             source, stdin = program, encode_inputs(name, bits, truth_table=table)
-        machine = make_vm(name, source, stdin=stdin)
-        steps = 0
-        while not machine.halted and steps < STEP_CAP:
-            machine.step()
-            steps += 1
-        if steps < STEP_CAP and (worst is None or steps > worst):
+        steps = run_to_answer(make_vm(name, source, stdin=stdin), STEP_CAP)
+        if steps is not None and (worst is None or steps > worst):
             worst = steps
     return worst
 
@@ -242,9 +265,6 @@ def measure(
 ) -> Growth:
     """Worst per-input command growth, past any route change."""
     if name in EXEMPT:
-        # Not stepped at all: A Painter Ant's rows run to the cap by
-        # construction, which was 91 seconds spent rediscovering its
-        # docstring.
         return Growth(name, reason=EXEMPT[name])
     top = ARITY_OVERRIDE.get(key, ceiling)
     series = _series(name, top, table)
