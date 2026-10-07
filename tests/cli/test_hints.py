@@ -308,7 +308,8 @@ def test_runtime_hints_for_executed_programs(language, source, message, hint):
 @pytest.mark.medium
 def test_input_exhaustion_keeps_counts_and_one_hint(isolated):
     with pytest.raises(esolangs.InputExhaustedError) as caught:
-        esolangs.run("brainfuck", "+.,", timeout=2, isolated=isolated)
+        # 10s: an isolated spawn under a loaded full run took over 2s.
+        esolangs.run("brainfuck", "+.,", timeout=10, isolated=isolated)
     assert caught.value.partial_output == "\x01"
     assert caught.value.reads == caught.value.supplied == 0
     hints = [note for note in caught.value.__notes__ if note.startswith("hint:")]
