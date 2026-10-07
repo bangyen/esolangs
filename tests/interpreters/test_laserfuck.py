@@ -2,12 +2,13 @@
 
 import io
 from contextlib import redirect_stdout
+from pathlib import Path
 from typing import ClassVar
 
 import pytest
 
 from esolangs.interpreters.grid_based.laserfuck import run
-from esolangs.interpreters.io import IO
+from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.interpreters.randomness import FirstDraw
 from tests.interpreters.contract import SnapshotContract
 
@@ -20,18 +21,82 @@ def run_and_capture(code: list[str], heading: int | None = 3) -> str:
     return buffer.getvalue()
 
 
+class _CharIO(IO):
+    """Feeds ``code`` to every read and keeps what is printed.
+
+    After ``limit`` reads it raises EOFError: a deflected beam that comes
+    back for more input is out of it.
+    """
+
+    def __init__(self, code: int, limit: int | None = None) -> None:
+        self.buf = io.StringIO()
+        self.code = code
+        self.limit = limit
+        self.reads = 0
+
+    def input_char(self, _prompt: str = "Input: ") -> int:
+        self.reads += 1
+        if self.limit is not None and self.reads > self.limit:
+            raise EOFError
+        return self.code
+
+    def print_char(self, char: str) -> None:
+        self.buf.write(char)
+
+    def print_str(self, text: str) -> None:
+        self.buf.write(text)
+
+    def print_num(self, num: int) -> None:
+        self.buf.write(str(num))
+
+
+_OUTPUT = {
+    "no_start_marker_prints_nothing": (["+"], ""),
+    # \xff selects byte mode; + touches cell 0 -> prints \x01
+    "plus_then_die_byte_mode": (["\u00ff}o+x\n   x"], "\x01"),
+    # a second 'o' halts before any output
+    "two_starts_halt_immediately": (["\u00ff}oo\n   x"], ""),
+    # '#' skips the next command, so the '+' after it does not run
+    "skip": (["\u00ff}o#+x\n     x"], ""),
+    # without \xff, values print as decimals (one value, no newline)
+    "decimal_mode": (["}o+x\n   x"], "1"),
+    # '-' on zero makes -1, which is excluded from output
+    "negative_cells_are_excluded": (["\u00ff}o-x\n   x"], ""),
+    # ``(`` deflects a horizontal beam only when the cell is nonzero.
+    "conditional_horizontal_mirror": (
+        [" _", "/o\\", "\\v/", " #", " }x", " +", " ("],
+        "2",
+    ),
+    # ``\`` turns the beam around: ``d`` becomes ``(d + 2) % 4``.
+    "reverse": ([" _", "/o\\", "\\v/", " \\+x"], "1"),
+    # ``{`` sets the heading to left, as ``}`` sets it to right.
+    "absolute_steer_left": ([" /\\", "|o}\\", " \\/", " x+{"], "1"),
+    # ``x`` removes one laser and leaves the other running.
+    "a_split_beam_runs_on_after_its_sibling_dies": (
+        [" /\\x", "|o}*  +x", " \\/", "   x"],
+        "1",
+    ),
+    # Walking off the right edge is a miss, not an index.
+    "the_beam_leaves_by_the_right_edge": (["o+"], "1"),
+    # ``#`` before a step off the top: the beam still leaves and dies.
+    "skip_across_the_top_edge_dies": ([" # ", "o^ ", " /+x"], ""),
+    # ``|`` sends a rightward beam back the way it came.
+    "a_horizontal_beam_turns_at_a_vertical_mirror": (["o+|++x"], "2"),
+    # ``|`` refuses a vertical beam even when the cell is set.
+    "a_downward_beam_passes_a_vertical_mirror": (["}o+v  ", "   |+x", "   x  "], "1"),
+    # ``_`` and ``(`` take only *vertical* beams.
+    "a_leftward_beam_passes_a_horizontal_mirror": (["x+_ o{", "     "], "1"),
+    # Zero is a value; only *unwritten* cells are skipped.
+    "a_written_zero_still_prints": (["o+-x"], "0"),
+}
+
+
+@pytest.mark.parametrize(("code", "expected"), _OUTPUT.values(), ids=list(_OUTPUT))
+def test_output(code, expected) -> None:
+    assert run_and_capture(code) == expected
+
+
 class TestLaserFuck:
-    def test_no_start_marker_prints_nothing(self) -> None:
-        assert run_and_capture(["+"]) == ""
-
-    def test_plus_then_die_byte_mode(self) -> None:
-        # \xff selects byte mode; + touches cell 0 -> prints \x01
-        assert run_and_capture(["\u00ff}o+x\n   x"]) == "\x01"
-
-    def test_two_starts_halt_immediately(self) -> None:
-        # a second 'o' halts before any output
-        assert run_and_capture(["\u00ff}oo\n   x"]) == ""
-
     def test_right_heading_is_deterministic(self) -> None:
         # heading 3 (right) runs the + and dies on x
         assert run_and_capture(["\u00ff}o+x\n   x"], heading=3) == "\x01"
@@ -41,25 +106,9 @@ class TestLaserFuck:
         # cell, 'v' turns it down to the 'x' on the bottom row, where it dies.
         # Only the input cell is touched and prints as '1'.
 
-        class TestIO(IO):
-            def __init__(self) -> None:
-                self.buf = io.StringIO()
-
-            def input_char(self, _prompt: str = "Input: ") -> int:
-                return ord("1")
-
-            def print_char(self, char: str) -> None:
-                self.buf.write(char)
-
-            def print_str(self, text: str) -> None:
-                self.buf.write(text)
-
-            def print_num(self, num: int) -> None:
-                self.buf.write(str(num))
-
         prog = ["\u00ff}},#v)x", "|o^", " _ x"]
         for heading in range(4):
-            io_obj = TestIO()
+            io_obj = _CharIO(ord("1"))
             buffer = io.StringIO()
             with redirect_stdout(buffer):
                 run(prog, io_obj, rng=FirstDraw(heading))
@@ -69,18 +118,6 @@ class TestLaserFuck:
         # '_' always reflects a vertical beam; heading 1 (down) bounces up and
         # off the top, touching nothing
         assert run_and_capture(["\u00ff}\n|o_", "  x"], heading=1) == ""
-
-    def test_skip(self) -> None:
-        # '#' skips the next command, so the '+' after it does not run
-        assert run_and_capture(["\u00ff}o#+x\n     x"]) == ""
-
-    def test_decimal_mode(self) -> None:
-        # without \xff, values print as decimals (one value, no newline)
-        assert run_and_capture(["}o+x\n   x"]) == "1"
-
-    def test_negative_cells_are_excluded(self) -> None:
-        # '-' on zero makes -1, which is excluded from output
-        assert run_and_capture(["\u00ff}o-x\n   x"]) == ""
 
     def test_cells_wrap_at_signed_32_bit_bounds(self) -> None:
         """The fixed-width tape wraps in signed two's-complement order."""
@@ -98,23 +135,7 @@ class TestLaserFuck:
     def test_input_reads_whole_line_first_char(self) -> None:
         prog = ["\u00ff}o,x\n   x"]
 
-        class TestIO(IO):
-            def __init__(self) -> None:
-                self.buf = io.StringIO()
-
-            def input_char(self, _prompt: str = "Input: ") -> int:
-                return ord("4")
-
-            def print_char(self, char: str) -> None:
-                self.buf.write(char)
-
-            def print_str(self, text: str) -> None:
-                self.buf.write(text)
-
-            def print_num(self, num: int) -> None:
-                self.buf.write(str(num))
-
-        io_obj = TestIO()
+        io_obj = _CharIO(ord("4"))
         buffer = io.StringIO()
         with redirect_stdout(buffer):
             run(prog, io_obj, rng=FirstDraw(3))
@@ -132,18 +153,6 @@ class TestLaserFuck:
 class TestUncoveredSteering:
     r"""``(``, ``\`` and ``{``, which no other program here reaches."""
 
-    def test_conditional_horizontal_mirror(self) -> None:
-        r"""``(`` deflects a horizontal beam only when the cell is nonzero."""
-        assert run_and_capture([" _", "/o\\", "\\v/", " #", " }x", " +", " ("]) == "2"
-
-    def test_reverse(self) -> None:
-        r"""``\`` turns the beam around: ``d`` becomes ``(d + 2) % 4``."""
-        assert run_and_capture([" _", "/o\\", "\\v/", " \\+x"]) == "1"
-
-    def test_absolute_steer_left(self) -> None:
-        """``{`` sets the heading to left, as ``}`` sets it to right."""
-        assert run_and_capture([" /\\", "|o}\\", " \\/", " x+{"]) == "1"
-
     def test_every_start_heading_reaches_its_own_arm(self) -> None:
         """The heading is random, so a symmetric grid pins all four outcomes."""
         cross = ["   x", "   +", "x++o++++x", "   +", "   +", "   +", "   x"]
@@ -158,10 +167,6 @@ class TestUncoveredSteering:
         """``*`` splits the beam, and only its *direction* is random."""
         split = [" /\\ x", "|o}+*+x", " \\/ x"]
         assert [run_and_capture(split, heading=h) for h in range(4)] == ["2"] * 4
-
-    def test_a_split_beam_runs_on_after_its_sibling_dies(self) -> None:
-        """``x`` removes one laser and leaves the other running."""
-        assert run_and_capture([" /\\x", "|o}*  +x", " \\/", "   x"]) == "1"
 
     def test_conditional_mirrors_pass_a_zero_cell(self) -> None:
         """The other half of each conditional mirror: it does *not* deflect."""
@@ -180,14 +185,6 @@ class TestSurvivorGaps:
             run(cross, IO())  # no heading: the interpreter draws one
         assert buffer.getvalue() in {"1", "2", "3", "4"}
 
-    def test_the_beam_leaves_by_the_right_edge(self) -> None:
-        """Walking off the right edge is a miss, not an index."""
-        assert run_and_capture(["o+"]) == "1"
-
-    def test_skip_across_the_top_edge_dies(self) -> None:
-        r"""``#`` before a step off the top: the beam still leaves and dies."""
-        assert run_and_capture([" # ", "o^ ", " /+x"]) == ""
-
     def test_a_character_outside_the_command_set_does_nothing(self) -> None:
         r"""An unknown character inside the grid is a no-op."""
         assert run_and_capture(["\xff}oX+x", "     x"]) == "\x01"
@@ -195,46 +192,14 @@ class TestSurvivorGaps:
         assert run_and_capture(["o+Xx", "   x"]) == "1"
         assert run_and_capture(["o+X)x", "   x"]) == "2"
 
-    def test_a_horizontal_beam_turns_at_a_vertical_mirror(self) -> None:
-        r"""``|`` sends a rightward beam back the way it came."""
-        assert run_and_capture(["o+|++x"]) == "2"
-
-    def test_a_downward_beam_passes_a_vertical_mirror(self) -> None:
-        r"""``|`` refuses a vertical beam even when the cell is set."""
-        assert run_and_capture(["}o+v  ", "   |+x", "   x  "]) == "1"
-
-    def test_a_leftward_beam_passes_a_horizontal_mirror(self) -> None:
-        r"""``_`` and ``(`` take only *vertical* beams."""
-        assert run_and_capture(["x+_ o{", "     "]) == "1"
-
     def test_a_mirror_reads_the_value_not_the_written_flag(self) -> None:
         """A supplied NUL marks a zero cell, which the conditional mirror skips."""
 
-        class TestIO(IO):
-            def __init__(self) -> None:
-                self.buf = io.StringIO()
-
-            def input_char(self, _prompt: str = "Input: ") -> int:
-                return 0
-
-            def print_char(self, char: str) -> None:
-                self.buf.write(char)
-
-            def print_str(self, text: str) -> None:
-                self.buf.write(text)
-
-            def print_num(self, num: int) -> None:
-                self.buf.write(str(num))
-
-        io_obj = TestIO()
+        io_obj = _CharIO(0)
         buffer = io.StringIO()
         with redirect_stdout(buffer):
             run(["o,v", "  (", "  x"], io_obj, rng=FirstDraw(3))
         assert io_obj.buf.getvalue() == "0"
-
-    def test_a_written_zero_still_prints(self) -> None:
-        """Zero is a value; only *unwritten* cells are skipped."""
-        assert run_and_capture(["o+-x"]) == "0"
 
     def test_the_tape_dumps_once_however_far_it_is_stepped(self) -> None:
         """The post-halt step dumps the tape, and only the first one does."""
@@ -262,27 +227,7 @@ class TestSurvivorGaps:
     def test_a_zero_cell_passes_the_other_conditional_mirror(self) -> None:
         """A supplied NUL writes zero, so the beam passes the mirror straight."""
 
-        class TestIO(IO):
-            def __init__(self) -> None:
-                self.buf = io.StringIO()
-                self.reads = 0
-
-            def input_char(self, _prompt: str = "Input: ") -> int:
-                self.reads += 1
-                if self.reads > 1:  # a deflected beam comes back for more
-                    raise EOFError
-                return 0
-
-            def print_char(self, char: str) -> None:
-                self.buf.write(char)
-
-            def print_str(self, text: str) -> None:
-                self.buf.write(text)
-
-            def print_num(self, num: int) -> None:
-                self.buf.write(str(num))
-
-        io_obj = TestIO()
+        io_obj = _CharIO(0, limit=1)
         buffer = io.StringIO()
         with redirect_stdout(buffer):
             run(["}o,)x", "    x"], io_obj, rng=FirstDraw(3))
@@ -349,3 +294,25 @@ class TestContract(SnapshotContract):
 
     machine = staticmethod(_machine)
     stepping_program: ClassVar[list[str]] = ["ÿ}o+x\n x"]
+
+
+#: The wiki's Hello world rows are wider than a source line.
+FIXTURES = Path(__file__).parents[1] / "fixtures"
+
+
+def _wiki_run(code: str, stdin: str, heading: int) -> str:
+    io_ = ScriptedIO(stdin)
+    run(code.split("\n"), io_, rng=FirstDraw(heading))
+    return io_.getvalue()
+
+
+@pytest.mark.parametrize("heading", range(4))
+def test_the_wiki_hello_world_prints_its_spent_counter(heading: int) -> None:
+    """Every used cell prints, so the loop counter left at 0 comes out as NUL."""
+    code = (FIXTURES / "laserfuck_hello.txt").read_text(encoding="utf-8").rstrip("\n")
+    assert _wiki_run(code, "", heading) == "\x00Hello, world!"
+
+
+def test_the_wiki_cat_prints_the_nul_it_stopped_on() -> None:
+    """The NUL was read into a cell, so it is a used cell and prints too."""
+    assert _wiki_run("ÿ/\\\n|o},#/)x\n _\\> /", "hi\x00", 0) == "hi\x00"

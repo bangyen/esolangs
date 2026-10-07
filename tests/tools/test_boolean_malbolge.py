@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import importlib
 from collections.abc import Sequence
 
@@ -14,6 +13,7 @@ from esolangs.exceptions import GeneratorCapError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.malbolge import _XLAT1, _load, run
 from esolangs.tools.malbolge.core import _cascade
+from tests.tools.test_boolean_contract import _dense
 
 _module = importlib.import_module("esolangs.tools.malbolge")
 
@@ -31,18 +31,6 @@ def _rows(table: str, rows: Sequence[int] | None = None) -> list[str]:
     return outputs
 
 
-def _dense(n: int) -> str:
-    """The suite's dense shape, rebuilt here so the module stands alone."""
-    digest = hashlib.sha256(f"dense:{n}".encode()).digest()
-    bits: list[str] = []
-    block = 0
-    while len(bits) < 2**n:
-        digest = hashlib.sha256(digest + bytes([block & 255])).digest()
-        bits.extend(str(byte & 1) for byte in digest)
-        block += 1
-    return "".join(bits[: 2**n])
-
-
 def _parity(n: int) -> str:
     return "".join(str(row.bit_count() & 1) for row in range(2**n))
 
@@ -52,7 +40,7 @@ def _parity(n: int) -> str:
 @pytest.mark.parametrize("table", ["00", "11", "0110", "01101001", _dense(5)])
 def test_wrapping_preserves_loaded_addresses_and_output(table: str, width: int) -> None:
     plain = boolean.malbolge(table)
-    wrapped = generate("Malbolge", table, width)
+    wrapped = generate("Malbolge", table, width=width)
     assert max(map(len, wrapped.splitlines())) <= width
     assert wrapped.replace("\n", "") == plain
     assert len(wrapped) == len(plain) + (len(plain) - 1) // width

@@ -19,6 +19,17 @@ Decisions for gaps in the wiki spec (documented):
   cat example writes ``shouldLoop = 1`` with no semicolon);
 - a trailing statement semicolon is otherwise optional, matching the wiki's
   loose examples;
+- scoping is lexical ("local to a function (and its children...)"): a
+  frame's ``parent`` is where its function was written, and an assignment
+  updates the nearest scope holding the name, since ``{code} 0;`` must be
+  "the same" as ``code``;
+- an iteration list's values are evaluated once, before the first pass;
+- ``return`` needs a value ("default is 0" is read as falling off the
+  end) and ``out`` exactly eight; uneven multiple assignments pair by
+  position, and a loop variable that "must first be defined" is bound
+  even if it is not;
+- ``f;`` and ``(f)`` call with no arguments, though the wiki says
+  "something has to be passed to call it" (generated code passes ``0``);
 - a call that resolves to no function is an invalid operation
   (:class:`~esolangs.exceptions.HaltError`), and malformed syntax raises
   :class:`ValueError`.
@@ -45,343 +56,20 @@ stack.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal, NoReturn
+from typing import Literal
 
 from esolangs._drive import drive
 from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.other._forbin_parse import (
+    _ForSpec,
+    _Function,
+    _Parser,
+    _Statement,
+    _ValueNode,
+)
 from esolangs.interpreters.source_hints import syntax_error
-
-# The parse tree, as tuples discriminated by their first element.  Four
-# families, because the grammar has four: a value, a for-loop pattern, the
-# spec that heads a for-loop, and a statement.  They nest -- a statement
-# holds a spec, a spec holds patterns, a pattern holds values -- so the
-# aliases quote their forward references.
-_Lit = tuple[Literal["lit"], int]
-_Not = tuple[Literal["not"], "_ValueNode"]
-_Var = tuple[Literal["var"], str]
-_FnLit = tuple[Literal["fnlit"], "_Function"]
-_CallNode = tuple[Literal["call"], "_ValueNode", list["_ValueNode"]]
-_ValueNode = _Lit | _Not | _Var | _FnLit | _CallNode
-
-# ``*`` is a wildcard standing for both bit values, so it is a bare
-# one-tuple: reading [1] off one is a type error rather than an IndexError.
-_Star = tuple[Literal["*"]]
-_ValuePat = tuple[Literal["value"], _ValueNode]
-_Group = tuple[Literal["group"], list["_Star | _ValuePat"]]
-_Pattern = _Star | _ValuePat | _Group
-
-_Range = tuple[Literal["range"], str, _ValueNode, _ValueNode]
-_Iter = tuple[Literal["iter"], list[str], list[_Pattern]]
-_ForSpec = _Range | _Iter
-
-_Return = tuple[Literal["return"], _ValueNode]
-_Assign = tuple[Literal["assign"], list[str], list[_ValueNode]]
-_For = tuple[Literal["for"], _ForSpec, list["_Statement"]]
-_Statement = _Return | _Assign | _CallNode | _For
-
-
-class _Function:
-    """A parsed function: name, parameter names, body, nested definitions."""
-
-    __slots__ = ("args", "body", "name", "nested")
-
-    def __init__(self, name: str, args: list[str]) -> None:
-        self.name = name
-        self.args = args
-        self.body: list[_Statement] = []
-        self.nested: dict[str, _Function] = {}
-
-
-class _Parser:
-    """Recursive-descent parser for Forbin source text."""
-
-    def __init__(self, text: str) -> None:
-        self.t = text
-        self.i = 0
-        self.n = len(text)
-        self.initializers: list[_Statement] = []
-        self._definition_scopes: list[dict[str, _Function]] = []
-
-    def _skip_ws(self) -> None:
-        while self.i < self.n:
-            c = self.t[self.i]
-            if c in " \t\r\n":
-                self.i += 1
-            elif c == "/" and self.i + 1 < self.n and self.t[self.i + 1] == "/":
-                while self.i < self.n and self.t[self.i] not in "\r\n":
-                    self.i += 1
-            else:
-                return
-
-    def _peek(self) -> str:
-        self._skip_ws()
-        return self.t[self.i] if self.i < self.n else ""
-
-    def _fail(self, msg: str) -> NoReturn:
-        raise syntax_error(
-            f"{msg} at position {self.i}",
-            (
-                "use bit literals 0/1, identifiers, and balanced call "
-                "parentheses or block braces at this position"
-            ),
-        )
-
-    def _expect(self, ch: str) -> None:
-        self._skip_ws()
-        if self.i >= self.n or self.t[self.i] != ch:
-            self._fail(f"expected {ch!r}")
-        self.i += 1
-
-    def _ident(self) -> str:
-        self._skip_ws()
-        if self.i >= self.n or not (self.t[self.i].isalpha() or self.t[self.i] == "_"):
-            self._fail("expected an identifier")
-        start = self.i
-        self.i += 1
-        while self.i < self.n and (self.t[self.i].isalnum() or self.t[self.i] == "_"):
-            self.i += 1
-        return self.t[start : self.i]
-
-    def _value(self) -> _ValueNode:
-        self._skip_ws()
-        if self.i >= self.n:
-            self._fail("expected a value")
-        c = self.t[self.i]
-        if c == "!":
-            self.i += 1
-            return ("not", self._value())
-        if c in "01":
-            self.i += 1
-            return ("lit", int(c))
-        if c == "{":  # a bare {code} block is a function literal (no args)
-            body, nested = self._block()
-            fn = _Function("", [])
-            fn.body, fn.nested = body, nested
-            return ("fnlit", fn)
-        if c == "(":
-            self.i += 1
-            save = self.i
-            first = self._ident()
-            params = [first]
-            while self._peek() == ",":
-                self._expect(",")
-                params.append(self._ident())
-            self._skip_ws()
-            if self._peek() == "@":  # anonymous function literal
-                self._expect("@")
-                body, nested = self._block()
-                self._expect(")")
-                fn = _Function("", params)
-                fn.body, fn.nested = body, nested
-                return ("fnlit", fn)
-            self.i = save
-            callee: _Var = ("var", self._ident())
-            args: list[_ValueNode] = []
-            self._skip_ws()
-            while self._peek() != ")":
-                if args:
-                    self._expect(",")
-                args.append(self._value())
-            self._expect(")")
-            return ("call", callee, args)
-        if not (c.isalpha() or c == "_"):
-            self._fail(f"unexpected character {c!r}")
-        return ("var", self._ident())
-
-    def _values(self) -> list[_ValueNode]:
-        values = [self._value()]
-        while self._peek() == ",":
-            self.i += 1
-            values.append(self._value())
-        return values
-
-    def _semi(self) -> None:
-        self._skip_ws()
-        if self._peek() == ";":
-            self.i += 1
-
-    def _pattern(self) -> _Star | _ValuePat:
-        self._skip_ws()
-        if self._peek() == "*":
-            self.i += 1
-            return ("*",)
-        return ("value", self._value())
-
-    def _pattern_group(self) -> _Pattern:
-        self._expect("(")
-        pats: list[_Star | _ValuePat] = []
-        while self._peek() != ")":
-            if pats:
-                self._expect(",")
-            pats.append(self._pattern())
-        self._expect(")")
-        return ("group", pats)
-
-    def _for_spec(self) -> _ForSpec:
-        self._skip_ws()
-        if self._peek() == "(":
-            self.i += 1
-            vars_ = [self._ident()]
-            while self._peek() == ",":
-                self.i += 1
-                vars_.append(self._ident())
-            self._expect(")")
-        else:
-            vars_ = [self._ident()]
-        self._expect(":")
-        self._skip_ws()
-        if self._peek() == "(":
-            self.i += 1
-            items: list[_Pattern] = []
-            if len(vars_) > 1 and self._peek() != "(":
-                shorthand: list[_Star | _ValuePat] = []
-                while self._peek() != ")":
-                    if shorthand:
-                        self._expect(",")
-                    shorthand.append(self._pattern())
-                self._expect(")")
-                group: _Group = ("group", shorthand)
-                iteration: _Iter = ("iter", vars_, [group])
-                return iteration
-            while self._peek() != ")":
-                if items:
-                    self._expect(",")
-                if len(vars_) == 1:
-                    items.append(self._pattern())
-                else:
-                    items.append(self._pattern_group())
-            self._expect(")")
-            return ("iter", vars_, items)
-        start = self._value()
-        self._skip_ws()
-        if not self.t.startswith("..", self.i):
-            self._fail("expected '..' or an iteration list")
-        self.i += 2
-        end = self._value()
-        return ("range", vars_[0], start, end)
-
-    def _header(self) -> tuple[str, list[str]]:
-        """Parse ``name [param (, param)*]``, stopping before any ``{``."""
-        name = self._ident()
-        params: list[str] = []
-        while True:
-            self._skip_ws()
-            if self._peek() == ",":
-                self.i += 1
-                self._skip_ws()
-                if self.i < self.n and (
-                    self.t[self.i].isalpha() or self.t[self.i] == "_"
-                ):
-                    params.append(self._ident())
-                    continue
-                break
-            if self.i < self.n and (self.t[self.i].isalpha() or self.t[self.i] == "_"):
-                params.append(self._ident())
-                continue
-            break
-        return name, params
-
-    def _block(self) -> tuple[list[_Statement], dict[str, _Function]]:
-        self._expect("{")
-        stmts: list[_Statement] = []
-        nested: dict[str, _Function] = {}
-        self._definition_scopes.append(nested)
-        while True:
-            self._skip_ws()
-            if self.i >= self.n:
-                self._fail("unterminated block, expected '}'")
-            if self.t[self.i] == "}":
-                self.i += 1
-                self._definition_scopes.pop()
-                return stmts, nested
-            c = self.t[self.i]
-            if c.isalpha() or c == "_":
-                save = self.i
-                name, params = self._header()
-                self._skip_ws()
-                if self._peek() == "{":
-                    fn = _Function(name, params)
-                    fn.body, fn.nested = self._block()
-                    nested[name] = fn
-                    continue
-                self.i = save
-            stmts.append(self._statement())
-
-    def _statement(self) -> _Statement:
-        self._skip_ws()
-        if self.t.startswith("return", self.i):
-            j = self.i + 6
-            if j >= self.n or not (self.t[j].isalnum() or self.t[j] == "_"):
-                self.i = j
-                value = self._value()
-                self._semi()
-                return ("return", value)
-        if self.t.startswith("for", self.i):
-            j = self.i + 3
-            if j >= self.n or not (self.t[j].isalnum() or self.t[j] == "_"):
-                self.i = j
-                spec = self._for_spec()
-                body, nested = self._block()
-                # Top-level parsing only admits definitions and assignments.
-                self._definition_scopes[-1].update(nested)
-                return ("for", spec, body)
-        first = self._value()
-        self._skip_ws()
-        if self._peek() == "=":
-            if first[0] != "var":
-                self._fail("assignment target must be a variable")
-            self.i += 1
-            rhs = self._values()
-            self._semi()
-            return ("assign", [first[1]], rhs)
-        if self._peek() == ",":
-            values = [first]
-            while self._peek() == ",":
-                self.i += 1
-                values.append(self._value())
-            self._skip_ws()
-            if self._peek() != "=":
-                self._fail("expected '=' after assignment targets")
-            self.i += 1
-            # Collecting the names as they are checked keeps the target
-            # list typed, which an ``all(...)`` over the values would not.
-            names: list[str] = []
-            for v in values:
-                if v[0] != "var":
-                    self._fail("assignment target must be a variable")
-                names.append(v[1])
-            rhs = self._values()
-            self._semi()
-            return ("assign", names, rhs)
-        if first[0] not in ("var", "call", "fnlit"):
-            self._fail("statement must be a call, assignment, or return")
-        args = (
-            self._values() if self._peek() in "01!(_" or self._peek().isalpha() else []
-        )
-        self._semi()
-        return ("call", first, args)
-
-    def parse(self) -> dict[str, _Function]:
-        funcs: dict[str, _Function] = {}
-        while True:
-            self._skip_ws()
-            if self.i >= self.n:
-                return funcs
-            start = self.i
-            name, params = self._header()
-            self._skip_ws()
-            if self._peek() != "{":
-                if self._peek() != "=":
-                    self._fail("expected '{' after function name")
-                self.i = start
-                initializer = self._statement()
-                self.initializers.append(initializer)
-                continue
-            fn = _Function(name, params)
-            fn.body, fn.nested = self._block()
-            funcs[fn.name] = fn
 
 
 class _BitReader:
@@ -402,7 +90,7 @@ class _BitReader:
 
 
 class _Frame:
-    """One function invocation: its function, the caller, and its locals.
+    """One function invocation: its function, defining scope, and locals.
 
     ``body``/``pos`` is the statement list a frame is executing and its
     cursor; ``for_rows``/``for_names``/``for_ind`` track a ``for`` loop in
@@ -459,18 +147,36 @@ class _Frame:
         return copy
 
 
-def _lookup(frame: _Frame | None, name: str, globals_: dict[str, _Function]) -> object:
-    """Resolve a variable, builtin, or function name from ``frame`` outward."""
-    while frame is not None:
-        if name in frame.locals:
-            return frame.locals[name]
-        if name in frame.fn.nested:
-            return frame.fn.nested[name]
-        frame = frame.parent
+@dataclass(frozen=True, eq=False)
+class _Closure:
+    """A function value: its definition and the scope it was written in."""
+
+    fn: _Function
+    env: _Frame
+
+    def __repr__(self) -> str:
+        """Name the function and its scope (a scope is its locals dict)."""
+        return f"<{self.fn.name or 'literal'} {id(self.fn):x}@{id(self.env.locals):x}>"
+
+
+def _lookup(frame: _Frame, name: str, globals_: dict[str, _Function]) -> object:
+    """Resolve a variable, builtin, or function name from ``frame`` outward.
+
+    The chain is lexical: a frame's ``parent`` is the scope its function
+    was defined in, so a top-level function sees globals, not its caller.
+    """
+    scope: _Frame | None = frame
+    root = frame
+    while scope is not None:
+        if name in scope.locals:
+            return scope.locals[name]
+        if name in scope.fn.nested:
+            return _Closure(scope.fn.nested[name], scope)
+        root, scope = scope, scope.parent
     if name in ("in", "out"):
         return name
     if name in globals_:
-        return globals_[name]
+        return _Closure(globals_[name], root)
     raise HaltError(
         f"undeclared identifier {name!r}",
         hint="declare the identifier before using it; check its spelling",
@@ -494,10 +200,10 @@ def _eval(
     if node[0] == "var":
         return _lookup(frame, node[1], globals_)
     if node[0] == "fnlit":
-        return node[1]
+        return _Closure(node[1], frame)
     callee = _eval(node[1], frame, globals_, reader, depth)
     args = [_eval(a, frame, globals_, reader, depth) for a in node[2]]
-    return _call(callee, args, frame, globals_, reader, depth)
+    return _call(callee, args, globals_, reader, depth)
 
 
 def _bound(value: object, which: str) -> int:
@@ -515,22 +221,40 @@ def _bound(value: object, which: str) -> int:
     return value
 
 
+def _enter(callee: _Closure, args: list[object]) -> _Frame:
+    """Return a frame for calling ``callee``; unpassed parameters are 0."""
+    frame = _Frame(callee.fn, callee.env)
+    for name in callee.fn.args:
+        frame.locals[name] = 0
+    for name, value in zip(callee.fn.args, args, strict=False):
+        frame.locals[name] = value
+    return frame
+
+
+def _bind(frame: _Frame, name: str, value: object) -> None:
+    """Assign ``name`` where it lives, else as a new local of ``frame``.
+
+    The wiki makes ``{code} 0;`` the same as ``code``, so a write inside a
+    literal (or a nested function) reaches the enclosing variable.
+    """
+    scope: _Frame | None = frame
+    while scope is not None:
+        if name in scope.locals:
+            scope.locals[name] = value
+            return
+        scope = scope.parent
+    frame.locals[name] = value
+
+
 def _call(
     callee: object,
     args: list[object],
-    caller: _Frame | None,
     globals_: dict[str, _Function],
     reader: _BitReader,
     depth: int,
 ) -> object:
-    if isinstance(callee, _Function):
-        frame = _Frame(callee, caller)
-        # unpassed parameters are set to 0 (per the wiki)
-        for name in callee.args:
-            frame.locals[name] = 0
-        for name, value in zip(callee.args, args, strict=False):
-            frame.locals[name] = value
-        result = _run(frame, globals_, reader, depth + 1)
+    if isinstance(callee, _Closure):
+        result = _run(_enter(callee, args), globals_, reader, depth + 1)
         return result if result is not None else 0
     if isinstance(callee, str):
         if callee == "in":
@@ -606,12 +330,12 @@ def _exec_stmt(
                 if name != "_"
             ]
         for name, value in bindings:
-            frame.locals[name] = value
+            _bind(frame, name, value)
         return None
     if stmt[0] == "call":
         callee = _eval(stmt[1], frame, globals_, reader, depth)
         args = [_eval(a, frame, globals_, reader, depth) for a in stmt[2]]
-        _call(callee, args, frame, globals_, reader, depth)
+        _call(callee, args, globals_, reader, depth)
         return None
     # The three arms above are the other statement kinds, so what is
     # left is a ``for``.
@@ -657,7 +381,7 @@ def _exec_stmt(
     for row in rows:
         for name, bound in zip(names, row, strict=False):
             if name != "_":
-                frame.locals[name] = bound
+                _bind(frame, name, bound)
         got = _exec_block(body, frame, globals_, reader, depth)
         if got is not None:
             return got
@@ -739,16 +463,10 @@ def _start_statement_call(
         return None
     callee = _eval(stmt[1], frame, globals_, reader, 0)
     args = [_eval(a, frame, globals_, reader, 0) for a in stmt[2]]
-    if not isinstance(callee, _Function):
-        _call(callee, args, frame, globals_, reader, 0)
+    if not isinstance(callee, _Closure):
+        _call(callee, args, globals_, reader, 0)
         return False
-    new_frame = _Frame(callee, frame)
-    # unpassed parameters are set to 0 (per the wiki)
-    for name in callee.args:
-        new_frame.locals[name] = 0
-    for name, value in zip(callee.args, args, strict=False):
-        new_frame.locals[name] = value
-    return new_frame
+    return _enter(callee, args)
 
 
 @dataclass
@@ -894,6 +612,28 @@ class _Machine:
                     for name, value in self.global_frame.locals.items()
                 )
             ),
+            self._scopes(),
+        )
+
+    def _scopes(self) -> tuple[object, ...]:
+        """Render every scope a live frame or a closure can reach.
+
+        A closure keeps its defining scope after that frame returns, and a
+        call through it can write there, so those locals are state too.
+        """
+        seen: dict[int, _Frame] = {}
+        todo: list[_Frame | None] = [*self.frames, self.global_frame]
+        while todo:
+            scope = todo.pop()
+            while scope is not None and id(scope.locals) not in seen:
+                seen[id(scope.locals)] = scope
+                todo += [
+                    v.env for v in scope.locals.values() if isinstance(v, _Closure)
+                ]
+                scope = scope.parent
+        return tuple(
+            (key, tuple(sorted((k, repr(v)) for k, v in s.locals.items())))
+            for key, s in sorted(seen.items())
         )
 
     def step(self) -> None:
@@ -981,7 +721,7 @@ class _Machine:
         self.frames[-1] = frame
         for name, value in zip(frame.for_names, row, strict=False):
             if name != "_":
-                frame.locals[name] = value
+                _bind(frame, name, value)
         # This method only runs while the cursor sits on the ``for`` whose
         # rows it is walking, so the statement under it is that ``for``.
         # The tag is checked rather than tested-and-skipped: narrowing the

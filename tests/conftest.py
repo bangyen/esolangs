@@ -4,6 +4,7 @@ import contextlib
 import time
 from collections.abc import Generator
 from pathlib import Path
+from typing import Any
 
 import coverage
 import pytest
@@ -92,3 +93,20 @@ def _repair_coverage_lock() -> Generator[None, None, None]:
     if lock is not None:
         with contextlib.suppress(RuntimeError):
             lock.release()
+
+
+@pytest.fixture
+def spawned(monkeypatch: pytest.MonkeyPatch) -> list[Any]:
+    """Every worker process the isolated runner starts, in order."""
+    from esolangs import _isolated
+
+    children: list[Any] = []
+    popen = _isolated.subprocess.Popen
+
+    def spawn(*args: Any, **kwargs: Any) -> Any:
+        child = popen(*args, **kwargs)
+        children.append(child)
+        return child
+
+    monkeypatch.setattr(_isolated.subprocess, "Popen", spawn)
+    return children

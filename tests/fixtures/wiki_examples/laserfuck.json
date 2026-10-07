@@ -1,0 +1,24 @@
+{
+ "language": "LaserFuck",
+ "oldid": 191932,
+ "examples": [
+  {
+   "id": "rng-seed0",
+   "source": " }+-x\n|o+x\n }+-x",
+   "seed": 0,
+   "expected": "1"
+  },
+  {
+   "id": "rng-seed1",
+   "source": " }+-x\n|o+x\n }+-x",
+   "seed": 1,
+   "expected": "0"
+  },
+  {
+   "id": "cat-until-nul",
+   "source": "ÿ/\\\n|o},#/)x\n _\\> /",
+   "stdin": "abc\u0000",
+   "expected": "abc\u0000"
+  }
+ ]
+}

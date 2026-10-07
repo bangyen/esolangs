@@ -1,10 +1,12 @@
 """Unit tests for the BF-PDA interpreter."""
 
 import importlib
+from functools import partial
 
 import pytest
 
 from esolangs.interpreters.io import ScriptedIO
+from tests.interpreters import runner
 from tests.interpreters.contract import (
     CycleContract,
     EmptyProgramContract,
@@ -14,10 +16,7 @@ from tests.raises import raises_message
 run = importlib.import_module("esolangs.interpreters.stack_based.bf_pda").run
 
 
-def run_program(code: str) -> str:
-    io = ScriptedIO()
-    run(code, io)
-    return io.getvalue()
+run_program = partial(runner.run_program, run, suppress_eof=False)
 
 
 class TestOutput:

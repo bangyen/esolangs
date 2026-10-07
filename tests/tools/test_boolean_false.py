@@ -4,7 +4,7 @@ import pytest
 
 from esolangs import tools as boolean
 from tests.generator_support import verify_generated
-from tests.tools.boolean_runners import five_input_sample
+from tests.tools.sample_tables import five_input_sample
 
 
 def test_false_tests_the_low_bit_and_prints_a_constant_pair() -> None:

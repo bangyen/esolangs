@@ -1,11 +1,12 @@
 """Covers :mod:`esolangs.tools.flowchart`."""
 
+from collections.abc import Callable
 from itertools import pairwise
 
 import pytest
 
 from esolangs import tools as boolean
-from esolangs.interpreters.io import IO
+from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.tools.flowchart import (
     _flowchart_cells,
     _flowchart_deque,
@@ -61,10 +62,11 @@ class TestFlowchart:
             assert run_flowchart(program, bits) == table[row], row
 
     def test_tree_depth_matches_input_count(self) -> None:
-        """One ``/ /`` read node sits on each path from entry to a leaf."""
+        """One switch per internal node; the leaves share one end."""
         program = _flowchart_render(_flowchart_cells("0110100110010110"))
         assert program.count("< >") == 15  # 2**4 - 1 internal nodes
-        assert program.count("(( ))") == 16  # 2**4 leaves
+        assert program.count("[ }") + program.count("{ ]") == 16 + 3  # + answer
+        assert program.count("(( ))") == 1
 
     def test_constant_subtrees_fold(self) -> None:
         """A constant slice is one leaf, and takes one column band."""
@@ -72,9 +74,12 @@ class TestFlowchart:
         def tree(table: str) -> str:
             return _flowchart_render(_flowchart_cells(table))
 
-        assert tree("11111111").count("(( ))") == 1
-        assert tree("11110000").count("(( ))") == 2
-        assert tree("10010110").count("(( ))") == 8  # no fold
+        def leaves(table: str) -> int:
+            return tree(table).count("[ }") + tree(table).count("{ ]") - 3
+
+        assert leaves("11111111") == 1
+        assert leaves("11110000") == 2
+        assert leaves("10010110") == 8  # no fold
         # a constant table needs no switch at all
         assert tree("11111111").count("< >") == 0
         assert tree("11110000").count("< >") == 1
@@ -105,26 +110,40 @@ class TestFlowchart:
                         f"but its middle is column {middle}"
                     )
 
-    def test_each_run_reads_exactly_n_bits(self) -> None:
-        """The drawn read nodes outnumber the reads any one run performs."""
-        program = _flowchart_render(_flowchart_cells("0110100110010110"))
-        assert program.count("/ /") == 15
+    @pytest.mark.parametrize("table", ["0110100110010110", "1111", "0000000000000001"])
+    def test_each_run_reads_exactly_n_bytes(self, table: str) -> None:
+        """Every path reads ``8n - 7`` bits: all of n bytes but the last's top.
 
-        consumed = 0
+        The tree draws 1 + 8 reads per later internal node, and a folded
+        leaf carries the reads its skipped levels owe.
+        """
+        from esolangs.interpreters.grid_based.flowchart import _Machine
 
-        class _CountingIO(IO):
-            def input_bit(self, _prompt: str = "Input: ") -> int:
-                nonlocal consumed
-                consumed += 1
-                return 1
+        n = len(table).bit_length() - 1
+        for name, text in (
+            ("flat", _flowchart_render(_flowchart_cells(table))),
+            ("stacked", _flowchart_render(_flowchart_stacked(table))),
+            ("deque", _flowchart_deque(table)),
+        ):
+            program = text.splitlines()
+            for row in range(2**n):
+                stdin = format(row, f"0{n}b")
+                io = ScriptedIO(stdin + "1")
+                machine = _Machine(program, io)
+                reads = 0
+                read = machine._read_bit  # noqa: SLF001
 
-            def print_str(self, text: str) -> None:
-                pass
+                def counted(read: Callable[[], int | None] = read) -> int | None:
+                    nonlocal reads
+                    reads += 1
+                    return read()
 
-        from esolangs.interpreters.grid_based.flowchart import run as fc_run
-
-        fc_run(program.splitlines(), _CountingIO())
-        assert consumed == 4
+                machine._read_bit = counted  # type: ignore[method-assign]  # noqa: SLF001
+                while not machine.halted:
+                    machine.step()
+                assert reads == 8 * n - 7, (name, table, row)
+                assert io.position() == n
+                assert io.getvalue() == table[row]
 
     def test_rejects_a_malformed_table(self) -> None:
         """A table whose length is not a power of two is rejected."""
@@ -149,13 +168,13 @@ class TestFlowchart:
                     assert got == table[combo], (table, width, bits)
 
     def test_stacking_costs_rows_and_stops_tracking_the_table(self) -> None:
-        """The stacked drawing is ``n + 5`` columns whatever the table."""
+        """The stacked drawing is ``n + 6`` columns whatever the table."""
         for n in (2, 3, 4):
             table = "".join(str(bin(i).count("1") % 2) for i in range(2**n))
             flat = _flowchart_render(_flowchart_cells(table))
             stacked = boolean.flowchart(table, 1)
-            assert max(len(row) for row in stacked.splitlines()) == n + 5, n
-            assert max(len(row) for row in flat.splitlines()) == 6 * 2**n - 1, n
+            assert max(len(row) for row in stacked.splitlines()) == n + 6, n
+            assert max(len(row) for row in flat.splitlines()) == 6 * 2**n - 2, n
             assert len(stacked.splitlines()) > len(flat.splitlines()), n
         # A table that folds to a single leaf is already as wide as one
         # ``(( ))``, and stacking spends a corridor column per level on top

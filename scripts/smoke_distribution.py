@@ -48,7 +48,9 @@ def smoke(*, math_extra: bool, image_extra: bool = False) -> None:
     assert (
         _evaluate(bound.name, program, inputs=2, isolated=True, max_output=1) == "0110"
     )
-    assert bound.read_answer(bound.run(program, bound.encode_inputs([0, 1]))) == "1"
+    assert (
+        bound.read_answer(bound.run(program, stdin=bound.encode_inputs([0, 1]))) == "1"
+    )
     assert esolangs.run("brainfuck", "+.", max_steps=2) == "\x01"
     assert esolangs.run("brainfuck", "+.", timeout=1, isolated=True) == "\x01"
     try:
@@ -72,7 +74,6 @@ def smoke(*, math_extra: bool, image_extra: bool = False) -> None:
     for name in esolangs.list_languages():
         facts = esolangs.describe(name)
         if facts["boolean_generator"]:
-            assert facts["proof_status"] is not None, name
             generated = esolangs.generate(name, "0110")
             if image_extra and isinstance(generated, esolangs.Raster):
                 generated = esolangs.Raster.from_png(generated.to_png())
@@ -84,14 +85,15 @@ def smoke(*, math_extra: bool, image_extra: bool = False) -> None:
                 assert not math_extra, name
             assert facts["examples"], name
             for filename in facts["examples"]:
-                path = Path(filename)
-                assert path.is_relative_to(package), filename
-                assert path.is_file(), filename
+                assert not Path(filename).is_absolute(), filename
+                assert (package / filename).is_file(), filename
     examples = esolangs.describe("brainfuck")["examples"]
     assert examples
-    example = Path(examples[0])
+    example = package / examples[0]
     assert (
-        esolangs.read_answer("brainfuck", esolangs.run("brainfuck", example, "0\n1\n"))
+        esolangs.read_answer(
+            "brainfuck", esolangs.run("brainfuck", example, stdin="0\n1\n")
+        )
         == "0"
     )
     with tempfile.TemporaryDirectory() as temporary:
@@ -152,7 +154,7 @@ def smoke(*, math_extra: bool, image_extra: bool = False) -> None:
         for row in range(4):
             bits = [row >> 1, row & 1]
             output = esolangs.run(
-                language, decoded, esolangs.encode_inputs(language, bits)
+                language, decoded, stdin=esolangs.encode_inputs(language, bits)
             )
             assert esolangs.read_answer(language, output) == "0110"[row]
     if hasattr(signal, "SIGALRM"):

@@ -264,7 +264,7 @@ def test_readme_program_computes_xor_on_every_row() -> None:
     program = _readme_program()
     for row, expected in enumerate(_TABLE):
         stdin = "".join(f"{bit}" for bit in format(row, "02b"))
-        assert run(_LANGUAGE, program, stdin) == expected
+        assert run(_LANGUAGE, program, stdin=stdin) == expected
 
 
 def test_readme_states_the_real_length() -> None:

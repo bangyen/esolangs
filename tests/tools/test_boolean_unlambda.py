@@ -4,8 +4,8 @@ import pytest
 
 from esolangs import tools as boolean
 from tests.generator_support import verify_generated
-from tests.tools.boolean_runners import five_input_sample
 from tests.tools.reader_support import _read_answer
+from tests.tools.sample_tables import five_input_sample
 
 
 @pytest.mark.medium  # both builds of 456 tables: 0.95s alone

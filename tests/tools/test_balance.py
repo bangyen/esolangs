@@ -9,7 +9,7 @@ from esolangs.tools.super_snusp import (
     balance_super_snusp,
 )
 from esolangs.tools.wrap import balance_program, balance_score, wrap_program
-from tests.test_cli import call_main
+from tests.cli.test_cli import call_main
 
 
 @pytest.mark.parametrize(
@@ -30,14 +30,16 @@ def test_balance_executes(name: str, table: str) -> None:
         else:
             source, stdin = program, esolangs.encode_inputs(name, bits)
         assert (
-            esolangs.read_answer(name, esolangs.run(name, source, stdin, 10))
+            esolangs.read_answer(
+                name, esolangs.run(name, source, stdin=stdin, timeout=10)
+            )
             == expected
         )
 
 
 def test_balance_rejects_width() -> None:
     with pytest.raises(ArgumentError, match="mutually exclusive"):
-        esolangs.generate("Brainfuck", "0110", 80, balance=True)
+        esolangs.generate("Brainfuck", "0110", width=80, balance=True)
 
 
 def test_character_balance() -> None:

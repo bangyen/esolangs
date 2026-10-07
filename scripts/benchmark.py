@@ -8,13 +8,15 @@ import signal
 import statistics
 import threading
 import time
+from dataclasses import fields, is_dataclass
+from fractions import Fraction
 from typing import Any, cast
 
 import esolangs
 import esolangs.debugger as debugger_api
 from esolangs._validate import check_timeout
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.vm import VM, run_until_halt_or_cycle
+from esolangs.vm import VM, complete_vm, run_until_halt_or_cycle
 
 
 def _bits(row: int, inputs: int) -> list[int]:
@@ -30,6 +32,86 @@ def _source_size(program: esolangs.Program) -> int:
 def _integer_bits(value: int) -> int:
     """Count magnitude bits (one for zero) and a sign bit for negatives."""
     return max(1, value.bit_length()) + int(value < 0)
+
+
+def state_bits(value: object, memo: dict[int, tuple[object, int]]) -> int:
+    """Count a snapshot value's bits: integer widths, 8 per character.
+
+    ``memo`` caches immutable containers by identity, so a persistent
+    store's shared chunks are walked once a run, not once a step.
+    """
+    if value is None:
+        return 0
+    if isinstance(value, bool):
+        return 1
+    if isinstance(value, int):
+        return _integer_bits(value)
+    if isinstance(value, float):
+        return 64
+    if isinstance(value, str | bytes | bytearray):
+        return 8 * len(value)
+    hit = memo.get(id(value))
+    if hit is not None and hit[0] is value:
+        return hit[1]
+    if isinstance(value, Fraction):
+        total = state_bits(value.numerator, memo) + state_bits(value.denominator, memo)
+    elif isinstance(value, dict):
+        total = sum(state_bits(k, memo) + state_bits(v, memo) for k, v in value.items())
+    elif isinstance(value, tuple | list | frozenset | set):
+        total = sum(state_bits(item, memo) for item in value)
+    elif is_dataclass(value):
+        total = sum(state_bits(getattr(value, f.name), memo) for f in fields(value))
+    elif hasattr(value, "__dict__"):
+        total = state_bits(vars(value), memo)
+    elif slots := [
+        name for cls in type(value).__mro__ for name in getattr(cls, "__slots__", ())
+    ]:
+        total = sum(state_bits(getattr(value, name, None), memo) for name in slots)
+    else:
+        raise TypeError(f"cannot count bits of {type(value).__name__}")
+    if isinstance(value, tuple | frozenset | Fraction):
+        memo[id(value)] = (value, total)
+    return total
+
+
+class WrittenState:
+    """Peak bits of the snapshot components a run writes.
+
+    A top-level component never changed is read-only (code, an untouched
+    grid) and excluded; one written counts whole at its peak, so a
+    preallocated tape or a self-modified program is workspace.  Summing
+    per-component peaks can only over-count.
+    """
+
+    def __init__(self, state: object) -> None:
+        """Start from a run's first snapshot."""
+        self._memo: dict[int, tuple[object, int]] = {}
+        self._start = self._parts(state)
+        self._peaks = [0] * len(self._start)
+        self._written = [False] * len(self._start)
+
+    @staticmethod
+    def _parts(state: object) -> tuple[object, ...]:
+        return state if isinstance(state, tuple) else (state,)
+
+    def sample(self, state: object) -> None:
+        """Record one snapshot."""
+        parts = self._parts(state)
+        if len(parts) != len(self._start):
+            raise ValueError("snapshot changed shape mid-run")
+        for at, part in enumerate(parts):
+            first = self._start[at]
+            if part is first or not (self._written[at] or part != first):
+                continue
+            if not self._written[at]:
+                self._written[at] = True
+                self._peaks[at] = state_bits(first, self._memo)
+            self._peaks[at] = max(self._peaks[at], state_bits(part, self._memo))
+
+    @property
+    def bits(self) -> int:
+        """Peak written bits so far."""
+        return sum(self._peaks)
 
 
 def _payload_profile(language: str, vm: VM) -> dict[str, int] | None:
@@ -87,7 +169,10 @@ def _execute(
         assert isinstance(program, str)
         source, stdin = esolangs.instantiate(language, program, bits), ""
     else:
-        source, stdin = program, esolangs.encode_inputs(language, bits, table)
+        source, stdin = (
+            program,
+            esolangs.encode_inputs(language, bits, truth_table=table),
+        )
     supported = facts["steppable_to_answer"]
     if track_store and facts["answer_mode"] == "termination":
         raise ValueError("store tracking requires a halting-answer language")
@@ -107,15 +192,16 @@ def _execute(
         "peak_integer_bits": None,
         "peak_pc_bits": None,
         "peak_machine_bits": None,
+        "peak_written_bits": None,
     }
 
     def drive(*_args: object) -> None:
         if not supported:
-            output = esolangs.run(language, source, stdin)
+            output = esolangs.run(language, source, stdin=stdin)
             result["execution_status"] = "halted"
             result["actual_answer"] = esolangs.read_answer(language, output)
             return
-        vm = debugger_api.make_vm(language, source, stdin)
+        vm = debugger_api.make_vm(language, source, stdin=stdin)
         terminating = facts["answer_mode"] == "termination"
         if terminating:
             halted = run_until_halt_or_cycle(vm, limit=cap)
@@ -127,10 +213,14 @@ def _execute(
                 return
             # The detector unwraps the VM; replay a halt to retain the
             # baseline's wrapper-step count, excluding its post-halt dump.
-            vm = debugger_api.make_vm(language, source, stdin)
+            vm = debugger_api.make_vm(language, source, stdin=stdin)
+
+        written = WrittenState(vm.snapshot()) if track_store else None
 
         def sample_store() -> None:
-            if track_store:
+            if written is not None:
+                written.sample(vm.snapshot())
+                result["peak_written_bits"] = written.bits
                 result["peak_memory_cells"] = max(
                     result["peak_memory_cells"] or 0, len(vm.memory)
                 )
@@ -155,7 +245,7 @@ def _execute(
             result["execution_status"] = "halted"
             result["actual_answer"] = str(list(facts["answer_encoding"]).index("halts"))
         else:
-            output = debugger_api.complete_vm(vm, max_steps=0)
+            output = complete_vm(vm, max_steps=0)
             result["execution_status"] = "halted"
             result["actual_answer"] = esolangs.read_answer(language, output)
 

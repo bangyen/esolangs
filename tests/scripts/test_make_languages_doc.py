@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-SCRIPT = REPO_ROOT / "src" / "esolangs" / "tools" / "_generate_docs.py"
+SCRIPT = REPO_ROOT / "scripts" / "generate_docs.py"
 README = REPO_ROOT / "README.md"
 USAGE_DOC = REPO_ROOT / "docs" / "usage.md"
 CONTRIBUTING = REPO_ROOT / "docs" / "CONTRIBUTING.md"

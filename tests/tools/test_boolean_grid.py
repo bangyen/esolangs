@@ -292,9 +292,9 @@ def test_super_snusp_arithmetic_literals_preserve_stack_and_floor(
     import esolangs
 
     table = "".join(str(row.bit_count() % 2) for row in range(1 << inputs))
-    program = esolangs.generate("Super SNUSP", table, width)
+    program = esolangs.generate("Super SNUSP", table, width=width)
     assert max(map(len, program.splitlines())) <= max(3, width)
     for row in (0, 1, len(table) // 2, len(table) - 1):
         bits = [int(bit) for bit in format(row, f"0{inputs}b")]
         stdin = esolangs.encode_inputs("Super SNUSP", bits)
-        assert esolangs.run("Super SNUSP", program, stdin) == table[row]
+        assert esolangs.run("Super SNUSP", program, stdin=stdin) == table[row]

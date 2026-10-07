@@ -2,7 +2,11 @@
 
 Two unbounded registers and a swappable register pointer.  The Nth ``~``
 jumps to the Nth number on the jump line, 1-based ("line N", per the
-wiki); a ``~`` with no jump number raises :class:`ValueError`.  The wiki
+wiki); a ``~`` with no jump number raises :class:`ValueError`.  Two
+choices the wiki leaves open: "The code line is split into characters,
+each character being a command", but a character that is no command is
+ignored rather than rejected; and a jump number ``0`` names no command,
+so that ``~`` falls through to the next command.  The wiki
 defines no I/O, so both registers are printed once at the end,
 space-separated with no trailing newline -- the repo's convention for
 interpreter-only languages (Back, Bitdeque, A Painter Ant), not the

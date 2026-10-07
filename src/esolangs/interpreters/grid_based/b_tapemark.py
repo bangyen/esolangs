@@ -6,6 +6,9 @@ comments and the unique direction marker become blank cells when loaded.
 
 Invalid source symbols raise :class:`ValueError`, as the wiki requires.
 Missing or repeated starts and unmatched quotes also raise :class:`ValueError`.
+An input symbol that is no command runs as a blank once a swap puts it
+on the first grid: the wiki rejects other symbols only "when the program
+is loaded".
 Source rows use LF, CRLF or CR; other characters occupy a column.
 Exhausted input raises :class:`EOFError`, following the package convention.
 

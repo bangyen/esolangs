@@ -19,7 +19,7 @@ class TestForbinBoolean:
         """The witness tables execute with a four-column grammar floor."""
         for n in range(1, 4):
             for table in witnesses(n):
-                program = esolangs.generate("Forbin", table, width)
+                program = esolangs.generate("Forbin", table, width=width)
                 assert isinstance(program, str)
                 assert max(map(len, program.splitlines())) <= max(width, 4)
                 for row in range(2**n):
@@ -37,7 +37,7 @@ class TestForbinBoolean:
                 "".join(rng.choice("01") for _ in range(2**n)),
             ]
             for table in tables:
-                program = esolangs.generate("Forbin", table, width)
+                program = esolangs.generate("Forbin", table, width=width)
                 assert isinstance(program, str)
                 assert max(map(len, program.splitlines())) <= max(width, 4)
                 for row in [0, 2**n - 1, *rng.sample(range(2**n), 16)]:

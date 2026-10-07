@@ -1,0 +1,12 @@
+{
+ "language": "6-5",
+ "oldid": 82957,
+ "examples": [
+  {
+   "id": "hello",
+   "note": "Titled Hello, World! but the program and its comments stop at d.",
+   "source": "666666666666A C initialize the first cell to 72 and print H\n66665A C change the cell to 101 and print e\n662AA C change the cell to 108 and print l twice\n626262A C change the cell to 111 and print o\n9999999999995A C change the cell to 44 and print the comma\n99A C change the cell to 32 and print the space\n55555555555A C change the cell to 87 and print W\n6666A C change the cell to 111 and print o\n626262A C change the cell to 114 and print r\n9A C change the cell to 108 and print l\n95959A C change the cell to 100 and print d",
+   "expected": "Hello, World"
+  }
+ ]
+}

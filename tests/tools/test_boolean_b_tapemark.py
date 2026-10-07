@@ -61,10 +61,13 @@ def test_render_has_no_blank_axis() -> None:
 def test_narrow_staircase_executes_every_small_table_in_input_order() -> None:
     import esolangs
 
-    assert max(map(len, esolangs.generate("B-tapemark", "0110", 1).splitlines())) == 9
+    assert (
+        max(map(len, esolangs.generate("B-tapemark", "0110", width=1).splitlines()))
+        == 9
+    )
     for n in range(1, 4):
         for table in witnesses(n):
-            program = esolangs.generate("B-tapemark", table, 1)
+            program = esolangs.generate("B-tapemark", table, width=1)
             for row, expected in enumerate(table):
                 assert execute(program, format(row, f"0{n}b")) == (expected, n)
 

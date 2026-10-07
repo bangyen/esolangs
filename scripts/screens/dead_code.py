@@ -77,11 +77,13 @@ class _Program:
                     stdin = ""
                 else:
                     source = text
-                    stdin = encode_inputs(self.name, bits, self.table)
+                    stdin = encode_inputs(self.name, bits, truth_table=self.table)
                 if self.terminating:
                     answer = self._terminates(source, stdin)
                 else:
-                    output = esolangs.run(self.name, source, stdin, self.timeout)
+                    output = esolangs.run(
+                        self.name, source, stdin=stdin, timeout=self.timeout
+                    )
                     answer = read_answer(self.name, output)
             except (EsolangError, ValueError, RecursionError):
                 return False

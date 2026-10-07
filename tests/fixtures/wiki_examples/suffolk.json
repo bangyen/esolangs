@@ -1,0 +1,13 @@
+{
+ "language": "Suffolk",
+ "oldid": 189093,
+ "examples": [
+  {
+   "id": "hello",
+   "source_file": "suffolk_hello.txt",
+   "expected": "Hello, world! Hello, world! ",
+   "stop": "steps",
+   "max_steps": 5000
+  }
+ ]
+}

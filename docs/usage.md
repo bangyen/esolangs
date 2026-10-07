@@ -21,7 +21,7 @@ The API handles language I/O conventions using [`describe`](#describe) metadata.
 
 ```bash
 esolangs generate LaserFuck 0110 > prog.txt
-esolangs encode LaserFuck 10 | esolangs run LaserFuck prog.txt | esolangs read-answer LaserFuck -> 1
+esolangs encode LaserFuck 10 | esolangs run LaserFuck prog.txt | esolangs read-answer LaserFuck  # prints 1
 esolangs generate Modulous 0110 > modulous.txt
 esolangs suggest Modulous modulous.txt
 ```
@@ -31,9 +31,11 @@ esolangs suggest Modulous modulous.txt
 `Language(name)` binds the same functions to one canonical language name:
 
 ```python
+import esolangs
+
 bf = esolangs.Language("brainfuck")
 program = bf.generate("0110", balance=True)
-output = bf.run(program, bf.encode_inputs([0, 1]))
+output = bf.run(program, stdin=bf.encode_inputs([0, 1]))
 assert bf.read_answer(output) == "1"
 info = bf.describe()
 ```
@@ -63,7 +65,7 @@ import esolangs
 table = "0110"
 program = esolangs.generate("brainfuck", table)
 stdin = esolangs.encode_inputs("brainfuck", [0, 1])
-output = esolangs.run("brainfuck", program, stdin)
+output = esolangs.run("brainfuck", program, stdin=stdin)
 assert esolangs.read_answer("brainfuck", output) == "1"
 ```
 
@@ -83,7 +85,7 @@ raster = esolangs.generate("Piet", table)
 assert isinstance(raster, esolangs.Raster)
 raster.to_png()
 stdin = esolangs.encode_inputs("Piet", [0, 1])
-assert esolangs.read_answer("Piet", esolangs.run("Piet", raster, stdin)) == "1"
+assert esolangs.read_answer("Piet", esolangs.run("Piet", raster, stdin=stdin)) == "1"
 ```
 
 To step through a text program and inspect its state:
@@ -93,7 +95,7 @@ program = esolangs.generate("brainfuck", table)
 stdin = esolangs.encode_inputs("brainfuck", [0, 1])
 from esolangs.debugger import make_vm
 
-vm = make_vm("brainfuck", program, stdin)
+vm = make_vm("brainfuck", program, stdin=stdin)
 for _ in range(20):
     if vm.halted:
         break
@@ -149,7 +151,6 @@ esolangs.encode_inputs("Taglate", [1, 0, 1])  # -> '0101'
 | 3x | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Algebraic Programming Language | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Befunge | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
-| Befunge-98 | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | CV(N)(C) | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Clockwise | `char_stream_cyclic` | `0`/`1` | `'101'` |
 | Collatz Multiverse | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
@@ -168,7 +169,7 @@ esolangs.encode_inputs("Taglate", [1, 0, 1])  # -> '0101'
 | Thue | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 | Vandevelo | `line_per_bit` | `0`/`1` | `'1\n0\n1\n'` |
 
-The other 36 that read stdin take one `0`/`1` character per bit -- `'101'`.
+The other 35 that read stdin take one `0`/`1` character per bit -- `'101'`.
 The remaining 21 embed their inputs and read no stdin: `instantiate` fills them.
 The 4 interpreter-only classics have no generator, so there is no generated stdin to feed.
 Use `encode_inputs` to build stdin; it and this table use `describe`.
@@ -190,7 +191,7 @@ refused. `esolangs list --details` marks them `tmpl`.
 
 ## Reading the answer
 
-Most languages print the answer; six dump their final state, and four answer
+Most languages print the answer; some dump their final state (`answer_mode` `"dump"`), and four answer
 by termination: halt for 0, loop forever for 1. `read_answer` handles printed
 and state-dump answers and refuses termination answers: run those with
 `max_steps` and treat a halt as 0. A timeout remains undecided.
@@ -201,12 +202,12 @@ Their `answer_encoding` is `("halts", "diverges")`; its index gives the bit.
 
 `generate` and CLI `--width` bound columns through layout;
 `describe(language)["width_effect"]` identifies the three behaviours,
-including the 15 languages that ignore width because newlines are semantic.
+including the languages it does not affect (`"none"`).
 
 ## Bounded execution
 
-`run(language, program, stdin, isolated=True, timeout=30)` bounds subprocess startup,
-loading and execution on Windows and worker threads. Timeout kills and reaps
+`run(language, program, stdin=stdin, isolated=True, timeout=30)` bounds
+subprocess startup, loading and execution on Windows and worker threads. Timeout kills and reaps
 the child; errors retain their class and `partial_output`.
 `max_memory=BYTES` bounds a Linux isolated worker's virtual address space,
 including Python overhead. `run` requires `isolated=True`; CLI
@@ -214,7 +215,13 @@ including Python overhead. `run` requires `isolated=True`; CLI
 option. Parent source loading is outside the cap; exhaustion raises
 `InterpreterLimitError`, never a Boolean answer.
 
-`run(language, program, stdin, max_steps=100_000, timeout=1)`
+Untrusted programs need all three bounds: `isolated=True`, a `timeout` and,
+on Linux, `max_memory`. A timeout alone does not bound memory, and a program
+can grow faster than any timeout fires (Underload's `(x)(~:*~:^):^` doubles a
+string past a gigabyte in under a second). Elsewhere, cap the process
+yourself.
+
+`run(language, program, stdin=stdin, max_steps=100_000, timeout=1)`
 returns output on halt and raises `ExecutionTimeoutError` with
 `partial_output` when either bound expires. `max_steps` selects cooperative stepping.
 It steps all languages on Windows and worker threads; deadlines are checked
@@ -228,7 +235,9 @@ Zero permits no output; halting at exactly the cap succeeds.
 
 ```python
 try:
-    esolangs.run("brainfuck", ",[.]", "y", isolated=True, timeout=3, max_output=12)
+    esolangs.run(
+        "brainfuck", ",[.]", stdin="y", isolated=True, timeout=3, max_output=12
+    )
 except esolangs.InterpreterLimitError as exc:
     assert exc.partial_output == "y" * 12
 ```
@@ -261,7 +270,7 @@ the halt instruction executes; inspect `halted` separately from the stop reason.
 ```python
 from esolangs.debugger import make_debugger
 
-debug = make_debugger("brainfuck", ",[.]", "y")
+debug = make_debugger("brainfuck", ",[.]", stdin="y")
 debug.break_on_output("yy")
 assert debug.run(max_steps=100) == "breakpoint"
 assert debug.output == "yy"
@@ -290,19 +299,27 @@ shows the `gen`, `tmpl`, and `ex` markers.
 
 ## Compatibility
 
-The package is beta. Within a major release, compatibility covers:
+The package is beta until 1.0: a 0.x minor release may still break the
+surface below, and [CHANGELOG.md](../CHANGELOG.md) lists every break. The
+public API is `esolangs.__all__` and `esolangs.debugger.__all__`, plus the
+documented CLI; every other module (`esolangs.vm`, `esolangs.registry`,
+`esolangs.tools`, `esolangs.interpreters`, ...) is internal. From 1.0, within
+a major release, compatibility covers:
 
-- names in `esolangs.__all__`, their documented arguments, and deliberate
-  `EsolangError` exceptions;
-- CLI command names, exit-status meanings, and JSON field meanings;
-- existing `describe()` fields and their value types;
+- public names, their signatures (required arguments positional, optional
+  ones keyword-only), and deliberate `EsolangError` exceptions;
+- CLI command names, JSON field meanings, and exit statuses: 0 success,
+  1 the program broke, 2 the ask was wrong, 70 internal error, 120 stdout
+  closed early, 124 a bound ran out, 130 interrupted;
+- existing `describe()` fields and their value types (an absent value is
+  `None`; `examples` are paths relative to the package);
 - interpreter semantics for valid programs, including I/O and answers;
 - committed examples as executable programs for their recorded tables.
 
-New optional arguments and metadata fields may be added. Human CLI prose,
-generated program text, debugger presentation, and private `_` names may
-change without deprecation; generated programs retain behaviour, not spelling
-or size.
+New keyword-only arguments and metadata fields may be added. Human CLI prose,
+generated program text, debugger presentation, internal modules, and private
+`_` names may change without deprecation; generated programs retain
+behaviour, not spelling or size.
 
 A breaking public change requires a major release. Coexisting replacements
 are documented for at least one minor release.

@@ -10,6 +10,7 @@ from tests.generator_support import evaluate_generated
 from tests.tools.boolean_runners import (
     run_grapheme,
 )
+from tests.tools.test_boolean_contract import _one_minterm
 
 
 class TestGrapheme:
@@ -45,15 +46,10 @@ class TestGrapheme:
 class TestGraphemeTable:
     """The one literal holding the table, and the index that shifts it."""
 
-    @staticmethod
-    def _one_minterm(n: int) -> str:
-        """A table whose single 1 makes every one of its ``n`` inputs matter."""
-        return "1" + "0" * (2**n - 1)
-
     def test_padding_never_reaches_an_entry(self) -> None:
         """Every entry survives the lift that forces a leading decimal 1."""
         for n in range(1, 9):
-            for table in (self._one_minterm(n), "01" * (2 ** (n - 1))):
+            for table in (_one_minterm(n), "01" * (2 ** (n - 1))):
                 packed = _grapheme_table(table)
                 assert str(packed)[0] == "1"
                 low = format(packed % (1 << len(table)), f"0{len(table)}b")
@@ -63,7 +59,7 @@ class TestGraphemeTable:
     @pytest.mark.medium
     def test_a_table_using_every_input_still_computes(self, n: int) -> None:
         """Six essential inputs reached slot 5, whose old key was ``FFF``."""
-        table = self._one_minterm(n)
+        table = _one_minterm(n)
         assert evaluate_generated("Grapheme", table, timeout=60) == table
 
     def test_parity_at_six_inputs_computes(self) -> None:
@@ -78,5 +74,5 @@ class TestGraphemeTable:
         packed = _grapheme_table
         module = importlib.import_module("esolangs.tools.grapheme")
         monkeypatch.setattr(module, "_grapheme_table", lambda t: 2 * packed(t))
-        table = self._one_minterm(6)
+        table = _one_minterm(6)
         assert evaluate_generated("Grapheme", table, timeout=60) != table

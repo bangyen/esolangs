@@ -92,7 +92,7 @@ def bits_of(value: int) -> str:
 #
 # **Do not derive this set from that flag.**  Importing every ``_Machine``
 # and reading the attribute reproduces these names exactly, which is the
-# reason not to: ``test_the_dump_convention_matches_what_the_vm_reports``
+# reason not to: ``_check_protocol`` in ``test_vm_protocol.py``
 # compares the declaration against the *behaviour*, driving a machine to
 # its halt and stepping once more, and it compares this set against the
 # flag in both directions.  A derived set would make that test compare the
@@ -131,25 +131,9 @@ DUMPS_ON_THE_POST_HALT_STEP = frozenset(
 # How each one is stopped from outside is recorded next to the trait, which
 # is where the machine that does it lives.  The set stays for the same two
 # reasons the one above does, and
-# ``test_the_halting_convention_matches_what_the_vm_reports`` locks it
+# ``_check_protocol`` in ``test_vm_protocol.py`` locks it
 # against the traits in both directions.
 NEVER_SELF_HALTS = frozenset({"A Painter Ant", "Suffolk"})
-
-# Languages whose ``step()`` raises when called on an already-halted
-# machine, rather than returning without doing anything.
-#
-# This set is kept, empty, because it is what holds the fix in place.  It
-# once held nine languages -- brainfuck, Eval, Factor, Dimensional,
-# Modulous, Point Break, Qoibl, S*bleq and Grapheme -- each of which
-# indexed off the end of its own program when stepped past its halt.  The
-# fifteen hand-written copies of ``test_step_after_halt_is_a_noop``
-# happened to cover none of them, so the inconsistency survived precisely
-# because the check was written per file instead of swept.
-#
-# All nine now carry the ``if self.halted: return`` guard the other fifty
-# interpreters already had.  The shared execution check steps each halted
-# machine again and fails on an exception; this set must stay empty.
-RAISES_ON_THE_POST_HALT_STEP: frozenset[str] = frozenset()
 
 # LaserFuck's ``run`` draws the laser's initial heading at random when it
 # is not pinned, so its output is not a function of the program alone and
@@ -165,7 +149,6 @@ SAMPLES: dict[str, tuple[Program, str]] = {
     "Cyclic tag": (",1", ""),
     "Subleq": ("6 -1 3 0 0 -1 65", ""),
     "123": ("3231", ""),
-    "3D Brainfuck": ("+.", ""),
     "3x": ("3!", ""),
     "6-5": ("55A", ""),
     "A Painter Ant": ("Pnn", ""),
@@ -177,7 +160,6 @@ SAMPLES: dict[str, tuple[Program, str]] = {
     "BFStack": (">+.", ""),
     "Back": ("-*", ""),
     "Befunge": ("99*.@", ""),
-    "Befunge-98": ("'Q.@", ""),
     "B-tapemark": (">OK!", ""),
     "BIO": ("0ox;0ix{1ox;};1ix;", ""),
     "bit~": ("~(", ""),

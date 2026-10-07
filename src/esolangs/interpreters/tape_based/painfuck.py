@@ -7,7 +7,7 @@ dropped.  This inverts the generator's rotation, so generated programs
 round-trip.
 
 Tape of unbounded integers from one 0 cell.  ``p``/``s`` add 2/subtract
-1; ``r``/``l`` move two right/one left (``l`` clamps at 0); ``i``/``j``
+1; ``r``/``l`` move two right/one left; ``i``/``j``
 read a number/byte; ``o``/``u`` print number/byte; ``a``/``b`` loop while
 nonzero; ``k`` squares, ``z`` zeroes, ``h`` halves rounded down; ``w``/``q``
 copy from right/left neighbour; ``c`` repeats the next command
@@ -15,10 +15,19 @@ copy from right/left neighbour; ``c`` repeats the next command
 wiki); ``v`` executes it only when the cell is zero; ``d`` resets the pointer;
 ``t`` repeats the previous command ``3**run``; ``e`` halts.
 
+The tape is unbounded both ways: ``l`` at the leftmost cell grows it a
+zero cell on the left.  The wiki says nothing about the left edge, and
+brainfuck's page allows cells left of the start.  ``d`` ("go back to the
+start of tape") returns to the cell the run started on, wherever the
+tape has grown since, and ``q`` at the leftmost cell copies the zero to
+its left, as ``w`` at the rightmost copies the zero to its right.
+
 A ``c`` run is one count: ``ccc`` is ``7**3``. ``cp`` runs ``p``
 seven times; ``pt`` four, and ``ptt`` thirteen (the author's ``ptto``
 prints 26). Each successive ``t`` contributes the next power of three.
-``ct`` is four ``c``s, ``7**4``; ``ctt`` thirteen, ``7**13``. A repeated
+``ct`` is four ``c``s, ``7**4``; ``ctt`` thirteen, ``7**13``.  "The last
+command" is the previous character of the program, so ``vpt`` repeats ``p``
+(not ``vp``) and a ``t`` after a jump repeats the text before it. A repeated
 ``y`` is each its own flip, so ``cyp`` spans ``{0, 2, ..., 14}`` weighted
 ``Binomial(7, 1/2)``.
 
@@ -74,10 +83,12 @@ def _half(n: int) -> int:
     return n // 2
 
 
-#: ``(tape, loop, ptr, ind, rep)``: cells, loop-entry stack, pointer,
-#: cursor, repeat counter.  ``c`` multiplies ``rep`` by 7 and ``t`` by 3
-#: and the whole command runs that many times, so effects are a list.
-type _State = tuple[tuple[int, ...], tuple[int, ...], int, int, int]
+#: ``(tape, loop, ptr, ind, rep, origin)``: cells, loop-entry stack,
+#: pointer, cursor, repeat counter, and the index of the starting cell
+#: (``d``'s target, which moves right as ``l`` grows the tape left).
+#: ``c`` multiplies ``rep`` by 7 and ``t`` by 3 and the whole command runs
+#: that many times, so effects are a list.
+type _State = tuple[tuple[int, ...], tuple[int, ...], int, int, int, int]
 
 
 @dataclass(frozen=True)
@@ -202,9 +213,9 @@ def _advance(
     Pure.  Writes are collected, not performed, because the repeat counter
     can print many times per step; inputs arrive in ``reads`` and ``y``
     coins in ``coins``.  The command is a local, not state: ``c``, ``y``,
-    ``v``, ``t`` refetch mid-repeat and ``j`` rewrites itself to a newline.
+    ``v``, ``t`` refetch mid-repeat, and a repeated ``j`` reads each time.
     """
-    tape, loop, ptr, ind, rep = state
+    tape, loop, ptr, ind, rep, origin = state
     reader = _Reader(reads)
     coin = _Coins(coins)
     effects: list[_Effect] = []
@@ -230,7 +241,10 @@ def _advance(
                 tape, rep = _grow(tape, ptr), 0
                 continue
             if c == "l":
-                ptr, rep = max(0, ptr - rep), 0
+                # Past the left edge the tape grows by the overshoot.
+                grown = max(0, rep - ptr)
+                tape, origin = (0,) * grown + tape, origin + grown
+                ptr, rep = ptr + grown - rep, 0
                 continue
             if c == "h":
                 # Repeated floor division by two is an arithmetic shift.
@@ -274,16 +288,20 @@ def _advance(
         elif c == "l":
             if ptr:
                 ptr -= 1
+            else:
+                tape, origin = (0, *tape), origin + 1
         elif c == "i":
             try:
                 line = reader.take(line=True)
             except _NeedRead as want:
-                raise _NeedRead(line=True, state=(tape, loop, ptr, ind, rep)) from want
+                raise _NeedRead(
+                    line=True, state=(tape, loop, ptr, ind, rep, origin)
+                ) from want
             try:
                 tape = _set(tape, ptr, int(str(line)))
             except ValueError:
                 raise _Halted(
-                    (tape, loop, ptr, ind, rep),
+                    (tape, loop, ptr, ind, rep, origin),
                     effects,
                     HaltError(hint="supply a decimal integer for i input"),
                 ) from None
@@ -292,12 +310,10 @@ def _advance(
             try:
                 byte = reader.take(line=False)
             except _NeedRead as want:
-                raise _NeedRead(line=False, state=(tape, loop, ptr, ind, rep)) from want
+                raise _NeedRead(
+                    line=False, state=(tape, loop, ptr, ind, rep, origin)
+                ) from want
             tape = _set(tape, ptr, int(str(byte)))
-            # The cross-check's discard-to-end-of-line loop leaves the main
-            # command variable holding '\n', so a ``c``/``t``-repeated ``j``
-            # only reads once and then no-ops.
-            c = "\n"
         elif c == "o":
             effects.append(_Print(tape[ptr], as_char=False))
         elif c == "u":
@@ -310,7 +326,7 @@ def _advance(
         elif c == "b":
             if not loop:
                 raise _Halted(
-                    (tape, loop, ptr, ind, rep),
+                    (tape, loop, ptr, ind, rep, origin),
                     effects,
                     HaltError(
                         "unmatched 'b': the loop stack is empty",
@@ -328,8 +344,7 @@ def _advance(
         elif c == "w":
             tape = _set(tape, ptr, tape[ptr + 1] if ptr + 1 < len(tape) else 0)
         elif c == "q":
-            if ptr:
-                tape = _set(tape, ptr, tape[ptr - 1])
+            tape = _set(tape, ptr, tape[ptr - 1] if ptr else 0)
         elif c == "c":
             rep = 1
             while c == "c":
@@ -364,13 +379,14 @@ def _advance(
             if rep <= 0:
                 break
         elif c == "e":
-            return ((tape, loop, ptr, n, 0), effects)
-        elif c == "v" and tape[ptr] == 0 and ind < n:
-            c = prog[ind]
+            return ((tape, loop, ptr, n, 0, origin), effects)
+        elif c == "v" and ind < n:
+            # "Do next command if value on tape is zero": else skip it.
+            # Either way the next command is consumed once.
+            c, rep = prog[ind], int(tape[ptr] == 0)
             ind += 1
-            rep = 1
         elif c == "d":
-            ptr = 0
+            ptr = origin
         elif c == "t":
             # Each t contributes another power of three. The author's
             # ptto example is 2 * (1 + 3 + 9) = 26.
@@ -386,7 +402,7 @@ def _advance(
             c = prog[ind] if found else _NUL
             ind = val
 
-    return ((tape, loop, ptr, ind, rep + 1), effects)
+    return ((tape, loop, ptr, ind, rep + 1, origin), effects)
 
 
 class _Machine:
@@ -412,6 +428,7 @@ class _Machine:
         self.ptr = 0
         self.ind = 0
         self.rep = 1
+        self.origin = 0
 
     @property
     def halted(self) -> bool:
@@ -439,6 +456,7 @@ class _Machine:
             self.ptr,
             self.ind,
             self.rep,
+            self.origin,
             self.io.position(),
             self.prog,
             self._input_reads,
@@ -490,8 +508,8 @@ class _Machine:
                 # is to ``run``.  The branch graph has no error flag, so move
                 # its cursor past the program; ``branching_halted`` then
                 # recognizes it without pretending the failed command ran.
-                tape, loop, ptr, _ind, rep = halt.state
-                successors.append((tape, loop, ptr, self.n, rep))
+                tape, loop, ptr, _ind, rep, origin = halt.state
+                successors.append((tape, loop, ptr, self.n, rep, origin))
             else:
                 successors.append(next_state)
         return tuple(successors)
@@ -499,11 +517,11 @@ class _Machine:
     @property
     def _state(self) -> _State:
         """The machine's fields as the value the transition works on."""
-        return (self.tape, self.loop, self.ptr, self.ind, self.rep)
+        return (self.tape, self.loop, self.ptr, self.ind, self.rep, self.origin)
 
     def _restore(self, state: _State) -> None:
         """Write a transition's result back onto the machine's fields."""
-        self.tape, self.loop, self.ptr, self.ind, self.rep = state
+        self.tape, self.loop, self.ptr, self.ind, self.rep, self.origin = state
 
     def step(self) -> None:
         """Execute one command, advancing the cursor.

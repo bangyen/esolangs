@@ -5,7 +5,7 @@ import pytest
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.grid_based.a_painter_ant import _Machine as _AntMachine
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.other.packlang import _Parser
+from esolangs.interpreters.other._packlang_parse import _Parser
 from esolangs.interpreters.stack_based.three_x import run as three_x_run
 from tests.interpreters.runner import run_program
 

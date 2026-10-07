@@ -1,0 +1,25 @@
+{
+ "language": "Painfuck",
+ "oldid": 189090,
+ "examples": [
+  {
+   "id": "hello",
+   "source": "crwydvoeprqddkveuwbldtveprsyjulephwzjtvsprwahkaeouztjkuypriihi\nbbcrtyjklaswwzjlleprqjldteprwzyyuyhrazoqoosyyuyhoppiozjtveprwi",
+   "expected": "Hello, world!"
+  },
+  {
+   "id": "cat",
+   "source": "jhdec",
+   "stdin": "abc",
+   "expected": "abc",
+   "stop": "eof"
+  },
+  {
+   "id": "looping-counter",
+   "source": "pticjdy",
+   "expected": "12345678910",
+   "stop": "steps",
+   "max_steps": 300
+  }
+ ]
+}

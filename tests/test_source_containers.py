@@ -47,7 +47,7 @@ def test_execution_container_parity(language: str, container: str, mode: str) ->
         bounds["max_steps"] = 10000
     elif mode == "isolated":
         bounds["isolated"] = True
-    assert esolangs.run(language, source, stdin, **bounds) == "1"
+    assert esolangs.run(language, source, stdin=stdin, **bounds) == "1"
     assert stdin.tell() == 1
     assert not stdin.closed
     if hasattr(source, "closed"):
@@ -62,7 +62,7 @@ def test_streams_work_with_bound_api_debugging_and_evaluation(language: str) -> 
         program.to_png() if isinstance(program, esolangs.Raster) else program.encode()
     )
     assert _evaluate(api.name, io.BytesIO(data), inputs=1) == "01"
-    debugger = make_debugger(language, io.BytesIO(data), io.StringIO("1"))
+    debugger = make_debugger(language, io.BytesIO(data), stdin=io.StringIO("1"))
     assert debugger.run(max_steps=10000) == "halted"
     assert debugger.output == "1"
 
@@ -81,18 +81,18 @@ def test_nonseekable_streams_are_read_once_from_the_current_position() -> None:
     program, stdin = Stream(b",.,."), Stream("\n\x00")
     assert _check_program("brainfuck", program, stdin) == ",.,."
     assert stdin.reads == 0
-    assert esolangs.run("brainfuck", ",.,.", stdin) == "\n\x00"
+    assert esolangs.run("brainfuck", ",.,.", stdin=stdin) == "\n\x00"
     assert (program.reads, stdin.reads) == (1, 1)
     source = io.StringIO("ignored,.")
     source.seek(7)
-    assert esolangs.run("brainfuck", source, "Z") == "Z"
+    assert esolangs.run("brainfuck", source, stdin="Z") == "Z"
 
 
 @pytest.mark.parametrize(
     "stdin", ["é", "é".encode(), io.StringIO("é"), io.BytesIO("é".encode())]
 )
 def test_binary_stdin_uses_the_same_unicode_character_stream(stdin: Any) -> None:
-    assert esolangs.run("brainfuck", ",.", stdin) == "é"
+    assert esolangs.run("brainfuck", ",.", stdin=stdin) == "é"
 
 
 def test_raster_interpreter_owns_loading_and_scale_support(
@@ -104,15 +104,15 @@ def test_raster_interpreter_owns_loading_and_scale_support(
         "Piet",
         replace(LANGUAGES["Piet"], source_kind=SourceKind.TEXT, boolean=None),
     )
-    assert esolangs.run("Piet", program.to_png(), "1", scale=2) == "1"
-    assert esolangs.run("Piet", program, "1", scale=2, max_steps=100) == "1"
+    assert esolangs.run("Piet", program.to_png(), stdin="1", scale=2) == "1"
+    assert esolangs.run("Piet", program, stdin="1", scale=2, max_steps=100) == "1"
 
 
 def test_path_loading_retains_existing_newline_normalization(tmp_path: Path) -> None:
     path = tmp_path / "source.txt"
     path.write_bytes(b"+,\r\n.\r\n")
     assert _check_program("brainfuck", path) == "+,\n."
-    assert esolangs.run("brainfuck", path, "Q") == "Q"
+    assert esolangs.run("brainfuck", path, stdin="Q") == "Q"
 
 
 @pytest.mark.parametrize("container", ["bytes", "stream"])
@@ -125,7 +125,7 @@ def test_invalid_utf8_input_is_an_argument_error(container: str, mode: str) -> N
     elif mode == "isolated":
         bounds["isolated"] = True
     with pytest.raises(esolangs.ArgumentError, match="cannot read stdin"):
-        esolangs.run("brainfuck", ",.", argument, **bounds)
+        esolangs.run("brainfuck", ",.", stdin=argument, **bounds)
 
 
 @pytest.mark.parametrize("mode", ["normal", "steps", "isolated"])
@@ -152,7 +152,7 @@ def test_stream_failures_keep_public_error_types(mode: str) -> None:
         with pytest.raises(esolangs.ProgramError):
             esolangs.run("brainfuck", stream, **bounds)  # type: ignore[arg-type]
         with pytest.raises(esolangs.ArgumentError):
-            esolangs.run("brainfuck", ",.", stream, **bounds)  # type: ignore[arg-type]
+            esolangs.run("brainfuck", ",.", stdin=stream, **bounds)  # type: ignore[arg-type]
 
 
 # Isolated cases spawn a worker: the medium band, like test_run_isolated.
@@ -165,11 +165,11 @@ def test_invalid_numeric_input_is_not_mislabeled_as_a_program_error(mode: str) -
         bounds["max_steps"] = 100
     elif mode == "isolated":
         bounds["isolated"] = True
-    assert esolangs.run("Befunge", "&.@", b"-12345", **bounds) == "-12345 "
+    assert esolangs.run("Befunge", "&.@", stdin=b"-12345", **bounds) == "-12345 "
     with pytest.raises(
         esolangs.ArgumentError, match="input must be an integer"
     ) as error:
-        esolangs.run("Befunge", '"A",&.@', io.StringIO("invalid"), **bounds)
+        esolangs.run("Befunge", '"A",&.@', stdin=io.StringIO("invalid"), **bounds)
     assert error.value.partial_output == "A"
 
 
@@ -196,7 +196,7 @@ def test_isolated_deadline_bounds_stream_acquisition(
     stdin: Any = Stream() if blocked == "stdin" else "A"
     try:
         with pytest.raises(esolangs.ExecutionTimeoutError, match="loading input"):
-            esolangs.run("brainfuck", program, stdin, isolated=True, timeout=0.1)
+            esolangs.run("brainfuck", program, stdin=stdin, isolated=True, timeout=0.1)
         assert entered.is_set()
         assert not finished.is_set()
     finally:

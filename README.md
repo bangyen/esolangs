@@ -7,7 +7,7 @@
 
 <!-- PACKAGE-COUNT:START -->
 
-Interpreters and Boolean generators for 82 esoteric languages: 80 text and 2 raster.
+Interpreters and Boolean generators for 80 esoteric languages: 78 text and 2 raster.
 
 <!-- PACKAGE-COUNT:END -->
 
@@ -59,9 +59,8 @@ import esolangs
 
 program = esolangs.generate("brainfuck", "0110")
 stdin = esolangs.encode_inputs("brainfuck", [0, 1])
-assert (
-    esolangs.read_answer("brainfuck", esolangs.run("brainfuck", program, stdin)) == "1"
-)
+output = esolangs.run("brainfuck", program, stdin=stdin)
+assert esolangs.read_answer("brainfuck", output) == "1"
 ```
 
 Use `isolated=True` for a bounded run on Windows or worker threads.
@@ -90,15 +89,15 @@ Generate a program with `esolangs generate Flowchart 0110 > flowchart.txt`, then
 Here is Flowchart at step 14:
 
 ```
-Flowchart  step 14  ip (1, 57, 0, -1)  running
+Flowchart  step 14  ip (1, 79, 0, -1)  running
 --------------------------------------------------------------------------
-1 | ───────────┐     ┌< ]──┐
-2 | \ \─\{ }/─< >─/ /┴────< >─/ /─\[ ]/─{ ]─\[ ]/─[ >─\[ ]/─[ }─\[ ]/─{ ]─
+1 |  ]─\ \─/{ }\─┐                                 ┌< ]──┐
+2 | ]─\ \─\{ }/─< >─/ /─/ /─/ /─/ /─/ /─/ /─/ /─/ /┴────< >─/ /─\[ ]/─{ ]─
 --------------------------------------------------------------------------
-memory   0 1 1
+memory   0 1 1 0
 stack    (empty)
 output   ''
-views    deques={0: [0, 1], 1: [1]}  pointers=[_Pointer(row=1, col=57, d=(
+views    deques={0: [0, 1], 1: [1, 0]}  pointers=[_Pointer(row=1, col=79,
 hjkl move | t break | space step | c continue | r run | b back | q quit
 R restart | w/W watch | G to ip | 0-9 count | p play | +/- speed
 ```
@@ -109,7 +108,7 @@ See [debugging](https://github.com/bangyen/esolangs/blob/main/docs/usage.md#debu
 
 <!-- EXAMPLES:START -->
 
-Ready-to-run programs for each of the 78
+Ready-to-run programs for each of the 76
 languages with a boolean generator live in
 [`examples/`](https://github.com/bangyen/esolangs/tree/main/src/esolangs/examples).
 
@@ -125,7 +124,7 @@ Familiar languages include [brainfuck](https://esolangs.org/wiki/brainfuck),
 <details>
 <!-- IMPLEMENTED:START -->
 
-<summary>Show all 82 languages</summary>
+<summary>Show all 80 languages</summary>
 
 ### Grid-based Languages
 
@@ -136,7 +135,6 @@ Languages that move a pointer or beam across a 2D grid.
 - [ArrowQueue](https://esolangs.org/wiki/ArrowQueue) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/arrowqueue.py))
 - [B-tapemark](https://esolangs.org/wiki/B-tapemark) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/b_tapemark.py))
 - [Befunge](https://esolangs.org/wiki/Befunge) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/befunge.py))
-- [Befunge-98](https://esolangs.org/wiki/Befunge-98) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/befunge_98.py))
 - [Circuit Diagram](https://esolangs.org/wiki/Circuit_Diagram) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/circuit_diagram.py))
 - [Clockwise](https://esolangs.org/wiki/Clockwise) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/clockwise.py))
 - [Dig](https://esolangs.org/wiki/Dig) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/dig.py))
@@ -178,7 +176,6 @@ Languages whose primary data structure is a queue or deque.
 Languages that operate on a tape (similar to Turing machines).
 
 - [123](https://esolangs.org/wiki/123) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/one_two_three.py))
-- [3D Brainfuck](https://esolangs.org/wiki/3D_Brainfuck) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/three_d_brainfuck.py))
 - [6-5](https://esolangs.org/wiki/6-5) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/six_five.py))
 - [Back](https://esolangs.org/wiki/Back) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/back.py))
 - [Boolfuck](https://esolangs.org/wiki/Boolfuck) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/boolfuck.py))
@@ -249,7 +246,7 @@ Languages that don't fit into the above categories.
 <!-- BOOLEAN-COUNT:START -->
 
 The truth table is a binary string of length `2**n`, most-significant input
-first; its length implies `n`, so it isn't passed separately.  78 of the
+first; its length implies `n`, so it isn't passed separately.  76 of the
 languages have such a generator, some covering only a documented subset of
 tables.
 
@@ -263,7 +260,5 @@ for input conventions and benchmarking.
 ## Contributing
 
 See [contributing](https://github.com/bangyen/esolangs/blob/main/docs/CONTRIBUTING.md)
-for setup and verification, and
-[architecture](https://github.com/bangyen/esolangs/blob/main/docs/architecture.md)
-for the execution path.
+for setup, verification and the execution path.
 The project is GPL v3; see [LICENSE](https://github.com/bangyen/esolangs/blob/main/LICENSE).

@@ -23,11 +23,12 @@ install-dev:
     set -euo pipefail
     if command -v uv >/dev/null 2>&1; then
         echo "Using uv..."
-        uv pip install -e ".[dev]"
+        uv sync --group dev
     else
         echo "Using pip..."
+        # `--group` (PEP 735 dependency groups) needs pip 25.1.
         python -m pip install -U pip
-        pip install -e ".[dev]"
+        pip install -e . --group dev
     fi
     # Enable the pre-push gate (scripts/verify.py) so every push runs the
     # full local check: lint, pytest, bandit, and the verify scripts.

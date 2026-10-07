@@ -8,6 +8,9 @@ is a nop and ``v`` halts.
 
 The reference interpreter hangs forever when the cell at ``c`` leaves 33-126;
 this one halts instead, the behaviour the wiki attributes to the specification.
+When ``i`` lands ``c`` on such a cell, the cell is left as it is rather than
+encrypted: the spec's table has no entry for it (the reference indexes
+outside its array), and the next instruction runs at ``c + 1``.
 Input consumes consecutive Unicode characters, including newlines; the spec
 does not define encoding or framing. EOF is the value 59048, not an error.  A
 source character that does not decipher to an instruction raises

@@ -35,7 +35,7 @@ class TestParameterizedMinskySwap:
         assert example.fill is not None
         for n in (1, 2, 3, 5):
             table = "".join(str(row.bit_count() & 1) for row in range(1 << n))
-            template = esolangs.generate("Minsky Swap", table, width)
+            template = esolangs.generate("Minsky Swap", table, width=width)
             pairs = minsky_swap_setters(template, n)
             assert len(set(pairs)) == 1
             assert len(pairs[0][0]) == len(pairs[0][1])
@@ -51,7 +51,7 @@ class TestParameterizedMinskySwap:
     def test_short_rmsn_public_floor(self) -> None:
         import esolangs
 
-        template = esolangs.generate("Minsky Swap", "0110", 1)
+        template = esolangs.generate("Minsky Swap", "0110", width=1)
         assert template.setters == (("decnz(2);", "inc();   "),) * 2
         assert max(map(len, template.splitlines())) == 9
         for bits in ([0, 0], [0, 1], [1, 0], [1, 1]):
@@ -65,7 +65,7 @@ class TestParameterizedMinskySwap:
 
         for table in witnesses(n):
             for width in (1, 8, 9, 10, 15):
-                tagged = esolangs.generate("Minsky Swap", table, width)
+                tagged = esolangs.generate("Minsky Swap", table, width=width)
                 assert tagged.setters is not None
                 assert len(tagged.setters) == n
                 assert len(set(tagged.setters)) == 1

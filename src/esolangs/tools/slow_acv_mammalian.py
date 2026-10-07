@@ -52,8 +52,8 @@ __all__ = ["slow_acv_mammalian"]
 #: How many arrays the machine has; ``SPRINT`` moves the pointer mod this.
 _ARRAYS = 23
 
-# Arithmetic domain of the current construction, including its replay model.
-# XOR read nodes and parity-based merges are proved only for this byte domain.
+# The helpers' default domain, including the replay model: the modulo-256
+# I/O construction.  The entry point passes the caller's moduli through.
 _GENERATOR_MODULI = MammalianModuli(cell_modulus=256, io_modulus=256)
 _MODULUS = _GENERATOR_MODULI.cell_modulus
 _IO_MODULUS = _GENERATOR_MODULI.io_modulus

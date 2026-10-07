@@ -18,6 +18,12 @@ other eight digits leave the mole unchanged here rather than being assigned
 a meaning the wiki does not give them.
 
 Exhausted input raises :class:`EOFError` (the repo-wide convention).
+
+The mole holds one integer (a letter is its code), and ``:`` prints one
+below 10 as a decimal and any other as a character: the page has no
+types.  ``;`` copies the mole into its cell and keeps it ("the ``;`` is
+given the Moles current value"), so the truth machine prints ``2111...``
+on 1, as drawn; zeroing the mole there would make it print ``111...``.
 """
 
 from esolangs._drive import drive

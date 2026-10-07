@@ -124,7 +124,7 @@ def test_fractran_phase_parity_public_uniform_setters(
 ) -> None:
     from esolangs.tools.fractran import fractran_setters
 
-    template = esolangs.generate("FRACTRAN", "0110", width)
+    template = esolangs.generate("FRACTRAN", "0110", width=width)
     if as_string:
         template = str(template)
     pairs = fractran_setters(template, 2)
@@ -160,7 +160,7 @@ def test_fractran_phase_parity_retains_larger_layout_execution(n: int) -> None:
 
     table = "".join(str(row.bit_count() % 2) for row in range(2**n))
     for width in [1, 4, 80]:
-        program = esolangs.generate("FRACTRAN", table, width)
+        program = esolangs.generate("FRACTRAN", table, width=width)
         for row in [0, 1, 2**n // 3, 2**n - 1]:
             bits = list(map(int, format(row, f"0{n}b")))
             filled = esolangs.instantiate("FRACTRAN", program, bits)

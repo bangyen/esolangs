@@ -71,3 +71,11 @@ def test_input_cursor_is_in_snapshot() -> None:
 
 def test_eof_clears_a_previously_read_cell() -> None:
     assert run_program(run, _source(",,."), "A", suppress_eof=False) == "\x00"
+
+
+def test_wiki_cat_stated_count_runs_and_listed_count_is_unmatched() -> None:
+    # Unary/Cat program states 56623 zeros; its listing holds 55623 (,.,>]).
+    assert decode("0" * 56623) == ",[.,]"
+    assert run_program(run, "0" * 56623, "hi") == "hi"
+    with pytest.raises(ValueError, match="unmatched"):
+        _Machine("0" * 55623, ScriptedIO())

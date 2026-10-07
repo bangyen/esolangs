@@ -62,8 +62,8 @@ def prepare_call(
         raise with_hint(
             ArgumentError(
                 f"{name} draws no random values, so a seed has nothing to fix; "
-                "the languages that draw are Befunge, Befunge-98, Fish, LaserFuck, "
-                "Modulous, Painfuck, Super SNUSP, Thue and thisthat"
+                "the languages that draw are Befunge, Fish, INTERCAL, "
+                "LaserFuck, Modulous, Painfuck, Super SNUSP, Thue and thisthat"
             ),
             ("omit seed when running a deterministic language"),
         )
@@ -90,11 +90,17 @@ def interpreter_errors(
     """Translate interpreter failures, preserving public errors and prior output."""
     try:
         yield
-    except (RecursionError, EsolangError, ValueError) as original:
+    except (RecursionError, MemoryError, EsolangError, ValueError) as original:
         error: EsolangError
         if isinstance(original, RecursionError):
             error = InterpreterLimitError(
                 recursion_message, hint="reduce expression nesting or recursion depth"
+            )
+        elif isinstance(original, MemoryError):
+            # As isolated execution reports a worker that hit max_memory.
+            error = InterpreterLimitError(
+                "the program ran out of memory",
+                hint="run it with isolated=True and max_memory to bound it",
             )
         elif isinstance(original, EsolangError):
             error = original

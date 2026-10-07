@@ -7,6 +7,12 @@ whose RAM is a tuple of ``(address, value)`` pairs in insertion order
 caller's dict.  ``halted`` once the cursor runs off the token list, and
 the dump prints exactly once on that step -- the ``dumped`` flag is in
 the state because it records an effect.
+
+Gotos are 1-based ("counting the first command as 1"), so ``0`` (or ``00``)
+names no command and raises :class:`~esolangs.exceptions.HaltError` when it
+runs.  It is not a comment: the wiki keeps digits out of the comment
+alphabet ("characters other than ``ZANCLS`` and digits").  A goto past the
+last command halts, as running off the end does.
 """
 
 from __future__ import annotations
@@ -14,6 +20,7 @@ from __future__ import annotations
 import re
 
 from esolangs._drive import drive
+from esolangs.exceptions import HaltError
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.persistent import (
@@ -89,6 +96,11 @@ def _advance(state: _State, op: str, index: _Index) -> _State:
     landing on ``int(op) - 2`` so the shared increment carries it.
     """
     ind, z, n, ram, dumped = state
+    if op.isdigit() and not int(op):
+        raise HaltError(
+            f"goto {op} at command {ind + 1}: commands count from 1",
+            hint="jump to a command number of 1 or more",
+        )
     z, n, ram, skip = change(z, n, ram, op, index)
     if op == "C" and skip:
         ind += 1
@@ -110,7 +122,7 @@ class _Machine:
     def __init__(self, code: str, io: IO) -> None:
         """Tokenize ``code`` and start both registers and RAM at zero."""
         self.io = io
-        self.tokens = re.findall(r"([ZANCLS]|[1-9]\d*)", code)
+        self.tokens = re.findall(r"[ZANCLS]|\d+", code)
         # ``halted`` is read twice per token -- once by ``run``'s loop and
         # once by ``step``'s guard -- so the length is taken once here.
         self.size = len(self.tokens)
@@ -146,7 +158,7 @@ class _Machine:
     def halted(self) -> bool:
         """Whether the cursor has run past the end of the token list.
 
-        A goto never lands negative (the regex tokenizes digits starting 1-9).
+        A goto never lands negative: :func:`_advance` rejects goto ``0``.
         """
         return self.state[0] >= self.size
 

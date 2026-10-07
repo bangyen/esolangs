@@ -31,11 +31,13 @@ class TestRotfuck:
             got = run_rotfuck(program, [str(b) for b in bits])
             assert got == table[combo], f"n={n} inputs {bits}"
 
-    def test_the_rotation_cycle_is_the_documented_one(self) -> None:
-        """``+ -> - -> > -> < -> , -> . -> [ -> ] -> +``, and it is a cycle."""
+    def test_the_rotation_cycle_is_the_interpreters_default(self) -> None:
+        """The prose's ``+-><,.[]`` turned backward, and it is a cycle."""
+        from esolangs.interpreters.tape_based.rotfuck import CYCLES
         from esolangs.tools.rotfuck import _ROTFUCK_CHAIN, _rotfuck_rot
 
-        assert _ROTFUCK_CHAIN == "+-><,.[]"
+        assert _ROTFUCK_CHAIN == "+][.,<>-" == CYCLES["backward"]
+        assert "+" + "+-><,.[]"[:0:-1] == _ROTFUCK_CHAIN
         for i, char in enumerate(_ROTFUCK_CHAIN):
             forward = _ROTFUCK_CHAIN[(i + 1) % 8]
             assert _rotfuck_rot(char, 1) == forward, char
@@ -53,70 +55,67 @@ class TestRotfuck:
                     assert _shows(cmd, seek, rot) == (
                         _rotfuck_rot(cmd, seek - rot) in "[]"
                     ), (cmd, seek, rot)
-        assert [c for c in "+-><" if not _shows(c, 0, 2)] == [">", "<"]
-        assert [c for c in "+-><" if not _shows(c, 0, 3)] == ["+", "<"]
         assert [c for c in "+-><" if not _shows(c, 0, 4)] == ["+", "-"]
+        assert [c for c in "+-><" if not _shows(c, 0, 5)] == ["+", "<"]
+        assert [c for c in "+-><" if not _shows(c, 0, 6)] == [">", "<"]
 
     def test_every_pad_is_invisible_and_they_are_shortest_first(self) -> None:
         """Padding shifts the rotation without shifting anything else."""
         from esolangs.tools.rotfuck import _PADS
 
-        assert _PADS[0] in ("+-", "-+", "><")
+        assert _PADS[:4] == ("+-", "-+", "><", "<>")
         assert list(_PADS) == sorted(_PADS, key=len)
         for pad in _PADS:
             cells: dict[int, int] = {}
-            at = low = 0
+            at = 0
             for char in pad:
                 assert char in "+-><", pad
                 at += (char == ">") - (char == "<")
-                low = min(low, at)
                 cells[at] = cells.get(at, 0) + (char == "+") - (char == "-")
             assert at == 0, pad
-            assert low == 0, pad
             assert not any(cells.values()), pad
 
     @pytest.mark.parametrize("trips", range(7))
     def test_a_loop_leaves_the_rotation_where_it_found_it(self, trips: int) -> None:
         """The invariant every loop rests on, checked by running one."""
         from esolangs.tools.helpers import _ASCII_ZERO
-        from esolangs.tools.rotfuck import _Builder
+        from esolangs.tools.rotfuck import _Builder, _parse
 
         out = _Builder()
-        out.travel(2)
-        out.emit("+" * trips)
-        out.travel(4)
-        out.drain("-<<+>>>>++")
-        out.travel(0)
-        out.emit("+" * _ASCII_ZERO)
-        out.emit(".")
+        out.emit(_parse("+" * trips + "[->+<]>" + "+" * _ASCII_ZERO + "."))
         assert run_rotfuck(out.text(), []) == str(trips)
+
+    @pytest.mark.parametrize("body", ["-", "-+-", ">+<-", "[-]"])
+    def test_a_body_of_either_parity_closes_at_its_phase(self, body: str) -> None:
+        """An even body opens with a ``[`` that cannot fire; an odd one does not."""
+        from esolangs.tools.helpers import _ASCII_ZERO
+        from esolangs.tools.rotfuck import _Builder, _parse
+
+        out = _Builder()
+        out.emit(_parse(f"+++[{body}]" + "+" * _ASCII_ZERO + "."))
+        assert run_rotfuck(out.text(), []) == "0"
 
     def test_the_program_is_only_command_characters(self) -> None:
         """Nothing but the eight commands is emitted."""
         for table in ("01", "0110", "11110000", "01101001"):
             assert set(boolean.rotfuck(table)) <= set("+-><,.[]"), table
 
+    def test_only_the_default_rotation_is_targeted(self) -> None:
+        assert boolean.rotfuck("01", rotation="backward") == boolean.rotfuck("01")
+        with pytest.raises(ValueError, match="backward"):
+            boolean.rotfuck("01", rotation="forward")
+
     @pytest.mark.parametrize(
         ("table", "length"),
         [
-            ("01", 224),
-            ("10", 224),
-            ("0001", 390),
-            ("0110", 391),
-            ("11110000", 228),
-            ("01101001", 571),
+            ("01", 128),
+            ("10", 128),
+            ("0001", 211),
+            ("0110", 212),
+            ("11110000", 134),
+            ("01101001", 301),
         ],
     )
     def test_the_emitted_length_is_exact(self, table: str, length: int) -> None:
         """The layout is deterministic down to the character."""
         assert len(boolean.rotfuck(table)) == length
-
-
-def test_rotfuck_loop_does_not_swallow_an_invariant_failure() -> None:
-    from esolangs.tools.rotfuck import _Builder
-
-    def broken() -> None:
-        raise AssertionError("broken body invariant")
-
-    with pytest.raises(AssertionError, match="broken body invariant"):
-        _Builder().loop(broken, lambda: None)

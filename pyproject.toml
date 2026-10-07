@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "esolangs"
-version = "0.8.0"
+version = "0.10.0"
 description = "A curated collection of esoteric programming language interpreters"
 authors = [{name = "Bangyen Pham", email = "bangyenp@gmail.com"}]
 license = "GPL-3.0-or-later"
@@ -21,6 +21,7 @@ classifiers = [
     "Programming Language :: Python :: 3.14",
     "Topic :: Software Development :: Interpreters",
     "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
 ]
 keywords = ["esoteric", "programming", "languages", "interpreters", "brainfuck", "esolangs"]
 dependencies = []
@@ -30,6 +31,11 @@ image = ["Pillow>=11.3.0"]
 math = [
     "sympy>=1.12.0",
 ]
+
+# PEP 735: development tooling is not an installable extra, so its exact pins
+# stay out of the published METADATA.  `uv sync` installs this group by
+# default; `uv sync --group dev` says so explicitly.
+[dependency-groups]
 dev = [
     "pytest>=9.0.3",
     "pytest-cov>=4.0.0",
@@ -57,6 +63,7 @@ dev = [
 Homepage = "https://github.com/bangyen/esolangs"
 Repository = "https://github.com/bangyen/esolangs"
 Issues = "https://github.com/bangyen/esolangs/issues"
+Changelog = "https://github.com/bangyen/esolangs/blob/main/CHANGELOG.md"
 
 [project.scripts]
 esolangs = "esolangs.cli:main"
@@ -71,7 +78,7 @@ exclude = ["tests*", "examples*", "docs*"]
 # root, which left them out of the wheel, so `describe(...)["examples"]` was
 # populated from a checkout and empty from an install, with nothing to say
 # which you had.
-esolangs = ["proof_status.json", "py.typed", "examples/*.md", "examples/*.txt", "examples/*.png"]
+esolangs = ["py.typed", "examples/*.md", "examples/*.txt", "examples/*.png"]
 
 [tool.ruff]
 target-version = "py312"

@@ -165,6 +165,6 @@ def test_seed_bootstrap_exact_queue(count: int) -> None:
 def test_public_narrow_generator_route() -> None:
     import esolangs
 
-    program = esolangs.generate("taglate", "0110", 1)
+    program = esolangs.generate("taglate", "0110", width=1)
     assert max(map(len, program.splitlines())) == 1
     assert run_taglate(program, ["0", "1"]) == "1"

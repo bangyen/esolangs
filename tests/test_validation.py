@@ -73,12 +73,12 @@ class TestWidthIsCheckedWhereverItIsTaken:
     def test_instantiate_refuses_what_generate_refuses(self, width: object) -> None:
         template = esolangs.generate("Minifuck", "0110")
         with pytest.raises(esolangs.ArgumentError, match="width"):
-            esolangs.instantiate("Minifuck", template, [1, 0], width)  # type: ignore[arg-type]
+            esolangs.instantiate("Minifuck", template, [1, 0], width=width)  # type: ignore[arg-type]
 
     @pytest.mark.parametrize("width", [0, -2, "8", 2.5])
     def test_generate_still_refuses_them(self, width: object) -> None:
         with pytest.raises(esolangs.ArgumentError, match="width"):
-            esolangs.generate("brainfuck", "0110", width)  # type: ignore[arg-type]
+            esolangs.generate("brainfuck", "0110", width=width)  # type: ignore[arg-type]
 
 
 class TestTheEncodersRefuseWhatTheyCannotAnswer:
@@ -132,9 +132,9 @@ class TestTheChecksAreSymmetric:
         self, program: object, stdin: object, expected: type[Exception]
     ) -> None:
         with pytest.raises(expected):
-            esolangs.run("brainfuck", program, stdin)  # type: ignore[arg-type]
+            esolangs.run("brainfuck", program, stdin=stdin)  # type: ignore[arg-type]
         with pytest.raises(expected):
-            debugger_api.make_debugger("brainfuck", program, stdin)  # type: ignore[arg-type]
+            debugger_api.make_debugger("brainfuck", program, stdin=stdin)  # type: ignore[arg-type]
 
     @pytest.mark.parametrize("text", [None, 5, b"x"])
     def test_break_on_output_refuses_a_non_string(self, text: object) -> None:

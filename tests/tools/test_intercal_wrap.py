@@ -36,7 +36,7 @@ def test_intercal_split_operations_keep_public_provenance(
     width: int, *, as_string: bool
 ) -> None:
     table = "0110"
-    template = esolangs.generate("INTERCAL", table, width)
+    template = esolangs.generate("INTERCAL", table, width=width)
     if as_string:
         template = str(template)
     shapes = set()

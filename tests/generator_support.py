@@ -15,7 +15,7 @@ def evaluate_generated(
 ) -> str:
     """Generate a table's program, then evaluate its observed answers."""
     inputs = _validate_shape_for_evaluate(table)
-    program = esolangs.generate(language, table, width)
+    program = esolangs.generate(language, table, width=width)
     return _evaluate(language, program, timeout, inputs=inputs, isolated=isolated)
 
 

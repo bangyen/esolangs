@@ -1,18 +1,10 @@
-"""No file grows past the cap, and the ones already over it only shrink."""
+"""No file grows past the cap, and tests/ stays smaller than src/."""
 
 import pathlib
-
-import pytest
+import subprocess
 
 #: The most lines a file may have before it has to be split.
 MAX_LINES = 1200
-
-#: Files already over :data:`MAX_LINES`, at the size they had when the cap
-#: landed.  Each may only shrink, and must be deleted from this table once it
-#: is under the cap.  Nothing may be added: a new entry means a file grew past
-#: the cap instead of being split.
-#:
-_RATCHET: dict[str, int] = {}
 
 _ROOT = pathlib.Path(__file__).resolve().parent.parent
 _TREES = ("src", "tests", "scripts")
@@ -27,41 +19,26 @@ def _sizes() -> dict[str, int]:
     }
 
 
-def test_no_unratcheted_file_is_over_the_cap() -> None:
-    """A file over the cap must be split, not added to the ratchet."""
-    over = {
-        name: lines
-        for name, lines in _sizes().items()
-        if lines > MAX_LINES and name not in _RATCHET
-    }
-    assert not over, (
-        f"over {MAX_LINES} lines and not in the ratchet: {over}. Split the"
-        " file -- the ratchet is for what was already over when the cap"
-        " landed, not a place to park new growth."
-    )
+def test_no_file_is_over_the_cap() -> None:
+    """A file over the cap must be split."""
+    over = {name: lines for name, lines in _sizes().items() if lines > MAX_LINES}
+    assert not over, f"over {MAX_LINES} lines: {over}. Split the file."
 
 
-@pytest.mark.parametrize(("name", "ceiling"), sorted(_RATCHET.items()))
-def test_a_ratcheted_file_only_shrinks(name: str, ceiling: int) -> None:
-    """A file already over the cap may not grow any further."""
-    lines = _sizes().get(name)
-    assert lines is not None, (
-        f"{name} is in the ratchet but does not exist; drop its entry"
-    )
-    assert lines <= ceiling, (
-        f"{name} grew from {ceiling} to {lines} lines. It is already over the"
-        f" {MAX_LINES}-line cap, so it may only shrink."
-    )
+def _tracked_lines(tree: str) -> int:
+    """Count the lines of tracked ``tree/*.py`` files, as ``wc -l`` does."""
+    listed = subprocess.run(
+        ["git", "ls-files", "-z", f"{tree}/*.py"],
+        cwd=_ROOT,
+        capture_output=True,
+        check=True,
+    ).stdout
+    names = [name.decode() for name in listed.split(b"\0") if name]
+    return sum((_ROOT / name).read_bytes().count(b"\n") for name in names)
 
 
-def test_the_ratchet_holds_nothing_under_the_cap() -> None:
-    """A file that has come under the cap leaves the ratchet."""
-    sizes = _sizes()
-    retired = {
-        name: sizes[name]
-        for name in _RATCHET
-        if name in sizes and sizes[name] <= MAX_LINES
-    }
-    assert not retired, (
-        f"under the {MAX_LINES}-line cap now, so remove from the ratchet: {retired}"
-    )
+def test_tests_stay_smaller_than_src() -> None:
+    """The test budget: tracked tests/*.py lines stay under src/*.py lines."""
+    tests, src = _tracked_lines("tests"), _tracked_lines("src")
+    assert src > 0
+    assert tests < src, f"tests/ has {tests} lines, src/ only {src}: trim tests"

@@ -52,6 +52,10 @@ one command in full; `--version` prints the version.  Short forms: -p is
 --portable and -s is --settings.  A truth table is 2^n bits,
 most significant first; its length sets the input count (0110 is two-input XOR).
 
+exit codes: 0 success, 1 the program broke, 2 the ask was wrong, 70 internal
+error (a bug in esolangs), 120 stdout closed early, 124 a bound ran out,
+130 interrupted.
+
 examples:
   esolangs list
   esolangs describe Fargo
@@ -197,8 +201,9 @@ newline is added only when stdout is a terminal.  Whatever the program
 printed before a failure is written too, then the error on stderr.
 
 exit codes: 0 ran, 1 the program broke while running, 2 the ask was wrong
-(unknown language, malformed program, unreadable file), 124 the bound ran
-out, 130 interrupted.
+(unknown language, malformed program, unreadable file), 70 internal error (a
+bug in esolangs), 120 stdout closed early, 124 the bound ran out,
+130 interrupted.
 
 options:
   --isolated         run in a subprocess; portable deadline, default 30 seconds.
@@ -217,7 +222,7 @@ options:
   --set KEY=VALUE    one dialect override without JSON, repeatable and applied
                      after --settings.
   --seed N           fix the random draws so the run repeats.  Nine
-                     languages draw: Befunge, Befunge-98, Fish, LaserFuck,
+                     languages draw: Befunge, Fish, INTERCAL, LaserFuck,
                      Modulous, Painfuck, Super SNUSP, Thue and thisthat.
                      A seed for a language that draws nothing is refused
                      rather than ignored.
@@ -262,7 +267,7 @@ examples:
 Read a program's output on stdin and print the answer bit it carries.
 
 For most languages the answer is the last thing printed and this is barely
-more than `tail`.  For ten it is not: six dump their entire final machine
+more than `tail`.  For some it is not: several dump their entire final machine
 state, and the answer sits at a fixed place in it -- RAM0's on its `z:`
 line, A Painter Ant's as the mark on the ant's own cell (`o` for 0, `@`
 for 1).  Working that out by hand meant generating all four rows and

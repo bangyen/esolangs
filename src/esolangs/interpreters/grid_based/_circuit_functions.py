@@ -11,7 +11,7 @@ from esolangs.interpreters.grid_based._circuit_diagram_hints import Hint
 from esolangs.interpreters.io import ScriptedIO
 
 if TYPE_CHECKING:
-    from esolangs.interpreters.grid_based.circuit_diagram import _Gate
+    from esolangs.interpreters.grid_based._circuit_parse import _Gate
 
 
 class _ClockStream:
@@ -249,13 +249,12 @@ def _evaluate_function_body(
     gate: _Gate, inputs: tuple[tuple[int, ...], ...], clock: _ClockStream | None
 ) -> tuple[int, ...]:
     """Evaluate one custom gate atomically for ``inputs``."""
-    from esolangs.interpreters.grid_based.circuit_diagram import (
+    from esolangs.interpreters.grid_based._circuit_parse import (
         _LABEL_RUN,
         _WIRES,
-        _emitted,
-        _Machine,
         _width_integer,
     )
+    from esolangs.interpreters.grid_based.circuit_diagram import _emitted, _Machine
 
     if gate.body is None:  # pragma: no cover - callers select custom gates
         raise Hint.FUNCTION_BODY.error(f"{gate.kind!r} has no function body")

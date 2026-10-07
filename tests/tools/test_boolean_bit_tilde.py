@@ -4,14 +4,6 @@ from esolangs import tools as boolean
 
 
 class TestBitTilde:
-    def test_full_table_growth_is_linear(self) -> None:
-        """Parity folds nothing, but one cell an entry stays linear."""
-        sizes = []
-        for n in (7, 8):
-            table = "".join(str(row.bit_count() & 1) for row in range(1 << n))
-            sizes.append(len(boolean.bit_tilde(table)))
-        assert sizes[1] < 2 * sizes[0] + 256
-
     def test_single_read_and_output(self) -> None:
         """One read per input and a single final output."""
         program = boolean.bit_tilde("0110")

@@ -2,6 +2,7 @@
 
 from collections import Counter
 from fractions import Fraction
+from functools import cache
 
 from esolangs.tools.helpers import (
     _validate_truth_table,
@@ -24,41 +25,43 @@ __all__ = ["three_x"]
 # characters for the first ten; nineteen of these fit in 13.  The values stay
 # small on their own -- the widest at 300 names is 364/243 -- so nothing has
 # to bound them.
-_CONSTS: list[str] = ["3"]
+@cache
+def _level(length: int) -> dict[Fraction, str]:
+    """Return the constants whose shortest program is ``length`` characters.
 
-
-_CONST_VALUES: set[Fraction] = {Fraction(3)}
-
-
-_CONST_BY_LEN: dict[int, dict[Fraction, str]] = {1: {Fraction(3): "3"}}
+    Pure and memoized: a level depends only on the levels below it, so
+    concurrent first calls agree instead of racing a shared growing table.
+    """
+    if length == 1:
+        return {Fraction(3): "3"}
+    lower = {size: _level(size) for size in range(1, length)}
+    seen = set().union(*lower.values())
+    fresh: dict[Fraction, str] = {}
+    for first, divisors in lower.items():
+        for second, subtracted in lower.items():
+            tops = lower.get(length - 1 - first - second)
+            if tops is None:
+                continue
+            for a, code_a in divisors.items():
+                if a == 0:  # ``x`` divides by the third item down
+                    continue
+                for b, code_b in subtracted.items():
+                    for c, code_c in tops.items():
+                        value = (c - b) / a
+                        if value in seen or value in fresh:
+                            continue
+                        fresh[value] = code_a + code_b + code_c + "x"
+    return fresh
 
 
 def _constants(count: int) -> list[str]:
-    """Return the ``count`` shortest constant programs, distinct values.
-
-    Cached across calls: lengths are only ever appended.
-    """
-    while len(_CONSTS) < count:
-        length = max(_CONST_BY_LEN) + 1
-        fresh: dict[Fraction, str] = {}
-        for first, divisors in _CONST_BY_LEN.items():
-            for second, subtracted in _CONST_BY_LEN.items():
-                tops = _CONST_BY_LEN.get(length - 1 - first - second)
-                if tops is None:
-                    continue
-                for a, code_a in divisors.items():
-                    if a == 0:  # ``x`` divides by the third item down
-                        continue
-                    for b, code_b in subtracted.items():
-                        for c, code_c in tops.items():
-                            value = (c - b) / a
-                            if value in _CONST_VALUES or value in fresh:
-                                continue
-                            fresh[value] = code_a + code_b + code_c + "x"
-        _CONST_BY_LEN[length] = fresh
-        _CONST_VALUES.update(fresh)
-        _CONSTS.extend(fresh.values())
-    return _CONSTS[:count]
+    """Return the ``count`` shortest constant programs, distinct values."""
+    codes: list[str] = []
+    length = 0
+    while len(codes) < count:
+        length += 1
+        codes.extend(_level(length).values())
+    return codes[:count]
 
 
 _ZERO = "333x"  # (3 - 3) / 3

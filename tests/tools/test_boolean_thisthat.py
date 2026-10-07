@@ -50,7 +50,7 @@ def test_constants_test_nothing() -> None:
             io = ScriptedIO("".join(f"{bit}" for bit in bits))
             run(program.splitlines(), io)
             assert (io.getvalue(), io.reads) == (table[0], n)
-    assert len(thisthat("0" * 8)) == 79  # 1,169 before
+    assert len(thisthat("0" * 8)) == 49  # 1,169 before
 
 
 def test_only_dependent_levels_are_tested() -> None:
@@ -82,9 +82,9 @@ def test_pruning_never_grows_a_table() -> None:
             assert size <= len(_tree(table, reorder=False))
             assert size <= len(_tree(table, prune=False))
     tables = [f"{value:08b}" for value in range(256)]
-    assert sum(len(thisthat(table)) for table in tables) == 130_860
+    assert sum(len(thisthat(table)) for table in tables) == 129_540
     assert sum("◐" in thisthat(table) for table in tables) == 100
-    assert sum(len(_tree(table, reorder=False)) for table in tables) == 159_628
+    assert sum(len(_tree(table, reorder=False)) for table in tables) == 158_308
     assert sum(len(_tree(table, prune=False)) for table in tables) == 199_936
 
 
@@ -145,7 +145,7 @@ def test_rotated_layout_keeps_ports_and_bistack_axes(width: int) -> None:
     for n in (1, 3, 5):
         table = _parity(n)
         plain = thisthat(table)
-        program = esolangs.generate("thisthat", table, width)
+        program = esolangs.generate("thisthat", table, width=width)
         floor = min(max(map(len, plain.splitlines())), len(plain.splitlines()))
         assert max(map(len, program.splitlines())) <= max(width, floor)
         for row, expected in enumerate(table):
@@ -166,7 +166,7 @@ def test_narrow_strip_executes_every_small_table() -> None:
     """Each narrow branch consumes the same input deque and prints once."""
     for n in range(1, 4):
         for table in witnesses(n):
-            source = esolangs.generate("thisthat", table, 1)
+            source = esolangs.generate("thisthat", table, width=1)
             assert max(map(len, source.splitlines())) <= 9
             for row, expected in enumerate(table):
                 io = ScriptedIO("".join(f"{bit}" for bit in f"{row:0{n}b}"))
@@ -174,7 +174,7 @@ def test_narrow_strip_executes_every_small_table() -> None:
                 assert (io.getvalue(), io.reads) == (expected, n)
     assert max(map(len, thisthat("0110", 1).splitlines())) == 1
     assert len(thisthat("0110", 1)) == 17
-    assert sum(len(thisthat(format(v, "04b"), 1)) for v in range(16)) == 1104
+    assert sum(len(thisthat(format(v, "04b"), 1)) for v in range(16)) == 1150
 
 
 @pytest.mark.parametrize("width", [1, 3, 4, 5, 7, 9, 10, 19, 20, 40])
@@ -188,7 +188,7 @@ def test_strip_preserves_fitting_layouts_and_public_answers(width: int) -> None:
             map(len, plain.splitlines())
         ):
             old = _rotate_tree(plain)
-        source = esolangs.generate("thisthat", table, width)
+        source = esolangs.generate("thisthat", table, width=width)
         if max(map(len, old.splitlines())) <= width:
             assert source == old
         assert evaluate_generated("thisthat", table, width=width) == table
@@ -206,7 +206,7 @@ def test_larger_narrow_layout_retains_linear_area_construction(n: int) -> None:
         if len(raw.splitlines()) < max(map(len, raw.splitlines()))
         else raw
     )
-    source = esolangs.generate("thisthat", table, 1)
+    source = esolangs.generate("thisthat", table, width=1)
     assert source == expected
     for row in {0, (1 << n) - 1, *(rng.randrange(1 << n) for _ in range(4))}:
         io = ScriptedIO("".join(f"{bit}" for bit in f"{row:0{n}b}"))

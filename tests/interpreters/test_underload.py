@@ -1,16 +1,15 @@
 """Underload stack and program-splicing semantics."""
 
+from functools import partial
+
 import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.stack_based.underload import _advance, _Machine, run
+from tests.interpreters.runner import run_program
 
-
-def _run(source: str) -> str:
-    io = ScriptedIO("")
-    run(source, io)
-    return io.getvalue()
+_run = partial(run_program, run, suppress_eof=False)
 
 
 def test_push_output_and_nested_elements() -> None:

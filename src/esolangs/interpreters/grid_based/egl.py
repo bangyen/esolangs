@@ -12,6 +12,12 @@ no specified invalid runtime operation requiring :class:`HaltError`.
 
 The spec does not define input representation; x reads the next Unicode
 character code, including newlines.
+
+A reflection negates a coordinate modulo the grid (``_`` row ``r`` to
+``-r % height``), so row 0 is fixed.  The page's stated output for
+``10,10:v>>_++#`` puts the 2 on the tenth line, third column; the
+mirror ``height - 1 - r`` puts it on the ninth, which only the prose
+("row 9, column 3", one-indexed) fits; the stated output wins.
 """
 
 from __future__ import annotations
@@ -61,11 +67,11 @@ def _advance(
     elif command == "v":
         row += 1
     elif command == "_":
-        row = height - 1 - row
+        row = -row % height
     elif command == "|":
-        col = width - 1 - col
+        col = -col % width
     elif command == "%":
-        row, col = height - 1 - row, width - 1 - col
+        row, col = -row % height, -col % width
     elif command == "+":
         cells[index] += 1
     elif command == "-":

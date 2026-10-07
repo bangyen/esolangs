@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from esolangs.tools import _proof_status as status
+from scripts import proof_status as status
 
 
 def test_rendering_preserves_committed_tables(

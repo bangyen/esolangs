@@ -17,9 +17,16 @@ follows (documented choices, not part of any written spec):
   reads a character).
 * ``$AXIS`` values below 2 are clamped to 2 (there is no 1-pointer).
 * A ``:`` or ``=`` at the end of a program, or a malformed ``=`` literal, is
-  a :class:`ValueError`; unmatched ``[``/``]`` or ``{``/``}`` brackets are
-  rejected, matching the package's other tape interpreters.
-* Cells wrap at 8 bits (unsigned bytes).
+  a :class:`ValueError` before the run starts; unmatched ``[``/``]`` or
+  ``{``/``}`` brackets are rejected, matching the package's other tape
+  interpreters.  The two pairs nest independently, so ``[{]}`` is accepted.
+* Cells wrap at 8 bits (unsigned bytes), ``:CHAR`` above 255 included.
+* The table writes ``{DIMENSION``, ``?DIMENSION``, ``!DIMENSION`` and
+  ``$AXIS`` with an operand; without one, the dimension is 0 and the axis 2
+  (a clean-room reading rejects the program instead).
+* ``d`` and ``x`` ("Accepts a number written in decimal") read one
+  whitespace-delimited token and leave the delimiter, so a following ``,``
+  reads it; reading the whole line is the other reading.
 
 Commands: ``>d``/``<d`` move the axis pointer along dimension ``d`` (bare
 ``>``/``<`` use the value as the dimension), ``+``/``-`` adjust the value,
@@ -151,6 +158,9 @@ def _matches(code: str) -> dict[int, int]:
         if char in ":=":
             # Literal payloads are data, including bracket and comment glyphs.
             operand_end = i + (2 if char == ":" else 3)
+            # A malformed literal rejects the program before it runs, as an
+            # unmatched bracket does, rather than when (or if) it executes.
+            _advance((i + 1, False, 2), code, {}, lambda: 0, lambda _d: 0)
         elif char == "*":
             comment = True
         elif char == "[":

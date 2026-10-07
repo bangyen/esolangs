@@ -5,7 +5,12 @@ Per the wiki, ``7n`` skips the next instruction when the cell equals
 parameters, so the program is tokenized with them merged.  Printing a
 cell outside the character range halts with
 :class:`~esolangs.exceptions.HaltError`; exhausted input raises
-:class:`EOFError`.
+:class:`EOFError`.  The wiki names no failures: an ``8n`` with no ``n``-th
+``4`` falls through, and characters that are no instruction are ignored
+(not counted by ``7n``'s "skips the next instruction").  ``3`` at the
+leftmost cell grows the tape a zero cell on the left: the spec says
+nothing about the left edge, and brainfuck's page allows cells left of
+the start.
 
 :func:`_advance` is a pure transition over an immutable ``_State`` (tuple
 tape, so hashable) with no ``io`` argument; :class:`_Machine` is the shell
@@ -50,6 +55,8 @@ def _tokens(code: str) -> list[str]:
     """Split a program into instructions, merging each 7/8 with its operand.
 
     A ``C`` not operand to ``7``/``8`` starts a comment to end of line.
+    Whitespace and other non-instructions are dropped, so ``7n`` "skips the
+    next instruction", not a blank (``70 6`` skips the ``6``).
     """
     toks: list[str] = []
     i = 0
@@ -63,6 +70,8 @@ def _tokens(code: str) -> list[str]:
         elif code[i] in "78" and i + 1 < len(code):
             toks.append(code[i : i + 2])
             i += 2
+        elif code[i] not in "0123456789AB":
+            i += 1
         else:
             toks.append(code[i])
             i += 1
@@ -94,9 +103,10 @@ def _advance(
 ) -> _State:
     """Return the state after executing one token.
 
-    ``1`` moves right two and grows the tape; ``3`` moves back one, clamped
-    at 0.  A missing ``8n`` marker leaves the cursor; ``0`` halts by putting
-    it past the end.  ``markers`` is :func:`_markers` of ``toks``.
+    ``1`` moves right two and grows the tape; ``3`` moves back one, and at
+    cell 0 grows the tape one zero cell on the left instead.  A missing
+    ``8n`` marker leaves the cursor; ``0`` halts by putting it past the end.
+    ``markers`` is :func:`_markers` of ``toks``.
     """
     ind, cell, tape = state
     tok = toks[ind]
@@ -104,8 +114,15 @@ def _advance(
         cell += 2
         if len(tape) < cell + 1:
             tape = (*tape, *([0] * (cell + 1 - len(tape))))
-    elif tok == "3" and cell:
-        cell -= 1
+    elif tok == "3":
+        # At cell 0 the tape grows a zero cell on the left, and index 0 is
+        # now that cell.  The spec says nothing about the left edge, and
+        # brainfuck's page allows cells left of the start.  The prepend
+        # rebuilds the tuple, as ``1`` and every write already do.
+        if cell:
+            cell -= 1
+        else:
+            tape = (0, *tape)
     elif tok in ("5", "6"):
         tape = _written(tape, cell, tape[cell] + int(tok))
     elif tok in ("2", "9"):
@@ -156,9 +173,10 @@ class _Machine:
 
     # The growth detector's view.  The pointer is ``cell`` here, so it is
     # aliased to the name ``esolangs.vm._TapeMachine`` asks for.  6-5
-    # qualifies for that protocol: ``3`` clamps at the left edge exactly as
-    # brainfuck's ``<`` does (``elif tok == "3" and cell``), which is what
-    # the certificate's ``m >= 1`` condition is written against, and every
+    # qualifies for that protocol: ``3`` at cell 0 prepends a zero and
+    # leaves the pointer at index 0, so ``ptr`` counts from the leftmost
+    # cell and a period that grows left passes ``ptr == 0``, which the
+    # certificate's ``m >= 1`` condition rejects; and every
     # other command reads or writes only ``tape[cell]``.  ``1`` moves *two*
     # cells and appends two zeros rather than one; that is still fresh
     # rightward growth, and the certificate checks the tape grew by exactly

@@ -353,12 +353,6 @@ def _register() -> None:
             expected="0 ",
             split=True,
         ),
-        "befunge-98": _reader(
-            b.befunge_98,
-            "grid_based.befunge_98",
-            expected="0 ",
-            split=True,
-        ),
         "bfstack": _reader(
             b.bfstack,
             "stack_based.bfstack",
@@ -547,10 +541,6 @@ def _register() -> None:
             "other.vandevelo",
             expected="",
         ),
-        "3d-brainfuck": _reader(
-            b.three_d_brainfuck,
-            "tape_based.three_d_brainfuck",
-        ),
         "3x": _reader(b.three_x, "stack_based.three_x"),
         "6-5": _reader(
             b.six_five,
@@ -607,7 +597,7 @@ def _register() -> None:
             "other.intercal",
             pair=INTERCAL_PAIR,
             char=INTERCAL_CHAR,
-            expected="\n",
+            expected="_\n\n",
         ),
         "minifuck": _embedded(
             b.minifuck, "tape_based.minifuck", setters=minifuck_setters

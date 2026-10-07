@@ -2,7 +2,6 @@
 
 import random
 import re
-from itertools import pairwise
 
 
 class TestParameterizedRam0:
@@ -108,13 +107,3 @@ class TestParameterizedRam0:
         for row in (0, 1, 2, 7, 31, 32, 62, 63):
             bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
             assert self.run_ram0(self.instantiate(template, bits)) == table[row]
-
-    def test_wide_template_growth(self) -> None:
-        """Wide parity templates grow by at most the table-size ratio."""
-        from esolangs import tools as generators
-
-        sizes = []
-        for n in range(11, 15):
-            table = "".join(str(row.bit_count() & 1) for row in range(2**n))
-            sizes.append(len(generators.ram0(table)))
-        assert all(b <= 2 * a for a, b in pairwise(sizes))

@@ -27,7 +27,7 @@ def test_timeout_retains_streamed_output():
 
 @pytest.mark.medium
 def test_isolation_preserves_integer_seeds_beyond_the_decimal_rendering_limit():
-    seeds = [*range(8), 10**5000, -(10**5000), "text seed"]
+    seeds = [*range(8), 10**5000, -(10**5000)]  # strings are refused now
     direct = [
         esolangs.run("LaserFuck", "o+++.\n", seed=seed, timeout=5) for seed in seeds
     ]
@@ -48,8 +48,8 @@ def test_input_error_retains_counts_and_output():
     assert caught.value.partial_output == "\x01"
 
 
-@pytest.mark.parametrize("timeout", [None, 0, float("inf")])
-def test_refuses_missing_or_invalid_deadline(timeout):
+@pytest.mark.parametrize("timeout", [0, float("inf")])
+def test_refuses_an_invalid_deadline(timeout):
     with pytest.raises(esolangs.ArgumentError):
         esolangs.run("brainfuck", "", timeout=timeout, isolated=True)
 
@@ -114,23 +114,12 @@ def test_unknown_error_reconstructs_suggestions():
 
 @pytest.mark.medium
 @pytest.mark.parametrize("limit", [0, 1, 4097])
-def test_output_limit_stops_an_infinite_writer_and_reaps(limit, monkeypatch):
-    from esolangs import _isolated
-
-    children = []
-    popen = _isolated.subprocess.Popen
-
-    def spawn(*args, **kwargs):
-        child = popen(*args, **kwargs)
-        children.append(child)
-        return child
-
-    monkeypatch.setattr(_isolated.subprocess, "Popen", spawn)
+def test_output_limit_stops_an_infinite_writer_and_reaps(limit, spawned):
     with pytest.raises(esolangs.InterpreterLimitError, match="output limit") as caught:
         esolangs.run("brainfuck", "+[.]", isolated=True, max_output=limit)
     assert caught.value.partial_output == "\x01" * limit
-    assert len(children) == 1
-    assert children[0].poll() is not None
+    assert len(spawned) == 1
+    assert spawned[0].poll() is not None
 
 
 @pytest.mark.medium
@@ -150,22 +139,11 @@ def test_output_limit_beyond_the_decimal_rendering_limit_accepts_small_output():
 
 
 @pytest.mark.medium
-def test_capped_timeout_retains_output_and_reaps(monkeypatch):
-    from esolangs import _isolated
-
-    children = []
-    popen = _isolated.subprocess.Popen
-
-    def spawn(*args, **kwargs):
-        child = popen(*args, **kwargs)
-        children.append(child)
-        return child
-
-    monkeypatch.setattr(_isolated.subprocess, "Popen", spawn)
+def test_capped_timeout_retains_output_and_reaps(spawned):
     with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
         esolangs.run("brainfuck", "+.[]", timeout=1, isolated=True, max_output=10)
     assert caught.value.partial_output == "\x01"
-    assert children[0].poll() is not None
+    assert spawned[0].poll() is not None
 
 
 @pytest.mark.parametrize("limit", [-1, True, 1.5, "1"])

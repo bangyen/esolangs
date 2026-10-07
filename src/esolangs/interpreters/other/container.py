@@ -5,7 +5,9 @@ following indented lines attach conditional deltas (``n cond``) to the
 most recent container.  Each tick updates every container from the *old*
 values; PRINT outputs OUT as a byte when it turns on, the empty-named
 container reads a character into IN when it fires, and EXIT halts.  A rule
-before any declaration raises :class:`ValueError`; an empty program halts
+before any declaration, or a condition on an undeclared container (the
+page gives undeclared names no value), raises :class:`ValueError`; an
+empty program halts
 at once; EOF supplies zero.  :func:`run` returns
 the EXIT code (``None`` if EXIT never fired) rather than exiting.
 
@@ -79,6 +81,12 @@ class Con:
     def add(self, cond: str) -> None:
         """Append a rule ``n cond`` that adds ``n`` when ``cond`` holds."""
         n, c = cond.split()
+        # "Valid conditions are": A>=B, A>=constant, A<=constant.
+        if "<=" in c and not c.split("<=")[1].isdecimal():
+            raise syntax_error(
+                f"'<=' compares with a constant only: {c}",
+                "write the container comparison as B>=A",
+            )
         self.rules.append((parse_integer(n), c))
 
     def update(self, var: dict[str, int]) -> int:

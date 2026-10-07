@@ -7,11 +7,13 @@ import pytest
 import esolangs
 from esolangs.registry import BY_BOOLEAN
 from tests.proofs._ledger import (
+    EXECUTION_CLASSES,
     LINEAR_CLAUSE_WORDS,
     NOT_A_LABEL,
     QUALIFIERS,
     SCALING_CLASSES,
     SCHEME_LABELS,
+    WORKSPACE_CLASSES,
     Ledger,
     load,
 )
@@ -115,6 +117,25 @@ def test_every_row_carries_a_scaling_cell(ledger: Ledger) -> None:
                 f"{row.generator}: linear clause is {words} words, "
                 f"more than {LINEAR_CLAUSE_WORDS}"
             )
+
+
+@pytest.mark.parametrize(
+    ("column", "classes"),
+    [("execution", EXECUTION_CLASSES), ("workspace", WORKSPACE_CLASSES)],
+)
+def test_every_row_carries_a_measured_cell(
+    ledger: Ledger, column: str, classes: frozenset[str]
+) -> None:
+    """A known class, then what it bounds or why it is unmeasured."""
+    for row in ledger.rows:
+        kind = getattr(row, f"{column}_class")
+        clause = getattr(row, f"{column}_clause")
+        assert kind in classes, f"{row.generator}: unknown {column} class {kind!r}"
+        assert clause, f"{row.generator}: {column} cell has no clause"
+        words = len(clause.split())
+        assert words <= LINEAR_CLAUSE_WORDS, (
+            f"{row.generator}: {column} clause is {words} words"
+        )
 
 
 def test_unproved_scaling_requires_a_totality_exception(ledger: Ledger) -> None:

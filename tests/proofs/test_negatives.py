@@ -38,22 +38,12 @@ class TestFactoredProgramsAreMisread:
     def test_the_expanded_form_is_read_as_written(self) -> None:
         assert sanitize("f(x) = x^2-5x^1+6") == [1, -5, 6]
 
-    @pytest.mark.parametrize("code", ["f(x) = (x-2)(x-3)", "f(x) = (x-2)*(x-3)"])
-    def test_a_product_is_accepted_rather_than_rejected(self, code: str) -> None:
-        # The silence is the point: a rejection would be a clean signal.
-        # ``*`` is stripped by the character filter, so both spellings land
-        # in the same place.
-        assert sanitize(code) is not None
-
-    @pytest.mark.parametrize("code", ["f(x) = (x-2)(x-3)", "f(x) = (x-2)*(x-3)"])
-    def test_a_product_decodes_to_a_different_polynomial(self, code: str) -> None:
-        assert sanitize(code) != sanitize("f(x) = x^2-5x^1+6")
-
     def test_only_the_last_term_of_each_degree_survives(self) -> None:
-        # The mechanism behind the misparse: ``_sanitize`` sums ``c*x^d``
-        # monomials and never multiplies out, so ``(x-2)(x-3)`` is read as
-        # the last term of each degree rather than as a product.
+        # Accepted, not rejected, and read as the last term of each degree:
+        # ``_sanitize`` sums ``c*x^d`` monomials and never multiplies out.
+        # ``*`` is stripped by the character filter.
         assert sanitize("f(x) = (x-2)(x-3)") == [1, -3]
+        assert sanitize("f(x) = (x-2)*(x-3)") == [1, -3]
         assert sanitize("f(x) = (x-2)(x-3)(x-5)") == [1, -5]
 
 
@@ -234,18 +224,10 @@ class TestIteratedEliminationThresholds:
     @pytest.mark.parametrize(
         ("roots", "degree", "low", "below", "above"),
         [
-            # 0.65s alone, 2.9s under `-n auto`: z3 contends with the other
-            # solver tests past the fast band.
+            # Bands by wall clock under `-n auto`, where z3 contends with the
+            # other solver tests (2.9s, 35s, and 23s measured).
             pytest.param((2, 3, 5, 7, 11), 14, 2, 60, 80, marks=pytest.mark.medium),
-            # Z3's branch-and-bound search is CPU-bound.  Under `-n auto`,
-            # this case exceeded the medium band's 15s CI ceiling (35.03s);
-            # the weekly slow run is its stable home.
             pytest.param((2, 3, 5, 7, 11, 13), 16, 3, 120, 160, marks=pytest.mark.slow),
-            # 2.3s alone, but z3 is CPU-bound and the bands measure wall
-            # clock: under `-n auto` this one contends with the other
-            # solver tests and reached 23s, past even the medium band's
-            # scaled CI ceiling.  The band with headroom is the honest
-            # home for it; the weekly run still checks it.
             pytest.param(
                 (2, 3, 5, 7, 11, 13, 17), 16, 4, 192, 300, marks=pytest.mark.slow
             ),
@@ -322,27 +304,6 @@ class TestFiniteDegreeCertificateDominatesTheLimit:
             assert _certificate_threshold(roots, low, degree) >= limit, degree
 
 
-class TestTwoLargestRootsTermwise:
-    """``c = 2``: with ``Q = h(all roots)``, ``a < b`` the two largest,
-    ``Q_{n-d} Q_{n-1} - Q_{n-d-1} Q_n <= psi_d (Q_n^2 - Q_{n-1} Q_{n+1})``,
-    ``psi_d = (a^-d - b^-d) / (b - a)``; an identity when only ``a, b`` are
-    present.  Summed over ``d`` it is the ``c = 2`` case of (b)."""
-
-    @pytest.mark.parametrize(
-        "roots", [(2, 3, 5), (2, 3, 5, 7, 11), (2, 3, 5, 7, 11, 13)]
-    )
-    def test_holds_to_n_30(self, roots: tuple[int, ...]) -> None:
-        a, b = roots[-2], roots[-1]
-        q = _h_table(roots, 32)
-        for n in range(2, 31):
-            top = q[n] * q[n] - q[n - 1] * q[n + 1]
-            assert top > 0
-            for d in range(1, n):
-                psi = (Fraction(1, a**d) - Fraction(1, b**d)) / (b - a)
-                left = q[n - d] * q[n - 1] - q[n - d - 1] * q[n]
-                assert 0 <= left <= psi * top, (n, d)
-
-
 class TestConvolutionStepOfTheTwoRootTheorem:
     """``docs/proofs/polynomial.md`` ("The two largest roots, every degree"): the
     induction step.  Adding a root ``x`` convolves ``Q`` with ``(1, x, x^2,
@@ -350,7 +311,8 @@ class TestConvolutionStepOfTheTwoRootTheorem:
     columns ``{0, s}`` is ``sum_{k1 < s <= k2} x^(k1 + k2 - s)`` times the old
     minor on columns ``{k1, k2}``, the same weights for both row pairs, and
     the s-uniform inequality passes through.  Checked exactly, and the
-    inequality itself with the pure base an identity in the interior.
+    inequality itself with the pure base an identity in the interior; its
+    ``s = 1`` column is the ``c = 2`` termwise statement of gap (b).
     """
 
     @staticmethod
@@ -654,58 +616,17 @@ class TestThreeRootHypothesisAtTheBoundary:
         assert (interior_equalities > 0) == (small == ())
 
 
-def _certificate_tail(
-    rho: tuple[int, ...], zeros: tuple[int, ...], horizon: int = 100
-) -> Fraction:
-    """``u_d = sum a_i rho_i^-d`` with ``u_0 = 1`` and ``u_z = 0`` on ``zeros``
-    (``len(zeros) == len(rho) - 1``); returns an upper bound on
-    ``sum_{d >= 1, d not in zeros} |u_d|`` (exact to ``horizon``, geometric
-    remainder beyond)."""
-    rows = [[Fraction(1)] * len(rho)] + [
-        [Fraction(1, r) ** z for r in rho] for z in zeros
-    ]
-    sol = sp.Matrix(rows).LUsolve(sp.Matrix([1] + [0] * len(zeros)))
-    a = [Fraction(int(x.p), int(x.q)) for x in sol]
-    total = sum(
-        abs(sum(ai * Fraction(1, r) ** d for ai, r in zip(a, rho, strict=True)))
-        for d in range(1, horizon + 1)
-        if d not in zeros
-    )
-    # Past the last prescribed zero the sum is one-signed (a c-term
-    # exponential sum has no other zeros), so the remainder is exact.
-    assert horizon > max(zeros)
-    remainder = abs(
-        sum(
-            ai * Fraction(1, r) ** (horizon + 1) / (1 - Fraction(1, r))
-            for ai, r in zip(a, rho, strict=True)
-        )
-    )
-    return total + remainder
+def _certificate_tail(rho: tuple[int, ...], zeros: tuple[int, ...]) -> Fraction:
+    """``sum_{d >= 1} |u_d|`` for ``u_d = sum a_i rho_i^-d``, ``u_0 = 1``,
+    ``u_z = 0`` on ``zeros`` (``len(zeros) == len(rho) - 1``)."""
+    y = [Fraction(1, r) for r in rho]
+    return _abs_tail(_exp_sum(y, zeros, None), y, zeros)
 
 
 class TestEachLeadingZeroBuysOneRoot:
-    """``docs/proofs/polynomial.md`` ("The slack certificate"): for the pure
-    exponential sum on ``c`` roots with ``c - 1`` prescribed zeros, of which
-    the first ``f`` are at distances ``1..f``, the tail is at most
-    ``1 / prod (rho - 1)`` over the ``f + 1`` largest roots, with equality
-    when every zero is a leading one.  Proved there; the proof's own links
-    are pinned by :class:`TestLeadingZeroTheoremProof`, and this is the
-    statement they assemble to, checked exhaustively on small zero sets."""
-
-    @pytest.mark.parametrize("rho", [(5, 7, 11), (3, 5, 7, 11), (7, 11, 13, 17)])
-    def test_measured(self, rho: tuple[int, ...]) -> None:
-        c = len(rho)
-        largest_first = sorted(rho, reverse=True)
-        equalities = 0
-        for zeros in itertools.combinations(range(1, 9), c - 1):
-            lead = 0
-            while lead + 1 in zeros:
-                lead += 1
-            bound = Fraction(1, math.prod(r - 1 for r in largest_first[: lead + 1]))
-            tail = _certificate_tail(rho, zeros)
-            assert tail <= bound, zeros
-            equalities += tail == bound
-        assert equalities == 1  # only the all-leading set
+    """``docs/proofs/polynomial.md`` ("The slack certificate"): the leading-zero
+    bound (pinned link by link, and as a statement, by
+    :class:`TestLeadingZeroTheoremProof`) applied with free positions."""
 
     @pytest.mark.parametrize(
         ("count", "free"), [(6, 1), (6, 2), (7, 2), (7, 3), (8, 3)]
@@ -778,166 +699,6 @@ def _exp_sum(y: list[Fraction], zeros: tuple[int, ...], unit_at: int | None):
     return [Fraction(int(x.p), int(x.q)) for x in sol]
 
 
-class TestTriangleSlackIsBounded:
-    """``docs/proofs/polynomial.md`` ("What the earlier rounds leave behind"): the
-    lossy induction the peel superseded.  ``u = F + lambda G`` with
-    ``F`` on the ``c - 1`` largest roots carrying all zeros but the last
-    displaced one and ``G`` the ``c``-root sum vanishing at ``0`` and those;
-    the triangle term ``|lambda| tail(G)`` is at most ``0.7 bound(f)`` (0.53,
-    0.58, 0.61, 0.64 at ``c = 3..6``), worst with one displaced zero just
-    past the fill, and ``|F_d / G_d|`` decreases past the last prescribed
-    zero.  Kept as the record of the route: step 3's identity is exact where
-    this triangle inequality was lossy, so the two sub-lemmas it needed are
-    no longer a dependency of the bound."""
-
-    @pytest.mark.parametrize(
-        "count",
-        [
-            3,
-            4,
-            pytest.param(5, marks=pytest.mark.medium),
-            pytest.param(6, marks=pytest.mark.medium),
-        ],
-    )
-    def test_slack_and_monotone_ratio(self, count: int) -> None:
-        primes = (3, 5, 7, 11, 13, 17)[:count]
-        y = sorted(Fraction(1, p) for p in primes)
-        worst = Fraction(0)
-        for f in range(count - 1):
-            k = count - 1 - f
-            lead = tuple(range(1, f + 1))
-            bound = math.prod(v / (1 - v) for v in y[: f + 1])
-            for disp in itertools.combinations(range(f + 2, f + 2 + 9), k):
-                a_f = _exp_sum(y[:-1], lead + disp[:-1], None)
-                a_g = _exp_sum(y, (0, *lead, *disp[:-1]), disp[-1])
-                horizon = disp[-1] + 50
-
-                def f_at(d: int, a: list[Fraction] = a_f) -> Fraction:
-                    return sum(ai * v**d for ai, v in zip(a, y[:-1], strict=True))
-
-                def g_at(d: int, a: list[Fraction] = a_g) -> Fraction:
-                    return sum(ai * v**d for ai, v in zip(a, y, strict=True))
-
-                tail_g = sum(
-                    abs(g_at(d)) for d in range(1, horizon) if d not in lead + disp
-                )
-                tail_g += abs(
-                    sum(ai * v**horizon / (1 - v) for ai, v in zip(a_g, y, strict=True))
-                )
-                worst = max(worst, abs(f_at(disp[-1])) * tail_g / bound)
-                last = disp[-2] if k > 1 else f
-                ratios = [
-                    abs(f_at(d)) / abs(g_at(d)) for d in range(last + 1, last + 20)
-                ]
-                assert all(a >= b for a, b in itertools.pairwise(ratios))
-        assert worst < Fraction(7, 10)
-
-
-class TestConvolutionRelationIsOneDisplacedOnly:
-    """``docs/proofs/polynomial.md`` ("What the earlier rounds leave behind"): ``G``
-    is a convolution of ``F`` only when the zeros are one consecutive run
-    (``k = 1``); with a second displaced zero the ratio ``G_d / (F * geo)_d``
-    is not constant.  That is step 5's ``p = 0`` dichotomy: the convolution
-    is the identity case, and (C) is the inequality that replaces it
-    everywhere else.  ``|F|`` is log-concave past its last prescribed zero
-    either way."""
-
-    def test_k1_relation_and_its_failure_at_k2(self) -> None:
-        y = sorted(Fraction(1, p) for p in (3, 5, 7, 11))
-        y_c = y[-1]
-
-        def conv(f_at, d: int) -> Fraction:
-            return sum(y_c**j * f_at(d - j) for j in range(d))
-
-        def make(zeros: tuple[int, ...]):
-            a_f = _exp_sum(y[:-1], zeros, None)
-            a_g = _exp_sum(y, (0, *zeros), max(zeros) + 1)
-            f_at = lambda d: sum(ai * v**d for ai, v in zip(a_f, y[:-1], strict=True))  # noqa: E731
-            g_at = lambda d: sum(ai * v**d for ai, v in zip(a_g, y, strict=True))  # noqa: E731
-            return f_at, g_at
-
-        f_at, g_at = make((1, 2))  # k = 1: zeros 1..c-2
-        ratios = {g_at(d) / conv(f_at, d) for d in range(3, 12)}
-        assert len(ratios) == 1
-        f_at, g_at = make((1, 4))  # k = 2
-        ratios = {g_at(d) / conv(f_at, d) for d in range(5, 12)}
-        assert len(ratios) > 1
-        vals = [abs(f_at(d)) for d in range(5, 30)]
-        assert all(
-            b * b >= a * c for a, b, c in zip(vals, vals[1:], vals[2:], strict=False)
-        )
-
-
-class TestPointADecomposition:
-    """``docs/proofs/polynomial.md`` ("What the earlier rounds leave behind"): the
-    Lagrange-basis decomposition the peel superseded, whose ``B``-pieces
-    would not split.  ``E_d = G_d - y_c G_{d-1}`` is a ``(c-1)``-root sum vanishing
-    on the leading zeros with ``E_{z_j} = -y_c G_{z_j - 1}``, it equals
-    ``mu F + sum_j E_{z_j} B_j`` on the Lagrange basis exactly, and ``G_d =
-    sum_{i<d} y_c^i E_{d-i}`` recovers ``G``.  The triangle sum over these
-    pieces stays under ``0.5 bound(f)`` while its ``B``-pieces are products
-    of an unbounded tail and a vanishing ratio."""
-
-    def test_identities_and_bound_sum(self) -> None:
-        y = sorted(Fraction(1, p) for p in (3, 5, 7, 11, 13))
-        y_c = y[-1]
-        worst = Fraction(0)
-        for f, disp in [
-            (0, (2, 5, 7, 9)),
-            (1, (3, 4, 6)),
-            (1, (4, 7, 12)),
-            (2, (5, 6)),
-            (2, (4, 9)),
-        ]:
-            lead = tuple(range(1, f + 1))
-            z_k = disp[-1]
-            a_f = _exp_sum(y[:-1], lead + disp[:-1], None)
-            a_g = _exp_sum(y, (0, *lead, *disp[:-1]), z_k)
-            a_e = [ai * (1 - y_c / v) for ai, v in zip(a_g[:-1], y[:-1], strict=True)]
-
-            def val(a: list[Fraction], roots: list[Fraction], d: int) -> Fraction:
-                return sum(ai * v**d for ai, v in zip(a, roots, strict=True))
-
-            for d in range(1, 14):
-                assert val(a_e, y[:-1], d) == val(a_g, y, d) - y_c * val(a_g, y, d - 1)
-                assert val(a_g, y, d) == sum(
-                    y_c**i * val(a_e, y[:-1], d - i) for i in range(d)
-                )
-            basis = []
-            for j, z_j in enumerate(disp[:-1]):
-                others = tuple(z for i, z in enumerate(disp[:-1]) if i != j)
-                basis.append(_exp_sum(y[:-1], (0, *lead, *others), z_j))
-            mu = val(a_e, y[:-1], 0)
-            for d in range(0, 16):
-                recon = mu * val(a_f, y[:-1], d) + sum(
-                    val(a_e, y[:-1], z_j) * val(b, y[:-1], d)
-                    for z_j, b in zip(disp[:-1], basis, strict=True)
-                )
-                assert recon == val(a_e, y[:-1], d)
-            bound = math.prod(v / (1 - v) for v in y[: f + 1])
-            horizon = z_k + 40
-
-            def tail1(
-                a: list[Fraction], roots: list[Fraction], horizon: int = horizon
-            ) -> Fraction:
-                s = sum(abs(val(a, roots, d)) for d in range(1, horizon))
-                return s + abs(
-                    sum(
-                        ai * v**horizon / (1 - v)
-                        for ai, v in zip(a, roots, strict=True)
-                    )
-                )
-
-            pref = abs(val(a_f, y[:-1], z_k)) * y_c / (1 - y_c)
-            total = pref * abs(val(a_g, y, -1)) * tail1(a_f, y[:-1])
-            total += sum(
-                pref * abs(val(a_g, y, z_j - 1)) * tail1(b, y[:-1])
-                for z_j, b in zip(disp[:-1], basis, strict=True)
-            )
-            worst = max(worst, total / bound)
-        assert worst < Fraction(1, 2)
-
-
 # --------------------------------------------------------------------------
 # The leading-zero theorem, link by link
 # --------------------------------------------------------------------------
@@ -1001,8 +762,9 @@ class TestLeadingZeroTheoremProof:
             bound = math.prod(v / (1 - v) for v in y[: _leading_run(zeros) + 1])
             tail_u = _abs_tail(a_u, y, zeros)
             assert tail_u <= bound, zeros
+            # Equality exactly in the k = 0 (all-leading) case.
+            assert (tail_u == bound) == (_leading_run(zeros) == c - 1), zeros
             if _leading_run(zeros) == c - 1:
-                assert tail_u == bound  # the k = 0 equality case
                 continue
 
             z, rest = zeros[-1], zeros[:-1]

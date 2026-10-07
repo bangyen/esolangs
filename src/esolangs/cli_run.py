@@ -144,9 +144,9 @@ def _run(rest: list[str]) -> None:
                 output = run(
                     language,
                     program,
-                    stdin,
-                    timeout,
-                    seed,
+                    stdin=stdin,
+                    timeout=timeout,
+                    seed=seed,
                     scale=scale,
                     isolated=True,
                     max_output=max_output,
@@ -157,9 +157,9 @@ def _run(rest: list[str]) -> None:
                 output = run(
                     language,
                     program,
-                    stdin,
-                    timeout,
-                    seed,
+                    stdin=stdin,
+                    timeout=timeout,
+                    seed=seed,
                     scale=scale,
                     settings=settings,
                 )

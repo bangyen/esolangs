@@ -13,6 +13,9 @@ The execution model is a pure function over an immutable ``_State``. The
 mutable VM shell performs input and replaces that state once per step.
 
 The spec does not delimit input values; Inp reads one line, excluding its newline.
+``x :: y`` takes expressions only, and ``a :: b :: c`` stops at the first nil.
+The Comments example ``2? -> 2? --Infinite loop`` writes its target with a
+``?``, which the table and the truth-machine never do; it is malformed here.
 """
 
 from __future__ import annotations

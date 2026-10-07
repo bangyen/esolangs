@@ -280,14 +280,22 @@ _BRANCH_SPACING = 5
 _GOTO_CORRIDOR = 1 + 2 * _CLEARANCE
 
 
-# `_subtree_extent` memo per `render()`, keyed by node id.  Measuring is a
-# dry-run `_layout`, exponential in nesting depth unmemoized (a depth-3
-# program stalled past two minutes vs under a second).  Cleared per render
-# because `id()` is reused once a `Node` is freed.
-_EXTENT_CACHE: dict[int, tuple[int, int, int, int]] = {}
-_TREE_NODES: set[int] = set()
-_TREE_STEM = _TREE_GAP
-_TREE_ARM = _TREE_GAP
+@dataclass
+class _Plan:
+    """One `render()` call's layout state, threaded through every helper.
+
+    ``extents`` memoizes :func:`_subtree_extent` by node id.  Measuring is a
+    dry-run `_layout`, exponential in nesting depth unmemoized (a depth-3
+    program stalled past two minutes vs under a second).  ``tree`` holds the
+    ids of goto-free subtrees laid out with ``stem``/``arm`` gaps.  Per call,
+    never module state: a shared memo raced between threads rendering lazy
+    rasters, and the root keeps every keyed node alive, so no id is reused.
+    """
+
+    extents: dict[int, tuple[int, int, int, int]] = field(default_factory=dict)
+    tree: set[int] = field(default_factory=set)
+    stem: int = _TREE_GAP
+    arm: int = _TREE_GAP
 
 
 def _has_goto(node: Node | None, seen: set[int] | None = None) -> bool:
@@ -308,7 +316,7 @@ def _has_goto(node: Node | None, seen: set[int] | None = None) -> bool:
     return False
 
 
-def _subtree_extent(node: Node | None) -> tuple[int, int, int, int]:
+def _subtree_extent(node: Node | None, plan: _Plan) -> tuple[int, int, int, int]:
     """Measure the bounding box ``node``'s subtree actually draws.
 
     ``(min_forward, max_forward, min_lateral, max_lateral)`` in grid units
@@ -321,20 +329,20 @@ def _subtree_extent(node: Node | None) -> tuple[int, int, int, int]:
     """
     if node is None:
         return (0, 0, 0, 0)
-    cached = _EXTENT_CACHE.get(id(node))
+    cached = plan.extents.get(id(node))
     if cached is not None:
         return cached
     scratch = _Cursor(0, 0, _FORWARD)
-    _layout(node, scratch, measuring=True)
+    _layout(node, scratch, plan, measuring=True)
     points = [p for stroke in scratch.strokes for p in stroke] or [(0, 0)]
     ys = [p[0] for p in points]
     xs = [p[1] for p in points]
     extent = (min(ys), max(ys), min(xs), max(xs))
-    _EXTENT_CACHE[id(node)] = extent
+    plan.extents[id(node)] = extent
     return extent
 
 
-def _arm_spacing(arm: Node | None, *, tree: bool = False) -> int:
+def _arm_spacing(arm: Node | None, plan: _Plan, *, tree: bool = False) -> int:
     """How far a fork arm runs before laying out ``arm``'s own content.
 
     ``tree`` uses the configured tree gap without a loop-return bay.
@@ -352,13 +360,13 @@ def _arm_spacing(arm: Node | None, *, tree: bool = False) -> int:
     their own fork's bay (dropping the multiplier shrank areas 17% at depth
     4 to 44% at depth 10).  A goto-free program renders pixel-identically.
     """
-    margin = _TREE_ARM if tree else _BRANCH_SPACING
+    margin = plan.arm if tree else _BRANCH_SPACING
     if arm is None:
         return margin
     # In the arm's frame, negative forward-extent is content behind the
     # entry point, toward the trunk.
-    min_forward, _, _, _ = _subtree_extent(arm)
-    corridors = _GOTO_CORRIDOR if id(arm) not in _TREE_NODES and _has_goto(arm) else 0
+    min_forward, _, _, _ = _subtree_extent(arm, plan)
+    corridors = _GOTO_CORRIDOR if id(arm) not in plan.tree and _has_goto(arm) else 0
     return margin + max(-min_forward, 0) + corridors
 
 
@@ -392,7 +400,7 @@ def _returns_to(node: Node | None, target: Node, seen: set[int] | None = None) -
     return False
 
 
-def _stem_len(node: Node) -> int:
+def _stem_len(node: Node, plan: _Plan) -> int:
     """How far :func:`_layout` runs a ``?``'s stem before its branch point.
 
     A loop-back's ring reaches ``hi_x`` back along the trunk from the vertex
@@ -407,11 +415,11 @@ def _stem_len(node: Node) -> int:
     own body loops back to pays it, so a goto-free program -- and any fork
     whose ring is shorter than the floor -- renders pixel-identically.
     """
-    if id(node) in _TREE_NODES:
-        return _TREE_STEM
+    if id(node) in plan.tree:
+        return plan.stem
     if not _returns_to(node.nonzero, node):
         return _STEM_LEN
-    _, _, _, x1 = _subtree_extent(node.nonzero)
+    _, _, _, x1 = _subtree_extent(node.nonzero, plan)
     return max(_STEM_LEN, x1 + _RING_OFFSET + _CLEARANCE)
 
 
@@ -419,6 +427,7 @@ def _loop_return_legs(
     start: tuple[int, int],
     target: Node,
     entries: dict[int, tuple[tuple[int, int], tuple[int, int]]],
+    plan: _Plan,
 ) -> list[tuple[tuple[int, int], int]] | None:
     """Construct a loop-back's legs deterministically, without search.
 
@@ -441,9 +450,9 @@ def _loop_return_legs(
     """
     vertex, h = entries[id(target)]
     a_h = _turn_left(h)
-    arm_run = _arm_spacing(target.nonzero)
+    arm_run = _arm_spacing(target.nonzero, plan)
     entry_pt = (vertex[0] + a_h[0] * arm_run, vertex[1] + a_h[1] * arm_run)
-    y0, y1, x0, x1 = _subtree_extent(target.nonzero)
+    y0, y1, x0, x1 = _subtree_extent(target.nonzero, plan)
 
     # `start` in the canonical frame (+y = a_h, +x = turn_left(a_h));
     # projection inverts `_rotate` exactly.
@@ -510,6 +519,7 @@ def _loop_return_legs(
 def _layout(
     node: Node | None,
     cursor: _Cursor,
+    plan: _Plan,
     entries: dict[int, tuple[tuple[int, int], tuple[int, int]]] | None = None,
     depth: int = 0,
     *,
@@ -527,16 +537,16 @@ def _layout(
         entries = {}
     while node is not None:
         if node.op == "?":
-            cursor.advance(cursor.heading, _stem_len(node))
+            cursor.advance(cursor.heading, _stem_len(node, plan))
             entries[id(node)] = ((cursor.y, cursor.x), cursor.heading)
             right, left = cursor.branch()
-            tree = id(node) in _TREE_NODES
-            right.advance(right.heading, _arm_spacing(node.zero, tree=tree))
+            tree = id(node) in plan.tree
+            right.advance(right.heading, _arm_spacing(node.zero, plan, tree=tree))
             right.finish()
-            left.advance(left.heading, _arm_spacing(node.nonzero, tree=tree))
+            left.advance(left.heading, _arm_spacing(node.nonzero, plan, tree=tree))
             left.finish()
-            _layout(node.zero, right, entries, depth + 1, measuring=measuring)
-            _layout(node.nonzero, left, entries, depth + 1, measuring=measuring)
+            _layout(node.zero, right, plan, entries, depth + 1, measuring=measuring)
+            _layout(node.nonzero, left, plan, entries, depth + 1, measuring=measuring)
             right.finish()
             left.finish()
             cursor.strokes.extend(right.strokes)
@@ -560,7 +570,7 @@ def _layout(
             # lacks its outermost fork, which the caller's frame draws.
             legs = None
             if id(node.goto) in entries:
-                legs = _loop_return_legs((cursor.y, cursor.x), node.goto, entries)
+                legs = _loop_return_legs((cursor.y, cursor.x), node.goto, entries, plan)
             if legs is not None and cursor.occupied is not None:
                 # Drift guard, real mode only: the construction never reads
                 # ink, so anything it did not reserve must be caught, not
@@ -709,21 +719,18 @@ def render(
     ``compact=False`` retains the previous acyclic spacing for balancing's
     no-growth fallback.
     """
-    # See `_EXTENT_CACHE`: `id()`-keyed, so it must not outlive its nodes.
-    global _TREE_STEM, _TREE_ARM
-    _EXTENT_CACHE.clear()
-    _TREE_NODES.clear()
+    plan = _Plan()
     if acyclic:
         from .tree_layout import tree_extents
 
-        _TREE_STEM = _TREE_GAP if compact else _STEM_LEN
-        _TREE_ARM = _TREE_GAP if compact else _BRANCH_SPACING
-        _EXTENT_CACHE.update(tree_extents(root, compact=compact))
-        _TREE_NODES.update(_EXTENT_CACHE)
+        plan.stem = _TREE_GAP if compact else _STEM_LEN
+        plan.arm = _TREE_GAP if compact else _BRANCH_SPACING
+        plan.extents = tree_extents(root, compact=compact)
+        plan.tree = set(plan.extents)
     occupied: set[tuple[int, int]] = set()
     cursor = _Cursor(0, 0, start_heading, occupied=occupied)
     entries: dict[int, tuple[tuple[int, int], tuple[int, int]]] = {}
-    _layout(root, cursor, entries)
+    _layout(root, cursor, plan, entries)
 
     ys = [p[0] for stroke in cursor.strokes for p in stroke]
     xs = [p[1] for stroke in cursor.strokes for p in stroke]

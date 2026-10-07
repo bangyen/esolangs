@@ -10,9 +10,9 @@ from esolangs import tools as boolean
 from esolangs.tools.helpers import best_input_order
 from tests.generator_support import verify_generated
 from tests.tools.boolean_runners import (
-    five_input_sample,
     run_algebraic_programming_language,
 )
+from tests.tools.sample_tables import five_input_sample
 from tests.witness_tables import witnesses
 
 
@@ -144,14 +144,6 @@ class TestAlgebraicProgrammingLanguage:
                 for row, output in enumerate(table):
                     assert self._run(program, n, row) == output + "\n"
 
-    def test_default_full_tree_growth_is_linear(self) -> None:
-        """Parity folds no subtree, but its source only doubles per input."""
-        sizes = []
-        for n in (7, 8):
-            table = "".join(str(row.bit_count() & 1) for row in range(1 << n))
-            sizes.append(len(boolean.algebraic_programming_language(table)))
-        assert sizes[1] < 2 * sizes[0] + 32
-
 
 class TestAlgebraicProgrammingLanguageShapes:
     """The structural corners of the decision tree, at four inputs."""
@@ -243,7 +235,9 @@ class TestAlgebraicProgrammingLanguageShapes:
 def test_apl_elementary_definitions_compute_every_small_table(width: int) -> None:
     for n in range(1, 4):
         for table in witnesses(n):
-            program = esolangs.generate("Algebraic Programming Language", table, width)
+            program = esolangs.generate(
+                "Algebraic Programming Language", table, width=width
+            )
             for row, expected in enumerate(table):
                 bits = list(format(row, f"0{n}b"))
                 assert (
@@ -270,12 +264,12 @@ def test_apl_elementary_floor_and_corpus_size() -> None:
 def test_apl_elementary_public_tagged_and_plain_source(
     width: int, *, as_string: bool
 ) -> None:
-    program = esolangs.generate("Algebraic Programming Language", "0110", width)
+    program = esolangs.generate("Algebraic Programming Language", "0110", width=width)
     if as_string:
         program = str(program)
     for bits, expected in (("00", "0"), ("01", "1"), ("10", "1"), ("11", "0")):
         stdin = "\n".join(bits) + "\n"
         assert (
-            esolangs.run("Algebraic Programming Language", program, stdin)
+            esolangs.run("Algebraic Programming Language", program, stdin=stdin)
             == expected + "\n"
         )

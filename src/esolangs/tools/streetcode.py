@@ -293,7 +293,7 @@ def _streetcode_lift(rows: list[str]) -> list[str]:
     # Write it into row 1 reversed, ending against the eastern wall, which
     # is found rather than assumed to be the last column: a block hanging
     # below the street can be wider than the street, and ``width`` is the
-    # widest row of the whole grid.  ``generate("Streetcode", "0001", 20)``
+    # widest row of the whole grid.  ``generate("Streetcode", "0001", width=20)``
     # was one of four two-input tables whose prefix landed outside the wall.
     east = "".join(grid[0]).rindex("+") - 1
     for i, char in enumerate(prefix):
@@ -683,7 +683,10 @@ def streetcode(truth_table: str, width: int | None = None) -> str:
     # seeds avoids that.  It is built once per input order, identity first,
     # so a table no reorder improves keeps the program it already emitted.
     programs.extend(_streetcode_shared_programs(truth_table, n, tree))
-    if width is not None and n == 5:
+    # At five the flat lookup wins on dense and parity tables and loses on
+    # one that folds, so it is compared; without it parity at five costs
+    # 3251 against 2534 and the odd rungs stop growing linearly.
+    if n == 5:
         programs.append(_streetcode_flat(truth_table, n))
     if width is not None:
         fitting = [p for p in programs if _streetcode_columns(p) <= width]

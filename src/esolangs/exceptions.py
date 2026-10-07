@@ -153,13 +153,6 @@ class GeneratorCapError(EsolangError, ValueError):
     """
 
 
-class InputMismatchWarning(UserWarning):
-    """Warned when stdin does not look like what the program read.
-
-    Its own class so ``filterwarnings("error", category=...)`` escalates exactly these.
-    """
-
-
 class InterpreterLimitError(HaltError):
     """An interpreter hit an implementation limit running a program.
 

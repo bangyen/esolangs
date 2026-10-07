@@ -30,13 +30,13 @@ def _wrappable() -> list[str]:
 def _evaluate(name: str, table: str, width: int | None) -> str:
     """Return the program's answer on every row of ``table``, at ``width``."""
     parameterized = esolangs.describe(name)["parameterized"]
-    program = esolangs.generate(name, table, None if parameterized else width)
+    program = esolangs.generate(name, table, width=None if parameterized else width)
     inputs = len(table).bit_length() - 1
     got = ""
     for row in range(len(table)):
         bits = [(row >> (inputs - 1 - i)) & 1 for i in range(inputs)]
         if parameterized:
-            source, stdin = esolangs.instantiate(name, program, bits, width), ""
+            source, stdin = esolangs.instantiate(name, program, bits, width=width), ""
         else:
             source, stdin = program, esolangs.encode_inputs(name, bits)
         got += esolangs.run(name, source, stdin=stdin, timeout=30).strip()[-1:] or "?"

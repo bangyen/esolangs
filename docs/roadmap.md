@@ -36,8 +36,9 @@ history; standing rules and proved limits are in [limitations](limitations.md).
   more executed round produces neither a construction nor a bound, that
   language and its row leave. An unproved wall is not a lookup table.
 
-  The four axes are totality (does the generator handle every table it
-  claims?), generation time, output size, and execution time.
+  The three axes are totality (does the generator handle every table it
+  claims?), generation time, and output size; execution time and workspace
+  are `proofs/index.md`'s Execution and Workspace columns.
   `proofs/index.md` defines totality; `tests/proofs/deep/linearity.py`
   measures output size by same-parity successive differences through
   n=12. Timings use the top five arities, best of three, and exclude
@@ -49,13 +50,13 @@ history; standing rules and proved limits are in [limitations](limitations.md).
 
   <!-- SCALING-STATUS:START -->
 
-  | Language | Totality | Generation time | Output size | Execution time |
-  | --- | --- | --- | --- | --- |
-  | Befunge | Exception | Linear | Linear | Linear |
-  | Factor | Total | Language lower bound | Language lower bound | Linear |
-  | Malbolge | Exception | Open | Linear | Linear |
-  | Polynomial | Cap | Language lower bound | Language lower bound | Linear |
-  | Vandevelo | Total | Open | Measured | Measured |
+  | Language | Totality | Generation time | Output size |
+  | --- | --- | --- | --- |
+  | Befunge | Exception | Linear | Linear |
+  | Factor | Total | Language lower bound | Language lower bound |
+  | Malbolge | Exception | Open | Linear |
+  | Polynomial | Cap | Language lower bound | Language lower bound |
+  | Vandevelo | Total | Open | Measured |
 
   <!-- SCALING-STATUS:END -->
 
@@ -86,23 +87,41 @@ history; standing rules and proved limits are in [limitations](limitations.md).
   n=11,13,15. Parity tables read no higher. All sit inside the measured
   4.4 contract; that is a measurement, not a proof of linearity.
 
-## Engineering
+## Candidate languages
 
-- **Malbolge Unshackled.** Unbounded memory lifts the fixed 59,049-cell
-  store behind Malbolge's 16-input cap. It does not settle the 17-input
-  question below, which concerns Malbolge itself. Next: implement it as a
-  separate entry. Then check whether the packing construction extends past
-  sixteen inputs.
+Screened 2026-10-05 from 54 Category:Unimplemented pages. Each is a first
+implementation (unique backlinks measured 2026-10-06); add with
+`/new-language`, ranked.
+
+- **[Smu](https://esolangs.org/wiki/Smu)** (4 backlinks). Zzo38's minimal
+  Smurf: a string stack over `()=|+`, four commands, and a run that ends by
+  outputting the top string and running the next one. Bit I/O per run.
+  Generator: one node `(c0)(|)=(c1)(+)=()+(=)` stores both children under
+  the input bit's names and runs the selected one on the next bit; a leaf
+  is `()=` then its bit. O(T), hand-traced, not executed. Gaps: an unset
+  variable's value (the cat example implies empty), `=` at EOF, and the
+  byte-to-bit input convention. The cat program is the only stated output.
+- **[SStack](https://esolangs.org/wiki/SStack)** (4 backlinks). Seven
+  unsigned stacks `a`-`g`, empty reads 0, byte I/O, and a loop
+  `[x\y/...]` while two tops are equal. Generator: nested one-shot ifs,
+  O(T). Gaps: EOF, decrementing an empty stack. The page's brainfuck
+  interpreter is untested, so it is not ground truth.
+- **[Transistor](https://esolangs.org/wiki/Transistor)** (2 backlinks).
+  Tri-state values (true, false, floating), N/P transistors and pull
+  resistors as the only primitives, plus `circuit`, `let` and `while`.
+  Generator: a mux fold with inputs as `let` lines, O(T). Gaps: no grammar,
+  no I/O (output would be a chosen variable), computational class unstated.
 
 ## Open problems
 
 Each item names its next executable step. When an item is answered, record
 the answer in the linked proof and remove the item.
 
-- **Brainfuck behaviour count.** In the repo model (clipped tape, EOF
-  error), the growth constant is bracketed:
-  `4.2420 <= liminf B(C)**(1/C) <= limsup <= 7.0347`. The limit itself, and
-  any sub-7 upper bound, remain open. The 11,673-state certificate covers
+- **Brainfuck behaviour count.** With a clipped tape and EOF error (the
+  repo model until 2026-10-06), the growth constant is bracketed:
+  `4.2420 <= liminf B(C)**(1/C) <= limsup <= 7.0347`; the repo's bi-infinite
+  tape has upper bound `6.9133`. The limit itself, and any clipped sub-7
+  upper bound, remain open. The 11,673-state certificate covers
   balanced bodies only to bracket depth one, and no finite monitor can
   count the unrestricted sound print-rotation and forced-divergence bodies:
   they match brackets across any depth. Next: count them with the
@@ -149,35 +168,32 @@ the answer in the linked proof and remove the item.
   close the constant bracket.
 
 - **Factor leading constant.** [factor](proofs/factor.md#leading-constants)
-  brackets worst-case minimum digits divided by `T*n` between 0.11528442
-  and 0.29229475 asymptotically (a 2.535423-fold gap). The lower side
+  brackets worst-case minimum digits divided by `T*n` between 0.11675954
+  and 0.29229475 asymptotically (a 2.503391-fold gap). The lower side
   counts weighted exponent compositions after local normalization and
   first-output pruning; the upper side prices a traveling counter, fixed
   signed-ball blocks, and an almost-all prime-window covering bound. Parity
   encodings executed through five inputs determine neither limit.
   On the executed corpus, semantic deduplication only halves the count (a
-  constant factor), and the tempting `<>` deletion is unsound at the
-  clamped edge. Next: find a sound local rewrite that lowers the lower
+  constant factor); `<>` is already in the forbidden set now that the
+  tape grows left. Next: find a sound local rewrite that lowers the lower
   side's Perron root, or construct a cheaper weighted command stream to lower
   the upper one. Whether the limit exists, and its value, remain open.
 
-- **Vandevelo structural scaling.** Register upkeep is bounded at O(T)
-  lines and O(T log n) characters; the identifier references are the part
-  that still carries the extra factor. The exact fallback now transforms
-  the quotient by a node's `d`-dimensional span: `O(n*|S|)` projection
-  plus `O((n-d)*2**(n-d))` transform work per call. A forced six-input
-  control executes the three-dimensional transform and matches full-space
-  counts; 280 generated programs retain identical source and all 2,536
-  rows execute. Affine-coset complements use direct violation guards: the
-  n=12 one-zero table drops 40,938,391 candidate visits and shrinks from
-  333 to 277 characters. The occurrence-weighted naming audit shrinks a
-  seeded n=12 source by only 1.01%, below the shipping threshold;
-  `scripts/profile_vandevelo.py` records its executed controls. Next:
-  remove the identifier factor, amortize projection and fallback calls,
-  and bound the dual-basis core's aggregate work. The fallback is not
-  amortized now: one seeded 15-input table spends `60*T` in it
-  ([proofs](proofs/index.md)). Neither remaining gap is
-  a language-wide lower bound; measured scaling does not settle them.
+- **Vandevelo structural scaling.** Clause count is under `17*2**n/n`
+  for every table: `_assure` puts a half-average direction on each level
+  of the chains the bound needs. Lines and commands per row are therefore
+  `O(T)`, which closes execution time. Identifier references still carry
+  the extra factor. Generation is not linear as built: with `k` zeros the
+  first chain stays near full for `n - log2(k)` levels, at least `T*(n -
+  log2(k) - 2)` work, and three zeros measure about `860*n*T`. Next:
+  score near-full levels from their complement, whose misses at most
+  double a level, and bound the dual-basis core's aggregate work
+  ([proofs](proofs/index.md)). The identifier factor is Cohen and
+  Shinkar's open `O(log n)` gap in DNF-of-parities size. On tables whose
+  cubes are under `2*log2(n)` dimensions, coset programs cost
+  `Theta(DNF+(f) * n * log n)` characters. So neither linear output nor a
+  super-linear lower bound can be proved without settling that gap.
 
 - **FRACTRAN order encoding.** One unchanged multiset of eight fractions
   computes all sixteen four-row tables just by ordering each `1/p, 2/p`

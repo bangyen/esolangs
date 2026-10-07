@@ -1,0 +1,11 @@
+{
+ "language": "SLOW ACV MAMMALIAN",
+ "oldid": 197094,
+ "examples": [
+  {
+   "id": "h",
+   "source": "SEED\nSPRINT\nSPRINT\nSPRINT\nSEED\nSEED\nSEED\nSEED\nSEED\nSEED\nSEED\nSEED\nDIGEST\nPRONOUNCE\n",
+   "expected": "H"
+  }
+ ]
+}

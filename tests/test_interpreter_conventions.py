@@ -36,7 +36,7 @@ _IO_OWNER = "run"
 #   recursive-evaluation boundary under their owning helper types.
 #
 # Pinned as a set, in both directions, so it cannot quietly grow and cannot
-# go stale -- the same shape as ``RAISES_ON_THE_POST_HALT_STEP``.
+# go stale.
 _MAY_REACH_IO = frozenset(
     {
         ("other/forbin.py", "_BitReader.read"),
@@ -160,26 +160,6 @@ class TestTransitionsDoNotReachIO:
         assert (module, function) in _reaching_functions()
 
 
-#: Interpreters still raising ``HaltError`` with nothing to say, by count.
-#:
-#: A bare ``raise HaltError`` used to reach the user as an *empty message*:
-#: ``esolangs run`` forwarded ``""``, so a failing program printed nothing
-#: at all and exited 1 -- indistinguishable from a crash and from a
-#: successful program that prints nothing.  A reader hit it in Modulous;
-#: Modulous was not special, it was thirteen files.
-#:
-#: :class:`~esolangs.exceptions.HaltError` has a default now, so none of
-#: these is silent.  The default is deliberately weak -- it names the class
-#: of fault and admits it does not know which one -- so this table is the
-#: work that remains rather than a set of exemptions.  Modulous is absent
-#: because its four were given real messages, which is the model: "the
-#: stack is empty, so there is no top value to read".
-#:
-#: The numbers only go down.  A new bare raise fails this, which is the
-#: point: the cheap thing when writing an interpreter is to raise the class
-#: and move on, and that is exactly how thirteen files got here.
-_WORDLESS_HALTS: dict[str, int] = {}
-
 #: A ``raise`` of a bare exception class, or one with no arguments at all.
 _BARE_RAISE = re.compile(
     r"^\s*raise (HaltError|ValueError|ProgramError|EOFError)\s*(\(\s*\))?\s*$"
@@ -208,33 +188,10 @@ def test_a_bare_halt_still_says_something() -> None:
 
 
 def test_no_interpreter_halts_without_saying_why() -> None:
-    """The inventory only shrinks."""
+    """A bare ``raise HaltError`` reaches the user as an empty message."""
     found = _wordless_halts()
-    grew = {
-        name: (count, _WORDLESS_HALTS.get(name, 0))
-        for name, count in found.items()
-        if count > _WORDLESS_HALTS.get(name, 0)
-    }
-    assert not grew, (
-        "these interpreters gained a wordless halt (now, allowed): "
-        f"{grew} -- give it a message rather than raising the bare class"
-    )
-    fixed = {
-        name: (found.get(name, 0), allowed)
-        for name, allowed in _WORDLESS_HALTS.items()
-        if found.get(name, 0) < allowed
-    }
-    assert not fixed, (
-        f"these improved and the table did not follow: {fixed} -- "
-        "lower the counts in _WORDLESS_HALTS"
-    )
-
-
-def test_the_scan_finds_the_ones_it_is_meant_to() -> None:
-    """A regex that matched nothing would make the guard above vacuous."""
-    assert sum(_wordless_halts().values()) == sum(_WORDLESS_HALTS.values())
-    # The ledger is empty, so the regex is pinned against samples rather
-    # than against a count of the offenders that are left.
+    assert not found, f"wordless halts: {found} -- give each a message"
+    # Pin the regex against samples, so the guard above is not vacuous.
     assert _BARE_RAISE.match("    raise HaltError")
     assert _BARE_RAISE.match("        raise ValueError()")
     assert not _BARE_RAISE.match('    raise HaltError("division by zero")')

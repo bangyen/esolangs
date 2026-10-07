@@ -604,7 +604,6 @@ WRAPPERS = {
     "grapheme": wrap_chars,
     "nocomment": wrap_chars,
     "brainfuck": wrap_chars,
-    "three_d_brainfuck": wrap_chars,
     "circlefuck": wrap_chars,
     # ``[`` skips the character after it.
     "minifuck": _minifuck,

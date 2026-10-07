@@ -46,14 +46,13 @@ def bit_tilde(truth_table: str) -> str:
 
     depth = {stream: level for level, stream in enumerate(used)}
     for i in range(n):
-        # The byte a read lands leaves a 1 three cells along, in the lane a
-        # later jump tests, so it is cleared on the way to the input's bit.
-        prog.append(")>>>~")
+        # ``)`` XORs; the flip three along, in the jump lane, is undone. A jump
+        # sends later reads below this bit; an unused input reads one up.
         if i in depth:
             weight = 2 << (width - 1 - depth[i])
-            prog.append(">>>>{" + "<" * weight + "}" + "<" * 7)
+            prog.append(")>>>~>>>>{" + "<" * weight + "}" + "<" * 7)
         else:
-            prog.append("<<<")
+            prog.append(">)>>~<<<")
 
     prog.append("<<{" + _BIT_TILDE_WALK + "}" + _BIT_TILDE_WALK)
     prog.append("<" * 17 + "(")

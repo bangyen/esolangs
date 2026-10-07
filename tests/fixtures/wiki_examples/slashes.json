@@ -1,0 +1,153 @@
+{
+ "language": "///",
+ "oldid": 166743,
+ "examples": [
+  {
+   "id": "hello-plain",
+   "source": "Hello, world!",
+   "expected": "Hello, world!"
+  },
+  {
+   "id": "hello-substitution",
+   "source": "/ world! world!/Hello,/ world! world! world!",
+   "expected": "Hello, world!"
+  },
+  {
+   "id": "hello-modifies-next",
+   "source": "/foo/Hello, world!//bar/foo/bar",
+   "expected": "Hello, world!"
+  },
+  {
+   "id": "hello-escaped-slash",
+   "source": "/a/\\//ab/world!/ab world!/Hello, aworld! bworld!",
+   "expected": "Hello, world!"
+  },
+  {
+   "id": "loop-foo",
+   "source": "/foo/foobar/foo",
+   "expected": "",
+   "stop": "steps",
+   "max_steps": 1000,
+   "note": "never halts, prints nothing"
+  },
+  {
+   "id": "loop-ab",
+   "source": "/ab/bbaa/abb",
+   "expected": "",
+   "stop": "steps",
+   "max_steps": 1000,
+   "note": "never halts, prints nothing"
+  },
+  {
+   "id": "bottles",
+   "note": "the song; the line between the 2- and 1-bottle verses is a single space, as written in the program",
+   "source_file": "slashes_bottles.txt",
+   "expected_file": "slashes_bottles_out.txt"
+  },
+  {
+   "id": "bottles-improved",
+   "note": "the song, except that the program prints \"1 bottles\" in its last two verses (a bug in the wiki program; a spec-literal reference prints the same)",
+   "source_file": "slashes_bottles-improved.txt",
+   "expected_file": "slashes_bottles-improved_out.txt"
+  },
+  {
+   "id": "bottles-golfed",
+   "source": "/NL/\n//@/ bottles of beer on the wallNL//^/bottles of beer//%/^NLtake one down pass it around//#/ %NL//$/NL99@99#98@98#97@97#96@96#95@95#94@94#93@93#92@92#91@91#90@90 %/$/NL9/NL8/$/NL8/NL7/$/NL7/NL6/$/NL6/NL5/%/NL5/NL4/$/NL4/NL3/$/NL3/NL2/$/NL2/NL1/$/NL11 bottles/NL* bottle//NL1/NL//0@0 %///*/1//e of beer\ntake one/e of beer\ntake it/$no more@no more ^",
+   "note": "the golfed lowercase song; a spec-literal reference prints the same",
+   "expected_file": "slashes_bottles-golfed_out.txt"
+  },
+  {
+   "id": "binary-to-unary",
+   "source": "/1/0*//*0/0**//0//100010",
+   "expected": "**********************************"
+  },
+  {
+   "id": "unary-to-binary",
+   "source": "/*/>01//1>/1//10/01//011/1\\0//01/_1//_///>0/>//>//**********************************",
+   "expected": "100010"
+  },
+  {
+   "id": "decimal-to-unary",
+   "source": "/9/8*//8/7*//7/6*//6/5*//5/4*//4/3*//3/2*//2/1*//1/0*//*0/9*//0//40",
+   "expected": "****************************************"
+  },
+  {
+   "id": "unary-to-decimal",
+   "source": "/*/>01//1>/1//10/01//01111111111/1\\0//0111111111/_9//011111111/_8//01111111/_7//0111111/_6//011111/_5//01111/_4//0111/_3//011/_2//01/_1//_///>0/>//>//****************************************",
+   "expected": "40"
+  },
+  {
+   "id": "unary-to-decimal-short",
+   "source": "/*/>01//1>/1//10/01//01111111111/1\\0//01111/_4//_411/%//%111/_9//%11/_8//%1/_7//%/_6//_41/_5//0111/_3//011/_2//01/_1//_///>0/>//>//****************************************",
+   "expected": "40"
+  },
+  {
+   "id": "roman-to-unary",
+   "source": "/CM/DCD//M/DD//CD/CCCC//D/CCCCC//XC/LXL//C/LL//XL/XXXX//L/XXXXX//IX/VIV//X/VV//IV/IIII//V/IIIII//I/*/XXXIV",
+   "expected": "**********************************"
+  },
+  {
+   "id": "unary-to-roman",
+   "source": "/*/I//IIIII/V//IIII/IV//VV/X//VIV/IX//XXXXX/L//XXXX/XL//LL/C//LXL/XC//CCCCC/D//CCCC/CD//DD/M//DCD/CM/**********************************",
+   "expected": "XXXIV"
+  },
+  {
+   "id": "roman-calculator",
+   "source": "[/cm/dcd//m/dd//cd/cccc//d/ccccc//xc/lxl//c/ll//xl/xxxx//l/xxxxx//ix/viv//x/vv//iv/iiii//v/iiiii//i/*//+///*-*/-//*-/*//*/I//IIIII/V//IIII/IV//VV/X//VIV/IX//XXXXX/L//XXXX/XL//LL/C//LXL/XC//CCCCC/D//CCCC/CD//DD/M//DCD/CM/]\n[clxv+xvi]",
+   "expected": "[]\n[CLXXXI]",
+   "note": "clxv+xvi = CLXXXI; the bracket lines are not removed by this program, so they print"
+  },
+  {
+   "id": "thue-morse",
+   "source": "/*/\\/.\\\\0\\/,\\\\,0,\\\\,1\\/\\/.\\\\1\\/,\\\\,1,\\\\,0\\/\\/,\\\\,\\/.\\//********/.//.0",
+   "expected": "0110100110010110100101100110100110010110011010010110100110010110100101100110100101101001100101100110100110010110100101100110100110010110011010010110100110010110011010011001011010010110011010010110100110010110100101100110100110010110011010010110100110010110"
+  },
+  {
+   "id": "thue-morse-tail-input",
+   "source": "/>*/#>//>/\\/.\\/\\/.0//#/\\/.\\\\0\\/,\\\\,0,\\\\,1\\/\\/.\\\\1\\/,\\\\,1,\\\\,0\\/\\/,\\\\,\\/.\\//>********",
+   "expected": "0110100110010110100101100110100110010110011010010110100110010110100101100110100101101001100101100110100110010110100101100110100110010110011010010110100110010110011010011001011010010110011010010110100110010110100101100110100110010110011010010110100110010110"
+  },
+  {
+   "id": "python-usage",
+   "source": "/*/#<//<#/#//</\\/.\\/\\/.0//#/\\/.\\\\0\\/,\\\\,0,\\\\,1\\/\\/.\\\\1\\/,\\\\,1,\\\\,0\\/\\/,\\\\,\\/.\\//********",
+   "expected": "0110100110010110100101100110100110010110011010010110100110010110100101100110100101101001100101100110100110010110100101100110100110010110011010010110100110010110011010011001011010010110011010010110100110010110100101100110100110010110011010010110100110010110"
+  },
+  {
+   "id": "fibonacci",
+   "source": "/!/\\/.\\\\0\\/,\\\\,0,\\\\,1\\/\\/.\\\\1\\/,\\\\,0\\/\\/,\\\\,\\/.\\/\\/+\\\\+\\/=\\\\=.\\\\1-\\/\\/=\\\\=\\/+\\\\+\\//!!!!!!!!!/.///+\\+///-/\\\\\\///0/1//1/*/++.1",
+   "expected": "*/*/**/***/*****/********/*************/*********************/**********************************/*******************************************************",
+   "note": "nine marks print ten numbers, 1 through 55; the prose says \"first N\""
+  },
+  {
+   "id": "fibonacci-tail-input",
+   "source": "/>*/#>//>/\\/.\\/\\/\\/+\\\\+\\/\\/\\/-\\/\\\\\\\\\\\\\\/\\/\\/0\\/1\\/\\/1\\/*\\/++.1//#/\\/.\\\\0\\/,\\\\,0,\\\\,1\\/\\/.\\\\1\\/,\\\\,0\\/\\/,\\\\,\\/.\\/\\/+\\\\+\\/=\\\\=.\\\\1-\\/\\/=\\\\=\\/+\\\\+\\//>*********",
+   "expected": "*/*/**/***/*****/********/*************/*********************/**********************************/*******************************************************",
+   "note": "nine marks print ten numbers, 1 through 55; the prose says \"first N\""
+  },
+  {
+   "id": "counter",
+   "expected": "*\n",
+   "stop": "steps",
+   "max_steps": 1000,
+   "note": "loops forever printing longer lines of asterisks",
+   "source_file": "slashes_counter.txt"
+  },
+  {
+   "id": "counter-simpler",
+   "source": "/]\n/]//] /]//][//]\n[/|/<-\\\\\\\\>\\\\\\\\\\\\/]\n[/QT/]\n    [|/R|N|/Q|T|/|/<-|\\|\\>|/<-|\\|\\|\\|\\>|\\|\\|\\|\\|/|/<|\\->|/|/]\n    [C|T|/C|\\T|/C|T|/|/*|\\\n]   [|/I|\\N|/|/I|\\N|/**|\\\n]   [|/]\n    [|/Q|\\T|/Q|T|/R|N]\n[/]\n[/RN/QT//<-\\\\>/<-\\\\\\\\>\\\\\\\\//<\\->//]\n[/CT/*\n/]\n[/Q\\T/QT/RN\n",
+   "expected": "*\n**\n***\n****\n*****\n******\n*******\n",
+   "stop": "steps",
+   "max_steps": 1000
+  },
+  {
+   "id": "quine-slashes",
+   "source_file": "slashes_quine-slashes.txt",
+   "expected_file": "slashes_quine-slashes_out.txt"
+  },
+  {
+   "id": "quine-readable",
+   "source": "/<\\>/<\\\\\\\\>\\\\\\\\\\\\//P1/<>/<<>\\><>/<<>\\<>\\<>\\<>\\><>\\<>\\<>\\<>\\<>\\<>\\<>/<>/P<>1<>/P<>2<>/<>/P<<>\\<>\\><>\\<>\\<>2<>/P<>1<>/<>/<<>\\><>/<<<>\\<>\\>><>\\<>\\<>/<>/<<>\\<>\\><>/<>/P<>1//P<\\\\>\\\\2/P1//<\\>/<<\\\\>>\\\\//<\\\\>//P1",
+   "expected": "/<\\>/<\\\\\\\\>\\\\\\\\\\\\//P1/<>/<<>\\><>/<<>\\<>\\<>\\<>\\><>\\<>\\<>\\<>\\<>\\<>\\<>/<>/P<>1<>/P<>2<>/<>/P<<>\\<>\\><>\\<>\\<>2<>/P<>1<>/<>/<<>\\><>/<<<>\\<>\\>><>\\<>\\<>/<>/<<>\\<>\\><>/<>/P<>1//P<\\\\>\\\\2/P1//<\\>/<<\\\\>>\\\\//<\\\\>//P1"
+  }
+ ]
+}

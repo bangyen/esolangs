@@ -4,7 +4,6 @@ from dataclasses import dataclass
 
 import esolangs
 from esolangs._describe import LanguageInfo
-from esolangs._evaluate import _DEFAULT, _Default
 from esolangs._program import Program
 from esolangs._source import InputSource, ProgramSource
 from esolangs.registry import resolve
@@ -31,8 +30,8 @@ class Language:
     def generate(
         self,
         truth_table: str,
-        width: int | None = None,
         *,
+        width: int | None = None,
         balance: bool = False,
         scale: int = 1,
         settings: DialectSettings | None = None,
@@ -41,7 +40,7 @@ class Language:
         return esolangs.generate(
             self.name,
             truth_table,
-            width,
+            width=width,
             balance=balance,
             scale=scale,
             settings=settings,
@@ -49,16 +48,21 @@ class Language:
 
     def instantiate(
         self,
-        template: str,
+        template: Program,
         bits: list[int] | tuple[int, ...],
+        *,
         width: int | None = None,
         truth_table: str | None = None,
-        *,
         settings: DialectSettings | None = None,
     ) -> str:
         """Fill a parameterized template with ``bits``."""
         return esolangs.instantiate(
-            self.name, template, bits, width, truth_table, settings=settings
+            self.name,
+            template,
+            bits,
+            width=width,
+            truth_table=truth_table,
+            settings=settings,
         )
 
     def dump_program(
@@ -74,10 +78,10 @@ class Language:
     def run(
         self,
         program: ProgramSource,
-        stdin: InputSource = "",
-        timeout: float | _Default | None = _DEFAULT,
-        seed: int | None = None,
         *,
+        stdin: InputSource = "",
+        timeout: float | None = None,
+        seed: int | None = None,
         isolated: bool = False,
         max_steps: int | None = None,
         max_output: int | None = None,
@@ -89,9 +93,9 @@ class Language:
         return esolangs.run(
             self.name,
             program,
-            stdin,
-            timeout,
-            seed,
+            stdin=stdin,
+            timeout=timeout,
+            seed=seed,
             isolated=isolated,
             max_steps=max_steps,
             max_output=max_output,
@@ -105,10 +109,10 @@ class Language:
         return esolangs.describe(self.name)
 
     def encode_inputs(
-        self, bits: list[int] | tuple[int, ...], truth_table: str | None = None
+        self, bits: list[int] | tuple[int, ...], *, truth_table: str | None = None
     ) -> str:
         """Return the stdin encoding for ``bits``."""
-        return esolangs.encode_inputs(self.name, bits, truth_table)
+        return esolangs.encode_inputs(self.name, bits, truth_table=truth_table)
 
     def read_answer(self, output: str) -> str:
         """Extract the answer bit from raw output."""

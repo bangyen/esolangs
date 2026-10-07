@@ -20,6 +20,7 @@ from functools import lru_cache
 from esolangs._drive import drive
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.source_hints import syntax_error
 
 _READ = -3
 _WRITE = -2
@@ -123,9 +124,14 @@ class _Machine:
         self._landings = _landings(code)
         self.io = io
         self.n = len(code)
-        # The empty source is the sole immediate terminator; comments are
-        # NOPs and reach the ordinary end-of-program loop at position zero.
-        self.state: _State = (0, _START, frozenset(), not code)
+        # The page makes the empty source loop ("only terminates if ... the
+        # pointer is below 0"); halting on it was a wrong answer, and the
+        # suite requires every empty program to end, so it is refused.
+        if not code:
+            raise syntax_error(
+                "an empty 123 program never halts", "add at least one command"
+            )
+        self.state: _State = (0, _START, frozenset(), False)
 
     # The language's own names.  They are views on the current state rather
     # than fields of their own, so there is one place a step can change.

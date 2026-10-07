@@ -10,17 +10,21 @@ so line-wrapped generated programs run. Spaces, tabs and CR remain malformed.
 ``integer_conversion="between_letters"`` keeps existing programs and generators:
 ``FAFY`` prints 1. ``"after_each_letter"`` follows the prose and prints 10;
 int mode and string-to-integer conversion share this rule. Numeric and function
-conversions are unchanged. Reading an unset variable halts; the spec leaves
-initial variable values unspecified.
+conversions are unchanged. Reading an unset variable pushes its name: the
+spec leaves initial values unspecified, and its "Using variables" example
+(``EVARIABLEEMYVAREKCDY`` prints ``VARIABL``) reads a name it never set.
 
 Gaps decided: underflow, math or ``Y`` on a function, a negative ``N``
-integer (alphabet ``A``-``J``), a function as a variable name, an
-undeclared ``D`` variable by default and division by zero halt
+integer (alphabet ``A``-``J``), and division by zero halt
 (:class:`~esolangs.exceptions.HaltError`); a character outside
 ``A``-``Z`` is malformed (:class:`ValueError`); ``G``/``I``/``Q``/``Z``
 run a function in a fresh normal-mode context sharing stack and
 variables; ``W`` reads a line and raises :class:`EOFError` at end of
-input; ``N`` on a function returns its body.
+input; ``N`` on a function returns its body.  "each one representing a
+command": ``U``/``V``/``X`` skip letters, not whole literals, and funcmode
+ends at the next ``H`` even inside ``E...E``; ``Z`` on a non-function does
+nothing; ``V``'s count converts as ``J`` does; a literal still open at the
+end of the code is pushed.
 
 :class:`_Machine` has an explicit call stack (one frame per active call),
 so ``halted`` is true once no frame remains and a repeated
@@ -37,6 +41,11 @@ rewind for ``Z``) is part of the transition, reading the *virtual* depth.
 The old ``steps``/``limit`` budget is gone: unbounded pushes are what
 ``esolangs.run``'s ``timeout`` catches, and ancestor replay is decided by
 :func:`esolangs.vm.run_until_halt_or_ancestor`.
+
+The page's truth machine ``HFAFYHWJUZFZFY`` works for input 0 only: on 1,
+``U`` pops the 1, ``Z`` pops the function off an otherwise empty stack, its
+loop never runs, and ``FZFY`` prints 0.  Only a ``Z`` that keeps its function
+on the stack would loop, against the table's "Pop A"; not adopted.
 
 The spec asks for strings without defining their delimiter; W reads one line,
 excluding its newline.
@@ -270,25 +279,14 @@ def _advance(
     elif c == "C":
         pops, name = _pop(view, pops)
         pops, value = _pop(view, pops)
-        if isinstance(name, tuple):
-            raise HaltError(
-                "a function cannot name a variable",
-                hint="use a string or numeric name for the variable",
-            )
+        # The map takes "integers/strings/functions to" the same, so a
+        # function names a variable too (by its body, a hashable pair).
         variables = {**variables, name: value}
     elif c == "D":
         pops, name = _pop(view, pops)
-        if isinstance(name, tuple):
-            raise HaltError(
-                "a function cannot name a variable",
-                hint="use a string or numeric name for the variable",
-            )
-        if name not in variables:
-            raise HaltError(
-                f"undeclared variable {name!r}",
-                hint="declare the variable before reading it; check its spelling",
-            )
-        pushes = (variables[name],)
+        # An unset name reads as itself: the wiki's "Using variables"
+        # example prints ``VARIABL`` by reading a name it never set.
+        pushes = (variables.get(name, name),)
     elif c in _OPENS:
         mode, buf = _OPENS[c], ()
     elif c == "G":
@@ -342,7 +340,8 @@ def _advance(
         pops, a = _pop(view, pops)
         pops, b = _pop(view, pops)
         if not _truthy(a):
-            pc += _to_int(b, dialect)
+            # "skip the next B commands": a negative B skips none.
+            pc += max(0, _to_int(b, dialect))
     elif c == "W":
         pushes = (line_in if line_in is not None else "",)
     elif c == "X":

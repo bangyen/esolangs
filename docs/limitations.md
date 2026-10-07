@@ -171,7 +171,7 @@ the 1792 level-0 rows.
 
 ## Curation
 
-The collection has 82 languages; its floor is 31. All ten classics have
+The collection has 80 languages; its floor is 31. All ten classics have
 generators. Removed: unused ordinary imperative entries with shared-shim
 generators; Nopstacle for incompatible embeds; ZTOALC L for a searched
 syntax-level lookup table. The 2D screen intersected
@@ -185,9 +185,15 @@ across all namespaces, and deduplicate by page ID. Pause at least three seconds
 between requests.
 
 The cutoff is policy, adopted 2026-10-01, not a measured popularity boundary.
-Record resolved title, date and count; missing data means unassessed. Below
-60, only intrinsic axes can admit a language. Low backlinks count against
-only old languages; Wikipedia pageviews are not a gate.
+Record resolved title, date and count; missing data means unassessed. Low
+backlinks count against only old languages; Wikipedia pageviews are not a
+gate.
+
+Below 60, a language is admitted only as a first implementation: when the
+repo adds it, no implementation exists but the maintainer's. Its page is in
+the Unimplemented category, or the edit that first tagged it Implemented is
+User:Bangyen's. An intrinsic axis can choose between such candidates; it
+admits nothing alone.
 
 Recognition sources checked 2026-10-01 supply selections, not admission gates
 or popularity rankings:
@@ -217,8 +223,22 @@ rejected Brainloller and Braincopter score 26 and 14. Piet (65) clears the
 fame gate; Whitespace (58),
 Forth (57), Chicken (55), Shakespeare (54), and LOLCODE (47) do not.
 
-Existing fame exceptions must still clear the bar; intrinsic axes are exempt.
-Whitespace was removed at 58 backlinks with no intrinsic axis.
+Existing fame exceptions must still clear the bar. Whitespace was removed at
+58 backlinks.
+
+The 2026-10-06 census (`tests/fixtures/curation.json`) records each
+language's backlinks and route: 21 clear the fame gate and 53 are first
+implementations. Six were implemented elsewhere when added, all before the
+rule was written down on 2026-09-27, and are grandfathered: BIO (ais523),
+BF-PDA (Madk, 2010), 123 (a 2012 VB.NET interpreter), NoComment, Sophie
+(their authors') and Jaune (two others'). Befunge-98 (Funge-98, 31, two
+dozen implementations) came after and was removed on 2026-10-06.
+
+A route admits a language only when its specification fixes the core
+semantics. 3D Brainfuck was removed on 2026-10-06: its page never says how
+a linear source places blocks in the grid or what the generation pointer
+does, so its interpreter invented the core, the invented semantics the
+大白话 deferral rules out.
 
 Bitwise Cyclic Tag (181) also adds the cyclic-schedule axis. Deadfish (315)
 is interpreter-only because it has no input vocabulary.
@@ -287,7 +307,8 @@ and 4.000 (///). The constructions supply the bounds; these ratios are measureme
   decoded Brainfuck, but sources of length at most L supply at most L+1
   functions. Covering all 2**T truth tables requires L >= 2**T - 1 somewhere,
   precluding an O(T) generator. Decoded Brainfuck uses wrapping bytes,
-  a left-clamped tape and zero at EOF, as its cat example requires.
+  a tape growing in both directions and zero at EOF, as its cat example
+  requires.
 - [大白话](https://esolangs.org/wiki/大白话) (134): deferred. The command table is
   explicitly partial; expression precedence, complete block grammar, library
   semantics, and embedded-language dispatch are unspecified. A restricted
@@ -315,14 +336,6 @@ languages remain rejected from the same image-source screen.
 ## Specification decisions
 
 - 6-5 accepts operands beyond its specification; generators use `0..35`.
-- Befunge-98 implements the Funge-98 core without fingerprints, concurrency
-  or file I/O: `A`-`Z`, `t i o = h l m`, and `(` `)` after their operands act
-  like `r`.  `&` reads one whitespace-delimited integer token, the shared
-  numeric convention, rather than skipping non-digits.  `,` writes the low
-  byte.  `k` runs its target in place `n` times and the IP then meets it once
-  more, the wiki's "0 or n+1 times".  `y` reports a sandbox: unbounded cells
-  (0 bytes), no command line or environment, zero date and time.  The
-  bounding box only grows.
 - FALSE's `ø` pick counts from zero, so `0ø` is `$`; the description ("dup
   the nth stack item") does not say where the count starts.  Reading a
   variable before storing it raises rather than inventing a value, and a
@@ -347,17 +360,22 @@ languages remain rejected from the same image-source screen.
 - Unlambda's `@` reads a Unicode character, including newlines. At EOF,
   it hands its argument `v` and clears the current character; `?x` and `|`
   then take their no-character branch.
-- Bitdeque `GOTO n` is zero-based: it lands on command index `n`, where the
-  wiki leaves the counting origin unstated. The generator’s labels match this.
-- Brainfuck uses wrapping bytes, a right-growing tape, a clamped left edge and
-  EOF errors. Its page describes implementation conventions rather than
+- Bitdeque `GOTO n` counts from 1, as the wiki's "the Nth operation" reads;
+  a target past the last command halts and a taken `GOTO 0` raises, both
+  unstated on the wiki. The generator's labels match this.
+- Brainfuck uses wrapping bytes, a tape growing in both directions and EOF
+  errors; its page allows cells left of the start, and two of its Hello
+  Worlds need them. Its page describes implementation conventions rather than
   conflicting requirements. Factor retains these defaults: its cell range
   and right growth are explicit, while its left edge and EOF are unspecified.
 - Line leaves cell width and tape boundaries unspecified: cells are unbounded
   integers and the sparse tape extends in both directions.
-- Flowchart leaves scheduling, cursor ownership and equal-distance junctions
-  unspecified. Pointers run in creation-order rounds with separate cursors;
-  junctions prefer straight, right, then left.
+- Flowchart leaves path timing, cursor ownership and equal-distance junctions
+  unspecified. Paths take no time, as the wiki's eight-pointer Hello World
+  requires, so a step runs one node per pointer in the spec's order; cursors
+  are per pointer; junctions prefer straight, right, then left. I/O is
+  Boolfuck's bytes, low bit first, as the spec says; EOF reads empty, and the
+  wiki cat's final empty pop pads to a trailing NUL.
 - LaserFuck inherits Brainfuck commands without defining EOF: exhausted input
   raises `EOFError`.
 - BrainIf rejects unknown commands, including those under a false guard.
@@ -365,15 +383,17 @@ languages remain rejected from the same image-source screen.
 - SLOW ACV MAMMALIAN rejects unknown words; commands are uppercase and
   whitespace-delimited. The Hello World fixture omits prose annotations.
   Its storage range is `0..255`, but EXCRETE and PRONOUNCE say modulo 255;
-  `cell_modulus` and `io_modulus` select 255 or 256, both defaulting to 256.
+  `cell_modulus` and `io_modulus` select 255 or 256; cells default to 256
+  and I/O to the page's 255.
 - Jaune leaves unresolved markers, cell bounds, tape bounds and EOF unspecified.
   Unresolved markers raise `HaltError`; cells are unbounded, the tape grows
-  right and clamps left, and EOF raises. `v` reads signed integer tokens.
+  in both directions, and EOF raises. `v` reads signed integer tokens.
 - Alight retains infix, left-to-right expressions for compatibility with
   existing programs and generators, despite the explicit postfix rule.
   Its cat examples use infix expressions; `expression_syntax="postfix"` follows
-  the conflicting Operations section. Three-argument `at` returns a copy;
-  the wiki reversed cat discards it.
+  the conflicting Operations section. Three-argument `at` defaults to
+  `list_update="in_place"`, which the reversed cat needs (it discards the
+  result); `"copy"` follows the prose's "return a copy".
 - CV(N)(C) accepts ASCII `g` as an alias for `ɡ` to run the wiki greeting.
   CV(N)(C), Grapheme and NoComment discard LF to run line-wrapped generated
   programs; these are source-rule deviations, not specification gaps.
@@ -381,10 +401,17 @@ languages remain rejected from the same image-source screen.
   1. `"after_each_letter"` includes the prose's final multiplication and prints
   10. Both integer mode and string conversion follow this setting; generators
   adapt their literals. The same page’s truth machine requires 1 rather than
-  the prose’s 10. Unset variables raise `HaltError`; initialization is unspecified.
+  the prose’s 10. An unset variable reads as its own name, which the page’s
+  variables example (`VARIABL`) requires.
 - Packlang literals default to decimal; `literal_policy="binary_digits"`
   treats literals containing only `0` and `1` as binary. The same page uses
   decimal `101` in Hello World and binary digits in PlusOrMinus and dependency
   examples. Character input preserves newlines; EOF supplies newline to `charGet`.
+- ROTfuck defaults to `rotation="backward"` (`+` turns into `]`): the wiki's
+  one-character cat `,[` then echoes; `"forward"` follows the prose (`+` into
+  `-`), under which the cat fires an unmatched `]`. A jump seeks its partner
+  before the rotation ("after the instruction is executed"). The wiki Hello
+  World prints no greeting under any direction or seek timing. The generator
+  targets the default only.
 - Pinyin is rejected: its spelling rule contradicts its examples and its
   input-1 truth-machine example has no deterministic reading.

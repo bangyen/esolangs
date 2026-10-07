@@ -1,0 +1,18 @@
+
+Dependency {
+  Integer equals : Integer a, Integer b {
+    !(a ^ b);
+  }
+  Integer nequals : Integer a, Integer b {
+    !!(a ^ b);
+  }
+} myDependency;
+Package : IO, myDependency {
+  Integer main {
+    charPut(110000 ^ equals(101, 011));
+    charPut(110000 ^ equals(001, 001));
+    charPut(110000 ^ nequals(101, 011));
+    charPut(110000 ^ nequals(001, 001));
+    0;
+  }
+} myPackage;

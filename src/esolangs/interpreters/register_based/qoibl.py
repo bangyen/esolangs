@@ -5,7 +5,10 @@ dispatched commands (:data:`INSTRUCTIONS`) plus ``[ey]+`` binary
 literals, and the four :data:`OPERATORS` (``ee``, ``ey``, ``ye``, ``yy``)
 reading as ``= > < !=`` after ``yr`` and ``+ - * /`` after ``ry``.
 Other characters are ignored, so the statement, not the line, is the
-unit and :func:`tokenize` recovers boundaries.  The variable list is an
+unit and :func:`tokenize` recovers boundaries.  The wiki fixes no
+precedence: a chain splits at its first ``yr`` (else ``ry``) and the
+right side is evaluated whole.  "``rr x rr y rr``" is read literally, a
+loop body being one statement.  The variable list is an
 unbounded dict.  Division by zero raises
 :class:`~esolangs.exceptions.HaltError`; an unrecognized operator raises
 :class:`ValueError`; exhausted input raises :class:`EOFError`.

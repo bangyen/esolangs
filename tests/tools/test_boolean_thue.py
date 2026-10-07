@@ -16,7 +16,7 @@ from tests.witness_tables import witnesses
 def _execute(table: str, row: int, width: int) -> None:
     n = len(table).bit_length() - 1
     io = ScriptedIO("\n".join(f"{row:0{n}b}"))
-    machine = _Machine(generate("Thue", table, width), io, Seeded(row))
+    machine = _Machine(generate("Thue", table, width=width), io, Seeded(row))
     for _ in range(5 * len(table) + 4 * n + 10):
         if machine.halted:
             break
@@ -93,11 +93,11 @@ def test_short_tree_executes_one_and_two_input_tables() -> None:
 
 def test_thue_proof_text_counts_the_emitted_rules() -> None:
     """The ledger says nineteen fixed rules; the program carries nineteen."""
-    import esolangs
+    from scripts.proof_status import load
 
     lines = boolean.thue("0110").splitlines()
     assert len(lines[: lines.index("::=")]) == 19
-    scaling = esolangs.describe("Thue")["proof_status"]["scaling"]
+    scaling = next(row.scaling for row in load()[0] if row.generator == "Thue")
     assert "nineteen fixed rules" in scaling
 
 

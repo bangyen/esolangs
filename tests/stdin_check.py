@@ -95,6 +95,14 @@ def _check_stdin(language: str, stdin: str, truth_table: str | None = None) -> N
                 )
         return
     if shape in {"char_stream", "char_stream_padded", "char_stream_cyclic"}:
+        if contract.input_sets:
+            first, _, rest = stdin.partition("\n")
+            if rest.strip():
+                raise ArgumentError(
+                    f"{name} reads its bits from the first line, and stdin "
+                    f"has more after it: {rest.strip()[:20]!r}"
+                )
+            stdin = first
         # A reader that skips whitespace (``input_bit``) takes its bits
         # wherever they sit, so the check reads the same text it will.
         checked = (

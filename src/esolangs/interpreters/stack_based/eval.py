@@ -7,6 +7,11 @@ command on a zero pop, and ! evaluates the popped string as a program.
 
 Arithmetic on a non-numeric top, or ``!`` on a non-string value, is an invalid
 operation and halts the program with :class:`~esolangs.exceptions.HaltError`.
+``?`` skips one character: before a literal it skips the opening quote,
+since the table lists ``"`` as the command "Toggle stringmode" (a
+clean-room reading skips the whole literal; "the next instruction" allows
+both).  ``!`` on an integer is the invalid operation above, as a number
+is no "Eval code" (the clean-room reading runs its decimal digits).
 
 The execution model is a pure function over an immutable ``_Core``: the two
 stacks and the active index.  :func:`_iterate` maps a core and a command to

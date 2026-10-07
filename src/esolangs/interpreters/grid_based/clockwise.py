@@ -5,9 +5,11 @@ A pointer walks clockwise around a square ring, turning a quarter at
 when the accumulator is nonzero.  ``;`` outputs the
 accumulator parity (seven bits per printed byte), ``.`` reads an input
 bit, ``S`` zeroes.  Walking off the edge is malformed
-(:class:`ValueError`).  Input bits are read once in ``__init__`` and then
-rotated, so ``.`` consumes from a queue in the state; a program that reads
-with no bits at all raises :class:`EOFError`.
+(:class:`ValueError`): the page names no wrap, only the halt on
+returning "to the northwesternmost character".  Input bits are read
+once in ``__init__`` and then rotated, so ``.`` consumes from a queue in
+the state; a program that reads with no bits at all raises
+:class:`EOFError`.
 
 :func:`_advance` is a pure transition over an immutable ``_State`` with
 no ``io`` argument; :class:`_Machine` rebinds one state per ``step()``

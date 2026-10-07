@@ -4,7 +4,7 @@ Nodes drawn as literal flowchart boxes are joined by box-drawing lines, and
 one or more pointers walk those lines, executing the node they land on.
 Each pointer owns a register holding a single bit (``0``, ``1``, or empty)
 and a cursor into a shared, infinite tape of deques; the deques themselves
-are shared by every pointer.  Execution starts on the top-most, left-most
+are shared by every pointer.  Execution starts on the left-most, top-most
 ``( )`` node travelling right, and the program halts once every pointer has
 stopped on an ``(( ))``.
 
@@ -42,17 +42,16 @@ rather than invented, and every one of the three examples on the page
   left/right is the only reading that puts 1 on the looping branch, so the
   example pins the orientation down even though the prose does not.
 
-* **Bits are read and written as characters, not packed into bytes.**  The
-  Boolfuck convention buffers eight bits and emits one byte, but
-  that convention cannot express Flowchart's own truth machine: given
-  ``0`` it reads a single bit, writes a single bit, and halts, so an
-  eight-bit output buffer would never flush and the program would print
-  nothing at all. ``/ /`` therefore reads a ``0`` or ``1`` character,
-  ignoring whitespace, and ``\ \`` prints a literal
-  ``'0'`` or ``'1'``.  EOF leaves the register empty rather than raising,
-  which is exactly the "empty if there are no more bits to read" the spec
-  asks for; a pointer reading past the end simply carries an empty
-  register onward, and ``\ \`` then prints nothing.
+* **I/O is Boolfuck's, as the spec says: bytes, low bit first.**  ``/ /``
+  takes the next bit of the current input byte and ``\ \`` buffers one
+  bit of an output byte; a partial byte is zero-padded and written at
+  halt, as in :mod:`esolangs.interpreters.tape_based.boolfuck`.  Both wiki
+  Hello Worlds then print ``Hello, world!`` itself, and the truth machine
+  given ``0`` prints one zero bit, padded to a NUL byte.  EOF leaves the
+  register empty rather than raising -- the spec's "empty if there are no
+  more bits to read" -- where Boolfuck supplies zeros; ``\ \`` then prints
+  zero.  The wiki's cat pushes that empty and pops it last, so it echoes
+  its input plus one zero bit, which pads to a trailing NUL.
 
 * **Re-entry memory disambiguates paths; it never suppresses a node.**
   The spec says a pointer re-entering a node or path it has already
@@ -67,21 +66,30 @@ rather than invented, and every one of the three examples on the page
   clause then means the remembered direction is declined whenever taking
   it would reverse the pointer.
 
-* **An empty register outputs zero, as the command table specifies.**
-  The wiki's cat reaches output after popping an exhausted deque, so it
-  appends a spurious zero (``101`` in, ``1010`` out). The explicit rule
-  takes precedence over that faulty example. Pushing an empty register
-  remains a no-op because deques hold bits, not empty values.
+* **Empty is a value: it outputs zero and it is pushed like a bit.**  The
+  spec says "bits in a register and deque are also able to be an 'empty'
+  value" and "outputting empty is the same as outputting zero", so a push
+  of an empty register puts an empty on the deque and popping it empties
+  the register again.  No wiki example forces the other reading (a push of
+  empty being a no-op): the truth machine, cat and both Hello Worlds never
+  touch a deque, and the Kolakoski program prints the Kolakoski sequence
+  either way.  An earlier revision of the wiki's cat popped an exhausted
+  deque before its last output and so appended a zero (``101`` in,
+  ``1010`` out); the explicit output rule takes precedence over that.
 
-* **Pointers run in lock-step, round-robin, in creation order.**  The
-  spec fixes the starting order (top-most, left-most) and says pointers
-  "run in parallel" but never gives an interleaving, and because the deques
-  are shared the choice is observable.  One step per pointer per round keeps
-  the ordering the spec does give, and a fork creates its pointers in the
-  reading order of the cells its paths leave through -- top-most first, then
-  left-most -- which is the same order the spec uses to pick the starting
-  node.  A pointer's deque cursor is likewise unspecified; it is kept
-  per-pointer here, alongside the register the spec does make per-pointer.
+* **A step runs one node per pointer; paths take no time.**  The spec
+  orders pointers "from the top-most left-most node, traveling right, then
+  down, then finally oldest-to-newest", so each step every pointer rides its
+  path to the next node and the pointers then execute in that order.  The
+  spec never says what a path cell costs, but the wiki's eight-pointer Hello
+  World settles it: its rows start at different distances from the fork,
+  and only node-counted time lines their output bits up.  The same program
+  fixes the start as the *left-most*, then top-most, ``( )`` -- the
+  spec's "left-most top-most" -- since a higher ``( )`` sits to its right.
+  A forking pointer keeps its forward-first exit (the spec's rule for any
+  node but ``< >``); new pointers take the others in reading order, an
+  order the spec leaves open.  A pointer's deque cursor is unspecified;
+  it is kept per-pointer here, alongside the register the spec does make per-pointer.
 
 One further rule the spec does state, and this interpreter enforces:
 
@@ -103,17 +111,15 @@ One further rule the spec does state, and this interpreter enforces:
   inside a node still leaves through whichever cell of the box its exit
   sits on, and a rail may still pass a node by without touching it.
 
-Malformed programs (touching nodes, an unknown node, a vertical path meeting
-a node off its middle, no ``( )`` to start from, or a non-end node with no
-onward path) raise :class:`ValueError`.
+Malformed programs (nodes touching side by side, an unknown node, a vertical
+path meeting a node off its middle, no ``( )`` to start from, or a non-end
+node with no onward path) raise :class:`ValueError`.
 
 At EOF a ``/ /`` read leaves the register **empty** rather than raising,
 which is the same state ``{ }`` clears it to. Output prints zero for that
-state; pushes onto a deque skip it. A program reading past EOF keeps running
-without a :class:`HaltError`.
-
-External bits are consecutive 0 or 1 characters, ignoring whitespace; the spec
-does not define stdin framing.
+state, and a push puts it on the deque as an empty cell. A program reading
+past EOF keeps running without a :class:`HaltError`.  Unicode input is
+reduced modulo 256, as in Boolfuck.
 """
 
 from bisect import bisect_left
@@ -330,7 +336,7 @@ class _State:
     """
 
     pointers: list[_Pointer]
-    deques: dict[int, list[int]]
+    deques: dict[int, list[int | None]]
 
 
 class _Machine:
@@ -365,6 +371,10 @@ class _Machine:
         """Parse ``code``'s nodes and start on the first ``( )``."""
         self.io = io
         self._input_reads = 0
+        # Boolfuck's byte buffers: the input byte's unread bits and how many
+        # remain, and the output bits gathered so far and how many.
+        self._incoming = self._remaining = 0
+        self._outgoing = self._used = 0
         rows = [line.rstrip("\n") for line in code]
         self.width = max((len(r) for r in rows), default=0)
         self.grid = tuple(r.ljust(self.width) for r in rows)
@@ -389,7 +399,7 @@ class _Machine:
         self.state.pointers = pointers
 
     @property
-    def deques(self) -> dict[int, list[int]]:
+    def deques(self) -> dict[int, list[int | None]]:
         """The shared deques, retained as a convenience for step helpers."""
         return self.state.deques
 
@@ -419,15 +429,19 @@ class _Machine:
         self._check_alignment()
 
     def _check_separation(self) -> None:
-        """Reject nodes touching without a connecting path."""
+        """Reject nodes touching side by side without a connecting path.
+
+        Nodes may sit in adjacent rows: both wiki Hello Worlds stack their
+        rows of ``{ ]``/``[ }`` boxes with no gap, and a box's exits are path
+        cells, so a node above or below is simply not an exit.
+        """
         for (row, col), node in self.nodes.items():
-            for dr, dc in (_RIGHT, _DOWN):
-                neighbour = self.nodes.get((row + dr, col + dc))
-                if neighbour is not None and (dr or neighbour != node):
-                    raise syntax_error(
-                        f"nodes touch without a path at ({col}, {row})",
-                        "separate the nodes with a connecting path",
-                    )
+            neighbour = self.nodes.get((row, col + 1))
+            if neighbour is not None and neighbour != node:
+                raise syntax_error(
+                    f"nodes touch without a path at ({col}, {row})",
+                    "separate the nodes with a connecting path",
+                )
 
     def _check_alignment(self) -> None:
         """Reject a vertical path that enters a node off its middle.
@@ -460,9 +474,15 @@ class _Machine:
                         )
 
     def _start(self) -> tuple[int, int]:
-        """Return the top-most, left-most ``( )`` node's first cell."""
-        for row in range(len(self.grid)):
-            for col in range(self.width):
+        """Return the left-most, then top-most, ``( )`` node's first cell.
+
+        The spec starts on "the left-most top-most node" -- column first,
+        unlike its top-most-first pointer order -- and the wiki's
+        eight-pointer Hello World needs exactly that: its start sits at the
+        left edge below a higher ``( )`` that only forks.
+        """
+        for col in range(self.width):
+            for row in range(len(self.grid)):
                 node = self.nodes.get((row, col))
                 if node and node[0] == "( )" and node[1] == col:
                     return (row, col)
@@ -479,7 +499,7 @@ class _Machine:
         """
         p = self.pointers[0]
         here = (p.row, p.col)
-        exits = self._reading_order(self._exits_from_node(p.row, p.col, None))
+        exits = self._forward_first(p, self._exits_from_node(p.row, p.col, None))
         if not exits:
             raise syntax_error(
                 "start node has no exit path", "connect a path leaving the start node"
@@ -503,6 +523,21 @@ class _Machine:
         arriving heading.
         """
         return sorted(exits, key=lambda step: (step[0], step[1]))
+
+    def _forward_first(
+        self, p: _Pointer, exits: list[tuple[int, int, tuple[int, int]]]
+    ) -> list[tuple[int, int, tuple[int, int]]]:
+        """Order a fork's exits: the pointer's own first, then reading order.
+
+        "A pointer will always choose to go forward on a node if given
+        multiple exit paths, followed by clockwise, then counterclockwise"
+        names only ``< >`` as the exception, so the forking pointer keeps
+        that exit and the new pointers take the rest in reading order.
+        """
+        exits = self._reading_order(exits)
+        order = (p.d, _turn_right(p.d), _turn_left(p.d), (-p.d[0], -p.d[1]))
+        own = min(exits, key=lambda step: order.index(step[2]), default=None)
+        return [] if own is None else [own, *(e for e in exits if e != own)]
 
     def _anchor(self, row: int, col: int) -> tuple[int, int]:
         """Return the key a cell's re-entry memory is stored under.
@@ -531,7 +566,9 @@ class _Machine:
         for c_row, c_col in sorted(cells, key=lambda c: (c[0], c[1])):
             for d in _HEADINGS:
                 n_row, n_col = c_row + d[0], c_col + d[1]
-                if (n_row, n_col) in cells or not self._in_bounds(n_row, n_col):
+                # A neighbouring node is never an exit: the only nodes that
+                # may touch are stacked in adjacent rows, with no path between.
+                if (n_row, n_col) in self.nodes or not self._in_bounds(n_row, n_col):
                     continue
                 if (n_row, n_col) == came_from:
                     continue
@@ -590,9 +627,13 @@ class _Machine:
     def memory(self) -> list[int]:
         """The shared tape of deques, concatenated in index order.
 
-        This is what the pointers read and write between them.
+        This is what the pointers read and write between them.  The view
+        holds bits only, so an empty cell is left out of it; the snapshot
+        keeps it.
         """
-        return [v for key in sorted(self.deques) for v in self.deques[key]]
+        return [
+            v for key in sorted(self.deques) for v in self.deques[key] if v is not None
+        ]
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
@@ -601,15 +642,58 @@ class _Machine:
             tuple(sorted((k, tuple(v)) for k, v in self.deques.items() if v)),
             self.io.position(),
             self._input_reads,
+            self._incoming,
+            self._remaining,
+            self._outgoing,
+            self._used,
         )
 
     def step(self) -> None:
-        """Advance every live pointer one cell, in creation order."""
+        """Run one node per live pointer, in the spec's pointer order.
+
+        Paths take no time: every pointer first rides its path to the next
+        node, then the pointers execute ordered by that node -- top-most,
+        then left-most, then oldest first.  Pointers a fork creates join on
+        the next step.
+        """
         if self.halted:
             return
-        for i in range(len(self.pointers)):
-            if not self.pointers[i].done:
-                self._advance(i)
+        live = [i for i, p in enumerate(self.pointers) if not p.done]
+        for i in live:
+            self._ride(i)
+        ready = [i for i in live if self._on_node(self.pointers[i])]
+        for i in sorted(ready, key=self._order):
+            self._execute(i)
+        # Spelled out: mypy narrows ``self.halted`` to False after the guard.
+        if self._used and all(p.done for p in self.pointers):
+            self.io.print_char(chr(self._outgoing))
+            self._outgoing = self._used = 0
+
+    def _on_node(self, p: _Pointer) -> bool:
+        """Whether ``p`` is live and standing on a node."""
+        return not p.done and (p.row, p.col) in self.nodes
+
+    def _order(self, i: int) -> tuple[int, int, int]:
+        """Return pointer ``i``'s sort key: its node's row, first column, then age."""
+        p = self.pointers[i]
+        return (p.row, self.nodes[(p.row, p.col)][1], i)
+
+    def _ride(self, i: int) -> None:
+        """Move pointer ``i`` along its path until it reaches a node or stops.
+
+        A rail that loops back on itself without meeting a node would ride
+        forever, so the ride ends where it repeats; the pointer is left on
+        the rail, every later step repeats it, and the cycle detector reports
+        the program as non-halting.
+        """
+        seen: set[tuple[int, int, tuple[int, int]]] = set()
+        p = self.pointers[i]
+        while not p.done and (p.row, p.col) not in self.nodes:
+            if (p.row, p.col, p.d) in seen:
+                return
+            seen.add((p.row, p.col, p.d))
+            self._follow_path(i)
+            p = self.pointers[i]
 
     def _put(self, i: int, p: _Pointer) -> None:
         """Write ``p`` back as the ``i``th pointer.
@@ -619,14 +703,6 @@ class _Machine:
         count grows with the program rather than with how long it runs.
         """
         self.pointers[i] = p
-
-    def _advance(self, i: int) -> None:
-        """Execute the cell under pointer ``i``, then move it one cell on."""
-        p = self.pointers[i]
-        if (p.row, p.col) in self.nodes:
-            self._execute(i)
-        else:
-            self._follow_path(i)
 
     def _follow_path(self, i: int) -> None:
         """Move pointer ``i`` along the line character it is standing on."""
@@ -729,12 +805,12 @@ class _Machine:
     def _fork(self, i: int) -> None:
         """Split pointer ``i`` across every path leaving a ``( )`` node.
 
-        The pointer itself continues along the first exit and a new pointer,
+        The pointer itself continues forward first and a new pointer,
         carrying a copy of the register and deque cursor, is appended for
         each of the others.
         """
         p = self.pointers[i]
-        exits = self._reading_order(self._exits_from_node(p.row, p.col, p.prev))
+        exits = self._forward_first(p, self._exits_from_node(p.row, p.col, p.prev))
         if not exits:
             raise syntax_error(
                 "non-end node has no exit path",
@@ -748,7 +824,7 @@ class _Machine:
         n_row, n_col, d = exits[0]
         self._step_to(i, n_row, n_col, d)
 
-    def _deque(self, p: _Pointer) -> list[int]:
+    def _deque(self, p: _Pointer) -> list[int | None]:
         """Return ``p``'s currently selected deque, creating it if needed."""
         return self.deques.setdefault(p.deque, [])
 
@@ -789,13 +865,11 @@ class _Machine:
         elif spelling == "/ /":
             reg = self._read_bit()
         elif spelling == "\\ \\":
-            self.io.print_str(str(0 if reg is None else reg))
+            self._write_bit(reg or 0)
         elif spelling == "\\[ ]/":
-            if reg is not None:
-                self._deque(p).append(reg)
+            self._deque(p).append(reg)
         elif spelling == "/[ ]\\":
-            if reg is not None:
-                self._deque(p).insert(0, reg)
+            self._deque(p).insert(0, reg)
         elif spelling == "\\{ }/":
             cells = self._deque(p)
             reg = cells.pop() if cells else None
@@ -834,13 +908,26 @@ class _Machine:
         self._leave(i, prefer)
 
     def _read_bit(self) -> int | None:
-        """Read one bit of input, or ``None`` once the input is exhausted."""
-        try:
-            value = self.io.input_bit()
-        except (EOFError, IndexError):
-            return None
-        self._input_reads += 1
-        return value
+        """Read the next input bit, low bit first, or ``None`` at EOF."""
+        if not self._remaining:
+            try:
+                self._incoming = self.io.input_char() % 256
+            except (EOFError, IndexError):
+                return None
+            self._input_reads += 1
+            self._remaining = 8
+        bit = self._incoming & 1
+        self._incoming >>= 1
+        self._remaining -= 1
+        return bit
+
+    def _write_bit(self, bit: int) -> None:
+        """Buffer one output bit, writing the byte once it holds eight."""
+        self._outgoing |= bit << self._used
+        self._used += 1
+        if self._used == 8:
+            self.io.print_char(chr(self._outgoing))
+            self._outgoing = self._used = 0
 
 
 def run(code: list[str], io: IO) -> None:

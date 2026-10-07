@@ -1,9 +1,9 @@
 # Contributing
 
 Add stable, deterministic languages verifiable through the repo's I/O model.
-Each needs a generator or documented impossibility; record rejections
-in [limitations](limitations.md). See [architecture](architecture.md) for the
-execution path.
+Each ships with an interpreter and a generator; only a famous language whose
+specification precludes a generator may ship without one (see below). Record
+rejections in [limitations](limitations.md).
 
 ## Development
 
@@ -51,6 +51,38 @@ Curation also defines removal independently of admission.
 | `src/esolangs/tools/` | generators |
 | `src/esolangs/registry/` | the source of truth for public integration |
 | `tests/` | interpreter and generator coverage |
+
+The registry connects the API and CLI to generators and interpreters:
+
+```text
+language name
+    │
+    ▼
+registry.Language ──► boolean generator ──► program or template
+    │                                              │
+    │                                      instantiate inputs
+    ▼                                              │
+interpreter module ◄──── source + encoded stdin ◄──┘
+    │
+    ├── run() ──► raw output ──► read_answer() ──► bit
+    └── make_vm() ──► step-and-inspect state
+```
+
+- `src/esolangs/registry/` owns integration. `Language` records names,
+  interpreter, source shape, optional generator and the typed input and
+  answer `contract`; `resolve` normalizes spelling, and `RUNNERS` selects
+  whole-source or split-line input.
+- Generators live in `src/esolangs/tools/`. Most return runnable source;
+  input-embedding languages return a `$`-run template for `instantiate`.
+  `encode_inputs` handles stdin conventions, and `read_answer` reads printed
+  and state-dump answers through the contract; termination answers (halt or
+  diverge) are read by the evaluation harness, which runs every row.
+- `run` loads the module from `src/esolangs/interpreters/` (grouped by
+  execution model) and calls its `run(code, io)`; `make_vm` exposes its
+  step-capable machine to the debugger and the hang proofs.
+- `tests/interpreters/` and `tests/tools/` hold language suites and shared
+  contract checks; `scripts/` holds verification, mutation and
+  documentation tools.
 
 ## Interpreter conventions
 

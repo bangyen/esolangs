@@ -9,7 +9,8 @@ loop while the top is nonzero, ``[`` prints the literal up to ``]``.
 Underflow, an unmatched ``(``, a stray ``)`` and division by zero raise
 :class:`HaltError`; ``?`` raises :class:`EOFError` at end of input (the
 cross-check exits 3) and rejects anything but an integer or fraction;
-``[`` with no ``]`` prints nothing; malformed programs raise
+``[`` with no ``]`` prints nothing (the rest runs as code) and a stray
+``]`` is ignored, the wiki naming neither; malformed programs raise
 :class:`ValueError`.
 
 :func:`_advance` is a pure, total transition over an immutable
@@ -68,14 +69,18 @@ def _needs(char: str) -> int:
 def _forward(code: str, ind: int) -> int | None:
     """Return the position of the ``)`` matching the ``(`` at ``ind``.
 
-    ``None`` when unmatched; the caller raises :class:`HaltError`.
+    ``None`` when unmatched; the caller raises :class:`HaltError`.  A
+    ``[...]`` literal is text, so its brackets are skipped as ``[`` skips
+    them when it runs.
     """
     num = 1
     while num > 0:
         ind += 1
         if ind >= len(code):
             return None
-        if code[ind] == "(":
+        if code[ind] == "[" and (close := code.find("]", ind + 1)) != -1:
+            ind = close
+        elif code[ind] == "(":
             num += 1
         elif code[ind] == ")":
             num -= 1

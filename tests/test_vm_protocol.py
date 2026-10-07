@@ -20,7 +20,6 @@ from .samples import (
     DUMPS_ON_THE_POST_HALT_STEP,
     NEVER_SELF_HALTS,
     NONDETERMINISTIC_AGAINST_RUN,
-    RAISES_ON_THE_POST_HALT_STEP,
     SAMPLES,
 )
 
@@ -66,18 +65,6 @@ def _observe(vm: VM) -> _Observed:
     return (vm.output, vm.ip, vm.memory, vm.stack)
 
 
-def _settle(vm: VM, language: str) -> _Observed:
-    """Drive ``vm`` as far as it goes and return its observable state."""
-    if language in NEVER_SELF_HALTS:
-        for _ in range(_PREFIX_STEPS):
-            vm.step()
-        return _observe(vm)
-    _drive(vm)
-    if language in DUMPS_ON_THE_POST_HALT_STEP:
-        vm.step()
-    return _observe(vm)
-
-
 def _machine_of(vm: VM) -> object | None:
     """Return the interpreter state object an adapter wraps, if it has one."""
     for value in vars(vm).values():
@@ -88,9 +75,6 @@ def _machine_of(vm: VM) -> object | None:
 
 class TestSamplesCoverEveryLanguage:
     """The table is the sweep's coverage, so it is the thing to lock."""
-
-    def test_post_halt_exceptions_stay_empty(self) -> None:
-        assert not RAISES_ON_THE_POST_HALT_STEP
 
     def test_every_registry_language_has_a_sample(self) -> None:
         assert sorted(set(INTERPRETERS) - set(SAMPLES)) == []
@@ -104,15 +88,44 @@ class TestSamplesCoverEveryLanguage:
             DUMPS_ON_THE_POST_HALT_STEP,
             NEVER_SELF_HALTS,
             NONDETERMINISTIC_AGAINST_RUN,
-            RAISES_ON_THE_POST_HALT_STEP,
         ],
-        ids=["dumps", "never-halts", "nondeterministic", "raises"],
+        ids=["dumps", "never-halts", "nondeterministic"],
     )
     def test_the_named_exceptions_are_real_languages(
         self, exceptions: frozenset[str]
     ) -> None:
         """A renamed language must not leave an exception silently inert."""
         assert sorted(exceptions - set(INTERPRETERS)) == []
+
+
+def _check_protocol(language: str, program: str, stdin: str) -> _Observed:
+    """Run the halt and snapshot contract on one machine; return where it settled."""
+    vm = make_vm(language, program, stdin=stdin)
+    assert vm.self_halts == (language not in NEVER_SELF_HALTS)
+    assert vm.dumps_on_the_post_halt_step == (language in DUMPS_ON_THE_POST_HALT_STEP)
+    machine = _machine_of(vm)
+    assert machine is not None, f"{language}'s adapter wraps no state object"
+    hash(machine.snapshot())  # type: ignore[attr-defined]
+    if language in NEVER_SELF_HALTS:
+        for _ in range(_PREFIX_STEPS):
+            vm.step()
+        return _observe(vm)
+
+    at_halt = _drive(vm)
+    assert vm.halted
+    vm.step()
+    assert (vm.output != at_halt) == vm.dumps_on_the_post_halt_step
+    if language not in NONDETERMINISTIC_AGAINST_RUN:
+        assert vm.output == esolangs.run(language, program, stdin=stdin)
+
+    settled = _observe(vm)
+    state = vm.snapshot()
+    hash(machine.snapshot())  # type: ignore[attr-defined]
+    vm.step()
+    assert vm.halted
+    assert _observe(vm) == settled
+    assert vm.snapshot() == state
+    return settled
 
 
 @pytest.mark.parametrize(("language", "program", "stdin"), _PARAMS)
@@ -122,31 +135,33 @@ class TestEveryLanguageHonoursTheProtocol:
     def test_execution_and_post_halt_state(
         self, language: str, program: str, stdin: str
     ) -> None:
-        vm = make_vm(language, program, stdin)
-        assert vm.self_halts == (language not in NEVER_SELF_HALTS)
-        assert vm.dumps_on_the_post_halt_step == (
-            language in DUMPS_ON_THE_POST_HALT_STEP
-        )
-        machine = _machine_of(vm)
-        assert machine is not None, f"{language}'s adapter wraps no state object"
-        hash(machine.snapshot())  # type: ignore[attr-defined]
-        if language in NEVER_SELF_HALTS:
-            return
+        """Then two interleaved machines must land on the same state, silently.
 
-        at_halt = _drive(vm)
-        assert vm.halted
-        vm.step()
-        assert (vm.output != at_halt) == vm.dumps_on_the_post_halt_step
-        if language not in NONDETERMINISTIC_AGAINST_RUN:
-            assert vm.output == esolangs.run(language, program, stdin=stdin)
-
-        settled = _observe(vm)
-        state = vm.snapshot()
-        hash(machine.snapshot())  # type: ignore[attr-defined]
-        vm.step()
-        assert vm.halted
-        assert _observe(vm) == settled
-        assert vm.snapshot() == state
+        Interleaving catches state shared between machines of one language
+        (a module-level tape, say); the redirect catches a stray ``print``.
+        """
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            settled = _check_protocol(language, program, stdin)
+            pair = [make_vm(language, program, stdin=stdin) for _ in range(2)]
+            if language in NEVER_SELF_HALTS:
+                for _ in range(_PREFIX_STEPS):
+                    for vm in pair:
+                        vm.step()
+            else:
+                for _ in range(_STEP_BUDGET):
+                    if all(vm.halted for vm in pair):
+                        break
+                    for vm in pair:
+                        if not vm.halted:
+                            vm.step()
+                else:
+                    raise AssertionError(f"no halt within {_STEP_BUDGET} steps")
+                for vm in pair:
+                    vm.step()  # the post-halt step ``settled`` was taken after
+            assert [_observe(vm) for vm in pair] == [settled, settled]
+        assert out.getvalue() == ""
+        assert err.getvalue() == ""
 
 
 @pytest.mark.parametrize(("language", "program", "stdin"), _PARAMS)
@@ -157,7 +172,7 @@ class TestEveryLanguageImplementsTheSameInterface:
         self, language: str, program: str, stdin: str
     ) -> None:
         """A tuple ``ip`` declares how to read it, in a shape the reader knows."""
-        vm = make_vm(language, program, stdin)
+        vm = make_vm(language, program, stdin=stdin)
         shape = vm.ip_shape
         assert shape in {"offset", "grid", "line", "opaque"}, (
             f"{language} declares ip_shape={shape!r}, which nothing reads"
@@ -171,44 +186,6 @@ class TestEveryLanguageImplementsTheSameInterface:
                 vm.step()
         if tuple in shapes:
             assert shape != "offset", f"{language} reports a tuple ip as an offset"
-
-
-@pytest.mark.parametrize(("language", "program", "stdin"), _PARAMS)
-class TestEveryLanguageIsPure:
-    """Interleaved runs stay deterministic and write only through their IO."""
-
-    def test_interleaved_machines_do_not_disturb_each_other(
-        self, language: str, program: str, stdin: str
-    ) -> None:
-        """Two live machines of one language stay independent."""
-        out, err = io.StringIO(), io.StringIO()
-        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
-            expected = _settle(make_vm(language, program, stdin), language)
-            first = make_vm(language, program, stdin)
-            second = make_vm(language, program, stdin)
-            if language in NEVER_SELF_HALTS:
-                for _ in range(_PREFIX_STEPS):
-                    first.step()
-                    second.step()
-            else:
-                for _ in range(_STEP_BUDGET):
-                    if first.halted and second.halted:
-                        break
-                    if not first.halted:
-                        first.step()
-                    if not second.halted:
-                        second.step()
-                else:
-                    raise AssertionError(
-                        f"no halt within {_STEP_BUDGET} interleaved steps"
-                    )
-                if language in DUMPS_ON_THE_POST_HALT_STEP:
-                    first.step()
-                    second.step()
-            assert _observe(first) == expected
-            assert _observe(second) == expected
-        assert out.getvalue() == ""
-        assert err.getvalue() == ""
 
 
 class TestTheCoordinateOrderIsRowThenColumn:
@@ -239,18 +216,18 @@ def _row_for(name: str, width: int | None = None) -> tuple[str, str]:
     program = (
         esolangs.generate(name, table)
         if width is None
-        else esolangs.generate(name, table, width)
+        else esolangs.generate(name, table, width=width)
     )
     if esolangs.describe(name)["parameterized"]:
         return esolangs.instantiate(name, program, [0, 0]), ""
-    return program, esolangs.encode_inputs(name, [0, 0], table)
+    return program, esolangs.encode_inputs(name, [0, 0], truth_table=table)
 
 
 def _first_move_pair(
     name: str, program: str, stdin: str
 ) -> tuple[tuple[int, ...], tuple[int, ...]]:
     """The coordinate before and after the first move that changes it."""
-    vm = debugger_api.make_vm(name, program, stdin)
+    vm = debugger_api.make_vm(name, program, stdin=stdin)
     start = vm.ip
     assert isinstance(start, tuple)
     for _ in range(400):
@@ -274,18 +251,18 @@ class TestPathAndTextTrailingNewline:
 
     def test_lf_ignored_by_cvnc_makes_path_and_text_agree(self, tmp_path: Path) -> None:
         path = tmp_path / "c.txt"
-        path.write_text(esolangs.generate("CV(N)(C)", "0110", 3) + "\n")
-        stdin = esolangs.encode_inputs("CV(N)(C)", [0, 0], "0110")
-        assert esolangs.run("CV(N)(C)", path, stdin, 5) == "0"
-        assert esolangs.run("CV(N)(C)", path.read_text(), stdin, 5) == "0"
+        path.write_text(esolangs.generate("CV(N)(C)", "0110", width=3) + "\n")
+        stdin = esolangs.encode_inputs("CV(N)(C)", [0, 0], truth_table="0110")
+        assert esolangs.run("CV(N)(C)", path, stdin=stdin, timeout=5) == "0"
+        assert esolangs.run("CV(N)(C)", path.read_text(), stdin=stdin, timeout=5) == "0"
 
     def test_they_agree_without_one(self, tmp_path: Path) -> None:
         """The difference is the newline and nothing else."""
         path = tmp_path / "c.txt"
         path.write_text(esolangs.generate("CV(N)(C)", "0110"))
-        stdin = esolangs.encode_inputs("CV(N)(C)", [0, 0], "0110")
-        assert esolangs.run("CV(N)(C)", path, stdin, 5) == esolangs.run(
-            "CV(N)(C)", path.read_text(), stdin, 5
+        stdin = esolangs.encode_inputs("CV(N)(C)", [0, 0], truth_table="0110")
+        assert esolangs.run("CV(N)(C)", path, stdin=stdin, timeout=5) == esolangs.run(
+            "CV(N)(C)", path.read_text(), stdin=stdin, timeout=5
         )
 
 
@@ -295,12 +272,12 @@ class TestPathAndTextTrailingNewline:
 @pytest.mark.parametrize("name", ["Smallfuck", "Befunge", "Suffolk"])
 def test_completion_agrees_with_running(name):
     source, stdin = SAMPLES[name]
-    vm = make_vm(name, source, stdin)
+    vm = make_vm(name, source, stdin=stdin)
     if not vm.self_halts:
         with pytest.raises(esolangs.ArgumentError, match="self-halts"):
             complete_vm(vm)
         return
-    expected = esolangs.run(name, source, stdin)
+    expected = esolangs.run(name, source, stdin=stdin)
     assert complete_vm(vm) == expected
     state = vm.snapshot()
     assert complete_vm(vm, max_steps=0) == expected
@@ -331,10 +308,10 @@ def test_completion_can_opt_out_of_the_step_budget():
 def test_a_non_self_halting_machine_can_already_be_finished():
     from esolangs.vm import run_until_halt
 
-    vm = make_vm("Suffolk", ",", "1")
+    vm = make_vm("Suffolk", ",", stdin="1")
     assert not vm.self_halts
     assert run_until_halt(vm, 2)
-    assert complete_vm(vm, max_steps=0) == esolangs.run("Suffolk", ",", "1")
+    assert complete_vm(vm, max_steps=0) == esolangs.run("Suffolk", ",", stdin="1")
 
 
 # Three visits, ten steps apart, whose values climb by a constant 1 with

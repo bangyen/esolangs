@@ -47,7 +47,9 @@ def test_sharing_admission() -> None:
             for row, expected in enumerate(table):
                 bits = [(row >> shift) & 1 for shift in reversed(range(n))]
                 vm = debugger_api.make_vm(
-                    "AddSubJump", program, esolangs.encode_inputs("AddSubJump", bits)
+                    "AddSubJump",
+                    program,
+                    stdin=esolangs.encode_inputs("AddSubJump", bits),
                 )
                 for _ in range(100_000):
                     if vm.halted:
@@ -74,7 +76,7 @@ def test_sharing_boundaries(n: int) -> None:
         output = esolangs.run(
             "AddSubJump",
             program,
-            esolangs.encode_inputs("AddSubJump", bits),
+            stdin=esolangs.encode_inputs("AddSubJump", bits),
             timeout=None,
         )
         assert esolangs.read_answer("AddSubJump", output) == expected
@@ -126,7 +128,7 @@ def test_shared_packed_cells_execute(n: int) -> None:
             output = esolangs.run(
                 "AddSubJump",
                 shared,
-                esolangs.encode_inputs("AddSubJump", bits),
+                stdin=esolangs.encode_inputs("AddSubJump", bits),
                 timeout=None,
             )
             assert esolangs.read_answer("AddSubJump", output) == table[row]

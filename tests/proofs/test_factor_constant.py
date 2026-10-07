@@ -62,7 +62,7 @@ def test_constant_bracket_is_below_three() -> None:
 
     lower = math.log(2) ** 2 / (math.log(prefix_growth()) * math.log(10))
     upper = (29 / 32) * (15 / 14) * math.log10(2)
-    assert upper / lower == pytest.approx(2.535422861779615)
+    assert upper / lower == pytest.approx(2.5033907126851784)
     assert upper < 3 * lower
 
 
@@ -86,37 +86,16 @@ def test_normalization_collapse_corpus() -> None:
 
 
 @pytest.mark.medium
-def test_pointer_pair_rule_is_rejected_by_clamp() -> None:
-    """`<>` lowers the Perron root but is not a valid rewrite at cell zero."""
-    import sympy
-
-    assert "<>" not in FORBIDDEN
-    survivors = 0
+def test_pointer_pair_rule_holds_on_a_growing_tape() -> None:
+    """`<>` is a no-op even at cell zero, since the tape grows left."""
+    assert "<>" in FORBIDDEN
     for n, table in corpus(parity_to=6):
         code = counter_program(table)
+        assert "<>" not in prefix_normalize(code)
         deleted = delete_pattern(code, "<>")
-        survivors += "<>" in prefix_normalize(code)
-        # The corpus cannot refute deletion: every occurrence runs right of the
-        # clamped edge, so it still returns to its origin.  Positive control.
         for row in range(2**n):
             bits = format(row, f"0{n}b")
             assert first_output(code, bits) == first_output(deleted, bits)
-    assert survivors == 275
 
-    # A clamped left edge is the counterexample: `,<>.` prints the untouched
-    # cell 1, while `,.` prints the input that `,` read into cell 0.
-    assert first_output(",<>.", "0") == ("out", "\x00", 1)
-    assert first_output(",.", "0") == ("out", "0", 1)
-
-    alphabet = "><+-.,[]"
-    forbidden = (FORBIDDEN | {"][", "]."}) | {"<>"}
-    matrix = sympy.Matrix(
-        [
-            [int(a + b not in forbidden and (a != "." or b == "]")) for b in alphabet]
-            for a in alphabet
-        ]
-    )
-    x = sympy.Symbol("x")
-    assert matrix.charpoly(x).as_expr() == sympy.expand(
-        x**2 * (x - 1) ** 2 * (x + 1) * (x**3 - 6 * x**2 + 1)
-    )
+    # The clamped edge's counterexample: `,<>.` now prints what `,` read.
+    assert first_output(",<>.", "0") == first_output(",.", "0") == ("out", "0", 1)

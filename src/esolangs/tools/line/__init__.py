@@ -18,7 +18,7 @@ from __future__ import annotations
 import re
 from functools import lru_cache
 
-from esolangs.raster import Pixel, Raster, Rows
+from esolangs.raster import Pixel, Raster, Rows, lazy_raster
 from esolangs.tools.helpers import (
     _residual_ids,
     _validate_truth_table,
@@ -107,10 +107,7 @@ def _render_node(
 def _generate(truth_table: str) -> Raster:
     """Return a Line raster computing ``truth_table``."""
     node = line_boolean(truth_table)
-    return Raster(
-        _materialize=lambda: _render_node(node),
-        _payload=node,
-    )
+    return lazy_raster(lambda: _render_node(node), node)
 
 
 def line(truth_table: str, *, scale: int = 1) -> Raster:
@@ -140,7 +137,6 @@ def balance(truth_table: str, _default: Raster) -> Raster:
     compact = score <= old_score
     if not compact:
         selected, heading = old_selected, old_heading
-    return Raster(
-        _materialize=lambda: _render_node(selected, heading, compact=compact),
-        _payload=selected,
+    return lazy_raster(
+        lambda: _render_node(selected, heading, compact=compact), selected
     )

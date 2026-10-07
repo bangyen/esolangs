@@ -1,6 +1,6 @@
-"""Check .pre-commit-config.yaml's hook revs against pyproject.toml's pins.
+"""Check .pre-commit-config.yaml's hook revs against pyproject.toml's dev pins.
 
-Dependabot watches pyproject.toml's dev extra but has no pre-commit
+Dependabot watches pyproject.toml's dev dependency group but has no pre-commit
 ecosystem, so a bump there leaves the matching hook ``rev`` behind and the
 two run different versions of the same tool.  That is not cosmetic: a
 ruff-format hook a minor behind the project's ruff reformats files the
@@ -13,6 +13,7 @@ compares the two strings -- so a new tool must be added here to be checked.
 
 import re
 import sys
+import tomllib
 from pathlib import Path
 
 # hook repo (as it appears in .pre-commit-config.yaml) -> pyproject dist name
@@ -24,8 +25,10 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def _pyproject_pins(text: str) -> dict[str, str]:
-    """Map distribution name to its exact pin, for ``name==version`` only."""
-    return {m[1]: m[2] for m in re.finditer(r'"([A-Za-z0-9_.-]+)==([^"]+)"', text)}
+    """Map the dev group's distributions to exact pins, ``name==version`` only."""
+    group = tomllib.loads(text)["dependency-groups"]["dev"]
+    pins = (re.fullmatch(r"([A-Za-z0-9_.-]+)==(\S+)", spec) for spec in group)
+    return {m[1]: m[2] for m in pins if m}
 
 
 def _hook_revs(text: str) -> dict[str, str]:

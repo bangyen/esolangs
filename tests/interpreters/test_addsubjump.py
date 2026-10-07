@@ -100,6 +100,16 @@ class TestAssembly:
         """
         assert _assembly(code) == [0]
 
+    def test_a_label_can_prefix_a_macro_with_a_body(self) -> None:
+        code = """
+        def one {
+        .data 7
+        }
+        start: one
+        .data start
+        """
+        assert _assembly(code) == [7, 0]
+
     def test_inline_data_label_can_precede_a_separate_value(self) -> None:
         assert _assembly(".data A: 1") == [1]
 
@@ -111,6 +121,8 @@ class TestAssemblyErrors:
             ("def", "malformed .*macro"),
             ("def bad {\n{\n}\n", "nested"),
             ("def bad {", "missing"),
+            ("def bad A { 1 2\n}", "malformed .*macro"),
+            (".data :1", "empty AddSubJump label"),
             ("def bad {\n}\ndef bad {\n}", "duplicate macro"),
             ("def loop {\nloop\n}\nloop", "recursive macro"),
             ("def one A {\n.data A\n}\none", "takes 1 arguments"),
@@ -295,6 +307,19 @@ class TestHaltAndErrors:
 
 
 class TestStepMachine:
+    def test_flag_views_report_the_mode_and_flags(self) -> None:
+        """After 0 - 1 with the mode on, only ``NF`` and ``FUM`` read 1."""
+        machine = _machine(TestFlags._flag(-6, -4))  # noqa: SLF001
+        machine.step()
+        machine.step()
+        assert (machine.cf, machine.zf, machine.nf, machine.vf, machine.fum) == (
+            0,
+            0,
+            1,
+            0,
+            1,
+        )
+
     def test_step_tracks_ip_and_memory(self) -> None:
         from esolangs.interpreters.register_based.addsubjump import _Machine
 

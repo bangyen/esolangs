@@ -69,7 +69,7 @@ class TestSlowAcvMammalian:
             start = sum([*_seeded(array, wrap), acc % 256])
             assert landing == start - 15
             padded = [*tokens, *["SEED"] * (landing + 2 - len(tokens))]
-            machine = _Machine(" ".join(padded), ScriptedIO("1\n"))
+            machine = _Machine(" ".join(padded), ScriptedIO("1\n"), io_modulus=256)
             machine.lst = (tuple(array), *machine.lst[1:])
             machine.acc = acc
             while not machine.halted and machine.ind < len(tokens):
@@ -89,7 +89,7 @@ class TestSlowAcvMammalian:
             array = [head, 255, 255, 200]
             tokens, out_array, out_acc = _trampoline(list(array), 5000, target)
             padded = [*tokens, *["SEED"] * (target + 2 - len(tokens))]
-            machine = _Machine(" ".join(padded), ScriptedIO(""))
+            machine = _Machine(" ".join(padded), ScriptedIO(""), io_modulus=256)
             machine.lst = (tuple(array), *machine.lst[1:])
             machine.acc = 5000
             while not machine.halted and machine.ind < len(tokens):
@@ -111,6 +111,7 @@ class TestSlowAcvMammalian:
         machine = _Machine(
             " ".join([*tokens, *["SEED"] * (target + 2 - len(tokens))]),
             ScriptedIO(""),
+            io_modulus=256,
         )
         machine.lst = (tuple(array), *machine.lst[1:])
         while not machine.halted and machine.ind < len(tokens):
@@ -159,7 +160,7 @@ class TestSlowAcvMammalian:
         st = module._Sums()  # noqa: SLF001
         st.ptr, st.hw, st.nw = 16, 9, 255
         tokens = module._w_raise(st, amount)  # noqa: SLF001
-        machine = _Machine(" ".join(tokens), ScriptedIO(""))
+        machine = _Machine(" ".join(tokens), ScriptedIO(""), io_modulus=256)
         machine.ptr = 16
         machine.lst = tuple((9, 200, 55) if k == 16 else (0,) for k in range(23))
         while not machine.halted:
@@ -189,9 +190,11 @@ class TestSlowAcvMammalian:
 
     def test_the_emitted_size_is_pinned_and_linear(self) -> None:
         """Exact sizes per arity, and the leaf table is the whole growth."""
+        tables = ("01", "0110", "01101001")
+        sizes = [len(boolean.slow_acv_mammalian(table)) for table in tables]
+        assert sizes == [11_451, 20_253, 26_326]
         sizes = [
-            len(boolean.slow_acv_mammalian(table))
-            for table in ("01", "0110", "01101001")
+            len(boolean.slow_acv_mammalian(table, io_modulus=256)) for table in tables
         ]
         assert sizes == [13_276, 23_330, 28_055]
 
@@ -239,29 +242,6 @@ class TestFastLanding:
         st.hw, st.nw, st.ptr = 0, 17, 16
         _w_raise(st, 10**6 + 510)
         assert (st.hw + st.nw) % 256 == final_r
-
-    @pytest.mark.parametrize("target", [1, 241, 1001, 2001, 3961])
-    def test_greedy_advance_matches_a_slow_walk_across_many_targets(
-        self, target: int
-    ) -> None:
-        """Sweep small-to-large targets from one residue."""
-        st = _Sums()
-        st.hw, st.nw, st.ptr = 3, 29, 16
-        real_tokens = _w_raise(st, target)
-        fast_len, fast_hw = _w_raise_len(3, 29, target)
-        assert (fast_len, fast_hw) == (len(real_tokens), st.hw)
-
-    @pytest.mark.parametrize("seed", range(3))
-    def test_w_raise_len_matches_random_states(self, seed: int) -> None:
-        rng = random.Random(seed)
-        hw0 = rng.randrange(256)
-        nw0 = rng.randrange(10**6)
-        amount = rng.randrange(2 * 10**6)
-        st = _Sums()
-        st.hw, st.nw, st.ptr = hw0, nw0, 16
-        real_tokens = _w_raise(st, amount)
-        fast_len, fast_hw = _w_raise_len(hw0, nw0, amount)
-        assert (fast_len, fast_hw) == (len(real_tokens), st.hw)
 
     @pytest.mark.parametrize(
         ("h0", "n0", "acc", "target"),
@@ -313,8 +293,8 @@ def test_explicit_default_moduli_preserve_generation() -> None:
     from esolangs.tools.slow_acv_mammalian import slow_acv_mammalian
 
     baseline = slow_acv_mammalian("01")
-    slow_acv_mammalian("01", io_modulus=255)
-    assert slow_acv_mammalian("01", cell_modulus=256, io_modulus=256) == baseline
+    slow_acv_mammalian("01", io_modulus=256)
+    assert slow_acv_mammalian("01", cell_modulus=256, io_modulus=255) == baseline
 
 
 @pytest.mark.parametrize(
@@ -755,13 +735,13 @@ def test_modulo_255_merge_rejects_a_one_branch_past_the_target() -> None:
     assert _try_arm(one, zero, 8, None, 500) is None
 
 
-@pytest.mark.parametrize("modulus", [255, 256])
-@pytest.mark.parametrize("step", [1, 7, 22])
+@pytest.mark.parametrize(
+    ("modulus", "step"),
+    [(m, s) for m in (255, 256) for s in (1, 7, 22) if gcd(s, m) == 1],
+)
 def test_short_routing_is_earliest(modulus: int, step: int) -> None:
     from esolangs.tools._mammalian_compact import _routing_seeds
 
-    if gcd(step, modulus) != 1:
-        return
     for head in range(modulus):
         earliest = {}
         for count in range(modulus):

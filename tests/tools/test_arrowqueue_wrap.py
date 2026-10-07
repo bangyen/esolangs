@@ -17,7 +17,7 @@ from tests.witness_tables import witnesses
     ["0110", "00010111", "01101001" * 4],
 )
 def test_arrowqueue_width_preserves_every_row(table: str, width: int | None) -> None:
-    template = esolangs.generate("ArrowQueue", table, width)
+    template = esolangs.generate("ArrowQueue", table, width=width)
     plain = arrowqueue(table)
     if width is None:
         assert template == plain
@@ -67,7 +67,7 @@ def test_arrowqueue_compact_rings_at_larger_arity() -> None:
 @pytest.mark.parametrize("tagged", [False, True])
 def test_arrowqueue_four_columns_preserve_public_provenance(*, tagged: bool) -> None:
     table = "0110"
-    template = esolangs.generate("ArrowQueue", table, 1)
+    template = esolangs.generate("ArrowQueue", table, width=1)
     source = template if tagged else str(template)
     for row, expected in enumerate(table):
         bits = [row >> 1, row & 1]

@@ -1,11 +1,12 @@
 """Interpreter for HQ9+.
 
 ASCII H/Q are case-insensitive; other characters are ignored. H prints
-"Hello, world!" plus newline; Q prints exact source without adding a newline.
-9 prints 99 descending verses and the store verse, two lines per verse with
-one blank line between verses. These formatting choices pin the wiki's
-varying implementations. + increments an unbounded accumulator. No input,
-EOFError, ValueError or HaltError arises.
+"Hello, world!" plus newline: the spec's `Print "hello, world"` links to the
+Hello, world! page and gives no punctuation. Q prints exact source without
+adding a newline. 9 prints 99 descending verses and the store verse, two
+lines per verse with one blank line between verses; the spec names the song
+and no text. + increments an unbounded accumulator. No input, EOFError,
+ValueError or HaltError arises.
 """
 
 from esolangs._drive import drive
