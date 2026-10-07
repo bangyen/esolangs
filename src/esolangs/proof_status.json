@@ -881,7 +881,7 @@
       "qualification": "each half is a `d` promise, forced by the `?` test that selects it, since an argument spelled inline would be evaluated before the application; the shipped node instead returns `s` over its selected promises, so a repeated subtree bound once as a promise reaches every half below, and the plain tree stays a candidate",
       "scaling": "linear: 29 characters an internal node, four a leaf",
       "execution": "poly n: at most max(77n + 12, 84n - 9) steps: 77 a split level, 7 a bound node",
-      "workspace": "linear: the program term, held in task and continuation frames",
+      "workspace": "T log T: at most 12L + 69 + (3n+6)(8L + 24 + bl(3n+6)) + bl(n) bits: a shared subterm per frame",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
