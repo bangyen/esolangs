@@ -58,7 +58,18 @@ def state_bits(value: object, memo: dict[int, tuple[object, int]]) -> int:
     elif isinstance(value, dict):
         total = sum(state_bits(k, memo) + state_bits(v, memo) for k, v in value.items())
     elif isinstance(value, tuple | list | frozenset | set):
-        total = sum(state_bits(item, memo) for item in value)
+        try:
+            # A flat run of ints (a tape, an array) counts in C: magnitude
+            # bits, one more for each zero, one more for each negative --
+            # _integer_bits per item, and bools agree.  SLOW ACV MAMMALIAN
+            # rebuilds its 23 arrays every step, so identity memo cannot help.
+            total = (
+                sum(map(int.bit_length, value))
+                + sum(map((0).__eq__, value))
+                + sum(map((0).__gt__, value))
+            )
+        except TypeError:
+            total = sum(state_bits(item, memo) for item in value)
     elif is_dataclass(value):
         total = sum(state_bits(getattr(value, f.name), memo) for f in fields(value))
     elif hasattr(value, "__dict__"):

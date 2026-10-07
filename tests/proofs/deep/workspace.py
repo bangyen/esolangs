@@ -33,7 +33,7 @@ from tests.tools.test_boolean_contract import _parity
 
 #: Cost band; see ``__main__.py``.
 BAND = "by-hand"
-COST = 55.0
+COST = 56.0
 
 #: Most growth a ``T log T`` row may show: T cells of ``log T``-bit values
 #: (BIO's loop counters, 123's painted indices) read x2.32, a quadratic x4.
@@ -66,7 +66,6 @@ ARITY_OVERRIDE = {
     "line": 7,
     "polynomial": 8,
     "rotfuck": 6,
-    "slow_acv_mammalian": 6,
     "streetcode": 7,
     "taglate": 7,
     "unlambda": 6,
