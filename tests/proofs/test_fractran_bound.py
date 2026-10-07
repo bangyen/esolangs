@@ -306,3 +306,20 @@ def test_scan_counting_bound_includes_the_zero_fraction_case() -> None:
     bound = (inspections + 1) * (1 << ((2 * inspections + n + 1) * width))
     assert 0 < len(behaviours) <= descriptions <= bound
     assert (1, 2) in behaviours, "the projection control never executed"
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("bit", ["0", "1"])
+def test_source_floor_is_worst_case_not_per_program(bit: str) -> None:
+    # A 1,024-row constant table has a 134-character template, below the
+    # counting floor for the hardest table; execute every row to pin this.
+    table = bit * 1024
+    template = fractran(table)
+    assert set(template) <= set("0123456789/*^ $")
+    assert TEMPLATE_CHAR in template
+    assert len(template) < len(table) / math.log2(15) - 1
+    for row in range(len(table)):
+        code = fill_runs(template, TEMPLATE_CHAR, [PAIR] * 10, _bits(row, 10))
+        start, fractions, _offsets = _parse(code)
+        _fired, halted = _trace(start, fractions)
+        assert halted == (2 if bit == "1" else 1)

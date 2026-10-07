@@ -6,7 +6,7 @@ Assigning a separate address to each of a truth table’s `T` rows costs
 count. These bounds apply to that construction, not to all FRACTRAN programs.
 
 **FRACTRAN’s Boolean source complexity is `Theta(T)`.** The counting floor is
-`D >= T / log2(c) > 0.26 T` (Theorem 14); the shared decision diagram in
+`D >= T / log2(15) - O(1)` (Theorem 14); the shared decision diagram in
 Theorem 15 matches it within a constant. At `n = 12`, the shipped generator
 emits `3.90` characters per entry, decreasing with arity, versus `23.6` and
 increasing for the prime-per-row tree.
@@ -33,7 +33,8 @@ the value it ends on is the output. Write
 The language has no I/O, so the generator contract embeds: input bit `x_j`
 is the exponent of a prime `p_j` in the starting value, the answer is the
 halt value, `2` for a one and `1` for a zero. A rendered program is
-decimal integers, `/`, and a separator, and this port also parses powers and
+decimal integers, `/`, and a separator; templates also carry `$` input
+markers. This port also parses powers and
 products (`2^3*5`, `_product`), so a power costs
 `log10 p + log10 e + 1` characters rather than `e log10 p`. Both
 renderings are priced below, because the wall differs between them.
@@ -200,9 +201,19 @@ FRACTRAN literature takes the first horn.
 
 ## The counting floor, and why it is the only one
 
-    Theorem 14 (floor). D >= T / log2(c) > 0.26 T.
+    Theorem 14 (worst-case floor). If every T-row table has a total
+    template of length at most D under the fixed (0,1) input fill, then
+    15**(D+1) >= 14*2**T + 1. Thus some table needs
+    D >= T / log2(15) - O(1) characters, with no execution restriction.
 
-There are `2**T` tables and at most `c**D` texts. Counting cannot give the
+Normalize decimal digits to ASCII and all token separators to one space;
+this preserves semantics without increasing length. The template alphabet
+is `0123456789/*^ $`, including the input marker: fifteen symbols. A fixed
+fill convention makes each total template compute at most one table. There
+are at most `sum_{ell=0}^D 15**ell = (15**(D+1)-1)/14` such texts, including
+invalid ones. Covering all `2**T` tables gives the stated inequality. This
+is an existential worst-case bound: constant tables can have much shorter
+programs. Counting cannot give the
 stronger Factor bound here. A Factor program is a single integer
 whose behaviour, by the analogue of Lemmas 4 and 5, is a function of
 exponents indexed by prime *rank*; the number of behaviours of a
@@ -214,8 +225,8 @@ program is a *list*, and its order is behaviour: `m` fractions carry
 damping. The number of behaviours of a `D`-character FRACTRAN program is
 `2**Theta(D)`, so **no counting argument can reach `Omega(T log T)` here**.
 
-Counting is therefore the only lower-bound technique available, and it
-stops at `Omega(T)`. An `O(T)`-character family would have to
+The matching construction below makes `Omega(T)` the sharp worst-case
+size floor. An `O(T)`-character family must
 
 - use `m = o(T)` fractions and `k = o(T)` primes (Theorems 7 and 8); and
 - carry the rest of the table somewhere those do not count it -- priority
@@ -271,9 +282,11 @@ and clears each set input it skipped: each depth costs one read or at most
 one clear, so a run fires at most `n + 1` fractions. Its value is one state prime and at most `n` input primes,
 `O(log T + n log n)` bits.
 
-    Corollary 16 (language size complexity). The worst-case rendered size
-    of a FRACTRAN boolean program is Theta(T): Omega(T) by Theorem 14,
-    O(T) by Theorem 15.
+    Corollary 16 (language size complexity). Let C_n(f) be the minimum
+    template length among all total FRACTRAN programs computing f under
+    the fixed input and answer contract. Then max_f C_n(f) = Theta(T):
+    Omega(T) by Theorem 14, O(T) by Theorem 15. No bound on fractions,
+    consultations, state changes, or runtime is assumed.
 
 Measured, at the seed pinned in the deep proof -- characters an entry for
 the shipped builder and for the row-addressing tree, and the states built
