@@ -22,6 +22,9 @@ class ProofRow:
     execution: str
     workspace: str
     evidence: str
+    #: ``"S = ..."`` symbols a formula cell uses, rendered under the table
+    #: so the cell itself stays short.
+    definitions: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -83,6 +86,11 @@ def load(path: Path = MANIFEST) -> tuple[tuple[ProofRow, ...], tuple[ScalingRow,
             or not all(isinstance(label, str) and label for label in labels)
         ):
             raise ValueError("invalid proof labels")
+        definitions = row.get("definitions", [])
+        if not isinstance(definitions, list) or not all(
+            isinstance(item, str) and " = " in item for item in definitions
+        ):
+            raise ValueError("invalid proof definitions")
         proofs.append(
             ProofRow(
                 _text(row, "generator"),
@@ -92,6 +100,7 @@ def load(path: Path = MANIFEST) -> tuple[tuple[ProofRow, ...], tuple[ScalingRow,
                 _text(row, "execution"),
                 _text(row, "workspace"),
                 _text(row, "evidence"),
+                tuple(definitions),
             )
         )
     for row in data["audit"]:
@@ -137,6 +146,14 @@ def update_docs(root: Path = ROOT) -> None:
                     f"{r.qualification} | {r.scaling} | {r.execution} | "
                     f"{r.workspace} |"
                     for r in proofs
+                ],
+                "",
+                "Symbols the formula cells use:",
+                "",
+                *[
+                    f"- **{r.generator}:** {'; '.join(r.definitions)}."
+                    for r in proofs
+                    if r.definitions
                 ],
             ],
         ),

@@ -63,7 +63,7 @@
       "qualification": "the blank grid is the table, one mark per row copied by `*`; a stage per input walks the mark pointer by that input's weight and `+` prints the mark it lands on",
       "scaling": "linear: 3T copy cells, T pointer steps, one stage per input",
       "execution": "linear: worst 4T + 42n + 5 steps on every table: 2T copy, stages 32 or 2w + 37",
-      "workspace": "T log T: two mark grids keyed by coordinates, about 4T marks",
+      "workspace": "T log T: at most (4T+31n+5)(8+bl(3T+n+3)+bl(9n+3)) + (T+4n)(10+2bl(8T+50n)) + 4bl(8T+50n) + bl(n) + 12 bits: program cells, data marks",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -206,8 +206,12 @@
       "qualification": "direct-jump packed decoder with byte reads and self-modifying chunk selection",
       "scaling": "linear: T/n packed chunks of n bits, O(n) decoder",
       "execution": "linear: worst 8T + (7n+5)(⌊T/n⌋-1) + 23n - 8 steps: the last full chunk, all ones",
-      "workspace": "linear: the self-modified program, T/n packed chunks",
-      "evidence": "docs/proofs/index.md#generator-ledger"
+      "workspace": "linear: at most T + C + I·bl(B) + (2I-1)bl(B+17) + bl(B+17+C) + R bits: each chunk plus sign",
+      "evidence": "docs/proofs/index.md#generator-ledger",
+      "definitions": [
+        "I = 8n + 45, B = 3I, C = ⌈T/n⌉",
+        "R = bl(3I-3) + 5bl(n) + 2n + 33 + max(n, bl(n)+1) + max(1, n-1), the registers"
+      ]
     },
     {
       "generator": "BrainIf",
@@ -239,7 +243,7 @@
       "qualification": "finite planar routing",
       "scaling": "linear: H-layout side C sqrt(T), area Theta(T)",
       "execution": "poly n: worst 2n + 1 commands; 2n + 2 past n = 7",
-      "workspace": "T log T: gate latches and live pulses over O(T) gates",
+      "workspace": "linear: at most 9T + 3n - 12 bits: one bit per gate latch slot and per live pulse",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -261,7 +265,7 @@
       "qualification": "an array subscript may name `lineNumber`, so a cell is addressed by the number of the line that writes it",
       "scaling": "linear: one line per four rows, a 64-cell decoder, 3n index lines",
       "execution": "linear: at most T/4 + 3n + 130 lines to n = 8: one step per line, no branching",
-      "workspace": "T log T: array A, T/4 cells keyed by a log T-bit index",
+      "workspace": "T log T: at most ⌈T/4⌉(bl(⌊L/17⌋)+6) + 64(bl(⌊L/17⌋)+1) + (n²+168)(8n+bl(L)+9)/2 + 2bl(L) + 115 bits: arrays, registers",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -283,8 +287,12 @@
       "qualification": "each input is the data of one jump in a two-line tester; a node patches the tester's two targets to its children and jumps in, a folded subtree targets the shared self-jump or the line past the end, and a subtree already emitted at its level is targeted, not repeated",
       "scaling": "linear: at most 3(T - 1) + 2n + 3 lines, subtree ids",
       "execution": "poly n: worst 5n + 2 commands, shared self-patching testers",
-      "workspace": "linear: the whole program tuple, about 3T/n patched lines",
-      "evidence": "docs/proofs/index.md#generator-ledger"
+      "workspace": "linear: at most 2bl(N) + 32 + bl(2n+3) + 2n(10+bl(N-1)) + P(28+3bl(2n+2)+2bl(N-2)) bits: whole program state",
+      "evidence": "docs/proofs/index.md#generator-ledger",
+      "definitions": [
+        "P = Σ_{k<n} min(2^k, 4^s - 2^s), s = 2^(n-k-1), the shared nodes per level",
+        "N = 3P + 2n + 3"
+      ]
     },
     {
       "generator": "CV(N)(C)",
@@ -404,7 +412,7 @@
       "qualification": "a pair of answers per deque, and the input walks the deque cursor to the pair it wants",
       "scaling": "linear: T pushes, `T/2 - 1` cursor steps, two rows",
       "execution": "linear: worst 3T + 9n + 4 nodes: preload T plus runs, then 8n of selection reads",
-      "workspace": "T log T: about 4T exit-memory entries and T/2 deques",
+      "workspace": "T log T: at most (7T+20n+100)(bl(L)+4) + Σ_{j<T/2}(bl(j)+2) + 2bl(L) + n + 2bl(n) + 32 bits: exit-memory keys, deques",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -415,8 +423,11 @@
       "qualification": "the last seven inputs paint a block of `2**7` table entries as one call's literal argument list, and each of them halves the callee's parameter window with one multi-assignment, so the first parameter ends up holding the addressed entry",
       "scaling": "linear: two characters an entry, halvings sum to `2 * 128`",
       "execution": "poly n: worst 2 max(n - 7, 0) + 2 commands",
-      "workspace": "linear: call frames embedding the parsed main body",
-      "evidence": "docs/proofs/index.md#generator-ledger"
+      "workspace": "linear: worst 32n + 71 + 2bl(n) + G bits for n ≤ 48: main's locals in both frame and scope",
+      "evidence": "docs/proofs/index.md#generator-ledger",
+      "definitions": [
+        "G = max(bl(h+1) + 4, max_{j<h} bl(j+1) + max(1, bl(h-1-j)) + 10), h = max(n-7, 0), the loop cursor"
+      ]
     },
     {
       "generator": "Forþ",
@@ -470,8 +481,11 @@
       "qualification": "one table block halved by `O(n)` conditional substitutions",
       "scaling": "linear: T literal, `.` halvings sum to 2T",
       "execution": "poly n: worst 8n + 10 commands past n = 4, halving per level",
-      "workspace": "linear: the T-character table line, halved in place",
-      "evidence": "docs/proofs/index.md#generator-ledger"
+      "workspace": "linear: worst 24T + 516n + 169 + A bits for n = 5..16: the program text after n reads",
+      "evidence": "docs/proofs/index.md#generator-ledger",
+      "definitions": [
+        "A = bl(12n+10) + bl(2n) + bl(n) + Σ_{i≤n+2}(bl(3i) + bl(3i+2)) + Σ_{2n+5≤m≤6n+4} bl(m)"
+      ]
     },
     {
       "generator": "INTERCAL",
@@ -790,8 +804,11 @@
       "qualification": "—",
       "scaling": "linear, time n log: greedy order scoring, capped",
       "execution": "linear: worst L commands: the all-ones row enters every guard, no loop repeats",
-      "workspace": "linear: one fraction per executed guard, never popped",
-      "evidence": "docs/proofs/index.md#generator-ledger"
+      "workspace": "linear: at most n·bl(L) + 3T/2 + 2n + 16 + bl(2n-1) + 2K(2n+1) + Σ_{i≤2n+1}(K(i)+3) bits: guard residues, keys",
+      "evidence": "docs/proofs/index.md#generator-ledger",
+      "definitions": [
+        "K(i) = 2bl(2^(i-1)·3^(2i-1)) + 1, a bound on the ith key's bits"
+      ]
     },
     {
       "generator": "Underload",

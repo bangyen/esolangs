@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 import pytest
 
 import esolangs
@@ -140,6 +142,20 @@ def test_every_row_carries_a_measured_cell(
             else LINEAR_CLAUSE_WORDS
         )
         assert words <= limit, f"{row.generator}: {column} clause is {words} words"
+
+
+def test_every_definition_names_a_symbol_its_cells_use() -> None:
+    """A row's ``S = ...`` definition defines S for its own cells, briefly."""
+    from scripts.proof_status import load as load_status
+
+    for row in load_status()[0]:
+        cells = f"{row.execution} {row.workspace}"
+        for definition in row.definitions:
+            symbol = re.split(r"[ (]", definition, maxsplit=1)[0]
+            assert re.search(rf"(?<![A-Za-z]){re.escape(symbol)}(?![A-Za-z])", cells), (
+                f"{row.generator}: {symbol} is defined but no cell uses it"
+            )
+            assert len(definition.split()) <= FORMULA_CLAUSE_WORDS, definition
 
 
 def test_unproved_scaling_requires_a_totality_exception(ledger: Ledger) -> None:

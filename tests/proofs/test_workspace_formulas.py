@@ -65,6 +65,67 @@ def _primes(count: int) -> list[int]:
     return out
 
 
+def _crement(n: int, _: str) -> int:
+    """The whole program; P bounds the shared nodes, N the instructions."""
+    p = sum(min(2**k, 4**2 ** (n - k - 1) - 2**2 ** (n - k - 1)) for k in range(n))
+    m = 3 * p + 2 * n + 3
+    return (
+        2 * bl(m)
+        + 32
+        + bl(2 * n + 3)
+        + 2 * n * (10 + bl(m - 1))
+        + p * (28 + 3 * bl(2 * n + 2) + 2 * bl(m - 2))
+    )
+
+
+def _inject(n: int, _: str) -> int:
+    """The program text after the n reads, its label spans and cursor."""
+    spans = sum(bl(3 * i) + bl(3 * i + 2) for i in range(n + 3))
+    spans += sum(map(bl, range(2 * n + 5, 6 * n + 5)))
+    return 24 * 2**n + 516 * n + 169 + bl(12 * n + 10) + bl(2 * n) + bl(n) + spans
+
+
+def _subleq(n: int, _: str) -> int:
+    """I instructions over operands up to B + 17, C chunks, the registers."""
+    i, chunks = 8 * n + 45, -(-(2**n) // n)
+    b = 3 * i
+    registers = (
+        bl(3 * i - 3) + 5 * bl(n) + 2 * n + 33 + max(n, bl(n) + 1) + max(1, n - 1)
+    )
+    return (
+        2**n
+        + chunks
+        + i * bl(b)
+        + (2 * i - 1) * bl(b + 17)
+        + bl(b + 17 + chunks)
+        + registers
+    )
+
+
+def _three_x(n: int, p: str) -> int:
+    """Guard residues, read cursor and the 2n + 1 keys, K a key's bits."""
+
+    def key(i: int) -> int:
+        return 2 * bl(2 ** (i - 1) * 3 ** (2 * i - 1)) + 1
+
+    return (
+        n * bl(len(p))
+        + 3 * 2**n // 2
+        + 2 * n
+        + 16
+        + bl(2 * n - 1)
+        + 2 * key(2 * n + 1)
+        + sum(key(i) + 3 for i in range(1, 2 * n + 2))
+    )
+
+
+def _forbin(n: int, _: str) -> int:
+    """Main's locals twice (frame and scope) and G, the loop cursor's peak."""
+    h = max(n - 7, 0)
+    loop = [bl(j + 1) + max(1, bl(h - 1 - j)) + 10 for j in range(h)]
+    return 32 * n + 71 + 2 * bl(n) + max([bl(h + 1) + 4, *loop])
+
+
 #: Generator -> (bits from n and the program, exact?, arities).  Mirrors the ledger.
 FORMULAS: dict[str, tuple[Callable[[int, str], int], bool, tuple[int, ...]]] = {
     "Fish": (lambda n, _: n + 13 + bl(9 * n + 8) + bl(n), True, (3, 6)),
@@ -318,6 +379,46 @@ FORMULAS: dict[str, tuple[Callable[[int, str], int], bool, tuple[int, ...]]] = {
         ),
         True,
         (6,),
+    ),
+    "Crement": (_crement, False, (3, 6)),
+    "Inject": (_inject, True, (5,)),
+    "Subleq": (_subleq, False, (3, 5)),
+    "3x": (_three_x, False, (3, 5)),
+    "Forbin": (_forbin, True, (3, 8)),
+    "B-tapemark": (
+        lambda n, _: (
+            (4 * 2**n + 31 * n + 5) * (8 + bl(3 * 2**n + n + 3) + bl(9 * n + 3))
+            + (2**n + 4 * n) * (10 + 2 * bl(8 * 2**n + 50 * n))
+            + 4 * bl(8 * 2**n + 50 * n)
+            + bl(n)
+            + 12
+        ),
+        False,
+        (3, 4),
+    ),
+    "Circuit Diagram": (lambda n, _: 9 * 2**n + 3 * n - 12, False, (3, 6)),
+    "Collatz Multiverse": (
+        lambda n, p: (
+            -(-(2**n) // 4) * (bl(len(p) // 17) + 6)
+            + 64 * (bl(len(p) // 17) + 1)
+            + (n * n + 168) * (8 * n + bl(len(p)) + 9) // 2
+            + 2 * bl(len(p))
+            + 115
+        ),
+        False,
+        (3, 6),
+    ),
+    "Flowchart": (
+        lambda n, p: (
+            (7 * 2**n + 20 * n + 100) * (bl(len(p)) + 4)
+            + sum(bl(j) + 2 for j in range(2**n // 2))
+            + 2 * bl(len(p))
+            + n
+            + 2 * bl(n)
+            + 32
+        ),
+        False,
+        (3, 4),
     ),
 }
 
