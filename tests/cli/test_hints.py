@@ -70,7 +70,9 @@ def test_mammalian_rejects_unknown_words_before_output(word):
 @pytest.mark.parametrize(("language", "source", "hint"), _BAD_SOURCE)
 def test_rejected_source_retains_a_repair_hint(language, source, hint):
     with pytest.raises(ValueError, match=r".+") as caught:
-        esolangs.run(language, source, timeout=0.2)
+        # Rejection is at load (ms); the bound only stops a hang, and 0.2s
+        # tripped on a contended release runner.
+        esolangs.run(language, source, timeout=2)
     assert any(hint in note for note in caught.value.__notes__)
 
 
