@@ -553,9 +553,30 @@ evaluations, about 75 s) on `K6` minus two disjoint edges reproduces
 is pinned with 40 executed order pairs in
 `test_pair_decoded_router_shatters_thirteen_rows_at_six_features`.
 
-Next: exhibit a `Theta(k log k)`-row family with rows of `k**Omega(1)`
-features that a fixed pair decoder shatters, or bound such rows by a
-non-counting argument.
+Dense complements have a separate prefix obstruction. If every row omits
+at most `r < k` features, its minimum lies among the first `r+1` features
+of either order: otherwise the row would omit all of that prefix. Hence
+both selections depend only on two ordered prefixes, giving at most
+`(k!/(k-r-1)!)**2` label vectors for every fixed decoder. Shattering requires
+`T <= 2 log2(k!/(k-r-1)!) <= 2(r+1) log2 k`. In particular, rows omitting
+`o(k)` features cannot shatter `Theta(k log k)` rows. Large row size alone
+is insufficient; any candidate must include a row omitting `Omega(k)`
+features as well as a row containing `k**Omega(1)` features.
+
+The complement-of-pairs control at `k=6` has fifteen four-feature rows and
+exactly 120 selection vectors, determined by the first three features.
+Thus every decoder realizes at most 14,400 tables, below 32,768. The known
+six-feature decoder realizes 845; on its original thirteen pair rows it
+still realizes 8,192 as a positive control. Forty order pairs on all fifteen
+dense rows execute through the interpreter (600 runs), checking both
+selected markers. These checks are pinned in
+`test_pair_router_dense_complements_have_a_prefix_obstruction`.
+
+The general dense-row question remains open; this round supplies neither
+an asymptotic construction nor a bound for arbitrary rows. Next: construct
+a balanced-row family (both row size and omitted size proportional to `k`)
+with `Theta(k log k)` independently programmable labels, or give a
+non-counting obstruction for arbitrary row families.
 
 ## The other end: the row-addressing tree
 

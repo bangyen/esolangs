@@ -75,32 +75,6 @@ history; standing rules and proved limits are in [limitations](limitations.md).
   n=11,13,15. Parity tables read no higher. All sit inside the measured
   4.4 contract; that is a measurement, not a proof of linearity.
 
-## Open problems
-
-Each item names its next executable step. When an item is answered, record
-the answer in the linked proof and remove the item. An item that stalls
-for a round moves to [Parked](#parked).
-
-- **FRACTRAN order encoding.** One unchanged multiset of eight fractions
-  computes all sixteen four-row tables just by ordering each `1/p, 2/p`
-  pair; all 64 rows executed. The one-consultation route is closed
-  negatively: fixed applicability and postprocessing give a linear
-  threshold class, requiring at least `T-1` distinct fractions and
-  `Omega(T log T)` text. A four-guard overlap cycle executes all 24
-  orders on four rows and realizes exactly fourteen tables, missing XOR
-  and XNOR. See [the order
-  bound](proofs/fractran.md#order-only-decoding-with-one-priority-consultation).
-  Two consultations escape the one-consultation cap: a `2k`-fraction
-  pair-decoded router realizes every table on up to 13 rows at `k=6`. On
-  pair rows it caps at `9.33*(k-1)` rows by region counting and reaches
-  `13*floor(k/6)` by disjoint blocks, so text stays `Theta(T log T)`; rows
-  of at most `s` features cap at `O(k log s)`
-  ([pair router](proofs/fractran.md#pair-decoded-two-priority-consultations)).
-  Next: exhibit a `Theta(k log k)`-row family with rows of `k**Omega(1)`
-  features that a fixed pair decoder shatters, or bound such rows without
-  counting. (The indexed threshold route already achieves linear text by
-  magnitudes.)
-
 Controls are in `tests/proofs/test_research_tracks.py`. The linked proofs
 close ordered input-forgetting construction, generated-family loading
 bounds, and the weighted-description theorem.
@@ -128,3 +102,7 @@ line changes only when its next step does.
   time; on the build side, a `certify` that rebuilds a level only when its
   direction drops below half the average
   ([index](proofs/index.md#vandevelo-identifier-and-fallback-audit)).
+- **FRACTRAN order encoding.** Next: a balanced-row family shattering
+  `Theta(k log k)` labels, or a non-counting obstruction; dense complements
+  depend only on short order prefixes
+  ([pair router](proofs/fractran.md#pair-decoded-two-priority-consultations)).

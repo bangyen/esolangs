@@ -533,3 +533,60 @@ def test_pair_decoded_router_shatters_thirteen_rows_at_six_features() -> None:
         for c2 in choices
     }
     assert len(tables) == 2**13
+
+
+@pytest.mark.medium
+def test_pair_router_dense_complements_have_a_prefix_obstruction() -> None:
+    # Omitting two features exposes only the first three in each order:
+    # 120 selection vectors cap every decoder below 2**15 tables.
+    features = (3, 5, 7, 11, 19, 23)
+    round1, round2, cleanup = _pair_router(features)
+    a = dict(zip(features, (37, 41, 43, 47, 53, 59), strict=True))
+    b = dict(zip(features, (61, 67, 71, 73, 79, 83), strict=True))
+    pairs = list(itertools.combinations(range(6), 2))
+    rows = [tuple(i for i in range(6) if i not in pair) for pair in pairs]
+    orders = list(itertools.permutations(range(6)))
+    choices = {tuple(min(row, key=order.index) for row in rows) for order in orders}
+    prefixes = {
+        tuple(next(i for i in prefix if i in row) for row in rows)
+        for prefix in itertools.permutations(range(6), 3)
+    }
+    assert choices == prefixes
+    assert len(choices) == 120
+    assert len(choices) ** 2 < 2 ** len(rows)
+    rng = random.Random(20261007)
+    for _ in range(40):
+        order1, order2 = rng.choice(orders), rng.choice(orders)
+        for row in rows:
+            seed = 13
+            for i in row:
+                seed *= features[i] ** 2
+            tokens = [
+                str(seed),
+                *(round1[features[f]] for f in order1),
+                *(round2[features[g]] for g in order2),
+                *cleanup,
+            ]
+            io = ScriptedIO("")
+            run(" ".join(tokens), io)
+            first = features[min(row, key=order1.index)]
+            second = features[min(row, key=order2.index)]
+            assert int(io.getvalue().strip()) == a[first] * b[second]
+    decoder = ("110000", "100010", "011000", "010100", "000011", "010011")
+    tables = {
+        "".join(decoder[p][q] for p, q in zip(c1, c2, strict=True))
+        for c1 in choices
+        for c2 in choices
+    }
+    assert len(tables) == 845
+    # The same decoder's known pair-row family is the positive control.
+    control = [pair for pair in pairs if pair not in {(0, 1), (4, 5)}]
+    control_choices = {
+        tuple(min(row, key=order.index) for row in control) for order in orders
+    }
+    control_tables = {
+        "".join(decoder[p][q] for p, q in zip(c1, c2, strict=True))
+        for c1 in control_choices
+        for c2 in control_choices
+    }
+    assert len(control_tables) == 8192
