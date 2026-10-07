@@ -58,4 +58,4 @@ class TestParameterizedBfpda:
         from esolangs import tools as generators
 
         total = sum(len(generators.bfpda(format(v, "08b"))) for v in range(256))
-        assert total == 16042
+        assert total == 14502

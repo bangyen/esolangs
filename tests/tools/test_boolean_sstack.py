@@ -23,7 +23,7 @@ def test_a_full_tree_is_28_characters_a_node_and_3_a_leaf() -> None:
 def test_a_constant_subtree_still_reads_its_inputs() -> None:
     """The fold drops branches, never reads: a trailing read sees the next byte."""
     program = boolean.sstack("0" * 8 + "01" * 4)
-    assert program.count(";d;") == 3
+    assert program.count(";d;") == 5  # 3 folded, 2 at nodes whose halves agree
     stdin = esolangs.encode_inputs("SStack", [0, 1, 1, 0]) + "B"
     assert esolangs.run("SStack", program + ";e;:e:", stdin=stdin) == "0B"
 

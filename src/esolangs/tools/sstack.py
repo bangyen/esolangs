@@ -9,7 +9,11 @@ prints ``:b:`` or ``:c:``; a constant subtree reads its remaining inputs
 onto ``d`` and prints once.  28 characters a node: O(T) size and build.
 """
 
-from esolangs.tools.helpers import _validate_truth_table, constant_span_test
+from esolangs.tools.helpers import (
+    _validate_truth_table,
+    constant_span_test,
+    subtree_ids,
+)
 
 _PROLOGUE = '"49/b""48/c"'
 _LEAF = {"0": ":c:", "1": ":b:"}
@@ -19,6 +23,7 @@ def sstack(truth_table: str) -> str:
     """Build an SStack program printing ``truth_table[row]`` for the inputs."""
     n = _validate_truth_table(truth_table)
     constant = constant_span_test(truth_table)
+    ids = subtree_ids(truth_table)
     out = [_PROLOGUE]
 
     def build(remaining: int, lo: int, hi: int) -> None:
@@ -26,6 +31,11 @@ def sstack(truth_table: str) -> str:
             out.append(";d;" * remaining + _LEAF[truth_table[lo]])
             return
         mid = (lo + hi) // 2
+        below = ids[n - remaining + 1]
+        if below[lo >> (remaining - 1)] == below[mid >> (remaining - 1)]:
+            out.append(";d;")  # halves agree: drop the bit, untested
+            build(remaining - 1, lo, mid)
+            return
         out.append(";a;[a\\b/")
         build(remaining - 1, mid, hi)
         out.append("+a/a+][a\\c/")
