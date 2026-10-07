@@ -42,6 +42,19 @@ FORMULAS: dict[str, tuple[Callable[[int, str], float], bool, tuple[int, ...]]] =
     "Container": (lambda n, _: 2 * n + 2, True, (3, 7)),
     "Fish": (lambda n, _: 9 * n + 9, True, (3, 6)),
     "Line": (lambda n, _: 5 * n, True, (3, 5)),
+    # Capped rows: straight-line headers, the same count on every table.
+    "Befunge": (
+        lambda n, _: (
+            5 * n + 16 + 4 * -(-n // 2)
+            if n <= 8
+            else 5 * n + 29
+            if n <= 10
+            else 5 * n + 67
+        ),
+        True,
+        (3, 9, 11),
+    ),
+    "Malbolge": (lambda n, _: 478 * n + 1459, True, (3, 6)),
     "Decleq": (
         lambda n, _: 49 * n + 3 * 2 ** (2 * n - 1).bit_length() + 2,
         True,
@@ -224,6 +237,9 @@ def _tables(name: str, n: int) -> tuple[str, ...]:
     if name == "Streetcode":
         # Its worst in both columns on all 10 tables checked to n = 7: all ones.
         return ("1" * width,)
+    if name in ("Befunge", "Malbolge"):
+        # Straight-line code: all 10 tables tie at every n measured.
+        return (_dense(n),)
     if name == "LaserFuck" and n >= 5:
         # Its worsts, all zeros and all ones; a 3T + 1 cell tape is slow.
         return (_parity(n), _dense(n), "0" * width, "1" * width)
