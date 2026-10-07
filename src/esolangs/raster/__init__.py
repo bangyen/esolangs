@@ -163,9 +163,11 @@ class Raster:
 
     def __hash__(self) -> int:
         """Hash the immutable RGB pixels, once."""
-        if self._hash is None:
-            object.__setattr__(self, "_hash", hash(self.rows))
-        return self._hash
+        cached = self._hash
+        if cached is None:
+            cached = hash(self.rows)
+            object.__setattr__(self, "_hash", cached)
+        return cached
 
     @property
     def language(self) -> str | None:
