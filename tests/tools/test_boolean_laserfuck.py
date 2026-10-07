@@ -406,7 +406,7 @@ def test_vertical_tree_preserves_fitting_public_layouts(width: int) -> None:
     legacy = _laserfuck_build(table, (0, 1), width)
     if max(map(len, legacy.splitlines())) > width:
         legacy = _laserfuck_raise_funnel(legacy)
-    source = esolangs.generate("LaserFuck", table, width)
+    source = esolangs.generate("LaserFuck", table, width=width)
     if max(map(len, legacy.splitlines())) <= width:
         assert source == legacy
     for heading in range(4):

@@ -25,7 +25,7 @@ def test_newline_is_distinct_from_eof():
 
 
 def test_stream_echo_preserves_characters_on_the_same_line():
-    assert esolangs.run("brainfuck", ",.,.,.", "ab\n") == "ab\n"
+    assert esolangs.run("brainfuck", ",.,.,.", stdin="ab\n") == "ab\n"
 
 
 def test_interactive_empty_line_is_a_newline_character():
@@ -36,7 +36,10 @@ def test_interactive_empty_line_is_a_newline_character():
 @pytest.mark.parametrize("language", ["Befunge", "Line", "Piet"])
 def test_numeric_readers_accept_tokens_on_the_same_line(language):
     program = esolangs.generate(language, "0110")
-    assert esolangs.read_answer(language, esolangs.run(language, program, "0 1")) == "1"
+    assert (
+        esolangs.read_answer(language, esolangs.run(language, program, stdin="0 1"))
+        == "1"
+    )
 
 
 #: What a language does when a *reading* program is handed no input at
@@ -121,7 +124,7 @@ def test_running_out_of_input_reaches_the_caller(name: str) -> None:
         from esolangs import run
 
         with pytest.raises(EOFError):
-            run(name, program, "")
+            run(name, program, stdin="")
         return
     module = importlib.import_module("esolangs.interpreters." + example.interpreter)
     argument = program.splitlines() if example.split else program

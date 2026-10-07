@@ -154,7 +154,7 @@ class TestPolynomialExecution:
             " - 365830453724082x^3 + 5225367261446055x^2"
             " - 9213984708801250x + 21911510628393750"
         )
-        assert esolangs.run("Polynomial", program, "hi\nyo") == "hi\nyo"
+        assert esolangs.run("Polynomial", program, stdin="hi\nyo") == "hi\nyo"
 
     def test_wiki_hello_world(self) -> None:
         """Enedil's degree-50 program: 25 instructions, alternating += and print."""

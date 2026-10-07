@@ -139,7 +139,7 @@ class TestPointerFallback:
         assert len(names) > 1
 
     def test_the_debugger_mirrors_the_pointer(self) -> None:
-        dbg = debugger_api.make_debugger("brainfuck", ">>,", "")
+        dbg = debugger_api.make_debugger("brainfuck", ">>,", stdin="")
         assert dbg.ptr == 0
         dbg.step()
         assert dbg.ptr == 1

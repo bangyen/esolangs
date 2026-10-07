@@ -75,7 +75,7 @@ class TestInject:
         for n in (5, 6, 7):
             table = "".join(str((row * 73 + row // 3) & 1) for row in range(1 << n))
             plain = boolean.inject(table)
-            program = esolangs.generate("Inject", table, width)
+            program = esolangs.generate("Inject", table, width=width)
             assert max(map(len, program.splitlines())) <= max(width, 22)
             assert program.count("readto ") == n
             if max(map(len, plain.splitlines())) <= width:

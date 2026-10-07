@@ -62,7 +62,7 @@ def test_line_is_a_public_raster_language() -> None:
     program = esolangs.generate("Line", "01")
     assert isinstance(program, Raster)
     assert esolangs.describe("Line")["source_kind"] == "raster"
-    assert esolangs.run("Line", program, "1\n") == "1"
+    assert esolangs.run("Line", program, stdin="1\n") == "1"
 
 
 @pytest.mark.slow
@@ -71,7 +71,7 @@ def test_public_run_loads_line_png(tmp_path: Path) -> None:
     assert isinstance(program, Raster)
     path = tmp_path / "line.png"
     path.write_bytes(program.to_png())
-    assert esolangs.run("Line", path, "0\n") == "0"
+    assert esolangs.run("Line", path, stdin="0\n") == "0"
 
 
 def test_a_corrupt_png_is_a_value_error(tmp_path: Path) -> None:
@@ -200,8 +200,8 @@ def test_public_and_bounded_runs_reuse_pixels_with_fresh_state(
     monkeypatch.setattr(line, "extract_mask", extract_once)
     for (a, b), answer in zip([(3, 2), (0, 4), (2, 3)], expected, strict=True):
         stdin = f"{a}\n{b}\n"
-        assert esolangs.run("Line", source, stdin) == str(answer)
-        assert esolangs.run("Line", source, stdin, max_steps=1000) == str(answer)
+        assert esolangs.run("Line", source, stdin=stdin) == str(answer)
+        assert esolangs.run("Line", source, stdin=stdin, max_steps=1000) == str(answer)
     assert parses == 1
     line._compiled.cache_clear()  # noqa: SLF001
 

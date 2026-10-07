@@ -148,7 +148,7 @@ def test_descending_loader_preserves_inputs_and_answers(width: int) -> None:
     for n in range(1, 7):
         table = "".join(str((row * 73 + row // 3) & 1) for row in range(1 << n))
         plain = esolangs.generate("Back", table)
-        template = esolangs.generate("Back", table, width)
+        template = esolangs.generate("Back", table, width=width)
         floor = max(map(len, plain.splitlines())) - 2
         assert max(map(len, template.splitlines())) <= max(width, floor)
         sizes = set()
@@ -196,15 +196,15 @@ def test_vertical_leaf_finish_preserves_every_small_table() -> None:
     runner = TestParameterizedBack()
     for n in range(1, 4):
         for table in witnesses(n):
-            template = esolangs.generate("back", table, 1)
+            template = esolangs.generate("back", table, width=1)
             for row, expected in enumerate(table):
                 bits = [(row >> shift) & 1 for shift in range(n - 1, -1, -1)]
                 code = esolangs.instantiate(
                     "back", str(template), bits, truth_table=table
                 )
                 assert runner.run_back(code, n) == expected
-    assert max(map(len, esolangs.generate("back", "0110", 1).splitlines())) == 1
-    assert max(map(len, esolangs.generate("back", "0110", 8).splitlines())) == 8
+    assert max(map(len, esolangs.generate("back", "0110", width=1).splitlines())) == 1
+    assert max(map(len, esolangs.generate("back", "0110", width=8).splitlines())) == 8
 
 
 @pytest.mark.parametrize("n", [1, 2, 3, 5])
@@ -217,7 +217,7 @@ def test_parity_accumulator_keeps_public_slots_and_provenance(
     table = "".join(str((row.bit_count() & 1) ^ bias) for row in range(1 << n))
     runner = TestParameterizedBack()
     for width in (1, 4, 7, 10, 80):
-        tagged = esolangs.generate("Back", table, width)
+        tagged = esolangs.generate("Back", table, width=width)
         assert tagged.setters == (("-", "+"),) * n
         for template in (tagged, str(tagged)):
             for row, expected in enumerate(table):
@@ -233,4 +233,4 @@ def test_parity_accumulator_keeps_public_slots_and_provenance(
                 esolangs.instantiate(
                     "Back", template, [0] * n, truth_table="0" * len(table)
                 )
-    assert max(map(len, esolangs.generate("Back", table, 1).splitlines())) == 1
+    assert max(map(len, esolangs.generate("Back", table, width=1).splitlines())) == 1

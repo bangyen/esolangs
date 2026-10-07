@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pathlib
+from importlib.resources import files
 
 import pytest
 
@@ -19,7 +20,9 @@ def _row(name: str, table: str, bits: list[int]) -> tuple[str, str]:
     """Return the ``(program, stdin)`` for one row, without naming a language."""
     if esolangs.describe(name)["parameterized"]:
         return esolangs.instantiate(name, esolangs.generate(name, table), bits), ""
-    return esolangs.generate(name, table), esolangs.encode_inputs(name, bits, table)
+    return esolangs.generate(name, table), esolangs.encode_inputs(
+        name, bits, truth_table=table
+    )
 
 
 def _drive(vm: debugger_api.VM) -> str:
@@ -96,9 +99,9 @@ class TestSteppingReachesTheSameAnswer:
         for name in languages:
             for row, bits in enumerate(([0, 0], [0, 1], [1, 0], [1, 1])):
                 program, stdin = _row(name, table, bits)
-                want = esolangs.run(name, program, stdin, timeout=30)
+                want = esolangs.run(name, program, stdin=stdin, timeout=30)
                 try:
-                    got = _drive(debugger_api.make_vm(name, program, stdin))
+                    got = _drive(debugger_api.make_vm(name, program, stdin=stdin))
                 except esolangs.EsolangError as exc:
                     disagreed.append(f"{name} row {row}: stepping raised {exc!r}")
                     continue
@@ -115,8 +118,8 @@ class TestSteppingReachesTheSameAnswer:
         table = "0110"
         for bits, want in (([0, 0], "0"), ([0, 1], "1"), ([1, 0], "1"), ([1, 1], "0")):
             program, stdin = _row("Suffolk", table, bits)
-            assert esolangs.run("Suffolk", program, stdin, timeout=20) == want
-            debugger = debugger_api.make_debugger("Suffolk", program, stdin)
+            assert esolangs.run("Suffolk", program, stdin=stdin, timeout=20) == want
+            debugger = debugger_api.make_debugger("Suffolk", program, stdin=stdin)
             assert debugger.run(max_steps=_STEP_BUDGET) == "halted"
             assert debugger.output == want
 
@@ -149,7 +152,7 @@ class TestStepPastHaltIsSafeEverywhere:
             if facts["answer_mode"] == "termination":
                 continue
             program, stdin = _row(name, "0110", [0, 1])
-            vm = debugger_api.make_vm(name, program, stdin)
+            vm = debugger_api.make_vm(name, program, stdin=stdin)
             run_until_halt(vm, _STEP_BUDGET)
             if not vm.halted:
                 continue
@@ -175,16 +178,20 @@ class TestTheConstructorsTakeWhatRunTakes:
         self, build: object
     ) -> None:
         """It validated the file's contents, then passed the Path itself on."""
-        example = pathlib.Path(str(esolangs.describe("brainfuck")["examples"][0]))
-        machine = build("brainfuck", example, "1\n0\n")  # type: ignore[operator]
+        example = pathlib.Path(
+            str(files("esolangs") / esolangs.describe("brainfuck")["examples"][0])
+        )
+        machine = build("brainfuck", example, stdin="1\n0\n")  # type: ignore[operator]
         assert machine.halted is False
 
     def test_the_path_and_the_source_build_the_same_machine(self) -> None:
         """Reading it here must match what a caller reading it gets."""
-        example = pathlib.Path(str(esolangs.describe("brainfuck")["examples"][0]))
+        example = pathlib.Path(
+            str(files("esolangs") / esolangs.describe("brainfuck")["examples"][0])
+        )
         source = example.read_text().rstrip("\n")
-        from_path = _drive(debugger_api.make_vm("brainfuck", example, "1\n0\n"))
-        from_text = _drive(debugger_api.make_vm("brainfuck", source, "1\n0\n"))
+        from_path = _drive(debugger_api.make_vm("brainfuck", example, stdin="1\n0\n"))
+        from_text = _drive(debugger_api.make_vm("brainfuck", source, stdin="1\n0\n"))
         assert from_path == from_text
 
 

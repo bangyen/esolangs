@@ -235,7 +235,9 @@ class TestAlgebraicProgrammingLanguageShapes:
 def test_apl_elementary_definitions_compute_every_small_table(width: int) -> None:
     for n in range(1, 4):
         for table in witnesses(n):
-            program = esolangs.generate("Algebraic Programming Language", table, width)
+            program = esolangs.generate(
+                "Algebraic Programming Language", table, width=width
+            )
             for row, expected in enumerate(table):
                 bits = list(format(row, f"0{n}b"))
                 assert (
@@ -262,12 +264,12 @@ def test_apl_elementary_floor_and_corpus_size() -> None:
 def test_apl_elementary_public_tagged_and_plain_source(
     width: int, *, as_string: bool
 ) -> None:
-    program = esolangs.generate("Algebraic Programming Language", "0110", width)
+    program = esolangs.generate("Algebraic Programming Language", "0110", width=width)
     if as_string:
         program = str(program)
     for bits, expected in (("00", "0"), ("01", "1"), ("10", "1"), ("11", "0")):
         stdin = "\n".join(bits) + "\n"
         assert (
-            esolangs.run("Algebraic Programming Language", program, stdin)
+            esolangs.run("Algebraic Programming Language", program, stdin=stdin)
             == expected + "\n"
         )

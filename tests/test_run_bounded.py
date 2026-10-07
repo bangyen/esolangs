@@ -17,16 +17,16 @@ pytestmark = pytest.mark.medium
 @pytest.mark.parametrize("language", ["Smallfuck", "Befunge"])
 def test_bounded_run_matches_whole_program_execution(language: str) -> None:
     program, stdin = SAMPLES[language]
-    assert esolangs.run(language, program, stdin, max_steps=100_000) == esolangs.run(
-        language, program, stdin
-    )
+    assert esolangs.run(
+        language, program, stdin=stdin, max_steps=100_000
+    ) == esolangs.run(language, program, stdin=stdin)
 
 
 def test_bounded_run_executes_generated_xor() -> None:
     program = esolangs.generate("Fargo", "0110")
     for row, expected in enumerate("0110"):
         stdin = esolangs.encode_inputs("Fargo", tuple(map(int, format(row, "02b"))))
-        assert esolangs.run("Fargo", program, stdin, max_steps=1000) == expected
+        assert esolangs.run("Fargo", program, stdin=stdin, max_steps=1000) == expected
 
 
 def test_step_exhaustion_keeps_partial_output() -> None:
@@ -60,9 +60,9 @@ def test_invalid_bounds_are_refused(options: dict[str, object]) -> None:
 @pytest.mark.parametrize("language", ["Line", "Piet"])
 def test_raster_execution_obeys_the_step_bound(language: str) -> None:
     source = esolangs.generate(language, "01")
-    assert esolangs.run(language, source, "1\n", max_steps=1000) == "1"
+    assert esolangs.run(language, source, stdin="1\n", max_steps=1000) == "1"
     with pytest.raises(esolangs.ExecutionTimeoutError):
-        esolangs.run(language, source, "1\n", max_steps=0)
+        esolangs.run(language, source, stdin="1\n", max_steps=0)
 
 
 def test_interpreter_errors_are_preserved() -> None:

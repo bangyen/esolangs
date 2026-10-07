@@ -36,7 +36,7 @@ def test_piet_balance_matches_rendered_width_oracle(table: str) -> None:
             esolangs.run(
                 "Piet",
                 Raster.from_png(image.to_png()),
-                "0\n" * (len(table).bit_length() - 1),
+                stdin="0\n" * (len(table).bit_length() - 1),
             )
             == table[0]
         )
@@ -65,14 +65,14 @@ def test_line_extent_fast_path_preserves_merged_runs_and_shared_arms() -> None:
                 Raster.from_png(png.write_grey(canvas.pixels))
                 for canvas in (compact, legacy)
             ]
-            assert esolangs.run("Line", sources[0], str(value)) == esolangs.run(
-                "Line", sources[1], str(value)
+            assert esolangs.run("Line", sources[0], stdin=str(value)) == esolangs.run(
+                "Line", sources[1], stdin=str(value)
             )
     assert (
         esolangs.run(
             "Line",
             Raster.from_png(png.write_grey(render(leaf, acyclic=True).pixels)),
-            "",
+            stdin="",
         )
         == "2"
     )

@@ -13,7 +13,7 @@ from esolangs.tools.befunge import befunge
 def test_befunge_folded_header_reads_the_table(inputs: int, width: int | None) -> None:
     rng = random.Random(inputs)
     table = "".join(str(rng.randrange(2)) for _ in range(1 << inputs))
-    program = esolangs.generate("Befunge", table, width)
+    program = esolangs.generate("Befunge", table, width=width)
     lines = program.splitlines()
     floor = max(map(len, befunge(table, 1).splitlines()))
     assert max(map(len, lines)) <= max(80 if width is None else width, floor)
@@ -54,7 +54,7 @@ def test_single_digit_bound_reclaims_a_column() -> None:
 def test_packed_ascii_lookup_answers_every_row(inputs: int, width: int | None) -> None:
     rng = random.Random(inputs)
     table = "".join(str(rng.randrange(2)) for _ in range(1 << inputs))
-    program = esolangs.generate("Befunge", table, width)
+    program = esolangs.generate("Befunge", table, width=width)
     assert program.isascii()
     assert set(' "?@\\') <= set(program)
     for row, expected in enumerate(table):

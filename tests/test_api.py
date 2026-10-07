@@ -23,7 +23,7 @@ def test_generate_computes_its_table(language: str) -> None:
         stdin = esolangs.encode_inputs(
             language, [int(bit) for bit in format(row, "02b")]
         )
-        assert esolangs.run(language, program, stdin) == expected
+        assert esolangs.run(language, program, stdin=stdin) == expected
 
 
 def test_run_feeds_stdin() -> None:
@@ -129,7 +129,6 @@ def test_describe_structured_summary() -> None:
     assert info["name"] == "brainfuck"
     assert info["state_model"] == "tape"
     assert info["boolean_generator"] is True
-    assert info["interpreter"] == "tape_based.brainfuck"
     assert info["wiki_url"] == "https://esolangs.org/wiki/brainfuck"
 
 
@@ -235,7 +234,6 @@ def test_isolated_execution_loads_a_path_in_worker_thread(tmp_path):
     "options",
     [
         {"isolated": True, "max_steps": 2},
-        {"isolated": True, "timeout": None},
         {"max_steps": 2, "seed": 1},
     ],
 )
@@ -281,10 +279,10 @@ def test_bound_language_runs_a_boolean_workflow():
     assert language.name == "brainfuck"
     assert language.describe()["name"] == language.name
     program = language.generate("0110", balance=True)
-    stdin = language.encode_inputs([0, 1], "0110")
+    stdin = language.encode_inputs([0, 1], truth_table="0110")
     _check_stdin(language.name, stdin, "0110")
     assert _check_program(language.name, program, stdin) == program
-    assert language.read_answer(language.run(program, stdin)) == "1"
+    assert language.read_answer(language.run(program, stdin=stdin)) == "1"
     assert _evaluate(language.name, program, inputs=2) == "0110"
 
 
@@ -317,8 +315,9 @@ def test_bound_language_preserves_subprocess_defaults_on_a_worker(tmp_path):
         assert output.result(timeout=5) == "\x02"
         table = pool.submit(_evaluate, language.name, ",.", inputs=1, isolated=True)
         assert table.result(timeout=5) == "01"
-    with pytest.raises(esolangs.ArgumentError, match="finite timeout"):
-        language.run(path, isolated=True, timeout=None)
+    # None is the public default, so under isolation it is the 30-second
+    # deadline rather than a refusal.
+    assert language.run(path, isolated=True, timeout=None) == "\x02"
 
 
 def test_bound_execution_keeps_partial_output_on_step_exhaustion():

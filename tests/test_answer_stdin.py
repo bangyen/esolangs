@@ -51,7 +51,7 @@ class TestTheStdinJudgeIsReachableFromPython:
             if not facts["reads_input"]:
                 continue
             for table, bits in (("0110", [1, 0]), ("00010111", [1, 0, 1])):
-                stdin = esolangs.encode_inputs(name, bits, table)
+                stdin = esolangs.encode_inputs(name, bits, truth_table=table)
                 try:
                     _check_stdin(name, stdin, table)
                 except esolangs.EsolangError as exc:
@@ -68,7 +68,7 @@ class TestTheStdinJudgeIsReachableFromPython:
         """Its odd input count costs an extra line, and the shape says so."""
         _check_stdin(
             "Taglate",
-            esolangs.encode_inputs("Taglate", [1, 0, 1], "00010111"),
+            esolangs.encode_inputs("Taglate", [1, 0, 1], truth_table="00010111"),
             "00010111",
         )
         with pytest.raises(esolangs.ArgumentError):
@@ -89,7 +89,7 @@ class TestRunSaysWhenStdinLooksWrong:
         program = esolangs.generate("brainfuck", "00010111")
         with warnings.catch_warnings():
             warnings.simplefilter("error")
-            answer = esolangs.run("brainfuck", program, "110011", 10)
+            answer = esolangs.run("brainfuck", program, stdin="110011", timeout=10)
         # A warning, not a refusal: the run still happened and still answered.
         assert answer == "1"
 
@@ -98,7 +98,7 @@ class TestRunSaysWhenStdinLooksWrong:
         program = esolangs.generate("Grapheme", "0110")
         with warnings.catch_warnings():
             warnings.simplefilter("error")
-            esolangs.run("Grapheme", program, "0\n1\n", 10)
+            esolangs.run("Grapheme", program, stdin="0\n1\n", timeout=10)
 
     # Generates and runs one program per language, like the wrap test above.
     @pytest.mark.medium
@@ -114,10 +114,10 @@ class TestRunSaysWhenStdinLooksWrong:
             program = esolangs.generate(name, "0110")
             if facts["answer_mode"] == "termination":
                 continue
-            stdin = esolangs.encode_inputs(name, [1, 0], "0110")
+            stdin = esolangs.encode_inputs(name, [1, 0], truth_table="0110")
             with warnings.catch_warnings(record=True) as caught:
                 warnings.simplefilter("always")
-                esolangs.run(name, program, stdin, 20)
+                esolangs.run(name, program, stdin=stdin, timeout=20)
             if caught:
                 noisy.append(f"{name}: {caught[0].message}")
         assert not noisy, "\n".join(noisy)
@@ -128,7 +128,7 @@ class TestRunSaysWhenStdinLooksWrong:
 
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
-            esolangs.run("brainfuck", "+.", "1\n0\n", 10)
+            esolangs.run("brainfuck", "+.", stdin="1\n0\n", timeout=10)
         assert not [c for c in caught if "lines supplied" in str(c.message)]
 
     def test_taking_a_value_from_past_the_end_is_warned_about(self) -> None:
@@ -138,13 +138,15 @@ class TestRunSaysWhenStdinLooksWrong:
             short = esolangs.encode_inputs(name, [1, 0])
             with warnings.catch_warnings():
                 warnings.simplefilter("error")
-                esolangs.run(name, program, short, 10)
+                esolangs.run(name, program, stdin=short, timeout=10)
 
     def test_forgetting_stdin_entirely_is_warned_about(self) -> None:
         """Fargo answered row 0 -- the starkest case, since nothing was fed."""
         with warnings.catch_warnings():
             warnings.simplefilter("error")
-            esolangs.run("Fargo", esolangs.generate("Fargo", "10010110"), "", 10)
+            esolangs.run(
+                "Fargo", esolangs.generate("Fargo", "10010110"), stdin="", timeout=10
+            )
 
     def test_a_language_whose_documented_stop_is_eof_is_not_warned_about(
         self,
@@ -153,10 +155,10 @@ class TestRunSaysWhenStdinLooksWrong:
         import warnings
 
         program = esolangs.generate("Suffolk", "0110")
-        stdin = esolangs.encode_inputs("Suffolk", [1, 0], "0110")
+        stdin = esolangs.encode_inputs("Suffolk", [1, 0], truth_table="0110")
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
-            assert esolangs.run("Suffolk", program, stdin, 20) == "1"
+            assert esolangs.run("Suffolk", program, stdin=stdin, timeout=20) == "1"
         assert not caught
 
 

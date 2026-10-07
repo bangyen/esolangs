@@ -33,7 +33,7 @@ esolangs suggest Modulous modulous.txt
 ```python
 bf = esolangs.Language("brainfuck")
 program = bf.generate("0110", balance=True)
-output = bf.run(program, bf.encode_inputs([0, 1]))
+output = bf.run(program, stdin=bf.encode_inputs([0, 1]))
 assert bf.read_answer(output) == "1"
 info = bf.describe()
 ```
@@ -63,7 +63,7 @@ import esolangs
 table = "0110"
 program = esolangs.generate("brainfuck", table)
 stdin = esolangs.encode_inputs("brainfuck", [0, 1])
-output = esolangs.run("brainfuck", program, stdin)
+output = esolangs.run("brainfuck", program, stdin=stdin)
 assert esolangs.read_answer("brainfuck", output) == "1"
 ```
 
@@ -83,7 +83,7 @@ raster = esolangs.generate("Piet", table)
 assert isinstance(raster, esolangs.Raster)
 raster.to_png()
 stdin = esolangs.encode_inputs("Piet", [0, 1])
-assert esolangs.read_answer("Piet", esolangs.run("Piet", raster, stdin)) == "1"
+assert esolangs.read_answer("Piet", esolangs.run("Piet", raster, stdin=stdin)) == "1"
 ```
 
 To step through a text program and inspect its state:
@@ -93,7 +93,7 @@ program = esolangs.generate("brainfuck", table)
 stdin = esolangs.encode_inputs("brainfuck", [0, 1])
 from esolangs.debugger import make_vm
 
-vm = make_vm("brainfuck", program, stdin)
+vm = make_vm("brainfuck", program, stdin=stdin)
 for _ in range(20):
     if vm.halted:
         break
@@ -204,8 +204,8 @@ including the 15 languages that ignore width because newlines are semantic.
 
 ## Bounded execution
 
-`run(language, program, stdin, isolated=True, timeout=30)` bounds subprocess startup,
-loading and execution on Windows and worker threads. Timeout kills and reaps
+`run(language, program, stdin=stdin, isolated=True, timeout=30)` bounds
+subprocess startup, loading and execution on Windows and worker threads. Timeout kills and reaps
 the child; errors retain their class and `partial_output`.
 `max_memory=BYTES` bounds a Linux isolated worker's virtual address space,
 including Python overhead. `run` requires `isolated=True`; CLI
@@ -213,7 +213,7 @@ including Python overhead. `run` requires `isolated=True`; CLI
 option. Parent source loading is outside the cap; exhaustion raises
 `InterpreterLimitError`, never a Boolean answer.
 
-`run(language, program, stdin, max_steps=100_000, timeout=1)`
+`run(language, program, stdin=stdin, max_steps=100_000, timeout=1)`
 returns output on halt and raises `ExecutionTimeoutError` with
 `partial_output` when either bound expires. `max_steps` selects cooperative stepping.
 It steps all languages on Windows and worker threads; deadlines are checked
@@ -227,7 +227,9 @@ Zero permits no output; halting at exactly the cap succeeds.
 
 ```python
 try:
-    esolangs.run("brainfuck", ",[.]", "y", isolated=True, timeout=3, max_output=12)
+    esolangs.run(
+        "brainfuck", ",[.]", stdin="y", isolated=True, timeout=3, max_output=12
+    )
 except esolangs.InterpreterLimitError as exc:
     assert exc.partial_output == "y" * 12
 ```
@@ -260,7 +262,7 @@ the halt instruction executes; inspect `halted` separately from the stop reason.
 ```python
 from esolangs.debugger import make_debugger
 
-debug = make_debugger("brainfuck", ",[.]", "y")
+debug = make_debugger("brainfuck", ",[.]", stdin="y")
 debug.break_on_output("yy")
 assert debug.run(max_steps=100) == "breakpoint"
 assert debug.output == "yy"
@@ -289,19 +291,25 @@ shows the `gen`, `tmpl`, and `ex` markers.
 
 ## Compatibility
 
-The package is beta. Within a major release, compatibility covers:
+The package is beta. The public API is `esolangs.__all__` and
+`esolangs.debugger.__all__`, plus the documented CLI; every other module
+(`esolangs.vm`, `esolangs.registry`, `esolangs.tools`, `esolangs.interpreters`,
+...) is internal. Within a major release, compatibility covers:
 
-- names in `esolangs.__all__`, their documented arguments, and deliberate
-  `EsolangError` exceptions;
-- CLI command names, exit-status meanings, and JSON field meanings;
-- existing `describe()` fields and their value types;
+- public names, their signatures (required arguments positional, optional
+  ones keyword-only), and deliberate `EsolangError` exceptions;
+- CLI command names, JSON field meanings, and exit statuses: 0 success,
+  1 the program broke, 2 the ask was wrong, 70 internal error, 120 stdout
+  closed early, 124 a bound ran out, 130 interrupted;
+- existing `describe()` fields and their value types (an absent value is
+  `None`; `examples` are paths relative to the package);
 - interpreter semantics for valid programs, including I/O and answers;
 - committed examples as executable programs for their recorded tables.
 
-New optional arguments and metadata fields may be added. Human CLI prose,
-generated program text, debugger presentation, and private `_` names may
-change without deprecation; generated programs retain behaviour, not spelling
-or size.
+New keyword-only arguments and metadata fields may be added. Human CLI prose,
+generated program text, debugger presentation, internal modules, and private
+`_` names may change without deprecation; generated programs retain
+behaviour, not spelling or size.
 
 A breaking public change requires a major release. Coexisting replacements
 are documented for at least one minor release.

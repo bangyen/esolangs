@@ -224,7 +224,7 @@ def _is_grid(name: str) -> bool:
 def _run(name: str, program: str) -> str:
     """What ``program`` does under ``name``'s interpreter: output, or a raise."""
     try:
-        return run(name, program, _stdin(name))
+        return run(name, program, stdin=_stdin(name))
     except Exception as exc:
         return f"{type(exc).__name__}: {exc}"
 
@@ -340,9 +340,9 @@ def test_every_wrapper_actually_fires(name: str) -> None:
 def _grown(name: str, table: str, width: int | None) -> str:
     """A runnable program for ``table``: the template filled with zeros."""
     if _example(name).fill is None:
-        return generate(name, table, width)
+        return generate(name, table, width=width)
     arity = len(table).bit_length() - 1
-    return esolangs.instantiate(name, generate(name, table), [0] * arity, width)
+    return esolangs.instantiate(name, generate(name, table), [0] * arity, width=width)
 
 
 # Tables the generators take a *different path* on than parity.  The
@@ -380,7 +380,7 @@ def _behaviour(name: str, program: str, stdin: str) -> str:
     if diverges(name, program, stdin):
         return "diverges (cycle proven)"
     try:
-        return run(name, program, stdin, timeout=_RUN_TIMEOUT)
+        return run(name, program, stdin=stdin, timeout=_RUN_TIMEOUT)
     except Exception as exc:
         return f"{type(exc).__name__}: {exc}"
 
@@ -552,14 +552,14 @@ def test_wrap_space_delimited_never_splits_a_token() -> None:
 
 def test_polynomial_never_strands_a_sign_on_its_own_line() -> None:
     """The raggedness this wrapper exists to fix: a line that is just a sign."""
-    program = generate("Polynomial", TABLE, DEFAULT_WIDTH)
+    program = generate("Polynomial", TABLE, width=DEFAULT_WIDTH)
     assert "\n" in program
     assert not [line for line in program.split("\n") if line.strip() in ("+", "-")]
 
 
 def test_polynomial_starts_a_term_only_on_a_line_of_its_own() -> None:
     """The layout: a term starts a line, and only ever at the start of one."""
-    program = generate("Polynomial", TABLE, DEFAULT_WIDTH)
+    program = generate("Polynomial", TABLE, width=DEFAULT_WIDTH)
     lines = program.split("\n")
     # Line 1 is ``f(x) = <term>``: ``f(x)``, ``=`` and the unsigned term.
     assert lines[0].startswith("f(x) = ")
@@ -574,7 +574,7 @@ def test_polynomial_carries_a_term_over_without_inventing_a_sign() -> None:
     """A row continuing a term is bare: the sign belongs to the term's start."""
     # Four-input parity: XOR's coefficients no longer reach the width now
     # that the generator spells itself on the cheap opcodes.
-    program = generate("Polynomial", "0110100110010110", DEFAULT_WIDTH)
+    program = generate("Polynomial", "0110100110010110", width=DEFAULT_WIDTH)
     carried = [
         line for line in program.split("\n")[1:] if not line.startswith(("+ ", "- "))
     ]

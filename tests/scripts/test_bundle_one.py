@@ -102,7 +102,7 @@ class TestBundleMatchesPackage:
             arg = program.splitlines() if split else program
             expected = _outcome(
                 lambda name=name, program=program, stdin=stdin: esolangs.run(
-                    name, program, stdin
+                    name, program, stdin=stdin
                 )
             )
             actual = _outcome(
@@ -253,7 +253,7 @@ def test_raster_bundle_matches_pixels_and_runs_standalone(
     for bits in ("00", "01", "10", "11"):
         stdin = "\n".join(bits) + "\n"
         assert _run_and_read(bundled, program, stdin) == esolangs.run(
-            language, program, stdin
+            language, program, stdin=stdin
         )
         result = subprocess.run(
             [sys.executable, "-I", str(out), str(path)],
@@ -264,7 +264,7 @@ def test_raster_bundle_matches_pixels_and_runs_standalone(
         )
         assert result.returncode == 0, result.stderr
         assert result.stdout.removeprefix("Input: Input: ") == esolangs.run(
-            language, path, stdin
+            language, path, stdin=stdin
         )
 
 

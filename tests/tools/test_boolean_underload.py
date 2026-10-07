@@ -40,7 +40,7 @@ def test_wrapped_templates_execute_every_three_input_table(width: int) -> None:
 def test_wrapped_public_templates_preserve_input_slots() -> None:
     table = "0110100110010110"
     for width in (1, 7, 13, 40):
-        template = esolangs.generate("Underload", table, width)
+        template = esolangs.generate("Underload", table, width=width)
         for row in range(16):
             bits = [int(bit) for bit in f"{row:04b}"]
             io = ScriptedIO("")
@@ -95,7 +95,7 @@ def test_repeated_subtrees_are_carried_and_no_table_grows() -> None:
 @pytest.mark.parametrize("width", [1, 3, 4, 5, 13, 40, 80])
 def test_short_selectors_keep_public_provenance_and_uniform_width(width: int) -> None:
     table = "0110"
-    template = str(esolangs.generate("Underload", table, width))
+    template = str(esolangs.generate("Underload", table, width=width))
     setters = underload_setters(template, 2)
     assert len(set(setters)) == 1
     for row, expected in enumerate(table):
@@ -117,7 +117,7 @@ def test_short_selector_floor_and_actual_narrow_corpus() -> None:
 
 
 def test_layout_provenance_does_not_ignore_output_literal_newlines() -> None:
-    template = str(esolangs.generate("Underload", "0000", 1))
+    template = str(esolangs.generate("Underload", "0000", width=1))
     with pytest.raises(esolangs.TemplateError, match="not the template"):
         esolangs.instantiate(
             "Underload", template.replace("(0)", "(0\n)"), [0, 1], truth_table="0000"

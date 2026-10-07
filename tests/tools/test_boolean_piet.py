@@ -23,12 +23,14 @@ def test_every_row_executes(truth_table: str) -> None:
     for bits in product((0, 1), repeat=inputs):
         stdin = "".join(f"{bit}\n" for bit in bits)
         row = int("".join(map(str, bits)), 2) if bits else 0
-        assert esolangs.run("Piet", program, stdin) == truth_table[row]
+        assert esolangs.run("Piet", program, stdin=stdin) == truth_table[row]
 
 
 def test_png_round_trip_executes_the_same_program() -> None:
     program = generate("0110")
-    assert esolangs.run("Piet", Raster.from_png(program.to_png()), "1\n0\n") == "1"
+    assert (
+        esolangs.run("Piet", Raster.from_png(program.to_png()), stdin="1\n0\n") == "1"
+    )
 
 
 @pytest.mark.medium
@@ -51,7 +53,7 @@ def test_every_three_input_function_executes_through_png() -> None:
         total += pixels
         for row in range(8):
             stdin = "".join(f"{bit}\n" for bit in f"{row:03b}")
-            assert esolangs.run("Piet", program, stdin) == truth_table[row]
+            assert esolangs.run("Piet", program, stdin=stdin) == truth_table[row]
     # Parent table lookup emitted 38,997 codels over this exhaustive corpus.
     assert total == 34_638
 
@@ -76,7 +78,7 @@ def test_larger_functions_execute_through_png() -> None:
 def test_public_generate_returns_a_piet_raster() -> None:
     program = esolangs.generate("Piet", "01")
     assert isinstance(program, Raster)
-    assert esolangs.run("Piet", program, "1\n") == "1"
+    assert esolangs.run("Piet", program, stdin="1\n") == "1"
     assert verify_generated("Piet", "0110")
 
 
@@ -94,7 +96,7 @@ def test_ignored_inputs_are_read_but_not_indexed() -> None:
     assert [b - a for a, b in pairwise(widths)] == [2] * 7
     # The second input is ignored: the stored table is the one-input one.
     assert len(generate("0011").rows[0]) == len(generate("01").rows[0]) + 2
-    assert esolangs.run("Piet", generate("0" * 8), "1\n1\n1\n") == "0"
+    assert esolangs.run("Piet", generate("0" * 8), stdin="1\n1\n1\n") == "0"
 
 
 @pytest.mark.parametrize("truth_table", ["", "0", "1", "010", "0121"])

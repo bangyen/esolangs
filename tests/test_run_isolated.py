@@ -27,7 +27,7 @@ def test_timeout_retains_streamed_output():
 
 @pytest.mark.medium
 def test_isolation_preserves_integer_seeds_beyond_the_decimal_rendering_limit():
-    seeds = [*range(8), 10**5000, -(10**5000), "text seed"]
+    seeds = [*range(8), 10**5000, -(10**5000)]  # strings are refused now
     direct = [
         esolangs.run("LaserFuck", "o+++.\n", seed=seed, timeout=5) for seed in seeds
     ]
@@ -48,8 +48,8 @@ def test_input_error_retains_counts_and_output():
     assert caught.value.partial_output == "\x01"
 
 
-@pytest.mark.parametrize("timeout", [None, 0, float("inf")])
-def test_refuses_missing_or_invalid_deadline(timeout):
+@pytest.mark.parametrize("timeout", [0, float("inf")])
+def test_refuses_an_invalid_deadline(timeout):
     with pytest.raises(esolangs.ArgumentError):
         esolangs.run("brainfuck", "", timeout=timeout, isolated=True)
 

@@ -40,7 +40,9 @@ def test_run_and_debug_restored_program(tmp_path, capsys, language, settings):
     path = save_generated(
         tmp_path, capsys, language, settings, *(["--bits", "10"] if embedded else [])
     )
-    stdin = "" if embedded else esolangs.encode_inputs(language, [1, 0], "0110")
+    stdin = (
+        "" if embedded else esolangs.encode_inputs(language, [1, 0], truth_table="0110")
+    )
     output, error = call_both(
         [
             "run",

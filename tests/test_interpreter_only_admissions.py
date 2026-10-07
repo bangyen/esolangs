@@ -35,8 +35,8 @@ def test_every_language_was_admitted_by_a_recorded_route() -> None:
     ],
 )
 def test_api_and_vm(language: str, code: str, stdin: str, output: str) -> None:
-    assert esolangs.run(language, code, stdin) == output
-    vm = make_vm(language, code, stdin)
+    assert esolangs.run(language, code, stdin=stdin) == output
+    vm = make_vm(language, code, stdin=stdin)
     while not vm.halted:
         hash(vm.snapshot())
         vm.step()

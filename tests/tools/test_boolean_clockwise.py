@@ -100,7 +100,7 @@ def test_width_rotates_the_lookup_without_changing_answers(width: int) -> None:
     for n in range(1, 7):
         table = ("01101001" * 8)[: 1 << n]
         plain = boolean.clockwise(table)
-        program = esolangs.generate("Clockwise", table, width)
+        program = esolangs.generate("Clockwise", table, width=width)
         plain_width = max(map(len, plain.splitlines()))
         assert max(map(len, program.splitlines())) <= max(
             width, min(plain_width, 2 if n <= 2 else 2 * n + 5)

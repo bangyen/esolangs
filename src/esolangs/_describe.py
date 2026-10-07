@@ -1,8 +1,6 @@
 """Registry facts as data: :func:`describe`, :func:`_spec`, :func:`list_languages`."""
 
-import json
 import pathlib
-from functools import cache
 from typing import TypedDict
 
 from esolangs._execution import interpreter_module
@@ -35,70 +33,13 @@ _STATE_MODELS = {
 }
 
 
-class ScalingStatus(TypedDict):
-    """Manifest verdicts; None means the axis has no explicit audit row."""
-
-    totality: str | None
-    generation_time: str | None
-    output_size: str | None
-    execution_time: str | None
-    evidence: str | None
-
-
-class ProofStatus(TypedDict):
-    """A ledger description and independent audited scaling verdicts."""
-
-    labels: list[str]
-    qualification: str
-    scaling: str
-    evidence: str
-    audit: ScalingStatus
-
-
-@cache
-def _proof_manifest() -> dict[str, ProofStatus]:
-    """Index the packaged, generated manifest without inferring missing verdicts."""
-    data = json.loads(
-        pathlib.Path(__file__)
-        .with_name("proof_status.json")
-        .read_text(encoding="utf-8")
-    )
-    audits = {row["generator"]: row for row in data["audit"]}
-    return {
-        row["generator"]: {
-            "labels": row["labels"],
-            "qualification": row["qualification"],
-            "scaling": row["scaling"],
-            "evidence": row["evidence"],
-            "audit": {
-                "totality": audits.get(row["generator"], {}).get("totality"),
-                "generation_time": audits.get(row["generator"], {}).get(
-                    "generation_time"
-                ),
-                "output_size": audits.get(row["generator"], {}).get("output_size"),
-                "execution_time": audits.get(row["generator"], {}).get(
-                    "execution_time"
-                ),
-                "evidence": audits.get(row["generator"], {}).get("evidence"),
-            },
-        }
-        for row in data["ledger"]
-    }
-
-
-def _proof_for(name: str) -> ProofStatus | None:
-    """Return independent mutable metadata, including caller-owned nested values."""
-    from copy import deepcopy
-
-    return deepcopy(_proof_manifest().get(name))
-
-
 class LanguageInfo(TypedDict):
     """What :func:`describe` returns, as a type a caller can annotate with.
 
     ``dict[str, object]`` cost a cast per field (five ``mypy --strict`` errors
-    in an ordinary consumer).  ``total=True``: a field that does not apply is
-    a documented empty value, so a caller iterates the registry without branching.
+    in an ordinary consumer).  ``total=True``: every key is always present, and
+    a scalar field that does not apply is None, never ``""`` -- so a caller
+    tests ``is None`` and iterates the registry without branching.
     """
 
     name: str
@@ -106,9 +47,8 @@ class LanguageInfo(TypedDict):
     id: str
     source_kind: str
     state_model: str | None
-    interpreter: str | None
     generator_max_inputs: int | None
-    generator_restrictions: str
+    generator_restrictions: str | None
     boolean_generator: bool
     parameterized: bool
     reads_input: bool
@@ -117,7 +57,7 @@ class LanguageInfo(TypedDict):
     input_encoding: tuple[str, str]
     input_shape: InputShape
     answer_mode: AnswerMode
-    answer_pattern: str
+    answer_pattern: str | None
     answer_encoding: tuple[str, str]
     answer_convention: str | None
     self_halts: bool
@@ -127,24 +67,19 @@ class LanguageInfo(TypedDict):
     examples: list[str]
     wiki_url: str
     dialect_settings: dict[str, DialectOption]
-    proof_status: ProofStatus | None
 
 
 def describe(language: str) -> LanguageInfo:
     """Return a structured description of ``language``.
 
-    ``proof_status`` separates ledger prose from explicit four-axis audits;
-    absent audit verdicts are None, not guarantees. Measured denotes an empirical
-    regression, not a proof. Evidence is repo-relative.
     ``spec`` contains the interpreter docstring; missing docstrings raise.
     ``dialect_settings`` gives runtime defaults, choices, bounds and dependencies.
-    Identity: ``name``, ``id``, ``source_kind``, ``state_model``,
-    ``interpreter``, ``wiki_url``.
+    Identity: ``name``, ``id``, ``source_kind``, ``state_model``, ``wiki_url``.
     Generation: ``generator_max_inputs`` is an explicit arity cap (None means
     none declared, or no generator); ``generator_restrictions`` names additional
-    table-dependent budgets. ``boolean_generator``; ``parameterized`` (a template,
-    filled by
-    :func:`instantiate`, ``reads_input`` false).  Width: ``width_effect`` is
+    table-dependent budgets, None when there are none.  ``boolean_generator``;
+    ``parameterized`` (a template, filled by :func:`instantiate`,
+    ``reads_input`` false).  Width: ``width_effect`` is
     ``"layout"`` (a shape built to fit; a hint), ``"wrap"`` (reflowed between
     tokens) or ``"none"`` (newlines are semantic); ``width_aware`` is the
     narrower ``== "layout"``.  Input: ``input_shape`` and ``input_encoding``,
@@ -152,41 +87,39 @@ def describe(language: str) -> LanguageInfo:
     alphabet is a wrong answer.  Answer: ``answer_mode`` is ``"output"``
     (last non-whitespace character), ``"dump"`` (a fixed place in the final
     state) or ``"termination"`` (a proven halt or divergence);
-    ``answer_pattern`` is the regex whose first group holds it;
+    ``answer_pattern`` is the regex whose first group holds it (None: no regex);
     ``answer_encoding`` the ``(zero, one)`` or ``("halts", "diverges")``;
-    ``answer_convention`` prose.  These describe raw output (A Painter Ant's
+    ``answer_convention`` prose or None.  These describe raw output (A Painter Ant's
     ``("o", "@")`` is a grid mark); :func:`read_answer` returns ``"0"``/``"1"``.
     Machine traits (``self_halts``, ``dumps_on_the_post_halt_step``,
     ``steppable_to_answer``, ``eof_is_a_value``) are documented on
     :func:`~esolangs.vm.machine_traits`.  ``examples`` lists the committed
-    programs; ``examples/MANIFEST.md`` says what each computes.
+    programs as POSIX paths relative to the package
+    (``importlib.resources.files("esolangs") / path``);
+    ``examples/MANIFEST.md`` says what each computes.
     """
     name = resolve(language)
     lang = LANGUAGES[name]
     family = lang.interpreter.split(".")[0] if lang.interpreter else None
     stem = example_stems().get(lang.id, lang.id)
-    # Absolute.  These were relative to the repository root, which made the
-    # recipe this package advertises -- ``run(lang, Path(describe(lang)
-    # ["examples"][0]))`` -- work from one directory and nowhere else: a
-    # ``chdir`` away it is ``cannot read examples/brainfuck.txt``,
-    # and for anyone who pip-installed there is no such directory at all.
+    # Package-relative: repository-relative paths broke a ``chdir`` away and
+    # under any install, and absolute ones froze the install location into
+    # the public output.  ``importlib.resources.files("esolangs")`` resolves.
     suffix = ".png" if lang.source_kind.value == "raster" else ".txt"
-    examples = sorted(str(p) for p in _EXAMPLES.glob(f"{stem}{suffix}"))
+    examples = sorted(f"examples/{p.name}" for p in _EXAMPLES.glob(f"{stem}{suffix}"))
     traits = machine_traits(name)
     parameterized = lang.id in parameterized_ids()
     contract = lang.contract
     return {
         "name": name,
-        "proof_status": _proof_for(name),
         "dialect_settings": dialect_choices(name),
         "spec": _spec(name),
         "id": lang.id,
         "source_kind": lang.source_kind.value,
         "state_model": _STATE_MODELS.get(family) if family else None,
-        "interpreter": lang.interpreter,
         "boolean_generator": lang.boolean is not None,
         "generator_max_inputs": lang.generator_max_inputs,
-        "generator_restrictions": lang.generator_restrictions,
+        "generator_restrictions": lang.generator_restrictions or None,
         "parameterized": parameterized,
         "reads_input": (lang.boolean is not None) and not parameterized,
         # Derived, not recomputed: this was a second copy of the very
@@ -197,7 +130,7 @@ def describe(language: str) -> LanguageInfo:
         "input_encoding": contract.alphabet,
         "input_shape": contract.input_shape,
         "answer_mode": contract.answer_mode,
-        "answer_pattern": contract.answer_pattern,
+        "answer_pattern": contract.answer_pattern or None,
         "answer_encoding": contract.answer_values,
         "answer_convention": contract.note or None,
         # Spelled out rather than ``**machine_traits(name)``: that returns

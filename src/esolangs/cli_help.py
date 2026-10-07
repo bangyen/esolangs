@@ -52,6 +52,10 @@ one command in full; `--version` prints the version.  Short forms: -p is
 --portable and -s is --settings.  A truth table is 2^n bits,
 most significant first; its length sets the input count (0110 is two-input XOR).
 
+exit codes: 0 success, 1 the program broke, 2 the ask was wrong, 70 internal
+error (a bug in esolangs), 120 stdout closed early, 124 a bound ran out,
+130 interrupted.
+
 examples:
   esolangs list
   esolangs describe Fargo
@@ -197,8 +201,9 @@ newline is added only when stdout is a terminal.  Whatever the program
 printed before a failure is written too, then the error on stderr.
 
 exit codes: 0 ran, 1 the program broke while running, 2 the ask was wrong
-(unknown language, malformed program, unreadable file), 124 the bound ran
-out, 130 interrupted.
+(unknown language, malformed program, unreadable file), 70 internal error (a
+bug in esolangs), 120 stdout closed early, 124 the bound ran out,
+130 interrupted.
 
 options:
   --isolated         run in a subprocess; portable deadline, default 30 seconds.
