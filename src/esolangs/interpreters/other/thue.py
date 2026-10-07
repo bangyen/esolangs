@@ -32,6 +32,9 @@ is the normal end.  A ``:::`` rule with no input left propagates ``EOFError``.
 
 from __future__ import annotations
 
+from bisect import bisect_left, bisect_right
+from itertools import accumulate
+
 from esolangs._drive import drive
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
@@ -116,6 +119,17 @@ def _matches(state: _State, rules: tuple[_Rule, ...]) -> tuple[_Match, ...]:
     return tuple(found)
 
 
+def _rewrite(rhs: str, line: str | None) -> tuple[str, str | None]:
+    """Return what a rule with right side ``rhs`` substitutes, and what it prints."""
+    if rhs == _INPUT:
+        return line or "", None
+    if rhs.startswith(_OUTPUT):
+        # Vogel's convention: no newline after the text, except that an
+        # empty string *is* one.
+        return "", rhs[len(_OUTPUT) :] or "\n"
+    return rhs, None
+
+
 def _advance(
     state: _State, rules: tuple[_Rule, ...], match: _Match, line: str | None = None
 ) -> tuple[_State, str | None]:
@@ -126,17 +140,182 @@ def _advance(
     """
     index, at = match
     lhs, rhs = rules[index]
-    out = None
-    if rhs == _INPUT:
-        replacement = line or ""
-    elif rhs.startswith(_OUTPUT):
-        replacement = ""
-        # Vogel's convention: no newline after the text, except that an
-        # empty string *is* one.
-        out = rhs[len(_OUTPUT) :] or "\n"
-    else:
-        replacement = rhs
+    replacement, out = _rewrite(rhs, line)
     return state[:at] + replacement + state[at + len(lhs) :], out
+
+
+#: Characters a block of :class:`_Text` holds, give or take a factor of two.
+_BLOCK = 256
+#: Blocks a draw's first walk sums together.
+_GROUP = 64
+
+
+class _Text:
+    """The state cut into blocks, each rule's occurrences indexed per block.
+
+    What :func:`_matches` finds, kept current by rescanning only the blocks a
+    rewrite touches, so a step costs a block and not the whole state:
+    ``a::=b`` over ``a*N`` rebuilt and rescanned all of it every step
+    (1.6 s at N=4k).  ``occ[rule][block]`` lists the offsets in that block
+    where the rule's left side starts, in order; it may run on into the next.
+    """
+
+    def __init__(self, text: str, lhss: list[str]) -> None:
+        self.lhss = lhss
+        #: How far an occurrence can run past the block it starts in.
+        self.reach = max(map(len, lhss), default=1) - 1
+        self.blocks: list[str] = []
+        self.occ: list[list[list[int]]] = [[] for _ in lhss]
+        #: Per rule, each block's occurrence count, and their total.
+        self.counts: list[list[int]] = [[] for _ in lhss]
+        self.totals = [0] * len(lhss)
+        #: Per rule, the counts summed by runs of ``_GROUP`` blocks, so a
+        #: draw walks groups and then one group.
+        self.groups: list[list[int]] = []
+        self._splice(0, 0, [], text)
+
+    def __str__(self) -> str:
+        return "".join(self.blocks)
+
+    def select(self, k: int) -> tuple[int, int, int]:
+        """Return the ``k``-th occurrence in rule then position order.
+
+        As ``(rule, block, index into occ[rule][block])``.
+        """
+        rule = 0
+        while k >= self.totals[rule]:
+            k -= self.totals[rule]
+            rule += 1
+        group, k = _locate(self.groups[rule], k)
+        block, k = _locate(self.counts[rule][group * _GROUP : (group + 1) * _GROUP], k)
+        return rule, group * _GROUP + block, k
+
+    def first(self) -> _Match | None:
+        """Return the first occurrence as ``(rule, offset)``, or ``None``."""
+        if not any(self.totals):
+            return None
+        rule, block, _index = self.select(0)
+        before = sum(map(len, self.blocks[:block]))
+        return rule, before + self.occ[rule][block][0]
+
+    def replace(self, rule: int, block: int, index: int, replacement: str) -> None:
+        """Rewrite that occurrence of ``rule`` to ``replacement``."""
+        at = self.occ[rule][block][index]
+        end = at + len(self.lhss[rule])
+        stop = block + 1
+        text = self.blocks[block]
+        size = len(text) - (end - at) + len(replacement)
+        if self.reach <= at and end <= len(text) and 0 < size <= 2 * _BLOCK:
+            self._patch(block, at, end, text[:at] + replacement + text[end:])
+            return
+        # The occurrence may run on into the next blocks; take them in.
+        while len(text) < end:
+            text += self.blocks[stop]
+            stop += 1
+        if len(replacement) <= 2 * _BLOCK:
+            self._splice(block, stop, [], text[:at] + replacement + text[end:])
+        else:
+            # A long right side stays one block, shared with the rule, until
+            # a rewrite lands in it.  Cut up at once, each of 1000 rewrites
+            # by a 200,000-character side added 782 blocks to reindex.
+            self._splice(block, stop, [*_cut(text[:at]), replacement], text[end:])
+
+    def _splice(self, start: int, stop: int, pieces: list[str], text: str) -> None:
+        """Replace blocks ``start:stop`` by ``pieces`` then ``text``; reindex."""
+        # Absorb what follows until the block is a full one, so deletions
+        # cannot leave a trail of tiny blocks -- but not a long block.
+        while (
+            len(text) < _BLOCK
+            and stop < len(self.blocks)
+            and len(text) + len(self.blocks[stop]) <= 2 * _BLOCK
+        ):
+            text += self.blocks[stop]
+            stop += 1
+        pieces = [*pieces, *_cut(text)]
+        for rule, occ in enumerate(self.occ):
+            counts = self.counts[rule]
+            self.totals[rule] -= sum(counts[start:stop])
+            counts[start:stop] = [0] * len(pieces)
+            occ[start:stop] = [[] for _ in pieces]
+        self.blocks[start:stop] = pieces
+        # Earlier blocks whose occurrences may run into the new text.
+        first, behind = start, 0
+        while first > 0 and behind < self.reach:
+            first -= 1
+            behind += len(self.blocks[first])
+        for block in range(first, start + len(pieces)):
+            self._scan(block)
+        self.groups = [
+            [sum(counts[i : i + _GROUP]) for i in range(0, len(counts), _GROUP)]
+            for counts in self.counts
+        ]
+
+    def _patch(self, block: int, at: int, end: int, text: str) -> None:
+        """Set ``block`` to ``text``, which rewrote its ``at:end`` in place.
+
+        Rescans only around the rewrite: an occurrence wholly before it
+        stands, and one wholly after it moves by the change in length.
+        Needs ``at >= reach``, so no earlier block sees the change.
+        """
+        delta = len(text) - len(self.blocks[block])
+        self.blocks[block] = text
+        window = self._window(block)
+        stop = min(end + delta, len(text))
+        for rule, lhs in enumerate(self.lhss):
+            occ = self.occ[rule]
+            old = occ[block]
+            low = at - len(lhs) + 1
+            first, last = bisect_left(old, low), bisect_left(old, end)
+            found = _starts(window, lhs, low, stop)
+            change = len(found) - (last - first)
+            self.totals[rule] += change
+            self.counts[rule][block] += change
+            self.groups[rule][block // _GROUP] += change
+            occ[block] = [*old[:first], *found, *(s + delta for s in old[last:])]
+
+    def _scan(self, block: int) -> None:
+        """Re-find every rule's occurrences starting in ``block``."""
+        window = self._window(block)
+        size = len(self.blocks[block])
+        for rule, lhs in enumerate(self.lhss):
+            starts = _starts(window, lhs, 0, size)
+            self.totals[rule] += len(starts) - self.counts[rule][block]
+            self.counts[rule][block] = len(starts)
+            self.occ[rule][block] = starts
+
+    def _window(self, block: int) -> str:
+        """Return ``block`` and the ``reach`` characters after it."""
+        text, need, after = self.blocks[block], self.reach, block + 1
+        while need > 0 and after < len(self.blocks):
+            text += self.blocks[after][:need]
+            need -= len(self.blocks[after])
+            after += 1
+        return text
+
+
+def _cut(text: str) -> list[str]:
+    """Return ``text`` as blocks."""
+    if len(text) <= 2 * _BLOCK:
+        return [text] if text else []
+    return [text[i : i + _BLOCK] for i in range(0, len(text), _BLOCK)]
+
+
+def _locate(counts: list[int], k: int) -> tuple[int, int]:
+    """Return the index whose count holds the ``k``-th item, and ``k`` in it."""
+    ends = list(accumulate(counts))
+    index = bisect_right(ends, k)
+    return index, k - (ends[index - 1] if index else 0)
+
+
+def _starts(text: str, lhs: str, low: int, high: int) -> list[int]:
+    """Return where ``lhs`` occurs in ``text`` starting in ``low:high``."""
+    out: list[int] = []
+    limit = high + len(lhs) - 1
+    at = text.find(lhs, max(low, 0), limit)
+    while at >= 0:
+        out.append(at)
+        at = text.find(lhs, at + 1, limit)
+    return out
 
 
 class _Machine:
@@ -144,14 +323,19 @@ class _Machine:
 
     def __init__(self, code: str, io: IO, rng: Randomness | None = None) -> None:
         self.rules, state = _parse(code)
-        self.state: _State = state
+        self._text = _Text(state, [lhs for lhs, _rhs in self.rules])
         self.io = io
         self._rng = rng
 
     @property
+    def state(self) -> _State:
+        """The string being rewritten."""
+        return str(self._text)
+
+    @property
     def halted(self) -> bool:
         """Whether no rule's left-hand side occurs any more."""
-        return not _matches(self.state, self.rules)
+        return not any(self._text.totals)
 
     #: The position is in the *state*, not the source: a rewrite happens on
     #: a string the program text does not contain after the first step.
@@ -164,8 +348,8 @@ class _Machine:
         The first, not the one the next step draws: reading a position must
         not consume randomness.
         """
-        found = _matches(self.state, self.rules)
-        return found[0] if found else ()
+        found = self._text.first()
+        return found if found is not None else ()
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
@@ -198,12 +382,13 @@ class _Machine:
 
     def step(self) -> None:
         """Perform one rewrite, drawing which one among those available."""
-        found = _matches(self.state, self.rules)
-        if not found:
+        count = sum(self._text.totals)
+        if not count:
             return
-        match = found[draw(self._rng, len(found))]
-        line = self.io.input_str() if self.rules[match[0]][1] == _INPUT else None
-        self.state, out = _advance(self.state, self.rules, match, line)
+        rule, block, index = self._text.select(draw(self._rng, count))
+        rhs = self.rules[rule][1]
+        replacement, out = _rewrite(rhs, self.io.input_str() if rhs == _INPUT else None)
+        self._text.replace(rule, block, index, replacement)
         if out is not None:
             self.io.print_str(out)
 
