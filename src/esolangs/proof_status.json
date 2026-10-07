@@ -8,7 +8,7 @@
       "qualification": "each embedded bit keeps the ant on a self-painting corridor or lifts it off, and the template walk after it advances the ant by that bit's weight, stopping at the corridor's end, leaving it over the indexed answer cell or the trailing run's first, which answers alike",
       "scaling": "linear: table walk; corridor weights sum to T",
       "execution": "linear: worst 2L commands: one pass to the fixed point, one proving the repeat",
-      "workspace": "T log T: painted cells keyed by coordinates along the corridor",
+      "workspace": "T log T: worst 2(n+1)T + 4 + bl(L-1) bits: corridor, answers, ant, cursor",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -754,8 +754,11 @@
       "qualification": "a node stores its halves under the input bit's own names and pushes the one the bit names as the next run's program, above seven skip runs for the byte's other bits; five macros carry the repeated text",
       "scaling": "linear: at most 6T + 90 characters: five a node, one a leaf",
       "execution": "poly n: worst 55n + 5 commands, one tree path of eight runs a level",
-      "workspace": "linear: the program text plus two stored halves a node",
-      "evidence": "docs/proofs/index.md#generator-ledger"
+      "workspace": "linear: worst 24E - 1214 + bl(E) + bl(n) bits for n ≥ 2: code, stack, variables",
+      "evidence": "docs/proofs/index.md#generator-ledger",
+      "definitions": [
+        "E = 95T - 80, the macro-expanded program with no constant subtree"
+      ]
     },
     {
       "generator": "Sophie",

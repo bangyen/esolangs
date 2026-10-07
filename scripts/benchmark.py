@@ -107,6 +107,8 @@ class WrittenState:
         self._peaks = [0] * len(self._start)
         self._written = [False] * len(self._start)
         self._last = list(self._start)
+        #: Bits of each written part's last sample, for frozenset deltas.
+        self._now: list[int | None] = [None] * len(self._start)
 
     @staticmethod
     def _parts(state: object) -> tuple[object, ...]:
@@ -127,7 +129,20 @@ class WrittenState:
             if not self._written[at]:
                 self._written[at] = True
                 self._peaks[at] = state_bits(self._start[at], self._memo)
-            self._peaks[at] = max(self._peaks[at], state_bits(part, self._memo))
+            now = self._now[at]
+            if (
+                now is not None
+                and isinstance(part, frozenset)
+                and isinstance(last, frozenset)
+            ):
+                # A frozenset counts as the sum of its items, so a painted
+                # cell recounts the change, not A Painter Ant's whole grid.
+                now += state_bits(part - last, self._memo)
+                now -= state_bits(last - part, self._memo)
+            else:
+                now = state_bits(part, self._memo)
+            self._now[at] = now
+            self._peaks[at] = max(self._peaks[at], now)
 
     @property
     def bits(self) -> int:

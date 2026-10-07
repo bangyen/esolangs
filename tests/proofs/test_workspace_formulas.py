@@ -444,6 +444,18 @@ FORMULAS: dict[str, tuple[Callable[[int, str], int], bool, tuple[int, ...]]] = {
     "Forbin": (_forbin, True, (3, 8)),
     "Algebraic Programming Language": (_apl, True, (3, 5)),
     "Decleq": (_decleq, True, (3, 4)),
+    # A T-cell corridor and T - 1 answers at bl(x) + 2 bits each, the ant, ip.
+    "A Painter Ant": (
+        lambda n, p: 2 * (n + 1) * 2**n + 4 + bl(len("".join(p.split())) - 1),
+        True,
+        (3, 6),
+    ),
+    # Code, stack and store each near E, the expanded program, at most 95T - 80.
+    "Smu": (
+        lambda n, _: 24 * (95 * 2**n - 80) - 1214 + bl(95 * 2**n - 80) + bl(n),
+        True,
+        (2, 4),
+    ),
     "AddSubJump": (_add_sub_jump, False, (3, 5)),
     "B-tapemark": (
         lambda n, _: (
