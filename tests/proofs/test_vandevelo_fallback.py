@@ -31,6 +31,54 @@ def test_fallback_draws_a_half_average_direction(
     assert 1 <= len(draws) <= _SAMPLES
 
 
+def test_assure_scores_the_exact_best_direction() -> None:
+    """Both branches -- pair differences and the transform -- find the maximum."""
+    import random
+
+    from esolangs.tools.vandevelo import _assure
+
+    rng = random.Random(3)
+    n = 8
+    for density, span_dirs in ((0.05, []), (0.6, []), (0.6, [0b1011])):
+        points = {p for p in range(1 << n) if rng.random() < density}
+        root = _Node(0, points, {0}, None)
+        node = root
+        for v in span_dirs:
+            node = _Node(v, {p for p in points if p ^ v in points}, {0, v}, root)
+        _assure(node, n)
+        _, count = _best(node)
+        best = max(
+            _pairs(node.points, v) for v in range(1, 1 << n) if v not in node.span
+        )
+        assert count == best
+
+
+def test_the_clause_bound_holds_on_assure_alone(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """No scored candidates, no sampling: the guarded chains still bound C."""
+    import random
+
+    from esolangs.tools.vandevelo import _Peel
+
+    module = importlib.import_module("esolangs.tools.vandevelo")
+    monkeypatch.setattr(module, "_nearest", lambda *_, **__: [])
+    monkeypatch.setattr(module, "_ensure_popular", lambda *_: None)
+    rng = random.Random(7)
+    for n in (8, 10):
+        ones = {p for p in range(1 << n) if rng.random() < 0.5}
+        cubes = _Peel(set(ones), n).run()
+        covered: set[int] = set()
+        for base, dirs in cubes:
+            cube = {base}
+            for v in dirs:
+                cube |= {p ^ v for p in cube}
+            covered |= cube
+        assert covered == ones
+        assert len(cubes) * n <= 17 << n
+        assert len(cubes) * n < 1 << n
+
+
 @pytest.mark.medium
 def test_identifier_charge_on_a_rendered_wide_program() -> None:
     import random

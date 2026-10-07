@@ -40,14 +40,16 @@ chain is at least ``d`` deep, and drops to ``d - 1`` only when the chain
 from the most popular root direction, brought up to date at every level,
 falls short of ``d`` -- that chain has Cohen--Shinkar's dimension, so the
 phase never drops below ``d(eps)`` while the density is ``eps``, which is
-what the clause bound needs.  The fallback below supplies, at a dense
-level, a direction of at least half the average popularity rather than
-the most popular one; halving squares into the telescoping as ``log2(1 /
-eps)`` becoming ``1 + log2(1 / eps)``, one dimension at most where ``eps <=
-1/2`` and at least ``log2(n) - 3`` above it, so the bound becomes ``1 + 22 *
-2**n / n`` clauses on the event that every fallback call clears it.
-The pool is rechosen from the remainder's nearest existing
-differences once a fixed fraction of it has gone; below density
+what the clause bound needs.  Every level of that chain, and of the
+first chain, which sets the opening phase, passes :func:`_assure`, so its
+direction holds at least half the average popularity: the quotient density
+then obeys ``eps' >= eps**2 / 4``, so ``log2(1 / eps) + 2`` at most doubles
+a level, and the chain reaches cubes of more than ``n / (2 * (log2(1 / eps)
++ 2))`` points.  Summing over the density bands ``(2**-(i+1), 2**-i]``
+gives at most ``16 * 2**n / n`` dense clauses, and the sparse tail adds at
+most ``2**n / n``, for every table.  The pool is rechosen from the
+remainder's nearest existing differences once a fixed fraction of it has
+gone; below density
 ``1 / max(_CANDIDATES, n)`` the remainder is sparse and each cube is grown
 at its lowest point from that point's nearest differences instead,
 filled from its successors in row order when the probes fall short.
@@ -61,25 +63,25 @@ each; a refresh follows a fixed fraction of removals, so the pool's cost
 ``T * ln(_CANDIDATES / 2)`` in all and a node's a constant per point it
 loses; the sparse tail costs a constant per point -- its order is
 threaded once in O(T), and a cube's probes, window and growth are
-bounded by the candidate count.  The proof's fallback
+bounded by the candidate count.  The sampled fallback
 fits the same charge: when no scored direction reaches the pigeonhole
 average on a dense working set, it scores :data:`_SAMPLES` uniform pair
-differences, ``_SAMPLES * |S|`` work, as many candidates more.  Each draw
-clears half the average with probability at least ``1/2 - 2**d / |S|``
-(pairs inside the span are skipped), so a call fails with probability
-under ``(1/2 + 2**d / |S|) ** _SAMPLES``; a failure costs cover, never
-correctness.  The exact quotient transform it replaces took ``(n - d) *
-2**(n - d)`` a call, ``60 * T`` on one 15-input table.  One term sits
-outside the charge: the dual-basis core below, at most ``sqrt(2**(dim +
-1))`` inputs, so under ``sqrt(n)`` per clause at the peel's dimensions and
-2% of the build at n=15.  The per-cube peel this replaces rescanned the
+differences, ``_SAMPLES * |S|`` work, as many candidates more.  It is a
+heuristic; :func:`_assure` carries the bound, and on measured tables it
+never has to compute.  The per-cube peel this replaces rescanned the
 remainder for every cube, ``Theta(T**2 / word)``; this one measures
 x1.7--2.3 per added input over n=10..15 at 0.93--1.02 of its size.
-Dense tables measure 7.3--8.7 characters per entry at n=8..11.  Scoring
-work is a full pool scan, about ``700 * T`` when the first phase fails,
-plus 10--170 ``T`` per later phase, flat from n=16 to n=17.  The charge
-above is a proposal, and the core still needs a build-work bound; these
-measurements prove neither.
+Dense tables measure 7.3--8.7 characters per entry at n=8..11.
+
+The charge fails on near-full tables.  "Once per level" assumes chains of
+bounded depth.  With ``k`` zeros, level ``l`` of the first chain misses at
+most ``k * 2**l`` points, so it keeps two cosets for ``n - log2(k) - 1``
+levels, and building each visits all of ``|S|``: at least ``T * (n -
+log2(k) - 2)`` work.  Three or eight zeros measure 845--1090 ``n * T`` of
+scoring at n=10..15; random tables of density 0.1 to 0.9 stay flat at
+13--4,500 ``T``.  The dual-basis core below is a second term outside the
+charge, at most ``sqrt(2**(dim + 1))`` inputs a clause and 2% of the build
+at n=15.
 
 A cube's guard needs one part per constraint, and any basis of the cube's
 dual space will do.  :func:`_constraints` builds one from short relations:
@@ -303,6 +305,78 @@ def _ensure_popular(node: _Node, n: int) -> None:
         node.cands[best_v] = best_c
 
 
+def _assure(node: _Node, n: int) -> None:
+    """Make the node's best candidate reach half the pigeonhole average.
+
+    The node's points are a union of ``q`` cosets of its span, of dimension
+    ``j``, and the directions outside the span hold ``|S| * (|S| - 2**j)``
+    of its ordered pairs.  When no candidate reaches half that over the
+    ``2**n - 2**j`` such directions -- or none has a pair while ``q >= 2``
+    -- the most popular one is computed exactly in the quotient and joins
+    the candidates: by pair differences of the coset representatives, or by
+    a Walsh--Hadamard transform when there are more pairs than the
+    transform's ``m * 2**m`` steps (``m = n - j``).  Only the chains the
+    clause bound speaks for call this, so it is a guarantee, not a search.
+    """
+    size = len(node.points)
+    j = len(node.span).bit_length() - 1
+    if size >> j < 2:
+        return
+    _, best_c = _best(node)
+    if best_c > 1 and 2 * best_c * ((1 << n) - (1 << j)) >= size * (size - (1 << j)):
+        return
+    dirs = []
+    cur: _Node | None = node
+    while cur is not None and cur.parent is not None:
+        dirs.append(cur.v)
+        cur = cur.parent
+    pivots: dict[int, int] = {}
+    for row in dirs:
+        for bit, prow in pivots.items():
+            if row >> bit & 1:
+                row ^= prow
+        hi = row.bit_length() - 1
+        for bit in pivots:
+            if pivots[bit] >> hi & 1:
+                pivots[bit] ^= row
+        pivots[hi] = row
+    free = [b for b in range(n) if b not in pivots]
+    reps = set()
+    for p in node.points:
+        for bit, prow in pivots.items():
+            if p >> bit & 1:
+                p ^= prow
+        reps.add(sum(1 << i for i, b in enumerate(free) if p >> b & 1))
+    m = len(free)
+    ordered = sorted(reps)
+    if len(ordered) ** 2 <= m << m:
+        pairs: dict[int, int] = {}
+        for i, a in enumerate(ordered):
+            for b in ordered[i + 1 :]:
+                pairs[a ^ b] = pairs.get(a ^ b, 0) + 2
+    else:
+        # Autocorrelation of the indicator: square its transform, invert.
+        f = [0] * (1 << m)
+        for x in ordered:
+            f[x] = 1
+        f = _walsh([c * c for c in _walsh(f)])
+        pairs = {u: c >> m for u, c in enumerate(f) if u}
+    u, count = min(pairs.items(), key=lambda kv: (-kv[1], kv[0]))
+    v = sum(1 << b for i, b in enumerate(free) if u >> i & 1)
+    node.cands[v] = count << j
+
+
+def _walsh(f: list[int]) -> list[int]:
+    """Unnormalised Walsh--Hadamard transform, in place."""
+    h = 1
+    while h < len(f):
+        for start in range(0, len(f), 2 * h):
+            for k in range(start, start + h):
+                f[k], f[k + h] = f[k] + f[k + h], f[k] - f[k + h]
+        h *= 2
+    return f
+
+
 def _remove(node: _Node, p: int) -> None:
     """Take ``p`` out of the node, its pair sets, and its chain below."""
     if p not in node.points:
@@ -401,8 +475,12 @@ class _Peel:
         )
         _ensure_popular(node, self.n)
 
-    def extend(self, node: _Node) -> int:
-        """Build the greedy chain below ``node`` as far as it goes; its depth."""
+    def extend(self, node: _Node, *, certain: bool = False) -> int:
+        """Build the greedy chain below ``node`` as far as it goes; its depth.
+
+        A ``certain`` chain has :func:`_assure` at every level, so it is
+        one the clause bound speaks for.
+        """
         depth = 0
         cur = node
         while True:
@@ -413,6 +491,8 @@ class _Peel:
             cur.child = None
             if cur is not node and cur.removed >= _REFRESH * len(cur.points):
                 self.refresh(cur)
+            if certain:
+                _assure(cur, self.n)
             best_v, _ = _best(cur)
             if best_v is None:
                 return depth
@@ -455,14 +535,20 @@ class _Peel:
         each.  Levels whose direction is still the most popular are kept;
         the chain is rebuilt below the first that is not.
         """
+        _assure(self.root, self.n)
         best_v, _ = _best(self.root)
         if best_v is None:
             return None
         # Every pooled direction with a pair has a node by now: the phase
-        # scores each once, and a dropped node forgets it was scored.
+        # scores each once, and a dropped node forgets it was scored --
+        # unless :func:`_assure` has just added it.
+        if best_v not in self.nodes:
+            self.tried.add(best_v)
+            self.nodes[best_v] = self.make_child(self.root, best_v)
         node = cur = self.nodes[best_v]
         while True:
             self.refresh(cur)
+            _assure(cur, self.n)
             best_w, _ = _best(cur)
             if best_w is None:
                 cur.child = None
@@ -506,6 +592,8 @@ class _Peel:
             # 2. score one more pooled direction this phase -- a sampled
             # popular one first, if the pool has fallen below average
             _ensure_popular(root, n)
+            if depth_target > n:
+                _assure(root, n)
             pick = None
             for v, c in sorted(root.cands.items(), key=lambda kv: (-kv[1], kv[0])):
                 if c < 2:
@@ -517,7 +605,7 @@ class _Peel:
                 tried.add(pick)
                 self.nodes[pick] = self.make_child(root, pick)
                 if depth_target > n:
-                    depth_target = self.extend(self.nodes[pick]) + 1
+                    depth_target = self.extend(self.nodes[pick], certain=True) + 1
                 continue
             # 3. drop the phase, but only past a chain the proof speaks for
             proven = self.certify()

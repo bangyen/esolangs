@@ -55,7 +55,7 @@ history; standing rules and proved limits are in [limitations](limitations.md).
   | Factor | Total | Language lower bound | Language lower bound | Linear |
   | Malbolge | Exception | Open | Linear | Linear |
   | Polynomial | Cap | Language lower bound | Language lower bound | Linear |
-  | Vandevelo | Total | Open | Measured | Measured |
+  | Vandevelo | Total | Open | Measured | Linear |
 
   <!-- SCALING-STATUS:END -->
 
@@ -179,23 +179,20 @@ the answer in the linked proof and remove the item.
   side's Perron root, or construct a cheaper weighted command stream to lower
   the upper one. Whether the limit exists, and its value, remain open.
 
-- **Vandevelo structural scaling.** Register upkeep is bounded at O(T)
-  lines and O(T log n) characters; the identifier references are the part
-  that still carries the extra factor. The popular-direction fallback now
-  scores a constant number of sampled pair differences, the same charge as
-  that many candidates; the exact transform it replaced spent `60*T` on
-  one seeded 15-input table. Affine-coset complements use direct violation
-  guards: the n=12 one-zero table drops 40,938,391 candidate visits and
-  shrinks from 333 to 277 characters. The occurrence-weighted naming audit
-  shrinks a seeded n=12 source by only 1.01%, below the shipping threshold;
-  `scripts/profile_vandevelo.py` records its executed controls. Next:
-  remove the identifier factor, prove the candidate charge, and bound the
-  dual-basis core's aggregate work ([proofs](proofs/index.md)). The
-  identifier factor is Cohen and Shinkar's open `O(log n)` gap in
-  DNF-of-parities size. On tables whose cubes are under `2*log2(n)`
-  dimensions, coset programs cost `Theta(DNF+(f) * n * log n)` characters.
-  So neither linear output nor a super-linear lower bound can be proved
-  without settling that gap.
+- **Vandevelo structural scaling.** Clause count is under `17*2**n/n`
+  for every table: `_assure` puts a half-average direction on each level
+  of the chains the bound needs. Lines and commands per row are therefore
+  `O(T)`, which closes execution time. Identifier references still carry
+  the extra factor. Generation is not linear as built: with `k` zeros the
+  first chain stays near full for `n - log2(k)` levels, at least `T*(n -
+  log2(k) - 2)` work, and three zeros measure about `860*n*T`. Next:
+  score near-full levels from their complement, whose misses at most
+  double a level, and bound the dual-basis core's aggregate work
+  ([proofs](proofs/index.md)). The identifier factor is Cohen and
+  Shinkar's open `O(log n)` gap in DNF-of-parities size. On tables whose
+  cubes are under `2*log2(n)` dimensions, coset programs cost
+  `Theta(DNF+(f) * n * log n)` characters. So neither linear output nor a
+  super-linear lower bound can be proved without settling that gap.
 
 - **FRACTRAN order encoding.** One unchanged multiset of eight fractions
   computes all sixteen four-row tables just by ordering each `1/p, 2/p`
