@@ -713,6 +713,7 @@ def test_nothing_else_is_anywhere_near_that_big() -> None:
         and esolangs.describe(name)["source_kind"] == "text"
     )
     assert biggest[0] < 600_000, biggest
-    # SLOW ACV MAMMALIAN leads at 115707 characters; Boolfuck led at 194026
+    # thisthat leads at 114637 characters; SLOW ACV MAMMALIAN led at 115707
+    # until its modulo-255 I/O default (101931), and Boolfuck led at 194026
     # after its admission, until its native bit-cell tree replaced the lowering.
-    assert biggest[1] == "SLOW ACV MAMMALIAN", biggest
+    assert biggest[1] == "thisthat", biggest
