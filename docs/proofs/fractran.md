@@ -233,11 +233,10 @@ size floor. An `O(T)`-character family must
   order, exponent magnitude, or the wiring: which state each numerator
   names, `log2 k` bits a fraction.
 
-The wiring route is the one taken below: `O(T / log T)` fractions each name
-one of `O(T / log T)` states, `Theta(T)` bits in all. This document once
-listed only order and magnitude, and shipped the magnitude route, which
-Lemma 11 prices in *steps* rather than characters. The order route is open
-and unused.
+The shipped construction takes the wiring route: `O(T / log T)` fractions
+each name one of `O(T / log T)` states, `Theta(T)` bits in all. The stateful
+order construction below also attains linear text. The earlier magnitude
+route remains valid; Lemma 11 prices it in steps rather than characters.
 
 ## Where the wall stops
 
@@ -633,6 +632,80 @@ fifteen nonempty subsets (8,640 runs). It verifies the selected marker
 product, the decoder's quadratic sign, and the decoder-independent
 `7/9` remainder bound; its six pair rows still realize all 64 labelings.
 See `test_pair_router_is_a_quadratic_sign_family`.
+
+### Stateful order encoding
+
+Repeated, state-dependent consultations attain the full permutation channel:
+a fixed multiset with `k + n + 746` fractions computes every `T`-row table
+whenever `k! >= 2**T`. Only the order of `k` router fractions depends on the
+table. All coefficients, the starting template, input loaders and decoder
+are table-independent at fixed `k,n`. Rendered source is
+`O(k log k + n**2) + O(1)` characters in the port's power-product notation.
+Thus `k = Theta(T/log T)` gives linear text using priority order alone.
+This settles the broader order route without extending the pair-decoder
+bound beyond its hypotheses.
+
+Choose distinct feature primes `f_0,...,f_{k-1}` outside the fixed control
+and input primes. Start with phase `3` and one copy of every feature. Place
+these `k` rules in the desired permutation order:
+
+    13*5**(i+1) / (3*f_i).
+
+The selected rule removes its feature and phase `3`, then records digit
+`i+1` in register `5`. A fixed nine-rule append routine updates the exponent
+`E` of register `7` to `(k+1)*E + i+1` and restores phase `3`. Its three
+phases multiply `E` by `k+1` through register `11`, move it back, and add
+the digit; separate bridge primes prevent guard cancellation. Each loop
+consumes its source counter, so the append terminates. No router rule is
+enabled until phase `3` returns. Consequently the router repeatedly selects
+the first remaining feature and consumes the whole permutation in order.
+After `k` consultations the tenth fixed rule enters the decoder. The final
+word is the base-`k+1` number with digits `pi(0)+1,...,pi(k-1)+1`, an
+injective encoding of all `k!` orders.
+
+The fixed decoder computes the lexicographic factorial rank. It extracts
+the word's digits from right to left. After processing `t` digits, a binary
+used-feature mask records that suffix, `F=t!`, and the rank accumulator
+contains its completed contributions. For the next digit `d`, count used
+features below `d-1` and add their count times `F`. Mark `d-1` used and
+advance the factorial. These are precisely the Lehmer-code contributions,
+so the result is a bijection onto `0,...,k!-1`. Divide it by two once per
+unit of the input-row counter, then take parity. Cleanup leaves exactly
+`2**bit`, satisfying the ordinary `1/2` answer contract.
+
+This algorithm is compiled from 259 fixed counter instructions to 736
+FRACTRAN fractions. State and bridge registers are separate primes; their
+threshold rules are sorted in descending state order. Every active
+instruction or bridge enables its own rule before any lower threshold or
+cleanup rule. The compilation therefore preserves increment, conditional
+decrement and control flow, including backward jumps. Its size is constant
+in `k,n`; these counts describe a named construction, not a searched table.
+The remaining `n` fractions load the row index from the usual prime-exponent
+inputs before the router starts. Their exponent literals cost `O(n**2)`
+characters. Feature primes and router digit literals cost `O(k log k)`.
+
+For a table, interpret its entries, low row first, as an integer `R`.
+Successive factorial quotients unrank `R` into a permutation; no permutation
+search is used. At `n >= 4`, the explicit choice `k=ceil(4T/n)` suffices:
+`k! >= (k/2)**(k/2)` and `log2(k/2) >= n+1-log2 n >= n/2` give
+`log2(k!) >= T`. For the finitely many smaller arities, `k=T+2` suffices.
+The asymptotic source cost is therefore `O(T)`, matching the language floor.
+
+Executed controls in `test_fractran_order.py`: the reader recovers all six
+three-feature and 24 four-feature permutations (119 and 134 characters).
+The full Boolean programs realize all four two-row and sixteen four-row
+tables, executing all 72 rows and checking that their starting templates
+and fraction multisets stay identical. Their measured lengths are 11,794
+and 11,827 characters, with 750 and 752 fractions. The independent counter
+execution checks rank bits for all six and 24 permutations as well.
+
+This is a source-size construction, not a production-generator replacement.
+The unary word reader already takes `2**Omega(k log k)` firings; for
+`k=Theta(T/log T)` this is exponential in `T`. Factorial unranking and list
+deletions have not been shown to take linear generation work either. The
+shipped indexed generator supplies the efficient magnitude route. The
+remaining implementation step for an order-based alternative is to avoid
+unary word accumulation while retaining the full permutation channel.
 
 ## The other end: the row-addressing tree
 
