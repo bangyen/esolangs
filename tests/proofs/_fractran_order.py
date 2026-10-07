@@ -306,3 +306,142 @@ def order_template(table: str, k: int) -> str:
     loaders = [f"107^{1 << (n - 1 - i)}/{prime}" for i, prime in enumerate(inputs)]
     _assembly, rules = decoder()
     return " ".join([start, *loaders, *reader(order, features, "109/3"), *rules])
+
+
+class _Available:
+    """Select and delete symbols by their ranks among remaining symbols."""
+
+    def __init__(self, size: int) -> None:
+        self.tree = [0, *(i & -i for i in range(1, size + 1))]
+        self.size = size
+
+    def pop(self, rank: int) -> int:
+        index = 0
+        bit = 1 << (self.size.bit_length() - 1)
+        while bit:
+            candidate = index + bit
+            if candidate <= self.size and self.tree[candidate] <= rank:
+                rank -= self.tree[candidate]
+                index = candidate
+            bit >>= 1
+        position = index + 1
+        while position <= self.size:
+            self.tree[position] -= 1
+            position += position & -position
+        return index
+
+
+def capacity(k: int) -> int:
+    """Return the independently encodable Lehmer bits, sum floor(log2 m)."""
+    width = k.bit_length() - 1
+    return width * k - (1 << (width + 1)) + width + 2
+
+
+def digit_order(table: str, k: int) -> tuple[int, ...]:
+    """Encode separate power-of-two Lehmer digits with rank selection."""
+    if capacity(k) < len(table):
+        raise ValueError("not enough independent Lehmer bits")
+    available = _Available(k)
+    result = []
+    offset = 0
+    for remaining in range(k, 0, -1):
+        width = remaining.bit_length() - 1
+        chunk = table[offset : offset + width]
+        rank = int(chunk[::-1] or "0", 2)
+        result.append(available.pop(rank))
+        offset += width
+    return tuple(result)
+
+
+@cache
+def bit_decoder() -> tuple[_Assembler, tuple[str, ...]]:
+    """Return the fixed small-counter bit extractor; no factorial rank."""
+    assembly = _Assembler()
+
+    def shift() -> None:
+        assembly.sub("row")
+        assembly.divide("R", "two", "Z")
+
+    assembly.loop("row", shift)
+    assembly.divide("R", "two", "Z")
+    assembly.move("Z", "answer")
+    assembly.code.append(("halt",))
+    registers = {
+        name: _REGISTERS[name]
+        for name in ("Q", "C", "tmp", "two", "row", "Z", "answer")
+    }
+    registers["R"] = 7
+    return assembly, tuple(assembly.fractions(registers))
+
+
+def _linear_primes(count: int) -> list[int]:
+    """Return primes with Euler's sieve and an explicit O(count log count) bound."""
+    assert count >= 6
+    # Rosser-Schoenfeld (1962), (3.13), bounds the count-th prime below this.
+    bound = 4 * count * count.bit_length()
+    least = [0] * (bound + 1)
+    primes = []
+    for candidate in range(2, bound + 1):
+        if not least[candidate]:
+            least[candidate] = candidate
+            primes.append(candidate)
+            if len(primes) == count:
+                return primes
+        for prime in primes:
+            product = prime * candidate
+            if prime > least[candidate] or product > bound:
+                break
+            least[product] = prime
+    raise AssertionError("explicit prime bound failed")
+
+
+def stream_template(table: str, k: int) -> str:
+    """Decode one independent Lehmer digit in O(k+n) fraction firings."""
+    n = len(table).bit_length() - 1
+    assert len(table) == 1 << n
+    order = digit_order(table, k)
+    primes = [prime for prime in _linear_primes(40 + n + k) if prime > 149]
+    inputs, features = primes[:n], primes[n : n + k]
+    start = "*".join(
+        [
+            "29",
+            "103^2",
+            *(f"{prime}^{TEMPLATE_CHAR}" for prime in inputs),
+            *map(str, features),
+        ]
+    )
+    loaders = [f"107^{1 << (n - 1 - i)}/{prime}" for i, prime in enumerate(inputs)]
+    mappings = []
+    offset = 0
+    for position, remaining in enumerate(range(k, 1, -1)):
+        mappings.append(f"3*23*11^{position}/29*107^{offset}")
+        offset += remaining.bit_length() - 1
+    selectors = []
+    for i in order:
+        selectors.extend((f"17/3*{features[i]}*11", f"13*5^{i}/3*{features[i]}"))
+    scans = []
+    bridges = []
+    for i in reversed(range(k)):
+        scans.extend(
+            (
+                f"19^{i + 1}*7/13^{i + 1}*{features[i]}*5",
+                f"19^{i + 1}/13^{i + 1}*5",
+            )
+        )
+        bridges.append(f"13^{i + 2}/19^{i + 1}")
+    _assembly, decoder_rules = bit_decoder()
+    return " ".join(
+        [
+            start,
+            *loaders,
+            *reversed(mappings),
+            *selectors,
+            "3/17",
+            *scans,
+            *bridges,
+            "1/13",
+            "109/23",
+            *decoder_rules,
+            *(f"1/{prime}" for prime in features),
+        ]
+    )

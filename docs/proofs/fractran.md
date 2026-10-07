@@ -704,8 +704,93 @@ The unary word reader already takes `2**Omega(k log k)` firings; for
 `k=Theta(T/log T)` this is exponential in `T`. Factorial unranking and list
 deletions have not been shown to take linear generation work either. The
 shipped indexed generator supplies the efficient magnitude route. The
-remaining implementation step for an order-based alternative is to avoid
-unary word accumulation while retaining the full permutation channel.
+streaming construction below avoids the unary word and factorial rank.
+
+### Streaming independent Lehmer digits
+
+The order channel also admits `O(T)` source, `O(T)` generation word work,
+and `O(T/log T)` fraction firings per query. The construction uses independent
+power-of-two subsets of the Lehmer digits rather than the whole factorial
+rank. It has `7k+n+258` fractions; only the order of `k` adjacent selector
+pairs depends on the table. Its initial template and fraction multiset
+are identical for all tables at fixed `k,n`.
+
+At position `p`, let `m=k-p`, `b_p=floor(log2 m)`, and
+`A_p=sum_{q<p} b_q`. Interpret the table block starting at `A_p` as a
+little-endian integer `a_p`, padding the last block with zeros. Since
+`a_p<2**b_p<=m`, it is a valid rank among the remaining symbols. Select
+and delete that symbol. The resulting permutation uniquely encodes the
+blocks, with capacity
+
+    S_k = sum_{m=1}^k floor(log2 m)
+        = b*k - 2**(b+1) + b + 2,   b=floor(log2 k).
+
+Here `S_k=Theta(k log k)`. For `n>=4`, `k=ceil(4T/n)` suffices:
+`S_k >= (k/2)*(log2(k/2)-1) >= (k/2)*(n-log2 n) >= T`.
+For smaller arities, `k=3,4,6` supplies `2,4,8` bits respectively.
+The zero-input case is covered by `k=2`.
+
+Load the row index `r` into register `107`. Descending threshold rules
+select the unique block with `A_p<=r<A_{p+1}`:
+
+    3*23*11**p / (29*107**A_p).
+
+They leave local bit index `j=r-A_p`, prefix counter `p`, ready phase `3`,
+and end flag `23`. Each symbol `i` has this adjacent selector pair, placed
+in permutation order:
+
+    17 / (3*f_i*11),
+    13*5**i / (3*f_i).
+
+While the prefix counter is positive the first rule consumes it and the
+first live feature; bridge `3/17` restores ready phase. After exactly `p`
+skips, the second rule consumes the target feature and sets countdown `i`.
+The live features now represent the suffix. Their count below `i` equals
+`a_p`, because removing the selected symbol does not change its rank.
+
+Scan identities `q=0,...,i-1` using phase exponents. For each `q`, put the
+live rule before its absent fallback, and order identity thresholds in
+descending `q`:
+
+    19**(q+1)*7 / (13**(q+1)*f_q*5),
+    19**(q+1)   / (13**(q+1)*5).
+
+Descending bridge rules `13**(q+2)/19**(q+1)` advance the identity. Each
+iteration removes one countdown unit and adds one to register `7` exactly
+when that feature is live. Induction maintains identity phase `q+1`,
+countdown `i-q`, and the count of live identities below `q`. Once the
+countdown vanishes, `1/13` clears the phase and `109/23` enters the fixed
+bit decoder. All active rules precede final feature cleanup.
+
+The decoder divides `a_p` by two `j` times and takes parity. Its 90 counter
+instructions compile to 256 fractions using the same separate state and
+bridge registers as the factorial decoder. Cleanup leaves exactly `2**bit`.
+The prefix costs `2p` firings, the scan and phase cleanup cost `O(i+1)`,
+and unused feature cleanup costs at most `k`. Unary divisions cost
+`O(a_p+j+1)=O(k+log k)`: their successively halved arguments sum to less
+than `2a_p`. Including at most `n` input-loader firings, a query therefore
+uses `O(k+n)` fraction firings. Integer width is `O(T)` bits. This is a
+unit-firing bound; guard inspection and integer arithmetic in an evaluator
+are additional work.
+
+Rank selection and deletion use a Fenwick tree in `O(k log k)` word
+operations. An Euler sieve supplies the feature primes in the same bound,
+assigning each composite once. With `c=40+n+k`, its limit is
+`4*c*bit_length(c)`: [Rosser and Schoenfeld (1962), (3.13), p. 69](https://doi.org/10.1215/ijm/1255631807)
+gives `p_c<c*(ln c+ln ln c)` for `c>=6`, below this limit. Source emission
+and table-block parsing also cost `O(k log k+n**2+T)` word operations,
+using words of `Theta(log T)` bits. Thus generation takes `O(T)` word
+work; this does not claim linear bit complexity. All literals have
+`O(log k)` characters except the input exponents, whose total is `O(n**2)`.
+Source length is consequently `O(k log k+n**2)+O(1)=O(T)`.
+
+Executed controls cover all 276 tables through three inputs, checking all
+2,120 rows, identical initial templates and fraction multisets, and exact
+answers. At `k=3,4,6`, measured source lengths are 4,065, 4,175 and 4,379
+characters; worst fraction-firing counts are 89, 254 and 265. Seeded tables
+at four, six, eight and ten inputs also pass first, interior and last-row
+queries. These programs establish the construction, not a production size
+improvement: the fixed decoder overhead remains substantial.
 
 ## The other end: the row-addressing tree
 
