@@ -444,6 +444,8 @@ FORMULAS: dict[str, tuple[Callable[[int, str], int], bool, tuple[int, ...]]] = {
     "Forbin": (_forbin, True, (3, 8)),
     "Algebraic Programming Language": (_apl, True, (3, 5)),
     "Decleq": (_decleq, True, (3, 4)),
+    # Every word and register is below 3^10 < 2^16; measured ~394k bits.
+    "Malbolge": (lambda n, _: 16 * 3**10 + 49 + bl(n), False, (2, 3)),
     # A T-cell corridor and T - 1 answers at bl(x) + 2 bits each, the ant, ip.
     "A Painter Ant": (
         lambda n, p: 2 * (n + 1) * 2**n + 4 + bl(len("".join(p.split())) - 1),

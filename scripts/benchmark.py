@@ -10,7 +10,8 @@ import threading
 import time
 from dataclasses import fields, is_dataclass
 from fractions import Fraction
-from itertools import chain
+from itertools import chain, compress
+from operator import is_not
 from typing import Any, cast
 
 import esolangs
@@ -139,6 +140,20 @@ class WrittenState:
                 # cell recounts the change, not A Painter Ant's whole grid.
                 now += state_bits(part - last, self._memo)
                 now -= state_bits(last - part, self._memo)
+            elif (
+                now is not None
+                and isinstance(part, tuple)
+                and isinstance(last, tuple)
+                and len(part) == len(last)
+                and part
+                and isinstance(part[0], tuple)
+            ):
+                # A chunked store (Malbolge's memory, a persistent tape):
+                # a tuple counts as the sum of its items, and an unwritten
+                # chunk is the same object, so recount only the new ones.
+                for i in compress(range(len(part)), map(is_not, part, last)):
+                    now += state_bits(part[i], self._memo)
+                    now -= state_bits(last[i], self._memo)
             else:
                 now = state_bits(part, self._memo)
             self._now[at] = now
