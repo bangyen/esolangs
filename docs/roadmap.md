@@ -84,9 +84,9 @@ bounds, and the weighted-description theorem.
 Stalled problems, one line each; detail lives in the linked proof page. A
 line changes only when its next step does.
 
-- **FRACTRAN bit-linear pipeline.** Next: implement bit-local rank selection;
-  Fenwick deletion needs only `Theta(T)` bit flips, but word updates cost
-  `Theta(T log T)` and linear bit cost for selection/addressing is unproved
+- **FRACTRAN bit-linear pipeline.** Next: amortize selector addressing or
+  replace the Fenwick access schedule; packed counters execute correctly,
+  but rank arithmetic and `Theta(T)` full-word cell visits retain the gap
   ([fractran](proofs/fractran.md#matched-bit-cost-for-the-materialized-pipeline)).
 - **Brainfuck behaviour count.** Next: count balanced bodies by the
   context-free system or a depth-indexed transfer matrix

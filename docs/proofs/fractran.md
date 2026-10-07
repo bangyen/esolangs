@@ -1095,6 +1095,44 @@ primes still need accounting. The next construction question is whether
 rank selection can use this bit-local representation without reintroducing
 the logarithmic factor elsewhere.
 
+**Packed-counter selector control.** `tests/proofs/_fractran_bit_order.py`
+implements this local arithmetic with packed counter bits and active-width
+metadata. Cell `j` begins at bit offset
+`2*(j-1)-popcount(j-1)`, because
+`sum_{i=1}^{j-1} v2(i)=(j-1)-popcount(j-1)`. Its reserved width is
+`v2(j)+1`, giving `2k-popcount(k)` counter bits. Decrement flips only the
+borrow chain; comparison first checks active widths, and subtraction
+normalizes the mutable rank's width. Metadata remains in word arrays;
+reported counter storage excludes it and the rank buffer.
+
+Controls realize every permutation through six symbols, and first,
+last-valid-digit and seeded-valid-digit rank sequences through 4,096
+symbols. The packed and reference selectors return the same symbol on
+every step. Substitution in the streaming generator gives identical source
+and correct executed first/interior/last-row answers for zero, one and
+seeded tables at zero, one, two, four, six and eight inputs.
+At `k=4,096`, the seeded control reads 47,872 bits in comparisons and
+287,704 in subtraction, writes 121,645 rank bits, and reads and writes
+53,248 counter bits in decrement. Counter storage is 8,191 bits. The
+first-rank control performs no comparison or subtraction bit accesses,
+so the mixed-rank controls positively exercise both arithmetic paths.
+These counts exclude metadata arithmetic and address computation.
+
+Packing does not change the access schedule. For `k=2**b`, each valid
+selection examines the root and all `b` lower levels: the root count is
+the number remaining, so a valid rank never advances beyond it. Together
+with initialization and deletion, the prototype computes
+
+    k + k*(b+1) + k*(1+b/2) = k*(3+3b/2)
+
+cell locations, or 86,016 at `k=4,096`. Under the stated materialized-word
+accounting, paying a full `Theta(log k)`-bit address per cell visit alone
+retains `Omega(T log T)` cost. This is a schedule-and-accounting bound,
+not a lower bound for amortized local addressing or other selectors.
+A bit-linear replacement must also change the access schedule or justify
+cheaper addressing, and bound rank arithmetic; packed counters alone do
+not close that gap.
+
 Executed arithmetic controls observe the actual sieve multiplications,
 checking unique composite assignment and absence of nonleast products.
 At `B=61,561`, moving the least-prime guard removes 20,269 unused products:
