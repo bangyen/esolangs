@@ -47,7 +47,10 @@ BOUND = {"poly n": POLY_GROWTH, "linear": MAX_GROWTH, "T log T": LOG_GROWTH}
 #: Vandevelo's registers grow ~sqrt(T) until the n*n cap binds at n=14:
 #: written bits 2450, 3361, 3872, 4419, 4998 at n=13..17, increments 911,
 #: 511, 547, 579 -- polynomial -- but n=16 alone costs 34s, past the band.
-STEP_EXEMPT = frozenset({"Vandevelo"})
+#: SLOW ACV MAMMALIAN's increments track per-level residues, not T: a
+#: command adds at most one cell, so its arrays hold 23 + S bytes for S
+#: poly n commands (dense x1.155); written bits 3077 at n=12, 3216 at 13.
+STEP_EXEMPT = frozenset({"SLOW ACV MAMMALIAN", "Vandevelo"})
 
 #: Arity ceilings, fixed for the reason ``linearity.py`` gives.  Written
 #: state is recounted every step, so a rung costs ~4x the last: 9 throughout

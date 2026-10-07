@@ -732,7 +732,7 @@
       "qualification": "a read chain banks each bit on array 16 and the dispatch's `DIGEST LEAPFROG` reads that sum as the leaf address; the five lightest weights are CONSUMEd from planted cells, so they never read the sum and need not be multiples of 256, which puts the stride at an eight-token leaf",
       "scaling": "linear: per-node landing search sized in O(1), not an O(weight) dry build",
       "execution": "poly n: n read nodes after a fixed dispatch and leaf",
-      "workspace": "linear: two arrays keep every excreted byte, about 8T/255 each",
+      "workspace": "poly n: each command adds at most one byte; commands are poly n",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
