@@ -386,15 +386,20 @@ def _worker() -> None:
                 scale=request.get("scale"),
                 settings=settings,
             )
-    except MemoryError:
-        del reserve
-        send(
-            {
-                "error": "InterpreterLimitError",
-                "args": ["isolated memory limit exceeded"],
-            }
-        )
-    except exceptions.EsolangError as error:
+    except (MemoryError, exceptions.EsolangError) as error:
+        # ``run`` translates an in-process MemoryError; here it is the cap.
+        cause: BaseException | None = error
+        while cause is not None and not isinstance(cause, MemoryError):
+            cause = cause.__cause__
+        if cause is not None:
+            del reserve
+            send(
+                {
+                    "error": "InterpreterLimitError",
+                    "args": ["isolated memory limit exceeded"],
+                }
+            )
+            return
         args: tuple[object, ...] = error.args
         if isinstance(error, exceptions.UnknownLanguageError):
             args = (error.language, error.suggestions)
