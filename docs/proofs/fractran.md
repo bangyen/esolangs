@@ -792,6 +792,59 @@ at four, six, eight and ten inputs also pass first, interior and last-row
 queries. These programs establish the construction, not a production size
 improvement: the fixed decoder overhead remains substantial.
 
+### Evaluator cost and the shipped generator
+
+Linear generation word work and sublinear fraction counts do not give a
+linear evaluator. For the streaming source, the current indexed evaluator
+copies the live prime-exponent tuple into a dictionary on every guard
+selection and every state update. All `k` feature primes are eventually
+removed, one per firing. Immediately before these removals their counts
+are `k,k-1,...,1`, so the updates alone copy at least `k(k+1)/2` entries.
+This gives an unconditional `Omega(k**2)` execution word-work lower bound
+for every query in this construction. It is an implementation bound,
+not a FRACTRAN language lower bound.
+
+There are `O(k+n)` firings and `O(k+n)` live factors. Each selection checks
+at most `O(k+n)` candidate guards, each of bounded support; each update
+sorts at most `O(k+n)` factors. With `k=Theta(T/log T)`, already-compiled
+execution therefore takes between `Omega(k**2)` and `O(k**2 log k)` word
+work. A straightforward bit-operation upper bound adds `O(log T)` per
+word operation. The selection cache avoids repeated scans of the same
+state; it does not remove the factor-copy lower bound.
+
+The selector bucket illustrates a separate inspection cost. For the
+all-zero table the permutation is the identity. At each prefix skip,
+selection starts at the beginning of the ready-phase bucket and tests
+the already-deleted features again. Reaching position `p` inspects
+`Omega(p**2)` candidates. Choosing the middle block gives `p=Theta(k)`
+when `k` is the least sufficient capacity. Executed all-zero controls at
+`k=9,23,63,182`, querying block `p=floor(k/2)`, give exactly
+`p**2+2p+2` ready-phase inspections, including the target selection. This
+positive control rules out reading a small firing count as a small
+guard-inspection count.
+
+Executed comparisons use one random table at each arity, seed `20261007`,
+the least `k` with `S_k>=T`, and rows `0,T//3,T-1`. Every answer is checked.
+Source lengths count the emitted templates in characters. Each cost column
+is the maximum over those three queries; maxima need not occur on the same
+row. Inspections count indexed candidates, or fractions tested by the
+literal fallback. Factor visits sum the live support before each VM
+transition, including the final print; they measure state volume rather
+than all work in the evaluator.
+
+| n | k | Stream chars | Shipped chars | Stream firings | Shipped firings | Stream inspections | Shipped inspections | Stream factor visits |
+|---|---|---|---|---|---|---|---|---|
+| 4 | 9 | 4,682 | 215 | 500 | 5 | 8,806 | 183 | 3,515 |
+| 6 | 23 | 6,156 | 617 | 650 | 16 | 9,919 | 869 | 9,206 |
+| 8 | 63 | 10,354 | 3,154 | 1,120 | 36 | 22,637 | 108 | 34,090 |
+| 10 | 182 | 23,739 | 12,164 | 10,767 | 12 | 308,605 | 19 | 357,107 |
+
+The shipped four- and six-input controls use the literal fallback; the
+others use indexed evaluation. These controls establish no size or query
+advantage for replacing the production generator. The order construction
+settles the source and generation route, while the shipped magnitude
+construction remains the practical implementation on these measurements.
+
 ## The other end: the row-addressing tree
 
 The generator that shipped before this was a decision tree with one prime

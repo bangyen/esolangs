@@ -11,7 +11,7 @@ import pytest
 
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.fractran import _choose, _Machine, _parse
-from esolangs.tools.fractran import PAIR, _primes
+from esolangs.tools.fractran import PAIR, _primes, fractran
 from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
 from tests.proofs._fractran_order import (
     _linear_primes,
@@ -181,3 +181,90 @@ def test_stream_order_wider_queries() -> None:
 def test_stream_order_constant_tables() -> None:
     for table in ("0", "1"):
         _execute_stream(stream_template(table, 2), table, range(1), 2)
+
+
+def _evaluation_cost(
+    template: str, table: str, row: int
+) -> tuple[int, int, int | None]:
+    n = len(table).bit_length() - 1
+    bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
+    source = fill_runs(template, TEMPLATE_CHAR, [PAIR] * n, bits)
+    io = ScriptedIO("")
+    machine = _Machine(source, io)
+    steps = visits = literal_probes = 0
+    while not machine.halted:
+        visits += len(machine._factors)
+        if machine._index is None:
+            selected = machine._next()
+            literal_probes += (
+                len(machine.fractions) if selected is None else selected + 1
+            )
+        machine.step()
+        steps += 1
+        assert steps <= 50000
+    assert io.getvalue().strip() == str(1 + int(table[row]))
+    return (
+        steps - 1,
+        machine.inspections + literal_probes,
+        visits if machine._index is not None else None,
+    )
+
+
+@pytest.mark.medium
+def test_stream_and_shipped_evaluation_costs() -> None:
+    rng = random.Random(20261007)
+    controls = (
+        (4, 9, 4682, 215, (500, 8806, 3515), (5, 183, None)),
+        (6, 23, 6156, 617, (650, 9919, 9206), (16, 869, None)),
+        (8, 63, 10354, 3154, (1120, 22637, 34090), (36, 108, 103)),
+        (10, 182, 23739, 12164, (10767, 308605, 357107), (12, 19, 69)),
+    )
+    for n, k, stream_length, shipped_length, stream_max, shipped_max in controls:
+        size = 1 << n
+        table = "".join(str(rng.randrange(2)) for _ in range(size))
+        assert capacity(k - 1) < size <= capacity(k)
+        stream = stream_template(table, k)
+        shipped = fractran(table)
+        assert (len(stream), len(shipped)) == (stream_length, shipped_length)
+        for template, expected in ((stream, stream_max), (shipped, shipped_max)):
+            costs = [
+                _evaluation_cost(template, table, row)
+                for row in (0, size // 3, size - 1)
+            ]
+            measured = tuple(
+                max(values)
+                for values in zip(*costs, strict=True)
+                if values[0] is not None
+            )
+            assert measured == tuple(value for value in expected if value is not None)
+            if template == stream:
+                assert all(cost[2] >= k * (k + 1) // 2 for cost in costs)
+
+
+@pytest.mark.medium
+def test_stream_prefix_inspections_positive_control() -> None:
+    for n, k in ((4, 9), (6, 23), (8, 63), (10, 182)):
+        table = "0" * (1 << n)
+        position = k // 2
+        row = sum(m.bit_length() - 1 for m in range(k - position + 1, k + 1))
+        assert row < len(table)
+        template = stream_template(table, k)
+        source = fill_runs(
+            template,
+            TEMPLATE_CHAR,
+            [PAIR] * n,
+            [(row >> (n - 1 - i)) & 1 for i in range(n)],
+        )
+        io = ScriptedIO("")
+        machine = _Machine(source, io)
+        ready_probes = steps = 0
+        while not machine.halted:
+            before = machine.inspections
+            machine._next()
+            if (3, 1) in machine._factors:
+                ready_probes += machine.inspections - before
+            machine.step()
+            steps += 1
+            assert steps < 200 * k + 100
+        assert io.getvalue().strip() == "1"
+        assert ready_probes == position**2 + 2 * position + 2
