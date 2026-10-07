@@ -13,6 +13,7 @@ import pytest
 
 import esolangs
 from esolangs.debugger import make_vm
+from esolangs.tools.one_two_three.construction import _leftover
 from scripts.benchmark import WrittenState
 from tests.proofs._ledger import load as load_ledger
 from tests.proofs.deep.execution import _dense
@@ -160,6 +161,23 @@ FORMULAS: dict[str, tuple[Callable[[int, str], float], bool, tuple[int, ...]]] =
     "BIO": (lambda n, _: 18 * 2**n - 10 * n + 30, True, (3, 5)),
     "bit~": (lambda n, _: 7 * 2**n + 17 * n + 92, True, (3, 5)),
     "Bitdeque": (lambda n, _: 3 * 2**n + 9 * n - 3, True, (5, 6)),
+    "ArrowQueue": (lambda n, _: 11 * 2**n + 6 * n + 24, True, (5, 7)),
+    "B-tapemark": (lambda n, _: 4 * 2**n + 42 * n + 5, True, (3, 6)),
+    "123": (lambda n, _: 32 * 2**n + 45 * n - 30, True, (4, 6)),
+    "6-5": (lambda _, p: len(p), True, (3, 7)),
+    "ROTfuck": (lambda n, _: 8 * 4**n + 43 * 2**n + 15 * n - 5, True, (3, 5)),
+    "Fargo": (
+        lambda n, _: 5 * 2**n + 1 if n > 5 else 15 * 2**n // 2 - 4,
+        False,
+        (3, 7),
+    ),
+    "Forþ": (lambda n, _: 6 * 2**n + 12 * n - 3, False, (3, 7)),
+    "Unlambda": (lambda n, _: max(77 * n + 12, 84 * n - 9), False, (3, 7)),
+    "Streetcode": (
+        lambda n, _: 3 * 2**n + 110 * n + 56 if n < 8 else 4 * 2**n + 14 * n + 600,
+        True,
+        (6, 8),
+    ),
 }
 
 
@@ -173,11 +191,38 @@ def _seeded(n: int, seed: int) -> str:
 _BFSTACK_BLOCK = "0" * 64 + "1" * 60 + "0" + "111"
 
 
+def _one_two_three_worst(n: int) -> str:
+    """123's worst, a rule: the all-ones row runs every level three times.
+
+    Rows are read bit-reversed.  The all-ones row answers 0, the next one 1
+    (the topmost one, so the kill spans 2T), row 0 carries the one shield,
+    and every other row takes whichever answer needs no shield of its own.
+    """
+    width = 1 << n
+    start = width - 1 + 3 * n
+    top = start + 2 * (width - 2) + 2
+    out = []
+    for row in range(width):
+        q = int(f"{row:0{n}b}"[::-1], 2)
+        if q in {width - 1, 0}:
+            out.append("0")
+        elif q == width - 2:
+            out.append("1")
+        else:
+            pos = start + 2 * q
+            tested = top if (top - pos) % 4 == 0 else top - 1
+            out.append("0" if _leftover(n, row & 1, tested - pos) else "1")
+    return "".join(out)
+
+
 def _tables(name: str, n: int) -> tuple[str, ...]:
     """Parity, dense, seeded, constants, AND, both alternations, NAND, ends."""
     width = 1 << n
     if name == "Circuit Diagram" and n >= 8:
         # Its worst, the all-ones H-layout; a wide circuit parses in 0.7s.
+        return ("1" * width,)
+    if name == "Streetcode" and n >= 7:
+        # Its worst on every table checked, all ones; n=8 alone takes 0.9s.
         return ("1" * width,)
     if name == "LaserFuck" and n >= 5:
         # Its worsts, all zeros and all ones; a 3T + 1 cell tape is slow.
@@ -199,6 +244,8 @@ def _tables(name: str, n: int) -> tuple[str, ...]:
         tables += (_BFSTACK_BLOCK * (1 << (n - 7)),)
     if name == "Bitdeque":
         tables += ("10" + "01" * (width // 2 - 1),)
+    if name == "123" and n >= 4:
+        tables += (_one_two_three_worst(n),)
     if name == "Packlang":
         # The most zeros a 128-row fill block may punch, in every block.
         block = min(width, 128)

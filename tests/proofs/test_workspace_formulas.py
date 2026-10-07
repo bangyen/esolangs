@@ -48,6 +48,23 @@ def _grapheme(n: int, _: str) -> int:
     return 16 * d + 112 * n + 312 + bl(14 * n + d + 17) + 2 * lifted + bl(2 * n) + bl(n)
 
 
+def _intercal(n: int) -> int:
+    """Nine bits and a key per variable, S the Execution statement bound."""
+    s = 2 * n + 3 + sum(min(2**k, 2 ** (2 ** (n - k)) - 2) for k in range(1, n))
+    return 9 * s - 18 + sum(map(bl, range(1, s - 1))) + bl(s)
+
+
+def _primes(count: int) -> list[int]:
+    """The first ``count`` primes."""
+    out: list[int] = []
+    p = 2
+    while len(out) < count:
+        if all(p % q for q in out):
+            out.append(p)
+        p += 1
+    return out
+
+
 #: Generator -> (bits from n and the program, exact?, arities).  Mirrors the ledger.
 FORMULAS: dict[str, tuple[Callable[[int, str], int], bool, tuple[int, ...]]] = {
     "Fish": (lambda n, _: n + 13 + bl(9 * n + 8) + bl(n), True, (3, 6)),
@@ -206,6 +223,90 @@ FORMULAS: dict[str, tuple[Callable[[int, str], int], bool, tuple[int, ...]]] = {
         ),
         False,
         (4, 5),
+    ),
+    "INTERCAL": (lambda n, _: _intercal(n), False, (3, 6)),
+    "Underload": (
+        lambda n, p: (
+            24 * len(p)
+            + 120 * 2**n
+            + 32 * n
+            - 176
+            + bl(2 * len(p) + 10 * 2**n + 6 * n - 14)
+        ),
+        False,
+        (3, 6),
+    ),
+    "ROTfuck": (
+        lambda n, p: (
+            2 * 2**n
+            + 5 * n
+            + 35
+            + bl(2080 * len(p))
+            + bl(2 * 2**n + 6)
+            + bl(len(p))
+            + bl(n)
+        ),
+        False,
+        (3, 4),
+    ),
+    "Painfuck": (
+        lambda n, p: 2 * n + 5 + 3 * bl(n) + (n + 1) * bl(len(p)),
+        False,
+        (3, 6),
+    ),
+    "BFStack": (
+        lambda n, p: (
+            n
+            + 7
+            + bl(n)
+            + (max(n - 7, 0) + (3 * min(2**n, 128) + 1) // 5 + 3) * bl(len(p))
+        ),
+        False,
+        (3, 6),
+    ),
+    "Boolfuck": (
+        lambda n, p: (
+            bl(len(p) - 1)
+            + max(12, bl(2 * n - 2) + 10)
+            + n
+            + sum(map(bl, range(1, n)))
+            + bl(2 * n)
+            + bl(n)
+        ),
+        False,
+        (3, 6),
+    ),
+    "Packlang": (
+        lambda n, p: (
+            min(2**n, 128)
+            + 2 * n
+            + min(n, 7)
+            + 192
+            + 16 * (n > 7)
+            + bl(len(p))
+            + 2 * bl(n)
+        ),
+        False,
+        (3, 5),
+    ),
+    "Polynomial": (
+        lambda n, _: (
+            bl(min(10 * 2**n - 7, 1934) + 10)
+            + 1
+            + max(
+                bl(n + 3),
+                bl(49 * (max(min(2**k, 2**2 ** (n - k)) for k in range(n + 1)) - 1)),
+            )
+            + 2 * bl(n)
+        ),
+        False,
+        (3,),
+    ),
+    "Fargo": (lambda _, p: 16 * (len(p) - 3) + bl(len(p)) + 11, False, (6,)),
+    "FRACTRAN": (
+        lambda n, _: n + 4 + sum(bl(p) + 1 for p in _primes(12 + n)[12:]),
+        False,
+        (7,),
     ),
 }
 
