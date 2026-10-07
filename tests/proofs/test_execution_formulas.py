@@ -12,6 +12,7 @@ import pytest
 
 import esolangs
 from esolangs.debugger import make_vm
+from scripts.benchmark import WrittenState
 from tests.proofs._ledger import load as load_ledger
 from tests.proofs.deep.execution import _dense
 from tests.tools.test_boolean_contract import _parity
@@ -31,14 +32,16 @@ FORMULAS: dict[str, tuple[Callable[[int], int], bool, tuple[int, ...]]] = {
     "Boolfuck": (lambda n: 2 * n * n + 27 * n + 8, True, (3, 6)),
     "Crement": (lambda n: 5 * n + 2, True, (3, 6)),
     "Factor": (lambda n: 265 * n + 231, True, (4,)),
+    "brainfuck": (lambda n: 69 * n + 44, True, (3, 6)),
+    "Circuit Diagram": (lambda n: 2 * n + 1 + (n >= 8), True, (3, 6)),
     "Forbin": (lambda n: 2 * max(n - 7, 0) + 2, True, (3, 8)),
     "Inject": (lambda n: 8 * n + 10, True, (5, 6)),
-    "BFStack": (lambda n: 60 * n + 475, False, (8,)),
-    "Painfuck": (lambda n: 2 * n * n + 21 * n + 5, False, (3, 6)),
+    "BFStack": (lambda n: 60 * n + 475, True, (8,)),
+    "Painfuck": (lambda n: -(-3 * n * n // 4) + 20 * n + 4, False, (3, 6)),
     "Smallfuck": (lambda n: 9 * n * n + 100 * n + 20, False, (3, 6)),
-    "Underload": (lambda n: 14 * n + 4, False, (3, 6)),
-    "FALSE": (lambda n: 12 * n + 71, False, (3, 6)),
-    "Jaune": (lambda n: 10 * n + 7, False, (3, 6)),
+    "Underload": (lambda n: 14 * n - 1, False, (3, 6)),
+    "FALSE": (lambda n: min(12 * n + 69, 10 * n + 99), False, (3, 6)),
+    "Jaune": (lambda n: 8 * n - 2, False, (3, 6)),
 }
 
 
@@ -48,8 +51,31 @@ def _seeded(n: int, seed: int) -> str:
     return f"{random.Random(7919 * seed + n).getrandbits(width):0{width}b}"
 
 
-def _worst(name: str, table: str) -> int:
-    """Most commands to halt over every halting row of ``table``."""
+#: BFStack's worst 7-input block, a rule: 64 zeros, 60 ones, a zero, then ones.
+_BFSTACK_BLOCK = "0" * 64 + "1" * 60 + "0" + "111"
+
+
+def _tables(name: str, n: int) -> tuple[str, ...]:
+    """Parity, dense, two seeded, the constants, AND, alternating and NAND."""
+    width = 1 << n
+    tables = (
+        _parity(n),
+        _dense(n),
+        _seeded(n, 1),
+        _seeded(n, 3),
+        "0" * width,
+        "1" * width,
+        "0" * (width - 1) + "1",
+        "10" * (width // 2),
+        "1" * (width - 1) + "0",
+    )
+    if name == "BFStack" and n >= 7:
+        tables += (_BFSTACK_BLOCK * (1 << (n - 7)),)
+    return tables
+
+
+def _worst(name: str, table: str, *, written: bool = False) -> int:
+    """Most commands to halt, or ``written`` state bits, over halting rows."""
     facts = esolangs.describe(name)
     halts = None
     if facts["answer_mode"] == "termination":
@@ -69,11 +95,14 @@ def _worst(name: str, table: str) -> int:
                 esolangs.encode_inputs(name, bits, truth_table=table),
             )
         machine = make_vm(name, source, stdin=stdin)
+        state = WrittenState(machine.snapshot())
         steps = 0
         while not machine.halted:
             machine.step()
             steps += 1
-        worst = max(worst, steps)
+            if written:
+                state.sample(machine.snapshot())
+        worst = max(worst, state.bits if written else steps)
     return worst
 
 
@@ -82,8 +111,7 @@ def _worst(name: str, table: str) -> int:
 def test_the_execution_formula_holds(name: str) -> None:
     formula, exact, arities = FORMULAS[name]
     for n in arities:
-        tables = (_parity(n), _dense(n), _seeded(n, 1), _seeded(n, 3), "0" * (1 << n))
-        worst = max(_worst(name, table) for table in tables)
+        worst = max(_worst(name, table) for table in _tables(name, n))
         assert worst <= formula(n), f"{name} n={n}: {worst} > {formula(n)}"
         if exact:
             assert worst == formula(n), (
