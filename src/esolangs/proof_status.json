@@ -19,8 +19,12 @@
       "qualification": "packed `n`-bit cells selected by a self-modified operand",
       "scaling": "linear: T/n packed cells of O(n) digits, O(n) decoder",
       "execution": "linear: worst (11n+4)⌊T/n⌋ + 11T + 13n - 17 past n = 5, one more from n = 10",
-      "workspace": "linear: the self-modified program, T/n packed cells",
-      "evidence": "docs/proofs/index.md#generator-ledger"
+      "workspace": "linear: at most Σ_{a<M} bl(a) + C(n + bl(B+13+C)) + 3n + 5bl(n) + Q bits: program cells, T/n packed",
+      "evidence": "docs/proofs/index.md#generator-ledger",
+      "definitions": [
+        "C = ⌈T/n⌉, I = 5n + 54, B = 4I, M = B + 14 + 2C",
+        "Q = I·bl(B) + (3I-2)bl(B+13) + 2bl(M-1) + bl(20n+212) + 23"
+      ]
     },
     {
       "generator": "Algebraic Programming Language",
@@ -30,8 +34,12 @@
       "qualification": "base-26 names are unbounded",
       "scaling": "linear, time n log: greedy order scoring, capped at n <= 10",
       "execution": "poly n: worst ceil(65n / 2) - 21 commands, one guarded path",
-      "workspace": "poly n: an expression work stack two nodes per input level",
-      "evidence": "docs/proofs/index.md#generator-ledger"
+      "workspace": "poly n: worst 179n + 400 + V + W bits for n ≥ 2: frame work stacks, globals",
+      "evidence": "docs/proofs/index.md#generator-ledger",
+      "definitions": [
+        "V = Σ_{1≤j≤n-2} (bl(s) + bl(s+1) + bl(s+5)), s = 2n+8+7j, three serials per level",
+        "W = bl(2n-1) + bl(2n+3) + bl(2n+13) + bl(F) + 2bl(F+1) + bl(F+2) + bl(F+4), F = 2n+7"
+      ]
     },
     {
       "generator": "Alight",
@@ -313,8 +321,16 @@
       "qualification": "the tree stops `k` levels short, `2**k >= 2n`, and each leaf is a `2**k`-cell table indexed by an unrolled counter, since `T - 1` absolute jump targets would be `Theta(T log T)` digits",
       "scaling": "linear: bounded dependency scan and canonical residual IDs",
       "execution": "poly n: worst 49n + 3*2^k + 2 commands, k = bitlen(2n-1)",
-      "workspace": "linear: the memory tuple, T table cells patched in place",
-      "evidence": "docs/proofs/index.md#generator-ledger"
+      "workspace": "linear: worst 55n + 11S + 95B + D + E + F + R bits: the memory tuple and registers",
+      "evidence": "docs/proofs/index.md#generator-ledger",
+      "definitions": [
+        "S = 2^k, m = n-k, c = 3⌈(n+18)/3⌉, P = c + 144n + 3k + 3S - 3",
+        "B = Σ_{i<n} bl(18+i)",
+        "D = Σ_{j<k} (2bl(18+m+j) + bl(P + 3(j-k+2) - 3·2^(k-1-j)))",
+        "E = Σ_{l<m, u<2^l} (2bl(18+l) + bl(P + 3l + (2u+1)2^(m-l-1)(S+18) - 3ν(u))), ν = ones in binary",
+        "F = Σ_{j<2^m} (22 + 6S + bl(x) + bl(x+9) + 2bl(x+10) + bl(x+14+S)), x = P+3m+j(S+18)-3ν(j)",
+        "R = 3bl(P - 3 + 2^m(S+18)) + bl(n) + bl(c) + c + k + 8"
+      ]
     },
     {
       "generator": "Dig",

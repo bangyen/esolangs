@@ -126,6 +126,53 @@ def _forbin(n: int, _: str) -> int:
     return 32 * n + 71 + 2 * bl(n) + max([bl(h + 1) + 4, *loop])
 
 
+def _apl(n: int, _: str) -> int:
+    """Frame work stacks at the leaf; V and W the serials' widths, n >= 2."""
+    f = 2 * n + 7
+    v = sum(bl(s) + bl(s + 1) + bl(s + 5) for s in range(2 * n + 15, 9 * n - 5, 7))
+    w = bl(2 * n - 1) + bl(2 * n + 3) + bl(2 * n + 13)
+    w += bl(f) + 2 * bl(f + 1) + bl(f + 2) + bl(f + 4)
+    return 179 * n + 400 + v + w
+
+
+def _add_sub_jump(n: int, _: str) -> int:
+    """Every program address's bits, the T/n packed cells, Q the rest."""
+    c = -(-(2**n) // n)
+    i = 5 * n + 54
+    b = 4 * i
+    m = b + 14 + 2 * c
+    q = i * bl(b) + (3 * i - 2) * bl(b + 13) + 2 * bl(m - 1) + bl(20 * n + 212) + 23
+    return sum(map(bl, range(m))) + c * (n + bl(b + 13 + c)) + 3 * n + 5 * bl(n) + q
+
+
+def _decleq(n: int, _: str) -> int:
+    """The memory tuple and registers; the letters are the ledger's."""
+
+    def ones(x: int) -> int:
+        return bin(x).count("1")
+
+    k = min(n, bl(2 * n - 1))
+    s, m, c = 2**k, n - k, -(-(n + 18) // 3) * 3
+    p = c + 144 * n + 3 * k + 3 * s - 3
+    b = sum(bl(18 + i) for i in range(n))
+    d = sum(
+        2 * bl(18 + m + j) + bl(p + 3 * (j - k + 2) - 3 * 2 ** (k - 1 - j))
+        for j in range(k)
+    )
+    e = sum(
+        2 * bl(18 + lv)
+        + bl(p + 3 * lv + (2 * u + 1) * 2 ** (m - lv - 1) * (s + 18) - 3 * ones(u))
+        for lv in range(m)
+        for u in range(2**lv)
+    )
+    xs = [p + 3 * m + j * (s + 18) - 3 * ones(j) for j in range(2**m)]
+    f = sum(
+        22 + 6 * s + bl(x) + bl(x + 9) + 2 * bl(x + 10) + bl(x + 14 + s) for x in xs
+    )
+    r = 3 * bl(p - 3 + 2**m * (s + 18)) + bl(n) + bl(c) + c + k + 8
+    return 55 * n + 11 * s + 95 * b + d + e + f + r
+
+
 #: Generator -> (bits from n and the program, exact?, arities).  Mirrors the ledger.
 FORMULAS: dict[str, tuple[Callable[[int, str], int], bool, tuple[int, ...]]] = {
     "Fish": (lambda n, _: n + 13 + bl(9 * n + 8) + bl(n), True, (3, 6)),
@@ -385,6 +432,9 @@ FORMULAS: dict[str, tuple[Callable[[int, str], int], bool, tuple[int, ...]]] = {
     "Subleq": (_subleq, False, (3, 5)),
     "3x": (_three_x, False, (3, 5)),
     "Forbin": (_forbin, True, (3, 8)),
+    "Algebraic Programming Language": (_apl, True, (3, 5)),
+    "Decleq": (_decleq, True, (3, 4)),
+    "AddSubJump": (_add_sub_jump, False, (3, 5)),
     "B-tapemark": (
         lambda n, _: (
             (4 * 2**n + 31 * n + 5) * (8 + bl(3 * 2**n + n + 3) + bl(9 * n + 3))
