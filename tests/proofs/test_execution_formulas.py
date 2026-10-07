@@ -5,6 +5,7 @@ Each was derived from its generator, not fitted: a fit from parity data
 ``exact`` formula must also be reached here; ``bound`` only never exceeded.
 """
 
+import math
 import random
 from collections.abc import Callable
 
@@ -17,33 +18,148 @@ from tests.proofs._ledger import load as load_ledger
 from tests.proofs.deep.execution import _dense
 from tests.tools.test_boolean_contract import _parity
 
-#: Generator -> (formula in n, exact?, arities checked).  Mirrors the ledger.
-FORMULAS: dict[str, tuple[Callable[[int], int], bool, tuple[int, ...]]] = {
-    "Container": (lambda n: 2 * n + 2, True, (3, 7)),
-    "Fish": (lambda n: 9 * n + 9, True, (3, 6)),
-    "Line": (lambda n: 5 * n, True, (3, 5)),
-    "Decleq": (lambda n: 49 * n + 3 * 2 ** (2 * n - 1).bit_length() + 2, True, (3, 6)),
-    "Qoibl": (lambda n: n + 2, True, (3, 6)),
-    "RAM0": (lambda n: n * n + 8 * n + 5, True, (3, 6)),
-    "Algebraic Programming Language": (lambda n: (65 * n + 1) // 2 - 21, True, (3, 6)),
-    "Alight": (lambda n: 2 * n + 5, True, (3, 6)),
-    "BF-PDA": (lambda n: 10 * n + 2, True, (3, 6)),
-    "BrainIf": (lambda n: 4 * n + 50, True, (3, 6)),
-    "Boolfuck": (lambda n: 2 * n * n + 27 * n + 8, True, (3, 6)),
-    "Crement": (lambda n: 5 * n + 2, True, (3, 6)),
-    "Factor": (lambda n: 265 * n + 231, True, (4,)),
-    "brainfuck": (lambda n: 69 * n + 44, True, (3, 6)),
-    "Circuit Diagram": (lambda n: 2 * n + 1 + (n >= 8), True, (3, 8)),
-    "Forbin": (lambda n: 2 * max(n - 7, 0) + 2, True, (3, 8)),
-    "Inject": (lambda n: 8 * n + 10, True, (5, 6)),
-    "BFStack": (lambda n: 60 * n + 475, True, (8,)),
+
+def _taglate(n: int) -> int:
+    """Even n past 2, then odd n through a ghost input, m = n + 1."""
+    if n % 2 == 0:
+        return 16 * 2**n + (7 * n * n + 26 * n - 22) // 2
+    m = n + 1
+    return 28 * 2**n + (7 * m * m + 22 * m - 36) // 2
+
+
+def _vandevelo(p: str) -> int:
+    """Each ``?`` read, three per comparison, less each guard's final ``loop?``."""
+    guards = sum(
+        "::" in line and line.rstrip().endswith("loop?") for line in p.splitlines()
+    )
+    return p.count("?") - guards + 3 * (p.count("==") + p.count("!="))
+
+
+#: Generator -> (formula in n and the program, exact?, arities).  Mirrors the
+#: ledger; ``T`` is 2**n.
+FORMULAS: dict[str, tuple[Callable[[int, str], float], bool, tuple[int, ...]]] = {
+    "Container": (lambda n, _: 2 * n + 2, True, (3, 7)),
+    "Fish": (lambda n, _: 9 * n + 9, True, (3, 6)),
+    "Line": (lambda n, _: 5 * n, True, (3, 5)),
+    "Decleq": (
+        lambda n, _: 49 * n + 3 * 2 ** (2 * n - 1).bit_length() + 2,
+        True,
+        (3, 6),
+    ),
+    "Qoibl": (lambda n, _: n + 2, True, (3, 6)),
+    "RAM0": (lambda n, _: n * n + 8 * n + 5, True, (3, 6)),
+    "Algebraic Programming Language": (
+        lambda n, _: (65 * n + 1) // 2 - 21,
+        True,
+        (3, 6),
+    ),
+    "Alight": (lambda n, _: 2 * n + 5, True, (3, 6)),
+    "BF-PDA": (lambda n, _: 10 * n + 2, True, (3, 6)),
+    "BrainIf": (lambda n, _: 4 * n + 50, True, (3, 6)),
+    "Boolfuck": (lambda n, _: 2 * n * n + 27 * n + 8, True, (3, 6)),
+    "Crement": (lambda n, _: 5 * n + 2, True, (3, 6)),
+    "Factor": (lambda n, _: 265 * n + 231, True, (4,)),
+    "brainfuck": (lambda n, _: 69 * n + 44, True, (3, 6)),
+    "Circuit Diagram": (lambda n, _: 2 * n + 1 + (n >= 8), True, (3, 8)),
+    "Forbin": (lambda n, _: 2 * max(n - 7, 0) + 2, True, (3, 8)),
+    "Inject": (lambda n, _: 8 * n + 10, True, (5, 6)),
+    "BFStack": (lambda n, _: 60 * n + 475, True, (8,)),
     # Proved for all n: a path costs at most the all-ones one, and a
     # level's moves at most max(a, b) + 2 over adjacent input cells a, b.
-    "Painfuck": (lambda n: -(-3 * n * n // 4) + 20 * n + 4, False, (3, 6)),
-    "Smallfuck": (lambda n: 9 * n * n + 100 * n + 20, False, (3, 6)),
-    "Underload": (lambda n: 14 * n - 1, False, (3, 6)),
-    "FALSE": (lambda n: min(12 * n + 69, 10 * n + 99), False, (3, 6)),
-    "Jaune": (lambda n: 8 * n - 2, False, (3, 6)),
+    "Painfuck": (lambda n, _: -(-3 * n * n // 4) + 20 * n + 4, False, (3, 6)),
+    "Smallfuck": (lambda n, _: 9 * n * n + 100 * n + 20, False, (3, 6)),
+    "Underload": (lambda n, _: 14 * n - 1, False, (3, 6)),
+    "FALSE": (lambda n, _: min(12 * n + 69, 10 * n + 99), False, (3, 6)),
+    "Jaune": (lambda n, _: 8 * n - 2, False, (3, 6)),
+    "Thue": (lambda n, _: 2 * 2**n + 3 * n - 2, True, (3, 6)),
+    "Super SNUSP": (lambda n, _: 2 * 2**n + 19 * n + 22, True, (5, 6)),
+    "Taglate": (lambda n, _: _taglate(n), True, (3, 4)),
+    "thisthat": (
+        lambda n, _: (
+            32 * 2 ** (n // 2) - 29 if n % 2 == 0 else 48 * 2 ** ((n - 1) // 2) - 29
+        ),
+        True,
+        (3, 4),
+    ),
+    "3x": (lambda _, p: len(p), True, (3, 5)),
+    "Unsquare": (lambda n, _: 2 * 2**n + 79 * n + 26, True, (3, 5)),
+    "Vandevelo": (lambda _, p: _vandevelo(p), False, (3, 5)),
+    "Home Row": (lambda n, _: 10 * 2**n + 10 * n + 95, True, (3, 5)),
+    "Minsky Swap": (lambda n, _: 2 * 2**n + 6 * n + 4, True, (3, 5)),
+    "Modulous": (lambda n, _: 5 * 2**n + 5 * n - 2, True, (3, 5)),
+    "LaserFuck": (lambda n, _: 18 * 2**n + 56 * n + 5, True, (5,)),
+    "NoComment": (
+        lambda n, _: (
+            12 * 2**n + 50 * n + 79
+            if n <= 6
+            else 3 * 2**n + 3 * 2**n // 32 + 240 * n - 491
+        ),
+        True,
+        (4, 7),
+    ),
+    "INTERCAL": (
+        lambda n, _: (
+            2 * n + 3 + sum(min(2**k, 2 ** (2 ** (n - k)) - 2) for k in range(1, n))
+        ),
+        False,
+        (3, 5),
+    ),
+    "Minifuck": (lambda _, p: len(p), False, (3, 5)),
+    "Dimensional": (lambda n, _: 15 * 2**n - 8 * n + 37, True, (3, 5)),
+    "EGL": (lambda n, _: 3 * 2**n + 52 * n + 4, True, (3, 5)),
+    "Eval": (lambda n, _: 2 * 2**n + 13 * n + 1, True, (3, 5)),
+    "Grapheme": (lambda n, _: 14 * n + 32 + len(str(2**2**n)), True, (3, 5)),
+    "Flowchart": (lambda n, _: 3 * 2**n + 9 * n + 4, True, (3, 5)),
+    "FRACTRAN": (lambda n, _: n + 2 if n <= 4 else n + 60, True, (3, 5)),
+    "Suffolk": (lambda _, p: len(p) + 151, True, (3, 5)),
+    "Piet": (lambda n, _: 2 * 2**n + 4 * n + 14, True, (3, 5)),
+    "Packlang": (
+        lambda n, _: 19 * 2**n // 2 - n - 4 if n <= 7 else 3 * 2**n // 64 + 1206 - n,
+        True,
+        (3, 7),
+    ),
+    "S*bleq": (lambda n, _: 3 * n + 2, True, (3, 6)),
+    "Sophie": (lambda n, _: 5 * n + 2**n // 4 + 1, False, (3, 5)),
+    "Cyclic tag": (lambda n, _: 2 * 2**n + n + 1, True, (3, 5)),
+    "///": (lambda n, _: 6 * 2**n + n + 19, True, (3, 5)),
+    "Subleq": (
+        lambda n, _: 8 * 2**n + (7 * n + 5) * (2**n // n - 1) + 23 * n - 8,
+        True,
+        (3, 5),
+    ),
+    "Clockwise": (lambda n, _: 10 * 2**n + 20 * n + 30, True, (3, 5)),
+    "Collatz Multiverse": (lambda n, _: 2**n // 4 + 3 * n + 130, False, (3, 6)),
+    "CV(N)(C)": (
+        lambda n, p: 17 + 4 * n + (n - 1) * (3 + math.sqrt(2 * len(p))),
+        False,
+        (3, 5),
+    ),
+    "Circlefuck": (
+        lambda n, p: (
+            (2 * n + 13) * 2**n + 63 * n + 89 + 2 * sum(map(ord, p[1 : n + 1]))
+        ),
+        True,
+        (3, 5),
+    ),
+    "Dig": (
+        lambda n, _: (
+            128 + 46 * 2 ** ((n - 6) // 2)
+            if n % 2 == 0
+            else 128 + 64 * 2 ** ((n - 7) // 2)
+        ),
+        True,
+        (7,),
+    ),
+    "AddSubJump": (
+        lambda n, _: (11 * n + 4) * (2**n // n) + 11 * 2**n + 13 * n - 17 + (n >= 10),
+        True,
+        (6,),
+    ),
+    "Back": (lambda n, _: max(2**n, 6 * n - 1) + 2**n + 3 * n + 6, True, (3, 5)),
+    "Bitwise Cyclic Tag": (lambda n, _: 5 * 2**n + n, True, (3, 5)),
+    "BIO": (lambda n, _: 18 * 2**n - 10 * n + 30, True, (3, 5)),
+    "bit~": (lambda n, _: 7 * 2**n + 17 * n + 92, True, (3, 5)),
+    "Bitdeque": (lambda n, _: 3 * 2**n + 9 * n - 3, True, (5, 6)),
 }
 
 
@@ -58,14 +174,14 @@ _BFSTACK_BLOCK = "0" * 64 + "1" * 60 + "0" + "111"
 
 
 def _tables(name: str, n: int) -> tuple[str, ...]:
-    """Parity, dense, two seeded, constants, AND, alternating, NAND, ends."""
+    """Parity, dense, seeded, constants, AND, both alternations, NAND, ends."""
     width = 1 << n
     if name == "Circuit Diagram" and n >= 8:
         # Its worst, the all-ones H-layout; a wide circuit parses in 0.7s.
         return ("1" * width,)
     if name == "LaserFuck" and n >= 5:
-        # Its worst is all zeros; a 3T + 1 cell tape snapshots every step.
-        return (_parity(n), _dense(n), "0" * width)
+        # Its worsts, all zeros and all ones; a 3T + 1 cell tape is slow.
+        return (_parity(n), _dense(n), "0" * width, "1" * width)
     tables = (
         _parity(n),
         _dense(n),
@@ -77,9 +193,17 @@ def _tables(name: str, n: int) -> tuple[str, ...]:
         "10" * (width // 2),
         "1" * (width - 1) + "0",
         "1" + "0" * (width - 2) + "1",
+        "01" * (width // 2),
     )
     if name == "BFStack" and n >= 7:
         tables += (_BFSTACK_BLOCK * (1 << (n - 7)),)
+    if name == "Bitdeque":
+        tables += ("10" + "01" * (width // 2 - 1),)
+    if name == "Packlang":
+        # The most zeros a 128-row fill block may punch, in every block.
+        block = min(width, 128)
+        zeros = (block - 4) // 2
+        tables += (("0" * zeros + "1" * (block - zeros)) * (width // block),)
     return tables
 
 
@@ -120,12 +244,13 @@ def _worst(name: str, table: str, *, written: bool = False) -> int:
 def test_the_execution_formula_holds(name: str) -> None:
     formula, exact, arities = FORMULAS[name]
     for n in arities:
-        worst = max(_worst(name, table) for table in _tables(name, n))
-        assert worst <= formula(n), f"{name} n={n}: {worst} > {formula(n)}"
-        if exact:
-            assert worst == formula(n), (
-                f"{name} n={n}: {worst} never reaches {formula(n)}"
-            )
+        reached = False
+        for table in _tables(name, n):
+            claim = formula(n, esolangs.generate(name, table))
+            steps = _worst(name, table)
+            assert steps <= claim, f"{name} n={n} {table}: {steps} > {claim}"
+            reached |= steps == claim
+        assert reached or not exact, f"{name} n={n}: no table reaches the formula"
 
 
 def test_every_formula_cell_is_checked() -> None:

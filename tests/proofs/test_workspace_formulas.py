@@ -174,6 +174,39 @@ FORMULAS: dict[str, tuple[Callable[[int, str], int], bool, tuple[int, ...]]] = {
     ),
     "LaserFuck": (lambda n, _: 12 * 2**n + 2 * n + 11 + 2 * bl(n), True, (5,)),
     "Grapheme": (_grapheme, True, (3, 5)),
+    "BIO": (
+        lambda n, _: (
+            max(2 * n, 8)
+            + sum(bl(10 * n - 8 + 3 * j) for j in range(2**n - 1))
+            + bl(4 * 2**n + 10 * n + 37)
+        ),
+        True,
+        (3, 5),
+    ),
+    "Dimensional": (
+        lambda n, _: (
+            sum(map(bl, range(2**n)))
+            + 5 * 2**n
+            + n * (n - 1) // 2
+            + 4 * n
+            + 6
+            + bl(2 * 2**n + 20 * n + 40)
+            + bl(2 * n - 1)
+        ),
+        True,
+        (3, 4),
+    ),
+    "Forþ": (lambda n, _: (2 * n + 364) * 2**n + 43 * n + 2 * bl(n), False, (3, 5)),
+    "123": (
+        lambda n, p: (
+            9
+            + sum(map(bl, range(1, 5 * 2**n + 3 * n - 2)))
+            + bl(len(p))
+            + bl(5 * 2**n + 3 * n - 3)
+        ),
+        False,
+        (4, 5),
+    ),
 }
 
 

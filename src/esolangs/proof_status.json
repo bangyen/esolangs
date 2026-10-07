@@ -18,7 +18,7 @@
       ],
       "qualification": "packed `n`-bit cells selected by a self-modified operand",
       "scaling": "linear: T/n packed cells of O(n) digits, O(n) decoder",
-      "execution": "linear: within x2.15 an input, by the execution contract",
+      "execution": "linear: worst (11n+4)⌊T/n⌋ + 11T + 13n - 17 past n = 5, one more from n = 10",
       "workspace": "linear: the self-modified program, T/n packed cells",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
@@ -73,7 +73,7 @@
       ],
       "qualification": "—",
       "scaling": "linear: leaf moves sum geometrically, sparse row render",
-      "execution": "linear: within x2.15 an input, by the execution contract",
+      "execution": "linear: worst max(T,6n-1) + T + 3n + 6 commands: the load column, then the all-ones path",
       "workspace": "poly n: worst n + 5 + bl(max(6n-2,2^n-1)) + bl(3n+4) + bl(n) bits",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
@@ -95,7 +95,7 @@
       ],
       "qualification": "the table is the program, one four-bit cell per row; each embedded bit appends two walk zeros per unit of its place value, and a cell consumes exactly two, so the zeros carry the program pointer to the indexed cell and the held-back sentinel arrives there to fire it; the cell's second `0` consumes the answer it just appended, without which a 1 would cascade into the rows below",
       "scaling": "linear: 4T table cells, 4T walk appends, 5T + n steps",
-      "execution": "linear: within x2.15 an input, by the execution contract",
+      "execution": "linear: worst 5T + n commands on every table: input segments, then 3 per walk cell",
       "workspace": "linear: worst 16T + 8 + bl(8T+n-2) + bl(2T+n+1) bits: a data queue of 2T bits",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
@@ -128,8 +128,8 @@
       ],
       "qualification": "nested loops telescope from `table[0]` to `table[index]`",
       "scaling": "linear: T - 1 loop pieces joined once",
-      "execution": "linear: within x2.15 an input, by the execution contract",
-      "workspace": "T log T: T - 1 loop-return indices on the stack",
+      "execution": "linear: worst 18T - 10n + 30 commands: Horner doubling 13T, decrement loops 5T",
+      "workspace": "T log T: worst max(2n,8) + Σ_{j<T-1} bl(10n-8+3j) + bl(4T+10n+37) bits: T - 1 return indices",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -139,7 +139,7 @@
       ],
       "qualification": "one tape cell an entry, and each input's one-shot loop jumps the pointer left by that input's weight, so the reads chain into a Horner index and a self-erasing walk carries the landed bit to one of two print windows",
       "scaling": "linear: bounded dependency scan and canonical residual IDs",
-      "execution": "linear: within x2.15 an input, by the execution contract",
+      "execution": "linear: worst 7T + 17n + 92 commands past n = 1: row 0 walks the odd lane",
       "workspace": "linear: worst 2T + 49 + bl(2T+41) + bl(5T+18n+74) + bl(n) bits: 2T + 49 tape cells",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
@@ -150,7 +150,7 @@
       ],
       "qualification": "head/tail discards leave the indexed entry in the deque",
       "scaling": "linear: 2T commands, discard blocks sum to T",
-      "execution": "linear: within x2.15 an input, by the execution contract",
+      "execution": "linear: worst 3T + 9n - 3 commands past n = 4: load 2T, then the stage walk",
       "workspace": "linear: worst T + 2 + bl(4T+10n-5) bits past n = 4: a deque of T + 1 bits",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
@@ -183,7 +183,7 @@
       ],
       "qualification": "weighted zero padding advances the cyclic rule pointer to the indexed answer; the next empty rule deletes it",
       "scaling": "linear: 5T + 2n + 1 characters, weighted padding",
-      "execution": "linear: within x2.15 an input, by the execution contract",
+      "execution": "linear: worst 2T + n + 1 steps on every table: n input rules, 2 per row, 3 closers",
       "workspace": "linear: worst 16T + 1 + bl(2T+n) bits: a queue of up to 2T - 1 bits",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
@@ -194,7 +194,7 @@
       ],
       "qualification": "binary-to-unary substitutions form the row index; T escaped sweeps consume indexed entries before decoding one answer and deleting the suffix",
       "scaling": "linear: T fixed-size sweeps and 2T table characters",
-      "execution": "linear: within x2.15 an input, by the execution contract",
+      "execution": "linear: worst 6T + n + 19 steps: rule parses, failed searches and substitutions",
       "workspace": "linear: worst 8L + 56 + 8max(0,T-15) bits: the program string, rewritten in place",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
@@ -205,7 +205,7 @@
       ],
       "qualification": "direct-jump packed decoder with byte reads and self-modifying chunk selection",
       "scaling": "linear: T/n packed chunks of n bits, O(n) decoder",
-      "execution": "linear: within x2.15 an input, by the execution contract",
+      "execution": "linear: worst 8T + (7n+5)(⌊T/n⌋-1) + 23n - 8 steps: the last full chunk, all ones",
       "workspace": "linear: the self-modified program, T/n packed chunks",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
@@ -227,7 +227,7 @@
       ],
       "qualification": "the tape is the program, so the table is its tail past the `@` that stops the run, entry 0 abutting the index digits at the ring's end; `}` deletes the cell under the pointer and slides the digits down into it, so counting the index out against one `}` apiece leaves the entry it names under the pointer",
       "scaling": "linear: bounded dependency scan and canonical residual IDs",
-      "execution": "linear: within x2.15 an input, by the execution contract",
+      "execution": "linear: worst (2n+13)T + 63n + 89 + 2S to n = 7, S the codes of program characters 1..n",
       "workspace": "linear: worst 6L + 10n + 7 + bl(L-1) + bl(L-T-2) + bl(n) bits: the program is the tape",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
@@ -249,7 +249,7 @@
       ],
       "qualification": "the ring is the table: one `!` per entry in a countdown row, and the index in the accumulator picks which one it is zero on, turning the pointer down that entry's own column; seven `.` an input build the index by Horner's rule, doubled between inputs by a two-row gadget that spends the accumulator as distance and buys back two per unit",
       "scaling": "linear: five table rows of 2T columns, doubling gadgets whose widths halve downward",
-      "execution": "linear: within x2.15 an input, by the execution contract",
+      "execution": "linear: worst 10T + 20n + 30 steps on every table: the pointer's path to the last row",
       "workspace": "poly n: worst 57n + 50 + bl(2n+14) + bl(2^(n+1)+9n+1) bits: 7n-character queue",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
@@ -260,7 +260,7 @@
       ],
       "qualification": "an array subscript may name `lineNumber`, so a cell is addressed by the number of the line that writes it",
       "scaling": "linear: one line per four rows, a 64-cell decoder, 3n index lines",
-      "execution": "linear: within x2.15 an input, by the execution contract",
+      "execution": "linear: at most T/4 + 3n + 130 lines to n = 8: one step per line, no branching",
       "workspace": "T log T: array A, T/4 cells keyed by a log T-bit index",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
@@ -293,7 +293,7 @@
       ],
       "qualification": "the halting goto squares once more whenever the program is not shorter than its reach, so every finite tree halts, and a subtree already emitted at its level is entered by climbing the accumulator to its syllable and `j`, where shorter",
       "scaling": "linear, time n log: greedy order scoring, capped at n <= 10",
-      "execution": "linear: shared-subtree jumps climb about the root of an address",
+      "execution": "linear: at most 17 + 4n + (n-1)(3 + sqrt(2L)) tokens: the path plus shared-subtree climbs",
       "workspace": "poly n: worst 2n + 20 + bl(2n-1) bits, n in 4..13",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
@@ -315,7 +315,7 @@
       ],
       "qualification": "finite cell placement, six inputs left to a painted leaf table",
       "scaling": "linear: leaves are 64-cell rectangles two `$` counts index, area O(T)",
-      "execution": "linear: within x2.15 an input, by the execution contract",
+      "execution": "linear: worst 128 + 46·2^((n-6)/2) for even n, 128 + 64·2^((n-7)/2) for odd, past n = 6",
       "workspace": "linear: worst 8RC + bl(R-1) + bl(C-1) + bl(2n-1) + bl(n) + 10 bits past n = 4: the R×C grid",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
@@ -326,8 +326,8 @@
       ],
       "qualification": "a bare `>` takes its dimension from the byte it stands on, so `d>` is a pointer displacement by the bit read: the index is a coordinate, doubled between reads by a two-loop `{`/`}` gadget, and it addresses one painted cell an entry along dimension 1",
       "scaling": "linear: 2T table characters plus a fixed gadget per input",
-      "execution": "linear: within x2.15 an input, by the execution contract",
-      "workspace": "T log T: up to T slots keyed by coordinate tuples",
+      "execution": "linear: worst 15T - 8n + 37 commands: paint 2T + 2, then 13 per index unit doubled",
+      "workspace": "T log T: worst Σ_{k<T} bl(k) + 5T + n(n-1)/2 + 4n + 6 + bl(2T+20n+40) + bl(2n-1) bits",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -337,7 +337,7 @@
       ],
       "qualification": "row 1 is painted with the table and each input's `(-...)` guard walks the row-0 pointer right by that input's Horner weight, so `v=` prints the indexed cell",
       "scaling": "linear: T painted cells, guard weights sum to T - 1",
-      "execution": "linear: within x2.15 an input, by the execution contract",
+      "execution": "linear: worst 3T + 52n + 4 commands: paint the table, 50 per input, weights summing to T - 1",
       "workspace": "linear: worst 2T + 2n + 7 + bl(L-d-3) + bl(L-d-9) + 2bl(n) bits, d the digits of T",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
@@ -348,7 +348,7 @@
       ],
       "qualification": "fixed reversed stack order selects the indexed row",
       "scaling": "linear: T literal plus halving `;` runs under T",
-      "execution": "linear: within x2.15 an input, by the execution contract",
+      "execution": "linear: worst 2T + 13n + 1 commands: one per program character, then the final frame pop",
       "workspace": "linear: worst 8L + T + n + 2 + bl(L) bits: frame program text and a stack",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
@@ -403,7 +403,7 @@
       ],
       "qualification": "a pair of answers per deque, and the input walks the deque cursor to the pair it wants",
       "scaling": "linear: T pushes, `T/2 - 1` cursor steps, two rows",
-      "execution": "linear: within x2.15 an input, by the execution contract",
+      "execution": "linear: worst 3T + 9n + 4 nodes: preload T plus runs, then 8n of selection reads",
       "workspace": "T log T: about 4T exit-memory entries and T/2 deques",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
@@ -426,7 +426,7 @@
       "qualification": "—",
       "scaling": "linear: span walk, constant dispatch, step literals geometric",
       "execution": "linear: within x2.15 an input, by the execution contract",
-      "workspace": "T log T: frame text and a scope dictionary keyed by heap index",
+      "workspace": "T log T: at most (2n+364)T + 43n + 2bl(n) bits: frame text and the scope dictionary",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -436,7 +436,7 @@
       ],
       "qualification": "the bits are the exponents of `n` primes in the starting value, a tree over the high bits reaches a block of `w` entries carried as one exponent, a fixed decoder shifts the block by the offset the low bits spell, and the first-match rule is the else-branch",
       "scaling": "linear: 3T/w blocks of w = Theta(n) entries, one exponent each",
-      "execution": "linear: within x2.15 an input, by the execution contract",
+      "execution": "linear: worst n + 2 to n = 4, n + 60 for n = 5..9: the block decoder halving",
       "workspace": "poly n: n prime exponents of O(n) bits each",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
@@ -447,7 +447,7 @@
       ],
       "qualification": "the whole table is one int-mode literal read in base 10, and each `W` squares an accumulator and doubles it on a 0, which is Horner's rule for the complemented index, so the accumulator is exactly the power of two that `R` shifts the wanted entry down to bit 0",
       "scaling": "linear: bounded dependency scan, one table literal, n read blocks",
-      "execution": "linear: within x2.15 an input, by the execution contract",
+      "execution": "linear: worst 14n + 32 + d commands, d the digits of 2^T: one per program character",
       "workspace": "linear: worst 16d + 112n + 312 + bl(14n+d+17) + 2bl(10^(d+1)+2^T-1) + bl(2n) + bl(n) bits, d the digits of 2^T",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
@@ -458,7 +458,7 @@
       ],
       "qualification": "—",
       "scaling": "linear: bounded dependency scan and canonical residual IDs",
-      "execution": "linear: within x2.15 an input, by the execution contract",
+      "execution": "linear: worst 10T + 10n + 95 commands: all T - 1 guarded leaves run",
       "workspace": "poly n: worst n + 32 + bl(14·2^n+10n+15) bits: index cell and cursor",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
@@ -480,7 +480,7 @@
       ],
       "qualification": "equal-width constants set each input once; fully grouped mingle, unary logic, and select expressions form a Shannon tree",
       "scaling": "linear: reverse-depth numbering confines long names near the root",
-      "execution": "linear: within x2.15 an input, by the execution contract",
+      "execution": "linear: at most 2n + 3 + Σ_{0<l<n} min(2^l, 2^(2^(n-l)) - 2) statements, one per named node",
       "workspace": "linear: about T/n shared-node variables",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
@@ -502,7 +502,7 @@
       ],
       "qualification": "weighted arms select one of `2**n` prewritten cells, cleaned in one sweep",
       "scaling": "linear: three rows of linear appends, ~15T",
-      "execution": "linear: within x2.15 an input, by the execution contract",
+      "execution": "linear: worst 18T + 56n + 5 commands past n = 4: one pass along the weighted row",
       "workspace": "linear: worst 12T + 2n + 11 + 2bl(n) bits past n = 4: 3T + 1 tape cells",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
@@ -535,7 +535,7 @@
       ],
       "qualification": "`_mux` is the total fallback; its six failure sites close uniformly in `n`",
       "scaling": "linear: mux lookup, constant strings times O(T) counts",
-      "execution": "linear: within x2.15 an input, by the execution contract",
+      "execution": "linear: at most L commands: straight-line, the cursor never moves back",
       "workspace": "linear: worst 6T + 30 + bl(6T+28) + bl(6T+30) + bl(L) bits past n = 4: a tape bit-integer",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
@@ -546,7 +546,7 @@
       ],
       "qualification": "every input is one `++`/`**` run; a stage per input adds its weight to the index register, and a `~` cascade routes the index to one of two shared leaves at the head of the program, so every table of one arity renders to the same length",
       "scaling": "linear: cascade routes to two shared leaves, one-digit targets",
-      "execution": "linear: within x2.15 an input, by the execution contract",
+      "execution": "linear: worst 2T + 6n + 4 commands: a unary index add, then the ~ chain down",
       "workspace": "poly n: worst n + 3 + bl(2^(n+1)+6n+5) bits: two registers and cursor",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
@@ -557,7 +557,7 @@
       ],
       "qualification": "the table is one `PSH STR` literal, pushed so that row 0 lands on top, and the inputs add their weights into the counter of how many characters to discard",
       "scaling": "linear: T-character literal, one read block an input",
-      "execution": "linear: within x2.15 an input, by the execution contract",
+      "execution": "linear: worst 5T + 5n - 2 commands past n = 1: n reads, then 5 per entry discarded",
       "workspace": "linear: worst 6T + n + 2 + bl(6n+5) + bl(2n-1) + bl(n) bits: table codes on the stack",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
@@ -568,7 +568,7 @@
       ],
       "qualification": "from 4 inputs the index is a run of byte-sized skips on the stack and the rows are code: a chain of uniform groups lands on the row, and the rows after it telescope to `table[index]` on six tape cells",
       "scaling": "linear: bounded dependency scan and canonical residual IDs",
-      "execution": "linear: within x2.15 an input, by the execution contract",
+      "execution": "linear: worst 12T + 50n + 79 commands for n = 4..6, then 3T + 3T/32 + 240n - 491",
       "workspace": "linear: worst 32768 + T/4 + 30 + bl(L) bits past n = 4: byte tape and stack",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
@@ -580,7 +580,7 @@
       "qualification": "table-independent separation plus verdict; failed tight geometry falls back to doubling geometry",
       "scaling": "linear: geometric paint per input, one-pass endgame",
       "execution": "linear: within x2.15 an input, by the execution contract",
-      "workspace": "T log T: one painted index per row",
+      "workspace": "T log T: at most 9 + Σ_{c≤M} bl(c) + bl(L) + bl(M) bits past n = 3, M = 5T+3n-3",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -590,7 +590,7 @@
       ],
       "qualification": "one 128-row array block, painted inside the `If` that selects it",
       "scaling": "linear: one write per differing row, block-bounded index digits",
-      "execution": "linear: within x2.15 an input, by the execution contract",
+      "execution": "linear: worst 19T/2 - n - 4 steps for n = 2..7, then 3T/64 + 1206 - n",
       "workspace": "poly n: a 128-cell array and O(n)-bit block registers",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
@@ -612,7 +612,7 @@
       ],
       "qualification": "each table entry is pushed and an input index selects its output; literal products replace conjunction tables",
       "scaling": "linear: one bounded-width strip with O(T) codels",
-      "execution": "linear: within x2.15 an input, by the execution contract",
+      "execution": "linear: worst 2T + 4n + 14 steps past n = 1: one colour block per operation",
       "workspace": "linear: worst T + 2n + 7 + bl(3T+5n+15) + bl(2n-1) + bl(n) bits past n = 2: the stack",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
@@ -668,7 +668,7 @@
       ],
       "qualification": "packed chunks decoded after the hoisted read block, against a hoisted tree that lays out each distinct subtable once and jumps to it",
       "scaling": "linear: T/n packed chunks of n bits, O(n) decoder",
-      "execution": "linear: within x2.15 an input, by the execution contract",
+      "execution": "linear: worst 3n + 2 instructions to n = 9, the tree route: n reads, 2n - 1 tests",
       "workspace": "linear: at most 3L bits: the self-modified program, decimal cells",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
@@ -712,7 +712,7 @@
       ],
       "qualification": "—",
       "scaling": "linear: canonical child IDs, shared states, one token join",
-      "execution": "linear: passes every labelled shared-state block; the count grows with T",
+      "execution": "linear: at most 5n + T/4 + 1 commands: forward only, one per skipped labelled block",
       "workspace": "poly n: at most bl(L) + bl(n) + 7 bits: cursor, accumulator, input count",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
@@ -734,7 +734,7 @@
       ],
       "qualification": "a countdown built from the row index reads zero exactly on the rows below it, so counting the table's rising and falling steps against it telescopes to the indexed entry",
       "scaling": "linear: bounded dependency scan and canonical residual IDs",
-      "execution": "linear: within x2.15 an input, by the execution contract",
+      "execution": "linear: worst L + 151 commands: one straight pass, then the wrap to the first read",
       "workspace": "poly n: worst bl(L-1) + max(6,n-1) + max(19,4n-1) + bl(n) + 4 bits: eight cells, four counters",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
@@ -745,7 +745,7 @@
       ],
       "qualification": "each folding pass removes at least one pending unit",
       "scaling": "linear: one `*` per entry; ANF only below five inputs",
-      "execution": "linear: within x2.15 an input, by the execution contract",
+      "execution": "linear: worst 2T + 19n + 22 commands past n = 4: one straight line, the all-ones table",
       "workspace": "linear: worst T + 2n + 12 + bl(L) + bl(n) bits past n = 4: the packed-table cell",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
@@ -756,7 +756,7 @@
       ],
       "qualification": "—",
       "scaling": "linear: bounded dependency scan and canonical residual IDs",
-      "execution": "linear: within x2.15 an input, by the execution contract",
+      "execution": "linear: worst 16T + (7n^2+26n-22)/2 for even n > 2, 28T + (7m^2+22m-36)/2 for odd, m = n + 1",
       "workspace": "linear: worst 24·2^m + 12m + 12 + bl(m) + bl(L-4·2^m-7m+1) bits, m = n rounded up to even",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
@@ -767,7 +767,7 @@
       ],
       "qualification": "the table is the starting state, one character an entry, and the bit read rewrites every adjacent pair to one of its two members, so the state halves per input and the last character is the answer; the rules never overlap, so the language's random rule choice has nothing to choose",
       "scaling": "linear: T state characters, nineteen fixed rules",
-      "execution": "linear: within x2.15 an input, by the execution contract",
+      "execution": "linear: worst 2T + 3n - 2 rewrites: n rounds, each a marker sweep out and back",
       "workspace": "linear: worst 8T + 24 + bl(2n) bits: the T + 3 character state string",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
@@ -778,7 +778,7 @@
       ],
       "qualification": "inputs go to either end of one bistack row, an ignored one to the column; each end pop drives the next alternating-axis decision node, or goes to the column where the halves agree, in an order the row can pop",
       "scaling": "linear: the planar H-tree has `O(sqrt(T))` width and height",
-      "execution": "linear: within x2.15 an input, by the execution contract",
+      "execution": "linear: worst 32·2^(n/2) - 29 for even n, 48·2^((n-1)/2) - 29 for odd, past n = 2: about sqrt T",
       "workspace": "poly n: worst 4n + 89 + 2bl(n) + Σ_{c<n} max(1,bl(c)) bits past n = 2",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
@@ -789,7 +789,7 @@
       ],
       "qualification": "—",
       "scaling": "linear, time n log: greedy order scoring, capped",
-      "execution": "linear: within x2.15 an input, by the execution contract",
+      "execution": "linear: worst L commands: the all-ones row enters every guard, no loop repeats",
       "workspace": "linear: one fraction per executed guard, never popped",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
@@ -822,7 +822,7 @@
       ],
       "qualification": "the table is one `O`/`I` push per row, reversed, and each read pops its bit's weight in cells off the top of it",
       "scaling": "linear: `2**n` cells and `2**n - 1` pops, two bytes a row",
-      "execution": "linear: within x2.15 an input, by the execution contract",
+      "execution": "linear: worst 2T + 79n + 26 commands: T pushes, 76 per input read, weight pops",
       "workspace": "linear: worst T + 12 + bl(L) + bl(L-33) + 2bl(n) bits: T + 1 table cells on the stack",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
@@ -833,7 +833,7 @@
       ],
       "qualification": "an affine-cube peel emits one guard line per coset of an affine cover of the 1-set",
       "scaling": "open: O(T) lines and commands for every table, O(T log n) identifier text; the build costs at least T*(n - log2 k) with k zeros, and core work is only O(T*n)",
-      "execution": "linear: within x2.15 an input, by the execution contract",
+      "execution": "linear: at most Q - G + 3C steps: Q ? reads, C comparisons, G guards' final loop? skipped",
       "workspace": "poly n: at most n * n registers; sqrt T below the cap",
       "evidence": "docs/proofs/index.md#vandevelo-identifier-and-fallback-audit"
     }
