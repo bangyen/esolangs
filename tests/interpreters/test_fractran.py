@@ -1,5 +1,8 @@
 """Execution tests for the FRACTRAN interpreter."""
 
+# ruff: noqa: SLF001
+
+import random
 import re
 
 import pytest
@@ -90,3 +93,49 @@ def test_the_final_print_is_its_own_step() -> None:
 def test_a_non_positive_numerator_is_refused() -> None:
     with pytest.raises(ValueError, match="is not positive"):
         run_program(run, "5 0/3")
+
+
+@pytest.mark.medium
+def test_incremental_guards_match_literal_threshold_crossings() -> None:
+    rng = random.Random(20261007)
+    primes = (2, 3, 5, 7, 11)
+
+    def product() -> str:
+        terms = [f"{prime}^{rng.randrange(4)}" for prime in primes]
+        return "*".join(terms)
+
+    for _ in range(200):
+        source = " ".join([product(), *(f"{product()}/{product()}" for _ in range(12))])
+        machine = _Machine(source, ScriptedIO(""))
+        assert machine._cursor is not None
+        value, fractions, _offsets = _parse(source)
+        for _ in range(64):
+            selected = _choose(value, fractions)
+            assert machine._next() == selected
+            # Repeated reads must not change eligibility or charge inspections.
+            inspections = machine.inspections
+            assert machine._next() == selected
+            assert machine.inspections == inspections
+            machine.step()
+            if selected is None:
+                assert machine.halted
+                break
+            numerator, denominator = fractions[selected]
+            value = value * numerator // denominator
+            assert machine.value == value
+
+
+def test_indexed_transitions_do_not_materialize_factor_snapshots(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    machine = _Machine("2^20*3^20 5/2 7/3 1/5 1/7", ScriptedIO(""))
+    assert machine._cursor is not None
+
+    def forbidden(_machine: _Machine) -> None:
+        pytest.fail("ordinary indexed execution copied the canonical factor snapshot")
+
+    monkeypatch.setattr(_Machine, "_factors", property(forbidden))
+    while not machine.halted:
+        machine.step()
+    assert machine.value == 1
+    assert machine._cursor.factor_updates == 120

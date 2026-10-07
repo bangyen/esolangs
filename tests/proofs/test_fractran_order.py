@@ -191,21 +191,25 @@ def _evaluation_cost(
     source = fill_runs(template, TEMPLATE_CHAR, [PAIR] * n, bits)
     io = ScriptedIO("")
     machine = _Machine(source, io)
-    steps = visits = literal_probes = 0
+    steps = visits = reference_probes = 0
     while not machine.halted:
         visits += len(machine._factors)
         if machine._index is None:
             selected = machine._next()
-            literal_probes += (
+            reference_probes += (
                 len(machine.fractions) if selected is None else selected + 1
             )
+        else:
+            selected, probes = machine._index.choose(machine._factors)
+            assert machine._next() == selected
+            reference_probes += probes
         machine.step()
         steps += 1
         assert steps <= 50000
     assert io.getvalue().strip() == str(1 + int(table[row]))
     return (
         steps - 1,
-        machine.inspections + literal_probes,
+        reference_probes,
         visits if machine._index is not None else None,
     )
 
@@ -259,12 +263,44 @@ def test_stream_prefix_inspections_positive_control() -> None:
         machine = _Machine(source, io)
         ready_probes = steps = 0
         while not machine.halted:
-            before = machine.inspections
-            machine._next()
+            assert machine._index is not None
+            selected, probes = machine._index.choose(machine._factors)
+            assert machine._next() == selected
             if (3, 1) in machine._factors:
-                ready_probes += machine.inspections - before
+                ready_probes += probes
             machine.step()
             steps += 1
             assert steps < 200 * k + 100
         assert io.getvalue().strip() == "1"
         assert ready_probes == position**2 + 2 * position + 2
+
+
+@pytest.mark.medium
+def test_dense_cursor_work_and_sparse_threshold_routing() -> None:
+    rng = random.Random(20261007)
+    for n in (4, 6, 8, 10):
+        size = 1 << n
+        table = "".join(str(rng.randrange(2)) for _ in range(size))
+        if n < 8:
+            continue
+        k = 63 if n == 8 else 182
+        streamed = stream_template(table, k)
+        shipped = fractran(table)
+        for row in (0, size // 3, size - 1):
+            bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
+            for template in (streamed, shipped):
+                source = fill_runs(template, TEMPLATE_CHAR, [PAIR] * n, bits)
+                io = ScriptedIO("")
+                machine = _Machine(source, io)
+                assert machine._index is not None
+                assert (machine._cursor is not None) == (template == streamed)
+                steps = 0
+                while not machine.halted:
+                    machine.step()
+                    steps += 1
+                    assert steps < 200 * k + 100
+                assert io.getvalue().strip() == str(1 + int(table[row]))
+                if machine._cursor is not None:
+                    assert machine.inspections == steps - 1
+                    assert machine._cursor.factor_updates <= 3 * steps
+                    assert machine._cursor.guard_updates <= 4 * (steps + k)

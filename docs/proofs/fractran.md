@@ -792,16 +792,16 @@ at four, six, eight and ten inputs also pass first, interior and last-row
 queries. These programs establish the construction, not a production size
 improvement: the fixed decoder overhead remains substantial.
 
-### Evaluator cost and the shipped generator
+### Reference evaluator cost and the shipped generator
 
 Linear generation word work and sublinear fraction counts do not give a
-linear evaluator. For the streaming source, the current indexed evaluator
+linear evaluator. For the streaming source, the reference indexed evaluator
 copies the live prime-exponent tuple into a dictionary on every guard
 selection and every state update. All `k` feature primes are eventually
 removed, one per firing. Immediately before these removals their counts
 are `k,k-1,...,1`, so the updates alone copy at least `k(k+1)/2` entries.
 This gives an unconditional `Omega(k**2)` execution word-work lower bound
-for every query in this construction. It is an implementation bound,
+for every query in this construction on the reference evaluator. It is an implementation bound,
 not a FRACTRAN language lower bound.
 
 There are `O(k+n)` firings and `O(k+n)` live factors. Each selection checks
@@ -844,6 +844,76 @@ others use indexed evaluation. These controls establish no size or query
 advantage for replacing the production generator. The order construction
 settles the source and generation route, while the shipped magnitude
 construction remains the practical implementation on these measurements.
+
+### Incremental eligibility for dense factor states
+
+The dense-state evaluator avoids the preceding copy and rescan bounds.
+It keeps exponents in a mutable dictionary and chooses one anchor prime
+per guard: the most frequent guarded prime, breaking ties by smaller
+prime. A group contains all guards with the same anchor, sorted by anchor
+threshold. Its leaves store the source index of each rule when all
+secondary conditions hold, or infinity otherwise. A minimum tree answers
+the prefix whose anchor thresholds fit the current exponent. A second
+minimum tree selects the earliest eligible rule across all groups and
+compares it with the earliest unconditional rule. Thus selection preserves
+FRACTRAN's exact first-match priority, including repeated thresholds and
+nonmonotone source order.
+
+For each secondary prime, sorted watchers record its thresholds and rule
+leaves. Changing an exponent from `a` to `b` updates exactly those watchers
+with thresholds in `(min(a,b),max(a,b)]`. Each leaf tracks its number of
+failed secondary conditions; it is eligible precisely at zero. After all
+changed exponents are applied, refresh only affected groups. Induction on
+transitions preserves the exponent dictionary, failure counts, group
+minima and global minimum. Separate revision caching preserves repeated
+pointer reads without repeating selection. Canonical tuples are produced
+only for explicit debug views or snapshots; final integer output is still exact.
+
+Let `F` be firings, `D` changed exponent entries and `H` crossed secondary
+watchers. After index compilation and cursor initialization, normal
+execution costs `O((F+D+H)*log(m+2))` word operations. Cursor initialization
+costs `O((m+G+I)*log(m+2))` for `G` guarded prime occurrences and initial
+support `I`. This bound
+includes guard maintenance; reporting one selected candidate per firing
+alone would omit it.
+
+For the streaming construction, the scan's anchor is phase `13`, because
+it occurs in `2k+1` guards versus `2k` for countdown `5`. Its changing
+identity thresholds therefore use prefix queries instead of watcher sweeps.
+Each feature deletion affects only three secondary leaves. Prefix and
+countdown counters cross their repeated threshold once on entry and once
+on exit; the query mapping's phase changes once. The fixed decoder adds
+bounded dependencies per firing. Hence `D,H=O(k+n+F)`, and `F=O(k+n)`
+gives `O(k log k)=O(T)` execution word work. This excludes source parsing,
+prime factorization, explicit debug snapshots and integer materialization;
+it does not assert linear bit complexity.
+
+Sparse threshold programs can fare worse with eager secondary updates:
+the ten-input shipped last-row control needs 296 watcher updates where
+the reference selector needs only 14 candidate inspections. Use the cursor
+only when `m<=16*max(1,initial_support)`; otherwise keep the reference
+selector. All sufficiently large streaming sources meet this criterion,
+while the eight- and ten-input shipped controls retain their original path.
+This is an implementation choice, not a language restriction.
+
+Executed streaming controls at eight and ten inputs, with the same seed
+and rows as above, give the following independent maxima. Exponent updates
+count changed entries; watcher updates count crossed secondary conditions.
+
+| n | Firings | Reference inspections | Cursor inspections | Exponent updates | Watcher updates |
+|---|---|---|---|---|---|
+| 8 | 1,120 | 22,637 | 1,120 | 2,571 | 1,394 |
+| 10 | 10,767 | 308,605 | 10,767 | 25,016 | 30,046 |
+
+The before/after corpus has 4,260 executions and 321,470 fraction firings:
+all streaming and shipped tables through three inputs, streaming constants,
+and wider seeded queries. Complete per-execution hashes of selected
+fractions and states agree. An independent literal-arithmetic test also
+checks 200 sources with multiple simultaneous threshold crossings for up
+to 64 firings each. Normal stepping is tested with canonical snapshot
+materialization forbidden. Source lengths and the production comparison
+above remain unchanged; this improves the evaluator rather than replacing
+the shipped generator.
 
 ## The other end: the row-addressing tree
 
