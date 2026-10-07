@@ -79,6 +79,12 @@ Controls are in `tests/proofs/test_research_tracks.py`. The linked proofs
 close ordered input-forgetting construction, generated-family loading
 bounds, and the weighted-description theorem.
 
+- **FRACTRAN evaluator cost.** Bound loading/factorization work and
+  end-to-end bit complexity for the streaming order construction. Its
+  `O(T)` execution bound counts word operations after compilation; the
+  linear-generator item remains closed
+  ([fractran](proofs/fractran.md#incremental-eligibility-for-dense-factor-states)).
+
 ## Parked
 
 Stalled problems, one line each; detail lives in the linked proof page. A
