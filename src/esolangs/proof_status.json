@@ -30,7 +30,7 @@
       "qualification": "base-26 names are unbounded",
       "scaling": "linear, time n log: greedy order scoring, capped at n <= 10",
       "execution": "poly n: one root-to-leaf path of n guarded tests",
-      "workspace": "poly n: one register per input",
+      "workspace": "poly n: an expression work stack two nodes per input level",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -41,7 +41,7 @@
       "qualification": "inputs folded into a row index by Horner's rule; the table is a string literal read with `at`, so the program has no branches",
       "scaling": "linear: one T-character literal, O(n) Horner reads",
       "execution": "poly n: n Horner reads, then one `at` into the literal",
-      "workspace": "poly n: n + 1 cells for the Horner index",
+      "workspace": "poly n: n + 1 variables, the input bytes and result",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -74,7 +74,7 @@
       "qualification": "—",
       "scaling": "linear: leaf moves sum geometrically, sparse row render",
       "execution": "linear: within x2.15 an input, by the execution contract",
-      "workspace": "poly n: n + 1 cells",
+      "workspace": "poly n: n + 1 bit cells and O(n)-bit coordinates",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -85,7 +85,7 @@
       "qualification": "six-bit ASCII lookup ships through thirteen inputs; finite source space excludes some sixteen-input tables",
       "scaling": "linear: T table cells, one g at the index",
       "execution": "unmeasured: exempt as an exception row",
-      "workspace": "poly n: four stack items; the grid is never written",
+      "workspace": "poly n: at most six stack items; the grid is never written",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -107,7 +107,7 @@
       "qualification": "—",
       "scaling": "linear: span walk, leaf drains sum geometrically",
       "execution": "poly n: one path of n tests; brackets jump in one step",
-      "workspace": "poly n: a stack of 2n items",
+      "workspace": "poly n: a bit stack of 2n items and an O(n)-bit cursor",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -118,7 +118,7 @@
       "qualification": "—",
       "scaling": "linear: zero-row walk telescopes to T",
       "execution": "poly n: n - 7 prefix branches, then one decoder over 128 rows",
-      "workspace": "poly n: a data stack of 2 max(n - 7, 0) + 3 items",
+      "workspace": "poly n: a loop stack of at most 128 and an O(n) data stack",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -162,7 +162,7 @@
       "qualification": "`decision_tree_program`",
       "scaling": "linear: decision_tree_program, span walk, leaf moves geometric",
       "execution": "poly n: one root-to-leaf path of n tests",
-      "workspace": "poly n: 2n + 1 tape cells",
+      "workspace": "poly n: 2n + 1 tape cells and an O(n)-bit cursor",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -173,7 +173,7 @@
       "qualification": "each input byte's low bit is read onto its own cell and tested in place by a flip-only decision tree, one flag interleaved beside each bit, consuming and emitting complete bytes",
       "scaling": "linear: constant cost per node, difference ratio ~3.9 at n=8..12",
       "execution": "poly n: one root-to-leaf decision-tree path",
-      "workspace": "poly n: a bit and a flag cell per input",
+      "workspace": "poly n: a bit and a flag per input, plus scratch",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -217,7 +217,7 @@
       "qualification": "equal cofactors share one layered DAG node; spatial lookup remains a candidate",
       "scaling": "linear: O(T/n) nodes with O(n)-digit addresses",
       "execution": "poly n: one root-to-leaf path of n tests",
-      "workspace": "poly n: at most two cells",
+      "workspace": "poly n: at most two cells and an O(n)-bit line cursor",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -250,7 +250,7 @@
       "qualification": "the ring is the table: one `!` per entry in a countdown row, and the index in the accumulator picks which one it is zero on, turning the pointer down that entry's own column; seven `.` an input build the index by Horner's rule, doubled between inputs by a two-row gadget that spends the accumulator as distance and buys back two per unit",
       "scaling": "linear: five table rows of 2T columns, doubling gadgets whose widths halve downward",
       "execution": "linear: within x2.15 an input, by the execution contract",
-      "workspace": "poly n: one accumulator; the ring is read-only",
+      "workspace": "poly n: a 7n-character input queue and an n-bit accumulator",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -272,7 +272,7 @@
       "qualification": "the table is the prefix sum of its own steps, summed against a row counter that is live for one tick",
       "scaling": "linear: one line per step in the table, halting in 2n+2 ticks",
       "execution": "poly n: a threshold build that halts at tick 2n + 2",
-      "workspace": "poly n: about 3n + 8 containers past six inputs",
+      "workspace": "poly n: 3n + 8 containers, one an n-bit counter",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -294,7 +294,7 @@
       "qualification": "the halting goto squares once more whenever the program is not shorter than its reach, so every finite tree halts, and a subtree already emitted at its level is entered by climbing the accumulator to its syllable and `j`, where shorter",
       "scaling": "linear, time n log: greedy order scoring, capped at n <= 10",
       "execution": "poly n: one root-to-leaf path of n reads and tests",
-      "workspace": "poly n: an accumulator and a deque of at most n entries",
+      "workspace": "poly n: an n-bit pointer and accumulator, a deque of n bits",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -360,7 +360,7 @@
       "qualification": "Brainfuck tree followed by a total arbitrary-precision segmented-sieve encoding; fixed-modulus short intervals bound its adaptive residue sequence",
       "scaling": "lower bound: tight language and generated Theta(T log T) ([factor](factor.md))",
       "execution": "poly n: n reads and one tree path after a fixed build",
-      "workspace": "poly n: 2n + 2 tape cells; the integer is source",
+      "workspace": "poly n: 2n + 2 tape cells, an n-bit cursor; the integer is source",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -371,7 +371,7 @@
       "qualification": "—",
       "scaling": "linear: 12 characters an internal node, two a leaf",
       "execution": "poly n: one root-to-leaf lambda path; `[` jumps by table",
-      "workspace": "poly n: 26 variables and a stack as deep as the tree",
+      "workspace": "poly n: 26 variables and frames n deep of n-bit offsets",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -382,7 +382,7 @@
       "qualification": "the inputs form a Horner row index and `g` reads that column from the table row",
       "scaling": "linear: T table cells, one g at the index",
       "execution": "poly n: n Horner reads and one `g` fetch",
-      "workspace": "poly n: four stack items; the grid is never written",
+      "workspace": "poly n: four stack items, one an n-bit row index",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -437,7 +437,7 @@
       "qualification": "the bits are the exponents of `n` primes in the starting value, a tree over the high bits reaches a block of `w` entries carried as one exponent, a fixed decoder shifts the block by the offset the low bits spell, and the first-match rule is the else-branch",
       "scaling": "linear: 3T/w blocks of w = Theta(n) entries, one exponent each",
       "execution": "linear: within x2.15 an input, by the execution contract",
-      "workspace": "poly n: one integer of O(n) bits",
+      "workspace": "poly n: n prime exponents of O(n) bits each",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -459,7 +459,7 @@
       "qualification": "—",
       "scaling": "linear: bounded dependency scan and canonical residual IDs",
       "execution": "linear: within x2.15 an input, by the execution contract",
-      "workspace": "poly n: a fixed tape footprint",
+      "workspace": "poly n: 25 cells holding an n-bit index, and an n-bit cursor",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -492,7 +492,7 @@
       "qualification": "a spatial table reached with two labels, against a hoisted tree that lays out each distinct subtable once and jumps to it",
       "scaling": "linear: two cells per row, unary weights sum T - 1",
       "execution": "poly n: one root-to-leaf path, each move at most n cells",
-      "workspace": "poly n: about n cells",
+      "workspace": "poly n: about n small cells and an n-bit cursor",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -514,7 +514,7 @@
       "qualification": "finite decision trees read inputs and choose a Boolean leaf; separated strokes preserve every branch",
       "scaling": "linear: alternating subtree extents bound rectangular area by O(T)",
       "execution": "poly n: one fork per level and at most n pointer moves",
-      "workspace": "poly n: about n decision-tree cells",
+      "workspace": "poly n: about n tape cells and an n-bit graph-node index",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -547,7 +547,7 @@
       "qualification": "every input is one `++`/`**` run; a stage per input adds its weight to the index register, and a `~` cascade routes the index to one of two shared leaves at the head of the program, so every table of one arity renders to the same length",
       "scaling": "linear: cascade routes to two shared leaves, one-digit targets",
       "execution": "linear: within x2.15 an input, by the execution contract",
-      "workspace": "poly n: two registers, the index under T",
+      "workspace": "poly n: an n-bit index register and an n-bit cursor",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -569,7 +569,7 @@
       "qualification": "from 4 inputs the index is a run of byte-sized skips on the stack and the rows are code: a chain of uniform groups lands on the row, and the rows after it telescope to `table[index]` on six tape cells",
       "scaling": "linear: bounded dependency scan and canonical residual IDs",
       "execution": "linear: within x2.15 an input, by the execution contract",
-      "workspace": "poly n: the fixed 4096-cell tape and an O(n) stack",
+      "workspace": "linear: a stack of T/32 + n + 3 bytes, past the tape",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -591,7 +591,7 @@
       "qualification": "one 128-row array block, painted inside the `If` that selects it",
       "scaling": "linear: one write per differing row, block-bounded index digits",
       "execution": "linear: within x2.15 an input, by the execution contract",
-      "workspace": "poly n: a 128-row block plus index digits",
+      "workspace": "poly n: a 128-cell array and O(n)-bit block registers",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -602,7 +602,7 @@
       "qualification": "decision tree emitted directly in Painfuck's own commands; numeric I/O pays no ASCII offset, and `d` resets the pointer to the answer cell",
       "scaling": "linear: brainfuck-shaped decision tree; `d` reset keeps leaf returns O(1)",
       "execution": "poly n: one path of n nested tests; untaken sides skipped",
-      "workspace": "poly n: 2n + 2 cells and a loop stack",
+      "workspace": "poly n: 2n + 2 cells and a loop stack of at most n",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -625,7 +625,7 @@
       "qualification": "each finite instruction list has a finite prime-product encoding; every program for a maximal-width table needs Omega(T/log T) distinct real roots ([polynomial](polynomial.md))",
       "scaling": "lower bound: coefficient mass is Omega(T**2 / log T), matching the uncapped residual-DAG construction; equal-root blocks force Omega(T/log T) distinct real roots and the slack certificate prices every multiple ([polynomial](polynomial.md))",
       "execution": "unmeasured: exempt as a cap row",
-      "workspace": "poly n: one variable of O(n) bits",
+      "workspace": "poly n: one register of O(n) bits",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -647,7 +647,7 @@
       "qualification": "the inputs are stored once and each node loads its bit with `L`; a subtree already emitted is reached by `goto`, so only the distinct subtables are laid out, and the straight-line lookup is kept as a candidate",
       "scaling": "linear: O(T/n) distinct subtables, O(n) commands each",
       "execution": "poly n: one root-to-leaf path of n tests, quadratic in n",
-      "workspace": "poly n: n + 2 registers",
+      "workspace": "poly n: n input cells and two O(log n)-bit registers",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -691,7 +691,7 @@
       "qualification": "a read chain banks each bit on array 16 and the dispatch's `DIGEST LEAPFROG` reads that sum as the leaf address; the five lightest weights are CONSUMEd from planted cells, so they never read the sum and need not be multiples of 256, which puts the stride at an eight-token leaf",
       "scaling": "linear: per-node landing search sized in O(1), not an O(weight) dry build",
       "execution": "poly n: n read nodes after a fixed dispatch and leaf",
-      "workspace": "poly n: 23 fixed arrays and a stack growing per input",
+      "workspace": "linear: two arrays keep every excreted byte, about 8T/255 each",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -713,7 +713,7 @@
       "qualification": "—",
       "scaling": "linear: canonical child IDs, shared states, one token join",
       "execution": "linear: passes every labelled shared-state block; the count grows with T",
-      "workspace": "poly n: one accumulator",
+      "workspace": "poly n: one accumulator of O(n) bits",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -735,7 +735,7 @@
       "qualification": "a countdown built from the row index reads zero exactly on the rows below it, so counting the table's rising and falling steps against it telescopes to the indexed entry",
       "scaling": "linear: bounded dependency scan and canonical residual IDs",
       "execution": "linear: within x2.15 an input, by the execution contract",
-      "workspace": "poly n: a fixed register set",
+      "workspace": "poly n: eight cells and an accumulator below T",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -779,7 +779,7 @@
       "qualification": "inputs go to either end of one bistack row, an ignored one to the column; each end pop drives the next alternating-axis decision node, or goes to the column where the halves agree, in an order the row can pop",
       "scaling": "linear: the planar H-tree has `O(sqrt(T))` width and height",
       "execution": "linear: within x2.15 an input, by the execution contract",
-      "workspace": "poly n: n bistack entries",
+      "workspace": "poly n: n bistack entries and O(n)-bit coordinates",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -834,7 +834,7 @@
       "qualification": "an affine-cube peel emits one guard line per coset of an affine cover of the 1-set",
       "scaling": "open: O(T) lines and commands for every table, O(T log n) identifier text; the build costs at least T*(n - log2 k) with k zeros, and core work is only O(T*n)",
       "execution": "linear: within x2.15 an input, by the execution contract",
-      "workspace": "poly n: at most n * n live registers",
+      "workspace": "poly n: at most n * n registers; sqrt T below the cap",
       "evidence": "docs/proofs/index.md#vandevelo-identifier-and-fallback-audit"
     }
   ],

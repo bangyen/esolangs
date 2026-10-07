@@ -22,7 +22,7 @@ from tests.tools.test_boolean_contract import _parity
 #: Cost band; see ``__main__.py``.  It steps every generator's program at
 #: rising arity, which is tens of seconds and so cannot sit in CI.
 BAND = "by-hand"
-COST = 30.0
+COST = 32.0
 
 #: Most per-added-input growth in commands a settled generator may show.
 #: Shared with ``linearity.py``: a single pass over the table doubles.
@@ -56,6 +56,13 @@ STEP_CAP = 2_000_000
 #: route changes late: AddSubJump jumps 39 -> 965 at n=6, FRACTRAN drops
 #: 41 -> 10 at n=7, so 9 left four and three rungs, short of ``MIN_RUNGS``.
 MAX_ARITY = 9
+
+#: The dense pass of a ``poly n`` row climbs further: Sophie passed it at
+#: n <= 9 and only diverged past 10 (dense 81 -> 455 commands at n=10..16,
+#: parity 68 -> 115).  A poly n row is cheap by its own claim; n=10..12 cost
+#: ~6s over 23 rows.  ``ARITY_OVERRIDE`` still caps Factor, Line and Circuit
+#: Diagram, whose time is load, not commands (152s, 99s, 27s to n=12).
+DENSE_ARITY = 12
 ARITY_OVERRIDE = {
     "addsubjump": 10,
     "b_tapemark": 7,
@@ -195,14 +202,19 @@ def _self_check() -> tuple[float, float, float]:
     return linear, linearithmic, quadratic
 
 
-def measure(key: str, name: str, table: Callable[[int], str] = _parity) -> Growth:
+def measure(
+    key: str,
+    name: str,
+    table: Callable[[int], str] = _parity,
+    ceiling: int = MAX_ARITY,
+) -> Growth:
     """Worst per-input command growth, past any route change."""
     if name in EXEMPT:
         # Not stepped at all: A Painter Ant's rows run to the cap by
         # construction, which was 91 seconds spent rediscovering its
         # docstring.
         return Growth(name, reason=EXEMPT[name])
-    top = ARITY_OVERRIDE.get(key, MAX_ARITY)
+    top = ARITY_OVERRIDE.get(key, ceiling)
     series = _series(name, top, table)
     if len(series) < MIN_RUNGS:
         return Growth(name, reason="too few arities produced a halting row")
@@ -239,7 +251,8 @@ def main() -> int:
     # A poly n claim must also survive a dense table; keep the worse reading.
     for at, row in enumerate(measured):
         if row.generator in poly:
-            dense = measure(by_display[row.generator], row.generator, _dense)
+            key = by_display[row.generator]
+            dense = measure(key, row.generator, _dense, DENSE_ARITY)
             if dense.ratio is None or (row.ratio or 0) < dense.ratio:
                 measured[at] = dense
 

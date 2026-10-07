@@ -16,6 +16,7 @@ from esolangs.registry import BY_BOOLEAN
 from scripts.benchmark import WrittenState
 from tests.proofs._ledger import load as load_ledger
 from tests.proofs.deep.execution import (
+    DENSE_ARITY,
     MAX_GROWTH,
     MIN_RUNGS,
     POLY_GROWTH,
@@ -49,10 +50,12 @@ ARITY_OVERRIDE = {
     "bfstack": 9,
     "circlefuck": 6,
     "dimensional": 7,
+    "factor": 8,
     "false": 9,
     "laserfuck": 9,
     "flowchart": 7,
     "line": 7,
+    "polynomial": 8,
     "rotfuck": 6,
     "slow_acv_mammalian": 6,
     "streetcode": 7,
@@ -119,11 +122,24 @@ def _self_check() -> tuple[float, float, float]:
 
 
 def measure(
-    key: str, name: str, workspace: str, table: Callable[[int], str] = _parity
+    key: str,
+    name: str,
+    workspace: str,
+    table: Callable[[int], str] = _parity,
+    ceiling: int = MAX_ARITY,
 ) -> Growth:
     """Worst per-input written-state growth, past any route change."""
+    # An override above MAX_ARITY is a floor (FALSE, BFStack need the rungs),
+    # one below it a cap (slow to step); the dense pass raises the ceiling.
+    override = ARITY_OVERRIDE.get(key)
+    if override is None:
+        top = ceiling
+    elif override > MAX_ARITY:
+        top = max(override, ceiling)
+    else:
+        top = override
     series: list[tuple[int, int]] = []
-    for n in range(1, ARITY_OVERRIDE.get(key, MAX_ARITY) + 1):
+    for n in range(1, top + 1):
         try:
             bits = _written(name, table(n))
         except Exception:
@@ -157,7 +173,9 @@ def main() -> int:
         growth = measure(key, row.generator, row.workspace_class)
         if row.workspace_class == "poly n":
             # Parity has n ANF terms; a poly n claim must survive a dense table.
-            dense = measure(key, row.generator, row.workspace_class, _dense)
+            dense = measure(
+                key, row.generator, row.workspace_class, _dense, DENSE_ARITY
+            )
             if dense.ratio is None or (growth.ratio or 0) < dense.ratio:
                 growth = dense
         measured.append(growth)
