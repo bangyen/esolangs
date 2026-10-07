@@ -224,6 +224,7 @@ SAMPLES: dict[str, tuple[Program, str]] = {
     "S*bleq": ("-3 11 3", ""),
     "SLOW ACV MAMMALIAN": ("SEED SEED SEED CONSUME PRONOUNCE", ""),
     "Smallfuck": (">>*", ""),
+    "Smu": ("(|+|+++|)", ""),
     "Sophie": ("#$5.", ""),
     "Streetcode": (STREETCODE, ""),
     "Super SNUSP": ('"65.', ""),

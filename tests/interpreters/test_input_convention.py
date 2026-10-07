@@ -79,6 +79,8 @@ _EOF_IS_A_HALT: dict[str, str] = {
     "inject": "an exhausted readto empties the block",
     # Likewise the wiki Cat ``[;@$0{&}{,}]`` halts only on a 0 at EOF.
     "sophie": "an exhausted ';' or ':' reads 0",
+    # Every run pushes its input bit, and the spec's EOF bit is ``=``.
+    "smu": "an exhausted read pushes the spec's '=' bit",
 }
 
 

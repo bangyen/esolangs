@@ -83,6 +83,7 @@ FORMULAS: dict[str, tuple[Callable[[int, str], float], bool, tuple[int, ...]]] =
     # level's moves at most max(a, b) + 2 over adjacent input cells a, b.
     "Painfuck": (lambda n, _: -(-3 * n * n // 4) + 20 * n + 4, False, (3, 6)),
     "Smallfuck": (lambda n, _: 9 * n * n + 100 * n + 20, False, (3, 6)),
+    "Smu": (lambda n, _: 55 * n + 5, True, (3, 6)),
     "Underload": (lambda n, _: 14 * n - 1, False, (3, 6)),
     "FALSE": (lambda n, _: min(12 * n + 69, 10 * n + 99), False, (3, 6)),
     "Jaune": (lambda n, _: 8 * n - 2, False, (3, 6)),

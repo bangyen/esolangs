@@ -228,9 +228,10 @@ Existing fame exceptions must still clear the bar. Whitespace was removed at
 58 backlinks.
 
 The 2026-10-06 census (`tests/fixtures/curation.json`) records each
-language's backlinks and route: 21 clear the fame gate and 53 are first
-implementations. Six were implemented elsewhere when added, all before the
-rule was written down on 2026-09-27, and are grandfathered: BIO (ais523),
+language's backlinks and route: 21 clear the fame gate and 54 are first
+implementations, Smu (4, Unimplemented, remeasured 2026-10-07) added
+after. Six were implemented elsewhere when added, all before the rule was
+written down on 2026-09-27, and are grandfathered: BIO (ais523),
 BF-PDA (Madk, 2010), 123 (a 2012 VB.NET interpreter), NoComment, Sophie
 (their authors') and Jaune (two others'). Befunge-98 (Funge-98, 31, two
 dozen implementations) came after and was removed on 2026-10-06.
@@ -418,5 +419,10 @@ languages remain rejected from the same image-source screen.
   before the rotation ("after the instruction is executed"). The wiki Hello
   World prints no greeting under any direction or seek timing. The generator
   targets the default only.
+- Smu reads an unset variable as empty, as the wiki cat needs at EOF.
+  Bits ride bytes low bit first, as in Boolfuck, so the cat copies bytes;
+  output `=` prints nothing, `(` or `)` halts, and an unbalanced program
+  popped to run halts. The page's expanded cat drops the `=` after `(+=)`
+  and forces a leading 1; the compact source fixes the repair.
 - Pinyin is rejected: its spelling rule contradicts its examples and its
   input-1 truth-machine example has no deterministic reading.

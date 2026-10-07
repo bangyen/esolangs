@@ -7,7 +7,7 @@
 
 <!-- PACKAGE-COUNT:START -->
 
-Interpreters and Boolean generators for 81 esoteric languages: 79 text and 2 raster.
+Interpreters and Boolean generators for 82 esoteric languages: 80 text and 2 raster.
 
 <!-- PACKAGE-COUNT:END -->
 
@@ -108,7 +108,7 @@ See [debugging](https://github.com/bangyen/esolangs/blob/main/docs/usage.md#debu
 
 <!-- EXAMPLES:START -->
 
-Ready-to-run programs for each of the 77
+Ready-to-run programs for each of the 78
 languages with a boolean generator live in
 [`examples/`](https://github.com/bangyen/esolangs/tree/main/src/esolangs/examples).
 
@@ -124,7 +124,7 @@ Familiar languages include [brainfuck](https://esolangs.org/wiki/brainfuck),
 <details>
 <!-- IMPLEMENTED:START -->
 
-<summary>Show all 81 languages</summary>
+<summary>Show all 82 languages</summary>
 
 ### Grid-based Languages
 
@@ -160,6 +160,7 @@ Languages that use a stack for data manipulation.
 - [Modulous](https://esolangs.org/wiki/Modulous) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/stack_based/modulous.py))
 - [Piet](https://esolangs.org/wiki/Piet) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/stack_based/piet/__init__.py))
 - [SStack](https://esolangs.org/wiki/SStack) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/stack_based/sstack.py))
+- [Smu](https://esolangs.org/wiki/Smu) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/stack_based/smu.py))
 - [Underload](https://esolangs.org/wiki/Underload) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/stack_based/underload.py))
 - [Unsquare](https://esolangs.org/wiki/Unsquare) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/stack_based/unsquare.py))
 
@@ -247,7 +248,7 @@ Languages that don't fit into the above categories.
 <!-- BOOLEAN-COUNT:START -->
 
 The truth table is a binary string of length `2**n`, most-significant input
-first; its length implies `n`, so it isn't passed separately.  77 of the
+first; its length implies `n`, so it isn't passed separately.  78 of the
 languages have such a generator, some covering only a documented subset of
 tables.
 

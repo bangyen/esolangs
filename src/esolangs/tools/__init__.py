@@ -63,6 +63,7 @@ from esolangs.tools.six_five import six_five
 from esolangs.tools.slashes import slashes
 from esolangs.tools.slow_acv_mammalian import slow_acv_mammalian
 from esolangs.tools.smallfuck import smallfuck
+from esolangs.tools.smu import smu
 from esolangs.tools.sophie import sophie
 from esolangs.tools.sstack import sstack
 from esolangs.tools.streetcode import streetcode
@@ -144,6 +145,7 @@ __all__ = [
     "slashes",
     "slow_acv_mammalian",
     "smallfuck",
+    "smu",
     "sophie",
     "sstack",
     "streetcode",

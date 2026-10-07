@@ -505,6 +505,10 @@ def _register() -> None:
             b.slow_acv_mammalian,
             "tape_based.slow_acv_mammalian",
         ),
+        "smu": _reader(
+            b.smu,
+            "stack_based.smu",
+        ),
         "sophie": _reader(
             b.sophie,
             "register_based.sophie",

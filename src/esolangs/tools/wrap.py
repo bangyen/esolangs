@@ -617,6 +617,7 @@ WRAPPERS = {
     "bfstack": wrap_chars,
     # Whitespace is discarded anywhere, inside a token too.
     "sstack": wrap_chars,
+    "smu": wrap_chars,
     "suffolk": wrap_chars,
     # The trailing ``1`` is a terminator, not a structural line.
     "one_two_three": wrap_chars,

@@ -97,14 +97,6 @@ Screened 2026-10-05 from 54 Category:Unimplemented pages. Each is a first
 implementation (unique backlinks measured 2026-10-06); add with
 `/new-language`, ranked.
 
-- **[Smu](https://esolangs.org/wiki/Smu)** (4 backlinks). Zzo38's minimal
-  Smurf: a string stack over `()=|+`, four commands, and a run that ends by
-  outputting the top string and running the next one. Bit I/O per run.
-  Generator: one node `(c0)(|)=(c1)(+)=()+(=)` stores both children under
-  the input bit's names and runs the selected one on the next bit; a leaf
-  is `()=` then its bit. O(T), hand-traced, not executed. Gaps: an unset
-  variable's value (the cat example implies empty), `=` at EOF, and the
-  byte-to-bit input convention. The cat program is the only stated output.
 - **[Transistor](https://esolangs.org/wiki/Transistor)** (2 backlinks).
   Tri-state values (true, false, floating), N/P transistors and pull
   resistors as the only primitives, plus `circuit`, `let` and `while`.

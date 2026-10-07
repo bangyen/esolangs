@@ -528,6 +528,12 @@ LANGUAGES: dict[str, Language] = {
         boolean=_boolean.smallfuck,
         id="smallfuck",
     ),
+    "Smu": Language(
+        "Smu",
+        "stack_based.smu",
+        boolean=_boolean.smu,
+        id="smu",
+    ),
     "Thue": Language(
         "Thue",
         "other.thue",

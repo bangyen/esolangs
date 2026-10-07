@@ -76,6 +76,7 @@ Row gives the logical bits; Input gives their language-specific encoding.
 | `slashes.txt` | /// | `0001` | `01` | embedded 01 | '0' |
 | `slow-acv-mammalian.txt` | SLOW ACV MAMMALIAN | `0001` | `01` | 01 | '0' |
 | `smallfuck.txt` | Smallfuck | `0001` | `01` | embedded 01 | '0' |
+| `smu.txt` | Smu | `0001` | `01` | 01 | '0' |
 | `sophie.txt` | Sophie | `0001` | `01` | 01 | '0' |
 | `sstack.txt` | SStack | `0001` | `01` | 01 | '0' |
 | `streetcode.txt` | Streetcode | `0001` | `01` | 01 | '0' |
@@ -115,6 +116,7 @@ Row gives the logical bits; Input gives their language-specific encoding.
 - **ram0** -- RAM0 has no output instruction and dumps its whole state at halt; the answer is the 'z' register
 - **slashes** -- Inputs fill the binary row index before unary table selection.
 - **smallfuck** -- Smallfuck defines no I/O; this implementation prints final cell 2
+- **smu** -- Smu reads one bit a run, low bit of each byte first, and packs its output bits into bytes the same way
 - **taglate** -- Taglate reads adjacent characters, but an odd input count above 1 is padded with a leading zero it reads like any other digit: an n=3 program wants four characters. Feeding three exhausts its input; padding at the end instead answers every row whose top bit is set wrongly
 - **thue** -- Thue draws which rewrite to make, by spec, and the interpreter draws too; this program's rules are written so that every state it reaches has exactly one, leaving the draw nothing to change
 - **vandevelo** -- Vandevelo answers by terminating: nil halts and not nil loops
