@@ -151,9 +151,15 @@ class WrittenState:
                 # A chunked store (Malbolge's memory, a persistent tape):
                 # a tuple counts as the sum of its items, and an unwritten
                 # chunk is the same object, so recount only the new ones.
-                for i in compress(range(len(part)), map(is_not, part, last)):
-                    now += state_bits(part[i], self._memo)
-                    now -= state_bits(last[i], self._memo)
+                # A store rebuilt wholesale (Streetcode re-sorts its records)
+                # moves most items, and one count in C beats that walk.
+                changed = list(compress(range(len(part)), map(is_not, part, last)))
+                if 8 * len(changed) < len(part):
+                    for i in changed:
+                        now += state_bits(part[i], self._memo)
+                        now -= state_bits(last[i], self._memo)
+                else:
+                    now = state_bits(part, self._memo)
             else:
                 now = state_bits(part, self._memo)
             self._now[at] = now
