@@ -19,18 +19,19 @@ class ProofRow:
     labels: tuple[str, ...]
     qualification: str
     scaling: str
+    execution: str
+    workspace: str
     evidence: str
 
 
 @dataclass(frozen=True)
 class ScalingRow:
-    """The four independent axes of an unresolved generator."""
+    """The three independent axes of an unresolved generator."""
 
     generator: str
     totality: str
     generation_time: str
     output_size: str
-    execution_time: str
     evidence: str
 
 
@@ -88,19 +89,14 @@ def load(path: Path = MANIFEST) -> tuple[tuple[ProofRow, ...], tuple[ScalingRow,
                 tuple(labels),
                 _text(row, "qualification"),
                 _text(row, "scaling"),
+                _text(row, "execution"),
+                _text(row, "workspace"),
                 _text(row, "evidence"),
             )
         )
     for row in data["audit"]:
         totality = _text(row, "totality")
-        costs = tuple(
-            _text(row, key)
-            for key in (
-                "generation_time",
-                "output_size",
-                "execution_time",
-            )
-        )
+        costs = tuple(_text(row, key) for key in ("generation_time", "output_size"))
         if totality not in {"Total", "Cap", "Exception"} or any(
             cost not in {"Linear", "O(T)", "Measured", "Open", "Language lower bound"}
             for cost in costs
@@ -112,7 +108,6 @@ def load(path: Path = MANIFEST) -> tuple[tuple[ProofRow, ...], tuple[ScalingRow,
                 totality,
                 costs[0],
                 costs[1],
-                costs[2],
                 _text(row, "evidence"),
             )
         )
@@ -134,11 +129,13 @@ def update_docs() -> None:
             "PROOF-STATUS",
             "",
             [
-                "| Generator | Proof | Qualification | Scaling |",
-                "| --- | --- | --- | --- |",
+                "| Generator | Proof | Qualification | Scaling | Execution | "
+                "Workspace |",
+                "| --- | --- | --- | --- | --- | --- |",
                 *[
                     f"| {r.generator} | {', '.join(r.labels)} | "
-                    f"{r.qualification} | {r.scaling} |"
+                    f"{r.qualification} | {r.scaling} | {r.execution} | "
+                    f"{r.workspace} |"
                     for r in proofs
                 ],
             ],
@@ -148,12 +145,11 @@ def update_docs() -> None:
             "SCALING-STATUS",
             "  ",
             [
-                "| Language | Totality | Generation time | Output size | "
-                "Execution time |",
-                "| --- | --- | --- | --- | --- |",
+                "| Language | Totality | Generation time | Output size |",
+                "| --- | --- | --- | --- |",
                 *[
                     f"| {r.generator} | {r.totality} | {r.generation_time} | "
-                    f"{r.output_size} | {r.execution_time} |"
+                    f"{r.output_size} |"
                     for r in audits
                 ],
             ],

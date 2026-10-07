@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+from dataclasses import fields
+
 import pytest
 
 from esolangs.registry import BY_BOOLEAN
 from tests.proofs._ledger import UNSETTLED_SCALING
 from tests.proofs._ledger import load as load_ledger
-from tests.proofs._roadmap import SETTLED, TOTAL, Audit, load
+from tests.proofs._roadmap import SETTLED, TOTAL, Audit, AuditRow, load
 from tests.proofs.deep.execution import EXEMPT as _EXECUTION_EXEMPT
 from tests.proofs.deep.execution import exempt_generators as execution_exempt
 from tests.proofs.deep.linearity import exempt_generators
@@ -48,13 +50,19 @@ def test_every_audit_verdict_is_a_known_one(audit: Audit) -> None:
         assert row.totality in _TOTALITY_VERDICTS, row
         assert row.generation_time in _VERDICTS, row
         assert row.output_size in _VERDICTS, row
-        assert row.execution_time in _VERDICTS, row
 
 
 def test_the_audit_holds_only_unresolved_rows(audit: Audit) -> None:
     """Rows leave the table when they close, so every row left is open."""
     assert all(row.is_open for row in audit.rows)
     assert audit.unsettled <= {row.generator for row in audit.rows}
+
+
+def test_every_audit_column_has_an_open_cell(audit: Audit) -> None:
+    """Columns leave too: Execution time sat ``Linear`` on every row."""
+    for axis in (f.name for f in fields(AuditRow) if f.name != "generator"):
+        closed = {TOTAL} if axis == "totality" else SETTLED
+        assert any(getattr(row, axis) not in closed for row in audit.rows), axis
 
 
 def test_the_totality_column_is_the_ledger(audit: Audit) -> None:
@@ -116,8 +124,8 @@ def test_the_exempt_set_is_read_from_both_documents(audit: Audit) -> None:
     assert all(why for why in exempt.values())
 
 
-def test_the_execution_exempt_set_is_read_from_both_documents(audit: Audit) -> None:
-    """The command-count bound's exemptions come from the same two documents."""
+def test_the_execution_exempt_set_is_the_unmeasured_column() -> None:
+    """The command-count bound exempts exactly the ``unmeasured`` Execution cells."""
     exempt = execution_exempt()
     ledger = load_ledger()
     qualified = {
@@ -125,8 +133,10 @@ def test_the_execution_exempt_set_is_read_from_both_documents(audit: Audit) -> N
         for row in ledger.rows
         if "cap" in row.labels or "exception" in row.labels
     }
-    assert set(exempt) == set(_EXECUTION_EXEMPT) | audit.execution_unsettled | qualified
-    assert audit.execution_unsettled <= {row.generator for row in audit.rows}
+    unmeasured = {
+        row.generator for row in ledger.rows if row.execution_class == "unmeasured"
+    }
+    assert set(exempt) == set(_EXECUTION_EXEMPT) | qualified == unmeasured
     assert all(why for why in exempt.values())
 
 
@@ -140,7 +150,7 @@ def test_the_contract_covers_generators_the_original_queue_missed() -> None:
 def test_vandevelo_remains_held_to_both_regressions(audit: Audit) -> None:
     row = audit.by_name()["Vandevelo"]
     assert row.output_size == "Measured"
-    assert row.execution_time == "Linear"
+    assert load_ledger().by_name()["Vandevelo"].execution_class == "linear"
     assert not row.size_is_settled
     assert row.is_open
     assert "Vandevelo" not in exempt_generators()

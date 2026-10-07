@@ -24,7 +24,6 @@ class AuditRow:
     totality: str
     generation_time: str
     output_size: str
-    execution_time: str
 
     @property
     def size_is_settled(self) -> bool:
@@ -33,12 +32,11 @@ class AuditRow:
 
     @property
     def is_open(self) -> bool:
-        """Whether any of the four axes is still unsettled."""
+        """Whether any of the three axes is still unsettled."""
         return not (
             self.totality == TOTAL
             and self.generation_time in SETTLED
             and self.output_size in SETTLED
-            and self.execution_time in SETTLED
         )
 
 
@@ -61,15 +59,6 @@ class Audit:
             if not row.size_is_settled and row.output_size != "Measured"
         )
 
-    @property
-    def execution_unsettled(self) -> frozenset[str]:
-        """Generators exempt from the measured command-count regression."""
-        return frozenset(
-            row.generator
-            for row in self.rows
-            if row.execution_time not in SETTLED and row.execution_time != "Measured"
-        )
-
 
 def load(path: Path | None = None) -> Audit:
     """Read and parse the live scaling audit."""
@@ -83,7 +72,6 @@ def load(path: Path | None = None) -> Audit:
                 row.totality,
                 row.generation_time,
                 row.output_size,
-                row.execution_time,
             )
             for row in rows
         )

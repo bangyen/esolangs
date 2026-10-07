@@ -53,6 +53,15 @@ UNSETTLED_SCALING = frozenset({"measured", "open", "lower bound"})
 #: A ``linear`` clause names its argument; longer than this it is prose.
 LINEAR_CLAUSE_WORDS = 12
 
+#: The Execution column's classes: commands to halt, held to their growth by
+#: ``tests/proofs/deep/execution.py``.  ``unmeasured`` says why.
+EXECUTION_CLASSES = frozenset({"poly n", "linear", "unmeasured"})
+
+#: The Workspace column's classes: peak written state in bits, held to its
+#: growth by ``tests/proofs/deep/workspace.py``.  ``T log T`` is T cells of
+#: ``log T``-bit values.
+WORKSPACE_CLASSES = EXECUTION_CLASSES | {"T log T"}
+
 
 @dataclass(frozen=True)
 class Row:
@@ -62,6 +71,8 @@ class Row:
     labels: tuple[str, ...]
     qualification: str
     scaling: str
+    execution: str
+    workspace: str
 
     @property
     def schemes(self) -> tuple[str, ...]:
@@ -77,6 +88,26 @@ class Row:
     def scaling_clause(self) -> str:
         """The Scaling cell's argument or term: the text after its class."""
         return self.scaling.split(":", 1)[1].strip() if ":" in self.scaling else ""
+
+    @property
+    def execution_class(self) -> str:
+        """The Execution cell's class: the text before its first colon."""
+        return self.execution.split(":", 1)[0].strip()
+
+    @property
+    def execution_clause(self) -> str:
+        """The Execution cell's reason: the text after its class."""
+        return self.execution.split(":", 1)[1].strip() if ":" in self.execution else ""
+
+    @property
+    def workspace_class(self) -> str:
+        """The Workspace cell's class: the text before its first colon."""
+        return self.workspace.split(":", 1)[0].strip()
+
+    @property
+    def workspace_clause(self) -> str:
+        """The Workspace cell's store: the text after its class."""
+        return self.workspace.split(":", 1)[1].strip() if ":" in self.workspace else ""
 
 
 @dataclass(frozen=True)
@@ -124,7 +155,15 @@ def load(path: Path | None = None) -> Ledger:
 
     proofs, _ = load_status()
     rows = [
-        Row(row.generator, row.labels, row.qualification, row.scaling) for row in proofs
+        Row(
+            row.generator,
+            row.labels,
+            row.qualification,
+            row.scaling,
+            row.execution,
+            row.workspace,
+        )
+        for row in proofs
     ]
 
     schemes = _section(text, "Proof schemes")

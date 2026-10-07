@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import random
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass
 from math import log2
 from pathlib import Path
@@ -14,7 +16,6 @@ from esolangs import describe, encode_inputs, generate, instantiate
 from esolangs.debugger import make_vm
 from esolangs.registry import BY_BOOLEAN
 from tests.proofs._ledger import load as load_ledger
-from tests.proofs._roadmap import load as load_audit
 from tests.proofs.deep.linearity import _regime_start
 from tests.tools.test_boolean_contract import _parity
 
@@ -26,6 +27,12 @@ COST = 30.0
 #: Most per-added-input growth in commands a settled generator may show.
 #: Shared with ``linearity.py``: a single pass over the table doubles.
 MAX_GROWTH = 2.15
+
+#: Most per-added-input growth a ``poly n`` Execution or Workspace cell may
+#: show.  ``n**2`` fitted over n=5..9 reads x1.33 and ``T`` reads x2, so
+#: this splits them; a large constant can still hide a ``T`` term this far
+#: down, which is why a ``poly n`` cell also names its reason.
+POLY_GROWTH = 1.5
 
 #: Rungs needed after the last route change before a ratio means anything,
 #: and the window the slope is fitted over.  Five, because the wobble these
@@ -85,8 +92,6 @@ def exempt_generators() -> dict[str, str]:
         for label in ("cap", "exception"):
             if label in row.labels:
                 reasons.setdefault(row.generator, f"proof_status.json {label} row")
-    for name in sorted(load_audit().execution_unsettled):
-        reasons.setdefault(name, "proof_status.json scaling audit: execution open")
     return reasons
 
 
@@ -141,12 +146,20 @@ def _commands(name: str, table: str) -> int | None:
     return worst
 
 
-def _series(name: str, top: int) -> list[tuple[int, int]]:
+def _dense(n: int) -> str:
+    """A seeded random table: parity has n ANF terms, so it hides Fargo's T."""
+    width = 1 << n
+    return f"{random.Random(n).getrandbits(width):0{width}b}"
+
+
+def _series(
+    name: str, top: int, table: Callable[[int], str] = _parity
+) -> list[tuple[int, int]]:
     """(arity, worst sampled command count) for every arity that runs."""
     out: list[tuple[int, int]] = []
     for n in range(1, top + 1):
         try:
-            count = _commands(name, _parity(n))
+            count = _commands(name, table(n))
         except Exception:
             break
         if count is None or count == 0:
@@ -178,7 +191,7 @@ def _self_check() -> tuple[float, float, float]:
     return linear, linearithmic, quadratic
 
 
-def measure(key: str, name: str) -> Growth:
+def measure(key: str, name: str, table: Callable[[int], str] = _parity) -> Growth:
     """Worst per-input command growth, past any route change."""
     if name in EXEMPT:
         # Not stepped at all: A Painter Ant's rows run to the cap by
@@ -186,7 +199,7 @@ def measure(key: str, name: str) -> Growth:
         # docstring.
         return Growth(name, reason=EXEMPT[name])
     top = ARITY_OVERRIDE.get(key, MAX_ARITY)
-    series = _series(name, top)
+    series = _series(name, top, table)
     if len(series) < MIN_RUNGS:
         return Growth(name, reason="too few arities produced a halting row")
     start = _regime_start(series)
@@ -213,7 +226,23 @@ def main() -> int:
     measured = [measure(key, name) for name, key in sorted(by_display.items())]
     assert len(measured) == len(BY_BOOLEAN), "not every generator was measured"
 
-    print(f"Execution contract: {len(measured)} generators, bound x{MAX_GROWTH}\n")
+    poly = {
+        row.generator for row in load_ledger().rows if row.execution_class == "poly n"
+    }
+    assert not poly & set(exempt), (
+        f"exempt rows claim poly n: {sorted(poly & set(exempt))}"
+    )
+    # A poly n claim must also survive a dense table; keep the worse reading.
+    for at, row in enumerate(measured):
+        if row.generator in poly:
+            dense = measure(by_display[row.generator], row.generator, _dense)
+            if dense.ratio is None or (row.ratio or 0) < dense.ratio:
+                measured[at] = dense
+
+    print(
+        f"Execution contract: {len(measured)} generators, bound x{MAX_GROWTH}, "
+        f"x{POLY_GROWTH} for poly n\n"
+    )
     print(f"  {'generator':30s} {'growth':>7s} {'commands':>9s}  where")
     for row in sorted(measured, key=lambda r: -(r.ratio or 0)):
         tag = "  [exempt]" if row.generator in exempt else ""
@@ -228,7 +257,11 @@ def main() -> int:
     failures = [
         row
         for row in measured
-        if row.generator not in exempt and (row.ratio is None or row.ratio > MAX_GROWTH)
+        if row.generator not in exempt
+        and (
+            row.ratio is None
+            or row.ratio > (POLY_GROWTH if row.generator in poly else MAX_GROWTH)
+        )
     ]
     xpass = sorted(
         row.generator

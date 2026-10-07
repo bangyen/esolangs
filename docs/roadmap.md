@@ -36,8 +36,9 @@ history; standing rules and proved limits are in [limitations](limitations.md).
   more executed round produces neither a construction nor a bound, that
   language and its row leave. An unproved wall is not a lookup table.
 
-  The four axes are totality (does the generator handle every table it
-  claims?), generation time, output size, and execution time.
+  The three axes are totality (does the generator handle every table it
+  claims?), generation time, and output size; execution time and workspace
+  are `proofs/index.md`'s Execution and Workspace columns.
   `proofs/index.md` defines totality; `tests/proofs/deep/linearity.py`
   measures output size by same-parity successive differences through
   n=12. Timings use the top five arities, best of three, and exclude
@@ -49,13 +50,13 @@ history; standing rules and proved limits are in [limitations](limitations.md).
 
   <!-- SCALING-STATUS:START -->
 
-  | Language | Totality | Generation time | Output size | Execution time |
-  | --- | --- | --- | --- | --- |
-  | Befunge | Exception | Linear | Linear | Linear |
-  | Factor | Total | Language lower bound | Language lower bound | Linear |
-  | Malbolge | Exception | Open | Linear | Linear |
-  | Polynomial | Cap | Language lower bound | Language lower bound | Linear |
-  | Vandevelo | Total | Open | Measured | Linear |
+  | Language | Totality | Generation time | Output size |
+  | --- | --- | --- | --- |
+  | Befunge | Exception | Linear | Linear |
+  | Factor | Total | Language lower bound | Language lower bound |
+  | Malbolge | Exception | Open | Linear |
+  | Polynomial | Cap | Language lower bound | Language lower bound |
+  | Vandevelo | Total | Open | Measured |
 
   <!-- SCALING-STATUS:END -->
 
