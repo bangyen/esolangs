@@ -106,7 +106,7 @@
       ],
       "qualification": "—",
       "scaling": "linear: span walk, leaf drains sum geometrically",
-      "execution": "poly n: one path of n tests",
+      "execution": "poly n: one path of n tests; brackets jump in one step",
       "workspace": "poly n: a stack of 2n items",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
@@ -238,7 +238,7 @@
       ],
       "qualification": "finite planar routing",
       "scaling": "linear: H-layout side C sqrt(T), area Theta(T)",
-      "execution": "poly n: gate evaluation, about two commands per input",
+      "execution": "poly n: generations bounded by a gate depth of at most 2n",
       "workspace": "T log T: pulses in flight across the wiring",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
@@ -271,7 +271,7 @@
       ],
       "qualification": "the table is the prefix sum of its own steps, summed against a row counter that is live for one tick",
       "scaling": "linear: one line per step in the table, halting in 2n+2 ticks",
-      "execution": "poly n: one tree path, two commands per input",
+      "execution": "poly n: a threshold build that halts at tick 2n + 2",
       "workspace": "poly n: about 3n + 8 containers past six inputs",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
@@ -282,7 +282,7 @@
       ],
       "qualification": "each input is the data of one jump in a two-line tester; a node patches the tester's two targets to its children and jumps in, a folded subtree targets the shared self-jump or the line past the end, and a subtree already emitted at its level is targeted, not repeated",
       "scaling": "linear: at most 3(T - 1) + 2n + 3 lines, subtree ids",
-      "execution": "poly n: one path of n tests",
+      "execution": "poly n: shared self-patching testers, at most 5n + 2 commands",
       "workspace": "linear: the program lines it patches",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
@@ -370,7 +370,7 @@
       ],
       "qualification": "—",
       "scaling": "linear: 12 characters an internal node, two a leaf",
-      "execution": "poly n: one root-to-leaf path of n tests",
+      "execution": "poly n: one root-to-leaf lambda path; `[` jumps by table",
       "workspace": "poly n: 26 variables and a stack as deep as the tree",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
@@ -381,7 +381,7 @@
       ],
       "qualification": "the inputs form a Horner row index and `g` reads that column from the table row",
       "scaling": "linear: T table cells, one g at the index",
-      "execution": "poly n: one path of n tests",
+      "execution": "poly n: n Horner reads and one `g` fetch",
       "workspace": "poly n: four stack items; the grid is never written",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
@@ -513,7 +513,7 @@
       ],
       "qualification": "finite decision trees read inputs and choose a Boolean leaf; separated strokes preserve every branch",
       "scaling": "linear: alternating subtree extents bound rectangular area by O(T)",
-      "execution": "poly n: five commands per input on one root-to-leaf path",
+      "execution": "poly n: one fork per level and at most n pointer moves",
       "workspace": "poly n: about n decision-tree cells",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
@@ -635,7 +635,7 @@
       ],
       "qualification": "the table is one binary literal, divided by the power of two the reads build",
       "scaling": "linear: T-bit literal, one squaring statement per input",
-      "execution": "poly n: one literal division and one squaring per input",
+      "execution": "poly n: n + 3 Horner statements over one T-bit literal",
       "workspace": "linear: the T-bit table literal",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
@@ -712,7 +712,7 @@
       ],
       "qualification": "—",
       "scaling": "linear: canonical child IDs, shared states, one token join",
-      "execution": "poly n: one root-to-leaf path of n tests",
+      "execution": "linear: passes every labelled shared-state block; the count grows with T",
       "workspace": "poly n: one accumulator",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
@@ -811,7 +811,7 @@
       ],
       "qualification": "each half is a `d` promise, forced by the `?` test that selects it, since an argument spelled inline would be evaluated before the application; the shipped node instead returns `s` over its selected promises, so a repeated subtree bound once as a promise reaches every half below, and the plain tree stays a candidate",
       "scaling": "linear: 29 characters an internal node, four a leaf",
-      "execution": "poly n: one root-to-leaf path of n tests",
+      "execution": "poly n: only selected d-promises are forced; one path of n",
       "workspace": "linear: the live term, reduced in place",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
