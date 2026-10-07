@@ -36,7 +36,10 @@ def test_public_layout_reads_all_inputs_and_preserves_fitting_source(
         assert evaluate_generated("collatz-multiverse", table, width=width) == table
 
 
-@pytest.mark.parametrize("n", [4, 6, 8, 10, 12])
+@pytest.mark.parametrize(
+    "n",
+    [4, 6, 8, 10, pytest.param(12, marks=pytest.mark.medium)],  # 0.7s alone
+)
 def test_larger_narrow_address_weights_execute(n: int) -> None:
     rng = random.Random(7531 + n)
     table = "".join(str(rng.randrange(2)) for _ in range(1 << n))
