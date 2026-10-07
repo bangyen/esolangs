@@ -16,6 +16,7 @@ from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
     constant_span_test,
+    subtree_ids,
 )
 
 #: How each input is set: the exponent of its prime in the starting value.
@@ -25,8 +26,9 @@ _FRACTRAN_INPUT = TEMPLATE_CHAR * len(PAIR[0])
 
 #: The widest table also built as a plain tree.  Below four inputs the
 #: decoder's fractions and its ten reserved primes outweigh what blocks save,
-#: on every table; at four the two split, and from five the tree all but
-#: never wins while it grows as ``T log T``, so it is not built past here.
+#: on every table; at four the two split.  Since equal subtrees are shared,
+#: the tree also wins on random tables at five to seven inputs; it is not
+#: built past here only because its ledger cells are priced to four.
 _PLAIN_MAX = 4
 
 #: Preserve small-table text while changing the asymptotic execution path.
@@ -101,6 +103,8 @@ def _tree(truth_table: str, n: int, v: int, wide: int) -> list[_Leaf | _Block | 
     entries; which ones is arbitrary, only how many.
     """
     constant = constant_span_test(truth_table)
+    ids = subtree_ids(truth_table)
+    seen: dict[tuple[int, int], int] = {}
     nodes: list[_Leaf | _Block | _Node] = []
     budget = [wide]
 
@@ -110,6 +114,15 @@ def _tree(truth_table: str, n: int, v: int, wide: int) -> list[_Leaf | _Block | 
         return len(nodes) - 1
 
     def walk(depth: int, lo: int, hi: int) -> int:
+        # Equal subtables at one depth share one state: a DAG, not a tree.
+        key = (depth, ids[depth][lo >> (n - depth)])
+        if key in seen:
+            return seen[key]
+        at = _walk(depth, lo, hi)
+        seen[key] = at
+        return at
+
+    def _walk(depth: int, lo: int, hi: int) -> int:
         if constant(lo, hi):
             nodes.append(_Leaf(truth_table[lo], depth))
         elif depth == n - v:
@@ -261,8 +274,19 @@ def _threshold(table: str, n: int) -> str:
     nodes: list[_Leaf | _Block | _Node] = []
     depths: list[int] = []
     constant = constant_span_test(table)
+    ids = subtree_ids(table)
+    seen: dict[tuple[int, int], int] = {}
 
     def walk(depth: int, lo: int, hi: int) -> int:
+        # Equal subtables at one depth share one state: a DAG, not a tree.
+        key = (depth, ids[depth][lo >> (n - depth)])
+        if key in seen:
+            return seen[key]
+        at = _walk(depth, lo, hi)
+        seen[key] = at
+        return at
+
+    def _walk(depth: int, lo: int, hi: int) -> int:
         if constant(lo, hi):
             nodes.append(_Leaf(table[lo], depth))
         elif depth == n - v or (depth == n - v - 1 and budget[0] > 0):

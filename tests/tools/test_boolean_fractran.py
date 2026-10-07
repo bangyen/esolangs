@@ -50,7 +50,7 @@ def test_fractran_spends_nothing_a_run_never_divides() -> None:
     assert "^1*" not in parity
     assert parity.endswith(" 1/3^2 2/3")  # no leaf folds, so nothing to clear
     tables = [format(i, "08b") for i in range(256)]
-    assert sum(len(_packed(t, 3)) for t in tables) == 41_010
+    assert sum(len(_packed(t, 3)) for t in tables) == 40_336
 
 
 def _fractran_steps(template: str, n: int) -> int:
@@ -82,8 +82,8 @@ def test_fractran_ships_the_plain_tree_where_the_decoder_costs_more() -> None:
         assert cost <= old_cost, table
         size, steps = size + len(template), steps + cost
         old_size, old_steps = old_size + len(packed), old_steps + old_cost
-    assert (old_size, size) == (41_010, 27_842)
-    assert (old_steps, steps) == (34_314, 9_592)
+    assert (old_size, size) == (40_336, 22_376)
+    assert (old_steps, steps) == (35_403, 9_592)
 
 
 def test_fractran_runs_inside_the_block_it_reads() -> None:
