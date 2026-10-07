@@ -424,6 +424,12 @@ LANGUAGES: dict[str, Language] = {
         boolean=_boolean.sophie,
         id="sophie",
     ),
+    "SStack": Language(
+        "SStack",
+        "stack_based.sstack",
+        boolean=_boolean.sstack,
+        id="sstack",
+    ),
     "Streetcode": Language(
         "Streetcode",
         "grid_based.streetcode",

@@ -273,6 +273,10 @@
    "backlinks": 3,
    "route": "grandfathered"
   },
+  "SStack": {
+   "backlinks": 4,
+   "route": "first implementation"
+  },
   "Streetcode": {
    "backlinks": 2,
    "route": "first implementation"

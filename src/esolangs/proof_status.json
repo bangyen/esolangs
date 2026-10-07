@@ -747,6 +747,17 @@
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
+      "generator": "SStack",
+      "labels": [
+        "tree"
+      ],
+      "qualification": "each input byte is stacked and compared with stacked '1' and '0' by two loops whose bodies lift it off the matched value, so each runs at most once; a constant subtree reads its remaining inputs and prints",
+      "scaling": "linear: 28 characters an internal node, three a leaf",
+      "execution": "poly n: worst 7n + 3 commands, one path of n one-shot ifs",
+      "workspace": "poly n: worst 6n + 12 + bl(K) + bl(n) bits, K commands: n stacked input bytes",
+      "evidence": "docs/proofs/index.md#generator-ledger"
+    },
+    {
       "generator": "Streetcode",
       "labels": [
         "linear lookup"

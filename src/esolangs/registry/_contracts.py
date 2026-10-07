@@ -228,6 +228,9 @@ CONTRACTS: dict[str, BooleanContract] = {
     "stack_based.eval": BooleanContract(
         parameterized=True,
     ),
+    "stack_based.sstack": BooleanContract(
+        input_shape="char_stream",
+    ),
     "stack_based.false": BooleanContract(
         input_shape="char_stream",
     ),

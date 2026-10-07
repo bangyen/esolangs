@@ -158,6 +158,7 @@ SAMPLES: dict[str, tuple[Program, str]] = {
     "ArrowQueue": ("~*+", "0"),
     "BF-PDA": ("<@.", ""),
     "BFStack": (">+.", ""),
+    "SStack": ('"65/a":a:', ""),
     "Back": ("-*", ""),
     "Befunge": ("99*.@", ""),
     "B-tapemark": (">OK!", ""),

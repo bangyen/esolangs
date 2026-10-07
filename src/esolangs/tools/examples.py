@@ -357,6 +357,10 @@ def _register() -> None:
             b.bfstack,
             "stack_based.bfstack",
         ),
+        "sstack": _reader(
+            b.sstack,
+            "stack_based.sstack",
+        ),
         "bit~": _reader(
             b.bit_tilde,
             "tape_based.bit_tilde",

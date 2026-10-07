@@ -105,11 +105,6 @@ implementation (unique backlinks measured 2026-10-06); add with
   is `()=` then its bit. O(T), hand-traced, not executed. Gaps: an unset
   variable's value (the cat example implies empty), `=` at EOF, and the
   byte-to-bit input convention. The cat program is the only stated output.
-- **[SStack](https://esolangs.org/wiki/SStack)** (4 backlinks). Seven
-  unsigned stacks `a`-`g`, empty reads 0, byte I/O, and a loop
-  `[x\y/...]` while two tops are equal. Generator: nested one-shot ifs,
-  O(T). Gaps: EOF, decrementing an empty stack. The page's brainfuck
-  interpreter is untested, so it is not ground truth.
 - **[Transistor](https://esolangs.org/wiki/Transistor)** (2 backlinks).
   Tri-state values (true, false, floating), N/P transistors and pull
   resistors as the only primitives, plus `circuit`, `let` and `while`.

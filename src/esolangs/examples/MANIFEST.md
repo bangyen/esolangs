@@ -77,6 +77,7 @@ Row gives the logical bits; Input gives their language-specific encoding.
 | `slow-acv-mammalian.txt` | SLOW ACV MAMMALIAN | `0001` | `01` | 01 | '0' |
 | `smallfuck.txt` | Smallfuck | `0001` | `01` | embedded 01 | '0' |
 | `sophie.txt` | Sophie | `0001` | `01` | 01 | '0' |
+| `sstack.txt` | SStack | `0001` | `01` | 01 | '0' |
 | `streetcode.txt` | Streetcode | `0001` | `01` | 01 | '0' |
 | `subleq.txt` | Subleq | `0001` | `01` | 01 | '0' |
 | `suffolk.txt` | Suffolk | `0001` | `01` | 01 | '0' |

@@ -171,7 +171,7 @@ the 1792 level-0 rows.
 
 ## Curation
 
-The collection has 80 languages; its floor is 31. All ten classics have
+The collection has 81 languages; its floor is 31. All ten classics have
 generators. Removed: unused ordinary imperative entries with shared-shim
 generators; Nopstacle for incompatible embeds; ZTOALC L for a searched
 syntax-level lookup table. The 2D screen intersected
@@ -379,6 +379,10 @@ languages remain rejected from the same image-source screen.
   wiki cat's final empty pop pads to a trailing NUL.
 - LaserFuck inherits Brainfuck commands without defining EOF: exhausted input
   raises `EOFError`.
+- SStack's page has no example with a stated output; its brainfuck
+  interpreter is marked untested. Popping an empty stack reads 0 and leaves it
+  empty, `:x:` peeks and raises `HaltError` above 255, EOF raises, and
+  whitespace is discarded anywhere, inside a token too.
 - BrainIf rejects unknown commands, including those under a false guard.
   `inc`, `left` and `right` remain aliases for the canonical commands.
 - SLOW ACV MAMMALIAN rejects unknown words; commands are uppercase and

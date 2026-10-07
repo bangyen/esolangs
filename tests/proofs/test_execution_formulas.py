@@ -69,6 +69,7 @@ FORMULAS: dict[str, tuple[Callable[[int, str], float], bool, tuple[int, ...]]] =
     ),
     "Alight": (lambda n, _: 2 * n + 5, True, (3, 6)),
     "BF-PDA": (lambda n, _: 10 * n + 2, True, (3, 6)),
+    "SStack": (lambda n, _: 7 * n + 3, True, (3, 6)),
     "BrainIf": (lambda n, _: 4 * n + 50, True, (3, 6)),
     "Boolfuck": (lambda n, _: 2 * n * n + 27 * n + 8, True, (3, 6)),
     "Crement": (lambda n, _: 5 * n + 2, True, (3, 6)),

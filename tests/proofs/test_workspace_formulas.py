@@ -10,6 +10,7 @@ from collections.abc import Callable
 import pytest
 
 import esolangs
+from esolangs.interpreters.stack_based.sstack import _parse
 from tests.proofs._ledger import load as load_ledger
 from tests.proofs.test_execution_formulas import _tables, _worst
 
@@ -212,6 +213,8 @@ FORMULAS: dict[str, tuple[Callable[[int, str], int], bool, tuple[int, ...]]] = {
     ),
     "FALSE": (lambda n, _: (2 * n + 56) * (n + 4) + n + 1 + bl(n), False, (3, 5)),
     "Sophie": (lambda n, p: bl(len(p)) + bl(n) + 7, False, (3, 6)),
+    # Every path stacks all n input bytes (6 bits) beside '1' and '0'.
+    "SStack": (lambda n, p: 6 * n + 12 + bl(len(_parse(p))) + bl(n), True, (3, 6)),
     "RAM0": (
         lambda n, p: (
             n + bl(len(p.split())) + 2 * _floor1(n - 1) + sum(map(_floor1, range(n)))
