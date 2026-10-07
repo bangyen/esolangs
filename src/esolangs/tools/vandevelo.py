@@ -61,23 +61,31 @@ cosets of its ``l``-dimensional span, stored as one representative each
 level.  A chain built in one pass costs a geometric sum even where its
 sizes stay near ``T`` -- with ``k`` zeros, level ``l`` misses at most
 ``k * 2**l`` points, and a point per entry cost at least ``T * (n -
-log2(k) - 2)``.  Removal and refresh charge to cosets built: a coset
-leaves each node once, at the candidate count, and a refresh follows the
-loss of a quarter of the node.  The sampled fallback scores
+log2(k) - 2)``.  Removal charges to cosets built: a coset leaves each
+node once, at the candidate count.  Refresh does too in
+:meth:`_Peel.extend`, which waits for the loss of a quarter of the node,
+but not in :meth:`_Peel.certify`, which refreshes every level of its
+chain on every call.  The sampled fallback scores
 :data:`_SAMPLES` uniform pair differences, as many candidates more.  It
 is a heuristic; :func:`_assure` carries the bound, and on measured tables
 it never has to compute.  The sparse tail costs a constant per point: its
 order is threaded once in O(T), and a cube's probes, window and growth are
 bounded by the candidate count.
 
-Linear time is not proved; three terms escape the charge.  A child rebuilt
-after it empties scans its parent's ``q`` cosets, and a rebuild need follow
-only one parent coset's removal, so these scans are bounded by ``q**2`` a
-node.  The children built under one node do total at most its cosets, so
-cosets built, with the scoring and removal they pay for, cost at most the
-level above a level, ``O(T * n)`` a chain; halving would need both halves
-of each child coset to leave together, which a cube harvested across the
-chain's span does not do.
+Linear time is not proved, and cannot be before linear output: writing
+the program is part of the build.  Four build terms escape the charge
+even counted in word operations.  A child rebuilt after it empties scans
+its parent's ``q`` cosets, and a rebuild need follow only one parent
+coset's removal, so these scans are bounded by ``q**2`` a node; the same
+holds for :meth:`_Peel.certify`, which must rebuild for the clause bound.
+The children built under one node do total at most its cosets, so cosets
+built, with the scoring and removal they pay for, cost at most the level
+above a level, ``O(T * n)`` a chain; halving would need both halves of
+each child coset to leave together, which a cube harvested across the
+chain's span does not do.  Rebuilding in :meth:`_Peel.extend` only after
+a node loses three quarters would halve them, but costs 2.5% over a
+433-table corpus and leaves :meth:`_Peel.certify`'s rebuilds, and its
+refreshes, which rescore a candidate per pairless one at ``q`` each.
 :func:`_nearest`'s sparse fallback lists points.  The dual-basis core
 below costs ``|core|**3 / 3`` a clause, ``O(T * n)`` proved.  Measured,
 element visits per entry are flat at n=10..14 -- three or eight zeros

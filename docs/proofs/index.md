@@ -525,15 +525,25 @@ byte-identical. Element visits per entry at n=10..14: three zeros
 Best-of-three time, three zeros, n=11..15: 290--332 us a row, against
 1,237--1,696 at n=11..14 before; dense 76--108.
 
-Three terms escape the charge. A child rebuilt after it empties scans
-its parent's `q` cosets, and a rebuild need follow only one parent coset's
-removal, so these scans are bounded only by `q**2` a node. The children
-built under one node total at most its cosets, so cosets built cost at
-most the level above a level, `O(T*n)` a chain. Halving needs both halves
-of each child coset to leave together, and a cube harvested across the
-chain's span removes one. `_nearest`'s sparse fallback lists points;
-listing representatives costs cosets but moves sizes up to 4% a table.
-The third, the core build, is below.
+Generation time cannot be linear before output size is. It includes
+writing the result, and the result is only `O(T log n)` characters, the
+identifier gap above. Even counted in word operations, four build terms
+escape the charge. A child rebuilt after it empties scans its parent's
+`q` cosets, and a rebuild need follow only one parent coset's removal,
+so these scans are bounded only by `q**2` a node. `certify` rebuilds the
+same way, and the clause bound needs it to. The children built under one
+node total at most its cosets, so cosets built cost at most the level
+above a level, `O(T*n)` a chain. Halving needs both halves of each child
+coset to leave together, and a cube harvested across the chain's span
+removes one. Measured, the levels do halve: three zeros at n=14 build
+12.96, 6.47, 3.23 and 1.61 `T` cosets at levels one to four. Rebuilding
+in `extend` only after a node loses three quarters would make the bound
+geometric. Over a 433-table corpus through n=13 that costs 2.5% of
+emitted size, and 4--6% at n=11..13. It also leaves `certify`, which
+refreshes every level on every call and rescores each pairless
+candidate at `q`. `_nearest`'s sparse fallback lists points. Listing
+representatives costs cosets but moves sizes from -9% to +14% a table,
++0.9% in total. The fourth term, the core build, is below.
 
 The dual-basis completion's other terms charge to the output. Column
 extraction costs `n*dim` a clause and the echelon reduction at most `n` a
