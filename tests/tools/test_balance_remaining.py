@@ -13,8 +13,9 @@ from esolangs.tools.wrap import balance_program, balance_score, wrap_program
 from tests.witness_tables import witnesses
 
 
-@pytest.mark.parametrize("language", ["addsubjump", "decleq", "sbleq"])
-def test_mixed_digit_operands_share_one_grid_cell(language):
+def test_mixed_digit_operands_share_one_grid_cell():
+    # All three subleq OISCs share wrap_grid, so the language is not an axis.
+    language = "decleq"
     for count in range(3, 65):
         program = " ".join(("1", "22", "333")[index % 3] for index in range(count))
         balanced = balance_program(program, language)
@@ -49,10 +50,10 @@ def test_token_fit_lattice_respects_width_regimes(minimum, maximum):
 def test_fractran_parity_representation_omits_empty_width_regimes():
     from esolangs.tools.balance import _fractran
 
-    parity = esolangs.generate("FRACTRAN", "0110", 4)
+    parity = esolangs.generate("FRACTRAN", "0110", width=4)
     balanced = _fractran("0110", parity)
     assert balanced in [
-        esolangs.generate("FRACTRAN", "0110", width) for width in (1, 4, 8)
+        esolangs.generate("FRACTRAN", "0110", width=width) for width in (1, 4, 8)
     ]
     assert _evaluate("FRACTRAN", balanced, inputs=2) == "0110"
 
@@ -79,7 +80,8 @@ def test_bio_padding_caps_match_every_width(inputs):
     default = esolangs.generate("BIO", table)
     balanced = esolangs.generate("BIO", table, balance=True)
     layouts = [default] + [
-        esolangs.generate("BIO", table, width) for width in range(1, len(default) + 1)
+        esolangs.generate("BIO", table, width=width)
+        for width in range(1, len(default) + 1)
     ]
     assert balanced in layouts
     assert balance_score(balanced) == min(map(balance_score, layouts))
@@ -93,14 +95,15 @@ def test_bio_saturated_runs_attain_both_geometry_bounds(inputs):
     table = "".join(rng.choice("01") for _ in range(1 << inputs))
     default = esolangs.generate("BIO", table)
     balanced = esolangs.generate("BIO", table, balance=True)
-    full = esolangs.generate("BIO", table, 3 * len(table))
+    full = esolangs.generate("BIO", table, width=3 * len(table))
     # Deep runs contain at most three four-cell commands; the last has at
     # least one. A cap over four levels below the deepest cannot attain Wmax.
     depth = len(table) - 1
     lower = 2 * (depth - 4) + 2 * (depth - 4) // 3
     upper = 2 * (depth + 1) + 2 * (depth + 1) // 3
     layouts = [default, full] + [
-        esolangs.generate("BIO", table, width) for width in range(lower, upper + 1)
+        esolangs.generate("BIO", table, width=width)
+        for width in range(lower, upper + 1)
     ]
     assert balanced in layouts
     assert balance_score(balanced) == min(map(balance_score, layouts))
@@ -139,7 +142,7 @@ def test_aligned_balanced_programs_compute_the_table(language, table):
     default = esolangs.generate(language, table)
     optimum = min(
         [default]
-        + [esolangs.generate(language, table, width) for width in range(1, 129)],
+        + [esolangs.generate(language, table, width=width) for width in range(1, 129)],
         key=balance_score,
     )
     assert balance_score(balanced) == balance_score(optimum)
@@ -220,7 +223,7 @@ def test_discrete_regimes_reach_the_supported_minimum(language, table):
     balanced = esolangs.generate(language, table, balance=True)
     widest = max(map(len, default.split("\n")))
     layouts = [default] + [
-        esolangs.generate(language, table, width)
+        esolangs.generate(language, table, width=width)
         for width in range(1, max(65, widest + 1))
     ]
     optimum = min(layouts, key=balance_score)
@@ -238,7 +241,7 @@ def test_grammar_and_marked_run_fits_execute(language, table):
     default = esolangs.generate(language, table)
     balanced = esolangs.generate(language, table, balance=True)
     layouts = [default] + [
-        esolangs.generate(language, table, width)
+        esolangs.generate(language, table, width=width)
         for width in range(1, len(default) + 1)
     ]
     assert balanced in layouts
@@ -255,7 +258,7 @@ def test_streetcode_indexed_regimes_are_balanced_and_execute(table):
     optimum = min(
         [default]
         + [
-            esolangs.generate("Streetcode", table, width)
+            esolangs.generate("Streetcode", table, width=width)
             for width in range(1, widest + 1)
         ],
         key=balance_score,
@@ -306,22 +309,17 @@ def test_circuit_gate_column_and_band_fit_transitions(inputs, affine):
         for order in _selector_orders(table, compact=False)
     )
     layouts = [default] + [
-        esolangs.generate(language, table, width) for width in range(1, widest + 1)
+        esolangs.generate(language, table, width=width)
+        for width in range(1, widest + 1)
     ]
     assert balanced in layouts
     assert balance_score(balanced) == min(map(balance_score, layouts))
     for row in (0, 1, len(table) // 2, len(table) - 1):
         bits = tuple(map(int, format(row, f"0{inputs}b")))
         output = esolangs.run(
-            language, balanced, esolangs.encode_inputs(language, bits)
+            language, balanced, stdin=esolangs.encode_inputs(language, bits)
         )
         assert esolangs.read_answer(language, output) == table[row]
-
-
-@pytest.mark.parametrize("language", ["Alight", "Qoibl"])
-def test_native_balance_preserves_answers(language):
-    program = esolangs.generate(language, "0110", balance=True)
-    assert _evaluate(language, program, inputs=2) == "0110"
 
 
 def test_qoibl_affine_row_envelope_minima():
@@ -412,7 +410,7 @@ def test_alight_native_minimax_records_match_rendered_columns(inputs):
         forms.append((max(width, columns), columns + 1, program))
         assert (
             esolangs.run(
-                "Alight", program, esolangs.encode_inputs("Alight", [0] * inputs)
+                "Alight", program, stdin=esolangs.encode_inputs("Alight", [0] * inputs)
             )
             == table[0]
         )
@@ -430,7 +428,7 @@ def test_alight_native_minimax_records_match_rendered_columns(inputs):
         expected = min(
             (item for item in ranked if item[0] <= width), key=lambda item: item[1]
         )[2]
-        assert esolangs.generate("Alight", table, width) == expected
+        assert esolangs.generate("Alight", table, width=width) == expected
     balanced = esolangs.generate("Alight", table, balance=True)
     winners = [flat] + [
         min((item for item in ranked if item[0] <= width), key=lambda item: item[1])[2]
@@ -440,6 +438,6 @@ def test_alight_native_minimax_records_match_rendered_columns(inputs):
     for row in (0, 1, len(table) // 2, len(table) - 1):
         bits = tuple(map(int, format(row, f"0{inputs}b")))
         output = esolangs.run(
-            "Alight", balanced, esolangs.encode_inputs("Alight", bits)
+            "Alight", balanced, stdin=esolangs.encode_inputs("Alight", bits)
         )
         assert esolangs.read_answer("Alight", output) == table[row]

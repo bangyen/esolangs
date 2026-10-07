@@ -1,9 +1,29 @@
-"""Public API and VM integration for the three fame-route admissions."""
+"""Admission routes, and API and VM integration for the interpreter-only three."""
+
+import json
+from pathlib import Path
 
 import pytest
 
 import esolangs
+from esolangs.registry import LANGUAGES
 from esolangs.vm import make_vm
+
+_CENSUS = json.loads(
+    (Path(__file__).parent / "fixtures/curation.json").read_text(encoding="utf-8")
+)["languages"]
+
+
+def test_every_language_was_admitted_by_a_recorded_route() -> None:
+    """Fame is 60 backlinks; below that, a first implementation or one of six."""
+    assert set(_CENSUS) == set(LANGUAGES)
+    for name, row in _CENSUS.items():
+        assert (row["route"] == "fame") == (row["backlinks"] >= 60), name
+        assert row["route"] in {"fame", "first implementation", "grandfathered"}
+    grandfathered = {
+        name for name, row in _CENSUS.items() if row["route"] == "grandfathered"
+    }
+    assert grandfathered == {"123", "BF-PDA", "BIO", "Jaune", "NoComment", "Sophie"}
 
 
 @pytest.mark.parametrize(
@@ -15,8 +35,8 @@ from esolangs.vm import make_vm
     ],
 )
 def test_api_and_vm(language: str, code: str, stdin: str, output: str) -> None:
-    assert esolangs.run(language, code, stdin) == output
-    vm = make_vm(language, code, stdin)
+    assert esolangs.run(language, code, stdin=stdin) == output
+    vm = make_vm(language, code, stdin=stdin)
     while not vm.halted:
         hash(vm.snapshot())
         vm.step()

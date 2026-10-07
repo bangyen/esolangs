@@ -18,9 +18,9 @@ from esolangs.tools.cvnc import (
 )
 from esolangs.tools.helpers import best_input_order
 from tests.tools.boolean_runners import (
-    five_input_sample,
     run_cvnc,
 )
+from tests.tools.sample_tables import five_input_sample
 from tests.witness_tables import witnesses
 
 

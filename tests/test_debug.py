@@ -184,11 +184,11 @@ class TestARunFinishesTheDump:
     def test_a_breakpoint_can_fire_on_the_dump_step_itself(self) -> None:
         """``run`` reports the breakpoint, not ``"halted"``, when it does."""
         program, stdin = SAMPLES["Minsky Swap"]
-        plain = debugger_api.make_debugger("Minsky Swap", program, stdin)
+        plain = debugger_api.make_debugger("Minsky Swap", program, stdin=stdin)
         assert plain.run(timeout=10) == "halted"
         assert plain.output
 
-        stopped = debugger_api.make_debugger("Minsky Swap", program, stdin)
+        stopped = debugger_api.make_debugger("Minsky Swap", program, stdin=stdin)
         stopped.break_on_output(plain.output)
         assert stopped.run(timeout=10) == "breakpoint"
         assert stopped.output == plain.output
@@ -212,8 +212,8 @@ class TestARunFinishesTheDump:
             if esolangs.describe(name)["parameterized"]:
                 program, stdin = esolangs.instantiate(name, program, [0, 0]), ""
             else:
-                stdin = esolangs.encode_inputs(name, [0, 0], "0110")
-            debugger = debugger_api.make_debugger(name, program, stdin)
+                stdin = esolangs.encode_inputs(name, [0, 0], truth_table="0110")
+            debugger = debugger_api.make_debugger(name, program, stdin=stdin)
             assert debugger.run(timeout=30) == "halted"
             if not debugger.output:
                 empty.append(name)
@@ -226,14 +226,16 @@ class TestARunFinishesTheDump:
             if esolangs.describe(name)["parameterized"]:
                 program, stdin = esolangs.instantiate(name, program, [0, 0]), ""
             else:
-                stdin = esolangs.encode_inputs(name, [0, 0], "0110")
-            debugger = debugger_api.make_debugger(name, program, stdin)
+                stdin = esolangs.encode_inputs(name, [0, 0], truth_table="0110")
+            debugger = debugger_api.make_debugger(name, program, stdin=stdin)
             debugger.run(timeout=30)
-            assert debugger.output == esolangs.run(name, program, stdin, 30), name
+            assert debugger.output == esolangs.run(
+                name, program, stdin=stdin, timeout=30
+            ), name
 
     def test_an_ordinary_language_takes_no_extra_step(self) -> None:
         """The step is a no-op elsewhere, but it would land in every watch."""
-        debugger = debugger_api.make_debugger("brainfuck", "+++.", "")
+        debugger = debugger_api.make_debugger("brainfuck", "+++.", stdin="")
         history = debugger.watch_cell(0)
         debugger.run(timeout=10)
         assert len(history) == 4  # three increments and the print, no more
@@ -247,23 +249,27 @@ class TestTheDebuggerWarnsAboutStdinToo:
         program = esolangs.generate("Flowchart", "0110")
         with warnings.catch_warnings():
             warnings.simplefilter("error")
-            esolangs.run("Flowchart", program, "1\n", 10)
+            esolangs.run("Flowchart", program, stdin="1\n", timeout=10)
         with warnings.catch_warnings():
             warnings.simplefilter("error")
-            debugger_api.make_debugger("Flowchart", program, "1\n").run(timeout=10)
+            debugger_api.make_debugger("Flowchart", program, stdin="1\n").run(
+                timeout=10
+            )
 
     def test_a_correct_input_stays_silent(self) -> None:
         """A warning that fires on correct input is worth less than none."""
         program = esolangs.generate("Flowchart", "0110")
-        stdin = esolangs.encode_inputs("Flowchart", [1, 0], "0110")
+        stdin = esolangs.encode_inputs("Flowchart", [1, 0], truth_table="0110")
         with warnings.catch_warnings():
             warnings.simplefilter("error")
-            debugger_api.make_debugger("Flowchart", program, stdin).run(timeout=10)
+            debugger_api.make_debugger("Flowchart", program, stdin=stdin).run(
+                timeout=10
+            )
 
     def test_it_is_said_once(self) -> None:
         """``run`` on a halted machine returns at once; re-warning is noise."""
         program = esolangs.generate("Flowchart", "0110")
-        debugger = debugger_api.make_debugger("Flowchart", program, "1\n")
+        debugger = debugger_api.make_debugger("Flowchart", program, stdin="1\n")
         with warnings.catch_warnings():
             warnings.simplefilter("error")
             debugger.run(timeout=10)
@@ -280,7 +286,7 @@ class TestSelfHaltsIsAWarningNotAGuarantee:
         assert esolangs.describe("Suffolk")["self_halts"] is False
         program = esolangs.generate("Suffolk", "0110")
         vm = debugger_api.make_vm(
-            "Suffolk", program, esolangs.encode_inputs("Suffolk", [1, 0])
+            "Suffolk", program, stdin=esolangs.encode_inputs("Suffolk", [1, 0])
         )
         steps = 0
         while not vm.halted and steps < 100_000:
@@ -335,7 +341,7 @@ class TestABreakpointAtTheHaltIsReported:
         assert dbg.run(max_steps=300_000) == "breakpoint"
         assert dbg.output == ""
         assert dbg.run(max_steps=300_000) == "halted"
-        assert dbg.output == esolangs.run(name, program, stdin, timeout=30)
+        assert dbg.output == esolangs.run(name, program, stdin=stdin, timeout=30)
 
     @pytest.mark.parametrize("name", _dumpers())
     def test_the_dump_step_is_taken_once_not_once_per_run(self, name: str) -> None:

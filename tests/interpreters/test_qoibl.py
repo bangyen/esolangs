@@ -2,11 +2,8 @@
 
 import inspect
 import io
-import signal
 import sys
-from collections.abc import Callable
 from contextlib import redirect_stdout
-from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -14,29 +11,6 @@ import pytest
 import esolangs
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.register_based.qoibl import run, tokenize
-
-
-class _TestTimeoutError(Exception):
-    """Custom timeout exception for test protection."""
-
-
-def timeout_handler(_signum: int, _frame: Any) -> None:
-    """Signal handler for timeout protection."""
-    raise _TestTimeoutError("Test timed out")
-
-
-def run_with_timeout(func: Callable[..., Any], timeout_seconds: int = 2) -> Any:
-    """Run a function with timeout protection."""
-    old_handler = signal.signal(signal.SIGALRM, timeout_handler)
-    signal.alarm(timeout_seconds)
-    try:
-        result = func()
-    except _TestTimeoutError:
-        raise
-    finally:
-        signal.alarm(0)
-        signal.signal(signal.SIGALRM, old_handler)
-    return result
 
 
 class TestQoiblBasicOperations:
@@ -113,6 +87,22 @@ class TestQoiblConditionals:
             run(code, IO())
         assert f.getvalue() == chr(1)  # True
 
+    def test_inequality_condition(self) -> None:
+        """``yr yy yr`` is ``!=``: 1 for 7 vs 3, 0 for 3 vs 3."""
+        for big, expected in (("yyy", 1), ("yy", 0)):
+            code: list[str] = [
+                f"we y we {big} we",  # var[1]
+                "we ye we yy we",  # var[2] = 3
+                "tt qe y qe yr yy yr qe ye qe tt",
+            ]
+            with redirect_stdout(io.StringIO()) as f:
+                run(code, IO())
+            assert f.getvalue() == chr(expected), big
+
+    def test_a_trailing_fragment_after_a_statement_is_malformed(self) -> None:
+        with pytest.raises(ValueError, match="malformed Qoibl expression"):
+            run(["tt y tt w"], IO())
+
     def test_the_orderings_are_strict(self) -> None:
         """``ye`` and ``ey`` are false when the two operands are equal."""
         for op in ("ye", "ey"):
@@ -160,16 +150,12 @@ class TestQoiblExamples:
         ]
 
         # Test 2 + 3 = 5
-        def run_adder() -> str:
-            with (
-                patch("builtins.input", side_effect=["23"]),
-                redirect_stdout(io.StringIO()) as f,
-            ):
-                run(code, IO())
-            return f.getvalue()
-
-        result = run_with_timeout(run_adder, timeout_seconds=2)
-        assert result == "5"  # Should print 5
+        with (
+            patch("builtins.input", side_effect=["23"]),
+            redirect_stdout(io.StringIO()) as f,
+        ):
+            run(code, IO())
+        assert f.getvalue() == "5"  # Should print 5
 
     def test_while_loop(self) -> None:
         code: list[str] = [
@@ -417,12 +403,14 @@ class TestTheTokenizerCarriesItsOwnStack:
     def test_it_runs_under_a_limit_far_below_the_old_need(self) -> None:
         """The direct measure of shallowness, and it needed 1375 before."""
         program = esolangs.generate("Qoibl", self._majority(6))
-        stdin = esolangs.encode_inputs("Qoibl", [0] * 6, self._majority(6))
+        stdin = esolangs.encode_inputs("Qoibl", [0] * 6, truth_table=self._majority(6))
         live = len(inspect.stack())
         previous = sys.getrecursionlimit()
         try:
             sys.setrecursionlimit(live + 200)
-            assert esolangs.run("Qoibl", program, stdin, timeout=120).endswith("0")
+            assert esolangs.run("Qoibl", program, stdin=stdin, timeout=120).endswith(
+                "0"
+            )
         finally:
             sys.setrecursionlimit(previous)
 

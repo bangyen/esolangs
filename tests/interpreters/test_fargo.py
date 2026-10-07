@@ -195,6 +195,12 @@ class TestWikiExamples:
         with pytest.raises(ValueError, match="no outer call"):
             run_program("myFn\n")
 
+    @pytest.mark.parametrize("line", ["f0 101", "f x x", "f :x :x"])
+    def test_a_body_with_no_call_is_malformed(self, line: str) -> None:
+        """A literal or value argument is no call, like the wiki's ``myFn``."""
+        with pytest.raises(ValueError, match="no outer call"):
+            run_program(line + "\n$\n")
+
     def test_a_body_still_owing_arguments_is_malformed(self) -> None:
         # ``&`` wants two and the body supplies one.
         with pytest.raises(ValueError, match="no outer call"):
@@ -240,6 +246,12 @@ class TestErrors:
     def test_array_index_out_of_range(self) -> None:
         with pytest.raises(HaltError, match="out of range"):
             run_program("% 0 [?] [] 1 1\n")
+
+    def test_shifting_an_array_or_concatenating_numbers_halts(self) -> None:
+        with pytest.raises(HaltError, match="expected a number"):
+            run_program("% 0 < [] 1\n")
+        with pytest.raises(HaltError, match="expected an array"):
+            run_program("% 0 +[] 1 1\n")
 
 
 class TestInput:

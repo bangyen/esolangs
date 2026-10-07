@@ -117,7 +117,7 @@ def load_program(language: str, document: str) -> Program:
         if value["kind"] == "png":
             source = Raster.from_png(
                 base64.b64decode(value["source"], validate=True)
-            ).tagged(name, settings)
+            ).tagged(name, settings=settings)
         elif value["kind"] == "text":
             source = _Tagged(value["source"], name, settings)
         elif value["kind"] == "template":

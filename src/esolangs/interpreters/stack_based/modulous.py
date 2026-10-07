@@ -12,8 +12,10 @@ used to be the exception, creating whatever name it was given, which made
 ``[PSH VAR VAR1]`` (the keyword spelling; the syntax is ``[PSH VAR1]``)
 store into a phantom ``VAR`` and silently leave ``VAR1`` alone.
 
-Operations that act on an empty stack, an undefined variable, or a missing
-operand are invalid: they halt the program with
+A ``JMP`` condition reads an empty stack's top as 0, and a backward jump
+past the start wraps to the end; the wiki says neither.  Other operations
+that act on an empty stack, an undefined variable, or a missing operand
+are invalid: they halt the program with
 :class:`~esolangs.exceptions.HaltError`, and a malformed token (a missing
 required argument) is rejected with :class:`ValueError`.
 
@@ -26,6 +28,9 @@ plausible slip for ``[PRT INT]`` -- ran as nothing at all, and ``[PSH INT
 0 having printed nothing.  A program that does nothing and reports success
 is the worst answer to a typo, so both raise now.  A reader who wants a
 comment has ``[]``, which the empty-token rule already skips.
+
+A ``STR`` push takes its string in straight quotes or in the typographic
+pair “ ”, which is how the wiki's own Hello World writes it.
 
 Exhausted input raises :class:`EOFError` (the repo-wide convention).
 
@@ -44,8 +49,12 @@ from esolangs.interpreters.io import IO
 from esolangs.interpreters.randomness import Randomness, draw
 from esolangs.interpreters.source_hints import keyword_hint, syntax_error, with_hint
 
+#: A quoted string: straight quotes, or the typographic pair the wiki's own
+#: Hello World is written with (``[PSH STR “Hello, World!”]``).
+_QUOTED = r'"([^"]*)"|“([^”]*)”'
+
 #: A command is a bracketed group, which may hold one quoted string.
-_TOKEN = re.compile(r'\[([^\[\]\"]*("[^"]*")?\s*)]')
+_TOKEN = re.compile(rf'\[([^\[\]"“]*(?:{_QUOTED})?\s*)]')
 
 
 def _reject_stray_text(code: str) -> None:
@@ -426,15 +435,15 @@ def _psh(core: _Core, mod: str, arg: list[str], _value: str | int | None) -> _Co
     if kind == "INT":
         return ((*stk, int(_operand(arg, 2))), var, ind)
     if kind == "STR":
-        parts = mod.split('"')
-        if len(parts) < 3:
-            # ``[PSH STR hello]`` has no quoted section, so ``split`` had no
-            # second element and the raw IndexError escaped ``run``.
+        quoted = re.search(_QUOTED, mod)
+        if quoted is None:
+            # ``[PSH STR hello]`` has no quoted section; this used to escape
+            # ``run`` as a raw IndexError.
             raise syntax_error(
                 f'missing quoted string in {" ".join(arg)}; expected [PSH STR "text"]',
                 ('enclose the string in double quotes, for example [PSH STR "text"]'),
             )
-        m = parts[1]
+        m = quoted.group(1) if quoted.group(1) is not None else quoted.group(2)
         return ((*stk, *[ord(c) for c in m][::-1]), var, ind)
     if kind.startswith("VAR"):
         # The store names its target the same way every other variable op

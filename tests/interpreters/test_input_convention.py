@@ -11,7 +11,7 @@ from esolangs.interpreters.io import IO, ScriptedIO
 
 @pytest.mark.parametrize(
     ("language", "program"),
-    [("brainfuck", ",."), ("3D Brainfuck", "su+dn,."), ("BFStack", ",.")],
+    [("brainfuck", ",."), ("BFStack", ",.")],
 )
 def test_character_input_preserves_newline(language, program):
     assert esolangs.run(language, program, stdin="\n") == "\n"
@@ -25,7 +25,7 @@ def test_newline_is_distinct_from_eof():
 
 
 def test_stream_echo_preserves_characters_on_the_same_line():
-    assert esolangs.run("brainfuck", ",.,.,.", "ab\n") == "ab\n"
+    assert esolangs.run("brainfuck", ",.,.,.", stdin="ab\n") == "ab\n"
 
 
 def test_interactive_empty_line_is_a_newline_character():
@@ -36,7 +36,10 @@ def test_interactive_empty_line_is_a_newline_character():
 @pytest.mark.parametrize("language", ["Befunge", "Line", "Piet"])
 def test_numeric_readers_accept_tokens_on_the_same_line(language):
     program = esolangs.generate(language, "0110")
-    assert esolangs.read_answer(language, esolangs.run(language, program, "0 1")) == "1"
+    assert (
+        esolangs.read_answer(language, esolangs.run(language, program, stdin="0 1"))
+        == "1"
+    )
 
 
 #: What a language does when a *reading* program is handed no input at
@@ -50,7 +53,6 @@ def test_numeric_readers_accept_tokens_on_the_same_line(language):
 #: statement about them, not a list of exceptions to ignore.
 _EOF_IS_A_HALT: dict[str, str] = {
     "boolfuck": "EOF supplies zero bits",
-    "befunge-98": "an exhausted '&' or '~' reflects the IP, as Funge-98 specifies",
     "piet": "an exhausted input command is ignored, as the spec requires",
     # Reads until the input runs out and treats that as its stop, which is
     # how its generated programs terminate at all.
@@ -73,6 +75,10 @@ _EOF_IS_A_HALT: dict[str, str] = {
     "thisthat": "an exhausted '◇' sends the spec's empty transfer",
     # Wiki: the empty container sets IN "with EOF returning 0".
     "container": "an exhausted read sets IN to the spec's 0",
+    # The wiki cat's only clean exit is a ``readto`` that gets no line.
+    "inject": "an exhausted readto empties the block",
+    # Likewise the wiki Cat ``[;@$0{&}{,}]`` halts only on a 0 at EOF.
+    "sophie": "an exhausted ';' or ':' reads 0",
 }
 
 
@@ -118,7 +124,7 @@ def test_running_out_of_input_reaches_the_caller(name: str) -> None:
         from esolangs import run
 
         with pytest.raises(EOFError):
-            run(name, program, "")
+            run(name, program, stdin="")
         return
     module = importlib.import_module("esolangs.interpreters." + example.interpreter)
     argument = program.splitlines() if example.split else program

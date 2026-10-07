@@ -24,11 +24,23 @@ from tests.interpreters.streetcode_support import (
 class TestStreetcodeSingleCommands:
     """Each instruction in isolation."""
 
-    def test_halt_immediately(self) -> None:
-        assert run_street("C;") == ""
-
-    def test_increment_then_output(self) -> None:
-        assert run_street("C^O;") == chr(1)
+    @pytest.mark.parametrize(
+        ("instructions", "expected"),
+        [
+            pytest.param("C;", "", id="halt_immediately"),
+            pytest.param("C^O;", chr(1), id="increment_then_output"),
+            # ~ and ^ both touch the same CPth cell, unbounded and signed.
+            pytest.param("C~^O;", chr(0), id="decrement_then_increment_then_output"),
+            pytest.param("C O;", chr(0), id="space_is_a_nop"),
+            # Box-drawing and other undefined characters act like space.
+            pytest.param("C#O;", chr(0), id="undefined_character_is_a_nop"),
+            # Only the proof sentence names ``<``/``>``; the table moves CP by ``=_``.
+            pytest.param("C>^<O;", chr(1), id="angle_brackets_do_not_move_cp"),
+            pytest.param("C=^O_O;", chr(1) + chr(0), id="cp_increment_and_decrement"),
+        ],
+    )
+    def test_output(self, instructions: str, expected: str) -> None:
+        assert run_street(instructions) == expected
 
     def test_repeated_runs_reuse_validated_geometry(
         self, monkeypatch: pytest.MonkeyPatch
@@ -54,18 +66,6 @@ class TestStreetcodeSingleCommands:
         """A cell of -1 is a valid signed int, but not a valid code point."""
         with pytest.raises(HaltError):
             run(["C~O;"], io=IO())
-
-    def test_decrement_then_increment_then_output(self) -> None:
-        """~ and ^ both touch the same CPth cell, unbounded and signed."""
-        assert run_street("C~^O;") == chr(0)
-
-    def test_space_is_a_nop(self) -> None:
-        """A space between C and O is skipped over; the cell is still 0."""
-        assert run_street("C O;") == chr(0)
-
-    def test_undefined_character_is_a_nop(self) -> None:
-        """Box-drawing and other undefined characters act like space."""
-        assert run_street("C#O;") == chr(0)
 
     def test_u_without_an_opposite_lane_is_invalid(self) -> None:
         """A one-wide corridor is narrower than the spec's two-character
@@ -131,10 +131,6 @@ class TestStreetcodeSingleCommands:
         assert headings == ["N", "N", "N"]
         assert machine.col == 2
 
-    def test_cp_increment_and_decrement(self) -> None:
-        """Move CP right onto a fresh cell, increment it, then move back."""
-        assert run_street("C=^O_O;") == chr(1) + chr(0)
-
 
 class TestStreetcodeHalt:
     def test_semicolon_halts_immediately(self) -> None:
@@ -163,11 +159,12 @@ class TestStreetcodeIO:
 
 
 class TestStreetcodeCPBounds:
-    def test_cp_decrement_below_zero_is_clamped(self) -> None:
-        """``_`` at CP 0 moves nothing rather than raising."""
-        assert run_street("C_^O;") == chr(1)
-        # repeated clamping stays on cell 0 rather than drifting
-        assert run_street("C___^O;") == chr(1)
+    def test_cp_decrement_below_zero_raises(self) -> None:
+        """``_`` at CP 0 aborts: the CP is unsigned, no cell lies left of 0."""
+        with pytest.raises(HaltError, match="unsigned CP below zero"):
+            run_street("C_^O;")
+        with pytest.raises(HaltError, match="unsigned CP below zero"):
+            run_street("C=__^O;")
 
     def test_cp_can_move_right_and_back_to_zero(self) -> None:
         assert run_street("C=_^O;") == chr(1)
@@ -233,6 +230,13 @@ class TestStreetcodeWikiExamples:
         scripted = ScriptedIO("A\nB\nC")
         with pytest.raises(EOFError):
             run(code, io=scripted)
+        assert scripted.getvalue() == "A\nB\nC"
+
+    def test_infinite_cat_runs_with_its_us_replaced_by_spaces(self) -> None:
+        """The wiki: "The Us can be replaced with spaces" -- dead ends turn."""
+        scripted = ScriptedIO("A\nB\nC")
+        with pytest.raises(EOFError):
+            run([" OI ", "CIO "], io=scripted)
         assert scripted.getvalue() == "A\nB\nC"
 
     def test_a_cursorless_cat_is_not_a_cycle(self) -> None:

@@ -31,6 +31,8 @@ does not say where the count starts.  A variable read before it is stored
 raises rather than inventing a value, since the spec gives no initial one.
 And a character that is no command is ignored, the way whitespace is --
 the spec says only that whitespace is ignored and is silent about the rest.
+Values left on the stack at the end are not an error, as in the 68000
+compiler (Wouter's portable interpreter reports them).
 A lambda is a span into the source rather than a copied string, which is
 why ``ip`` stays a real offset even inside one.
 """

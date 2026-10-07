@@ -1,0 +1,13 @@
+
+Package : IO {
+  Char input;
+  Integer main {
+    charGet(input);
+    If input ^ 48 Then {
+      While 1 Do {
+        charPut(49);
+      }
+    }
+    charPut(48);
+  }
+} truthMachine;

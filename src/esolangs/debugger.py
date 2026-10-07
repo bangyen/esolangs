@@ -24,7 +24,6 @@ __all__ = [
     "VM",
     "Debugger",
     "StopReason",
-    "complete_vm",
     "make_debugger",
     "make_vm",
 ]
@@ -275,14 +274,14 @@ class Debugger:
         self._record()
 
     def run(
-        self, max_steps: int | None = None, timeout: float | None = None
+        self, *, max_steps: int | None = None, timeout: float | None = None
     ) -> StopReason:
         """Execute until the machine halts, a breakpoint fires, or a bound ends it.
 
         Returns why: ``"halted"``, ``"breakpoint"``, ``"max_steps"`` or
         ``"timeout"``.  A breakpoint that stopped the last run is suppressed
         until its condition goes false.  It is checked again after the halt, and
-        on the six post-halt-dump languages before *and* after the dump, so
+        on the post-halt-dump languages before *and* after the dump, so
         ``"breakpoint"`` can come back with ``halted`` true and ``output`` empty
         -- another ``step()`` takes the dump, which is outside ``max_steps``.
         Bounds return rather than raise (``None`` unbounded); a fault still
@@ -302,13 +301,13 @@ class Debugger:
             # step makes true was never seen (``break_on_output`` on a
             # program ending in ``.``).  Checked both before and after the
             # dump step below, because the dump changes ``output``:
-            # after-only lost ``vm.halted and vm.output == ""`` on the six
+            # after-only lost ``vm.halted and vm.output == ""`` on the
             # dumping languages, before-only puts the dumped text out of reach.
             if self._at_breakpoint():
                 self._suppressed = set(self._hits)
                 return "breakpoint"
             if self.dumps_on_the_post_halt_step and not self._dumped:
-                # Cross the halt for the six dumping languages, or ``run``
+                # Cross the halt for the dumping languages, or ``run``
                 # ends with the answer one un-taken step away (the CLI
                 # printed ``output: ''`` on a correct program).  Once per
                 # debugger, not per run: it lands in every watch history,
@@ -351,8 +350,8 @@ class Debugger:
 def make_debugger(
     language: str,
     program: ProgramSource,
-    stdin: InputSource = "",
     *,
+    stdin: InputSource = "",
     scale: int | None = None,
     settings: DialectSettings | None = None,
 ) -> Debugger:
@@ -365,4 +364,6 @@ def make_debugger(
     raises :class:`~esolangs.exceptions.InputExhaustedError` here rather
     than at :meth:`Debugger.run`.
     """
-    return Debugger(make_vm(language, program, stdin, scale=scale, settings=settings))
+    return Debugger(
+        make_vm(language, program, stdin=stdin, scale=scale, settings=settings)
+    )

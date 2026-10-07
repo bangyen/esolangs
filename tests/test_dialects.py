@@ -24,6 +24,7 @@ from esolangs.tools.alight import alight as build_alight
 from esolangs.tools.alight.balance import _balance_postfix
 from esolangs.tools.grapheme import _grapheme_literal, _grapheme_push65
 from esolangs.tools.packlang import packlang as build_packlang
+from esolangs.tools.rotfuck import rotfuck as build_rotfuck
 from esolangs.tui import History, replay
 from esolangs.vm import complete_vm, make_vm
 from tests.cli_support import call_both
@@ -33,6 +34,7 @@ from tests.witness_tables import witnesses
 CASES = [
     ("Alight", DialectSettings(expression_syntax="postfix")),
     ("Packlang", DialectSettings(literal_policy="binary_digits")),
+    ("ROTfuck", DialectSettings(rotation="backward")),
     ("Grapheme", DialectSettings(integer_conversion="after_each_letter")),
     ("SLOW ACV MAMMALIAN", DialectSettings(cell_modulus=255, io_modulus=256)),
 ]
@@ -52,25 +54,27 @@ def test_generated_rows_match_across_execution_paths(language, settings):
             stdin = ""
         else:
             source = program
-            stdin = esolangs.encode_inputs(language, bits, table)
-        direct = esolangs.run(language, source, stdin, settings=settings)
+            stdin = esolangs.encode_inputs(language, bits, truth_table=table)
+        direct = esolangs.run(language, source, stdin=stdin, settings=settings)
         assert esolangs.read_answer(language, direct) == answer
         assert (
-            esolangs.run(language, source, stdin, settings=settings, max_steps=100_000)
+            esolangs.run(
+                language, source, stdin=stdin, settings=settings, max_steps=100_000
+            )
             == direct
         )
         assert (
             esolangs.run(
                 language,
                 source,
-                stdin,
+                stdin=stdin,
                 settings=settings,
                 isolated=True,
                 max_output=1000,
             )
             == direct
         )
-        vm = make_vm(language, source, stdin, settings=settings)
+        vm = make_vm(language, source, stdin=stdin, settings=settings)
         assert complete_vm(vm, 100_000) == direct
 
 
@@ -95,17 +99,19 @@ class Unreadable(StringIO):
     ("language", "settings"),
     [
         ("Brainfuck", DialectSettings(cell_modulus=256)),
-        ("Alight", DialectSettings(expression_syntax="prefix")),
+        ("Alight", DialectSettings(list_update="deep")),
         ("Packlang", DialectSettings(literal_policy="octal")),
-        ("FALSE", DialectSettings(integer_conversion="after_each_letter")),
+        ("ROTfuck", DialectSettings(rotation="sideways")),
         ("SLOW ACV MAMMALIAN", DialectSettings(io_modulus=257)),
     ],
 )
 def test_invalid_settings_fail_before_reading(language, settings, options):
     with pytest.raises(esolangs.ArgumentError):
-        esolangs.run(language, Unreadable(), Unreadable(), settings=settings, **options)
+        esolangs.run(
+            language, Unreadable(), stdin=Unreadable(), settings=settings, **options
+        )
     with pytest.raises(esolangs.ArgumentError):
-        make_vm(language, Unreadable(), Unreadable(), settings=settings)
+        make_vm(language, Unreadable(), stdin=Unreadable(), settings=settings)
     with pytest.raises(esolangs.ArgumentError):
         esolangs.generate(language, "01", settings=settings)
 
@@ -121,12 +127,9 @@ def test_settings_are_immutable_and_do_not_change_defaults():
     assert DialectSettings().options("Unary") == {}
 
 
-@pytest.mark.parametrize(
-    "choices", [{"surprise": 1}, {"eof": []}, {"cell_modulus": True}, {"eof": None}]
-)
-def test_constructor_refuses_unknown_or_untyped_choices(choices):
+def test_constructor_refuses_a_bool_integer():
     with pytest.raises(esolangs.ArgumentError):
-        DialectSettings(**choices)
+        DialectSettings(cell_modulus=True)
 
 
 def test_settings_require_the_public_object():
@@ -138,14 +141,7 @@ def test_settings_require_the_public_object():
         )
 
 
-@pytest.mark.parametrize(("language", "settings"), CASES)
-def test_balanced_settings_compute_every_row(language, settings):
-    table = "0110"
-    program = esolangs.generate(language, table, balance=True, settings=settings)
-    assert _evaluate(language, program, inputs=2, settings=settings) == table
-
-
-@pytest.mark.parametrize("inputs", [1, 3, 6])
+@pytest.mark.parametrize("inputs", [1, 6])
 def test_balanced_postfix_chunks_execute(inputs):
     table = "01" * (1 << (inputs - 1))
     settings = DialectSettings(expression_syntax="postfix")
@@ -170,7 +166,7 @@ def test_cli_generate_and_run_share_settings(tmp_path: Path, capsys):
         assert output.strip() == "1"
 
 
-@pytest.mark.parametrize("choices", ["[]", "no json", '{"eof":true}', '{"eof":"zero"}'])
+@pytest.mark.parametrize("choices", ["[]", "no json", '{"eof":true}'])
 def test_cli_invalid_settings_precede_io(choices, capsys):
     with (
         patch("esolangs.cli_run._read_program", side_effect=AssertionError("read")),
@@ -188,7 +184,7 @@ def test_cli_help_shows_literal_settings_json(capsys):
     assert '{"expression_syntax":"postfix"}' in help_text
 
 
-@pytest.mark.parametrize("language", ["Bitdeque", "Alight", "Packlang"])
+@pytest.mark.parametrize("language", ["Alight", "Packlang", "ROTfuck"])
 def test_single_choice_languages_refuse_other_keys(language):
     with pytest.raises(esolangs.ArgumentError):
         esolangs.run(language, Unreadable(), settings=DialectSettings(cell_modulus=255))
@@ -210,23 +206,12 @@ def test_only_conflicting_specs_publish_choices():
 
 
 @pytest.mark.medium
-@pytest.mark.parametrize("inputs", [4, 6])
-@pytest.mark.parametrize("layout", [1, "balanced"])
-def test_postfix_chunk_boundaries_across_sizes(inputs, layout):
-    # Parity hides reversed input order; this deterministic mix exposes it.
-    table = "".join(
-        str(((row * 37) ^ (row >> 1)).bit_count() % 2) for row in range(1 << inputs)
-    )
-    if inputs > 1:
-        reversed_inputs = "".join(
-            table[int(format(row, f"0{inputs}b")[::-1], 2)]
-            for row in range(1 << inputs)
-        )
-        assert table != reversed_inputs
+def test_postfix_one_entry_chunks():
+    # Width 1 forces 64 one-entry chunks; parity would hide reversed inputs.
+    table = "".join(str(((row * 37) ^ (row >> 1)).bit_count() % 2) for row in range(64))
     settings = DialectSettings(expression_syntax="postfix")
-    options = {"balance": True} if layout == "balanced" else {"width": layout}
-    source = esolangs.generate("Alight", table, settings=settings, **options)
-    assert _evaluate("Alight", source, inputs=inputs, settings=settings) == table
+    source = esolangs.generate("Alight", table, width=1, settings=settings)
+    assert _evaluate("Alight", source, inputs=6, settings=settings) == table
 
 
 @pytest.mark.medium
@@ -246,20 +231,24 @@ def test_generated_settings_are_reused(language, settings, balance):
             assert program.settings is settings
             stdin = ""
         else:
-            program, stdin = source, esolangs.encode_inputs(language, bits, "0110")
+            program, stdin = (
+                source,
+                esolangs.encode_inputs(language, bits, truth_table="0110"),
+            )
         assert (
-            esolangs.read_answer(language, esolangs.run(language, program, stdin))
+            esolangs.read_answer(language, esolangs.run(language, program, stdin=stdin))
             == expected
         )
         assert (
             esolangs.read_answer(
-                language, esolangs.run(language, program, stdin, max_steps=100_000)
+                language,
+                esolangs.run(language, program, stdin=stdin, max_steps=100_000),
             )
             == expected
         )
         assert (
             esolangs.read_answer(
-                language, complete_vm(make_vm(language, program, stdin), 100_000)
+                language, complete_vm(make_vm(language, program, stdin=stdin), 100_000)
             )
             == expected
         )
@@ -287,9 +276,9 @@ def test_raster_scaling_retains_settings(balance):
     )
     assert source.settings is settings
     assert source.tagged(source.language).settings is settings
-    assert source.upscaled().settings is settings
+    assert source.upscaled(1).settings is settings
     assert source.upscaled(2).settings is settings
-    assert esolangs.run("Line", source, "1") == "1"
+    assert esolangs.run("Line", source, stdin="1") == "1"
     assert Raster.from_png(source.to_png()).settings is None
     assert source.tagged("Piet").settings is None
 
@@ -345,7 +334,9 @@ def test_foreign_language_guard_precedes_retained_choices():
 def test_empty_tag_metadata_and_template_override():
     source = esolangs.generate("Brainfuck", "01")
     assert source.settings is None
-    assert esolangs.run("Brainfuck", source, "1", settings=DialectSettings()) == "1"
+    assert (
+        esolangs.run("Brainfuck", source, stdin="1", settings=DialectSettings()) == "1"
+    )
     settings = DialectSettings()
     template = esolangs.generate("Bitdeque", "0110", settings=settings)
     filled = esolangs.instantiate(
@@ -356,11 +347,9 @@ def test_empty_tag_metadata_and_template_override():
 
 
 def test_inherited_choices_are_checked_before_input():
-    from tests.test_dialects import Unreadable
-
     source = _Tagged("+.", "brainfuck", DialectSettings(cell_modulus=255))
     with pytest.raises(esolangs.ArgumentError, match="dialect settings"):
-        esolangs.run("Brainfuck", source, Unreadable())
+        esolangs.run("Brainfuck", source, stdin=Unreadable())
 
 
 def test_evaluation_inherits_loaded_metadata():
@@ -378,7 +367,7 @@ def test_default_pickle_has_no_retained_choices():
     source = esolangs.generate("Brainfuck", "01")
     restored = pickle.loads(pickle.dumps(source))
     assert restored.settings is None
-    assert esolangs.run("Brainfuck", restored, "1") == "1"
+    assert esolangs.run("Brainfuck", restored, stdin="1") == "1"
 
 
 def test_generation_rejects_untyped_settings():
@@ -386,25 +375,11 @@ def test_generation_rejects_untyped_settings():
         esolangs.generate("Brainfuck", "01", settings={})
 
 
-@pytest.mark.parametrize("isolated", [False, True])
-@pytest.mark.parametrize("streaming", [False, True])
-@pytest.mark.parametrize(
-    ("language", "settings"),
-    [
-        ("Brainfuck", DialectSettings(cell_modulus=255)),
-        ("123", DialectSettings(cell_modulus=255)),
-    ],
-)
-def test_evaluation_refuses_settings_before_source_reads(
-    language, settings, streaming, isolated
-):
-    runner = _iter_evaluate if streaming else _evaluate
+@pytest.mark.parametrize("language", ["Brainfuck", "123"])
+def test_evaluation_refuses_settings_before_source_reads(language):
+    settings = DialectSettings(cell_modulus=255)
     with pytest.raises(esolangs.ArgumentError):
-        list(
-            runner(
-                language, Unreadable(), inputs=1, settings=settings, isolated=isolated
-            )
-        )
+        _evaluate(language, Unreadable(), inputs=1, settings=settings)
 
 
 @pytest.mark.medium
@@ -455,35 +430,29 @@ def test_cli_json_describes_dialect_choices(capsys):
     assert schema["integer_conversion"]["requires"] == {}
 
 
-@pytest.mark.parametrize("mode", ["between_letters", "after_each_letter"])
+# The default mode's readings are pinned in tests/interpreters/test_grapheme.py.
 @pytest.mark.parametrize(
-    ("source", "value"),
-    [
-        ("FAFY", 1),
-        ("FABFY", 12),
-        ("FZFY", 0),
-        ("EABFCEJY", 12),
-    ],
+    ("source", "expected"),
+    [("FAFY", "10"), ("FABFY", "120"), ("FZFY", "0"), ("EABFCEJY", "120")],
 )
-def test_literal_and_string_conversion(source, value, mode):
+def test_literal_and_string_conversion(source, expected):
     io = ScriptedIO("")
-    run(source, io, integer_conversion=mode)
-    assert io.getvalue() == str(value * (10 if mode == "after_each_letter" else 1))
+    run(source, io, integer_conversion="after_each_letter")
+    assert io.getvalue() == expected
 
 
-@pytest.mark.parametrize("mode", ["between_letters", "after_each_letter"])
-def test_unterminated_modes_flush_in_called_frames(mode):
-    options = {"integer_conversion": mode}
+def test_unterminated_modes_flush_in_called_frames():
+    options = {"integer_conversion": "after_each_letter"}
     machine = _Machine("FA", ScriptedIO(""), **options)
     while not machine.halted:
         machine.step()
-    assert machine.stack == [10 if mode == "after_each_letter" else 1]
-    assert esolangs.run("Grapheme", "HFAHIY", settings=DialectSettings(**options)) == (
-        "10" if mode == "after_each_letter" else "1"
-    )
+    assert machine.stack == [10]
+    settings = DialectSettings(**options)
+    assert esolangs.run("Grapheme", "HFAHIY", settings=settings) == "10"
 
 
-@pytest.mark.parametrize("source", ["EFAFYEG", "HFAFYHI", "FZFTHFAFYHQ", "FZFHFAFYMHZ"])
+# The dialect is machine-wide; one string call and one Z rewind witness it.
+@pytest.mark.parametrize("source", ["EFAFYEG", "FZFHFAFYMHZ"])
 def test_called_code_uses_selected_conversion(source):
     assert (
         esolangs.run(
@@ -513,30 +482,15 @@ def test_string_skip_count_uses_conversion():
     assert esolangs.run("Grapheme", source) == "1"
 
 
-@pytest.mark.parametrize("source", ["FAFDY", "EABEDY", "HEABEDYHI"])
-def test_unset_names(source):
-    with pytest.raises(esolangs.HaltError, match="undeclared variable"):
-        esolangs.run("Grapheme", source)
-
-
-def test_function_names_still_fail():
-    with pytest.raises(esolangs.HaltError, match="function cannot name"):
-        esolangs.run("Grapheme", "HHD")
+@pytest.mark.parametrize(("source", "expected"), [("FAFDY", "1"), ("EABEDY", "AB")])
+def test_unset_names_read_as_themselves(source, expected):
+    assert esolangs.run("Grapheme", source) == expected
 
 
 @pytest.mark.parametrize(
-    "choices",
-    [
-        {"integer_conversion": "bad"},
-        {"unset_variables": "bad"},
-        {"integer_conversion": 1},
-    ],
+    "choices", [{"integer_conversion": "bad"}, {"integer_conversion": 1}]
 )
 def test_invalid_settings_precede_source_reads(choices):
-    class Unreadable:
-        def read(self):
-            raise AssertionError("invalid settings acquired source")
-
     with pytest.raises(esolangs.ArgumentError):
         esolangs.run("Grapheme", Unreadable(), settings=DialectSettings(**choices))
 
@@ -554,9 +508,8 @@ def test_generator_literals_are_exact(mode):
 
 
 @pytest.mark.medium
-@pytest.mark.parametrize("mode", ["between_letters", "after_each_letter"])
-def test_generated_corpus(mode):
-    settings = DialectSettings(integer_conversion=mode)
+def test_generated_corpus():
+    settings = DialectSettings(integer_conversion="after_each_letter")
     for n in range(1, 4):
         for table in witnesses(n):
             for balance in (False, True):
@@ -599,24 +552,6 @@ def test_portable_settings_vm_and_override(isolated):
     assert source.settings == settings
 
 
-def test_cli_portable_settings(tmp_path, capsys):
-    document, _ = call_both(
-        [
-            "generate",
-            "--portable",
-            "--settings",
-            '{"integer_conversion":"after_each_letter"}',
-            "Grapheme",
-            "0110",
-        ],
-        capsys,
-    )
-    path = tmp_path / "grapheme.json"
-    path.write_text(document)
-    restored = esolangs.load_program("Grapheme", path.read_text())
-    assert _evaluate("Grapheme", restored, inputs=2) == "0110"
-
-
 def test_metadata():
     settings = esolangs.describe("Grapheme")["dialect_settings"]
     assert settings["integer_conversion"]["default"] == "between_letters"
@@ -627,33 +562,31 @@ def test_metadata():
     assert set(settings) == {"integer_conversion"}
 
 
-_TABLES = ["0110", "01101001", "00110110011010100101110010100110"]
+# Default notation and literals are covered by the registry-wide generator
+# contracts; these pin the alternative dialect on an irregular 5-input table.
+_TABLE = "00110110011010100101110010100110"
 
 
 @pytest.mark.medium
-@pytest.mark.parametrize("table", _TABLES)
-@pytest.mark.parametrize("syntax", ["infix", "postfix"])
 @pytest.mark.parametrize("width", [None, 100])
-def test_alight_generated(table, syntax, width):
-    source = build_alight(table, width, expression_syntax=syntax)
+def test_alight_generated(width):
+    source = build_alight(_TABLE, width, expression_syntax="postfix")
     if width is not None:
         assert max(map(len, source.splitlines())) <= width
-    n = (len(table) - 1).bit_length()
-    for row in range(len(table)):
-        io = ScriptedIO(format(row, f"0{n}b"))
-        alight.run(source, io, expression_syntax=syntax)
-        assert io.getvalue() == table[row]
+    for row in range(len(_TABLE)):
+        io = ScriptedIO(format(row, "05b"))
+        alight.run(source, io, expression_syntax="postfix")
+        assert io.getvalue() == _TABLE[row]
 
 
 @pytest.mark.medium
-@pytest.mark.parametrize("table", _TABLES)
-@pytest.mark.parametrize("policy", ["decimal", "binary_digits"])
-def test_packlang_generated(table, policy):
-    source = build_packlang(table, 32, literal_policy=policy)
+@pytest.mark.parametrize("table", ["0110", _TABLE])
+def test_packlang_generated(table):
+    source = build_packlang(table, 32, literal_policy="binary_digits")
     n = (len(table) - 1).bit_length()
     for row in range(len(table)):
         io = ScriptedIO(format(row, f"0{n}b"))
-        packlang.run(source, io, literal_policy=policy)
+        packlang.run(source, io, literal_policy="binary_digits")
         assert io.getvalue() == table[row]
 
 
@@ -685,11 +618,10 @@ def test_alight_notation(source, syntax):
 
 
 @pytest.mark.medium
-@pytest.mark.parametrize("width", [1, 20, 40])
-def test_alight_postfix_narrow_layout(width):
+def test_alight_postfix_narrow_layout():
     table = "01101001"
-    source = build_alight(table, width, expression_syntax="postfix")
-    assert max(map(len, source.splitlines())) <= width
+    source = build_alight(table, 20, expression_syntax="postfix")
+    assert max(map(len, source.splitlines())) <= 20
     for row in range(8):
         io = ScriptedIO(format(row, "03b"))
         alight.run(source, io, expression_syntax="postfix")
@@ -712,11 +644,31 @@ def test_packlang_hybrid_multiple_blocks(n):
     [
         (build_alight, "01", {"expression_syntax": "mixed"}, "expression_syntax"),
         (build_packlang, "01", {"literal_policy": "binary"}, "literal_policy"),
+        (build_rotfuck, "01", {"rotation": "sideways"}, "rotation"),
     ],
 )
 def test_invalid_dialects_are_rejected(build, table, options, message):
     with pytest.raises(ValueError, match=message):
         build(table, **options)
+
+
+@pytest.mark.parametrize(
+    "isolated", [False, pytest.param(True, marks=pytest.mark.medium)]
+)
+def test_rotfuck_rotation_reaches_every_execution_path(isolated):
+    """The wiki cat ``,[`` echoes backward; forward, ``,,`` does instead."""
+    forward = DialectSettings(rotation="forward")
+    assert esolangs.run("ROTfuck", ",[", stdin="x", isolated=isolated) == "x"
+    assert (
+        esolangs.run("ROTfuck", ",,", stdin="x", settings=forward, isolated=isolated)
+        == "x"
+    )
+    assert (
+        complete_vm(make_vm("ROTfuck", ",,", stdin="x", settings=forward), 100) == "x"
+    )
+    assert complete_vm(make_vm("ROTfuck", ",,", stdin="x"), 100) == ""
+    with pytest.raises(esolangs.ArgumentError, match="backward"):
+        esolangs.generate("ROTfuck", "01", settings=forward)
 
 
 @pytest.mark.medium

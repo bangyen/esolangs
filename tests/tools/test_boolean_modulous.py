@@ -17,7 +17,7 @@ class TestModulous:
     def test_narrow_chunks_execute_every_small_table(self, width: int) -> None:
         for n in range(1, 4):
             for table in witnesses(n):
-                program = esolangs.generate("Modulous", table, width)
+                program = esolangs.generate("Modulous", table, width=width)
                 assert max(map(len, program.splitlines())) <= max(width, 4)
                 for row in range(2**n):
                     bits = list(format(row, f"0{n}b"))
@@ -32,7 +32,7 @@ class TestModulous:
             format(rng.getrandbits(2**n), f"0{2**n}b"),
         ):
             for width in (1, 4, 13, 80):
-                program = esolangs.generate("Modulous", table, width)
+                program = esolangs.generate("Modulous", table, width=width)
                 for row in [0, 2**n - 1, *rng.sample(range(2**n), 12)]:
                     assert (
                         run_modulous(program, list(format(row, f"0{n}b"))) == table[row]

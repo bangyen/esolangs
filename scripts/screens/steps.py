@@ -58,8 +58,10 @@ def _machine(name: str, program: str, row: int) -> VM:
     """Return a fresh machine for one row, fed as ``benchmark._commands``."""
     bits = _bits(row, 3)
     if esolangs.describe(name)["parameterized"]:
-        return debugger_api.make_vm(name, esolangs.instantiate(name, program, bits), "")
-    return debugger_api.make_vm(name, program, esolangs.encode_inputs(name, bits))
+        return debugger_api.make_vm(
+            name, esolangs.instantiate(name, program, bits), stdin=""
+        )
+    return debugger_api.make_vm(name, program, stdin=esolangs.encode_inputs(name, bits))
 
 
 def _to_verdict(name: str, program: str, row: int, cap: int) -> int | None:

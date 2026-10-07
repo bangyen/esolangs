@@ -7,7 +7,7 @@ entry point and initial direction.  Source must be a lossless PNG because
 anti-aliasing changes the path geometry.
 
 Input numbers are whitespace-delimited integer tokens; the spec does not define
-text framing. EOF raises EOFError.
+text framing. EOF raises EOFError.  Outputs are decimal, unseparated.
 """
 
 from __future__ import annotations

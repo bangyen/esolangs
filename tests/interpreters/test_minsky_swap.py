@@ -82,6 +82,14 @@ class TestMinskySwapReadableNotation:
             run("decnz(5);\ninc();\nswap();\ninc();\ninc();", io=IO())
         assert f.getvalue().strip() == "1 0"
 
+    def test_blank_lines_between_readable_commands_are_skipped(self) -> None:
+        outputs = []
+        for code in ("inc();\ninc();", "inc();\n\n  \ninc();"):
+            with redirect_stdout(io.StringIO()) as f:
+                run(code, io=IO())
+            outputs.append(f.getvalue())
+        assert outputs[0] == outputs[1]
+
     def test_a_bare_decnz_jumps_to_the_first_line(self) -> None:
         """``decnz();`` with no argument targets line 1."""
         from esolangs.interpreters.register_based.minsky_swap import _Machine

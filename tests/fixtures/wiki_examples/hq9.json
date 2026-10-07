@@ -1,0 +1,11 @@
+{
+ "language": "HQ9+",
+ "oldid": 197022,
+ "examples": [
+  {
+   "id": "case-insensitive-quine",
+   "source": "Q+q",
+   "expected": "Q+qQ+q"
+  }
+ ]
+}

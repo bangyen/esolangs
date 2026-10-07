@@ -1,10 +1,12 @@
 """Unit tests for the 123 interpreter."""
 
 import importlib
+from functools import partial
 
 import pytest
 
 from esolangs.interpreters.io import ScriptedIO
+from tests.interpreters import runner
 
 run = importlib.import_module("esolangs.interpreters.tape_based.one_two_three").run
 
@@ -13,10 +15,7 @@ run = importlib.import_module("esolangs.interpreters.tape_based.one_two_three").
 WIKI_CAT = "111212112"
 
 
-def run_program(code: str, stdin: str = "") -> str:
-    io = ScriptedIO(stdin)
-    run(code, io)
-    return io.getvalue()
+run_program = partial(runner.run_program, run, suppress_eof=False)
 
 
 class Test123:
@@ -26,6 +25,13 @@ class Test123:
         from esolangs.vm import run_until_halt_or_cycle
 
         assert run_until_halt_or_cycle(_Machine(" \n abc \n", ScriptedIO())) is False
+
+    def test_empty_program_is_refused(self) -> None:
+        """By the page it loops (only a pointer below 0 halts); it used to
+        halt with no output, found against a clean-room reference.
+        """
+        with pytest.raises(ValueError, match="never halts"):
+            run_program("")
 
     def test_wiki_cat_echoes(self) -> None:
         """The cat program echoes input, then EOF raises like the others."""

@@ -13,12 +13,15 @@ name counts, so it can recurse); a ``:``-prefixed token is passed raw.
 Gaps decided: ``:`` is lazy, forced by the wiki truth machine's
 ``: @ 0 one`` (strict evaluation would loop on input 0); ``%``, ``$``
 and a failed ``:`` return 0; a definition's code must be exactly one
-outer call (:class:`ValueError`), though a top-level line may hold
-several (``$ $``); redefinition is unreachable, since a defined first
-token parses as a call.  :class:`~esolangs.exceptions.HaltError` for an
-undefined name, a ``:`` body taking arguments, bad array indexing, and
-shifting or combining an array.  No expression can build a negative bit
-index (see :meth:`_Machine._bit`).
+outer call (:class:`ValueError`; a bare literal or value argument is
+none), though a top-level line may hold several (``$ $``); ``% x y``
+writes ``y``'s low bit ("sets the xth bit ... to y" leaves y=10 open;
+the clean-room reading writes 1 for any nonzero y); redefinition is
+unreachable, since a defined first token parses as a call.
+:class:`~esolangs.exceptions.HaltError` for an undefined name, a ``:``
+body taking arguments, bad array indexing, and shifting or combining an
+array.  No expression can build a negative bit index (see
+:meth:`_Machine._bit`).
 
 Evaluation uses an explicit ``_Frame`` stack: recursion is Fargo's only
 loop, native recursion would hit Python's limit, and the growing stack is
@@ -362,6 +365,17 @@ class _Machine:
             for parameter in definition.params
             if _bare_name(parameter) != parameter
         }
+        head = definition.code[0] if definition.code else ":"
+        if (
+            _bare_name(head) != head
+            or _is_literal(head)
+            or (head in parameters and head not in raw_parameters)
+        ):
+            # A literal, raw name or value argument is no call (``f0 101``).
+            raise syntax_error(
+                f"function {definition.name!r} has no outer call",
+                "start the code with a function call",
+            )
         pending = [False]
         for index, token in enumerate(definition.code):
             if not pending:

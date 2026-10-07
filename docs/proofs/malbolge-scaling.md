@@ -1374,3 +1374,23 @@ conflicts). No shared setup of the current fold, selector and decoder fits
 the store, so a placement search is deferred. The decoder's 1,173
 unshareable overlaps are the binding term: only more sharing of the common
 initialization, or a smaller decoder, closes the gap.
+
+## Malbolge Unshackled: the cap lifts, off the registry
+
+Malbolge Unshackled (Johansen, 2007) lifts the 59,049-cell store, so it
+answers whether the sixteen-input cap is Malbolge's or the store's. It is
+not admitted: 15 backlinks and two earlier interpreters meet neither
+[curation](../limitations.md#curation) route.
+
+The answer, recorded 2026-10-06 and not executable here: a rotation-free
+construction is correct under every rotation-width policy, because it only
+rotates C0, C1 and ...1112, which rotation fixes, and every `j` loads a
+value of at most five trits. Each input builds a pointer whose low trit is
+the bit, and a post-order multiplexer tree runs once as straight-line code.
+That gave O(T) source, about 14 characters per row from thirteen inputs,
+through nineteen inputs: 13 slot blocks below cell 81 and six in the ...111
+region, because pointers built from source characters fix their fifth
+trit. On a branch since deleted, 138,520 runs over five rotation policies
+failed none (exhaustive to three inputs, 200 random tables each at four to
+six, spot rows at 13, 16 and 19). An uncapped build, with far blocks placed
+at boot, was designed but not built.

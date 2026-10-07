@@ -10,6 +10,7 @@ fold is the construction working.  The reads are unconditional and first.
 """
 
 from esolangs._dialects import expression_syntax as validate_expression_syntax
+from esolangs._dialects import list_update as validate_list_update
 from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table
 
 __all__ = ["alight"]
@@ -191,7 +192,11 @@ def _alight_balanced(truth_table: str, n: int, width: int) -> str:
 
 
 def alight(
-    truth_table: str, width: int | None = None, *, expression_syntax: str = "infix"
+    truth_table: str,
+    width: int | None = None,
+    *,
+    expression_syntax: str = "infix",
+    list_update: str = "in_place",
 ) -> str:
     """Return an Alight program printing ``truth_table``'s entry for its input.
 
@@ -199,10 +204,12 @@ def alight(
     table character: a branch-free single line, ``O(2**n)`` literal plus
     ``O(n)`` reads.  ``width`` is a hard bound; the layout minimizing
     ``max(width, height)`` wins for infix, ties preferring less area.
-    Postfix folds commands or rotates them into one column.
+    Postfix folds commands or rotates them into one column.  Only
+    two-argument ``at`` is emitted, so every ``list_update`` runs it.
     """
     n = _validate_truth_table(truth_table)
     validate_expression_syntax(expression_syntax)
+    validate_list_update(list_update)
     if expression_syntax == "postfix":
         units = _postfix_units(
             truth_table,

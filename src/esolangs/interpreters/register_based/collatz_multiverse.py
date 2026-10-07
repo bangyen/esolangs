@@ -5,9 +5,9 @@ zero var1 becomes ``var1 * var2 + var3``, an even one is halved, and
 ``DO`` prints the low byte.  Variables start at 0; ``arr[var]`` indexes
 (bare ``arr`` is ``arr[0]``); ``negativeOne`` starts at -1; ``input``
 reads an integer and cannot be a target; ``lineNumber`` is the 1-based
-current line and assigning it jumps (the Collatz rule applies to it
-too).  Non-blank lines are numbered from 1; the run halts when the
-pointer leaves.  var2/var3 and indices must be names (the wiki rejects
+current line; assigning it sets the pointer, which then advances (the Collatz
+rule applies to it too).  Non-blank lines are numbered from 1; the run halts
+when the pointer leaves.  var2/var3 and indices must be names (the wiki rejects
 ``var = 3 x + 1``); ``input`` raises :class:`EOFError` when exhausted; a
 malformed line, numeric literal or redefinition of ``input`` raises
 :class:`ValueError`.  :func:`_advance` is pure over an immutable
@@ -15,7 +15,18 @@ malformed line, numeric literal or redefinition of ``input`` raises
 :func:`_read` defaults a missing array to zero rather than creating it.
 
 Input numbers are whitespace-delimited integer tokens; the spec does not define
-delimiters.
+delimiters.  Readings of sentences that admit two:
+
+- "input || Takes input, and uses that as a variable": an integer token,
+  not a byte, and every ``input`` a line names is read, even on the even
+  branch that ignores var2 and var3.
+- "if var1s value is 110, and the Boolean says DO, an A will be printed":
+  no code maps 110 to ``A``; ``DO`` prints the new value's low byte, so a
+  value outside 0..255 wraps rather than failing.
+- "changing it moves it to that line number, but doesn't execute it": the
+  pointer moves to N and then advances as usual, so line N is skipped and
+  N = 0 resumes at line 1; only this reading gives "doesn't execute it"
+  meaning.  Blank lines are not numbered.
 """
 
 from __future__ import annotations
@@ -257,7 +268,7 @@ def _advance(
 
     next_ip = ip + 1
     if var1 == "lineNumber":
-        next_ip = value
+        next_ip = value + 1
     elif idx1 is not None and target_index != 0:
         arrays = _arr_set(arrays, var1, target_index, value)
     else:

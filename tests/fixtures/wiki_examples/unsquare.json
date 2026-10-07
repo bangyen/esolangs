@@ -1,0 +1,29 @@
+{
+ "language": "Unsquare",
+ "oldid": 189097,
+ "examples": [
+  {
+   "id": "cat",
+   "source": "iA>PoiA<",
+   "stdin": "abc",
+   "expected": "abc",
+   "stop": "eof"
+  },
+  {
+   "id": "truth-machine-0",
+   "source": "ioAx>Io<",
+   "stdin": "\u0000",
+   "expected": "0",
+   "decode": "codes"
+  },
+  {
+   "id": "truth-machine-1",
+   "source": "ioAx>Io<",
+   "stdin": "\u0001",
+   "expected": "1111111111",
+   "decode": "codes",
+   "stop": "steps",
+   "max_steps": 200
+  }
+ ]
+}

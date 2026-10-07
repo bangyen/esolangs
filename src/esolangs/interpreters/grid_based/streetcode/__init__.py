@@ -6,7 +6,12 @@ signed integer cells under an unsigned cell pointer (CP).
 
 The author's Streetcode revision 78016 specifies right-hand driving and
 leftmost/second-leftmost junction choices. Multi-stage merge timing is
-an implementation convention corroborated by the wiki examples.
+an implementation convention corroborated by the wiki examples.  The page
+gives no geometry, so these are readings: the car starts on the first of
+N, E, S, W with a wall to its right and road ahead (``C`` at a ring's
+corner heads down the side road, not into the turn); a dead end turns the
+car across the street in two steps, and a ``U`` on the cell where that
+turn lands does not reverse it again.
 
 Movement is pure and lives in :mod:`.geometry`; the mutable run
 lives in :class:`_Machine`.  :func:`_drive` is the whole of movement in one
@@ -16,10 +21,13 @@ signature, ``_drive(grid, state, arrival_cell, current_cell)``, which lets
 Errors: a malformed program raises :class:`ValueError` at construction
 (streets two wide, road enclosed, wall forms, no ``-`` beside ``|``, one
 network, exactly one ``C``); a ``U`` with no opposite lane raises
-:class:`~esolangs.exceptions.HaltError`.  ``_`` at cell 0 clamps (the wiki
-says nothing; brainfuck clamps ``<``); ``O`` on a non-code-point raises
-``HaltError``.  ``I`` on exhausted input raises :class:`EOFError`; a
-newline stores character code 10.
+:class:`~esolangs.exceptions.HaltError`.  ``_`` at cell 0 raises ``HaltError``:
+the wiki says "The CP is unsigned and right-unbounded", so no cell lies
+left of 0, and an abort beats a wrong answer.  ``O`` on a non-code-point
+raises ``HaltError``.  ``I`` on exhausted input raises :class:`EOFError`; a
+newline stores character code 10.  ``I``/``O``'s "Nth register" is the
+CPth cell.  The wiki's Turing-completeness sentence names ``<`` and ``>``;
+the command table's ``=``/``_`` move CP, and ``<``/``>`` are nops.
 """
 
 import functools
@@ -550,9 +558,14 @@ class _Machine:
         elif op == "RIGHT":
             self.cp += 1
         elif op == "LEFT":
-            # Clamped, not an error: an unsigned quantity that cannot go
-            # lower saturates.  See the module docstring.
-            self.cp = max(0, self.cp - 1)
+            # An error, not a clamp: the CP is unsigned, so the cell it
+            # would name does not exist.  See the module docstring.
+            if not self.cp:
+                raise HaltError(
+                    "'_' at cell 0 would move the unsigned CP below zero",
+                    hint="move right with '=' before moving left with '_'",
+                )
+            self.cp -= 1
         elif op == "IN":
             self._set_cell(self.io.input_char())
             self._input_reads += 1

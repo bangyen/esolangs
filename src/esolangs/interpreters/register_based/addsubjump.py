@@ -13,7 +13,11 @@ out; malformed source raises :class:`ValueError`; no instruction cap
 allocate halts with :class:`HaltError`.
 
 The spec leaves input representation unspecified; this interpreter reads
-consecutive Unicode characters, including newlines.
+consecutive Unicode characters, including newlines.  It is silent past
+``-9`` too: those addresses read 0 and drop writes.  Writing the port
+prints ``*b`` whatever ``*d`` is ("writing to it outputs" names no
+difference), and with FUM set every write sets the flags, read-only ones
+included.
 """
 
 import re

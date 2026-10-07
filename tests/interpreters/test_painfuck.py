@@ -52,6 +52,31 @@ def run_program(targets: str, stdin: str = "", coin: int | None = None) -> str:
     return io.getvalue()
 
 
+_OUTPUT = {
+    # pp a (cell 2 nonzero, open), s b (0 -> close), u prints 0
+    "loop": ("ppas b ue".replace(" ", ""), "\x00"),
+    # t repeats the previous command 3 times
+    "repeat_previous": ("ptpue", "\n"),
+    "print_number": ("ppoe", "4"),
+    # q copies the left neighbor into the current cell when ptr > 0
+    "copy_from_left_neighbor": ("pprpplque", "\x04"),
+    "decrement": ("sue", "\xff"),
+    "half": ("pphue", "\x02"),
+    # p at cell 0, r moves right, pp, then d resets and p adds again
+    "pointer_reset": ("prppdpue", "\x04"),
+    "zero": ("pzue", "\x00"),
+    # A zero cell skips to the loop's own 'b', not to a nested one.
+    # cell 0 is zero, so the outer 'a' skips forward; the inner 'a...b'
+    # pair must be consumed as a unit, leaving 'u' to print cell 0.
+    "skipping_a_loop_steps_over_a_nested_one": ("aabbue", "\x00"),
+}
+
+
+@pytest.mark.parametrize(("targets", "expected"), _OUTPUT.values(), ids=list(_OUTPUT))
+def test_output(targets, expected) -> None:
+    assert run_program(targets) == expected
+
+
 class TestPainfuck:
     def test_increment_and_print(self) -> None:
         assert run_program("pue") == "\x02"
@@ -82,19 +107,11 @@ class TestPainfuck:
         with pytest.raises(HaltError):
             run_program("ip", "12x\n")
 
-    def test_loop(self) -> None:
-        # pp a (cell 2 nonzero, open), s b (0 -> close), u prints 0
-        assert run_program("ppas b ue".replace(" ", "")) == "\x00"
-
     def test_repeat_next(self) -> None:
         # c repeats the next command 7 times; s subtracts 1 each -> -5
         assert run_program("pcsu") == "\xfb"
         # c repeating u prints 7 times
         assert run_program("pcue") == "\x02\x02\x02\x02\x02\x02\x02"
-
-    def test_repeat_previous(self) -> None:
-        # t repeats the previous command 3 times
-        assert run_program("ptpue") == "\n"
 
     def test_repeat_previous_with_nothing_before_it(self) -> None:
         """A leading ``t`` has no earlier command, so it repeats nothing."""
@@ -105,17 +122,17 @@ class TestPainfuck:
         assert run_program("pe") == ""
         assert run_program("p") == ""
 
-    def test_print_number(self) -> None:
-        assert run_program("ppoe") == "4"
-
-    def test_copy_from_left_neighbor(self) -> None:
-        # q copies the left neighbor into the current cell when ptr > 0
-        assert run_program("pprpplque") == "\x04"
-
     def test_conditional_skip(self) -> None:
-        # v executes the next command only when the cell is zero.
+        # v executes the next command only when the cell is zero, else
+        # skips it ("Do next command if value on tape is zero").
         assert run_program("vsu") == "\xff"
-        assert run_program("pvsu") == "\x01"
+        assert run_program("pvsu") == "\x02"
+        assert run_program("pvuu") == "\x02"
+
+    def test_a_repeated_byte_read_reads_each_time(self) -> None:
+        """``c``/``t`` repeat ``j`` itself: 7 or 3 more reads, not one."""
+        assert run_program("cju", "abcdefgh") == "g"
+        assert run_program("jtu", "abcde") == "d"
 
     def test_random_skip(self) -> None:
         """``y`` skips the next command on a coin flip; pin both outcomes."""
@@ -139,22 +156,37 @@ class TestPainfuck:
         assert run_program("ppwue") == "\x00"  # copy 0 from the right neighbor
         assert run_program("ppwque") == "\x00"  # copy back
 
-    def test_decrement(self) -> None:
-        assert run_program("sue") == "\xff"  # -1 as a byte
+    def test_left_of_cell_zero_is_a_fresh_zero_cell(self) -> None:
+        """``l`` at the leftmost cell grows the tape onto a new zero cell."""
+        assert run_program("ploe") == "0"
+        # three new cells; r r l walks 4 right and 1 back, onto the start
+        assert run_program("plllrrloe") == "2"
+        # a repeated ``l`` grows by its overshoot: 8 new cells, and four
+        # ``r`` (two each) walk back onto the start cell
+        assert run_program("pcllrrrroe") == "2"
 
-    def test_half(self) -> None:
-        assert run_program("pphue") == "\x02"  # 4 // 2 = 2
+    def test_left_of_zero_and_back_keeps_both_cells(self) -> None:
+        """The grown cell and the start cell are distinct and both kept."""
+        # start 2, grow left and add 6; r lands one past the start, then
+        # two l print the start cell and the grown one
+        assert run_program("plppprloloe") == "26"
 
-    def test_pointer_reset(self) -> None:
-        # p at cell 0, r moves right, pp, then d resets and p adds again
-        assert run_program("prppdpue") == "\x04"
+    def test_reset_returns_to_the_start_cell_after_growing_left(self) -> None:
+        """``d`` goes back to the cell the run began on, not the leftmost."""
+        assert run_program("plldoe") == "2"
+        assert run_program("lpdoe") == "0"
+
+    def test_copy_from_left_at_the_leftmost_cell_copies_a_zero(self) -> None:
+        """The cell left of the leftmost exists and is zero, as ``w``'s is."""
+        assert run_program("ppqoe") == "0"
 
     def test_square(self) -> None:
         assert run_program("pkue") == "\x04"  # 2*2
         assert run_program("ppkue") == "\x10"  # 4*4
 
-    def test_zero(self) -> None:
-        assert run_program("pzue") == "\x00"
+    def test_repeated_square_leaves_zero_and_one_fixed(self) -> None:
+        assert run_program("psckue") == "\x01"
+        assert run_program("ckue") == "\x00"
 
 
 class TestStepMachine:
@@ -231,18 +263,14 @@ class TestStepMachine:
         assert _grow(tape, 2) is tape  # the last addressable cell
         assert _grow(tape, 4) == (1, 2, 3, 0, 0)  # past the end, so extended
 
-    def test_skipping_a_loop_steps_over_a_nested_one(self) -> None:
-        """A zero cell skips to the loop's own 'b', not to a nested one."""
-        # cell 0 is zero, so the outer 'a' skips forward; the inner 'a...b'
-        # pair must be consumed as a unit, leaving 'u' to print cell 0.
-        assert run_program("aabbue") == "\x00"
-
 
 class TestRepeatCollapsing:
     """The closed forms `_advance` uses instead of looping `rep` times."""
 
     @staticmethod
-    def _iterate(op: str, tape: tuple[int, ...], ptr: int, rep: int) -> tuple:
+    def _iterate(
+        op: str, tape: tuple[int, ...], ptr: int, origin: int, rep: int
+    ) -> tuple:
         """Apply ``op`` ``rep`` times, one step at a time."""
         from esolangs.interpreters.tape_based.painfuck import _half, _set
 
@@ -256,20 +284,23 @@ class TestRepeatCollapsing:
                 if ptr >= len(tape):
                     tape = (*tape, *([0] * (ptr + 1 - len(tape))))
             elif op == "l":
-                ptr = ptr - 1 if ptr else ptr
+                if ptr:
+                    ptr -= 1
+                else:
+                    tape, origin = (0, *tape), origin + 1
             elif op == "z":
                 tape = _set(tape, ptr, 0)
             elif op == "w":
                 tape = _set(tape, ptr, tape[ptr + 1] if ptr + 1 < len(tape) else 0)
             elif op == "q":
-                tape = _set(tape, ptr, tape[ptr - 1]) if ptr else tape
+                tape = _set(tape, ptr, tape[ptr - 1] if ptr else 0)
             elif op == "d":
-                ptr = 0
+                ptr = origin
             elif op == "h":
                 tape = _set(tape, ptr, _half(tape[ptr]))
             elif op == "k":
                 tape = _set(tape, ptr, tape[ptr] * tape[ptr])
-        return tape, ptr
+        return tape, ptr, origin
 
     @pytest.mark.parametrize("op", "psrlzwqdhk")
     @pytest.mark.parametrize("rep", [13])
@@ -288,9 +319,13 @@ class TestRepeatCollapsing:
             tape = tuple(cells)
             if op == "k" and abs(tape[ptr]) > 1 and rep > 5:
                 continue  # squaring explodes by design; nothing to collapse
-            state = (tape, (), ptr, 0, rep)
-            (got_tape, _loop, got_ptr, _ind, _r), _fx = _advance(state, op, 1, (), ())
-            assert (got_tape, got_ptr) == self._iterate(op, tape, ptr, rep), (
+            origin = len(cells) - 1  # ``d``'s target, off the pointer
+            state = (tape, (), ptr, 0, rep, origin)
+            (got_tape, _loop, got_ptr, _ind, _r, got_origin), _fx = _advance(
+                state, op, 1, (), ()
+            )
+            got = (got_tape, got_ptr, got_origin)
+            assert got == self._iterate(op, tape, ptr, origin, rep), (
                 f"{op!r} at ptr={ptr} rep={rep}"
             )
 
@@ -300,16 +335,16 @@ class TestRepeatCollapsing:
 
         entered = None
         for rep in (1, 2, 7, 1000):
-            state = ((5,), (), 0, 0, rep)  # nonzero cell: the loop is entered
-            (_tape, loop, _ptr, ind, _r), _fx = _advance(state, "ab", 2, (), ())
+            state = ((5,), (), 0, 0, rep, 0)  # nonzero cell: the loop is entered
+            (_tape, loop, _ptr, ind, _r, _o), _fx = _advance(state, "ab", 2, (), ())
             assert len(loop) == 1, f"rep={rep} pushed {len(loop)} entries"
             entered = (loop, ind) if entered is None else entered
             assert (loop, ind) == entered, f"rep={rep} differed from rep=1"
 
         popped = None
         for rep in (1, 2, 7, 1000):
-            state = ((5,), (7, 8, 9), 0, 3, rep)
-            (_tape, loop, _ptr, ind, _r), _fx = _advance(state, "aaab", 4, (), ())
+            state = ((5,), (7, 8, 9), 0, 3, rep, 0)
+            (_tape, loop, _ptr, ind, _r, _o), _fx = _advance(state, "aaab", 4, (), ())
             popped = (loop, ind) if popped is None else popped
             assert (loop, ind) == popped, f"b at rep={rep} differed from rep=1"
 
@@ -328,8 +363,10 @@ class TestRepeatCollapsing:
         """A ``t`` run after a ``c`` run repeats *the ``c``*."""
         from esolangs.interpreters.tape_based.painfuck import _advance
 
-        state = ((0,), (), 0, 0, 1)
-        (tape, _loop, _ptr, _ind, _r), _fx = _advance(state, prog, len(prog), (), ())
+        state = ((0,), (), 0, 0, 1, 0)
+        (tape, _loop, _ptr, _ind, _r, _o), _fx = _advance(
+            state, prog, len(prog), (), ()
+        )
         assert tape[0] == 2 * runs, f"{prog!r} ran p {tape[0] // 2}x, wanted {runs}"
 
     @pytest.mark.parametrize(
@@ -347,8 +384,10 @@ class TestRepeatCollapsing:
         loop: tuple[int, ...] = ()
         ptr = ind = 0
         while ind < len(prog):
-            state = (tape, loop, ptr, ind, 1)
-            (tape, loop, ptr, ind, _r), _fx = _advance(state, prog, len(prog), (), ())
+            state = (tape, loop, ptr, ind, 1, 0)
+            (tape, loop, ptr, ind, _r, _o), _fx = _advance(
+                state, prog, len(prog), (), ()
+            )
         assert tape[0] == 2 * runs, f"{prog!r} ran p {tape[0] // 2}x, wanted {runs}"
 
     @pytest.mark.parametrize(
@@ -366,8 +405,10 @@ class TestRepeatCollapsing:
         ptr = ind = 0
         seen = []
         while ind < len(prog):
-            state = (tape, loop, ptr, ind, 1)
-            (tape, loop, ptr, ind, _r), _fx = _advance(state, prog, len(prog), (), ())
+            state = (tape, loop, ptr, ind, 1, 0)
+            (tape, loop, ptr, ind, _r, _o), _fx = _advance(
+                state, prog, len(prog), (), ()
+            )
             seen.append(tape[0])
         assert seen == trace
 
@@ -375,8 +416,8 @@ class TestRepeatCollapsing:
         """The one collapse a truncating shift would get wrong."""
         from esolangs.interpreters.tape_based.painfuck import _advance
 
-        state = ((-7,), (), 0, 0, 2)
-        (tape, _loop, _ptr, _ind, _r), _fx = _advance(state, "h", 1, (), ())
+        state = ((-7,), (), 0, 0, 2, 0)
+        (tape, _loop, _ptr, _ind, _r, _o), _fx = _advance(state, "h", 1, (), ())
         assert tape == (-2,), "halving a negative must round down"
 
 

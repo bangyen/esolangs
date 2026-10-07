@@ -6,7 +6,8 @@ from unittest.mock import patch
 import pytest
 
 import esolangs.debugger as debugger_api
-from esolangs.tui import History, breakpoint_for, drive, render, replay
+from esolangs.tui import History, render, replay
+from esolangs.tui_loop import breakpoint_for, drive
 from tests.test_tui import (
     _drive,
     _frame,
@@ -138,7 +139,7 @@ class TestPointerFallback:
         assert len(names) > 1
 
     def test_the_debugger_mirrors_the_pointer(self) -> None:
-        dbg = debugger_api.make_debugger("brainfuck", ">>,", "")
+        dbg = debugger_api.make_debugger("brainfuck", ">>,", stdin="")
         assert dbg.ptr == 0
         dbg.step()
         assert dbg.ptr == 1
@@ -216,7 +217,8 @@ class TestRawTerminal:
         import time
 
         source = (
-            "from esolangs.tui import run_tui\nrun_tui('brainfuck', '+++>++.', '')\n"
+            "from esolangs.tui_loop import run_tui\n"
+            "run_tui('brainfuck', '+++>++.', '')\n"
         )
         pid, fd = pty.fork()
         if pid == 0:  # pragma: no cover - the child is a fresh interpreter

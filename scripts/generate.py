@@ -3,7 +3,8 @@
 import argparse
 import sys
 
-from esolangs.tools import _generate_docs, _generate_examples
+import generate_docs
+import generate_examples
 
 
 def main() -> int:
@@ -15,10 +16,10 @@ def main() -> int:
     if args.target == "docs":
         if args.args:
             parser.error("docs takes no arguments")
-        return _generate_docs.main()
+        return generate_docs.main()
     if args.target == "examples":
         sys.argv = [sys.argv[0], *args.args]
-        return _generate_examples.main()
+        return generate_examples.main()
     raise AssertionError(args.target)
 
 

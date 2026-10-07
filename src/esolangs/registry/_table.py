@@ -418,12 +418,6 @@ LANGUAGES: dict[str, Language] = {
         boolean=_boolean.sbleq,
         id="sbleq",
     ),
-    "3D Brainfuck": Language(
-        "3D Brainfuck",
-        "tape_based.three_d_brainfuck",
-        boolean=_boolean.three_d_brainfuck,
-        id="three_d_brainfuck",
-    ),
     "Sophie": Language(
         "Sophie",
         "register_based.sophie",
@@ -488,13 +482,6 @@ LANGUAGES: dict[str, Language] = {
         interpreter="grid_based.befunge",
         boolean=_boolean.befunge,
         id="befunge",
-        split=True,
-    ),
-    "Befunge-98": Language(
-        "Befunge-98",
-        interpreter="grid_based.befunge_98",
-        boolean=_boolean.befunge_98,
-        id="befunge_98",
         split=True,
     ),
     "FALSE": Language(

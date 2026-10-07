@@ -60,21 +60,12 @@ def test_budget_allows_answers_and_bound_language() -> None:
 
 @pytest.mark.medium
 @pytest.mark.skipif(not _LINUX, reason="Linux RLIMIT_AS only")
-def test_growing_state_fails_and_worker_is_reaped(monkeypatch) -> None:
-    children = []
-    popen = _isolated.subprocess.Popen
-
-    def spawn(*args, **kwargs):
-        child = popen(*args, **kwargs)
-        children.append(child)
-        return child
-
-    monkeypatch.setattr(_isolated.subprocess, "Popen", spawn)
+def test_growing_state_fails_and_worker_is_reaped(spawned) -> None:
     source = "(A)S(x)" + ":*" * 29
     with pytest.raises(esolangs.InterpreterLimitError, match="memory limit") as caught:
         esolangs.run("Underload", source, isolated=True, timeout=10, max_memory=_BUDGET)
     assert caught.value.partial_output == "A"
-    assert children[0].poll() is not None
+    assert spawned[0].poll() is not None
     assert esolangs.run("Underload", "(ok)S", isolated=True, max_memory=_BUDGET) == "ok"
 
 
@@ -166,6 +157,30 @@ def test_worker_cannot_silently_drop_an_unenforceable_limit(
     with pytest.raises(
         esolangs.InterpreterLimitError, match="cannot enforce memory limit"
     ):
+        _decode(capsys.readouterr().out, expired=False)
+
+
+def test_worker_reports_a_translated_memory_error_as_the_cap(
+    monkeypatch, capsys
+) -> None:
+    """``run`` turns MemoryError into its own error; the worker must see through it."""
+
+    def explode(*_args: object, **_kwargs: object) -> None:
+        raise MemoryError
+
+    # The worker installs a streaming ScriptedIO; undo it for the next test.
+    monkeypatch.setattr(esolangs, "ScriptedIO", esolangs.ScriptedIO)
+    monkeypatch.setattr(esolangs, "_run", explode)
+    monkeypatch.setattr(
+        sys,
+        "stdin",
+        io.StringIO(
+            '{"language":"brainfuck","program":"+","raster":false,'
+            '"stdin":"","seed":null}'
+        ),
+    )
+    _worker()
+    with pytest.raises(esolangs.InterpreterLimitError, match="memory limit"):
         _decode(capsys.readouterr().out, expired=False)
 
 

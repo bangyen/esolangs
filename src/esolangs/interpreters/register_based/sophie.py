@@ -9,12 +9,13 @@ raise :class:`ValueError`; a `*` break with no enclosing loop is an
 invalid operation and halts the program with
 :class:`~esolangs.exceptions.HaltError`.
 
-Exhausted input raises :class:`EOFError` (the repo-wide convention).
-
-The interpreter runs on a :class:`_Machine` (the code, accumulator, loop
-stack, and skip flag), so it is step-capable: ``step()`` executes one
-command and ``halted`` is true once ``&`` fires or the cursor reaches the
-end of the code.
+Exhausted input reads as 0, for ``;`` and ``:`` alike.  A judgment call:
+the page names no EOF value, but its Cat ``[;@$0{&}{,}]`` halts cleanly
+only if ``;`` yields 0 at EOF, and examples outrank prose (as for Inject).
+``:`` mirrors it.  ``#$n``/``@$n`` take unsigned decimals; ``#$`` before
+anything else is ``#c`` with c ``$``.  Gaps decided: other characters are
+NOPs, an else block must touch its ``}`` (after a space it is a comment),
+and comment text still counts toward bracket matching.
 """
 
 import re
@@ -30,7 +31,7 @@ from esolangs.interpreters.source_hints import syntax_error
 
 def _brackets(code: str) -> Iterator[tuple[int, str]]:
     """Yield structural brackets, skipping literal data in loads and guards."""
-    for token in re.finditer(r"\#(?:\$\d+|\$?.)|@(?:\$\d+|\$?.)\{|[\[\]{}]", code):
+    for token in re.finditer(r"\#(?:\$\d+|.)|@(?:\$\d+|.)\{|[\[\]{}]", code):
         glyph = token[0]
         if glyph.startswith("#"):
             continue
@@ -74,20 +75,6 @@ def _partners(code: str) -> dict[int, int]:
             elif glyph == closer and stack:
                 table[stack.pop()] = index
     return table
-
-
-def find(code: str, ind: int) -> int:
-    """Return the literal-aware closing position, or source length if unmatched."""
-    opener = code[ind]
-    closer = chr(ord(opener) + 2)
-    depth = 1
-    for index, glyph in _brackets(code):
-        if index <= ind:
-            continue
-        depth += (glyph == opener) - (glyph == closer)
-        if not depth:
-            return index
-    return len(code)
 
 
 #: One instant of a run: ``(acc, ind, skp, stk, halted)`` -- the
@@ -147,12 +134,12 @@ def _advance(
             ind = _branch(
                 code, partners, ind, m.end() - 1, taken=acc == parse_integer(m[1])
             )
-        elif m := re.match(r"@\$?(.){", val):
+        elif m := re.match(r"@(.){", val):
             ind = _branch(code, partners, ind, m.end() - 1, taken=acc == ord(m[1]))
         elif m := re.match(r"#\$(\d+)", val):
             acc = parse_integer(m[1])
             ind += m.end() - 1
-        elif m := re.match(r"#\$?(.)", val):
+        elif m := re.match(r"#(.)", val):
             acc = ord(m[1])
             ind += m.end() - 1
 
@@ -178,6 +165,8 @@ def _branch(
 
 class _Machine:
     """Per-run Sophie state: the code, accumulator, loop stack, and cursor."""
+
+    eof_is_a_value = True
 
     def __init__(self, code: str, io: IO) -> None:
         """Validate ``code``'s brackets and start with a zero accumulator.
@@ -254,16 +243,19 @@ class _Machine:
         c = self.code[self.ind]
 
         value: int | None = None
-        if c == ".":
-            self.io.print_str(format_integer(self.acc))
-        elif c == ",":
-            self.io.print_char(chr(self.acc))
-        elif c == ":":
-            num = self.io.input_token()
-            if num.isdigit():
-                value = parse_integer(num)
-        elif c == ";":
-            value = self.io.input_char()
+        try:
+            if c == ".":
+                self.io.print_str(format_integer(self.acc))
+            elif c == ",":
+                self.io.print_char(chr(self.acc))
+            elif c == ":":
+                num = self.io.input_token()
+                if num.isdigit():
+                    value = parse_integer(num)
+            elif c == ";":
+                value = self.io.input_char()
+        except EOFError:
+            value = 0
 
         self._restore(_advance(self._state, self.code, self._partners, value))
 

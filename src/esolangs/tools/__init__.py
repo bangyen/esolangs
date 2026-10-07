@@ -8,7 +8,6 @@ from esolangs.tools.arrowqueue import arrowqueue
 from esolangs.tools.b_tapemark import b_tapemark
 from esolangs.tools.back import back
 from esolangs.tools.befunge import befunge
-from esolangs.tools.befunge_98 import befunge_98
 from esolangs.tools.bfpda import bfpda
 from esolangs.tools.bfstack import bfstack
 from esolangs.tools.bio import bio
@@ -71,7 +70,6 @@ from esolangs.tools.suffolk import suffolk
 from esolangs.tools.super_snusp import super_snusp
 from esolangs.tools.taglate import taglate
 from esolangs.tools.thisthat import thisthat
-from esolangs.tools.three_d_brainfuck import three_d_brainfuck
 from esolangs.tools.three_x import three_x
 from esolangs.tools.thue import thue
 from esolangs.tools.underload import underload
@@ -89,7 +87,6 @@ __all__ = [
     "b_tapemark",
     "back",
     "befunge",
-    "befunge_98",
     "bf_tree",
     "bfpda",
     "bfstack",
@@ -153,7 +150,6 @@ __all__ = [
     "super_snusp",
     "taglate",
     "thisthat",
-    "three_d_brainfuck",
     "three_x",
     "thue",
     "underload",

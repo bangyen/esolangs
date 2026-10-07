@@ -9,119 +9,24 @@ from esolangs.interpreters.grid_based.alight import _Machine, run
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.tools.alight import alight
 from esolangs.vm import run_until_halt_or_cycle
+from tests.fixtures import grid
 from tests.interpreters.contract import (
     CycleContract,
     SnapshotContract,
 )
 from tests.interpreters.runner import run_program
 
-# --- the wiki's three examples, transcribed from the page source ---------
-#
-# Written as explicit lists of strings rather than a dedented block so that
-# the interior columns survive an editor or a hook that trims trailing
-# whitespace: the vertical ``turn right`` in each sits at a fixed column,
-# and the row that is blank in the middle of one is a legal in-command
-# space, not padding.
-
-CAT_TURN = [
-    "                              d",
-    "                              n",
-    "                              e",
-    "begin;var c;inp c;turn c = eof;",
-    "           t                  t",
-    "           h                  u",
-    "           g                  r",
-    "           i                  n",
-    "           r                   ",
-    "                              r",
-    "           n                  i",
-    "           r                  g",
-    "           u                  h",
-    "           t                  t",
-    "           ;thgir nrut;;;c tuo;",
-]
-
-CAT_SKIP = [
-    "begin;var c;inp c;skip c = eof;turn right;end",
-    "           t                             t",
-    "           h                             u",
-    "           g                             r",
-    "           i                             n",
-    "           r                              ",
-    "                                         r",
-    "           n                             i",
-    "           r                             g",
-    "           u                             h",
-    "           t                             t",
-    "           ;thgir nrut;;;;;;;;;;;;;;c tuo;",
-]
-
-REVERSED_CAT = [
-    (
-        "begin;var c;var l;set l [];inp c;;;;;;;;;;;;;;;;;;;skip c = eof;tu"
-        "rn right;var x;set x len{l}-0.5;;;;;;;;;;;skip sign{x} > 0;end;tur"
-        "n right;"
-    ),
-    (
-        "                          t                                       "
-        "        t                      t                                  "
-        "       t"
-    ),
-    (
-        "                          h                                       "
-        "        u                      h                                  "
-        "       u"
-    ),
-    (
-        "                          g                                       "
-        "        r                      g                                  "
-        "       r"
-    ),
-    (
-        "                          i                                       "
-        "        n                      i                                  "
-        "       n"
-    ),
-    (
-        "                          r                                       "
-        "                               r                                  "
-        "        "
-    ),
-    (
-        "                                                                  "
-        "        r                                                         "
-        "       r"
-    ),
-    (
-        "                          n                                       "
-        "        i                      n                                  "
-        "       i"
-    ),
-    (
-        "                          r                                       "
-        "        g                      r                                  "
-        "       g"
-    ),
-    (
-        "                          u                                       "
-        "        h                      u                                  "
-        "       h"
-    ),
-    (
-        "                          t                                       "
-        "        t                      t                                  "
-        "       t"
-    ),
-    (
-        "                          ;thgir nrut;}c ,5.0-}l{nel ,l{ta;}1 ,l{n"
-        "el l tes;                      ;thgir nrut;1-x x tes;c tuo;}x ,l{t"
-        "a c tes;"
-    ),
-]
+# The wiki's three examples, transcribed from the page source.  Trailing
+# spaces matter (each vertical ``turn right`` sits at a fixed column, and a
+# blank row is a legal in-command space), so tests/fixtures is exempt from
+# the whitespace hooks.
+CAT_TURN = grid("alight/cat_turn.txt")
+CAT_SKIP = grid("alight/cat_skip.txt")
+REVERSED_CAT = grid("alight/reversed_cat.txt")
 
 
-def _run(code: list[str], stdin: str = "") -> str:
-    return run_program(run, code, stdin)
+def _run(code: list[str], stdin: str = "", list_update: str = "in_place") -> str:
+    return run_program(run, code, stdin, list_update=list_update)
 
 
 def _machine(code: list[str]) -> _Machine:
@@ -144,17 +49,14 @@ class TestWikiExamples:
 
     @pytest.mark.parametrize(
         ("stdin", "expected"),
-        [("h\ni\n", "\ni\nh"), ("", "")],
+        [("h\ni\n", "\ni\nh"), ("Hello!", "!olleH"), ("", "")],
     )
-    def test_reversed_cat_discards_the_required_copy(
-        self, stdin: str, expected: str
-    ) -> None:
-        """The wiki example discards at's copy and outputs nil."""
+    def test_reversed_cat_reverses(self, stdin: str, expected: str) -> None:
+        """Default in-place ``at``; the example discards its result."""
+        assert _run(REVERSED_CAT, stdin) == expected
         if stdin:
             with pytest.raises(HaltError, match="cannot output"):
-                _run(REVERSED_CAT, stdin)
-        else:
-            assert _run(REVERSED_CAT, stdin) == expected
+                _run(REVERSED_CAT, stdin, "copy")
 
     def test_cat_geometry_closes_the_loop(self) -> None:
         """The turn-cat's loop returns to ``inp``, which only one geometry does."""
@@ -323,26 +225,17 @@ class TestFunctions:
         assert len(machine.walkers) > 1000
         assert not machine.halted
 
-    def test_at_copy_beside_a_call_preserves_the_original(self) -> None:
-        """A copied list beside a user call leaves its input intact."""
+    @pytest.mark.parametrize("calls", ["+f{0}", "+f{0}+g{0}"])
+    def test_an_in_place_at_beside_calls_fires_once(self, calls: str) -> None:
+        """Each re-entry would increment again: 'B' is once, 'C' twice."""
         program = [
             'begin;var l;set l "A";var v;'
-            "set v len{at{l, 0.5, at{l, 0.5}+1}}+f{0};"
-            "var c;set c at{l, 0.5};out c;end;",
-            "func f{a};end a;",
-        ]
-        assert _run(program) == "A"
-
-    def test_at_copy_beside_two_calls_preserves_the_original(self) -> None:
-        """Resuming after two calls also preserves the original list."""
-        program = [
-            'begin;var l;set l "A";var v;'
-            "set v len{at{l, 0.5, at{l, 0.5}+1}}+f{0}+g{0};"
+            f"set v len{{at{{l, 0.5, at{{l, 0.5}}+1}}}}{calls};"
             "var c;set c at{l, 0.5};out c;end;",
             "func f{a};end a;",
             "func g{a};end a;",
         ]
-        assert _run(program) == "A"
+        assert _run(program) == "B"
 
     def test_a_ring_inside_a_called_function_is_provable(self) -> None:
         """The reason calls are framed rather than run inline."""
@@ -401,8 +294,8 @@ class TestSnapshot(SnapshotContract):
         positions = {snap[-1] for snap in seen}
         assert len(positions) > 1
 
-    def test_a_banked_snapshot_survives_list_replacement(self) -> None:
-        """Replacing a list must not alter a banked snapshot."""
+    def test_a_banked_snapshot_survives_list_mutation(self) -> None:
+        """An in-place ``at`` must not alter a banked snapshot."""
         machine = _Machine(
             ['begin;var l;set l "A";set l at{l,0.5,66};end;'], ScriptedIO()
         )
@@ -417,7 +310,6 @@ class TestSnapshot(SnapshotContract):
                 copy = machine.snapshot()
             machine.step()
         assert banked is not None, "the run never held a non-empty list"
-        # The variable now holds the changed copy.
         assert banked == copy
         assert banked != machine.snapshot()
 
@@ -672,20 +564,19 @@ class TestFunctionDefinitionEdges:
                 ScriptedIO(),
             )
 
-    def test_a_bare_at_call_discards_its_copy(self) -> None:
-        """Discarding an at-copy leaves the original list intact."""
-        program = (
-            'begin;var l;set l "xy";at{l, 0.5, 65};var c;set c at{l, 0.5};out c;end;'
-        )
-        assert _run([program]) == "x"
 
-
-@pytest.mark.parametrize("command", ["", "set l "])
-def test_at_returns_a_copy_without_changing_aliases(command: str) -> None:
+@pytest.mark.parametrize(
+    ("command", "list_update", "expected"),
+    [("", "in_place", "BB"), ("", "copy", "AA"), ("set l ", "copy", "BA")],
+)
+def test_at_list_update_and_aliases(
+    command: str, list_update: str, expected: str
+) -> None:
+    """In place, ``set m l`` aliases and a bare call writes; a copy does neither."""
     program = (
         'begin;var l;var m;var c;set l "A";set m l;'
         + command
         + "at{l,0.5,66};set c at{l,0.5};out c;"
         "set c at{m,0.5};out c;end;"
     )
-    assert _run([program]) == ("BA" if command else "AA")
+    assert _run([program], "", list_update) == expected

@@ -3,19 +3,35 @@
 Single-line wires carry execution pointers; double-line wires carry a zero,
 one, or empty transfer. Every pointer advances once per cycle, ordered by node
 priority and grid position. Coincident pointers implement merges, logic, and
-barriers; the shared bistack is a sparse plane whose cursor moves diagonally.
+barriers. Readings the page leaves open, each forced by a wiki example:
 
-The specification says a cursor move can fail without defining the collision;
-this interpreter refuses a move exactly when its destination cell holds a bit.
+- A node that sends data in execution mode (``◇□■▦◧⬓◨⬒◹◺``) also goes on
+  down its other execution wires (Kolakoski's ``▣─□─■─◹─■─◺`` chain, the
+  truth machine's ``■`` loop).
+- An arrow never sends a pointer back the way it came, so it is a diode;
+  without that the truth machine's ``1`` loop multiplies its pointers.  A
+  white arrow passes perpendicular flow straight through (the Cat's ``▽``
+  lets its end-of-input transfer by).
+- Only wires connect; touching nodes do not (Kolakoski's stacked ``⬒⬒``).
+- ``◉`` halts at the end of its cycle, so the truth machine's ``0``, reaching
+  its ``◇`` in the same cycle, still prints.
+- The bistack is the quadrant of cells ``(column, row)`` from 0.  The cursor
+  ``k`` sits on the diagonal and selects row ``k`` and column ``k``, each
+  beginning at the axis, so they share cell ``(k, k)``.  ``◹`` always moves
+  up; ``◺`` fails only at ``k = 0``.  The Cat pushes one bit per column, walks
+  down until that fails, then pops row 0 in input order.
 
-EOF makes ``◇`` send an empty transfer; printing an empty transfer produces no
-text. Malformed input, connections, or source
+- Input is newline-separated sets of 0 or 1 characters, other whitespace
+  ignored.  A read past the end of the current set, or at EOF, sends an
+  empty transfer.  An empty transfer into a data-mode ``◇`` prints nothing; it
+  is the page's "flag", which skips the rest of the set and moves reads to the
+  next.  The page says "switching to the next set of input" but not how sets
+  are separated; the Bitwise Cyclic Tag example needs two (program, data).
+
+Malformed input, connections, or source
 raise :class:`~esolangs.exceptions.HaltError`. ``◘`` uses the shared randomness
 hook, so callers may inject a reproducible source. A branch from another
 program is rejected with :class:`ValueError`.
-
-External bits are consecutive 0 or 1 characters, ignoring whitespace; the spec
-does not define stdin framing.
 """
 
 from __future__ import annotations
@@ -85,11 +101,12 @@ class _Pointer:
 type _State = tuple[
     tuple[_Pointer, ...],
     tuple[tuple[_Point, int], ...],
-    _Point,
+    int,
     bool,
     int,
     int,
     tuple[str, ...],
+    bool,
 ]
 
 
@@ -140,9 +157,11 @@ class _Machine:
             )
         self.pointers: tuple[_Pointer, ...] = starts
         self.cells: dict[_Point, int] = {}
-        self.cursor: _Point = (0, 0)
+        self.cursor = 0
         self._halted = False
+        self._halting = False
         self._input_reads = 0
+        self._set_ended = False
 
     def _char(self, point: _Point) -> str:
         x, y = point
@@ -159,8 +178,9 @@ class _Machine:
             dx, dy = _STEP[direction]
             there = (point[0] + dx, point[1] + dy)
             other = self._char(there)
-            connected_wire = other in alphabet and _OPPOSITE[direction] in _PORTS[other]
-            if connected_wire or other in _NODES:
+            wire = other in alphabet and _OPPOSITE[direction] in _PORTS[other]
+            # A wire's end reaches a node; touching nodes are not connected.
+            if wire or (other in _NODES and here not in _NODES):
                 neighbors.append(there)
         return neighbors
 
@@ -190,51 +210,69 @@ class _Machine:
             _Pointer(exit_, pointer.position, channel, value) for exit_ in exits
         )
 
-    def _stack_axis(self, axis: Literal["row", "column"]) -> list[_Point]:
-        x, y = self.cursor
-        if axis == "column":
-            return sorted(
-                (p for p in self.cells if p[0] == x and p[1] > y), key=lambda p: p[1]
+    def _send(
+        self, following: list[_Pointer], pointer: _Pointer, value: int | None
+    ) -> None:
+        """Send ``value`` down the data wires and go on down the execution ones."""
+        self._emit(following, pointer, self._exits(pointer, "data"), "data", value)
+        self._emit(following, pointer, self._exits(pointer, "execution"), "execution")
+
+    def _read_char(self) -> str | None:
+        try:
+            char = chr(self.io.input_char())
+        except EOFError:
+            return None
+        # Counted for the snapshot: an IO without a cursor still moves on.
+        self._input_reads += 1
+        return char
+
+    def _read_bit(self) -> int | None:
+        """Return the current set's next bit, or ``None`` past its end."""
+        char = None if self._set_ended else self._read_char()
+        while char is not None and char != "\n" and char.isspace():
+            char = self._read_char()
+        if char == "\n":
+            self._set_ended = True
+        if char in (None, "\n"):
+            return None
+        if char not in "01":
+            raise HaltError(
+                "thisthat input must be a bit",
+                hint="supply input bits as 0 or 1 characters, a set per line",
             )
+        return int(char)
+
+    def _at(self, axis: Literal["row", "column"], index: int) -> _Point:
+        return (self.cursor, index) if axis == "column" else (index, self.cursor)
+
+    def _stack_axis(self, axis: Literal["row", "column"]) -> list[_Point]:
+        """Return the stack's occupied cells, beginning (at the axis) first."""
+        along = 1 if axis == "column" else 0
+        line = 0 if axis == "column" else 1
         return sorted(
-            (p for p in self.cells if p[1] == y and p[0] < x), key=lambda p: -p[0]
+            (p for p in self.cells if p[line] == self.cursor), key=lambda p: p[along]
         )
 
     def _head(self, axis: Literal["row", "column"], value: int | None) -> int | None:
-        x, y = self.cursor
-        vertical = axis == "column"
+        along = 1 if axis == "column" else 0
         points = self._stack_axis(axis)
         if value is None:
-            head = (x, y + 1) if vertical else (x - 1, y)
-            result = self.cells.pop(head, None)
+            result = self.cells.pop(self._at(axis, 0), None)
             for point in points:
-                if point == head:
-                    continue
-                bit = self.cells.pop(point)
-                shifted = (
-                    (point[0], point[1] - 1) if vertical else (point[0] + 1, point[1])
-                )
-                self.cells[shifted] = bit
+                if point[along]:
+                    self.cells[self._at(axis, point[along] - 1)] = self.cells.pop(point)
             return result
         for point in reversed(points):
-            bit = self.cells.pop(point)
-            shifted = (point[0], point[1] + 1) if vertical else (point[0] - 1, point[1])
-            self.cells[shifted] = bit
-        self.cells[(x, y + 1) if vertical else (x - 1, y)] = value
+            self.cells[self._at(axis, point[along] + 1)] = self.cells.pop(point)
+        self.cells[self._at(axis, 0)] = value
         return None
 
     def _tail(self, axis: Literal["row", "column"], value: int | None) -> int | None:
-        x, y = self.cursor
-        vertical = axis == "column"
+        along = 1 if axis == "column" else 0
         points = self._stack_axis(axis)
         if value is None:
-            return self.cells.pop(points[-1], None) if points else None
-        if points:
-            tail = points[-1]
-            point = (tail[0], tail[1] + 1) if vertical else (tail[0] - 1, tail[1])
-        else:
-            point = (x, y + 1) if vertical else (x - 1, y)
-        self.cells[point] = value
+            return self.cells.pop(points[-1]) if points else None
+        self.cells[self._at(axis, points[-1][along] + 1 if points else 0)] = value
         return None
 
     @property
@@ -265,6 +303,7 @@ class _Machine:
             self.io.position(),
             self._input_reads,
             self.grid,
+            self._set_ended,
         )
 
     def branching_snapshot(self) -> _State:
@@ -277,11 +316,12 @@ class _Machine:
             self.io.position(),
             self._input_reads,
             self.grid,
+            self._set_ended,
         )
 
     def branching_halted(self, state: object) -> bool:
         """Report whether a branch halted or lost every pointer."""
-        if not isinstance(state, tuple) or len(state) != 7:
+        if not isinstance(state, tuple) or len(state) != 8:
             return False
         return bool(state[3]) or not state[0]
 
@@ -293,19 +333,21 @@ class _Machine:
         self.cursor = state[2]
         self._halted = state[3]
         self._input_reads = state[5]
+        self._set_ended = state[7]
 
     def branching_successors(
         self, state: object, limit: int
     ) -> tuple[_State, ...] | None:
-        """Return every random-merge successor, or ``None`` before input."""
-        if not isinstance(state, tuple) or len(state) != 7:
+        """Return every random-merge successor, or ``None`` before input or a flag."""
+        if not isinstance(state, tuple) or len(state) != 8:
             raise TypeError("invalid thisthat branch state")
         current: _State = state
         if self.branching_halted(current):
             return (current,)
         pointers = current[0]
         if any(
-            self._char(pointer.position) == "◇" and pointer.channel == "execution"
+            self._char(pointer.position) == "◇"
+            and (pointer.channel == "execution" or pointer.value is None)
             for pointer in pointers
         ):
             return None
@@ -401,13 +443,7 @@ class _Machine:
             if cell in "□■▦" and pointers[0].channel == "execution":
                 value = {"□": 0, "■": 1, "▦": None}[cell]
                 for pointer in pointers:
-                    self._emit(
-                        following,
-                        pointer,
-                        self._exits(pointer, "data"),
-                        "data",
-                        value,
-                    )
+                    self._send(following, pointer, value)
                 continue
             chosen = pointers[0]
             if cell == "◘" and len(pointers) > 1:
@@ -440,19 +476,22 @@ class _Machine:
                 following, pointer, self._exits(pointer, "execution"), "execution"
             )
         elif cell == "◉":
-            self._halted = True
+            self._halting = True
         elif cell in _ARROWS:
             direction = _ARROW_DIRECTION[cell]
             incoming = self._incoming(pointer)
-            white = cell in "△▷▽◁"
-            if (
-                not white
-                or incoming is None
-                or incoming == direction
-                or incoming == _OPPOSITE[direction]
+            if cell in "△▷▽◁" and incoming not in (
+                None,
+                direction,
+                _OPPOSITE[direction],
             ):
-                exits = self._directed_exit(pointer, direction, pointer.channel)
-                self._emit(following, pointer, exits, pointer.channel, pointer.value)
+                direction = incoming
+            exits = [
+                point
+                for point in self._directed_exit(pointer, direction, pointer.channel)
+                if point != pointer.previous
+            ]
+            self._emit(following, pointer, exits, pointer.channel, pointer.value)
         elif cell == "◯":
             self._emit(
                 following,
@@ -482,31 +521,19 @@ class _Machine:
                 )
         elif cell == "◇":
             if pointer.channel == "execution":
-                try:
-                    bit = self.io.input_bit()
-                except EOFError:
-                    value = None
-                except ValueError:
-                    raise HaltError(
-                        "thisthat input must be a bit",
-                        hint="supply input bits as 0 or 1 characters",
-                    ) from None
-                else:
-                    value = bit
-                    self._input_reads += 1
-                self._emit(
-                    following, pointer, self._exits(pointer, "data"), "data", value
-                )
+                self._send(following, pointer, self._read_bit())
             elif pointer.value is not None:
                 self.io.print_num(pointer.value)
+            elif self._set_ended:
+                self._set_ended = False
+            else:
+                while self._read_char() not in (None, "\n"):
+                    pass
         elif cell in "◧⬓◨⬒":
             axis: Literal["row", "column"] = "column" if cell in "⬓⬒" else "row"
             operation = self._tail if cell in "◨⬒" else self._head
             if pointer.channel == "execution":
-                value = operation(axis, None)
-                self._emit(
-                    following, pointer, self._exits(pointer, "data"), "data", value
-                )
+                self._send(following, pointer, operation(axis, None))
             else:
                 if pointer.value is not None:
                     operation(axis, pointer.value)
@@ -516,15 +543,11 @@ class _Machine:
         elif cell in "◹◺":
             if pointer.channel == "data" and pointer.value != 1:
                 return
-            delta = -1 if cell == "◹" else 1
-            target = (self.cursor[0] + delta, self.cursor[1] + delta)
-            moved = target not in self.cells
+            moved = cell == "◹" or self.cursor > 0
             if moved:
-                self.cursor = target
+                self.cursor += 1 if cell == "◹" else -1
             if pointer.channel == "execution":
-                self._emit(
-                    following, pointer, self._exits(pointer, "data"), "data", int(moved)
-                )
+                self._send(following, pointer, int(moved))
             else:
                 self._emit(
                     following, pointer, self._exits(pointer, "execution"), "execution"
@@ -538,8 +561,7 @@ class _Machine:
             )
             self._emit(following, pointer, exits, "execution")
         elif cell in "□■▦":
-            value = {"□": 0, "■": 1, "▦": None}[cell]
-            self._emit(following, pointer, self._exits(pointer, "data"), "data", value)
+            self._send(following, pointer, {"□": 0, "■": 1, "▦": None}[cell])
         else:
             raise HaltError(
                 f"unsupported thisthat cell: {cell!r}",
@@ -569,9 +591,9 @@ class _Machine:
             else:
                 for pointer in arrived:
                     self._advance_one(pointer, following)
-            if self._halted:
-                following.clear()
-                break
+        if self._halting:
+            self._halted = True
+            following.clear()
         self.pointers = tuple(following)
 
 

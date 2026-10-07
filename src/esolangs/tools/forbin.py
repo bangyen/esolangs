@@ -104,11 +104,14 @@ def forbin(truth_table: str, width: int | None = None) -> str:
 
     used: set[str] = set()
     tree = _tree(truth_table, n, high, names, used, narrow=width is not None)
-    lines = ["main{", _reads(n, names), *tree, "}"]
+    lines = ["main{", _reads(n, names)]
     # A table that folds everywhere paints no block, so the register would
-    # be dead prologue.
+    # be dead prologue.  It reads ``main``'s input bits, so it is nested
+    # there: scoping is lexical (a variable is local to a function "and its
+    # children").  It goes first, so the tree's last return closes ``main``.
     if names.table in used:
         lines.append(_register(names, block, high, n))
+    lines += [*tree, "}"]
     for bit, name in ((0, names.zero), (1, names.one)):
         if name in used:
             lines.append(f"{name}{{out {_byte(bit)};}}")
@@ -148,7 +151,8 @@ def _tree(
         if constant(row, row + span):
             name = names.one if truth_table[row] == "1" else names.zero
             used.add(name)
-            return [f"{name};" if narrow else f"return({name})"]
+            # The 0 is the wiki's: "something has to be passed to call it".
+            return [f"{name} 0;" if narrow else f"return({name} 0)"]
         if level == high:
             # The literal block goes on a line of its own: it is one
             # unbreakable token, and the wrapper holds a line to its width

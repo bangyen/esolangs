@@ -1,0 +1,21 @@
+{
+ "language": "Fargo",
+ "oldid": 194505,
+ "examples": [
+  {
+   "id": "truth-0",
+   "note": "the page's zero-width spaces kept",
+   "source": "one ​^ $ one\n​% 0 @ 0\n: @ 0 one\n$",
+   "stdin": "0",
+   "expected": "0"
+  },
+  {
+   "id": "truth-1",
+   "source": "one ​^ $ one\n​% 0 @ 0\n: @ 0 one\n$",
+   "stdin": "1",
+   "stop": "steps",
+   "max_steps": 200,
+   "expected": "1111"
+  }
+ ]
+}

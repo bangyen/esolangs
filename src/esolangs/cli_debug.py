@@ -38,7 +38,7 @@ from esolangs.debugger import make_debugger
 from esolangs.exceptions import EsolangError, TemplateError
 from esolangs.interpreters.source_hints import error_text
 from esolangs.settings import DialectSettings, dialect_options
-from esolangs.tui import breakpoint_for, run_tui
+from esolangs.tui_loop import breakpoint_for, run_tui
 
 
 def _run_tui_session(
@@ -165,7 +165,7 @@ def _debug(rest: list[str]) -> None:
             else:
                 _run_tui_session(language, program, stdin, options, cell, settings)
             return
-        dbg = make_debugger(language, program, stdin, settings=settings)
+        dbg = make_debugger(language, program, stdin=stdin, settings=settings)
     except TemplateError as exc:
         _fail(_template_hint(exc, language))
     except EsolangError as exc:
@@ -210,7 +210,7 @@ def _debug(rest: list[str]) -> None:
         )
     try:
         with _UnboundedNotice("debug") if not bounded else _null_context():
-            reason = dbg.run(steps, limit)
+            reason = dbg.run(max_steps=steps, timeout=limit)
     except Exception as exc:
         fault = f"{type(exc).__name__}: {error_text(exc)}"
 

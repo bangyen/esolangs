@@ -8,37 +8,11 @@ import pytest
 
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.other.container import run
+from tests.fixtures import grid
 from tests.interpreters.contract import SnapshotContract, StateViewContract
 from tests.raises import raises_message
 
-HELLO_WORLD = [
-    "A:",
-    "+1 EXIT>=1",
-    "",
-    "PRINT:",
-    "+1 PRINT<=0",
-    "-1 PRINT>=1",
-    "",
-    "OUT:",
-    "+72 A>=0",
-    "-115 A>=2",
-    "+93 A>=4",
-    "-100 A>=6",
-    "+103 A>=8",
-    "-173 A>=10",
-    "+114 A>=11",
-    "+0 A>=12",
-    "+99 A>=14",
-    "-194 A>=16",
-    "+205 A>=18",
-    "-214 A>=20",
-    "+106 A>=21",
-    "+0 A>=22",
-    "-59 A>=24",
-    "",
-    "EXIT=1:",
-    "-1 A>=24",
-]
+HELLO_WORLD = grid("container/hello_world.txt")
 
 
 class TestContainer:
@@ -75,6 +49,11 @@ class TestContainer:
         """A rule line before any container declaration is malformed."""
         with pytest.raises(ValueError, match="before any container"):
             run(["+1 A>=0"], IO())
+
+    def test_less_equal_takes_only_a_constant(self) -> None:
+        """The page lists ``Container<=Constant``, never ``A<=B``."""
+        with pytest.raises(ValueError, match="with a constant only"):
+            run(["A:", "+1 A<=B", "B:"], IO())
 
     def test_the_malformed_program_message_reads_exactly(self) -> None:
         """``match=`` only looks for a substring, so pin the whole message."""
@@ -116,6 +95,16 @@ class TestStepMachine:
         while not machine.halted:
             machine.step()
         assert machine.exit_code == 0
+
+    def test_tick_counts_the_steps_taken(self) -> None:
+        from esolangs.interpreters.other.container import _Machine
+
+        machine = _Machine(HELLO_WORLD, IO())
+        steps = 0
+        while not machine.halted:
+            machine.step()
+            steps += 1
+        assert machine.tick == steps
 
     def test_loop_is_detected_as_a_cycle(self) -> None:
         # A oscillates 0 -> 1 -> 0 forever with no EXIT rule: a genuine

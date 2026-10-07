@@ -27,6 +27,8 @@ class BooleanContract:
     answer_values: tuple[str, str] = ("0", "1")
     note: str = ""
     ignores_whitespace: bool = False
+    #: A newline ends the set a program reads; generated programs read one.
+    input_sets: bool = False
 
 
 # Only departures from the default line-input, printed-bit contract.
@@ -76,7 +78,6 @@ CONTRACTS: dict[str, BooleanContract] = {
     ),
     "grid_based.flowchart": BooleanContract(
         input_shape="char_stream",
-        ignores_whitespace=True,
     ),
     "grid_based.laserfuck": BooleanContract(
         answer_mode="dump",
@@ -93,6 +94,7 @@ CONTRACTS: dict[str, BooleanContract] = {
     "grid_based.thisthat": BooleanContract(
         input_shape="char_stream",
         ignores_whitespace=True,
+        input_sets=True,
     ),
     "other.algebraic_programming_language": BooleanContract(
         note="an executed line prints its result, so the answer ends in a newline",
@@ -129,9 +131,9 @@ CONTRACTS: dict[str, BooleanContract] = {
         note="send terminates each line, so the answer ends in a newline",
     ),
     "other.intercal": BooleanContract(
-        answer_pattern=r"(?s)^([I]?)\n$",
-        answer_values=("", "I"),
-        note="INTERCAL READ OUT prints blank for zero and I for one",
+        answer_pattern=r"(?s)^(_\n|I)\n$",
+        answer_values=("_\n", "I"),
+        note="INTERCAL READ OUT prints a lone overbar for zero and I for one",
         parameterized=True,
     ),
     "other.malbolge": BooleanContract(
@@ -308,9 +310,6 @@ CONTRACTS: dict[str, BooleanContract] = {
         input_shape="char_stream",
     ),
     "tape_based.suffolk": BooleanContract(
-        input_shape="char_stream",
-    ),
-    "tape_based.three_d_brainfuck": BooleanContract(
         input_shape="char_stream",
     ),
     "stack_based.piet": BooleanContract(

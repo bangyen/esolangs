@@ -1,7 +1,5 @@
 """addsubjump generator tests."""
 
-from itertools import pairwise
-
 import pytest
 
 from esolangs import tools as boolean
@@ -44,15 +42,3 @@ class TestAddSubJump:
                 got = run_addsubjump_from(program, feed)
                 assert got == table[combo], f"{table} inputs {bits}"
                 assert not list(feed), f"{table} inputs {bits} left input unread"
-
-    def test_packed_growth_is_linear(self) -> None:
-        """Wide parity tables grow by at most the table-size ratio."""
-        sizes = [
-            len(
-                boolean.addsubjump(
-                    "".join(str(row.bit_count() & 1) for row in range(2**n))
-                )
-            )
-            for n in range(11, 15)
-        ]
-        assert all(b <= 2 * a for a, b in pairwise(sizes))

@@ -2,9 +2,11 @@
 
 The byte-I/O dialect uses -1 B C for input and A -1 C for output, advancing
 after either. EOF raises EOFError. Negative jumps halt; reads beyond loaded
-memory yield zero. Malformed source and negative data addresses raise
-ValueError. Incomplete instruction fetches raise HaltError. Writes are effects
-so a packed table is not copied at every arithmetic instruction.
+memory yield zero. A jump at or past the end of memory halts; writes past
+the end grow memory and reads do not, so only written cells move that end.
+Malformed source and negative data addresses raise ValueError. Incomplete
+instruction fetches raise HaltError. Writes are effects so a packed table is
+not copied at every arithmetic instruction.
 """
 
 from esolangs._drive import drive

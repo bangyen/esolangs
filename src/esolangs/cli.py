@@ -213,7 +213,7 @@ def _generate(rest: list[str]) -> None:
         program = generate(
             rest[0],
             rest[1],
-            width,
+            width=width,
             balance=balance,
             scale=scale or 1,
             settings=settings,
@@ -226,7 +226,7 @@ def _generate(rest: list[str]) -> None:
                 _fail("raster programs read bits from stdin and cannot be instantiated")
             program = cast(str, program)
             program = instantiate(
-                rest[0], program, [int(b) for b in bits], width, settings=settings
+                rest[0], program, [int(b) for b in bits], width=width, settings=settings
             )
         if portable:
             program = dump_program(rest[0], program)

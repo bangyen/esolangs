@@ -1,5 +1,6 @@
 """Unit tests for the Inject interpreter."""
 
+from functools import partial
 from typing import Any, ClassVar
 
 import pytest
@@ -12,6 +13,7 @@ from tests.interpreters.contract import (
     SnapshotContract,
     StateViewContract,
 )
+from tests.interpreters.runner import run_program
 from tests.raises import raises_message
 
 HELLO_WORLD = "\n".join(
@@ -77,11 +79,7 @@ CAT = "\n".join(
 )
 
 
-def _run(program: str, stdin: str = "") -> str:
-    """Run ``program`` and return everything it printed."""
-    io = ScriptedIO(stdin)
-    run(program, io)
-    return io.getvalue()
+_run = partial(run_program, run, suppress_eof=False)
 
 
 def _machine(program: Any) -> _Machine:
@@ -93,14 +91,9 @@ class TestWikiExamples:
         """The block is sent, then skipped over rather than executed."""
         assert _run(HELLO_WORLD) == "Hello, world!\n"
 
-    def test_cat_echoes_until_an_empty_line(self) -> None:
-        """Each line is echoed; the empty line empties the block and stops."""
-        assert _run(CAT, "ab\ncd\n\n") == "ab\ncd\n"
-
-    def test_cat_without_a_terminating_blank_line_reads_past_its_input(self) -> None:
-        """Input exhaustion is EOFError, distinct from the empty-line halt."""
-        with pytest.raises(EOFError):
-            _run(CAT, "ab\n")
+    def test_cat_copies_blank_lines_and_stops_at_eof(self) -> None:
+        """A blank line is one empty line; only EOF empties the block."""
+        assert _run(CAT, "ab\n\ncd\n") == "ab\n\ncd\n"
 
     def test_wiki_truth_machine_is_inverted(self) -> None:
         """The wiki's truth machine halts on 1 and loops on 0 -- backwards."""
@@ -325,3 +318,24 @@ def test_a_rewrite_cannot_erase_a_nested_block_s_delimiters() -> None:
     program = "readto data\nsend in\nskip\ndata;\nin;\nx\nin;\ndata;"
     with pytest.raises(HaltError, match="another block's delimiters"):
         run(program, ScriptedIO("q\n"))
+
+
+def test_skip_as_the_last_line_exits() -> None:
+    """No next line to be a label: the outermost ``skip`` ends the program."""
+    assert _run("send d\nd;\nx\nd;\nskip") == "x\n"
+
+
+def test_inject_needs_a_replacement_and_skip_forms_are_checked() -> None:
+    with pytest.raises(ValueError, match="inject needs a replacement: d=x"):
+        _run("d;\nd;\ninject d=x")
+    with pytest.raises(ValueError, match="skip takes no argument"):
+        _run("skip now")
+    with pytest.raises(ValueError, match="skipq takes two labels"):
+        _run("a;\na;\nskipq a")
+
+
+def test_a_rewrite_cannot_move_the_pointer_before_the_program() -> None:
+    """A ``readto`` at EOF inside its own block deletes lines around the pointer."""
+    program = "a;\nreadto a\nx\ny\na;"
+    with pytest.raises(HaltError, match="before the program"):
+        run(program, ScriptedIO(""))

@@ -4,6 +4,21 @@ import pytest
 
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.tape_based.brainfuck import _Machine
+from esolangs.vm import run_until_halt_or_growth
+
+
+def _canonical(machine: _Machine) -> tuple[object, ...]:
+    """Return the state up to translation of the bi-infinite tape.
+
+    Cells outside the trimmed window are all zero on both sides, and every
+    command addresses relative to the pointer, so two states equal here
+    behave identically: a repeat proves divergence even while the run
+    walks into fresh cells (``[+<-]`` leaves one behind each lap).
+    """
+    ind, ptr, tape, *_ = machine.snapshot()
+    cells = [i for i, value in enumerate(tape) if value] + [ptr]
+    low, high = min(cells), max(cells) + 1
+    return (ind, ptr - low, tape[low:high], machine.io.position())
 
 
 def _result(code: str) -> tuple[str, str]:
@@ -14,7 +29,7 @@ def _result(code: str) -> tuple[str, str]:
     for _ in range(64):
         if machine.halted:
             return "halt", io.getvalue()
-        state = machine.snapshot()
+        state = _canonical(machine)
         if state in seen:
             return "diverge", ""
         seen.add(state)
@@ -43,7 +58,7 @@ def _observe(code: str, stdin: str) -> tuple[str, str, tuple[int, ...], int, int
             while tape and tape[-1] == 0:
                 tape.pop()
             return "halt", io.getvalue(), tuple(tape), machine.ptr, io.reads
-        state = machine.snapshot()
+        state = _canonical(machine)
         if state in seen:
             return "diverge", "", (), 0, 0
         seen.add(state)
@@ -51,6 +66,17 @@ def _observe(code: str, stdin: str) -> tuple[str, str, tuple[int, ...], int, int
             machine.step()
         except EOFError:
             return "eof", io.getvalue(), (), 0, io.reads
+    # A walk that leaves a trail never repeats, even up to translation.  The
+    # bi-infinite tape is mirror-symmetric, so the program with `<` and `>`
+    # swapped halts exactly when this one does, and a leftward walk becomes
+    # one the rightward growth certificate can prove.
+    for program in (code, code.translate(str.maketrans("<>", "><"))):
+        try:
+            machine = _Machine(program, ScriptedIO(stdin))
+            if not run_until_halt_or_growth(machine, 2_000):
+                return "diverge", "", (), 0, 0
+        except (TimeoutError, EOFError):
+            pass
     raise AssertionError("witness neither halted, reached EOF, nor repeated a state")
 
 

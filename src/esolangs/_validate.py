@@ -42,6 +42,24 @@ def check_whole(value: object, name: str) -> int:
     return value
 
 
+def check_seed(seed: object) -> None:
+    """Refuse a seed that is not an integer; ``None`` is allowed.
+
+    A float or a string otherwise reached ``random.Random``, which accepts
+    both, so ``seed=1.5`` ran instead of failing like ``max_steps=1.5``.
+    """
+    from esolangs.exceptions import ArgumentError
+    from esolangs.interpreters.source_hints import with_hint
+
+    if seed is not None and (isinstance(seed, bool) or not isinstance(seed, int)):
+        raise with_hint(
+            ArgumentError(
+                f"seed must be an integer or None, got {_argument_repr(seed)}"
+            ),
+            "use an integer seed, for example seed=0",
+        )
+
+
 def check_timeout(timeout: object) -> None:
     """Refuse invalid timeouts; ``None`` is allowed."""
     from esolangs.exceptions import ArgumentError

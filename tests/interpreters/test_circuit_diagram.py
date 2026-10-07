@@ -1,82 +1,53 @@
 r"""Unit tests for the Circuit Diagram interpreter."""
 
+import time
+from collections import OrderedDict
+from functools import partial
+
 import pytest
 
-from esolangs.interpreters.grid_based.circuit_diagram import (
+from esolangs.interpreters.grid_based import _circuit_functions
+from esolangs.interpreters.grid_based._circuit_functions import _remember_width
+from esolangs.interpreters.grid_based._circuit_parse import (
     _OUTPUT,
-    _compile,
     _Connections,
     _Grid,
+    _Parser,
+)
+from esolangs.interpreters.grid_based.circuit_diagram import (
+    _compile,
     _Machine,
     _merge,
-    _Parser,
+    _seconds_since_2000,
     run,
 )
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
+from tests.fixtures import grid
+from tests.interpreters.runner import run_program
 
 # The wiki's 4-bit prime tester, exactly as the page draws it.  Two of its
 # OR gates have an input no gate ever drives, so it prints nothing; see
 # ``PRIME_TESTER`` for the repaired circuit and the module docstring for
 # how the repair is derived.
-PRIME_TESTER_AS_DRAWN = [
-    "       .~..",
-    "      /    ..         .-.",
-    "     <.----=-----    .   o.",
-    "    / .~. /.   .---.    .  >.",
-    "-4-<     =  >.=--.  o.-=--.  \\",
-    "    \\ . . ..      ..  /       .",
-    "     < =    = .------=-----.   >.",
-    "      = .~..-=--.~.-.       .-.  a.-:",
-    "     / \\    / \\                 .",
-    "    .   .===.  .               /",
-    "     \\   o.  \\  o.------------.",
-    "      .-.     ..",
-]
+PRIME_TESTER_AS_DRAWN = grid("circuit_diagram/prime_tester_as_drawn.txt")
 
 # The same circuit with the two omissions repaired: four ``-`` closing the
 # gap on the third line, and the ``/`` whose two ``=`` crossings the page
 # already draws.  This computes primality of a 4-bit input, MSB first.
-PRIME_TESTER = [
-    "       .~..",
-    "      /    ..         .-.",
-    "     <.----=---------.   o.",
-    "    / .~. /.   .---.    .  >.",
-    "-4-<     =  >.=--.  o.-=--.  \\",
-    "    \\ . . .. /    ..  /       .",
-    "     < =    = .------=-----.   >.",
-    "      = .~..-=--.~.-.       .-.  a.-:",
-    "     / \\    / \\                 .",
-    "    .   .===.  .               /",
-    "     \\   o.  \\  o.------------.",
-    "      .-.     ..",
-]
+PRIME_TESTER = grid("circuit_diagram/prime_tester.txt")
 
 # The wiki's flip-flop: two NOTs wired into each other through a crossover.
 # The page states its output as ``1N1N1N...``.
-FLIP_FLOP = [
-    "--.~.",
-    "   =",
-    "  .~.--",
-]
+FLIP_FLOP = grid("circuit_diagram/flip_flop.txt")
 
 # The wiki's "it is possible to produce a constant output" circuit.
-CONSTANT = [
-    "     .",
-    "--.-. a.----.--.~.",
-    "   \\ .     /    =",
-    "    \\     /    .~.-----",
-    "     .~.~.",
-]
+CONSTANT = grid("circuit_diagram/constant.txt")
 
 PRIMES = frozenset({2, 3, 5, 7, 11, 13})
 
 
-def output_for(code: list[str], stdin: str) -> str:
-    """Run ``code`` on ``stdin`` and return everything it printed."""
-    io = ScriptedIO(stdin)
-    run(code, io)
-    return io.getvalue()
+output_for = partial(run_program, run, suppress_eof=False)
 
 
 def bits_of(value: int) -> str:
@@ -256,6 +227,20 @@ class TestMultiWire:
         assert output_for(circuit, "0\n1\n0\n0\n") == "1"
         assert output_for(circuit, "1\n1\n0\n0\n") == "0"
 
+    @pytest.mark.parametrize(
+        ("kind", "ones"),
+        [("A", {0, 1, 2, 3}), ("O", {0}), ("X", {0, 2, 3, 4})],
+    )
+    def test_the_negated_gates_read_many_wires_as_the_wiki_says(
+        self, kind: str, ones: set[int]
+    ) -> None:
+        """NAND: not all 1; NOR: no 1; XNOR: only 0s or more than one 1."""
+        circuit = ["-2-.", f"    {kind}.-:", "-2-."]
+        for row in range(16):
+            bits = f"{row:04b}"
+            want = "1" if bits.count("1") in ones else "0"
+            assert output_for(circuit, "\n".join(bits) + "\n") == want, bits
+
     def test_not_preserves_width(self) -> None:
         assert output_for(["-3-~.-:"], "1\n0\n1\n") == "010"
 
@@ -349,6 +334,10 @@ class TestSpecifiedSourcesAndRemoval:
             lambda: 5,
         )
         assert output_for(["t-32-:"], "") == f"{5:032b}"
+
+    def test_the_real_clock_counts_seconds_since_2000(self) -> None:
+        # 946684800 is the Unix time of 2000-01-01T00:00:00Z.
+        assert abs(_seconds_since_2000() - (int(time.time()) - 946684800)) <= 2
 
     def test_remove_drops_the_first_input_width_from_the_second(self) -> None:
         circuit = [
@@ -686,6 +675,27 @@ class TestSpecRepairs:
             machine.step()
         assert machine.io.getvalue() == f"{5:032b}0"
         assert machine.snapshot()[3] == 1
+
+    def test_a_clock_read_before_a_nested_call_is_replayed_not_reread(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        reads = iter(range(1, 10))
+        monkeypatch.setattr(
+            "esolangs.interpreters.grid_based.circuit_diagram._seconds_since_2000",
+            lambda: next(reads),
+        )
+        code = ["{inv", "-.~.-:", "}", "{stamp", "t-32-:", "-inv-:", "}", "-stamp-:"]
+        assert output_for(code, "1\n") == f"{1:032b}0"
+
+    def test_the_width_cache_forgets_its_oldest_entry_past_256(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        widths = OrderedDict((((), str(i), None, ()), 1) for i in range(256))
+        monkeypatch.setattr(_circuit_functions, "_FUNCTION_WIDTHS", widths)
+        _remember_width(((), "new", None, ()), 2)
+        assert len(widths) == 256
+        assert ((), "0", None, ()) not in widths
+        assert widths[((), "new", None, ())] == 2
 
     def test_a_width_label_past_the_int_digit_limit_parses(self) -> None:
         # 5001 digits, value 2: beyond int()'s default 4300-digit cap.

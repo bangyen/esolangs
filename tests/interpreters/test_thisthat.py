@@ -84,17 +84,24 @@ def test_barrier_waits_for_a_second_pointer() -> None:
 
 
 def test_specification_truth_machine() -> None:
+    """0 prints once and halts; 1 loops on ``■``, printing 1 forever."""
     source = """     ◇
      ║
     ┌□─◉
 ▣─◇═◒  ┌┐
     └▶─■┘
        ║
-       ◇"""
-    for bit in "01":
-        io = ScriptedIO(bit + "\n")
-        run(source.splitlines(), io)
-        assert io.getvalue() == bit
+       ◇""".splitlines()
+    io = ScriptedIO("0\n")
+    run(source, io)
+    assert io.getvalue() == "0"
+    machine = _Machine(source, ScriptedIO("1\n"))
+    for _ in range(200):
+        machine.step()
+    assert not machine.halted
+    assert machine.io.getvalue() == "1" * len(machine.io.getvalue())
+    assert len(machine.io.getvalue()) > 50
+    assert len(machine.pointers) <= 6
 
 
 @pytest.mark.parametrize(
@@ -125,23 +132,46 @@ def test_random_merge_selects_one_pointer_and_nands_data() -> None:
     assert machine.pointers[0].value == 0
 
 
-def test_cursor_moves_report_success_and_collision() -> None:
-    machine = _Machine(["▣◹"], ScriptedIO(""))
-    machine.pointers = (_Pointer((1, 0), (0, 0)),)
-    machine.step()
-    assert machine.cursor == (-1, -1)
-
-    machine.cursor = (0, 0)
-    machine.cells[(-1, -1)] = 1
-    machine.pointers = (_Pointer((1, 0), (0, 0)),)
-    machine.step()
-    assert machine.cursor == (0, 0)
+def test_cursor_moves_up_freely_and_fails_only_at_the_axis() -> None:
+    """``◹`` always succeeds; ``◺`` sends 0 at ``k = 0`` and stays there."""
+    io = ScriptedIO("")
+    run(["▣─◹─◺─◺", "  ║ ║ ║", "  ◇ ◇ ◇"], io)
+    assert io.getvalue() == "110"
 
 
 def test_eof_is_an_empty_transfer() -> None:
     io = ScriptedIO("")
     run(["▣─◇═◇"], io)
     assert io.getvalue() == ""
+
+
+@pytest.mark.parametrize(
+    ("stdin", "expected"), [("1\n0", "10"), ("10\n1", "11"), ("1", "1")]
+)
+def test_the_flag_switches_input_sets(stdin: str, expected: str) -> None:
+    """``▦``'s empty transfer into ``◇`` skips the set's rest; a set ends at EOL."""
+    flag = ["▣─◇─▦───◇", "  ║ ║   ║", "  ◇ ◇   ◇"]
+    io = ScriptedIO(stdin)
+    run(flag, io)
+    assert io.getvalue() == expected
+    io = ScriptedIO("1\n1")
+    run(["▣─◇─◇", "  ║ ║", "  ◇ ◇"], io)
+    assert io.getvalue() == "1"
+
+
+def test_a_generated_program_reads_the_first_set_only() -> None:
+    """Spaces are ignored, a newline is not: the stdin oracle refuses ``0\\n1``."""
+    from esolangs.exceptions import ArgumentError
+    from tests.stdin_check import _check_stdin
+
+    xor = thisthat("0110").splitlines()
+    for stdin, expected in (("0 1\n", "1"), ("0\n1", "")):
+        io = ScriptedIO(stdin)
+        run(xor, io)
+        assert io.getvalue() == expected
+    _check_stdin("thisthat", "0 1\n", "0110")
+    with pytest.raises(ArgumentError, match="first line"):
+        _check_stdin("thisthat", "0\n1", "0110")
 
 
 def test_branching_protocol_covers_random_input_plain_and_halted() -> None:
@@ -206,9 +236,12 @@ def test_arrows_noop_and_cursor_data_behaviors() -> None:
     machine._advance_one(_Pointer((1, 0), (0, 0)), following)
     assert following[0].position == (2, 0)
 
-    machine = _Machine(["▣▷─"], ScriptedIO(""))
+    machine = _Machine([" │", "▣▷─", " │"], ScriptedIO(""))
     following = []
-    machine._advance_one(_Pointer((1, 0), (1, -1)), following)
+    machine._advance_one(_Pointer((1, 1), (1, 0)), following)
+    assert [p.position for p in following] == [(1, 2)]
+    following = []
+    machine._advance_one(_Pointer((1, 1), (2, 1)), following)
     assert following == []
 
     machine = _Machine(["▣◯─"], ScriptedIO(""))
@@ -224,6 +257,11 @@ def test_arrows_noop_and_cursor_data_behaviors() -> None:
     assert following[0].channel == "execution"
 
 
+def test_an_unknown_cell_aborts_at_load_even_when_unreached() -> None:
+    with pytest.raises(HaltError, match="unsupported thisthat cell: 'x'"):
+        run(["▣◇", "  x"], ScriptedIO(""))
+
+
 def test_unreachable_bad_cell_still_aborts() -> None:
     machine = _Machine(["▣─"], ScriptedIO(""))
     machine.grid = ("▣x",)
@@ -234,9 +272,9 @@ def test_unreachable_bad_cell_still_aborts() -> None:
 def test_popping_an_empty_head_shifts_the_stack_back() -> None:
     """Wiki: a pop removes the beginning element, even an empty one, and shifts."""
     machine = _Machine(["▣"], ScriptedIO(""))
-    machine.cells = {(-2, 0): 1}
+    machine.cells = {(1, 0): 1}
     assert machine._head("row", None) is None
-    assert machine.cells == {(-1, 0): 1}
+    assert machine.cells == {(0, 0): 1}
 
 
 def test_branch_choices_follow_the_update_order() -> None:
@@ -270,3 +308,46 @@ def test_a_cursorless_read_loop_halts_at_eof() -> None:
     loop = ["▣─▶─◇═◒", "  │   │", "  └───┘"]
     assert run_until_halt_or_cycle(_Machine(loop, io)) is True
     assert io.exhausted
+
+
+def test_cat_and_kolakoski_wiki_examples() -> None:
+    """The Cat echoes and halts; Kolakoski prints the sequence, 1 as 0, 2 as 1."""
+    from pathlib import Path
+
+    pages = Path(__file__).parent.parent / "fixtures" / "wiki_examples"
+    cat = (pages / "thisthat_cat.txt").read_text(encoding="utf-8").splitlines()
+    for bits in ("", "0", "1", "0110"):
+        io = ScriptedIO(bits)
+        run(cat, io)
+        assert io.getvalue() == bits
+    kolakoski = [1, 2, 2]
+    for i in range(2, 200):
+        kolakoski += [3 - kolakoski[-1]] * kolakoski[i]
+    source = (pages / "thisthat_kolakoski.txt").read_text(encoding="utf-8")
+    machine = _Machine(source.splitlines(), ScriptedIO(""))
+    for _ in range(4000):
+        machine.step()
+    printed = machine.io.getvalue()
+    assert len(printed) > 60
+    assert printed == "".join(str(term - 1) for term in kolakoski)[: len(printed)]
+
+
+def test_touching_nodes_do_not_connect() -> None:
+    """Only wires connect: a ``◇`` beside ``■`` never receives its 1."""
+    io = ScriptedIO("")
+    run(["▣─■◇", "  ║", "  ◇"], io)
+    assert io.getvalue() == "1"
+
+
+def test_a_data_sender_goes_on_down_execution_wires() -> None:
+    """``◇`` reads, sends the bit, and goes on: two reads, two prints."""
+    io = ScriptedIO("10")
+    run(["▣─◇─◇", "  ║ ║", "  ◇ ◇"], io)
+    assert io.getvalue() == "10"
+
+
+def test_halt_lets_its_cycle_finish() -> None:
+    """``◉`` and a ``◇`` reached in the same cycle: the bit still prints."""
+    io = ScriptedIO("")
+    run(["▣─■─◉", "  ║", "  ◇"], io)
+    assert io.getvalue() == "1"

@@ -1,11 +1,14 @@
 """Interpreter for Brainfuck.
 
-8-bit wrapping tape growing rightward, ``<`` clamped at the left edge,
-matching-bracket loops.  Unbalanced brackets raise :class:`ValueError`;
-``,`` raises :class:`EOFError` on exhausted input (the spec leaves EOF
-undefined), so ``,[.,]`` ends with an error.  :func:`_advance` is pure
-over an immutable ``_State`` and ``snapshot`` returns it directly; the
-shell does ``.`` and ``,``.  ``factor.py`` drives a decoded program through it.
+8-bit wrapping tape growing in both directions, matching-bracket loops.
+``<`` at the leftmost cell adds a fresh zero cell to its left: the wiki
+allows cells left of the start ("an interpreter may provide some"), and
+its primo and KSab Hello Worlds need four and five of them.  Unbalanced
+brackets raise :class:`ValueError`; ``,`` raises :class:`EOFError` on
+exhausted input (the spec leaves EOF undefined), so ``,[.,]`` ends with
+an error.  :func:`_advance` is pure over an immutable ``_State`` and
+``snapshot`` returns it directly; the shell does ``.`` and ``,``.
+``factor.py`` drives a decoded program through it.
 """
 
 from __future__ import annotations
@@ -84,12 +87,15 @@ def _advance(state: _State, code: str, brackets: dict[int, int]) -> _State:
             tape = (*tape, 0)
         acc = tape[ptr]
     elif char == "<":
-        # Clamped at the left edge; a clamped move stays, so no commit.
+        # Leaving the cell: commit first.  Past the left end grows by one,
+        # and the pointer stays at index 0, now the new cell.
+        tape = _committed(state)
+        dirty = False
         if ptr:
-            tape = _committed(state)
-            dirty = False
             ptr -= 1
-            acc = tape[ptr]
+        else:
+            tape = (0, *tape)
+        acc = tape[ptr]
     elif (char == "[" and acc == 0) or (char == "]" and acc != 0):
         # Tests ``acc`` (the truth).  Lands on the partner; +1 steps past it.
         ind = brackets[ind]
@@ -235,7 +241,12 @@ def run(code: str, io: IO) -> None:
             if ptr >= len(tape):
                 tape.extend(bytes(ptr + 1 - len(tape)))
         elif opcode == _LEFT:
-            ptr = max(0, ptr - arg)
+            ptr -= arg
+            if ptr < 0:
+                # At least double: a program marching left stays linear.
+                grow = max(-ptr, len(tape))
+                tape[0:0] = bytes(grow)
+                ptr += grow
         elif opcode == _OUTPUT:
             output(chr(tape[ptr]))
         elif opcode == _INPUT:

@@ -1,5 +1,7 @@
 """Unit tests for the Forþ interpreter."""
 
+from functools import partial
+
 import pytest
 
 from esolangs.exceptions import HaltError
@@ -10,15 +12,49 @@ from tests.interpreters.contract import (
     EmptyProgramContract,
     InputCursorContract,
 )
+from tests.interpreters.cursorless_io import PositionlessIO
+from tests.interpreters.runner import run_program as _run_program
 
-
-def run_program(code: str, stdin: str = "") -> str:
-    io = ScriptedIO(stdin)
-    run(code, io)
-    return io.getvalue()
+run_program = partial(_run_program, run, suppress_eof=False)
 
 
 class TestForth:
+    @pytest.mark.parametrize(
+        ("code", "expected"),
+        [
+            # 0 9 / is 0, then ~0 is -1, printed as byte 0xff
+            pytest.param("09/~.", "\xff", id="division_truncates_toward_zero"),
+            pytest.param("65v..", "\x06\x05", id="swap"),
+            # push the seed 0 and the bytes for 'H' (72) and 'i' (105); the
+            # [.] loop prints both and stops at the 0 seed
+            pytest.param("0F7*0+F4*C+[.]", "Hi", id="loop"),
+            pytest.param("0[F.]5.", "\x05", id="loop_on_zero_top_is_skipped"),
+            pytest.param("123o...", "\x01\x02\x03", id="reverse_flips_the_whole_stack"),
+            # only A-F push; G is past the end of the hex run and is ignored
+            pytest.param("0G.", "\x00", id="uppercase_past_f_is_not_a_digit"),
+            # X sits outside every command class, so it leaves the stack alone
+            pytest.param("X5.", "\x05", id="x_is_neither_an_operator_nor_a_bracket"),
+            # ; on a key with no scope pushes an empty frame, not nothing
+            pytest.param("1;", "", id="calling_an_unstored_scope_runs_nothing"),
+            # the scope excludes the ), so what follows runs once, not twice
+            pytest.param(
+                "1(5:).", "\x05", id="a_branch_scope_stops_at_its_closing_bracket"
+            ),
+            # depth is counted up as well as down, so the outer scope is whole
+            pytest.param(
+                "1((5.))", "\x05", id="a_live_nested_branch_matches_the_outer_bracket"
+            ),
+            # a loop two frames deep re-enters the top frame, not frame 1
+            pytest.param(
+                "1{3[:1-]A.}1;", "\n", id="a_loop_inside_a_called_scope_finishes"
+            ),
+            # a called scope's underflow returns 3, which the caller ignores
+            pytest.param("1{/}1;", "", id="nested_error_is_discarded"),
+        ],
+    )
+    def test_prints(self, code: str, expected: str) -> None:
+        assert run_program(code) == expected
+
     def test_arithmetic(self) -> None:
         assert run_program("23+.") == "\x05"
         assert run_program("95-.") == "\x04"
@@ -26,21 +62,15 @@ class TestForth:
         assert run_program("84/.") == "\x02"
         assert run_program("85%.") == "\x03"
 
-    def test_division_truncates_toward_zero(self) -> None:
-        # 0 9 / is 0, then ~0 is -1, printed as byte 0xff
-        assert run_program("09/~.") == "\xff"
-
-    def test_swap(self) -> None:
-        assert run_program("65v..") == "\x06\x05"
-
     def test_branch(self) -> None:
         assert run_program("1(F4*5+.)") == "A"
         assert run_program("0(F4*5+.)") == ""
 
-    def test_loop(self) -> None:
-        # push the seed 0 and the bytes for 'H' (72) and 'i' (105); the
-        # [.] loop prints both and stops at the 0 seed
-        assert run_program("0F7*0+F4*C+[.]") == "Hi"
+    def test_rotate_cycles_three_and_aborts_under_three(self) -> None:
+        """Three rotations restore the stack; two elements abort the run."""
+        assert run_program("123ccc...") == "\x03\x02\x01"
+        with pytest.raises(HaltError):
+            run_program("12c")
 
     def test_store_and_call(self) -> None:
         assert run_program("1{65.}1;") == "\x05"
@@ -63,30 +93,6 @@ class TestForth:
         # with two elements it leaves the stack untouched (no-op)
         assert run_program("65a.") == "\x05"
 
-    def test_uppercase_past_f_is_not_a_digit(self) -> None:
-        """Only A-F push; G is past the end of the hex run and is ignored."""
-        assert run_program("0G.") == "\x00"
-
-    def test_x_is_neither_an_operator_nor_a_bracket(self) -> None:
-        """X sits outside every command class, so it leaves the stack alone."""
-        assert run_program("X5.") == "\x05"
-
-    def test_calling_an_unstored_scope_runs_nothing(self) -> None:
-        """``;`` on a key with no scope pushes an empty frame, not nothing."""
-        assert run_program("1;") == ""
-
-    def test_a_branch_scope_stops_at_its_closing_bracket(self) -> None:
-        """The scope excludes the ``)``, so what follows runs once, not twice."""
-        assert run_program("1(5:).") == "\x05"
-
-    def test_a_live_nested_branch_matches_the_outer_bracket(self) -> None:
-        """Depth is counted up as well as down, so the outer scope is whole."""
-        assert run_program("1((5.))") == "\x05"
-
-    def test_a_loop_inside_a_called_scope_finishes(self) -> None:
-        """A loop two frames deep re-enters the top frame, not frame 1."""
-        assert run_program("1{3[:1-]A.}1;") == "\n"
-
     def test_empty_stack_pop_halts(self) -> None:
         with pytest.raises(HaltError):
             run_program(".")
@@ -102,10 +108,6 @@ class TestForth:
             run_program("(5")
         with pytest.raises(HaltError):
             run_program("[")
-
-    def test_nested_error_is_discarded(self) -> None:
-        """A called scope's underflow returns 3, which the caller ignores."""
-        assert run_program("1{/}1;") == ""
 
     def test_nested_empty_pop_is_fatal(self) -> None:
         """An empty-stack pop inside a called scope halts the whole program."""
@@ -149,6 +151,15 @@ class TestStepMachine:
         machine.step()  # the "/" underflow aborts the scope (and ends the run)
         assert machine.halted
         assert machine.error is False  # the nested error is discarded
+
+    def test_a_top_level_abort_raises_from_step(self) -> None:
+        """A stepped run fails as ``run`` does, not as a quiet halt."""
+        from esolangs.interpreters.stack_based.forth import _Machine
+
+        machine = _Machine("0/", ScriptedIO())
+        machine.step()
+        with pytest.raises(HaltError, match="top-level scope aborted"):
+            machine.step()
 
     def test_the_wrap_folds_at_exactly_two_to_the_thirty_first(self) -> None:
         """2**31 is the first value that wraps, and it lands on the floor."""
@@ -205,12 +216,8 @@ def test_a_read_loop_on_a_cursorless_port_is_not_a_cycle() -> None:
     from esolangs.interpreters.stack_based.forth import _Machine
     from esolangs.vm import run_until_halt_or_cycle
 
-    class _Cursorless(ScriptedIO):
-        def position(self) -> int:
-            return 0
-
     with pytest.raises(EOFError):
-        run_until_halt_or_cycle(_Machine("1[,]", _Cursorless("\n" * 10)), limit=100)
+        run_until_halt_or_cycle(_Machine("1[,]", PositionlessIO("\n" * 10)), limit=100)
 
 
 class TestContract(EmptyProgramContract, CycleContract, InputCursorContract):

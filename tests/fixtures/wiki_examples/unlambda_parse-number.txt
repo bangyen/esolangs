@@ -1,0 +1,22 @@
+``
+ ````sii                                                      # Actual parser
+  ``s`k `s`kc
+   ``s``s`ks ``s`k `s`ks ``s`k `s`kk
+    ``s`k `s`kd ``s`k `s`kk ``s``s`ks ``s``s`ks k k `k
+     `d ``s `k `s``s`ks ``s`kk                               # Add next digit
+      ` `?0`?1`?2`?3`?4`?5`?6`?7`?8`?9                      # Parse one digit
+       ```sii                       # Calculate number from i and v arguments
+        ``s`k `s`kc
+         ``s``s`ks ``s`kk ``s`ks ``s`kk  ``s`kd ``s`kk ``sii  `k ``s s `k`k `
+          ```sii                                  # Count v arguments until i
+           ``s`k `s`k `s`k c
+            ``s``s`ks ``s`k `s`ks ``s`k `s`kk ``s`k `s`ks ``s`k `s`kk
+             ``s`k `s`kd ``s`k `s`kk  ``s``s`ks ``s``s`ks k k  `k `s``s`ks k
+            `k ``s`k `s s ``s`kk k
+          `ki                                               # Initial count 0
+       i                                  # Final i argument to stop counting
+      `s`k                                                   # Multiply by 10
+       ``s``s`ksk ` ``s``s`kski ``s``s`ksk ``s``s`kski
+    `k ``s`d`k `s `@ ?  k                                     # Stop on space
+  `ki                                                      # Initial number 0
+ .*i                                             # Test by printing asterisks

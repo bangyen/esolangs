@@ -1,0 +1,12 @@
+begin;var c;var l;set l [];inp c;;;;;;;;;;;;;;;;;;;skip c = eof;turn right;var x;set x len{l}-0.5;;;;;;;;;;;skip sign{x} > 0;end;turn right;
+                          t                                               t                      t                                         t
+                          h                                               u                      h                                         u
+                          g                                               r                      g                                         r
+                          i                                               n                      i                                         n
+                          r                                                                      r                                          
+                                                                          r                                                                r
+                          n                                               i                      n                                         i
+                          r                                               g                      r                                         g
+                          u                                               h                      u                                         h
+                          t                                               t                      t                                         t
+                          ;thgir nrut;}c ,5.0-}l{nel ,l{ta;}1 ,l{nel l tes;                      ;thgir nrut;1-x x tes;c tuo;}x ,l{ta c tes;

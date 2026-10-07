@@ -245,15 +245,16 @@ def _drive(lang: str, program: Program, stdin: str, cap: int) -> bool:
     its call and the overrun policy -- a cap is not a finding -- is the
     ``False`` this hands straight back.
     """
-    return run_until_halt(make_vm(lang, program, stdin), cap)
+    return run_until_halt(make_vm(lang, program, stdin=stdin), cap)
 
 
 #: Wall-clock a language's worker gets before the parent kills it.
 #:
-#: The full six-worker sweep finishes in 5.4s and its slowest worker in 4.5s.
-#: Thirty seconds leaves room for a slower machine while bounding a regression
-#: in VM construction, where the step cap cannot act.
-_LANG_TIMEOUT = 30.0
+#: The slowest workers (123, Befunge, Circlefuck) take 8-10s locally and
+#: passed 30s on one release runner but not the next.  Ninety seconds leaves
+#: room for a slower machine while bounding a regression in VM construction,
+#: where the step cap cannot act.
+_LANG_TIMEOUT = 90.0
 
 #: How many language workers run at once.  Deliberately **2**, not the core
 #: count: each worker is a separate process doing pure CPU work, so scaling

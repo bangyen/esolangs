@@ -5,7 +5,8 @@ import re
 import pytest
 
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.other.thue import _Machine, _matches, _parse, run
+from esolangs.interpreters.other import thue
+from esolangs.interpreters.other.thue import _advance, _Machine, _matches, _parse, run
 from esolangs.interpreters.randomness import FirstDraw, Seeded
 from tests.interpreters.runner import run_program
 
@@ -73,6 +74,8 @@ def test_the_separator_may_carry_whitespace() -> None:
     rules, state = _parse("a::=b\n  ::=  \naa")
     assert rules == (("a", "b"),)
     assert state == "aa"
+    # A whitespace left side with text on the right is a rule, not the end.
+    assert run_program(run, "  ::=~y\n::=\na  b") == "y"
 
 
 def test_an_empty_output_string_prints_a_newline() -> None:
@@ -144,3 +147,25 @@ def test_the_branching_protocol_reports_the_state_it_searches() -> None:
     assert not machine.branching_halted("aa")
     assert machine.branching_halted("zz")
     assert set(machine.branching_successors("aa", 8)) == {"ba", "ab", "ca", "ac"}
+
+
+def test_the_block_index_steps_as_the_whole_string_would(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The machine indexes occurrences per block; :func:`_matches` and
+    :func:`_advance` rescan the whole string.  Tiny blocks put rewrites
+    across every boundary, and ``bb``'s side outgrows two blocks."""
+    monkeypatch.setattr(thue, "_BLOCK", 3)
+    monkeypatch.setattr(thue, "_GROUP", 2)
+    program = "ab::=ba\nba::=\nbb::=abababababab\naab::=b\nbab::=a\n::=\n" + "ab" * 40
+    machine = _Machine(program, ScriptedIO(""), Seeded(4))
+    rules, state = _parse(program)
+    reference = Seeded(4)
+    for _ in range(400):
+        found = _matches(state, rules)
+        assert machine.state == state
+        assert machine.ip == (found[0] if found else ())
+        if not found:
+            break
+        state = _advance(state, rules, found[reference.randbelow(len(found))])[0]
+        machine.step()

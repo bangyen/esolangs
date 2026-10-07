@@ -1,14 +1,16 @@
 """Interpreter for bit~.
 
 An 8-cell bit pool with a pointer: ``~`` flips, ``>``/``<`` move (``>``
-extends the pool when the window would run past the end; ``<`` is a
-no-op at cell 0), ``)`` reads a byte as 8 bits MSB first, ``(`` prints
-the 8-bit window (fewer if the pool ends), ``{``/``}`` loop on the
+extends the pool when the window would run past the end; ``<`` at cell 0
+prepends a zero cell, as the wiki's bare "move ... to the left" reads
+for every tape here), ``)`` reads a byte and XORs it, MSB first, into the
+8-bit window -- the spec says it "flip[s] the current bit and the next 7
+bits ... according to the ASCII character code" -- ``(`` prints that
+window ("the current bit and the next 7 bits"), ``{``/``}`` loop on the
 current bit.  Other characters are ignored.  ``)`` raises
-:class:`EOFError` on exhausted input (the cross-check exits 3); an
-unmatched bracket raises :class:`ValueError` when it would jump (the
-Ruby port looped). Input consumes consecutive characters, including
-newlines.
+:class:`EOFError` on exhausted input (the cross-check exits 3) and reads
+newlines too; an unmatched bracket raises :class:`ValueError` when it
+would jump (the Ruby port looped).
 :func:`_advance` is pure over an immutable ``_State``; the shell reads,
 prints and resolves the jump via :func:`_match`, the one part that can
 fail.  A loop that keeps extending the pool never repeats; ``run()``'s
@@ -79,18 +81,20 @@ def _advance(
     if char == "~":
         tape = (*tape[:cell], tape[cell] ^ 1, *tape[cell + 1 :])
     elif char == ">":
-        # The window is eight cells wide, so the pool grows to keep one.
-        if cell + 8 > len(tape):
-            tape = (*tape, 0)
+        # ``(`` reads eight cells, so the pool keeps them under the new cell.
         cell += 1
+        tape = _grown(tape, cell + 8)
     elif char == "<":
-        # ``<`` at the first cell is a no-op rather than an error.
+        # At cell 0 the pool grows a zero cell on the left; see the docstring.
         if cell:
             cell -= 1
+        else:
+            tape = (0, *tape)
     elif char == ")":
         bits = tuple(int(b) for b in f"{byte if byte is not None else 0:08b}")
         tape = _grown(tape, cell + 8)
-        tape = (*tape[:cell], *bits, *tape[cell + 8 :])
+        window = tuple(a ^ b for a, b in zip(tape[cell : cell + 8], bits, strict=True))
+        tape = (*tape[:cell], *window, *tape[cell + 8 :])
     elif target is not None:
         # Both brackets, once the shell has decided a jump happens.
         ind = target

@@ -74,8 +74,10 @@ def test_branching_protocol_covers_random_input_plain_and_halted_states() -> Non
 
 
 def test_errors_are_fishy() -> None:
-    # a negative jump target and a non-codepoint 'o' are errors (author's fish.py)
-    for source in ("~;", "10,;", "10%;", "};", "{;", "2[;", "z;", "01-0.;", "01-o;"):
+    # a negative jump target and a non-codepoint 'o' are errors (author's fish.py),
+    # and so are a tab and a newline that 'p' writes: only a space is a NOP
+    errors = ("~;", "10,;", "10%;", "};", "{;", "2[;", "z;", "01-0.;", "01-o;")
+    for source in (*errors, "\t;", "1a60p 2n;"):
         with pytest.raises(HaltError, match="fishy"):
             _run(source)
     fractional = _Machine(["p"], ScriptedIO(""))
@@ -129,6 +131,11 @@ def test_a_missing_codebox_cell_is_a_nop() -> None:
     machine.step()
     machine.step()
     assert machine.ip == (0, 0, 0, 1)
+    # a string pushes a missing cell as 0, its 'g' value (fish.py: a space)
+    machine = _Machine(['"', "ab"], ScriptedIO(""))
+    machine.step()
+    machine.step()
+    assert machine.stack == [0]
 
 
 def test_empty_program_is_rejected() -> None:
@@ -142,6 +149,8 @@ def test_movement_mirrors_jump_and_trampolines() -> None:
     assert _run("10?9n;") == "1"
     assert _run("01?9n;") == "9"
     assert _run("20.9n;") == "9"
+    # a jump past the box re-enters it modulo its width (fish.py: wraps to 0)
+    assert _run("1n f0. 2n;") == "12"
     assert _run("x;", rng=FirstDraw(0)) == ""
     machine = _Machine(["/ ", " ;"], ScriptedIO(""))
     machine.step()
@@ -169,3 +178,50 @@ def test_movement_mirrors_jump_and_trampolines() -> None:
         machine.dx, machine.dy = start
         machine.step()
         assert (machine.dx, machine.dy) == expected
+
+
+#: The wiki's four Hello, world! programs, its one-space indent removed.
+_WIKI_HELLO = (
+    '>"Hello, world!"0r>o:?v;\n                  ^   <',
+    '"!dlrow ,olleH"l?!;oe0.',
+    "98*oaa*1+o9c*o9c*oba*\\\n1+ob4*o84*of2+7*oba*1\\\n+of4+6*oc9*oaa*ob3*o;\\",
+    "98*ob3*aa*:1+o9c*:\\\no;!*4b*48+8o::-3:+\\!6o:|ooo",
+)
+
+
+@pytest.mark.parametrize("source", _WIKI_HELLO)
+def test_the_wiki_hello_worlds(source: str) -> None:
+    assert _run(source) == "Hello, world!"
+
+
+def test_the_wiki_fizzbuzz_counts_to_one_hundred() -> None:
+    source = (
+        "0voa                            ~/?=0:\\\n"
+        " voa            oooo'Buzz'~<     /\n"
+        " >1+:aa*1+=?;::5%:{3%:@*?\\?/'zziF'oooo/\n"
+        " ^oa                 n:~~/"
+    )
+    lines = _run(source).splitlines()
+    assert len(lines) == 100
+    assert lines[:5] == ["1", "2", "Fizz", "4", "Buzz"]
+    assert lines[14] == "FizzBuzz"
+    assert lines[-2:] == ["Fizz", "Buzz"]
+
+
+def test_the_wiki_quines_print_their_source() -> None:
+    """The multi-line quine reads 24 columns a row.
+
+    The wiki copy lost its last row's trailing space, so the quine then reads
+    an empty cell (0) there; restoring that one space is the only repair.
+    """
+    assert _run('"r00gol?!;40.') == '"r00gol?!;40.'
+    quine = (
+        "0>:a$f8+$p1+:5-?vv     \n"
+        " ^              <>~0v  \n"
+        "v             <     <  \n"
+        ">0v          ;^?-6:+1~<\n"
+        "v <                  < \n"
+        ">$:{:}$go$   1+:f9+-?^^ "
+    )
+    assert _run(quine) == quine
+    assert _run(quine.rstrip(" ")).endswith("^^\x00")

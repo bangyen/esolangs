@@ -1,5 +1,6 @@
 """Unit tests for the Algebraic Programming Language interpreter."""
 
+from functools import partial
 from typing import ClassVar
 
 import pytest
@@ -7,6 +8,7 @@ import pytest
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.algebraic_programming_language import _Machine, run
+from tests.fixtures import text
 from tests.interpreters.contract import (
     CycleContract,
     EmptyProgramContract,
@@ -16,23 +18,7 @@ from tests.interpreters.runner import run_program
 from tests.raises import raises_message
 
 # The wiki's own examples, which are the specification's ground truth.
-HELLO_WORLD = "\n".join(
-    [
-        "72",
-        "101",
-        "108",
-        "108",
-        "111",
-        "44",
-        "32",
-        "87",
-        "111",
-        "114",
-        "108",
-        "100",
-        "33",
-    ]
-)
+HELLO_WORLD = text("algebraic_programming_language/hello_world.txt")
 TRUTH_MACHINE = "x? = x & x?\nn?"
 NOT = "!x = {\nx & $0\n$1\n}"
 CEIL = "CEIL(n) = {\nn % 1 & $(n - n % 1 + 1)\nn\n}"
@@ -41,9 +27,7 @@ WHILE = "WHILE(x, c) = x() & ((c() | 1) & WHILE(x, c))"
 IF = "IF(x, c) = x & c()"
 
 
-def run_and_capture(program: str, stdin: str = "") -> str:
-    """Run a program and return everything it wrote."""
-    return run_program(run, program, stdin)
+run_and_capture = partial(run_program, run)
 
 
 def machine(program: str, stdin: str = "") -> _Machine:
@@ -149,50 +133,51 @@ class TestExecutionModel:
         assert run_and_capture(f"{IF}\nY() = 4\nIF(1, Y)") == "4\n"
 
 
+_VALUE_ERRORS = {
+    # The wiki says ``1(2)`` raises an error.
+    "bracket_multiplication_is_rejected": (
+        "bracket multiplication is invalid syntax",
+        "1(2)",
+    ),
+    # A variable inside a *function* body is not input-bound.
+    "an_unknown_variable_is_rejected": ("unknown variable 'q'", "F() = q\nF()"),
+    "an_unknown_function_is_rejected": ("unknown function 'G'", "G()"),
+    "the_wrong_argument_count_is_rejected": (
+        "'F' takes 1 argument(s), got 2",
+        "F(x) = x\nF(1, 2)",
+    ),
+    "an_unbalanced_bracket_is_rejected": ("expected ')'", "(1 + 2"),
+    "an_unbalanced_brace_is_rejected": ("unbalanced { in program", "F() = {\n1"),
+    "trailing_input_is_rejected": ("trailing input at ')'", "1 + 2)"),
+    "a_bad_parameter_is_rejected": ("bad parameter '1'", "F(1) = 2\nF(3)"),
+    "an_operator_with_no_arguments_is_rejected": (
+        "operator '##' takes no arguments",
+        "## = 2\n1",
+    ),
+    "an_operator_repeating_a_parameter_is_rejected": (
+        "operator 'a#a' repeats a parameter",
+        "a#a = 2\n1",
+    ),
+    "a_definition_with_no_left_hand_side_is_rejected": (
+        "definition has no left-hand side",
+        "= 2",
+    ),
+    "a_malformed_function_header_is_rejected": (
+        "malformed function header 'F1'",
+        "F1 = 2\n1",
+    ),
+}
+
+
 class TestErrors:
     """Malformed programs raise ValueError; bad operations raise HaltError."""
 
-    def test_bracket_multiplication_is_rejected(self) -> None:
-        """The wiki says ``1(2)`` raises an error."""
-        with raises_message(ValueError, "bracket multiplication is invalid syntax"):
-            run_and_capture("1(2)")
-
-    def test_an_unknown_variable_is_rejected(self) -> None:
-        """A variable inside a *function* body is not input-bound."""
-        with raises_message(ValueError, "unknown variable 'q'"):
-            run_and_capture("F() = q\nF()")
-
-    def test_an_unknown_function_is_rejected(self) -> None:
-        with raises_message(ValueError, "unknown function 'G'"):
-            run_and_capture("G()")
-
-    def test_the_wrong_argument_count_is_rejected(self) -> None:
-        with raises_message(ValueError, "'F' takes 1 argument(s), got 2"):
-            run_and_capture("F(x) = x\nF(1, 2)")
-
-    def test_an_unbalanced_bracket_is_rejected(self) -> None:
-        with raises_message(ValueError, "expected ')'"):
-            run_and_capture("(1 + 2")
-
-    def test_an_unbalanced_brace_is_rejected(self) -> None:
-        with raises_message(ValueError, "unbalanced { in program"):
-            run_and_capture("F() = {\n1")
-
-    def test_trailing_input_is_rejected(self) -> None:
-        with raises_message(ValueError, "trailing input at ')'"):
-            run_and_capture("1 + 2)")
-
-    def test_a_bad_parameter_is_rejected(self) -> None:
-        with raises_message(ValueError, "bad parameter '1'"):
-            run_and_capture("F(1) = 2\nF(3)")
-
-    def test_an_operator_with_no_arguments_is_rejected(self) -> None:
-        with raises_message(ValueError, "operator '##' takes no arguments"):
-            run_and_capture("## = 2\n1")
-
-    def test_an_operator_repeating_a_parameter_is_rejected(self) -> None:
-        with raises_message(ValueError, "operator 'a#a' repeats a parameter"):
-            run_and_capture("a#a = 2\n1")
+    @pytest.mark.parametrize(
+        ("message", "program"), _VALUE_ERRORS.values(), ids=list(_VALUE_ERRORS)
+    )
+    def test_raises(self, message, program) -> None:
+        with raises_message(ValueError, message):
+            run_and_capture(program)
 
     def test_division_by_zero_is_a_halt(self) -> None:
         with raises_message(HaltError, "division by zero"):
@@ -214,14 +199,6 @@ class TestErrors:
         """A line naming more variables than the input supplies."""
         with pytest.raises(EOFError):
             run_program(run, "a + b", "1\n", suppress_eof=False)
-
-    def test_a_definition_with_no_left_hand_side_is_rejected(self) -> None:
-        with raises_message(ValueError, "definition has no left-hand side"):
-            run_and_capture("= 2")
-
-    def test_a_malformed_function_header_is_rejected(self) -> None:
-        with raises_message(ValueError, "malformed function header 'F1'"):
-            run_and_capture("F1 = 2\n1")
 
 
 class TestContract(EmptyProgramContract):
@@ -556,6 +533,8 @@ class TestGuardsAndBoundaries:
         ("ab**2", "2\n3\n", "18\n"),
         # Exact integer division past float precision.
         ("(10**20 + 1) / 1", "", "100000000000000000001\n"),
+        # A float operand divides as a float, exact or not.
+        ("1.5 / 3", "", "0.5\n"),
         # Integers are unbounded, past Python's 4300-digit str limit.
         ("10**4400 + 1", "", "1" + "0" * 4399 + "1\n"),
     ],
@@ -571,6 +550,10 @@ def test_arithmetic_regressions(program: str, stdin: str, expected: str) -> None
         ("F(x, x) = x\nF(1)", "repeats a parameter"),
         ("F(x,) = x\nF(1)", "bad parameter"),
         ("10.0**400", "exceeds the float range"),
+        ("F(x y) = x\nF(1)", "malformed function header"),
+        ("X", "unknown function"),
+        ("1 % 0", "modulo by zero"),
+        ("10.0**308 * 10", "number must be finite"),
     ],
 )
 def test_malformed_headers_and_overflow_raise(program: str, error: str) -> None:
@@ -585,3 +568,11 @@ def test_the_evaluation_budget_resets_each_line() -> None:
     while not machine_.halted:
         machine_.step()
     assert machine_.io.getvalue() == "10\n" * 3
+
+
+def test_snapshot_distinguishes_a_float_input_by_its_bits() -> None:
+    """A read ``1.0`` and a read ``1`` are different states."""
+    one, other = machine("x + 0", "1\n"), machine("x + 0", "1.0\n")
+    one.step()
+    other.step()
+    assert one.snapshot() != other.snapshot()

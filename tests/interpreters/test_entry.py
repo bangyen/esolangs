@@ -47,6 +47,15 @@ class TestSourceShape:
         assert seen == [["one\n", "two\n"]]
 
 
+def test_strip_drops_the_newlines(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    seen, run = _spy()
+    monkeypatch.setattr("sys.argv", ["prog", str(_written(tmp_path))])
+    script_main(run, shape="strip")
+    assert seen == [["one", "two"]]
+
+
 class TestArgumentHandling:
     """A missing path is a no-op; a returned code becomes the exit status."""
 

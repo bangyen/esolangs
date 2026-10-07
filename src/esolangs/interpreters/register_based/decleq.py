@@ -1,24 +1,25 @@
 """Interpreter for Decleq.
 
 An OISC: ``a b c`` sets ``b = a - 1`` and jumps to ``c`` if the new ``b``
-is ``<= 0``.  Memory is self-modifying: the source is whitespace-separated
-integers (``#`` comments), the instruction at ``pc`` is
-``memory[pc..pc+2]``, and ``x x next`` is the countdown idiom.  A read out
-of range is zero; a write past the right end grows the store; a write to
-a negative address indexes from the right (growing leftwards would turn a
-terminating program non-terminating), so a program can write to ``-1``
-and read back ``0``; a write further left than the store halts with
-:class:`~esolangs.exceptions.HaltError`.  Decisions:
-``a = -2`` outputs ``memory[b]`` as a byte and ``a = -1`` reads one,
-both falling through; cells are unbounded; the pointer halts off the end;
-exhausted input raises :class:`EOFError`.  Malformed programs raise
-:class:`ValueError`.  No instruction cap: a self-decrementing cell never
-revisits a state on unbounded integers, and ``esolangs.run``'s
-``timeout`` is the guard.  :func:`_advance` is pure over an immutable
-``_State`` whose tuple memory is part of the state because it grows.
+is ``<= 0``.  The source is whitespace-separated integers (``#``
+comments) forming self-modifying memory; ``x x next`` is the countdown
+idiom.  Unbounded cells; no instruction cap (a decrementing cell never
+repeats a state), so ``esolangs.run``'s ``timeout`` is the guard.
+:func:`_advance` is pure over an immutable ``_State``.
 
-The spec leaves user input unspecified; this interpreter reads consecutive
-Unicode character codes, including newlines.
+The page is ten lines and names no halt, so these are choices
+("Memory-mapped I/O: It is optional / -2 b c Outputs b / -1 b c Set b to
+user input"):
+
+* I/O is implemented: ``a = -2`` prints ``memory[b]`` as a byte, ``a = -1``
+  reads one Unicode character code; EOF raises :class:`EOFError`.  Both
+  ignore ``c`` and fall through (SUBBIG, whose assembly the example uses,
+  jumps to ``c``).
+* The pointer halts off the end of the store as it has grown (not of the
+  source).  A read out of range is zero; a write past the end grows the
+  store; a negative write indexes from the right (an error is the other
+  reading), and one past the left end raises
+  :class:`~esolangs.exceptions.HaltError`.
 """
 
 from __future__ import annotations

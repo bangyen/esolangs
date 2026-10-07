@@ -11,12 +11,13 @@ from tests.witness_tables import witnesses
 def test_false_single_character_floor_executes_every_small_table() -> None:
     for n in range(1, 4):
         for table in witnesses(n):
-            program = esolangs.generate("FALSE", table, 1)
+            program = esolangs.generate("FALSE", table, width=1)
             assert max(map(len, program.splitlines())) == 1
             for row, expected in enumerate(table):
                 stdin = format(row, f"0{n}b")
                 assert (
-                    esolangs.run("FALSE", program, stdin, max_steps=100_000) == expected
+                    esolangs.run("FALSE", program, stdin=stdin, max_steps=100_000)
+                    == expected
                 )
 
 
@@ -27,7 +28,7 @@ def test_narrow_small_tokens_keep_larger_input_order(language: str) -> None:
         table = "".join(
             str((row * 17 + row // 3).bit_count() % 2) for row in range(1 << n)
         )
-        program = esolangs.generate(language, table, 1)
+        program = esolangs.generate(language, table, width=1)
         if language != "RAM0":
             assert max(map(len, program.splitlines())) == 1
         for row, expected in enumerate(table):
@@ -38,7 +39,7 @@ def test_narrow_small_tokens_keep_larger_input_order(language: str) -> None:
                 else program
             )
             stdin = "".join(map(str, bits)) if language == "FALSE" else ""
-            output = esolangs.run(language, code, stdin, max_steps=100_000)
+            output = esolangs.run(language, code, stdin=stdin, max_steps=100_000)
             assert (
                 output.startswith(f"z: {expected}\n")
                 if language == "RAM0"
@@ -48,7 +49,7 @@ def test_narrow_small_tokens_keep_larger_input_order(language: str) -> None:
 
 def test_factored_setters_reduce_public_template_floors() -> None:
     for name, floor in (("BF-PDA", 1), ("Home Row", 1), ("RAM0", 1)):
-        template = esolangs.generate(name, "0110", 1)
+        template = esolangs.generate(name, "0110", width=1)
         assert max(map(len, template.splitlines())) == floor
         for row in range(4):
             bits = [int(char) for char in format(row, "02b")]
