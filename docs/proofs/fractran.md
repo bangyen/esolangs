@@ -500,8 +500,8 @@ of 128 at `m=6,T=7`. The `m`-th prime costs `Theta(log m)` characters, so a
 survives; the linear-dependence obstruction moves from the first selection's
 feature vectors to a decoder that reads only the second.
 
-Next: make the decoder depend on both selections, or prove that repeated
-consultations retain an `Omega(T log T)` text floor.
+The pair-decoded construction below makes the decoder depend on both
+selections. Its arbitrary-row bound closes the dense-row escape.
 
 ### Pair-decoded two priority consultations
 
