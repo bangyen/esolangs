@@ -97,6 +97,7 @@ def _assign(
     object.__setattr__(raster, "_payload", payload)
     object.__setattr__(raster, "_language", language)
     object.__setattr__(raster, "_settings", settings)
+    object.__setattr__(raster, "_hash", None)
     raster.__post_init__()
     return raster
 
@@ -132,6 +133,8 @@ class Raster:
     _payload: object | None = field(default=None, repr=False, compare=False)
     _language: str | None = field(default=None, repr=False, compare=False)
     _settings: DialectSettings | None = field(default=None, repr=False, compare=False)
+    # Tuples cache no hash before 3.14; an lru_cache key rehashes every pixel.
+    _hash: int | None = field(default=None, repr=False, compare=False)
 
     def __init__(
         self,
@@ -159,8 +162,10 @@ class Raster:
         return isinstance(other, Raster) and self.rows == other.rows
 
     def __hash__(self) -> int:
-        """Hash the immutable RGB pixels."""
-        return hash(self.rows)
+        """Hash the immutable RGB pixels, once."""
+        if self._hash is None:
+            object.__setattr__(self, "_hash", hash(self.rows))
+        return self._hash
 
     @property
     def language(self) -> str | None:
