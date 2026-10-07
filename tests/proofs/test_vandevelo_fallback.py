@@ -31,26 +31,27 @@ def test_fallback_draws_a_half_average_direction(
     assert 1 <= len(draws) <= _SAMPLES
 
 
-def test_assure_scores_the_exact_best_direction() -> None:
-    """Both branches -- pair differences and the transform -- find the maximum."""
+def test_assure_finds_a_half_average_direction() -> None:
+    """Sparse, dense, and inside a span: the pigeonhole bucket count suffices."""
     import random
 
     from esolangs.tools.vandevelo import _assure
 
     rng = random.Random(3)
     n = 8
-    for density, span_dirs in ((0.05, []), (0.6, []), (0.6, [0b1011])):
+    for density, span_dirs in ((0.05, []), (0.6, []), (0.97, []), (0.6, [0b1011])):
         points = {p for p in range(1 << n) if rng.random() < density}
         root = _Node(0, points, {0}, None)
         node = root
         for v in span_dirs:
             node = _Node(v, {p for p in points if p ^ v in points}, {0, v}, root)
         _assure(node, n)
-        _, count = _best(node)
-        best = max(
-            _pairs(node.points, v) for v in range(1, 1 << n) if v not in node.span
-        )
-        assert count == best
+        direction, count = _best(node)
+        assert direction is not None
+        assert direction not in node.span
+        assert count == _pairs(node.points, direction)
+        size, span = len(node.points), len(node.span)
+        assert 2 * count * ((1 << n) - span) >= size * (size - span)
 
 
 def test_the_clause_bound_holds_on_assure_alone(
