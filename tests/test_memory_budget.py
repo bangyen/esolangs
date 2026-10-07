@@ -168,6 +168,8 @@ def test_worker_reports_a_translated_memory_error_as_the_cap(
     def explode(*_args: object, **_kwargs: object) -> None:
         raise MemoryError
 
+    # The worker installs a streaming ScriptedIO; undo it for the next test.
+    monkeypatch.setattr(esolangs, "ScriptedIO", esolangs.ScriptedIO)
     monkeypatch.setattr(esolangs, "_run", explode)
     monkeypatch.setattr(
         sys,
