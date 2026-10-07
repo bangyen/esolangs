@@ -308,6 +308,17 @@ FORMULAS: dict[str, tuple[Callable[[int, str], int], bool, tuple[int, ...]]] = {
         False,
         (7,),
     ),
+    "Streetcode": (
+        lambda n, _: (
+            n * 2**n
+            + 2 * n
+            + 24
+            + bl(52 + sum(max(51, 2 ** (k - 1) + 3) for k in range(1, n)))
+            + 2 * bl(n)
+        ),
+        True,
+        (6,),
+    ),
 }
 
 

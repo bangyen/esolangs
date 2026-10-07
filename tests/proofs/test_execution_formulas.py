@@ -221,8 +221,8 @@ def _tables(name: str, n: int) -> tuple[str, ...]:
     if name == "Circuit Diagram" and n >= 8:
         # Its worst, the all-ones H-layout; a wide circuit parses in 0.7s.
         return ("1" * width,)
-    if name == "Streetcode" and n >= 7:
-        # Its worst on every table checked, all ones; n=8 alone takes 0.9s.
+    if name == "Streetcode":
+        # Its worst in both columns on all 10 tables checked to n = 7: all ones.
         return ("1" * width,)
     if name == "LaserFuck" and n >= 5:
         # Its worsts, all zeros and all ones; a 3T + 1 cell tape is slow.
