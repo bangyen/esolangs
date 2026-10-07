@@ -73,7 +73,7 @@ class Audit:
 
 def load(path: Path | None = None) -> Audit:
     """Read and parse the live scaling audit."""
-    from esolangs.tools._proof_status import load as load_status
+    from scripts.proof_status import load as load_status
 
     _, rows = load_status() if path is None else load_status(path)
     return Audit(

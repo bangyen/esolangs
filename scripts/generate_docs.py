@@ -8,14 +8,15 @@ to hold them, which is why the gates could stop matching wording.
 
 import pathlib
 import re
+import sys
 from typing import cast
 
 import esolangs
 from esolangs.registry import LANGUAGES, SourceKind, wiki_url
 from esolangs.tools import BOOLEAN
 
-ROOT = pathlib.Path(__file__).parents[3]
-_INTERPRETERS = pathlib.Path(__file__).parents[1] / "interpreters"
+ROOT = pathlib.Path(__file__).resolve().parents[1]
+_INTERPRETERS = ROOT / "src" / "esolangs" / "interpreters"
 
 
 # The README's Implemented Languages section, grouped by interpreter
@@ -380,7 +381,10 @@ def update_readme() -> None:
 
 def main() -> int:
     """Write every generated documentation section."""
-    from esolangs.tools._proof_status import update_docs
+    # Imported here so the module also loads from a test, where this directory
+    # is not on ``sys.path`` until now.
+    sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+    from proof_status import update_docs
 
     update_docs()
     update_readme()

@@ -1,4 +1,4 @@
-"""Round-trip verification for :mod:`extract` against the wiki's own images.
+"""Round-trip verification for Line's ``extract`` against the wiki's own images.
 
 ``extract()`` raises ``ValueError`` when its coverage check fails (see its
 docstring and ``coverage_gap``'s). This script reports that result for every
@@ -8,10 +8,9 @@ fixture, so ``render.py`` and ``extract.py`` regressions produce a nonzero exit.
 import sys
 from pathlib import Path
 
-from .extract import extract
+from esolangs.interpreters.tape_based.line.extract import extract
 
-# The old ``__file__.parent / "fixtures"`` did not exist.
-FIXTURES = Path(__file__).resolve().parents[5] / "tests" / "fixtures" / "line"
+FIXTURES = Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "line"
 
 
 def main(fixtures: Path = FIXTURES) -> int:

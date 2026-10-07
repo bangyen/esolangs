@@ -5,7 +5,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from esolangs.tools import _generate_docs
+import generate_docs
 
 ROOT = Path(__file__).parents[1]
 GENERATED = (
@@ -21,7 +21,7 @@ GENERATED = (
 def main() -> int:
     """Return nonzero when the committed generated sections were stale."""
     before = {path: (ROOT / path).read_bytes() for path in GENERATED}
-    result = _generate_docs.main()
+    result = generate_docs.main()
     changed = [
         path
         for path, content in before.items()
