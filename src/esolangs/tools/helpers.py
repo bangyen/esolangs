@@ -545,7 +545,7 @@ def best_input_order(
 
     ``build(permuted_table, perm)`` splits on ``perm[k]`` at level ``k``
     over the *permuted* table.  Through :data:`_GREEDY_ORDER_MAX_ARITY` the
-    greedy order is scored level by level (``O(n**2 * 2**n)``), both built
+    greedy order is scored level by level (``O(n * 2**n)``), both built
     since routing costs can outweigh folds; wider tables use the identity.
     Identity first, ties keep it, so reordering only ever shrinks.
     Only the *test* order moves; the reads stay in input order.  That rules
@@ -578,14 +578,36 @@ def _greedy_input_order(truth_table: str, n: int) -> tuple[int, ...]:
     Score each unchosen input by the constant subtrees it creates among
     the live blocks; ties keep the lowest index so an unhelped table
     yields the identity.
+
+    A block's whole scoreboard comes from one pass over its rows: the AND
+    and OR of the row indices holding a ``1`` and of those holding a
+    ``0``.  Input ``i``'s zero half is constant iff every ``1`` row, or
+    every ``0`` row, has bit ``i`` set (an empty class vacuously does),
+    and its one half iff every row of one class has it clear.  So a level
+    costs ``O(live rows)`` however many inputs are scored, ``O(n * 2**n)``
+    in all; each level must still read every live row, so parity cannot
+    do better.
     """
+    full = (1 << n) - 1
+
+    def summarize(rows: list[int]) -> tuple[list[int], int, int, int, int]:
+        one_and = zero_and = full
+        one_or = zero_or = 0
+        for r in rows:
+            if truth_table[r] == "1":
+                one_and &= r
+                one_or |= r
+            else:
+                zero_and &= r
+                zero_or |= r
+        return rows, one_and, one_or, zero_and, zero_or
+
+    # Each live block is its rows plus the four aggregates.
+    stats = [summarize(list(range(2**n)))]
     order: list[int] = []
     remaining = list(range(n))
-    # Blocks of rows still to be separated: each is a list of row indices
-    # that agree on every input chosen so far.
-    blocks = [list(range(2**n))]
     # The loop always leaves by the ``break`` below: picking every input
-    # separates every row, so ``blocks`` is empty on the last pass at the
+    # separates every row, so ``stats`` is empty on the last pass at the
     # latest, and ``remaining`` is never the condition that ends it.
     while remaining:  # pragma: no branch - always exits via the break
         best_input = remaining[0]
@@ -593,29 +615,23 @@ def _greedy_input_order(truth_table: str, n: int) -> tuple[int, ...]:
         for i in remaining:
             bit = 1 << (n - 1 - i)
             score = 0
-            for block in blocks:
-                for half in (
-                    [r for r in block if not r & bit],
-                    [r for r in block if r & bit],
-                ):
-                    if half and len({truth_table[r] for r in half}) == 1:
-                        score += 1
+            for _, one_and, one_or, zero_and, zero_or in stats:
+                score += bool((one_and | zero_and) & bit)
+                score += bool(~(one_or & zero_or) & bit)
             if score > best_score:
                 best_input, best_score = i, score
         order.append(best_input)
         remaining.remove(best_input)
         bit = 1 << (n - 1 - best_input)
         split = []
-        for block in blocks:
-            for half in (
-                [r for r in block if not r & bit],
-                [r for r in block if r & bit],
-            ):
-                # A block that is already constant needs no further splitting.
-                if half and len({truth_table[r] for r in half}) > 1:
-                    split.append(half)
-        blocks = split
-        if not blocks:
+        for rows, one_and, one_or, zero_and, zero_or in stats:
+            # A block that is already constant needs no further splitting.
+            if not (one_and | zero_and) & bit:
+                split.append(summarize([r for r in rows if not r & bit]))
+            if not ~(one_or & zero_or) & bit:
+                split.append(summarize([r for r in rows if r & bit]))
+        stats = split
+        if not stats:
             # Everything below folds; the rest of the order cannot matter, so
             # keep it ascending to stay closest to the identity.
             order.extend(remaining)
