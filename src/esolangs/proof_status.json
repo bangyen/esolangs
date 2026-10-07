@@ -63,7 +63,7 @@
       "qualification": "the blank grid is the table, one mark per row copied by `*`; a stage per input walks the mark pointer by that input's weight and `+` prints the mark it lands on",
       "scaling": "linear: 3T copy cells, T pointer steps, one stage per input",
       "execution": "linear: within x2.15 an input, by the execution contract",
-      "workspace": "linear: the mark grid, copied once per row",
+      "workspace": "T log T: two mark grids keyed by coordinates, about 4T marks",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -129,7 +129,7 @@
       "qualification": "nested loops telescope from `table[0]` to `table[index]`",
       "scaling": "linear: T - 1 loop pieces joined once",
       "execution": "linear: within x2.15 an input, by the execution contract",
-      "workspace": "T log T: T - 1 loop counters on the stack",
+      "workspace": "T log T: T - 1 loop-return indices on the stack",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -140,7 +140,7 @@
       "qualification": "one tape cell an entry, and each input's one-shot loop jumps the pointer left by that input's weight, so the reads chain into a Horner index and a self-erasing walk carries the landed bit to one of two print windows",
       "scaling": "linear: bounded dependency scan and canonical residual IDs",
       "execution": "linear: within x2.15 an input, by the execution contract",
-      "workspace": "linear: one tape cell per entry",
+      "workspace": "linear: 2T + 42 tape cells, an entry in every other cell",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -151,7 +151,7 @@
       "qualification": "head/tail discards leave the indexed entry in the deque",
       "scaling": "linear: 2T commands, discard blocks sum to T",
       "execution": "linear: within x2.15 an input, by the execution contract",
-      "workspace": "linear: a deque holding the table",
+      "workspace": "linear: a deque of T pushed table bits",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -184,7 +184,7 @@
       "qualification": "weighted zero padding advances the cyclic rule pointer to the indexed answer; the next empty rule deletes it",
       "scaling": "linear: 5T + 2n + 1 characters, weighted padding",
       "execution": "linear: within x2.15 an input, by the execution contract",
-      "workspace": "linear: a queue of T - 1 symbols",
+      "workspace": "linear: a queue of up to 2T - 1 bits",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -195,7 +195,7 @@
       "qualification": "binary-to-unary substitutions form the row index; T escaped sweeps consume indexed entries before decoding one answer and deleting the suffix",
       "scaling": "linear: T fixed-size sweeps and 2T table characters",
       "execution": "linear: within x2.15 an input, by the execution contract",
-      "workspace": "linear: the program text, rewritten in place",
+      "workspace": "linear: the program string, about 21T characters, rewritten in place",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -228,7 +228,7 @@
       "qualification": "the tape is the program, so the table is its tail past the `@` that stops the run, entry 0 abutting the index digits at the ring's end; `}` deletes the cell under the pointer and slides the digits down into it, so counting the index out against one `}` apiece leaves the entry it names under the pointer",
       "scaling": "linear: bounded dependency scan and canonical residual IDs",
       "execution": "linear: within x2.15 an input, by the execution contract",
-      "workspace": "linear: the program tape, deleted and shifted",
+      "workspace": "linear: a tape of T + O(n) byte cells, shrinking by deletes",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -239,7 +239,7 @@
       "qualification": "finite planar routing",
       "scaling": "linear: H-layout side C sqrt(T), area Theta(T)",
       "execution": "poly n: generations bounded by a gate depth of at most 2n",
-      "workspace": "T log T: pulses in flight across the wiring",
+      "workspace": "T log T: gate latches and live pulses over O(T) gates",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -261,7 +261,7 @@
       "qualification": "an array subscript may name `lineNumber`, so a cell is addressed by the number of the line that writes it",
       "scaling": "linear: one line per four rows, a 64-cell decoder, 3n index lines",
       "execution": "linear: within x2.15 an input, by the execution contract",
-      "workspace": "linear: one array cell per four rows",
+      "workspace": "T log T: array A, T/4 cells keyed by a log T-bit index",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -283,7 +283,7 @@
       "qualification": "each input is the data of one jump in a two-line tester; a node patches the tester's two targets to its children and jumps in, a folded subtree targets the shared self-jump or the line past the end, and a subtree already emitted at its level is targeted, not repeated",
       "scaling": "linear: at most 3(T - 1) + 2n + 3 lines, subtree ids",
       "execution": "poly n: shared self-patching testers, at most 5n + 2 commands",
-      "workspace": "linear: the program lines it patches",
+      "workspace": "linear: the whole program tuple, about 3T/n patched lines",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -305,7 +305,7 @@
       "qualification": "the tree stops `k` levels short, `2**k >= 2n`, and each leaf is a `2**k`-cell table indexed by an unrolled counter, since `T - 1` absolute jump targets would be `Theta(T log T)` digits",
       "scaling": "linear: bounded dependency scan and canonical residual IDs",
       "execution": "poly n: an n-level tree and a 2^k >= 2n lookup counter",
-      "workspace": "linear: the program image, patched in place",
+      "workspace": "linear: the memory tuple, T table cells patched in place",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -316,7 +316,7 @@
       "qualification": "finite cell placement, six inputs left to a painted leaf table",
       "scaling": "linear: leaves are 64-cell rectangles two `$` counts index, area O(T)",
       "execution": "linear: within x2.15 an input, by the execution contract",
-      "workspace": "linear: the grid the mole writes",
+      "workspace": "linear: the whole grid, at least 7T cells, rewritten by `;`",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -327,7 +327,7 @@
       "qualification": "a bare `>` takes its dimension from the byte it stands on, so `d>` is a pointer displacement by the bit read: the index is a coordinate, doubled between reads by a two-loop `{`/`}` gadget, and it addresses one painted cell an entry along dimension 1",
       "scaling": "linear: 2T table characters plus a fixed gadget per input",
       "execution": "linear: within x2.15 an input, by the execution contract",
-      "workspace": "linear: one tape cell per entry",
+      "workspace": "T log T: up to T slots keyed by coordinate tuples",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -349,7 +349,7 @@
       "qualification": "fixed reversed stack order selects the indexed row",
       "scaling": "linear: T literal plus halving `;` runs under T",
       "execution": "linear: within x2.15 an input, by the execution contract",
-      "workspace": "linear: the table pushed on one stack",
+      "workspace": "linear: frame program text of about 2T characters",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -393,7 +393,7 @@
       "qualification": "finite folded layout",
       "scaling": "linear: word-packed transform and budgeted emission",
       "execution": "linear: within x2.15 an input, by the execution contract",
-      "workspace": "linear: the expression state, sized with the program",
+      "workspace": "linear: the top frame's token tuple, the whole expression",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -404,7 +404,7 @@
       "qualification": "a pair of answers per deque, and the input walks the deque cursor to the pair it wants",
       "scaling": "linear: T pushes, `T/2 - 1` cursor steps, two rows",
       "execution": "linear: within x2.15 an input, by the execution contract",
-      "workspace": "linear: T pushes across T/2 deques",
+      "workspace": "T log T: about 4T exit-memory entries and T/2 deques",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -415,7 +415,7 @@
       "qualification": "the last seven inputs paint a block of `2**7` table entries as one call's literal argument list, and each of them halves the callee's parameter window with one multi-assignment, so the first parameter ends up holding the addressed entry",
       "scaling": "linear: two characters an entry, halvings sum to `2 * 128`",
       "execution": "poly n: one block-selecting path and a fixed 2^k shift register",
-      "workspace": "linear: call frames sized with the program",
+      "workspace": "linear: call frames embedding the parsed main body",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -426,7 +426,7 @@
       "qualification": "—",
       "scaling": "linear: span walk, constant dispatch, step literals geometric",
       "execution": "linear: within x2.15 an input, by the execution contract",
-      "workspace": "linear: a dictionary and stack sized with the program",
+      "workspace": "T log T: frame text and a scope dictionary keyed by heap index",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -448,7 +448,7 @@
       "qualification": "the whole table is one int-mode literal read in base 10, and each `W` squares an accumulator and doubles it on a 0, which is Horner's rule for the complemented index, so the accumulator is exactly the power of two that `R` shifts the wanted entry down to bit 0",
       "scaling": "linear: bounded dependency scan, one table literal, n read blocks",
       "execution": "linear: within x2.15 an input, by the execution contract",
-      "workspace": "linear: a T-bit table integer and accumulator",
+      "workspace": "linear: frame program text and a literal buffer, about 0.6T letters",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -536,7 +536,7 @@
       "qualification": "`_mux` is the total fallback; its six failure sites close uniformly in `n`",
       "scaling": "linear: mux lookup, constant strings times O(T) counts",
       "execution": "linear: within x2.15 an input, by the execution contract",
-      "workspace": "linear: about 6T mux tape cells",
+      "workspace": "linear: a tape bit-integer of about 6T bits",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -558,7 +558,7 @@
       "qualification": "the table is one `PSH STR` literal, pushed so that row 0 lands on top, and the inputs add their weights into the counter of how many characters to discard",
       "scaling": "linear: T-character literal, one read block an input",
       "execution": "linear: within x2.15 an input, by the execution contract",
-      "workspace": "linear: the T-character table string on the stack",
+      "workspace": "linear: a stack of T table-character codes",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -613,7 +613,7 @@
       "qualification": "each table entry is pushed and an input index selects its output; literal products replace conjunction tables",
       "scaling": "linear: one bounded-width strip with O(T) codels",
       "execution": "linear: within x2.15 an input, by the execution contract",
-      "workspace": "linear: table entries pushed on the stack",
+      "workspace": "linear: T one-bit table entries on the stack",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -636,7 +636,7 @@
       "qualification": "the table is one binary literal, divided by the power of two the reads build",
       "scaling": "linear: T-bit literal, one squaring statement per input",
       "execution": "poly n: n + 3 Horner statements over one T-bit literal",
-      "workspace": "linear: the T-bit table literal",
+      "workspace": "linear: a variable holding the table shifted by the row index",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -680,7 +680,7 @@
       "qualification": "past 35 inputs the positional walk loops on sixteen labels: each bit advances the pointer to the first row whose 2-adic valuation mark reads zero, and one pass per bit shifts the marks",
       "scaling": "linear, time n log: greedy order scoring, capped at n <= 10",
       "execution": "linear: within x2.15 an input, by the execution contract",
-      "workspace": "linear: the walk route's mark and valuation tape",
+      "workspace": "linear: a tape of about 2T one-bit cells holding the table",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -702,7 +702,7 @@
       "qualification": "each level owns a bit, branch flag, and result cell; a child transfers its result three cells upward, so the depth-first pointer walk crosses each tree edge only a constant number of times",
       "scaling": "linear: six characters an input, approaching 48.5T characters",
       "execution": "poly n: one root-to-leaf path of n tests",
-      "workspace": "linear: the preallocated tape, about 15T cells",
+      "workspace": "linear: a preallocated 1-bit tape, one cell per source character",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -724,7 +724,7 @@
       "qualification": "the street writes one cell per entry, then each input's mouth forks on its bit and its side room walks the cell pointer left by that bit's weight, leaving the car over the indexed entry",
       "scaling": "linear: nine rows of street, ~1.8T columns",
       "execution": "linear: within x2.15 an input, by the execution contract",
-      "workspace": "linear: one street cell per entry",
+      "workspace": "T log T: a cell dictionary, one address-keyed entry per 1",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -746,7 +746,7 @@
       "qualification": "each folding pass removes at least one pending unit",
       "scaling": "linear: one `*` per entry; ANF only below five inputs",
       "execution": "linear: within x2.15 an input, by the execution contract",
-      "workspace": "linear: cells sized with the table",
+      "workspace": "linear: one cell holding the T-bit packed table integer",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -757,7 +757,7 @@
       "qualification": "—",
       "scaling": "linear: bounded dependency scan and canonical residual IDs",
       "execution": "linear: within x2.15 an input, by the execution contract",
-      "workspace": "linear: a queue of about 4T symbols",
+      "workspace": "linear: a queue of 4T to 8T small cells",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -768,7 +768,7 @@
       "qualification": "the table is the starting state, one character an entry, and the bit read rewrites every adjacent pair to one of its two members, so the state halves per input and the last character is the answer; the rules never overlap, so the language's random rule choice has nothing to choose",
       "scaling": "linear: T state characters, nineteen fixed rules",
       "execution": "linear: within x2.15 an input, by the execution contract",
-      "workspace": "linear: the T-character start string",
+      "workspace": "linear: the state string of T + 3 characters",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -790,7 +790,7 @@
       "qualification": "—",
       "scaling": "linear, time n log: greedy order scoring, capped",
       "execution": "linear: within x2.15 an input, by the execution contract",
-      "workspace": "linear: stack operands never popped, about T/2 items",
+      "workspace": "linear: one 3-bit fraction per executed guard, never popped",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -801,7 +801,7 @@
       "qualification": "equal-width input programs leave one selector apiece; each node stores both branches as strings and the selector evaluates exactly one, while a constant leaf discards the unused selectors; a repeated subtree is pushed once and carried above the next selector, and the plain tree stays a candidate",
       "scaling": "linear: 7n input characters plus at most 11T - 4 tree characters",
       "execution": "poly n: a lazy promise tree; one path of n selections",
-      "workspace": "linear: a stack of branch strings, about 11T characters",
+      "workspace": "linear: spliced program text plus a branch-string stack",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -812,7 +812,7 @@
       "qualification": "each half is a `d` promise, forced by the `?` test that selects it, since an argument spelled inline would be evaluated before the application; the shipped node instead returns `s` over its selected promises, so a repeated subtree bound once as a promise reaches every half below, and the plain tree stays a candidate",
       "scaling": "linear: 29 characters an internal node, four a leaf",
       "execution": "poly n: only selected d-promises are forced; one path of n",
-      "workspace": "linear: the live term, reduced in place",
+      "workspace": "linear: the program term, held in task and continuation frames",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
