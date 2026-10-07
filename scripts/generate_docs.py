@@ -331,25 +331,25 @@ def _splice(text: str, start: str, end: str, body: str) -> str:
     return text[: text.index(start)] + block + text[text.index(end) + len(end) :]
 
 
-def update_usage() -> None:
+def update_usage(root: pathlib.Path = ROOT) -> None:
     """Rewrite the generated tables in docs/usage.md between their markers."""
-    path = ROOT / "docs" / "usage.md"
+    path = root / "docs" / "usage.md"
     text = path.read_text()
     text = _splice(text, _SHAPES_START, _SHAPES_END, render_input_shapes_section())
     text = _splice(text, _API_START, _API_END, render_api_section())
     path.write_text(text)
 
 
-def update_contributing() -> None:
+def update_contributing(root: pathlib.Path = ROOT) -> None:
     """Validate the registry-derived generator location in contributor docs."""
-    path = ROOT / "docs" / "CONTRIBUTING.md"
+    path = root / "docs" / "CONTRIBUTING.md"
     if render_contributor_tools_section() not in path.read_text():
         raise ValueError(f"{path} does not name the registry's generator directory")
 
 
-def update_language_request() -> None:
+def update_language_request(root: pathlib.Path = ROOT) -> None:
     """Rewrite the issue template's registry language count."""
-    path = ROOT / ".github" / "ISSUE_TEMPLATE" / "language_request.yml"
+    path = root / ".github" / "ISSUE_TEMPLATE" / "language_request.yml"
     text, replacements = re.subn(
         r"(What it adds that the current )\d+( do not —)",
         rf"\g<1>{len(LANGUAGES)}\g<2>",
@@ -360,9 +360,9 @@ def update_language_request() -> None:
     path.write_text(text)
 
 
-def update_readme() -> None:
+def update_readme(root: pathlib.Path = ROOT) -> None:
     """Rewrite the generated sections of README.md between their markers."""
-    path = ROOT / "README.md"
+    path = root / "README.md"
     text = path.read_text()
     for start, end, render in (
         (
@@ -379,20 +379,20 @@ def update_readme() -> None:
     path.write_text(text)
 
 
-def main() -> int:
+def main(*, output_root: pathlib.Path = ROOT) -> int:
     """Write every generated documentation section."""
     # Imported here so the module also loads from a test, where this directory
     # is not on ``sys.path`` until now.
     sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
     from proof_status import update_docs
 
-    update_docs()
-    update_readme()
+    update_docs(output_root)
+    update_readme(output_root)
     print("updated the generated sections of README.md")
-    update_usage()
+    update_usage(output_root)
     print("updated the generated tables of docs/usage.md")
-    update_contributing()
+    update_contributing(output_root)
     print("validated the registry facts in docs/CONTRIBUTING.md")
-    update_language_request()
+    update_language_request(output_root)
     print("updated the generated facts of the language request template")
     return 0

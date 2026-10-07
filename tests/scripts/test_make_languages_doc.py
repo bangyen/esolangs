@@ -80,47 +80,49 @@ def test_a_language_without_a_generator_is_ignored() -> None:
 
 def test_an_incorrect_contributor_path_is_rejected(tmp_path: Path) -> None:
     module = load_script()
-    module.ROOT = tmp_path
     path = tmp_path / "docs" / "CONTRIBUTING.md"
     path.parent.mkdir()
     path.write_text("| `src/esolangs/tools/boolean/` | generators |\n")
     module.render_contributor_tools_section = lambda: "correct row"
     with pytest.raises(ValueError, match="does not name"):
-        module.update_contributing()
+        module.update_contributing(tmp_path)
 
 
 def test_the_issue_template_must_contain_one_count(tmp_path: Path) -> None:
     """A wording change cannot silently disable count generation."""
     module = load_script()
-    module.ROOT = tmp_path
     path = tmp_path / ".github" / "ISSUE_TEMPLATE" / "language_request.yml"
     path.parent.mkdir(parents=True)
     path.write_text("no generated count here\n")
     with pytest.raises(ValueError, match="expected one language count"):
-        module.update_language_request()
+        module.update_language_request(tmp_path)
 
 
 def test_the_issue_template_count_is_rewritten(tmp_path: Path) -> None:
     module = load_script()
-    module.ROOT = tmp_path
     path = tmp_path / ".github" / "ISSUE_TEMPLATE" / "language_request.yml"
     path.parent.mkdir(parents=True)
     path.write_text("What it adds that the current 1 do not — enough\n")
-    module.update_language_request()
+    module.update_language_request(tmp_path)
     assert f"current {len(module.LANGUAGES)} do not" in path.read_text()
 
 
 def test_main_updates_all_registry_derived_docs(
     capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
 ) -> None:
     """The public generator command includes both contributor surfaces."""
     module = load_script()
     called = []
-    module.update_readme = lambda: called.append("readme")
-    module.update_usage = lambda: called.append("usage")
-    module.update_contributing = lambda: called.append("contributing")
-    module.update_language_request = lambda: called.append("request")
-    assert module.main() == 0
+    module.update_readme = lambda _root: called.append("readme")
+    module.update_usage = lambda _root: called.append("usage")
+    module.update_contributing = lambda _root: called.append("contributing")
+    module.update_language_request = lambda _root: called.append("request")
+    for relative in ("docs/proofs/index.md", "docs/roadmap.md"):
+        target = tmp_path / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes((REPO_ROOT / relative).read_bytes())
+    assert module.main(output_root=tmp_path) == 0
     assert called == ["readme", "usage", "contributing", "request"]
     assert "language request template" in capsys.readouterr().out
 
@@ -133,9 +135,8 @@ def test_the_writers_rewrite_the_committed_sections(tmp_path: Path) -> None:
     usage = USAGE_DOC.read_text()
     (tmp_path / "README.md").write_text(readme)
     (tmp_path / "docs" / "usage.md").write_text(usage)
-    module.ROOT = tmp_path
-    module.update_readme()
-    module.update_usage()
+    module.update_readme(tmp_path)
+    module.update_usage(tmp_path)
     assert (tmp_path / "README.md").read_text() == readme
     assert (tmp_path / "docs" / "usage.md").read_text() == usage
 
@@ -204,3 +205,45 @@ def test_language_listing_only_lists_available_interpreters(
     rendered = module.render_languages_section()
     assert "- [Line]" not in rendered
     assert f"Show all {len(module.LANGUAGES) - 1} languages" in rendered
+
+
+@pytest.mark.parametrize("stale", [False, True])
+def test_documentation_check_preserves_source_files(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    *,
+    stale: bool,
+) -> None:
+    monkeypatch.syspath_prepend(str(REPO_ROOT / "scripts"))
+    import check_generated_docs
+
+    for relative in check_generated_docs.GENERATED:
+        target = tmp_path / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes((REPO_ROOT / relative).read_bytes())
+    readme = tmp_path / "README.md"
+    if stale:
+        text = readme.read_text()
+        start, end = _markers("PACKAGE-COUNT")
+        readme.write_text(
+            text.replace(_marked(text, start, end), start + "\nstale\n" + end)
+        )
+    before = {
+        relative: (
+            (tmp_path / relative).read_bytes(),
+            (tmp_path / relative).stat().st_mtime_ns,
+        )
+        for relative in check_generated_docs.GENERATED
+    }
+    monkeypatch.setattr(check_generated_docs, "ROOT", tmp_path)
+    assert check_generated_docs.main() == int(stale)
+    assert {
+        relative: (
+            (tmp_path / relative).read_bytes(),
+            (tmp_path / relative).stat().st_mtime_ns,
+        )
+        for relative in check_generated_docs.GENERATED
+    } == before
+    error = capsys.readouterr().err
+    assert ("run python scripts/generate.py docs: README.md" in error) == stale

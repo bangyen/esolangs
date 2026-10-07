@@ -120,12 +120,12 @@ def load(path: Path = MANIFEST) -> tuple[tuple[ProofRow, ...], tuple[ScalingRow,
     return tuple(proofs), tuple(audits)
 
 
-def update_docs() -> None:
+def update_docs(root: Path = ROOT) -> None:
     """Render both status tables without changing surrounding prose."""
     proofs, audits = load()
     tables = (
         (
-            ROOT / "docs/proofs/index.md",
+            root / "docs/proofs/index.md",
             "PROOF-STATUS",
             "",
             [
@@ -141,7 +141,7 @@ def update_docs() -> None:
             ],
         ),
         (
-            ROOT / "docs/roadmap.md",
+            root / "docs/roadmap.md",
             "SCALING-STATUS",
             "  ",
             [
