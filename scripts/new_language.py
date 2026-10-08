@@ -82,8 +82,9 @@ def {slug}(truth_table: str) -> str:
 
 
 # The registry entry.  Add split=True if run() takes one string per source
-# line, and contract=BooleanContract(...) if the programs do not read one 0/1
-# line per input (docs/CONTRIBUTING.md#the-boolean-io-contract).
+# line, contract=BooleanContract(...) if the programs do not read one 0/1
+# line per input (docs/CONTRIBUTING.md#the-boolean-io-contract), and
+# wrap=wrap_chars (esolangs.tools.wrap) if a newline anywhere is harmless.
 LANGUAGE = Language("{name}", "{category}.{slug}", boolean={slug})
 '''
 
@@ -248,7 +249,7 @@ def _generator_gaps(lang: Language) -> list[Gap]:
     from esolangs import tools
     from esolangs.tools.balance import BALANCERS
     from esolangs.tools.examples import BOOLEAN_EXAMPLES
-    from esolangs.tools.wrap import WRAPPERS, takes_width
+    from esolangs.tools.wrap import takes_width
 
     assert lang.boolean is not None
     gen = lang.boolean.__name__
@@ -275,14 +276,15 @@ def _generator_gaps(lang: Language) -> list[Gap]:
         )
     width = takes_width(lang.boolean)
     exceptions = _tests_module("tools.test_wrap", "WIDTH_EXCEPTIONS")
-    if not width and lang.id not in WRAPPERS and lang.id not in exceptions:
+    if not width and lang.wrap is None and lang.id not in exceptions:
+        gen_module = lang.boolean.__module__.replace(".", "/")
         gaps.append(
             Gap(
-                "src/esolangs/tools/wrap.py",
-                f'add "{lang.id}": wrap_chars (or a wrapper its syntax needs, '
-                "keeping a header such as `W,H:` whole) to "
-                "WRAPPERS, take a width parameter, or say why it cannot in "
-                "WIDTH_EXCEPTIONS in tests/tools/test_wrap.py",
+                f"src/{gen_module}.py",
+                "add wrap=wrap_chars (from esolangs.tools.wrap, or a wrapper "
+                "its syntax needs, keeping a header such as `W,H:` whole) to "
+                "its LANGUAGE, take a width parameter, or say why it cannot "
+                "in WIDTH_EXCEPTIONS in tests/tools/test_wrap.py",
             )
         )
     if width and lang.id not in BALANCERS:
@@ -591,7 +593,6 @@ def remove(name: str) -> list[str]:
         "src/esolangs/registry/_table.py",
         "src/esolangs/tools/__init__.py",
         "src/esolangs/tools/examples.py",
-        "src/esolangs/tools/wrap.py",
         "src/esolangs/tools/balance.py",
         "tests/samples.py",
         "tests/tools/boolean_runners.py",

@@ -14,6 +14,7 @@ from esolangs.tools.helpers import (
     permute_truth_table,
     read_at,
 )
+from esolangs.tools.wrap import _quote_literal
 
 # ``~`` swaps the active stack, ``*`` reverses it, ``=`` pops it onto the
 # other.  Moving values across reverses them (tests/tools/eval_reorders.py).
@@ -70,4 +71,6 @@ LANGUAGE = Language(
     contract=BooleanContract(
         parameterized=True,
     ),
+    # Print through a literal that must not be broken.
+    wrap=_quote_literal,
 )

@@ -9,6 +9,7 @@ from esolangs.tools.helpers import (
     subtree_ids,
     subtree_slot,
 )
+from esolangs.tools.wrap import wrap_space_delimited
 
 #: A fixed Z precedes each slot; the one-command pair selects zero or one.
 PAIR = ("Z", "A")
@@ -201,4 +202,7 @@ LANGUAGE = Language(
         "at halt; the answer is the 'z' register",
         parameterized=True,
     ),
+    # Multi-character tokens (``vs``, ``0b1``, ``L C 19``); space is the
+    # only safe break.
+    wrap=wrap_space_delimited,
 )

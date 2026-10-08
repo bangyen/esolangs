@@ -10,6 +10,7 @@ from esolangs.tools.helpers import (
     essential_inputs,
     read_at,
 )
+from esolangs.tools.wrap import wrap_chars
 
 __all__ = ["HOME_ROW_PAIR", "home_row"]
 
@@ -79,4 +80,5 @@ LANGUAGE = Language(
     contract=BooleanContract(
         parameterized=True,
     ),
+    wrap=wrap_chars,
 )

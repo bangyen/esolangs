@@ -16,6 +16,7 @@ from esolangs.tools.helpers import (
     move_text,
     read_at,
 )
+from esolangs.tools.wrap import wrap_chars
 
 #: How each input is set: ``c`` clears the cell for a zero, ``i`` increments
 #: it to one.  The template spells each input as a run of
@@ -253,4 +254,5 @@ LANGUAGE = Language(
     contract=BooleanContract(
         parameterized=True,
     ),
+    wrap=wrap_chars,
 )

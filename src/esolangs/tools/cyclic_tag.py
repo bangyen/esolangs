@@ -7,6 +7,7 @@ runs once a cycle, so none is shared.
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 from esolangs.tools.helpers import TEMPLATE_CHAR, _validate_truth_table, input_weights
+from esolangs.tools.wrap import wrap_chars
 
 
 def cyclic_tag(truth_table: str) -> str:
@@ -29,4 +30,5 @@ LANGUAGE = Language(
         note="Inputs fill the initial queue; the final deleted bit is the answer.",
         parameterized=True,
     ),
+    wrap=wrap_chars,
 )

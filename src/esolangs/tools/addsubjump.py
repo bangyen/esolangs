@@ -13,6 +13,7 @@ from esolangs.tools.helpers import (
     in_input_order,
     stored_inputs,
 )
+from esolangs.tools.wrap import wrap_grid
 
 #: The ``d`` operand of every instruction: cell 7, the last word of the
 #: first data block, which nothing writes, so ``*d > 0`` never holds and the
@@ -348,4 +349,5 @@ LANGUAGE = Language(
     contract=BooleanContract(
         input_shape="char_stream",
     ),
+    wrap=wrap_grid,
 )

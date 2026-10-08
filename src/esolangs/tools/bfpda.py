@@ -8,6 +8,7 @@ from esolangs.tools.helpers import (
     constant_span_test,
     subtree_ids,
 )
+from esolangs.tools.wrap import wrap_chars
 
 __all__ = ["BFPDA_PAIR", "bfpda"]
 
@@ -71,4 +72,5 @@ LANGUAGE = Language(
     contract=BooleanContract(
         parameterized=True,
     ),
+    wrap=wrap_chars,
 )

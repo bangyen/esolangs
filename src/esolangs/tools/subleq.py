@@ -9,6 +9,7 @@ Packed chunks have no subtrees to fold or share.
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 from esolangs.tools.sbleq import _sbleq_packed
+from esolangs.tools.wrap import wrap_grid
 
 
 def subleq(truth_table: str) -> str:
@@ -23,4 +24,5 @@ LANGUAGE = Language(
     contract=BooleanContract(
         input_shape="char_stream",
     ),
+    wrap=wrap_grid,
 )

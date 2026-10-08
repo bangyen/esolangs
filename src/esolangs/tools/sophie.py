@@ -10,6 +10,7 @@ from esolangs.tools.helpers import (
     _residual_ids,
     _validate_truth_table,
 )
+from esolangs.tools.wrap import _sophie
 
 __all__ = ["sophie", "sophie_labels"]
 
@@ -138,4 +139,5 @@ LANGUAGE = Language(
     contract=BooleanContract(
         input_shape="char_stream",
     ),
+    wrap=_sophie,
 )

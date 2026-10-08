@@ -17,6 +17,7 @@ from esolangs.tools.helpers import (
     _validate_truth_table,
     subtree_ids,
 )
+from esolangs.tools.wrap import _false
 
 #: ``'0`` and ``'1`` differ in their low bit, so ``1&`` is the bit and ``?``
 #: takes any nonzero flag; ``$`` leaves a copy under it for the ``0`` test.
@@ -165,4 +166,6 @@ LANGUAGE = Language(
     contract=BooleanContract(
         input_shape="char_stream",
     ),
+    # ``'x`` and ``.x``/``?x`` take the character after them.
+    wrap=_false,
 )

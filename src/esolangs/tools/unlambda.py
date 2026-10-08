@@ -30,6 +30,7 @@ from esolangs.tools.helpers import (
     SubtreeDiagram,
     _validate_truth_table,
 )
+from esolangs.tools.wrap import _unlambda
 
 #: ``@`` reads a character and applies its argument -- the promise of everything
 #: after the read -- to ``i``, or to ``v`` at end of input.
@@ -176,4 +177,5 @@ LANGUAGE = Language(
     contract=BooleanContract(
         input_shape="char_stream",
     ),
+    wrap=_unlambda,
 )

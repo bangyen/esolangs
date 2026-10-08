@@ -11,6 +11,7 @@ from esolangs.tools.helpers import (
     read_at,
     subtree_ids,
 )
+from esolangs.tools.wrap import wrap_grid
 
 __all__ = ["decleq"]
 
@@ -169,4 +170,5 @@ LANGUAGE = Language(
     contract=BooleanContract(
         input_shape="char_stream",
     ),
+    wrap=wrap_grid,
 )

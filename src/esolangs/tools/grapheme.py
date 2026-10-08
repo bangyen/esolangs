@@ -7,6 +7,7 @@ from esolangs._grapheme import DEFAULT_GRAPHEME, GraphemeDialect
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 from esolangs.tools.helpers import _validate_truth_table, essential_inputs, read_at
+from esolangs.tools.wrap import wrap_chars
 
 #: Int-mode digits: ``Z`` is 0 and ``A``-``Y`` are 1 to 25, so the one value
 #: with no letter is 6 -- ``F`` closes the mode.  16 with a borrow spells it.
@@ -108,4 +109,5 @@ LANGUAGE = Language(
         "step is not optional prose -- ord('A') - 65 is 0, so the "
         "subtraction alone says the opposite",
     ),
+    wrap=wrap_chars,
 )

@@ -39,6 +39,7 @@ from esolangs.tools.helpers import (
     input_weights,
     subtree_ids,
 )
+from esolangs.tools.wrap import wrap_chars
 
 __all__ = ["cvnc"]
 
@@ -409,4 +410,6 @@ LANGUAGE = Language(
     "CV(N)(C)",
     "other.cvnc",
     boolean=cvnc,
+    # LF-only source-format deviation: discard breaks before parsing or addressing.
+    wrap=wrap_chars,
 )
