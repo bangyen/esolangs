@@ -37,7 +37,7 @@ class TestQoibl:
     def test_narrow_horner_floor_and_corpus_size(self) -> None:
         assert max(map(len, boolean.qoibl("0110", 1).splitlines())) == 2
         assert (
-            sum(len(boolean.qoibl(format(v, "08b"), 1)) for v in range(256)) == 509287
+            sum(len(boolean.qoibl(format(v, "08b"), 1)) for v in range(256)) == 508676
         )
 
     def test_the_table_is_one_literal(self) -> None:
@@ -62,3 +62,14 @@ class TestQoibl:
         program = boolean.qoibl("0000")
         assert program.count(" et ") == 2
         assert "we y we e ry yy ry" in program
+
+
+def test_constant_table_reads_cost_one_line_each() -> None:
+    """Past the first read a constant's inputs are ignored reads, not Horner steps."""
+    for bit in "01":
+        sizes = [len(boolean.qoibl(bit * 2**n)) for n in (4, 6, 8)]
+        assert sizes[2] - sizes[1] == sizes[1] - sizes[0] < 80 * 2
+        for n in (1, 3, 5):
+            program = boolean.qoibl(bit * 2**n)
+            for row in (0, 2**n - 1):
+                assert run_qoibl(program, list(f"{row:0{n}b}")) == bit

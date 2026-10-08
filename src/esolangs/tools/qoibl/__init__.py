@@ -30,8 +30,10 @@ def qoibl(truth_table: str, width: int | None = None) -> str:
     if any(weights):
         truth_table = projected
     else:
-        # A constant keeps every input, since the first read sets ``p``.
-        weights = [1] * n
+        # A constant still needs the first read to set ``p``, so the first input
+        # stands as a two-row table; the rest are ignored reads.
+        weights = [1] + [0] * (n - 1)
+        truth_table = truth_table[0] * 2
     # Variables 0 and 1; variable 2 is the Horner scratch when narrow.
     power = _qoibl_enc(0)
     row = _qoibl_enc(1)
