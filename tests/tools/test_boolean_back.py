@@ -43,6 +43,20 @@ class TestParameterizedBack:
             }
             assert len(sizes) == 1, f"n={n} sizes {sorted(sizes)}"
 
+    def test_a_falling_beam_reuses_the_next_zero_subtree(self) -> None:
+        """A one-edge onto an equal zero side draws no rows, and still answers."""
+        import random
+
+        from esolangs import tools as generators
+
+        rng = random.Random(5)
+        table = "".join(rng.choice("01") for _ in range(128))
+        program = generators.back(table)
+        assert len(program.splitlines()) < 80  # 84 when every one-edge is drawn
+        for row in range(128):
+            bits = [(row >> (6 - i)) & 1 for i in range(7)]
+            assert self.run_back(self.instantiate(program, bits), 7) == table[row]
+
     def test_template_is_input_independent(self) -> None:
         """The template has one run per input, not hardcoded bits."""
         from esolangs import tools as generators

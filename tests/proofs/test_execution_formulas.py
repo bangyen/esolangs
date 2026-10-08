@@ -172,7 +172,7 @@ FORMULAS: dict[str, tuple[Callable[[int, str], float], bool, tuple[int, ...]]] =
         True,
         (6,),
     ),
-    "Back": (lambda n, _: max(2**n, 6 * n - 1) + 2**n + 3 * n + 6, True, (3, 5)),
+    "Back": (lambda n, _: max(2**n, 6 * n - 1) + 2**n + 3 * n + 6, False, (3, 5)),
     "Bitwise Cyclic Tag": (lambda n, _: 5 * 2**n + n, True, (3, 5)),
     "BIO": (lambda n, _: 18 * 2**n - 10 * n + 30, False, (3, 5)),
     "bit~": (lambda n, _: 7 * 2**n + 17 * n + 92, True, (3, 5)),

@@ -1,11 +1,14 @@
 """Boolean-function generator for Back."""
 
+from itertools import pairwise
+
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
     constant_span_test,
     input_weights,
     move_text,
+    subtree_ids,
 )
 
 #: Finisher for a cell primed to 1: ``-`` flips it to 0, ``+`` is inert.
@@ -112,6 +115,14 @@ def back(truth_table: str, width: int | None = None) -> str:
 
     The answer is the *value* of cell ``n``, which the halt dump prints;
     the head's position is not printed.
+
+    A node whose one-subtree equals the zero-subtree of the next node on its
+    level draws none: the beam falls down the column onto that node's mirror,
+    the first cell below, and turns east into the zero side.  Only that node
+    is reachable, so other repeats are drawn again.  Area (rows x longest
+    row), seeded tables, n=6/7: random -21.9% / -23.6%, tiled from two
+    random blocks -17.5% / -35.8%, constant half 0% / -13.1%; n <= 5 is
+    unchanged, the load column setting the height.
     """
     n = _validate_truth_table(truth_table)
     weights, table = input_weights(truth_table, n)
@@ -200,50 +211,113 @@ def _back_ordered(
     # emits input 0 first.
     units = load(list(range(n - 1, -1, -1)))
 
-    grid: dict[tuple[int, int], str] = {}
-    next_row = [1]
     constant = constant_span_test(truth_table)
-    vertical = False
+    ids = subtree_ids(truth_table)
 
-    def leaf(level: int, value: str, row: int, col: int) -> None:
-        # Walk to cell n, flip it (starts 0) for a 1-leaf, halt.
-        code = ">" * (n - level) + ("-" if value == "1" else "") + "*"
-        if vertical:
-            # Reserved DFS rows turn leaf finishers down without widening the tree.
-            grid[(row, col)] = "\\"
-            for k, ch in enumerate(code, 1):
-                grid[(row + k, col)] = ch
-            next_row[0] = max(next_row[0], row + len(code) + 1)
-        else:
-            for k, ch in enumerate(code):
-                grid[(row, col + k)] = ch
+    def draw(
+        shared: set[tuple[int, int]], *, vertical: bool
+    ) -> tuple[dict[tuple[int, int], str], dict[tuple[int, int], tuple[int, int]]]:
+        """Draw the tree; return its cells and each node's cell by (level, block).
 
-    def emit(level: int, lo: int, hi: int, row: int, col: int) -> None:
-        if level == levels or constant(lo, hi):
-            leaf(level, truth_table[lo], row, col)
-            return
-        mid = lo + (hi - lo) // 2
-        grid[(row, col)] = "+"
-        grid[(row, col + 1)] = "\\"
-        grid[(row, col + 2)] = ">"
-        emit(level + 1, lo, mid, row, col + 3)  # zero (bit=0) straight
-        nrow = next_row[0]
-        next_row[0] += 1
-        grid[(nrow, col + 1)] = "\\"
-        grid[(nrow, col + 2)] = ">"
-        emit(level + 1, mid, hi, nrow, col + 3)  # one (bit=1) child
+        A node in ``shared`` draws no one-subtree: its mirror drops the beam down
+        the column to the next mirror below, the zero-side entry of the next
+        node on that level.
+        """
+        grid: dict[tuple[int, int], str] = {}
+        where: dict[tuple[int, int], tuple[int, int]] = {}
+        next_row = [1]
 
-    emit(0, 0, 2**levels, 0, 1)  # tree root at column 1, the beam arriving rightward
+        def leaf(level: int, value: str, row: int, col: int) -> None:
+            # Walk to cell n, flip it (starts 0) for a 1-leaf, halt.
+            code = ">" * (n - level) + ("-" if value == "1" else "") + "*"
+            if vertical:
+                # Reserved DFS rows turn leaf finishers down without widening the tree.
+                grid[(row, col)] = "\\"
+                for k, ch in enumerate(code, 1):
+                    grid[(row + k, col)] = ch
+                next_row[0] = max(next_row[0], row + len(code) + 1)
+            else:
+                for k, ch in enumerate(code):
+                    grid[(row, col + k)] = ch
+
+        def emit(level: int, lo: int, hi: int, row: int, col: int) -> None:
+            if level == levels or constant(lo, hi):
+                leaf(level, truth_table[lo], row, col)
+                return
+            mid = lo + (hi - lo) // 2
+            grid[(row, col)] = "+"
+            grid[(row, col + 1)] = "\\"
+            grid[(row, col + 2)] = ">"
+            block = lo >> (levels - level)
+            where[level, block] = (row, col + 1)
+            emit(level + 1, lo, mid, row, col + 3)  # zero (bit=0) straight
+            if (level, block) in shared:
+                return
+            nrow = next_row[0]
+            next_row[0] += 1
+            grid[(nrow, col + 1)] = "\\"
+            grid[(nrow, col + 2)] = ">"
+            emit(level + 1, mid, hi, nrow, col + 3)  # one (bit=1) child
+
+        # Tree root at column 1, the beam arriving rightward.
+        emit(0, 0, 2**levels, 0, 1)
+        return grid, where
+
+    def level_order(k: int, shared: set[tuple[int, int]]) -> list[int]:
+        """Return level ``k``'s nodes in text order, one-subtrees of ``shared`` cut."""
+        order: list[int] = []
+
+        def walk(level: int, block: int) -> None:
+            size = 2 ** (levels - level)
+            if level == levels or constant(block * size, (block + 1) * size):
+                return
+            if level == k:
+                order.append(block)
+            walk(level + 1, 2 * block)
+            if (level, block) not in shared:
+                walk(level + 1, 2 * block + 1)
+
+        walk(0, 0)
+        return order
+
+    def plan(*, vertical: bool) -> set[tuple[int, int]]:
+        """Pick the nodes whose one-edge can fall onto an equal zero-side subtree.
+
+        Level by level: a node qualifies when the next node on its level (in
+        text order) has an equal zero subtree and that node's mirror is the
+        first cell below it in the column.
+        """
+        shared: set[tuple[int, int]] = set()
+        for k in range(levels):
+            order = level_order(k, shared)
+            follower = dict(pairwise(order))
+            tried = {
+                (k, a)
+                for a, b in follower.items()
+                if ids[k + 1][2 * a + 1] == ids[k + 1][2 * b]
+            }
+            if not tried:
+                continue
+            grid, where = draw(shared | tried, vertical=vertical)
+            height = max(r for r, _ in grid) + 1
+            column = 3 * k + 2
+            owner = {cell: node for node, cell in where.items()}
+            for _, a in tried:
+                row = where[k, a][0] + 1
+                while row < height and (row, column) not in grid:
+                    row += 1
+                if owner.get((row, column)) == (k, follower[a]):
+                    shared.add((k, a))
+        return shared
+
+    grid, _ = draw(plan(vertical=False), vertical=False)
 
     if width is not None and width > 0:
         span = max(c for _, c in grid) + 3
         if span > width:
             down = load(list(range(n)))
             wide = _descending_back(grid, down)
-            vertical = True
-            grid.clear()
-            next_row[0] = 1
-            emit(0, 0, 2**levels, 0, 1)
+            grid, _ = draw(plan(vertical=True), vertical=True)
             tall = _descending_back(grid, down)
             return min((wide, tall), key=lambda code: max(map(len, code.splitlines())))
 

@@ -81,7 +81,7 @@
       ],
       "qualification": "an ignored input's run lands on the cell the next load fills, and a `-` after it leaves the cell empty",
       "scaling": "linear: leaf moves sum geometrically, sparse row render",
-      "execution": "linear: worst max(T,6n-1) + T + 3n + 6 commands: the load column, then the all-ones path",
+      "execution": "linear: at most max(T,6n-1) + T + 3n + 6 commands: the load column, then a path down the tree",
       "workspace": "poly n: worst n + 5 + bl(max(6n-2,2^n-1)) + bl(3n+4) + bl(n) bits",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
