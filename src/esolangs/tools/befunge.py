@@ -98,8 +98,9 @@ def befunge(truth_table: str, width: int | None = None) -> str:
         return plain
     # At most two decimal digits per coordinate on the 80x25 torus.
     # Reserving 23 rows of payload leaves the ceiling slack below 25 rows.
-    # Single-digit column counts save twelve literal cells; the narrow bound
-    # applies only when it proves that the count remains single-digit.
+    # Single-digit column counts save twelve literal cells (10.5% of area at
+    # n=6, widths 4-8; unreachable at n>=7); the narrow bound applies only
+    # when it proves that the count remains single-digit.
     header_bound = len(reads) + _BOUND_NARROW
     columns = max(width, 4, (count + header_bound + 22) // 23 + 2)
     if columns >= 10:
