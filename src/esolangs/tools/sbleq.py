@@ -19,66 +19,43 @@ def sbleq(truth_table: str) -> str:
 
     S*bleq's instruction is ``a b c``: ``mem[a] -= mem[b]``, and when the
     result is ``<= 0`` the pointer jumps to the address stored at ``c``.
-    The ``<= 0`` branch traps on zero, so a bit normalized to 0 would
-    branch the wrong way; the generator instead normalizes each input to
-    ``49 - byte`` (``'0'`` -> 1, ``'1'`` -> 0), which lands the two cases on
+    A bit normalized to 0 would trap on that test, so each input is tested
+    as ``49 - byte`` (``'0'`` -> 1, ``'1'`` -> 0), landing the two cases on
     opposite sides of zero.
 
-    **The reads are hoisted above the tree**, which is what lets the tree
-    split in any input order. The read block is one instruction per input::
-
-        v_i -2   NXT    # v_i = -byte (always <= 0, so NXT is the next instr)
-
-    A branch then normalizes and tests that stored value in one destructive
-    instruction::
-
-        v_j NEG49 ONE   # a one jumps to ONE, a zero falls through
-
-    The tree tests each input at most once on every root-to-leaf path, so the
-    destructive branch is safe. This removes the separate normalization and
-    its continuation address without limiting input order.
-
-    Hoisting is a saving in its own right, independent of the reorder. The
-    node-read build it replaces read at each node, so every leaf had to
-    *drain* the reads its untaken siblings never made -- an input-capable
-    language reads each of its n inputs exactly once per run whatever the
-    table says -- and that drain cost two instructions and a data triple per
-    undrained level, per leaf.  The hoisted read block pays once per input
-    for the whole program.
+    **The reads are hoisted above the tree**, one instruction per input
+    (``v_i -2 NXT``: ``v_i = -byte``, always ``<= 0``, so control falls to
+    the next read), which lets the tree split in any input order.  A branch
+    is then one destructive instruction on ``v_j`` that subtracts the
+    ``-49`` constant and jumps on a one.  Each path tests an input at most
+    once, so destroying ``v_j`` is safe; it needs base S*bleq
+    (``store="a"``), since ``b`` holds the constant.  Reads happen once per
+    input for the whole program, with no per-leaf drain.
 
     Leaves print ``-3 D 0`` (``D`` a constant 48/49 cell) and halt with
-    ``0 0 3``; an entry trampoline keeps -1 in fixed low cell 3.  Whole
-    subtrees whose table entries are constant collapse to a leaf.
+    ``0 0 3``; an entry trampoline keeps -1 in fixed low cell 3.  Subtrees
+    with constant table entries collapse to a leaf.
 
-    S*bleq's operands are addresses, so a cell holding a transient 0/1 is
-    misread as a jump target if any ``c`` references it.  The generator
-    therefore keeps *constant* cells (``NEG49``, ``D48``, ``D49``, ``HALT``,
-    and the ``NXT``/``ONE`` targets, the only cells ever
-    used as a ``c`` operand) strictly separate from *value* cells (each
-    input's ``v``, written by the read and never used as a ``c`` operand).
-    The jump targets are back-patched once the code layout is known.  The
-    normalize subtracts the constant in the ``b`` operand, which the
-    ``store="b"``/``"ab"`` variants would overwrite, so this generator
-    targets base S*bleq (``store="a"``).
+    Operands are addresses, so a transient 0/1 in a cell that any ``c``
+    references would be misread as a jump target.  *Constant* cells (the
+    ``-49``, the 48/49 digits, -1, and the jump-target cells, the only
+    ``c`` operands) are therefore kept separate from *value* cells (each
+    input's ``v``); targets are back-patched once the layout is known.
 
-    The node-read form is now redundant: the hoisted route has the same
-    one-instruction read-and-test shape at a node but shares its input reads
-    across the tree. It handles every table alone.
-
-    **A repeated subtree is emitted once and jumped to.**  A branch assumes
-    only its own input's value cell, and every path through the shared
-    diagram still tests each input once, so the destructive test stays
-    safe.  A one-subtree equal to an earlier copy is reached through the
-    copy's target cell (branches to one copy share a cell), a zero-subtree
-    becomes ``0 0 c`` (cell 0 is always zero, so the jump is taken), a leaf
-    is emitted once per answer, and a test whose halves agree is skipped.
-    Shared, the tree is O(T), so it runs past 16 entries against
-    :func:`_sbleq_packed`, which it undercuts through about nine inputs.
+    **A repeated subtree is emitted once and jumped to.**  Every path
+    through the shared diagram still tests each input once, so the
+    destructive test stays safe.  A one-subtree equal to an earlier copy is
+    reached through the copy's target cell (branches to one copy share a
+    cell), a zero-subtree becomes ``0 0 c`` (cell 0 is always zero, so the
+    jump is taken), a leaf is emitted once per answer, and a test whose
+    halves agree is skipped.  Shared, the tree is O(T), so it runs past 16
+    entries against :func:`_sbleq_packed`, which it undercuts through about
+    nine inputs.
     """
     _validate_truth_table(truth_table)
-    if len(truth_table) <= 16:
-        return in_input_order(truth_table, _sbleq_shared)
     tree = in_input_order(truth_table, _sbleq_shared)
+    if len(truth_table) <= 16:
+        return tree
     packed = _sbleq_packed(truth_table)
     return tree if len(tree) < len(packed) else packed
 
@@ -273,15 +250,11 @@ def _sbleq_packed(truth_table: str, *, direct: bool = False) -> str:
         return address[value] if isinstance(value, str) else int(value)
 
     for i, (a, b, target) in enumerate(instructions):
-        if target == "next":
-            target_value = 3 * (i + 1)
-        elif target.startswith("@"):
-            target_value = None
+        if target.startswith("@"):
+            c = address[target[1:]]
         else:
-            target_value = 3 * labels[target]
-        target_cell = target_names[i]
-        memory[address[target_cell]] = target_value if target_value is not None else 0
-        c = address[target[1:]] if target.startswith("@") else address[target_cell]
+            c = address[target_names[i]]
+            memory[c] = 3 * (i + 1) if target == "next" else 3 * labels[target]
         memory[3 * i : 3 * i + 3] = [operand(a), operand(b), c]
 
     for name, value in values.items():
@@ -349,9 +322,9 @@ def _sbleq_hoisted(
 
     onebase = nxtbase + n
     # One target cell per distinct target: two branches to one copy share it.
-    targets = {
-        arg: None for _a, _b, kind, arg in instructions if kind in {"one", "jump"}
-    }
+    targets = dict.fromkeys(
+        arg for _a, _b, kind, arg in instructions if kind in {"one", "jump"}
+    )
     slot_of = {arg: i for i, arg in enumerate(targets)}
     data_base = 9
     code_base = data_base + onebase + len(targets)
