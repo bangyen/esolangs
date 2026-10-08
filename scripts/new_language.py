@@ -302,6 +302,8 @@ def _ledger_gaps(name: str) -> list[Gap]:
                 '"qualification", "scaling", "execution", "workspace", "evidence": '
                 '"docs/proofs/index.md#generator-ledger"}; copy a row with the '
                 "same construction and see Symbols in docs/proofs/index.md; "
+                'each cell is "<class>: <clause>", e.g. "linear: ..." or '
+                '"poly n: worst 7n + 3 commands ..."; '
                 "a clause after `worst`/`at most` takes at most "
                 f"{_tests_attr('proofs._ledger', 'FORMULA_CLAUSE_WORDS')} words, "
                 f"any other {_tests_attr('proofs._ledger', 'LINEAR_CLAUSE_WORDS')}; "
@@ -394,18 +396,22 @@ def quick_tests(name: str) -> list[str]:
     return nodes
 
 
-def bounds(name: str, arities: range) -> list[tuple[int, int, int]]:
-    """Return ``(n, worst steps, worst written bits)`` for the ledger's cells.
+def bounds(name: str, arities: range) -> list[tuple[int, int, int, int]]:
+    """Return ``(n, worst steps, worst written bits, largest size)`` per arity.
 
     Over the tables the formula tests use, so a stated bound that matches
-    these is one they accept.
+    these is one they accept.  Size is characters per table row: flat for
+    an O(T) generator, growing for one that is not.
     """
+    import esolangs
+
     tables = _tests_attr("proofs.test_execution_formulas", "_tables")
     measure = _tests_attr("proofs.test_execution_formulas", "_measure")
     rows = []
     for n in arities:
         worst = [measure(name, table, written=True) for table in tables(name, n)]
-        rows.append((n, max(s for s, _ in worst), max(b for _, b in worst)))
+        size = max(len(str(esolangs.generate(name, t))) for t in tables(name, n))
+        rows.append((n, max(s for s, _ in worst), max(b for _, b in worst), size >> n))
     return rows
 
 
@@ -674,10 +680,10 @@ def main(argv: list[str] | None = None) -> int:
     measure.add_argument("--max-n", type=int, default=5)
     args = parser.parse_args(argv)
     if args.command == "bounds":
-        print("n  worst steps  worst bits")
+        print("n  worst steps  worst bits  chars/row")
         rows = bounds(args.name, range(1, args.max_n + 1))
-        for n, steps, bits in rows:
-            print(f"{n:<2} {steps:>11}  {bits:>10}")
+        for n, steps, bits, per_row in rows:
+            print(f"{n:<2} {steps:>11}  {bits:>10}  {per_row:>9}")
         for column, label in ((1, "steps"), (2, "bits")):
             slopes = {b[column] - a[column] for a, b in itertools.pairwise(rows)}
             if len(slopes) == 1:
