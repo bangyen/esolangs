@@ -86,7 +86,11 @@ import pytest
 import esolangs
 
 
-@pytest.mark.parametrize("table", ["01", "10", "0001", "0110", "00010111"])
+#: Every one- and two-input table; a tree's folding bugs show here first.
+TABLES = [format(i, f"0{{2**n}}b") for n in (1, 2) for i in range(2 ** 2**n)]
+
+
+@pytest.mark.parametrize("table", [*TABLES, "00010111", "01101001", "11101000"])
 def test_every_row_prints_its_answer(table: str) -> None:
     """Each row's stdin is what the registry's BooleanContract encodes."""
     n = len(table).bit_length() - 1
@@ -94,7 +98,8 @@ def test_every_row_prints_its_answer(table: str) -> None:
     for row in range(len(table)):
         bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
         stdin = esolangs.encode_inputs("{name}", bits)
-        assert esolangs.run("{name}", program, stdin=stdin) == table[row]
+        got = esolangs.run("{name}", program, stdin=stdin, timeout=5)
+        assert got == table[row], (table, row)
 '''
 
 
@@ -271,7 +276,8 @@ def _generator_gaps(lang: Language) -> list[Gap]:
         gaps.append(
             Gap(
                 "src/esolangs/tools/wrap.py",
-                f'add "{lang.id}": wrap_chars (or the wrapper its syntax needs) to '
+                f'add "{lang.id}": wrap_chars (or a wrapper its syntax needs, '
+                "keeping a header such as `W,H:` whole) to "
                 "WRAPPERS, take a width parameter, or say why it cannot in "
                 "WIDTH_EXCEPTIONS in tests/tools/test_wrap.py",
             )
@@ -350,10 +356,12 @@ def quick_tests(name: str) -> list[str]:
         )
         if (ROOT / path).exists()
     ]
-    nodes.append(
+    nodes += [
         "tests/test_interpreter_conventions.py"
-        "::test_interpreter_docstrings_follow_the_template"
-    )
+        "::test_interpreter_docstrings_follow_the_template",
+        f"tests/fuzz/test_interpreters_robustness.py"
+        f"::test_empty_program_terminates[{name}]",
+    ]
     if lang.boolean is None:
         return nodes
     nodes += ["tests/proofs/test_ledger.py", "tests/proofs/test_schemes.py"]
@@ -407,12 +415,27 @@ def finish(name: str) -> int:
             break
     else:
         return 0
-    if cmd[1] != "scripts/verify.py":
-        return 1
+    lastfailed = ROOT / ".pytest_cache/v/cache/lastfailed"
+    if cmd[1] != "scripts/verify.py" or not (
+        lastfailed.exists() and json.loads(lastfailed.read_text())
+    ):
+        return 1  # not a pytest failure: rerunning would rerun everything
     # A loaded machine pushes borderline tests past their duration band.
     # Rerunning only the failures, serially, separates those from real ones.
     print("+ rerunning the failed tests alone", flush=True)
-    rerun = [*python, "-m", "pytest", "-q", "--lf", "-n", "0", "-m", ""]
+    rerun = [
+        *python,
+        "-m",
+        "pytest",
+        "-q",
+        "--lf",
+        "--lfnf",
+        "none",
+        "-n",
+        "0",
+        "-m",
+        "",
+    ]
     if subprocess.run(rerun, cwd=ROOT, check=False).returncode:
         return 1
     print(

@@ -93,7 +93,9 @@ Start from `src/esolangs/interpreters/_template.py`. Every interpreter:
   Most grids receive lines via registry `split=True`; A Painter Ant,
   B-tapemark and EGL receive whole source.
 - Raises `ValueError` for a malformed program and `HaltError` for an
-  invalid runtime operation. Divergence is legal; tests bound execution of
+  invalid runtime operation, where the spec has one. An empty program the
+  spec calls malformed is listed in `_EMPTY_REJECTIONS`
+  (`tests/fuzz/test_interpreters_robustness.py`). Divergence is legal; tests bound execution of
   empty programs rather than requiring termination.
 - Guards an input line before indexing it (`if val:`); an empty line is
   legal, and running out raises `EOFError` either way.
@@ -177,7 +179,9 @@ Use `scripts/screens/` to bound the upside first.
 4. `just finish-language "Name"` regenerates examples, docs and the size
    baseline, then runs the full `verify.py`. That is the gate: `just
    test-quick` skips the slower contract sweeps every generator must pass.
-   It takes minutes, so run it in the background; it reruns failed tests
+   Added lines need 90% statement and branch coverage per file; the
+   report separates them from older gaps. It takes minutes, so run it in
+   the background; it reruns failed tests
    alone and says when every failure was machine load.
 
 To take a language out, `just remove-language "Name"` deletes what `check`
