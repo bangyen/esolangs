@@ -253,8 +253,8 @@ def _common_gaps(name: str, module: str) -> list[Gap]:
             Gap(
                 "tests/fixtures/curation.toml",
                 f'add "{name}" = {{ backlinks = <wiki "What links here" count>, '
-                'route = "fame" | "first implementation" }} under [languages] (see '
-                'docs/limitations.md#curation); offline, {{ route = "unassessed" }} '
+                'route = "fame" | "first implementation" } under [languages] (see '
+                'docs/limitations.md#curation); offline, { route = "unassessed" } '
                 "until the count is recorded",
             )
         )
