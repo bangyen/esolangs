@@ -43,13 +43,13 @@ def _numeric(program: str, *, keep_10: bool = False) -> str:
 class TestSophie:
     def test_hybrid_subsumes_both_routes(self) -> None:
         """The hybrid is no longer than either prior construction through n=3."""
-        from esolangs.tools.sophie import _sophie_hybrid
+        from esolangs.tools.sophie import sophie
 
         improved = 0
         for n in range(1, 4):
             for value in range(1 << (1 << n)):
                 table = format(value, f"0{1 << n}b")
-                hybrid = _sophie_hybrid(table)
+                hybrid = sophie(table)
                 best = min(
                     len(_printed_once(_sophie_tree(table))),
                     len(_printed_once(_sophie_dag(table))),

@@ -22,67 +22,14 @@ def sophie(truth_table: str) -> str:
     consecutive conditionals must use the block form. A leaf loads ``#0`` or
     ``#1`` for one final ``,`` to print; a last-level ``01`` is its read.
 
-    :func:`_sophie_hybrid` nests unshared residual states like a tree and
-    labels only states reached from multiple parents, merging equal ones.
+    Unshared residual states nest like a tree; only states reached from
+    multiple parents get labels, merging equal ones.
 
     **Reordering the inputs is not available here**, unlike most tree
     generators: ``;`` and ``:`` *assign* to the accumulator, ``#`` loads only
     a literal, and nothing else writes it, so a bit can only be branched on
     before the next read and the test order is the stream order.  The merge
     collects the saving a reorder would have found.
-    """
-    _validate_truth_table(truth_table)
-    return _sophie_hybrid(truth_table)
-
-
-#: Accumulator values a Sophie label may not take: a read leaves ``0`` or
-#: ``1`` (48/49), so a block labelled either would fire on an ordinary bit.
-_SOPHIE_RESERVED = frozenset({_ASCII_ZERO, _ASCII_ONE})
-
-#: Stable printable label alphabet, excluding syntax markers; other values
-#: use numeric spelling.
-_SOPHIE_CHARACTERS = frozenset(range(33, 127)) - {ord(c) for c in "#$[]{}"}
-
-
-def _sophie_literal(value: int) -> str:
-    """Spell ``value`` after ``#`` or ``@``: its character, else ``$`` digits."""
-    return chr(value) if value in _SOPHIE_CHARACTERS else f"${value}"
-
-
-def sophie_labels(retained: list[list[int]]) -> list[dict[int, int]]:
-    """Return one label per retained state, unique across all levels.
-
-    This used to draw from two bands by level parity -- ``((1, 20), (21,
-    40))`` -- on the reasoning that a fired block leaves the accumulator
-    holding a *next*-level label, which no remaining test in the chain can
-    match.  The reasoning holds for consecutive levels and that is not the
-    relation that matters.  Unshared states are *inlined*, so one top-level
-    block contains jumps originating at many different depths, and two
-    levels of the same parity are both jump targets from inside it.  Level 2
-    and level 4 then both got label ``1``, and since level 2 is emitted
-    first, a jump meant for level 4 fired level 2 on the way past -- reading
-    inputs the caller never supplied.
-
-    The smallest table that does it is the five-input
-    ``00000000000000010000000100000100``, whose program carries two ``@$1``
-    blocks.  It is shape-dependent rather than size-dependent, so it hides
-    from parity and dense tables and shows up on one-hot: over 500 random
-    tables per arity, 1.6% collide at n=5, 11.2% at n=6, 35.0% at n=7 and
-    87.6% at n=8, while all 65536 tables at n <= 4 are clean.
-
-    Single-character values come first, then numbers from 1 that are not.
-    """
-    single = sorted(_SOPHIE_CHARACTERS - _SOPHIE_RESERVED)
-    rest = (v for v in count(1) if v not in _SOPHIE_CHARACTERS)
-    values = chain(single, rest)
-    return [{state: next(values) for state in states} for states in retained]
-
-
-def _sophie_hybrid(truth_table: str) -> str:
-    """Emit a Sophie tree that labels only shared residual states.
-
-    Canonical child pairs name states in O(T) RAM work without copying
-    the subtables at every depth. First-occurrence order preserves labels.
     """
     n = _validate_truth_table(truth_table)
     levels, children, constants = _residual_ids(truth_table, n)
@@ -146,3 +93,37 @@ def _sophie_hybrid(truth_table: str) -> str:
                 out.append("}")
     out.append(",")
     return "".join(out)
+
+
+#: Accumulator values a Sophie label may not take: a read leaves ``0`` or
+#: ``1`` (48/49), so a block labelled either would fire on an ordinary bit.
+_SOPHIE_RESERVED = frozenset({_ASCII_ZERO, _ASCII_ONE})
+
+#: Stable printable label alphabet, excluding syntax markers; other values
+#: use numeric spelling.
+_SOPHIE_CHARACTERS = frozenset(range(33, 127)) - {ord(c) for c in "#$[]{}"}
+
+
+def _sophie_literal(value: int) -> str:
+    """Spell ``value`` after ``#`` or ``@``: its character, else ``$`` digits."""
+    return chr(value) if value in _SOPHIE_CHARACTERS else f"${value}"
+
+
+def sophie_labels(retained: list[list[int]]) -> list[dict[int, int]]:
+    """Return one label per retained state, unique across all levels.
+
+    Labels must be unique across *all* levels: unshared states are inlined,
+    so one top-level block holds jumps from many depths, and two levels
+    sharing a label make a jump meant for the later one fire the earlier
+    block in passing, reading inputs the caller never supplied.  Smallest
+    case: the five-input ``00000000000000010000000100000100`` (two ``@$1``
+    blocks).  Shape-dependent, so it hides from dense tables: over 500
+    random tables per arity, 1.6% collide at n=5, 87.6% at n=8; all tables
+    at n <= 4 are clean.
+
+    Single-character values come first, then numbers from 1 that are not.
+    """
+    single = sorted(_SOPHIE_CHARACTERS - _SOPHIE_RESERVED)
+    rest = (v for v in count(1) if v not in _SOPHIE_CHARACTERS)
+    values = chain(single, rest)
+    return [{state: next(values) for state in states} for states in retained]
