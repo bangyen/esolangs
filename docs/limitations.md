@@ -135,7 +135,9 @@ forces those values holds for every read count, so the language bound is
 ### Scaling
 
 Size is measured from rendered output, and correctness claims require running
-the generated program. Execution measurements exclude loading and use the
+the generated program. A generator guarantees its size class, not its
+constant; constant-factor tweaks beyond the canonical set ship only at 10% or
+more where they run (`docs/CONTRIBUTING.md`). Execution measurements exclude loading and use the
 worst sampled parity row. A sub-10 ms run does not establish an exponent.
 Loading dominates Factor (integer factorization) and Circuit Diagram (parsing
 super-linear area); it is intentionally excluded from execution time.

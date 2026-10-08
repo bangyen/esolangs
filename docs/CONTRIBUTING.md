@@ -122,14 +122,22 @@ interpreter reads input or raises them.
 
 ## What makes a generator optimization worth shipping
 
-A generator size optimization must meet all of these requirements:
+A generator guarantees its size class (the Scaling column in
+`docs/proofs/index.md`), not its constant. Every generator applies the
+canonical set, or its docstring says why one does not apply: ignored inputs
+dropped (`essential_inputs`, `read_at`), constant subtrees folded
+(`constant_span_test`), repeated subtrees shared (`subtree_ids`).
 
-- **5% or more** off the total emitted size over all 256 three-input tables,
-  measured against its parent. ArrowQueue's 2.1% rotation gain was reverted.
-  A gain that grows with the table, such as sharing repeated subtrees
-  (`scripts/screens/sharing.py`: 14.5% of nodes repeat at three inputs, a
-  third at five), may clear it instead on 200 seeded random five-input
-  tables; the no-growth rule then holds on that sample too.
+Anything else is a bespoke size optimization and must meet all of these
+requirements:
+
+- **10% or more** off the total emitted size at the largest arity where it
+  runs: seeded random tables at n=7..8, or at its cap if it stops earlier,
+  and 200 tables when the result is within two points of the bar. A trick
+  aimed at a table class (ignored inputs, constants) is judged on that class;
+  2D grids are judged by area, rows times the longest row. The n=3 total is
+  context only: greedy order searches saved 8-15% there but at most 2.2% at
+  n >= 7, and were retired. Cite the measurement beside the code.
 - **No table grows**: checked exhaustively through three inputs, so keep the
   old build as a candidate when the new one is not uniformly shorter.
 - **Every table executes**: exhaustively through three inputs and sampled at
