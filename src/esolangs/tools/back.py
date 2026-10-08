@@ -388,4 +388,5 @@ LANGUAGE = Language(
         parameterized=True,
     ),
     balance=_balance,
+    no_wrap="the beam path and embedded input occupy fixed grid coordinates",
 )

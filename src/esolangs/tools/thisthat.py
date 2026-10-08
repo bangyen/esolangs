@@ -381,4 +381,5 @@ LANGUAGE = Language(
         input_sets=True,
     ),
     balance=_balance,
+    no_wrap="the H-tree's nodes and wires occupy fixed grid coordinates",
 )

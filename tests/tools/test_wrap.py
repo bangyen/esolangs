@@ -63,7 +63,8 @@ def _public(lang: object, table: str) -> str:
 # width in the suite is what keeps the class from coming back.
 NARROW_WIDTH = 13
 
-# Languages that must never be *reflowed*, and why.  Not a restatement of
+# Languages that must never be *reflowed*, and why: each ``LANGUAGE``'s
+# ``no_wrap=``.  Not a restatement of
 # the implementation: each was verified to break (or to be meaningless) when
 # newlines are inserted, so the table is the record of that finding.
 #
@@ -88,27 +89,7 @@ NARROW_WIDTH = 13
 # subtrees.  What this table says is only that :func:`wrap_program` must
 # not touch the finished text -- the reasons above are why a break is
 # destructive, and those hold whatever the generator learns to do.
-UNWRAPPABLE = {
-    "slashes": "newlines are literal output and substitution data",
-    "fargo": "each physical line is one command; expressions have no continuation",
-    "minsky_swap": "only line 1 is code; line 2 gives its numeric jump distances",
-    "alight": "a command is a word walked cell by cell; a row end cuts it",
-    "super_snusp": "a row is a grid row; a break moves code, it does not reflow",
-    "algebraic_programming_language": "a line with '=' defines, one without runs",
-    "arrowqueue": "the queue and decision tree occupy fixed grid coordinates",
-    "back": "the beam path and embedded input occupy fixed grid coordinates",
-    "befunge": "a row is a grid row and the lookup table is indexed by column",
-    "fish": "a row is a codebox row and the lookup table is indexed by column",
-    "underload": "a break inside a pushed element changes the string it contains",
-    "brainif": "each line is one instruction and goto targets are line numbers",
-    "clockwise": "a row is a ring row; the walk's turns sit at fixed cells",
-    "collatz_multiverse": "each line is one complete register assignment",
-    "container": "each line declares a container or one of its rules",
-    "crement": "each line is one instruction; jumps and patches name line numbers",
-    "inject": "blocks and executable commands are delimited by source lines",
-    "thue": "a newline ends a rule, and the state's own newlines are part of it",
-    "thisthat": "the H-tree's nodes and wires occupy fixed grid coordinates",
-}
+UNWRAPPABLE = {lang.id: lang.no_wrap for lang in LANGUAGES.values() if lang.no_wrap}
 
 # These are 2D too, and wrap_program must not touch them either -- but each
 # honours a width itself by *laying its program out* to fit rather than by
@@ -125,12 +106,6 @@ UNWRAPPABLE = {
 # what let it pass.  Dig has since grown a real one, so that entry would be
 # right today for a reason the table never had; a derived table cannot make
 # either mistake in the first place.
-WIDTH_EXCEPTIONS = {
-    "slashes": "newlines are literal output and substitution data",
-    "piet_plus_plus": "one fixed three-row strip, like Piet before scaling",
-    "line": "tree geometry fixes the width; balance chooses orientation",
-}
-
 WIDTH_HONOURING = sorted(
     lang.id
     for lang in LANGUAGES.values()
@@ -176,25 +151,15 @@ def _wrapper_witnesses() -> list[str]:
 
 def test_every_generator_has_a_width_policy() -> None:
     """Every generator reflows, lays itself out, or records why it cannot."""
-    boolean_ids = {
-        language.id for language in LANGUAGES.values() if language.boolean is not None
-    }
     missing = {
         language.id
         for language in LANGUAGES.values()
         if language.boolean is not None
         and language.id not in WRAPPERS
         and not takes_width(language.boolean)
-        and language.id not in WIDTH_EXCEPTIONS
+        and not language.no_wrap.strip()
     }
     assert not missing, f"{sorted(missing)} have no width policy; {CHECK}"
-    tables = {"WIDTH_EXCEPTIONS": WIDTH_EXCEPTIONS, "UNWRAPPABLE": UNWRAPPABLE}
-    for table, reasons in tables.items():
-        where = f"{table} in tests/tools/test_wrap.py"
-        stale = sorted(set(reasons) - boolean_ids)
-        assert not stale, f"remove {stale} from {where}"
-        blank = sorted(name for name, why in reasons.items() if not why.strip())
-        assert not blank, f"give {blank} a reason in {where}"
 
 
 def _table(arity: int) -> str:

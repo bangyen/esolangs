@@ -193,4 +193,5 @@ LANGUAGE = Language(
         parameterized=True,
     ),
     balance=_balance,
+    no_wrap="each line is one instruction; jumps and patches name line numbers",
 )

@@ -240,4 +240,5 @@ LANGUAGE = Language(
         "is read as a different row and answered wrongly",
     ),
     balance=_balance,
+    no_wrap="a row is a ring row; the walk's turns sit at fixed cells",
 )

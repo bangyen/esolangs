@@ -546,4 +546,5 @@ LANGUAGE = Language(
         input_shape="char_stream",
     ),
     balance=balance_container,
+    no_wrap="each line declares a container or one of its rules",
 )

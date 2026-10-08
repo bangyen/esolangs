@@ -50,8 +50,12 @@ class Language:
     #: ``balance(table, default)``: the squarest layout, for width-taking
     #: generators whose regimes a plain reflow cannot compare.
     balance: Callable[..., Any] | None = None
+    #: Why ``wrap`` is absent, when a break would change the program.
+    no_wrap: str = ""
 
     def __post_init__(self) -> None:
         """Fill the id from the name when none is given."""
         if not self.id:
             object.__setattr__(self, "id", canonical_id(self.name))
+        if self.wrap is not None and self.no_wrap:
+            raise ValueError(f"{self.name}: wrap and no_wrap exclude each other")

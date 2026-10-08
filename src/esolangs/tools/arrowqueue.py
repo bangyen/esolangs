@@ -123,4 +123,5 @@ LANGUAGE = Language(
         parameterized=True,
     ),
     balance=_balance,
+    no_wrap="the queue and decision tree occupy fixed grid coordinates",
 )

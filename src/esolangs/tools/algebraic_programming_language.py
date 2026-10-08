@@ -424,4 +424,5 @@ LANGUAGE = Language(
         note="an executed line prints its result, so the answer ends in a newline",
     ),
     balance=balance_apl,
+    no_wrap="a line with '=' defines, one without runs",
 )

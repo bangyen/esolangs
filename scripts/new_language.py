@@ -86,7 +86,8 @@ def {slug}(truth_table: str) -> str:
 # The registry entry.  Add split=True if run() takes one string per source
 # line, contract=BooleanContract(...) if the programs do not read one 0/1
 # line per input (docs/CONTRIBUTING.md#the-boolean-io-contract), and
-# wrap=wrap_chars (esolangs.tools.wrap) if a newline anywhere is harmless;
+# wrap=wrap_chars (esolangs.tools.wrap) if a newline anywhere is harmless,
+# else no_wrap="<why a break changes the program>";
 # a generator taking a width needs balance=, picking its squarest regime.
 LANGUAGE = Language("{name}", "{category}.{slug}", boolean={slug})
 '''
@@ -277,16 +278,15 @@ def _generator_gaps(lang: Language) -> list[Gap]:
             )
         )
     width = takes_width(lang.boolean)
-    exceptions = _tests_module("tools.test_wrap", "WIDTH_EXCEPTIONS")
-    if not width and lang.wrap is None and lang.id not in exceptions:
+    if not width and lang.wrap is None and not lang.no_wrap:
         gen_module = lang.boolean.__module__.replace(".", "/")
         gaps.append(
             Gap(
                 f"src/{gen_module}.py",
                 "add wrap=wrap_chars (from esolangs.tools.wrap, or a wrapper "
                 "its syntax needs, keeping a header such as `W,H:` whole) to "
-                "its LANGUAGE, take a width parameter, or say why it cannot "
-                "in WIDTH_EXCEPTIONS in tests/tools/test_wrap.py",
+                "its LANGUAGE, take a width parameter, or say why a break "
+                'would change the program as no_wrap="..."',
             )
         )
     if width and lang.balance is None:

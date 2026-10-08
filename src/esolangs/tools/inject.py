@@ -288,4 +288,5 @@ LANGUAGE = Language(
         note="send terminates each line, so the answer ends in a newline",
     ),
     balance=_balance,
+    no_wrap="blocks and executable commands are delimited by source lines",
 )
