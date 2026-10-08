@@ -119,3 +119,13 @@ class TestRotfuck:
     def test_the_emitted_length_is_exact(self, table: str, length: int) -> None:
         """The layout is deterministic down to the character."""
         assert len(boolean.rotfuck(table)) == length
+
+    def test_a_long_run_of_zero_entries_is_skipped_by_a_walk_and_runs(self) -> None:
+        """A zero upper half is one carried count, not 2 * 128 steps."""
+        half = "".join(str(bin(row * 37 % 256).count("1") & 1) for row in range(128))
+        table = half + "0" * 128
+        program = boolean.rotfuck(table)
+        assert len(program) < len(boolean.rotfuck(half + half[::-1]))
+        for combo in (0, 1, 127, 128, 200, 255):
+            bits = [(combo >> (7 - i)) & 1 for i in range(8)]
+            assert run_rotfuck(program, [str(b) for b in bits]) == table[combo]
