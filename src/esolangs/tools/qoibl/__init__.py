@@ -10,15 +10,11 @@ def _qoibl_enc(n: int) -> str:
     return f"{n:b}".replace("0", "e").replace("1", "y")
 
 
-_QOIBL_POWER, _QOIBL_ROW = 0, 1
-
-
 def qoibl(truth_table: str, width: int | None = None) -> str:
     """Build a Qoibl program computing the given truth table.
 
     ``truth_table`` has length ``2**n``, most significant input first.  The
-    Whole-table literals expand into O(T) binary Horner steps when narrow.
-    The whole table rides in one binary literal, bit ``k`` holding row ``k``, so
+    whole table rides in one binary literal, bit ``k`` holding row ``k``, so
     ``table // 2**index`` then ``r - 2 * (r // 2)`` reads that row off.
     """
     n = _validate_truth_table(truth_table)
@@ -27,14 +23,15 @@ def qoibl(truth_table: str, width: int | None = None) -> str:
     # variable, and the table is packed over the rest.  It is stored as the
     # bit plus one: a raw 49 beside a live ``p`` broke the workspace bound
     # (17 > 16 bits on ``00111100``).
-    # A constant keeps every input, since the first read sets ``p``.
     weights, projected = input_weights(truth_table, n)
     if any(weights):
         truth_table = projected
     else:
+        # A constant keeps every input, since the first read sets ``p``.
         weights = [1] * n
-    power = _qoibl_enc(_QOIBL_POWER)
-    row = _qoibl_enc(_QOIBL_ROW)
+    # Variables 0 and 1; variable 2 is the Horner scratch when narrow.
+    power = _qoibl_enc(0)
+    row = _qoibl_enc(1)
     zero = _qoibl_enc(_ASCII_ZERO)
     packed = sum(int(bit) << index for index, bit in enumerate(truth_table))
 
@@ -61,11 +58,12 @@ def qoibl(truth_table: str, width: int | None = None) -> str:
     program = "\n".join(lines)
     if width is None or width <= 0:
         return program
-    from esolangs.tools.wrap import _qoibl, wrap_space_delimited
+    from esolangs.tools.wrap import _qoibl
 
-    previous = _qoibl(program, width)
-    if max(map(len, previous.splitlines())) <= width:
-        return previous
+    # Fits as-is: no Horner expansion needed.
+    wrapped = _qoibl(program, width)
+    if max(map(len, wrapped.splitlines())) <= width:
+        return wrapped
     limit = max(2, width)
     output: list[str] = []
     scratch = _qoibl_enc(2)
@@ -84,4 +82,4 @@ def qoibl(truth_table: str, width: int | None = None) -> str:
                 output.append(f"we {scratch} we qe {scratch} qe ry ee ry {chunk} we")
             tokens[at] = f"qe {scratch} qe"
         output.append(" ".join(tokens))
-    return "\n".join(wrap_space_delimited(line, limit) for line in output)
+    return _qoibl("\n".join(output), limit)
