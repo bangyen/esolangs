@@ -640,7 +640,7 @@ def test_an_ignored_input_is_read_and_dropped(name: str) -> None:
 #: is busy -- which, on a suite that runs four workers, is always.
 _DOCUMENTED_SIZES: dict[str, tuple[int, int, float]] = {
     "Circuit Diagram": (1_780_773, 2_505_897, 1.4),
-    "Polynomial": (1_589_968, 5_016_851, 3.2),
+    "Polynomial": (1_745_528, 5_458_693, 3.1),
     "Factor": (12_592, 24_463, 2.1),
 }
 
