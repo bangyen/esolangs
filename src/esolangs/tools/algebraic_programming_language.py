@@ -4,6 +4,8 @@ from collections.abc import Callable
 from itertools import pairwise
 from string import ascii_uppercase
 
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
     _validate_truth_table,
     constant_span_test,
@@ -412,3 +414,13 @@ def balance_apl(table: str, default: str) -> str:
     from esolangs.tools.wrap import balance_score
 
     return min(candidates, key=balance_score)
+
+
+LANGUAGE = Language(
+    "Algebraic Programming Language",
+    "other.algebraic_programming_language",
+    boolean=algebraic_programming_language,
+    contract=BooleanContract(
+        note="an executed line prints its result, so the answer ends in a newline",
+    ),
+)

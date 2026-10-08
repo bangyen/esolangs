@@ -48,6 +48,8 @@ tables through ``n == 12``.  All ``n`` inputs are read unconditionally.
 from collections.abc import Sequence
 
 from esolangs._mammalian import DEFAULT_MODULI, MammalianModuli
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table, essential_inputs
 
 __all__ = ["slow_acv_mammalian"]
@@ -1029,3 +1031,13 @@ def _with_leaves(
         start = base + banked
         out[start : start + unit] = _leaf(int(entry), unit=unit)
     return out
+
+
+LANGUAGE = Language(
+    "SLOW ACV MAMMALIAN",
+    "tape_based.slow_acv_mammalian",
+    boolean=slow_acv_mammalian,
+    contract=BooleanContract(
+        input_shape="char_stream",
+    ),
+)

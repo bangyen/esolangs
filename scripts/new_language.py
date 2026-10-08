@@ -71,6 +71,7 @@ _GENERATOR = '''"""Boolean program generator for {name}.
 answers, and the size and build bound (O(T) for a decision tree)>
 """
 
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import _validate_truth_table
 
 
@@ -78,6 +79,12 @@ def {slug}(truth_table: str) -> str:
     """Build a {name} program printing ``truth_table[row]`` for the inputs."""
     _validate_truth_table(truth_table)
     raise NotImplementedError("{name} generator")
+
+
+# The registry entry.  Add split=True if run() takes one string per source
+# line, and contract=BooleanContract(...) if the programs do not read one 0/1
+# line per input (docs/CONTRIBUTING.md#the-boolean-io-contract).
+LANGUAGE = Language("{name}", "{category}.{slug}", boolean={slug})
 '''
 
 _GENERATOR_TEST = '''"""Tests for the {name} Boolean generator."""
@@ -183,23 +190,27 @@ def _export(gen: str) -> Gap:
 def _unregistered(name: str, slug: str) -> list[Gap]:
     found = sorted((ROOT / "src/esolangs/interpreters").glob(f"*/{slug}.py"))
     module = f"{found[0].parent.name}.{slug}" if found else f"<category>.{slug}"
-    gaps, generator = [], ""
-    if (ROOT / f"src/esolangs/tools/{slug}.py").exists():
-        generator = f"boolean=_boolean.{slug}, "
-        exports = (ROOT / "src/esolangs/tools/__init__.py").read_text()
-        if f"esolangs.tools.{slug} import" not in exports:
-            gaps.append(_export(slug))
+    generator = ROOT / f"src/esolangs/tools/{slug}.py"
+    if not generator.exists():
+        return [
+            Gap(
+                "src/esolangs/registry/_table.py",
+                f'add Language("{name}", "{module}") to _INTERPRETER_ONLY; add '
+                "split=True only if run() takes list[str], one string per line",
+            )
+        ]
+    exports = (ROOT / "src/esolangs/tools/__init__.py").read_text()
+    if f"esolangs.tools.{slug} import" not in exports:
+        return [_export(slug)]
     return [
-        *gaps,
         Gap(
-            "src/esolangs/registry/_table.py",
-            f'add "{name}": Language("{name}", "{module}", {generator}id="{slug}") '
-            "anywhere in LANGUAGES (order is free); add split=True only if "
-            "run() takes list[str], one string per source line; a generator "
-            "whose programs read characters, not one 0/1 line per input, also "
-            "needs a BooleanContract in src/esolangs/registry/_contracts.py "
+            str(generator.relative_to(ROOT)),
+            f'end it with LANGUAGE = Language("{name}", "{module}", '
+            f"boolean={slug}); add split=True only if run() takes list[str], "
+            "one string per source line, and contract=BooleanContract(...) if "
+            "its programs do not read one 0/1 line per input "
             "(docs/CONTRIBUTING.md#the-boolean-io-contract)",
-        ),
+        )
     ]
 
 
@@ -335,10 +346,8 @@ def _ledger_gaps(name: str) -> list[Gap]:
 
 def check(name: str) -> list[Gap]:
     """Return every integration point ``name`` still lacks, in order."""
-    try:
-        from esolangs.registry import LANGUAGES, canonical_id
-    except AttributeError as exc:  # ``_table`` names a generator not exported
-        return [_export(exc.name or "<generator>")]
+    from esolangs.registry import LANGUAGES, canonical_id
+
     lang = LANGUAGES.get(name)
     if lang is None:
         return _unregistered(name, canonical_id(name))
@@ -518,7 +527,11 @@ def _drop_entries(path: Path, keys: set[str], modules: set[str]) -> int:
                     own(key, value)
         elif isinstance(node, ast.List | ast.Set | ast.Tuple):
             for item in node.elts:
-                if named(item):
+                # A bare key, or a ``Language("Name", ...)`` naming it.
+                first = (
+                    item.args[0] if isinstance(item, ast.Call) and item.args else None
+                )
+                if named(item) or named(first):
                     own(item, item)
         elif isinstance(node, ast.stmt) and _whole_statement(node, named, modules):
             spans.append((node.lineno, node.end_lineno or node.lineno))
@@ -586,7 +599,6 @@ def remove(name: str) -> list[str]:
     modules = {f"esolangs.interpreters.{module}", f"esolangs.tools.{gen}"}
     for relative in (
         "src/esolangs/registry/_table.py",
-        "src/esolangs/registry/_contracts.py",
         "src/esolangs/tools/__init__.py",
         "src/esolangs/tools/examples.py",
         "src/esolangs/tools/wrap.py",

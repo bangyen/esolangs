@@ -21,6 +21,8 @@ its uses multiply), so the program is never longer than the plain tree.
 from collections import Counter
 from string import ascii_letters
 
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
     _validate_truth_table,
     constant_span_test,
@@ -87,3 +89,15 @@ def smu(truth_table: str) -> str:
             text[key] = name
     parts.append(text[root])
     return "".join(parts)
+
+
+LANGUAGE = Language(
+    "Smu",
+    "stack_based.smu",
+    boolean=smu,
+    contract=BooleanContract(
+        input_shape="char_stream",
+        note="Smu reads one bit a run, low bit of each byte first, and "
+        "packs its output bits into bytes the same way",
+    ),
+)

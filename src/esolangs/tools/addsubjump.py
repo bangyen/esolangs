@@ -2,6 +2,8 @@
 
 from typing import Any
 
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
     _ASCII_ONE,
     _ASCII_ZERO,
@@ -337,3 +339,13 @@ def _addsubjump_ordered(
     for name, val in values.items():
         mem[cell(name)] = val
     return " ".join(map(str, mem))
+
+
+LANGUAGE = Language(
+    "AddSubJump",
+    "register_based.addsubjump",
+    boolean=addsubjump,
+    contract=BooleanContract(
+        input_shape="char_stream",
+    ),
+)

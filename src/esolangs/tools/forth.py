@@ -1,5 +1,6 @@
 """Boolean program generator for Forþ."""
 
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
@@ -120,3 +121,10 @@ def _forth_ordered(truth_table: str, reads: str, *, share: bool = False) -> str:
     prog.append(reads)
     prog.append("1+:;.")
     return "".join(prog)
+
+
+LANGUAGE = Language(
+    "Forþ",
+    "stack_based.forth",
+    boolean=forth,
+)

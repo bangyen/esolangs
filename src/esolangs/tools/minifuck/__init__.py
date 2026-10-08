@@ -12,6 +12,8 @@ subtree to fold or share.
 from functools import cache
 from itertools import pairwise
 
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     _validate_shape,
@@ -269,3 +271,13 @@ def _wrap_template(template: str, n: int, width: int) -> str:
 
     marked = mark_runs(template, TEMPLATE_CHAR, (PAIR,) * n)
     return unmark(wrap_program(marked, "minifuck", width), TEMPLATE_CHAR, n)
+
+
+LANGUAGE = Language(
+    "Minifuck",
+    "tape_based.minifuck",
+    boolean=minifuck,
+    contract=BooleanContract(
+        parameterized=True,
+    ),
+)

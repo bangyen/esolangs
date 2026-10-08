@@ -42,6 +42,8 @@ from __future__ import annotations
 
 from functools import cache
 
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
@@ -237,3 +239,20 @@ def one_two_three(truth_table: str) -> str:
         return _in_name_order(construct(truth_table), n)
     candidates = [_construct_small(truth_table, n, law) for law in range(len(_LAWS[n]))]
     return _in_name_order(min(candidates, key=len), n)
+
+
+LANGUAGE = Language(
+    "123",
+    "tape_based.one_two_three",
+    boolean=one_two_three,
+    contract=BooleanContract(
+        answer_mode="termination",
+        answer_values=("halts", "diverges"),
+        note="123 answers by terminating: it halts for a 0 result and loops "
+        "forever for a 1, so only the halting branch is committed. Its "
+        "output is not the answer and is not compared -- the merge pops "
+        "through location -2 and prints whatever that cell holds, which "
+        "for this program is the two bytes 'VO with a diaeresis'",
+        parameterized=True,
+    ),
+)

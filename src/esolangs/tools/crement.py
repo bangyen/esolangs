@@ -20,6 +20,8 @@ tables that is 39,156 to 37,862 characters (3.3%); over 200 seeded
 five-input tables, 114,791 to 83,070 (27.6%).
 """
 
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
@@ -154,3 +156,18 @@ def _crement_ordered(
     ]
     testers = [TEMPLATE_CHAR * len(PAIR[0]), "+J 0 1"] * n
     return "\n".join(header + testers + lines)
+
+
+LANGUAGE = Language(
+    "Crement",
+    "other.crement",
+    boolean=crement,
+    contract=BooleanContract(
+        answer_mode="termination",
+        answer_values=("halts", "diverges"),
+        note="Crement answers by termination: the tree's nodes patch a "
+        "per-input tester's jump targets, and the row lands past the "
+        "end (halts, 0) or on a self-jump (diverges, 1)",
+        parameterized=True,
+    ),
+)

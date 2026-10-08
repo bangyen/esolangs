@@ -3,6 +3,8 @@
 import re
 from collections.abc import Callable
 
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
@@ -244,3 +246,13 @@ def _register(names: _Names, block: int, high: int, n: int) -> str:
         live = half
     body.append(f"out 0,0,1,1,0,0,0,{cells[0]};")
     return f"{names.table} {','.join(cells)}{{{''.join(body)}}}"
+
+
+LANGUAGE = Language(
+    "Forbin",
+    "other.forbin",
+    boolean=forbin,
+    contract=BooleanContract(
+        input_shape="char_stream",
+    ),
+)

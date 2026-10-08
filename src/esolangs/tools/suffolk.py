@@ -1,5 +1,7 @@
 """Boolean generator for Suffolk: steps telescope; with no jump, nothing is shared."""
 
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
     _ASCII_ONE,
     _ASCII_ZERO,
@@ -107,3 +109,13 @@ def suffolk(truth_table: str) -> str:
     out.append(_one(_COUNTS[0][0]) + _read(_COUNTS[0][1]) + _read(_COUNTS[1][1]))
     out.append(_write(_COUNTS[0][0]) + _write(_TWO) * (_ASCII_ZERO - 2))
     return "".join(out) + _read(_TWO) + _read(_COUNTS[0][0]) + "."
+
+
+LANGUAGE = Language(
+    "Suffolk",
+    "tape_based.suffolk",
+    boolean=suffolk,
+    contract=BooleanContract(
+        input_shape="char_stream",
+    ),
+)

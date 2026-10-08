@@ -9,6 +9,8 @@ there, and every index past it shares its answer.  Interior runs stay: the
 ant counts through every row, so no subtree folds or is shared.
 """
 
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
@@ -44,3 +46,19 @@ def a_painter_ant(truth_table: str) -> str:
     # ``s`` steps onto a black answer; a white one leaves the ant on white.
     out.append("s")
     return "".join(out)
+
+
+LANGUAGE = Language(
+    "A Painter Ant",
+    "grid_based.a_painter_ant",
+    boolean=a_painter_ant,
+    contract=BooleanContract(
+        answer_mode="dump",
+        answer_pattern=r"(?m)^[.#o@]*([o@])[.#o@]*$",
+        answer_values=("o", "@"),
+        note="A Painter Ant has no output: it paints a grid and the answer "
+        "is the answer cell the ant rests on below its white corridor, "
+        "shown by 'o' (on black, a zero) or '@' (on white, a one)",
+        parameterized=True,
+    ),
+)

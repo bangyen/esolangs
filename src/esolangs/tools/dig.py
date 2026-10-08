@@ -2,6 +2,7 @@
 
 import heapq
 
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
     _validate_truth_table,
     constant_span_test,
@@ -962,3 +963,11 @@ def _dig_build(
     if n <= 4:
         candidates += (_dig_quarter_turn(flat),)
     return narrowest_grid(*candidates)
+
+
+LANGUAGE = Language(
+    "Dig",
+    "grid_based.dig",
+    boolean=dig,
+    split=True,
+)

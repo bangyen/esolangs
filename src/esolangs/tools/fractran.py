@@ -15,6 +15,8 @@ from dataclasses import dataclass
 from itertools import islice
 
 from esolangs.interpreters.other.fractran.index import SMALL_BASE
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.factor import _primes as _prime_stream
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
@@ -186,3 +188,18 @@ def fractran_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
         elif template.split() == _PARITY_BINARY.split():
             pair = ("1", "2")
     return (pair,) * n
+
+
+LANGUAGE = Language(
+    "FRACTRAN",
+    "other.fractran",
+    boolean=fractran,
+    contract=BooleanContract(
+        answer_mode="dump",
+        answer_values=("1", "2"),
+        note="FRACTRAN has neither input nor output: the inputs are the "
+        "exponents of n primes in the starting value, and the answer "
+        "is the value the run stops on -- 1 for a zero and 2 for a one",
+        parameterized=True,
+    ),
+)

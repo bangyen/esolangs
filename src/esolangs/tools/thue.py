@@ -20,6 +20,8 @@ from __future__ import annotations
 from math import isqrt
 from string import ascii_letters
 
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import _validate_truth_table, essential_inputs, read_at
 from esolangs.tools.wrap import balance_score
 
@@ -308,3 +310,16 @@ def balance_thue(truth_table: str, default: str) -> str:
             for payload in (root - 1, root, root + 1, root + 2)
         )
     return min(candidates, key=balance_score)
+
+
+LANGUAGE = Language(
+    "Thue",
+    "other.thue",
+    boolean=thue,
+    contract=BooleanContract(
+        note="Thue draws which rewrite to make, by spec, and the "
+        "interpreter draws too; this program's rules are written so that "
+        "every state it reaches has exactly one, leaving the draw nothing "
+        "to change",
+    ),
+)

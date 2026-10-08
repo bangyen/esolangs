@@ -5,6 +5,8 @@ Named ``eval_lang`` so the module does not read as the builtin ``eval``.
 The table is a literal halved by position: no subtrees to fold or share.
 """
 
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
@@ -59,3 +61,13 @@ def _eval_ordered(truth_table: str, ops: str) -> str:
         out.extend(("~^=~?*", ";" * remaining, "~=~?*"))
     out.append(".")
     return "".join(out)
+
+
+LANGUAGE = Language(
+    "Eval",
+    "stack_based.eval",
+    boolean=eval,
+    contract=BooleanContract(
+        parameterized=True,
+    ),
+)

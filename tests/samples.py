@@ -262,4 +262,7 @@ def _generated(name: str) -> tuple[Program, str]:
 # A generator language needs no hand sample: its generated program is one.
 for _name, _lang in LANGUAGES.items():
     if _lang.boolean is not None and _name not in SAMPLES:
-        SAMPLES[_name] = _generated(_name)
+        try:
+            SAMPLES[_name] = _generated(_name)
+        except NotImplementedError:  # a scaffolded stub, not yet written
+            continue

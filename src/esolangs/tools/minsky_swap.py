@@ -1,5 +1,7 @@
 """Boolean template for minsky swap; a row is one ``~``, so no span shrinks."""
 
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import TEMPLATE_CHAR, _validate_truth_table, input_weights
 
 __all__ = ["MINSKY_SWAP_PAIR", "minsky_swap", "minsky_swap_setters"]
@@ -105,3 +107,16 @@ def minsky_swap_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
     elif template.startswith("decnz("):
         pair = _MINSKY_SHORT_RMSN_PAIR
     return (pair,) * n
+
+
+LANGUAGE = Language(
+    "Minsky Swap",
+    "register_based.minsky_swap",
+    boolean=minsky_swap,
+    contract=BooleanContract(
+        answer_mode="dump",
+        note="Minsky Swap has no output instruction and dumps its "
+        "registers at halt; the answer is the second one",
+        parameterized=True,
+    ),
+)

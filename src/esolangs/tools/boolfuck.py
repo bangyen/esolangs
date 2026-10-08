@@ -26,6 +26,8 @@ cleared flag cell, bits 4..5 after flipping it, bits 6..7 cleared
 again -- the ASCII ``'0'``/``'1'`` byte in exactly 8 prints.
 """
 
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
     _validate_truth_table,
     constant_span_test,
@@ -114,3 +116,13 @@ def boolfuck(truth_table: str) -> str:
     parts.append(";;;+;;+;;")
 
     return "".join(parts)
+
+
+LANGUAGE = Language(
+    "Boolfuck",
+    "tape_based.boolfuck",
+    boolean=boolfuck,
+    contract=BooleanContract(
+        input_shape="char_stream",
+    ),
+)

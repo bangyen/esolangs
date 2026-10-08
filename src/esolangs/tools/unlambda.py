@@ -24,6 +24,8 @@ from __future__ import annotations
 
 from functools import cache
 
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
     SubtreeDiagram,
     _validate_truth_table,
@@ -165,3 +167,13 @@ def unlambda(truth_table: str) -> str:
         write_node(root, None)
         pieces.append("v")
     return "".join(pieces)
+
+
+LANGUAGE = Language(
+    "Unlambda",
+    "other.unlambda",
+    boolean=unlambda,
+    contract=BooleanContract(
+        input_shape="char_stream",
+    ),
+)

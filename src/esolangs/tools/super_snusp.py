@@ -7,7 +7,12 @@ Tables use a linear packed-integer lookup, and never the language's random
 import re
 from math import isqrt
 
-from esolangs.tools.helpers import _validate_truth_table, input_weights
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
+from esolangs.tools.helpers import (
+    _validate_truth_table,
+    input_weights,
+)
 from esolangs.tools.wrap import balance_score
 
 __all__ = ["super_snusp"]
@@ -178,3 +183,14 @@ def balance_super_snusp(flat: str) -> str:
     vertical = _super_snusp_layout(flat, 1)
     narrow = _super_snusp_layout(flat, 3)
     return min((flat, lower, middle, upper, vertical, narrow), key=balance_score)
+
+
+LANGUAGE = Language(
+    "Super SNUSP",
+    "grid_based.super_snusp",
+    boolean=super_snusp,
+    split=True,
+    contract=BooleanContract(
+        input_shape="char_stream",
+    ),
+)

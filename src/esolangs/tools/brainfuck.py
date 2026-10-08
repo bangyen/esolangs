@@ -1,5 +1,7 @@
 """Build brainfuck Boolean programs with a folded decision tree."""
 
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
@@ -63,3 +65,13 @@ def _bf_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     cells.append("+" * _ASCII_ZERO)
     cells.append(".")
     return "".join(cells)
+
+
+LANGUAGE = Language(
+    "brainfuck",
+    "tape_based.brainfuck",
+    boolean=brainfuck,
+    contract=BooleanContract(
+        input_shape="char_stream",
+    ),
+)

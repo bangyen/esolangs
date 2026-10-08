@@ -2,6 +2,8 @@
 
 import re
 
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
@@ -264,3 +266,17 @@ def _bitdeque_ordered(
     end = len(prelude) + load_len + len(tree) + 1
     tokens = prelude + load + tree
     return " ".join("GOTO " + str(end) if t == "GOTO@END" else t for t in tokens)
+
+
+LANGUAGE = Language(
+    "Bitdeque",
+    "queue_based.bitdeque",
+    boolean=bitdeque,
+    contract=BooleanContract(
+        answer_mode="dump",
+        note="Bitdeque has no output instruction and dumps its deque at "
+        "halt; the generator leaves exactly one bit on it, so the "
+        "whole dump is the answer and there is no position to name",
+        parameterized=True,
+    ),
+)

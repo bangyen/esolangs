@@ -15,6 +15,8 @@ from typing import Any
 from esolangs.exceptions import GeneratorCapError
 from esolangs.interpreters.source_hints import with_hint
 from esolangs.polynomial_resources import estimate_generation
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
@@ -361,3 +363,16 @@ def _polynomial_hybrid(truth_table: str, k: int) -> list[list[int]]:
 def _polynomial_hybrid_cost(truth_table: str, k: int) -> int:
     """Return the emitted hybrid instruction count."""
     return len(_polynomial_hybrid(truth_table, k))
+
+
+LANGUAGE = Language(
+    "Polynomial",
+    "register_based.polynomial",
+    generator_restrictions=f"at most {_POLYNOMIAL_MAX_INSTRS} instructions and "
+    f"{_POLYNOMIAL_MAX_ESTIMATED_CHARS} estimated characters; "
+    "table dependent",
+    boolean=polynomial,
+    contract=BooleanContract(
+        input_shape="char_stream",
+    ),
+)

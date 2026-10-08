@@ -31,6 +31,7 @@ import math
 from collections import Counter
 from functools import partial
 
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
     _validate_truth_table,
     constant_span_test,
@@ -402,3 +403,10 @@ def cvnc(truth_table: str) -> str:
         if len(_halt(squarings)) + len(body) < _reach(squarings):
             return _halt(squarings) + body
         squarings += 1
+
+
+LANGUAGE = Language(
+    "CV(N)(C)",
+    "other.cvnc",
+    boolean=cvnc,
+)

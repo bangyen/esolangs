@@ -12,6 +12,8 @@ The reads are unconditional and first.
 
 from esolangs._dialects import expression_syntax as validate_expression_syntax
 from esolangs._dialects import list_update as validate_list_update
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table, input_weights
 
 __all__ = ["alight"]
@@ -336,3 +338,14 @@ def _postfix_units(
         else:
             units.append([f"skip i {_half_before(start)} <", lookup])
     return [*units, ["out r"], ["end"]]
+
+
+LANGUAGE = Language(
+    "Alight",
+    "grid_based.alight",
+    boolean=alight,
+    split=True,
+    contract=BooleanContract(
+        input_shape="char_stream",
+    ),
+)

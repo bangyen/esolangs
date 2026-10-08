@@ -3,6 +3,8 @@
 A packed literal has no subtrees to fold or share.
 """
 
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table, input_weights
 
 __all__ = ["qoibl"]
@@ -90,3 +92,14 @@ def qoibl(truth_table: str, width: int | None = None) -> str:
             tokens[at] = f"qe {scratch} qe"
         output.append(" ".join(tokens))
     return _qoibl("\n".join(output), limit)
+
+
+LANGUAGE = Language(
+    "Qoibl",
+    "register_based.qoibl",
+    boolean=qoibl,
+    split=True,
+    contract=BooleanContract(
+        input_shape="char_stream",
+    ),
+)

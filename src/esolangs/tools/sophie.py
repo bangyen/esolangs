@@ -2,6 +2,8 @@
 
 from itertools import chain, count
 
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
     _ASCII_ONE,
     _ASCII_ZERO,
@@ -127,3 +129,13 @@ def sophie_labels(retained: list[list[int]]) -> list[dict[int, int]]:
     rest = (v for v in count(1) if v not in _SOPHIE_CHARACTERS)
     values = chain(single, rest)
     return [{state: next(values) for state in states} for states in retained]
+
+
+LANGUAGE = Language(
+    "Sophie",
+    "register_based.sophie",
+    boolean=sophie,
+    contract=BooleanContract(
+        input_shape="char_stream",
+    ),
+)

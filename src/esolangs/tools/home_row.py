@@ -2,6 +2,8 @@
 
 from itertools import groupby
 
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
@@ -68,3 +70,13 @@ def home_row(truth_table: str) -> str:
     # The source's end halts, so the last answer needs no ``;``.
     last = ("ff" if guarded else "f") + "a" * (table[-1] == "1") + "k"
     return setup + "".join(bit_lines) + "ffff" * bool(guarded) + "".join(leaves) + last
+
+
+LANGUAGE = Language(
+    "Home Row",
+    "tape_based.home_row",
+    boolean=home_row,
+    contract=BooleanContract(
+        parameterized=True,
+    ),
+)

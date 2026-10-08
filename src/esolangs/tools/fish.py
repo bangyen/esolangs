@@ -5,6 +5,8 @@ A grid has no subtrees to fold or share.
 
 from math import isqrt
 
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import _parity_bias, _validate_truth_table, input_weights
 
 
@@ -79,3 +81,14 @@ def balance_fish(truth_table: str, default: str) -> str:
     if _parity_bias(truth_table) is not None:
         candidates.append(fish(truth_table, 1))
     return min(candidates, key=balance_score)
+
+
+LANGUAGE = Language(
+    "Fish",
+    "grid_based.fish",
+    boolean=fish,
+    split=True,
+    contract=BooleanContract(
+        input_shape="char_stream",
+    ),
+)

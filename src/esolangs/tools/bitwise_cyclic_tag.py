@@ -10,6 +10,8 @@ walk arrives at cell ``index`` and fires it, and no row can drop.  Emission is
 
 from __future__ import annotations
 
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import TEMPLATE_CHAR, _validate_truth_table, input_weights
 
 #: One bit of the initial data-string, so an input's run is one TEMPLATE_CHAR.
@@ -34,3 +36,17 @@ def bitwise_cyclic_tag(truth_table: str) -> str:
         parts.append("1" + answer + "00")
     data = TEMPLATE_CHAR * n + _SENTINEL
     return f"{''.join(parts)},{data}"
+
+
+LANGUAGE = Language(
+    "Bitwise Cyclic Tag",
+    "queue_based.bitwise_cyclic_tag",
+    boolean=bitwise_cyclic_tag,
+    contract=BooleanContract(
+        note="Bitwise Cyclic Tag has no I/O vocabulary at all: the inputs "
+        "are bits of the initial data-string, and the answer is the "
+        "bit the last 0 deletes, which the interpreter prints alone -- "
+        "so the output is the answer and there is no position to name",
+        parameterized=True,
+    ),
+)

@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import _validate_truth_table, input_weights
 
 #: The stage, row by row, with its run of ``|`` left out.  The two ``*``
@@ -220,3 +222,14 @@ def b_tapemark(truth_table: str, width: int | None = None) -> str:
     if len(painted) <= depth:
         painted, weights = truth_table, [1 << (depth - 1 - i) for i in range(depth)]
     return _b_tapemark_narrow(painted, depth, weights)
+    return _b_tapemark_narrow(truth_table, depth)
+
+
+LANGUAGE = Language(
+    "B-tapemark",
+    "grid_based.b_tapemark",
+    boolean=b_tapemark,
+    contract=BooleanContract(
+        input_shape="char_stream",
+    ),
+)

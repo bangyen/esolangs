@@ -99,6 +99,8 @@ import heapq
 import random
 from itertools import islice
 
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import _validate_truth_table, short_name
 
 __all__ = ["vandevelo"]
@@ -988,3 +990,15 @@ def _flips(cover: list[list[tuple[int, int]]], dims: list[int], n: int) -> int:
                 weight[bit] += reach if value else -reach
         reach -= 1 << dim
     return sum(1 << bit for bit in range(n) if count[bit] < 0 and weight[bit] < 0)
+
+
+LANGUAGE = Language(
+    "Vandevelo",
+    "other.vandevelo",
+    boolean=vandevelo,
+    contract=BooleanContract(
+        answer_mode="termination",
+        answer_values=("halts", "diverges"),
+        note="Vandevelo answers by terminating: nil halts and not nil loops",
+    ),
+)

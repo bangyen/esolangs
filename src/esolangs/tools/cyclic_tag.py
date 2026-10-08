@@ -4,6 +4,8 @@ One rule a row is the index step; dropping rows moves the walk, and a rule
 runs once a cycle, so none is shared.
 """
 
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import TEMPLATE_CHAR, _validate_truth_table, input_weights
 
 
@@ -17,3 +19,14 @@ def cyclic_tag(truth_table: str) -> str:
     for answer in table:
         rules.extend((answer, ""))
     return ";".join(rules) + "," + TEMPLATE_CHAR * n + "1"
+
+
+LANGUAGE = Language(
+    "Cyclic tag",
+    "queue_based.cyclic_tag",
+    boolean=cyclic_tag,
+    contract=BooleanContract(
+        note="Inputs fill the initial queue; the final deleted bit is the answer.",
+        parameterized=True,
+    ),
+)

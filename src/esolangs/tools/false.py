@@ -11,6 +11,8 @@ from __future__ import annotations
 
 from string import ascii_lowercase
 
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
     _validate_truth_table,
     subtree_ids,
@@ -154,3 +156,13 @@ def _shared(truth_table: str, n: int) -> str:
         out.append("]" + name + ":")
     body((0, ids[0][0]), out)
     return "".join(out)
+
+
+LANGUAGE = Language(
+    "FALSE",
+    "stack_based.false",
+    boolean=false,
+    contract=BooleanContract(
+        input_shape="char_stream",
+    ),
+)

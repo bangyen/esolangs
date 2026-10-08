@@ -11,6 +11,7 @@ from __future__ import annotations
 from functools import cache
 
 from esolangs.raster import Raster
+from esolangs.registry._language import Language, SourceKind
 from esolangs.tools.helpers import _validate_truth_table
 from esolangs.tools.piet import (
     _ADD,
@@ -58,3 +59,11 @@ def _generate(truth_table: str) -> Raster:
 def piet_plus_plus(truth_table: str) -> Raster:
     """Return a Piet++ raster computing ``truth_table``."""
     return _generate(truth_table)
+
+
+LANGUAGE = Language(
+    "Piet++",
+    "stack_based.piet_plus_plus",
+    source_kind=SourceKind.RASTER,
+    boolean=piet_plus_plus,
+)

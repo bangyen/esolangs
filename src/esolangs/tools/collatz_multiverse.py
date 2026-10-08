@@ -3,6 +3,7 @@
 import re
 from collections import Counter
 
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
     _ASCII_ZERO,
     _cm_constants,
@@ -339,3 +340,10 @@ def balance_collatz_multiverse(truth_table: str, default: str) -> str:
             )
         candidates.append(program)
     return min(candidates, key=balance_score)
+
+
+LANGUAGE = Language(
+    "Collatz Multiverse",
+    "register_based.collatz_multiverse",
+    boolean=collatz_multiverse,
+)

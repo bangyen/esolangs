@@ -1,5 +1,7 @@
 """Smallfuck boolean generator: a decision tree with banded result cells."""
 
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
@@ -141,3 +143,14 @@ def _trim_tail(code: str) -> str:
     if first < 0:
         return code
     return code[:first] + "]" * code.count("]", first)
+
+
+LANGUAGE = Language(
+    "Smallfuck",
+    "tape_based.smallfuck",
+    boolean=smallfuck,
+    contract=BooleanContract(
+        note="Smallfuck defines no I/O; this implementation prints final cell 2",
+        parameterized=True,
+    ),
+)

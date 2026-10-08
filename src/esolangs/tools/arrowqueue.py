@@ -7,6 +7,8 @@ Rows are reached by a Horner count, so no subtree is drawn to share.
 Narrow paths drop ignored inputs too (area -46.8% / -70.5% at n=8, 1 / 2 ignored).
 """
 
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
@@ -78,3 +80,34 @@ def _cascade(truth_table: str) -> list[str]:
     tail = len(truth_table.rstrip(truth_table[-1]))
     rows = [row for bit in truth_table[:tail] for row in _ROWS[bit]]
     return [*rows, *_DRAINED_RING] if truth_table[-1] == "1" else rows
+
+
+def _compact(rows: list[str]) -> list[str]:
+    """Drop the wholly blank rows and columns from the template's body.
+
+    A blank line carries only straight travel; the header's glyphs sit past
+    column 4, which every branch marks.
+    """
+    width = max(map(len, rows))
+    padded = [row.ljust(width) for row in rows]
+    kept = [row for row in padded if row.strip()]
+    columns = [x for x in range(width) if any(row[x] != " " for row in kept)]
+    return ["".join(row[x] for x in columns).rstrip() for row in kept]
+
+
+LANGUAGE = Language(
+    "ArrowQueue",
+    "grid_based.arrowqueue",
+    boolean=arrowqueue,
+    split=True,
+    contract=BooleanContract(
+        answer_mode="termination",
+        answer_values=("halts", "diverges"),
+        note="ArrowQueue answers by termination -- it halts for a 0 result "
+        "and loops forever for a 1, so only the halting branch is "
+        "committed.  The headings printed are its interpreter-only "
+        "queue dump, which the verdict does not read: the answer is "
+        "that the program halted at all",
+        parameterized=True,
+    ),
+)

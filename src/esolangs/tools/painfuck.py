@@ -10,6 +10,7 @@ per cell.
 """
 
 from esolangs.interpreters.tape_based.painfuck import _CYCLES
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
     _validate_truth_table,
     constant_span_test,
@@ -155,3 +156,10 @@ def _painfuck_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     move(result)
     out.append("o")
     return _encode("".join(out))
+
+
+LANGUAGE = Language(
+    "Painfuck",
+    "tape_based.painfuck",
+    boolean=painfuck,
+)
