@@ -24,6 +24,7 @@ _SKIP = "^%"
 #: and of one whose halves are ``1`` and ``0``: ``'0=`` is ``-1`` on a zero.
 _SAME = "^1&"
 _FLIPPED = "^'0=_"
+Key = tuple[int, int]  # (level, subtable id)
 
 
 def false(truth_table: str, width: int | None = None) -> str:
@@ -45,10 +46,8 @@ def false(truth_table: str, width: int | None = None) -> str:
     return wrap_program(program, "false", width)
 
 
-Key = tuple[int, int]
-
 #: A node around its two halves, whether written ``[...]`` or fetched ``x;``.
-_NODE = (_TEST_ONE[:-1], "?0=", "?")
+_OPEN, _BETWEEN, _CLOSE = _TEST_ONE[:-1], "?0=", "?"
 
 
 def _shared(truth_table: str, n: int) -> str:
@@ -72,6 +71,12 @@ def _shared(truth_table: str, n: int) -> str:
     uses: dict[Key, int] = {}
     inner: dict[Key, int] = {}  # of those uses, the ones that are a body
     found: list[list[Key]] = [[] for _ in range(n + 1)]
+
+    def use(child: Key, depth: int) -> None:
+        if child not in uses:
+            found[depth].append(child)
+        uses[child] = uses.get(child, 0) + 1
+
     for depth in range(n):
         for place, node in enumerate(ids[depth]):
             key = (depth, node)
@@ -86,15 +91,11 @@ def _shared(truth_table: str, n: int) -> str:
             if zero == one:  # the test changes nothing: drop the bit, run it
                 folds[key] = zero
                 inner[zero] = inner.get(zero, 0) + 1
-                if zero not in uses:
-                    found[depth + 1].append(zero)
-                uses[zero] = uses.get(zero, 0) + 1
+                use(zero, depth + 1)
                 continue
             kids[key] = (zero, one)
-            for child in (zero, one):
-                if child not in uses:
-                    found[depth + 1].append(child)
-                uses[child] = uses.get(child, 0) + 1
+            use(zero, depth + 1)
+            use(one, depth + 1)
 
     size: dict[Key, int] = {}
     names: dict[Key, str] = {}
@@ -111,8 +112,9 @@ def _shared(truth_table: str, n: int) -> str:
             size[key] = len(_SKIP) + (3 if child in names else size[child])
         else:
             halves = (2 if k in names else size[k] + 2 for k in kids[key])
-            size[key] = len("".join(_NODE)) + sum(halves)
-        # A ``[text]`` use becomes ``x;`` and a bare one ``x;!``.
+            size[key] = len(_OPEN + _BETWEEN + _CLOSE) + sum(halves)
+        # Each ``[text]`` use becomes ``x;`` (saves size - 2), a bare one
+        # ``x;!`` (saves size - 3); the store ``[text]x:`` costs size + 4.
         gain = uses[key] * size[key] - 3 * inner.get(key, 0) - size[key] - 4
         if gain > 0 and (name := next(free, None)):
             names[key] = name
@@ -131,11 +133,11 @@ def _shared(truth_table: str, n: int) -> str:
                 body(folds[key], out)
         else:
             zero, one = kids[key]
-            out.append(_NODE[0])
+            out.append(_OPEN)
             half(one, out)
-            out.append(_NODE[1])
+            out.append(_BETWEEN)
             half(zero, out)
-            out.append(_NODE[2])
+            out.append(_CLOSE)
 
     def half(key: Key, out: list[str]) -> None:
         if key in names:
