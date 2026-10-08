@@ -84,9 +84,10 @@ bounds, and the weighted-description theorem.
 Stalled problems, one line each; detail lives in the linked proof page. A
 line changes only when its next step does.
 
-- **FRACTRAN bit-linear pipeline.** Next: reduce prime generation, literal
-  conversion and cursor bit cost; direct chunks remove rank selection,
-  but the materialized sieve still forces `Theta(T log T)` generation
+- **FRACTRAN bit-linear pipeline.** Next: execute a forward cleanup scan
+  for direct chunks in place of minimum-tree updates; factor removal cannot
+  enable an earlier failed guard. Prime generation and literal conversion
+  remain, with the materialized sieve forcing `Theta(T log T)` generation
   ([fractran](proofs/fractran.md#direct-chunks-with-exact-cleanup)).
 - **Brainfuck behaviour count.** Next: count balanced bodies by the
   context-free system or a depth-indexed transfer matrix
