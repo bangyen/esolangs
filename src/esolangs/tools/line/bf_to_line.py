@@ -19,7 +19,7 @@ _BF_TO_LINE = {"+": "+", "-": "-", "<": "<", ">": ">", ",": "i", ".": "o"}
 
 
 def _nop() -> Node:
-    """Build a single node whose op has no net effect on tape or pointer.
+    """Build a two-node chain whose ops has no net effect on tape or pointer.
 
     A ``>`` node followed by ``<``; the ``goto`` attaches to the second, so
     the pointer is back before the jump.
@@ -113,14 +113,3 @@ def bf_to_line(program: str) -> Node:
     if head is None:
         raise ValueError("brainfuck program has no recognized commands to compile")
     return head
-
-
-if __name__ == "__main__":
-    import sys
-
-    from .render import render
-
-    code = sys.argv[1] if len(sys.argv) > 1 else "++++++++[>++++++++<-]>+."
-    out_path = sys.argv[2] if len(sys.argv) > 2 else "bf_line_out.png"
-    render(bf_to_line(code)).save(out_path)
-    print(f"wrote {out_path}")

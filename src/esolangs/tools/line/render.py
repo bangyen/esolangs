@@ -17,7 +17,6 @@ that makes extraction hard.
 from __future__ import annotations
 
 import itertools
-import sys
 from dataclasses import dataclass, field
 
 from esolangs.raster import png
@@ -55,19 +54,6 @@ def _diag_left(d: tuple[int, int]) -> tuple[int, int]:
     return dy + ly, dx + lx
 
 
-def _horiz_right(d: tuple[int, int]) -> tuple[int, int]:
-    """Pure sideways step, turned right relative to ``d`` (no forward motion).
-
-    The connector that distinguishes ``>``/``<``/``i``/``o`` from ``+``/``-``.
-    """
-    return _turn_right(d)
-
-
-def _horiz_left(d: tuple[int, int]) -> tuple[int, int]:
-    """Pure sideways step, turned left relative to ``d`` (no forward motion)."""
-    return _turn_left(d)
-
-
 def _rotate(d: tuple[int, int], heading: tuple[int, int]) -> tuple[int, int]:
     """Rotate a direction defined relative to "forward" onto ``heading``."""
     dy, dx = d
@@ -86,34 +72,34 @@ def _rotate(d: tuple[int, int], heading: tuple[int, int]) -> tuple[int, int]:
 #   3x), so these are templates over `count`, built by :func:`_op_segments`
 #   and fed by :func:`_Cursor.emit_op`.
 # * `>`/`<`/`i`/`o` (Lineanim7/8/10/11): a pure sideways connector
-#   (`_horiz_right`/`_horiz_left`) bridging the diagonal legs; `i`/`o` have
+#   (`_turn_right`/`_turn_left`) bridging the diagonal legs; `i`/`o` have
 #   one more diagonal leg (Lineanim10 is one unit-diagonal taller than
 #   Lineanim7).  Repeats never merge: no wiki example shows it.
 _OPS: dict[str, list[tuple[tuple[int, int], int]]] = {
     ">": [
         (_FORWARD, 2),
         (_diag_right(_FORWARD), 1),
-        (_horiz_left(_FORWARD), 1),
+        (_turn_left(_FORWARD), 1),
         (_FORWARD, 2),
     ],
     "<": [
         (_FORWARD, 2),
         (_diag_left(_FORWARD), 1),
-        (_horiz_right(_FORWARD), 1),
+        (_turn_right(_FORWARD), 1),
         (_FORWARD, 2),
     ],
     "i": [
         (_FORWARD, 2),
         (_diag_right(_FORWARD), 1),
-        (_horiz_left(_FORWARD), 2),
+        (_turn_left(_FORWARD), 2),
         (_diag_right(_FORWARD), 1),
         (_FORWARD, 2),
     ],
     "o": [
         (_FORWARD, 2),
-        (_horiz_left(_FORWARD), 1),
+        (_turn_left(_FORWARD), 1),
         (_diag_right(_FORWARD), 2),
-        (_horiz_left(_FORWARD), 1),
+        (_turn_left(_FORWARD), 1),
         (_FORWARD, 2),
     ],
 }
@@ -205,24 +191,14 @@ class Node:
 
 def chain(*ops: str) -> Node:
     """Build a straight-through Node chain from an opcode string, e.g. "+++"."""
-    head: Node | None = None
-    tail: Node | None = None
-    for op in ops:
-        node = Node(op)
-        if head is None:
-            head = node
-        else:
-            if tail is None:
-                raise AssertionError("non-empty node chain lost its tail")
-            tail.next = node
-        tail = node
-    if head is None:
+    if not ops:
         raise ValueError("chain() requires at least one opcode")
-    return head
+    node = None
+    for op in reversed(ops):
+        node = Node(op, next=node)
+    assert node is not None
+    return node
 
-
-# The only opcodes whose repeats merge into one kink (Lineanim6.png; see `_OPS`).
-_MERGEABLE = {"+", "-"}
 
 # Grid cells (`_UNIT` pixels each) a loop-back keeps from unrelated ink.
 # Abutting strokes rasterize into one ribbon and `lattice._band_lit`'s
@@ -506,10 +482,7 @@ def _loop_return_legs(
             return None
         if not dy and not dx:
             continue
-        direction = (
-            0 if dy == 0 else (1 if dy > 0 else -1),
-            0 if dx == 0 else (1 if dx > 0 else -1),
-        )
+        direction = ((dy > 0) - (dy < 0), (dx > 0) - (dx < 0))
         legs.append((direction, abs(dy) + abs(dx)))
     legs.append(((-1, -1), _DIAGONAL_APPROACH))
 
@@ -521,7 +494,6 @@ def _layout(
     cursor: _Cursor,
     plan: _Plan,
     entries: dict[int, tuple[tuple[int, int], tuple[int, int]]] | None = None,
-    depth: int = 0,
     *,
     measuring: bool = False,
 ) -> None:
@@ -529,7 +501,7 @@ def _layout(
 
     ``entries`` maps a ``?``'s ``id`` to its ``(vertex, heading)``; a
     ``goto`` reconnects on the stem :data:`_RETURN_STEM_T` behind the vertex.
-    ``depth`` is informational.  ``measuring`` runs the layout for
+    ``measuring`` runs the layout for
     :func:`_subtree_extent`: nested ``goto`` returns are drawn in both modes,
     and only a ``goto`` whose fork is outside the chain is terminal.
     """
@@ -545,15 +517,15 @@ def _layout(
             right.finish()
             left.advance(left.heading, _arm_spacing(node.nonzero, plan, tree=tree))
             left.finish()
-            _layout(node.zero, right, plan, entries, depth + 1, measuring=measuring)
-            _layout(node.nonzero, left, plan, entries, depth + 1, measuring=measuring)
+            _layout(node.zero, right, plan, entries, measuring=measuring)
+            _layout(node.nonzero, left, plan, entries, measuring=measuring)
             right.finish()
             left.finish()
             cursor.strokes.extend(right.strokes)
             cursor.strokes.extend(left.strokes)
             return
         op, count = node.op, 1
-        if op in _MERGEABLE:
+        if op in "+-":  # only these repeats merge into one kink (see `_OPS`)
             while (
                 node.next is not None and node.next.op == op and node.next.goto is None
             ):
@@ -754,8 +726,3 @@ def render(
     start_px, start_py = to_px((0, 0))
     _arrowhead(canvas, start_py, start_px, start_heading)
     return canvas.upscale(scale)
-
-
-if __name__ == "__main__":
-    program = chain(*sys.argv[1]) if len(sys.argv) > 1 else chain("+", "+", "+")
-    render(program).save(sys.argv[2] if len(sys.argv) > 2 else "line_out.png")

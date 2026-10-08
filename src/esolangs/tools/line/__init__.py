@@ -8,9 +8,8 @@ halves agree is skipped, so a constant is one leaf and an ignored input
 is read but never tested.  A leaf prints the cell it just tested, after
 one ``+`` or ``-`` when the entry differs from that bit; a constant has no
 test and prints the unread cell ``n``.  ``truth_table`` is a binary string of
-length ``2**n``, MSB first. Arms use measured subtree extents. The acyclic
-renderer uses a two-cell gap: n=4 parity renders at 880x1720. PNG round trips
-cover parity through n=8, boundary rows at n=9, and every pruned topology at n=3.
+length ``2**n``, MSB first.  Arms use measured subtree extents with a
+two-cell gap.
 """
 
 from __future__ import annotations
@@ -24,7 +23,8 @@ from esolangs.tools.helpers import (
     _validate_truth_table,
     permute_truth_table,
 )
-from esolangs.tools.line.render import Node, chain
+from esolangs.tools.line.render import _UNIT, Node, chain
+from esolangs.tools.line.tree_layout import tree_extents
 
 
 def line_boolean(truth_table: str, *, reverse: bool = False) -> Node:
@@ -83,6 +83,7 @@ def _render_node(
     node: Node, heading: tuple[int, int] = (-1, 0), *, compact: bool = True
 ) -> Rows:
     """Render a generated Line graph into shared RGB rows."""
+    # Local: a top-level `render` would shadow the submodule on the package.
     from esolangs.tools.line.render import render
 
     canvas = render(node, start_heading=heading, acyclic=True, compact=compact)
@@ -117,26 +118,21 @@ def line(truth_table: str, *, scale: int = 1) -> Raster:
 
 def balance(truth_table: str, _default: Raster) -> Raster:
     """Choose the most balanced compact or previous forward/reverse tree."""
-    from esolangs.tools.line.render import _UNIT
-    from esolangs.tools.line.tree_layout import tree_extents
 
-    plans = []
-    previous = []
-    for reverse in (False, True):
-        node = line_boolean(truth_table, reverse=reverse)
-        y0, y1, x0, x1 = tree_extents(node)[id(node)]
+    def score(node: Node, *, compact: bool) -> tuple[int, int, int]:
+        y0, y1, x0, x1 = tree_extents(node, compact=compact)[id(node)]
         width, height = (x1 - x0 + 2) * _UNIT, (y1 - y0 + 2) * _UNIT
-        heading = (-1, 0)
-        plans.append(((abs(width - height), width * height, width), node, heading))
-        y0, y1, x0, x1 = tree_extents(node, compact=False)[id(node)]
-        width, height = (x1 - x0 + 2) * _UNIT, (y1 - y0 + 2) * _UNIT
-        previous.append(((abs(width - height), width * height, width), node, heading))
-    score, selected, heading = min(plans, key=lambda plan: plan[0])
-    old_score, old_selected, old_heading = min(previous, key=lambda plan: plan[0])
-    # 01101110 ties in imbalance but grows 1,187,200 -> 1,276,000 pixels.
-    compact = score <= old_score
-    if not compact:
-        selected, heading = old_selected, old_heading
-    return lazy_raster(
-        lambda: _render_node(selected, heading, compact=compact), selected
+        return abs(width - height), width * height, width
+
+    nodes = [line_boolean(truth_table, reverse=reverse) for reverse in (False, True)]
+    compact_score, selected = min(
+        ((score(node, compact=True), node) for node in nodes), key=lambda p: p[0]
     )
+    old_score, old_selected = min(
+        ((score(node, compact=False), node) for node in nodes), key=lambda p: p[0]
+    )
+    # 01101110 ties in imbalance but grows 1,187,200 -> 1,276,000 pixels.
+    compact = compact_score <= old_score
+    if not compact:
+        selected = old_selected
+    return lazy_raster(lambda: _render_node(selected, compact=compact), selected)
