@@ -70,3 +70,10 @@ def test_remove_cuts_only_entries_that_own_their_lines(tmp_path: Path) -> None:
         "from esolangs.tools.gone import PAIR\n"
         'T = {\n    "kept": PAIR,\n}\nL = ["gone", "kept"]\n'
     )
+
+
+def test_remove_drops_the_whole_limitations_bullet(tmp_path: Path) -> None:
+    path = tmp_path / "limitations.md"
+    path.write_text("- Gone reads\n  past EOF.\n- Gonero stays.\n  Kept.\n")
+    new_language._drop_bullets(path, "Gone")  # noqa: SLF001
+    assert path.read_text() == "- Gonero stays.\n  Kept.\n"
