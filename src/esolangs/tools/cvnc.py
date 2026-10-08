@@ -10,16 +10,13 @@ gadget squares its way past the end of the program and halts.  A constant
 subtree folds to one leaf but keeps its reads, the last of which is floored
 by ``ə``.
 
-Commands are emitted through :func:`_render`, which is the whole size
-story: CV(N)(C) admits a nasal and a coda after a syllable's vowel, so a
-consonant command does not need a vowel of its own when the next command
-can host it.  Spelling every command as its own ``CV`` pair -- which is
-what this generator used to do -- pays a filler vowel per consonant.
-:func:`_render` chooses, per syllable, between taking the next consonant as
-a coda and letting it open the next syllable, and takes the cheaper.  The
-two fillers it inserts, ``c`` and ``u``, are inert *because* no command
-here ever builds a function: ``c`` clears an already-empty one and ``u``
-applies it, which the interpreter defines as leaving the accumulator alone.
+Commands are spelled by :func:`_render`, which is the size story: CV(N)(C)
+admits a nasal and a coda after a syllable's vowel, so a consonant command
+needs no vowel of its own when the next command can host it.  Per syllable
+it takes the cheaper of closing with the next consonant as a coda or
+letting it open the next syllable.  Its fillers, ``c`` and ``u``, are inert
+because no command here builds a function: ``c`` clears an already-empty
+one and ``u`` applies it, which leaves the accumulator alone.
 
 A second construction hoists the reads into the deque (``m``/``n`` push,
 ``ŋ``/``ɲ`` pop either end) so :func:`_ordered` can test in any order; each
@@ -31,8 +28,7 @@ nothing; the shorter of the two is kept.
 ``j`` is also how a repeated subtree is shared (:class:`_Stream`): the
 accumulator names a syllable, so a later copy climbs to the first copy's
 syllable with ``i``, ``æ`` and ``ə`` and jumps into it, where that is
-shorter. Its leaves halt, so nothing returns. Production uses the shared
-build.
+shorter. Its leaves halt, so nothing returns.
 """
 
 import math
@@ -121,16 +117,6 @@ def _reach(squarings: int) -> int:
     return int(_HALT_BASE ** (2**squarings))
 
 
-def _is_vowel(token: str) -> bool:
-    """Whether ``token`` can fill a syllable's vowel slot."""
-    return token in _VOWELS
-
-
-def _is_nasal(token: str) -> bool:
-    """Whether ``token`` can fill a syllable's nasal slot."""
-    return token in _NASALS
-
-
 def _syllable_options(tokens: list[str], index: int) -> list[tuple[str, int]]:
     """Return the ways to spell one syllable starting at ``tokens[index]``.
 
@@ -147,24 +133,24 @@ def _syllable_options(tokens: list[str], index: int) -> list[tuple[str, int]]:
     chars: list[str] = []
     cursor = index
     token = tokens[cursor]
-    if _is_vowel(token) or _is_nasal(token):
+    if token in _VOWELS or token in _NASALS:
         chars.append(_FILLER_ONSET)
     else:
         chars.append(token)
         cursor += 1
-    if cursor < total and _is_vowel(tokens[cursor]):
+    if cursor < total and tokens[cursor] in _VOWELS:
         chars.append(tokens[cursor])
         cursor += 1
     else:
         chars.append(_FILLER_VOWEL)
-    if cursor < total and _is_nasal(tokens[cursor]):
+    if cursor < total and tokens[cursor] in _NASALS:
         chars.append(tokens[cursor])
         cursor += 1
     options = [("".join(chars), cursor)]
     if (
         cursor < total
-        and not _is_vowel(tokens[cursor])
-        and not _is_nasal(tokens[cursor])
+        and tokens[cursor] not in _VOWELS
+        and tokens[cursor] not in _NASALS
     ):
         options.append(("".join(chars) + tokens[cursor], cursor + 1))
     return options
@@ -324,11 +310,6 @@ def _leaf(answer: str, accumulator: int | None) -> list[str]:
     return tokens
 
 
-def _bit_count(size: int) -> int:
-    """Return how many inputs a subtable of ``size`` rows still selects on."""
-    return size.bit_length() - 1
-
-
 def _consumed(weights: list[int]) -> list[int]:
     """Return the stream reads made before each indexed level, then in all."""
     return (
@@ -351,7 +332,7 @@ def _tree(
     """
     constant = constant_span_test(table)
     stream = stream or _Stream(table)
-    before = _consumed(weights or [1] * _bit_count(len(table)))
+    before = _consumed(weights or [1] * (len(table).bit_length() - 1))
 
     def walk(lo: int, hi: int, level: int, accumulator: int | None) -> None:
         if constant(lo, hi):
