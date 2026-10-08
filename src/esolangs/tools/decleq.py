@@ -1,11 +1,10 @@
 """Boolean generator for decleq."""
 
-from itertools import pairwise
-
 from esolangs.tools.helpers import (
     _ASCII_ONE,
     _ASCII_ZERO,
     _validate_truth_table,
+    constant_span_test,
     essential_inputs,
     read_at,
     subtree_ids,
@@ -63,21 +62,12 @@ def _decleq_build(
     k = min(m, (2 * n - 1).bit_length())
     span = 2**k
 
-    # ``changes[r]`` counts the value changes before row ``r``, so a run is
-    # constant iff its two ends agree; a slice-and-set per node would cost
-    # ``Theta(n T)`` over the tree.
-    changes = [0]
-    for previous, current in pairwise(truth_table):
-        changes.append(changes[-1] + (previous != current))
-
-    def constant(row: int, width: int) -> bool:
-        """Whether the ``width`` rows starting at ``row`` all agree."""
-        return changes[row] == changes[row + width - 1]
+    is_constant = constant_span_test(truth_table)
 
     # Fixed low addresses; a leaf reaches a gadget by ``0 0 gadget``.
     out_zero, halt, out_one = 3, 6, 9
     k48, k49, counter = 15, 16, 17
-    read_cells = [18 + i for i in range(n)]
+    read_cells = list(range(18, 18 + n))
     # The code starts on a multiple of three so wrap_grid's columns are the
     # operand columns; at most two pad cells.
     code = -(-(18 + n) // 3) * 3
@@ -91,9 +81,6 @@ def _decleq_build(
 
     def pc() -> int:
         return len(mem)
-
-    def patch(addr: int, c: int) -> None:
-        mem[addr + 2] = c
 
     # A read falls through and these decrements never reach 0: target 0.
     for rc in read_cells:
@@ -136,7 +123,7 @@ def _decleq_build(
 
     def earlier(level: int, row: int) -> int | None:
         """Address of an equal non-constant subtree already emitted, if any."""
-        if constant(row, 2 ** (m - level)):
+        if is_constant(row, row + 2 ** (m - level)):
             return None
         return done.get((level, ids[level][row >> (m - level)]))
 
@@ -145,7 +132,7 @@ def _decleq_build(
         if (copy := earlier(level, row)) is not None:
             emit(0, 0, copy)
             return
-        if constant(row, width):
+        if is_constant(row, row + width):
             emit(0, 0, out_one if truth_table[row] == "1" else out_zero)
             return
         done[level, ids[level][row >> (m - level)]] = pc()
@@ -160,7 +147,7 @@ def _decleq_build(
         if target is None:
             target = pc()
             node(level + 1, row)
-        patch(branch, target)
+        mem[branch + 2] = target
 
     node(0, 0)
 
