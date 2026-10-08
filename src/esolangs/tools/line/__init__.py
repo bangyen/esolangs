@@ -23,7 +23,8 @@ from esolangs.tools.helpers import (
     _validate_truth_table,
     permute_truth_table,
 )
-from esolangs.tools.line.render import _UNIT, Node, chain
+from esolangs.tools.line.render import _UNIT, Canvas, Node, chain
+from esolangs.tools.line.small_tree import small_tree_canvas
 from esolangs.tools.line.tree_layout import tree_extents
 
 
@@ -76,6 +77,7 @@ def line_boolean(truth_table: str, *, reverse: bool = False) -> Node:
     return head
 
 
+_SMALL_MAX = 5  # tight tree layout through n=5 (see small_tree)
 _GREY_RUN = re.compile(rb"(.)\1*", re.DOTALL)
 
 
@@ -86,7 +88,13 @@ def _render_node(
     # Local: a top-level `render` would shadow the submodule on the package.
     from esolangs.tools.line.render import render
 
-    canvas = render(node, start_heading=heading, acyclic=True, compact=compact)
+    return _grey_rows(
+        render(node, start_heading=heading, acyclic=True, compact=compact)
+    )
+
+
+def _grey_rows(canvas: Canvas) -> Rows:
+    """Expand a greyscale canvas into shared RGB rows."""
     palette = tuple((level, level, level) for level in range(256))
     cache: dict[bytes, tuple[Pixel, ...]] = {}
     rows = []
@@ -108,6 +116,8 @@ def _render_node(
 def _generate(truth_table: str) -> Raster:
     """Return a Line raster computing ``truth_table``."""
     node = line_boolean(truth_table)
+    if _validate_truth_table(truth_table) <= _SMALL_MAX:
+        return lazy_raster(lambda: _grey_rows(small_tree_canvas(node)), node)
     return lazy_raster(lambda: _render_node(node), node)
 
 
@@ -125,6 +135,13 @@ def balance(truth_table: str, _default: Raster) -> Raster:
         return abs(width - height), width * height, width
 
     nodes = [line_boolean(truth_table, reverse=reverse) for reverse in (False, True)]
+    if _validate_truth_table(truth_table) <= _SMALL_MAX:
+        drawn = [(small_tree_canvas(node), node) for node in nodes]
+        canvas, node = min(
+            drawn,
+            key=lambda p: (abs(p[0].width - p[0].height), p[0].width * p[0].height),
+        )
+        return lazy_raster(lambda: _grey_rows(canvas), node)
     compact_score, selected = min(
         ((score(node, compact=True), node) for node in nodes), key=lambda p: p[0]
     )
