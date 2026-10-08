@@ -261,7 +261,7 @@
       ],
       "qualification": "the ring is the table: one `!` per entry in a countdown row, and the index in the accumulator picks which one it is zero on, turning the pointer down that entry's own column; seven `.` an input build the index by Horner's rule, doubled between inputs by a two-row gadget that spends the accumulator as distance and buys back two per unit",
       "scaling": "linear: five table rows of 2T columns, doubling gadgets whose widths halve downward",
-      "execution": "linear: worst 10T + 20n + 30 steps on every table: the pointer's path to the last row",
+      "execution": "linear: worst 10T + 20n + 30 steps: the pointer's path to the last row",
       "workspace": "poly n: worst 57n + 50 + bl(2n+14) + bl(2^(n+1)+9n+1) bits: 7n-character queue",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
@@ -349,8 +349,8 @@
         "linear lookup"
       ],
       "qualification": "a bare `>` takes its dimension from the byte it stands on, so `d>` is a pointer displacement by the bit read: the index is a coordinate, doubled between reads by a two-loop `{`/`}` gadget, and it addresses one painted cell an entry along dimension 1",
-      "scaling": "linear: 2T table characters plus a fixed gadget per input",
-      "execution": "linear: worst 15T - 8n + 37 commands: paint 2T + 2, then 13 per index unit doubled",
+      "scaling": "linear: 2T table characters plus at most a fixed gadget per input",
+      "execution": "linear: at most 15T - 8n + 37 commands: paint 2T + 2, then 13 per index unit doubled",
       "workspace": "T log T: worst Σ_{k<T} bl(k) + 5T + n(n-1)/2 + 4n + 6 + bl(2T+20n+40) + bl(2n-1) bits",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
@@ -427,7 +427,7 @@
       ],
       "qualification": "a pair of answers per deque, and the input walks the deque cursor to the pair it wants",
       "scaling": "linear: T pushes, `T/2 - 1` cursor steps, two rows",
-      "execution": "linear: worst 3T + 9n + 4 nodes: preload T plus runs, then 8n of selection reads",
+      "execution": "linear: at most 3T + 9n + 4 nodes: preload T plus runs, then 8n of selection reads",
       "workspace": "T log T: at most (7T+20n+100)(bl(L)+4) + Σ_{j<T/2}(bl(j)+2) + 2bl(L) + n + 2bl(n) + 32 bits: exit-memory keys, deques",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
@@ -532,8 +532,8 @@
       ],
       "qualification": "weighted arms select one of `2**n` prewritten cells, cleaned in one sweep",
       "scaling": "linear: three rows of linear appends, ~15T",
-      "execution": "linear: worst 18T + 56n + 5 commands past n = 4: one pass along the weighted row",
-      "workspace": "linear: worst 12T + 2n + 11 + 2bl(n) bits past n = 4: 3T + 1 tape cells",
+      "execution": "linear: at most 18T + 56n + 5 commands past n = 4: one pass along the weighted row",
+      "workspace": "linear: at most 12T + 2n + 11 + 2bl(n) bits past n = 4: 3T + 1 tape cells",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -811,7 +811,7 @@
       ],
       "qualification": "each folding pass removes at least one pending unit",
       "scaling": "linear: one `*` per entry; ANF only below five inputs",
-      "execution": "linear: worst 2T + 19n + 22 commands past n = 4: one straight line, the all-ones table",
+      "execution": "linear: worst 2T + 19n + 21 commands past n = 4: one straight line, all ones but one row",
       "workspace": "linear: worst T + 2n + 12 + bl(L) + bl(n) bits past n = 4: the packed-table cell",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },

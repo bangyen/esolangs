@@ -6,7 +6,7 @@ so ``d>`` displaces the pointer by the bit read -- dimension 1 for a one, 0 for
 a zero; ``{d`` loops on a *coordinate* (``:296``), so the index doubles.
 """
 
-from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table
+from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table, input_weights
 from esolangs.tools.wrap import wrap_program
 
 __all__ = ["dimensional"]
@@ -26,7 +26,11 @@ def dimensional(truth_table: str, width: int | None = None) -> str:
     n = _validate_truth_table(truth_table)
     if width == 1 and n <= 2:
         return wrap_program(_dimensional_bare(truth_table, n), "dimensional", width)
-    index = _READ + (_DOUBLE + _READ) * (n - 1)
+    # An ignored input is a bare ``d``: the next read overwrites its byte.
+    # The first read needs no doubling.
+    weights, truth_table = input_weights(truth_table, n)
+    reads = (_DOUBLE + _READ if weight else "d" for weight in weights)
+    index = "".join(reads).replace(_DOUBLE, "", 1)
     program = _paint(truth_table) + index + f">{_PLANE}" + "+" * _ASCII_ZERO + "."
     return wrap_program(program, "dimensional", width)
 

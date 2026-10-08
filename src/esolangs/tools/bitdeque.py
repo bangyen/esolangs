@@ -7,6 +7,7 @@ from esolangs.tools.helpers import (
     _validate_truth_table,
     best_input_order,
     decision_tree_tokens,
+    input_weights,
     runs,
 )
 
@@ -108,8 +109,11 @@ def _bitdeque_linear(truth_table: str) -> str:
     half off the head for a one, ``POP`` the lower half off the tail for a
     zero, ``2**(n-1-i)`` commands each, meeting at a block that zeroes the
     register.  The last input skips that.  ``2T`` commands long, ``T`` executed.
+    An ignored input's bit is popped straight back and the register zeroed,
+    so the table indexes the rest.
     """
     n = _validate_truth_table(truth_table)
+    weights, truth_table = input_weights(truth_table, n)
     tokens: list[str] = []
     register = 0
     for bit in truth_table:
@@ -122,8 +126,13 @@ def _bitdeque_linear(truth_table: str) -> str:
         tokens.append("INVERT")
     # Command numbers count from 1, as ``GOTO`` does.
     at = len(tokens) + 1
-    for i, run in enumerate([TEMPLATE_CHAR * len(BITDEQUE_PAIR[0])] * n):
-        k = 2 ** (n - 1 - i)
+    run = TEMPLATE_CHAR * len(BITDEQUE_PAIR[0])
+    for i, k in enumerate(weights):
+        if not k:
+            # Pop the bit back; a one skips the first INVERT, zeroing it.
+            tokens += [run, "POP", f"GOTO {at + 5}", "INVERT", "INVERT"]
+            at += 6
+            continue
         # ``run`` is one token of text but two commands once filled.
         at += 2
         # Command numbers, with ``at`` the ``POP`` that reads the bit back:

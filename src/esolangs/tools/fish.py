@@ -2,7 +2,7 @@
 
 from math import isqrt
 
-from esolangs.tools.helpers import _parity_bias, _validate_truth_table
+from esolangs.tools.helpers import _parity_bias, _validate_truth_table, input_weights
 
 
 def fish(truth_table: str, width: int | None = None) -> str:
@@ -14,14 +14,17 @@ def fish(truth_table: str, width: int | None = None) -> str:
             # ASCII zero is even, so sums modulo two already normalize inputs.
             header = "vi" + "i+" * (n - 1) + "2%" + ("0=" if bias else "") + "n;"
             return "\n".join(header)
-    # Read ASCII bits, fold the row number, then fetch the digit below.
-    header = "0" + "i68*-$2*+" * n + "1g68*-n;"
+    # Read ASCII bits, fold the row number, then fetch the digit below; an
+    # ignored input is read and popped, and the table indexes the rest.
+    weights, truth_table = input_weights(truth_table, n)
+    reads = "".join("i68*-$2*+" if weight else "i~" for weight in weights)
+    header = "0" + reads + "1g68*-n;"
     plain = header + "\n" + truth_table
     if width is None or width <= 0 or max(len(header), len(truth_table)) <= width:
         return plain
     columns = 1 << (min(max(1, width - 2), len(truth_table)).bit_length() - 1)
     divisor = "1" + "2*" * (columns.bit_length() - 1)
-    body = "0" + "i68*-$2*+" * n + ":" + divisor + "%$:" + divisor + "%-"
+    body = "0" + reads + ":" + divisor + "%$:" + divisor + "%-"
     body += divisor + ","
     # Reserve a power-of-two height: its doubling literal fits even at width 3.
     height = 1 << (2 * len(body) // columns + 32).bit_length()

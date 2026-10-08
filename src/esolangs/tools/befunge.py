@@ -13,7 +13,7 @@ from math import isqrt
 
 from esolangs.exceptions import GeneratorCapError
 from esolangs.interpreters.source_hints import with_hint
-from esolangs.tools.helpers import _parity_bias, _validate_truth_table
+from esolangs.tools.helpers import _parity_bias, _validate_truth_table, input_weights
 from esolangs.tools.wrap import balance_score
 
 #: ``6 * 8``: Befunge has no multi-digit literal, so 48 is built arithmetically.
@@ -36,7 +36,6 @@ def befunge(truth_table: str, width: int | None = None) -> str:
     modulo two instead.
     """
     n = _validate_truth_table(truth_table)
-    count = 1 << n
     if n > MAX_INPUTS:
         raise with_hint(
             GeneratorCapError(
@@ -47,21 +46,25 @@ def befunge(truth_table: str, width: int | None = None) -> str:
                 "cannot enlarge Befunge's fixed 80x25 grid"
             ),
         )
-    if n > 10:
-        return _packed_befunge(truth_table, n, width)
+    # An ignored input is read and popped; the table indexes the rest.
+    weights, table = input_weights(truth_table, n)
+    reads = "".join("&\\2*+" if weight else "&$" for weight in weights)
+    if len(table) > 1 << 10:
+        return _packed_befunge(table, reads, width)
     if width is not None and 0 < width < 4:
         bias = _parity_bias(truth_table)
         if bias is not None:
             # At most 25 commands even at n=10, within the native torus.
             header = "v&" + "&+" * (n - 1) + "2%" + ("!" if bias else "") + _END
             return "\n".join(header)
+    truth_table, n, count = table, len(table).bit_length() - 1, len(table)
     shift = (n + 1) // 2
     table_width = 1 << shift
     # ``1`` then ``2*`` shift times is ``2**shift``; both are single commands.
     build_width = "1" + "2*" * shift
     header = (
         "0"
-        + "&\\2*+" * n
+        + reads
         + ":"
         + build_width
         + "%\\"
@@ -82,11 +85,11 @@ def befunge(truth_table: str, width: int | None = None) -> str:
         return plain
     # At most two decimal digits per coordinate on the 80x25 torus.
     # Reserving 23 rows of payload leaves the ceiling slack below 25 rows.
-    header_bound = 5 * n + 34
+    header_bound = len(reads) + 34
     columns = min(80, max(width, 4, (count + header_bound + 22) // 23 + 2))
     # Single-digit column counts save twelve literal cells.  This named
     # bound applies only when it proves that the count remains single-digit.
-    narrow_bound = 5 * n + 22
+    narrow_bound = len(reads) + 22
     narrow_columns = max(width, 4, (count + narrow_bound + 22) // 23 + 2)
     if narrow_columns < 10:
         columns, header_bound = narrow_columns, narrow_bound
@@ -94,7 +97,7 @@ def befunge(truth_table: str, width: int | None = None) -> str:
     literal = _literal(columns)
     header = (
         "0"
-        + "&\\2*+" * n
+        + reads
         + ":"
         + literal
         + "%\\"
@@ -125,13 +128,13 @@ def _fold_header(header: str, columns: int, header_rows: int) -> list[str]:
     return folded
 
 
-def _packed_befunge(truth_table: str, n: int, width: int | None) -> str:
+def _packed_befunge(truth_table: str, reads: str, width: int | None) -> str:
     """Return a six-bit printable-ASCII lookup within the fixed torus."""
     count = (len(truth_table) + 5) // 6
     # Two-digit columns and a single-digit header offset cost 64 cells
     # beyond the input fold. The floor gives at most six header rows and
     # ceil(B/(W-2)) + ceil(T/W) <= 25, including the n=13 dense build.
-    bound = 5 * n + 64
+    bound = len(reads) + 64
     requested = 80 if width is None or width <= 0 else width
     columns = min(80, max(requested, (count + bound + 22) // 23 + 2))
     header_rows = (bound + columns - 3) // (columns - 2)
@@ -140,7 +143,7 @@ def _packed_befunge(truth_table: str, n: int, width: int | None) -> str:
     # (1+u%2)*(1+3*((u//2)%2))*(1+15*(u//4)).
     header = (
         "0"
-        + "&\\2*+" * n
+        + reads
         + ":6%:2%1+\\:2/2%3*1+\\4/35**1+**\\6/:"
         + literal
         + "%\\"

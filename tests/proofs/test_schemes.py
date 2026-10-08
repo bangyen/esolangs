@@ -47,7 +47,9 @@ _FOLD = 0.05
 #: Cyclic Tag, ///, A Painter Ant, Forbin and Minsky Swap weight only the
 #: essential inputs (``input_weights``): an ignored one costs an empty rule, a
 #: bare ``0``, an ``X``-deleted bit, a bare ``SN``, a read into the scratch
-#: name or a drained ``~ ~``.  Named rather
+#: name or a drained ``~ ~``; Fish reads and pops it (``i~``), Packlang reads
+#: it bare, Flowchart skips its eight bits and Clockwise reads its seven
+#: before the next input's overwrite them.  Named rather
 #: than derived because the proxy is structural and these are its known blind
 #: spot; a further such row has to be added here, which is the point -- the
 #: equality below then fails until the prose and this set agree.
@@ -58,13 +60,17 @@ _FOLDS_WITHOUT_TREE = frozenset(
         "Bitwise Cyclic Tag",
         "bit~",
         "Circlefuck",
+        "Clockwise",
         "Collatz Multiverse",
         "Cyclic tag",
         "Dimensional",
         "Eval",
+        "Fish",
+        "Flowchart",
         "Forbin",
         "Minsky Swap",
         "NoComment",
+        "Packlang",
         "Suffolk",
         "Unsquare",
     }

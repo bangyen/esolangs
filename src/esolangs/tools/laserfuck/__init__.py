@@ -17,6 +17,7 @@ from esolangs.tools.helpers import (
     constant_span_test,
     grid_width,
     input_orders,
+    input_weights,
     narrowest_grid,
     permute_truth_table,
 )
@@ -58,9 +59,12 @@ def _laserfuck_weighted(truth_table: str) -> str:
     the top row; one reflects onto ``v``, crosses the lower arm, and rises to
     the same ``}`` exit.  The three rows, table initialization, arms, and
     cleanup all have total length O(T), and construction performs only those
-    linear appends.
+    linear appends.  An ignored input is read and normalized but crosses no
+    arm, so T counts the essential inputs alone.
     """
-    n = _validate_truth_table(truth_table)
+    weights, truth_table = input_weights(
+        truth_table, _validate_truth_table(truth_table)
+    )
     size = len(truth_table)
     top = list(" }}}")
     middle = list("|o^ ")
@@ -74,9 +78,10 @@ def _laserfuck_weighted(truth_table: str) -> str:
     straight(">" * size)
     straight("".join(("+" if bit == "1" else "") + ">" for bit in truth_table))
     straight("<" * (2 * size))
-    for level in range(n):
-        arm = 1 << (n - 1 - level)
+    for arm in weights:
         straight("," + "-" * 48)
+        if not arm:
+            continue
         upper = "#v)" + " " * (arm - 1) + "}"
         lower = " }" + ">" * arm + "^"
         top.extend(upper)

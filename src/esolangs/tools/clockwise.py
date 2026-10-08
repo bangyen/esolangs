@@ -1,6 +1,6 @@
 """Boolean-function generator for Clockwise."""
 
-from esolangs.tools.helpers import _validate_truth_table
+from esolangs.tools.helpers import _validate_truth_table, essential_inputs, read_at
 
 # The ring's own columns: 3 descends at the start, 2 climbs into the first
 # gadget, 0 climbs home.  Column 1 is the gap that keeps the three apart.
@@ -8,10 +8,9 @@ _DESCENT = 3
 _CLIMB = 2
 
 # A head is a corner, a gap the descent crosses, seven ``.`` for one input's
-# value bit, and the gap the return leg climbs -- the next gadget's corner,
-# so the head width is the pitch too.
+# value bit (more where ignored inputs precede it), and the gap the return
+# leg climbs -- the next gadget's corner, so the head width is the pitch too.
 _READS = 7
-_HEAD = 2 + _READS
 
 _TABLE_ROWS = 5
 
@@ -42,8 +41,25 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
     of three columns a unit -- out losing one a group, down on zero, back
     picking up two.  Gadget widths double upward, so the chain costs what
     its top one does and the program is ``O(T)``.
+
+    An ignored input's seven reads run just before the next indexed
+    input's, which overwrite the bit they leave, so the table indexes the
+    rest.  Inputs past the last essential one stay indexed: the queue
+    rotates, and a run must read all ``7n`` bits to turn it whole.
     """
-    n = _validate_truth_table(truth_table)
+    original = truth_table
+    total = _validate_truth_table(original)
+    used = essential_inputs(original, total)
+    used += range(used[-1] + 1 if used else 0, total)
+    truth_table = read_at(original, used, total)
+    reads: list[int] = []
+    pending = 0
+    for position in range(total):
+        pending += _READS
+        if position in used:
+            reads.append(pending)
+            pending = 0
+    n = len(reads)
     size = len(truth_table)
     cells: dict[tuple[int, int], str] = {}
 
@@ -53,19 +69,21 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
             raise AssertionError(f"two cells at {(x, y)}: {cells[(x, y)]!r}, {char!r}")
         cells[(x, y)] = char
 
-    def head(x: int, y: int) -> None:
-        """Lay a gadget's corner and the seven reads that follow it."""
-        place(x, y, "R")
-        for i in range(_READS):
-            place(x + 2 + i, y, ".")
+    def head(level: int, y: int) -> None:
+        """Lay a gadget's corner and the reads that follow it."""
+        place(corner[level], y, "R")
+        for i in range(reads[level]):
+            place(corner[level] + 2 + i, y, ".")
 
-    # A gadget starts a pitch right of the one below.
-    corner = [_HEAD * level + _CLIMB for level in range(n)]
+    # A gadget starts a head's width right of the one below.
+    corner = [_CLIMB]
+    for count in reads[:-1]:
+        corner.append(corner[-1] + 2 + count)
 
     # Row 0 sends the pointer down; rows 1 to 5 are the table.
     place(_DESCENT, 0, "R")
-    start = corner[n - 1] + _HEAD + 1
-    head(corner[n - 1], 1)
+    start = corner[n - 1] + 2 + reads[n - 1] + 1
+    head(n - 1, 1)
     for entry in range(size):
         place(start + 2 * entry, 1, "!")
         if entry + 1 < size:
@@ -84,9 +102,9 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
     for level in range(n - 1):
         # A level's gadget covers every value its partial index can hold.
         row = _TABLE_ROWS + 1 + 2 * (n - 2 - level)
-        base = corner[level] + _HEAD + 1
+        base = corner[level + 1] + 1
         groups = 1 << (level + 1)
-        head(corner[level], row)
+        head(level, row)
         place(base - 1, row + 1, "R")
         for group in range(groups):
             place(base + 3 * group, row, "!")
@@ -147,8 +165,8 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
         return legacy
     lean = _clockwise_lean_rotate(original_cells, n, digit, original_span)
     chosen = lean if max(map(len, lean.splitlines())) < max(map(len, rows)) else legacy
-    if size <= 4 and max(map(len, chosen.splitlines())) > width:
-        return _clockwise_two_columns(truth_table)
+    if len(original) <= 4 and max(map(len, chosen.splitlines())) > width:
+        return _clockwise_two_columns(original)
     return chosen
 
 

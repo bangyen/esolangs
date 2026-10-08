@@ -13,8 +13,8 @@ passes one block.  A block holding more ones than zeros is filled by a loop
 and its zeros punched back out, so a constant table pays per *block*.
 
 Every row runs every write. The answer prints ``48 ^ t`` over painted
-ones; retiring the opposite polarity adds 3.19% to the three-input total
-and 2.60% to the seeded five-input sample.
+ones; retiring the opposite polarity added 3.19% to the three-input total
+and 2.60% to the seeded five-input sample when it was retired.
 
 The index is counted too: each input doubles what has been read and adds
 its bit.  Doubling drains one register into its partner two counts at a
@@ -25,7 +25,7 @@ import re
 from itertools import pairwise
 
 from esolangs._dialects import PacklangLiterals
-from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table
+from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table, input_weights
 from esolangs.tools.wrap import (
     _PACKLANG_LEXEME,
     _join_tokens,
@@ -55,8 +55,8 @@ def packlang(
     The unused package name shortens below ten columns; keywords floor at seven.
     """
     literals = PacklangLiterals(literal_policy)
-    n = _validate_truth_table(truth_table)
-    program = _painted(truth_table, n)
+    weights, table = input_weights(truth_table, _validate_truth_table(truth_table))
+    program = _painted(table, weights)
     if literal_policy != "decimal":
         program = re.sub(
             r"\b\d+\b", lambda match: literals.emit(int(match[0])), program
@@ -124,18 +124,26 @@ def balance_packlang(_table: str, default: str) -> str:
     )
 
 
-def _painted(painted: str, n: int) -> str:
-    """Return a program painting ``painted``'s ones into an array."""
+def _painted(painted: str, weights: list[int]) -> str:
+    """Return a program painting ``painted``'s ones into an array.
+
+    ``painted`` indexes the inputs of nonzero weight; the rest are read and
+    dropped.
+    """
+    n = len(painted).bit_length() - 1
     low = min(n, _BLOCK)
     span = 1 << low
     blocks = 1 << (n - low)
+    # The block number's reads end at its last essential input.
+    essential = [at for at, weight in enumerate(weights) if weight]
+    cut = essential[n - low - 1] + 1 if blocks > 1 else 0
 
     body: list[str] = []
     index = "i"
     if blocks > 1:
-        picked, index = _counter("h", "g", n - low)
+        picked, index = _counter("h", "g", weights[:cut])
         body += picked
-    counted, low_index = _counter("i", "d", low)
+    counted, low_index = _counter("i", "d", weights[cut:])
     body += counted
 
     filled = False
@@ -168,16 +176,20 @@ def _painted(painted: str, n: int) -> str:
     )
 
 
-def _counter(first: str, second: str, count: int) -> tuple[list[str], str]:
-    """Read ``count`` inputs into a value, and name the register holding it.
+def _counter(first: str, second: str, weights: list[int]) -> tuple[list[str], str]:
+    """Read inputs into a value, and name the register holding it.
 
     Each step doubles the register read so far into its partner and adds
     the new bit, so the two swap roles and the drained one is always the
-    next step's target.
+    next step's target.  An input of weight 0 is read and dropped.
     """
     lines = []
     source, target = first, second
-    for step in range(count):
+    step = 0
+    for weight in weights:
+        if not weight:
+            lines.append("charGet(c);")
+            continue
         # Nothing is read before the first input, so it has nothing to double.
         double = (
             f"While {source} Do{{DECR {source};INCR {target};INCR {target};}}"
@@ -186,6 +198,7 @@ def _counter(first: str, second: str, count: int) -> tuple[list[str], str]:
         )
         lines.append(f"{double}charGet(c);If c^{_ASCII_ZERO}Then{{INCR {target};}}")
         source, target = target, source
+        step += 1
     return lines, source
 
 

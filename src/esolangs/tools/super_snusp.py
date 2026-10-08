@@ -12,6 +12,7 @@ from esolangs.tools.helpers import (
     _validate_truth_table,
     anf_coefficients,
     essential_inputs,
+    input_weights,
     move_text,
     read_at,
 )
@@ -163,13 +164,17 @@ def _emit_lookup(truth_table: str) -> str:
     The input row is accumulated by Horner's rule in cell 0.  Cell 1 then
     builds the reversed table as one binary integer at run time, shifts it by
     that row, and takes the low bit.  Each table entry emits one ``*`` and a
-    one entry emits one extra ``)``, so generation and output are O(T).
+    one entry emits one extra ``)``, so generation and output are O(T).  An
+    ignored input is read into cell 1 and left there for the next read, or
+    for ``>0``, to overwrite; the table indexes the rest.
     """
-    n = _validate_truth_table(truth_table)
+    weights, truth_table = input_weights(
+        truth_table, _validate_truth_table(truth_table)
+    )
     out = ['"']
-    for _ in range(n):
+    for weight in weights:
         # acc *= 2; read and normalize the next ASCII bit; acc += bit.
-        out.extend((">2{<*$", ">,>48{<-$", "{<+$"))
+        out.extend((">2{<*$", ">,>48{<-$", "{<+$") if weight else (">,<",))
     # Keep 2 on the value stack while cell 1 builds the packed table.  The
     # reversed source order makes truth_table[row] bit ``row`` of the integer.
     out.append(">0>2{<")

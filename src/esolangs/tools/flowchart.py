@@ -9,11 +9,15 @@ whole byte.  The answer is printed as R and then the seven high bits of
 ASCII ``'0'`` (:data:`_ANSWER`), so the output byte is ``'0'`` or ``'1'``.
 """
 
+from itertools import pairwise
+
 from esolangs.tools.helpers import (
     _validate_truth_table,
     constant_span_test,
+    essential_inputs,
     grid_width,
     narrowest_grid,
+    read_at,
 )
 
 # Leaf pitch: the leaves were five-cell ``(( ))`` nodes plus a gutter.
@@ -295,7 +299,16 @@ def _flowchart_deque(truth_table: str) -> str:
     columns, which is what keeps that upper row short -- a line is padded
     out to its last non-space cell, so a selector drawn east of the preload
     would have charged the preload's width twice.
+
+    Input ``p``'s value bit is stream bit ``8p``, so an ignored input costs
+    only the eight ``/ /`` that skip it, and the deque holds the table over
+    the essential inputs alone.
     """
+    n = len(truth_table).bit_length() - 1
+    # A constant table keeps one input for the selector to switch on.
+    used = essential_inputs(truth_table, n) or list(range(n))
+    truth_table = read_at(truth_table, used, n)
+    skips = [8 * used[0] + 1] + [8 * (b - a) for a, b in pairwise(used)]
     cells: dict[tuple[int, int], str] = {}
     spine = 1
     col = 0
@@ -326,9 +339,9 @@ def _flowchart_deque(truth_table: str) -> str:
         if index % 2 and index + 1 < len(truth_table):
             west("[ >")
 
-    n = len(truth_table).bit_length() - 1
+    n = len(used)
     for level in range(n - 1):
-        for _ in range(_reads(level)):
+        for _ in range(skips[level]):
             west("/ /")
         switch = west("< >")
         # Travelling west a switch sends 1 straight on and 0 up, and the
@@ -345,7 +358,7 @@ def _flowchart_deque(truth_table: str) -> str:
     # The last bit picks an end rather than a deque: the pair sharing a deque
     # was pushed even entry first, so its odd half is the top.  Each arm
     # prints its own answer, the upper one a column east of the spine's.
-    for _ in range(_reads(n - 1)):
+    for _ in range(skips[n - 1]):
         west("/ /")
     switch = west("< >")
     cells[(switch + 1, spine - 1)] = "┐"

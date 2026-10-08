@@ -37,6 +37,16 @@ class TestLaserFuck:
                     for heading in range(4):
                         assert run_laserfuck(program, bits, heading) == table[combo]
 
+    def test_an_ignored_input_crosses_no_arm(self) -> None:
+        """The weighted lookup reads an ignored input but indexes the rest."""
+        # Five inputs, the middle one ignored: rows pair up across bit 2.
+        table = "".join("0110100110010110"[(r >> 3) << 2 | r & 3] for r in range(32))
+        program = boolean.laserfuck(table)
+        assert program.count("#v)") == 4
+        for combo in range(32):
+            bits = [str((combo >> (4 - i)) & 1) for i in range(5)]
+            assert run_laserfuck(program, bits, 0) == table[combo]
+
     def test_input_reordering_folds_a_scattered_table(self) -> None:
         """The tree splits in whichever order folds most, not input order."""
         scattered = len(boolean.laserfuck("10101010"))

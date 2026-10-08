@@ -69,7 +69,7 @@ class TestDimensional:
 
     def test_the_table_costs_two_characters_an_entry(self) -> None:
         """One painted cell an entry, whichever bit it is."""
-        full = "1" * 64
+        full = "0" + "1" * 63
         one = "0" * 63 + "1"
         assert len(boolean.dimensional(full)) == len(boolean.dimensional(one))
         parity = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(64))

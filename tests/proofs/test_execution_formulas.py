@@ -90,7 +90,7 @@ FORMULAS: dict[str, tuple[Callable[[int, str], float], bool, tuple[int, ...]]] =
     "FALSE": (lambda n, _: min(12 * n + 69, 10 * n + 99), False, (3, 6)),
     "Jaune": (lambda n, _: 8 * n - 2, False, (3, 6)),
     "Thue": (lambda n, _: 2 * 2**n + 3 * n - 2, True, (3, 6)),
-    "Super SNUSP": (lambda n, _: 2 * 2**n + 19 * n + 22, True, (5, 6)),
+    "Super SNUSP": (lambda n, _: 2 * 2**n + 19 * n + 21, True, (5, 6)),
     "Taglate": (lambda n, _: _taglate(n), True, (3, 4)),
     "thisthat": (
         lambda n, _: (
@@ -105,7 +105,7 @@ FORMULAS: dict[str, tuple[Callable[[int, str], float], bool, tuple[int, ...]]] =
     "Home Row": (lambda n, _: 10 * 2**n + 10 * n + 95, True, (3, 5)),
     "Minsky Swap": (lambda n, _: 2 * 2**n + 6 * n + 4, True, (3, 5)),
     "Modulous": (lambda n, _: 5 * 2**n + 5 * n - 2, True, (3, 5)),
-    "LaserFuck": (lambda n, _: 18 * 2**n + 56 * n + 5, True, (5,)),
+    "LaserFuck": (lambda n, _: 18 * 2**n + 56 * n + 5, False, (5,)),
     "NoComment": (
         lambda n, _: (
             12 * 2**n + 50 * n + 79
@@ -123,11 +123,11 @@ FORMULAS: dict[str, tuple[Callable[[int, str], float], bool, tuple[int, ...]]] =
         (3, 5),
     ),
     "Minifuck": (lambda _, p: len(p), False, (3, 5)),
-    "Dimensional": (lambda n, _: 15 * 2**n - 8 * n + 37, True, (3, 5)),
+    "Dimensional": (lambda n, _: 15 * 2**n - 8 * n + 37, False, (3, 5)),
     "EGL": (lambda n, _: 3 * 2**n + 52 * n + 4, True, (3, 5)),
     "Eval": (lambda n, _: 2 * 2**n + 13 * n + 1, True, (3, 5)),
     "Grapheme": (lambda n, _: 14 * n + 32 + len(str(2**2**n)), True, (3, 5)),
-    "Flowchart": (lambda n, _: 3 * 2**n + 9 * n + 4, True, (3, 5)),
+    "Flowchart": (lambda n, _: 3 * 2**n + 9 * n + 4, False, (3, 5)),
     "FRACTRAN": (lambda n, _: n + 2, True, (3, 5)),
     "Suffolk": (lambda _, p: len(p) + 151, True, (3, 5)),
     "Piet": (lambda n, _: 2 * 2**n + 4 * n + 14, True, (3, 5)),
@@ -242,9 +242,12 @@ def _tables(name: str, n: int) -> tuple[str, ...]:
     if name == "Streetcode":
         # Its worst in both columns on all 10 tables checked to n = 7: all ones.
         return ("1" * width,)
-    if name in ("Befunge", "Malbolge"):
+    if name == "Malbolge":
         # Straight-line code: all 10 tables tie at every n measured.
         return (_dense(n),)
+    if name == "Befunge":
+        # Straight-line code over the inputs that matter; parity has all.
+        return (_parity(n),)
     if name == "LaserFuck" and n >= 5:
         # Its worsts, all zeros and all ones; a 3T + 1 cell tape is slow.
         return (_parity(n), _dense(n), "0" * width, "1" * width)
@@ -268,10 +271,11 @@ def _tables(name: str, n: int) -> tuple[str, ...]:
     if name == "123" and n >= 4:
         tables += (_one_two_three_worst(n),)
     if name == "Packlang":
-        # The most zeros a 128-row fill block may punch, in every block.
+        # The most zeros a 128-row fill block may punch, in every block; the
+        # run starts at an odd row so that no input is ignored.
         block = min(width, 128)
         zeros = (block - 4) // 2
-        tables += (("0" * zeros + "1" * (block - zeros)) * (width // block),)
+        tables += (("1" + "0" * zeros + "1" * (block - zeros - 1)) * (width // block),)
     return tables
 
 

@@ -318,7 +318,7 @@ FORMULAS: dict[str, tuple[Callable[[int, str], int], bool, tuple[int, ...]]] = {
         True,
         (5,),
     ),
-    "LaserFuck": (lambda n, _: 12 * 2**n + 2 * n + 11 + 2 * bl(n), True, (5,)),
+    "LaserFuck": (lambda n, _: 12 * 2**n + 2 * n + 11 + 2 * bl(n), False, (5,)),
     "Grapheme": (_grapheme, True, (3, 5)),
     "BIO": (
         lambda n, _: (
