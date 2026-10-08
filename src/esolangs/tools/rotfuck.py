@@ -32,7 +32,7 @@ __all__ = ["rotfuck"]
 #: The default direction's cycle: ``+ -> ] -> [ -> . -> , -> < -> > -> - -> +``.
 _ROTFUCK_CHAIN = ROTFUCK_CYCLES["backward"]
 
-# Longest pad: a pad of eight advances the rotation by nothing.
+# Pads are even-length; an 8-run is a full-cycle rotation no-op, so 6 is the cap.
 _MAX_PAD = 6
 
 #: Bits per digit of the index.  A digit's walk takes ``count**2 / 2`` moves,

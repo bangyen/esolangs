@@ -50,7 +50,7 @@ def _paint(truth_table: str) -> str:
 
 
 def _dimensional_bare(table: str, n: int) -> str:
-    """Paint small leaf coordinates while preserving their exit-cell values."""
+    """Program painting the 2n leaf coordinates (axis 2+2i+bit); width 1, n<=2."""
     parts: list[str] = []
 
     def move(dimension: int, direction: str) -> str:
@@ -64,7 +64,7 @@ def _dimensional_bare(table: str, n: int) -> str:
         parts.extend(move(dimension, ">") for dimension in dimensions)
         # Leaf values select exit axis zero or one, outside all input axes.
         # Return off-plane until the final move, never erasing a painted leaf.
-        parts.append("[-]" + "+" * int(bit) + ">")
+        parts.append(move(int(bit), ">"))
         parts.extend(move(dimension, "<") for dimension in reversed(dimensions))
         parts.append(move(int(bit), "<"))
     parts.extend("d" + "+" * (2 + 2 * index) + ">" for index in range(n))
