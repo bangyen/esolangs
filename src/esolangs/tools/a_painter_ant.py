@@ -60,7 +60,6 @@ LANGUAGE = Language(
         note="A Painter Ant has no output: it paints a grid and the answer "
         "is the answer cell the ant rests on below its white corridor, "
         "shown by 'o' (on black, a zero) or '@' (on white, a one)",
-        parameterized=True,
     ),
     wrap=wrap_chars,
     example=Example(pair=PAIR, expected="....\n####\n.o.#"),

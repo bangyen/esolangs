@@ -385,7 +385,6 @@ LANGUAGE = Language(
         answer_mode="dump",
         note="Back has no output instruction and dumps its tape at halt; "
         "the answer is cell n, past the n input cells",
-        parameterized=True,
     ),
     balance=_balance,
     no_wrap="the beam path and embedded input occupy fixed grid coordinates",

@@ -190,7 +190,6 @@ LANGUAGE = Language(
         note="Crement answers by termination: the tree's nodes patch a "
         "per-input tester's jump targets, and the row lands past the "
         "end (halts, 0) or on a self-jump (diverges, 1)",
-        parameterized=True,
     ),
     balance=_balance,
     no_wrap="each line is one instruction; jumps and patches name line numbers",

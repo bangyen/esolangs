@@ -168,7 +168,6 @@ LANGUAGE = Language(
     boolean=smallfuck,
     contract=BooleanContract(
         note="Smallfuck defines no I/O; this implementation prints final cell 2",
-        parameterized=True,
     ),
     wrap=wrap_chars,
     balance=_balance,

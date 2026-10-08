@@ -293,7 +293,6 @@ LANGUAGE = Language(
         note="Bitdeque has no output instruction and dumps its deque at "
         "halt; the generator leaves exactly one bit on it, so the "
         "whole dump is the answer and there is no position to name",
-        parameterized=True,
     ),
     # Space-delimited, but ``GOTO`` and its target must stay on one line.
     wrap=_bitdeque,

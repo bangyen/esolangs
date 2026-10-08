@@ -77,9 +77,7 @@ LANGUAGE = Language(
     "Home Row",
     "tape_based.home_row",
     boolean=home_row,
-    contract=BooleanContract(
-        parameterized=True,
-    ),
+    contract=BooleanContract(),
     wrap=wrap_chars,
     example=Example(pair=HOME_ROW_PAIR),
 )

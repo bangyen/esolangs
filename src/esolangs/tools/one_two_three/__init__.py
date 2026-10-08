@@ -254,7 +254,6 @@ LANGUAGE = Language(
         "output is not the answer and is not compared -- the merge pops "
         "through location -2 and prints whatever that cell holds, which "
         "for this program is the two bytes 'VO with a diaeresis'",
-        parameterized=True,
     ),
     # The trailing ``1`` is a terminator, not a structural line.
     wrap=wrap_chars,

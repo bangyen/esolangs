@@ -307,9 +307,7 @@ LANGUAGE = Language(
     "Minifuck",
     "tape_based.minifuck",
     boolean=minifuck,
-    contract=BooleanContract(
-        parameterized=True,
-    ),
+    contract=BooleanContract(),
     # ``[`` skips the character after it.
     wrap=_minifuck,
     balance=_balance,

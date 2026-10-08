@@ -129,7 +129,6 @@ LANGUAGE = Language(
         answer_mode="dump",
         note="Minsky Swap has no output instruction and dumps its "
         "registers at halt; the answer is the second one",
-        parameterized=True,
     ),
     balance=_balance,
     no_wrap="only line 1 is code; line 2 gives its numeric jump distances",

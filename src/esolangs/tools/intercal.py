@@ -261,7 +261,6 @@ LANGUAGE = Language(
         answer_pattern=r"(?s)^(_\n|I)\n$",
         answer_values=("_\n", "I"),
         note="INTERCAL READ OUT prints a lone overbar for zero and I for one",
-        parameterized=True,
     ),
     balance=balance_intercal,
     empty_program="INTERCAL program is insufficiently or excessively polite (E099)",

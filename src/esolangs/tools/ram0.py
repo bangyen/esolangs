@@ -210,7 +210,6 @@ LANGUAGE = Language(
         answer_pattern=r"z: (\d+)",
         note="RAM0 has no output instruction and dumps its whole state "
         "at halt; the answer is the 'z' register",
-        parameterized=True,
     ),
     # Multi-character tokens (``vs``, ``0b1``, ``L C 19``); space is the
     # only safe break.

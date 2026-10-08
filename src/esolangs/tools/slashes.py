@@ -63,7 +63,6 @@ LANGUAGE = Language(
     boolean=slashes,
     contract=BooleanContract(
         note="Inputs fill the binary row index before unary table selection.",
-        parameterized=True,
     ),
     no_wrap="newlines are literal output and substitution data",
     example=Example(pair=("a", "b")),

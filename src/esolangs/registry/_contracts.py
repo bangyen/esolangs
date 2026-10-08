@@ -18,6 +18,7 @@ type WidthEffect = Literal["layout", "wrap", "none"]
 class BooleanContract:
     """Input encoding and answer extraction for a generated Boolean program."""
 
+    #: Set from the language's ``example=``: a ``pair`` or ``setters`` embeds.
     parameterized: bool = False
     alphabet: tuple[str, str] = ("0", "1")
     input_shape: InputShape = "line_per_bit"

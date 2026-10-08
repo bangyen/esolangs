@@ -316,6 +316,8 @@ def _stem(lang: Language) -> str:
 
 
 def _register() -> None:
+    from esolangs._answers import encode_inputs
+
     # Everything an example needs is in its ``LANGUAGE``: the registry facts
     # ``_reader`` takes, and ``example=`` for a template or other answer.
     for lang in LANGUAGES.values():
@@ -335,10 +337,11 @@ def _register() -> None:
                 kwargs=spec.kwargs,
             )
         else:
+            stdin = encode_inputs(lang.name, (0, 1), truth_table=AND2)
             example = _reader(
                 lang.boolean,
                 lang.interpreter,
-                inputs=spec.inputs,
+                inputs=tuple(stdin.splitlines()),
                 expected=spec.expected,
                 split=lang.split,
                 kwargs=spec.kwargs,

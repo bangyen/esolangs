@@ -68,9 +68,7 @@ LANGUAGE = Language(
     "Eval",
     "stack_based.eval",
     boolean=eval,
-    contract=BooleanContract(
-        parameterized=True,
-    ),
+    contract=BooleanContract(),
     # Print through a literal that must not be broken.
     wrap=_quote_literal,
     example=Example(pair=PAIR),

@@ -29,7 +29,6 @@ LANGUAGE = Language(
     boolean=cyclic_tag,
     contract=BooleanContract(
         note="Inputs fill the initial queue; the final deleted bit is the answer.",
-        parameterized=True,
     ),
     wrap=wrap_chars,
     empty_program="Cyclic tag requires productions,queue using bits and semicolons",

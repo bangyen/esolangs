@@ -77,9 +77,7 @@ LANGUAGE = Language(
     "BIO",
     "register_based.bio",
     boolean=bio,
-    contract=BooleanContract(
-        parameterized=True,
-    ),
+    contract=BooleanContract(),
     wrap=_wrap_bio,
     example=Example(pair=BIO_PAIR),
 )
