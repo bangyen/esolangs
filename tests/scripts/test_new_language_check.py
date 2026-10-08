@@ -31,3 +31,13 @@ def test_a_generator_language_needs_no_hand_sample() -> None:
 
     program, stdin = samples._generated("SStack")  # noqa: SLF001
     assert esolangs.run("SStack", program, stdin=stdin) == "1"
+
+
+def test_sources_names_the_interpreter_and_generator() -> None:
+    assert new_language.sources("Smu") == [
+        "src/esolangs/interpreters/stack_based/smu.py",
+        "src/esolangs/tools/smu.py",
+    ]
+    # A package interpreter is its directory.
+    (interpreter, _) = new_language.sources("Piet")
+    assert interpreter == "src/esolangs/interpreters/stack_based/piet"
