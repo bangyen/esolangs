@@ -6,11 +6,12 @@ needed and the construction is the **algebraic normal form**
 coefficients from the Möbius transform (:func:`anf_coefficients`).
 The emitter factors each variable as ``p = p0 ^ (x & p1)``, so every
 coefficient appears at most once; identity order emits O(T) characters.
-The emitter picks each node's arm locally (:func:`_arm_expression`).
-Rotated orders (0.25% at n=8) and character-cost splits with indexed
-selectors (7.61% at n=5) fall under the 10% bar and are not built. The
-transform and arm rule pack Theta(log T) coefficients per word, giving O(T)
-word-RAM build work.
+A node keeps its 0-arm (Davio0) unless the 1-arm vanishes (1-arm kept) or is
+the constant one (``f0 | x``); the free choice among Davio0, Davio1 and
+monotone-OR arms (9.61% at n=8), rotated orders (0.25% at n=8) and
+indexed-selector cost splits (7.61% at n=5) fall under the 10% bar and are
+not built. The transform packs Theta(log T) coefficients per word, giving
+O(T) word-RAM build work.
 
 The program is ``% 0 <expression>`` then ``$``, writing exactly ``0`` or
 ``1``; a constant table emits the literal.  The harness feeds one line
@@ -21,7 +22,6 @@ exactly one input line.  With no reads there is no read order: factoring
 order only renames the ``@`` literals, and :func:`fargo` uses the identity.
 """
 
-from collections.abc import Callable
 from string import ascii_lowercase
 
 from esolangs.tools.helpers import (
@@ -77,29 +77,6 @@ def _factored(coeffs: list[int], n: int) -> str:
     return "\n".join([*lines, f"% 0 {result}", "$", ""])
 
 
-def _arm_choice(
-    w0: int,
-    wd: int,
-    w1: int,
-    *,
-    one_constant: bool,
-    zero_implies_one: Callable[[], bool],
-    one_implies_zero: Callable[[], bool],
-) -> int:
-    """Choose a Davio or monotone OR arm, preserving polarity ties."""
-    if not w1:
-        return 1
-    if one_constant and w0:
-        return 2
-    options = [(w0 + wd, 0, 0), (w1 + wd, 1, 1)]
-    # Keep implication checks lazy: the constant shortcuts need neither.
-    if w0 and zero_implies_one():
-        options.append((w0 + w1, 0, 2))
-    if one_implies_zero():
-        options.append((w0 + w1, 1, 3))
-    return min(options)[2]
-
-
 def _arm_expression(
     table: str,
     coeffs: list[int],
@@ -140,21 +117,18 @@ def _arm_expression(
             low, high = anf & mask, anf >> half
         f0, f1 = table & mask, table >> half
         one = low ^ high
-        w0, wd, w1 = count(low), count(high), count(one)
-        choice = _arm_choice(
-            w0,
-            wd,
-            w1,
-            one_constant=one == 1,
-            zero_implies_one=lambda: not (f0 & ~f1),
-            one_implies_zero=lambda: not (f1 & ~f0),
-        )
+        w0, w1 = count(low), count(one)
+        if not w1:
+            choice = 1
+        elif one == 1 and w0:
+            choice = 2
+        else:
+            choice = 0
         d = f0 ^ f1
         kept, kept_anf, op, operand, operand_anf = (
             (f0, low, "^", d, high),
             (f1, one, "^", d, high),
             (f0, low, "|", f1, one),
-            (f1, one, "|", f0, low),
         )[choice]
         literal = f"^ 1 @ {at[bit]:b}" if choice % 2 else f"@ {at[bit]:b}"
         if kept_anf:
@@ -190,25 +164,18 @@ def _arm_expression(
             low, high = anf[:half], anf[half:]
         f0, f1 = table[:half], table[half:]
         one = [a ^ b for a, b in zip(low, high, strict=True)]
-        w0, wd, w1 = weight(low), weight(high), weight(one)
-        choice = _arm_choice(
-            w0,
-            wd,
-            w1,
-            one_constant=w1 == 1 and bool(one[0] & 1),
-            zero_implies_one=lambda: all(
-                not (a & ~b) for a, b in zip(f0, f1, strict=True)
-            ),
-            one_implies_zero=lambda: all(
-                not (b & ~a) for a, b in zip(f0, f1, strict=True)
-            ),
-        )
+        w0, w1 = weight(low), weight(one)
+        if not w1:
+            choice = 1
+        elif w1 == 1 and one[0] & 1 and w0:
+            choice = 2
+        else:
+            choice = 0
         d = [a ^ b for a, b in zip(f0, f1, strict=True)]
         kept, kept_anf, op, operand, operand_anf = (
             (f0, low, "^", d, high),
             (f1, one, "^", d, high),
             (f0, low, "|", f1, one),
-            (f1, one, "|", f0, low),
         )[choice]
         literal = f"^ 1 @ {at[bit]:b}" if choice % 2 else f"@ {at[bit]:b}"
         if any(kept_anf):

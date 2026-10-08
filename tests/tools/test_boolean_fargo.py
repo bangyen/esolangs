@@ -73,7 +73,7 @@ class TestFargo:
         assert sizes[1] < 2 * sizes[0] + 16
 
     def test_choosing_arms_shrinks_the_corpus(self) -> None:
-        """Tables to two inputs never grow; the three-input corpus shrinks 14%."""
+        """Tables to two inputs never grow; the three-input corpus shrinks 11%."""
         from esolangs.tools.helpers import anf_coefficients
         from tests.tools.fargo_oracle import _anf_expression
 
@@ -90,7 +90,7 @@ class TestFargo:
                 else:
                     before += old
                     after += built
-        assert (before, after) == (9556, 8204)
+        assert (before, after) == (9556, 8468)
 
     @pytest.mark.parametrize(
         ("table", "expression"),
