@@ -17,8 +17,8 @@ decoded brainfuck machine.
 
 import math
 import re
-import sys
 
+from esolangs._digits import digit_limit_for
 from esolangs._drive import drive
 from esolangs.factor_primes import prime_segments
 from esolangs.interpreters._entry import script_main
@@ -80,16 +80,8 @@ def _parse(digits: str) -> int:
     The 4300-digit cap is a DoS guard, not Factor's (n=6 parity is 5934
     digits); raised for this program and put back.
     """
-    limit = sys.get_int_max_str_digits()
-    # 0 means the process-global limit is already unlimited; lifting it would
-    # raise, and ``set_int_max_str_digits`` rejects any value under 640.
-    if limit == 0 or len(digits) <= limit:
+    with digit_limit_for(len(digits)):
         return int(digits)
-    sys.set_int_max_str_digits(len(digits) + 1)
-    try:
-        return int(digits)
-    finally:
-        sys.set_int_max_str_digits(limit)
 
 
 def _factorint(number: int) -> dict[int, int]:

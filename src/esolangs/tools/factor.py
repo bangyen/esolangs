@@ -4,15 +4,13 @@ Ascending primes encode Brainfuck instructions by residue modulo eleven
 and run length by exponent. A compact tree tests inputs in stream order
 and puts the answer in the final input's unused flag. Multiplication loops
 build and subtract the ASCII offsets; only this tree is encoded.
-
-Retiring alternate trees and weighted reordering adds 4.26% to the
-three-input digit total, 0.061% to the seeded five-input sample.
 """
 
 import heapq
-import sys
 from collections.abc import Iterator
+from itertools import groupby
 
+from esolangs._digits import digit_limit_for
 from esolangs.factor_primes import prime_segments
 from esolangs.tools.helpers import (
     _ASCII_ZERO,
@@ -24,7 +22,8 @@ from esolangs.tools.helpers import (
 
 __all__ = ["factor"]
 
-#: A prime's residue mod 11 selects the instruction it stands for.
+#: A prime's residue mod ``_MODULUS`` selects the instruction it stands for.
+_MODULUS = 11
 _BF_RESIDUE = {">": 1, "<": 2, "+": 3, "-": 4, ".": 5, ",": 6, "[": 7, "]": 8}
 
 # Exact prime enumeration, in bounded segments. ``isprime`` becomes a BPSW
@@ -55,16 +54,10 @@ def _spans(code: str) -> list[tuple[int, int]]:
     encode smaller even when it has more runs.
     """
     primes = _primes()
-    out: list[tuple[int, int]] = []
-    i = 0
-    while i < len(code):
-        j = i
-        while j < len(code) and code[j] == code[i]:
-            j += 1
-        residue = _BF_RESIDUE[code[i]]
-        out.append((j - i, next(p for p in primes if p % 11 == residue)))
-        i = j
-    return out
+    return [
+        (len(list(run)), next(p for p in primes if p % _MODULUS == _BF_RESIDUE[char]))
+        for char, run in groupby(code)
+    ]
 
 
 def _encode(code: str) -> int:
@@ -80,9 +73,7 @@ def _encode(code: str) -> int:
     heapq.heapify(heap)
     serial = len(heap)
     while len(heap) > 1:
-        _a_bits, _a_serial, a = heapq.heappop(heap)
-        _b_bits, _b_serial, b = heapq.heappop(heap)
-        product = a * b
+        product = heapq.heappop(heap)[2] * heapq.heappop(heap)[2]
         heapq.heappush(heap, (product.bit_length(), serial, product))
         serial += 1
     return heap[0][2] if heap else 1
@@ -145,18 +136,10 @@ def factor(truth_table: str) -> str:
     """Build a Factor program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first).  Total, with no digit ceiling (the old
-    4300/16000/500000 budgets were size policy): CPython's
-    ``sys.get_int_max_str_digits()`` is raised to a bit-length estimate
-    (``log10(2) < 0.30103``, never under-counting) and put back.
+    inputs (most significant first).  Total, with no digit ceiling: CPython's
+    digit cap is raised to a bit-length estimate (``log10(2) < 0.30103``,
+    never under-counting) and put back.
     """
     number = _encode(_program(truth_table))
-    digits = int(number.bit_length() * 0.30103) + 1
-    limit = sys.get_int_max_str_digits()
-    if limit == 0 or digits <= limit:  # 0 is CPython's "unlimited"
+    with digit_limit_for(int(number.bit_length() * 0.30103) + 1):
         return str(number)
-    sys.set_int_max_str_digits(digits + 1)
-    try:
-        return str(number)
-    finally:
-        sys.set_int_max_str_digits(limit)

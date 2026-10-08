@@ -190,10 +190,10 @@ class TestBranchesTheGeneratorNoLongerReaches:
     def test_the_digit_cap_is_lifted_and_restored(self) -> None:
         import sys
 
-        from esolangs.tools.polynomial.algebra import _digit_limit_for
+        from esolangs._digits import digit_limit_for
 
         before = sys.get_int_max_str_digits()
-        with _digit_limit_for(before + 200):
+        with digit_limit_for(before + 200):
             assert len(str(10 ** (before + 100))) == before + 101
         assert sys.get_int_max_str_digits() == before
 

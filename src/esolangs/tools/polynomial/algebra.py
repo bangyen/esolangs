@@ -6,29 +6,9 @@ becomes a root ``a + p**b*i``; conjugate
 pairs keep the coefficients integral.
 """
 
-import contextlib
 import decimal
-import sys
-from collections.abc import Iterator
 
-
-@contextlib.contextmanager
-def _digit_limit_for(digits: int) -> Iterator[None]:
-    """Raise CPython's ``int``/``str`` digit cap to fit ``digits``, then restore.
-
-    The 4300 default is a DoS guard; a 1382-instruction table exceeds it.
-    Same borrow as Factor's ``_parse`` and boolean ``factor``.
-    """
-    limit = sys.get_int_max_str_digits()
-    if digits <= limit:
-        yield
-        return
-    sys.set_int_max_str_digits(digits + 1)
-    try:
-        yield
-    finally:
-        sys.set_int_max_str_digits(limit)
-
+from esolangs._digits import digit_limit_for
 
 def primes(count: int) -> list[int]:
     """Return the first ``count`` primes."""
@@ -105,7 +85,7 @@ def _packed_product(factors: list[list[int]]) -> tuple[list[str], bool]:
 
     groups = 1 << max(1, (len(factors) // _PACKED_GROUP_SIZE).bit_length() - 1)
     size = -(-len(factors) // groups)
-    with _digit_limit_for(digits):
+    with digit_limit_for(digits):
         nodes = [
             _normalise(_expand_group(factors[start : start + size]))
             for start in range(0, len(factors), size)
@@ -256,7 +236,7 @@ def format_coeffs(coeffs: list[int]) -> str:
     """
     widest = max((abs(coeff) for coeff in coeffs), default=0)
     digits = int(widest.bit_length() * 0.30103) + 2
-    with _digit_limit_for(digits):
+    with digit_limit_for(digits):
         return _format_coeffs(coeffs)
 
 
