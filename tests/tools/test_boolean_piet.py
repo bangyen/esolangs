@@ -55,7 +55,8 @@ def test_every_three_input_function_executes_through_png() -> None:
             stdin = "".join(f"{bit}\n" for bit in f"{row:03b}")
             assert esolangs.run("Piet", program, stdin=stdin) == truth_table[row]
     # Parent table lookup emitted 38,997 codels over this exhaustive corpus.
-    assert total == 34_638
+    # Folding a constant half: 34,638 -> 34,512.
+    assert total == 34_512
 
 
 @pytest.mark.slow
@@ -105,6 +106,16 @@ def test_ignored_inputs_are_read_but_not_indexed() -> None:
     # The second input is ignored: the stored table is the one-input one.
     assert len(generate("0011").rows[0]) == len(generate("01").rows[0]) + 2
     assert esolangs.run("Piet", generate("0" * 8), stdin="1\n1\n1\n") == "0"
+
+
+def test_a_constant_half_is_folded_and_runs() -> None:
+    """All four constant-half shapes at n=5 beat the plain lookup and execute."""
+    rng = random.Random(3)
+    half = "".join(rng.choice("01") for _ in range(16))
+    plain = len(generate(half + "".join(rng.choice("01") for _ in range(16))).rows[0])
+    for table in (half + "0" * 16, half + "1" * 16, "0" * 16 + half, "1" * 16 + half):
+        assert len(generate(table).rows[0]) < plain
+        assert _evaluate("Piet", generate(table), inputs=5) == table
 
 
 @pytest.mark.parametrize("truth_table", ["", "0", "1", "010", "0121"])

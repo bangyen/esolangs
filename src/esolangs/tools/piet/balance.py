@@ -13,9 +13,10 @@ from . import (
     _MULTIPLY,
     _POP,
     Pixel,
+    _area,
+    _candidates,
     _next_colour,
     _Operation,
-    _operations,
     _push,
 )
 
@@ -43,18 +44,19 @@ class _Plan(NamedTuple):
 
 def _bounded_operations(table: str) -> list[_Operation]:
     """Replace the depth push by doubling; blocks use at most two cells."""
-    operations = _operations(table, _validate_truth_table(table))
-    result = []
-    for operation in operations:
-        if operation.size > 2:
-            result.append(_push(1))
-            for _ in range(operation.size.bit_length() - 1):
-                result.extend((_push(2), _Operation(_MULTIPLY)))
-        else:
-            result.append(operation)
+    options = []
+    for operations in _candidates(table, _validate_truth_table(table)):
+        result = []
+        for operation in operations:
+            if operation.size > 2:
+                result.append(_push(1))
+                for _ in range(operation.size.bit_length() - 1):
+                    result.extend((_push(2), _Operation(_MULTIPLY)))
+            else:
+                result.append(operation)
+        options.append(result)
     # Keep the halt block away from the preceding vertical turn.
-    result.extend((_push(2), _Operation(_POP)))
-    return result
+    return [*min(options, key=_area), _push(2), _Operation(_POP)]
 
 
 def _plan(operations: list[_Operation], columns: int, stop: int) -> _Plan:

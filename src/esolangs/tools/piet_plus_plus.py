@@ -3,7 +3,7 @@
 Piet's lookup recoloured: Piet++ keeps Piet's traversal, push-int, roll,
 not, arithmetic and numeric I/O, so each Piet command maps to its Piet++
 colour delta and the same strip computes the table (T + O(n) codels).
-A strip has no subtrees to fold or share.
+A constant half is folded as in Piet; a strip has no subtrees to share.
 """
 
 from __future__ import annotations
