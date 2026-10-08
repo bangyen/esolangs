@@ -7,6 +7,7 @@ from esolangs.tools.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
     constant_span_test,
+    input_weights,
     permute_truth_table,
     subtree_ids,
 )
@@ -76,15 +77,25 @@ def forth(truth_table: str) -> str:
     The linear tree tests the last bit first; ``2*1++:;`` keeps the callee's key.
     Leaves push ``48+result`` for ``.``; same-level twins use ``_FORTH_SHARE``.
     One removed scope pays for a merged step; two children pay for sharing.
+    The tree tests the essential inputs; an ignored one is read and dropped.
     """
     n = _validate_truth_table(truth_table)
-    natural = tuple(reversed(range(n)))
-    table = permute_truth_table(truth_table, natural)
-    return _forth_ordered(table, natural, share=True)
+    weights, table = input_weights(truth_table, n)
+    if len(table) == 1:
+        # A constant already folds to one scope; it keeps every input.
+        weights, table = [1] * n, truth_table
+    natural = tuple(reversed(range(len(table).bit_length() - 1)))
+    reads = "".join(_FORTH_READ if weight else _FORTH_DROP for weight in weights)
+    return _forth_ordered(
+        permute_truth_table(table, natural), natural, share=True, reads=reads
+    )
 
 
 # The read that pushes one normalized input bit.
 _FORTH_READ = ",68*-"
+#: The read that drops an ignored input: zero it and add it to the value
+#: below, a bit or, under the first read, the last scope's label.
+_FORTH_DROP = ",0*+"
 
 
 #: Enter with ``.. bit, index``: ``2*1+`` finds children; ``+`` consumes the bit.
@@ -122,21 +133,25 @@ def _forth_stack_programs(n: int) -> dict[tuple[int, ...], str]:
 
 
 def _forth_ordered(
-    truth_table: str, perm: tuple[int, ...], *, share: bool = False
+    truth_table: str,
+    perm: tuple[int, ...],
+    *,
+    share: bool = False,
+    reads: str | None = None,
 ) -> str:
     """Emit a permuted Forþ table, or ``""`` if its input order is unreachable.
 
     Level ``k`` needs ``perm[k]`` on top; the counter stays below the bits.
     Empty pops halt Forþ. Dispatch consumes bit and index, returning an index.
     Sharing calls the nearest emitted twin with equal subtable and level.
+    ``reads``, given, replaces the identity order's reads.
     """
     n = _validate_truth_table(truth_table)
     wanted = tuple(reversed(perm))
-    reads = (
-        _FORTH_READ * n
-        if wanted == tuple(range(n))
-        else _forth_stack_programs(n).get(wanted)
-    )
+    if wanted == tuple(range(n)):
+        reads = _FORTH_READ * n if reads is None else reads
+    else:
+        reads = _forth_stack_programs(n).get(wanted)
     if reads is None:
         return ""
 

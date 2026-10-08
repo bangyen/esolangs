@@ -42,16 +42,8 @@ def _reflect_back(grid: dict[tuple[int, int], str], height: int, width: int) -> 
     return "\n".join(lines)
 
 
-def _descending_back(grid: dict[tuple[int, int], str], n: int, cells: list[int]) -> str:
+def _descending_back(grid: dict[tuple[int, int], str], units: list[str]) -> str:
     """Reflect the tree below a downward loader, without outer entry columns."""
-    units: list[str] = []
-    at = 0
-    for cell in cells:
-        units.extend((">" if cell > at else "<") * abs(cell - at))
-        units.extend(("-", _BACK_INPUT))
-        at = cell
-    units.extend(">" * (n - at))
-    units.extend("<" * n)
     top = len(units) + 1
     last = max(column for _, column in grid)
     rows: dict[int, dict[int, str]] = {0: {last: "\\"}}
@@ -184,9 +176,11 @@ def _back_ordered(
     height cannot leak an input.
 
     ``weights`` names the stream inputs, zero for an ignored one: the table
-    indexes the rest, and an ignored input loads into a fresh cell past
-    them -- fresh, since a ``+`` meeting a zero cell would skip a row -- with
-    the answer cell still last, at the stream's input count.
+    indexes the rest, and the answer cell stays at the stream's input count.
+    An ignored input's run lands on the empty cell the next load fills and
+    a ``-`` follows it: a zero's ``-`` sets the cell and the ``-`` clears it,
+    a one's ``+`` meets the empty cell and skips the ``-``.  Two rows, no
+    walk, and the cell is empty again.
     """
     levels = _validate_truth_table(truth_table)
     if weights is None:
@@ -197,32 +191,38 @@ def _back_ordered(
     # perm.index(i).  Filling in cell order instead needs no walk (12.0% vs
     # 9.15%) but breaks "run k = input k"; not kept -- see the docstring.
     essential = [i for i, weight in enumerate(weights) if weight]
-    ignored = [i for i, weight in enumerate(weights) if not weight]
-    cells = [0] * n
+    cells = [levels] * n
     for level, i in enumerate(perm):
         cells[essential[i]] = level
-    for cell, i in enumerate(ignored, levels):
-        cells[i] = cell
 
     def walk(frm: int, to: int) -> list[str]:
         """Move the pointer from cell ``frm`` to cell ``to``, one per row."""
         return [">" if to >= frm else "<"] * abs(to - frm)
 
+    def load(order: list[int]) -> list[str]:
+        """Load the inputs in ``order``, then open the answer cell and home."""
+        # An ignored input borrows the cell loaded after it, or a spare one.
+        borrowed = dict(enumerate(cells))
+        spare = levels
+        for i in reversed(order):
+            spare = borrowed[i] = cells[i] if weights[i] else spare
+        units: list[str] = []
+        at = 0
+        for i in order:
+            # Primer '-' then the run, one row each (the beam reads one cell
+            # per row).  Bit on the trailing row so every load row executes;
+            # the walk goes before the pair, never between, or the height
+            # leaks the bit.
+            units.extend(walk(at, borrowed[i]))
+            units.extend(("-", _BACK_INPUT) if weights[i] else (_BACK_INPUT, "-"))
+            at = borrowed[i]
+        units.extend(walk(at, n))
+        units.extend("<" * n)
+        return units
+
     # Reverse name order: the load is drawn bottom-up in column 0, so this
     # emits input 0 first.  The input-order search prices the walk anyway.
-    units: list[str] = []
-    at = 0
-    for cell in range(n - 1, -1, -1):
-        # Primer '-' then the run, one row each (the beam reads one cell per
-        # row).  Bit on the trailing row so every load row executes; the walk
-        # goes before the pair, never between, or the height leaks the bit.
-        units.extend(walk(at, cells[cell]))
-        units.append("-")
-        units.append(_BACK_INPUT)
-        at = cells[cell]
-    # Open the answer cell at n, then home to cell 0.
-    units.extend(walk(at, n))
-    units.extend("<" * n)
+    units = load(list(range(n - 1, -1, -1)))
 
     # One '/' at the origin does both turns: right -> up off the top edge onto
     # the bottom row, up the load, then up -> right into the tree at column 1.
@@ -268,12 +268,13 @@ def _back_ordered(
     if width is not None and width > 0:
         span = max(c for _, c in grid) + 3
         if span > width:
-            original = _descending_back(grid, n, cells)
+            down = load(list(range(n)))
+            original = _descending_back(grid, down)
             vertical = True
             grid.clear()
             next_row[0] = 1
             emit(0, 0, 2**levels, 0, 1)
-            narrow = _descending_back(grid, n, cells)
+            narrow = _descending_back(grid, down)
             return min(
                 (original, narrow), key=lambda code: max(map(len, code.splitlines()))
             )

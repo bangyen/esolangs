@@ -6,7 +6,7 @@ import random
 import pytest
 
 from esolangs import tools as boolean
-from esolangs.tools.helpers import permute_truth_table
+from esolangs.tools.helpers import essential_inputs, permute_truth_table
 from tests.generator_support import verify_generated
 from tests.tools.boolean_runners import (
     run_forth,
@@ -76,9 +76,11 @@ class TestForth:
     def test_folded_subtree_leaves_no_orphans(self) -> None:
         """Folding drops the whole subtree, not just the two children."""
         assert _forth_scope_keys("1" * 8) == {1, 2}
-        # Node 2 repeats node 1 and node 4 repeats node 3, so each is a call
-        # and drops its subtree as a fold does: only 3's leaves remain.
-        assert _forth_scope_keys("0" * 4 + "1" * 4) == {1, 2, 3, 4, 7, 8}
+        # Nodes 2 and 4 are constant, so each drops its subtree: only 3's
+        # leaves remain.
+        assert _forth_scope_keys("00101010") == {1, 2, 3, 4, 7, 8}
+        # An ignored input has no level: one node over the input that matters.
+        assert _forth_scope_keys("0" * 4 + "1" * 4) == {1, 2}
         # The one-side fold keeps its sibling's descendants: AND's zero
         # subtree collapses to node 1 while 2 keeps 5 and 6.
         assert _forth_scope_keys("0001") == {1, 2, 5, 6}
@@ -94,7 +96,10 @@ class TestForth:
                 _forth_ordered(permute_truth_table(table, natural), natural, share=s)
                 for s in (False, True)
             ]
-            assert boolean.forth(table) == min(builds, key=len)
+            if len(essential_inputs(table, 3)) == 3:
+                assert boolean.forth(table) == min(builds, key=len)
+            else:  # an ignored input is read and dropped, never a level
+                assert len(boolean.forth(table)) <= len(min(builds, key=len))
 
     def test_rotations_are_interleaved_with_the_reads(self) -> None:
         """Weaving the rotations into the reads reaches more arrangements."""
@@ -151,7 +156,7 @@ class TestForth:
         """Calling a repeated subtree's twin cuts the totals, growing none."""
         three = [format(value, "08b") for value in range(256)]
         for tables, before, after in (
-            (three, 28672, 24992),
+            (three, 28672, 24418),
             (five_input_sample(), 93764, 63240),
         ):
             plain = [len(_forth_plain(table)) for table in tables]

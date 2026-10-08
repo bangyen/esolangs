@@ -79,7 +79,7 @@
       "labels": [
         "parameterized tree"
       ],
-      "qualification": "—",
+      "qualification": "an ignored input's run lands on the cell the next load fills, and a `-` after it leaves the cell empty",
       "scaling": "linear: leaf moves sum geometrically, sparse row render",
       "execution": "linear: worst max(T,6n-1) + T + 3n + 6 commands: the load column, then the all-ones path",
       "workspace": "poly n: worst n + 5 + bl(max(6n-2,2^n-1)) + bl(3n+4) + bl(n) bits",
@@ -226,7 +226,7 @@
       "labels": [
         "tree"
       ],
-      "qualification": "equal cofactors share one layered DAG node; spatial lookup remains a candidate",
+      "qualification": "equal cofactors share one layered DAG node, and an ignored input is read by the next layer's nodes; spatial lookup remains a candidate",
       "scaling": "linear: O(T/n) nodes with O(n)-digit addresses",
       "execution": "poly n: worst 4n + 50 commands, one DAG path and a tail",
       "workspace": "poly n: worst 13 + bl(lines) + bl(n) bits: two cells, a line cursor",
@@ -381,7 +381,7 @@
       "labels": [
         "tree"
       ],
-      "qualification": "Brainfuck tree followed by a total arbitrary-precision segmented-sieve encoding; fixed-modulus short intervals bound its adaptive residue sequence",
+      "qualification": "Brainfuck tree over the essential inputs followed by a total arbitrary-precision segmented-sieve encoding; fixed-modulus short intervals bound its adaptive residue sequence",
       "scaling": "lower bound: tight language and generated Theta(T log T) ([factor](factor.md))",
       "execution": "poly n: worst 265n + 231 commands, after a 247n + 240 prelude",
       "workspace": "poly n: worst 7n + 12 + bl(2n+1) + bl(n) + bl(51·2^(n-2)+16n+14) bits",
@@ -450,7 +450,7 @@
       "labels": [
         "tree"
       ],
-      "qualification": "—",
+      "qualification": "the tree tests the essential inputs; an ignored one is read and dropped as `,0*+`",
       "scaling": "linear: span walk, constant dispatch, step literals geometric",
       "execution": "linear: at most 6T + 12n - 3 commands: every heap scope defined once, one dispatch path",
       "workspace": "T log T: at most (2n+364)T + 43n + 2bl(n) bits: frame text and the scope dictionary",
@@ -751,7 +751,7 @@
       "labels": [
         "tree"
       ],
-      "qualification": "a node stores its halves under the input bit's own names and pushes the one the bit names as the next run's program, above seven skip runs for the byte's other bits; five macros carry the repeated text, and a subtree two parents reach is one more when that is shorter",
+      "qualification": "a node stores its halves under the input bit's own names and pushes the one the bit names as the next run's program, above seven skip runs for the byte's other bits; a node with equal halves is a pad; five macros carry the repeated text, and a subtree two parents reach is one more when that is shorter",
       "scaling": "linear: at most 6T + 90 characters: five a node, one a leaf",
       "execution": "poly n: worst 55n + 5 commands, one tree path of eight runs a level",
       "workspace": "linear: worst 24E - 1214 + bl(E) + bl(n) bits for n ≥ 2: code, stack, variables",

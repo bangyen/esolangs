@@ -18,6 +18,7 @@ from esolangs.tools.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
     decision_tree_body,
+    input_weights,
     move_text,
 )
 
@@ -88,9 +89,18 @@ def _encode(code: str) -> int:
 
 
 def _program(truth_table: str) -> str:
-    """Build the compact tree in input order, using the final input's flag."""
+    """Build the compact tree in input order, using the final input's flag.
+
+    The tree tests the essential inputs only, so its last level is the last
+    one the table reads and keeps its binary leaves; an ignored input is
+    read and its cell left set.
+    """
     n = _validate_truth_table(truth_table)
-    perm = tuple(range(n))
+    weights, table = input_weights(truth_table, n)
+    perm = tuple(i for i, weight in enumerate(weights) if weight)
+    if len(table) == 1:
+        # A constant already folds to one leaf; it keeps every input.
+        table, perm = truth_table, tuple(range(n))
     result = 2 * n - 1
     scratch, multiplier = result + 1, result + 2
     after_reads = 2 * (n - 1)
@@ -120,7 +130,7 @@ def _program(truth_table: str) -> str:
         + "<" * back
     )
     body, pos = decision_tree_body(
-        truth_table,
+        table,
         ">",
         "<",
         perm,

@@ -7,6 +7,7 @@ from esolangs.tools.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
     essential_inputs,
+    read_at,
 )
 
 
@@ -65,8 +66,8 @@ def brainif(truth_table: str, width: int | None = None) -> str:
     """Build BrainIf, reading each input in order.
 
     The residual DAG reuses one input cell and shares equal cofactors.
-    It cuts the three-input total from 319,576 to 292,492 characters and
-    steps from 134,984 to 74,752, with no table growing or slowing.
+    It cuts the three-input total from 319,576 to 291,524 characters and
+    steps from 134,984 to 74,440, with no table growing or slowing.
     Width requests retain the tree/spatial construction.
     """
     if width is not None:
@@ -149,14 +150,37 @@ def _residual_layers(table: str) -> list[list[tuple[int, int]]]:
 
 
 def _brainif_dag(table: str) -> str:
-    """Emit every ordered read, discarding the prior bit before the next."""
-    layers = _residual_layers(table)
+    """Emit every ordered read, discarding the prior bit before the next.
+
+    An ignored input with an essential one after it has no layer: each node
+    of that next layer reads it first and discards it, two lines a node
+    against a layer of four-line nodes.  Trailing ones keep their layers,
+    which are at most two nodes wide.
+    """
+    n = _validate_truth_table(table)
+    essential = essential_inputs(table, n)
+    last = essential[-1] if essential else -1
+    kept = [i for i in range(n) if i in essential or i > last]
+    layers = _residual_layers(read_at(table, kept, n))
+    # Layer ``depth`` reads kept input ``kept[-1 - depth]``, after the
+    # dropped ones between it and the kept input before it.
+    skips = [b - a - 1 for a, b in zip([-1, *kept], kept, strict=False)][::-1]
     lines: list[str] = []
     addresses: dict[tuple[int, int], int] = {}
+
+    def reads(depth: int) -> list[str]:
+        """Read every input this layer owns, ending on its own bit."""
+        first = (
+            ["if 0 input"]
+            if depth == len(layers) - 1
+            else ["if 48 increment", "if 49 input"]
+        )
+        return first + ["if 48 increment", "if 49 input"] * skips[depth]
+
     for depth in reversed(range(len(layers))):
         for node in range(len(layers[depth])):
             addresses[depth, node] = len(lines) + 1
-            lines.extend([""] * (3 if depth == len(layers) - 1 else 4))
+            lines.extend([""] * (len(reads(depth)) + 2))
     outputs = [len(lines) + 1]
     lines.append("if 49 move right")
     lines.extend(f"if {i} increment" for i in range(48))
@@ -172,11 +196,7 @@ def _brainif_dag(table: str) -> str:
                 addresses[depth - 1, child] if depth else outputs[child]
                 for child in (zero, one)
             ]
-            block = (
-                ["if 0 input"]
-                if depth == len(layers) - 1
-                else ["if 48 increment", "if 49 input"]
-            )
+            block = reads(depth)
             block.extend([f"if 48 goto {children[0]}", f"if 49 goto {children[1]}"])
             start = addresses[depth, node] - 1
             lines[start : start + len(block)] = block

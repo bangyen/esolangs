@@ -602,8 +602,10 @@ def test_the_exec_tables_really_need_every_input(make: Callable[[int], str]) -> 
 _IGNORED_INPUT_COST = {
     "Alight": (6, 6),  # ``inp r;``, overwritten by the lookup
     "B-tapemark": (5, 177),  # its stage, crossing no ``|``
+    "Back": (6, 131),  # two load rows on a borrowed cell; each leaf walks one more
     "BFStack": (6, 2),  # ``,<``
     "EGL": (6, 1),  # a bare ``x``
+    "Forþ": (6, 4),  # ``,0*+``
     "Inject": (6, 15),  # its declaration and ``readto``
     "Subleq": (6, 11),  # one read into ``TMP``
     "Modulous": (6, 14),  # ``[INP INT][POP]``
