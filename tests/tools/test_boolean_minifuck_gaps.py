@@ -37,8 +37,8 @@ def test_degenerate_column_rules_execute_or_decline() -> None:
             assert runner.run_minifuck(runner.instantiate(template, bits)) == expected
 
 
-def test_failed_projection_mux_aborts_without_lifting() -> None:
-    """A failed construction cannot return a lifted template in the wrong order."""
+def test_failed_gap_mux_aborts_without_projecting() -> None:
+    """An input ignored between essential ones takes the mux; a failure aborts."""
     from unittest.mock import patch
 
     import pytest
@@ -52,7 +52,7 @@ def test_failed_projection_mux_aborts_without_lifting() -> None:
             ),
             pytest.raises(ValueError, match="broken mux invariant"),
         ):
-            module.minifuck("0101")
+            module.minifuck("01011010")
     finally:
         _solve.cache_clear()
 

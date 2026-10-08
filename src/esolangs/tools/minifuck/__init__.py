@@ -76,24 +76,10 @@ def _project(truth_table: str, essential: list[int], n: int) -> str:
     return read_at(truth_table, essential, n)
 
 
-def _lift_leaves_name_order(essential: list[int], n: int) -> bool:
-    """Whether lifting would put the ignored inputs' runs out of name order.
-
-    Correct only when every ignored index is above every essential one.
-    """
-    ignored = [i for i in range(n) if i not in essential]
-    return bool(ignored and essential and min(ignored) < max(essential))
-
-
-def _lift(template: str, essential: list[int], n: int) -> str:
-    """Widen a smaller table's template back onto the wider arity.
-
-    Ignored inputs' runs go on the end: two characters either bit, after
-    the ``.`` has printed.  An order the append would misname is refused.
-    """
-    if _lift_leaves_name_order(essential, n):
-        raise ValueError(f"lifting {essential} onto {n} inputs misnames a run")
-    return template + _MINIFUCK_INPUT * (n - len(essential))
+#: An ignored input's run between two fixed halves: either fill walks the
+#: fresh tape back to fresh -- zero cells, pointer 0, no skip pending -- so a
+#: block in front of a program leaves it the start it was verified from.
+_INERT = "[[<<[" + _MINIFUCK_INPUT + "<"
 
 
 @cache
@@ -110,24 +96,23 @@ def _solve(truth_table: str) -> str:
     """
     n = _validate_shape(truth_table)
 
-    # Dependency discovery compares every row at every input and is
-    # O(T log T).  Keep the compact legacy routes only below the strip's
-    # crossover; the direct lookup is O(T) for every wider table, folded or
-    # not, so no preliminary analysis may dominate it.
-    if n >= 5:
-        return _mux_lookup(truth_table, n)
-
-    # Below the strip crossover, a table that ignores inputs is a smaller
-    # table wearing extra ones; solve it there and append the ignored runs.
+    # A table that ignores inputs is a smaller table wearing extra ones: solve
+    # it there, put an inert block in front for each ignored input before the
+    # essential ones and a run after the print for each one past them.  An
+    # ignored input between two essential ones has no such place, so the
+    # full-arity mux, which embeds every slot in order, takes that case.
     essential = essential_inputs(truth_table, n)
     if len(essential) < n:
-        # Projection is cheaper, but appending ignored inputs after the print
-        # disorders their names when one lies below an essential input.  The
-        # full-arity mux embeds every slot in order, so that case uses it.
-        if _lift_leaves_name_order(essential, n):
+        first = essential[0] if essential else 0
+        if essential and essential[-1] - first + 1 != len(essential):
             return _mux(truth_table, n)
         inner = _solve(_project(truth_table, essential, n))
-        return _lift(inner, essential, n)
+        after = n - first - len(essential)
+        return _INERT * first + inner + _MINIFUCK_INPUT * after
+
+    # The strip's crossover: the direct lookup is O(T) for every wider table.
+    if n >= 5:
+        return _mux_lookup(truth_table, n)
 
     # Nullary and unary inner solves use the embed's named standing column.
     if n < _MUX_MIN_ARITY:

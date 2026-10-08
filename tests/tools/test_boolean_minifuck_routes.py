@@ -8,7 +8,7 @@ import pytest
 from esolangs.tools.helpers import essential_inputs
 from esolangs.tools.minifuck import _solve
 from esolangs.tools.minifuck.mux import _MUX_MIN_ARITY, _mux, _mux_lookup
-from esolangs.tools.minifuck.sim import _MINIFUCK_INPUT
+from esolangs.tools.minifuck.sim import _MINIFUCK_INPUT, PAIR
 from tests.tools.minifuck_support import _MinifuckCase, _mux_separate, run_count
 
 
@@ -108,16 +108,26 @@ class TestParameterizedMinifuck(_MinifuckCase):
         }
         assert len(lengths) == 1, f"unequal instantiation lengths: {lengths}"
 
-    def test_lift_appends_the_ignored_runs_or_refuses(self) -> None:
-        """``_lift`` widens by appending runs, and refuses an order it cannot spell."""
+    def test_ignored_inputs_wrap_the_inner_program(self) -> None:
+        """An inert block before it per leading input, a run after per trailing one."""
+        from esolangs.interpreters.tape_based.minifuck import _step
+
         module = importlib.import_module("esolangs.tools.minifuck")
+        inert = module._INERT  # noqa: SLF001
+        for fill in PAIR:
+            code, tape, ptr, at = inert.replace(_MINIFUCK_INPUT, fill), 0, 0, 0
+            while at < len(code):
+                tape, _length, ptr, skipped, char, reads = _step(code[at], tape, 8, ptr)
+                assert (char, reads) == (None, False)
+                at += 2 if skipped else 1
+            assert (tape, ptr, at) == (0, 0, len(code)), fill
+
         inner = module._solve("01")  # noqa: SLF001
-
-        lifted = module._lift(inner, [0], 2)  # noqa: SLF001
-        assert lifted == inner + _MINIFUCK_INPUT
-        assert run_count(lifted, 2) == 2
-        for a, b in ((0, 0), (0, 1), (1, 0), (1, 1)):
-            assert self.run_minifuck(self.instantiate(lifted, [a, b])) == str(a)
-
-        with pytest.raises(ValueError, match="misnames a run"):
-            module._lift(inner, [1], 2)  # noqa: SLF001
+        for table, template in (
+            ("0101", inert + inner),
+            ("0011", inner + _MINIFUCK_INPUT),
+        ):
+            assert module._solve(table) == template  # noqa: SLF001
+            for row, expected in enumerate(table):
+                bits = [row >> 1, row & 1]
+                assert self.run_minifuck(self.instantiate(template, bits)) == expected
