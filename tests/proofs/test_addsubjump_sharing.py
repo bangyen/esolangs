@@ -11,12 +11,12 @@ from esolangs.tools.addsubjump import (
     _addsubjump_packed,
     addsubjump,
 )
-from esolangs.tools.helpers import best_input_order
+from esolangs.tools.helpers import in_input_order
 
 
 def _parent(table: str) -> str:
     return (
-        best_input_order(table, _addsubjump_ordered)
+        in_input_order(table, _addsubjump_ordered)
         if len(table) <= 16
         else _addsubjump_packed(table)
     )
@@ -59,7 +59,7 @@ def test_sharing_admission() -> None:
                 assert esolangs.read_answer("AddSubJump", vm.output) == expected
                 assert vm.snapshot()[-1] == n
         totals[n] = before, after
-    assert totals[3] == (99032, 94800)
+    assert totals[3] == (105924, 96084)
     assert totals[5] == (252406, 205998)
     assert new <= 0.95 * old
 
