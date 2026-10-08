@@ -254,10 +254,10 @@ def _evaluation_cost(
 def test_stream_and_shipped_evaluation_costs() -> None:
     rng = random.Random(20261007)
     controls = (
-        (4, 9, 4682, 215, (500, 8806, 3515), (5, 183, None)),
-        (6, 23, 6156, 617, (650, 9919, 9206), (16, 869, None)),
-        (8, 63, 10354, 3154, (1120, 22637, 34090), (36, 108, 103)),
-        (10, 182, 23739, 12164, (10767, 308605, 357107), (12, 19, 69)),
+        (4, 9, 4682, 113, (500, 4511, 3515), (5, 11, 15)),
+        (6, 23, 6156, 456, (650, 19909, 9206), (7, 16, 28)),
+        (8, 63, 10354, 1395, (1120, 84935, 34090), (9, 21, 45)),
+        (10, 182, 23739, 4802, (10767, 1039816, 357107), (11, 26, 66)),
     )
     for n, k, stream_length, shipped_length, stream_max, shipped_max in controls:
         size = 1 << n
@@ -308,7 +308,7 @@ def test_stream_prefix_inspections_positive_control() -> None:
             steps += 1
             assert steps < 200 * k + 100
         assert io.getvalue().strip() == "1"
-        assert ready_probes == position**2 + 2 * position + 2
+        assert ready_probes == 2 * position + 3
 
 
 @pytest.mark.medium

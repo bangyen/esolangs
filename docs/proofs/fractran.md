@@ -703,7 +703,8 @@ This is a source-size construction, not a production-generator replacement.
 The unary word reader already takes `2**Omega(k log k)` firings; for
 `k=Theta(T/log T)` this is exponential in `T`. Factorial unranking and list
 deletions have not been shown to take linear generation work either. The
-shipped indexed generator supplies the efficient magnitude route. The
+earlier indexed generator supplied an efficient magnitude route; the
+shipped shared generator uses wiring. The
 streaming construction below avoids the unary word and factorial rank.
 
 ### Streaming independent Lehmer digits
@@ -812,16 +813,12 @@ work. A straightforward bit-operation upper bound adds `O(log T)` per
 word operation. The selection cache avoids repeated scans of the same
 state; it does not remove the factor-copy lower bound.
 
-The selector bucket illustrates a separate inspection cost. For the
-all-zero table the permutation is the identity. At each prefix skip,
-selection starts at the beginning of the ready-phase bucket and tests
-the already-deleted features again. Reaching position `p` inspects
-`Omega(p**2)` candidates. Choosing the middle block gives `p=Theta(k)`
-when `k` is the least sufficient capacity. Executed all-zero controls at
-`k=9,23,63,182`, querying block `p=floor(k/2)`, give exactly
-`p**2+2p+2` ready-phase inspections, including the target selection. This
-positive control rules out reading a small firing count as a small
-guard-inspection count.
+The largest-guard-prime anchor removes the former ready-phase bucket
+rescan. For an all-zero table the permutation is the identity. Executed
+controls at `k=9,23,63,182`, querying block `p=floor(k/2)`, now give exactly
+`2p+3` ready-phase inspections, including the target selection. The
+previous smallest-prime anchor gave `p**2+2p+2`; that inspection bound no
+longer applies. The factor-copy lower bound is independent of the anchor.
 
 Executed comparisons use one random table at each arity, seed `20261007`,
 the least `k` with `S_k>=T`, and rows `0,T//3,T-1`. Every answer is checked.
@@ -834,15 +831,14 @@ than all work in the evaluator.
 
 | n | k | Stream chars | Shipped chars | Stream firings | Shipped firings | Stream inspections | Shipped inspections | Stream factor visits |
 |---|---|---|---|---|---|---|---|---|
-| 4 | 9 | 4,682 | 215 | 500 | 5 | 8,806 | 183 | 3,515 |
-| 6 | 23 | 6,156 | 617 | 650 | 16 | 9,919 | 869 | 9,206 |
-| 8 | 63 | 10,354 | 3,154 | 1,120 | 36 | 22,637 | 108 | 34,090 |
-| 10 | 182 | 23,739 | 12,164 | 10,767 | 12 | 308,605 | 19 | 357,107 |
+| 4 | 9 | 4,682 | 113 | 500 | 5 | 4,511 | 11 | 3,515 |
+| 6 | 23 | 6,156 | 456 | 650 | 7 | 19,909 | 16 | 9,206 |
+| 8 | 63 | 10,354 | 1,395 | 1,120 | 9 | 84,935 | 21 | 34,090 |
+| 10 | 182 | 23,739 | 4,802 | 10,767 | 11 | 1,039,816 | 26 | 357,107 |
 
-The shipped four- and six-input controls use the literal fallback; the
-others use indexed evaluation. These controls establish no size or query
+All shipped controls use indexed evaluation. These controls establish no size or query
 advantage for replacing the production generator. The order construction
-settles the source and generation route, while the shipped magnitude
+settles the source and generation route, while the shipped shared
 construction remains the practical implementation on these measurements.
 
 ### Incremental eligibility for dense factor states
@@ -889,11 +885,11 @@ prime factorization, explicit debug snapshots and integer materialization;
 it does not assert linear bit complexity.
 
 Sparse threshold programs can fare worse with eager secondary updates:
-the ten-input shipped last-row control needs 296 watcher updates where
-the reference selector needs only 14 candidate inspections. Use the cursor
+the earlier ten-input packed last-row control needed 296 watcher updates where
+the earlier reference selector needed only 14 candidate inspections. Use the cursor
 only when `m<=16*max(1,initial_support)`; otherwise keep the reference
 selector. All sufficiently large streaming sources meet this criterion,
-while the eight- and ten-input shipped controls retain their original path.
+while the eight- and ten-input shared controls retain the reference path.
 This is an implementation choice, not a language restriction.
 
 Executed streaming controls at eight and ten inputs, with the same seed
@@ -906,7 +902,7 @@ count changed entries; watcher updates count crossed secondary conditions.
 | 10 | 10,767 | 308,605 | 10,767 | 25,016 | 30,046 |
 
 The before/after corpus has 4,260 executions and 321,470 fraction firings:
-all streaming and shipped tables through three inputs, streaming constants,
+all streaming and then-shipped packed tables through three inputs, streaming constants,
 and wider seeded queries. Complete per-execution hashes of selected
 fractions and states agree. An independent literal-arithmetic test also
 checks 200 sources with multiple simultaneous threshold crossings for up
