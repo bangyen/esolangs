@@ -192,8 +192,9 @@ refused. `esolangs list --details` marks them `tmpl`.
 
 ## Reading the answer
 
-Most languages print the answer; some dump their final state (`answer_mode` `"dump"`), and four answer
-by termination: halt for 0, loop forever for 1. `read_answer` handles printed
+Most languages print the answer; some dump their final state (`answer_mode`
+`"dump"`), and a few answer by termination (`"termination"`): halt for 0, loop
+forever for 1. `read_answer` handles printed
 and state-dump answers and refuses termination answers: run those with
 `max_steps` and treat a halt as 0. A timeout remains undecided.
 

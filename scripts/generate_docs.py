@@ -1,4 +1,4 @@
-"""Generate docs/usage.md's tables and README sections from the registry.
+"""Generate the registry-derived sections of README.md and the docs.
 
 The two docs/usage.md blocks exist because the facts in them used to be
 *prose* policed by regex, in three documents at once.  A rendered table
@@ -6,6 +6,7 @@ compared for equality states the same facts without prescribing a sentence
 to hold them, which is why the gates could stop matching wording.
 """
 
+import json
 import pathlib
 import re
 import sys
@@ -17,6 +18,7 @@ from esolangs.tools import BOOLEAN
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 _INTERPRETERS = ROOT / "src" / "esolangs" / "interpreters"
+CURATION = ROOT / "tests" / "fixtures" / "curation.json"
 
 
 # The README's Implemented Languages section, grouped by interpreter
@@ -71,6 +73,12 @@ _API_START = "<!-- PUBLIC-API:START -->"
 _API_END = "<!-- PUBLIC-API:END -->"
 _TUI_START = "<!-- TUI-FRAME:START -->"
 _TUI_END = "<!-- TUI-FRAME:END -->"
+_RASTER_START = "<!-- RASTER-SOURCES:START -->"
+_RASTER_END = "<!-- RASTER-SOURCES:END -->"
+_SIZE_START = "<!-- COLLECTION-SIZE:START -->"
+_SIZE_END = "<!-- COLLECTION-SIZE:END -->"
+_CENSUS_START = "<!-- CURATION-CENSUS:START -->"
+_CENSUS_END = "<!-- CURATION-CENSUS:END -->"
 
 #: The frame the README shows.  Flowchart because the pane is worth seeing:
 #: it is a grid language, so the screenshot shows the 2D program pane and a
@@ -129,8 +137,15 @@ def render_languages_section() -> str:
     ]
     groups: dict[str, list[str]] = {prefix: [] for prefix, _, _ in _README_HEADINGS}
     for name, lang in LANGUAGES.items():
-        if lang.interpreter is not None:
-            groups[lang.interpreter.split(".")[0]].append(name)
+        if lang.interpreter is None:
+            continue
+        category = lang.interpreter.split(".")[0]
+        if category not in groups:
+            raise ValueError(
+                f"{name}'s interpreter category {category!r} has no README "
+                "heading; add one to _README_HEADINGS in scripts/generate_docs.py"
+            )
+        groups[category].append(name)
 
     for prefix, heading, description in _README_HEADINGS:
         out.append(f"### {heading}")
@@ -325,6 +340,56 @@ def render_tui_section() -> str:
     )
 
 
+def _join(names: list[str]) -> str:
+    """Return ``names`` as an English list: ``A``, ``A and B``, ``A, B and C``."""
+    if len(names) < 2:
+        return "".join(names)
+    return ", ".join(names[:-1]) + " and " + names[-1]
+
+
+def render_raster_section() -> str:
+    """Render docs/limitations.md's raster-source paragraph from the registry."""
+    raster = [
+        name
+        for name, lang in LANGUAGES.items()
+        if lang.source_kind is SourceKind.RASTER
+    ]
+    verb = "carries" if len(raster) == 1 else "carry"
+    return "\n".join(
+        [
+            f"{_join(raster)} {verb} a raster source: `generate` returns an",
+            "`esolangs.raster.Raster`, `run` takes it or a PNG path through the shared",
+            'codec, and `describe` reports `source_kind="raster"`.',
+        ]
+    )
+
+
+def render_collection_size_section() -> str:
+    """Render docs/limitations.md's collection size from the registry."""
+    return f"The collection has {len(LANGUAGES)} languages."
+
+
+def render_curation_census_section() -> str:
+    """Render docs/limitations.md's census counts from the curation fixture.
+
+    The fixture records one route per registry language;
+    ``tests/test_interpreter_only_admissions.py`` holds its keys to the
+    registry, so the counts here are the registry's too.
+    """
+    census = json.loads(CURATION.read_text(encoding="utf-8"))
+    routes = [entry["route"] for entry in census["languages"].values()]
+    return "\n".join(
+        [
+            f"The {census['checked']} census (`tests/fixtures/curation.json`)"
+            " records each",
+            f"language's backlinks and route: {routes.count('fame')} clear the"
+            " fame gate,",
+            f"{routes.count('first implementation')} are first implementations"
+            f" and {routes.count('grandfathered')} are grandfathered.",
+        ]
+    )
+
+
 def _splice(text: str, start: str, end: str, body: str) -> str:
     """Replace the marked block in ``text``, keeping the markers themselves."""
     block = start + "\n\n" + body + "\n\n" + end
@@ -337,6 +402,19 @@ def update_usage(root: pathlib.Path = ROOT) -> None:
     text = path.read_text()
     text = _splice(text, _SHAPES_START, _SHAPES_END, render_input_shapes_section())
     text = _splice(text, _API_START, _API_END, render_api_section())
+    path.write_text(text)
+
+
+def update_limitations(root: pathlib.Path = ROOT) -> None:
+    """Rewrite the generated paragraphs of docs/limitations.md."""
+    path = root / "docs" / "limitations.md"
+    text = path.read_text()
+    for start, end, render in (
+        (_RASTER_START, _RASTER_END, render_raster_section),
+        (_SIZE_START, _SIZE_END, render_collection_size_section),
+        (_CENSUS_START, _CENSUS_END, render_curation_census_section),
+    ):
+        text = _splice(text, start, end, render())
     path.write_text(text)
 
 
@@ -391,6 +469,8 @@ def main(*, output_root: pathlib.Path = ROOT) -> int:
     print("updated the generated sections of README.md")
     update_usage(output_root)
     print("updated the generated tables of docs/usage.md")
+    update_limitations(output_root)
+    print("updated the generated paragraphs of docs/limitations.md")
     update_contributing(output_root)
     print("validated the registry facts in docs/CONTRIBUTING.md")
     update_language_request(output_root)

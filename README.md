@@ -242,8 +242,6 @@ Languages that don't fit into the above categories.
 <!-- IMPLEMENTED:END -->
 </details>
 
-`just test` includes Line and Piet's tape and stack interpreter suites.
-
 ## Generators
 
 <!-- BOOLEAN-COUNT:START -->

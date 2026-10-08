@@ -24,7 +24,7 @@ from tests.stdin_check import _check_stdin
 # 5.2s over 33 tests: drives the CLI as a subprocess.
 @pytest.mark.medium
 class TestTheShellCanJudgeAnAnswer:
-    """Nine languages could be run from the CLI and not judged from it."""
+    """Some languages could be run from the CLI and not judged from it."""
 
     def test_describe_prints_the_input_shape(
         self, capsys: pytest.CaptureFixture[str]
@@ -147,22 +147,27 @@ class TestASeedMakesARunRepeat:
             for name in esolangs.list_languages()
             if "rng" in inspect.signature(interpreter_module(name).run).parameters
         ]
-        assert drawing == [
-            "Befunge",
-            "Fish",
-            "INTERCAL",
-            "LaserFuck",
-            "Modulous",
-            "Painfuck",
-            "Super SNUSP",
-            "Thue",
-            "thisthat",
-        ]
+        assert drawing
         with pytest.raises(esolangs.ArgumentError) as caught:
             esolangs.run("brainfuck", "+++.", stdin="", timeout=5, seed=1)
+        seed_help = " ".join(HELP["run"].split("\n  --seed N", 1)[1].split())
         for name in drawing:
             assert name in str(caught.value)
-        assert "nine languages that draw" in str(esolangs.run.__doc__)
+            assert name in seed_help, f"run --help's --seed omits {name}"
+        assert "languages that draw" in str(esolangs.run.__doc__)
+
+    def test_the_languages_that_terminate_are_the_ones_named(self) -> None:
+        """``run --timeout`` names every language whose answer is halting."""
+        halting = [
+            name
+            for name in esolangs.list_languages()
+            if esolangs.describe(name)["answer_mode"] == "termination"
+        ]
+        assert halting
+        option = HELP["run"].split("\n  --timeout SECONDS", 1)[1]
+        timeout_help = " ".join(option.split("\n  --scale N", 1)[0].split())
+        for name in halting:
+            assert name in timeout_help, f"run --help's --timeout omits {name}"
 
     def test_the_cli_takes_one(
         self, capsys: pytest.CaptureFixture[str], tmp_path: Path

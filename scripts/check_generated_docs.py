@@ -7,6 +7,7 @@ import tempfile
 from pathlib import Path
 
 import generate_docs
+import generate_examples
 
 ROOT = Path(__file__).parents[1]
 GENERATED = (
@@ -14,9 +15,22 @@ GENERATED = (
     "docs/proofs/index.md",
     "docs/roadmap.md",
     "docs/usage.md",
+    "docs/limitations.md",
     "docs/CONTRIBUTING.md",
     ".github/ISSUE_TEMPLATE/language_request.yml",
 )
+
+
+def _manifest_is_stale() -> bool:
+    """Return whether the committed examples manifest differs from its render.
+
+    Only the manifest: regenerating every example program would make this
+    check as slow as ``tests/scripts/test_examples.py``, which covers them.
+    """
+    manifest = generate_examples.EXAMPLES / "MANIFEST.md"
+    return manifest.read_text(encoding="utf-8") != (
+        generate_examples.boolean_manifest_text()
+    )
 
 
 def main() -> int:
@@ -38,6 +52,12 @@ def main() -> int:
         print(
             "generated documentation is stale; run python scripts/generate.py docs: "
             + ", ".join(changed),
+            file=sys.stderr,
+        )
+        return 1
+    if _manifest_is_stale():
+        print(
+            "examples/MANIFEST.md is stale; run python scripts/generate.py examples",
             file=sys.stderr,
         )
         return 1

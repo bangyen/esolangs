@@ -268,7 +268,7 @@ def test_readme_program_computes_xor_on_every_row() -> None:
 
 
 def test_readme_states_the_real_length() -> None:
-    """The prose says 51 characters; the program has to be that long."""
+    """The length the prose states is the program's real length."""
     program = _readme_program()
     body = _README.read_text(encoding="utf-8")
     assert f"emits {len(program)} characters" in body

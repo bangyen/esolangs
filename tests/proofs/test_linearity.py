@@ -143,8 +143,7 @@ def test_the_execution_exempt_set_is_the_unmeasured_column() -> None:
 def test_the_contract_covers_generators_the_original_queue_missed() -> None:
     """The point of the registry-wide contract: it is wider than the queue."""
     queue = _LINEAR_SCALING | _LANGUAGE_SUPERLINEAR_SCALING | _OPEN_SCALING
-    assert len(queue) == 26
-    assert len(BY_BOOLEAN) - len(queue) == 53
+    assert queue < set(BY_BOOLEAN)
 
 
 def test_vandevelo_remains_held_to_both_regressions(audit: Audit) -> None:

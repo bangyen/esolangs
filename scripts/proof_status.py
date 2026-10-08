@@ -129,8 +129,24 @@ def load(path: Path = MANIFEST) -> tuple[tuple[ProofRow, ...], tuple[ScalingRow,
     return tuple(proofs), tuple(audits)
 
 
+#: Small counts read as words in the totals sentence, as the prose around it does.
+_WORDS = ("no", "one", "two", "three", "four", "five")
+
+
+def render_totals(proofs: tuple[ProofRow, ...]) -> str:
+    """Return the ledger's closing totals sentence: arguments and exceptions."""
+    exceptions = sum("exception" in row.labels for row in proofs)
+    count = _WORDS[exceptions] if exceptions < len(_WORDS) else str(exceptions)
+    noun = "exception" if exceptions == 1 else "exceptions"
+    return (
+        f"Accordingly, this ledger records {len(proofs) - exceptions} theoretical"
+        f" totality arguments and\n{count} {noun} under the source-embedded"
+        " contract."
+    )
+
+
 def update_docs(root: Path = ROOT) -> None:
-    """Render both status tables without changing surrounding prose."""
+    """Render the status tables and totals without changing surrounding prose."""
     proofs, audits = load()
     tables = (
         (
@@ -157,6 +173,7 @@ def update_docs(root: Path = ROOT) -> None:
                 ],
             ],
         ),
+        (root / "docs/proofs/index.md", "PROOF-TOTALS", "", [render_totals(proofs)]),
         (
             root / "docs/roadmap.md",
             "SCALING-STATUS",

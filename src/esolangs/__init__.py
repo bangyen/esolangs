@@ -712,7 +712,7 @@ def run(
     :class:`TimeoutError` and a :class:`~esolangs.exceptions.HaltError`; catch
     it, not the base).  It is ``SIGALRM``, so needs a Unix main thread; off it,
     :meth:`Debugger.run` bounds by stepping.  ``seed``, an integer, fixes the
-    nine languages that draw and is refused by the rest.  An unloadable program raises
+    languages that draw and is refused by the rest.  An unloadable program raises
     :class:`~esolangs.exceptions.ProgramError`.
     """
     settings = effective_settings(language, program, settings)

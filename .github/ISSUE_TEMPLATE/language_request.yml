@@ -5,8 +5,8 @@ body:
   - type: markdown
     attributes:
       value: >
-        docs/roadmap.md tracks the candidates already under consideration and
-        the criteria for admitting one. Please check it first.
+        The Curation section of docs/limitations.md states the criteria for
+        admitting a language. Please check it first.
 
   - type: input
     id: language

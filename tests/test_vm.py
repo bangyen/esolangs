@@ -400,7 +400,7 @@ class TestEveryLanguageIsSteppable:
             assert list(vm.stack) == before_stk, f"{name}: stack is live"
 
     def test_stepping_is_reproducible_for_the_random_languages(self) -> None:
-        """Four languages have a random instruction; the VM pins every one."""
+        """Each sampled random instruction steps the same way twice."""
         from esolangs.interpreters import randomness
 
         cases = {
