@@ -7,8 +7,6 @@ __all__ = ["MINSKY_SWAP_PAIR", "minsky_swap", "minsky_swap_setters"]
 
 MINSKY_SWAP_PAIR = ("**", "++")
 
-_MINSKY_RMSN_PAIR = ("swap();\nswap();", "inc(); \ninc(); ")
-
 _MINSKY_SHORT_RMSN_PAIR = ("decnz();", "inc();  ")
 
 _MINSKY_SMALL_RMSN_PAIR = ("decnz(2);", "inc();   ")
@@ -32,10 +30,10 @@ def minsky_swap(truth_table: str, width: int | None = None) -> str:
     leaf per row was ``Theta(T log T)`` of addresses), every table of one
     arity whose inputs all matter is one length (an ignored input's stage is
     just ``~ ~`` draining its run), and the dump reads ``0 {answer}``.  A ``width`` the
-    program exceeds switches to RMSN, one command per line: width >= 15 keeps
-    the two-command setters, 10-14 shares an increment (setters eight wide),
-    and below 10 with ``n <= 2`` a decision chain (nine commands at ``n = 2``)
-    uses the first register as scratch; the answer stays in the second.
+    program exceeds switches to RMSN, one command per line, setters eight
+    wide sharing an increment; below 10 with ``n <= 2`` a decision chain
+    (nine commands at ``n = 2``) uses the first register as scratch, the
+    answer staying in the second.
     """
     n = _validate_truth_table(truth_table)
     weights, table = input_weights(truth_table, n)
@@ -74,6 +72,7 @@ def minsky_swap(truth_table: str, width: int | None = None) -> str:
     if width is None or width <= 0 or max(map(len, program.splitlines())) <= width:
         return program
     if n <= 2 and width < 10:
+        # Essential: otherwise lines reach 10 columns.
         # One bit contributes 1, the other 2: common inc plus decnz/inc
         # adds 0/2 without branching. All leaves fit single-digit targets.
         slot = TEMPLATE_CHAR * len(_MINSKY_SMALL_RMSN_PAIR[0])
@@ -88,13 +87,8 @@ def minsky_swap(truth_table: str, width: int | None = None) -> str:
     jumps = iter(resolved)
     for token in tokens:
         if token.startswith(TEMPLATE_CHAR):
-            if width < 15:
-                # Both fills still execute two commands, preserving every target.
-                lines.extend(
-                    ("inc();", TEMPLATE_CHAR * len(_MINSKY_SHORT_RMSN_PAIR[0]))
-                )
-            else:
-                lines.append(TEMPLATE_CHAR * len(_MINSKY_RMSN_PAIR[0]))
+            # Both fills still execute two commands, preserving every target.
+            lines.extend(("inc();", TEMPLATE_CHAR * len(_MINSKY_SHORT_RMSN_PAIR[0])))
         else:
             for command in token:
                 lines.append(
@@ -109,9 +103,5 @@ def minsky_swap_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
     if template.startswith(TEMPLATE_CHAR * len(_MINSKY_SMALL_RMSN_PAIR[0])):
         pair = _MINSKY_SMALL_RMSN_PAIR
     elif template.startswith("decnz("):
-        pair = (
-            _MINSKY_RMSN_PAIR
-            if TEMPLATE_CHAR * len(_MINSKY_RMSN_PAIR[0]) in template
-            else _MINSKY_SHORT_RMSN_PAIR
-        )
+        pair = _MINSKY_SHORT_RMSN_PAIR
     return (pair,) * n
