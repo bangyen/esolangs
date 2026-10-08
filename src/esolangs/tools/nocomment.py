@@ -1,10 +1,13 @@
 """Boolean-function generator for NoComment."""
 
+from collections.abc import Callable
+
 from esolangs.tools.helpers import (
     _ASCII_ZERO,
     TEMPLATE_CHAR,
     _validate_truth_table,
     essential_inputs,
+    move_text,
     read_at,
 )
 
@@ -34,6 +37,34 @@ _NOCOMMENT_GROUP = 6
 _NOCOMMENT_STAGE = 32
 
 
+def _projected(truth_table: str, n: int) -> tuple[str, int, dict[int, int]]:
+    """Return the essential-input table, its width, and weight by input."""
+    used = essential_inputs(truth_table, n) or [0]
+    table = truth_table if len(used) == n else read_at(truth_table, used, n)
+    width = len(used)
+    return table, width, {i: 1 << (width - 1 - s) for s, i in enumerate(used)}
+
+
+def _mover(buf: list[str], pos: int) -> Callable[[int], None]:
+    """Return a ``move(dst)`` appending ``r``/``l`` runs to ``buf`` from ``pos``."""
+
+    def move(dst: int) -> None:
+        nonlocal pos
+        buf.append(move_text(pos, dst, "r", "l"))
+        pos = dst
+
+    return move
+
+
+def _push(k: int) -> str:
+    """Return the commands pushing ``k`` from a cleared current cell."""
+    return "c" + "i" * k + "n"
+
+
+def _group(delta: int) -> str:
+    return "fsf" + {1: "ii", -1: "dd", 0: "id"}[delta] + "s"
+
+
 def _nocomment_chain(truth_table: str, n: int) -> str:
     """Build a NoComment template that needs six tape cells at any arity.
 
@@ -51,22 +82,11 @@ def _nocomment_chain(truth_table: str, n: int) -> str:
     epilogue maps ``{6, 8}`` to ``{48, 49}``.  Size ``6`` per row plus
     ``T / 32`` pushes; execution ``O(T)``; stack depth ``T / 32 + n + 3``.
     """
-    used = essential_inputs(truth_table, n) or [0]
-    table = truth_table if len(used) == n else read_at(truth_table, used, n)
-    width = len(used)
-    weights = {i: 1 << (width - 1 - slot) for slot, i in enumerate(used)}
+    table, width, weights = _projected(truth_table, n)
     rows = 1 << width
     out: list[str] = []
-    ptr = [0]
+    move = _mover(out, 0)
     bit, comp, stage, scratch, guard, const = range(6)
-
-    def move(dst: int) -> None:
-        while ptr[0] < dst:
-            out.append("r")
-            ptr[0] += 1
-        while ptr[0] > dst:
-            out.append("l")
-            ptr[0] -= 1
 
     def guarded(cell: int, block: list[str]) -> None:
         """Run ``block`` iff ``cell`` is zero, ending on ``cell``.
@@ -74,9 +94,7 @@ def _nocomment_chain(truth_table: str, n: int) -> str:
         Leaves the stack as it found it; below is the index under construction.
         """
         move(scratch)
-        out.append("c")
-        out.extend(["i"] * len(block))
-        out.append("n")
+        out.append(_push(len(block)))
         move(cell)
         out.append("s")
         out.extend(block)
@@ -87,11 +105,7 @@ def _nocomment_chain(truth_table: str, n: int) -> str:
     # The two constants under everything: the fall-through's skip of three
     # (deepest, so it is what remains) and the final stage's landing six.
     move(const)
-    out.append("c")
-    out.extend(["i"] * 3)
-    out.append("n")
-    out.extend(["i"] * 3)
-    out.append("n")
+    out.append(_push(3) + "iiin")
 
     stages = 0
     for i in range(n):
@@ -108,8 +122,7 @@ def _nocomment_chain(truth_table: str, n: int) -> str:
         # comp = 1 - bit: the increment runs exactly when the bit is zero.
         guarded(bit, ["r", "i", "l"])
         move(stage)
-        out.append("c")
-        out.extend(["i"] * 4)
+        out.append(_push(4)[:-1])
         # stage = 4 + 6 * advance exactly when the bit is one.
         guarded(comp, ["r", *(["i"] * (_NOCOMMENT_GROUP * advance)), "l"])
         move(stage)
@@ -118,23 +131,18 @@ def _nocomment_chain(truth_table: str, n: int) -> str:
 
     # The first group pops before it skips, so a nonzero dummy goes on top.
     move(const)
-    out.append("c")
-    out.extend(["i"] * 4)
-    out.append("n")
+    out.append(_push(4))
     move(guard)
 
-    def group(delta: int) -> str:
-        return "fsf" + {1: "ii", -1: "dd", 0: "id"}[delta] + "s"
-
-    out.extend(group(0) for _ in range(stages + 1))
+    out.extend(_group(0) for _ in range(stages + 1))
     for j in range(rows):
         after = int(table[j + 1]) if j + 1 < rows else 0
-        out.append(group(int(table[j]) - after))
+        out.append(_group(int(table[j]) - after))
 
     # The last group's skip of three lands past it, on three dead commands.
     out.append("sss")
     # G is 6 or 8: down to {0, 2}, then +1 only when zero -> {1, 2}, then +47.
-    out.extend(["d"] * _NOCOMMENT_GROUP)
+    out.extend(["d"] * 6)
     out.append("s")
     out.append("iid")
     out.extend(["i"] * (_ASCII_ZERO - 1))
@@ -159,17 +167,9 @@ def nocomment(truth_table: str) -> str:
     if n >= _NOCOMMENT_CHAIN_MIN:
         return _nocomment_chain(truth_table, n)
 
-    # Everything is sized by the index range (one ``l`` and one output
-    # cell per row), so evaluating over the essential inputs shrinks
-    # ``2**n`` to ``2**width``.  Every input keeps its setter and prologue;
-    # an ignored one's weight run ``["i"] * (2**w)`` is empty, and its
-    # guard still leaves the pointer on its complement cell.
-    used = essential_inputs(truth_table, n) or [0]
-    table = truth_table if len(used) == n else read_at(truth_table, used, n)
-    width = len(used)
-    # Slot ``s`` carries original input ``used[s]``, so it takes the weight
-    # ``2**(width - 1 - s)``; an ignored input takes none.
-    weights = {i: 2 ** (width - 1 - slot) for slot, i in enumerate(used)}
+    # Sized by the essential inputs (one ``l`` and one output cell per row).
+    # An ignored input keeps its setter and prologue but takes no weight.
+    table, width, weights = _projected(truth_table, n)
 
     k = 2**width
     index = 2 * n
@@ -178,19 +178,8 @@ def nocomment(truth_table: str) -> str:
     sentinel = tbase + k  # non-zero cell the final ``s`` gates on
     scratch = sentinel + 1  # reused per bit to push each NOT gate's skip length
 
-    # Emit the index computation and the output staircase.  Each bit's
-    # guarded increment ends with the pointer back on its complement cell,
-    # so the emitted moves stay consistent.
     commands: list[str] = []
-    ptr = [index]
-
-    def move(dst: int) -> None:
-        while ptr[0] < dst:
-            commands.append("r")
-            ptr[0] += 1
-        while ptr[0] > dst:
-            commands.append("l")
-            ptr[0] -= 1
+    move = _mover(commands, index)
 
     skip_vals: dict[int, int] = {}
     for i in range(n):
@@ -204,10 +193,9 @@ def nocomment(truth_table: str) -> str:
         move(index)
         commands.extend(["i"] * weights.get(i, 0))
         move(comp)
-        skip_vals[d] = len(commands) - block
+        skip_vals[d] = len("".join(commands[block:]))
     move(index)
     commands.append("n")  # push the index
-    ptr[0] = index
     move(sentinel)
     commands.append("s")  # skip by the index into the staircase
     commands.extend(["l"] * k)
@@ -217,39 +205,17 @@ def nocomment(truth_table: str) -> str:
     # scratch.  The complement cells (n..2n-1) start at zero and are filled
     # by the NOT-gate prologue below, not by a second embedded run.
     setup: list[str] = []
-    setup_ptr = [0]
-
-    def setup_move(dst: int) -> None:
-        while setup_ptr[0] < dst:
-            setup.append("r")
-            setup_ptr[0] += 1
-        while setup_ptr[0] > dst:
-            setup.append("l")
-            setup_ptr[0] -= 1
-
-    for _i in range(n):
-        setup.append(_NOCOMMENT_INPUT)
-        setup.append("r")
-    setup_ptr[0] = n
+    setup_move = _mover(setup, n)
+    setup.append((_NOCOMMENT_INPUT + "r") * n)
 
     # NOT-gate prologue: ``s`` at the bit cell skips the block that
-    # increments comp_i, so it runs only when the bit is zero; both paths
-    # leave the pointer on the bit cell.
+    # increments comp_i, so it runs only when the bit is zero.
     for i in range(n):
-        comp = n + i
-        # comp is always to the right of bit i (comp - i == n), so the gate
-        # is a straight-line move-set-return with no branching to track.
-        dist = comp - i
-        gate = ["r"] * dist + ["i"] + ["l"] * dist
-        gate_len = len(gate)
-
+        gate = "r" * n + "i" + "l" * n  # comp is always n right of bit i
         setup_move(scratch)
-        setup.append("c")
-        setup.extend(["i"] * gate_len)
-        setup.append("n")  # push gate_len
+        setup.append(_push(len(gate)))
         setup_move(i)
-        setup.append("s")
-        setup.extend(gate)
+        setup.append("s" + gate)
 
     setup_move(index)
     setup.append("c")  # index starts at zero
