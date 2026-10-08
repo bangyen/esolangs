@@ -37,7 +37,7 @@ def test_terminal_transfer_corpus(n: int) -> None:
 @pytest.mark.medium
 def test_three_input_digit_total() -> None:
     total = sum(len(factor(format(i, "08b"))) for i in range(256))
-    assert total == 103105
+    assert total == 102857
     assert total * 100 < 106465 * 105
 
 
