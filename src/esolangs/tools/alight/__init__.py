@@ -25,6 +25,10 @@ __all__ = ["alight"]
 _ALIGHT_EAST_TURN = "turn right;"
 _ALIGHT_WEST_TURN = "turn left;"
 
+#: Width of a chunk's guard and lookup around the index text: ``skip i < I;``
+#: is 10 + I, ``set r at{"", i-I};`` is 18 + I.
+_ALIGHT_OVERHEAD = 28
+
 
 def _half_before(value: int) -> str:
     """Return value minus one half without floating-point rounding."""
@@ -38,15 +42,11 @@ def _alight_chunk(rows: int, width: int) -> int:
     by the largest row number, so this is a formula.
     """
     index = len(_half_before(rows))
-    # ``skip i < I;`` is 10 + I, ``set r at{"", i-I};`` is 18 + I.
-    overhead = 28 + 2 * index
+    overhead = _ALIGHT_OVERHEAD + 2 * index
     chunk = max(1, width - overhead - len(_ALIGHT_EAST_TURN))
-    # Chunking is not free: it buys a shorter literal with a guard, and for
-    # a short table the guard costs more than the literal saves.  Keeping
-    # the whole table in one lookup whenever splitting would not actually
-    # make the widest unit narrower is also what keeps this monotone --
-    # otherwise asking for 1 came back *wider* than asking for 40, which is
-    # not what "the narrowest it can build" should mean.
+    # For a short table the guard costs more than the literal saves; one
+    # lookup unless splitting narrows the widest unit, else a smaller request
+    # came back wider than a larger one.
     if len('set r at{"", i+0.5};') + rows <= overhead + chunk:
         return rows
     return chunk
@@ -56,10 +56,9 @@ def _alight_units(truth_table: str, n: int, chunk: int) -> list[list[str]]:
     """Build the commands, grouped into pieces a fold may not split.
 
     A ``skip`` guards the next command along the heading, so the pair stays
-    on one row.  The literal is one token, so it is chunked to make the floor
-    the chunk size; each chunk is guarded only from below, so every chunk up
-    to the index's runs and the last overwrites (reading past a chunk's end
-    is ``nil``, per the wiki).
+    on one row.  The first chunk is guarded from above (``i > end``), the
+    rest from below (``i < start``); later chunks overwrite ``r`` (reading
+    past a chunk's end is ``nil``, per the wiki).
     """
     units: list[list[str]] = [["begin"], ["var a"], ["var i"], ["var r"]]
     for k in range(n):
@@ -117,11 +116,11 @@ def _alight_flat_compact(
 
 
 def _alight_folded(units: list[list[str]], width: int) -> str:
-    """Lay ``commands`` out as a boustrophedon inside ``width`` columns.
+    """Lay ``units`` out as a boustrophedon inside ``width`` columns.
 
     A command is a word walked cell by cell, so a row end cuts it; the
-    heading is steered with two ``turn right`` then two ``turn left``, the
-    second of each written downward from the cell beyond.  Westward rows
+    heading is steered by an east turn then a west turn, the second of each
+    written downward from the cell beyond.  Westward rows
     read right to left (``end;`` is ``;dne``).  The turn sits at the far
     edge with bare semicolons (a nop) filling the gap, so every row is full
     width.  The floor is the longest command plus its turn.
@@ -133,9 +132,7 @@ def _alight_folded(units: list[list[str]], width: int) -> str:
     cells: dict[tuple[int, int], str] = {}
     row, col, step = 0, 0, 1
     pending = list(units)
-    # Every pass places at least one command and the pass that empties
-    # ``pending`` leaves through the break below, so the loop has no other
-    # way out and says so.
+    # Every pass places a command; the pass that empties ``pending`` breaks.
     while True:
         turn = _ALIGHT_EAST_TURN if step == 1 else _ALIGHT_WEST_TURN
         edge = limit - 1 if step == 1 else 0
@@ -187,17 +184,9 @@ def _dimensions(program: str) -> tuple[int, int]:
     return max(map(len, rows)), len(rows)
 
 
-def _alight_balanced(truth_table: str, n: int, width: int) -> str:
-    """Return the permitted layout with the smallest longer dimension.
-
-    Straight, one-column rotation, or any legal boustrophedon within
-    ``width``; ties prefer less area, then fewer characters.
-    """
-    if width < 1:
-        raise ValueError("width must be at least 1")
-    from esolangs.tools.alight.balance import select_alight
-
-    return select_alight(truth_table, n, width)
+def _flatten(units: list[list[str]]) -> str:
+    """Return the commands of ``units`` as one semicolon-terminated line."""
+    return ";".join(command for unit in units for command in unit) + ";"
 
 
 def alight(
@@ -219,6 +208,8 @@ def alight(
     n = _validate_truth_table(truth_table)
     validate_expression_syntax(expression_syntax)
     validate_list_update(list_update)
+    if width is not None and width < 1:
+        raise ValueError("width must be at least 1")
     if width is None:
         # An ignored input is read and dropped, and the table is indexed by
         # the rest.  The width layouts model their geometry from ``n`` alone,
@@ -228,7 +219,7 @@ def alight(
             essential = [bool(weight) for weight in weights]
             if expression_syntax == "postfix":
                 units = _postfix_units(projected, n, len(projected), essential)
-                return ";".join(command for unit in units for command in unit) + ";"
+                return _flatten(units)
             return _alight_flat_compact(projected, n, essential)
     if expression_syntax == "postfix":
         units = _postfix_units(
@@ -238,11 +229,9 @@ def alight(
             if width is None
             else _alight_chunk(len(truth_table), width),
         )
-        flat = ";".join(command for unit in units for command in unit) + ";"
+        flat = _flatten(units)
         if width is None:
             return flat
-        if width < 1:
-            raise ValueError("width must be at least 1")
         program = _alight_folded(units, width)
         if _dimensions(program)[0] > width:
             return "\n".join(flat)
@@ -250,7 +239,9 @@ def alight(
     flat = _alight_flat_compact(truth_table, n)
     if width is None:
         return flat
-    return _alight_balanced(truth_table, n, width)
+    from esolangs.tools.alight.balance import select_alight  # circular
+
+    return select_alight(truth_table, n, width)
 
 
 def _postfix_units(

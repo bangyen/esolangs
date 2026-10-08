@@ -7,6 +7,7 @@ from typing import NamedTuple
 
 from esolangs.tools.alight import (
     _ALIGHT_EAST_TURN,
+    _ALIGHT_OVERHEAD,
     _ALIGHT_WEST_TURN,
     _alight_chunk,
     _alight_flat_compact,
@@ -21,6 +22,8 @@ from esolangs.tools.helpers import _validate_truth_table
 _Affine = tuple[int, int]
 _EAST = len(_ALIGHT_EAST_TURN)
 _WEST = len(_ALIGHT_WEST_TURN)
+#: ``_Plan.kind``, also a score tiebreak, so the order is load-bearing.
+_COLUMN, _ROW, _FOLD = 0, 1, 2
 
 
 class _Plan(NamedTuple):
@@ -92,9 +95,12 @@ def _plans(n: int) -> tuple[_Plan, ...]:
     flat = size + len(_alight_flat_compact("", n))
     base = [len(";".join(unit)) + 1 for unit in _alight_units("", n, 0)]
     prefix, tail = base[:-3], base[-2:]
-    plans = [_Plan(0, 0, 0, 1, flat, 2 * flat - 1), _Plan(1, 0, 0, flat, 1, flat)]
+    plans = [
+        _Plan(_COLUMN, 0, 0, 1, flat, 2 * flat - 1),
+        _Plan(_ROW, 0, 0, flat, 1, flat),
+    ]
     index = len(_half_before(size))
-    overhead = 28 + 2 * index
+    overhead = _ALIGHT_OVERHEAD + 2 * index
     shift = overhead + _EAST
     whole = 1 if _alight_chunk(size, 1) == size else shift + size + base[-3] - overhead
     whole_pieces = [(0, length) for length in [*prefix, size + base[-3], *tail]]
@@ -109,7 +115,7 @@ def _plans(n: int) -> tuple[_Plan, ...]:
             if lower == max(length for _, length in whole_pieces) + _EAST + 1
             else lower
         )
-        plans.append(_Plan(2, columns, size, width, height, length))
+        plans.append(_Plan(_FOLD, columns, size, width, height, length))
         lower = stop
     cutoff = size + base[-3] - overhead
     if cutoff > 1:
@@ -150,16 +156,16 @@ def _plans(n: int) -> tuple[_Plan, ...]:
                         pieces, (1, shift), lower, upper
                     )
                     columns = 1 if lower == 1 else lower + shift
-                    plans.append(_Plan(2, columns, lower, width, height, length))
+                    plans.append(_Plan(_FOLD, columns, lower, width, height, length))
                     lower = stop
     return tuple(plans)
 
 
 def _emit(table: str, n: int, plan: _Plan) -> str:
     flat = _alight_flat_compact(table, n)
-    if plan.kind == 0:
+    if plan.kind == _COLUMN:
         program = "\n".join(flat)
-    elif plan.kind == 1:
+    elif plan.kind == _ROW:
         program = flat
     else:
         program = _alight_folded(_alight_units(table, n, plan.chunk), plan.columns)
@@ -206,14 +212,14 @@ def _balance_postfix(table: str, n: int, default: str) -> str:
 
 
 def balance_alight(
-    table: str, _default: str, *, expression_syntax: str = "infix"
+    table: str, default: str, *, expression_syntax: str = "infix"
 ) -> str:
     """Balance the layouts that can win the native minimax width selector."""
     n = _validate_truth_table(table)
     if expression_syntax == "postfix":
-        return _balance_postfix(table, n, _default)
+        return _balance_postfix(table, n, default)
     plans = _plans(n)
-    records = [next(plan for plan in plans if plan.kind == 1)]
+    records = [next(plan for plan in plans if plan.kind == _ROW)]
     best: _Plan | None = None
     for plan in sorted(plans, key=lambda plan: (plan.ready(), plan.score())):
         if best is None or plan.score() < best.score():
