@@ -6,7 +6,8 @@ string literal and the input bits fold into its row by Horner's rule,
 ``row = ((b0 * 2 + b1) * 2 + b2)...``, minus their ASCII offset: O(n)
 commands over an O(2**n) literal, no branching.  That is why ``alight``
 sits in the contract test's ``_UNSHAPED`` list: a 0%
-fold is the construction working.  The reads are unconditional and first.
+fold is the construction working: a literal has no subtrees to fold or share.
+The reads are unconditional and first.
 """
 
 from esolangs._dialects import expression_syntax as validate_expression_syntax

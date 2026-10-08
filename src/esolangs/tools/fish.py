@@ -1,4 +1,7 @@
-"""Fish boolean generator: a grid table read with ``g``."""
+"""Fish boolean generator: a grid table read with ``g``.
+
+A grid has no subtrees to fold or share.
+"""
 
 from math import isqrt
 

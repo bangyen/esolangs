@@ -24,7 +24,10 @@ def bf_tree(truth_table: str) -> str:
 
     Bits use cells 2i, flags 2i+1; branches clear both, and one final print
     reads the result. Flags cut n=10 sparse from 2,646 to 754 chars;
-    folding and shared output cut n=10 XOR from 77,939 to 18,495.
+    folding and shared output cut n=10 XOR from 77,939 to 18,495.  Equal
+    sibling halves merge; the code has no call, so other repeats are copied.
+    An ignored input is still read with its 48 subtracted: skipping the
+    subtract saves 2.4% at n=8, one ignored (7.4% with two), under the 10% bar.
     """
     return in_input_order(truth_table, _bf_ordered)
 

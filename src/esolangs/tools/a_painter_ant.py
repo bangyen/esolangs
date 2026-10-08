@@ -5,7 +5,8 @@ answers.  Each input is ``n`` (into the lane) or ``N`` (blocked), then
 ``E`` x ``2**(n-1-i)`` which only the corridor allows, then ``SN``; a pass
 ends on the answer, or for a one on the white corridor above it.  The
 corridor ends where the trailing run of equal answers starts: a walk halts
-there, and every index past it shares its answer.
+there, and every index past it shares its answer.  Interior runs stay: the
+ant counts through every row, so no subtree folds or is shared.
 """
 
 from esolangs.tools.helpers import (

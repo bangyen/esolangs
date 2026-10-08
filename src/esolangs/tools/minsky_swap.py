@@ -33,7 +33,7 @@ def minsky_swap(truth_table: str, width: int | None = None) -> str:
     program exceeds switches to RMSN, one command per line, setters eight
     wide sharing an increment; below 10 with ``n <= 2`` a decision chain
     (nine commands at ``n = 2``) uses the first register as scratch, the
-    answer staying in the second.
+    answer staying in the second.  A zero tail stays: trimming it failed 60/134.
     """
     n = _validate_truth_table(truth_table)
     weights, table = input_weights(truth_table, n)

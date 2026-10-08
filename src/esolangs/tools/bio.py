@@ -24,7 +24,8 @@ def bio(truth_table: str) -> str:
     (:data:`_BIO_SKIP`), so the table indexes the rest.  A guard keeping the
     shorter of full and projected saved 0.0% at n=4-7 (constants at n<=2 are
     the only tables projection lengthens, by 28 characters) and was retired;
-    telescoping saves 39.6% at n=7 over resetting y per row.
+    telescoping saves 39.6% at n=7 over resetting y per row.  Each row is one
+    nested loop that sets where the walk stops, so no row is dropped.
     """
     n = _validate_truth_table(truth_table)
     weights, table = input_weights(truth_table, n)

@@ -1,4 +1,8 @@
-"""Linear /// construction: unary row selection by a fixed substitution sweep."""
+"""Linear /// construction: unary row selection by a fixed substitution sweep.
+
+The table is a literal with no subtrees to fold or share, and a trailing run
+cannot be trimmed: the cursor ``>`` is left undecoded (116 of 126 wrong).
+"""
 
 from esolangs.tools.helpers import TEMPLATE_CHAR, _validate_truth_table, input_weights
 

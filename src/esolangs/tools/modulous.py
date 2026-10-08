@@ -1,4 +1,7 @@
-"""Boolean program generator for Modulous."""
+"""Boolean program generator for Modulous.
+
+A string literal has no subtrees to fold or share.
+"""
 
 import re
 

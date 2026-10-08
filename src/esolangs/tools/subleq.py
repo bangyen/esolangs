@@ -3,6 +3,7 @@
 Chunks contain n bits apiece: O(T/n) decimal values of O(n) digits. The
 O(n) read instructions use O(log T) address digits, hence O(n**2) source,
 which is O(T). Selection scans chunks; division extracts the requested bit.
+Packed chunks have no subtrees to fold or share.
 """
 
 from esolangs.tools.sbleq import _sbleq_packed

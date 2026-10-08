@@ -3,7 +3,9 @@
 Ascending primes encode Brainfuck instructions by residue modulo eleven
 and run length by exponent. A compact tree tests inputs in stream order
 and puts the answer in the final input's unused flag. Multiplication loops
-build and subtract the ASCII offsets; only this tree is encoded.
+build and subtract the ASCII offsets; only this tree is encoded.  Equal
+sibling halves merge; the code has no call, so other repeats are copied.
+An ignored cell is still dedented: skipping it saves 0.2% at n=6.
 """
 
 import heapq

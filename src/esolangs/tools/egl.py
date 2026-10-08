@@ -13,7 +13,8 @@ def egl(truth_table: str, width: int | None = None) -> str:
     weight, so the weights accumulate into the index with no branch per
     level, and ``v=`` prints the cell below.  An ignored input is a bare
     ``x`` the next read overwrites, and the table is indexed by the rest.  A
-    constant keeps its full table: one cell leaves ``^<`` no room.
+    constant keeps its full table: one cell leaves ``^<`` no room.  A row is a
+    cell, with no subtrees to fold or share.
     """
     n = _validate_truth_table(truth_table)
     weights, projected = input_weights(truth_table, n)

@@ -1,4 +1,7 @@
-"""Boolean generator for qoibl."""
+"""Boolean generator for qoibl.
+
+A packed literal has no subtrees to fold or share.
+"""
 
 from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table, input_weights
 

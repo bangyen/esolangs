@@ -1,7 +1,7 @@
 """Boolean-function generator for Super SNUSP.
 
 Tables use a linear packed-integer lookup, and never the language's random
-``=`` opcode.
+``=`` opcode.  A packed integer has no subtrees to fold or share.
 """
 
 import re

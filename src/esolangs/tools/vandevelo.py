@@ -25,6 +25,10 @@ direction reaches ``d(eps) = log2(n) - log2(log2(1/eps)) - 2``, so a peel
 taking only cubes of at least that dimension ends in ``1 + 9 * 2**n / n``
 clauses.
 
+An ignored input is a free direction of every cube, so the cover already
+drops it: projecting first changed size by -2.9% to +0.8% at n=7-9.  Guards
+are cosets of the 1-set, so there is no subtree to share.
+
 The peel does not restart per cube.  Every scored pair set ``S(v) = B & (B ^
 v)`` is kept and updated as points leave: the root pools :data:`_CANDIDATES`
 directions, each with a node of its own candidates and greedy sub-chain,

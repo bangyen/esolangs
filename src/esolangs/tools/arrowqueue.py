@@ -3,6 +3,7 @@
 A cascade: each stage doubles the queued markers then crosses the cell
 (Horner); one ``+`` per row turns right at the indexed row.  The tree it
 replaced (``n <= 4``) was at most 3.9% smaller at n=4 and kept ignored inputs.
+Rows are reached by a Horner count, so no subtree is drawn to share.
 """
 
 from esolangs.tools.helpers import (

@@ -4,7 +4,8 @@
 into a row index with Horner's rule, and reads the answer out of a grid the
 generator wrote, one cell per entry through ten inputs and six bits per cell
 above that. ``g`` addresses data the instruction pointer never walks: O(T)
-cells of source and O(n) executed commands, no branch and no loop.
+cells of source and O(n) executed commands, no branch and no loop; a grid
+has no subtrees to fold or share.
 """
 
 from __future__ import annotations

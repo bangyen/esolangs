@@ -4,8 +4,8 @@ BCT has no branch, so all an input can change is how much data is appended, and
 so how far the pointer has moved when a later bit is read.  Input ``i`` appends
 ``2**(n-i+1)`` zeros when set, a sentinel ``1`` lands behind them, and the table
 is one ``1 x 0 0`` cell a row consuming two zeros while advancing four -- so the
-walk arrives at cell ``index`` and fires it.  Emission is ``program,data``; the
-count and why a cell needs four bits are in ``docs/proofs/index.md``.
+walk arrives at cell ``index`` and fires it, and no row can drop.  Emission is
+``program,data``; the count and why a cell needs four bits: ``docs/proofs/index.md``.
 """
 
 from __future__ import annotations
