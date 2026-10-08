@@ -91,7 +91,7 @@ def test_probe_frame_refuses_a_pointer_outside_its_low_byte() -> None:
 
 
 def test_narrow_layout_drops_ignored_inputs() -> None:
-    """A width-1 layout drops ignored inputs: under half a fully essential 5-input one."""
+    """A width-1 layout drops ignored inputs: under half a fully essential one."""
     from esolangs import generate
     from esolangs._evaluate import _evaluate
 
