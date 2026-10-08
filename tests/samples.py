@@ -2,6 +2,7 @@
 
 from esolangs._program import Program
 from esolangs.raster import Raster
+from esolangs.registry import LANGUAGES
 from esolangs.tools.line import line as _line_sample
 from esolangs.tools.piet import piet as _piet_sample
 from esolangs.tools.piet_plus_plus import piet_plus_plus as _pp_sample
@@ -246,3 +247,19 @@ SAMPLES: dict[str, tuple[Program, str]] = {
 SAMPLES["Line"] = (Raster.from_png(_line_sample("01").to_png()), "1\n")
 SAMPLES["Piet++"] = (Raster.from_png(_pp_sample("01").to_png()), "1\n")
 SAMPLES["Piet"] = (Raster.from_png(_piet_sample("01").to_png()), "1\n")
+
+
+def _generated(name: str) -> tuple[Program, str]:
+    """A generator language's own one-input program, fed a 1."""
+    import esolangs
+
+    program = esolangs.generate(name, "01")
+    if esolangs.describe(name)["parameterized"]:
+        return esolangs.instantiate(name, program, [1]), ""
+    return program, esolangs.encode_inputs(name, [1])
+
+
+# A generator language needs no hand sample: its generated program is one.
+for _name, _lang in LANGUAGES.items():
+    if _lang.boolean is not None and _name not in SAMPLES:
+        SAMPLES[_name] = _generated(_name)
