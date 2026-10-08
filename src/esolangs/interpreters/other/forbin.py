@@ -509,6 +509,9 @@ class _Machine:
         for name in main_fn.args:
             main_frame.locals[name] = 0
         self.state = _State([main_frame], reader)
+        # Identity -> (serial, object): holding the object keeps its id
+        # from being reused, so a serial names one object for the run.
+        self._serials: dict[int, tuple[int, object]] = {}
 
     @property
     def reader(self) -> _BitReader:
@@ -570,7 +573,7 @@ class _Machine:
             scope = scope.parent
         return (
             frame.fn,
-            tuple(sorted((name, repr(value)) for name, value in bindings.items())),
+            tuple(sorted((name, self._render(v)) for name, v in bindings.items())),
             self.io.position(),
             tuple(self.reader.bits),
             self.reader.reads,
@@ -579,7 +582,9 @@ class _Machine:
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection.
 
-        Locals are captured via ``repr()`` since a function value is not
+        Locals are captured via :meth:`_render` (``repr`` with closure
+        identities as first-seen serials, so a snapshot is the same on
+        every run) since a function value is not
         meaningfully hashable (it closes over live, mutable frames) --
         sufficient for the state-cycle detector's purpose, since a
         genuine hang re-executes the same cursor with the same bindings
@@ -592,10 +597,10 @@ class _Machine:
                 (
                     f.fn.name,
                     f.pos,
-                    tuple(sorted((k, repr(v)) for k, v in f.locals.items())),
+                    tuple(sorted((k, self._render(v)) for k, v in f.locals.items())),
                     f.for_ind if f.for_rows is not None else -1,
                     f.for_body_pos if f.for_rows is not None else -1,
-                    f.fn,
+                    self._serial(f.fn),
                     None
                     if f.for_rows is None
                     else tuple(tuple(row) for row in f.for_rows),
@@ -608,7 +613,7 @@ class _Machine:
             self.reader.reads,
             tuple(
                 sorted(
-                    (name, repr(value))
+                    (name, self._render(value))
                     for name, value in self.global_frame.locals.items()
                 )
             ),
@@ -625,16 +630,27 @@ class _Machine:
         todo: list[_Frame | None] = [*self.frames, self.global_frame]
         while todo:
             scope = todo.pop()
-            while scope is not None and id(scope.locals) not in seen:
-                seen[id(scope.locals)] = scope
+            while scope is not None and self._serial(scope.locals) not in seen:
+                seen[self._serial(scope.locals)] = scope
                 todo += [
                     v.env for v in scope.locals.values() if isinstance(v, _Closure)
                 ]
                 scope = scope.parent
         return tuple(
-            (key, tuple(sorted((k, repr(v)) for k, v in s.locals.items())))
+            (key, tuple(sorted((k, self._render(v)) for k, v in s.locals.items())))
             for key, s in sorted(seen.items())
         )
+
+    def _serial(self, thing: object) -> int:
+        """Return ``thing``'s serial: its identity numbered by first sight."""
+        return self._serials.setdefault(id(thing), (len(self._serials), thing))[0]
+
+    def _render(self, value: object) -> str:
+        """``repr(value)``, but a closure names its identities by serial."""
+        if isinstance(value, _Closure):
+            fn, scope = self._serial(value.fn), self._serial(value.env.locals)
+            return f"<{value.fn.name or 'literal'} {fn}@{scope}>"
+        return repr(value)
 
     def step(self) -> None:
         """Execute one statement, one ``for``-loop row, or advance a call.

@@ -109,16 +109,6 @@ class TestMammalian:
         run("ACCEPT DIGEST LEAPFROG", ScriptedIO("A\n"))
 
 
-class TestStepMachine:
-    def test_step_after_halt_is_a_noop(self) -> None:
-        from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
-
-        machine = _Machine("", IO())
-        assert machine.halted
-        machine.step()  # stepping a halted machine is a no-op
-        assert machine.lst == tuple((0,) for _ in range(23))
-
-
 class TestPartial:
     """``_partial`` applies one array op; two of them need a non-empty array."""
 

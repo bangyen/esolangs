@@ -5,6 +5,7 @@ from esolangs.tools.helpers import (
     _validate_truth_table,
     best_input_order,
     constant_span_test,
+    subtree_ids,
 )
 
 # Each input cell is fresh; zero needs no clear and one needs one flip.
@@ -71,6 +72,7 @@ def _smallfuck_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     """
     n = _validate_truth_table(truth_table)
     constant = constant_span_test(truth_table)
+    ids = subtree_ids(truth_table)
     builder = _Builder()
     builder.code.append(TEMPLATE_CHAR * (len(PAIR[0]) * n))
     builder.at = 3 * n
@@ -96,6 +98,11 @@ def _smallfuck_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
 
     def tree(level: int, lo: int, hi: int, result: int, on: str) -> None:
         bit, flag, mid = 3 * perm[level], 3 * level + 1, (lo + hi) // 2
+        below = ids[level + 1]
+        if below[lo >> (n - level - 1)] == below[mid >> (n - level - 1)]:
+            # Both halves agree, so the bit cannot matter: build one, untested.
+            arm(level, lo, mid, result, on)
+            return
         if constant(lo, mid):
             if truth_table[lo] == on:
                 builder.flip(result)

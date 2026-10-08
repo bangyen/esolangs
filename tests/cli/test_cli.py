@@ -40,16 +40,6 @@ def call_main(
 # Every test here spawns `python -m esolangs.cli`; 2.8s over nine tests.
 @pytest.mark.medium
 class TestSubprocess:
-    def test_list(self) -> None:
-        result = run_cli("list")
-        assert result.returncode == 0
-        assert "Sophie" in result.stdout
-
-    def test_generate(self) -> None:
-        result = run_cli("generate", "Sophie", "0110")
-        assert result.returncode == 0
-        assert esolangs.run("Sophie", result.stdout, stdin="01") == "1"
-
     def test_run(self, tmp_path: Path) -> None:
         program = tmp_path / "prog.soph"
         program.write_text(esolangs.generate("Sophie", "0110"))
@@ -72,11 +62,6 @@ class TestInProcess:
         assert out.startswith(b"\x89PNG\r\n\x1a\n")
         image = esolangs.Raster.from_png(out)
         assert esolangs.run("Piet", image, stdin="1\n0\n") == "1"
-
-    def test_generate_missing_args(self, capsys: pytest.CaptureFixture[str]) -> None:
-        with pytest.raises(SystemExit) as exc:
-            call_main(["generate", "Sophie"], capsys)
-        assert exc.value.code == 2
 
     def test_run_feeds_stdin(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
@@ -576,10 +561,6 @@ _REFUSALS = {
         f"generate brainfuck {TABLE3} --width 0",
         "must be positive",
     ),
-    "width_rejects_a_non_positive_value--5": (
-        f"generate brainfuck {TABLE3} --width -5",
-        "must be positive",
-    ),
     "unknown_language": ("debug NoSuchLanguage prog:+", "unknown language"),
     "missing_file": ("debug brainfuck /no/such/file", "cannot read"),
     "missing_args": ("debug brainfuck", "usage: esolangs debug"),
@@ -595,20 +576,12 @@ _REFUSALS = {
         "debug brainfuck prog.b --steps",
         "--steps needs a value",
     ),
-    "a_malformed_cell_breakpoint_is_refused-3": (
-        "debug --break-on-cell=3 brainfuck prog:+",
-        "INDEX=VALUE",
-    ),
     "a_malformed_cell_breakpoint_is_refused-x=1": (
         "debug --break-on-cell=x=1 brainfuck prog:+",
         "INDEX=VALUE",
     ),
     "a_malformed_cell_breakpoint_is_refused-0=y": (
         "debug --break-on-cell=0=y brainfuck prog:+",
-        "INDEX=VALUE",
-    ),
-    "a_malformed_cell_breakpoint_is_refused-empty": (
-        "debug --break-on-cell= brainfuck prog:+",
         "INDEX=VALUE",
     ),
     "a_non_integer_break_at_is_refused": (

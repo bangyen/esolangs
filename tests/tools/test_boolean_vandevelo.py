@@ -337,3 +337,18 @@ def test_short_names_are_unique_and_skip_builtins() -> None:
     names = [short_name(index, _ALPHABET) for index in range(500)]
     assert len(set(names)) == len(names)
     assert not set(names) & _RESERVED
+
+
+def test_a_near_full_chain_holds_cosets_not_points() -> None:
+    """Three zeros keep each level near ``T``; its stored cosets halve."""
+    from esolangs.tools.vandevelo import _Node
+
+    n = 12
+    node = _Node.root(set(range(1 << n)) - {5, 1234, 4000})
+    for level in range(1, n - 2):
+        node = node.below(1 << (level - 1))
+        assert node.size >= (1 << n) - (3 << level)
+        assert len(node.reps) == node.size >> level
+        assert all(
+            node.reduce(r) == r == min(r ^ s for s in node.span()) for r in node.reps
+        )

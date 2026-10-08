@@ -3,8 +3,10 @@
 from esolangs.tools.helpers import (
     _validate_truth_table,
     constant_span_test,
+    essential_inputs,
     grid_width,
     narrowest_grid,
+    read_at,
 )
 
 # Dig blocks for one level of the decision tree.  ``$`` takes its count
@@ -619,6 +621,24 @@ def _dig_xor_pair() -> str:
     )
 
 
+def _dig_discards(count: int, tail: str = "0") -> str:
+    """Return a column reading and dropping ``count`` inputs, then ``tail``.
+
+    Its ``'`` on the start cell turns the mole down it, and windows of eight
+    reads chain below; the last window also arms ``tail``.  The default, an
+    armed ``0``, clears the mole: the program below then meets it on its
+    ``'`` facing down, carrying 0, nothing armed -- the state it has one
+    step into a run of its own.
+    """
+    cells = "'"
+    while count > _DIG_SPAN - 1 - len(tail):
+        take = min(_DIG_SPAN - 1, count)
+        cells += f"${take + 1}" + "~" * take
+        count -= take
+    cells += f"${count + 1 + len(tail)}" + "~" * count + tail
+    return "\n".join(cells)
+
+
 def dig(truth_table: str, width: int | None = None) -> str:
     """Build a Dig program computing the given truth table.
 
@@ -637,6 +657,22 @@ def dig(truth_table: str, width: int | None = None) -> str:
     polynomial stencil instead.
     """
     n = _validate_truth_table(truth_table)
+    built = _dig_build(truth_table, n, width)
+    essential = essential_inputs(truth_table, n)
+    if width is None and not essential:
+        # A constant reads every input down one column and prints.
+        column = _dig_discards(n, truth_table[0] + ":") + "\n@"
+        return min(built, column, key=len)
+    if width is None and essential and 0 < essential[0] == n - len(essential):
+        # Inputs before the first essential one can be read and dropped above
+        # the smaller table's program, when that is shorter.
+        inner = dig(read_at(truth_table, essential, n))
+        return min(built, _dig_discards(essential[0]) + "\n" + inner, key=len)
+    return built
+
+
+def _dig_build(truth_table: str, n: int, width: int | None) -> str:
+    """Return :func:`dig`'s layout for every table, ignored inputs included."""
     if width is not None and 0 < width < 8 and truth_table == "0110":
         return _dig_xor_pair()
     if width is None and n > 4:

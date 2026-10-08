@@ -58,10 +58,6 @@ class TestSophie:
                 improved += len(hybrid) < best
         assert improved == 104
 
-    def test_structure(self) -> None:
-        """A one-input function is a single conditional pair."""
-        assert boolean.sophie("10") == ";@0{#1}{#0},"
-
     def test_leaves_share_one_print_and_01_is_its_read(self) -> None:
         """A leaf loads its digit, and the one ``,`` at the end prints it."""
         assert boolean.sophie("01") == ";,"

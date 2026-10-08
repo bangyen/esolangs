@@ -241,6 +241,10 @@
    "backlinks": 65,
    "route": "fame"
   },
+  "Piet++": {
+   "backlinks": 8,
+   "route": "first implementation"
+  },
   "Polynomial": {
    "backlinks": 6,
    "route": "first implementation"
@@ -269,9 +273,17 @@
    "backlinks": 66,
    "route": "fame"
   },
+  "Smu": {
+   "backlinks": 4,
+   "route": "first implementation"
+  },
   "Sophie": {
    "backlinks": 3,
    "route": "grandfathered"
+  },
+  "SStack": {
+   "backlinks": 4,
+   "route": "first implementation"
   },
   "Streetcode": {
    "backlinks": 2,

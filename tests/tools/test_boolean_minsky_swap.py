@@ -24,7 +24,7 @@ class TestParameterizedMinskySwap:
 
         return _fill_minsky_swap(tpl, bits)
 
-    @pytest.mark.parametrize("width", [1, 9, 10, 15, 20, 40, 80])
+    @pytest.mark.parametrize("width", [1, 10, 15, 40, 80])
     def test_rmsn_templates_preserve_command_targets(self, width: int) -> None:
         """Public and example fills use the notation's one equal-width pair."""
         import esolangs

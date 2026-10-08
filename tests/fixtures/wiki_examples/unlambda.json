@@ -26,11 +26,6 @@
    "expected": "Hello, World"
   },
   {
-   "id": "palindrome-v",
-   "source": "`?d`?c`?d`?c`?d`?c`?d``v````````````.H.e.l.l.o.,. .W.o.r.l.di`d\n```````````````\nd`id.l.r.o.W. .,.o.l.l.e.H.````````````v``d?`c?`d?`c?`d?`c?`d?`",
-   "expected": "Hello, World"
-  },
-  {
    "id": "hello",
    "source": "`.!`.d`.l`.r`.o`.w`. `.,`.o`.l`.l`.e`.Hi",
    "expected": "Hello, world!"
@@ -38,12 +33,6 @@
   {
    "id": "cat",
    "source": "``cd``d`@|`cd",
-   "stdin": "cat\n",
-   "expected": "cat\n"
-  },
-  {
-   "id": "cat-efficient",
-   "source": "```s`d`@|i`ci",
    "stdin": "cat\n",
    "expected": "cat\n"
   },

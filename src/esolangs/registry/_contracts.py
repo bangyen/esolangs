@@ -225,8 +225,16 @@ CONTRACTS: dict[str, BooleanContract] = {
     "stack_based.bfstack": BooleanContract(
         input_shape="char_stream",
     ),
+    "stack_based.smu": BooleanContract(
+        input_shape="char_stream",
+        note="Smu reads one bit a run, low bit of each byte first, and "
+        "packs its output bits into bytes the same way",
+    ),
     "stack_based.eval": BooleanContract(
         parameterized=True,
+    ),
+    "stack_based.sstack": BooleanContract(
+        input_shape="char_stream",
     ),
     "stack_based.false": BooleanContract(
         input_shape="char_stream",

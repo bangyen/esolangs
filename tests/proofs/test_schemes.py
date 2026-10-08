@@ -43,16 +43,22 @@ _FOLD = 0.05
 #: a table whose tail is constant zero is cheaper (6.9% on the best
 #: one-dependency table) with no subtree involved, A Painter Ant's corridor
 #: stops where the trailing run of equal answers starts (36.4%), and Unsquare
-#: pushes only the cells the essential inputs address.  Named rather
+#: pushes only the cells the essential inputs address.  Cyclic tag, Bitwise
+#: Cyclic Tag, /// and A Painter Ant weight only the essential inputs
+#: (``input_weights``): an ignored one costs an empty rule, a bare ``0``, an
+#: ``X``-deleted bit or a bare ``SN``.  Named rather
 #: than derived because the proxy is structural and these are its known blind
 #: spot; a further such row has to be added here, which is the point -- the
 #: equality below then fails until the prose and this set agree.
 _FOLDS_WITHOUT_TREE = frozenset(
     {
+        "///",
         "A Painter Ant",
+        "Bitwise Cyclic Tag",
         "bit~",
         "Circlefuck",
         "Collatz Multiverse",
+        "Cyclic tag",
         "Dimensional",
         "Eval",
         "NoComment",

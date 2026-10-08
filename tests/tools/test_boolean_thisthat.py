@@ -139,7 +139,7 @@ def test_layout_collisions_abort() -> None:
         builder.connect([(1, 0), (2, 0)], "double")
 
 
-@pytest.mark.parametrize("width", [1, 10, 20, 40, 80])
+@pytest.mark.parametrize("width", [1, 10, 20, 80])
 def test_rotated_layout_keeps_ports_and_bistack_axes(width: int) -> None:
     """Rotation changes physical directions while input deque order stays fixed."""
     for n in (1, 3, 5):

@@ -391,3 +391,17 @@ Executed parity encodings at n=1..5 contain 135, 266, 501, 966, 1883 digits;
 all 62 input rows return parity. Their normalized costs 67.5, 33.25,
 20.875, 15.09375, 11.76875 are finite measurements, not a lower bound or
 an asymptotic limit.
+
+## Open problems
+
+**Factor leading constant.** Whether the limit exists, and its value,
+remain open; the bracket above has a 2.503391-fold gap. The lower side
+counts weighted exponent compositions after local normalization and
+first-output pruning; the upper side prices a traveling counter, fixed
+signed-ball blocks, and an almost-all prime-window covering bound. Parity
+encodings executed through five inputs determine neither limit.
+On the executed corpus, semantic deduplication only halves the count (a
+constant factor); `<>` is already in the forbidden set now that the
+tape grows left. Next: find a sound local rewrite that lowers the lower
+side's Perron root, or construct a cheaper weighted command stream to lower
+the upper one.

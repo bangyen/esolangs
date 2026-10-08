@@ -114,31 +114,11 @@ class TestParameterizedOneTwoThree:
                         bits,
                     )
 
-    def test_the_construction_emits_an_exact_template(self) -> None:
-        """``construct`` itself, pinned -- not the small route."""
-        from esolangs.tools.one_two_three.construction import construct
-
-        assert construct("01") == (
-            f"2222{_X}1111121211222222111111233222332233222211211211213311111111"
-            "122222222212331111111111"
-        )
-
-    def test_slots_run_in_name_order(self) -> None:
-        """Every emitted template embeds exactly two runs, one per input."""
-        from esolangs import tools as generators
-
-        for table_int in range(16):
-            table = format(table_int, "04b")
-            template = generators.one_two_three(table)
-            assert "{X" not in template
-            assert len(runs(template, TEMPLATE_CHAR, ((ZERO, ONE),) * 2)) == 2, table
-
     def test_both_bits_embed_at_the_same_width(self) -> None:
         """A zero and a one embed at equal width, so length leaks nothing."""
         from esolangs import tools as generators
 
-        for table_int in range(16):
-            table = format(table_int, "04b")
+        for table in witnesses(2):
             template = generators.one_two_three(table)
             sizes = {
                 len(self.instantiate(template, [(c >> 1) & 1, c & 1])) for c in range(4)
@@ -546,8 +526,7 @@ class TestParameterizedOneTwoThree:
         from esolangs import tools as generators
 
         for n in (1, 2, 3):
-            for table_int in range(2 ** (2**n)):
-                table = format(table_int, f"0{2**n}b")
+            for table in witnesses(n):
                 template = generators.one_two_three(table)
                 spans = runs(template, TEMPLATE_CHAR, ((ZERO, ONE),) * n)
                 assert len(spans) == n, (table, spans)
@@ -760,3 +739,28 @@ def test_a_malformed_template_is_refused() -> None:
         _in_name_order(_X, 2)
     with pytest.raises(ValueError, match="does not embed 1 inputs"):
         _in_name_order(_X + "1" + _X, 1)
+
+
+def test_ignored_trailing_inputs_idle_past_the_end() -> None:
+    """Each input past the last essential one appends a run that keeps rows below 0."""
+    from esolangs.interpreters.tape_based.one_two_three import _advance, _landings
+    from esolangs.tools.one_two_three import _IDLE, one_two_three
+
+    for fill in (ZERO, ONE):
+        code = _IDLE.replace(_X, fill)
+        for start in (-1, -2, -3):
+            state = (0, start, frozenset[int](), False)
+            while not state[3]:
+                ip, pos = state[0], state[1]
+                assert ip >= len(code) or (code[ip], pos) != ("2", -3), "a read"
+                state = _advance(state, code, _landings(code))
+            assert state[1] < 0, (fill, start)
+
+    base = "0110"
+    table = "".join(bit * 4 for bit in base)  # inputs 2 and 3 are ignored
+    template = one_two_three(table)
+    assert template == one_two_three(base) + _IDLE * 2
+    for row, want in enumerate(table):
+        bits = [row >> shift & 1 for shift in (3, 2, 1, 0)]
+        code = fill_runs(template, TEMPLATE_CHAR, ((ZERO, ONE),) * 4, bits)
+        assert one_two_three_result(code) == want, row

@@ -44,19 +44,6 @@ class TestParameterizedBfpda:
         # The first marker's ``<`` is dropped: ``@`` pushes a 1 onto the empty stack.
         assert template.startswith("@<$<@<$")
 
-    def test_program_structure(self) -> None:
-        """Each input is embedded once (pre-loaded), not re-embedded per node."""
-
-        from esolangs import tools as generators
-        from esolangs.tools.bfpda import BFPDA_PAIR
-        from esolangs.tools.helpers import runs
-
-        template = generators.bfpda("0110")
-        # ``runs`` refuses a stray ``$``, so two spans is exactly two embeds
-        assert runs(template, "$", (BFPDA_PAIR,) * 2) == [(2, 3), (6, 7)]
-        assert "{C0}" not in template  # the marker is a constant, not a complement
-        assert "{C1}" not in template
-
     def test_leaf_leaves_the_stack_empty(self) -> None:
         """A zero drains and prints the empty stack; a one prints the bottom marker."""
         from esolangs import tools as generators
@@ -71,4 +58,4 @@ class TestParameterizedBfpda:
         from esolangs import tools as generators
 
         total = sum(len(generators.bfpda(format(v, "08b"))) for v in range(256))
-        assert total == 16042
+        assert total == 14502

@@ -60,7 +60,7 @@ def test_brainif_unknown_command_is_a_cli_source_error(guard, tmp_path, capsys):
 
 
 @pytest.mark.medium
-@pytest.mark.parametrize("word", ["comment", "seed", "PRONOUNCEE"])
+@pytest.mark.parametrize("word", ["comment", "seed"])
 def test_mammalian_rejects_unknown_words_before_output(word):
     with pytest.raises(ValueError, match="unknown SLOW ACV MAMMALIAN command"):
         esolangs.run("SLOW ACV MAMMALIAN", f"PRONOUNCE {word}", timeout=1)

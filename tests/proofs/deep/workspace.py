@@ -16,27 +16,41 @@ from esolangs.registry import BY_BOOLEAN
 from scripts.benchmark import WrittenState
 from tests.proofs._ledger import load as load_ledger
 from tests.proofs.deep.execution import (
+    DENSE_ARITY,
     MAX_GROWTH,
     MIN_RUNGS,
     POLY_GROWTH,
     STEP_CAP,
+    STEP_GROWTH,
     WINDOW,
     _dense,
     _growth,
     _rows,
+    _step_growth,
+    run_to_answer,
 )
 from tests.proofs.deep.linearity import _regime_start
 from tests.tools.test_boolean_contract import _parity
 
 #: Cost band; see ``__main__.py``.
 BAND = "by-hand"
-COST = 55.0
+COST = 56.0
 
 #: Most growth a ``T log T`` row may show: T cells of ``log T``-bit values
 #: (BIO's loop counters, 123's painted indices) read x2.32, a quadratic x4.
 LOG_GROWTH = 2.5
 
 BOUND = {"poly n": POLY_GROWTH, "linear": MAX_GROWTH, "T log T": LOG_GROWTH}
+
+#: ``poly n`` rows whose dense increments may grow past ``STEP_GROWTH`` at
+#: these arities, each with the measurement that shows the bound bind later.
+#: Vandevelo's registers grow ~sqrt(T) until the n*n cap binds at n=14:
+#: written bits 2450, 3361, 3872, 4419, 4998 at n=13..17, increments 911,
+#: 511, 547, 579 -- polynomial -- but n=16 alone costs 34s, past the band.
+#: SLOW ACV MAMMALIAN's increments track per-level residues, not T: a
+#: command adds at most one cell, so its arrays hold 23 + S bytes for S
+#: poly n commands (dense x1.155); written bits 3077 at n=12, 3216 at 13.
+STEP_EXEMPT = frozenset({"SLOW ACV MAMMALIAN", "Vandevelo"})
 
 #: Arity ceilings, fixed for the reason ``linearity.py`` gives.  Written
 #: state is recounted every step, so a rung costs ~4x the last: 9 throughout
@@ -48,13 +62,17 @@ ARITY_OVERRIDE = {
     "b_tapemark": 7,
     "bfstack": 9,
     "circlefuck": 6,
+    # Below its n=8 route change, which leaves no five rungs in budget past
+    # it; the 9T + 3n - 12 bound holds at n=8 on all ten formula tables.
+    "circuit_diagram": 7,
     "dimensional": 7,
+    "factor": 8,
     "false": 9,
     "laserfuck": 9,
     "flowchart": 7,
     "line": 7,
+    "polynomial": 8,
     "rotfuck": 6,
-    "slow_acv_mammalian": 6,
     "streetcode": 7,
     "taglate": 7,
     "unlambda": 6,
@@ -71,6 +89,7 @@ class Growth:
     arity: int = 0
     bits: int = 0
     reason: str = ""
+    step: float | None = None
 
 
 def _written(name: str, table: str) -> int | None:
@@ -95,12 +114,8 @@ def _written(name: str, table: str) -> int | None:
             source, stdin = program, encode_inputs(name, bits, truth_table=table)
         machine = make_vm(name, source, stdin=stdin)
         state = WrittenState(machine.snapshot())
-        steps = 0
-        while not machine.halted and steps < STEP_CAP:
-            machine.step()
-            steps += 1
-            state.sample(machine.snapshot())
-        if steps < STEP_CAP and (worst is None or state.bits > worst):
+        steps = run_to_answer(machine, STEP_CAP, state.sample)
+        if steps is not None and (worst is None or state.bits > worst):
             worst = state.bits
     return worst
 
@@ -119,11 +134,24 @@ def _self_check() -> tuple[float, float, float]:
 
 
 def measure(
-    key: str, name: str, workspace: str, table: Callable[[int], str] = _parity
+    key: str,
+    name: str,
+    workspace: str,
+    table: Callable[[int], str] = _parity,
+    ceiling: int = MAX_ARITY,
 ) -> Growth:
     """Worst per-input written-state growth, past any route change."""
+    # An override above MAX_ARITY is a floor (FALSE, BFStack need the rungs),
+    # one below it a cap (slow to step); the dense pass raises the ceiling.
+    override = ARITY_OVERRIDE.get(key)
+    if override is None:
+        top = ceiling
+    elif override > MAX_ARITY:
+        top = max(override, ceiling)
+    else:
+        top = override
     series: list[tuple[int, int]] = []
-    for n in range(1, ARITY_OVERRIDE.get(key, MAX_ARITY) + 1):
+    for n in range(1, top + 1):
         try:
             bits = _written(name, table(n))
         except Exception:
@@ -137,7 +165,14 @@ def measure(
         return Growth(
             name, workspace, reason="too few rungs past the last route change"
         )
-    return Growth(name, workspace, _growth(past[-WINDOW:]), past[-1][0], past[-1][1])
+    return Growth(
+        name,
+        workspace,
+        _growth(past[-WINDOW:]),
+        past[-1][0],
+        past[-1][1],
+        step=_step_growth(past),
+    )
 
 
 def main() -> int:
@@ -157,9 +192,21 @@ def main() -> int:
         growth = measure(key, row.generator, row.workspace_class)
         if row.workspace_class == "poly n":
             # Parity has n ANF terms; a poly n claim must survive a dense table.
-            dense = measure(key, row.generator, row.workspace_class, _dense)
+            dense = measure(
+                key, row.generator, row.workspace_class, _dense, DENSE_ARITY
+            )
             if dense.ratio is None or (growth.ratio or 0) < dense.ratio:
                 growth = dense
+            step = dense.step
+            if step is not None and step > STEP_GROWTH:
+                if row.generator in STEP_EXEMPT:
+                    print(f"  {row.generator}: x{step:.3f} steps, exempt below its cap")
+                else:
+                    growth = Growth(
+                        row.generator,
+                        row.workspace_class,
+                        reason=f"dense increments grow x{step:.3f}, a hidden T",
+                    )
         measured.append(growth)
     print(f"Workspace contract: {len(measured)} generators\n")
     print(f"  {'generator':30s} {'class':7s} {'growth':>7s} {'bits':>8s}")

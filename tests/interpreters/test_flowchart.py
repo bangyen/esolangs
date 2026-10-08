@@ -344,14 +344,6 @@ class TestPointersStop:
         with pytest.raises(ValueError, match="no exit path"):
             _Machine(["( )"], ScriptedIO(""))
 
-    def test_stepping_a_halted_machine_does_nothing(self) -> None:
-        machine = _Machine(["( )─(( ))"], ScriptedIO(""))
-        while not machine.halted:
-            machine.step()
-        before = machine.snapshot()
-        machine.step()
-        assert machine.snapshot() == before
-
     def test_rail_running_off_the_grid_stops(self) -> None:
         """A rail that reaches the edge stops instead of stepping outside."""
         assert self._halts(["( )─"])

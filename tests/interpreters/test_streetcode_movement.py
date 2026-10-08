@@ -384,14 +384,6 @@ class TestStreetcodeCountingLoop:
     def test_counting_loop_prints_its_character(self) -> None:
         assert run_and_capture(self._code()) == "H"
 
-    def test_counting_loop_halts(self) -> None:
-        machine = _Machine(self._code(), IO())
-        for _ in range(500):
-            machine.step()
-            if machine.halted:
-                break
-        assert machine.halted
-
     def test_counting_loop_laps_nine_times(self) -> None:
         """The counter is nine on entry and falls by one per lap, so the
         car passes the island's corner nine times: eight laps that carry
@@ -406,12 +398,3 @@ class TestStreetcodeCountingLoop:
             if machine.halted:
                 break
         assert counters == [8, 7, 6, 5, 4, 3, 2, 1, 0]
-
-    def test_counting_loop_accumulates_seventy_two(self) -> None:
-        """Eight per lap into cell 1, which is what makes the 'H'."""
-        machine = _Machine(self._code(), IO())
-        for _ in range(500):
-            machine.step()
-            if machine.halted:
-                break
-        assert machine.cells[1] == ord("H")

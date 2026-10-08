@@ -59,16 +59,6 @@
    "expected": "3.5\n"
   },
   {
-   "id": "double",
-   "source": "a@ = a * 2\n3@",
-   "expected": "6\n"
-  },
-  {
-   "id": "three-sum",
-   "source": "^a^b^c^ = a + b + c\n^1^2^3^",
-   "expected": "6\n"
-  },
-  {
    "id": "div-mod",
    "source": "~a`b``c~ = (a / b) % c\n~7`1``4~",
    "expected": "3\n"

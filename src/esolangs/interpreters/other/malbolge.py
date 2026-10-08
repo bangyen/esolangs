@@ -25,6 +25,7 @@ from functools import lru_cache
 from esolangs._drive import drive
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.persistent import CHUNK, chunked
 from esolangs.interpreters.source_hints import syntax_error
 
 #: Instruction decipherment: ``(cell - 33 + c) % 94`` indexes this.
@@ -168,6 +169,11 @@ class _Machine:
         self.memory = _load(code)
         self.io = io
         self.state: _State = (0, 0, 0, False)
+        # ``snapshot``'s memory as fixed chunks, rebuilt only where a step
+        # wrote: an untouched chunk stays the same object between snapshots,
+        # so a per-step snapshot costs the writes, not all 59049 words.
+        self._chunks = list(chunked(self.memory))
+        self._dirty: set[int] = set()
 
     @property
     def halted(self) -> bool:
@@ -182,7 +188,10 @@ class _Machine:
         return None if self.halted else self.state[1]
 
     def snapshot(self) -> tuple[object, ...]:
-        return (*self.state, tuple(self.memory), self.io.position())
+        for at in self._dirty:
+            self._chunks[at] = tuple(self.memory[at * CHUNK : (at + 1) * CHUNK])
+        self._dirty.clear()
+        return (*self.state, tuple(self._chunks), self.io.position())
 
     def step(self) -> None:
         if self.halted:
@@ -197,6 +206,7 @@ class _Machine:
         self.state, writes, effect = _advance(self.state, self.memory, char_input)
         for address, value in writes:
             self.memory[address] = value
+            self._dirty.add(address // CHUNK)
         if effect is not None:
             self.io.print_char(chr(effect))
 

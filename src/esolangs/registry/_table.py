@@ -340,6 +340,13 @@ LANGUAGES: dict[str, Language] = {
         source_kind=SourceKind.RASTER,
         boolean=_boolean.piet,
     ),
+    "Piet++": Language(
+        "Piet++",
+        interpreter="stack_based.piet_plus_plus",
+        id=canonical_id("Piet++"),
+        source_kind=SourceKind.RASTER,
+        boolean=_boolean.piet_plus_plus,
+    ),
     "SLOW ACV MAMMALIAN": Language(
         "SLOW ACV MAMMALIAN",
         "tape_based.slow_acv_mammalian",
@@ -423,6 +430,12 @@ LANGUAGES: dict[str, Language] = {
         "register_based.sophie",
         boolean=_boolean.sophie,
         id="sophie",
+    ),
+    "SStack": Language(
+        "SStack",
+        "stack_based.sstack",
+        boolean=_boolean.sstack,
+        id="sstack",
     ),
     "Streetcode": Language(
         "Streetcode",
@@ -521,6 +534,12 @@ LANGUAGES: dict[str, Language] = {
         "tape_based.smallfuck",
         boolean=_boolean.smallfuck,
         id="smallfuck",
+    ),
+    "Smu": Language(
+        "Smu",
+        "stack_based.smu",
+        boolean=_boolean.smu,
+        id="smu",
     ),
     "Thue": Language(
         "Thue",

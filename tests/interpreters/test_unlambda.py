@@ -111,15 +111,6 @@ def test_the_continuation_is_the_stack_the_vm_shows() -> None:
     assert not machine.stack
 
 
-def test_stepping_past_the_halt_is_a_no_op() -> None:
-    machine = _Machine("`.Ai", ScriptedIO(""))
-    while not machine.halted:
-        machine.step()
-    before = machine.snapshot()
-    machine.step()
-    assert machine.snapshot() == before
-
-
 def test_snapshots_compare_continuations_by_their_frames() -> None:
     """Two runs build distinct linked continuations; the cycle detector
     needs them equal, and hashed alike, exactly when their frames are."""

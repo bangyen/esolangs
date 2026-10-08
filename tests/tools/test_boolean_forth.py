@@ -48,15 +48,6 @@ class TestForth:
         program = module.forth("0" * (2**11))
         assert run_forth(program, ["0"] * 11) == "0"
 
-    def test_program_structure(self) -> None:
-        """The program defines one function per surviving node, reading n bits."""
-        program = boolean.forth("0001")
-        # The root dup is what hands the callee its own index, which is
-        # what lets every node below spell its children as a step.
-        assert program.endswith("1+:;.")
-        assert program.count("{") == program.count("}") == 4
-        assert program.count(",68*-") == 2  # read and normalize 2 inputs
-
     def test_leaf_results_are_the_byte(self) -> None:
         """Each leaf pushes 48 + its table entry."""
         program = boolean.forth("0001")

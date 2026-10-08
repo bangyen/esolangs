@@ -30,7 +30,9 @@ def test_intercal_fitting_primitive_layout_keeps_its_source() -> None:
     assert evaluate_generated("INTERCAL", table, width=width) == table
 
 
-@pytest.mark.parametrize("width", [1, 6, 9, 17, 19, 20, 22, 40, 80])
+# One width per distinct layout of 0110: 17, 19 and 20 build the same
+# program, as do 40 and 80.
+@pytest.mark.parametrize("width", [1, 6, 9, 17, 22, 40])
 @pytest.mark.parametrize("as_string", [False, True])
 def test_intercal_split_operations_keep_public_provenance(
     width: int, *, as_string: bool

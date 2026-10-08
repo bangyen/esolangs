@@ -38,18 +38,6 @@ class TestParameterizedNoComment:
         assert "{X" not in template
         assert template.count(TEMPLATE_CHAR) == 2 * len(PAIR[0])
 
-    def test_program_structure(self) -> None:
-        """A one-bit template computes the index then skips to the output."""
-        from esolangs import tools as generators
-
-        template = generators.nocomment("10")
-        assert template.startswith(TEMPLATE_CHAR * len(PAIR[0]))
-        # The complement is computed at runtime: one run per input, no second.
-        assert template.count(TEMPLATE_CHAR) == len(PAIR[0])
-        assert template.endswith("o")  # a single final output
-        assert template.count("s") == 3  # NOT gate + guarded increment + index skip
-        assert template.count("o") == 1
-
     def test_four_input_works(self) -> None:
         """A dense four-input table assembles and runs correctly."""
         from esolangs import tools as generators

@@ -116,6 +116,9 @@ class _Machine:
                     "use only n/e/s/w or N/E/S/W to move, and p/P to paint",
                 )
         self.grid: dict[tuple[int, int], int] = {}
+        # ``snapshot``'s grid, rebuilt only after a paint changes a cell: past
+        # pass 1 almost none do, so a per-step snapshot stops costing O(grid).
+        self._frozen: frozenset[tuple[tuple[int, int], int]] | None = None
         self.visited: set[tuple[int, int]] = {(0, 0)}
         self.x = self.y = 0
         self.ip = 0
@@ -134,7 +137,9 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return (frozenset(self.grid.items()), self.x, self.y, self.ip)
+        if self._frozen is None:
+            self._frozen = frozenset(self.grid.items())
+        return (self._frozen, self.x, self.y, self.ip)
 
     @property
     def _state(self) -> _State:
@@ -149,10 +154,12 @@ class _Machine:
         self.x, self.y, self.ip, paint = move
         if paint is not None:
             cell, colour = paint
-            # Unconditional: 73.7% of paints are redundant but a guard
-            # measured slower (0.1113s vs 0.1095s).  Black is stored, not
+            # Guarded: 73.7% of paints are redundant, and only a real change
+            # may drop ``snapshot``'s cached grid.  Black is stored, not
             # deleted; ``_glyph``/``_colour`` read via ``grid.get(cell, 0)``.
-            self.grid[cell] = colour
+            if self.grid.get(cell) != colour:
+                self.grid[cell] = colour
+                self._frozen = None
         # Standing on a cell marks it visited.
         self.visited.add((self.x, self.y))
 

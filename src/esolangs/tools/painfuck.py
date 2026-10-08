@@ -13,6 +13,7 @@ from esolangs.tools.helpers import (
     _validate_truth_table,
     best_input_order,
     constant_span_test,
+    subtree_ids,
 )
 
 __all__ = ["painfuck"]
@@ -104,6 +105,7 @@ def _painfuck_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
             move(pos + 2)
 
     is_constant = constant_span_test(truth_table)
+    ids = subtree_ids(truth_table)
 
     def constant(level: int, combo: int) -> str | None:
         """Return the shared value of the subtree at ``(level, combo)``, else None."""
@@ -129,6 +131,11 @@ def _painfuck_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
         bit = 2 * perm[level]
         flag = bit + 1
         one = combo | (1 << (n - 1 - level))
+        below = ids[level + 1]
+        if below[combo >> (n - 1 - level)] == below[one >> (n - 1 - level)]:
+            # Both sides agree, so the bit cannot matter: emit one, untested.
+            branch(level, combo)
+            return
         move(flag)
         out.append("ps")  # flag = 1, pending
         move(bit)

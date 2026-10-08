@@ -55,6 +55,19 @@ def test_a_known_program_prints_its_greeting() -> None:
     assert run_program(run, HELLO) == "Hello, world."
 
 
+def test_the_snapshot_memory_follows_every_write() -> None:
+    """The chunked snapshot rebuilds written chunks and shares the rest."""
+    machine = _Machine(HELLO, ScriptedIO(""))
+    before = machine.snapshot()
+    while not machine.halted:
+        machine.step()
+        snapshot = machine.snapshot()
+        chunks = snapshot[4]
+        assert isinstance(chunks, tuple)
+        assert [word for chunk in chunks for word in chunk] == machine.memory
+    assert sum(a is not b for a, b in zip(chunks, before[4], strict=True)) < 100
+
+
 def test_a_one_character_program_halts_immediately() -> None:
     assert run_program(run, "Q") == ""
 

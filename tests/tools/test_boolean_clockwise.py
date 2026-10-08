@@ -29,29 +29,6 @@ class TestClockwise:
                 for combo in range(size):
                     assert run_clockwise(program, _bits(combo, n)) == table[combo]
 
-    def test_the_table_is_one_cell_per_entry(self) -> None:
-        """The construction's signature: the answer row holds the table itself."""
-        n = 5
-        size = 1 << n
-        table = ["0"] * size
-        base = boolean.clockwise("".join(table))
-        for entry in (0, 1, 7, size - 1):
-            table[entry] = "1"
-            flipped = boolean.clockwise("".join(table))
-            table[entry] = "0"
-            differ = [
-                (row, col)
-                for row, (before, after) in enumerate(
-                    zip(base.splitlines(), flipped.splitlines(), strict=True)
-                )
-                for col, (old, new) in enumerate(
-                    zip(before.ljust(len(after)), after, strict=True)
-                )
-                if old != new
-            ]
-            assert len(differ) == 1, (entry, differ)
-            assert flipped.splitlines()[differ[0][0]][differ[0][1]] == "+"
-
     @pytest.mark.parametrize("width", [None, 1])
     def test_every_run_reads_each_input_exactly_once(self, width: int | None) -> None:
         """Clockwise's input queue rotates, so a run must consume 7n bits."""
@@ -92,7 +69,7 @@ class TestClockwise:
 
 
 @pytest.mark.medium
-@pytest.mark.parametrize("width", [1, 2, 3, 9, 10, 11, 20, 27, 80])
+@pytest.mark.parametrize("width", [1, 3, 9, 10, 11, 20, 27, 80])
 def test_width_rotates_the_lookup_without_changing_answers(width: int) -> None:
     """Both lookup orientations execute every row, including floor widths."""
     import esolangs

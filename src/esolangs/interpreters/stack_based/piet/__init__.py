@@ -24,11 +24,12 @@ scanf leaves it unread.
 from __future__ import annotations
 
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from contextlib import suppress
 
 from esolangs._drive import drive
 from esolangs._source import raster_source as load_source
+from esolangs.interpreters.codels import DIRECTIONS, find_block, leave, slide
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.memory import parse_integer
 from esolangs.raster import Raster
@@ -67,71 +68,10 @@ _COLOURS: dict[Pixel, tuple[int, int]] = {
 
 _INTEGER = re.compile(r"[+-]?[0-9]+")
 
-# right, down, left, up
-_DIRECTIONS: tuple[Point, ...] = ((1, 0), (0, 1), (-1, 0), (0, -1))
-
 
 def _colour(pixel: Pixel) -> Pixel:
     """Return a standard colour, treating non-standard colours as white."""
     return pixel if pixel in _COLOURS or pixel in {WHITE, BLACK} else WHITE
-
-
-def _block(rows: tuple[tuple[Pixel, ...], ...], start: Point) -> set[Point]:
-    """Return the four-connected colour block containing ``start``."""
-    width, height = len(rows[0]), len(rows)
-    wanted = _colour(rows[start[1]][start[0]])
-    found = {start}
-    pending = [start]
-    while pending:
-        x, y = pending.pop()
-        for dx, dy in _DIRECTIONS:
-            point = x + dx, y + dy
-            px, py = point
-            if (
-                0 <= px < width
-                and 0 <= py < height
-                and point not in found
-                and _colour(rows[py][px]) == wanted
-            ):
-                found.add(point)
-                pending.append(point)
-    return found
-
-
-def _exit(block: set[Point], dp: int, cc: int) -> Point:
-    """Choose the block exit codel for the direction pointer and chooser."""
-    dx, dy = _DIRECTIONS[dp]
-    edge = max(x * dx + y * dy for x, y in block)
-    candidates = [point for point in block if point[0] * dx + point[1] * dy == edge]
-    # Image y grows downward: left of travel is (dy, -dx).
-    lx, ly = -cc * dy, cc * dx
-    return max(candidates, key=lambda point: point[0] * lx + point[1] * ly)
-
-
-def _slide(
-    rows: tuple[tuple[Pixel, ...], ...], start: Point, dp: int, cc: int
-) -> tuple[Point, int, int] | None:
-    """Slide from a white codel until colour or a repeated white state."""
-    width, height = len(rows[0]), len(rows)
-    point = start
-    seen: set[tuple[Point, int]] = set()
-    while True:
-        state = point, dp
-        if state in seen:
-            return None
-        seen.add(state)
-        dx, dy = _DIRECTIONS[dp]
-        target = point[0] + dx, point[1] + dy
-        x, y = target
-        if 0 <= x < width and 0 <= y < height:
-            colour = _colour(rows[y][x])
-            if colour == WHITE:
-                point = target
-                continue
-            if colour != BLACK:
-                return target, dp, cc
-        cc *= -1
-        dp = (dp + 1) % 4
 
 
 type _State = tuple[Point, int, int, tuple[int, ...], bool]
@@ -207,20 +147,20 @@ def _advance(
         return state, None
     colour = _colour(rows[current[1]][current[0]])
     if colour == WHITE:
-        slid = _slide(rows, current, dp, cc)
+        slid = slide(rows, current, dp, cc, _colour)
         return (
             (current, dp, cc, stack, True) if slid is None else (*slid, stack, False)
         ), None
-    block = _block(rows, current)
+    block = find_block(rows, current, _colour)
     for attempt in range(8):
-        exit_x, exit_y = _exit(block, dp, cc)
-        dx, dy = _DIRECTIONS[dp]
+        exit_x, exit_y = leave(block, dp, cc)
+        dx, dy = DIRECTIONS[dp]
         target = exit_x + dx, exit_y + dy
         x, y = target
         if 0 <= x < len(rows[0]) and 0 <= y < len(rows):
             target_colour = _colour(rows[y][x])
             if target_colour == WHITE:
-                slid = _slide(rows, target, dp, cc)
+                slid = slide(rows, target, dp, cc, _colour)
                 return (
                     (current, dp, cc, stack, True)
                     if slid is None

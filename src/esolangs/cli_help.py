@@ -41,7 +41,9 @@ commands:
     read-answer <language>      read a program's output on stdin and print
                                 the answer bit it carries
   Catalog:
-    list [--details] [--json]   list the supported languages
+    list [--details] [--json] [--generator | --interpreter-only]
+         [--source text|raster] [--answer output|dump|termination] [--inputs N]
+                                list languages matching their capabilities
     describe [--json] [--spec] <language>
                                 print how that language reads its input and
                                 where it puts the answer (--spec prints the
@@ -114,8 +116,11 @@ example:
   esolangs encode brainfuck 10 -> 10
 """,
     "list": """usage: esolangs list [--details] [--json]
+                     [--generator | --interpreter-only]
+                     [--source text|raster] [--answer output|dump|termination]
+                     [--inputs N]
 
-List the supported languages, one per line.
+List matching languages, one per line. Filters combine with AND.
 
 options:
   --details   add a marker column per language:
@@ -125,9 +130,16 @@ options:
                 ex     a committed program in examples/
                 int    interpreter-only: a classic kept for coverage, with
                        no generator, so `generate` refuses it
-  --json      print a JSON array instead: names alone, or with --details
-              an object per language carrying the same three facts as
-              booleans, so nobody has to parse the marker column.
+  --json      print a JSON array: names, or capability records with --details
+  --generator restrict to languages with a Boolean generator
+  --interpreter-only restrict to languages without a Boolean generator
+  --source    select text or raster source
+  --answer    select output, dump, or termination as the Boolean answer
+  --inputs N  select generators whose declared input cap admits positive N;
+              table-dependent restrictions still apply (shown by --details)
+
+example:
+  esolangs list --generator --source text --answer output --inputs 4 --details
 """,
     "generate": f"""usage: esolangs generate [--width [N] | --balance] [--bits BITS]
                          [--scale N] [--settings JSON] [--set KEY=VALUE]

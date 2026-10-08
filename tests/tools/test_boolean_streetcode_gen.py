@@ -22,7 +22,8 @@ class TestStreetcode:
     # One case per row, because each run rebuilds the machine and revalidates
     # the whole grid: nine in one test is 2.5s locally and over the band on a
     # slower runner.  The build is 0.03s of that, so splitting costs nothing.
-    @pytest.mark.parametrize("combo", [0, 1, 2, 17, 31, 32, 47, 62, 63])
+    # Between them every input is read as both a 0 and a 1.
+    @pytest.mark.parametrize("combo", [0, 31, 32, 63])
     def test_the_flat_lookup_addresses_every_entry(self, combo: int) -> None:
         """Each input's room walks the pointer by its own weight."""
         n = 6
@@ -215,17 +216,15 @@ def test_a_width_past_the_crossover_still_chooses_a_shape() -> None:
 
 @pytest.mark.parametrize("n", [1, 3, 6])
 @pytest.mark.parametrize("row", [0, 1, -1])
-@pytest.mark.parametrize("width", [1, 8])
-def test_quarter_turned_lookup_preserves_input_order(
-    n: int, row: int, width: int
-) -> None:
+def test_quarter_turned_lookup_preserves_input_order(n: int, row: int) -> None:
     from esolangs.interpreters.grid_based.streetcode import run
     from esolangs.interpreters.io import ScriptedIO
 
     table = "".join(str((value * 73 + value // 3) & 1) for value in range(1 << n))
     row %= len(table)
-    program = boolean.streetcode(table, width)
-    assert _columns(program) == (7 if width < 9 else 9)
+    # Every width under 9 builds this same seven-column program.
+    program = boolean.streetcode(table, 1)
+    assert _columns(program) == 7
     io = ScriptedIO(f"{row:0{n}b}")
     run(program.splitlines(), io)
     assert (io.getvalue(), io.reads) == (table[row], n)

@@ -4,6 +4,7 @@ from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
     constant_span_test,
+    subtree_ids,
 )
 
 __all__ = ["BFPDA_PAIR", "bfpda"]
@@ -43,6 +44,7 @@ def bfpda(truth_table: str) -> str:
         truth_table[int(f"{row:0{n}b}"[::-1], 2)] for row in range(2**n)
     )
     constant = constant_span_test(reflected)
+    ids = subtree_ids(reflected)
     pieces = [head]
 
     # Not routed through :func:`decision_tree_tokens`: a plain string with no
@@ -52,6 +54,11 @@ def bfpda(truth_table: str) -> str:
             pieces.append(leaf(i, reflected[lo]))
             return
         mid = (lo + hi) // 2
+        below = ids[i + 1]
+        if below[lo >> (n - i - 1)] == below[mid >> (n - i - 1)]:
+            pieces.append(">>")  # halves agree: drop bit and marker, untested
+            node(i + 1, lo, mid)
+            return
         # Each arm ends on an empty stack, so its ``]`` exits as it stands.
         pieces.append("[>>")
         node(i + 1, mid, hi)

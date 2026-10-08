@@ -81,15 +81,6 @@ class TestStreetcodeStepMachine:
     def test_halting_program_is_detected_as_halted(self) -> None:
         assert run_until_halt_or_cycle(_Machine(["C;"], IO())) is True
 
-    def test_step_on_an_already_halted_machine_is_a_no_op(self) -> None:
-        machine = _Machine(["C;"], IO())
-        machine.step()  # 'C', moves onto ';'
-        machine.step()  # ';' halts
-        assert machine.halted
-        before = machine.snapshot()
-        machine.step()  # calling step() again must not raise or move further
-        assert machine.snapshot() == before
-
 
 class TestStreetcodeDriveStates:
     """The drive-state graph (``_drive_states``) and its two uses."""

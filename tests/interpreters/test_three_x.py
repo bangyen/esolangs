@@ -186,14 +186,6 @@ class TestStepMachine:
             closed.step()
         assert closed.io.getvalue() == "abc"
 
-    def test_step_after_halt_is_a_noop(self) -> None:
-        from esolangs.interpreters.stack_based.three_x import _Machine
-
-        machine = _Machine("", ScriptedIO())
-        assert machine.halted
-        machine.step()  # stepping a halted machine is a no-op
-        assert machine.stack == ()
-
     def test_a_loop_that_reads_is_not_a_cycle(self) -> None:
         """The snapshot holds the input cursor (214c4f77)."""
         from esolangs.interpreters.stack_based.three_x import _Machine

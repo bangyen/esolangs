@@ -37,15 +37,18 @@ def test_terminal_transfer_corpus(n: int) -> None:
 @pytest.mark.medium
 def test_three_input_digit_total() -> None:
     total = sum(len(factor(format(i, "08b"))) for i in range(256))
-    assert total == 111004
+    assert total == 103587
     assert total * 100 < 106465 * 105
 
 
 def test_terminal_tree_character_bound() -> None:
     rng = random.Random(918)
     for n in range(2, 13):
-        bound = 27 * 2 ** (n - 1) + 16 * n + 14
-        assert len(_program("10" * 2 ** (n - 1))) == bound
+        # Siblings that agree go untested, so at most half the bottom pairs
+        # are the costlier "10"; parity reaches that with "10" and "01".
+        bound = 51 * 2 ** (n - 2) + 16 * n + 14
+        parity = "".join(str(r.bit_count() & 1) for r in range(2**n))
+        assert len(_program(parity)) == bound
         tables = (
             [format(i, f"0{2**n}b") for i in range(2 ** (2**n))]
             if n <= 3

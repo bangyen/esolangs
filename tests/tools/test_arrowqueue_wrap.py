@@ -11,7 +11,8 @@ from tests.tools.fills import _instantiate_arrowqueue
 from tests.witness_tables import witnesses
 
 
-@pytest.mark.parametrize("width", [1, 5, 80, None])
+# 80 builds what None does.
+@pytest.mark.parametrize("width", [1, 5, None])
 @pytest.mark.parametrize(
     "table",
     ["0110", "00010111", "01101001" * 4],
@@ -37,7 +38,7 @@ def test_arrowqueue_replaces_an_overwide_tree() -> None:
     assert arrowqueue(table, 80) == arrowqueue(table)
 
 
-@pytest.mark.parametrize("width", [1, 4, 5, 6, 80])
+@pytest.mark.parametrize("width", [1, 5, 6, 80])
 def test_arrowqueue_narrow_leaf_ring_executes_the_witness_tables(width: int) -> None:
     for inputs in range(1, 4):
         for table in witnesses(inputs):

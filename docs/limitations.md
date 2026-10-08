@@ -138,12 +138,11 @@ Loading dominates Factor (integer factorization) and Circuit Diagram (parsing
 super-linear area); it is intentionally excluded from execution time.
 
 FRACTRAN's row-addressing tree costs `Theta(T log T)`, but that is not a
-language floor. The shipped generator packs `w = Theta(n)` entries into an
-exponent and pays for `3T / w` addresses, giving `Theta(T)` text and
-`O(2**w)` execution. At n=12 it emits 8.93 characters per entry versus 23.6
-for the tree; same-parity difference ratios satisfy the contract from n=6.
-The construction, counting floor, and time tradeoff are in
-[fractran](proofs/fractran.md) and `tests/proofs/deep/fractran_packed.py`.
+language floor. The shipped generator gives equal subtables one state, so
+it names `O(T / log T)` primes of `O(log T)` digits: `Theta(T)` text, and at
+most `n + 1` fractions fire a run. At n=12 it emits 3.81 characters per entry
+versus 23.6 for the tree. The construction and the counting floor are in
+[fractran](proofs/fractran.md) and `tests/proofs/deep/fractran_shared.py`.
 
 The execution contract in `tests/proofs/deep/execution.py` holds every
 generator's command count linear. Bracket matching is precomputed at load.
@@ -171,7 +170,7 @@ the 1792 level-0 rows.
 
 ## Curation
 
-The collection has 80 languages; its floor is 31. All ten classics have
+The collection has 81 languages; its floor is 31. All ten classics have
 generators. Removed: unused ordinary imperative entries with shared-shim
 generators; Nopstacle for incompatible embeds; ZTOALC L for a searched
 syntax-level lookup table. The 2D screen intersected
@@ -193,7 +192,8 @@ Below 60, a language is admitted only as a first implementation: when the
 repo adds it, no implementation exists but the maintainer's. Its page is in
 the Unimplemented category, or the edit that first tagged it Implemented is
 User:Bangyen's. An intrinsic axis can choose between such candidates; it
-admits nothing alone.
+admits nothing alone and removes nothing. A stalled generator row moves to
+the [roadmap](roadmap.md#parked)'s Parked section; the language stays.
 
 Recognition sources checked 2026-10-01 supply selections, not admission gates
 or popularity rankings:
@@ -227,9 +227,11 @@ Existing fame exceptions must still clear the bar. Whitespace was removed at
 58 backlinks.
 
 The 2026-10-06 census (`tests/fixtures/curation.json`) records each
-language's backlinks and route: 21 clear the fame gate and 53 are first
-implementations. Six were implemented elsewhere when added, all before the
-rule was written down on 2026-09-27, and are grandfathered: BIO (ais523),
+language's backlinks and route: 21 clear the fame gate and 54 are first
+implementations; SStack (4), Smu (4, remeasured 2026-10-07) and Piet++
+(8), all Unimplemented, were added after. Six were implemented elsewhere
+when added, all before the rule was written down on 2026-09-27, and are
+grandfathered: BIO (ais523),
 BF-PDA (Madk, 2010), 123 (a 2012 VB.NET interpreter), NoComment, Sophie
 (their authors') and Jaune (two others'). Befunge-98 (Funge-98, 31, two
 dozen implementations) came after and was removed on 2026-10-06.
@@ -238,7 +240,14 @@ A route admits a language only when its specification fixes the core
 semantics. 3D Brainfuck was removed on 2026-10-06: its page never says how
 a linear source places blocks in the grid or what the generation pointer
 does, so its interpreter invented the core, the invented semantics the
-大白话 deferral rules out.
+大白话 deferral rules out. Transistor (2) was built and dropped on
+2026-10-07 for the same reason: its page gives no grammar and no I/O, and
+its one loop example calls an undefined `or`.
+
+Piet++ (8) is a first implementation: the page is in the Unimplemented
+category, and the only other code is a partial C# executor (Esolang-NET/Piet)
+whose Read, Write and Roll-Context are no-ops, so it cannot arbitrate the
+conventions below.
 
 Bitwise Cyclic Tag (181) also adds the cyclic-schedule axis. Deadfish (315)
 is interpreter-only because it has no input vocabulary.
@@ -378,6 +387,10 @@ languages remain rejected from the same image-source screen.
   wiki cat's final empty pop pads to a trailing NUL.
 - LaserFuck inherits Brainfuck commands without defining EOF: exhausted input
   raises `EOFError`.
+- SStack's page has no example with a stated output; its brainfuck
+  interpreter is marked untested. Popping an empty stack reads 0 and leaves it
+  empty, `:x:` peeks and raises `HaltError` above 255, EOF raises, and
+  whitespace is discarded anywhere, inside a token too.
 - BrainIf rejects unknown commands, including those under a false guard.
   `inc`, `left` and `right` remain aliases for the canonical commands.
 - SLOW ACV MAMMALIAN rejects unknown words; commands are uppercase and
@@ -413,5 +426,16 @@ languages remain rejected from the same image-source screen.
   before the rotation ("after the instruction is executed"). The wiki Hello
   World prints no greeting under any direction or seek timing. The generator
   targets the default only.
+- Smu reads an unset variable as empty, as the wiki cat needs at EOF.
+  Bits ride bytes low bit first, as in Boolfuck, so the cat copies bytes;
+  output `=` prints nothing, `(` or `)` halts, and an unbalanced program
+  popped to run halts. The page's expanded cat drops the `=` after `(+=)`
+  and forces a leading 1; the compact source fixes the repair.
+- Piet++ settles its open conventions from the page text alone (the module
+  docstring names each): Read and Write pop their x operand and offset from
+  the codel just entered; a Write lands at once and may recolour the running
+  block; invalid or ill-typed commands are ignored without popping, as the
+  page recommends; a codel is one pixel.  XKCD Random Number (`4`) and
+  User:Miui/Nah. (`Nah.`) pin the delta sign.
 - Pinyin is rejected: its spelling rule contradicts its examples and its
   input-1 truth-machine example has no deterministic reading.

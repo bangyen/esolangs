@@ -36,8 +36,10 @@ def _parity(n: int) -> str:
 
 
 @pytest.mark.medium
-@pytest.mark.parametrize("width", [1, 7, 13, 40, 80, 200])
-@pytest.mark.parametrize("table", ["00", "11", "0110", "01101001", _dense(5)])
+# Wrapping depends on the width and the program length, not the table: the
+# one-char floor, a stride, and one wider than most lines.
+@pytest.mark.parametrize("width", [1, 13, 200])
+@pytest.mark.parametrize("table", ["0110", _dense(5)])
 def test_wrapping_preserves_loaded_addresses_and_output(table: str, width: int) -> None:
     plain = boolean.malbolge(table)
     wrapped = generate("Malbolge", table, width=width)

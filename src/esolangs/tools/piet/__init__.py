@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from functools import cache
 
@@ -123,36 +124,42 @@ def _next_colour(colour: tuple[int, int, int], change: Change) -> tuple[int, int
     )
 
 
-@cache
-def _generate(truth_table: str) -> Raster:
-    """Return a Piet raster computing ``truth_table`` in linear space."""
-    inputs = _validate_truth_table(truth_table)
-    operations = _operations(truth_table, inputs)
+Pixel = tuple[int, int, int]
 
-    # A three-codel initial block reaches row 1.  Its pop is ignored on the
-    # empty stack; the final vertical block is entered at its middle codel,
-    # so every DP/CC exit is blocked and the program terminates.
-    colour = (255, 192, 192)
-    blocks: list[tuple[tuple[int, int, int], int]] = []
-    colour = _next_colour(colour, _POP)
+
+def strip(
+    operations: list[_Operation],
+    initial: Pixel,
+    next_colour: Callable[[Pixel, Change], Pixel],
+) -> Raster:
+    """Lay ``operations`` out as one row of blocks, Piet traversal rules.
+
+    A three-codel initial block reaches row 1.  Its pop is ignored on the
+    empty stack; the final vertical block is entered at its middle codel,
+    so every DP/CC exit is blocked and the program terminates.
+    """
+    blocks: list[tuple[Pixel, int]] = []
+    colour = next_colour(initial, _POP)
     for operation in operations:
         blocks.append((colour, operation.size))
-        colour = _next_colour(colour, operation.change)
+        colour = next_colour(colour, operation.change)
 
     width = 2 + sum(size for _, size in blocks) + 1
     rows = [[BLACK for _ in range(width)] for _ in range(3)]
-    initial = (255, 192, 192)
-    rows[0][0] = initial
-    rows[1][0] = initial
-    rows[1][1] = initial
+    rows[0][0] = rows[1][0] = rows[1][1] = initial
     x = 2
     for block_colour, size in blocks:
         rows[1][x : x + size] = [block_colour] * size
         x += size
-    rows[0][x] = colour
-    rows[1][x] = colour
-    rows[2][x] = colour
+    rows[0][x] = rows[1][x] = rows[2][x] = colour
     return Raster(tuple(tuple(row) for row in rows))
+
+
+@cache
+def _generate(truth_table: str) -> Raster:
+    """Return a Piet raster computing ``truth_table`` in linear space."""
+    inputs = _validate_truth_table(truth_table)
+    return strip(_operations(truth_table, inputs), (255, 192, 192), _next_colour)
 
 
 def piet(truth_table: str, width: int | None = None, *, scale: int = 1) -> Raster:

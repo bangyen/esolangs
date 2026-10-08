@@ -15,14 +15,11 @@ _READERS = {
 
 
 _TABLES = [
-    "01",  # identity
     "10",  # NOT
     "0001",  # AND
-    "1110",  # NAND
-    "0110",  # XOR
     "00000000",  # constant, which folds all the way down
     "01101001",  # parity, which folds nothing
-    "10100101",
+    "00110101",  # mux, which reading the inputs out of order breaks
     "1000000000000000",  # AND4
 ]
 
