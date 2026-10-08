@@ -7,6 +7,7 @@ from esolangs.tools.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
     essential_inputs,
+    input_weights,
     read_at,
 )
 
@@ -359,6 +360,9 @@ def _brainif_tree(truth_table: str, width: int | None, *, prune: bool = True) ->
     # Equal halves skip exactly the nonessential inputs. Decide before
     # allocating entries; the unpruned tree retains its arity cutoff.
     if (len(essential_inputs(truth_table, n)) if prune else n) > _TREE_LEVELS:
+        if prune:
+            weights, projected = input_weights(truth_table, n)
+            return _brainif_linear(projected, weights)
         return _brainif_linear(truth_table)
     entries = _brainif_tree_entries(truth_table, n, prune=prune)
     return _brainif_resolve(entries, width)
@@ -376,7 +380,9 @@ def _top_level(n: int) -> int:
     Levels ``i < j`` share a marker position exactly when ``j - i ==
     2**(n-1-j)``, and ``m_i = 2**(n-1-i)`` must be even for a two-cell loop
     iteration.  Halving the arity clears both at once: ``top <= (n-2)/2``
-    leaves ``2**(n-1-top) >= 2**(n/2)``, which outgrows ``top``.
+    leaves ``2**(n-1-top) >= 2**(n/2)``, which outgrows ``top``.  ``n`` counts
+    the essential inputs; :class:`_Strip` re-checks the pairs once ignored ones
+    sit between the levels.
     """
     return min(_LOOP_LEVELS, (n - 2) // 2)
 
@@ -389,22 +395,32 @@ class _Strip:
     bit instead, which is what stops that level's loop.
     """
 
-    def __init__(self, cells: str, n: int) -> None:
-        """Place the markers and fix the alphabet for an ``n``-input table."""
+    def __init__(self, cells: str, weights: list[int]) -> None:
+        """Place the markers and fix the alphabet; ``weights[i]`` is ``m_i``.
+
+        An ignored input weighs 0 and only steps the pointer.  Levels ``i < j``
+        share a marker cell exactly when ``(j - i) % (2 * m_j) == m_j``; the
+        looped levels are the widest ones up to the first such pair.
+        """
         self.cells = cells
         size = len(cells)
-        top = _top_level(n)
-        self.levels = list(range(top + 1))
+        essential = [i for i, w in enumerate(weights) if w]
+        self.levels: list[int] = []
+        for i in essential[: _top_level(len(essential)) + 1]:
+            if any((i - j) % (2 * weights[i]) == weights[i] for j in self.levels):
+                break
+            self.levels.append(i)
         #: ``2 * m_i``: the period of level ``i``'s marker class.
-        self.period = {i: 1 << (n - i) for i in self.levels}
+        self.period = {i: 2 * weights[i] for i in self.levels}
         #: Level ``i``'s walk starts at ``size - 2 - i`` (mod its period) and
         #: ends ``m_i`` cells left of it, which is where its marker goes.
         self.first = {
-            i: (size - 2 - i - (1 << (n - 1 - i))) % self.period[i] for i in self.levels
+            i: (size - 2 - i - weights[i]) % self.period[i] for i in self.levels
         }
         # The deepest looped level has the most markers, so it takes the
         # cheapest value: a climb to v costs v lines, once per marker.
-        self.value = {i: 4 + 2 * (top - i) for i in self.levels}
+        top = len(self.levels) - 1
+        self.value = {i: 4 + 2 * (top - rank) for rank, i in enumerate(self.levels)}
         self.level_at: dict[int, int] = {}
         for i in self.levels:
             for pos in range(self.first[i], size, self.period[i]):
@@ -431,6 +447,9 @@ class _Strip:
         """
         if modulus is None:
             return [self.at(residue)]
+        if modulus == 1:
+            # Past the weight-1 level an ignored read's parity is unknown.
+            return sorted(self.alphabet[0] | self.alphabet[1])
         parity = residue % 2
         out = {2 * parity, 2 * parity + 1}
         for i in self.levels:
@@ -442,7 +461,7 @@ class _Strip:
         return sorted(out)
 
 
-def _brainif_linear(truth_table: str) -> str:
+def _brainif_linear(truth_table: str, weights: list[int] | None = None) -> str:
     """Emit a linear spatial lookup for BrainIf.
 
     One cell an entry, carrying its bit *and* its parity -- ``{0, 1}`` even,
@@ -465,11 +484,17 @@ def _brainif_linear(truth_table: str) -> str:
     widest levels are worth (:data:`_LOOP_LEVELS`) -- level 0 alone is half
     the crossings and costs one marker.  Commands take the short spellings
     the interpreter matches by substring.
+
+    ``weights`` gives each input's row weight (see
+    :func:`~esolangs.tools.helpers.input_weights`); an ignored input, weight 0,
+    is read and stepped past, and ``truth_table`` is then its projection.
+    The default is every input essential.
     """
-    n = _validate_truth_table(truth_table)
+    n = len(weights) if weights else _validate_truth_table(truth_table)
+    weights = weights or [1 << (n - 1 - i) for i in range(n)]
     cells = truth_table + "0" * n
     size = len(cells)
-    strip = _Strip(cells, n)
+    strip = _Strip(cells, weights)
     lines: list[str] = []
     labels: dict[str, int] = {}
 
@@ -494,8 +519,14 @@ def _brainif_linear(truth_table: str) -> str:
     # sits at ``size - 1 - i`` mod ``2**(n-i)`` -- exactly, for level 0.
     for i in range(n):
         far, after = f"far_{i}", f"after_{i}"
-        known = None if i == 0 else 1 << (n - i)
+        # Every higher bit moves the pointer a multiple of the smallest
+        # higher weight, so the read cell's class is known modulo it.
+        known = next((w for w in reversed(weights[:i]) if w), None)
         guard(size - 1 - i, known, "input")
+        if not weights[i]:
+            lines.append(f"if {_ASCII_ZERO} left")
+            lines.append(f"if {_ASCII_ONE} left")
+            continue
         lines.append(f"if {_ASCII_ZERO} goto @{far}")
         lines.append(f"if {_ASCII_ONE} left")
         guard(size - 2 - i, known, f"goto @{after}")
@@ -504,7 +535,7 @@ def _brainif_linear(truth_table: str) -> str:
         if i in strip.levels:
             _emit_loop(lines, labels, strip, i, size)
         else:
-            for k in range(1 << (n - 1 - i)):
+            for k in range(weights[i]):
                 guard(size - 2 - i - k, known, "left")
         mark(after)
 

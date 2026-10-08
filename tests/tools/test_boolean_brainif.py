@@ -174,3 +174,15 @@ def test_brainif_unpruned_large_tree_uses_spatial_fallback() -> None:
     program = _brainif_tree(table, 1, prune=False)
     for row in [0, 1, 7, 13, 31]:
         assert run_brainif(program, list(format(row, "05b"))) == table[row]
+
+
+def test_linear_lookup_drops_ignored_inputs() -> None:
+    """A 6-input table ignoring its last input: smaller, and every row executes."""
+    from esolangs import generate
+
+    small = "".join(str((row * 73 + row // 3) % 2) for row in range(32))
+    table = "".join(bit * 2 for bit in small)
+    program = generate("BrainIf", table, width=1)
+    assert len(program) < 0.8 * len(generate("BrainIf", small + small[::-1], width=1))
+    for row in range(64):
+        assert run_brainif(program, list(format(row, "06b"))) == table[row]
