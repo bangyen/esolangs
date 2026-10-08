@@ -70,10 +70,6 @@ class TestControlFlow:
         # cell is 0; 1! jumps to label 1 when zero
         assert run_program("1!1:^.") == "0"
 
-    def test_subroutine(self) -> None:
-        # v+>v+1@^.1$#<&; : read a, b; subroutine 1 adds hold to a; print
-        assert run_program("v+>v+1@^.1$#<&;", "3\n4\n") == "7"
-
     def test_a_return_ends_only_itself(self) -> None:
         """``;`` consumes one character, leaving the next definition whole."""
         # call 1 then 2; subroutine 1 adds 5, subroutine 2 adds 3

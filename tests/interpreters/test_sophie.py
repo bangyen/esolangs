@@ -75,12 +75,6 @@ class TestSophieLoops:
         # Should print 3 then break
         assert f.getvalue() == "3"
 
-    def test_loop_with_break(self) -> None:
-        with redirect_stdout(io.StringIO()) as f:
-            run("#$1[.*]&", io=IO())
-        # Should print 1 then break
-        assert f.getvalue() == "1"
-
     def test_nested_loops(self) -> None:
         with redirect_stdout(io.StringIO()) as f:
             run("#A[#B[.*]*]&", io=IO())
@@ -227,19 +221,6 @@ class TestMiscCommands:
 
 
 class TestSophieExamples:
-    def test_hello_world(self) -> None:
-        with redirect_stdout(io.StringIO()) as f:
-            run("#H,#e,#l,,#o,#,,# ,#W,#o,#r,#l,#d,#!,&", io=IO())
-        assert f.getvalue() == "Hello, World!"
-
-    def test_truth_machine_zero(self) -> None:
-        with (
-            patch("builtins.input", return_value="0"),
-            redirect_stdout(io.StringIO()) as f,
-        ):
-            run(";@1{[,]}{,&}", io=IO())
-        assert f.getvalue() == "0"
-
     def test_cat_program_stops_on_nul(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
 

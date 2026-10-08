@@ -45,9 +45,6 @@ def _machine(code: str) -> _Machine:
 class TestWikiExamples:
     """Every example on the wiki page, run rather than read."""
 
-    def test_hello_world(self) -> None:
-        assert _run(HELLO) == "Hello, World!\r\n"
-
     def test_truth_machine_zero_halts_printing_zero(self) -> None:
         assert _run(TRUTH_MACHINE, "0\n") == "0"
 

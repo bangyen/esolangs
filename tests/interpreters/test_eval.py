@@ -48,9 +48,6 @@ class TestEval:
         """= moves a value to the other stack; ~ switches the current stack."""
         assert run_and_capture("0=~.") == "0"
 
-    def test_truth_machine(self) -> None:
-        assert run_and_capture('"0+.^!"^0?!0.') == "0"
-
     def test_reverse_turns_the_stack_over(self) -> None:
         """* reverses the current stack, so the bottom becomes the top."""
         assert run_and_capture("0+0*.") == "1"

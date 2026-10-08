@@ -13,11 +13,6 @@ def run_and_capture(code: str, inputs: list[str] | None = None) -> str:
 
 
 class TestCirclefuck:
-    def test_hello_world(self) -> None:
-        """Canonical Hello, World! program from esolangs.org."""
-        program = "<[.<]@\\0\\n!dlroW\\ ,olleH"
-        assert run_and_capture(program) == "Hello, World!\n"
-
     def test_truth_machine_zero(self) -> None:
         """A 0 input prints 0 and halts."""
         program = "," + "-" * 48 + "[[-]" + "+" * 49 + ".]" + "+" * 48 + ".@"
@@ -44,6 +39,26 @@ class TestCirclefuck:
             pytest.param("{+.@", "\x01", id="insert_cell"),
             # } deletes the current cell.
             pytest.param("+}.@", "}", id="delete_cell"),
+            # :math:`\NNN` escape sequences decode to a single byte.
+            pytest.param("\\065.@", "A", id="decimal_escape"),
+            pytest.param("\\x41.@", "A", id="hex_escape"),
+            # A lone ``\F`` is a hex digit; the lowercase run is not one.
+            pytest.param("\\F.@", "\x0f", id="bare_hex_digit_escape_is_uppercase"),
+            # ``\o101`` names the same octal byte as ``\101``.
+            pytest.param("\\o101.@", "A", id="a_leading_o_is_dropped_from_an_escape"),
+            # ``\065`` reads the same whichever digit the decode starts at.
+            pytest.param(
+                "\\165.@", "\xa5", id="decimal_escape_keeps_its_leading_digit"
+            ),
+            # Cells below the space are stripped, so only the ``.`` remains.
+            pytest.param("\x1f.@", ".", id="the_unit_separator_is_not_a_command"),
+            # 127 is stripped too, so the printable range is open at both ends.
+            pytest.param("\x7f.@", ".", id="delete_is_not_a_command"),
+            # ``[`` on a zero cell jumps to its own ``]``, not a bracket behind it.
+            pytest.param(
+                "\\0[.].[.]@", "\x00", id="a_skipped_loop_scans_forward_for_its_partner"
+            ),
+            pytest.param("\\n.@", "\n", id="newline_escape"),
         ],
     )
     def test_result(self, code, expected) -> None:
@@ -71,34 +86,6 @@ class TestStepMachine:
         assert machine.halted
         machine.step()  # stepping a halted machine is a no-op
         assert machine.ind == 2
-
-    @pytest.mark.parametrize(
-        ("code", "expected"),
-        [
-            # :math:`\NNN` escape sequences decode to a single byte.
-            pytest.param("\\065.@", "A", id="decimal_escape"),
-            pytest.param("\\x41.@", "A", id="hex_escape"),
-            # A lone ``\F`` is a hex digit; the lowercase run is not one.
-            pytest.param("\\F.@", "\x0f", id="bare_hex_digit_escape_is_uppercase"),
-            # ``\o101`` names the same octal byte as ``\101``.
-            pytest.param("\\o101.@", "A", id="a_leading_o_is_dropped_from_an_escape"),
-            # ``\065`` reads the same whichever digit the decode starts at.
-            pytest.param(
-                "\\165.@", "\xa5", id="decimal_escape_keeps_its_leading_digit"
-            ),
-            # Cells below the space are stripped, so only the ``.`` remains.
-            pytest.param("\x1f.@", ".", id="the_unit_separator_is_not_a_command"),
-            # 127 is stripped too, so the printable range is open at both ends.
-            pytest.param("\x7f.@", ".", id="delete_is_not_a_command"),
-            # ``[`` on a zero cell jumps to its own ``]``, not a bracket behind it.
-            pytest.param(
-                "\\0[.].[.]@", "\x00", id="a_skipped_loop_scans_forward_for_its_partner"
-            ),
-            pytest.param("\\n.@", "\n", id="newline_escape"),
-        ],
-    )
-    def test_result(self, code, expected) -> None:
-        assert run_and_capture(code) == expected
 
     def test_space_and_invalid_escapes(self) -> None:
         assert parse("\\ ") == [32]

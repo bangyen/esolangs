@@ -401,6 +401,10 @@ class TestEdgeCases:
             ("begin;var v;set v 65.5;out v;end;", "not a character code"),
             # A non-numeric list index.
             ('begin;var v;set v at{"ab", nil};end;', "index is not a number"),
+            # ``len`` with three arguments.
+            ('begin;var v;set v len{"ab", 1, 2};end;', "optionally a count"),
+            # ``at`` with four.
+            ('begin;var v;set v at{"ab", 0.5, 65, 1};end;', "optionally a value"),
         ],
     )
     def test_invalid_operations_raise_halt_error(
@@ -499,20 +503,6 @@ class TestFunctionDefinitionEdges:
         assert _run(["begin;var v;set v 130/2;out v;end;"]) == "A"
         with pytest.raises(HaltError, match="division by zero"):
             run(["begin;var v;set v 1/0;end;"], ScriptedIO())
-
-    @pytest.mark.parametrize(
-        ("program", "message"),
-        [
-            # ``len`` with three arguments.
-            ('begin;var v;set v len{"ab", 1, 2};end;', "optionally a count"),
-            # ``at`` with four.
-            ('begin;var v;set v at{"ab", 0.5, 65, 1};end;', "optionally a value"),
-        ],
-    )
-    def test_builtin_arity_errors(self, program: str, message: str) -> None:
-        """A builtin called with the wrong number of arguments halts."""
-        with pytest.raises(HaltError, match=message):
-            run([program], ScriptedIO())
 
     @pytest.mark.parametrize(
         ("lines", "message"),
