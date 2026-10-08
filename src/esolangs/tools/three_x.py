@@ -29,8 +29,7 @@ __all__ = ["three_x"]
 def _level(length: int) -> dict[Fraction, str]:
     """Return the constants whose shortest program is ``length`` characters.
 
-    Pure and memoized: a level depends only on the levels below it, so
-    concurrent first calls agree instead of racing a shared growing table.
+    Pure and memoized per length.
     """
     if length == 1:
         return {Fraction(3): "3"}
@@ -65,11 +64,7 @@ def _constants(count: int) -> list[str]:
 
 
 _ZERO = "333x"  # (3 - 3) / 3
-
-
 _ONE = "3333x3x"  # (3 - 0) / 3
-
-
 _NEG_ONE = "33333xx"  # (0 - 3) / 3
 
 
@@ -109,9 +104,7 @@ def three_x(truth_table: str) -> str:
     **The tree splits in whichever order emits the shortest program**
     (:func:`~esolangs.tools.helpers.best_input_order`), spelled in the store
     targets: stream input ``i`` is stored into the name tested at depth
-    ``perm.index(i)``.  The screen fires on 17.2% of tables at n=3 (44 of
-    256) and 31.9% at n=4 -- unlike Circlefuck (over-estimate) or
-    S*bleq/BrainIf (under-estimate).
+    ``perm.index(i)``.
     """
     return best_input_order(truth_table, _three_x_ordered)
 
@@ -171,6 +164,7 @@ def _three_x_build(
         ``""`` means the value depends on bits below, which only costs the
         caller's next sibling its skipped writes.
         """
+        nonlocal top
         if constant(lo, hi):
             if table[lo] != ambient:
                 write(table[lo])
@@ -185,7 +179,6 @@ def _three_x_build(
                 copy(level, complement=True)
                 return ""
 
-        nonlocal top
         mid = (lo + hi) // 2
         first = build(lo, mid, depth + 1, ambient)
         pieces.append(("bit", essential[depth]))
