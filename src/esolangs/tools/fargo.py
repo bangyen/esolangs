@@ -8,8 +8,8 @@ The emitter factors each variable as ``p = p0 ^ (x & p1)``, so every
 coefficient appears at most once; identity order emits O(T) characters.
 The emitter picks each node's arm locally (:func:`_arm_expression`).
 Through five inputs, character-cost splits and an indexed selector also
-compete; their difference recursion is bounded. The transform and arm rule
-pack Theta(log T) coefficients per word, giving O(T) word-RAM build work.
+compete. The transform and arm rule pack Theta(log T) coefficients per word,
+giving O(T) word-RAM build work.
 
 The program is ``% 0 <expression>`` then ``$``, writing exactly ``0`` or
 ``1``; a constant table emits the literal.  The harness feeds one line
@@ -22,6 +22,7 @@ order only renames the ``@`` literals, and :func:`fargo` compares named orders.
 
 from collections.abc import Callable
 from functools import cache
+from itertools import chain
 from string import ascii_lowercase
 
 from esolangs.tools.helpers import (
@@ -39,8 +40,9 @@ def _word_width(n: int) -> int:
     return max(2, 1 << (n.bit_length() - 1))
 
 
-def _factored(masks: list[int], constant: int, n: int) -> str:
+def _factored(coeffs: list[int], n: int) -> str:
     """Return the ANF as short nullary definitions and one output call."""
+    masks = [mask for mask in range(1, 1 << n) if coeffs[mask]]
     lines: list[str] = []
 
     def define(expression: str) -> str:
@@ -51,7 +53,7 @@ def _factored(masks: list[int], constant: int, n: int) -> str:
     used = {i for mask in masks for i in range(n) if mask >> i & 1}
     reads = {i: define(f"@ {i:b}") for i in sorted(used)}
 
-    def combine(parts: list[str], op: str) -> str:
+    def fold(parts: list[str], op: str) -> str:
         while len(parts) > 1:
             joined: list[str] = []
             for i in range(0, len(parts) - 1, 2):
@@ -62,18 +64,18 @@ def _factored(masks: list[int], constant: int, n: int) -> str:
         return parts[0]
 
     terms = [
-        combine(
+        fold(
             [reads[i] for i in range(n) if mask >> i & 1],
             "&",
         )
         for mask in masks
     ]
-    if constant:
+    if coeffs[0]:
         terms.insert(0, "1")
-    # The all-zero table has no terms and no constant, so ``combine`` would
+    # The all-zero table has no terms and no constant, so ``fold`` would
     # index an empty list.  It is the constant program, same as the compact
     # path; only the width check sent it here.
-    result = combine(terms, "^") if terms else "0"
+    result = fold(terms, "^") if terms else "0"
     return "\n".join([*lines, f"% 0 {result}", "$", ""])
 
 
@@ -282,15 +284,15 @@ def _expression(
 
 _SELECTOR_BODY = "^ y & @ x ^ y z"
 _SELECTOR = f"M x y z {_SELECTOR_BODY}\n"
+# Each selector call evaluates its body and finishes one extra frame.
+_SELECTOR_FRAME = len(_SELECTOR_BODY.split()) + 1
+_NOT = "^ 1 "
 
 
 def _cost_key(source: str) -> tuple[int, int]:
     """Return characters and strict-evaluation token/frame cost."""
     tokens = source.removeprefix(_SELECTOR).split()
-    # Each selector call evaluates its body and finishes one extra frame.
-    return len(source), len(tokens) + tokens.count("M") * (
-        len(_SELECTOR_BODY.split()) + 1
-    )
+    return len(source), len(tokens) + tokens.count("M") * _SELECTOR_FRAME
 
 
 def _cost_expression(truth_table: str, at: tuple[int, ...], *, selectors: bool) -> str:
@@ -300,14 +302,14 @@ def _cost_expression(truth_table: str, at: tuple[int, ...], *, selectors: bool) 
     def product(a: str, b: str) -> str:
         return a if b == "1" else f"& {a} {b}"
 
-    def combine(a: str, b: str, op: str) -> str:
+    def join_terms(a: str, b: str, op: str) -> str:
         if a == "0":
             return b
         if op == "^":
-            if a == "1" and b.startswith("^ 1 "):
-                return b[4:]
-            if a.startswith("^ 1 ") and b.startswith("^ 1 "):
-                return combine(a[4:], b[4:], "^")
+            if a == "1" and b.startswith(_NOT):
+                return b[len(_NOT) :]
+            if a.startswith(_NOT) and b.startswith(_NOT):
+                return join_terms(a[len(_NOT) :], b[len(_NOT) :], "^")
         return f"{op} {a} {b}"
 
     @cache
@@ -329,13 +331,13 @@ def _cost_expression(truth_table: str, at: tuple[int, ...], *, selectors: bool) 
         x = f"@ {at[n - 1]:b}"
         notx = f"^ 1 {x}"
         candidates = [
-            combine(low, product(x, delta), "^"),
-            combine(high, product(notx, delta), "^"),
+            join_terms(low, product(x, delta), "^"),
+            join_terms(high, product(notx, delta), "^"),
         ]
         if all(a <= b for a, b in zip(zero, one, strict=True)):
-            candidates.append(combine(low, product(x, high), "|"))
+            candidates.append(join_terms(low, product(x, high), "|"))
         if all(b <= a for a, b in zip(zero, one, strict=True)):
-            candidates.append(combine(high, product(notx, low), "|"))
+            candidates.append(join_terms(high, product(notx, low), "|"))
         if selectors:
             candidates.append(f"M {at[n - 1]:b} {low} {high}")
         return min(candidates, key=_cost_key)
@@ -457,11 +459,9 @@ def fargo(truth_table: str, width: int | None = None) -> str:
         compact = min(
             [
                 compact,
-                *[
-                    program
-                    for order in orders
-                    for program in _cost_programs(truth_table, n, order)
-                ],
+                *chain.from_iterable(
+                    _cost_programs(truth_table, n, order) for order in orders
+                ),
             ],
             key=_cost_key,
         )
@@ -469,6 +469,4 @@ def fargo(truth_table: str, width: int | None = None) -> str:
         return compact
     if n > 5:
         return _definition_program(expression, n)
-    coeffs = anf_coefficients(truth_table)
-    masks = [mask for mask in range(1 << n) if coeffs[mask] and mask]
-    return _factored(masks, coeffs[0], n)
+    return _factored(anf_coefficients(truth_table), n)
