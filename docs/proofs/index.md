@@ -337,7 +337,7 @@ and `tests/proofs/test_workspace_formulas.py` run them at small n; Painfuck's
 | Underload | parameterized tree | equal-width input programs leave one selector apiece; each node stores both branches as strings and the selector evaluates exactly one, while a constant leaf discards the unused selectors; a repeated subtree is pushed once and carried above the next selector, and the plain tree stays a candidate | linear: 7n input characters plus at most 11T - 4 tree characters | poly n: at most 14n - 1 commands, one path of n selections | linear: at most 24L + 120T + 32n - 176 + bl(2L+10T+6n-14) bits: spliced program, stack |
 | Unlambda | tree | each half is a `d` promise, forced by the `?` test that selects it, since an argument spelled inline would be evaluated before the application; the shipped node instead returns `s` over its selected promises, so a repeated subtree bound once as a promise reaches every half below, and the plain tree stays a candidate | linear: 29 characters an internal node, four a leaf | poly n: at most max(77n + 12, 84n - 9) steps: 77 a split level, 7 a bound node | T log T: at most 12L + 69 + (3n+6)(8L + 24 + bl(3n+6)) + bl(n) bits: a shared subterm per frame |
 | Unsquare | linear lookup | the table is one `O`/`I` push per row, reversed, and each read pops its bit's weight in cells off the top of it | linear: `2**n` cells and `2**n - 1` pops, two bytes a row | linear: worst 2T + 79n + 26 commands: T pushes, 76 per input read, weight pops | linear: worst T + 12 + bl(L) + bl(L-33) + 2bl(n) bits: T + 1 table cells on the stack |
-| Vandevelo | minterms | an affine-cube peel emits one guard line per coset of an affine cover of the 1-set | open: O(T) lines and commands for every table, O(T log n) identifier text; the build is measured flat, but child-rebuild scans are bounded only by q**2 a node and core work by O(T*n) | linear: at most Q - G + 3C steps: Q ? reads, C comparisons, G guards' final loop? skipped | poly n: at most n * n registers; sqrt T below the cap |
+| Vandevelo | minterms | an affine-cube peel emits one guard line per coset of an affine cover of the 1-set | open: O(T) lines and commands for every table, O(T log n) identifier text; the build is measured flat, but child-rebuild scans are bounded only by q**2 a node and core work by O(T*sqrt(n)) | linear: at most Q - G + 3C steps: Q ? reads, C comparisons, G guards' final loop? skipped | poly n: at most n * n registers; sqrt T below the cap |
 
 Symbols the formula cells use:
 
@@ -479,7 +479,7 @@ the next read. The controls are in `tests/proofs/test_research_tracks.py`.
 The construction bounds register upkeep by `O(T)` lines, but identifiers
 cost `O(log n)` characters per occurrence. Command count is proved linear
 below. The build's charge leaves child rebuilds unbounded, and
-dual-basis core work lacks an aggregate bound. The
+dual-basis core work has only a super-linear aggregate bound. The
 audit marks size `Measured`, keeping its regression gate without claiming
 an asymptotic proof.
 
@@ -571,17 +571,25 @@ character-level time gap coincides with the identifier gap. Measured on
 seed 0, n=12..16: 2.0--2.5 `T` for columns and 0.75--0.91 `T` for
 reduction.
 
-The core build, `|core|**3/3` a clause, is the one term that charges to
-neither. A core with no relation of weight four or less can hold all `n`
+The core build stores distinct pair sums and queries each distinct nonzero
+column against the core, preserving the old triple cache's first witness.
+A later core input cannot precede that witness, so repeated columns reuse
+it. With `u <= min(n, 2**dim - 1)` distinct columns and core size `c`,
+work is `O(n + u*c)` and cache entries are `O(u + c**2)`. Since
+`c <= 1 + sqrt(2*2**dim)`, the disjoint cubes and `C <= 17*T/n` give
+`sum(n*c) <= 17*T + sqrt(34)*T*sqrt(n)` by Cauchy--Schwarz. Cache
+insertions and witness-cache upkeep total `O(T)`, but the queries still have only an
+`O(T*sqrt(n))` bound. The former triple cache cost `c**3/3` a clause. A core with no relation of weight four or less can hold all `n`
 inputs: the extended-BCH columns `(1, x, x**3)` over GF(16) do, with
 `dim = 9`. Half the cosets of that subspace at n=16 reach a 16-input core,
 but the peel merges coset pairs into cubes of dimension 10--12. That gives
-12 clauses and `0.13*T` core work. Any two cosets of a subspace form a
+12 clauses and `0.13*T` work in the former triple cache. Any two cosets of a subspace form a
 cube of one dimension more. Blocking that merge leaves a Sidon set of
 cosets, too sparse to matter, and globally popular directions do not see
 planted cubes. On random tables the greedy core stops at about
-`(6*2**dim)**(1/3)` inputs: at most 6 to n=16, and a flat `0.43*T`. The
-proved bound is still `O(T*n)`; no executed table exceeds a constant.
+`(6*2**dim)**(1/3)` inputs: at most 6 to n=16, and a flat `0.43*T` in
+the former cache. No executed table exceeds a constant; the new query
+bound is still super-linear.
 
 What linear text would take. While no guard part reads `Inp`, every value
 is affine and a guard hangs on one coset. A coset of codimension `c` needs

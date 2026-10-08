@@ -91,7 +91,7 @@ class TestFargo:
                     after += built
         assert (before, after) == (9556, 7740)
 
-    @pytest.mark.medium
+    @pytest.mark.slow
     def test_character_cost_five_input_corpus(self) -> None:
         """The seeded ship gate: no growth, 7.79% smaller, every row executed."""
         from esolangs.tools.fargo import _expression, _orders

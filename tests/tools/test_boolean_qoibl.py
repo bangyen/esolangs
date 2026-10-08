@@ -22,7 +22,7 @@ class TestQoibl:
                 assert run_qoibl(program, list(format(row, "03b"))) == table[row]
 
     @pytest.mark.medium
-    @pytest.mark.parametrize("n", [5, 8])
+    @pytest.mark.parametrize("n", [5, pytest.param(8, marks=pytest.mark.slow)])
     @pytest.mark.parametrize("width", [1, 3, 13])
     def test_narrow_horner_larger_literals(self, n: int, width: int) -> None:
         rng = random.Random(20260930 + n)

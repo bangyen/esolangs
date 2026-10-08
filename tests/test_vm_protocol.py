@@ -391,6 +391,46 @@ class TestTheArmsThatTranslateWhatAnInterpreterRaises:
         assert exc.value is planted
 
 
+@pytest.mark.parametrize(
+    ("fault", "error_type"),
+    [
+        (RecursionError(), InterpreterLimitError),
+        (MemoryError(), InterpreterLimitError),
+        (ValueError("invalid literal for int() with base 10: 'x'"), ProgramError),
+        (RuntimeError("unexpected"), RuntimeError),
+        (KeyboardInterrupt(), KeyboardInterrupt),
+    ],
+)
+def test_step_keeps_shared_failure_translation(fault, error_type):
+    machine = debugger_api.make_vm("brainfuck", "+")
+    message = (
+        "the brainfuck interpreter recursed deeper than "
+        "CPython's stack limit allows on this program"
+    )
+    with (
+        pytest.raises(error_type) as expected,
+        vm_module.interpreter_errors(message, language="brainfuck"),
+    ):
+        raise fault
+
+    def boom():
+        raise fault
+
+    with (
+        patch.object(machine._machine, "step", boom),  # noqa: SLF001 - planted failure
+        pytest.raises(error_type) as actual,
+    ):
+        machine.step()
+    assert type(actual.value) is type(expected.value)
+    assert str(actual.value) == str(expected.value)
+    assert getattr(actual.value, "__notes__", ()) == getattr(
+        expected.value, "__notes__", ()
+    )
+    assert actual.value.__cause__ is expected.value.__cause__
+    if expected.value is fault:
+        assert actual.value is fault
+
+
 class TestRunUntilHalt:
     """The plain bounded drive the four consumers now share."""
 

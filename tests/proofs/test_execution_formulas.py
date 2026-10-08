@@ -9,8 +9,6 @@ import math
 import random
 from collections.abc import Callable
 
-import pytest
-
 import esolangs
 from esolangs.debugger import make_vm
 from esolangs.tools.one_two_three.construction import _leftover
@@ -281,15 +279,22 @@ def _tables(name: str, n: int) -> tuple[str, ...]:
     return tables
 
 
-def _worst(name: str, table: str, *, written: bool = False) -> int:
-    """Most commands to halt, or ``written`` state bits, over halting rows."""
+def _measure(
+    name: str,
+    table: str,
+    *,
+    written: bool = False,
+    program: esolangs.Program | None = None,
+) -> tuple[int, int]:
+    """Most commands and optional written-state bits over halting rows."""
     facts = esolangs.describe(name)
     halts = None
     if facts["answer_mode"] == "termination":
         halts = str(list(facts["answer_encoding"]).index("halts"))
     n = len(table).bit_length() - 1
-    program = esolangs.generate(name, table)
-    worst = 0
+    if program is None:
+        program = esolangs.generate(name, table)
+    worst_steps = worst_bits = 0
     for row in range(len(table)):
         if halts is not None and table[row] != halts:
             continue
@@ -302,25 +307,15 @@ def _worst(name: str, table: str, *, written: bool = False) -> int:
                 esolangs.encode_inputs(name, bits, truth_table=table),
             )
         machine = make_vm(name, source, stdin=stdin)
-        state = WrittenState(machine.snapshot())
-        steps = run_to_answer(machine, sample=state.sample if written else None)
+        state = WrittenState(machine.snapshot()) if written else None
+        steps = run_to_answer(
+            machine, sample=state.sample if state is not None else None
+        )
         assert steps is not None  # no cap
-        worst = max(worst, state.bits if written else steps)
-    return worst
-
-
-@pytest.mark.medium
-@pytest.mark.parametrize("name", sorted(FORMULAS))
-def test_the_execution_formula_holds(name: str) -> None:
-    formula, exact, arities = FORMULAS[name]
-    for n in arities:
-        reached = False
-        for table in _tables(name, n):
-            claim = formula(n, esolangs.generate(name, table))
-            steps = _worst(name, table)
-            assert steps <= claim, f"{name} n={n} {table}: {steps} > {claim}"
-            reached |= steps == claim
-        assert reached or not exact, f"{name} n={n}: no table reaches the formula"
+        worst_steps = max(worst_steps, steps)
+        if state is not None:
+            worst_bits = max(worst_bits, state.bits)
+    return worst_steps, worst_bits
 
 
 def test_every_formula_cell_is_checked() -> None:

@@ -87,7 +87,10 @@ a node loses three quarters would halve them, but costs 2.5% over a
 433-table corpus and leaves :meth:`_Peel.certify`'s rebuilds, and its
 refreshes, which rescore a candidate per pairless one at ``q`` each.
 :func:`_nearest`'s sparse fallback lists points.  The dual-basis core
-below costs ``|core|**3 / 3`` a clause, ``O(T * n)`` proved.  Measured,
+below queries pair sums in ``O(n * |core|)`` work a clause. Since
+``|core| <= 1 + sqrt(2 * 2**dim)`` and the cubes partition the 1-set,
+Cauchy--Schwarz with ``C <= 17 * T / n`` bounds the sum by
+``O(T * sqrt(n))``. Its linear charge remains open. Measured,
 element visits per entry are flat at n=10..14 -- three or eight zeros
 2,700--3,800 (17,000--28,000 and rising when nodes held points), density
 0.9 2,400--2,700, dense 500--900, quadratic forms 110--120.
@@ -526,10 +529,17 @@ class _Peel:
             if node is self.root:
                 self.nodes.pop(v, None)
                 self.tried.discard(v)
-        fresh = _nearest(
-            node, min(node.reps), set(node.cands), self.n, _CANDIDATES - len(node.cands)
-        )
-        _score(node, fresh)
+        if len(node.cands) < _CANDIDATES:
+            # With a full pool _nearest returns nothing, but min still
+            # scanned 262,863 cosets over the 364-table audit corpus.
+            fresh = _nearest(
+                node,
+                min(node.reps),
+                set(node.cands),
+                self.n,
+                _CANDIDATES - len(node.cands),
+            )
+            _score(node, fresh)
         _ensure_popular(node, self.n)
 
     def extend(self, node: _Node, *, certain: bool = False) -> int:
@@ -773,22 +783,40 @@ def _constraints(base: int, dirs: list[int], n: int) -> list[tuple[int, int]]:
     """
     dim = len(dirs)
     cols = [sum((v >> j & 1) << i for i, v in enumerate(dirs)) for j in range(n)]
-    # Sums of one to three core columns, mapped to the set of inputs summed.
-    sums: dict[int, int] = {}
+    # Keep pair sums rather than materializing every triple. Querying a
+    # triple against each core column preserves the old first witness.
+    witnesses: dict[int, int] = {}
+    pairs: dict[int, int] = {}
     core: list[int] = []
     duals: list[int] = []
+
+    def rank(inputs: int) -> tuple[int, int, list[int]]:
+        # The old cache inserted witnesses by last input, then width,
+        # then the earlier inputs in ascending order.
+        return inputs.bit_length(), inputs.bit_count(), _points(inputs)
+
     for j, col in enumerate(cols):
         if col == 0:
             duals.append(1 << j)
-        elif col in sums:
-            duals.append(sums[col] | 1 << j)
+            continue
+        witness = witnesses.get(col)
+        if witness is None:
+            witness = pairs.get(col)
+            for c in core:
+                pair = pairs.get(col ^ cols[c])
+                if pair is not None and not pair & (1 << c):
+                    triple = pair | (1 << c)
+                    if witness is None or rank(triple) < rank(witness):
+                        witness = triple
+        if witness is not None:
+            # A later core input cannot precede this witness's last input,
+            # so repeats keep the first witness without another core scan.
+            witnesses[col] = witness
+            duals.append(witness | (1 << j))
         else:
-            singles = [(cols[c], 1 << c) for c in core]
-            pairs = [(a ^ b, x | y) for a, x in singles for b, y in singles if x < y]
-            for value, inputs in [(col, 1 << j)] + [
-                (col ^ a, 1 << j | x) for a, x in singles + pairs
-            ]:
-                sums.setdefault(value, inputs)
+            for c in core:
+                pairs[col ^ cols[c]] = (1 << j) | (1 << c)
+            witnesses[col] = 1 << j
             core.append(j)
     # A short relation's leading bit is its own input -- the core inputs it
     # sums are all earlier -- so the relations are independent as they

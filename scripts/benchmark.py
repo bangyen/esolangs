@@ -16,6 +16,7 @@ from typing import Any, cast
 
 import esolangs
 import esolangs.debugger as debugger_api
+from esolangs._describe import LanguageInfo
 from esolangs._validate import check_timeout
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.vm import VM, complete_vm, run_until_halt_or_cycle
@@ -218,8 +219,10 @@ def _execute(
     timeout: float | None,
     *,
     track_store: bool = False,
+    facts: LanguageInfo | None = None,
 ) -> dict[str, Any]:
-    facts = esolangs.describe(language)
+    if facts is None:
+        facts = esolangs.describe(language)
     bits = _bits(row, len(table).bit_length() - 1)
     source: esolangs.Program
     if facts["parameterized"]:
@@ -371,10 +374,18 @@ def measure(
         _source_size(program)
         timings.append(time.perf_counter_ns() - started)
     assert program is not None
+    facts = esolangs.describe(language)
     rows = range(len(table)) if all_rows else sample_rows or (row,)
     executions = [
         _execute(
-            language, program, table, at, step_cap, timeout, track_store=track_store
+            language,
+            program,
+            table,
+            at,
+            step_cap,
+            timeout,
+            track_store=track_store,
+            facts=facts,
         )
         for at in rows
     ]
@@ -382,10 +393,10 @@ def measure(
     return {
         "schema": 5,
         "track_store": track_store,
-        "language": esolangs.describe(language)["name"],
+        "language": facts["name"],
         "truth_table": table,
         "inputs": len(table).bit_length() - 1,
-        "source_kind": esolangs.describe(language)["source_kind"],
+        "source_kind": facts["source_kind"],
         "source_units": _source_size(program),
         "source_utf8_bits": 8 * len(program.encode("utf-8"))
         if isinstance(program, str)

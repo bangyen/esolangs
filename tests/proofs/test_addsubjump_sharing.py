@@ -22,7 +22,7 @@ def _parent(table: str) -> str:
     )
 
 
-@pytest.mark.medium
+@pytest.mark.slow
 def test_sharing_admission() -> None:
     rng = random.Random(0)
     five = sorted({f"{rng.getrandbits(32):032b}" for _ in range(200)})
@@ -109,7 +109,15 @@ def _previous(table: str) -> str:
 
 
 @pytest.mark.medium
-@pytest.mark.parametrize("n", [6, 8, 10, 12])
+@pytest.mark.parametrize(
+    "n",
+    [
+        6,
+        8,
+        pytest.param(10, marks=pytest.mark.slow),
+        pytest.param(12, marks=pytest.mark.slow),
+    ],
+)
 def test_shared_packed_cells_execute(n: int) -> None:
     rng = random.Random(n)
     tables = [

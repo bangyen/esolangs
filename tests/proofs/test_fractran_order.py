@@ -343,8 +343,12 @@ def test_dense_cursor_work_and_sparse_threshold_routing() -> None:
 
 
 @pytest.mark.medium
+@pytest.mark.parametrize(
+    "arity", [8, *(pytest.param(n, marks=pytest.mark.slow) for n in (10, 12, 14, 16))]
+)
 def test_stream_loading_sieve_and_wider_answers(
     monkeypatch: pytest.MonkeyPatch,
+    arity: int,
 ) -> None:
     original = fractran_index._least_primes
     limits = []
@@ -364,6 +368,8 @@ def test_stream_loading_sieve_and_wider_answers(
     ):
         size = 1 << n
         table = "".join(str(rng.randrange(2)) for _ in range(size))
+        if n != arity:
+            continue
         assert capacity(k - 1) < size <= capacity(k)
         template = stream_template(table, k)
         source = fill_runs(template, TEMPLATE_CHAR, [PAIR] * n, [1] * n)
@@ -378,4 +384,5 @@ def test_stream_loading_sieve_and_wider_answers(
             steps += 1
             assert steps < 200 * k + 100
         assert io.getvalue().strip() == str(1 + int(table[-1]))
-    assert len(limits) == 5
+        break
+    assert len(limits) == 1

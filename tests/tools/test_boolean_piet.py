@@ -58,7 +58,7 @@ def test_every_three_input_function_executes_through_png() -> None:
     assert total == 34_638
 
 
-@pytest.mark.medium
+@pytest.mark.slow
 def test_larger_functions_execute_through_png() -> None:
     rng = random.Random(20261001)
     for inputs in (4, 5, 6):
@@ -73,6 +73,14 @@ def test_larger_functions_execute_through_png() -> None:
                 image = esolangs.generate("Piet", table, balance=balanced)
                 decoded = Raster.from_png(image.to_png())
                 assert _evaluate("Piet", decoded, inputs=inputs) == table
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("balanced", [False, True])
+def test_larger_asymmetric_function_executes_through_png(*, balanced: bool) -> None:
+    table = "".join(str(int(row in (0, 7, 31, 63))) for row in range(64))
+    image = esolangs.generate("Piet", table, balance=balanced)
+    assert _evaluate("Piet", Raster.from_png(image.to_png()), inputs=6) == table
 
 
 def test_public_generate_returns_a_piet_raster() -> None:

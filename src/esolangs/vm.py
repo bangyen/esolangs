@@ -827,12 +827,17 @@ class _DelegatingVM:
         becomes :class:`~esolangs.exceptions.ProgramError`, a
         ``RecursionError`` :class:`~esolangs.exceptions.InterpreterLimitError`.
         """
-        with interpreter_errors(
-            f"the {self.language} interpreter recursed deeper than "
-            "CPython's stack limit allows on this program",
-            language=self.language,
-        ):
+        try:
             self._machine.step()
+        except Exception:
+            # Translation is needed only on failure; a context per instruction
+            # dominated the wrapper cost in the generator-size sweep.
+            with interpreter_errors(
+                f"the {self.language} interpreter recursed deeper than "
+                "CPython's stack limit allows on this program",
+                language=self.language,
+            ):
+                raise
 
     def snapshot(self) -> Hashable:
         """Return the underlying machine's complete state."""

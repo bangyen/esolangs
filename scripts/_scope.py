@@ -52,21 +52,22 @@ SHARED_TOOLING = (
 def changed_files() -> list[str]:
     """Return the repo-relative paths this branch changed, or [] if unknown.
 
-    Prefers the branch's own diff against ``origin/main``; falls back to the
-    last commit when there is no such ref (a fresh clone, a detached HEAD).
+    Prefers local ``main`` so unpushed integrated work is not attributed
+    to this branch; tries ``origin/main`` and the last commit if absent.
     Uncommitted work counts too -- the point is to check the tree in hand, not
     only what has been committed.  An empty list means "could not tell", which
     callers must read as "run everything".
     """
     names: list[str] = []
     for args in (
+        ["diff", "--name-only", "main...HEAD"],
         ["diff", "--name-only", "origin/main...HEAD"],
         ["diff", "--name-only", "HEAD~1"],
     ):
         got = subprocess.run(
             ["git", *args], capture_output=True, text=True, cwd=ROOT, check=False
         )
-        if got.returncode == 0 and got.stdout.strip():
+        if got.returncode == 0:
             names = got.stdout.split()
             break
 

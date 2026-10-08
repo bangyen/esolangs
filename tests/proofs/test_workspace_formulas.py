@@ -17,7 +17,8 @@ from esolangs.tools.three_x import _level
 from scripts.benchmark import WrittenState, state_bits
 from tests.proofs._ledger import load as load_ledger
 from tests.proofs.deep.execution import run_to_answer
-from tests.proofs.test_execution_formulas import _tables, _worst
+from tests.proofs.test_execution_formulas import FORMULAS as EXECUTION_FORMULAS
+from tests.proofs.test_execution_formulas import _measure, _tables
 
 bl = int.bit_length
 
@@ -531,18 +532,53 @@ FORMULAS: dict[str, tuple[Callable[[int, str], int], bool, tuple[int, ...]]] = {
 }
 
 
-@pytest.mark.medium
-@pytest.mark.parametrize("name", sorted(FORMULAS))
-def test_the_workspace_formula_holds(name: str) -> None:
-    formula, exact, arities = FORMULAS[name]
-    for n in arities:
-        reached = False
-        for table in _tables(name, n):
-            claim = formula(n, esolangs.generate(name, table))
-            bits = _worst(name, table, written=True)
-            assert bits <= claim, f"{name} n={n} {table}: {bits} > {claim}"
-            reached |= bits == claim
-        assert reached or not exact, f"{name} n={n}: no table reaches the formula"
+def _formula_cases() -> list[object]:
+    ledgers = (EXECUTION_FORMULAS, FORMULAS)
+    cases = sorted(
+        {
+            (name, n)
+            for ledger in ledgers
+            for name, (_, _, arities) in ledger.items()
+            for n in arities
+        }
+    )
+    return [
+        pytest.param(
+            name,
+            n,
+            marks=pytest.mark.medium
+            if any(name in ledger and n == min(ledger[name][2]) for ledger in ledgers)
+            else pytest.mark.slow,
+        )
+        for name, n in cases
+    ]
+
+
+@pytest.mark.parametrize(("name", "n"), _formula_cases())
+def test_execution_and_workspace_formulas_hold(name: str, n: int) -> None:
+    formulas = [
+        (written, formula, exact)
+        for written, ledger in ((False, EXECUTION_FORMULAS), (True, FORMULAS))
+        if name in ledger
+        for formula, exact, arities in (ledger[name],)
+        if n in arities
+    ]
+    reached = [False] * len(formulas)
+    for table in _tables(name, n):
+        program = esolangs.generate(name, table)
+        measurements = _measure(
+            name,
+            table,
+            written=any(written for written, _, _ in formulas),
+            program=program,
+        )
+        for i, (written, formula, _) in enumerate(formulas):
+            claim = formula(n, program)
+            actual = measurements[int(written)]
+            assert actual <= claim, f"{name} n={n} {table}: {actual} > {claim}"
+            reached[i] |= actual == claim
+    for found, (_, _, exact) in zip(reached, formulas, strict=True):
+        assert found or not exact, f"{name} n={n}: no table reaches the formula"
 
 
 def test_every_formula_cell_is_checked() -> None:

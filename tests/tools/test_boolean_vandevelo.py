@@ -288,6 +288,33 @@ def test_constraints_weigh_four_per_input_plus_a_core() -> None:
     assert sum(w.bit_count() > 4 for w in duals) <= core - dim
 
 
+def test_constraints_keep_the_earliest_triple_before_a_later_pair() -> None:
+    """A five-column dependency offers both witnesses; the first stays stable."""
+    from esolangs.tools.vandevelo import _constraints
+
+    columns = (1, 2, 4, 8, 15, 7)
+    dirs = [
+        sum(((col >> bit) & 1) << j for j, col in enumerate(columns))
+        for bit in range(4)
+    ]
+    # Column 7 is 1^2^4 before the later 8^15 pair becomes available.
+    assert _constraints(0, dirs, 6) == [(0b100111, 0), (0b111000, 0)]
+    _check_basis(dirs, 6)
+
+
+def test_repeated_columns_keep_the_witness_before_core_growth() -> None:
+    from esolangs.tools.vandevelo import _constraints
+
+    columns = (1, 2, 4, 7, 8, 15, 7)
+    dirs = [
+        sum(((col >> bit) & 1) << j for j, col in enumerate(columns))
+        for bit in range(4)
+    ]
+    # Both occurrences of 7 retain 1^2^4 after the later 8^15 pair appears.
+    assert _constraints(0, dirs, 7)[:2] == [(0b0001111, 0), (0b1000111, 0)]
+    _check_basis(dirs, 7)
+
+
 def test_constraint_bound_holds_on_random_cubes() -> None:
     import random
 

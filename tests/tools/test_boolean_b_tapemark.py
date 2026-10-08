@@ -19,9 +19,12 @@ def execute(program: str, bits: str) -> tuple[str, int]:
 
 
 @pytest.mark.medium
-def test_every_one_hot_table_is_addressed() -> None:
+@pytest.mark.parametrize(
+    "ones", [(0, 15, 31), pytest.param(range(32), marks=pytest.mark.slow)]
+)
+def test_every_one_hot_table_is_addressed(ones: tuple[int, ...] | range) -> None:
     """One row answering ``1`` pins the walk's arrival on that row alone."""
-    for one in range(32):
+    for one in ones:
         table = "".join("1" if i == one else "0" for i in range(32))
         program = tools.b_tapemark(table)
         for bits in map("".join, product("01", repeat=5)):
