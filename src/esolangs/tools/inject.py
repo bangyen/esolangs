@@ -25,7 +25,9 @@ from esolangs.tools.helpers import (
     _validate_truth_table,
     best_input_order,
     constant_span_test,
+    essential_inputs,
     input_weights,
+    read_at,
 )
 
 __all__ = ["inject"]
@@ -157,11 +159,17 @@ def inject(truth_table: str, width: int | None = None) -> str:
 
 
 def _inject_banded(truth_table: str) -> str:
-    """Select an O(n)-bit chunk, then halve it in one shared postlude."""
+    """Select an O(m)-bit chunk of the ``m`` essential inputs, then halve it.
+
+    Ignored inputs are read and never tested (see :func:`_inject_halving`).
+    """
     n = _validate_truth_table(truth_table)
-    # >= n rows per chunk amortize O(n)-letter unique labels over the table.
-    low = min(n, (n - 1).bit_length())
-    high = n - low
+    essential = essential_inputs(truth_table, n)
+    table = read_at(truth_table, essential, n)
+    m = len(essential)
+    # >= m rows per chunk amortize O(m)-letter unique labels over the table.
+    low = min(m, (m - 1).bit_length())
+    high = m - low
     names = _Names(n, tuple(range(n)))
     lines = _preamble(names, "0")
 
@@ -169,22 +177,21 @@ def _inject_banded(truth_table: str) -> str:
         if level == high:
             escape = names.fresh()
             names.escapes.append(escape)
-            lines.extend(
-                ["inject t=^.*$/" + truth_table[start:stop], "skip", f"{escape};"]
-            )
+            lines.extend(["inject t=^.*$/" + table[start:stop], "skip", f"{escape};"])
             return
         middle = (start + stop) // 2
         block = names.fresh()
-        lines.extend([f"skipq {names.inputs[level]} z", f"{block};"])
+        lines.extend([f"skipq {names.inputs[essential[level]]} z", f"{block};"])
         walk(middle, stop, level + 1)
         lines.append(f"{block};")
         walk(start, middle, level + 1)
 
     # Every leaf escapes the remaining tree to the same low-input postlude.
-    walk(0, len(truth_table), 0)
+    walk(0, len(table), 0)
     lines.extend(f"{escape};" for escape in names.escapes)
     lines += _halve(
-        names, [(1 << (n - d - 1), names.inputs[d]) for d in range(high, n)]
+        names,
+        [(1 << (m - d - 1), names.inputs[essential[d]]) for d in range(high, m)],
     )
     lines.append("send t")
     return "\n".join(lines)

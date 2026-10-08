@@ -83,6 +83,18 @@ class TestInject:
             for row in range(1 << n):
                 assert run_inject(program, list(f"{row:0{n}b}")) == table[row] + "\n"
 
+    def test_chunked_lookup_drops_ignored_inputs(self) -> None:
+        """Input 2 of 7 is read and never tested; the table is indexed without it."""
+        small = "".join(str((row * 73 + row // 3) & 1) for row in range(64))
+        table = "".join(small[r >> 1 & 32 | r & 31] for r in range(128))
+        program = esolangs.generate("Inject", table, width=1)
+        assert program.count("readto ") == 7
+        assert len(program) < 0.7 * len(
+            esolangs.generate("Inject", small + small[::-1], width=1)
+        )
+        for row in range(128):
+            assert run_inject(program, list(f"{row:07b}")) == table[row] + "\n"
+
     def test_chunked_source_growth_is_linear(self) -> None:
         sizes = [
             len(boolean.inject("01101001" * (2 ** (n - 3)), 1)) for n in (9, 10, 11)
