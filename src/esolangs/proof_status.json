@@ -158,8 +158,8 @@
       ],
       "qualification": "head/tail discards leave the indexed entry in the deque",
       "scaling": "linear: shorter of the shared tree and the 2T-command discard lookup",
-      "execution": "linear: at most 3T + 9n - 3 commands past n = 4: load 2T, then the stage walk",
-      "workspace": "linear: at most T + 2 + bl(4T+10n-5) bits past n = 4: a deque of T + 1 bits",
+      "execution": "linear: at most 3T + 9n - 3 commands past n=4: load 2T, stage walk; unreached, n=5 worst 47",
+      "workspace": "linear: at most T + 2 + bl(4T+10n-5) bits past n=4: a deque of T + 1 bits; unreached",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
