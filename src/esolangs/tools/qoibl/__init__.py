@@ -36,7 +36,9 @@ def qoibl(truth_table: str, width: int | None = None) -> str:
     packed = sum(int(bit) << index for index, bit in enumerate(truth_table))
 
     # ``p = p * (p * (et - 47))``: the digit is 48 or 49, so that factor is
-    # the bit plus one and squaring makes the reads Horner's rule.
+    # the bit plus one and squaring makes the reads Horner's rule.  Essential,
+    # not an optimisation: the operators are + - * / only, so ``p`` must reach
+    # ``2**index`` by squaring for the packed literal's division.
     bit = f"et ry ey ry {_qoibl_enc(_ASCII_ZERO - 1)}"
     lines = []
     counted = False
