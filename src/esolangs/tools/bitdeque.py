@@ -12,7 +12,8 @@ from esolangs.tools.helpers import (
     runs,
     subtree_ids,
 )
-from esolangs.tools.wrap import _bitdeque
+from esolangs.tools.token_balance import balanced_token_width
+from esolangs.tools.wrap import _bitdeque, _bitdeque_tokens, _join_tokens, balance_score
 
 __all__ = ["BITDEQUE_PAIR", "bitdeque", "bitdeque_setters"]
 
@@ -269,6 +270,20 @@ def _bitdeque_ordered(
     return " ".join("GOTO " + str(end) if t == "GOTO@END" else t for t in tokens)
 
 
+def _balance(table: str, default: str) -> str:
+    """Balance the eleven-cell and short endpoint loads in their width regimes."""
+    normal = _bitdeque_tokens(default)
+    short = _bitdeque_tokens(bitdeque(table, 1))
+    normal_width = balanced_token_width(normal, " ", minimum=11)
+    short_width = balanced_token_width(short, " ", maximum=10)
+    return min(
+        default,
+        _join_tokens(normal, normal_width, " "),
+        _join_tokens(short, short_width, " "),
+        key=balance_score,
+    )
+
+
 LANGUAGE = Language(
     "Bitdeque",
     "queue_based.bitdeque",
@@ -282,4 +297,5 @@ LANGUAGE = Language(
     ),
     # Space-delimited, but ``GOTO`` and its target must stay on one line.
     wrap=_bitdeque,
+    balance=_balance,
 )

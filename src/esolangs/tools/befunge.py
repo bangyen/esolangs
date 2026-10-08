@@ -204,4 +204,5 @@ LANGUAGE = Language(
     generator_max_inputs=MAX_INPUTS,
     boolean=befunge,
     split=True,
+    balance=balance_befunge,
 )

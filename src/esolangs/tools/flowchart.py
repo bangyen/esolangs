@@ -26,6 +26,7 @@ from esolangs.tools.helpers import (
     read_at,
     subtree_ids,
 )
+from esolangs.tools.wrap import balance_score
 
 # Fewest table rows a subtree must span for the stacked layout to draw it once.
 _SHARE_ROWS = 8
@@ -536,6 +537,12 @@ def _flowchart_deque(truth_table: str) -> str:
     return _flowchart_render({(x - left, row): c for (x, row), c in cells.items()})
 
 
+def _balance(table: str, default: str) -> str:
+    """Compare deque lookup, flat tree and the supported stacked fallback."""
+    flat = _flowchart_render(_flowchart_cells(table))
+    return min(default, flat, flowchart(table, 1), key=balance_score)
+
+
 LANGUAGE = Language(
     "Flowchart",
     "grid_based.flowchart",
@@ -544,4 +551,5 @@ LANGUAGE = Language(
     contract=BooleanContract(
         input_shape="char_stream",
     ),
+    balance=_balance,
 )

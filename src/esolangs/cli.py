@@ -89,7 +89,6 @@ from esolangs.exceptions import (
     EsolangError,
 )
 from esolangs.registry import LANGUAGES, resolve
-from esolangs.tools.balance import BALANCERS
 
 
 def _encode(rest: list[str]) -> None:
@@ -279,7 +278,7 @@ def _generate(rest: list[str]) -> None:
     if (
         (width is not None or bare or balance)
         and describe(rest[0])["width_effect"] == "none"
-        and not (balance and LANGUAGES[resolve(rest[0])].id in BALANCERS)
+        and not (balance and LANGUAGES[resolve(rest[0])].balance is not None)
     ):
         sys.stderr.write(
             f"note: {'--balance' if balance else '--width'} has no effect on "

@@ -9,7 +9,8 @@ from esolangs.tools.helpers import (
     subtree_ids,
     subtree_slot,
 )
-from esolangs.tools.wrap import wrap_space_delimited
+from esolangs.tools.token_balance import balanced_token_width
+from esolangs.tools.wrap import _join_tokens, balance_score, wrap_space_delimited
 
 #: A fixed Z precedes each slot; the one-command pair selects zero or one.
 PAIR = ("Z", "A")
@@ -191,6 +192,15 @@ def _ram0_ordered(
     return " ".join(str(end) if t == "END@" else t for t in tokens)
 
 
+def _balance(table: str, default: str) -> str:
+    """Compare the width-one NAND form and ordinary operand row fits."""
+    tokens = default.split()
+    width = balanced_token_width(tokens, " ", minimum=2)
+    return min(
+        default, _join_tokens(tokens, width, " "), ram0(table, 1), key=balance_score
+    )
+
+
 LANGUAGE = Language(
     "RAM0",
     "register_based.ram0",
@@ -205,4 +215,5 @@ LANGUAGE = Language(
     # Multi-character tokens (``vs``, ``0b1``, ``L C 19``); space is the
     # only safe break.
     wrap=wrap_space_delimited,
+    balance=_balance,
 )

@@ -54,9 +54,11 @@ def test_cli_balance(capsys: pytest.CaptureFixture[str]) -> None:
 
 
 def test_balance_raster_retains_layout(monkeypatch: pytest.MonkeyPatch) -> None:
-    from esolangs.tools.balance import BALANCERS
+    from dataclasses import replace
 
-    monkeypatch.delitem(BALANCERS, "piet")
+    from esolangs.registry import LANGUAGES
+
+    monkeypatch.setitem(LANGUAGES, "Piet", replace(LANGUAGES["Piet"], balance=None))
     default = esolangs.generate("Piet", "0110")
     balanced = esolangs.generate("Piet", "0110", balance=True)
     assert isinstance(default, esolangs.Raster)

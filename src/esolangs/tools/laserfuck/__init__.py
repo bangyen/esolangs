@@ -833,4 +833,5 @@ LANGUAGE = Language(
         "the source it is drawn from: seed 0 draws heading 3",
         input_shape="char_stream",
     ),
+    balance=balance_laserfuck,
 )

@@ -161,4 +161,5 @@ LANGUAGE = Language(
     "tape_based.line",
     source_kind=SourceKind.RASTER,
     boolean=line,
+    balance=balance,
 )

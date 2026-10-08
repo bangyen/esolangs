@@ -10,6 +10,8 @@ fold is the construction working: a literal has no subtrees to fold or share.
 The reads are unconditional and first.
 """
 
+from typing import Any
+
 from esolangs._dialects import expression_syntax as validate_expression_syntax
 from esolangs._dialects import list_update as validate_list_update
 from esolangs.registry._contracts import BooleanContract
@@ -340,6 +342,13 @@ def _postfix_units(
     return [*units, ["out r"], ["end"]]
 
 
+def _balance(table: str, default: Any, **options: Any) -> Any:
+    """Defer to the ``balance`` submodule, which imports this one."""
+    from esolangs.tools.alight.balance import balance_alight  # circular
+
+    return balance_alight(table, default, **options)
+
+
 LANGUAGE = Language(
     "Alight",
     "grid_based.alight",
@@ -348,4 +357,5 @@ LANGUAGE = Language(
     contract=BooleanContract(
         input_shape="char_stream",
     ),
+    balance=_balance,
 )

@@ -48,7 +48,7 @@ def test_token_fit_lattice_respects_width_regimes(minimum, maximum):
 
 
 def test_fractran_parity_representation_omits_empty_width_regimes():
-    from esolangs.tools.balance import _fractran
+    from esolangs.tools.fractran import _balance as _fractran
 
     parity = esolangs.generate("FRACTRAN", "0110", width=4)
     balanced = _fractran("0110", parity)
@@ -340,7 +340,6 @@ def test_qoibl_affine_row_envelope_minima():
 
 def test_native_width_generators_have_balance_rules():
     from esolangs.registry import LANGUAGES
-    from esolangs.tools.balance import BALANCERS
     from esolangs.tools.wrap import takes_width
 
     assert not [
@@ -348,7 +347,7 @@ def test_native_width_generators_have_balance_rules():
         for name, language in LANGUAGES.items()
         if (generator := language.boolean) is not None
         and takes_width(generator)
-        and language.id not in BALANCERS
+        and language.balance is None
     ]
 
 

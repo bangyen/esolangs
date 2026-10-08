@@ -14,6 +14,7 @@ from esolangs.tools.helpers import (
     _validate_truth_table,
     input_weights,
 )
+from esolangs.tools.wrap import balance_score
 
 #: Each input's cell: ``~`` pushes a down heading, ``.`` nothing.
 PAIR = (".", "~")
@@ -95,6 +96,17 @@ def _compact(rows: list[str]) -> list[str]:
     return ["".join(row[x] for x in columns).rstrip() for row in kept]
 
 
+def _balance(table: str, default: str) -> str:
+    """Compare the tree and cascades with one, five and six columns."""
+    return min(
+        default,
+        arrowqueue(table, 1),
+        arrowqueue(table, 5),
+        arrowqueue(table, 6),
+        key=balance_score,
+    )
+
+
 LANGUAGE = Language(
     "ArrowQueue",
     "grid_based.arrowqueue",
@@ -110,4 +122,5 @@ LANGUAGE = Language(
         "that the program halted at all",
         parameterized=True,
     ),
+    balance=_balance,
 )

@@ -102,6 +102,7 @@ from itertools import islice
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 from esolangs.tools.helpers import _validate_truth_table, short_name
+from esolangs.tools.wrap import balance_score
 
 __all__ = ["vandevelo"]
 
@@ -992,6 +993,11 @@ def _flips(cover: list[list[tuple[int, int]]], dims: list[int], n: int) -> int:
     return sum(1 << bit for bit in range(n) if count[bit] < 0 and weight[bit] < 0)
 
 
+def _balance(table: str, default: str) -> str:
+    """Compare the two spellings; any requested width selects the compact one."""
+    return min(default, vandevelo(table, 1), key=balance_score)
+
+
 LANGUAGE = Language(
     "Vandevelo",
     "other.vandevelo",
@@ -1001,4 +1007,5 @@ LANGUAGE = Language(
         answer_values=("halts", "diverges"),
         note="Vandevelo answers by terminating: nil halts and not nil loops",
     ),
+    balance=_balance,
 )

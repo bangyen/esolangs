@@ -345,4 +345,5 @@ LANGUAGE = Language(
     # Both concatenate before tokenizing (Taglate after the queue seed; A
     # Painter Ant drops whitespace), so no break can land inside a command.
     wrap=_taglate,
+    balance=balance_taglate,
 )

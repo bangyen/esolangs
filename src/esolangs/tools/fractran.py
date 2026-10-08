@@ -24,7 +24,8 @@ from esolangs.tools.helpers import (
     constant_span_test,
     subtree_ids,
 )
-from esolangs.tools.wrap import wrap_space_delimited
+from esolangs.tools.token_balance import balanced_token_width
+from esolangs.tools.wrap import _join_tokens, balance_score, wrap_space_delimited
 
 #: How each input is set: the exponent of its prime in the starting value.
 #: One digit wide, so the run is one :data:`TEMPLATE_CHAR`.
@@ -191,6 +192,35 @@ def fractran_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
     return (pair,) * n
 
 
+def _balance(table: str, default: str) -> str:
+    """Balance ordinary fractions, small-root fractions and parity phases."""
+    n = _validate_truth_table(table)
+    floor = max(map(len, default.split()))
+    narrow = _plain(table, n, small_root=True)
+    if max(map(len, narrow.split())) >= floor:
+        narrow = default
+    regimes: list[tuple[str, int, int | None]] = [(default, floor, None)]
+    upper = floor - 1
+    lower = 1
+    if n == 2 and all(int(bit) == row.bit_count() % 2 for row, bit in enumerate(table)):
+        lower = max(map(len, narrow.split()))
+        regimes.extend(
+            [
+                (_PARITY_BINARY, 1, min(3, lower - 1, upper)),
+                (_PARITY_TWO, 4, min(lower - 1, upper)),
+            ]
+        )
+    regimes.append((narrow, lower, upper))
+    candidates = [default]
+    for program, lo, hi in regimes:
+        if hi is not None and lo > hi:
+            continue
+        tokens = program.split()
+        width = balanced_token_width(tokens, " ", minimum=lo, maximum=hi)
+        candidates.append(_join_tokens(tokens, width, " "))
+    return min(candidates, key=balance_score)
+
+
 LANGUAGE = Language(
     "FRACTRAN",
     "other.fractran",
@@ -206,4 +236,5 @@ LANGUAGE = Language(
     # Whitespace- or comma-separated tokens, and a break inside one would
     # change a number.
     wrap=wrap_space_delimited,
+    balance=_balance,
 )

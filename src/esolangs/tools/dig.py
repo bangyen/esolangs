@@ -11,6 +11,7 @@ from esolangs.tools.helpers import (
     narrowest_grid,
     read_at,
 )
+from esolangs.tools.wrap import balance_score
 
 # Dig blocks for one level of the decision tree.  ``$`` takes its count
 # from the digit beside it and looks up, right, down, left for one, so the
@@ -965,9 +966,30 @@ def _dig_build(
     return narrowest_grid(*candidates)
 
 
+def _balance(table: str, default: str) -> str:
+    """Compare alternating, flat, banded and reachable narrow/affine routes."""
+    n = _validate_truth_table(table)
+    flat = _dig_grid(table, n, None)
+    # The full tree stays: a reduced one can be less square.
+    candidates = [
+        default,
+        dig(table, share=False),
+        flat,
+        _dig_grid(table, n, None, reduce=False),
+        dig(table, 1),
+        dig(table, 8),
+    ]
+    if n >= 2:
+        banded = _dig_grid(table, n, (n + 3) // 2)
+        if grid_width(banded) < grid_width(flat):
+            candidates.append(banded)
+    return min(candidates, key=balance_score)
+
+
 LANGUAGE = Language(
     "Dig",
     "grid_based.dig",
     boolean=dig,
     split=True,
+    balance=_balance,
 )

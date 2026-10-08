@@ -11,6 +11,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from functools import cache
+from typing import Any
 
 from esolangs.interpreters.stack_based.piet import _COLOURS, BLACK
 from esolangs.raster import Raster
@@ -263,10 +264,18 @@ def piet(truth_table: str, width: int | None = None, *, scale: int = 1) -> Raste
     return _generate(truth_table).upscaled(scale)
 
 
+def _balance(table: str, default: Any, **options: Any) -> Any:
+    """Defer to the ``balance`` submodule, which imports this one."""
+    from esolangs.tools.piet.balance import balance  # circular
+
+    return balance(table, default, **options)
+
+
 LANGUAGE = Language(
     "Piet",
     "stack_based.piet",
     source_kind=SourceKind.RASTER,
     boolean=piet,
     contract=BooleanContract(note="80 pixels per codel, comparable in area to Line"),
+    balance=_balance,
 )

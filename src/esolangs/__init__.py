@@ -87,7 +87,6 @@ from esolangs.registry import (
 )
 from esolangs.settings import DialectSettings, dialect_options, effective_settings
 from esolangs.tagged import _Tagged, _Template
-from esolangs.tools.balance import BALANCERS as _BALANCERS
 from esolangs.tools.helpers import mark_runs, unmark
 
 # Imported private: it takes a *generator function*, not a language name, so
@@ -213,7 +212,7 @@ def generate(
     if balance:
         default = generate(language, truth_table, settings=settings)
         lang = LANGUAGES[resolve(language)]
-        balancer = _BALANCERS.get(lang.id)
+        balancer = lang.balance
         if isinstance(default, Raster):
             if balancer is None:
                 return default

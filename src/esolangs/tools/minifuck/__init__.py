@@ -9,6 +9,7 @@ displacement, so every row owns a cell and a constant half or repeat has no
 subtree to fold or share.
 """
 
+import re
 from functools import cache
 from itertools import pairwise
 
@@ -38,7 +39,8 @@ from esolangs.tools.minifuck.sim import (
     PAIR,
     _clamp,
 )
-from esolangs.tools.wrap import _minifuck
+from esolangs.tools.token_balance import balanced_token_width
+from esolangs.tools.wrap import _MINIFUCK_COMMAND, _RUN, _minifuck, balance_score
 
 __all__ = ["minifuck"]
 
@@ -274,6 +276,33 @@ def _wrap_template(template: str, n: int, width: int) -> str:
     return unmark(wrap_program(marked, "minifuck", width), TEMPLATE_CHAR, n)
 
 
+def _balance(table: str, default: str) -> str:
+    """Balance ordinary and paired skip tokens, including the parity column."""
+    n = _validate_truth_table(table)
+
+    def tokens(program: str) -> list[str]:
+        marked = mark_runs(program.replace("\n", ""), TEMPLATE_CHAR, (PAIR,) * n)
+        return re.findall(f"{_RUN}|{_MINIFUCK_COMMAND}", marked)
+
+    normal = tokens(default)
+    floor = max(map(len, normal))
+    width = balanced_token_width(normal, minimum=floor)
+    candidates = [default, minifuck(table, width), minifuck(table, 1)]
+    parity = all(
+        int(bit) == ((row.bit_count() ^ int(table[0])) & 1)
+        for row, bit in enumerate(table)
+    )
+    lower = 4 if parity else 1
+    if lower < floor:
+        # Below the ordinary token floor, paired tokens win throughout the
+        # regime exactly when their own floor is smaller; otherwise the
+        # generator retains the ordinary tokens throughout it.
+        narrow = tokens(minifuck(table, lower))
+        width = balanced_token_width(narrow, minimum=lower, maximum=floor - 1)
+        candidates.append(minifuck(table, width))
+    return min(candidates, key=balance_score)
+
+
 LANGUAGE = Language(
     "Minifuck",
     "tape_based.minifuck",
@@ -283,4 +312,5 @@ LANGUAGE = Language(
     ),
     # ``[`` skips the character after it.
     wrap=_minifuck,
+    balance=_balance,
 )

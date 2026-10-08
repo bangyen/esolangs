@@ -84,7 +84,8 @@ def {slug}(truth_table: str) -> str:
 # The registry entry.  Add split=True if run() takes one string per source
 # line, contract=BooleanContract(...) if the programs do not read one 0/1
 # line per input (docs/CONTRIBUTING.md#the-boolean-io-contract), and
-# wrap=wrap_chars (esolangs.tools.wrap) if a newline anywhere is harmless.
+# wrap=wrap_chars (esolangs.tools.wrap) if a newline anywhere is harmless;
+# a generator taking a width needs balance=, picking its squarest regime.
 LANGUAGE = Language("{name}", "{category}.{slug}", boolean={slug})
 '''
 
@@ -247,7 +248,6 @@ def _common_gaps(name: str, module: str) -> list[Gap]:
 def _generator_gaps(lang: Language) -> list[Gap]:
     """List the steps a language with a Boolean generator needs."""
     from esolangs import tools
-    from esolangs.tools.balance import BALANCERS
     from esolangs.tools.examples import BOOLEAN_EXAMPLES
     from esolangs.tools.wrap import takes_width
 
@@ -287,9 +287,15 @@ def _generator_gaps(lang: Language) -> list[Gap]:
                 "in WIDTH_EXCEPTIONS in tests/tools/test_wrap.py",
             )
         )
-    if width and lang.id not in BALANCERS:
+    if width and lang.balance is None:
+        gen_module = lang.boolean.__module__.replace(".", "/")
         gaps.append(
-            Gap("src/esolangs/tools/balance.py", f'add "{lang.id}" to BALANCERS')
+            Gap(
+                f"src/{gen_module}.py",
+                "add balance=_balance to its LANGUAGE: a "
+                "`_balance(table, default)` returning the squarest of its "
+                "width regimes (see tools/arrowqueue.py)",
+            )
         )
     return gaps + _ledger_gaps(lang.name)
 
@@ -593,7 +599,6 @@ def remove(name: str) -> list[str]:
         "src/esolangs/registry/_table.py",
         "src/esolangs/tools/__init__.py",
         "src/esolangs/tools/examples.py",
-        "src/esolangs/tools/balance.py",
         "tests/samples.py",
         "tests/tools/boolean_runners.py",
         "tests/tools/test_wrap.py",

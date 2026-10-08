@@ -2,7 +2,13 @@
 
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
-from esolangs.tools.helpers import _validate_truth_table, essential_inputs, read_at
+from esolangs.tools.helpers import (
+    _validate_truth_table,
+    essential_inputs,
+    grid_width,
+    read_at,
+)
+from esolangs.tools.wrap import balance_score
 
 # The ring's own columns: 3 descends at the start, 2 climbs into the first
 # gadget, 0 climbs home.  Column 1 is the gap that keeps the three apart.
@@ -213,6 +219,13 @@ def _clockwise_two_columns(table: str) -> str:
     return "\n".join(row.rstrip() for row in rows)
 
 
+def _balance(table: str, default: str) -> str:
+    """Compare the lookup, legacy rotation, lean rotation and two-column route."""
+    rotated = clockwise(table, max(1, grid_width(default) - 1))
+    lean = clockwise(table, max(1, grid_width(rotated) - 1))
+    return min(default, rotated, lean, clockwise(table, 1), key=balance_score)
+
+
 LANGUAGE = Language(
     "Clockwise",
     "grid_based.clockwise",
@@ -226,4 +239,5 @@ LANGUAGE = Language(
         "but is on the output side. A line per bit, or a packed one, "
         "is read as a different row and answered wrongly",
     ),
+    balance=_balance,
 )

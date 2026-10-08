@@ -9,6 +9,7 @@ The reduced diagram (:func:`_shared`) shares repeated halves.
 
 from __future__ import annotations
 
+import re
 from string import ascii_lowercase
 
 from esolangs.registry._contracts import BooleanContract
@@ -17,7 +18,8 @@ from esolangs.tools.helpers import (
     _validate_truth_table,
     subtree_ids,
 )
-from esolangs.tools.wrap import _false
+from esolangs.tools.token_balance import balanced_token_width
+from esolangs.tools.wrap import _FALSE_COMMAND, _false, _join_tokens, balance_score
 
 #: ``'0`` and ``'1`` differ in their low bit, so ``1&`` is the bit and ``?``
 #: takes any nonzero flag; ``$`` leaves a copy under it for the ``0`` test.
@@ -159,6 +161,15 @@ def _shared(truth_table: str, n: int) -> str:
     return "".join(out)
 
 
+def _balance(table: str, default: str) -> str:
+    """Compare ordinary token fits above width one and the alternate zero push."""
+    tokens = re.findall(_FALSE_COMMAND, default)
+    width = balanced_token_width(tokens, minimum=2)
+    return min(
+        default, _join_tokens(tokens, width, ""), false(table, 1), key=balance_score
+    )
+
+
 LANGUAGE = Language(
     "FALSE",
     "stack_based.false",
@@ -168,4 +179,5 @@ LANGUAGE = Language(
     ),
     # ``'x`` and ``.x``/``?x`` take the character after them.
     wrap=_false,
+    balance=_balance,
 )

@@ -8,10 +8,12 @@ from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
     constant_span_test,
+    grid_width,
     input_weights,
     move_text,
     subtree_ids,
 )
+from esolangs.tools.wrap import balance_score
 
 #: Finisher for a cell primed to 1: ``-`` flips it to 0, ``+`` is inert.
 #: Both are one grid cell, so a run is the exact width of its program.
@@ -365,6 +367,15 @@ def _back_ordered(
     return _reflect_back(grid, height, tree_width)
 
 
+def _balance(table: str, default: str) -> str:
+    """Compare the reflected tree, descending tree and parity column."""
+    descending = back(table, max(1, grid_width(default) - 1))
+    # The unshared layouts stay: sharing can leave a layout less square.
+    plain = back(table, wrap=False)
+    narrow = back(table, max(1, grid_width(plain) - 1), wrap=False)
+    return min(default, descending, plain, narrow, back(table, 1), key=balance_score)
+
+
 LANGUAGE = Language(
     "Back",
     "tape_based.back",
@@ -376,4 +387,5 @@ LANGUAGE = Language(
         "the answer is cell n, past the n input cells",
         parameterized=True,
     ),
+    balance=_balance,
 )

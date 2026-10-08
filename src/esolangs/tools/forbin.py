@@ -9,10 +9,13 @@ from esolangs.tools.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
     constant_span_test,
+    grid_width,
     input_weights,
     short_name,
     subtree_ids,
 )
+from esolangs.tools.token_balance import balanced_token_width
+from esolangs.tools.wrap import _join_tokens, balance_score
 
 _FORBIN_ALPHABET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
@@ -248,6 +251,13 @@ def _register(names: _Names, block: int, high: int, n: int) -> str:
     return f"{names.table} {','.join(cells)}{{{''.join(body)}}}"
 
 
+def _balance(table: str, default: str) -> str:
+    """Balance the disjoint-guard spelling below the natural statement span."""
+    tokens = forbin(table, 1).split()
+    width = balanced_token_width(tokens, " ", maximum=grid_width(default) - 1)
+    return min(default, _join_tokens(tokens, width, " "), key=balance_score)
+
+
 LANGUAGE = Language(
     "Forbin",
     "other.forbin",
@@ -255,4 +265,5 @@ LANGUAGE = Language(
     contract=BooleanContract(
         input_shape="char_stream",
     ),
+    balance=_balance,
 )
