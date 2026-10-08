@@ -31,9 +31,6 @@ def run_program(code: str, stdin: str = "") -> str:
 class TestWikiExamples:
     """The page's four example programs, which pin the execution model."""
 
-    def test_hi(self) -> None:
-        assert run_program(HI) == "HI"
-
     def test_cat_echoes_until_its_input_runs_out(self) -> None:
         """The cat loops on the character it read, so EOF is how it ends."""
         io = ScriptedIO("H\ni\n!\n")

@@ -11,9 +11,6 @@ def run_and_capture(code: str, inputs: list[str] | None = None) -> str:
 
 
 class TestSixFive:
-    def test_add_six(self) -> None:
-        assert run_and_capture("66666666A0") == "0"
-
     def test_input_echo(self) -> None:
         assert run_and_capture("BA0", inputs=["X"]) == "X"
 

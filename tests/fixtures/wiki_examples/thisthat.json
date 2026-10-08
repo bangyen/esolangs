@@ -35,6 +35,7 @@
   },
   {
    "id": "bct-runs-on",
+   "band": "medium",
    "source_file": "thisthat_bct.txt",
    "stdin": "1\n1",
    "stop": "steps",

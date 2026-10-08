@@ -18,12 +18,23 @@ def run_and_capture(code: list[str], inputs: list[str] | None = None) -> str:
 
 
 class TestTaglate:
-    def test_output_hello(self) -> None:
-        assert run_and_capture(["Hi", "ii"]) == "Hi"
-
-    def test_add(self) -> None:
-        # ord('1') + ord('2') = 99 = 'c'
-        assert run_and_capture(["12", "ai"]) == "c"
+    @pytest.mark.parametrize(
+        ("seed", "commands", "expected"),
+        [
+            pytest.param("Hi", "ii", "Hi", id="output_hello"),
+            pytest.param("12", "ai", "c", id="add"),
+            pytest.param("12", "ei", "2", id="rotate"),
+            pytest.param("11", "gyigz", "11", id="loop_outputs_until_empty"),
+            pytest.param("\x001", "gyigz", "", id="loop_skipped_when_front_zero"),
+            pytest.param("1", "ji", "0", id="j_decrements_nonzero"),
+            # Any other character after a ``g`` leaves the ``g`` alone.
+            pytest.param("1", "gXi", "1", id="only_y_and_z_pair_with_a_g"),
+            # Passing over a non-command moves on, rather than restarting.
+            pytest.param("1", "ix", "1", id="a_skipped_character_advances_the_cursor"),
+        ],
+    )
+    def test_output(self, seed: str, commands: str, expected: str) -> None:
+        assert run_and_capture([seed, commands]) == expected
 
     def test_subtract_wraps(self) -> None:
         # ord('1') - ord('2') = -1, wrapping to 65535
@@ -35,18 +46,6 @@ class TestTaglate:
 
         with pytest.raises(HaltError):
             run_and_capture(["1\x00", "di"])
-
-    def test_rotate(self) -> None:
-        assert run_and_capture(["12", "ei"]) == "2"
-
-    def test_loop_outputs_until_empty(self) -> None:
-        assert run_and_capture(["11", "gyigz"]) == "11"
-
-    def test_loop_skipped_when_front_zero(self) -> None:
-        assert run_and_capture(["\x001", "gyigz"]) == ""
-
-    def test_j_decrements_nonzero(self) -> None:
-        assert run_and_capture(["1", "ji"]) == "0"
 
     def test_j_zero_becomes_one(self) -> None:
         assert run_and_capture(["11", "bji"]) == chr(1)
@@ -67,14 +66,6 @@ class TestTaglate:
     def test_google_translate_url_encodes_unsafe_chars(self) -> None:
         expected = "https://translate.google.com/?sl=en&tl=es&text=a%20b&op=translate"
         assert run_and_capture(["a b", "t" + "i" * len(expected)]) == expected
-
-    def test_only_y_and_z_pair_with_a_g(self) -> None:
-        """Any other character after a ``g`` leaves the ``g`` alone."""
-        assert run_and_capture(["1", "gXi"]) == "1"
-
-    def test_a_skipped_character_advances_the_cursor(self) -> None:
-        """Passing over a non-command moves on, rather than restarting."""
-        assert run_and_capture(["1", "ix"]) == "1"
 
     def test_the_command_lines_are_joined_without_a_separator(self) -> None:
         """``gy`` split across two lines is still one token."""

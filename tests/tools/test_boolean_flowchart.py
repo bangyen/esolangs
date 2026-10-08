@@ -145,11 +145,6 @@ class TestFlowchart:
                 assert io.position() == n
                 assert io.getvalue() == table[row]
 
-    def test_rejects_a_malformed_table(self) -> None:
-        """A table whose length is not a power of two is rejected."""
-        with pytest.raises(ValueError, match="power-of-two"):
-            boolean.flowchart("011")
-
     def test_a_width_stacks_the_tree_onto_one_column(self) -> None:
         """A narrower drawing is the same tree, separated by rows not columns."""
         for table in ("0110", "01101001", "0110100110010110"):

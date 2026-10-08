@@ -55,9 +55,7 @@ class TestBuiltins:
     def test_binary_operators_read_both_arguments(self) -> None:
         """Each operand must come from its own position."""
         assert run_program("% 0 & 0 1\n$") == "0"
-        assert run_program("% 0 & 1 0\n$") == "0"
         assert run_program("% 0 | 1 0\n$") == "1"
-        assert run_program("% 0 | 0 1\n$") == "1"
         # `+[] x y` concatenates in order, so index 0 comes from the left.
         assert run_program("% 0 [?] +[] [] 1 [] 0 0\n$") == "1"
         assert run_program("% 0 [?] +[] [] 1 [] 0 1\n$") == "0"

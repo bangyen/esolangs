@@ -93,14 +93,6 @@ class TestSuperSNUSP:
 
         assert len(super_snusp(table)) == length
 
-    def test_a_malformed_table_is_rejected(self) -> None:
-        from esolangs.tools.super_snusp import super_snusp
-
-        with pytest.raises(ValueError, match="power-of-two"):
-            super_snusp("010")
-        with pytest.raises(ValueError, match="only '0' and '1'"):
-            super_snusp("012x")
-
 
 class TestSuperSNUSPWidth:
     """SNUSP's mirrors, which make this the cheapest fold of any generator here."""

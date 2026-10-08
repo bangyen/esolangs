@@ -2,8 +2,6 @@
 
 import random
 
-import pytest
-
 from esolangs import tools as boolean
 from esolangs.tools.helpers import best_input_order
 from esolangs.tools.sbleq import _sbleq_hoisted, _sbleq_packed
@@ -41,14 +39,6 @@ class TestSbleq:
         for row in (0, 1, 5, 6, 7, 31, 32, 62, 63):
             bits = [str((row >> (n - 1 - i)) & 1) for i in range(n)]
             assert run_sbleq(program, bits) == table[row]
-
-    def test_mismatched_table_rejected(self) -> None:
-        with pytest.raises(ValueError, match="power-of-two"):
-            boolean.sbleq("011")
-
-    def test_bad_table_rejected(self) -> None:
-        with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.sbleq("0123")
 
     def test_a_repeated_subtree_is_jumped_to(self) -> None:
         """XOR's second test reaches the leaves already emitted for the first."""

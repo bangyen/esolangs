@@ -16,33 +16,25 @@ from tests.raises import raises_message
 
 
 class TestMinskySwapBasicCommands:
-    def test_increment_command(self) -> None:
+    @pytest.mark.parametrize(
+        ("code", "expected", "code2", "expected2"),
+        [
+            pytest.param("+", "1 0", "++", "2 0", id="increment_command"),
+            pytest.param("*+", "0 1", "+*+", "1 1", id="swap_command"),
+            # ~ jumps to command 2 (the +) since the register is zero
+            pytest.param("+~\n1", "0 0", "~+\n2", "1 0", id="decrement_jump_command"),
+        ],
+    )
+    def test_command_pairs(
+        self, code: str, expected: str, code2: str, expected2: str
+    ) -> None:
         with redirect_stdout(io.StringIO()) as f:
-            run("+", io=IO())
-        assert f.getvalue().strip() == "1 0"
+            run(code, io=IO())
+        assert f.getvalue().strip() == expected
 
         with redirect_stdout(io.StringIO()) as f:
-            run("++", io=IO())
-        assert f.getvalue().strip() == "2 0"
-
-    def test_swap_command(self) -> None:
-        with redirect_stdout(io.StringIO()) as f:
-            run("*+", io=IO())
-        assert f.getvalue().strip() == "0 1"
-
-        with redirect_stdout(io.StringIO()) as f:
-            run("+*+", io=IO())
-        assert f.getvalue().strip() == "1 1"
-
-    def test_decrement_jump_command(self) -> None:
-        with redirect_stdout(io.StringIO()) as f:
-            run("+~\n1", io=IO())
-        assert f.getvalue().strip() == "0 0"
-
-        with redirect_stdout(io.StringIO()) as f:
-            run("~+\n2", io=IO())
-        # ~ jumps to command 2 (the +) since the register is zero
-        assert f.getvalue().strip() == "1 0"
+            run(code2, io=IO())
+        assert f.getvalue().strip() == expected2
 
     def test_jump_targets(self) -> None:
         with redirect_stdout(io.StringIO()) as f:

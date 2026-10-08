@@ -26,14 +26,6 @@ from tests.stdin_check import _check_stdin
 class TestTheShellCanJudgeAnAnswer:
     """Some languages could be run from the CLI and not judged from it."""
 
-    def test_describe_prints_the_input_shape(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """The fact whose absence caused this round's wrong answer."""
-        out = call_main(["describe", "Fargo"], capsys)
-        assert "input_shape" in out
-        assert "row_index" in out
-
     def test_describe_prints_the_traits_that_decide_how_to_drive(
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:

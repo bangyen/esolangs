@@ -18,12 +18,22 @@ def run_and_capture(code: str, inputs: list[str] | None = None) -> str:
 
 
 class TestBFStack:
-    def test_push_and_output(self) -> None:
-        assert run_and_capture(">+.") == "\x01"
-
-    def test_pop(self) -> None:
-        """< pops the top of the stack."""
-        assert run_and_capture(">+>+<.") == "\x01"
+    @pytest.mark.parametrize(
+        ("code", "expected"),
+        [
+            pytest.param(">+.", "\x01", id="push_and_output"),
+            # < pops the top of the stack.
+            pytest.param(">+>+<.", "\x01", id="pop"),
+            # A loop that zeroes its cell executes exactly once.
+            pytest.param(">+[>+<-]>+.", "\x01", id="loop"),
+            # [ jumps past its matching ] when the top is zero.
+            pytest.param(">[>]", "", id="loop_skipped_when_zero"),
+            # A skipped loop with nested [ brackets counts both.
+            pytest.param(">[[-]]", "", id="loop_skip_nested"),
+        ],
+    )
+    def test_output(self, code: str, expected: str) -> None:
+        assert run_and_capture(code) == expected
 
     def test_a_pop_leaves_everything_below_it(self) -> None:
         """Popping removes one cell, not all but the bottom one."""
@@ -45,18 +55,6 @@ class TestBFStack:
     def test_input_adds_a_cell_rather_than_overwriting_one(self) -> None:
         """``,`` pushes, so what was on top before is still underneath."""
         assert run_and_capture(">+,<.", inputs=["Z"]) == "\x01"
-
-    def test_loop(self) -> None:
-        """A loop that zeroes its cell executes exactly once."""
-        assert run_and_capture(">+[>+<-]>+.") == "\x01"
-
-    def test_loop_skipped_when_zero(self) -> None:
-        """[ jumps past its matching ] when the top is zero."""
-        assert run_and_capture(">[>]") == ""
-
-    def test_loop_skip_nested(self) -> None:
-        """A skipped loop with nested [ brackets counts both."""
-        assert run_and_capture(">[[-]]") == ""
 
     def test_loop_skip_unmatched(self) -> None:
         """A skipped [ with no closing ] is a malformed program."""

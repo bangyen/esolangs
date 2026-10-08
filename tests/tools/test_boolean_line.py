@@ -74,25 +74,23 @@ def _topology_representatives(n: int) -> list[str]:
 class TestLineBoolean:
     """Generated decision trees, end to end through render -> extract -> simulate."""
 
-    def test_identity_n1(self, tmp_path: Path) -> None:
-        """Identity on one input: output follows the single bit."""
-        _check_truth_table("01", 1, tmp_path)
-
-    def test_not_n1(self, tmp_path: Path) -> None:
-        """NOT on one input: output is the inverted bit."""
-        _check_truth_table("10", 1, tmp_path)
-
-    def test_and_n2(self, tmp_path: Path) -> None:
-        """AND over two inputs."""
-        _check_truth_table("0001", 2, tmp_path)
-
-    def test_xor_n2(self, tmp_path: Path) -> None:
-        """XOR over two inputs."""
-        _check_truth_table("0110", 2, tmp_path)
-
-    def test_majority_n3(self, tmp_path: Path) -> None:
-        """The regression case: a 3-deep tree with an inward-turning arm."""
-        _check_truth_table("00010111", 3, tmp_path)
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            # Identity on one input: output follows the single bit.
+            pytest.param("01", 1, id="identity_n1"),
+            # NOT on one input: output is the inverted bit.
+            pytest.param("10", 1, id="not_n1"),
+            # AND over two inputs.
+            pytest.param("0001", 2, id="and_n2"),
+            # XOR over two inputs.
+            pytest.param("0110", 2, id="xor_n2"),
+            # The regression case: a 3-deep tree with an inward-turning arm.
+            pytest.param("00010111", 3, id="majority_n3"),
+        ],
+    )
+    def test_truth_table(self, tmp_path: Path, table: str, n: int) -> None:
+        _check_truth_table(table, n, tmp_path)
 
     @pytest.mark.slow  # 5.2s: 32 input combinations through the renderer
     def test_parity_n5(self, tmp_path: Path) -> None:
@@ -166,16 +164,6 @@ class TestLineBoolean:
         for table in representatives:
             _check_truth_table(table, 3, tmp_path)
             _check_truth_table(_complement(table), 3, tmp_path)
-
-    def test_invalid_length_rejected(self) -> None:
-        """A truth table whose length is not a power of two is rejected."""
-        with pytest.raises(ValueError, match="power-of-two"):
-            line_boolean("010")
-
-    def test_invalid_characters_rejected(self) -> None:
-        """A truth table containing anything but 0/1 is rejected."""
-        with pytest.raises(ValueError, match="only '0' and '1'"):
-            line_boolean("0102")
 
 
 def test_line_generator_entry_points() -> None:

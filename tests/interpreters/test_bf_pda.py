@@ -29,25 +29,23 @@ class TestOutput:
 
 
 class TestBrackets:
-    def test_loop_skipped_when_top_zero(self) -> None:
-        """``[`` jumps past the body when the top bit is 0."""
-        assert run_program("<[.]") == ""
-
-    def test_loop_runs_while_top_nonzero(self) -> None:
-        """The body repeats while the top bit is 1, popping the bit out."""
-        assert run_program("<@[>]") == ""
-
-    def test_loop_terminates_on_empty_stack(self) -> None:
-        """A ``[`` on an empty stack reads 0 and skips the body."""
-        assert run_program("<@[>.]") == "0"
-
-    def test_skip_over_nested_bracket(self) -> None:
-        """``[`` with a zero top skips past nested ``[`` brackets."""
-        assert run_program("[[.]]") == ""
-
-    def test_jump_back_over_nested_bracket(self) -> None:
-        """``]`` with a one top jumps back across a nested ``]`` exactly once."""
-        assert run_program("<@<@[<@[>@]>]") == ""
+    @pytest.mark.parametrize(
+        ("code", "expected"),
+        [
+            # ``[`` jumps past the body when the top bit is 0.
+            pytest.param("<[.]", "", id="loop_skipped_when_top_zero"),
+            # The body repeats while the top bit is 1, popping the bit out.
+            pytest.param("<@[>]", "", id="loop_runs_while_top_nonzero"),
+            # A ``[`` on an empty stack reads 0 and skips the body.
+            pytest.param("<@[>.]", "0", id="loop_terminates_on_empty_stack"),
+            # ``[`` with a zero top skips past nested ``[`` brackets.
+            pytest.param("[[.]]", "", id="skip_over_nested_bracket"),
+            # ``]`` with a one top jumps back across a nested ``]`` exactly once.
+            pytest.param("<@<@[<@[>@]>]", "", id="jump_back_over_nested_bracket"),
+        ],
+    )
+    def test_output(self, code: str, expected: str) -> None:
+        assert run_program(code) == expected
 
     def test_forward_scan_skips_an_empty_inner_loop(self) -> None:
         """The forward scan counts an inner ``[`` even with nothing inside it."""

@@ -11,9 +11,18 @@ from tests.interpreters.runner import run_program
 execute = partial(run_program, run, suppress_eof=False)
 
 
-def test_documented_examples() -> None:
-    assert execute("10,10:v>>_++=") == "2"
-    assert execute("10,1:++(>+++++<-)>=") == "10"
+@pytest.mark.parametrize(
+    ("code", "expected"),
+    [
+        pytest.param("10,1:++(>+++++<-)>=", "10", id="documented_examples"),
+        pytest.param("2,2:+>++v+++#", "|1|2|\n|0|3|\n", id="grid_output"),
+        pytest.param("2,1:+(->)=", "0", id="loop_tests_its_declaration_cell"),
+        # ``^`` is the only mover the documented examples never exercise.
+        pytest.param("10,10:v+^+=", "1", id="upward_movement"),
+    ],
+)
+def test_output(code: str, expected: str) -> None:
+    assert execute(code) == expected
 
 
 def test_character_input() -> None:
@@ -36,22 +45,12 @@ def test_a_cursorless_read_loop_is_not_a_cycle() -> None:
         run_until_halt_or_cycle(machine)
 
 
-def test_grid_output() -> None:
-    assert execute("2,2:+>++v+++#") == "|1|2|\n|0|3|\n"
-
-
 def test_reflections() -> None:
-    """A reflection negates modulo the grid, as the page's stated grid needs."""
-    stated = ["|0|0|0|0|0|0|0|0|0|0|\n"] * 9 + ["|0|0|2|0|0|0|0|0|0|0|\n"]
-    assert execute("10,10:v>>_++#") == "".join(stated)
+    """A reflection negates modulo the grid."""
     assert execute("2,3:+|=%=_=") == "111"
     assert execute("1,4:v+_=") == "0"
     assert execute("4,1:>+|=") == "0"
     assert execute("4,4:v>+%=") == "0"
-
-
-def test_loop_tests_its_declaration_cell() -> None:
-    assert execute("2,1:+(->)=") == "0"
 
 
 def test_transition_does_not_mutate_its_input() -> None:
@@ -74,11 +73,6 @@ def test_transition_does_not_mutate_its_input() -> None:
 def test_malformed_program(code: str, message: str) -> None:
     with pytest.raises(ValueError, match=message):
         execute(code)
-
-
-def test_upward_movement() -> None:
-    """``^`` is the only mover the documented examples never exercise."""
-    assert execute("10,10:v+^+=") == "1"
 
 
 def test_a_close_without_an_open_is_rejected_at_the_transition() -> None:

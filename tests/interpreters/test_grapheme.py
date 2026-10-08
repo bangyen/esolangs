@@ -142,6 +142,12 @@ def test_loading_ignores_only_lf(char: str) -> None:
             "12",
             id="string_integer_conversion_stops_before_f_without_a_final_shift",
         ),
+        # "skip the next B commands" never moves back to re-run ``V``.
+        pytest.param(
+            "FAFFZFBFZFVFAFY", "1", id="v_with_a_negative_count_skips_nothing"
+        ),
+        # The map takes "integers/strings/functions" as keys, by body.
+        pytest.param("FBFHAHCHAHDY", "2", id="a_function_names_a_variable"),
     ],
 )
 def test_prints(code: str, expected: str) -> None:
@@ -253,14 +259,6 @@ class TestEdgeCases:
         program = "H" + "FFTPBKFAFDQ" + "H" + "FAFC" + "FAFD" + "G"
         assert run_program("FEZZF" + program) == ""
         assert run_program("FEZZF" + "FFT" + "A" + program) == ""
-
-    def test_v_with_a_negative_count_skips_nothing(self) -> None:
-        """ "skip the next B commands" never moves back to re-run ``V``."""
-        assert run_program("FAFFZFBFZFVFAFY") == "1"
-
-    def test_a_function_names_a_variable(self) -> None:
-        """The map takes "integers/strings/functions" as keys, by body."""
-        assert run_program("FBFHAHCHAHDY") == "2"
 
     def test_the_error_messages_read_in_full(self) -> None:
         """Each message entire, not the fragment the tests match on."""

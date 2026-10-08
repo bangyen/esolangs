@@ -69,6 +69,12 @@ _OUTPUT = {
     # cell 0 is zero, so the outer 'a' skips forward; the inner 'a...b'
     # pair must be consumed as a unit, leaving 'u' to print cell 0.
     "skipping_a_loop_steps_over_a_nested_one": ("aabbue", "\x00"),
+    # The grown cell and the start cell are distinct and both kept.
+    # start 2, grow left and add 6; r lands one past the start, then
+    # two l print the start cell and the grown one
+    "left_of_zero_and_back_keeps_both_cells": ("plppprloloe", "26"),
+    # The cell left of the leftmost exists and is zero, as ``w``'s is.
+    "copy_from_left_at_the_leftmost_cell_copies_a_zero": ("ppqoe", "0"),
 }
 
 
@@ -165,20 +171,10 @@ class TestPainfuck:
         # ``r`` (two each) walk back onto the start cell
         assert run_program("pcllrrrroe") == "2"
 
-    def test_left_of_zero_and_back_keeps_both_cells(self) -> None:
-        """The grown cell and the start cell are distinct and both kept."""
-        # start 2, grow left and add 6; r lands one past the start, then
-        # two l print the start cell and the grown one
-        assert run_program("plppprloloe") == "26"
-
     def test_reset_returns_to_the_start_cell_after_growing_left(self) -> None:
         """``d`` goes back to the cell the run began on, not the leftmost."""
         assert run_program("plldoe") == "2"
         assert run_program("lpdoe") == "0"
-
-    def test_copy_from_left_at_the_leftmost_cell_copies_a_zero(self) -> None:
-        """The cell left of the leftmost exists and is zero, as ``w``'s is."""
-        assert run_program("ppqoe") == "0"
 
     def test_square(self) -> None:
         assert run_program("pkue") == "\x04"  # 2*2

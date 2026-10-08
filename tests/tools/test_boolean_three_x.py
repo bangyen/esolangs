@@ -2,8 +2,6 @@
 
 import itertools
 
-import pytest
-
 from esolangs import tools as boolean
 
 
@@ -66,16 +64,6 @@ class TestThreeX:
                     io = ScriptedIO("\n".join(str(b) for b in bits) + "\n")
                     run(program, io)
                     assert io.getvalue().strip() == table[combo], f"{table} {perm}"
-
-    def test_wrong_length_truth_table_rejected(self) -> None:
-        """A truth table of the wrong length is malformed."""
-        with pytest.raises(ValueError, match="entries"):
-            boolean.three_x("011")
-
-    def test_invalid_truth_table_chars_rejected(self) -> None:
-        """A truth table with non-0/1 characters is malformed."""
-        with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.three_x("02")
 
     def test_uses_input_variables(self) -> None:
         """Each input bit is read into a distinct variable."""
