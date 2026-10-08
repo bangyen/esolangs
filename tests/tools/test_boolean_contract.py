@@ -679,10 +679,8 @@ _LINEAR_SCALING = {
     "streetcode",
     "vandevelo",
 }
-_LANGUAGE_SUPERLINEAR_SCALING = {"factor"}
-_OPEN_SCALING = {
-    "polynomial",
-}
+_LANGUAGE_SUPERLINEAR_SCALING = {"factor", "polynomial"}
+_OPEN_SCALING: set[str] = set()
 
 
 def test_remaining_scaling_audit_is_exhaustive() -> None:
