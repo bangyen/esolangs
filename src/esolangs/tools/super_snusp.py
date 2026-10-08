@@ -15,7 +15,9 @@ __all__ = ["super_snusp"]
 
 _TWO_INPUT_SHORT = {
     # These executed forms reuse 48 both to decode each input and to encode
-    # the answer, keeping the literal at the bottom of the stack.
+    # the answer, keeping the literal at the bottom of the stack.  n=2 is the
+    # only arity: 723 vs 907 characters over all 16 tables (20.3%), 72 vs 256
+    # (72%) on these five.
     "0000": "48{,-> ,-<}.",
     "0011": "48{,-> ,-<^.",
     "0101": "48{,-> ,-<>^.",
