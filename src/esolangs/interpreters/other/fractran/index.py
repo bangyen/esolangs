@@ -3,16 +3,20 @@
 from __future__ import annotations
 
 import re
+from array import array
 from bisect import bisect_left
 from dataclasses import dataclass
 from functools import cache
 from itertools import pairwise
-from math import prod
+from math import isqrt, prod
 
 type Factors = tuple[tuple[int, int], ...]
 type Rule = tuple[Factors, Factors]
 
 _POWER = re.compile(r"^(\d+)(?:\^(\d+))?$")
+
+#: Every source may name bases up to this, however short it is.
+SMALL_BASE = 256
 
 
 def integer(value: Factors) -> int:
@@ -67,30 +71,41 @@ class Index:
         return best, probes
 
 
+def _least_factors(top: int) -> array[int]:
+    """Return each integer's least prime factor, through ``top``.
+
+    Descending ``p`` writes every multiple from ``p * p``; a smaller divisor
+    writes later, so the least one stays.  Composite ``p`` are harmless.
+    """
+    least = array("L", range(top + 1))
+    for p in range(isqrt(top), 1, -1):
+        least[p * p :: p] = array("L", [p]) * len(range(p * p, top + 1, p))
+    return least
+
+
 def compile_index(code: str) -> Index | None:
     """Compile small bases exactly; leave expensive factorization to the literal VM."""
     tokens = [(m.start(), m.group()) for m in re.finditer(r"[^\s,]+", code)]
     if not tokens:
         return None
-    # Dense generated sources use only O(log T log log T)-sized bases.
-    # This bound prevents factoring arbitrary large literals during loading.
+    # A base costs at least its digits, so one no larger than the source is
+    # cheap to factor: a sieve to the largest such base, linear in the source.
+    # Larger literals are left to the literal VM rather than factored.
     limit = max(
-        256,
-        len(code).bit_length() ** 2,
+        SMALL_BASE,
+        len(code),
         (tokens[0][1].count("*") + 1) ** 2,
     )
+    named = (int(m[1]) for m in re.finditer(r"(?:^|[\s,/*])(\d+)", code))
+    least = _least_factors(max((b for b in named if b <= limit), default=1))
 
     @cache
     def factor(base: int) -> Factors:
         result: dict[int, int] = {}
-        p = 2
-        while p * p <= base:
-            while base % p == 0:
-                result[p] = result.get(p, 0) + 1
-                base //= p
-            p += 1
-        if base > 1:
-            result[base] = result.get(base, 0) + 1
+        while base > 1:
+            p = least[base]
+            result[p] = result.get(p, 0) + 1
+            base //= p
         return tuple(result.items())
 
     def product(text: str) -> Factors | None:
@@ -124,7 +139,9 @@ def compile_index(code: str) -> Index | None:
         guard = tuple((p, -e) for p, e in delta if e < 0)
         rules.append((guard, delta))
         if guard:
-            p, threshold = guard[0]
+            # The largest guard prime is the most selective: a bucket keyed
+            # on a prime many rules share would be scanned rule by rule.
+            p, threshold = guard[-1]
             groups.setdefault(p, []).append((index, threshold))
         elif unconditional is None:
             unconditional = index

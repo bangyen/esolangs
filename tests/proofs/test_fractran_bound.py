@@ -12,7 +12,7 @@ import pytest
 from esolangs.interpreters.other.fractran import _choose, _parse
 from esolangs.tools.fractran import PAIR, fractran
 from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
-from tests.proofs.deep.fractran_packed import row_addressed, rows, spelled
+from tests.proofs.deep.fractran_shared import row_addressed, rows, spelled
 
 #: A fraction list, as the interpreter holds it.
 type _Fractions = tuple[tuple[int, int], ...]
@@ -227,20 +227,20 @@ def _pseudo_table(n: int) -> str:
 
 def test_the_shipped_builder_answers_every_row_without_addressing_one() -> None:
     """Theorem 15: a program does not have to give a row an address."""
-    table = _pseudo_table(6)
-    worst, widest = rows(fractran(table), table)
-    assert worst > 2 * 6 + 1, "the packed run was not slower than a tree's"
-    assert widest > 0
+    table = _pseudo_table(8)
+    worst, _widest = rows(fractran(table), table)
+    assert worst <= 8 + 1, "a run fired more than a fraction a level and a leaf"
+    assert len(spelled(fractran(table))) < len(table) // 2
 
 
-def test_packing_pays_the_address_budget_rather_than_escaping_it() -> None:
-    """Corollary 9 covers the packed program too, and does not bind."""
+def test_sharing_pays_the_address_budget_rather_than_escaping_it() -> None:
+    """Corollary 9 covers the shared program too, and does not bind."""
     table = _pseudo_table(12)
     template = fractran(table)
-    assert len(template.split()) - 1 < len(table)
-    assert len(spelled(template)) < len(table)
-    assert len(template) < 12 * len(table)
-    assert len(row_addressed(table)) > 2 * len(template)
+    assert len(template.split()) - 1 < len(table) // 2
+    assert len(spelled(template)) < len(table) // 4
+    assert len(template) < 5 * len(table)
+    assert len(row_addressed(table)) > 5 * len(template)
 
 
 def test_priority_order_is_a_channel_no_counting_argument_can_close() -> None:

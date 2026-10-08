@@ -128,7 +128,7 @@ FORMULAS: dict[str, tuple[Callable[[int, str], float], bool, tuple[int, ...]]] =
     "Eval": (lambda n, _: 2 * 2**n + 13 * n + 1, True, (3, 5)),
     "Grapheme": (lambda n, _: 14 * n + 32 + len(str(2**2**n)), True, (3, 5)),
     "Flowchart": (lambda n, _: 3 * 2**n + 9 * n + 4, True, (3, 5)),
-    "FRACTRAN": (lambda n, _: n + 2 if n <= 4 else n + 60, True, (3, 5)),
+    "FRACTRAN": (lambda n, _: n + 2, True, (3, 5)),
     "Suffolk": (lambda _, p: len(p) + 151, True, (3, 5)),
     "Piet": (lambda n, _: 2 * 2**n + 4 * n + 14, True, (3, 5)),
     "Piet++": (lambda n, _: 2 * 2**n + 4 * n + 14, True, (3, 5)),

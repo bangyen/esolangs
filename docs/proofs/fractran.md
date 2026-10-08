@@ -6,17 +6,16 @@ Assigning a separate address to each of a truth table’s `T` rows costs
 count. These bounds apply to that construction, not to all FRACTRAN programs.
 
 **FRACTRAN’s Boolean source complexity is `Theta(T)`.** The counting floor is
-`D >= T / log2(c) > 0.26 T` (Theorem 14); the packed construction in Theorem 15
-matches it within a constant. At `n = 12`, the shipped generator emits `8.93`
-characters per entry, decreasing with arity, versus `23.6` and increasing for
-the prime-per-row tree.
+`D >= T / log2(c) > 0.26 T` (Theorem 14); the shared decision diagram in
+Theorem 15 matches it within a constant. At `n = 12`, the shipped generator
+emits `3.90` characters per entry, decreasing with arity, versus `23.6` and
+increasing for the prime-per-row tree.
 
-Packing trades source size for execution cost. A packed program stores `w`
-entries in one exponent, using a value of `Theta(2**w)` bits and `O(2**w)`
-steps. The tree takes `2n + 1` steps on `O(n log n)` bits. Linear source size
-requires only `w = Omega(n)`; choosing `w` near `n / 3` keeps execution within
-a fractional power of `T`. Both constructions are executed in
-`tests/proofs/deep/fractran_packed.py`.
+Sharing costs no execution. The diagram gives every distinct subtable one
+state, so it names `O(T / log T)` primes, and a run still fires at most a
+fraction a level, one for the leaf, and a clear a set input left unread:
+`n + 1` fractions on `O(n log n)`-bit values. Both constructions are executed
+in `tests/proofs/deep/fractran_shared.py`.
 
 ## Setup
 
@@ -128,9 +127,9 @@ A prime-per-node tree attains this order. On the unfoldable parity table it
 emits `m = 3T + n - 2` fractions over `k = 2T + n` primes with all `m`
 guards distinct, and `D / log10(m!)` falls to `3.00` by `n = 12`.
 
-Programs need not address individual rows. Theorem 15 addresses
-`3T / w` of them for a block width `w = Theta(n)`, and pays this same
-budget for those, which comes to `Theta(T)`.
+Programs need not address individual rows. Theorem 15 addresses only the
+`O(T / log T)` distinct subtables, and pays this same budget for those,
+which comes to `Theta(T)`.
 
 ## Pricing the packing route
 
@@ -165,9 +164,9 @@ claim it genuinely is not closed.
 Read Lemma 11 the other way and it is a recipe rather than a refutation.
 Packing the *whole* table is what costs `2**T` steps; packing `w` entries
 costs `Theta(2**w)`, and at `w = Theta(log T)` that is `Theta(T)` steps --
-inside the linear execution contract, not outside it. Theorem 15 is
-exactly that reading, and it is why the size cell cannot be closed by any
-of the work above.
+inside the linear execution contract, not outside it. The generator once
+shipped exactly that reading, blocks of `w = Theta(n)` entries under a tree;
+Theorem 15 needs no packing at all.
 
 ## Why shared machinery cannot escape
 
@@ -194,7 +193,7 @@ matching the constant; and two nonzero weights of that sign are attained
 together, giving `2` or `-1`. So an arbitrary table cannot come from
 per-level shared machinery. To compute anything but a dictator a program
 must either branch at a level on more than that level's bit -- distinct
-fractions per distinguished prefix, which Theorem 7 prices -- or fire a
+fractions per distinguished residual table, which Theorem 7 prices -- or fire a
 fraction a number of times that varies with the input, which is a loop,
 which Lemma 11 prices in steps. Every construction in this repo and in the
 FRACTRAN literature takes the first horn.
@@ -219,201 +218,87 @@ Counting is therefore the only lower-bound technique available, and it
 stops at `Omega(T)`. An `O(T)`-character family would have to
 
 - use `m = o(T)` fractions and `k = o(T)` primes (Theorems 7 and 8); and
-- carry the rest of the table somewhere those do not count it -- which
-  leaves exactly two places, priority order and exponent magnitude.
+- carry the rest of the table somewhere those do not count it -- priority
+  order, exponent magnitude, or the wiring: which state each numerator
+  names, `log2 k` bits a fraction.
 
-The order route is open and unused. The magnitude route is the one taken
-below, and it was available all along: Lemma 11 prices a magnitude in
-*steps*, and steps are a different axis from characters. This document
-previously read that lemma as closing the route. It closes it on the
-clock, and the cell it was being used to justify measures text.
+The wiring route is the one taken below: `O(T / log T)` fractions each name
+one of `O(T / log T)` states, `Theta(T)` bits in all. This document once
+listed only order and magnitude, and shipped the magnitude route, which
+Lemma 11 prices in *steps* rather than characters. The order route is open
+and unused.
 
 ## Where the wall stops
 
-    Theorem 15 (packed construction). For every block width w = 2**v <= T
-    there is a FRACTRAN program family computing any T-row table under the
-    generator contract, with
+    Theorem 15 (shared construction). Every T-row table has a FRACTRAN
+    program under the generator contract with
 
-        m, k = Theta(T / w)  fractions and primes,
-        D    = O((T / w) log(T / w)) + T log10(2) + O(n log T)  characters,
+        k <= C + n + 1 primes,  m <= 2C + n fractions,
+        C = sum_{d <= n} min(2**d, 2**2**(n-d)) = O(T / log T),
+        D = O(T) characters,
 
-    running O(w * 2**w) steps on a value of O(2**w + log T) bits.
-    Any w = Omega(n) gives D = Theta(T), and w = O(n) keeps the run
-    polylogarithmic in T; the generator takes w near n / 3.
+    firing at most n + 1 fractions a run on values of O(n log n) bits.
 
-*Construction.* Stop the decision tree `v` levels early. Its `T / w`
-leaves are blocks of `w` consecutive table entries, and the high `n - v`
-input bits reach the right one exactly as a plain tree does: a node owns
-two fractions, the first dividing by the node's input prime, the second
-serving as FRACTRAN's own else. A leaf fires
+*Construction.* Build the decision tree over the inputs in order, and give
+equal subtables at one depth one state prime: a node many prefixes reach is
+written once, so the tree becomes a decision diagram. A node owns two
+fractions, `one / (state * p_d)` dividing by its depth's input prime, then
+`zero / state` serving as FRACTRAN's own else. A constant subtable is a leaf,
+`2 / state` or `1 / state`, and trailing `1 / p` fractions clear the inputs a
+folded leaf left unread. Only `2` is reserved: the inputs take the next `n`
+primes and the states the ones after, in post-order, root last.
 
-    carry**c * ready / state
+*Correctness.* The value holds exactly one state prime, and every state
+fraction's guard is that state times at most one input prime, so only the
+current node's fractions can fire, the first exactly when its input is set,
+which it consumes. Sharing merges states whose subtables, and so whose every
+continuation, agree. The clears come after every state fraction, so they
+fire only once the leaf has spent the last state. It is checked by
+execution: every row of every table at every arity from one to nine, over
+random, constant, parity and half-split tables, in
+`tests/proofs/deep/fractran_shared.py` (10,220 rows at the pinned seed) and
+in `tests/proofs/test_fractran_bound.py`.
 
-where `c` is its block read as a `w`-bit integer, low entry first. That is
-`w` bits of table for `log10 c + O(1)` characters, because this port parses
-`p^e` (Lemma 10's plain-notation pricing is what would forbid it).
-
-The inputs the tree did not read are the offset inside the block. One
-fraction each, `count**(2**(v-r)) / p`, places them in unary as the exponent
-of `count`. Their position in the list is the whole argument for them: they
-sit *after* the tree's fractions and before the decoder's, and a descending
-tree always has a fraction of its own to fire, so they take their turn
-exactly once a block is loaded. Put them at the top instead and they would
-steal an input the tree still had to read -- which is a mistake this
-construction made and the execution check caught.
-
-The decoder is one fixed list of twelve fractions, independent of the
-table. It shifts the block right once per unit of the counter -- halving
-the exponent by moving two `carry` to one `work`, discarding the bit
-shifted out, moving `work` back -- and then answers with the parity of what
-is left: `1 / carry**2` casts out pairs and `2 / carry` answers a unit that
-remains. Each loop alternates between two state primes, which is what keeps
-a guard from being shared; by Lemma 2 a fraction that tried to hold its own
-state prime in both numerator and denominator would have that prime cancel
-out of its guard and fire everywhere. The last two fractions need no state
-prime at all: every earlier state holds a tree state or a phase prime whose
-unguarded fraction comes first, so they fire only once the last phase prime
-is gone. The trailing `1 / p` clears exist only when a folded leaf leaves
-the inputs below it, and the offset, unread: a block's path spends both.
-
-*Two widths.* A power of two is too coarse a setting for `w`: it would
-double where the target crossed it, and the characters an entry would saw
-between the two settings rather than settle -- measured, that sawtooth
-pushes the size contract's difference ratio to `6.19` against its `4.4`,
-while the mixture holds every same-parity triple from `n = 6` to `n = 14`
-inside `3.93`. So blocks come in both `2**v` and `2**(v+1)`, mixed to
-average a target of about `n / 3`. The wider ones stop a level above the
-rest, which leaves them one more unread input; the offset fraction carrying
-weight `2**v` is exactly that level's, and under a narrow block that prime
-is already gone, so the two widths need no marker to tell them apart.
-
-*Small tables.* The decoder's twelve fractions and ten reserved primes are
-a constant, and below four inputs they outweigh what blocks save on every
-table. So through four inputs the generator also builds the plain tree --
-every level read, a leaf per answer, only `2` reserved -- and ships the
-shorter text, the tree on a tie. The tree never runs longer: past the
-shared levels it spends a step a level and one on its leaf, where a block
-spends its load, an offset fraction a level, and the decoder. Over the 256
-three-input tables this takes the text from 41,010 characters to 27,842
-and the benchmark's steps from 34,314 to 9,592, no table growing on either.
-At four inputs the tree ships for 37,984 of the 65,536 tables, taking the
-text down 5.0% and the steps 41.7%, again with no table growing; from five
-on it is all but never shorter, so it is not built there and the
-asymptotics above are untouched.
-
-*Correctness* is the loop invariant that after `j` units are spent the
-`carry` exponent is `c >> j`, and the offset is exactly the row's index
-inside its block. It is checked by execution rather than asserted: every
-row of every table, at every arity from one to nine, over random, constant,
-parity and half-split tables, in `tests/proofs/deep/fractran_packed.py`
-(10,220 rows at the pinned seed) and in
-`tests/proofs/test_fractran_bound.py`.
-
-*Cost.* The tree addresses `T / w` blocks, so Theorems 7 and 8 price it at
-`Theta((T/w) log(T/w))` -- the budget is paid, for fewer addresses. The
-block literals cost `sum log10 c_j <= (T/w)(w log10 2 + 1)`, which is
-`0.302 T + T/w`, and digit additivity (Theorem 8's engine) says no rendering
-does better. The decoder is `O(log T)` and the `n` clears `O(n log T)`.
-With `w = Omega(n)` the first term is `O(T)`, and
+*Cost.* Depth `d` holds at most `2**d` prefixes and at most `2**2**(n-d)`
+distinct subtables, so the states number at most `C`. The two terms cross
+where `2**(n-d)` is about `d`, and each falls geometrically away from the
+crossing, so `C = O(2**d*) = O(T / log T)`. Every fraction names at most
+three primes, each `O(log T)` digits by the prime number theorem, so
+`D = O(C log T) = O(T)`. A run descends a level a firing, fires its leaf,
+and clears each set input below the leaf: at most `d + 1 + (n - d) = n + 1`
+firings. Its value is one state prime and at most `n` input primes,
+`O(log T + n log n)` bits.
 
     Corollary 16 (language size complexity). The worst-case rendered size
     of a FRACTRAN boolean program is Theta(T): Omega(T) by Theorem 14,
     O(T) by Theorem 15.
 
-Measured, at the seed pinned in the deep proof -- `m` fractions, `k` primes,
-and characters an entry for the shipped builder and for the tree:
+Measured, at the seed pinned in the deep proof -- characters an entry for
+the shipped builder and for the row-addressing tree, and the states built
+against `C`:
 
-    n     T       w    D        D/T     tree      tree/T   m       k
-    8     256     2    2217     8.66    4696      18.34    242     246
-    9     512     2    4621     9.03    9914      19.36    469     475
-    10    1024    2    8892     8.68    21514     21.01    844     851
-    11    2048    2    16889    8.25    45429     22.18    1547    1554
-    12    4096    4    35900    8.76    96624     23.59    3080    3088
-    13    8192    4    69429    8.48    199542    24.36    5657    5666
-    14    16384   4    132844   8.11    426120    26.01    10508   10518
+    n     T       D        D/T     tree      tree/T   states   C
+    8     256     1483     5.79    4696      18.34    85       85
+    10    1024    4844     4.73    21514     21.01    248      277
+    12    4096    15980    3.90    96624     23.59    748      789
+    14    16384   55028    3.36    426120    26.01    2319     2325
 
-`D/T` declines while the tree's climbs, and the successive-difference ratio
-sits between `3.50` and `4.28` against the size contract's `4.4` at every
-same-parity triple from `n = 6` up -- which is the mixture doing its work,
-since a single power-of-two width reads `6.19` there. The `w` column is the
-narrow width; about a third of the table sits in blocks of `2w`.
-
-`m` and `k` are `3T / w`, so they are below `T` and fall as `w` grows:
-nothing here contradicts the address budget, which is paid in full for the
-addresses that exist. At these arities `w` is small and the margin is a
-constant factor; it is the `w = Theta(n)` growth that makes the product
-`Theta(T)`.
+`D/T` declines while the tree's climbs. A random table reaches `C` at
+`n = 8` and comes within 0.3% of it at `n = 14`.
 
 ## Size-time frontier
 
-The width is a knob, and what it trades is sharp. Writing `alpha` for the
-tree's per-address constant,
+The generator shipped a packed construction before this one: blocks of
+`w = Theta(n)` entries carried as one exponent and read by a fixed decoder,
+`Theta(T)` text for `O(2**w)` steps, so buying the text constant down cost
+exponentially in steps. Sharing removes the trade:
 
-    D ~ (0.302 + alpha (n - log2 w) / w) T     characters
-    S ~ 4 * 2**w                              steps
+    tree     D = Theta(T log T)   at most 2n + 1 firings   O(n log n)-bit values
+    shared   D = Theta(T)         at most n + 1 firings    O(n log n)-bit values
 
-so every `w = Omega(n)` gives `D = Theta(T)`, and buying the constant down
-by a factor costs exponentially in steps. At `w = Theta(n)` the run is
-`2**Theta(n) = T**Theta(1)` -- the shipped width near `n / 3` measures
-`T**(1/3)` steps on values of `O(T**(1/3))` bits, so its bit cost is
-`O(T**(2/3))`, sublinear, which is why the execution axis stays linear while
-the text does too. The two ends built here are
-
-    tree     D = Theta(T log T)   2n + 1 steps          O(log T)-bit values
-    packed   D = Theta(T)         Theta(T**(1/3))       O(T**(1/3))-bit values
-
-The fraction-firing question has a constructive answer, the literal-scan
-model has a counting obstruction, and indexed factored execution now
-achieves the stronger bound below.
-
-### Shared threshold dictionaries
-
-Let `n = log2 T`, and choose a power-of-two block width `w` with
-`n/4 < w <= n/2` for `n >= 2`. Route the high inputs through the ordinary
-tree, stopping at blocks of `w` rows. Intern equal block bit strings: there
-are at most `2**w <= sqrt(T)` distinct patterns. A block leaf replaces its
-state prime by its pattern prime. The low inputs load their offset `r` into
-one counter-prime exponent, using one fraction per input.
-
-For each pattern, emit descending threshold guards `pattern * counter**j`
-only at bit changes, including `j = 0`. The highest applicable threshold is
-exactly the start of the run containing `r`; its numerator is `1` or `2`.
-It consumes the pattern prime and `j` counter units. Trailing cleanup
-fractions remove the residual offset and unread input primes. Tree rules
-precede offset loading, which precedes dispatch and cleanup. Constant leaves
-use their own direct answer rule. No pattern is found by search.
-
-The tree has `O(T/w)` nodes; their primes have `O(n)` decimal digits, so
-routing costs `O(T)` text. The shared dictionary has at most `2**w * w`
-thresholds, each costing `O(n + log w)` characters. Its text is therefore
-`O(sqrt(T) * n**2) = o(T)`. Input loading and cleanup add `O(n log n)`.
-Thus every table has `O(T)` rendered text. This is a text bound; the prime
-sieve's build time has not been proved linear.
-
-A run uses at most `n-v` routing firings, one pattern load, `v = log2 w`
-offset loads, one dispatch, `w-1` counter clears, and `n` input clears:
-`O(n) = O(log T)` firings. Values have `O(n log n)` bits: each input prime
-has polynomial size in `n`, the active state or pattern prime has `O(n)`
-bits, and the counter exponent is at most `w-1`. Constant leaves obey the
-same bound.
-
-`tests/proofs/deep/fractran_shared.py` executes all tables through three
-inputs, then constants, parity, and twelve seeded tables per arity four
-through six: 3,800 rows, all correct. Maximum firings by arity are
-`2, 3, 4, 6, 7, 8`. Rendered seeded dense-table lengths are:
-
-    n       shared      shipped
-    8         1948         2210
-    10        7937         9057
-    12       34663        35705
-    14      149045       132259
-    16      342464       512956
-
-Four rows of each wider program and its shipped counterpart were also
-executed correctly. At sixteen inputs, the shared sample needed at most
-21 firings but 544,733 guard inspections, including the final halt scan.
-The three-input aggregate grows from 27,842 to 31,322, so this is a research construction,
-not a replacement for the shipped generator.
+What a firing costs depends on the evaluator. The literal scan has a
+counting obstruction (Theorem 16), and the indexed evaluator makes a firing
+`O(n)` word operations (Theorem 17).
 
 ### Literal-scan execution tradeoff
 
@@ -461,7 +346,7 @@ Consequently, a family covering all `2**T` tables must satisfy
 Both `I` and `W` cannot be polynomial in `n = log2 T`. This excludes
 polylogarithmic inspections together with polylogarithmic explicit integer
 bit work, even without a linear-text restriction. In the explicit bit-cost
-model used for the packed construction, materializing a `b`-bit product
+model, materializing a `b`-bit product
 costs at least `b` bit operations. With any fractions present, the first
 inspection already charges the initial width; a zero-fraction program only
 returns `1` or `2`, whose output width is charged. If every run has bit work
@@ -482,142 +367,54 @@ finite check includes the zero-fraction projection and the ordered numeric
 description count. These checks exercise the proof's semantic premises;
 the universal counting inequality is the argument above.
 
-### Small-prime indexed construction
+### Indexed execution
 
-The numeric scan is not required by FRACTRAN semantics. The shipped
-interpreter now keeps exact prime-exponent vectors for sources whose bases
-can be factored cheaply, and falls back to the literal integer evaluator
-otherwise. Numerator and denominator exponents cancel to give the exact
-reduced guard and multiplier. Each guard is assigned to its smallest prime;
-source indices retain priority. For a bucket whose anchor exponents decrease
-in source order, binary search skips impossible thresholds. Otherwise that
-bucket is scanned in source order. The least applicable source index over
-all active buckets and unconditional fractions is exactly FRACTRAN's first
-match. No generator recognition or Boolean-specific semantics are involved.
-Debug numeric values and fractions retain their original meaning.
+The numeric scan is not required by FRACTRAN semantics. The interpreter
+keeps exact prime-exponent vectors for sources whose bases are at most
+`max(256, S)` for source length `S`, factoring them with one sieve to the
+largest such base, and falls back to the literal integer evaluator
+otherwise; a larger base costs more digits than the source holds.
+Numerator and denominator exponents cancel to give the exact reduced guard
+and multiplier. Each guard is filed under its largest prime, the most
+selective; source indices retain priority. For a bucket whose anchor
+exponents decrease in source order, binary search skips impossible
+thresholds; otherwise that bucket is scanned in source order. The least
+applicable source index over all active buckets and unconditional fractions
+is exactly FRACTRAN's first match. No generator recognition or
+Boolean-specific semantics are involved. Debug numeric values and fractions
+retain their original meaning.
 
-    Theorem 17 (indexed construction). Every table has O(T) text,
-    O(T) generator word work including emission, and O(poly(log T))
-    execution bit work after loading in the indexed factored evaluator.
+    Theorem 17 (indexed execution). In the indexed evaluator, a run of the
+    shipped program costs O(n**2) word operations after loading, and
+    loading costs O(S log log S) for the sieve and O(S) to parse.
 
-**Construction.** Keep the mixed block widths from `_plan`: for large `n`,
-both widths are `Theta(n)`, and the widest is at most `2n/3`. Give each tree
-node its postorder index `i >= 1`, encoded as `3**(T+i)` at even depth and
-`5**(T+i)` at odd depth. The common offset keeps state fields at table-width
-magnitude and avoids decimal-width jumps in the size regression. Emit nodes in decreasing index order. A one edge tests
-its input prime before the zero fallback. Opposite-depth primes prevent
-cancellation from weakening the state guard. Within a phase, larger state
-thresholds fail and the current state's two rules precede every smaller
-state. Thus these overlapping guards still select the exact node.
+**Proof.** Every base is a prime at most `p_k`, or a product of two at most
+`256`. Every state but the at most `2(n + 1)` constant leaves is spelled at
+least three times -- in its two denominators, and in a parent's numerator
+or the start -- so `S >= 3 sum_{j <= k} log10 p_j - O(n log T)`, which is
+`(3 / ln 10 - o(1)) p_k > p_k`, and the sieve reaches every base. States follow the inputs, so a node's guard
+`state * p_d` is filed under the state: a state's bucket holds its own one
+or two fractions, and an input's holds its clear. The value carries one
+state prime and at most `n` input primes, so a selection inspects `O(n)`
+buckets of `O(1)` rules on `O(n log n)`-bit exponent vectors, and a run
+makes at most `n + 1` selections and one final failed one. Parsing reads
+each character a bounded number of times. QED.
 
-Intern block integers and assign positive pattern indices `j`, represented
-by `7**j`. A block leaf consumes its state and loads its pattern. Low inputs
-load their offset into the exponent of `11`; the input primes start at `13`.
-Emit patterns in decreasing index order, and their bit-change thresholds in
-decreasing offset order, including zero. The current pattern always reaches
-its own zero threshold before a smaller pattern can apply. Narrow blocks
-consume the extra tree input before loading; padding their dictionaries to
-the wider width cannot affect their attainable offsets. Cleanup removes
-unread inputs and the residual offset. Constant leaves return directly.
+`tests/tools/test_boolean_fractran.py` checks that every generated program
+through ten inputs compiles to the index. Executed on six rows of one seeded
+dense table per arity, the slowest loaded run stays flat while loading
+follows the text:
 
-**Bounds.** There are `O(T/n)` tree nodes; the shifted state index costs `O(n)` decimal
-characters, so routing text is `O(T)`. The number of distinct patterns is at
-most `2**(2n/3) = T**(2/3)`. Their `O(n)` thresholds each cost `O(n)` text,
-for `O(T**(2/3) n**2) = o(T)`. Only the first `n+5` primes are needed.
-The tree walks once, block parsing uses binary strings, and interning hashes
-`O(n)`-bit blocks. Together with writing the text, generator work is `O(T)`
-in the repository's table/index word model. This replaces the large-state
-prime sieve rather than assuming it is linear. Arity at most six retains
-the legacy generator, a finite exception that preserves its small-table size.
+    n     text      load ms    run ms
+    10    4905      2.9        0.038
+    12    16122     13.1       0.051
+    14    54908     36.2       0.081
+    16    210465    135.6      0.165
 
-Every compiled guard bucket is monotone. Only one routing phase or pattern
-prime is active; it takes at most two routing candidates or `O(n)` pattern
-candidates to find that bucket's first match. There are `O(n)` other active
-prime buckets, each containing at most an offset rule and a cleanup rule.
-Bucket binary searches take `O(n)` comparisons on `O(n)`-bit exponents.
-There are `O(n)` firings, including cleanup, and the sparse state has `O(n)`
-entries with `O(n)`-bit exponents. Thus even the conservative bound is
-`O(n**4)` execution bit work, which is `o(T)` and hence linear in `T`.
-Returning the answer materializes only `1` or `2`.
-
-Generated bases are bounded by the `(n+1)**2` load-time factoring allowance
-from the starting value's factor count for all sufficiently large `n`;
-smaller arities also fit the fixed minimum allowance. Exponents are parsed
-without raising their bases to those powers. Accessing debug `.value` or
-`.fractions` deliberately materializes the corresponding integers, and is
-outside the execution bound. Cached selections are invalidated by state
-changes. The literal-scan lower bound still applies to that evaluator,
-not to this representation.
-
-`tests/proofs/test_fractran_indexed.py` executes every table through three
-inputs and compares each selected source fraction and resulting integer
-with the literal evaluator. Constants, parity and four seeded tables per
-arity four through eight execute every row; arities through six also compare
-literal transitions. Random unreduced fractions check generic indexing,
-including non-monotone buckets. A million-unit state-power control reaches
-its answer without materializing a numeric fraction. Executed nested dense
-samples through eighteen inputs measured:
-
-    n       text       best build seconds   max steps   candidate guards
-    14      174583         0.026975             474           1705
-    15      326848         0.050646             475           1707
-    16      603730         0.096115              20             39
-    17     1240479         0.186735              20             41
-    18     2332119         0.356141              21             43
-
-Build timings are best of three; four input rows executed at each arity.
-These measurements use the public minimum-size selection. The same-parity
-size-difference trend over arities seven through eighteen was `4.0275`,
-inside the `4.4` regression contract. Loaded execution took under `1.5` ms
-in these samples, so timings establish no execution exponent; the bound is
-structural. Binary-search comparisons are additional work to the
-candidate-guard counts and are included in the proof above.
-
-The public generator also constructs a packed candidate with the same
-small-prime state encoding and the fixed decoder from the legacy builder,
-then chooses the shorter text, preferring thresholds on ties. This adds one
-named `O(T)` construction, not a search. Its widest block is at most `2n/3`;
-decoding takes `O(2**w+n)` firings on `O(n)`-bit exponents. Control buckets
-contain only the fixed decoder rules, while state buckets remain monotone.
-Thus packed execution costs at most `O(T**(2/3) poly(n)) = o(T)`. Both
-candidates have linear text and generation and sublinear loaded execution,
-so selecting by rendered length preserves all three bounds. The threshold
-construction supplies the polylogarithmic frontier answer even when the
-public size choice selects the slower packed program.
-
-This closes the frontier constructively in the indexed factored model:
-linear text and generation, and a polylogarithmic threshold construction.
-The public minimum-size selection has `O(T)` execution. It leaves the
-literal-scan obstruction intact and does not assert that scanning integers
-has the same cost.
-
-### Loading the generated indexed sources
-
-The loaded-run bound does not include parsing. For either indexed
-candidate, let `S` be rendered source length and `n` the input count.
-Apart from the initial product's `n+1` factors, each fraction has a
-constant number of prime-power atoms. Its exponents have `O(n)` bits:
-state indices are `T+i`, patterns are below `T`, and packed blocks
-have at most `2n/3` bits. Bases are among the first `n+12` primes or
-fixed decoder constants. All therefore lie below `O(n**2)` and the
-compiler's factoring allowance for sufficiently large `n`.
-
-Parsing an exponent of `l` digits costs at most `O(l**2)` elementary
-bit work. Since `l=O(n)` and their digit counts sum below `S`, all
-conversions cost `O(S*n)`. Cached trial factoring sees `O(n)` distinct
-bases, each requiring at most `O(n)` divisions on `O(log n)`-bit values,
-so `O(n**3)` conservatively covers that work. Sparse factor arithmetic,
-guard bucketing, negative threshold keys and monotonicity comparisons
-cost `O(n)` bits per fraction; the initial sort also fits `O(n**3)`.
-No state prime is raised to its exponent. Hence
-
-    loading = O(S*n + n**3) = O(T*log T) bit work,
-
-using the already proved `S=O(T)`. Stored rules, offsets and exponents
-use at most `O(S*n+n**2)` bits. This is a conservative upper bound;
-it does not assert a matching lower bound or apply to arbitrary-source
-literal fallback. The finitely many legacy arities change no asymptotic
-bound. Loaded parity programs through ten inputs executed correctly.
+Before the sieve the index factored bases by trial division under a cap of
+`max(256, (log2 S)**2)`, which the shared program's state primes exceed
+from four inputs; its literal scan then took `O(T / log T)` inspections a
+firing, 4.32 ms a row at `n = 14`.
 
 ### Order-only decoding with one priority consultation
 
@@ -772,8 +569,8 @@ measured successive-difference ratio of `4.61` against the size contract's
 `4.4`. Corollary 9 is attained to within a constant, so the construction is
 optimal among row-addressing programs up to that constant. Its measured
 super-linearity is therefore not slack in the encoding and not the
-language's arithmetic either: it is the price of the `2n + 1`-step run,
-which is what a row-addressed table buys.
+language's arithmetic either: it is the price of addressing rows, and
+Theorem 15 keeps the short run while addressing only distinct subtables.
 
     n     T      D       m      k    D / log10(m!)
     2     4      73      12     10   8.41

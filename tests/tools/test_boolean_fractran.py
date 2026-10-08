@@ -41,16 +41,15 @@ def test_fractran_answers_every_table_to_three_inputs() -> None:
                 assert _fractran_answer(table, row) == answer, (table, row)
 
 
-def test_fractran_spends_nothing_a_run_never_divides() -> None:
-    """No ``p^1``, no clear a block's path spends, no phase on the parity."""
-    from esolangs.tools.fractran import _packed
-
-    parity = str(boolean.fractran("0110100110010110" * 2))
+def test_fractran_shares_equal_subtables() -> None:
+    """No ``p^1``; parity at five inputs needs only 2n - 1 nodes, not 2**n - 1."""
+    parity = str(boolean.fractran("".join(str(r.bit_count() & 1) for r in range(32))))
     assert "^1 " not in parity
     assert "^1*" not in parity
-    assert parity.endswith(" 1/3^2 2/3")  # no leaf folds, so nothing to clear
+    # A root, two nodes a level below it, two leaves: two fractions a node.
+    assert len(parity.split()) - 1 == 2 * (2 * 5 - 1) + 2
     tables = [format(i, "08b") for i in range(256)]
-    assert sum(len(_packed(t, 3)) for t in tables) == 40_336
+    assert sum(len(boolean.fractran(t)) for t in tables) == 22_376
 
 
 def _fractran_steps(template: str, n: int) -> int:
@@ -68,45 +67,29 @@ def _fractran_steps(template: str, n: int) -> int:
 
 
 @pytest.mark.medium
-def test_fractran_ships_the_plain_tree_where_the_decoder_costs_more() -> None:
-    """Small trees beat packed blocks in source size and executed steps."""
-    from esolangs.tools.fractran import _packed, _plain
-
+def test_fractran_runs_a_step_a_level() -> None:
+    """A run fires at most n + 1 fractions; a constant table clears its set inputs."""
     tables = [format(i, "08b") for i in range(256)]
-    size = steps = old_size = old_steps = 0
-    for table in tables:
-        template, packed = boolean.fractran(table), _packed(table, 3)
-        assert template == _plain(table, 3), table
-        cost, old_cost = _fractran_steps(template, 3), _fractran_steps(packed, 3)
-        assert len(template) <= len(packed), table
-        assert cost <= old_cost, table
-        size, steps = size + len(template), steps + cost
-        old_size, old_steps = old_size + len(packed), old_steps + old_cost
-    assert (old_size, size) == (40_336, 22_376)
-    assert (old_steps, steps) == (35_403, 9_592)
+    assert sum(_fractran_steps(boolean.fractran(t), 3) for t in tables) == 9_592
+    for n in range(1, 8):
+        table = "".join(str((row * row + 1) % 3 & 1) for row in range(2**n))
+        # The machine's count includes the step that finds it halted.
+        assert _fractran_steps(boolean.fractran(table), n) <= (n + 2) << n
+        # One leaf, a clear a set bit, the halt: 2 + popcount summed over rows.
+        constant = _fractran_steps(boolean.fractran("1" * 2**n), n)
+        assert constant == 2 * 2**n + n * 2 ** (n - 1)
 
 
-def test_fractran_runs_inside_the_block_it_reads() -> None:
-    """A run is bounded by one block, never by the table."""
-    from esolangs.interpreters.other.fractran import _Machine
-    from esolangs.tools.fractran import _plan
+def test_fractran_programs_are_indexed() -> None:
+    """Every base is a prime the interpreter sieves, so no run scans the list."""
+    from esolangs.interpreters.other.fractran.index import compile_index
 
-    for n in range(2, 8):
-        table = "".join(str((row * row + 1) % 2) for row in range(2**n))
-        v, wide = _plan(n)
-        widest = 1 << (v + 1 if wide else v)
-        ceiling = 4 * (1 << widest) + 4 * n
-        template = boolean.fractran(table)
-        for row in range(2**n):
-            program = fill_runs(
-                template, TEMPLATE_CHAR, [FRACTRAN_PAIR] * n, _bits(row, n)
-            )
-            machine = _Machine(program, ScriptedIO(""))
-            steps = 0
-            while not machine.halted:
-                machine.step()
-                steps += 1
-            assert steps <= ceiling, (n, row, steps, ceiling)
+    for n in range(1, 11):
+        table = "".join(str((row * 2654435761 >> 7) & 1) for row in range(2**n))
+        program = fill_runs(
+            boolean.fractran(table), TEMPLATE_CHAR, [FRACTRAN_PAIR] * n, [1] * n
+        )
+        assert compile_index(program) is not None, n
 
 
 @pytest.mark.parametrize("width", [1, 4, 9, 40, 80])

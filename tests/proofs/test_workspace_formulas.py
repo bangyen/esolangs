@@ -60,6 +60,11 @@ def _intercal(n: int) -> int:
     return 9 * s - 18 + sum(map(bl, range(1, s - 1))) + bl(s)
 
 
+def _diagram_cap(n: int) -> int:
+    """Distinct subtables each depth can hold: FRACTRAN's most states."""
+    return sum(min(1 << d, 1 << (1 << (n - d))) for d in range(n + 1))
+
+
 def _primes(count: int) -> list[int]:
     """The first ``count`` primes."""
     out: list[int] = []
@@ -428,9 +433,14 @@ FORMULAS: dict[str, tuple[Callable[[int, str], int], bool, tuple[int, ...]]] = {
     ),
     "Fargo": (lambda _, p: 16 * (len(p) - 3) + bl(len(p)) + 11, False, (6,)),
     "FRACTRAN": (
-        lambda n, _: n + 4 + sum(bl(p) + 1 for p in _primes(12 + n)[12:]),
+        lambda n, _: (
+            bl(_primes(n + 1 + _diagram_cap(n))[-1])
+            + n
+            + 2
+            + sum(map(bl, _primes(n + 1)[1:]))
+        ),
         False,
-        (7,),
+        (3, 5),
     ),
     "Streetcode": (
         lambda n, _: (

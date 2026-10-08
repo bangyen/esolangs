@@ -138,12 +138,11 @@ Loading dominates Factor (integer factorization) and Circuit Diagram (parsing
 super-linear area); it is intentionally excluded from execution time.
 
 FRACTRAN's row-addressing tree costs `Theta(T log T)`, but that is not a
-language floor. The shipped generator packs `w = Theta(n)` entries into an
-exponent and pays for `3T / w` addresses, giving `Theta(T)` text and
-`O(2**w)` execution. At n=12 it emits 8.93 characters per entry versus 23.6
-for the tree; same-parity difference ratios satisfy the contract from n=6.
-The construction, counting floor, and time tradeoff are in
-[fractran](proofs/fractran.md) and `tests/proofs/deep/fractran_packed.py`.
+language floor. The shipped generator gives equal subtables one state, so
+it names `O(T / log T)` primes of `O(log T)` digits: `Theta(T)` text, and at
+most `n + 1` fractions fire a run. At n=12 it emits 3.90 characters per entry
+versus 23.6 for the tree. The construction and the counting floor are in
+[fractran](proofs/fractran.md) and `tests/proofs/deep/fractran_shared.py`.
 
 The execution contract in `tests/proofs/deep/execution.py` holds every
 generator's command count linear. Bracket matching is precomputed at load.

@@ -27,7 +27,7 @@ from esolangs.tools.fargo import fargo
 from esolangs.tools.fish import balance_fish
 from esolangs.tools.flowchart import _flowchart_cells, _flowchart_render, flowchart
 from esolangs.tools.forbin import forbin
-from esolangs.tools.fractran import _PARITY_BINARY, _PARITY_TWO, _PLAIN_MAX, _plain
+from esolangs.tools.fractran import _PARITY_BINARY, _PARITY_TWO, _plain
 from esolangs.tools.helpers import TEMPLATE_CHAR, _validate_truth_table, mark_runs
 from esolangs.tools.inject import inject
 from esolangs.tools.intercal import balance_intercal
@@ -155,7 +155,7 @@ def _fractran(table: str, default: str) -> str:
     """Balance ordinary fractions, small-root fractions and parity phases."""
     n = _validate_truth_table(table)
     floor = max(map(len, default.split()))
-    narrow = _plain(table, n, small_root=True) if n <= _PLAIN_MAX else default
+    narrow = _plain(table, n, small_root=True)
     if max(map(len, narrow.split())) >= floor:
         narrow = default
     regimes: list[tuple[str, int, int | None]] = [(default, floor, None)]

@@ -60,8 +60,8 @@ STEP_CAP = 2_000_000
 #: Arity ceilings.  Fixed rather than a time budget, for the reason
 #: ``linearity.py`` gives: a wall-clock cutoff climbs further on a fast
 #: machine than in CI and quietly changes the verdict.  Raised where the
-#: route changes late: AddSubJump jumps 39 -> 965 at n=6, FRACTRAN drops
-#: 41 -> 10 at n=7, so 9 left four and three rungs, short of ``MIN_RUNGS``.
+#: route changes late: AddSubJump jumps 39 -> 965 at n=6, so 9 left it four
+#: rungs, short of ``MIN_RUNGS``.
 MAX_ARITY = 9
 
 #: The dense pass of a ``poly n`` row climbs further: Sophie passed it at
@@ -73,7 +73,6 @@ DENSE_ARITY = 12
 ARITY_OVERRIDE = {
     "addsubjump": 10,
     "b_tapemark": 7,
-    "fractran": 11,
     "circuit_diagram": 7,
     "container": 6,
     "factor": 7,

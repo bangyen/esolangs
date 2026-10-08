@@ -461,10 +461,10 @@
       "labels": [
         "parameterized tree"
       ],
-      "qualification": "the bits are the exponents of `n` primes in the starting value, a tree over the high bits reaches a block of `w` entries carried as one exponent, a fixed decoder shifts the block by the offset the low bits spell, and the first-match rule is the else-branch",
-      "scaling": "linear: 3T/w blocks of w = Theta(n) entries, one exponent each",
-      "execution": "linear: worst n + 2 to n = 4, n + 60 for n = 5..9: the block decoder halving",
-      "workspace": "poly n: at most n + 4 + Σ_{i<n}(bl(p_{13+i}) + 1) bits past n = 6, p_k the kth prime: all-ones start",
+      "qualification": "the bits are the exponents of `n` primes in the starting value, a decision tree gives equal subtables one state prime, and the first-match rule is the else-branch",
+      "scaling": "linear: at most C = Σ_d min(2^d, 2^2^(n-d)) states, O(log T) digits each",
+      "execution": "poly n: worst n + 2: a step a level or unread set bit, the leaf, the halt",
+      "workspace": "poly n: at most bl(p_{n+1+C}) + n + 2 + Σ_{i≤n} bl(p_{i+1}) bits, p_k the kth prime: all-ones start",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
