@@ -28,7 +28,12 @@ from esolangs.tools.fish import balance_fish
 from esolangs.tools.flowchart import _flowchart_cells, _flowchart_render, flowchart
 from esolangs.tools.forbin import forbin
 from esolangs.tools.fractran import _PARITY_BINARY, _PARITY_TWO, _plain
-from esolangs.tools.helpers import TEMPLATE_CHAR, _validate_truth_table, mark_runs
+from esolangs.tools.helpers import (
+    TEMPLATE_CHAR,
+    _validate_truth_table,
+    grid_width,
+    mark_runs,
+)
 from esolangs.tools.inject import inject
 from esolangs.tools.intercal import balance_intercal
 from esolangs.tools.laserfuck import balance_laserfuck
@@ -70,13 +75,8 @@ from esolangs.tools.wrap import (
 )
 
 
-def _width(program: str) -> int:
-    """Return the largest rendered row."""
-    return max(map(len, program.split("\n")))
-
-
 def _arrowqueue(table: str, default: str) -> str:
-    """Compare the tree and cascades with four, five and six columns."""
+    """Compare the tree and cascades with one, five and six columns."""
     return min(
         default,
         arrowqueue(table, 1),
@@ -90,7 +90,7 @@ def _tapemark(table: str, default: str) -> str:
     """Compare the original grid, its reflection and the narrow staircase."""
     return min(
         default,
-        b_tapemark(table, _width(default)),
+        b_tapemark(table, grid_width(default)),
         b_tapemark(table, 1),
         key=balance_score,
     )
@@ -98,21 +98,21 @@ def _tapemark(table: str, default: str) -> str:
 
 def _back(table: str, default: str) -> str:
     """Compare the reflected tree, descending tree and parity column."""
-    descending = back(table, max(1, _width(default) - 1))
+    descending = back(table, max(1, grid_width(default) - 1))
     return min(default, descending, back(table, 1), key=balance_score)
 
 
 def _brainif(table: str, default: str) -> str:
     """Compare the DAG, full tree, short spellings and small zero-jump tree."""
     wide = _brainif_tree(table, None)
-    short = brainif(table, max(1, _width(wide) - 1))
+    short = brainif(table, max(1, grid_width(wide) - 1))
     return min(default, wide, short, brainif(table, 1), key=balance_score)
 
 
 def _clockwise(table: str, default: str) -> str:
     """Compare the lookup, legacy rotation, lean rotation and two-column route."""
-    rotated = clockwise(table, max(1, _width(default) - 1))
-    lean = clockwise(table, max(1, _width(rotated) - 1))
+    rotated = clockwise(table, max(1, grid_width(default) - 1))
+    lean = clockwise(table, max(1, grid_width(rotated) - 1))
     return min(default, rotated, lean, clockwise(table, 1), key=balance_score)
 
 
@@ -123,7 +123,7 @@ def _dig(table: str, default: str) -> str:
     candidates = [default, flat, dig(table, 1), dig(table, 8)]
     if n >= 2:
         banded = _dig_grid(table, n, (n + 3) // 2)
-        if _width(banded) < _width(flat):
+        if grid_width(banded) < grid_width(flat):
             candidates.append(banded)
     return min(candidates, key=balance_score)
 
@@ -147,7 +147,7 @@ def _false(table: str, default: str) -> str:
 def _forbin(table: str, default: str) -> str:
     """Balance the disjoint-guard spelling below the natural statement span."""
     tokens = forbin(table, 1).split()
-    width = balanced_token_width(tokens, " ", maximum=_width(default) - 1)
+    width = balanced_token_width(tokens, " ", maximum=grid_width(default) - 1)
     return min(default, _join_tokens(tokens, width, " "), key=balance_score)
 
 
@@ -171,11 +171,11 @@ def _fractran(table: str, default: str) -> str:
         )
     regimes.append((narrow, lower, upper))
     candidates = [default]
-    for program, lower, maximum in regimes:
-        if maximum is not None and lower > maximum:
+    for program, lo, hi in regimes:
+        if hi is not None and lo > hi:
             continue
         tokens = program.split()
-        width = balanced_token_width(tokens, " ", minimum=lower, maximum=maximum)
+        width = balanced_token_width(tokens, " ", minimum=lo, maximum=hi)
         candidates.append(_join_tokens(tokens, width, " "))
     return min(candidates, key=balance_score)
 
@@ -217,11 +217,11 @@ def _minsky_swap(table: str, default: str) -> str:
 def _crement(table: str, default: str) -> str:
     """Compare preserved instructions and the two field-wrapping regimes."""
     candidates = [default]
-    upper = _width(default) - 1
+    upper = grid_width(default) - 1
     if upper >= 6:
         normal = crement(table, upper)
         candidates.append(normal)
-        folded_upper = min(upper, _width(normal) - 1)
+        folded_upper = min(upper, grid_width(normal) - 1)
         if folded_upper >= 6:
             width = balanced_token_width(
                 normal.split(), " ", minimum=6, maximum=folded_upper
@@ -399,9 +399,9 @@ def _inject(table: str, default: str) -> str:
 
 def _thisthat(table: str, default: str) -> str:
     """Compare tree, rotation, strip, stream and the one-column XOR route."""
-    rotated = thisthat(table, max(1, _width(default) - 1))
-    strip = thisthat(table, max(1, _width(rotated) - 1))
-    stream = thisthat(table, max(1, _width(strip) - 1))
+    rotated = thisthat(table, max(1, grid_width(default) - 1))
+    strip = thisthat(table, max(1, grid_width(rotated) - 1))
+    stream = thisthat(table, max(1, grid_width(strip) - 1))
     return min(default, rotated, strip, stream, thisthat(table, 1), key=balance_score)
 
 
@@ -422,7 +422,7 @@ def _streetcode(table: str, default: str) -> str:
     # A requested width changes the shortest fitting shape only when another
     # shape starts fitting; asking at that shape's span also excludes losers.
     candidates = [default, streetcode(table, 1), streetcode(table, 9)]
-    candidates.extend(streetcode(table, _width(shape)) for shape in shapes)
+    candidates.extend(streetcode(table, grid_width(shape)) for shape in shapes)
     return min(candidates, key=balance_score)
 
 
