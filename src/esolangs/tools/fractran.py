@@ -14,8 +14,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from itertools import islice
 
-from esolangs.factor_primes import prime_segments
 from esolangs.interpreters.other.fractran.index import SMALL_BASE
+from esolangs.tools.factor import _primes as _prime_stream
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
@@ -26,10 +26,6 @@ from esolangs.tools.helpers import (
 #: How each input is set: the exponent of its prime in the starting value.
 #: One digit wide, so the run is one :data:`TEMPLATE_CHAR`.
 PAIR = ("0", "1")
-_FRACTRAN_INPUT = TEMPLATE_CHAR * len(PAIR[0])
-
-#: Segment width for the sieve; the primes wanted are a prefix of it.
-_PRIME_CHUNK = 1 << 12
 
 
 @dataclass(frozen=True)
@@ -51,12 +47,7 @@ class _Node:
 
 def _primes(count: int) -> list[int]:
     """Return the first ``count`` primes, 2 first."""
-    stream = (
-        prime
-        for _start, _stop, segment in prime_segments(_PRIME_CHUNK)
-        for prime in segment
-    )
-    return list(islice(stream, count))
+    return list(islice(_prime_stream(), count))
 
 
 def _tree(truth_table: str, n: int) -> list[_Leaf | _Node]:
@@ -100,7 +91,8 @@ def _nodes(
             # A large guard is spelled as its primes, which the index factors.
             one, zero = entry.one, entry.zero
             state, bit = states[index], inputs[entry.depth]
-            guard = state * bit if state * bit <= SMALL_BASE else f"{state}*{bit}"
+            product = state * bit
+            guard = product if product <= SMALL_BASE else f"{state}*{bit}"
             fractions.append(f"{states[one]}/{guard}")
             fractions.append(f"{states[zero]}/{states[index]}")
     return fractions
@@ -109,7 +101,7 @@ def _nodes(
 def _start(states: list[int], inputs: list[int]) -> str:
     """Return the starting value: the root's state, and each input's run."""
     return "*".join(
-        [str(states[-1])] + [f"{prime}^{_FRACTRAN_INPUT}" for prime in inputs]
+        [str(states[-1])] + [f"{prime}^{TEMPLATE_CHAR}" for prime in inputs]
     )
 
 
@@ -147,6 +139,19 @@ def _plain(truth_table: str, n: int, *, small_root: bool = False) -> str:
     return " ".join([_start(states, inputs), *fractions])
 
 
+def _widest(program: str) -> int:
+    """Return the longest token's length."""
+    return max(map(len, program.split()))
+
+
+#: Parity on two inputs: consume the unique phase primes 3/7 once, depositing
+#: 5 for each.  Cancel paired ones, then move the remaining 5 onto answer 2.
+_PARITY_TWO = "21 $/3 $/7 1/25 2/5"
+_PARITY_PAIR = ("1", "5")
+#: Width < 4 cannot hold "1/25", so it takes the binary form.
+_PARITY_BINARY = "21 $/3 $/7 1/4"
+
+
 def fractran(truth_table: str, width: int | None = None) -> str:
     """Return a template; narrow tables give the root the smallest state prime.
 
@@ -158,25 +163,18 @@ def fractran(truth_table: str, width: int | None = None) -> str:
     program = _plain(truth_table, n)
     if width is None:
         return program
-    floor = max(map(len, program.split()))
+    floor = _widest(program)
     if floor > width:
         narrow = _plain(truth_table, n, small_root=True)
-        if max(map(len, narrow.split())) < floor:
+        if _widest(narrow) < floor:
             program = narrow
-    # Consume unique phase primes 3/7 once, depositing 5 for each one.
-    # Cancel paired ones, then move the remaining 5 onto answer 2.
     if (
         n == 2
-        and max(map(len, program.split())) > width
+        and _widest(program) > width
         and all(int(bit) == row.bit_count() % 2 for row, bit in enumerate(truth_table))
     ):
         program = _PARITY_BINARY if width < 4 else _PARITY_TWO
     return wrap_program(program, "fractran", width)
-
-
-_PARITY_TWO = "21 $/3 $/7 1/25 2/5"
-_PARITY_PAIR = ("1", "5")
-_PARITY_BINARY = "21 $/3 $/7 1/4"
 
 
 def fractran_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
