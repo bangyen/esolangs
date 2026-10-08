@@ -3,23 +3,21 @@ r"""Unlambda boolean program builder: a decision tree of promises.
 Each half of a node is a ``d`` promise, forced by the ``?`` test that selects
 it: Unlambda evaluates an argument before applying it, so a half spelled
 inline would read twice a level and print both answers.  ``?c`` hands its
-argument the spec's ``i`` on a match and ``v`` otherwise, which is the whole
-conditional and makes a node 25 characters, ``29T - 25`` in all.  The ``?1``
-flag is computed *before* the zero half runs, since that half's read replaces
-the character ``?`` looks at -- testing it afterwards asked about a deeper
+argument the spec's ``i`` on a match and ``v`` otherwise.  The ``?1`` flag is
+computed *before* the zero half runs, since that half's read replaces the
+character ``?`` looks at -- testing it afterwards asked about a deeper
 level's character and fired both halves on ``0`` then ``1``.
 
-The shipped build turns each node into a function of one argument, the
-*share*: ``` `@`d`k``s``?0i`dZ``?1i`dO ``` reads, takes both flags at once,
-and returns ``s`` over the two selected promises, so applying it to a share
-runs the matching half on that same share.  Every half is handed the share
-for free, so a repeated subtree ``X`` is bound once, ``` `N`dX ``` runs node
-``N`` on the promise of ``X``, and a half that is ``X`` is just ``i`` put
-first under ``s``: its ``i`` flag returns the share unforced, and the
-other half's ``v`` forces it.  ``X`` itself is still a ``d`` promise, so it
-reads only when one path forces it, once.  A ``λ``-bound ``X`` would not
-do: bracket abstraction through a ``d`` forces the promise the moment the
-variable is supplied.
+Each node is a function of one argument, the *share*:
+``` `@`d`k``s``?0i`dZ``?1i`dO ``` reads, takes both flags at once, and returns
+``s`` over the two selected promises, so applying it to a share runs the
+matching half on that same share.  A repeated subtree ``X`` is bound once,
+``` `N`dX ``` runs node ``N`` on the promise of ``X``, and a half that is ``X``
+is just ``i`` put first under ``s``: its ``i`` flag returns the share
+unforced, and the other half's ``v`` forces it.  ``X`` itself is a ``d``
+promise, so it reads only when one path forces it, once.  A ``λ``-bound ``X``
+would not do: bracket abstraction through a ``d`` forces the promise the
+moment the variable is supplied.
 """
 
 from __future__ import annotations
@@ -48,9 +46,12 @@ _SPLIT = "``s"
 _BOUND = "i"
 #: A skip's half that is the share, which nothing else would force.
 _FORCE_BOUND = "``si`kv"
-#: How many levels below a node a bound subtree may sit: 2**4 candidates a
-#: node keeps the build O(T).
+#: How many levels below a node a bound subtree may sit; bounds the candidates
+#: per node (2**4) so the build stays O(T).
 _REACH = 4
+#: One ``?`` test and one promise wrapper, shared by the size model and writer.
+_TEST = "``?{}i"
+_PROMISE = "`d"
 
 
 def _leaf(n: int, level: int, bit: str) -> str:
@@ -61,10 +62,12 @@ def _leaf(n: int, level: int, bit: str) -> str:
     return printing if not unread else _INERT + _SKIP * unread + printing
 
 
-def _shared(truth_table: str) -> str:
-    """Return the tree of share-taking nodes, binding repeated subtrees.
+def unlambda(truth_table: str) -> str:
+    """Return an Unlambda program computing ``truth_table``.
 
-    Subtrees are named by :class:`~esolangs.tools.helpers.SubtreeDiagram`.
+    Reads ``n`` characters, one ``0``/``1`` per input in table order, and
+    prints the answer digit.  The tree is of share-taking nodes; subtrees are
+    named by :class:`~esolangs.tools.helpers.SubtreeDiagram`.
     A node whose halves agree reads and runs the half, and each node binds
     the one subtree within :data:`_REACH` levels that shortens it most, if
     any does; a bound node's subtree sees only its own share.
@@ -82,7 +85,7 @@ def _shared(truth_table: str) -> str:
         return min(node(key, share), binding(key)[0])
 
     def half(level: int, key: int, share: int | None) -> int:
-        return len(_BOUND) if key == share else 2 + size(level, key, share)
+        return len(_BOUND) if key == share else len(_PROMISE) + size(level, key, share)
 
     @cache
     def node(key: int, share: int | None) -> int:
@@ -93,7 +96,7 @@ def _shared(truth_table: str) -> str:
                 return len(_OPEN + _FORCE_BOUND)
             return len(_OPEN) + size(level, zero, share)
         tests = half(level, zero, share) + half(level, one, share)
-        return len(_OPEN + _SPLIT) + 2 * len("``?0i") + tests
+        return len(_OPEN + _SPLIT) + 2 * len(_TEST.format(0)) + tests
 
     @cache
     def binding(key: int) -> tuple[int, int]:
@@ -101,7 +104,12 @@ def _shared(truth_table: str) -> str:
         # Unbound, a node is never longer than this, so it stays unbound.
         best: tuple[int, int] = (32 * len(truth_table), 0)
         for name in diagram.repeated_near(key, _REACH):
-            bound = 3 + node(key, name) + size(level_of[name], name, None)
+            bound = (
+                len("`")
+                + len(_PROMISE)
+                + node(key, name)
+                + size(level_of[name], name, None)
+            )
             if bound < best[0]:
                 best = (bound, name)
         return best
@@ -123,7 +131,7 @@ def _shared(truth_table: str) -> str:
         bound = binding(key)[1]
         pieces.append("`")
         write_node(key, bound)
-        pieces.append("`d")
+        pieces.append(_PROMISE)
         write(level_of[bound], bound, None)
 
     def write_node(key: int, share: int | None) -> None:
@@ -139,30 +147,21 @@ def _shared(truth_table: str) -> str:
         pieces.append(_SPLIT)
         order = [("1", one), ("0", zero)] if one == share else [("0", zero), ("1", one)]
         for digit, half_key in order:
-            pieces.append(f"``?{digit}i")
+            pieces.append(_TEST.format(digit))
             if half_key == share:
                 pieces.append(_BOUND)
             else:
-                pieces.append("`d")
+                pieces.append(_PROMISE)
                 write(level, half_key, share)
 
     root = diagram.ids[0][0]
     if root < 2:
         return _leaf(n, 0, str(root))
     # The root is applied to a share either way: ``v`` when nothing is bound.
-    if binding(root)[0] < node(root, None) + 2:
+    if binding(root)[0] < node(root, None) + len("`v"):
         write_bound(root)
     else:
         pieces.append("`")
         write_node(root, None)
         pieces.append("v")
     return "".join(pieces)
-
-
-def unlambda(truth_table: str) -> str:
-    """Return an Unlambda program computing ``truth_table``.
-
-    Reads ``n`` characters, one ``0``/``1`` per input in table order, and prints
-    the answer digit.
-    """
-    return _shared(truth_table)
