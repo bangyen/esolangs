@@ -191,7 +191,9 @@ Use `scripts/screens/` to bound the upside first.
    Added lines need 90% statement and branch coverage per file; the
    report separates them from older gaps. It takes minutes, so run it in
    the background; it reruns failed tests
-   alone and says when every failure was machine load.
+   alone and says when every failure was machine load. Steps `check`
+   still lists don't stop it: it reports them, runs the gate anyway, and
+   fails.
 
 To take a language out, `just remove-language "Name"` deletes what `check`
 asks for, regenerates, and lists the prose mentions left to edit.
