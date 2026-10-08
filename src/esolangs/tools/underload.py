@@ -174,9 +174,7 @@ LANGUAGE = Language(
     "Underload",
     "stack_based.underload",
     boolean=underload,
-    contract=BooleanContract(
-        parameterized=True,
-    ),
+    contract=BooleanContract(),
     balance=_balance,
     no_wrap="a break inside a pushed element changes the string it contains",
     example=Example(setters=underload_setters),

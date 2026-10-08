@@ -251,9 +251,7 @@ LANGUAGE = Language(
     "NoComment",
     "tape_based.nocomment",
     boolean=nocomment,
-    contract=BooleanContract(
-        parameterized=True,
-    ),
+    contract=BooleanContract(),
     wrap=wrap_chars,
     example=Example(pair=PAIR),
 )

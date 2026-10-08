@@ -231,7 +231,6 @@ LANGUAGE = Language(
         note="FRACTRAN has neither input nor output: the inputs are the "
         "exponents of n primes in the starting value, and the answer "
         "is the value the run stops on -- 1 for a zero and 2 for a one",
-        parameterized=True,
     ),
     # Whitespace- or comma-separated tokens, and a break inside one would
     # change a number.

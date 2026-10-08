@@ -25,7 +25,7 @@ order only renames the ``@`` literals, and :func:`fargo` uses the identity.
 from string import ascii_lowercase
 
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
     _validate_truth_table,
     anf_coefficients,
@@ -288,5 +288,4 @@ LANGUAGE = Language(
     # convention is therefore to feed the row index: the inputs
     # most-significant-first are its binary digits, so the 0,1 row of a
     # two-input table is the single line "1".
-    example=Example(inputs=("1",)),
 )

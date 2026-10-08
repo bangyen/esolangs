@@ -69,9 +69,7 @@ LANGUAGE = Language(
     "BF-PDA",
     "stack_based.bf_pda",
     boolean=bfpda,
-    contract=BooleanContract(
-        parameterized=True,
-    ),
+    contract=BooleanContract(),
     wrap=wrap_chars,
     empty_program="BF-PDA program cannot be empty",
     example=Example(pair=BFPDA_PAIR),

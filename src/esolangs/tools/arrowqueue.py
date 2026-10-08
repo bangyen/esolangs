@@ -120,7 +120,6 @@ LANGUAGE = Language(
         "committed.  The headings printed are its interpreter-only "
         "queue dump, which the verdict does not read: the answer is "
         "that the program halted at all",
-        parameterized=True,
     ),
     balance=_balance,
     no_wrap="the queue and decision tree occupy fixed grid coordinates",

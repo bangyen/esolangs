@@ -34,3 +34,12 @@ def test_a_language_cannot_both_wrap_and_refuse_to() -> None:
 
     with pytest.raises(ValueError, match="exclude each other"):
         Language("X", wrap=wrap_chars, no_wrap="a break changes it")
+
+
+def test_parameterized_follows_the_example() -> None:
+    from esolangs.registry._contracts import BooleanContract
+    from esolangs.registry._language import Example, Language
+
+    assert Language("X", example=Example(pair=("a", "b"))).contract.parameterized
+    with pytest.raises(ValueError, match="parameterized follows example="):
+        Language("X", contract=BooleanContract(parameterized=True))

@@ -8,7 +8,7 @@ module imports nothing from the package, so any generator can import it.
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from enum import StrEnum
 from typing import Any
 
@@ -39,7 +39,6 @@ class Example:
     """
 
     expected: str = "0"
-    inputs: tuple[str, ...] = ("0", "1")
     pair: tuple[str, str] | None = None
     setters: Callable[[str, int], Any] | None = None
     char: str = ""
@@ -83,5 +82,12 @@ class Language:
         """Fill the id from the name when none is given."""
         if not self.id:
             object.__setattr__(self, "id", canonical_id(self.name))
+        # Embedded inputs are what a template example says: one fact, once.
+        template = self.example.pair is not None or self.example.setters is not None
+        if self.contract.parameterized and not template:
+            raise ValueError(f"{self.name}: parameterized follows example=")
+        object.__setattr__(
+            self, "contract", replace(self.contract, parameterized=template)
+        )
         if self.wrap is not None and self.no_wrap:
             raise ValueError(f"{self.name}: wrap and no_wrap exclude each other")

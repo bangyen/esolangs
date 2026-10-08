@@ -48,7 +48,6 @@ LANGUAGE = Language(
         "are bits of the initial data-string, and the answer is the "
         "bit the last 0 deletes, which the interpreter prints alone -- "
         "so the output is the answer and there is no position to name",
-        parameterized=True,
     ),
     # Safe anywhere: every space and newline is stripped before parsing.
     wrap=wrap_chars,

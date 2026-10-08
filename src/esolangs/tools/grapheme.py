@@ -5,7 +5,7 @@ The table is one integer literal, so it has no subtrees to fold or share.
 
 from esolangs._grapheme import DEFAULT_GRAPHEME, GraphemeDialect
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import _validate_truth_table, essential_inputs, read_at
 from esolangs.tools.wrap import wrap_chars
 
@@ -110,5 +110,4 @@ LANGUAGE = Language(
         "subtraction alone says the opposite",
     ),
     wrap=wrap_chars,
-    example=Example(inputs=("%", "A")),
 )
