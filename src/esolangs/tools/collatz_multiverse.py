@@ -58,7 +58,7 @@ def _cm_cells(
     lines += block
 
 
-def _cm_codes(counts: Counter[int], *, zero_top: bool) -> dict[int, int] | None:
+def _cm_codes(counts: Counter[int]) -> dict[int, int]:
     """Return codes ``0, 1, ...`` for the distinct cells: the decoder spans them.
 
     A cell's code, not its bits, is what the table stores and the decoder is
@@ -68,20 +68,15 @@ def _cm_codes(counts: Counter[int], *, zero_top: bool) -> dict[int, int] | None:
     the cell nothing writes, so it goes to the empty cell when there is one
     (its cells cost a pad) and else to the most frequent.  The top code's
     decoder entries past its highest set bit are trailing pads and drop, so
-    it goes to the cell whose highest set bit is lowest.
-
-    ``zero_top`` instead puts the empty cell on top, where its four decoder
-    entries all drop, and pays for its cells with an alias; ``None`` when
-    there is no empty cell to move.
+    it goes to the cell whose highest set bit is lowest.  Putting the empty
+    cell on top instead saves 1.09% at n=8, under the 10% bar.
     """
-    if zero_top and 0 not in counts:
-        return None
     ranked = sorted(counts, key=lambda v: (-counts[v], v))
     head = []
-    if 0 in counts and not zero_top:
+    if 0 in counts:
         ranked.remove(0)
         head = [0]
-    top = 0 if zero_top else min(ranked, key=lambda v: (v.bit_length(), -counts[v]))
+    top = min(ranked, key=lambda v: (v.bit_length(), -counts[v]))
     ranked.remove(top)
     return {value: code for code, value in enumerate([*head, *ranked, top])}
 
@@ -112,16 +107,16 @@ def _cm_build(
     n: int,
     order: list[int],
     *,
-    zero_top: bool | None,
+    numbered: bool = True,
     narrow: bool = False,
-) -> str | None:
+) -> str:
     """Emit the cell-and-decoder program over ``order``'s inputs.
 
     ``order`` names the inputs the address is built from, most significant
     first; its last two select a row within a cell and the rest index the
     cells.  An input it leaves out is still read, and never added.
-    ``zero_top`` picks :func:`_cm_codes`'s numbering; ``None`` stores each
-    cell's own value as its code, the build before cells were numbered.
+    ``numbered`` False stores each cell's own value as its code, the build
+    before :func:`_cm_codes` numbered cells.
     ``narrow`` uses odd indices ``3 + 2 i`` and doubles address offsets.
     """
     address_scale = 2 if narrow else 1
@@ -132,12 +127,7 @@ def _cm_build(
         for base in range(0, len(padded), _CM_CHUNK)
     ]
     uses = Counter(chunks)
-    if zero_top is None:
-        codes: dict[int, int] | None = {value: value for value in chunks}
-    else:
-        codes = _cm_codes(uses, zero_top=zero_top)
-    if codes is None:
-        return None
+    codes = _cm_codes(uses) if numbered else {value: value for value in chunks}
 
     high = max(len(order) - 2, 0)
     weights = {address_scale * 2 ** (high - 1 - k) for k in range(high)}
@@ -228,12 +218,14 @@ def _cm_layout(program: str, width: int) -> str:
 
 
 def _cm_orders(essential: list[int], *, expanded: bool) -> list[list[int]]:
-    """Return the selector orders; width requests (``expanded``) add one more."""
+    """Return the selector orders; width requests (``expanded``) add a rotation.
+
+    A middle-rotated order for the default call saves 0.46% at n=8, under
+    the 10% bar.
+    """
     orders = [essential]
-    if len(essential) >= 3:
-        if expanded:
-            orders.append(essential[2:] + essential[:2])
-        orders.append([*essential[1:-1], essential[0], essential[-1]])
+    if expanded and len(essential) >= 3:
+        orders.append(essential[2:] + essential[:2])
     return orders
 
 
@@ -261,7 +253,7 @@ def _cm_narrow_choice(fitted: str, layouts: list[str]) -> str:
 def _cm_candidates(
     truth_table: str, n: int, *, narrow: bool, expanded: bool
 ) -> list[str]:
-    """Return every build: one for a constant, else per order and code numbering."""
+    """Return every build: one for a constant, else per order."""
     if len(set(truth_table)) == 1:
         # A constant table needs no evaluation, but the reads are the
         # interface: skipping them strands the caller's bits and the prompts.
@@ -269,12 +261,7 @@ def _cm_candidates(
             _cm_constant_program(n, _ASCII_ZERO + int(truth_table[0]), narrow=narrow)
         ]
     orders = _cm_orders(essential_inputs(truth_table, n), expanded=expanded)
-    built = (
-        _cm_build(truth_table, n, order, zero_top=zero_top, narrow=narrow)
-        for order in orders
-        for zero_top in (False, True)
-    )
-    return [program for program in built if program is not None]
+    return [_cm_build(truth_table, n, order, narrow=narrow) for order in orders]
 
 
 def collatz_multiverse(truth_table: str, width: int | None = None) -> str:
