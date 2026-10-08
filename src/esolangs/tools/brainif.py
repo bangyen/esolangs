@@ -39,6 +39,14 @@ class _MoveLeft:
 
 
 @dataclass
+class _GotoOut:
+    """An ``if <char> goto`` line aimed at the marker ``OUT<which>``."""
+
+    char: int
+    which: int
+
+
+@dataclass
 class _Out:
     """A marker naming the next line ``OUT<which>``; it emits no line itself.
 
@@ -53,7 +61,7 @@ class _End:
     """The trailing blank line every program ends on."""
 
 
-_Entry = _Cmd | _If | _MoveLeft | _Out | _End
+_Entry = _Cmd | _If | _MoveLeft | _GotoOut | _Out | _End
 
 
 #: The most levels the tree may branch on before the linear lookup takes
@@ -74,7 +82,7 @@ def brainif(truth_table: str, width: int | None = None) -> str:
         plain = _brainif_tree(truth_table, width)
         n = _validate_truth_table(truth_table)
         if n <= 2 and max(map(len, plain.splitlines())) > width:
-            # The old two-digit output jump is13 columns; this is12.
+            # Two-digit output jumps overflow a narrow width; zero jumps are shorter.
             return _brainif_zero_jumps(truth_table)
         return plain
     return _brainif_dag(truth_table)
@@ -89,7 +97,7 @@ def _brainif_zero_jumps(table: str) -> str:
     def mark(label: str) -> None:
         labels[label] = len(lines) + 1
 
-    # Cell0 stays zero for the output escape; cell1 holds48, cell2 is
+    # Cell0 stays zero for the output escape; cell1 holds 48, cell2 is
     # the final zero landing, and input cells lie above it. Two-input
     # addresses fit two digits; larger arities retain the scalable build
     # rather than O(T log T) jump text.
@@ -205,13 +213,13 @@ def _brainif_dag(table: str) -> str:
 
 def _brainif_tree_entries(truth_table: str, n: int, *, prune: bool) -> list[_Entry]:
     """Emit symbolic tree entries with one shared output tail."""
-    # Initial zero skips the two-line output trampoline.  Leaves later return
-    # with 48/49 to line 2, whose guards forward to the wide output-tail
-    # address -- rendered twice, rather than once per leaf.
+    # Initial zero skips the two-line output trampoline.  Leaves return with
+    # 48/49 to line 2, whose guards forward to the wide output-tail address,
+    # rendered twice rather than once per leaf.
     entries: list[_Entry] = [
         _Cmd("if 0 goto 4"),
-        _Cmd(f"if {_ASCII_ZERO} goto OUT0"),
-        _Cmd(f"if {_ASCII_ONE} goto OUT0"),
+        _GotoOut(_ASCII_ZERO, 0),
+        _GotoOut(_ASCII_ONE, 0),
     ]
     # The answer byte goes on cell 0 and the inputs above it, read from the
     # far end back down.
@@ -219,7 +227,7 @@ def _brainif_tree_entries(truth_table: str, n: int, *, prune: bool) -> list[_Ent
     entries.append(_Cmd(f"if {_ASCII_ZERO} move right"))
     entries += [_Cmd("if 0 move right") for _ in range(n - 1)]
 
-    counter = [0]
+    next_label = 0
     shared: dict[tuple[int, str], int] = {}
 
     def build(lo: int, hi: int, k: int) -> list[_Entry]:
@@ -229,9 +237,7 @@ def _brainif_tree_entries(truth_table: str, n: int, *, prune: bool) -> list[_Ent
         # Entered on an unread cell (0), or on the answer byte (48) once
         # every input is read, so one guarded jump reuses an equal span.
         if prune and span in shared:
-            return [
-                _Cmd(f"if {_ASCII_ZERO if rest == 0 else 0} goto OUT{shared[span]}")
-            ]
+            return [_GotoOut(_ASCII_ZERO if rest == 0 else 0, shared[span])]
         body = _span(lo, hi, k, rest)
         if prune and len(body) > 1:
             shared[span] = len(shared) + 1
@@ -263,8 +269,9 @@ def _brainif_tree_entries(truth_table: str, n: int, *, prune: bool) -> list[_Ent
         # Level ``k`` reads input ``k - 1`` into cell ``n - k + 1``, so the
         # bit it selects is the table's usual most-significant-first one --
         # the reads are in input order even though the pointer walks down.
-        l0, l1 = counter[0], counter[0] + 1
-        counter[0] += 2
+        nonlocal next_label
+        l0, l1 = next_label, next_label + 1
+        next_label += 2
         sub0 = build(lo, middle, k + 1)
         sub1 = build(middle, hi, k + 1)
         return [
@@ -289,8 +296,7 @@ def _brainif_tree_entries(truth_table: str, n: int, *, prune: bool) -> list[_Ent
 
 def _brainif_resolve(entries: list[_Entry], width: int | None) -> str:
     """Resolve symbolic addresses and shorten commands when a width requires it."""
-    # resolve labels from the actual line sequence (the "out" markers emit
-    # no line, so the marker's target is the next line that does)
+    # ``_Out`` markers emit no line: each targets the next line that does.
     labels: dict[int, int] = {}
     out_labels: dict[int, int] = {}
     line_no = 0
@@ -305,13 +311,10 @@ def _brainif_resolve(entries: list[_Entry], width: int | None) -> str:
     lines: list[str] = []
     for entry in entries:
         if isinstance(entry, _Cmd):
-            text = entry.text
-            if "goto OUT" in text:
-                # keep the line's own guard: a leaf reaches the tail from a
-                # cell holding 48 or 49, so it emits one goto for each
-                guard, target = text.split(" goto OUT")
-                text = f"{guard} goto {out_labels[int(target)]}"
-            lines.append(text)
+            lines.append(entry.text)
+        elif isinstance(entry, _GotoOut):
+            # A leaf reaches the tail holding 48 or 49: one goto for each.
+            lines.append(f"if {entry.char} goto {out_labels[entry.which]}")
         elif isinstance(entry, _If):
             lines.append(f"if {entry.char} goto {labels[entry.label]}")
         elif isinstance(entry, _MoveLeft):
@@ -319,10 +322,9 @@ def _brainif_resolve(entries: list[_Entry], width: int | None) -> str:
         elif isinstance(entry, _Out):
             continue
         else:
-            # _End, the trailing blank line.  Spelled as the fallback rather
-            # than a fifth ``isinstance`` so that adding a variant to
-            # ``_Entry`` without a branch here is a type error: mypy narrows
-            # this to ``_End``, and a wider union would not narrow.
+            # _End, the trailing blank line.  The fallback rather than an
+            # ``isinstance``, so an ``_Entry`` variant without a branch here
+            # is a type error: mypy narrows this to ``_End``.
             _: _End = entry
             lines.append("")
     if width is not None and any(len(line) > width for line in lines):
@@ -343,31 +345,15 @@ def _brainif_tree(truth_table: str, width: int | None, *, prune: bool = True) ->
     ``truth_table`` is a binary string of length 2**n indexed by the inputs
     (most significant first), ``n`` is the input count implied by the table length.
 
-    BrainIf reads each input into a cell with ``if 0 input``, then a
-    recursive decision tree checks each cell with ``if 49 goto``; zero falls
-    through to its subtree without spelling a second destination.
-
-    The answer byte is built *first*, on cell 0: 48 ``increment`` lines
-    once, rather than a climb per digit.  There is no way to copy a byte in
-    BrainIf, and a climb converges -- every entry value 0..47 leaves it
-    holding 48 -- so one climb cannot serve both digits however it is
-    entered.  Two climbs is 48 + 49 lines, which used to dominate: a
-    ``11110000`` program was 97 increments out of 153 lines.
-
-    Building first also fixes which way the tape runs.  The pointer steps
-    out over cells that are still zero, where one ``if 0 move right``
-    advances exactly one cell, and the tree reads its inputs from that far
-    cell back down toward the answer.  So a level is a read, two branch
-    tests and a step left, and a leaf is *there* already, adding one iff its
-    entry is a ``1`` before joining a two-line tail.
-
-    That is what makes the tree foldable: a level whose halves agree is read
-    and stepped past but not tested, as Line's tree skips it, so an ignored
-    input costs its three reading lines.  Every read still happens, or a
-    caller feeding several programs from one stream would desync.  Equal
-    spans at one level run the same code from the same cell, so the second
-    is one guarded ``goto`` to the first.  A wide table stays a tree while
-    it branches on at most :data:`_TREE_LEVELS` inputs.
+    BrainIf reads each input into a cell with ``if 0 input``; a recursive
+    decision tree checks each cell with ``if 49 goto``, zero falling through
+    to its subtree.  The answer byte is built first on cell 0 (48
+    ``increment`` lines once; a climb converges, so one cannot serve both
+    digits), the tape grows outward over zero cells, and the tree reads
+    from the far cell back down.  A level whose halves agree is read and
+    stepped past untested, so every read still happens; equal spans at one
+    level share code via one guarded ``goto``.  A wide table stays a tree
+    while it branches on at most :data:`_TREE_LEVELS` inputs.
     """
     n = _validate_truth_table(truth_table)
     # Equal halves skip exactly the nonessential inputs. Decide before
