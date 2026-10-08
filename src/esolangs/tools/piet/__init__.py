@@ -11,6 +11,9 @@ from esolangs.raster import Raster
 from esolangs.tools.helpers import _validate_truth_table, essential_inputs, read_at
 
 Change = tuple[int, int]
+Pixel = tuple[int, int, int]
+
+_INITIAL: Pixel = (255, 192, 192)
 
 _PUSH = (0, 1)
 _POP = (0, 2)
@@ -25,6 +28,8 @@ _OUT_NUMBER = (5, 1)
 
 @dataclass(frozen=True)
 class _Operation:
+    """``size`` is the codel count; for ``_PUSH`` it is the pushed value."""
+
     change: Change
     size: int = 1
 
@@ -52,10 +57,10 @@ def _literal_product(
         operations.append(_Operation(_IN_NUMBER))
         if cell not in literals:
             operations.append(_Operation(_POP))
-        else:
-            if literals[cell] == 0:
-                operations.append(_Operation(_NOT))
-            operations.append(_Operation(_MULTIPLY))
+            continue
+        if literals[cell] == 0:
+            operations.append(_Operation(_NOT))
+        operations.append(_Operation(_MULTIPLY))
     if invert:
         operations.append(_Operation(_NOT))
     operations.append(_Operation(_OUT_NUMBER))
@@ -116,15 +121,12 @@ def _operations(truth_table: str, inputs: int) -> list[_Operation]:
     return operations
 
 
-def _next_colour(colour: tuple[int, int, int], change: Change) -> tuple[int, int, int]:
+def _next_colour(colour: Pixel, change: Change) -> Pixel:
     hue, lightness = _COLOURS[colour]
     wanted = (hue + change[0]) % 6, (lightness + change[1]) % 3
     return next(
         pixel for pixel, coordinates in _COLOURS.items() if coordinates == wanted
     )
-
-
-Pixel = tuple[int, int, int]
 
 
 def strip(
@@ -157,9 +159,9 @@ def strip(
 
 @cache
 def _generate(truth_table: str) -> Raster:
-    """Return a Piet raster computing ``truth_table`` in linear space."""
+    """Return a Piet raster computing ``truth_table``."""
     inputs = _validate_truth_table(truth_table)
-    return strip(_operations(truth_table, inputs), (255, 192, 192), _next_colour)
+    return strip(_operations(truth_table, inputs), _INITIAL, _next_colour)
 
 
 def piet(truth_table: str, width: int | None = None, *, scale: int = 1) -> Raster:
