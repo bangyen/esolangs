@@ -9,6 +9,10 @@ inputs arrive most significant first, and no rewrite can select a half.
 Thue draws which rewrite to make; these rules leave nothing to draw (every
 state reached has one rule at one position), so the answer is reproducible
 unpinned, as the classics tests assert to ``n = 3`` under several draws.
+
+A constant half is stored once (:func:`_thue_folded`, shorter from nine
+inputs).  A repeated block is not shared: the rules rewrite every pair of the
+one string, and none can name a block to reuse.
 """
 
 from __future__ import annotations
@@ -103,11 +107,66 @@ def thue(truth_table: str, width: int | None = None) -> str:
         _thue_layout(table, rounds, width) for table, rounds in _tables(truth_table)
     ]
     limit = width if width and width > 0 else None
+    folded = _thue_folded(truth_table)
+    if folded is not None and (limit is None or _widest(folded) <= limit):
+        layouts.append(folded)
 
     def overshoot(layout: str) -> int:
         return 0 if limit is None else max(0, _widest(layout) - limit)
 
     return min(layouts, key=lambda layout: (overshoot(layout), len(layout)))
+
+
+#: Rules for a constant half, on top of :data:`_QUEUED_RULES`.  ``Z`` reads the
+#: first essential line: the half that survives is left whole, the other digit
+#: deletes the entries to one (``V``) which the constant restores.  A queued
+#: ``K`` meeting that single entry only reads and deletes its line, as ``S`` does.
+_FOLD_RULES = (
+    "ZR::=YWR",
+    "Y::=:::",
+    "VRa::=VR",
+    "VRb::=VR",
+    "KRaE::=JRaE",
+    "KRbE::=JRbE",
+)
+
+
+def _thue_folded(truth_table: str) -> str | None:
+    """Return the queued layout storing one half of a table whose other is constant.
+
+    The fold's nine rules cost about 110 characters, so it wins from nine
+    inputs (-19% at n=9, -32% at n=10 on a constant half); ``None`` when no
+    half is constant.
+    """
+    n = _validate_truth_table(truth_table)
+    essential = essential_inputs(truth_table, n)
+    if len(essential) < 2:
+        return None
+    table = read_at(truth_table, essential, n)
+    half = len(table) // 2
+    low, high = table[:half], table[half:]
+    if len(set(high)) == 1:
+        kept, constant, keep = low, high[0], "0"
+    elif len(set(low)) == 1:
+        kept, constant, keep = high, low[0], "1"
+    else:
+        return None
+    other = "1" if keep == "0" else "0"
+    rounds = "".join(
+        "Z" if i == essential[0] else "K" if i in essential else "S"
+        for i in reversed(range(n))
+    )
+    rules = "\n".join(
+        [
+            _QUEUED_RULES.removesuffix("\n::="),
+            *_FOLD_RULES,
+            f"{keep}WR::=R",
+            f"{other}WR::=VR",
+            f"VRE::=R{'ab'[constant == '1']}E",
+            "::=",
+        ]
+    )
+    return f"{rules}\nL{rounds}R{_thue_entries(kept)}E"
 
 
 def _tables(truth_table: str) -> list[tuple[str, str | None]]:
