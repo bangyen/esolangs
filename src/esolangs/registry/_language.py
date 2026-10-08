@@ -50,32 +50,33 @@ class Example:
 
 @dataclass(frozen=True)
 class Language:
-    """Language name, interpreter, source shape, id, and optional generator.
+    """Everything the package and its tests know about one language."""
 
-    ``id`` defaults to :func:`canonical_id` of the name; ``contract`` to the
-    one-``0``/``1``-line-per-input, printed-bit default.
-    """
-
+    # Identity.  ``id`` defaults to :func:`canonical_id` of the name.
     name: str
     interpreter: str | None = None
-    split: bool = False
     id: str = ""
-    boolean: Generator | None = None
+    # Source: ``split`` passes ``run()`` one string per line.
+    split: bool = False
     source_kind: SourceKind = SourceKind.TEXT
+    # The Boolean generator, its limits, and how its programs read inputs
+    # and give the answer (default: a 0/1 line per input, the bit printed).
+    boolean: Generator | None = None
     generator_max_inputs: int | None = None
     generator_restrictions: str = ""
     contract: BooleanContract = field(default_factory=BooleanContract)
     #: ``wrap(program, width)``: a meaning-preserving reflow, if one exists.
     wrap: Callable[[str, int], str] | None = None
+    #: Why ``wrap`` is absent, when a break would change the program.
+    no_wrap: str = ""
     #: ``balance(table, default)``: the squarest layout, for width-taking
     #: generators whose regimes a plain reflow cannot compare.
     balance: Callable[..., Any] | None = None
-    #: Why ``wrap`` is absent, when a break would change the program.
-    no_wrap: str = ""
     #: What an exhausted read does instead of raising ``EOFError``.
     eof: str = ""
     #: The error an empty program raises, when the spec rejects one.
     empty_program: str = ""
+    #: The committed AND example, where the default reader does not fit.
     example: Example = field(default_factory=Example)
 
     def __post_init__(self) -> None:
