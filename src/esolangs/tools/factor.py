@@ -84,7 +84,9 @@ def _program(truth_table: str) -> str:
 
     The tree tests the essential inputs only, so its last level is the last
     one the table reads and keeps its binary leaves; an ignored input is
-    read and its cell left set.
+    read and its cell left set.  The final-flag leaves are essential, not an
+    optimisation: the last input's flag cell is the answer cell, so the plain
+    flag test computes the wrong function.
     """
     n = _validate_truth_table(truth_table)
     weights, table = input_weights(truth_table, n)
