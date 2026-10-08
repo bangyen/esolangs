@@ -12,11 +12,7 @@ __all__ = ["bf_tree", "brainfuck"]
 
 
 def brainfuck(truth_table: str) -> str:
-    """Return the folded tree for a binary, MSB-first ``2**n`` truth table.
-
-    It beats minterm sums through n=4 except constants: 277 vs 253 chars
-    (1.1x, formerly 2.5x), insufficient to retain a second construction.
-    """
+    """Return the folded tree for a binary, MSB-first ``2**n`` truth table."""
     return bf_tree(truth_table)
 
 
@@ -37,23 +33,11 @@ def _bf_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     """Emit a permuted table; node i tests cell 2*perm[i], reads stay ordered."""
     n = _validate_truth_table(truth_table)
 
-    cells: list[str] = []
-    pos = 0
-
-    def move(target: int) -> None:
-        nonlocal pos
-        delta = target - pos
-        cells.append(_RIGHT * delta if delta >= 0 else _LEFT * -delta)
-        pos = target
-
     # read bits b_i at cell 2i, leaving the flag cells (1, 3, ...) zero
-    for i in range(n):
-        cells.append(",")
-        cells.append("-" * _ASCII_ZERO)
-        if i < n - 1:
-            move(pos + 2)
+    cells = [(_RIGHT * 2).join(["," + "-" * _ASCII_ZERO] * n)]
+    pos = 2 * max(n - 1, 0)
 
-    # The tree itself, which Factor also builds around its own prologue.
+    # The tree itself.
     body, pos = decision_tree_body(truth_table, _RIGHT, _LEFT, perm, pos)
     cells.append(body)
 
