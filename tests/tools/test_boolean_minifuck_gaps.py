@@ -88,3 +88,16 @@ def test_probe_frame_refuses_a_pointer_outside_its_low_byte() -> None:
 
     assert _probe_frame("[" * (_POOL_WIDTH - 1), 0) == (_POOL_WIDTH - 1, 0)
     assert _probe_frame("[" * _POOL_WIDTH, 0) is None
+
+
+def test_narrow_layout_drops_ignored_inputs() -> None:
+    """A width-1 layout drops ignored inputs: under half a fully essential 5-input one."""
+    from esolangs import generate
+    from esolangs._evaluate import _evaluate
+
+    table = "0110" * 8
+    narrow = generate("Minifuck", table, width=1)
+    assert _evaluate("Minifuck", narrow, inputs=5) == table
+    assert len(str(narrow)) < 0.5 * len(
+        str(generate("Minifuck", "0110100110010110" + "0110100110010111", width=1))
+    )

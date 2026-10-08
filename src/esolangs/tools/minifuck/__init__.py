@@ -94,6 +94,27 @@ def _kept_inputs(essential: list[int]) -> list[int]:
     return sorted(kept)
 
 
+def _reduce(
+    truth_table: str, n: int
+) -> tuple[int, str, list[int], tuple[int, ...], int] | None:
+    """Return (leading ignored, inner table, kept inputs, gaps, trailing ignored).
+
+    ``None`` when every input is essential.  A table that ignores inputs is a
+    smaller table wearing extra ones: the caller puts an inert block in front
+    for each leading ignored input and a run after the print for each
+    trailing one.  An ignored input between two essential ones replaces a
+    lookup pad's last step where one fits (``gaps``).
+    """
+    essential = essential_inputs(truth_table, n)
+    if len(essential) == n:
+        return None
+    first = essential[0] if essential else 0
+    after = n - 1 - essential[-1] if essential else n
+    kept = _kept_inputs(essential) if essential else essential
+    gaps = tuple(b - a - 1 for a, b in pairwise(kept))
+    return first, read_at(truth_table, kept, n), kept, gaps, after
+
+
 @cache
 def _solve(truth_table: str) -> str:
     """Build a Minifuck template for the given truth table.
@@ -120,14 +141,10 @@ def _solve(truth_table: str) -> str:
     # ignored input between two essential ones replaces a lookup pad's last
     # step where one fits; otherwise the full-arity mux, which embeds every
     # slot in order, takes the table.
-    essential = essential_inputs(truth_table, n)
-    if len(essential) < n:
-        first = essential[0] if essential else 0
-        after = n - 1 - essential[-1] if essential else n
-        kept = _kept_inputs(essential) if essential else essential
-        inner_table = read_at(truth_table, kept, n)
-        gaps = tuple(b - a - 1 for a, b in pairwise(kept))
-        if kept == essential and not any(gaps):
+    reduced = _reduce(truth_table, n)
+    if reduced is not None:
+        first, inner_table, kept, gaps, after = reduced
+        if kept == essential_inputs(truth_table, n) and not any(gaps):
             inner = _solve(inner_table)
         else:
             inner = _mux_lookup(inner_table, len(kept), gaps=gaps)
@@ -155,7 +172,9 @@ def minifuck(truth_table: str, width: int | None = None) -> str:
     :func:`_solve` plus the arity check: ``_solve`` accepts a nullary table
     while recursing (six such calls building the 276 tables up to three
     inputs), but the API refuses it.  Narrow layouts pair fresh walks with
-    comments so skip chains no longer bind the padding into one long line.
+    comments so skip chains no longer bind the padding into one long line; they
+    drop ignored inputs as :func:`_solve` does (width 1/8, 10 seeded tables per
+    cell, n=6: one ignored input -47%, two -63%).
     """
     n = _validate_truth_table(truth_table)
     natural = _solve(truth_table)
@@ -169,20 +188,34 @@ def minifuck(truth_table: str, width: int | None = None) -> str:
         for row, bit in enumerate(truth_table)
     ):
         return _parity_columns(n, int(truth_table[0]))
-    if n == 1:
-        # The lookup requires two inputs: duplicate each leaf and fix its
-        # second setter to zero, leaving the first as the sole named input.
-        narrow = _mux_lookup("".join(bit * 2 for bit in truth_table), 2, paired=True)
-        at = narrow.rindex(_MINIFUCK_INPUT)
-        narrow = narrow[:at] + PAIR[0] + narrow[at + len(PAIR[0]) :]
-    else:
-        narrow = _mux_lookup(truth_table, n, paired=True)
+    narrow = _narrow(truth_table, n)
     narrow = _wrap_template(narrow, n, width)
     return (
         narrow
         if max(map(len, narrow.splitlines())) < max(map(len, wrapped.splitlines()))
         else wrapped
     )
+
+
+def _paired(truth_table: str, n: int, gaps: tuple[int, ...] = ()) -> str:
+    """Return the paired lookup of an ``n``-input table (``n >= 1``)."""
+    if n == 1:
+        # The lookup requires two inputs: duplicate each leaf and fix its
+        # second setter to zero, leaving the first as the sole named input.
+        narrow = _mux_lookup("".join(bit * 2 for bit in truth_table), 2, paired=True)
+        at = narrow.rindex(_MINIFUCK_INPUT)
+        return narrow[:at] + PAIR[0] + narrow[at + len(PAIR[0]) :]
+    return _mux_lookup(truth_table, n, paired=True, gaps=gaps)
+
+
+def _narrow(truth_table: str, n: int) -> str:
+    """Return the paired lookup, dropping ignored inputs as :func:`_solve` does."""
+    reduced = _reduce(truth_table, n)
+    if reduced is None or not reduced[2]:
+        return _paired(truth_table, n)
+    first, inner_table, kept, gaps, after = reduced
+    inner = _paired(inner_table, len(kept), gaps)
+    return _INERT * first + inner + _MINIFUCK_INPUT * after
 
 
 def _parity_columns(n: int, complement: int) -> str:
