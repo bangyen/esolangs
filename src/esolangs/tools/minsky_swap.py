@@ -13,6 +13,8 @@ _MINSKY_SHORT_RMSN_PAIR = ("decnz();", "inc();  ")
 
 _MINSKY_SMALL_RMSN_PAIR = ("decnz(2);", "inc();   ")
 
+_RMSN = {"+": "inc();", "*": "swap();"}
+
 
 def minsky_swap(truth_table: str, width: int | None = None) -> str:
     """Build a Minsky Swap template for the given truth table.
@@ -29,11 +31,11 @@ def minsky_swap(truth_table: str, width: int | None = None) -> str:
     (``+ * ~``) set ``reg[1]`` first.  Every target is the digit 2 or 3 (a
     leaf per row was ``Theta(T log T)`` of addresses), every table of one
     arity whose inputs all matter is one length (an ignored input's stage is
-    just ``~ ~`` draining its run), and the dump reads ``0 {answer}``.  Width switches
-    to RMSN, one command per line.  Below width 15 a shared increment
-    leaves setters eight wide; absolute jump operands set the remaining floor.
-    Below that floor, up to two inputs use a nine-command decision chain
-    with the first register as scratch; the answer remains the second register.
+    just ``~ ~`` draining its run), and the dump reads ``0 {answer}``.  A ``width`` the
+    program exceeds switches to RMSN, one command per line: width >= 15 keeps
+    the two-command setters, 10-14 shares an increment (setters eight wide),
+    and below 10 with ``n <= 2`` a decision chain (nine commands at ``n = 2``)
+    uses the first register as scratch; the answer stays in the second.
     """
     n = _validate_truth_table(truth_table)
     weights, table = input_weights(truth_table, n)
@@ -54,7 +56,8 @@ def minsky_swap(truth_table: str, width: int | None = None) -> str:
             targets += [0, 0]
             pos += len(run) + 2
             continue
-        skip = pos + len(run) + 2 + 2 + weight + 1  # 1-based line after the stage
+        # run, 2 tildes, 2 stars, the + block, then +1 for the 1-based line
+        skip = pos + len(run) + 2 + 2 + weight + 1
         tokens += [run, "~", "~", "*", "+" * weight, "*"]
         targets += [skip, skip]
         pos = skip - 1
@@ -77,6 +80,7 @@ def minsky_swap(truth_table: str, width: int | None = None) -> str:
         lines = [slot] if n == 1 else [slot, "inc();", slot]
         one = len(lines) + len(truth_table) + 1
         for value in range(len(truth_table)):
+            # the chain adds the low bit as 2 and the high bit as 1: swap them
             row = value if n == 1 else (value & 1) * 2 + (value >> 1)
             lines.append(f"decnz({one if truth_table[row] == '1' else one + 1});")
         return "\n".join([*lines, "swap();", "inc();"])
@@ -93,12 +97,9 @@ def minsky_swap(truth_table: str, width: int | None = None) -> str:
                 lines.append(TEMPLATE_CHAR * len(_MINSKY_RMSN_PAIR[0]))
         else:
             for command in token:
-                if command == "~":
-                    lines.append(f"decnz({next(jumps)});")
-                elif command == "+":
-                    lines.append("inc();")
-                else:
-                    lines.append("swap();")
+                lines.append(
+                    f"decnz({next(jumps)});" if command == "~" else _RMSN[command]
+                )
     return "\n".join(lines)
 
 
