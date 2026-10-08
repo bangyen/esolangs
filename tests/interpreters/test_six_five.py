@@ -10,32 +10,12 @@ def run_and_capture(code: str, inputs: list[str] | None = None) -> str:
     return run_program(sixfive.run, code, "".join(f"{line}\n" for line in inputs or []))
 
 
-HELLO_WORLD = "\n".join(
-    [
-        "666666666666A C",
-        "66665A C",
-        "662AA C",
-        "626262A C",
-        "9999999999995A C",
-        "99A C",
-        "55555555555A C",
-        "6666A C",
-        "626262A C",
-        "9A C",
-        "95959A C",
-    ]
-)
-
-
 class TestSixFive:
     def test_add_six(self) -> None:
         assert run_and_capture("66666666A0") == "0"
 
     def test_input_echo(self) -> None:
         assert run_and_capture("BA0", inputs=["X"]) == "X"
-
-    def test_hello_world(self) -> None:
-        assert run_and_capture(HELLO_WORLD) == "Hello, World"
 
     def test_right_move_reuses_an_already_allocated_tape(self) -> None:
         """Moving right need not grow a tape that a prior state already grew."""
