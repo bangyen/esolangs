@@ -73,20 +73,21 @@ class TestParameterizedBack:
         assert "*" in template  # leaves halt
 
     def test_the_natural_order_folds_its_aligned_dependency(self) -> None:
-        """Only a dependency aligned with the natural root folds immediately."""
+        """A one-input dependency folds wherever the input sits."""
         from esolangs import tools as generators
 
         scattered = len(generators.back("10101010"))
         aligned = len(generators.back("11110000"))
         parity = len(generators.back("01101001"))
-        assert scattered == parity
+        assert scattered < parity
         assert aligned < parity
 
     def test_the_identity_template_is_emitted(self) -> None:
         """Back no longer contests input orders."""
         from esolangs import tools as generators
 
-        for table in ("01101001", "10101010", "11110000", "00111100", "10010110"):
+        # Every input matters in each; an ignored one is indexed past.
+        for table in ("01101001", "00010111", "01111110", "00011110", "10010110"):
             n = (len(table) - 1).bit_length()
             identity = _back_ordered(table, tuple(range(n)))
             assert generators.back(table) == identity, table

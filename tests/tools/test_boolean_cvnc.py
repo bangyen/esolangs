@@ -63,7 +63,7 @@ class TestCvnc:
         program = boolean.cvnc("11110000")
         assert _leaves(program) == 2
         assert _branches(program) == 1  # only the root still branches
-        assert program.count("s") == 5  # one at the root, two per folded arm
+        assert program.count("s") == 3  # each input read once
         for combo in range(8):
             bits = [str((combo >> (2 - i)) & 1) for i in range(3)]
             assert run_cvnc(program, bits) == "11110000"[combo]
@@ -225,7 +225,7 @@ class TestCvnc:
             stream = module._Stream(table, _prologue_syllables(4))  # noqa: SLF001
             module._tree(table, stream)  # noqa: SLF001
             tree = stream.text()
-            assert boolean.cvnc(table).endswith(tree)
+            assert module._ordered(table, (0, 1, 2), _prologue_syllables(4)) == tree  # noqa: SLF001
 
     def test_a_served_order_pops_from_the_end_holding_its_input(self) -> None:
         """The schedule is not merely non-empty; it is the right one."""
@@ -277,8 +277,8 @@ class TestCvncSharing:
     def test_three_input_total(self) -> None:
         """Three-input retirement stays within five percent of the original."""
         tables = [format(i, "08b") for i in range(256)]
-        assert self._totals(tables) == (14_849, 15_192)
-        assert 15_192 * 100 < 14_621 * 105
+        assert self._totals(tables) == (14_849, 14_856)
+        assert 14_856 * 100 < 14_621 * 105
 
     def test_five_input_sample_total(self) -> None:
         """Five-input retirement stays within five percent of the original."""

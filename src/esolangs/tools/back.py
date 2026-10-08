@@ -4,6 +4,7 @@ from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
     constant_span_test,
+    input_weights,
 )
 
 #: Finisher for a cell primed to 1: ``-`` flips it to 0, ``+`` is inert.
@@ -129,7 +130,12 @@ def back(truth_table: str, width: int | None = None) -> str:
     costs a leaf one ``-`` instead of one extra pointer move.
     """
     n = _validate_truth_table(truth_table)
-    program = _back_ordered(truth_table, tuple(range(n)), width)
+    weights, table = input_weights(truth_table, n)
+    if len(table) == 1:
+        # A constant already folds to one leaf; it keeps every input.
+        weights, table = [1] * n, truth_table
+    levels = len(table).bit_length() - 1
+    program = _back_ordered(table, tuple(range(levels)), width, weights)
     if width is not None and width > 0 and max(map(len, program.splitlines())) > width:
         parity = _back_parity(truth_table, n)
         if parity is not None:
@@ -138,7 +144,10 @@ def back(truth_table: str, width: int | None = None) -> str:
 
 
 def _back_ordered(
-    truth_table: str, perm: tuple[int, ...], width: int | None = None
+    truth_table: str,
+    perm: tuple[int, ...],
+    width: int | None = None,
+    weights: list[int] | None = None,
 ) -> str:
     r"""Build one Back template, loading its inputs in ``perm`` order.
 
@@ -173,15 +182,27 @@ def _back_ordered(
     embedding: the primer and the run are one unit and are never
     separated, so both bits still cost the same two rows and the template's
     height cannot leak an input.
+
+    ``weights`` names the stream inputs, zero for an ignored one: the table
+    indexes the rest, and an ignored input loads into a fresh cell past
+    them -- fresh, since a ``+`` meeting a zero cell would skip a row -- with
+    the answer cell still last, at the stream's input count.
     """
-    n = _validate_truth_table(truth_table)
+    levels = _validate_truth_table(truth_table)
+    if weights is None:
+        weights = [1] * levels
+    n = len(weights)
 
     # Level c tests cell c and input perm[c], so input i lives at cell
     # perm.index(i).  Filling in cell order instead needs no walk (12.0% vs
     # 9.15%) but breaks "run k = input k"; not kept -- see the docstring.
+    essential = [i for i, weight in enumerate(weights) if weight]
+    ignored = [i for i, weight in enumerate(weights) if not weight]
     cells = [0] * n
     for level, i in enumerate(perm):
-        cells[i] = level
+        cells[essential[i]] = level
+    for cell, i in enumerate(ignored, levels):
+        cells[i] = cell
 
     def walk(frm: int, to: int) -> list[str]:
         """Move the pointer from cell ``frm`` to cell ``to``, one per row."""
@@ -228,7 +249,7 @@ def _back_ordered(
                 grid[(row, col + k)] = ch
 
     def emit(level: int, lo: int, hi: int, row: int, col: int) -> None:
-        if level == n or constant(lo, hi):
+        if level == levels or constant(lo, hi):
             leaf(level, truth_table[lo], row, col)
             return
         mid = lo + (hi - lo) // 2
@@ -242,7 +263,7 @@ def _back_ordered(
         grid[(nrow, col + 2)] = ">"
         emit(level + 1, mid, hi, nrow, col + 3)  # one (bit=1) child
 
-    emit(0, 0, 2**n, 0, 1)  # tree root at column 1, the beam arriving rightward
+    emit(0, 0, 2**levels, 0, 1)  # tree root at column 1, the beam arriving rightward
 
     if width is not None and width > 0:
         span = max(c for _, c in grid) + 3
@@ -251,7 +272,7 @@ def _back_ordered(
             vertical = True
             grid.clear()
             next_row[0] = 1
-            emit(0, 0, 2**n, 0, 1)
+            emit(0, 0, 2**levels, 0, 1)
             narrow = _descending_back(grid, n, cells)
             return min(
                 (original, narrow), key=lambda code: max(map(len, code.splitlines()))

@@ -11,8 +11,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from esolangs.tools import bio
-from esolangs.tools.bio import BIO_PAIR
-from esolangs.tools.helpers import runs
+from esolangs.tools.bio import _BIO_SKIP, BIO_PAIR
+from esolangs.tools.helpers import _ASCII_ZERO, input_weights, runs
 
 #: Cost band; see ``__main__.py``. Telescoping-lookup lemmas, cheap enough that
 #: scoping them is the only reason they are ever skipped.
@@ -25,8 +25,19 @@ _RISE, _FALL = "0oy;", "1oy;"
 
 
 def lookup(program: str) -> str:
-    """The telescope: everything after the last input run."""
-    return program[program.rfind("$") + 1 :]
+    """The telescope: after the last input run and its skip, before the print.
+
+    The print's ASCII lift is cut so that a constant's empty telescope does not
+    read as a rise.
+    """
+    body = program[program.rfind("$") + 1 :].removeprefix(_BIO_SKIP[1])
+    return body.removesuffix(_RISE * _ASCII_ZERO + "1iy;")
+
+
+def indexed(table: str, program: str) -> str:
+    """The table the telescope indexes: the essential inputs' when skipped."""
+    n = len(table).bit_length() - 1
+    return input_weights(table, n)[1] if _BIO_SKIP[0] in program else table
 
 
 def levels(program: str) -> list[str]:
@@ -65,34 +76,36 @@ def check_l1(max_n: int = 7) -> list[str]:
         executed = 0
         for table in tables:
             program = bio(table)
+            kept = indexed(table, program)
             adjust = levels(program)
-            assert len(adjust) == size - 1, (
-                f"n={n}: recovered {len(adjust)} levels, expected {size - 1}"
+            assert len(adjust) == len(kept) - 1, (
+                f"n={n}: recovered {len(adjust)} levels, expected {len(kept) - 1}"
             )
             start = 1 if lookup(program).startswith(_RISE) else 0
-            assert start == int(table[0]), (
-                f"n={n}: y starts at {start} but table[0] is {table[0]}"
+            assert start == int(kept[0]), (
+                f"n={n}: y starts at {start} but table[0] is {kept[0]}"
             )
             y = start
-            for index in range(size):
+            for index in range(len(kept)):
                 if index:
                     step = adjust[index - 1]
                     if step == _RISE:
                         y = 1
                     elif step == _FALL:
                         y = 0
-                assert y == int(table[index]), (
-                    f"n={n} row {index}: telescope holds {y}, table says {table[index]}"
+                assert y == int(kept[index]), (
+                    f"n={n} row {index}: telescope holds {y}, table says {kept[index]}"
                 )
-                if n <= 3:
-                    got = _executed_answer(program, n, index)
-                    assert got == y, (
-                        f"n={n} row {index}: interpreter gives {got}, fold gives {y}"
-                    )
-                    executed += 1
+            for index in range(size if n <= 3 else 0):
+                got = _executed_answer(program, n, index)
+                assert got == int(table[index]), (
+                    f"n={n} row {index}: interpreter gives {got}, "
+                    f"table says {table[index]}"
+                )
+                executed += 1
         lines.append(
             f"  n={n}: {len(tables):2d} tables x {size:3d} rows telescoped, "
-            f"{size - 1} levels each, {executed} executed"
+            f"at most {size - 1} levels each, {executed} executed"
         )
     return lines
 
@@ -121,6 +134,8 @@ def check_l2(max_n: int = 9) -> list[str]:
         # brace profile reads straight off the telescope.
         template = bio(table)
         assert "{X" not in template, f"n={n}: template still carries {{Xi}} marks"
+        table = indexed(table, template)
+        size = len(table)
         program = lookup(template)
         depth = 0
         returns_to_zero = 0

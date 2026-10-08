@@ -73,6 +73,21 @@ def polynomial(truth_table: str) -> str:
     # *leading* ignored run before building (a later one drained out of
     # turn branched on the wrong bit: 92 wrong rows over 26 tables).
     essential = essential_inputs(truth_table, n) or [0]
+    # A *trailing* ignored run is cut from the table and its reads appended
+    # at the very end, which every path reaches parked below zero, so they
+    # change nothing; the selection below keeps it only where it is shorter.
+    tail = n - 1 - essential[-1]
+    if tail:
+        cut = read_at(truth_table, list(range(n - tail)), n)
+        builders += [
+            (
+                _polynomial_hybrid_cost(cut, level) + tail,
+                lambda level=level, c=cut, t=tail: (
+                    _polynomial_hybrid(c, level) + [[0, 2]] * t
+                ),
+            )
+            for level in range(n - tail, -1, -1)
+        ]
     lead = next((i for i in range(n) if i in essential), n)
     if lead and min(cost for cost, _ in builders) > _POLYNOMIAL_MAX_INSTRS:
         prefix: list[list[int]] = [[0, 2]] * lead

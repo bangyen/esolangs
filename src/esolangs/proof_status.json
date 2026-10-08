@@ -136,8 +136,8 @@
       ],
       "qualification": "nested loops telescope from `table[0]` to `table[index]`",
       "scaling": "linear: T - 1 loop pieces joined once",
-      "execution": "linear: worst 18T - 10n + 30 commands: Horner doubling 13T, decrement loops 5T",
-      "workspace": "T log T: worst max(2n,8) + Σ_{j<T-1} bl(10n-8+3j) + bl(4T+10n+37) bits: T - 1 return indices",
+      "execution": "linear: at most 18T - 10n + 30 commands: Horner doubling 13T, decrement loops 5T",
+      "workspace": "T log T: at most max(2n,8) + Σ_{j<T-1} bl(10n-8+3j) + bl(4T+10n+37) bits: T - 1 return indices",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
@@ -787,7 +787,7 @@
       "labels": [
         "linear lookup"
       ],
-      "qualification": "the street writes one cell per entry, then each input's mouth forks on its bit and its side room walks the cell pointer left by that bit's weight, leaving the car over the indexed entry",
+      "qualification": "the street writes one cell per entry, then each essential input's mouth forks on its bit (an ignored one is a lone read) and its side room walks the cell pointer left by that bit's weight, leaving the car over the indexed entry",
       "scaling": "linear: nine rows of street, ~1.8T columns",
       "execution": "linear: worst 3T + 110n + 56 steps for n = 6, 7, then 4T + 14n + 600: all ones",
       "workspace": "T log T: worst nT + 2n + 24 + bl(52+G) + 2bl(n) bits past n = 5, G = Σ_{0<k<n} max(51,2^(k-1)+3)",

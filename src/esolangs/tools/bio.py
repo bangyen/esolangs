@@ -1,6 +1,11 @@
 """Boolean template generator for bio."""
 
-from esolangs.tools.helpers import _ASCII_ZERO, TEMPLATE_CHAR, _validate_truth_table
+from esolangs.tools.helpers import (
+    _ASCII_ZERO,
+    TEMPLATE_CHAR,
+    _validate_truth_table,
+    input_weights,
+)
 
 __all__ = ["BIO_PAIR", "bio"]
 
@@ -14,16 +19,33 @@ def bio(truth_table: str) -> str:
     Four-character setters add one to x or write unused z. Horner doubling
     through y costs eight commands per input and leaves y zero. Starting y
     at table[0], 2**n-1 nested decrement loops telescope adjacent transitions
-    (0oy rise, 1oy fall) to y=table[index], printed with 1iy.
+    (0oy rise, 1oy fall) to y=table[index], printed with 1iy.  An ignored
+    input's setter can instead run with x parked in y and then be cleared
+    (:data:`_BIO_SKIP`), so the table indexes the rest; the shorter of the
+    two is kept, since on a small table the skip costs more than it saves.
     """
     n = _validate_truth_table(truth_table)
+    weights, table = input_weights(truth_table, n)
+    return min(_bio(truth_table, [1] * n), _bio(table, weights), key=len)
+
+
+def _bio(truth_table: str, weights: list[int]) -> str:
+    """Return the template indexing ``truth_table`` by the weighted inputs."""
+    n = len(truth_table).bit_length() - 1
 
     def yop(a: str, b: str) -> str:
         if a == b:
             return ""
         return "0oy;" if a == "0" else "1oy;"
 
-    pack = _BIO_DOUBLE.join([TEMPLATE_CHAR * len(BIO_PAIR[0])] * n)
+    setter = TEMPLATE_CHAR * len(BIO_PAIR[0])
+    pack, read = "", False
+    for weight in weights:
+        if weight:
+            pack += (_BIO_DOUBLE if read else "") + setter
+            read = True
+        else:
+            pack += _BIO_SKIP[0] + setter + _BIO_SKIP[1]
     # Loop ``j`` wraps ``j + 1``: opens, then closes, joined once (O(2**n)).
     opens = [
         "0ix{1ox;" + yop(truth_table[j - 1], truth_table[j]) for j in range(1, 2**n)
@@ -37,3 +59,7 @@ def bio(truth_table: str) -> str:
 #: ``y`` twice, the second moves ``y`` back; both registers stay non-negative,
 #: so each loop terminates and ``y`` ends at zero.
 _BIO_DOUBLE = "0ix{1ox;0oy;0oy;};0iy{1oy;0ox;};"
+
+#: Around an ignored input's setter: park ``x`` in ``y``, then clear what the
+#: setter added and move ``x`` back, so ``y`` ends at zero as doubling leaves it.
+_BIO_SKIP = ("0ix{1ox;0oy;};", "0ix{1ox;};0iy{1oy;0ox;};")

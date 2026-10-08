@@ -19,6 +19,7 @@ from esolangs.tools.helpers import (
     _validate_truth_table,
     constant_span_test,
     input_orders,
+    input_weights,
     permute_truth_table,
 )
 from esolangs.tools.helpers import (
@@ -514,7 +515,9 @@ _READ_RUN = 49
 _TAIL = ";O" + "^" * 48 + "_"
 
 
-def _streetcode_mouths(n: int, first: int) -> list[tuple[int, int, int]]:
+def _streetcode_mouths(
+    n: int, first: int, gaps: list[int]
+) -> list[tuple[int, int, int]]:
     """Return each level's mouth column, room width and leftward walk.
 
     Level ``k`` skips ``2 ** (n - 1 - k)`` cells, so the rooms halve going
@@ -523,7 +526,8 @@ def _streetcode_mouths(n: int, first: int) -> list[tuple[int, int, int]]:
     that steers the exit.  The gap to the next mouth is sized from the room
     *that* mouth carries, since a room hangs west of its own: sized from
     this one's the rooms overlap from eight inputs up, where a room first
-    outgrows the read run, and the grid stops rendering.
+    outgrows the read run, and the grid stops rendering.  ``gaps``, in read
+    order, widens a read run by the ignored inputs read just ahead of it.
     """
     walks = [1 << level for level in range(n)]
     rooms = [max(2, -(-(walk + 1) // 2)) for walk in walks]
@@ -532,7 +536,7 @@ def _streetcode_mouths(n: int, first: int) -> list[tuple[int, int, int]]:
     for step, (walk, room) in enumerate(zip(walks, rooms, strict=True)):
         mouths.append((col, room, walk))
         if step + 1 < n:
-            col += max(_READ_RUN + 2, rooms[step + 1] + 2)
+            col += max(_READ_RUN + 2 + gaps[n - 1 - step], rooms[step + 1] + 2)
     mouths.reverse()
     return mouths
 
@@ -586,11 +590,27 @@ def _streetcode_flat(truth_table: str, n: int) -> str:
     CP lands on ``T - index``, one east of the answer, and every cell an
     ``I`` overwrites is east of that.  The fill's last ``^`` leaves cell
     ``T`` nonzero, which is what drives the fill past the mouths.
+
+    An ignored input is a lone ``I`` just east of the next indexed input's,
+    whose read overwrites the cell; one past the last indexed input is not
+    read at all.  The table holds the indexed inputs' entries alone.
     """
+    weights, table = input_weights(truth_table, n)
+    if len(table) > 1:
+        truth_table, n = table, len(table).bit_length() - 1
+    else:
+        weights = [1] * n  # a constant keeps one level to fork on
+    gaps, pending = [], 0
+    for weight in weights:
+        if weight:
+            gaps.append(pending)
+            pending = 0
+        else:
+            pending += 1
     fill = "".join(("^" if bit == "1" else "") + "=" for bit in reversed(truth_table))
     fill += "^"
-    mouths = _streetcode_mouths(n, max(len(fill) + 3, len(_TAIL) + 1))
-    width = mouths[0][0] + _READ_RUN + 2
+    mouths = _streetcode_mouths(n, max(len(fill) + 3, len(_TAIL) + 1), gaps)
+    width = mouths[0][0] + _READ_RUN + 2 + gaps[0]
     grid: dict[tuple[int, int], str] = {}
     for col in range(width + 2):
         grid[_KERB, col] = grid[_SILL, col] = "-"
@@ -598,8 +618,10 @@ def _streetcode_flat(truth_table: str, n: int) -> str:
         grid[row, 0] = grid[row, width + 1] = char
     for col in range(1, width + 1):
         grid[_WEST, col] = grid[_EAST, col] = " "
-    for mouth, room, walk in mouths:
+    for (mouth, room, walk), gap in zip(mouths, gaps, strict=True):
         _streetcode_room(grid, mouth, room, walk)
+        for col in range(mouth + _READ_RUN + 2, mouth + _READ_RUN + 2 + gap):
+            grid[_WEST, col] = "I"
     for step, char in enumerate(_TAIL):
         grid[_WEST, mouths[-1][0] - len(_TAIL) + step] = char
     grid[_EAST, 1] = "C"

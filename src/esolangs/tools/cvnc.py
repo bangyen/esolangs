@@ -44,6 +44,7 @@ from esolangs.tools.helpers import (
     constant_span_test,
     deque_plan,
     in_input_order,
+    input_weights,
     subtree_ids,
 )
 
@@ -328,20 +329,33 @@ def _bit_count(size: int) -> int:
     return size.bit_length() - 1
 
 
-def _tree(table: str, stream: _Stream | None = None) -> list[str]:
+def _consumed(weights: list[int]) -> list[int]:
+    """Return the stream reads made before each indexed level, then in all."""
+    return (
+        [0] + [at + 1 for at, weight in enumerate(weights) if weight] + [len(weights)]
+    )
+
+
+def _tree(
+    table: str, stream: _Stream | None = None, weights: list[int] | None = None
+) -> list[str]:
     """Build the command sequence for ``table``, reading at every node.
 
     A constant table stops branching but still owes every read below it.
     Spans of the one table, an O(1) constant test and one flat token list:
     O(2**n).  Returns the commands not yet spelled: all of them unless
     ``stream`` shares, whose :meth:`_Stream.text` is then the body.
+    ``weights`` names the stream inputs, zero for an ignored one: ``table``
+    indexes the rest, and a node first reads the ignored inputs ahead of its
+    own, which its read then overwrites.
     """
     constant = constant_span_test(table)
     stream = stream or _Stream(table)
+    before = _consumed(weights or [1] * _bit_count(len(table)))
 
     def walk(lo: int, hi: int, level: int, accumulator: int | None) -> None:
         if constant(lo, hi):
-            reads = _bit_count(hi - lo)
+            reads = before[-1] - before[level]
             stream.tokens.extend([_READ] * reads)
             stream.tokens.extend(_leaf(table[lo], None if reads else accumulator))
             return
@@ -353,7 +367,8 @@ def _tree(table: str, stream: _Stream | None = None) -> list[str]:
         # ``ɰ`` jumps past ``ʋ`` on *nonzero*, so the arm between the
         # markers is the first (bit 0) half; swapped, every odd-weight
         # table inverts.
-        stream.tokens.extend([_READ, _IF_ZERO])
+        stream.tokens.extend([_READ] * (before[level + 1] - before[level]))
+        stream.tokens.append(_IF_ZERO)
         walk(lo, mid, level + 1, 0)
         stream.tokens.append(_END_IF)
         walk(mid, hi, level + 1, 1)
@@ -378,21 +393,26 @@ def _deque_schedule(
 
 
 def _stored(
-    truth_table: str, perm: tuple[int, ...], stream: _Stream | None = None
+    truth_table: str,
+    perm: tuple[int, ...],
+    stream: _Stream | None = None,
+    weights: list[int] | None = None,
 ) -> list[str] | None:
     """Build the stored-read command sequence for ``perm``.
 
     Every input is read up front and each node fetches the bit it tests; a
     folded subtree owes nothing, which is where the reorder pays.  Returns
     what :func:`_tree` does, or None when no deque schedule serves ``perm``.
+    An ignored input (weight 0) is read and not pushed.
     """
     schedule = _deque_schedule(perm)
     if schedule is None:
         return None
     pushes, pops = schedule
     stream = stream or _Stream(truth_table)
-    for push in pushes:
-        stream.tokens.extend([_READ, push])
+    queued = iter(pushes)
+    for weight in weights or [1] * len(perm):
+        stream.tokens.extend([_READ, next(queued)] if weight else [_READ])
     constant = constant_span_test(truth_table)
 
     def walk(lo: int, hi: int, level: int, accumulator: int | None) -> None:
@@ -417,7 +437,10 @@ def _stored(
 
 
 def _ordered(
-    truth_table: str, perm: tuple[int, ...], offset: int | None = None
+    truth_table: str,
+    perm: tuple[int, ...],
+    offset: int | None = None,
+    weights: list[int] | None = None,
 ) -> str | None:
     """Build the shortest read strategy available for ``perm``.
 
@@ -426,20 +449,24 @@ def _ordered(
     turns sharing on in both.
     """
     stream = _Stream(truth_table, offset)
-    rendered = stream.text() if _stored(truth_table, perm, stream) is not None else None
+    stored = _stored(truth_table, perm, stream, weights)
+    rendered = stream.text() if stored is not None else None
     if perm != tuple(range(len(perm))):
         return rendered
     stream = _Stream(truth_table, offset)
-    _tree(truth_table, stream)
+    _tree(truth_table, stream, weights)
     direct = stream.text()
     return rendered if rendered is not None and len(rendered) < len(direct) else direct
 
 
 def _ordered_candidate(
-    truth_table: str, perm: tuple[int, ...], offset: int | None = None
+    truth_table: str,
+    perm: tuple[int, ...],
+    offset: int | None = None,
+    weights: list[int] | None = None,
 ) -> str:
     """Adapt :func:`_ordered` to :func:`in_input_order`'s contract."""
-    return _ordered(truth_table, perm, offset) or ""
+    return _ordered(truth_table, perm, offset, weights) or ""
 
 
 def _prologue_syllables(squarings: int) -> int:
@@ -462,13 +489,24 @@ def cvnc(truth_table: str) -> str:
     fits; changing the prologue rebases the shared body before its
     reach is checked again.
     """
-    # For the refusal only; the arity is not needed below.
-    _validate_truth_table(truth_table)
+    # A tree over the inputs that matter, its ignored reads bare, against the
+    # full tree, whose sharing is sometimes the shorter; a tie keeps the full.
+    n = _validate_truth_table(truth_table)
+    weights, table = input_weights(truth_table, n)
+    shapes = [(truth_table, [1] * n)]
+    if 1 < len(table) < len(truth_table):
+        shapes.append((table, weights))
     squarings = _HALT_SQUARINGS
     while True:
-        body = in_input_order(
-            truth_table,
-            partial(_ordered_candidate, offset=_prologue_syllables(squarings)),
+        offset = _prologue_syllables(squarings)
+        body = min(
+            (
+                in_input_order(
+                    shape, partial(_ordered_candidate, offset=offset, weights=named)
+                )
+                for shape, named in shapes
+            ),
+            key=len,
         )
         if len(_halt(squarings)) + len(body) < _reach(squarings):
             return _halt(squarings) + body

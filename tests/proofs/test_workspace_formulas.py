@@ -326,7 +326,7 @@ FORMULAS: dict[str, tuple[Callable[[int, str], int], bool, tuple[int, ...]]] = {
             + sum(bl(10 * n - 8 + 3 * j) for j in range(2**n - 1))
             + bl(4 * 2**n + 10 * n + 37)
         ),
-        True,
+        False,
         (3, 5),
     ),
     "Dimensional": (
