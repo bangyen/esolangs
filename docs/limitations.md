@@ -74,9 +74,12 @@ dense, parity, constant tables were executed exhaustively at each shipped
 arity. Construction details and measurements are in
 [malbolge-scaling](proofs/malbolge-scaling.md).
 
-Seventeen remains open. Executed decoder and instruction-reuse controls exist,
-but no source joins the address fold, row selector and complete decoder around
-an arbitrary full truth table. The shipped cap remains sixteen.
+Seventeen remains open. A prepared complete query and separate legal-source
+initialization and handoff components pass exhaustive input controls, but no
+source installs the query and relocates obstructed records around an arbitrary
+full truth table. The handoff's existing continuation corrupts a saved parity
+word. See [the controls](proofs/malbolge-scaling.md#native-input-and-prepared-query-controls-2026-10-08).
+The shipped cap remains sixteen.
 
 Counting bounds each family independently of mixer quality:
 

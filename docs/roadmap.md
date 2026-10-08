@@ -99,8 +99,9 @@ line changes only when its next step does.
 - **Factor leading constant.** Next: a sound local rewrite lowering the
   lower side's Perron root, or a cheaper weighted command stream
   ([factor](proofs/factor.md#open-problems)).
-- **Malbolge's first unreachable arity.** Next: shrink the decoder or share
-  more of its common initialization
+- **Malbolge's first unreachable arity.** Next: construct native query
+  initialization and the obstructed-record selector; the verified handoff's
+  existing continuation corrupts saved parity
   ([malbolge-scaling](proofs/malbolge-scaling.md#open-problems)).
 - **Vandevelo structural scaling.** Next: settle Cohen and Shinkar's
   `O(log n)` DNF-of-parities gap, which bounds output and so generation
