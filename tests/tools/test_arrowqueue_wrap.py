@@ -31,10 +31,11 @@ def test_arrowqueue_width_preserves_every_row(table: str, width: int | None) -> 
         assert diverges("ArrowQueue", source, "") is (expected == "1")
 
 
-def test_arrowqueue_replaces_an_overwide_tree() -> None:
+def test_arrowqueue_narrows_the_cascade() -> None:
     table = "0110100110010110"
-    assert max(map(len, arrowqueue(table).splitlines())) > 6
-    assert arrowqueue(table, 6) != arrowqueue(table)
+    assert max(map(len, arrowqueue(table).splitlines())) == 6
+    assert max(map(len, arrowqueue(table, 5).splitlines())) == 5
+    assert arrowqueue(table, 6) == arrowqueue(table)
     assert arrowqueue(table, 80) == arrowqueue(table)
 
 

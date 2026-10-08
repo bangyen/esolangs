@@ -189,62 +189,6 @@ class TestParameterizedArrowQueue:
         assert verdict(_ROWS["1"], 0) == "1"
         assert not any(verdict(_ROWS["1"], m) == "1" for m in range(1, 64))
 
-    def test_folded_one_leaf_drains_the_bits_it_skipped(self) -> None:
-        """The drain is required: a ring needs the queue it expects."""
-        from esolangs.tools.arrowqueue import _TREE_1, _drained_leaf
-
-        undrained = _drained_leaf("1", 0)  # no drains at all
-        assert [row.strip() for row in undrained if row.strip()] == [
-            row.strip() for row in _TREE_1
-        ]
-
-        # With two levels skipped the drained leaf is strictly taller than
-        # the bare ring, and that extra height is the drain chain.
-        drained = _drained_leaf("1", 2)
-        assert len(drained) == len(_TREE_1) + 2
-        # Each drain is two pops: the bit, then a one's trailing ``R``.
-        assert sum(row.count("+") for row in drained) == 4 + 2 * 2
-
-    def test_folded_zero_leaf_needs_no_drain(self) -> None:
-        """A ``0`` leaf halts by leaving the grid, which the queue cannot stop."""
-        from esolangs import tools as generators
-        from esolangs.tools.arrowqueue import _TREE_0, _drained_leaf
-
-        # It carries no drain at all.  Paying for one is not free: the
-        # staircase sits a column right of the branches it replaces, so
-        # ``_compact`` finds fewer all-blank columns and the instantiated
-        # program grows -- which is what made AND-2 larger than before the
-        # fold until this case was carved out.
-        assert _drained_leaf("0", 3) == list(_TREE_0)
-        for table, n in (("0000", 2), ("0" * 8, 3)):
-            template = generators.arrowqueue(table)
-            for combo in range(2**n):
-                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-                assert self.run_arrowqueue(self.instantiate(template, bits)) == "0"
-
-    def test_folding_never_grows_a_program(self) -> None:
-        """No instantiated program is larger than its unfolded equivalent."""
-        from esolangs.tools.arrowqueue import _TREE_0, _TREE_1, _connect, _tree
-
-        def unfolded(values: list[str]) -> list[str]:
-            """The pre-fold construction: a branch per level, never collapsed."""
-            if len(values) == 2:
-                return _connect(
-                    _TREE_1 if values[0] == "1" else _TREE_0,
-                    _TREE_1 if values[1] == "1" else _TREE_0,
-                )
-            half = len(values) // 2
-            return _connect(unfolded(values[:half]), unfolded(values[half:]))
-
-        for n in (1, 2, 3):
-            for value in range(2 ** (2**n)):
-                table = format(value, f"0{2**n}b")
-                folded = _tree(list(table))
-                plain = unfolded(list(table))
-                assert sum(len(r.rstrip()) for r in folded) <= sum(
-                    len(r.rstrip()) for r in plain
-                ), table
-
     def test_fold_keeps_equal_width_embedding(self) -> None:
         """Every instantiation of a folded template is the same length."""
         from esolangs import tools as generators
@@ -260,31 +204,3 @@ class TestParameterizedArrowQueue:
                 for c in range(2**n)
             }
             assert len(sizes) == 1, f"{table}: {sizes}"
-
-    def test_bare_ring_is_entry_sensitive(self) -> None:
-        """A bare ring sustains on right-entry and *halts* on down-entry."""
-        from esolangs.interpreters.grid_based.arrowqueue import _Machine
-        from esolangs.tools.arrowqueue import _TREE_1
-        from esolangs.vm import run_until_halt_or_cycle
-
-        rdlu = (0, 1, 2, 3)
-
-        def verdict(state: tuple[int, int, int, tuple[int, ...]]) -> str:
-            machine = _Machine(list(_TREE_1))
-            machine.state = (*state, not machine.grid)
-            return "0" if run_until_halt_or_cycle(machine) else "1"
-
-        assert verdict((0, 0, 0, rdlu)) == "1"  # right-entry: the ring closes
-        assert verdict((0, 1, 1, rdlu)) == "0"  # down-entry: it does not
-
-    def test_constant_one_never_tops_out_as_a_bare_ring(self) -> None:
-        """The top-level tree always carries a drain, so down-entry is safe."""
-        from esolangs.tools.arrowqueue import _TREE_1, _drained_leaf, _tree
-
-        for n in range(1, 6):
-            assert _tree(list("1" * (2**n))) == _drained_leaf("1", n)
-
-        for n in (1, 2, 3):
-            for value in range(2 ** (2**n)):
-                table = format(value, f"0{2**n}b")
-                assert _tree(list(table)) != list(_TREE_1), table

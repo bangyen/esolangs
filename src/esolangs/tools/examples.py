@@ -651,7 +651,7 @@ def _register() -> None:
             b.arrowqueue,
             "grid_based.arrowqueue",
             pair=ARROWQUEUE_PAIR,
-            expected="1 0 0 1 2 3",
+            expected="0 1 2 3",
             split=True,
         ),
         "crement": _embedded(

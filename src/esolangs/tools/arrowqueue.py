@@ -1,13 +1,8 @@
-"""Boolean-function generator for ArrowQueue, and the tree it draws.
+"""Boolean-function generator for ArrowQueue: halt = 0, loop forever = 1.
 
-``*`` turns clockwise, ``~`` pushes the direction, ``+`` pops and points
-(halting on an empty pop); no I/O, so parameterized runs plus the
-termination convention (halt = 0, loop forever = 1).  Tree (``n <= 4``):
-a right push follows each cell and ``+`` branches pop the front.  Cascade
-(``n >= 5``): each stage doubles the queued markers then crosses the cell
-(Horner), and one ``+`` per row turns right at the indexed row.
-A ``0`` leaf is empty; a ``1`` leaf is a self-sustaining ring.
-Both routes fold constant rows (a subtree; the cascade's tail).
+A cascade: each stage doubles the queued markers then crosses the cell
+(Horner); one ``+`` per row turns right at the indexed row.  The tree it
+replaced (``n <= 4``) was at most 3.9% smaller at n=4 and kept ignored inputs.
 """
 
 from esolangs.tools.helpers import (
@@ -16,21 +11,12 @@ from esolangs.tools.helpers import (
     input_weights,
 )
 
-#: Each input's cell, both routes: ``~`` pushes a down heading, ``.`` nothing.
+#: Each input's cell: ``~`` pushes a down heading, ``.`` nothing.
 PAIR = (".", "~")
 
-_TREE_1 = ["+~+", "~ ~", "+~+"]
-_TREE_0 = ["   ", "   ", "   "]
-_LEAF = {"0": _TREE_0, "1": _TREE_1}
-_BRANCH = [" + ", "   ", "   "]
-
-
-# Entered heading down at column 3; queues R, D, L, U, then down column 1.
 _MIDDLE = ["*~* ", "*  *", "*  *", "~ ~ ", "*~* ", "**  ", "*  *"]
 
 
-# One cascade stage: two ``~`` double each popped down marker; the right
-# heading exits through the input cell and pushes the next stop heading.
 _STAGE = ["  *+*", "   ~" + TEMPLATE_CHAR, "   ~", "  **", " *~*", " *  *"]
 
 #: An ignored input's setter, off the selector's path: either fill leaves the
@@ -45,101 +31,17 @@ _ROWS = {"0": [" +", "", ""], "1": [" + +~+", "   ~ ~", "   +~+"]}
 _DRAINED_RING = ["*+ +~+", "** ~ ~", "   +~+"]
 
 
-def _header(n: int) -> list[str]:
-    """Build the tree route's header: ``n`` input cells, a right push each.
-
-    The cells sit on a diagonal; the last exits heading down at column 3.
-    """
-    rows = [" " * (n + 3) + "*"]
-    for i in range(n):
-        x = n + 3 - i
-        rows.append(" " * (x - 3) + "*~*" + TEMPLATE_CHAR)
-        rows.append(" " * (x - 3) + "*  *")
-    return rows
-
-
-def _connect(t0: list[str], t1: list[str]) -> list[str]:
-    """Connect two decision subtrees into one.
-
-    0-branch top-left, ``t0`` at its right exit, 1-branch below ``t0``,
-    ``t1`` at its right exit.
-    """
-    yb = len(t0)
-    width = max(3 + len(t0[0]), 3 + len(t1[0]))
-    height = max(3, yb + 3, yb + len(t1))
-    grid = [[" "] * width for _ in range(height)]
-    for block, r0, c0 in (
-        (_BRANCH, 0, 0),
-        (_BRANCH, yb, 0),
-        (t0, 0, 3),
-        (t1, yb, 3),
-    ):
-        for r, line in enumerate(block):
-            for c, ch in enumerate(line):
-                grid[r0 + r][c0 + c] = ch
-    return ["".join(row) for row in grid]
-
-
-def _drained_leaf(value: str, skipped: int) -> list[str]:
-    """Build a folded leaf that drains the ``skipped`` bits it never popped.
-
-    A ``1`` leaf's ring must find exactly ``R, D, L, U``, so each skipped bit
-    gets a ``+`` whose two exits reconverge one row down, one column right.
-    """
-    # A ``0`` leaf needs no drain: running off the grid halts regardless.
-    if value != "1":
-        return list(_LEAF[value])
-    # 3x3 leaf at (skipped, skipped + 1).
-    grid = [[" "] * (skipped + 4) for _ in range(skipped + 3)]
-    for i in range(skipped):
-        grid[i][i + 1] = "+"
-        grid[i][i + 2] = "*"
-        grid[i + 1][i + 1] = "+"
-    for r, line in enumerate(_TREE_1):
-        for c, char in enumerate(line):
-            if char != " ":
-                grid[skipped + r][skipped + 1 + c] = char
-    return ["".join(row) for row in grid]
-
-
-def _tree(values: list[str]) -> list[str]:
-    """Build the decision tree for the ``2**n`` table values.
-
-    A constant subtree folds to a leaf that drains its skipped bits.
-    """
-    if len(set(values)) == 1:
-        skipped = len(values).bit_length() - 1
-        return _drained_leaf(values[0], skipped)
-    if len(values) == 2:
-        return _connect(_LEAF[values[0]], _LEAF[values[1]])
-    half = len(values) // 2
-    return _connect(_tree(values[:half]), _tree(values[half:]))
-
-
 def arrowqueue(truth_table: str, width: int | None = None) -> str:
-    """Build an ArrowQueue template for an ``n``-input Boolean function.
-
-    The program halts iff the entry is ``0``.  Below five inputs a tree
-    with 3x3 leaves, constant subtrees folded (:func:`_drained_leaf`); from
-    five a cascade linear in the table, its tail folded (:func:`_cascade`).
-    An over-wide tree uses the cascade; below five columns an extra down
-    marker moves the selector to the left edge.
-    """
+    """Build an ArrowQueue template that halts iff the table entry is ``0``."""
     n = _validate_truth_table(truth_table)
     width = max(width or 0, 0)  # 0, None and negative all mean unbounded
-    if n <= 4:
-        body = _compact(_MIDDLE + _tree(list(truth_table)))
-        tree = "\n".join([*_header(n), *body])
-        if not width or max(map(len, tree.split("\n"))) <= width:
-            return tree
     if 0 < width < 5:
         return _four_column_cascade(truth_table, n)
     narrow = 0 < width < 6
-    # Five columns leave no room for an ignored input's setter off the path.
+    # Five columns leave no room for an ignored input's setter.
     weights, table = ([1] * n, truth_table) if narrow else input_weights(truth_table, n)
     leaves = _cascade(table)
     if narrow:
-        # Column 2 of every leaf is blank travel from the selector; drop it.
         leaves = [row[:2] + row[3:] for row in leaves]
     stages = [row for weight in weights for row in (_STAGE if weight else _IGNORED)]
     rows = ["  ~*", *stages, *_MIDDLE, *leaves]
@@ -147,10 +49,7 @@ def arrowqueue(truth_table: str, width: int | None = None) -> str:
 
 
 def _four_column_cascade(table: str, n: int) -> str:
-    """Prepend one down marker to route the selector along column0.
-
-    Takes every input's stage (``_STAGE * n``): ignored inputs are not dropped.
-    """
+    """Prepend a down marker to route the selector along column0; no input drop."""
     # Shift input stages left; a clockwise detour lands down at column 1.
     rows = [" ~*", *(row[1:] for row in _STAGE * n), "**", "* *", " ~"]
     # Append D, rotate the D markers to the R sentinel; queue becomes D^(index+1),R.
@@ -173,16 +72,3 @@ def _cascade(truth_table: str) -> list[str]:
     tail = len(truth_table.rstrip(truth_table[-1]))
     rows = [row for bit in truth_table[:tail] for row in _ROWS[bit]]
     return [*rows, *_DRAINED_RING] if truth_table[-1] == "1" else rows
-
-
-def _compact(rows: list[str]) -> list[str]:
-    """Drop the wholly blank rows and columns from the template's body.
-
-    A blank line carries only straight travel; the header's glyphs sit past
-    column 4, which every branch marks.
-    """
-    width = max(map(len, rows))
-    padded = [row.ljust(width) for row in rows]
-    kept = [row for row in padded if row.strip()]
-    columns = [x for x in range(width) if any(row[x] != " " for row in kept)]
-    return ["".join(row[x] for x in columns).rstrip() for row in kept]

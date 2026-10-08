@@ -19,7 +19,7 @@ Row gives the logical bits; Input gives their language-specific encoding.
 | `addsubjump.txt` | AddSubJump | `0001` | `01` | 01 | '0' |
 | `algebraic-programming-language.txt` | Algebraic Programming Language | `0001` | `01` | 0 1 | '0\n' |
 | `alight.txt` | Alight | `0001` | `01` | 01 | '0' |
-| `arrowqueue.txt` | ArrowQueue | `0001` | `01` | embedded 01 | '1 0 0 1 2 3' |
+| `arrowqueue.txt` | ArrowQueue | `0001` | `01` | embedded 01 | '0 1 2 3' |
 | `b-tapemark.txt` | B-tapemark | `0001` | `01` | 01 | '0' |
 | `back.txt` | Back | `0001` | `01` | embedded 01 | '0 1 0' |
 | `befunge.txt` | Befunge | `0001` | `01` | 0 1 | '0 ' |

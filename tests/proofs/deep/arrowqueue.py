@@ -4,25 +4,11 @@
 from __future__ import annotations
 
 import argparse
-import itertools
 import random
 import sys
 
 from esolangs.interpreters.grid_based.arrowqueue import _advance, _Machine
-from esolangs.tools.arrowqueue import (
-    _BRANCH,
-    _DRAINED_RING,
-    _MIDDLE,
-    _STAGE,
-    _TREE_0,
-    _TREE_1,
-    _compact,
-    _connect,
-    _drained_leaf,
-    _header,
-    _tree,
-    arrowqueue,
-)
+from esolangs.tools.arrowqueue import _DRAINED_RING, _STAGE, arrowqueue
 from esolangs.tools.helpers import TEMPLATE_CHAR
 from esolangs.vm import run_until_halt_or_cycle
 from tests.tools.fills import _instantiate_arrowqueue
@@ -34,17 +20,6 @@ COST = 2.0
 
 #: The four loop components the ring's corners must pop, in queue order.
 RDLU = (0, 1, 2, 3)
-
-#: Composed trees the geometry checks run against.  Shapes, not a sample of
-#: tables: G1-G3 are facts about ``_connect``'s three writes, and these
-#: exercise a balanced tree, a lopsided one, and two folded halves.
-_GEOMETRY_SHAPES = [
-    "0110",
-    "01101001",
-    "1000",
-    "1111000010101010",
-    "0111011101110111",
-]
 
 failures: list[str] = []
 
@@ -77,85 +52,6 @@ def _verdict_from(rows: list[str], state: tuple[int, int, int, tuple[int, ...]])
     machine = _Machine(list(rows))
     machine.state = (*state, not machine.grid)
     return "0" if run_until_halt_or_cycle(machine) else "1"
-
-
-def _glyph_rows(block: list[str]) -> set[int]:
-    """Row indices of ``block`` that hold at least one glyph."""
-    return {r for r, row in enumerate(block) if row.strip()}
-
-
-def _header_rows(bits: list[int]) -> list[str]:
-    """The tree route's header filled with ``bits``, one cell each."""
-    return [
-        row.replace(TEMPLATE_CHAR, "~" if bits[(r - 1) // 2] else ".") if r else row
-        for r, row in enumerate(_header(len(bits)))
-    ]
-
-
-def _encoded(bits: tuple[int, ...]) -> tuple[int, ...]:
-    """The queue the header leaves: ``D, R`` for a one, ``R`` for a zero."""
-    return tuple(h for bit in bits for h in ((1, 0) if bit else (0,)))
-
-
-def check_h1_pitch() -> None:
-    """H1: the header is exactly 2n+1 rows and n cells for every arity."""
-    bad = 0
-    for n in range(1, 13):
-        rows = _header(n)
-        cells = [
-            (r, row.index(TEMPLATE_CHAR))
-            for r, row in enumerate(rows)
-            if TEMPLATE_CHAR in row
-        ]
-        if len(rows) != 2 * n + 1 or cells != [
-            (1 + 2 * i, n + 3 - i) for i in range(n)
-        ]:
-            bad += 1
-    report(
-        "H1 header pitch",
-        ok=bad == 0,
-        detail=f"n=1..12, {bad} wrong shapes; one cell per input on a diagonal",
-    )
-
-
-def check_h2_h3_handoff() -> None:
-    """H2/H3: header exits down col 3 with the bits; +middle enters the tree."""
-    bad_h2 = bad_h3 = 0
-    total = 0
-    for n in range(1, 13):
-        patterns = (
-            list(itertools.product([0, 1], repeat=n))
-            if n <= 9
-            else [tuple(random.choice([0, 1]) for _ in range(n)) for _ in range(200)]
-        )
-        for bits in patterns:
-            total += 1
-            row, col, d, queue, _done = _run_block(
-                _header_rows(list(bits)), (0, 0, 0, ())
-            )
-            if not (
-                queue == _encoded(bits) and d == 1 and col == 3 and row == 2 * n + 1
-            ):
-                bad_h2 += 1
-            rows = _header_rows(list(bits)) + list(_MIDDLE)
-            row, col, d, queue, _done = _run_block(rows, (0, 0, 0, ()))
-            if not (
-                queue == (*_encoded(bits), *RDLU)
-                and d == 1
-                and col == 1
-                and row == 2 * n + 1 + len(_MIDDLE)
-            ):
-                bad_h3 += 1
-    report(
-        "H2 header chain",
-        ok=bad_h2 == 0,
-        detail=f"{total} patterns to n=12, {bad_h2} violations",
-    )
-    report(
-        "H3 middle hand-off",
-        ok=bad_h3 == 0,
-        detail=f"queue becomes bits+RDLU, enters tree down col 1; {bad_h3} violations",
-    )
 
 
 def check_s_stage() -> None:
@@ -193,236 +89,11 @@ def check_d_drain() -> None:
     )
 
 
-def check_g_geometry() -> None:
-    """G1/G2/G3: row disjointness, blank right corridor, and the entry column."""
-    plus = [
-        (r, c) for r, row in enumerate(_BRANCH) for c, ch in enumerate(row) if ch == "+"
-    ]
-    report("G3 entry cell", ok=plus == [(0, 1)], detail=f"0-branch '+' at {plus}")
-
-    overlaps = 0
-    right_blockers = 0
-    column_blockers = 0
-    for values in _GEOMETRY_SHAPES:
-        half = len(values) // 2
-        t0, t1 = _tree(list(values[:half])), _tree(list(values[half:]))
-        grid = _connect(t0, t1)
-        yb = len(t0)
-        width = len(grid[0])
-
-        # G1: the rows the two subtrees actually occupy must not intersect.
-        rows_t0 = _glyph_rows(t0)
-        rows_t1 = {yb + r for r in _glyph_rows(t1)}
-        overlaps += len(rows_t0 & rows_t1)
-
-        # G2: within t0's rows nothing is written right of t0.
-        for r in range(len(t0)):
-            for c in range(3 + len(t0[0]), width):
-                if grid[r][c] != " ":
-                    right_blockers += 1
-
-        # G3 (second half): column 1 between the two branch blocks is blank,
-        # so the 0-branch's downward exit falls through to the 1-branch.
-        for r in range(3, yb):
-            if grid[r][1] != " ":
-                column_blockers += 1
-
-    report(
-        "G1 row disjointness",
-        ok=overlaps == 0,
-        detail=f"{len(_GEOMETRY_SHAPES)} composed trees, {overlaps} shared glyph rows",
-    )
-    report(
-        "G2 right corridor",
-        ok=right_blockers == 0,
-        detail=f"{right_blockers} glyphs right of a subtree within its own rows",
-    )
-    report(
-        "G3 drop column clear",
-        ok=column_blockers == 0,
-        detail=f"{column_blockers} glyphs in column 1 between the branch blocks",
-    )
-
-
-def check_b_branches() -> None:
-    """B2/B3/B3': branch routing, reflection, and entry-column sensitivity."""
-    down_exits = {}
-    right_exits = {}
-    for bit in (0, 1):
-        row, col, d, queue, _done = _run_block(_BRANCH, (0, 1, 1, (bit,)))
-        down_exits[bit] = (row, col, d, queue)
-        row, col, d, queue, _done = _run_block(_BRANCH, (0, 0, 0, (bit,)))
-        right_exits[bit] = (row, col, d, queue)
-
-    ok_down = (
-        down_exits[0][:3] == (0, 3, 0)
-        and down_exits[1][:3] == (3, 1, 1)
-        and down_exits[0][3] == ()
-        and down_exits[1][3] == ()
-    )
-    report(
-        "B2 0-branch (down-entry)",
-        ok=ok_down,
-        detail=f"bit0 -> {down_exits[0][:3]}, bit1 -> {down_exits[1][:3]}, bit popped",
-    )
-
-    ok_right = (
-        right_exits[0][:3] == (0, 3, 0)
-        and right_exits[1][:3] == (3, 1, 1)
-        and right_exits[0][3] == ()
-        and right_exits[1][3] == ()
-    )
-    report(
-        "B2 0-branch (right-entry)",
-        ok=ok_right,
-        detail=f"bit0 -> {right_exits[0][:3]}, bit1 -> {right_exits[1][:3]}, same",
-    )
-
-    row, col, d, queue, _done = _run_block(_BRANCH, (0, 1, 1, (0, 7)))
-    report(
-        "B3 1-branch reflects",
-        ok=(row, col, d) == (0, 3, 0) and queue == (7,),
-        detail=f"exit {(row, col, d)}, the one's trailing R popped, rest {queue}",
-    )
-
-    row, col, d, queue, _done = _run_block(_BRANCH, (0, 0, 1, (0,)))
-    report(
-        "B3' entry column matters",
-        ok=(row, col, d) == (3, 0, 1) and queue == (0,),
-        detail=f"1-branch entered at col 0 pops nothing: exit {(row, col, d)}, {queue}",
-    )
-
-
-def check_l_leaves() -> None:
-    """L1/L2/L2'/L3/L4: leaf behaviour, drains, and the bare ring's entry."""
-    right = _verdict_from(_TREE_1, (0, 0, 0, RDLU))
-    down = _verdict_from(_TREE_1, (0, 1, 1, RDLU))
-    report(
-        "L2 ring sustains (right)",
-        ok=right == "1",
-        detail=f"right-entry verdict {right!r} (1 = loops)",
-    )
-    report(
-        "L2' ring halts (down)",
-        ok=down == "0",
-        detail=f"down-entry verdict {down!r} -- entry styles are NOT interchangeable",
-    )
-
-    zero_ok = all(
-        _verdict_from(_TREE_0, state) == "0"
-        for state in ((0, 0, 0, RDLU), (0, 1, 1, RDLU))
-    )
-    report(
-        "L1 zero leaf halts",
-        ok=zero_ok,
-        detail="empty block exits the grid under both entries",
-    )
-
-    bad = 0
-    cases = 0
-    for k in range(9):
-        leaf = _drained_leaf("1", k)
-        shape_ok = (
-            len(leaf) == k + 3
-            and sum(row.count("+") for row in leaf) == 2 * k + 4
-            and sum(row.count("~") for row in leaf)
-            == sum(row.count("~") for row in _TREE_1)
-        )
-        if not shape_ok:
-            bad += 1
-        for stale in itertools.product([0, 1], repeat=k):
-            queue = (*_encoded(stale), *RDLU)
-            for state in ((0, 0, 0, queue), (0, 1, 1, queue)):
-                cases += 1
-                if _verdict_from(leaf, state) != "1":
-                    bad += 1
-        if _drained_leaf("0", k) != list(_TREE_0):
-            bad += 1
-    report(
-        "L3 drains drain",
-        ok=bad == 0,
-        detail=f"k=0..8, all stale patterns x 2 entries = {cases} runs, {bad} bad",
-    )
-
-    # A ``1`` leaf must carry its drain: for ``k > 0`` skipped bits the leaf
-    # grows by one ``+/+`` step per bit and a ``*`` glyph appears.  The bare
-    # ring ``_TREE_1`` is 3 rows tall and has no ``*`` -- it is exactly what a
-    # leaf that skipped its drain would look like, so the predicate below is
-    # *about the ring* and the control is the ring itself.
-    def is_bare_ring(rows: list[str]) -> bool:
-        return len(rows) == 3 and not any("*" in row for row in rows)
-
-    bare_leaves = [n for n in range(1, 6) if is_bare_ring(_drained_leaf("1", n))]
-    const_ok = all(
-        _tree(list("1" * (2**n))) == _drained_leaf("1", n) for n in range(1, 6)
-    )
-    control = is_bare_ring(list(_TREE_1))
-    report(
-        "L4 bare ring never on top",
-        ok=not bare_leaves and const_ok and control,
-        detail=(
-            f"k=1..5 leaves carry a drain ({len(bare_leaves)} bare); "
-            f"constant-1 folds to k=n; control fires={control}"
-        ),
-    )
-
-
-def check_c1_compaction(*, deep: bool) -> None:
-    """C1: _compact preserves the halt-or-cycle verdict."""
-    mismatch = 0
-    pairs = 0
-    arities = (1, 2, 3, 4) if deep else (1, 2, 3)
-    for n in arities:
-        tables = (
-            [format(i, f"0{2**n}b") for i in range(2 ** (2**n))]
-            if n <= 3
-            else ["".join(random.choice("01") for _ in range(2**n)) for _ in range(40)]
-        )
-        for table in tables:
-            template = arrowqueue(table)
-            body = _MIDDLE + _tree(list(table))
-            if _compact(body) != template.split("\n")[2 * n + 1 :]:
-                mismatch += 1  # the template's body is not the compacted body
-            for combo in range(2**n):
-                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-                raw = "\n".join(_header_rows(bits) + body)
-                small = _instantiate_arrowqueue(template, bits)
-                pairs += 1
-                raw_v = _verdict_from(raw.split("\n"), (0, 0, 0, ()))
-                small_v = _verdict_from(small.split("\n"), (0, 0, 0, ()))
-                if raw_v != small_v or small_v != table[combo]:
-                    mismatch += 1
-    report(
-        "C1 compaction preserves",
-        ok=mismatch == 0,
-        detail=f"{pairs} uncompacted/compacted pairs, {mismatch} mismatches",
-    )
-
-
-def check_tree_sweep() -> None:
-    """T: leaf-index routing, certified by an exhaustive tree-only sweep."""
-    bad = 0
-    for n in (1, 2, 3, 4):
-        for i in range(2 ** (2**n)):
-            values = format(i, f"0{2**n}b")
-            rows = _tree(list(values))
-            for combo in range(2**n):
-                bits = [(combo >> (n - 1 - j)) & 1 for j in range(n)]
-                queue = (*_encoded(tuple(bits)), *RDLU)
-                if _verdict_from(rows, (0, 1, 1, queue)) != values[combo]:
-                    bad += 1
-    report(
-        "T tree-only routing",
-        ok=bad == 0,
-        detail=f"all tables n<=4 (65536 at n=4) entered at the tree, {bad} failures",
-    )
-
-
 def check_deep_composition() -> None:
     """Composition past every swept arity: whole programs at n = 6..12."""
     bad = 0
     detail = []
-    for n in (6, 8, 10, 12):
+    for n in (1, 2, 3, 4, 6, 8, 10, 12):
         table = "".join(random.choice("01") for _ in range(2**n))
         template = arrowqueue(table)
         size = 0
@@ -467,26 +138,13 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="add high-arity composition runs (~2 minutes)",
     )
-    parser.add_argument(
-        "--tree-sweep",
-        action="store_true",
-        help="add the exhaustive 65536-table tree sweep (~3 minutes)",
-    )
     args = parser.parse_args(argv)
 
     # Seeded so the sampled arities and random tables are reproducible.
     random.seed(20240904)
 
-    check_h1_pitch()
-    check_h2_h3_handoff()
     check_s_stage()
     check_d_drain()
-    check_g_geometry()
-    check_b_branches()
-    check_l_leaves()
-    check_c1_compaction(deep=args.deep)
-    if args.tree_sweep:
-        check_tree_sweep()
     if args.deep:
         check_deep_composition()
 

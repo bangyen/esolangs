@@ -291,7 +291,7 @@ FORMULAS: dict[str, tuple[Callable[[int, str], int], bool, tuple[int, ...]]] = {
         (3, 5),
     ),
     "Bitdeque": (lambda n, _: 2**n + 2 + bl(4 * 2**n + 10 * n - 5), True, (5,)),
-    "ArrowQueue": (lambda n, _: 2**n + 11 + bl(3 * 2**n + 6 * n + 5), True, (5, 6)),
+    "ArrowQueue": (lambda n, _: 2**n + 11 + bl(3 * 2**n + 6 * n + 5), True, (1, 6)),
     "bit~": (
         lambda n, _: (
             2 * 2**n + 49 + bl(2 * 2**n + 41) + bl(5 * 2**n + 18 * n + 74) + bl(n)

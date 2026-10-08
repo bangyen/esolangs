@@ -59,8 +59,8 @@
       ],
       "qualification": "one stage per input doubles the queued markers and adds the bit (Horner), and the count selects one of `2**n` constant-size cascade stages",
       "scaling": "linear: at most 6n + 3T rows, the constant tail folded",
-      "execution": "linear: worst 11T + 6n + 24 commands past n = 4: Horner doubling 8 a marker, then 3 a row",
-      "workspace": "linear: worst T + 11 + bl(3T+6n+5) bits past n = 4: a queue of T markers",
+      "execution": "linear: worst 11T + 6n + 24 commands: Horner doubling 8 a marker, then 3 a row",
+      "workspace": "linear: worst T + 11 + bl(3T+6n+5) bits: a queue of T markers",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {
