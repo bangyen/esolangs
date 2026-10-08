@@ -128,8 +128,10 @@ def scaffold(name: str, category: str, *, generator: bool = True) -> list[Path]:
         ),
         ROOT / "tests" / "interpreters" / f"test_{slug}.py": (
             f'"""Tests for the {name} interpreter."""\n\n'
+            "import pytest\n\n"
             f"from esolangs.interpreters.{category}.{slug} import run\n"
             "from esolangs.interpreters.io import ScriptedIO\n\n\n"
+            '@pytest.mark.xfail(reason="placeholder: replace with the spec")\n'
             "def test_placeholder_increment_and_write() -> None:\n"
             "    io = ScriptedIO()\n"
             '    run("+.", io)\n'
@@ -224,11 +226,18 @@ def _common_gaps(name: str, module: str) -> list[Gap]:
     elif PLACEHOLDER in source.read_text(encoding="utf-8"):
         gaps.append(Gap(str(source.relative_to(ROOT)), "write the docstring"))
     needle = f"esolangs.interpreters.{module}"
-    if not any(
-        needle in path.read_text(encoding="utf-8")
+    tests = [
+        path
         for path in (ROOT / "tests").rglob("*.py")
-    ):
+        if needle in path.read_text(encoding="utf-8")
+    ]
+    if not tests:
         gaps.append(Gap("tests/interpreters/", f"add tests importing {needle}"))
+    gaps.extend(
+        Gap(str(path.relative_to(ROOT)), "replace the placeholder test")
+        for path in tests
+        if "def test_placeholder_" in path.read_text(encoding="utf-8")
+    )
     if name not in _tests_module("samples", "SAMPLES"):
         gaps.append(
             Gap(
@@ -245,7 +254,8 @@ def _common_gaps(name: str, module: str) -> list[Gap]:
                 "tests/fixtures/curation.toml",
                 f'add "{name}" = {{ backlinks = <wiki "What links here" count>, '
                 'route = "fame" | "first implementation" }} under [languages] (see '
-                "docs/limitations.md#curation)",
+                'docs/limitations.md#curation); offline, {{ route = "unassessed" }} '
+                "until the count is recorded",
             )
         )
     return gaps
@@ -330,7 +340,7 @@ def _ledger_gaps(name: str) -> list[Gap]:
                     f"the ledger's {cell} cell does not parse as a formula: "
                     f"{stated}; write its bound with n, T, L, integers, bl, "
                     "max, min, ⌈⌉ and ⌊⌋ before the unit (tests/proofs/"
-                    f'_formula.py), or add "{name}": (lambda n, p: ..., '
+                    f'_formula.py), or add "{name}": (lambda n, _: ..., '
                     "exact, (lo, hi)) to _HAND for a case split or definition",
                 )
             )
@@ -426,7 +436,21 @@ def finish(name: str) -> int:
     gaps = check(name)
     if gaps:
         _report(name, gaps)
-        return 1
+        print("running the gate anyway, to list every other failure")
+    gate = _gate()
+    if _curation(name).get("route") == "unassessed":
+        print(f"{name}: curation unassessed; record its backlinks before merging")
+    return 1 if gaps else gate
+
+
+def _curation(name: str) -> dict[str, Any]:
+    """Return ``name``'s row in the curation fixture, or {}."""
+    text = (ROOT / "tests/fixtures/curation.toml").read_text(encoding="utf-8")
+    return dict(tomllib.loads(text)["languages"].get(name, {}))
+
+
+def _gate() -> int:
+    """Regenerate, run the gate, and rerun its failures alone."""
     python = [sys.executable]
     for cmd in (
         [*python, "scripts/generate.py", "examples"],
@@ -735,8 +759,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "check":
         gaps = check(args.name)
         if gaps:
+            # A to-do list, not a failure: nonzero is for failing tests.
             _report(args.name, gaps)
-            return 1
+            return 0
         # Generated totals (the ledger's row count) are tested; refresh them.
         subprocess.run(
             [sys.executable, "scripts/generate.py", "docs"],

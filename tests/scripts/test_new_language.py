@@ -1,5 +1,6 @@
 """Tests for the new-language scaffolder."""
 
+import sys
 from pathlib import Path
 
 import pytest
@@ -77,3 +78,45 @@ def test_remove_drops_the_whole_limitations_bullet(tmp_path: Path) -> None:
     path.write_text("- Gone reads\n  past EOF.\n- Gonero stays.\n  Kept.\n")
     new_language._drop_bullets(path, "Gone")  # noqa: SLF001
     assert path.read_text() == "- Gonero stays.\n  Kept.\n"
+
+
+def test_check_flags_a_leftover_placeholder_test(root: Path) -> None:
+    new_language.scaffold("Tiny", "other", generator=False)
+    fixtures = root / "tests/fixtures"
+    fixtures.mkdir()
+    (fixtures / "curation.toml").write_text("[languages]\n")
+    gaps = new_language._common_gaps("Tiny", "other.tiny")  # noqa: SLF001
+    assert ("tests/interpreters/test_tiny.py", "replace the placeholder test") in {
+        (gap.where, gap.fix) for gap in gaps
+    }
+
+
+def test_finish_still_runs_the_gate_past_open_steps(
+    root: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    fixtures = root / "tests/fixtures"
+    fixtures.mkdir(parents=True)
+    (fixtures / "curation.toml").write_text(
+        '[languages]\nTiny = { route = "unassessed" }\n'
+    )
+    gap = new_language.Gap("somewhere", "do it")
+    monkeypatch.setattr(new_language, "check", lambda _: [gap])
+    ran = []
+    monkeypatch.setattr(new_language, "_gate", lambda: ran.append(1) or 0)
+    assert new_language.finish("Tiny") == 1
+    assert ran == [1]
+    assert "curation unassessed" in capsys.readouterr().out
+
+
+def test_check_with_open_steps_is_not_a_failure(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    import types
+
+    fake = types.ModuleType("generate_exports")
+    fake.update = lambda *_: None  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "generate_exports", fake)
+    gap = new_language.Gap("somewhere", "do it")
+    monkeypatch.setattr(new_language, "check", lambda _: [gap])
+    assert new_language.main(["check", "Tiny"]) == 0
+    assert "1 step(s) left" in capsys.readouterr().out

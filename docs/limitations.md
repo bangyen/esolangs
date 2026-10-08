@@ -205,7 +205,8 @@ across all namespaces, and deduplicate by page ID. Pause at least three seconds
 between requests.
 
 The cutoff is policy, adopted 2026-10-01, not a measured popularity boundary.
-Record resolved title, date and count; missing data means unassessed. Low
+Record resolved title, date and count; missing data means unassessed
+(`route = "unassessed"`, which `finish` flags until the count is recorded). Low
 backlinks count against only old languages; Wikipedia pageviews are not a
 gate.
 
