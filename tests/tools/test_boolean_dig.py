@@ -190,3 +190,29 @@ class TestDig:
                 program = boolean.dig(value * (1 << n))
                 assert len(program) < 4 * n + 8
                 assert run_dig(program, ["1"] * n) == value
+
+    @pytest.mark.medium
+    def test_an_ignored_middle_input_joins_the_leaf(self) -> None:
+        """A bare ``~`` in the leaf's adder, not a tree level: 802 -> 355."""
+
+        def ignore(table: str, at: int) -> str:
+            low = len(table).bit_length() - 1 - at
+            return "".join(
+                table[row >> (low + 1) << low | row & ((1 << low) - 1)]
+                for row in range(2 * len(table))
+            )
+
+        six, seven = (
+            "".join(str((row * 73 + row // 3) & 1) for row in range(size))
+            for size in (64, 128)
+        )
+        # Seven essential inputs put the ignored one above the leaf's six.
+        cases = [(six, at) for at in (1, 3, 5)] + [(seven, 1)]
+        for inner, at in cases:
+            table = ignore(inner, at)
+            n = len(table).bit_length() - 1
+            program = boolean.dig(table)
+            assert len(program) < 1.03 * len(boolean.dig(inner))
+            for row in range(0, 1 << n, 1 if n == 7 else 5):
+                bits = [str(row >> (n - 1 - i) & 1) for i in range(n)]
+                assert run_dig(program, bits) == table[row], (at, row)

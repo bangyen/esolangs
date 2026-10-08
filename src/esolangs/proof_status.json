@@ -337,8 +337,8 @@
       "labels": [
         "tree"
       ],
-      "qualification": "finite cell placement, six inputs left to a painted leaf table",
-      "scaling": "linear: leaves are 64-cell rectangles two `$` counts index, area O(T)",
+      "qualification": "finite cell placement, the last six essential inputs left to a painted leaf table, an ignored input among or just before them read and dropped",
+      "scaling": "linear: leaves are ≤64-cell rectangles two `$` counts index, area O(T)",
       "execution": "linear: worst 128 + 46·2^((n-6)/2) for even n, 128 + 64·2^((n-7)/2) for odd, past n = 6",
       "workspace": "linear: worst 8RC + bl(R-1) + bl(C-1) + bl(2n-1) + bl(n) + 10 bits past n = 4: the R×C grid",
       "evidence": "docs/proofs/index.md#generator-ledger"

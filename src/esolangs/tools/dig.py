@@ -276,11 +276,13 @@ type _Stamp = tuple[
 ]
 
 
-def _dig_adder(bits: int, bonus: int) -> _Stamp:
-    """Read ``bits`` inputs and leave their value plus ``bonus`` in the mole.
+def _dig_adder(weights: list[int], bonus: int) -> _Stamp:
+    """Read one input per weight and leave their weighted sum plus ``bonus``.
 
     One ``$`` arms the whole forward leg: ``~ * ;`` per leading bit, then a
-    bare ``~`` for the last, whose weight is one.  The partial products stay
+    bare ``~`` for the last, whose weight is one.  An ignored input weighs 0
+    and is a bare ``~`` the next read overwrites, so it may not be last; at
+    least one leading weight is nonzero.  The partial products stay
     in the grid where ``;`` wrote them, and the return leg one cell to the
     side adds them back -- a ``+`` under a ``;`` is the only placement that
     puts a stored operand where the mole can reach it, since a work command
@@ -300,14 +302,15 @@ def _dig_adder(bits: int, bonus: int) -> _Stamp:
     reads: _Reads = []
     stores: list[int] = []
     spot = 1
-    for index in range(bits - 1):
+    for weight in weights[:-1]:
         chars[0, spot] = "~"
-        weight = spot + 1
-        chars[0, weight] = "*"
-        chars[-1, weight] = str(1 << (bits - 1 - index))
-        reads.append(((0, weight), (-1, weight), frozenset({(0, weight + 1)})))
-        spot = weight + 1
-        if bonus and not index:
+        spot += 1
+        if not weight:
+            continue
+        chars[0, spot], chars[-1, spot] = "*", str(weight)
+        reads.append(((0, spot), (-1, spot), frozenset({(0, spot + 1)})))
+        spot += 1
+        if bonus and not stores:
             chars[0, spot], chars[-1, spot] = "+", str(bonus)
             reads.append(((0, spot), (-1, spot), frozenset({(0, spot + 1)})))
             spot += 1
@@ -329,7 +332,7 @@ def _dig_adder(bits: int, bonus: int) -> _Stamp:
     return chars, turns, reads, (1, first - 1), (0, hold + 1, -1, 1)
 
 
-def _dig_flat_leaf(table: str, high: int, low: int) -> _Stamp:
+def _dig_flat_leaf(table: str, high: list[int], low: list[int]) -> _Stamp:
     """Index ``table`` by two adders instead of branching on its bits.
 
     The first ``high`` inputs become a row count, painted across a whole row
@@ -344,7 +347,7 @@ def _dig_flat_leaf(table: str, high: int, low: int) -> _Stamp:
     corridor columns carry the mole between them: one in, one down to the
     paint row, one back up to the selector.
     """
-    rows, cols = 1 << high, 1 << low
+    rows, cols = sum(high) + 1, sum(low) + 1
     painter, stepper = _dig_adder(high, 2), _dig_adder(low, 0)
     chars: dict[tuple[int, int], str] = {}
     turns: dict[tuple[int, int], int] = {}
@@ -398,12 +401,15 @@ def _dig_flat_leaf(table: str, high: int, low: int) -> _Stamp:
     reads.append(((last + 5, 5), (last + 5, 6), frozenset()))
     # Down the far side, back along the bottom, and up into the second
     # adder; then up the near side into the selector.
-    turns[sel + 1, 6 + cols] = _DIG_SIDE
-    turns[back, 6 + cols] = _DIG_BACK
+    # The far corridor clears the second adder's exit turns: a narrow
+    # table would put them on it.
+    far = max(6 + cols, 4 + stepper[4][1])
+    turns[sel + 1, far] = _DIG_SIDE
+    turns[back, far] = _DIG_BACK
     turns[back, 2] = _DIG_RETRACE
     turns[bot, 2] = _DIG_FORWARD
     turns[stamp(bot, 3, stepper)[0], 1] = _DIG_RETRACE
-    width = max(6 + cols, 3 + max(painter[4][1], stepper[4][1]))
+    width = max(far, 3 + painter[4][1])
     return chars, turns, reads, (0, 0), (0, width, top - 1, back)
 
 
@@ -447,6 +453,51 @@ def _dig_alt_clear(
                 raise AssertionError(f"a mole from {start} meets {char!r} on its way")
 
 
+def _dig_leaf_inputs(truth_table: str, n: int) -> tuple[list[int], list[int], int, str]:
+    """Return the leaf's two adders' weights, the tree depth, and its table.
+
+    The leaf takes the last six essential inputs, the ignored ones among
+    them, and those just before them while the first adder's digit reaches.
+    An ignored input weighs 0, a bare ``~`` rather than a tree level; the
+    table is read at the tree's inputs and the leaf's essential ones.  The
+    adders split after the first's last essential input, so neither ends on
+    an ignored one.  Fewer than four essential inputs, a trailing ignored
+    one, or a forward leg past the digit keeps every input.
+    """
+    essential = essential_inputs(truth_table, n)
+    leaf = essential[-_DIG_LEAF_BITS:]
+
+    def weigh(group: range) -> list[int]:
+        return [
+            1 << sum(j in leaf for j in group if j > i) if i in leaf else 0
+            for i in group
+        ]
+
+    def fits(group: range, bonus: int) -> bool:
+        # ``~ * ;`` per leading essential input, ``~`` per ignored one, the
+        # bonus and the last ``~``: the run one digit arms.
+        leading = weigh(group)[:-1]
+        return sum(3 if w else 1 for w in leading) + bonus + 1 <= _DIG_SPAN
+
+    if len(leaf) >= 4 and leaf[-1] == n - 1:
+        split = leaf[len(leaf) - len(leaf) // 2 - 1] + 1
+        depth = leaf[0]
+        while depth and depth - 1 not in essential and fits(range(depth - 1, split), 1):
+            depth -= 1
+        high, low = range(depth, split), range(split, n)
+        if fits(high, 1) and fits(low, 0):
+            table = read_at(truth_table, [*range(depth), *leaf], n)
+            return weigh(high), weigh(low), depth, table
+    bits = min(_DIG_LEAF_BITS, n)
+    low_bits = bits // 2
+    return (
+        [1 << k for k in reversed(range(bits - low_bits))],
+        [1 << k for k in reversed(range(low_bits))],
+        n - bits,
+        truth_table,
+    )
+
+
 def _dig_alternating(truth_table: str, n: int) -> str:
     """Lay a Dig tree whose leaves are flat tables, branch axis rotating.
 
@@ -457,15 +508,12 @@ def _dig_alternating(truth_table: str, n: int) -> str:
     beyond the parent's most-backward cell; width and height swap and one
     doubles per level, so the rectangle stays O(2**n).
     """
-    leaf_bits = min(_DIG_LEAF_BITS, n)
-    low = leaf_bits // 2
-    high = leaf_bits - low
-    depth = n - leaf_bits
+    high, low, depth, truth_table = _dig_leaf_inputs(truth_table, n)
     # Bounds of a complete m-level subtree, inclusive and local to its first
     # ``$``: (min_x, max_x, min_y, max_y), x along the heading.  A branch
     # block is four cells long and carries its operand one cell off to a
     # side the heading picks, so it reaches one row past its own line.
-    bounds = [_dig_flat_leaf("0" * (1 << leaf_bits), high, low)[4]]
+    bounds = [_dig_flat_leaf("0" * (len(truth_table) >> depth), high, low)[4]]
     for _ in range(depth):
         min_x, max_x, min_y, max_y = bounds[-1]
         distance = 2 - min_x
