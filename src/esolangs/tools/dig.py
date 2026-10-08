@@ -795,11 +795,6 @@ def _dig_discards(count: int, tail: str = "0") -> str:
     return "\n".join(cells)
 
 
-def _area(program: str) -> int:
-    """Rows times the longest row, the cost a grid is judged by."""
-    return (program.count("\n") + 1) * grid_width(program)
-
-
 def dig(truth_table: str, width: int | None = None) -> str:
     """Build a Dig program computing the given truth table.
 
@@ -822,7 +817,7 @@ def dig(truth_table: str, width: int | None = None) -> str:
     if width is None and not essential:
         # A constant reads every input down one column and prints.
         column = _dig_discards(n, truth_table[0] + ":") + "\n@"
-        return min(built, column, key=_area)
+        return min(built, column, key=len)
     if width is None and essential and 0 < essential[0] == n - len(essential):
         # Inputs before the first essential one can be read and dropped above
         # the smaller table's program, when that is shorter.

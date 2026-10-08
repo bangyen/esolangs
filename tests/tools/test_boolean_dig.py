@@ -65,10 +65,10 @@ class TestDig:
         assert len(banded) < len(flat)
         assert boolean.dig(table, width=18) == banded
 
-    def test_a_constant_table_is_one_column(self) -> None:
-        """Nothing to branch on: one column of reads beats the row on area."""
+    def test_a_constant_table_is_one_line(self) -> None:
+        """Nothing to branch on, so the whole grid is a single leaf."""
         program = boolean.dig("1111")
-        assert program.split("\n") == ["'", "$", "5", "~", "~", "1", ":", "@"]
+        assert program.split("\n") == ["'", ">$5~~1:@"]
 
     def test_a_constant_leaf_is_a_row_of_reads(self) -> None:
         """A constant half sizes its own box, so the grid shrinks."""
