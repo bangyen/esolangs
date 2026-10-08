@@ -1,14 +1,10 @@
 """Compile a brainfuck program into a Line ``Node`` graph.
 
-Build with ``esolangs.tools.brainfuck.brainfuck``, compile here, render with
-:func:`render.render`, and the drawing round-trips through
-:func:`extract.extract`/:func:`simulate.run` to the same tape.  The
-mapping is 1:1 (``,`` -> ``i``, ``.`` -> ``o``; compare per-call numeric
-values, not bytes) except ``[...]``: Line expresses repetition only by a
-stroke reconnecting, so a loop is a ``?`` whose ``nonzero`` arm ends in a
-``goto`` back to it and whose ``zero`` arm is what follows.  ``_layout``
-never follows a ``?``'s ``.next``, so :func:`_parse` builds the
-continuation as ``.zero``.
+The drawing round-trips through :func:`extract.extract`/:func:`simulate.run`
+to the same tape.  The mapping is 1:1 (``,`` -> ``i``, ``.`` -> ``o``;
+compare per-call numeric values, not bytes) except ``[...]``: a loop is a
+``?`` whose ``nonzero`` arm ends in a ``goto`` back to it and whose ``zero``
+arm is what follows (``_layout`` never follows a ``?``'s ``.next``).
 """
 
 from __future__ import annotations
@@ -33,9 +29,7 @@ def _nop() -> Node:
 def _control_tail(node: Node) -> Node:
     """Find the node where ``node``'s chain falls through to whatever follows it.
 
-    A ``?`` is not a dead end: a loop's exit is its ``zero`` arm, so the walk
-    descends there (without this, code after a nested loop was wired as the
-    inner fork's ignored ``goto`` and the outer loop-back dropped).  A ``?``
+    The walk descends a ``?``'s ``zero`` arm, since the loop exits there; one
     with no ``.zero`` gets a :func:`_nop` placeholder to carry the ``goto``.
     """
     while True:
@@ -64,14 +58,9 @@ def _parse(program: str, pos: int) -> tuple[Node | None, int]:
     if ch == "[":
         body_head, pos = _parse(program, pos + 1)
         if body_head is None:
-            # An empty loop body ("[]") has no node to hang a `goto` off of
-            # -- `Node.goto` is only checked on a straight-through node's own
-            # step, after its op runs (see render.py's `_layout`), so a fork
-            # with nothing at all between visits has no way to express the
-            # reconnection.  Brainfuck's own "[]" is a real infinite spin on
-            # a nonzero cell to begin with (not a useful program), so this is
-            # rejected rather than forcing degenerate geometry to represent
-            # it.
+            # "[]" has no node to carry the `goto`, which `_layout` checks
+            # only on a straight-through node's own step.  It is an infinite
+            # spin on a nonzero cell anyway, so it is rejected.
             raise ValueError(
                 "an empty loop body ('[]') cannot be compiled to Line: a "
                 "loop-back needs at least one node to carry the 'goto' back "
@@ -86,8 +75,7 @@ def _parse(program: str, pos: int) -> tuple[Node | None, int]:
     op = _BF_TO_LINE.get(ch)
     rest, pos = _parse(program, pos + 1)
     if op is None:
-        # A comment character: not itself a node, but the rest of this
-        # level still needs parsing and returning.
+        # A comment character is not a node.
         return rest, pos
     node = Node(op, next=rest)
     return node, pos

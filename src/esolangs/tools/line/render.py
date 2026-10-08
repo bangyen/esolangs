@@ -193,10 +193,9 @@ def chain(*ops: str) -> Node:
     """Build a straight-through Node chain from an opcode string, e.g. "+++"."""
     if not ops:
         raise ValueError("chain() requires at least one opcode")
-    node = None
-    for op in reversed(ops):
+    node = Node(ops[-1])
+    for op in reversed(ops[:-1]):
         node = Node(op, next=node)
-    assert node is not None
     return node
 
 

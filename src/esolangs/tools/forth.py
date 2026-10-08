@@ -25,7 +25,6 @@ def forth(truth_table: str) -> str:
     Heap children of ``m`` are ``2m+1``/``2m+2``; definitions advance by ``1+``.
     The linear tree tests the last bit first; ``2*1++:;`` keeps the callee's key.
     Leaves push ``48+result`` for ``.``; same-level twins use ``_FORTH_SHARE``.
-    One removed scope pays for a merged step; two children pay for sharing.
     The tree tests the essential inputs; an ignored one is read and dropped.
     """
     n = _validate_truth_table(truth_table)
@@ -38,7 +37,6 @@ def forth(truth_table: str) -> str:
     return _forth_ordered(permute_truth_table(table, natural), reads, share=True)
 
 
-# The read that pushes one normalized input bit.
 _FORTH_READ = ",68*-"
 #: The read that drops an ignored input: zero it and add it to the value
 #: below, a bit or, under the first read, the last scope's label.
@@ -89,33 +87,29 @@ def _forth_ordered(truth_table: str, reads: str, *, share: bool = False) -> str:
     previous = 0  # the index the accumulator holds; 0 before anything is pushed
     for m in range(1, 2 ** (n + 1) - 1):
         if m in folded:
-            # An ancestor answered for this subtree, so its scope is never
-            # called; Forþ looks scopes up by pushed number with a default,
-            # so the gap in the numbering costs nothing.
+            # An ancestor answered for it, so it is never called; the gap
+            # in the numbering costs nothing (scopes are looked up with a default).
             continue
         if m <= last_internal:
             depth = (m + 1).bit_length() - 1
-            index = m + 1 - (1 << depth)  # position within its level
-            # The node covers ``2**(n - depth)`` rows from ``index`` such spans in.
+            index = m + 1 - (1 << depth)
             lo = index << (n - depth)
             hi = lo + (1 << (n - depth))
             key = ids[depth][index] if share else -1
             twin = emitted.get(key) if share else None
             call = _FORTH_SHARE.format(_forth_const(m - twin)) if twin else ""
             if constant(lo, hi):
-                # Every row under this node agrees, so answer here.  The
-                # reads are outside the tree, so a folded program consumes
-                # its input as an unfolded one does.
+                # Every row agrees: answer here.  The reads sit outside the
+                # tree, so a folded program still consumes its input.
                 body = _forth_const(_ASCII_ZERO + int(truth_table[lo]))
                 fold_below(m)
             elif call and len(call) < _FORTH_SUBTREE_FLOOR:
-                # The twin's subtree already answers for this one.
                 body = call
                 fold_below(m)
-            else:  # internal node: dispatch on the top bit
+            else:
                 body = _FORTH_DISPATCH
             emitted[key] = m
-        else:  # leaf: push the result byte
+        else:
             body = _forth_const(_ASCII_ZERO + int(truth_table[m - last_internal - 1]))
         # The label is a step from the index on the stack, never the index
         # itself: ``{`` reads its key without popping, so the pushed number
@@ -123,6 +117,6 @@ def _forth_ordered(truth_table: str, reads: str, *, share: bool = False) -> str:
         step = _forth_const(m - previous) + ("+" if previous else "")
         previous = m
         prog.append(step + "{" + body + "}")
-    prog.append(reads)  # the reads, with this order's rotations woven in
-    prog.append("1+:;.")  # root dispatch, then print the result
+    prog.append(reads)
+    prog.append("1+:;.")
     return "".join(prog)

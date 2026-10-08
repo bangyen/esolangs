@@ -2,12 +2,11 @@
 
 ``*`` turns clockwise, ``~`` pushes the direction, ``+`` pops and points
 (halting on an empty pop); no I/O, so parameterized runs plus the
-termination convention (halt = 0, loop forever = 1).  Every input is one
-cell crossed heading down: ``~`` pushes a down heading, ``.`` nothing.
-Tree (``n <= 4``): a right push follows each cell and ``+`` branches pop
-the front.  Cascade (``n >= 5``): each stage doubles the queued markers
-then crosses the cell (Horner), and one ``+`` per row turns right at the
-indexed row.  A ``0`` leaf is empty; a ``1`` leaf is a self-sustaining ring.
+termination convention (halt = 0, loop forever = 1).  Tree (``n <= 4``):
+a right push follows each cell and ``+`` branches pop the front.  Cascade
+(``n >= 5``): each stage doubles the queued markers then crosses the cell
+(Horner), and one ``+`` per row turns right at the indexed row.
+A ``0`` leaf is empty; a ``1`` leaf is a self-sustaining ring.
 Both routes fold constant rows (a subtree; the cascade's tail).
 """
 
@@ -120,13 +119,11 @@ def _tree(values: list[str]) -> list[str]:
 def arrowqueue(truth_table: str, width: int | None = None) -> str:
     """Build an ArrowQueue template for an ``n``-input Boolean function.
 
-    ``truth_table`` is a binary string of length ``2**n``, MSB first; the
-    instantiated program halts iff the entry is ``0``.  Below five inputs a
-    tree with 3x3 leaves, constant subtrees folded (:func:`_drained_leaf`);
-    from five a cascade linear in the table, its constant tail folded
-    (:func:`_cascade`).  An over-wide tree uses the cascade instead; below five
-    columns an extra down marker moves the selector to the left edge while
-    preserving the rings.
+    The program halts iff the entry is ``0``.  Below five inputs a tree
+    with 3x3 leaves, constant subtrees folded (:func:`_drained_leaf`); from
+    five a cascade linear in the table, its tail folded (:func:`_cascade`).
+    An over-wide tree uses the cascade; below five columns an extra down
+    marker moves the selector to the left edge.
     """
     n = _validate_truth_table(truth_table)
     width = max(width or 0, 0)  # 0, None and negative all mean unbounded
@@ -142,8 +139,7 @@ def arrowqueue(truth_table: str, width: int | None = None) -> str:
     weights, table = ([1] * n, truth_table) if narrow else input_weights(truth_table, n)
     leaves = _cascade(table)
     if narrow:
-        # Entry travels down column1; column2 in every leaf is only blank
-        # travel between that selector and its ring, so remove it locally.
+        # Column 2 of every leaf is blank travel from the selector; drop it.
         leaves = [row[:2] + row[3:] for row in leaves]
     stages = [row for weight in weights for row in (_STAGE if weight else _IGNORED)]
     rows = ["  ~*", *stages, *_MIDDLE, *leaves]
@@ -155,14 +151,12 @@ def _four_column_cascade(table: str, n: int) -> str:
 
     Takes every input's stage (``_STAGE * n``): ignored inputs are not dropped.
     """
-    # Shift input stages left. A clockwise detour then lands down at1.
+    # Shift input stages left; a clockwise detour lands down at column 1.
     rows = [" ~*", *(row[1:] for row in _STAGE * n), "**", "* *", " ~"]
-    # Append D, rotate the existing D markers until the R sentinel,
-    # consume that R and restore it on exit. Queue becomes D^(index+1),R.
+    # Append D, rotate the D markers to the R sentinel; queue becomes D^(index+1),R.
     rows.extend(["*+~*", " ~", "**"])
     rows.extend(_MIDDLE)
-    # The fixed extra D turns leftward travel down at the left edge;
-    # consuming it leaves the original selector/ring queue unchanged.
+    # The extra D turns leftward travel down; consuming it restores the queue.
     rows.append("+*")
     for bit in table:
         # Unfold the constant tail: its old drain loop uses column0.

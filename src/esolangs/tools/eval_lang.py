@@ -1,7 +1,6 @@
 """Boolean-function generator for Eval.
 
-Named ``eval_lang`` because the generator itself is called ``eval``, and a
-module of that name reads as the builtin wherever it is imported.
+Named ``eval_lang`` so the module does not read as the builtin ``eval``.
 """
 
 from esolangs.tools.helpers import (
@@ -12,15 +11,12 @@ from esolangs.tools.helpers import (
     read_at,
 )
 
-# Eval's two stacks and the ops that move values between them.  ``~`` swaps
-# which stack is active, ``*`` reverses the active one, and ``=`` pops the
-# active stack onto the other.  The pair is a spindle: moving values across
-# reverses them (tests/tools/eval_reorders.py composes them).
+# ``~`` swaps the active stack, ``*`` reverses it, ``=`` pops it onto the
+# other.  Moving values across reverses them (tests/tools/eval_reorders.py).
 _EVAL_TREE_STACK, _EVAL_READ_STACK = 0, 1
 
-#: How each input is set: stage the bit on the tree stack (``0`` pushes a
-#: zero, the backtick a one), then ``=`` moves it to the input stack.  The
-#: template spells each input as a run of :data:`TEMPLATE_CHAR` this wide.
+#: Stage the bit on the tree stack (``0`` or backtick), ``=`` moves it to the
+#: input stack.  Each input is a run of :data:`TEMPLATE_CHAR` this wide.
 PAIR = ("0=", "`=")
 _EVAL_INPUT = TEMPLATE_CHAR * len(PAIR[0])
 
@@ -28,8 +24,8 @@ _EVAL_INPUT = TEMPLATE_CHAR * len(PAIR[0])
 def eval(truth_table: str) -> str:  # noqa: A001 - the language is named "Eval"
     """Build an Eval template for the given truth table.
 
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first).  The program prints ``'0'`` or ``'1'``.
+    Inputs index the table most significant first; the program prints
+    ``'0'`` or ``'1'``.
 
     Each placeholder stages one equal-width bit on the input stack; the
     table's bits are pushed on the other stack and each input halves it (a
