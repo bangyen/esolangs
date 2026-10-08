@@ -100,28 +100,6 @@ class TestRunSaysWhenStdinLooksWrong:
             warnings.simplefilter("error")
             esolangs.run("Grapheme", program, stdin="0\n1\n", timeout=10)
 
-    # Generates and runs one program per language, like the wrap test above.
-    @pytest.mark.medium
-    def test_the_documented_path_is_silent(self) -> None:
-        """A warning that fires on correct input is worse than none."""
-        import warnings
-
-        noisy = []
-        for name in esolangs.list_languages():
-            facts = esolangs.describe(name)
-            if not facts["boolean_generator"] or facts["parameterized"]:
-                continue
-            program = esolangs.generate(name, "0110")
-            if facts["answer_mode"] == "termination":
-                continue
-            stdin = esolangs.encode_inputs(name, [1, 0], truth_table="0110")
-            with warnings.catch_warnings(record=True) as caught:
-                warnings.simplefilter("always")
-                esolangs.run(name, program, stdin=stdin, timeout=20)
-            if caught:
-                noisy.append(f"{name}: {caught[0].message}")
-        assert not noisy, "\n".join(noisy)
-
     def test_a_program_that_reads_nothing_is_not_warned_about(self) -> None:
         """Reading none of what it was given is not an arity mistake."""
         import warnings

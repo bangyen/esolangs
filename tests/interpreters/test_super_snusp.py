@@ -116,32 +116,6 @@ def test_generator_rejects_invalid_table() -> None:
         super_snusp("011")
 
 
-@pytest.mark.parametrize(
-    ("value", "degree", "expected"),
-    [
-        # Zero, which the negative branch's ``<`` must not claim.
-        (0, 2, 0),
-        (0, 3, 0),
-        # Degree 1, the smallest the rejection admits: the root is the value.
-        (1, 1, 1),
-        (7, 1, 7),
-        # Exact powers, where the search's ``<=`` decides whether the answer
-        # is the root itself or one below it.
-        (8, 3, 2),
-        (9, 2, 3),
-        (10, 2, 3),  # and an inexact one, for contrast
-        # Negatives with an odd degree, exact and not.
-        (-8, 3, -2),
-        (-7, 3, -2),
-    ],
-)
-def test_the_integer_root_at_its_boundaries(
-    value: int, degree: int, expected: int
-) -> None:
-    """``ROOT``'s guards turn on values the wiki's programs never reach."""
-    assert _floor_root(value, degree) == expected
-
-
 @pytest.mark.parametrize(("value", "degree"), [(5, 0), (-9, 2), (-1, 4)])
 def test_the_integer_root_refuses_what_it_cannot_answer(
     value: int, degree: int

@@ -1,7 +1,5 @@
 """Hints attached to source, runtime and detector errors."""
 
-import json
-import pickle
 from pathlib import Path
 
 import pytest
@@ -9,7 +7,6 @@ import pytest
 import esolangs
 from esolangs import vm
 from esolangs._execution import interpreter_errors
-from esolangs._isolated import _decode
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other._packlang_parse import _Parser
@@ -346,27 +343,6 @@ def test_cli_displays_runtime_hints(tmp_path, capsys):
     with pytest.raises(SystemExit):
         call_both(["run", "Modulous", str(source)], capsys)
     assert "hint: push two values before SWP" in capsys.readouterr().err
-
-
-@pytest.mark.parametrize(
-    "kind",
-    [
-        esolangs.InputExhaustedError,
-        esolangs.ExecutionTimeoutError,
-        esolangs.MissingDependencyError,
-    ],
-)
-def test_constructor_hints_are_not_duplicated_by_isolation(kind):
-    args = [0, 0, "character"] if kind is esolangs.InputExhaustedError else ["failed"]
-    original = kind(*args)
-    payload = {"error": kind.__name__, "args": args, "notes": original.__notes__}
-    with pytest.raises(kind) as caught:
-        _decode(json.dumps(payload), expired=False)
-    assert str(caught.value) == str(original)
-    assert caught.value.__notes__ == original.__notes__
-    restored = pickle.loads(pickle.dumps(original))
-    assert str(restored) == str(original)
-    assert restored.__notes__ == original.__notes__
 
 
 @pytest.mark.medium

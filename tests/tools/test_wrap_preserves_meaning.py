@@ -63,16 +63,6 @@ def test_sophie_survives_the_widths_that_used_to_break_it(width: int) -> None:
     assert _evaluate("Sophie", "0110", width) == "0110"
 
 
-def _lays_itself_out() -> list[str]:
-    """Return the languages that take a width in the generator."""
-    return sorted(
-        name
-        for name in esolangs.list_languages()
-        if esolangs.describe(name)["width_aware"]
-        and esolangs.describe(name)["answer_mode"] != "termination"
-    )
-
-
 @pytest.mark.slow
 @pytest.mark.parametrize("width", [2, 5, 11, 20, 27, 35, 36, 60])
 def test_streetcode_lays_out_every_two_input_table(width: int) -> None:

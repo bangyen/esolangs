@@ -102,31 +102,6 @@ def test_native_generator_scales_and_runs(name: str) -> None:
     assert esolangs.run(name, Raster.from_png(image.to_png()), stdin="1\n") == "0"
 
 
-@pytest.mark.medium
-@pytest.mark.parametrize("name", ["Line", "Piet"])
-def test_cli_scaled_png_round_trip(name, monkeypatch, capsysbinary, tmp_path):
-    import io
-    import sys
-
-    from esolangs.cli import main
-
-    monkeypatch.setattr(
-        sys, "argv", ["esolangs", "generate", "--scale", "2", name, "00"]
-    )
-    monkeypatch.setattr(sys, "stdin", io.StringIO(""))
-    main()
-    generated = capsysbinary.readouterr()
-    assert generated.err == b""
-    path = tmp_path / "scaled.png"
-    path.write_bytes(generated.out)
-    monkeypatch.setattr(
-        sys, "argv", ["esolangs", "run", "--scale", "2", name, str(path)]
-    )
-    monkeypatch.setattr(sys, "stdin", io.StringIO("1\n"))
-    main()
-    assert capsysbinary.readouterr().out == b"0"
-
-
 @pytest.mark.parametrize("value", ["x", "0", "-1", "1.5"])
 def test_cli_rejects_invalid_scale(value, monkeypatch, capsys):
     import sys

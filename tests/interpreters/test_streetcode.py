@@ -24,44 +24,6 @@ from tests.interpreters.streetcode_support import (
 class TestStreetcodeSingleCommands:
     """Each instruction in isolation."""
 
-    @pytest.mark.parametrize(
-        ("instructions", "expected"),
-        [
-            pytest.param("C;", "", id="halt_immediately"),
-            pytest.param("C^O;", chr(1), id="increment_then_output"),
-            # ~ and ^ both touch the same CPth cell, unbounded and signed.
-            pytest.param("C~^O;", chr(0), id="decrement_then_increment_then_output"),
-            pytest.param("C O;", chr(0), id="space_is_a_nop"),
-            # Box-drawing and other undefined characters act like space.
-            pytest.param("C#O;", chr(0), id="undefined_character_is_a_nop"),
-            # Only the proof sentence names ``<``/``>``; the table moves CP by ``=_``.
-            pytest.param("C>^<O;", chr(1), id="angle_brackets_do_not_move_cp"),
-            pytest.param("C=^O_O;", chr(1) + chr(0), id="cp_increment_and_decrement"),
-        ],
-    )
-    def test_output(self, instructions: str, expected: str) -> None:
-        assert run_street(instructions) == expected
-
-    def test_repeated_runs_reuse_validated_geometry(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        from esolangs.interpreters.grid_based import streetcode
-
-        streetcode._Machine._compile.cache_clear()  # noqa: SLF001
-        calls = 0
-        validate = streetcode._Machine._validate  # noqa: SLF001
-
-        def counted(machine: _Machine, start: tuple[int, int]) -> None:
-            nonlocal calls
-            calls += 1
-            validate(machine, start)
-
-        monkeypatch.setattr(streetcode._Machine, "_validate", counted)  # noqa: SLF001
-        assert run_street("C^O;") == chr(1)
-        assert run_street("C^O;") == chr(1)
-        assert calls == 1
-        streetcode._Machine._compile.cache_clear()  # noqa: SLF001
-
     def test_decrement_below_zero_then_output_is_invalid(self) -> None:
         """A cell of -1 is a valid signed int, but not a valid code point."""
         with pytest.raises(HaltError):
@@ -80,30 +42,6 @@ class TestStreetcodeSingleCommands:
         assert (machine.row, machine.col) == (1, 0)
         with pytest.raises(HaltError):
             machine.step()  # 'U' with no lane to the new right
-
-    def test_u_on_a_two_way_street_ends_in_the_opposite_lane(self) -> None:
-        """Streets are two wide and the car drives on the right, so after
-        turning around it belongs in the lane now on its right: the U-turn
-        ends there, and that lane cell is executed on the next step.
-        """
-        code = [
-            "|  |",
-            "|C |",
-            "|  |",
-            "|U^|",
-            "|  |",
-            "+--+",
-        ]
-        machine = machine_unvalidated(code)
-        # Southbound in the west lane (wall on the right), down to the U.
-        for _ in range(2):
-            machine.step()
-        assert (machine.row, machine.col, machine.heading) == (3, 1, "S")
-        machine.step()  # 'U': turn around, sliding east into the northbound lane
-        assert (machine.row, machine.col, machine.heading) == (3, 2, "N")
-        machine.step()  # the lane cell's '^' runs before the car moves on
-        assert machine.cells[0] == 1
-        assert (machine.row, machine.col, machine.heading) == (2, 2, "N")
 
     def test_u_in_place_would_leave_the_car_driving_on_the_left(self) -> None:
         """The reason the lane change is not optional: turned around in

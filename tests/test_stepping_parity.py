@@ -193,13 +193,3 @@ class TestTheConstructorsTakeWhatRunTakes:
         from_path = _drive(debugger_api.make_vm("brainfuck", example, stdin="1\n0\n"))
         from_text = _drive(debugger_api.make_vm("brainfuck", source, stdin="1\n0\n"))
         assert from_path == from_text
-
-
-#: The arity and shapes the *execution* sweep uses, so the two agree.
-_WIDER_ARITY = 6
-
-#: Four rows rather than every language.  A step/run divergence is a property of
-#: the program, not of the row -- Grapheme's and Sophie's showed on every
-#: row that reached the broken construct -- so sampling buys the arity and
-#: the second shape for a sixteenth of the cost.
-_WIDER_ROWS = (0, 1, 32, 63)

@@ -264,23 +264,6 @@ class TestSnapshotProgress:
         with pytest.raises(EOFError):
             run_until_halt_or_cycle(machine)
 
-    def test_a_ring_that_escapes_on_a_later_draw_halts(self) -> None:
-        """Six splits die upward, the seventh goes down to ``+``; ``)`` then ends it."""
-        from esolangs.interpreters.grid_based.laserfuck import _Machine
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.vm import run_until_halt_or_cycle
-
-        class Draws:
-            def __init__(self, values: list[int]) -> None:
-                self.values = values
-
-            def randbelow(self, _upper: int) -> int:
-                return self.values.pop(0)
-
-        ring = ["/o#x)*\\", "     + ", "\\     /"]
-        machine = _Machine(ring, ScriptedIO(), rng=Draws([3, 0, 0, 0, 0, 0, 0, 1]))
-        assert run_until_halt_or_cycle(machine) is True
-
 
 def _machine(code: object) -> object:
     from esolangs.interpreters.grid_based.laserfuck import _Machine

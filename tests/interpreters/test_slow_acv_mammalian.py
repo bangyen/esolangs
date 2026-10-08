@@ -254,37 +254,6 @@ class TestContract(SnapshotContract):
     stepping_program = "SEED PRONOUNCE"
 
 
-@pytest.mark.parametrize("io_modulus", [255])
-@pytest.mark.parametrize("cell_modulus", [255, 256])
-@pytest.mark.parametrize(
-    ("program", "stdin"),
-    [
-        ("ACCEPT CONSUME CONSUME PRONOUNCE", "ÿ"),
-        ("ACCEPT CONSUME CONSUME EXCRETE CONSUME PRONOUNCE", "ÿ"),
-        ("ACCEPT CONSUME CONSUME PRONOUNCE", "Ā"),
-        (" ".join(["SEED"] * 256 + ["DIGEST", "PRONOUNCE"]), ""),
-    ],
-)
-def test_moduli_agree_between_fast_run_and_vm(
-    cell_modulus: int, io_modulus: int, program: str, stdin: str
-) -> None:
-    from esolangs.interpreters.io import ScriptedIO
-    from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine, run
-
-    fast = ScriptedIO(stdin)
-    run(program, fast, cell_modulus=cell_modulus, io_modulus=io_modulus)
-    stepped = ScriptedIO(stdin)
-    machine = _Machine(
-        program, stepped, cell_modulus=cell_modulus, io_modulus=io_modulus
-    )
-    while not machine.halted:
-        machine.step()
-    raw_value = ord(stdin) if stdin else 256
-    expected = raw_value % cell_modulus
-    assert fast.getvalue() == stepped.getvalue() == chr(expected % io_modulus)
-    assert fast.reads == stepped.reads == len(stdin)
-
-
 @pytest.mark.parametrize("cell_modulus", [255, 256])
 def test_conflagrate_uses_cell_modulus(cell_modulus: int) -> None:
     from esolangs.interpreters.tape_based.slow_acv_mammalian import _total

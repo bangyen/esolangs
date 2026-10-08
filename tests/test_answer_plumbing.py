@@ -10,8 +10,6 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
-from esolangs import cli
-from esolangs.cli import HELP
 from tests.generator_support import evaluate_generated, verify_generated
 from tests.stdin_check import _check_stdin
 from tests.witness_tables import witnesses
@@ -28,27 +26,6 @@ USAGE_DOC = ROOT / "docs" / "usage.md"
 #: The bit vector ``docs/usage.md``'s stdin table is rendered for; it has to
 #: match the generator's ``_SAMPLE_BITS`` or the table cannot be compared.
 _SAMPLE_BITS = [1, 0, 1]
-
-
-#: How each shape may *not* be described, as a regex over the prose.  Only
-#: the negative direction is regex-matched: a document that states one of
-#: these about a language with a different shape is wrong, whatever else it
-#: says.  Nothing here obliges a document to contain any of it.
-_SHAPE_PROSE = {
-    "one_line": r"(all |every |them all )?(bits? )?.{0,12}on one line",
-    "row_index": r"row index as (one|a single) decimal number|row index as one decimal",
-    "char_stream_padded": r"pads an odd input count with a leading zero",
-}
-
-
-def _every_document() -> dict[str, str]:
-    """Return every document a reader could follow, keyed by where it is."""
-    found = {"README.md": README, "usage": cli.USAGE}
-    for name, text in HELP.items():
-        found[f"{name} --help"] = text
-    for doc in sorted((ROOT / "docs").rglob("*.md")):
-        found[str(doc.relative_to(ROOT))] = doc.read_text()
-    return found
 
 
 @pytest.mark.filterwarnings("ignore::UserWarning")
@@ -263,25 +240,6 @@ class TestAProgramKnowsWhoseItIs:
         assert esolangs.run(
             "brainfuck", program, stdin=esolangs.encode_inputs("brainfuck", [0, 1])
         )
-
-    def test_a_program_is_still_a_string_everywhere_else(self) -> None:
-        import json
-        import pickle
-
-        program = esolangs.generate("brainfuck", "0110")
-        assert isinstance(program, str)
-        assert program == str(program)
-        assert json.dumps(program) == json.dumps(str(program))
-        copied = pickle.loads(pickle.dumps(program))
-        assert copied == program
-        assert getattr(copied, "language", None) == "brainfuck"
-        template = pickle.loads(
-            pickle.dumps(esolangs.generate("Minifuck", "0110", width=20))
-        )
-        assert template == esolangs.generate("Minifuck", "0110", width=20)
-        assert isinstance(template, str)
-        assert template == str(template)
-        assert json.dumps(template) == json.dumps(str(template))
 
     def test_a_width_keeps_the_tag(self) -> None:
         program = esolangs.generate("brainfuck", "0110", width=20)

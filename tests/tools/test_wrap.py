@@ -346,14 +346,6 @@ def _grown(name: str, table: str, width: int | None) -> str:
     return esolangs.instantiate(name, generate(name, table), [0] * arity, width=width)
 
 
-# Tables the generators take a *different path* on than parity.  The
-# committed examples are all AND2, and the sweeps above grow parity, so
-# between them they exercise two shapes -- and a wrapper is exercised by the
-# shape of the program, not by the table directly.  Sophie's else-block bug
-# needed a table that puts an if-block beside an else-block, which neither
-# AND2 nor parity produces at three inputs; majority does.
-_OTHER_TABLES = {"majority": "00010111", "mixed": "11111001"}
-
 # Long enough that a run which has not finished is looping, short enough
 # that eight of them are not a wait.  123 answers by *looping forever* for a
 # one, so a timeout is one of the behaviours being compared rather than a

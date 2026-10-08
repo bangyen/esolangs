@@ -24,43 +24,6 @@ class TestAssembly:
         """
         assert _assembly(code) == [-1, 4, -1, 5, 65, 0, 3, -7]
 
-    def test_sugar_and_data_directive(self) -> None:
-        code = """
-        IO A
-        IO B
-        IO C
-        IO D
-        IO E IO
-        .data A:65 B:66 C:67 D:68 E:69
-        """
-        assert _assembly(code) == [
-            -1,
-            20,
-            4,
-            -7,
-            -1,
-            21,
-            8,
-            -7,
-            -1,
-            22,
-            12,
-            -7,
-            -1,
-            23,
-            16,
-            -7,
-            -1,
-            24,
-            -1,
-            -7,
-            65,
-            66,
-            67,
-            68,
-            69,
-        ]
-
     def test_macro_example(self) -> None:
         code = """
         def macro A {

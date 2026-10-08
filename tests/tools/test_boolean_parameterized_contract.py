@@ -86,14 +86,6 @@ def test_parameterized_generators_embed_each_input_once() -> None:
 _SLOT_ORDER_TABLES = ("0110", "01101001", "10101010", "11110000", "00111100")
 
 
-def _all_derived_plans(derived_plans, staged_arities, n: int) -> dict:
-    """Every staging the enumeration places at ``n``, in one pass."""
-    if n not in staged_arities:
-        return derived_plans(n, ())
-    every = tuple(format(v, f"0{2**n}b") for v in range(2 ** (2**n)))
-    return derived_plans(n, every)
-
-
 def _slot_order(gen: object, table: str) -> list[int] | None:
     """The input indices in the order ``gen`` emits them, or None."""
 

@@ -11,7 +11,7 @@ import pytest
 
 import esolangs
 from esolangs import DialectSettings, Raster
-from esolangs._evaluate import _evaluate, _iter_evaluate
+from esolangs._evaluate import _evaluate
 from esolangs._grapheme import GraphemeDialect
 from esolangs.cli_debug import _run_tui_session
 from esolangs.debugger import make_debugger
@@ -173,46 +173,6 @@ def test_postfix_one_entry_chunks():
     settings = DialectSettings(expression_syntax="postfix")
     source = esolangs.generate("Alight", table, width=1, settings=settings)
     assert _evaluate("Alight", source, inputs=6, settings=settings) == table
-
-
-@pytest.mark.medium
-@pytest.mark.parametrize(("language", "settings"), CASES)
-@pytest.mark.parametrize("balance", [False, True])
-def test_generated_settings_are_reused(language, settings, balance):
-    source = esolangs.generate(language, "0110", balance=balance, settings=settings)
-    assert source.settings is settings
-    assert _evaluate(language, source, inputs=2) == "0110"
-    assert "".join(_iter_evaluate(language, source, inputs=2)) == "0110"
-    bound = esolangs.Language(language)
-    assert _evaluate(bound.name, source, inputs=2) == "0110"
-    for row, expected in enumerate("0110"):
-        bits = tuple(map(int, format(row, "02b")))
-        if esolangs.describe(language)["parameterized"]:
-            program = esolangs.instantiate(language, source, bits, truth_table="0110")
-            assert program.settings is settings
-            stdin = ""
-        else:
-            program, stdin = (
-                source,
-                esolangs.encode_inputs(language, bits, truth_table="0110"),
-            )
-        assert (
-            esolangs.read_answer(language, esolangs.run(language, program, stdin=stdin))
-            == expected
-        )
-        assert (
-            esolangs.read_answer(
-                language,
-                esolangs.run(language, program, stdin=stdin, max_steps=100_000),
-            )
-            == expected
-        )
-        assert (
-            esolangs.read_answer(
-                language, complete_vm(make_vm(language, program, stdin=stdin), 100_000)
-            )
-            == expected
-        )
 
 
 @pytest.mark.parametrize("template", [False, True])

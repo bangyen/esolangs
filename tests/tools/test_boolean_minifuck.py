@@ -17,11 +17,6 @@ from esolangs.tools.minifuck.sim import PAIR, _runs, _Sim
 from tests.tools.minifuck_support import _FLIP, _embed, _mux_separate, run_count
 
 
-def _unreachable(*_args: object, **_kwargs: object) -> None:
-    """Stand in for a function a test asserts is never called."""
-    raise AssertionError("this should not have been called")
-
-
 def _slot_order(gen: object, table: str) -> list[int] | None:
     """The run starts in the order ``gen`` emits them, or None."""
 

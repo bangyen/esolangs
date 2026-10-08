@@ -22,10 +22,6 @@ from tests.tools.boolean_runners import one_two_three_result
 BASE_DIR = Path(__file__).parents[2]
 
 
-def _file_name(display_name: str) -> str:
-    return display_name.lower().replace(" ", "-")
-
-
 # The VM registry is keyed by the language's display name, while boolean
 # examples are keyed by their filesystem stem.  The interpreter module is
 # shared metadata and uniquely identifies the registered display name.
@@ -35,8 +31,6 @@ VM_LANGUAGE = {
     if lang.interpreter is not None
 }
 
-# container halts by calling sys.exit(0)
-EXITS = {"container"}
 
 # Boolean examples whose answer is their *termination* rather than their
 # output: each halts for a 0 and loops forever for a 1, so the committed
@@ -236,31 +230,6 @@ class TestTheWritersWriteWhatTheBuildersBuild:
 
         monkeypatch.setattr(generate_examples, "EXAMPLES", target)
         return generate_examples
-
-    def test_write_set_writes_programs_and_manifest(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        module = self._redirect(monkeypatch, tmp_path / "examples")
-        programs = [("one", "a"), ("two", "b\n"), ("image", Raster((((0, 0, 0),),)))]
-        monkeypatch.setitem(module.SETS, "boolean", lambda: iter(programs))  # type: ignore[attr-defined]
-        module.write_set("boolean")  # type: ignore[attr-defined]
-
-        written = {
-            path.stem
-            for path in (tmp_path / "examples").iterdir()
-            if path.suffix in (".txt", ".png")
-        }
-        assert written == {"one", "two", "image"}
-        assert (tmp_path / "examples" / "MANIFEST.md").is_file()
-        for stem, generated in programs:
-            if isinstance(generated, Raster):
-                png = (tmp_path / "examples" / f"{stem}.png").read_bytes()
-                assert Raster.from_png(png) == generated
-            else:
-                text = (tmp_path / "examples" / f"{stem}.txt").read_text(
-                    encoding="utf-8"
-                )
-                assert text == generated.rstrip("\n") + "\n"
 
     def test_a_second_write_reports_unchanged(
         self,

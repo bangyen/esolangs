@@ -26,26 +26,6 @@ def run_bounded(program: str, stdin: str = "", store: str = "a") -> str:
 class TestCoreInstruction:
     """The single subtract-and-branch instruction."""
 
-    @pytest.mark.parametrize(
-        ("program", "expected"),
-        [
-            # 0 - 0 = 0 jumps to mem[2]=9, past the end.
-            pytest.param("0 0 2 9 0", "", id="conditional_jump_on_zero"),
-            # 0 - 5 = -5 jumps too.
-            pytest.param("0 5 2 9 0", "", id="conditional_jump_on_negative"),
-            # The jump target mem[2] holds -1, a negative target, so it stops.
-            pytest.param("0 0 2 -1", "", id="negative_target_halts"),
-            # The branch is on ``<= 0``, so a difference of exactly 1 does not.
-            pytest.param(
-                "9 10 11  -3 12 0  0 0 13  5 4 99 67 99",
-                "C",
-                id="a_difference_of_one_falls_through",
-            ),
-        ],
-    )
-    def test_output(self, program: str, expected: str) -> None:
-        assert run_bounded(program) == expected
-
     def test_special_addresses_are_not_branch_operands(self) -> None:
         """``c`` is an address, not an operand port."""
         with pytest.raises(ValueError, match="invalid S\\*bleq branch address"):

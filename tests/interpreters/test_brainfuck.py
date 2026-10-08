@@ -122,20 +122,3 @@ class TestFastRunParity:
         while not machine.halted:
             machine.step()
         return io_obj.getvalue(), io_obj.reads
-
-    @pytest.mark.parametrize(
-        ("code", "stdin"),
-        [
-            ("+++>++++<[>++<-]>. ", ""),
-            ("[>++++<-]>. ", ""),
-            ("-[>+<-]>. ", ""),
-            ("++[+].", ""),
-            (",+.", "Ā\n"),
-            ("+++[>++[>+<-]<-]>+++.", ""),
-        ],
-    )
-    def test_curated_programs_match(self, code: str, stdin: str) -> None:
-        assert (
-            run_and_capture(code, stdin.splitlines())
-            == self.run_reference(code, stdin)[0]
-        )

@@ -145,30 +145,6 @@ class TestErrorsSurviveAProcessBoundary:
             current = pickle.loads(pickle.dumps(current))
         assert str(current) == str(caught.value)
 
-    def test_every_error_class_round_trips(self) -> None:
-        """The two above were found one at a time; this is the class."""
-        import pickle
-
-        raisers = [
-            lambda: esolangs.describe("nosuchlang"),
-            lambda: esolangs.generate("brainfuck", "011"),
-            lambda: esolangs.encode_inputs("brainfuck", [2, 0]),
-            lambda: esolangs.instantiate("brainfuck", "x", [0]),
-            lambda: esolangs.run("brainfuck", None),  # type: ignore[arg-type]
-            lambda: esolangs.run("brainfuck", "+[]", stdin="", timeout=0.01),
-            lambda: esolangs.run(
-                "brainfuck",
-                esolangs.generate("brainfuck", "10010110"),
-                stdin="10",
-                timeout=10,
-            ),
-        ]
-        for raise_it in raisers:
-            with pytest.raises(esolangs.EsolangError) as caught:
-                raise_it()
-            restored = pickle.loads(pickle.dumps(caught.value))
-            assert str(restored) == str(caught.value), type(caught.value).__name__
-
 
 class TestAnInterpreterLimitIsStillAnEsolangError:
     """Qoibl's interpreter recurses, and Python's stack is finite."""

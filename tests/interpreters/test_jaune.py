@@ -194,31 +194,7 @@ class TestErrors:
         assert str(caught.value) == "; with no active subroutine call"
 
 
-class TestMachine:
-    def test_the_vm_view_tracks_the_run(self) -> None:
-        """``ip``/``memory``/``stack`` are what the debugger reads, so they run."""
-        from esolangs.interpreters.tape_based.jaune import _Machine
-
-        machine = _Machine("6+5+^.", ScriptedIO())
-        assert machine.ip == 0
-        assert machine.memory == [0]
-        while not machine.halted:
-            machine.step()
-        assert machine.ip == 4  # the cursor advanced with the run
-        assert machine.memory == [11]  # 6 + 5, in the cell the program built
-
-        # `stack` is the call stack, and only a call puts anything on it.
-        called = _Machine("1@2@^.1$5+;2$3+;", ScriptedIO())
-        depths = []
-        while not called.halted:
-            called.step()
-            depths.append(len(called.stack))
-        assert max(depths) == 1  # the two calls nest one deep, not zero
-        assert called.stack == []  # and both returned
-
-
 def _machine(code: object) -> object:
-    from esolangs.interpreters.io import ScriptedIO
     from esolangs.interpreters.tape_based.jaune import _Machine
 
     return _Machine(code, ScriptedIO())

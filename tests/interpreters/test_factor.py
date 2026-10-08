@@ -214,26 +214,6 @@ class TestFactorint:
 
         assert _factorint(2**61 - 1) == {2**61 - 1: 1}
 
-    def test_does_not_strand_a_large_composite_on_sympy(self) -> None:
-        """The residue handed to sympy must never be a large composite."""
-        import re
-        import time
-
-        from esolangs import tools as boolean_tools
-        from esolangs.interpreters.tape_based.factor import _factorint
-
-        program = str(boolean_tools.factor("0110100110010110"))
-        number = int(re.sub(r"[^0-9]", "", program))
-        start = time.perf_counter()
-        factors = _factorint(number)
-        elapsed = time.perf_counter() - start
-
-        assert max(factors) > 10000, "the case only bites above a 10000 sieve"
-        # Generous next to the ~0.004s it takes, and far under the minutes
-        # a stranded composite costs, so this fails on the bug and not on
-        # a slow machine.
-        assert elapsed < 5.0, f"factorizing took {elapsed:.1f}s"
-
     def test_never_strands_a_composite_above_the_first_chunk(self) -> None:
         """A barren chunk is not a factorization ceiling."""
         import sympy

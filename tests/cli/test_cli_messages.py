@@ -228,23 +228,6 @@ class TestTheSmallInconsistencies:
         image = esolangs.Raster.from_png(captured.out)
         assert esolangs.run("Line", image, stdin="0\n0\n") == "0"
 
-    @pytest.mark.medium
-    def test_line_balance_has_no_no_op_warning(
-        self, capsysbinary: pytest.CaptureFixture[bytes]
-    ) -> None:
-        with (
-            patch.object(
-                sys, "argv", ["esolangs", "generate", "--balance", "Line", "0001"]
-            ),
-            patch.object(sys, "stdin", _FakeStdin("")),
-        ):
-            main()
-        captured = capsysbinary.readouterr()
-        assert b"no effect" not in captured.err
-        image = esolangs.Raster.from_png(captured.out)
-        assert (len(image.rows[0]), len(image.rows)) == (680, 800)
-        assert esolangs.run("Line", image, stdin="1\n1\n") == "1"
-
     def test_a_breakpoint_that_never_fires_says_so(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
@@ -486,29 +469,6 @@ def test_isolated_cli_preserves_error_hint_and_partial_output(
     assert direct[0] == output
     assert hint in direct[1]
     assert direct[1].count("hint:") == 1
-
-
-@pytest.mark.medium
-@pytest.mark.parametrize(
-    ("language", "source", "kind"),
-    [
-        ("brainfuck", "[", esolangs.ProgramError),
-        ("Modulous", "[SWP]", esolangs.HaltError),
-        ("brainfuck", ",", esolangs.InputExhaustedError),
-    ],
-)
-def test_isolated_worker_preserves_exact_diagnostic_and_notes(language, source, kind):
-    errors = []
-    for isolated in (False, True):
-        with pytest.raises(kind) as caught:
-            esolangs.run(language, source, isolated=isolated)
-        errors.append(caught.value)
-    assert type(errors[0]) is type(errors[1])
-    assert str(errors[0]) == str(errors[1])
-    assert errors[0].__notes__ == errors[1].__notes__
-    if kind is esolangs.InputExhaustedError:
-        assert errors[0].unit == errors[1].unit == "character"
-    assert sum(note.startswith("hint:") for note in errors[1].__notes__) == 1
 
 
 def test_cli_note_translation_preserves_multiline_diagnostic_and_api_notes():

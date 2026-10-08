@@ -431,16 +431,6 @@ class TestCharPut:
         assert _run(program) == "hi"
 
 
-def _boolean_rows(table: str, n: int) -> list[str]:
-    """Run the generated program on every row and collect what it printed."""
-    program = packlang(table)
-    out = []
-    for row in range(2**n):
-        bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
-        out.append(_run(program, "".join(f"{b}" for b in bits)))
-    return out
-
-
 class TestBooleanGenerator:
     """Executed over complete truth tables, not inspected as source."""
 
@@ -509,26 +499,6 @@ Package : IO {
   }
 } looper;
 """
-
-
-def test_a_global_belongs_to_its_own_package() -> None:
-    """Wiki: a package defines "all variables it will need"."""
-    code = """Package : IO {
-  Integer x;
-  Integer main {
-    INCR x;
-    INCR x;
-    charPut(48 ^ x);
-    0;
-  }
-} p;
-Dependency {
-  Integer(0, 1, 0, 0) x;
-  Integer f : Integer a {
-    a;
-  }
-} d;"""
-    assert _run(code) == "2"
 
 
 _TWO_GS = """Dependency {

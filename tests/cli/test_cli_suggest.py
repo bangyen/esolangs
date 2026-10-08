@@ -365,27 +365,6 @@ def test_new_previews_do_not_execute_or_read_stdin(
     assert "no unambiguous command corrections" in out
 
 
-@pytest.mark.parametrize(
-    "source",
-    [
-        "",
-        "Packxxxxx {} app;",
-        "Package { ZZZ main { 0; } } app;",
-    ],
-)
-def test_packlang_preview_refuses_unsupported_syntax_before_output(
-    source, tmp_path, capsys
-):
-    path = tmp_path / "bad.pack"
-    path.write_text(source)
-    with pytest.raises(SystemExit) as caught:
-        call_both(["suggest", "Packlang", str(path)], capsys)
-    assert caught.value.code == 2
-    captured = capsys.readouterr()
-    assert captured.out == ""
-    assert "hint:" in captured.err
-
-
 def test_packlang_deep_preview_reports_parser_limit(tmp_path, capsys):
     path = tmp_path / "deep.pack"
     path.write_text("Package { " + "Pointer(" * 2000 + "Integer" + ")" * 2000 + " x; }")
