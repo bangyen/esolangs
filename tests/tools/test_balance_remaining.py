@@ -441,3 +441,21 @@ def test_alight_native_minimax_records_match_rendered_columns(inputs):
             "Alight", balanced, stdin=esolangs.encode_inputs("Alight", bits)
         )
         assert esolangs.read_answer("Alight", output) == table[row]
+
+
+# Smallest tables reaching each balancer's otherwise-untaken regime arm.
+@pytest.mark.parametrize(
+    ("language", "table"),
+    [
+        ("Dig", "00"),
+        ("Dig", "0000"),
+        ("Crement", "00"),
+        ("Crement", "0011"),
+        ("Minifuck", "01"),
+        ("INTERCAL", "00"),
+        ("Container", "01" * 64),
+    ],
+)
+def test_narrow_regime_edges_balance_and_execute(language, table):
+    balanced = esolangs.generate(language, table, balance=True)
+    assert _evaluate(language, balanced, inputs=len(table).bit_length() - 1) == table

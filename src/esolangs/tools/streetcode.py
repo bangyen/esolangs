@@ -265,9 +265,9 @@ def _streetcode_lift(rows: list[str]) -> list[str]:
     # The prefix runs from the ``C`` to the first blank; what follows it
     # belongs to loops the car only meets after the hairpin.
     start = lane.index("C")
-    end = lane.find(" ", start)
-    if end < 0:
-        end = len(lane)
+    end = start
+    while end < len(lane) and lane[end] != " ":
+        end += 1
 
     width = max(len(row) for row in rows)
     grid = [list(row.ljust(width)) for row in rows]
