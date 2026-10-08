@@ -49,7 +49,7 @@ def test_fractran_shares_equal_subtables() -> None:
     # A root, two nodes a level below it, two leaves: two fractions a node.
     assert len(parity.split()) - 1 == 2 * (2 * 5 - 1) + 2
     tables = [format(i, "08b") for i in range(256)]
-    assert sum(len(boolean.fractran(t)) for t in tables) == 22_376
+    assert sum(len(boolean.fractran(t)) for t in tables) == 21_674
 
 
 def _fractran_steps(template: str, n: int) -> int:
@@ -70,7 +70,7 @@ def _fractran_steps(template: str, n: int) -> int:
 def test_fractran_runs_a_step_a_level() -> None:
     """A run fires at most n + 1 fractions; a constant table clears its set inputs."""
     tables = [format(i, "08b") for i in range(256)]
-    assert sum(_fractran_steps(boolean.fractran(t), 3) for t in tables) == 9_592
+    assert sum(_fractran_steps(boolean.fractran(t), 3) for t in tables) == 9_408
     for n in range(1, 8):
         table = "".join(str((row * row + 1) % 3 & 1) for row in range(2**n))
         # The machine's count includes the step that finds it halted.

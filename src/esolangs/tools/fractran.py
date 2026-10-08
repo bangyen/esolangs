@@ -76,6 +76,9 @@ def _tree(truth_table: str, n: int) -> list[_Leaf | _Node]:
                 mid = (lo + hi) // 2
                 zero = walk(depth + 1, lo, mid)
                 one = walk(depth + 1, mid, hi)
+                if zero == one:
+                    seen[key] = zero  # halves agree: this input is never read
+                    return zero
                 nodes.append(_Node(depth, zero, one))
             seen[key] = len(nodes) - 1
         return seen[key]
@@ -110,9 +113,20 @@ def _start(states: list[int], inputs: list[int]) -> str:
     )
 
 
-def _shallowest(nodes: list[_Leaf | _Node], n: int) -> int:
-    """Return the depth of the shallowest folded leaf, or ``n`` for none."""
-    return min((e.depth for e in nodes if isinstance(e, _Leaf)), default=n)
+def _unread(nodes: list[_Leaf | _Node], n: int) -> set[int]:
+    """Return the inputs some path never reads: each needs a clear.
+
+    A path skips the depths an edge jumps over, and a leaf skips every depth
+    from its own down.
+    """
+    unread = set(range(nodes[-1].depth))
+    for entry in nodes:
+        if isinstance(entry, _Leaf):
+            unread.update(range(entry.depth, n))
+        else:
+            for child in (entry.zero, entry.one):
+                unread.update(range(entry.depth + 1, nodes[child].depth))
+    return unread
 
 
 def _plain(truth_table: str, n: int, *, small_root: bool = False) -> str:
@@ -120,7 +134,7 @@ def _plain(truth_table: str, n: int, *, small_root: bool = False) -> str:
 
     Only ``2`` is reserved, so the inputs and states take the smallest primes
     there are, and a run is a step a level, one for the leaf, and a clear for
-    each input a folded leaf left unread.
+    each input a path left unread.
     """
     nodes = _tree(truth_table, n)
     primes = _primes(1 + n + len(nodes))
@@ -128,7 +142,8 @@ def _plain(truth_table: str, n: int, *, small_root: bool = False) -> str:
     if small_root:
         states[0], states[-1] = states[-1], states[0]
     fractions = _nodes(nodes, states, inputs)
-    fractions += [f"1/{prime}" for prime in inputs[_shallowest(nodes, n) :]]
+    unread = _unread(nodes, n)
+    fractions += [f"1/{p}" for depth, p in enumerate(inputs) if depth in unread]
     return " ".join([_start(states, inputs), *fractions])
 
 

@@ -241,12 +241,14 @@ and unused.
 
 *Construction.* Build the decision tree over the inputs in order, and give
 equal subtables at one depth one state prime: a node many prefixes reach is
-written once, so the tree becomes a decision diagram. A node owns two
+written once, so the tree becomes a decision diagram. A node whose halves
+agree is not written at all: its parent points past it. A node owns two
 fractions, `one / (state * p_d)` dividing by its depth's input prime, then
 `zero / state` serving as FRACTRAN's own else. A constant subtable is a leaf,
 `2 / state` or `1 / state`, and trailing `1 / p` fractions clear the inputs a
-folded leaf left unread. Only `2` is reserved: the inputs take the next `n`
-primes and the states the ones after, in post-order, root last.
+path left unread, below a folded leaf or at a skipped node. Only `2` is
+reserved: the inputs take the next `n` primes and the states the ones after,
+in post-order, root last.
 
 *Correctness.* The value holds exactly one state prime, and every state
 fraction's guard is that state times at most one input prime, so only the
@@ -265,8 +267,8 @@ where `2**(n-d)` is about `d`, and each falls geometrically away from the
 crossing, so `C = O(2**d*) = O(T / log T)`. Every fraction names at most
 three primes, each `O(log T)` digits by the prime number theorem, so
 `D = O(C log T) = O(T)`. A run descends a level a firing, fires its leaf,
-and clears each set input below the leaf: at most `d + 1 + (n - d) = n + 1`
-firings. Its value is one state prime and at most `n` input primes,
+and clears each set input it skipped: each depth costs one read or at most
+one clear, so a run fires at most `n + 1` fractions. Its value is one state prime and at most `n` input primes,
 `O(log T + n log n)` bits.
 
     Corollary 16 (language size complexity). The worst-case rendered size
@@ -278,13 +280,13 @@ the shipped builder and for the row-addressing tree, and the states built
 against `C`:
 
     n     T       D        D/T     tree      tree/T   states   C
-    8     256     1483     5.79    4696      18.34    85       85
-    10    1024    4844     4.73    21514     21.01    248      277
-    12    4096    15980    3.90    96624     23.59    748      789
-    14    16384   55028    3.36    426120    26.01    2319     2325
+    8     256     1391     5.43    4696      18.34    80       85
+    10    1024    4697     4.59    21514     21.01    242      277
+    12    4096    15622    3.81    96624     23.59    733      789
+    14    16384   54374    3.32    426120    26.01    2298     2325
 
-`D/T` declines while the tree's climbs. A random table reaches `C` at
-`n = 8` and comes within 0.3% of it at `n = 14`.
+`D/T` declines while the tree's climbs. A random table builds within 6%
+of `C` at `n = 8` and within 1.2% at `n = 14`.
 
 ## Size-time frontier
 

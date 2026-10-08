@@ -140,7 +140,7 @@ super-linear area); it is intentionally excluded from execution time.
 FRACTRAN's row-addressing tree costs `Theta(T log T)`, but that is not a
 language floor. The shipped generator gives equal subtables one state, so
 it names `O(T / log T)` primes of `O(log T)` digits: `Theta(T)` text, and at
-most `n + 1` fractions fire a run. At n=12 it emits 3.90 characters per entry
+most `n + 1` fractions fire a run. At n=12 it emits 3.81 characters per entry
 versus 23.6 for the tree. The construction and the counting floor are in
 [fractran](proofs/fractran.md) and `tests/proofs/deep/fractran_shared.py`.
 
