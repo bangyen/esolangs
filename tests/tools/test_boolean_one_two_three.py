@@ -254,99 +254,6 @@ class TestParameterizedOneTwoThree:
                 assert p1 == p0, k
                 assert t1 == t0 ^ (1 << (p0 + k + _RING)), k
 
-    def test_paint_all_sweeps_the_span_once(self) -> None:
-        """The fused painter flips an arbitrary mask in one linear sweep."""
-        from esolangs.tools.one_two_three.construction import (
-            _RING,
-            _WORK_BUDGET,
-            _Builder,
-            _paint_all,
-            _work,
-        )
-
-        _work[0] = _WORK_BUDGET
-        b = _Builder(2)
-        for row, pos in zip(b.rows, (1, 5, 29, 41), strict=True):
-            row.pos = pos
-        before = [(r.pos, r.tape) for r in b.rows]
-        _paint_all(b, [1, 3, 6])
-        assert b.template() == "222222112112111211"
-        delta = sum(1 << k for k in (1, 3, 6))
-        for (p0, t0), row in zip(before, b.rows, strict=True):
-            assert row.pos == p0
-            assert row.tape == t0 ^ (delta << (p0 + _RING))
-
-    def test_paint_all_replays_mixed_runs_exactly(self) -> None:
-        """A conditional sweep replays ``21`` as two different commands."""
-        from esolangs.tools.one_two_three.construction import (
-            _RING,
-            _WORK_BUDGET,
-            _Builder,
-            _paint_all,
-            _work,
-        )
-
-        _work[0] = _WORK_BUDGET
-        b = _Builder(1)
-        b.rows[1].tape = 1 << (2 + _RING)
-        b.run("2221")
-        _paint_all(b, [7])
-        b.test()
-        assert [row.pos for row in b.rows] == [2, 4]
-        assert all((row.tape >> (9 + _RING)) & 1 for row in b.rows)
-        assert not (b.rows[0].tape >> (11 + _RING)) & 1
-        assert (b.rows[1].tape >> (11 + _RING)) & 1
-
-    def test_the_verdict_checks_its_position_preconditions(self) -> None:
-        """A state violating the parity law raises instead of emitting."""
-        from esolangs.tools.one_two_three.construction import (
-            _WORK_BUDGET,
-            ConstructError,
-            _Builder,
-            _verdict,
-            _work,
-        )
-
-        _work[0] = _WORK_BUDGET
-        even = _Builder(1)
-        even.rows[0].pos, even.rows[1].pos = 2, 5
-        with pytest.raises(ConstructError, match="precondition"):
-            _verdict(even, "01")
-
-        shared = _Builder(1)
-        shared.rows[0].pos = shared.rows[1].pos = 5
-        with pytest.raises(ConstructError, match="precondition"):
-            _verdict(shared, "01")
-
-        all_zero = _Builder(1)
-        all_zero.rows[0].pos, all_zero.rows[1].pos = 2, 5
-        _verdict(all_zero, "00")  # no 1-rows: nothing to prove, no check
-
-    @pytest.mark.parametrize("n", [1, 2, 3])
-    def test_small_geometry_separates_every_row(self, n: int) -> None:
-        """The modeled route's complete arity domain needs no geometry probe."""
-        from esolangs.tools.one_two_three import construction as module
-
-        module._work[0] = module._WORK_BUDGET  # noqa: SLF001
-        marks, escapes = module._geometry(n)  # noqa: SLF001
-        builder = module._Builder(n)  # noqa: SLF001
-        module._phase_a(builder, list(marks))  # noqa: SLF001
-        module._close(builder)  # noqa: SLF001
-        module._separate(builder, list(marks), escapes)  # noqa: SLF001
-        rows = builder.live()
-        assert len(rows) == 1 << n
-        assert len({row.pos for row in rows}) == len(rows)
-        assert all(row.pos % 2 for row in rows)
-        assert not any(module._on_mark(row) for row in rows)  # noqa: SLF001
-        assert all(row.tape >> (row.pos + 1 + module._RING) == 0 for row in rows)  # noqa: SLF001
-
-    @pytest.mark.parametrize("n", [0, 4])
-    def test_geometry_rejects_other_arities(self, n: int) -> None:
-        from esolangs.tools.one_two_three.construction import _geometry
-
-        with pytest.raises(ValueError, match="one through three"):
-            _geometry(n)
-
     def test_linear_endgame_parks_all_four_residues(self) -> None:
         from esolangs.tools.one_two_three import construction as module
 
@@ -359,20 +266,6 @@ class TestParameterizedOneTwoThree:
             for command in program:
                 module._exec_char(row, command)  # noqa: SLF001
             assert row.pos == -1
-
-    def test_an_exhausted_work_budget_is_declined(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """Budget exhaustion aborts without changing the mark geometry."""
-        from esolangs.tools.one_two_three import construction as module
-
-        geometry = module._geometry(3)  # noqa: SLF001
-        with monkeypatch.context() as patch:
-            patch.setattr(module, "_WORK_BUDGET", 50)
-            with pytest.raises(ValueError, match="work budget ran out"):
-                module.construct("00000000")
-        assert module._geometry(3) == geometry  # noqa: SLF001
-        assert module.construct("00000000")
 
     def test_normalize_reports_a_live_locked_ring(self) -> None:
         """Four distinct rows pinned to all four ring cells cannot escape."""
@@ -397,28 +290,6 @@ class TestParameterizedOneTwoThree:
         _work[0] = 100_000  # _normalize is called outside construct() here
         with pytest.raises(ConstructError, match="live-locked"):
             _normalize(b)
-
-    def test_close_reports_no_clean_cell_in_range(self) -> None:
-        """A row TRUE on every cell in the search window has no exit."""
-        from esolangs.tools.one_two_three.construction import (
-            ConstructError,
-            _Builder,
-            _close,
-            _Row,
-            _work,
-        )
-
-        row = _Row((0,))
-        row.pos = 0
-        row.tape = _mask(range(100002))
-        b = _Builder.__new__(_Builder)
-        b.n = 1
-        b.chunks = []
-        b.seg = []
-        b.rows = [row]
-        _work[0] = 10_000_000  # _close is called outside construct() here
-        with pytest.raises(ConstructError, match="no clean closing cell"):
-            _close(b)
 
     def test_fixpoint_reports_a_non_converging_rerun(self) -> None:
         """A segment that never revisits a state within the cap gives up."""
@@ -603,27 +474,12 @@ class TestParameterizedOneTwoThree:
         with pytest.raises(ConstructError, match="endgame did not converge"):
             _endgame(stranded)
 
-    def test_a_stage_refusal_surfaces_as_a_value_error(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """A stage that cannot prove its move is reported, never worked
-        around -- the alternative is emitting a template no stage proved.
-        """
-        from esolangs.tools.one_two_three import construction as module
-
-        def refuse(*_: object, **__: object) -> None:
-            raise module.ConstructError("verdict precondition: constructed refusal")
-
-        monkeypatch.setattr(module, "_verdict", refuse)
-        with pytest.raises(ValueError, match="123 construction failed"):
-            module.construct("0110")
-
     def test_a_looping_row_reads_as_a_one(self) -> None:
         """A 1-row is decided by cycle detection, not by halting."""
-        from esolangs.tools.one_two_three.construction import construct
+        from esolangs import tools as generators
         from tests.tools.one_two_three_support import _replay_verdict
 
-        template = construct("01")
+        template = generators.one_two_three("01")
         for bit in (0, 1):
             program = self.instantiate(template, [bit])
             assert self.run(program) == "01"[bit], bit
@@ -676,33 +532,6 @@ class TestParameterizedOneTwoThree:
         steps.pos = 4
         _exec_char(steps, "2")
         assert steps.pos == 5
-
-    def test_closing_walks_only_when_a_row_sits_on_a_true_cell(self) -> None:
-        """``_close`` emits the walk it needs and nothing when already clean."""
-        from esolangs.tools.one_two_three.construction import (
-            _RING,
-            _WORK_BUDGET,
-            _Builder,
-            _close,
-            _work,
-        )
-
-        _work[0] = _WORK_BUDGET
-        already_clean = _Builder(1)
-        _close(already_clean)
-        assert "2" not in "".join(already_clean.chunks)
-
-        _work[0] = _WORK_BUDGET
-        needs_a_walk = _Builder(1)
-        needs_a_walk.run("1")  # flips cell 0 TRUE and steps into the ring
-        _close(needs_a_walk)
-        emitted = "".join(needs_a_walk.chunks)
-        assert "2" in emitted
-        # Every row ends on a cell that is FALSE, which is what "closed" means.
-        assert all(
-            row.pos >= 0 and not row.tape >> (row.pos + _RING) & 1
-            for row in needs_a_walk.live()
-        )
 
     def test_replaying_twos_handles_the_empty_walk_and_the_stdin_cell(self) -> None:
         """A zero-width run is a no-op; a run starting at -3 is refused."""

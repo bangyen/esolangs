@@ -13,29 +13,26 @@ displacement-neutral ``12``/``21`` setter, not the language: the ±1
 setter here displaces the fills oppositely, so the looping set need not
 be upward-closed.
 
-Construction (``n <= 3``; wider tables go unchanged to
+Construction (``n <= 3``; wider tables go to
 :mod:`esolangs.tools.one_two_three.construction`):
 
 1. **Seed** ``"2"*w0 $ "2"*w1 $ ... "33"`` -- the fills are the
    embedding; ``33`` closes at the first offset where no row sits on a
-   mark (bounded first-fit, like the wider ``_close``).
+   mark (bounded first-fit).
 2. **Separation** -- a frozen per-arity schedule of even-displacement
    walk/descend segments each closed by ``33``, ending with every row at
    a distinct odd position.  Frozen constants, replayed on the exact
    model, never searched at build time; up to four laws per arity are
    candidates, and the shortest template wins.
-3. **Verdict** -- the wider pipeline's planned kill on a junky tape: one
-   paint per row whose tested cell disagrees with the table's demand;
-   distinct odd positions keep paint offsets collision-free.
-4. **Endgame** -- the wider pipeline's, reused.
+3. **Verdict** -- a planned kill on a junky tape: one paint per row whose
+   tested cell disagrees with the table's demand; distinct odd positions
+   keep paint offsets collision-free.
+4. **Endgame** -- ``_endgame`` parks the survivors below zero.
 
 The suite's exhaustive ``n <= 3`` sweep on the real interpreter is what
-pins the schedules.  Retired stored plans (see git history) averaged
-5.75/11.44/19.97 characters at one/two/three inputs; the constructed
-route averages 20.0/48.1/136.1 (3.5x/4.2x/6.8x) because 102 of the 256
-three-input plans were search-found witnesses with no rule.  Every
-template loops by a proven state revisit, never unbounded growth, or
-the harness would hang instead of reporting a 1; the suite checks it.
+pins the schedules.  Every template loops by a proven state revisit, never
+unbounded growth, or the harness would hang instead of reporting a 1; the
+suite checks it.
 """
 
 from __future__ import annotations
@@ -61,43 +58,35 @@ from esolangs.tools.one_two_three.construction import (
     _on_mark,
     _paint,
     _table_val,
+    _tested,
     _work,
+    _WorkExhaustedError,
     construct,
 )
 
 __all__ = ["one_two_three"]
 
-#: The input fills.  One character each, so instantiations are equal length;
-#: the construction names them, and this re-exports its pair.
+#: The input fills, re-exported from the construction.
 ONE, ZERO = _ONE, _ZERO
 #: Each input's embed: the generator's own ``ZERO``/``ONE`` command.
 PAIR = (ZERO, ONE)
 
-#: One separation law: the walk before each fill, then the alternating test
-#: displacements.
-#:
-#: Both parts are one *shape*, not a set of answers.  The seed walks a fixed
-#: distance before each fill; separation
-#: alternates ``"1"``-runs and ``"2"``-runs, one displacement each, with
-#: no raw repositioning.  Every displacement is closed by its own ``33``:
-#: rows whose tested cell is marked re-run the segment and escape, rows
-#: whose cell is clear skip.  That split is what separates -- rows differ
-#: in their *marks* after a bare fill, not their positions, so a walk
-#: alone can never split them.
+#: One separation law: the walk before each fill, then the alternating
+#: ``1``/``2`` test displacements, each closed by its own ``33``.  Rows whose
+#: tested cell is marked re-run the segment and escape, rows whose cell is
+#: clear skip: rows differ in their *marks* after a bare fill, not their
+#: positions, so a walk alone can never split them.
 type _Law = tuple[tuple[int, ...], tuple[int, ...]]
 
 #: The separation laws per small arity, each a named candidate.
 #:
-#: These are *derived* constants, not a frozen search log.  The first is,
-#: over constant seeds and alternating displacement vectors, the law with
-#: the least mean template length.  Each law puts the rows at different
-#: positions, so the paints and the kill height differ by table, and the
-#: rest are a greedy cover: over seeds of 0..6 per fill and up to four
-#: displacements of 1..10, each is the law that most shrinks the total over
-#: every table given the candidates before it (the first law and the wide
-#: chain), at most four laws in all.  Both rules are re-derived in
-#: ``tests/tools/test_boolean_one_two_three_laws.py``.  A failing law could
-#: only raise, never mis-emit, and the exhaustive sweep re-proves each.
+#: Derived, not a frozen search log.  The first law has the least mean
+#: template length over constant seeds and alternating displacement vectors;
+#: the rest are a greedy cover (seeds 0..6 per fill, up to four displacements
+#: of 1..10): each most shrinks the total over every table given the laws
+#: before it and the wide chain, at most four in all.  Both rules are
+#: re-derived in ``tests/tools/test_boolean_one_two_three_laws.py``.  A
+#: failing law could only raise, never mis-emit.
 _LAWS: dict[int, tuple[_Law, ...]] = {
     1: (((0,), ()), ((1,), (1, 2, 2)), ((0,), (2,))),
     2: (
@@ -176,7 +165,7 @@ def _verdict_junky(b: _Builder, table: str) -> None:
     for r in sorted(live, key=lambda row: row.pos):
         if r.pos >= a:
             continue
-        tested = a if (a - r.pos) % 4 == 0 else a - 1
+        tested = _tested(a, r.pos)
         have = bool(r.tape >> (tested + _RING) & 1)
         want = _table_val(table, r.bits) == "0"
         if have != want:
@@ -200,7 +189,10 @@ def _construct_small(truth_table: str, n: int, law: int = 0) -> str:
         b = _separated(n, law).clone()
         _verdict_junky(b, truth_table)
         _endgame(b)
-    except ConstructError as exc:  # pragma: no cover - the sweep proves coverage
+    except (
+        ConstructError,
+        _WorkExhaustedError,
+    ) as exc:  # pragma: no cover - the sweep proves coverage
         raise ValueError(f"123 construction failed for {truth_table!r}: {exc}") from exc
     return b.template()
 

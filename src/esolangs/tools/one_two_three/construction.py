@@ -1,29 +1,21 @@
-r"""Constructed 123 templates for four and more inputs.
+r"""Constructed 123 templates for the wide route and the small route's helpers.
 
 Same contract as :mod:`esolangs.tools.one_two_three`: each run once in
 name order, ``1`` a one and ``2`` a zero, halt for a 0 entry and a proven
 loop for a 1.
 
-At four inputs and up :func:`_construct_linear` emits by rule, one
-segment per input: **the fill is the splitter**.  A one flips the cell
-under it and steps left, a zero steps right, so the branches part by two
-and the ``33`` sees the flip; the set-bit branch then replays twice,
-because a replay is the first pass translated by its own displacement and
-:func:`_segment` picks which cells it marks so that the third landing
-cell, not the second, comes up clear.  Replays cost displacement and no
-source, so the same split needs half the walk.  Nothing is pre-painted,
-and the marks each pass leaves are read by the verdict, not cleared.
+:func:`_construct_linear` emits by rule, one segment per input: **the fill
+is the splitter**.  A one flips the cell under it and steps left, a zero
+steps right, so the branches part by two and the ``33`` sees the flip; the
+set-bit branch then replays twice, because a replay is the first pass
+translated by its own displacement and :func:`_segment` picks which cells
+it marks so that the third landing cell, not the second, comes up clear.
+Replays cost displacement and no source, so the same split needs half the
+walk.  Nothing is pre-painted, and the marks each pass leaves are read by
+the verdict, not cleared.
 
-Below four inputs :func:`construct` runs the older modelled pipeline --
-:func:`_phase_a` embeds each bit as a mark and re-merges the branches,
-:func:`_separate` walks a decode tree onto the geometry
-:func:`_geometry` picks, :func:`_verdict` shields each 0-row and fires
-one kill, :func:`_endgame` parks the survivors below zero.  Every stage
-there is validated on an exact model while emitting, and raises rather
-than ship an unproven template.
-
-Neither route replays what it emitted; the suite runs emitted programs on
-the real interpreter, exhaustively at ``n <= 3``.  :func:`_replay_verdict`
+Nothing replays what it emitted; the suite runs emitted programs on the
+real interpreter, exhaustively at ``n <= 3``.  :func:`_replay_verdict`
 is a separate 123 interpreter for those tests, checked against the real
 one on random programs.
 """
@@ -34,7 +26,6 @@ from esolangs.tools.helpers import TEMPLATE_CHAR
 
 __all__ = ["ConstructError", "construct"]
 
-#: Fill characters, shared with the stored-plan module's contract.
 #: The fills: one character each, so instantiations are equal length.  The
 #: template spells each input as a run of :data:`TEMPLATE_CHAR` this wide.
 _ONE, _ZERO = "1", "2"
@@ -63,7 +54,7 @@ type _Token = str | tuple[str, int]
 class ConstructError(Exception):
     """A stage of the construction found no valid move.
 
-    :func:`construct` turns it into :class:`ValueError`.
+    The small route turns it into :class:`ValueError`.
     """
 
 
@@ -91,7 +82,7 @@ class _Row:
         self.dead = False
 
 
-#: Remaining work budget for the current :func:`construct` call, counted
+#: Remaining work budget for the current small-route build, counted
 #: in simulated commands — machine-independent, so the same table either
 #: builds or raises identically everywhere.  A list so the counter can be
 #: decremented in place from :func:`_exec_char`.
@@ -122,6 +113,13 @@ def _exec_char(row: _Row, ch: str) -> None:
         raise AssertionError(ch)
 
 
+def _charge(w: int) -> None:
+    """Spend ``w`` simulated commands; raise when the budget runs out."""
+    _work[0] -= w
+    if _work[0] < 0:
+        raise _WorkExhaustedError
+
+
 def _exec_run(row: _Row, ch: str, w: int) -> None:
     """Apply ``ch`` repeated ``w`` times to one row.
 
@@ -133,9 +131,7 @@ def _exec_run(row: _Row, ch: str, w: int) -> None:
     """
     if w and row.pos >= 0:
         if ch == _ZERO:
-            _work[0] -= w
-            if _work[0] < 0:
-                raise _WorkExhaustedError
+            _charge(w)
             row.pos += w
             return
         if row.pos - w >= -1:
@@ -144,9 +140,7 @@ def _exec_run(row: _Row, ch: str, w: int) -> None:
             # the cells pos-w+1..pos are contiguous, hence one XOR with a
             # w-bit mask.  Below -1 the ring's -4 -> 0 wrap and the read
             # at -3 both matter, so that case stays per-character.
-            _work[0] -= w
-            if _work[0] < 0:
-                raise _WorkExhaustedError
+            _charge(w)
             row.tape ^= ((1 << w) - 1) << (row.pos - w + 1 + _RING)
             row.pos -= w
             return
@@ -154,9 +148,7 @@ def _exec_run(row: _Row, ch: str, w: int) -> None:
         # A descent that runs past -1 splits at the ring boundary: the
         # part above it is the contiguous-XOR case, and the rest laps.
         head = row.pos + 1
-        _work[0] -= head
-        if _work[0] < 0:
-            raise _WorkExhaustedError
+        _charge(head)
         row.tape ^= ((1 << head) - 1) << _RING
         row.pos = -1
         w -= head
@@ -168,9 +160,7 @@ def _exec_run(row: _Row, ch: str, w: int) -> None:
         # ``w % 4`` steps have to be walked.  This is the kill segment's
         # inner loop, where the descents run hundreds of cells deep.
         laps, rest = divmod(w, 4)
-        _work[0] -= w - rest
-        if _work[0] < 0:
-            raise _WorkExhaustedError
+        _charge(w - rest)
         if laps & 1:
             row.tape ^= 0b1111  # cells -3..0, i.e. bits 0..3
         for _ in range(rest):
@@ -183,9 +173,7 @@ def _exec_run(row: _Row, ch: str, w: int) -> None:
         _exec_char(row, ch)
         w -= 1
         if w:
-            _work[0] -= w
-            if _work[0] < 0:
-                raise _WorkExhaustedError
+            _charge(w)
             row.pos += w
         return
     for _ in range(w):
@@ -385,85 +373,6 @@ def _normalize(b: _Builder) -> None:
         seen.add(key)
 
 
-def _close(b: _Builder) -> None:
-    """Walk right until every live row sits on a FALSE cell, then test."""
-    _normalize(b)
-    probe = b.clone()
-    for w in range(100001):
-        if all(r.pos >= 0 and not r.tape >> (r.pos + _RING) & 1 for r in probe.live()):
-            if w:
-                b.run("2" * w)
-            b.test()
-            return
-        for row in probe.live():
-            _exec_char(row, "2")
-    raise ConstructError("no clean closing cell")
-
-
-def _phase_a(b: _Builder, marks: list[int]) -> None:
-    """Embed every input, merge back to position 0, and scrub the blob.
-
-    ``marks[i] = P_i + 1``.  The fill+merge flips ``[0, P+1]`` (0 row) or
-    ``[0, P]`` (1 row); one more synchronized walk-descend-pop re-flips the
-    junk identically, leaving one mark at ``P+1`` per set bit.
-    """
-    for i, m in enumerate(marks):
-        p = m - 1
-        b.run("2" * p)
-        b.fill(i)
-        b.run("1" * (p + 1) + "212112")
-        b.run("2" * m + "1" * (m + 1) + "2")
-        if {r.pos for r in b.live()} != {0}:  # pragma: no cover - invariant
-            raise ConstructError("merge failed to re-synchronize")
-
-
-def _separate(b: _Builder, marks: list[int], ws: tuple[int, ...]) -> None:
-    """Give every row a unique position by a planned decode tree.
-
-    Level ``i`` walks each same-position group, highest first, onto
-    ``marks[i]``, where ``33`` splits it by bit ``i``.  Each visit is a shift
-    ``"2"*s + "33"`` then a test ``"2"*w + "33"``, so the escape offset ``w``
-    is decoupled from the distance. Fixed even escapes sum to
-    ``2**(n + 1) - 2``, below the mark spacing. This route is used only
-    at one through three inputs, whose row states are checked exhaustively.
-    """
-    for i, mk in enumerate(marks):
-        for _visit in range(2**b.n + 1):
-            pending = [p for p in {r.pos for r in b.live()} if p < mk]
-            if not pending:
-                break
-            d = mk - max(pending)
-            w = ws[i]
-            if d < w:  # pragma: no cover - the probed arities all pass
-                raise ConstructError(f"level {i}: walk {d} under escape {w}")
-            # `d < w` is refused above, and the planned walk always
-            # overshoots the escape, so this always runs.
-            if d > w:  # pragma: no branch
-                b.run("2" * (d - w))
-                b.test()
-            b.run("2" * w)
-            b.test()
-        else:  # pragma: no cover - 2**n groups is the exact worst case
-            raise ConstructError(f"level {i} did not converge")
-    poss = [r.pos for r in b.live()]
-    if len(set(poss)) != len(poss):  # pragma: no cover - invariant
-        raise ConstructError("separation left shared positions")
-
-
-def _geometry(n: int) -> tuple[tuple[int, ...], tuple[int, ...]]:
-    """Return tight marks and binary escapes for the small modeled pipeline.
-
-    Four and more inputs use :func:`_construct_linear`; the three remaining
-    geometries satisfy the separation invariants on every input row.
-    """
-    if not 1 <= n <= 3:
-        raise ValueError("modeled geometry requires one through three inputs")
-    return (
-        tuple((i + 1) * 2 ** (n + 1) + 1 for i in range(n)),
-        tuple(2 ** (n - i) for i in range(n)),
-    )
-
-
 def _paint(b: _Builder, k: int) -> None:
     """Flip exactly cell ``pos + k`` for every live row, positions kept.
 
@@ -475,82 +384,6 @@ def _paint(b: _Builder, k: int) -> None:
     b.run("2" * k + "1" * k)
     if k > 1:
         b.run("2" * (k - 1) + "1" * (k - 1))
-
-
-def _paint_all(b: _Builder, offsets: list[int]) -> None:
-    """Paint every offset in one outward-and-back sweep.
-
-    Walk to the highest target, descend; an unselected cell gets a ``21``
-    excursion so it flips twice.  At most four commands per cell, one XOR
-    per tracked row.  Offsets must be distinct (a clash is a broken precondition).
-    """
-    if any(k < 1 for k in offsets):  # pragma: no cover - the verdict computes k >= 1
-        raise ConstructError("a paint offset is not above the row")
-    if len(set(offsets)) != len(offsets):  # pragma: no cover - positions are odd
-        raise ConstructError("two shields aim at one offset")
-    live = b.live()
-    if any(r.pos < 0 for r in live):  # pragma: no cover - separation leaves pos >= 1
-        raise ConstructError("a shield would walk out of the ring")
-    targets = set(offsets)
-    top = max(offsets)
-    parts = [_ZERO * top]
-    for k in range(top, 0, -1):
-        parts.append(_ONE)
-        if k not in targets:
-            parts.append(_ZERO + _ONE)
-    _work[0] -= sum(map(len, parts)) * len(live)
-    if _work[0] < 0:
-        raise _WorkExhaustedError
-    delta = 0
-    for k in offsets:
-        delta |= 1 << k
-    for row in live:
-        row.tape ^= delta << (row.pos + _RING)
-    source = "".join(parts)
-    # ``parts`` includes mixed ``"21"`` excursions, while ``seg`` stores
-    # maximal homogeneous runs.  Most callers close on a false cell and
-    # never replay the sweep; conditional painting does, so preserving a
-    # mixed part as one token would replay it as two ``2`` commands.
-    b.seg.extend(_run_parts(source))
-    b.chunks.append(source)
-
-
-def _verdict(b: _Builder, table: str) -> None:
-    """Shield every 0-row, then loop every 1-row with one planned kill.
-
-    With rows at distinct odd ``P(r)`` and nothing marked above, the kill
-    ``"1"*a + "2" + "2"*(a-1) + "12"`` (``a`` odd) is a closed form: a row at
-    ``p >= a`` walks back to ``p`` and tests its own unmarked cell (FALSE);
-    a row at ``p < a`` dips into the ring (odd ``a`` and ``p`` land at -1 or
-    -2, never the read at -3), pops, and tests ``a-1`` or ``a`` in its virgin
-    zone, just marked by the trailing ``1`` -- TRUE, and the second or
-    fourth pass is an exact revisit.  A pre-existing mark there is cleared
-    instead, the row tests FALSE and skips: the shield, plantable per row
-    because positions are odd and distinct.  :func:`_paint_all` plants one
-    per live 0-row, the paints are closed, and one kill sits two above the
-    highest 1-row.  Every fate is still validated by ``test(kills=...)``.
-    """
-    ones = [r for r in b.live() if _table_val(table, r.bits) == "1"]
-    if not ones:
-        return
-    live = b.live()
-    positions = [r.pos for r in live]
-    if len(set(positions)) != len(positions) or any(p % 2 == 0 for p in positions):
-        # Keep the verdict's precondition explicit even though the small
-        # geometries are exhaustively checked.
-        raise ConstructError("verdict precondition: positions not distinct odd")
-    a = max(r.pos for r in ones) + 2
-    offsets: list[int] = []
-    for r in sorted(live, key=lambda row: row.pos):
-        if r.pos >= a or _table_val(table, r.bits) == "1":
-            continue
-        tested = a if (a - r.pos) % 4 == 0 else a - 1
-        offsets.append(tested - r.pos)
-    if offsets:
-        _paint_all(b, offsets)
-        b.test()
-    b.run("1" * a + "2" + "2" * (a - 1) + "12")
-    b.test(kills=frozenset(r.bits for r in ones))
 
 
 def _endgame(b: _Builder) -> None:
@@ -594,6 +427,11 @@ def _position_after_ones(pos: int, count: int) -> int:
     if count <= pos + 1:
         return pos - count
     return (-1, -2, -3, 0)[(count - pos - 1) % 4]
+
+
+def _tested(boundary: int, pos: int) -> int:
+    """Return the cell a row at ``pos`` tests when the kill's reach is ``boundary``."""
+    return boundary if (boundary - pos) % 4 == 0 else boundary - 1
 
 
 def _linear_endgame(positions: set[int]) -> str:
@@ -704,7 +542,7 @@ def _construct_linear(truth_table: str, n: int) -> str:
         for row, pos in enumerate(positions):
             if pos >= boundary:
                 continue
-            tested = boundary if (boundary - pos) % 4 == 0 else boundary - 1
+            tested = _tested(boundary, pos)
             # Below the kill a 0-row's tested cell must end marked and a
             # 1-row's clear, so paint only where the leftovers disagree.
             if _leftover(n, row & 1, tested - pos) != (truth_table[row] == "0"):
@@ -721,9 +559,7 @@ def _construct_linear(truth_table: str, n: int) -> str:
             )
         )
         live = {
-            (boundary if (boundary - pos) % 4 == 0 else boundary - 1)
-            if pos < boundary
-            else pos
+            _tested(boundary, pos) if pos < boundary else pos
             for row, pos in enumerate(positions)
             if truth_table[row] == "0"
         }
@@ -734,48 +570,17 @@ def _construct_linear(truth_table: str, n: int) -> str:
     return "".join(out)
 
 
-#: Simulated commands a :func:`construct` call may spend before raising.
-#: Counted work, not wall clock, so the same table either builds or
-#: raises identically on every machine.
-#:
-#: The counter is charged for what is actually simulated.  It is never
-#: read by a planning decision -- only tested against zero to abort --
-#: so charging cannot change which template a table emits, only whether
-#: a diverging build is cut off.  The pipeline is planned end to end,
-#: so the budget is a divergence guard for a stage invariant breaking
-#: at an unprobed arity, not a search allowance; :func:`construct`
-#: scales it with the row count so it never becomes an arity ceiling.
+#: Simulated-command budget for the small route's builder.  Counted work,
+#: not wall clock, so a diverging build aborts identically on every machine;
+#: charging never feeds a planning decision.
 _WORK_BUDGET = 2_000_000_000
 
 
 def construct(truth_table: str) -> str:
-    """Build a 123 template for ``truth_table`` at any arity.
+    """Build a 123 template for ``truth_table`` by the wide (linear) rule.
 
-    Deterministic; every stage asserts its invariants.  Raises
-    :class:`ValueError` on a violated invariant or exhausted budget.  No
-    closing replay here (81% of a four-input call, 95% at six): the suite
-    sweeps every table at ``n <= 3`` and replays wider ones row by row on the
-    real interpreter.
+    Deterministic, no closing replay: the suite replays emitted programs row
+    by row on the real interpreter.
     """
     n = max(1, (len(truth_table) - 1).bit_length())
-    if n >= 4:
-        return _construct_linear(truth_table, n)
-    marks_t, ws = _geometry(n)
-    marks = list(marks_t)
-    _work[0] = _WORK_BUDGET * max(1, 2 ** (n - 4))
-    try:
-        b = _Builder(n)
-        _phase_a(b, marks)
-        _close(b)
-        _separate(b, marks, ws)
-        _verdict(b, truth_table)
-        _endgame(b)
-        template = b.template()
-    except _WorkExhaustedError:
-        raise ValueError(
-            f"123 construction failed for {truth_table!r}: "
-            "the work budget ran out before the build converged"
-        ) from None
-    except ConstructError as exc:
-        raise ValueError(f"123 construction failed for {truth_table!r}: {exc}") from exc
-    return template
+    return _construct_linear(truth_table, n)
