@@ -37,6 +37,11 @@ changing the program.
 
 ## Boolean generators
 
+Every path reads all n inputs in order; an ignored input is read and
+discarded, never left unread. Leaving a trailing ignored input unread would
+save 9-29% at n=7..8 on Sophie, Unlambda, Brainfuck and Factor, but would make
+a program's input consumption depend on the table.
+
 Parameterized generators embed each input exactly once. Every emitted
 character is build work. The input text must have:
 
@@ -58,9 +63,9 @@ MAMMALIAN must read in order; BF-PDA uses fixed stack order. No instruction-only
 wire is derived for 123 or Minifuck.
 
 - ArrowQueue's rotations cost 19, 39, and 63 characters at k=1, 2, 3. Their
-  2.1% gain misses the 5% bar, so plain order ships (d5bac32).
-- Circuit Diagram gains 3.5% over four orders on the seeded five-input sample.
-  A fifth, sharing-scored order reaches 5.6% but violates the cap.
+  2.1% gain misses the 10% bar, so plain order ships (d5bac32).
+- Circuit Diagram's default path builds the identity order: four orders save
+  8.48% of area at n=7, under the 10% bar. Width requests still try four.
 - Factor subtree dispatch loses 1.0% at three inputs and gains 3.4% at five.
   Brainfuck lacks a cheaper jump, call, or label.
 - 123 has one straight-line stream per row. Its table-dependent paint sweep is
