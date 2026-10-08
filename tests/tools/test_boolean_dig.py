@@ -65,10 +65,20 @@ class TestDig:
         assert len(banded) < len(flat)
         assert boolean.dig(table, width=18) == banded
 
-    def test_a_constant_table_is_one_line(self) -> None:
-        """Nothing to branch on, so the whole grid is a single leaf."""
+    def test_a_constant_table_is_one_column(self) -> None:
+        """Nothing to branch on: one column of reads beats the row on area."""
         program = boolean.dig("1111")
-        assert program.split("\n") == ["'", ">$5~~1:@"]
+        assert program.split("\n") == ["'", "$", "5", "~", "~", "1", ":", "@"]
+
+    def test_a_constant_leaf_is_a_row_of_reads(self) -> None:
+        """A constant half sizes its own box, so the grid shrinks."""
+        import random
+
+        rng = random.Random(3)
+        half = "".join(rng.choice("01") for _ in range(64))
+        mixed = boolean.dig(half + "0" * 64).split("\n")
+        full = boolean.dig(half + half[::-1]).split("\n")
+        assert len(mixed) * max(map(len, mixed)) < len(full) * max(map(len, full))
 
     def test_constant_subtrees_prune_their_rows(self) -> None:
         """A folded node's descendants are never written."""
