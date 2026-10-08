@@ -174,7 +174,12 @@ FORMULAS: dict[str, tuple[Callable[[int, str], float], bool, tuple[int, ...]]] =
         True,
         (6,),
     ),
-    "Back": (lambda n, _: max(2**n, 6 * n - 1) + 2**n + 3 * n + 6, False, (3, 5)),
+    # Shared one-edges cap the tree at 3T/4 + 1 rows (n=3,4 exhaustive).
+    "Back": (
+        lambda n, _: max(3 * 2**n // 4 + 1, 6 * n - 1) + 3 * 2**n // 4 + 1 + 3 * n + 6,
+        True,
+        (3, 5, 6),
+    ),
     "Bitwise Cyclic Tag": (lambda n, _: 5 * 2**n + n, True, (3, 5)),
     "BIO": (lambda n, _: 18 * 2**n - 10 * n + 30, False, (3, 5)),
     "bit~": (lambda n, _: 7 * 2**n + 17 * n + 92, True, (3, 5)),
@@ -272,6 +277,15 @@ def _tables(name: str, n: int) -> tuple[str, ...]:
         tables += ("10" + "01" * (width // 2 - 1),)
     if name == "123" and n >= 4:
         tables += (_one_two_three_worst(n),)
+    if name == "Back":
+        # Rudin-Shapiro (parity of 11 pairs in the row), complemented at odd n
+        # and with row 1 flipped: the most rows its one-edges cannot share.
+        tables += (
+            "".join(
+                str(bin(i & i >> 1).count("1") % 2 ^ n % 2 ^ (i == 1))
+                for i in range(width)
+            ),
+        )
     if name == "Unsquare" and n >= 6:
         # Ends of one cell, runs of 12 and 14 between: 12a + 14b = 2**(n-1) - 1.
         b = (2 ** (n - 1) - 1) % 6
