@@ -41,6 +41,9 @@ def _advance(
 class _Machine:
     """The run state: the data cell and the code position."""
 
+    # ``ind`` counts source characters.  If it indexes anything else (parsed
+    # tokens, a grid, a frame stack), set ``ip_shape`` -- see ``vm.ip_shape``.
+
     def __init__(self, code: str, io: IO) -> None:
         self.code = code
         self.io = io
@@ -72,6 +75,9 @@ class _Machine:
 
         The shell: the two ports live here and nothing else does.
         """
+        # A halted machine ignores a further step (``contract.py`` checks).
+        if self.halted:
+            return
         c = self.code[self.ind]
 
         # A read is taken before the transition and passed as an argument.

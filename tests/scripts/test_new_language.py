@@ -14,10 +14,14 @@ def test_scaffold_creates_source_and_test(
     template.parent.mkdir(parents=True)
     template.write_text('"""Template for a new esolang interpreter.\n"""\n')
     monkeypatch.setattr(new_language, "ROOT", tmp_path)
-    source, test = new_language.scaffold("Tiny Lang", "other")
-    assert source.name == "tiny_lang.py"
+    source, test, generator, generator_test = new_language.scaffold(
+        "Tiny Lang", "other"
+    )
+    assert source.name == generator.name == "tiny_lang.py"
     assert test.name == "test_tiny_lang.py"
+    assert generator_test.name == "test_boolean_tiny_lang.py"
     assert "Interpreter for Tiny Lang." in source.read_text()
+    assert "def tiny_lang(truth_table: str) -> str:" in generator.read_text()
 
 
 def test_scaffold_refuses_overwrite(
@@ -38,3 +42,22 @@ def test_a_python_keyword_is_refused() -> None:
     """``class`` scaffolded ``from esolangs.interpreters.other.class import``."""
     with pytest.raises(ValueError, match="keyword"):
         new_language._slug("class")  # noqa: SLF001
+
+
+def test_an_interpreter_only_language_gets_no_generator(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    template = tmp_path / "src/esolangs/interpreters/_template.py"
+    template.parent.mkdir(parents=True)
+    template.write_text("template")
+    monkeypatch.setattr(new_language, "ROOT", tmp_path)
+    paths = new_language.scaffold("Tiny", "other", generator=False)
+    assert [path.name for path in paths] == ["tiny.py", "test_tiny.py"]
+
+
+@pytest.mark.parametrize(
+    ("name", "slug"), [("123", "one_two_three"), ("Piet++", "piet_plus_plus")]
+)
+def test_the_slug_is_the_registry_id(name: str, slug: str) -> None:
+    """A second slug rule refused ``123`` and gave Piet++ Piet's file."""
+    assert new_language._slug(name) == slug  # noqa: SLF001
