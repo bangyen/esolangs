@@ -16,7 +16,7 @@ from typing import Any
 from esolangs.interpreters.stack_based.piet import _COLOURS, BLACK
 from esolangs.raster import Raster
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language, SourceKind
+from esolangs.registry._language import Example, Language, SourceKind
 from esolangs.tools.helpers import _validate_truth_table, essential_inputs, read_at
 
 Change = tuple[int, int]
@@ -279,4 +279,5 @@ LANGUAGE = Language(
     contract=BooleanContract(note="80 pixels per codel, comparable in area to Line"),
     balance=_balance,
     eof="an exhausted input command is ignored, as the spec requires",
+    example=Example(scale=80),
 )

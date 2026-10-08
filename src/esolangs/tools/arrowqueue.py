@@ -8,7 +8,7 @@ Narrow paths drop ignored inputs too (area -46.8% / -70.5% at n=8, 1 / 2 ignored
 """
 
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
+from esolangs.registry._language import Example, Language
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
@@ -124,4 +124,5 @@ LANGUAGE = Language(
     ),
     balance=_balance,
     no_wrap="the queue and decision tree occupy fixed grid coordinates",
+    example=Example(pair=PAIR, expected="0 1 2 3"),
 )

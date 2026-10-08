@@ -5,7 +5,7 @@ cannot be trimmed: the cursor ``>`` is left undecoded (116 of 126 wrong).
 """
 
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
+from esolangs.registry._language import Example, Language
 from esolangs.tools.helpers import TEMPLATE_CHAR, _validate_truth_table, input_weights
 
 _UNARY = "/b/a*//*a/a**//a//"
@@ -66,4 +66,5 @@ LANGUAGE = Language(
         parameterized=True,
     ),
     no_wrap="newlines are literal output and substitution data",
+    example=Example(pair=("a", "b")),
 )

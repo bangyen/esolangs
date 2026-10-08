@@ -1,7 +1,7 @@
 """Boolean-function generator for RAM0."""
 
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
+from esolangs.registry._language import Example, Language
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
@@ -216,4 +216,5 @@ LANGUAGE = Language(
     # only safe break.
     wrap=wrap_space_delimited,
     balance=_balance,
+    example=Example(pair=PAIR, expected="z: 0\nn: 0\nram: {\n    1: 0,\n    0: 1\n}"),
 )

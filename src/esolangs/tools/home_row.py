@@ -3,7 +3,7 @@
 from itertools import groupby
 
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
+from esolangs.registry._language import Example, Language
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
@@ -81,4 +81,5 @@ LANGUAGE = Language(
         parameterized=True,
     ),
     wrap=wrap_chars,
+    example=Example(pair=HOME_ROW_PAIR),
 )

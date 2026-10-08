@@ -25,7 +25,7 @@ order only renames the ``@`` literals, and :func:`fargo` uses the identity.
 from string import ascii_lowercase
 
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
+from esolangs.registry._language import Example, Language
 from esolangs.tools.helpers import (
     _validate_truth_table,
     anf_coefficients,
@@ -283,4 +283,10 @@ LANGUAGE = Language(
     balance=_balance,
     no_wrap="each physical line is one command; expressions have no continuation",
     eof="the interpreter reads before the program starts",
+    # Fargo reads one *number* before the program starts, not a bit per
+    # line, and ``@ k`` indexes that number's bits.  The boolean
+    # convention is therefore to feed the row index: the inputs
+    # most-significant-first are its binary digits, so the 0,1 row of a
+    # two-input table is the single line "1".
+    example=Example(inputs=("1",)),
 )

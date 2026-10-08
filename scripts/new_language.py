@@ -89,7 +89,9 @@ def {slug}(truth_table: str) -> str:
 # wrap=wrap_chars (esolangs.tools.wrap) if a newline anywhere is harmless,
 # else no_wrap="<why a break changes the program>"; eof="..." if an
 # exhausted read has a spec value, empty_program="..." if "" is rejected;
-# a generator taking a width needs balance=, picking its squarest regime.
+# a generator taking a width needs balance=, picking its squarest regime;
+# example=Example(pair=PAIR, expected=...) for a template or an answer that
+# is not a printed 0/1.
 LANGUAGE = Language("{name}", "{category}.{slug}", boolean={slug})
 '''
 
@@ -252,7 +254,6 @@ def _common_gaps(name: str, module: str) -> list[Gap]:
 def _generator_gaps(lang: Language) -> list[Gap]:
     """List the steps a language with a Boolean generator needs."""
     from esolangs import tools
-    from esolangs.tools.examples import BOOLEAN_EXAMPLES
     from esolangs.tools.wrap import takes_width
 
     assert lang.boolean is not None
@@ -266,16 +267,6 @@ def _generator_gaps(lang: Language) -> list[Gap]:
             Gap(
                 "src/esolangs/tools/__init__.py",
                 f'add `from esolangs.tools.{gen} import {gen}` and "{gen}" to __all__',
-            )
-        )
-    if not any(ex.interpreter == lang.interpreter for ex in BOOLEAN_EXAMPLES.values()):
-        stem = lang.name.lower().replace(" ", "-")
-        gaps.append(
-            Gap(
-                "src/esolangs/tools/examples.py",
-                f'add "{stem}": _reader(b.{gen}, "{lang.interpreter}", '
-                "expected=...) for its non-output answer, or _embedded for a "
-                "template (a plain output reader needs no entry)",
             )
         )
     width = takes_width(lang.boolean)
@@ -629,7 +620,6 @@ def remove(name: str) -> list[str]:
     for relative in (
         "src/esolangs/registry/_table.py",
         "src/esolangs/tools/__init__.py",
-        "src/esolangs/tools/examples.py",
         "tests/samples.py",
         "tests/tools/boolean_runners.py",
         "tests/tools/test_wrap.py",

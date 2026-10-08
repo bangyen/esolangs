@@ -14,7 +14,7 @@ from functools import cache
 from itertools import pairwise
 
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
+from esolangs.registry._language import Example, Language
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     _validate_shape,
@@ -313,4 +313,5 @@ LANGUAGE = Language(
     # ``[`` skips the character after it.
     wrap=_minifuck,
     balance=_balance,
+    example=Example(setters=minifuck_setters),
 )

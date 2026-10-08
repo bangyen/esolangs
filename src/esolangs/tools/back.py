@@ -3,7 +3,7 @@
 from itertools import pairwise
 
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
+from esolangs.registry._language import Example, Language
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
@@ -390,4 +390,5 @@ LANGUAGE = Language(
     balance=_balance,
     no_wrap="the beam path and embedded input occupy fixed grid coordinates",
     empty_program="Back program cannot be empty",
+    example=Example(pair=PAIR, expected="0 1 0"),
 )

@@ -6,7 +6,7 @@ The table is a literal halved by position: no subtrees to fold or share.
 """
 
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
+from esolangs.registry._language import Example, Language
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
@@ -73,4 +73,5 @@ LANGUAGE = Language(
     ),
     # Print through a literal that must not be broken.
     wrap=_quote_literal,
+    example=Example(pair=PAIR),
 )

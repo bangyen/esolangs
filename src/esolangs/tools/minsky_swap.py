@@ -1,7 +1,7 @@
 """Boolean template for minsky swap; a row is one ``~``, so no span shrinks."""
 
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
+from esolangs.registry._language import Example, Language
 from esolangs.tools.helpers import TEMPLATE_CHAR, _validate_truth_table, input_weights
 from esolangs.tools.wrap import balance_score
 
@@ -133,4 +133,5 @@ LANGUAGE = Language(
     ),
     balance=_balance,
     no_wrap="only line 1 is code; line 2 gives its numeric jump distances",
+    example=Example(setters=minsky_swap_setters, expected="1 0"),
 )
