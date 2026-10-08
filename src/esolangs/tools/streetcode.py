@@ -4,8 +4,7 @@ Through five inputs, a decision tree from labelled loop strips
 (:func:`_streetcode_strip`), per-level blocks joined side by side.  Each
 per-input strip walks a cell by 48 (an ASCII digit to a bit, a fresh cell
 to a digit); its hallway loop spends the 48 as unary cells, 29 rows by 4
-columns.  The shared-lap construction uses a product ring mirrored from
-the text generator.
+columns.
 
 From six inputs the tree goes away: the table is written one cell per
 entry and the inputs address it (:func:`_streetcode_flat`), which is nine
@@ -18,12 +17,10 @@ from functools import cache
 from esolangs.tools.helpers import (
     _validate_truth_table,
     constant_span_test,
+    grid_width,
     input_orders,
     input_weights,
     permute_truth_table,
-)
-from esolangs.tools.helpers import (
-    grid_width as _streetcode_columns,
 )
 from esolangs.tools.wrap import shortest
 
@@ -122,9 +119,6 @@ def _streetcode_strip(before: str, block: list[str]) -> list[str]:
 # The +1 it leaves behind is not slack. Every gap crossing reads the CPth
 # cell; a bare 0 there would steer the car West back down the street instead
 # of East onto the next loop.
-_Shape = tuple[str, str, Callable[[str], list[str]]]
-
-_HALLWAY_SHAPE: _Shape = ("~=I^", "~=^", _streetcode_hallway)
 
 
 def _streetcode_constant(block: list[str]) -> bool:
@@ -199,12 +193,7 @@ def _streetcode_tree_span(
 
 @cache
 def _streetcode_tree_memo(table: str) -> tuple[str, ...]:
-    """Remember one small subtree's drawing; see :data:`_TREE_CACHE_MAX`."""
-    return tuple(_streetcode_tree_uncached(table))
-
-
-def _streetcode_tree_uncached(table: str) -> list[str]:
-    """Build the binary decision tree: one T-junction turn per input bit.
+    """Build one small subtree, remembered; see :data:`_TREE_CACHE_MAX`.
 
     Halves are joined by a hall that advances CP one ``=`` and forks on the
     bit.  A constant subtree folds to a leaf (389 chars for the constant table
@@ -213,7 +202,7 @@ def _streetcode_tree_uncached(table: str) -> list[str]:
     """
     size = len(table)
     if size == 1:
-        return _streetcode_leaf(int(table[0]))
+        return tuple(_streetcode_leaf(int(table[0])))
 
     half = size // 2
     top = _streetcode_tree(table[:half])
@@ -222,7 +211,7 @@ def _streetcode_tree_uncached(table: str) -> list[str]:
         top = _streetcode_leaf(int(table[0]), half.bit_length() - 1)
     if _streetcode_constant(bot):
         bot = _streetcode_leaf(int(table[half]), half.bit_length() - 1)
-    return _streetcode_join(top, bot)
+    return tuple(_streetcode_join(top, bot))
 
 
 def _streetcode_join(top: list[str], bot: list[str]) -> list[str]:
@@ -233,8 +222,7 @@ def _streetcode_join(top: list[str], bot: list[str]) -> list[str]:
     height = len(top)
 
     hall = []
-    # The hall spans both children.  ``height * 2`` said the same thing
-    # while siblings were always the same height, which folding ends.
+    # The hall spans both children, which folding can leave unequal in height.
     for k in range(len(top) + len(bot)):
         if k == 0:
             row = "----"
@@ -245,10 +233,7 @@ def _streetcode_join(top: list[str], bot: list[str]) -> list[str]:
         elif k == 3:
             row = "+  +"
         elif k == 4:
-            # This used to test ``size == 2``, which in an unfolded tree
-            # meant the children are bare leaves -- four rows tall.  A fold
-            # makes a four-row child at any size, so the height is what it
-            # was always really asking about.
+            # Four rows tall means a leaf-height child, folded or not.
             row = "|  +" if height == 4 else "|  |"
         elif k < height:
             row = "|  |"
@@ -280,9 +265,9 @@ def _streetcode_lift(rows: list[str]) -> list[str]:
     # The prefix runs from the ``C`` to the first blank; what follows it
     # belongs to loops the car only meets after the hairpin.
     start = lane.index("C")
-    end = start
-    while end < len(lane) and lane[end] != " ":
-        end += 1
+    end = lane.find(" ", start)
+    if end < 0:
+        end = len(lane)
 
     width = max(len(row) for row in rows)
     grid = [list(row.ljust(width)) for row in rows]
@@ -313,27 +298,25 @@ def _streetcode_lift(rows: list[str]) -> list[str]:
     return ["".join(row).rstrip() for row in grid]
 
 
-def _streetcode_populate(n: int, shape: _Shape) -> list[str]:
+def _streetcode_populate(n: int) -> list[str]:
     """Build the car's start plus ``n`` input loops and a final loader loop.
 
     The loader is an input loop without ``I``; its label's ``^`` forces the
     turn and ramps a fresh cell to ``'0'`` + 1 (:func:`_streetcode_leaf`).
     """
-    collect_label, loader_label, block = shape
     start = ["+--", "|  ", "|C^", "+--"]
-    col = _streetcode_strip(collect_label, block("~"))
+    col = _streetcode_strip("~=I^", _streetcode_hallway("~"))
     # The rewind strip walks CP back over the n cells the input loops filled,
     # so it carries n '_' instructions.  Streets are two characters wide, so
     # a single '_' would draw a one-wide room the car cannot legally drive:
     # pad the label out to the minimum width with spaces, which are no-ops.
-    rewind = "_" * n
-    rewind = rewind.ljust(2)
+    rewind = ("_" * n).ljust(2)
     width = len(rewind)
     return _streetcode_combine(
         [
             start,
             *([col] * n),
-            _streetcode_strip(loader_label, block("^")),
+            _streetcode_strip("~=^", _streetcode_hallway("^")),
             ["-" * width, " " * width, rewind, "-" * width],
         ],
     )
@@ -366,10 +349,7 @@ def _streetcode_shared_lap(body: str) -> list[str]:
     below the descent gap whose ``=`` hops CP onto the counter.
     """
     k = max(0, len(body) - 6)
-    grid = [
-        list(row.format(plus="+" * k, gap=" " * k, dash="-" * k))
-        for row in _SHARED_ROWS
-    ]
+    grid = [list(row.format(gap=" " * k, dash="-" * k)) for row in _SHARED_ROWS]
     cells = [(4, 5 + k), (5, 5 + k)] + [(5, c) for c in range(4 + k, 1, -1)] + [(4, 2)]
     for i, char in enumerate(body):
         r, c = cells[i]
@@ -398,15 +378,11 @@ def _streetcode_cells(n: int, perm: tuple[int, ...]) -> list[int]:
 def _streetcode_shared(n: int, perm: tuple[int, ...] | None = None) -> list[str]:
     """Build the populate phase as one shared 48-lap loop over every cell.
 
-    One counter holding 48 and one lap walking every cell -- inputs down,
-    loader up, counter down -- so the loop's cost stops scaling with ``n``.
-    Cells: inputs at 1..n, loader n+1, counter n+2, ring cell n+3.  Inputs
-    reach zero mid-run, but CP is only on an input along junction-free legs;
-    both junctions read the counter, and the drop out lands on the loader,
-    seeded to 1 (required).  The trailing ``_`` walk CP back to cell 1.
-    ``perm`` changes only the prefix (``==I_I`` vs ``=I=I``); reads stay in
-    stream order, and the walks are down the shaft, crossing no mouth.  The
-    seeding suffix is relative to cell ``n``.
+    Cells: inputs at 1..n, loader n+1, counter n+2, ring cell n+3.  Both
+    junctions read the counter, and the drop out lands on the loader, seeded
+    to 1 (required).  ``perm`` changes only the prefix (``==I_I`` vs
+    ``=I=I``); reads stay in stream order, and the walks are down the shaft,
+    crossing no mouth.  The seeding suffix is relative to cell ``n``.
     """
     perm = tuple(range(n)) if perm is None else perm
     body = "_" * (n + 1) + "~=" * n + "^"
@@ -424,7 +400,7 @@ def _streetcode_shared(n: int, perm: tuple[int, ...] | None = None) -> list[str]
     # Back to cell ``n``, which the seeding suffix below counts from.  Under
     # the identity order the last read already left CP there and the walk is
     # empty, so the prefix is spelled exactly as it was.
-    prefix = "C" + reads + _streetcode_walk(at, n) + "=^" + "=" + "=^"
+    prefix = "C" + reads + _streetcode_walk(at, n) + "=^==^"
     tail = "_" * n
     blocks = [_streetcode_ring("^"), _streetcode_shared_lap(body)]
 
@@ -491,6 +467,11 @@ def _streetcode_quarter_turn(program: str) -> str:
     )
 
 
+# The flat lookup's nine rows, top to bottom.  Sharing the kerb removes the
+# stalk; both sets of corners still bound the junction.
+_ROOF, _UP, _DOWN, _FLOOR, _STALK, _KERB, _WEST, _EAST, _SILL = range(9)
+
+
 def _streetcode_shared_kerb(program: str) -> str:
     """Share the side-room floors with the street kerb, removing the stalk."""
     rows = program.splitlines()
@@ -500,11 +481,6 @@ def _streetcode_shared_kerb(program: str) -> str:
             kerb[col] = char
     return "\n".join([*rows[:_FLOOR], "".join(kerb), *rows[_WEST:]])
 
-
-# The flat lookup's nine rows, top to bottom.  The stalk is three cells deep
-# for the original separated-room layout; sharing the kerb instead
-# removes the stalk and both sets of corners still bound the junction.
-_ROOF, _UP, _DOWN, _FLOOR, _STALK, _KERB, _WEST, _EAST, _SILL = range(9)
 
 # ``I`` and the 48 ``~`` behind it: a junction tests a cell for zero and an
 # ASCII digit is 48 or 49, so the read has to be walked down to its bit.
@@ -636,9 +612,7 @@ def _streetcode_flat(truth_table: str, n: int) -> str:
 def _streetcode_hallway_program(n: int, tree: list[str]) -> str:
     """Render the narrow per-input layout used for width selection."""
     return "\n".join(
-        _streetcode_lift(
-            _streetcode_combine([_streetcode_populate(n, _HALLWAY_SHAPE), tree])
-        )
+        _streetcode_lift(_streetcode_combine([_streetcode_populate(n), tree]))
     )
 
 
@@ -661,23 +635,23 @@ def _streetcode_shared_programs(truth_table: str, n: int, tree: list[str]) -> li
     return programs
 
 
+def _streetcode_narrow(flat: str, width: int) -> str:
+    """Turn the indexed street clockwise: nine columns, or seven with a shared kerb."""
+    return _streetcode_quarter_turn(
+        _streetcode_shared_kerb(flat) if width < _SILL + 1 else flat
+    )
+
+
 def streetcode(truth_table: str, width: int | None = None) -> str:
     """Build a Streetcode program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n``, MSB first.  From
-    six inputs there is no tree at all: the table becomes one cell per entry
-    and the inputs address it (:func:`_streetcode_flat`).  Below that, each
-    input is read through a loop walking its ASCII value down to a bit
-    (:func:`_streetcode_populate`), then a tree (:func:`_streetcode_tree`)
-    whose T-junctions apply the ambiguous-turn rule; a loader loop ramps a
-    cell to ``'0'`` so every leaf prints directly, and the leading run moves
-    to the oncoming lane (:func:`_streetcode_lift`).  Shapes are compared
-    with their 180-degree rotations, and the tree splits in whichever input
-    order is shortest -- a placement, since halls test cells positionally
-    (:func:`_streetcode_shared`).  ``width`` chooses among the shapes rather
-    than reflowing (rows are streets); a clockwise turn of the indexed
-    street supplies a nine-column floor when the existing shapes do not fit;
-    sharing its room floors with the kerb lowers narrower requests to seven.
+    six inputs the table is one cell per entry, addressed by the inputs
+    (:func:`_streetcode_flat`); below that, a populate phase plus a decision
+    tree.  The shortest of the shapes and their 180-degree rotations wins.
+    ``width`` chooses among the shapes rather than reflowing (rows are
+    streets); when none fit, a clockwise turn of the indexed street gives a
+    nine-column floor, seven with its room floors shared with the kerb.
     """
     n = _validate_truth_table(truth_table)
     if n >= 6:
@@ -685,14 +659,8 @@ def streetcode(truth_table: str, width: int | None = None) -> str:
         turned = _streetcode_rotate(flat)
         if width is None:
             return shortest(flat, turned)
-        fitting = [p for p in (flat, turned) if _streetcode_columns(p) <= width]
-        return (
-            shortest(*fitting)
-            if fitting
-            else _streetcode_quarter_turn(
-                _streetcode_shared_kerb(flat) if width < 9 else flat
-            )
-        )
+        fitting = [p for p in (flat, turned) if grid_width(p) <= width]
+        return shortest(*fitting) if fitting else _streetcode_narrow(flat, width)
     tree = _streetcode_tree(truth_table)
     # The per-input loops trade rows for columns, so only width selection
     # needs them.  The shared lap is strictly shorter through every table at
@@ -711,14 +679,11 @@ def streetcode(truth_table: str, width: int | None = None) -> str:
     if n == 5:
         programs.append(_streetcode_flat(truth_table, n))
     if width is not None:
-        fitting = [p for p in programs if _streetcode_columns(p) <= width]
+        fitting = [p for p in programs if grid_width(p) <= width]
         if fitting:
             return shortest(*fitting)
         # The indexed street has nine rows at every arity; rotating it
         # makes those the width floor while preserving right-hand driving.
-        flat = _streetcode_flat(truth_table, n)
-        return _streetcode_quarter_turn(
-            _streetcode_shared_kerb(flat) if width < 9 else flat
-        )
+        return _streetcode_narrow(_streetcode_flat(truth_table, n), width)
     rotated = [_streetcode_rotate(program) for program in programs]
     return shortest(*programs, *rotated)
