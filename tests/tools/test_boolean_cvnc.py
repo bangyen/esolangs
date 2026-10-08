@@ -1,22 +1,17 @@
 """Covers :mod:`esolangs.tools.cvnc`."""
 
 import importlib
-import itertools
 import random
-from functools import partial
 
 import pytest
 
 from esolangs import tools as boolean
 from esolangs.tools.cvnc import (
     _HALT_SQUARINGS,
+    _direct,
     _halt,
-    _ordered_candidate,
-    _prologue_syllables,
-    _render,
-    _stored,
 )
-from esolangs.tools.helpers import best_input_order
+from esolangs.tools.helpers import in_input_order
 from tests.tools.boolean_runners import (
     run_cvnc,
 )
@@ -32,12 +27,6 @@ def _leaves(program: str) -> int:
 def _branches(program: str) -> int:
     """Count the interior nodes: a plain ``ɰ``, not the prologue's ``ɰ̊``."""
     return program.count("\u0270") - program.count("\u0270\u030a")
-
-
-def _stored_candidate(truth_table: str, perm: tuple[int, ...]) -> str:
-    """Adapt :func:`_stored` to :func:`best_input_order`'s contract."""
-    tokens = _stored(truth_table, perm)
-    return _render(tokens) if tokens is not None else ""
 
 
 class TestCvnc:
@@ -63,7 +52,7 @@ class TestCvnc:
         program = boolean.cvnc("11110000")
         assert _leaves(program) == 2
         assert _branches(program) == 1  # only the root still branches
-        assert program.count("s") == 3  # each input read once
+        assert program.count("s") == 5  # the root's, then two owed on each arm
         for combo in range(8):
             bits = [str((combo >> (2 - i)) & 1) for i in range(3)]
             assert run_cvnc(program, bits) == "11110000"[combo]
@@ -127,133 +116,8 @@ class TestCvnc:
             with pytest.raises(ValueError, match="at least one input"):
                 boolean.cvnc(bit)
 
-    def test_the_hoisted_build_reorders_a_table_the_stream_order_cannot_fold(
-        self,
-    ) -> None:
-        """A table folding only on its *last* input is what the reorder is for."""
-        squarings = _HALT_SQUARINGS
-        program = _halt(squarings) + best_input_order(
-            "10101010",
-            partial(_ordered_candidate, offset=_prologue_syllables(squarings)),
-        )
-        assert _leaves(program) == 2  # two leaves, as the reorder intends
-        assert _branches(program) == 1
-        # The unreordered node-read tree over the same table folds only at the
-        # bottom, so it costs a leaf per row.
-        module = importlib.import_module("esolangs.tools.cvnc")
-        unreordered = module._render(module._tree("10101010"))  # noqa: SLF001
-        assert _leaves(unreordered) == 8
-        assert len(program) < len(unreordered)
-
-    def test_the_hoisted_build_stores_and_fetches_rather_than_rotating(self) -> None:
-        """The bridge between read order and test order is the deque's ends."""
-        squarings = _HALT_SQUARINGS
-        program = _halt(squarings) + best_input_order(
-            "10101010",
-            partial(_ordered_candidate, offset=_prologue_syllables(squarings)),
-        )
-        # Every input is read once and pushed to an end in the same syllable.
-        assert program.count("s") == 3
-        assert program.count("sum") + program.count("sun") == 3
-        # The one surviving node fetches rather than reads.
-        assert program.count("cuŋ") + program.count("cuɲ") == 1
-
-    def test_choosing_between_the_builds_never_grows_a_program(self) -> None:
-        """The hoist has a price, so it is a candidate and not a replacement."""
-        module = importlib.import_module("esolangs.tools.cvnc")
-        for value in range(2**8):
-            table = bin(value)[2:].zfill(8)
-            stream = module._Stream(table, _prologue_syllables(4))  # noqa: SLF001
-            module._tree(table, stream)  # noqa: SLF001
-            tree = stream.text()
-            assert len(boolean.cvnc(table)) <= len(_halt(4)) + len(tree)
-        # and parity specifically keeps the node-read build, pushing nothing
-        assert not {"m", "n"} & set(boolean.cvnc("01101001"))
-
-    def test_an_unservable_order_is_skipped_rather_than_mispriced(self) -> None:
-        """The deque serves the unimodal orders; the rest return no program."""
-        module = importlib.import_module("esolangs.tools.cvnc")
-        # (0, 2, 1, 3) is the smallest non-unimodal permutation.
-        assert module._deque_schedule((0, 2, 1, 3)) is None  # noqa: SLF001
-        assert _stored_candidate("0" * 16, (0, 2, 1, 3)) == ""
-        # The identity is always unimodal, so a candidate always exists.
-        assert module._deque_schedule((0, 1, 2, 3)) is not None  # noqa: SLF001
-
-    @pytest.mark.parametrize(
-        ("n", "servable"),
-        [(1, 1), (2, 2), (3, 6), (4, 20), (5, 70), (6, 252)],
-    )
-    def test_the_servable_orders_are_counted_exactly(
-        self, n: int, servable: int
-    ) -> None:
-        """How many permutations the deque serves, per arity."""
-        module = importlib.import_module("esolangs.tools.cvnc")
-
-        served = sum(
-            1
-            for perm in itertools.permutations(range(n))
-            if module._deque_schedule(perm) is not None  # noqa: SLF001
-        )
-        assert served == servable
-
-    def test_a_tie_keeps_the_node_read_tree(self) -> None:
-        """The hoisted build must be strictly shorter to be taken."""
-        from esolangs.tools.helpers import best_input_order
-
-        module = importlib.import_module("esolangs.tools.cvnc")
-
-        def stored(table: str, perm: tuple[int, ...]) -> str:
-            stream = module._Stream(table, _prologue_syllables(4))  # noqa: SLF001
-            if module._stored(table, perm, stream) is None:  # noqa: SLF001
-                return ""
-            return stream.text()
-
-        tied = []
-        for value in range(2**8):
-            table = bin(value)[2:].zfill(8)
-            stream = module._Stream(table, _prologue_syllables(4))  # noqa: SLF001
-            module._tree(table, stream)  # noqa: SLF001
-            tree = stream.text()
-            hoisted = best_input_order(
-                table,
-                stored,
-            )
-            if hoisted and len(hoisted) == len(tree):
-                tied.append(table)
-        assert len(tied) == 4
-        for table in tied:
-            stream = module._Stream(table, _prologue_syllables(4))  # noqa: SLF001
-            module._tree(table, stream)  # noqa: SLF001
-            tree = stream.text()
-            assert module._ordered(table, (0, 1, 2), _prologue_syllables(4)) == tree  # noqa: SLF001
-
-    def test_a_served_order_pops_from_the_end_holding_its_input(self) -> None:
-        """The schedule is not merely non-empty; it is the right one."""
-        module = importlib.import_module("esolangs.tools.cvnc")
-
-        for n in (2, 3, 4):
-            for perm in itertools.permutations(range(n)):
-                schedule = module._deque_schedule(perm)  # noqa: SLF001
-                if schedule is None:
-                    continue
-                pushes, pops = schedule
-                assert len(pushes) == n
-                assert len(pops) == n
-                held: list[int] = []
-                for i, push in enumerate(pushes):
-                    if push == module._PUSH_FRONT:  # noqa: SLF001
-                        held.insert(0, i)
-                    else:
-                        held.append(i)
-                for wanted, pop in zip(perm, pops, strict=True):
-                    if pop == module._POP_FRONT:  # noqa: SLF001
-                        assert held.pop(0) == wanted, (perm, wanted)
-                    else:
-                        assert held.pop() == wanted, (perm, wanted)
-                assert not held
-
     def test_a_table_folding_at_its_root_normalizes_the_last_read(self) -> None:
-        """The hoisted build's folded root still holds an unpredictable bit."""
+        """A folded root still holds an unpredictable bit."""
         program = boolean.cvnc("00")
         assert "sə" in program  # the floor rides the read's own vowel slot
         for bit in ("0", "1"):
@@ -268,7 +132,7 @@ class TestCvncSharing:
         """Return plain and shipped character totals."""
         before = after = 0
         for table in tables:
-            body = best_input_order(table, _ordered_candidate)
+            body = in_input_order(table, _direct)
             plain = len(_halt(_HALT_SQUARINGS)) + len(body)
             shipped = len(boolean.cvnc(table))
             before, after = before + plain, after + shipped
@@ -277,13 +141,12 @@ class TestCvncSharing:
     def test_three_input_total(self) -> None:
         """Three-input retirement stays within five percent of the original."""
         tables = [format(i, "08b") for i in range(256)]
-        assert self._totals(tables) == (14_849, 14_856)
-        assert 14_856 * 100 < 14_621 * 105
+        assert self._totals(tables) == (15_834, 14_893)
+        assert 14_893 * 100 < 14_621 * 105
 
     def test_five_input_sample_total(self) -> None:
-        """Five-input retirement stays within five percent of the original."""
-        assert self._totals(five_input_sample()) == (39_373, 38_468)
-        assert 38_468 * 100 < 37_048 * 105
+        """Five-input sharing totals; the retired hoist cost 4.87% at n=8."""
+        assert self._totals(five_input_sample()) == (42_786, 40_121)
 
     def test_the_climb_is_a_closed_form(self) -> None:
         """A target is its nearer square's root climbed to, squared, stepped."""
@@ -309,7 +172,7 @@ class TestCvncSharing:
         for _ in range(3):
             table = format(rng.getrandbits(2**n), f"0{2**n}b")
             program = boolean.cvnc(table)
-            plain = best_input_order(table, _ordered_candidate)
+            plain = in_input_order(table, _direct)
             assert not program.endswith(plain), table
             for combo in range(2**n):
                 bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]

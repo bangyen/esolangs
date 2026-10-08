@@ -310,7 +310,7 @@
       "qualification": "the halting goto squares once more whenever the program is not shorter than its reach, so every finite tree halts, and a subtree already emitted at its level is entered by climbing the accumulator to its syllable and `j`, where shorter",
       "scaling": "linear: built in input order, no order search",
       "execution": "linear: at most 17 + 4n + (n-1)(3 + sqrt(2L)) tokens: the path plus shared-subtree climbs",
-      "workspace": "poly n: worst 2n + 20 + bl(2n-1) bits, n in 4..13",
+      "workspace": "poly n: worst 17 + bl(2n-1) + bl(L) bits, n in 4..13",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {

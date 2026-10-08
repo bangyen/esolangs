@@ -203,7 +203,7 @@ FORMULAS: dict[str, tuple[Callable[[int, str], int], bool, tuple[int, ...]]] = {
         True,
         (3, 6),
     ),
-    "CV(N)(C)": (lambda n, _: 2 * n + 20 + bl(2 * n - 1), True, (4, 6)),
+    "CV(N)(C)": (lambda n, p: 17 + bl(2 * n - 1) + bl(len(p)), True, (4, 6)),
     "Container": (lambda n, _: 25 * n + 154 + bl(2 * n + 2) + 2 * bl(n), True, (7,)),
     "BF-PDA": (lambda n, _: 3 * n + 4, True, (3, 6)),
     "Back": (

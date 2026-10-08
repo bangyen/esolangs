@@ -18,12 +18,8 @@ letting it open the next syllable.  Its fillers, ``c`` and ``u``, are inert
 because no command here builds a function: ``c`` clears an already-empty
 one and ``u`` applies it, which leaves the accumulator alone.
 
-A second construction hoists the reads into the deque (``m``/``n`` push,
-``ŋ``/``ɲ`` pop either end) so :func:`_ordered` can test in any order; each
-read is pushed to the end it will be popped from (:func:`_deque_schedule`),
-which serves exactly the unimodal permutations.  A stored read costs one
-more character and a fetch three vs one, but a folded subtree then owes
-nothing; the shorter of the two is kept.
+A second construction, hoisting the reads into the deque to test in any
+order, saves 4.87% at n=8, under the 10% bar, and is not built.
 
 ``j`` is also how a repeated subtree is shared (:class:`_Stream`): the
 accumulator names a syllable, so a later copy climbs to the first copy's
@@ -38,7 +34,6 @@ from functools import partial
 from esolangs.tools.helpers import (
     _validate_truth_table,
     constant_span_test,
-    deque_plan,
     in_input_order,
     input_weights,
     subtree_ids,
@@ -71,10 +66,6 @@ _IF_ZERO = "ɰ"
 # one, which is a codepoint shorter.
 _SKIP = "ɰ̊"
 _END_IF = "ʋ"
-_PUSH_FRONT = "m"
-_PUSH_BACK = "n"
-_POP_FRONT = "ŋ"
-_POP_BACK = "ɲ"
 
 # Every leaf leaves the accumulator here before its ``j``, which is both
 # the syllable the shared gadget starts at and the answer ``1``: the bit
@@ -359,95 +350,16 @@ def _tree(
     return stream.tokens
 
 
-def _deque_schedule(
-    perm: tuple[int, ...],
-) -> tuple[list[str], list[str]] | None:
-    """Return this order's named two-run deque routing, or None."""
-    plan = deque_plan(perm)
-    if plan is None:
-        return None
-    pushes, pops = plan
-    return (
-        [_PUSH_FRONT if head else _PUSH_BACK for head in pushes],
-        [_POP_FRONT if head else _POP_BACK for head in pops],
-    )
-
-
-def _stored(
+def _direct(
     truth_table: str,
-    perm: tuple[int, ...],
-    stream: _Stream | None = None,
-    weights: list[int] | None = None,
-) -> list[str] | None:
-    """Build the stored-read command sequence for ``perm``.
-
-    Every input is read up front and each node fetches the bit it tests; a
-    folded subtree owes nothing, which is where the reorder pays.  Returns
-    what :func:`_tree` does, or None when no deque schedule serves ``perm``.
-    An ignored input (weight 0) is read and not pushed.
-    """
-    schedule = _deque_schedule(perm)
-    if schedule is None:
-        return None
-    pushes, pops = schedule
-    stream = stream or _Stream(truth_table)
-    queued = iter(pushes)
-    for weight in weights or [1] * len(perm):
-        stream.tokens.extend([_READ, next(queued)] if weight else [_READ])
-    constant = constant_span_test(truth_table)
-
-    def walk(lo: int, hi: int, level: int, accumulator: int | None) -> None:
-        if constant(lo, hi):
-            # Below a branch the accumulator is a known bit; at an
-            # immediately-folding root it is the last read, so it is floored.
-            stream.tokens.extend(_leaf(truth_table[lo], accumulator))
-            return
-        block = lo // (hi - lo)
-        if accumulator is not None and stream.jump(level, block, accumulator):
-            return
-        entered = stream.enter(level, block)
-        mid = (lo + hi) // 2
-        stream.tokens.extend([pops[level], _IF_ZERO])
-        walk(lo, mid, level + 1, 0)
-        stream.tokens.append(_END_IF)
-        walk(mid, hi, level + 1, 1)
-        stream.leave(entered)
-
-    walk(0, len(truth_table), 0, None)
-    return stream.tokens
-
-
-def _ordered(
-    truth_table: str,
-    perm: tuple[int, ...],
-    offset: int | None = None,
-    weights: list[int] | None = None,
-) -> str | None:
-    """Build the shortest read strategy available for ``perm``.
-
-    Stream order may read at its nodes or store first; other orders store.
-    Ties keep the direct tree.  ``offset``, the body's first syllable,
-    turns sharing on in both.
-    """
-    stream = _Stream(truth_table, offset)
-    stored = _stored(truth_table, perm, stream, weights)
-    rendered = stream.text() if stored is not None else None
-    if perm != tuple(range(len(perm))):
-        return rendered
-    stream = _Stream(truth_table, offset)
-    _tree(truth_table, stream, weights)
-    direct = stream.text()
-    return rendered if rendered is not None and len(rendered) < len(direct) else direct
-
-
-def _ordered_candidate(
-    truth_table: str,
-    perm: tuple[int, ...],
+    _perm: tuple[int, ...],
     offset: int | None = None,
     weights: list[int] | None = None,
 ) -> str:
-    """Adapt :func:`_ordered` to :func:`in_input_order`'s contract."""
-    return _ordered(truth_table, perm, offset, weights) or ""
+    """Spell the direct tree; ``offset``, the first syllable, turns sharing on."""
+    stream = _Stream(truth_table, offset)
+    _tree(truth_table, stream, weights)
+    return stream.text()
 
 
 def _prologue_syllables(squarings: int) -> int:
@@ -482,9 +394,7 @@ def cvnc(truth_table: str) -> str:
         offset = _prologue_syllables(squarings)
         body = min(
             (
-                in_input_order(
-                    shape, partial(_ordered_candidate, offset=offset, weights=named)
-                )
+                in_input_order(shape, partial(_direct, offset=offset, weights=named))
                 for shape, named in shapes
             ),
             key=len,
