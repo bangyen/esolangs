@@ -179,14 +179,6 @@ def _tests_module(module: str, attr: str) -> Container[str]:
     return value
 
 
-def _export(gen: str) -> Gap:
-    return Gap(
-        "src/esolangs/tools/__init__.py",
-        f'add `from esolangs.tools.{gen} import {gen}` and "{gen}" to __all__ '
-        "(the registry reads the generator from there)",
-    )
-
-
 def _unregistered(name: str, slug: str) -> list[Gap]:
     found = sorted((ROOT / "src/esolangs/interpreters").glob(f"*/{slug}.py"))
     module = f"{found[0].parent.name}.{slug}" if found else f"<category>.{slug}"
@@ -199,9 +191,6 @@ def _unregistered(name: str, slug: str) -> list[Gap]:
                 "split=True only if run() takes list[str], one string per line",
             )
         ]
-    exports = (ROOT / "src/esolangs/tools/__init__.py").read_text()
-    if f"esolangs.tools.{slug} import" not in exports:
-        return [_export(slug)]
     return [
         Gap(
             str(generator.relative_to(ROOT)),
@@ -237,7 +226,8 @@ def _common_gaps(name: str, module: str) -> list[Gap]:
             Gap(
                 "tests/samples.py",
                 f'add "{name}": (<tiny program>, <stdin>) to SAMPLES; the VM '
-                "protocol and debugger tests step it",
+                "protocol and debugger tests step it (a generator language "
+                "gets its own one-input program once the generator runs)",
             )
         )
     curation = json.loads((ROOT / "tests/fixtures/curation.json").read_text())
@@ -704,6 +694,13 @@ def main(argv: list[str] | None = None) -> int:
                 base = rows[0][column] - slope * rows[0][0]
                 print(f"{label} fit exactly: lambda n, _: {slope} * n + {base}")
         return 0
+    if args.command in {"check", "finish"}:
+        # Before anything imports the package: a new LANGUAGE is registered
+        # by the export this writes.
+        sys.path.insert(0, str(ROOT / "scripts"))
+        from generate_exports import update as update_exports
+
+        update_exports(ROOT, ROOT)
     if args.command == "check":
         gaps = check(args.name)
         if gaps:
