@@ -17,32 +17,25 @@ from esolangs.tools.helpers import (
 
 _STEP = {"E": (1, 0), "W": (-1, 0), "N": (0, -1), "S": (0, 1)}
 _OPPOSITE = {"E": "W", "W": "E", "N": "S", "S": "N"}
-_SINGLE = {
-    frozenset("EW"): "─",
-    frozenset("NS"): "│",
-    frozenset("ES"): "┌",
-    frozenset("WS"): "┐",
-    frozenset("EN"): "└",
-    frozenset("WN"): "┘",
-    frozenset("ENS"): "├",
-    frozenset("WNS"): "┤",
-    frozenset("EWS"): "┬",
-    frozenset("EWN"): "┴",
-    frozenset("EWNS"): "┼",
-}
-_DOUBLE = {
-    frozenset("EW"): "═",
-    frozenset("NS"): "║",
-    frozenset("ES"): "╔",
-    frozenset("WS"): "╗",
-    frozenset("EN"): "╚",
-    frozenset("WN"): "╝",
-    frozenset("ENS"): "╠",
-    frozenset("WNS"): "╣",
-    frozenset("EWS"): "╦",
-    frozenset("EWN"): "╩",
-    frozenset("EWNS"): "╬",
-}
+_PORTS = [
+    frozenset(ports)
+    for ports in (
+        "EW",
+        "NS",
+        "ES",
+        "WS",
+        "EN",
+        "WN",
+        "ENS",
+        "WNS",
+        "EWS",
+        "EWN",
+        "EWNS",
+    )
+]
+_SINGLE = dict(zip(_PORTS, "─│┌┐└┘├┤┬┴┼", strict=True))
+_DOUBLE = dict(zip(_PORTS, "═║╔╗╚╝╠╣╦╩╬", strict=True))
+_NAME = {step: name for name, step in _STEP.items()}
 
 
 def _path(
@@ -83,7 +76,7 @@ class _Builder:
     def connect(self, points: list[tuple[int, int]], kind: str) -> None:
         for left, right in pairwise(points):
             delta = (right[0] - left[0], right[1] - left[1])
-            direction = next(name for name, step in _STEP.items() if step == delta)
+            direction = _NAME[delta]
             for point, port in ((left, direction), (right, _OPPOSITE[direction])):
                 if point in self.nodes:
                     continue
@@ -92,8 +85,11 @@ class _Builder:
                     raise ValueError("thisthat wire collision")
                 ports.add(port)
 
+    def cells(self) -> set[tuple[int, int]]:
+        return set(self.nodes) | set(self.wires)
+
     def render(self) -> str:
-        cells = set(self.nodes) | set(self.wires)
+        cells = self.cells()
         min_x = min(x for x, _ in cells)
         min_y = min(y for _, y in cells)
         width = max(x for x, _ in cells) - min_x + 1
@@ -198,11 +194,15 @@ def _rotate_tree(program: str) -> str:
     )
 
 
+def _essential(ids: list[list[int]], n: int) -> list[int]:
+    """Return the inputs on whose level some node has unequal halves."""
+    return [i for i in range(n) if ids[i + 1][::2] != ids[i + 1][1::2]]
+
+
 def _strip_tree(truth_table: str) -> str:
     """Build a small-arity vertical decision strip with channel-separated nodes."""
     n = _validate_truth_table(truth_table)
-    ids = subtree_ids(truth_table)
-    essential = [i for i in range(n) if ids[i + 1][::2] != ids[i + 1][1::2]]
+    essential = _essential(subtree_ids(truth_table), n)
     table = read_at(truth_table, essential, n)
     depth = len(essential)
     builder = _Builder()
@@ -224,7 +224,7 @@ def _strip_tree(truth_table: str) -> str:
             tree(level + 1, child_lo, child_hi, child)
 
     tree(0, 0, len(table), (0, 0))
-    min_y = min(y for _, y in set(builder.nodes) | set(builder.wires))
+    min_y = min(y for _, y in builder.cells())
     start = (0, min_y - 2 * n - 2 * len(essential) - 2)
     builder.node(start, "▣")
     previous = start
@@ -245,24 +245,13 @@ def _strip_tree(truth_table: str) -> str:
 def _tree(truth_table: str, *, prune: bool = True, reorder: bool = True) -> str:
     """Build the tree; ``prune=False`` tests every input at every node.
 
-    Every input is read in order.  An ignored input's read sends its bit
-    nowhere, and the tree is the projected table's; inside it a constant span
-    is a leaf and a node whose halves agree pops its bit onto the column
-    stack, which nothing pops, as Line's tree skips such a level.  The row
-    is a deque, so the tree may test the kept inputs in the greedy order
-    (:func:`~esolangs.tools.helpers.best_input_order`) when
-    :func:`_deque_plan` can pop them in it: a read pushes to the head or the
-    tail and a node pops either end, one glyph for another.  ``reorder=False``
-    keeps input order.
+    Ignored inputs are read and dropped.  A node whose halves agree pops its
+    bit onto the unpopped column stack.  Kept inputs are tested in the greedy
+    order when :func:`_deque_plan` can pop them in it; ``reorder=False`` keeps
+    input order.
     """
     n = _validate_truth_table(truth_table)
-    ids = subtree_ids(truth_table)
-    # Input ``level`` is essential when some node on it has unequal halves.
-    essential = [
-        level
-        for level in range(n)
-        if not prune or ids[level + 1][::2] != ids[level + 1][1::2]
-    ]
+    essential = _essential(subtree_ids(truth_table), n) if prune else list(range(n))
     if len(essential) < n:
         truth_table = read_at(truth_table, essential, n)
     if not (prune and reorder and essential):
@@ -289,16 +278,16 @@ def _layout(
 ) -> str:
     """Lay out the tree over ``truth_table``, whose level ``k`` pops ``order[k]``.
 
-    ``order`` names essential inputs by their rank; ``""`` when the row
-    cannot pop them in that order.  ``swap`` sends the root's 1 arm west
-    (``◐`` for ``◑``, a glyph for a glyph): the halves' pruned shapes
-    differ, and the rendered program is not mirror-symmetric, since rows
-    are stripped on the east and the loader row enters from the west.
+    ``""`` when the row cannot pop them in that order.  ``swap`` sends the
+    root's 1 arm west; the program is not mirror-symmetric (rows are stripped
+    on the east, the loader enters from the west).
     """
     plan = _deque_plan(order) if order else ([], [])
     if plan is None:
         return ""
     head_push, head_pop = plan
+    # No essential input: the table is one constant char, which subtree_ids
+    # (table length 2**n) is not asked about.
     ids = subtree_ids(truth_table) if essential else [[int(truth_table[0])]]
     depth = len(essential)
     builder = _Builder()
@@ -327,7 +316,7 @@ def _layout(
         router = (pop[0] + 2 * incoming[0], pop[1] + 2 * incoming[1])
         axis = axes[level % 2]
         mid = (lo + hi) // 2
-        west = -1 if not (swap and level == 0) else 1
+        west = 1 if swap and level == 0 else -1
         children: tuple[tuple[int, int, int], ...] = (
             (west, lo, mid),
             (-west, mid, hi),
@@ -341,7 +330,10 @@ def _layout(
             builder.node(router, "⬒")
             children = children[:1]
         else:
-            builder.node(router, ("◑" if axis[0] else "◒") if west < 0 else "◐")
+            glyph = "◑" if axis[0] else "◒"
+            if west > 0:
+                glyph = "◐"
+            builder.node(router, glyph)
         builder.connect(_path(pop, router, _first_axis(incoming[0])), "double")
         for sign, child_lo, child_hi in children:
             child_incoming = (sign * axis[0], sign * axis[1])
@@ -354,8 +346,9 @@ def _layout(
 
     root = (0, 0)
     tree(0, 0, len(truth_table), root, (0, 1))
-    min_x = min(x for x, _ in set(builder.nodes) | set(builder.wires))
-    min_y = min(y for _, y in set(builder.nodes) | set(builder.wires))
+    cells = builder.cells()
+    min_x = min(x for x, _ in cells)
+    min_y = min(y for _, y in cells)
     loader_y = min_y - 2
     # An ignored input's read sends its bit nowhere and goes straight on.
     start_x = min(min_x, root[0] - 2 * n - 2 * len(essential) - 2)
