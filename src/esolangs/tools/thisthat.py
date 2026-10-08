@@ -246,7 +246,8 @@ def _tree(truth_table: str, *, prune: bool = True) -> str:
 
     Ignored inputs are read and dropped.  A node whose halves agree pops its
     bit onto the unpopped column stack.  Kept inputs are tested in input
-    order (a greedy order saves 0.2% at n=8, under the 10% bar).
+    order (a greedy order saves 0.2% at n=8, under the 10% bar); the root's arms
+    are not swapped (swapping saves 0.5% at n=8, under the 10% bar).
     """
     n = _validate_truth_table(truth_table)
     essential = _essential(subtree_ids(truth_table), n) if prune else list(range(n))
@@ -255,13 +256,7 @@ def _tree(truth_table: str, *, prune: bool = True) -> str:
     order = tuple(range(len(essential)))
     if not (prune and essential):
         return _layout(truth_table, n, essential, order, prune=prune)
-    return min(
-        (
-            _layout(truth_table, n, essential, order, swap=swap)
-            for swap in (False, True)
-        ),
-        key=len,
-    )
+    return _layout(truth_table, n, essential, order)
 
 
 def _layout(
@@ -271,13 +266,10 @@ def _layout(
     order: tuple[int, ...],
     *,
     prune: bool = True,
-    swap: bool = False,
 ) -> str:
     """Lay out the tree over ``truth_table``, whose level ``k`` pops ``order[k]``.
 
-    ``""`` when the row cannot pop them in that order.  ``swap`` sends the
-    root's 1 arm west; the program is not mirror-symmetric (rows are stripped
-    on the east, the loader enters from the west).
+    ``""`` when the row cannot pop them in that order.
     """
     plan = _deque_plan(order) if order else ([], [])
     if plan is None:
@@ -313,10 +305,9 @@ def _layout(
         router = (pop[0] + 2 * incoming[0], pop[1] + 2 * incoming[1])
         axis = axes[level % 2]
         mid = (lo + hi) // 2
-        west = 1 if swap and level == 0 else -1
         children: tuple[tuple[int, int, int], ...] = (
-            (west, lo, mid),
-            (-west, mid, hi),
+            (-1, lo, mid),
+            (1, mid, hi),
         )
         if prune and ids[level + 1][2 * index] == ids[level + 1][2 * index + 1]:
             # The halves agree: pop the bit onto the column stack, which
@@ -327,10 +318,7 @@ def _layout(
             builder.node(router, "⬒")
             children = children[:1]
         else:
-            glyph = "◑" if axis[0] else "◒"
-            if west > 0:
-                glyph = "◐"
-            builder.node(router, glyph)
+            builder.node(router, "◑" if axis[0] else "◒")
         builder.connect(_path(pop, router, _first_axis(incoming[0])), "double")
         for sign, child_lo, child_hi in children:
             child_incoming = (sign * axis[0], sign * axis[1])

@@ -80,8 +80,7 @@ def test_pruning_never_grows_a_table() -> None:
             size = len(thisthat(table))
             assert size <= len(_tree(table, prune=False))
     tables = [f"{value:08b}" for value in range(256)]
-    assert sum(len(thisthat(table)) for table in tables) == 141_636
-    assert sum("◐" in thisthat(table) for table in tables) == 92
+    assert sum(len(thisthat(table)) for table in tables) == 158_308
     assert sum(len(_tree(table, prune=False)) for table in tables) == 199_936
 
 
