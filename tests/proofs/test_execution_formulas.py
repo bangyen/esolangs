@@ -286,7 +286,13 @@ def _tables(name: str, n: int) -> tuple[str, ...]:
         tail = block - 2 * (zeros - 1)
         # The odd tail zero keeps every input essential.
         head = "10" * (zeros - 1) + "11" + "0" + "1" * (tail - 3)
-        tables += (head * (width // block),)
+        # Swap pair j of 16-row block j, so no two blocks are equal: equal
+        # ones alias at a smaller block (n=7: 311 steps, not 1205).
+        cells = list(head)
+        for j in range(block // 16 - 1):
+            at = 16 * j + 2 * j % 16
+            cells[at], cells[at + 1] = cells[at + 1], cells[at]
+        tables += ("".join(cells) * (width // block),)
     return tables
 
 
