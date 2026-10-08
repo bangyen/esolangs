@@ -17,6 +17,7 @@ from math import isqrt
 from string import ascii_letters
 
 from esolangs.tools.helpers import _validate_truth_table, essential_inputs, read_at
+from esolangs.tools.wrap import balance_score
 
 #: Entries are ``a``/``b`` so a ``0``/``1`` input line is never mistaken for
 #: one; ``L``/``E`` are sentinels, ``M``/``R`` and the read ``0``/``1`` markers.
@@ -70,13 +71,17 @@ _QUEUED_RULES = "\n".join(
 )
 
 
+#: Chunk-name symbols: no table or control symbol (K, S, J stay free, but the
+#: queued rules never meet chunk names).
+_NAME_ALPHABET = "".join(c for c in ascii_letters if c not in "abLMRECD")
+
+
 def _chunk_marker(index: int, digits: int) -> str:
     """Return a fixed-width name containing no table or control symbol."""
-    alphabet = "".join(char for char in ascii_letters if char not in "abLMRECD")
     name = []
     for _ in range(digits):
-        index, digit = divmod(index, len(alphabet))
-        name.append(alphabet[digit])
+        index, digit = divmod(index, len(_NAME_ALPHABET))
+        name.append(_NAME_ALPHABET[digit])
     return "".join(reversed(name))
 
 
@@ -111,9 +116,8 @@ def thue(truth_table: str, width: int | None = None) -> str:
     if length <= 8 and width < 9:
         return _thue_short_tree(truth_table)
     digits = _marker_digits(length)
-    marker_width = digits
     # Payload covers its names' overhead, keeping even the narrowest source O(T).
-    payload = max(marker_width, width - marker_width - max(marker_width, 2) - 3)
+    payload = max(digits, width - digits - max(digits, 2) - 3)
     rules = rules_text.splitlines()[:-1]
     for index, offset in enumerate(range(0, length, payload)):
         marker = _chunk_marker(index, digits)
@@ -122,17 +126,16 @@ def thue(truth_table: str, width: int | None = None) -> str:
         )
         rules.append(f"{marker}::={table[offset : offset + payload]}{following}")
     # No input marker exists until expansion finishes and R sweeps back to L.
-    # Here T>=8 and 3*digits<T: max(width,9,3*digits+3)<T+3.
     return "\n".join([*rules, "::=", "L" + _chunk_marker(0, digits)])
 
 
 def _thue_entries(truth_table: str) -> str:
     """Return the table as ``a``/``b`` entries in bit-reversed row order."""
     length = len(truth_table)
-    # A bit-reversed counter: reversing per position would cost an O(log T).
+    # Increment the row counter in bit-reversed order.
     entries = []
     row = 0
-    for _position in range(length):
+    for _ in range(length):
         entries.append("ab"[truth_table[row] == "1"])
         carry = length >> 1
         while row & carry:
@@ -166,10 +169,10 @@ def _thue_short_tree(truth_table: str) -> str:
 
 def _marker_digits(length: int) -> int:
     """Return the fixed base-44 name length covering the table."""
-    digits, capacity = 1, len(ascii_letters) - len("abLMRECD")
+    digits, capacity = 1, len(_NAME_ALPHABET)
     while capacity < length:
         digits += 1
-        capacity *= len(ascii_letters) - len("abLMRECD")
+        capacity *= len(_NAME_ALPHABET)
     return digits
 
 
@@ -187,8 +190,6 @@ def balance_thue(truth_table: str, default: str) -> str:
     root = (offset + isqrt(offset * offset + 4 * size)) // 2
     overhead = digits + max(digits, 2) + 3
     maximum = max(digits, max(map(len, default.split("\n"))) - 1 - overhead)
-    from esolangs.tools.wrap import balance_score
-
     candidates = [default, thue(truth_table, 1)]
     candidates.extend(
         thue(truth_table, min(maximum, max(digits, payload)) + overhead)
