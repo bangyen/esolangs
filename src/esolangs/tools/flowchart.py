@@ -20,7 +20,7 @@ from esolangs.tools.helpers import (
     read_at,
 )
 
-# Leaf pitch: the leaves were five-cell ``(( ))`` nodes plus a gutter.
+# Leaf column pitch: 5-cell ``(( ))`` plus 1 gutter.
 _FLOWCHART_PITCH = 6
 
 # Prints the register, then bits 1..7 of 0x30 low bit first, and halts.
@@ -40,6 +40,17 @@ _ANSWER = (
 )
 
 
+def _set(bit: str) -> str:
+    """Return the node that sets the register to ``bit``."""
+    return "[ }" if bit == "1" else "{ ]"
+
+
+def _paint(cells: dict[tuple[int, int], str], x: int, y: int, text: str) -> None:
+    """Write ``text`` into ``cells`` along row ``y`` from column ``x``."""
+    for i, char in enumerate(text):
+        cells[(x + i, y)] = char
+
+
 def _reads(level: int) -> int:
     """Return the ``/ /`` count that selects input ``level``'s value bit."""
     return 1 if level == 0 else 8
@@ -48,9 +59,7 @@ def _reads(level: int) -> int:
 def _answer_column(cells: dict[tuple[int, int], str], middle: int, y: int) -> None:
     """Paint :data:`_ANSWER` down column ``middle`` from row ``y``."""
     for text in _ANSWER:
-        left = middle - len(text) // 2
-        for i, char in enumerate(text):
-            cells[(left + i, y)] = char
+        _paint(cells, middle - len(text) // 2, y, text)
         cells[(middle, y + 1)] = "│"
         y += 2
     del cells[(middle, y - 1)]
@@ -66,11 +75,6 @@ def _flowchart_cells(truth_table: str) -> dict[tuple[int, int], str]:
     """
     cells: dict[tuple[int, int], str] = {}
     constant = constant_span_test(truth_table)
-
-    def put(x: int, y: int, text: str) -> None:
-        for i, char in enumerate(text):
-            cells[(x + i, y)] = char
-
     n = (len(truth_table) - 1).bit_length()
     # top[d] is level d's first read row; top[n] is the leaves' row.
     top = [2]
@@ -86,7 +90,7 @@ def _flowchart_cells(truth_table: str) -> dict[tuple[int, int], str]:
     def leaf(slot: int, bit: str) -> int:
         """Draw the leaf for ``bit`` in column slot ``slot``; return its middle."""
         middle = _FLOWCHART_PITCH * slot + 2
-        put(middle - 1, leaf_top, "[ }" if bit == "1" else "{ ]")
+        _paint(cells, middle - 1, leaf_top, _set(bit))
         cells[(middle, leaf_top + 1)] = "│"
         middles.append(middle)
         return middle
@@ -96,9 +100,9 @@ def _flowchart_cells(truth_table: str) -> dict[tuple[int, int], str]:
         switch_row = top[depth + 1] - 2
         middle = (west + east) // 2
         for y in read_rows(depth):
-            put(middle - 1, y, "/ /")
+            _paint(cells, middle - 1, y, "/ /")
             cells[(middle, y + 1)] = "│"
-        put(middle - 1, switch_row, "< >")
+        _paint(cells, middle - 1, switch_row, "< >")
         for x in range(west + 1, middle - 1):
             cells[(x, switch_row)] = "─"
         for x in range(middle + 2, east):
@@ -135,7 +139,7 @@ def _flowchart_cells(truth_table: str) -> dict[tuple[int, int], str]:
                 cells.setdefault((middle, y), "│")
             for skipped in range(depth, n):
                 for y in read_rows(skipped):
-                    put(middle - 1, y, "/ /")
+                    _paint(cells, middle - 1, y, "/ /")
             return middle
         half = (hi - lo) // 2
         west = walk(lo, lo + half, depth + 1)
@@ -143,7 +147,7 @@ def _flowchart_cells(truth_table: str) -> dict[tuple[int, int], str]:
         return switch(depth, west, east)
 
     root = walk(0, len(truth_table), 0)
-    put(root - 1, 0, "( )")
+    _paint(cells, root - 1, 0, "( )")
     cells[(root, 1)] = "│"
 
     # A pointer heading down onto ``┴`` turns clockwise, west, and one
@@ -193,14 +197,10 @@ def _flowchart_stacked(truth_table: str) -> dict[tuple[int, int], str]:
     constant = constant_span_test(truth_table)
     taps: list[int] = []
 
-    def put(x: int, y: int, text: str) -> None:
-        for i, char in enumerate(text):
-            cells[(x + i, y)] = char
-
     def reads(y: int, count: int) -> int:
         """Draw ``count`` ``/ /`` nodes down the spine; return the row after."""
         for _ in range(count):
-            put(spine - 1, y, "/ /")
+            _paint(cells, spine - 1, y, "/ /")
             cells[(spine, y + 1)] = "│"
             y += 2
         return y
@@ -211,9 +211,9 @@ def _flowchart_stacked(truth_table: str) -> dict[tuple[int, int], str]:
         A folded leaf's owed reads stack above it.
         """
         y = reads(y, sum(_reads(level) for level in range(depth, n)))
-        put(spine - 1, y, "[ }" if bit == "1" else "{ ]")
+        _paint(cells, spine - 1, y, _set(bit))
         cells[(spine, y + 1)] = "│"
-        put(spine, y + 2, "└──")
+        _paint(cells, spine, y + 2, "└──")
         taps.append(y + 2)
         return y + 3
 
@@ -222,7 +222,7 @@ def _flowchart_stacked(truth_table: str) -> dict[tuple[int, int], str]:
         if constant(lo, hi):
             return leaf(y, depth, truth_table[lo])
         y = reads(y, _reads(depth))
-        put(spine - 1, y, "< >")
+        _paint(cells, spine - 1, y, "< >")
         # b=1: east out of the switch, down, back west, onto the spine
         cells[(spine + 2, y)] = "┐"
         cells[(spine + 2, y + 1)] = "┘"
@@ -244,7 +244,7 @@ def _flowchart_stacked(truth_table: str) -> dict[tuple[int, int], str]:
         return walk(lo, lo + half, depth + 1, below + 1)
 
     walk(0, len(truth_table), 0, 2)
-    put(spine - 1, 0, "( )")
+    _paint(cells, spine - 1, 0, "( )")
     cells[(spine, 1)] = "│"
     # Heading east onto ``┤`` turns clockwise, down, so every tap joins.
     for row in range(taps[0], taps[-1] + 1):
@@ -254,7 +254,7 @@ def _flowchart_stacked(truth_table: str) -> dict[tuple[int, int], str]:
     cells[(bus, taps[0])] = "┐"
     end = taps[-1] + 1
     cells[(bus, end)] = "┘"
-    put(spine, end, "┌──")
+    _paint(cells, spine, end, "┌──")
     _answer_column(cells, spine, end + 1)
     return cells
 
@@ -263,11 +263,8 @@ def flowchart(truth_table: str, width: int | None = None) -> str:
     """Build a Flowchart program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n``, MSB first.
-    Unconstrained programs preload paired answers into deques and select
-    one with the input bits. Width-constrained programs draw a decision
-    tree, stacking branches when necessary. Every node connection includes
-    a path cell; adjacent leaves have a blank gutter. Folded leaves still
-    read the skipped inputs.
+    Without ``width``, preloads paired answers into deques and selects one
+    by the input bits; with it, draws a decision tree, stacked if narrower.
     """
     _validate_truth_table(truth_table)
     if width is None:
@@ -288,17 +285,10 @@ def _flowchart_deque(truth_table: str) -> str:
     ``2 ** (n - 2 - k)`` and a one leaves it alone.  The last bit needs no
     step at all -- the pair sharing a deque is one at each end, so it picks
     ``\{ }/`` or ``/{ }\`` and halves both the ``[ >`` run and the walk.
-    Discarding halves of one deque instead needed a pop node on *both* arms
-    of every switch, so a unit of selection cost two five-character nodes
-    rather than one three-character ``< ]`` on the arm that moves and a bare
-    rail on the arm that does not.
 
-    Two rows, not five, and the pointer runs east to west.  Only one arm of
-    a switch leaves the spine, so the drawing needs one row above it rather
-    than two on each side; running westwards puts the selector in the low
-    columns, which is what keeps that upper row short -- a line is padded
-    out to its last non-space cell, so a selector drawn east of the preload
-    would have charged the preload's width twice.
+    Two rows; the pointer runs east to west, so the selector sits in the low
+    columns and the upper row stays short (a line is padded to its last
+    non-space cell).
 
     Input ``p``'s value bit is stream bit ``8p``, so an ignored input costs
     only the eight ``/ /`` that skip it, and the deque holds the table over
@@ -317,15 +307,10 @@ def _flowchart_deque(truth_table: str) -> str:
         """Place ``text`` on the spine ending at ``col``; return its left end."""
         nonlocal col
         left = col - len(text) + 1
-        for offset, char in enumerate(text):
-            cells[(left + offset, spine)] = char
+        _paint(cells, left, spine, text)
         cells[(left - 1, spine)] = "─"
         col = left - 2
         return left
-
-    def paint(start: int, row: int, text: str) -> None:
-        for offset, char in enumerate(text):
-            cells[(start + offset, row)] = char
 
     west("( )")
     # ``\[ ]/`` and ``[ >`` both leave the register alone, so a run of equal
@@ -333,24 +318,25 @@ def _flowchart_deque(truth_table: str) -> str:
     register: str | None = None
     for index, bit in enumerate(truth_table):
         if register != bit:
-            west("[ }" if bit == "1" else "{ ]")
+            west(_set(bit))
             register = bit
         west("\\[ ]/")
         if index % 2 and index + 1 < len(truth_table):
             west("[ >")
 
-    n = len(used)
-    for level in range(n - 1):
+    m = len(used)
+    for level in range(m - 1):
         for _ in range(skips[level]):
             west("/ /")
         switch = west("< >")
         # Travelling west a switch sends 1 straight on and 0 up, and the
         # rail west of the switch is the one-branch's bypass.
-        count = 1 << (n - 2 - level)
+        count = 1 << (m - 2 - level)
+        # "< ]─" is 4 cells
         junction = col - 4 * count + 1
-        paint(switch, spine - 1, "─┐")
-        paint(junction + 1, spine - 1, "< ]─" * count)
-        paint(junction + 1, spine, "─" * (4 * count))
+        _paint(cells, switch, spine - 1, "─┐")
+        _paint(cells, junction + 1, spine - 1, "< ]─" * count)
+        _paint(cells, junction + 1, spine, "─" * (4 * count))
         cells[(junction, spine - 1)] = "┌"
         cells[(junction, spine)] = "┴"
         col = junction - 1
@@ -358,19 +344,15 @@ def _flowchart_deque(truth_table: str) -> str:
     # The last bit picks an end rather than a deque: the pair sharing a deque
     # was pushed even entry first, so its odd half is the top.  Each arm
     # prints its own answer, the upper one a column east of the spine's.
-    for _ in range(skips[n - 1]):
+    for _ in range(skips[m - 1]):
         west("/ /")
     switch = west("< >")
     cells[(switch + 1, spine - 1)] = "┐"
     upper = "─".join(reversed(("/{ }\\", *_ANSWER)))
-    paint(switch - len(upper), spine - 1, upper + "─")
+    _paint(cells, switch - len(upper), spine - 1, upper + "─")
     for text in ("\\{ }/", *_ANSWER):
         end = west(text)
     del cells[(end - 1, spine)]
 
     left = min(x for x, _ in cells)
-    width = max(x for x, _ in cells) - left + 1
-    grid = [[" "] * width for _ in range(2)]
-    for (x, row), char in cells.items():
-        grid[row][x - left] = char
-    return "\n".join("".join(row).rstrip() for row in grid)
+    return _flowchart_render({(x - left, row): c for (x, row), c in cells.items()})
