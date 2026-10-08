@@ -195,10 +195,7 @@ class TestPolynomial:
 
     def test_drained_machine_survives_a_one_in_the_drained_bit(self) -> None:
         """The reduction reaches the machine, not just the tree."""
-        from esolangs.tools.polynomial import _polynomial_drained_dag
-
         table = "0000010100000101"  # ignores its first input
-        assert _polynomial_drained_dag(table) is not None
         program = boolean.polynomial(table)
         for combo in range(16):
             bits = [(combo >> (3 - i)) & 1 for i in range(4)]

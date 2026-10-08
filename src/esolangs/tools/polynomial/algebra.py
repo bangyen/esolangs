@@ -1,9 +1,7 @@
 """Polynomial algebra for the Polynomial generator.
 
-Each run of instructions whose decode order is their program order shares one
-prime ``p`` ascending in program order (see ``_polynomial_assemble``) and
-becomes a root ``a + p**b*i``; conjugate
-pairs keep the coefficients integral.
+Each instruction takes the next prime ``p`` in program order and becomes a
+root ``a + p**b*i``; conjugate pairs keep the coefficients integral.
 """
 
 import decimal
