@@ -129,7 +129,10 @@ def _check_rows(failures: list[str]) -> int:
                 failures.append(f"n={n} fired {steps} > n + 1 fractions")
             if tree_steps > 2 * n + 1:
                 failures.append(f"n={n} tree ran {tree_steps} > 2n+1 steps")
-        print(f"  n={n:>2} rows={5 << n:>5} ok  steps<={worst:>3}  value<={widest:>4} bits")
+        print(
+            f"  n={n:>2} rows={5 << n:>5} ok  "
+            f"steps<={worst:>3}  value<={widest:>4} bits"
+        )
     return checked
 
 
