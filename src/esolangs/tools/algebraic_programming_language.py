@@ -423,4 +423,5 @@ LANGUAGE = Language(
     contract=BooleanContract(
         note="an executed line prints its result, so the answer ends in a newline",
     ),
+    balance=balance_apl,
 )

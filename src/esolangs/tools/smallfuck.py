@@ -1,5 +1,7 @@
 """Smallfuck boolean generator: a decision tree with banded result cells."""
 
+import re
+
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
@@ -12,7 +14,8 @@ from esolangs.tools.helpers import (
     subtree_ids,
     unmark,
 )
-from esolangs.tools.wrap import wrap_chars
+from esolangs.tools.token_balance import balanced_token_width
+from esolangs.tools.wrap import _RUN, balance_score, wrap_chars
 
 # Each input cell is fresh; zero needs no clear and one needs one flip.
 PAIR = ("x>>>", "*>>>")
@@ -146,6 +149,19 @@ def _trim_tail(code: str) -> str:
     return code[:first] + "]" * code.count("]", first)
 
 
+def _balance(table: str, default: str) -> str:
+    """Balance four-character setters and the one-character narrow setters."""
+    n = _validate_truth_table(table)
+    candidates = [default]
+    for source, minimum, maximum in ((default, 4, None), (smallfuck(table, 3), 1, 3)):
+        clean = source.replace("\n", "")
+        marked = mark_runs(clean, TEMPLATE_CHAR, smallfuck_setters(clean, n))
+        tokens = re.findall(f"{_RUN}|[\\s\\S]", marked)
+        width = balanced_token_width(tokens, minimum=minimum, maximum=maximum)
+        candidates.append(smallfuck(table, width))
+    return min(candidates, key=balance_score)
+
+
 LANGUAGE = Language(
     "Smallfuck",
     "tape_based.smallfuck",
@@ -155,4 +171,5 @@ LANGUAGE = Language(
         parameterized=True,
     ),
     wrap=wrap_chars,
+    balance=_balance,
 )

@@ -346,4 +346,5 @@ LANGUAGE = Language(
     "Collatz Multiverse",
     "register_based.collatz_multiverse",
     boolean=collatz_multiverse,
+    balance=balance_collatz_multiverse,
 )

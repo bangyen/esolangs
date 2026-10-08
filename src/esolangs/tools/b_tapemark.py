@@ -10,7 +10,8 @@ from dataclasses import dataclass, field
 
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
-from esolangs.tools.helpers import _validate_truth_table, input_weights
+from esolangs.tools.helpers import _validate_truth_table, grid_width, input_weights
+from esolangs.tools.wrap import balance_score
 
 #: The stage, row by row, with its run of ``|`` left out.  The two ``*``
 #: copy a ``\`` and a ``%`` onto the blank grid beside the pointer, ``-``
@@ -225,6 +226,16 @@ def b_tapemark(truth_table: str, width: int | None = None) -> str:
     return _b_tapemark_narrow(truth_table, depth)
 
 
+def _balance(table: str, default: str) -> str:
+    """Compare the original grid, its reflection and the narrow staircase."""
+    return min(
+        default,
+        b_tapemark(table, grid_width(default)),
+        b_tapemark(table, 1),
+        key=balance_score,
+    )
+
+
 LANGUAGE = Language(
     "B-tapemark",
     "grid_based.b_tapemark",
@@ -232,4 +243,5 @@ LANGUAGE = Language(
     contract=BooleanContract(
         input_shape="char_stream",
     ),
+    balance=_balance,
 )

@@ -15,6 +15,7 @@ from esolangs.tools.helpers import (
 from esolangs.tools.helpers import (
     deque_plan as _deque_plan,
 )
+from esolangs.tools.wrap import balance_score
 
 _STEP = {"E": (1, 0), "W": (-1, 0), "N": (0, -1), "S": (0, 1)}
 _OPPOSITE = {"E": "W", "W": "E", "N": "S", "S": "N"}
@@ -361,6 +362,14 @@ def _layout(
     return builder.render()
 
 
+def _balance(table: str, default: str) -> str:
+    """Compare tree, rotation, strip, stream and the one-column XOR route."""
+    rotated = thisthat(table, max(1, grid_width(default) - 1))
+    strip = thisthat(table, max(1, grid_width(rotated) - 1))
+    stream = thisthat(table, max(1, grid_width(strip) - 1))
+    return min(default, rotated, strip, stream, thisthat(table, 1), key=balance_score)
+
+
 LANGUAGE = Language(
     "thisthat",
     "grid_based.thisthat",
@@ -371,4 +380,5 @@ LANGUAGE = Language(
         ignores_whitespace=True,
         input_sets=True,
     ),
+    balance=_balance,
 )

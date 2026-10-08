@@ -1,8 +1,11 @@
 """Boolean-function generator for EGL."""
 
+from math import isqrt
+
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 from esolangs.tools.helpers import _validate_truth_table, input_weights
+from esolangs.tools.wrap import balance_score
 
 
 def egl(truth_table: str, width: int | None = None) -> str:
@@ -46,6 +49,20 @@ def egl(truth_table: str, width: int | None = None) -> str:
     return "\n".join(rows)
 
 
+def _balance(table: str, default: str) -> str:
+    """Balance character folds above the header and its fixed-width regime."""
+    header, _, body = default.partition(":")
+    floor = len(header) + 1
+    square = max(floor, isqrt(len(default) - 1) + 1)
+    crossing = len(body) // (floor - 1)
+    widths = {
+        square,
+        min(max(1, crossing), floor - 1),
+        min(max(1, crossing + 1), floor - 1),
+    }
+    return min(default, *(egl(table, width) for width in widths), key=balance_score)
+
+
 LANGUAGE = Language(
     "EGL",
     "grid_based.egl",
@@ -53,4 +70,5 @@ LANGUAGE = Language(
     contract=BooleanContract(
         input_shape="char_stream",
     ),
+    balance=_balance,
 )

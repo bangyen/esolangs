@@ -185,6 +185,11 @@ def balance_super_snusp(flat: str) -> str:
     return min((flat, lower, middle, upper, vertical, narrow), key=balance_score)
 
 
+def _balance(_table: str, default: str) -> str:
+    """Balance the already-generated straight line."""
+    return balance_super_snusp(default)
+
+
 LANGUAGE = Language(
     "Super SNUSP",
     "grid_based.super_snusp",
@@ -193,4 +198,5 @@ LANGUAGE = Language(
     contract=BooleanContract(
         input_shape="char_stream",
     ),
+    balance=_balance,
 )

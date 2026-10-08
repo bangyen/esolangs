@@ -9,9 +9,11 @@ from esolangs.tools.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
     essential_inputs,
+    grid_width,
     input_weights,
     read_at,
 )
+from esolangs.tools.wrap import balance_score
 
 
 @dataclass
@@ -584,6 +586,13 @@ def _emit_loop(
     lines.extend(f"if {v} goto @{name}" for v in crossable)
 
 
+def _balance(table: str, default: str) -> str:
+    """Compare the DAG, full tree, short spellings and small zero-jump tree."""
+    wide = _brainif_tree(table, None)
+    short = brainif(table, max(1, grid_width(wide) - 1))
+    return min(default, wide, short, brainif(table, 1), key=balance_score)
+
+
 LANGUAGE = Language(
     "BrainIf",
     "tape_based.brainif",
@@ -592,4 +601,5 @@ LANGUAGE = Language(
     contract=BooleanContract(
         input_shape="char_stream",
     ),
+    balance=_balance,
 )

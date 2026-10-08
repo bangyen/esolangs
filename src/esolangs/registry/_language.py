@@ -10,6 +10,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import StrEnum
+from typing import Any
 
 from esolangs._program import Program
 from esolangs.registry._contracts import BooleanContract
@@ -46,6 +47,9 @@ class Language:
     contract: BooleanContract = field(default_factory=BooleanContract)
     #: ``wrap(program, width)``: a meaning-preserving reflow, if one exists.
     wrap: Callable[[str, int], str] | None = None
+    #: ``balance(table, default)``: the squarest layout, for width-taking
+    #: generators whose regimes a plain reflow cannot compare.
+    balance: Callable[..., Any] | None = None
 
     def __post_init__(self) -> None:
         """Fill the id from the name when none is given."""

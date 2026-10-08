@@ -3,6 +3,7 @@
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 from esolangs.tools.helpers import TEMPLATE_CHAR, _validate_truth_table, input_weights
+from esolangs.tools.wrap import balance_score
 
 __all__ = ["MINSKY_SWAP_PAIR", "minsky_swap", "minsky_swap_setters"]
 
@@ -109,6 +110,17 @@ def minsky_swap_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
     return (pair,) * n
 
 
+def _balance(table: str, default: str) -> str:
+    """Compare compact source and the three line-oriented setter regimes."""
+    return min(
+        default,
+        minsky_swap(table, 1),
+        minsky_swap(table, 10),
+        minsky_swap(table, 15),
+        key=balance_score,
+    )
+
+
 LANGUAGE = Language(
     "Minsky Swap",
     "register_based.minsky_swap",
@@ -119,4 +131,5 @@ LANGUAGE = Language(
         "registers at halt; the answer is the second one",
         parameterized=True,
     ),
+    balance=_balance,
 )

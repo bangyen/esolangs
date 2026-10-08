@@ -10,11 +10,18 @@ unpainted (unvisited cells read 0); an interior run of zeros is a counter
 loop where that is shorter, any other entry is painted one by one.
 """
 
+import re
 from itertools import groupby
 
 from esolangs.registry._language import Language
 from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table, input_weights
-from esolangs.tools.wrap import _dimensional, wrap_program
+from esolangs.tools.token_balance import balanced_token_width
+from esolangs.tools.wrap import (
+    _DIMENSIONAL_COMMAND,
+    _dimensional,
+    balance_score,
+    wrap_program,
+)
 
 __all__ = ["dimensional"]
 
@@ -141,9 +148,19 @@ def _dimensional_bare(table: str, n: int) -> str:
     return "".join(parts)
 
 
+def _balance(table: str, default: str) -> str:
+    """Balance index tokens above width one and compare bare leaf coordinates."""
+    tokens = re.findall(_DIMENSIONAL_COMMAND, default)
+    width = balanced_token_width(tokens, minimum=2)
+    return min(
+        default, dimensional(table, width), dimensional(table, 1), key=balance_score
+    )
+
+
 LANGUAGE = Language(
     "Dimensional",
     "tape_based.dimensional",
     boolean=dimensional,
     wrap=_dimensional,
+    balance=_balance,
 )

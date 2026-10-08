@@ -37,6 +37,7 @@ from esolangs.tools.helpers import (
     read_at,
     subtree_ids,
 )
+from esolangs.tools.wrap import balance_score
 
 __all__ = ["inject"]
 
@@ -274,6 +275,11 @@ def _inject_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     return "\n".join([*head, *body, *tail])
 
 
+def _balance(table: str, default: str) -> str:
+    """Compare the normal program and its width-selected banded lookup."""
+    return min(default, inject(table, 1), key=balance_score)
+
+
 LANGUAGE = Language(
     "Inject",
     "other.inject",
@@ -281,4 +287,5 @@ LANGUAGE = Language(
     contract=BooleanContract(
         note="send terminates each line, so the answer ends in a newline",
     ),
+    balance=_balance,
 )

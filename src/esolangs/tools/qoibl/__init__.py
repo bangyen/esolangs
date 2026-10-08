@@ -3,6 +3,8 @@
 A packed literal has no subtrees to fold or share.
 """
 
+from typing import Any
+
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table, input_weights
@@ -94,6 +96,13 @@ def qoibl(truth_table: str, width: int | None = None) -> str:
     return _qoibl("\n".join(output), limit)
 
 
+def _balance(table: str, default: Any, **options: Any) -> Any:
+    """Defer to the ``balance`` submodule, which imports this one."""
+    from esolangs.tools.qoibl.balance import balance_qoibl  # circular
+
+    return balance_qoibl(table, default, **options)
+
+
 LANGUAGE = Language(
     "Qoibl",
     "register_based.qoibl",
@@ -102,4 +111,5 @@ LANGUAGE = Language(
     contract=BooleanContract(
         input_shape="char_stream",
     ),
+    balance=_balance,
 )

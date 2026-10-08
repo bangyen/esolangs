@@ -545,4 +545,5 @@ LANGUAGE = Language(
         note="Container prints the answer; module.run returns the EXIT code.",
         input_shape="char_stream",
     ),
+    balance=balance_container,
 )

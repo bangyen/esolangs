@@ -19,7 +19,8 @@ from esolangs.tools.helpers import (
     SubtreeDiagram,
     _validate_truth_table,
 )
-from esolangs.tools.wrap import wrap_tokens
+from esolangs.tools.token_balance import balanced_token_width
+from esolangs.tools.wrap import balance_score, wrap_tokens
 
 # ()! and :! are neutral, padding both selectors to _NODE space-free characters.
 PAIR = ("(()!!^)", "(~:!!^)")
@@ -153,6 +154,22 @@ def _underload_layout_tokens(template: str) -> list[str]:
     return re.findall(r"\${4}|\([01]\)|[^\n]", template)
 
 
+def _balance(table: str, default: str) -> str:
+    """Balance default selectors, the width-four form and swap bits."""
+    normal = re.findall(rf"\${{{len(PAIR[0])}}}|\(\)!|\([01]\)|.", default)
+    width = balanced_token_width(normal, minimum=5)
+    short = underload(table, 3).replace("\n", "")
+    tokens = re.findall(r"\$|\(\)!|\([01]\)|.", short)
+    short_width = balanced_token_width(tokens, maximum=3)
+    return min(
+        default,
+        underload(table, width),
+        underload(table, 4),
+        underload(table, short_width),
+        key=balance_score,
+    )
+
+
 LANGUAGE = Language(
     "Underload",
     "stack_based.underload",
@@ -160,4 +177,5 @@ LANGUAGE = Language(
     contract=BooleanContract(
         parameterized=True,
     ),
+    balance=_balance,
 )

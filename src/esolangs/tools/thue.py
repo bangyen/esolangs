@@ -322,4 +322,5 @@ LANGUAGE = Language(
         "every state it reaches has exactly one, leaving the draw nothing "
         "to change",
     ),
+    balance=balance_thue,
 )

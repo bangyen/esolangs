@@ -29,7 +29,7 @@ from esolangs.tools.helpers import (
     move_text,
     permute_truth_table,
 )
-from esolangs.tools.wrap import shortest
+from esolangs.tools.wrap import balance_score, shortest
 
 __all__ = ["streetcode"]
 
@@ -686,6 +686,27 @@ def streetcode(truth_table: str, width: int | None = None) -> str:
     return shortest(*programs, *rotated)
 
 
+def _balance(table: str, default: str) -> str:
+    """Compare each fit threshold and the seven/nine-column fallback regimes."""
+    n = _validate_truth_table(table)
+    if n >= 6:
+        flat = _streetcode_flat(table, n)
+        shapes = [flat, _streetcode_rotate(flat)]
+    else:
+        tree = _streetcode_tree(table)
+        shapes = [
+            _streetcode_hallway_program(n, tree),
+            *_streetcode_shared_programs(table, n, tree),
+        ]
+        if n == 5:
+            shapes.append(_streetcode_flat(table, n))
+    # A requested width changes the shortest fitting shape only when another
+    # shape starts fitting; asking at that shape's span also excludes losers.
+    candidates = [default, streetcode(table, 1), streetcode(table, 9)]
+    candidates.extend(streetcode(table, grid_width(shape)) for shape in shapes)
+    return min(candidates, key=balance_score)
+
+
 LANGUAGE = Language(
     "Streetcode",
     "grid_based.streetcode",
@@ -694,4 +715,5 @@ LANGUAGE = Language(
     contract=BooleanContract(
         input_shape="char_stream",
     ),
+    balance=_balance,
 )

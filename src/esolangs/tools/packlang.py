@@ -323,4 +323,5 @@ LANGUAGE = Language(
     # Generators emit indented blocks; fold only an over-wide line.
     # Packlang punctuation separates tokens even without a space.
     wrap=_packlang,
+    balance=balance_packlang,
 )

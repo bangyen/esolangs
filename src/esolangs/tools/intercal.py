@@ -263,4 +263,5 @@ LANGUAGE = Language(
         note="INTERCAL READ OUT prints a lone overbar for zero and I for one",
         parameterized=True,
     ),
+    balance=balance_intercal,
 )

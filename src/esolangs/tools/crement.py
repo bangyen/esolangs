@@ -25,9 +25,12 @@ from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
+    grid_width,
     in_input_order,
     subtree_ids,
 )
+from esolangs.tools.token_balance import balanced_token_width
+from esolangs.tools.wrap import balance_score
 
 __all__ = ["crement"]
 
@@ -158,6 +161,25 @@ def _crement_ordered(
     return "\n".join(header + testers + lines)
 
 
+def _balance(table: str, default: str) -> str:
+    """Compare preserved instructions and the two field-wrapping regimes."""
+    candidates = [default]
+    upper = grid_width(default) - 1
+    if upper >= 6:
+        normal = crement(table, upper)
+        candidates.append(normal)
+        folded_upper = min(upper, grid_width(normal) - 1)
+        if folded_upper >= 6:
+            width = balanced_token_width(
+                normal.split(), " ", minimum=6, maximum=folded_upper
+            )
+            candidates.append(crement(table, width))
+    short = crement(table, 1)
+    width = balanced_token_width(short.split(), " ", maximum=5)
+    candidates.append(crement(table, width))
+    return min(candidates, key=balance_score)
+
+
 LANGUAGE = Language(
     "Crement",
     "other.crement",
@@ -170,4 +192,5 @@ LANGUAGE = Language(
         "end (halts, 0) or on a self-jump (diverges, 1)",
         parameterized=True,
     ),
+    balance=_balance,
 )

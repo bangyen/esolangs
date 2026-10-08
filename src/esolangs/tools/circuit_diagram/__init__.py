@@ -72,7 +72,8 @@ port) and only ever read after that, which is why the tests can assert that
 a run prints exactly one character.
 """
 
-from typing import Literal
+from collections.abc import Iterator
+from typing import Any, Literal
 
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
@@ -596,6 +597,15 @@ def circuit_diagram(truth_table: str, width: int | None = None) -> str:
     return _narrowest_present(flat, banded, affine)
 
 
+def _balance(table: str, default: Any, **options: Any) -> Any:
+    """Defer to the ``balance`` submodule, which imports this one."""
+    from esolangs.tools.circuit_diagram.balance import (
+        balance_circuit_diagram,  # circular
+    )
+
+    return balance_circuit_diagram(table, default, **options)
+
+
 LANGUAGE = Language(
     "Circuit Diagram",
     "grid_based.circuit_diagram",
@@ -605,4 +615,5 @@ LANGUAGE = Language(
         input_shape="char_stream",
         ignores_whitespace=True,
     ),
+    balance=_balance,
 )

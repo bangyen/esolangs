@@ -31,6 +31,7 @@ from esolangs.tools.helpers import (
     anf_coefficients,
     short_name,
 )
+from esolangs.tools.wrap import balance_score
 
 __all__ = ["fargo"]
 
@@ -263,6 +264,13 @@ def fargo(truth_table: str, width: int | None = None) -> str:
     return _definition_program(expression, n)
 
 
+def _balance(table: str, default: str) -> str:
+    """Compare both order sets and the single definition/factored fallback."""
+    # Width requests add orders; their shortest expression cannot grow.
+    wide = fargo(table, len(default))
+    return min(default, wide, fargo(table, 1), key=balance_score)
+
+
 LANGUAGE = Language(
     "Fargo",
     "other.fargo",
@@ -272,4 +280,5 @@ LANGUAGE = Language(
         note="Fargo reads one number whose bits are the inputs, so the "
         "committed input is the row index rather than a bit per line",
     ),
+    balance=_balance,
 )
