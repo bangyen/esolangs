@@ -4,11 +4,14 @@
     python scripts/new_language.py check "Name"     # what is still missing
     python scripts/new_language.py finish "Name"    # regenerate, then verify
     python scripts/new_language.py remove "Name"    # the inverse of all three
+    python scripts/new_language.py bounds "Name"    # worst steps/bits per n
 
 ``start`` writes the interpreter, generator and test stubs.  ``check`` lists
 every integration point the language still lacks, with the file and entry
 to add; ``tests/scripts/test_new_language.py`` runs it over the registry,
-so the list cannot drift from what the suite enforces.  ``finish``
+so the list cannot drift from what the suite enforces.  Once the list is
+empty it runs the seconds-long tests ``finish`` would otherwise fail late.
+``bounds`` measures what the proof ledger's cells state.  ``finish``
 regenerates every committed artifact and runs the full ``verify.py`` gate.
 ``remove`` deletes what ``check`` asks for, regenerates, and lists the
 mentions left in prose for a hand edit.  The bare ``"Name" --category ...``
@@ -27,7 +30,7 @@ import sys
 from collections.abc import Callable, Container
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from esolangs.registry import Language
@@ -40,7 +43,7 @@ CATEGORIES = tuple(
         if path.is_dir() and (path / "__init__.py").exists()
     )
 )
-COMMANDS = ("start", "check", "finish", "remove")
+COMMANDS = ("start", "check", "finish", "remove", "bounds")
 
 
 def _slug(name: str) -> str:
@@ -58,10 +61,13 @@ def _slug(name: str) -> str:
     return slug
 
 
+#: Left in a stub's docstring until it is written; ``check`` looks for it.
+PLACEHOLDER = "<describe"
+
 _GENERATOR = '''"""Boolean program generator for {name}.
 
-Describe the construction: how a node reads its input, branches, and
-answers, and the size and build bound (O(T) for a decision tree).
+<describe the construction: how a node reads its input, branches, and
+answers, and the size and build bound (O(T) for a decision tree)>
 """
 
 from esolangs.tools.helpers import _validate_truth_table
@@ -75,23 +81,20 @@ def {slug}(truth_table: str) -> str:
 
 _GENERATOR_TEST = '''"""Tests for the {name} Boolean generator."""
 
-from itertools import product
-
 import pytest
 
-from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.{category}.{slug} import run
-from esolangs.tools.{slug} import {slug}
+import esolangs
 
 
 @pytest.mark.parametrize("table", ["01", "10", "0001", "0110", "00010111"])
 def test_every_row_prints_its_answer(table: str) -> None:
+    """Each row's stdin is what the registry's BooleanContract encodes."""
     n = len(table).bit_length() - 1
-    program = {slug}(table)
-    for row, bits in enumerate(product("01", repeat=n)):
-        io = ScriptedIO("\\n".join(bits) + "\\n")
-        run(program, io)
-        assert io.getvalue() == table[row]
+    program = esolangs.generate("{name}", table)
+    for row in range(len(table)):
+        bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
+        stdin = esolangs.encode_inputs("{name}", bits)
+        assert esolangs.run("{name}", program, stdin=stdin) == table[row]
 '''
 
 
@@ -132,10 +135,12 @@ def scaffold(name: str, category: str, *, generator: bool = True) -> list[Path]:
 
 def _interpreter_stub(name: str) -> str:
     template = (ROOT / "src/esolangs/interpreters/_template.py").read_text()
-    return template.replace(
-        '"""Template for a new esolang interpreter.',
-        f'"""Interpreter for {name}.',
-        1,
+    body = template.split('"""', 2)[2]
+    return (
+        f'"""Interpreter for {name}.\n\n{PLACEHOLDER} the machine from the wiki '
+        "page: memory, pointer, commands>\n\nA malformed program raises "
+        ":class:`ValueError`;\nexhausted input raises :class:`EOFError`.\n"
+        '"""' + body
     )
 
 
@@ -147,16 +152,18 @@ class Gap:
     fix: str
 
 
-def _tests_module(module: str, attr: str) -> Container[str]:
+def _tests_attr(module: str, attr: str) -> Any:
     """Read ``attr`` from ``tests.<module>``, which needs the repo on the path."""
     sys.path.insert(0, str(ROOT))
     try:
-        value: Container[str] = getattr(
-            importlib.import_module(f"tests.{module}"), attr
-        )
-        return value
+        return getattr(importlib.import_module(f"tests.{module}"), attr)
     finally:
         sys.path.remove(str(ROOT))
+
+
+def _tests_module(module: str, attr: str) -> Container[str]:
+    value: Container[str] = _tests_attr(module, attr)
+    return value
 
 
 def _export(gen: str) -> Gap:
@@ -182,7 +189,10 @@ def _unregistered(name: str, slug: str) -> list[Gap]:
             "src/esolangs/registry/_table.py",
             f'add "{name}": Language("{name}", "{module}", {generator}id="{slug}") '
             "anywhere in LANGUAGES (order is free); add split=True only if "
-            "run() takes list[str], one string per source line",
+            "run() takes list[str], one string per source line; a generator "
+            "whose programs read characters, not one 0/1 line per input, also "
+            "needs a BooleanContract in src/esolangs/registry/_contracts.py "
+            "(docs/CONTRIBUTING.md#the-boolean-io-contract)",
         ),
     ]
 
@@ -191,8 +201,14 @@ def _common_gaps(name: str, module: str) -> list[Gap]:
     """List the steps every language needs, generator or not."""
     gaps = []
     base = ROOT / "src/esolangs/interpreters" / module.replace(".", "/")
-    if not (base.with_suffix(".py").exists() or (base / "__init__.py").exists()):
+    source = next(
+        (p for p in (base.with_suffix(".py"), base / "__init__.py") if p.exists()),
+        None,
+    )
+    if source is None:
         gaps.append(Gap(f"{base.relative_to(ROOT)}.py", "write the interpreter"))
+    elif PLACEHOLDER in source.read_text(encoding="utf-8"):
+        gaps.append(Gap(str(source.relative_to(ROOT)), "write the docstring"))
     needle = f"esolangs.interpreters.{module}"
     if not any(
         needle in path.read_text(encoding="utf-8")
@@ -230,6 +246,9 @@ def _generator_gaps(lang: Language) -> list[Gap]:
     assert lang.boolean is not None
     gen = lang.boolean.__name__
     gaps = []
+    source = ROOT / f"src/esolangs/tools/{gen}.py"
+    if source.exists() and PLACEHOLDER in source.read_text(encoding="utf-8"):
+        gaps.append(Gap(str(source.relative_to(ROOT)), "write the docstring"))
     if gen not in tools.__all__:
         gaps.append(
             Gap(
@@ -275,7 +294,9 @@ def _ledger_gaps(name: str) -> list[Gap]:
                 f'add a "ledger" row {{"generator": "{name}", "labels": ["tree"], '
                 '"qualification", "scaling", "execution", "workspace", "evidence": '
                 '"docs/proofs/index.md#generator-ledger"}; copy a row with the '
-                "same construction and see Symbols in docs/proofs/index.md",
+                "same construction and see Symbols in docs/proofs/index.md; "
+                f"`python scripts/new_language.py bounds {name!r}` measures the "
+                "worst steps and bits to state",
             )
         ]
     if not row["execution"].split(": ", 1)[-1].startswith(("worst ", "at most ")):
@@ -310,6 +331,59 @@ def check(name: str) -> list[Gap]:
     if lang.boolean is not None:
         gaps += _generator_gaps(lang)
     return gaps
+
+
+def quick_tests(name: str) -> list[str]:
+    """Return the seconds-long tests that ``finish`` would otherwise fail late.
+
+    The language's own files, the ledger's prose limits and fold measure,
+    its formula rows at their smallest arity, and the docstring conventions.
+    """
+    from esolangs.registry import LANGUAGES
+
+    lang = LANGUAGES[name]
+    nodes = [
+        path
+        for path in (
+            f"tests/interpreters/test_{lang.id}.py",
+            f"tests/tools/test_boolean_{lang.id}.py",
+        )
+        if (ROOT / path).exists()
+    ]
+    nodes.append(
+        "tests/test_interpreter_conventions.py"
+        "::test_interpreter_docstrings_follow_the_template"
+    )
+    if lang.boolean is None:
+        return nodes
+    nodes += ["tests/proofs/test_ledger.py", "tests/proofs/test_schemes.py"]
+    arities = [
+        min(formulas[name][2])
+        for table in ("execution", "workspace")
+        for formulas in (_tests_attr(f"proofs.test_{table}_formulas", "FORMULAS"),)
+        if name in formulas
+    ]
+    if arities:
+        nodes.append(
+            "tests/proofs/test_workspace_formulas.py::"
+            f"test_execution_and_workspace_formulas_hold[{name}-{min(arities)}]"
+        )
+    return nodes
+
+
+def bounds(name: str, arities: range) -> list[tuple[int, int, int]]:
+    """Return ``(n, worst steps, worst written bits)`` for the ledger's cells.
+
+    Over the tables the formula tests use, so a stated bound that matches
+    these is one they accept.
+    """
+    tables = _tests_attr("proofs.test_execution_formulas", "_tables")
+    measure = _tests_attr("proofs.test_execution_formulas", "_measure")
+    rows = []
+    for n in arities:
+        worst = [measure(name, table, written=True) for table in tables(name, n)]
+        rows.append((n, max(s for s, _ in worst), max(b for _, b in worst)))
+    return rows
 
 
 def finish(name: str) -> int:
@@ -512,11 +586,24 @@ def main(argv: list[str] | None = None) -> int:
     )
     for command in ("check", "finish", "remove"):
         sub.add_parser(command).add_argument("name")
+    measure = sub.add_parser("bounds", help="worst steps and bits per arity")
+    measure.add_argument("name")
+    measure.add_argument("--max-n", type=int, default=5)
     args = parser.parse_args(argv)
+    if args.command == "bounds":
+        print("n  worst steps  worst bits")
+        for n, steps, bits in bounds(args.name, range(1, args.max_n + 1)):
+            print(f"{n:<2} {steps:>11}  {bits:>10}")
+        return 0
     if args.command == "check":
         gaps = check(args.name)
         if gaps:
             _report(args.name, gaps)
+            return 1
+        quick = [sys.executable, "-m", "pytest", "-q", "-n", "0", "-m", ""]
+        print("+ pytest", " ".join(quick_tests(args.name)), flush=True)
+        if subprocess.run([*quick, *quick_tests(args.name)], cwd=ROOT).returncode:
+            print(f"{args.name}: integrated, but fix the failures above first")
             return 1
         print(
             f"{args.name}: integrated; next: "
