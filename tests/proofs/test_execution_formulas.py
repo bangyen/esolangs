@@ -102,7 +102,7 @@ FORMULAS: dict[str, tuple[Callable[[int, str], float], bool, tuple[int, ...]]] =
     # most 3c); two odd runs keep the last input essential, 2 under 3T each.
     "Unsquare": (lambda n, _: 4 * 2**n + 79 * n + 22, True, (6, 7)),
     "Vandevelo": (lambda _, p: _vandevelo(p), False, (3, 5)),
-    "Home Row": (lambda n, _: 10 * 2**n + 10 * n + 95, False, (3, 5)),
+    "Home Row": (lambda n, _: 10 * 2**n + 10 * n + 88, True, (3, 5)),
     "Minsky Swap": (lambda n, _: 2 * 2**n + 6 * n + 4, True, (3, 5)),
     "Modulous": (lambda n, _: 5 * 2**n + 5 * n + 1, True, (3, 5)),
     "LaserFuck": (lambda n, _: 18 * 2**n + 56 * n + 5, False, (5,)),
@@ -277,6 +277,9 @@ def _tables(name: str, n: int) -> tuple[str, ...]:
         tables += ("10" + "01" * (width // 2 - 1),)
     if name == "123" and n >= 4:
         tables += (_one_two_three_worst(n),)
+    if name == "Home Row":
+        # Alternating but for one equal pair: every input essential, T - 2 leaves.
+        tables += ("10" * (width // 2 - 1) + "01",)
     if name == "Back":
         # Rudin-Shapiro (parity of 11 pairs in the row), complemented at odd n
         # and with row 1 flipped: the most rows its one-edges cannot share.

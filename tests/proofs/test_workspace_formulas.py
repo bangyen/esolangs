@@ -189,7 +189,7 @@ def _decleq(n: int, _: str) -> int:
 #: Generator -> (bits from n and the program, exact?, arities).  Mirrors the ledger.
 FORMULAS: dict[str, tuple[Callable[[int, str], int], bool, tuple[int, ...]]] = {
     "Fish": (lambda n, _: n + 13 + bl(9 * n + 8) + bl(n), True, (3, 6)),
-    "Home Row": (lambda n, _: n + 32 + bl(14 * 2**n + 10 * n + 15), False, (3, 5)),
+    "Home Row": (lambda n, _: n + 32 + bl(27 * 2**n // 2 + 10 * n + 6), True, (3, 5)),
     "Minsky Swap": (lambda n, _: n + 3 + bl(2 ** (n + 1) + 6 * n + 5), True, (3, 6)),
     "Factor": (
         lambda n, _: (
