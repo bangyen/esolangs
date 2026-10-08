@@ -188,3 +188,13 @@ def test_line_generator_entry_points() -> None:
     balanced = balance("01", generate("01"))
     assert balanced.to_png() == esolangs.generate("Line", "01", balance=True).to_png()
     assert _evaluate("Line", balanced.to_png(), inputs=1) == "01"
+
+
+def test_six_inputs_keep_the_rendered_layout() -> None:
+    """Past the small-tree cut-off both entry points draw through ``render``."""
+    import esolangs
+
+    table = "0110100110010110" * 4
+    for balanced in (False, True):
+        program = esolangs.generate("Line", table, balance=balanced)
+        assert _evaluate("Line", program.to_png(), inputs=6) == table
