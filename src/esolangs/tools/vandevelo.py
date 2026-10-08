@@ -1,125 +1,91 @@
 """Boolean-function generator for Vandevelo.
 
 The program reads the inputs, then hangs -- ``loop -> loop?`` evaluated
-lazily never terminates -- exactly when the table entry is 1.  Every value
-a Vandevelo program can bind is affine in the inputs (``==``/``!=`` are
-XNOR/XOR over nil), and only ``::`` chains evaluate conditionally, so a
-guard line hangs on an affine coset of inputs and a whole program hangs on
-a union of cosets.  The generator therefore emits one guard line per coset
-of an affine cover of the table's 1-set. Affine tables, single cosets and their
-complements bypass the peel after geometric doubling checks.
+lazily never terminates -- exactly when the table entry is 1.  Every bindable
+value is affine in the inputs (``==``/``!=`` are XNOR/XOR over nil) and only
+``::`` chains evaluate conditionally, so a guard line hangs on an affine
+coset of inputs.  One guard line is emitted per coset of an affine cover of
+the 1-set; affine tables, single cosets and their complements bypass the
+peel after geometric doubling checks.
 
-A test for 0 is ``x? == Nil?``, eight characters and four steps over a
-bare ``x?``, so the guards are spelled to need it rarely.  A register
-takes whichever polarity its clause wants -- its last toggle is ``==``
-rather than ``!=`` -- and an input most of whose tests ask for 0 is read
-negated (``~!>``) when the rows reaching those tests agree.  A guard's
-bare tests run first, and a test every row reaching it passes -- the
-far side of an earlier one-test guard -- is dropped.  Over the
-three-input tables these take 30,476 steps to 22,669 and 26,438
-characters to 23,425.
+A test for 0 is ``x? == Nil?``, eight characters and four steps over a bare
+``x?``, so guards avoid it: a register's last toggle takes whichever
+polarity the clause wants, an input mostly tested for 0 is read negated
+(``~!>``) when the rows reaching those tests agree, bare tests run first,
+and a test every reaching row passes is dropped.  Over the three-input
+tables: 30,476 steps to 22,669, 26,438 characters to 23,425.
 
 The cover is an affine-cube peel.  A cube is grown by iterated popular
-differences: pick the direction ``v`` maximising ``|B & (B ^ v)|``,
-intersect, repeat while a pair remains; the working sets along that chain
-are exactly the places the partial cube fits, so the chain finds cubes of
-dimension about ``log2(log2(T))`` that no local search sees.  The counting
-behind the choice is Cohen--Shinkar's (ECCC TR14-099): while the remainder
-has density ``eps``, the chain from the most popular direction reaches
-dimension ``d(eps) = log2(n) - log2(log2(1/eps)) - 2``, so a peel that
-only ever takes cubes of at least that dimension ends in ``1 + 9 * 2**n /
-n`` clauses, and the guard parts across all clauses total ``O(2**n)``.
+differences: pick ``v`` maximising ``|B & (B ^ v)|``, intersect, repeat
+while a pair remains; the chain finds cubes of dimension about
+``log2(log2(T))`` that no local search sees.  Cohen--Shinkar (ECCC
+TR14-099): at remainder density ``eps`` the chain from the most popular
+direction reaches ``d(eps) = log2(n) - log2(log2(1/eps)) - 2``, so a peel
+taking only cubes of at least that dimension ends in ``1 + 9 * 2**n / n``
+clauses.
 
-The peel does not restart per cube.  Every set it scores is kept and
-updated as points leave: the root holds the pair set ``S(v) = B & (B ^
-v)`` for a pool of :data:`_CANDIDATES` directions; below each pooled
-direction hangs a node with its own candidates and a greedy sub-chain,
-built on demand and kept while it has points.  Harvesting is deep-first
-in phases: phase ``d`` takes every coset at the deepest level of whichever
-chain is at least ``d`` deep, and drops to ``d - 1`` only when the chain
-from the most popular root direction, brought up to date at every level,
-falls short of ``d`` -- that chain has Cohen--Shinkar's dimension, so the
-phase never drops below ``d(eps)`` while the density is ``eps``, which is
-what the clause bound needs.  Every level of that chain, and of the
-first chain, which sets the opening phase, passes :func:`_assure`, so its
-direction holds at least half the average popularity: the quotient density
-then obeys ``eps' >= eps**2 / 4``, so ``log2(1 / eps) + 2`` at most doubles
-a level, and the chain reaches cubes of more than ``n / (2 * (log2(1 / eps)
-+ 2))`` points.  Summing over the density bands ``(2**-(i+1), 2**-i]``
-gives at most ``16 * 2**n / n`` dense clauses, and the sparse tail adds at
-most ``2**n / n``, for every table.  The pool is rechosen from the
-remainder's nearest existing differences once a fixed fraction of it has
-gone; below density
-``1 / max(_CANDIDATES, n)`` the remainder is sparse and each cube is grown
-at its lowest point from that point's nearest differences instead,
-filled from its successors in row order when the probes fall short.
+The peel does not restart per cube.  Every scored pair set ``S(v) = B & (B ^
+v)`` is kept and updated as points leave: the root pools :data:`_CANDIDATES`
+directions, each with a node of its own candidates and greedy sub-chain,
+built on demand.  Harvesting is deep-first in phases: phase ``d`` takes
+every coset at the deepest level of any chain at least ``d`` deep, and
+drops only when the up-to-date chain from the most popular root direction
+falls short, so it never drops below ``d(eps)``.  That chain and the first
+pass :func:`_assure` at every level (direction holds at least half the
+average popularity), so ``eps' >= eps**2 / 4`` and cubes exceed ``n / (2 *
+(log2(1 / eps) + 2))`` points; summed over density bands that is at most
+``16 * 2**n / n`` dense clauses plus ``2**n / n`` sparse, for every table.
+The pool is rechosen from the remainder's nearest existing differences once
+a fixed fraction has gone; below density ``1 / max(_CANDIDATES, n)`` each
+cube is grown at its lowest point from that point's nearest differences,
+filled from its successors in row order when probes fall short.
 
-Nodes hold cosets, not points: a node ``l`` levels down is a union of
-cosets of its ``l``-dimensional span, stored as one representative each
-(:class:`_Node`), so building, scoring, removal, refresh and
-:func:`_assure` cost its coset count ``q``, and ``q`` at least halves a
-level.  A chain built in one pass costs a geometric sum even where its
-sizes stay near ``T`` -- with ``k`` zeros, level ``l`` misses at most
-``k * 2**l`` points, and a point per entry cost at least ``T * (n -
-log2(k) - 2)``.  Removal charges to cosets built: a coset leaves each
-node once, at the candidate count.  Refresh does too in
-:meth:`_Peel.extend`, which waits for the loss of a quarter of the node,
-but not in :meth:`_Peel.certify`, which refreshes every level of its
-chain on every call.  The sampled fallback scores
-:data:`_SAMPLES` uniform pair differences, as many candidates more.  It
-is a heuristic; :func:`_assure` carries the bound, and on measured tables
-it never has to compute.  The sparse tail costs a constant per point: its
-order is threaded once in O(T), and a cube's probes, window and growth are
-bounded by the candidate count.
+Nodes hold cosets, not points: a node ``l`` levels down stores one
+representative per coset of its ``l``-dimensional span (:class:`_Node`), so
+building, scoring, removal, refresh and :func:`_assure` cost its coset
+count ``q``, which at least halves a level.  Removal charges to cosets
+built.  So does refresh in :meth:`_Peel.extend` (after a quarter is lost),
+but not :meth:`_Peel.certify`, which refreshes every level on every call.
+The sampled fallback scores :data:`_SAMPLES` uniform pair differences; it
+is a heuristic -- :func:`_assure` carries the bound and on measured tables
+never computes.  The sparse tail costs a constant per point.
 
-Linear time is not proved, and cannot be before linear output: writing
-the program is part of the build.  Four build terms escape the charge
-even counted in word operations.  A child rebuilt after it empties scans
-its parent's ``q`` cosets, and a rebuild need follow only one parent
-coset's removal, so these scans are bounded by ``q**2`` a node; the same
-holds for :meth:`_Peel.certify`, which must rebuild for the clause bound.
-The children built under one node do total at most its cosets, so cosets
-built, with the scoring and removal they pay for, cost at most the level
-above a level, ``O(T * n)`` a chain; halving would need both halves of
-each child coset to leave together, which a cube harvested across the
-chain's span does not do.  Rebuilding in :meth:`_Peel.extend` only after
-a node loses three quarters would halve them, but costs 2.5% over a
-433-table corpus and leaves :meth:`_Peel.certify`'s rebuilds, and its
-refreshes, which rescore a candidate per pairless one at ``q`` each.
-:func:`_nearest`'s sparse fallback lists points.  The dual-basis core
-below queries pair sums in ``O(n * |core|)`` work a clause. Since
-``|core| <= 1 + sqrt(2 * 2**dim)`` and the cubes partition the 1-set,
-Cauchy--Schwarz with ``C <= 17 * T / n`` bounds the sum by
-``O(T * sqrt(n))``. Its linear charge remains open. Measured,
-element visits per entry are flat at n=10..14 -- three or eight zeros
+Linear time is not proved, and cannot be before linear output.  Four build
+terms escape the charge: a child rebuilt after it empties scans its
+parent's ``q`` cosets (bounded by ``q**2`` a node, likewise
+:meth:`_Peel.certify`); cosets built cost ``O(T * n)`` a chain; halving
+would need both halves of each child coset to leave together, and
+rebuilding in :meth:`_Peel.extend` only after three quarters is lost
+costs 2.5% over a 433-table corpus; :func:`_nearest`'s sparse fallback
+lists points.  The dual-basis core queries pair sums in ``O(n * |core|)``
+a clause; ``|core| <= 1 + sqrt(2 * 2**dim)`` and the cubes partition the
+1-set, so Cauchy--Schwarz with ``C <= 17 * T / n`` bounds the sum by
+``O(T * sqrt(n))``; its linear charge remains open.  Measured element
+visits per entry are flat at n=10..14 -- three or eight zeros
 2,700--3,800 (17,000--28,000 and rising when nodes held points), density
 0.9 2,400--2,700, dense 500--900, quadratic forms 110--120.
 
-A cube's guard needs one part per constraint, and any basis of the cube's
-dual space will do.  :func:`_constraints` builds one from short relations:
-all but at most ``1 + 2**((dim + 1) / 2)`` constraints are parities of at
-most four inputs, the rest come from reduced elimination at most ``dim +
-1`` wide, so a clause's constraints weigh at most ``4 * n + (dim + 1) * (1
-+ 2**((dim + 1) / 2))`` inputs in total.  Single-input constraints test
-the input name directly and wider ones live in strict register bindings
-(``A ~> a?``, ``A ~> A? != b?``) that later clauses morph one toggle at a
-time instead of respelling; a fresh register costs one line per input of
-its parity and a morph strictly fewer, so upkeep never exceeds the total
-constraint weight.  Summed over the peel, ``4 * n`` per clause is ``4 * n
-+ 36 * 2**n`` by the clause bound, and the second term is at most ``4 *
-2**dim`` per clause, hence ``4 * 2**n`` over the disjoint cubes.  Register
-upkeep is therefore O(T) lines -- under ``40 * 2**n + 4 * n`` lines -- and its
-measured share stays under half of the emitted text.  The bank holds at
-most ``n**2`` registers (:func:`_bank_cap`), so a register name is never
-longer than two input names and a full bank respells its least recently
-used free register at the same cost as a fresh one; a clause looks for a
-register to reuse or morph among the :data:`_SCAN` most recently used, so
-the lookup is a constant per constraint.  The reduced-echelon basis alone
-would not give the weight bound: on a cube whose columns spread over
-``2**dim`` values it weighs ``n * dim / 2`` however the pivots are chosen,
-which is ``Theta(T log log T)`` at the ``log2(n)`` dimensions the peel
-produces. Identifier lengths are ``O(log n)``, so this argument bounds
-characters by ``O(T log n)``, not ``O(T)``. Removing that factor is open.
+A cube's guard needs one part per dual-space constraint.
+:func:`_constraints` builds them from short relations: all but at most
+``1 + 2**((dim + 1) / 2)`` are parities of at most four inputs, the rest
+come from reduced elimination at most ``dim + 1`` wide, so a clause weighs
+at most ``4 * n + (dim + 1) * (1 + 2**((dim + 1) / 2))`` inputs.
+Single-input constraints test the input directly; wider ones live in
+strict register bindings (``A ~> a?``, ``A ~> A? != b?``) that later
+clauses morph one toggle at a time; a morph costs strictly fewer lines than
+a fresh register, so upkeep never exceeds the total weight.  Over the peel
+that is ``4 * n + 36 * 2**n`` by the clause bound, the second term at most
+``4 * 2**n`` over the disjoint cubes, so register upkeep is O(T) lines --
+under ``40 * 2**n + 4 * n`` -- and measures under half the emitted text.
+The bank holds at most ``n**2`` registers (:func:`_bank_cap`), so a name is at most two
+input names long and a full bank respells its least recently used free register
+at fresh cost; a clause scans the :data:`_SCAN` most recently used, a
+constant per constraint.  The reduced-echelon basis alone would not bound
+the weight: on a cube whose columns spread over ``2**dim`` values it
+weighs ``n * dim / 2`` whatever the pivots, ``Theta(T log log T)`` at the
+``log2(n)`` dimensions the peel produces.  Identifier lengths are ``O(log
+n)``, so characters are ``O(T log n)``, not ``O(T)``; removing that factor
+is open.
 """
 
 from __future__ import annotations
