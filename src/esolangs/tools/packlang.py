@@ -10,7 +10,9 @@ That is what fixes the per-row cost.  A row costs one ``INCR t(k);`` --
 Packlang writes by counting, so there is no shorter statement -- and ``k``
 is an offset inside the block, so its digits stop growing once the table
 passes one block.  A block holding more ones than zeros is filled by a loop
-and its zeros punched back out, so a constant table pays per *block*.
+and its zeros punched back out, so a constant table pays per *block*; an
+all-zero block paints nothing, and a block equal to an earlier one is aliased
+to it (:func:`_blocks` shrinks the block until repeats align).
 
 The answer prints ``48 ^ t``; the opposite polarity was dropped: it cost
 +3.19% (3-input total) and +2.60% (seeded 5-input sample).
@@ -21,7 +23,7 @@ time, so the two alternate and no copy is ever needed.
 """
 
 import re
-from itertools import pairwise
+from itertools import pairwise, product
 
 from esolangs._dialects import PacklangLiterals
 from esolangs.tools.helpers import (
@@ -46,6 +48,9 @@ __all__ = ["packlang"]
 #: value is flat: 5/6/8 differ from 7 by +1.2%/-1.2%/+2.7% at n=10 (random).
 _BLOCK = 7
 
+#: The smallest block :func:`_blocks` tries; below it index digits dominate.
+_MIN_BLOCK = 4
+
 #: Fills cheaper than this many writes are not worth the loop that fills.
 #: Dropping fill+punch costs +2.4% at n=8 random but +66% (n=8, 80% ones)
 #: and +125% (n=10, 90% ones).
@@ -69,8 +74,8 @@ def packlang(
     literals = PacklangLiterals(literal_policy)
     weights, table = input_weights(truth_table, _validate_truth_table(truth_table))
     built = []
-    for runs in (False, True):
-        program = _painted(table, weights, runs=runs)
+    for runs, block in product((False, True), _blocks(table)):
+        program = _painted(table, weights, runs=runs, block=block)
         if literal_policy != "decimal":
             program = re.sub(
                 r"\b\d+\b", lambda match: literals.emit(int(match[0])), program
@@ -82,6 +87,25 @@ def packlang(
             program = wrap_program(program, "packlang", width)
         built.append(program)
     return min(built, key=len)
+
+
+def _blocks(table: str) -> list[int]:
+    """Return the block sizes (log2 rows) to build.
+
+    :data:`_BLOCK`, plus each smaller one where two blocks are equal and can
+    alias; a single block cannot, so repeats shorter than it were never
+    shared.  Tiled tables: -16..-18% at n=7, -22..-35% at n=8 (12 seeded
+    tables); random tables never offer one, so they cost nothing.
+    """
+    n = len(table).bit_length() - 1
+    top = min(n, _BLOCK)
+    if n <= _MIN_BLOCK:
+        return [top]
+    ids = subtree_ids(table)
+    smaller = [
+        low for low in range(_MIN_BLOCK, top) if len(set(ids[n - low])) < 1 << (n - low)
+    ]
+    return [top, *smaller]
 
 
 def _short_name(program: str) -> str:
@@ -138,14 +162,16 @@ def balance_packlang(_table: str, default: str) -> str:
     )
 
 
-def _painted(painted: str, weights: list[int], *, runs: bool) -> str:
+def _painted(
+    painted: str, weights: list[int], *, runs: bool, block: int = _BLOCK
+) -> str:
     """Return a program painting ``painted``'s ones into an array.
 
     ``painted`` indexes the inputs of nonzero weight; the rest are read and
     dropped.
     """
     n = len(painted).bit_length() - 1
-    low = min(n, _BLOCK)
+    low = min(n, block)
     span = 1 << low
     blocks = 1 << (n - low)
     # The block number's reads end at its last essential input.

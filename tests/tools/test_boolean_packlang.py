@@ -68,4 +68,13 @@ class TestPacklangPaintedArray:
         block = "0" * 127 + "1"
         zero = "0" * 128
         table = block + zero + zero + block
-        assert boolean.packlang(table).count("INCR t(127);") == 2
+        assert boolean.packlang(table).count("INCR t(") == 2
+
+    def test_repeats_shorter_than_a_block_are_aliased_and_run(self) -> None:
+        """Eight 16-row tiles of two blocks: a smaller block aliases them."""
+        rng = random.Random(2)
+        a, b = ("".join(rng.choice("01") for _ in range(16)) for _ in range(2))
+        tiled = (a + b) * 4
+        program = boolean.packlang(tiled)
+        assert "Array(Char,128)" not in program
+        assert _evaluate("Packlang", program, inputs=7) == tiled
