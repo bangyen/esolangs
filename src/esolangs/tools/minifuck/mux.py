@@ -159,20 +159,6 @@ def _mux_init_bits(bits: str, *, paired: bool = False) -> str:
 _GAP_BLOCK = "[[<[" + _MINIFUCK_INPUT + "<[x<[[x<"
 
 
-def _gaps_fit(gaps: tuple[int, ...], n: int) -> bool:
-    """Whether each gap's ignored input can stand in for its pad's last step.
-
-    Only a pad of three or more steps ends with both cells right of the
-    pointer zero; the last pad (weights 2 and 1) is two steps, and its first
-    still clears the gadget's trail.  One block per gap.
-    """
-    weights = _mux_weights(n)
-    return all(
-        not gap or (gap == 1 and i < n - 2 and weights[i] + weights[i + 1] > 3)
-        for i, gap in enumerate(gaps)
-    )
-
-
 def _mux_lookup(
     truth_table: str, n: int, *, paired: bool = False, gaps: tuple[int, ...] = ()
 ) -> str:
@@ -183,7 +169,7 @@ def _mux_lookup(
     ``popcount(r)`` plus the separator phase; a control flips every row but
     its own and the sentinel flips all, so the selected output is the bit.
     ``paired`` absorbs skips on fresh padding, allowing two-character breaks.
-    ``gaps[i]`` ignored inputs (see :func:`_gaps_fit`) sit after setter ``i``.
+    ``gaps[i]`` ignored inputs (see :data:`_GAP_BLOCK`) sit after setter ``i``.
     """
     total = len(truth_table)
     phase = (n ^ (_mux_start(n) - _MUX_BASE) ^ 1) & 1

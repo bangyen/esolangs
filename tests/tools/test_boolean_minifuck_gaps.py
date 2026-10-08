@@ -37,24 +37,17 @@ def test_degenerate_column_rules_execute_or_decline() -> None:
             assert runner.run_minifuck(runner.instantiate(template, bits)) == expected
 
 
-def test_failed_gap_mux_aborts_without_projecting() -> None:
-    """An input ignored between essential ones takes the mux; a failure aborts."""
-    from unittest.mock import patch
+def test_unabsorbable_ignored_input_stays_while_the_rest_drop() -> None:
+    """Input 1 is absorbed, 4 (before the last essential) kept, 6 dropped."""
+    from esolangs import generate
+    from esolangs._evaluate import _evaluate
+    from esolangs.tools.minifuck.mux import _mux_lookup
 
-    import pytest
-
-    module = importlib.import_module("esolangs.tools.minifuck")
-    _solve.cache_clear()
-    try:
-        with (
-            patch.object(
-                module, "_mux", side_effect=ValueError("broken mux invariant")
-            ),
-            pytest.raises(ValueError, match="broken mux invariant"),
-        ):
-            module.minifuck("01011010")
-    finally:
-        _solve.cache_clear()
+    inner = "0110100110010111"
+    bits = ((r >> 6 - i & 1 for i in (0, 2, 3, 5)) for r in range(128))
+    table = "".join(inner[int("".join(map(str, b)), 2)] for b in bits)
+    assert _evaluate("Minifuck", generate("Minifuck", table), inputs=7) == table
+    assert len(_solve(table)) < 0.4 * len(_mux_lookup(table, 7))
 
 
 def test_failed_unary_column_rule_aborts_without_a_program() -> None:

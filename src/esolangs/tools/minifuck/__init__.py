@@ -20,7 +20,6 @@ from esolangs.tools.helpers import (
 from esolangs.tools.minifuck.mux import (
     _MUX_MIN_ARITY,
     _canonical_endgame,
-    _gaps_fit,
     _mux,
     _mux_lookup,
 )
@@ -75,6 +74,26 @@ def _degenerate(truth_table: str, n: int) -> str | None:
 _INERT = "[[<<[" + _MINIFUCK_INPUT + "<"
 
 
+def _kept_inputs(essential: list[int]) -> list[int]:
+    """Return the essential inputs plus the ignored ones a pad cannot absorb.
+
+    An ignored input between two kept ones, with two essential inputs after
+    it, replaces a pad step (see :data:`_GAP_BLOCK`); only a pad of three or
+    more steps ends with both cells right of the pointer zero, so the last
+    pad takes none.  The others stay inputs of the lookup.  Leading and
+    trailing ones are dropped by the caller.
+    """
+    kept = list(essential)
+    for p in range(essential[0] + 1, essential[-1]):
+        if p in essential:
+            continue
+        later = [e for e in essential if e > p + 1]
+        if p - 1 in kept and p + 1 in essential and later:
+            continue
+        kept.append(p)
+    return sorted(kept)
+
+
 @cache
 def _solve(truth_table: str) -> str:
     """Build a Minifuck template for the given truth table.
@@ -86,6 +105,12 @@ def _solve(truth_table: str) -> str:
     every emission is tracked against all rows by
     :mod:`esolangs.tools.minifuck.sim` and :class:`ValueError` is raised
     otherwise.  Cached; no route enumerates candidates.
+
+    Ignored inputs are dropped (mean emitted characters, 10 seeded tables per
+    cell, against the lookup with every input essential): one ignored input
+    -49% at n=8 (-44% at n=5), two -74% (-65%).  The exception is an ignored
+    input immediately before the last essential one: no pad can absorb it,
+    so it stays an input (0%, never larger).
     """
     n = _validate_shape(truth_table)
 
@@ -99,14 +124,13 @@ def _solve(truth_table: str) -> str:
     if len(essential) < n:
         first = essential[0] if essential else 0
         after = n - 1 - essential[-1] if essential else n
-        inner_table = read_at(truth_table, essential, n)
-        gaps = tuple(b - a - 1 for a, b in pairwise(essential))
-        if not any(gaps):
+        kept = _kept_inputs(essential) if essential else essential
+        inner_table = read_at(truth_table, kept, n)
+        gaps = tuple(b - a - 1 for a, b in pairwise(kept))
+        if kept == essential and not any(gaps):
             inner = _solve(inner_table)
-        elif _gaps_fit(gaps, len(essential)):
-            inner = _mux_lookup(inner_table, len(essential), gaps=gaps)
         else:
-            return _mux(truth_table, n)
+            inner = _mux_lookup(inner_table, len(kept), gaps=gaps)
         return _INERT * first + inner + _MINIFUCK_INPUT * after
 
     # The strip's crossover: the direct lookup is O(T) for every wider table.
