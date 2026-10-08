@@ -50,6 +50,11 @@ class _Block:
         )
 
 
+def _depth(prefix: int) -> int:
+    """Return a heap node's level (the root is 0)."""
+    return prefix.bit_length() - 1
+
+
 def _h_size(inputs: int) -> int:
     """Return a side length for a two-level-at-a-time H-layout.
 
@@ -86,7 +91,7 @@ def _h_sites(inputs: int) -> dict[int, tuple[int, int]]:
     blocks = _h_blocks(inputs)
     sites: dict[int, tuple[int, int]] = {}
     for prefix, block in blocks.items():
-        remaining = inputs - (prefix.bit_length() - 1)
+        remaining = inputs - _depth(prefix)
         if remaining == 0:
             continue
         if remaining == 1:
@@ -111,19 +116,19 @@ def _h_minterm_sites(inputs: int) -> dict[int, tuple[int, int]]:
     blocks = _h_blocks(inputs)
     if inputs % 2 == 0:
         for prefix, block in blocks.items():
-            if (prefix.bit_length() - 1) == inputs:
+            if _depth(prefix) == inputs:
                 sites[prefix] = (
                     block.x + block.size // 2,
                     block.y + block.size // 2,
                 )
     else:
         for prefix, block in blocks.items():
-            if (prefix.bit_length() - 1) != inputs - 1:
+            if _depth(prefix) != inputs - 1:
                 continue
             middle_x = block.x + block.size // 2
             middle_y = block.y + block.size // 2
-            sites[2 * prefix] = (middle_x - 8, middle_y + 8)
-            sites[2 * prefix + 1] = (middle_x + 8, middle_y + 8)
+            sites[2 * prefix] = (middle_x - _LATTICE, middle_y + _LATTICE)
+            sites[2 * prefix + 1] = (middle_x + _LATTICE, middle_y + _LATTICE)
     return sites
 
 
@@ -141,6 +146,12 @@ class _HTermPlan:
     def literal(self, depth: int, bit: str) -> int:
         return self.literal_start + 2 * depth + int(bit)
 
+    def signal_of(self, prefix: int) -> int:
+        """Return the signal a non-root prefix's gate output carries."""
+        if _depth(prefix) == 1:
+            return self.literal(0, str(prefix & 1))
+        return self.signals[prefix]
+
     def result_anchor(self, prefix: int) -> tuple[int, int]:
         x, y = self.sites[prefix]
         return x + _RESULT_TRACK[0], y - _RESULT_TRACK[1]
@@ -148,7 +159,6 @@ class _HTermPlan:
 
 def _h_term_plan(table: str) -> _HTermPlan:
     """Assign minterm and result signals to fixed H-layout sites."""
-    truth_table = table
     inputs = len(table).bit_length() - 1
     margin = _LATTICE * inputs + _LATTICE  # the root anchors and input feeders
     sites = {
@@ -157,20 +167,20 @@ def _h_term_plan(table: str) -> _HTermPlan:
     }
     levels: list[list[int]] = [[] for _ in range(inputs + 1)]
     for node in sites:
-        levels[node.bit_length() - 1].append(node)
+        levels[_depth(node)].append(node)
     signals = {
         prefix: index
         for index, prefix in enumerate(
-            prefix for prefix in sites if (prefix.bit_length() - 1) >= 2
+            prefix for prefix in sites if _depth(prefix) >= 2
         )
     }
     literal_start = len(signals)
 
     next_signal = literal_start + 2 * inputs
     results: dict[int, int | None] = {
-        prefix: signals[prefix] if truth_table[prefix - (1 << inputs)] == "1" else None
+        prefix: signals[prefix] if table[prefix - (1 << inputs)] == "1" else None
         for prefix in sites
-        if (prefix.bit_length() - 1) == inputs
+        if _depth(prefix) == inputs
     }
     result_gates: set[int] = set()
     for depth in range(inputs - 1, -1, -1):
@@ -203,31 +213,16 @@ def _h_reserve_terms(
     layout: _RoutingLayout, plan: _HTermPlan
 ) -> dict[tuple[int, str, int], tuple[int, int]]:
     """Reserve gate ports, result holds, and table-independent literal anchors."""
-    inputs, sites, signals = plan.inputs, plan.sites, plan.signals
+    inputs, sites = plan.inputs, plan.sites
     literal, result_anchor = plan.literal, plan.result_anchor
     for prefix, (x, y) in sites.items():
-        if (prefix.bit_length() - 1) >= 2:
+        if _depth(prefix) >= 2:
             layout.glyph(x, y, "a")
         if prefix != 1:
-            signal = (
-                literal(0, str(prefix & 1))
-                if (prefix.bit_length() - 1) == 1
-                else signals[prefix]
-            )
-            layout.reserve((x + 1, y), signal)
-        if (prefix.bit_length() - 1) >= 2:
-            parent = prefix // 2
-            layout.reserve(
-                (x - 1, y - 1),
-                (
-                    literal(0, str(parent & 1))
-                    if (parent.bit_length() - 1) == 1
-                    else signals[parent]
-                ),
-            )
-            layout.reserve(
-                (x - 1, y + 1), literal((prefix.bit_length() - 1) - 1, str(prefix & 1))
-            )
+            layout.reserve((x + 1, y), plan.signal_of(prefix))
+        if _depth(prefix) >= 2:
+            layout.reserve((x - 1, y - 1), plan.signal_of(prefix // 2))
+            layout.reserve((x - 1, y + 1), literal(_depth(prefix) - 1, str(prefix & 1)))
 
     # Every result anchor is kept clear whether or not this table uses it,
     # so the literal and selector trees are routed on a canvas that does
@@ -235,7 +230,7 @@ def _h_reserve_terms(
     # are routed.  A route may cross a held cell's neighbourhood but may
     # not corner there (see :meth:`_RoutingLayout._route_is_free`).
     for prefix in sites:
-        if (prefix.bit_length() - 1) == inputs:
+        if _depth(prefix) == inputs:
             continue
         x, y = result_anchor(prefix)
         for cell in ((x, y), (x + 1, y), (x - 1, y - 1), (x - 1, y + 1)):
@@ -247,7 +242,7 @@ def _h_reserve_terms(
             for level in range(depth + 1):
                 for prefix in plan.levels[level]:
                     x, y = sites[prefix]
-                    below = _LATTICE * (depth - (prefix.bit_length() - 1))
+                    below = _LATTICE * (depth - _depth(prefix))
                     point = (
                         x - _LITERAL_TRACK_X[bit] - below,
                         y - _LITERAL_TRACK_Y[bit] - below,
@@ -265,15 +260,10 @@ def _h_route_literals(
     literal_anchors: dict[tuple[int, str, int], tuple[int, int]],
 ) -> None:
     """Route input feeders, minterm prefixes, and literal fanout."""
-    inputs, sites, signals, literal = (
-        plan.inputs,
-        plan.sites,
-        plan.signals,
-        plan.literal,
-    )
+    inputs, sites, literal = plan.inputs, plan.sites, plan.literal
     input_starts: dict[tuple[int, str], tuple[int, int]] = {}
     for depth in range(inputs):
-        row = 8 * depth
+        row = _LATTICE * depth
         plain = literal(depth, "1")
         negated = literal(depth, "0")
         layout.glyph(0, row, "-")
@@ -301,11 +291,7 @@ def _h_route_literals(
     for prefix, (x, y) in sites.items():
         if prefix == 1:
             continue
-        signal = (
-            literal(0, str(prefix & 1))
-            if (prefix.bit_length() - 1) == 1
-            else signals[prefix]
-        )
+        signal = plan.signal_of(prefix)
         source = (x + 1, y)
         layout.junction(*source, signal)
         for bit in "01":
@@ -331,7 +317,7 @@ def _h_route_literals(
                             child_x, child_y = sites[child]
                             target = (
                                 (child_x + 1, child_y)
-                                if (child.bit_length() - 1) == 1
+                                if _depth(child) == 1
                                 else (child_x - 1, child_y + 1)
                             )
                             # Side-by-side siblings put both last-level
@@ -359,7 +345,7 @@ def _h_route_results(layout: _RoutingLayout, plan: _HTermPlan) -> None:
     for prefix, result_value in results.items():
         if result_value is None:
             continue
-        if (prefix.bit_length() - 1) == inputs:
+        if _depth(prefix) == inputs:
             x, y = sites[prefix]
             result_points[prefix] = (x + 1, y)
         else:
@@ -373,13 +359,10 @@ def _h_route_results(layout: _RoutingLayout, plan: _HTermPlan) -> None:
             layout.reserve(point, result_value)
     for prefix in result_gates:
         x, y = result_anchor(prefix)
-        children = [
-            2 * prefix + int(bit)
-            for bit in "01"
-            if results.get(2 * prefix + int(bit)) is not None
-        ]
         for child, target in zip(
-            children, ((x - 1, y - 1), (x - 1, y + 1)), strict=True
+            _result_children(results, prefix),
+            ((x - 1, y - 1), (x - 1, y + 1)),
+            strict=True,
         ):
             layout.reserve(target, cast(int, results[child]))
     root = result_points[1]
@@ -390,11 +373,6 @@ def _h_route_results(layout: _RoutingLayout, plan: _HTermPlan) -> None:
         for prefix in plan.levels[depth]:
             if results[prefix] is None:
                 continue
-            children = [
-                2 * prefix + int(bit)
-                for bit in "01"
-                if results.get(2 * prefix + int(bit)) is not None
-            ]
             if prefix in result_gates:
                 gate_x, gate_y = result_anchor(prefix)
                 targets: tuple[tuple[int, int], ...] = (
@@ -403,14 +381,25 @@ def _h_route_results(layout: _RoutingLayout, plan: _HTermPlan) -> None:
                 )
             else:
                 targets = (result_points[prefix],)
-            for child, target in zip(children, targets, strict=True):
+            for child, target in zip(
+                _result_children(results, prefix), targets, strict=True
+            ):
                 child_result = results[child]
                 if child_result is None:  # pragma: no cover - filtered above
                     raise AssertionError("missing result signal")
                 layout.route(result_points[child], target, child_result)
 
 
-def _h_term_layout(table: str) -> "_Layout":
+def _result_children(results: dict[int, int | None], prefix: int) -> list[int]:
+    """Return the children of ``prefix`` that carry a result."""
+    return [
+        child
+        for child in (2 * prefix, 2 * prefix + 1)
+        if results.get(child) is not None
+    ]
+
+
+def _h_term_layout(table: str) -> _Layout:
     """Route one truth table's parallel minterm tree through an H-layout.
 
     Every wire takes a lane fixed by its class (see ``_LATTICE``): the

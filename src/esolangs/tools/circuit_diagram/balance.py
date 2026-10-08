@@ -3,10 +3,14 @@
 from esolangs.tools.circuit_diagram import (
     _Builder,
     _circuit_diagram_at,
-    _selector_orders,
+    _flat_best,
+    _narrowest_present,
 )
 from esolangs.tools.circuit_diagram.layout import _Layout
-from esolangs.tools.helpers import _validate_truth_table, grid_width, narrowest_grid
+from esolangs.tools.helpers import _validate_truth_table, grid_width
+
+# Width of the 2-input all-XOR flat drawing below (``-.X.-:``).
+_XOR2_FLAT_WIDTH = 6
 
 
 def affine_circuit(
@@ -30,9 +34,9 @@ def affine_circuit(
         if bit < n:
             parity ^= coefficients[bit]
     if n == 2 and all(coefficients):
-        if width < 6:
+        if width < _XOR2_FLAT_WIDTH:
             if _events is not None:
-                _events.append(6)
+                _events.append(_XOR2_FLAT_WIDTH)
             # Return the output below both inputs, then left. Two rows
             # isolate its final junction from the colon's diagonal pin.
             gate = "X" if constant else "x"
@@ -69,13 +73,7 @@ def affine_circuit(
 
 def balance_circuit_diagram(table: str, default: str) -> str:
     """Compare reachable gate-column thresholds and band-fit transitions."""
-    flat, order = min(
-        (
-            (_circuit_diagram_at(table, None, order), order)
-            for order in _selector_orders(table, compact=False)
-        ),
-        key=lambda built: len(built[0]),
-    )
+    flat, order = _flat_best(table, compact=False)
     floor = grid_width(flat)
     candidates = [default, flat]
     width = 1
@@ -93,8 +91,7 @@ def balance_circuit_diagram(table: str, default: str) -> str:
             )
             events.extend(point + 2 for point in shifted)
             affine = affine_circuit(table, width, _events=events)
-            forms = (flat, banded) if affine is None else (flat, banded, affine)
-            candidates.append(narrowest_grid(*forms))
+            candidates.append(_narrowest_present(flat, banded, affine))
         # Until a failed column comparison becomes true, the drawing and its
         # band decisions stay fixed. A drawing's own span can also start fitting.
         width = min(events)

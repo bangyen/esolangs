@@ -53,9 +53,8 @@ most significant first, matching the other generators in this package.
 * a left-to-right binary-carry fold combines adjacent cofactors.  Equal
   cofactors share one signal, ``0/1`` is the selector itself, and the other
   cases use a fixed one- or three-gate mux rule;
-* at most one unfinished signal per input level is live.  The fold performs
-  one pass over the table and emits fewer than three gates per entry; it is
-  neither a circuit search nor a graph traversal.
+* at most one unfinished signal per input level is live; the fold is one
+  pass over the table and emits fewer than three gates per entry.
 * through seven inputs the fold is built for up to four *selector orders*
   and the shortest drawing ships.  The rails keep their rows and read order;
   only which rail each Shannon level selects moves, which is the table's
@@ -72,11 +71,11 @@ port) and only ever read after that, which is why the tests can assert that
 a run prints exactly one character.
 """
 
-from dataclasses import dataclass
-from typing import Literal, cast
+from collections.abc import Iterator
+from typing import Literal
 
 from esolangs.tools.circuit_diagram.hlayout import _h_term_layout
-from esolangs.tools.circuit_diagram.layout import _HOLD, _Layout, _RoutingLayout, _Shape
+from esolangs.tools.circuit_diagram.layout import _Layout
 from esolangs.tools.helpers import (
     _greedy_input_order,
     _validate_truth_table,
@@ -295,10 +294,7 @@ class _Builder:
         self._tap(source, column - 1, row)
         self.layout.glyph(column, row, "~")
 
-        signal = self._new_signal()
-        self.layout.junction(column + 1, row, signal)
-        self.buses[signal] = (column + 1, row)
-        return signal
+        return self._drive(column + 1, row)
 
     def gate(self, kind: _GateGlyph, left: int, right: int) -> int:
         """Place a two-input ``kind`` gate and return its output signal.
@@ -320,13 +316,11 @@ class _Builder:
         )
         row = self._new_band()
 
-        self._feed(left, column - 1, row - 1)
-        self._feed(right, column - 1, row + 1)
+        self._tap(left, column - 1, row - 1)
+        self._tap(right, column - 1, row + 1)
         self.layout.glyph(column, row, kind)
 
-        signal = self._new_signal()
-        self.layout.junction(column + 1, row, signal)
-        self.buses[signal] = (column + 1, row)
+        signal = self._drive(column + 1, row)
         self.stride_of[signal] = first
         if self.limit is not None:
             self.live.append(signal)
@@ -350,9 +344,13 @@ class _Builder:
         self.layout.junction(column - 1, row + 1, source)
         self.layout.glyph(column, row, kind)
 
+        return self._drive(column + 1, row)
+
+    def _drive(self, column: int, row: int) -> int:
+        """Return a fresh signal driven from a junction at ``(column, row)``."""
         signal = self._new_signal()
-        self.layout.junction(column + 1, row, signal)
-        self.buses[signal] = (column + 1, row)
+        self.layout.junction(column, row, signal)
+        self.buses[signal] = (column, row)
         return signal
 
     def output(self, source: int) -> None:
@@ -392,10 +390,6 @@ class _Builder:
         if x != column:  # pragma: no branch - nor in the bus column
             self.layout.run_horizontal(column, x, y, signal)
             self.layout.junction(x, y, signal)
-
-    def _feed(self, signal: int, x: int, y: int) -> None:
-        """Bring ``signal`` to a gate's input junction at ``(x, y)``."""
-        self._tap(signal, x, y)
 
 
 _Value = int | Literal["0", "1"]
@@ -522,6 +516,13 @@ def _mux_cost(zero: int, one: int) -> tuple[int, bool]:
     return 3, True
 
 
+def _pairs(tokens: list[int], stride: int) -> Iterator[tuple[int, int]]:
+    """Yield each (zero, one) cofactor pair a level at ``stride`` muxes."""
+    for block in range(0, len(tokens), 2 * stride):
+        for x in range(block, block + stride):
+            yield tokens[x], tokens[x + stride]
+
+
 def _cheapest_selector_order(truth_table: str, n: int) -> tuple[int, ...]:
     """Pick each Shannon level's rail bottom-up by what its muxes cost.
 
@@ -541,31 +542,34 @@ def _cheapest_selector_order(truth_table: str, n: int) -> tuple[int, ...]:
         for pos in range(len(remaining) - 1, -1, -1):
             stride = 1 << (len(remaining) - 1 - pos)
             cost, complement = 0, False
-            for block in range(0, len(tokens), 2 * stride):
-                for x in range(block, block + stride):
-                    gates, negated = _mux_cost(tokens[x], tokens[x + stride])
-                    cost += gates
-                    complement = complement or negated
+            for zero, one in _pairs(tokens, stride):
+                gates, negated = _mux_cost(zero, one)
+                cost += gates
+                complement = complement or negated
             cost += complement
             if best_cost < 0 or cost < best_cost:
                 best_pos, best_cost = pos, cost
         stride = 1 << (len(remaining) - 1 - best_pos)
         rail = remaining.pop(best_pos)
         folded = []
-        for block in range(0, len(tokens), 2 * stride):
-            for x in range(block, block + stride):
-                zero, one = tokens[x], tokens[x + stride]
-                if zero == one and zero != _GATE:
-                    folded.append(zero)
-                elif (zero, one) == (0, 1):
-                    folded.append(2 + 2 * rail)
-                elif (zero, one) == (1, 0):
-                    folded.append(3 + 2 * rail)
-                else:
-                    folded.append(_GATE)
+        for zero, one in _pairs(tokens, stride):
+            if zero == one and zero != _GATE:
+                folded.append(zero)
+            elif (zero, one) == (0, 1):
+                folded.append(2 + 2 * rail)
+            elif (zero, one) == (1, 0):
+                folded.append(3 + 2 * rail)
+            else:
+                folded.append(_GATE)
         tokens = folded
         bottom_up.append(rail)
     return tuple(remaining + bottom_up[::-1])
+
+
+def _essential_table(truth_table: str, n: int) -> tuple[list[int], str]:
+    """Return the essential inputs (input 0 for a constant) and the table over them."""
+    used = essential_inputs(truth_table, n) or [0]
+    return used, truth_table if len(used) == n else read_at(truth_table, used, n)
 
 
 def _selector_orders(
@@ -579,8 +583,7 @@ def _selector_orders(
     n = len(truth_table).bit_length() - 1
     if n > _REORDER_MAX_ARITY:
         return [None]
-    used = essential_inputs(truth_table, n) or [0]
-    table = read_at(truth_table, used, n)
+    used, table = _essential_table(truth_table, n)
     identity = tuple(range(len(used)))
     orders: list[tuple[int, ...] | None] = [None]
     for order in (
@@ -605,18 +608,14 @@ def _circuit_diagram_at(
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.
 
-    The table is folded bottom-up by Shannon expansion.  Each unequal pair
-    becomes a fixed three-gate mux, while equal pairs share their signal.
-    There are fewer pairs than table entries, so construction uses O(T)
-    gates and no tree traversal or circuit search.
+    The table is folded bottom-up by Shannon expansion (:func:`_mux`): equal
+    pairs share their signal, unequal pairs take at most three gates, so
+    construction is O(T) gates.
 
-    The drawing's *width* is gate column groups, and a group is reused once
-    the bus it drives is dead.  What makes so many die is the shape of the
-    circuit rather than any analysis: only selector rails are read more than
-    once, and each mux result is read once by the carry above it.  A gate
-    must still sit right of every bus it reads,
-    since the run feeding it travels along its row, so what is reused is the
-    leftmost dead group past those buses.  Four inputs: 219 columns to 99.
+    Width is gate column groups, and a group is reused once its bus is dead.
+    Only selector rails are read more than once; each mux result is read once
+    by the carry above it.  A gate must sit right of every bus it reads, so
+    the leftmost dead group past those buses is the one reused.
 
     ``perm`` renames the essential inputs' levels: level ``k`` selects rail
     ``perm[k]``.  The input rows are drawn first and in input order either
@@ -629,8 +628,7 @@ def _circuit_diagram_at(
     # Every input keeps its ``-`` row (the read order), but the fold uses
     # only the essential inputs' rails; an ignored rail drives nothing, as
     # every rail but the first does for a constant table.
-    used = essential_inputs(truth_table, n) or [0]
-    table = truth_table if len(used) == n else read_at(truth_table, used, n)
+    used, table = _essential_table(truth_table, n)
     rails = [builder.input_bus() for _ in range(n)]
     if len(used) < n:
         rails = [rails[i] for i in used]
@@ -667,6 +665,27 @@ def _affine_circuit(
     return affine_circuit(table, width, _events=_events)
 
 
+def _flat_best(
+    truth_table: str, *, compact: bool
+) -> tuple[str, tuple[int, ...] | None]:
+    """Return the shortest unbanded drawing and its selector order.
+
+    ``min`` keeps the first on a tie, so the identity only gives way to a win.
+    """
+    return min(
+        (
+            (_circuit_diagram_at(truth_table, None, order), order)
+            for order in _selector_orders(truth_table, compact=compact)
+        ),
+        key=lambda built: len(built[0]),
+    )
+
+
+def _narrowest_present(*forms: str | None) -> str:
+    """Return the narrowest grid among the forms that exist."""
+    return narrowest_grid(*(form for form in forms if form is not None))
+
+
 def circuit_diagram(truth_table: str, width: int | None = None) -> str:
     """Build a Circuit Diagram program computing the given truth table.
 
@@ -682,27 +701,17 @@ def circuit_diagram(truth_table: str, width: int | None = None) -> str:
     From eight inputs an unconstrained build uses the H-layout instead;
     :mod:`.hlayout` gives why, and why at eight.
 
-    What a width buys is *banding* (:meth:`_Builder._band`).  Below that
-    floor, affine tables use native XOR/XNOR chains.
-    A mux layout's floor is what a band cannot reclaim -- the rails and complements,
-    which their mux levels share and which therefore stay live for the whole
-    drawing -- plus the carried signals and one gate group.  That is about
-    ``8 * n`` columns, so the floor grows with the inputs rather than with
-    the table.
+    What a width buys is *banding* (:meth:`_Builder._band`).  A mux layout's
+    floor is what a band cannot reclaim -- the rails and complements, live
+    for the whole drawing -- plus the carried signals and one gate group:
+    about ``8 * n`` columns, growing with the inputs rather than the table.
+    Below that floor, affine tables use native XOR/XNOR chains.
     """
     _validate_truth_table(truth_table)
     inputs = len(truth_table).bit_length() - 1
     if width is None and inputs >= 8 and "1" in truth_table:
         return _h_term_layout(truth_table).render()
-    # The shortest drawing over the candidate selector orders; ``min`` keeps
-    # the first on a tie, so the identity only ever gives way to a win.
-    flat, order = min(
-        (
-            (_circuit_diagram_at(truth_table, None, order), order)
-            for order in _selector_orders(truth_table, compact=width is None)
-        ),
-        key=lambda built: len(built[0]),
-    )
+    flat, order = _flat_best(truth_table, compact=width is None)
     if width is None or grid_width(flat) <= width:
         return flat
     banded = _circuit_diagram_at(truth_table, width, order)
@@ -711,5 +720,4 @@ def circuit_diagram(truth_table: str, width: int | None = None) -> str:
     # The output dash and colon extend beyond the final gate group.
     banded = _circuit_diagram_at(truth_table, max(1, width - 2), order)
     affine = _affine_circuit(truth_table, width)
-    candidates = (flat, banded) if affine is None else (flat, banded, affine)
-    return narrowest_grid(*candidates)
+    return _narrowest_present(flat, banded, affine)

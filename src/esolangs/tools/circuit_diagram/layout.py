@@ -112,7 +112,7 @@ class _Layout:
             a, b, s = ordered[index]
             if a >= hi:
                 break
-            if s != signal and a < hi and lo < b:
+            if s != signal and lo < b:
                 at = max(lo, a)
                 if hit is None or at < hit[0]:
                     hit = (at, True)
@@ -123,7 +123,7 @@ class _Layout:
             g = glyphs[index]
             if g >= hi:
                 break
-            if lo <= g < hi and (hit is None or g < hit[0]):
+            if hit is None or g < hit[0]:
                 hit = (g, False)
             index += 1
         return hit
@@ -179,16 +179,13 @@ class _Layout:
         """
         self._check_junction_spacing()
 
-        height = 0
-        for y in self.horizontal:
-            height = max(height, y + 1)
-        for runs in self.vertical.values():
-            for _, b, _ in runs:
-                height = max(height, b)
-        for _, y in self.junctions:
-            height = max(height, y + 1)
-        for _, y in self.glyphs:
-            height = max(height, y + 1)
+        height = max(
+            [y + 1 for y in self.horizontal]
+            + [b for runs in self.vertical.values() for _, b, _ in runs]
+            + [y + 1 for _, y in self.junctions]
+            + [y + 1 for _, y in self.glyphs],
+            default=0,
+        )
         if height == 0:
             return ""  # pragma: no cover - every table lays a wire
 

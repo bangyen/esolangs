@@ -535,7 +535,7 @@ class TestCircuitDiagram:
 
     def test_a_route_may_cross_a_hold_but_not_corner_beside_it(self) -> None:
         """A held cell keeps corners out of its neighbourhood, not wires."""
-        from esolangs.tools.circuit_diagram import _HOLD, _RoutingLayout
+        from esolangs.tools.circuit_diagram.layout import _HOLD, _RoutingLayout
 
         layout = _RoutingLayout()
         layout.reserve((1, 10), _HOLD)  # beside the ``down`` corner
@@ -552,7 +552,7 @@ class TestCircuitDiagram:
     @pytest.mark.parametrize("collision", ["endpoint", "neighbour", "interior"])
     def test_a_route_refuses_each_kind_of_claimed_cell(self, collision: str) -> None:
         """Endpoints, their neighbours and run interiors are all guarded."""
-        from esolangs.tools.circuit_diagram import _RoutingLayout
+        from esolangs.tools.circuit_diagram.layout import _RoutingLayout
 
         layout = _RoutingLayout()
         if collision == "endpoint":
