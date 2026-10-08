@@ -501,6 +501,19 @@ def read_at(truth_table: str, inputs: tuple[int, ...] | list[int], n: int) -> st
     return "".join([truth_table[o] for o in originals])
 
 
+def input_weights(truth_table: str, n: int) -> tuple[list[int], str]:
+    """Each input's row weight in the table read at its essential inputs.
+
+    An ignored input weighs 0, so a positional embed spends nothing on it:
+    holding it at 0 cannot change the answer (see :func:`read_at`).
+    """
+    essential = essential_inputs(truth_table, n)
+    weights = [0] * n
+    for rank, i in enumerate(essential):
+        weights[i] = 1 << (len(essential) - 1 - rank)
+    return weights, read_at(truth_table, essential, n)
+
+
 def stored_inputs(truth_table: str, perm: tuple[int, ...]) -> set[int]:
     """Return the *stream* inputs a decision tree over ``perm`` has to keep.
 

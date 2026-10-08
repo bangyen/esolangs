@@ -1,11 +1,13 @@
 """Linear /// construction: unary row selection by a fixed substitution sweep."""
 
-from esolangs.tools.helpers import TEMPLATE_CHAR, _validate_truth_table
+from esolangs.tools.helpers import TEMPLATE_CHAR, _validate_truth_table, input_weights
 
 PAIR = ("a", "b")
 _UNARY = "/b/a*//*a/a**//a//"
 _SWEEP = "/*\\>qA/>//*\\>qB/>/"
 _DECODE = "/>qA/C//>qB/D//qA///qB///C/0//D/1/"
+#: Deletes an ignored input's ``X``-marked bit before the unary sweep reads it.
+_IGNORE = "/Xa///Xb//"
 
 
 def slashes(truth_table: str) -> str:
@@ -16,21 +18,29 @@ def slashes(truth_table: str) -> str:
     from the table and decoder. There are T sweeps and 2T table characters.
     """
     n = _validate_truth_table(truth_table)
-    table = "".join("qA" if bit == "0" else "qB" for bit in truth_table)
-    return (
-        _UNARY + _SWEEP * len(truth_table) + _DECODE + TEMPLATE_CHAR * n + ">" + table
+    weights, bits = input_weights(truth_table, n)
+    table = "".join("qA" if bit == "0" else "qB" for bit in bits)
+    slots = "".join(
+        TEMPLATE_CHAR if weight else "X" + TEMPLATE_CHAR for weight in weights
     )
+    prefix = _IGNORE if 0 in weights else ""
+    return prefix + _UNARY + _SWEEP * len(bits) + _DECODE + slots + ">" + table
 
 
 def _is_unfilled_template(code: str) -> bool:
     """Recognize canonical templates without reserving literal dollars in ///."""
     prefix, delimiter, data = code.partition(_DECODE)
     slots, cursor, table = data.partition(">")
-    if not delimiter or not cursor or TEMPLATE_CHAR not in slots or slots.strip("$ab"):
+    if not delimiter or not cursor or TEMPLATE_CHAR not in slots or slots.strip("$abX"):
         return False
     if len(table) % 2 or any(
         table[i : i + 2] not in ("qA", "qB") for i in range(0, len(table), 2)
     ):
         return False
     size = len(table) // 2
-    return size == 1 << len(slots) and prefix == _UNARY + _SWEEP * size
+    ignored = slots.count("X")
+    head = _IGNORE if ignored else ""
+    return (
+        size == 1 << (len(slots) - 2 * ignored)
+        and prefix == head + _UNARY + _SWEEP * size
+    )

@@ -11,6 +11,7 @@ there, and every index past it shares its answer.
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
+    input_weights,
 )
 
 __all__ = ["a_painter_ant"]
@@ -22,21 +23,23 @@ PAIR = ("n", "N")
 def a_painter_ant(truth_table: str) -> str:
     """Build an A Painter Ant template: one run per input, weight in the ``E`` walk."""
     n = _validate_truth_table(truth_table)
-    size = len(truth_table.rstrip(truth_table[-1])) + 1
+    # An ignored input walks no ``E``: the corridor is the essential inputs'.
+    weights, table = input_weights(truth_table, n)
+    size = len(table.rstrip(table[-1])) + 1
     # Pass 1 paints the origin; later ``N`` lifts off the answer, ``W`` returns.
     out = ["N", "W" * (size - 1), "P"]
-    if truth_table[0] == "1":
+    if table[0] == "1":
         out.append("sPN")
-    for bit in truth_table[1:size]:
+    for bit in table[1:size]:
         # ``e`` paints on pass 1, ``E`` enters white later: one cell per pass.
         out.append("ePE")
         if bit == "1":
             # Paints the answer cell on pass 1; harmless later.
             out.append("sPN")
     out.append("W" * (size - 1))
-    for i in range(n):
+    for weight in weights:
         out.append(TEMPLATE_CHAR)
-        out.append("E" * (1 << (n - 1 - i)) + "SN")
+        out.append("E" * weight + "SN")
     # ``s`` steps onto a black answer; a white one leaves the ant on white.
     out.append("s")
     return "".join(out)

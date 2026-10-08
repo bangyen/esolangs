@@ -103,7 +103,7 @@
       ],
       "qualification": "the table is the program, one four-bit cell per row; each embedded bit appends two walk zeros per unit of its place value, and a cell consumes exactly two, so the zeros carry the program pointer to the indexed cell and the held-back sentinel arrives there to fire it; the cell's second `0` consumes the answer it just appended, without which a 1 would cascade into the rows below",
       "scaling": "linear: 4T table cells, 4T walk appends, 5T + n steps",
-      "execution": "linear: worst 5T + n commands on every table: input segments, then 3 per walk cell",
+      "execution": "linear: worst 5T + n commands: input segments, then 3 per walk cell",
       "workspace": "linear: worst 16T + 8 + bl(8T+n-2) + bl(2T+n+1) bits: a data queue of 2T bits",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
@@ -190,8 +190,8 @@
         "parameterized lookup"
       ],
       "qualification": "weighted zero padding advances the cyclic rule pointer to the indexed answer; the next empty rule deletes it",
-      "scaling": "linear: 5T + 2n + 1 characters, weighted padding",
-      "execution": "linear: worst 2T + n + 1 steps on every table: n input rules, 2 per row, 3 closers",
+      "scaling": "linear: at most 5T + 2n + 1 characters, weighted padding",
+      "execution": "linear: worst 2T + n + 1 steps: n input rules, 2 per row, 3 closers",
       "workspace": "linear: worst 16T + 1 + bl(2T+n) bits: a queue of up to 2T - 1 bits",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
