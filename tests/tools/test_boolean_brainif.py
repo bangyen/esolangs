@@ -186,3 +186,21 @@ def test_linear_lookup_drops_ignored_inputs() -> None:
     assert len(program) < 0.8 * len(generate("BrainIf", small + small[::-1], width=1))
     for row in range(64):
         assert run_brainif(program, list(format(row, "06b"))) == table[row]
+
+
+def test_linear_lookup_loops_stop_at_a_shared_marker_cell() -> None:
+    """Ignored inputs 1-7 put levels 0 and 8 on one marker cell: only level 0 loops."""
+    from esolangs import generate
+    from esolangs.tools.brainif import _Strip
+
+    n, kept = 12, [0, 8, 9, 10, 11]
+    small = "01101001100101101001011001101001"
+    table = "".join(
+        small[sum((r >> (n - 1 - i) & 1) << (4 - k) for k, i in enumerate(kept))]
+        for r in range(1 << n)
+    )
+    weights = [16 if i == 0 else 1 << (11 - i) if i in kept else 0 for i in range(n)]
+    assert _Strip("0" * 64, weights).levels == [0]
+    program = generate("BrainIf", table, width=1)
+    for row in (0, 1, 777, 2048, 4095):
+        assert run_brainif(program, list(format(row, f"0{n}b"))) == table[row]

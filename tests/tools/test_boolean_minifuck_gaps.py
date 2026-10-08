@@ -101,3 +101,8 @@ def test_narrow_layout_drops_ignored_inputs() -> None:
     assert len(str(narrow)) < 0.5 * len(
         str(generate("Minifuck", "0110100110010110" + "0110100110010111", width=1))
     )
+    # One essential input: the paired lookup is built at arity 1.
+    single = "".join("01"[r >> 1 & 1] for r in range(16))
+    assert (
+        _evaluate("Minifuck", generate("Minifuck", single, width=1), inputs=4) == single
+    )
