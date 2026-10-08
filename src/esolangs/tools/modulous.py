@@ -6,9 +6,9 @@ from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table, input_wei
 
 
 def modulous(truth_table: str, width: int | None = None) -> str:
-    """Build a Modulous table lookup, chunking literals below the old width.
+    """Return a Modulous table lookup; ``width`` folds command whitespace.
 
-    Command whitespace folds; each quoted chunk keeps its closing bracket.
+    Literals are chunked to fit; each quoted chunk keeps its closing bracket.
     """
     n = _validate_truth_table(truth_table)
     # ``PSH STR`` pushes the characters in reverse, so the leftmost entry is on
@@ -44,9 +44,9 @@ def modulous(truth_table: str, width: int | None = None) -> str:
         return program
     from esolangs.tools.wrap import _bracket_literal, wrap_space_delimited
 
-    previous = _bracket_literal(program, width)
-    if max(map(len, previous.splitlines())) <= width:
-        return previous
+    wrapped = _bracket_literal(program, width)
+    if max(map(len, wrapped.splitlines())) <= width:
+        return wrapped
     # Push chunks from last to first: each string itself pushes in reverse.
     # All jumps follow the prologue and are relative, so its length is free.
     chunk = max(1, width - 3)
@@ -59,5 +59,5 @@ def modulous(truth_table: str, width: int | None = None) -> str:
             for start in reversed(starts)
         )
     )
-    tokens = re.findall(r'"[^"]*"\]|[A-Z]+|\d+|[^\s]', prologue + "".join(reads) + walk)
+    tokens = re.findall(r'"[^"]*"\]|[A-Z]+|\d+|\S', prologue + "".join(reads) + walk)
     return wrap_space_delimited(" ".join(tokens), width)
