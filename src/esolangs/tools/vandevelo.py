@@ -5,15 +5,16 @@ lazily never terminates -- exactly when the table entry is 1.  Every bindable
 value is affine in the inputs (``==``/``!=`` are XNOR/XOR over nil) and only
 ``::`` chains evaluate conditionally, so a guard line hangs on an affine
 coset of inputs.  One guard line is emitted per coset of an affine cover of
-the 1-set; affine tables, single cosets and their complements bypass the
-peel after geometric doubling checks.
+the 1-set; single cosets and their complements (every affine table) bypass
+the peel after geometric doubling checks.
 
 A test for 0 is ``x? == Nil?``, eight characters and four steps over a bare
 ``x?``, so guards avoid it: a register's last toggle takes whichever
 polarity the clause wants, an input mostly tested for 0 is read negated
-(``~!>``) when the rows reaching those tests agree, bare tests run first,
-and a test every reaching row passes is dropped.  Over the three-input
-tables: 30,476 steps to 22,669, 26,438 characters to 23,425.
+(``~!>``) when the rows reaching those tests agree, and a test every
+reaching row passes is dropped.  Ordering bare tests first saved 0.0% of
+characters and 8.8% of steps at n=7, and was retired.  Over the three-input
+tables: 26,438 characters to 23,425.
 
 The cover is an affine-cube peel.  A cube is grown by iterated popular
 differences: pick ``v`` maximising ``|B & (B ^ v)|``, intersect, repeat
@@ -801,16 +802,6 @@ def _constraints(base: int, dirs: list[int], n: int) -> list[tuple[int, int]]:
     return [(w, (w & base).bit_count() % 2) for w in duals]
 
 
-def _affine_form(table: str, n: int) -> tuple[int, int] | None:
-    """Return the XOR mask and constant, checking all rows in O(T) work."""
-    first = table[0]
-    mask = sum(1 << bit for bit in range(n) if table[1 << bit] != first)
-    expected = first
-    for bit in range(n):
-        expected += expected.translate(_COMPLEMENT) if mask & (1 << bit) else expected
-    return (mask, int(first)) if expected == table else None
-
-
 def _affine_coset(table: str, ones: set[int]) -> tuple[int, list[int]] | None:
     """Return a basis for an affine 1-set, with O(T) membership work."""
     size = len(ones)
@@ -836,34 +827,22 @@ def vandevelo(truth_table: str, width: int | None = None) -> str:
     n = _validate_truth_table(truth_table)
     compact = width is not None
     names = [short_name(index, _ALPHABET) for index in range(n)]
-    affine = _affine_form(truth_table, n)
-    if affine is None:
-        ones = {row for row, entry in enumerate(truth_table) if entry == "1"}
-        coset = _affine_coset(truth_table, ones)
-        excluded = None
-        if coset is None:
-            zeros = set(range(1 << n)) - ones
-            excluded = _affine_coset(truth_table.translate(_COMPLEMENT), zeros)
-        if excluded is not None:
-            equations = _constraints(*excluded, n)
-            cover = [[(mask, value ^ 1)] for mask, value in equations]
-            # The first failed equation partitions the complement, even
-            # though earlier failures let its redundant prefix tests go.
-            dims = [n - index - 1 for index in range(len(equations))]
-        else:
-            cubes = (
-                [coset] if coset is not None else (_Peel(ones, n).run() if ones else [])
-            )
-            cover = _pruned([_constraints(base, dirs, n) for base, dirs in cubes])
-            dims = [len(dirs) for _, dirs in cubes]
+    ones = {row for row, entry in enumerate(truth_table) if entry == "1"}
+    coset = _affine_coset(truth_table, ones)
+    excluded = None
+    if coset is None:
+        zeros = set(range(1 << n)) - ones
+        excluded = _affine_coset(truth_table.translate(_COMPLEMENT), zeros)
+    if excluded is not None:
+        equations = _constraints(*excluded, n)
+        cover = [[(mask, value ^ 1)] for mask, value in equations]
+        # The first failed equation partitions the complement, even
+        # though earlier failures let its redundant prefix tests go.
+        dims = [n - index - 1 for index in range(len(equations))]
     else:
-        mask, offset = affine
-        if mask:
-            cover, dims = [[(mask, offset ^ 1)]], [n - 1]
-        elif offset:
-            cover, dims = [[]], [n]
-        else:
-            cover, dims = [], []
+        cubes = [coset] if coset is not None else (_Peel(ones, n).run() if ones else [])
+        cover = _pruned([_constraints(base, dirs, n) for base, dirs in cubes])
+        dims = [len(dirs) for _, dirs in cubes]
     flips = _flips(cover, dims, n)
     lines = []
     for index in range(n):
@@ -952,9 +931,6 @@ def vandevelo(truth_table: str, width: int | None = None) -> str:
                 parts.append(f"{part}?")
             else:
                 parts.append(f"{part}?==Nil?" if compact else f"{part}? == Nil?")
-        # A bare test costs one step and a ``== Nil`` five, and each part
-        # stops about half the rows still evaluating: cheap parts go first.
-        parts.sort(key=lambda part: part.endswith("Nil?"))
         lines.append(
             "::".join([*parts, loop]) if compact else " :: ".join([*parts, loop])
         )
@@ -963,6 +939,9 @@ def vandevelo(truth_table: str, width: int | None = None) -> str:
 
 def _pruned(cover: list[list[tuple[int, int]]]) -> list[list[tuple[int, int]]]:
     """Drop the tests every row reaching their clause passes.
+
+    Random tables: 0.0% of characters.  Unions of cubes and axis half-spaces,
+    which the peel covers with one-test clauses: 10.7% at n=8, 12.1% at n=10.
 
     A clause left with one test hangs every row that reaches it on that
     test's side, so every row reaching a later clause is on the other, and
@@ -990,7 +969,9 @@ def _flips(cover: list[list[tuple[int, int]]], dims: list[int], n: int) -> int:
     test's line (each sheds four steps per row).  The cubes are disjoint
     and a row in one hangs on its line, so a line is reached by every row
     outside the cubes before it.  Registers set their own polarity, so only
-    the bare tests count.
+    the bare tests count.  Saves 1.5% of characters on random tables at n=8
+    (200 tables), 14.8-17.6% on single-minterm tables at n=8-12 and 24-32%
+    when the minterms have few 1 bits: judged on that sparse class.
     """
     count = [0] * n
     weight = [0] * n

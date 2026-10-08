@@ -87,7 +87,7 @@ def test_three_input_steps_and_sizes() -> None:
         program = vandevelo(format(index, "08b"))
         size += len(program)
         steps += sum(_steps(program, bits) for bits in product(range(2), repeat=3))
-    assert (size, steps) == (23425, 22669)
+    assert (size, steps) == (23425, 23430)
 
 
 def test_parity_is_a_single_hyperplane() -> None:
@@ -102,8 +102,6 @@ def test_parity_is_a_single_hyperplane() -> None:
 def test_affine_tables_bypass_the_peel(monkeypatch: pytest.MonkeyPatch) -> None:
     import importlib
 
-    from esolangs.tools.vandevelo import _affine_form
-
     module = importlib.import_module("esolangs.tools.vandevelo")
 
     def reject(*_args: object) -> None:
@@ -117,7 +115,6 @@ def test_affine_tables_bypass_the_peel(monkeypatch: pytest.MonkeyPatch) -> None:
                     str(((row & mask).bit_count() % 2) ^ offset)
                     for row in range(1 << n)
                 )
-                assert _affine_form(table, n) == (mask, offset)
                 program = vandevelo(table)
                 for bits in product((0, 1), repeat=n):
                     io = ScriptedIO("\n".join(map(str, bits)))
@@ -125,16 +122,6 @@ def test_affine_tables_bypass_the_peel(monkeypatch: pytest.MonkeyPatch) -> None:
                     row = int("".join(map(str, bits)), 2)
                     assert str(int(not halted)) == table[row]
                     assert io.reads == n
-
-
-def test_affine_detection_checks_non_basis_rows() -> None:
-    from esolangs.tools.vandevelo import _affine_form
-
-    for n in range(2, 13):
-        parity = "".join(str(row.bit_count() % 2) for row in range(1 << n))
-        assert _affine_form(parity, n) == ((1 << n) - 1, 0)
-        changed = parity[:-1] + str(1 - int(parity[-1]))
-        assert _affine_form(changed, n) is None
 
 
 @pytest.mark.medium
