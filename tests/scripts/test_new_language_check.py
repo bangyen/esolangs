@@ -17,3 +17,9 @@ def test_an_unregistered_language_is_told_to_register() -> None:
     (gap,) = new_language.check("Not A Language")
     assert gap.where == "src/esolangs/registry/_table.py"
     assert 'id="not_a_language"' in gap.fix
+
+
+def test_check_runs_the_formula_case_bounds_measures() -> None:
+    nodes = new_language.quick_tests("SStack")
+    assert nodes[-1].endswith("formulas_hold[SStack-3]")
+    assert new_language.bounds("SStack", range(1, 2)) == [(1, 10, 23)]
