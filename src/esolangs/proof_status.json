@@ -351,7 +351,7 @@
       "qualification": "a bare `>` takes its dimension from the byte it stands on, so `d>` is a pointer displacement by the bit read: the index is a coordinate, doubled between reads by a two-loop `{`/`}` gadget, and it addresses one painted cell an entry along dimension 1",
       "scaling": "linear: 2T table characters plus at most a fixed gadget per input",
       "execution": "linear: at most 15T - 8n + 37 commands: paint 2T + 2, then 13 per index unit doubled",
-      "workspace": "T log T: worst Σ_{k<T} bl(k) + 5T + n(n-1)/2 + 4n + 6 + bl(2T+20n+40) + bl(2n-1) bits",
+      "workspace": "T log T: worst Σ_{k<T} bl(k) + 5T + n(n-1)/2 + 4n + 6 + bl(2T+20n+56) + bl(2n-1) bits",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
     {

@@ -27,10 +27,11 @@ def dimensional(truth_table: str, width: int | None = None) -> str:
     if width == 1 and n <= 2:
         return wrap_program(_dimensional_bare(truth_table, n), "dimensional", width)
     # An ignored input is a bare ``d``: the next read overwrites its byte.
-    # The first read needs no doubling.
+    # Skipping the first read's doubling saves 16 characters, 2.2% at n=8:
+    # not worth the special case.
     weights, truth_table = input_weights(truth_table, n)
     reads = (_DOUBLE + _READ if weight else "d" for weight in weights)
-    index = "".join(reads).replace(_DOUBLE, "", 1)
+    index = "".join(reads)
     program = _paint(truth_table) + index + f">{_PLANE}" + "+" * _ASCII_ZERO + "."
     return wrap_program(program, "dimensional", width)
 
@@ -50,23 +51,46 @@ def _paint(truth_table: str) -> str:
 
 
 def _dimensional_bare(table: str, n: int) -> str:
-    """Program painting the 2n leaf coordinates (axis 2+2i+bit); width 1, n<=2."""
+    """Program painting the leaf coordinates (axis 2+2i+bit); width 1, n<=2.
+
+    Essential for the width: the shared index form is 102-161 characters
+    against this form's 189-437, but wraps no narrower than two columns.
+
+    An ignored input paints nothing.  Before the last essential read its
+    ``d`` is overwritten by the next; after it, ``d`` would clobber the leaf,
+    so it reads at the leaf and steps off along a fresh axis (``[-]`` fixes
+    the dimension) to a second leaf copy.
+    """
+    weights, painted = input_weights(table, n)
+    if not any(weights):
+        weights, painted = [1] * n, table
+    essential = [i for i, weight in enumerate(weights) if weight]
+    m = len(essential)
+    last = essential[-1]
+    fresh = 2 + 2 * m
+    trailing = n - 1 - last
     parts: list[str] = []
 
     def move(dimension: int, direction: str) -> str:
         return "[-]" + "+" * dimension + direction
 
-    for row, bit in enumerate(table):
+    for row, bit in enumerate(painted):
         dimensions = [
             2 + 2 * index + int(value)
-            for index, value in enumerate(format(row, f"0{n}b"))
-        ]
+            for index, value in enumerate(format(row, f"0{m}b"))
+        ] + [fresh] * trailing
         parts.extend(move(dimension, ">") for dimension in dimensions)
         # Leaf values select exit axis zero or one, outside all input axes.
         # Return off-plane until the final move, never erasing a painted leaf.
         parts.append(move(int(bit), ">"))
         parts.extend(move(dimension, "<") for dimension in reversed(dimensions))
         parts.append(move(int(bit), "<"))
-    parts.extend("d" + "+" * (2 + 2 * index) + ">" for index in range(n))
+    for i in range(n):
+        if i in essential:
+            parts.append("d" + "+" * (2 + 2 * essential.index(i)) + ">")
+        elif i < last:
+            parts.append("d")
+        else:
+            parts.append("d" + move(fresh, ">"))
     parts.append("+" * _ASCII_ZERO + ".")
     return "".join(parts)

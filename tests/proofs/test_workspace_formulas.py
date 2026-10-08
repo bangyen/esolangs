@@ -337,7 +337,7 @@ FORMULAS: dict[str, tuple[Callable[[int, str], int], bool, tuple[int, ...]]] = {
             + n * (n - 1) // 2
             + 4 * n
             + 6
-            + bl(2 * 2**n + 20 * n + 40)
+            + bl(2 * 2**n + 20 * n + 56)
             + bl(2 * n - 1)
         ),
         True,

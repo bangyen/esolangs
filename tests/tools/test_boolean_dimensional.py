@@ -29,6 +29,9 @@ def test_bare_axis_leaves_execute_all_small_tables() -> None:
                 assert machine.halted
                 assert (io.getvalue(), io.reads) == (expected, n)
     assert len(dimensional("0110", 1)) == 429
+    # Ignored inputs paint nothing: 0011 ignores the second, 0101 the first.
+    assert len(dimensional("0011", 1)) == 275
+    assert len(dimensional("0101", 1)) == 195
 
 
 @pytest.mark.parametrize("width", [None, 2, 3, 8, 80])
