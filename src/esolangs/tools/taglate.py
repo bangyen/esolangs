@@ -26,6 +26,20 @@ def _reorder_tt(tt: str, n: int) -> str:
     return "".join(tt[i : i + 2] for i in range(2**n - 2, -1, -2))
 
 
+def _half_select(pairs: int, ahead: int, n: int) -> str:
+    """Branch on the front input, skip the kept half, drop the rejected one."""
+    return (
+        "gy"
+        + "e" * pairs
+        + "gz"
+        + "e" * ahead
+        + "f" * pairs
+        + "gy"
+        + "e" * (n + 2)
+        + "gz"
+    )
+
+
 def _even_reduce(pairs: int, level: int, n: int) -> str:
     """Even-reduction block: select half the value pairs, keep all inputs.
 
@@ -36,21 +50,7 @@ def _even_reduce(pairs: int, level: int, n: int) -> str:
     skips the untouched half and ``f^pairs`` drops it.  Every input stays on
     the queue, so the level that follows still sees all ``n`` of them.
     """
-    processed = level
-    ahead = n - level
-    total = n
-    rot = 2 * pairs + 2 + processed
-    return (
-        "e" * rot
-        + "gy"
-        + "e" * pairs
-        + "gz"
-        + "e" * ahead
-        + "f" * pairs
-        + "gy"
-        + "e" * (total + 2)
-        + "gz"
-    )
+    return "e" * (2 * pairs + 2 + level) + _half_select(pairs, n - level, n)
 
 
 # Final odd-reduce block: the committed n==2 pattern.  Given the 8-cell
@@ -78,18 +78,6 @@ _SEL1_N2: str = (
 )
 
 
-def _build_padded_tt(truth_table: str, n_effective: int) -> str:
-    """Pad a ``2**(n_effective - 1)``-entry truth table to ``n_effective`` bits.
-
-    Odd ``n`` is computed with ``n_effective = n + 1`` inputs whose leading
-    (ghost) digit is always 0.  The real table covers the ghost=0 half; the
-    entries the ghost=1 would select are padded with 0 so the never-taken
-    rows stay harmless.
-    """
-    half = 2 ** (n_effective - 1)
-    return truth_table.ljust(half * 2, "0")
-
-
 def _odd_reduce(pairs: int, level: int, n: int) -> str:
     """Odd-reduction block: retire one input, reduce, keep the rest.
 
@@ -108,34 +96,13 @@ def _odd_reduce(pairs: int, level: int, n: int) -> str:
     popped; the final ``f^pairs`` in ``er`` drops only the rejected value
     slots.
     """
-    processed = level
-    ahead = n - level + 1  # +1 for the ghost cell added by the swap
-    total = n
-    qlen = 2 * pairs + 2 + total
-    rot = 2 * pairs + 2 + (processed - 1) if processed > 0 else 0
+    qlen = 2 * pairs + 2 + n
+    rot = 2 * pairs + 1 + level
     zero = "gy" + "j" + "e" * (qlen - 1) + "gz"
     swap = "e" + "gy" + "j" + "e" * (qlen - 2) + "j" + "gz"
     bring = "e" * (qlen - 1)
-    er = (
-        "gy"
-        + "e" * pairs
-        + "gz"
-        + "e" * ahead
-        + "f" * pairs
-        + "gy"
-        + "e" * (total + 2)
-        + "gz"
-    )
+    er = _half_select(pairs, n - level + 1, n)  # +1: the swap's ghost cell
     return "e" * rot + zero + swap + bring + er
-
-
-def _taglate_reduced_table(truth_table: str, n: int, used: list[int]) -> str:
-    """Rewrite the function over just the inputs in ``used``.
-
-    :func:`read_at` builds the row indices by doubling, O(2**width) rather
-    than a bit sum per row.
-    """
-    return read_at(truth_table, used, n)
 
 
 def _taglate_raw(truth_table: str) -> str:
@@ -189,14 +156,7 @@ def _taglate_raw(truth_table: str) -> str:
     """
     n = _validate_truth_table(truth_table)
 
-    # A table that ignores some of its inputs is really a smaller table, and
-    # taglate's cost is almost all fixed overhead scaled by the input count
-    # -- the seed alone is ``2**(n_eff + 2)`` cells -- so dropping one input
-    # drops a whole tier.  Emit the reduced table's program and read the
-    # ignored inputs anyway, discarding each with ``h``/``e``-rotate/``f``,
-    # which leaves the queue exactly as it was so the reduces' positional
-    # arithmetic is undisturbed.
-    #
+    ghost = n % 2 == 1 and n > 1
     used = essential_inputs(truth_table, n)
     # A constant table depends on nothing, so it reduces to the smallest
     # valid table there is -- a one-input constant, never the length-1
@@ -211,13 +171,13 @@ def _taglate_raw(truth_table: str) -> str:
             used = [*used, used[-1] + 1]
         elif used[0] > 0:
             used = [used[0] - 1, *used]
+    # A single input needs no ghost, so odd size is fine there.
     if 0 < len(used) < n and (len(used) % 2 == 0 or len(used) == 1):
-        reduced = _taglate_reduced_table(truth_table, n, used)
+        reduced = read_at(truth_table, used, n)
         seed, commands = _taglate_raw(reduced).split("\n", 1)
         discard = "h" + "e" * len(seed) + "f"
         # Odd ``n`` above 1 is called with a leading ghost digit, which is
         # one more input to read and throw away before the real ones.
-        ghost = 1 if n % 2 == 1 and n > 1 else 0
         leading = used[0] + ghost
         reads = commands.split("h")
         parts = [reads[0] + "h"]
@@ -237,9 +197,10 @@ def _taglate_raw(truth_table: str) -> str:
 
     # For odd n, prepend a fake zero-input (ghost) to make the stride land
     # on a separator.  n_effective is the number of h-reads and levels.
-    if n % 2 == 1 and n > 1:
+    if ghost:
         n_eff = n + 1
-        full_tt = _build_padded_tt(truth_table, n_eff)
+        # Ghost=1 rows are never taken; pad them with 0.
+        full_tt = truth_table.ljust(2**n_eff, "0")
     else:
         n_eff = n
         full_tt = truth_table
@@ -290,14 +251,17 @@ def _seed_commands(seed: str) -> str:
     count = len(targets)
     prefixes: list[str] = []
     suffixes: list[str] = []
+
+    def encode(text: str) -> str:
+        return "".join(c if c in _URL_SAFE else f"%{ord(c):02X}" for c in text)
+
     prefix, suffix = _PREFIX, _SUFFIX
     enough = 0
     while enough < count:
         prefixes.append(prefix)
         suffixes.append(suffix)
         enough += sum(ord(c) >= 49 for c in prefix + suffix)
-        prefix = "".join(c if c in _URL_SAFE else f"%{ord(c):02X}" for c in prefix)
-        suffix = "".join(c if c in _URL_SAFE else f"%{ord(c):02X}" for c in suffix)
+        prefix, suffix = encode(prefix), encode(suffix)
     # Encoding distributes over concatenation; nested URLs are these layers.
     values = list(map(ord, "".join(prefixes + suffixes[::-1])))
     parts: list[str] = ["t" * len(prefixes)]
