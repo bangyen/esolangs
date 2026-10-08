@@ -292,7 +292,8 @@ def _flowchart_deque(truth_table: str) -> str:
 
     Input ``p``'s value bit is stream bit ``8p``, so an ignored input costs
     only the eight ``/ /`` that skip it, and the deque holds the table over
-    the essential inputs alone.
+    the essential inputs alone.  Trailing ignored inputs are read in each
+    answer arm, ahead of its pop.
     """
     n = len(truth_table).bit_length() - 1
     # A constant table keeps one input for the selector to switch on.
@@ -348,9 +349,12 @@ def _flowchart_deque(truth_table: str) -> str:
         west("/ /")
     switch = west("< >")
     cells[(switch + 1, spine - 1)] = "┐"
-    upper = "─".join(reversed(("/{ }\\", *_ANSWER)))
+    # A trailing ignored input is read before the pop, which overwrites the
+    # register they leave behind; the arms split here so each repeats them.
+    owed = ("/ /",) * (8 * (n - 1 - used[-1]))
+    upper = "─".join(reversed((*owed, "/{ }\\", *_ANSWER)))
     _paint(cells, switch - len(upper), spine - 1, upper + "─")
-    for text in ("\\{ }/", *_ANSWER):
+    for text in (*owed, "\\{ }/", *_ANSWER):
         end = west(text)
     del cells[(end - 1, spine)]
 
