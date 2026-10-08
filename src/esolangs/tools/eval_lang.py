@@ -2,8 +2,7 @@
 
 Named ``eval_lang`` so the module does not read as the builtin ``eval``.
 
-The table is a literal halved by position, so every entry stays and there
-are no subtrees to fold or share.
+The table is a literal halved by position: no subtrees to fold or share.
 """
 
 from esolangs.tools.helpers import (
