@@ -36,6 +36,9 @@ The leaf itself never reads the sum either: it clears the accumulator,
 SPRINTs to a print array whose middle cell holds ``'0'`` or ``'1'``, and
 CONSUMEs it.  Six or seven tokens, the same for every row.
 
+The leaf table is addressed by the summed weights, one slot per row, so a
+constant half or repeat has no subtree to fold or share.
+
 Everything is closed-form; the bounded fixed points raise if they do not
 settle, and the merge equalities are asserted on every build.  Executed
 evidence: every table through ``n == 3``, plus sampled rows of dense

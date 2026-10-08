@@ -3,6 +3,10 @@
 Each input is embedded once at equal width; every row is verified with
 the joint simulator and an unverified program raises.  The simulator laws
 are pinned differentially against the interpreter.
+
+The strip is positional: the pointer lands on a control cell by weighted
+displacement, so every row owns a cell and a constant half or repeat has no
+subtree to fold or share.
 """
 
 from functools import cache

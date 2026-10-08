@@ -1,4 +1,4 @@
-"""Boolean-function generator for Suffolk."""
+"""Boolean generator for Suffolk: steps telescope; with no jump, nothing is shared."""
 
 from esolangs.tools.helpers import (
     _ASCII_ONE,

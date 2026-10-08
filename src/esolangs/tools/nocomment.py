@@ -1,4 +1,8 @@
-"""Boolean-function generator for NoComment."""
+"""Boolean-function generator for NoComment.
+
+Every row owns a landing site for the index skip, so a constant half or repeat
+has no subtree to fold or share.
+"""
 
 from collections.abc import Callable
 

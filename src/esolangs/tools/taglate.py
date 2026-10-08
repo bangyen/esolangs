@@ -1,4 +1,8 @@
-"""Boolean-function generator for Taglate."""
+"""Boolean-function generator for Taglate.
+
+Rows are fixed queue slots the strided reduces walk, two characters for a 0 or
+a 1, so a constant half or repeat has nothing to fold or share.
+"""
 
 from itertools import pairwise
 from math import isqrt

@@ -8,7 +8,8 @@ columns.
 
 From six inputs the tree goes away: the table is written one cell per
 entry and the inputs address it (:func:`_streetcode_flat`), which is nine
-rows of street however many entries there are.
+rows of street however many entries there are.  The tree folds constant
+subtrees; a repeated one is redrawn, not shared.
 """
 
 from collections.abc import Callable

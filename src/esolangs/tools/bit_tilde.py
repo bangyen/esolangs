@@ -1,4 +1,8 @@
-"""Boolean generator for bit tilde."""
+"""Boolean generator for bit tilde.
+
+Entries are planted left to right, so a skip loop has no terminator ahead of
+it: a constant or repeated span costs a ``>`` per cell.
+"""
 
 from esolangs.tools.helpers import _validate_truth_table, essential_inputs, read_at
 

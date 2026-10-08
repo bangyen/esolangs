@@ -1,4 +1,4 @@
-"""Boolean template generator for minsky swap."""
+"""Boolean template for minsky swap; a row is one ``~``, so no span shrinks."""
 
 from esolangs.tools.helpers import TEMPLATE_CHAR, _validate_truth_table, input_weights
 
