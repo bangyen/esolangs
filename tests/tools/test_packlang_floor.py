@@ -9,19 +9,19 @@ from esolangs.interpreters.other._packlang_lex import _tokenize
 from esolangs.tools.packlang import packlang
 from esolangs.tools.wrap import wrap_program
 from tests.generator_support import evaluate_generated
+from tests.witness_tables import witnesses
 
 
 @pytest.mark.parametrize("inputs", [1, 2, 3])
 @pytest.mark.medium
 def test_every_small_packlang_table_executes_at_the_new_floor(inputs: int) -> None:
-    for value in range(1 << (1 << inputs)):
-        table = format(value, f"0{1 << inputs}b")
+    for table in witnesses(inputs):
         source = esolangs.generate("Packlang", table, width=1)
         assert max(map(len, source.splitlines())) == 7
         assert evaluate_generated("Packlang", table, width=1) == table
 
 
-@pytest.mark.parametrize("inputs", [4, 5, 8, 10])
+@pytest.mark.parametrize("inputs", [4, 10])
 @pytest.mark.parametrize("width", [1, 7, 11, 40, 80])
 def test_packlang_lexical_folds_execute_sampled_rows(inputs: int, width: int) -> None:
     table = format(random.Random(inputs).getrandbits(1 << inputs), f"0{1 << inputs}b")

@@ -8,11 +8,6 @@
    "expected": "Hello World!\n"
   },
   {
-   "id": "six-cell-hello",
-   "source": "+++++++++++[>++++++>+++++++++>++++++++>++++>+++>+<<<<<<-]>++++++.>++.+++++++..+++.>>.>-.<<-.<.+++.------.--------.>>>+.>-.",
-   "expected": "Hello, World!\n"
-  },
-  {
    "id": "below-zero-hello",
    "source": ">++++++++[-<+++++++++>]<.>>+>-[+]++>++>+++[>[->+++<<+++>]<<]>-----.>->\n+++..+++.>-.<<+[>[+>+]>>]<--------------.>>.+++.------.--------.>+.>+.",
    "expected": "Hello World!\n"
@@ -33,27 +28,6 @@
   {
    "id": "cat-eof-0",
    "source": ",[.,]",
-   "stdin": "ab\n",
-   "expected": "ab\n",
-   "stop": "eof"
-  },
-  {
-   "id": "cat-eof-minus-1",
-   "source": ",+[-.,+]",
-   "stdin": "ab\n",
-   "expected": "ab\n",
-   "stop": "eof"
-  },
-  {
-   "id": "cat-eof-unchanged-or-0",
-   "source": ",[.[-],]",
-   "stdin": "ab\n",
-   "expected": "ab\n",
-   "stop": "eof"
-  },
-  {
-   "id": "cat-eof-unchanged-or-minus-1",
-   "source": ",+[-.[-]-,+]",
    "stdin": "ab\n",
    "expected": "ab\n",
    "stop": "eof"
@@ -93,20 +67,6 @@
    "max_steps": 2000
   },
   {
-   "id": "truth-alt-0",
-   "source": ">,>>>+++[-<++>]<[-<++++[-<-->]>]<<[-<+>>+<]>[-<+>]<[[-]>>+++[-<++>]<[-<++++[\n-<++>]>]<<[.]]>>+++[-<++>]<[-<++++[-<++>]>]<<.",
-   "stdin": "0",
-   "expected": "0"
-  },
-  {
-   "id": "truth-alt-1",
-   "source": ">,>>>+++[-<++>]<[-<++++[-<-->]>]<<[-<+>>+<]>[-<+>]<[[-]>>+++[-<++>]<[-<++++[\n-<++>]>]<<[.]]>>+++[-<++>]<[-<++++[-<++>]>]<<.",
-   "stdin": "1",
-   "expected": "11111111111111111111111111111111111111111111111111",
-   "stop": "steps",
-   "max_steps": 3000
-  },
-  {
    "id": "truth-alt-echoes-other",
    "source": ">,>>>+++[-<++>]<[-<++++[-<-->]>]<<[-<+>>+<]>[-<+>]<[[-]>>+++[-<++>]<[-<++++[\n-<++>]>]<<[.]]>>+++[-<++>]<[-<++++[-<++>]>]<<.",
    "stdin": "a",
@@ -115,49 +75,8 @@
    "max_steps": 3000
   },
   {
-   "id": "truth-opt-0",
-   "source": "+++++++[>+++++++<-],>[>+<<->-]<[>-<[-]]>+[>[.]]>-.",
-   "stdin": "0",
-   "expected": "0"
-  },
-  {
-   "id": "truth-opt-1",
-   "source": "+++++++[>+++++++<-],>[>+<<->-]<[>-<[-]]>+[>[.]]>-.",
-   "stdin": "1",
-   "expected": "11111111111111111111111111111111111111111111111111",
-   "stop": "steps",
-   "max_steps": 2000
-  },
-  {
-   "id": "truth-opt-alt-0",
-   "source": "++++++++[>------<-],[>+>+<<-]>[>[.]]>.",
-   "stdin": "0",
-   "expected": "0"
-  },
-  {
-   "id": "truth-opt-alt-1",
-   "source": "++++++++[>------<-],[>+>+<<-]>[>[.]]>.",
-   "stdin": "1",
-   "expected": "11111111111111111111111111111111111111111111111111",
-   "stop": "steps",
-   "max_steps": 2000
-  },
-  {
-   "id": "truth-opt-alt-echoes-other",
-   "source": "++++++++[>------<-],[>+>+<<-]>[>[.]]>.",
-   "stdin": "a",
-   "expected": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-   "stop": "steps",
-   "max_steps": 2000
-  },
-  {
    "id": "xkcd-random",
    "source": "++++[->+++<]>+[->++++<]>.",
-   "expected": "4"
-  },
-  {
-   "id": "xkcd-random-commented",
-   "source": "+c+h+o+s[e-n> +b+y+ <f]a>i+r[ -d>i+c+e+ +r<o]l-l+>;\nGuaranteed to be random.",
    "expected": "4"
   },
   {

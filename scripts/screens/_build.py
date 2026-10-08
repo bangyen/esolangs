@@ -5,6 +5,7 @@ each puts this directory on ``sys.path`` for the import, as
 ``check_generator_sizes.py`` does for ``benchmark``.
 """
 
+import random
 from collections.abc import Callable, Iterator
 
 from esolangs.raster import Raster
@@ -50,3 +51,27 @@ def chosen(names: list[str]) -> list[tuple[str, Callable[[str], object]]]:
         return list(generators())
     wanted = {resolve(name) for name in names}
     return [(key, gen) for key, gen in generators() if key in wanted]
+
+
+def random_table(n: int, rng: random.Random) -> str:
+    """Return a uniformly random ``n``-input table."""
+    return format(rng.getrandbits(1 << n), f"0{1 << n}b")
+
+
+def tiled(n: int, rng: random.Random) -> str:
+    """Return an ``n``-input table tiled from two random smaller tables.
+
+    Its subtrees repeat, which a random table's almost never do.
+    """
+    k = rng.randint(1, n - 2)
+    blocks = [random_table(k, rng), random_table(k, rng)]
+    return "".join(rng.choice(blocks) for _ in range(1 << (n - k)))
+
+
+def ignore(table: str, at: int) -> str:
+    """Return ``table`` with a new input at position ``at`` it never reads."""
+    low = len(table).bit_length() - 1 - at  # inputs after the new one
+    mask = (1 << low) - 1
+    return "".join(
+        table[(row >> (low + 1) << low) | (row & mask)] for row in range(2 * len(table))
+    )

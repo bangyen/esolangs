@@ -13,6 +13,7 @@ from esolangs.interpreters.queue_based.bitwise_cyclic_tag import (
 from esolangs.tools.bitwise_cyclic_tag import PAIR as BCT_PAIR
 from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
 from tests.tools.reader_support import _TABLES, _bits
+from tests.tools.test_boolean_contract import _parity
 
 
 def _bct_program(table: str, row: int) -> str:
@@ -46,21 +47,18 @@ def test_bitwise_cyclic_tag_answers_every_table_to_three_inputs() -> None:
 
 
 def test_bitwise_cyclic_tag_spells_the_table_at_a_fixed_rate() -> None:
-    """Size is exactly ``8T + 2n + 1``, not merely ``O(T)``."""
+    """Size is exactly ``8T + 2n + 1`` when every input matters, else less."""
     for n in (1, 2, 3, 4, 8):
         rows = 2**n
-        sizes = {
-            len(boolean.bitwise_cyclic_tag(table))
-            for table in ("0" * rows, "1" * rows, ("01" * rows)[:rows])
-        }
-        assert sizes == {8 * rows + 2 * n + 1}, n
+        assert len(boolean.bitwise_cyclic_tag(_parity(n))) == 8 * rows + 2 * n + 1
+        assert len(boolean.bitwise_cyclic_tag("0" * rows)) < 8 * rows + 2 * n + 1
 
 
 def test_bitwise_cyclic_tag_runs_in_a_fixed_number_of_steps() -> None:
     """The walk is linear in the table and ends on the row it addressed."""
     for n in (1, 2, 3, 6):
         rows = 2**n
-        table = ("01" * rows)[:rows]
+        table = _parity(n)
         counts = []
         for row in range(rows):
             machine = BctMachine(_bct_program(table, row), ScriptedIO(""))

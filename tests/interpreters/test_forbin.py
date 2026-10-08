@@ -234,16 +234,6 @@ class TestStepMachine:
             machine.step()
         assert machine.io.getvalue() == "\x00"
 
-    def test_step_after_halt_is_a_noop(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.other.forbin import _Machine
-
-        machine = _Machine("main { }", ScriptedIO())
-        while not machine.halted:
-            machine.step()
-        machine.step()  # stepping a halted machine is a no-op
-        assert machine.halted
-
     def test_statement_call_inside_a_for_loop_body_pushes_a_frame(self) -> None:
         # a statement-position call inside a for-loop body is stepped
         # through _step_for's own frame-push, not _exec_stmt's

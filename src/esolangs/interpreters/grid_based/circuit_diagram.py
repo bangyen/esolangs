@@ -105,18 +105,30 @@ def _compile(
     list[_Gate],
     dict[int, int],
     dict[tuple[int, int], _Wiring],
+    tuple[tuple[tuple[int, int], ...], ...],
 ]:
-    """Return the validated, read-only topology shared by public runs."""
+    """Return the validated, read-only topology shared by public runs.
+
+    The last part lists, per wiring, the ``(gate, slot)`` pairs it feeds,
+    so a generation visits only the gates downstream of a live wire.
+    """
     main, definitions = _split_definitions(list(code))
     grid = _Grid(main)
     parsed = _Parser(grid, definitions)
     wirings = parsed.wirings
+    index = {id(wiring): i for i, wiring in enumerate(wirings)}
+    fed: list[list[tuple[int, int]]] = [[] for _ in wirings]
+    for position, gate in enumerate(parsed.gates):
+        if gate.kind not in (_OUTPUT, _ZERO, _ONE, _CLOCK):
+            for slot, wiring in enumerate(gate.inputs):
+                fed[index[id(wiring)]].append((position, slot))
     return (
         grid,
         wirings,
         parsed.gates,
-        {id(wiring): i for i, wiring in enumerate(wirings)},
+        index,
         {cell: wiring for wiring in wirings for cell in wiring.cells},
+        tuple(map(tuple, fed)),
     )
 
 
@@ -198,12 +210,9 @@ type _Latches = tuple[tuple[tuple[int, ...] | None, ...], ...]
 type _State = tuple[_Values, _Latches]
 
 
-def _emitted(
-    state: _State, wirings: list["_Wiring"], gates: list["_Gate"]
-) -> list[str]:
+def _emitted(state: _State, gates: list["_Gate"], index: dict[int, int]) -> list[str]:
     """Return what each ``:`` gate writes this generation, in gate order."""
     values, _ = state
-    index = {id(w): i for i, w in enumerate(wirings)}
     out = []
     for gate in gates:
         if gate.kind != _OUTPUT:
@@ -216,8 +225,9 @@ def _emitted(
 
 def _generation(
     state: _State,
-    wirings: list["_Wiring"],
     gates: list["_Gate"],
+    index: dict[int, int],
+    consumers: tuple[tuple[tuple[int, int], ...], ...],
     clock: _ClockStream | None = None,
 ) -> tuple[_State, bool]:
     """Return the state after one generation, and whether the run went quiet.
@@ -226,34 +236,31 @@ def _generation(
     wiring; a wiring nothing drove goes Null again.
     """
     values, latches = state
-    index = {id(w): i for i, w in enumerate(wirings)}
-
+    arrivals: dict[int, list[tuple[int, ...] | None]] = {}
+    for wire, value in enumerate(values):
+        if value is not None:
+            for position, slot in consumers[wire]:
+                slots = arrivals.setdefault(position, list(latches[position]))
+                slots[slot] = value
     pending: dict[int, list[tuple[int, ...]]] = {}
     fired = False
     grown = list(latches)
-    for position, gate in enumerate(gates):
-        if gate.kind in (_OUTPUT, _ZERO, _ONE, _CLOCK):
-            continue
-        slots = list(latches[position])
-        live = False
-        for slot, wiring in enumerate(gate.inputs):
-            arrived = values[index[id(wiring)]]
-            if arrived is not None:
-                slots[slot] = arrived
-                live = True
+    # Gate order, as before: clock reads and merges depend on it.
+    for position in sorted(arrivals):
+        slots = arrivals[position]
         grown[position] = tuple(slots)
-        if not live or any(slot is None for slot in slots):
+        if any(slot is None for slot in slots):
             continue
         fired = True
         inputs = [slot for slot in slots if slot is not None]
-        for wiring, value in _drive(gate, inputs, clock):
+        for wiring, value in _drive(gates[position], inputs, clock):
             pending.setdefault(index[id(wiring)], []).append(value)
 
     quiet = not fired and all(value is None for value in values)
-    driven = tuple(
-        _merge(pending[i]) if i in pending else None for i in range(len(wirings))
-    )
-    return (driven, tuple(grown)), quiet
+    driven: list[tuple[int, ...] | None] = [None] * len(values)
+    for i, arrived in pending.items():
+        driven[i] = _merge(arrived)
+    return (tuple(driven), tuple(grown)), quiet
 
 
 class _Machine:
@@ -292,6 +299,7 @@ class _Machine:
             self.gates,
             self.index,
             self._by_cell,
+            self.consumers,
         ) = _compile(tuple(code))
         self.halted = False
         # Static topology is shared; values and remembered gate inputs stay
@@ -315,6 +323,7 @@ class _Machine:
             machine.gates,
             machine.index,
             machine._by_cell,  # noqa: SLF001 -- alternate constructor
+            machine.consumers,
         ) = _compile(tuple(code))
         machine.halted = False
         machine.values = (None,) * len(machine.wirings)
@@ -412,10 +421,14 @@ class _Machine:
 
         Every ``:`` gate whose wire carries a value prints, in gate order.
         """
-        for text in _emitted((self.values, self.latches), self.wirings, self.gates):
+        for text in _emitted((self.values, self.latches), self.gates, self.index):
             self.io.print_str(text)
         (self.values, self.latches), halted = _generation(
-            (self.values, self.latches), self.wirings, self.gates, self.clock
+            (self.values, self.latches),
+            self.gates,
+            self.index,
+            self.consumers,
+            self.clock,
         )
         if halted:
             self.halted = True

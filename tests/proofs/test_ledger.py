@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import re
+
 import pytest
 
 import esolangs
 from esolangs.registry import BY_BOOLEAN
 from tests.proofs._ledger import (
     EXECUTION_CLASSES,
+    FORMULA_CLAUSE_WORDS,
     LINEAR_CLAUSE_WORDS,
     NOT_A_LABEL,
     QUALIFIERS,
@@ -133,9 +136,26 @@ def test_every_row_carries_a_measured_cell(
         assert kind in classes, f"{row.generator}: unknown {column} class {kind!r}"
         assert clause, f"{row.generator}: {column} cell has no clause"
         words = len(clause.split())
-        assert words <= LINEAR_CLAUSE_WORDS, (
-            f"{row.generator}: {column} clause is {words} words"
+        limit = (
+            FORMULA_CLAUSE_WORDS
+            if clause.startswith(("worst ", "at most "))
+            else LINEAR_CLAUSE_WORDS
         )
+        assert words <= limit, f"{row.generator}: {column} clause is {words} words"
+
+
+def test_every_definition_names_a_symbol_its_cells_use() -> None:
+    """A row's ``S = ...`` definition defines S for its own cells, briefly."""
+    from scripts.proof_status import load as load_status
+
+    for row in load_status()[0]:
+        cells = f"{row.execution} {row.workspace}"
+        for definition in row.definitions:
+            symbol = re.split(r"[ (]", definition, maxsplit=1)[0]
+            assert re.search(rf"(?<![A-Za-z]){re.escape(symbol)}(?![A-Za-z])", cells), (
+                f"{row.generator}: {symbol} is defined but no cell uses it"
+            )
+            assert len(definition.split()) <= FORMULA_CLAUSE_WORDS, definition
 
 
 def test_unproved_scaling_requires_a_totality_exception(ledger: Ledger) -> None:

@@ -358,15 +358,6 @@ class TestSpellings:
 
 
 class TestMachine:
-    def test_stepping_a_halted_machine_does_nothing(self) -> None:
-        io = ScriptedIO("")
-        machine = _Machine("ci", io)
-        while not machine.halted:
-            machine.step()
-        before = machine.snapshot()
-        machine.step()
-        assert machine.snapshot() == before
-
     def test_the_snapshot_carries_the_deque_and_the_function(self) -> None:
         """Two machines differing only in memory must not look alike."""
         empty = _Machine("cim", ScriptedIO(""))

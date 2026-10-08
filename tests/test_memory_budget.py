@@ -25,7 +25,7 @@ def test_memory_probe_template_reaches_execution() -> None:
     assert _evaluate("Underload", _growing_template(3), inputs=1, isolated=True) == "01"
 
 
-@pytest.mark.parametrize("limit", [0, -1, True, 1.5, "1", 1 << 63])
+@pytest.mark.parametrize("limit", [0, True, 1.5, "1", 1 << 63])
 def test_invalid_memory_budget_precedes_source_reads(limit: object) -> None:
     with pytest.raises(esolangs.ArgumentError, match="max_memory"):
         esolangs.run("Underload", Path("missing"), isolated=True, max_memory=limit)

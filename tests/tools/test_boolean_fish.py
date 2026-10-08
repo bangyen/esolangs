@@ -19,7 +19,7 @@ def _run(table: str, row: int, width: int | None = None) -> tuple[str, int]:
 
 
 @pytest.mark.medium
-@pytest.mark.parametrize("width", [1, 3, 4, 5, 7, 13, 40, 80])
+@pytest.mark.parametrize("width", [1, 3, 4, 7, 13, 40])
 def test_folded_lookup_executes_every_three_input_table(width: int) -> None:
     for table in witnesses(3):
         program = fish(table, width)

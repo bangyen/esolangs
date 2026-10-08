@@ -7,8 +7,17 @@ from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.algebraic_programming_language import _Machine
 
 
-@pytest.mark.parametrize("table", ["00", "11", "0110", "0001", "10010110"])
-@pytest.mark.parametrize("width", [1, 4, 5, 6, 9])
+# Below the five-column floor, at it, and above it -- less where a table
+# builds the same program at two of those widths.
+@pytest.mark.parametrize(
+    ("table", "width"),
+    [
+        *[(table, width) for table in ("00", "0110") for width in (1, 5, 9)],
+        ("0001", 1),
+        ("0001", 9),
+        ("10010110", 1),
+    ],
+)
 def test_operator_binding_reads_every_input_once(table: str, width: int) -> None:
     n = len(table).bit_length() - 1
     program = generate("Algebraic Programming Language", table, width=width)

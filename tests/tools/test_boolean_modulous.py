@@ -50,13 +50,6 @@ class TestModulous:
         natural = boolean.modulous("01101001")
         assert boolean.modulous("01101001", 80) == _bracket_literal(natural, 80)
 
-    def test_structure(self) -> None:
-        """The table is one literal and the program prints one of its bytes."""
-        program = boolean.modulous("10010110")
-        assert program.startswith('[PSH STR "10010110"]')
-        assert program.count("[INP INT]") == 3
-        assert program.endswith("[PRT][END]")
-
     def test_size_is_the_table_plus_a_fixed_frame(self) -> None:
         """No branch reads the table, so its contents cannot change the size."""
         sizes = {

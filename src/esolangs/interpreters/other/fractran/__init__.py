@@ -34,6 +34,7 @@ from typing import cast
 from esolangs._drive import drive
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.other.fractran.index import (
+    Cursor,
     Factors,
     Index,
     advance,
@@ -128,24 +129,47 @@ class _Machine:
 
     def __init__(self, code: str, io: IO) -> None:
         self._index = compile_index(code)
-        self._factors: Factors = ()
+        # The n=10 shipped control needed 296 secondary updates vs 14 scan probes.
+        # Keep sparse rule/state ratios on scans; dense bases avoid tuple copying.
+        self._cursor = (
+            Cursor(self._index)
+            if self._index is not None
+            and len(self._index.rules) <= 16 * max(1, len(self._index.initial))
+            else None
+        )
+        self._legacy_factors = () if self._index is None else self._index.initial
         self._fractions: tuple[_Fraction, ...] | None = None
         self._integer = 1
         if self._index is None:
             self._integer, self._fractions, self.offsets = _parse(code)
         else:
-            self._factors = self._index.initial
             self.offsets = self._index.offsets
         self.inspections = 0
+        self._selected_revision = -1
         self._selected_for: int | Factors | None = None
         self._selected: int | None = None
         self.io = io
         self.printed = False
 
     @property
+    def _factors(self) -> Factors:
+        """Return the canonical debug view without copying during transitions."""
+        return (
+            self._legacy_factors
+            if self._cursor is None
+            else tuple(sorted(self._cursor.value.items()))
+        )
+
+    @property
     def value(self) -> int:
         """The exact integer; materialized only when a caller requests it."""
-        return self._integer if self._index is None else integer(self._factors)
+        if self._index is None:
+            return self._integer
+        return integer(
+            self._legacy_factors
+            if self._cursor is None
+            else tuple(self._cursor.value.items())
+        )
 
     @property
     def fractions(self) -> tuple[_Fraction, ...]:
@@ -158,12 +182,18 @@ class _Machine:
         return self._fractions
 
     def _next(self) -> int | None:
-        state = self._integer if self._index is None else self._factors
+        if self._cursor is not None:
+            if self._selected_revision != self._cursor.version:
+                self._selected, probes = self._cursor.choose()
+                self.inspections += probes
+                self._selected_revision = self._cursor.version
+            return self._selected
+        state = self._integer if self._index is None else self._legacy_factors
         if state != self._selected_for:
             if self._index is None:
                 self._selected = _choose(self._integer, self.fractions)
             else:
-                self._selected, probes = self._index.choose(self._factors)
+                self._selected, probes = self._index.choose(self._legacy_factors)
                 self.inspections += probes
             self._selected_for = state
         return self._selected
@@ -215,8 +245,13 @@ class _Machine:
         elif index is None:
             out = None if self.printed else self.value
             self.printed = True
+        elif self._cursor is None:
+            self._legacy_factors = advance(
+                self._legacy_factors, self._index.rules[index][1]
+            )
+            out = None
         else:
-            self._factors = advance(self._factors, self._index.rules[index][1])
+            self._cursor.advance(index)
             out = None
         if out is not None:
             self.io.print_num(out)

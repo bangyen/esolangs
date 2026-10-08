@@ -14,7 +14,7 @@ help:
     @echo ""
     @echo "  Tiers: fast (unmarked), medium (runs a program or a subprocess),"
     @echo "  slow (left to CI), weekly (high-arity probes, weekly workflow only)."
-    @echo "  Use 'just test-quick' for inner loop, 'just test-mid' before a commit,"
+    @echo "  Use 'just test-quick' for inner loop, 'just test' before a commit,"
     @echo "  'just test-full' before a release."
 
 # install tooling
@@ -61,9 +61,9 @@ test-full *args:
 test-quick *args:
     PYTEST_ADDOPTS="-m 'not slow and not medium and not weekly' -n 8" {{PYTHON}} scripts/verify.py --quiet --only pre-commit,pytest {{args}}
 
-# before a commit: everything but the long tail
+# pytest fast and medium bands only; use just test before a commit
 test-mid *args:
-    PYTEST_ADDOPTS="-m 'not slow'" {{PYTHON}} scripts/verify.py --only pytest {{args}}
+    PYTEST_ADDOPTS="-m 'not slow and not weekly'" {{PYTHON}} scripts/verify.py --only pytest {{args}}
 
 # granular targets — each maps to one STEPS entry in scripts/verify.py (see verify.py --list)
 # add --quiet to any of these for terse output (e.g. just test-py --quiet)

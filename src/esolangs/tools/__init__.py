@@ -54,6 +54,7 @@ from esolangs.tools.one_two_three import one_two_three
 from esolangs.tools.packlang import packlang
 from esolangs.tools.painfuck import painfuck
 from esolangs.tools.piet import piet
+from esolangs.tools.piet_plus_plus import piet_plus_plus
 from esolangs.tools.polynomial import polynomial
 from esolangs.tools.qoibl import qoibl
 from esolangs.tools.ram0 import ram0
@@ -63,7 +64,9 @@ from esolangs.tools.six_five import six_five
 from esolangs.tools.slashes import slashes
 from esolangs.tools.slow_acv_mammalian import slow_acv_mammalian
 from esolangs.tools.smallfuck import smallfuck
+from esolangs.tools.smu import smu
 from esolangs.tools.sophie import sophie
+from esolangs.tools.sstack import sstack
 from esolangs.tools.streetcode import streetcode
 from esolangs.tools.subleq import subleq
 from esolangs.tools.suffolk import suffolk
@@ -134,6 +137,7 @@ __all__ = [
     "packlang",
     "painfuck",
     "piet",
+    "piet_plus_plus",
     "polynomial",
     "qoibl",
     "ram0",
@@ -143,7 +147,9 @@ __all__ = [
     "slashes",
     "slow_acv_mammalian",
     "smallfuck",
+    "smu",
     "sophie",
+    "sstack",
     "streetcode",
     "subleq",
     "suffolk",

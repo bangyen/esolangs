@@ -9,7 +9,8 @@ from esolangs.tools.minifuck.sim import PAIR
 from esolangs.tools.wrap import wrap_program
 
 
-@pytest.mark.parametrize("width", [1, 3, 4, 11, 40, 80])
+# Widths 1 and 3 build the same program.
+@pytest.mark.parametrize("width", [1, 4, 11, 40, 80])
 @pytest.mark.parametrize("plain", [False, True])
 def test_minifuck_layout_and_post_fill_wrapper_preserve_provenance(
     width: int, *, plain: bool

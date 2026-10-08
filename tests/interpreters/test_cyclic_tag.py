@@ -5,7 +5,7 @@ import pytest
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.queue_based.cyclic_tag import _Machine, run
 from esolangs.tools.cyclic_tag import cyclic_tag
-from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
+from esolangs.tools.helpers import TEMPLATE_CHAR, essential_inputs, fill_runs
 from tests.witness_tables import witnesses
 
 
@@ -13,7 +13,10 @@ def test_all_three_input_tables() -> None:
     for n in range(1, 4):
         for table in witnesses(n):
             template = cyclic_tag(table)
-            assert len(template) == 5 * len(table) + 2 * n + 1
+            # Exact when every input matters; an ignored one's rule is empty.
+            bound = 5 * len(table) + 2 * n + 1
+            ignores = len(essential_inputs(table, n)) < n
+            assert len(template) < bound if ignores else len(template) == bound
             for row in range(1 << n):
                 bits = [int(c) for c in f"{row:0{n}b}"]
                 code = fill_runs(template, TEMPLATE_CHAR, (("0", "1"),) * n, bits)

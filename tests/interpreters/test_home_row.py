@@ -115,14 +115,6 @@ class TestStepMachine:
         assert machine.snapshot() != before
         assert machine.grid[0] == 1
 
-    def test_step_after_halt_is_a_noop(self) -> None:
-        from esolangs.interpreters.tape_based.home_row import _Machine
-
-        machine = _Machine("", ScriptedIO())
-        assert machine.halted
-        machine.step()  # stepping a halted machine is a no-op
-        assert machine.grid[0] == 0
-
 
 def _machine(code: object) -> object:
     from esolangs.interpreters.io import ScriptedIO

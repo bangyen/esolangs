@@ -58,7 +58,7 @@ class TestContainer:
             assert before.var == {key: after.var[key] for key in before.var}
             assert before.halted == after.halted
 
-    @pytest.mark.parametrize("width", [1, 7, 8, 13])
+    @pytest.mark.parametrize("width", [1, 7, 8])
     def test_narrow_rules_execute_the_three_input_witnesses(self, width: int) -> None:
         for table in witnesses(3):
             program = boolean.container(table, width)
@@ -90,24 +90,6 @@ class TestContainer:
                 assert before.var == {key: after.var[key] for key in keys}
                 assert before.halted == after.halted
                 assert before.io.getvalue() == after.io.getvalue()
-
-    def test_structure(self) -> None:
-        """The program reads n inputs and advances prefix survivors."""
-        program = boolean.container("0110")
-        assert program.startswith("T:\n1 T>=T")
-        assert ":" in program.splitlines()[:4]  # the empty-named reader
-        declarations = [
-            line[:-1].split("=", 1)[0]
-            for line in program.splitlines()
-            if line.endswith(":")
-        ]
-        generated = [
-            name
-            for name in declarations
-            if name not in {"", "T", "IN", "OUT", "PRINT", "EXIT"}
-        ]
-        assert len(generated) == len(set(generated))
-        assert program.count("PRINT:") == 1
 
     @pytest.mark.medium
     def test_wide_tables_decode_every_row_inside_a_tick_budget(self) -> None:

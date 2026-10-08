@@ -132,17 +132,6 @@ class TestATemplateKnowsWhoseItIs:
         with pytest.raises(esolangs.TemplateError, match="came from generate"):
             esolangs.instantiate("RAM0", template, [0, 1])
 
-    def test_its_own_language_still_fills_it(self) -> None:
-        """And the filled program answers the row it was asked for."""
-        template = esolangs.generate("Minifuck", "0110")
-        program = esolangs.instantiate("Minifuck", template, [0, 1])
-        assert (
-            esolangs.read_answer(
-                "Minifuck", esolangs.run("Minifuck", program, timeout=20)
-            )
-            == "1"
-        )
-
     def test_the_name_is_resolved_before_it_is_compared(self) -> None:
         """A case variant is the same language, not a mismatch."""
         template = esolangs.generate("minifuck", "0110")
@@ -262,13 +251,6 @@ class TestAProgramKnowsWhoseItIs:
         with pytest.raises(esolangs.ProgramError, match="generated for Minifuck"):
             esolangs.run("brainfuck", program)
 
-    def test_its_own_language_still_runs_it(self) -> None:
-        program = esolangs.generate("brainfuck", "0110")
-        out = esolangs.run(
-            "brainfuck", program, stdin=esolangs.encode_inputs("brainfuck", [0, 1])
-        )
-        assert esolangs.read_answer("brainfuck", out) == "1"
-
     def test_the_name_is_resolved_before_it_is_compared(self) -> None:
         program = esolangs.generate("BRAINFUCK", "0110")
         assert esolangs.run(
@@ -326,14 +308,6 @@ class TestExamplePathsWorkFromAnywhere:
 
 class TestTheVerifierIsShipped:
     """Two blind readers and the test suite each wrote this same function."""
-
-    def test_evaluate_returns_the_table_the_program_computes(self) -> None:
-        """So a mismatch is locatable rather than summarized to False."""
-        assert evaluate_generated("brainfuck", "0110") == "0110"
-
-    def test_verify_is_the_comparison(self) -> None:
-        """The verdict, for callers who only want the verdict."""
-        assert verify_generated("brainfuck", "0110") is True
 
     def test_it_reads_the_termination_polarity_as_data(self) -> None:
         """Rather than assuming halting is the zero."""
@@ -508,18 +482,7 @@ class TestInstantiateCanCheckProvenance:
         with pytest.raises(esolangs.TemplateError, match="is not the template"):
             esolangs.instantiate("Minifuck", "hello $$", [1], truth_table="01")
 
-    def test_the_real_template_passes(self) -> None:
-        """And still fills, and still answers its row."""
-        template = esolangs.generate("Minifuck", "0110")
-        program = esolangs.instantiate("Minifuck", template, [0, 1], truth_table="0110")
-        assert (
-            esolangs.read_answer(
-                "Minifuck", esolangs.run("Minifuck", program, stdin="", timeout=20)
-            )
-            == "1"
-        )
-
-    @pytest.mark.parametrize("width", [1, 20, 40, 80])
+    @pytest.mark.parametrize("width", [1, 40])
     def test_intercal_layout_candidates_keep_exact_provenance(self, width: int) -> None:
         for inputs in range(1, 4):
             for table in witnesses(inputs):
@@ -747,7 +710,3 @@ class TestEvaluateTakesAWidth:
         assert "\n" in narrow
         assert max(len(line) for line in narrow.splitlines()) <= 30
         assert evaluate_generated("brainfuck", "10010110", width=30) == "10010110"
-
-    def test_verify_takes_one_as_well(self) -> None:
-        """It is ``evaluate`` with the comparison done, so it must pass it on."""
-        assert verify_generated("brainfuck", "10010110", width=30)

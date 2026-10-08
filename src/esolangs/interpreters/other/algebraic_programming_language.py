@@ -174,6 +174,9 @@ class _Machine:
         self.io = io
         self.lines = _blocks(code)
         self.state = _State({}, {}, [], 0)
+        # Identity -> (serial, object): holding the object keeps its id
+        # from being reused, so a serial names one object for the run.
+        self._serials: dict[int, tuple[int, object]] = {}
 
     @property
     def defs(self) -> dict[str, _Definition]:
@@ -240,23 +243,25 @@ class _Machine:
         only its length made two genuinely different states compare equal
         -- one operand of ``1 + 1`` resolved versus both -- and the cycle
         detector called a halting program a hang.  A node is identified
-        by ``id``, which is stable because the parse tree is built once
-        and never rewritten.
+        by identity, which is stable because the parse tree is built once
+        and never rewritten.  Identities are reported as first-seen
+        serials rather than raw ``id``s, so a snapshot is small and the
+        same on every run.
         """
         return (
             self.line,
-            tuple(sorted((k, _value_key(v)) for k, v in self.globals.items())),
+            tuple(sorted((k, self._key(v)) for k, v in self.globals.items())),
             tuple(
                 (
-                    _value_key(f.fn),
+                    self._key(f.fn),
                     f.stmt,
                     tuple(
-                        (id(node), tuple(_value_key(v) for v in done))
+                        (self._serial(node), tuple(self._key(v) for v in done))
                         for node, done in f.work
                     ),
-                    _value_key(f.value),
+                    self._key(f.value),
                     f.returned,
-                    tuple(sorted((k, _value_key(v)) for k, v in f.locals.items())),
+                    tuple(sorted((k, self._key(v)) for k, v in f.locals.items())),
                 )
                 for f in self.frames
             ),
@@ -276,10 +281,29 @@ class _Machine:
         if not isinstance(frame, _Frame):
             raise AssertionError("isinstance(frame, _Frame)")
         return (
-            _value_key(frame.fn),
-            tuple(sorted((k, _value_key(v)) for k, v in frame.locals.items())),
+            self._key(frame.fn),
+            tuple(sorted((k, self._key(v)) for k, v in frame.locals.items())),
             self.io.position(),
         )
+
+    def _serial(self, thing: object) -> int:
+        """Return ``thing``'s serial: its identity numbered by first sight."""
+        return self._serials.setdefault(id(thing), (len(self._serials), thing))[0]
+
+    def _key(self, value: object) -> tuple[object, ...]:
+        """Keep numeric types and retained function identities distinct."""
+        if isinstance(value, _Definition):
+            return (
+                "function",
+                self._serial(value),
+                value.name,
+                tuple(value.params),
+                tuple(self._serial(node) for node in value.body),
+                tuple(value.control),
+            )
+        if isinstance(value, float):
+            return ("float", value.hex())
+        return ("integer", value)
 
     def step(self) -> None:
         """Advance the program by one definition, read, or expression node."""
@@ -544,22 +568,6 @@ def _truthy(value: object) -> bool:
     if isinstance(value, _Definition):
         return True
     return _as_number(value) != 0
-
-
-def _value_key(value: object) -> tuple[object, ...]:
-    """Keep numeric types and retained function identities distinct."""
-    if isinstance(value, _Definition):
-        return (
-            "function",
-            id(value),
-            value.name,
-            tuple(value.params),
-            tuple(id(node) for node in value.body),
-            tuple(value.control),
-        )
-    if isinstance(value, float):
-        return ("float", value.hex())
-    return ("integer", value)
 
 
 def _arith(op: str, left: _Number, right: _Number) -> _Number:

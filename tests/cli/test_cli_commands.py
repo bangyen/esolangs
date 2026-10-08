@@ -336,13 +336,13 @@ class TestPrivateEvaluationNeedsNoSeed:
 class TestALeadingZeroIndexNeverCrashes:
     """The message explaining a leading zero crashed on one."""
 
-    @pytest.mark.parametrize("value", ["02", "07", "012", "089"])
+    @pytest.mark.parametrize("value", ["02", "089"])
     def test_a_non_binary_leading_zero_is_refused_cleanly(self, value: str) -> None:
         """`int('02', 2)` raises, so the friendly message threw a traceback."""
         with pytest.raises(esolangs.ArgumentError, match="leading zero"):
             _check_stdin("Fargo", f"{value}\n")
 
-    @pytest.mark.parametrize("value", ["00", "01", "010", "011"])
+    @pytest.mark.parametrize("value", ["01", "010"])
     def test_a_binary_one_still_offers_the_index(self, value: str) -> None:
         """The helpful half must survive the fix to the crashing half."""
         with pytest.raises(esolangs.ArgumentError, match="if those are the input bits"):

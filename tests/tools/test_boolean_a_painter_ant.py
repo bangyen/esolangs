@@ -10,6 +10,7 @@ from esolangs.interpreters.grid_based.a_painter_ant import run as run_a_painter_
 from esolangs.tools.a_painter_ant import PAIR, a_painter_ant
 from esolangs.tools.helpers import TEMPLATE_CHAR, runs
 from tests.tools.fills import _instantiate_apa
+from tests.tools.test_boolean_contract import _parity
 
 
 # 2.0s over 45 tests: runs the generated program.
@@ -138,9 +139,11 @@ class TestAPainterAnt:
                 assert template.count(TEMPLATE_CHAR) == n
 
     def test_the_template_carries_each_weight(self) -> None:
-        """Input ``i``'s run is followed by ``2**(n-1-i)`` ``E`` and ``SN``."""
-        template = a_painter_ant("01" * 16)  # n = 5
-        head, *tails = template.split(TEMPLATE_CHAR)
+        """Input ``i``'s run is followed by ``2**(n-1-i)`` ``E`` and ``SN``.
+
+        An ignored input weighs nothing: ``"01" * 16`` reads only the last.
+        """
+        head, *tails = a_painter_ant(_parity(5)).split(TEMPLATE_CHAR)
         assert head.endswith("W" * 31)
         assert tails == [
             "E" * 16 + "SN",
@@ -149,6 +152,8 @@ class TestAPainterAnt:
             "E" * 2 + "SN",
             "E" * 1 + "SNs",
         ]
+        _head, *tails = a_painter_ant("01" * 16).split(TEMPLATE_CHAR)
+        assert tails == ["SN"] * 4 + ["ESNs"]
 
     def test_each_input_moves_the_ant_by_its_weight(self) -> None:
         """After input ``i``'s gadget the ant stands at the partial index."""
@@ -203,9 +208,9 @@ class TestAPainterAnt:
                 assert self._check(table, list(bits)) == int(table[index])
 
     def test_three_input_total(self) -> None:
-        """The 256 three-input templates total 15,245 characters."""
+        """The 256 three-input templates total 14,269 characters."""
         total = sum(len(a_painter_ant(f"{value:08b}")) for value in range(256))
-        assert total == 15245
+        assert total == 14269
 
     def test_linear_strip_executes_dense_wide_table(self) -> None:
         """Every row reaches its adjacent strip cell and remains cycle-stable."""

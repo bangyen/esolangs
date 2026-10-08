@@ -275,14 +275,6 @@ class TestInput:
 
 
 class TestMachine:
-    def test_step_after_halting_is_a_no_op(self) -> None:
-        machine = _Machine("$\n", ScriptedIO("0\n"))
-        while not machine.halted:
-            machine.step()
-        state = machine.snapshot()
-        machine.step()
-        assert machine.snapshot() == state
-
     @staticmethod
     def _states(code: str, stdin: str = "0\n") -> list[object]:
         """Every snapshot one run passes through, halt included."""

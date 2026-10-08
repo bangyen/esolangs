@@ -302,13 +302,10 @@ class TestSelfHaltsIsAWarningNotAGuarantee:
         assert "Suffolk" in doc
 
 
-def _dumpers() -> list[str]:
-    """Return the languages whose output lands one step past the halt."""
-    return [
-        name
-        for name in esolangs.list_languages()
-        if esolangs.describe(name)["dumps_on_the_post_halt_step"]
-    ]
+#: Two of the nine dump-on-post-halt languages, one reader and one template:
+#: the dump step is the debugger's shared code, and test_vm_protocol already
+#: checks every language's flag against its behaviour.
+_DUMPERS = ("LaserFuck", "RAM0")
 
 
 def _runnable(name: str, table: str = "0110") -> tuple[str, str]:
@@ -332,9 +329,10 @@ class TestABreakpointAtTheHaltIsReported:
         assert dbg.run(max_steps=100_000) == "halted"
         assert dbg.halted
 
-    @pytest.mark.parametrize("name", _dumpers())
+    @pytest.mark.parametrize("name", _DUMPERS)
     def test_the_answer_is_never_stranded_by_that_stop(self, name: str) -> None:
         """A stop before the dump must not cost the caller the answer."""
+        assert esolangs.describe(name)["dumps_on_the_post_halt_step"]
         program, stdin = _runnable(name)
         dbg = debugger_api.make_debugger(name, program, stdin=stdin)
         dbg.break_when(lambda vm: vm.halted and vm.output == "")
@@ -343,7 +341,7 @@ class TestABreakpointAtTheHaltIsReported:
         assert dbg.run(max_steps=300_000) == "halted"
         assert dbg.output == esolangs.run(name, program, stdin=stdin, timeout=30)
 
-    @pytest.mark.parametrize("name", _dumpers())
+    @pytest.mark.parametrize("name", _DUMPERS)
     def test_the_dump_step_is_taken_once_not_once_per_run(self, name: str) -> None:
         """Three idle runs grew a watch history by three."""
         program, stdin = _runnable(name)

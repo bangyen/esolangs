@@ -18,7 +18,7 @@ def test_rendering_preserves_committed_tables(
         path.write_bytes((status.ROOT / relative).read_bytes())
     monkeypatch.setattr(status, "ROOT", tmp_path)
     before = {path: path.read_bytes() for path in tmp_path.rglob("*.md")}
-    status.update_docs()
+    status.update_docs(tmp_path)
     assert {path: path.read_bytes() for path in before} == before
 
 

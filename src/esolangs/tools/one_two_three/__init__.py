@@ -42,8 +42,15 @@ from __future__ import annotations
 
 from functools import cache
 
-from esolangs.tools.helpers import TEMPLATE_CHAR, _validate_truth_table, runs
+from esolangs.tools.helpers import (
+    TEMPLATE_CHAR,
+    _validate_truth_table,
+    essential_inputs,
+    read_at,
+    runs,
+)
 from esolangs.tools.one_two_three.construction import (
+    _INPUT,
     _ONE,
     _RING,
     _WORK_BUDGET,
@@ -198,6 +205,14 @@ def _construct_small(truth_table: str, n: int, law: int = 0) -> str:
     return b.template()
 
 
+#: An ignored input's run past the end, between fixed ``1``/``2`` halves.  No
+#: ``3``, so it moves the pointer alone: from any of -1, -2, -3, either fill
+#: ends below 0 again without a ``2`` at -3 (a read).  Every jump in front
+#: lands where it did, killed rows never leave their loops, and the rows
+#: that reach the end are below 0, so they still halt.
+_IDLE = "1112" + _INPUT + "12111"
+
+
 def _in_name_order(body: str, n: int) -> str:
     """Return ``body`` once it is known to carry exactly ``n`` input runs."""
     try:
@@ -219,6 +234,11 @@ def one_two_three(truth_table: str) -> str:
     """
     n = _validate_truth_table(truth_table)
     if n > 3:
+        # Inputs past the last essential one become idle runs on the end.
+        essential = essential_inputs(truth_table, n)
+        if essential and essential[-1] + 1 == len(essential) < n:
+            inner = one_two_three(read_at(truth_table, essential, n))
+            return _in_name_order(inner + _IDLE * (n - len(essential)), n)
         return _in_name_order(construct(truth_table), n)
     candidates = [_construct_small(truth_table, n, law) for law in range(len(_LAWS[n]))]
     return _in_name_order(min(candidates, key=len), n)

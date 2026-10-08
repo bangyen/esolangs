@@ -673,7 +673,10 @@ equivalence is confined to the chosen input set.
 
 ## 8. What is not settled
 
-* **The limit.**  The repo-model interval is `[4.2420, 7.0347]`.  Nested loops raise the
+* **The limit.**  With a clipped tape and EOF error (the repo model until 2026-10-06), the
+  growth constant is bracketed: `4.2420 <= liminf B(C)**(1/C) <= limsup <= 7.0347`; the repo's
+  bi-infinite tape has upper bound `6.9133`.  The limit itself, and any clipped sub-7 upper
+  bound, remain open.  Nested loops raise the
   certified lower bound above the loop-free upper bound `4.236` (section 5c), so loops strictly
   raise the growth rate.  The
   idealised grammar explains why loops must nest.  Take prints of weight `x mu^2`, reads of
@@ -692,8 +695,10 @@ equivalence is confined to the chosen input set.
   used the unsound read-free-prefix rule above. The unrestricted sound print rotation and
   forced-divergence bodies are not regular (section 3): a finite-factor monitor accepts
   depth-`k` left-hand sides for every `k >= 2`, and the balanced avoidance specification
-  has unbounded Moore class count. Next: the context-free/algebraic system `B0, B1, L0, L1,
-  R, P` (section 3), or a depth-indexed transfer matrix. A potentially diverging excursion
+  has unbounded Moore class count. The 11,673-state certificate covers balanced bodies only
+  to bracket depth one. Next: count them with the context-free system `B0, B1, L0, L1, R, P`
+  (section 3) or a depth-indexed transfer matrix, preserving the cell-preservation condition
+  (`+[-[]].` halts and prints NUL, while `+[].` diverges). A potentially diverging excursion
   cannot commute across a read at EOF; excursions with output cannot commute across prints.
   Two tried and dead: (i) the event encoding of section 4 applied to each bracket-free segment between
   brackets must also charge the positions of the segment's final increments, and the resulting series
@@ -703,11 +708,16 @@ equivalence is confined to the chosen input set.
   convention (it reads the timing of reads from where the run stops); the rules `[S] -> []` with `.` in
   `S`, `[S[T]X] -> []` and `[]. -> .[]` need that a diverging run's output is not observed.
 * **Finite input sets.** Theorem 6 brackets every fixed nonempty finite
-  `I` between `3.366148` and `6.584428341`. The limit and sharp rate remain
-  open. For input length proportional to source length, `R=pC`, Theorem 6's
+  `I` between `3.366148` and `6.584428341`, below the all-input upper bound
+  `7.0347`: delete unvisited reads, then count seven-command segments by a
+  certified adjacency matrix. It also covers varying input sets with total
+  read budget `o(C)`, including byte-input lengths at most
+  `(1-eps)*log_256(C)`. The limit and sharp rate remain open. For input length proportional to source length, `R=pC`, Theorem 6's
   own bound has rate `f(min(p,t*))`, already `>lambda_I` for `p>0` and
   `>=1+lambda_I>7.0347` at `p>=t*~0.1599`, so that counting method cannot
-  sharpen the all-input bound (section 7b).
+  sharpen the all-input bound (section 7b). Theorem 6's counting improves on
+  `7.0347` only while the proportion stays below about 0.021, and never on
+  `6.584428341`. Next: establish the limit or sharpen either side.
 
 ## 9. Reproduction
 

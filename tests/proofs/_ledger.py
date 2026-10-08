@@ -53,6 +53,10 @@ UNSETTLED_SCALING = frozenset({"measured", "open", "lower bound"})
 #: A ``linear`` clause names its argument; longer than this it is prose.
 LINEAR_CLAUSE_WORDS = 12
 
+#: A measured cell that opens ``worst`` or ``at most`` states a formula,
+#: whose spaced operators count as words.
+FORMULA_CLAUSE_WORDS = 20
+
 #: The Execution column's classes: commands to halt, held to their growth by
 #: ``tests/proofs/deep/execution.py``.  ``unmeasured`` says why.
 EXECUTION_CLASSES = frozenset({"poly n", "linear", "unmeasured"})

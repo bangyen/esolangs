@@ -345,7 +345,7 @@ def _evaluate_function_body(
             raise Hint.SETTLED_FUNCTION.error(f"function {gate.kind!r} does not settle")
         seen.add(snapshot)
         emitted.extend(
-            _emitted((machine.values, machine.latches), machine.wirings, machine.gates)
+            _emitted((machine.values, machine.latches), machine.gates, machine.index)
         )
         machine.step()
     output = "".join(emitted)

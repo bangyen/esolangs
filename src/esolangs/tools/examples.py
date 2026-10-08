@@ -357,6 +357,10 @@ def _register() -> None:
             b.bfstack,
             "stack_based.bfstack",
         ),
+        "sstack": _reader(
+            b.sstack,
+            "stack_based.sstack",
+        ),
         "bit~": _reader(
             b.bit_tilde,
             "tape_based.bit_tilde",
@@ -500,6 +504,10 @@ def _register() -> None:
         "slow-acv-mammalian": _reader(
             b.slow_acv_mammalian,
             "tape_based.slow_acv_mammalian",
+        ),
+        "smu": _reader(
+            b.smu,
+            "stack_based.smu",
         ),
         "sophie": _reader(
             b.sophie,
@@ -665,6 +673,7 @@ def _register() -> None:
         _reader(piet, "stack_based.piet"),
         scale=80,
     )
+    reading["piet-plus-plus"] = _reader(b.piet_plus_plus, "stack_based.piet_plus_plus")
     for stem, example in {**reading, **embedded}.items():
         BOOLEAN_EXAMPLES[stem] = replace(example, stem=stem)
 

@@ -41,13 +41,13 @@ def _profile(frame: FrameType, event: str, _arg: Any, work: Work) -> None:
         return
     fallback = _MODULE._ensure_popular.__code__  # noqa: SLF001
     if frame.f_code is _MODULE._pairs.__code__ and caller.f_code is fallback:  # noqa: SLF001
-        # Each sampling call lists its points afresh; holding the list keeps
+        # Each sampling call lists its cosets afresh; holding the list keeps
         # its identity from being reused by a later call.
-        if caller.f_locals["pts"] is not _LAST_DRAW[0]:
-            _LAST_DRAW[0] = caller.f_locals["pts"]
+        if caller.f_locals["reps"] is not _LAST_DRAW[0]:
+            _LAST_DRAW[0] = caller.f_locals["reps"]
             work.fallback_calls += 1
         work.pair_draws += 1
-        work.draw_visits += len(frame.f_locals["pts"])
+        work.draw_visits += len(frame.f_locals["node"].reps)
 
 
 def frequency_names(program: str) -> str:
@@ -109,7 +109,7 @@ def positive_control() -> Work:
     """Force the sampled fallback on a span-invariant set; verify the chosen count."""
     # Six-input span {0,1,2,3} over three cosets; no candidate is scored yet.
     points = {base ^ offset for base in (0, 4, 8) for offset in range(4)}
-    node = _MODULE._Node(0, points, set(range(4)), None)  # noqa: SLF001
+    node = _MODULE._Node.root(points).below(1).below(2)  # noqa: SLF001
     work = Work()
     prior = sys.getprofile()
     try:
@@ -123,7 +123,8 @@ def positive_control() -> Work:
     assert count == sum((point ^ direction) in points for point in points)
     assert work.fallback_calls == 1
     assert 1 <= work.pair_draws <= _MODULE._SAMPLES  # noqa: SLF001
-    assert work.draw_visits == 12 * work.pair_draws
+    # A draw visits the three cosets, not the twelve points.
+    assert work.draw_visits == 3 * work.pair_draws
     return work
 
 

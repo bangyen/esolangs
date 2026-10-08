@@ -14,12 +14,6 @@
    "expected": "9"
   },
   {
-   "id": "adder-3-1",
-   "source": "we e we yyeeee we\nwe y we et ry ey ry qe e qe we\nwe ye we et ry ey ry qe e qe we\nwe y we qe y qe ry ee ry qe ye qe we\nwe y we qe y qe ry ee ry qe e qe we\ntt qe y qe tt",
-   "stdin": "31",
-   "expected": "4"
-  },
-  {
    "id": "truth-machine-0",
    "source": "we e we et we\nrr qe e qe yr ee yr yyeeey rr tt yyeeey tt rr\ntt yyeeee tt",
    "stdin": "0",

@@ -10,6 +10,8 @@ import threading
 import time
 from dataclasses import fields, is_dataclass
 from fractions import Fraction
+from itertools import chain, compress
+from operator import is_not
 from typing import Any, cast
 
 import esolangs
@@ -58,7 +60,23 @@ def state_bits(value: object, memo: dict[int, tuple[object, int]]) -> int:
     elif isinstance(value, dict):
         total = sum(state_bits(k, memo) + state_bits(v, memo) for k, v in value.items())
     elif isinstance(value, tuple | list | frozenset | set):
-        total = sum(state_bits(item, memo) for item in value)
+        items = value
+        if value and set(map(type, value)) == {tuple}:
+            # Records of ints (a sparse tape's address-value pairs) count
+            # as the flat run they hold; Streetcode re-sorts its every write.
+            items = list(chain.from_iterable(value))
+        try:
+            # A flat run of ints (a tape, an array) counts in C: magnitude
+            # bits, one more for each zero, one more for each negative --
+            # _integer_bits per item, and bools agree.  SLOW ACV MAMMALIAN
+            # rebuilds its 23 arrays every step, so identity memo cannot help.
+            total = (
+                sum(map(int.bit_length, items))
+                + sum(map((0).__eq__, items))
+                + sum(map((0).__gt__, items))
+            )
+        except TypeError:
+            total = sum(state_bits(item, memo) for item in value)
     elif is_dataclass(value):
         total = sum(state_bits(getattr(value, f.name), memo) for f in fields(value))
     elif hasattr(value, "__dict__"):
@@ -89,6 +107,9 @@ class WrittenState:
         self._start = self._parts(state)
         self._peaks = [0] * len(self._start)
         self._written = [False] * len(self._start)
+        self._last = list(self._start)
+        #: Bits of each written part's last sample, for frozenset deltas.
+        self._now: list[int | None] = [None] * len(self._start)
 
     @staticmethod
     def _parts(state: object) -> tuple[object, ...]:
@@ -100,13 +121,49 @@ class WrittenState:
         if len(parts) != len(self._start):
             raise ValueError("snapshot changed shape mid-run")
         for at, part in enumerate(parts):
-            first = self._start[at]
-            if part is first or not (self._written[at] or part != first):
+            # Equal to the last sample, so equal bits: a rebuilt but
+            # unchanged tape is compared in C, not walked in Python.
+            last = self._last[at]
+            if part is last or part == last:
                 continue
+            self._last[at] = part
             if not self._written[at]:
                 self._written[at] = True
-                self._peaks[at] = state_bits(first, self._memo)
-            self._peaks[at] = max(self._peaks[at], state_bits(part, self._memo))
+                self._peaks[at] = state_bits(self._start[at], self._memo)
+            now = self._now[at]
+            if (
+                now is not None
+                and isinstance(part, frozenset)
+                and isinstance(last, frozenset)
+            ):
+                # A frozenset counts as the sum of its items, so a painted
+                # cell recounts the change, not A Painter Ant's whole grid.
+                now += state_bits(part - last, self._memo)
+                now -= state_bits(last - part, self._memo)
+            elif (
+                now is not None
+                and isinstance(part, tuple)
+                and isinstance(last, tuple)
+                and len(part) == len(last)
+                and part
+                and isinstance(part[0], tuple)
+            ):
+                # A chunked store (Malbolge's memory, a persistent tape):
+                # a tuple counts as the sum of its items, and an unwritten
+                # chunk is the same object, so recount only the new ones.
+                # A store rebuilt wholesale (Streetcode re-sorts its records)
+                # moves most items, and one count in C beats that walk.
+                changed = list(compress(range(len(part)), map(is_not, part, last)))
+                if 8 * len(changed) < len(part):
+                    for i in changed:
+                        now += state_bits(part[i], self._memo)
+                        now -= state_bits(last[i], self._memo)
+                else:
+                    now = state_bits(part, self._memo)
+            else:
+                now = state_bits(part, self._memo)
+            self._now[at] = now
+            self._peaks[at] = max(self._peaks[at], now)
 
     @property
     def bits(self) -> int:

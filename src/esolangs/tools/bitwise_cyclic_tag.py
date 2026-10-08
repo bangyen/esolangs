@@ -10,7 +10,7 @@ count and why a cell needs four bits are in ``docs/proofs/index.md``.
 
 from __future__ import annotations
 
-from esolangs.tools.helpers import TEMPLATE_CHAR, _validate_truth_table
+from esolangs.tools.helpers import TEMPLATE_CHAR, _validate_truth_table, input_weights
 
 #: One bit of the initial data-string, so an input's run is one TEMPLATE_CHAR.
 PAIR = ("0", "1")
@@ -22,13 +22,15 @@ _SENTINEL = "1"
 def bitwise_cyclic_tag(truth_table: str) -> str:
     """Return the BCT template computing ``truth_table``."""
     n = _validate_truth_table(truth_table)
+    # An ignored input appends nothing either way: its command is a bare ``0``.
+    weights, table = input_weights(truth_table, n)
     parts = []
-    for i in range(1, n + 1):
-        parts.append("10" * (1 << (n - i + 1)))
+    for weight in weights:
+        parts.append("10" * (2 * weight))
         parts.append("0")
     parts.append("1" + _SENTINEL)
     parts.append("0")
-    for answer in truth_table:
+    for answer in table:
         parts.append("1" + answer + "00")
     data = TEMPLATE_CHAR * n + _SENTINEL
     return f"{''.join(parts)},{data}"

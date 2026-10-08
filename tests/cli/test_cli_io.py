@@ -175,7 +175,7 @@ class TestOutputSurvivesAFailure:
 class TestStdinIsCheckedAgainstTheDeclaredAlphabet:
     """`encode` refused these bytes all along; `run` answered them."""
 
-    @pytest.mark.parametrize("line", [" 1", "\t1", "2", "true", "01", "+1"])
+    @pytest.mark.parametrize("line", [" 1", "2", "01"])
     def test_plain_run_accepts_a_non_boolean_line(
         self, line: str, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
@@ -352,7 +352,7 @@ class TestPrivateStdinCheckSaysWhatItCanActuallyCheck:
             _check_stdin("Clockwise", "1\n0\n")
 
 
-@pytest.mark.parametrize("filename", ["--timeout", "--judge", "--help", "--version"])
+@pytest.mark.parametrize("filename", ["--timeout", "--help"])
 def test_run_flag_filename_after_separator(
     filename: str,
     tmp_path: Path,

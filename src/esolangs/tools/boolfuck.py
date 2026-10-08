@@ -26,7 +26,7 @@ cleared flag cell, bits 4..5 after flipping it, bits 6..7 cleared
 again -- the ASCII ``'0'``/``'1'`` byte in exactly 8 prints.
 """
 
-from esolangs.tools.helpers import _validate_truth_table
+from esolangs.tools.helpers import _validate_truth_table, subtree_ids
 
 _SCRATCH = -1
 
@@ -38,6 +38,7 @@ def boolfuck(truth_table: str) -> str:
         raise AssertionError("unreachable")
 
     result = 2 * n
+    ids = subtree_ids(truth_table)
 
     def bit(i: int) -> int:
         return 2 * i
@@ -77,6 +78,10 @@ def boolfuck(truth_table: str) -> str:
         bit_cell = bit(i)
         flg = flag(i)
         one = combo | (1 << (n - 1 - i))
+        below = ids[i + 1]
+        if below[combo >> (n - i - 1)] == below[one >> (n - i - 1)]:
+            branch(i, combo)  # halves agree: bit i cannot matter
+            return
         move(flg)
         parts.append("+")  # flag_i = 1 (it is 0 by invariant)
         move(bit_cell)

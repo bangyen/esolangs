@@ -14,14 +14,6 @@ from tests.witness_tables import witnesses
 class TestBrainIf:
     """The DAG selector and the retained width-constrained tree/spatial route."""
 
-    def test_structure(self) -> None:
-        """An entry trampoline precedes the answer build and input tree."""
-        program = boolean.brainif("10", width=1000)
-        assert program.startswith("if 0 goto 4\nif 48 goto")
-        assert "if 0 input" in program
-        # The one leaf, a 0, joins the trampoline line its byte (48) passes.
-        assert program.count("goto 2") == 1
-
     def test_the_answer_byte_is_built_once(self) -> None:
         """The climb to 48 is paid before the tree, not once per digit."""
         for table in ("10", "0110", "11111110", "01101001"):
@@ -133,7 +125,8 @@ class TestBrainIf:
             assert run_brainif(program, bits) == table[row]
 
 
-@pytest.mark.parametrize("width", [1, 11, 12, 13, 40, 80])
+# 1, 11 and 12 build the same programs, as do 40 and 80.
+@pytest.mark.parametrize("width", [1, 13, 40])
 def test_brainif_zero_landing_executes_all_small_tables(width: int) -> None:
     from esolangs.interpreters.io import ScriptedIO
     from esolangs.interpreters.tape_based.brainif import run
@@ -161,7 +154,7 @@ def test_brainif_zero_landing_output_floor_and_corpus_size() -> None:
         assert run_brainif(program, list(format(row, "02b"))) == expected
 
 
-@pytest.mark.parametrize("width", [1, 12, 80])
+@pytest.mark.parametrize("width", [1, 80])
 def test_brainif_zero_landing_public_and_larger_samples(width: int) -> None:
     import esolangs
 

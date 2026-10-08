@@ -5,22 +5,6 @@ history; standing rules and proved limits are in [limitations](limitations.md).
 
 ## Research follow-up
 
-- **Piet++: finish the specification and generator audit.** The wiki still
-  tags Piet++ as [Unimplemented](https://esolangs.org/wiki/Piet%2B%2B), but a
-  [partial executor](https://github.com/Esolang-NET/Piet/blob/14d1533cc46e27463b4baa6957137f5af6c83380/Processor/PietPlusPlusExecutor.cs)
-  exists. In that executor, Read, Write and Roll-Context are no-ops, and Dup
-  aliases nested stacks. A strict subset already runs: nested-stack cofactor
-  descent adds a data-tree selection mechanism, and the subset executed 309
-  tables across 3,352 rows, including every table through three inputs. That
-  shows the approach is feasible; it does not yet prove full-language
-  correctness or admission. The executor cannot arbitrate the open
-  conventions: its Read/Write are no-ops and its arithmetic reads a stack
-  operand as 0, so operand consumption, the coordinate origin and image
-  updates are unobservable there. Next: fix those conventions from the wiki
-  text alone, audit invalid typed operations and image/block updates, then
-  run the loop-less O(T) generator through three inputs and sampled
-  larger tables under the chosen input conventions.
-
 - **Linear Boolean generators: make generation and output grow only with
   the table.** Here `T` is the truth-table length. The goal is build time
   and emitted size both O(T). For each generator still open, the path to
@@ -29,12 +13,16 @@ history; standing rules and proved limits are in [limitations](limitations.md).
   or its required encoding forces super-linear output, then move on.
   Generation time includes choosing an input order and writing the result.
 
-  A language stays in the repo if its generator is O(T) on all four audit
-  axes below, if its row carries a proved language-wide lower bound, or if
-  tests pin a semantic obstruction that every attempted construction
-  breaks. A syntax-level lookup table does not count as a generator. If one
-  more executed round produces neither a construction nor a bound, that
-  language and its row leave. An unproved wall is not a lookup table.
+  A row closes when its generator is O(T) on every audit axis below, when
+  it carries a proved language-wide lower bound, or when tests pin a
+  semantic obstruction that every attempted construction breaks. A
+  syntax-level lookup table does not count as a generator. If one more
+  executed round produces neither a construction nor a bound, the row
+  moves to [Parked](#parked): one line there, its known state in the
+  language's proof page. The language stays, and its status-table cells
+  keep their vocabulary; [curation](limitations.md#curation) alone admits
+  and removes languages.
+  An unproved wall is not a lookup table.
 
   The three axes are totality (does the generator handle every table it
   claims?), generation time, and output size; execution time and workspace
@@ -87,142 +75,35 @@ history; standing rules and proved limits are in [limitations](limitations.md).
   n=11,13,15. Parity tables read no higher. All sit inside the measured
   4.4 contract; that is a measurement, not a proof of linearity.
 
-## Candidate languages
-
-Screened 2026-10-05 from 54 Category:Unimplemented pages. Each is a first
-implementation (unique backlinks measured 2026-10-06); add with
-`/new-language`, ranked.
-
-- **[Smu](https://esolangs.org/wiki/Smu)** (4 backlinks). Zzo38's minimal
-  Smurf: a string stack over `()=|+`, four commands, and a run that ends by
-  outputting the top string and running the next one. Bit I/O per run.
-  Generator: one node `(c0)(|)=(c1)(+)=()+(=)` stores both children under
-  the input bit's names and runs the selected one on the next bit; a leaf
-  is `()=` then its bit. O(T), hand-traced, not executed. Gaps: an unset
-  variable's value (the cat example implies empty), `=` at EOF, and the
-  byte-to-bit input convention. The cat program is the only stated output.
-- **[SStack](https://esolangs.org/wiki/SStack)** (4 backlinks). Seven
-  unsigned stacks `a`-`g`, empty reads 0, byte I/O, and a loop
-  `[x\y/...]` while two tops are equal. Generator: nested one-shot ifs,
-  O(T). Gaps: EOF, decrementing an empty stack. The page's brainfuck
-  interpreter is untested, so it is not ground truth.
-- **[Transistor](https://esolangs.org/wiki/Transistor)** (2 backlinks).
-  Tri-state values (true, false, floating), N/P transistors and pull
-  resistors as the only primitives, plus `circuit`, `let` and `while`.
-  Generator: a mux fold with inputs as `let` lines, O(T). Gaps: no grammar,
-  no I/O (output would be a chosen variable), computational class unstated.
-
-## Open problems
-
-Each item names its next executable step. When an item is answered, record
-the answer in the linked proof and remove the item.
-
-- **Brainfuck behaviour count.** With a clipped tape and EOF error (the
-  repo model until 2026-10-06), the growth constant is bracketed:
-  `4.2420 <= liminf B(C)**(1/C) <= limsup <= 7.0347`; the repo's bi-infinite
-  tape has upper bound `6.9133`. The limit itself, and any clipped sub-7
-  upper bound, remain open. The 11,673-state certificate covers
-  balanced bodies only to bracket depth one, and no finite monitor can
-  count the unrestricted sound print-rotation and forced-divergence bodies:
-  they match brackets across any depth. Next: count them with the
-  context-free system `B0, B1, L0, L1, R, P` or a depth-indexed transfer
-  matrix, preserving the cell-preservation condition (`+[-[]].` halts and
-  prints NUL, while `+[].` diverges). Certificates, withdrawn bounds and
-  the loop-free comparison: [brainfuck-count](proofs/brainfuck-count.md#3-upper-bound-theorem-1).
-
-- **Malbolge's first unreachable arity.** The shipped cap is 16 inputs.
-  Counting excludes some 18-input tables; 17 remains undecided, and a
-  build needs more than two table bits per cell across almost the whole
-  store. Packing uses 49,152 cells, and the five-state decoder executes
-  all 2,744 one-group cases. Neither placement nor sharing setup
-  between the address fold, row selector and decoder fits them: the
-  shared union is 10,324 cells against a 9,897-cell complement, and the
-  decoder's 1,173 conflicting overlaps are the binding term. Next: shrink
-  the decoder or share more of its common initialization. See [the construction
-  record](proofs/malbolge-scaling.md#seventeen-navigation-is-linear-in-address-so-packing-helps-measured).
-  Proving impossibility instead needs a density lemma: cut the count by
-  `2**46076`, or bound a normal-form representative's dependence by
-  24,434 cells. A per-program dependence cut is false (`'o'*59046 + '/<v'`
-  computes the one-input identity and depends on all 59,049 cells), and
-  length and alphabet cuts are closed; [limitations](limitations.md#boolean-generators)
-  records the controls.
-
-- **Polynomial's constant.** `prop:bracket` in
-  [polynomial](proofs/polynomial.tex) brackets both limits of
-  `C_P n / T**2` in `[13/4 log10(2), 325/8 log10(2)]` — a factor of 12.5
-  apart. Next: replace the instruction profile or raise the
-  coefficient-mass bound. Four refinements provably cannot improve
-  `325/8` (inline-state tuning, narrower decoder operands, local opcode
-  substitution, affine dispatch); their proofs are in the paper. The
-  lower-bound gap is a quadratic mass charge for Gaussian instruction
-  roots: the forced factor currently gives only `8 log(K!) = Theta(T)`,
-  and residual width alone does not force distinct Gaussian roots. Parity
-  sources are universal and must be priced; the argument assumes exact
-  register arithmetic, with float `**` a caveat. See [explicit
-  constants](proofs/polynomial.md#explicit-constants) and the
-  [coefficient-mass roadmap](https://github.com/bangyen/coefficient-mass/blob/main/ROADMAP.md).
-  The [common-norm bound](proofs/polynomial-common-norm.md) is
-  `Lambda(Q) >= K**2 log(R)/16` for the raw forced factor and scaled
-  reciprocal or anti-reciprocal integer multiples. Arbitrary multipliers
-  remain open, and register roots need not share a norm, so this does not
-  close the constant bracket.
-
-- **Factor leading constant.** [factor](proofs/factor.md#leading-constants)
-  brackets worst-case minimum digits divided by `T*n` between 0.11675954
-  and 0.29229475 asymptotically (a 2.503391-fold gap). The lower side
-  counts weighted exponent compositions after local normalization and
-  first-output pruning; the upper side prices a traveling counter, fixed
-  signed-ball blocks, and an almost-all prime-window covering bound. Parity
-  encodings executed through five inputs determine neither limit.
-  On the executed corpus, semantic deduplication only halves the count (a
-  constant factor); `<>` is already in the forbidden set now that the
-  tape grows left. Next: find a sound local rewrite that lowers the lower
-  side's Perron root, or construct a cheaper weighted command stream to lower
-  the upper one. Whether the limit exists, and its value, remain open.
-
-- **Vandevelo structural scaling.** Clause count is under `17*2**n/n`
-  for every table: `_assure` puts a half-average direction on each level
-  of the chains the bound needs. Lines and commands per row are therefore
-  `O(T)`, which closes execution time. Identifier references still carry
-  the extra factor. Generation is not linear as built: with `k` zeros the
-  first chain stays near full for `n - log2(k)` levels, at least `T*(n -
-  log2(k) - 2)` work, and three zeros measure about `860*n*T`. Next:
-  score near-full levels from their complement, whose misses at most
-  double a level, and bound the dual-basis core's aggregate work
-  ([proofs](proofs/index.md)). The identifier factor is Cohen and
-  Shinkar's open `O(log n)` gap in DNF-of-parities size. On tables whose
-  cubes are under `2*log2(n)` dimensions, coset programs cost
-  `Theta(DNF+(f) * n * log n)` characters. So neither linear output nor a
-  super-linear lower bound can be proved without settling that gap.
-
-- **FRACTRAN order encoding.** One unchanged multiset of eight fractions
-  computes all sixteen four-row tables just by ordering each `1/p, 2/p`
-  pair; all 64 rows executed. The one-consultation route is closed
-  negatively: fixed applicability and postprocessing give a linear
-  threshold class, requiring at least `T-1` distinct fractions and
-  `Omega(T log T)` text. A four-guard overlap cycle executes all 24
-  orders on four rows and realizes exactly fourteen tables, missing XOR
-  and XNOR. See [the order
-  bound](proofs/fractran.md#order-only-decoding-with-one-priority-consultation).
-  Two consultations escape the one-consultation cap: a `2k`-fraction
-  pair-decoded router realizes every table on up to 13 rows at `k=6`, but
-  its checked maxima grow linearly in `k`, so text stays `Theta(T log T)`
-  ([pair router](proofs/fractran.md#pair-decoded-two-priority-consultations)).
-  Next: exhibit a `Theta(k log k)`-row family a fixed pair decoder
-  shatters, or prove the router caps at `O(k)` rows. (The indexed threshold route already achieves
-  linear text by magnitudes.)
-
-- **Brainfuck on bounded inputs.** The finite-set upper bound is now
-  `6.584428341`, below the all-input upper bound `7.0347`: delete
-  unvisited reads, then count seven-command segments by a certified
-  adjacency matrix. [Theorem 6](proofs/brainfuck-count.md#7b-bounded-input-upper-bound-theorem-6)
-  also covers varying input sets with total read budget `o(C)`, including
-  byte-input lengths at most `(1-eps)*log_256(C)`. The lower bound remains
-  `3.366148`. For input length proportional to source length, Theorem 6's
-  counting improves on `7.0347` only while the proportion stays below
-  about 0.021, and never on `6.584428341`. Next: establish
-  the limit or sharpen either side.
-
 Controls are in `tests/proofs/test_research_tracks.py`. The linked proofs
 close ordered input-forgetting construction, generated-family loading
 bounds, and the weighted-description theorem.
+
+## Parked
+
+Stalled problems, one line each; detail lives in the linked proof page. A
+line changes only when its next step does.
+
+- **FRACTRAN bit-linear pipeline.** Next: execute a forward cleanup scan
+  for direct chunks in place of minimum-tree updates; factor removal cannot
+  enable an earlier failed guard. Prime generation and literal conversion
+  remain, with the materialized sieve forcing `Theta(T log T)` generation
+  ([fractran](proofs/fractran.md#direct-chunks-with-exact-cleanup)).
+- **Brainfuck behaviour count.** Next: count balanced bodies by the
+  context-free system or a depth-indexed transfer matrix
+  ([brainfuck-count](proofs/brainfuck-count.md#8-what-is-not-settled)).
+- **Brainfuck on bounded inputs.** Next: establish Theorem 6's limit or
+  sharpen either side ([brainfuck-count](proofs/brainfuck-count.md#8-what-is-not-settled)).
+- **Polynomial's constant.** Next: replace the instruction profile or raise
+  the coefficient-mass bound ([polynomial](proofs/polynomial.md#explicit-constants)).
+- **Factor leading constant.** Next: a sound local rewrite lowering the
+  lower side's Perron root, or a cheaper weighted command stream
+  ([factor](proofs/factor.md#open-problems)).
+- **Malbolge's first unreachable arity.** Next: shrink the decoder or share
+  more of its common initialization
+  ([malbolge-scaling](proofs/malbolge-scaling.md#open-problems)).
+- **Vandevelo structural scaling.** Next: settle Cohen and Shinkar's
+  `O(log n)` DNF-of-parities gap, which bounds output and so generation
+  time; on the build side, a `certify` that rebuilds a level only when its
+  direction drops below half the average
+  ([index](proofs/index.md#vandevelo-identifier-and-fallback-audit)).

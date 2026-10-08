@@ -1,6 +1,8 @@
 """``tests/tools/mutate_generator.py`` selects the suites and shapes the run."""
 
 import importlib.util
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -212,6 +214,22 @@ class TestParseTarget:
 
 
 class TestPrepare:
+    @pytest.mark.medium
+    def test_focused_generator_baseline_collects(self, tmp_path: Path) -> None:
+        script = load_script()
+        proj, _ = script._prepare(  # noqa: SLF001
+            "tools", "underload", tmp_path, slow=False, selection="underload"
+        )
+        result = subprocess.run(
+            [sys.executable, "-m", "pytest", "--collect-only", "-q", "tests/tools"],
+            cwd=proj,
+            capture_output=True,
+            text=True,
+            timeout=60,
+            check=False,
+        )
+        assert result.returncode == 0, result.stdout + result.stderr
+
     def test_the_mutated_path_is_the_requested_family(self, tmp_path: Path) -> None:
         """``paths_to_mutate`` must name the family that was asked for."""
         script = load_script()

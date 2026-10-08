@@ -9,7 +9,8 @@ from esolangs.tools.befunge import befunge
 
 
 @pytest.mark.parametrize("inputs", [1, 4, 13])
-@pytest.mark.parametrize("width", [1, 5, 80, None])
+# 80 builds what None does.
+@pytest.mark.parametrize("width", [1, 5, None])
 def test_befunge_folded_header_reads_the_table(inputs: int, width: int | None) -> None:
     rng = random.Random(inputs)
     table = "".join(str(rng.randrange(2)) for _ in range(1 << inputs))

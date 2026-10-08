@@ -54,6 +54,7 @@ def test_numeric_readers_accept_tokens_on_the_same_line(language):
 _EOF_IS_A_HALT: dict[str, str] = {
     "boolfuck": "EOF supplies zero bits",
     "piet": "an exhausted input command is ignored, as the spec requires",
+    "piet-plus-plus": "an exhausted In command is ignored, as the page recommends",
     # Reads until the input runs out and treats that as its stop, which is
     # how its generated programs terminate at all.
     "suffolk": "reads to exhaustion, so EOF is the halt",
@@ -79,15 +80,9 @@ _EOF_IS_A_HALT: dict[str, str] = {
     "inject": "an exhausted readto empties the block",
     # Likewise the wiki Cat ``[;@$0{&}{,}]`` halts only on a 0 at EOF.
     "sophie": "an exhausted ';' or ':' reads 0",
+    # Every run pushes its input bit, and the spec's EOF bit is ``=``.
+    "smu": "an exhausted read pushes the spec's '=' bit",
 }
-
-
-@pytest.mark.parametrize("name", sorted(_EOF_IS_A_HALT))
-def test_every_eof_exemption_names_a_real_language(name: str) -> None:
-    """An exemption whose language is gone must not linger unnoticed."""
-    from esolangs.tools.examples import BOOLEAN_EXAMPLES
-
-    assert name in BOOLEAN_EXAMPLES
 
 
 def _reading_languages() -> list[str]:

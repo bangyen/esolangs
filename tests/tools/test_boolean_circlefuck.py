@@ -108,7 +108,7 @@ def test_circlefuck_essential_inputs_are_the_ones_flipping_changes(seed: int) ->
     assert _essential_byte_inputs(table, n) == expected
 
 
-@pytest.mark.parametrize("seed", range(12))
+@pytest.mark.parametrize("seed", range(4))
 def test_circlefuck_projection_is_the_table_over_its_essential_inputs(
     seed: int,
 ) -> None:

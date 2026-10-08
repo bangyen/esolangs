@@ -60,6 +60,19 @@ class TestDecleq:
                 got = run_decleq(program, [str(b) for b in bits])
                 assert got == str(int(table[combo])), f"{table} inputs {bits}"
 
+    def test_a_repeated_subtree_is_emitted_once(self) -> None:
+        """Two equal quarters share one copy and still print every entry."""
+        rng = random.Random(8)
+        block, other = ("".join(rng.choice("01") for _ in range(64)) for _ in "ab")
+        table = block + other + block + block
+        program = boolean.decleq(table)
+        assert len(program) < 0.9 * len(
+            boolean.decleq(block + other + other[::-1] + block[::-1])
+        )
+        for combo in rng.sample(range(256), 48):
+            bits = [(combo >> (7 - i)) & 1 for i in range(8)]
+            assert run_decleq(program, [str(b) for b in bits]) == table[combo]
+
     def test_untaken_jumps_target_zero(self) -> None:
         """A jump no run can take is spelt ``0``, not the next address."""
         cells = [int(tok) for tok in boolean.decleq("01101001").split()]
