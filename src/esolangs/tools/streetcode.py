@@ -433,7 +433,7 @@ def _streetcode_rotate(program: str) -> str:
     """Rotate a Streetcode grid 180 degrees and trim its new line ends.
 
     Rotation preserves right-hand driving; a reflection would not.  The
-    small-input generator no longer tries it; the balancer does.
+    generator no longer tries it; the balancer does.
     """
     rows = program.splitlines()
     width = max(map(len, rows))
@@ -633,10 +633,8 @@ def streetcode(truth_table: str, width: int | None = None) -> str:
     ``truth_table`` is a binary string of length ``2**n``, MSB first.  From
     six inputs the table is one cell per entry, addressed by the inputs
     (:func:`_streetcode_flat`); below that, a populate phase plus a decision
-    tree.  The shortest shape wins.  From six inputs the flat street is
-    also tried rotated 180 degrees, which only strips trailing blanks (0.0%
-    by area at n=6-8); the workspace ledger's exact bound is stated for the
-    rotated program.  Below six it is not tried: it costs area there.
+    tree.  The shortest shape wins.  A 180-degree rotation only strips
+    trailing blanks (0.0% by area at n=2-8, worse at n=5), so it is not tried.
     ``width`` chooses among the shapes rather than reflowing (rows are
     streets); when none fit, a clockwise turn of the indexed street gives a
     nine-column floor, seven with its room floors shared with the kerb.
@@ -644,11 +642,9 @@ def streetcode(truth_table: str, width: int | None = None) -> str:
     n = _validate_truth_table(truth_table)
     if n >= 6:
         flat = _streetcode_flat(truth_table, n)
-        turned = _streetcode_rotate(flat)
-        if width is None:
-            return shortest(flat, turned)
-        fitting = [p for p in (flat, turned) if grid_width(p) <= width]
-        return shortest(*fitting) if fitting else _streetcode_narrow(flat, width)
+        if width is None or grid_width(flat) <= width:
+            return flat
+        return _streetcode_narrow(flat, width)
     tree = _streetcode_tree(truth_table)
     # The per-input loops trade rows for columns, so only width selection
     # needs them.  The shared lap is strictly shorter through every table at

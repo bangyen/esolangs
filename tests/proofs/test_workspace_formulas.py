@@ -444,15 +444,18 @@ FORMULAS: dict[str, tuple[Callable[[int, str], int], bool, tuple[int, ...]]] = {
         (3, 5),
     ),
     "Streetcode": (
+        # Peak car state is 13 + bl(width), width = 2T + 57 + G.
         lambda n, _: (
             n * 2**n
             + 2 * n
-            + 24
-            + bl(52 + sum(max(51, 2 ** (k - 1) + 3) for k in range(1, n)))
+            + 25
+            + bl(
+                2 ** (n + 1) + 57 + sum(max(51, 2 ** (k - 1) + 3) for k in range(1, n))
+            )
             + 2 * bl(n)
         ),
         True,
-        (6,),
+        (6, 7),
     ),
     "Crement": (_crement, False, (3, 6)),
     "Inject": (_inject, True, (5,)),
