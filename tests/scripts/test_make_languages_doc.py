@@ -120,7 +120,11 @@ def test_main_updates_all_registry_derived_docs(
     module.update_limitations = lambda _root: called.append("limitations")
     module.update_contributing = lambda _root: called.append("contributing")
     module.update_language_request = lambda _root: called.append("request")
-    for relative in ("docs/proofs/index.md", "docs/roadmap.md"):
+    for relative in (
+        "docs/proofs/index.md",
+        "docs/roadmap.md",
+        "src/esolangs/tools/__init__.py",
+    ):
         target = tmp_path / relative
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes((REPO_ROOT / relative).read_bytes())

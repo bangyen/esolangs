@@ -462,8 +462,11 @@ def main(*, output_root: pathlib.Path = ROOT) -> int:
     # Imported here so the module also loads from a test, where this directory
     # is not on ``sys.path`` until now.
     sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+    from generate_exports import update as update_exports
     from proof_status import update_docs
 
+    update_exports(output_root)
+    print("updated the generated exports of esolangs.tools")
     update_docs(output_root)
     update_readme(output_root)
     print("updated the generated sections of README.md")

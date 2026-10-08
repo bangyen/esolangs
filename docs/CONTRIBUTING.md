@@ -75,7 +75,9 @@ interpreter module ◄──── source + encoded stdin ◄──┘
   whole-source or split-line input. A language with a generator declares
   its own `LANGUAGE = Language(...)` at the end of its generator module, and
   the registry collects those; only interpreter-only languages are listed
-  in `registry/_table.py`.
+  in `registry/_table.py`. `esolangs.tools`'s imports are generated from
+  the declarations (`scripts/generate_exports.py`, run by `generate.py docs`
+  and by `check`).
 - Generators live in `src/esolangs/tools/`. Most return runnable source;
   input-embedding languages return a `$`-run template for `instantiate`.
   `encode_inputs` handles stdin conventions, and `read_answer` reads printed
