@@ -13,35 +13,33 @@ from esolangs.tools.helpers import (
 
 
 def jaune(truth_table: str) -> str:
-    """Build a Jaune program computing the given truth table.
+    """Build a Jaune program computing the given truth table (MSB first).
 
-    ``truth_table`` is a binary string of length ``2**n``, MSB first.  All
-    bits are read up front (``v``), then ``?`` jumps route the
-    tree; each leaf prints with ``^`` and terminates.  Only inputs the tree
-    branches on get a cell (``>`` after the read), so the tree navigates a
-    span as wide as the real dependencies, and a leaf prints from its
-    parent's test cell for one ``+``/``-``, and a node whose halves are
-    ``0`` and ``1`` prints its own cell unbranched (``1`` and ``0``, after
-    :func:`_inverted_inputs` reads it inverted).  Reading up front keeps the
-    input count constant: reads at the nodes let a folded tree skip them,
-    and Jaune escaped the contract test only by not being in
-    ``BY_FUNCTION``. Splits stay in input order; navigation costs one
-    move per cell, measured not assumed.
+    All bits are read up front (``v``), then ``?`` jumps route the tree; each
+    leaf prints with ``^`` and terminates.  Reading up front keeps the input
+    count constant: reads at the nodes let a folded tree skip them.  Only
+    inputs the tree branches on get a cell (``>`` after the read); a leaf
+    prints from its parent's test cell for one ``+``/``-``, and a node whose
+    halves are ``0`` and ``1`` prints its own cell unbranched (``1`` and
+    ``0``, after :func:`_inverted_inputs` reads it inverted).  Splits stay in
+    input order.
 
     A repeated subtree is laid out once and jumped to (``share`` in
-    :func:`_jaune_ordered`). Sharing never grows a table through four inputs
-    (exhaustively checked). The shared tree lays out
-    distinct subtables alone in O(T).  Over the 256
-    three-input tables that is 7,437 to 7,199 characters (3.2%); over 200
-    seeded five-input tables, 47,973 to 19,568 (59.2%), where the unshared
-    tree would give 29,291.
+    :func:`_jaune_ordered`); sharing never grows a table through four inputs
+    (exhaustively checked).  Over the 256 three-input tables that is 7,437 to
+    7,199 characters (3.2%); over 200 seeded five-input tables, 47,973 to
+    19,568 (59.2%), where the unshared tree would give 29,291.
     """
-    return in_input_order(truth_table, _jaune_shared)
+    return in_input_order(truth_table, lambda t, p: _jaune_ordered(t, p, share=True))
 
 
-def _jaune_shared(truth_table: str, perm: tuple[int, ...]) -> str:
-    """Return one order's program with its repeated subtrees jumped to."""
-    return _jaune_ordered(truth_table, perm, share=True)
+def _move(frm: int, to: int) -> str:
+    return ">" * (to - frm) if to >= frm else "<" * (frm - to)
+
+
+def _leaf(want: int, held: int | None) -> str:
+    delta = want - (0 if held is None else held)
+    return ("+" if delta > 0 else "-") * abs(delta) + "^."
 
 
 def _inverted_inputs(
@@ -123,9 +121,6 @@ def _jaune_ordered(
     flip = _inverted_inputs(truth_table, perm, constant)
     ids = subtree_ids(truth_table)  # O(2**n), so a subtree's name is O(1)
 
-    def move(frm: int, to: int) -> str:
-        return ">" * (to - frm) if to >= frm else "<" * (frm - to)
-
     stored = stored_inputs(truth_table, perm)
     # Reads run in input order; only a stored input advances the pointer, so
     # the kept bits occupy a contiguous block from cell 0.
@@ -150,24 +145,17 @@ def _jaune_ordered(
     # Any other table prints only from test cells and walks straight back to
     # its first, so the last read's step off its cell is dropped instead.
     scratch = slot
-    if not constant(0, 1 << n):
-        if reads.endswith(">"):
-            reads = reads[:-1]
-            scratch = slot - 1
-    else:
+    if constant(0, 1 << n):
         reads += ">"
         scratch = slot + 1
-
-    def leaf(value: str, held: int | None) -> str:
-        want = int(value)
-        have = 0 if held is None else held
-        adjust = "+" * (want - have) if want >= have else "-" * (have - want)
-        return adjust + "^."
+    elif reads.endswith(">"):
+        reads = reads[:-1]
+        scratch = slot - 1
 
     def name(level: int, lo: int, entry: int, held: int) -> tuple[int, ...] | None:
         if not share:
             return None
-        _level, _block, key = subtree_slot(ids, level, lo >> (n - level), skip=True)
+        key = subtree_slot(ids, level, lo >> (n - level), skip=True)[2]
         return (*key, held) if key[0] < 0 else (*key, entry)
 
     def arm(level: int, lo: int, hi: int, cell: int, held: int) -> tuple[str, int]:
@@ -180,7 +168,7 @@ def _jaune_ordered(
 
     def node(level: int, lo: int, hi: int, entry: int, held: int | None) -> str:
         if level == n or constant(lo, hi):
-            return leaf(truth_table[lo], held)
+            return _leaf(int(truth_table[lo]), held)
         # A clobbered input has no cell to test.  Its bit cannot change the
         # answer, so the two halves of this span are value-identical and
         # descending into either one is the same function -- take the zero
@@ -188,10 +176,10 @@ def _jaune_ordered(
         # Shared, any test whose halves agree is passed over the same way.
         block = lo >> (n - level)
         agrees = share and ids[level + 1][2 * block] == ids[level + 1][2 * block + 1]
-        if perm[level] not in cell_of or agrees:
-            return node(level + 1, lo, (lo + hi) // 2, entry, held)
-        cell = cell_of[perm[level]]
         mid = (lo + hi) // 2
+        if perm[level] not in cell_of or agrees:
+            return node(level + 1, lo, mid, entry, held)
+        cell = cell_of[perm[level]]
         (elo, ehi), (tlo, thi) = (lo, mid), (mid, hi)
         if perm[level] in flip:
             (elo, ehi), (tlo, thi) = (tlo, thi), (elo, ehi)
@@ -203,10 +191,10 @@ def _jaune_ordered(
             and truth_table[lo] != truth_table[mid]
         ):
             if truth_table[tlo] == "1":
-                return move(entry, cell) + "^."
+                return _move(entry, cell) + "^."
             skip = labels.fresh()
-            return move(entry, cell) + f"{skip}?++{skip}:-^."
-        nav = move(entry, cell)
+            return _move(entry, cell) + f"{skip}?++{skip}:-^."
+        nav = _move(entry, cell)
         then_key = name(level + 1, tlo, cell, 1)
         else_key = name(level + 1, elo, cell, 0)
         both = then_key not in labels.placed and else_key not in labels.placed
