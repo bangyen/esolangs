@@ -641,6 +641,10 @@ def streetcode(truth_table: str, width: int | None = None) -> str:
     ``width`` chooses among the shapes rather than reflowing (rows are
     streets); when none fit, a clockwise turn of the indexed street gives a
     nine-column floor, seven with its room floors shared with the kerb.
+    That floor is the indexed street, one cell per entry addressed by position,
+    so constant halves and repeats have no subtree to fold or share; ignored
+    inputs still drop.  A tree one column past ``width`` falls to it (11x38
+    -> 258x9 at ``width=40``), which is a shape switch, not a missing piece.
     """
     n = _validate_truth_table(truth_table)
     if n >= 6:
