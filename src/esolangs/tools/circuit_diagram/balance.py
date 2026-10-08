@@ -3,7 +3,6 @@
 from esolangs.tools.circuit_diagram import (
     _Builder,
     _circuit_diagram_at,
-    _flat_best,
     _narrowest_present,
 )
 from esolangs.tools.circuit_diagram.layout import _Layout
@@ -73,22 +72,20 @@ def affine_circuit(
 
 def balance_circuit_diagram(table: str, default: str) -> str:
     """Compare reachable gate-column thresholds and band-fit transitions."""
-    flat, order = _flat_best(table, compact=False)
+    flat = _circuit_diagram_at(table, None)
     floor = grid_width(flat)
     candidates = [default, flat]
     width = 1
     while width < floor:
         events = [floor]
-        primary = _circuit_diagram_at(table, width, order, _events=events)
+        primary = _circuit_diagram_at(table, width, _events=events)
         span = grid_width(primary)
         if span <= width:
             candidates.append(primary)
         else:
             events.append(span)
             shifted: list[int] = []
-            banded = _circuit_diagram_at(
-                table, max(1, width - 2), order, _events=shifted
-            )
+            banded = _circuit_diagram_at(table, max(1, width - 2), _events=shifted)
             events.extend(point + 2 for point in shifted)
             affine = affine_circuit(table, width, _events=events)
             candidates.append(_narrowest_present(flat, banded, affine))

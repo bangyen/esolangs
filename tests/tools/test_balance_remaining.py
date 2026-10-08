@@ -292,7 +292,7 @@ def test_packlang_reduced_indent_crossing(indent):
 @pytest.mark.parametrize("inputs", [6, 8])
 @pytest.mark.parametrize("affine", [False, True])
 def test_circuit_gate_column_and_band_fit_transitions(inputs, affine):
-    from esolangs.tools.circuit_diagram import _circuit_diagram_at, _selector_orders
+    from esolangs.tools.circuit_diagram import _circuit_diagram_at
 
     language = "Circuit Diagram"
     rng = random.Random(1022 + inputs)
@@ -303,11 +303,8 @@ def test_circuit_gate_column_and_band_fit_transitions(inputs, affine):
     )
     default = esolangs.generate(language, table)
     balanced = esolangs.generate(language, table, balance=True)
-    # Once any possible flat order fits, all larger widths repeat the selected flat.
-    widest = max(
-        max(map(len, _circuit_diagram_at(table, None, order).split("\n")))
-        for order in _selector_orders(table, compact=False)
-    )
+    # Once the flat drawing fits, all larger widths repeat it.
+    widest = max(map(len, _circuit_diagram_at(table, None).split("\n")))
     layouts = [default] + [
         esolangs.generate(language, table, width=width)
         for width in range(1, widest + 1)

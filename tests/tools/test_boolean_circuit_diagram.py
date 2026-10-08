@@ -467,38 +467,11 @@ class TestCircuitDiagram:
         table = "".join("1" if n in primes else "0" for n in range(16))
         assert self.run_table(table) == table
 
-    @pytest.mark.slow  # ~3s: 256 builds of up to four orders, eight rows each
-    def test_every_three_input_table_under_its_chosen_order(self) -> None:
-        """A reordered fold still reads its rails in input order."""
+    @pytest.mark.slow  # 256 builds, eight rows each
+    def test_every_three_input_table_executes(self) -> None:
+        """Every three-input table computes itself."""
         for table in witnesses(3):
             assert self.run_table(table) == table
-
-    @pytest.mark.parametrize(
-        ("table", "winner"),
-        [
-            # One four-input table per candidate that alone is shortest.
-            ("1001111101010101", 0),  # identity
-            ("1001100001000001", 1),  # constant-cofactor greedy
-            ("0010000101100011", 2),  # mux-cost greedy
-            ("0111100101011011", 3),  # reversed identity
-        ],
-    )
-    def test_the_shortest_candidate_order_ships(self, table: str, winner: int) -> None:
-        """Each named order wins somewhere (width path); the identity ships compact."""
-        from esolangs.tools.circuit_diagram import (
-            _circuit_diagram_at,
-            _selector_orders,
-            circuit_diagram,
-        )
-
-        orders = _selector_orders(table)
-        assert len(orders) == 4
-        sizes = [len(_circuit_diagram_at(table, None, order)) for order in orders]
-        assert sizes.index(min(sizes)) == winner
-        assert sizes.count(min(sizes)) == 1
-        assert _selector_orders(table, compact=True) == [None]
-        assert circuit_diagram(table) == _circuit_diagram_at(table, None)
-        assert self.run_table(table) == table
 
     def test_each_run_prints_exactly_one_bit(self) -> None:
         """The output wire is live for exactly one generation."""
@@ -580,23 +553,3 @@ class TestCircuitDiagram:
                 io = ScriptedIO("".join(f"{bit}" for bit in format(index, "04b")))
                 run(program, io)
                 assert io.getvalue() == table[index], (table, index)
-
-
-class TestCircuitDiagramSelectorOrder:
-    """Which rail each Shannon level selects, chosen among four named orders."""
-
-    def test_the_mux_cost_order_keeps_the_identity_on_a_tie(self) -> None:
-        """Parity costs every level the same, whichever rail it selects."""
-        from esolangs.tools.circuit_diagram import _cheapest_selector_order
-
-        assert _cheapest_selector_order("01101001", 3) == (0, 1, 2)
-        assert _cheapest_selector_order("0110", 2) == (0, 1)
-        assert _cheapest_selector_order("01", 1) == (0,)
-
-    def test_orders_stop_at_the_flat_routes_last_arity(self) -> None:
-        """From eight inputs only the identity is built: bounded scoring."""
-        from esolangs.tools.circuit_diagram import _selector_orders
-
-        seven = "0001" * 32
-        assert len(_selector_orders(seven)) > 1
-        assert _selector_orders("0001" * 64) == [None]

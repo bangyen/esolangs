@@ -27,7 +27,6 @@ wires are connected", so one ``=`` carries a horizontal and a vertical wire
 past each other independently.  The renderer therefore derives each cell
 from what covers it: a horizontal segment alone is ``-``, a vertical
 segment alone is ``|``, both together is ``=``, and an endpoint is ``.``.
-The wiki's own prime tester is drawn the same way.
 
 What the layout must still guarantee is that nothing *merges* by accident.
 A ``.`` connects to all eight of its neighbours, so two junctions belonging
@@ -44,21 +43,17 @@ Construction
 most significant first, matching the other generators in this package.
 
 * ``n`` input bits arrive on ``n`` separate lines, each a ``-`` at the start
-  of its own line, which is what the spec makes an input port.  Keeping the
-  bits on separate lines rather than in one ``-n-`` multi-wire keeps the
-  network scalar: the multi-wire path would need a ``<`` splitter tree to
-  get back to individual rails, and the splitter's rounding rule makes that
-  layout depend on ``n`` in a way this one does not.
+  of its own line, which is what the spec makes an input port.  Separate
+  lines rather than one ``-n-`` multi-wire keep the network scalar: the
+  multi-wire path would need a ``<`` splitter tree back to rails.
 * each input and any complement the mux rules need is built once and shared;
 * a left-to-right binary-carry fold combines adjacent cofactors.  Equal
   cofactors share one signal, ``0/1`` is the selector itself, and the other
   cases use a fixed one- or three-gate mux rule;
 * at most one unfinished signal per input level is live; the fold is one
   pass over the table and emits fewer than three gates per entry.
-* a width request below eight inputs builds up to four *selector orders*
-  and the shortest drawing ships.  The rails keep their rows and read order;
-  only which rail each Shannon level selects moves, which is the table's
-  inputs renamed (:func:`_selector_orders`).
+* levels select rails in input order; a search over selector orders saved
+  7.95-9.86% of area at n=7 (200 tables, widths 40..200) and was retired.
 
 **Constant tables need no muxes.**  Both are a single self-fed ``x`` or ``X``
 gate, the shape the wiki's own constant-output circuit uses.
@@ -71,18 +66,15 @@ port) and only ever read after that, which is why the tests can assert that
 a run prints exactly one character.
 """
 
-from collections.abc import Iterator
 from typing import Literal
 
 from esolangs.tools.circuit_diagram.hlayout import _h_term_layout
 from esolangs.tools.circuit_diagram.layout import _Layout
 from esolangs.tools.helpers import (
-    _greedy_input_order,
     _validate_truth_table,
     essential_inputs,
     grid_width,
     narrowest_grid,
-    permute_truth_table,
     read_at,
 )
 
@@ -97,12 +89,6 @@ __all__ = ["circuit_diagram"]
 # each other (see the module docstring's note on the eight-way ``.``).
 _COL_STEP = 2
 _ROW_STEP = 2
-
-# The flat route's widest arity: from eight inputs an unconstrained build is
-# the H-layout, which is not reordered.  Selector orders are only chosen up
-# to here -- a width-bound build past it keeps the identity -- so their
-# scoring is bounded work and the wide route's generation stays O(T).
-_REORDER_MAX_ARITY = 7
 
 
 class _Builder:
@@ -130,12 +116,10 @@ class _Builder:
         # read once by the carry that consumes it and then dies.
         self.free_strides: list[int] = []
         self.stride_of: dict[int, int] = {}
-        # Set once a width is asked for: the column a new band starts at,
-        # and the width the bands have to stay inside.  ``live`` is every
-        # intermediate signal not yet read into the gate that consumes it,
-        # in the order they were made -- what a band has to carry.  Rails
-        # and complements are not in it: they are read by everything, sit
-        # left of ``band_start``, and are never reclaimed.
+        # Set once a width is asked for: the column a new band starts at, and
+        # the width the bands stay inside.  ``live`` is every intermediate
+        # signal not yet read by its consumer, in creation order -- what a
+        # band carries.  Rails and complements are never reclaimed.
         self.limit: int | None = None
         self.next_limit: int | None = None
         self.band_start = 0
@@ -167,19 +151,12 @@ class _Builder:
         a single wiring of the gate's input and output, which the interpreter
         rejects.
         """
-        # A dead group is reused rather than a fresh one taken.  Two things
-        # make that safe.
-        #
-        # Rows: the drawing only ever moves *down*.  ``_new_band`` hands out
-        # increasing rows and ``_tap`` only extends a bus downward, so a
-        # recycled group's old wiring ends at the row of the gate that read
-        # it last, and everything drawn into it afterwards starts a band
-        # below that.
-        #
-        # Columns: a gate must sit *right* of every bus it reads.  ``_tap``
-        # runs the bus along the gate's row to the input junction, so a group
-        # left of a source would cross the gate's own glyph (:class:`_Layout`
-        # refuses it).  ``after`` is the rightmost bus the gate will read.
+        # A dead group is reused, which is safe two ways.  Rows: the drawing
+        # only moves *down* (``_new_band`` hands out increasing rows, ``_tap``
+        # extends buses downward), so a recycled group's old wiring ends above
+        # whatever is drawn into it.  Columns: a gate must sit *right* of every
+        # bus it reads (``after`` is the rightmost), or the tap would cross the
+        # gate's own glyph (:class:`_Layout` refuses it).
         usable = [group for group in self.free_strides if group + _COL_STEP > after]
         if usable:
             first = min(usable)
@@ -377,12 +354,9 @@ class _Builder:
         it.
         """
         column, reached = self.buses[signal]
-        # Each leg is skipped when the bus already sits on the tap's row or
-        # column, which the layout never produces: rows advance for every
-        # gate and a bus column is its own, so a tap is always at least one
-        # cell away on both axes.  Both tests stay, since a layout change
-        # that did reach a tap head-on would otherwise draw a zero-length
-        # run and a junction on top of the bus.
+        # A leg is skipped when the bus already sits on the tap's row or
+        # column; the layout never produces that, but a head-on tap would
+        # otherwise draw a zero-length run and a junction on top of the bus.
         if y != reached:  # pragma: no branch - a tap is never on the bus row
             self.layout.run_vertical(column, reached, y, signal)
             self.layout.junction(column, y, signal)
@@ -496,112 +470,15 @@ def _complemented_levels(truth_table: str, n: int) -> set[int]:
     return needed
 
 
-# A fold token that is a gate's output.  Unlike a constant or a rail it is
-# never the same signal twice, so two of them always take a real mux.
-_GATE = -1
-
-
-def _mux_cost(zero: int, one: int) -> tuple[int, bool]:
-    """Return what :func:`_mux` spends on a pair: gates, and whether ``~``."""
-    if zero == one and zero != _GATE:
-        return 0, False
-    if (zero, one) == (0, 1):
-        return 0, False
-    if (zero, one) == (1, 0):
-        return 0, True
-    if zero == 0 or one == 1:
-        return 1, False
-    if zero == 1 or one == 0:
-        return 1, True
-    return 3, True
-
-
-def _pairs(tokens: list[int], stride: int) -> Iterator[tuple[int, int]]:
-    """Yield each (zero, one) cofactor pair a level at ``stride`` muxes."""
-    for block in range(0, len(tokens), 2 * stride):
-        for x in range(block, block + stride):
-            yield tokens[x], tokens[x + stride]
-
-
-def _cheapest_selector_order(truth_table: str, n: int) -> tuple[int, ...]:
-    """Pick each Shannon level's rail bottom-up by what its muxes cost.
-
-    A level's cost is read straight off its pairs with :func:`_mux_cost`,
-    one per gate plus one for a complement.  The pairs a level sees do not
-    depend on the order *below* it -- a cofactor is a constant, a rail or a
-    gate whichever way it was folded -- so the bottom level is chosen first,
-    folded, and the next chosen over what is left.  Ties keep the identity's
-    rail.  Each level scores every remaining input over the remaining
-    table, so the whole choice is ``O(n * 2**n)``.
-    """
-    tokens = [int(bit) for bit in truth_table]
-    remaining = list(range(n))
-    bottom_up: list[int] = []
-    while len(remaining) > 1:
-        best_pos, best_cost = len(remaining) - 1, -1
-        for pos in range(len(remaining) - 1, -1, -1):
-            stride = 1 << (len(remaining) - 1 - pos)
-            cost, complement = 0, False
-            for zero, one in _pairs(tokens, stride):
-                gates, negated = _mux_cost(zero, one)
-                cost += gates
-                complement = complement or negated
-            cost += complement
-            if best_cost < 0 or cost < best_cost:
-                best_pos, best_cost = pos, cost
-        stride = 1 << (len(remaining) - 1 - best_pos)
-        rail = remaining.pop(best_pos)
-        folded = []
-        for zero, one in _pairs(tokens, stride):
-            if zero == one and zero != _GATE:
-                folded.append(zero)
-            elif (zero, one) == (0, 1):
-                folded.append(2 + 2 * rail)
-            elif (zero, one) == (1, 0):
-                folded.append(3 + 2 * rail)
-            else:
-                folded.append(_GATE)
-        tokens = folded
-        bottom_up.append(rail)
-    return tuple(remaining + bottom_up[::-1])
-
-
 def _essential_table(truth_table: str, n: int) -> tuple[list[int], str]:
     """Return the essential inputs (input 0 for a constant) and the table over them."""
     used = essential_inputs(truth_table, n) or [0]
     return used, truth_table if len(used) == n else read_at(truth_table, used, n)
 
 
-def _selector_orders(
-    truth_table: str, *, compact: bool = False
-) -> list[tuple[int, ...] | None]:
-    """Return named selector orders, identity first.
-
-    Compact builds keep only the identity: cheapest-mux and reversed orders
-    save 8.48% of area at n=7, under the 10% bar.  Width requests try the
-    constant-cofactor greedy, cheapest-mux and reversed orders.  Rails stay
-    in input order.
-    """
-    n = len(truth_table).bit_length() - 1
-    if compact or n > _REORDER_MAX_ARITY:
-        return [None]
-    used, table = _essential_table(truth_table, n)
-    identity = tuple(range(len(used)))
-    orders: list[tuple[int, ...] | None] = [None]
-    for order in (
-        _greedy_input_order(table, len(used)),
-        _cheapest_selector_order(table, len(used)),
-        identity[::-1],
-    ):
-        if order != identity and order not in orders:
-            orders.append(order)
-    return orders
-
-
 def _circuit_diagram_at(
     truth_table: str,
     limit: int | None,
-    perm: tuple[int, ...] | None = None,
     *,
     _events: list[int] | None = None,
 ) -> str:
@@ -619,9 +496,7 @@ def _circuit_diagram_at(
     by the carry above it.  A gate must sit right of every bus it reads, so
     the leftmost dead group past those buses is the one reused.
 
-    ``perm`` renames the essential inputs' levels: level ``k`` selects rail
-    ``perm[k]``.  The input rows are drawn first and in input order either
-    way.
+    The input rows are drawn first and in input order.
     """
     _validate_truth_table(truth_table)
 
@@ -636,9 +511,6 @@ def _circuit_diagram_at(
         rails = [rails[i] for i in used]
         truth_table = table
         n = len(used)
-    if perm is not None:
-        truth_table = permute_truth_table(truth_table, perm)
-        rails = [rails[i] for i in perm]
 
     complemented = _complemented_levels(truth_table, n)
     selectors: list[list[int | None]] = [
@@ -667,22 +539,6 @@ def _affine_circuit(
     return affine_circuit(table, width, _events=_events)
 
 
-def _flat_best(
-    truth_table: str, *, compact: bool
-) -> tuple[str, tuple[int, ...] | None]:
-    """Return the shortest unbanded drawing and its selector order.
-
-    ``min`` keeps the first on a tie, so the identity only gives way to a win.
-    """
-    return min(
-        (
-            (_circuit_diagram_at(truth_table, None, order), order)
-            for order in _selector_orders(truth_table, compact=compact)
-        ),
-        key=lambda built: len(built[0]),
-    )
-
-
 def _narrowest_present(*forms: str | None) -> str:
     """Return the narrowest grid among the forms that exist."""
     return narrowest_grid(*(form for form in forms if form is not None))
@@ -694,10 +550,6 @@ def circuit_diagram(truth_table: str, width: int | None = None) -> str:
     See :func:`_circuit_diagram_at` for the construction.  ``width`` asks
     for a column count: the drawing is built once without one, and again
     inside the width if that came out too wide.
-
-    Below eight inputs a width request keeps the shortest of four named
-    selector orders; the compact build uses the identity alone (the other
-    orders save 8.48% of area at n=7, under the 10% bar).
 
     From eight inputs an unconstrained build uses the H-layout instead;
     :mod:`.hlayout` gives why, and why at eight.
@@ -712,13 +564,13 @@ def circuit_diagram(truth_table: str, width: int | None = None) -> str:
     inputs = len(truth_table).bit_length() - 1
     if width is None and inputs >= 8 and "1" in truth_table:
         return _h_term_layout(truth_table).render()
-    flat, order = _flat_best(truth_table, compact=width is None)
+    flat = _circuit_diagram_at(truth_table, None)
     if width is None or grid_width(flat) <= width:
         return flat
-    banded = _circuit_diagram_at(truth_table, width, order)
+    banded = _circuit_diagram_at(truth_table, width)
     if grid_width(banded) <= width:
         return banded
     # The output dash and colon extend beyond the final gate group.
-    banded = _circuit_diagram_at(truth_table, max(1, width - 2), order)
+    banded = _circuit_diagram_at(truth_table, max(1, width - 2))
     affine = _affine_circuit(truth_table, width)
     return _narrowest_present(flat, banded, affine)
