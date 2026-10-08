@@ -3,6 +3,7 @@
 import pytest
 
 from esolangs import tools as boolean
+from esolangs._evaluate import _evaluate
 
 
 class TestSuperSNUSP:
@@ -169,6 +170,26 @@ class TestAlightWidth:
                     bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
                     assert self._run(narrow, bits) == table[combo], (table, width)
 
+    @pytest.mark.parametrize("syntax", ["infix", "postfix"])
+    def test_an_ignored_input_is_read_and_dropped_under_a_width(
+        self, syntax: str
+    ) -> None:
+        """Dropping the first input of a 4-input table shrinks the area."""
+        from esolangs.settings import DialectSettings
+
+        settings = DialectSettings(expression_syntax=syntax)
+
+        def area(program: str) -> int:
+            rows = program.splitlines()
+            return max(map(len, rows)) * len(rows)
+
+        ignored = "0110100101101001"
+        full = "0110100110010110"
+        built = boolean.alight(ignored, 30, expression_syntax=syntax)
+        assert max(map(len, built.splitlines())) <= 30
+        assert _evaluate("Alight", built, inputs=4, settings=settings) == ignored
+        assert area(built) < area(boolean.alight(full, 30, expression_syntax=syntax))
+
     @pytest.mark.slow
     def test_a_width_is_met_at_every_arity(self) -> None:
         """Every requested width holds at every practical arity."""
@@ -181,7 +202,7 @@ class TestAlightWidth:
     @pytest.mark.parametrize(
         ("table", "width", "dimensions"),
         [
-            ("0001", 30, (1, 75)),
+            ("0001", 30, (1, 77)),
             ("0001", 40, (36, 43)),
             ("0001", 80, (43, 33)),
             ("01101001", 80, (43, 43)),

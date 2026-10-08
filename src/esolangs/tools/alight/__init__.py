@@ -46,26 +46,35 @@ def _alight_chunk(rows: int, width: int) -> int:
     chunk = max(1, width - overhead - len(_ALIGHT_EAST_TURN))
     # For a short table the guard costs more than the literal saves; one
     # lookup unless splitting narrows the widest unit, else a smaller request
-    # came back wider than a larger one.
+    # came back wider than a larger one.  Postfix, measured by area on random
+    # tables: without the guard n=8 at width 300 is 83% larger (0% at 50-160
+    # and 500).
     if len('set r at{"", i+0.5};') + rows <= overhead + chunk:
         return rows
     return chunk
 
 
-def _alight_units(truth_table: str, n: int, chunk: int) -> list[list[str]]:
+def _alight_units(
+    truth_table: str, n: int, chunk: int, essential: list[bool] | None = None
+) -> list[list[str]]:
     """Build the commands, grouped into pieces a fold may not split.
 
     A ``skip`` guards the next command along the heading, so the pair stays
     on one row.  The first chunk is guarded from above (``i > end``), the
     rest from below (``i < start``); later chunks overwrite ``r`` (reading
-    past a chunk's end is ``nil``, per the wiki).
+    past a chunk's end is ``nil``, per the wiki).  An input ``essential``
+    marks False is a bare ``inp a`` and ``truth_table`` is indexed by the rest.
     """
     units: list[list[str]] = [["begin"], ["var a"], ["var i"], ["var r"]]
-    for k in range(n):
+    folded = False
+    for kept in essential or [True] * n:
         units.append(["inp a"])
+        if not kept:
+            continue
         units.append(
-            [f"set i a-{_ASCII_ZERO}" if k == 0 else f"set i i*2+a-{_ASCII_ZERO}"]
+            [f"set i i*2+a-{_ASCII_ZERO}" if folded else f"set i a-{_ASCII_ZERO}"]
         )
+        folded = True
     rows = len(truth_table)
     if chunk >= rows:
         # Indices run 0.5, 1.5, ... so the row number is offset by a half.
@@ -93,6 +102,9 @@ def _alight_flat_compact(
 ) -> str:
     """Return the shorter straight lookup, with the index in ``at`` itself.
 
+    Against the ``set i`` fold of ``_alight_units`` it is 10.3% shorter at n=8
+    (13.8% at n=7), so the default path never builds units.
+
     An input ``essential`` marks False is read into ``r``, which the lookup
     overwrites, and ``truth_table`` is indexed by the rest.
     """
@@ -103,10 +115,10 @@ def _alight_flat_compact(
     expr = names[0]
     for name in names[1:m]:
         expr += f"*2+{name}"
-    # Every input is its character code.  The final half selects Alight's
-    # half-integer list slot; omitting its leading zero saves one column.
-    offset = _half_before(_ASCII_ZERO * ((1 << m) - 1))
-    expr += f"-{offset}"
+    # Every input is its character code; the final half selects Alight's
+    # half-integer list slot.  (Folding it into the offset, ``-N.5``, saved
+    # 2 chars: 0.47% at n=8, retired.)
+    expr += f"-{_ASCII_ZERO * ((1 << m) - 1)}+0.5"
     reads = iter(names[:m])
     return ";".join(
         ["begin", *(f"var {name}" for name in names[:m]), "var r"]
@@ -189,6 +201,30 @@ def _flatten(units: list[list[str]]) -> str:
     return ";".join(command for unit in units for command in unit) + ";"
 
 
+def _fit(program: str, width: int) -> str | None:
+    """Return ``program`` if it is at most ``width`` wide, else None."""
+    return program if _dimensions(program)[0] <= width else None
+
+
+def _smallest(*programs: str | None, minimax: bool = True) -> str:
+    """Return the candidate with least ``max(width, height)``, then area.
+
+    ``minimax=False`` (postfix) ranks by area alone.
+    """
+
+    def score(program: str) -> tuple[int, int, int]:
+        w, h = _dimensions(program)
+        return max(w, h) if minimax else 0, w * h, len(program)
+
+    return min((p for p in programs if p is not None), key=score)
+
+
+def _postfix_width(units: list[list[str]], width: int) -> str:
+    """Return the fold of ``units`` if it fits ``width``, else one column."""
+    program = _alight_folded(units, width)
+    return program if _dimensions(program)[0] <= width else "\n".join(_flatten(units))
+
+
 def alight(
     truth_table: str,
     width: int | None = None,
@@ -210,17 +246,15 @@ def alight(
     validate_list_update(list_update)
     if width is not None and width < 1:
         raise ValueError("width must be at least 1")
-    if width is None:
-        # An ignored input is read and dropped, and the table is indexed by
-        # the rest.  The width layouts model their geometry from ``n`` alone,
-        # so they and a constant keep every input.
-        weights, projected = input_weights(truth_table, n)
-        if any(weights):
-            essential = [bool(weight) for weight in weights]
-            if expression_syntax == "postfix":
-                units = _postfix_units(projected, n, len(projected), essential)
-                return _flatten(units)
-            return _alight_flat_compact(projected, n, essential)
+    weights, projected = input_weights(truth_table, n)
+    essential = [bool(weight) for weight in weights]
+    dropped = any(weights)
+    # An ignored input is read and dropped, and the table is indexed by the
+    # rest.  A constant keeps every input.
+    if width is None and dropped:
+        if expression_syntax == "postfix":
+            return _flatten(_postfix_units(projected, n, len(projected), essential))
+        return _alight_flat_compact(projected, n, essential)
     if expression_syntax == "postfix":
         units = _postfix_units(
             truth_table,
@@ -229,19 +263,45 @@ def alight(
             if width is None
             else _alight_chunk(len(truth_table), width),
         )
-        flat = _flatten(units)
         if width is None:
-            return flat
-        program = _alight_folded(units, width)
-        if _dimensions(program)[0] > width:
-            return "\n".join(flat)
+            return _flatten(units)
+        program = _postfix_width(units, width)
+        if dropped:
+            units = _postfix_units(
+                projected, n, _alight_chunk(len(projected), width), essential
+            )
+            return _smallest(program, _postfix_width(units, width), minimax=False)
         return program
     flat = _alight_flat_compact(truth_table, n)
     if width is None:
         return flat
     from esolangs.tools.alight.balance import select_alight  # circular
 
-    return select_alight(truth_table, n, width)
+    program = select_alight(truth_table, n, width)
+    if not dropped:
+        return program
+    # select_alight models n reads, so the dropped build is rendered here:
+    # the model's plan for the projected table, and a fold at ``width``.
+    # 32.6% by chars at n=8, 1 ignored, width 80 (audit); area measured in
+    # the commit.  A candidate wider than ``width`` is discarded.
+    from esolangs.tools.alight.balance import _Plan, _plans  # circular
+
+    plan = min(
+        (p for p in _plans(sum(essential)) if p.ready() <= width), key=_Plan.score
+    )
+    flat = _alight_flat_compact(projected, n, essential)
+    if plan.kind == 0:
+        planned = "\n".join(flat)
+    elif plan.kind == 1:
+        planned = flat
+    else:
+        planned = _alight_folded(
+            _alight_units(projected, n, plan.chunk, essential), plan.columns
+        )
+    units = _alight_units(projected, n, _alight_chunk(len(projected), width), essential)
+    return _smallest(
+        program, _fit(planned, width), _fit(_alight_folded(units, width), width)
+    )
 
 
 def _postfix_units(
