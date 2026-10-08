@@ -62,6 +62,8 @@ class TestDimensional:
             ),
             # =NN. loads a hex byte and prints it, once per character
             pytest.param("=48.=69.", "Hi", id="hex_literals_print_their_bytes"),
+            # Pins the bracket scan skipping ``:CHAR`` data: ``:[`` sets 0x5B.
+            pytest.param(":[.", "[", id="a_char_literal_payload_is_not_a_bracket"),
         ],
     )
     def test_prints(self, code: str, expected: str) -> None:
@@ -183,11 +185,6 @@ class TestContract(SnapshotContract):
 
     machine = staticmethod(_machine)
     stepping_program = "+" * 3 + "."
-
-
-def test_a_char_literal_payload_is_not_a_bracket() -> None:
-    """Pins the bracket scan skipping ``:CHAR`` data: ``:[`` sets 0x5B."""
-    assert run_and_capture(":[.") == "["
 
 
 def test_a_hex_literal_rejects_a_sign() -> None:

@@ -102,11 +102,17 @@ class TestOperandRange:
         # bound has to be strict: memory[6] does not exist.
         assert _run(memory([[-2, 6, 0], [0, 0, 999]])) == "\x00"
 
-    def test_source_past_the_end_reads_zero(self) -> None:
-        # a == len(memory) exactly, the other side of the same strictness:
-        # memory[1] becomes 0 - 1, which is <= 0, so it jumps to 99 and
-        # halts.  A non-strict bound would index off the end instead.
-        assert _run("6 1 99 0 0 0") == ""
+    @pytest.mark.parametrize(
+        ("code", "expected"),
+        [
+            pytest.param("6 1 99 0 0 0", "", id="source_past_the_end_reads_zero"),
+            pytest.param(
+                "-2 5 0 9 6 7", "\x07", id="growth_stops_at_the_cell_it_was_for"
+            ),
+        ],
+    )
+    def test_out_of_range_operands(self, code: str, expected: str) -> None:
+        assert _run(code) == expected
 
     def test_growing_memory_fills_with_zeros(self) -> None:
         # Writing to cell 20 grows memory to reach it; the cells the growth
@@ -114,17 +120,6 @@ class TestOperandRange:
         # because the instruction overwrites 20 itself.
         code = memory([[5, 20, 6], [0, 0, 0], [-2, 19, 0], [0, 0, 999]], {5: 1})
         assert _run(code) == "\x00"
-
-    def test_growth_stops_at_the_cell_it_was_for(self) -> None:
-        # Growth reaches exactly the cell being written and no further, and
-        # the length that leaves is what decides the halt: memory is six
-        # cells, writing cell 6 makes it seven, and the jump to 7 is then
-        # one past the end.  Growing even one cell further would leave an
-        # instruction there for the pointer to land on, so the program
-        # would run on instead of stopping.  The cells' *values* cannot
-        # show this -- a surplus cell is zero, and reading past the end
-        # gives zero too -- so it is the halt that pins it.
-        assert _run("-2 5 0 9 6 7") == "\x07"
 
     def test_input_growth_stops_at_the_cell_it_was_for(self) -> None:
         # The input branch grows memory with its own copy of the code, so

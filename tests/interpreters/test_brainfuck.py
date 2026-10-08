@@ -35,14 +35,22 @@ class TestBrainfuck:
     def test_cell_wraps(self) -> None:
         assert run_and_capture("+" * 256 + ".") == "\x00"
 
-    def test_cell_wraps_below_zero(self) -> None:
-        # The upward wrap above lands on zero for any modulus, so it pins
-        # neither the wrap's direction nor its width.  Decrementing from
-        # zero does: it is 255 only under a modulus of exactly 256.
-        assert run_and_capture("-.") == "\xff"
-
-    def test_comments_ignored(self) -> None:
-        assert run_and_capture("abc+++abc.abc") == "\x03"
+    @pytest.mark.parametrize(
+        ("code", "expected"),
+        [
+            pytest.param("-.", "\xff", id="cell_wraps_below_zero"),
+            pytest.param("abc+++abc.abc", "\x03", id="comments_ignored"),
+            # +[-] enters a loop, zeroes the cell, and exits.
+            pytest.param("+[-].", "\x00", id="loop_zeroing"),
+            pytest.param("[.]", "", id="loop_skipped_when_zero"),
+            # ++[>+<-] moves 2 from cell 0 to cell 1.
+            pytest.param("++[>+<-]>.>.", "\x02\x00", id="loop_iterates_while_nonzero"),
+            # A doubly-nested loop leaves a known value in the printed cell.
+            pytest.param("+++[>++[>+<-]<-]>+++.", "\x03", id="nested_loop"),
+        ],
+    )
+    def test_output(self, code: str, expected: str) -> None:
+        assert run_and_capture(code) == expected
 
     def test_the_tape_grows_left(self) -> None:
         """< at the left edge adds a fresh cell; the start cell keeps its value."""
@@ -67,21 +75,6 @@ class TestBrainfuck:
         """The bug this pins was a disagreement, not just a wide value."""
         assert run_and_capture(",+.", inputs=["Ā"]) == "\x01"
         assert run_and_capture(",.", inputs=["ā"]) == "\x01"
-
-    def test_loop_zeroing(self) -> None:
-        """+[-] enters a loop, zeroes the cell, and exits."""
-        assert run_and_capture("+[-].") == "\x00"
-
-    def test_loop_skipped_when_zero(self) -> None:
-        assert run_and_capture("[.]") == ""
-
-    def test_loop_iterates_while_nonzero(self) -> None:
-        """++[>+<-] moves 2 from cell 0 to cell 1."""
-        assert run_and_capture("++[>+<-]>.>.") == "\x02\x00"
-
-    def test_nested_loop(self) -> None:
-        """A doubly-nested loop leaves a known value in the printed cell."""
-        assert run_and_capture("+++[>++[>+<-]<-]>+++.") == "\x03"
 
     def test_machine_exposes_its_state(self) -> None:
         """``ind``/``ptr``/``tape`` track the run and stay in step."""

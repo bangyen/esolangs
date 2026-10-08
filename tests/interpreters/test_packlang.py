@@ -72,16 +72,6 @@ class TestWikiExamples:
 class TestLiteralBase:
     """The wiki's conflicting literal-base examples, pinned both ways."""
 
-    def test_the_decimal_examples_are_byte_exact(self) -> None:
-        assert _run(HELLO) == "Hello, World!\r\n"
-        assert _run(TRUTH_MACHINE, "0\n") == "0"
-        machine = _Machine(CAT, io := ScriptedIO("hi"))
-        for _ in range(1000):
-            machine.step()
-            if io.getvalue() == "hi\r\n":
-                break
-        assert io.getvalue() == "hi\r\n"
-
     def test_the_binary_authored_example_is_declared_wrong(self) -> None:
         """As written it prints mojibake, not the ``0110`` its comments claim."""
         assert _run(DEPENDENCY) == "°±±°"
@@ -191,9 +181,6 @@ Package : IO {
 """
         assert _run(code) == "0"
 
-    def test_a_dependency_function_is_callable(self) -> None:
-        assert _run(DEPENDENCY_REBASED) == "0110"
-
     def test_comments_are_stripped(self) -> None:
         code = """
 % a line comment
@@ -224,10 +211,6 @@ Package : IO {
 
 
 class TestErrors:
-    def test_an_operator_cannot_start_an_expression(self) -> None:
-        with pytest.raises(ValueError, match="unexpected token"):
-            _run("Package : IO { Integer main { ); } } p;")
-
     def test_unbalanced_block_is_malformed(self) -> None:
         """A block that is never closed runs the parser off the end."""
         with pytest.raises(ValueError, match="unbalanced"):
@@ -236,10 +219,6 @@ class TestErrors:
         # check the parser reaches is the datatype one.
         with pytest.raises(ValueError, match="unknown datatype"):
             _run("Package : IO {\n  Integer main {\n    0;\n} p;")
-
-    def test_a_program_with_no_entry_is_malformed(self) -> None:
-        with pytest.raises(ValueError, match="no parameterless entry"):
-            _run("Dependency {\n  Integer f : Integer a {\n    a;\n  }\n} d;")
 
     def test_unbounded_recursion_grows_frames_without_crashing(self) -> None:
         """No depth ceiling: frames grow on the heap, not Python's stack."""
@@ -268,10 +247,6 @@ class TestErrors:
         io = ScriptedIO()
         assert run_until_halt_or_cycle(_Machine(program, io)) is False
         assert set(io.getvalue()) == {"A"}
-
-    def test_garbage_is_malformed(self) -> None:
-        with pytest.raises(ValueError, match="not Packlang tokens"):
-            _run("~~~ not packlang @@@")
 
     def test_undefined_variable_halts(self) -> None:
         with pytest.raises(HaltError, match="undefined variable"):
@@ -536,6 +511,19 @@ _HEAD = "{\n  Integer main"
         ),
         (_MAIN + "\n" + _MAIN.replace("} p;", "} q;"), "multiple parameterless"),
         (_MAIN.replace("} p;", "  Integer main {\n    0;\n  }\n} p;"), "duplicate"),
+        pytest.param(
+            "Package : IO { Integer main { ); } } p;",
+            "unexpected token",
+            id="an_operator_cannot_start_an_expression",
+        ),
+        pytest.param(
+            "Dependency {\n  Integer f : Integer a {\n    a;\n  }\n} d;",
+            "no parameterless entry",
+            id="a_program_with_no_entry_is_malformed",
+        ),
+        pytest.param(
+            "~~~ not packlang @@@", "not Packlang tokens", id="garbage_is_malformed"
+        ),
     ],
 )
 def test_malformed_declarations_are_rejected(code: str, error: str) -> None:

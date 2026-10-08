@@ -18,20 +18,26 @@ def run_and_capture(code: str) -> str:
 
 
 class TestEval:
-    def test_hello_world(self) -> None:
-        assert run_and_capture('"Hello, World!".') == "Hello, World!"
-
-    def test_stringmode_backtick(self) -> None:
-        """A backtick inside stringmode becomes a double quote."""
-        assert run_and_capture('"`".') == '"'
-
-    def test_charmode(self) -> None:
-        """' wraps the string in double quotes."""
-        assert run_and_capture("'ab\".") == '"ab"'
-
-    def test_a_literal_ends_at_the_first_quote_not_the_last(self) -> None:
-        """Two literals in one program stay separate."""
-        assert run_and_capture('"a"."b".') == "ab"
+    @pytest.mark.parametrize(
+        ("code", "expected"),
+        [
+            pytest.param('"Hello, World!".', "Hello, World!", id="hello_world"),
+            # A backtick inside stringmode becomes a double quote.
+            pytest.param('"`".', '"', id="stringmode_backtick"),
+            # ' wraps the string in double quotes.
+            pytest.param("'ab\".", '"ab"', id="charmode"),
+            # Two literals in one program stay separate.
+            pytest.param(
+                '"a"."b".', "ab", id="a_literal_ends_at_the_first_quote_not_the_last"
+            ),
+            # = moves a value to the other stack; ~ switches the current stack.
+            pytest.param("0=~.", "0", id="move_between_stacks"),
+            # ! evaluates a pushed string as a program.
+            pytest.param('"0+."!', "1", id="eval_string_evaluates_program"),
+        ],
+    )
+    def test_output(self, code: str, expected: str) -> None:
+        assert run_and_capture(code) == expected
 
     def test_only_the_two_quotes_start_a_literal(self) -> None:
         """No other character opens stringmode -- the rest are commands or no-ops."""
@@ -43,10 +49,6 @@ class TestEval:
             state.step()
             assert state.stk == ((), ()), f"{char!r} was not a no-op"
             assert state.ind == 1
-
-    def test_move_between_stacks(self) -> None:
-        """= moves a value to the other stack; ~ switches the current stack."""
-        assert run_and_capture("0=~.") == "0"
 
     def test_reverse_turns_the_stack_over(self) -> None:
         """* reverses the current stack, so the bottom becomes the top."""
@@ -70,10 +72,6 @@ class TestEval:
         """! on a non-string value is an invalid operation."""
         with pytest.raises(HaltError):
             run("0!", IO())
-
-    def test_eval_string_evaluates_program(self) -> None:
-        """! evaluates a pushed string as a program."""
-        assert run_and_capture('"0+."!') == "1"
 
     def test_arithmetic_on_string_halts(self) -> None:
         """+ on a non-numeric top is an invalid operation."""

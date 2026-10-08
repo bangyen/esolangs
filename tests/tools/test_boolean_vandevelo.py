@@ -28,19 +28,17 @@ def test_constant_still_reads_every_input() -> None:
     assert io.reads == 3
 
 
-def test_one_rows_are_named_cubes() -> None:
-    program = vandevelo("0001")
-    assert program.splitlines()[-1] == "b? :: a? :: loop?"
-
-
-def test_constant_one_needs_no_guards() -> None:
-    program = vandevelo("11111111")
-    assert program.splitlines()[-1] == "loop?"
-
-
-def test_constant_subtree_is_one_coset() -> None:
-    program = vandevelo("00001111")
-    assert program.splitlines()[-1] == "a? :: loop?"
+@pytest.mark.parametrize(
+    ("table", "expected"),
+    [
+        pytest.param("0001", "b? :: a? :: loop?", id="one_rows_are_named_cubes"),
+        pytest.param("11111111", "loop?", id="constant_one_needs_no_guards"),
+        pytest.param("00001111", "a? :: loop?", id="constant_subtree_is_one_coset"),
+    ],
+)
+def test_last_line(table: str, expected: str) -> None:
+    program = vandevelo(table)
+    assert program.splitlines()[-1] == expected
 
 
 def test_an_input_tested_mostly_for_zero_is_read_negated() -> None:

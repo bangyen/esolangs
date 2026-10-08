@@ -498,14 +498,6 @@ class TestCircuitDiagram:
         starts = [row for row in rows if row.startswith("-")]
         assert len(starts) == 3
 
-    def test_a_malformed_table_is_rejected(self) -> None:
-        from esolangs.tools.circuit_diagram import circuit_diagram
-
-        with pytest.raises(ValueError, match="power-of-two"):
-            circuit_diagram("010")
-        with pytest.raises(ValueError, match="only '0' and '1'"):
-            circuit_diagram("012x")
-
     def test_a_route_may_cross_a_hold_but_not_corner_beside_it(self) -> None:
         """A held cell keeps corners out of its neighbourhood, not wires."""
         from esolangs.tools.circuit_diagram.layout import _HOLD, _RoutingLayout

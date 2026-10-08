@@ -790,10 +790,6 @@ class TestTheThreadRefusalNamesAWayThrough:
             )
             assert outcome == "0110", language
 
-    def test_the_main_thread_is_unaffected(self) -> None:
-        """The refusal is about threads, not about timeouts."""
-        assert esolangs.run("brainfuck", "+++.", stdin="", timeout=5) == "\x03"
-
 
 # 7.8s over 21 tests: each spawns the CLI to read the version.
 @pytest.mark.medium

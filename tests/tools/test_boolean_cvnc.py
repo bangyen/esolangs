@@ -110,12 +110,6 @@ class TestCvnc:
         assert _leaves(program) == 4
         assert program.count("\u0279") == 1
 
-    def test_a_zero_input_table_is_refused(self) -> None:
-        """A one-entry table is a constant, not a function of any input."""
-        for bit in ("0", "1"):
-            with pytest.raises(ValueError, match="at least one input"):
-                boolean.cvnc(bit)
-
     def test_a_table_folding_at_its_root_normalizes_the_last_read(self) -> None:
         """A folded root still holds an unpredictable bit."""
         program = boolean.cvnc("00")

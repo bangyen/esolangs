@@ -141,6 +141,8 @@ class TestStreetcodeStreetWidth:
                 ["+----+", "|C   |", "|    |", "+----+", "      "],
                 id="blank_padding_is_not_geometry",
             ),
+            # One open cell with no neighbour is not a street to drive on.
+            pytest.param([" + ", "+C+", " + "], id="an_isolated_cell_is_not_a_street"),
         ],
     )
     def test_accepted(self, code: list[str]) -> None:
@@ -258,8 +260,3 @@ class TestStreetcodeStreetWidth:
         if code and code[-1] == "":
             code = code[:-1]
         _Machine(code, IO())
-
-
-def test_an_isolated_cell_is_not_a_street() -> None:
-    """One open cell with no neighbour is not a street to drive on."""
-    _Machine([" + ", "+C+", " + "], IO())

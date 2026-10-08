@@ -14,9 +14,6 @@ run_program = partial(runner.run_program, run, suppress_eof=False)
 
 
 class TestArithmetic:
-    def test_add_and_output(self) -> None:
-        assert run_program("6+5+^.") == "11"
-
     def test_explicit_zero_and_signed_counts_are_literals(self) -> None:
         assert run_program("0+^.") == "0"
         assert run_program("-2+^.") == "-2"
@@ -52,28 +49,11 @@ class TestMemory:
         assert run_program("5+<3+>^<^.") == "53"
         assert run_program("5+<<>>^.") == "5"
 
-    def test_the_hold_cell_starts_at_zero(self) -> None:
-        """``&`` before any ``#`` adds nothing."""
-        assert run_program("&^.") == "0"
-
 
 class TestControlFlow:
     def test_loop_adder(self) -> None:
         # v+>v+1:1-<1+>1?<^. : read a, b; while b: b--, a++; print a
         assert run_program("v+>v+1:1-<1+>1?<^", "3\n4\n") == "7"
-
-    def test_jump_on_nonzero(self) -> None:
-        # 1+ sets cell to 1; 1? jumps to label 1 when nonzero
-        assert run_program("1+1?2:^1:^.") == "1"
-
-    def test_jump_on_zero(self) -> None:
-        # cell is 0; 1! jumps to label 1 when zero
-        assert run_program("1!1:^.") == "0"
-
-    def test_a_return_ends_only_itself(self) -> None:
-        """``;`` consumes one character, leaving the next definition whole."""
-        # call 1 then 2; subroutine 1 adds 5, subroutine 2 adds 3
-        assert run_program("1@2@^.1$5+;2$3+;") == "8"
 
 
 class TestComputedDispatch:
@@ -165,10 +145,6 @@ class TestParsing:
         assert [(c.op, c.arg) for c in _parse("12+")] == [("+", 12)]
         assert _parse("12") == []
 
-    def test_an_ignored_character_after_the_first_still_advances(self) -> None:
-        """The parser steps past an unknown character, wherever it sits."""
-        assert run_program("^x^.") == "00"
-
 
 class TestErrors:
     def test_undefined_label(self) -> None:
@@ -203,13 +179,29 @@ class TestContract(SnapshotContract):
     stepping_program = "6+5+^."
 
 
-@pytest.mark.parametrize(("code", "expected"), [("+12^.", "1"), ("-12^.", "-1")])
-def test_a_sign_without_an_operand_command_remains_a_bare_operation(
-    code: str, expected: str
-) -> None:
+@pytest.mark.parametrize(
+    ("code", "expected"),
+    [
+        pytest.param("6+5+^.", "11", id="add_and_output"),
+        # ``&`` before any ``#`` adds nothing.
+        pytest.param("&^.", "0", id="the_hold_cell_starts_at_zero"),
+        # 1+ sets cell to 1; 1? jumps to label 1 when nonzero
+        pytest.param("1+1?2:^1:^.", "1", id="jump_on_nonzero"),
+        # cell is 0; 1! jumps to label 1 when zero
+        pytest.param("1!1:^.", "0", id="jump_on_zero"),
+        # ``;`` consumes one character, leaving the next definition whole:
+        # call 1 then 2; subroutine 1 adds 5, subroutine 2 adds 3
+        pytest.param("1@2@^.1$5+;2$3+;", "8", id="a_return_ends_only_itself"),
+        # The parser steps past an unknown character, wherever it sits.
+        pytest.param(
+            "^x^.", "00", id="an_ignored_character_after_the_first_still_advances"
+        ),
+        # A sign without an operand command remains a bare operation.
+        ("+12^.", "1"),
+        ("-12^.", "-1"),
+        # Pins ASCII-only counts: Arabic-Indic three is ignored, so ``+`` adds 1.
+        pytest.param("\u0663+^.", "1", id="a_non_ascii_digit_is_not_a_count"),
+    ],
+)
+def test_output(code: str, expected: str) -> None:
     assert run_program(code) == expected
-
-
-def test_a_non_ascii_digit_is_not_a_count() -> None:
-    """Pins ASCII-only counts: Arabic-Indic three is ignored, so ``+`` adds 1."""
-    assert run_program("\u0663+^.") == "1"

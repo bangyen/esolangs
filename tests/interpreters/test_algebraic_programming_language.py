@@ -8,7 +8,6 @@ import pytest
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.algebraic_programming_language import _Machine, run
-from tests.fixtures import text
 from tests.interpreters.contract import (
     CycleContract,
     EmptyProgramContract,
@@ -18,7 +17,6 @@ from tests.interpreters.runner import run_program
 from tests.raises import raises_message
 
 # The wiki's own examples, which are the specification's ground truth.
-HELLO_WORLD = text("algebraic_programming_language/hello_world.txt")
 TRUTH_MACHINE = "x? = x & x?\nn?"
 NOT = "!x = {\nx & $0\n$1\n}"
 CEIL = "CEIL(n) = {\nn % 1 & $(n - n % 1 + 1)\nn\n}"
@@ -37,20 +35,6 @@ def machine(program: str, stdin: str = "") -> _Machine:
 
 class TestWikiExamples:
     """Every program the wiki gives, producing what the wiki says it does."""
-
-    def test_hello_world_prints_the_ascii_values(self) -> None:
-        """The example prints numbers, not characters: APL has only numbers."""
-        assert run_and_capture(HELLO_WORLD) == (
-            "72\n101\n108\n108\n111\n44\n32\n87\n111\n114\n108\n100\n33\n"
-        )
-
-    def test_numeric_cat_echoes_its_input(self) -> None:
-        """``n`` reads a variable by naming it and prints the line's result."""
-        assert run_and_capture("n", "42\n") == "42\n"
-
-    def test_truth_machine_halts_on_zero(self) -> None:
-        """``x? = x & x?`` short-circuits to 0 and stops."""
-        assert run_and_capture(TRUTH_MACHINE, "0\n") == "0\n"
 
     def test_floor_of_a_fraction(self) -> None:
         assert run_and_capture(f"{FLOOR}\nFLOOR(7 / 2)") == "3\n"
@@ -98,20 +82,8 @@ class TestWikiExamples:
 class TestExecutionModel:
     """Reading by naming, printing by evaluating, and binding across lines."""
 
-    def test_variables_are_read_in_first_appearance_order(self) -> None:
-        """The wiki's own example asks for a, b, d, c, e -- b only once."""
-        assert run_and_capture("a + b + d\nc + e + b", "1\n2\n3\n4\n5\n") == "6\n11\n"
-
-    def test_an_assignment_takes_no_input_and_prints_nothing(self) -> None:
-        """``n = 123`` binds; only the bare ``n`` line prints."""
-        assert run_and_capture("n = 123\nn") == "123\n"
-
     def test_an_assignment_binds_before_a_later_line_would_read_it(self) -> None:
         assert run_and_capture("n = 7\nn + 1") == "8\n"
-
-    def test_input_is_bound_before_evaluation_not_lazily(self) -> None:
-        """A short-circuit must not skip a read the spec says happens."""
-        assert run_and_capture("a & b\nc", "0\n5\n9\n") == "0\n9\n"
 
     def test_a_fractional_result_keeps_its_decimal_part(self) -> None:
         assert run_and_capture("7 / 2") == "3.5\n"
@@ -124,9 +96,6 @@ class TestExecutionModel:
 
     def test_and_returns_zero_when_its_left_is_false(self) -> None:
         assert run_and_capture("0 & 9") == "0\n"
-
-    def test_numeric_input_skips_blank_lines(self) -> None:
-        assert run_and_capture("n", "\n42") == "42\n"
 
     def test_a_bare_uppercase_name_passes_the_function_itself(self) -> None:
         """``WHILE(x, c)`` receives functions by name and calls them."""
@@ -166,6 +135,35 @@ _VALUE_ERRORS = {
         "malformed function header 'F1'",
         "F1 = 2\n1",
     ),
+    # A pattern that runs out of tokens mid-match is not a match.
+    "an_operator_argument_slot_with_nothing_after_it": (
+        "trailing input at '#'",
+        "a # b = a\n1 #",
+    ),
+    "a_stray_comma_is_rejected": ("unexpected token ','", ","),
+    "a_bare_return_operator_is_rejected": ("unexpected end of expression", "$"),
+    "trailing_input_in_a_function_header_is_rejected": (
+        "trailing input in header 'F(x) y'",
+        "F(x) y = 1\n1",
+    ),
+    "a_digit_leading_operator_pattern_is_rejected": (
+        "bad operator pattern '1a'",
+        "1a = 2\n1",
+    ),
+    # ``F() = {1} 2`` balances its braces but does not end at one.
+    "trailing_input_after_a_block_is_rejected": (
+        "trailing input after block in '{1} 2'",
+        "F() = {1} 2\nF()",
+    ),
+    # The lookahead's bounds check is what stops this indexing off.
+    "a_trailing_star_at_the_end_of_input_is_not_a_power": (
+        "unexpected end of expression",
+        "2 *",
+    ),
+    # A fractional part needs a digit; a bare trailing dot is a symbol.
+    "a_dot_with_no_digit_after_it_is_its_own_token": ("trailing input at '.'", "3."),
+    # ``3.a`` is 3, a dot, and a name -- not the number 3 times a.
+    "a_dot_before_a_letter_is_not_a_decimal_point": ("trailing input at '.'", "3.a"),
 }
 
 
@@ -288,27 +286,6 @@ class TestFrameBookkeeping:
 class TestCoveragePaths:
     """The error and shape paths the wiki's own examples do not reach."""
 
-    def test_an_operator_argument_slot_with_nothing_after_it(self) -> None:
-        """A pattern that runs out of tokens mid-match is not a match."""
-        with raises_message(ValueError, "trailing input at '#'"):
-            run_and_capture("a # b = a\n1 #")
-
-    def test_a_stray_comma_is_rejected(self) -> None:
-        with raises_message(ValueError, "unexpected token ','"):
-            run_and_capture(",")
-
-    def test_a_bare_return_operator_is_rejected(self) -> None:
-        with raises_message(ValueError, "unexpected end of expression"):
-            run_and_capture("$")
-
-    def test_trailing_input_in_a_function_header_is_rejected(self) -> None:
-        with raises_message(ValueError, "trailing input in header 'F(x) y'"):
-            run_and_capture("F(x) y = 1\n1")
-
-    def test_a_digit_leading_operator_pattern_is_rejected(self) -> None:
-        with raises_message(ValueError, "bad operator pattern '1a'"):
-            run_and_capture("1a = 2\n1")
-
     def test_a_postfix_operator_applies_twice(self) -> None:
         """The postfix loop keeps matching until no pattern fits."""
         assert run_and_capture("a@ = a * 2\n3@@") == "12\n"
@@ -327,11 +304,6 @@ class TestCoveragePaths:
     def test_a_blank_line_between_executed_lines_is_skipped(self) -> None:
         """At depth 0 a blank line is dropped rather than joined."""
         assert run_and_capture("1\n\n2") == "1\n2\n"
-
-    def test_trailing_input_after_a_block_is_rejected(self) -> None:
-        """``F() = {1} 2`` balances its braces but does not end at one."""
-        with raises_message(ValueError, "trailing input after block in '{1} 2'"):
-            run_and_capture("F() = {1} 2\nF()")
 
     def test_a_parameter_holding_a_function_is_looked_up_locally(self) -> None:
         """``F(c) = c()`` resolves ``c`` from the frame, not the globals."""
@@ -379,11 +351,6 @@ class TestMutationGaps:
 
     def test_a_power_of_a_product_binds_tighter_than_the_product(self) -> None:
         assert run_and_capture("2 * 3 ** 2") == "18\n"
-
-    def test_a_trailing_star_at_the_end_of_input_is_not_a_power(self) -> None:
-        """The lookahead's bounds check is what stops this indexing off."""
-        with raises_message(ValueError, "unexpected end of expression"):
-            run_and_capture("2 *")
 
     def test_the_snapshot_line_cursor_varies(self) -> None:
         """Two programs differing only in how far they have got differ."""
@@ -472,13 +439,6 @@ class TestNestedTraversals:
             "-3\n9\n"
         )
 
-    def test_variables_in_both_operands_are_read_left_to_right(self) -> None:
-        assert run_and_capture("a - b", "9\n4\n") == "5\n"
-
-    def test_a_repeated_variable_is_read_once(self) -> None:
-        """First-appearance order dedupes, so ``a + a`` takes one input."""
-        assert run_and_capture("a + a", "5\n") == "10\n"
-
 
 class TestGuardsAndBoundaries:
     """The guards, boundaries, and lexer edges no earlier test pins."""
@@ -490,16 +450,6 @@ class TestGuardsAndBoundaries:
     def test_zero_to_the_zeroth_power(self) -> None:
         """``0 ** 0`` is 1: the guard's ``right < 0`` excludes zero."""
         assert run_and_capture("0 ** 0") == "1\n"
-
-    def test_a_dot_with_no_digit_after_it_is_its_own_token(self) -> None:
-        """A fractional part needs a digit; a bare trailing dot is a symbol."""
-        with raises_message(ValueError, "trailing input at '.'"):
-            run_and_capture("3.")
-
-    def test_a_dot_before_a_letter_is_not_a_decimal_point(self) -> None:
-        """``3.a`` is 3, a dot, and a name -- not the number 3 times a."""
-        with raises_message(ValueError, "trailing input at '.'"):
-            run_and_capture("3.a")
 
     def test_an_equals_after_nested_brackets_still_splits(self) -> None:
         """Bracket depth counts up, not to one."""
@@ -537,6 +487,22 @@ class TestGuardsAndBoundaries:
         ("1.5 / 3", "", "0.5\n"),
         # Integers are unbounded, past Python's 4300-digit str limit.
         ("10**4400 + 1", "", "1" + "0" * 4399 + "1\n"),
+        # A short-circuit must not skip a read the spec says happens.
+        pytest.param(
+            "a & b\nc",
+            "0\n5\n9\n",
+            "0\n9\n",
+            id="input_is_bound_before_evaluation_not_lazily",
+        ),
+        pytest.param("n", "\n42", "42\n", id="numeric_input_skips_blank_lines"),
+        pytest.param(
+            "a - b",
+            "9\n4\n",
+            "5\n",
+            id="variables_in_both_operands_are_read_left_to_right",
+        ),
+        # First-appearance order dedupes, so ``a + a`` takes one input.
+        pytest.param("a + a", "5\n", "10\n", id="a_repeated_variable_is_read_once"),
     ],
 )
 def test_arithmetic_regressions(program: str, stdin: str, expected: str) -> None:

@@ -13,15 +13,19 @@ from tests.interpreters.contract import CycleContract, SnapshotContract
 
 
 class TestSophieBasicCommands:
-    def test_output_number(self) -> None:
+    @pytest.mark.parametrize(
+        ("code", "expected"),
+        [
+            pytest.param("#$42.&", "42", id="output_number"),
+            pytest.param("#A,&", "A", id="output_char"),
+            # Program halts before reaching output
+            pytest.param("&.", "", id="halt_command"),
+        ],
+    )
+    def test_output(self, code: str, expected: str) -> None:
         with redirect_stdout(io.StringIO()) as f:
-            run("#$42.&", io=IO())
-        assert f.getvalue() == "42"
-
-    def test_output_char(self) -> None:
-        with redirect_stdout(io.StringIO()) as f:
-            run("#A,&", io=IO())
-        assert f.getvalue() == "A"
+            run(code, io=IO())
+        assert f.getvalue() == expected
 
     def test_input_number(self) -> None:
         with (
@@ -39,54 +43,40 @@ class TestSophieBasicCommands:
             run(";,&", io=IO())
         assert f.getvalue() == "X"
 
-    def test_halt_command(self) -> None:
-        with redirect_stdout(io.StringIO()) as f:
-            run("&.", io=IO())
-        # Program halts before reaching output
-        assert f.getvalue() == ""
-
 
 class TestSophieConditionals:
-    def test_char_conditional_true(self) -> None:
+    @pytest.mark.parametrize(
+        ("code", "expected"),
+        [
+            pytest.param("#A@A{,#C,}&", "AC", id="char_conditional_true"),
+            pytest.param("#$65@$65{,#C,}&", "AC", id="number_conditional_true"),
+            pytest.param("#A@A{,&}", "A", id="conditional_without_else"),
+            pytest.param("#A@A{@$65{,#B,}}{#C,}&", "AB", id="nested_conditionals"),
+        ],
+    )
+    def test_conditional_output(self, code: str, expected: str) -> None:
         with redirect_stdout(io.StringIO()) as f:
-            run("#A@A{,#C,}&", io=IO())
-        assert f.getvalue() == "AC"
-
-    def test_number_conditional_true(self) -> None:
-        with redirect_stdout(io.StringIO()) as f:
-            run("#$65@$65{,#C,}&", io=IO())
-        assert f.getvalue() == "AC"
-
-    def test_conditional_without_else(self) -> None:
-        with redirect_stdout(io.StringIO()) as f:
-            run("#A@A{,&}", io=IO())
-        assert f.getvalue() == "A"
-
-    def test_nested_conditionals(self) -> None:
-        with redirect_stdout(io.StringIO()) as f:
-            run("#A@A{@$65{,#B,}}{#C,}&", io=IO())
-        assert f.getvalue() == "AB"
+            run(code, io=IO())
+        assert f.getvalue() == expected
 
 
 class TestSophieLoops:
-    def test_simple_loop(self) -> None:
+    @pytest.mark.parametrize(
+        ("code", "expected"),
+        [
+            # Should print 3 then break
+            pytest.param("#$3[.*]&", "3", id="simple_loop"),
+            # `*` breaks only its own loop (wiki "break loop"; the author's
+            # sophie.py pops one loop), so the outer loop needs its own break.
+            pytest.param("#A[#B[.*]*]&", "66", id="nested_loops"),
+            # Closing a loop pops one frame, not all but the outermost.
+            pytest.param("#A[#B[#C[.*]*]*]&", "67", id="loops_nested_three_deep"),
+        ],
+    )
+    def test_loop_output(self, code: str, expected: str) -> None:
         with redirect_stdout(io.StringIO()) as f:
-            run("#$3[.*]&", io=IO())
-        # Should print 3 then break
-        assert f.getvalue() == "3"
-
-    def test_nested_loops(self) -> None:
-        with redirect_stdout(io.StringIO()) as f:
-            run("#A[#B[.*]*]&", io=IO())
-        # `*` breaks only its own loop (wiki "break loop"; the author's
-        # sophie.py pops one loop), so the outer loop needs its own break.
-        assert f.getvalue() == "66"
-
-    def test_loops_nested_three_deep(self) -> None:
-        """Closing a loop pops one frame, not all but the outermost."""
-        with redirect_stdout(io.StringIO()) as f:
-            run("#A[#B[#C[.*]*]*]&", io=IO())
-        assert f.getvalue() == "67"
+            run(code, io=IO())
+        assert f.getvalue() == expected
 
 
 class TestSophieComments:
@@ -130,10 +120,28 @@ class TestSophieInputHandling:
 
 
 class TestSophieEdgeCases:
-    def test_empty_program(self) -> None:
+    @pytest.mark.parametrize(
+        ("code", "expected"),
+        [
+            pytest.param("", "", id="empty_program"),
+            # ``#[`` loads the ``[`` as data, so no loop is left unmatched.
+            pytest.param("#[", "", id="a_bracket_loaded_by_a_marker_is_not_a_bracket"),
+            # Validation already skipped ``#]``; the jump table did not.
+            pytest.param(
+                "[#]*]#A,&", "A", id="a_loaded_bracket_is_data_to_the_jumps_too"
+            ),
+            # A break used to set a flag that skipped the next loop entered.
+            pytest.param(
+                "[#A,[,*][#B,*]*]#C,&", "AABC", id="a_break_leaves_later_loops_running"
+            ),
+            # Brackets loaded as ``#`` data are not treated as structure.
+            pytest.param("#{,", "{", id="braces_loaded_as_data"),
+        ],
+    )
+    def test_edge_case_output(self, code: str, expected: str) -> None:
         with redirect_stdout(io.StringIO()) as f:
-            run("", io=IO())
-        assert f.getvalue() == ""
+            run(code, io=IO())
+        assert f.getvalue() == expected
 
     def test_a_program_ending_on_a_load_marker(self) -> None:
         """``#`` and ``#$`` may be the last thing in the program."""
@@ -141,12 +149,6 @@ class TestSophieEdgeCases:
             with redirect_stdout(io.StringIO()) as f:
                 run(code, io=IO())
             assert f.getvalue() == "", code
-
-    def test_a_bracket_loaded_by_a_marker_is_not_a_bracket(self) -> None:
-        """``#[`` loads the ``[`` as data, so no loop is left unmatched."""
-        with redirect_stdout(io.StringIO()) as f:
-            run("#[", io=IO())
-        assert f.getvalue() == ""
 
     def test_a_dollar_without_a_number_is_the_loaded_character(self) -> None:
         """``#c`` with c ``$``: the ``[`` after ``#$`` is structure, not data."""
@@ -170,30 +172,12 @@ class TestSophieEdgeCases:
         with pytest.raises(HaltError):
             run("*&", io=IO())
 
-    def test_a_loaded_bracket_is_data_to_the_jumps_too(self) -> None:
-        """Validation already skipped ``#]``; the jump table did not."""
-        with redirect_stdout(io.StringIO()) as f:
-            run("[#]*]#A,&", io=IO())
-        assert f.getvalue() == "A"
-
-    def test_a_break_leaves_later_loops_running(self) -> None:
-        """A break used to set a flag that skipped the next loop entered."""
-        with redirect_stdout(io.StringIO()) as f:
-            run("[#A,[,*][#B,*]*]#C,&", io=IO())
-        assert f.getvalue() == "AABC"
-
     def test_numbers_past_the_decimal_digit_cap(self) -> None:
         """A 5000-digit load prints back whole (CPython's str cap is 4300)."""
         digits = "9" * 5000
         with redirect_stdout(io.StringIO()) as f:
             run(f"#${digits}.&", io=IO())
         assert f.getvalue() == digits
-
-    def test_braces_loaded_as_data(self) -> None:
-        """Brackets loaded as ``#`` data are not treated as structure."""
-        with redirect_stdout(io.StringIO()) as f:
-            run("#{,", io=IO())
-        assert f.getvalue() == "{"
 
     def test_unmatched_closing_brace(self) -> None:
         with pytest.raises(ValueError, match="unmatched"):

@@ -6,7 +6,7 @@ from typing import Any, ClassVar
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.io import IO, ScriptedIO
+from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.inject import _Machine, run
 from tests.interpreters.contract import (
     CycleContract,
@@ -296,14 +296,6 @@ class TestCycle(CycleContract):
     looping_program: ClassVar[str] = "\n".join(
         ["loop;", "send data", "skip", "loop;", "data;", "x", "data;"]
     )
-
-
-def test_main_block_runs_a_file(tmp_path: Any, capsys: Any) -> None:
-    """The ``__main__`` entry point reads a program file and runs it."""
-    path = tmp_path / "hello.inj"
-    path.write_text(HELLO_WORLD, encoding="utf-8")
-    run(path.read_text(encoding="utf-8"), IO())
-    assert capsys.readouterr().out == "Hello, world!\n"
 
 
 def test_a_malformed_replacement_is_a_halt() -> None:

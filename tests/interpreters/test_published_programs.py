@@ -12,7 +12,8 @@ that never halts, whose output after ``max_steps`` must start with
 interpreters refuse rather than invent a value for.  ``decode`` names a
 converter from our I/O convention to the page's (bits versus bytes, say).
 A halting run is also stepped to completion, unless ``"vm": false`` or it
-draws on a ``seed``.  ``settings`` holds dialect choices.
+draws on a ``seed``.  ``settings`` holds dialect choices; ``band`` marks a
+case past the fast band (``"medium"``).
 """
 
 import json
@@ -60,6 +61,9 @@ def _cases():
                 example,
                 f"https://esolangs.org/w/index.php?oldid={data['oldid']}",
                 id=f"{page.stem}-{example['id']}",
+                marks=[getattr(pytest.mark, example["band"])]
+                if "band" in example
+                else [],
             )
 
 
