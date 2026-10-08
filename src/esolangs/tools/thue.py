@@ -71,18 +71,23 @@ _QUEUED_RULES = "\n".join(
 )
 
 
-#: Chunk-name symbols: no table or control symbol (K, S, J stay free, but the
-#: queued rules never meet chunk names).
+#: Chunk-name symbols: no table or control symbol.  A queued layout also
+#: leaves out ``K``, ``S`` and ``J``, which its rules match.
 _NAME_ALPHABET = "".join(c for c in ascii_letters if c not in "abLMRECD")
+_QUEUED_NAME_ALPHABET = "".join(c for c in _NAME_ALPHABET if c not in "KSJ")
 
 
-def _chunk_marker(index: int, digits: int) -> str:
+def _chunk_marker(index: int, digits: int, alphabet: str = _NAME_ALPHABET) -> str:
     """Return a fixed-width name containing no table or control symbol."""
     name = []
     for _ in range(digits):
-        index, digit = divmod(index, len(_NAME_ALPHABET))
-        name.append(_NAME_ALPHABET[digit])
+        index, digit = divmod(index, len(alphabet))
+        name.append(alphabet[digit])
     return "".join(reversed(name))
+
+
+def _widest(program: str) -> int:
+    return max(map(len, program.splitlines()))
 
 
 def thue(truth_table: str, width: int | None = None) -> str:
@@ -90,43 +95,73 @@ def thue(truth_table: str, width: int | None = None) -> str:
 
     Reads ``n`` lines, one ``0``/``1`` per input in table order, and prints
     the answer digit. Narrow layouts expand named chunks before reading.
+    An ignored input's round reads and halves nothing, so the table is laid
+    out at the rest; the queue's five rules lose below that saving.  Plain
+    and queued layouts compete on every path, nearest the width first.
     """
+    layouts = [
+        _thue_layout(table, rounds, width) for table, rounds in _tables(truth_table)
+    ]
+    limit = width if width and width > 0 else None
+
+    def overshoot(layout: str) -> int:
+        return 0 if limit is None else max(0, _widest(layout) - limit)
+
+    return min(layouts, key=lambda layout: (overshoot(layout), len(layout)))
+
+
+def _tables(truth_table: str) -> list[tuple[str, str | None]]:
+    """Return the ``(table, rounds)`` layouts; queued only if an input is ignored."""
     n = _validate_truth_table(truth_table)
-    length = len(truth_table)
-    table = _thue_entries(truth_table)
-    program = f"{_RULES}\nLM{table}E"
+    layouts: list[tuple[str, str | None]] = [(truth_table, None)]
     essential = essential_inputs(truth_table, n)
-    if width is None and len(essential) < n:
-        # An ignored input's round reads and halves nothing, so the table is
-        # laid out at the rest; the queue's five rules lose below that saving.
+    if len(essential) < n:
         rounds = "".join("K" if i in essential else "S" for i in reversed(range(n)))
-        entries = _thue_entries(read_at(truth_table, essential, n))
-        queued = f"{_QUEUED_RULES}\nL{rounds}R{entries}E"
-        return min(program, queued, key=len)
-    if width is None or width <= 0 or max(map(len, program.splitlines())) <= width:
+        layouts.append((read_at(truth_table, essential, n), rounds))
+    return layouts
+
+
+def _thue_layout(table: str, rounds: str | None, width: int | None) -> str:
+    """Return one layout: plain, or queued with a ``K``/``S`` round per input."""
+    queued = rounds is not None
+    entries = _thue_entries(table)
+    base = _QUEUED_RULES if queued else _RULES
+    start = f"L{rounds}R" if queued else "LM"
+    program = f"{base}\n{start}{entries}E"
+    if width is None or width <= 0 or _widest(program) <= width:
         return program
-    # Contract only a completed return sweep. D restores L before reading,
-    # so the shorter start rules cannot fire on R in the table's interior.
-    rules_text = _RULES.replace("LR", "C").replace("::=LM", "::=D")
-    rules_text = rules_text.removesuffix("::=") + "LR::=C\nD::=LM\n::="
-    narrow = f"{rules_text}\nLM{table}E"
-    if max(map(len, narrow.splitlines())) <= width:
+    if queued:
+        # ``KR`` and ``LR`` contract once a sweep completes, as ``LR`` does below.
+        rules_text = _QUEUED_RULES.replace("KR", "C").replace("LR", "C")
+        rules_text = rules_text.removesuffix("::=") + "KR::=C\nLR::=C\n::="
+    else:
+        # Contract only a completed return sweep. D restores L before reading,
+        # so the shorter start rules cannot fire on R in the table's interior.
+        rules_text = _RULES.replace("LR", "C").replace("::=LM", "::=D")
+        rules_text = rules_text.removesuffix("::=") + "LR::=C\nD::=LM\n::="
+    narrow = f"{rules_text}\n{start}{entries}E"
+    if _widest(narrow) <= width:
         return narrow
+    length = len(entries)
     # One-symbol nodes fit only bounded arities; larger trees retain chunks.
-    if length <= 8 and width < 9:
-        return _thue_short_tree(truth_table)
-    digits = _marker_digits(length)
+    if not queued and length <= 8 and width < 9:
+        return _thue_short_tree(table)
+    alphabet = _QUEUED_NAME_ALPHABET if queued else _NAME_ALPHABET
+    digits = _marker_digits(length, len(alphabet))
     # Payload covers its names' overhead, keeping even the narrowest source O(T).
     payload = max(digits, width - digits - max(digits, 2) - 3)
     rules = rules_text.splitlines()[:-1]
     for index, offset in enumerate(range(0, length, payload)):
-        marker = _chunk_marker(index, digits)
+        marker = _chunk_marker(index, digits, alphabet)
         following = (
-            _chunk_marker(index + 1, digits) if offset + payload < length else "RE"
+            _chunk_marker(index + 1, digits, alphabet)
+            if offset + payload < length
+            else "RE"
         )
-        rules.append(f"{marker}::={table[offset : offset + payload]}{following}")
+        rules.append(f"{marker}::={entries[offset : offset + payload]}{following}")
     # No input marker exists until expansion finishes and R sweeps back to L.
-    return "\n".join([*rules, "::=", "L" + _chunk_marker(0, digits)])
+    head = "L" + (rounds or "")
+    return "\n".join([*rules, "::=", head + _chunk_marker(0, digits, alphabet)])
 
 
 def _thue_entries(truth_table: str) -> str:
@@ -167,12 +202,12 @@ def _thue_short_tree(truth_table: str) -> str:
     return "\n".join([*rules, "::=", ready[0]])
 
 
-def _marker_digits(length: int) -> int:
+def _marker_digits(length: int, base: int = len(_NAME_ALPHABET)) -> int:
     """Return the fixed base-44 name length covering the table."""
-    digits, capacity = 1, len(_NAME_ALPHABET)
+    digits, capacity = 1, base
     while capacity < length:
         digits += 1
-        capacity *= len(_NAME_ALPHABET)
+        capacity *= base
     return digits
 
 
@@ -181,18 +216,21 @@ def balance_thue(truth_table: str, default: str) -> str:
 
     H=23+ceil(T/p). Above the rule floor, W=p+2d+3, plus at most one cell for d=1.
     The ceiling and extra cell put the crossing within one payload of the root.
+    Each layout (see :func:`_tables`) is tuned at its own rule count.
     """
-    _validate_truth_table(truth_table)
-    size = len(truth_table)
-    digits = _marker_digits(size)
-    fixed_rows = len(_RULES.splitlines()) + 3
-    offset = fixed_rows - 2 * digits - 3
-    root = (offset + isqrt(offset * offset + 4 * size)) // 2
-    overhead = digits + max(digits, 2) + 3
-    maximum = max(digits, max(map(len, default.split("\n"))) - 1 - overhead)
     candidates = [default, thue(truth_table, 1)]
-    candidates.extend(
-        thue(truth_table, min(maximum, max(digits, payload)) + overhead)
-        for payload in (root - 1, root, root + 1, root + 2)
-    )
+    cap = max(map(len, default.split("\n")))
+    for table, rounds in _tables(truth_table):
+        size = len(table)
+        alphabet = _NAME_ALPHABET if rounds is None else _QUEUED_NAME_ALPHABET
+        digits = _marker_digits(size, len(alphabet))
+        base = _RULES if rounds is None else _QUEUED_RULES
+        offset = len(base.splitlines()) + 3 - 2 * digits - 3
+        root = (offset + isqrt(offset * offset + 4 * size)) // 2
+        overhead = digits + max(digits, 2) + 3
+        maximum = max(digits, cap - 1 - overhead)
+        candidates.extend(
+            _thue_layout(table, rounds, min(maximum, max(digits, payload)) + overhead)
+            for payload in (root - 1, root, root + 1, root + 2)
+        )
     return min(candidates, key=balance_score)

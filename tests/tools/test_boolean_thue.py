@@ -201,3 +201,14 @@ def test_thue_fixed_width_chunk_names_expand_before_reading() -> None:
                 assert len(_matches(machine.state, machine.rules)) == 1
                 machine.step()
             assert io.getvalue() == expected
+
+
+def test_narrow_layouts_drop_ignored_inputs() -> None:
+    """Chunked sources drop ignored inputs and stay deterministic."""
+    small = "0110"
+    table = "".join(small[r >> 1 & 2 | r & 1] for r in range(32))
+    full = "0110100110010110" + "0110100110010111"
+    for width in (1, 8):
+        assert len(thue(table, width)) < 0.8 * len(thue(full, width))
+        for row in (0, 5, 18, 31):
+            _execute(table, row, width)
