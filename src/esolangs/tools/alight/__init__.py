@@ -248,7 +248,7 @@ def alight(
         raise ValueError("width must be at least 1")
     weights, projected = input_weights(truth_table, n)
     essential = [bool(weight) for weight in weights]
-    dropped = any(weights)
+    dropped = any(weights) and not all(weights)
     # An ignored input is read and dropped, and the table is indexed by the
     # rest.  A constant keeps every input.
     if width is None and dropped:
@@ -290,10 +290,8 @@ def alight(
         (p for p in _plans(sum(essential)) if p.ready() <= width), key=_Plan.score
     )
     flat = _alight_flat_compact(projected, n, essential)
-    if plan.kind == 0:
-        planned = "\n".join(flat)
-    elif plan.kind == 1:
-        planned = flat
+    if plan.kind < 2:  # a column, or the one row (never the minimum here)
+        planned = ("\n".join(flat), flat)[plan.kind]
     else:
         planned = _alight_folded(
             _alight_units(projected, n, plan.chunk, essential), plan.columns

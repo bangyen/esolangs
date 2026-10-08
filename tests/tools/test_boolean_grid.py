@@ -189,6 +189,8 @@ class TestAlightWidth:
         assert max(map(len, built.splitlines())) <= 30
         assert _evaluate("Alight", built, inputs=4, settings=settings) == ignored
         assert area(built) < area(boolean.alight(full, 30, expression_syntax=syntax))
+        folded = boolean.alight(ignored, 80, expression_syntax=syntax)  # a fold plan
+        assert _evaluate("Alight", folded, inputs=4, settings=settings) == ignored
 
     @pytest.mark.slow
     def test_a_width_is_met_at_every_arity(self) -> None:

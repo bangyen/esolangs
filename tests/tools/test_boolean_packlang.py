@@ -42,14 +42,26 @@ class TestPacklangPaintedArray:
         assert "INCR t(0);" in program
         assert _evaluate("Packlang", program, inputs=7) == table
 
-    @pytest.mark.medium
-    def test_a_repeated_block_is_aliased_to_its_first_copy(self) -> None:
-        """Equal 128-row blocks cost less than distinct ones, and still run."""
+    @staticmethod
+    def _blocks() -> list[str]:
         rng = random.Random(1)
-        first, other = ("".join(rng.choice("01") for _ in range(128)) for _ in range(2))
-        same, distinct = first * 2, first + other
-        assert len(boolean.packlang(same)) < len(boolean.packlang(distinct))
-        assert _evaluate("Packlang", boolean.packlang(same), inputs=8) == same
+        return ["".join(rng.choice("01") for _ in range(128)) for _ in range(4)]
+
+    def test_a_repeated_block_is_aliased_to_its_first_copy(self) -> None:
+        """Equal 128-row blocks cost less than distinct ones.
+
+        ``f * 2`` would not do: it ignores its first input and is one block.
+        """
+        f, g, h, k = self._blocks()
+        assert len(boolean.packlang(f + g + f + h)) < len(
+            boolean.packlang(f + g + k + h)
+        )
+
+    @pytest.mark.medium
+    def test_an_aliased_block_runs(self) -> None:
+        f, g, h, _ = self._blocks()
+        same = f + g + f + h
+        assert _evaluate("Packlang", boolean.packlang(same), inputs=9) == same
 
     def test_an_alias_dearer_than_the_writes_is_not_taken(self) -> None:
         """A one-write block three blocks on repeats by writing again."""

@@ -909,7 +909,7 @@
      "6": 11,
      "7": 11
     },
-    "source_units": 95
+    "source_units": 97
    },
    "00001100": {
     "commands": 10,
@@ -923,7 +923,7 @@
      "6": 10,
      "7": 10
     },
-    "source_units": 81
+    "source_units": 83
    },
    "00110110": {
     "commands": 11,
@@ -937,7 +937,7 @@
      "6": 11,
      "7": 11
     },
-    "source_units": 95
+    "source_units": 97
    },
    "0110": {
     "commands": 9,
@@ -947,7 +947,7 @@
      "2": 9,
      "3": 9
     },
-    "source_units": 75
+    "source_units": 77
    },
    "01101001": {
     "commands": 11,
@@ -961,7 +961,7 @@
      "6": 11,
      "7": 11
     },
-    "source_units": 95
+    "source_units": 97
    },
    "0110100110010110": {
     "commands": 13,
@@ -983,7 +983,7 @@
      "8": 13,
      "9": 13
     },
-    "source_units": 119
+    "source_units": 121
    },
    "1101001101101101": {
     "commands": 13,
@@ -1005,7 +1005,7 @@
      "8": 13,
      "9": 13
     },
-    "source_units": 119
+    "source_units": 121
    },
    "11111110": {
     "commands": 11,
@@ -1019,7 +1019,7 @@
      "6": 11,
      "7": 11
     },
-    "source_units": 95
+    "source_units": 97
    }
   },
   "ArrowQueue": {
