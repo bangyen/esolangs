@@ -9,6 +9,7 @@ pointer, so returning to the reads costs one character instead of one
 per cell.
 """
 
+from esolangs.interpreters.tape_based.painfuck import _CYCLES
 from esolangs.tools.helpers import (
     _validate_truth_table,
     best_input_order,
@@ -17,11 +18,6 @@ from esolangs.tools.helpers import (
 )
 
 __all__ = ["painfuck"]
-
-# The interpreter's two substitution cycles, in the order its cross-check
-# scans them: source is pre-shifted here so the trans table recovers the
-# intended command.
-_CYCLES = ("pevkjzwr", "yuctsobqihald")
 
 
 def _encode(code: str) -> str:
