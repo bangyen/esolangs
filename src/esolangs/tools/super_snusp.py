@@ -6,6 +6,7 @@ polarity: a cell may hold an input or its complement at one command.  Neither us
 language's random ``=`` opcode.
 """
 
+import re
 from math import isqrt
 
 from esolangs.tools.helpers import (
@@ -120,39 +121,12 @@ def _emit_anf(
     return "".join(program)
 
 
-def _anf_cost(
-    n: int,
-    truth_table: str,
-    used: list[int],
-    *,
-    negated: int = 0,
-) -> int:
-    """Return the rendered length of :func:`_emit_anf` without emitting it."""
-    k = len(used)
-    flips = negated.bit_count()
-    cost = 4 + 2 * n + k + 7 + min(flips, k - flips)
-    if not used or used[-1] != n - 1:
-        cost += 1
-    coefficients = anf_coefficients(_flip(truth_table, negated))
-    cost += coefficients[0]
-    product = k + 1
-    for mask, coefficient in enumerate(coefficients[1:], start=1):
-        if not coefficient:
-            continue
-        cost += 5  # ``>1`` then ``{<^`` around the product.
-        for input_index in range(k):
-            table_bit = 1 << (k - 1 - input_index)
-            if mask & table_bit:
-                cost += 2 * (product - input_index) + 2
-    return cost
-
-
 def _polarity(n: int, truth_table: str, used: list[int]) -> tuple[int, int]:
     """Return a polarity and cost after one greedy pass from positive inputs."""
     mask = 0
-    cost = _anf_cost(n, truth_table, used)
+    cost = len(_emit_anf(n, truth_table, used))
     for bit in range(len(used)):
-        trial = _anf_cost(n, truth_table, used, negated=mask ^ 1 << bit)
+        trial = len(_emit_anf(n, truth_table, used, negated=mask ^ 1 << bit))
         if trial < cost:
             mask, cost = mask ^ 1 << bit, trial
     return mask, cost
@@ -210,9 +184,8 @@ def _super_snusp_flat(truth_table: str) -> str:
     shapes = [(truth_table, full)]
     if len(used) < n:
         shapes.append((read_at(truth_table, used, n), used))
-    # Price each shape at its chosen polarity and emit only the cheaper; the
-    # full shape wins ties, as it did before polarity was chosen, because
-    # ``min`` returns the first of equally cheap entries.
+    # Price each shape at its chosen polarity; the full shape wins ties (``min``
+    # returns the first).
     priced = [
         (_polarity(n, table, retained), table, retained) for table, retained in shapes
     ]
@@ -229,48 +202,25 @@ def _super_snusp_tokens(program: str) -> list[str]:
     the mirrors of a fold between ``4`` and ``8`` would leave 4 and 8
     instead of 48.
     """
-    tokens: list[str] = []
-    index = 0
-    while index < len(program):
-        if program[index].isdigit():
-            end = index
-            while end < len(program) and program[end].isdigit():
-                end += 1
-            tokens.append(program[index:end])
-            index = end
-        else:
-            tokens.append(program[index])
-            index += 1
-    return tokens
+    return re.findall(r"\d+|.", program, re.S)
 
 
 def _super_snusp_folded(program: str, width: int) -> str:
     r"""Fold ``program`` into a boustrophedon inside ``width`` columns.
 
-    SNUSP's mirrors are what make this the cheapest fold of any generator
-    here: ``\\`` sends an eastward pointer down and ``/`` sends a downward
-    one west, so the pair stacked turns a row round in **one row and one
-    column**.  At the west edge ``/`` then ``\\`` bring it back east.
-
-    A westward row is written in the order the pointer meets its cells,
-    which is right to left on the page.  Nothing is reversed; the row is.
-
-    The mirrors sit at the far edges and the gap before them is left blank,
-    since a blank is a cell the pointer walks over -- so unlike Alight,
-    which has to pad with empty commands, this pads with nothing at all.
-    Folding where the commands run out instead would leave the next row
-    starting wherever that was, with less than a full row to work with.
-
-    The floor is two columns wider than the longest token, and every token
-    here is one cell but the ``48`` the decode leans on.  A width under the
-    floor is raised to it.
+    ``\\`` then ``/`` stacked turn an eastward row round in one row and one
+    column; at the west edge ``/`` then ``\\`` turn it back.  A westward row
+    is written in the order the pointer meets its cells (right to left on the
+    page).  Mirrors sit at the far edges with a blank gap before them, which
+    the pointer walks over, so no padding commands are needed.  ``width`` is
+    raised to two more than the longest token (``48``).
     """
     tokens = _super_snusp_tokens(program)
     limit = max(width, max(len(token) for token in tokens) + 2)
     cells: dict[tuple[int, int], str] = {}
     row, col, step = 0, 0, 1
     index = 0
-    # Each row consumes a token; the final row leaves through the break.
+    # One row per iteration; the last breaks out before placing mirrors.
     while True:
         edge = limit - 1 if step == 1 else 0
         mirror, under = ("\\", "/") if step == 1 else ("/", "\\")

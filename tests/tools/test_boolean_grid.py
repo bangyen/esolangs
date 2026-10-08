@@ -9,12 +9,10 @@ class TestSuperSNUSP:
     """The Super SNUSP generator (bounded ANF or a packed lookup)."""
 
     def test_cost_model_selects_the_smallest_form(self) -> None:
-        """The selector prices both ANF layouts and the lookup exactly."""
+        """The selector emits the smallest of both ANF layouts and the lookup."""
         from esolangs.tools.helpers import essential_inputs, read_at
         from esolangs.tools.super_snusp import (
             _TWO_INPUT_SHORT,
-            _anf_cost,
-            _emit_anf,
             _emit_lookup,
             _polarity,
             super_snusp,
@@ -26,11 +24,6 @@ class TestSuperSNUSP:
                 used = essential_inputs(table, n)
                 reduced = read_at(table, used, n)
                 full = list(range(n))
-                for shape, retained in ((table, full), (reduced, used)):
-                    for negated in range(1 << len(retained)):
-                        assert _anf_cost(n, shape, retained, negated=negated) == len(
-                            _emit_anf(n, shape, retained, negated=negated)
-                        )
                 full_cost = _polarity(n, table, full)[1]
                 reduced_cost = _polarity(n, reduced, used)[1]
                 if table not in _TWO_INPUT_SHORT:
@@ -43,7 +36,7 @@ class TestSuperSNUSP:
         from esolangs.tools.helpers import essential_inputs, read_at
         from esolangs.tools.super_snusp import (
             _TWO_INPUT_SHORT,
-            _anf_cost,
+            _emit_anf,
             _emit_lookup,
             super_snusp,
         )
@@ -59,8 +52,8 @@ class TestSuperSNUSP:
                     used = essential_inputs(table, n)
                     old = min(
                         len(_emit_lookup(table)),
-                        _anf_cost(n, table, list(range(n))),
-                        _anf_cost(n, read_at(table, used, n), used),
+                        len(_emit_anf(n, table, list(range(n)))),
+                        len(_emit_anf(n, read_at(table, used, n), used)),
                     )
                 assert built <= old, table
                 if n == 3:
