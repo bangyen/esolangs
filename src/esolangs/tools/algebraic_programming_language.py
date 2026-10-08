@@ -17,13 +17,23 @@ from esolangs.tools.helpers import (
 
 #: Input variable names in harness order; a variable is bound by being
 #: named on an executed line, so these must be codepoint-ascending
-#: (the input prefix names variables in this order).  The wiki allows accented Latin,
-#: Cyrillic and Greek; accented Latin is appended (past any reachable
+#: (the input prefix names variables in this order).  The wiki allows accented
+#: Latin, Cyrillic and Greek; accented Latin is appended (past any reachable
 #: arity), Cyrillic and Greek left out as confusable (RUF001).
 _NAMES = "abcdefghijklmnopqrstuvwxyzàáâãäåæçèéêëìíîïñòóôõöøùúûüý"
 
 #: The complement operator, spelled exactly as the wiki spells it.
 _NOT = "!x = {\nx & $0\n$1\n}"
+_NOT_TIGHT = _NOT.replace(" ", "")
+
+
+def _reads(n: int, sep: str) -> str:
+    """Join the input names ``a``.. in order, then ``0``."""
+    return sep.join([*_NAMES[:n], "0"])
+
+
+def _span(program: str) -> int:
+    return max(map(len, program.splitlines()))
 
 
 def algebraic_programming_language(truth_table: str, width: int | None = None) -> str:
@@ -32,17 +42,14 @@ def algebraic_programming_language(truth_table: str, width: int | None = None) -
     ``truth_table`` is a binary string of length ``2**n``, MSB first.  A
     variable is read from stdin by appearing on an executed line, and the
     line's result is printed.  A folded decision tree selects subtrees with
-    ``!x`` and ``x``; the harness feeds 0 or 1, so an input needs no
-    normalization and every value stays 0 or 1. Splits stay in input order
-    unless a width is requested; the reads
-    are unaffected since the line names ``a`` before ``b``.  A zero-valued
-    prefix names every input first, preserving binding under folds; O(T)
-    size.  Width-constrained output splits the compact tree into definitions,
+    ``!x`` and ``x``; the harness feeds 0 or 1, so every value stays 0 or 1.
+    A zero-valued prefix names every input first, preserving binding under
+    folds; O(T) size.  With ``width``, the tree splits into definitions,
     since APL cannot continue an expression across lines.
     """
     if width is not None:
         return best_input_order(
-            truth_table, lambda table, perm: _apl_narrow(table, perm, width)
+            truth_table, lambda table, perm: _apl_narrow_layout(table, perm, width)[0]
         )
     return in_input_order(truth_table, _apl_reduced_ordered)
 
@@ -57,7 +64,7 @@ def _apl_tree_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     changes = [0]
     for previous, current in pairwise(truth_table):
         changes.append(changes[-1] + (previous != current))
-    reads = " & ".join(_NAMES[index] for index in range(n)) + " & 0"
+    reads = _reads(n, " & ")
     pieces = [f"{_NOT}\n({reads}) | "]
 
     def constant(start: int, end: int) -> str | None:
@@ -95,9 +102,9 @@ def _apl_tree_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     return "".join(pieces)
 
 
-Key = tuple[int, int]
+_Key = tuple[int, int]
 #: A half as a node reached through it and whether it arrives complemented.
-Ref = tuple[Key, bool]
+_Ref = tuple[_Key, bool]
 
 
 def _apl_reduced_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
@@ -112,17 +119,17 @@ def _apl_reduced_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     """
     n = _validate_truth_table(truth_table)
     ids = subtree_ids(truth_table)
-    reads = " & ".join(_NAMES[index] for index in range(n)) + " & 0"
+    reads = _reads(n, " & ")
     # A node's (test, zero half, one half); ``ref`` sends every subtable to
     # the node that spells it, and ``made`` finds a node by its halves.
-    split: dict[Key, tuple[str, Ref, Ref]] = {}
-    ref: dict[Key, Ref] = {}
-    made: dict[tuple[int, Ref, Ref], Key] = {}
+    split: dict[_Key, tuple[str, _Ref, _Ref]] = {}
+    ref: dict[_Key, _Ref] = {}
+    made: dict[tuple[int, _Ref, _Ref], _Key] = {}
 
-    def resolve(key: Key) -> Ref:
+    def resolve(key: _Key) -> _Ref:
         return (key, False) if key[1] < 2 else ref[key]
 
-    def flip(half: Ref) -> Ref:
+    def flip(half: _Ref) -> _Ref:
         (level, node), negated = half
         return ((level, 1 - node), False) if node < 2 else (half[0], not negated)
 
@@ -142,9 +149,10 @@ def _apl_reduced_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
                 made[depth, zero, one] = key
                 split[key] = (_NAMES[perm[depth]], zero, one)
 
-    def emit(half: Ref, out: list[str]) -> None:
+    def emit(half: _Ref, out: list[str]) -> None:
         """Append a half's text: the inline tree's shapes, ``!`` if flipped."""
-        (key, negated), bang = half, "!" * half[1]
+        (key, negated) = half
+        bang = "!" * negated
         if key[1] < 2:
             out.append(str(key[1]))
             return
@@ -173,6 +181,15 @@ def _apl_reduced_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
 
 
 type _Rope = str | tuple[_Rope, ...]
+
+
+def _join(parts: list[tuple[_Rope, int, int]]) -> tuple[_Rope, int, int]:
+    """Fold frame pieces into one (nodes, length, fresh) piece."""
+    return (
+        tuple(node for node, _, _ in parts),
+        sum(length for _, length, _ in parts),
+        sum(fresh for _, _, fresh in parts),
+    )
 
 
 def _apl_tree_layout(
@@ -231,37 +248,18 @@ def _apl_tree_layout(
             parts = frames.pop()
             parts.append((")", 1, 1))
             trim(parts, limit - name_width - 1)
-            frames[-1].append(
-                (
-                    tuple(node for node, _, _ in parts),
-                    sum(length for _, length, _ in parts),
-                    sum(fresh for _, _, fresh in parts),
-                )
-            )
+            frames[-1].append(_join(parts))
         else:
             frames[-1].append((char, 1, 1))
     parts = frames[0]
     span = sum(length for _, length, _ in parts) + len(prefix)
     if span > limit:
         events.add(span)
-        parts = [
-            define(
-                (
-                    tuple(node for node, _, _ in parts),
-                    sum(length for _, length, _ in parts),
-                    sum(fresh for _, _, fresh in parts),
-                )
-            )
-        ]
-    complement = _NOT.replace(" ", "")
+        parts = [define(_join(parts))]
     program = "\n".join(
-        [complement, *definitions, prefix + render(tuple(node for node, _, _ in parts))]
+        [_NOT_TIGHT, *definitions, prefix + render(tuple(node for node, _, _ in parts))]
     )
     return program, min(events, default=None)
-
-
-def _apl_narrow(table: str, perm: tuple[int, ...], width: int) -> str:
-    return _apl_narrow_layout(table, perm, width)[0]
 
 
 def _apl_narrow_layout(
@@ -270,9 +268,9 @@ def _apl_narrow_layout(
     """Return the chosen spelling and its next frame or format fit."""
     previous, next_width = _apl_tree_layout(table, perm, width)
     n = _validate_truth_table(table)
-    if n > 3 or max(map(len, previous.splitlines())) <= width:
+    if n > 3 or _span(previous) <= width:
         return previous, next_width
-    events = [max(map(len, previous.splitlines()))]
+    events = [_span(previous)]
     if next_width is not None:
         events.append(next_width)
     # At most nine primitive definitions use one-character names below n=4.
@@ -310,12 +308,10 @@ def _apl_narrow_layout(
     result = tree(0, len(table), 0)
     # '&' binds before '|'; the zero prefix pre-binds every input without
     # parentheses, preserving input order even when a Boolean arm folds.
-    reads = "&".join(_NAMES[index] for index in range(n)) + "&0"
-    candidate = "\n".join([_NOT.replace(" ", ""), *definitions, f"{reads}|{result}"])
-    chosen = min(
-        (previous, candidate), key=lambda program: max(map(len, program.splitlines()))
-    )
-    span = max(map(len, chosen.splitlines()))
+    reads = _reads(n, "&")
+    candidate = "\n".join([_NOT_TIGHT, *definitions, f"{reads}|{result}"])
+    chosen = min((previous, candidate), key=_span)
+    span = _span(chosen)
     if span <= width:
         return chosen, min(events)
     events.append(span)
@@ -324,9 +320,7 @@ def _apl_narrow_layout(
         events.append(5)
         # a+b-2ab: the executed sum binds both globals before the unary calls.
         operators = "!x={\nx*b\n}\n?x={\nx*2\n}\n~x={\na-x\n}\n^x={\n~?!x\n}\n^a+b"
-    program = min(
-        (chosen, operators), key=lambda program: max(map(len, program.splitlines()))
-    )
+    program = min((chosen, operators), key=_span)
     return program, min(events)
 
 
