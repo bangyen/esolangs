@@ -43,19 +43,21 @@ def _bfstack_cascade(rows: list[int], payload: str) -> str:
     return prog + payload + "]" * (len(rows) + 1)
 
 
+#: Most inputs one byte-indexed block holds: index 1 + 127 fits, 8 inputs wrap.
+_BLOCK_INPUTS = 7
+
+
 def _bfstack_decoder(truth_table: str) -> tuple[str, bool]:
     """Return the decoder, and whether the result must start at 1.
 
-    A listed row costs the gap to the one before it and two brackets, so
-    listing the *zero* rows made a mostly-zero table the expensive case --
-    backwards: at twelve inputs it cost 17,091 characters against 4,801 for
-    the all-one table.  Listing the one rows inverts the cascade, which
-    starting the result at 1 and subtracting undoes; ties keep the direct form.
+    Lists the rarer value (the inverted form lists ones); ties keep direct.
+    Listing zeros for a mostly-zero table cost 17,091 characters at twelve
+    inputs against 4,801 for the all-one table.
     """
     zeros = [k + 1 for k, ch in enumerate(truth_table) if ch == "0"]
     ones = [k + 1 for k, ch in enumerate(truth_table) if ch == "1"]
     direct = _bfstack_cascade(zeros, "[<+>]")
-    # One character dearer than it looks: the preset ``+`` in the encoder.
+    # +1 pays the encoder's preset ``+``.
     inverted = _bfstack_cascade(ones, "[<->]")
     if len(inverted) + 1 < len(direct):
         return inverted, True
@@ -65,7 +67,7 @@ def _bfstack_decoder(truth_table: str) -> tuple[str, bool]:
 def _bfstack_small(truth_table: str, n: int) -> str:
     """Return a byte-indexed decoder over the essential inputs.
 
-    At most seven fit its sentinel; an ignored input weighs nothing.
+    At most ``_BLOCK_INPUTS`` essential inputs; an ignored input weighs nothing.
     """
     weights, projected = input_weights(truth_table, n)
     decoder, preset = _bfstack_decoder(projected)
@@ -74,13 +76,14 @@ def _bfstack_small(truth_table: str, n: int) -> str:
 
 
 def bfstack(truth_table: str) -> str:
-    """Build a BFStack program, routing wider tables into seven-input blocks.
+    """Build a BFStack program, routing wide tables into blocks.
 
-    The byte index is ``1 + row``; eight inputs wrap its nonzero sentinel.
+    The byte index is ``1 + row``; eight inputs wrap its nonzero sentinel
+    (``_BLOCK_INPUTS`` = 7).
     Prefix branches select blocks before the byte-indexed decoder runs.
     """
     n = _validate_truth_table(truth_table)
-    if n <= 7 or 0 < len(essential_inputs(truth_table, n)) <= 7:
+    if n <= _BLOCK_INPUTS or 0 < len(essential_inputs(truth_table, n)) <= _BLOCK_INPUTS:
         return _bfstack_small(truth_table, n)
     constant = constant_span_test(truth_table)
 
@@ -93,7 +96,7 @@ def bfstack(truth_table: str) -> str:
                 + "+" * (_ASCII_ZERO + int(truth_table[lo]))
                 + ".<"
             )
-        if remaining <= 7:
+        if remaining <= _BLOCK_INPUTS:
             return _bfstack_small(truth_table[lo:hi], remaining) + "<"
         mid = (lo + hi) // 2
         if truth_table[lo:mid] == truth_table[mid:hi]:
