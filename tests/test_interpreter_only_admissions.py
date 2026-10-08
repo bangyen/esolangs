@@ -1,6 +1,6 @@
 """Admission routes, and API and VM integration for the interpreter-only three."""
 
-import json
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -10,8 +10,8 @@ from esolangs.registry import LANGUAGES
 from esolangs.vm import make_vm
 from tests.generator_support import CHECK
 
-_CENSUS = json.loads(
-    (Path(__file__).parent / "fixtures/curation.json").read_text(encoding="utf-8")
+_CENSUS = tomllib.loads(
+    (Path(__file__).parent / "fixtures/curation.toml").read_text(encoding="utf-8")
 )["languages"]
 
 
@@ -20,7 +20,7 @@ def test_every_language_was_admitted_by_a_recorded_route() -> None:
     unrecorded = sorted(set(LANGUAGES) - set(_CENSUS))
     assert not unrecorded, f"no admission record for {unrecorded}; {CHECK}"
     stale = sorted(set(_CENSUS) - set(LANGUAGES))
-    assert not stale, f"remove {stale} from tests/fixtures/curation.json"
+    assert not stale, f"remove {stale} from tests/fixtures/curation.toml"
     for name, row in _CENSUS.items():
         assert (row["route"] == "fame") == (row["backlinks"] >= 60), name
         assert row["route"] in {"fame", "first implementation", "grandfathered"}

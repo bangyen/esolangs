@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-import json
 import re
+import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-MANIFEST = ROOT / "src" / "esolangs" / "proof_status.json"
+MANIFEST = ROOT / "src" / "esolangs" / "proof_status.toml"
 
 
 @dataclass(frozen=True)
@@ -75,7 +75,7 @@ def _check_evidence(reference: str, *, precise: bool) -> None:
 
 def load(path: Path = MANIFEST) -> tuple[tuple[ProofRow, ...], tuple[ScalingRow, ...]]:
     """Return validated proof and audit rows from the manifest."""
-    data = json.loads(path.read_text(encoding="utf-8"))
+    data = tomllib.loads(path.read_text(encoding="utf-8"))
     proofs = []
     audits = []
     for row in data["ledger"]:

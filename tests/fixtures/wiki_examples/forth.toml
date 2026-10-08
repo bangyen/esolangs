@@ -1,0 +1,14 @@
+language = "Forþ"
+oldid = 189084
+
+[[examples]]
+id = "cat"
+source = "1{,0o[.]1+}[;]"
+stdin = "abc"
+stop = "eof"
+expected = "abc"
+
+[[examples]]
+id = "hello"
+source = "0F2*3+F6*A+F7*3+F7*9+F7*6+F7*E+F2*2+F2*E+F7*6+F7*3+F7*3+F6*B+F4*C+[.]"
+expected = "Hello, world!"

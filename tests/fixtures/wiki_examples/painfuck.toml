@@ -1,0 +1,23 @@
+language = "Painfuck"
+oldid = 189090
+
+[[examples]]
+id = "hello"
+source = '''
+crwydvoeprqddkveuwbldtveprsyjulephwzjtvsprwahkaeouztjkuypriihi
+bbcrtyjklaswwzjlleprqjldteprwzyyuyhrazoqoosyyuyhoppiozjtveprwi'''
+expected = "Hello, world!"
+
+[[examples]]
+id = "cat"
+source = "jhdec"
+stdin = "abc"
+expected = "abc"
+stop = "eof"
+
+[[examples]]
+id = "looping-counter"
+source = "pticjdy"
+expected = "12345678910"
+stop = "steps"
+max_steps = 300

@@ -1,0 +1,196 @@
+language = "Algebraic Programming Language"
+oldid = 194498
+
+[[examples]]
+id = "hello-ascii"
+source = '''
+72
+101
+108
+108
+111
+44
+32
+87
+111
+114
+108
+100
+33'''
+expected = '''
+72
+101
+108
+108
+111
+44
+32
+87
+111
+114
+108
+100
+33
+'''
+
+[[examples]]
+id = "numeric-cat"
+source = "n"
+stdin = '''
+42
+'''
+expected = '''
+42
+'''
+
+[[examples]]
+id = "truth-machine-0"
+source = '''
+x? = x & x?
+n?'''
+stdin = '''
+0
+'''
+expected = '''
+0
+'''
+
+[[examples]]
+id = "truth-machine-1"
+note = "Wiki bug: a one-line body prints nothing, so input 1 recurses forever silently."
+source = '''
+x? = x & x?
+n?'''
+stdin = '''
+1
+'''
+stop = "steps"
+max_steps = 2000
+expected = ""
+
+[[examples]]
+id = "floor-ceiling"
+source = '''
+FLOOR(n) = n - n % 1
+CEIL(n) = {
+n % 1 & $(n - n % 1 + 1)
+n
+}
+FLOOR(2.5)
+CEIL(2.5)
+CEIL(3)'''
+expected = '''
+2
+3
+3
+'''
+
+[[examples]]
+id = "if"
+source = '''
+IF(x, c) = x & c()
+C() = 5
+IF(1, C)
+IF(0, C)'''
+expected = '''
+5
+0
+'''
+
+[[examples]]
+id = "multiline-prints"
+source = '''
+MULTILINE() = {
+123
+456
+}
+MULTILINE()'''
+expected = '''
+123
+456
+'''
+
+[[examples]]
+id = "multiline-return"
+source = '''
+MULTILINE() = {
+$123
+456
+}
+MULTILINE()'''
+expected = '''
+123
+'''
+
+[[examples]]
+id = "not"
+source = '''
+!x = {
+x & $0
+$1
+}
+!0
+!5'''
+expected = '''
+1
+0
+'''
+
+[[examples]]
+id = "mean"
+source = '''
+a ~ b = (a + b) / 2
+3 ~ 4'''
+expected = '''
+3.5
+'''
+
+[[examples]]
+id = "div-mod"
+source = '''
+~a`b``c~ = (a / b) % c
+~7`1``4~'''
+expected = '''
+3
+'''
+
+[[examples]]
+id = "assignment"
+source = '''
+n = 123
+n'''
+expected = '''
+123
+'''
+
+[[examples]]
+id = "input-order"
+note = "Reads a, b, d, c, e; b is not read twice."
+source = '''
+a + b + d
+c + e + b'''
+stdin = '''
+1
+2
+3
+4
+5
+'''
+expected = '''
+6
+11
+'''
+
+[[examples]]
+id = "implied-multiplication"
+source = '''
+a * b
+ab'''
+stdin = '''
+3
+4
+'''
+expected = '''
+12
+12
+'''

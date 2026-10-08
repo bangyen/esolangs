@@ -1,0 +1,25 @@
+language = "Fargo"
+oldid = 194505
+
+[[examples]]
+id = "truth-0"
+note = "the page's zero-width spaces kept"
+source = '''
+one ​^ $ one
+​% 0 @ 0
+: @ 0 one
+$'''
+stdin = "0"
+expected = "0"
+
+[[examples]]
+id = "truth-1"
+source = '''
+one ​^ $ one
+​% 0 @ 0
+: @ 0 one
+$'''
+stdin = "1"
+stop = "steps"
+max_steps = 200
+expected = "1111"

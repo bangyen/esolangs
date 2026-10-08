@@ -178,7 +178,7 @@ Use `scripts/screens/` to bound the upside first.
    seconds-long tests `finish` would otherwise fail late: the language's
    own, the ledger's word limits and fold measure, its formula rows.
    Optional: the wiki page's own examples, with their stated output, go in
-   `tests/fixtures/wiki_examples/<id>.json` (schema in
+   `tests/fixtures/wiki_examples/<id>.toml` (schema in
    `tests/interpreters/test_published_programs.py`).
 3. Record generator evidence with `just benchmark "Name" TABLE`; compare
    `source_units` and `commands`, not wall-clock time. `python

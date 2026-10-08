@@ -1,0 +1,27 @@
+language = "Eval"
+oldid = 85468
+
+[[examples]]
+id = "hello"
+source = "\"Hello, World!\"."
+expected = "Hello, World!"
+
+[[examples]]
+id = "infinite-loop"
+source = "\"^!\"^!"
+expected = ""
+stop = "steps"
+max_steps = 1000
+
+[[examples]]
+id = "truth-0"
+source = "\"0+.^!\"^0?!0."
+expected = "0"
+
+[[examples]]
+id = "truth-1"
+source = "\"0+.^!\"^0+?!0."
+expected = "111111111111111111111111111111"
+stop = "steps"
+max_steps = 1000
+note = "the page's edit for input 1: second 0 becomes 0+"
