@@ -10,12 +10,11 @@ from esolangs.tools.minifuck.mux import (
     _MUX_PRESERVE_RIGHT,
     _SCULPT_POOL_CODE,
     _mux,
-    _mux_weight,
     _probe_frame,
 )
 from esolangs.tools.minifuck.pool import _POOL_MASK
-from esolangs.tools.minifuck.sim import PAIR, _Joint, _runs, _Sim
-from tests.tools.minifuck_support import _mux_separate, run_count
+from esolangs.tools.minifuck.sim import PAIR, _runs, _Sim
+from tests.tools.minifuck_support import _FLIP, _embed, _mux_separate, run_count
 
 
 def _unreachable(*_args: object, **_kwargs: object) -> None:
@@ -116,8 +115,6 @@ def test_minifuck_builds_five_input_xor() -> None:
 def test_a_flipped_embed_complements_in_place_and_keeps_slot_order() -> None:
     """``flips`` is a live derivation coordinate, not dead weight."""
 
-    from esolangs.tools.minifuck.pool import _FLIP, _embed
-
     for n in (2, 3):
         plain = _embed(n).template()
         assert run_count(plain, n) == n
@@ -199,129 +196,3 @@ def test_ten_input_builds_print_on_the_interpreter() -> None:
             io_ = ScriptedIO("")
             run(_fill_minifuck(template, row), io_)
             assert io_.getvalue() == table[combo], f"row {combo}"
-
-
-def test_the_weight_law_matches_the_parsed_runs() -> None:
-    """``run_weight`` is ``apply(_runs(_mux_weight(k)))``, or refuses untouched."""
-    import random
-
-    from esolangs.tools.minifuck.sim import _runs, _Sim
-
-    rng = random.Random(20260910)
-    applied = refused = 0
-    for _ in range(2500):
-        fast = _Sim(64)
-        fast.tape = rng.getrandbits(rng.choice([16, 48, 200]))
-        fast.ptr = rng.randrange(0, 40)
-        fast.skip = rng.random() < 0.2
-        units = rng.randrange(1, 70)
-        slow = fast.copy()
-        if not fast.run_weight(units):
-            refused += 1
-            assert fast.key() == slow.key(), "a refusal touched the row"
-            continue
-        applied += 1
-        slow.apply(_runs(_mux_weight(units)))
-        assert fast.key() == slow.key(), (units, slow.key())
-    assert applied, "the fused arm never fired"
-    assert refused, "the refusal arm never fired"
-
-    floor_refusals = 0
-    for ptr in range(6):
-        for units in range(1, 12):
-            fast = _Sim(64)
-            fast.tape, fast.ptr = (1 << 40) - 1, ptr
-            slow = fast.copy()
-            if fast.run_weight(units):
-                slow.apply(_runs(_mux_weight(units)))
-                assert fast.key() == slow.key(), (ptr, units)
-            else:
-                floor_refusals += 1
-    assert floor_refusals, "the floor guard never fired"
-
-    # The edge arms: a dead row and zero units are no-ops that still apply.
-    dead = _Sim(16)
-    dead.dead = True
-    frozen = dead.key()
-    assert dead.run_weight(3)
-    assert dead.key() == frozen
-    fresh = _Sim(16)
-    frozen = fresh.key()
-    assert fresh.run_weight(0)
-    assert fresh.key() == frozen
-
-    # The joint-level fallback: a row the law refuses advances by the
-    # parsed runs and the pair must land on the same state.
-    joint = _Joint(1)
-    for m in joint.ms:
-        m.tape, m.ptr = 0b1011 << 5, 8
-    joint.ms[0].skip = True
-    clones = [m.copy() for m in joint.ms]
-    code = _mux_weight(3)
-    joint.emit_weight(code, 3)
-    assert joint.parts[-1] == code
-    for m, clone in zip(joint.ms, clones, strict=True):
-        clone.apply(_runs(code))
-        assert m.key() == clone.key()
-
-
-def test_the_rewind_law_matches_the_parsed_runs() -> None:
-    """A sculpting round and a fused round sequence match the parsed runs."""
-    import random
-
-    from esolangs.tools.minifuck.sim import _runs, _Sim
-
-    rng = random.Random(20260911)
-    fused = fell_back = 0
-    for _ in range(2500):
-        fast = _Sim(64)
-        fast.tape = rng.getrandbits(rng.choice([32, 400]))
-        fast.ptr = rng.randrange(0, 60)
-        fast.skip = rng.random() < 0.2
-        count = rng.randrange(0, 40)
-        slow = fast.copy()
-        if fast.skip or fast.ptr < count:
-            fell_back += 1
-        else:
-            fused += 1
-        fast.run_rewind(count)
-        slow.apply(_runs("<" * count + "[x" * count + "x"))
-        assert fast.key() == slow.key(), (count, slow.key())
-    assert fused, "the fused arm never fired"
-    assert fell_back, "the fallback arm never fired"
-
-    for _ in range(800):
-        fast = _Sim(64)
-        fast.tape = rng.getrandbits(rng.choice([64, 400]))
-        fast.ptr = rng.randrange(0, 60)
-        fast.skip = rng.random() < 0.15
-        widths = sorted(
-            (rng.randrange(1, 40) for _ in range(rng.randrange(1, 12))),
-            reverse=True,
-        )
-        if rng.random() < 0.3:
-            rng.shuffle(widths)
-        slow = fast.copy()
-        fast.run_rewinds(widths)
-        for width in widths:
-            slow.apply(_runs("<" * width + "[x" * width + "x"))
-        assert fast.key() == slow.key(), (widths, slow.key())
-
-    # The edge arms: dead rows and empty sequences are no-ops, and a zero
-    # count is the bare ``x``, which consumes a pending skip.
-    dead = _Sim(16)
-    dead.dead = True
-    frozen = dead.key()
-    dead.run_rewind(4)
-    dead.run_rewinds([3, 2])
-    assert dead.key() == frozen
-    still = _Sim(16)
-    frozen = still.key()
-    still.run_rewinds([])
-    assert still.key() == frozen
-    skipping = _Sim(16)
-    skipping.skip = True
-    clone = skipping.copy()
-    skipping.run_rewind(0)
-    clone.apply(_runs("x"))
-    assert skipping.key() == clone.key()

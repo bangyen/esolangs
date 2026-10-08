@@ -26,7 +26,6 @@ from esolangs.tools.minifuck.mux import (
 )
 from esolangs.tools.minifuck.pool import (
     _BASE,
-    _SEP,
     _embed,
 )
 from esolangs.tools.minifuck.sim import (
@@ -62,20 +61,12 @@ def _degenerate(truth_table: str, n: int) -> str | None:
     else:
         return None
 
-    base = _embed(n, sep=_SEP)
+    base = _embed(n)
     _clamp(base)
     _canonical_endgame(base, acc, direct=direct)
     if base.printed() != list(truth_table):  # pragma: no cover - the law is exact
         raise AssertionError("the degenerate rule printed the wrong column")
     return base.template()
-
-
-def _project(truth_table: str, essential: list[int], n: int) -> str:
-    """Rewrite the table over its essential inputs only.
-
-    :func:`read_at`, shared with :func:`permute_truth_table`.
-    """
-    return read_at(truth_table, essential, n)
 
 
 #: An ignored input's run between two fixed halves: either fill walks the
@@ -108,7 +99,7 @@ def _solve(truth_table: str) -> str:
     if len(essential) < n:
         first = essential[0] if essential else 0
         after = n - 1 - essential[-1] if essential else n
-        inner_table = _project(truth_table, essential, n)
+        inner_table = read_at(truth_table, essential, n)
         gaps = tuple(b - a - 1 for a, b in pairwise(essential))
         if not any(gaps):
             inner = _solve(inner_table)

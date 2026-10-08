@@ -8,7 +8,6 @@ from functools import cache
 
 from esolangs.tools.minifuck.pool import (
     _BASE,
-    _POOL_CODES,
     _POOL_MASK,
     _POOL_WIDTH,
     _PROBE_WALK_OUT,
@@ -66,23 +65,15 @@ def _mux_start(n: int) -> int:
     ``offset = _MUX_BASE - _MUX_GUARD + 1`` (9) clears the guard by one.
     Derived, not tuned: every offset builds and larger is shorter (n=5 mean
     1443 -> 1383 for offsets 3..13), but one more lands on :data:`_MUX_GUARD`
-    and :func:`_mux_intact` fails.  Applies only from five inputs.
+    and the guard is overwritten.  Applies only from five inputs.
     """
     return _MUX_BASE + max(0, (1 << (n - 1)) - (_MUX_BASE - _MUX_GUARD + 1))
 
 
-#: The sculpting probe's pool code, a constant of the construction.  The
-#: probe state is canonical: :func:`_mux_probe` emits ``x`` then clamps and
-#: ``<`` never writes, so every probe has all pointers at 0, no skip, pool
-#: region ``(0, 1, 1, 1, 1, 1, 1, 1)`` -- 2 distinct states in all (the two
-#: ``cell7`` values) over 50688 probes at n=3, 200 tables at 4, 12 at 5.  No
-#: pool code touches past cell 6 from there, and a round's rewind guard
-#: ``rewind > min(ptrs) - _POOL_WIDTH`` keeps it out of the region.  So the
-#: fifth code answers ``cell7 == 0`` everywhere and none answers 1.  Worth
-#: ~0.3s on a warm n=5 build (3.1 -> 2.8s); the column derivation in
-#: :func:`_mux_probe` is a different question.  :func:`_find_pool` answers
-#: the unclamped derivation path via :data:`_POOL_CODE_OF` likewise.
-_SCULPT_POOL_CODE = _POOL_CODES[4]
+#: The pool code every build uses: from the canonical state (all pointers 0, no
+#: skip, pool region ``(0, 1, 1, 1, 1, 1, 1, 1)``, checked in
+#: :func:`_canonical_endgame`) it answers ``cell7 == 0`` and none answers 1.
+_SCULPT_POOL_CODE = "[<[<[<<[[[<[[<<<"
 
 
 #: The relay leaves the pointer at 6 for a one, 7 for a zero, over pool
