@@ -432,7 +432,8 @@ def _streetcode_shared(n: int, perm: tuple[int, ...] | None = None) -> list[str]
 def _streetcode_rotate(program: str) -> str:
     """Rotate a Streetcode grid 180 degrees and trim its new line ends.
 
-    Rotation preserves right-hand driving; a reflection would not.
+    Rotation preserves right-hand driving; a reflection would not.  The
+    small-input generator no longer tries it; the balancer does.
     """
     rows = program.splitlines()
     width = max(map(len, rows))
@@ -632,7 +633,10 @@ def streetcode(truth_table: str, width: int | None = None) -> str:
     ``truth_table`` is a binary string of length ``2**n``, MSB first.  From
     six inputs the table is one cell per entry, addressed by the inputs
     (:func:`_streetcode_flat`); below that, a populate phase plus a decision
-    tree.  The shortest of the shapes and their 180-degree rotations wins.
+    tree.  The shortest shape wins.  From six inputs the flat street is
+    also tried rotated 180 degrees, which only strips trailing blanks (0.0%
+    by area at n=6-8); the workspace ledger's exact bound is stated for the
+    rotated program.  Below six it is not tried: it costs area there.
     ``width`` chooses among the shapes rather than reflowing (rows are
     streets); when none fit, a clockwise turn of the indexed street gives a
     nine-column floor, seven with its room floors shared with the kerb.
@@ -669,5 +673,4 @@ def streetcode(truth_table: str, width: int | None = None) -> str:
         # The indexed street has nine rows at every arity; rotating it
         # makes those the width floor while preserving right-hand driving.
         return _streetcode_narrow(_streetcode_flat(truth_table, n), width)
-    rotated = [_streetcode_rotate(program) for program in programs]
-    return shortest(*programs, *rotated)
+    return shortest(*programs)

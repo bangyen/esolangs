@@ -60,7 +60,7 @@ class TestLaserFuck:
         assert ",>,>," in boolean.laserfuck("01101001")
 
     def test_only_identity_and_greedy_orders_are_built(self) -> None:
-        """Each table costs at most two orders with two named layouts each."""
+        """Each table costs at most two orders, one natural layout each."""
 
         # The package re-exports the generator under the submodule's own
         # name, so import the module explicitly rather than by attribute.
@@ -78,7 +78,7 @@ class TestLaserFuck:
             with pytest.MonkeyPatch.context() as patch:
                 patch.setattr(module, "_laserfuck_build", counted)
                 boolean.laserfuck(table)
-            assert built == 2 * orders, f"n={n} built {built} candidates"
+            assert built == orders, f"n={n} built {built} candidates"
 
     @pytest.mark.parametrize(
         "table",
