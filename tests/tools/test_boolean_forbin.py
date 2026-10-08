@@ -100,3 +100,18 @@ class TestForbinBoolean:
             parity = "".join(str(i.bit_count() & 1) for i in range(2**n))
             sizes.append(len(boolean.forbin(parity)))
         assert all(later < 2 * earlier for earlier, later in itertools.pairwise(sizes))
+
+    def test_a_repeated_block_is_painted_once(self) -> None:
+        """Blocks a b b a share one function per distinct block."""
+        from esolangs.tools.forbin import _BLOCK_BITS
+
+        rng = random.Random(7)
+        a, b = (
+            ",".join(rng.choice("01") for _ in range(2**_BLOCK_BITS)) for _ in range(2)
+        )
+        table = "".join(block.replace(",", "") for block in (a, b, b, a))
+        program = boolean.forbin(table)
+        assert program.count(a) == program.count(b) == 1
+        for row in (0, 127, 128, 300, 400, 511):
+            bits = list(format(row, "09b"))
+            assert run_forbin_boolean(program, bits) == table[row]

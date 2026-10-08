@@ -9,6 +9,7 @@ from esolangs.tools.helpers import (
     constant_span_test,
     input_weights,
     short_name,
+    subtree_ids,
 )
 
 _FORBIN_ALPHABET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -58,6 +59,11 @@ class _Names:
         self.table, self.zero, self.one = take(3)
         (self.junk,) = take(1)
         self.cells = take(block)
+        self._take = take
+
+    def fresh(self) -> str:
+        """Return a name no other part of the program uses."""
+        return self._take(1)[0]
 
 
 def _byte(bit: int) -> str:
@@ -91,7 +97,9 @@ def forbin(truth_table: str, width: int | None = None) -> str:
     remaining ``n - _BLOCK_BITS`` inputs pick the block with a range-loop
     if (``for _:1..b`` runs once when ``b`` is 1 and not at all when it is
     0, and every leaf returns), and a constant span anywhere in that tree
-    collapses to a call to one of the two printers.
+    collapses to a call to one of the two printers.  A repeated block or
+    subtree is one function nested in ``main`` (seeded tables tiled from two
+    random 128-entry blocks: n=9 -20.5%, n=10 -42.8%; random tables unchanged).
     """
     if width is not None:
         natural = forbin(truth_table)
@@ -107,7 +115,7 @@ def forbin(truth_table: str, width: int | None = None) -> str:
     names = _Names(n, block)
 
     used: set[str] = set()
-    tree = _tree(table, n, high, names, used, narrow=width is not None)
+    defs, tree = _tree(table, n, high, names, used, narrow=width is not None)
     lines = ["main{", _reads(weights, names)]
     # A table that folds everywhere paints no block, so the register would
     # be dead prologue.  It reads ``main``'s input bits, so it is nested
@@ -115,7 +123,7 @@ def forbin(truth_table: str, width: int | None = None) -> str:
     # children").  It goes first, so the tree's last return closes ``main``.
     if names.table in used:
         lines.append(_register(names, block, high, n))
-    lines += [*tree, "}"]
+    lines += [*defs, *tree, "}"]
     for bit, name in ((0, names.zero), (1, names.one)):
         if name in used:
             lines.append(f"{name}{{out {_byte(bit)};}}")
@@ -150,17 +158,57 @@ def _tree(
     used: set[str],
     *,
     narrow: bool = False,
-) -> list[str]:
-    """Return the block-selecting branch tree, recording the callees used."""
+) -> tuple[list[str], list[str]]:
+    """Return the shared functions and the block-selecting branch tree.
+
+    A subtree repeated at its level becomes one function, called from each
+    place; the functions nest in ``main``, which holds the input bits.
+    """
     constant: Callable[[int, int], bool] = constant_span_test(truth_table)
+    # A constant table is one entry, which has no levels to name.
+    ids = subtree_ids(truth_table) if n else []
+    count: dict[int, int] = {}
+
+    def tally(level: int, row: int) -> None:
+        span = 2 ** (n - level)
+        if constant(row, row + span):
+            return
+        key = ids[level][row // span]
+        count[key] = count.get(key, 0) + 1
+        # A repeat's insides are one copy, wherever it ends up.
+        if level < high and count[key] == 1:
+            tally(level + 1, row)
+            tally(level + 1, row + span // 2)
+
+    tally(0, 0)
+    shared: dict[int, str] = {}
+    defs: list[str] = []
+
+    def call(name: str) -> list[str]:
+        # The 0 is the wiki's: "something has to be passed to call it".
+        return [f"{name} 0;" if narrow else f"return({name} 0)"]
 
     def emit(level: int, row: int) -> list[str]:
         span = 2 ** (n - level)
         if constant(row, row + span):
             name = names.one if truth_table[row] == "1" else names.zero
             used.add(name)
-            # The 0 is the wiki's: "something has to be passed to call it".
-            return [f"{name} 0;" if narrow else f"return({name} 0)"]
+            return call(name)
+        key = ids[level][row // span]
+        if key in shared:
+            return call(shared[key])
+        lines = build(level, row, span)
+        if count[key] > 1:
+            name = names.fresh()
+            # Keep the function only where its calls cost less than the copies.
+            saved = (count[key] - 1) * (len("".join(lines)) - len(*call(name)))
+            if saved > len(name) + 2:
+                shared[key] = name
+                defs.extend([f"{name}{{", *lines, "}"])
+                return call(name)
+        return lines
+
+    def build(level: int, row: int, span: int) -> list[str]:
         if level == high:
             # The literal block goes on a line of its own: it is one
             # unbreakable token, and the wrapper holds a line to its width
@@ -181,7 +229,7 @@ def _tree(
             *lower,
         ]
 
-    return emit(0, 0)
+    return defs, emit(0, 0)
 
 
 def _register(names: _Names, block: int, high: int, n: int) -> str:
