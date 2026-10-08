@@ -45,7 +45,7 @@ tables through ``n == 12``.  All ``n`` inputs are read unconditionally.
 from collections.abc import Sequence
 
 from esolangs._mammalian import DEFAULT_MODULI, MammalianModuli
-from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table
+from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table, essential_inputs
 
 __all__ = ["slow_acv_mammalian"]
 
@@ -957,18 +957,27 @@ def slow_acv_mammalian(
         from esolangs.tools._mammalian255 import decision_tree
 
         return decision_tree(truth_table, n, io_modulus=moduli.io_modulus)
+    # The weights and pools are laid out over the essential inputs; an
+    # ignored one's node banks 0 with no pool, so it reads and the leaf rows
+    # it would split coincide, holding equal entries.  A constant keeps all.
+    essential = essential_inputs(truth_table, n) or list(range(n))
+    m = len(essential)
     unit = _LEAF_UNIT
-    if moduli.io_modulus == 255 and n > _FREE:
+    if moduli.io_modulus == 255 and m > _FREE:
         unit = 7
-        fixed = n - _FREE
+        fixed = m - _FREE
         stride = moduli.io_modulus
-        weights = [stride * (1 << (fixed - 1 - i)) for i in range(fixed)]
-        weights += [unit * (1 << i) for i in range(_FREE)]
-        pools: list[int | None] = [None] * (fixed + 1) + list(_POOLS)
+        kept = [stride * (1 << (fixed - 1 - i)) for i in range(fixed)]
+        kept += [unit * (1 << i) for i in range(_FREE)]
+        kept_pools: list[int | None] = [None] * (fixed + 1) + list(_POOLS)
     else:
-        weights = _weights(n)
-        free = min(n, _FREE)
-        pools = [None] * (n - free + 1) + list(_POOLS[: free - 1])
+        kept = _weights(m)
+        free = min(m, _FREE)
+        kept_pools = [None] * (m - free + 1) + list(_POOLS[: free - 1])
+    weights = [0] * n
+    pools: list[int | None] = [None] * n
+    for i, weight, pool in zip(essential, kept, kept_pools, strict=True):
+        weights[i], pools[i] = weight, pool
     base = 0
     for _ in range(12):
         tokens = _emit(weights, pools, base, io_modulus=moduli.io_modulus, unit=unit)

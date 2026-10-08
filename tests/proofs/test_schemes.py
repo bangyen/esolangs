@@ -58,6 +58,8 @@ _FOLDS_WITHOUT_TREE = frozenset(
     {
         "///",
         "A Painter Ant",
+        "Alight",
+        "B-tapemark",
         "BIO",
         "Bitwise Cyclic Tag",
         "bit~",
@@ -76,6 +78,7 @@ _FOLDS_WITHOUT_TREE = frozenset(
         "NoComment",
         "Packlang",
         "Qoibl",
+        "SLOW ACV MAMMALIAN",
         "Subleq",
         "Suffolk",
         "Unsquare",

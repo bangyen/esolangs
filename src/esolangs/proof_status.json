@@ -70,7 +70,7 @@
       ],
       "qualification": "the blank grid is the table, one mark per row copied by `*`; a stage per input walks the mark pointer by that input's weight and `+` prints the mark it lands on",
       "scaling": "linear: 3T copy cells, T pointer steps, one stage per input",
-      "execution": "linear: worst 4T + 42n + 5 steps on every table: 2T copy, stages 32 or 2w + 37",
+      "execution": "linear: worst 4T + 42n + 5 steps: 2T copy, stages 32 or 2w + 37",
       "workspace": "T log T: at most (4T+31n+5)(8+bl(3T+n+3)+bl(9n+3)) + (T+4n)(10+2bl(8T+50n)) + 4bl(8T+50n) + bl(n) + 12 bits: program cells, data marks",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },

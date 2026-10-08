@@ -11,7 +11,7 @@ fold is the construction working.  The reads are unconditional and first.
 
 from esolangs._dialects import expression_syntax as validate_expression_syntax
 from esolangs._dialects import list_update as validate_list_update
-from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table
+from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table, input_weights
 
 __all__ = ["alight"]
 
@@ -89,20 +89,29 @@ def _alight_units(truth_table: str, n: int, chunk: int) -> list[list[str]]:
     return units
 
 
-def _alight_flat_compact(truth_table: str, n: int) -> str:
-    """Return the shorter straight lookup, with the index in ``at`` itself."""
+def _alight_flat_compact(
+    truth_table: str, n: int, essential: list[bool] | None = None
+) -> str:
+    """Return the shorter straight lookup, with the index in ``at`` itself.
+
+    An input ``essential`` marks False is read into ``r``, which the lookup
+    overwrites, and ``truth_table`` is indexed by the rest.
+    """
+    essential = essential or [True] * n
+    m = sum(essential)
     names = [chr(code) for code in range(ord("a"), ord("z") + 1) if code != ord("r")]
-    names.extend(f"a{index}" for index in range(n - len(names)))
+    names.extend(f"a{index}" for index in range(m - len(names)))
     expr = names[0]
-    for name in names[1:n]:
+    for name in names[1:m]:
         expr += f"*2+{name}"
     # Every input is its character code.  The final half selects Alight's
     # half-integer list slot; omitting its leading zero saves one column.
-    offset = _half_before(_ASCII_ZERO * ((1 << n) - 1))
+    offset = _half_before(_ASCII_ZERO * ((1 << m) - 1))
     expr += f"-{offset}"
+    reads = iter(names[:m])
     return ";".join(
-        ["begin", *(f"var {name}" for name in names[:n]), "var r"]
-        + [f"inp {name}" for name in names[:n]]
+        ["begin", *(f"var {name}" for name in names[:m]), "var r"]
+        + [f"inp {next(reads) if kept else 'r'}" for kept in essential]
         + [f'set r at{{"{truth_table}",{expr}}}', "out r", "end", ""]
     )
 
@@ -210,6 +219,17 @@ def alight(
     n = _validate_truth_table(truth_table)
     validate_expression_syntax(expression_syntax)
     validate_list_update(list_update)
+    if width is None:
+        # An ignored input is read and dropped, and the table is indexed by
+        # the rest.  The width layouts model their geometry from ``n`` alone,
+        # so they and a constant keep every input.
+        weights, projected = input_weights(truth_table, n)
+        if any(weights):
+            essential = [bool(weight) for weight in weights]
+            if expression_syntax == "postfix":
+                units = _postfix_units(projected, n, len(projected), essential)
+                return ";".join(command for unit in units for command in unit) + ";"
+            return _alight_flat_compact(projected, n, essential)
     if expression_syntax == "postfix":
         units = _postfix_units(
             truth_table,
@@ -233,18 +253,28 @@ def alight(
     return _alight_balanced(truth_table, n, width)
 
 
-def _postfix_units(table: str, n: int, chunk: int) -> list[list[str]]:
-    """Emit the same row fold and guarded lookups in postfix notation."""
+def _postfix_units(
+    table: str, n: int, chunk: int, essential: list[bool] | None = None
+) -> list[list[str]]:
+    """Emit the same row fold and guarded lookups in postfix notation.
+
+    An input ``essential`` marks False is a bare ``inp a`` the next read
+    overwrites, and ``table`` is indexed by the rest.
+    """
     units = [["begin"], ["var a"], ["var i"], ["var r"]]
-    for step in range(n):
+    folded = False
+    for kept in essential or [True] * n:
         units.append(["inp a"])
+        if not kept:
+            continue
         units.append(
             [
-                f"set i a {_ASCII_ZERO} -"
-                if step == 0
-                else f"set i i 2 * a + {_ASCII_ZERO} -"
+                f"set i i 2 * a + {_ASCII_ZERO} -"
+                if folded
+                else f"set i a {_ASCII_ZERO} -"
             ]
         )
+        folded = True
     for start in range(0, len(table), chunk):
         piece = table[start : start + chunk]
         index = "i 0.5 +" if start == 0 else f"i {_half_before(start)} -"

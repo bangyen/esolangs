@@ -600,6 +600,8 @@ def test_the_exec_tables_really_need_every_input(make: Callable[[int], str]) -> 
 #: route starts at seven).  Each used to grow as much as a real input,
 #: 1.13x-2.08x at six or seven inputs: the table doubled over the bit.
 _IGNORED_INPUT_COST = {
+    "Alight": (6, 6),  # ``inp r;``, overwritten by the lookup
+    "B-tapemark": (5, 177),  # its stage, crossing no ``|``
     "BFStack": (6, 2),  # ``,<``
     "EGL": (6, 1),  # a bare ``x``
     "Inject": (6, 15),  # its declaration and ``readto``

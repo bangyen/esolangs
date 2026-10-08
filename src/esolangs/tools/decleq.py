@@ -7,6 +7,7 @@ from esolangs.tools.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
     essential_inputs,
+    read_at,
     subtree_ids,
 )
 
@@ -36,9 +37,30 @@ def decleq(truth_table: str) -> str:
     cell 0 supplies every unconditional decrement and END is one past memory.
     """
     n = _validate_truth_table(truth_table)
+    essential = essential_inputs(truth_table, n)
+    # Routing only the essential inputs drops an ignored one's level and the
+    # leaves it doubles, but it can move the leaf depth off a constant half
+    # the full routing exploits (0100010011111111: 1345 -> 1371), so both run.
+    return min(
+        _decleq_build(read_at(truth_table, essential, n), n, essential, essential),
+        _decleq_build(truth_table, n, list(range(n)), essential),
+        key=len,
+    )
+
+
+def _decleq_build(
+    truth_table: str, n: int, routes: list[int], normalized: list[int]
+) -> str:
+    """Build over ``truth_table``, the table read at the inputs ``routes`` names.
+
+    All ``n`` inputs are read; only the ``normalized`` ones pay the chain, and
+    only they are counted, so an ignored input left in ``routes`` is a level
+    whose sides are equal and share one subtree.
+    """
+    m = len(routes)
     # The table depth: the fewest low inputs whose lookup pays for the
     # tree above it, ``2**k >= 2 n``, and never more inputs than there are.
-    k = min(n, (2 * n - 1).bit_length())
+    k = min(m, (2 * n - 1).bit_length())
     span = 2**k
 
     # ``changes[r]`` counts the value changes before row ``r``, so a run is
@@ -51,10 +73,6 @@ def decleq(truth_table: str) -> str:
     def constant(row: int, width: int) -> bool:
         """Whether the ``width`` rows starting at ``row`` all agree."""
         return changes[row] == changes[row + width - 1]
-
-    # Only the inputs the table depends on need the normalization chain;
-    # see the docstring for why an ignored one still reads but never routes.
-    essential = set(essential_inputs(truth_table, n))
 
     # Fixed low addresses; a leaf reaches a gadget by ``0 0 gadget``.
     out_zero, halt, out_one = 3, 6, 9
@@ -80,20 +98,18 @@ def decleq(truth_table: str) -> str:
     # A read falls through and these decrements never reach 0: target 0.
     for rc in read_cells:
         emit(-1, rc, 0)
-    for i, rc in enumerate(read_cells):
-        if i not in essential:
-            continue
+    for i in normalized:
         for _ in range(47):
-            emit(rc, rc, 0)
+            emit(read_cells[i], read_cells[i], 0)
 
     # Index: the low ``k`` inputs, each one taking its weight off the
     # counter.  A zero (1) decrements to 0 and jumps the run; a one (2)
     # falls into it.
-    for i in range(n - k, n):
-        if i not in essential:
+    for j in range(m - k, m):
+        if routes[j] not in normalized:
             continue
-        rc = read_cells[i]
-        weight = 2 ** (n - 1 - i)
+        rc = read_cells[routes[j]]
+        weight = 2 ** (m - 1 - j)
         emit(rc, rc, pc() + 3 * (weight + 1))
         for _ in range(weight):
             emit(counter, counter, 0)
@@ -114,28 +130,29 @@ def decleq(truth_table: str) -> str:
         emit(0, 0, halt)
         mem.extend(_ASCII_ZERO + int(c) for c in truth_table[row : row + span])
 
-    ids = subtree_ids(truth_table)
+    # A constant prints at the root and never looks an id up.
+    ids = subtree_ids(truth_table) if m else []
     done: dict[tuple[int, int], int] = {}
 
     def earlier(level: int, row: int) -> int | None:
         """Address of an equal non-constant subtree already emitted, if any."""
-        if constant(row, 2 ** (n - level)):
+        if constant(row, 2 ** (m - level)):
             return None
-        return done.get((level, ids[level][row >> (n - level)]))
+        return done.get((level, ids[level][row >> (m - level)]))
 
     def node(level: int, row: int) -> None:
-        width = 2 ** (n - level)
+        width = 2 ** (m - level)
         if (copy := earlier(level, row)) is not None:
             emit(0, 0, copy)
             return
         if constant(row, width):
             emit(0, 0, out_one if truth_table[row] == "1" else out_zero)
             return
-        done[level, ids[level][row >> (n - level)]] = pc()
-        if level == n - k:
+        done[level, ids[level][row >> (m - level)]] = pc()
+        if level == m - k:
             leaf(row)
             return
-        rc = read_cells[level]
+        rc = read_cells[routes[level]]
         emit(rc, rc, 0)
         branch = pc() - 3
         node(level + 1, row + width // 2)

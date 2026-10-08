@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from esolangs.tools.helpers import _validate_truth_table
+from esolangs.tools.helpers import _validate_truth_table, input_weights
 
 #: Rows one branch stage occupies, and so the stride between stages.
 _STAGE_ROWS = 7
@@ -170,12 +170,18 @@ def b_tapemark(truth_table: str, width: int | None = None) -> str:
     layouts have O(T) source and construction; narrow XOR2 needs nine columns.
     """
     depth = _validate_truth_table(truth_table)
-    size = len(truth_table)
+    # The table is copied at its essential inputs, and an ignored input's
+    # stage crosses no ``|``: it still reads and still steps the pointer once,
+    # so the climb and tail stay a stage per input.  A constant keeps all.
+    weights, painted = input_weights(truth_table, depth)
+    if not any(weights):
+        painted, weights = truth_table, [1 << (depth - 1 - i) for i in range(depth)]
+    size = len(painted)
     builder = _Builder()
 
     # Rightmost row first: the beam runs leftwards and the pointer trails
     # it, ``*`` copying the digit it skips and ``|`` stepping the pointer.
-    for index, bit in enumerate(truth_table):
+    for index, bit in enumerate(painted):
         builder.row(1 + 3 * (size - 1 - index), 0, f"|{bit}*")
     builder.put(3 * size + 1, 0, "<")
 
@@ -189,7 +195,7 @@ def b_tapemark(truth_table: str, width: int | None = None) -> str:
     builder.put(0, -2 * depth - 1, "\\")
     builder.put(-1, -2 * depth - 1, "/")
 
-    for stage, weight in enumerate(2**place for place in reversed(range(depth))):
+    for stage, weight in enumerate(weights):
         builder.stage(-1, 1 + _STAGE_ROWS * stage, weight)
 
     # A stage adds one to the pointer whichever way it branches, so the

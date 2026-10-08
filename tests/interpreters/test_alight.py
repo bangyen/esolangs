@@ -8,6 +8,7 @@ from esolangs.exceptions import HaltError
 from esolangs.interpreters.grid_based.alight import _Machine, run
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.tools.alight import alight
+from esolangs.tools.helpers import essential_inputs
 from esolangs.vm import run_until_halt_or_cycle
 from tests.fixtures import grid
 from tests.interpreters.contract import (
@@ -260,9 +261,17 @@ class TestGenerators:
         assert counts == {3}
 
     def test_boolean_length_does_not_leak_the_table(self) -> None:
-        """Every table of one arity renders to the same length."""
-        lengths = {len(alight(bin(v)[2:].zfill(8))) for v in range(256)}
-        assert len(lengths) == 1
+        """Tables reading as many inputs render to the same length.
+
+        An ignored input is read and dropped, so the essential count, not
+        the entries, sets the length.
+        """
+        lengths: dict[int, set[int]] = {}
+        for v in range(256):
+            table = bin(v)[2:].zfill(8)
+            count = len(essential_inputs(table, 3))
+            lengths.setdefault(count, set()).add(len(alight(table)))
+        assert all(len(group) == 1 for group in lengths.values()), lengths
 
     def test_boolean_refuses_a_nullary_table(self) -> None:
         with pytest.raises(ValueError, match="at least one input"):

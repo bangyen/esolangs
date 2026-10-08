@@ -82,4 +82,4 @@ class TestDecleq:
             assert instrs.count([rc, rc, 0]) == 47
         assert instrs.count([17, 17, 0]) == 4 + 2 + 1  # the index weights
         tables = [format(i, "08b") for i in range(256)]
-        assert sum(len(boolean.decleq(t)) for t in tables) == 327_842
+        assert sum(len(boolean.decleq(t)) for t in tables) == 326_910

@@ -7,6 +7,7 @@ import pytest
 from esolangs import tools
 from esolangs.interpreters.grid_based.b_tapemark import run
 from esolangs.interpreters.io import ScriptedIO
+from esolangs.tools.helpers import essential_inputs
 from tests.witness_tables import witnesses
 
 
@@ -43,9 +44,17 @@ def test_dense_scaling_is_linear() -> None:
 
 
 def test_size_does_not_depend_on_the_table() -> None:
-    """Every entry costs the same three cells, whichever digit it holds."""
-    sizes = {len(tools.b_tapemark("".join(t))) for t in product("01", repeat=8)}
-    assert len(sizes) == 1
+    """Every entry costs the same three cells, whichever digit it holds.
+
+    An ignored input's stage crosses no ``|`` and the table is copied at the
+    rest, so the essential count, not the entries, sets the size.
+    """
+    sizes: dict[int, set[int]] = {}
+    for bits in product("01", repeat=8):
+        table = "".join(bits)
+        count = len(essential_inputs(table, 3))
+        sizes.setdefault(count, set()).add(len(tools.b_tapemark(table)))
+    assert all(len(group) == 1 for group in sizes.values()), sizes
 
 
 def test_render_has_no_blank_axis() -> None:
