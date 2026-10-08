@@ -7,6 +7,11 @@ per added input, measured n=6..11 -- while the H-layout is O(T) with a
 constant about twelve times larger (n=8 dense: 145 KB flat, 1.78 MB H).
 Eight is where the registry's linearity contract starts measuring, and
 lowering it would only cost size.
+
+Repeated subtrees are not shared here (:func:`circuit_diagram`'s flat build
+does): each subtree owns a square block of the lattice and its wires stay
+inside it, so a second parent would need a wire out of the block, off the
+lattice's disjoint-track guarantee.
 """
 
 from dataclasses import dataclass

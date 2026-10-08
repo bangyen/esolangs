@@ -163,9 +163,9 @@ class TestCircuitDiagramLayoutGuards:
             table = "".join(str(bin(i).count("1") % 2) for i in range(2**n))
             drawing = boolean.circuit_diagram(table)
             widths[n] = max(len(row) for row in drawing.splitlines())
-        assert widths == {3: 67, 4: 99, 5: 131, 6: 163}
+        assert widths == {3: 67, 4: 87, 5: 125, 6: 145}
         steps = [widths[n + 1] - widths[n] for n in (3, 4, 5)]
-        assert max(steps) <= 32, steps
+        assert max(steps) <= 40, steps
 
     @pytest.mark.slow
     def test_emitted_size_is_linear_in_the_table(self) -> None:
@@ -553,3 +553,15 @@ class TestCircuitDiagram:
                 io = ScriptedIO("".join(f"{bit}" for bit in format(index, "04b")))
                 run(program, io)
                 assert io.getvalue() == table[index], (table, index)
+
+
+def test_a_repeated_subtree_is_drawn_once_and_still_computes() -> None:
+    from esolangs._evaluate import _evaluate
+    from esolangs.tools.circuit_diagram import circuit_diagram
+
+    gates = lambda t: sum(map(str(circuit_diagram(t)).count, "aox"))  # noqa: E731
+    tiled, distinct = "0110111010010011" * 2, "01101110100100110011101011000101"
+    assert gates(tiled) < gates(distinct)
+    assert (
+        _evaluate("Circuit Diagram", str(circuit_diagram(tiled, 40)), inputs=5) == tiled
+    )
