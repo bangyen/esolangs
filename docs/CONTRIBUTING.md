@@ -172,6 +172,9 @@ Use `scripts/screens/` to bound the upside first.
    so the list matches what the suite enforces. It then runs the
    seconds-long tests `finish` would otherwise fail late: the language's
    own, the ledger's word limits and fold measure, its formula rows.
+   Optional: the wiki page's own examples, with their stated output, go in
+   `tests/fixtures/wiki_examples/<id>.json` (schema in
+   `tests/interpreters/test_published_programs.py`).
 3. Record generator evidence with `just benchmark "Name" TABLE`; compare
    `source_units` and `commands`, not wall-clock time. `python
    scripts/new_language.py bounds "Name"` prints the worst steps and
