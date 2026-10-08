@@ -83,12 +83,12 @@ class TestParameterizedBitdeque:
         assert "GOTO" in template
 
     def test_leaves_share_a_low_address_halt_trampoline(self) -> None:
-        """Only the trampoline itself repeats the widening end address."""
+        """Both leaves are emitted once, each returning through ``GOTO 1``."""
         from esolangs import tools as generators
 
         template = generators.bitdeque("01101001")
         assert template.startswith("GOTO 4 INVERT GOTO 5 GOTO ")
-        assert f"{template} ".count("GOTO 1 ") == 8
+        assert f"{template} ".count("GOTO 1 ") == 2
 
     def test_linear_discard_executes_wide_rows(self) -> None:
         """Head/tail discards leave sampled six-input answers."""
@@ -142,7 +142,7 @@ def test_bitdeque_short_load_floor_and_rendered_total() -> None:
             len(esolangs.generate("Bitdeque", format(value, "08b"), width=1))
             for value in range(256)
         )
-        == 141184
+        == 117472
     )
 
 
