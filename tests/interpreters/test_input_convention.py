@@ -42,67 +42,22 @@ def test_numeric_readers_accept_tokens_on_the_same_line(language):
     )
 
 
-#: What a language does when a *reading* program is handed no input at
-#: all.  Twenty-two files pinned this one language at a time; the split
-#: between the two answers is the interesting part, so it is written down
-#: here rather than inferred.
-#:
-#: The default is that the ``EOFError`` escapes: the interpreter does not
-#: catch it, so the caller sees a real end of input.  The languages below
-#: answer differently, and each for a reason of its own -- so the set is a
-#: statement about them, not a list of exceptions to ignore.
-_EOF_IS_A_HALT: dict[str, str] = {
-    "boolfuck": "EOF supplies zero bits",
-    "piet": "an exhausted input command is ignored, as the spec requires",
-    "piet-plus-plus": "an exhausted In command is ignored, as the page recommends",
-    # Reads until the input runs out and treats that as its stop, which is
-    # how its generated programs terminate at all.
-    "suffolk": "reads to exhaustion, so EOF is the halt",
-    # Read their inputs before the program runs, so an exhausted stream is
-    # a load-time answer rather than a step that fails.
-    "fargo": "the interpreter reads before the program starts",
-    "circuit_diagram": "resolves its inputs while laying the grid",
-    "flowchart": "reads at the switch, which a program without one skips",
-    "sbleq": "a failed read leaves the cell alone and the program runs on",
-    "malbolge": "an exhausted read is the value 59048, not an error",
-    "packlang": "an exhausted charGet is newline byte 10",
-    "polynomial": "an exhausted input instruction stores -1",
-    # Both specs name the value a failed read answers with, so catching the
-    # raise is what makes their own idioms work: FALSE's cat tests ``^``
-    # against -1, and an Unlambda read-until-EOF loop needs the ``v`` branch.
-    "false": "an exhausted '^' is the spec's -1",
-    "fish": "an exhausted 'i' is the spec's -1",
-    "unlambda": "an exhausted '@' hands its argument v, the spec's branch",
-    "thisthat": "an exhausted '◇' sends the spec's empty transfer",
-    # Wiki: the empty container sets IN "with EOF returning 0".
-    "container": "an exhausted read sets IN to the spec's 0",
-    # The wiki cat's only clean exit is a ``readto`` that gets no line.
-    "inject": "an exhausted readto empties the block",
-    # Likewise the wiki Cat ``[;@$0{&}{,}]`` halts only on a 0 at EOF.
-    "sophie": "an exhausted ';' or ':' reads 0",
-    # Every run pushes its input bit, and the spec's EOF bit is ``=``.
-    "smu": "an exhausted read pushes the spec's '=' bit",
-}
-
-
+# What a language does when a *reading* program is handed no input at all.
+# The default is that the ``EOFError`` escapes, so the caller sees a real end
+# of input.  A language that answers differently says why in its
+# ``LANGUAGE``'s ``eof=``: a statement about it, not an exception to ignore.
 def _reading_languages() -> list[str]:
     """The examples whose programs read their inputs from the stream."""
+    from esolangs.registry import LANGUAGES
     from esolangs.tools.examples import BOOLEAN_EXAMPLES
 
+    eof = {lang.interpreter for lang in LANGUAGES.values() if lang.eof}
     return sorted(
         name
         for name, example in BOOLEAN_EXAMPLES.items()
         # A ``fill`` means the bits are embedded in the program text, so
         # the language has no input command to run out of.
-        if example.fill is None
-        and name not in _EOF_IS_A_HALT
-        # Circlefuck specifies that its input command is a no-op at EOF.
-        and name != "circlefuck"
-        # Suptiftam's read sits inside a loop that never ends without one,
-        # so an empty stream is a hang rather than a raise.
-        and name != "suptiftam"
-        # Alight raises its own error before the read is reached.
-        and name != "alight"
+        if example.fill is None and example.interpreter not in eof
     )
 
 
@@ -130,5 +85,5 @@ def test_running_out_of_input_reaches_the_caller(name: str) -> None:
         return
     pytest.fail(
         f"{name} ran past EOF; if its spec gives EOF a value, "
-        f"add {name!r} and the reason to _EOF_IS_A_HALT"
+        f'add eof="<what it does>" to its LANGUAGE'
     )

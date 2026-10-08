@@ -264,4 +264,5 @@ LANGUAGE = Language(
         parameterized=True,
     ),
     balance=balance_intercal,
+    empty_program="INTERCAL program is insufficiently or excessively polite (E099)",
 )

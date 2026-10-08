@@ -278,4 +278,5 @@ LANGUAGE = Language(
     boolean=piet,
     contract=BooleanContract(note="80 pixels per codel, comparable in area to Line"),
     balance=_balance,
+    eof="an exhausted input command is ignored, as the spec requires",
 )

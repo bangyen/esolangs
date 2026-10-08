@@ -716,4 +716,5 @@ LANGUAGE = Language(
         input_shape="char_stream",
     ),
     balance=_balance,
+    empty_program="Streetcode program cannot be empty",
 )

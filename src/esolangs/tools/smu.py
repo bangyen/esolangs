@@ -102,4 +102,6 @@ LANGUAGE = Language(
         "packs its output bits into bytes the same way",
     ),
     wrap=wrap_chars,
+    # Every run pushes its input bit, and the spec's EOF bit is ``=``.
+    eof="an exhausted read pushes the spec's '=' bit",
 )

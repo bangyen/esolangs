@@ -289,4 +289,6 @@ LANGUAGE = Language(
     ),
     balance=_balance,
     no_wrap="blocks and executable commands are delimited by source lines",
+    # The wiki cat's only clean exit is a ``readto`` that gets no line.
+    eof="an exhausted readto empties the block",
 )

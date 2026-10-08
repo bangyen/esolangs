@@ -93,4 +93,6 @@ LANGUAGE = Language(
     ),
     balance=balance_fish,
     no_wrap="a row is a codebox row and the lookup table is indexed by column",
+    eof="an exhausted 'i' is the spec's -1",
+    empty_program="Fish program cannot be empty",
 )

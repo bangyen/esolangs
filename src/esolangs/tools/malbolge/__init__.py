@@ -781,4 +781,5 @@ LANGUAGE = Language(
     ),
     # Loader whitespace is discarded before assigning memory addresses.
     wrap=wrap_chars,
+    eof="an exhausted read is the value 59048, not an error",
 )

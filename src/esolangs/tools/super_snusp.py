@@ -200,4 +200,5 @@ LANGUAGE = Language(
     ),
     balance=_balance,
     no_wrap="a row is a grid row; a break moves code, it does not reflow",
+    empty_program="Super SNUSP program cannot be empty",
 )

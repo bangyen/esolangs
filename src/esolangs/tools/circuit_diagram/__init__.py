@@ -616,4 +616,5 @@ LANGUAGE = Language(
         ignores_whitespace=True,
     ),
     balance=_balance,
+    eof="resolves its inputs while laying the grid",
 )

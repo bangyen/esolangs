@@ -99,8 +99,9 @@ Start from `src/esolangs/interpreters/_template.py`. Every interpreter:
   B-tapemark and EGL receive whole source.
 - Raises `ValueError` for a malformed program and `HaltError` for an
   invalid runtime operation, where the spec has one. An empty program the
-  spec calls malformed is listed in `_EMPTY_REJECTIONS`
-  (`tests/fuzz/test_interpreters_robustness.py`). Divergence is legal; tests bound execution of
+  spec calls malformed declares its error as `empty_program=` in the
+  `LANGUAGE`, and an input command the spec gives an EOF value declares it
+  as `eof=`. Divergence is legal; tests bound execution of
   empty programs rather than requiring termination.
 - Guards an input line before indexing it (`if val:`); an empty line is
   legal, and running out raises `EOFError` either way.

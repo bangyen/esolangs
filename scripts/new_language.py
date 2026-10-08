@@ -87,7 +87,8 @@ def {slug}(truth_table: str) -> str:
 # line, contract=BooleanContract(...) if the programs do not read one 0/1
 # line per input (docs/CONTRIBUTING.md#the-boolean-io-contract), and
 # wrap=wrap_chars (esolangs.tools.wrap) if a newline anywhere is harmless,
-# else no_wrap="<why a break changes the program>";
+# else no_wrap="<why a break changes the program>"; eof="..." if an
+# exhausted read has a spec value, empty_program="..." if "" is rejected;
 # a generator taking a width needs balance=, picking its squarest regime.
 LANGUAGE = Language("{name}", "{category}.{slug}", boolean={slug})
 '''
@@ -635,8 +636,6 @@ def remove(name: str) -> list[str]:
         "tests/proofs/test_execution_formulas.py",
         "tests/proofs/test_workspace_formulas.py",
         "tests/proofs/test_schemes.py",
-        "tests/interpreters/test_input_convention.py",
-        "tests/fuzz/test_interpreters_robustness.py",
     ):
         _drop_entries(ROOT / relative, keys, modules)
 

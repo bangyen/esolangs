@@ -389,4 +389,5 @@ LANGUAGE = Language(
     ),
     balance=_balance,
     no_wrap="the beam path and embedded input occupy fixed grid coordinates",
+    empty_program="Back program cannot be empty",
 )

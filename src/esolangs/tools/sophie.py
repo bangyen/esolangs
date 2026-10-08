@@ -140,4 +140,6 @@ LANGUAGE = Language(
         input_shape="char_stream",
     ),
     wrap=_sophie,
+    # Likewise the wiki Cat ``[;@$0{&}{,}]`` halts only on a 0 at EOF.
+    eof="an exhausted ';' or ':' reads 0",
 )

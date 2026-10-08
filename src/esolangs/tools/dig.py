@@ -992,4 +992,5 @@ LANGUAGE = Language(
     boolean=dig,
     split=True,
     balance=_balance,
+    empty_program="Dig program cannot be empty",
 )
