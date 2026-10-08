@@ -57,11 +57,12 @@ class TestParameterizedBitdeque:
 
     def test_linear_route_forces_the_register_between_inputs(self) -> None:
         """Both discard paths meet at a reset, and the last input skips it."""
-        from esolangs import tools as generators
+
+        from esolangs.tools.bitdeque import _bitdeque_linear
 
         n = 5
         table = "".join(str(row.bit_count() & 1) for row in range(2**n))
-        tokens = generators.bitdeque(table).split()
+        tokens = _bitdeque_linear(table).split()
         assert tokens[:3] == ["PUSH", "INVERT", "PUSH"]  # parity opens 0, 1
         assert tokens.count("POP") == 2**n - 1 + n  # the discards, the reads
         assert tokens.count("EJECT") == 2**n - 1
@@ -92,24 +93,24 @@ class TestParameterizedBitdeque:
 
     def test_linear_discard_executes_wide_rows(self) -> None:
         """Head/tail discards leave sampled six-input answers."""
-        from esolangs import tools as generators
+        from esolangs.tools.bitdeque import _bitdeque_linear
 
         n = 6
         table = "".join(str(row.bit_count() & 1) for row in range(2**n))
-        template = generators.bitdeque(table)
+        template = _bitdeque_linear(table)
         for row in (0, 1, 2, 7, 31, 32, 62, 63):
             bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
             assert self.run_bitdeque(self.instantiate(template, bits)) == table[row]
 
     def test_linear_discard_growth(self) -> None:
         """Wide templates and their fills scale with table size."""
-        from esolangs import tools as generators
+        from esolangs.tools.bitdeque import _bitdeque_linear
 
         templates = []
         filled = []
         for n in range(11, 15):
             table = "".join(str(row.bit_count() & 1) for row in range(2**n))
-            template = generators.bitdeque(table)
+            template = _bitdeque_linear(table)
             templates.append(len(template))
             filled.append(len(self.instantiate(template, [0] * n)))
         assert all(b <= 2 * a for a, b in pairwise(templates))

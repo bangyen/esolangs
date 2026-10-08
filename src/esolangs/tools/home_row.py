@@ -17,7 +17,7 @@ HOME_ROW_PAIR = ("s", "j")
 
 def _runs(rows: str) -> list[tuple[int, str]]:
     """Return ``(end, run)`` for each maximal run of equal characters in ``rows``."""
-    out = []
+    out: list[tuple[int, str]] = []
     for _, group in groupby(rows):
         run = "".join(group)
         out.append(((out[-1][0] if out else 0) + len(run), run))

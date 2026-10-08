@@ -5,7 +5,7 @@ and the generators take no ``n`` parameter.
 """
 
 from collections.abc import Callable, Iterable, Sequence
-from itertools import pairwise, repeat
+from itertools import pairwise
 
 from esolangs.exceptions import TruthTableError
 from esolangs.interpreters.source_hints import with_hint
@@ -663,69 +663,6 @@ def _greedy_input_order(truth_table: str, n: int) -> tuple[int, ...]:
             order.extend(remaining)
             break
     return tuple(order)
-
-
-# The walker only lays tokens out and measures runs of them, never looks
-# inside one, so a token is whatever the caller finds convenient: a string
-# for most generators, an instruction tuple for S*bleq.
-type Leaf[Token] = Callable[[int, int], list[Token]]
-type Node[Token] = Callable[[int, int, int, int], list[Token]]
-
-
-def decision_tree_tokens[Token](
-    truth_table: str,
-    leaf: Leaf[Token],
-    node: Node[Token],
-    *,
-    parent_width: int | Callable[[int], int] = 0,
-    start: int = 0,
-    collapse: bool = False,
-) -> list[Token]:
-    """Walk a truth table's decision tree, laying out caller-emitted parts.
-
-    ``leaf(level, row)`` returns a leaf's tokens; ``node(level, zero, one,
-    at)`` returns a node's own ``parent_width`` tokens given its finished
-    subtrees' *lengths*, post-order; they sit ahead of the zero subtree,
-    then the one subtree.  ``collapse`` returns a leaf as soon as a
-    subtree's rows agree.  ``at`` is the absolute index the subtree begins
-    at, from ``start`` and ``parent_width`` (a constant or a function of
-    level, as RAM0's address run), which is what lets Bitdeque, RAM0 and
-    S*bleq name a jump target up front instead of backpatching.  One flat
-    list, a node's slot written in after its subtrees: O(tokens).
-
-    Deliberately cannot: act between the children (6-5, Jaune allocate a
-    label there; Polynomial threads a cell value); thread
-    anything *down* (CV(N)(C)'s accumulator, Jaune's held bit, Circlefuck's
-    pointer); lay the one subtree first (Between, CV(N)(C), Unsquare); split
-    other than MSB-first (Modulous, Unsquare); build a
-    positional heap (Eval, Forth pin children at ``2i+1``/``2i+2``); skip a
-    child (AddSubJump, Jaune descend into one half -- 24 of 256 tables came
-    out longer at ``n == 3``); Lamfunc's plain string; the grid generators'
-    plane.  Contrast :func:`decision_tree_body`, which carries a whole
-    construction rather than a walk its caller fills in.
-    """
-    n = _validate_truth_table(truth_table)
-    constant = constant_span_test(truth_table)
-    width = parent_width if callable(parent_width) else lambda _level: parent_width
-    out: list[Token] = []
-
-    def walk(level: int, lo: int, hi: int, at: int) -> None:
-        if level == n or (collapse and constant(lo, hi)):
-            out.extend(leaf(level, lo))
-            return
-        half = (hi - lo) // 2
-        slot = len(out)
-        own = width(level)
-        out.extend(repeat(None, own))  # type: ignore[arg-type]
-        below = at + own
-        walk(level + 1, lo, lo + half, below)
-        zero = len(out) - slot - own
-        walk(level + 1, lo + half, hi, below + zero)
-        one = len(out) - slot - own - zero
-        out[slot : slot + own] = node(level, zero, one, at)
-
-    walk(0, 0, len(truth_table), start)
-    return out
 
 
 def move_text(start: int, target: int, right: str, left: str) -> str:

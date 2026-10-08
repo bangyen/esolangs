@@ -176,7 +176,7 @@ FORMULAS: dict[str, tuple[Callable[[int, str], float], bool, tuple[int, ...]]] =
     "Bitwise Cyclic Tag": (lambda n, _: 5 * 2**n + n, True, (3, 5)),
     "BIO": (lambda n, _: 18 * 2**n - 10 * n + 30, False, (3, 5)),
     "bit~": (lambda n, _: 7 * 2**n + 17 * n + 92, True, (3, 5)),
-    "Bitdeque": (lambda n, _: 3 * 2**n + 9 * n - 3, True, (5, 6)),
+    "Bitdeque": (lambda n, _: 3 * 2**n + 9 * n - 3, False, (5, 6)),
     "ArrowQueue": (lambda n, _: 11 * 2**n + 6 * n + 24, True, (1, 7)),
     "B-tapemark": (lambda n, _: 4 * 2**n + 42 * n + 5, True, (3, 6)),
     "123": (lambda n, _: 32 * 2**n + 45 * n - 30, True, (4, 6)),

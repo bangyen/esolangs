@@ -33,23 +33,21 @@ def bitdeque(truth_table: str, width: int | None = None) -> str:
     ``EJECT``/``INJECT`` work the head, so any bit can be brought to an end
     at two commands per position, measured not modelled.  Rotations happen
     inside the tree; the load is byte-identical under every order.
-    A constant subtree is one leaf; past n=4 the table is pushed whole and
-    discarded into, a literal with no subtrees.
-    A subtree repeated at its level is emitted once and reached by ``GOTO``
-    (n=4: -49.3% over all 65,536 tables, none longer).  The shared tree is also
-    0.58x to 0.36x the linear route at n=4..8 (identity order, random tables);
-    that route stays, its proof-ledger rows pinning it.
+    A constant subtree is one leaf, and a subtree repeated at its level is
+    emitted once and reached by ``GOTO`` (n=4, all 65,536 tables: -49.3%, none
+    longer).  Past n=4 the shorter of that tree and the linear discard lookup
+    is kept (tree 0.48x to 0.29x at n=5..10, random tables; never longer).
     Width < 11 with n <= 4 loads each input via POP/EJECT on fresh zero/one
     endpoints (15 commands each); otherwise the load is the linear ``2n``.
     """
-    if len(truth_table) <= 16:
-        short = width is not None and width < len(BITDEQUE_PAIR[0])
-        program = best_input_order(
-            truth_table,
-            lambda table, perm: _bitdeque_ordered(table, perm, short=short),
-        )
-    else:
-        program = _bitdeque_linear(truth_table)
+    small = len(truth_table) <= 16
+    short = small and width is not None and width < len(BITDEQUE_PAIR[0])
+    program = best_input_order(
+        truth_table,
+        lambda table, perm: _bitdeque_ordered(table, perm, short=short),
+    )
+    if not small:
+        program = min(program, _bitdeque_linear(truth_table), key=len)
     if width is not None:
         from esolangs.tools.wrap import _bitdeque
 
