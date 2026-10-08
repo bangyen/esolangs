@@ -205,5 +205,9 @@ A generated program reads the inputs and prints the answer the way its
 default is one `0`/`1` line per input and a printed `0`/`1`. Every program
 reads all n inputs, in order, even when the table is constant or ignores an
 input. `input_shape="char_stream"` reads the bits as bare characters, and also
-covers languages whose stdin packs bits into bytes (Boolfuck, Smu);
-`answer_mode` covers state-dump and termination answers.
+covers languages whose stdin packs bits into bytes (Boolfuck, Smu): each
+input is then the byte `'0'` (0x30) or `'1'` (0x31), whose low bit is the
+input's value, so a program that reads low bit first takes that bit and must
+read and drop the byte's other seven before the next input (see
+`src/esolangs/tools/smu.py`). `answer_mode` covers state-dump and
+termination answers.

@@ -162,7 +162,9 @@ def _interpreter_stub(name: str) -> str:
     return (
         f'"""Interpreter for {name}.\n\n{PLACEHOLDER} the machine from the wiki '
         "page: memory, pointer, commands>\n\nA malformed program raises "
-        ":class:`ValueError`;\nexhausted input raises :class:`EOFError`.\n"
+        ":class:`ValueError`;\nexhausted input raises :class:`EOFError` <or, if the "
+        "spec gives EOF a value, say what a read returns and set eof= on "
+        "its LANGUAGE>.\n"
         '"""' + body
     )
 
@@ -253,9 +255,9 @@ def _common_gaps(name: str, module: str) -> list[Gap]:
             Gap(
                 "tests/fixtures/curation.toml",
                 f'add "{name}" = {{ backlinks = <wiki "What links here" count>, '
-                'route = "fame" | "first implementation" } under [languages] (see '
-                'docs/limitations.md#curation); offline, { route = "unassessed" } '
-                "until the count is recorded",
+                'route = "fame" (60+) | "first implementation" } under '
+                "[languages] (see docs/limitations.md#curation); offline, "
+                '{ route = "unassessed" } until the count is recorded',
             )
         )
     return gaps
@@ -386,6 +388,13 @@ def quick_tests(name: str) -> list[str]:
     if lang.boolean is None:
         return nodes
     nodes += ["tests/proofs/test_ledger.py", "tests/proofs/test_schemes.py"]
+    gen = lang.boolean.__name__
+    if gen not in _tests_attr("tools.test_boolean_contract", "_UNSHAPED"):
+        # A tree generator must fold an input the table ignores.
+        nodes.append(
+            "tests/tools/test_boolean_contract.py"
+            f"::test_generator_shape_is_what_the_catalogue_says[{gen}]"
+        )
     stem = example_stems().get(lang.id, "")
     if (
         stem
@@ -407,6 +416,23 @@ def quick_tests(name: str) -> list[str]:
             f"test_execution_and_workspace_formulas_hold[{name}-{min(arities)}]"
         )
     return nodes
+
+
+def sources(name: str) -> list[str]:
+    """Return the language's interpreter and generator source paths."""
+    from esolangs.registry import LANGUAGES
+
+    lang = LANGUAGES[name]
+    modules = [f"esolangs.interpreters.{lang.interpreter}"] if lang.interpreter else []
+    if lang.boolean is not None:
+        modules.append(lang.boolean.__module__)
+    return [
+        str(path.relative_to(ROOT))
+        for module in modules
+        for base in (ROOT / "src" / module.replace(".", "/"),)
+        for path in (base.with_suffix(".py"), base)
+        if path.exists()
+    ]
 
 
 def bounds(name: str, arities: range) -> list[tuple[int, int, int, int]]:
@@ -738,16 +764,22 @@ def main(argv: list[str] | None = None) -> int:
     measure.add_argument("--max-n", type=int, default=5)
     args = parser.parse_args(argv)
     if args.command == "bounds":
-        print("n  worst steps  worst bits  chars/row")
+        # Steps feed the ledger's Execution cell, bits its Workspace cell
+        # (peak written state); chars/row stays flat for an O(T) generator.
+        print("n  Execution  Workspace  chars/row")
         rows = bounds(args.name, range(1, args.max_n + 1))
         for n, steps, bits, per_row in rows:
-            print(f"{n:<2} {steps:>11}  {bits:>10}  {per_row:>9}")
-        for column, label in ((1, "steps"), (2, "bits")):
+            print(f"{n:<2} {steps:>9}  {bits:>9}  {per_row:>9}")
+        for column, cell, unit in (
+            (1, "execution", "<unit>"),
+            (2, "workspace", "bits"),
+        ):
             slopes = {b[column] - a[column] for a, b in itertools.pairwise(rows)}
             if len(slopes) == 1:
                 (slope,) = slopes
                 base = rows[0][column] - slope * rows[0][0]
-                print(f"{label} fit exactly: lambda n, _: {slope} * n + {base}")
+                sign = "-" if base < 0 else "+"
+                print(f'{cell} = "...: worst {slope}n {sign} {abs(base)} {unit}"')
         return 0
     if args.command in {"check", "finish"}:
         # Before anything imports the package: a new LANGUAGE is registered
@@ -771,7 +803,12 @@ def main(argv: list[str] | None = None) -> int:
         )
         quick = [sys.executable, "-m", "pytest", "-q", "-n", "0", "-m", ""]
         print("+ pytest", " ".join(quick_tests(args.name)), flush=True)
-        if subprocess.run([*quick, *quick_tests(args.name)], cwd=ROOT).returncode:
+        failed = subprocess.run([*quick, *quick_tests(args.name)], cwd=ROOT)
+        # The gate's bandit, on the language's own sources only.
+        bandit = ["uv", "run", "--no-sync", "--with", "bandit", "bandit", "-q"]
+        print("+ bandit", *sources(args.name), flush=True)
+        flagged = subprocess.run([*bandit, *sources(args.name)], cwd=ROOT)
+        if failed.returncode or flagged.returncode:
             print(f"{args.name}: integrated, but fix the failures above first")
             return 1
         print(
