@@ -98,29 +98,81 @@ def _dig_leaf(reads: int, value: int, *, aligned: bool) -> str:
     return out + f"${reads + pad + 3}" + tail
 
 
-def _dig_columns(n: int, split: int | None) -> tuple[int, int]:
-    """Where the two bands start, or the one band if ``split`` is ``None``.
+def _dig_columns(strides: list[int], split: int | None) -> list[int]:
+    """Return the ``$`` column of every level, the leaf's last, from the strides.
 
     A banded tree turns round once and the west band runs over the east
     band's columns, mirrored.  A ``$`` or ``#`` sits at block offset 0 or 4
     and confusable digits at 1 and 3, so with stride six a collision needs
     the bands' column difference ``d`` to be 0, 1, 2, 3 or 5 mod six; four is
-    not, so ``d = 4 mod 6`` clears all of them.  A second turn would put two
+    not, so ``d = 4 mod six`` clears all of them.  A second turn would put two
     bands the same way, differing by 0 mod six -- the case ``d`` must avoid.
+    The west band is anchored at the leaf, whose ``$`` sits at column seven:
+    one stride further back from the east band's last ``#`` makes ``d`` four.
+    A level's skipped reads lengthen its stride, so only the one-band tree
+    has any.
     """
+    east = [1]
+    for stride in strides:
+        east.append(east[-1] + stride)
     if split is None:
-        return 1, 0
-    # The west band ends four columns short of where the east band's last
-    # ``#`` stands, which is the cell the mole turns west from; putting it
-    # one stride further back is what makes ``d`` four modulo six.
-    return 1, _DIG_BAND * (n - split) + 3
+        return east
+    west = [7]
+    for stride in reversed(strides[split:]):
+        west.append(west[-1] + stride)
+    return east[:split] + west[::-1]
 
 
-def _dig_grid(truth_table: str, n: int, split: int | None) -> str:
-    """Lay the decision tree out, in one band east or two that turn round."""
-    total = 2 ** (n + 1) - 1
+def _dig_levels(essential: list[int], n: int) -> list[int]:
+    """Return the inputs a tree branches on.
+
+    The essential ones, and an ignored one only where a block's count digit
+    cannot hold more skips.
+    """
+    if not essential:
+        return list(range(n))
+    levels: list[int] = []
+    pending = 0
+    for i in range(essential[-1] + 1):
+        if i in essential or pending == _DIG_SPAN - 3:
+            levels.append(i)
+            pending = 0
+        else:
+            pending += 1
+    return levels
+
+
+def _dig_grid(
+    truth_table: str, n: int, split: int | None, *, reduce: bool = True
+) -> str:
+    """Lay the decision tree out, in one band east or two that turn round.
+
+    The one-band tree branches only on the essential inputs; an ignored one
+    is read by the next block (``$5~~;#`` after one skipped read), or by the
+    leaf.  The banded tree branches on every input: with a skip or a long
+    leaf it left blocks the clearance check does not see (mole deaths at
+    n=5, essential inputs (0, 2, 3, 4) and (0, 1, 2)).  ``reduce=False``
+    branches on every input in either.
+    """
+    levels = list(range(n))
+    if reduce and split is None:
+        levels = _dig_levels(essential_inputs(truth_table, n), n)
+    return _dig_lay(truth_table, n, split, levels)
+
+
+def _dig_lay(truth_table: str, n: int, split: int | None, used: list[int]) -> str:
+    """Lay the tree out branching on the inputs ``used``, reading the rest."""
+    truth_table = read_at(truth_table, used, n)
+    m = len(used)
+    # Inputs read before level ``l``'s own block, its skips being the gap.
+    consumed = [0, *(i + 1 for i in used)]
+    skips = [used[level] - consumed[level] for level in range(m)]
+    columns = _dig_columns(
+        [(_DIG_STRIDE if split is None else _DIG_BAND) + skip for skip in skips],
+        split,
+    )
+    total = 2 ** (m + 1) - 1
     constant = constant_span_test(truth_table)
-    east, west = _dig_columns(n, split)
     cells: dict[tuple[int, int], str] = {}
     corridors: list[tuple[int, int, int]] = []
 
@@ -130,11 +182,7 @@ def _dig_grid(truth_table: str, n: int, split: int | None) -> str:
 
     def dollar(level: int) -> int:
         """Return the column of this level's ``$``, the cell the mole meets first."""
-        if split is None:
-            return east + _DIG_STRIDE * level
-        if level < split:
-            return east + _DIG_BAND * level
-        return west + _DIG_LAST - _DIG_BAND * (level - split)
+        return columns[level]
 
     def place(row: int, col: int, text: str) -> None:
         """Write ``text`` along ``row`` from ``col``, refusing an occupied cell.
@@ -159,23 +207,25 @@ def _dig_grid(truth_table: str, n: int, split: int | None) -> str:
 
     def walk(row: int, level: int, lo: int, hi: int) -> None:
         """Lay the subtree for ``truth_table[lo:hi]`` at ``row``."""
-        if level == n or constant(lo, hi):
+        if level == m or constant(lo, hi):
             # A constant slice cannot be told apart by more branching, so
             # this is a leaf and every row below it goes unwritten.  It
             # still reads what it did not branch on: a program whose input
             # count depended on its table would desync a caller feeding
             # several programs from one stream.
-            reads = n - level
+            reads = n - consumed[level]
             block(
                 row,
                 level,
                 _dig_leaf(reads, int(truth_table[lo]), aligned=split is not None),
             )
             return
-        block(row, level, _DIG_BRANCH)
+        skip = skips[level]
+        block(row, level, f"${3 + skip}{'~' * skip}~;#")
         col = dollar(level)
-        hop = col - _DIG_LAST if leftward(level) else col + _DIG_LAST
-        step = 2 ** (n - level - 1)
+        last = _DIG_LAST + skip
+        hop = col - last if leftward(level) else col + last
+        step = 2 ** (m - level - 1)
         half = (hi - lo) // 2
         # ``#`` rotates one way on a 0 and the other on a 1, so which child
         # is up and which is down follows the mole's heading: a bit that
@@ -196,8 +246,8 @@ def _dig_grid(truth_table: str, n: int, split: int | None) -> str:
 
     # The mole starts at (0, 0) facing right, so the ``'`` below turns it
     # down column 0 and this is the cell that turns it back out of it.
-    place(total // 2, east - 1, ">")
-    walk(total // 2, 0, 0, 2**n)
+    place(total // 2, columns[0] - 1, ">")
+    walk(total // 2, 0, 0, 2**m)
     _dig_clear(cells, corridors)
 
     if (0, 0) in cells:

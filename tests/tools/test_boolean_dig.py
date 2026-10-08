@@ -217,3 +217,15 @@ class TestDig:
             for row in range(0, 1 << n, 1 if n == 7 else 11):
                 bits = [str(row >> (n - 1 - i) & 1) for i in range(n)]
                 assert run_dig(program, bits) == table[row], (at, row)
+
+
+@pytest.mark.parametrize("width", [40, 10_000])
+def test_a_width_tree_reads_an_ignored_input_in_the_next_block(width: int) -> None:
+    """f(a, c, d) with b ignored: one ``$4~~;#`` skip, not a fourth level."""
+    inner = "01101001"
+    table = "".join(inner[(i >> 3) << 2 | i & 3] for i in range(16))  # b ignored
+    program = boolean.dig(table, width)
+    assert "$4~~;#" in program
+    assert len(program) < len(boolean.dig("0110100110010110", width))
+    for row in range(16):
+        assert run_dig(program, list(format(row, "04b"))) == table[row], row

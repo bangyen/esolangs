@@ -120,7 +120,14 @@ def _dig(table: str, default: str) -> str:
     """Compare alternating, flat, banded and reachable narrow/affine routes."""
     n = _validate_truth_table(table)
     flat = _dig_grid(table, n, None)
-    candidates = [default, flat, dig(table, 1), dig(table, 8)]
+    # The full tree stays: a reduced one can be less square.
+    candidates = [
+        default,
+        flat,
+        _dig_grid(table, n, None, reduce=False),
+        dig(table, 1),
+        dig(table, 8),
+    ]
     if n >= 2:
         banded = _dig_grid(table, n, (n + 3) // 2)
         if grid_width(banded) < grid_width(flat):
