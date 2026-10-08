@@ -1,12 +1,15 @@
 """Boolean-function generator for Algebraic Programming Language."""
 
+from collections.abc import Callable
 from itertools import pairwise
 from string import ascii_uppercase
 
 from esolangs.tools.helpers import (
     _validate_truth_table,
     constant_span_test,
+    essential_inputs,
     in_input_order,
+    read_at,
     short_name,
     subtree_ids,
 )
@@ -191,9 +194,32 @@ def _join(parts: list[tuple[_Rope, int, int]]) -> tuple[_Rope, int, int]:
 def _apl_tree_layout(
     table: str, perm: tuple[int, ...], width: int
 ) -> tuple[str, int | None]:
-    """Return the split tree and its next frame-budget transition."""
+    """Return the shorter split tree and its next frame-budget transition.
+
+    The reduced diagram drops ignored inputs and repeated halves; the inline
+    tree stays a candidate since ``!`` sharing grew XOR-like n=3 tables by
+    1-3 characters.
+    """
+    laid = [
+        _apl_split(table, perm, width, build)
+        for build in (_apl_reduced_ordered, _apl_tree_ordered)
+    ]
+    events = [point for _, point in laid if point is not None]
+    best = min(
+        (program for program, _ in laid), key=lambda x: (max(_span(x), width), len(x))
+    )
+    return best, min(events, default=None)
+
+
+def _apl_split(
+    table: str,
+    perm: tuple[int, ...],
+    width: int,
+    build: Callable[[str, tuple[int, ...]], str],
+) -> tuple[str, int | None]:
+    """Split ``build``'s tree into definitions under the frame budget."""
     n = _validate_truth_table(table)
-    source = _apl_tree_ordered(table, perm).removeprefix(_NOT + "\n").replace(" ", "")
+    source = build(table, perm).removeprefix(_NOT + "\n").replace(" ", "")
     prefix, source = source.split(")|", 1)
     prefix += ")|"
     # There are fewer definitions than source characters, bounding name width.
@@ -271,19 +297,24 @@ def _apl_narrow_layout(
         events.append(next_width)
     # At most nine primitive definitions use one-character names below n=4.
     # Larger trees retain fresh-text splitting, avoiding O(T log T) names.
-    constant = constant_span_test(table)
+    reduced, selectors = _essential(table, perm)
+    constant = constant_span_test(reduced)
     definitions: list[str] = []
+    made: dict[str, str] = {}
 
     def combine(left: str, operator: str, right: str) -> str:
-        name = short_name(len(definitions), ascii_uppercase)
-        definitions.append(f"{name}={left}{operator}{right}")
-        return f"{name}()"
+        body = f"{left}{operator}{right}"
+        if body not in made:
+            name = short_name(len(definitions), ascii_uppercase)
+            definitions.append(f"{name}={body}")
+            made[body] = f"{name}()"
+        return made[body]
 
     def tree(start: int, end: int, depth: int) -> str:
         if constant(start, end):
-            return table[start]
+            return reduced[start]
         half = (start + end) // 2
-        selector = _NAMES[perm[depth]]
+        selector = selectors[depth]
         zero, one = tree(start, half, depth + 1), tree(half, end, depth + 1)
         if (zero, one) == ("0", "1"):
             return selector
@@ -301,7 +332,7 @@ def _apl_narrow_layout(
         high = combine(selector, "&", one)
         return combine(low, "|", high)
 
-    result = tree(0, len(table), 0)
+    result = tree(0, len(reduced), 0)
     # '&' binds before '|'; the zero prefix pre-binds every input without
     # parentheses, preserving input order even when a Boolean arm folds.
     reads = _reads(n, "&")
@@ -320,11 +351,26 @@ def _apl_narrow_layout(
     return program, min(events)
 
 
+def _essential(table: str, perm: tuple[int, ...]) -> tuple[str, list[str]]:
+    """Return the table over its essential inputs and their selector names.
+
+    An ignored input is still named by the binding line, so it needs no test.
+    """
+    n = len(perm)
+    used = essential_inputs(table, n)
+    if not used:
+        return table, [_NAMES[i] for i in perm]
+    return read_at(table, used, n), [_NAMES[perm[i]] for i in used]
+
+
 def _apl_short_operators(table: str, perm: tuple[int, ...]) -> str:
     """Return five-column operator definitions for at most three inputs."""
+    inputs = len(perm)
+    table, selectors = _essential(table, perm)
     constant = constant_span_test(table)
     symbols = iter("!?:;~^@")
     lines: list[str] = []
+    made: dict[tuple[str, str], str] = {}
 
     def tree(start: int, end: int, depth: int) -> str:
         if constant(start, end):
@@ -332,17 +378,19 @@ def _apl_short_operators(table: str, perm: tuple[int, ...]) -> str:
         half = (start + end) // 2
         zero = tree(start, half, depth + 1)
         one = tree(half, end, depth + 1)
-        symbol = next(symbols)
-        lines.extend([f"{symbol}x={{", f"x&${one}", f"${zero}", "}"])
-        return symbol + _NAMES[perm[depth]]
+        if (one, zero) not in made:
+            symbol = next(symbols)
+            lines.extend([f"{symbol}x={{", f"x&${one}", f"${zero}", "}"])
+            made[one, zero] = symbol
+        return made[one, zero] + selectors[depth]
 
     root = tree(0, len(table), 0)
     # The executed binding call names all inputs before any operator runs.
     # Its intermediate values are unused, so chaining binds three inputs.
-    if len(perm) == 1:
+    if inputs == 1:
         lines.extend(["]x={", f"${root}", "}", "]a"])
     else:
-        lines.extend(["x`y={", f"${root}", "}", "`".join(_NAMES[: len(perm)])])
+        lines.extend(["x`y={", f"${root}", "}", "`".join(_NAMES[:inputs])])
     return "\n".join(lines)
 
 

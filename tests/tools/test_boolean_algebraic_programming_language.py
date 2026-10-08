@@ -255,7 +255,7 @@ def test_apl_elementary_floor_and_corpus_size() -> None:
             len(boolean.algebraic_programming_language(format(v, "08b"), 1))
             for v in range(256)
         )
-        == 23520
+        == 19968
     )
 
 
@@ -273,3 +273,15 @@ def test_apl_elementary_public_tagged_and_plain_source(
             esolangs.run("Algebraic Programming Language", program, stdin=stdin)
             == expected + "\n"
         )
+
+
+@pytest.mark.parametrize("width", [1, 40])
+def test_apl_width_layout_drops_an_ignored_input(width: int) -> None:
+    """A width layout tests only the essential inputs, yet still reads all."""
+    lang = "Algebraic Programming Language"
+    table = "0110" * 8  # inputs 0, 1 and 2 ignored
+    program = esolangs.generate(lang, table, width=width)
+    assert len(str(program)) < len(esolangs.generate(lang, "01101001" * 4, width=width))
+    for combo in range(32):
+        stdin = "\n".join(format(combo, "05b")) + "\n"
+        assert esolangs.run(lang, program, stdin=stdin) == table[combo] + "\n"
