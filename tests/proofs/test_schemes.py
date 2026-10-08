@@ -166,4 +166,9 @@ def test_the_documented_exemptions_are_real_ledger_rows(ledger: Ledger) -> None:
 
 def test_no_minterm_obligation_is_claimed(ledger: Ledger) -> None:
     """The `minterms` rows carry no measured obligation, and that is recorded."""
-    assert len(ledger.labelled("minterms")) == 3
+    rows = ledger.labelled("minterms")
+    assert rows, "no ledger row is labelled minterms; retire this test"
+    for row in rows:
+        assert not set(row.labels) & _LOOKUP_SCHEMES, (
+            f"{row.generator} is minterms and a lookup; a lookup row is measured"
+        )

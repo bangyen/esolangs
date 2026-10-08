@@ -36,7 +36,7 @@ NOT_A_LABEL = frozenset({"Size dispatch"})
 #: ledger preamble, ``exception`` in the Exceptions section.
 QUALIFIERS = frozenset({"cap", "exception"})
 
-_WORD_NUMBERS = {"zero": 0, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5}
+_WORD_NUMBERS = {"no": 0, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5}
 
 #: The Scaling column's classes, the text before the cell's first colon.
 #: ``linear`` is proved O(T) size and time; ``linear, time n log`` keeps one
@@ -176,12 +176,11 @@ def load(path: Path | None = None) -> Ledger:
         for match in re.finditer(r"^\*\*(.+?)\.\*\*", schemes, re.MULTILINE)
     }
 
-    # An exception may be an open gap or a proved language obstruction.  The
-    # count still has to stay grammatical, so the plural cannot be hard-coded.
+    # ``scripts/proof_status.py`` renders this sentence; reading it back
+    # catches a committed copy left behind by an edit to the ledger rows.
     count = re.search(
-        r"records (\d+) theoretical totality arguments and (\w+)\s+"
-        r"(?:(?:open|proved language) )?exceptions?",
-        text,
+        r"records (\d+) theoretical totality arguments and (\w+) exceptions?",
+        " ".join(text.split()),
     )
     assert count, f"{DOC} no longer states its own totals"
 
@@ -210,5 +209,9 @@ def load(path: Path | None = None) -> Ledger:
         exception_section=exceptions,
         exception_bullets=_bullets(exceptions),
         claimed_arguments=int(count.group(1)),
-        claimed_exceptions=_WORD_NUMBERS[count.group(2).lower()],
+        claimed_exceptions=(
+            int(word)
+            if (word := count.group(2).lower()).isdigit()
+            else _WORD_NUMBERS[word]
+        ),
     )

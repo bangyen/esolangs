@@ -766,9 +766,8 @@ class VM(Protocol):
         ``True`` marks the languages that take a value instead, so an
         underfed program answers a different row.  Two are neither: Alight
         is ``True`` but halts on ``cannot apply '+' to 2.0 and 'eof'``;
-        Suffolk is ``False`` but the read *ends* the program.  Swept one
-        line short: of 52 languages reading stdin, 44 of 45 ``False`` raise
-        and 6 of 7 ``True`` answer a different row.
+        Suffolk is ``False`` but the read *ends* the program.  Every other
+        language reading stdin, swept one line short, matches its flag.
         """
 
     @property

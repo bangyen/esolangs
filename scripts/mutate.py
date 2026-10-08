@@ -769,7 +769,7 @@ def main() -> int:
 
         # The per-test alarm belongs to the mutation runs; the baseline has
         # none, so anything that does not finish here waits forever instead
-        # of saying so.  Every baseline measured across the 46 languages is
+        # of saying so.  Every baseline measured across the languages is
         # under a second, so a cap two orders of magnitude above that costs
         # nothing and turns a hang into a message.
         started = time.monotonic()

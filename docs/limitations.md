@@ -16,12 +16,18 @@ See [Polynomial](proofs/polynomial.md) for its size lower bound.
   documented host-recursion limit.
 - Streetcode's four-way junction is an implementation convention: the source
   specifies only a two-road choice.
-- Line and Piet carry a raster source: `generate` returns an
-  `esolangs.raster.Raster`, `run` takes it or a PNG path through the shared
-  codec, and `describe` reports `source_kind="raster"`. Text and raster share
-  VM and step contracts; `RUNNERS` describes text bundling only. Line
-  retains its graph for repeated generated rows; stepping parses pixels. Piet
-  emits and executes pixels.
+
+<!-- RASTER-SOURCES:START -->
+
+Line, Piet and Piet++ carry a raster source: `generate` returns an
+`esolangs.raster.Raster`, `run` takes it or a PNG path through the shared
+codec, and `describe` reports `source_kind="raster"`.
+
+<!-- RASTER-SOURCES:END -->
+
+Text and raster share VM and step contracts; `RUNNERS` describes text
+bundling only. Line retains its graph for repeated generated rows, and
+stepping parses pixels; the other raster languages emit and execute pixels.
 
 ## Source positions
 
@@ -180,10 +186,15 @@ the 1792 level-0 rows.
 
 ## Curation
 
-The collection has 81 languages; its floor is 31. All ten classics have
-generators. Removed: unused ordinary imperative entries with shared-shim
-generators; Nopstacle for incompatible embeds; ZTOALC L for a searched
-syntax-level lookup table. The 2D screen intersected
+<!-- COLLECTION-SIZE:START -->
+
+The collection has 83 languages.
+
+<!-- COLLECTION-SIZE:END -->
+
+Its floor is 31, and all ten classics have generators. Removed: unused
+ordinary imperative entries with shared-shim generators; Nopstacle for
+incompatible embeds; ZTOALC L for a searched syntax-level lookup table. The 2D screen intersected
 1,543 unimplemented with 567 two-dimensional pages, then filtered 36 by prior
 verdicts, co-categories, I/O and branch vocabulary, and page length. It admitted
 Super SNUSP and Alight and rejected Pinyin.
@@ -236,14 +247,18 @@ Forth (57), Chicken (55), Shakespeare (54), and LOLCODE (47) do not.
 Existing fame exceptions must still clear the bar. Whitespace was removed at
 58 backlinks.
 
+<!-- CURATION-CENSUS:START -->
+
 The 2026-10-06 census (`tests/fixtures/curation.json`) records each
-language's backlinks and route: 21 clear the fame gate and 54 are first
-implementations; SStack (4), Smu (4, remeasured 2026-10-07) and Piet++
-(8), all Unimplemented, were added after. Six were implemented elsewhere
-when added, all before the rule was written down on 2026-09-27, and are
-grandfathered: BIO (ais523),
-BF-PDA (Madk, 2010), 123 (a 2012 VB.NET interpreter), NoComment, Sophie
-(their authors') and Jaune (two others'). Befunge-98 (Funge-98, 31, two
+language's backlinks and route: 21 clear the fame gate,
+56 are first implementations and 6 are grandfathered.
+
+<!-- CURATION-CENSUS:END -->
+
+The grandfathered languages were implemented elsewhere when added, all
+before the rule was written down on 2026-09-27: BIO (ais523), BF-PDA (Madk,
+2010), 123 (a 2012 VB.NET interpreter), NoComment, Sophie (their authors')
+and Jaune (two others'). Befunge-98 (Funge-98, 31, two
 dozen implementations) came after and was removed on 2026-10-06.
 
 A route admits a language only when its specification fixes the core

@@ -24,11 +24,11 @@ the coverage arguments.
 In `tests/proofs/`, fast-band `test_ledger.py` checks registry consistency,
 and `test_schemes.py` checks lookup and parameterized rows (`tree` and
 `minterms` have no per-row check). Deeper checks live in `tests/proofs/deep/`.
-`all_generators.py` checks all 80 constructions: flipping each table row
+`all_generators.py` checks every construction: flipping each table row
 changes the emitted program at the tested arities, and each construction
 completes an arity ladder on both table shapes. This checks the counting half
-of each scheme. Four generators -- A Painter Ant, ArrowQueue, Container and
-BIO -- also have construction-specific proofs.
+of each scheme. A Painter Ant, ArrowQueue, Container and BIO also have
+construction-specific proofs.
 
 `python -m tests.proofs.deep <band>` selects declared cost bands: `verify`
 for the local gate, `ci` for the registry battery, `by-hand` for expensive
@@ -384,7 +384,7 @@ Symbols the formula cells use:
   pair.  Whether some 17-input table has no program is open.
 
 The former exception, `%^2^-1`, left with its language. Every row outside
-these two exceptions is `Total`, or theoretically total past the resource
+these exceptions is `Total`, or theoretically total past the resource
 ceiling below.
 
 ### Resource-ceiling audit
@@ -425,8 +425,14 @@ construction.  Parity at thirteen inputs is 966568 digits, built in
 three seconds with the prime powers multiplied as a balanced tree, and
 the interpreter decodes it to the tree the generator encoded.
 
-Accordingly, this ledger records 77 theoretical totality arguments and two
-proved language exceptions under the source-embedded contract.
+<!-- PROOF-TOTALS:START -->
+
+Accordingly, this ledger records 77 theoretical totality arguments and
+two exceptions under the source-embedded contract.
+
+<!-- PROOF-TOTALS:END -->
+
+Each exception is a proved obstruction of the language, not an open gap.
 Every other row is `Total` or theoretically total past a resource ceiling.
 
 ## Ordered reads without retained inputs

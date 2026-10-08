@@ -58,7 +58,7 @@ class TestTheShapeWarningFiresOnlyWhenItShould:
     def test_an_ordinary_language_is_never_warned_about(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        """Sixty-five languages read 0/1 lines and must stay silent."""
+        """The languages that read 0/1 lines must stay silent."""
         path = tmp_path / "bf.txt"
         path.write_text(esolangs.generate("brainfuck", "0110"))
         out, err = call_both(["run", "brainfuck", str(path)], capsys, stdin="10")
