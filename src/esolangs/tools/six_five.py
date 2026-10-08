@@ -12,6 +12,8 @@ from collections.abc import Callable
 
 from esolangs.exceptions import GeneratorCapError
 from esolangs.interpreters.source_hints import with_hint
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
     _ASCII_ZERO,
     _GREEDY_ORDER_MAX_ARITY,
@@ -720,3 +722,13 @@ def _six_five_const(value: int) -> str:
     q, r = divmod(value, 6)
     # A remainder of five already satisfies 5*k <= value.
     return "6" * q + "62" * r
+
+
+LANGUAGE = Language(
+    "6-5",
+    "tape_based.six_five",
+    boolean=six_five,
+    contract=BooleanContract(
+        input_shape="char_stream",
+    ),
+)

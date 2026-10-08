@@ -2,6 +2,8 @@
 
 from itertools import groupby
 
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
@@ -50,3 +52,13 @@ def unsquare(truth_table: str) -> str:
         else:
             blocks.append("iA")  # consume the line, leave the stack alone
     return cells + "".join(blocks) + "A" + "+" * (_ASCII_ZERO // 2) + "Po"
+
+
+LANGUAGE = Language(
+    "Unsquare",
+    "stack_based.unsquare",
+    boolean=unsquare,
+    contract=BooleanContract(
+        input_shape="char_stream",
+    ),
+)

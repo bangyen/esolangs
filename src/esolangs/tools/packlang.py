@@ -26,6 +26,8 @@ import re
 from itertools import pairwise, product
 
 from esolangs._dialects import PacklangLiterals
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
@@ -308,3 +310,13 @@ def _folded(statements: list[str]) -> list[str]:
         else:
             lines.append(statement)
     return lines
+
+
+LANGUAGE = Language(
+    "Packlang",
+    "other.packlang",
+    boolean=packlang,
+    contract=BooleanContract(
+        input_shape="char_stream",
+    ),
+)

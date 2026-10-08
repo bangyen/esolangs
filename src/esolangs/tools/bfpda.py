@@ -1,5 +1,7 @@
 """Boolean template generator for bfpda."""
 
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
@@ -60,3 +62,13 @@ def bfpda(truth_table: str) -> str:
 
     node(0, 0, 2**n)
     return "".join(pieces)
+
+
+LANGUAGE = Language(
+    "BF-PDA",
+    "stack_based.bf_pda",
+    boolean=bfpda,
+    contract=BooleanContract(
+        parameterized=True,
+    ),
+)

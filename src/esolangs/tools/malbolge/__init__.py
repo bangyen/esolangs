@@ -41,6 +41,8 @@ from itertools import product
 from esolangs.exceptions import GeneratorCapError
 from esolangs.interpreters.other.malbolge import _XLAT1, _XLAT2, _crazy
 from esolangs.interpreters.source_hints import with_hint
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import _validate_truth_table
 
 from .core import (
@@ -765,3 +767,15 @@ def malbolge(truth_table: str) -> str:
     return "".join(
         chr(_char_for(program.get(address, "o"), address)) for address in range(_WORDS)
     )
+
+
+LANGUAGE = Language(
+    "Malbolge",
+    "other.malbolge",
+    generator_max_inputs=MAX_INPUTS,
+    boolean=malbolge,
+    contract=BooleanContract(
+        note="the answer is one character and is printed with no newline",
+        input_shape="char_stream",
+    ),
+)

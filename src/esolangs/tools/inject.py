@@ -27,6 +27,8 @@ agree is passed over.
 
 import string
 
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
     _validate_truth_table,
     best_input_order,
@@ -270,3 +272,13 @@ def _inject_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     # block is two adjacent delimiters.
     head = [f"{name};\n{name};" for name in names.inputs]
     return "\n".join([*head, *body, *tail])
+
+
+LANGUAGE = Language(
+    "Inject",
+    "other.inject",
+    boolean=inject,
+    contract=BooleanContract(
+        note="send terminates each line, so the answer ends in a newline",
+    ),
+)

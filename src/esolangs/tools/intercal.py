@@ -7,6 +7,8 @@ variables and named where they recur (:func:`_intercal_shared`).
 import re
 from dataclasses import dataclass
 
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
     _validate_truth_table,
     in_input_order,
@@ -249,3 +251,16 @@ def _program(n: int, assigned: list[tuple[int, _Expr]], result: _Expr) -> str:
         f"{'PLEASE' if i < polite else 'DO'} {statement}"
         for i, statement in enumerate(statements)
     )
+
+
+LANGUAGE = Language(
+    "INTERCAL",
+    "other.intercal",
+    boolean=intercal,
+    contract=BooleanContract(
+        answer_pattern=r"(?s)^(_\n|I)\n$",
+        answer_values=("_\n", "I"),
+        note="INTERCAL READ OUT prints a lone overbar for zero and I for one",
+        parameterized=True,
+    ),
+)

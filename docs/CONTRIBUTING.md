@@ -72,7 +72,10 @@ interpreter module ◄──── source + encoded stdin ◄──┘
 - `src/esolangs/registry/` owns integration. `Language` records names,
   interpreter, source shape, optional generator and the typed input and
   answer `contract`; `resolve` normalizes spelling, and `RUNNERS` selects
-  whole-source or split-line input.
+  whole-source or split-line input. A language with a generator declares
+  its own `LANGUAGE = Language(...)` at the end of its generator module, and
+  the registry collects those; only interpreter-only languages are listed
+  in `registry/_table.py`.
 - Generators live in `src/esolangs/tools/`. Most return runnable source;
   input-embedding languages return a `$`-run template for `instantiate`.
   `encode_inputs` handles stdin conventions, and `read_answer` reads printed
@@ -193,7 +196,7 @@ asks for, regenerates, and lists the prose mentions left to edit.
 ### The Boolean I/O contract
 
 A generated program reads the inputs and prints the answer the way its
-`BooleanContract` (`registry/_contracts.py`) says; with no entry the
+`BooleanContract` (the `contract=` of its `LANGUAGE`) says; with none the
 default is one `0`/`1` line per input and a printed `0`/`1`. Every program
 reads all n inputs, in order, even when the table is constant or ignores an
 input. `input_shape="char_stream"` reads the bits as bare characters, and also

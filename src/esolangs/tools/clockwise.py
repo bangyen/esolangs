@@ -1,5 +1,7 @@
 """Boolean-function generator for Clockwise."""
 
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import _validate_truth_table, essential_inputs, read_at
 
 # The ring's own columns: 3 descends at the start, 2 climbs into the first
@@ -209,3 +211,19 @@ def _clockwise_two_columns(table: str) -> str:
             rows.append("+" + ("-" if entry and offset == 0 else " "))
         rows.append("!!")
     return "\n".join(row.rstrip() for row in rows)
+
+
+LANGUAGE = Language(
+    "Clockwise",
+    "grid_based.clockwise",
+    boolean=clockwise,
+    split=True,
+    contract=BooleanContract(
+        input_shape="char_stream_cyclic",
+        note="Clockwise reads all its input bits in one go, so they go "
+        "on one line -- one character per bit, not a line per bit, and "
+        "not seven bits packed into a character: that packing is real "
+        "but is on the output side. A line per bit, or a packed one, "
+        "is read as a different row and answered wrongly",
+    ),
+)

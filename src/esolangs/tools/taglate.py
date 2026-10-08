@@ -7,6 +7,8 @@ a 1, so a constant half or repeat has nothing to fold or share.
 from itertools import pairwise
 from math import isqrt
 
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
@@ -323,3 +325,20 @@ def balance_taglate(_table: str, default: str) -> str:
                 wrap_program(program, "taglate", min(upper, max(lower, width)))
             )
     return min(candidates, key=balance_score)
+
+
+LANGUAGE = Language(
+    "Taglate",
+    "queue_based.taglate",
+    boolean=taglate,
+    split=True,
+    contract=BooleanContract(
+        input_shape="char_stream_padded",
+        ghost_digit=True,
+        note="Taglate reads adjacent characters, but an "
+        "odd input count above 1 is padded with a leading zero it reads "
+        "like any other digit: an n=3 program wants four characters. Feeding "
+        "three exhausts its input; padding at the end instead answers "
+        "every row whose top bit is set wrongly",
+    ),
+)

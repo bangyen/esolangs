@@ -2,6 +2,8 @@
 
 from dataclasses import dataclass
 
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
     _ASCII_ONE,
     _ASCII_ZERO,
@@ -580,3 +582,14 @@ def _emit_loop(
     lines.extend(f"if {v} left" for v in crossable)
     lines.extend(f"if {v} left" for v in sorted(strip.alphabet[1 - parity]))
     lines.extend(f"if {v} goto @{name}" for v in crossable)
+
+
+LANGUAGE = Language(
+    "BrainIf",
+    "tape_based.brainif",
+    boolean=brainif,
+    split=True,
+    contract=BooleanContract(
+        input_shape="char_stream",
+    ),
+)

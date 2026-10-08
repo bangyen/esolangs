@@ -12,6 +12,7 @@ loop where that is shorter, any other entry is painted one by one.
 
 from itertools import groupby
 
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table, input_weights
 from esolangs.tools.wrap import wrap_program
 
@@ -138,3 +139,10 @@ def _dimensional_bare(table: str, n: int) -> str:
             parts.append("d" + move(fresh, ">"))
     parts.append("+" * _ASCII_ZERO + ".")
     return "".join(parts)
+
+
+LANGUAGE = Language(
+    "Dimensional",
+    "tape_based.dimensional",
+    boolean=dimensional,
+)

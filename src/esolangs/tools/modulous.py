@@ -5,6 +5,7 @@ A string literal has no subtrees to fold or share.
 
 import re
 
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table, input_weights
 
 
@@ -52,3 +53,10 @@ def modulous(truth_table: str, width: int | None = None) -> str:
     )
     tokens = re.findall(r'"[^"]*"\]|[A-Z]+|\d+|\S', prologue + "".join(reads) + walk)
     return wrap_space_delimited(" ".join(tokens), width)
+
+
+LANGUAGE = Language(
+    "Modulous",
+    "stack_based.modulous",
+    boolean=modulous,
+)

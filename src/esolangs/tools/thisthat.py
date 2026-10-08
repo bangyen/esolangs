@@ -3,6 +3,8 @@
 from itertools import pairwise
 from typing import Literal
 
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
     _validate_truth_table,
     grid_width,
@@ -357,3 +359,16 @@ def _layout(
     route.append(root)
     builder.connect(route, "single")
     return builder.render()
+
+
+LANGUAGE = Language(
+    "thisthat",
+    "grid_based.thisthat",
+    boolean=thisthat,
+    split=True,
+    contract=BooleanContract(
+        input_shape="char_stream",
+        ignores_whitespace=True,
+        input_sets=True,
+    ),
+)

@@ -12,6 +12,8 @@ copy of ``X`` is then ``^``, and a half without one drops it with ``!``.
 import re
 from functools import cache
 
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     SubtreeDiagram,
@@ -149,3 +151,13 @@ def underload_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
 def _underload_layout_tokens(template: str) -> list[str]:
     """Ignore layout LF while retaining whole output literals as atoms."""
     return re.findall(r"\${4}|\([01]\)|[^\n]", template)
+
+
+LANGUAGE = Language(
+    "Underload",
+    "stack_based.underload",
+    boolean=underload,
+    contract=BooleanContract(
+        parameterized=True,
+    ),
+)

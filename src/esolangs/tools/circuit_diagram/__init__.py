@@ -74,6 +74,8 @@ a run prints exactly one character.
 
 from typing import Literal
 
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.circuit_diagram.hlayout import _h_term_layout
 from esolangs.tools.circuit_diagram.layout import _Layout
 from esolangs.tools.helpers import (
@@ -592,3 +594,15 @@ def circuit_diagram(truth_table: str, width: int | None = None) -> str:
     banded = _circuit_diagram_at(truth_table, max(1, width - 2))
     affine = _affine_circuit(truth_table, width)
     return _narrowest_present(flat, banded, affine)
+
+
+LANGUAGE = Language(
+    "Circuit Diagram",
+    "grid_based.circuit_diagram",
+    boolean=circuit_diagram,
+    split=True,
+    contract=BooleanContract(
+        input_shape="char_stream",
+        ignores_whitespace=True,
+    ),
+)

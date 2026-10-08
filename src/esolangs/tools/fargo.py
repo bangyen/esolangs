@@ -24,6 +24,8 @@ order only renames the ``@`` literals, and :func:`fargo` uses the identity.
 
 from string import ascii_lowercase
 
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
     _validate_truth_table,
     anf_coefficients,
@@ -259,3 +261,15 @@ def fargo(truth_table: str, width: int | None = None) -> str:
     # Interns the folded Davio expression; the old ANF-per-mask form was 1.4-2.0x
     # larger at n=3-5 on random, constant-half and tiled tables.
     return _definition_program(expression, n)
+
+
+LANGUAGE = Language(
+    "Fargo",
+    "other.fargo",
+    boolean=fargo,
+    contract=BooleanContract(
+        input_shape="row_index",
+        note="Fargo reads one number whose bits are the inputs, so the "
+        "committed input is the row index rather than a bit per line",
+    ),
+)

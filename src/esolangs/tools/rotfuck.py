@@ -20,6 +20,8 @@ from itertools import product
 
 from esolangs._dialects import ROTFUCK_CYCLES
 from esolangs._dialects import rotation as validate_rotation
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
@@ -321,3 +323,23 @@ def rotfuck(truth_table: str, *, rotation: str = "backward") -> str:
         out.emit(_parse(bf))
         texts.append(out.text())
     return min(texts, key=len)
+    size = 2 ** len(used)
+
+    strip = ">>".join(
+        "+" if table[size - 1 - slot] == "1" else "" for slot in range(size)
+    )
+    bf = strip + ">" + _select(n, used, _groups(len(used)))
+    bf += "<" + "+" * _ASCII_ZERO + "."
+    out = _Builder()
+    out.emit(_parse(bf))
+    return out.text()
+
+
+LANGUAGE = Language(
+    "ROTfuck",
+    "tape_based.rotfuck",
+    boolean=rotfuck,
+    contract=BooleanContract(
+        input_shape="char_stream",
+    ),
+)

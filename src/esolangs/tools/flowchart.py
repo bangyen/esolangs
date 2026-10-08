@@ -15,6 +15,8 @@ sets the register once), so it has no subtrees to share.
 from collections import Counter
 from itertools import pairwise
 
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
     _validate_truth_table,
     constant_span_test,
@@ -532,3 +534,14 @@ def _flowchart_deque(truth_table: str) -> str:
 
     left = min(x for x, _ in cells)
     return _flowchart_render({(x - left, row): c for (x, row), c in cells.items()})
+
+
+LANGUAGE = Language(
+    "Flowchart",
+    "grid_based.flowchart",
+    boolean=flowchart,
+    split=True,
+    contract=BooleanContract(
+        input_shape="char_stream",
+    ),
+)

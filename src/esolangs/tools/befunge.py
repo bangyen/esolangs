@@ -14,6 +14,7 @@ from math import isqrt
 
 from esolangs.exceptions import GeneratorCapError
 from esolangs.interpreters.source_hints import with_hint
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import _parity_bias, _validate_truth_table, input_weights
 from esolangs.tools.wrap import balance_score
 
@@ -195,3 +196,12 @@ def balance_befunge(truth_table: str, default: str) -> str:
     if n <= 10 and _parity_bias(truth_table) is not None:
         candidates.append(befunge(truth_table, 1))
     return min(candidates, key=balance_score)
+
+
+LANGUAGE = Language(
+    "Befunge",
+    "grid_based.befunge",
+    generator_max_inputs=MAX_INPUTS,
+    boolean=befunge,
+    split=True,
+)

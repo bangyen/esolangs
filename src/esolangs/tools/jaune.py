@@ -2,6 +2,7 @@
 
 from collections.abc import Callable
 
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
     _validate_truth_table,
     constant_span_test,
@@ -220,3 +221,10 @@ def _jaune_ordered(
         return nav + f"{else_at}!{then}"
 
     return labels.render(lambda: reads + node(0, 0, 2**n, scratch, None), share=share)
+
+
+LANGUAGE = Language(
+    "Jaune",
+    "tape_based.jaune",
+    boolean=jaune,
+)

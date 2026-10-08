@@ -6,6 +6,8 @@ has no subtree to fold or share.
 
 from collections.abc import Callable
 
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
     _ASCII_ZERO,
     TEMPLATE_CHAR,
@@ -242,3 +244,13 @@ def nocomment(truth_table: str) -> str:
     setup_move(index)
 
     return "".join(setup + commands)
+
+
+LANGUAGE = Language(
+    "NoComment",
+    "tape_based.nocomment",
+    boolean=nocomment,
+    contract=BooleanContract(
+        parameterized=True,
+    ),
+)

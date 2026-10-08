@@ -2,6 +2,8 @@
 
 from itertools import pairwise
 
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
@@ -361,3 +363,17 @@ def _back_ordered(
     # No input row can instantiate to whitespace (a zero used to embed as a
     # blank, and the height revealed it).
     return _reflect_back(grid, height, tree_width)
+
+
+LANGUAGE = Language(
+    "Back",
+    "tape_based.back",
+    boolean=back,
+    split=True,
+    contract=BooleanContract(
+        answer_mode="dump",
+        note="Back has no output instruction and dumps its tape at halt; "
+        "the answer is cell n, past the n input cells",
+        parameterized=True,
+    ),
+)

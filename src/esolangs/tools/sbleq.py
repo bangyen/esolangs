@@ -1,5 +1,7 @@
 """Boolean-function generator for s*bleq."""
 
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
     _ASCII_ONE,
     _ASCII_ZERO,
@@ -354,3 +356,13 @@ def _sbleq_hoisted(
     prelude = [0, 0, 6, -1, 0, 0, code_base, 0, 0]
     cells = prelude + data + cells
     return " ".join(map(str, cells))
+
+
+LANGUAGE = Language(
+    "S*bleq",
+    "tape_based.sbleq",
+    boolean=sbleq,
+    contract=BooleanContract(
+        input_shape="char_stream",
+    ),
+)

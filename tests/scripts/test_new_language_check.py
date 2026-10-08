@@ -16,7 +16,7 @@ def test_every_registered_language_passes_check() -> None:
 def test_an_unregistered_language_is_told_to_register() -> None:
     (gap,) = new_language.check("Not A Language")
     assert gap.where == "src/esolangs/registry/_table.py"
-    assert 'id="not_a_language"' in gap.fix
+    assert 'Language("Not A Language"' in gap.fix
 
 
 def test_check_runs_the_formula_case_bounds_measures() -> None:

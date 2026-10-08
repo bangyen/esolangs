@@ -4,6 +4,8 @@ Entries are planted left to right, so a skip loop has no terminator ahead of
 it: a constant or repeated span costs a ``>`` per cell.
 """
 
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import _validate_truth_table, essential_inputs, read_at
 
 __all__ = ["bit_tilde"]
@@ -63,3 +65,13 @@ def bit_tilde(truth_table: str) -> str:
     prog.append("<<{" + _BIT_TILDE_WALK + "}" + _BIT_TILDE_WALK)
     prog.append("<" * 17 + "(")
     return "".join(prog)
+
+
+LANGUAGE = Language(
+    "bit~",
+    "tape_based.bit_tilde",
+    boolean=bit_tilde,
+    contract=BooleanContract(
+        input_shape="char_stream",
+    ),
+)

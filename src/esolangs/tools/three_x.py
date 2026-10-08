@@ -4,6 +4,7 @@ from collections import Counter
 from fractions import Fraction
 from functools import cache
 
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
     _validate_truth_table,
     constant_span_test,
@@ -308,3 +309,10 @@ def _three_x_emit(
     return "".join(
         keys[piece] if isinstance(piece, tuple) else piece for piece in pieces
     )
+
+
+LANGUAGE = Language(
+    "3x",
+    "stack_based.three_x",
+    boolean=three_x,
+)

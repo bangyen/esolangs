@@ -17,6 +17,8 @@ repeat of 8+ rows for free would save 0.0% (random, const-half) to 0.9%
 from collections.abc import Callable
 from functools import cache
 
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
     _validate_truth_table,
     constant_span_test,
@@ -680,3 +682,16 @@ def streetcode(truth_table: str, width: int | None = None) -> str:
         # makes those the width floor while preserving right-hand driving.
         return _streetcode_narrow(_streetcode_flat(truth_table, n), width)
     return shortest(*programs)
+    rotated = [_streetcode_rotate(program) for program in programs]
+    return shortest(*programs, *rotated)
+
+
+LANGUAGE = Language(
+    "Streetcode",
+    "grid_based.streetcode",
+    boolean=streetcode,
+    split=True,
+    contract=BooleanContract(
+        input_shape="char_stream",
+    ),
+)

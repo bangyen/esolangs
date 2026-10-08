@@ -1,5 +1,7 @@
 """Boolean-function generator for RAM0."""
 
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
@@ -186,3 +188,17 @@ def _ram0_ordered(
     tokens += tree
     end = pos + len(tree) + 1  # 1-based goto operand just past the last command
     return " ".join(str(end) if t == "END@" else t for t in tokens)
+
+
+LANGUAGE = Language(
+    "RAM0",
+    "register_based.ram0",
+    boolean=ram0,
+    contract=BooleanContract(
+        answer_mode="dump",
+        answer_pattern=r"z: (\d+)",
+        note="RAM0 has no output instruction and dumps its whole state "
+        "at halt; the answer is the 'z' register",
+        parameterized=True,
+    ),
+)

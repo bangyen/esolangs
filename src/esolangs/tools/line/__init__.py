@@ -18,6 +18,7 @@ import re
 from functools import lru_cache
 
 from esolangs.raster import Pixel, Raster, Rows, lazy_raster
+from esolangs.registry._language import Language, SourceKind
 from esolangs.tools.helpers import (
     _residual_ids,
     _validate_truth_table,
@@ -153,3 +154,11 @@ def balance(truth_table: str, _default: Raster) -> Raster:
     if not compact:
         selected = old_selected
     return lazy_raster(lambda: _render_node(selected, compact=compact), selected)
+
+
+LANGUAGE = Language(
+    "Line",
+    "tape_based.line",
+    source_kind=SourceKind.RASTER,
+    boolean=line,
+)

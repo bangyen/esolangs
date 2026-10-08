@@ -1,5 +1,7 @@
 """Boolean template generator for bio."""
 
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
     _ASCII_ZERO,
     TEMPLATE_CHAR,
@@ -68,3 +70,13 @@ _BIO_DOUBLE = "0ix{1ox;0oy;0oy;};0iy{1oy;0ox;};"
 #: Around an ignored input's setter: park ``x`` in ``y``, then clear what the
 #: setter added and move ``x`` back, so ``y`` ends at zero as doubling leaves it.
 _BIO_SKIP = ("0ix{1ox;0oy;};", "0ix{1ox;};0iy{1oy;0ox;};")
+
+
+LANGUAGE = Language(
+    "BIO",
+    "register_based.bio",
+    boolean=bio,
+    contract=BooleanContract(
+        parameterized=True,
+    ),
+)

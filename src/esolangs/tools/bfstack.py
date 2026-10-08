@@ -11,6 +11,8 @@ has no range test, so each listed row is its own nested loop.
 
 from functools import cache
 
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
@@ -156,3 +158,13 @@ def bfstack(truth_table: str) -> str:
         return plain if shared is None or len(plain) <= len(shared) else shared
 
     return build(0, 0, len(truth_table))
+
+
+LANGUAGE = Language(
+    "BFStack",
+    "stack_based.bfstack",
+    boolean=bfstack,
+    contract=BooleanContract(
+        input_shape="char_stream",
+    ),
+)

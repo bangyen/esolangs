@@ -2,6 +2,8 @@
 
 from itertools import pairwise
 
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
@@ -71,3 +73,13 @@ def _deleter(digit: int) -> str:
     if digit == 0:
         return "[-<}]"
     return f"[-<{'+' * (1 << _DIGIT_BITS)}{_deleter(digit - 1)}>]"
+
+
+LANGUAGE = Language(
+    "Circlefuck",
+    "tape_based.circlefuck",
+    boolean=circlefuck,
+    contract=BooleanContract(
+        input_shape="char_stream",
+    ),
+)

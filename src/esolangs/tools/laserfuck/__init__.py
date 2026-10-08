@@ -3,6 +3,8 @@
 from functools import cache
 from typing import NamedTuple
 
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
     _validate_truth_table,
     constant_span_test,
@@ -818,3 +820,17 @@ def balance_laserfuck(table: str, default: str) -> str:
         *(laserfuck(table, width) for width in sorted(widths)),
         key=balance_score,
     )
+
+
+LANGUAGE = Language(
+    "LaserFuck",
+    "grid_based.laserfuck",
+    boolean=laserfuck,
+    split=True,
+    contract=BooleanContract(
+        answer_mode="dump",
+        note="the initial heading is random by spec, so the example pins "
+        "the source it is drawn from: seed 0 draws heading 3",
+        input_shape="char_stream",
+    ),
+)

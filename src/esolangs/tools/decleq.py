@@ -1,5 +1,7 @@
 """Boolean generator for decleq."""
 
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
     _ASCII_ONE,
     _ASCII_ZERO,
@@ -158,3 +160,13 @@ def _decleq_build(
     for addr in ends:
         mem[addr] = len(mem)
     return " ".join(map(str, mem))
+
+
+LANGUAGE = Language(
+    "Decleq",
+    "register_based.decleq",
+    boolean=decleq,
+    contract=BooleanContract(
+        input_shape="char_stream",
+    ),
+)

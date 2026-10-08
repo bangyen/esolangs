@@ -5,6 +5,8 @@ from dataclasses import dataclass
 from itertools import count, pairwise
 from typing import NamedTuple
 
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.forbin import (
     _forbin_name,
 )
@@ -532,3 +534,15 @@ def balance_container(table: str, default: str) -> str:
             )
         )
     return min(candidates, key=balance_score)
+
+
+LANGUAGE = Language(
+    "Container",
+    "other.container",
+    boolean=container,
+    split=True,
+    contract=BooleanContract(
+        note="Container prints the answer; module.run returns the EXIT code.",
+        input_shape="char_stream",
+    ),
+)

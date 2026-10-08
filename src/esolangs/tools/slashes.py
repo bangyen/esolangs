@@ -4,6 +4,8 @@ The table is a literal with no subtrees to fold or share, and a trailing run
 cannot be trimmed: the cursor ``>`` is left undecoded (116 of 126 wrong).
 """
 
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import TEMPLATE_CHAR, _validate_truth_table, input_weights
 
 _UNARY = "/b/a*//*a/a**//a//"
@@ -53,3 +55,14 @@ def _is_unfilled_template(code: str) -> bool:
         size == 1 << (len(slots) - 2 * ignored)
         and prefix == head + _UNARY + _SWEEP * size
     )
+
+
+LANGUAGE = Language(
+    "///",
+    "other.slashes",
+    boolean=slashes,
+    contract=BooleanContract(
+        note="Inputs fill the binary row index before unary table selection.",
+        parameterized=True,
+    ),
+)

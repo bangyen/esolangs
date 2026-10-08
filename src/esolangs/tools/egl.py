@@ -1,5 +1,7 @@
 """Boolean-function generator for EGL."""
 
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import _validate_truth_table, input_weights
 
 
@@ -42,3 +44,13 @@ def egl(truth_table: str, width: int | None = None) -> str:
     rows = [header + rest[:first]]
     rows.extend(rest[start : start + room] for start in range(first, len(rest), room))
     return "\n".join(rows)
+
+
+LANGUAGE = Language(
+    "EGL",
+    "grid_based.egl",
+    boolean=egl,
+    contract=BooleanContract(
+        input_shape="char_stream",
+    ),
+)

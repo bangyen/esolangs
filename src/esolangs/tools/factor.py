@@ -14,6 +14,8 @@ from itertools import groupby
 
 from esolangs._digits import digit_limit_for
 from esolangs.factor_primes import prime_segments
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
@@ -147,3 +149,13 @@ def factor(truth_table: str) -> str:
     number = _encode(_program(truth_table))
     with digit_limit_for(int(number.bit_length() * 0.30103) + 1):
         return str(number)
+
+
+LANGUAGE = Language(
+    "Factor",
+    "tape_based.factor",
+    boolean=factor,
+    contract=BooleanContract(
+        input_shape="char_stream",
+    ),
+)

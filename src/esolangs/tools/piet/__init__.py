@@ -14,6 +14,8 @@ from functools import cache
 
 from esolangs.interpreters.stack_based.piet import _COLOURS, BLACK
 from esolangs.raster import Raster
+from esolangs.registry._contracts import BooleanContract
+from esolangs.registry._language import Language, SourceKind
 from esolangs.tools.helpers import _validate_truth_table, essential_inputs, read_at
 
 Change = tuple[int, int]
@@ -259,3 +261,12 @@ def piet(truth_table: str, width: int | None = None, *, scale: int = 1) -> Raste
 
         return folded(truth_table, width).upscaled(scale)
     return _generate(truth_table).upscaled(scale)
+
+
+LANGUAGE = Language(
+    "Piet",
+    "stack_based.piet",
+    source_kind=SourceKind.RASTER,
+    boolean=piet,
+    contract=BooleanContract(note="80 pixels per codel, comparable in area to Line"),
+)
