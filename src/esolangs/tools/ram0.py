@@ -16,57 +16,38 @@ _RAM0_INPUT = TEMPLATE_CHAR * len(PAIR[0])
 _LEAF = "Z A 2"
 
 
-def _ram0_width(address: int) -> int:
-    """Commands a RAM0 tree node spends before its subtrees.
-
-    ``Z``, an ``A`` per unit of the cell address, ``L``, ``C``, and the
-    ``goto`` that reaches the one-subtree.  Addresses descend with depth,
-    putting the most repeated tests in the shortest cells.
-    """
-    return address + 4
-
-
 def ram0(truth_table: str, width: int | None = None) -> str:
     """Build a RAM0 template for the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
-    One-column builds through three inputs use unary-address NAND circuits.
-    Wider layouts use the shared tree; only final ``z`` is the answer.
+    inputs (most significant first).  ``width=1`` through three inputs uses
+    unary-address NAND circuits; otherwise the shared tree.  Only final ``z``
+    is the answer.
 
-    RAM0 has no input command, so this is a parameterized generator: the
-    template's input runs become a fixed-length two-command
-    unit — fixed ``Z``, then the ``Z``/``A`` setter — independent of the
-    incoming register (``Z`` resets absolutely).  The earlier wall's
-    variable-length setter (``Z`` vs ``Z A``) was what shifted the absolute
-    ``goto`` operands; the padded setter removes that.
+    RAM0 has no input command, so each input run becomes a fixed-length
+    ``Z``, ``Z``/``A`` unit independent of the incoming register (``Z`` resets
+    absolutely); a variable-length setter would shift the absolute ``goto``
+    operands.
 
-    The load stores each bit once in its own RAM cell. Tree nodes use indirect
-    ``L`` (``z := ram[z]``), then ``C`` falls through to the zero-subtree or a
-    ``goto`` reaches the one-subtree. A leaf sets the answer and jumps to a
-    fixed low-address halt trampoline; the state dump's final ``z`` is the
-    answer.
+    The load stores each bit once in its own RAM cell, the level-``k`` test in
+    cell ``n-1-k``.  Tree nodes use indirect ``L`` (``z := ram[z]``), then
+    ``C`` falls through to the zero-subtree or a ``goto`` reaches the
+    one-subtree.  A leaf sets the answer and jumps to a fixed low-address halt
+    trampoline.
 
-    **The tree splits in input order.**
-    Input addresses are assigned by depth: level ``n-1`` uses zero,
-    up to the root at ``n-1``. Input runs remain in stream order.
-
-    **A repeated subtree is emitted once and jumped to.**  A node assumes
-    nothing on entry (it sets ``z`` and loads its own bit), so a one-subtree
-    equal to one already emitted at its level costs nothing -- its ``goto``
-    names the copy -- and a zero-subtree costs one ``goto`` in place of
-    itself; a leaf is shared the same way, and a test whose halves agree is
-    skipped. That caps the tree at its distinct subtables, O(T) with addresses.
-    Sharing never grows a table through four inputs (exhaustively checked).
-    The shared tree handles larger tables too.
+    A repeated subtree is emitted once and jumped to: a one-subtree equal to
+    one already emitted at its level costs nothing, a zero-subtree costs one
+    ``goto``, a leaf is shared the same way, and a test whose halves agree is
+    skipped.  That caps the tree at its distinct subtables.
     """
-    program = in_input_order(truth_table, _ram0_shared)
     if width is None:
-        return program
+        return in_input_order(truth_table, _ram0_shared)
     from esolangs.tools.wrap import wrap_space_delimited
 
-    if width == 1 and len(truth_table) <= 8:
+    if width == 1 and len(truth_table) <= 8:  # three inputs
         program = _ram0_nand(truth_table)
+    else:
+        program = in_input_order(truth_table, _ram0_shared)
     return wrap_space_delimited(program, width)
 
 
@@ -77,11 +58,14 @@ def _ram0_nand(truth_table: str) -> str:
     # RAM[3] reset to 1: reading RAM[3] then returns NOT(a AND b).
     tokens = ["Z", "N", "A", "S"]
 
+    def address_op(address: int, op: str) -> None:
+        tokens.extend(["Z", *("A" for _ in range(address)), op])
+
     def target(address: int) -> None:
-        tokens.extend(["Z", *("A" for _ in range(address)), "N"])
+        address_op(address, "N")
 
     def load(address: int) -> None:
-        tokens.extend(["Z", *("A" for _ in range(address)), "L"])
+        address_op(address, "L")
 
     for i in range(n):
         target(4 + i)
@@ -150,13 +134,9 @@ def _ram0_ordered(
     """
     n = _validate_truth_table(truth_table)
 
-    def width(level: int) -> int:
-        return _ram0_width(n - 1 - level)
-
     # Initial z == 0 makes C skip the widening end target.  Leaves jump to
     # that target through fixed 1-based address 2.
     tokens = ["C", "END@"]
-    pos = len(tokens)  # instantiated command index of the next command
 
     # Store the deepest, most repeated test at address zero.  Placeholders
     # remain in input-name order; only their destination cell changes.
@@ -166,12 +146,10 @@ def _ram0_ordered(
         tokens.append("Z")
         tokens.extend("A" for _ in range(address))
         tokens.append("N")
-        pos += 1 + address + 1
         tokens.extend(("Z", _RAM0_INPUT))  # reset, then set the bit
-        pos += 2
         tokens.append("S")
-        pos += 1
 
+    pos = len(tokens)  # instantiated command index of the next command
     ids = subtree_ids(truth_table)
     tree: list[str] = []
     # First address of each emitted subtree, by :func:`subtree_slot` name.
@@ -184,7 +162,7 @@ def _ram0_ordered(
         """Lay the subtree out where control falls in, or jump to its copy."""
         level, block, slot = resolve(level, block)
         copy = placed.get(slot)
-        # A jump is one token; a leaf's three only lose to a long address.
+        # A jump is one token; a leaf is 3, so jump to it only if copy has <3 digits.
         if copy is not None and (slot[0] >= 0 or len(str(copy)) < len(_LEAF)):
             tree.append(str(copy))
             return
@@ -194,20 +172,15 @@ def _ram0_ordered(
             tree.extend(["Z", "A" if slot[1] else "Z", "2"])
             return
         at = len(tree)
-        tree.extend([""] * width(level))
+        head = ["Z", *("A" for _ in range(n - 1 - level)), "L", "C"]
+        tree.extend([""] * (len(head) + 1))
         emit(level + 1, 2 * block)
         # The one subtree is jumped to, so an earlier copy costs nothing.
         one = placed.get(resolve(level + 1, 2 * block + 1)[2])
         if one is None:
             one = pos + len(tree) + 1
             emit(level + 1, 2 * block + 1)
-        tree[at : at + width(level)] = [
-            "Z",
-            *("A" for _ in range(n - 1 - level)),
-            "L",
-            "C",
-            str(one),
-        ]
+        tree[at : at + len(head) + 1] = [*head, str(one)]
 
     emit(0, 0)
     tokens += tree
