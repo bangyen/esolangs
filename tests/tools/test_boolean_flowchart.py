@@ -196,3 +196,14 @@ class TestFlowchart:
             column = {row[x] for row in grid} - {" "}
             assert column <= set("│┌└─"), (x, column)
         assert "┼" not in drawing, "a rail crossed a corridor"
+
+
+@pytest.mark.parametrize("width", [1, 40])
+def test_a_width_tree_branches_only_on_essential_inputs(width: int) -> None:
+    """Ignored inputs cost their reads, not a switch: f(c, d) of four inputs."""
+    table = "0110" * 4
+    program = boolean.flowchart(table, width)
+    assert program.count("< >") == 3
+    for row in range(16):
+        bits = [str((row >> (3 - i)) & 1) for i in range(4)]
+        assert run_flowchart(program, bits) == table[row], row

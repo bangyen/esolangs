@@ -56,6 +56,21 @@ def _reads(level: int) -> int:
     return 1 if level == 0 else 8
 
 
+def _plan(truth_table: str) -> tuple[str, list[int], int]:
+    """Return the essential-input table, the ``/ /`` count per switch, the tail.
+
+    The tail is the ``/ /`` count owed after the last switch.  An ignored
+    input is read, not branched on: its eight ``/ /`` join the next level's,
+    or the tail.  A constant table keeps every level, folded.
+    """
+    n = len(truth_table).bit_length() - 1
+    used = essential_inputs(truth_table, n)
+    if not used:
+        return truth_table, [_reads(level) for level in range(n)], 0
+    costs = [8 * used[0] + 1] + [8 * (b - a) for a, b in pairwise(used)]
+    return read_at(truth_table, used, n), costs, 8 * (n - 1 - used[-1])
+
+
 def _answer_column(cells: dict[tuple[int, int], str], middle: int, y: int) -> None:
     """Paint :data:`_ANSWER` down column ``middle`` from row ``y``."""
     for text in _ANSWER:
@@ -74,16 +89,18 @@ def _flowchart_cells(truth_table: str) -> dict[tuple[int, int], str]:
     sets the register and drops onto a westward bus to the shared answer.
     """
     cells: dict[tuple[int, int], str] = {}
+    truth_table, costs, tail = _plan(truth_table)
     constant = constant_span_test(truth_table)
-    n = (len(truth_table) - 1).bit_length()
-    # top[d] is level d's first read row; top[n] is the leaves' row.
+    n = len(costs)
+    # top[d] is level d's first read row; top[n] is where the tail's reads
+    # start and the leaves follow them.
     top = [2]
     for level in range(n):
-        top.append(top[-1] + 2 * _reads(level) + 2)
-    leaf_top = top[n]
+        top.append(top[-1] + 2 * costs[level] + 2)
+    leaf_top = top[n] + 2 * tail
 
     def read_rows(level: int) -> range:
-        return range(top[level], top[level] + 2 * _reads(level), 2)
+        return range(top[level], top[level] + 2 * costs[level], 2)
 
     middles: list[int] = []
 
@@ -140,6 +157,8 @@ def _flowchart_cells(truth_table: str) -> dict[tuple[int, int], str]:
             for skipped in range(depth, n):
                 for y in read_rows(skipped):
                     _paint(cells, middle - 1, y, "/ /")
+            for y in range(top[n], leaf_top, 2):
+                _paint(cells, middle - 1, y, "/ /")
             return middle
         half = (hi - lo) // 2
         west = walk(lo, lo + half, depth + 1)
@@ -188,7 +207,8 @@ def _flowchart_stacked(truth_table: str) -> dict[tuple[int, int], str]:
     rail and corridor ever meet.  Each leaf turns east onto a bus down
     column ``spine + 3``, which returns to the spine below the last leaf.
     """
-    n = (len(truth_table) - 1).bit_length()
+    truth_table, costs, tail = _plan(truth_table)
+    n = len(costs)
     # Columns 0..n-1 are the corridors, one per depth; the tree itself sits
     # on ``spine``, far enough east that the answer's ``(( ))`` clears them.
     spine = n + 2
@@ -210,7 +230,7 @@ def _flowchart_stacked(truth_table: str) -> dict[tuple[int, int], str]:
 
         A folded leaf's owed reads stack above it.
         """
-        y = reads(y, sum(_reads(level) for level in range(depth, n)))
+        y = reads(y, sum(costs[depth:]) + tail)
         _paint(cells, spine - 1, y, _set(bit))
         cells[(spine, y + 1)] = "│"
         _paint(cells, spine, y + 2, "└──")
@@ -221,7 +241,7 @@ def _flowchart_stacked(truth_table: str) -> dict[tuple[int, int], str]:
         """Draw the subtree for ``truth_table[lo:hi]``; return the row after."""
         if constant(lo, hi):
             return leaf(y, depth, truth_table[lo])
-        y = reads(y, _reads(depth))
+        y = reads(y, costs[depth])
         _paint(cells, spine - 1, y, "< >")
         # b=1: east out of the switch, down, back west, onto the spine
         cells[(spine + 2, y)] = "┐"
