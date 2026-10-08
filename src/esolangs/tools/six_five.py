@@ -21,6 +21,7 @@ from esolangs.tools.helpers import (
     _greedy_input_order,
     _validate_truth_table,
     constant_span_test,
+    input_weights,
     permute_truth_table,
     stored_inputs,
     subtree_ids,
@@ -210,14 +211,24 @@ def _six_five_walk(truth_table: str) -> str:
     pointer is at the indexed row and the leaf adds 48 and prints.  The
     shared stride keeps every ``B`` behind the final cell.  Dense n == 10:
     10 labels, 5309 chars, 1024 rows in 12s.
+
+    An ignored input is ``B1``, its shared stride alone, and the table is
+    laid out at the rest.  It has no ``4``, so labels count essential inputs:
+    ``8n`` names the n-th ``4``, and a skipped one misroutes every later jump.
     """
     n = _validate_truth_table(truth_table)
     if n > _SIX_FIVE_MAX_LABEL:
         return _six_five_guarded(truth_table)
-    out = _six_five_preload(truth_table, n)
-    for i in range(n):
-        out += "B" + _SIX_FIVE_NORMALIZE + "79" + "8" + _six_five_label(i + 1)
-        out += "1" * 2 ** (n - 1 - i) + "4" + "1"
+    weights, projected = input_weights(truth_table, n)
+    out = _six_five_preload(projected, n)
+    label = 0
+    for weight in weights:
+        if not weight:
+            out += "B1"
+            continue
+        label += 1
+        out += "B" + _SIX_FIVE_NORMALIZE + "79" + "8" + _six_five_label(label)
+        out += "1" * weight + "4" + "1"
     return out + "6" * 8 + "A0"
 
 

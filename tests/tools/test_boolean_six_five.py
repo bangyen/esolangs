@@ -205,6 +205,27 @@ class TestSixFive:
             got = run_six_five(program, [str(b) for b in bits])
             assert got == dense7[combo], f"inputs {bits}"
 
+    def test_an_ignored_input_on_the_walk_is_one_read(self) -> None:
+        """``B1`` and its stride: five characters, never another table.
+
+        Its ``4`` is gone too, so the labels count essential inputs; labelled
+        by position, every later jump misroutes (all but a last ignored one
+        computed wrong rows).
+        """
+        dense7 = _dense(7)
+        for at in (0, 3, 7):
+            low = 7 - at
+            table = "".join(
+                dense7[row >> (low + 1) << low | row & ((1 << low) - 1)]
+                for row in range(256)
+            )
+            program = boolean.six_five(table)
+            assert len(program) - len(boolean.six_five(dense7)) == 5, at
+            assert _markers(program) == 7
+            for combo in range(0, 256, 3):
+                bits = [str((combo >> (7 - i)) & 1) for i in range(8)]
+                assert run_six_five(program, bits) == table[combo], (at, combo)
+
     def test_dense_ten_inputs_render_and_run(self) -> None:
         """The generator clears n == 10 on a table with nothing to fold."""
         dense10 = _dense(10)

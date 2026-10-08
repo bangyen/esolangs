@@ -16,7 +16,7 @@ from __future__ import annotations
 from math import isqrt
 from string import ascii_letters
 
-from esolangs.tools.helpers import _validate_truth_table
+from esolangs.tools.helpers import _validate_truth_table, essential_inputs, read_at
 
 #: Entries are ``a``/``b`` so a ``0``/``1`` input line is never mistaken for
 #: one; ``L``/``E`` are sentinels, ``M``/``R`` and the read ``0``/``1`` markers.
@@ -51,6 +51,24 @@ _RULES = "\n".join(
     ]
 )
 
+#: The rules for a queue of rounds between ``L`` and ``R``, the next one
+#: beside ``R``: ``K`` starts a halving round where ``LR`` did, and ``S``
+#: reads a line and deletes it -- the digit lands beside ``R``, never an
+#: entry, so no halving rule can fire on it.
+_QUEUED_RULES = "\n".join(
+    [
+        *(
+            "K" + rule[1:].replace("::=LM", "::=M") if "::=LM" in rule else rule
+            for rule in _RULES.splitlines()[:-1]
+        ),
+        "SR::=JR",
+        "J::=:::",
+        "0R::=R",
+        "1R::=R",
+        "::=",
+    ]
+)
+
 
 def _chunk_marker(index: int, digits: int) -> str:
     """Return a fixed-width name containing no table or control symbol."""
@@ -68,20 +86,18 @@ def thue(truth_table: str, width: int | None = None) -> str:
     Reads ``n`` lines, one ``0``/``1`` per input in table order, and prints
     the answer digit. Narrow layouts expand named chunks before reading.
     """
-    _validate_truth_table(truth_table)
+    n = _validate_truth_table(truth_table)
     length = len(truth_table)
-    # A bit-reversed counter: reversing per position would cost an O(log T).
-    entries = []
-    row = 0
-    for _position in range(length):
-        entries.append("ab"[truth_table[row] == "1"])
-        carry = length >> 1
-        while row & carry:
-            row ^= carry
-            carry >>= 1
-        row |= carry
-    table = "".join(entries)
+    table = _thue_entries(truth_table)
     program = f"{_RULES}\nLM{table}E"
+    essential = essential_inputs(truth_table, n)
+    if width is None and len(essential) < n:
+        # An ignored input's round reads and halves nothing, so the table is
+        # laid out at the rest; the queue's five rules lose below that saving.
+        rounds = "".join("K" if i in essential else "S" for i in reversed(range(n)))
+        entries = _thue_entries(read_at(truth_table, essential, n))
+        queued = f"{_QUEUED_RULES}\nL{rounds}R{entries}E"
+        return min(program, queued, key=len)
     if width is None or width <= 0 or max(map(len, program.splitlines())) <= width:
         return program
     # Contract only a completed return sweep. D restores L before reading,
@@ -108,6 +124,22 @@ def thue(truth_table: str, width: int | None = None) -> str:
     # No input marker exists until expansion finishes and R sweeps back to L.
     # Here T>=8 and 3*digits<T: max(width,9,3*digits+3)<T+3.
     return "\n".join([*rules, "::=", "L" + _chunk_marker(0, digits)])
+
+
+def _thue_entries(truth_table: str) -> str:
+    """Return the table as ``a``/``b`` entries in bit-reversed row order."""
+    length = len(truth_table)
+    # A bit-reversed counter: reversing per position would cost an O(log T).
+    entries = []
+    row = 0
+    for _position in range(length):
+        entries.append("ab"[truth_table[row] == "1"])
+        carry = length >> 1
+        while row & carry:
+            row ^= carry
+            carry >>= 1
+        row |= carry
+    return "".join(entries)
 
 
 def _thue_short_tree(truth_table: str) -> str:

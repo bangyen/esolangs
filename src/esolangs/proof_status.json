@@ -831,8 +831,8 @@
       "labels": [
         "linear lookup"
       ],
-      "qualification": "the table is the starting state, one character an entry, and the bit read rewrites every adjacent pair to one of its two members, so the state halves per input and the last character is the answer; the rules never overlap, so the language's random rule choice has nothing to choose",
-      "scaling": "linear: T state characters, nineteen fixed rules",
+      "qualification": "the table is the starting state, one character an entry, and the bit read rewrites every adjacent pair to one of its two members, so the state halves per essential input and the last character is the answer; an ignored input's round reads its line and deletes it; the rules never overlap, so the language's random rule choice has nothing to choose",
+      "scaling": "linear: T state characters, at most 23 fixed rules",
       "execution": "linear: worst 2T + 3n - 2 rewrites: n rounds, each a marker sweep out and back",
       "workspace": "linear: worst 8T + 24 + bl(2n) bits: the T + 3 character state string",
       "evidence": "docs/proofs/index.md#generator-ledger"

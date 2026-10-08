@@ -92,13 +92,14 @@ def test_short_tree_executes_one_and_two_input_tables() -> None:
 
 
 def test_thue_proof_text_counts_the_emitted_rules() -> None:
-    """The ledger says nineteen fixed rules; the program carries nineteen."""
+    """The ledger says at most 23 fixed rules: 19, or 23 with a round queue."""
     from scripts.proof_status import load
 
-    lines = boolean.thue("0110").splitlines()
-    assert len(lines[: lines.index("::=")]) == 19
+    for table, count in (("0110", 19), ("0110" * 32, 23)):
+        lines = boolean.thue(table).splitlines()
+        assert len(lines[: lines.index("::=")]) == count, table
     scaling = next(row.scaling for row in load()[0] if row.generator == "Thue")
-    assert "nineteen fixed rules" in scaling
+    assert "at most 23 fixed rules" in scaling
 
 
 def test_thue_spells_the_table_once_and_its_rules_are_fixed() -> None:
@@ -138,6 +139,27 @@ def test_thue_answers_the_same_under_every_draw(table: str) -> None:
             run_thue(program, io, rng)
             answers.add(io.getvalue())
         assert answers == {table[row]}, (table, row, answers)
+
+
+@pytest.mark.medium
+def test_an_ignored_input_reads_without_halving() -> None:
+    """Its round is an ``S`` in the queue: read, delete, nothing to draw."""
+    from esolangs.interpreters.other.thue import _Machine, _matches
+
+    inner = "".join(str((row * 73 + row // 3) & 1) for row in range(64))
+    # Seven inputs, the third ignored: 64 entries, not 128.
+    table = "".join(inner[row >> 5 << 4 | row & 15] for row in range(128))
+    program = boolean.thue(table)
+    assert "SR::=JR" in program
+    assert len(program) < len(boolean.thue(inner)) + 50
+    for row in range(0, 128, 5):
+        io = ScriptedIO("".join(f"{bit}\n" for bit in _bits(row, 7)))
+        machine = _Machine(program, io, Seeded(row))
+        while not machine.halted:
+            assert len(_matches(machine.state, machine.rules)) == 1
+            machine.step()
+        assert io.getvalue() == table[row]
+        assert io.reads == 7
 
 
 @pytest.mark.medium
