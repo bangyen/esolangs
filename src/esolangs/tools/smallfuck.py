@@ -6,6 +6,7 @@ from esolangs.tools.helpers import (
     best_input_order,
     constant_span_test,
     mark_runs,
+    move_text,
     subtree_ids,
     unmark,
 )
@@ -25,8 +26,7 @@ class _Builder:
         self.code: list[str] = []
 
     def move(self, cell: int) -> None:
-        delta = cell - self.at
-        self.code.append((">" if delta >= 0 else "<") * abs(delta))
+        self.code.append(move_text(self.at, cell, ">", "<"))
         self.at = cell
 
     def flip(self, cell: int) -> None:

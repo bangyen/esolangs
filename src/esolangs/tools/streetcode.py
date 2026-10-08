@@ -20,6 +20,8 @@ from esolangs.tools.helpers import (
     grid_width,
     input_orders,
     input_weights,
+    level_cells,
+    move_text,
     permute_truth_table,
 )
 from esolangs.tools.wrap import shortest
@@ -357,24 +359,6 @@ def _streetcode_shared_lap(body: str) -> list[str]:
     return ["".join(row) for row in grid]
 
 
-def _streetcode_walk(frm: int, to: int) -> str:
-    """Spell the CP walk from cell ``frm`` to cell ``to`` (``=`` right, ``_`` left)."""
-    return "=" * (to - frm) if to >= frm else "_" * (frm - to)
-
-
-def _streetcode_cells(n: int, perm: tuple[int, ...]) -> list[int]:
-    """Return the cell each stream input is read into, indexed by input.
-
-    Level ``k`` tests cell ``k + 1``, so input ``perm[k]`` goes there: the
-    inverse of ``perm``, shifted one.  Read forward, every non-identity order
-    computes a different function.
-    """
-    cells = [0] * n
-    for level, i in enumerate(perm):
-        cells[i] = level + 1
-    return cells
-
-
 def _streetcode_shared(n: int, perm: tuple[int, ...] | None = None) -> list[str]:
     """Build the populate phase as one shared 48-lap loop over every cell.
 
@@ -391,16 +375,16 @@ def _streetcode_shared(n: int, perm: tuple[int, ...] | None = None) -> list[str]
     # no bump to satisfy the mouths' junctions.  The ring then subtracts
     # exactly 48 and the inputs land on bare bits, so the tail only has to
     # walk CP back -- there is no +1 for it to take off.
-    cells = _streetcode_cells(n, perm)
+    cells = level_cells(perm)
     reads = ""
     at = 0
     for cell in cells:
-        reads += _streetcode_walk(at, cell) + "I"
+        reads += move_text(at, cell, "=", "_") + "I"
         at = cell
     # Back to cell ``n``, which the seeding suffix below counts from.  Under
     # the identity order the last read already left CP there and the walk is
     # empty, so the prefix is spelled exactly as it was.
-    prefix = "C" + reads + _streetcode_walk(at, n) + "=^==^"
+    prefix = "C" + reads + move_text(at, n, "=", "_") + "=^==^"
     tail = "_" * n
     blocks = [_streetcode_ring("^"), _streetcode_shared_lap(body)]
 

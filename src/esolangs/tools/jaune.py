@@ -6,6 +6,7 @@ from esolangs.tools.helpers import (
     _validate_truth_table,
     constant_span_test,
     in_input_order,
+    move_text,
     stored_inputs,
     subtree_ids,
     subtree_slot,
@@ -31,10 +32,6 @@ def jaune(truth_table: str) -> str:
     19,568 (59.2%), where the unshared tree would give 29,291.
     """
     return in_input_order(truth_table, lambda t, p: _jaune_ordered(t, p, share=True))
-
-
-def _move(frm: int, to: int) -> str:
-    return ">" * (to - frm) if to >= frm else "<" * (frm - to)
 
 
 def _leaf(want: int, held: int | None) -> str:
@@ -191,10 +188,10 @@ def _jaune_ordered(
             and truth_table[lo] != truth_table[mid]
         ):
             if truth_table[tlo] == "1":
-                return _move(entry, cell) + "^."
+                return move_text(entry, cell, ">", "<") + "^."
             skip = labels.fresh()
-            return _move(entry, cell) + f"{skip}?++{skip}:-^."
-        nav = _move(entry, cell)
+            return move_text(entry, cell, ">", "<") + f"{skip}?++{skip}:-^."
+        nav = move_text(entry, cell, ">", "<")
         then_key = name(level + 1, tlo, cell, 1)
         else_key = name(level + 1, elo, cell, 0)
         both = then_key not in labels.placed and else_key not in labels.placed

@@ -5,6 +5,7 @@ from esolangs.tools.helpers import (
     _validate_truth_table,
     constant_span_test,
     input_weights,
+    move_text,
 )
 
 #: Finisher for a cell primed to 1: ``-`` flips it to 0, ``+`` is inert.
@@ -170,7 +171,7 @@ def _back_ordered(
 
     def walk(frm: int, to: int) -> list[str]:
         """Move the pointer from cell ``frm`` to cell ``to``, one per row."""
-        return [">" if to >= frm else "<"] * abs(to - frm)
+        return list(move_text(frm, to, ">", "<"))
 
     def load(order: list[int]) -> list[str]:
         """Load the inputs in ``order``, then open the answer cell and home."""

@@ -376,6 +376,19 @@ def permute_truth_table(truth_table: str, perm: tuple[int, ...]) -> str:
     return read_at(truth_table, perm, len(perm))
 
 
+def level_cells(perm: tuple[int, ...]) -> list[int]:
+    """Return the cell each input is read into when level ``k`` tests ``k + 1``.
+
+    Level ``k`` tests original input ``perm[k]``, so that input goes to cell
+    ``k + 1``: the *inverse* of ``perm``, shifted one.  Reading it forward
+    puts the right bits in the wrong cells and computes a different function.
+    """
+    cells = [0] * len(perm)
+    for level, i in enumerate(perm):
+        cells[i] = level + 1
+    return cells
+
+
 def _residual_ids(
     truth_table: str, n: int
 ) -> tuple[list[list[int]], dict[int, tuple[int, int]], dict[int, int | None]]:

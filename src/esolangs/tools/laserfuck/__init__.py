@@ -9,6 +9,8 @@ from esolangs.tools.helpers import (
     grid_width,
     input_orders,
     input_weights,
+    level_cells,
+    move_text,
     narrowest_grid,
     permute_truth_table,
 )
@@ -30,11 +32,6 @@ MARGIN = 3
 _LASER_OUTER = 8
 _LASER_INNER = 6
 _LASER_BIAS = _LASER_OUTER * _LASER_INNER  # 48, the code of '0'
-
-
-def _laserfuck_walk(frm: int, to: int) -> str:
-    """Spell the tape walk from cell ``frm`` to cell ``to``."""
-    return ">" * (to - frm) if to >= frm else "<" * (frm - to)
 
 
 def _laserfuck_weighted(truth_table: str) -> str:
@@ -88,22 +85,7 @@ def _laserfuck_weighted(truth_table: str) -> str:
     return "\n".join("".join(row).rstrip() for row in (top, middle, bottom))
 
 
-def _laserfuck_cells(n: int, perm: tuple[int, ...]) -> list[int]:
-    """Return the cell each stream input is read into, indexed by input.
-
-    A node is ``>#v)``: it steps the pointer and then tests the cell under
-    it, so level ``k`` tests cell ``k + 1`` whatever is in it.  Level ``k``
-    has to test original input ``perm[k]``, so that input is read into cell
-    ``k + 1`` -- the *inverse* of ``perm``.  Reading it forward puts the
-    right bits in the wrong cells and computes a different function.
-    """
-    cells = [0] * n
-    for level, i in enumerate(perm):
-        cells[i] = level + 1
-    return cells
-
-
-def _laserfuck_reads(n: int, perm: tuple[int, ...]) -> str:
+def _laserfuck_reads(perm: tuple[int, ...]) -> str:
     """Spell the reader's read section, placing the inputs in ``perm`` order.
 
     ``multiply`` ends on cell 1, so that is where the pointer starts; the
@@ -117,13 +99,14 @@ def _laserfuck_reads(n: int, perm: tuple[int, ...]) -> str:
     a straight run the beam crosses once: a walk cannot steer it, which
     frees the placement of the steering hazards a ring body would carry.
     """
-    cells = _laserfuck_cells(n, perm)
+    # A node ``>#v)`` steps the pointer, then tests: level k tests cell k + 1.
+    cells = level_cells(perm)
     out = ""
     at = 1
     for cell in cells:
-        out += _laserfuck_walk(at, cell) + ","
+        out += move_text(at, cell, ">", "<") + ","
         at = cell
-    return out + _laserfuck_walk(at, 0)
+    return out + move_text(at, 0, ">", "<")
 
 
 def _laserfuck_ring_reader(
@@ -162,7 +145,7 @@ def _laserfuck_ring_reader(
     multiply = "<" + "+" * _LASER_INNER + ">" + "-#/)"
     # The reads land the inputs in cells 1..n and end back on the counter.
     # Which input goes in which cell is the reorder (see _laserfuck_reads).
-    reads = _laserfuck_reads(n, tuple(range(n)) if perm is None else perm)
+    reads = _laserfuck_reads(tuple(range(n)) if perm is None else perm)
     # one '-' for the counter and one for each input, then home again
     retire = "".join("->" for _ in range(n)) + "-" + "<" * n + "#/)"
 
