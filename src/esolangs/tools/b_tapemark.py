@@ -6,9 +6,6 @@ from dataclasses import dataclass, field
 
 from esolangs.tools.helpers import _validate_truth_table, input_weights
 
-#: Rows one branch stage occupies, and so the stride between stages.
-_STAGE_ROWS = 7
-
 #: The stage, row by row, with its run of ``|`` left out.  The two ``*``
 #: copy a ``\`` and a ``%`` onto the blank grid beside the pointer, ``-``
 #: reads the input digit into the pointer's own cell, and ``0`` compares:
@@ -23,6 +20,20 @@ _STAGE = (
     "\\|*%/ \\|\\",
     "    /",
     "/   /*  /",
+    "|",
+)
+
+#: Rows one branch stage occupies, and so the stride between stages.
+_STAGE_ROWS = len(_STAGE)
+
+#: The narrow layout's stage: the same rows, packed into fewer columns.
+_NARROW_STAGE = (
+    "|/   \\",
+    "*\\-|\\0",
+    "\\   ||",
+    "\\|*%/\\|\\",
+    "    /",
+    "/   /* /",
     "|",
 )
 
@@ -49,17 +60,27 @@ class _Builder:
             if char != " ":
                 self.put(x + offset, y, char)
 
-    def stage(self, x: int, y: int, weight: int) -> None:
+    def stage(
+        self,
+        x: int,
+        y: int,
+        weight: int,
+        lines: tuple[str, ...] = _STAGE,
+        run_start: int | None = None,
+    ) -> None:
         """Place one input's branch, whose ``0`` side adds ``weight``.
+
+        ``run_start`` is the run's first column (default ``x + _RUN_COLUMN``).
 
         The beam arrives and leaves downwards, and only the ``0`` side
         crosses the run of ``|``, which is what moves the pointer.
         """
-        for offset, line in enumerate(_STAGE):
+        for offset, line in enumerate(lines):
             self.row(x, y + offset, line)
+        start = x + _RUN_COLUMN if run_start is None else run_start
         for offset in range(weight):
-            self.put(x + _RUN_COLUMN + offset, y + 1, "|")
-        turn = x + _RUN_COLUMN + weight
+            self.put(start + offset, y + 1, "|")
+        turn = start + weight
         self.put(turn, y + 1, "\\")
         self.put(turn, y + 4, "/")
 
@@ -74,24 +95,20 @@ class _Builder:
         horizontal mirror is as faithful and is not offered, because it
         moves every ragged edge to the left, where it is rendered.
         """
-        occupied = {x for x, _ in self.cells}
-        xs: list[int] = []
-        if occupied:
-            lo, hi = min(occupied), max(occupied)
-            # The table occupies 3T columns; scanning its span removes the
-            # comparison-sort factor. Sparse standalone layouts retain sorting.
-            xs = (
-                [x for x in range(lo, hi + 1) if x in occupied]
-                if hi - lo + 1 <= 4 * len(occupied)
-                else sorted(occupied)
-            )
-        occupied_y = {y for _, y in self.cells}
-        lo_y, hi_y = min(occupied_y, default=0), max(occupied_y, default=-1)
-        if hi_y - lo_y + 1 <= 4 * len(occupied_y):
-            order = range(hi_y, lo_y - 1, -1) if reflect else range(lo_y, hi_y + 1)
-            ys = [y for y in order if y in occupied_y]
-        else:
-            ys = sorted(occupied_y, reverse=reflect)
+
+        def axis(values: set[int], *, reverse: bool = False) -> list[int]:
+            # Scanning a dense span beats a comparison sort; the table
+            # fills 3T columns, so only sparse layouts sort.
+            if not values:
+                return []
+            lo, hi = min(values), max(values)
+            if hi - lo + 1 > 4 * len(values):
+                return sorted(values, reverse=reverse)
+            order = range(hi, lo - 1, -1) if reverse else range(lo, hi + 1)
+            return [v for v in order if v in values]
+
+        xs = axis({x for x, _ in self.cells})
+        ys = axis({y for _, y in self.cells}, reverse=reflect)
         column = {x: i for i, x in enumerate(xs)}
         symbols = {"/": "\\", "\\": "/"} if reflect else {}
         rows: dict[int, dict[int, str]] = {y: {} for y in ys}
@@ -108,17 +125,14 @@ class _Builder:
 
 
 def _b_tapemark_narrow(table: str, depth: int) -> str:
-    """Copy on a staircase, retaining vertical compares and horizontal indices."""
+    """Narrow layout: copy on a staircase, compares vertical, indices horizontal."""
     builder = _Builder()
     # The copy beam always travels west; only the connector reverses it.
     for index, bit in enumerate(table):
         row = 2 * index
         builder.row(2, row, f"|{bit}*")
         builder.put(1, row, "/")
-        if index == 0:
-            builder.put(5, row, "<")
-        else:
-            builder.put(5, row, "/")
+        builder.put(5, row, "<" if index == 0 else "/")
         if index + 1 < len(table):
             builder.put(1, row + 1, "\\")
             builder.put(5, row + 1, "\\")
@@ -127,30 +141,15 @@ def _b_tapemark_narrow(table: str, depth: int) -> str:
     builder.put(6, bottom, "/")
     for offset in range(1, 2 * depth + 1):
         builder.put(6, bottom - offset, "|")
-    # The climb is outside copy columns1..5; descent uses empty column0.
+    # The climb is outside copy columns 1..5; descent uses empty column 0.
     builder.put(6, -1, "\\")
     builder.put(0, -1, "/")
-    stage = (
-        "|/   \\",
-        "*\\-|\\0",
-        "\\   ||",
-        "\\|*%/\\|\\",
-        "    /",
-        "/   /* /",
-        "|",
-    )
     first = bottom + 1
     for level in range(depth):
         row = first + _STAGE_ROWS * level
         weight = 1 << (depth - level - 1)
-        for offset, line in enumerate(stage):
-            builder.row(0, row + offset, line)
-        # Column8 clears the other arm's turn in column7, even at weight1.
-        start = max(6, 8 - weight)
-        for offset in range(weight):
-            builder.put(start + offset, row + 1, "|")
-        builder.put(start + weight, row + 1, "\\")
-        builder.put(start + weight, row + 4, "/")
+        # Column 8 clears the other arm's turn in column 7, even at weight 1.
+        builder.stage(0, row, weight, _NARROW_STAGE, max(6, 8 - weight))
     # Correct the stages' shared horizontal displacement inside their columns.
     tail = first + _STAGE_ROWS * depth
     builder.put(0, tail, "\\")
@@ -165,7 +164,7 @@ def b_tapemark(truth_table: str, width: int | None = None) -> str:
 
     The table is copied onto the blank grid one cell per row, the inputs
     walk the mark pointer to the row they name, and ``+`` prints the mark
-    it ends on. Below the mirrored grid's width, a staircase copies one
+    it ends on. When the wide layout exceeds ``width``, a staircase copies one
     entry per row and compact stages retain vertical comparisons. Both
     layouts have O(T) source and construction; narrow XOR2 needs nine columns.
     """
@@ -207,5 +206,5 @@ def b_tapemark(truth_table: str, width: int | None = None) -> str:
     program = builder.render(reflect=width is not None)
     if width is None or max(map(len, program.splitlines())) <= width:
         return program
-    # max(9,T/2+7) is below the original 3T+depth+4 columns.
+    # Narrow width is max(9, T/2+7) columns, under the wide 3T+depth+4.
     return _b_tapemark_narrow(truth_table, depth)
