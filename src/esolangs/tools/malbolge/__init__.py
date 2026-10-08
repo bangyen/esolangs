@@ -1,7 +1,7 @@
 """Malbolge boolean program builder: one source stub per table row.
 
 ``malbolge(truth_table)`` reads one ``0``/``1`` line per input and folds them
-through a fixed four-cell branch-free mixer into a distinct address ``h(row)``.
+through a fixed five-cell branch-free mixer into a distinct address ``h(row)``.
 The runtime then jumps to a three-cell stub at ``h(row)`` that prints the
 row's answer.  The whole 59049-cell source is the program: the mixer inits,
 the navigation constants and the stubs are all source characters, so there is

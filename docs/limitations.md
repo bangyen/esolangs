@@ -296,10 +296,12 @@ The 2026-10-01 fame audit covered eight census candidates:
   T/n chunks of n bits, with O(n) read instructions: O(T) rendered text.
 - [///](https://esolangs.org/wiki////) (88): integrated with ordered
   one-character `a`/`b` embeds. Binary-to-unary substitutions form the row
-  index; T fixed sweeps consume that many two-character table entries.
+  index; 2^m fixed sweeps, for the m inputs the table depends on, consume
+  that many two-character table entries.
   Escaped future patterns prevent earlier sweeps corrupting later rules.
   The selected entry becomes 0/1 and the suffix is deleted. Source is
-  exactly 20T + n + 53 characters; build work is O(T).
+  exactly 20*2^m + n + 53 characters, plus k + 10 for k = n - m > 0
+  ignored inputs; build work is O(T).
 
 Each uses the same 309-table, 3,352-row corpus as Cyclic tag. Dense size-difference
 ratios at n=8,10,12 are 3.997 (Cyclic tag), 3.903 (Boolfuck), 2.926 (Subleq)

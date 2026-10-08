@@ -52,7 +52,7 @@ _FORTH_DISPATCH = "2*1++:;"
 #: twin's, whose dispatch reaches the twin's children, so none is re-emitted.
 _FORTH_SHARE = "{}-:;"
 
-#: The least a subtree spends inline (a dispatch, two ``1+{0}`` scopes); a
+#: A lower bound on a subtree's inline cost (a dispatch, two ``1+{0}`` scopes); a
 #: call is kept only when shorter, the local rule.
 _FORTH_SUBTREE_FLOOR = len(_FORTH_DISPATCH) + 2 * len("1+{0}")
 

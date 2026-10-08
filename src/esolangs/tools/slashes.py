@@ -14,7 +14,8 @@ def slashes(truth_table: str) -> str:
 
     Escaping the cursor in future patterns prevents earlier sweeps rewriting
     those patterns. The binary-to-unary substitutions use disjoint alphabets
-    from the table and decoder. There are T sweeps and 2T table characters.
+    from the table and decoder. There are 2^m sweeps and 2^(m+1) table
+    characters for the m inputs the table depends on.
     """
     n = _validate_truth_table(truth_table)
     weights, bits = input_weights(truth_table, n)
