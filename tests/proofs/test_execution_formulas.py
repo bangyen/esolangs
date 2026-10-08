@@ -100,7 +100,7 @@ FORMULAS: dict[str, tuple[Callable[[int, str], float], bool, tuple[int, ...]]] =
     "3x": (lambda _, p: len(p), True, (3, 5)),
     "Unsquare": (lambda n, _: 2 * 2**n + 79 * n + 26, True, (3, 5)),
     "Vandevelo": (lambda _, p: _vandevelo(p), False, (3, 5)),
-    "Home Row": (lambda n, _: 10 * 2**n + 10 * n + 95, True, (3, 5)),
+    "Home Row": (lambda n, _: 10 * 2**n + 10 * n + 95, False, (3, 5)),
     "Minsky Swap": (lambda n, _: 2 * 2**n + 6 * n + 4, True, (3, 5)),
     "Modulous": (lambda n, _: 5 * 2**n + 5 * n + 1, True, (3, 5)),
     "LaserFuck": (lambda n, _: 18 * 2**n + 56 * n + 5, False, (5,)),

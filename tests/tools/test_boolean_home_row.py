@@ -79,8 +79,9 @@ class TestParameterizedHomeRow:
 
         setup = "aaaaaalsffaaaaaaaaffflfa$lsffffaafla$lsffffafl"
         assert generators.home_row("0111") == setup + "fffflflfflk;lffffak"
+        # The two rows of the middle run are one leaf behind a clamped decrement.
         assert generators.home_row("0110") == setup + (
-            "fffflsflfflk;lfflsflfflak;lfflflfflak;lffffk"
+            "fffflsflfflk;lffjslflfflak;lffffk"
         )
 
     def test_the_constructed_lengths_are_stable_over_three_inputs(self) -> None:
@@ -88,4 +89,4 @@ class TestParameterizedHomeRow:
         from esolangs import tools as generators
 
         tables = (format(v, "08b") for v in range(256))
-        assert sum(len(generators.home_row(t)) for t in tables) == 34521
+        assert sum(len(generators.home_row(t)) for t in tables) == 28452
