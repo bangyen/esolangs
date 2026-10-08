@@ -17,6 +17,7 @@ from esolangs.tools.helpers import (
     in_input_order,
     subtree_ids,
 )
+from esolangs.tools.wrap import wrap_chars
 
 __all__ = ["painfuck"]
 
@@ -162,4 +163,5 @@ LANGUAGE = Language(
     "Painfuck",
     "tape_based.painfuck",
     boolean=painfuck,
+    wrap=wrap_chars,
 )

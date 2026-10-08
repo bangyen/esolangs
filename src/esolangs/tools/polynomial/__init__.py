@@ -24,6 +24,7 @@ from esolangs.tools.helpers import (
     read_at,
 )
 from esolangs.tools.polynomial.algebra import primes, render_product
+from esolangs.tools.wrap import _polynomial
 
 # Instruction cap.  Analytic n=10 worst case is 1659
 # (``test_polynomial_cap_admits_every_n10_table``); kept at the old 1934,
@@ -375,4 +376,6 @@ LANGUAGE = Language(
     contract=BooleanContract(
         input_shape="char_stream",
     ),
+    # Space wrap stranded every sign alone; keep sign with term, one per line.
+    wrap=_polynomial,
 )

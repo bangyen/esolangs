@@ -20,6 +20,7 @@ from esolangs.tools.helpers import (
     essential_inputs,
     input_weights,
 )
+from esolangs.tools.wrap import wrap_chars
 
 
 def _bfstack_encoder(weights: list[int], *, preset: bool) -> str:
@@ -167,4 +168,5 @@ LANGUAGE = Language(
     contract=BooleanContract(
         input_shape="char_stream",
     ),
+    wrap=wrap_chars,
 )

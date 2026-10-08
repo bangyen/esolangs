@@ -38,6 +38,7 @@ from esolangs.tools.minifuck.sim import (
     PAIR,
     _clamp,
 )
+from esolangs.tools.wrap import _minifuck
 
 __all__ = ["minifuck"]
 
@@ -280,4 +281,6 @@ LANGUAGE = Language(
     contract=BooleanContract(
         parameterized=True,
     ),
+    # ``[`` skips the character after it.
+    wrap=_minifuck,
 )

@@ -24,6 +24,7 @@ from esolangs.tools.helpers import (
     constant_span_test,
     subtree_ids,
 )
+from esolangs.tools.wrap import wrap_space_delimited
 
 #: How each input is set: the exponent of its prime in the starting value.
 #: One digit wide, so the run is one :data:`TEMPLATE_CHAR`.
@@ -202,4 +203,7 @@ LANGUAGE = Language(
         "is the value the run stops on -- 1 for a zero and 2 for a one",
         parameterized=True,
     ),
+    # Whitespace- or comma-separated tokens, and a break inside one would
+    # change a number.
+    wrap=wrap_space_delimited,
 )

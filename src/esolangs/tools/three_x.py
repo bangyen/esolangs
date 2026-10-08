@@ -12,6 +12,7 @@ from esolangs.tools.helpers import (
     in_input_order,
     read_at,
 )
+from esolangs.tools.wrap import _bracket_literal
 
 __all__ = ["three_x"]
 
@@ -315,4 +316,5 @@ LANGUAGE = Language(
     "3x",
     "stack_based.three_x",
     boolean=three_x,
+    wrap=_bracket_literal,
 )

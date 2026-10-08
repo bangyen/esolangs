@@ -12,6 +12,7 @@ from esolangs.tools.helpers import (
     subtree_ids,
     subtree_slot,
 )
+from esolangs.tools.wrap import _jaune
 
 
 def jaune(truth_table: str) -> str:
@@ -227,4 +228,6 @@ LANGUAGE = Language(
     "Jaune",
     "tape_based.jaune",
     boolean=jaune,
+    # Operand-before-operator, so a break between the two is a load error.
+    wrap=_jaune,
 )

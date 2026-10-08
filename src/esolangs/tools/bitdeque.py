@@ -12,6 +12,7 @@ from esolangs.tools.helpers import (
     runs,
     subtree_ids,
 )
+from esolangs.tools.wrap import _bitdeque
 
 __all__ = ["BITDEQUE_PAIR", "bitdeque", "bitdeque_setters"]
 
@@ -279,4 +280,6 @@ LANGUAGE = Language(
         "whole dump is the answer and there is no position to name",
         parameterized=True,
     ),
+    # Space-delimited, but ``GOTO`` and its target must stay on one line.
+    wrap=_bitdeque,
 )

@@ -11,6 +11,7 @@ from esolangs.tools.helpers import (
     subtree_ids,
     subtree_slot,
 )
+from esolangs.tools.wrap import wrap_grid
 
 
 def sbleq(truth_table: str) -> str:
@@ -365,4 +366,5 @@ LANGUAGE = Language(
     contract=BooleanContract(
         input_shape="char_stream",
     ),
+    wrap=wrap_grid,
 )

@@ -8,6 +8,7 @@ from esolangs.tools.helpers import (
     _validate_truth_table,
     input_weights,
 )
+from esolangs.tools.wrap import _bio as _wrap_bio
 
 __all__ = ["BIO_PAIR", "bio"]
 
@@ -79,4 +80,5 @@ LANGUAGE = Language(
     contract=BooleanContract(
         parameterized=True,
     ),
+    wrap=_wrap_bio,
 )

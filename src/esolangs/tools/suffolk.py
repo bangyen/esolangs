@@ -9,6 +9,7 @@ from esolangs.tools.helpers import (
     essential_inputs,
     read_at,
 )
+from esolangs.tools.wrap import wrap_chars
 
 #: The cell plan.  Cost here is a cell's *index* -- every read spends one
 #: ``>`` per cell crossed -- so the countdown, which every sweep op reads,
@@ -118,4 +119,5 @@ LANGUAGE = Language(
     contract=BooleanContract(
         input_shape="char_stream",
     ),
+    wrap=wrap_chars,
 )

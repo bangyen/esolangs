@@ -14,7 +14,7 @@ from itertools import groupby
 
 from esolangs.registry._language import Language
 from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table, input_weights
-from esolangs.tools.wrap import wrap_program
+from esolangs.tools.wrap import _dimensional, wrap_program
 
 __all__ = ["dimensional"]
 
@@ -145,4 +145,5 @@ LANGUAGE = Language(
     "Dimensional",
     "tape_based.dimensional",
     boolean=dimensional,
+    wrap=_dimensional,
 )

@@ -28,6 +28,7 @@ from esolangs.tools.helpers import (
     constant_span_test,
     subtree_ids,
 )
+from esolangs.tools.wrap import wrap_chars
 
 #: ``k`` drops a run's bit and outputs nothing; ``n`` is a node less its
 #: halves, ``m`` a pad; ``z``/``o`` print ``'0'`` (0x30), ``'1'`` (0x31) low bit first.
@@ -100,4 +101,5 @@ LANGUAGE = Language(
         note="Smu reads one bit a run, low bit of each byte first, and "
         "packs its output bits into bytes the same way",
     ),
+    wrap=wrap_chars,
 )

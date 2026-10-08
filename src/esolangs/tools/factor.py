@@ -23,6 +23,7 @@ from esolangs.tools.helpers import (
     input_weights,
     move_text,
 )
+from esolangs.tools.wrap import wrap_chars
 
 __all__ = ["factor"]
 
@@ -158,4 +159,5 @@ LANGUAGE = Language(
     contract=BooleanContract(
         input_shape="char_stream",
     ),
+    wrap=wrap_chars,
 )

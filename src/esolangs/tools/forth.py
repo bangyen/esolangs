@@ -9,6 +9,7 @@ from esolangs.tools.helpers import (
     permute_truth_table,
     subtree_ids,
 )
+from esolangs.tools.wrap import wrap_chars
 
 
 def _forth_const(value: int) -> str:
@@ -127,4 +128,5 @@ LANGUAGE = Language(
     "Forþ",
     "stack_based.forth",
     boolean=forth,
+    wrap=wrap_chars,
 )

@@ -16,6 +16,7 @@ from esolangs.tools.helpers import (
     constant_span_test,
     subtree_ids,
 )
+from esolangs.tools.wrap import wrap_chars
 
 _PROLOGUE = '"49/b""48/c"'
 _LEAF = {"0": ":c:", "1": ":b:"}
@@ -55,4 +56,6 @@ LANGUAGE = Language(
     contract=BooleanContract(
         input_shape="char_stream",
     ),
+    # Whitespace is discarded anywhere, inside a token too.
+    wrap=wrap_chars,
 )

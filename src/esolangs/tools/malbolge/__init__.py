@@ -44,6 +44,7 @@ from esolangs.interpreters.source_hints import with_hint
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 from esolangs.tools.helpers import _validate_truth_table
+from esolangs.tools.wrap import wrap_chars
 
 from .core import (
     _ACTIVE,
@@ -778,4 +779,6 @@ LANGUAGE = Language(
         note="the answer is one character and is printed with no newline",
         input_shape="char_stream",
     ),
+    # Loader whitespace is discarded before assigning memory addresses.
+    wrap=wrap_chars,
 )

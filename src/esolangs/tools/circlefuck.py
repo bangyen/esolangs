@@ -10,6 +10,7 @@ from esolangs.tools.helpers import (
     essential_inputs,
     read_at,
 )
+from esolangs.tools.wrap import wrap_chars
 
 #: Bits an index digit carries: seven is the widest power of two a byte can
 #: also count out (:func:`_deleter` plants that many in the digit below).
@@ -82,4 +83,5 @@ LANGUAGE = Language(
     contract=BooleanContract(
         input_shape="char_stream",
     ),
+    wrap=wrap_chars,
 )

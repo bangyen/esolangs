@@ -51,6 +51,7 @@ from esolangs._mammalian import DEFAULT_MODULI, MammalianModuli
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table, essential_inputs
+from esolangs.tools.wrap import _mammalian
 
 __all__ = ["slow_acv_mammalian"]
 
@@ -1040,4 +1041,6 @@ LANGUAGE = Language(
     contract=BooleanContract(
         input_shape="char_stream",
     ),
+    # Four-character cells align the ``SEED`` runs; longer words span cells.
+    wrap=_mammalian,
 )

@@ -34,6 +34,7 @@ from esolangs.tools.helpers import (
     move_text,
     subtree_ids,
 )
+from esolangs.tools.wrap import wrap_chars
 
 _SCRATCH = -1
 
@@ -125,4 +126,5 @@ LANGUAGE = Language(
     contract=BooleanContract(
         input_shape="char_stream",
     ),
+    wrap=wrap_chars,
 )

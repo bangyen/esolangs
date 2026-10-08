@@ -26,6 +26,7 @@ from esolangs.tools.helpers import (
     subtree_ids,
     subtree_slot,
 )
+from esolangs.tools.wrap import _six_five
 
 __all__ = ["six_five"]
 
@@ -731,4 +732,6 @@ LANGUAGE = Language(
     contract=BooleanContract(
         input_shape="char_stream",
     ),
+    # 7n/8n are two-character tokens; see :func:`_six_five`.
+    wrap=_six_five,
 )

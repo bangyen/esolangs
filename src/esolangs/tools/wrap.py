@@ -12,8 +12,8 @@ width cannot fit whole tokens, statements or routing cells.
 :data:`MULTILINE` names the wrappers that handle their own structural
 lines.  :func:`_bio` indents by loop depth, :func:`wrap_grid` right-aligns
 the subleq OISCs into cells, Polynomial glues each sign to its term.
-:data:`WRAPPERS` maps a language id to its wrapper; :func:`wrap_program`
-is the entry point.
+:data:`WRAPPERS` maps a language id to the wrapper its ``LANGUAGE`` names
+(``wrap=``); :func:`wrap_program` is the entry point.
 """
 
 import inspect
@@ -21,6 +21,7 @@ import re
 from collections.abc import Callable
 from itertools import pairwise
 from math import isqrt
+from typing import Any
 
 from esolangs.tools.helpers import MARK, MOST_INPUTS, mark
 from esolangs.tools.token_balance import balanced_token_width
@@ -580,83 +581,38 @@ def _qoibl(program: str, width: int) -> str:
 
 
 # Language id -> wrapper; semantic newlines require generator-owned layouts.
-WRAPPERS = {
-    "addsubjump": wrap_grid,
-    "decleq": wrap_grid,
-    "sbleq": wrap_grid,
-    "subleq": wrap_grid,
-    "boolfuck": wrap_chars,
-    "cyclic_tag": wrap_chars,
-    # Space wrap stranded every sign alone; keep sign with term, one per line.
-    "polynomial": _polynomial,
-    # Space-delimited, but ``GOTO`` and its target must stay on one line.
-    "bitdeque": _bitdeque,
-    "bio": _bio,
-    "dimensional": _dimensional,
-    # 7n/8n are two-character tokens; see :func:`_six_five`.
-    "six_five": _six_five,
-    # Safe anywhere: every space and newline is stripped before parsing.
-    "bitwise_cyclic_tag": wrap_chars,
-    # Loader whitespace is discarded before assigning memory addresses.
-    "malbolge": wrap_chars,
-    # LF-only source-format deviation: discard breaks before parsing or addressing.
-    "cvnc": wrap_chars,
-    "grapheme": wrap_chars,
-    "nocomment": wrap_chars,
-    "brainfuck": wrap_chars,
-    "circlefuck": wrap_chars,
-    # ``[`` skips the character after it.
-    "minifuck": _minifuck,
-    "factor": wrap_chars,
-    "home_row": wrap_chars,
-    "painfuck": wrap_chars,
-    "bit_tilde": wrap_chars,
-    "unsquare": wrap_chars,
-    "rotfuck": wrap_chars,
-    "smallfuck": wrap_chars,
-    "bfstack": wrap_chars,
-    # Whitespace is discarded anywhere, inside a token too.
-    "sstack": wrap_chars,
-    "smu": wrap_chars,
-    "suffolk": wrap_chars,
-    # The trailing ``1`` is a terminator, not a structural line.
-    "one_two_three": wrap_chars,
-    # Four-character cells align the ``SEED`` runs; longer words span cells.
-    "slow_acv_mammalian": _mammalian,
-    # Multi-character tokens (``vs``, ``0b1``, ``L C 19``); space is the
-    # only safe break.
-    "ram0": wrap_space_delimited,
-    # Operand-before-operator, so a break between the two is a load error.
-    "jaune": _jaune,
-    # Print through a literal that must not be broken.
-    "eval": _quote_literal,
-    # ``'x`` and ``.x``/``?x`` take the character after them.
-    "false": _false,
-    "unlambda": _unlambda,
-    # Whitespace- or comma-separated tokens, and a break inside one would
-    # change a number.
-    "fractran": wrap_space_delimited,
-    "sophie": _sophie,
-    "three_x": _bracket_literal,
-    "forth": wrap_chars,
-    # Both concatenate before tokenizing (Taglate after the queue seed; A
-    # Painter Ant drops whitespace), so no break can land inside a command.
-    "taglate": _taglate,
-    "a_painter_ant": wrap_chars,
-    "bf_pda": wrap_chars,
-    # One statement a line; each folds on its own.
-    # Generators emit indented blocks; fold only an over-wide line.
-    # Packlang punctuation separates tokens even without a space.
-    "packlang": _packlang,
-}
-
-
 # These wrappers preserve structural rows or existing newline comments.
-MULTILINE = frozenset(
-    language_id
-    for language_id, wrapper in WRAPPERS.items()
-    if wrapper in {_taglate, _packlang, _minifuck}
-)
+_MULTILINE_WRAPPERS = frozenset({_taglate, _packlang, _minifuck})
+
+
+def __getattr__(name: str) -> Any:
+    """Derive ``WRAPPERS`` and ``MULTILINE`` from the registry on first use.
+
+    Each language names its wrapper in its own ``LANGUAGE`` (``wrap=``); the
+    registry imports the generators, which import this module, so the
+    tables cannot be built while it loads.
+    """
+    if name not in {"WRAPPERS", "MULTILINE"}:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    from esolangs.registry import LANGUAGES
+
+    wrappers = {lang.id: lang.wrap for lang in LANGUAGES.values() if lang.wrap}
+    globals()["WRAPPERS"] = wrappers
+    globals()["MULTILINE"] = frozenset(
+        language_id
+        for language_id, wrapper in wrappers.items()
+        if wrapper in _MULTILINE_WRAPPERS
+    )
+    return globals()[name]
+
+
+def _wrapper(language_id: str) -> Callable[[str, int], str] | None:
+    """Return the wrapper the language with ``language_id`` declares."""
+    from esolangs.registry import LANGUAGES
+
+    return next(
+        (lang.wrap for lang in LANGUAGES.values() if lang.id == language_id), None
+    )
 
 
 def takes_width(fn: Callable[..., object]) -> bool:
@@ -680,9 +636,9 @@ def wrap_program(program: str, language_id: str, width: int | None) -> str:
     """
     if width is None or width <= 0:
         return program
-    if "\n" in program and language_id not in MULTILINE:
+    wrapper = _wrapper(language_id)
+    if "\n" in program and wrapper not in _MULTILINE_WRAPPERS:
         return program
-    wrapper = WRAPPERS.get(language_id)
     if wrapper is None:
         return program
     return wrapper(program, width)
@@ -697,7 +653,7 @@ def balance_width(program: str) -> int:
 
 def balance_program(program: str, language_id: str) -> str:
     """Balance whole-token fits and term folds; otherwise estimate source area."""
-    wrapper = WRAPPERS.get(language_id)
+    wrapper = _wrapper(language_id)
     if "\n" not in program and wrapper is _polynomial:
         return _balance_polynomial(program)
     if "\n" not in program and wrapper is _bio:

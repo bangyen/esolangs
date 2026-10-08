@@ -10,6 +10,7 @@ from esolangs.tools.helpers import (
     essential_inputs,
     read_at,
 )
+from esolangs.tools.wrap import wrap_chars
 
 
 def _run(entry: str, count: int) -> str:
@@ -61,4 +62,5 @@ LANGUAGE = Language(
     contract=BooleanContract(
         input_shape="char_stream",
     ),
+    wrap=wrap_chars,
 )

@@ -10,6 +10,7 @@ from esolangs.tools.helpers import (
     in_input_order,
     move_text,
 )
+from esolangs.tools.wrap import wrap_chars
 
 __all__ = ["bf_tree", "brainfuck"]
 
@@ -74,4 +75,5 @@ LANGUAGE = Language(
     contract=BooleanContract(
         input_shape="char_stream",
     ),
+    wrap=wrap_chars,
 )

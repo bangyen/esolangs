@@ -68,6 +68,7 @@ from esolangs.tools.one_two_three.construction import (
     _WorkExhaustedError,
     construct,
 )
+from esolangs.tools.wrap import wrap_chars
 
 __all__ = ["one_two_three"]
 
@@ -255,4 +256,6 @@ LANGUAGE = Language(
         "for this program is the two bytes 'VO with a diaeresis'",
         parameterized=True,
     ),
+    # The trailing ``1`` is a terminator, not a structural line.
+    wrap=wrap_chars,
 )

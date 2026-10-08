@@ -15,6 +15,7 @@ from esolangs.tools.helpers import (
     essential_inputs,
     read_at,
 )
+from esolangs.tools.wrap import _taglate
 
 
 def _reorder_tt(tt: str, n: int) -> str:
@@ -341,4 +342,7 @@ LANGUAGE = Language(
         "three exhausts its input; padding at the end instead answers "
         "every row whose top bit is set wrongly",
     ),
+    # Both concatenate before tokenizing (Taglate after the queue seed; A
+    # Painter Ant drops whitespace), so no break can land inside a command.
+    wrap=_taglate,
 )

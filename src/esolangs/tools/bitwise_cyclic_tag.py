@@ -13,6 +13,7 @@ from __future__ import annotations
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 from esolangs.tools.helpers import TEMPLATE_CHAR, _validate_truth_table, input_weights
+from esolangs.tools.wrap import wrap_chars
 
 #: One bit of the initial data-string, so an input's run is one TEMPLATE_CHAR.
 PAIR = ("0", "1")
@@ -49,4 +50,6 @@ LANGUAGE = Language(
         "so the output is the answer and there is no position to name",
         parameterized=True,
     ),
+    # Safe anywhere: every space and newline is stripped before parsing.
+    wrap=wrap_chars,
 )

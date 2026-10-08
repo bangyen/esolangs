@@ -12,6 +12,7 @@ from esolangs.tools.helpers import (
     subtree_ids,
     unmark,
 )
+from esolangs.tools.wrap import wrap_chars
 
 # Each input cell is fresh; zero needs no clear and one needs one flip.
 PAIR = ("x>>>", "*>>>")
@@ -153,4 +154,5 @@ LANGUAGE = Language(
         note="Smallfuck defines no I/O; this implementation prints final cell 2",
         parameterized=True,
     ),
+    wrap=wrap_chars,
 )

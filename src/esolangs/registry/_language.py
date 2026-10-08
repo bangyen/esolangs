@@ -15,12 +15,8 @@ from esolangs._program import Program
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._slug import canonical_id
 
-# A generator: ``generator(truth_table)`` returns a program computing it.
-# Most take only the table; the few that lay their program out in two
-# dimensions (LaserFuck, which folds its beam's track) also accept a
-# ``width`` bounding the columns, since a shape cannot be reflowed after the
-# fact the way a single long line can.  ``...`` keeps both arities callable
-# with the table alone, which is how every width-less caller invokes them.
+# ``generator(truth_table)`` returns a program computing it; the few that lay
+# out two dimensions (LaserFuck) also take a ``width``, hence ``...``.
 Generator = Callable[..., Program]
 
 
@@ -48,6 +44,8 @@ class Language:
     generator_max_inputs: int | None = None
     generator_restrictions: str = ""
     contract: BooleanContract = field(default_factory=BooleanContract)
+    #: ``wrap(program, width)``: a meaning-preserving reflow, if one exists.
+    wrap: Callable[[str, int], str] | None = None
 
     def __post_init__(self) -> None:
         """Fill the id from the name when none is given."""

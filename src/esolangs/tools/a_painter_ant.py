@@ -16,6 +16,7 @@ from esolangs.tools.helpers import (
     _validate_truth_table,
     input_weights,
 )
+from esolangs.tools.wrap import wrap_chars
 
 __all__ = ["a_painter_ant"]
 
@@ -61,4 +62,5 @@ LANGUAGE = Language(
         "shown by 'o' (on black, a zero) or '@' (on white, a one)",
         parameterized=True,
     ),
+    wrap=wrap_chars,
 )
