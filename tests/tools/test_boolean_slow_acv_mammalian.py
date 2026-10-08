@@ -242,7 +242,8 @@ class TestFastLanding:
         array, acc = [11, 23], 7
         counts = []
         for _ in range(6):
-            chunk, array, acc = _stash_chunk(array, acc)
+            chunk, array = _stash_chunk(array, acc)
+            acc = 0
             counts.append(len(chunk) - 2)
         assert counts[2:] == [1, 1, 1, 1]
 

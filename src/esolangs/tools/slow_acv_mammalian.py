@@ -27,7 +27,7 @@ control flow, machine-verified end to end over every table through
 A bit's whole effect is banked on array 16's non-head sum; both branches
 leave through trampolines aimed at one merge address (so array 0's sums
 agree exactly) and the 1-arm's tuning chunk (:func:`_arm`) zeroes the even
-head residue at slope -2.  The five lightest weights are banked without
+head residue at slope -2.  The four lightest weights are banked without
 reading the sum at all -- :func:`_pool_bank` CONSUMEs a planted cell and
 rides it to array 16 -- so they may be any byte, and the leaf slot rather
 than 256 sets the table's stride.
@@ -54,9 +54,8 @@ _ARRAYS = 23
 
 # The helpers' default domain, including the replay model: the modulo-256
 # I/O construction.  The entry point passes the caller's moduli through.
-_GENERATOR_MODULI = MammalianModuli(cell_modulus=256, io_modulus=256)
-_MODULUS = _GENERATOR_MODULI.cell_modulus
-_IO_MODULUS = _GENERATOR_MODULI.io_modulus
+_MODULUS = 256
+_IO_MODULUS = 256
 
 # The byte a stash chunk appends.  It is what raises the sum, and the sum is
 # what puts a distant token index within a jump's reach, so the chunk buys
@@ -112,7 +111,7 @@ def _seeded(array: Sequence[int], count: int) -> list[int]:
 
 def _stash_chunk(
     array: list[int], acc: int, *, io_modulus: int = _IO_MODULUS
-) -> tuple[list[str], list[int], int]:
+) -> tuple[list[str], list[int]]:
     """Append the maximum I/O residue and clear the accumulator.
 
     With modulo-256 I/O, the low byte advances by one per ``SEED`` across a head
@@ -127,12 +126,11 @@ def _stash_chunk(
             tokens.append("EXCRETE")
         head = (io_modulus - 1 - sum(cur[1:])) % io_modulus
         tokens += ["SEED"] * ((head - cur[0]) % _MODULUS) + ["DIGEST", "EXCRETE"]
-        return tokens, [head, *cur[1:], io_modulus - 1], 0
+        return tokens, [head, *cur[1:], io_modulus - 1]
     count = (((acc % _MODULUS) ^ _STASH_BYTE) - sum(array)) % _MODULUS
     return (
         [*["SEED"] * count, "DIGEST", "EXCRETE"],
         [*_seeded(array, count), _STASH_BYTE],
-        0,
     )
 
 
@@ -191,10 +189,8 @@ def _trampoline(
     byte, then ``u`` is solved so the ``EXCRETE`` appends the closing
     ``b``.  ``b >= 1`` keeps the ``LEAPFROG`` firing; callers always aim
     past the sum they enter with.  ``rest_sum`` is ``sum(cur) - cur[0]``
-    carried incrementally: each chunk appends exactly one new element
-    (``_STASH_BYTE``) and touches no other, so re-summing the growing
-    list every iteration -- as a naive read of the loop condition would
-    -- costs O(chunks**2) for no reason.
+    carried incrementally (each chunk appends exactly one
+    ``_STASH_BYTE``); re-summing per iteration would be O(chunks**2).
     """
     if io_modulus == 255:
         return _trampoline_255(array, acc, target)
@@ -203,7 +199,8 @@ def _trampoline(
     if target <= rest_sum:
         raise _UnreachableError("trampoline target is not past the running sum")
     while rest_sum < target - _STASH_BYTE:
-        chunk, cur, val = _stash_chunk(cur, val)
+        chunk, cur = _stash_chunk(cur, val)
+        val = 0
         rest_sum += _STASH_BYTE
         tokens += chunk
     hop = target - rest_sum
@@ -234,7 +231,8 @@ def _trampoline_len(
     for _ in range(2):
         if rest_sum >= target - _STASH_BYTE:
             break
-        chunk, cur, val = _stash_chunk(cur, val)
+        chunk, cur = _stash_chunk(cur, val)
+        val = 0
         rest_sum += _STASH_BYTE
         tokens += len(chunk)
     if rest_sum < target - _STASH_BYTE:
@@ -259,7 +257,7 @@ def _trampoline_255(
     if target <= rest:
         raise _UnreachableError("trampoline target is not past the running sum")
     while rest < target - 254:
-        chunk, cur, _ = _stash_chunk(cur, 0, io_modulus=255)
+        chunk, cur = _stash_chunk(cur, 0, io_modulus=255)
         rest += 254
         tokens += chunk
     hop = target - rest
@@ -394,6 +392,12 @@ def _apply(st: _Sums, tok: str, bit: int) -> None:
         st.ptr = (st.ptr + cells[st.acc]) % _ARRAYS
 
 
+def _plant(st: _Sums) -> list[str]:
+    """Replay and return the ``EXCRETE`` that plants the accumulator as a cell."""
+    _replay(st, ["EXCRETE"])
+    return ["EXCRETE"]
+
+
 def _route(st: _Sums, dest: int) -> list[str]:
     """Move the pointer to ``dest``, emitting the tokens that do it.
 
@@ -408,16 +412,11 @@ def _route(st: _Sums, dest: int) -> list[str]:
     if st.acc:
         tokens = ["DIGEST", "EXCRETE"]
         _replay(st, tokens)
-    want = (dest - here) % _ARRAYS
-    step = here + 1
-    for count in range(_MODULUS):
-        if ((st.heads[here] + step * count) % _MODULUS) % _ARRAYS == want:
-            run = [*["SEED"] * count, "SPRINT"]
-            _replay(st, run)
-            if st.ptr != dest:  # pragma: no cover - the residue solve is exact
-                raise AssertionError(f"route to {dest} landed on {st.ptr}")
-            return tokens + run
-    raise AssertionError(f"no seed count routes {here} to {dest}")  # pragma: no cover
+    run = [*["SEED"] * (_route_len(st.heads[here], here, dest) - 1), "SPRINT"]
+    _replay(st, run)
+    if st.ptr != dest:  # pragma: no cover - the residue solve is exact
+        raise AssertionError(f"route to {dest} landed on {st.ptr}")
+    return tokens + run
 
 
 def _route_len(head: int, here: int, dest: int) -> int:
@@ -607,7 +606,7 @@ def _jump(st: _Sums, target: int) -> list[str]:
     return tokens
 
 
-def _weights(n: int) -> list[int]:
+def _weights(n: int, *, stride: int = _MODULUS, unit: int = _LEAF_UNIT) -> list[int]:
     """Return the weight each read node banks, in read order.
 
     The last ``_FREE`` bits carry the weights under 256 -- the one a
@@ -620,8 +619,8 @@ def _weights(n: int) -> list[int]:
     """
     free = min(n, _FREE)
     fixed = n - free
-    weights = [_MODULUS * (1 << (fixed - 1 - i)) for i in range(fixed)]
-    return weights + [_LEAF_UNIT * (1 << k) for k in range(free)]
+    weights = [stride * (1 << (fixed - 1 - i)) for i in range(fixed)]
+    return weights + [unit * (1 << k) for k in range(free)]
 
 
 def _pool_plan(delta: int, pool: int) -> list[int]:
@@ -647,8 +646,7 @@ def _build_pool(st: _Sums, delta: int, pool: int) -> list[str]:
         if cell:
             tokens += _exact_append(st, cell)
             continue
-        _replay(st, ["EXCRETE"])
-        tokens += ["EXCRETE"]
+        tokens += _plant(st)
     tokens += _route(st, 0)
     return tokens
 
@@ -769,8 +767,7 @@ def _prologue(st: _Sums, pairs: Sequence[tuple[int, int]], base: int) -> list[st
     for digit, arr in enumerate(_PRINT):
         tokens += _route(st, arr)
         tokens += _exact_append(st, _ASCII_ZERO + digit)
-        _replay(st, ["EXCRETE"])
-        tokens += ["EXCRETE"]
+        tokens += _plant(st)
         tokens += _route(st, 0)
     for weight, pool in pairs:
         tokens += _build_pool(st, weight, pool)
@@ -801,7 +798,7 @@ def _level(
         )
         if landing >= node_end + reach:
             break
-        chunk, _, _ = _stash_chunk(st.arr0(), st.acc, io_modulus=st.io_modulus)
+        chunk, _ = _stash_chunk(st.arr0(), st.acc, io_modulus=st.io_modulus)
         _replay(st, chunk)
         tokens += chunk
         pos += len(chunk)
@@ -962,18 +959,12 @@ def slow_acv_mammalian(
     # it would split coincide, holding equal entries.  A constant keeps all.
     essential = essential_inputs(truth_table, n) or list(range(n))
     m = len(essential)
-    unit = _LEAF_UNIT
+    unit, stride = _LEAF_UNIT, _MODULUS
     if moduli.io_modulus == 255 and m > _FREE:
-        unit = 7
-        fixed = m - _FREE
-        stride = moduli.io_modulus
-        kept = [stride * (1 << (fixed - 1 - i)) for i in range(fixed)]
-        kept += [unit * (1 << i) for i in range(_FREE)]
-        kept_pools: list[int | None] = [None] * (fixed + 1) + list(_POOLS)
-    else:
-        kept = _weights(m)
-        free = min(m, _FREE)
-        kept_pools = [None] * (m - free + 1) + list(_POOLS[: free - 1])
+        unit, stride = 7, 255
+    kept = _weights(m, stride=stride, unit=unit)
+    free = min(m, _FREE)
+    kept_pools: list[int | None] = [None] * (m - free + 1) + list(_POOLS[: free - 1])
     weights = [0] * n
     pools: list[int | None] = [None] * n
     for i, weight, pool in zip(essential, kept, kept_pools, strict=True):
