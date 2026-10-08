@@ -58,10 +58,15 @@ def test_remove_cuts_only_entries_that_own_their_lines(tmp_path: Path) -> None:
     path = tmp_path / "table.py"
     path.write_text(
         "from esolangs.tools.gone import gone\n"
-        'T = {\n    "gone": 1,\n    "kept": 2,\n}\n'
+        "from esolangs.tools.gone import PAIR\n"
+        'T = {\n    "gone": 1,\n    "kept": PAIR,\n}\n'
         'L = ["gone", "kept"]\n'
         'run_gone = _runner("gone")\n'
     )
     modules = {"esolangs.tools.gone"}
     assert new_language._drop_entries(path, {"gone"}, modules) == 3  # noqa: SLF001
-    assert path.read_text() == 'T = {\n    "kept": 2,\n}\nL = ["gone", "kept"]\n'
+    # The import another entry still uses stays.
+    assert path.read_text() == (
+        "from esolangs.tools.gone import PAIR\n"
+        'T = {\n    "kept": PAIR,\n}\nL = ["gone", "kept"]\n'
+    )

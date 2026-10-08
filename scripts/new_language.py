@@ -494,6 +494,27 @@ def _drop_entries(path: Path, keys: set[str], modules: set[str]) -> int:
                     own(item, item)
         elif isinstance(node, ast.stmt) and _whole_statement(node, named, modules):
             spans.append((node.lineno, node.end_lineno or node.lineno))
+    # An import another language still uses stays (Cyclic tag reuses BCT's
+    # PAIR); judged on the source with every other cut already made.
+    imports = {
+        (node.lineno, node.end_lineno or node.lineno): node
+        for node in ast.parse(source).body
+        if isinstance(node, ast.ImportFrom)
+    }
+    kept = [*lines]
+    for lo, hi in sorted(set(spans), reverse=True):
+        del kept[lo - 1 : hi]
+    used = {
+        node.id
+        for node in ast.walk(ast.parse("".join(kept)))
+        if isinstance(node, ast.Name)
+    }
+    spans = [
+        span
+        for span in spans
+        if span not in imports
+        or not {a.asname or a.name for a in imports[span].names} & used
+    ]
     for lo, hi in sorted(set(spans), reverse=True):
         del lines[lo - 1 : hi]
     if spans:
@@ -568,6 +589,22 @@ def remove(name: str) -> list[str]:
         "src/esolangs/proof_status.json",
     ):
         _drop_json(ROOT / relative, prune)
+    kept = []
+    for module_name in sorted(modules):
+        users = subprocess.run(
+            ["git", "grep", "-l", "-F", f"from {module_name} import", "--", "*.py"],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
+        ).stdout.split()
+        path = f"src/{module_name.replace('.', '/')}.py"
+        if users and (ROOT / path).parent.exists():
+            # Another language imports from it: restore it rather than break.
+            subprocess.run(
+                ["git", "checkout", "HEAD", "--", path], cwd=ROOT, check=True
+            )
+            kept.append(f"{path}: kept, still imported by {', '.join(users)}")
     for target in ("docs", "examples"):
         subprocess.run(
             [sys.executable, "scripts/generate.py", target],
@@ -582,7 +619,7 @@ def remove(name: str) -> list[str]:
         text=True,
         check=False,
     )
-    return grep.stdout.splitlines()
+    return kept + grep.stdout.splitlines()
 
 
 def _report(name: str, gaps: list[Gap]) -> None:
