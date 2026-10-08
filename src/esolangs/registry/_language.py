@@ -29,6 +29,26 @@ class SourceKind(StrEnum):
 
 
 @dataclass(frozen=True)
+class Example:
+    """How the committed AND example deviates from a plain reading program.
+
+    ``pair`` or ``setters(template, n)`` makes it a template whose bits are
+    embedded (``char`` marks the runs; empty means the shared one);
+    ``expected`` is its whole output on the 0,1 row, and ``expected_compared``
+    False where that output is junk around a halting answer.
+    """
+
+    expected: str = "0"
+    inputs: tuple[str, ...] = ("0", "1")
+    pair: tuple[str, str] | None = None
+    setters: Callable[[str, int], Any] | None = None
+    char: str = ""
+    expected_compared: bool = True
+    kwargs: tuple[tuple[str, int], ...] = ()
+    scale: int = 1
+
+
+@dataclass(frozen=True)
 class Language:
     """Language name, interpreter, source shape, id, and optional generator.
 
@@ -56,6 +76,7 @@ class Language:
     eof: str = ""
     #: The error an empty program raises, when the spec rejects one.
     empty_program: str = ""
+    example: Example = field(default_factory=Example)
 
     def __post_init__(self) -> None:
         """Fill the id from the name when none is given."""

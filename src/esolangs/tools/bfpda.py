@@ -1,7 +1,7 @@
 """Boolean template generator for bfpda."""
 
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
+from esolangs.registry._language import Example, Language
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
@@ -74,4 +74,5 @@ LANGUAGE = Language(
     ),
     wrap=wrap_chars,
     empty_program="BF-PDA program cannot be empty",
+    example=Example(pair=BFPDA_PAIR),
 )

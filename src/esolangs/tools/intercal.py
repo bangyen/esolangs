@@ -8,7 +8,7 @@ import re
 from dataclasses import dataclass
 
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
+from esolangs.registry._language import Example, Language
 from esolangs.tools.helpers import (
     _validate_truth_table,
     in_input_order,
@@ -265,4 +265,5 @@ LANGUAGE = Language(
     ),
     balance=balance_intercal,
     empty_program="INTERCAL program is insufficiently or excessively polite (E099)",
+    example=Example(pair=PAIR, char=TEMPLATE_CHAR, expected="_\n\n"),
 )

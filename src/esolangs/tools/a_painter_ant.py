@@ -10,7 +10,7 @@ ant counts through every row, so no subtree folds or is shared.
 """
 
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
+from esolangs.registry._language import Example, Language
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
@@ -63,4 +63,5 @@ LANGUAGE = Language(
         parameterized=True,
     ),
     wrap=wrap_chars,
+    example=Example(pair=PAIR, expected="....\n####\n.o.#"),
 )

@@ -33,7 +33,7 @@ Row gives the logical bits; Input gives their language-specific encoding.
 | `brainfuck.txt` | brainfuck | `0001` | `01` | 01 | '0' |
 | `brainif.txt` | BrainIf | `0001` | `01` | 01 | '0' |
 | `circlefuck.txt` | Circlefuck | `0001` | `01` | 01 | '0' |
-| `circuit_diagram.txt` | Circuit Diagram | `0001` | `01` | 01 | '0' |
+| `circuit-diagram.txt` | Circuit Diagram | `0001` | `01` | 01 | '0' |
 | `clockwise.txt` | Clockwise | `0001` | `01` | 01 | '0' |
 | `collatz-multiverse.txt` | Collatz Multiverse | `0001` | `01` | 0 1 | '0' |
 | `container.txt` | Container | `0001` | `01` | 01 | '0' |

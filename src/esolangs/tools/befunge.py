@@ -14,7 +14,7 @@ from math import isqrt
 
 from esolangs.exceptions import GeneratorCapError
 from esolangs.interpreters.source_hints import with_hint
-from esolangs.registry._language import Language
+from esolangs.registry._language import Example, Language
 from esolangs.tools.helpers import _parity_bias, _validate_truth_table, input_weights
 from esolangs.tools.wrap import balance_score
 
@@ -207,4 +207,7 @@ LANGUAGE = Language(
     balance=balance_befunge,
     no_wrap="a row is a grid row and the lookup table is indexed by column",
     empty_program="Befunge program cannot be empty",
+    # ``.`` writes the digit and a trailing space, so the committed
+    # answer carries it and the sweep strips it.
+    example=Example(expected="0 "),
 )

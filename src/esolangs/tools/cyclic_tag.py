@@ -5,7 +5,8 @@ runs once a cycle, so none is shared.
 """
 
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
+from esolangs.registry._language import Example, Language
+from esolangs.tools.bitwise_cyclic_tag import PAIR
 from esolangs.tools.helpers import TEMPLATE_CHAR, _validate_truth_table, input_weights
 from esolangs.tools.wrap import wrap_chars
 
@@ -32,4 +33,5 @@ LANGUAGE = Language(
     ),
     wrap=wrap_chars,
     empty_program="Cyclic tag requires productions,queue using bits and semicolons",
+    example=Example(pair=PAIR),
 )

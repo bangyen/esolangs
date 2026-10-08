@@ -16,7 +16,7 @@ from itertools import islice
 
 from esolangs.interpreters.other.fractran.index import SMALL_BASE
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
+from esolangs.registry._language import Example, Language
 from esolangs.tools.factor import _primes as _prime_stream
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
@@ -238,4 +238,5 @@ LANGUAGE = Language(
     wrap=wrap_space_delimited,
     balance=_balance,
     empty_program="a FRACTRAN program needs a starting value",
+    example=Example(setters=fractran_setters, expected="1"),
 )

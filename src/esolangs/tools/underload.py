@@ -13,7 +13,7 @@ import re
 from functools import cache
 
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
+from esolangs.registry._language import Example, Language
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     SubtreeDiagram,
@@ -179,4 +179,5 @@ LANGUAGE = Language(
     ),
     balance=_balance,
     no_wrap="a break inside a pushed element changes the string it contains",
+    example=Example(setters=underload_setters),
 )

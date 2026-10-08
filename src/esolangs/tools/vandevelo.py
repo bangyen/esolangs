@@ -100,7 +100,7 @@ import random
 from itertools import islice
 
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
+from esolangs.registry._language import Example, Language
 from esolangs.tools.helpers import _validate_truth_table, short_name
 from esolangs.tools.wrap import balance_score
 
@@ -1008,4 +1008,5 @@ LANGUAGE = Language(
         note="Vandevelo answers by terminating: nil halts and not nil loops",
     ),
     balance=_balance,
+    example=Example(expected=""),
 )

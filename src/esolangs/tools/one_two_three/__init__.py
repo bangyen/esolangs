@@ -43,7 +43,7 @@ from __future__ import annotations
 from functools import cache
 
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
+from esolangs.registry._language import Example, Language
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
@@ -259,4 +259,10 @@ LANGUAGE = Language(
     # The trailing ``1`` is a terminator, not a structural line.
     wrap=wrap_chars,
     empty_program="an empty 123 program never halts",
+    # 123 answers with the termination convention, as ArrowQueue does, so
+    # only the halting (0) branch is committed.  The constructed template
+    # pops through location -2 while merging, which prints junk bytes on
+    # every row; ``test_boolean_example`` asserts the halt and ignores
+    # them, so ``expected`` is vestigial here.
+    example=Example(pair=PAIR, expected="", expected_compared=False),
 )

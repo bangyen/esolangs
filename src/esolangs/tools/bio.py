@@ -1,7 +1,7 @@
 """Boolean template generator for bio."""
 
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
+from esolangs.registry._language import Example, Language
 from esolangs.tools.helpers import (
     _ASCII_ZERO,
     TEMPLATE_CHAR,
@@ -81,4 +81,5 @@ LANGUAGE = Language(
         parameterized=True,
     ),
     wrap=_wrap_bio,
+    example=Example(pair=BIO_PAIR),
 )

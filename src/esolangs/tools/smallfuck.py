@@ -3,7 +3,7 @@
 import re
 
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
+from esolangs.registry._language import Example, Language
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
@@ -172,4 +172,5 @@ LANGUAGE = Language(
     ),
     wrap=wrap_chars,
     balance=_balance,
+    example=Example(setters=smallfuck_setters),
 )

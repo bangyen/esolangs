@@ -54,7 +54,7 @@ REGENERATE = "`uv run python scripts/generate.py examples`"
     "name",
     [
         pytest.param(name, marks=pytest.mark.medium)
-        if name in {"circuit_diagram", "vandevelo"}
+        if name in {"circuit-diagram", "vandevelo"}
         else name
         for name in sorted(BOOLEAN_GENERATED)
     ],

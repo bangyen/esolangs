@@ -1,7 +1,7 @@
 """Boolean-function generator for Clockwise."""
 
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
+from esolangs.registry._language import Example, Language
 from esolangs.tools.helpers import (
     _validate_truth_table,
     essential_inputs,
@@ -242,4 +242,5 @@ LANGUAGE = Language(
     balance=_balance,
     no_wrap="a row is a ring row; the walk's turns sit at fixed cells",
     empty_program="Clockwise program cannot be empty",
+    example=Example(inputs=("01",)),
 )

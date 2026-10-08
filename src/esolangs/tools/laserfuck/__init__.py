@@ -4,7 +4,7 @@ from functools import cache
 from typing import NamedTuple
 
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
+from esolangs.registry._language import Example, Language
 from esolangs.tools.helpers import (
     _validate_truth_table,
     constant_span_test,
@@ -834,4 +834,5 @@ LANGUAGE = Language(
         input_shape="char_stream",
     ),
     balance=balance_laserfuck,
+    example=Example(expected="0", kwargs=(("seed", 0),)),
 )

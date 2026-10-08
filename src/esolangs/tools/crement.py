@@ -21,7 +21,7 @@ five-input tables, 114,791 to 83,070 (27.6%).
 """
 
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
+from esolangs.registry._language import Example, Language
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
@@ -194,4 +194,5 @@ LANGUAGE = Language(
     ),
     balance=_balance,
     no_wrap="each line is one instruction; jumps and patches name line numbers",
+    example=Example(setters=crement_setters, expected=""),
 )

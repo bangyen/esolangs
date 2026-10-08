@@ -28,7 +28,7 @@ agree is passed over.
 import string
 
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
+from esolangs.registry._language import Example, Language
 from esolangs.tools.helpers import (
     _validate_truth_table,
     best_input_order,
@@ -291,4 +291,7 @@ LANGUAGE = Language(
     no_wrap="blocks and executable commands are delimited by source lines",
     # The wiki cat's only clean exit is a ``readto`` that gets no line.
     eof="an exhausted readto empties the block",
+    # ``send`` terminates every line it writes, so the answer arrives
+    # with a newline after it -- there is no other output command.
+    example=Example(expected="0\n"),
 )

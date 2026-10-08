@@ -5,7 +5,7 @@ from itertools import pairwise
 from string import ascii_uppercase
 
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
+from esolangs.registry._language import Example, Language
 from esolangs.tools.helpers import (
     _validate_truth_table,
     constant_span_test,
@@ -425,4 +425,7 @@ LANGUAGE = Language(
     ),
     balance=balance_apl,
     no_wrap="a line with '=' defines, one without runs",
+    # An executed line prints its result and nothing else, so the
+    # answer arrives with the newline that ends that line.
+    example=Example(expected="0\n"),
 )

@@ -11,7 +11,7 @@ walk arrives at cell ``index`` and fires it, and no row can drop.  Emission is
 from __future__ import annotations
 
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
+from esolangs.registry._language import Example, Language
 from esolangs.tools.helpers import TEMPLATE_CHAR, _validate_truth_table, input_weights
 from esolangs.tools.wrap import wrap_chars
 
@@ -52,4 +52,5 @@ LANGUAGE = Language(
     ),
     # Safe anywhere: every space and newline is stripped before parsing.
     wrap=wrap_chars,
+    example=Example(pair=PAIR),
 )
