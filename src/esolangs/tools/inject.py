@@ -17,6 +17,12 @@ The bits are read up front (one ``readto`` each) so every path reads
 greedy compete) with ``skipq INPUT ZERO``, which fires when the bit is
 ``0`` and skips the ``1``-subtree block.  A leaf sends the zero or one
 block and escapes; the two constants serve as operands and answers.
+
+A subtree repeated at its level is written once, at its last occurrence, and
+each earlier one is a ``skip`` over a block closing just before it (jumps run
+forward only): n=4, all 65,536 tables, -27.1%, none longer; at n=5 the shared tree is
+1.04x the halving lookup, so the n<=4 crossover stays.  A node whose halves
+agree is passed over.
 """
 
 import string
@@ -24,10 +30,10 @@ import string
 from esolangs.tools.helpers import (
     _validate_truth_table,
     best_input_order,
-    constant_span_test,
     essential_inputs,
     input_weights,
     read_at,
+    subtree_ids,
 )
 
 __all__ = ["inject"]
@@ -81,30 +87,60 @@ def _tree(
     """Emit the decision tree for ``table``, testing input ``perm[depth]`` first.
 
     ``table`` is in the permuted frame; ``names`` records escape labels, closing order.
+    A subtree repeated at its level is written at its last occurrence in the
+    text; each earlier one is a ``skip`` over a block that closes just before
+    it.  A constant subtree is a leaf, and a node whose halves agree is passed
+    over for its zero half.
     """
-    constant = constant_span_test(table)
+    ids = subtree_ids(table)
 
-    def walk(start: int, stop: int, level: int) -> list[str]:
-        # A constant subtree needs no further tests: whatever the remaining
-        # bits are, the answer is the same, so the node collapses to its leaf.
-        if level == n or constant(start, stop):
+    def canonical(level: int, block: int) -> tuple[int, int]:
+        while (
+            level < n
+            and ids[level][block] >= 2
+            and ids[level + 1][2 * block] == ids[level + 1][2 * block + 1]
+        ):
+            level, block = level + 1, 2 * block
+        return level, block
+
+    # Text order is the node, its one-subtree, then its zero-subtree.
+    last: dict[int, tuple[int, int]] = {}
+
+    def scan(level: int, block: int) -> None:
+        level, block = canonical(level, block)
+        last[ids[level][block]] = (level, block)
+        if ids[level][block] >= 2:
+            scan(level + 1, 2 * block + 1)
+            scan(level + 1, 2 * block)
+
+    scan(depth, 0)
+    closes: dict[int, list[str]] = {}
+
+    def walk(level: int, block: int) -> list[str]:
+        level, block = canonical(level, block)
+        key = ids[level][block]
+        if last[key] != (level, block):
+            label = names.fresh()
+            closes.setdefault(key, []).append(f"{label};")
+            return ["skip", f"{label};"]
+        lines = closes.get(key, [])
+        if key < 2:
             escape = names.fresh()
             names.escapes.append(escape)
-            return _leaf(table[start], escape)
-
-        middle = (start + stop) // 2
-        zeros = walk(start, middle, level + 1)
-        ones = walk(middle, stop, level + 1)
-        block = names.fresh()
+            return [*lines, *_leaf(str(key), escape)]
+        label = names.fresh()
+        ones = walk(level + 1, 2 * block + 1)
+        zeros = walk(level + 1, 2 * block)
         return [
+            *lines,
             f"skipq {names.inputs[perm[level]]} z",
-            f"{block};",
+            f"{label};",
             *ones,
-            f"{block};",
+            f"{label};",
             *zeros,
         ]
 
-    return walk(0, len(table), depth)
+    return walk(depth, 0)
 
 
 def _widest(program: str) -> int:

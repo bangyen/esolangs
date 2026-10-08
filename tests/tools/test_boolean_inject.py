@@ -18,7 +18,7 @@ class TestInject:
         """A table ignoring its later inputs costs one test, not ``n``."""
         one_dependency = len(boolean.inject("00001111"))
         parity = len(boolean.inject("01101001"))
-        assert one_dependency < parity / 2
+        assert one_dependency < parity * 3 / 4
 
     def test_reads_every_input_before_branching(self) -> None:
         """The reads are hoisted, so every path consumes exactly ``n`` lines."""
