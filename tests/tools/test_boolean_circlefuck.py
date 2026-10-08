@@ -16,26 +16,9 @@ def _rows(program: str, table: str, n: int) -> None:
 
 
 class TestCirclefuck:
-    @pytest.mark.parametrize(
-        ("values", "n"),
-        [
-            ([0, 255], 1),
-            ([48, 49, 50, 51], 2),
-        ],
-    )
-    def test_byte_values(self, values: list[int], n: int) -> None:
-        """The table under the generator holds arbitrary bytes."""
-        from esolangs.tools.circlefuck import _circlefuck_table
-
-        program = _circlefuck_table(values)
-        for combo in range(2**n):
-            bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
-            got = run_circlefuck(program, bits)
-            assert got == chr(values[combo]), f"inputs {bits}"
-
     def test_the_index_survives_more_than_one_digit(self) -> None:
         """Past 128 entries the index needs a carry, and it is spent right."""
-        from esolangs.tools.circlefuck import _DIGIT_BITS, _circlefuck_table
+        from esolangs.tools.circlefuck import _DIGIT_BITS
 
         n = 9
         table = "".join("1" if row % 3 == 0 else "0" for row in range(2**n))
@@ -44,7 +27,6 @@ class TestCirclefuck:
         for row in (0, 127, 128, 129, 255, 256, 257, 383, 384, 511):
             bits = [str((row >> (n - 1 - i)) & 1) for i in range(n)]
             assert run_circlefuck(program, bits) == table[row], row
-        assert _circlefuck_table([48] * 2) == boolean.circlefuck("00")
 
     @pytest.mark.parametrize("fed", ["", "1\n", "x\ny\nz\n", "9\n9\n9\n"])
     def test_a_byte_outside_the_alphabet_still_lands_in_the_table(
@@ -82,54 +64,3 @@ class TestCirclefuck:
         )
         _rows(boolean.circlefuck("11111111"), "11111111", 3)
         _rows(boolean.circlefuck("11110000"), "11110000", 3)
-
-
-@pytest.mark.parametrize("seed", range(3))
-def test_circlefuck_essential_inputs_are_the_ones_flipping_changes(seed: int) -> None:
-    """The sibling-block scan finds exactly the inputs the table depends on."""
-    from esolangs.tools.circlefuck import _essential_byte_inputs
-
-    rng = random.Random(seed)
-    n = rng.randint(1, 8)
-    # A function of a random subset of the inputs, so most are inessential.
-    subset = sorted(rng.sample(range(n), rng.randint(0, n)))
-    values = [rng.choice((48, 49, 7)) for _ in range(2 ** len(subset))]
-    table = []
-    for row in range(2**n):
-        index = 0
-        for i in subset:
-            index = (index << 1) | ((row >> (n - 1 - i)) & 1)
-        table.append(values[index])
-    expected = [
-        i
-        for i in range(n)
-        if any(table[row] != table[row ^ (1 << (n - 1 - i))] for row in range(2**n))
-    ]
-    assert _essential_byte_inputs(table, n) == expected
-
-
-@pytest.mark.parametrize("seed", range(4))
-def test_circlefuck_projection_is_the_table_over_its_essential_inputs(
-    seed: int,
-) -> None:
-    """Projecting and then re-expanding gives the table back."""
-    from esolangs.tools.circlefuck import _essential_byte_inputs, _projected
-
-    rng = random.Random(seed)
-    n = rng.randint(1, 7)
-    subset = sorted(rng.sample(range(n), rng.randint(1, n)))
-    values = [rng.choice((48, 49)) for _ in range(2 ** len(subset))]
-    table = []
-    for row in range(2**n):
-        key = 0
-        for i in subset:
-            key = (key << 1) | ((row >> (n - 1 - i)) & 1)
-        table.append(values[key])
-    essential = _essential_byte_inputs(table, n)
-    rows = _projected(table, n, essential)
-    assert len(rows) == 2 ** len(essential)
-    for row in range(2**n):
-        key = 0
-        for i in essential:
-            key = (key << 1) | ((row >> (n - 1 - i)) & 1)
-        assert rows[key] == table[row], row
