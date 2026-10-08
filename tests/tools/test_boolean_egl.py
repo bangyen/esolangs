@@ -20,8 +20,12 @@ def test_the_walk_is_branch_free() -> None:
 
 
 def test_size_is_table_content_only() -> None:
-    """Two tables of one arity and one popcount render to the same length."""
-    assert len(tools.egl("01101001")) == len(tools.egl("00001111"))
+    """Two tables of one arity and one popcount render to the same length.
+
+    Both read every input: an ignored one is a bare ``x`` and drops the table
+    to the rest's.
+    """
+    assert len(tools.egl("01101001")) == len(tools.egl("01110001"))
 
 
 def test_wrapped_programs_still_compute_the_table() -> None:

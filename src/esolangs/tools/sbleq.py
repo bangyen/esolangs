@@ -5,6 +5,7 @@ from esolangs.tools.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
     in_input_order,
+    input_weights,
     subtree_ids,
     subtree_slot,
 )
@@ -88,8 +89,18 @@ def _sbleq_shared(truth_table: str, perm: tuple[int, ...]) -> str:
 
 
 def _sbleq_packed(truth_table: str, *, direct: bool = False) -> str:
-    """Emit a linear-size packed-table decoder for S*bleq."""
-    n = _validate_truth_table(truth_table)
+    """Emit a linear-size packed-table decoder for S*bleq.
+
+    An ignored input is read into ``TMP``, which the next read overwrites,
+    and never joins the index; the table is packed over the rest, so its
+    chunks hold one bit per essential input.  A constant keeps every input.
+    """
+    weights, projected = input_weights(truth_table, _validate_truth_table(truth_table))
+    if any(weights):
+        truth_table = projected
+    else:
+        weights = [1] * len(weights)
+    n = sum(map(bool, weights))
     instructions: list[tuple[int | str, int | str, str]] = []
     labels: dict[str, int] = {}
     values: dict[str, int] = {
@@ -147,16 +158,20 @@ def _sbleq_packed(truth_table: str, *, direct: bool = False) -> str:
         jump(positive)
 
     if direct:
-        for _ in range(n):
+        for weight in weights:
             emit("TMP", "INPUT")
+            if not weight:
+                continue
             emit("TMP", "POS48")
             add("INDEX", "INDEX")
             add("INDEX", "TMP")
     else:
         # Read ASCII bits once and form their binary row index.
-        for _ in range(n):
+        for weight in weights:
             clear("TMP")
             emit("TMP", -2)
+            if not weight:
+                continue
             emit("TMP", "NEG48")
             clear("BIT")
             emit("BIT", "TMP")

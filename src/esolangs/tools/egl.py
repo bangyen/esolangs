@@ -1,6 +1,6 @@
 """Boolean-function generator for EGL."""
 
-from esolangs.tools.helpers import _validate_truth_table
+from esolangs.tools.helpers import _validate_truth_table, input_weights
 
 
 def egl(truth_table: str, width: int | None = None) -> str:
@@ -11,9 +11,16 @@ def egl(truth_table: str, width: int | None = None) -> str:
     scratch: each input is read under the pointer and its ``(-...)`` guard,
     run once exactly when the bit is 1, walks right by the input's Horner
     weight, so the weights accumulate into the index with no branch per
-    level, and ``v=`` prints the cell below.
+    level, and ``v=`` prints the cell below.  An ignored input is a bare
+    ``x`` the next read overwrites, and the table is indexed by the rest.  A
+    constant keeps its full table: one cell leaves ``^<`` no room.
     """
     n = _validate_truth_table(truth_table)
+    weights, projected = input_weights(truth_table, n)
+    if any(weights):
+        truth_table = projected
+    else:
+        weights = [1 << (n - 1 - index) for index in range(n)]
     size = len(truth_table)
 
     # Paint row 1 left to right, then fold both axes back to the origin.
@@ -21,7 +28,7 @@ def egl(truth_table: str, width: int | None = None) -> str:
     pieces = [f"{size},2:", "v", ">".join(cells), "%^<"]
 
     # One read and one weighted guard an input; the weights sum to T - 1.
-    pieces += [f"x{'-' * 48}(-{'>' * (1 << (n - 1 - index))})" for index in range(n)]
+    pieces += [f"x{'-' * 48}(-{'>' * weight})" if weight else "x" for weight in weights]
     pieces.append("v=")
 
     program = "".join(pieces)

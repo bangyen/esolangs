@@ -2,7 +2,7 @@
 
 import re
 
-from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table
+from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table, input_weights
 
 
 def modulous(truth_table: str, width: int | None = None) -> str:
@@ -15,13 +15,27 @@ def modulous(truth_table: str, width: int | None = None) -> str:
     # top and discarding ``index`` of them uncovers ``truth_table[index]`` --
     # the row index read MSB first, which is what the weights below build.  The
     # first read *is* the counter: a bit is already 0 or 1, so the top weight is
-    # one conditional ``ADD`` away and no accumulator is pushed.
-    top = 1 << (n - 1)
-    reads = ["[INP INT]" + (f"[JMP F 2 IF 0][ADD {top - 1}]" if n > 1 else "")]
-    reads += [
-        f"[INP INT][JMP F 4 IF 0][POP][ADD {1 << (n - 1 - i)}][JMP F 2][POP]"
-        for i in range(1, n)
-    ]
+    # one conditional ``ADD`` away and no accumulator is pushed.  An ignored
+    # input is read and popped, and the table is indexed by the rest; a
+    # constant keeps every input, since some read must be the counter.
+    weights, projected = input_weights(truth_table, n)
+    if any(weights):
+        truth_table = projected
+    else:
+        weights = [1 << (n - 1 - i) for i in range(n)]
+    reads = []
+    counted = False
+    for weight in weights:
+        if not weight:
+            reads.append("[INP INT][POP]")
+        elif counted:
+            reads.append(f"[INP INT][JMP F 4 IF 0][POP][ADD {weight}][JMP F 2][POP]")
+        else:
+            reads.append(
+                "[INP INT]"
+                + (f"[JMP F 2 IF 0][ADD {weight - 1}]" if weight > 1 else "")
+            )
+            counted = True
     # ``SWP``/``POP`` discards the entry *under* the counter, which is what
     # keeps the counter reachable: nothing but the top two cells is.
     walk = "[JMP F 5 IF 0][SUB 1][SWP][POP][JMP B 4][POP][PRT][END]"

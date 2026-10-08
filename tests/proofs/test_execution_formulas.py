@@ -206,6 +206,8 @@ def _seeded(n: int, seed: int) -> str:
 
 
 #: BFStack's worst 7-input block, a rule: 64 zeros, 60 ones, a zero, then ones.
+#: Wider, it sits under all-ones top inputs: repeated, it would make them
+#: ignored, and they are read and dropped rather than branched.
 _BFSTACK_BLOCK = "0" * 64 + "1" * 60 + "0" + "111"
 
 
@@ -265,7 +267,7 @@ def _tables(name: str, n: int) -> tuple[str, ...]:
         "01" * (width // 2),
     )
     if name == "BFStack" and n >= 7:
-        tables += (_BFSTACK_BLOCK * (1 << (n - 7)),)
+        tables += ("0" * (width - 128) + _BFSTACK_BLOCK,)
     if name == "Bitdeque":
         tables += ("10" + "01" * (width // 2 - 1),)
     if name == "123" and n >= 4:

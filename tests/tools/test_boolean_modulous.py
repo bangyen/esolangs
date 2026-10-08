@@ -41,7 +41,7 @@ class TestModulous:
     def test_narrow_literal_floor_and_corpus_size(self) -> None:
         assert max(map(len, boolean.modulous("0110", 1).splitlines())) == 3
         assert (
-            sum(len(boolean.modulous(format(v, "08b"), 1)) for v in range(256)) == 94976
+            sum(len(boolean.modulous(format(v, "08b"), 1)) for v in range(256)) == 90500
         )
 
     def test_fitting_bracket_layout_keeps_its_source(self) -> None:
@@ -54,7 +54,7 @@ class TestModulous:
         """No branch reads the table, so its contents cannot change the size."""
         sizes = {
             len(boolean.modulous(table))
-            for table in ("11111111", "10010110", "00000000", "11110000")
+            for table in ("11111111", "10010110", "00000000", "01110001")
         }
         assert len(sizes) == 1
         assert len(boolean.modulous("1" * 16)) - sizes.pop() == 16 - 8 + 49

@@ -296,9 +296,7 @@ def test_the_tree_program_spends_its_permutation_on_the_tested_cell() -> None:
 # reduction are tree techniques, complement/polarity is a minterm one.  The
 # lists are measured (see the doc's "Which shape a boolean generator is"),
 # so this test is what keeps them true rather than a comment that rots.
-_MINTERM_SHAPED = {
-    "bfstack",
-}
+_MINTERM_SHAPED: set[str] = set()
 
 # Neither model describes these.  ``minifuck`` is a route search over a
 # grid, not a sum and not a tree.
@@ -334,6 +332,7 @@ _MINTERM_SHAPED = {
 # lookup tabulates the essential inputs alone, so a one-dependency table is
 # a two-entry table and not a collapsed tree.
 _REDUCING = {
+    "bfstack",
     "circlefuck",
     "home_row",
     "nocomment",
@@ -594,6 +593,39 @@ def test_the_exec_tables_really_need_every_input(make: Callable[[int], str]) -> 
     """The guards above are worthless if their tables fold."""
     table = make(_ONE_MINTERM_ARITY)
     assert len(essential_inputs(table, _ONE_MINTERM_ARITY)) == _ONE_MINTERM_ARITY
+
+
+#: What one ignored input adds to a lookup that reads and drops it, at every
+#: position, against the arity it lifts the table from (Container's threshold
+#: route starts at seven).  Each used to grow as much as a real input,
+#: 1.13x-2.08x at six or seven inputs: the table doubled over the bit.
+_IGNORED_INPUT_COST = {
+    "BFStack": (6, 2),  # ``,<``
+    "EGL": (6, 1),  # a bare ``x``
+    "Inject": (6, 15),  # its declaration and ``readto``
+    "Subleq": (6, 11),  # one read into ``TMP``
+    "Modulous": (6, 14),  # ``[INP INT][POP]``
+    "Qoibl": (6, 30),  # one read into a register the next write clears
+    "Container": (7, 66),  # its latch and window, no weight
+}
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("name", sorted(_IGNORED_INPUT_COST))
+def test_an_ignored_input_is_read_and_dropped(name: str) -> None:
+    """The table is indexed by the essential inputs; the ignored one still reads."""
+    n, cost = _IGNORED_INPUT_COST[name]
+    inner = _one_hot(n)
+    build = LANGUAGES[name].boolean
+    assert build is not None
+    for at in (0, n // 2, n):
+        low = n - at
+        table = "".join(
+            inner[row >> (low + 1) << low | row & ((1 << low) - 1)]
+            for row in range(2 * len(inner))
+        )
+        assert len(build(table)) - len(build(inner)) == cost, at
+    assert evaluate_generated(name, table, timeout=30) == table
 
 
 #: What ``docs/limitations.md`` says the expensive generators cost, as

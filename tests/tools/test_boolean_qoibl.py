@@ -37,7 +37,7 @@ class TestQoibl:
     def test_narrow_horner_floor_and_corpus_size(self) -> None:
         assert max(map(len, boolean.qoibl("0110", 1).splitlines())) == 2
         assert (
-            sum(len(boolean.qoibl(format(v, "08b"), 1)) for v in range(256)) == 520366
+            sum(len(boolean.qoibl(format(v, "08b"), 1)) for v in range(256)) == 509287
         )
 
     def test_the_table_is_one_literal(self) -> None:

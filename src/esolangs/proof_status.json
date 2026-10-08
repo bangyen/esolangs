@@ -359,7 +359,7 @@
       "labels": [
         "finite lookup"
       ],
-      "qualification": "row 1 is painted with the table and each input's `(-...)` guard walks the row-0 pointer right by that input's Horner weight, so `v=` prints the indexed cell",
+      "qualification": "row 1 is painted with the table and each essential input's `(-...)` guard walks the row-0 pointer right by that input's Horner weight, so `v=` prints the indexed cell",
       "scaling": "linear: T painted cells, guard weights sum to T - 1",
       "execution": "linear: worst 3T + 52n + 4 commands: paint the table, 50 per input, weights summing to T - 1",
       "workspace": "linear: worst 2T + 2n + 7 + bl(L-d-3) + bl(L-d-9) + 2bl(n) bits, d the digits of T",

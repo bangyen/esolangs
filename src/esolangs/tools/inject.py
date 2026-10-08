@@ -23,6 +23,7 @@ from esolangs.tools.helpers import (
     _validate_truth_table,
     best_input_order,
     constant_span_test,
+    input_weights,
 )
 
 __all__ = ["inject"]
@@ -173,15 +174,21 @@ def _inject_banded(truth_table: str) -> str:
 
 
 def _inject_halving(truth_table: str) -> str:
-    """Select one table character with linear total regex text."""
+    """Select one table character with linear total regex text.
+
+    An input's halving is its weight; an ignored input, weight 0, is read
+    and never tested, and the table is indexed by the rest.
+    """
     n = _validate_truth_table(truth_table)
+    weights, projected = input_weights(truth_table, n)
     names = _Names(n, tuple(range(n)))
     lines = [f"{name};\n{name};" for name in names.inputs]
-    lines += ["t;", truth_table, "t;", "z;", "0", "z;", "o;", "1", "o;"]
+    lines += ["t;", projected, "t;", "z;", "0", "z;", "o;", "1", "o;"]
     lines += [f"readto {name}" for name in names.inputs]
 
-    for depth, input_name in enumerate(names.inputs):
-        half = 1 << (n - depth - 1)
+    for half, input_name in zip(weights, names.inputs, strict=True):
+        if not half:
+            continue
         one = names.fresh()
         zero = names.fresh()
         # A zero skips the prefix deletion; a one skips the suffix deletion.

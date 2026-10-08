@@ -6,7 +6,12 @@ from itertools import count, pairwise
 from esolangs.tools.forbin import (
     _forbin_name,
 )
-from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table, subtree_ids
+from esolangs.tools.helpers import (
+    _ASCII_ZERO,
+    _validate_truth_table,
+    input_weights,
+    subtree_ids,
+)
 
 #: The names Container gives its own meaning, which a generated container
 #: may not take.  ``_forbin_name`` draws from a mixed-case alphabet and so
@@ -325,8 +330,16 @@ def _container_threshold(truth_table: str) -> str:
     ``n == 7``, which is not a program that can be run.
     """
     n = _validate_truth_table(truth_table)
-    mirrored = _threshold_deltas(truth_table, n, mirror=True)
-    plain = _threshold_deltas(truth_table, n, mirror=False)
+    # An ignored input is latched like any other but adds no weight, so the
+    # steps are those of the table over the rest.  A constant keeps them all.
+    weights, projected = input_weights(truth_table, n)
+    if any(weights):
+        truth_table = projected
+    else:
+        weights = [1 << (n - 1 - k) for k in range(n)]
+    essential = sum(map(bool, weights))
+    mirrored = _threshold_deltas(truth_table, essential, mirror=True)
+    plain = _threshold_deltas(truth_table, essential, mirror=False)
     mirror = sum(map(bool, mirrored[1:])) < sum(map(bool, plain[1:]))
     deltas = mirrored if mirror else plain
     steps = [(row, delta) for row, delta in enumerate(deltas) if row and delta]
@@ -335,10 +348,10 @@ def _container_threshold(truth_table: str) -> str:
     # named once per input.  Assign the shortest names by actual frequency.
     uses: dict[tuple[str, int, int], int] = {
         ("count", 0, 0): 1 + len(steps),
-        ("gate", 0, 0): 1 + n,
+        ("gate", 0, 0): 1 + essential,
     }
     for bit in range(n):
-        uses[("latch", bit, 0)] = 2
+        uses[("latch", bit, 0)] = 1 + bool(weights[bit])
         uses[("window", bit, 0)] = 2
     names = _allocate_names(uses)
     counter = names[("count", 0, 0)]
@@ -377,9 +390,11 @@ def _container_threshold(truth_table: str) -> str:
             f"{counter}:",
         )
     )
-    for k in range(n):
-        weight = 2**k if mirror else 2 ** (n - 1 - k)
-        lines.append(f"+{weight} {names[('latch', k, 0)]}>={gate}")
+    for k, weight in enumerate(weights):
+        if weight:
+            # The mirror reverses the essential inputs' ranks.
+            weight = (1 << (essential - 1)) // weight if mirror else weight
+            lines.append(f"+{weight} {names[('latch', k, 0)]}>={gate}")
 
     lines.append(f"OUT={_ASCII_ZERO + deltas[0]}:")
     lines.extend(f"{delta:+d} {counter}>={row}" for row, delta in steps)

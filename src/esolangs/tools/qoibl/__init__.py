@@ -1,6 +1,6 @@
 """Boolean generator for qoibl."""
 
-from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table
+from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table, input_weights
 
 __all__ = ["qoibl"]
 
@@ -22,6 +22,17 @@ def qoibl(truth_table: str, width: int | None = None) -> str:
     ``table // 2**index`` then ``r - 2 * (r // 2)`` reads that row off.
     """
     n = _validate_truth_table(truth_table)
+    # An ignored input is read into ``p`` until the first essential read sets
+    # it, then into ``row``, which the packed literal overwrites: it costs no
+    # variable, and the table is packed over the rest.  It is stored as the
+    # bit plus one: a raw 49 beside a live ``p`` broke the workspace bound
+    # (17 > 16 bits on ``00111100``).
+    # A constant keeps every input, since the first read sets ``p``.
+    weights, projected = input_weights(truth_table, n)
+    if any(weights):
+        truth_table = projected
+    else:
+        weights = [1] * n
     power = _qoibl_enc(_QOIBL_POWER)
     row = _qoibl_enc(_QOIBL_ROW)
     zero = _qoibl_enc(_ASCII_ZERO)
@@ -30,10 +41,18 @@ def qoibl(truth_table: str, width: int | None = None) -> str:
     # ``p = p * (p * (et - 47))``: the digit is 48 or 49, so that factor is
     # the bit plus one and squaring makes the reads Horner's rule.
     bit = f"et ry ey ry {_qoibl_enc(_ASCII_ZERO - 1)}"
-    lines = [f"we {power} we {bit} we"]
-    lines += (n - 1) * [
-        f"we {power} we qe {power} qe ry ye ry qe {power} qe ry ye ry {bit} we"
-    ]
+    lines = []
+    counted = False
+    for weight in weights:
+        if not weight:
+            lines.append(f"we {row if counted else power} we {bit} we")
+        elif counted:
+            lines.append(
+                f"we {power} we qe {power} qe ry ye ry qe {power} qe ry ye ry {bit} we"
+            )
+        else:
+            lines.append(f"we {power} we {bit} we")
+            counted = True
     lines.append(f"we {row} we {_qoibl_enc(packed)} ry yy ry qe {power} qe we")
     lines.append(
         f"tt qe {row} qe ry ee ry {zero} ry ey ry ye ry ye ry "
