@@ -32,7 +32,7 @@
         "minterms"
       ],
       "qualification": "base-26 names are unbounded",
-      "scaling": "linear, time n log: greedy order scoring, capped at n <= 10",
+      "scaling": "linear: bounded dependency scan and canonical residual IDs",
       "execution": "poly n: worst ceil(65n / 2) - 21 commands, one guarded path",
       "workspace": "poly n: worst 179n + 400 + V + W bits for n ≥ 2: frame work stacks, globals",
       "evidence": "docs/proofs/index.md#generator-ledger",

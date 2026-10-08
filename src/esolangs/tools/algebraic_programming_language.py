@@ -4,12 +4,9 @@ from itertools import pairwise
 from string import ascii_uppercase
 
 from esolangs.tools.helpers import (
-    _GREEDY_ORDER_MAX_ARITY,
     _validate_truth_table,
     constant_span_test,
     in_input_order,
-    input_orders,
-    permute_truth_table,
     short_name,
     subtree_ids,
 )
@@ -350,9 +347,12 @@ def _apl_short_operators(table: str, perm: tuple[int, ...]) -> str:
 
 
 def balance_apl(table: str, default: str) -> str:
-    """Compare reachable frame-budget and short-definition fit transitions."""
-    orders = input_orders(table, max_arity=_GREEDY_ORDER_MAX_ARITY)
-    regimes = [(permute_truth_table(table, perm), perm) for perm in orders]
+    """Compare reachable frame-budget and short-definition fit transitions.
+
+    Input order stays the identity (a greedy order saves 4.8% at n=8, under
+    the 10% bar).
+    """
+    regimes = [(table, tuple(range(len(table).bit_length() - 1)))]
     candidates = [default]
     width: int | None = 1
     while width is not None:
