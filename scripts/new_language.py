@@ -23,6 +23,7 @@ from __future__ import annotations
 import argparse
 import ast
 import importlib
+import itertools
 import json
 import keyword
 import subprocess
@@ -301,6 +302,9 @@ def _ledger_gaps(name: str) -> list[Gap]:
                 '"qualification", "scaling", "execution", "workspace", "evidence": '
                 '"docs/proofs/index.md#generator-ledger"}; copy a row with the '
                 "same construction and see Symbols in docs/proofs/index.md; "
+                "a clause after `worst`/`at most` takes at most "
+                f"{_tests_attr('proofs._ledger', 'FORMULA_CLAUSE_WORDS')} words, "
+                f"any other {_tests_attr('proofs._ledger', 'LINEAR_CLAUSE_WORDS')}; "
                 f"`python scripts/new_language.py bounds {name!r}` measures the "
                 "worst steps and bits to state",
             )
@@ -317,8 +321,10 @@ def _ledger_gaps(name: str) -> list[Gap]:
             gaps.append(
                 Gap(
                     f"tests/proofs/{table}.py",
-                    f'add "{name}": (lambda n, p: ..., exact, (lo, hi)) to '
-                    f"FORMULAS, encoding the ledger's {cell} cell: {stated}",
+                    f'add "{name}": (lambda n, _: ..., exact, (lo, hi)) to '
+                    f"FORMULAS, encoding the ledger's {cell} cell: {stated} "
+                    "(name the second argument p only if the bound reads "
+                    "the program)",
                 )
             )
     return gaps
@@ -345,7 +351,7 @@ def quick_tests(name: str) -> list[str]:
     The language's own files, the ledger's prose limits and fold measure,
     its formula rows at their smallest arity, and the docstring conventions.
     """
-    from esolangs.registry import LANGUAGES
+    from esolangs.registry import LANGUAGES, example_stems
 
     lang = LANGUAGES[name]
     nodes = [
@@ -365,6 +371,15 @@ def quick_tests(name: str) -> list[str]:
     if lang.boolean is None:
         return nodes
     nodes += ["tests/proofs/test_ledger.py", "tests/proofs/test_schemes.py"]
+    stem = example_stems().get(lang.id, "")
+    if (
+        stem
+        in _tests_attr("interpreters.test_input_convention", "_reading_languages")()
+    ):
+        nodes.append(
+            "tests/interpreters/test_input_convention.py"
+            f"::test_running_out_of_input_reaches_the_caller[{stem}]"
+        )
     arities = [
         min(formulas[name][2])
         for table in ("execution", "workspace")
@@ -569,6 +584,7 @@ def remove(name: str) -> list[str]:
         "tests/proofs/test_execution_formulas.py",
         "tests/proofs/test_workspace_formulas.py",
         "tests/proofs/test_schemes.py",
+        "tests/interpreters/test_input_convention.py",
     ):
         _drop_entries(ROOT / relative, keys, modules)
 
@@ -652,14 +668,28 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.command == "bounds":
         print("n  worst steps  worst bits")
-        for n, steps, bits in bounds(args.name, range(1, args.max_n + 1)):
+        rows = bounds(args.name, range(1, args.max_n + 1))
+        for n, steps, bits in rows:
             print(f"{n:<2} {steps:>11}  {bits:>10}")
+        for column, label in ((1, "steps"), (2, "bits")):
+            slopes = {b[column] - a[column] for a, b in itertools.pairwise(rows)}
+            if len(slopes) == 1:
+                (slope,) = slopes
+                base = rows[0][column] - slope * rows[0][0]
+                print(f"{label} fit exactly: lambda n, _: {slope} * n + {base}")
         return 0
     if args.command == "check":
         gaps = check(args.name)
         if gaps:
             _report(args.name, gaps)
             return 1
+        # Generated totals (the ledger's row count) are tested; refresh them.
+        subprocess.run(
+            [sys.executable, "scripts/generate.py", "docs"],
+            cwd=ROOT,
+            check=True,
+            stdout=subprocess.DEVNULL,
+        )
         quick = [sys.executable, "-m", "pytest", "-q", "-n", "0", "-m", ""]
         print("+ pytest", " ".join(quick_tests(args.name)), flush=True)
         if subprocess.run([*quick, *quick_tests(args.name)], cwd=ROOT).returncode:

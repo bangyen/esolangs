@@ -124,5 +124,11 @@ def test_running_out_of_input_reaches_the_caller(name: str) -> None:
     module = importlib.import_module("esolangs.interpreters." + example.interpreter)
     argument = program.splitlines() if example.split else program
     extra = {key: value for key, value in example.kwargs if key != "seed"}
-    with pytest.raises(EOFError):
+    try:
         module.run(argument, io=ScriptedIO(""), **extra)
+    except EOFError:
+        return
+    pytest.fail(
+        f"{name} ran past EOF; if its spec gives EOF a value, "
+        f"add {name!r} and the reason to _EOF_IS_A_HALT"
+    )
