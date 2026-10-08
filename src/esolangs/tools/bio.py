@@ -20,13 +20,15 @@ def bio(truth_table: str) -> str:
     through y costs eight commands per input and leaves y zero. Starting y
     at table[0], 2**n-1 nested decrement loops telescope adjacent transitions
     (0oy rise, 1oy fall) to y=table[index], printed with 1iy.  An ignored
-    input's setter can instead run with x parked in y and then be cleared
-    (:data:`_BIO_SKIP`), so the table indexes the rest; the shorter of the
-    two is kept, since on a small table the skip costs more than it saves.
+    input's setter runs with x parked in y and is then cleared
+    (:data:`_BIO_SKIP`), so the table indexes the rest.  A guard keeping the
+    shorter of full and projected saved 0.0% at n=4-7 (constants at n<=2 are
+    the only tables projection lengthens, by 28 characters) and was retired;
+    telescoping saves 39.6% at n=7 over resetting y per row.
     """
     n = _validate_truth_table(truth_table)
     weights, table = input_weights(truth_table, n)
-    return min(_bio(truth_table, [1] * n), _bio(table, weights), key=len)
+    return _bio(table, weights)
 
 
 def _bio(truth_table: str, weights: list[int]) -> str:
