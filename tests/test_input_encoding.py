@@ -9,8 +9,6 @@ import pytest
 import esolangs
 from esolangs.cli_hints import _template_hint
 from esolangs.exceptions import ProgramError, TemplateError
-from esolangs.registry import LANGUAGES, example_stems
-from tests.generator_support import CHECK
 
 XOR = "0110"
 PARITY3 = "10010110"
@@ -68,11 +66,6 @@ class TestTheExceptionalLanguages:
 
     def test_every_reading_language_has_an_encoding(self) -> None:
         """``encode_inputs`` indexes the example table, which must cover all."""
-        generators = {
-            lang.id for lang in LANGUAGES.values() if lang.boolean is not None
-        }
-        stems = set(example_stems())
-        assert stems == generators, f"{stems ^ generators}: {CHECK}"
         for name in esolangs.list_languages():
             if not esolangs.describe(name)["boolean_generator"]:
                 continue

@@ -107,6 +107,10 @@ check-language name:
 finish-language name:
     {{PYTHON}} scripts/new_language.py finish "{{name}}"
 
+# delete a language everywhere check looks, then list prose mentions left
+remove-language name:
+    {{PYTHON}} scripts/new_language.py remove "{{name}}"
+
 # Not part of `just test`: a few minutes per language.
 # `language` is quoted: display names like "A Painter Ant" contain spaces,
 # and unquoted they split into two arguments.

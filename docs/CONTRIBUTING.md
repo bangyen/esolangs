@@ -173,6 +173,11 @@ Use `scripts/screens/` to bound the upside first.
 4. `just finish-language "Name"` regenerates examples, docs and the size
    baseline, then runs the full `verify.py`. That is the gate: `just
    test-quick` skips the slower contract sweeps every generator must pass.
+   It takes minutes, so run it in the background; it reruns failed tests
+   alone and says when every failure was machine load.
+
+To take a language out, `just remove-language "Name"` deletes what `check`
+asks for, regenerates, and lists the prose mentions left to edit.
 
 ### The Boolean I/O contract
 

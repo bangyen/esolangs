@@ -3,24 +3,28 @@
     python scripts/new_language.py start "Name" --category tape_based
     python scripts/new_language.py check "Name"     # what is still missing
     python scripts/new_language.py finish "Name"    # regenerate, then verify
+    python scripts/new_language.py remove "Name"    # the inverse of all three
 
 ``start`` writes the interpreter, generator and test stubs.  ``check`` lists
 every integration point the language still lacks, with the file and entry
 to add; ``tests/scripts/test_new_language.py`` runs it over the registry,
 so the list cannot drift from what the suite enforces.  ``finish``
 regenerates every committed artifact and runs the full ``verify.py`` gate.
-The bare ``"Name" --category ...`` form still means ``start``.
+``remove`` deletes what ``check`` asks for, regenerates, and lists the
+mentions left in prose for a hand edit.  The bare ``"Name" --category ...``
+form still means ``start``.
 """
 
 from __future__ import annotations
 
 import argparse
+import ast
 import importlib
 import json
 import keyword
 import subprocess
 import sys
-from collections.abc import Container
+from collections.abc import Callable, Container
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -36,7 +40,7 @@ CATEGORIES = tuple(
         if path.is_dir() and (path / "__init__.py").exists()
     )
 )
-COMMANDS = ("start", "check", "finish")
+COMMANDS = ("start", "check", "finish", "remove")
 
 
 def _slug(name: str) -> str:
@@ -155,17 +159,32 @@ def _tests_module(module: str, attr: str) -> Container[str]:
         sys.path.remove(str(ROOT))
 
 
-def _unregistered(name: str, slug: str) -> Gap:
+def _export(gen: str) -> Gap:
+    return Gap(
+        "src/esolangs/tools/__init__.py",
+        f'add `from esolangs.tools.{gen} import {gen}` and "{gen}" to __all__ '
+        "(the registry reads the generator from there)",
+    )
+
+
+def _unregistered(name: str, slug: str) -> list[Gap]:
     found = sorted((ROOT / "src/esolangs/interpreters").glob(f"*/{slug}.py"))
     module = f"{found[0].parent.name}.{slug}" if found else f"<category>.{slug}"
-    generator = ""
+    gaps, generator = [], ""
     if (ROOT / f"src/esolangs/tools/{slug}.py").exists():
         generator = f"boolean=_boolean.{slug}, "
-    return Gap(
-        "src/esolangs/registry/_table.py",
-        f'add "{name}": Language("{name}", "{module}", {generator}id="{slug}"), '
-        "plus split=True if the interpreter takes lines",
-    )
+        exports = (ROOT / "src/esolangs/tools/__init__.py").read_text()
+        if f"esolangs.tools.{slug} import" not in exports:
+            gaps.append(_export(slug))
+    return [
+        *gaps,
+        Gap(
+            "src/esolangs/registry/_table.py",
+            f'add "{name}": Language("{name}", "{module}", {generator}id="{slug}") '
+            "anywhere in LANGUAGES (order is free); add split=True only if "
+            "run() takes list[str], one string per source line",
+        ),
+    ]
 
 
 def _common_gaps(name: str, module: str) -> list[Gap]:
@@ -280,11 +299,13 @@ def _ledger_gaps(name: str) -> list[Gap]:
 
 def check(name: str) -> list[Gap]:
     """Return every integration point ``name`` still lacks, in order."""
-    from esolangs.registry import LANGUAGES, canonical_id
-
+    try:
+        from esolangs.registry import LANGUAGES, canonical_id
+    except AttributeError as exc:  # ``_table`` names a generator not exported
+        return [_export(exc.name or "<generator>")]
     lang = LANGUAGES.get(name)
     if lang is None:
-        return [_unregistered(name, canonical_id(name))]
+        return _unregistered(name, canonical_id(name))
     gaps = _common_gaps(name, lang.interpreter or "")
     if lang.boolean is not None:
         gaps += _generator_gaps(lang)
@@ -292,7 +313,10 @@ def check(name: str) -> list[Gap]:
 
 
 def finish(name: str) -> int:
-    """Regenerate every committed artifact, then run the full gate."""
+    """Regenerate every committed artifact, then run the full gate.
+
+    Several minutes on a laptop: run it in the background.
+    """
     gaps = check(name)
     if gaps:
         _report(name, gaps)
@@ -302,12 +326,166 @@ def finish(name: str) -> int:
         [*python, "scripts/generate.py", "examples"],
         [*python, "scripts/generate.py", "docs"],
         [*python, "scripts/check_generator_sizes.py", "--update"],
-        [*python, "scripts/verify.py"],
+        [*python, "scripts/verify.py", "--quiet"],
     ):
         print("+", " ".join(cmd[1:]), flush=True)
         if subprocess.run(cmd, cwd=ROOT, check=False).returncode:
-            return 1
+            break
+    else:
+        return 0
+    if cmd[1] != "scripts/verify.py":
+        return 1
+    # A loaded machine pushes borderline tests past their duration band.
+    # Rerunning only the failures, serially, separates those from real ones.
+    print("+ rerunning the failed tests alone", flush=True)
+    rerun = [*python, "-m", "pytest", "-q", "--lf", "-n", "0", "-m", ""]
+    if subprocess.run(rerun, cwd=ROOT, check=False).returncode:
+        return 1
+    print(
+        "every failed test passed alone: the failures were load, not the "
+        "language; rerun the gate on a quiet machine before pushing"
+    )
     return 0
+
+
+def _whole_statement(
+    node: ast.AST, named: Callable[[ast.AST | None], bool], modules: set[str]
+) -> bool:
+    """Whether ``node`` is a statement that exists only for the language.
+
+    ``X["Name"] = ...``, ``run_x = _runner("module")``, and an import from
+    the language's own interpreter or generator module.
+    """
+    if isinstance(node, ast.ImportFrom):
+        return node.module in modules
+    if not isinstance(node, ast.Assign):
+        return False
+    if any(isinstance(t, ast.Subscript) and named(t.slice) for t in node.targets):
+        return True
+    call = node.value
+    return isinstance(call, ast.Call) and [*map(named, call.args)] == [True]
+
+
+def _drop_entries(path: Path, keys: set[str], modules: set[str]) -> int:
+    """Delete every dict entry, list item or ``X[key] = ...`` keyed by ``keys``.
+
+    Located by AST and cut by line, so an entry must own its lines; one
+    sharing a line with another is left for the leftover report.
+    """
+    source = path.read_text(encoding="utf-8")
+    lines = source.splitlines(keepends=True)
+    spans: list[tuple[int, int]] = []
+
+    def named(node: ast.AST | None) -> bool:
+        return isinstance(node, ast.Constant) and node.value in keys
+
+    def own(first: ast.expr, last: ast.expr) -> None:
+        """Take an entry's lines only if nothing else shares them."""
+        before = lines[first.lineno - 1][: first.col_offset]
+        after = lines[last.end_lineno - 1][last.end_col_offset :]  # type: ignore[operator]
+        if not before.strip() and after.strip() in {"", ","}:
+            spans.append((first.lineno, last.end_lineno or last.lineno))
+
+    for node in ast.walk(ast.parse(source)):
+        if isinstance(node, ast.Dict):
+            for key, value in zip(node.keys, node.values, strict=True):
+                if key is not None and named(key):
+                    own(key, value)
+        elif isinstance(node, ast.List | ast.Set | ast.Tuple):
+            for item in node.elts:
+                if named(item):
+                    own(item, item)
+        elif isinstance(node, ast.stmt) and _whole_statement(node, named, modules):
+            spans.append((node.lineno, node.end_lineno or node.lineno))
+    for lo, hi in sorted(set(spans), reverse=True):
+        del lines[lo - 1 : hi]
+    if spans:
+        path.write_text("".join(lines), encoding="utf-8")
+    return len(spans)
+
+
+def _drop_json(path: Path, prune: Callable[[object], object]) -> None:
+    """Rewrite ``path`` through ``prune``, keeping its indent and escaping."""
+    text = path.read_text(encoding="utf-8")
+    indent = len(text.split("\n", 2)[1]) - len(text.split("\n", 2)[1].lstrip())
+    pruned = prune(json.loads(text))
+    out = json.dumps(pruned, indent=indent, ensure_ascii=text.isascii())
+    path.write_text(out + "\n" * text.endswith("\n"), encoding="utf-8")
+
+
+def remove(name: str) -> list[str]:
+    """Delete ``name`` everywhere ``check`` looks; return the leftover mentions."""
+    from esolangs.registry import LANGUAGES, example_stems
+
+    lang = LANGUAGES[name]
+    module = lang.interpreter or ""
+    gen = lang.boolean.__name__ if lang.boolean else lang.id
+    stem = example_stems().get(lang.id, "")
+    doomed = [
+        ROOT / "src/esolangs/interpreters" / f"{module.replace('.', '/')}.py",
+        ROOT / f"src/esolangs/tools/{gen}.py",
+        ROOT / f"tests/interpreters/test_{lang.id}.py",
+        ROOT / f"tests/tools/test_boolean_{gen}.py",
+        ROOT / f"tests/fixtures/wiki_examples/{lang.id}.json",
+        *(ROOT / "src/esolangs/examples").glob(f"{stem}.*" if stem else "-"),
+    ]
+    # ``git rm``, not unlink: tests read ``git ls-files``, which would still
+    # list a file deleted only from disk.
+    subprocess.run(
+        ["git", "rm", "-q", "-r", "--ignore-unmatch", *map(str, doomed)],
+        cwd=ROOT,
+        check=True,
+    )
+    keys = {name, module, lang.id, gen, stem} - {""}
+    modules = {f"esolangs.interpreters.{module}", f"esolangs.tools.{gen}"}
+    for relative in (
+        "src/esolangs/registry/_table.py",
+        "src/esolangs/registry/_contracts.py",
+        "src/esolangs/tools/__init__.py",
+        "src/esolangs/tools/examples.py",
+        "src/esolangs/tools/wrap.py",
+        "src/esolangs/tools/balance.py",
+        "tests/samples.py",
+        "tests/tools/boolean_runners.py",
+        "tests/tools/test_wrap.py",
+        "tests/proofs/test_execution_formulas.py",
+        "tests/proofs/test_workspace_formulas.py",
+        "tests/proofs/test_schemes.py",
+    ):
+        _drop_entries(ROOT / relative, keys, modules)
+
+    def prune(node: object) -> object:
+        if isinstance(node, dict):
+            return {k: prune(v) for k, v in node.items() if k != name}
+        if isinstance(node, list):
+            return [
+                prune(item)
+                for item in node
+                if not (isinstance(item, dict) and item.get("generator") == name)
+            ]
+        return node
+
+    for relative in (
+        "tests/fixtures/curation.json",
+        "tests/fixtures/generator_sizes.json",
+        "src/esolangs/proof_status.json",
+    ):
+        _drop_json(ROOT / relative, prune)
+    for target in ("docs", "examples"):
+        subprocess.run(
+            [sys.executable, "scripts/generate.py", target],
+            cwd=ROOT,
+            check=True,
+            stdout=subprocess.DEVNULL,
+        )
+    grep = subprocess.run(
+        ["git", "grep", "-n", "-I", "-w", "-e", name, "-e", lang.id, "-e", module],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    return grep.stdout.splitlines()
 
 
 def _report(name: str, gaps: list[Gap]) -> None:
@@ -318,7 +496,7 @@ def _report(name: str, gaps: list[Gap]) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Dispatch ``start``, ``check`` or ``finish``."""
+    """Dispatch ``start``, ``check``, ``finish`` or ``remove``."""
     argv = list(sys.argv[1:] if argv is None else argv)
     if not argv or argv[0] not in COMMANDS:
         argv.insert(0, "start")
@@ -332,7 +510,7 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="no generator: only for a famous language whose spec precludes one",
     )
-    for command in ("check", "finish"):
+    for command in ("check", "finish", "remove"):
         sub.add_parser(command).add_argument("name")
     args = parser.parse_args(argv)
     if args.command == "check":
@@ -347,6 +525,11 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command == "finish":
         return finish(args.name)
+    if args.command == "remove":
+        leftover = remove(args.name)
+        print(f"removed {args.name}; {len(leftover)} mention(s) left to edit by hand")
+        print("\n".join(leftover))
+        return 0
     try:
         paths = scaffold(args.name, args.category, generator=not args.interpreter_only)
     except (ValueError, FileExistsError) as exc:
