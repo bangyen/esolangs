@@ -24,14 +24,9 @@ def addsubjump(truth_table: str) -> str:
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.
 
-    Through five inputs, shared residuals compete with the existing build;
-    wider tables retain the linear packed construction.
-
-    Inputs are read once into a binary row index.  The table is packed into
-    ``n``-bit numeric cells; a self-modified operand selects the indexed cell
-    and repeated subtraction extracts its bit.  There are ``Theta(T/n)``
-    cells of ``O(n)`` digits and the decoder has ``O(n)`` instructions, so
-    generation time and rendered size are both ``O(T)``.
+    Up to 16 rows, the best input order of tree vs shared residuals; 32 rows
+    also try the shared residual tree; wider tables use the linear packed
+    decoder (``n``-bit cells, size ``O(T)``).
     """
     if len(truth_table) <= 16:
         return best_input_order(truth_table, _addsubjump_candidate)
@@ -188,11 +183,11 @@ def _addsubjump_packed(truth_table: str, *, shared: bool = False) -> str:
     address = {name: base + i for i, name in enumerate(names)}
 
     memory = [0] * (base + len(names))
+
+    def operand(value: int | str) -> int:
+        return address[value] if isinstance(value, str) else int(value)
+
     for i, (a, b, target, d) in enumerate(instructions):
-
-        def operand(value: int | str) -> int:
-            return address[value] if isinstance(value, str) else int(value)
-
         if target == "next":
             c = 4 * (i + 1)
         elif isinstance(target, int):
@@ -250,11 +245,8 @@ def _addsubjump_ordered(
     # operand rather than into a cell the jump dereferences.  ``targets`` maps
     # a forward-reference name to the instruction index it will land on.
     targets: dict[str, int] = {}
-    # The operand names in the order the instructions mention them, recorded
-    # as they are emitted.  The numbering pass below wants exactly this list
-    # and used to recover it by re-scanning every operand of every
-    # instruction -- 3.5M ``isinstance`` calls on a six-input build, which
-    # input-order selection pays once per candidate.
+    # Operand names in mention order, recorded at emit: re-scanning every
+    # operand cost 3.5M ``isinstance`` calls on a six-input build.
     named: list[str] = []
 
     def emit(a: object, b: object, c: object, d: int) -> int:
@@ -267,8 +259,7 @@ def _addsubjump_ordered(
 
     # The entry jumps over these two instruction-width data blocks.  Their
     # fixed addresses hold the operands repeated throughout the tree:
-    # D48=4, D49=5, U=6 and C48=8.  It adds U to itself, a no-op: nothing
-    # reads the flags, so the old ``-9 -6`` (enable flag mode) bought nothing.
+    # D48=4, D49=5, U=6 and C48=8.  It adds U to itself, a no-op.
     emit(6, 6, "next", _ADD)
     instructions += [[_ASCII_ZERO, _ASCII_ONE, 0, 0], [-_ASCII_ZERO, 0, 0, 0]]
 
@@ -292,10 +283,7 @@ def _addsubjump_ordered(
 
     # Rows split most significant first, so the span a node covers is the
     # contiguous ``truth_table[lo:hi]`` and its two halves are that slice cut
-    # in two.  Carried as a pair rather than as the list of row indices it
-    # used to be: the list rebuilt itself at every node, O(n * 2**n) per
-    # candidate, for spans the slice bounds already name.  The fold test is
-    # O(1) on the span, so the tree is O(2**n).
+    # in two.  The fold test is O(1) on the span, so the tree is O(2**n).
     constant = constant_span_test(truth_table)
 
     # IDs retain depth, so each row visits a self-modified branch at most once.
@@ -331,7 +319,7 @@ def _addsubjump_ordered(
         # it to the one trampoline.
         jump = 4 * (base + 1) + 2
         emit(jump, bit, "next", _ADD)  # c of the goto += B, the hoisted bit
-        emit(6, 6, ("init", 4 * (base + 2)), _ADD)  # goto, target patched above
+        emit(6, 6, 4 * (base + 2), _ADD)  # goto, rests on the zero trampoline
         ztarget = f"Z{base}"
         otarget = f"O{base}"
         emit(6, 6, ztarget, _ADD)  # zero trampoline
@@ -344,12 +332,8 @@ def _addsubjump_ordered(
     build(0, 0, 2**n, root)
 
     base_data = 4 * len(instructions)
-    # Insertion-ordered name -> index.  A dict rather than a list because the
-    # list spelling scanned twice per call -- ``in`` and then ``.index`` --
-    # which is O(names) on a table that calls this once per operand: 1.6M
-    # calls and 2.4s of a 3.8s six-input build, the generator's whole cost.
-    # ``dict`` preserves insertion order, so the numbering it hands out is
-    # the same one the scan produced.
+    # A dict, not a list: list ``in`` + ``.index`` per operand was 2.4s of a
+    # 3.8s six-input build.
     names = {name: index for index, name in enumerate(dict.fromkeys([*named, *values]))}
 
     def cell(name: str) -> int:
@@ -361,8 +345,6 @@ def _addsubjump_ordered(
         if c == "next":
             # Instruction 0 jumps over the two data blocks that follow it.
             c = 12 if i == 0 else 4 * (i + 1)
-        elif isinstance(c, tuple):
-            c = c[1]
         elif isinstance(c, str):
             c = 4 * targets[c]
         row = [cell(v) if isinstance(v, str) else v for v in (a, b)]
