@@ -24,7 +24,12 @@ import re
 from itertools import pairwise
 
 from esolangs._dialects import PacklangLiterals
-from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table, input_weights
+from esolangs.tools.helpers import (
+    _ASCII_ZERO,
+    _validate_truth_table,
+    input_weights,
+    subtree_ids,
+)
 from esolangs.tools.wrap import (
     _PACKLANG_LEXEME,
     _join_tokens,
@@ -36,10 +41,14 @@ from esolangs.tools.wrap import (
 __all__ = ["packlang"]
 
 #: Inputs the array block spans.  It bounds the index digits every painted
-#: row pays, and the rows a fill loop has to walk.
+#: row pays, and the rows a fill loop has to walk.  Essential as a cap: one
+#: 512-row array (n=9) did not terminate in 30 s (Char index wraps).  The
+#: value is flat: 5/6/8 differ from 7 by +1.2%/-1.2%/+2.7% at n=10 (random).
 _BLOCK = 7
 
 #: Fills cheaper than this many writes are not worth the loop that fills.
+#: Dropping fill+punch costs +2.4% at n=8 random but +66% (n=8, 80% ones)
+#: and +125% (n=10, 90% ones).
 _FILL_COST = 3
 
 #: The package name shortens below this many columns.
@@ -59,17 +68,20 @@ def packlang(
     """
     literals = PacklangLiterals(literal_policy)
     weights, table = input_weights(truth_table, _validate_truth_table(truth_table))
-    program = _painted(table, weights)
-    if literal_policy != "decimal":
-        program = re.sub(
-            r"\b\d+\b", lambda match: literals.emit(int(match[0])), program
-        )
-    if width is None or width <= 0:
-        return program
-    # The package is never named by its own body or the IO dependency.
-    if width < _NAME_LEN:
-        program = _short_name(program)
-    return wrap_program(program, "packlang", width)
+    built = []
+    for runs in (False, True):
+        program = _painted(table, weights, runs=runs)
+        if literal_policy != "decimal":
+            program = re.sub(
+                r"\b\d+\b", lambda match: literals.emit(int(match[0])), program
+            )
+        if width is not None and width > 0:
+            # The package is never named by its own body or the IO dependency.
+            if width < _NAME_LEN:
+                program = _short_name(program)
+            program = wrap_program(program, "packlang", width)
+        built.append(program)
+    return min(built, key=len)
 
 
 def _short_name(program: str) -> str:
@@ -126,7 +138,7 @@ def balance_packlang(_table: str, default: str) -> str:
     )
 
 
-def _painted(painted: str, weights: list[int]) -> str:
+def _painted(painted: str, weights: list[int], *, runs: bool) -> str:
     """Return a program painting ``painted``'s ones into an array.
 
     ``painted`` indexes the inputs of nonzero weight; the rest are read and
@@ -149,16 +161,32 @@ def _painted(painted: str, weights: list[int]) -> str:
     body += counted
 
     filled = False
+    # A block equal to an earlier one is remapped onto it: the index is
+    # decremented to the first copy's number before any block tests it
+    # (-38.5% at n=9, -62.0% at n=10 with two distinct blocks).
+    ids = subtree_ids(painted)[n - low] if blocks > 1 else []
+    first: dict[int, int] = {}
+    remaps: list[str] = []
+    painting: list[str] = []
     for number in range(blocks):
         rows = painted[number * span : (number + 1) * span]
-        writes, fill = _writes(rows)
-        filled = filled or fill
+        writes, fill = _writes(rows, runs=runs)
         if not writes:
             continue
-        if blocks > 1:
-            body += [f"If !({index}^{number})Then{{", *writes, "}"]
-        else:
-            body += writes
+        if blocks == 1:
+            painting += writes
+            filled = fill
+            continue
+        test = f"If !({index}^{number})Then{{"
+        copy = first.setdefault(ids[number], number)
+        if copy < number:
+            alias = [test, *[f"DECR {index};"] * (number - copy), "}"]
+            if sum(map(len, alias)) < sum(map(len, writes)) + len(test) + 1:
+                remaps += alias
+                continue
+        filled = filled or fill
+        painting += [test, *writes, "}"]
+    body += remaps + painting
     body += [f"charPut({_ASCII_ZERO}^t({low_index}));", "0;"]
 
     declarations = "".join(
@@ -206,14 +234,41 @@ def _counter(first: str, second: str, weights: list[int]) -> tuple[list[str], st
     return lines, source
 
 
-def _writes(rows: str) -> tuple[list[str], bool]:
-    """Return one block's painting statements, and whether they fill it first."""
+def _writes(rows: str, *, runs: bool) -> tuple[list[str], bool]:
+    """Return one block's shortest painting statements, and whether they use ``q``.
+
+    Candidates: single writes, a fill with the zeros punched out, and (with
+    ``runs``) a loop per run of ones.  ``q`` costs a declaration, so the
+    caller builds both.  Run loops: -19.9%/-32.7%/-35.8% at n=7/8/9 on
+    constant-leaf tables, 0% on random.
+    """
     ones = rows.count("1")
-    if ones - (len(rows) - ones) <= _FILL_COST:
-        return [f"INCR t({row});" for row, bit in enumerate(rows) if bit == "1"], False
-    fill = f"While q^{len(rows)}Do{{INCR t(q);INCR q;}}"
-    punched = [f"DECR t({row});" for row, bit in enumerate(rows) if bit == "0"]
-    return [fill, *punched], True
+    singles = [f"INCR t({row});" for row, bit in enumerate(rows) if bit == "1"]
+    best, fill = singles, False
+    if ones - (len(rows) - ones) > _FILL_COST:
+        fill_all = f"While q^{len(rows)}Do{{INCR t(q);INCR q;}}"
+        punched = [f"DECR t({row});" for row, bit in enumerate(rows) if bit == "0"]
+        best, fill = [fill_all, *punched], True
+    if not runs:
+        return best, fill
+    painted: list[str] = []
+    used = False
+    at = 0  # where q stands
+    for match in re.finditer("1+", rows):
+        start, stop = match.span()
+        single = "".join(f"INCR t({row});" for row in range(start, stop))
+        loop = f"While q^{stop}Do{{INCR t(q);INCR q;}}"
+        if start != at:
+            loop = f"While q^{start}Do{{INCR q;}}" + loop
+        if len(loop) < len(single):
+            painted.append(loop)
+            used = True
+            at = stop
+        else:
+            painted.append(single)
+    if sum(map(len, painted)) < sum(map(len, best)):
+        return painted, used
+    return best, fill
 
 
 def _folded(statements: list[str]) -> list[str]:

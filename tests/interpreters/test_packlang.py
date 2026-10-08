@@ -440,8 +440,8 @@ class TestBooleanGenerator:
         assert packlang("0110").count("INCR t(") == 2
         assert packlang("01101001").count("INCR t(") == 4
         assert packlang("0000").count("INCR t(") == 0
-        assert "While q^8Do{" in packlang("11111110")
-        assert packlang("11111110").count("DECR t(") == 1
+        assert "While q^7Do{" in packlang("11111110")
+        assert packlang("11111110").count("DECR t(") == 0
         assert packlang("1110").count("INCR t(") == 3
         assert "charPut(48^t(" in packlang("1110")
 
@@ -458,7 +458,7 @@ class TestBooleanGenerator:
                 while not machine.halted:
                     machine.step()
                     steps += 1
-        assert (size, steps) == (80592, 55648)
+        assert (size, steps) == (80562, 55632)
 
     def test_full_table_growth_is_linear(self) -> None:
         """Parity paints half the rows, and its emitted size still doubles."""
