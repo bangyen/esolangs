@@ -20,22 +20,15 @@ from esolangs.tools.wrap import balance_score
 _ASCII_ZERO = "68*"
 _END = ".@"
 
-
 MAX_INPUTS = 13
+#: Header cells beyond the input reads: narrow (single-digit columns), wide
+#: (two-digit columns), packed (two-digit columns plus the six-bit decode).
+_BOUND_NARROW = 22
+_BOUND_WIDE = 34
+_BOUND_PACKED = 64
 
 
-def befunge(truth_table: str, width: int | None = None) -> str:
-    """Return a Befunge grid computing ``truth_table``.
-
-    The natural grid has a straight header and a power-of-two table width
-    near ``sqrt(T)``.  An over-wide header folds along alternating rows;
-    ``g`` addresses the table below them.  The width floor reserves enough
-    cells for both within the 80x25 torus. Above ten inputs, printable ASCII
-    cells pack six answers each; tables above thirteen inputs raise
-    ``GeneratorCapError``. Narrow parity uses one vertical column of sums
-    modulo two instead.
-    """
-    n = _validate_truth_table(truth_table)
+def _check_cap(n: int) -> None:
     if n > MAX_INPUTS:
         raise with_hint(
             GeneratorCapError(
@@ -46,6 +39,38 @@ def befunge(truth_table: str, width: int | None = None) -> str:
                 "cannot enlarge Befunge's fixed 80x25 grid"
             ),
         )
+
+
+def _header(reads: str, width: str, offset: str) -> str:
+    """Return the lookup header: fold ``reads`` into an index, print ``g`` at it."""
+    return (
+        "0"
+        + reads
+        + ":"
+        + width
+        + "%\\"
+        + width
+        + "/"
+        + offset
+        + "+g"
+        + _ASCII_ZERO
+        + "-"
+        + _END
+    )
+
+
+def befunge(truth_table: str, width: int | None = None) -> str:
+    """Return a Befunge grid computing ``truth_table``.
+
+    The natural grid has a straight header and a power-of-two table width
+    near ``sqrt(T)``.  An over-wide header folds along alternating rows;
+    ``g`` addresses the table below them.  Above ten inputs, printable ASCII
+    cells pack six answers each; above ``MAX_INPUTS`` raises
+    ``GeneratorCapError``.  A parity table with ``width < 4`` uses one vertical
+    column of sums modulo two instead.
+    """
+    n = _validate_truth_table(truth_table)
+    _check_cap(n)
     # An ignored input is read and popped; the table indexes the rest.
     weights, table = input_weights(truth_table, n)
     reads = "".join("&\\2*+" if weight else "&$" for weight in weights)
@@ -57,26 +82,14 @@ def befunge(truth_table: str, width: int | None = None) -> str:
             # At most 25 commands even at n=10, within the native torus.
             header = "v&" + "&+" * (n - 1) + "2%" + ("!" if bias else "") + _END
             return "\n".join(header)
-    truth_table, n, count = table, len(table).bit_length() - 1, len(table)
-    shift = (n + 1) // 2
+    count = len(table)
+    shift = count.bit_length() // 2
     table_width = 1 << shift
     # ``1`` then ``2*`` shift times is ``2**shift``; both are single commands.
     build_width = "1" + "2*" * shift
-    header = (
-        "0"
-        + reads
-        + ":"
-        + build_width
-        + "%\\"
-        + build_width
-        + "/1+g"
-        + _ASCII_ZERO
-        + "-"
-        + _END
-    )
-    rows = [header]
+    rows = [_header(reads, build_width, "1")]
     rows.extend(
-        truth_table[base : base + table_width] for base in range(0, count, table_width)
+        table[base : base + table_width] for base in range(0, count, table_width)
     )
     plain = "\n".join(rows)
     if width is None or width <= 0:
@@ -85,34 +98,18 @@ def befunge(truth_table: str, width: int | None = None) -> str:
         return plain
     # At most two decimal digits per coordinate on the 80x25 torus.
     # Reserving 23 rows of payload leaves the ceiling slack below 25 rows.
-    header_bound = len(reads) + 34
-    columns = min(80, max(width, 4, (count + header_bound + 22) // 23 + 2))
-    # Single-digit column counts save twelve literal cells.  This named
-    # bound applies only when it proves that the count remains single-digit.
-    narrow_bound = len(reads) + 22
-    narrow_columns = max(width, 4, (count + narrow_bound + 22) // 23 + 2)
-    if narrow_columns < 10:
-        columns, header_bound = narrow_columns, narrow_bound
+    # Single-digit column counts save twelve literal cells; the narrow bound
+    # applies only when it proves that the count remains single-digit.
+    header_bound = len(reads) + _BOUND_NARROW
+    columns = max(width, 4, (count + header_bound + 22) // 23 + 2)
+    if columns >= 10:
+        header_bound = len(reads) + _BOUND_WIDE
+        columns = min(80, max(width, 4, (count + header_bound + 22) // 23 + 2))
     header_rows = (header_bound + columns - 3) // (columns - 2)
     literal = _literal(columns)
-    header = (
-        "0"
-        + reads
-        + ":"
-        + literal
-        + "%\\"
-        + literal
-        + "/"
-        + _literal(header_rows)
-        + "+g"
-        + _ASCII_ZERO
-        + "-"
-        + _END
-    )
+    header = _header(reads, literal, _literal(header_rows))
     folded = _fold_header(header, columns, header_rows)
-    folded.extend(
-        truth_table[base : base + columns] for base in range(0, count, columns)
-    )
+    folded.extend(table[base : base + columns] for base in range(0, count, columns))
     return "\n".join(folded)
 
 
@@ -134,7 +131,7 @@ def _packed_befunge(truth_table: str, reads: str, width: int | None) -> str:
     # Two-digit columns and a single-digit header offset cost 64 cells
     # beyond the input fold. The floor gives at most six header rows and
     # ceil(B/(W-2)) + ceil(T/W) <= 25, including the n=13 dense build.
-    bound = len(reads) + 64
+    bound = len(reads) + _BOUND_PACKED
     requested = 80 if width is None or width <= 0 else width
     columns = min(80, max(requested, (count + bound + 22) // 23 + 2))
     header_rows = (bound + columns - 3) // (columns - 2)
@@ -150,7 +147,8 @@ def _packed_befunge(truth_table: str, reads: str, width: int | None) -> str:
         + literal
         + "/"
         + _literal(header_rows)
-        + "+g48*-\\/2%.@"
+        + "+g48*-\\/2%"  # 48* is 32, the packed chr offset
+        + _END
     )
     folded = _fold_header(header, columns, header_rows)
     data = "".join(
@@ -175,21 +173,12 @@ def balance_befunge(truth_table: str, default: str) -> str:
     """
     n = _validate_truth_table(truth_table)
     count = 1 << n
-    if n > MAX_INPUTS:
-        raise with_hint(
-            GeneratorCapError(
-                "Befunge supports at most thirteen inputs on its 80x25 grid"
-            ),
-            (
-                "check another generator's limits; width "
-                "cannot enlarge Befunge's fixed 80x25 grid"
-            ),
-        )
+    _check_cap(n)
     candidates = [default]
-    layouts = [(5 * n + 22, 4, 9), (5 * n + 34, 10, 80)]
+    layouts = [(5 * n + _BOUND_NARROW, 4, 9), (5 * n + _BOUND_WIDE, 10, 80)]
     if n > 10:
         count = (count + 5) // 6
-        layouts = [(5 * n + 64, 10, 80)]
+        layouts = [(5 * n + _BOUND_PACKED, 10, 80)]
     for bound, low, high in layouts:
         floor = max(low, (count + bound + 22) // 23 + 2)
         if floor > high:
