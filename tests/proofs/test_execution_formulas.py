@@ -98,7 +98,9 @@ FORMULAS: dict[str, tuple[Callable[[int, str], float], bool, tuple[int, ...]]] =
         (3, 4),
     ),
     "3x": (lambda _, p: len(p), True, (3, 5)),
-    "Unsquare": (lambda n, _: 2 * 2**n + 79 * n + 26, True, (3, 5)),
+    # Past n = 5: loops of 12 or 14 cells cost 3 a cell (a run of c costs at
+    # most 3c); two odd runs keep the last input essential, 2 under 3T each.
+    "Unsquare": (lambda n, _: 4 * 2**n + 79 * n + 22, True, (6, 7)),
     "Vandevelo": (lambda _, p: _vandevelo(p), False, (3, 5)),
     "Home Row": (lambda n, _: 10 * 2**n + 10 * n + 95, False, (3, 5)),
     "Minsky Swap": (lambda n, _: 2 * 2**n + 6 * n + 4, True, (3, 5)),
@@ -270,6 +272,12 @@ def _tables(name: str, n: int) -> tuple[str, ...]:
         tables += ("10" + "01" * (width // 2 - 1),)
     if name == "123" and n >= 4:
         tables += (_one_two_three_worst(n),)
+    if name == "Unsquare" and n >= 6:
+        # Ends of one cell, runs of 12 and 14 between: 12a + 14b = 2**(n-1) - 1.
+        b = (2 ** (n - 1) - 1) % 6
+        a = (2 ** (n - 1) - 1 - 7 * b) // 6
+        runs = [1, *[12] * (a // 2), *[14] * b, *[12] * (a - a // 2), 1]
+        tables += ("".join(str(i % 2) * c for i, c in enumerate(runs)),)
     if name == "Packlang":
         # The most zeros a 128-row fill block may punch, in every block;
         # zeros are isolated, since a run of ones would be a shorter loop.

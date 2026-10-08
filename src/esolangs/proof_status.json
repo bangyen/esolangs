@@ -891,7 +891,7 @@
       ],
       "qualification": "the table is one `O`/`I` push per row, reversed, and each read pops its bit's weight in cells off the top of it",
       "scaling": "linear: `2**n` cells and `2**n - 1` pops, two bytes a row",
-      "execution": "linear: worst 2T + 79n + 26 commands: T pushes, 76 per input read, weight pops",
+      "execution": "linear: worst 4T + 79n + 22 commands past n=5: 12- or 14-cell loops, 76 per read, weight pops",
       "workspace": "linear: worst T + 12 + bl(L) + bl(L-33) + 2bl(n) bits: T + 1 table cells on the stack",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },
