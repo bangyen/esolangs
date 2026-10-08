@@ -352,3 +352,104 @@ def test_a_near_full_chain_holds_cosets_not_points() -> None:
         assert all(
             node.reduce(r) == r == min(r ^ s for s in node.span()) for r in node.reps
         )
+
+
+@pytest.mark.parametrize("density", [1, 2, 5, 16])
+@pytest.mark.parametrize("cap", [0, 1, 3, 12, 48])
+def test_nearest_matches_independent_expanded_quotient(density, cap) -> None:
+    from esolangs.tools.vandevelo import _nearest, _Node
+
+    n = 6
+    node = _Node.root(set(range(1 << n))).below(0b100101).below(0b010011)
+    node.reps.intersection_update(sorted(node.reps)[:density])
+    span = set(node.span())
+    assert len(span) == 4
+    assert all(node.reduce(r) == r for r in node.reps)
+    points = {r ^ s for r in node.reps for s in span}
+    ordered = sorted(range(1, 1 << n), key=lambda v: (v.bit_count(), v))
+    for pivot in node.reps:
+        for seen in (set(), {0, 1, 2, 3, 8, 13, 21, 37}):
+            expected = [
+                v
+                for v in ordered
+                if v not in span and pivot ^ v in points and v not in seen
+            ][:cap]
+            assert _nearest(node, pivot, seen, n, cap) == expected
+            probed = [
+                v
+                for v in ordered[: 4 * cap]
+                if v not in span and pivot ^ v in points and v not in seen
+            ][:cap]
+            assert _nearest(node, pivot, seen, n, cap, scan=False) == probed
+
+
+def test_nearest_fallback_reduces_only_the_bounded_probes(monkeypatch) -> None:
+    from esolangs.tools.vandevelo import _nearest, _Node
+
+    node = _Node.root(set(range(256))).below(0b10010101).below(0b01001011)
+    reduce = _Node.reduce
+    calls = []
+
+    def counted_reduce(self, value):
+        calls.append(value)
+        return reduce(self, value)
+
+    monkeypatch.setattr(_Node, "reduce", counted_reduce)
+    # Only one other representative's coset remains; its high-weight
+    # differences force the fallback and include equal-weight tie breaks.
+    node.reps.intersection_update({0, max(node.reps)})
+    result = _nearest(node, 0, {0}, 8, 8)
+    assert result == sorted(
+        [max(node.reps) ^ s for s in node.span()],
+        key=lambda v: (v.bit_count(), v),
+    )
+    assert len(calls) == 4 * 8
+
+
+@pytest.mark.medium
+def test_nearest_corpus_matches_direct_reduction_and_executes(monkeypatch) -> None:
+    import heapq
+    import importlib
+    import random
+
+    module = importlib.import_module("esolangs.tools.vandevelo")
+    rng = random.Random(739)
+    tables = [format(i, "08b") for i in range(256)]
+    for n in (4, 5, 6):
+        for density in (0.1, 0.5, 0.9):
+            tables.extend(
+                "".join(str(int(rng.random() < density)) for _ in range(1 << n))
+                for _ in range(4)
+            )
+    programs = [(vandevelo(t), vandevelo(t, width=1)) for t in tables]
+    from esolangs.tools.vandevelo import _nearest as nearest
+
+    def direct_nearest(node, pivot, seen, n, cap, *, scan=True):
+        assert pivot in node.reps
+        assert node.reduce(pivot) == pivot
+        assert all(node.reduce(r) == r for r in node.reps)
+        span = node.span()
+        assert all(node.reduce(s) == 0 for s in span)
+        out = nearest(node, pivot, seen, n, cap, scan=False)
+        if scan and len(out) < cap:
+            found = set(out)
+            extra = heapq.nsmallest(
+                cap - len(out),
+                (
+                    (v.bit_count(), v)
+                    for v in (pivot ^ r ^ s for r in node.reps for s in span)
+                    if v and node.reduce(v) and v not in seen and v not in found
+                ),
+            )
+            out.extend(v for _, v in extra)
+        return out
+
+    monkeypatch.setattr(module, "_nearest", direct_nearest)
+    for table, pair in zip(tables, programs, strict=True):
+        assert pair == (vandevelo(table), vandevelo(table, width=1))
+        n = len(table).bit_length() - 1
+        for program in pair:
+            assert (
+                "".join(_result(program, bits) for bits in product(range(2), repeat=n))
+                == table
+            )

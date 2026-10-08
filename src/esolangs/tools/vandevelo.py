@@ -179,7 +179,7 @@ def _points(mask: int) -> list[int]:
 def _nearest(
     node: _Node, pivot: int, seen: set[int], n: int, cap: int, *, scan: bool = True
 ) -> list[int]:
-    """Return the ``cap`` nearest differences from ``pivot`` inside ``node``.
+    """Return the ``cap`` nearest differences from canonical ``pivot`` inside ``node``.
 
     Smallest by ``(bit_count, value)``, skipping ``seen`` and the node's
     span: the differences are walked in that order -- each weight's values
@@ -218,12 +218,13 @@ def _nearest(
     if scan and len(out) < cap:
         found = set(out)
         span = node.span()
+        # Canonical pivot/r give reduce(pivot ^ r ^ s) == pivot ^ r.
         extra = heapq.nsmallest(
             cap - len(out),
             (
                 (v.bit_count(), v)
-                for v in (pivot ^ r ^ s for r in reps for s in span)
-                if v and reduce(v) and v not in seen and v not in found
+                for v in (pivot ^ r ^ s for r in reps if r != pivot for s in span)
+                if v not in seen and v not in found
             ),
         )
         out.extend(v for _, v in extra)
