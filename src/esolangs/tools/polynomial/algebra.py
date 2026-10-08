@@ -11,8 +11,6 @@ import decimal
 import sys
 from collections.abc import Iterator
 
-from esolangs.polynomial_resources import GenerationEstimate, estimate_generation
-
 
 @contextlib.contextmanager
 def _digit_limit_for(digits: int) -> Iterator[None]:
@@ -84,16 +82,8 @@ def render_product(factors: list[list[int]]) -> str:
     Both are exact, so they render the same bytes.
     """
     if len(factors) < _PACKED_MIN_FACTORS:
-        coeffs = [1]
-        for factor in factors:
-            coeffs = multiply(coeffs, factor)
-        return format_coeffs(coeffs)
+        return format_coeffs(_schoolbook(factors))
     return _render_terms(*_packed_product(factors))
-
-
-def estimate_product(factors: list[list[int]]) -> GenerationEstimate:
-    """Return the conservative pre-expansion resource estimate."""
-    return estimate_generation(factors)
 
 
 def _packed_product(factors: list[list[int]]) -> tuple[list[str], bool]:
@@ -130,10 +120,15 @@ def _packed_product(factors: list[list[int]]) -> tuple[list[str], bool]:
 
 def _expand_group(factors: list[list[int]]) -> list[str]:
     """Expand one group on the incremental loop, as signed decimal strings."""
+    return [str(coeff) for coeff in _schoolbook(factors)]
+
+
+def _schoolbook(factors: list[list[int]]) -> list[int]:
+    """Multiply the factors in one incremental sweep, as ints."""
     coeffs = [1]
     for factor in factors:
         coeffs = multiply(coeffs, factor)
-    return [str(coeff) for coeff in coeffs]
+    return coeffs
 
 
 def _normalise(coeffs: list[str]) -> tuple[list[str], bool]:

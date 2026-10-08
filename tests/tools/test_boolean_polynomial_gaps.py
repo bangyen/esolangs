@@ -1,23 +1,17 @@
 """The drained-DAG builder's refusals."""
 
-from esolangs.tools.polynomial import (
-    _polynomial_drained_dag,
-    _polynomial_drained_dag_cost,
-)
+from esolangs.tools.polynomial import _polynomial_drained_dag
 
 
 class TestDrainedDag:
     def test_a_table_using_its_first_input_is_declined(self) -> None:
         # XOR: both inputs are essential, so no lead is drained.
         assert _polynomial_drained_dag("0110") is None
-        assert _polynomial_drained_dag_cost("0110") is None
 
     def test_a_table_ignoring_its_first_input_is_built(self) -> None:
         """Only the second input matters, so the first is drained."""
         instrs = _polynomial_drained_dag("0101")
         assert instrs is not None
-        cost = _polynomial_drained_dag_cost("0101")
-        assert cost == len(instrs)
 
     def test_two_ignored_inputs_cost_one_instruction_each(self) -> None:
         built = _polynomial_drained_dag("01010101")

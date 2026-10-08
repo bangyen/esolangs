@@ -2,13 +2,13 @@
 
 import pytest
 
+from esolangs.polynomial_resources import estimate_generation
 from esolangs.tools.polynomial.algebra import (
     _PACKED_MIN_FACTORS,
     _normalise,
     _pack,
     _render_terms,
     _resign,
-    estimate_product,
     format_coeffs,
     multiply,
     render_product,
@@ -93,7 +93,9 @@ class TestResourceEstimate:
         )
 
         factors = _polynomial_factors(_polynomial_hybrid(table, 0))
-        assert len(render_product(factors)) <= estimate_product(factors).rendered_chars
+        assert (
+            len(render_product(factors)) <= estimate_generation(factors).rendered_chars
+        )
 
     def test_render_bound_holds_across_signed_boundary_cases(self) -> None:
         cases = [
@@ -103,13 +105,13 @@ class TestResourceEstimate:
             [[1, 2 + i, 3 + i] for i in range(_PACKED_MIN_FACTORS + 8)],
         ]
         for factors in cases:
-            estimate = estimate_product(factors)
+            estimate = estimate_generation(factors)
             assert len(render_product(factors)) <= estimate.rendered_chars
             assert estimate.peak_decimal_digits >= estimate.rendered_chars
 
     def test_larger_coefficients_increase_every_resource_bound(self) -> None:
-        small = estimate_product([[1, -2], [1, -3]])
-        large = estimate_product([[1, -(10**20)], [1, -(10**30)]])
+        small = estimate_generation([[1, -2], [1, -3]])
+        large = estimate_generation([[1, -(10**20)], [1, -(10**30)]])
         assert large.rendered_chars > small.rendered_chars
         assert large.peak_decimal_digits > small.peak_decimal_digits
         assert large.digit_work > small.digit_work

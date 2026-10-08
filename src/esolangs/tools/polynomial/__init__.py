@@ -14,12 +14,14 @@ from typing import Any
 
 from esolangs.exceptions import GeneratorCapError
 from esolangs.interpreters.source_hints import with_hint
+from esolangs.polynomial_resources import estimate_generation
 from esolangs.tools.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
     essential_inputs,
     read_at,
 )
+from esolangs.tools.polynomial.algebra import primes, render_product
 
 # Instruction cap.  Analytic n=10 worst case is 1659
 # (``test_polynomial_cap_admits_every_n10_table``); kept at the old 1934,
@@ -57,10 +59,6 @@ def polynomial(truth_table: str) -> str:
     """
     n = _validate_truth_table(truth_table)
 
-    # Every construction here is :func:`_polynomial_hybrid` at some ``k``.
-    # ``k == n`` is the plain decision tree, ``k == 0`` the plain state
-    # machine, and the interior splits the difference; the reduced variants
-    # below prepend a drain and rebuild on a smaller table.
     builders: list[tuple[int, Any]] = [
         (
             _polynomial_hybrid_cost(truth_table, level),
@@ -102,11 +100,10 @@ def polynomial(truth_table: str) -> str:
             )
             for level in range(reduced_n, 0, -1)
         ]
-        drained = _polynomial_drained_dag_cost(truth_table)
-        # Only reached inside ``if lead:``, and the cost is None only when
-        # there is no lead to drain, so it always answers here.
+        # Only reached inside ``if lead:``, where the build always answers.
+        drained = _polynomial_drained_dag(truth_table)
         if drained is not None:  # pragma: no branch
-            builders.append((drained, lambda: _polynomial_drained_dag(truth_table)))
+            builders.append((len(drained), lambda: drained))
 
     fits = [(cost, build) for cost, build in builders if cost <= _POLYNOMIAL_MAX_INSTRS]
     if not fits:
@@ -164,10 +161,8 @@ def _polynomial_assemble(instrs: list[list[int]]) -> str:
     ``if > 0; input; *= span`` and ``endif; += 1`` are such runs, so a block
     spends three primes, not six.
     """
-    from esolangs.tools.polynomial.algebra import estimate_product, render_product
-
     factors = _polynomial_factors(instrs)
-    estimate = estimate_product(factors)
+    estimate = estimate_generation(factors)
     if estimate.rendered_chars > _POLYNOMIAL_MAX_ESTIMATED_CHARS:
         raise with_hint(
             GeneratorCapError(
@@ -190,8 +185,6 @@ def _polynomial_assemble(instrs: list[list[int]]) -> str:
 
 def _polynomial_factors(instrs: list[list[int]]) -> list[list[int]]:
     """Encode instructions as factors without expanding their product."""
-    from esolangs.tools.polynomial.algebra import primes
-
     groups: list[list[list[int]]] = []
     for instr in instrs:
         if groups and _polynomial_decode_key(groups[-1][-1]) <= _polynomial_decode_key(
@@ -409,12 +402,6 @@ def _polynomial_drained_dag(truth_table: str) -> list[list[int]] | None:
     if len(reduced) < 2:  # pragma: no cover - see above
         return None
     return [[0, 2]] * lead + _polynomial_dag(reduced, n + 2)
-
-
-def _polynomial_drained_dag_cost(truth_table: str) -> int | None:
-    """Return :func:`_polynomial_drained_dag`'s instruction count."""
-    built = _polynomial_drained_dag(truth_table)
-    return None if built is None else len(built)
 
 
 def _polynomial_hybrid_cost(truth_table: str, k: int) -> int:
