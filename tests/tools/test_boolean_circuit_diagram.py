@@ -484,7 +484,7 @@ class TestCircuitDiagram:
         ],
     )
     def test_the_shortest_candidate_order_ships(self, table: str, winner: int) -> None:
-        """Each named order wins somewhere, and the winner still computes."""
+        """Each named order wins somewhere (width path); the identity ships compact."""
         from esolangs.tools.circuit_diagram import (
             _circuit_diagram_at,
             _selector_orders,
@@ -496,10 +496,8 @@ class TestCircuitDiagram:
         sizes = [len(_circuit_diagram_at(table, None, order)) for order in orders]
         assert sizes.index(min(sizes)) == winner
         assert sizes.count(min(sizes)) == 1
-        compact = _selector_orders(table, compact=True)
-        assert len(circuit_diagram(table)) == min(
-            len(_circuit_diagram_at(table, None, order)) for order in compact
-        )
+        assert _selector_orders(table, compact=True) == [None]
+        assert circuit_diagram(table) == _circuit_diagram_at(table, None)
         assert self.run_table(table) == table
 
     def test_each_run_prints_exactly_one_bit(self) -> None:

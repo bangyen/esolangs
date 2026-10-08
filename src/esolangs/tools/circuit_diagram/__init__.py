@@ -55,7 +55,7 @@ most significant first, matching the other generators in this package.
   cases use a fixed one- or three-gate mux rule;
 * at most one unfinished signal per input level is live; the fold is one
   pass over the table and emits fewer than three gates per entry.
-* through seven inputs the fold is built for up to four *selector orders*
+* a width request below eight inputs builds up to four *selector orders*
   and the shortest drawing ships.  The rails keep their rows and read order;
   only which rail each Shannon level selects moves, which is the table's
   inputs renamed (:func:`_selector_orders`).
@@ -577,17 +577,19 @@ def _selector_orders(
 ) -> list[tuple[int, ...] | None]:
     """Return named selector orders, identity first.
 
-    Compact builds keep identity, mux-cost greedy and reverse. Width requests
-    also try the constant-cofactor greedy order. Rails remain in input order.
+    Compact builds keep only the identity: cheapest-mux and reversed orders
+    save 8.48% of area at n=7, under the 10% bar.  Width requests try the
+    constant-cofactor greedy, cheapest-mux and reversed orders.  Rails stay
+    in input order.
     """
     n = len(truth_table).bit_length() - 1
-    if n > _REORDER_MAX_ARITY:
+    if compact or n > _REORDER_MAX_ARITY:
         return [None]
     used, table = _essential_table(truth_table, n)
     identity = tuple(range(len(used)))
     orders: list[tuple[int, ...] | None] = [None]
     for order in (
-        identity if compact else _greedy_input_order(table, len(used)),
+        _greedy_input_order(table, len(used)),
         _cheapest_selector_order(table, len(used)),
         identity[::-1],
     ):
@@ -693,10 +695,9 @@ def circuit_diagram(truth_table: str, width: int | None = None) -> str:
     for a column count: the drawing is built once without one, and again
     inside the width if that came out too wide.
 
-    Below eight inputs the shortest named selector order is kept. Compact
-    builds use three orders; width requests keep all four. Retiring the
-    constant-cofactor greedy choice adds 3.29% to the three-input total
-    and 1.62% to the seeded five-input sample.
+    Below eight inputs a width request keeps the shortest of four named
+    selector orders; the compact build uses the identity alone (the other
+    orders save 8.48% of area at n=7, under the 10% bar).
 
     From eight inputs an unconstrained build uses the H-layout instead;
     :mod:`.hlayout` gives why, and why at eight.
