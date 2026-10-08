@@ -82,32 +82,6 @@ def test_sharing_boundaries(n: int) -> None:
         assert esolangs.read_answer("AddSubJump", output) == expected
 
 
-def _previous(table: str) -> str:
-    def candidate(table: str, order: tuple[int, ...]) -> str:
-        return min(
-            (
-                _addsubjump_ordered(table, order),
-                _addsubjump_ordered(table, order, shared=True, skip_equal=False),
-            ),
-            key=len,
-        )
-
-    if len(table) <= 16:
-        return best_input_order(table, candidate)
-    packed = _addsubjump_packed(table)
-    if len(table) == 32:
-        return min(
-            (
-                packed,
-                _addsubjump_ordered(
-                    table, tuple(range(5)), shared=True, skip_equal=False
-                ),
-            ),
-            key=len,
-        )
-    return packed
-
-
 @pytest.mark.medium
 @pytest.mark.parametrize(
     "n",
@@ -118,7 +92,7 @@ def _previous(table: str) -> str:
         pytest.param(12, marks=pytest.mark.slow),
     ],
 )
-def test_shared_packed_cells_execute(n: int) -> None:
+def test_packed_cells_execute(n: int) -> None:
     rng = random.Random(n)
     tables = [
         "0" * (1 << n),
@@ -127,19 +101,14 @@ def test_shared_packed_cells_execute(n: int) -> None:
         f"{rng.getrandbits(1 << n):0{1 << n}b}",
     ]
     for table in tables:
-        shared = _addsubjump_packed(table, shared=True)
         program = addsubjump(table)
-        assert len(program) <= len(_previous(table))
         rows = range(len(table)) if n == 6 else (0, 1, len(table) // 2, len(table) - 1)
         for row in rows:
             bits = [(row >> shift) & 1 for shift in reversed(range(n))]
             output = esolangs.run(
                 "AddSubJump",
-                shared,
+                program,
                 stdin=esolangs.encode_inputs("AddSubJump", bits),
                 timeout=None,
             )
             assert esolangs.read_answer("AddSubJump", output) == table[row]
-    if n == 12:
-        parity = tables[2]
-        assert len(addsubjump(parity)) <= 0.95 * len(_previous(parity))

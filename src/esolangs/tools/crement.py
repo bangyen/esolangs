@@ -101,13 +101,6 @@ def _crement_shared(truth_table: str, perm: tuple[int, ...]) -> str:
     return _crement_ordered(truth_table, perm, share=True)
 
 
-def _data(target: int, line: int) -> str:
-    """Spell ``+A`` data at ``line`` naming ``target``: absolute or ``@-k``."""
-    relative = _rel(target - 1 - line)
-    absolute = str(target - 1)
-    return relative if len(relative) < len(absolute) else absolute
-
-
 def _crement_ordered(
     truth_table: str, perm: tuple[int, ...], *, share: bool = False
 ) -> str:
@@ -144,7 +137,7 @@ def _crement_ordered(
         # A child emitted here is named relative to the patch, as ``@+k``;
         # a gadget or earlier copy takes the shorter spelling.
         def data(target: int, line: int) -> str:
-            return f"@+{target - 1 - line}" if target > at else _data(target, line)
+            return f"@+{target - 1 - line}" if target > at else str(target - 1)
 
         cell = tester[level]
         rel = at - first
