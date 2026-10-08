@@ -162,4 +162,5 @@ LANGUAGE = Language(
     source_kind=SourceKind.RASTER,
     boolean=line,
     balance=balance,
+    no_wrap="tree geometry fixes the width; balance chooses orientation",
 )

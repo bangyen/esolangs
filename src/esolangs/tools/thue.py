@@ -323,4 +323,5 @@ LANGUAGE = Language(
         "to change",
     ),
     balance=balance_thue,
+    no_wrap="a newline ends a rule, and the state's own newlines are part of it",
 )

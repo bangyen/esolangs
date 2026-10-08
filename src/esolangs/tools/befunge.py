@@ -205,4 +205,5 @@ LANGUAGE = Language(
     boolean=befunge,
     split=True,
     balance=balance_befunge,
+    no_wrap="a row is a grid row and the lookup table is indexed by column",
 )

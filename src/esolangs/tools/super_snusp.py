@@ -199,4 +199,5 @@ LANGUAGE = Language(
         input_shape="char_stream",
     ),
     balance=_balance,
+    no_wrap="a row is a grid row; a break moves code, it does not reflow",
 )

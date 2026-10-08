@@ -65,4 +65,5 @@ LANGUAGE = Language(
         note="Inputs fill the binary row index before unary table selection.",
         parameterized=True,
     ),
+    no_wrap="newlines are literal output and substitution data",
 )

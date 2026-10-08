@@ -602,4 +602,5 @@ LANGUAGE = Language(
         input_shape="char_stream",
     ),
     balance=_balance,
+    no_wrap="each line is one instruction and goto targets are line numbers",
 )

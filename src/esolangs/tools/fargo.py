@@ -281,4 +281,5 @@ LANGUAGE = Language(
         "committed input is the row index rather than a bit per line",
     ),
     balance=_balance,
+    no_wrap="each physical line is one command; expressions have no continuation",
 )

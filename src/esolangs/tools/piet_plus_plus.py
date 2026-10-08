@@ -66,4 +66,5 @@ LANGUAGE = Language(
     "stack_based.piet_plus_plus",
     source_kind=SourceKind.RASTER,
     boolean=piet_plus_plus,
+    no_wrap="one fixed three-row strip, like Piet before scaling",
 )

@@ -178,4 +178,5 @@ LANGUAGE = Language(
         parameterized=True,
     ),
     balance=_balance,
+    no_wrap="a break inside a pushed element changes the string it contains",
 )

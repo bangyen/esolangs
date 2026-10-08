@@ -347,4 +347,5 @@ LANGUAGE = Language(
     "register_based.collatz_multiverse",
     boolean=collatz_multiverse,
     balance=balance_collatz_multiverse,
+    no_wrap="each line is one complete register assignment",
 )

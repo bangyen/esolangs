@@ -358,4 +358,5 @@ LANGUAGE = Language(
         input_shape="char_stream",
     ),
     balance=_balance,
+    no_wrap="a command is a word walked cell by cell; a row end cuts it",
 )

@@ -132,4 +132,5 @@ LANGUAGE = Language(
         parameterized=True,
     ),
     balance=_balance,
+    no_wrap="only line 1 is code; line 2 gives its numeric jump distances",
 )

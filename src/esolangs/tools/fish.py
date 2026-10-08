@@ -92,4 +92,5 @@ LANGUAGE = Language(
         input_shape="char_stream",
     ),
     balance=balance_fish,
+    no_wrap="a row is a codebox row and the lookup table is indexed by column",
 )
