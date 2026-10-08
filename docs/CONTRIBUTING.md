@@ -125,7 +125,10 @@ A generator guarantees its size class (the Scaling column in
 `docs/proofs/index.md`), not its constant. Every generator applies the
 canonical set, or its docstring says why one does not apply: ignored inputs
 dropped (`essential_inputs`, `read_at`), constant subtrees folded
-(`constant_span_test`), repeated subtrees shared (`subtree_ids`).
+(`constant_span_test`), repeated subtrees shared (`subtree_ids`). A
+canonical piece ships at any saving: it is exempt only where the construction
+leaves it nothing to act on, or where it makes the average program larger on
+the tables it targets at the largest arity measured (cite the figure).
 
 Anything else is a bespoke size optimization and must meet all of these
 requirements:

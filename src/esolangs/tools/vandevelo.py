@@ -26,7 +26,7 @@ taking only cubes of at least that dimension ends in ``1 + 9 * 2**n / n``
 clauses.
 
 An ignored input is a free direction of every cube, so the cover already
-drops it: projecting first changed size by -2.9% to +0.8% at n=7-9.  Guards
+drops it: projecting first is 0.4% larger, pooled over 22 tables at n=8-9.  Guards
 are cosets of the 1-set, so there is no subtree to share.
 
 The peel does not restart per cube.  Every scored pair set ``S(v) = B & (B ^
