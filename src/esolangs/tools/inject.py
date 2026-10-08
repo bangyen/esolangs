@@ -19,6 +19,8 @@ greedy compete) with ``skipq INPUT ZERO``, which fires when the bit is
 block and escapes; the two constants serve as operands and answers.
 """
 
+import string
+
 from esolangs.tools.helpers import (
     _validate_truth_table,
     best_input_order,
@@ -29,7 +31,7 @@ from esolangs.tools.helpers import (
 __all__ = ["inject"]
 
 
-_ALPHABET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+_ALPHABET = string.ascii_letters
 _CONSTANTS = {"o", "t", "z"}
 
 
@@ -103,6 +105,38 @@ def _tree(
     return walk(0, len(table), depth)
 
 
+def _widest(program: str) -> int:
+    return max(map(len, program.splitlines()))
+
+
+def _preamble(names: _Names, table_line: str) -> list[str]:
+    """Empty input blocks, the table ``t``, constants ``z``/``o``, then the reads."""
+    lines = [f"{name};\n{name};" for name in names.inputs]
+    lines += ["t;", table_line, "t;", "z;", "0", "z;", "o;", "1", "o;"]
+    lines += [f"readto {name}" for name in names.inputs]
+    return lines
+
+
+def _halve(names: _Names, halvings: list[tuple[int, str]]) -> list[str]:
+    """Narrow ``t`` by each ``(half, input name)``: a zero keeps the front half."""
+    lines: list[str] = []
+    for half, input_name in halvings:
+        one = names.fresh()
+        zero = names.fresh()
+        # A zero skips the prefix deletion; a one skips the suffix deletion.
+        lines += [
+            f"skipq {input_name} z",
+            f"{one};",
+            "inject t=^" + "." * half + "/",
+            f"{one};",
+            f"skipq {input_name} o",
+            f"{zero};",
+            "inject t=" + "." * half + "$/",
+            f"{zero};",
+        ]
+    return lines
+
+
 def inject(truth_table: str, width: int | None = None) -> str:
     """Build an Inject program computing ``truth_table``.
 
@@ -115,25 +149,21 @@ def inject(truth_table: str, width: int | None = None) -> str:
         program = best_input_order(truth_table, _inject_ordered)
     else:
         program = _inject_halving(truth_table)
-    if width is None or width <= 0 or max(map(len, program.splitlines())) <= width:
+    widest = _widest(program)
+    if width is None or width <= 0 or widest <= width:
         return program
     banded = _inject_banded(truth_table)
-    return (
-        banded
-        if max(map(len, banded.splitlines())) < max(map(len, program.splitlines()))
-        else program
-    )
+    return banded if _widest(banded) < widest else program
 
 
 def _inject_banded(truth_table: str) -> str:
     """Select an O(n)-bit chunk, then halve it in one shared postlude."""
     n = _validate_truth_table(truth_table)
+    # >= n rows per chunk amortize O(n)-letter unique labels over the table.
     low = min(n, (n - 1).bit_length())
     high = n - low
     names = _Names(n, tuple(range(n)))
-    lines = [f"{name};\n{name};" for name in names.inputs]
-    lines += ["t;", "0", "t;", "z;", "0", "z;", "o;", "1", "o;"]
-    lines += [f"readto {name}" for name in names.inputs]
+    lines = _preamble(names, "0")
 
     def walk(start: int, stop: int, level: int) -> None:
         if level == high:
@@ -150,25 +180,12 @@ def _inject_banded(truth_table: str) -> str:
         lines.append(f"{block};")
         walk(start, middle, level + 1)
 
-    # >= n rows per chunk amortize O(n)-letter unique labels over the table.
     # Every leaf escapes the remaining tree to the same low-input postlude.
     walk(0, len(truth_table), 0)
     lines.extend(f"{escape};" for escape in names.escapes)
-    for depth in range(high, n):
-        half = 1 << (n - depth - 1)
-        one, zero = names.fresh(), names.fresh()
-        lines.extend(
-            [
-                f"skipq {names.inputs[depth]} z",
-                f"{one};",
-                "inject t=^" + "." * half + "/",
-                f"{one};",
-                f"skipq {names.inputs[depth]} o",
-                f"{zero};",
-                "inject t=" + "." * half + "$/",
-                f"{zero};",
-            ]
-        )
+    lines += _halve(
+        names, [(1 << (n - d - 1), names.inputs[d]) for d in range(high, n)]
+    )
     lines.append("send t")
     return "\n".join(lines)
 
@@ -182,26 +199,10 @@ def _inject_halving(truth_table: str) -> str:
     n = _validate_truth_table(truth_table)
     weights, projected = input_weights(truth_table, n)
     names = _Names(n, tuple(range(n)))
-    lines = [f"{name};\n{name};" for name in names.inputs]
-    lines += ["t;", projected, "t;", "z;", "0", "z;", "o;", "1", "o;"]
-    lines += [f"readto {name}" for name in names.inputs]
-
-    for half, input_name in zip(weights, names.inputs, strict=True):
-        if not half:
-            continue
-        one = names.fresh()
-        zero = names.fresh()
-        # A zero skips the prefix deletion; a one skips the suffix deletion.
-        lines += [
-            f"skipq {input_name} z",
-            f"{one};",
-            "inject t=^" + "." * half + "/",
-            f"{one};",
-            f"skipq {input_name} o",
-            f"{zero};",
-            "inject t=" + "." * half + "$/",
-            f"{zero};",
-        ]
+    lines = _preamble(names, projected)
+    lines += _halve(
+        names, [(h, i) for h, i in zip(weights, names.inputs, strict=True) if h]
+    )
     lines.append("send t")
     return "\n".join(lines)
 
@@ -214,15 +215,12 @@ def _inject_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     body = [f"readto {names.inputs[d]}" for d in range(n)]
     body += _tree(truth_table, 0, n, names, perm)
 
-    # Every escape block has to span all the remaining executable lines, so
-    # the closes come after the tree and before the data tail.  They are
-    # emitted innermost-last: a leaf that escapes must clear every *later*
-    # leaf's code too, and closing them in order of issue does that.
+    # Each escape block spans every later executable line, so the closes
+    # follow the tree, in order of issue, ahead of the constants.
     tail = [f"{escape};" for escape in names.escapes]
 
-    # The constants.  ``z`` is both the comparison operand for every node
-    # and the answer for a 0 leaf; ``o`` is only an answer.  They sit
-    # after the escape closes, so no escape jump can land inside them.
+    # ``z`` is also every node's comparison operand; after the closes, so no
+    # escape lands inside the constants.
     tail += ["z;", "0", "z;", "o;", "1", "o;"]
 
     # The input blocks start empty: ``readto`` fills them, and an empty
