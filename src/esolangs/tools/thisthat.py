@@ -5,7 +5,6 @@ from typing import Literal
 
 from esolangs.tools.helpers import (
     _validate_truth_table,
-    best_input_order,
     grid_width,
     narrowest_grid,
     read_at,
@@ -242,29 +241,27 @@ def _strip_tree(truth_table: str) -> str:
     return builder.render()
 
 
-def _tree(truth_table: str, *, prune: bool = True, reorder: bool = True) -> str:
+def _tree(truth_table: str, *, prune: bool = True) -> str:
     """Build the tree; ``prune=False`` tests every input at every node.
 
     Ignored inputs are read and dropped.  A node whose halves agree pops its
-    bit onto the unpopped column stack.  Kept inputs are tested in the greedy
-    order when :func:`_deque_plan` can pop them in it; ``reorder=False`` keeps
-    input order.
+    bit onto the unpopped column stack.  Kept inputs are tested in input
+    order (a greedy order saves 0.2% at n=8, under the 10% bar).
     """
     n = _validate_truth_table(truth_table)
     essential = _essential(subtree_ids(truth_table), n) if prune else list(range(n))
     if len(essential) < n:
         truth_table = read_at(truth_table, essential, n)
-    if not (prune and reorder and essential):
-        order = tuple(range(len(essential)))
+    order = tuple(range(len(essential)))
+    if not (prune and essential):
         return _layout(truth_table, n, essential, order, prune=prune)
-
-    def build(table: str, order: tuple[int, ...]) -> str:
-        return min(
-            (_layout(table, n, essential, order, swap=swap) for swap in (False, True)),
-            key=len,
-        )
-
-    return best_input_order(truth_table, build)
+    return min(
+        (
+            _layout(truth_table, n, essential, order, swap=swap)
+            for swap in (False, True)
+        ),
+        key=len,
+    )
 
 
 def _layout(

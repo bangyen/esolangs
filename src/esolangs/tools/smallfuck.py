@@ -3,8 +3,8 @@
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
-    best_input_order,
     constant_span_test,
+    in_input_order,
     mark_runs,
     move_text,
     subtree_ids,
@@ -46,10 +46,10 @@ def smallfuck(truth_table: str, width: int | None = None) -> str:
     """Return a Smallfuck template whose final tape cell 2 is the answer.
 
     Input ``i`` is stored in cell ``3 i`` before the tree runs, so a level
-    may test any of them: the shorter of the identity and greedy orders is
-    kept (:func:`best_input_order`).
+    may test any of them; splits stay in input order (a greedy order saves
+    1.1% at n=8, under the 10% bar).
     """
-    natural = best_input_order(truth_table, _smallfuck_ordered)
+    natural = in_input_order(truth_table, _smallfuck_ordered)
     if width is None or width <= 0:
         return natural
     n = _validate_truth_table(truth_table)

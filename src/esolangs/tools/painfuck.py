@@ -12,8 +12,8 @@ per cell.
 from esolangs.interpreters.tape_based.painfuck import _CYCLES
 from esolangs.tools.helpers import (
     _validate_truth_table,
-    best_input_order,
     constant_span_test,
+    in_input_order,
     subtree_ids,
 )
 
@@ -74,7 +74,7 @@ def painfuck(truth_table: str) -> str:
     side, so exactly one side fires and both cells are left zero.  The
     answer accumulates in cell ``2n`` and is printed once, as a number.
     """
-    return best_input_order(truth_table, _painfuck_ordered)
+    return in_input_order(truth_table, _painfuck_ordered)
 
 
 def _painfuck_ordered(truth_table: str, perm: tuple[int, ...]) -> str:

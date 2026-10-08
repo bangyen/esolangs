@@ -6,9 +6,9 @@ from functools import cache
 
 from esolangs.tools.helpers import (
     _validate_truth_table,
-    best_input_order,
     constant_span_test,
     essential_inputs,
+    in_input_order,
     read_at,
 )
 
@@ -101,12 +101,10 @@ def three_x(truth_table: str) -> str:
     popped off the stack: the interpreter leaves a tested condition where it
     is, and every snippet pushes its own operands, so the junk is never read.
 
-    **The tree splits in whichever order emits the shortest program**
-    (:func:`~esolangs.tools.helpers.best_input_order`), spelled in the store
-    targets: stream input ``i`` is stored into the name tested at depth
-    ``perm.index(i)``.
+    The tree splits in input order (a greedy order saves 2.2% at n=8,
+    under the 10% bar).
     """
-    return best_input_order(truth_table, _three_x_ordered)
+    return in_input_order(truth_table, _three_x_ordered)
 
 
 def _three_x_ordered(truth_table: str, perm: tuple[int, ...]) -> str:

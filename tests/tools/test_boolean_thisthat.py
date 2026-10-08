@@ -56,17 +56,16 @@ def test_constants_test_nothing() -> None:
 def test_only_dependent_levels_are_tested() -> None:
     """A level whose halves agree is popped onto the column stack, not tested."""
 
-    def tests(table: str, *, reorder: bool = False) -> int:
-        program = _tree(table, reorder=reorder)
+    def tests(table: str) -> int:
+        program = _tree(table)
         return sum(map(program.count, "◐◑◒"))
 
     assert tests("00001111") == 1  # the first input alone
     assert tests("01010101") == 1  # the last input alone
     assert tests("00010011") == 4  # the full tree has 7
-    assert tests("00010011", reorder=True) == 3  # testing x1 first
     # The second input is tested under x0 = 0 and popped under x0 = 1.
     assert tests("00010101") == 4  # 7 unpruned
-    assert "⬒" in _tree("00010101", reorder=False).split("\n", 1)[1]
+    assert "⬒" in _tree("00010101").split("\n", 1)[1]
     for table in ("00110011", "00010101", "01011010"):
         for row, expected in enumerate(table):
             assert _run(table, row) == (expected, 3)
@@ -79,12 +78,10 @@ def test_pruning_never_grows_a_table() -> None:
         for value in range(1 << (1 << n)):
             table = f"{value:0{1 << n}b}"
             size = len(thisthat(table))
-            assert size <= len(_tree(table, reorder=False))
             assert size <= len(_tree(table, prune=False))
     tables = [f"{value:08b}" for value in range(256)]
-    assert sum(len(thisthat(table)) for table in tables) == 129_540
-    assert sum("◐" in thisthat(table) for table in tables) == 100
-    assert sum(len(_tree(table, reorder=False)) for table in tables) == 158_308
+    assert sum(len(thisthat(table)) for table in tables) == 141_636
+    assert sum("◐" in thisthat(table) for table in tables) == 92
     assert sum(len(_tree(table, prune=False)) for table in tables) == 199_936
 
 
@@ -116,17 +113,13 @@ def test_deque_plan_pops_exactly_the_orders_a_deque_can() -> None:
 
 
 @pytest.mark.medium
-def test_reordered_tables_through_six_inputs_execute() -> None:
-    """Samples at four to six inputs, some in a reordered test order."""
+def test_tables_through_six_inputs_execute() -> None:
+    """Samples at four to six inputs execute."""
     rng = random.Random(6)
-    reordered = 0
     for n in (4, 5, 6):
         for _ in range(12):
             table = "".join(rng.choice("01") for _ in range(1 << n))
-            program = thisthat(table)
-            reordered += program != _tree(table, reorder=False)
             assert verify_generated("thisthat", table), table
-    assert reordered
 
 
 def test_layout_collisions_abort() -> None:

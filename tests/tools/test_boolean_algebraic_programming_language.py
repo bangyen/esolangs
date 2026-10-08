@@ -255,7 +255,7 @@ def test_apl_elementary_floor_and_corpus_size() -> None:
             len(boolean.algebraic_programming_language(format(v, "08b"), 1))
             for v in range(256)
         )
-        == 20448
+        == 23520
     )
 
 

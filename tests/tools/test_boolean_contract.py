@@ -133,10 +133,8 @@ def test_boolean_set_lists_exactly_the_exported_generators() -> None:
 # builder that emits one fixed order, so a test can compare the two.
 def _reordering_generators() -> list[tuple[str, object, object]]:
     from esolangs.tools.bitdeque import _bitdeque_ordered
-    from esolangs.tools.painfuck import _painfuck_ordered
 
     entries: list[tuple[str, object, object]] = [
-        ("painfuck", boolean.painfuck, _painfuck_ordered),
         ("bitdeque", boolean.bitdeque, _bitdeque_ordered),
     ]
     return entries

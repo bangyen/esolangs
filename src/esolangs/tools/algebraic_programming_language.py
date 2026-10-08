@@ -6,7 +6,6 @@ from string import ascii_uppercase
 from esolangs.tools.helpers import (
     _GREEDY_ORDER_MAX_ARITY,
     _validate_truth_table,
-    best_input_order,
     constant_span_test,
     in_input_order,
     input_orders,
@@ -48,7 +47,7 @@ def algebraic_programming_language(truth_table: str, width: int | None = None) -
     since APL cannot continue an expression across lines.
     """
     if width is not None:
-        return best_input_order(
+        return in_input_order(
             truth_table, lambda table, perm: _apl_narrow_layout(table, perm, width)[0]
         )
     return in_input_order(truth_table, _apl_reduced_ordered)

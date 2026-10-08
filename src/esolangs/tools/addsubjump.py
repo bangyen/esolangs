@@ -7,8 +7,8 @@ from esolangs.tools.helpers import (
     _ASCII_ZERO,
     _residual_ids,
     _validate_truth_table,
-    best_input_order,
     constant_span_test,
+    in_input_order,
     stored_inputs,
 )
 
@@ -24,12 +24,12 @@ def addsubjump(truth_table: str) -> str:
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.
 
-    Up to 16 rows, the best input order of tree vs shared residuals; 32 rows
+    Up to 16 rows, the shorter of tree and shared residuals in input order; 32 rows
     also try the shared residual tree; wider tables use the linear packed
     decoder (``n``-bit cells, size ``O(T)``).
     """
     if len(truth_table) <= 16:
-        return best_input_order(truth_table, _addsubjump_candidate)
+        return in_input_order(truth_table, _addsubjump_candidate)
     packed = min(
         (_addsubjump_packed(truth_table), _addsubjump_packed(truth_table, shared=True)),
         key=len,

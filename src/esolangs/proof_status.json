@@ -854,7 +854,7 @@
         "tree"
       ],
       "qualification": "—",
-      "scaling": "linear, time n log: greedy order scoring, capped",
+      "scaling": "linear: O(1) constant-span tests over canonical residual IDs",
       "execution": "linear: worst L commands: the all-ones row enters every guard, no loop repeats",
       "workspace": "linear: at most n·bl(L) + 3T/2 + 2n + 16 + bl(2n-1) + 2K(2n+1) + Σ_{i≤2n+1}(K(i)+3) bits: guard residues, keys",
       "evidence": "docs/proofs/index.md#generator-ledger",
