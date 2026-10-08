@@ -553,8 +553,8 @@ def _streetcode_flat(truth_table: str, n: int) -> str:
     ``T`` nonzero, which is what drives the fill past the mouths.
 
     An ignored input is a lone ``I`` just east of the next indexed input's,
-    whose read overwrites the cell; one past the last indexed input is not
-    read at all.  The table holds the indexed inputs' entries alone.
+    whose read overwrites the cell; one past the last indexed input is an
+    ``I`` ahead of the tail.  The table holds the indexed inputs' entries alone.
     """
     weights, table = input_weights(truth_table, n)
     if len(table) > 1:
@@ -570,7 +570,10 @@ def _streetcode_flat(truth_table: str, n: int) -> str:
             pending += 1
     fill = "".join(("^" if bit == "1" else "") + "=" for bit in reversed(truth_table))
     fill += "^"
-    mouths = _streetcode_mouths(n, max(len(fill) + 3, len(_TAIL) + 1), gaps)
+    # ``pending`` trailing ignored inputs are lone ``I`` between the last
+    # mouth and the tail; each overwrites the cell CP rests on, one east of
+    # the answer, which the tail's ``_`` leaves behind.
+    mouths = _streetcode_mouths(n, max(len(fill) + 3, len(_TAIL) + pending + 1), gaps)
     width = mouths[0][0] + _READ_RUN + 2 + gaps[0]
     grid: dict[tuple[int, int], str] = {}
     for col in range(width + 2):
@@ -583,8 +586,8 @@ def _streetcode_flat(truth_table: str, n: int) -> str:
         _streetcode_room(grid, mouth, room, walk)
         for col in range(mouth + _READ_RUN + 2, mouth + _READ_RUN + 2 + gap):
             grid[_WEST, col] = "I"
-    for step, char in enumerate(_TAIL):
-        grid[_WEST, mouths[-1][0] - len(_TAIL) + step] = char
+    for step, char in enumerate(_TAIL + "I" * pending):
+        grid[_WEST, mouths[-1][0] - len(_TAIL) - pending + step] = char
     grid[_EAST, 1] = "C"
     for step, char in enumerate(fill):
         grid[_EAST, 2 + step] = char
