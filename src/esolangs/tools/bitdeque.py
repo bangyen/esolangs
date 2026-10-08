@@ -33,16 +33,15 @@ def bitdeque(truth_table: str, width: int | None = None) -> str:
     ``EJECT``/``INJECT`` work the head, so any bit can be brought to an end
     at two commands per position, measured not modelled.  Rotations happen
     inside the tree; the load is byte-identical under every order.
-    Below eleven columns, up to four inputs use POP/EJECT on fresh
-    zero/one endpoints; larger tables keep the linear load.
+    Width < 11 with n <= 4 loads each input via POP/EJECT on fresh zero/one
+    endpoints (15 commands each); otherwise the load is the linear ``2n``.
     """
     if len(truth_table) <= 16:
-        program = best_input_order(truth_table, _bitdeque_ordered)
-        if width is not None and width < len(BITDEQUE_PAIR[0]):
-            program = best_input_order(
-                truth_table,
-                lambda table, perm: _bitdeque_ordered(table, perm, short=True),
-            )
+        short = width is not None and width < len(BITDEQUE_PAIR[0])
+        program = best_input_order(
+            truth_table,
+            lambda table, perm: _bitdeque_ordered(table, perm, short=short),
+        )
     else:
         program = _bitdeque_linear(truth_table)
     if width is not None:
@@ -53,6 +52,8 @@ def bitdeque(truth_table: str, width: int | None = None) -> str:
 
 
 _BITDEQUE_SHORT_PAIR = ("POP  ", "EJECT")
+_PRELUDE_LEN = 5
+_SHORT_BLOCK = 15
 
 
 def _bitdeque_short_load(n: int) -> list[str]:
@@ -60,7 +61,7 @@ def _bitdeque_short_load(n: int) -> list[str]:
     tokens: list[str] = []
     for i in range(n):
         # The block's first command, counted from 1 as ``GOTO`` counts.
-        at = 6 + 15 * i
+        at = _PRELUDE_LEN + 1 + _SHORT_BLOCK * i
         # POP/EJECT selects zero/one. Both branches remove the other
         # sentinel, append the selected bit, and restore register zero.
         tokens.extend(
@@ -97,6 +98,7 @@ def bitdeque_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
     pair = _BITDEQUE_SHORT_PAIR if short else BITDEQUE_PAIR
     setters = (pair,) * n
     if template.count(TEMPLATE_CHAR) == 5 * n:
+        # Called only to raise if the runs do not match the setters.
         runs(template, TEMPLATE_CHAR, setters)
     return setters
 
@@ -211,40 +213,36 @@ def _bitdeque_ordered(
         # the rotation, its consuming pop, and the node's own ``GOTO``
         return len(rotations[level]) + 1
 
-    # Each input's run fills to two commands, which is what ``start`` below
-    # counts; see the docstring for why the load is byte-identical per order.
     # Commands count from 1.  Initially command 1 falls through on zero and
     # commands 2/3 skip the trampoline.  A leaf returns with one, so ``GOTO
     # 1`` reaches command 4; only that command carries the widening end
     # address.
     prelude = ["GOTO 4", "INVERT", "GOTO 5", "GOTO@END", "INVERT"]
-    # The setters read the route off the template's prefix, so they are
-    # handed the prelude, whose opening ``GOTO 4`` names this one.
-    load_block_in_name_order = (
+    # The setters read the route off the prelude's opening ``GOTO 4``.
+    load = (
         _bitdeque_short_load(n)
         if short
-        else ([TEMPLATE_CHAR * len(BITDEQUE_PAIR[0])] * n)
+        else [TEMPLATE_CHAR * len(BITDEQUE_PAIR[0])] * n
     )
+    # Each linear run fills to two commands.
+    load_len = _SHORT_BLOCK * n if short else 2 * n
 
     # A node spends its rotation, its pop and its ``GOTO`` before either
     # subtree, so the walker's ``at`` lands on this node and ``at +
     # width(level)`` on the zero subtree.  The load block occupies ``2n``
     # commands ahead of the tree, which is where the indices start, so the
     # ``GOTO`` operands are right after substitution; ``start`` is 1-based.
-    def leaf_tokens(_level: int, row: int) -> list[str]:
-        return leaf(seen[row])
-
     def node(level: int, zero: int, _one: int, at: int) -> list[str]:
         return [*rotations[level], f"GOTO {at + width(level) + zero}"]
 
     tree = decision_tree_tokens(
         seen,
-        leaf_tokens,
+        lambda _level, row: leaf(seen[row]),
         node,
         parent_width=width,
-        start=len(prelude) + (15 * n if short else 2 * n) + 1,
+        start=len(prelude) + load_len + 1,
         collapse=True,
     )
-    end = len(prelude) + (15 * n if short else 2 * n) + len(tree) + 1
-    tokens = prelude + load_block_in_name_order + tree
+    end = len(prelude) + load_len + len(tree) + 1
+    tokens = prelude + load + tree
     return " ".join("GOTO " + str(end) if t == "GOTO@END" else t for t in tokens)
