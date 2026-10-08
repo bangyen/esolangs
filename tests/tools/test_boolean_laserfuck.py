@@ -1,4 +1,4 @@
-"""Covers :mod:`esolangs.tools.laserfuck` and its layout module."""
+"""Covers :mod:`esolangs.tools.laserfuck`."""
 
 import importlib
 import random
@@ -6,7 +6,7 @@ import random
 import pytest
 
 from esolangs import tools as boolean
-from esolangs.tools.laserfuck import layout as laserfuck_layout
+from esolangs.tools.laserfuck import MARGIN
 from tests.tools.boolean_runners import (
     run_laserfuck,
 )
@@ -159,8 +159,8 @@ class TestLaserFuck:
         """The folded reader loops rather than writing 48 '-' per input."""
         rows = boolean.laserfuck("0110", 80).split("\n")
         # columns 0..2 are the funnel; the reader starts at the margin
-        head = rows[0][laserfuck_layout.MARGIN :]
-        legs = rows[1][laserfuck_layout.MARGIN :]
+        head = rows[0][MARGIN:]
+        legs = rows[1][MARGIN:]
         assert head.count("}") == 3, "the reader's own '}' plus one per ring"
         assert head.count("#/)") == 2, "each ring tests its counter"
         assert legs.count("^") == 2, "each ring returns to its own '}'"

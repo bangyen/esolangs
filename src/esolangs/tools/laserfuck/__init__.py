@@ -1,13 +1,4 @@
-"""The LaserFuck boolean generator.
-
-One language, one file -- the pattern this package already follows for
-``streetcode.py``, ``circuit_diagram.py``, and the rest of the
-larger generators, and the one the text package follows for its own
-LaserFuck.  It earns it here for the same reason: at ~420 lines it was
-better than a quarter of ``other.py``, and it is the only generator in that
-file that lays out a grid, builds a looping input reader, and rotates a
-block on end to meet a width.
-"""
+"""The LaserFuck boolean generator."""
 
 from functools import cache
 from typing import NamedTuple
@@ -21,18 +12,24 @@ from esolangs.tools.helpers import (
     narrowest_grid,
     permute_truth_table,
 )
-from esolangs.tools.laserfuck import layout as laserfuck_layout
 
 __all__ = ["laserfuck"]
+
+# The leftmost column code may use.  Columns 0..2 carry the funnel (``|o^``
+# and the ``_`` beneath it), which every initial heading is routed through
+# at startup, so code there would drop the beam back onto the funnel and
+# start the program over.
+MARGIN = 3
 
 
 # The two loops that normalize the input cells.  ``,`` reads a character, so
 # ``'0'``/``'1'`` arrive as 48/49 and every input needs 48 subtracted.
 # Writing that straight costs 49 columns per input; running it as a loop
 # costs a counter instead, and the counter itself is built by a second loop
-# rather than by 48 ``+`` -- ``_LASER_OUTER * _LASER_INNER`` is 48.
+# rather than by 48 ``+``.
 _LASER_OUTER = 8
 _LASER_INNER = 6
+_LASER_BIAS = _LASER_OUTER * _LASER_INNER  # 48, the code of '0'
 
 
 def _laserfuck_walk(frm: int, to: int) -> str:
@@ -79,7 +76,7 @@ def _laserfuck_weighted(truth_table: str) -> str:
     straight("".join(("+" if bit == "1" else "") + ">" for bit in truth_table))
     straight("<" * (2 * size))
     for arm in weights:
-        straight("," + "-" * 48)
+        straight("," + "-" * _LASER_BIAS)
         if not arm:
             continue
         upper = "#v)" + " " * (arm - 1) + "}"
@@ -266,19 +263,13 @@ def _laserfuck_reader_blocks(
 class _LaserBlock(NamedTuple):
     """A reader ring placed in one of its two orientations.
 
-    The beam always arrives travelling *right* and must leave travelling
-    right, so a placement's whole contract is where it puts its cells and
-    where it hands the beam back.  ``rows`` are the block's own cells, laid
-    ``top`` rows below the origin; ``connectors`` are the extra
-    ``(row, col, char)`` cells that steer the beam in and out; and
-    ``exit_row``/``exit_col`` are the offsets to add to the origin to reach
-    the cell the next block starts from.
-
-    A flat block is the trivial case -- the beam runs straight along its
-    single row, so it sits at the origin, needs no connectors, and hands
-    the beam back on the same row past its right edge.  A rotated one is
-    entered from above and left from below, which is why it sits one row
-    down and carries the two connectors that turn the beam.
+    The beam arrives and leaves travelling *right*.  ``rows`` are the
+    block's cells, laid ``top`` rows below the origin; ``connectors`` are
+    extra ``(row, col, char)`` cells that steer the beam in and out;
+    ``exit_row``/``exit_col`` are the offsets from the origin to the cell
+    the next block starts from.  A flat block needs no connectors; a rotated
+    one is entered from above and left from below, so it sits one row down
+    with two connectors.
     """
 
     rows: list[str]
@@ -291,14 +282,10 @@ class _LaserBlock(NamedTuple):
 def _laserfuck_place(block: list[str], upright: str) -> _LaserBlock:
     r"""Give ``block`` an explicit entry/exit contract in one orientation.
 
-    ``F`` leaves the block flat: the beam enters at its left edge and leaves
-    on the same row past its right edge, so there is nothing to connect.
-    ``R`` stands it on end with :func:`_laserfuck_rotate`, which turns the
-    rightward beam downward -- so the placement needs a ``v`` one row
-    *above* the block to drop the beam in at the rotated ring's own entry
-    column, and a ``\`` one row *below* to turn it right again.  The entry
-    column is read off the rotated block's first row rather than
-    rediscovered by the caller.
+    ``F`` leaves the block flat.  ``R`` stands it on end with
+    :func:`_laserfuck_rotate`, so the beam needs a ``v`` one row *above* to
+    drop in at the rotated ring's entry column (read off its first row) and
+    a ``\`` one row *below* to turn right again.
     """
     if upright == "F":
         return _LaserBlock(block, 0, [], 0, len(block[0]))
@@ -362,18 +349,17 @@ def _laserfuck_assemble_reader(
     rows: list[list[tuple[int, str]]] = [[] for _ in range(height)]
     for (r, c), char in cells.items():
         rows[r].append((c, char))
-    lines = []
-    for marks in rows:
-        marks.sort()
-        parts: list[str] = []
-        cursor = 0
-        for c, char in marks:
-            if c > cursor:
-                parts.append(" " * (c - cursor))
-            parts.append(char)
-            cursor = c + 1
-        lines.append("".join(parts))
-    return lines, row, col
+    return [_laserfuck_join(sorted(marks))[0] for marks in rows], row, col
+
+
+def _laserfuck_join(marks: list[tuple[int, str]]) -> tuple[str]:
+    """Join ``(column, text)`` runs left to right, padding gaps with blanks."""
+    parts: list[str] = []
+    cursor = 0
+    for col, text in marks:
+        parts.append(" " * (col - cursor) + text)
+        cursor = col + len(text)
+    return ("".join(parts),)
 
 
 _ReaderCandidate = tuple[int, int, tuple[str, ...], int, int]
@@ -437,7 +423,7 @@ def _laserfuck_reader(
         fitting = [
             item
             for item in candidates
-            if width is None or laserfuck_layout.MARGIN + item[1] + 2 <= width
+            if width is None or MARGIN + item[1] + 2 <= width
         ]
         chosen = fitting[0] if fitting else min(candidates, key=lambda item: item[1])
         _, _, reader_rows, reader_exit_row, reader_exit_col = chosen
@@ -449,19 +435,18 @@ class _LaserGrid:
     def __init__(self) -> None:
         self.cells: list[list[str]] = []
 
+    def _row(self, row: int) -> list[str]:
+        if len(self.cells) <= row:
+            self.cells.extend([] for _ in range(row + 1 - len(self.cells)))
+        return self.cells[row]
+
     def put(self, row: int, col: int, char: str) -> None:
         """Write one cell, growing the ragged grid to reach it.
 
-        The grid's final extent is not known here -- the tree is laid out
-        and mirrored as it goes -- so it stays ragged and grows on demand.
-        What changed is how: the two ``while`` loops appended one element
-        per call, which is 1.8M calls and the generator's hot path on a
-        six-input build.  Extending by the whole shortfall at once leaves
-        the same grid and lets the list resize in one step.
+        Extends by the whole shortfall at once: per-element appends were
+        1.8M calls, the hot path of a six-input build.
         """
-        if len(self.cells) <= row:
-            self.cells.extend([] for _ in range(row + 1 - len(self.cells)))
-        line = self.cells[row]
+        line = self._row(row)
         # The layout fills each row left to right, so a column is never
         # already in range and this always extends.
         if len(line) <= col:  # pragma: no branch
@@ -471,13 +456,10 @@ class _LaserGrid:
     def put_run(self, row: int, col: int, text: str) -> None:
         """Write a whole run of cells, growing the ragged grid to reach it.
 
-        The tree arrives as runs, and going through :meth:`put` a character
-        at a time dominated six-input builds.  A slice assignment leaves the same line:
-        the run is blank-free, so nothing it covers had to be preserved.
+        Going through :meth:`put` a character at a time dominated six-input
+        builds; the run is blank-free, so a slice assignment loses nothing.
         """
-        if len(self.cells) <= row:
-            self.cells.extend([] for _ in range(row + 1 - len(self.cells)))
-        line = self.cells[row]
+        line = self._row(row)
         if len(line) < col:
             line.extend(" " * (col - len(line)))
         line[col : col + len(text)] = text
@@ -531,17 +513,7 @@ def _laserfuck_tree(truth_table: str, n: int) -> _LaserTree:
 
     emit(0, 0, 0, 0)
     span = max(col + len(text) for marks in rows for col, text in marks)
-    upright = []
-    for marks in rows:
-        parts: list[str] = []
-        cursor = 0
-        for col, text in marks:
-            if col > cursor:
-                parts.append(" " * (col - cursor))
-            parts.append(text)
-            cursor = col + len(text)
-        parts.append(" " * (span - cursor))
-        upright.append("".join(parts))
+    upright = [_laserfuck_join(marks)[0].ljust(span) for marks in rows]
 
     return _LaserTree(rows, upright)
 
@@ -555,13 +527,13 @@ def _laserfuck_attach_tree(
     vertical_tree: bool,
 ) -> None:
     """Place the tree straight, rotated, or hanging beneath its reader."""
-    margin = laserfuck_layout.MARGIN
+    margin = MARGIN
     reader_rows, reader_exit_row, reader_exit_col = reader
     rows, upright = tree
     # Carry straight on into the tree if the width allows reader + tree
     # end to end; otherwise mirror it and hang it underneath (a '/' faces
     # the beam left, so no return row is needed).
-    straight = margin + reader_exit_col + max(len(line) for line in upright)
+    straight_width = margin + reader_exit_col + max(len(line) for line in upright)
     if vertical_tree:
         turned = _laserfuck_rotate(upright)
         entry = margin + len(upright) - 1
@@ -577,7 +549,7 @@ def _laserfuck_attach_tree(
         for offset, line in enumerate(turned):
             for index, char in enumerate(line):
                 grid.put(top + offset, margin + index, char)
-    elif width is None or straight + 1 <= width:
+    elif width is None or straight_width + 1 <= width:
         # Laid from the runs, not from the padded rows: the tree is a
         # staircase, so ``upright`` is mostly blanks, and a blank is
         # re-padded by the next run on its row (or ``rstrip``ed off the
@@ -615,71 +587,33 @@ def _laserfuck_build(
     r"""Build one LaserFuck program, placing inputs in ``perm`` tape order.
 
     ``truth_table`` is already permuted, so every row index here is in the
-    permuted frame; ``perm`` is spent in exactly one place, the read section
-    that decides which cell each input lands in.
+    permuted frame; ``perm`` is spent only in the reader's read section.
 
     The laser starts at ``o`` with a random heading, so a mirror funnel
     (``|``/``^``/``_`` plus two ``}`` on the row above) sends every heading
-    to the top row moving right.  There it meets the reader, then the tree.
+    to the top row moving right, into the reader and then the tree (see
+    :func:`_laserfuck_ring_reader`, :func:`_laserfuck_tree`).  Rows scale
+    with the number of *one* edges, and the all-zeros path is one line.
 
-    **The reader.**  ``,`` reads a character, so ``'0'``/``'1'`` arrive as
-    48/49 and each input needs 48 subtracted.  Written straight that is 49
-    columns per input; instead two rings do it as a loop
-    (:func:`_laserfuck_ring_reader`).  The first multiplies 8 by 6 to build
-    the 48, the second spends that counter one unit at a time across the
-    counter and every input.  Each ring is a ``}`` facing the beam along
-    its body, ``#`` skipping the deflector so ``)`` can test the cell under
-    the pointer, and a return leg beneath.  The reader is two rows and a
-    few dozen columns whatever ``n`` is.
-
-    **The tape.**  The ring counter is cell 0 and the inputs are cells
-    1..n.  That is not an accident of layout: the counter ends *touched at
-    zero*, which is exactly what a zero answer must be for the dump to
-    print it, so cell 0 doubles as the answer cell.
-
-    **The tree.**  Each node writes ``>#v)``: the ``#`` skips the ``v`` on
-    the way in, so ``)`` tests the cell under the pointer.  A zero passes
-    straight through and the next node carries on *along the same row*;
-    only a one turns the beam back onto the ``v``, which drops it to a
-    ``\\`` that faces it right again on a fresh row.  Rows therefore scale
-    with the number of *one* edges rather than with the node count, and the
-    all-zeros path is a single straight line.  A leaf retires each input
-    (driving the cell negative so the dump skips it), walks down to cell 0,
-    and adds a ``+`` only if the answer is one -- a zero answer needs no
-    code at all.
-
-    A subtree whose rows all agree becomes a leaf rather than branching on
-    bits that cannot change the answer, and how a leaf retires the inputs is
-    what the fold turns on.  Sized to the bit, retiring is one ``-`` for a
-    zero and two for a one -- but a folded leaf never learned the bits it
-    did not branch on.  It does not have to: only the cells *above* its
-    depth are unknown, and a flat two ``-`` retires either value (0 -> -2,
-    1 -> -1), while the cells the path did consume keep the sized run.  So
-    the flat form is spent exactly on the cells that need it, and a table
-    with no constant subtree comes out as it did before folding.  The sweep
+    A subtree whose rows all agree becomes a leaf.  Only the cells above a
+    leaf's depth are unknown, so a flat two ``-`` retires either value
+    (0 -> -2, 1 -> -1) while consumed cells keep the sized run.  The sweep
     still covers all ``n`` cells, since an unconsumed one sits at 0 or 1 and
-    would print beside the answer, so a folded leaf steps out to cell ``n``
-    first and sweeps back from there.
+    would print beside the answer.
 
-    LaserFuck has no output instruction: it prints the tape when the last
-    laser dies, in decimal, skipping negative cells.  Cell (0, 0) is left
-    blank deliberately -- a ``\\xff`` there would select byte mode.
+    LaserFuck prints the tape when the last laser dies, in decimal, skipping
+    negative cells.  Cell (0, 0) is left blank deliberately -- a ``\\xff``
+    there would select byte mode.
 
-    ``width`` bounds the columns.  The tree adds only a column or two past
-    the reader, so the reader is what a width has to bargain with: laid flat
-    it is one row and forty-odd columns, and when that will not fit
-    :func:`_laserfuck_rotate` stands it on end instead -- two columns and
-    forty-odd rows.  A ring body cannot be broken across rows, since the
-    return leg re-enters at the ``}`` and re-runs the whole body, which is
-    why the block is rotated rather than folded.  Below the width the *tree*
-    needs there is nothing left to give, and the grid comes out as wide as
-    the tree.
+    ``width`` bounds the columns.  When the flat reader will not fit,
+    :func:`_laserfuck_rotate` stands it on end; below the width the *tree*
+    needs, the grid comes out as wide as the tree.
     """
     n = _validate_truth_table(truth_table)
     reader = _laserfuck_reader(n, perm, width, vertical_tree=vertical_tree)
     reader_rows = reader.rows
 
-    margin = laserfuck_layout.MARGIN
+    margin = MARGIN
     grid = _LaserGrid()
 
     # The funnel: every start heading ends up on row 0 moving right.  Cell
@@ -792,7 +726,7 @@ def _laserfuck_four_columns(table: str) -> str:
         (3, 2, "v"),
     ):
         cells[row, col] = char
-    end = vertical(4, 2, (">," + "-" * 48) * n + "<" * n)
+    end = vertical(4, 2, (">," + "-" * _LASER_BIAS) * n + "<" * n)
 
     def select(row: int, one_column: int) -> int:
         vertical(row, 2, ">#" + ("}" if one_column == 3 else "{") + "(")
@@ -829,7 +763,7 @@ def _laserfuck_four_columns(table: str) -> str:
 def _laserfuck_raise_funnel(program: str) -> str:
     """Move startup above the computation, reclaiming its three reserved columns."""
     rows = program.splitlines()
-    shifted = [line[laserfuck_layout.MARGIN :] for line in rows]
+    shifted = [line[MARGIN:] for line in rows]
     entry = len(shifted[0]) - len(shifted[0].lstrip())
     route = " " * entry + "/" + " " * (2 - entry) + "/"
     return "\n".join([" }}v", "|o^", " _", route, *shifted])
@@ -840,7 +774,7 @@ def balance_laserfuck(table: str, default: str) -> str:
     n = _validate_truth_table(table)
     orders = input_orders(table)
     regimes = [(permute_truth_table(table, perm), perm) for perm in orders]
-    margin = laserfuck_layout.MARGIN
+    margin = MARGIN
     events = {1, 4}
     for ordered, perm in regimes:
         tree = _laserfuck_tree(ordered, n)
@@ -861,6 +795,7 @@ def balance_laserfuck(table: str, default: str) -> str:
         widths.update(
             span for span in spans if start < span and (stop is None or span < stop)
         )
+    # Local: a module-level import changes the dump's callable keys.
     from esolangs.tools.wrap import balance_score
 
     return min(
