@@ -59,7 +59,7 @@ def test_remove_cuts_only_entries_that_own_their_lines(tmp_path: Path) -> None:
     path.write_text(
         "from esolangs.tools.gone import gone\n"
         "from esolangs.tools.gone import PAIR\n"
-        'T = {\n    "gone": 1,\n    "kept": PAIR,\n}\n'
+        'T = {\n    "kept": PAIR,\n    # gone\'s note\n    "gone": 1,\n}\n'
         'L = ["gone", "kept"]\n'
         'run_gone = _runner("gone")\n'
     )

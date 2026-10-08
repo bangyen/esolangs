@@ -496,7 +496,13 @@ def _drop_entries(path: Path, keys: set[str], modules: set[str]) -> int:
         before = lines[first.lineno - 1][: first.col_offset]
         after = lines[last.end_lineno - 1][last.end_col_offset :]  # type: ignore[operator]
         if not before.strip() and after.strip() in {"", ","}:
-            spans.append((first.lineno, last.end_lineno or last.lineno))
+            lo, hi = first.lineno, last.end_lineno or last.lineno
+            # Its comment goes too, unless a sibling below still sits under it.
+            following = lines[hi].strip() if hi < len(lines) else ""
+            if not following or following[0] in "#)]}":
+                while lo > 1 and lines[lo - 2].strip().startswith("#"):
+                    lo -= 1
+            spans.append((lo, hi))
 
     for node in ast.walk(ast.parse(source)):
         if isinstance(node, ast.Dict):
@@ -585,6 +591,7 @@ def remove(name: str) -> list[str]:
         "tests/proofs/test_workspace_formulas.py",
         "tests/proofs/test_schemes.py",
         "tests/interpreters/test_input_convention.py",
+        "tests/fuzz/test_interpreters_robustness.py",
     ):
         _drop_entries(ROOT / relative, keys, modules)
 
