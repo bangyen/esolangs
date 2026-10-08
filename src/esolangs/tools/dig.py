@@ -453,8 +453,10 @@ def _dig_alt_clear(
                 raise AssertionError(f"a mole from {start} meets {char!r} on its way")
 
 
-def _dig_leaf_inputs(truth_table: str, n: int) -> tuple[list[int], list[int], int, str]:
-    """Return the leaf's two adders' weights, the tree depth, and its table.
+def _dig_leaf_inputs(
+    truth_table: str, n: int
+) -> tuple[list[int], list[int], list[int], str]:
+    """Return the leaf's two adders' weights, each tree level's skips, the table.
 
     The leaf takes the last six essential inputs, the ignored ones among
     them, and those just before them while the first adder's digit reaches.
@@ -462,7 +464,12 @@ def _dig_leaf_inputs(truth_table: str, n: int) -> tuple[list[int], list[int], in
     table is read at the tree's inputs and the leaf's essential ones.  The
     adders split after the first's last essential input, so neither ends on
     an ignored one.  Fewer than four essential inputs, a trailing ignored
-    one, or a forward leg past the digit keeps every input.
+    one, or a forward leg past the digit keeps every leaf input.
+
+    Above the leaf, an ignored input is a bare ``~`` in the next level's
+    block (:func:`_dig_alternating`), so a level's skips count the ignored
+    inputs just before it; those after the last essential tree input have no
+    next level and stay levels.
     """
     essential = essential_inputs(truth_table, n)
     leaf = essential[-_DIG_LEAF_BITS:]
@@ -479,6 +486,21 @@ def _dig_leaf_inputs(truth_table: str, n: int) -> tuple[list[int], list[int], in
         leading = weigh(group)[:-1]
         return sum(3 if w else 1 for w in leading) + bonus + 1 <= _DIG_SPAN
 
+    def levels(depth: int) -> tuple[list[int], list[int]]:
+        last = max((i for i in essential if i < depth), default=-1)
+        kept: list[int] = []
+        skips: list[int] = []
+        pending = 0
+        for i in range(depth):
+            # The skips share the level's one-digit count with its own read.
+            if i in essential or i > last or pending == _DIG_SPAN - 2:
+                kept.append(i)
+                skips.append(pending)
+                pending = 0
+            else:
+                pending += 1
+        return kept, skips
+
     if len(leaf) >= 4 and leaf[-1] == n - 1:
         split = leaf[len(leaf) - len(leaf) // 2 - 1] + 1
         depth = leaf[0]
@@ -486,15 +508,17 @@ def _dig_leaf_inputs(truth_table: str, n: int) -> tuple[list[int], list[int], in
             depth -= 1
         high, low = range(depth, split), range(split, n)
         if fits(high, 1) and fits(low, 0):
-            table = read_at(truth_table, [*range(depth), *leaf], n)
-            return weigh(high), weigh(low), depth, table
+            kept, skips = levels(depth)
+            table = read_at(truth_table, [*kept, *leaf], n)
+            return weigh(high), weigh(low), skips, table
     bits = min(_DIG_LEAF_BITS, n)
     low_bits = bits // 2
+    kept, skips = levels(n - bits)
     return (
         [1 << k for k in reversed(range(bits - low_bits))],
         [1 << k for k in reversed(range(low_bits))],
-        n - bits,
-        truth_table,
+        skips,
+        read_at(truth_table, [*kept, *range(n - bits, n)], n),
     )
 
 
@@ -506,21 +530,25 @@ def _dig_alternating(truth_table: str, n: int) -> str:
     :func:`_dig_flat_leaf`), so the tree above it is a sixty-fourth the size
     the per-entry tree was.  Children enter on the local y-axis, placed just
     beyond the parent's most-backward cell; width and height swap and one
-    doubles per level, so the rectangle stays O(2**n).
+    doubles per level, so the rectangle stays O(2**n).  An ignored input
+    above the leaf is no level: its read rides the next block, ``$~~;#``.
     """
-    high, low, depth, truth_table = _dig_leaf_inputs(truth_table, n)
+    high, low, skips, truth_table = _dig_leaf_inputs(truth_table, n)
+    depth = len(skips)
     # Bounds of a complete m-level subtree, inclusive and local to its first
     # ``$``: (min_x, max_x, min_y, max_y), x along the heading.  A branch
     # block is four cells long and carries its operand one cell off to a
     # side the heading picks, so it reaches one row past its own line.
+    # A level's skipped reads lengthen its block by one cell each.
     bounds = [_dig_flat_leaf("0" * (len(truth_table) >> depth), high, low)[4]]
-    for _ in range(depth):
+    for skip in reversed(skips):
         min_x, max_x, min_y, max_y = bounds[-1]
         distance = 2 - min_x
+        end = _DIG_END + skip
         bounds.append(
             (
-                min(0, _DIG_END + min_y, _DIG_END - max_y),
-                max(_DIG_END, _DIG_END + max_y, _DIG_END - min_y),
+                min(0, end + min_y, end - max_y),
+                max(end, end + max_y, end - min_y),
                 min(-1, -(distance + max_x)),
                 max(1, distance + max_x),
             )
@@ -591,10 +619,11 @@ def _dig_alternating(truth_table: str, n: int) -> str:
         # stray digit opposite it can never be read first.
         side = min((heading + 1) % 4, (heading - 1) % 4)
         count = step(point, side)
-        place(count, _DIG_COUNT)
+        skip = skips[level]
+        place(count, str(int(_DIG_COUNT) + skip))
         reads.append((point, count, frozenset()))
-        text(point, heading, _DIG_ALT_BRANCH)
-        end = step(point, heading, _DIG_END)
+        text(point, heading, _DIG_ALT_BRANCH[0] + "~" * skip + _DIG_ALT_BRANCH[1:])
+        end = step(point, heading, _DIG_END + skip)
         reads.append((end, step(end, heading, -1), frozenset()))
         half = (lo + hi) // 2
         # Two cells off, not one: a leaf reaches far enough sideways that
