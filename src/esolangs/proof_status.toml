@@ -726,6 +726,8 @@ workspace = """\
     one frame, array"""
 evidence = "docs/proofs/index.md#generator-ledger"
 
+# Proved for all n: a path costs at most the all-ones one, and a
+# level's moves at most max(a, b) + 2 over adjacent input cells a, b.
 [[ledger]]
 generator = "Painfuck"
 labels = ["tree"]
