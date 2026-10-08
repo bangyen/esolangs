@@ -739,3 +739,28 @@ def test_a_malformed_template_is_refused() -> None:
         _in_name_order(_X, 2)
     with pytest.raises(ValueError, match="does not embed 1 inputs"):
         _in_name_order(_X + "1" + _X, 1)
+
+
+def test_ignored_trailing_inputs_idle_past_the_end() -> None:
+    """Each input past the last essential one appends a run that keeps rows below 0."""
+    from esolangs.interpreters.tape_based.one_two_three import _advance, _landings
+    from esolangs.tools.one_two_three import _IDLE, one_two_three
+
+    for fill in (ZERO, ONE):
+        code = _IDLE.replace(_X, fill)
+        for start in (-1, -2, -3):
+            state = (0, start, frozenset[int](), False)
+            while not state[3]:
+                ip, pos = state[0], state[1]
+                assert ip >= len(code) or (code[ip], pos) != ("2", -3), "a read"
+                state = _advance(state, code, _landings(code))
+            assert state[1] < 0, (fill, start)
+
+    base = "0110"
+    table = "".join(bit * 4 for bit in base)  # inputs 2 and 3 are ignored
+    template = one_two_three(table)
+    assert template == one_two_three(base) + _IDLE * 2
+    for row, want in enumerate(table):
+        bits = [row >> shift & 1 for shift in (3, 2, 1, 0)]
+        code = fill_runs(template, TEMPLATE_CHAR, ((ZERO, ONE),) * 4, bits)
+        assert one_two_three_result(code) == want, row
