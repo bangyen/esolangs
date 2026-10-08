@@ -87,3 +87,14 @@ def test_generated_programs(n: int) -> None:
         code = smu(table)
         for row in range(1 << n):
             assert _run(code, f"{row:0{n}b}") == table[row], (table, row)
+
+
+def test_a_repeated_subtree_is_written_once() -> None:
+    # Sixteen copies of one 16-row block: the block's tree is a macro, so the
+    # program is the block's plus a name a copy, not sixteen trees.
+    block = "0110100110010110"
+    table = block * 16
+    code = smu(table)
+    assert len(code) < len(smu(block)) + 16 * 8
+    for row in range(0, 256, 17):
+        assert _run(code, f"{row:08b}") == table[row], row
