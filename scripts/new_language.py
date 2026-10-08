@@ -327,10 +327,11 @@ def _ledger_gaps(name: str) -> list[Gap]:
             gaps.append(
                 Gap(
                     f"tests/proofs/{table}.py",
-                    f'add "{name}": (lambda n, _: ..., exact, (lo, hi)) to '
-                    f"FORMULAS, encoding the ledger's {cell} cell: {stated} "
-                    "(name the second argument p only if the bound reads "
-                    "the program)",
+                    f"the ledger's {cell} cell does not parse as a formula: "
+                    f"{stated}; write its bound with n, T, L, integers, bl, "
+                    "max, min, ⌈⌉ and ⌊⌋ before the unit (tests/proofs/"
+                    f'_formula.py), or add "{name}": (lambda n, p: ..., '
+                    "exact, (lo, hi)) to _HAND for a case split or definition",
                 )
             )
     return gaps
