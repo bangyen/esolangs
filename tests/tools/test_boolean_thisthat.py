@@ -204,3 +204,10 @@ def test_larger_narrow_layout_retains_linear_area_construction(n: int) -> None:
         io = ScriptedIO("".join(f"{bit}" for bit in f"{row:0{n}b}"))
         run(source.splitlines(), io)
         assert (io.getvalue(), io.reads) == (table[row], n)
+
+
+def test_narrow_strip_counts_kept_inputs() -> None:
+    table = "01101001" * 2  # four inputs, the first ignored
+    source = esolangs.generate("thisthat", table, width=1)
+    assert max(map(len, source.splitlines())) <= 9
+    assert verify_generated("thisthat", table, width=1)

@@ -120,7 +120,9 @@ def thisthat(truth_table: str, width: int | None = None) -> str:
         return program
     # A strip needs O(T log T) wires in general; bounding it at three inputs
     # keeps this fallback and the larger linear-area trees uniformly O(T).
-    if len(truth_table) <= 8:
+    # Counted on the kept inputs: an ignored input only lengthens the loader.
+    n = _validate_truth_table(truth_table)
+    if len(_essential(subtree_ids(truth_table), n)) <= 3:
         narrow = _strip_tree(truth_table)
         program = narrowest_grid(program, narrow)
     if len(truth_table) <= 4 and grid_width(program) > width:
