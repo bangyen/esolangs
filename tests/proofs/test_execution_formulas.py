@@ -13,6 +13,7 @@ import esolangs
 from esolangs.debugger import make_vm
 from esolangs.tools.one_two_three.construction import _leftover
 from scripts.benchmark import WrittenState
+from tests.generator_support import CHECK
 from tests.proofs._ledger import load as load_ledger
 from tests.proofs.deep.execution import _dense, run_to_answer
 from tests.tools.test_boolean_contract import _parity
@@ -372,4 +373,7 @@ def test_every_formula_cell_is_checked() -> None:
         for row in load_ledger().rows
         if row.execution_clause.startswith(("worst ", "at most "))
     }
-    assert stated == set(FORMULAS)
+    unchecked = sorted(stated - set(FORMULAS))
+    assert not unchecked, f"{unchecked} state a bound with no FORMULAS row; {CHECK}"
+    orphaned = sorted(set(FORMULAS) - stated)
+    assert not orphaned, f"remove {orphaned} from FORMULAS: no stated bound"

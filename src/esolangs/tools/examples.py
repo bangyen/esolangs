@@ -205,8 +205,13 @@ class BooleanExample:
 
 def _contract_for(interpreter: str) -> BooleanContract:
     """Return the registered Boolean I/O contract for an interpreter."""
-    return next(
-        lang.contract for lang in LANGUAGES.values() if lang.interpreter == interpreter
+    for lang in LANGUAGES.values():
+        if lang.interpreter == interpreter:
+            return lang.contract
+    raise LookupError(
+        f"no registered language runs interpreter {interpreter!r}; the second "
+        "argument of an example in src/esolangs/tools/examples.py is the "
+        "module under esolangs.interpreters, e.g. 'tape_based.brainfuck'"
     )
 
 

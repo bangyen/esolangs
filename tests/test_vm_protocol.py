@@ -15,6 +15,7 @@ from esolangs.debugger import complete_vm
 from esolangs.exceptions import InterpreterLimitError, ProgramError
 from esolangs.registry import INTERPRETERS
 from esolangs.vm import VM, _climbs_forever, make_vm, run_until_halt
+from tests.generator_support import CHECK
 
 from .samples import (
     DUMPS_ON_THE_POST_HALT_STEP,
@@ -77,10 +78,12 @@ class TestSamplesCoverEveryLanguage:
     """The table is the sweep's coverage, so it is the thing to lock."""
 
     def test_every_registry_language_has_a_sample(self) -> None:
-        assert sorted(set(INTERPRETERS) - set(SAMPLES)) == []
+        missing = sorted(set(INTERPRETERS) - set(SAMPLES))
+        assert not missing, f"no VM sample for {missing}; {CHECK}"
 
     def test_no_sample_names_a_language_the_registry_lost(self) -> None:
-        assert sorted(set(SAMPLES) - set(INTERPRETERS)) == []
+        stale = sorted(set(SAMPLES) - set(INTERPRETERS))
+        assert not stale, f"remove {stale} from SAMPLES in tests/samples.py"
 
     @pytest.mark.parametrize(
         "exceptions",
@@ -95,7 +98,8 @@ class TestSamplesCoverEveryLanguage:
         self, exceptions: frozenset[str]
     ) -> None:
         """A renamed language must not leave an exception silently inert."""
-        assert sorted(exceptions - set(INTERPRETERS)) == []
+        stale = sorted(exceptions - set(INTERPRETERS))
+        assert not stale, f"remove or rename {stale} in tests/samples.py"
 
 
 def _check_protocol(language: str, program: str, stdin: str) -> _Observed:

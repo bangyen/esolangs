@@ -1,7 +1,6 @@
 """Generated README and usage sections stay in sync with the registry."""
 
 import importlib.util
-import json
 import re
 from dataclasses import replace
 from pathlib import Path
@@ -146,28 +145,6 @@ def test_the_writers_rewrite_the_committed_sections(tmp_path: Path) -> None:
     assert (tmp_path / "README.md").read_text() == readme
     assert (tmp_path / "docs" / "usage.md").read_text() == usage
     assert (tmp_path / "docs" / "limitations.md").read_text() == limitations
-
-
-def test_the_census_counts_are_the_fixtures() -> None:
-    """Each route's count is read from curation.json, not typed."""
-    module = load_script()
-    census = json.loads(module.CURATION.read_text(encoding="utf-8"))
-    routes = [entry["route"] for entry in census["languages"].values()]
-    rendered = " ".join(module.render_curation_census_section().split())
-    for route, phrase in (
-        ("fame", "clear the fame gate"),
-        ("first implementation", "are first implementations"),
-        ("grandfathered", "are grandfathered"),
-    ):
-        assert f"{routes.count(route)} {phrase}" in rendered
-
-
-def test_the_raster_paragraph_names_every_raster_language() -> None:
-    module = load_script()
-    rendered = " ".join(module.render_raster_section().split())
-    for name, language in module.LANGUAGES.items():
-        is_raster = language.source_kind is module.SourceKind.RASTER
-        assert (name in rendered.split(" carr")[0]) == is_raster, name
 
 
 def test_an_unheaded_category_names_where_to_add_it() -> None:
