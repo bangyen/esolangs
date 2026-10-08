@@ -2,8 +2,6 @@
 
 from esolangs.tools.helpers import TEMPLATE_CHAR, _validate_truth_table, input_weights
 
-PAIR = ("0", "1")
-
 
 def cyclic_tag(truth_table: str) -> str:
     """Return an ordered queue embed with final-deletion output."""

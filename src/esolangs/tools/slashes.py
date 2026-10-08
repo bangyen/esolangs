@@ -2,7 +2,6 @@
 
 from esolangs.tools.helpers import TEMPLATE_CHAR, _validate_truth_table, input_weights
 
-PAIR = ("a", "b")
 _UNARY = "/b/a*//*a/a**//a//"
 _SWEEP = "/*\\>qA/>//*\\>qB/>/"
 _DECODE = "/>qA/C//>qB/D//qA///qB///C/0//D/1/"
@@ -31,7 +30,12 @@ def _is_unfilled_template(code: str) -> bool:
     """Recognize canonical templates without reserving literal dollars in ///."""
     prefix, delimiter, data = code.partition(_DECODE)
     slots, cursor, table = data.partition(">")
-    if not delimiter or not cursor or TEMPLATE_CHAR not in slots or slots.strip("$abX"):
+    if (
+        not delimiter
+        or not cursor
+        or TEMPLATE_CHAR not in slots
+        or slots.strip(TEMPLATE_CHAR + "abX")
+    ):
         return False
     if len(table) % 2 or any(
         table[i : i + 2] not in ("qA", "qB") for i in range(0, len(table), 2)

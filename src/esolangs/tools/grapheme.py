@@ -12,7 +12,7 @@ _GRAPHEME_CONST = 9
 
 
 def _grapheme_push65(dialect: GraphemeDialect = DEFAULT_GRAPHEME) -> str:
-    """Grapheme code pushing 65 (``ord('A')``), spelled ``5 * 13``."""
+    """Grapheme code pushing 65: ``5 * 13``, or ``FEFFMFS`` between letters."""
     if dialect.integer_conversion == "between_letters":
         return "FEFFMFS"
     return _grapheme_literal(5, dialect) + _grapheme_literal(13, dialect) + "S"

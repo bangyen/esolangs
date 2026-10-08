@@ -33,8 +33,8 @@ def home_row(truth_table: str) -> str:
 
     setup = "aaaaaalsffaaaaaaaaffflf"
     bit_lines = [
-        "a" + run + "lsffff" + "a" * weights.get(i, 0) + "fl"
-        for i, run in enumerate([TEMPLATE_CHAR * len(HOME_ROW_PAIR[0])] * n)
+        "a" + TEMPLATE_CHAR + "lsffff" + "a" * weights.get(i, 0) + "fl"
+        for i in range(n)
     ]
     guarded = table.rstrip(table[-1])
     # Nothing after the last guard reads the index: it need not decrement.
