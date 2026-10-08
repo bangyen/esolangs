@@ -593,6 +593,13 @@ def _drop_toml(path: Path, name: str) -> None:
     path.write_text("\n".join(kept), encoding="utf-8")
 
 
+def _drop_bullets(path: Path, name: str) -> None:
+    """Drop each ``- name ...`` bullet, with its indented lines, from ``path``."""
+    text = path.read_text(encoding="utf-8")
+    bullet = rf"(?m)^- {re.escape(name)}\b.*\n(?:  .*\n)*"
+    path.write_text(re.sub(bullet, "", text), encoding="utf-8")
+
+
 def remove(name: str) -> list[str]:
     """Delete ``name`` everywhere ``check`` looks; return the leftover mentions."""
     from esolangs.registry import LANGUAGES, example_stems
@@ -644,6 +651,7 @@ def remove(name: str) -> list[str]:
     _drop_json(ROOT / "tests/fixtures/generator_sizes.json", prune)
     for relative in ("tests/fixtures/curation.toml", "src/esolangs/proof_status.toml"):
         _drop_toml(ROOT / relative, name)
+    _drop_bullets(ROOT / "docs/limitations.md", name)
     kept = []
     for module_name in sorted(modules):
         users = subprocess.run(
