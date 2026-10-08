@@ -379,6 +379,19 @@ def test_alight_planned_layouts_render_and_execute():
         assert _evaluate("Alight", program, inputs=2) == "0110"
 
 
+@pytest.mark.parametrize("syntax", ["infix", "postfix"])
+def test_alight_balance_drops_ignored_inputs(syntax):
+    from esolangs.settings import DialectSettings
+
+    settings = DialectSettings(expression_syntax=syntax)
+    table = "0110" * 16  # 4 inputs ignored of 6
+    program = str(esolangs.generate("Alight", table, balance=True, settings=settings))
+    assert _evaluate("Alight", program, inputs=6, settings=settings) == table
+    full = "0" * 31 + "1" + "0" * 32  # every input matters
+    kept = esolangs.generate("Alight", full, balance=True, settings=settings)
+    assert len(program) < len(str(kept))
+
+
 def test_alight_model_drift_aborts(monkeypatch):
     from esolangs.tools.alight import balance as module
 
