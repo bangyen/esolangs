@@ -1,22 +1,13 @@
 """Boolean-function generator for Super SNUSP.
 
-Wide tables use a linear packed-integer lookup.  Small tables retain the ANF
-evaluator where its XOR of input products is shorter, at a per-input
-polarity: a cell may hold an input or its complement at one command.  Neither uses the
-language's random ``=`` opcode.
+Tables use a linear packed-integer lookup, and never the language's random
+``=`` opcode.
 """
 
 import re
 from math import isqrt
 
-from esolangs.tools.helpers import (
-    _validate_truth_table,
-    anf_coefficients,
-    essential_inputs,
-    input_weights,
-    move_text,
-    read_at,
-)
+from esolangs.tools.helpers import _validate_truth_table, input_weights
 from esolangs.tools.wrap import balance_score
 
 __all__ = ["super_snusp"]
@@ -24,112 +15,13 @@ __all__ = ["super_snusp"]
 
 _TWO_INPUT_SHORT = {
     # These executed forms reuse 48 both to decode each input and to encode
-    # the answer.  They beat the general ANF construction by keeping the
-    # literal at the bottom of the stack rather than rebuilding it at the end.
+    # the answer, keeping the literal at the bottom of the stack.
     "0000": "48{,-> ,-<}.",
     "0011": "48{,-> ,-<^.",
     "0101": "48{,-> ,-<>^.",
     "0110": "48{,-> ,-<^{>^.",
     "0111": "48{,-> ,-<^{>|.",
 }
-
-# ANF wins on small sparse functions, but its input products are super-linear.
-# Bound the comparison to keep those wins off the scaling path.
-_ANF_MAX_INPUTS = 4
-
-
-def _flip(truth_table: str, negated: int) -> str:
-    """Return ``truth_table`` with the inputs set in ``negated`` inverted.
-
-    ``negated`` is a row mask (most-significant input first), so row ``r``
-    of the result is row ``r ^ negated`` of the table.
-    """
-    return "".join(truth_table[row ^ negated] for row in range(len(truth_table)))
-
-
-def _decode_base(k: int, negated: int) -> int:
-    """Return the decode constant, 48 or 49, for ``k`` retained inputs.
-
-    ``,-`` against 48 stores an input as its bit (0 or 1); against 49 it
-    stores ``bit - 1``, which is -1 for a 0 and 0 for a 1.  A product starts
-    at 1 and ``&`` with -1 keeps it, so a -1/0 cell *is* the negated
-    literal.  Whichever polarity is the majority rides on the constant for
-    free and each minority input pays one ``(`` or ``)``.
-    """
-    return 49 if 2 * negated.bit_count() > k else 48
-
-
-def _emit_anf(
-    n: int,
-    truth_table: str,
-    used: list[int],
-    *,
-    negated: int = 0,
-) -> str:
-    """Emit a fixed-polarity ANF evaluator over ``used`` stream inputs.
-
-    ``negated`` marks, as a row mask over ``truth_table``'s inputs, the
-    retained inputs whose cells hold the complement; the terms are then the
-    ANF of the table with those inputs flipped.
-    """
-    k = len(used)
-    base = _decode_base(k, negated)
-    program = ['"', f"{base}{{"]
-    retained = 0
-    for input_index in range(n):
-        program.extend([",", "-"])
-        if input_index in used:
-            flipped = bool(negated >> (k - 1 - retained) & 1)
-            retained += 1
-            if flipped and base == 48:
-                program.append("(")
-            elif not flipped and base == 49:
-                program.append(")")
-            program.append(">")
-
-    # A trailing ignored input occupies the accumulator cell.  Inputs that
-    # are ignored earlier are overwritten by the next retained input, so a
-    # clear is needed only when the last stream input is ignored (or none are
-    # retained at all).
-    if not used or used[-1] != n - 1:
-        program.append("0")
-    product = k + 1
-    coefficients = anf_coefficients(_flip(truth_table, negated))
-    if coefficients[0]:
-        program.append(")")
-
-    for mask, coefficient in enumerate(coefficients[1:], start=1):
-        if not coefficient:
-            continue
-        program.extend([">", "1"])
-        for input_index in range(k):
-            table_bit = 1 << (k - 1 - input_index)
-            if mask & table_bit:
-                program.extend(
-                    [
-                        move_text(product, input_index, ">", "<"),
-                        "{",
-                        move_text(input_index, product, ">", "<"),
-                        "&",
-                    ]
-                )
-        program.extend(["{", "<", "^"])
-
-    # The stack top is a term by now, so build a fresh ASCII offset in the
-    # product cell and push it.  The accumulator is then exactly 48 or 49.
-    program.extend([">", "48", "{", "<", "+", "."])
-    return "".join(program)
-
-
-def _polarity(n: int, truth_table: str, used: list[int]) -> tuple[int, int]:
-    """Return a polarity and cost after one greedy pass from positive inputs."""
-    mask = 0
-    cost = len(_emit_anf(n, truth_table, used))
-    for bit in range(len(used)):
-        trial = len(_emit_anf(n, truth_table, used, negated=mask ^ 1 << bit))
-        if trial < cost:
-            mask, cost = mask ^ 1 << bit, trial
-    return mask, cost
 
 
 def _emit_lookup(truth_table: str) -> str:
@@ -159,39 +51,18 @@ def _emit_lookup(truth_table: str) -> str:
 
 
 def _super_snusp_flat(truth_table: str) -> str:
-    """Emit the shortest bounded-ANF or linear lookup program.
+    """Emit the straight-line program: the lookup, or a fixed form at n=2.
 
-    Only essential inputs are retained, compactly, while every original input
-    is still consumed in stream order.  The ANF is built over that projection
-    or the full table, whichever is shorter at its :func:`_polarity`: for
-    every nonzero coefficient the construction forms its input product
-    beside the accumulator and xors it in.  Both reads happen before any
-    evaluation, so every path consumes exactly ``n`` input lines, including
-    constant and reduced functions.
+    A bounded ANF evaluator beat the lookup by only 1.92% at its n=4 cap
+    (polarity pass 1.59%), under the 10% bar.  Every path consumes exactly
+    ``n`` input lines.
     """
     n = _validate_truth_table(truth_table)
     if n == 2 and truth_table in _TWO_INPUT_SHORT:
         # An explicit START marker removes the spec's undocumented default
         # heading from generated programs; it is a no-op once execution begins.
         return '"' + _TWO_INPUT_SHORT[truth_table]
-
-    lookup = _emit_lookup(truth_table)
-    if n > _ANF_MAX_INPUTS:
-        return lookup
-
-    used = essential_inputs(truth_table, n)
-    full = list(range(n))
-    shapes = [(truth_table, full)]
-    if len(used) < n:
-        shapes.append((read_at(truth_table, used, n), used))
-    # Price each shape at its chosen polarity; the full shape wins ties (``min``
-    # returns the first).
-    priced = [
-        (_polarity(n, table, retained), table, retained) for table, retained in shapes
-    ]
-    (negated, _cost), table, retained = min(priced, key=lambda shape: shape[0][1])
-    anf = _emit_anf(n, table, retained, negated=negated)
-    return min(lookup, anf, key=len)
+    return _emit_lookup(truth_table)
 
 
 def _super_snusp_tokens(program: str) -> list[str]:
@@ -256,9 +127,8 @@ def _super_snusp_folded(program: str, width: int) -> str:
 def super_snusp(truth_table: str, width: int | None = None) -> str:
     """Build a deterministic Super SNUSP program for ``truth_table``.
 
-    Small functions keep the shorter of the ANF evaluator and an integer
-    lookup.  Above four inputs only the lookup is built: it emits one or two
-    commands per table entry and O(n) setup while consuming every input.
+    The integer lookup emits one or two commands per table entry and O(n)
+    setup while consuming every input.
 
     ``width`` asks for a column count, and the straight line folds into a
     boustrophedon to meet one -- see :func:`_super_snusp_folded`, where the
@@ -282,8 +152,8 @@ def _super_snusp_layout(flat: str, width: int | None) -> str:
             if len(token) == 1:
                 pieces.append(token)
             else:
-                # Both emitters use only 48/49 as multi-digit literals.
-                pieces.append("6{8*" + (")" if token[-1] == "9" else ""))
+                # The only multi-digit literal emitted is 48.
+                pieces.append("6{8*")
         flat = "".join(pieces)
     return _super_snusp_folded(flat, width)
 

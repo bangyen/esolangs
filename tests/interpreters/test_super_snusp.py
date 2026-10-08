@@ -102,7 +102,7 @@ def _run_boolean(program: str, bits: tuple[int, ...]) -> str:
 
 
 def test_generator_reduces_unused_inputs_but_reads_them() -> None:
-    """Projection saves ANF work without leaving stream input behind."""
+    """Ignored inputs are still read from the stream."""
     reduced = super_snusp("00001111")  # depends only on the first input
     parity = super_snusp("01101001")
     assert reduced.count(",") == 3

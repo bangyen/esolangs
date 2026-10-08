@@ -810,7 +810,7 @@
         "tree"
       ],
       "qualification": "each folding pass removes at least one pending unit",
-      "scaling": "linear: one `*` per entry; ANF only below five inputs",
+      "scaling": "linear: one `*` per entry",
       "execution": "linear: worst 2T + 19n + 21 commands past n = 4: one straight line, all ones but one row",
       "workspace": "linear: worst T + 2n + 12 + bl(L) + bl(n) bits past n = 4: the packed-table cell",
       "evidence": "docs/proofs/index.md#generator-ledger"

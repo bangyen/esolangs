@@ -27,8 +27,7 @@ A new language must add an uncovered construction, branch mechanism,
 answer convention, or input interface:
 
 - **Construction shape** -- decision tree (the default), minterm sum
-  (`bfstack`, `vandevelo`), ANF/XOR-of-products (`fargo`, and `super_snusp`
-  below five inputs), grid walk (`laserfuck`, `a_painter_ant`, `streetcode`).
+  (`bfstack`, `vandevelo`), ANF/XOR-of-products (`fargo`), grid walk (`laserfuck`, `a_painter_ant`, `streetcode`).
 - **Branch mechanism** -- explicit conditional, value-testable jump, skip
   guard, implicit comparator, pointer displacement (`123`).
 - **Answer convention** -- print 0/1, landing colour (`a_painter_ant`),

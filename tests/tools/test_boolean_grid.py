@@ -6,76 +6,7 @@ from esolangs import tools as boolean
 
 
 class TestSuperSNUSP:
-    """The Super SNUSP generator (bounded ANF or a packed lookup)."""
-
-    def test_cost_model_selects_the_smallest_form(self) -> None:
-        """The selector emits the smallest of both ANF layouts and the lookup."""
-        from esolangs.tools.helpers import essential_inputs, read_at
-        from esolangs.tools.super_snusp import (
-            _TWO_INPUT_SHORT,
-            _emit_lookup,
-            _polarity,
-            super_snusp,
-        )
-
-        for n in range(1, 4):
-            for value in range(1 << (1 << n)):
-                table = format(value, f"0{1 << n}b")
-                used = essential_inputs(table, n)
-                reduced = read_at(table, used, n)
-                full = list(range(n))
-                full_cost = _polarity(n, table, full)[1]
-                reduced_cost = _polarity(n, reduced, used)[1]
-                if table not in _TWO_INPUT_SHORT:
-                    assert len(super_snusp(table)) == min(
-                        full_cost, reduced_cost, len(_emit_lookup(table))
-                    )
-
-    def test_choosing_polarity_never_grows_a_program(self) -> None:
-        """Every table to three inputs is no longer than its all-positive build."""
-        from esolangs.tools.helpers import essential_inputs, read_at
-        from esolangs.tools.super_snusp import (
-            _TWO_INPUT_SHORT,
-            _emit_anf,
-            _emit_lookup,
-            super_snusp,
-        )
-
-        before = after = 0
-        for n in range(1, 4):
-            for value in range(1 << (1 << n)):
-                table = format(value, f"0{1 << n}b")
-                built = len(super_snusp(table))
-                if table in _TWO_INPUT_SHORT and n == 2:
-                    old = built
-                else:
-                    used = essential_inputs(table, n)
-                    old = min(
-                        len(_emit_lookup(table)),
-                        len(_emit_anf(n, table, list(range(n)))),
-                        len(_emit_anf(n, read_at(table, used, n), used)),
-                    )
-                assert built <= old, table
-                if n == 3:
-                    before += old
-                    after += built
-        assert (before, after) == (19786, 16567)
-
-    @pytest.mark.parametrize(
-        ("table", "program"),
-        [
-            # NOR3: every product of the positive literals, one of the negated.
-            ("10000000", '"49{,->,->,->>1<<<<{>>>>&<<<{>>>&<<{>>&{<^>48{<+.'),
-            # x0 and not x1: the minority input pays one ``(``.
-            ("00001100", '"48{,->,-(>,-0>1<<<{>>>&<<{>>&{<^>48{<+.'),
-        ],
-    )
-    def test_a_negated_input_is_read_against_49(self, table: str, program: str) -> None:
-        """A cell read against 49 holds -1 or 0, the complement for ``&``."""
-        from esolangs.tools.super_snusp import super_snusp
-
-        assert super_snusp(table) == program
-        assert self.run_table(table) == table
+    """The Super SNUSP generator (a packed lookup)."""
 
     @staticmethod
     def run_table(table: str) -> str:
@@ -146,26 +77,17 @@ class TestSuperSNUSP:
         for table, form in _TWO_INPUT_SHORT.items():
             assert super_snusp(table) == '"' + form
 
-    def test_the_general_build_is_used_off_the_short_table(self) -> None:
-        """A two-input table with no short form is built by the evaluator."""
-        from esolangs.tools.super_snusp import _TWO_INPUT_SHORT, super_snusp
-
-        assert "0001" not in _TWO_INPUT_SHORT
-        assert super_snusp("0001") == '"48{,->,->>1<<<{>>>&<<{>>&{<^>48{<+.'
-
     @pytest.mark.parametrize(
         ("table", "length"),
         [
-            ("1010", 27),  # one dependency at two inputs, read negated
-            ("1111", 17),  # constant: the reduction drops both inputs
-            ("00000000", 18),  # constant at three
-            ("00000011", 39),  # depends on the last two of three
+            ("1010", 47),  # one dependency at two inputs
+            ("1111", 30),  # constant at two
+            ("00000000", 32),  # constant at three
+            ("00000011", 68),  # depends on the last two of three
         ],
     )
-    def test_the_reduced_build_is_the_one_emitted(
-        self, table: str, length: int
-    ) -> None:
-        """A table that ignores an input is emitted over its essential ones."""
+    def test_the_lookup_length_is_pinned(self, table: str, length: int) -> None:
+        """Ignored inputs are read but not dropped: the lookup is the whole table."""
         from esolangs.tools.super_snusp import super_snusp
 
         assert len(super_snusp(table)) == length
@@ -218,7 +140,8 @@ class TestSuperSNUSPWidth:
         """``48`` has to stay on one row: a mirror in between would make it 4, 8."""
         for width in range(4, 20):
             narrow = boolean.super_snusp("0110100110010110", width)
-            assert "48" in narrow, (width, narrow)
+            # A westward row reads right to left on the page.
+            assert "48" in narrow or "84" in narrow, (width, narrow)
 
 
 class TestAlightWidth:
