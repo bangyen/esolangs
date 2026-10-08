@@ -408,34 +408,34 @@ def finish(name: str) -> int:
         [*python, "scripts/generate.py", "examples"],
         [*python, "scripts/generate.py", "docs"],
         [*python, "scripts/check_generator_sizes.py", "--update"],
-        [*python, "scripts/verify.py", "--quiet"],
     ):
         print("+", " ".join(cmd[1:]), flush=True)
         if subprocess.run(cmd, cwd=ROOT, check=False).returncode:
-            break
-    else:
+            return 1
+    print("+ scripts/verify.py --quiet", flush=True)
+    failed = []
+    with subprocess.Popen(
+        [*python, "scripts/verify.py", "--quiet"],
+        cwd=ROOT,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+    ) as gate:
+        assert gate.stdout is not None
+        for line in gate.stdout:
+            print(line, end="", flush=True)
+            if line.startswith("FAILED "):
+                failed.append(line[7:].split(" - ")[0].strip())
+    if not gate.returncode:
         return 0
-    lastfailed = ROOT / ".pytest_cache/v/cache/lastfailed"
-    if cmd[1] != "scripts/verify.py" or not (
-        lastfailed.exists() and json.loads(lastfailed.read_text())
-    ):
-        return 1  # not a pytest failure: rerunning would rerun everything
+    if not failed:
+        return 1  # not a pytest failure
     # A loaded machine pushes borderline tests past their duration band.
     # Rerunning only the failures, serially, separates those from real ones.
+    # The ids come from this run's output: pytest's own --lf record can
+    # hold tests since deleted, and then reruns the whole suite.
     print("+ rerunning the failed tests alone", flush=True)
-    rerun = [
-        *python,
-        "-m",
-        "pytest",
-        "-q",
-        "--lf",
-        "--lfnf",
-        "none",
-        "-n",
-        "0",
-        "-m",
-        "",
-    ]
+    rerun = [*python, "-m", "pytest", "-q", "-n", "0", "-m", "", *failed]
     if subprocess.run(rerun, cwd=ROOT, check=False).returncode:
         return 1
     print(
