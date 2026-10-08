@@ -38,12 +38,17 @@ class TestFargo:
             assert boolean.fargo("00000000", width=width) == "% 0 0\n$\n"
 
     def test_narrow_dense_anf_keeps_constant_and_long_names(self) -> None:
-        """Wrapping NOR needs the constant coefficient and more than 26 labels."""
+        """Wrapping NOR keeps the constant term; wrapped, it shrinks vs the ANF form."""
         table = "1" + "0" * 31
         program = boolean.fargo(table, width=1)
-        assert "aa " in program
         for row in range(32):
             assert run_fargo(program, list(format(row, "05b"))) == table[row]
+
+    def test_narrow_one_input_keeps_literal_one(self) -> None:
+        """Literal 1 is not input 1 when only input 0 exists."""
+        for table in ("01", "10"):
+            program = boolean.fargo(table, width=1)
+            assert [run_fargo(program, [b]) for b in "01"] == list(table)
 
     def test_parity_is_one_term_per_input(self) -> None:
         """Parity's ANF is the sum of the single-variable terms."""

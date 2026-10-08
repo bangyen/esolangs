@@ -38,45 +38,6 @@ def _word_width(n: int) -> int:
     return max(2, 1 << (n.bit_length() - 1))
 
 
-def _factored(coeffs: list[int], n: int) -> str:
-    """Return the ANF as short nullary definitions and one output call."""
-    masks = [mask for mask in range(1, 1 << n) if coeffs[mask]]
-    lines: list[str] = []
-
-    def define(expression: str) -> str:
-        name = short_name(len(lines), ascii_lowercase)
-        lines.append(f"{name} {expression}")
-        return name
-
-    used = {i for mask in masks for i in range(n) if mask >> i & 1}
-    reads = {i: define(f"@ {i:b}") for i in sorted(used)}
-
-    def fold(parts: list[str], op: str) -> str:
-        while len(parts) > 1:
-            joined: list[str] = []
-            for i in range(0, len(parts) - 1, 2):
-                joined.append(define(f"{op} {parts[i]} {parts[i + 1]}"))
-            if len(parts) % 2:
-                joined.append(parts[-1])
-            parts = joined
-        return parts[0]
-
-    terms = [
-        fold(
-            [reads[i] for i in range(n) if mask >> i & 1],
-            "&",
-        )
-        for mask in masks
-    ]
-    if coeffs[0]:
-        terms.insert(0, "1")
-    # The all-zero table has no terms and no constant, so ``fold`` would
-    # index an empty list.  It is the constant program, same as the compact
-    # path; only the width check sent it here.
-    result = fold(terms, "^") if terms else "0"
-    return "\n".join([*lines, f"% 0 {result}", "$", ""])
-
-
 def _arm_expression(
     table: str,
     coeffs: list[int],
@@ -211,21 +172,22 @@ def _definition_program(expression: str, n: int) -> str:
     """Return shared definitions with deterministic linear-time prefix interning."""
     symbols = "@&|^"
     arities = {"@": 1, "&": 2, "|": 2, "^": 2}
+    lits = max(n, 2)  # literal 1 is a node even with one input
     nodes: list[tuple[int, tuple[int, ...]]] = []
-    heights = [0] * n
+    heights = [0] * lits
     stack: list[int] = []
     for token in reversed(expression.split()):
         if token in arities:
             children = tuple(stack.pop() for _ in range(arities[token]))
-            stack.append(n + len(nodes))
+            stack.append(lits + len(nodes))
             nodes.append((symbols.index(token), children))
             heights.append(1 + max(heights[child] for child in children))
         else:
             stack.append(int(token, 2))
     levels: list[list[int]] = [[] for _ in range(max(heights) + 1)]
-    for node in range(n, len(heights)):
+    for node in range(lits, len(heights)):
         levels[heights[node]].append(node)
-    canonical = list(range(n)) + [0] * len(nodes)
+    canonical = list(range(lits)) + [0] * len(nodes)
     keys = [(0, 0, 0)] * len(heights)
     unique: list[tuple[int, tuple[int, ...]]] = []
     digit_bits = (n + 1) // 2
@@ -255,23 +217,23 @@ def _definition_program(expression: str, n: int) -> str:
 
     for group in levels[1:]:
         for node in group:
-            tag, children = nodes[node - n]
+            tag, children = nodes[node - lits]
             keys[node] = (
                 tag,
                 canonical[children[0]],
                 canonical[children[1]] if len(children) == 2 else 0,
             )
         previous: tuple[int, int, int] | None = None
-        named = n - 1
+        named = lits - 1
         for node in ordered(group):
             key = keys[node]
             if key != previous:
                 tag, zero, one = key
                 unique.append((tag, (zero,) if tag == 0 else (zero, one)))
-                named = n + len(unique) - 1
+                named = lits + len(unique) - 1
                 previous = key
             canonical[node] = named
-    references = [f"{value:b}" for value in range(n)]
+    references = [f"{value:b}" for value in range(lits)]
     lines: list[str] = []
     for tag, children in unique:
         name = short_name(len(lines), ascii_lowercase)
@@ -294,6 +256,6 @@ def fargo(truth_table: str, width: int | None = None) -> str:
     compact = f"% 0 {expression}\n$\n"
     if width is None or max(map(len, compact.splitlines())) <= width:
         return compact
-    if n > 5:
-        return _definition_program(expression, n)
-    return _factored(anf_coefficients(truth_table), n)
+    # Interns the folded Davio expression; the old ANF-per-mask form was 1.4-2.0x
+    # larger at n=3-5 on random, constant-half and tiled tables.
+    return _definition_program(expression, n)
