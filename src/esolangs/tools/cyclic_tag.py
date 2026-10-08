@@ -1,6 +1,7 @@
 """Linear padding construction for Cyclic tag.
 
-One rule a row is the index step; dropping rows moves the walk.
+One rule a row is the index step; dropping rows moves the walk, and a rule
+runs once a cycle, so none is shared.
 """
 
 from esolangs.tools.helpers import TEMPLATE_CHAR, _validate_truth_table, input_weights

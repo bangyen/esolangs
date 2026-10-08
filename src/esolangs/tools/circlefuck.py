@@ -28,7 +28,9 @@ def circlefuck(truth_table: str) -> str:
 
     The tape is the program: the table is its tail, backwards past the ``@``,
     so entry 0 abuts the index cells, which ``<`` reaches from cell 0 (the
-    tape is a ring).  Only the table grows.
+    tape is a ring).  Only the table grows.  A literal deleted into by index:
+    no entry can drop without clamping the index, and it has no subtrees to
+    share.
     """
     _validate_truth_table(truth_table)
     n = len(truth_table).bit_length() - 1

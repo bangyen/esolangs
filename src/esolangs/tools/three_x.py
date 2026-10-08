@@ -101,6 +101,9 @@ def three_x(truth_table: str) -> str:
     popped off the stack: the interpreter leaves a tested condition where it
     is, and every snippet pushes its own operands, so the junk is never read.
 
+    3x has no call or goto (``( )`` loops back only to their own start), so a
+    span has one parent and none is shared.
+
     The tree splits in input order (a greedy order saves 2.2% at n=8,
     under the 10% bar).
     """

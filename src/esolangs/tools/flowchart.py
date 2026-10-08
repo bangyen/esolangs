@@ -7,6 +7,9 @@ which the switch tests.  The first input has no previous byte and the last
 byte's high bits are never read: the interpreter has already consumed the
 whole byte.  The answer is printed as R and then the seven high bits of
 ASCII ``'0'`` (:data:`_ANSWER`), so the output byte is ``'0'`` or ``'1'``.
+
+The default is a deque lookup, one pushed entry a row (a run of equal entries
+sets the register once), so it has no subtrees to share.
 """
 
 from itertools import pairwise

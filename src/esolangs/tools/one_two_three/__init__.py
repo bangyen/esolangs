@@ -29,6 +29,9 @@ Construction (``n <= 3``; wider tables go to
    keep paint offsets collision-free.
 4. **Endgame** -- ``_endgame`` parks the survivors below zero.
 
+Every row walks the same segments in parallel on one tape, so no jump
+reaches a subtree twice; rows past the last one need no verdict paint.
+
 The suite's exhaustive ``n <= 3`` sweep on the real interpreter is what
 pins the schedules.  Every template loops by a proven state revisit, never
 unbounded growth, or the harness would hang instead of reporting a 1; the

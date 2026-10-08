@@ -659,6 +659,11 @@ def laserfuck(truth_table: str, width: int | None = None) -> str:
     area (-106.7%), so it is not tried.  The greedy order saves 12.3% of
     area at n=4.
 
+    A constant span is one leaf and a node whose halves agree is passed over.
+    A leaf retires the cells it consumed by the bits on its path (``-`` x
+    bit+1), so equal subtrees are different code under different parents:
+    none is shared.
+
     A width is applied to every candidate rather than to the winner: the
     reader's orientations and the tree's placement already trade rows
     against columns, so the narrowest program is often not the shortest,

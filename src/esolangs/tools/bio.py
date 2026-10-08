@@ -25,7 +25,9 @@ def bio(truth_table: str) -> str:
     shorter of full and projected saved 0.0% at n=4-7 (constants at n<=2 are
     the only tables projection lengthens, by 28 characters) and was retired;
     telescoping saves 39.6% at n=7 over resetting y per row.  Each row is one
-    nested loop that sets where the walk stops, so no row is dropped.
+    nested loop that sets where the walk stops, so no row is dropped (a run
+    folded to one decrement would overshoot zero); loops nest and none is
+    called, so none is shared.
     """
     n = _validate_truth_table(truth_table)
     weights, table = input_weights(truth_table, n)

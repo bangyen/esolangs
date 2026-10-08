@@ -32,7 +32,8 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
     doubling gadget per input (widths double upward, so ``O(T)``).  An
     ignored input's seven reads run just before the next indexed input's,
     which overwrite the bit they leave; inputs past the last essential one
-    stay indexed, since a run must read all ``7n`` bits to turn whole.
+    stay indexed, since a run must read all ``7n`` bits to turn whole.  A
+    literal row has no subtrees to fold or share.
     """
     total = _validate_truth_table(truth_table)
     used = essential_inputs(truth_table, total)

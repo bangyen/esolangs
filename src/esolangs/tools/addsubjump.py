@@ -26,7 +26,9 @@ def addsubjump(truth_table: str) -> str:
 
     Up to 16 rows, the shorter of tree and shared residuals in input order; 32 rows
     also try the shared residual tree; wider tables use the linear packed
-    decoder (``n``-bit cells, size ``O(T)``).
+    decoder (``n``-bit cells, size ``O(T)``).  Packed cells are read by a
+    running operand, so equal cells cannot share a word (interning saves 0.00%
+    at n=8) and a constant run costs a cell each.
     """
     if len(truth_table) <= 16:
         return in_input_order(truth_table, _addsubjump_candidate)

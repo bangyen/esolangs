@@ -33,6 +33,8 @@ def bitdeque(truth_table: str, width: int | None = None) -> str:
     ``EJECT``/``INJECT`` work the head, so any bit can be brought to an end
     at two commands per position, measured not modelled.  Rotations happen
     inside the tree; the load is byte-identical under every order.
+    A constant subtree is one leaf; past n=4 the table is pushed whole and
+    discarded into, a literal with no subtrees.
     A subtree repeated at its level is emitted once and reached by ``GOTO``
     (n=4: -49.3% over all 65,536 tables, none longer).  The shared tree is also
     0.58x to 0.36x the linear route at n=4..8 (identity order, random tables);

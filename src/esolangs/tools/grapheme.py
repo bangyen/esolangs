@@ -1,4 +1,7 @@
-"""Boolean program generator for Grapheme."""
+"""Boolean program generator for Grapheme.
+
+The table is one integer literal, so it has no subtrees to fold or share.
+"""
 
 from esolangs._grapheme import DEFAULT_GRAPHEME, GraphemeDialect
 from esolangs.tools.helpers import _validate_truth_table, essential_inputs, read_at

@@ -4,6 +4,10 @@ A bare ``>`` takes its dimension from the byte it stands on (``:260`` parses
 none, ``:382`` reads the cell, in ``interpreters/tape_based/dimensional.py``),
 so ``d>`` displaces the pointer by the bit read -- dimension 1 for a one, 0 for
 a zero; ``{d`` loops on a *coordinate* (``:296``), so the index doubles.
+
+The table is painted, two characters an entry: a trailing zero run is left
+unpainted (unvisited cells read 0) and an interior run is painted entry by
+entry; a painted cell has no second parent to share.
 """
 
 from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table, input_weights

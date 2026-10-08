@@ -1,4 +1,9 @@
-"""Boolean program generator for BFStack."""
+"""Boolean program generator for BFStack.
+
+No call or goto (loops nest), so a span has one parent and none is shared.
+The byte-indexed decoder lists the rarer value rather than folding a run: it
+has no range test, so each listed row is its own nested loop.
+"""
 
 from esolangs.tools.helpers import (
     _ASCII_ZERO,

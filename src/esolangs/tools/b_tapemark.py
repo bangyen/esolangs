@@ -1,6 +1,7 @@
 """Boolean-function generator for B-tapemark.
 
-One copied cell a row is the walk's target, so a constant run is not folded.
+One copied cell a row is the walk's target, so a constant run is not folded
+or a repeated one shared.
 """
 
 from __future__ import annotations
