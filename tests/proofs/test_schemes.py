@@ -44,9 +44,10 @@ _FOLD = 0.05
 #: one-dependency table) with no subtree involved, A Painter Ant's corridor
 #: stops where the trailing run of equal answers starts (36.4%), and Unsquare
 #: pushes only the cells the essential inputs address.  Cyclic tag, Bitwise
-#: Cyclic Tag, /// and A Painter Ant weight only the essential inputs
-#: (``input_weights``): an ignored one costs an empty rule, a bare ``0``, an
-#: ``X``-deleted bit or a bare ``SN``.  Named rather
+#: Cyclic Tag, ///, A Painter Ant, Forbin and Minsky Swap weight only the
+#: essential inputs (``input_weights``): an ignored one costs an empty rule, a
+#: bare ``0``, an ``X``-deleted bit, a bare ``SN``, a read into the scratch
+#: name or a drained ``~ ~``.  Named rather
 #: than derived because the proxy is structural and these are its known blind
 #: spot; a further such row has to be added here, which is the point -- the
 #: equality below then fails until the prose and this set agree.
@@ -61,6 +62,8 @@ _FOLDS_WITHOUT_TREE = frozenset(
         "Cyclic tag",
         "Dimensional",
         "Eval",
+        "Forbin",
+        "Minsky Swap",
         "NoComment",
         "Suffolk",
         "Unsquare",

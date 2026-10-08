@@ -1,6 +1,6 @@
 """Boolean template generator for minsky swap."""
 
-from esolangs.tools.helpers import TEMPLATE_CHAR, _validate_truth_table
+from esolangs.tools.helpers import TEMPLATE_CHAR, _validate_truth_table, input_weights
 
 __all__ = ["MINSKY_SWAP_PAIR", "minsky_swap", "minsky_swap_setters"]
 
@@ -28,23 +28,32 @@ def minsky_swap(truth_table: str, width: int | None = None) -> str:
     line 2 halts (a ``~`` targeting one past the end), lines 3-5
     (``+ * ~``) set ``reg[1]`` first.  Every target is the digit 2 or 3 (a
     leaf per row was ``Theta(T log T)`` of addresses), every table of one
-    arity is one length, and the dump reads ``0 {answer}``.  Width switches
+    arity whose inputs all matter is one length (an ignored input's stage is
+    just ``~ ~`` draining its run), and the dump reads ``0 {answer}``.  Width switches
     to RMSN, one command per line.  Below width 15 a shared increment
     leaves setters eight wide; absolute jump operands set the remaining floor.
     Below that floor, up to two inputs use a nine-command decision chain
     with the first register as scratch; the answer remains the second register.
     """
     n = _validate_truth_table(truth_table)
+    weights, table = input_weights(truth_table, n)
 
     zero_leaf, one_leaf = 2, 3
     tokens: list[str] = ["~", "~", "+", "*", "~"]
-    targets: list[int] = [6, 0, 0]
+    targets: list[int | None] = [6, None, None]  # None: one past the end
     pos = 5  # instantiated command index of the next command
 
     # load: one stage per input, MSB first; the run is read off the setters
     # themselves, so the offsets count exactly the text the fill emits.
-    for i, run in enumerate([TEMPLATE_CHAR * len(MINSKY_SWAP_PAIR[0])] * n):
-        weight = 2 ** (n - 1 - i)
+    run = TEMPLATE_CHAR * len(MINSKY_SWAP_PAIR[0])
+    for weight in weights:
+        if not weight:
+            # An ignored input's two decrements drain its run, jumping nowhere
+            # (target 0), so ``reg[0]`` is zero either way and nothing is added.
+            tokens += [run, "~", "~"]
+            targets += [0, 0]
+            pos += len(run) + 2
+            continue
         skip = pos + len(run) + 2 + 2 + weight + 1  # 1-based line after the stage
         tokens += [run, "~", "~", "*", "+" * weight, "*"]
         targets += [skip, skip]
@@ -52,12 +61,12 @@ def minsky_swap(truth_table: str, width: int | None = None) -> str:
 
     tokens.append("*")  # pointer onto reg[1], which holds the index
     pos += 1
-    tokens += ["~"] * 2**n
-    targets += [one_leaf if bit == "1" else zero_leaf for bit in truth_table]
-    pos += 2**n
+    tokens += ["~"] * len(table)
+    targets += [one_leaf if bit == "1" else zero_leaf for bit in table]
+    pos += len(table)
 
     end = pos + 1
-    resolved = [end if t == 0 else t for t in targets]
+    resolved = [end if t is None else t for t in targets]
     program = " ".join(tokens) + "\n" + " ".join(map(str, resolved))
     if width is None or width <= 0 or max(map(len, program.splitlines())) <= width:
         return program

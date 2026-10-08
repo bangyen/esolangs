@@ -156,7 +156,8 @@ class TestParameterizedArrowQueue:
     def test_cascade_folds_its_constant_tail(self, table: str) -> None:
         """Past four inputs the table's constant tail folds to one row or none."""
         from esolangs import tools as generators
-        from esolangs.tools.arrowqueue import _MIDDLE, _STAGE
+        from esolangs.tools.arrowqueue import _IGNORED, _MIDDLE, _STAGE
+        from esolangs.tools.helpers import input_weights
 
         n = len(table).bit_length() - 1
         template = generators.arrowqueue(table)
@@ -164,9 +165,13 @@ class TestParameterizedArrowQueue:
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = self.run_arrowqueue(self.instantiate(template, bits))
             assert got == table[combo], f"inputs {bits}"
-        tail = len(table) - len(table.rstrip(table[-1]))
-        rows = 1 + len(_STAGE) * n + len(_MIDDLE) + 3 * len(table)
-        folded = 3 * (tail if table[-1] == "0" else tail - 1)
+        # An ignored input is one setter row; the cascade indexes the rest.
+        weights, kept = input_weights(table, n)
+        m = sum(map(bool, weights))
+        tail = len(kept) - len(kept.rstrip(kept[-1]))
+        stages = len(_STAGE) * m + len(_IGNORED) * (n - m)
+        rows = 1 + stages + len(_MIDDLE) + 3 * len(kept)
+        folded = 3 * (tail if kept[-1] == "0" else tail - 1)
         assert template.count("\n") + 1 == rows - folded
 
     def test_reusable_drain_pops_every_marker(self) -> None:

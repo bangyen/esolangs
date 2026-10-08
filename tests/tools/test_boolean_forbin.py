@@ -86,10 +86,12 @@ class TestForbinBoolean:
         register = _Names(arity, 1 << _BLOCK_BITS).table + " "
         whole = boolean.forbin("1" * wide)
         assert whole.count("return(") == 1
-        half = boolean.forbin("0" * (wide // 2) + "1" * (wide // 2))
-        assert half.count("return(") == 2
-        # Neither paints a block, so neither defines the shift register.
-        assert all(register not in program for program in (whole, half))
+        # The constant table paints no block, so defines no shift register.
+        assert register not in whole
+        # Two constant spans call printers beside the one painted quarter.
+        parity = "".join(str(i.bit_count() & 1) for i in range(wide // 4))
+        mixed = boolean.forbin("0" * (wide // 2) + "1" * (wide // 4) + parity)
+        assert mixed.count("return(") == 3
 
     def test_full_tree_growth_is_linear(self) -> None:
         """Names and indentation add only a geometric cost to the tree."""

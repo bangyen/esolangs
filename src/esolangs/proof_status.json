@@ -574,7 +574,7 @@
       "labels": [
         "parameterized lookup"
       ],
-      "qualification": "every input is one `++`/`**` run; a stage per input adds its weight to the index register, and a `~` cascade routes the index to one of two shared leaves at the head of the program, so every table of one arity renders to the same length",
+      "qualification": "every input is one `++`/`**` run; a stage per input adds its weight to the index register, and a `~` cascade routes the index to one of two shared leaves at the head of the program, so every table of one arity whose inputs all matter renders to the same length (an ignored input's stage is a bare `~ ~`)",
       "scaling": "linear: cascade routes to two shared leaves, one-digit targets",
       "execution": "linear: worst 2T + 6n + 4 commands: a unary index add, then the ~ chain down",
       "workspace": "poly n: worst n + 3 + bl(2^(n+1)+6n+5) bits: two registers and cursor",

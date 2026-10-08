@@ -14,6 +14,7 @@ Both routes fold constant rows (a subtree; the cascade's tail).
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
+    input_weights,
 )
 
 #: Each input's cell, both routes: ``~`` pushes a down heading, ``.`` nothing.
@@ -38,6 +39,10 @@ _MIDDLE = ["*~* ", "*  *", "*  *", "~ ~ ", "*~* ", "**  ", "*  *"]
 # One cascade stage: two ``~`` double each popped down marker; the right
 # heading exits through the input cell and pushes the next stop heading.
 _STAGE = ["  *+*", "   ~" + TEMPLATE_CHAR, "   ~", "  **", " *~*", " *  *"]
+
+#: An ignored input's setter, off the selector's path: either fill leaves the
+#: queue as it found it, so the cascade indexes the essential inputs alone.
+_IGNORED = [" " * 5 + TEMPLATE_CHAR]
 
 #: The cascade's row per table entry: a ring right of the ``+``, or none.
 _ROWS = {"0": [" +", "", ""], "1": [" + +~+", "   ~ ~", "   +~+"]}
@@ -146,12 +151,18 @@ def arrowqueue(truth_table: str, width: int | None = None) -> str:
     ):
         if width is not None and 0 < width < 5:
             return _four_column_cascade(truth_table, n)
-        leaves = _cascade(truth_table)
-        if width is not None and 0 < width < 6:
+        narrow = width is not None and 0 < width < 6
+        # Five columns leave no room for an ignored input's setter off the path.
+        weights, table = (
+            ([1] * n, truth_table) if narrow else input_weights(truth_table, n)
+        )
+        leaves = _cascade(table)
+        if narrow:
             # Entry travels down column1; column2 in every leaf is only blank
             # travel between that selector and its ring, so remove it locally.
             leaves = [row[:2] + row[3:] for row in leaves]
-        rows = ["  ~*", *(_STAGE * n), *_MIDDLE, *leaves]
+        stages = [row for weight in weights for row in (_STAGE if weight else _IGNORED)]
+        rows = ["  ~*", *stages, *_MIDDLE, *leaves]
         return "\n".join(row.rstrip() for row in rows)
     return tree
 

@@ -7,6 +7,7 @@ from esolangs.tools.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
     constant_span_test,
+    input_weights,
     short_name,
 )
 
@@ -96,15 +97,18 @@ def forbin(truth_table: str, width: int | None = None) -> str:
         natural = forbin(truth_table)
         if max(map(len, natural.splitlines())) <= width:
             return natural
-    n = _validate_truth_table(truth_table)
+    # The tree is built over the essential inputs; an ignored input is still
+    # read, but its kept bit drops into the scratch name with the other seven.
+    weights, table = input_weights(truth_table, _validate_truth_table(truth_table))
+    n = len(table).bit_length() - 1
     low = min(n, _BLOCK_BITS)
     high = n - low
     block = 1 << low
     names = _Names(n, block)
 
     used: set[str] = set()
-    tree = _tree(truth_table, n, high, names, used, narrow=width is not None)
-    lines = ["main{", _reads(n, names)]
+    tree = _tree(table, n, high, names, used, narrow=width is not None)
+    lines = ["main{", _reads(weights, names)]
     # A table that folds everywhere paints no block, so the register would
     # be dead prologue.  It reads ``main``'s input bits, so it is nested
     # there: scoping is lexical (a variable is local to a function "and its
@@ -125,12 +129,16 @@ def forbin(truth_table: str, width: int | None = None) -> str:
     return wrap_space_delimited(" ".join(tokens), width)
 
 
-def _reads(n: int, names: _Names) -> str:
-    """Return the one assignment that reads every input's low bit."""
+def _reads(weights: list[int], names: _Names) -> str:
+    """Return the one assignment that reads every input's low bit.
+
+    An input of weight 0 is ignored: its low bit goes to the scratch name.
+    """
     targets: list[str] = []
-    for bit in names.bits[:n]:
+    bits = iter(names.bits)
+    for weight in weights:
         targets.extend([names.junk] * 7)
-        targets.append(bit)
+        targets.append(next(bits) if weight else names.junk)
     return f"{','.join(targets)}=(in 0);"
 
 
