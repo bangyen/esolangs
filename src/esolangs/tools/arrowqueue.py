@@ -4,6 +4,7 @@ A cascade: each stage doubles the queued markers then crosses the cell
 (Horner); one ``+`` per row turns right at the indexed row.  The tree it
 replaced (``n <= 4``) was at most 3.9% smaller at n=4 and kept ignored inputs.
 Rows are reached by a Horner count, so no subtree is drawn to share.
+Narrow paths drop ignored inputs too (area -46.8% / -70.5% at n=8, 1 / 2 ignored).
 """
 
 from esolangs.tools.helpers import (
@@ -24,6 +25,9 @@ _STAGE = ["  *+*", "   ~" + TEMPLATE_CHAR, "   ~", "  **", " *~*", " *  *"]
 #: queue as it found it, so the cascade indexes the essential inputs alone.
 _IGNORED = [" " * 5 + TEMPLATE_CHAR]
 
+#: The same setter one column in, for the narrow paths.
+_IGNORED_NARROW = [" " * 4 + TEMPLATE_CHAR]
+
 #: The cascade's row per table entry: a ring right of the ``+``, or none.
 _ROWS = {"0": [" +", "", ""], "1": [" + +~+", "   ~ ~", "   +~+"]}
 
@@ -36,23 +40,24 @@ def arrowqueue(truth_table: str, width: int | None = None) -> str:
     """Build an ArrowQueue template that halts iff the table entry is ``0``."""
     n = _validate_truth_table(truth_table)
     width = max(width or 0, 0)  # 0, None and negative all mean unbounded
+    weights, table = input_weights(truth_table, n)
     if 0 < width < 5:
-        return _four_column_cascade(truth_table, n)
+        return _four_column_cascade(table, weights)
     narrow = 0 < width < 6
-    # Five columns leave no room for an ignored input's setter.
-    weights, table = ([1] * n, truth_table) if narrow else input_weights(truth_table, n)
     leaves = _cascade(table)
     if narrow:
         leaves = [row[:2] + row[3:] for row in leaves]
-    stages = [row for weight in weights for row in (_STAGE if weight else _IGNORED)]
+    ignored = _IGNORED_NARROW if narrow else _IGNORED
+    stages = [row for weight in weights for row in (_STAGE if weight else ignored)]
     rows = ["  ~*", *stages, *_MIDDLE, *leaves]
     return "\n".join(row.rstrip() for row in rows)
 
 
-def _four_column_cascade(table: str, n: int) -> str:
-    """Prepend a down marker to route the selector along column0; no input drop."""
+def _four_column_cascade(table: str, weights: list[int]) -> str:
+    """Prepend a down marker to route the selector along column0."""
     # Shift input stages left; a clockwise detour lands down at column 1.
-    rows = [" ~*", *(row[1:] for row in _STAGE * n), "**", "* *", " ~"]
+    stages = (row[1:] for w in weights for row in (_STAGE if w else _IGNORED_NARROW))
+    rows = [" ~*", *stages, "**", "* *", " ~"]
     # Append D, rotate the D markers to the R sentinel; queue becomes D^(index+1),R.
     rows.extend(["*+~*", " ~", "**"])
     rows.extend(_MIDDLE)

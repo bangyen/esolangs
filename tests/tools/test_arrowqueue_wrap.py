@@ -52,7 +52,7 @@ def test_arrowqueue_narrow_leaf_ring_executes_the_witness_tables(width: int) -> 
 
 def test_arrowqueue_leaf_gap_floor_and_corpus_size() -> None:
     assert max(map(len, arrowqueue("0110", 1).splitlines())) == 4
-    assert sum(len(arrowqueue(format(v, "08b"), 1)) for v in range(256)) == 54784
+    assert sum(len(arrowqueue(format(v, "08b"), 1)) for v in range(256)) == 52113
 
 
 def test_arrowqueue_compact_rings_at_larger_arity() -> None:
@@ -78,3 +78,15 @@ def test_arrowqueue_four_columns_preserve_public_provenance(*, tagged: bool) -> 
         assert diverges("ArrowQueue", program, "") is (expected == "1")
     with pytest.raises(ValueError, match="does not compute that table"):
         esolangs.instantiate("ArrowQueue", source, [0, 1], truth_table="1001")
+
+
+@pytest.mark.parametrize("width", [1, 4, 5, 6])
+def test_arrowqueue_narrow_drops_ignored_inputs(width: int) -> None:
+    """A narrow build with ignored inputs is smaller than the full cascade and runs."""
+    from esolangs._evaluate import _evaluate
+
+    table = "".join(b for b in "0110" for _ in range(8))  # 2 of 5 inputs essential
+    template = arrowqueue(table, width)
+    assert _evaluate("ArrowQueue", template, inputs=5) == table
+    full = arrowqueue("".join(str(bin(i).count("1") % 2) for i in range(32)), width)
+    assert template.count("\n") < full.count("\n")
