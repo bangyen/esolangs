@@ -12,9 +12,8 @@ is an offset inside the block, so its digits stop growing once the table
 passes one block.  A block holding more ones than zeros is filled by a loop
 and its zeros punched back out, so a constant table pays per *block*.
 
-Every row runs every write. The answer prints ``48 ^ t`` over painted
-ones; retiring the opposite polarity added 3.19% to the three-input total
-and 2.60% to the seeded five-input sample when it was retired.
+The answer prints ``48 ^ t``; the opposite polarity was dropped: it cost
++3.19% (3-input total) and +2.60% (seeded 5-input sample).
 
 The index is counted too: each input doubles what has been read and adds
 its bit.  Doubling drains one register into its partner two counts at a
@@ -31,6 +30,7 @@ from esolangs.tools.wrap import (
     _join_tokens,
     _packlang,
     balance_score,
+    wrap_program,
 )
 
 __all__ = ["packlang"]
@@ -41,6 +41,9 @@ _BLOCK = 7
 
 #: Fills cheaper than this many writes are not worth the loop that fills.
 _FILL_COST = 3
+
+#: The package name shortens below this many columns.
+_NAME_LEN = len("truthTable")
 
 #: Where a run of statements folds.  Whitespace is not a Packlang token, so
 #: a break costs one character per line rather than one per statement.
@@ -64,11 +67,13 @@ def packlang(
     if width is None or width <= 0:
         return program
     # The package is never named by its own body or the IO dependency.
-    if width < len("truthTable"):
-        program = program.removesuffix("} truthTable;\n") + "} t;\n"
-    from esolangs.tools.wrap import wrap_program
-
+    if width < _NAME_LEN:
+        program = _short_name(program)
     return wrap_program(program, "packlang", width)
+
+
+def _short_name(program: str) -> str:
+    return program.removesuffix("} truthTable;\n") + "} t;\n"
 
 
 def _balance_form(program: str, minimum: int, maximum: int) -> str:
@@ -90,7 +95,7 @@ def _balance_form(program: str, minimum: int, maximum: int) -> str:
     candidates = []
     for start, stop in pairwise(boundaries):
         height = 0
-        moving_width: int | None = None
+        offsets = []
         for line, tokens, indent, longest in records:
             if len(line) <= start:
                 height += 1
@@ -100,26 +105,23 @@ def _balance_form(program: str, minimum: int, maximum: int) -> str:
             height += len(rows)
             span = max(map(len, rows))
             if longest <= start < longest + indent:
-                offset = span - longest
-                moving_width = (
-                    max(moving_width, offset) if moving_width is not None else offset
-                )
+                offsets.append(span - longest)
         candidates.append(start)
         # Height is fixed between fits. Only reduced indentation grows with
         # width, so its crossing of height is the other possible minimum.
-        if moving_width is not None:
-            candidates.append(min(max(height - moving_width, start), stop - 1))
+        if offsets:
+            candidates.append(min(max(height - max(offsets), start), stop - 1))
     return min((_packlang(program, width) for width in candidates), key=balance_score)
 
 
 def balance_packlang(_table: str, default: str) -> str:
     """Compare token-fit layouts with the two package-name spellings."""
-    short = default.removesuffix("} truthTable;\n") + "} t;\n"
+    short = _short_name(default)
     maximum = max(map(len, default.split("\n"))) - 1
     return min(
         default,
-        _balance_form(default, 10, maximum),
-        _balance_form(short, 1, 9),
+        _balance_form(default, _NAME_LEN, maximum),
+        _balance_form(short, 1, _NAME_LEN - 1),
         key=balance_score,
     )
 
@@ -153,17 +155,19 @@ def _painted(painted: str, weights: list[int]) -> str:
         filled = filled or fill
         if not writes:
             continue
-        guard = f"If !({index}^{number})Then{{" if blocks > 1 else ""
-        body += [guard, *writes, "}" if guard else ""]
+        if blocks > 1:
+            body += [f"If !({index}^{number})Then{{", *writes, "}"]
+        else:
+            body += writes
     body += [f"charPut({_ASCII_ZERO}^t({low_index}));", "0;"]
 
-    names = ["i", "d", "c"] + (["q"] if filled else [])
-    if blocks > 1:
-        names += ["h", "g"]
-    wide = f"Integer(0,{blocks - 1},0,0)"
     declarations = "".join(
-        f"  {wide if name in {'h', 'g'} else 'Char'} {name};\n" for name in names
+        f"  Char {name};\n" for name in ["i", "d", "c", *"q" * filled]
     )
+    if blocks > 1:
+        declarations += "".join(
+            f"  Integer(0,{blocks - 1},0,0) {name};\n" for name in "hg"
+        )
     statements = "".join(f"  {line}\n" for line in _folded(body))
     return (
         "Package : IO {\n"
