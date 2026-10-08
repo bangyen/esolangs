@@ -485,7 +485,7 @@ def read_at(truth_table: str, inputs: tuple[int, ...] | list[int], n: int) -> st
 
     Slot ``k`` varies with original input ``inputs[k]``; every input not
     named is held at 0.  :func:`permute_truth_table` passes all ``n`` (a
-    renaming); :func:`~esolangs.tools.minifuck._project` passes the
+    renaming); projecting generators pass the
     essential inputs (holding an ignored one at 0 cannot change the answer).
     ``n`` is passed because the projected result is narrower than its input.
     """

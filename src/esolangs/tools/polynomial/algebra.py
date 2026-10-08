@@ -10,6 +10,7 @@ import decimal
 
 from esolangs._digits import digit_limit_for
 
+
 def primes(count: int) -> list[int]:
     """Return the first ``count`` primes."""
     primes: list[int] = []
