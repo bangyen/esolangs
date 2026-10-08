@@ -48,6 +48,7 @@ import argparse
 import atexit
 import functools
 import os
+import shlex
 import shutil
 import subprocess
 import sys
@@ -220,12 +221,34 @@ STEPS = [
     # The contract exceptions.py states, executed: no interpreter may leak a
     # raw Python error to its caller.  Bare, it checks only the languages
     # this branch touched, which is why it is affordable here; CI runs
-    # --all (59 languages, 68s).
+    # --all over the whole registry.
     (
         "exception leaks",
         [*PY, "scripts/verify_no_exception_leaks.py"],
     ),
 ]
+
+
+# What fixes a step beyond rerunning it, for the steps whose failure is a
+# stale committed file a script rewrites.  Printed under its rerun command.
+FIXES: dict[str, tuple[str, ...]] = {
+    "generated docs": ("uv run python scripts/generate.py docs",),
+    "generator size baseline": (
+        "uv run python scripts/check_generator_sizes.py --update  "
+        "(only if the size change is intended)",
+    ),
+}
+
+
+def _rerun_hint(name: str) -> list[str]:
+    """Return the commands that rerun, and any that fix, failed step *name*.
+
+    The coverage gate is not a ``STEPS`` entry, so ``--only`` cannot name it;
+    it runs after pytest, which is what reproduces it.
+    """
+    step = "pytest" if name == DIFF_COVERAGE_STEP else name
+    rerun = f"  rerun: uv run python scripts/verify.py --only {shlex.quote(step)}"
+    return [rerun, *(f"  fix:   {fix}" for fix in FIXES.get(name, ()))]
 
 
 @functools.lru_cache(maxsize=1)
@@ -694,6 +717,8 @@ def _run_steps(
     for name, cmd, step_env in heavy:
         run_serial(name, cmd, step_env)
 
+    for name in failed:
+        print(f"[FAIL] {name}", *_rerun_hint(name), sep="\n")
     return len(failed), timings, time.time() - wall_start
 
 

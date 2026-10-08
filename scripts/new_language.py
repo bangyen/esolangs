@@ -20,6 +20,7 @@ import json
 import keyword
 import subprocess
 import sys
+from collections.abc import Container
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -142,11 +143,14 @@ class Gap:
     fix: str
 
 
-def _tests_module(module: str, attr: str) -> object:
+def _tests_module(module: str, attr: str) -> Container[str]:
     """Read ``attr`` from ``tests.<module>``, which needs the repo on the path."""
     sys.path.insert(0, str(ROOT))
     try:
-        return getattr(importlib.import_module(f"tests.{module}"), attr)
+        value: Container[str] = getattr(
+            importlib.import_module(f"tests.{module}"), attr
+        )
+        return value
     finally:
         sys.path.remove(str(ROOT))
 

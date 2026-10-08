@@ -8,6 +8,7 @@ import pytest
 import esolangs
 from esolangs.registry import LANGUAGES
 from esolangs.vm import make_vm
+from tests.generator_support import CHECK
 
 _CENSUS = json.loads(
     (Path(__file__).parent / "fixtures/curation.json").read_text(encoding="utf-8")
@@ -16,13 +17,17 @@ _CENSUS = json.loads(
 
 def test_every_language_was_admitted_by_a_recorded_route() -> None:
     """Fame is 60 backlinks; below that, a first implementation or one of six."""
-    assert set(_CENSUS) == set(LANGUAGES)
+    unrecorded = sorted(set(LANGUAGES) - set(_CENSUS))
+    assert not unrecorded, f"no admission record for {unrecorded}; {CHECK}"
+    stale = sorted(set(_CENSUS) - set(LANGUAGES))
+    assert not stale, f"remove {stale} from tests/fixtures/curation.json"
     for name, row in _CENSUS.items():
         assert (row["route"] == "fame") == (row["backlinks"] >= 60), name
         assert row["route"] in {"fame", "first implementation", "grandfathered"}
     grandfathered = {
         name for name, row in _CENSUS.items() if row["route"] == "grandfathered"
     }
+    # Closed: a new language takes "fame" or "first implementation".
     assert grandfathered == {"123", "BF-PDA", "BIO", "Jaune", "NoComment", "Sophie"}
 
 

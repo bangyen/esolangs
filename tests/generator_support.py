@@ -31,3 +31,8 @@ def verify_generated(
     return (
         evaluate_generated(language, table, timeout, width, isolated=isolated) == table
     )
+
+
+#: What a coverage failure for a new language says to do: ``check`` names
+#: the file and the entry, so the messages need not repeat it.
+CHECK = "`just check-language <name>` names the entry to add"

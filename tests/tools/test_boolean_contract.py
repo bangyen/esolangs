@@ -458,8 +458,9 @@ def test_generator_shape_is_what_the_catalogue_says(name: str) -> None:
     else:
         assert folds >= 0.05, (
             f"{name} is listed as tree-shaped but folds only {folds:.1%} -- "
-            f"either its folding regressed or it is a minterm sum and belongs "
-            f"in _MINTERM_SHAPED"
+            f"either its folding regressed, or add it to _MINTERM_SHAPED (a "
+            f"minterm sum) or _UNSHAPED (a branch-free lookup, with a reason) "
+            f"in tests/tools/test_boolean_contract.py"
         )
 
 
@@ -686,7 +687,7 @@ def test_remaining_scaling_audit_is_exhaustive() -> None:
     classes = (_LINEAR_SCALING, _LANGUAGE_SUPERLINEAR_SCALING, _OPEN_SCALING)
     classified = set().union(*classes)
     assert sum(map(len, classes)) == len(classified)
-    assert classified <= set(BY_BOOLEAN)
+    assert classified <= set(BY_BOOLEAN), classified - set(BY_BOOLEAN)
 
 
 @pytest.mark.parametrize(
@@ -729,8 +730,11 @@ def test_converted_generators_scale_linearly(name: str) -> None:
 def test_the_expensive_generators_grow_as_documented(name: str) -> None:
     """``docs/limitations.md`` tells a reader whether n=11 is affordable."""
     at_eight, at_nine, ratio = _DOCUMENTED_SIZES[name]
-    assert len(esolangs.generate(name, _dense(8))) == at_eight
-    assert len(esolangs.generate(name, _dense(9))) == at_nine
+    sizes = (len(esolangs.generate(name, _dense(n))) for n in (8, 9))
+    assert tuple(sizes) == (at_eight, at_nine), (
+        f"{name}'s dense n=8 and n=9 sizes moved; update its row in "
+        "_DOCUMENTED_SIZES in tests/tools/test_boolean_contract.py"
+    )
     assert at_nine / at_eight == pytest.approx(ratio, abs=0.35)
 
 
@@ -744,8 +748,14 @@ def test_nothing_else_is_anywhere_near_that_big() -> None:
         and LANGUAGES[name].boolean is not None
         and esolangs.describe(name)["source_kind"] == "text"
     )
-    assert biggest[0] < 600_000, biggest
     # thisthat leads at 114637 characters; SLOW ACV MAMMALIAN led at 115707
     # until its modulo-255 I/O default (101931), and Boolfuck led at 194026
-    # after its admission, until its native bit-cell tree replaced the lowering.
-    assert biggest[1] == "thisthat", biggest
+    # after its admission, until its native bit-cell tree replaced the
+    # lowering.  The leader is not pinned: a new language may take the lead
+    # without breaking the claim, which is only the ceiling.
+    size, name = biggest
+    assert size < 600_000, (
+        f"{name} emits {size} characters for a dense n=9 table; shrink its "
+        "generator, or add it to _DOCUMENTED_SIZES in "
+        "tests/tools/test_boolean_contract.py with its n=8 and n=9 sizes"
+    )

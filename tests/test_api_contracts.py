@@ -29,7 +29,7 @@ from esolangs.exceptions import (
 )
 from esolangs.registry import LANGUAGES
 from esolangs.tools.wrap import takes_width
-from tests.generator_support import evaluate_generated
+from tests.generator_support import CHECK, evaluate_generated
 from tests.stdin_check import _check_stdin
 
 XOR = "0110"
@@ -168,7 +168,7 @@ class TestDescribe:
             if esolangs.describe(name)["boolean_generator"]
             and not esolangs.describe(name)["examples"]
         ]
-        assert missing == []
+        assert not missing, f"{missing} report no examples; {CHECK}"
 
     def test_width_aware_names_the_generators_that_lay_themselves_out(self) -> None:
         """It answered False for every one: it takes a generator, not a name."""

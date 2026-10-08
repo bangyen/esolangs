@@ -32,6 +32,7 @@ from esolangs.tools.wrap import (
     wrap_tokens,
 )
 from tests.divergence import diverges, terminates
+from tests.generator_support import CHECK
 
 # A 2-input table (XOR), which every boolean generator can build.  Used
 # where a test needs *a* program rather than the language's own example.
@@ -186,11 +187,14 @@ def test_every_generator_has_a_width_policy() -> None:
         and not takes_width(language.boolean)
         and language.id not in WIDTH_EXCEPTIONS
     }
-    assert missing == set()
-    assert set(WIDTH_EXCEPTIONS) <= boolean_ids
-    assert all(reason.strip() for reason in WIDTH_EXCEPTIONS.values())
-    assert set(UNWRAPPABLE) <= boolean_ids
-    assert all(reason.strip() for reason in UNWRAPPABLE.values())
+    assert not missing, f"{sorted(missing)} have no width policy; {CHECK}"
+    tables = {"WIDTH_EXCEPTIONS": WIDTH_EXCEPTIONS, "UNWRAPPABLE": UNWRAPPABLE}
+    for table, reasons in tables.items():
+        where = f"{table} in tests/tools/test_wrap.py"
+        stale = sorted(set(reasons) - boolean_ids)
+        assert not stale, f"remove {stale} from {where}"
+        blank = sorted(name for name, why in reasons.items() if not why.strip())
+        assert not blank, f"give {blank} a reason in {where}"
 
 
 def _table(arity: int) -> str:

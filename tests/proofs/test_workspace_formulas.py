@@ -15,6 +15,7 @@ from esolangs.debugger import make_vm
 from esolangs.interpreters.stack_based.sstack import _parse
 from esolangs.tools.three_x import _level
 from scripts.benchmark import WrittenState, state_bits
+from tests.generator_support import CHECK
 from tests.proofs._ledger import load as load_ledger
 from tests.proofs.deep.execution import run_to_answer
 from tests.proofs.test_execution_formulas import FORMULAS as EXECUTION_FORMULAS
@@ -592,7 +593,10 @@ def test_every_formula_cell_is_checked() -> None:
         if row.workspace_clause.startswith(("worst ", "at most "))
         and " bits" in row.workspace_clause
     }
-    assert stated == set(FORMULAS)
+    unchecked = sorted(stated - set(FORMULAS))
+    assert not unchecked, f"{unchecked} state a bound with no FORMULAS row; {CHECK}"
+    orphaned = sorted(set(FORMULAS) - stated)
+    assert not orphaned, f"remove {orphaned} from FORMULAS: no stated bound"
 
 
 def _unlambda_chain(n: int) -> str:

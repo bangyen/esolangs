@@ -69,5 +69,7 @@ def violation(
         return None
     return (
         f"{duration:.2f}s exceeds the {band} band limit of {limit:g}s; "
-        f"optimize, delete, or mark this test {next_band}"
+        f"optimize, delete, or mark this test {next_band}.  Under -n load a "
+        "borderline test can overrun once; rerun it alone (uv run pytest -q "
+        "<node id>) and mark it only if it still fails"
     )
