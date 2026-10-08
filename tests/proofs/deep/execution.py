@@ -104,7 +104,7 @@ def exempt_generators() -> dict[str, str]:
     for row in load_ledger().rows:
         for label in ("cap", "exception"):
             if label in row.labels:
-                reasons.setdefault(row.generator, f"proof_status.json {label} row")
+                reasons.setdefault(row.generator, f"proof_status.toml {label} row")
     return reasons
 
 

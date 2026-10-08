@@ -1,0 +1,40 @@
+language = "FALSE"
+oldid = 178723
+
+[[examples]]
+id = "hello"
+source = "\"Hello, World!\""
+expected = "Hello, World!"
+
+[[examples]]
+id = "factorial-5"
+source = "0 0[ß^$$47>\\58\\>&][48-\\10*+]#%[$1>][$1-]#[\\$0=~][*]#%."
+stdin = '''
+5
+'''
+expected = "120"
+
+[[examples]]
+id = "fibonacci-10"
+source = '''
+{read input n}
+0 n:
+[^ $ $ '9 > \ '0 \ > | ~]['0 - n; 10 * + n:]#
+%
+{compute n-th fibonacci number iteratively}
+0 1
+[n; 1 - $ n: 1_=~][$ @ +]#
+% .'''
+stdin = '''
+10
+'''
+expected = "55"
+
+[[examples]]
+id = "99-bottles"
+note = "The loop prints no newline after each verse's last line."
+source = '''
+99b:
+[b;0=["No more bottles of beer"]?b;1=["1 more bottle of beer"]?b;1>[b;." bottles of beer"]?]a:
+[b;0>][a;!" on the wall"10,a;!10,"Take one down, pass it around"10,b;1-b:a;!" on the wall"]#'''
+expected_file = "false_99_bottles.txt"

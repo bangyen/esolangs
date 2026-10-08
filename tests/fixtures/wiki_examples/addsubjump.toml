@@ -1,0 +1,67 @@
+language = "AddSubJump"
+oldid = 189073
+
+[[examples]]
+id = "output-cell-1"
+note = "Outputs cell 1 (value 1), then jumps to 0 forever."
+source = "-1 1 0 -7"
+stop = "steps"
+max_steps = 20
+expected = "\u0001\u0001"
+
+[[examples]]
+id = "labels"
+source = '''
+-1 @A -1 @A+1
+@A:65 0 @A-1
+//Labels start with @ or a letter, every other character is an alphanumberic character.'''
+expected = "A"
+
+[[examples]]
+id = "labels-assembled"
+source = '''
+-1 4 -1 5
+65 0 3'''
+expected = "A"
+
+[[examples]]
+id = "data"
+source = '''
+-1 A
+-1 B
+-1 C
+-1 D
+-1 E -1
+.data A:65 B:66 C:67 D:68 E:69'''
+expected = "ABCDE"
+
+[[examples]]
+id = "data-assembled"
+source = '''
+-1 20 4 -7
+-1 21 8 -7
+-1 22 12 -7
+-1 23 16 -7
+-1 24 -1 -7
+65 66 67 68
+69'''
+expected = "ABCDE"
+
+[[examples]]
+id = "macro"
+source = '''
+def macro A {
+  IO A
+}
+macro H
+@0 @0 @0
+H:.data 72'''
+expected = "H"
+
+[[examples]]
+id = "macro-assembled"
+source = '''
+-1 8  4 -7
+-7 -7 -7 -7
+72'''
+expected = "H"

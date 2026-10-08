@@ -1,0 +1,30 @@
+language = "Boolfuck"
+oldid = 134484
+
+[[examples]]
+id = "hello"
+source = '''
+;;;+;+;;+;+;
++;+;+;+;;+;;+;
+;;+;;+;+;;+;
+;;+;;+;+;;+;
++;;;;+;+;;+;
+;;+;;+;+;+;;
+;;;;;+;+;;
++;;;+;+;;;+;
++;;;;+;+;;+;
+;+;+;;+;;;+;
+;;+;;+;+;;+;
+;;+;+;;+;;+;
++;+;;;;+;+;;
+;+;+;+;
+'''
+expected = '''
+Hello, world!
+'''
+note = "the page says it prints Hello, world!; its last byte is a newline"
+
+[[examples]]
+id = "print-one"
+source = "+;+;;;+;;+;;"
+expected = "1"

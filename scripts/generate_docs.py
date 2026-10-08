@@ -6,10 +6,10 @@ compared for equality states the same facts without prescribing a sentence
 to hold them, which is why the gates could stop matching wording.
 """
 
-import json
 import pathlib
 import re
 import sys
+import tomllib
 from typing import cast
 
 import esolangs
@@ -18,7 +18,7 @@ from esolangs.tools import BOOLEAN
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 _INTERPRETERS = ROOT / "src" / "esolangs" / "interpreters"
-CURATION = ROOT / "tests" / "fixtures" / "curation.json"
+CURATION = ROOT / "tests" / "fixtures" / "curation.toml"
 
 
 # The README's Implemented Languages section, grouped by interpreter
@@ -376,11 +376,11 @@ def render_curation_census_section() -> str:
     ``tests/test_interpreter_only_admissions.py`` holds its keys to the
     registry, so the counts here are the registry's too.
     """
-    census = json.loads(CURATION.read_text(encoding="utf-8"))
+    census = tomllib.loads(CURATION.read_text(encoding="utf-8"))
     routes = [entry["route"] for entry in census["languages"].values()]
     return "\n".join(
         [
-            f"The {census['checked']} census (`tests/fixtures/curation.json`)"
+            f"The {census['checked']} census (`tests/fixtures/curation.toml`)"
             " records each",
             f"language's backlinks and route: {routes.count('fame')} clear the"
             " fame gate,",

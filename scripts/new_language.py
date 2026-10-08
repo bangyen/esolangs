@@ -26,8 +26,10 @@ import importlib
 import itertools
 import json
 import keyword
+import re
 import subprocess
 import sys
+import tomllib
 from collections.abc import Callable, Container
 from dataclasses import dataclass
 from pathlib import Path
@@ -232,13 +234,13 @@ def _common_gaps(name: str, module: str) -> list[Gap]:
                 "gets its own one-input program once the generator runs)",
             )
         )
-    curation = json.loads((ROOT / "tests/fixtures/curation.json").read_text())
+    curation = tomllib.loads((ROOT / "tests/fixtures/curation.toml").read_text())
     if name not in curation["languages"]:
         gaps.append(
             Gap(
-                "tests/fixtures/curation.json",
-                f'add "{name}": {{"backlinks": <wiki "What links here" count>, '
-                '"route": "fame" | "first implementation"} (see '
+                "tests/fixtures/curation.toml",
+                f'add "{name}" = {{ backlinks = <wiki "What links here" count>, '
+                'route = "fame" | "first implementation" }} under [languages] (see '
                 "docs/limitations.md#curation)",
             )
         )
@@ -302,15 +304,15 @@ def _generator_gaps(lang: Language) -> list[Gap]:
 
 def _ledger_gaps(name: str) -> list[Gap]:
     """List the ledger row and the formula tests its stated bounds need."""
-    data = json.loads((ROOT / "src/esolangs/proof_status.json").read_text())
+    data = tomllib.loads((ROOT / "src/esolangs/proof_status.toml").read_text())
     row = next((row for row in data["ledger"] if row["generator"] == name), None)
     if row is None:
         return [
             Gap(
-                "src/esolangs/proof_status.json",
-                f'add a "ledger" row {{"generator": "{name}", "labels": ["tree"], '
-                '"qualification", "scaling", "execution", "workspace", "evidence": '
-                '"docs/proofs/index.md#generator-ledger"}; copy a row with the '
+                "src/esolangs/proof_status.toml",
+                f'add a [[ledger]] block: generator = "{name}", labels = ["tree"], '
+                "qualification, scaling, execution, workspace and evidence = "
+                '"docs/proofs/index.md#generator-ledger"; copy a block with the '
                 "same construction and see Symbols in docs/proofs/index.md; "
                 'each cell is "<class>: <clause>", e.g. "linear: ..." or '
                 '"poly n: worst 7n + 3 commands ..."; '
@@ -570,6 +572,34 @@ def _drop_json(path: Path, prune: Callable[[object], object]) -> None:
     path.write_text(out + "\n" * text.endswith("\n"), encoding="utf-8")
 
 
+def _drop_toml(path: Path, name: str) -> None:
+    """Drop ``name``'s ``[[...]]`` block and ``"name" = ...`` lines from ``path``.
+
+    Text, not a parse and rewrite, so the file's comments and folding stay.
+    """
+    text = path.read_text(encoding="utf-8")
+    # Each block runs from its header to the next; the head has none.
+    blocks = re.split(r"\n(?=\[)", text)
+    kept = []
+    for block in blocks:
+        if (
+            block.startswith("[[")
+            and tomllib.loads(block.split("\n", 1)[1]).get("generator") == name
+        ):
+            continue
+        lines = block.split("\n")
+        kept.append(
+            "\n".join(
+                line
+                for line in lines
+                if not re.match(
+                    rf"({re.escape(json.dumps(name))}|{re.escape(name)}) =", line
+                )
+            )
+        )
+    path.write_text("\n".join(kept), encoding="utf-8")
+
+
 def remove(name: str) -> list[str]:
     """Delete ``name`` everywhere ``check`` looks; return the leftover mentions."""
     from esolangs.registry import LANGUAGES, example_stems
@@ -583,7 +613,7 @@ def remove(name: str) -> list[str]:
         ROOT / f"src/esolangs/tools/{gen}.py",
         ROOT / f"tests/interpreters/test_{lang.id}.py",
         ROOT / f"tests/tools/test_boolean_{gen}.py",
-        ROOT / f"tests/fixtures/wiki_examples/{lang.id}.json",
+        ROOT / f"tests/fixtures/wiki_examples/{lang.id}.toml",
         *(ROOT / "src/esolangs/examples").glob(f"{stem}.*" if stem else "-"),
     ]
     # ``git rm``, not unlink: tests read ``git ls-files``, which would still
@@ -621,12 +651,9 @@ def remove(name: str) -> list[str]:
             ]
         return node
 
-    for relative in (
-        "tests/fixtures/curation.json",
-        "tests/fixtures/generator_sizes.json",
-        "src/esolangs/proof_status.json",
-    ):
-        _drop_json(ROOT / relative, prune)
+    _drop_json(ROOT / "tests/fixtures/generator_sizes.json", prune)
+    for relative in ("tests/fixtures/curation.toml", "src/esolangs/proof_status.toml"):
+        _drop_toml(ROOT / relative, name)
     kept = []
     for module_name in sorted(modules):
         users = subprocess.run(

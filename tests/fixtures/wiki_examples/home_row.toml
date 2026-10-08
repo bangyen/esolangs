@@ -1,0 +1,9 @@
+language = "Home Row"
+oldid = 189085
+
+[[examples]]
+id = "hello"
+source_file = "home_row_hello.txt"
+expected = '''
+Hello, World!
+'''

@@ -1,0 +1,121 @@
+language = "///"
+oldid = 166743
+
+[[examples]]
+id = "hello-plain"
+source = "Hello, world!"
+expected = "Hello, world!"
+
+[[examples]]
+id = "hello-substitution"
+source = "/ world! world!/Hello,/ world! world! world!"
+expected = "Hello, world!"
+
+[[examples]]
+id = "hello-modifies-next"
+source = "/foo/Hello, world!//bar/foo/bar"
+expected = "Hello, world!"
+
+[[examples]]
+id = "hello-escaped-slash"
+source = "/a/\\//ab/world!/ab world!/Hello, aworld! bworld!"
+expected = "Hello, world!"
+
+[[examples]]
+id = "loop-foo"
+source = "/foo/foobar/foo"
+expected = ""
+stop = "steps"
+max_steps = 1000
+note = "never halts, prints nothing"
+
+[[examples]]
+id = "bottles"
+note = """\
+    the song; the line between the 2- and 1-bottle verses is a single space, as \
+    written in the program"""
+source_file = "slashes_bottles.txt"
+expected_file = "slashes_bottles_out.txt"
+
+[[examples]]
+id = "binary-to-unary"
+source = "/1/0*//*0/0**//0//100010"
+expected = "**********************************"
+
+[[examples]]
+id = "unary-to-binary"
+source = """\
+    /*/>01//1>/1//10/01//011/1\\0//01/_1//_///>0/>//>//**********************************"""
+expected = "100010"
+
+[[examples]]
+id = "decimal-to-unary"
+source = "/9/8*//8/7*//7/6*//6/5*//5/4*//4/3*//3/2*//2/1*//1/0*//*0/9*//0//40"
+expected = "****************************************"
+
+[[examples]]
+id = "unary-to-decimal"
+source = """\
+    /*/>01//1>/1//10/01//01111111111/1\\0//0111111111/_9//011111111/_8//01111111/_7//0111111/_6//011111/_5//01111/_4//0111/_3//011/_2//01/_1//_///>0/>//>//****************************************"""
+expected = "40"
+
+[[examples]]
+id = "roman-to-unary"
+source = """\
+    /CM/DCD//M/DD//CD/CCCC//D/CCCCC//XC/LXL//C/LL//XL/XXXX//L/XXXXX//IX/VIV//X/VV//IV/IIII//V/IIIII//I/*/XXXIV"""
+expected = "**********************************"
+
+[[examples]]
+id = "unary-to-roman"
+source = """\
+    /*/I//IIIII/V//IIII/IV//VV/X//VIV/IX//XXXXX/L//XXXX/XL//LL/C//LXL/XC//CCCCC/D//CCCC/CD//DD/M//DCD/CM/**********************************"""
+expected = "XXXIV"
+
+[[examples]]
+id = "roman-calculator"
+source = '''
+[/cm/dcd//m/dd//cd/cccc//d/ccccc//xc/lxl//c/ll//xl/xxxx//l/xxxxx//ix/viv//x/vv//iv/iiii//v/iiiii//i/*//+///*-*/-//*-/*//*/I//IIIII/V//IIII/IV//VV/X//VIV/IX//XXXXX/L//XXXX/XL//LL/C//LXL/XC//CCCCC/D//CCCC/CD//DD/M//DCD/CM/]
+[clxv+xvi]'''
+expected = '''
+[]
+[CLXXXI]'''
+note = """\
+    clxv+xvi = CLXXXI; the bracket lines are not removed by this program, so they \
+    print"""
+
+[[examples]]
+id = "thue-morse"
+source = """\
+    /*/\\/.\\\\0\\/,\\\\,0,\\\\,1\\/\\/.\\\\1\\/,\\\\,1,\\\\,0\\/\\/,\\\\,\\/.\\//********/.//.0"""
+expected = """\
+    0110100110010110100101100110100110010110011010010110100110010110100101100110100101101001100101100110100110010110100101100110100110010110011010010110100110010110011010011001011010010110011010010110100110010110100101100110100110010110011010010110100110010110"""
+
+[[examples]]
+id = "python-usage"
+source = """\
+    /*/#<//<#/#//</\\/.\\/\\/.0//#/\\/.\\\\0\\/,\\\\,0,\\\\,1\\/\\/.\\\\1\\/,\\\\,1,\\\\,0\\/\\/,\\\\,\\/.\\//********"""
+expected = """\
+    0110100110010110100101100110100110010110011010010110100110010110100101100110100101101001100101100110100110010110100101100110100110010110011010010110100110010110011010011001011010010110011010010110100110010110100101100110100110010110011010010110100110010110"""
+
+[[examples]]
+id = "fibonacci"
+source = """\
+    /!/\\/.\\\\0\\/,\\\\,0,\\\\,1\\/\\/.\\\\1\\/,\\\\,0\\/\\/,\\\\,\\/.\\/\\/+\\\\+\\/=\\\\=.\\\\1-\\/\\/=\\\\=\\/+\\\\+\\//!!!!!!!!!/.///+\\+///-/\\\\\\///0/1//1/*/++.1"""
+expected = """\
+    */*/**/***/*****/********/*************/*********************/**********************************/*******************************************************"""
+note = "nine marks print ten numbers, 1 through 55; the prose says \"first N\""
+
+[[examples]]
+id = "counter"
+expected = '''
+*
+'''
+stop = "steps"
+max_steps = 1000
+note = "loops forever printing longer lines of asterisks"
+source_file = "slashes_counter.txt"
+
+[[examples]]
+id = "quine-slashes"
+source_file = "slashes_quine-slashes.txt"
+expected_file = "slashes_quine-slashes_out.txt"

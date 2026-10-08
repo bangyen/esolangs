@@ -1,0 +1,76 @@
+language = "Forbin"
+oldid = 194508
+
+[[examples]]
+id = "hello"
+source = '''
+main {
+  out 0,1,0,0,1,0,0,0;
+  out 0,1,1,0,0,1,0,1;
+  out 0,1,1,0,1,1,0,0;
+  out 0,1,1,0,1,1,0,0;
+  out 0,1,1,0,1,1,1,1;
+  out 0,0,1,0,0,0,0,0;
+  out 0,1,0,1,0,1,1,1;
+  out 0,1,1,0,1,1,1,1;
+  out 0,1,1,1,0,0,1,0;
+  out 0,1,1,0,1,1,0,0;
+  out 0,1,1,0,0,1,0,0;
+}'''
+expected = "Hello World"
+
+[[examples]]
+id = "cat"
+source = '''
+main {
+  i, shouldLoop = 0;
+  a,b,c,d,e,f,g,h = (in 0);
+  out a,b,c,d,e,f,g,h;
+  for i:(a,b,c,d,e,f,g,h) {
+    for _:!i..i {
+      shouldLoop = 1
+    }
+  }
+  for _:!shouldLoop..shouldLoop {
+    main 0;
+  }
+}'''
+stdin = "abc"
+stop = "eof"
+expected = "abc"
+
+[[examples]]
+id = "truth-0"
+source = '''
+main {
+  a,b,c,d,e,f,g,h = (in 0);
+  out a,b,c,d,e,f,g,h;
+  for _:!h..h {
+    loop 0;
+  }
+}
+loop {
+  out 0,0,1,1,0,0,0,1;
+  loop 0;
+}'''
+stdin = "0"
+expected = "0"
+
+[[examples]]
+id = "truth-1"
+source = '''
+main {
+  a,b,c,d,e,f,g,h = (in 0);
+  out a,b,c,d,e,f,g,h;
+  for _:!h..h {
+    loop 0;
+  }
+}
+loop {
+  out 0,0,1,1,0,0,0,1;
+  loop 0;
+}'''
+stdin = "1"
+stop = "steps"
+max_steps = 200
+expected = "1111"

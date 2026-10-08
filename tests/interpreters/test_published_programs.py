@@ -1,22 +1,23 @@
 """Revision-pinned published programs, independent of this repo's generators.
 
-Each ``tests/fixtures/wiki_examples/<language>.json`` holds one wiki page's
-examples (CC0): ``{"language", "oldid", "examples": [...]}``.  An example has
-an ``id``, its ``source`` (or a ``source_file`` beside the JSON), optional
-``stdin``, and the page's stated output as ``expected`` (or ``expected_file``).
-Expected values come from the cited page, not local execution.
+Each ``tests/fixtures/wiki_examples/<language>.toml`` holds one wiki page's
+examples (CC0): ``language``, ``oldid`` and one ``[[examples]]`` table each.
+An example has an ``id``, its ``source`` (or a ``source_file`` beside the
+TOML), optional ``stdin``, and the page's stated output as ``expected`` (or
+``expected_file``).  Expected values come from the cited page, not local
+execution.
 
 ``stop`` says how the run ends: ``halt`` (default); ``steps`` for a program
 that never halts, whose output after ``max_steps`` must start with
 ``expected``; ``eof`` for one that reads past its input, which these
 interpreters refuse rather than invent a value for.  ``decode`` names a
 converter from our I/O convention to the page's (bits versus bytes, say).
-A halting run is also stepped to completion, unless ``"vm": false`` or it
+A halting run is also stepped to completion, unless ``vm = false`` or it
 draws on a ``seed``.  ``settings`` holds dialect choices; ``band`` marks a
 case past the fast band (``"medium"``).
 """
 
-import json
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -52,8 +53,8 @@ def _text(page: Path, example: dict, key: str) -> str:
 
 
 def _cases():
-    for page in sorted(_DIR.glob("*.json")):
-        data = json.loads(page.read_text(encoding="utf-8"))
+    for page in sorted(_DIR.glob("*.toml")):
+        data = tomllib.loads(page.read_text(encoding="utf-8"))
         for example in data["examples"]:
             yield pytest.param(
                 data["language"],
