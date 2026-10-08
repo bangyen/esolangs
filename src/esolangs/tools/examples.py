@@ -330,10 +330,6 @@ def _register() -> None:
     from esolangs import tools as b
 
     reading = {
-        "addsubjump": _reader(
-            b.addsubjump,
-            "register_based.addsubjump",
-        ),
         # An executed line prints its result and nothing else, so the
         # answer arrives with the newline that ends that line.
         "algebraic-programming-language": _reader(
@@ -341,54 +337,12 @@ def _register() -> None:
             "other.algebraic_programming_language",
             expected="0\n",
         ),
-        "alight": _reader(
-            b.alight,
-            "grid_based.alight",
-            split=True,
-        ),
-        "b-tapemark": _reader(
-            b.b_tapemark,
-            "grid_based.b_tapemark",
-        ),
         # ``.`` writes the digit and a trailing space, so the committed
         # answer carries it and the sweep strips it.
         "befunge": _reader(
             b.befunge,
             "grid_based.befunge",
             expected="0 ",
-            split=True,
-        ),
-        "bfstack": _reader(
-            b.bfstack,
-            "stack_based.bfstack",
-        ),
-        "sstack": _reader(
-            b.sstack,
-            "stack_based.sstack",
-        ),
-        "bit~": _reader(
-            b.bit_tilde,
-            "tape_based.bit_tilde",
-        ),
-        "brainfuck": _reader(
-            b.brainfuck,
-            "tape_based.brainfuck",
-        ),
-        "brainif": _reader(
-            b.brainif,
-            "tape_based.brainif",
-            split=True,
-        ),
-        "circlefuck": _reader(
-            b.circlefuck,
-            "tape_based.circlefuck",
-        ),
-        "collatz-multiverse": _reader(
-            b.collatz_multiverse, "register_based.collatz_multiverse"
-        ),
-        "container": _reader(
-            b.container,
-            "other.container",
             split=True,
         ),
         # ``send`` terminates every line it writes, so the answer arrives
@@ -410,34 +364,6 @@ def _register() -> None:
             split=True,
         ),
         "cvnc": _reader(b.cvnc, "other.cvnc"),
-        "decleq": _reader(
-            b.decleq,
-            "register_based.decleq",
-        ),
-        "dig": _reader(b.dig, "grid_based.dig", split=True),
-        "dimensional": _reader(b.dimensional, "tape_based.dimensional"),
-        "egl": _reader(
-            b.egl,
-            "grid_based.egl",
-        ),
-        "factor": _reader(
-            b.factor,
-            "tape_based.factor",
-        ),
-        "false": _reader(
-            b.false,
-            "stack_based.false",
-        ),
-        "fish": _reader(
-            b.fish,
-            "grid_based.fish",
-            split=True,
-        ),
-        "thisthat": _reader(
-            b.thisthat,
-            "grid_based.thisthat",
-            split=True,
-        ),
         # Fargo reads one *number* before the program starts, not a bit per
         # line, and ``@ k`` indexes that number's bits.  The boolean
         # convention is therefore to feed the row index: the inputs
@@ -448,22 +374,11 @@ def _register() -> None:
             "other.fargo",
             inputs=("1",),
         ),
-        "flowchart": _reader(
-            b.flowchart,
-            "grid_based.flowchart",
-            split=True,
-        ),
-        "forbin": _reader(
-            b.forbin,
-            "other.forbin",
-        ),
-        "forþ": _reader(b.forth, "stack_based.forth"),
         "grapheme": _reader(
             b.grapheme,
             "stack_based.grapheme",
             inputs=("%", "A"),
         ),
-        "jaune": _reader(b.jaune, "tape_based.jaune"),
         "laserfuck": _reader(
             b.laserfuck,
             "grid_based.laserfuck",
@@ -471,93 +386,14 @@ def _register() -> None:
             expected="0",
             kwargs=(("seed", 0),),
         ),
-        "malbolge": _reader(
-            b.malbolge,
-            "other.malbolge",
-        ),
-        "modulous": _reader(b.modulous, "stack_based.modulous"),
-        "packlang": _reader(
-            b.packlang,
-            "other.packlang",
-        ),
-        "painfuck": _reader(b.painfuck, "tape_based.painfuck"),
-        "polynomial": _reader(
-            b.polynomial,
-            "register_based.polynomial",
-        ),
-        "qoibl": _reader(
-            b.qoibl,
-            "register_based.qoibl",
-            split=True,
-        ),
-        "rotfuck": _reader(
-            b.rotfuck,
-            "tape_based.rotfuck",
-        ),
-        "boolfuck": _reader(
-            b.boolfuck,
-            "tape_based.boolfuck",
-        ),
-        "subleq": _reader(
-            b.subleq,
-            "tape_based.subleq",
-        ),
         "sbleq": _reader(
             b.sbleq,
             "tape_based.sbleq",
-        ),
-        "slow-acv-mammalian": _reader(
-            b.slow_acv_mammalian,
-            "tape_based.slow_acv_mammalian",
-        ),
-        "smu": _reader(
-            b.smu,
-            "stack_based.smu",
-        ),
-        "sophie": _reader(
-            b.sophie,
-            "register_based.sophie",
-        ),
-        "streetcode": _reader(
-            b.streetcode,
-            "grid_based.streetcode",
-            split=True,
-        ),
-        "super-snusp": _reader(
-            b.super_snusp,
-            "grid_based.super_snusp",
-            split=True,
-        ),
-        "suffolk": _reader(
-            b.suffolk,
-            "tape_based.suffolk",
-        ),
-        "taglate": _reader(
-            b.taglate,
-            "queue_based.taglate",
-            split=True,
-        ),
-        "thue": _reader(
-            b.thue,
-            "other.thue",
-        ),
-        "unlambda": _reader(
-            b.unlambda,
-            "other.unlambda",
-        ),
-        "unsquare": _reader(
-            b.unsquare,
-            "stack_based.unsquare",
         ),
         "vandevelo": _reader(
             b.vandevelo,
             "other.vandevelo",
             expected="",
-        ),
-        "3x": _reader(b.three_x, "stack_based.three_x"),
-        "6-5": _reader(
-            b.six_five,
-            "tape_based.six_five",
         ),
     }
 
@@ -679,6 +515,19 @@ def _register() -> None:
         scale=80,
     )
     reading["piet-plus-plus"] = _reader(b.piet_plus_plus, "stack_based.piet_plus_plus")
+    # A generator whose program reads its bits the default way needs no
+    # entry: the registry says everything ``_reader`` takes.  A template or
+    # a non-``output`` answer still names itself above.
+    covered = {ex.interpreter for ex in (*reading.values(), *embedded.values())}
+    for lang in LANGUAGES.values():
+        if (
+            lang.boolean is not None
+            and lang.interpreter is not None
+            and lang.interpreter not in covered
+            and lang.contract.answer_mode == "output"
+        ):
+            stem = lang.name.lower().replace(" ", "-")
+            reading[stem] = _reader(lang.boolean, lang.interpreter, split=lang.split)
     for stem, example in {**reading, **embedded}.items():
         BOOLEAN_EXAMPLES[stem] = replace(example, stem=stem)
 

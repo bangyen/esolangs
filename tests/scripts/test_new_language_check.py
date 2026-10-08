@@ -23,3 +23,11 @@ def test_check_runs_the_formula_case_bounds_measures() -> None:
     nodes = new_language.quick_tests("SStack")
     assert nodes[-1].endswith("formulas_hold[SStack-3]")
     assert new_language.bounds("SStack", range(1, 2)) == [(1, 10, 23, 23)]
+
+
+def test_a_generator_language_needs_no_hand_sample() -> None:
+    import esolangs
+    from tests import samples
+
+    program, stdin = samples._generated("SStack")  # noqa: SLF001
+    assert esolangs.run("SStack", program, stdin=stdin) == "1"

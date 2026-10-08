@@ -267,8 +267,9 @@ def _generator_gaps(lang: Language) -> list[Gap]:
         gaps.append(
             Gap(
                 "src/esolangs/tools/examples.py",
-                f'add "{stem}": _reader(b.{gen}, "{lang.interpreter}") to the '
-                "reading examples (_embedded for a template)",
+                f'add "{stem}": _reader(b.{gen}, "{lang.interpreter}", '
+                "expected=...) for its non-output answer, or _embedded for a "
+                "template (a plain output reader needs no entry)",
             )
         )
     width = takes_width(lang.boolean)
