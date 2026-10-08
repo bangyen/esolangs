@@ -587,7 +587,7 @@
       ],
       "qualification": "the table is one `PSH STR` literal, pushed so that row 0 lands on top, and the inputs add their weights into the counter of how many characters to discard",
       "scaling": "linear: T-character literal, one read block an input",
-      "execution": "linear: worst 5T + 5n - 2 commands past n = 1: n reads, then 5 per entry discarded",
+      "execution": "linear: worst 5T + 5n + 1 commands: a zero push, n reads, then 5 per entry discarded",
       "workspace": "linear: worst 6T + n + 2 + bl(6n+5) + bl(2n-1) + bl(n) bits: table codes on the stack",
       "evidence": "docs/proofs/index.md#generator-ledger"
     },

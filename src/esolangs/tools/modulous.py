@@ -13,29 +13,17 @@ def modulous(truth_table: str, width: int | None = None) -> str:
     n = _validate_truth_table(truth_table)
     # ``PSH STR`` pushes the characters in reverse, so the leftmost entry is on
     # top and discarding ``index`` of them uncovers ``truth_table[index]`` --
-    # the row index read MSB first, which is what the weights below build.  The
-    # first read *is* the counter: a bit is already 0 or 1, so the top weight is
-    # one conditional ``ADD`` away and no accumulator is pushed.  An ignored
-    # input is read and popped, and the table is indexed by the rest; a
-    # constant keeps every input, since some read must be the counter.
-    weights, projected = input_weights(truth_table, n)
-    if any(weights):
-        truth_table = projected
-    else:
-        weights = [1 << (n - 1 - i) for i in range(n)]
-    reads = []
-    counted = False
+    # the row index read MSB first, which is what the weights below build.  A
+    # pushed zero is the counter; an ignored input is read and popped, and the
+    # table is indexed by the rest.  Letting the first read be the counter
+    # saves 6.8% at n=6, 4.1% at n=8, 1.9% at n=10, under the 10% bar.
+    weights, truth_table = input_weights(truth_table, n)
+    reads = ["[PSH INT 0]"]
     for weight in weights:
-        if not weight:
-            reads.append("[INP INT][POP]")
-        elif counted:
+        if weight:
             reads.append(f"[INP INT][JMP F 4 IF 0][POP][ADD {weight}][JMP F 2][POP]")
         else:
-            reads.append(
-                "[INP INT]"
-                + (f"[JMP F 2 IF 0][ADD {weight - 1}]" if weight > 1 else "")
-            )
-            counted = True
+            reads.append("[INP INT][POP]")
     # ``SWP``/``POP`` discards the entry *under* the counter, which is what
     # keeps the counter reachable: nothing but the top two cells is.
     walk = "[JMP F 5 IF 0][SUB 1][SWP][POP][JMP B 4][POP][PRT][END]"

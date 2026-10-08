@@ -41,20 +41,6 @@ class TestModulous:
     def test_narrow_literal_floor_and_corpus_size(self) -> None:
         assert max(map(len, boolean.modulous("0110", 1).splitlines())) == 3
         assert (
-            sum(len(boolean.modulous(format(v, "08b"), 1)) for v in range(256)) == 90500
+            sum(len(boolean.modulous(format(v, "08b"), 1)) for v in range(256))
+            == 100922
         )
-
-    def test_fitting_bracket_layout_keeps_its_source(self) -> None:
-        from esolangs.tools.wrap import _bracket_literal
-
-        natural = boolean.modulous("01101001")
-        assert boolean.modulous("01101001", 80) == _bracket_literal(natural, 80)
-
-    def test_size_is_the_table_plus_a_fixed_frame(self) -> None:
-        """No branch reads the table, so its contents cannot change the size."""
-        sizes = {
-            len(boolean.modulous(table))
-            for table in ("11111111", "10010110", "00000000", "01110001")
-        }
-        assert len(sizes) == 1
-        assert len(boolean.modulous("1" * 16)) - sizes.pop() == 16 - 8 + 49

@@ -102,7 +102,7 @@ FORMULAS: dict[str, tuple[Callable[[int, str], float], bool, tuple[int, ...]]] =
     "Vandevelo": (lambda _, p: _vandevelo(p), False, (3, 5)),
     "Home Row": (lambda n, _: 10 * 2**n + 10 * n + 95, True, (3, 5)),
     "Minsky Swap": (lambda n, _: 2 * 2**n + 6 * n + 4, True, (3, 5)),
-    "Modulous": (lambda n, _: 5 * 2**n + 5 * n - 2, True, (3, 5)),
+    "Modulous": (lambda n, _: 5 * 2**n + 5 * n + 1, True, (3, 5)),
     "LaserFuck": (lambda n, _: 18 * 2**n + 56 * n + 5, False, (5,)),
     "NoComment": (
         lambda n, _: (
