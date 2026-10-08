@@ -7,6 +7,7 @@ from esolangs.tools.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
     essential_inputs,
+    subtree_ids,
 )
 
 __all__ = ["decleq"]
@@ -26,6 +27,9 @@ def decleq(truth_table: str) -> str:
     counter and prints the selected 48/49. T three-character table cells
     plus at most T/(2n) O(n)-digit branches give O(T) size, O(n) execution.
     Constant subtrees use shared print gadgets; 11110000 needs one branch.
+    A subtree that repeats an earlier one at its level is not emitted again:
+    a zero side branches to the copy, a one side jumps to it in one
+    instruction, so the program is never longer than the plain tree.
 
     Cell 0 jumps over two ``-2 K 0; 0 0 END`` gadgets, constants 48/49,
     the counter and read cells. Code starts at the next multiple of three;
@@ -110,11 +114,24 @@ def decleq(truth_table: str) -> str:
         emit(0, 0, halt)
         mem.extend(_ASCII_ZERO + int(c) for c in truth_table[row : row + span])
 
+    ids = subtree_ids(truth_table)
+    done: dict[tuple[int, int], int] = {}
+
+    def earlier(level: int, row: int) -> int | None:
+        """Address of an equal non-constant subtree already emitted, if any."""
+        if constant(row, 2 ** (n - level)):
+            return None
+        return done.get((level, ids[level][row >> (n - level)]))
+
     def node(level: int, row: int) -> None:
         width = 2 ** (n - level)
+        if (copy := earlier(level, row)) is not None:
+            emit(0, 0, copy)
+            return
         if constant(row, width):
             emit(0, 0, out_one if truth_table[row] == "1" else out_zero)
             return
+        done[level, ids[level][row >> (n - level)]] = pc()
         if level == n - k:
             leaf(row)
             return
@@ -122,8 +139,10 @@ def decleq(truth_table: str) -> str:
         emit(rc, rc, 0)
         branch = pc() - 3
         node(level + 1, row + width // 2)
-        target = pc()
-        node(level + 1, row)
+        target = earlier(level + 1, row)
+        if target is None:
+            target = pc()
+            node(level + 1, row)
         patch(branch, target)
 
     node(0, 0)

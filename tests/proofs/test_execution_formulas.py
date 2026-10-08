@@ -58,8 +58,8 @@ FORMULAS: dict[str, tuple[Callable[[int, str], float], bool, tuple[int, ...]]] =
     ),
     "Malbolge": (lambda n, _: 478 * n + 1459, True, (3, 6)),
     "Decleq": (
-        lambda n, _: 49 * n + 3 * 2 ** (2 * n - 1).bit_length() + 2,
-        True,
+        lambda n, _: 49 * n + 3 * 2 ** (k := (2 * n - 1).bit_length()) + 2 + n - k,
+        False,
         (3, 6),
     ),
     "Qoibl": (lambda n, _: n + 2, True, (3, 6)),

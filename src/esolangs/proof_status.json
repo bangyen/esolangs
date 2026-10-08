@@ -318,9 +318,9 @@
       "labels": [
         "tree"
       ],
-      "qualification": "the tree stops `k` levels short, `2**k >= 2n`, and each leaf is a `2**k`-cell table indexed by an unrolled counter, since `T - 1` absolute jump targets would be `Theta(T log T)` digits",
+      "qualification": "the tree stops `k` levels short, `2**k >= 2n`, and each leaf is a `2**k`-cell table indexed by an unrolled counter, since `T - 1` absolute jump targets would be `Theta(T log T)` digits; an equal subtree is emitted once",
       "scaling": "linear: bounded dependency scan and canonical residual IDs",
-      "execution": "poly n: worst 49n + 3*2^k + 2 commands, k = bitlen(2n-1)",
+      "execution": "poly n: at most 49n + 3*2^k + (n-k) + 2 commands, k = bitlen(2n-1)",
       "workspace": "linear: worst 55n + 11S + 95B + D + E + F + R bits: the memory tuple and registers",
       "evidence": "docs/proofs/index.md#generator-ledger",
       "definitions": [
