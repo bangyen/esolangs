@@ -10,13 +10,12 @@ import sys
 
 from esolangs.interpreters.grid_based.arrowqueue import _advance, _Machine
 from esolangs.tools.arrowqueue import (
+    _BRANCH,
     _DRAINED_RING,
     _MIDDLE,
     _STAGE,
     _TREE_0,
     _TREE_1,
-    _TREE_BRANCH_0,
-    _TREE_BRANCH_1,
     _compact,
     _connect,
     _drained_leaf,
@@ -197,10 +196,7 @@ def check_d_drain() -> None:
 def check_g_geometry() -> None:
     """G1/G2/G3: row disjointness, blank right corridor, and the entry column."""
     plus = [
-        (r, c)
-        for r, row in enumerate(_TREE_BRANCH_0)
-        for c, ch in enumerate(row)
-        if ch == "+"
+        (r, c) for r, row in enumerate(_BRANCH) for c, ch in enumerate(row) if ch == "+"
     ]
     report("G3 entry cell", ok=plus == [(0, 1)], detail=f"0-branch '+' at {plus}")
 
@@ -253,9 +249,9 @@ def check_b_branches() -> None:
     down_exits = {}
     right_exits = {}
     for bit in (0, 1):
-        row, col, d, queue, _done = _run_block(_TREE_BRANCH_0, (0, 1, 1, (bit,)))
+        row, col, d, queue, _done = _run_block(_BRANCH, (0, 1, 1, (bit,)))
         down_exits[bit] = (row, col, d, queue)
-        row, col, d, queue, _done = _run_block(_TREE_BRANCH_0, (0, 0, 0, (bit,)))
+        row, col, d, queue, _done = _run_block(_BRANCH, (0, 0, 0, (bit,)))
         right_exits[bit] = (row, col, d, queue)
 
     ok_down = (
@@ -282,14 +278,14 @@ def check_b_branches() -> None:
         detail=f"bit0 -> {right_exits[0][:3]}, bit1 -> {right_exits[1][:3]}, same",
     )
 
-    row, col, d, queue, _done = _run_block(_TREE_BRANCH_1, (0, 1, 1, (0, 7)))
+    row, col, d, queue, _done = _run_block(_BRANCH, (0, 1, 1, (0, 7)))
     report(
         "B3 1-branch reflects",
         ok=(row, col, d) == (0, 3, 0) and queue == (7,),
         detail=f"exit {(row, col, d)}, the one's trailing R popped, rest {queue}",
     )
 
-    row, col, d, queue, _done = _run_block(_TREE_BRANCH_1, (0, 0, 1, (0,)))
+    row, col, d, queue, _done = _run_block(_BRANCH, (0, 0, 1, (0,)))
     report(
         "B3' entry column matters",
         ok=(row, col, d) == (3, 0, 1) and queue == (0,),

@@ -21,15 +21,9 @@ from esolangs.tools.helpers import (
 PAIR = (".", "~")
 
 _TREE_1 = ["+~+", "~ ~", "+~+"]
-
-
 _TREE_0 = ["   ", "   ", "   "]
-
-
-_TREE_BRANCH_0 = [" + ", "   ", "   "]
-
-
-_TREE_BRANCH_1 = [" + ", "   ", "   "]
+_LEAF = {"0": _TREE_0, "1": _TREE_1}
+_BRANCH = [" + ", "   ", "   "]
 
 
 # Entered heading down at column 3; queues R, D, L, U, then down column 1.
@@ -75,18 +69,15 @@ def _connect(t0: list[str], t1: list[str]) -> list[str]:
     width = max(3 + len(t0[0]), 3 + len(t1[0]))
     height = max(3, yb + 3, yb + len(t1))
     grid = [[" "] * width for _ in range(height)]
-    for r, line in enumerate(_TREE_BRANCH_0):
-        for c, ch in enumerate(line):
-            grid[r][c] = ch
-    for r, line in enumerate(_TREE_BRANCH_1):
-        for c, ch in enumerate(line):
-            grid[yb + r][c] = ch
-    for r, line in enumerate(t0):
-        for c, ch in enumerate(line):
-            grid[r][3 + c] = ch
-    for r, line in enumerate(t1):
-        for c, ch in enumerate(line):
-            grid[yb + r][3 + c] = ch
+    for block, r0, c0 in (
+        (_BRANCH, 0, 0),
+        (_BRANCH, yb, 0),
+        (t0, 0, 3),
+        (t1, yb, 3),
+    ):
+        for r, line in enumerate(block):
+            for c, ch in enumerate(line):
+                grid[r0 + r][c0 + c] = ch
     return ["".join(row) for row in grid]
 
 
@@ -98,7 +89,7 @@ def _drained_leaf(value: str, skipped: int) -> list[str]:
     """
     # A ``0`` leaf needs no drain: running off the grid halts regardless.
     if value != "1":
-        return list(_TREE_0)
+        return list(_LEAF[value])
     # 3x3 leaf at (skipped, skipped + 1).
     grid = [[" "] * (skipped + 4) for _ in range(skipped + 3)]
     for i in range(skipped):
@@ -121,10 +112,7 @@ def _tree(values: list[str]) -> list[str]:
         skipped = len(values).bit_length() - 1
         return _drained_leaf(values[0], skipped)
     if len(values) == 2:
-        return _connect(
-            _TREE_1 if values[0] == "1" else _TREE_0,
-            _TREE_1 if values[1] == "1" else _TREE_0,
-        )
+        return _connect(_LEAF[values[0]], _LEAF[values[1]])
     half = len(values) // 2
     return _connect(_tree(values[:half]), _tree(values[half:]))
 
@@ -135,40 +123,38 @@ def arrowqueue(truth_table: str, width: int | None = None) -> str:
     ``truth_table`` is a binary string of length ``2**n``, MSB first; the
     instantiated program halts iff the entry is ``0``.  Below five inputs a
     tree with 3x3 leaves, constant subtrees folded (:func:`_drained_leaf`);
-    from five a cascade of at most ``6n`` + ``3 * 2**n`` rows, linear in the
-    table, its constant tail folded (:func:`_cascade`).  An over-wide tree
-    uses the cascade instead; below five columns an extra down marker
-    moves the selector to the left edge while preserving the rings.
+    from five a cascade linear in the table, its constant tail folded
+    (:func:`_cascade`).  An over-wide tree uses the cascade instead; below five
+    columns an extra down marker moves the selector to the left edge while
+    preserving the rings.
     """
     n = _validate_truth_table(truth_table)
-    tree = (
-        "\n".join([*_header(n), *_compact(_MIDDLE + _tree(list(truth_table)))])
-        if n <= 4
-        else None
-    )
-    if tree is None or (
-        width is not None and width > 0 and max(map(len, tree.split("\n"))) > width
-    ):
-        if width is not None and 0 < width < 5:
-            return _four_column_cascade(truth_table, n)
-        narrow = width is not None and 0 < width < 6
-        # Five columns leave no room for an ignored input's setter off the path.
-        weights, table = (
-            ([1] * n, truth_table) if narrow else input_weights(truth_table, n)
-        )
-        leaves = _cascade(table)
-        if narrow:
-            # Entry travels down column1; column2 in every leaf is only blank
-            # travel between that selector and its ring, so remove it locally.
-            leaves = [row[:2] + row[3:] for row in leaves]
-        stages = [row for weight in weights for row in (_STAGE if weight else _IGNORED)]
-        rows = ["  ~*", *stages, *_MIDDLE, *leaves]
-        return "\n".join(row.rstrip() for row in rows)
-    return tree
+    width = max(width or 0, 0)  # 0, None and negative all mean unbounded
+    if n <= 4:
+        body = _compact(_MIDDLE + _tree(list(truth_table)))
+        tree = "\n".join([*_header(n), *body])
+        if not width or max(map(len, tree.split("\n"))) <= width:
+            return tree
+    if 0 < width < 5:
+        return _four_column_cascade(truth_table, n)
+    narrow = 0 < width < 6
+    # Five columns leave no room for an ignored input's setter off the path.
+    weights, table = ([1] * n, truth_table) if narrow else input_weights(truth_table, n)
+    leaves = _cascade(table)
+    if narrow:
+        # Entry travels down column1; column2 in every leaf is only blank
+        # travel between that selector and its ring, so remove it locally.
+        leaves = [row[:2] + row[3:] for row in leaves]
+    stages = [row for weight in weights for row in (_STAGE if weight else _IGNORED)]
+    rows = ["  ~*", *stages, *_MIDDLE, *leaves]
+    return "\n".join(row.rstrip() for row in rows)
 
 
 def _four_column_cascade(table: str, n: int) -> str:
-    """Prepend one down marker to route the selector along column0."""
+    """Prepend one down marker to route the selector along column0.
+
+    Takes every input's stage (``_STAGE * n``): ignored inputs are not dropped.
+    """
     # Shift input stages left. A clockwise detour then lands down at1.
     rows = [" ~*", *(row[1:] for row in _STAGE * n), "**", "* *", " ~"]
     # Append D, rotate the existing D markers until the R sentinel,
@@ -201,10 +187,8 @@ def _compact(rows: list[str]) -> list[str]:
     A blank line carries only straight travel; the header's glyphs sit past
     column 4, which every branch marks.
     """
-    width = max((len(row) for row in rows), default=0)
+    width = max(map(len, rows))
     padded = [row.ljust(width) for row in rows]
     kept = [row for row in padded if row.strip()]
-    if not kept:
-        return []  # pragma: no cover - every table lays a cell
     columns = [x for x in range(width) if any(row[x] != " " for row in kept)]
     return ["".join(row[x] for x in columns).rstrip() for row in kept]
