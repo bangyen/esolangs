@@ -164,8 +164,10 @@ class TestCircuitDiagramLayoutGuards:
             drawing = boolean.circuit_diagram(table)
             widths[n] = max(len(row) for row in drawing.splitlines())
         assert widths == {3: 67, 4: 87, 5: 125, 6: 145}
-        steps = [widths[n + 1] - widths[n] for n in (3, 4, 5)]
-        assert max(steps) <= 40, steps
+        # A shared output alternates the step (20, 38); two inputs still cost
+        # at most the 64 columns two unshared levels did.
+        steps = [widths[n + 2] - widths[n] for n in (3, 4)]
+        assert max(steps) <= 64, steps
 
     @pytest.mark.slow
     def test_emitted_size_is_linear_in_the_table(self) -> None:
