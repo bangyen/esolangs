@@ -7,6 +7,7 @@ module of that name reads as the builtin wherever it is imported.
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
+    essential_inputs,
     permute_truth_table,
     read_at,
 )
@@ -14,7 +15,7 @@ from esolangs.tools.helpers import (
 # Eval's two stacks and the ops that move values between them.  ``~`` swaps
 # which stack is active, ``*`` reverses the active one, and ``=`` pops the
 # active stack onto the other.  The pair is a spindle: moving values across
-# reverses them, so composing the three reaches essentially any arrangement.
+# reverses them (tests/tools/eval_reorders.py composes them).
 _EVAL_TREE_STACK, _EVAL_READ_STACK = 0, 1
 
 #: How each input is set: stage the bit on the tree stack (``0`` pushes a
@@ -42,35 +43,10 @@ def eval(truth_table: str) -> str:  # noqa: A001 - the language is named "Eval"
     return _eval_ordered(table, "")
 
 
-def _eval_dependencies(truth_table: str) -> list[int]:
-    """Return essential levels in one bottom-up pass over the table."""
-    n = _validate_truth_table(truth_table)
-    nodes = [int(bit) for bit in truth_table]
-    used: list[int] = []
-    ids: dict[tuple[int, int], int] = {}
-    next_id = 2
-    for level in reversed(range(n)):
-        parents: list[int] = []
-        matters = False
-        for index in range(0, len(nodes), 2):
-            pair = (nodes[index], nodes[index + 1])
-            matters |= pair[0] != pair[1]
-            node = ids.get(pair)
-            if node is None:
-                node = next_id
-                ids[pair] = node
-                next_id += 1
-            parents.append(node)
-        if matters:
-            used.append(level)
-        nodes = parents
-    return list(reversed(used))
-
-
 def _eval_ordered(truth_table: str, ops: str) -> str:
     """Emit one input order's linear lookup; see :func:`eval`."""
     n = _validate_truth_table(truth_table)
-    used = _eval_dependencies(truth_table)
+    used = essential_inputs(truth_table, n)
     reduced = read_at(truth_table, used, n)
     bits = _EVAL_INPUT * n
     values = "".join("`" if bit == "1" else "0" for bit in reduced)
