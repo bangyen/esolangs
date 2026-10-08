@@ -26,7 +26,12 @@ cleared flag cell, bits 4..5 after flipping it, bits 6..7 cleared
 again -- the ASCII ``'0'``/``'1'`` byte in exactly 8 prints.
 """
 
-from esolangs.tools.helpers import _validate_truth_table, subtree_ids
+from esolangs.tools.helpers import (
+    _validate_truth_table,
+    constant_span_test,
+    move_text,
+    subtree_ids,
+)
 
 _SCRATCH = -1
 
@@ -34,11 +39,10 @@ _SCRATCH = -1
 def boolfuck(truth_table: str) -> str:
     """Return a native Boolfuck program for an MSB-first truth table."""
     n = _validate_truth_table(truth_table)
-    if n < 1:  # _validate_truth_table already refuses n == 0; keep mypy honest
-        raise AssertionError("unreachable")
 
     result = 2 * n
     ids = subtree_ids(truth_table)
+    is_constant = constant_span_test(truth_table)
 
     def bit(i: int) -> int:
         return 2 * i
@@ -51,17 +55,13 @@ def boolfuck(truth_table: str) -> str:
 
     def move(target: int) -> None:
         nonlocal pos
-        if target > pos:
-            parts.append(">" * (target - pos))
-        elif target < pos:
-            parts.append("<" * (pos - target))
+        parts.append(move_text(pos, target, ">", "<"))
         pos = target
 
     def constant(i: int, combo: int) -> str | None:
         """Shared value of the level-``i`` subtree at ``combo``, else None."""
         span = 1 << (n - i)
-        rows = truth_table[combo : combo + span]
-        return rows[0] if rows == rows[0] * span else None
+        return truth_table[combo] if is_constant(combo, combo + span) else None
 
     def branch(i: int, combo: int) -> None:
         """Emit one side of node ``i``: a folded leaf or the child subtree."""
@@ -111,10 +111,6 @@ def boolfuck(truth_table: str) -> str:
     move(result)
     parts.append(";")
     move(flag(0))  # every flag is 0 again here
-    parts.append(";;;")
-    parts.append("+")
-    parts.append(";;")
-    parts.append("+")
-    parts.append(";;")
+    parts.append(";;;+;;+;;")
 
     return "".join(parts)
