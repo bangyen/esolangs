@@ -196,5 +196,6 @@ A generated program reads the inputs and prints the answer the way its
 `BooleanContract` (`registry/_contracts.py`) says; with no entry the
 default is one `0`/`1` line per input and a printed `0`/`1`. Every program
 reads all n inputs, in order, even when the table is constant or ignores an
-input. `input_shape="char_stream"` reads the bits as bare characters;
+input. `input_shape="char_stream"` reads the bits as bare characters, and also
+covers languages whose stdin packs bits into bytes (Boolfuck, Smu);
 `answer_mode` covers state-dump and termination answers.
