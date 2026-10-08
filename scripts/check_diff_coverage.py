@@ -292,6 +292,11 @@ def main() -> int:
         )
         for path, missing in gaps:
             spans = ",".join(str(n) for n in missing)
+            if args.partial:
+                # Only added lines block; name them apart from older gaps.
+                mine = ",".join(str(n) for n in missing if n in added[path])
+                older = ",".join(str(n) for n in missing if n not in added[path])
+                spans = f"added {mine or 'none'}; older {older or 'none'}"
             print(f"  {path}: {spans}")
 
     if arc_gaps:
@@ -300,7 +305,8 @@ def main() -> int:
         for path, untaken in arc_gaps:
             for src, dest in untaken:
                 where = "exit" if dest < 0 else f"line {dest}"
-                print(f"  {path}: line {src} never continues to {where}")
+                tag = " (added)" if args.partial and src in added[path] else ""
+                print(f"  {path}: line {src} never continues to {where}{tag}")
 
     if unmeasured:
         print(f"touched but never imported by the suite: {len(unmeasured)} file(s)")

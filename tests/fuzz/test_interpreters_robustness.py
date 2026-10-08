@@ -65,7 +65,14 @@ def _check_empty_program(language: str) -> None:
     }
     rejection = _EMPTY_REJECTIONS.get(language)
     if rejection is None:
-        esolangs.run(language, source, **options)
+        try:
+            esolangs.run(language, source, **options)
+        except esolangs.EsolangError as exc:
+            pytest.fail(
+                f"{language} refuses an empty program; if the spec does, add "
+                f"{language!r}: ({type(exc).__name__}, {str(exc)!r}) to "
+                "_EMPTY_REJECTIONS"
+            )
         return
     kind, message = rejection
     with pytest.raises(kind, match=f"^{re.escape(message)}") as caught:
