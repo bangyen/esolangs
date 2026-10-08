@@ -6,6 +6,7 @@ import re
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = ROOT / "src" / "esolangs" / "proof_status.toml"
@@ -75,7 +76,13 @@ def _check_evidence(reference: str, *, precise: bool) -> None:
 
 def load(path: Path = MANIFEST) -> tuple[tuple[ProofRow, ...], tuple[ScalingRow, ...]]:
     """Return validated proof and audit rows from the manifest."""
-    data = tomllib.loads(path.read_text(encoding="utf-8"))
+    return validate(tomllib.loads(path.read_text(encoding="utf-8")))
+
+
+def validate(
+    data: dict[str, Any],
+) -> tuple[tuple[ProofRow, ...], tuple[ScalingRow, ...]]:
+    """Return proof and audit rows from parsed manifest ``data``."""
     proofs = []
     audits = []
     for row in data["ledger"]:
