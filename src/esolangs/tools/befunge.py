@@ -206,4 +206,5 @@ LANGUAGE = Language(
     split=True,
     balance=balance_befunge,
     no_wrap="a row is a grid row and the lookup table is indexed by column",
+    empty_program="Befunge program cannot be empty",
 )

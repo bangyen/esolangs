@@ -552,4 +552,6 @@ LANGUAGE = Language(
         input_shape="char_stream",
     ),
     balance=_balance,
+    eof="reads at the switch, which a program without one skips",
+    empty_program="Flowchart program has no '( )' start node",
 )

@@ -367,4 +367,5 @@ LANGUAGE = Language(
         input_shape="char_stream",
     ),
     wrap=wrap_grid,
+    eof="a failed read leaves the cell alone and the program runs on",
 )

@@ -378,4 +378,6 @@ LANGUAGE = Language(
     ),
     # Space wrap stranded every sign alone; keep sign with term, one per line.
     wrap=_polynomial,
+    eof="an exhausted input instruction stores -1",
+    empty_program="Polynomial program must start with 'f(x) = '",
 )

@@ -359,4 +359,6 @@ LANGUAGE = Language(
     ),
     balance=_balance,
     no_wrap="a command is a word walked cell by cell; a row end cuts it",
+    eof="it raises its own error before the read is reached",
+    empty_program="empty program",
 )

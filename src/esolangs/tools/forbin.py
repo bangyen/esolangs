@@ -266,4 +266,5 @@ LANGUAGE = Language(
         input_shape="char_stream",
     ),
     balance=_balance,
+    empty_program="Forbin program has no main function",
 )

@@ -412,4 +412,5 @@ LANGUAGE = Language(
     boolean=cvnc,
     # LF-only source-format deviation: discard breaks before parsing or addressing.
     wrap=wrap_chars,
+    empty_program="program is empty",
 )

@@ -73,4 +73,5 @@ LANGUAGE = Language(
         parameterized=True,
     ),
     wrap=wrap_chars,
+    empty_program="BF-PDA program cannot be empty",
 )

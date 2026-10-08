@@ -67,4 +67,5 @@ LANGUAGE = Language(
     source_kind=SourceKind.RASTER,
     boolean=piet_plus_plus,
     no_wrap="one fixed three-row strip, like Piet before scaling",
+    eof="an exhausted In command is ignored, as the page recommends",
 )

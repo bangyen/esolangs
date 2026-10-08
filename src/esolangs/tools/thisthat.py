@@ -382,4 +382,6 @@ LANGUAGE = Language(
     ),
     balance=_balance,
     no_wrap="the H-tree's nodes and wires occupy fixed grid coordinates",
+    eof="an exhausted '◇' sends the spec's empty transfer",
+    empty_program="thisthat needs at least one start node",
 )

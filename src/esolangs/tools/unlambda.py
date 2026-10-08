@@ -178,4 +178,6 @@ LANGUAGE = Language(
         input_shape="char_stream",
     ),
     wrap=_unlambda,
+    eof="an exhausted '@' hands its argument v, the spec's branch",
+    empty_program="an Unlambda program cannot be empty",
 )

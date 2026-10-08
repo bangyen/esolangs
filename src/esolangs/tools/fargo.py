@@ -282,4 +282,5 @@ LANGUAGE = Language(
     ),
     balance=_balance,
     no_wrap="each physical line is one command; expressions have no continuation",
+    eof="the interpreter reads before the program starts",
 )

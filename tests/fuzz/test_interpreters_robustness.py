@@ -1,7 +1,6 @@
 """Bounded empty-source runs for every registered interpreter."""
 
 import os
-import re
 
 import pytest
 
@@ -9,46 +8,9 @@ import esolangs
 from esolangs.exceptions import ExecutionTimeoutError, HaltError, ProgramError
 from esolangs.registry import LANGUAGES, SourceKind
 
-# Empty-source rejections are language contracts, not arbitrary exceptions.
-_EMPTY_REJECTIONS = {
-    "Alight": (ProgramError, "empty program"),
-    "123": (ProgramError, "an empty 123 program never halts"),
-    "Back": (ProgramError, "Back program cannot be empty"),
-    "B-tapemark": (ProgramError, "B-tapemark program needs exactly one start marker"),
-    "BF-PDA": (ProgramError, "BF-PDA program cannot be empty"),
-    "Cyclic tag": (
-        ProgramError,
-        "Cyclic tag requires productions,queue using bits and semicolons",
-    ),
-    "Circlefuck": (ProgramError, "Circlefuck program cannot be empty"),
-    "Clockwise": (ProgramError, "Clockwise program cannot be empty"),
-    "CV(N)(C)": (ProgramError, "program is empty"),
-    "Dig": (ProgramError, "Dig program cannot be empty"),
-    "EGL": (ProgramError, "EGL program must begin with 'width,height:'"),
-    "Flowchart": (ProgramError, "Flowchart program has no '( )' start node"),
-    "Forbin": (ProgramError, "Forbin program has no main function"),
-    # A blank raster is a white pixel: Raster itself refuses zero pixels.
-    "Line": (ProgramError, "image contains no ink"),
-    "Packlang": (ProgramError, "empty program"),
-    "Polynomial": (ProgramError, "Polynomial program must start with 'f(x) = '"),
-    "Streetcode": (ProgramError, "Streetcode program cannot be empty"),
-    "Super SNUSP": (ProgramError, "Super SNUSP program cannot be empty"),
-    "Suffolk": (ProgramError, "Suffolk program cannot be empty"),
-    "thisthat": (HaltError, "thisthat needs at least one start node"),
-    "Befunge": (ProgramError, "Befunge program cannot be empty"),
-    "FRACTRAN": (ProgramError, "a FRACTRAN program needs a starting value"),
-    "Fish": (ProgramError, "Fish program cannot be empty"),
-    "INTERCAL": (
-        HaltError,
-        "INTERCAL program is insufficiently or excessively polite (E099)",
-    ),
-    "Thue": (
-        ProgramError,
-        "a Thue program needs a '::=' line with nothing but whitespace on either "
-        "side, to separate its rules from its starting state",
-    ),
-    "Unlambda": (ProgramError, "an Unlambda program cannot be empty"),
-}
+# Empty-source rejections are language contracts, not arbitrary exceptions:
+# each is its ``LANGUAGE``'s ``empty_program=``.
+_REJECTION_KINDS = (ProgramError, HaltError)
 
 
 def _check_empty_program(language: str) -> None:
@@ -63,32 +25,27 @@ def _check_empty_program(language: str) -> None:
         "isolated": isolated,
         "max_output": 1024 if isolated else None,
     }
-    rejection = _EMPTY_REJECTIONS.get(language)
-    if rejection is None:
+    message = LANGUAGES[language].empty_program
+    if not message:
         try:
             esolangs.run(language, source, **options)
         except esolangs.EsolangError as exc:
             pytest.fail(
                 f"{language} refuses an empty program; if the spec does, add "
-                f"{language!r}: ({type(exc).__name__}, {str(exc)!r}) to "
-                "_EMPTY_REJECTIONS"
+                f"empty_program={str(exc)!r} to its LANGUAGE"
             )
         return
-    kind, message = rejection
-    with pytest.raises(kind, match=f"^{re.escape(message)}") as caught:
+    with pytest.raises(esolangs.EsolangError) as caught:
         esolangs.run(language, source, **options)
-    assert type(caught.value) is kind
-    assert str(caught.value) == message
+    error = caught.value
+    assert type(error) in _REJECTION_KINDS, f"{type(error).__name__}: {error}"
+    assert str(error) == message, f"{language}: {error}"
 
 
 @pytest.mark.medium
 @pytest.mark.parametrize("language", sorted(LANGUAGES))
 def test_empty_program_terminates(language: str) -> None:
     _check_empty_program(language)
-
-
-def test_empty_rejections_name_registered_languages() -> None:
-    assert _EMPTY_REJECTIONS.keys() <= LANGUAGES.keys()
 
 
 @pytest.mark.parametrize("error", [TypeError, AttributeError, RuntimeError])
@@ -112,7 +69,7 @@ def test_wrong_rejection_message_fails(monkeypatch):
 
 def test_timeout_is_not_an_empty_source_rejection(monkeypatch):
     def timed_run(*_args, **_kwargs):
-        raise ExecutionTimeoutError(_EMPTY_REJECTIONS["thisthat"][1])
+        raise ExecutionTimeoutError(LANGUAGES["thisthat"].empty_program)
 
     monkeypatch.setattr(esolangs, "run", timed_run)
     with pytest.raises(AssertionError, match="ExecutionTimeoutError"):

@@ -324,4 +324,6 @@ LANGUAGE = Language(
     # Packlang punctuation separates tokens even without a space.
     wrap=_packlang,
     balance=balance_packlang,
+    eof="an exhausted charGet is newline byte 10",
+    empty_program="empty program",
 )

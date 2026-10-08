@@ -127,4 +127,5 @@ LANGUAGE = Language(
         input_shape="char_stream",
     ),
     wrap=wrap_chars,
+    eof="EOF supplies zero bits",
 )

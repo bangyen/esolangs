@@ -237,4 +237,5 @@ LANGUAGE = Language(
     # change a number.
     wrap=wrap_space_delimited,
     balance=_balance,
+    empty_program="a FRACTRAN program needs a starting value",
 )

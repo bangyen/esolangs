@@ -52,6 +52,10 @@ class Language:
     balance: Callable[..., Any] | None = None
     #: Why ``wrap`` is absent, when a break would change the program.
     no_wrap: str = ""
+    #: What an exhausted read does instead of raising ``EOFError``.
+    eof: str = ""
+    #: The error an empty program raises, when the spec rejects one.
+    empty_program: str = ""
 
     def __post_init__(self) -> None:
         """Fill the id from the name when none is given."""

@@ -84,4 +84,6 @@ LANGUAGE = Language(
         input_shape="char_stream",
     ),
     wrap=wrap_chars,
+    eof="its input command is a no-op at EOF, as the spec says",
+    empty_program="Circlefuck program cannot be empty",
 )

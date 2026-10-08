@@ -241,4 +241,5 @@ LANGUAGE = Language(
     ),
     balance=_balance,
     no_wrap="a row is a ring row; the walk's turns sit at fixed cells",
+    empty_program="Clockwise program cannot be empty",
 )

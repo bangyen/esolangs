@@ -324,4 +324,8 @@ LANGUAGE = Language(
     ),
     balance=balance_thue,
     no_wrap="a newline ends a rule, and the state's own newlines are part of it",
+    empty_program=(
+        "a Thue program needs a '::=' line with nothing but whitespace on "
+        "either side, to separate its rules from its starting state"
+    ),
 )

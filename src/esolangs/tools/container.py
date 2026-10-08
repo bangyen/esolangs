@@ -547,4 +547,6 @@ LANGUAGE = Language(
     ),
     balance=balance_container,
     no_wrap="each line declares a container or one of its rules",
+    # Wiki: the empty container sets IN "with EOF returning 0".
+    eof="an exhausted read sets IN to the spec's 0",
 )

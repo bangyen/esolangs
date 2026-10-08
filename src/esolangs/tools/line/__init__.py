@@ -163,4 +163,5 @@ LANGUAGE = Language(
     boolean=line,
     balance=balance,
     no_wrap="tree geometry fixes the width; balance chooses orientation",
+    empty_program="image contains no ink",
 )

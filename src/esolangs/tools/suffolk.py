@@ -120,4 +120,8 @@ LANGUAGE = Language(
         input_shape="char_stream",
     ),
     wrap=wrap_chars,
+    # Reads until the input runs out and treats that as its stop, which is
+    # how its generated programs terminate at all.
+    eof="reads to exhaustion, so EOF is the halt",
+    empty_program="Suffolk program cannot be empty",
 )

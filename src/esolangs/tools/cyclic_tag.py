@@ -31,4 +31,5 @@ LANGUAGE = Language(
         parameterized=True,
     ),
     wrap=wrap_chars,
+    empty_program="Cyclic tag requires productions,queue using bits and semicolons",
 )

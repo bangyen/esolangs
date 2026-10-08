@@ -180,4 +180,5 @@ LANGUAGE = Language(
     # ``'x`` and ``.x``/``?x`` take the character after them.
     wrap=_false,
     balance=_balance,
+    eof="an exhausted '^' is the spec's -1",
 )
