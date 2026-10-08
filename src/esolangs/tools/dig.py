@@ -17,15 +17,6 @@ from esolangs.tools.helpers import (
 _DIG_BRANCH = "$3~;#"  # arm three, read a bit, store it, then turn on it
 
 
-_DIG_ENTER = ">"  # the root's turn out of the column the mole starts down
-
-
-_DIG_CONTINUE = ">"  # a child of a branch: keep facing right into its block
-
-
-_DIG_RETURN = "<"  # the same, for a child the mole reaches facing west
-
-
 _DIG_PRINT = "{}:@"  # set the mole to the result and print it
 
 
@@ -45,6 +36,10 @@ _DIG_STRIDE = len(_DIG_BRANCH)
 _DIG_BAND = _DIG_STRIDE + 1
 
 
+# Offset of a block's ``#``, the cell its children attach under.
+_DIG_LAST = _DIG_STRIDE - 1
+
+
 # Cells a mole walking over them does not obey.  Everything else is
 # scenery while the underground counter is at zero -- digits included,
 # which is what lets a corridor cross a block's middle.
@@ -57,6 +52,26 @@ _DIG_OPAQUE = "^>'<#$@"
 _DIG_DIGITS = "0123456789;"
 
 
+def _render(cells: dict[tuple[int, int], str], *, dense: bool) -> str:
+    """Paint ``cells`` into rows of text; ``dense`` keeps empty rows.
+
+    Rows are painted into a rectangle of blanks, but the mole never walks
+    past the last command on a row, so the trailing filler is inert and is
+    trimmed rather than committed.
+    """
+    span = max(col for _, col in cells) + 1
+    rows = (
+        range(max(row for row, _ in cells) + 1)
+        if dense
+        else sorted({row for row, _ in cells})
+    )
+    index = {row: i for i, row in enumerate(rows)}
+    grid = [[" "] * span for _ in rows]
+    for (row, col), char in cells.items():
+        grid[index[row]][col] = char
+    return "\n".join("".join(row).rstrip() for row in grid)
+
+
 def _dig_leaf(reads: int, value: int, *, aligned: bool) -> str:
     """Build a leaf that consumes ``reads`` inputs, then prints ``value``.
 
@@ -67,6 +82,8 @@ def _dig_leaf(reads: int, value: int, *, aligned: bool) -> str:
     """
     out = ""
     if not aligned:
+        # Three cells of the last window are not reads: its count digit and
+        # the two of ``_DIG_PRINT`` that precede the value.
         while reads > _DIG_SPAN - 3:
             take = min(_DIG_SPAN - 1, reads - (_DIG_SPAN - 3))
             out += f"${take + 1}" + "~" * take
@@ -117,7 +134,7 @@ def _dig_grid(truth_table: str, n: int, split: int | None) -> str:
             return east + _DIG_STRIDE * level
         if level < split:
             return east + _DIG_BAND * level
-        return west + 4 - _DIG_BAND * (level - split)
+        return west + _DIG_LAST - _DIG_BAND * (level - split)
 
     def place(row: int, col: int, text: str) -> None:
         """Write ``text`` along ``row`` from ``col``, refusing an occupied cell.
@@ -157,7 +174,7 @@ def _dig_grid(truth_table: str, n: int, split: int | None) -> str:
             return
         block(row, level, _DIG_BRANCH)
         col = dollar(level)
-        hop = col - 4 if leftward(level) else col + 4
+        hop = col - _DIG_LAST if leftward(level) else col + _DIG_LAST
         step = 2 ** (n - level - 1)
         half = (hi - lo) // 2
         # ``#`` rotates one way on a 0 and the other on a 1, so which child
@@ -173,29 +190,20 @@ def _dig_grid(truth_table: str, n: int, split: int | None) -> str:
             # the mole arrives here vertically from the parent's "#", which
             # is the cell right before the child's own block -- so the turn
             # goes in that column, pointing the way the child is entered
-            place(child, hop, _DIG_RETURN if leftward(level + 1) else _DIG_CONTINUE)
+            place(child, hop, "<" if leftward(level + 1) else ">")
             corridors.append((hop, row, child))
             walk(child, level + 1, *bounds)
 
     # The mole starts at (0, 0) facing right, so the ``'`` below turns it
     # down column 0 and this is the cell that turns it back out of it.
-    place(total // 2, east - 1, _DIG_ENTER)
+    place(total // 2, east - 1, ">")
     walk(total // 2, 0, 0, 2**n)
     _dig_clear(cells, corridors)
 
     if (0, 0) in cells:
         raise AssertionError("the start marker's cell is taken")
     cells[0, 0] = "'"
-    span = max(col for _, col in cells) + 1
-    rows = sorted({row for row, _ in cells})
-    grid = [[" "] * span for _ in rows]
-    row_index = {row: i for i, row in enumerate(rows)}
-    for (row, col), char in cells.items():
-        grid[row_index[row]][col] = char
-    # Rows are painted into a rectangle of blanks, but the mole never walks
-    # past the last command on a row, so the trailing filler is inert and is
-    # trimmed rather than committed.
-    return "\n".join("".join(row).rstrip() for row in grid)
+    return _render(cells, dense=False)
 
 
 def _dig_clear(
@@ -239,7 +247,7 @@ _DIG_ALT_BRANCH = "$~;#"
 # Two work commands is what a branch block arms: read and store.  The
 # command after them runs with the counter back at zero, which is what
 # ``#`` needs.
-_DIG_COUNT = "2"
+_DIG_COUNT = 2
 
 
 # The block's last cell, the one children attach to.
@@ -527,8 +535,7 @@ def _dig_alternating(truth_table: str, n: int) -> str:
 
     The last six inputs are not branched on at all: a leaf holds their whole
     table as one rectangle of digits and indexes it with two counts (see
-    :func:`_dig_flat_leaf`), so the tree above it is a sixty-fourth the size
-    the per-entry tree was.  Children enter on the local y-axis, placed just
+    :func:`_dig_flat_leaf`).  Children enter on the local y-axis, placed just
     beyond the parent's most-backward cell; width and height swap and one
     doubles per level, so the rectangle stays O(2**n).  An ignored input
     above the leaf is no level: its read rides the next block, ``$~~;#``.
@@ -620,7 +627,7 @@ def _dig_alternating(truth_table: str, n: int) -> str:
         side = min((heading + 1) % 4, (heading - 1) % 4)
         count = step(point, side)
         skip = skips[level]
-        place(count, str(int(_DIG_COUNT) + skip))
+        place(count, str(_DIG_COUNT + skip))
         reads.append((point, count, frozenset()))
         text(point, heading, _DIG_ALT_BRANCH[0] + "~" * skip + _DIG_ALT_BRANCH[1:])
         end = step(point, heading, _DIG_END + skip)
@@ -657,12 +664,7 @@ def _dig_alternating(truth_table: str, n: int) -> str:
     cells[(0, 0)] = "'"
     cells[(root_row, 0)] = ">"
 
-    height = max(row for row, _ in cells) + 1
-    width = max(col for _, col in cells) + 1
-    grid = [[" "] * width for _ in range(height)]
-    for (row, col), char in cells.items():
-        grid[row][col] = char
-    return "\n".join("".join(row).rstrip() for row in grid)
+    return _render(cells, dense=True)
 
 
 def _dig_quarter_turn(program: str) -> str:
@@ -722,16 +724,10 @@ def dig(truth_table: str, width: int | None = None) -> str:
     ``truth_table`` is a binary string of length ``2**n``, MSB first.  Past
     four inputs the default stops branching six inputs short and gives each
     leaf their whole table as one rectangle of digits, indexed by two ``$``
-    counts (:func:`_dig_flat_leaf`); the tree above it alternates the branch
-    axis, so the area stays O(T) at 7.2 characters an entry rather than the
-    29.5 a per-entry tree cost.  ``width`` keeps the one- or two-band
-    layouts, the narrower returned when under the floor.  The mole starts
-    top-left facing down; each branch block reads a bit (``~``), stores it
-    (``;``) and ``#`` turns on it, and in the band layouts a constant
-    subtree becomes a leaf whose rows are never written.  A level of those
-    costs five columns, and under ``5 * n + 6`` the tree turns round once
-    (:func:`_dig_columns`). Two-input XOR below width eight uses a four-column
-    polynomial stencil instead.
+    counts (:func:`_dig_flat_leaf`), keeping the area O(T).  ``width`` keeps
+    the one- or two-band layouts (:func:`_dig_columns`), the narrower
+    returned when under the floor; two-input XOR below width eight uses a
+    four-column polynomial stencil.
     """
     n = _validate_truth_table(truth_table)
     built = _dig_build(truth_table, n, width)

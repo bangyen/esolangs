@@ -6,7 +6,7 @@ import pytest
 
 import esolangs
 from esolangs import tools as boolean
-from esolangs.tools.dig import _DIG_BRANCH, _DIG_RETURN, _DIG_STRIDE
+from esolangs.tools.dig import _DIG_BRANCH, _DIG_STRIDE
 from tests.tools.boolean_runners import (
     run_dig,
 )
@@ -155,10 +155,10 @@ class TestDig:
         """Past the turn a block is written backwards, so its ``$`` comes first."""
         narrow = boolean.dig("0110100110010110", 1)
         assert _DIG_BRANCH[::-1] in narrow, "no mirrored block: the tree never turned"
-        assert _DIG_RETURN in narrow, "nothing points the mole west"
+        assert "<" in narrow, "nothing points the mole west"
         flat = boolean.dig("0110100110010110", 10_000)
         assert _DIG_BRANCH[::-1] not in flat
-        assert _DIG_RETURN not in flat
+        assert "<" not in flat
 
     def test_the_layout_check_refuses_a_stride_that_collides(
         self, monkeypatch: pytest.MonkeyPatch
