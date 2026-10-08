@@ -7,9 +7,10 @@ coefficients from the Möbius transform (:func:`anf_coefficients`).
 The emitter factors each variable as ``p = p0 ^ (x & p1)``, so every
 coefficient appears at most once; identity order emits O(T) characters.
 The emitter picks each node's arm locally (:func:`_arm_expression`).
-Through five inputs, character-cost splits and an indexed selector also
-compete. The transform and arm rule pack Theta(log T) coefficients per word,
-giving O(T) word-RAM build work.
+Rotated orders (0.25% at n=8) and character-cost splits with indexed
+selectors (7.61% at n=5) fall under the 10% bar and are not built. The
+transform and arm rule pack Theta(log T) coefficients per word, giving O(T)
+word-RAM build work.
 
 The program is ``% 0 <expression>`` then ``$``, writing exactly ``0`` or
 ``1``; a constant table emits the literal.  The harness feeds one line
@@ -17,18 +18,15 @@ holding ``int(bits, 2)``, so input ``i`` (most-significant-first) is bit
 ``n - 1 - i`` of that number -- the only place the mapping appears.  The
 interpreter reads that line before execution, so every program consumes
 exactly one input line.  With no reads there is no read order: factoring
-order only renames the ``@`` literals, and :func:`fargo` compares named orders.
+order only renames the ``@`` literals, and :func:`fargo` uses the identity.
 """
 
 from collections.abc import Callable
-from functools import cache
-from itertools import chain
 from string import ascii_lowercase
 
 from esolangs.tools.helpers import (
     _validate_truth_table,
     anf_coefficients,
-    permute_truth_table,
     short_name,
 )
 
@@ -79,28 +77,6 @@ def _factored(coeffs: list[int], n: int) -> str:
     return "\n".join([*lines, f"% 0 {result}", "$", ""])
 
 
-class _SourceLimitError(Exception):
-    """A candidate cannot beat the already-emitted source."""
-
-
-class _Emission:
-    """Append-only source with a character budget for reordered candidates."""
-
-    def __init__(self, limit: int | None) -> None:
-        self.limit = limit
-        self.size = 0
-        self.pieces: list[str] = []
-
-    def append(self, text: str) -> None:
-        self.size += len(text)
-        if self.limit is not None and self.size >= self.limit:
-            raise _SourceLimitError
-        self.pieces.append(text)
-
-    def render(self) -> str:
-        return "".join(self.pieces)
-
-
 def _arm_choice(
     w0: int,
     wd: int,
@@ -129,8 +105,6 @@ def _arm_expression(
     coeffs: list[int],
     n: int,
     at: tuple[int, ...],
-    *,
-    limit: int | None = None,
 ) -> str:
     """Return the same local arm rule using packed coefficients and scalar leaves.
 
@@ -147,7 +121,7 @@ def _arm_expression(
     def count(value: int) -> int:
         return counts[value & countmask] + counts[value >> halfword]
 
-    pieces = _Emission(limit)
+    pieces: list[str] = []
 
     def scalar_leaf(table: int, anf: int, bit: int) -> None:
         if anf == 1:
@@ -257,104 +231,13 @@ def _arm_expression(
     if not any(anf):
         return "0"
     leaf(values, anf, n - 1)
-    return pieces.render()
+    return "".join(pieces)
 
 
-def _orders(n: int, *, compact: bool = False) -> list[tuple[int, ...]]:
-    """Return two compact orders, or all four for width requests."""
-    identity = tuple(range(n))
-    if compact:
-        return list(dict.fromkeys([identity, (*identity[1:], 0)]))
-    orders = [identity, identity[::-1], (*identity[1:], 0), (n - 1, *identity[:-1])]
-    return list(dict.fromkeys(orders))
-
-
-def _expression(
-    truth_table: str, n: int, order: tuple[int, ...], *, limit: int | None = None
-) -> str | None:
-    """Return the arm expression, or None if it cannot beat ``limit``."""
-    table = permute_truth_table(truth_table, order)
-    coeffs = anf_coefficients(table)
-    at = tuple(n - 1 - order[n - 1 - bit] for bit in range(n))
-    try:
-        return _arm_expression(table, coeffs, n, at, limit=limit)
-    except _SourceLimitError:
-        return None
-
-
-_SELECTOR_BODY = "^ y & @ x ^ y z"
-_SELECTOR = f"M x y z {_SELECTOR_BODY}\n"
-# Each selector call evaluates its body and finishes one extra frame.
-_SELECTOR_FRAME = len(_SELECTOR_BODY.split()) + 1
-_NOT = "^ 1 "
-
-
-def _cost_key(source: str) -> tuple[int, int]:
-    """Return characters and strict-evaluation token/frame cost."""
-    tokens = source.removeprefix(_SELECTOR).split()
-    return len(source), len(tokens) + tokens.count("M") * _SELECTOR_FRAME
-
-
-def _cost_expression(truth_table: str, at: tuple[int, ...], *, selectors: bool) -> str:
-    """Return a local character-cost split; callers cap the table at 32 rows."""
-
-    # Distinct arms make product operands nonzero; input literals are nonconstant.
-    def product(a: str, b: str) -> str:
-        return a if b == "1" else f"& {a} {b}"
-
-    def join_terms(a: str, b: str, op: str) -> str:
-        if a == "0":
-            return b
-        if op == "^":
-            if a == "1" and b.startswith(_NOT):
-                return b[len(_NOT) :]
-            if a.startswith(_NOT) and b.startswith(_NOT):
-                return join_terms(a[len(_NOT) :], b[len(_NOT) :], "^")
-        return f"{op} {a} {b}"
-
-    @cache
-    def build(values: str) -> str:
-        n = len(values).bit_length() - 1
-        if len(set(values)) == 1:
-            return values[0]
-        if n == 1:
-            x = f"@ {at[0]:b}"
-            return x if values == "01" else f"^ 1 {x}"
-        half = len(values) // 2
-        zero, one = values[:half], values[half:]
-        if zero == one:
-            return build(zero)
-        difference = "".join(
-            "0" if a == b else "1" for a, b in zip(zero, one, strict=True)
-        )
-        low, high, delta = build(zero), build(one), build(difference)
-        x = f"@ {at[n - 1]:b}"
-        notx = f"^ 1 {x}"
-        candidates = [
-            join_terms(low, product(x, delta), "^"),
-            join_terms(high, product(notx, delta), "^"),
-        ]
-        if all(a <= b for a, b in zip(zero, one, strict=True)):
-            candidates.append(join_terms(low, product(x, high), "|"))
-        if all(b <= a for a, b in zip(zero, one, strict=True)):
-            candidates.append(join_terms(high, product(notx, low), "|"))
-        if selectors:
-            candidates.append(f"M {at[n - 1]:b} {low} {high}")
-        return min(candidates, key=_cost_key)
-
-    return build(truth_table)
-
-
-def _cost_programs(truth_table: str, n: int, order: tuple[int, ...]) -> list[str]:
-    """Return plain and indexed-selector programs in the given input order."""
-    table = permute_truth_table(truth_table, order)
-    at = tuple(n - 1 - order[n - 1 - bit] for bit in range(n))
-    programs = []
-    for selectors in (False, True):
-        expression = _cost_expression(table, at, selectors=selectors)
-        header = _SELECTOR if "M" in expression.split() else ""
-        programs.append(f"{header}% 0 {expression}\n$\n")
-    return programs
+def _expression(truth_table: str, n: int) -> str:
+    """Return the arm expression in identity input order."""
+    coeffs = anf_coefficients(truth_table)
+    return _arm_expression(truth_table, coeffs, n, tuple(range(n)))
 
 
 def _definition_program(expression: str, n: int) -> str:
@@ -440,31 +323,8 @@ def fargo(truth_table: str, width: int | None = None) -> str:
     the interpreter consumes the input line either way.
     """
     n = _validate_truth_table(truth_table)
-    orders = _orders(n, compact=width is None)
-    # Identity has linear text. Stop other orders at that budget: repeating
-    # a high bit index at the leaves would otherwise cost Theta(T log n).
-    expression = ""
-    for order in orders:
-        candidate = _expression(
-            truth_table, n, order, limit=len(expression) if expression else None
-        )
-        if candidate is not None and (
-            not expression or len(candidate) < len(expression)
-        ):
-            expression = candidate
+    expression = _expression(truth_table, n)
     compact = f"% 0 {expression}\n$\n"
-    if n <= 5:
-        # Index selectors save 7.79% on 200 seeded five-input tables. Difference
-        # recursion stays capped, contributing only constant-size build work.
-        compact = min(
-            [
-                compact,
-                *chain.from_iterable(
-                    _cost_programs(truth_table, n, order) for order in orders
-                ),
-            ],
-            key=_cost_key,
-        )
     if width is None or max(map(len, compact.splitlines())) <= width:
         return compact
     if n > 5:

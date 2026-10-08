@@ -415,7 +415,7 @@
         "tree"
       ],
       "qualification": "finite folded layout",
-      "scaling": "linear: word-packed transform and budgeted emission",
+      "scaling": "linear: word-packed transform and emission",
       "execution": "linear: at most 5T + 1 commands past n = 5, else 15T/2 - 4: each token runs once",
       "workspace": "linear: at most 16(L - 3) + bl(L) + 11 bits past n = 5: one frame's tokens, pending calls",
       "evidence": "docs/proofs/index.md#generator-ledger"
