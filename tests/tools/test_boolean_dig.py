@@ -173,3 +173,20 @@ class TestDig:
         monkeypatch.undo()
         # and the stride the rule names still builds
         assert boolean.dig("0110100110010110", 1)
+
+    def test_ignored_leading_inputs_are_read_down_one_column(self) -> None:
+        """Leading ignored inputs and constants cost a column, not a wider tree."""
+        inner = "0110"
+        for count in (1, 7, 8, 9):
+            table = inner * (1 << count)
+            n = count + 2
+            program = boolean.dig(table)
+            assert program.endswith("\n" + boolean.dig(inner))
+            for row in (0, 1, 2, 3, (1 << n) - 1, (1 << n) - 2):
+                bits = [str(row >> (n - 1 - i) & 1) for i in range(n)]
+                assert run_dig(program, bits) == table[row], (count, row)
+        for n in (6, 7, 8):
+            for value in "01":
+                program = boolean.dig(value * (1 << n))
+                assert len(program) < 4 * n + 8
+                assert run_dig(program, ["1"] * n) == value
