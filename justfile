@@ -95,9 +95,17 @@ benchmark language table *args:
 sizes *args:
     {{PYTHON}} scripts/check_generator_sizes.py {{args}}
 
-# create interpreter and test stubs; pass e.g. --category tape_based
+# create interpreter, generator and test stubs; pass e.g. --category tape_based
 new-language name *args:
-    {{PYTHON}} scripts/new_language.py "{{name}}" {{args}}
+    {{PYTHON}} scripts/new_language.py start "{{name}}" {{args}}
+
+# list every integration step a language still lacks
+check-language name:
+    {{PYTHON}} scripts/new_language.py check "{{name}}"
+
+# regenerate examples, docs and size baselines, then run the full gate
+finish-language name:
+    {{PYTHON}} scripts/new_language.py finish "{{name}}"
 
 # Not part of `just test`: a few minutes per language.
 # `language` is quoted: display names like "A Painter Ant" contain spaces,

@@ -160,11 +160,25 @@ Use `scripts/screens/` to bound the upside first.
 
 ## Checklist
 
-1. Run `just new-language "Name" --category tape_based` (using the matching
-   category), then replace the placeholder semantics and test.
-2. Register the language and any generator in `registry/_table.py`.
-3. Add end-to-end tests, and execute the generated programs.
-4. Record generator evidence with `just benchmark "Name" TABLE`; compare
+1. `just new-language "Name" --category tape_based` (the matching category;
+   `--interpreter-only` for a fame admission) writes the interpreter,
+   generator and test stubs. Replace the placeholder semantics and tests.
+2. `just check-language "Name"` lists every integration step still missing,
+   each with the file and entry to add: registry, exports, contract,
+   example, width policy, samples, curation, proof ledger and its formula
+   tables. Repeat until it reports none; a test runs it over the registry,
+   so the list matches what the suite enforces.
+3. Record generator evidence with `just benchmark "Name" TABLE`; compare
    `source_units` and `commands`, not wall-clock time.
-5. Regenerate docs, then run `just test`; `just test-full` for release-scale
-   changes.
+4. `just finish-language "Name"` regenerates examples, docs and the size
+   baseline, then runs the full `verify.py`. That is the gate: `just
+   test-quick` skips the slower contract sweeps every generator must pass.
+
+### The Boolean I/O contract
+
+A generated program reads the inputs and prints the answer the way its
+`BooleanContract` (`registry/_contracts.py`) says; with no entry the
+default is one `0`/`1` line per input and a printed `0`/`1`. Every program
+reads all n inputs, in order, even when the table is constant or ignores an
+input. `input_shape="char_stream"` reads the bits as bare characters;
+`answer_mode` covers state-dump and termination answers.
