@@ -31,6 +31,7 @@ address (:mod:`esolangs.tools.malbolge.digits`); ``n > 16`` is refused.
 from __future__ import annotations
 
 from collections import Counter
+from collections.abc import Callable
 from functools import cache
 from itertools import product
 
@@ -40,12 +41,25 @@ from esolangs.interpreters.source_hints import with_hint
 from esolangs.tools.helpers import _validate_truth_table
 
 from .core import (
+    _ACTIVE,
+    _ALL1,
+    _ALL2,
+    _ANSWER,
     _C_INITS,
     _C_POST,
     _C_SCHEDULE,
     _CASCADE_N,
+    _CONSTS,
     _ENTRY,
+    _K_CELL,
     _NEXT,
+    _OPS,
+    _T_FLOOR,
+    _T_HELPERS,
+    _T_HUB_CELLS,
+    _T_LABELS,
+    _T_LOW,
+    _T_SEEDS,
     _W_OFFSETS,
     _W_OPS,
     _W_READOUT,
@@ -56,14 +70,32 @@ from .core import (
     _apply,
     _build_constants,
     _cascade_program,
+    _chain,
     _char_for,
+    _decoder_entry,
+    _emit_chain,
+    _fold,
     _g,
+    _main_planner,
+    _merge_code,
+    _n_hub_pass,
+    _one_options,
+    _ops,
+    _Planner,
+    _pointers,
+    _prime,
+    _program,
+    _render,
     _rot,
     _skeleton,
+    _t_hubs,
+    _t_jump,
     _table_char,
+    _valid_chars,
     _wide,
     _wide_program,
 )
+from .digits import _DIGITS_N, _digits_program
 
 # ---------------------------------------------------------------------------
 # Thirteen inputs: the twelve-input core, with input thirteen read by the stub.
@@ -87,108 +119,8 @@ from .core import (
 # holds a source character rotated until it names a free stub; the N hubs hold
 # all-1 twice and reach the decoder at 29525 as before.
 _THIRTEEN_N = 13
-#: Label of the pointer cell ``T + 1`` for ``T`` in ``33..126`` (``n`` is
-#: ``not x``, ``-`` a mixer cell or unused).  Every ``h mod 94`` admits a
-#: character of each label; found by CP-SAT with the mixer cells blocked.
-_T_LABELS = (
-    "nxnnnnNx01N1n--0101xNx0101nxx0x01xN-Nn01NxnNnNnNxNnnNxN11N1NNx0101nNx0101"
-    "xNx0-01NxN-010NnNn0nx"
-)
-#: Per label, in chain order: the seed's walked value and its rotations.
-_T_SEEDS = {"0": (53, 3), "1": (103, 5), "x": (70, 5), "N": (48, 4), "n": (59, 4)}
-#: ``'0'`` prints the preloaded ``A``; ``x`` reads the last input and prints
-#: it; ``'1'`` runs ``p`` over the two characters after the hub (a pair with
-#: ``crazy(crazy(48, a), b) & 0xFF == ord("1")``); ``not x`` runs ``p`` over two
-#: characters and then, through a third that names a pointer cell, over that
-#: cell's chain value, which swaps ``'0'`` and ``'1'`` (a flip needs a large
-#: operand: over small ones the last input's trit leaves ``A`` odd).
-_T_STUBS = {"0": "<v", "x": "/<v", "1": "pp<v", "n": "/ppjp<v"}
-#: Hub cells each label reads, from ``V + 1``, including the ``j`` target the
-#: builder escapes through after writing the hub.
-_T_HUB_CELLS: dict[str, int | tuple[int, ...]] = {
-    "0": 2,
-    "x": 2,
-    "1": 3,
-    "N": 3,
-    "n": 5,
-}
-#: Fresh all-1 and all-2 cells just past the pointer region, for the paths.
-_T_LOW = (128, 129)
-_T_HELPERS = {"z1": 40, "z0": 37, "w": 80, "v": 78, "a1": 69}
 
-
-def _valid_chars(address: int) -> list[int]:
-    return [_char_for(op, address) for op in "ji*p</vo"]
-
-
-class _Planner:
-    """Code emitter that navigates by shortest path over ``o`` and ``j``.
-
-    ``mem`` maps walked addresses to their known values (``None`` once
-    written); ``data`` maps store addresses above the code to source
-    characters, which a ``j`` from there reads to come back below 128.
-    """
-
-    def __init__(
-        self, start: int, d: int, mem: dict[int, int | None], data: dict[int, int]
-    ) -> None:
-        self.code: dict[int, str] = {}
-        self.c = start
-        self.d = d
-        self.mem = mem
-        self.data = data
-
-    def raw(self, op: str) -> None:
-        self.code[self.c] = op
-        self.c += 1
-        self.d += 1
-
-    def goto(self, target: int) -> None:
-        if self.d >= _ENTRY:
-            char = self.data.setdefault(self.d, min(_valid_chars(self.d)))
-            self.raw("j")
-            self.d = char + 1
-        previous: dict[int, tuple[int, str] | None] = {self.d: None}
-        frontier = [self.d]
-        while target not in previous:
-            following = []
-            for d in frontier:
-                moves = [(d + 1, "o")]
-                value = self.mem.get(d)
-                if value is not None:
-                    moves.append((value + 1, "j"))
-                for step, op in moves:
-                    if step < _ENTRY and step not in previous:
-                        previous[step] = (d, op)
-                        following.append(step)
-            if not following:  # pragma: no cover - the walked cells cover all
-                raise AssertionError(f"cannot reach {target}")
-            frontier = following
-        path = []
-        node = target
-        while (link := previous[node]) is not None:
-            node, op = link
-            path.append(op)
-        for op in reversed(path):
-            self.code[self.c] = op
-            self.c += 1
-        self.d = target
-
-    def op(self, op: str, target: int) -> None:
-        self.goto(target)
-        self.raw(op)
-        self.mem[target] = None
-
-    def hub(self, pointer: int, value: int, offset: int = 1) -> None:
-        """``j`` through ``pointer`` (holding ``value``) to ``value + offset``."""
-        self.goto(pointer)
-        self.raw("j")
-        self.d = value + 1
-        while self.d < value + offset:
-            self.raw("o")
-
-
-_Thirteen = tuple[
+_Layout = tuple[
     dict[int, str],
     dict[int, int],
     tuple[tuple[int, ...], ...],
@@ -197,94 +129,38 @@ _Thirteen = tuple[
 ]
 
 
-def _t_hubs(
+def _t_place(
     values: dict[int, int],
     label: dict[int, str],
     avoid: set[int],
     hub_cells: dict[str, int | tuple[int, ...]] = _T_HUB_CELLS,
 ) -> tuple[dict[int, int], dict[int, str], dict[int, int]]:
-    """Return hub and data characters, stub code and rotations per hub.
+    """Place the hubs of thirteen and fourteen inputs (see :func:`_t_hubs`)."""
 
-    ``hub_cells`` gives, per label, how many cells past a hub are reserved
-    or exactly which offsets are.
-    """
-    hubs = {values[p]: label[p] for p in sorted(values)}
-    reserved: set[int] = set()
-    for v, lab in sorted(hubs.items()):
-        span = hub_cells[lab]
-        cells = (
-            set(range(v + 1, v + 1 + span))
-            if isinstance(span, int)
-            else {v + o for o in span}
-        )
-        if cells & (avoid | reserved):
-            raise AssertionError(f"hub {v} collides")
-        reserved |= cells
-    data: dict[int, int] = {}
-    stubs: dict[int, str] = {}
-    turns: dict[int, int] = {}
-    for v, lab in sorted(hubs.items()):
-        if lab == "N":
-            continue
-        options: list[dict[int, int]] = [{}]
+    def options_of(v: int, lab: str) -> list[dict[int, int]]:
         if lab == "1":
-            options = [
-                {v + 2: a, v + 3: b}
-                for a in _valid_chars(v + 2)
-                for b in _valid_chars(v + 3)
-                if _crazy(_crazy(48, a), b) & 0xFF == ord("1")
-            ]
-        elif lab == "n":
-            options = [
-                {v + 3: a, v + 4: b, v + 5: q}
-                for a in _valid_chars(v + 3)
-                for b in _valid_chars(v + 4)
-                for q in _valid_chars(v + 5)
-                if q + 1 in values
-                and all(
-                    _crazy(_crazy(_crazy(48 + x, a), b), values[q + 1]) & 0xFF == 49 - x
-                    for x in (0, 1)
-                )
-            ]
-        placed = next(
-            (
-                (option, char, k, s)
-                for option in options
-                for char in _valid_chars(v + 1)
-                for k, s in _rotations(char)
-                if s >= _T_FLOOR
-                and not set(range(s, s + 1 + len(_T_STUBS[lab])))
-                & (avoid | reserved | set(option))
-            ),
-            None,
-        )
-        if placed is None:
-            raise AssertionError(f"no stub for hub {v}")
-        option, char, k, s = placed
-        data.update(option)
-        data[v + 1] = char
-        turns[v] = k
-        for i, op in enumerate(_T_STUBS[lab]):
-            stubs[s + 1 + i] = op
-        reserved |= set(range(s, s + 1 + len(_T_STUBS[lab])))
-    return data, stubs, turns
+            return _one_options(v)
+        if lab != "n":
+            return [{}]
+        return [
+            {v + 3: a, v + 4: b, v + 5: q}
+            for a in _valid_chars(v + 3)
+            for b in _valid_chars(v + 4)
+            for q in _valid_chars(v + 5)
+            if q + 1 in values
+            and all(
+                _crazy(_crazy(_crazy(48 + x, a), b), values[q + 1]) & 0xFF == 49 - x
+                for x in (0, 1)
+            )
+        ]
 
-
-#: Stubs and hubs stay above the main code.
-_T_FLOOR = 12000
-
-
-def _rotations(char: int) -> list[tuple[int, int]]:
-    out = []
-    value = char
-    for k in range(1, 10):
-        value = _rot(value)
-        out.append((k, value))
-    return out
+    return _t_hubs(
+        values, label, avoid, hub_cells=hub_cells, options_of=options_of, floor=_T_FLOOR
+    )
 
 
 @cache
-def _thirteen() -> _Thirteen:
+def _thirteen() -> _Layout:
     """Return ``(code, data, level, tables, labels)`` for thirteen inputs.
 
     ``level`` and ``tables`` are the twelve-input core's, indexed by the
@@ -315,33 +191,16 @@ def _thirteen() -> _Thirteen:
         next(a for a in range(34, 128) if _g(a) == v and a not in label)
         for v in _C_INITS
     ]
-    values: dict[int, int] = {}
-    for lab, (_, turns) in _T_SEEDS.items():
-        a = _g(seeds[lab])
-        for _ in range(turns):
-            a = _rot(a)
-        for p in sorted(label):
-            if label[p] == lab:
-                a = _crazy(a, 29524)
-                values[p] = a
-    pointer: dict[int, int] = {}
-    for p in sorted(values):
-        pointer.setdefault(values[p], p)
-    data, stubs, hub_turns = _t_hubs(
+    values, pointer = _pointers(label, _seed_values(seeds, _T_SEEDS))
+    data, stubs, hub_turns = _t_place(
         values, label, cells_of_tables | set(range(29520, 29800))
     )
 
     cell = [*mix, helper["z0"], helper["all1"], helper["all2"]]
-    mem: dict[int, int | None] = {a: _g(a) for a in range(_ENTRY)}
-    main = _Planner(_ENTRY + 1, 34 + (7 - _ENTRY) % 94, mem, data)
-    main.code[_ENTRY] = "j"
+    main, mem = _main_planner(data)
     # all-2 is one more ``p`` with ``A = all-2`` (``crazy(all-2, all-1)``).
     _build_constants(main, helper)
-    for p in (helper["all1"], helper["all2"], *sorted(label)):
-        main.op("p", p)
-        main.op("p", p)
-    main.op("*", helper["w"])
-    main.op("p", helper["all2"])
+    _prime(main, helper, (helper["all1"], helper["all2"], *sorted(label)))
     for lab, (_, turns) in _T_SEEDS.items():
         for _ in range(turns):
             main.op("*", seeds[lab])
@@ -351,26 +210,17 @@ def _thirteen() -> _Thirteen:
     main.op("*", helper["z1"])
     for v in sorted(pointer):
         if label[pointer[v]] == "N":
-            main.hub(pointer[v], v)
-            main.raw("p")
-            main.hub(pointer[v], v)
-            main.raw("p")
-            main.raw("p")
-            main.hub(pointer[v], v, 2)
-            main.raw("p")
+            _n_hub_pass(main, pointer[v], v)
     for v, turns in sorted(hub_turns.items()):
         for _ in range(turns):
             main.hub(pointer[v], v)
             main.raw("*")
     for _ in range(_CASCADE_N):
         main.raw("/")
-        for kind, index in _C_SCHEDULE:
-            main.op("p" if kind == 0 else "*", cell[index])
-    for kind, index in _C_POST[0]:
-        main.op("p" if kind == 0 else "*", cell[index])
+        _ops(main, cell, _C_SCHEDULE)
+    _ops(main, cell, _C_POST[0])
     main.raw("/")
-    for kind, index in _W_SELECT_OPS:
-        main.op("p" if kind == 0 else "*", select[index])
+    _ops(main, select, _W_SELECT_OPS)
     main.goto(select[0])
     main.raw("i")
     code_end = main.c
@@ -383,21 +233,19 @@ def _thirteen() -> _Thirteen:
     parts = [main.code]
     for x in (0, 1):
         path = _Planner(targets[x][0] + 1, select[0] + 1, mem, data)
-        _t_ops(path, cell, _W_OPS[0][x])
+        _ops(path, cell, _W_OPS[0][x])
         path.op("*", helper["all2"])
         path.op("p", helper["a1"])
         _t_jump(path, cell[_W_READOUT[0][x]], _W_OFFSETS[0][x])
         parts.append(path.code)
     dec = _Planner(_NEXT + 1, 0, mem, data)
-    dec.raw("j")
-    dec.raw("j")
-    dec.d = ord(_XLAT2[_char_for("j", _NEXT + 1) - 33]) + 1
+    _decoder_entry(dec, _NEXT + 1)
     dec.goto(select[1])
     dec.raw("i")
     parts.append(dec.code)
     for x in (0, 1):
         path = _Planner(targets[x][1] + 1, select[1] + 1, mem, data)
-        _t_ops(path, cell, _W_OPS[1][x])
+        _ops(path, cell, _W_OPS[1][x])
         # Level 1 left ``a1`` at 48: two rounds give 69 and then 48 again.
         for _ in range(2):
             path.op("*", helper["all2"])
@@ -405,54 +253,41 @@ def _thirteen() -> _Thirteen:
         _t_jump(path, cell[_W_READOUT[1][x]], _W_OFFSETS[1][x])
         parts.append(path.code)
 
-    code = dict.fromkeys(range(_ENTRY), "o")
-    for part in (*parts, stubs):
-        if set(part) & set(code):
-            raise AssertionError(f"code overlaps at {min(set(part) & set(code))}")
-        code.update(part)
-    if set(data) & set(code):
-        raise AssertionError("a data cell overlaps code")
-    hits = cells_of_tables & (set(code) | set(data))
-    if hits or min(cells_of_tables) <= code_end or code_end >= _T_FLOOR:
-        raise AssertionError("a table cell collides with code")
+    code = _merge_code(
+        (*parts, stubs), data, cells_of_tables, code_end, ceiling=_T_FLOOR
+    )
     labels = {p - 1: lab for p, lab in label.items()}
     return code, data, level, tables, labels
 
 
-_Ops = tuple[tuple[int, int], ...]
-
-
-def _t_ops(path: _Planner, cell: list[int], ops: _Ops) -> None:
-    for kind, index in ops:
-        path.op("p" if kind == 0 else "*", cell[index])
-
-
-def _t_jump(path: _Planner, readout: int, offset: int) -> None:
-    """``j`` to the table cell, ``j`` to its pointer, ``j`` to the hub, ``i``."""
-    path.op("j", readout)
-    for _ in range(offset):
-        path.raw("o")
-    path.raw("j")
-    path.raw("j")
-    path.raw("i")
+def _seed_values(
+    seeds: dict[str, int], rotations: dict[str, tuple[int, int]]
+) -> list[tuple[str, int]]:
+    """Return each label's first pointer value: its seed cell rotated ``k`` times."""
+    out = []
+    for lab, (_, turns) in rotations.items():
+        a = _g(seeds[lab])
+        for _ in range(turns):
+            a = _rot(a)
+        out.append((lab, a))
+    return out
 
 
 def _thirteen_program(truth_table: str) -> str:
     code, data, level, tables, labels = _thirteen()
-    program = {a: _char_for(op, a) for a, op in code.items()}
+    program = _program(code)
     program.update(data)
-    answer = {"00": "0", "11": "1", "01": "x", "10": "n"}
     for x in (0, 1):
         for row, h in enumerate(tables[0][x]):
             i = 4 * row + 2 * x
-            label = answer[truth_table[i : i + 2]]
+            label = _ANSWER[truth_table[i : i + 2]]
             if level[x][row]:
                 program[h] = _table_char(h, "N", labels)
                 h2 = tables[1][x][row]
                 program[h2] = _table_char(h2, label, labels)
             else:
                 program[h] = _table_char(h, label, labels)
-    return "".join(chr(program.get(a, _char_for("o", a))) for a in range(_WORDS))
+    return _render(program)
 
 
 # ---------------------------------------------------------------------------
@@ -488,8 +323,7 @@ def _thirteen_program(truth_table: str) -> str:
 # main code under the level-3 region.
 _FOURTEEN_N = 14
 #: Fifteen and sixteen inputs: :mod:`esolangs.tools.malbolge.digits`.
-MAX_INPUTS = 16
-_DIGITS_N = MAX_INPUTS
+MAX_INPUTS = _DIGITS_N
 #: ``g`` values of the extra state cells 5, 6 and 7.
 _F_EXTRA = (57, 75, 119)
 #: The readout ops, in three segments run after the eleven-bit post-map:
@@ -572,26 +406,6 @@ def _second_pass(op: str, address: int) -> str:
     return decoded if decoded in "ji*p</v" else "o"
 
 
-_CHAIN_A = {"K0": 0, "K1": 29524, "K2": 59048}
-
-
-def _chain(value: int, ops: str) -> int:
-    """Return ``value`` after a chain of constant ``p`` ops and rotations."""
-    for op in ops.split():
-        value = _rot(value) if op == "rot" else _crazy(_CHAIN_A[op], value)
-    return value
-
-
-def _emit_chain(path: _Planner, target: int, ops: str, helper: dict[str, int]) -> None:
-    """Run ``ops`` on ``target``: ``*`` on a constant cell sets ``A``, then ``p``."""
-    for op in ops.split():
-        if op == "rot":
-            path.op("*", target)
-        else:
-            path.op("*", helper[{"K0": "z0", "K1": "all1", "K2": "all2"}[op]])
-            path.op("p", target)
-
-
 def _f_select() -> tuple[tuple[int, ...], ...]:
     """Return each level's four selector values, by copy ``2 * x12 + x13``."""
     g, first, second = _F_SELECT
@@ -626,11 +440,7 @@ def _f_tables() -> tuple[
     prep = [[_chain(*spec) for spec in per_copy] for per_copy in _F_PREP]
     tables = [[[0] * rows for _ in range(4)] for _ in range(3)]
     for row in range(rows):
-        cells = [*_C_INITS, 0, 29524, 59048]
-        a = 0
-        for i in range(_CASCADE_N):
-            bit = (row >> (_CASCADE_N - 1 - i)) & 1
-            a = _apply(cells, 49 if bit else 48, _C_SCHEDULE)
+        cells, a = _fold(row)
         a = _apply(cells, a, _C_POST[0])
         state = [*cells[:5], *_F_EXTRA]
         for lvl, segment in enumerate(_F_SEGMENTS):
@@ -640,7 +450,7 @@ def _f_tables() -> tuple[
                 elif kind == 1:
                     a = state[index] = _rot(state[index])
                 elif kind == 2:
-                    a = (0, 29524, 59048)[index]
+                    a = _CONSTS[index]
                 else:
                     if lvl < 2:
                         a = _crazy(a, prep[index][lvl])
@@ -722,7 +532,7 @@ class _Window:
 
 
 @cache
-def _fourteen() -> _Thirteen:
+def _fourteen() -> _Layout:
     """Return ``(code, data, level, tables, labels)`` for fourteen inputs.
 
     ``level[c][row]`` is the level (0-based) at which copy ``c`` of the
@@ -770,37 +580,24 @@ def _fourteen() -> _Thirteen:
     singles += [a for a in range(*_F_WINDOW) if a not in window.used and _g(a) >= 81]
     readout.update({(c, 2): triples[4 + c] for c in range(4)})
 
-    values: dict[int, int] = {}
-    for lab, (_, turns) in _F_SEEDS.items():
-        a = _g(seeds[lab])
-        for _ in range(turns):
-            a = _rot(a)
-        for p in sorted(label):
-            if label[p] == lab:
-                a = _crazy(a, 29524)
-                values[p] = a
-    pointer: dict[int, int] = {}
-    for p in sorted(values):
-        pointer.setdefault(values[p], p)
+    values, pointer = _pointers(label, _seed_values(seeds, _F_SEEDS))
     decoder = set(range(_F_DECODER - 1, _F_DECODER + _F_DECODER_SPAN))
     avoid = cells_of_tables | decoder
-    data, stubs, hub_turns = _t_hubs(values, label, avoid, _F_HUB_CELLS)
+    data, stubs, hub_turns = _t_place(values, label, avoid, _F_HUB_CELLS)
 
     cell = [*mix, *extras]
     konst = (helper["z0"], helper["all1"], helper["all2"])
-    mem: dict[int, int | None] = {a: _g(a) for a in range(_ENTRY)}
-    main = _Planner(_ENTRY + 1, 34 + (7 - _ENTRY) % 94, mem, data)
-    main.code[_ENTRY] = "j"
+    main, mem = _main_planner(data)
     _build_constants(main, helper)
-    for p in (helper["all1"], helper["all2"], *sorted(label), *triples, *spares):
-        main.op("p", p)
-        main.op("p", p)
-    main.op("*", helper["w"])
-    main.op("p", helper["all2"])
+    _prime(
+        main,
+        helper,
+        (helper["all1"], helper["all2"], *sorted(label), *triples, *spares),
+    )
     for a in singles[:_F_TRAMPOLINES]:
         main.op("*", helper["all2"])
         main.op("p", a)
-        mem[a] = _crazy(59048, _g(a))
+        mem[a] = _crazy(_ALL2, _g(a))
     for lab, (_, turns) in _F_SEEDS.items():
         for _ in range(turns):
             main.op("*", seeds[lab])
@@ -824,13 +621,7 @@ def _fourteen() -> _Thirteen:
     main.op("*", helper["z1"])
     nhubs = [v for v in sorted(pointer) if label[pointer[v]] == "N"]
     for v in nhubs:
-        main.hub(pointer[v], v)
-        main.raw("p")
-        main.hub(pointer[v], v)
-        main.raw("p")
-        main.raw("p")
-        main.hub(pointer[v], v, 2)
-        main.raw("p")
+        _n_hub_pass(main, pointer[v], v)
     # A = 36066, and each p over an all-1 cell swaps it with 13168.
     _emit_chain(main, hub_prep, _F_HUB_A[1][1], helper)
     main.op("*", hub_a)
@@ -853,7 +644,7 @@ def _fourteen() -> _Thirteen:
         handlers.update(code_of)
         for op in chain.split():
             if op != "rot":
-                main.op("*", helper[{"K0": "z0", "K1": "all1", "K2": "all2"}[op]])
+                main.op("*", helper[_K_CELL[op]])
             main.hub(pointer[v], v, 11)
             main.raw("*" if op == "rot" else "p")
     for v, turns in sorted(hub_turns.items()):
@@ -862,14 +653,12 @@ def _fourteen() -> _Thirteen:
             main.raw("*")
     for _ in range(_CASCADE_N):
         main.raw("/")
-        for kind, index in _C_SCHEDULE:
-            main.op("p" if kind == 0 else "*", mix[index])
-    for kind, index in _C_POST[0]:
-        main.op("p" if kind == 0 else "*", mix[index])
+        _ops(main, mix, _C_SCHEDULE)
+    _ops(main, mix, _C_POST[0])
     for lvl, segment in enumerate(_F_SEGMENTS):
         for kind, index in segment:
             if kind < 2:
-                main.op("p*"[kind], cell[index])
+                main.op(_OPS[kind], cell[index])
             elif kind == 2:
                 main.op("*", konst[index])
             elif lvl < 2:
@@ -898,9 +687,7 @@ def _fourteen() -> _Thirteen:
             _t_jump(stub, readout[c, lvl], _F_OFFSETS[c][lvl])
             parts.append(stub.code)
     dec = _Planner(_F_DECODER, 0, mem, data)
-    dec.raw("j")
-    dec.raw("j")
-    dec.d = ord(_XLAT2[_char_for("j", _F_DECODER) - 33]) + 1
+    _decoder_entry(dec, _F_DECODER)
     for _ in range(_F_DECODER_NOPS):
         dec.raw("o")
     dec.goto(select[2])
@@ -912,25 +699,15 @@ def _fourteen() -> _Thirteen:
         raise AssertionError("the decoder overran its span")
     parts.append(dec.code)
 
-    code = dict.fromkeys(range(_ENTRY), "o")
-    for part in (*parts, stubs):
-        if set(part) & set(code):
-            raise AssertionError(f"code overlaps at {min(set(part) & set(code))}")
-        code.update(part)
-    if set(data) & set(code):
-        raise AssertionError("a data cell overlaps code")
-    hits = cells_of_tables & (set(code) | set(data))
-    if hits or min(cells_of_tables) <= code_end:
-        raise AssertionError("a table cell collides with code")
+    code = _merge_code((*parts, stubs), data, cells_of_tables, code_end)
     labels = {p - 1: lab for p, lab in label.items()}
     return code, data, level, tables, labels
 
 
 def _fourteen_program(truth_table: str) -> str:
     code, data, level, tables, labels = _fourteen()
-    program = {a: _char_for(op, a) for a, op in code.items()}
+    program = _program(code)
     program.update(data)
-    answer = {"00": "0", "11": "1", "01": "x", "10": "n"}
     for c in range(4):
         for row, k in enumerate(level[c]):
             i = 8 * row + 2 * c
@@ -938,8 +715,8 @@ def _fourteen_program(truth_table: str) -> str:
                 h = tables[lvl][c][row]
                 program[h] = _table_char(h, "N", labels)
             h = tables[k][c][row]
-            program[h] = _table_char(h, answer[truth_table[i : i + 2]], labels)
-    return "".join(chr(program.get(a, _char_for("o", a))) for a in range(_WORDS))
+            program[h] = _table_char(h, _ANSWER[truth_table[i : i + 2]], labels)
+    return _render(program)
 
 
 def malbolge(truth_table: str) -> str:
@@ -967,10 +744,7 @@ def malbolge(truth_table: str) -> str:
             ),
         )
     if n > _FOURTEEN_N:
-        # Deferred: the positional build reads this module.
-        from .digits import _digits_program
-
-        return _digits_program(truth_table)
+        return _digits_program(truth_table, n)
     if n == _FOURTEEN_N:
         return _fourteen_program(truth_table)
     if n == _THIRTEEN_N:
