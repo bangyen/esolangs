@@ -131,3 +131,13 @@ class TestParameterizedMinifuck(_MinifuckCase):
             for row, expected in enumerate(table):
                 bits = [row >> 1, row & 1]
                 assert self.run_minifuck(self.instantiate(template, bits)) == expected
+
+    def test_an_ignored_input_between_two_is_a_pad_step(self) -> None:
+        """Input 1 of four, ignored, costs a pad step, not the full-arity mux."""
+        inner = "01101001"  # inputs 0, 2 and 3
+        table = "".join(inner[(row >> 3 << 2) | (row & 3)] for row in range(16))
+        template = _solve(table)
+        assert len(template) < 0.7 * len(_mux(table, 4))
+        for row, expected in enumerate(table):
+            bits = [(row >> shift) & 1 for shift in (3, 2, 1, 0)]
+            assert self.run_minifuck(self.instantiate(template, bits)) == expected

@@ -6,6 +6,7 @@ are pinned differentially against the interpreter.
 """
 
 from functools import cache
+from itertools import pairwise
 
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
@@ -19,6 +20,7 @@ from esolangs.tools.helpers import (
 from esolangs.tools.minifuck.mux import (
     _MUX_MIN_ARITY,
     _canonical_endgame,
+    _gaps_fit,
     _mux,
     _mux_lookup,
 )
@@ -99,15 +101,21 @@ def _solve(truth_table: str) -> str:
     # A table that ignores inputs is a smaller table wearing extra ones: solve
     # it there, put an inert block in front for each ignored input before the
     # essential ones and a run after the print for each one past them.  An
-    # ignored input between two essential ones has no such place, so the
-    # full-arity mux, which embeds every slot in order, takes that case.
+    # ignored input between two essential ones replaces a lookup pad's last
+    # step where one fits; otherwise the full-arity mux, which embeds every
+    # slot in order, takes the table.
     essential = essential_inputs(truth_table, n)
     if len(essential) < n:
         first = essential[0] if essential else 0
-        if essential and essential[-1] - first + 1 != len(essential):
+        after = n - 1 - essential[-1] if essential else n
+        inner_table = _project(truth_table, essential, n)
+        gaps = tuple(b - a - 1 for a, b in pairwise(essential))
+        if not any(gaps):
+            inner = _solve(inner_table)
+        elif _gaps_fit(gaps, len(essential)):
+            inner = _mux_lookup(inner_table, len(essential), gaps=gaps)
+        else:
             return _mux(truth_table, n)
-        inner = _solve(_project(truth_table, essential, n))
-        after = n - first - len(essential)
         return _INERT * first + inner + _MINIFUCK_INPUT * after
 
     # The strip's crossover: the direct lookup is O(T) for every wider table.
