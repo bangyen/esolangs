@@ -4,7 +4,6 @@ from pathlib import Path
 import pytest
 
 from scripts import proof_status as status
-from scripts._toml import dumps
 
 
 def test_rendering_preserves_committed_tables(
@@ -36,7 +35,7 @@ def test_rendering_preserves_committed_tables(
         "text",
     ],
 )
-def test_invalid_status_cannot_grant_an_exemption(tmp_path: Path, case: str) -> None:
+def test_invalid_status_cannot_grant_an_exemption(case: str) -> None:
     data = tomllib.loads(status.MANIFEST.read_text())
     if case == "verdict":
         data["audit"][0]["output_size"] = "Linera"
@@ -54,10 +53,8 @@ def test_invalid_status_cannot_grant_an_exemption(tmp_path: Path, case: str) -> 
         data["ledger"][0]["labels"] = []
     else:
         data["ledger"][0]["scaling"] = False
-    path = tmp_path / "status.toml"
-    path.write_text(dumps(data))
     with pytest.raises(ValueError, match=r"invalid|unknown|duplicate|missing"):
-        status.load(path)
+        status.validate(data)
 
 
 def test_heading_targets_ignore_code_and_number_duplicates(tmp_path, monkeypatch):
@@ -68,20 +65,16 @@ def test_heading_targets_ignore_code_and_number_duplicates(tmp_path, monkeypatch
     data = tomllib.loads(status.MANIFEST.read_text())
     data["ledger"] = []
     data["audit"] = [data["audit"][0]]
-    manifest = tmp_path / "status.toml"
     for anchor in ("a-proof-bound", "a-proof-bound-1", "false-target"):
         data["audit"][0]["evidence"] = f"proof.md#{anchor}"
-        manifest.write_text(dumps(data))
         if anchor == "false-target":
             with pytest.raises(ValueError, match="missing evidence anchor"):
-                status.load(manifest)
+                status.validate(data)
         else:
-            status.load(manifest)
+            status.validate(data)
 
 
-def test_ledger_evidence_can_name_a_whole_file(tmp_path):
+def test_ledger_evidence_can_name_a_whole_file():
     data = tomllib.loads(status.MANIFEST.read_text())
     data["ledger"][0]["evidence"] = "docs/proofs/index.md"
-    manifest = tmp_path / "status.toml"
-    manifest.write_text(dumps(data))
-    status.load(manifest)
+    status.validate(data)
