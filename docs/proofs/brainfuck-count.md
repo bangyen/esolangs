@@ -15,14 +15,14 @@ The limit remains open. Exact rational certificates narrow the former
 | clipped tape, `,` at EOF is an error, all inputs | 4.24200 (Thm 4) | 7.0347 (Thm 1) |
 | clipped tape, EOF stores a constant, all inputs | 3.79003 (Thm 4) | 7.0347 (Thm 1) |
 | clipped tape, EOF leaves the cell, all inputs | 3.79003 (Thm 4) | 7.3339 (Thm 1) |
-| repo model: bi-infinite tape, EOF error / keep | **4.24200** / 3.79003 | **6.89** / 7.1949 (Thm 1) |
+| repo model: bi-infinite tape, EOF error / keep | **4.24200** / 3.79003 | **6.885** / 7.1949 (Thm 1) |
 | any fixed nonempty finite input set `I`, any EOF, any tape | **3.36614** (Thm 5) | as for all inputs |
 | only the empty input (clipped tape, EOF error) | 3.36614 | 6.3218 (Thm 1) |
 | loop-free programs, EOF error | **4.06124** (Thm 3) | **2 + sqrt 5 = 4.23607** (Thm 3) |
 | loop-free programs, EOF constant / keep | 3.79003 | 4.23607 / 4.72458 |
 
-For the repository model: **`4.2420 <= liminf B(C)^(1/C) <= limsup B(C)^(1/C) <= 6.89`**,
-from `[2.414, 7.388]`.  In bits per character: `[2.085, 2.785]`, from `[1.272, 2.885]`.
+For the repository model: **`4.2420 <= liminf B(C)^(1/C) <= limsup B(C)^(1/C) <= 6.885`**,
+from `[2.414, 7.388]`.  In bits per character: `[2.085, 2.784]`, from `[1.272, 2.885]`.
 The repository tape clipped at cell 0 until 2026-10-06; on that tape the bracket is
 `[4.2420, 7.0347]`.
 The lower bound uses nested loops (section 5c) and exceeds the loop-free upper bound
@@ -63,7 +63,7 @@ behaviours of programs of length exactly `C` is nondecreasing in `C` and lies be
 ## 2. Results
 
 **Theorem 1 (upper bound).**  In clip/err and clip/const, `B(C) <= K * 7.0347^C`.  For
-clip/keep `7.3339`, bi/err (the repo model) `6.89`, bi/keep `7.1949`.  With only the
+clip/keep `7.3339`, bi/err (the repo model) `6.885`, bi/keep `7.1949`.  With only the
 empty input (clip/err), `B_{{eps}}(C) <= K * 6.3218^C`.
 
 **Theorem 2 (the old five adjacencies).**  Words avoiding `+- -+ >< ][ []` grow as `7.38776` (Perron
@@ -153,6 +153,7 @@ set; with transfer matrix `M`, `N_n = e_root^T M^n 1 <= (v_root / min v) * rho^n
 | bi/err, balanced bodies without sole-loop bodies, local factors of length at most six and their mirrors | 1186 | 195 | **6.91** |
 | bi/err, the same local factors and unrestricted print rotation | 1186 | 195 | **6.90** |
 | bi/err, the same factors, rotation and unrestricted read-free nonzero tails | 1186 | 195; 32 atom classes | **6.89** |
+| bi/err, also recursively confined preserving prefixes | 1186 | 195; 236 atom classes | **6.885** |
 | bi/keep, all rules | 12759 | 17946 | 7.1948872 |
 | clip/err, empty input only, + `,c -> ,` for `c != ]` | 3940 | 6273 | 6.3217970 |
 
@@ -360,14 +361,14 @@ with the matching `]` across arbitrary depth. The 11,673-state monitor accepts
 avoidance specification is not a finite right congruence: Moore refinement gives
 15, 39, 86, 173 classes at observation windows 4, 6, 8, 10. The balanced
 certificates above count sole-loop removal and print rotation at every depth.
-The nonzero-tail certificate below counts its forced-divergence bodies at every
-depth; tested-cell-preserving prefixes remain uncounted beyond finite factors.
+The certificates below count nonzero tails and recursively confined preserving
+prefixes at every bracket depth. More general preserving prefixes remain open.
 A larger finite-factor monitor cannot enforce those classes.
 `test_unbounded_body_classes_are_not_regular` pins the accepted families and the
 class counts through window 8.
 
 The unrestricted nonzero-tail rule has an exact typed coefficient constructor
-in `tests/proofs/_brainfuck_divergence.py`. Its atom state records whether any read occurs, the first atom,
+in `scripts/_brainfuck_divergence.py`. Its atom state records whether any read occurs, the first atom,
 the atom count capped at two, and four suffix classes: no eligible loop,
 a loop followed by prints, a print-first loop with no following print,
 or a loop followed by prints, one sign, then prints. A new loop resets the
@@ -417,10 +418,63 @@ An independent word oracle also checks the matrix coefficients through size
 five; `[[--]+]` is accepted by the finite factors and rejected by the typed
 grammar, a positive control for the added rule. No searched table is committed.
 
-    uv run python -m tests.proofs._brainfuck_divergence --export notes/brainfuck-divergence.json
+    uv run python -m scripts._brainfuck_divergence --export notes/brainfuck-divergence.json
     uv run python scripts/divergence_certificate.py notes/brainfuck-divergence.json
 
-The preservation-prefix rule `[P0[]G]` still needs a separate classifier.
+The preserving-prefix extension uses the named recursive languages
+
+    Q = (. | + | - | [Q])*
+    R = (. | + | - | [R] | >Q<)*
+    L = the left/right mirror of R
+    P = (. | >R< | <L>)*.
+
+`Q` stays on one cell. Induction over `R` shows that it never moves left of
+its starting cell, visits at most one cell to its right, and returns to its
+start whenever it returns. A loop `[R]` inherits those properties because
+each returning iteration restores its pointer. Thus every returning `P`
+preserves its starting cell and pointer: its excursions visit only the
+two cells to either side, and its base prints do not change the cell.
+These words contain no read and have unbounded bracket nesting.
+
+For `[P[]G] -> []`, zero entry skips both bodies. At nonzero entry, `P`
+either diverges or returns with that same nonzero cell, so `[]` diverges;
+arbitrary balanced `G`, including reads, is unreachable. No prefix can
+reach EOF, and divergence output is unobserved. This differs from merely
+read-free prefixes: `+[-[]].` halts, and `+>+<[>[<->-]<[]].` halts because
+its excursion changes the tested cell; neither prefix belongs to `P`.
+
+Extend the atom state by two confinement phases (base, adjacent cell,
+broken) for `R` and `L`, plus a preserving-prefix phase (base, offsets
+`+1,+2,-1,-2`, broken, blocked). A loop at a confined base requires a
+body of that confinement type; at the adjacent cell it requires `Q`.
+The overlap of the right and left types is exactly `Q`. For the prefix
+phase, a loop at offset one requires the corresponding confined body,
+and at offset two requires `Q`. At base, an empty loop makes the phase
+blocked; every other loop, read or sign breaks the prefix. Blocked stays
+blocked through every suffix, including reads. Only loop-body formation
+rejects blocked sequences; top-level `P[]G` remains counted.
+
+Reachability reconstructs 236 classes and eleven loop types: one empty
+type and ten nonempty read/first-print/confinement types. The same positive
+forward equations apply, now excluding blocked body classes. Five initial
+DFA rows still suffice. At `x = 200/1377` and scale `10^8`, capped integer
+iteration freezes with 22,344 nonzero entries. The independent checker
+uses pointer-height arithmetic rather than the builder's phase transitions,
+ordinary sparse products, and the same 705-pair factor-language check.
+The initial-row sum proves **`B(C) <= 7.93307057 * 6.885^C`**.
+
+The independent recursive word oracle checks all 299,593 words through
+size six and all eleven body classes. Executions cover bracket depths
+one through eight in both directions, with unreachable reads in `G`
+and zeroing/touching negative controls. The finite-factor DFA and earlier
+nonzero-tail grammar accept `[>[-[->[-]<]]<[],]`; the new grammar rejects it,
+a positive control for the added family. No certificate table is committed.
+
+    uv run python -m scripts._brainfuck_preserving --export notes/brainfuck-preserving.json
+    uv run python scripts/preserving_certificate.py notes/brainfuck-preserving.json
+
+The next extension is preserving prefixes that permit cancelling updates
+to the tested cell; `P` currently permits only prints at that cell.
 
 ## 4. Loop-free programs (Theorem 3)
 
@@ -835,7 +889,7 @@ equivalence is confined to the chosen input set.
 
 * **The limit.**  With a clipped tape and EOF error (the repo model until 2026-10-06), the
   growth constant is bracketed: `4.2420 <= liminf B(C)**(1/C) <= limsup <= 7.0347`; the repo's
-  bi-infinite tape has upper bound `6.89`.  The limit itself, and any clipped sub-7 upper
+  bi-infinite tape has upper bound `6.885`.  The limit itself, and any clipped sub-7 upper
   bound, remain open.  Nested loops raise the
   certified lower bound above the loop-free upper bound `4.236` (section 5c), so loops strictly
   raise the growth rate.  The
@@ -857,8 +911,9 @@ equivalence is confined to the chosen input set.
   depth-`k` left-hand sides for every `k >= 2`, and the balanced avoidance specification
   has unbounded Moore class count. The 11,673-state certificate covers balanced bodies only
   to bracket depth one. The balanced-body, rotation and read-free nonzero-tail
-  certificates give `6.89` on the bi-infinite tape (section 3). Next classify
-  tested-cell-preserving prefixes
+  certificates, extended by recursively confined preserving prefixes, give
+  `6.885` on the bi-infinite tape (section 3). Next permit cancelling updates
+  to the tested cell in the preserving-prefix class
   (`+[-[]].` halts and prints NUL, while `+[].` diverges). A potentially diverging excursion
   cannot commute across a read at EOF; excursions with output cannot commute across prints.
   Two tried and dead: (i) the event encoding of section 4 applied to each bracket-free segment between

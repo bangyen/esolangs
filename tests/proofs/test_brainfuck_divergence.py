@@ -9,12 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from scripts.balanced_certificate import _product, _sum
-from scripts.divergence_certificate import _next, check_certificate
-from scripts.grammar_certificate import check_grammar
-from tests.proofs._brainfuck_balanced import SCALE, Matrix, patterns
-from tests.proofs._brainfuck_count import ALPHABET, accepts, automaton, minimize
-from tests.proofs._brainfuck_divergence import (
+from scripts._brainfuck_divergence import (
     BOUND,
     EMPTY,
     _append,
@@ -23,6 +18,11 @@ from tests.proofs._brainfuck_divergence import (
     states,
     typed_counts,
 )
+from scripts.balanced_certificate import _product, _sum
+from scripts.divergence_certificate import _next, check_certificate
+from scripts.grammar_certificate import check_grammar
+from tests.proofs._brainfuck_balanced import SCALE, Matrix, patterns
+from tests.proofs._brainfuck_count import ALPHABET, accepts, automaton, minimize
 from tests.proofs.test_brainfuck_count import _observe
 
 

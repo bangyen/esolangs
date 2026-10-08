@@ -43,14 +43,13 @@ def _states() -> list[State]:
         reached |= image
 
 
-def check_certificate(
+def _validate(
     rows: list[list[int]],
-    classes: list[State],
     matrices: list[Matrix],
     scale: int,
     bound: tuple[int, int],
-) -> None:
-    """Verify the forward atom equations, independently of grouped construction."""
+) -> tuple[int, int]:
+    """Validate sparse integer matrices and their DFA and rational scale."""
     size = len(rows)
     if not size or type(scale) is not int or scale <= 0:
         raise ValueError("invalid certificate scale or size")
@@ -65,8 +64,6 @@ def check_certificate(
         for row in rows
     ):
         raise ValueError("invalid DFA transition")
-    if classes != _states() or len(matrices) != len(classes):
-        raise ValueError("invalid atom classes")
     for matrix in matrices:
         if len(matrix) != size or any(
             type(end) is not int
@@ -77,6 +74,63 @@ def check_certificate(
             for end, value in row.items()
         ):
             raise ValueError("invalid matrix entry")
+    return numerator, denominator
+
+
+def _atom_image(
+    rows: list[list[int]],
+    matrices: list[Matrix],
+    atoms: list[Matrix],
+    edges: list[list[int]],
+    scale: int,
+    bound: tuple[int, int],
+) -> list[Matrix]:
+    """Evaluate positive forward equations; class zero is the empty sequence."""
+    numerator, denominator = bound
+    image: list[Matrix] = [[{} for _ in rows] for _ in matrices]
+    for prefix, targets in zip(matrices, edges, strict=True):
+        for column, (atom, target) in enumerate(zip(atoms, targets, strict=True)):
+            if target < 0:
+                continue
+            multiplier = (
+                numerator * denominator * scale if column < 6 else denominator**2
+            )
+            image[target] = _sum(
+                image[target], _scale(_product(prefix, atom), multiplier)
+            )
+    starts = {0, *(row[6] for row in rows if row[6] >= 0)}
+    identity = [
+        {state: numerator**2 * scale**2} if state in starts else {}
+        for state in range(len(rows))
+    ]
+    image[0] = _sum(image[0], identity)
+    return image
+
+
+def _check_image(image: list[Matrix], matrices: list[Matrix], divisor: int) -> None:
+    """Reject any componentwise polynomial supersolution inequality failure."""
+    for position, (polynomial, candidate) in enumerate(
+        zip(image, matrices, strict=True)
+    ):
+        if any(
+            value > divisor * candidate[start].get(end, 0)
+            for start, row in enumerate(polynomial)
+            for end, value in row.items()
+        ):
+            raise ValueError(f"atom {position} supersolution inequality failed")
+
+
+def check_certificate(
+    rows: list[list[int]],
+    classes: list[State],
+    matrices: list[Matrix],
+    scale: int,
+    bound: tuple[int, int],
+) -> None:
+    """Verify the forward atom equations, independently of grouped construction."""
+    numerator, _ = _validate(rows, matrices, scale, bound)
+    if classes != _states() or len(matrices) != len(classes):
+        raise ValueError("invalid atom classes")
     zero: Matrix = [{} for _ in rows]
     bodies = [[dict(row) for row in zero] for _ in range(4)]
     for (read, suffix, first, count), matrix in zip(classes, matrices, strict=True):
@@ -92,34 +146,16 @@ def check_certificate(
         _product(_product(transitions[6], body), transitions[7]) for body in bodies
     ]
     atoms = transitions[:6] + loops
-    image = [[dict(row) for row in zero] for _ in classes]
     index = {state: position for position, state in enumerate(classes)}
-    for state, prefix in zip(classes, matrices, strict=True):
-        for column, atom in enumerate(atoms):
-            target = _next(state, column)
-            if target is None:
-                continue
-            multiplier = (
-                numerator * denominator * scale if column < 6 else denominator**2
-            )
-            position = index[target]
-            image[position] = _sum(
-                image[position], _scale(_product(prefix, atom), multiplier)
-            )
-    starts = {0, *(row[6] for row in rows if row[6] >= 0)}
-    identity = [
-        {state: numerator**2 * scale**2} if state in starts else {}
-        for state in range(size)
+    edges = [
+        [
+            index[target] if (target := _next(state, column)) is not None else -1
+            for column in range(len(atoms))
+        ]
+        for state in classes
     ]
-    image[index[False, 0, 0, 0]] = _sum(image[index[False, 0, 0, 0]], identity)
-    divisor = numerator**2 * scale
-    for state, polynomial, candidate in zip(classes, image, matrices, strict=True):
-        if any(
-            value > divisor * candidate[start].get(end, 0)
-            for start, row in enumerate(polynomial)
-            for end, value in row.items()
-        ):
-            raise ValueError(f"atom {state} supersolution inequality failed")
+    image = _atom_image(rows, matrices, atoms, edges, scale, bound)
+    _check_image(image, matrices, numerator**2 * scale)
 
 
 def main() -> None:

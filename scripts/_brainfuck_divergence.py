@@ -1,8 +1,13 @@
 """Count balanced words with unrestricted nonzero-tail divergence removed."""
 
+import sys
 from collections import defaultdict
+from collections.abc import Callable
 from functools import lru_cache
+from pathlib import Path
 from time import monotonic
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from tests.proofs._brainfuck_balanced import SCALE, Matrix, patterns
 from tests.proofs._brainfuck_count import automaton, minimize
@@ -157,6 +162,41 @@ def matrix_image(
     ]
 
 
+def _construct[StateT](
+    rows: list[list[int]],
+    classes: list[StateT],
+    scale: int,
+    bound: tuple[int, int],
+    update: Callable[
+        [list[list[int]], list[StateT], list[Matrix], int, tuple[int, int]],
+        list[Matrix],
+    ],
+    name: str,
+) -> list[Matrix]:
+    """Iterate a positive system under the shared value, time and update caps."""
+    matrices: list[Matrix] = [[{} for _ in rows] for _ in classes]
+    starts = {0, *(row[6] for row in rows if row[6] >= 0)}
+    matrices[0] = [
+        {state: scale} if state in starts else {} for state in range(len(rows))
+    ]
+    started = monotonic()
+    for _ in range(1500):
+        image = update(rows, classes, matrices, scale, bound)
+        if image == matrices:
+            return matrices
+        if any(
+            value > 100 * scale
+            for matrix in image
+            for row in matrix
+            for value in row.values()
+        ):
+            raise RuntimeError(f"{name} certificate value budget exceeded")
+        if monotonic() - started > 120:
+            raise RuntimeError(f"{name} certificate time budget exceeded")
+        matrices = image
+    raise RuntimeError(f"{name} certificate iteration budget exceeded")
+
+
 @lru_cache(maxsize=1)
 def certificate() -> tuple[list[list[int]], list[State], list[Matrix]]:
     """Rebuild the capped nonzero-tail supersolution; abort without relaxing it."""
@@ -164,41 +204,33 @@ def certificate() -> tuple[list[list[int]], list[State], list[Matrix]]:
     classes = states()
     if len(rows) > 256 or len(classes) > 32:
         raise RuntimeError("divergence certificate state budget exceeded")
-    matrices: list[Matrix] = [[{} for _ in rows] for _ in classes]
-    starts = {0, *(row[6] for row in rows if row[6] >= 0)}
-    matrices[classes.index(EMPTY)] = [
-        {state: SCALE} if state in starts else {} for state in range(len(rows))
-    ]
-    started = monotonic()
-    for _ in range(1500):
-        image = matrix_image(rows, classes, matrices, SCALE, BOUND)
-        if image == matrices:
-            return rows, classes, matrices
-        if any(
-            value > 100 * SCALE
-            for matrix in image
-            for row in matrix
-            for value in row.values()
-        ):
-            raise RuntimeError("divergence certificate value budget exceeded")
-        if monotonic() - started > 120:
-            raise RuntimeError("divergence certificate time budget exceeded")
-        matrices = image
-    raise RuntimeError("divergence certificate iteration budget exceeded")
+    return (
+        rows,
+        classes,
+        _construct(rows, classes, SCALE, BOUND, matrix_image, "divergence"),
+    )
 
 
-if __name__ == "__main__":
+def _export[StateT](
+    factory: Callable[[], tuple[list[list[int]], list[StateT], list[Matrix]]],
+    check: Callable[
+        [list[list[int]], list[StateT], list[Matrix], int, tuple[int, int]], None
+    ],
+    scale: int,
+    bound: tuple[int, int],
+    name: str,
+) -> None:
+    """Parse export arguments, rebuild and independently check a named certificate."""
     import argparse
     import json
-    from pathlib import Path
 
-    from scripts.divergence_certificate import check_certificate
-
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(
+        description=f"Rebuild and check the {name} certificate."
+    )
     parser.add_argument("--export", type=Path)
     args = parser.parse_args()
-    rows, classes, matrices = certificate()
-    check_certificate(rows, classes, matrices, SCALE, BOUND)
+    rows, classes, matrices = factory()
+    check(rows, classes, matrices, scale, bound)
     if args.export:
         args.export.write_text(
             json.dumps(
@@ -206,11 +238,17 @@ if __name__ == "__main__":
                     "rows": rows,
                     "classes": classes,
                     "matrices": matrices,
-                    "scale": SCALE,
-                    "bound": BOUND,
+                    "scale": scale,
+                    "bound": bound,
                     "factors": sorted(patterns()),
                 }
             )
         )
     constant = sum(sum(matrix[0].values()) for matrix in matrices)
-    print(f"exact nonzero-tail upper certificate {BOUND}: K={constant}/{SCALE}")
+    print(f"exact {name} upper certificate {bound}: K={constant}/{scale}")
+
+
+if __name__ == "__main__":
+    from divergence_certificate import check_certificate
+
+    _export(certificate, check_certificate, SCALE, BOUND, "nonzero-tail")

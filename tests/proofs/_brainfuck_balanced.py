@@ -84,7 +84,9 @@ def _rotation_image(
 ) -> tuple[Matrix, Matrix, Matrix]:
     numerator, denominator = ROTATION_BOUND
     divisor = numerator**3 * SCALE
-    next_nonempty, next_nonprint, next_bodies = [], [], []
+    next_nonempty: Matrix = []
+    next_nonprint: Matrix = []
+    next_bodies: Matrix = []
     for state, row in enumerate(rows):
         atoms: dict[int, int] = {}
         other: dict[int, int] = {}
@@ -176,9 +178,11 @@ def rotation_certificate() -> tuple[list[list[int]], Matrix, Matrix, Matrix]:
 if __name__ == "__main__":
     import argparse
     import json
+    import sys
     from pathlib import Path
 
-    from scripts.balanced_certificate import check_certificate
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
+    from balanced_certificate import check_certificate
 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--export", type=Path)

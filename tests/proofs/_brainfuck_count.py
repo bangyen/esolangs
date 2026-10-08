@@ -1,9 +1,11 @@
 """Rebuild the finite-state Brainfuck behaviour-count certificate."""
 
 import itertools
+from collections.abc import Iterable
 from functools import lru_cache
-from re import _constants as rc
-from re import _parser
+from re import _constants as rc  # type: ignore[attr-defined]
+from re import _parser  # type: ignore[attr-defined]
+from typing import Any
 
 ALPHABET = ".,-+<>[]"
 BOUND = (70347, 10000)
@@ -28,7 +30,7 @@ def sole_loop_counts(length: int, letters: int = 6) -> list[int]:
     return sequences
 
 
-def local_patterns():
+def local_patterns() -> set[str]:
     patterns = {
         "+-",
         "-+",
@@ -96,16 +98,16 @@ def local_patterns():
     return patterns
 
 
-def _stationary(letters):
+def _stationary(letters: str) -> str:
     return r"(?:[" + letters + r"]|\[" + "[" + letters + r"]*\])*"
 
 
-def _confined(letters):
+def _confined(letters: str) -> str:
     body = "[" + letters + "]*"
     return "(?:[" + letters + r"]|\[" + body + r"\]|>" + body + "<)*"
 
 
-def regular_patterns():
+def regular_patterns() -> list[str]:
     # Stationary loops and right excursions return without changing the
     # tested cell. A read can cross only a terminating, silent excursion.
     w0, w1 = _stationary(r"+\-."), _stationary(r"+\-.,")
@@ -139,18 +141,18 @@ def regular_patterns():
     return patterns
 
 
-def automaton(patterns, regexes):
+def automaton(patterns: Iterable[str], regexes: Iterable[str]) -> list[list[int]]:
     # Trie shares the finite prefixes; Thompson states handle regular tails.
-    edges = [{}]
-    eps = [[]]
-    finals = set()
+    edges: list[dict[str, list[int]]] = [{}]
+    eps: list[list[int]] = [[]]
+    finals: set[int] = set()
 
-    def state():
+    def state() -> int:
         edges.append({})
         eps.append([])
         return len(edges) - 1
 
-    def edge(a, c, b):
+    def edge(a: int, c: str, b: int) -> None:
         edges[a].setdefault(c, []).append(b)
 
     for word in sorted(patterns):
@@ -161,7 +163,7 @@ def automaton(patterns, regexes):
             s = edges[s][c][0]
         finals.add(s)
 
-    def compile_seq(items, a, b):
+    def compile_seq(items: Any, a: int, b: int) -> None:
         for index, (op, arg) in enumerate(items):
             t = b if index == len(items) - 1 else state()
             if op == rc.LITERAL:
@@ -219,8 +221,8 @@ def automaton(patterns, regexes):
             bit = bits & -bits
             s = bit.bit_length() - 1
             bits ^= bit
-            for c in range(8):
-                dest[c] |= transitions[s][c]
+            for column in range(8):
+                dest[column] |= transitions[s][column]
         row = []
         for target in dest:
             if target & bad:
@@ -236,10 +238,11 @@ def automaton(patterns, regexes):
     return rows
 
 
-def minimize(rows):
+def minimize(rows: list[list[int]]) -> list[list[int]]:
     groups = [0] * len(rows)
     while True:
-        keys, new = {}, []
+        keys: dict[tuple[int, ...], int] = {}
+        new: list[int] = []
         for row in rows:
             key = tuple(groups[j] if j >= 0 else -1 for j in row)
             if key not in keys:
@@ -257,7 +260,7 @@ def minimize(rows):
     ]
 
 
-def intersect(a, b):
+def intersect(a: list[list[int]], b: list[list[int]]) -> list[list[int]]:
     states, indices, rows = [(0, 0)], {(0, 0): 0}, []
     for s, t in states:
         row = []
@@ -277,7 +280,7 @@ def intersect(a, b):
 
 
 @lru_cache(maxsize=1)
-def certificate():
+def certificate() -> tuple[list[list[int]], list[int]]:
     """Return the reconstructed DFA and an exactly checked positive vector."""
     rows = minimize(automaton(local_patterns(), []))
     for pattern in regular_patterns():
@@ -296,9 +299,13 @@ def certificate():
     return rows, integers
 
 
-def check_certificate(rows, vector):
+def check_certificate(rows: list[list[int]], vector: list[int]) -> None:
     """Check M v <= (70347/10000) v using integers only."""
-    from scripts.perron_certificate import check_certificate as check
+    import sys
+    from pathlib import Path
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
+    from perron_certificate import check_certificate as check
 
     try:
         check(rows, vector, BOUND, ALPHABET)
@@ -306,7 +313,7 @@ def check_certificate(rows, vector):
         raise AssertionError(str(error)) from error
 
 
-def accepts(rows, word):
+def accepts(rows: list[list[int]], word: str) -> bool:
     """Return whether the word avoids every forbidden factor."""
     state = 0
     for char in word:
