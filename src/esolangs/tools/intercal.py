@@ -28,18 +28,11 @@ class _Expr:
         if self.op == "input":
             return f".{self.value + 1}"
         outer, inner = ("'", '"') if depth % 2 == 0 else ('"', "'")
-        if self.op == "mingle":
-            left, right = self.children
-            return f"{outer}{left.render()}${right.render()}{outer}"
-        if self.op == "select":
-            # The manual places a unary between the spot and the number.
-            (operand,) = self.children
-            return f"{outer}.{'&V?'[self.value]}{operand.value + 1}~#1{outer}"
         if self.op == "not":
             children, operator = (*self.children, _ONE), "?"
         else:
             children = self.children
-            operator = {"and": "&", "or": "V", "xor": "?"}[self.op]
+            operator = {"and": "&", "or": "V"}[self.op]
         left, right = children
         mingled = (
             f"{inner}{operator}{left.render(depth + 2)}$"
@@ -49,7 +42,6 @@ class _Expr:
 
 
 _ZERO, _ONE = _Expr("constant", 0), _Expr("constant", 1)
-_SELECT_OPS = ("and", "or", "xor")
 # A statement's newline plus a fifth of the 4 characters PLEASE costs over DO.
 _STATEMENT_OVERHEAD = 2
 
@@ -58,33 +50,23 @@ def intercal(truth_table: str, width: int | None = None) -> str:
     """Return a polite C-INTERCAL template computing ``truth_table``.
 
     Inputs are tested in input order (the greedy order costs +2.14% on three
-    inputs, +1.68% on the five-input sample); over-wide expressions name each
-    operation, else break between tokens.
+    inputs, +1.68% on the five-input sample).  A ``width`` breaks over-wide
+    statements between tokens.  Narrower rebuilds (unsimplified, per-operation
+    names, split mingles) were retired: at n=7..10 wrapping the natural
+    program is smaller at every width from 1 to 259, by 26.2% (n=7) to
+    32.3% (n=10).
     """
     natural = in_input_order(truth_table, _intercal_shared)
-    if width is None or width <= 0 or _span(natural) <= width:
+    if width is None or width <= 0:
         return natural
-    unsimplified = _intercal_narrow(truth_table, simplify=False)
-    if _span(unsimplified) <= width:
-        return unsimplified
-    narrow = _intercal_narrow(truth_table)
-    if _span(narrow) <= width:
-        return narrow
-    split = _intercal_narrow(truth_table, split=True)
-    return _wrap_intercal(_wrap_base(natural, narrow, split), width)
+    return _wrap_intercal(natural, width)
 
 
 def _span(program: str) -> int:
     return max(map(len, program.splitlines()))
 
 
-def _wrap_base(natural: str, narrow: str, split: str) -> str:
-    """Return the narrowest of ``narrow``/``split`` if it beats ``natural``."""
-    best = min((narrow, split), key=_span)
-    return best if _span(best) < _span(natural) else natural
-
-
-_TOKEN = re.compile(r"[A-Z]+|[.#][&V?]?[0-9]+|<-|@+|[0-9]+|[^\s]")
+_TOKEN = re.compile(r"[A-Z]+|[.#][0-9]+|<-|@+|[0-9]+|[^\s]")
 
 
 def _intercal_tokens(program: str) -> list[str]:
@@ -92,25 +74,13 @@ def _intercal_tokens(program: str) -> list[str]:
     return _TOKEN.findall(program)
 
 
-def balance_intercal(table: str, default: str) -> str:
-    """Return the lowest-``balance_score`` candidate over formats and fit widths."""
+def balance_intercal(_table: str, default: str) -> str:
+    """Return the lowest-``balance_score`` wrap of ``default`` over fit widths."""
     from esolangs.tools.wrap import balance_score
 
-    natural_width = _span(default)
-    unsimplified = _intercal_narrow(table, simplify=False)
-    unsimplified_width = _span(unsimplified)
-    narrow = _intercal_narrow(table)
-    narrow_width = _span(narrow)
-    candidates = [default]
-    if unsimplified_width < natural_width:
-        candidates.append(unsimplified)
-    if narrow_width < min(natural_width, unsimplified_width):
-        candidates.append(narrow)
-    split = _intercal_narrow(table, split=True)
-    chosen = _wrap_base(default, narrow, split)
-    maximum = min(natural_width, unsimplified_width, narrow_width) - 1
+    maximum = _span(default) - 1
     widths = {1}
-    for line in chosen.splitlines():
+    for line in default.splitlines():
         if len(line) <= maximum:
             widths.add(len(line))
         tokens = _intercal_tokens(line)
@@ -121,9 +91,9 @@ def balance_intercal(table: str, default: str) -> str:
                 if used > maximum:
                     break
                 widths.add(used)
-    # Within a format, a row changes only when a whole token run fits or
-    # the original statement starts fitting and retains its punctuation.
-    candidates.extend(_wrap_intercal(chosen, width) for width in widths)
+    # A row changes only when a whole token run fits or the original
+    # statement starts fitting and retains its punctuation.
+    candidates = [default, *(_wrap_intercal(default, width) for width in widths)]
     return min(candidates, key=balance_score)
 
 
@@ -137,87 +107,6 @@ def _wrap_intercal(program: str, width: int) -> str:
         else _join_tokens(_intercal_tokens(line), width, separator=" ")
         for line in program.splitlines()
     )
-
-
-def _intercal_narrow(
-    truth_table: str, *, simplify: bool = True, split: bool = False
-) -> str:
-    """Name each primitive operation in the reduced Shannon diagram.
-
-    At most O(T/log T) diagram nodes need O(log T)-digit names: O(T) source.
-    Constant arms simplify Boolean operations; complementary arms use XOR.
-    Each assignment has only one mingle/unary/select frame.
-    """
-    n = _validate_truth_table(truth_table)
-    nodes, root = _diagram(truth_table, n)
-    assigned: list[tuple[int, _Expr]] = []
-
-    def name(expr: _Expr) -> _Expr:
-        if split:
-            children = expr.children
-            operator = "xor" if expr.op == "not" else expr.op
-            index = _SELECT_OPS.index(operator)
-            if expr.op == "not":
-                children = (*children, _ONE)
-            intermediate = n + 2 + len(assigned)
-            assigned.append(
-                (
-                    intermediate,
-                    _Expr("mingle", index, children),
-                )
-            )
-            # Store the raw mingle (at most 3); unary OR/XOR on the 32-bit
-            # mingle can set bit31 and would overflow a onespot assignment.
-            expr = _Expr(
-                "select",
-                index,
-                children=(_Expr("input", intermediate - 1),),
-            )
-        variable = n + 2 + len(assigned)
-        assigned.append((variable, expr))
-        return _Expr("input", variable - 1)
-
-    selectors = [_Expr("input", n - 1 - level) for level in range(n)]
-    if not simplify:
-        inverses = [name(_Expr("not", children=(selector,))) for selector in selectors]
-        results = [_ZERO, _ONE]
-        for level, zero, one in nodes[2:]:
-            low = name(_Expr("and", children=(inverses[level], results[zero])))
-            high = name(_Expr("and", children=(selectors[level], results[one])))
-            results.append(name(_Expr("or", children=(low, high))))
-        return _program(n, assigned, results[root])
-    negated: dict[int, _Expr] = {}
-    results = [_ZERO, _ONE]
-    complements = {0: 1, 1: 0}
-    seen: dict[tuple[int, int, int], int] = {}
-    for node, (level, zero, one) in enumerate(nodes[2:], 2):
-        mirror = (level, complements.get(zero, -1), complements.get(one, -1))
-        if mirror in seen:
-            other = seen[mirror]
-            complements[node], complements[other] = other, node
-        seen[level, zero, one] = node
-        selector = selectors[level]
-        if (zero, one) == (0, 1):
-            result = selector
-        elif complements.get(zero) == one:
-            result = name(_Expr("xor", children=(selector, results[zero])))
-        else:
-            if level not in negated:
-                negated[level] = name(_Expr("not", children=(selector,)))
-            if zero == 0:
-                result = name(_Expr("and", children=(selector, results[one])))
-            elif one == 0:
-                result = name(_Expr("and", children=(negated[level], results[zero])))
-            elif zero == 1:
-                result = name(_Expr("or", children=(negated[level], results[one])))
-            elif one == 1:
-                result = name(_Expr("or", children=(selector, results[zero])))
-            else:
-                low = name(_Expr("and", children=(negated[level], results[zero])))
-                high = name(_Expr("and", children=(selector, results[one])))
-                result = name(_Expr("or", children=(low, high)))
-        results.append(result)
-    return _program(n, assigned, results[root])
 
 
 def _mux(
@@ -326,6 +215,8 @@ def _negations(
     """Name each level's ``~selector`` variable, or ``None`` to inline it.
 
     Numbered from the bottom level up, from the first spare ``.{n + 2}``.
+    Naming beats inlining every ``~selector`` by 15.4% at n=8, 19.0% at n=10
+    (random tables); always naming a used level is within 0.8% at n=8.
     """
     n = len(selectors)
     per_level = [0] * n

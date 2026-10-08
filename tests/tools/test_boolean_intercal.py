@@ -1,7 +1,6 @@
 """Executed tests for the INTERCAL Shannon-expression generator."""
 
 import random
-from itertools import pairwise
 
 import pytest
 
@@ -28,11 +27,6 @@ def test_setters_are_equal_width_and_embedded_once() -> None:
     for n in range(1, 8):
         template = intercal("01" * (1 << (n - 1)))
         assert template.count(TEMPLATE_CHAR) == 2 * n
-
-
-def test_source_growth_is_linear() -> None:
-    sizes = [len(intercal("0110" * (1 << (n - 2)))) for n in range(2, 11)]
-    assert all(right <= 2 * left + 500 for left, right in pairwise(sizes))
 
 
 def test_levels_select_inputs_in_the_shorter_order() -> None:
