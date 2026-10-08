@@ -10,7 +10,16 @@ from esolangs.tools.helpers import (
 #: Finisher for a cell primed to 1: ``-`` flips it to 0, ``+`` is inert.
 #: Both are one grid cell, so a run is the exact width of its program.
 PAIR = ("-", "+")
-_BACK_INPUT = TEMPLATE_CHAR * len(PAIR[0])
+_BACK_INPUT = TEMPLATE_CHAR
+_MIRROR = {"/": "\\", "\\": "/"}
+
+
+def _render(rows: list[dict[int, str]]) -> str:
+    """Join sparse rows, gaps blank, each row only as long as its last cell."""
+    return "\n".join(
+        "".join(cells.get(x, " ") for x in range(max(cells, default=-1) + 1))
+        for cells in rows
+    )
 
 
 def _reflect_back(grid: dict[tuple[int, int], str], height: int, width: int) -> str:
@@ -23,23 +32,16 @@ def _reflect_back(grid: dict[tuple[int, int], str], height: int, width: int) -> 
     cells, each row only as long as its last one, so the cost is the
     output's size rather than the bounding box (``2**n`` rows by ``4n``).
     """
-    mirrors = {"/": "\\", "\\": "/"}
     rows: list[dict[int, str]] = [{} for _ in range(height)]
     for (row, column), cell in grid.items():
-        rows[row][width - column] = mirrors.get(cell, cell)
+        rows[row][width - column] = _MIRROR.get(cell, cell)
 
     # East, south, wrap west, north, west into the reflected root.  The two
     # extra columns touch only rows 0-1; tree padding is trailing and rstrips.
     rows[0][0] = rows[0][width + 1] = "\\"
     rows[1][0] = "/"
     rows[1][width + 1] = "\\"
-    lines = []
-    for cells in rows:
-        line = [" "] * (max(cells, default=-1) + 1)
-        for column, cell in cells.items():
-            line[column] = cell
-        lines.append("".join(line))
-    return "\n".join(lines)
+    return _render(rows)
 
 
 def _descending_back(grid: dict[tuple[int, int], str], units: list[str]) -> str:
@@ -50,14 +52,9 @@ def _descending_back(grid: dict[tuple[int, int], str], units: list[str]) -> str:
     for row, unit in enumerate(units, 1):
         rows[row] = {last: unit}
     rows[top] = {last: "/"}
-    mirrors = {"/": "\\", "\\": "/"}
     for (row, column), char in grid.items():
-        rows.setdefault(top + row, {})[last - column] = mirrors.get(char, char)
-    return "\n".join(
-        "".join(painted.get(x, " ") for x in range(max(painted, default=-1) + 1))
-        for y in range(max(rows) + 1)
-        for painted in [rows.get(y, {})]
-    )
+        rows.setdefault(top + row, {})[last - column] = _MIRROR.get(char, char)
+    return _render([rows.get(y, {}) for y in range(max(rows) + 1)])
 
 
 def _back_parity(truth_table: str, n: int) -> str | None:
@@ -93,10 +90,7 @@ def back(truth_table: str, width: int | None = None) -> str:
     cell to 1 for either bit, then the input's run finishes it -- ``+`` (inert on
     a set cell) for a one, ``-`` (flipping it back) for a zero.  So cells
     ``0..n-1`` hold the inputs and cell ``n`` is the answer cell.  Both
-    bits cost the same two rows and, because no ``+`` ever meets a zero
-    cell here, both rows run for either bit.  A zero used to embed as a
-    blank the rstrip then removed, which made the program's height reveal
-    it.
+    bits cost the same two rows, so the height cannot leak an input.
 
     A decision node is ``+\>``: ``+`` tests the current tape bit (advancing
     the beam straight past the ``\`` when it is 0) and ``\`` reflects the
@@ -115,11 +109,8 @@ def back(truth_table: str, width: int | None = None) -> str:
     line ends where it is stripped.  A two-row outer route converts Back's
     fixed eastward start into the westward entry the reflected root needs.
 
-    The answer is the *value* of cell ``n``, which the halt dump prints,
-    rather than the head's position, which it does not.  An earlier layout
-    parked the head on whichever of a 0-cell and a 1-cell matched, which made
-    the result unreadable from the program's own output.  One answer cell
-    costs a leaf one ``-`` instead of one extra pointer move.
+    The answer is the *value* of cell ``n``, which the halt dump prints;
+    the head's position is not printed.
     """
     n = _validate_truth_table(truth_table)
     weights, table = input_weights(truth_table, n)
@@ -143,37 +134,20 @@ def _back_ordered(
 ) -> str:
     r"""Build one Back template, loading its inputs in ``perm`` order.
 
-    ``truth_table`` is already permuted, so every row index here is in the
-    permuted frame.  ``perm`` is spent in exactly one place: the cell each
-    input's unit loads into.
+    ``truth_table`` is already permuted, so row indices are in the permuted
+    frame; ``perm`` only picks the cell each input loads into.
 
-    A node is ``+\>`` -- test the current cell, *then* advance -- so level
-    ``k`` tests cell ``k``, and input ``perm[k]`` is the one that has to be
-    loaded there.  That is one cell lower than the generators whose node
-    steps before it tests (Streetcode's halls and LaserFuck's ``>#v)`` both
-    test cell ``k + 1``), and getting it wrong computes a different
-    function rather than failing to draw.
+    A node tests the current cell, *then* advances, so level ``k`` tests cell
+    ``k`` and input ``perm[k]`` must load there -- one cell lower than
+    Streetcode's halls and LaserFuck's ``>#v)``, which test cell ``k + 1``.
+    Getting it wrong computes a different function.
 
-    **The load runs the inputs in name order and walks the pointer to
-    each one's cell.**  Input ``i`` belongs at cell ``perm.index(i)``, the
-    inverse of the permutation, and a walk of ``>``/``<`` carries the
-    pointer there.  Reading the permutation forward instead puts the right
-    bits in the wrong cells and computes a different function.
-
-    **This is not the cheapest build, and the trade is deliberate.**
-    Filling in *cell* order -- cell ``c`` taking input ``perm[c]`` -- emits no
-    walk at all and delivers the full 12.0% screen against the 9.15% here,
-    but it puts the inputs out of name order, and the k-th run of the
-    template *is* input k: the harness fills the runs in order, so a
-    cell-order load would have to carry its permutation some other way.
-    The choice costs 2.85 points.  The walk is cheap in absolute
-    terms -- ``4n - 2`` pointer moves, 10 of the 236 characters Back's
-    programs average at n=3 -- but visible because the programs are short.
-
-    Keeping the ``-``/run pairs intact preserves the equal-width
-    embedding: the primer and the run are one unit and are never
-    separated, so both bits still cost the same two rows and the template's
-    height cannot leak an input.
+    The load runs the inputs in name order (run k *is* input k) and walks the
+    pointer to cell ``perm.index(i)``, the inverse permutation; reading
+    ``perm`` forward computes a different function.  Filling in cell order
+    needs no walk and screens 12.0% against 9.15% here, but breaks name
+    order.  The walk is ``4n - 2`` moves, 10 of the 236 characters at n=3.
+    A ``-``/run pair is never split, so both bits still cost two rows.
 
     ``weights`` names the stream inputs, zero for an ignored one: the table
     indexes the rest, and the answer cell stays at the stream's input count.
@@ -188,8 +162,7 @@ def _back_ordered(
     n = len(weights)
 
     # Level c tests cell c and input perm[c], so input i lives at cell
-    # perm.index(i).  Filling in cell order instead needs no walk (12.0% vs
-    # 9.15%) but breaks "run k = input k"; not kept -- see the docstring.
+    # perm.index(i).
     essential = [i for i, weight in enumerate(weights) if weight]
     cells = [levels] * n
     for level, i in enumerate(perm):
@@ -205,7 +178,9 @@ def _back_ordered(
         borrowed = dict(enumerate(cells))
         spare = levels
         for i in reversed(order):
-            spare = borrowed[i] = cells[i] if weights[i] else spare
+            if weights[i]:
+                spare = cells[i]
+            borrowed[i] = spare
         units: list[str] = []
         at = 0
         for i in order:
@@ -221,13 +196,9 @@ def _back_ordered(
         return units
 
     # Reverse name order: the load is drawn bottom-up in column 0, so this
-    # emits input 0 first.  The input-order search prices the walk anyway.
+    # emits input 0 first.
     units = load(list(range(n - 1, -1, -1)))
 
-    # One '/' at the origin does both turns: right -> up off the top edge onto
-    # the bottom row, up the load, then up -> right into the tree at column 1.
-    # Relies on toroidal wrap (``_Machine.step`` uses ``% len(code)``); the
-    # wiki text is silent on edges and no interpreter test covers a wrap.
     grid: dict[tuple[int, int], str] = {}
     next_row = [1]
     constant = constant_span_test(truth_table)
@@ -235,9 +206,7 @@ def _back_ordered(
 
     def leaf(level: int, value: str, row: int, col: int) -> None:
         # Walk to cell n, flip it (starts 0) for a 1-leaf, halt.
-        delta = n - level
-        move = (">" if delta >= 0 else "<") * abs(delta)
-        code = move + ("-" if value == "1" else "") + "*"
+        code = ">" * (n - level) + ("-" if value == "1" else "") + "*"
         if vertical:
             # Reserved DFS rows turn leaf finishers down without widening the tree.
             grid[(row, col)] = "\\"
@@ -269,23 +238,24 @@ def _back_ordered(
         span = max(c for _, c in grid) + 3
         if span > width:
             down = load(list(range(n)))
-            original = _descending_back(grid, down)
+            wide = _descending_back(grid, down)
             vertical = True
             grid.clear()
             next_row[0] = 1
             emit(0, 0, 2**levels, 0, 1)
-            narrow = _descending_back(grid, down)
-            return min(
-                (original, narrow), key=lambda code: max(map(len, code.splitlines()))
-            )
+            tall = _descending_back(grid, down)
+            return min((wide, tall), key=lambda code: max(map(len, code.splitlines())))
 
     # Height is max(tree 2**n, load units + 1).  Past n=3 load rows share with
     # tree rows; safe only because a run is one character for either bit.
     height = max(max(r for r, _ in grid) + 1, 1 + len(units))
-    width = max(c for _, c in grid) + 1
+    tree_width = max(c for _, c in grid) + 1
+    # One '/' at the origin does both turns: right -> up off the top edge onto
+    # the bottom row (toroidal wrap), up the load, then up -> right into the
+    # tree at column 1.
     grid[(0, 0)] = "/"
     for k, unit in enumerate(units):
         grid[(height - 1 - k, 0)] = unit
     # No input row can instantiate to whitespace (a zero used to embed as a
     # blank, and the height revealed it).
-    return _reflect_back(grid, height, width)
+    return _reflect_back(grid, height, tree_width)
