@@ -124,8 +124,12 @@ class _Builder:
         return "\n".join(lines)
 
 
-def _b_tapemark_narrow(table: str, depth: int) -> str:
-    """Narrow layout: copy on a staircase, compares vertical, indices horizontal."""
+def _b_tapemark_narrow(table: str, depth: int, weights: list[int]) -> str:
+    """Narrow layout: copy on a staircase, compares vertical, indices horizontal.
+
+    ``table`` is painted at the essential inputs; ``weights`` has one stage
+    per input, an ignored one crossing no ``|``.
+    """
     builder = _Builder()
     # The copy beam always travels west; only the connector reverses it.
     for index, bit in enumerate(table):
@@ -147,7 +151,7 @@ def _b_tapemark_narrow(table: str, depth: int) -> str:
     first = bottom + 1
     for level in range(depth):
         row = first + _STAGE_ROWS * level
-        weight = 1 << (depth - level - 1)
+        weight = weights[level]
         # Column 8 clears the other arm's turn in column 7, even at weight 1.
         builder.stage(0, row, weight, _NARROW_STAGE, max(6, 8 - weight))
     # Correct the stages' shared horizontal displacement inside their columns.
@@ -207,4 +211,8 @@ def b_tapemark(truth_table: str, width: int | None = None) -> str:
     if width is None or max(map(len, program.splitlines())) <= width:
         return program
     # Narrow width is max(9, T/2+7) columns, under the wide 3T+depth+4.
-    return _b_tapemark_narrow(truth_table, depth)
+    # The climb of 2*depth rows must end below the connector at row -1, which
+    # a painted table of depth entries or fewer cannot house.
+    if len(painted) <= depth:
+        painted, weights = truth_table, [1 << (depth - 1 - i) for i in range(depth)]
+    return _b_tapemark_narrow(painted, depth, weights)

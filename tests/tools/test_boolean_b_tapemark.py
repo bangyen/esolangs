@@ -85,6 +85,22 @@ def test_narrow_staircase_executes_every_small_table_in_input_order() -> None:
 
 
 @pytest.mark.medium
+def test_narrow_drops_ignored_inputs_but_reads_them() -> None:
+    """Inputs 1 and 3 are ignored: smaller than the full table, all five read."""
+    n = 5
+    base = "01101001"
+    table = "".join(
+        base[((row >> 4) & 1) << 2 | ((row >> 2) & 1) << 1 | (row & 1)]
+        for row in range(1 << n)
+    )
+    program = tools.b_tapemark(table, 12)
+    parity = "".join(str(row.bit_count() & 1) for row in range(1 << n))
+    assert len(program) < 0.7 * len(tools.b_tapemark(parity, 12))
+    for row, expected in enumerate(table):
+        assert execute(program, format(row, f"0{n}b")) == (expected, n)
+
+
+@pytest.mark.medium
 def test_narrow_weighted_arms_and_fitting_layouts() -> None:
     from esolangs.tools.b_tapemark import _b_tapemark_narrow, _Builder
 
@@ -102,7 +118,14 @@ def test_narrow_weighted_arms_and_fitting_layouts() -> None:
             )
             for row, expected in enumerate(table):
                 assert execute(program, format(row, f"0{n}b")) == (expected, n)
-    sizes = [len(_b_tapemark_narrow("01" * (1 << (n - 1)), n)) for n in (7, 8, 9)]
+    sizes = [
+        len(
+            _b_tapemark_narrow(
+                "01" * (1 << (n - 1)), n, [1 << (n - 1 - i) for i in range(n)]
+            )
+        )
+        for n in (7, 8, 9)
+    ]
     assert sizes[2] < 2.1 * sizes[1] < 4.41 * sizes[0]
     # Sparse standalone layouts exercise coordinate compression on either axis.
     horizontal, vertical = _Builder(), _Builder()
