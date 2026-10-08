@@ -1,8 +1,5 @@
 """Boolean program generator for Forþ."""
 
-from functools import cache
-from itertools import product
-
 from esolangs.tools.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
@@ -12,60 +9,12 @@ from esolangs.tools.helpers import (
     subtree_ids,
 )
 
-Sinks = tuple[tuple[int, str], ...]
-
-
-def _sink_top(stack: tuple[int, ...], places: int) -> tuple[int, ...]:
-    """Move the top bit down by ``places``, leaving the others in order."""
-    *below, top = stack
-    at = len(below) - places
-    return (*below[:at], top, *below[at:])
-
-
-def stack_programs(n: int, sinks: Sinks, read: str) -> dict[tuple[int, ...], str]:
-    """Map input-index stacks (bottom to top) to read-and-sink programs.
-
-    ``sinks`` pairs places with ops; ``read`` pushes a bit. Each read can
-    sink 0, 1 or 2 places, so the product yields ``2 * 3**(n - 2)``
-    arrangements for ``n >= 2``; no search.
-    """
-    reached: dict[tuple[int, ...], str] = {}
-    for combination in product(sinks, repeat=n):
-        stack: tuple[int, ...] = ()
-        text = ""
-        for read_index, (places, ops) in enumerate(combination):
-            stack = (*stack, read_index)
-            text += read
-            if places >= len(stack):
-                break  # nothing below to sink under
-            stack = _sink_top(stack, places)
-            text += ops
-        else:
-            # 162 completions at n == 6, no two sharing a shape, so the
-            # tie-break never fires; it stays because the table is keyed by
-            # shape and a future sink could repeat one.
-            if (  # pragma: no branch - no two combinations share a shape
-                stack not in reached or len(text) < len(reached[stack])
-            ):
-                reached[stack] = text
-    return reached
-
 
 def _forth_const(value: int) -> str:
     """Forþ code pushing ``value`` (base-15 digits built with Horner's rule)."""
-    digits = "0123456789ABCDEF"
-    if value == 0:
-        return "0"
-    ds: list[int] = []
-    v = value
-    while v:
-        ds.append(v % 15)
-        v //= 15
-    ds.reverse()
-    prog = digits[ds[0]]
-    for d in ds[1:]:
-        prog += "F*" + digits[d] + "+"
-    return prog
+    high, low = divmod(value, 15)
+    digit = "0123456789ABCDE"[low]
+    return _forth_const(high) + "F*" + digit + "+" if high else digit
 
 
 def forth(truth_table: str) -> str:
@@ -86,9 +35,7 @@ def forth(truth_table: str) -> str:
         weights, table = [1] * n, truth_table
     natural = tuple(reversed(range(len(table).bit_length() - 1)))
     reads = "".join(_FORTH_READ if weight else _FORTH_DROP for weight in weights)
-    return _forth_ordered(
-        permute_truth_table(table, natural), natural, share=True, reads=reads
-    )
+    return _forth_ordered(permute_truth_table(table, natural), reads, share=True)
 
 
 # The read that pushes one normalized input bit.
@@ -112,64 +59,16 @@ _FORTH_SHARE = "{}-:;"
 _FORTH_SUBTREE_FLOOR = len(_FORTH_DISPATCH) + 2 * len("1+{0}")
 
 
-# How far a freshly-read bit can sink, and the ops that put it there.  ``v``
-# swaps the top two and ``c`` rotates the third up, so two ``c``s bury the new
-# bit under the two below it.  ``o`` is absent deliberately: it reverses the
-# *whole* stack, dragging the scope indices under the bits up with them.
-_FORTH_SINKS = ((0, ""), (1, "v"), (2, "cc"))
+def _forth_ordered(truth_table: str, reads: str, *, share: bool = False) -> str:
+    """Emit a Forþ table whose inputs are read by ``reads``.
 
-
-@cache
-def _forth_stack_programs(n: int) -> dict[tuple[int, ...], str]:
-    """Read-and-rotate program for each reachable stack arrangement.
-
-    ``2 * 3**(n - 2)`` arrangements, as :func:`stack_programs`: sinking each
-    bit as it arrives reaches 18 at n == 4 and 54 at n == 5, where sinking
-    after all the reads permutes only the last three (2.4% at n == 4, none
-    at n == 5).  A BFS finds shorter op strings on some arrangements (a late
-    ``c`` composes across reads); not used, the natural order is kept.
-    """
-    return stack_programs(n, _FORTH_SINKS, _FORTH_READ)
-
-
-def _forth_ordered(
-    truth_table: str,
-    perm: tuple[int, ...],
-    *,
-    share: bool = False,
-    reads: str | None = None,
-) -> str:
-    """Emit a permuted Forþ table, or ``""`` if its input order is unreachable.
-
-    Level ``k`` needs ``perm[k]`` on top; the counter stays below the bits.
+    Level ``k`` needs input ``n - 1 - k`` on top; the counter stays below the bits.
     Empty pops halt Forþ. Dispatch consumes bit and index, returning an index.
     Sharing calls the nearest emitted twin with equal subtable and level.
-    ``reads``, given, replaces the identity order's reads.
     """
     n = _validate_truth_table(truth_table)
-    wanted = tuple(reversed(perm))
-    if wanted == tuple(range(n)):
-        reads = _FORTH_READ * n if reads is None else reads
-    else:
-        reads = _forth_stack_programs(n).get(wanted)
-    if reads is None:
-        return ""
-
     last_internal = 2**n - 2
     constant = constant_span_test(truth_table)
-
-    def span_under(m: int) -> tuple[int, int]:
-        """Return the table rows the subtree rooted at heap index ``m`` covers.
-
-        Heap index ``m`` at depth ``d`` is the ``m - (2**d - 1)``-th node of
-        its level, and covers that many spans of ``2**(n - d)`` rows in; the
-        leaf at heap index ``m`` is row ``m - last_internal - 1``.  O(1), so
-        the fold test over the whole heap is O(2**n).
-        """
-        depth = (m + 1).bit_length() - 1
-        width = 1 << (n - depth)
-        lo = (m - (1 << depth) + 1) * width
-        return lo, lo + width
 
     prog = []
     folded: set[int] = set()
@@ -195,9 +94,12 @@ def _forth_ordered(
             # so the gap in the numbering costs nothing.
             continue
         if m <= last_internal:
-            lo, hi = span_under(m)
             depth = (m + 1).bit_length() - 1
-            key = ids[depth][m + 1 - (1 << depth)] if share else -1
+            index = m + 1 - (1 << depth)  # position within its level
+            # The node covers ``2**(n - depth)`` rows from ``index`` such spans in.
+            lo = index << (n - depth)
+            hi = lo + (1 << (n - depth))
+            key = ids[depth][index] if share else -1
             twin = emitted.get(key) if share else None
             call = _FORTH_SHARE.format(_forth_const(m - twin)) if twin else ""
             if constant(lo, hi):
