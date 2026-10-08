@@ -13,6 +13,7 @@ from esolangs.tools.helpers import (
     move_text,
     narrowest_grid,
     permute_truth_table,
+    subtree_ids,
 )
 
 __all__ = ["laserfuck"]
@@ -454,7 +455,7 @@ class _LaserGrid:
         return "\n".join(lines)
 
 
-def _laserfuck_tree(truth_table: str, n: int) -> _LaserTree:
+def _laserfuck_tree(truth_table: str, n: int, *, fold: bool = True) -> _LaserTree:
     """Emit the decision-tree runs and their padded upright block."""
     # The tree is built as its own block, mirrored, and hung under the
     # reader: the beam turns down at the reader's end and a '/' faces it
@@ -469,9 +470,13 @@ def _laserfuck_tree(truth_table: str, n: int) -> _LaserTree:
     rows: list[list[tuple[int, str]]] = [[]]
 
     constant = constant_span_test(truth_table)
+    ids = subtree_ids(truth_table)
 
-    def emit(depth: int, first: int, row: int, col: int) -> None:
-        """Lay one row span, entered at ``(row, col)`` going right."""
+    def emit(depth: int, first: int, row: int, col: int, skipped: int = 0) -> None:
+        """Lay one row span, entered at ``(row, col)`` going right.
+
+        ``skipped`` has bit ``d`` set where level ``d`` took no test.
+        """
         stop = first + 2 ** (n - depth)
         if depth == n or constant(first, stop):
             index = first
@@ -484,15 +489,24 @@ def _laserfuck_tree(truth_table: str, n: int) -> _LaserTree:
             run += "--<" * (n - depth)
             for level in range(depth, 0, -1):
                 bit = (first >> (n - level)) & 1
-                run += "-" * (bit + 1) + "<"
+                # A level without a test left its cell unknown: flat ``--``.
+                run += "-" * (2 if skipped >> (level - 1) & 1 else bit + 1) + "<"
             run += "+" if truth_table[index] == "1" else ""
             rows[row].append((col, run + "x"))
             return
+        below = ids[depth + 1]
+        place = first >> (n - depth)
+        if fold and below[2 * place] == below[2 * place + 1]:
+            # Equal halves (an ignored input, a repeat): the input is still
+            # read, so step the pointer past its cell, but test nothing.
+            rows[row].append((col, ">"))
+            emit(depth + 1, first, row, col + 1, skipped | 1 << depth)
+            return
         rows[row].append((col, ">#v)"))
-        emit(depth + 1, first, row, col + 4)  # zero carries on along this row
+        emit(depth + 1, first, row, col + 4, skipped)  # zero carries on
         drop = len(rows)
         rows.append([(col + 2, "\\")])  # a one comes down the 'v' column
-        emit(depth + 1, first + 2 ** (n - depth - 1), drop, col + 3)
+        emit(depth + 1, first + 2 ** (n - depth - 1), drop, col + 3, skipped)
 
     emit(0, 0, 0, 0)
     span = max(col + len(text) for marks in rows for col, text in marks)
@@ -566,6 +580,7 @@ def _laserfuck_build(
     width: int | None = None,
     *,
     vertical_tree: bool = False,
+    fold: bool = True,
 ) -> str:
     r"""Build one LaserFuck program, placing inputs in ``perm`` tape order.
 
@@ -614,7 +629,7 @@ def _laserfuck_build(
         for index, char in enumerate(text):
             if char != " ":
                 grid.put(offset, margin + index, char)
-    tree = _laserfuck_tree(truth_table, n)
+    tree = _laserfuck_tree(truth_table, n, fold=fold)
     _laserfuck_attach_tree(grid, reader, tree, width, vertical_tree=vertical_tree)
     return grid.render()
 
@@ -652,13 +667,31 @@ def laserfuck(truth_table: str, width: int | None = None) -> str:
     _validate_truth_table(truth_table)
     if width is None and len(truth_table) > 16:
         return _laserfuck_weighted(truth_table)
+    # Folding equal halves (ignored inputs, repeats) drops tests but moved a
+    # width layout's area up 7 of ~500 on some n=3 tables, so under a width
+    # the unfolded build stays a candidate, judged by area.
+    built = [
+        _laserfuck_pool(truth_table, width, fold=fold)
+        for fold in ((True,) if width is None else (True, False))
+    ]
+    return min(built, key=lambda form: _laserfuck_rank(form, width))
+
+
+def _laserfuck_rank(program: str, width: int | None) -> tuple[int, int]:
+    """Rank by columns past the request, then area (rows times widest row)."""
+    span = grid_width(program)
+    return (0 if width is None else max(span, width), len(program.splitlines()) * span)
+
+
+def _laserfuck_pool(truth_table: str, width: int | None, *, fold: bool) -> str:
+    """Return the best candidate over input orders, tree placements and fold."""
     orders = input_orders(truth_table)
     identity = orders[0]
 
-    best = _laserfuck_build(truth_table, identity, width)
+    best = _laserfuck_build(truth_table, identity, width, fold=fold)
     for perm in orders[1:]:
         candidate = _laserfuck_build(
-            permute_truth_table(truth_table, perm), perm, width
+            permute_truth_table(truth_table, perm), perm, width, fold=fold
         )
         if len(candidate) < len(best):
             best = candidate
@@ -670,7 +703,7 @@ def laserfuck(truth_table: str, width: int | None = None) -> str:
         # this bounded fallback keeps the full family O(T).
         if grid_width(best) > width and len(truth_table) <= 8:
             candidate = _laserfuck_build(
-                truth_table, identity, width, vertical_tree=True
+                truth_table, identity, width, vertical_tree=True, fold=fold
             )
             if grid_width(candidate) > width:
                 candidate = _laserfuck_raise_funnel(candidate)

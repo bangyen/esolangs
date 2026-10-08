@@ -367,7 +367,7 @@ def test_overhead_funnel_floor_and_corpus_size() -> None:
     assert len(boolean.laserfuck("0110", 1)) == 569
     assert sum(len(boolean.laserfuck(format(v, "04b"), 1)) for v in range(16)) == 9104
     assert (
-        sum(len(boolean.laserfuck(format(v, "08b"), 1)) for v in range(256)) == 104873
+        sum(len(boolean.laserfuck(format(v, "08b"), 1)) for v in range(256)) == 102623
     )
 
 
@@ -440,3 +440,13 @@ def test_vertical_tree_places_permuted_inputs_in_stream_order(
             assert (
                 run_laserfuck(source, list(f"{row:0{len(perm)}b}"), heading) == expected
             )
+
+
+@pytest.mark.parametrize("width", [1, 40])
+def test_a_width_tree_tests_only_essential_inputs(width: int) -> None:
+    """Ignored inputs cost a bare step, not a node: f(c, d) of four inputs."""
+    table = "0110" * 4
+    program = boolean.laserfuck(table, width)
+    assert len(program) < len(boolean.laserfuck("0110100110010110", width))
+    for row in range(16):
+        assert run_laserfuck(program, list(format(row, "04b")), 0) == table[row]
