@@ -4,6 +4,8 @@ import importlib
 
 import pytest
 
+import esolangs
+from esolangs._evaluate import _evaluate
 from esolangs.tools.helpers import TEMPLATE_CHAR, essential_inputs, runs
 from esolangs.tools.minifuck.mux import (
     _MUX_MIN_ARITY,
@@ -191,3 +193,10 @@ def test_ten_input_builds_print_on_the_interpreter() -> None:
             io_ = ScriptedIO("")
             run(_fill_minifuck(template, row), io_)
             assert io_.getvalue() == table[combo], f"row {combo}"
+
+
+@pytest.mark.parametrize("table", ["01"])
+def test_narrow_balance_regime_edge_executes(table):
+    """The smallest tables reaching an otherwise-untaken balance arm."""
+    balanced = esolangs.generate("Minifuck", table, balance=True)
+    assert _evaluate("Minifuck", balanced, inputs=len(table).bit_length() - 1) == table

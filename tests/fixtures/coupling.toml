@@ -38,11 +38,8 @@
 "tests/proofs/deep/arrowqueue.py" = 3
 "tests/proofs/deep/bio.py" = 3
 "tests/proofs/deep/container.py" = 2
-"tests/proofs/deep/execution.py" = 8
 "tests/proofs/deep/fractran_shared.py" = 3
-"tests/proofs/deep/linearity.py" = 4
 "tests/proofs/deep/multiplicity.py" = 8
-"tests/proofs/deep/workspace.py" = 17
 "tests/proofs/test_addsubjump_sharing.py" = 11
 "tests/proofs/test_bands.py" = 2
 "tests/proofs/test_conventions.py" = 1
@@ -100,9 +97,8 @@
 "tests/tools/plain_oracles.py" = 5
 "tests/tools/reader_support.py" = 3
 "tests/tools/test_balance.py" = 8
-"tests/tools/test_balance_remaining.py" = 12
+"tests/tools/test_balance_remaining.py" = 2
 "tests/tools/test_boolean_contract.py" = 11
-"tests/tools/test_boolean_grid.py" = 13
 "tests/tools/test_boolean_oracle_execution.py" = 3
 "tests/tools/test_boolean_parameterized_contract.py" = 10
 "tests/tools/test_boolean_reader_contract.py" = 5

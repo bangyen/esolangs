@@ -15,6 +15,7 @@ from esolangs.debugger import make_vm
 from esolangs.registry import BY_BOOLEAN
 from scripts.benchmark import WrittenState
 from tests.proofs._ledger import load as load_ledger
+from tests.proofs.deep import deep_arities
 from tests.proofs.deep.execution import (
     DENSE_ARITY,
     MAX_GROWTH,
@@ -42,41 +43,16 @@ LOG_GROWTH = 2.5
 
 BOUND = {"poly n": POLY_GROWTH, "linear": MAX_GROWTH, "T log T": LOG_GROWTH}
 
-#: ``poly n`` rows whose dense increments may grow past ``STEP_GROWTH`` at
-#: these arities, each with the measurement that shows the bound bind later.
-#: Vandevelo's registers grow ~sqrt(T) until the n*n cap binds at n=14:
-#: written bits 2450, 3361, 3872, 4419, 4998 at n=13..17, increments 911,
-#: 511, 547, 579 -- polynomial -- but n=16 alone costs 34s, past the band.
-#: SLOW ACV MAMMALIAN's increments track per-level residues, not T: a
-#: command adds at most one cell, so its arrays hold 23 + S bytes for S
-#: poly n commands (dense x1.155); written bits 3077 at n=12, 3216 at 13.
-STEP_EXEMPT = frozenset({"SLOW ACV MAMMALIAN", "Vandevelo"})
+#: ``poly n`` rows whose dense increments may outgrow ``STEP_GROWTH`` at
+#: these arities, by language id; each reason is in the fixture.
+STEP_EXEMPT = frozenset(deep_arities("workspace_step_exempt"))
 
 #: Arity ceilings, fixed for the reason ``linearity.py`` gives.  Written
 #: state is recounted every step, so a rung costs ~4x the last: 9 throughout
 #: was 207s.  Lowered where a generator's top rung passed ~3s; FALSE and
 #: BFStack keep 9, since their poly n fit (x1.49, x1.48) is steeper lower down.
 MAX_ARITY = 8
-ARITY_OVERRIDE = {
-    "addsubjump": 6,
-    "b_tapemark": 7,
-    "bfstack": 9,
-    "circlefuck": 6,
-    # Below its n=8 route change, which leaves no five rungs in budget past
-    # it; the 9T + 3n - 12 bound holds at n=8 on all ten formula tables.
-    "circuit_diagram": 7,
-    "dimensional": 7,
-    "factor": 8,
-    "false": 9,
-    "laserfuck": 9,
-    "flowchart": 7,
-    "line": 7,
-    "polynomial": 8,
-    "rotfuck": 6,
-    "streetcode": 7,
-    "taglate": 7,
-    "unlambda": 6,
-}
+ARITY_OVERRIDE = deep_arities("workspace")
 
 
 @dataclass
@@ -199,7 +175,7 @@ def main() -> int:
                 growth = dense
             step = dense.step
             if step is not None and step > STEP_GROWTH:
-                if row.generator in STEP_EXEMPT:
+                if key in STEP_EXEMPT:
                     print(f"  {row.generator}: x{step:.3f} steps, exempt below its cap")
                 else:
                     growth = Growth(

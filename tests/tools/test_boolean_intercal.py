@@ -4,6 +4,8 @@ import random
 
 import pytest
 
+import esolangs
+from esolangs._evaluate import _evaluate
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.intercal import run
 from esolangs.tools.helpers import best_input_order, fill_runs
@@ -81,3 +83,10 @@ def test_shared_templates_execute_on_sampled_tables(n: int) -> None:
     for _ in range(3):
         table = format(rng.getrandbits(1 << n), f"0{1 << n}b")
         assert "".join(_run(table, row) for row in range(1 << n)) == table
+
+
+@pytest.mark.parametrize("table", ["00"])
+def test_narrow_balance_regime_edge_executes(table):
+    """The smallest tables reaching an otherwise-untaken balance arm."""
+    balanced = esolangs.generate("INTERCAL", table, balance=True)
+    assert _evaluate("INTERCAL", balanced, inputs=len(table).bit_length() - 1) == table
