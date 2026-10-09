@@ -7,8 +7,10 @@ import pytest
 import esolangs
 from esolangs.tools.arrowqueue import arrowqueue
 from tests.divergence import diverges
-from tests.tools.fills import _instantiate_arrowqueue
+from tests.tools.fills import fill
 from tests.witness_tables import witnesses
+
+_instantiate_arrowqueue = fill("ArrowQueue")
 
 
 # 80 builds what None does.

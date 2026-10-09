@@ -26,7 +26,9 @@ class TestParameterizedNoComment:
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
         """Fill through the shipped filler, not a copy of it."""
-        from tests.tools.fills import _fill_nocomment
+        from tests.tools.fills import fill
+
+        _fill_nocomment = fill("NoComment")
 
         return _fill_nocomment(tpl, bits)
 

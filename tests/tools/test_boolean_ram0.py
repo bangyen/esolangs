@@ -25,7 +25,9 @@ class TestParameterizedRam0:
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
         """Fill through the shipped filler, not a copy of it."""
-        from tests.tools.fills import _fill_ram0
+        from tests.tools.fills import fill
+
+        _fill_ram0 = fill("RAM0")
 
         return _fill_ram0(tpl, bits)
 

@@ -33,10 +33,6 @@
 "tests/interpreters/test_taglate.py" = 3
 "tests/piet/test_piet_plus_plus.py" = 3
 "tests/proofs/_fractran_order.py" = 1
-"tests/proofs/deep/a_painter_ant.py" = 2
-"tests/proofs/deep/arrowqueue.py" = 3
-"tests/proofs/deep/bio.py" = 3
-"tests/proofs/deep/container.py" = 2
 "tests/proofs/deep/fractran_shared.py" = 3
 "tests/proofs/deep/multiplicity.py" = 8
 "tests/proofs/test_addsubjump_sharing.py" = 11
@@ -88,10 +84,7 @@
 "tests/test_vm_protocol.py" = 10
 "tests/tools/boolean_oracles.py" = 1
 "tests/tools/eval_reorders.py" = 1
-"tests/tools/fills.py" = 12
-"tests/tools/minifuck_support.py" = 1
 "tests/tools/mutate_generator.py" = 2
-"tests/tools/one_two_three_support.py" = 1
 "tests/tools/plain_oracles.py" = 5
 "tests/tools/reader_support.py" = 3
 "tests/tools/test_balance.py" = 8
@@ -106,4 +99,3 @@
 "tests/tools/test_one_column_grids.py" = 4
 "tests/tools/test_raster_balance.py" = 1
 "tests/tools/test_short_names.py" = 1
-"tests/tools/test_small_width_floors.py" = 11

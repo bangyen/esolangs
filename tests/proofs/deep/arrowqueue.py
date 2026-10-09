@@ -11,7 +11,10 @@ from esolangs.interpreters.grid_based.arrowqueue import _advance, _Machine
 from esolangs.tools.arrowqueue import _DRAINED_RING, _STAGE, arrowqueue
 from esolangs.tools.helpers import TEMPLATE_CHAR
 from esolangs.vm import run_until_halt_or_cycle
-from tests.tools.fills import _instantiate_arrowqueue
+from tests.tools.fills import fill
+
+_instantiate_arrowqueue = fill("ArrowQueue")
+
 
 #: Cost band; see ``__main__.py``. Total over every arity, so nothing here enumerates
 #: tables to establish the claim -- the best gating ratio in the directory.

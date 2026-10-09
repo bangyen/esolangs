@@ -28,14 +28,18 @@ class TestParameterizedBack:
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
         """Fill the template the way the example harness does."""
-        from tests.tools.fills import _fill_back
+        from tests.tools.fills import fill
+
+        _fill_back = fill("Back")
 
         return _fill_back(tpl, bits)
 
     def test_program_length_is_the_same_for_every_input(self) -> None:
         """Both bits cost one command, so the size reveals nothing."""
         from esolangs import tools as generators
-        from tests.tools.fills import _fill_back
+        from tests.tools.fills import fill
+
+        _fill_back = fill("Back")
 
         for n in (1, 2, 3):
             template = generators.back(format(0, f"0{2**n}b"))
@@ -161,7 +165,9 @@ class TestParameterizedBack:
     def test_reordering_keeps_the_equal_width_embedding(self) -> None:
         """Reordered loads still cost the same for either bit."""
         from esolangs import tools as generators
-        from tests.tools.fills import _fill_back
+        from tests.tools.fills import fill
+
+        _fill_back = fill("Back")
 
         for table in ("10101010", "11001100", "01101001"):
             template = generators.back(table)
