@@ -79,15 +79,6 @@ Controls are in `tests/proofs/test_research_tracks.py`. The linked proofs
 close ordered input-forgetting construction, generated-family loading
 bounds, and the weighted-description theorem.
 
-## Engineering
-
-Generator gaps against the canonical pieces in
-[CONTRIBUTING](CONTRIBUTING.md#what-makes-a-generator-optimization-worth-shipping).
-
-- **Back bend routes stay out.** They add under one point on tiled n=8,
-  and raise worst commands at n=6/7 from 122/221 to 154/306, past the
-  execution ledger's bound.
-
 ## Parked
 
 Stalled problems, one line each; detail lives in the linked proof page. A

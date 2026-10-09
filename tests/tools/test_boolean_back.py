@@ -305,3 +305,90 @@ def test_a_permuting_generator_changes_its_drawing() -> None:
             for drawing, sizes in builds.items():
                 assert len(sizes) == 1, (name, table, len(drawing), sorted(sizes))
     assert checked >= 3, checked
+
+
+@pytest.mark.parametrize(
+    ("n", "seed"),
+    [
+        (6, 2031),
+        (7, 2033),
+        (8, 2034),
+        (9, 2035),
+        (10, 2036),
+        pytest.param(11, 2037, marks=pytest.mark.medium),
+        pytest.param(12, 2038, marks=pytest.mark.medium),
+    ],
+)
+def test_selective_bend_preserves_the_command_bound(n: int, seed: int) -> None:
+    """Every input executes; admission compares with both original layouts."""
+    import random
+
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.tape_based.back import _Machine
+    from esolangs.tools.back import back
+    from tests.tools.fills import _fill_back
+
+    rng = random.Random(seed)
+    blocks = ["".join(rng.choice("01") for _ in range(2 ** (n - 3))) for _ in range(3)]
+    table = "".join(blocks[int(c)] for c in "01201201")
+    baseline = min(
+        (_back_ordered(table, tuple(range(n)), wrap=w) for w in (False, True)), key=len
+    )
+    program = back(table)
+
+    def area(code: str) -> int:
+        return len(code.splitlines()) * max(map(len, code.splitlines()))
+
+    assert len(program) <= len(baseline)
+    assert area(program) <= area(baseline)
+    rows = 3 * 2**n // 4 + 1
+    bound = max(rows, 6 * n - 1) + rows + 3 * n + 6
+    worst = 0
+    for row, answer in enumerate(table):
+        bits = [row >> (n - 1 - i) & 1 for i in range(n)]
+        machine = _Machine(_fill_back(program, bits).splitlines(), ScriptedIO())
+        steps = 0
+        while not machine.halted and steps < bound:
+            machine.step()
+            steps += 1
+        assert machine.halted
+        assert machine.tape[n] == int(answer)
+        worst = max(worst, steps)
+    if n == 7:
+        assert (len(baseline), len(program), area(baseline), area(program), worst) == (
+            1267,
+            1156,
+            1560,
+            1274,
+            179,
+        )
+
+
+def test_bend_walk_rejects_cycles_and_counts_both_skip_outcomes() -> None:
+    from esolangs.tools.back_routes import _back_walk
+
+    assert _back_walk({(0, 1): "*"}, 1, 3) == 1
+    assert _back_walk({(0, 1): "+", (0, 3): "*"}, 1, 4) == 3
+    assert _back_walk({(0, 1): " "}, 1, 3) is None
+
+
+@pytest.mark.parametrize("obstruction", ["owner", "distance", "occupied"])
+def test_bend_refuses_a_missing_owner_or_blocked_corridor(obstruction: str) -> None:
+    from esolangs.tools.back_routes import _back_bend
+
+    positions = {(1, 0): (1, 5), (1, 1): (4, 5), (1, 2): (10, 5)}
+    grid = dict.fromkeys(positions.values(), "\\")
+    ids = [[0], [0, 0], [0, 7, 1, 8, 7, 9]]
+
+    def draw(_shared: set[tuple[int, int]]):
+        cells = dict(grid)
+        nodes = dict(positions)
+        if obstruction == "owner":
+            del nodes[1, 2]
+        elif obstruction == "distance":
+            nodes[1, 2] = (2, 5)
+        else:
+            cells[2, 3] = ">"
+        return cells, nodes
+
+    assert _back_bend(grid, positions, set(), ids, draw) is None
