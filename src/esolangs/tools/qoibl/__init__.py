@@ -8,6 +8,7 @@ from typing import Any
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language, Shape
 from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table, input_weights
+from esolangs.tools.wrap import wrap_space_delimited
 
 __all__ = ["qoibl"]
 
@@ -69,8 +70,6 @@ def qoibl(truth_table: str, width: int | None = None) -> str:
     program = "\n".join(lines)
     if width is None or width <= 0:
         return program
-    from esolangs.tools.wrap import _qoibl
-
     # Fits as-is: no Horner expansion needed.
     wrapped = _qoibl(program, width)
     if max(map(len, wrapped.splitlines())) <= width:
@@ -94,6 +93,15 @@ def qoibl(truth_table: str, width: int | None = None) -> str:
             tokens[at] = f"qe {scratch} qe"
         output.append(" ".join(tokens))
     return _qoibl("\n".join(output), limit)
+
+
+def _qoibl(program: str, width: int) -> str:
+    """Wrap Qoibl, folding each of its lines but keeping them apart.
+
+    A newline between tokens is whitespace (measured), so each statement
+    line folds on its own; joining first would fold across statements.
+    """
+    return "\n".join(wrap_space_delimited(line, width) for line in program.split("\n"))
 
 
 def _balance(table: str, default: Any, **options: Any) -> Any:

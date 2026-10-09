@@ -8,8 +8,7 @@ import pytest
 
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.fargo import run
-from esolangs.tools.fargo import _arm_expression, fargo
-from esolangs.tools.helpers import anf_coefficients
+from esolangs.tools.fargo import _arm_expression, anf_coefficients, fargo
 from tests.witness_tables import nested_dense
 
 
