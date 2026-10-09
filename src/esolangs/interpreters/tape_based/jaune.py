@@ -375,7 +375,7 @@ class _Machine:
             self.ptr,
             self.hold,
             self.call_stack,
-            self.io.position(),
+            self.io.progress(),
         )
 
     def frame_entry_key(self, _frame: object) -> tuple[object, ...]:
@@ -389,7 +389,7 @@ class _Machine:
             self.cells,
             self.ptr,
             self.hold,
-            self.io.position(),
+            self.io.progress(),
         )
 
     @property

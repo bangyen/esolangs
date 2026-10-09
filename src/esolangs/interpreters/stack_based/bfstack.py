@@ -149,7 +149,7 @@ class _Machine:
         """Return the complete internal state, hashable for cycle detection."""
         # Both stacks are already tuples, so they go in as they stand.
         ind, stk, lst = self.state
-        return (stk, lst, ind, self.io.position())
+        return (stk, lst, ind, self.io.progress())
 
     def step(self) -> None:
         """Execute one command, advancing the cursor.

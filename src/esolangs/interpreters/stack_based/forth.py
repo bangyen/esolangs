@@ -286,7 +286,7 @@ class _Machine:
             self.stack,
             frozenset(self.table.items()),
             tuple((f.code, f.pc, f.loop) for f in self.frames),
-            self.io.position(),
+            self.io.progress(),
             self._input_reads,
         )
 
@@ -302,7 +302,7 @@ class _Machine:
             frame.loop,
             self.stack,
             frozenset(self.table.items()),
-            self.io.position(),
+            self.io.progress(),
             self._input_reads,
         )
 

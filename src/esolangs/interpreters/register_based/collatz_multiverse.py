@@ -184,7 +184,7 @@ class _Machine:
             frozenset(regs),
             frozenset((name, frozenset(cells)) for name, cells in arrays),
             ip,
-            self.io.position(),
+            self.io.progress(),
         )
 
     def step(self) -> None:

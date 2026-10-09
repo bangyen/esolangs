@@ -69,7 +69,7 @@ class _Machine:
         """Return the complete internal state, hashable for cycle detection."""
         # Every field ``step`` can change, plus the input cursor: a repeat
         # that ignores consumed input is not a real cycle.
-        return (self.ind, self.data, self.io.position())
+        return (self.ind, self.data, self.io.progress())
 
     def step(self) -> None:
         """Execute one command, advancing the code position.

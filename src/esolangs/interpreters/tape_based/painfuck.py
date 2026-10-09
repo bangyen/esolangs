@@ -457,7 +457,7 @@ class _Machine:
             self.ind,
             self.rep,
             self.origin,
-            self.io.position(),
+            self.io.progress(),
             self.prog,
             self._input_reads,
             self._random_draws,

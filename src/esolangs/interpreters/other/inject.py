@@ -309,7 +309,7 @@ class _Machine:
             self.ind,
             self.done,
             tuple(self.lines),
-            self.io.position(),
+            self.io.progress(),
             self._input_reads,
             frozenset(self.spans.items()),
         )

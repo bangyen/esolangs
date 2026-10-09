@@ -160,7 +160,7 @@ class _Machine:
             _freeze(self.chain[0]),
             path,
             frozenset(self._writes.items()),
-            self.io.position(),
+            self.io.progress(),
             self.halted,
             self._program_key,
             self._input_reads,

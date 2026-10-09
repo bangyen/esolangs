@@ -145,7 +145,7 @@ class _Machine:
     def snapshot(self) -> tuple[object, ...]:
         node, at, pointer, tape = self.state
         cells = tuple((cell, value) for cell, value in tape if value)
-        return node, at, pointer, cells, self.io.position()
+        return node, at, pointer, cells, self.io.progress()
 
     def step(self) -> None:
         from .simulate import _advance

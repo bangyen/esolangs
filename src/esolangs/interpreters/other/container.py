@@ -194,7 +194,7 @@ class _Machine:
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         variables, queue, exit_code, _tick_count, reads = self.state
-        return (variables, queue, exit_code, self.io.position(), reads)
+        return (variables, queue, exit_code, self.io.progress(), reads)
         # Successful reads distinguish unread input even when IO has no cursor.
         # EOF supplies zero without advancing it, so real EOF cycles stay detectable.
 

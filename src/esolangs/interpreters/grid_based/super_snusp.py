@@ -283,7 +283,7 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         cursor, (pointer, cells), values, digit, done = self.state
-        return (*cursor, pointer, cells, values, digit, done, self.io.position())
+        return (*cursor, pointer, cells, values, digit, done, self.io.progress())
 
     # The all-random-outcomes search.  ``_State`` is already the whole
     # machine -- ``done`` included -- so the branching state is that value

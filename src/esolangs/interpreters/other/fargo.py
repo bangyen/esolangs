@@ -315,7 +315,7 @@ class _Machine:
                 )
                 for frame in self.frames
             ),
-            self.io.position(),
+            self.io.progress(),
         )
 
     def frame_entry_key(self, frame: _Frame) -> Hashable:
@@ -327,7 +327,7 @@ class _Machine:
         return (
             frame.fn_name,
             tuple(sorted((k, repr(v)) for k, v in frame.binds)),
-            self.io.position(),
+            self.io.progress(),
         )
 
     def _lookup(self, name: str, frame: _Frame | None) -> _Func:

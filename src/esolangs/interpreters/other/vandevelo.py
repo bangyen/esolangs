@@ -270,7 +270,7 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete evaluator state."""
-        return (self.state, self.io.position(), self._input_reads, self.statements)
+        return (self.state, self.io.progress(), self._input_reads, self.statements)
 
     def step(self) -> None:
         """Advance one expression-evaluation operation."""

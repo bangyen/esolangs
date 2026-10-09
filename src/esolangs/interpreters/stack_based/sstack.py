@@ -162,7 +162,7 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return (*self.state, self.io.position())
+        return (*self.state, self.io.progress())
 
     def step(self) -> None:
         """Execute one op; the reads, the writes and the byte check live here."""

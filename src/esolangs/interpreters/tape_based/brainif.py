@@ -188,7 +188,7 @@ class _Machine:
 
     def input_position(self) -> int:
         """Report the input cursor for the growth detector."""
-        return self.io.position()
+        return self.io.progress()
 
     @property
     def halted(self) -> bool:
@@ -214,7 +214,7 @@ class _Machine:
         # input cursor joins them because a repeat that ignores consumed
         # input is not a real cycle.
         ind, ptr, cells = self.state
-        return (cells, ind, ptr, self.io.position())
+        return (cells, ind, ptr, self.io.progress())
 
     def step(self) -> None:
         """Execute one line, advancing the cursor.

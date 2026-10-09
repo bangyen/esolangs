@@ -32,7 +32,7 @@ class _Machine:
         return int(self.state)
 
     def snapshot(self) -> tuple[object, ...]:
-        return (self.state, self.io.position())
+        return (self.state, self.io.progress())
 
     def step(self) -> None:
         self.state, output = _advance(self.state)

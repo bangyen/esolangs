@@ -168,7 +168,7 @@ class _Machine:
         # the same order.  ``rendered`` stays out: the detector compares
         # states of a running machine.
         ind, reg, deq, _rendered = self.state
-        return (tuple(self.tokens), ind, reg, deq, self.io.position())
+        return (tuple(self.tokens), ind, reg, deq, self.io.progress())
 
     def step(self) -> None:
         """Execute one token, printing the deque once the cursor ends.

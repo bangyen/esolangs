@@ -236,7 +236,7 @@ class _Machine:
             self.mole,
             self.num,
             self.code,
-            self.io.position(),
+            self.io.progress(),
             self._input_reads,  # IO providers may expose no cursor.
         )
 

@@ -174,7 +174,7 @@ class _Machine:
             self.ind,
             self.stk,
             tuple(sorted(self.var.items())),
-            self.io.position(),
+            self.io.progress(),
             self._halted,
             self.tokens,
             self._input_reads,

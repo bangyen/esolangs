@@ -529,7 +529,7 @@ class _Machine:
             tuple(sorted(cells.items())),
             length,
             *self.state[1:],
-            self.io.position(),
+            self.io.progress(),
         )
 
     def step(self) -> None:

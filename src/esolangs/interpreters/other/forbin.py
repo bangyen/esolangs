@@ -574,7 +574,7 @@ class _Machine:
         return (
             frame.fn,
             tuple(sorted((name, self._render(v)) for name, v in bindings.items())),
-            self.io.position(),
+            self.io.progress(),
             tuple(self.reader.bits),
             self.reader.reads,
         )
@@ -608,7 +608,7 @@ class _Machine:
                 )
                 for f in self.frames
             ),
-            self.io.position(),
+            self.io.progress(),
             tuple(self.reader.bits),
             self.reader.reads,
             tuple(

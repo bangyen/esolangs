@@ -4,7 +4,11 @@ import importlib
 
 import pytest
 
+from esolangs.interpreters.io import ScriptedIO
+from esolangs.interpreters.tape_based.brainfuck import _Machine
+from esolangs.vm import run_until_halt_or_cycle, run_until_halt_or_growth
 from tests.interpreters.contract import CycleContract, EmptyProgramContract
+from tests.interpreters.cursorless_io import PositionlessIO
 from tests.interpreters.runner import run_program
 from tests.raises import assert_rejected_with_hint
 
@@ -121,3 +125,20 @@ class TestFastRunParity:
 @pytest.mark.medium
 def test_malformed_source_carries_a_repair_hint() -> None:
     assert_rejected_with_hint("brainfuck", "[", "close this '['")
+
+
+@pytest.mark.parametrize("io_type", [ScriptedIO, PositionlessIO])
+@pytest.mark.parametrize(
+    ("code", "detector", "output"),
+    [
+        (",[.,]", run_until_halt_or_cycle, "aaaa"),
+        (",[>,]", run_until_halt_or_growth, ""),
+    ],
+)
+def test_cursorless_input_cannot_prove_cycle_or_growth(io_type, code, detector, output):
+    io = io_type("aaaa\0")
+    machine = _Machine(code, io)
+    assert detector(machine, limit=100)
+    assert machine.halted
+    assert io.getvalue() == output
+    assert io.reads == 5

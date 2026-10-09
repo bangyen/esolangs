@@ -30,6 +30,7 @@ class IO:
         self._newline = False
         self._pending = ""
         self._reads = 0
+        self._consumed = 0
 
     def _read(self, prompt: str) -> str:
         return input(prompt)
@@ -75,11 +76,13 @@ class IO:
     def input_str(self, prompt: str = "Input: ") -> str:
         """Read one line, preserving any text left by character reads."""
         prefix = "\n" if self._newline else ""
+        before = self.position()
         if self._pending:
             value, self._pending = self._pending.rstrip("\n"), ""
         else:
             value = self._read(prefix + prompt)
         self._newline = False
+        self._consumed += max(1, len(value), self.position() - before)
         self._reads += 1
         return value
 
@@ -87,6 +90,7 @@ class IO:
         if not self._pending:
             self._pending = self._read(prompt) + "\n"
         value, self._pending = self._pending[0], self._pending[1:]
+        self._consumed += 1
         return value
 
     def input_char(self, prompt: str = "Input: ") -> int:
@@ -155,13 +159,16 @@ class IO:
         self._reads += 1
         return "".join(values)
 
+    def progress(self) -> int:
+        """Return consumed-input progress, including sources with no cursor."""
+        return self._consumed
+
     def position(self) -> int:
         """Report the input cursor, or 0 for a source with no cursor.
 
         ``ScriptedIO`` overrides this with the character offset;
         an interactive source has no cursor to report, so the base returns
-        0.  The state-cycle hang detector snapshots this so a loop that
-        keeps reading input is not mistaken for a repeat.
+        0. Use ``progress()`` for state-cycle and growth detection.
         """
         return 0
 
@@ -247,6 +254,7 @@ class ScriptedIO(IO):
             self._exhausted("character")
         value = self._source[self._offset]
         self._offset += 1
+        self._consumed += 1
         return value
 
     def _peek_char(self, _prompt: str) -> str | None:

@@ -3,6 +3,8 @@
 from contextlib import nullcontext
 from unittest.mock import patch
 
+import pytest
+
 from scripts.screens import candidate
 
 
@@ -21,3 +23,22 @@ def test_shorter_text_with_larger_grid_is_reported_as_growth(capsys) -> None:
     row = capsys.readouterr().out.splitlines()[-1].split()
     assert row[4] == "1"
     assert row[5] == "1.778/1.778"
+
+
+@pytest.mark.parametrize(
+    "options",
+    [
+        ["--rows", "0"],
+        ["--count", "0"],
+        ["--rows", "-1"],
+        ["--n", "0", "1"],
+        ["--n", "2", "1"],
+    ],
+)
+def test_empty_screen_rejected_before_loading(options):
+    with (
+        patch.object(candidate, "_load", side_effect=AssertionError("loaded")),
+        pytest.raises(SystemExit) as caught,
+    ):
+        candidate.main(["brainfuck", "unused.py:build", *options])
+    assert caught.value.code == 2

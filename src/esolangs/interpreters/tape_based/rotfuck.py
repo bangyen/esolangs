@@ -220,7 +220,7 @@ class _Machine:
             self.tape,
             self.ptr,
             self.ind,
-            self.io.position(),
+            self.io.progress(),
         )
 
     @property

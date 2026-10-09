@@ -462,7 +462,7 @@ class _Machine:
             tuple(self.stack),
             frozenset(self.vars.items()),
             self.frames,
-            self.io.position(),
+            self.io.progress(),
             self._input_reads,
         )
 
@@ -478,7 +478,7 @@ class _Machine:
             repeat,
             tuple(self.stack),
             frozenset(self.vars.items()),
-            self.io.position(),
+            self.io.progress(),
             self._input_reads,
         )
 

@@ -116,6 +116,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--seed", type=int, default=0)
     args = parser.parse_args(argv)
 
+    if args.rows < 1 or args.count < 1:
+        parser.error("--rows and --count must be positive")
+    if not 1 <= args.n[0] <= args.n[1]:
+        parser.error("--n requires 1 <= LO <= HI")
+
     language = resolve(args.language)
     fn = _load(args.candidate)
     rng = random.Random(args.seed)

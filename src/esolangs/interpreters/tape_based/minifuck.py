@@ -181,7 +181,7 @@ class _Machine:
         ``length`` rides along, since trailing zeros are invisible in the int.
         """
         _, tape, length, ptr, ind = self.state
-        return (tape, length, ptr, ind, self.io.position())
+        return (tape, length, ptr, ind, self.io.progress())
 
     def step(self) -> None:
         """Execute one instruction, advancing the cursor."""

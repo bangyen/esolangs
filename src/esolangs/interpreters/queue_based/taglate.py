@@ -224,7 +224,7 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return (self.queue, self.ind, self.io.position())
+        return (self.queue, self.ind, self.io.progress())
 
     @property
     def _state(self) -> _State:

@@ -211,7 +211,7 @@ class _Machine:
             self.skp,
             self.stk,
             self._halted_by_command,
-            self.io.position(),
+            self.io.progress(),
         )
 
     @property

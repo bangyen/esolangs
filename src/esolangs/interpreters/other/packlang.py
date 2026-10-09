@@ -596,7 +596,7 @@ class _Machine:
                 (frame.key(), repr(frame.pending), frame.returned)
                 for frame in self.frames
             ),
-            self.io.position(),
+            self.io.progress(),
             self._input_reads,
             self._program_key,
         )
