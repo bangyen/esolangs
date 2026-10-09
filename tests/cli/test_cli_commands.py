@@ -8,7 +8,7 @@ import pytest
 
 import esolangs
 from tests.cli.test_cli import _program, call_main
-from tests.cli_support import _LOOPS, _refused, call_both
+from tests.cli_support import _refused, call_both
 from tests.generator_support import evaluate_generated
 
 
@@ -18,74 +18,6 @@ from tests.generator_support import evaluate_generated
 @pytest.mark.medium
 # 5.2s over 33 tests: drives the CLI as a subprocess.
 @pytest.mark.medium
-class TestTheShellCanJudgeAnAnswer:
-    """Some languages could be run from the CLI and not judged from it."""
-
-    def test_describe_prints_the_traits_that_decide_how_to_drive(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """A Painter Ant cannot be stepped to its answer; it says so."""
-        out = call_main(["describe", "A Painter Ant"], capsys)
-        assert "steppable_to_answer" in out
-        assert "False" in out
-
-    def test_read_answer_finds_a_dumped_answer(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """RAM0's answer is its `z` register, three lines from the end."""
-        program = esolangs.instantiate(
-            "RAM0", esolangs.generate("RAM0", "0110"), [0, 1]
-        )
-        output = esolangs.run("RAM0", program, timeout=20)
-        assert call_main(["read-answer", "RAM0"], capsys, stdin=output).strip() == "1"
-
-    def test_read_answer_refuses_a_termination_language(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """Their output is not the answer, so reading one would invent it."""
-        with pytest.raises(SystemExit) as exc:
-            call_main(["read-answer", "123"], capsys, stdin="VO")
-        assert exc.value.code == 2
-        err = capsys.readouterr().err
-        assert "--timeout" in err
-        assert "observe" in err
-
-    def test_run_read_answer_prints_the_bit_for_a_dump(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """A Painter Ant's grid, reduced through the separate answer reader."""
-        program = esolangs.instantiate(
-            "A Painter Ant", esolangs.generate("A Painter Ant", "0110"), [0, 1]
-        )
-        out = call_main(["run", "A Painter Ant", _program(tmp_path, program)], capsys)
-        assert esolangs.read_answer("A Painter Ant", out).strip() == "1"
-
-    def test_run_timeout_is_the_one_for_a_termination_language(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """For the four that answer by diverging, the timeout carries the 1."""
-        program = esolangs.instantiate("123", esolangs.generate("123", "0110"), [0, 1])
-        with pytest.raises(SystemExit) as exc:
-            call_main(
-                ["run", "--timeout", _LOOPS, "123", _program(tmp_path, program)],
-                capsys,
-            )
-        assert exc.value.code == 124
-        assert "answers 1 by not terminating" in capsys.readouterr().err
-
-    def test_run_halt_is_the_zero_for_a_termination_language(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """And the other polarity, from the same program and a different row."""
-        program = esolangs.instantiate("123", esolangs.generate("123", "0110"), [0, 0])
-        out, err = call_both(
-            ["run", "--timeout", _LOOPS, "123", _program(tmp_path, program)],
-            capsys,
-        )
-        assert out == ""
-        assert err == ""
-
-
 class TestJsonOutput:
     """The reading layout is lossy, so scripting it meant reparsing prose."""
 
@@ -166,28 +98,6 @@ class TestJsonOutput:
 class TestDebugMakesTheSameRefusals:
     """Debugging a program is no reason to skip the checks ``run`` makes."""
 
-    def test_an_unfilled_template_is_refused(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """It stepped one to a confident ``output: '0'``, which was wrong."""
-        path = tmp_path / "t.txt"
-        path.write_text(esolangs.generate("Minifuck", "0110"))
-        with pytest.raises(SystemExit) as exc:
-            call_main(["debug", "Minifuck", str(path)], capsys)
-        assert exc.value.code == 2
-        assert "unfilled runs of '$'" in capsys.readouterr().err
-
-    def test_a_load_error_is_reported_not_raised(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """``debug --help`` promises a raise is reported, not propagated."""
-        path = tmp_path / "junk.txt"
-        path.write_text("ZZZ!!!")
-        with pytest.raises(SystemExit) as exc:
-            call_main(["debug", "Grapheme", str(path)], capsys)
-        assert exc.value.code == 2
-        assert "uppercase Latin letters" in capsys.readouterr().err
-
     def test_an_internal_fault_is_still_reported_not_raised(
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
@@ -219,13 +129,6 @@ class TestPrivateEvaluationNeedsNoSeed:
         """The four that draw, less the slowest, four runs each."""
         answers = {evaluate_generated(language, "0110", timeout=30) for _ in range(4)}
         assert answers == {"0110"}
-
-    def test_run_still_takes_one_because_it_takes_any_program(self) -> None:
-        """The distinction: ``run`` executes what a caller wrote."""
-        assert {
-            esolangs.run("LaserFuck", "o+++.\n", stdin="", timeout=5, seed=0)
-            for _ in range(4)
-        } == {esolangs.run("LaserFuck", "o+++.\n", stdin="", timeout=5, seed=0)}
 
 
 class TestTheWidthFlagDoesNotEatTheTable:

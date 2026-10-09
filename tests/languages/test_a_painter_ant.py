@@ -1,10 +1,12 @@
 """A Painter Ant through the shared API, CLI and machinery."""
 
+from pathlib import Path
+
 import pytest
 
 import esolangs
 from esolangs._execution import interpreter_errors
-from tests.cli.test_cli import call_main
+from tests.cli.test_cli import _program, call_main
 from tests.cli_support import call_both
 from tests.generator_support import evaluate_generated
 
@@ -104,3 +106,33 @@ class TestPrintedCommandsCanBePasted:
         for name in spaced:
             out, _err = call_both(["describe", name], capsys)
             assert f'--spec "{name}"' in out, name
+
+
+def test_a_painter_ant_is_the_one_that_cannot_be_stepped() -> None:
+    """Stated as data: three million steps leave it with no output."""
+    unsteppable = [
+        n
+        for n in esolangs.list_languages()
+        if not esolangs.describe(n)["steppable_to_answer"]
+    ]
+    assert unsteppable == ["A Painter Ant"]
+
+
+def test_describe_prints_the_traits_that_decide_how_to_drive(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """A Painter Ant cannot be stepped to its answer; it says so."""
+    out = call_main(["describe", "A Painter Ant"], capsys)
+    assert "steppable_to_answer" in out
+    assert "False" in out
+
+
+def test_run_read_answer_prints_the_bit_for_a_dump(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A Painter Ant's grid, reduced through the separate answer reader."""
+    program = esolangs.instantiate(
+        "A Painter Ant", esolangs.generate("A Painter Ant", "0110"), [0, 1]
+    )
+    out = call_main(["run", "A Painter Ant", _program(tmp_path, program)], capsys)
+    assert esolangs.read_answer("A Painter Ant", out).strip() == "1"

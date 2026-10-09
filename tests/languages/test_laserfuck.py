@@ -183,3 +183,11 @@ def test_the_branching_detector_takes_a_vm() -> None:
     looping = make_vm("LaserFuck", " v \n}o{\n ^ ")
     assert run_until_halt_or_all_branches_cycle(looping) is False
     assert run_until_halt_or_all_branches_cycle(make_vm("LaserFuck", "}o{")) is True
+
+
+def test_run_still_takes_one_because_it_takes_any_program() -> None:
+    """The distinction: ``run`` executes what a caller wrote."""
+    assert {
+        esolangs.run("LaserFuck", "o+++.\n", stdin="", timeout=5, seed=0)
+        for _ in range(4)
+    } == {esolangs.run("LaserFuck", "o+++.\n", stdin="", timeout=5, seed=0)}

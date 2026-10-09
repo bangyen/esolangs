@@ -3,7 +3,7 @@
 import pytest
 
 import esolangs
-from tests.test_answer_plumbing_refusals import _big_table
+from tests.generator_support import evaluate_generated
 
 
 class TestADeliberateRefusalIsAnEsolangError:
@@ -20,3 +20,23 @@ class TestADeliberateRefusalIsAnEsolangError:
         with pytest.raises(esolangs.GeneratorCapError) as exc:
             esolangs.generate("Polynomial", _big_table())
         assert "_POLYNOMIAL" not in str(exc.value)
+
+
+def _big_table(arity: int = 11) -> str:
+    """Return a dense table at ``arity``, past the cap it is used for."""
+    import random
+
+    rng = random.Random(7)
+    return "".join(rng.choice("01") for _ in range(2**arity))
+
+
+def test_the_refusal_is_catchable_at_the_size_it_refuses() -> None:
+    """A refusal past the sweep's bound, at the first arity that triggers it."""
+    with pytest.raises(esolangs.GeneratorCapError, match="cost"):
+        esolangs.generate("Polynomial", _big_table(11))
+
+
+def test_it_is_catchable_through_evaluate_too() -> None:
+    """NoComment's leaked through ``evaluate`` identically."""
+    with pytest.raises(esolangs.GeneratorCapError):
+        evaluate_generated("Polynomial", _big_table(11))

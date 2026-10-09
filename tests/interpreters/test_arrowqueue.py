@@ -1,23 +1,18 @@
 """Unit tests for the ArrowQueue interpreter."""
 
-import io
-from contextlib import redirect_stdout
+from functools import partial
 from typing import ClassVar
 
 import esolangs
 from esolangs.interpreters.grid_based.arrowqueue import _Machine, run
-from esolangs.interpreters.io import IO, ScriptedIO
+from esolangs.interpreters.io import ScriptedIO
 from tests.interpreters.contract import (
     CycleContract,
     EmptyProgramContract,
 )
+from tests.interpreters.runner import run_printing
 
-
-def run_and_capture(code: list[str]) -> str:
-    buffer = io.StringIO()
-    with redirect_stdout(buffer):
-        run(code, IO())
-    return buffer.getvalue()
+run_and_capture = partial(run_printing, run)
 
 
 class TestArrowQueue:

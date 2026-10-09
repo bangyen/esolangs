@@ -16,6 +16,7 @@ from tests.interpreters.contract import (
 )
 from tests.interpreters.cursorless_io import PositionlessIO
 from tests.interpreters.runner import run_program as _run_program
+from tests.raises import assert_rejected_with_hint
 
 run_program = partial(_run_program, run)
 
@@ -447,3 +448,8 @@ def test_grapheme_changing_stack_halts() -> None:
     # has a different shared stack and reaches the zero base case.
     code = "FAF" + "H" + "FFTPBKFAFDQ" + "H" + "FAFC" + "FAFD" + "G"
     assert run_until_halt_or_ancestor(Grapheme(code, ScriptedIO())) is True
+
+
+@pytest.mark.medium
+def test_malformed_source_carries_a_repair_hint() -> None:
+    assert_rejected_with_hint("Grapheme", "abc", "uppercase Latin")

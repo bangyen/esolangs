@@ -19,6 +19,7 @@ from tests.interpreters.streetcode_support import (
     run_and_capture,
     run_street,
 )
+from tests.raises import assert_rejected_with_hint
 
 
 class TestStreetcodeSingleCommands:
@@ -270,3 +271,8 @@ class TestStreetcodeWikiExamples:
 def test_a_counting_ring_program_drives_its_whole_lap() -> None:
     """The lap follows the latched merge through to the turn."""
     assert run_and_capture(_RING_PROGRAM) == "Hi"
+
+
+@pytest.mark.medium
+def test_malformed_source_carries_a_repair_hint() -> None:
+    assert_rejected_with_hint("Streetcode", "zzz", "exactly one C")

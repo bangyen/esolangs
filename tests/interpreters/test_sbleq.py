@@ -4,6 +4,7 @@ import io
 
 import pytest
 
+import esolangs
 from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.interpreters.tape_based.sbleq import _Machine, run
 from esolangs.interpreters.tape_based.sbleq import _Machine as Sbleq
@@ -281,3 +282,12 @@ def test_sbleq_looping_run_is_detected_as_a_cycle() -> None:
     # a=0 b=0 c=2: diff is always 0, so it jumps to mem[2] (address 0) forever
     machine = Sbleq("0 0 0", ScriptedIO(), store="a")
     assert run_until_halt_or_cycle(machine) is False
+
+
+def test_a_huge_address_is_refused_before_allocating() -> None:
+    """A store grown to whatever the program named thrashed the machine."""
+    with pytest.raises(esolangs.InterpreterLimitError, match="grow its store"):
+        esolangs.run("S*bleq", "100000000000000000000 0 0", stdin="", timeout=2)
+    with pytest.raises(esolangs.InterpreterLimitError, match="grow its store"):
+        esolangs.run("S*bleq", "1000000000000000000 0 0", stdin="", timeout=2)
+    assert esolangs.run("S*bleq", "20 0 0", stdin="", timeout=5) == ""

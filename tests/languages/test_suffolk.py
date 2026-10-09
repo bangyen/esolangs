@@ -1,5 +1,7 @@
 """Suffolk through the shared API, CLI and machinery."""
 
+import warnings
+
 import pytest
 
 import esolangs
@@ -12,6 +14,7 @@ from esolangs.vm import (
     run_until_halt_or_value_growth,
 )
 from tests.generator_support import evaluate_generated
+from tests.test_stepping_parity import _STEP_BUDGET, _row
 
 
 class TestSelfHaltsIsAWarningNotAGuarantee:
@@ -78,3 +81,25 @@ def test_the_value_growth_detector_declines_a_repeating_program() -> None:
     # `<` alone rewinds to a cell it already read: a repeat, not a climb.
     with pytest.raises(TimeoutError):
         run_until_halt_or_value_growth(make_vm("Suffolk", "<"), 5_000)
+
+
+def test_a_language_whose_documented_stop_is_eof_is_not_warned_about() -> None:
+    """Suffolk's programs end *by* running out of input."""
+
+    program = esolangs.generate("Suffolk", "0110")
+    stdin = esolangs.encode_inputs("Suffolk", [1, 0], truth_table="0110")
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        assert esolangs.run("Suffolk", program, stdin=stdin, timeout=20) == "1"
+    assert not caught
+
+
+def test_suffolk_no_longer_disagrees_with_itself() -> None:
+    """``run`` answered and the debugger raised, for the same call."""
+    table = "0110"
+    for bits, want in (([0, 0], "0"), ([0, 1], "1"), ([1, 0], "1"), ([1, 1], "0")):
+        program, stdin = _row("Suffolk", table, bits)
+        assert esolangs.run("Suffolk", program, stdin=stdin, timeout=20) == want
+        debugger = debugger_api.make_debugger("Suffolk", program, stdin=stdin)
+        assert debugger.run(max_steps=_STEP_BUDGET) == "halted"
+        assert debugger.output == want

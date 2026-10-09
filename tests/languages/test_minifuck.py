@@ -374,3 +374,35 @@ class TestBitsAreBits:
     def test_a_non_string_template_is_refused(self) -> None:
         with pytest.raises(esolangs.TemplateError, match="template must be"):
             esolangs.instantiate("Minifuck", None, [1, 0])  # type: ignore[arg-type]
+
+
+def test_running_one_unfilled_is_refused() -> None:
+    """Minifuck ignored its slots and reported a constant as the answer."""
+    template = esolangs.generate("Minifuck", XOR)
+    with pytest.raises(TemplateError) as exc:
+        esolangs.run("Minifuck", template)
+    assert "unfilled runs of '$'" in str(exc.value)
+    assert "instantiate" in str(exc.value)
+
+
+def test_instantiating_gives_the_right_answer() -> None:
+    """The whole point: all four rows, executed."""
+    template = esolangs.generate("Minifuck", XOR)
+    got = "".join(
+        esolangs.run("Minifuck", esolangs.instantiate("Minifuck", template, [a, b]))
+        for a in (0, 1)
+        for b in (0, 1)
+    )
+    assert got == XOR
+
+
+def test_an_unfilled_template_is_refused(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """It stepped one to a confident ``output: '0'``, which was wrong."""
+    path = tmp_path / "t.txt"
+    path.write_text(esolangs.generate("Minifuck", "0110"))
+    with pytest.raises(SystemExit) as exc:
+        call_main(["debug", "Minifuck", str(path)], capsys)
+    assert exc.value.code == 2
+    assert "unfilled runs of '$'" in capsys.readouterr().err

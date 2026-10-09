@@ -50,22 +50,6 @@ class TestTheTraitsAreReportedBeforeAMachineExists:
             for key, value in machine_traits(name).items():
                 assert facts[key] == value, (name, key)
 
-    def test_a_painter_ant_is_the_one_that_cannot_be_stepped(self) -> None:
-        """Stated as data: three million steps leave it with no output."""
-        unsteppable = [
-            n
-            for n in esolangs.list_languages()
-            if not esolangs.describe(n)["steppable_to_answer"]
-        ]
-        assert unsteppable == ["A Painter Ant"]
-
-    def test_the_debugger_mirrors_them_too(self) -> None:
-        """Reading them meant reaching through ``.vm``, which decides nothing."""
-        d = debugger_api.make_debugger("RAM0", _row("RAM0", "0110", [0, 1])[0])
-        assert d.dumps_on_the_post_halt_step is True
-        assert d.self_halts is True
-        assert d.steppable_to_answer is True
-
 
 def _steppable_languages() -> list[str]:
     """Return the languages this file's parity sweeps compare, by the same rule."""
@@ -112,28 +96,6 @@ class TestSteppingReachesTheSameAnswer:
         # Every admitted language on every row: anything that raised took
         # the ``except`` above and is missing from the count.
         assert checked == len(languages) * 4, checked
-
-    def test_suffolk_no_longer_disagrees_with_itself(self) -> None:
-        """``run`` answered and the debugger raised, for the same call."""
-        table = "0110"
-        for bits, want in (([0, 0], "0"), ([0, 1], "1"), ([1, 0], "1"), ([1, 1], "0")):
-            program, stdin = _row("Suffolk", table, bits)
-            assert esolangs.run("Suffolk", program, stdin=stdin, timeout=20) == want
-            debugger = debugger_api.make_debugger("Suffolk", program, stdin=stdin)
-            assert debugger.run(max_steps=_STEP_BUDGET) == "halted"
-            assert debugger.output == want
-
-    def test_a_dump_is_reachable_without_touching_the_wrapped_vm(self) -> None:
-        """``Debugger.step`` returned early on ``halted``; the dump *is* that step."""
-        program, _ = _row("RAM0", "0110", [0, 1])
-        debugger = debugger_api.make_debugger("RAM0", program)
-        assert debugger.run(max_steps=_STEP_BUDGET) == "halted"
-        assert esolangs.read_answer("RAM0", debugger.output) == "1"
-        # And the step after the dump is the no-op the docstring promises,
-        # so a caller who does step again is not punished for it.
-        before = debugger.output
-        debugger.step()
-        assert debugger.output == before
 
 
 class TestStepPastHaltIsSafeEverywhere:

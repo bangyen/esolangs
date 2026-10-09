@@ -1,5 +1,4 @@
-import io
-from contextlib import redirect_stdout
+from functools import partial
 
 import pytest
 
@@ -12,14 +11,10 @@ from tests.interpreters.contract import (
     SnapshotContract,
     StateViewContract,
 )
+from tests.interpreters.runner import run_printing
 from tests.raises import assert_rejected_with_hint
 
-
-def run_and_capture(code: str) -> str:
-    buffer = io.StringIO()
-    with redirect_stdout(buffer):
-        run(code, IO())
-    return buffer.getvalue()
+run_and_capture = partial(run_printing, run)
 
 
 class TestBitdeque:
@@ -79,7 +74,6 @@ class TestTheWikiExample:
 
 class TestStepMachine:
     def test_step_tracks_cursor_register_and_deque(self) -> None:
-        from esolangs.interpreters.io import IO
         from esolangs.interpreters.queue_based.bitdeque import _Machine
 
         machine = _Machine("INVERT PUSH", IO())
@@ -110,7 +104,6 @@ class TestStepMachine:
 
 
 def _machine(code: object) -> object:
-    from esolangs.interpreters.io import IO
     from esolangs.interpreters.queue_based.bitdeque import _Machine
 
     return _Machine(code, IO())

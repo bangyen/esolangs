@@ -1,20 +1,15 @@
 """Unit tests for the Eval interpreter."""
 
-import io
-from contextlib import redirect_stdout
+from functools import partial
 
 import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.interpreters.stack_based.eval import _Machine, run
+from tests.interpreters.runner import run_printing
 
-
-def run_and_capture(code: str) -> str:
-    buffer = io.StringIO()
-    with redirect_stdout(buffer):
-        run(code, IO())
-    return buffer.getvalue()
+run_and_capture = partial(run_printing, run)
 
 
 class TestEval:

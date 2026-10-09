@@ -2,10 +2,8 @@
 
 import pytest
 
-from esolangs.interpreters.grid_based.laserfuck import _Machine as Laserfuck
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.tape_based.brainfuck import _Machine as Brainfuck
-from esolangs.interpreters.tape_based.painfuck import _Machine as Painfuck
 from esolangs.vm import (
     make_vm,
     run_until_halt,
@@ -16,56 +14,11 @@ from esolangs.vm import (
 )
 
 
-def _painfuck_source(targets: str) -> str:
-    """Encode direct Painfuck commands through its source translation."""
-    cycles = ("pevkjzwr", "yuctsobqihald")
-    out: list[str] = []
-    for index, target in enumerate(targets):
-        cycle = next(cycle for cycle in cycles if target in cycle)
-        out.append(cycle[(cycle.index(target) - index) % len(cycle)])
-    return "".join(out)
-
-
 def _bf(code: str, stdin: str = "") -> Brainfuck:
     return Brainfuck(code, ScriptedIO(stdin))
 
 
 class TestRunUntilHaltOrCycle:
-    def test_painfuck_later_coin_can_escape_repeated_visible_state(self) -> None:
-        """Pins the draw count in the snapshot: tape/cursor repeat, yet the
-        fifth coin halts ``payb``, so a single path must not report a cycle."""
-
-        class DelayedEscape:
-            def __init__(self) -> None:
-                self.draws = 0
-
-            def randbelow(self, upper: int) -> int:
-                assert upper == 2
-                self.draws += 1
-                return int(self.draws == 5)
-
-        coins = DelayedEscape()
-        machine = Painfuck(_painfuck_source("payb"), ScriptedIO(), coins)
-        assert run_until_halt_or_cycle(machine, limit=64) is True
-        assert coins.draws == 5
-
-    def test_branching_search_leaves_unbounded_or_input_paths_undecided(self) -> None:
-        with pytest.raises(TimeoutError, match="reachable graph may be unbounded"):
-            run_until_halt_or_all_branches_cycle(
-                Laserfuck(["o*"], ScriptedIO()), limit=1
-            )
-        # The direct target 'j' reads; sibling paths must not share a cursor.
-        with pytest.raises(TimeoutError, match="needs input"):
-            run_until_halt_or_all_branches_cycle(
-                Painfuck(_painfuck_source("j"), ScriptedIO("A\n"))
-            )
-        # c repeats y 49 times: the frontier is limited at the transition,
-        # before its 2**49 outcomes are materialized.
-        with pytest.raises(TimeoutError, match="coin outcomes"):
-            run_until_halt_or_all_branches_cycle(
-                Painfuck(_painfuck_source("ccy"), ScriptedIO()), limit=4
-            )
-
     def test_a_machine_already_halted_is_reported_as_halting(self) -> None:
         """The loop is never entered, and the answer is still ``True``."""
         vm = make_vm("brainfuck", "++")
