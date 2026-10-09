@@ -45,6 +45,7 @@ Usage:
 """
 
 import argparse
+import ast
 import atexit
 import functools
 import os
@@ -313,6 +314,129 @@ INTERPRETER_CONTRACT_TESTS = (
 )
 
 
+def _generator_test_scope(module: str) -> list[str] | None:
+    """Keep shared tests and dependent language suites for a leaf generator."""
+    from esolangs.registry import LANGUAGES
+
+    owners: dict[str, str] = {}
+    for language in LANGUAGES.values():
+        if language.boolean is not None:
+            owner = language.boolean.__module__.removeprefix("esolangs.tools.")
+            for name in (
+                language.id,
+                language.name,
+                *language.aliases,
+                language.boolean.__name__,
+                owner,
+            ):
+                owners[name] = owner
+    if module not in owners.values():
+        return None
+    needles = {name for name, owner in owners.items() if owner == module}
+    # A generator importing this one makes its language suite relevant too.
+    dependents = {module}
+    tools_root = ROOT / "src/esolangs/tools"
+    sources = {
+        source: source.read_text(encoding="utf-8")
+        for source in tools_root.rglob("*.py")
+    }
+    imports: dict[Path, set[str]] = {}
+    while True:
+        found = set()
+        for source, text in sources.items():
+            if not any(dep.rsplit(".", 1)[-1] in text for dep in dependents):
+                continue
+            if source not in imports:
+                references = set()
+                package = list(source.parent.relative_to(tools_root).parts)
+                for node in ast.walk(ast.parse(text)):
+                    if isinstance(node, ast.ImportFrom):
+                        prefix = node.module or ""
+                        if node.level:
+                            prefix = ".".join(
+                                [
+                                    *package[: len(package) - node.level + 1],
+                                    *(prefix.split(".") if prefix else []),
+                                ]
+                            )
+                        prefix = prefix.removeprefix("esolangs.tools.")
+                        references.add(prefix)
+                        for alias in node.names:
+                            references.add(prefix + "." + alias.name)
+                            references.add(owners.get(alias.name, alias.name))
+                    elif isinstance(node, ast.Import):
+                        references.update(
+                            alias.name.removeprefix("esolangs.tools.")
+                            for alias in node.names
+                        )
+                imports[source] = references
+            if imports[source] & dependents:
+                owner = (
+                    source.relative_to(tools_root)
+                    .with_suffix("")
+                    .as_posix()
+                    .replace("/", ".")
+                    .removesuffix(".__init__")
+                )
+                found.add(owner)
+        if found <= dependents:
+            break
+        dependents.update(found)
+    selected = []
+    for test in (ROOT / "tests").rglob("*.py"):
+        path = test.relative_to(ROOT).as_posix()
+        if not _is_collected(path):
+            continue
+        test_owner: str | None = None
+        for prefix in ("test_boolean_", "test_"):
+            if test.stem.startswith(prefix):
+                suffix = test.stem.removeprefix(prefix)
+                matches = [
+                    name
+                    for name in owners
+                    if suffix == name or suffix.startswith(name + "_")
+                ]
+                if matches:
+                    test_owner = owners[max(matches, key=len)]
+                    break
+        # Only language-local directories follow this naming convention.
+        local = test.parent.name in {"tools", "interpreters", "languages"}
+        if local and test_owner is not None and test_owner not in dependents:
+            text = test.read_text(encoding="utf-8").lower()
+            if not any(needle.lower() in text for needle in needles):
+                continue
+        selected.append(path)
+    return selected
+
+
+def _screen_test_scope(path: str) -> list[str] | None:
+    """Scope a standalone screen with a dedicated suite and no importers."""
+    stem = Path(path).stem
+    candidate = f"tests/scripts/test_{stem}.py"
+    if not (ROOT / candidate).is_file():
+        return None
+    module = path.removesuffix(".py").replace("/", ".")
+    for folder in ("src", "scripts", "tests"):
+        for source in (ROOT / folder).rglob("*.py"):
+            if source.relative_to(ROOT).as_posix() in {path, candidate}:
+                continue
+            text = source.read_text(encoding="utf-8")
+            if stem not in text:
+                continue
+            tree = ast.parse(text)
+            for node in ast.walk(tree):
+                if isinstance(node, ast.ImportFrom) and (
+                    node.module in {module, stem}
+                    or any(alias.name == stem for alias in node.names)
+                ):
+                    return None
+                if isinstance(node, ast.Import) and any(
+                    alias.name in {module, stem} for alias in node.names
+                ):
+                    return None
+    return [candidate]
+
+
 def _pytest_scope(changed: list[str]) -> list[str] | str:
     """Return the pytest paths covering *changed*.
 
@@ -356,8 +480,23 @@ def _pytest_scope(changed: list[str]) -> list[str] | str:
             if (ROOT / generator_tests).exists():
                 paths.add(generator_tests)
             continue
+        if f.startswith("src/esolangs/tools/") and f.endswith(".py"):
+            relative = Path(f).relative_to("src/esolangs/tools")
+            if len(relative.parts) != 1 or relative.stem.startswith("_"):
+                return WHOLE_SUITE
+            selected = _generator_test_scope(relative.stem)
+            if selected is None:
+                return WHOLE_SUITE
+            paths.update(selected)
+            continue
         if f.startswith("src/"):
             return WHOLE_SUITE  # non-interpreter source: not localisable
+        if f.startswith("scripts/screens/") and f.endswith(".py"):
+            selected = _screen_test_scope(f)
+            if selected is None:
+                return WHOLE_SUITE
+            paths.update(selected)
+            continue
         if f.startswith("scripts/") and f.endswith(".py"):
             # The scripts have unit tests (the bundler's, for one) that do not
             # follow the interpreter naming convention, so there is no way to

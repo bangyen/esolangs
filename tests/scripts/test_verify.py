@@ -318,3 +318,106 @@ assert ready.exists(), 'producer stalled on captured output'
         assert "START" + "x" * 1000000 + "END" in output
     else:
         assert "START" not in output
+
+
+class TestGeneratorScope:
+    def test_leaf_generator_keeps_shared_contracts_and_its_suites(self) -> None:
+        verify = load_script()
+        scope = verify._pytest_scope(  # noqa: SLF001
+            ["src/esolangs/tools/bfstack.py"]
+        )
+        assert isinstance(scope, list)
+        assert "tests/tools/test_boolean_bfstack.py" in scope
+        assert "tests/interpreters/test_bfstack.py" in scope
+        assert "tests/tools/test_boolean_contract.py" in scope
+        assert "tests/proofs/test_execution_formulas.py" in scope
+        assert "tests/tools/test_boolean_line.py" not in scope
+        assert "tests/tools/test_boolean_malbolge.py" not in scope
+
+    @pytest.mark.parametrize("module", ["helpers.py", "line/render.py", "__init__.py"])
+    def test_shared_or_package_generator_changes_keep_the_whole_suite(
+        self, module
+    ) -> None:
+        verify = load_script()
+        assert (
+            verify._pytest_scope(  # noqa: SLF001
+                [f"src/esolangs/tools/{module}"]
+            )
+            == verify.WHOLE_SUITE
+        )
+
+    def test_unknown_screen_keeps_the_whole_suite(self) -> None:
+        verify = load_script()
+        assert (
+            verify._pytest_scope(  # noqa: SLF001
+                ["scripts/screens/paths.py"]
+            )
+            == verify.WHOLE_SUITE
+        )
+
+    def test_standalone_screen_has_its_own_suite(self) -> None:
+        verify = load_script()
+        assert verify._pytest_scope(  # noqa: SLF001
+            ["scripts/screens/canonical.py"]
+        ) == ["tests/scripts/test_canonical.py"]
+
+    def test_explicitly_changed_language_tests_are_never_dropped(self) -> None:
+        verify = load_script()
+        scope = verify._pytest_scope(  # noqa: SLF001
+            ["src/esolangs/tools/bfstack.py", "tests/tools/test_boolean_line.py"]
+        )
+        assert "tests/tools/test_boolean_line.py" in scope
+
+
+def test_screen_imported_from_its_package_keeps_the_whole_suite(tmp_path) -> None:
+    verify = load_script()
+    verify.ROOT = tmp_path
+    for path, text in {
+        "tests/scripts/test_probe.py": "",
+        "scripts/screens/probe.py": "",
+        "scripts/consumer.py": "from scripts.screens import probe\n",
+    }.items():
+        target = tmp_path / path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(text)
+    assert verify._pytest_scope(["scripts/screens/probe.py"]) == verify.WHOLE_SUITE  # noqa: SLF001
+
+
+def test_generator_scope_keeps_transitive_dependents(tmp_path, monkeypatch) -> None:
+    from types import SimpleNamespace
+
+    from esolangs import registry
+
+    verify = load_script()
+    verify.ROOT = tmp_path
+    languages = {}
+    for name in ("target", "consumer", "unrelated"):
+
+        def build():
+            return ""
+
+        build.__module__ = "esolangs.tools." + (
+            "package.consumer" if name == "consumer" else name
+        )
+        build.__name__ = name
+        languages[name] = SimpleNamespace(id=name, name=name, aliases=(), boolean=build)
+    monkeypatch.setattr(registry, "LANGUAGES", languages)
+    for path, text in {
+        "src/esolangs/tools/target.py": "",
+        "src/esolangs/tools/package/dependency.py": (
+            "from esolangs.tools.target import build\n"
+        ),
+        "src/esolangs/tools/package/consumer.py": ("from . import dependency\n"),
+        "tests/tools/test_boolean_target.py": "",
+        "tests/tools/test_boolean_consumer.py": "",
+        "tests/tools/test_boolean_unrelated.py": "",
+        "tests/tools/test_contracts.py": "",
+    }.items():
+        target = tmp_path / path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(text)
+    assert verify._pytest_scope(["src/esolangs/tools/target.py"]) == [  # noqa: SLF001
+        "tests/tools/test_boolean_consumer.py",
+        "tests/tools/test_boolean_target.py",
+        "tests/tools/test_contracts.py",
+    ]
