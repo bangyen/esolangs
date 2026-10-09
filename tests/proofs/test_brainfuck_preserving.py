@@ -65,9 +65,16 @@ def _confined(word: str, direction: int) -> bool:
 def _prefix(word: str) -> bool:
     atoms = _atoms(word)
     position = 0
+    balance = 0
     while position < len(atoms):
         char, _, _, begin = atoms[position]
         if char == ".":
+            position += 1
+            continue
+        if char in "+-":
+            balance += 1 if char == "+" else -1
+            if abs(balance) > 1:
+                return False
             position += 1
             continue
         if char not in "<>":
@@ -86,7 +93,7 @@ def _prefix(word: str) -> bool:
                 break
         else:
             return False
-    return True
+    return balance == 0
 
 
 def _word(word: str, *, body: bool = False) -> bool:
@@ -135,6 +142,24 @@ def test_preserving_side_conditions() -> None:
     assert _word("[->+<[],]")
     assert _observe("+[-[]].", "")[0] == "halt"
     assert _observe("+[]", "")[0] == "diverge"
+    assert _prefix("+>+<-")
+    assert not _prefix("+>+<")
+    assert not _prefix("++>+<--")
+    assert not _word("[+>+<-[],]")
+    assert _word("[+>+<[],]")
+
+
+def test_cancelling_tested_updates_execute() -> None:
+    for prefix in ("+>+<-", "->+<+", "+>[-[->[-]<]]<-", "+.>+<-."):
+        assert _prefix(prefix)
+        for value in range(256):
+            initial = "+" * value
+            assert _observe(initial + "[" + prefix + "[],].", "") == _observe(
+                initial + "[].", ""
+            )
+    # At byte 255 a non-cancelling increment clears the tested cell.
+    assert _observe("-" + "[+>+<[]].", "")[0] == "halt"
+    assert _observe("-" + "[].", "")[0] == "diverge"
 
 
 @pytest.mark.parametrize("direction", [1, -1])
@@ -165,7 +190,13 @@ def test_touching_excursion_is_not_preserving() -> None:
 def test_preserving_certificate() -> None:
     rows, classes, matrices = certificate()
     check_certificate(rows, classes, matrices, SCALE, BOUND)
-    assert matrix_image(rows, classes, matrices, SCALE, BOUND) == matrices
+    image = matrix_image(rows, classes, matrices, SCALE, BOUND)
+    assert all(
+        value <= upper.get(end, 0)
+        for matrix, bounds in zip(image, matrices, strict=True)
+        for row, upper in zip(matrix, bounds, strict=True)
+        for end, value in row.items()
+    )
     assert sum(sum(matrix[0].values()) for matrix in matrices) <= 793307057
     assert check_grammar(rows, ALPHABET, sorted(patterns()), []) == 705
     with pytest.raises(ValueError, match="supersolution"):
@@ -204,7 +235,7 @@ def test_preserving_checker_rejects_bad_candidates(damage: str) -> None:
 def test_preserving_checker_cli(tmp_path: Path) -> None:
     rows, classes = [[0] + [-1] * 7], states()
     matrices: list[Matrix] = [[{}] for _ in classes]
-    for state in (EMPTY, (False, 0, 1, 1, 0, 0, 0), (False, 0, 1, 2, 0, 0, 0)):
+    for state in (EMPTY, (False, 0, 1, 1, 0, 0, 0, 0), (False, 0, 1, 2, 0, 0, 0, 0)):
         matrices[classes.index(state)][0][0] = 1
     path = tmp_path / "preserving.json"
     path.write_text(

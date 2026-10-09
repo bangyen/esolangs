@@ -12,7 +12,7 @@ from divergence_certificate import _atom_image, _check_image, _validate
 from divergence_certificate import _next as _base
 from grammar_certificate import check_grammar
 
-type State = tuple[bool, int, int, int, int, int, int]
+type State = tuple[bool, int, int, int, int, int, int, int]
 type Loop = tuple[bool, bool, int, bool]
 
 
@@ -27,7 +27,7 @@ def _loops() -> list[Loop]:
 
 
 def _next(state: State, column: int) -> State | None:
-    read, tail, first, count, right, left, prefix = state
+    read, tail, first, count, right, left, prefix, balance = state
     loop = _loops()[column - 6] if column >= 6 else None
     base_column = 6 + int(loop[1]) + 2 * int(loop[0]) if loop else column
     base = _base((read, tail, first, count), base_column)
@@ -51,22 +51,26 @@ def _next(state: State, column: int) -> State | None:
         height = prefix if prefix <= 2 else 2 - prefix
         if loop:
             if height == 0:
-                prefix = 6 if loop[3] else 5
+                prefix = 6 if loop[3] and balance == 0 else 5
             else:
                 required = 1 if height > 0 else 2
                 allowed = bool(loop[2] & required) if abs(height) == 1 else loop[2] == 3
                 if not allowed:
                     prefix = 5
-        elif column == 1 or (height == 0 and column in (2, 3)):
+        elif column == 1:
             prefix = 5
+        elif height == 0 and column in (2, 3):
+            balance += 1 if column == 3 else -1
+            if not -1 <= balance <= 1:
+                prefix = 5
         elif column in (4, 5):
             height += 1 if column == 5 else -1
             prefix = (height if height >= 0 else 2 - height) if abs(height) <= 2 else 5
-    return (*base, phases[0], phases[1], prefix)
+    return (*base, phases[0], phases[1], prefix, balance if prefix < 5 else 0)
 
 
 def _states() -> list[State]:
-    pending: list[State] = [(False, 0, 0, 0, 0, 0, 0)]
+    pending: list[State] = [(False, 0, 0, 0, 0, 0, 0, 0)]
     reached = set(pending)
     for state in pending:
         for column in range(6 + len(_loops())):
@@ -91,7 +95,7 @@ def check_certificate(
     kinds = _loops()
     bodies: list[Matrix] = [[{} for _ in rows] for _ in kinds]
     for state, matrix in zip(classes, matrices, strict=True):
-        read, tail, first, count, right, left, prefix = state
+        read, tail, first, count, right, left, prefix, _balance = state
         if prefix == 6 or (first, count) == (2, 1) or (tail == 3 and not read):
             continue
         kind = (read, first == 1, int(right == 0) + 2 * int(left == 0), count == 0)
