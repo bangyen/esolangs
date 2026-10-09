@@ -3,7 +3,18 @@
 # These independent construction oracles deliberately mirror generated programs.
 # pylint: disable=duplicate-code
 
-from esolangs.tools.helpers import _ASCII_ZERO, _residual_levels, _validate_truth_table
+from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table
+
+
+def _residual_levels(truth_table: str, n: int) -> list[list[str]]:
+    """Return the distinct residual subtables at each level, in first-seen order."""
+    levels = [[truth_table]]
+    for k in range(n):
+        half = 2 ** (n - k - 1)
+        states = (part for s in levels[-1] for part in (s[:half], s[half:]))
+        levels.append(list(dict.fromkeys(states)))
+    return levels
+
 
 #: Label bands for the *pure* DAG below, which the shipped generator no
 #: longer shares.

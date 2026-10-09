@@ -8,13 +8,14 @@ import pytest
 from esolangs import tools as boolean
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.register_based.sophie import _Machine as Sophie
-from esolangs.tools.helpers import _ASCII_ONE, _ASCII_ZERO, _residual_levels
+from esolangs.tools.helpers import _ASCII_ONE, _ASCII_ZERO
 from esolangs.tools.sophie import _SOPHIE_CHARACTERS, _SOPHIE_RESERVED
 from tests.tools.boolean_runners import (
     run_sophie,
     run_sophie_from,
 )
 from tests.tools.sophie_support import (
+    _residual_levels,
     _sophie_dag,
     _sophie_tree,
 )

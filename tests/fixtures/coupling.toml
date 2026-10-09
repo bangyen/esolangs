@@ -14,7 +14,6 @@
 "src/esolangs/interpreters/register_based/polynomial/roots.py" = 1
 "src/esolangs/tools/container.py" = 1
 "src/esolangs/tools/fractran.py" = 1
-"src/esolangs/tools/subleq.py" = 1
 "tests/duration_policy.py" = 1
 "tests/proofs/test_bands.py" = 2
 "tests/scripts/test_bundle_one.py" = 1
