@@ -471,7 +471,7 @@ with the four rows carrying one guard of each sign. All 24 orders of the
 same four fractions execute on all rows. Exactly 14 of 16 tables occur;
 XOR and XNOR are missing because the four feature rows are dependent.
 The eight-fraction independent-pair control realizes all sixteen tables.
-Both controls live in `tests/proofs/test_research_tracks.py`.
+Both controls live in `tests/proofs/test_fractran_routing.py`.
 
 ### Order-only decoding with two priority consultations
 
