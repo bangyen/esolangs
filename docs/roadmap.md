@@ -79,6 +79,27 @@ Controls are in `tests/proofs/test_research_tracks.py`. The linked proofs
 close ordered input-forgetting construction, generated-family loading
 bounds, and the weighted-description theorem.
 
+## Engineering
+
+Generator gaps against the canonical pieces in
+[CONTRIBUTING](CONTRIBUTING.md#what-makes-a-generator-optimization-worth-shipping).
+
+- **Canonical-gap screen.** Run every generator on every path (default,
+  width, balance, dialect) to n=8 against the three canonical pieces, with
+  execution and a positive control; price it before launch. It should find
+  the two gaps below and any others.
+- **BFStack constant fold.** A constant n=4 table emits 67 characters where
+  a constant leaf takes 59.
+- **Dig width paths.** A repeated flat leaf is shared on the default and
+  balance paths (tiled n=8 -22.7%), never under `width`. Either route its
+  wires in the narrow layout or record why none fit.
+- **Dig wire rule.** Routes to a shared leaf come from a per-build
+  fewest-turns search. Replace the search with a fixed route if one keeps
+  the saving.
+- **Back bend routes stay out.** They add under one point on tiled n=8,
+  and raise worst commands at n=6/7 from 122/221 to 154/306, past the
+  execution ledger's bound.
+
 ## Parked
 
 Stalled problems, one line each; detail lives in the linked proof page. A
