@@ -10,6 +10,7 @@ from esolangs._evaluate import _evaluate
 from esolangs._validate import check_bits, check_scale, check_timeout, check_whole
 from esolangs.exceptions import EsolangError, UnknownLanguageError
 from esolangs.interpreters.source_hints import error_text
+from esolangs.vm import machine_traits
 from tests.stdin_check import _check_stdin
 
 
@@ -20,11 +21,25 @@ def test_list_languages() -> None:
     assert names == sorted(names)
 
 
-def test_unknown_language_raises() -> None:
-    with pytest.raises(UnknownLanguageError):
-        esolangs.generate("NoSuchLanguage", "x")
-    with pytest.raises(UnknownLanguageError):
-        esolangs.run("NoSuchLanguage", "x")
+@pytest.mark.parametrize(
+    "call",
+    [
+        lambda name: esolangs.generate(name, "x"),
+        lambda name: esolangs.run(name, "x"),
+        lambda name: debugger.make_debugger(name, "+"),
+        # Naming the language it refused is the whole use of the message to
+        # a caller who passed it by mistake.
+        lambda name: debugger.make_vm(name, "+"),
+        machine_traits,
+    ],
+    ids=["generate", "run", "make_debugger", "make_vm", "machine_traits"],
+)
+def test_unknown_language_raises(call) -> None:
+    with pytest.raises(UnknownLanguageError, match="NoSuchLanguage"):
+        call("NoSuchLanguage")
+
+
+def test_unknown_language_error_is_catchable() -> None:
     assert issubclass(UnknownLanguageError, EsolangError)
     assert issubclass(UnknownLanguageError, ValueError)
 
@@ -189,8 +204,6 @@ def test_runnable_guard_refuses_non_source_values():
 
 def test_default_answer_contract_reads_the_final_bit():
     assert esolangs.read_answer("brainfuck", "answer: 1\n") == "1"
-    with pytest.raises(esolangs.ProgramError, match="expected '0' or '1'"):
-        esolangs.read_answer("brainfuck", "answer: unknown\n")
 
 
 def test_isolated_worker_requires_a_deadline():

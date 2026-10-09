@@ -3,7 +3,7 @@
 import subprocess
 import sys
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -87,52 +87,39 @@ class TestInProcess:
         assert exc.value.code == 2
 
 
-class TestWidthOption:
+@pytest.mark.parametrize(
+    ("args", "limit", "runs"),
+    [
+        # ``--width N`` bounds the generated program's columns.
+        pytest.param(["brainfuck", TABLE3, "--width", "20"], 20, True, id="value"),
+        # The guard rejects zero and below, not one.
+        pytest.param(["brainfuck", "0110", "--width", "1"], None, False, id="one"),
+        # ``--width N`` consumes two arguments, not three.
+        pytest.param(["--width", "20", "brainfuck", TABLE3], 20, True, id="first"),
+        pytest.param(["brainfuck", TABLE3, "--width=20"], 20, False, id="equals"),
+        # A bare ``--width`` wraps to the conventional default.
+        pytest.param(["brainfuck", TABLE3, "--width"], "default", False, id="bare"),
+        # A following word is an argument, not a width.
+        pytest.param(["--width", "brainfuck", TABLE3], None, True, id="bare_first"),
+    ],
+)
+def test_width_option(
+    args: list[str],
+    limit: int | str | None,
+    capsys: pytest.CaptureFixture[str],
+    *,
+    runs: bool,
+) -> None:
     """``--width`` in all the spellings the parser accepts."""
+    from esolangs.tools.wrap import DEFAULT_WIDTH
 
-    def test_width_with_a_value(self, capsys: pytest.CaptureFixture[str]) -> None:
-        """``--width N`` bounds the generated program's columns."""
-        out = call_main(["generate", "brainfuck", TABLE3, "--width", "20"], capsys)
-        assert max(len(line) for line in out.rstrip("\n").split("\n")) <= 20
-        assert esolangs.run("brainfuck", out, stdin="011") == "0"
-
-    def test_a_width_of_one_is_positive(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """The guard rejects zero and below, not one."""
-        out = call_main(["generate", "brainfuck", "0110", "--width", "1"], capsys)
-        assert out.strip()
-
-    def test_the_option_may_come_before_the_positionals(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """``--width N`` consumes two arguments, not three."""
-        out = call_main(["generate", "--width", "20", "brainfuck", TABLE3], capsys)
-        assert max(len(line) for line in out.rstrip("\n").split("\n")) <= 20
-        assert esolangs.run("brainfuck", out, stdin="011") == "0"
-
-    def test_width_with_an_equals_sign(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """``--width=N`` is the same option written the other way."""
-        out = call_main(["generate", "brainfuck", TABLE3, "--width=20"], capsys)
-        assert max(len(line) for line in out.rstrip("\n").split("\n")) <= 20
-
-    def test_bare_width_takes_the_default(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """A bare ``--width`` wraps to the conventional default."""
-        from esolangs.tools.wrap import DEFAULT_WIDTH
-
-        out = call_main(["generate", "brainfuck", TABLE3, "--width"], capsys)
-        assert max(len(line) for line in out.rstrip("\n").split("\n")) <= DEFAULT_WIDTH
+    out = call_main(["generate", *args], capsys)
+    assert out.strip()
+    if limit is not None:
+        limit = DEFAULT_WIDTH if limit == "default" else limit
+        assert max(len(line) for line in out.rstrip("\n").split("\n")) <= limit
         assert "\n" in out.rstrip("\n")
-
-    def test_bare_width_before_a_non_integer(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """A following word is an argument, not a width."""
-        out = call_main(["generate", "--width", "brainfuck", TABLE3], capsys)
+    if runs:
         assert esolangs.run("brainfuck", out, stdin="011") == "0"
 
 
@@ -141,64 +128,56 @@ class TestWidthOption:
 _ABC = "++++++++[>++++++++<-]>+.+.+."
 
 
-class TestDebugCommand:
+@pytest.mark.parametrize(
+    ("flags", "program", "expected"),
+    [
+        pytest.param([], _ABC, ["halted: yes", "output: 'ABC'"], id="runs_to_halt"),
+        # A step budget stops the run short, which is the point of it.
+        pytest.param(["--steps", "5"], _ABC, ["halted: no", "output: ''"], id="steps"),
+        pytest.param(["--steps=5"], _ABC, ["halted: no"], id="steps_inline"),
+        # The watch history is what the debugger adds over plain stepping.
+        pytest.param(
+            ["--steps", "3", "--watch-cell", "0"],
+            _ABC,
+            ["cell 0: [1, 2, 3]"],
+            id="watch_cell",
+        ),
+        # A breakpoint is checked *before* a step, so ``B`` is the last byte.
+        pytest.param(
+            ["--break-on-output", "B"],
+            _ABC,
+            ["halted: no", "output: 'AB'"],
+            id="break_on_output",
+        ),
+        pytest.param(
+            ["--break-at", "3"], "+++++", ["ip: 3", "halted: no"], id="break_at"
+        ),
+        pytest.param(
+            ["--break-on-cell", "0=3", "--watch-cell", "0"],
+            "+++++",
+            ["cell 0: [1, 2, 3]"],
+            id="break_on_cell",
+        ),
+        # A short watch history is printed whole.
+        pytest.param(
+            ["--watch-cell", "0"], "+++", ["cell 0: [1, 2, 3]"], id="short_watch"
+        ),
+    ],
+)
+def test_debug_report(
+    flags: list[str],
+    program: str,
+    expected: list[str],
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     """``esolangs debug`` exposes the breakpoint/watch VM on the CLI."""
+    out = call_main(["debug", *flags, "brainfuck", _program(tmp_path, program)], capsys)
+    for line in expected:
+        assert line in out
 
-    def test_it_runs_to_halt_and_reports_the_output(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        out = call_main(["debug", "brainfuck", _program(tmp_path, _ABC)], capsys)
-        assert "halted: yes" in out
-        assert "output: 'ABC'" in out
 
-    def test_steps_bounds_the_run(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """A step budget stops the run short, which is the point of it."""
-        out = call_main(
-            ["debug", "--steps", "5", "brainfuck", _program(tmp_path, _ABC)], capsys
-        )
-        assert "halted: no" in out
-        assert "output: ''" in out
-
-    def test_the_option_takes_an_inline_value_too(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """``--steps=5`` is the same option written the other way."""
-        out = call_main(
-            ["debug", "--steps=5", "brainfuck", _program(tmp_path, _ABC)], capsys
-        )
-        assert "halted: no" in out
-
-    def test_watch_cell_reports_one_value_per_step(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """The watch history is what the debugger adds over plain stepping."""
-        out = call_main(
-            [
-                "debug",
-                "--steps",
-                "3",
-                "--watch-cell",
-                "0",
-                "brainfuck",
-                _program(tmp_path, _ABC),
-            ],
-            capsys,
-        )
-        assert "cell 0: [1, 2, 3]" in out
-
-    def test_break_on_output_stops_with_the_condition_still_true(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """A breakpoint is checked *before* a step, so ``B`` is the last byte."""
-        out = call_main(
-            ["debug", "--break-on-output", "B", "brainfuck", _program(tmp_path, _ABC)],
-            capsys,
-        )
-        assert "halted: no" in out
-        assert "output: 'AB'" in out
-
+class TestDebugCommand:
     def test_a_raise_is_reported_rather_than_propagated(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
@@ -216,35 +195,28 @@ class TestDebugCommand:
         assert "halted: no" in out
 
 
-class TestBreakpointOptions:
-    """``--break-at`` and ``--break-on-cell`` on the batch debugger."""
-
-    def test_break_at_stops_on_the_position(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        out = call_main(
-            ["debug", "--break-at", "3", "brainfuck", _program(tmp_path, "+++++")],
-            capsys,
-        )
-        assert "ip: 3" in out
-        assert "halted: no" in out
-
-    def test_break_on_cell_stops_with_the_value_still_there(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        out = call_main(
+def _tui(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    *flags: str,
+    program: str = "+++",
+    stdin: str = "",
+) -> MagicMock:
+    """Run ``debug --tui`` with the screen patched out; return the patch."""
+    with patch("esolangs.cli_debug.run_tui") as screen:
+        call_main(
             [
                 "debug",
-                "--break-on-cell",
-                "0=3",
-                "--watch-cell",
-                "0",
+                "--tui",
+                "--stdin",
+                stdin,
+                *flags,
                 "brainfuck",
-                _program(tmp_path, "+++++"),
+                _program(tmp_path, program),
             ],
             capsys,
         )
-        assert "cell 0: [1, 2, 3]" in out
+    return screen
 
 
 class TestTuiFlag:
@@ -261,18 +233,7 @@ class TestTuiFlag:
         # The key loop owns the terminal, so what is pinned here is the
         # handoff: the flag is recognised, stripped from the positionals,
         # and the right three arguments reach the screen.
-        with patch("esolangs.cli_debug.run_tui") as screen:
-            call_main(
-                [
-                    "debug",
-                    "--tui",
-                    "--stdin",
-                    "01",
-                    "brainfuck",
-                    _program(tmp_path, ",."),
-                ],
-                capsys,
-            )
+        screen = _tui(tmp_path, capsys, program=",.", stdin="01")
         screen.assert_called_once()
         language, program, stdin = screen.call_args.args
         assert (language, program, stdin) == ("brainfuck", ",.", "01")
@@ -281,21 +242,7 @@ class TestTuiFlag:
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """The same flags the batch debugger takes drive the continue key."""
-        with patch("esolangs.cli_debug.run_tui") as screen:
-            call_main(
-                [
-                    "debug",
-                    "--tui",
-                    "--stdin",
-                    "",
-                    "--break-on-cell",
-                    "0=2",
-                    "brainfuck",
-                    _program(tmp_path, "+++"),
-                ],
-                capsys,
-            )
-        stop = screen.call_args.kwargs["stop"]
+        stop = _tui(tmp_path, capsys, "--break-on-cell", "0=2").call_args.kwargs["stop"]
         assert stop is not None
         # The predicate reads a frame, so it can be checked without a run.
         frame = esolangs.tui.Frame(
@@ -314,43 +261,17 @@ class TestTuiFlag:
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """``--break-at`` is the one breakpoint that has somewhere to be drawn."""
-        with patch("esolangs.cli_debug.run_tui") as screen:
-            call_main(
-                [
-                    "debug",
-                    "--tui",
-                    "--stdin",
-                    "",
-                    "--break-at",
-                    "2",
-                    "brainfuck",
-                    _program(tmp_path, "+++"),
-                ],
-                capsys,
-            )
-        assert screen.call_args.kwargs["at"] == (2,)
+        kwargs = _tui(tmp_path, capsys, "--break-at", "2").call_args.kwargs
+        assert kwargs["at"] == (2,)
         # A position needs no predicate: the screen stops on what it marks.
-        assert screen.call_args.kwargs["stop"] is None
+        assert kwargs["stop"] is None
 
     def test_a_watched_cell_reaches_the_screen(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """``--watch-cell`` means the same on both sides, shown as a row."""
-        with patch("esolangs.cli_debug.run_tui") as screen:
-            call_main(
-                [
-                    "debug",
-                    "--tui",
-                    "--stdin",
-                    "",
-                    "--watch-cell",
-                    "2",
-                    "brainfuck",
-                    _program(tmp_path, "+++"),
-                ],
-                capsys,
-            )
-        assert screen.call_args.kwargs["watch"] == 2
+        kwargs = _tui(tmp_path, capsys, "--watch-cell", "2").call_args.kwargs
+        assert kwargs["watch"] == 2
 
 
 class TestHelp:
@@ -452,15 +373,6 @@ class TestOutputAndAbridging:
         )
         assert "more ..." in out
         assert len(out.splitlines()[-1]) < 400
-
-    def test_a_short_watch_history_is_printed_whole(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        out = call_main(
-            ["debug", "--watch-cell", "0", "brainfuck", _program(tmp_path, "+++")],
-            capsys,
-        )
-        assert "cell 0: [1, 2, 3]" in out
 
 
 class TestGenerateArgumentTypes:
