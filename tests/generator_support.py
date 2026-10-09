@@ -96,7 +96,9 @@ def run_lines(run, program: str, bits: str) -> tuple[str, int]:
     return io.getvalue(), io.reads
 
 
-def assert_shared_program(language, table, plain, command_bound, workspace_bound):
+def assert_shared_program(
+    language, table, plain, command_bound, workspace_bound, *, size=len
+):
     """Execute every shared-program row and check commands and written state."""
     from esolangs.debugger import make_vm
     from scripts.benchmark import WrittenState
@@ -104,7 +106,7 @@ def assert_shared_program(language, table, plain, command_bound, workspace_bound
     n = len(table).bit_length() - 1
     program = esolangs.generate(language, table)
     assert isinstance(program, str)
-    assert len(program) < len(plain)
+    assert size(program) < size(plain)
     parameterized = esolangs.describe(language)["parameterized"]
     for row, expected in enumerate(table):
         bits = [int(bit) for bit in format(row, f"0{n}b")]

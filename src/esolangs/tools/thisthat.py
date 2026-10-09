@@ -103,16 +103,57 @@ class _Builder:
 
 
 def thisthat(truth_table: str, width: int | None = None) -> str:
-    """Return a linear-area tree, using a vertical strip for narrow small arities."""
+    """Return a linear-area tree or a bounded DAG with shared residuals.
+
+    The DAG uses directed crossings and at most max(8, 2 floor(sqrt(T)))
+    nodes, keeping its bus grid O(T). The old grid,
+    cycle bound and coordinate widths guard admission; narrow small arities
+    additionally compare folded strips and streaming trees.
+    """
     if width is not None and 0 < width < 3 and truth_table == "0110":
         # Equal-length paths merge both input transfers on native XOR.
         # Top-to-bottom update order reads the first input first; the result
         # returns along the lower wire to its input node, which now prints.
         return "▣\n│\n◇\n║\n▦\n║\n◇\n│\n▣"
     program = _tree(truth_table)
+    plain = program
+    from esolangs.tools.thisthat_shared import shared_tree
+
+    shared = shared_tree(truth_table)
+    if shared is not None:
+        candidate, cycles = shared
+        n = _validate_truth_table(truth_table)
+        bound = 32 * (1 << (n // 2)) - 29 if n % 2 == 0 else 48 * (1 << (n // 2)) - 29
+        old_rows, old_cols = len(program.splitlines()), grid_width(program)
+        rows, cols = len(candidate.splitlines()), grid_width(candidate)
+        # One pointer and the same bistack cells: keeping the sum of coordinate
+        # widths no larger preserves the existing written-state bound.
+        coordinates = (rows - 1).bit_length() + (cols - 1).bit_length()
+        old_coordinates = (old_rows - 1).bit_length() + (old_cols - 1).bit_length()
+        if (
+            rows * cols < old_rows * old_cols
+            and cycles <= bound
+            and coordinates <= old_coordinates
+        ):
+            program = candidate
+    if width is None or width <= 0:
+        return program
+    old = _narrow_tree(truth_table, plain, width)
+    if program == plain:
+        return old
+    candidate = _narrow_tree(truth_table, program, width)
+    old_area = len(old.splitlines()) * grid_width(old)
+    area = len(candidate.splitlines()) * grid_width(candidate)
+    if grid_width(candidate) <= max(width, grid_width(old)) and area < old_area:
+        return candidate
+    return old
+
+
+def _narrow_tree(truth_table: str, program: str, width: int) -> str:
+    """Compare rotation, strip and tiny streaming forms of one candidate."""
     lines = program.splitlines()
     span = max(map(len, lines))
-    if width is None or width <= 0 or span <= width:
+    if span <= width:
         return program
     if len(lines) < span:
         program = _rotate_tree(program)
@@ -181,6 +222,8 @@ def _rotate_tree(program: str) -> str:
     # logical memory axes, independent of the diagram's orientation.
     directions = {"E": "N", "N": "W", "W": "S", "S": "E"}
     glyphs = dict(zip("◐◑◒◓", "◒◓◑◐", strict=True))
+    glyphs.update(zip("▲▶▼◀", "◀▲▶▼", strict=True))
+    glyphs.update(zip("△▷▽◁", "◁△▷▽", strict=True))
     for alphabet in (_SINGLE, _DOUBLE):
         glyphs.update(
             {
@@ -363,12 +406,21 @@ def _layout(
     return builder.render()
 
 
-def _balance(table: str, default: str) -> str:
-    """Compare tree, rotation, strip, stream and the one-column XOR route."""
-    rotated = thisthat(table, max(1, grid_width(default) - 1))
-    strip = thisthat(table, max(1, grid_width(rotated) - 1))
-    stream = thisthat(table, max(1, grid_width(strip) - 1))
-    return min(default, rotated, strip, stream, thisthat(table, 1), key=balance_score)
+def _balance(truth_table: str, default: str) -> str:
+    """Compare shared and inline tree orientations with narrow fallbacks."""
+    candidates = [default, _tree(truth_table)]
+    for base, shared in ((default, True), (candidates[1], False)):
+        previous = base
+        for _ in range(3):
+            width = max(1, grid_width(previous) - 1)
+            previous = (
+                thisthat(truth_table, width)
+                if shared
+                else _narrow_tree(truth_table, base, width)
+            )
+            candidates.append(previous)
+    candidates.append(thisthat(truth_table, 1))
+    return min(candidates, key=balance_score)
 
 
 def _deque_plan(order: tuple[int, ...]) -> tuple[list[bool], list[bool]] | None:

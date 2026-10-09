@@ -21,7 +21,7 @@ def _run(table: str, row: int) -> tuple[str, int]:
 
 @pytest.mark.medium
 def test_source_growth_is_linear_in_the_table() -> None:
-    """Parity keeps every node, so it is the full tree's growth."""
+    """Parity exercises both inline trees and shared residual DAGs."""
     sizes = [len(thisthat(parity(n))) for n in range(1, 13)]
     assert all(right <= 3 * left for left, right in pairwise(sizes[3:]))
     assert max(size / (1 << n) for n, size in enumerate(sizes, 1)) < 300
@@ -208,3 +208,55 @@ def test_narrow_strip_counts_kept_inputs() -> None:
 def test_xor_has_one_column() -> None:
     xor = esolangs.generate("thisthat", "0110", width=1)
     assert max(map(len, xor.splitlines())) == 1
+
+
+@pytest.mark.medium
+def test_shared_residual_buses_execute_within_ledger() -> None:
+    from esolangs.tools.thisthat_shared import shared_tree
+    from tests.generator_support import assert_shared_program
+
+    a, b = "0001011101101001" * 4, "0110100100010111" * 4
+    table = a + b + b + a
+    plain = _tree(table)
+    program = thisthat(table)
+
+    def area(source):
+        return len(source.splitlines()) * max(map(len, source.splitlines()))
+
+    assert (area(plain), area(program)) == (12995, 5831)
+    shared = shared_tree(table)
+    assert shared is not None
+    assert shared[1] == 335
+    assert_shared_program(
+        "thisthat",
+        table,
+        plain,
+        483,
+        lambda _: (
+            4 * 8
+            + 89
+            + 2 * (8).bit_length()
+            + sum(max(1, c.bit_length()) for c in range(8))
+        ),
+        size=area,
+    )
+
+
+@pytest.mark.medium
+def test_shared_dag_rasters_and_rotations_execute_small_tables() -> None:
+    from esolangs.tools.thisthat import _rotate_tree
+    from esolangs.tools.thisthat_shared import shared_tree
+
+    exercised = 0
+    for table in witnesses(3):
+        built = shared_tree(table)
+        if built is None:
+            continue
+        exercised += 1
+        program, _ = built
+        for source in (program, _rotate_tree(program)):
+            for row, expected in enumerate(table):
+                io = ScriptedIO(f"{row:03b}")
+                run(source.splitlines(), io)
+                assert (io.getvalue(), io.reads) == (expected, 3)
+    assert exercised > 0
