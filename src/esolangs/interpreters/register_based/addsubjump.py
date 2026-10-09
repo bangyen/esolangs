@@ -372,6 +372,8 @@ def _load(state: _State, addr: int, byte: int | None = None) -> int:
     ``byte`` is what the shell read from the port; out of range reads zero.
     """
     (cells, length), _ip, cf, zf, nf, vf, fum = state
+    if addr >= 0:
+        return cells.get(addr, 0) if addr < length else 0
     if addr == _IO:
         return byte if byte is not None else 0
     if addr == _CF:
@@ -430,24 +432,24 @@ def _store(state: _State, addr: int, value: int) -> _State:
     return ((new, length), ip, cf, zf, nf, vf, fum)
 
 
-def _advance(state: _State, reads: tuple[int, ...]) -> tuple[int, _State]:
+def _advance(
+    state: _State,
+    reads: tuple[int, ...],
+    operands: tuple[int, int, int, int] | None = None,
+) -> tuple[int, _State]:
     """Return the value the instruction computed, and the state after it.
 
     ``reads`` holds the bytes the shell took from the port, in operand order.
     The value comes back because writing the port is the shell's effect.
     """
-    pending = list(reads)
-
-    def take(addr: int) -> int:
-        return _load(state, addr, pending.pop(0) if addr == _IO else None)
-
-    a, b, c, d = _operands(state)
-    vd = take(d)
-    vb = take(b)
+    pending = iter(reads)
+    a, b, c, d = _operands(state) if operands is None else operands
+    vd = _load(state, d, next(pending) if d == _IO else None)
+    vb = _load(state, b, next(pending) if b == _IO else None)
     if a == _IO:
         value = vb
     else:
-        va = take(a)
+        va = _load(state, a, next(pending) if a == _IO else None)
         value = va - vb if vd > 0 else va + vb
 
     after = _store(state, a, value)
@@ -540,7 +542,8 @@ class _Machine:
         """
         if self.halted:
             return
-        a, b, _c, d = _operands(self.state)
+        operands = _operands(self.state)
+        a, b, _c, d = operands
         if _too_large(self.state, a):
             raise HaltError(
                 f"memory address {format_integer(a)} is too large",
@@ -551,7 +554,7 @@ class _Machine:
             for addr in ((d, b) if a == _IO else (d, b, a))
             if addr == _IO
         )
-        value, self.state = _advance(self.state, reads)
+        value, self.state = _advance(self.state, reads, operands)
         if a == _IO:
             self.io.print_char(chr(value & 0xFF))
 

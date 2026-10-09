@@ -133,6 +133,32 @@ class TestInstruction:
 
 
 class TestSpecialAddresses:
+    @pytest.mark.parametrize("target", [8, -1])
+    @pytest.mark.parametrize("selector", [0, 1])
+    def test_port_reads_selector_before_source(self, target, selector) -> None:
+        from esolangs.interpreters.register_based.addsubjump import _Machine
+
+        port = ScriptedIO(chr(selector) + chr(3))
+        machine = _Machine(f"{target} -1 -1 -1 0 0 0 0 7", port)
+        machine.step()
+        assert port.reads == 2
+        if target == -1:
+            assert port.getvalue() == chr(3)
+        else:
+            assert machine.memory[8] == (4 if selector else 10)
+        assert machine.halted
+
+    def test_second_port_read_exhaustion_preserves_memory(self) -> None:
+        from esolangs.interpreters.register_based.addsubjump import _Machine
+
+        port = ScriptedIO(chr(1))
+        machine = _Machine("8 -1 -1 -1 0 0 0 0 7", port)
+        before = machine.state
+        with pytest.raises(EOFError):
+            machine.step()
+        assert machine.state == before
+        assert port.reads == 1
+
     def test_constants(self) -> None:
         # -6 = 1, -7 = 0, -8 = -1: memory[30] = 1 + 0 + (-1) = 0.
         code = memory(
@@ -271,6 +297,16 @@ class TestHaltAndErrors:
 
 
 class TestStepMachine:
+    def test_transition_keeps_its_input_memory(self) -> None:
+        from esolangs.interpreters.register_based.addsubjump import _advance, _pack
+
+        state = (_pack([8, -1, -1, -1, 0, 0, 0, 0, 7]), 0, 0, 0, 0, 0, 0)
+        value, after = _advance(state, (1, 3))
+        assert value == 4
+        assert state[0][0][8] == 7
+        assert after[0][0][8] == 4
+        assert after[1] == -1
+
     def test_flag_views_report_the_mode_and_flags(self) -> None:
         """After 0 - 1 with the mode on, only ``NF`` and ``FUM`` read 1."""
         machine = _machine(TestFlags._flag(-6, -4))  # noqa: SLF001
