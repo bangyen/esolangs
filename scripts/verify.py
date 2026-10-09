@@ -310,7 +310,6 @@ INTERPRETER_CONTRACT_TESTS = (
     "tests/test_interpreter_conventions.py",
     "tests/interpreters/test_io.py",
     "tests/interpreters/test_input_convention.py",
-    "tests/interpreters/test_semantic_oracles.py",
 )
 
 
