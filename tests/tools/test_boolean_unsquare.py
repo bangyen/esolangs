@@ -63,3 +63,44 @@ class TestUnsquare:
         table = "01101001100101101001011001101001" + tail
         assert "OA+" in boolean.unsquare(table)
         assert self._rows(table) == list(table)
+
+
+@pytest.mark.medium
+def test_shared_push_body_executes_within_ledger() -> None:
+    from esolangs.tools.helpers import essential_inputs, read_at
+    from esolangs.tools.unsquare import _runs, _shared_pushes, unsquare
+    from tests.generator_support import assert_shared_program
+
+    first = "0001011101101001" * 4
+    second = "0110100100010111" * 4
+    third = "0011010101010011" * 4
+    table = first + first + second + third
+    used = essential_inputs(table, 8) or [0]
+    bits = read_at(table, used, 8)[::-1]
+    shared = _shared_pushes(bits, 8, len(used))
+    assert shared is not None
+    program = unsquare(table)
+    assert program.startswith(shared)
+    plain = _runs(bits)[0] + program[len(shared) :]
+    assert_shared_program(
+        "Unsquare",
+        table,
+        plain,
+        4 * 256 + 79 * 8 + 22,
+        lambda p: 256 + 12 + len(p).bit_length() + (len(p) - 33).bit_length() + 8,
+    )
+
+
+@pytest.mark.medium
+def test_balance_retains_the_square_unshared_initializer() -> None:
+    from esolangs import generate
+    from esolangs.tools.unsquare import _program
+    from esolangs.tools.wrap import balance_program, balance_score
+
+    first = "0001011101101001" * 4
+    table = first * 2 + "0110100100010111" * 4 + "0011010101010011" * 4
+    old = balance_program(_program(table, share=False), "unsquare")
+    program = generate("Unsquare", table, balance=True)
+    assert balance_score(program) == balance_score(old) == (0, 232, 15)
+    for row in (0, 1, 127, 128, 255):
+        assert run_unsquare(program, list(format(row, "08b"))) == table[row]
