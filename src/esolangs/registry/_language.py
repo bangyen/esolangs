@@ -93,6 +93,8 @@ class Language:
     same_layout: Callable[[str, str, Callable[[int], Any]], bool] | None = None
     #: ``balance(table, default)``: the squarest layout a reflow cannot find.
     balance: Callable[..., Any] | None = None
+    #: Some instruction draws at random (``run(seed=...)`` fixes it).
+    random: bool = False
     #: What an exhausted read does instead of raising ``EOFError``.
     eof: str = ""
     #: The error an empty program raises, when the spec rejects one.

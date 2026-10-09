@@ -373,6 +373,7 @@ def _balance(table: str, default: str) -> str:
 LANGUAGE = Language(
     "thisthat",
     "grid_based.thisthat",
+    random=True,
     boolean=thisthat,
     split=True,
     contract=BooleanContract(
