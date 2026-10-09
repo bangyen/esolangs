@@ -429,3 +429,9 @@ def test_exception_sweep_scope_includes_helpers_outside_interpreters() -> None:
         "src/esolangs/_traits.py".startswith(prefix)
         for prefix in verify.STEP_SCOPE["exception leaks"]
     )
+
+
+def test_leak_step_covers_shipped_examples():
+    from scripts.verify import STEP_SCOPE
+
+    assert "src/esolangs/examples/fixture.txt".startswith(STEP_SCOPE["exception leaks"])

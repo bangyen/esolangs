@@ -480,14 +480,13 @@ class TestRunUntilHalt:
         )
         assert machine.steps == 0  # type: ignore[attr-defined]
 
-    def test_a_negative_budget_stops_rather_than_running_free(self) -> None:
-        """A cap below zero is still a cap."""
+    def test_a_negative_budget_is_refused(self) -> None:
+        """A negative count is refused before execution."""
         from esolangs.vm import run_until_halt
 
         for limit in (-1, -1000):
-            assert (
-                run_until_halt(debugger_api.make_vm("brainfuck", "+[]"), limit) is False
-            )
+            with pytest.raises(esolangs.ArgumentError, match="limit"):
+                run_until_halt(debugger_api.make_vm("brainfuck", "+[]"), limit)
 
 
 class TestViews:

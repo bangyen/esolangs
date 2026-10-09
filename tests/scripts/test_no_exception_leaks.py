@@ -105,3 +105,40 @@ def test_missing_imported_module_fails_closed(source_tree) -> None:
     source.write_text("from esolangs.interpreters.missing import value\n")
     with pytest.raises(FileNotFoundError, match="imported source"):
         leaks._sources("other.fixture")  # noqa: SLF001
+
+
+@pytest.mark.parametrize("extension", ["txt", "png"])
+@pytest.mark.parametrize("exists", [False, True])
+def test_shipped_example_selects_its_language(source_tree, extension, exists):
+    from types import SimpleNamespace
+
+    path = source_tree / f"src/esolangs/examples/fixture-name.{extension}"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if exists:
+        path.write_bytes(b"changed")
+    runners = {
+        "fixture": ("other.fixture", False),
+        "unrelated": ("other.unrelated", False),
+    }
+    with (
+        patch.object(
+            leaks, "LANGUAGES", {name: SimpleNamespace(id=name) for name in runners}
+        ),
+        patch.object(leaks, "example_stems", return_value={"fixture": "fixture-name"}),
+        patch.object(
+            leaks, "_changed_files", return_value=[str(path.relative_to(source_tree))]
+        ),
+    ):
+        selected, _ = leaks._select(list(runners), runners)  # noqa: SLF001
+    assert selected == ["fixture"]
+
+
+def test_language_corpus_is_independent_of_other_examples():
+    examples = {"before": ["a"], "fixture": ["+."]}
+    old = leaks._corpus("fixture", examples)  # noqa: SLF001
+    leaks._corpus("before", examples)  # noqa: SLF001
+    examples["before"] = ["aaa"]
+    leaks._corpus("before", examples)  # noqa: SLF001
+    assert leaks._corpus("fixture", examples) == old  # noqa: SLF001
+    examples["fixture"] = ["++."]
+    assert leaks._corpus("fixture", examples) != old  # noqa: SLF001

@@ -225,13 +225,25 @@ def _select(
     if any(f.endswith(_SHARED) for f in changed):
         return langs, "shared interpreter machinery changed"
     if any(
-        name.startswith("src/esolangs/") and not (_ROOT / name).is_file()
+        name.startswith("src/esolangs/")
+        and not name.startswith("src/esolangs/examples/")
+        and not (_ROOT / name).is_file()
         for name in changed
     ):
         return langs, "source removed; dependency resolution is incomplete"
+    changed_examples = {
+        pathlib.Path(name).stem
+        for name in changed
+        if pathlib.Path(name).parent == pathlib.Path("src/esolangs/examples")
+        and pathlib.Path(name).suffix in {".txt", ".png"}
+    }
+    stems = example_stems()
     changed_paths = {(_ROOT / name).resolve() for name in changed}
     picked = [
-        name for name in langs if changed_paths.intersection(_sources(runners[name][0]))
+        name
+        for name in langs
+        if (changed_examples and stems.get(LANGUAGES[name].id) in changed_examples)
+        or changed_paths.intersection(_sources(runners[name][0]))
     ]
     if not picked:
         return [], "no interpreter changed"
@@ -275,16 +287,9 @@ _LANG_TIMEOUT = 90.0
 _JOBS = max(1, int(os.environ.get("LEAKSWEEP_JOBS", 0)) or 2)
 
 
-def _corpus(
-    lang: str, examples: dict[str, list[Program]], rng: random.Random
-) -> list[Program]:
-    """Return the programs swept for ``lang``, advancing ``rng`` as it goes.
-
-    One generator feeds every language in order, so the parent and a worker
-    only agree on a corpus if both consume it in the same sequence -- which
-    is why a worker replays the languages before its own rather than seeding
-    afresh.
-    """
+def _corpus(lang: str, examples: dict[str, list[Program]]) -> list[Program]:
+    """Return a reproducible corpus independent of other languages' examples."""
+    rng = random.Random(f"1234:{lang}")
     seed = examples[lang][0] if examples[lang] else None
     progs: list[Program]
     if isinstance(seed, Raster):
@@ -538,13 +543,7 @@ def _worker(target: str) -> None:
     by_slug = _examples_by_slug()
     examples = {name: by_slug.get(slug, []) for name, slug in slug_of.items()}
 
-    rng = random.Random(1234)
-    progs: list[Program] = []
-    for lang in langs:  # replay in order so the corpus matches the parent's
-        got = _corpus(lang, examples, rng)
-        if lang == target:
-            progs = got
-            break
+    progs = _corpus(target, examples)
 
     n, found = _sweep_one(target, progs)
     print(json.dumps({"runs": n, "findings": found}), flush=True)
@@ -589,15 +588,6 @@ def main() -> None:
 
     findings: dict[str, list[dict[str, str]]] = {}
     counts: dict[str, int] = {}
-
-    # Drawn here, in order, purely to keep this generator in step with each
-    # worker's own replay: one generator feeds every language in sequence,
-    # so the corpus is only reproducible if the draws happen in that order.
-    # Doing it before the pool keeps the parallel section free of shared
-    # mutable state.
-    rng = random.Random(1234)
-    for lang in langs:
-        _corpus(lang, examples, rng)
 
     timeouts: list[str] = []
     # Workers are independent processes, so they overlap freely; the pool is

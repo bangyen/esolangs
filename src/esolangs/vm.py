@@ -26,6 +26,7 @@ from esolangs._execution import interpreter_errors, interpreter_module, prepare_
 from esolangs._program import Program
 from esolangs._source import InputSource, ProgramSource, check_scale_for
 from esolangs._traits import trait, traits
+from esolangs._validate import check_whole
 from esolangs._vm_views import (
     machine_views,
 )
@@ -120,6 +121,8 @@ def run_until_halt_or_cycle(
     unbounded search; bound it when the machine may *grow* instead, which
     never repeats a state and so would not return.
     """
+    if limit is not None:
+        check_whole(limit, "limit")
     machine = cast(
         _StepMachine,
         _unwrap(
@@ -180,6 +183,7 @@ def run_until_halt_or_all_branches_cycle(
     :class:`TimeoutError`.  Every state is kept, since branches merge.
     A language with no random instruction raises :class:`TypeError`.
     """
+    check_whole(limit, "limit")
     machine = cast(
         _BranchingStepMachine,
         _unwrap(
@@ -267,6 +271,7 @@ def run_until_halt_or_ancestor(machine: _FramedMachine | VM, limit: int = 64) ->
     across the Forbin suite) -- and exhausting it raises
     :class:`TimeoutError`.  No call stack raises :class:`TypeError`.
     """
+    check_whole(limit, "limit")
     machine = cast(
         _FramedMachine,
         _unwrap(
@@ -372,6 +377,7 @@ def run_until_halt_or_growth(machine: _TapeMachine | VM, limit: int = 100_000) -
     never saw).  ``limit`` is in steps and raises :class:`TimeoutError`;
     no tape raises :class:`TypeError`.
     """
+    check_whole(limit, "limit")
     machine = cast(
         _TapeMachine,
         _unwrap(
@@ -528,6 +534,7 @@ def run_until_halt_or_value_growth(
     worst case, under a millisecond on the two programs this is for).
     Bounded values raise :class:`TypeError`: a climbing byte wraps.
     """
+    check_whole(limit, "limit")
     machine = cast(
         _AffineMachine,
         _unwrap(
@@ -638,6 +645,8 @@ def run_until_halt(
     steps, ``None`` unbounded.  ``stop`` is checked *before* each step
     (what a breakpoint means).  The machine is left where it stopped.
     """
+    if limit is not None:
+        check_whole(limit, "limit")
     steps = 0
     while not machine.halted:
         if stop is not None and stop():

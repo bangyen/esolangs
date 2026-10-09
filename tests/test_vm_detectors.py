@@ -8,6 +8,7 @@ from esolangs.vm import (
     make_vm,
     run_until_halt,
     run_until_halt_or_all_branches_cycle,
+    run_until_halt_or_ancestor,
     run_until_halt_or_cycle,
     run_until_halt_or_growth,
     run_until_halt_or_value_growth,
@@ -45,8 +46,8 @@ class TestTheDetectorsTakeAVM:
         with pytest.raises(TypeError, match="steppable with a snapshot"):
             run_until_halt_or_cycle(object())  # type: ignore[arg-type]
 
-    def test_a_negative_branch_cap_stops_rather_than_exploring_free(self) -> None:
-        """A cap below zero is still a cap."""
+    def test_a_zero_branch_cap_stops_before_exploring(self) -> None:
+        """A zero cap stops before exploring the initial branching state."""
 
         class _Unbounded:
             def branching_snapshot(self) -> int:
@@ -58,14 +59,32 @@ class TestTheDetectorsTakeAVM:
             def branching_successors(self, state: int, _limit: int) -> list[int]:
                 return [state + 1]
 
-        for limit in (0, -1):
-            with pytest.raises(TimeoutError, match="branching states"):
-                run_until_halt_or_all_branches_cycle(
-                    _Unbounded(),  # type: ignore[arg-type]
-                    limit=limit,
-                )
+        with pytest.raises(TimeoutError, match="branching states"):
+            run_until_halt_or_all_branches_cycle(
+                _Unbounded(),  # type: ignore[arg-type]
+                limit=0,
+            )
 
 
 @pytest.mark.parametrize(("program", "limit"), [("", 0), ("+", 1)])
 def test_growth_detector_accepts_halt_at_step_limit(program: str, limit: int) -> None:
     assert run_until_halt_or_growth(make_vm("Brainfuck", program), limit) is True
+
+
+@pytest.mark.parametrize(
+    "detector",
+    [
+        run_until_halt_or_cycle,
+        run_until_halt_or_all_branches_cycle,
+        run_until_halt_or_growth,
+        run_until_halt_or_value_growth,
+        run_until_halt,
+        run_until_halt_or_ancestor,
+    ],
+)
+@pytest.mark.parametrize("limit", [float("nan"), float("inf"), 1.5, "3", True, -1])
+def test_invalid_limit_is_refused_before_machine_acquisition(detector, limit):
+    from esolangs.exceptions import ArgumentError
+
+    with pytest.raises(ArgumentError, match="limit"):
+        detector(object(), limit=limit)
