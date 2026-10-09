@@ -108,7 +108,7 @@ class TestContainer:
                 assert got == table[combo], f"n={n} row {combo}"
 
     def test_name_allocation_steps_over_container_s_own_names(self) -> None:
-        """``_forbin_name`` reaches ``T`` at 45 and ``IN`` at 754, so it collides."""
+        """Letter names reach ``T`` at 45 and ``IN`` at 754, so they collide."""
         from esolangs.tools.container import _RESERVED, _allocate_names
 
         uses = {("node", 0, index): 1000 - index for index in range(800)}

@@ -20,6 +20,7 @@ import re
 
 from esolangs._digits import digit_limit_for
 from esolangs._drive import drive
+from esolangs.factor_primes import isprime64 as _isprime64
 from esolangs.factor_primes import prime_segments
 from esolangs.interpreters._entry import script_main
 from esolangs.interpreters.io import IO
@@ -39,39 +40,8 @@ _SIEVE_CHUNK = 20000
 #: committed examples sit below it.
 _BATCH_BITS = 8192
 
-# The fixed Miller-Rabin witnesses below prove primality only through this
-# range.  Above it, trial division continues to keep the decode exact.
+# ``isprime64`` is a proof only below this; above, trial division stays exact.
 _EXACT_ISPRIME_LIMIT = 1 << 64
-
-
-def _isprime64(number: int) -> bool:
-    """Return whether ``number < 2**64`` is prime, deterministically."""
-    if number < 2:
-        return False
-    for prime in (2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37):
-        if number % prime == 0:
-            return number == prime
-    odd = number - 1
-    shifts = 0
-    while not odd & 1:
-        shifts += 1
-        odd >>= 1
-    # Sinclair's seven bases, proven for every number below 2**64.  A base
-    # the number divides says nothing, so it is skipped rather than read as
-    # a witness of compositeness (73 divides 450775, for one).
-    for base in (2, 325, 9375, 28178, 450775, 9780504, 1795265022):
-        if base % number == 0:
-            continue
-        value = pow(base, odd, number)
-        if value in (1, number - 1):
-            continue
-        for _ in range(shifts - 1):
-            value = value * value % number
-            if value == number - 1:
-                break
-        else:
-            return False
-    return True
 
 
 def _parse(digits: str) -> int:

@@ -10,9 +10,6 @@
 "scripts/smoke_distribution.py" = 4
 "scripts/verify_no_exception_leaks.py" = 1
 "src/esolangs/interpreters/grid_based/_circuit_functions.py" = 2
-"src/esolangs/interpreters/register_based/polynomial/roots.py" = 1
-"src/esolangs/tools/container.py" = 1
-"src/esolangs/tools/fractran.py" = 1
 "tests/duration_policy.py" = 1
 "tests/proofs/test_bands.py" = 2
 "tests/scripts/test_bundle_one.py" = 1
