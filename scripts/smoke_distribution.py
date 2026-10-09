@@ -37,6 +37,27 @@ def _refuses_timeout() -> None:
     assert "Unix main thread" in message
 
 
+def _generator(name: str, *, math_extra: bool, image_extra: bool) -> None:
+    """Execute all rows in one process; its parent supplies the deadline."""
+    generated = esolangs.generate(name, "0110")
+    if image_extra and isinstance(generated, esolangs.Raster):
+        generated = esolangs.Raster.from_png(generated.to_png())
+    try:
+        assert _evaluate(name, generated, timeout=None, inputs=2) == "0110", name
+    except esolangs.MissingDependencyError:
+        assert not math_extra, name
+
+
+def _generator_process(name: str, *, math_extra: bool, image_extra: bool) -> None:
+    """Bound one language's four rows together, retaining process isolation."""
+    args = [sys.executable, "-I", str(Path(__file__).resolve()), "--language", name]
+    if math_extra:
+        args.append("--math")
+    if image_extra:
+        args.append("--image")
+    subprocess.run(args, timeout=30, check=True)
+
+
 def smoke(*, math_extra: bool, image_extra: bool = False) -> None:
     """Check installed resources and behaviour outside the source checkout."""
     package = Path(esolangs.__file__).resolve().parent
@@ -74,15 +95,7 @@ def smoke(*, math_extra: bool, image_extra: bool = False) -> None:
     for name in esolangs.list_languages():
         facts = esolangs.describe(name)
         if facts["boolean_generator"]:
-            generated = esolangs.generate(name, "0110")
-            if image_extra and isinstance(generated, esolangs.Raster):
-                generated = esolangs.Raster.from_png(generated.to_png())
-            try:
-                assert _evaluate(name, generated, inputs=2, isolated=True) == "0110", (
-                    name
-                )
-            except esolangs.MissingDependencyError:
-                assert not math_extra, name
+            _generator_process(name, math_extra=math_extra, image_extra=image_extra)
             assert facts["examples"], name
             for filename in facts["examples"]:
                 assert not Path(filename).is_absolute(), filename
@@ -225,7 +238,11 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--math", action="store_true")
     parser.add_argument("--image", action="store_true")
+    parser.add_argument("--language", help=argparse.SUPPRESS)
     args = parser.parse_args()
+    if args.language is not None:
+        _generator(args.language, math_extra=args.math, image_extra=args.image)
+        return
     smoke(math_extra=args.math, image_extra=args.image)
     print("installed distribution smoke check passed")
 

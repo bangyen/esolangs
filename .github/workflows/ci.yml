@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [ main ]
 
+# A newer commit supersedes the previous run for the same branch or PR.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 # `.python-version` pins 3.14, but the jobs below deliberately sync other
 # interpreters -- the lint job holds the 3.12 floor `requires-python`
 # promises, and the test matrix spans 3.12/3.13/3.14.  A bare `uv run`
@@ -99,9 +104,8 @@ jobs:
     # The fast band on the non-coverage interpreters, sharded in two.
     # Measured in run 37334678602, the plain legs set the wall clock
     # (3.12: 496s of pytest, 3.13: 353s) while the 3.14 coverage leg
-    # below took 297s, so these shard and it does not: coverage writes
-    # one data file and the changed-line gate reads it whole, so
-    # splitting that leg would split the arcs it judges.  The `slow`
+    # below took 297s. Coverage now shards too, combining its branch data
+    # before the changed-line gate. The `slow`
     # job's sharder partitions the band; with no recorded durations
     # for this band it balances by test count, which the band limits
     # keep honest (fast <= 1s, medium <= 5s on a local machine).
@@ -130,74 +134,72 @@ jobs:
     - name: Test with pytest (shard ${{ matrix.shard }} of 2)
       run: uv run python scripts/pytest_shard.py --marker "not slow and not weekly" --shard ${{ matrix.shard }} --shards 2 -- -n auto
 
-  coverage:
+  # Branch monitoring needs 3.14: local line/branch coverage measured
+  # 36.1/119.3s on 3.13 versus 17.81/17.89s on 3.14 (coverage 7.13.4).
+  coverage-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1]
+    env:
+      COVERAGE_FILE: .coverage.shard-${{ matrix.shard }}
     steps:
     - uses: actions/checkout@v7
-      with:
-        # The changed-line gate below diffs against the merge-base with main.
-        # The default shallow clone has no such commit, so the gate would
-        # fail open and check nothing at all -- quietly, which is worse than
-        # not running it.
-        fetch-depth: 0
-
-    - name: Install uv
-      uses: astral-sh/setup-uv@v7
-
-    - name: Set up Python 3.14
-      uses: actions/setup-python@v7
+    - uses: astral-sh/setup-uv@v7
+    - uses: actions/setup-python@v7
       with:
         python-version: "3.14"
-
     - name: Install dependencies
       run: uv sync --group dev --python 3.14
+    # Run 37966422522 spent 226s in coverage pytest. Partition the same band;
+    # retain branch data from both shards before applying either coverage gate.
+    - name: Test one coverage shard
+      run: >
+        uv run python scripts/pytest_shard.py --marker "not slow and not weekly"
+        --shard ${{ matrix.shard }} --shards 2 --
+        -n auto --cov --cov-branch --cov-report=
+    - uses: actions/upload-artifact@v7
+      with:
+        name: coverage-${{ matrix.shard }}
+        path: .coverage.shard-${{ matrix.shard }}
+        include-hidden-files: true
+        if-no-files-found: error
+        retention-days: 1
 
-    # Coverage is consumed from one leg only (the changed-line gate below),
-    # and that leg is now 3.14, because which interpreter measures it
-    # decides what it costs.  sys.monitoring cannot measure *branches*
-    # before 3.14, so asking for `--cov-branch` there drops coverage onto the
-    # old tracer.  Measured locally over the fast subset at -n 4, coverage
-    # 7.13.4, the same flags on both:
-    #
-    #     3.13  --cov (line, sysmon)     36.1s
-    #     3.13  --cov --cov-branch      119.3s   <- 3.3x, no-sysmon fallback
-    #     3.14  --cov (line, sysmon)     17.81s
-    #     3.14  --cov --cov-branch       17.89s  <- free
-    #
-    # The other legs just run the tests, sharded in the `test` job above.
-    # 3.12 stays tested on every push because `requires-python` promises
-    # it -- the floor has to keep being tested even though it is no longer
-    # where coverage is measured.
-    - name: Test with pytest (with coverage)
-      # The local default is a fixed, modest worker count so developer laptops
-      # keep cores free; CI has the box to itself, so ask for all of them.
-      # `-n auto` is already every vCPU the runner has -- xdist falls back to
-      # `os.cpu_count()` because psutil is not a dependency here -- so there
-      # is no worker count left to raise.  What made this job slow was the
-      # `slow` band: 546 of 10172 tests that measure, locally at two workers,
-      # 289s against the 81s the rest take.  The `slow` job below runs
-      # them sharded; this runs fast and `medium`. Weekly law sweeps cost
-      # another six minutes and belong only in weekly.yml.
-      #
-      # `--cov-branch` is free on this leg (see the table above) and the gate
-      # below needs the arcs.
-      #
-      # `--cov-fail-under` is a drift floor, not a target: this band measures
-      # 99% today, and the two points of slack absorb a slow-only path moving
-      # under a line the fast band cannot reach.  It lives here rather than in
-      # pyproject's `[tool.coverage.report]` because a local `just test` run
-      # is scoped -- `verify.py`'s `_scoped_coverage` narrows measurement to
-      # the touched files -- and a shared floor would read that subset as a
-      # collapse.  The changed-line gate below is the per-PR check; this only
-      # catches whole-tree erosion.
-      run: uv run pytest -n auto -m "not slow and not weekly" --cov --cov-branch --cov-report=xml --cov-report=term-missing --cov-fail-under=97
-
-    # The fast suite cannot judge pre-existing lines covered only by a slow
-    # test, so `--partial` reports those whole-file gaps without blocking.
-    # Added executable lines and branches are still this PR's responsibility
-    # and fail the job; the weekly suite retains the expensive evidence.
+  coverage:
+    needs: coverage-tests
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+    - name: Require every coverage shard to pass
+      env:
+        SHARD_RESULT: ${{ needs.coverage-tests.result }}
+      run: test "$SHARD_RESULT" = success
+    - uses: actions/checkout@v7
+      with:
+        fetch-depth: 0
+    - uses: astral-sh/setup-uv@v7
+    - uses: actions/setup-python@v7
+      with:
+        python-version: "3.14"
+    - name: Install dependencies
+      run: uv sync --group dev --python 3.14
+    - uses: actions/download-artifact@v8
+      with:
+        pattern: coverage-*
+        merge-multiple: true
+    # Keep the 97% whole-tree drift floor; slow-only paths have slack here.
+    # The separate diff gate still requires added lines and branches to pass.
+    - name: Combine complete branch coverage and retain the drift floor
+      run: |
+        test -f .coverage.shard-0
+        test -f .coverage.shard-1
+        uv run coverage combine .coverage.shard-0 .coverage.shard-1
+        uv run coverage report --fail-under=97
+        uv run coverage xml
     - name: Check changed-line and changed-branch coverage
       run: uv run python scripts/check_diff_coverage.py --partial --strict
 
