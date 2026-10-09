@@ -35,10 +35,10 @@ def test_every_one_hot_table_is_addressed(ones: tuple[int, ...] | range) -> None
 
 def test_measured_sizes() -> None:
     assert [len(tools.b_tapemark("0" * (2**n))) for n in range(1, 5)] == [
-        106,
-        221,
-        364,
-        545,
+        5,
+        7,
+        9,
+        11,
     ]
 
 
@@ -60,6 +60,71 @@ def test_size_does_not_depend_on_the_table() -> None:
         count = len(essential_inputs(table, 3))
         sizes.setdefault(count, set()).add(len(tools.b_tapemark(table)))
     assert all(len(group) == 1 for group in sizes.values()), sizes
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("n", [1, 3, 8])
+@pytest.mark.parametrize("bit", ["0", "1"])
+def test_constant_reads_each_input_and_prints_a_literal(n, bit):
+    import esolangs
+    from esolangs.interpreters.grid_based.b_tapemark import _Machine
+    from esolangs.tools.b_tapemark import _b_tapemark_program
+    from esolangs.tools.wrap import balance_score
+
+    table = bit * (1 << n)
+    default = tools.b_tapemark(table)
+    assert default == ">" + "-|" * n + bit + "!"
+    assert len(default) == 2 * n + 3
+    assert len(default) < len(_b_tapemark_program(table))
+    for options in ({}, {"width": 1}, {"width": 8}, {"width": 40}, {"balance": True}):
+        program = esolangs.generate("B-tapemark", table, **options)
+        for row in range(1 << n):
+            bits = format(row, f"0{n}b")
+            assert execute(program, bits) == (bit, n)
+        if options.get("balance"):
+            legacy = _b_tapemark_program(table)
+            old = min(
+                legacy,
+                _b_tapemark_program(table, max(map(len, legacy.splitlines()))),
+                _b_tapemark_program(table, 1),
+                key=balance_score,
+            )
+            assert balance_score(program) <= balance_score(old)
+    for program, expected in (
+        (default, 2 * n + 3),
+        (tools.b_tapemark(table, 1), 2 * n + 4),
+    ):
+        io = ScriptedIO("1" * n + "0")
+        machine = _Machine(program, io)
+        for _ in range(expected):
+            assert not machine.halted
+            machine.step()
+        assert machine.halted
+        assert io.getvalue() == bit
+        assert io.reads == n
+        assert io.position() == n
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("used", [(i,) for i in range(8)] + [(0, 7), (0, 3, 7)])
+def test_narrow_short_projected_table_keeps_ignored_selectors_out(used):
+    import esolangs
+    from esolangs.tools.b_tapemark import _b_tapemark_program
+
+    n = 8
+    base = {1: "01", 2: "0110", 3: "01001110"}[len(used)]
+    table = "".join(
+        base[int("".join(str((row >> (n - 1 - i)) & 1) for i in used), 2)]
+        for row in range(1 << n)
+    )
+    for width in (1, 8, 40):
+        program = esolangs.generate("B-tapemark", table, width=width)
+        legacy = _b_tapemark_program(table, width, keep_full_narrow=True)
+        assert len(program) <= len(legacy)
+        if width <= 8:
+            assert len(program) < len(legacy)
+        for row, bit in enumerate(table):
+            assert execute(program, format(row, f"0{n}b")) == (bit, n)
 
 
 def test_render_has_no_blank_axis() -> None:
