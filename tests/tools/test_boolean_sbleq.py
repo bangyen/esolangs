@@ -6,7 +6,8 @@ import pytest
 
 from esolangs import tools as boolean
 from esolangs.tools.helpers import best_input_order
-from esolangs.tools.sbleq import _sbleq_hoisted, _sbleq_packed
+from esolangs.tools.packed_decoder import packed_decoder
+from esolangs.tools.sbleq import _sbleq_hoisted
 from tests.generator_support import assert_parity_at_most_doubles
 from tests.tools.boolean_runners import run_sbleq
 from tests.tools.sample_tables import five_input_sample
@@ -38,7 +39,7 @@ class TestSbleq:
         """Rows on both sides of chunk boundaries decode correctly."""
         n = 6
         table = "".join(str(row.bit_count() & 1) for row in range(2**n))
-        program = _sbleq_packed(table)
+        program = packed_decoder(table)
         for row in (0, 1, 5, 6, 7, 31, 32, 62, 63):
             bits = [str((row >> (n - 1 - i)) & 1) for i in range(n)]
             assert run_sbleq(program, bits) == table[row]
@@ -60,7 +61,7 @@ class TestSbleq:
             old = len(
                 best_input_order(table, _sbleq_hoisted)
                 if len(table) <= 16
-                else _sbleq_packed(table)
+                else packed_decoder(table)
             )
             new = len(boolean.sbleq(table))
             assert new <= old, table
@@ -81,7 +82,7 @@ class TestSbleq:
         n = 7
         table = format(random.Random(7).getrandbits(2**n), f"0{2**n}b")
         program = boolean.sbleq(table)
-        assert len(program) < len(_sbleq_packed(table))
+        assert len(program) < len(packed_decoder(table))
         for row in range(2**n):
             bits = [str((row >> (n - 1 - i)) & 1) for i in range(n)]
             assert run_sbleq(program, bits) == table[row]
