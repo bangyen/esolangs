@@ -11,8 +11,8 @@ KeyError -- is a bug in the interpreter, not in the program it was given.
 The corpus is deliberately hostile but *derived from real programs*: the
 generic fragments below, plus every shipped example for the language, plus
 mutations of those examples (truncated, a character dropped, one doubled,
-one inserted).  Factor's integer is shortened before mutation because its
-operand size changes cost, not interpreter paths.  Truncation finds the
+one inserted).  A language's ``fuzz_max_digits`` shortens its numbers before
+mutation where operand size changes cost, not interpreter paths.  Truncation finds the
 interesting cases -- a half-written program reaches states no hand-written
 test thinks to build.
 
@@ -169,16 +169,10 @@ _CAP_LADDER = (10, 100, 1000, _STEP_CAP)
 # and the sweep runs every program against every one of these.
 STDINS = ["", "\n", "0\n1\n", "abc"]
 
-# Factor does unbounded work before its first VM step when a one-character
-# mutation turns its deliberately factorable example into a huge semiprime.
-# Twelve digits still exercise the same parser and factorization paths and
-# are the measured safe bound.
-_MAX_OPERAND_DIGITS = 12
 
-
-def _cap_numeric_runs(program: str) -> str:
-    """Keep only the first bounded number of digits in a Factor program."""
-    left = _MAX_OPERAND_DIGITS
+def _cap_numeric_runs(program: str, digits: int) -> str:
+    """Keep only the first ``digits`` digits of a program's numbers."""
+    left = digits
 
     def shorten(match: re.Match[str]) -> str:
         nonlocal left
@@ -306,8 +300,8 @@ def _corpus(lang: str, examples: dict[str, list[Program]]) -> list[Program]:
     progs = list(GENERIC)
     for src in examples[lang]:
         assert isinstance(src, str)
-        if lang == "Factor":
-            src = _cap_numeric_runs(src)
+        if digits := LANGUAGES[lang].fuzz_max_digits:
+            src = _cap_numeric_runs(src, digits)
         progs.append(src)
         progs.extend(mutate(src, rng))
     return progs

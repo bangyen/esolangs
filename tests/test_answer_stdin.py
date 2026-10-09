@@ -5,6 +5,7 @@ import warnings
 import pytest
 
 import esolangs
+from esolangs.registry import LANGUAGES
 from tests.pick import first, languages, one, one_where
 from tests.stdin_check import _check_stdin
 from tests.test_language_coupling import REFERENCE
@@ -112,8 +113,8 @@ class TestRunSaysWhenStdinLooksWrong:
         carry_on = languages(
             eof_is_a_value=True, input_shape="char_stream", parameterized=False
         )
-        # Alight refuses instead (``test_debug``'s documented exception).
-        for name in [name for name in carry_on if name != "Alight"][:3]:
+        # A language that refuses instead is ``test_debug``'s exception.
+        for name in [n for n in carry_on if not LANGUAGES[n].underfed_raises][:3]:
             program = esolangs.generate(name, "10010110")
             short = esolangs.encode_inputs(name, [1, 0])
             with warnings.catch_warnings():

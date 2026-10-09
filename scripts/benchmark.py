@@ -19,6 +19,7 @@ import esolangs.debugger as debugger_api
 from esolangs._describe import LanguageInfo
 from esolangs._validate import check_timeout
 from esolangs.interpreters.io import ScriptedIO
+from esolangs.registry import LANGUAGES
 from esolangs.vm import VM, complete_vm, run_until_halt_or_cycle
 
 
@@ -173,28 +174,15 @@ class WrittenState:
 
 
 def _payload_profile(language: str, vm: VM) -> dict[str, int] | None:
-    """Count logical data and control integers for three audited machine shapes.
+    """Count logical data and control integers where the language splits them.
 
-    Excludes Python overhead, static parser indexes and I/O state. Subleq's
-    mutable code is included in its memory; other source is measured separately.
+    Excludes Python overhead, static parser indexes and I/O state; what a
+    machine's state holds is its ``LANGUAGE.payload``'s to say.
     """
-    state = vm.snapshot()
-    flags = 0
-    if language == "BFStack":
-        data, control, pc, _cursor = cast(
-            "tuple[tuple[int, ...], tuple[int, ...], int, int]", state
-        )
-    elif language == "Sophie":
-        pc, accumulator, _skip, control, _halted, _cursor = cast(
-            "tuple[int, int, bool, tuple[int, ...], bool, int]", state
-        )
-        data = (accumulator,)
-        flags = 2
-    elif language == "Subleq":
-        data, pc, _cursor = cast("tuple[tuple[int, ...], int, int]", state)
-        control = ()
-    else:
+    split = LANGUAGES[language].payload
+    if split is None:
         return None
+    data, control, pc, flags = split(vm.snapshot())
     data_widths = [_integer_bits(value) for value in data]
     control_widths = [_integer_bits(value) for value in control]
     data_bits = sum(data_widths)
@@ -433,7 +421,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--track-store",
         action="store_true",
-        help="sample stores; Sophie/BFStack/Subleq also report integer payloads",
+        help="sample stores; languages with a payload split report integers too",
     )
     args = parser.parse_args(argv)
     if args.repeat < 1 or args.step_cap < 1:

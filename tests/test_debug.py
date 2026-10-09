@@ -4,6 +4,7 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
+from esolangs.registry import LANGUAGES
 from tests.pick import one
 
 
@@ -99,13 +100,11 @@ class TestSteppingWarnsAboutStdinToo:
         return [
             pytest.param(
                 name,
-                # Malbolge's program is the full 59049-cell store, so stepping
-                # it to its halt one instruction at a time is a medium run.
-                marks=pytest.mark.medium if name == "Malbolge" else (),
+                marks=pytest.mark.medium if LANGUAGES[name].slow_stepping else (),
             )
             for name in esolangs.list_languages()
             if esolangs.describe(name)["boolean_generator"]
             and esolangs.describe(name)["eof_is_a_value"]
             and not esolangs.describe(name)["parameterized"]
-            and name != "Alight"
+            and not LANGUAGES[name].underfed_raises
         ]

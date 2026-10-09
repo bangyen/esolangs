@@ -201,6 +201,7 @@ def balance_befunge(truth_table: str, default: str) -> str:
 LANGUAGE = Language(
     "Befunge",
     "grid_based.befunge",
+    layout_switch=(10, 11),
     random=True,
     generator_max_inputs=MAX_INPUTS,
     boolean=befunge,

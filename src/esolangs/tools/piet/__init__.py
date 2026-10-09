@@ -274,6 +274,7 @@ def _balance(table: str, default: Any, **options: Any) -> Any:
 LANGUAGE = Language(
     "Piet",
     "stack_based.piet",
+    weekly_mutation=("interpreter", "generator"),
     source_kind=SourceKind.RASTER,
     boolean=piet,
     contract=BooleanContract(note="80 pixels per codel, comparable in area to Line"),

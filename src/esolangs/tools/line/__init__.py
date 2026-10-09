@@ -174,6 +174,9 @@ def balance(truth_table: str, _default: Raster) -> Raster:
 LANGUAGE = Language(
     "Line",
     "tape_based.line",
+    weekly_mutation=("interpreter", "generator"),
+    # A 2^12-row raster renders in about 24s.
+    slow_scaling=True,
     source_kind=SourceKind.RASTER,
     boolean=line,
     balance=balance,

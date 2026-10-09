@@ -61,9 +61,9 @@ REGENERATE = "`uv run python scripts/generate.py examples`"
     "name",
     [
         pytest.param(name, marks=pytest.mark.medium)
-        if name in {"circuit-diagram", "vandevelo"}
+        if LANGUAGES[VM_LANGUAGE[example.interpreter]].example.slow_build
         else name
-        for name in sorted(BOOLEAN_GENERATED)
+        for name, example in sorted(BOOLEAN_GENERATED.items())
     ],
 )
 def test_boolean_example_matches_generator(name: str) -> None:

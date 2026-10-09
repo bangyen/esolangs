@@ -309,6 +309,7 @@ def _bitdeque_tokens(program: str) -> list[str]:
 LANGUAGE = Language(
     "Bitdeque",
     "queue_based.bitdeque",
+    weekly_mutation=("interpreter",),
     boolean=bitdeque,
     same_layout=_same_layout,
     contract=BooleanContract(

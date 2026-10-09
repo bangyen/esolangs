@@ -114,6 +114,7 @@ def _balance(table: str, default: Any, **options: Any) -> Any:
 LANGUAGE = Language(
     "Qoibl",
     "register_based.qoibl",
+    weekly_mutation=("interpreter",),
     boolean=qoibl,
     # Not a tree: the table is one binary literal the reads divide down.
     shape=Shape.LOOKUP,
