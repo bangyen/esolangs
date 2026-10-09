@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+import json
 import re
 import struct
 import sys
@@ -400,3 +401,39 @@ def write_rgb(pixels: Sequence[Sequence[tuple[int, int, int]]]) -> bytes:
         if immutable and len(packed_rows) < 1024:
             packed_rows[id(row)] = row, packed
     return _write("RGB", width, height, b"".join(parts))
+
+
+_METADATA_CHUNK = b"esOL"
+_METADATA_LIMIT = 16_384
+
+
+def read_metadata(data: bytes) -> dict[str, Any] | None:
+    """Read bounded version-one source metadata; ignore future versions."""
+    found: dict[str, Any] | None = None
+    for kind, body in _chunks(data):
+        if kind != _METADATA_CHUNK:
+            continue
+        if found is not None or len(body) > _METADATA_LIMIT:
+            raise ValueError("duplicate or oversized esolangs PNG metadata")
+        decoded = json.loads(body)
+        if not isinstance(decoded, dict):
+            raise ValueError("esolangs PNG metadata must be an object")
+        found = decoded
+    if found is None or type(found.get("version")) is not int or found["version"] != 1:
+        return None
+    return found
+
+
+def write_metadata(data: bytes, metadata: dict[str, Any]) -> bytes:
+    """Append source metadata before IEND; image editors may discard it."""
+    body = json.dumps(metadata, separators=(",", ":")).encode("utf-8")
+    if len(body) > _METADATA_LIMIT:
+        raise ValueError("oversized esolangs PNG metadata")
+    chunk = _METADATA_CHUNK + body
+    return (
+        data[:-12]
+        + struct.pack(">I", len(body))
+        + chunk
+        + struct.pack(">I", zlib.crc32(chunk) & 0xFFFFFFFF)
+        + data[-12:]
+    )

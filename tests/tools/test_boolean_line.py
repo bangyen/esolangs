@@ -178,7 +178,7 @@ def test_line_generator_entry_points() -> None:
     source = generate("01", scale=2)
     assert _evaluate("Line", source, inputs=1) == "01"
     balanced = balance("01", generate("01"))
-    assert balanced.to_png() == esolangs.generate("Line", "01", balance=True).to_png()
+    assert balanced.rows == esolangs.generate("Line", "01", balance=True).rows
     assert _evaluate("Line", balanced.to_png(), inputs=1) == "01"
 
 

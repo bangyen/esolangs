@@ -11,6 +11,7 @@ from pathlib import Path
 import pytest
 
 from esolangs.raster import png
+from tests.pick import one
 
 #: Two wiki images, kept apart from any one language's fixtures so the codec
 #: tests outlive the language that drew them.
@@ -519,3 +520,67 @@ assert esolangs.Raster.from_png(data).rows == raster.rows
         check=False,
     )
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+@pytest.mark.parametrize(
+    "fields",
+    [
+        {"language": True},
+        {"language": "NotAnInstalledLanguage"},
+        {"scale": 0},
+        {"scale": True},
+        {"settings": []},
+        {"settings": {"unknown": "value"}},
+        {"settings": {"cell_modulus": {"integer": "bad-value"}}},
+        {
+            "language": one(source_kind="raster", dialect_settings={})[0],
+            "settings": {"cell_modulus": 2},
+        },
+    ],
+)
+def test_bad_source_metadata_is_a_program_error(fields):
+    from esolangs.exceptions import ProgramError
+    from esolangs.raster import Raster
+
+    data = png.write_rgb((((1, 2, 3),),))
+    data = png.write_metadata(data, {"version": 1, **fields})
+    with pytest.raises(ProgramError, match="not a readable PNG"):
+        Raster.from_png(data)
+
+
+def test_future_metadata_versions_leave_pixels_readable():
+    from esolangs.raster import Raster
+
+    data = png.write_rgb((((1, 2, 3),),))
+    tagged = png.write_metadata(data, {"version": 2, "language": True})
+    restored = Raster.from_png(tagged)
+    assert restored.rows == (((1, 2, 3),),)
+    assert restored.language is None
+
+
+def test_duplicate_source_metadata_is_refused():
+    from esolangs.exceptions import ProgramError
+    from esolangs.raster import Raster
+
+    data = png.write_rgb((((1, 2, 3),),))
+    data = png.write_metadata(data, {"version": 1})
+    data = png.write_metadata(data, {"version": 1})
+    with pytest.raises(ProgramError, match="duplicate"):
+        Raster.from_png(data)
+
+
+@pytest.mark.parametrize("body", [b"[]", b"broken-json", b"x" * 16_385])
+def test_malformed_source_metadata_is_refused(body):
+    from esolangs.exceptions import ProgramError
+    from esolangs.raster import Raster
+
+    data = png.write_rgb((((1, 2, 3),),))
+    data = data[:-12] + _chunk(b"esOL", body) + data[-12:]
+    with pytest.raises(ProgramError, match="not a readable PNG"):
+        Raster.from_png(data)
+
+
+def test_metadata_writer_bounds_chunk_size():
+    data = png.write_rgb((((1, 2, 3),),))
+    with pytest.raises(ValueError, match="oversized"):
+        png.write_metadata(data, {"version": 1, "extra": "x" * 16_384})

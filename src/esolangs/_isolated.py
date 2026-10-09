@@ -177,7 +177,11 @@ def run_isolated(
                         "seed": hex(seed) if isinstance(seed, int) else seed,
                         "integer_seed": isinstance(seed, int),
                         "max_memory": max_memory,
-                        "scale": scale,
+                        "scale": scale
+                        if scale is not None
+                        else source.scale
+                        if isinstance(source, Raster)
+                        else None,
                         "max_output": hex(max_output)
                         if max_output is not None
                         else None,

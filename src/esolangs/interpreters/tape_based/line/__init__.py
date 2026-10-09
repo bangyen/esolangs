@@ -107,7 +107,9 @@ class _Machine:
     def __init__(self, program: Raster, io: IO, *, scale: int | None = None) -> None:
         from .simulate import _freeze_program
 
-        self.program = _freeze_program(_compiled(program, scale))
+        self.program = _freeze_program(
+            _compiled(program, scale if scale is not None else program.scale)
+        )
         self.state: _State = (0, 0, 0, ())
         self.io = io
 
@@ -159,6 +161,6 @@ def run(program: Raster, io: IO, *, scale: int | None = None) -> None:
         _Machine.run_node(cast("Node", program._payload), io)  # noqa: SLF001
         return
     _run_compiled(
-        _compiled(program, scale),
+        _compiled(program, scale if scale is not None else program.scale),
         _LINE_IO(read=io.input_num, write=io.print_num),
     )

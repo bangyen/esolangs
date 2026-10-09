@@ -34,7 +34,7 @@ def test_raw_png_round_trip_executes(scale):
     settings = DialectSettings()
     source = esolangs.generate("Line", "01", scale=scale, settings=settings)
     raw = Raster.from_png(source.to_png())
-    assert raw.settings is None
+    assert raw.settings == settings
     restored = esolangs.load_program(
         "Line", esolangs.dump_program("Line", raw, settings=settings)
     )

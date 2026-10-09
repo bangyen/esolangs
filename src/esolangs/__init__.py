@@ -220,7 +220,7 @@ def generate(
                 return default
             raster_balance = cast(Callable[[str, Raster], Raster], balancer)
             return raster_balance(truth_table, default).tagged(
-                resolve(language), settings=settings
+                resolve(language), settings=settings, scale=1
             )
         if balancer is not None:
             # A dialect setting the balancer names changes what it rebuilds.
@@ -280,7 +280,7 @@ def generate(
         # Tagged the way a text program is ``_Tagged``: a Line raster fed to
         # Piet otherwise passed ``_check_program`` and answered '', a
         # confident garbage result rather than a refusal.
-        return generated.tagged(resolved, settings=settings)
+        return generated.tagged(resolved, settings=settings, scale=1)
     slots = str(generated)
     if lang.id not in parameterized_ids():
         program = slots if laid_out else wrap_program(slots, lang.id, width)
