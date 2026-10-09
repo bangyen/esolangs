@@ -12,6 +12,7 @@ from tests.interpreters.contract import (
     SnapshotContract,
     StateViewContract,
 )
+from tests.interpreters.runner import run_printing
 from tests.raises import raises_message
 
 
@@ -50,9 +51,8 @@ class TestMinskySwapBasicCommands:
 
 class TestMinskySwapReadableNotation:
     def test_swap_command_readable(self) -> None:
-        with redirect_stdout(io.StringIO()) as f:
-            run("swap();\ninc();", io=IO())
-        assert f.getvalue().strip() == "0 1"
+        f = run_printing(run, "swap();\ninc();")
+        assert f.strip() == "0 1"
 
     @pytest.mark.parametrize(
         "code",
@@ -77,9 +77,8 @@ class TestMinskySwapReadableNotation:
     def test_blank_lines_between_readable_commands_are_skipped(self) -> None:
         outputs = []
         for code in ("inc();\ninc();", "inc();\n\n  \ninc();"):
-            with redirect_stdout(io.StringIO()) as f:
-                run(code, io=IO())
-            outputs.append(f.getvalue())
+            f = run_printing(run, code)
+            outputs.append(f)
         assert outputs[0] == outputs[1]
 
     def test_a_bare_decnz_jumps_to_the_first_line(self) -> None:
@@ -111,9 +110,8 @@ class TestMinskySwapEdgeCases:
         assert f.getvalue().strip() == "1 0"
 
     def test_invalid_jump_target(self) -> None:
-        with redirect_stdout(io.StringIO()) as f:
-            run("~\n999", io=IO())
-        assert f.getvalue().strip() == "0 0"
+        f = run_printing(run, "~\n999")
+        assert f.strip() == "0 0"
 
     def test_tilde_without_target_rejected(self) -> None:
         """A ~ with no matching jump-line number is malformed."""

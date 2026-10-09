@@ -1,22 +1,18 @@
 """``scripts/mutate_one.py`` repoints imports at the bundled interpreter."""
 
-import importlib.util
 from pathlib import Path
+from typing import Any
 
 import pytest
+
+from tests.scripts.script_support import load
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = REPO_ROOT / "scripts" / "mutate.py"
 
 
-def load_script() -> object:
-    """Import the harness as a module, mirroring the other script tests."""
-    spec = importlib.util.spec_from_file_location("mutate_one", SCRIPT)
-    assert spec is not None
-    module = importlib.util.module_from_spec(spec)
-    assert spec.loader is not None
-    spec.loader.exec_module(module)
-    return module
+def load_script() -> Any:
+    return load(SCRIPT)
 
 
 class TestRewriteImports:

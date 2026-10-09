@@ -10,6 +10,7 @@ from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.register_based.sophie import run
 from tests.interpreters.contract import CycleContract, SnapshotContract
+from tests.interpreters.runner import run_printing
 from tests.raises import assert_rejected_with_hint
 
 
@@ -56,9 +57,8 @@ class TestSophieConditionals:
         ],
     )
     def test_conditional_output(self, code: str, expected: str) -> None:
-        with redirect_stdout(io.StringIO()) as f:
-            run(code, io=IO())
-        assert f.getvalue() == expected
+        f = run_printing(run, code)
+        assert f == expected
 
 
 class TestSophieLoops:
@@ -87,9 +87,8 @@ class TestSophieComments:
         assert f.getvalue() == "A"
 
     def test_nested_comments(self) -> None:
-        with redirect_stdout(io.StringIO()) as f:
-            run("{Outer{Inner}comment}#A,&", io=IO())
-        assert f.getvalue() == "A"
+        f = run_printing(run, "{Outer{Inner}comment}#A,&")
+        assert f == "A"
 
 
 class TestSophieInputHandling:
@@ -147,17 +146,15 @@ class TestSophieEdgeCases:
     def test_a_program_ending_on_a_load_marker(self) -> None:
         """``#`` and ``#$`` may be the last thing in the program."""
         for code in ("#", "#$"):
-            with redirect_stdout(io.StringIO()) as f:
-                run(code, io=IO())
-            assert f.getvalue() == "", code
+            f = run_printing(run, code)
+            assert f == "", code
 
     def test_a_dollar_without_a_number_is_the_loaded_character(self) -> None:
         """``#c`` with c ``$``: the ``[`` after ``#$`` is structure, not data."""
         with pytest.raises(ValueError, match="unmatched"):
             run("#$[", io=IO())
-        with redirect_stdout(io.StringIO()) as f:
-            run("#$#[,", io=IO())
-        assert f.getvalue() == "["
+        f = run_printing(run, "#$#[,")
+        assert f == "["
 
     def test_a_digit_load_stops_at_the_first_non_digit(self) -> None:
         """``#$1[`` loads the digits only, leaving the bracket as structure."""
@@ -176,9 +173,8 @@ class TestSophieEdgeCases:
     def test_numbers_past_the_decimal_digit_cap(self) -> None:
         """A 5000-digit load prints back whole (CPython's str cap is 4300)."""
         digits = "9" * 5000
-        with redirect_stdout(io.StringIO()) as f:
-            run(f"#${digits}.&", io=IO())
-        assert f.getvalue() == digits
+        f = run_printing(run, f"#${digits}.&")
+        assert f == digits
 
     def test_unmatched_closing_brace(self) -> None:
         with pytest.raises(ValueError, match="unmatched"):

@@ -7,13 +7,10 @@ import pytest
 from esolangs.interpreters.grid_based.dig import run
 from esolangs.interpreters.io import IO, ScriptedIO
 from tests.interpreters.contract import CycleContract, InputCursorContract
-from tests.interpreters.runner import run_program
+from tests.interpreters.runner import run_lines
 from tests.raises import raises_message
 
-
-def run_and_capture(code: list[str], inputs: list[str] | None = None) -> str:
-    """Run a Dig program and return its stdout."""
-    return run_program(run, code, "".join(f"{line}\n" for line in inputs or []))
+run_and_capture = run_lines(run)
 
 
 @pytest.mark.parametrize(

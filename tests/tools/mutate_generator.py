@@ -43,6 +43,7 @@ _TOOLS_SUPPORT = (
     Path("tests/source_support.py"),
     Path("tests/witness_tables.py"),
     Path("tests/generator_support.py"),
+    Path("tests/pick.py"),
     # ``generator_support`` validates tables through this oracle.
     Path("tests/stdin_check.py"),
     Path("tests/__init__.py"),

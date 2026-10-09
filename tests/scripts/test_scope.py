@@ -1,24 +1,20 @@
 """The scoping rule narrows a check without ever narrowing what it proves."""
 
-import importlib.util
 import subprocess
 from pathlib import Path
+from typing import Any
 from unittest import mock
 
 import pytest
+
+from tests.scripts.script_support import load
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = REPO_ROOT / "scripts" / "_scope.py"
 
 
-def load_script() -> object:
-    """Import the scoping helper as a module, mirroring the other script tests."""
-    spec = importlib.util.spec_from_file_location("_scope", SCRIPT)
-    assert spec is not None
-    assert spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+def load_script() -> Any:
+    return load(SCRIPT)
 
 
 # 2.9s over 6 tests: shells out to git.

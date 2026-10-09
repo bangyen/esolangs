@@ -10,11 +10,9 @@ from tests.interpreters.contract import (
     SnapshotContract,
     StateViewContract,
 )
-from tests.interpreters.runner import run_program
+from tests.interpreters.runner import run_lines
 
-
-def run_and_capture(code: str, inputs: list[str] | None = None) -> str:
-    return run_program(run, code, "".join(f"{line}\n" for line in inputs or []))
+run_and_capture = run_lines(run)
 
 
 class TestMinifuck:

@@ -248,62 +248,6 @@ def test_text_generator_scale_hint_uses_cli_flag(capsys):
     assert "hint: omit --scale for text languages" in err
 
 
-#: Commands refused with exit code 2, and what stderr must say.
-#: ``prog:SRC`` is a file holding SRC; a third item is stdin.
-_REFUSALS = {
-    "a_repeated_width_quotes_its_value": (
-        "generate --width 77 --width 33 brainfuck 0110",
-        "first was '77'",
-    ),
-    "a_missing_argument_is_named": ("generate brainfuck", "missing <truth-table>"),
-    "swapped_arguments_are_recognized_as_swapped": (
-        "generate 0110 brainfuck",
-        "looks like a truth table",
-    ),
-    "a_misspelled_option_is_suggested": (
-        "generate --wdith 40 brainfuck 0110",
-        "did you mean --width",
-    ),
-    "read_answer_reports_an_unknown_language": (
-        "read-answer Nonexistent",
-        "unknown language",
-        "1",
-    ),
-    "read_answer_reports_an_unreadable_output": (
-        "read-answer brainfuck",
-        "no answer this could read",
-        "no digits here!",
-    ),
-    "a_genuine_extra_argument_still_says_so": (
-        "describe brainfuck zzz",
-        "unexpected argument",
-    ),
-    "an_unknown_subcommand_is_suggested": ("lst", "did you mean list"),
-    "a_negative_watch_cell_is_refused": (
-        "debug --watch-cell -1 brainfuck prog:+++",
-        "must not be negative",
-    ),
-    "encode_refuses_a_language_that_reads_nothing": ("encode 123 01", "reads no stdin"),
-    "a_repeated_option_is_refused": (
-        "generate --bits 10 --bits 01 Minifuck 0110",
-        "more than once",
-    ),
-    "encode_refuses_a_non_binary_bit_string": ("encode brainfuck 2x", "0s and 1s"),
-    "an_empty_break_on_output_is_refused": (
-        "debug --break-on-output '' brainfuck prog:+++",
-        "needs some text",
-    ),
-}
-
-
-@pytest.mark.parametrize("case", _REFUSALS.values(), ids=list(_REFUSALS))
-def test_a_bad_command_exits_2_and_says_why(
-    case: tuple[str, ...], tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    command, message, *stdin = case
-    assert message in _refused(command, tmp_path, capsys, *stdin)
-
-
 #: Refused, but these hints must stay quiet.
 _QUIET = {
     "an_unknown_language_is_not_called_a_swapped_argument": (

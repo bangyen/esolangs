@@ -12,23 +12,22 @@ import esolangs
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.register_based import qoibl
 from esolangs.interpreters.register_based.qoibl import run, tokenize
+from tests.interpreters.runner import run_printing
 
 
 class TestQoiblBasicOperations:
     def test_print_character(self) -> None:
         code: list[str] = ["tt yeeyeee tt"]  # 'H' in binary
-        with redirect_stdout(io.StringIO()) as f:
-            run(code, IO())
-        assert f.getvalue() == "H"
+        f = run_printing(run, code)
+        assert f == "H"
 
     def test_assignment_and_access(self) -> None:
         code: list[str] = [
             "we y we yyeeee we",  # var[1] = 48
             "tt qe y qe tt",  # print var[1]
         ]
-        with redirect_stdout(io.StringIO()) as f:
-            run(code, IO())
-        assert f.getvalue() == chr(48)  # '0'
+        f = run_printing(run, code)
+        assert f == chr(48)  # '0'
 
     def test_input_operation(self) -> None:
         code: list[str] = [
@@ -62,9 +61,8 @@ class TestQoiblBinaryNumbers:
 
         for binary_str, expected in test_cases:
             code: list[str] = [f"tt {binary_str} tt"]
-            with redirect_stdout(io.StringIO()) as f:
-                run(code, IO())
-            assert f.getvalue() == chr(expected), f"Failed for {binary_str}"
+            f = run_printing(run, code)
+            assert f == chr(expected), f"Failed for {binary_str}"
 
 
 class TestQoiblConditionals:
@@ -74,9 +72,8 @@ class TestQoiblConditionals:
             "we ye we yy we",  # var[2] = 3
             "tt qe y qe yr ee yr qe ye qe tt",  # print var[1] == var[2]
         ]
-        with redirect_stdout(io.StringIO()) as f:
-            run(code, IO())
-        assert f.getvalue() == chr(1)  # True
+        f = run_printing(run, code)
+        assert f == chr(1)  # True
 
     def test_greater_than_condition(self) -> None:
         code: list[str] = [
@@ -84,9 +81,8 @@ class TestQoiblConditionals:
             "we ye we yy we",  # var[2] = 3
             "tt qe y qe yr ey yr qe ye qe tt",  # print var[1] > var[2]
         ]
-        with redirect_stdout(io.StringIO()) as f:
-            run(code, IO())
-        assert f.getvalue() == chr(1)  # True
+        f = run_printing(run, code)
+        assert f == chr(1)  # True
 
     def test_inequality_condition(self) -> None:
         """``yr yy yr`` is ``!=``: 1 for 7 vs 3, 0 for 3 vs 3."""
@@ -96,9 +92,8 @@ class TestQoiblConditionals:
                 "we ye we yy we",  # var[2] = 3
                 "tt qe y qe yr yy yr qe ye qe tt",
             ]
-            with redirect_stdout(io.StringIO()) as f:
-                run(code, IO())
-            assert f.getvalue() == chr(expected), big
+            f = run_printing(run, code)
+            assert f == chr(expected), big
 
     def test_a_trailing_fragment_after_a_statement_is_malformed(self) -> None:
         with pytest.raises(ValueError, match="malformed Qoibl expression"):
@@ -112,9 +107,8 @@ class TestQoiblConditionals:
                 "we ye we yy we",  # var[2] = 3
                 f"tt qe y qe yr {op} yr qe ye qe tt",
             ]
-            with redirect_stdout(io.StringIO()) as f:
-                run(code, IO())
-            assert f.getvalue() == chr(0), op
+            f = run_printing(run, code)
+            assert f == chr(0), op
 
 
 class TestQoiblMathOperations:
@@ -124,9 +118,8 @@ class TestQoiblMathOperations:
             "we ye we yy we",  # var[2] = 3
             "tt qe y qe ry ee ry qe ye qe tt",  # print var[1] + var[2]
         ]
-        with redirect_stdout(io.StringIO()) as f:
-            run(code, IO())
-        assert f.getvalue() == chr(6)
+        f = run_printing(run, code)
+        assert f == chr(6)
 
     def test_division(self) -> None:
         code: list[str] = [
@@ -134,9 +127,8 @@ class TestQoiblMathOperations:
             "we ye we yy we",  # var[2] = 3
             "tt qe y qe ry yy ry qe ye qe tt",  # print var[1] // var[2]
         ]
-        with redirect_stdout(io.StringIO()) as f:
-            run(code, IO())
-        assert f.getvalue() == chr(2)  # 7 // 3 = 2
+        f = run_printing(run, code)
+        assert f == chr(2)  # 7 // 3 = 2
 
 
 class TestQoiblExamples:
@@ -172,15 +164,13 @@ class TestQoiblExamples:
 class TestQoiblEdgeCases:
     def test_empty_program(self) -> None:
         code: list[str] = []
-        with redirect_stdout(io.StringIO()) as f:
-            run(code, IO())
-        assert f.getvalue() == ""
+        f = run_printing(run, code)
+        assert f == ""
 
     def test_undefined_variable_access(self) -> None:
         code: list[str] = ["tt qe yyy qe tt"]  # print var[7] (undefined)
-        with redirect_stdout(io.StringIO()) as f:
-            run(code, IO())
-        assert f.getvalue() == chr(0)
+        f = run_printing(run, code)
+        assert f == chr(0)
 
     def test_variable_indices_stay_within_the_256_cell_list(self) -> None:
         from esolangs.exceptions import HaltError
@@ -228,9 +218,8 @@ class TestQoiblEdgeCases:
             "we yyy we qe y qe ry ee ry qe ye qe we",  # var[3] = var[1] + var[2]
             "tt qe yyy qe tt",  # print var[3]
         ]
-        with redirect_stdout(io.StringIO()) as f:
-            run(code, IO())
-        assert f.getvalue() == chr(6)
+        f = run_printing(run, code)
+        assert f == chr(6)
 
 
 WIKI_PROGRAMS = {

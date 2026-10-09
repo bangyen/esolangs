@@ -1,8 +1,5 @@
 """Unit tests for RAM0 interpreter."""
 
-import io
-from contextlib import redirect_stdout
-
 import pytest
 
 from esolangs.exceptions import HaltError
@@ -13,14 +10,13 @@ from tests.interpreters.contract import (
     SnapshotContract,
     StateViewContract,
 )
+from tests.interpreters.runner import run_printing
 from tests.raises import assert_rejected_with_hint
 
 
 def dump(code: str) -> str:
     """Run ``code`` and return the state dump it prints."""
-    with redirect_stdout(io.StringIO()) as f:
-        run(code, io=IO())
-    return f.getvalue()
+    return run_printing(run, code)
 
 
 _DUMPS = {
@@ -115,15 +111,6 @@ class TestStepMachine:
         machine.step()  # dumps
         machine.step()  # must not dump again
         assert machine.io.getvalue() == "z: 1\nn: 0\nram: {}"
-
-    def test_loop_is_detected_as_a_cycle(self) -> None:
-        # Z1: Z zeroes z (already zero, a net no-op), then the goto to
-        # token 1 sets ind back to 0 -- a genuine state cycle, not
-        # unbounded growth.
-        from esolangs.interpreters.register_based.ram0 import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
-
-        assert run_until_halt_or_cycle(_Machine("Z1", IO())) is False
 
 
 def _machine(code: object) -> object:

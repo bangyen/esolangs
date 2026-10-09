@@ -10,6 +10,10 @@ import pytest
 import esolangs
 from esolangs.cli import main
 from tests.cli_support import _FakeStdin, _program, _refused
+from tests.pick import first
+
+RASTER = first(source_kind="raster", boolean_generator=True)
+TEMPLATED = first(parameterized=True)
 
 # A 3-input parity table.  Parity depends on every input, so the program is
 # long enough to have something to wrap -- an echo-one-input table folds
@@ -472,11 +476,11 @@ class TestGenerateArgumentTypes:
 #: ``prog:SRC`` is a file holding SRC; a third item is stdin.
 _REFUSALS = {
     "generate_bits_refuses_a_raster": (
-        "generate Piet 0110 --bits 01",
+        f"generate {RASTER} 0110 --bits 01",
         "raster programs read bits",
     ),
     "generate_unknown_language": ("generate NoSuchLanguage 01", "unknown language"),
-    "run_missing_file": ("run Sophie /no/such/file", "cannot read"),
+    "run_missing_file": ("run brainfuck /no/such/file", "cannot read"),
     "unknown_command": ("no.such.command", "unknown command"),
     "width_rejects_a_non_integer_after_equals": (
         f"generate brainfuck {TABLE3} --width=x",
@@ -530,6 +534,64 @@ _REFUSALS = {
         f"generate brainfuck {TABLE3} extra",
         "unexpected argument: 'extra'",
     ),
+    "a_repeated_width_quotes_its_value": (
+        "generate --width 77 --width 33 brainfuck 0110",
+        "first was '77'",
+    ),
+    "a_missing_argument_is_named": ("generate brainfuck", "missing <truth-table>"),
+    "swapped_arguments_are_recognized_as_swapped": (
+        "generate 0110 brainfuck",
+        "looks like a truth table",
+    ),
+    "a_misspelled_option_is_suggested": (
+        "generate --wdith 40 brainfuck 0110",
+        "did you mean --width",
+    ),
+    "read_answer_reports_an_unknown_language": (
+        "read-answer Nonexistent",
+        "unknown language",
+        "1",
+    ),
+    "read_answer_reports_an_unreadable_output": (
+        "read-answer brainfuck",
+        "no answer this could read",
+        "no digits here!",
+    ),
+    "a_genuine_extra_argument_still_says_so": (
+        "describe brainfuck zzz",
+        "unexpected argument",
+    ),
+    "an_unknown_subcommand_is_suggested": ("lst", "did you mean list"),
+    "a_negative_watch_cell_is_refused": (
+        "debug --watch-cell -1 brainfuck prog:+++",
+        "must not be negative",
+    ),
+    "encode_refuses_a_language_that_reads_nothing": (
+        f"encode {TEMPLATED!r} 01",
+        "reads no stdin",
+    ),
+    "a_repeated_option_is_refused": (
+        f"generate --bits 10 --bits 01 {TEMPLATED!r} 0110",
+        "more than once",
+    ),
+    "encode_refuses_a_non_binary_bit_string": ("encode brainfuck 2x", "0s and 1s"),
+    "an_empty_break_on_output_is_refused": (
+        "debug --break-on-output '' brainfuck prog:+++",
+        "needs some text",
+    ),
+    "read_answer_says_so_when_given_nothing": (
+        "read-answer brainfuck",
+        "nothing on stdin",
+    ),
+    "a_negative_step_bound_is_refused": (
+        "debug --steps -1 brainfuck prog:+",
+        "must not be negative",
+    ),
+    "a_negative_break_at_is_refused": (
+        "debug --break-at -1 brainfuck prog:+",
+        "--break-at must not be negative",
+    ),
+    "a_swallowed_table_is_named": ("generate brainfuck --width 0110", "--width"),
 }
 
 

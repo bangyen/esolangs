@@ -1,27 +1,23 @@
 """The local gate may skip work, but only work CI is known to redo."""
 
-import importlib.util
 import re
 import subprocess
 import sys
 import tomllib
 from pathlib import Path
+from typing import Any
 from unittest import mock
 
 import pytest
+
+from tests.scripts.script_support import load
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = REPO_ROOT / "scripts" / "verify.py"
 
 
-def load_script() -> object:
-    """Import the verifier as a module, mirroring the other script tests."""
-    spec = importlib.util.spec_from_file_location("verify", SCRIPT)
-    assert spec is not None
-    assert spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+def load_script() -> Any:
+    return load(SCRIPT)
 
 
 class TestPytestScopeCollects:
