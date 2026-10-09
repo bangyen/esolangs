@@ -10,7 +10,7 @@ from tests.interpreters.contract import (
     StateViewContract,
 )
 from tests.interpreters.runner import run_program
-from tests.raises import raises_message
+from tests.raises import assert_rejected_with_hint, raises_message
 
 
 def run_and_capture(code: str, inputs: list[str] | None = None) -> str:
@@ -168,3 +168,8 @@ class TestContract(CycleContract, InputCursorContract, StateViewContract):
     reading_program = ">,"  # > pushes 0, then , reads the first byte
     reading_stdin = "A\nB"
     steps_to_read = 2
+
+
+@pytest.mark.medium
+def test_malformed_source_carries_a_repair_hint() -> None:
+    assert_rejected_with_hint("BFStack", ">[", "close the loop")

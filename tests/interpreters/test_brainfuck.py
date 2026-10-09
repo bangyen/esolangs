@@ -6,6 +6,7 @@ import pytest
 
 from tests.interpreters.contract import CycleContract, EmptyProgramContract
 from tests.interpreters.runner import run_program
+from tests.raises import assert_rejected_with_hint
 
 bf = importlib.import_module("esolangs.interpreters.tape_based.brainfuck")
 
@@ -115,3 +116,8 @@ class TestFastRunParity:
         while not machine.halted:
             machine.step()
         return io_obj.getvalue(), io_obj.reads
+
+
+@pytest.mark.medium
+def test_malformed_source_carries_a_repair_hint() -> None:
+    assert_rejected_with_hint("brainfuck", "[", "close this '['")

@@ -9,7 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
+from esolangs.registry._language import Language, Shape
 from esolangs.tools.helpers import _validate_truth_table, grid_width, input_weights
 from esolangs.tools.wrap import balance_score
 
@@ -240,6 +240,8 @@ LANGUAGE = Language(
     "B-tapemark",
     "grid_based.b_tapemark",
     boolean=b_tapemark,
+    # Not a tree: the table copied onto the grid, one mark per row.
+    shape=Shape.LOOKUP,
     contract=BooleanContract(
         input_shape="char_stream",
     ),

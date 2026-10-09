@@ -6,6 +6,7 @@ import pytest
 
 from esolangs.tools.back import _back_ordered
 from esolangs.tools.helpers import TEMPLATE_CHAR, permute_truth_table, runs
+from tests.generator_support import assert_an_ignored_input_costs
 from tests.witness_tables import witnesses
 
 
@@ -265,3 +266,9 @@ def test_parity_accumulator_keeps_public_slots_and_provenance(
                     "Back", template, [0] * n, truth_table="0" * len(table)
                 )
     assert max(map(len, esolangs.generate("Back", table, width=1).splitlines())) == 1
+
+
+@pytest.mark.medium
+def test_an_ignored_input_is_read_and_dropped() -> None:
+    """Two load rows on a borrowed cell; each leaf walks one more."""
+    assert_an_ignored_input_costs("Back", 6, 131)

@@ -1,6 +1,6 @@
 import pytest
 
-from esolangs.registry import LANGUAGES, canonical_id
+from esolangs.registry import LANGUAGES, resolve
 
 
 def test_every_language_has_a_canonical_id() -> None:
@@ -9,9 +9,11 @@ def test_every_language_has_a_canonical_id() -> None:
         assert lang.id.isidentifier(), name
 
 
-def test_canonical_id_derives_the_recorded_id() -> None:
+def test_every_name_id_and_alias_resolves_to_its_language() -> None:
+    """An id set by hand (``///``'s ``slashes``) must still be reachable."""
     for name, lang in LANGUAGES.items():
-        assert canonical_id(name) == lang.id, name
+        for spelling in (name, name.casefold(), lang.id, *lang.aliases):
+            assert resolve(spelling) == name, spelling
 
 
 def test_id_matches_the_interpreter_module() -> None:

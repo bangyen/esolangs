@@ -122,7 +122,7 @@ def test_parameterized_rows_embed_each_input_exactly_once() -> None:
     """A ``parameterized`` row's proof rests on the per-input embedding."""
     rows = _parameterized_rows(load())
     assert rows, "the ledger lists no parameterized rows"
-    from esolangs.registry import canonical_id, recover_setters, template_char
+    from esolangs.registry import LANGUAGES, recover_setters, template_char
 
     for row in rows:
         # The generator spells its inputs as runs of its declared character;
@@ -130,7 +130,7 @@ def test_parameterized_rows_embed_each_input_exactly_once() -> None:
         # run, so three spans is exactly one per input.
         program = str(_generator(row)(_PARITY))
         assert "{X" not in program, row.generator
-        language = canonical_id(row.generator)
+        language = LANGUAGES[row.generator].id
         char = template_char(language)
         assert char is not None
         spans = runs(program, char, recover_setters(language, program))

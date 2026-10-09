@@ -409,6 +409,8 @@ def cvnc(truth_table: str) -> str:
 LANGUAGE = Language(
     "CV(N)(C)",
     "other.cvnc",
+    # The parentheses mark optional slots; the language is written as one word.
+    id="cvnc",
     boolean=cvnc,
     # LF-only source-format deviation: discard breaks before parsing or addressing.
     wrap=wrap_chars,

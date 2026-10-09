@@ -43,7 +43,7 @@ from __future__ import annotations
 from functools import cache
 
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language
+from esolangs.registry._language import Example, Language, Shape
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
@@ -246,6 +246,8 @@ LANGUAGE = Language(
     "123",
     "tape_based.one_two_three",
     boolean=one_two_three,
+    # Not a tree: a flat plan; the answer is the pointer phase the embeds leave.
+    shape=Shape.LOOKUP,
     contract=BooleanContract(
         answer_mode="termination",
         answer_values=("halts", "diverges"),

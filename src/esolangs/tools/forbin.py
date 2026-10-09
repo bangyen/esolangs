@@ -4,7 +4,7 @@ import re
 from collections.abc import Callable
 
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
+from esolangs.registry._language import Language, Shape
 from esolangs.tools.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
@@ -262,6 +262,8 @@ LANGUAGE = Language(
     "Forbin",
     "other.forbin",
     boolean=forbin,
+    # Not a tree: one painted call argument per entry, halved down to the first.
+    shape=Shape.LOOKUP,
     contract=BooleanContract(
         input_shape="char_stream",
     ),

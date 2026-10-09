@@ -21,7 +21,7 @@ from math import isqrt
 from string import ascii_letters
 
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
+from esolangs.registry._language import Language, Shape
 from esolangs.tools.helpers import _validate_truth_table, essential_inputs, read_at
 from esolangs.tools.wrap import balance_score
 
@@ -316,6 +316,8 @@ LANGUAGE = Language(
     "Thue",
     "other.thue",
     boolean=thue,
+    # Not a tree: the table is the state, and each read halves it.
+    shape=Shape.LOOKUP,
     contract=BooleanContract(
         note="Thue draws which rewrite to make, by spec, and the "
         "interpreter draws too; this program's rules are written so that "

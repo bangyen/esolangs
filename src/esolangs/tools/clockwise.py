@@ -1,7 +1,7 @@
 """Boolean-function generator for Clockwise."""
 
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
+from esolangs.registry._language import Language, Shape
 from esolangs.tools.helpers import (
     _validate_truth_table,
     essential_inputs,
@@ -230,6 +230,8 @@ LANGUAGE = Language(
     "Clockwise",
     "grid_based.clockwise",
     boolean=clockwise,
+    # Not a tree: a countdown stops on the entry's own column.
+    shape=Shape.LOOKUP,
     split=True,
     contract=BooleanContract(
         input_shape="char_stream_cyclic",

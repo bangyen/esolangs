@@ -6,6 +6,7 @@ import pytest
 
 import esolangs
 from esolangs import tools as boolean
+from tests.generator_support import assert_an_ignored_input_costs
 from tests.tools.boolean_runners import (
     run_modulous,
 )
@@ -44,3 +45,9 @@ class TestModulous:
             sum(len(boolean.modulous(format(v, "08b"), 1)) for v in range(256))
             == 100922
         )
+
+
+@pytest.mark.medium
+def test_an_ignored_input_is_read_and_dropped() -> None:
+    """``[INP INT][POP]``."""
+    assert_an_ignored_input_costs("Modulous", 6, 14)

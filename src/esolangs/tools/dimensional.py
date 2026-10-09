@@ -13,7 +13,7 @@ loop where that is shorter, any other entry is painted one by one.
 import re
 from itertools import groupby
 
-from esolangs.registry._language import Language
+from esolangs.registry._language import Language, Shape
 from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table, input_weights
 from esolangs.tools.token_balance import balanced_token_width
 from esolangs.tools.wrap import (
@@ -161,6 +161,8 @@ LANGUAGE = Language(
     "Dimensional",
     "tape_based.dimensional",
     boolean=dimensional,
+    # Not a tree: one painted cell per entry along dimension 1.
+    shape=Shape.LOOKUP,
     wrap=_dimensional,
     balance=_balance,
 )

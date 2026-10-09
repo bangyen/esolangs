@@ -3,7 +3,7 @@
 from itertools import groupby
 
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language
+from esolangs.registry._language import Example, Language, Shape
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
     _validate_truth_table,
@@ -77,6 +77,8 @@ LANGUAGE = Language(
     "Home Row",
     "tape_based.home_row",
     boolean=home_row,
+    # A sum, not a tree: a lookup over the essential inputs only.
+    shape=Shape.REDUCING,
     contract=BooleanContract(),
     wrap=wrap_chars,
     example=Example(pair=HOME_ROW_PAIR),

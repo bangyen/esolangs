@@ -3,7 +3,9 @@
 import contextlib
 import hashlib
 import importlib
+import tomllib
 from collections.abc import Callable
+from pathlib import Path
 
 import pytest
 
@@ -12,6 +14,7 @@ import esolangs.tools as boolean
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.raster import Raster
 from esolangs.registry import BY_BOOLEAN, INTERPRETERS, LANGUAGES
+from esolangs.registry._language import Shape
 from esolangs.tools.helpers import essential_inputs
 from esolangs.vm import run_until_halt_or_cycle
 from tests.generator_support import evaluate_generated
@@ -289,124 +292,11 @@ def test_the_tree_program_spends_its_permutation_on_the_tested_cell() -> None:
     assert len(_bf_ordered("0110", (1, 0))) == 211
 
 
-# The shape each boolean generator's construction takes, which decides which
-# optimizations even apply to it: folding, input reordering and dependency
-# reduction are tree techniques, complement/polarity is a minterm one.  The
-# lists are measured (see the doc's "Which shape a boolean generator is"),
-# so this test is what keeps them true rather than a comment that rots.
-_MINTERM_SHAPED: set[str] = set()
-
-# Neither model describes these.  ``minifuck`` is a route search over a
-# grid, not a sum and not a tree.
-#
-# ``b_tapemark`` copies the whole table onto the blank grid, one mark per
-# row, and each input walks the mark pointer by its weight -- so every table
-# of one arity renders to the same length and a 0% fold is its construction
-# working.  ``slow_acv_mammalian`` is a branch-free
-# chain into a flat leaf table -- every table of one arity renders to the
-# same length, so a 0% fold is its construction working.
-#
-# ``minifuck`` is a search too: it emits
-# whatever code it can *see* produce the table's column, so the program has
-# no per-row structure to fold and its size tracks the search rather than the
-# table's shape.
-#
-# ``one_two_three`` emits no tree either, and for a related reason: 123's
-# answer is whether the program halts, and what decides that is the pointer
-# phase the embeds leave behind, so the generator emits a flat plan whose
-# length tracks the modulo-four decode rather than any table shape.  It also
-# raises on the ``n == 3`` tables this test uses -- an ignored input still
-# has to be embedded, and every fill moves the pointer that carries the
-# answer, so the projection this test's folding measures cannot happen.
-# Minterm sums that nonetheless gain on a one-dependency table, and *not* by
-# folding: they apply dependency reduction (technique 10), emitting the
-# smaller table that a degenerate one really is.  The distinction the shape
-# test would otherwise lose is that these have no subtrees at all -- the sum
-# is simply over fewer rows because the table was rewritten over its
-# essential inputs, so the gain tracks the dropped *arity* rather than any
-# collapsed structure.  Reordering does not become applicable to them the way
-# it would if they had grown a tree, which is why they are neither list.
-# ``circlefuck`` reduces for the same reason from the other shape: its
-# lookup tabulates the essential inputs alone, so a one-dependency table is
-# a two-entry table and not a collapsed tree.
-_REDUCING = {
-    "bfstack",
-    "circlefuck",
-    "home_row",
-    "nocomment",
-    "rotfuck",
-    "suffolk",
-    "super_snusp",
-}
-
-# ``minsky_swap`` is a branch-free lookup of the same class as
-# ``slow_acv_mammalian``: a stage per input adds its weight to the index
-# register, and a ``~`` cascade routes the index to one of two shared
-# leaves, a one-digit target per row.  Every table of one arity renders to
-# the same length, so a 0% fold is the construction working.  (Its
-# earlier leaves were three or four commands by whether the row's LSB
-# matched its answer, which read as a fold on the one-dependency table
-# that *is* the LSB and on nothing else.)
-#
-# ``alight`` is a branch-free lookup: the inputs are folded into a row
-# index by Horner's rule and the table is a string literal read with
-# ``at{table, i+0.5}``, so there are no subtrees to collapse and every
-# table of a given arity renders to exactly the same length.  A 0% fold is
-# the construction working.
-#
-# ``a_painter_ant`` is a branch-free lookup of the same class: one white
-# corridor cell per row, one answer paint per one-row, and the inputs walk
-# the corridor by their weights, so two tables with the same ones-count
-# render to the same length and a 0% fold is the construction working.
-#
-# ``bio`` is a telescope of one nested level per row whatever the table
-# says; a one-dependency table only spares it the flat edges' adjustments,
-# which is 4.4% once the doubling between the input runs is in the text.
-#
-# ``qoibl`` encodes a lookup: the whole table is one
-# binary literal and the reads build the power of two that divides it down,
-# so the only thing a one-dependency table spares is the literal's leading
-# zeros.
-#
-# ``befunge``, ``clockwise``, ``dimensional`` and ``modulous``
-# are branch-free lookups: Befunge reads a grid cell with ``g`` (six packed
-# bits per cell above ten inputs), Clockwise stops a countdown on the entry's
-# own column, Modulous
-# pops a ``PSH STR`` table down to the indexed character, so a 0% fold is
-# the construction working.
-# Dimensional paints one cell an entry along dimension 1 and stops at the last
-# one, so a constant-zero tail reads as a 6.9% fold with nothing collapsing.
-_UNSHAPED = {
-    "a_painter_ant",
-    "befunge",
-    "fish",
-    "bio",
-    "alight",
-    "clockwise",
-    "dimensional",
-    "egl",  # one painted grid cell per entry, walked to by weighted guards
-    "forbin",  # one painted call argument per entry, halved down to the first
-    # One deque push per entry; equal neighbours share a set node, which is
-    # 16 characters (4.2%) at n == 3 against the byte I/O's fixed overhead.
-    "flowchart",
-    "malbolge",
-    "minsky_swap",
-    "cyclic_tag",
-    "slashes",
-    "subleq",
-    "b_tapemark",
-    "bitwise_cyclic_tag",  # no branch, so every table of an arity is one length
-    "minifuck",
-    "modulous",
-    "one_two_three",
-    "packlang",  # one painted array cell per differing row, read by index
-    "qoibl",
-    "slow_acv_mammalian",
-    # The table is the state and the bit read rewrites every pair down to
-    # one, so nothing collapses and a 0% fold is the construction working.
-    "thue",
-}
-
+# The shape each generator's construction takes (its LANGUAGE's ``shape=``)
+# decides which optimizations apply: folding, input reordering and
+# dependency reduction are tree techniques.  This test keeps the declared
+# shape true; a ``LOOKUP`` renders every table of an arity alike, so there
+# is nothing to measure.
 # Every table depending on exactly one input, at n == 3, both polarities.
 # All have ones-count 4, as parity does, so the comparison below is not
 # measuring density.
@@ -424,44 +314,34 @@ _PARITY = "01101001"
 @pytest.mark.parametrize(
     "name",
     sorted(
-        n
-        for n in boolean.__all__
-        if n not in ("BOOLEAN", "instantiate")
-        and callable(getattr(boolean, n, None))
-        and n not in _UNSHAPED
+        name
+        for name, lang in LANGUAGES.items()
+        if lang.boolean is not None and lang.shape is not Shape.LOOKUP
     ),
 )
 def test_generator_shape_is_what_the_catalogue_says(name: str) -> None:
-    """A tree generator folds a one-dependency table; a minterm sum cannot."""
-    fn = getattr(boolean, name)
+    """A tree folds a one-dependency table; a reducing sum drops its inputs."""
+    fn = LANGUAGES[name].boolean
+    assert fn is not None
     best = min(source_units(fn(table)) for table in _ONE_DEPENDENCY)
     parity = source_units(fn(_PARITY))
     folds = 1 - best / parity
-    if name in _REDUCING:
+    if LANGUAGES[name].shape is Shape.REDUCING:
         # The gain is real but is not a fold, so assert it from the other
         # direction: the saving must come from dropped inputs, which means a
         # table that depends on *every* input cannot be shortened at all.
         assert folds >= 0.05, (
-            f"{name} is listed as applying dependency reduction but gains "
-            f"only {folds:.1%} on a one-dependency table -- its reduction "
-            f"has regressed"
+            f"{name} declares Shape.REDUCING but gains only {folds:.1%} on a "
+            "one-dependency table -- its reduction has regressed"
         )
         for table in _ONE_DEPENDENCY:
             assert source_units(fn(table)) < parity, table
         return
-    if name in _MINTERM_SHAPED:
-        assert folds < 0.05, (
-            f"{name} is listed as minterm-shaped but folds {folds:.1%} on a "
-            f"one-dependency table -- if it grew a tree, move it to the "
-            f"tree-shaped list and consider whether reordering now applies"
-        )
-    else:
-        assert folds >= 0.05, (
-            f"{name} is listed as tree-shaped but folds only {folds:.1%} -- "
-            f"either its folding regressed, or add it to _MINTERM_SHAPED (a "
-            f"minterm sum) or _UNSHAPED (a branch-free lookup, with a reason) "
-            f"in tests/tools/test_boolean_contract.py"
-        )
+    assert folds >= 0.05, (
+        f"{name} is a tree (the default shape) but folds only {folds:.1%} on "
+        "a table that ignores inputs: fold equal subtrees, or declare "
+        "shape=Shape.REDUCING or Shape.LOOKUP on its LANGUAGE, with the reason"
+    )
 
 
 # The two table shapes every generator is built against.  A dense
@@ -594,43 +474,6 @@ def test_the_exec_tables_really_need_every_input(make: Callable[[int], str]) -> 
     assert len(essential_inputs(table, _ONE_MINTERM_ARITY)) == _ONE_MINTERM_ARITY
 
 
-#: What one ignored input adds to a lookup that reads and drops it, at every
-#: position, against the arity it lifts the table from (Container's threshold
-#: route starts at seven).  Each used to grow as much as a real input,
-#: 1.13x-2.08x at six or seven inputs: the table doubled over the bit.
-_IGNORED_INPUT_COST = {
-    "Alight": (6, 6),  # ``inp r;``, overwritten by the lookup
-    "B-tapemark": (5, 177),  # its stage, crossing no ``|``
-    "Back": (6, 131),  # two load rows on a borrowed cell; each leaf walks one more
-    "BFStack": (6, 2),  # ``,<``
-    "EGL": (6, 1),  # a bare ``x``
-    "Forþ": (6, 4),  # ``,0*+``
-    "Inject": (6, 15),  # its declaration and ``readto``
-    "Subleq": (6, 11),  # one read into ``TMP``
-    "Modulous": (6, 14),  # ``[INP INT][POP]``
-    "Qoibl": (6, 30),  # one read into a register the next write clears
-    "Container": (7, 66),  # its latch and window, no weight
-}
-
-
-@pytest.mark.medium
-@pytest.mark.parametrize("name", sorted(_IGNORED_INPUT_COST))
-def test_an_ignored_input_is_read_and_dropped(name: str) -> None:
-    """The table is indexed by the essential inputs; the ignored one still reads."""
-    n, cost = _IGNORED_INPUT_COST[name]
-    inner = _one_hot(n)
-    build = LANGUAGES[name].boolean
-    assert build is not None
-    for at in (0, n // 2, n):
-        low = n - at
-        table = "".join(
-            inner[row >> (low + 1) << low | row & ((1 << low) - 1)]
-            for row in range(2 * len(inner))
-        )
-        assert len(build(table)) - len(build(inner)) == cost, at
-    assert evaluate_generated(name, table, timeout=30) == table
-
-
 #: What ``docs/limitations.md`` says the expensive generators cost, as
 #: ``(n=8 size, n=9 size, growth per input)``.  Sizes are exact because a
 #: program's length is deterministic for a fixed generator and table; the
@@ -646,74 +489,52 @@ _DOCUMENTED_SIZES: dict[str, tuple[int, int, float]] = {
 }
 
 
-# The roadmap's original scaling queue.  A row leaves ``_OPEN_SCALING`` only
-# after an O(T) construction or a language-wide lower bound; it enters when
-# the construction is read super-linear, whatever the twelve doublings
-# measure.  Streetcode left: its per-level hall was the
-# ``Theta(T log T)`` source, and the tree it hung off has since gone too --
-# the table is one street cell per entry and the inputs address it.
-_LINEAR_SCALING = {
-    "a_painter_ant",
-    "addsubjump",
-    "arrowqueue",
-    "back",
-    "bitdeque",
-    "brainif",
-    "circuit_diagram",
-    "clockwise",
-    "container",
-    "dig",
-    "forth",
-    "flowchart",
-    "fractran",
-    "inject",
-    "jaune",
-    "laserfuck",
-    "malbolge",
-    "minifuck",
-    "one_two_three",
-    "ram0",
-    "sbleq",
-    "slow_acv_mammalian",
-    "streetcode",
-    "vandevelo",
+#: Every generator is held to linear source growth but the ones the ledger
+#: bounds below by the language itself (its ``lower bound`` scaling rows).
+_LANGUAGE_SUPERLINEAR_SCALING = {
+    # The ledger's data, read from the package: the mutation bundle has no
+    # ``tests/proofs`` to parse it with.
+    row["generator"]
+    for row in tomllib.loads(
+        (Path(esolangs.__file__).parent / "proof_status.toml").read_text("utf-8")
+    )["ledger"]
+    if row["scaling"].startswith("lower bound:")
 }
-_LANGUAGE_SUPERLINEAR_SCALING = {"factor", "polynomial"}
-_OPEN_SCALING: set[str] = set()
-
-
-def test_remaining_scaling_audit_is_exhaustive() -> None:
-    """The scaling classes are disjoint and name real generators."""
-    classes = (_LINEAR_SCALING, _LANGUAGE_SUPERLINEAR_SCALING, _OPEN_SCALING)
-    classified = set().union(*classes)
-    assert sum(map(len, classes)) == len(classified)
-    assert classified <= set(BY_BOOLEAN), classified - set(BY_BOOLEAN)
+_LINEAR_SCALING = sorted(
+    name
+    for name, lang in LANGUAGES.items()
+    if lang.boolean is not None and name not in _LANGUAGE_SUPERLINEAR_SCALING
+)
 
 
 @pytest.mark.parametrize(
     "name",
     [
-        pytest.param(name, marks=pytest.mark.slow) if name == "streetcode" else name
-        for name in sorted(_LINEAR_SCALING)
+        # Line renders a 2^12-row raster: 24s.
+        pytest.param(name, marks=pytest.mark.slow)
+        if name in {"Line", "Streetcode"}
+        else name
+        for name in _LINEAR_SCALING
     ],
 )
-def test_converted_generators_scale_linearly(name: str) -> None:
+def test_generators_scale_linearly(name: str) -> None:
     """Three same-parity rungs grow by four, whatever the prologue."""
-    fn = getattr(boolean, name)
-    if name == "circuit_diagram":
+    fn = LANGUAGES[name].boolean
+    assert fn is not None
+    if name == "Circuit Diagram":
         # The H-layout is not asymptotic below n=8, so it has no room for a
         # third rung; the deep contract carries it on a backstop for the
         # same reason, and its area recurrence is checked with the
         # construction invariants.
-        sizes = [len(fn(_parity(n))) for n in (8, 9)]
+        sizes = [source_units(fn(_parity(n))) for n in (8, 9)]
         assert sizes[1] <= 2 * sizes[0]
         return
     arities = (8, 10, 12)
-    sizes = [len(fn(_parity(n))) for n in arities]
-    if name == "minifuck":
+    sizes = [source_units(fn(_parity(n))) for n in arities]
+    if name == "Minifuck":
         assert all(size <= 70 * 2**n for size, n in zip(sizes, arities, strict=True))
         return
-    if name == "malbolge":
+    if name == "Malbolge":
         # Every Malbolge source loads into 59,049 cells, so every program --
         # this generator's or any other -- is bounded by a constant.
         assert all(size <= 59_049 for size in sizes)

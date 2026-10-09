@@ -10,6 +10,7 @@ from tests.interpreters.contract import (
     EmptyProgramContract,
 )
 from tests.interpreters.oisc import memory, run_program
+from tests.raises import assert_rejected_with_hint
 
 
 def _run(code, stdin=""):
@@ -447,3 +448,8 @@ class TestContract(EmptyProgramContract, CycleContract):
     machine = staticmethod(_machine)
     halting_program = "-1 1 -1 -7"
     looping_program = "0 0 0 0"
+
+
+@pytest.mark.medium
+def test_malformed_source_carries_a_repair_hint() -> None:
+    assert_rejected_with_hint("AddSubJump", "ASJ 1", "2 to 4 address operands")

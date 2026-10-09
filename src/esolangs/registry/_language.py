@@ -28,6 +28,17 @@ class SourceKind(StrEnum):
     RASTER = "raster"
 
 
+class Shape(StrEnum):
+    """How a generator's program grows with its table."""
+
+    #: A decision tree: a table that ignores an input folds that subtree.
+    TREE = "tree"
+    #: A sum over the essential inputs: a degenerate table is a smaller one.
+    REDUCING = "reducing"
+    #: Branch-free: every table of one arity renders to about one length.
+    LOOKUP = "lookup"
+
+
 @dataclass(frozen=True)
 class Example:
     """How the committed AND example deviates from a plain reading program.
@@ -55,6 +66,8 @@ class Language:
     name: str
     interpreter: str | None = None
     id: str = ""
+    #: Other names :func:`~esolangs.registry.resolve` accepts.
+    aliases: tuple[str, ...] = ()
     # Source: ``split`` passes ``run()`` one string per line.
     split: bool = False
     source_kind: SourceKind = SourceKind.TEXT
@@ -63,6 +76,7 @@ class Language:
     boolean: Generator | None = None
     generator_max_inputs: int | None = None
     generator_restrictions: str = ""
+    shape: Shape = Shape.TREE
     contract: BooleanContract = field(default_factory=BooleanContract)
     #: ``wrap(program, width)``: a meaning-preserving reflow, if one exists.
     wrap: Callable[[str, int], str] | None = None

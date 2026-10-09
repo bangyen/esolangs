@@ -12,6 +12,7 @@ from tests.interpreters.contract import (
     SnapshotContract,
     StateViewContract,
 )
+from tests.raises import assert_rejected_with_hint
 
 
 def run_and_capture(code: str) -> str:
@@ -146,3 +147,8 @@ def test_stray_text_is_rejected_with_the_first_invalid_word(
     with pytest.raises(ValueError, match="not a Bitdeque command") as caught:
         run_and_capture(code)
     assert str(caught.value) == expected
+
+
+@pytest.mark.medium
+def test_malformed_source_carries_a_repair_hint() -> None:
+    assert_rejected_with_hint("Bitdeque", "PUHS", "did you mean 'PUSH'")

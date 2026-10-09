@@ -49,7 +49,7 @@ from collections.abc import Sequence
 
 from esolangs._mammalian import DEFAULT_MODULI, MammalianModuli
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
+from esolangs.registry._language import Language, Shape
 from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table, essential_inputs
 from esolangs.tools.wrap import _mammalian
 
@@ -1038,6 +1038,8 @@ LANGUAGE = Language(
     "SLOW ACV MAMMALIAN",
     "tape_based.slow_acv_mammalian",
     boolean=slow_acv_mammalian,
+    # Not a tree: a branch-free chain into a flat leaf table.
+    shape=Shape.LOOKUP,
     contract=BooleanContract(
         input_shape="char_stream",
     ),

@@ -5,7 +5,7 @@ cannot be trimmed: the cursor ``>`` is left undecoded (116 of 126 wrong).
 """
 
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Example, Language
+from esolangs.registry._language import Example, Language, Shape
 from esolangs.tools.helpers import TEMPLATE_CHAR, _validate_truth_table, input_weights
 
 _UNARY = "/b/a*//*a/a**//a//"
@@ -60,7 +60,11 @@ def _is_unfilled_template(code: str) -> bool:
 LANGUAGE = Language(
     "///",
     "other.slashes",
+    id="slashes",
+    aliases=("Slashalash",),
     boolean=slashes,
+    # Not a tree: an indexed table rewrite, not a tree.
+    shape=Shape.LOOKUP,
     contract=BooleanContract(
         note="Inputs fill the binary row index before unary table selection.",
     ),

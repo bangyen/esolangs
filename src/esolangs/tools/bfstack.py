@@ -12,7 +12,7 @@ has no range test, so each listed row is its own nested loop.
 from functools import cache
 
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
+from esolangs.registry._language import Language, Shape
 from esolangs.tools.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
@@ -165,6 +165,8 @@ LANGUAGE = Language(
     "BFStack",
     "stack_based.bfstack",
     boolean=bfstack,
+    # A sum, not a tree: a lookup over the essential inputs only.
+    shape=Shape.REDUCING,
     contract=BooleanContract(
         input_shape="char_stream",
     ),

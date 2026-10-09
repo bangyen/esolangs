@@ -7,7 +7,7 @@ import re
 from itertools import pairwise
 from math import isqrt
 
-from esolangs.registry._language import Language
+from esolangs.registry._language import Language, Shape
 from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table, input_weights
 from esolangs.tools.token_balance import balanced_token_width
 from esolangs.tools.wrap import _BRACKET_LITERAL, balance_score
@@ -137,5 +137,7 @@ LANGUAGE = Language(
     "Modulous",
     "stack_based.modulous",
     boolean=modulous,
+    # Not a tree: pops a ``PSH STR`` table down to the indexed character.
+    shape=Shape.LOOKUP,
     balance=_balance,
 )

@@ -6,6 +6,7 @@ import random
 import pytest
 
 from esolangs import tools as boolean
+from tests.generator_support import assert_an_ignored_input_costs
 from tests.tools.boolean_runners import run_container
 from tests.tools.sample_tables import five_input_sample
 from tests.witness_tables import witnesses
@@ -257,3 +258,9 @@ class TestContainerSharing:
         for combo in range(16):
             bits = [str((combo >> (3 - i)) & 1) for i in range(4)]
             assert run_container(program, bits) == table[combo]
+
+
+@pytest.mark.medium
+def test_an_ignored_input_is_read_and_dropped() -> None:
+    """Its latch and window, no weight (the threshold route starts at seven)."""
+    assert_an_ignored_input_costs("Container", 7, 66)

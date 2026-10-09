@@ -6,6 +6,7 @@ import pytest
 
 import esolangs
 from esolangs import tools as boolean
+from tests.generator_support import assert_an_ignored_input_costs
 from tests.tools.boolean_runners import (
     run_qoibl,
 )
@@ -73,3 +74,9 @@ def test_constant_table_reads_cost_one_line_each() -> None:
             program = boolean.qoibl(bit * 2**n)
             for row in (0, 2**n - 1):
                 assert run_qoibl(program, list(f"{row:0{n}b}")) == bit
+
+
+@pytest.mark.medium
+def test_an_ignored_input_is_read_and_dropped() -> None:
+    """One read into a register the next write clears."""
+    assert_an_ignored_input_costs("Qoibl", 6, 30)

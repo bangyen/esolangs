@@ -6,6 +6,7 @@ import pytest
 
 import esolangs
 from esolangs import tools as boolean
+from tests.generator_support import assert_an_ignored_input_costs
 from tests.tools.boolean_runners import (
     run_bfstack,
 )
@@ -97,3 +98,9 @@ class TestBfstack:
         """No character outside the eight commands is emitted."""
         for table in ("10", "0110", "0001", "11111110"):
             assert set(boolean.bfstack(table)) <= set("+,-.<>[]"), table
+
+
+@pytest.mark.medium
+def test_an_ignored_input_is_read_and_dropped() -> None:
+    """``,<``."""
+    assert_an_ignored_input_costs("BFStack", 6, 2)

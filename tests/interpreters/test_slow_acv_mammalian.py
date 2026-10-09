@@ -9,7 +9,7 @@ import pytest
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.tape_based.slow_acv_mammalian import run
 from tests.interpreters.contract import SnapshotContract
-from tests.raises import raises_message
+from tests.raises import assert_rejected_with_hint, raises_message
 
 
 def run_and_capture(code: str) -> str:
@@ -292,3 +292,10 @@ def test_unsupported_moduli_are_rejected_before_execution(settings) -> None:
     for entry in (_Machine, run):
         with pytest.raises(ValueError, match="modulus must"):
             entry("PRONOUNCE", ScriptedIO(), **settings)
+
+
+@pytest.mark.medium
+def test_malformed_source_carries_a_repair_hint() -> None:
+    assert_rejected_with_hint(
+        "SLOW ACV MAMMALIAN", "PRONOUNCEE", "did you mean 'PRONOUNCE'"
+    )

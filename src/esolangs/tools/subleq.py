@@ -7,7 +7,7 @@ Packed chunks have no subtrees to fold or share.
 """
 
 from esolangs.registry._contracts import BooleanContract
-from esolangs.registry._language import Language
+from esolangs.registry._language import Language, Shape
 from esolangs.tools.sbleq import _sbleq_packed
 from esolangs.tools.wrap import wrap_grid
 
@@ -21,6 +21,8 @@ LANGUAGE = Language(
     "Subleq",
     "tape_based.subleq",
     boolean=subleq,
+    # Not a tree: an indexed table read, not a tree.
+    shape=Shape.LOOKUP,
     contract=BooleanContract(
         input_shape="char_stream",
     ),

@@ -6,6 +6,7 @@ import pytest
 
 import esolangs
 from esolangs import tools as boolean
+from tests.generator_support import assert_an_ignored_input_costs
 from tests.tools.boolean_runners import (
     run_inject,
 )
@@ -127,3 +128,9 @@ class TestInject:
         assert _tree("01101001", 0, 3, _Names(3, perm), perm) == _tree(
             "01101001", 0, 3, _Names(3, perm), perm
         )
+
+
+@pytest.mark.medium
+def test_an_ignored_input_is_read_and_dropped() -> None:
+    """Its declaration and ``readto``."""
+    assert_an_ignored_input_costs("Inject", 6, 15)

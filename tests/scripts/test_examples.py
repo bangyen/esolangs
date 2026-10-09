@@ -145,9 +145,7 @@ def _halts(name: str, program: str, _inputs: list[str]) -> bool:
 
 def test_every_boolean_generator_has_an_example() -> None:
     """Every registered boolean generator has a committed example."""
-    registered = {
-        canonical_id(lang.name) for lang in LANGUAGES.values() if lang.boolean
-    }
+    registered = {lang.id for lang in LANGUAGES.values() if lang.boolean}
     covered = {canonical_id(stem.replace("-", " ")) for stem in BOOLEAN_GENERATED}
     missing = sorted(registered - covered)
     assert not missing, f"no committed example for {missing}; {CHECK}"

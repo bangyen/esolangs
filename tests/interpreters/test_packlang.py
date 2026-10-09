@@ -19,6 +19,7 @@ from tests.interpreters.contract import (
     SnapshotContract,
 )
 from tests.interpreters.runner import run_program
+from tests.raises import assert_rejected_with_hint
 
 # The wiki's five example programs, verbatim.
 HELLO, TRUTH_MACHINE, CAT, PLUS_OR_MINUS, DEPENDENCY = (
@@ -529,3 +530,8 @@ _HEAD = "{\n  Integer main"
 def test_malformed_declarations_are_rejected(code: str, error: str) -> None:
     with pytest.raises(ValueError, match=error):
         _run(code)
+
+
+@pytest.mark.medium
+def test_malformed_source_carries_a_repair_hint() -> None:
+    assert_rejected_with_hint("Packlang", "?", "punctuation")

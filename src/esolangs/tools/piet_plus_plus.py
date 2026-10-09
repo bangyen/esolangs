@@ -64,6 +64,8 @@ def piet_plus_plus(truth_table: str) -> Raster:
 LANGUAGE = Language(
     "Piet++",
     "stack_based.piet_plus_plus",
+    # The slug rule drops "++" and would collide with Piet.
+    id="piet_plus_plus",
     source_kind=SourceKind.RASTER,
     boolean=piet_plus_plus,
     no_wrap="one fixed three-row strip, like Piet before scaling",
