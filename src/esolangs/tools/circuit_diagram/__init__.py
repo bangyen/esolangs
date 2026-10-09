@@ -77,7 +77,7 @@ from typing import Any, Literal
 
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Example, Language
-from esolangs.tools.circuit_diagram.hlayout import _h_term_layout
+from esolangs.tools.circuit_diagram.hlayout import _h_minterm_sites, _h_term_layout
 from esolangs.tools.circuit_diagram.layout import _Layout
 from esolangs.tools.helpers import (
     _validate_truth_table,
@@ -501,6 +501,16 @@ def _circuit_diagram_at(
     *,
     _events: list[int] | None = None,
 ) -> str:
+    """Render the folded circuit inside an optional gate-column limit."""
+    return _circuit_diagram_model(truth_table, limit, _events=_events).render()
+
+
+def _circuit_diagram_model(
+    truth_table: str,
+    limit: int | None,
+    *,
+    _events: list[int] | None = None,
+) -> _Layout:
     """Build a Circuit Diagram program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
@@ -549,7 +559,30 @@ def _circuit_diagram_at(
     builder.output(result)
     if _events is not None and builder.next_limit is not None:
         _events.append(builder.next_limit)
-    return builder.layout.render()
+    return builder.layout
+
+
+def _linear_shared_layout(table: str, inputs: int) -> _Layout | None:
+    """Admit the folded model only within the H-layout's linear work and area."""
+    used, projected = _essential_table(table, inputs)
+    ops = _dag(projected, len(used))[0]
+    # At most three gates per node, with O(nodes**2) interval insertion
+    # and column scans. At most twice sqrt(T) nodes keeps that work O(T).
+    if len(ops) ** 2 > 4 * len(table):
+        return None
+    sites = [
+        point
+        for prefix, point in _h_minterm_sites(inputs).items()
+        if prefix.bit_length() - 1 >= 2
+    ]
+    floor = (max(x for x, _ in sites) - min(x for x, _ in sites) + 1) * (
+        max(y for _, y in sites) - min(y for _, y in sites) + 1
+    )
+    # Every H build contains these minterm sites, so their box is an O(T)
+    # area budget independent of density and the chosen candidate.
+    model = _circuit_diagram_model(table, None)
+    height, width = model.bounds()
+    return model if height * width <= floor else None
 
 
 def _affine_circuit(
@@ -572,8 +605,8 @@ def circuit_diagram(truth_table: str, width: int | None = None) -> str:
     for a column count: the drawing is built once without one, and again
     inside the width if that came out too wide.
 
-    From eight inputs an unconstrained nonconstant build uses the H-layout;
-    :mod:`.hlayout` gives why, and why at eight.
+    From eight inputs an unconstrained nonconstant build tries a shared fold
+    within linear work and area budgets, then the projected H-layout.
 
     What a width buys is *banding* (:meth:`_Builder._band`).  A mux layout's
     floor is what a band cannot reclaim -- the rails and complements, live
@@ -585,6 +618,14 @@ def circuit_diagram(truth_table: str, width: int | None = None) -> str:
     inputs = len(truth_table).bit_length() - 1
     # Constants need only the scalar clock gate, not a minterm lattice.
     if width is None and inputs >= 8 and "1" in truth_table and "0" in truth_table:
+        shared = _linear_shared_layout(truth_table, inputs)
+        if shared is not None:
+            return shared.render()
+        used, projected = _essential_table(truth_table, inputs)
+        if len(used) < inputs:
+            return _h_term_layout(
+                projected, input_order=used, port_inputs=inputs
+            ).render()
         return _h_term_layout(truth_table).render()
     flat = _circuit_diagram_at(truth_table, None)
     if width is None or grid_width(flat) <= width:

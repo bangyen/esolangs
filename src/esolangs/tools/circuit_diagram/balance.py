@@ -76,9 +76,9 @@ def balance_circuit_diagram(table: str, default: str) -> str:
     flat = _circuit_diagram_at(table, None)
     floor = grid_width(flat)
     candidates = [default, flat]
-    # The former constant-one default is more square at n=8 (imbalance 2
-    # versus 4); retain it until a folded layout beats its balance score.
-    if len(table) >= 256 and set(table) == {"1"}:
+    # Folding can shrink a wide default while increasing its imbalance.
+    # Retain the former H candidate until a folded layout beats its score.
+    if len(table) >= 256 and "1" in table:
         candidates.append(_h_term_layout(table).render())
     width = 1
     while width < floor:

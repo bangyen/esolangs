@@ -584,6 +584,10 @@ def test_circuit_gate_column_and_band_fit_transitions(inputs, affine):
         esolangs.generate(language, table, width=width)
         for width in range(1, widest + 1)
     ]
+    if inputs >= 8 and "1" in table:
+        from esolangs.tools.circuit_diagram.hlayout import _h_term_layout
+
+        layouts.append(_h_term_layout(table).render())
     assert balanced in layouts
     assert balance_score(balanced) == min(map(balance_score, layouts))
     for row in (0, 1, len(table) // 2, len(table) - 1):
@@ -617,3 +621,76 @@ def test_wide_constant_balance_keeps_the_old_square_candidate():
     assert balance_score(program) <= balance_score(legacy)
     assert len(program) <= len(legacy)
     assert _evaluate("Circuit Diagram", program, inputs=8) == table
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("inputs", [8, 9])
+def test_wide_repeated_cofactors_use_the_bounded_shared_circuit(inputs):
+    from esolangs._evaluate import _evaluate
+    from esolangs.tools.circuit_diagram import (
+        _circuit_diagram_at,
+        _linear_shared_layout,
+    )
+    from esolangs.tools.circuit_diagram.hlayout import _h_term_layout
+
+    table = "".join(str(row.bit_count() % 2) for row in range(1 << inputs))
+    model = _linear_shared_layout(table, inputs)
+    assert model is not None
+    program = boolean.circuit_diagram(table)
+    assert program == model.render() == _circuit_diagram_at(table, None)
+    legacy = _h_term_layout(table)
+    assert model.bounds()[0] * model.bounds()[1] < (
+        legacy.bounds()[0] * legacy.bounds()[1]
+    )
+    assert sum(map(program.count, "aoxX~")) <= 7 * inputs
+    assert _evaluate("Circuit Diagram", program, inputs=inputs) == table
+
+
+@pytest.mark.medium
+def test_wide_projection_retains_nonadjacent_ports_outside_the_shared_budget():
+    from esolangs._evaluate import _evaluate
+    from esolangs.tools.circuit_diagram import _linear_shared_layout
+    from esolangs.tools.circuit_diagram.hlayout import _h_term_layout
+
+    rng = random.Random(841)
+    residual = "".join(rng.choice("01") for _ in range(128))
+    # Input six is ignored; the last input keeps its original eighth port.
+    table = "".join(residual[((row >> 2) << 1) | (row & 1)] for row in range(256))
+    assert _linear_shared_layout(table, 8) is None
+    model = _h_term_layout(residual, input_order=[0, 1, 2, 3, 4, 5, 7], port_inputs=8)
+    program = boolean.circuit_diagram(table)
+    assert program == model.render()
+    legacy = _h_term_layout(table)
+    assert model.bounds()[0] * model.bounds()[1] < (
+        legacy.bounds()[0] * legacy.bounds()[1]
+    )
+    assert _evaluate("Circuit Diagram", program, inputs=8) == table
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("kind", ["shared", "projected", "minterms"])
+def test_wide_layouts_preserve_execution_and_written_state_bounds(kind):
+    from esolangs.debugger import make_vm
+    from scripts.benchmark import WrittenState
+
+    rng = random.Random(841)
+    if kind == "shared":
+        table = "".join(str(row.bit_count() % 2) for row in range(256))
+    elif kind == "projected":
+        residual = "".join(rng.choice("01") for _ in range(128))
+        table = "".join(residual[((row >> 2) << 1) | (row & 1)] for row in range(256))
+    else:
+        table = "".join(rng.choice("01") for _ in range(256))
+    program = boolean.circuit_diagram(table)
+    for row in (0, 1, 128, 255):
+        stdin = esolangs.encode_inputs("Circuit Diagram", list(map(int, f"{row:08b}")))
+        vm = make_vm("Circuit Diagram", program, stdin=stdin)
+        state = WrittenState(vm.snapshot())
+        commands = 0
+        while not vm.halted and commands < 18:
+            vm.step()
+            state.sample(vm.snapshot())
+            commands += 1
+        assert vm.halted
+        assert vm.output == table[row]
+        assert state.bits <= 7 * 256 + 2 * 8 - 9

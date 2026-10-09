@@ -223,8 +223,9 @@ def _tables(name: str, n: int) -> tuple[str, ...]:
     """Parity, dense, seeded, constants, AND, both alternations, NAND, ends."""
     width = 1 << n
     if name == "Circuit Diagram" and n >= 8:
-        # Its worst, the all-ones H-layout; a wide circuit parses in 0.7s.
-        return ("1" * width,)
+        # Seeded minterms retain the H worst; parity exercises the bounded
+        # shared fold, and constants now use only their clock gate.
+        return (_seeded(n, 1), _parity(n), "1" * width)
     if name == "Streetcode":
         # Its worst in both columns on all 10 tables checked to n = 7: all ones.
         return ("1" * width,)
