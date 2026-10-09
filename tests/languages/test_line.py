@@ -11,6 +11,8 @@ import esolangs
 from esolangs import DialectSettings, Raster
 from esolangs._evaluate import _evaluate
 from esolangs.cli import main
+from esolangs.interpreters.tape_based.line.extract import detect_scale, normalize_scale
+from esolangs.interpreters.tape_based.line.mask import Mask
 from esolangs.tui import History, render
 from tests.cli.test_cli import _FakeStdin, call_main
 from tests.cli.test_cli_portable import save_generated
@@ -162,3 +164,31 @@ def test_raster_interpreter_retains_geometry_hint():
     with pytest.raises(esolangs.ProgramError, match=r".+") as caught:
         esolangs.run("Line", image, scale=None, timeout=1)
     assert "dark connected paths" in caught.value.__notes__[0]
+
+
+def test_line_detection_has_no_sixteen_fold_ceiling() -> None:
+    # A small stroke with uneven outer margins retains its ink-anchored grid.
+    mask = Mask(
+        40,
+        45,
+        [0] * 3 + [((1 << 34) - 1) << 5] * 17 + [((1 << 17) - 1) << 5] * 17 + [0] * 3,
+    )
+    assert detect_scale(mask) == 17
+
+
+def test_explicit_line_scale_checks_ink_blocks() -> None:
+    with pytest.raises(ValueError, match="uniform"):
+        normalize_scale(Mask(3, 2, [3, 3, 3]), 2)
+    blank = Mask(3, 3)
+    assert normalize_scale(blank, 2) is blank
+    # A partly blank group is still uniform.
+    assert normalize_scale(Mask(3, 2, [3, 3, 0]), 2).rows == [1, 0]
+
+
+@pytest.mark.medium
+def test_explicit_scale_validates_lazy_line_pixels() -> None:
+    image = esolangs.generate("Line", "00", scale=2)
+    assert esolangs.run("Line", image, stdin="1\n", scale=2) == "0"
+    assert esolangs.run("Line", Raster.from_png(image.to_png()), stdin="1\n") == "0"
+    with pytest.raises(esolangs.ProgramError, match="uniform"):
+        esolangs.run("Line", image, stdin="1\n", scale=3)

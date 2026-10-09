@@ -157,3 +157,8 @@ def test_forgetting_stdin_entirely_is_warned_about() -> None:
         esolangs.run(
             "Fargo", esolangs.generate("Fargo", "10010110"), stdin="", timeout=10
         )
+
+
+def test_inputs_are_one_number_indexed_by_bit():
+    assert esolangs.describe("Fargo")["input_shape"] == "row_index"
+    assert esolangs.encode_inputs("Fargo", [1, 0, 1]) == "5\n"
