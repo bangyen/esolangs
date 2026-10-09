@@ -90,8 +90,9 @@ def {slug}(truth_table: str) -> str:
 # else no_wrap="<why a break changes the program>"; eof="..." if an
 # exhausted read has a spec value, empty_program="..." if "" is rejected;
 # a generator taking a width needs balance=, picking its squarest regime;
-# example=Example(pair=PAIR, expected=...) for a template or an answer that
-# is not a printed 0/1.
+# example=Example(pair=PAIR, expected=...) for a template, or
+# Example(expected=...) when the 0,1 row's output is not a bare "0" (a
+# trailing newline, a dump).
 LANGUAGE = Language("{name}", "{category}.{slug}", boolean={slug})
 '''
 
@@ -115,7 +116,8 @@ def test_every_row_prints_its_answer(table: str) -> None:
         bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
         stdin = esolangs.encode_inputs("{name}", bits)
         got = esolangs.run("{name}", program, stdin=stdin, timeout=5)
-        assert got == table[row], (table, row)
+        # The answer as the contract reads it, not the raw output.
+        assert esolangs.read_answer("{name}", got) == table[row], (table, row)
 '''
 
 
@@ -396,6 +398,8 @@ def quick_tests(name: str) -> list[str]:
             f"::test_generator_shape_is_what_the_catalogue_says[{gen}]"
         )
     stem = example_stems().get(lang.id, "")
+    if stem:
+        nodes.append(f"tests/scripts/test_examples.py::test_boolean_example[{stem}]")
     if (
         stem
         in _tests_attr("interpreters.test_input_convention", "_reading_languages")()
@@ -418,6 +422,18 @@ def quick_tests(name: str) -> list[str]:
     return nodes
 
 
+def _dirty() -> set[str]:
+    """Return the paths git reports as changed or untracked."""
+    status = subprocess.run(
+        ["git", "status", "--porcelain", "-uall"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout
+    return {line[3:] for line in status.splitlines()}
+
+
 def sources(name: str) -> list[str]:
     """Return the language's interpreter and generator source paths."""
     from esolangs.registry import LANGUAGES
@@ -435,12 +451,13 @@ def sources(name: str) -> list[str]:
     ]
 
 
-def bounds(name: str, arities: range) -> list[tuple[int, int, int, int]]:
-    """Return ``(n, worst steps, worst written bits, largest size)`` per arity.
+def bounds(name: str, arities: range) -> list[tuple[int, int, int, int, str, str]]:
+    """Return ``(n, worst steps, worst bits, size, steps' table, bits' table)``.
 
     Over the tables the formula tests use, so a stated bound that matches
-    these is one they accept.  Size is characters per table row: flat for
-    an O(T) generator, growing for one that is not.
+    these is one they accept, and the tables are the witnesses a ``worst``
+    bound needs.  Size is characters per table row: flat for an O(T)
+    generator, growing for one that is not.
     """
     import esolangs
 
@@ -448,9 +465,11 @@ def bounds(name: str, arities: range) -> list[tuple[int, int, int, int]]:
     measure = _tests_attr("proofs.test_execution_formulas", "_measure")
     rows = []
     for n in arities:
-        worst = [measure(name, table, written=True) for table in tables(name, n)]
+        worst = {t: measure(name, t, written=True) for t in tables(name, n)}
         size = max(len(str(esolangs.generate(name, t))) for t in tables(name, n))
-        rows.append((n, max(s for s, _ in worst), max(b for _, b in worst), size >> n))
+        steps = max(worst, key=lambda t: worst[t][0])
+        bits = max(worst, key=lambda t: worst[t][1])
+        rows.append((n, worst[steps][0], worst[bits][1], size >> n, steps, bits))
     return rows
 
 
@@ -766,18 +785,21 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "bounds":
         # Steps feed the ledger's Execution cell, bits its Workspace cell
         # (peak written state); chars/row stays flat for an O(T) generator.
-        print("n  Execution  Workspace  chars/row")
+        print("n  Execution  Workspace  chars/row  witness tables (steps, bits)")
         rows = bounds(args.name, range(1, args.max_n + 1))
-        for n, steps, bits, per_row in rows:
-            print(f"{n:<2} {steps:>9}  {bits:>9}  {per_row:>9}")
-        for column, cell, unit in (
-            (1, "execution", "<unit>"),
-            (2, "workspace", "bits"),
+        for n, steps, bits, per_row, by_steps, by_bits in rows:
+            print(f"{n:<2} {steps:>9}  {bits:>9}  {per_row:>9}  {by_steps} {by_bits}")
+        # "worst" claims these exact maxima from the cell's first n (3, or
+        # one past "past n = k"); a looser bound is "at most".
+        print('"worst" must equal these columns; otherwise write "at most"')
+        for values, cell, unit in (
+            ([(r[0], r[1]) for r in rows], "execution", "<unit>"),
+            ([(r[0], r[2]) for r in rows], "workspace", "bits"),
         ):
-            slopes = {b[column] - a[column] for a, b in itertools.pairwise(rows)}
+            slopes = {b[1] - a[1] for a, b in itertools.pairwise(values)}
             if len(slopes) == 1:
                 (slope,) = slopes
-                base = rows[0][column] - slope * rows[0][0]
+                base = values[0][1] - slope * values[0][0]
                 sign = "-" if base < 0 else "+"
                 print(f'{cell} = "...: worst {slope}n {sign} {abs(base)} {unit}"')
         return 0
@@ -794,13 +816,17 @@ def main(argv: list[str] | None = None) -> int:
             # A to-do list, not a failure: nonzero is for failing tests.
             _report(args.name, gaps)
             return 0
-        # Generated totals (the ledger's row count) are tested; refresh them.
-        subprocess.run(
-            [sys.executable, "scripts/generate.py", "docs"],
-            cwd=ROOT,
-            check=True,
-            stdout=subprocess.DEVNULL,
-        )
+        # Generated totals and the committed example are tested; refresh them.
+        before = _dirty()
+        for target in ("examples", "docs"):
+            subprocess.run(
+                [sys.executable, "scripts/generate.py", target],
+                cwd=ROOT,
+                check=True,
+                stdout=subprocess.DEVNULL,
+            )
+        for changed in sorted(_dirty() - before):
+            print(f"regenerated {changed}")
         quick = [sys.executable, "-m", "pytest", "-q", "-n", "0", "-m", ""]
         print("+ pytest", " ".join(quick_tests(args.name)), flush=True)
         failed = subprocess.run([*quick, *quick_tests(args.name)], cwd=ROOT)
