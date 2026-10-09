@@ -20,7 +20,7 @@
 "tests/cli/test_cli_commands.py" = 3
 "tests/duration_policy.py" = 1
 "tests/interpreters/test_input_convention.py" = 4
-"tests/piet/test_piet_plus_plus.py" = 3
+"tests/piet/test_piet_plus_plus.py" = 4
 "tests/proofs/test_bands.py" = 2
 "tests/proofs/test_resource_bounds.py" = 3
 "tests/scripts/test_bundle_one.py" = 3
