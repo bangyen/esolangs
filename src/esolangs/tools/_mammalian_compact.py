@@ -4,6 +4,7 @@ from dataclasses import dataclass, field, replace
 from math import gcd, lcm
 
 from esolangs._mammalian import MammalianModuli
+from esolangs.tools.helpers import essential_inputs, read_at
 
 
 @dataclass
@@ -345,8 +346,21 @@ class _Chain:
         tokens += ["DIGEST", "LEAPFROG"]
         return tokens + ["SEED"] * max(0, base - len(tokens))
 
-    def build(self, table: str, inputs: int) -> str:
+    def build(self, table: str, inputs: int, *, project_inputs: bool = False) -> str:
+        original_inputs = inputs
+        used = (
+            essential_inputs(table, inputs) if project_inputs else list(range(inputs))
+        )
+        if not used:
+            used = list(range(inputs))
+        inputs = len(used)
         plan, free, stride, unit = self.plan(inputs)
+        if inputs < original_inputs:
+            kept = dict(zip(used, plan, strict=True))
+            # Keep every read in place; zero weights merge both digit paths
+            # without allocating another leaf coordinate.
+            plan = [kept.get(i, (0, None)) for i in range(original_inputs)]
+            table = read_at(table, used, original_inputs)
         base = 0
         for _ in range(16):
             tokens = self.emit(plan, base)
@@ -376,7 +390,14 @@ class _Chain:
 
 
 def compact_chain(
-    table: str, inputs: int, *, modulus: int, io_modulus: int | None = None
+    table: str,
+    inputs: int,
+    *,
+    modulus: int,
+    io_modulus: int | None = None,
+    project_inputs: bool = False,
 ) -> str:
     """Emit pooled-weight chains with leaves in I/O-aligned blocks."""
-    return _Chain(modulus, io_modulus=io_modulus).build(table, inputs)
+    return _Chain(modulus, io_modulus=io_modulus).build(
+        table, inputs, project_inputs=project_inputs
+    )

@@ -23,6 +23,86 @@ from esolangs.tools.wrap import (
 from tests.witness_tables import witnesses
 
 
+@pytest.mark.medium
+@pytest.mark.parametrize("essential", range(1, 8))
+@pytest.mark.parametrize("io_modulus", [255, 256])
+def test_mod255_projected_chain_runs_nonadjacent_input_coordinates(
+    essential, io_modulus
+):
+    import esolangs
+    from esolangs.tools._mammalian_compact import compact_chain
+
+    used = [*range(essential - 1), 7]
+    # Parity makes every selected coordinate essential, including both ends.
+    table = "".join(
+        str(sum((row >> (7 - bit)) & 1 for bit in used) % 2) for row in range(256)
+    )
+    program = compact_chain(
+        table, 8, modulus=255, io_modulus=io_modulus, project_inputs=True
+    )
+    settings = esolangs.DialectSettings(cell_modulus=255, io_modulus=io_modulus)
+    for row in (0, 1, 85, 128, 170, 255):
+        bits = [int(bit) for bit in f"{row:08b}"]
+        output = esolangs.run(
+            "SLOW ACV MAMMALIAN",
+            program,
+            stdin=esolangs.encode_inputs("SLOW ACV MAMMALIAN", bits),
+            settings=settings,
+        )
+        assert esolangs.read_answer("SLOW ACV MAMMALIAN", output) == table[row]
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("inputs", [2, 3, 8])
+@pytest.mark.parametrize("io_modulus", [255, 256])
+@pytest.mark.parametrize("kind", ["first", "last", "ends"])
+def test_mod255_ignored_inputs_keep_reads_and_the_smaller_candidate(
+    inputs, io_modulus, kind
+):
+    import esolangs
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
+    from esolangs.tools.slow_acv_mammalian import _program
+    from esolangs.tools.wrap import balance_program, balance_score
+    from esolangs.vm import run_until_halt_or_cycle
+
+    used = {"first": [0], "last": [inputs - 1], "ends": [0, inputs - 1]}[kind]
+    table = "".join(
+        str(sum((row >> (inputs - 1 - bit)) & 1 for bit in used) % 2)
+        for row in range(1 << inputs)
+    )
+    settings = esolangs.DialectSettings(cell_modulus=255, io_modulus=io_modulus)
+    legacy = _program(
+        table, cell_modulus=255, io_modulus=io_modulus, keep_ignored_inputs=True
+    )
+    program = esolangs.generate("SLOW ACV MAMMALIAN", table, settings=settings)
+    assert len(program) <= len(legacy)
+    if inputs >= 3 or io_modulus == 256:
+        assert program.split().count("ACCEPT") == inputs
+    if inputs == 8 and io_modulus == 255:
+        assert len(program) < len(legacy)  # positive control for projection
+    balanced = esolangs.generate(
+        "SLOW ACV MAMMALIAN", table, settings=settings, balance=True
+    )
+    assert balance_score(balanced) <= balance_score(
+        balance_program(legacy, "slow_acv_mammalian")
+    )
+    rows = range(1 << inputs) if inputs <= 3 else (0, 1, 128, 255)
+    for row in rows:
+        bits = [int(bit) for bit in format(row, f"0{inputs}b")]
+        stdin = esolangs.encode_inputs("SLOW ACV MAMMALIAN", bits)
+        for candidate in (legacy, program, balanced):
+            io_obj = ScriptedIO(stdin + "0")
+            run_until_halt_or_cycle(
+                _Machine(candidate, io_obj, cell_modulus=255, io_modulus=io_modulus)
+            )
+            assert io_obj.position() == inputs
+            assert (
+                esolangs.read_answer("SLOW ACV MAMMALIAN", io_obj.getvalue())
+                == table[row]
+            )
+
+
 class TestSlowAcvMammalian:
     """The decision tree LEAPFROG makes possible."""
 

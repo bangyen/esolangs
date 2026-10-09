@@ -943,6 +943,7 @@ def slow_acv_mammalian(
     packs 32 seven-token leaves into each 255-token block.
     Cell modulus 255 uses coprime-array chains above two inputs with
     I/O modulus 255, or above one with 256; smaller tables use a tree.
+    Essential-input chains compete with the original layout by text length.
     """
     return _program(truth_table, cell_modulus=cell_modulus, io_modulus=io_modulus)
 
@@ -953,6 +954,7 @@ def _program(
     cell_modulus: int = DEFAULT_MODULI.cell_modulus,
     io_modulus: int = DEFAULT_MODULI.io_modulus,
     keep_constant_input: bool = False,
+    keep_ignored_inputs: bool = False,
 ) -> str:
     """Build the dispatch, optionally retaining constant-input weights."""
     moduli = MammalianModuli(cell_modulus, io_modulus)
@@ -960,20 +962,32 @@ def _program(
     if not keep_constant_input and len(set(truth_table)) == 1:
         return _constant_read(truth_table[0], n, moduli.cell_modulus)
     if moduli.cell_modulus == 255:
+        from esolangs.tools._mammalian_compact import compact_chain
+
         # Chain/tree characters: 64835/95678 at n=3 with I/O 255;
         # 83404/83749 at n=2 with I/O 256. Smaller trees win below these.
         if n >= (3 if moduli.io_modulus == 255 else 2):
-            from esolangs.tools._mammalian_compact import compact_chain
-
-            return compact_chain(
+            legacy = compact_chain(
                 truth_table,
                 n,
                 modulus=moduli.cell_modulus,
                 io_modulus=moduli.io_modulus,
             )
-        from esolangs.tools._mammalian255 import decision_tree
+        else:
+            from esolangs.tools._mammalian255 import decision_tree
 
-        return decision_tree(truth_table, n, io_modulus=moduli.io_modulus)
+            legacy = decision_tree(truth_table, n, io_modulus=moduli.io_modulus)
+        used = essential_inputs(truth_table, n)
+        if keep_ignored_inputs or not used or len(used) == n:
+            return legacy
+        projected = compact_chain(
+            truth_table,
+            n,
+            modulus=moduli.cell_modulus,
+            io_modulus=moduli.io_modulus,
+            project_inputs=True,
+        )
+        return min(legacy, projected, key=len)
     # The weights and pools are laid out over the essential inputs; an
     # ignored one's node banks 0 with no pool, so it reads and the leaf rows
     # it would split coincide, holding equal entries.
@@ -1078,6 +1092,17 @@ def balance_slow_acv_mammalian(
     from esolangs.tools.wrap import balance_program
 
     if len(set(truth_table)) > 1:
+        if cell_modulus == 255:
+            return balanced_projection(
+                default,
+                _program(
+                    truth_table,
+                    cell_modulus=cell_modulus,
+                    io_modulus=io_modulus,
+                    keep_ignored_inputs=True,
+                ),
+                "slow_acv_mammalian",
+            )
         return balance_program(default, "slow_acv_mammalian")
     return balanced_projection(
         default,
