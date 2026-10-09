@@ -6,9 +6,11 @@ so ``d>`` displaces the pointer by the bit read -- dimension 1 for a one, 0 for
 a zero; ``{d`` loops on a *coordinate* (``:296``), so the index doubles.
 
 The table is painted, two characters an entry: a trailing zero run is left
-unpainted (unvisited cells read 0) and an interior run is painted entry by
-entry; a painted cell has no second parent to share.
+unpainted (unvisited cells read 0); an interior run of zeros is a counter
+loop where that is shorter, any other entry is painted one by one.
 """
+
+from itertools import groupby
 
 from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table, input_weights
 from esolangs.tools.wrap import wrap_program
@@ -17,6 +19,10 @@ __all__ = ["dimensional"]
 
 _INDEX, _PLANE = 1, 3
 _DOUBLE = "{1<1>2>2}{2<2>1}"
+_COUNTER, _SPARE = 4, 5
+_COUNT_DOUBLE = (
+    f"{{{_COUNTER}<{_COUNTER}>{_SPARE}>{_SPARE}}}{{{_SPARE}<{_SPARE}>{_COUNTER}}}"
+)
 _READ = "d>!0"
 
 
@@ -46,12 +52,46 @@ def _paint(truth_table: str) -> str:
     Two characters an entry either way: ``>1`` for a zero, ``+`` and a bare
     ``>`` for a one, whose ``+`` leaves the 1 that names the index axis.
     Painting stops at the last one, since an unvisited cell already reads 0.
+    A long run of zeros is a counter loop (:func:`_advance`); ones are not,
+    as a cell is keyed by every nonzero coordinate, counter included.
     """
     last = truth_table.rfind("1")
     if last < 0:
         return ""
-    cells = ["+>" if bit == "1" else f">{_INDEX}" for bit in truth_table[:last]]
+    cells = [
+        _advance(len(run)) if bit == "0" else "+>" * len(run)
+        for bit, group in groupby(truth_table[:last])
+        for run in ["".join(group)]
+    ]
     return f">{_PLANE}" + "".join(cells) + f"+!{_INDEX}<{_PLANE}"
+
+
+def _count(count: int) -> str:
+    """Return commands making dimension 4 hold ``count``, doubling through 5."""
+    unary = f">{_COUNTER}" * count
+    if count < 2:
+        return unary
+    doubled = _count(count // 2) + _COUNT_DOUBLE + f">{_COUNTER}" * (count & 1)
+    return min(unary, doubled, key=len)
+
+
+def _advance(length: int) -> str:
+    """Return the shortest commands moving ``length`` along dimension 1.
+
+    ``m`` steps a pass under a counter of ``length // m``, the rest bare.
+    """
+    best = f">{_INDEX}" * length
+    for m in range(1, length // 2 + 1):
+        count, rest = divmod(length, m)
+        loop = (
+            _count(count)
+            + f"{{{_COUNTER}<{_COUNTER}"
+            + f">{_INDEX}" * m
+            + "}"
+            + f">{_INDEX}" * rest
+        )
+        best = min(best, loop, key=len)
+    return best
 
 
 def _dimensional_bare(table: str, n: int) -> str:

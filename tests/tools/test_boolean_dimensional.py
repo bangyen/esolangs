@@ -71,10 +71,12 @@ class TestDimensional:
         assert len(bare) == 3, program
 
     def test_the_table_costs_two_characters_an_entry(self) -> None:
-        """One painted cell an entry, whichever bit it is."""
+        """One painted cell an entry, whichever bit, until a zero run is a loop."""
         full = "0" + "1" * 63
+        spaced = "01" * 31 + "11"
         one = "0" * 63 + "1"
-        assert len(boolean.dimensional(full)) == len(boolean.dimensional(one))
+        assert len(boolean.dimensional(full)) == len(boolean.dimensional(spaced))
+        assert len(boolean.dimensional(one)) < len(boolean.dimensional(full))
         parity = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(64))
         assert len(boolean.dimensional(parity)) < 10_000
 
