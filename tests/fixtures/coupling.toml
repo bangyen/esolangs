@@ -55,13 +55,11 @@
 "tests/test_answer_plumbing_refusals.py" = 6
 "tests/test_answer_stdin.py" = 1
 "tests/test_api.py" = 6
-"tests/test_branch_gaps.py" = 2
 "tests/test_debug.py" = 5
 "tests/test_docs.py" = 1
 "tests/test_generator_conventions.py" = 9
 "tests/test_generic_verifier.py" = 5
 "tests/test_interpreter_only_admissions.py" = 10
-"tests/test_memory_budget.py" = 1
 "tests/test_run_bounded.py" = 4
 "tests/test_source_containers.py" = 5
 "tests/test_stepping_parity.py" = 4

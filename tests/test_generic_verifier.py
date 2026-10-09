@@ -6,6 +6,7 @@ import pytest
 
 import esolangs
 from tests.divergence import terminates
+from tests.witness_tables import row_bits
 
 #: One two-input table, one asymmetric two-input table, and two three-input
 #: ones.  The asymmetry matters: a verifier that reads the wrong position
@@ -49,7 +50,7 @@ def _verify(name: str, table: str) -> str:
     program = esolangs.generate(name, table)
     got = ""
     for row in range(len(table)):
-        bits = [(row >> (inputs - 1 - i)) & 1 for i in range(inputs)]
+        bits = row_bits(row, inputs)
         if facts["parameterized"]:
             source, stdin = esolangs.instantiate(name, program, bits), ""
         else:

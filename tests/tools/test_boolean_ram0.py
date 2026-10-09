@@ -7,6 +7,7 @@ import pytest
 
 from esolangs import tools as boolean
 from tests.generator_support import assert_parity_at_most_doubles
+from tests.witness_tables import row_bits
 
 
 class TestParameterizedRam0:
@@ -90,7 +91,7 @@ class TestParameterizedRam0:
         table = format(random.Random(7).getrandbits(2**n), f"0{2**n}b")
         template = generators.ram0(table)
         for row in range(2**n):
-            bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
+            bits = row_bits(row, n)
             assert self.run_ram0(self.instantiate(template, bits)) == table[row]
 
     def test_wide_template_executes_sampled_rows(self) -> None:
@@ -101,7 +102,7 @@ class TestParameterizedRam0:
         table = "".join(str(row.bit_count() & 1) for row in range(2**n))
         template = generators.ram0(table)
         for row in (0, 1, 2, 7, 31, 32, 62, 63):
-            bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
+            bits = row_bits(row, n)
             assert self.run_ram0(self.instantiate(template, bits)) == table[row]
 
     def test_lookup_candidate_executes_wide_rows(self) -> None:
@@ -112,7 +113,7 @@ class TestParameterizedRam0:
         table = "".join(str(row.bit_count() & 1) for row in range(2**n))
         template = _ram0_linear(table)
         for row in (0, 1, 2, 7, 31, 32, 62, 63):
-            bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
+            bits = row_bits(row, n)
             assert self.run_ram0(self.instantiate(template, bits)) == table[row]
 
 

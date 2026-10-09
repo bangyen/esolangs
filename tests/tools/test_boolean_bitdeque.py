@@ -5,7 +5,7 @@ from itertools import pairwise
 import pytest
 
 from esolangs.tools.bitdeque import _bitdeque_ordered
-from tests.witness_tables import witnesses
+from tests.witness_tables import row_bits, witnesses
 
 
 class TestParameterizedBitdeque:
@@ -101,7 +101,7 @@ class TestParameterizedBitdeque:
         table = "".join(str(row.bit_count() & 1) for row in range(2**n))
         template = _bitdeque_linear(table)
         for row in (0, 1, 2, 7, 31, 32, 62, 63):
-            bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
+            bits = row_bits(row, n)
             assert self.run_bitdeque(self.instantiate(template, bits)) == table[row]
 
     def test_linear_discard_growth(self) -> None:

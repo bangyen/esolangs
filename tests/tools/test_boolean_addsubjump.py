@@ -18,7 +18,7 @@ from tests.tools.boolean_runners import (
     run_addsubjump,
     run_addsubjump_from,
 )
-from tests.witness_tables import witnesses
+from tests.witness_tables import row_bits, witnesses
 
 
 class TestAddSubJump:
@@ -48,7 +48,7 @@ class TestAddSubJump:
         for table, n in (("01101001", 3), ("11111111", 3), ("10101010", 3)):
             program = boolean.addsubjump(table)
             for combo in range(2**n):
-                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                bits = row_bits(combo, n)
                 feed = iter([str(b) for b in bits])
                 got = run_addsubjump_from(program, feed)
                 assert got == table[combo], f"{table} inputs {bits}"

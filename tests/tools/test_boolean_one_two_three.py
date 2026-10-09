@@ -8,7 +8,7 @@ from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs, runs
 from esolangs.tools.one_two_three import ONE, ZERO
 from esolangs.tools.one_two_three.construction import _RING
 from tests.tools.boolean_runners import one_two_three_result
-from tests.witness_tables import witnesses
+from tests.witness_tables import row_bits, witnesses
 
 
 def _mask(cells: Iterable[int]) -> int:
@@ -43,7 +43,7 @@ class TestParameterizedOneTwoThree:
         for table in witnesses(n):
             template = generators.one_two_three(table)
             for combo in range(2**n):
-                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                bits = row_bits(combo, n)
                 got = self.run(self.instantiate(template, bits))
                 assert got == table[combo], (table, bits)
 
@@ -69,7 +69,7 @@ class TestParameterizedOneTwoThree:
             for table in witnesses(n):
                 template = generators.one_two_three(table)
                 for combo in range(2**n):
-                    bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                    bits = row_bits(combo, n)
                     code = self.instantiate(template, bits)
                     machine = _Machine(code, ScriptedIO(""))
                     seen = set()
@@ -95,7 +95,7 @@ class TestParameterizedOneTwoThree:
             for table in witnesses(n):
                 template = generators.one_two_three(table)
                 for combo in range(2**n):
-                    bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                    bits = row_bits(combo, n)
                     code = self.instantiate(template, bits)
                     machine = _Machine(code, ScriptedIO(""))
                     seen = set()

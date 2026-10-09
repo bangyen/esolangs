@@ -12,6 +12,7 @@ from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
 from tests.proofs import _fractran_order
 from tests.proofs._fractran_bit_order import BitAvailable
 from tests.proofs._fractran_order import _Available, capacity, stream_template
+from tests.witness_tables import row_bits
 
 
 def test_packed_selector_realizes_every_small_permutation() -> None:
@@ -84,7 +85,7 @@ def test_packed_selector_preserves_executed_streams(
             packed = stream_template(table, k)
             assert packed == reference
             for row in sorted({0, size // 3, size - 1}):
-                bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
+                bits = row_bits(row, n)
                 source = fill_runs(packed, TEMPLATE_CHAR, [PAIR] * n, bits)
                 io = ScriptedIO("")
                 machine = _Machine(source, io)

@@ -25,6 +25,7 @@ from tests.proofs._fractran_order import (
     reader,
     stream_template,
 )
+from tests.witness_tables import row_bits
 
 
 @pytest.mark.medium
@@ -92,7 +93,7 @@ def test_order_alone_realizes_every_table(n: int, k: int) -> None:
         assert tokens[0] == start
         lengths.add(len(template))
         for row in range(1 << n):
-            bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
+            bits = row_bits(row, n)
             source = fill_runs(template, TEMPLATE_CHAR, [PAIR] * n, bits)
             io = ScriptedIO("")
             machine = _Machine(source, io)
@@ -156,7 +157,7 @@ def _execute_stream(
     n = len(table).bit_length() - 1
     worst = 0
     for row in rows:
-        bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
+        bits = row_bits(row, n)
         source = fill_runs(template, TEMPLATE_CHAR, [PAIR] * n, bits)
         io = ScriptedIO("")
         machine = _Machine(source, io)
@@ -223,7 +224,7 @@ def _evaluation_cost(
     template: str, table: str, row: int
 ) -> tuple[int, int, int | None]:
     n = len(table).bit_length() - 1
-    bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
+    bits = row_bits(row, n)
     source = fill_runs(template, TEMPLATE_CHAR, [PAIR] * n, bits)
     io = ScriptedIO("")
     machine = _Machine(source, io)
@@ -293,7 +294,7 @@ def test_stream_prefix_inspections_positive_control() -> None:
             template,
             TEMPLATE_CHAR,
             [PAIR] * n,
-            [(row >> (n - 1 - i)) & 1 for i in range(n)],
+            row_bits(row, n),
         )
         io = ScriptedIO("")
         machine = _Machine(source, io)
@@ -323,7 +324,7 @@ def test_dense_cursor_work_and_sparse_threshold_routing() -> None:
         streamed = stream_template(table, k)
         shipped = fractran(table)
         for row in (0, size // 3, size - 1):
-            bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
+            bits = row_bits(row, n)
             for template in (streamed, shipped):
                 source = fill_runs(template, TEMPLATE_CHAR, [PAIR] * n, bits)
                 io = ScriptedIO("")

@@ -10,7 +10,7 @@ from tests.generator_support import assert_parity_at_most_doubles
 from tests.tools.boolean_runners import (
     run_collatz_multiverse,
 )
-from tests.witness_tables import witnesses
+from tests.witness_tables import row_bits, witnesses
 
 
 class TestCollatzMultiverse:
@@ -49,7 +49,7 @@ class TestCollatzMultiverse:
             for shape in (table, table[: 2 ** (n - 1)] * 2):
                 program = boolean.collatz_multiverse(shape)
                 for combo in range(2**n):
-                    bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                    bits = row_bits(combo, n)
                     assert run_collatz_multiverse(program, bits) == shape[combo]
 
     def test_numbered_cells_halve_the_three_input_total(self) -> None:

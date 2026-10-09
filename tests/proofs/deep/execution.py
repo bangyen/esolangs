@@ -21,6 +21,7 @@ from tests.proofs._ledger import load as load_ledger
 from tests.proofs.deep import deep_arities
 from tests.proofs.deep.linearity import _regime_start
 from tests.witness_tables import parity as _parity
+from tests.witness_tables import row_bits
 
 #: Cost band; see ``__main__.py``.  It steps every generator's program at
 #: rising arity, which is tens of seconds and so cannot sit in CI.
@@ -166,7 +167,7 @@ def _commands(name: str, table: str) -> int | None:
     program = generate(name, table, width=None)
     worst: int | None = None
     for row in _rows(table, halts):
-        bits = [(row >> (inputs - 1 - i)) & 1 for i in range(inputs)]
+        bits = row_bits(row, inputs)
         if facts["parameterized"]:
             source, stdin = instantiate(name, program, bits, width=None), ""
         else:

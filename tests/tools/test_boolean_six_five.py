@@ -31,7 +31,7 @@ from tests.tools.boolean_runners import (
 )
 from tests.tools.sample_tables import five_input_sample
 from tests.witness_tables import dense as _dense
-from tests.witness_tables import witnesses
+from tests.witness_tables import row_bits, witnesses
 
 
 def _leaves(table: str) -> int:
@@ -96,7 +96,7 @@ class TestSixFive:
 
         program = _six_five_stream_ordered(table)
         for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            bits = row_bits(combo, n)
             got = run_six_five(program, [str(b) for b in bits])
             assert got == str(int(table[combo])), f"inputs {bits}"
 
@@ -182,7 +182,7 @@ class TestSixFive:
         # Greedy tests the last input first, and NOT of it is one node.
         assert _markers(program) == 1
         for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            bits = row_bits(combo, n)
             feed = iter([str(b) for b in bits])
             assert run_six_five_from(program, feed) == alternating[combo]
             assert not list(feed), f"inputs {bits} left input unread"

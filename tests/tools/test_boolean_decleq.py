@@ -8,6 +8,7 @@ from tests.tools.boolean_runners import (
     run_decleq,
 )
 from tests.witness_tables import parity as _parity
+from tests.witness_tables import row_bits
 
 
 class TestDecleq:
@@ -57,7 +58,7 @@ class TestDecleq:
             program = boolean.decleq(table)
             n = len(table).bit_length() - 1
             for combo in range(2**n):
-                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                bits = row_bits(combo, n)
                 got = run_decleq(program, [str(b) for b in bits])
                 assert got == str(int(table[combo])), f"{table} inputs {bits}"
 

@@ -19,6 +19,7 @@ from esolangs.raster import Raster, png
 from esolangs.tools.line import line_boolean
 from esolangs.tools.line.render import Node, render
 from esolangs.tools.line.tree_layout import tree_extents
+from tests.witness_tables import row_bits
 
 
 def _forks(node: Node | None) -> int:
@@ -43,7 +44,7 @@ def _check_truth_table(
     render(line_boolean(truth_table), acyclic=True).save(path)
     program = compile_program(extract(path))
     for combo in range(2**n) if rows is None else rows:
-        bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+        bits = row_bits(combo, n)
         io, outputs = _io(bits)
         run_compiled(program, io=io)
         assert outputs == [int(truth_table[combo])], (

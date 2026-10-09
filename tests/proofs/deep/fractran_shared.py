@@ -11,6 +11,7 @@ from esolangs.tools.helpers import (
     constant_span_test,
     fill_runs,
 )
+from tests.witness_tables import row_bits
 
 #: Cost band; see ``__main__.py``.  Cheap because a run is a firing a level:
 #: the size claim is a text measurement, and the rows it executes are the
@@ -68,7 +69,7 @@ def rows(template: str, truth_table: str) -> tuple[int, int]:
     n = len(truth_table).bit_length() - 1
     worst = widest = 0
     for row in range(len(truth_table)):
-        bits = [(row >> (n - 1 - index)) & 1 for index in range(n)]
+        bits = row_bits(row, n)
         code = fill_runs(template, TEMPLATE_CHAR, [PAIR] * n, bits)
         value, steps, bits_seen = run(code)
         want = 2 if truth_table[row] == "1" else 1

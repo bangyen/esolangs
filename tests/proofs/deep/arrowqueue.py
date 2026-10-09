@@ -12,6 +12,7 @@ from esolangs.tools.arrowqueue import _DRAINED_RING, _STAGE, arrowqueue
 from esolangs.tools.helpers import TEMPLATE_CHAR
 from esolangs.vm import run_until_halt_or_cycle
 from tests.tools.fills import fill
+from tests.witness_tables import row_bits
 
 _instantiate_arrowqueue = fill("ArrowQueue")
 
@@ -101,7 +102,7 @@ def check_deep_composition() -> None:
         template = arrowqueue(table)
         size = 0
         for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            bits = row_bits(combo, n)
             program = _instantiate_arrowqueue(template, bits)
             size = max(size, len(program))
             if _verdict_from(program.split("\n"), (0, 0, 0, ())) != table[combo]:
@@ -122,7 +123,7 @@ def check_deep_composition() -> None:
         ):
             template = arrowqueue(table)
             for combo in range(2**n):
-                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                bits = row_bits(combo, n)
                 program = _instantiate_arrowqueue(template, bits)
                 if _verdict_from(program.split("\n"), (0, 0, 0, ())) != table[combo]:
                     bad += 1

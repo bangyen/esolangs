@@ -18,6 +18,7 @@ from tests.proofs._formula import ledger_formulas
 from tests.proofs._ledger import load as load_ledger
 from tests.proofs.deep.execution import _dense, run_to_answer
 from tests.witness_tables import parity as _parity
+from tests.witness_tables import row_bits
 
 
 def _taglate(n: int) -> int:
@@ -310,7 +311,7 @@ def _measure(
     for row in range(len(table)):
         if halts is not None and table[row] != halts:
             continue
-        bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
+        bits = row_bits(row, n)
         if facts["parameterized"]:
             source, stdin = esolangs.instantiate(name, program, bits), ""
         else:

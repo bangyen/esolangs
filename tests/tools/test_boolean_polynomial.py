@@ -22,6 +22,7 @@ from tests.tools.boolean_runners import (
     run_polynomial,
     run_polynomial_from,
 )
+from tests.witness_tables import row_bits
 
 
 @pytest.mark.medium
@@ -227,7 +228,7 @@ class TestPolynomial:
         for table, n in (("0110", 2), ("10101010", 3), ("00001111", 3)):
             program = boolean.polynomial(table)
             for combo in range(2**n):
-                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                bits = row_bits(combo, n)
                 feed = iter([str(b) for b in bits])
                 got = run_polynomial_from(program, feed)
                 assert got == table[combo], f"{table} inputs {bits}"

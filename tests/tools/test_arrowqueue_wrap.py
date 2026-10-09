@@ -8,7 +8,7 @@ import esolangs
 from esolangs.tools.arrowqueue import arrowqueue
 from tests.divergence import diverges
 from tests.tools.fills import fill
-from tests.witness_tables import witnesses
+from tests.witness_tables import row_bits, witnesses
 
 _instantiate_arrowqueue = fill("ArrowQueue")
 
@@ -28,7 +28,7 @@ def test_arrowqueue_width_preserves_every_row(table: str, width: int | None) -> 
         assert max(map(len, template.splitlines())) <= max(4, width)
     inputs = len(table).bit_length() - 1
     for row, expected in enumerate(table):
-        bits = [(row >> (inputs - 1 - i)) & 1 for i in range(inputs)]
+        bits = row_bits(row, inputs)
         source = _instantiate_arrowqueue(template, bits)
         assert diverges("ArrowQueue", source, "") is (expected == "1")
 

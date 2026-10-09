@@ -11,7 +11,7 @@ from esolangs._evaluate import _evaluate
 from tests.generator_support import assert_an_ignored_input_costs
 from tests.tools.boolean_runners import run_container
 from tests.tools.sample_tables import five_input_sample
-from tests.witness_tables import witnesses
+from tests.witness_tables import row_bits, witnesses
 
 
 def _run_container_capped(program: str, inputs: list[str], *, budget: int) -> str:
@@ -220,7 +220,7 @@ class TestContainer:
         n = (len(table) - 1).bit_length()
         program = boolean.container(table)
         for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            bits = row_bits(combo, n)
             got = run_container(program, [str(b) for b in bits])
             assert got == str(int(table[combo])), f"inputs {bits}"
 

@@ -21,6 +21,7 @@ from tests.proofs._ledger import load as load_ledger
 from tests.proofs.deep.execution import run_to_answer
 from tests.proofs.test_execution_formulas import FORMULAS as EXECUTION_FORMULAS
 from tests.proofs.test_execution_formulas import _measure, _tables
+from tests.witness_tables import row_bits
 
 bl = int.bit_length
 
@@ -502,7 +503,7 @@ def test_unlambda_workspace_is_not_linear() -> None:
         table = _unlambda_chain(n)
         program = esolangs.generate("Unlambda", table)
         row = 1 << (n - 2)  # inputs 0, 1, 0, ..., 0: down X's zero path
-        bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
+        bits = row_bits(row, n)
         stdin = esolangs.encode_inputs("Unlambda", bits, truth_table=table)
         machine = make_vm("Unlambda", program, stdin=stdin)
         state = WrittenState(machine.snapshot())
