@@ -1077,9 +1077,18 @@ def dig(truth_table: str, width: int | None = None, *, share: bool = True) -> st
         return min(built, column, key=len)
     if width is None and essential and 0 < essential[0] == n - len(essential):
         # Inputs before the first essential one can be read and dropped above
-        # the smaller table's program, when that is shorter.
+        # the smaller table's program, when that uses less area.
         inner = dig(read_at(truth_table, essential, n), share=share)
-        return min(built, _dig_discards(essential[0]) + "\n" + inner, key=len)
+        # Grids are measured by area: the n=10 parity-prefix wrapper used
+        # 2,736 cells against the integrated reader's 2,627, despite less text.
+        return min(
+            built,
+            _dig_discards(essential[0]) + "\n" + inner,
+            key=lambda program: (
+                len(program.splitlines()) * grid_width(program),
+                len(program),
+            ),
+        )
     return built
 
 
@@ -1142,6 +1151,13 @@ def _balance(table: str, default: str) -> str:
         dig(table, 1),
         dig(table, 8),
     ]
+    essential = essential_inputs(table, n)
+    if essential and 0 < essential[0] == n - len(essential):
+        # A discard column can be more square even when its area is larger.
+        inner = dig(read_at(table, essential, n))
+        wrapped = _dig_discards(essential[0]) + "\n" + inner
+        legacy = min(_dig_build(table, n, None, share=True), wrapped, key=len)
+        candidates.append(legacy)
     if n >= 2:
         banded = _dig_grid(table, n, (n + 3) // 2)
         if grid_width(banded) < grid_width(flat):

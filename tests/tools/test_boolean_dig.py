@@ -209,14 +209,20 @@ class TestDig:
         # and the stride the rule names still builds
         assert boolean.dig("0110100110010110", 1)
 
-    def test_ignored_leading_inputs_are_read_down_one_column(self) -> None:
-        """Leading ignored inputs and constants cost a column, not a wider tree."""
+    def test_ignored_leading_inputs_choose_a_compact_reader(self) -> None:
+        """A discard column competes with an integrated reader by grid area."""
         inner = "0110"
         for count in (1, 7, 8, 9):
             table = inner * (1 << count)
             n = count + 2
             program = boolean.dig(table)
-            assert program.endswith("\n" + boolean.dig(inner))
+            if count == 1:
+                assert (
+                    len(program.splitlines()) * max(map(len, program.splitlines()))
+                    == 119
+                )
+            else:
+                assert program.endswith("\n" + boolean.dig(inner))
             for row in (0, 1, 2, 3, (1 << n) - 1, (1 << n) - 2):
                 bits = [str(row >> (n - 1 - i) & 1) for i in range(n)]
                 assert run_dig(program, bits) == table[row], (count, row)
@@ -659,3 +665,50 @@ def test_parallel_gutter_refuses_a_tenth_armed_cell() -> None:
             steps += 1
         assert machine.halted
         assert (io.getvalue(), io.reads) == (table[row], 17)
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("ignored", [1, 2])
+def test_ignored_prefix_chooses_grid_area_over_text_length(ignored: int) -> None:
+    import random
+
+    from esolangs.interpreters.grid_based.dig import _Machine
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.tools.dig import _dig_build, _dig_discards
+
+    rng = random.Random(2026)
+    blocks = ["".join(rng.choice("01") for _ in range(64)) for _ in range(2)]
+    base = "".join(blocks[int(bit)] for bit in "01101001")
+    table = base * (1 << ignored)
+    n = 9 + ignored
+    integrated = _dig_build(table, n, None, share=True)
+    wrapped = _dig_discards(ignored) + "\n" + boolean.dig(base)
+    assert len(wrapped) < len(integrated)
+    program = boolean.dig(table)
+    assert program == integrated
+    rows = program.splitlines()
+    assert len(rows) * max(map(len, rows)) == (2627 if ignored == 1 else 2698)
+    assert len(wrapped.splitlines()) * max(map(len, wrapped.splitlines())) == (
+        2736 if ignored == 1 else 2772
+    )
+    bound = 312 if n == 10 else 384
+    for row, expected in enumerate(table):
+        io = ScriptedIO("\n".join(format(row, f"0{n}b")) + "\n")
+        machine = _Machine(rows, io)
+        steps = 0
+        while not machine.halted and steps <= bound:
+            machine.step()
+            steps += 1
+        assert machine.halted
+        assert (io.getvalue(), io.reads) == (expected, n)
+
+
+def test_balance_keeps_the_square_discard_wrapper() -> None:
+    table = "01100110"
+    default = boolean.dig(table).splitlines()
+    program = esolangs.generate("Dig", table, balance=True)
+    balanced = program.splitlines()
+    assert (len(default), max(map(len, default))) == (7, 17)
+    assert (len(balanced), max(map(len, balanced))) == (12, 12)
+    for row, expected in enumerate(table):
+        assert run_dig(program, list(format(row, "03b"))) == expected
