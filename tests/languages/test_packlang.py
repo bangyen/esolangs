@@ -6,8 +6,7 @@ import esolangs
 from esolangs.interpreters.other.packlang import (
     suggest_corrections as _packlang_corrections,
 )
-from tests.cli.test_cli_suggest import _repaired
-from tests.cli_support import call_both
+from tests.cli_support import call_both, repaired
 
 
 @pytest.mark.parametrize(
@@ -22,7 +21,7 @@ from tests.cli_support import call_both
 def test_packlang_required_keyword_repairs_execute(source):
     corrections = _packlang_corrections(source)
     assert corrections
-    assert esolangs.run("Packlang", _repaired(source, corrections), timeout=5) == "A"
+    assert esolangs.run("Packlang", repaired(source, corrections), timeout=5) == "A"
 
 
 def test_packlang_comment_mask_preserves_exact_locations_and_source(tmp_path, capsys):
@@ -52,3 +51,21 @@ def test_packlang_deep_preview_reports_parser_limit(tmp_path, capsys):
     assert captured.out == ""
     assert "source preview exceeds parser recursion depth" in captured.err
     assert "reduce expression nesting" in captured.err
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "Package : IO { Integer Integre; "
+        "Integer main { INIT Integre; charPut(65); } } app;",
+        "Package : IO { Integer charPutt { 65; } "
+        "Integer main { charPut(charPutt()); } } app;",
+        "% Pacakge Integre\nPackage { Integer main { 0; } } app;",
+        # Speculative parsing of a declaration rewrites nothing in it.
+        "Package : IO { Integer main { Array(Integer, 2) a; charPut(65); } } app;",
+        "Package : IO { Integer main { While 0 Do { charPut(65); } "
+        "charPut(65); } } app;",
+    ],
+)
+def test_packlang_identifiers_calls_and_comments_receive_no_edit(source):
+    assert _packlang_corrections(source) == ()

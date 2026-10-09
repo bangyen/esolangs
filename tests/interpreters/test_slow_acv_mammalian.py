@@ -6,8 +6,12 @@ from pathlib import Path
 
 import pytest
 
-from esolangs.interpreters.io import IO
+from esolangs.interpreters.io import IO, ScriptedIO
+from esolangs.interpreters.tape_based.slow_acv_mammalian import (
+    _Machine as SlowAcvMammalian,
+)
 from esolangs.interpreters.tape_based.slow_acv_mammalian import run
+from esolangs.vm import run_until_halt_or_cycle
 from tests.interpreters.contract import SnapshotContract
 from tests.raises import assert_rejected_with_hint, raises_message
 
@@ -299,3 +303,10 @@ def test_malformed_source_carries_a_repair_hint() -> None:
     assert_rejected_with_hint(
         "SLOW ACV MAMMALIAN", "PRONOUNCEE", "did you mean 'PRONOUNCE'"
     )
+
+
+def test_slow_acv_mammalian_looping_run_is_detected_as_a_cycle() -> None:
+    # LEAPFROG jumps back to a point that reproduces the exact same state
+    code = "CONFLAGRATE SEED SEED DIGEST FISSION LEAPFROG"
+    machine = SlowAcvMammalian(code, ScriptedIO())
+    assert run_until_halt_or_cycle(machine) is False

@@ -126,3 +126,24 @@ class TestEncodeInputsCanCheckItsArity:
         """Not reported as a bit-count mismatch against a nonsense arity."""
         with pytest.raises(esolangs.TruthTableError):
             esolangs.encode_inputs("brainfuck", [1, 0], truth_table="011")
+
+
+def test_the_input_is_a_row_index() -> None:
+    """The claim the prose got wrong, stated as an executable fact."""
+    assert esolangs.describe("Fargo")["input_shape"] == "row_index"
+    assert esolangs.encode_inputs("Fargo", [1, 1, 1, 1]) == "15\n"
+
+
+def test_a_bit_per_line_input_is_the_wrong_row() -> None:
+    """Only n>=4 shows it."""
+    table = "0000000000000001"  # AND of four inputs
+    program = esolangs.generate("Fargo", table)
+    right = esolangs.run(
+        "Fargo",
+        program,
+        stdin=esolangs.encode_inputs("Fargo", [1, 1, 1, 1]),
+        timeout=20,
+    )
+    wrong = esolangs.run("Fargo", program, stdin="1111\n", timeout=20)
+    assert esolangs.read_answer("Fargo", right) == "1"
+    assert esolangs.read_answer("Fargo", wrong) == "0"

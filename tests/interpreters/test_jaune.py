@@ -6,9 +6,12 @@ import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
+from esolangs.interpreters.tape_based.jaune import _Machine as Jaune
 from esolangs.interpreters.tape_based.jaune import run
+from esolangs.vm import run_until_halt_or_ancestor
 from tests.interpreters import runner
 from tests.interpreters.contract import SnapshotContract
+from tests.raises import assert_halts_with_hint
 
 run_program = partial(runner.run_program, run, suppress_eof=False)
 
@@ -205,3 +208,23 @@ class TestContract(SnapshotContract):
 )
 def test_output(code: str, expected: str) -> None:
     assert run_program(code) == expected
+
+
+@pytest.mark.medium
+def test_hints_for_bad_programs_and_input():
+    assert_halts_with_hint(
+        "Jaune", "1@", "undefined subroutine", "define the subroutine"
+    )
+
+
+def test_jaune_replayed_subroutine_is_detected_as_an_ancestor() -> None:
+    # Main calls subroutine 1, whose body immediately calls itself.
+    machine = Jaune("1@.1$1@;", ScriptedIO())
+    assert run_until_halt_or_ancestor(machine) is False
+
+
+def test_jaune_changing_tape_halts() -> None:
+    # Subroutine 1 decrements the tape then recurs until the zero case
+    # jumps to its return, so the tape belongs in the entry key.
+    machine = Jaune("3+1@.1$1-2!1@;2:;", ScriptedIO())
+    assert run_until_halt_or_ancestor(machine) is True

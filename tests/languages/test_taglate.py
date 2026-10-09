@@ -41,3 +41,7 @@ class TestAnswerMode:
             if got != XOR:
                 wrong.append((name, got))
         assert wrong == []
+
+
+def test_the_input_shape_is_padded() -> None:
+    assert esolangs.describe("Taglate")["input_shape"] == "char_stream_padded"

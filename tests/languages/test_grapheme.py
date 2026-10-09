@@ -22,8 +22,7 @@ from esolangs.tagged import _Tagged
 from esolangs.tui import History, replay
 from esolangs.vm import complete_vm, make_vm
 from tests.cli.test_cli import call_main
-from tests.cli.test_cli_suggest import repaired
-from tests.cli_support import call_both
+from tests.cli_support import assert_repair_runs, call_both, repaired
 from tests.stdin_check import _check_stdin
 from tests.test_dialects import Unreadable
 from tests.witness_tables import witnesses
@@ -427,3 +426,17 @@ class TestTheShapeWarningFiresOnlyWhenItShould:
         right = call_main(["run", "Grapheme", str(path)], capsys, stdin=stdin)
         assert warned == "0"
         assert right == "1"
+
+
+def test_grapheme_repair_executes(tmp_path, capsys):
+    assert_repair_runs("Grapheme", "FAFy", "1", tmp_path, capsys)
+
+
+def test_grapheme_case_preview_preserves_other_characters():
+    source = "Eé1?E\naY"
+    assert repaired(source, _grapheme_corrections(source)) == "Eé1?E\nAY"
+    assert not _grapheme_corrections("EABEYFAFY")
+
+
+def test_the_input_alphabet() -> None:
+    assert esolangs.describe("Grapheme")["input_encoding"] == ("%", "A")

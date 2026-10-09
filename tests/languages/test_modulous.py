@@ -317,3 +317,17 @@ def test_halt_and_cycle_verdicts_are_unchanged():
     assert (
         vm.run_until_halt_or_all_branches_cycle(vm.make_vm("Modulous", "[END]")) is True
     )
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "[POT]",  # POP and PRT are both one substitution away.
+        '[PSH STR "[PRTT INT]"][PRT][END]',
+        "",
+        "[123][END]",
+        '["x"][END]',
+    ],
+)
+def test_ambiguous_spellings_and_noncommand_text_receive_no_edit(source):
+    assert _modulous_corrections(source) == ()

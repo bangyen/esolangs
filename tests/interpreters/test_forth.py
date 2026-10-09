@@ -6,7 +6,9 @@ import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
+from esolangs.interpreters.stack_based.forth import _Machine as Forth
 from esolangs.interpreters.stack_based.forth import run
+from esolangs.vm import run_until_halt_or_ancestor
 from tests.interpreters.contract import (
     CycleContract,
     EmptyProgramContract,
@@ -231,3 +233,16 @@ class TestContract(EmptyProgramContract, CycleContract, InputCursorContract):
     position_after_read = 2
     halting_program = "65."
     looping_program = "1[]"
+
+
+def test_forth_replayed_scope_is_detected_as_an_ancestor() -> None:
+    # Store 1; under key 1, then have that scope call itself forever.
+    machine = Forth("1{1;}1;", ScriptedIO())
+    assert run_until_halt_or_ancestor(machine) is False
+
+
+def test_forth_changing_stack_halts() -> None:
+    # The scope decrements its shared counter before conditionally
+    # calling itself, so every entered scope has a different binding.
+    machine = Forth("1{1-(1;)}3v;", ScriptedIO())
+    assert run_until_halt_or_ancestor(machine) is True

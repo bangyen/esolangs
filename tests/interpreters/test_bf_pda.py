@@ -11,7 +11,7 @@ from tests.interpreters.contract import (
     CycleContract,
     EmptyProgramContract,
 )
-from tests.raises import raises_message
+from tests.raises import assert_rejected_with_hint, raises_message
 
 run = importlib.import_module("esolangs.interpreters.stack_based.bf_pda").run
 
@@ -136,3 +136,8 @@ class TestContract(EmptyProgramContract, CycleContract):
     empty_raises = "BF-PDA program cannot be empty"
     halting_program = "<@."
     looping_program = "<@[@@]"
+
+
+@pytest.mark.medium
+def test_hints_for_bad_programs_and_input():
+    assert_rejected_with_hint("BF-PDA", "[", "close this '[' with ']'")

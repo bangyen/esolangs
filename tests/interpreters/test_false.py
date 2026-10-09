@@ -12,7 +12,7 @@ from esolangs.interpreters.stack_based.false import (
     run,
 )
 from tests.interpreters.runner import run_program
-from tests.raises import assert_rejected_with_hint
+from tests.raises import assert_halts_with_hint, assert_rejected_with_hint
 
 
 @pytest.mark.parametrize(
@@ -147,5 +147,6 @@ def test_bitwise_or_and_pick_beyond_the_stack() -> None:
 
 
 @pytest.mark.medium
-def test_malformed_source_carries_a_repair_hint() -> None:
+def test_bad_programs_carry_a_repair_hint() -> None:
     assert_rejected_with_hint("FALSE", "[", "close the lambda")
+    assert_halts_with_hint("FALSE", "%", "stack is empty", "push a value")

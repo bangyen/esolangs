@@ -4,10 +4,12 @@ import importlib
 
 import pytest
 
-from esolangs.interpreters.io import IO
+from esolangs.interpreters.io import IO, ScriptedIO
+from esolangs.interpreters.tape_based.dimensional import _Machine as Dimensional
+from esolangs.vm import run_until_halt_or_cycle
 from tests.interpreters.contract import SnapshotContract
 from tests.interpreters.runner import run_program
-from tests.raises import raises_message
+from tests.raises import assert_rejected_with_hint, raises_message
 
 dim = importlib.import_module("esolangs.interpreters.tape_based.dimensional")
 
@@ -225,3 +227,14 @@ def test_memory_view_follows_a_raised_tape() -> None:
     assert machine.memory == [0]
     machine.step()
     assert machine.memory == [1]
+
+
+@pytest.mark.medium
+def test_hints_for_bad_programs_and_input():
+    assert_rejected_with_hint("Dimensional", "x", "base-16 integer", stdin="oops")
+
+
+def test_dimensional_looping_run_is_detected_as_a_cycle() -> None:
+    # cell starts nonzero and the loop body never changes it
+    machine = Dimensional("+[]", ScriptedIO())
+    assert run_until_halt_or_cycle(machine) is False

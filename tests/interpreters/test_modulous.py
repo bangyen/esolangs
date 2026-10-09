@@ -4,10 +4,16 @@ import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO, ScriptedIO
-from esolangs.interpreters.stack_based.modulous import run
+from esolangs.interpreters.stack_based.modulous import _Machine as Modulous
+from esolangs.interpreters.stack_based.modulous import _named, run
+from esolangs.vm import run_until_halt_or_all_branches_cycle, run_until_halt_or_cycle
 from tests.interpreters.cursorless_io import PositionlessIO
 from tests.interpreters.runner import run_program
-from tests.raises import raises_message
+from tests.raises import (
+    assert_halts_with_hint,
+    assert_rejected_with_hint,
+    raises_message,
+)
 
 
 def run_and_capture(code: str, inputs: list[str] | None = None) -> str:
@@ -301,3 +307,71 @@ class TestBranchingMachine:
             )
             == expected
         )
+
+
+@pytest.mark.medium
+def test_hints_for_bad_programs_and_input():
+    assert_rejected_with_hint("Modulous", "[PSH INT nope]", "decimal integer")
+    assert_rejected_with_hint("Modulous", "[PSH INT -1][PRT]", "between 0 and 1114111")
+    assert_halts_with_hint(
+        "Modulous", "[PRT INT]", "the stack is empty", "push a value"
+    )
+    assert_halts_with_hint("Modulous", "[RND 0]", "upper bound", "at least 1")
+
+
+def test_variable_suggestions_use_the_live_scope():
+    with pytest.raises(HaltError) as caught:
+        _named({"COUNT": 1}, "COUTN")
+    assert caught.value.__notes__ == ["hint: did you mean 'COUNT'?"]
+
+
+def test_modulous_reset_loops_and_end_halts() -> None:
+    """``RST`` rewinds the cursor forever; ``END`` stops."""
+    reset = Modulous("[RST]", ScriptedIO())
+    assert run_until_halt_or_all_branches_cycle(reset) is False
+    assert run_until_halt_or_cycle(Modulous("[RST]", ScriptedIO())) is False
+    end = Modulous("[END]", ScriptedIO())
+    assert run_until_halt_or_all_branches_cycle(end) is True
+
+
+def test_modulous_forks_every_value_rnd_could_draw() -> None:
+    """``RND n`` opens exactly ``n`` outcomes, one per drawable value."""
+    machine = Modulous("[RND 4]", ScriptedIO())
+    successors = machine.branching_successors(machine.branching_snapshot(), 100)
+    assert successors is not None
+    assert sorted(state[0][0][-1] for state in successors) == [0, 1, 2, 3]
+
+    # A bound below one is rejected by the handler, so the search raises
+    # exactly where a step would.
+    quiet = Modulous("[RND 0]", ScriptedIO())
+    with pytest.raises(HaltError):
+        quiet.branching_successors(quiet.branching_snapshot(), 100)
+
+
+def test_modulous_non_command_tokens_advance_one_branch() -> None:
+    """A token no handler claims still steps, and forks nothing."""
+    machine = Modulous("[]", ScriptedIO())
+    successors = machine.branching_successors(machine.branching_snapshot(), 100)
+    assert successors is not None
+    assert len(successors) == 1
+
+    # Arithmetic changes the named variable without forking.
+    for token, expected in (("[VAR1+1]", 1), ("[VAR1-1]", -1)):
+        arith = Modulous(token, ScriptedIO())
+        (stepped,) = arith.branching_successors(arith.branching_snapshot(), 100) or ()
+        assert dict(stepped[0][1])["VAR1"] == expected, token
+
+    word = Modulous("[FOO]", ScriptedIO())
+    with pytest.raises(ValueError, match="not a Modulous command"):
+        word.branching_successors(word.branching_snapshot(), 100)
+
+
+def test_modulous_declines_input_and_caps_a_wide_draw() -> None:
+    """``INP`` cannot be forked, and one ``RND`` cannot be unbounded."""
+    with pytest.raises(TimeoutError, match="needs input"):
+        run_until_halt_or_all_branches_cycle(Modulous("[INP]", ScriptedIO("A\n")))
+    wide = Modulous("[RND 100000]", ScriptedIO())
+    with pytest.raises(TimeoutError, match=r"exceeds the .* cap") as caught:
+        run_until_halt_or_all_branches_cycle(wide, limit=100000)
+    assert "cap on a single transition" in str(caught.value)
+    assert "limit does not raise this transition cap" in caught.value.__notes__[0]

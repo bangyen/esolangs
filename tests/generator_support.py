@@ -58,3 +58,14 @@ def assert_an_ignored_input_costs(name: str, n: int, cost: int) -> None:
         )
         assert len(build(table)) - len(build(inner)) == cost, at
     assert evaluate_generated(name, table, timeout=30) == table
+
+
+def overruns(name: str, table: str) -> tuple[int, int]:
+    """Return how many widths a layout overran, and by the worst margin."""
+    counted = [
+        max(len(line) for line in esolangs.generate(name, table, width=w).splitlines())
+        - w
+        for w in range(1, 124, 4)
+    ]
+    over = [margin for margin in counted if margin > 0]
+    return len(over), max(over, default=0)

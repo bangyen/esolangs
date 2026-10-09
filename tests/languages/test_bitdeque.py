@@ -12,8 +12,7 @@ from esolangs._evaluate import _evaluate
 from esolangs.interpreters.queue_based.bitdeque import (
     suggest_corrections as _bitdeque_corrections,
 )
-from tests.cli.test_cli_suggest import _repaired
-from tests.cli_support import call_both
+from tests.cli_support import call_both, repaired
 
 
 @pytest.mark.parametrize(
@@ -26,7 +25,7 @@ from tests.cli_support import call_both
 def test_bitdeque_proposed_repairs_execute(source, output):
     corrections = _bitdeque_corrections(source)
     assert corrections
-    assert esolangs.run("Bitdeque", _repaired(source, corrections), timeout=5) == output
+    assert esolangs.run("Bitdeque", repaired(source, corrections), timeout=5) == output
 
 
 def test_bitdeque_multiline_cli_preview_preserves_target_and_file(tmp_path, capsys):
@@ -186,3 +185,8 @@ class TestBitdeque:
         assert vm.output == "0"
         vm.step()  # and rendering happens once, not once per step past the halt
         assert vm.output == "0"
+
+
+@pytest.mark.parametrize("source", ["IJECT", "PUSH 12", ""])
+def test_bitdeque_ambiguous_words_and_jump_operands_receive_no_edit(source):
+    assert _bitdeque_corrections(source) == ()

@@ -6,11 +6,15 @@ import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
+from esolangs.interpreters.randomness import FirstDraw
+from esolangs.interpreters.tape_based.painfuck import _Machine as Painfuck
+from esolangs.vm import run_until_halt_or_all_branches_cycle, run_until_halt_or_cycle
 from tests.interpreters.contract import (
     CycleContract,
     EmptyProgramContract,
     SnapshotContract,
 )
+from tests.raises import assert_halts_with_hint
 
 run = importlib.import_module("esolangs.interpreters.tape_based.painfuck").run
 
@@ -432,3 +436,53 @@ class TestContract(EmptyProgramContract, SnapshotContract, CycleContract):
     stepping_program = "pp"
     halting_program = "pp"
     looping_program = _encode("pab")
+
+
+@pytest.mark.medium
+def test_hints_for_bad_programs_and_input():
+    assert_halts_with_hint("Painfuck", "i", HaltError.DEFAULT, "decimal integer", "x")
+
+
+def _painfuck_source(targets: str) -> str:
+    """Encode direct Painfuck commands through its source translation."""
+    cycles = ("pevkjzwr", "yuctsobqihald")
+    out: list[str] = []
+    for index, target in enumerate(targets):
+        cycle = next(cycle for cycle in cycles if target in cycle)
+        out.append(cycle[(cycle.index(target) - index) % len(cycle)])
+    return "".join(out)
+
+
+def test_painfuck_all_coin_outcomes_can_be_proved_to_loop() -> None:
+    """Either ``y`` outcome reaches a loop close and returns to ``a``."""
+    code = _painfuck_source("paybb")
+    machine = Painfuck(code, ScriptedIO())
+    assert run_until_halt_or_all_branches_cycle(machine) is False
+    # A single path's snapshot counts its coin draws (a later draw could
+    # escape), so it never repeats: undecided, not a false cycle.
+    for coin in (0, 1):
+        draws = FirstDraw(coin, rest=coin)
+        with pytest.raises(TimeoutError, match="undecided after 64 steps"):
+            run_until_halt_or_cycle(Painfuck(code, ScriptedIO(), draws), limit=64)
+
+
+def test_painfuck_one_halting_coin_refutes_an_all_branches_hang() -> None:
+    code = _painfuck_source("payb")
+    machine = Painfuck(code, ScriptedIO())
+    assert run_until_halt_or_all_branches_cycle(machine) is True
+    halting = Painfuck(code, ScriptedIO(), FirstDraw(1))
+    assert run_until_halt_or_cycle(halting) is True
+    looping = Painfuck(code, ScriptedIO(), FirstDraw(0, rest=0))
+    with pytest.raises(TimeoutError, match="undecided after 64 steps"):
+        run_until_halt_or_cycle(looping, limit=64)
+
+
+def test_painfuck_a_malformed_loop_is_a_terminal_branch() -> None:
+    """An unmatched ``b`` ends its branch instead of escaping the search."""
+    machine = Painfuck(_painfuck_source("b"), ScriptedIO())
+    start = machine.branching_snapshot()
+    assert machine.branching_halted(start) is False
+
+    (ended,) = machine.branching_successors(start, 100) or ()
+    assert machine.branching_halted(ended) is True
+    assert ended[3] == machine.n  # cursor parked past the program

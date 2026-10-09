@@ -5,6 +5,7 @@ import pytest
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.tape_based.boolfuck import run
 from esolangs.tools.boolfuck import boolfuck
+from tests.raises import assert_rejected_with_hint
 from tests.witness_tables import witnesses
 
 
@@ -33,3 +34,8 @@ def test_all_three_input_tables(n: int) -> None:
             io = ScriptedIO(f"{row:0{n}b}")
             run(code, io)
             assert io.getvalue() == table[row]
+
+
+@pytest.mark.medium
+def test_hints_for_bad_programs_and_input():
+    assert_rejected_with_hint("Boolfuck", "[", "close this '[' with ']'")

@@ -154,3 +154,11 @@ def test_source_kind_cannot_change_language_contract():
     document["language"] = "brainfuck"
     with pytest.raises(esolangs.ProgramError):
         esolangs.load_program("Brainfuck", json.dumps(document))
+
+
+@pytest.mark.medium
+def test_raster_interpreter_retains_geometry_hint():
+    image = Raster((((255, 255, 255),),))
+    with pytest.raises(esolangs.ProgramError, match=r".+") as caught:
+        esolangs.run("Line", image, scale=None, timeout=1)
+    assert "dark connected paths" in caught.value.__notes__[0]

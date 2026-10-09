@@ -9,7 +9,8 @@ import pytest
 import esolangs
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.other.packlang import _Machine, run
+from esolangs.interpreters.other._packlang_parse import _Parser
+from esolangs.interpreters.other.packlang import _get, _Machine, _node, run
 from esolangs.tools.packlang import packlang
 from esolangs.vm import run_until_halt_or_cycle
 from tests.fixtures import text
@@ -535,3 +536,22 @@ def test_malformed_declarations_are_rejected(code: str, error: str) -> None:
 @pytest.mark.medium
 def test_malformed_source_carries_a_repair_hint() -> None:
     assert_rejected_with_hint("Packlang", "?", "punctuation")
+
+
+def test_datatype_typo_uses_the_parser_vocabulary():
+    with pytest.raises(ValueError, match="unknown datatype") as caught:
+        _Parser(["Intger"]).parse_type()
+    assert caught.value.__notes__ == ["hint: did you mean 'Integer'?"]
+
+
+def test_variable_suggestions_use_the_live_scope():
+    with pytest.raises(HaltError) as caught:
+        _get((("COUNT", 1),), "COUTN")
+    assert caught.value.__notes__ == ["hint: did you mean 'COUNT'?"]
+
+
+def test_internal_tree_errors_and_explicit_aborts_have_no_repair_hint():
+    with pytest.raises(HaltError) as caught:
+        _node("broken internal tree")
+    assert not hasattr(caught.value, "__notes__")
+    assert not hasattr(HaltError(), "__notes__")

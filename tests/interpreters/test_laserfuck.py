@@ -7,9 +7,11 @@ from typing import ClassVar
 
 import pytest
 
+from esolangs.interpreters.grid_based.laserfuck import _Machine as Laserfuck
 from esolangs.interpreters.grid_based.laserfuck import run
 from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.interpreters.randomness import FirstDraw
+from esolangs.vm import run_until_halt_or_all_branches_cycle, run_until_halt_or_cycle
 from tests.interpreters.contract import SnapshotContract
 
 
@@ -299,3 +301,89 @@ def test_the_wiki_hello_world_prints_its_spent_counter(heading: int) -> None:
 def test_the_wiki_cat_prints_the_nul_it_stopped_on() -> None:
     """The NUL was read into a cell, so it is a used cell and prints too."""
     assert _wiki_run("ÿ/\\\n|o},#/)x\n _\\> /", "hi\x00", 0) == "hi\x00"
+
+
+def test_laserfuck_all_initial_headings_can_be_proved_to_loop() -> None:
+    """The four headings are searched, not the one the machine drew."""
+    code = [" v ", "}o{", " ^ "]
+    machine = Laserfuck(code, ScriptedIO())
+    assert run_until_halt_or_all_branches_cycle(machine) is False
+    for heading in range(4):
+        draws = FirstDraw(heading, rest=heading)
+        machine = Laserfuck(code, ScriptedIO(), draws)
+        assert run_until_halt_or_cycle(machine) is False
+
+
+def test_laserfuck_one_halting_heading_refutes_an_all_branches_hang() -> None:
+    """Up and down leave the grid; left and right bounce forever."""
+    code = ["}o{"]
+    machine = Laserfuck(code, ScriptedIO())
+    assert run_until_halt_or_all_branches_cycle(machine) is True
+    up = Laserfuck(code, ScriptedIO(), FirstDraw(0))
+    assert run_until_halt_or_cycle(up) is True
+    left = Laserfuck(code, ScriptedIO(), FirstDraw(2, rest=2))
+    assert run_until_halt_or_cycle(left) is False
+
+
+def test_laserfuck_grid_without_a_start_marker_places_no_beam() -> None:
+    """A laserless grid reports empty beams, never the unplaced sentinel."""
+    machine = Laserfuck(["+-", "<>"], ScriptedIO())
+    assert machine.halted is True
+    assert machine.branching_snapshot()[2] == ()
+    assert machine.branching_halted(machine.branching_snapshot()) is True
+    assert run_until_halt_or_all_branches_cycle(machine) is True
+
+
+def test_laserfuck_search_skips_the_command_after_a_hash() -> None:
+    """``#`` skips in the search exactly as it does in a step."""
+    machine = Laserfuck(["o#{"], ScriptedIO())
+    start = machine.branching_snapshot()
+    rightward = next(
+        state
+        for state in machine.branching_successors(start, 100) or ()
+        if state[2] is not None and state[2][0][2] == 3
+    )
+
+    (at_hash,) = machine.branching_successors(rightward, 100) or ()
+    assert at_hash[2] == ((0, 1, 3),)
+    assert at_hash[4] == frozenset({0}), "'#' arms beam 0's skip"
+
+    (skipped,) = machine.branching_successors(at_hash, 100) or ()
+    assert skipped[2] == ((0, 2, 3),), "'{' was passed over, not executed"
+    assert skipped[4] == frozenset(), "the skip disarms itself"
+
+
+def test_laserfuck_a_placed_beam_starts_the_search_unplaced() -> None:
+    """The complement: a grid *with* an ``o`` does use the sentinel."""
+    machine = Laserfuck(["o"], ScriptedIO())
+    assert machine.branching_snapshot()[2] is None
+    assert machine.branching_halted(machine.branching_snapshot()) is False
+
+
+def test_laserfuck_explores_both_beam_splitter_outcomes() -> None:
+    """``*``'s coin is searched, not sampled."""
+    code = ["/{v", "^o^", "*/*"]
+    for heading in range(4):
+        draws = FirstDraw(heading, rest=0)
+        machine = Laserfuck(code, ScriptedIO(), draws)
+        assert run_until_halt_or_cycle(machine) is False
+    escaping = Laserfuck(code, ScriptedIO(), FirstDraw(1, rest=1))
+    assert run_until_halt_or_cycle(escaping) is True
+    machine = Laserfuck(code, ScriptedIO())
+    assert run_until_halt_or_all_branches_cycle(machine, limit=5000) is True
+
+
+def test_laserfuck_a_second_start_marker_halts_every_branch() -> None:
+    """Two ``o``s stop the machine before it can draw a heading."""
+    machine = Laserfuck(["oo"], ScriptedIO())
+    assert machine.halted is True
+    # the search's start state is halted too, not an unplaced beam
+    assert machine.branching_halted(machine.branching_snapshot()) is True
+    assert run_until_halt_or_all_branches_cycle(machine) is True
+
+
+def test_laserfuck_declines_a_reachable_input_command() -> None:
+    """``,`` cannot be forked, so the search reports undecided."""
+    machine = Laserfuck(["o,"], ScriptedIO("A\n"))
+    with pytest.raises(TimeoutError, match="needs input"):
+        run_until_halt_or_all_branches_cycle(machine)

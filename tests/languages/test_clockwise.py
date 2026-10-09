@@ -47,3 +47,16 @@ class TestAgainstTheInterpreter:
         program = "\n".join(["o  v", "   <"])
         frame = _frame(program, (1, 3), language="Clockwise", ip_shape="grid")
         assert _highlighted(render(frame)) == "<"
+
+
+def test_clockwise_is_not_marked_because_it_never_reads_past_an_end() -> None:
+    """Its underfed input is a shorter one-line string: no EOF happens."""
+    assert esolangs.describe("Clockwise")["eof_is_a_value"] is False
+    program = esolangs.generate("Clockwise", "10010110")
+    short = esolangs.encode_inputs("Clockwise", [1, 0])
+    output = esolangs.run("Clockwise", program, stdin=short, timeout=10)
+    esolangs.read_answer("Clockwise", output)
+
+
+def test_the_input_is_a_bit_string() -> None:
+    assert esolangs.encode_inputs("Clockwise", [1, 1, 1, 1]) == "1111"

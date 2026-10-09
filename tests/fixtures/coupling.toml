@@ -36,9 +36,7 @@
 "tests/cli/test_cli_io.py" = 8
 "tests/cli/test_cli_messages.py" = 8
 "tests/cli/test_cli_portable.py" = 3
-"tests/cli/test_cli_suggest.py" = 17
 "tests/cli/test_cli_timeouts.py" = 2
-"tests/cli/test_hints.py" = 31
 "tests/duration_policy.py" = 1
 "tests/fuzz/test_interpreters_robustness.py" = 4
 "tests/interpreters/forbin_support.py" = 1
@@ -91,7 +89,6 @@
 "tests/scripts/test_mutate_one.py" = 2
 "tests/scripts/test_new_language.py" = 4
 "tests/scripts/test_new_language_check.py" = 6
-"tests/test_answer_plumbing.py" = 48
 "tests/test_answer_plumbing_refusals.py" = 15
 "tests/test_answer_stdin.py" = 22
 "tests/test_api.py" = 6
@@ -115,7 +112,7 @@
 "tests/test_tui.py" = 6
 "tests/test_validation.py" = 2
 "tests/test_vm.py" = 15
-"tests/test_vm_detectors.py" = 24
+"tests/test_vm_detectors.py" = 2
 "tests/test_vm_protocol.py" = 10
 "tests/tools/boolean_oracles.py" = 1
 "tests/tools/eval_reorders.py" = 1

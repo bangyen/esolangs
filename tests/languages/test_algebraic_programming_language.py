@@ -4,6 +4,7 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
+from esolangs.vm import make_vm, run_until_halt_or_ancestor
 
 
 class TestTheVmPathRefusesLikeRunDoes:
@@ -45,3 +46,12 @@ class TestTheVmPathRefusesLikeRunDoes:
         vm = debugger_api.make_vm("Algebraic Programming Language", "(" * 90)
         with pytest.raises(esolangs.InterpreterLimitError):
             vm.step()
+
+
+def test_the_ancestor_detector_takes_a_vm() -> None:
+    """APL's truth machine, the shape the frame stack exists for."""
+    truth = "x? = x & x?\nn?"
+    halts = make_vm("Algebraic Programming Language", truth, stdin="0\n")
+    assert run_until_halt_or_ancestor(halts) is True
+    hangs = make_vm("Algebraic Programming Language", truth, stdin="1\n")
+    assert run_until_halt_or_ancestor(hangs) is False

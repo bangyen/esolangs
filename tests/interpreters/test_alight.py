@@ -16,7 +16,7 @@ from tests.interpreters.contract import (
     SnapshotContract,
 )
 from tests.interpreters.runner import run_program
-from tests.raises import assert_rejected_with_hint
+from tests.raises import assert_halts_with_hint, assert_rejected_with_hint
 
 # The wiki's three examples, transcribed from the page source.  Trailing
 # spaces matter (each vertical ``turn right`` sits at a fixed column, and a
@@ -579,5 +579,11 @@ def test_at_list_update_and_aliases(
 
 
 @pytest.mark.medium
-def test_malformed_source_carries_a_repair_hint() -> None:
+def test_bad_programs_carry_a_repair_hint() -> None:
     assert_rejected_with_hint("Alight", "begin;vra x;end;", "did you mean 'var'")
+    assert_halts_with_hint(
+        "Alight", "begin;var v;set v 1/0;end;", "division by zero", "divisor"
+    )
+    assert_halts_with_hint(
+        "Alight", 'begin;var v;set v at{"AB",1};end;', "0.5 + k", "0.5, 1.5"
+    )

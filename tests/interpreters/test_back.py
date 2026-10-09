@@ -4,8 +4,10 @@ import io
 from contextlib import redirect_stdout
 from typing import ClassVar
 
-from esolangs.interpreters.io import IO
+from esolangs.interpreters.io import IO, ScriptedIO
+from esolangs.interpreters.tape_based.back import _Machine as Back
 from esolangs.interpreters.tape_based.back import run
+from esolangs.vm import run_until_halt_or_growth
 from tests.interpreters.contract import CycleContract, SnapshotContract
 from tests.raises import raises_message
 
@@ -99,3 +101,12 @@ class TestContract(SnapshotContract, CycleContract):
     stepping_program: ClassVar[list[str]] = ["-*"]
     halting_program: ClassVar[list[str]] = ["-*"]
     looping_program: ClassVar[list[str]] = ["-"]
+
+
+def test_the_heading_is_part_of_the_code_position() -> None:
+    # Back's position is (row, col, a, b): two visits to one square
+    # travelling different ways are not the same point in the program.
+    machine = Back([">"], ScriptedIO())
+    assert isinstance(machine.ip, tuple)
+    assert len(machine.ip) == 4
+    assert run_until_halt_or_growth(machine) is False

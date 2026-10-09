@@ -9,8 +9,10 @@ import esolangs
 import esolangs.debugger as debugger_api
 from esolangs._execution import interpreter_module
 from esolangs.cli import HELP
+from esolangs.vm import make_vm, run_until_halt_or_all_branches_cycle
 from tests.cli.test_cli import call_main
 from tests.cli_support import call_both
+from tests.generator_support import evaluate_generated, overruns
 from tests.test_vm import _run_all
 
 
@@ -165,3 +167,19 @@ class TestASeedMakesARunRepeat:
     def test_the_help_mentions_it(self) -> None:
         """A flag nobody can find is a flag nobody has."""
         assert "--seed" in HELP["run"]
+
+
+def test_width_floor_matches_its_source_and_overrun_count() -> None:
+    """Warnings follow actual rendered widths, including narrower constructions."""
+    assert esolangs.describe("LaserFuck")["width_aware"]
+    source = esolangs.generate("LaserFuck", "10010110", width=1)
+    assert max(map(len, source.splitlines())) == 8
+    assert overruns("LaserFuck", "10010110") == (2, 7)
+    assert evaluate_generated("LaserFuck", "10010110", width=1) == "10010110"
+
+
+def test_the_branching_detector_takes_a_vm() -> None:
+    """The adapter's seeded ``rng`` must not narrow the search."""
+    looping = make_vm("LaserFuck", " v \n}o{\n ^ ")
+    assert run_until_halt_or_all_branches_cycle(looping) is False
+    assert run_until_halt_or_all_branches_cycle(make_vm("LaserFuck", "}o{")) is True

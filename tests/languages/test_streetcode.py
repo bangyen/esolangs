@@ -8,6 +8,7 @@ import esolangs
 import esolangs.debugger as debugger_api
 from esolangs.tui import Mark, render
 from tests.cli_support import call_both
+from tests.generator_support import evaluate_generated, overruns
 from tests.samples import STREETCODE, STREETCODE_GAP
 from tests.test_tui import _frame, _highlighted, _marked_both, _marked_break, _sgr
 from tests.test_validation import _debugger
@@ -155,3 +156,12 @@ class TestTheAdvisoryNotesAreRenderedOnce:
             stdin="0\n1\n",
         )
         assert "did not exist yet" in out
+
+
+def test_width_floor_matches_its_source_and_overrun_count() -> None:
+    """Warnings follow actual rendered widths, including narrower constructions."""
+    assert esolangs.describe("Streetcode")["width_aware"]
+    source = esolangs.generate("Streetcode", "10010110", width=1)
+    assert max(map(len, source.splitlines())) == 7
+    assert overruns("Streetcode", "10010110") == (2, 6)
+    assert evaluate_generated("Streetcode", "10010110", width=1) == "10010110"
