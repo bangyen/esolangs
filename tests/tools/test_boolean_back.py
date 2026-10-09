@@ -316,7 +316,8 @@ def test_a_permuting_generator_changes_its_drawing() -> None:
         (9, 2035),
         (10, 2036),
         pytest.param(11, 2037, marks=pytest.mark.medium),
-        pytest.param(12, 2038, marks=pytest.mark.medium),
+        # 5.24s alone with coverage exceeds the five-second medium band.
+        pytest.param(12, 2038, marks=pytest.mark.slow),
     ],
 )
 def test_selective_bend_preserves_the_command_bound(n: int, seed: int) -> None:
