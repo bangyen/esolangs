@@ -21,6 +21,79 @@ from tests.tools.boolean_runners import (
 from tests.witness_tables import row_bits, witnesses
 
 
+@pytest.mark.medium
+def test_packed_projection_executes_every_three_input_table():
+    from esolangs._evaluate import _evaluate
+    from esolangs.tools.addsubjump import _addsubjump_packed
+
+    for value in range(256):
+        table = f"{value:08b}"
+        program = _addsubjump_packed(table)
+        legacy = _addsubjump_packed(table, keep_ignored_inputs=True)
+        assert len(program) <= len(legacy)
+        assert _evaluate("AddSubJump", program, inputs=3) == table
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("kind", ["zero", "one", "first", "last", "ends"])
+def test_wide_packed_projection_keeps_reads_and_old_balanced_score(kind):
+    from esolangs._evaluate import _evaluate
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.register_based.addsubjump import _Machine
+    from esolangs.tools.addsubjump import _addsubjump_packed
+    from esolangs.tools.wrap import balance_program, balance_score
+    from esolangs.vm import run_until_halt_or_cycle
+
+    table = (
+        str(int(kind == "one")) * 256
+        if kind in ("zero", "one")
+        else "".join(
+            str(
+                (
+                    (row >> 7)
+                    if kind == "first"
+                    else row & 1
+                    if kind == "last"
+                    else (row >> 7) + (row & 1)
+                )
+                % 2
+            )
+            for row in range(256)
+        )
+    )
+    program = boolean.addsubjump(table)
+    legacy = _addsubjump_packed(table, keep_ignored_inputs=True)
+    assert len(program) < len(legacy)
+    assert _evaluate("AddSubJump", program, inputs=8) == table
+    balanced = esolangs.generate("AddSubJump", table, balance=True)
+    assert balance_score(balanced) <= balance_score(
+        balance_program(legacy, "addsubjump")
+    )
+    assert _evaluate("AddSubJump", balanced, inputs=8) == table
+    for row in (0, 1, 128, 255):
+        bits = [int(c) for c in f"{row:08b}"]
+        stdin = esolangs.encode_inputs("AddSubJump", bits)
+        io = ScriptedIO(stdin + "0")
+        run_until_halt_or_cycle(_Machine(program, io))
+        assert io.position() == 8
+        assert io.getvalue() == table[row]
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("essential", range(1, 8))
+def test_packed_projection_indexes_nonadjacent_coordinates(essential):
+    from esolangs._evaluate import _evaluate
+    from esolangs.tools.addsubjump import _addsubjump_packed
+
+    used = [*range(essential - 1), 7]
+    table = "".join(
+        str(sum((row >> (7 - bit)) & 1 for bit in used) % 2) for row in range(256)
+    )
+    program = boolean.addsubjump(table)
+    assert len(program) <= len(_addsubjump_packed(table, keep_ignored_inputs=True))
+    assert _evaluate("AddSubJump", program, inputs=8) == table
+
+
 class TestAddSubJump:
     def test_branch_normalizes_ascii_bits(self) -> None:
         """Each ASCII input contributes its zero-or-one value to the index."""

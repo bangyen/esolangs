@@ -19,6 +19,37 @@ from esolangs.tools.wrap import (
 from tests.tools.fills import _run_form
 
 
+@pytest.mark.medium
+@pytest.mark.parametrize("bit", ["0", "1"])
+def test_constant_root_keeps_setters_without_index_save_loops(bit):
+    from esolangs.debugger import make_vm
+    from esolangs.tools.bio import BIO_PAIR, _bio
+    from esolangs.tools.helpers import input_weights, mark_runs, unmark
+
+    table = bit * 256
+    template = esolangs.generate("BIO", table)
+    assert "{" not in template
+    assert len(template) == 4 * 8 + 4 * (49 + int(bit))
+    assert _evaluate("BIO", template, inputs=8) == table
+    weights, projected = input_weights(table, 8)
+    legacy = _bio(projected, weights, keep_constant_input=True)
+    marked = mark_runs(legacy, "$", (BIO_PAIR,) * 8)
+    old_balance = unmark(balance_program(marked, "bio"), "$", 8)
+    balanced = esolangs.generate("BIO", table, balance=True)
+    assert balance_score(balanced) <= balance_score(old_balance)
+    assert _evaluate("BIO", balanced, inputs=8) == table
+    for row in (0, 1, 128, 255):
+        bits = [int(c) for c in f"{row:08b}"]
+        vm = make_vm("BIO", esolangs.instantiate("BIO", template, bits))
+        commands = 0
+        while not vm.halted and commands < 58:
+            vm.step()
+            commands += 1
+        assert vm.halted
+        assert vm.output == bit
+        assert commands == 8 + 49 + int(bit)
+
+
 class TestParameterizedBIO:
     """Input-by-substitution generators for the no-input language BIO."""
 

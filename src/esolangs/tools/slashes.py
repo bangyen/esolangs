@@ -2,6 +2,7 @@
 
 The table is a literal with no subtrees to fold or share, and a trailing run
 cannot be trimmed: the cursor ``>`` is left undecoded (116 of 126 wrong).
+Constants delete the input letters and print their literal answer.
 """
 
 from esolangs.registry._contracts import BooleanContract
@@ -13,6 +14,7 @@ _SWEEP = "/*\\>qA/>//*\\>qB/>/"
 _DECODE = "/>qA/C//>qB/D//qA///qB///C/0//D/1/"
 #: Deletes an ignored input's ``X``-marked bit before the unary sweep reads it.
 _IGNORE = "/Xa///Xb//"
+_CONSTANT = "/a///b//"
 
 
 def slashes(truth_table: str) -> str:
@@ -24,6 +26,9 @@ def slashes(truth_table: str) -> str:
     characters for the m inputs the table depends on.
     """
     n = _validate_truth_table(truth_table)
+    if len(set(truth_table)) == 1:
+        # Delete the input letters; no cursor or unary sweep selects a constant.
+        return _CONSTANT + TEMPLATE_CHAR * n + truth_table[0]
     weights, bits = input_weights(truth_table, n)
     table = "".join("qA" if bit == "0" else "qB" for bit in bits)
     slots = "".join(
@@ -35,6 +40,14 @@ def slashes(truth_table: str) -> str:
 
 def _is_unfilled_template(code: str) -> bool:
     """Recognize canonical templates without reserving literal dollars in ///."""
+    if code.startswith(_CONSTANT):
+        data = code[len(_CONSTANT) :]
+        return (
+            len(data) > 1
+            and data[-1] in "01"
+            and TEMPLATE_CHAR in data[:-1]
+            and not data[:-1].strip(TEMPLATE_CHAR + "ab")
+        )
     prefix, delimiter, data = code.partition(_DECODE)
     slots, cursor, table = data.partition(">")
     if (
@@ -67,7 +80,8 @@ LANGUAGE = Language(
     # Not a tree: an indexed table rewrite.
     shape=Shape.LOOKUP,
     contract=BooleanContract(
-        note="Inputs fill the binary row index before unary table selection.",
+        note="Inputs fill the binary row index before unary selection; "
+        "constant tables delete the input letters and print their answer.",
     ),
     no_wrap="newlines are literal output and substitution data",
     example=Example(pair=("a", "b"), unfilled=_is_unfilled_template),
