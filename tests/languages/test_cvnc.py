@@ -36,3 +36,9 @@ class TestPathAndTextTrailingNewline:
         assert esolangs.run("CV(N)(C)", path, stdin=stdin, timeout=5) == esolangs.run(
             "CV(N)(C)", path.read_text(), stdin=stdin, timeout=5
         )
+
+
+@pytest.mark.parametrize("name", ["CV(N)(C)"])
+def test_the_override_name_specifically(name: str) -> None:
+    """Named, so a future override cannot quietly reintroduce the gap."""
+    assert esolangs.describe(f" {name} ")["name"] == name

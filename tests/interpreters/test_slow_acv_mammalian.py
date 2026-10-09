@@ -1,7 +1,6 @@
 """Unit tests for the SLOW ACV SLOW ACV MAMMALIAN interpreter."""
 
-import io
-from contextlib import redirect_stdout
+from functools import partial
 from pathlib import Path
 
 import pytest
@@ -13,14 +12,10 @@ from esolangs.interpreters.tape_based.slow_acv_mammalian import (
 from esolangs.interpreters.tape_based.slow_acv_mammalian import run
 from esolangs.vm import run_until_halt_or_cycle
 from tests.interpreters.contract import SnapshotContract
+from tests.interpreters.runner import run_printing
 from tests.raises import assert_rejected_with_hint, raises_message
 
-
-def run_and_capture(code: str) -> str:
-    buffer = io.StringIO()
-    with redirect_stdout(buffer):
-        run(code, IO())
-    return buffer.getvalue()
+run_and_capture = partial(run_printing, run)
 
 
 class TestMammalian:

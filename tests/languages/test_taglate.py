@@ -3,6 +3,7 @@
 import pytest
 
 import esolangs
+from tests.stdin_check import _check_stdin
 from tests.test_input_encoding import XOR
 
 
@@ -45,3 +46,14 @@ class TestAnswerMode:
 
 def test_the_input_shape_is_padded() -> None:
     assert esolangs.describe("Taglate")["input_shape"] == "char_stream_padded"
+
+
+def test_it_catches_taglates_pad() -> None:
+    """Its odd input count costs an extra line, and the shape says so."""
+    _check_stdin(
+        "Taglate",
+        esolangs.encode_inputs("Taglate", [1, 0, 1], truth_table="00010111"),
+        "00010111",
+    )
+    with pytest.raises(esolangs.ArgumentError):
+        _check_stdin("Taglate", "1\n0\n1\n", "00010111")

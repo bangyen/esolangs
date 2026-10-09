@@ -387,3 +387,8 @@ def test_laserfuck_declines_a_reachable_input_command() -> None:
     machine = Laserfuck(["o,"], ScriptedIO("A\n"))
     with pytest.raises(TimeoutError, match="needs input"):
         run_until_halt_or_all_branches_cycle(machine)
+
+
+def test_branching_search_leaves_an_unbounded_graph_undecided() -> None:
+    with pytest.raises(TimeoutError, match="reachable graph may be unbounded"):
+        run_until_halt_or_all_branches_cycle(Laserfuck(["o*"], ScriptedIO()), limit=1)

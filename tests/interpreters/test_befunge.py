@@ -234,6 +234,10 @@ def test_division_keeps_the_mutable_runtime_stack() -> None:
 @pytest.mark.medium
 def test_hints_for_bad_programs_and_input():
     assert_rejected_with_hint(
-        "Befunge", "&@", "whitespace-separated decimal integer", stdin="oops"
+        "Befunge",
+        "&@",
+        "whitespace-separated decimal integer",
+        stdin="oops",
+        error=ValueError,
     )
     assert_halts_with_hint("Befunge", "10/.@", "divides by zero", "divisor")

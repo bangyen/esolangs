@@ -1,22 +1,17 @@
 """Unit tests for the Back interpreter."""
 
-import io
-from contextlib import redirect_stdout
+from functools import partial
 from typing import ClassVar
 
-from esolangs.interpreters.io import IO, ScriptedIO
+from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.tape_based.back import _Machine as Back
 from esolangs.interpreters.tape_based.back import run
 from esolangs.vm import run_until_halt_or_growth
 from tests.interpreters.contract import CycleContract, SnapshotContract
+from tests.interpreters.runner import run_printing
 from tests.raises import raises_message
 
-
-def run_and_capture(code: list[str]) -> str:
-    buffer = io.StringIO()
-    with redirect_stdout(buffer):
-        run(code, IO())
-    return buffer.getvalue()
+run_and_capture = partial(run_printing, run)
 
 
 class TestBack:

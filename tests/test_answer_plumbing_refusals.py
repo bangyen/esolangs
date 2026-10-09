@@ -36,37 +36,8 @@ class TestTheNewChecksRefuseTheirOwnBadInput:
             machine_traits("Nonexistent")
 
 
-def _big_table(arity: int = 11) -> str:
-    """Return a dense table at ``arity``, past the cap it is used for."""
-    import random
-
-    rng = random.Random(7)
-    return "".join(rng.choice("01") for _ in range(2**arity))
-
-
 class TestEveryAuditedCapIsCatchable:
     """The n=11 probe that found the first five was bounded by n=11."""
-
-    def test_the_refusal_is_catchable_at_the_size_it_refuses(self) -> None:
-        """A refusal past the sweep's bound, at the first arity that triggers it."""
-        with pytest.raises(esolangs.GeneratorCapError, match="cost"):
-            esolangs.generate("Polynomial", _big_table(11))
-
-    def test_it_is_catchable_through_evaluate_too(self) -> None:
-        """NoComment's leaked through ``evaluate`` identically."""
-        with pytest.raises(esolangs.GeneratorCapError):
-            evaluate_generated("Polynomial", _big_table(11))
-
-    def test_befunge_grid_refusal_is_catchable(self) -> None:
-        with pytest.raises(esolangs.GeneratorCapError, match="80x25"):
-            esolangs.generate("Befunge", "0010" * (1 << 12))
-
-    def test_nocomment_builds_at_the_arity_that_escaped(self) -> None:
-        """The escape's subject is gone: n=12 is a template, not a refusal."""
-        n = 12
-        table = "".join(str(bin(r).count("1") % 2) for r in range(2**n))
-        template = esolangs.generate("NoComment", table)
-        assert template.inputs == 12
 
     @pytest.mark.slow
     @pytest.mark.weekly
@@ -172,15 +143,6 @@ class TestASurroundingSpaceResolves:
         """All of them, because the one that failed was not the obvious one."""
         for name in esolangs.list_languages():
             assert esolangs.describe(pad.format(name))["name"] == name
-
-    @pytest.mark.parametrize("name", ["CV(N)(C)"])
-    def test_the_override_name_specifically(self, name: str) -> None:
-        """Named, so a future override cannot quietly reintroduce the gap."""
-        assert esolangs.describe(f" {name} ")["name"] == name
-
-    def test_internal_spacing_is_still_normalized(self) -> None:
-        """The strip must not have replaced the rule that was already working."""
-        assert esolangs.describe("Home  Row")["name"] == "Home Row"
 
 
 class TestABadStdinIsAnArgumentFault:
@@ -349,11 +311,3 @@ class TestDivergenceIsProvenNotWaitedOut:
     def test_the_proven_answer_is_the_table(self, name: str) -> None:
         """The answers must be the ones the clock used to give, exactly."""
         assert evaluate_generated(name, "00011011") == "00011011"
-
-    def test_it_no_longer_costs_a_timeout_per_row(self) -> None:
-        """It was five seconds per 1-row: twenty seconds for this call."""
-        import time
-
-        start = time.monotonic()
-        evaluate_generated("123", "0110")
-        assert time.monotonic() - start < 5.0

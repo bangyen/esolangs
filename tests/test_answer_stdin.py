@@ -64,22 +64,6 @@ class TestTheStdinJudgeIsReachableFromPython:
         with pytest.raises(esolangs.ArgumentError, match=match):
             _check_stdin(*args)
 
-    def test_it_catches_taglates_pad(self) -> None:
-        """Its odd input count costs an extra line, and the shape says so."""
-        _check_stdin(
-            "Taglate",
-            esolangs.encode_inputs("Taglate", [1, 0, 1], truth_table="00010111"),
-            "00010111",
-        )
-        with pytest.raises(esolangs.ArgumentError):
-            _check_stdin("Taglate", "1\n0\n1\n", "00010111")
-
-    def test_a_one_line_language_has_its_bits_counted(self) -> None:
-        """Clockwise's underfeed is a shorter string, not a missing line."""
-        _check_stdin("Clockwise", "101", "00010111")
-        with pytest.raises(esolangs.ArgumentError, match="reads 3 characters"):
-            _check_stdin("Clockwise", "10", "00010111")
-
 
 class TestRunSaysWhenStdinLooksWrong:
     """Silence was indistinguishable from correctness, from Python."""
@@ -92,13 +76,6 @@ class TestRunSaysWhenStdinLooksWrong:
             answer = esolangs.run("brainfuck", program, stdin="110011", timeout=10)
         # A warning, not a refusal: the run still happened and still answered.
         assert answer == "1"
-
-    def test_the_wrong_alphabet_is_warned_about(self) -> None:
-        """The same judgement `check_stdin` raises, rendered as advice."""
-        program = esolangs.generate("Grapheme", "0110")
-        with warnings.catch_warnings():
-            warnings.simplefilter("error")
-            esolangs.run("Grapheme", program, stdin="0\n1\n", timeout=10)
 
     def test_a_program_that_reads_nothing_is_not_warned_about(self) -> None:
         """Reading none of what it was given is not an arity mistake."""
@@ -117,27 +94,6 @@ class TestRunSaysWhenStdinLooksWrong:
             with warnings.catch_warnings():
                 warnings.simplefilter("error")
                 esolangs.run(name, program, stdin=short, timeout=10)
-
-    def test_forgetting_stdin_entirely_is_warned_about(self) -> None:
-        """Fargo answered row 0 -- the starkest case, since nothing was fed."""
-        with warnings.catch_warnings():
-            warnings.simplefilter("error")
-            esolangs.run(
-                "Fargo", esolangs.generate("Fargo", "10010110"), stdin="", timeout=10
-            )
-
-    def test_a_language_whose_documented_stop_is_eof_is_not_warned_about(
-        self,
-    ) -> None:
-        """Suffolk's programs end *by* running out of input."""
-        import warnings
-
-        program = esolangs.generate("Suffolk", "0110")
-        stdin = esolangs.encode_inputs("Suffolk", [1, 0], truth_table="0110")
-        with warnings.catch_warnings(record=True) as caught:
-            warnings.simplefilter("always")
-            assert esolangs.run("Suffolk", program, stdin=stdin, timeout=20) == "1"
-        assert not caught
 
 
 @pytest.mark.parametrize("language", ["Grapheme", "Line", "Piet"])

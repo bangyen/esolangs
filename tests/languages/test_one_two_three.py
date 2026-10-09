@@ -292,3 +292,51 @@ class TestTheEncodersRefuseWhatTheyCannotAnswer:
     def test_read_answer_refuses_a_non_string(self) -> None:
         with pytest.raises(esolangs.ProgramError, match="output must be a string"):
             esolangs.read_answer("brainfuck", None)  # type: ignore[arg-type]
+
+
+def test_read_answer_refuses_a_termination_language(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Their output is not the answer, so reading one would invent it."""
+    with pytest.raises(SystemExit) as exc:
+        call_main(["read-answer", "123"], capsys, stdin="VO")
+    assert exc.value.code == 2
+    err = capsys.readouterr().err
+    assert "--timeout" in err
+    assert "observe" in err
+
+
+def test_run_timeout_is_the_one_for_a_termination_language(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """For the four that answer by diverging, the timeout carries the 1."""
+    program = esolangs.instantiate("123", esolangs.generate("123", "0110"), [0, 1])
+    with pytest.raises(SystemExit) as exc:
+        call_main(
+            ["run", "--timeout", _LOOPS, "123", _program(tmp_path, program)],
+            capsys,
+        )
+    assert exc.value.code == 124
+    assert "answers 1 by not terminating" in capsys.readouterr().err
+
+
+def test_run_halt_is_the_zero_for_a_termination_language(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """And the other polarity, from the same program and a different row."""
+    program = esolangs.instantiate("123", esolangs.generate("123", "0110"), [0, 0])
+    out, err = call_both(
+        ["run", "--timeout", _LOOPS, "123", _program(tmp_path, program)],
+        capsys,
+    )
+    assert out == ""
+    assert err == ""
+
+
+def test_it_no_longer_costs_a_timeout_per_row() -> None:
+    """It was five seconds per 1-row: twenty seconds for this call."""
+    import time
+
+    start = time.monotonic()
+    evaluate_generated("123", "0110")
+    assert time.monotonic() - start < 5.0

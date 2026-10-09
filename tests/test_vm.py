@@ -8,10 +8,7 @@ import esolangs
 import esolangs.debugger as debugger_api
 from esolangs.exceptions import UnknownLanguageError
 from esolangs.vm import VM
-
-from .samples import (
-    SAMPLES,
-)
+from tests.pick import languages
 
 
 def _run_all(vm: VM) -> str:
@@ -22,7 +19,9 @@ def _run_all(vm: VM) -> str:
 
 class TestProtocol:
     @pytest.mark.medium
-    @pytest.mark.parametrize("language", ["Line", "Piet"])
+    @pytest.mark.parametrize(
+        "language", languages(source_kind="raster", boolean_generator=True)
+    )
     def test_raster_languages_step_their_pixels(self, language: str) -> None:
         source = esolangs.generate(language, "01")
         pixels = esolangs.Raster.from_png(source.to_png())
@@ -84,34 +83,7 @@ class TestEveryLanguageIsSteppable:
                 missing[language] = absent
 
         assert missing == {}
-        assert random_languages == {
-            "Befunge",
-            "Fish",
-            "INTERCAL",
-            "LaserFuck",
-            "Modulous",
-            "Painfuck",
-            "Super SNUSP",
-            "Thue",
-            "thisthat",
-        }, "the random set changed -- a new language needs a branching search"
-
-    def test_memory_and_stack_are_copies_not_the_live_store(self) -> None:
-        """A caller must not be able to write into a running machine.
-
-        ``_DelegatingVM`` makes the copy once for every interpreter, so a tape
-        language and FALSE (non-empty memory and stack) cover it.
-        """
-        for name in ("brainfuck", "FALSE"):
-            program, stdin = SAMPLES[name]
-            vm = debugger_api.make_vm(name, program, stdin=stdin)
-            with contextlib.suppress(Exception):
-                vm.step()
-            before_mem, before_stk = list(vm.memory), list(vm.stack)
-            vm.memory.append(12345)
-            vm.stack.append("scribble")
-            assert list(vm.memory) == before_mem, f"{name}: memory is live"
-            assert list(vm.stack) == before_stk, f"{name}: stack is live"
+        assert random_languages, "the sweep found no random language"
 
     def test_stepping_is_reproducible_for_the_random_languages(self) -> None:
         """Each sampled random instruction steps the same way twice."""

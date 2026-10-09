@@ -24,14 +24,15 @@ def assert_rejected_with_hint(
     hint: str,
     *,
     message: str = "",
-    error: type[Exception] = ValueError,
+    error: type[Exception] | None = None,
     stdin: str = "",
     **options: object,
 ) -> None:
-    """Running ``source`` raises ``error`` with a repair ``hint`` attached."""
+    """Running ``source`` raises ``error`` (a ``ProgramError`` by default)
+    with a repair ``hint`` attached."""
     import esolangs  # the installed package: a mutation bundle copies this file
 
-    with pytest.raises(error, match=r".+") as caught:
+    with pytest.raises(error or esolangs.ProgramError, match=r".+") as caught:
         # Rejection is at load or within a few steps (ms); the bound only
         # stops a hang, and 0.2s tripped on a contended release runner.
         esolangs.run(language, source, stdin=stdin, timeout=2, **options)  # type: ignore[arg-type]

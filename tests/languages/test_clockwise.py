@@ -60,3 +60,10 @@ def test_clockwise_is_not_marked_because_it_never_reads_past_an_end() -> None:
 
 def test_the_input_is_a_bit_string() -> None:
     assert esolangs.encode_inputs("Clockwise", [1, 1, 1, 1]) == "1111"
+
+
+def test_a_one_line_language_has_its_bits_counted() -> None:
+    """Clockwise's underfeed is a shorter string, not a missing line."""
+    _check_stdin("Clockwise", "101", "00010111")
+    with pytest.raises(esolangs.ArgumentError, match="reads 3 characters"):
+        _check_stdin("Clockwise", "10", "00010111")

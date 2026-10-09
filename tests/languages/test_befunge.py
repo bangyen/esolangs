@@ -37,3 +37,8 @@ def test_invalid_numeric_input_is_not_mislabeled_as_a_program_error(mode: str) -
     ) as error:
         esolangs.run("Befunge", '"A",&.@', stdin=io.StringIO("invalid"), **bounds)
     assert error.value.partial_output == "A"
+
+
+def test_befunge_grid_refusal_is_catchable() -> None:
+    with pytest.raises(esolangs.GeneratorCapError, match="80x25"):
+        esolangs.generate("Befunge", "0010" * (1 << 12))

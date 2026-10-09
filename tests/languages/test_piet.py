@@ -9,7 +9,9 @@ import esolangs
 from esolangs import Raster
 from esolangs._evaluate import _evaluate
 from esolangs._execution import interpreter_module
+from esolangs.exceptions import TemplateError
 from esolangs.registry import LANGUAGES, SourceKind
+from tests.test_api_contracts import XOR
 
 
 def test_bound_raster_language_loads_and_evaluates_png(tmp_path):
@@ -91,3 +93,9 @@ def test_raster_interpreter_retains_geometry_hint():
     with pytest.raises(esolangs.ProgramError, match=r".+") as caught:
         esolangs.run("Piet", image, scale=2, timeout=1)
     assert "dividing both image dimensions" in caught.value.__notes__[0]
+
+
+def test_a_raster_is_refused_as_a_template() -> None:
+    """Typed ``Program`` so generate's result type-checks; no raster embeds."""
+    with pytest.raises(TemplateError, match="raster programs read"):
+        esolangs.instantiate("Piet", esolangs.generate("Piet", XOR), [0, 1])

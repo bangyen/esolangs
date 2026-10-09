@@ -1,6 +1,7 @@
 """Grapheme through the shared API, CLI and machinery."""
 
 import json
+import warnings
 from io import StringIO
 from pathlib import Path
 from unittest.mock import patch
@@ -24,6 +25,7 @@ from esolangs.vm import complete_vm, make_vm
 from tests.cli.test_cli import call_main
 from tests.cli_support import assert_repair_runs, call_both, repaired
 from tests.stdin_check import _check_stdin
+from tests.test_api_contracts import XOR
 from tests.test_dialects import Unreadable
 from tests.witness_tables import witnesses
 
@@ -440,3 +442,41 @@ def test_grapheme_case_preview_preserves_other_characters():
 
 def test_the_input_alphabet() -> None:
     assert esolangs.describe("Grapheme")["input_encoding"] == ("%", "A")
+
+
+def test_grapheme_names_its_input_alphabet() -> None:
+    """Digits are read as truthy, so 0/1 lines answer the wrong row."""
+    assert esolangs.describe("Grapheme")["input_encoding"] == ("%", "A")
+    assert esolangs.describe("brainfuck")["input_encoding"] == ("0", "1")
+
+
+def test_the_named_alphabet_is_the_one_that_works() -> None:
+    """The point of the key: using it reproduces the truth table."""
+    zero, one = esolangs.describe("Grapheme")["input_encoding"]  # type: ignore[misc]
+    program = esolangs.generate("Grapheme", XOR)
+    got = "".join(
+        esolangs.run("Grapheme", program, stdin=f"{[zero, one][a]}\n{[zero, one][b]}\n")
+        for a in (0, 1)
+        for b in (0, 1)
+    )
+    assert got == XOR
+
+
+def test_the_wrong_alphabet_is_warned_about() -> None:
+    """The same judgement `check_stdin` raises, rendered as advice."""
+    program = esolangs.generate("Grapheme", "0110")
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        esolangs.run("Grapheme", program, stdin="0\n1\n", timeout=10)
+
+
+def test_a_load_error_is_reported_not_raised(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """``debug --help`` promises a raise is reported, not propagated."""
+    path = tmp_path / "junk.txt"
+    path.write_text("ZZZ!!!")
+    with pytest.raises(SystemExit) as exc:
+        call_main(["debug", "Grapheme", str(path)], capsys)
+    assert exc.value.code == 2
+    assert "uppercase Latin letters" in capsys.readouterr().err

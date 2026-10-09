@@ -7,8 +7,11 @@ from pathlib import Path
 import pytest
 
 import esolangs
+import esolangs.debugger as debugger_api
 from esolangs._evaluate import _evaluate
+from tests.cli.test_cli import call_main
 from tests.stdin_check import _check_stdin
+from tests.test_stepping_parity import _STEP_BUDGET, _row
 
 
 def test_bound_template_language_runs_each_input_row():
@@ -154,3 +157,31 @@ def test_execution_does_not_require_examples_or_docstrings(monkeypatch) -> None:
     _check_stdin("brainfuck", "01", "0110")
     assert esolangs.read_answer("RAM0", "z: 1\nn: 0") == "1"
     assert _evaluate("brainfuck", program, inputs=2) == "0110"
+
+
+def test_the_debugger_mirrors_them_too() -> None:
+    """Reading them meant reaching through ``.vm``, which decides nothing."""
+    d = debugger_api.make_debugger("RAM0", _row("RAM0", "0110", [0, 1])[0])
+    assert d.dumps_on_the_post_halt_step is True
+    assert d.self_halts is True
+    assert d.steppable_to_answer is True
+
+
+def test_a_dump_is_reachable_without_touching_the_wrapped_vm() -> None:
+    """``Debugger.step`` returned early on ``halted``; the dump *is* that step."""
+    program, _ = _row("RAM0", "0110", [0, 1])
+    debugger = debugger_api.make_debugger("RAM0", program)
+    assert debugger.run(max_steps=_STEP_BUDGET) == "halted"
+    assert esolangs.read_answer("RAM0", debugger.output) == "1"
+    # And the step after the dump is the no-op the docstring promises,
+    # so a caller who does step again is not punished for it.
+    before = debugger.output
+    debugger.step()
+    assert debugger.output == before
+
+
+def test_read_answer_finds_a_dumped_answer(capsys: pytest.CaptureFixture[str]) -> None:
+    """RAM0's answer is its `z` register, three lines from the end."""
+    program = esolangs.instantiate("RAM0", esolangs.generate("RAM0", "0110"), [0, 1])
+    output = esolangs.run("RAM0", program, timeout=20)
+    assert call_main(["read-answer", "RAM0"], capsys, stdin=output).strip() == "1"

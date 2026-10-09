@@ -7,7 +7,6 @@ import sys
 import threading
 from importlib.resources import files
 from pathlib import Path
-from typing import ClassVar
 
 import pytest
 
@@ -26,6 +25,8 @@ from esolangs.exceptions import (
 from esolangs.registry import LANGUAGES
 from esolangs.tools.wrap import takes_width
 from tests.generator_support import CHECK, evaluate_generated
+from tests.pick import languages
+from tests.test_language_coupling import REFERENCE
 
 XOR = "0110"
 ROOT = pathlib.Path(__file__).parents[1]
@@ -47,29 +48,6 @@ class TestNameResolution:
 
 class TestParameterizedTemplates:
     """A template is never mistaken for a runnable program."""
-
-    def test_running_one_unfilled_is_refused(self) -> None:
-        """Minifuck ignored its slots and reported a constant as the answer."""
-        template = esolangs.generate("Minifuck", XOR)
-        with pytest.raises(TemplateError) as exc:
-            esolangs.run("Minifuck", template)
-        assert "unfilled runs of '$'" in str(exc.value)
-        assert "instantiate" in str(exc.value)
-
-    def test_a_raster_is_refused_as_a_template(self) -> None:
-        """Typed ``Program`` so generate's result type-checks; no raster embeds."""
-        with pytest.raises(TemplateError, match="raster programs read"):
-            esolangs.instantiate("Piet", esolangs.generate("Piet", XOR), [0, 1])
-
-    def test_instantiating_gives_the_right_answer(self) -> None:
-        """The whole point: all four rows, executed."""
-        template = esolangs.generate("Minifuck", XOR)
-        got = "".join(
-            esolangs.run("Minifuck", esolangs.instantiate("Minifuck", template, [a, b]))
-            for a in (0, 1)
-            for b in (0, 1)
-        )
-        assert got == XOR
 
     def test_a_reader_has_nothing_to_instantiate(self) -> None:
         with pytest.raises(TemplateError, match="reads its inputs"):
@@ -278,25 +256,10 @@ PUBLIC_MEMBERS = {
 class TestConventionsAreDiscoverable:
     """How to feed a language, and how to read its answer, are askable."""
 
-    def test_grapheme_names_its_input_alphabet(self) -> None:
-        """Digits are read as truthy, so 0/1 lines answer the wrong row."""
-        assert esolangs.describe("Grapheme")["input_encoding"] == ("%", "A")
-        assert esolangs.describe("brainfuck")["input_encoding"] == ("0", "1")
-
-    def test_the_named_alphabet_is_the_one_that_works(self) -> None:
-        """The point of the key: using it reproduces the truth table."""
-        zero, one = esolangs.describe("Grapheme")["input_encoding"]  # type: ignore[misc]
-        program = esolangs.generate("Grapheme", XOR)
-        got = "".join(
-            esolangs.run(
-                "Grapheme", program, stdin=f"{[zero, one][a]}\n{[zero, one][b]}\n"
-            )
-            for a in (0, 1)
-            for b in (0, 1)
-        )
-        assert got == XOR
-
-    @pytest.mark.parametrize("name", ["123", "ArrowQueue", "Fargo"])
+    @pytest.mark.parametrize(
+        "name",
+        languages(answer_mode="termination") + languages(input_shape="row_index"),
+    )
     def test_a_language_that_needs_explaining_explains_itself(self, name: str) -> None:
         """Termination-as-answer and Fargo's row index are not guessable."""
         assert esolangs.describe(name)["answer_convention"]
@@ -308,21 +271,12 @@ class TestConventionsAreDiscoverable:
 class TestEveryDeliberateErrorIsCatchable:
     """The package docstring's promise, checked against the interpreters."""
 
-    @pytest.mark.parametrize(
-        ("language", "source"),
-        [
-            ("brainfuck", "[[["),
-            ("Sophie", "{{{"),
-            ("Streetcode", "zzz"),
-            ("Grapheme", "abc"),
-        ],
-    )
-    def test_a_malformed_program_is_a_programerror(
-        self, language: str, source: str
-    ) -> None:
-        """They were bare ValueErrors, so the documented base class missed."""
+    def test_a_malformed_program_is_a_programerror(self) -> None:
+        """They were bare ValueErrors, so the documented base class missed.
+
+        ``assert_rejected_with_hint`` checks each language's own."""
         with pytest.raises(ProgramError) as exc:
-            esolangs.run(language, source, timeout=5)
+            esolangs.run(REFERENCE, "[[[", timeout=5)
         assert isinstance(exc.value, EsolangError)
         assert str(exc.value)
 
@@ -484,19 +438,17 @@ class TestTheThreadRefusalNamesAWayThrough:
 
     def test_the_debugger_route_bounds_a_diverging_program(self) -> None:
         """The one that matters: a program that never halts, on a thread."""
-        template = esolangs.generate("123", "0110")
-        program = esolangs.instantiate("123", template, [0, 1])
+        name = languages(answer_mode="termination", parameterized=True)[0]
+        program = esolangs.instantiate(name, esolangs.generate(name, "0110"), [0, 1])
 
         def work() -> object:
-            return debugger_api.make_debugger("123", program, stdin="").run(
-                timeout=0.01
-            )
+            return debugger_api.make_debugger(name, program, stdin="").run(timeout=0.01)
 
         assert self._off_thread(work) == "timeout"
 
     def test_the_private_evaluation_route_works_on_a_thread(self) -> None:
         """The private harness settles diverging rows off the main thread."""
-        for language in ("123", "ArrowQueue"):
+        for language in languages(answer_mode="termination", parameterized=True)[:2]:
             outcome = self._off_thread(
                 lambda language=language: evaluate_generated(  # type: ignore[misc]
                     language, "0110", timeout=None
@@ -531,28 +483,6 @@ class TestTheVersionIsResolvedWhenAsked:
             check=True,
         )
         assert result.stdout.strip() == f"esolangs {esolangs.__version__}"
-
-
-class TestAnAddressIsNotAllocatedOnTrust:
-    """Three interpreters grew a store to whatever the program named."""
-
-    HUGE: ClassVar[list[tuple[str, str]]] = [
-        ("S*bleq", "100000000000000000000 0 0"),
-        ("S*bleq", "1000000000000000000 0 0"),
-        ("Decleq", "1 100000000000000000000"),
-    ]
-
-    @pytest.mark.parametrize(("language", "program"), HUGE)
-    def test_it_is_refused_cleanly(self, language: str, program: str) -> None:
-        """Refused before allocating, so a bigger machine thrashes no worse."""
-        with pytest.raises(esolangs.InterpreterLimitError, match="grow its store"):
-            esolangs.run(language, program, stdin="", timeout=2)
-
-    def test_an_ordinary_address_still_grows(self) -> None:
-        """A cap that refused real programs would be worse than the bug."""
-        assert esolangs.run("S*bleq", "20 0 0", stdin="", timeout=5) == ""
-        assert evaluate_generated("Decleq", "0110", timeout=30) == "0110"
-        assert evaluate_generated("S*bleq", "0110", timeout=30) == "0110"
 
 
 class TestThePathGuardKnowsMoreThanTxt:
