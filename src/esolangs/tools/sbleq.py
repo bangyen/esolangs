@@ -51,9 +51,8 @@ def sbleq(truth_table: str) -> str:
     reached through the copy's target cell (branches to one copy share a
     cell), a zero-subtree becomes ``0 0 c`` (cell 0 is always zero, so the
     jump is taken), a leaf is emitted once per answer, and a test whose
-    halves agree is skipped.  Shared, the tree is O(T), so it runs past 16
-    entries against :func:`packed_decoder`, which it undercuts through about
-    nine inputs.
+    halves agree is skipped.  The O(T) shared tree races the packed
+    decoder past 16 entries, and wins through about nine inputs.
     """
     _validate_truth_table(truth_table)
     tree = in_input_order(truth_table, _sbleq_shared)
