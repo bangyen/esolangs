@@ -15,6 +15,7 @@ from esolangs.exceptions import InterpreterLimitError, ProgramError
 from esolangs.registry import INTERPRETERS
 from esolangs.vm import VM, _climbs_forever, make_vm, run_until_halt
 from tests.generator_support import CHECK
+from tests.pick import languages
 
 from .samples import (
     DUMPS_ON_THE_POST_HALT_STEP,
@@ -249,10 +250,22 @@ def _first_move(name: str, program: str, stdin: str) -> tuple[int, int]:
     return (before[0] != after[0], before[1] != after[1])
 
 
+def _sampled(**facts: object) -> str:
+    """The first language with these facts that has a sample program."""
+    return next(name for name in languages(**facts) if name in SAMPLES)
+
+
 @pytest.mark.medium
 # A tape language, a grid language, and one that never halts by itself:
 # ``complete_vm`` is the same driver for all of them.
-@pytest.mark.parametrize("name", ["Smallfuck", "Befunge", "Suffolk"])
+@pytest.mark.parametrize(
+    "name",
+    [
+        _sampled(state_model="tape"),
+        _sampled(state_model="grid", self_halts=True),
+        _sampled(self_halts=False),
+    ],
+)
 def test_completion_agrees_with_running(name):
     source, stdin = SAMPLES[name]
     vm = make_vm(name, source, stdin=stdin)

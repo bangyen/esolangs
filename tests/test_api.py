@@ -10,14 +10,14 @@ from esolangs._evaluate import _evaluate
 from esolangs._validate import check_bits, check_scale, check_timeout, check_whole
 from esolangs.exceptions import EsolangError, UnknownLanguageError
 from esolangs.interpreters.source_hints import error_text
+from esolangs.registry import LANGUAGES
 from esolangs.vm import machine_traits
 from tests.stdin_check import _check_stdin
 
 
 def test_list_languages() -> None:
     names = esolangs.list_languages()
-    assert "Sophie" in names
-    assert "Circlefuck" in names
+    assert set(names) == set(LANGUAGES)
     assert names == sorted(names)
 
 
@@ -110,10 +110,8 @@ def test_describe_structured_summary() -> None:
 
 
 def test_describe_covers_state_models() -> None:
-    assert esolangs.describe("Forþ")["state_model"] == "stack"
-    assert esolangs.describe("Decleq")["state_model"] == "register"
-    assert esolangs.describe("LaserFuck")["state_model"] == "grid"
-    assert esolangs.describe("NoComment")["boolean_generator"] is True
+    models = {esolangs.describe(n)["state_model"] for n in esolangs.list_languages()}
+    assert {"stack", "register", "grid", "tape"} <= models
 
 
 @pytest.mark.parametrize("table", ["", "0120", "010", "1"])

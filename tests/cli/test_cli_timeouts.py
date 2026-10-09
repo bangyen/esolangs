@@ -11,6 +11,7 @@ from esolangs.cli import HELP
 from tests.cli.test_cli import _program, call_main
 from tests.cli_support import _LOOPS, _refused, call_both
 from tests.generator_support import evaluate_generated
+from tests.pick import languages
 
 _BAD_TIMEOUTS = [
     # A forgotten number blamed the positional it had swallowed.
@@ -70,7 +71,9 @@ class TestRunCanBeBounded:
 class TestEvaluationProvesRatherThanWaits:
     """A generous bound must not be paid per diverging row."""
 
-    @pytest.mark.parametrize("language", ["123", "ArrowQueue"])
+    @pytest.mark.parametrize(
+        "language", languages(answer_mode="termination", boolean_generator=True)[:2]
+    )
     def test_a_diverging_row_is_settled_quickly(self, language: str) -> None:
         """A generous bound must not be paid; it is the backstop, not the clock."""
         start = time.perf_counter()

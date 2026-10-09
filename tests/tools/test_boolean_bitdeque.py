@@ -4,7 +4,9 @@ from itertools import pairwise
 
 import pytest
 
+from esolangs import tools as boolean
 from esolangs.tools.bitdeque import _bitdeque_ordered
+from tests.source_support import source_units
 from tests.witness_tables import row_bits, witnesses
 
 
@@ -180,3 +182,23 @@ def test_bitdeque_short_load_rejects_wrong_table_provenance() -> None:
     template = str(esolangs.generate("Bitdeque", "0110", width=9))
     with pytest.raises(esolangs.TemplateError, match="not the template"):
         esolangs.instantiate("Bitdeque", template, [0, 1], truth_table="0001")
+
+
+def test_reordering_never_grows_a_program() -> None:
+    """Choosing the input order can only shrink the emitted program."""
+    for n in (1, 2, 3):
+        for value in range(2 ** (2**n)):
+            table = bin(value)[2:].zfill(2**n)
+            baseline = _bitdeque_ordered(table, tuple(range(n)))
+            # An order the search cannot place has no baseline to beat.
+            if not baseline:
+                continue
+            assert source_units(boolean.bitdeque(table)) <= len(baseline), table
+
+
+def test_reordering_shrinks_the_tables_it_should() -> None:
+    """A table only one input order folds well is emitted from that order."""
+    table = "10101010"
+    assert source_units(boolean.bitdeque(table)) < len(
+        _bitdeque_ordered(table, (0, 1, 2))
+    )

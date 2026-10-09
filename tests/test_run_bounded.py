@@ -5,13 +5,20 @@ from concurrent.futures import ThreadPoolExecutor
 import pytest
 
 import esolangs
+from tests.pick import languages
 from tests.samples import SAMPLES
 
 pytestmark = pytest.mark.medium
 
 
 # ``max_steps`` is one driver for every language: a tape and a grid one.
-@pytest.mark.parametrize("language", ["Smallfuck", "Befunge"])
+@pytest.mark.parametrize(
+    "language",
+    [
+        next(n for n in languages(state_model=model, self_halts=True) if n in SAMPLES)
+        for model in ("tape", "grid")
+    ],
+)
 def test_bounded_run_matches_whole_program_execution(language: str) -> None:
     program, stdin = SAMPLES[language]
     assert esolangs.run(
@@ -47,12 +54,16 @@ def test_invalid_bounds_are_refused(options: dict[str, object]) -> None:
         esolangs.run("brainfuck", "", **options)
 
 
-@pytest.mark.parametrize("language", ["Line", "Piet"])
+@pytest.mark.parametrize(
+    "language", languages(source_kind="raster", boolean_generator=True)
+)
 def test_raster_execution_obeys_the_step_bound(language: str) -> None:
     source = esolangs.generate(language, "01")
-    assert esolangs.run(language, source, stdin="1\n", max_steps=1000) == "1"
+    stdin = esolangs.encode_inputs(language, [1])
+    out = esolangs.run(language, source, stdin=stdin, max_steps=1000)
+    assert esolangs.read_answer(language, out) == "1"
     with pytest.raises(esolangs.ExecutionTimeoutError):
-        esolangs.run(language, source, stdin="1\n", max_steps=0)
+        esolangs.run(language, source, stdin=stdin, max_steps=0)
 
 
 def test_interpreter_errors_are_preserved() -> None:

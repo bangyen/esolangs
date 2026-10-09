@@ -129,13 +129,13 @@ class TestParseTarget:
     def test_a_qualified_target_resolves_in_each_family(self) -> None:
         """Both kinds are reachable, named ``family/module``."""
         script = load_script()
-        assert script._parse_target("tools/decleq") == ("tools", "decleq")  # noqa: SLF001
+        assert script._parse_target("tools/brainfuck") == ("tools", "brainfuck")  # noqa: SLF001
         assert script._parse_target("tools/wrap") == ("tools", "wrap")  # noqa: SLF001
 
     def test_an_unambiguous_bare_name_still_resolves(self) -> None:
         """The bare spelling keeps working where it is unambiguous."""
         script = load_script()
-        assert script._parse_target("minifuck") == ("tools", "minifuck")  # noqa: SLF001
+        assert script._parse_target("brainfuck") == ("tools", "brainfuck")  # noqa: SLF001
 
     def test_a_name_in_both_families_is_refused(self) -> None:
         """The failure this prevents is silent, which is why it is an error."""
@@ -149,10 +149,10 @@ class TestParseTarget:
         script._FAMILIES = (*script._FAMILIES, "mirror")  # noqa: SLF001
         try:
             with pytest.raises(SystemExit) as excinfo:
-                script._parse_target("decleq")  # noqa: SLF001
+                script._parse_target("brainfuck")  # noqa: SLF001
             message = str(excinfo.value)
-            assert "tools/decleq" in message
-            assert "mirror/decleq" in message
+            assert "tools/brainfuck" in message
+            assert "mirror/brainfuck" in message
         finally:
             del kinds["mirror"]
 
@@ -165,7 +165,7 @@ class TestParseTarget:
             script._parse_target("nosuchmodule")  # noqa: SLF001
         message = str(excinfo.value)
         assert "nosuchmodule" in message
-        assert "decleq" in message
+        assert "brainfuck" in message
 
     def test_an_unknown_family_is_refused(self) -> None:
         """A qualified target with a bad family names the families instead."""
@@ -214,7 +214,7 @@ class TestPrepare:
     def test_focused_generator_baseline_collects(self, tmp_path: Path) -> None:
         script = load_script()
         proj, _ = script._prepare(  # noqa: SLF001
-            "tools", "underload", tmp_path, slow=False, selection="underload"
+            "tools", "brainfuck", tmp_path, slow=False, selection="brainfuck"
         )
         result = subprocess.run(
             [sys.executable, "-m", "pytest", "--collect-only", "-q", "tests/tools"],
@@ -244,7 +244,7 @@ class TestPrepare:
         assert scored == proj / "mutants" / f"{mutated}.meta"
 
 
-@pytest.mark.parametrize("selection", [None, "suffolk"])
+@pytest.mark.parametrize("selection", [None, "brainfuck"])
 def test_config_isolates_xdist_and_applies_selection_to_every_pass(
     tmp_path: Path,
     selection: str | None,
@@ -253,12 +253,12 @@ def test_config_isolates_xdist_and_applies_selection_to_every_pass(
 
     script = load_script()
     proj, _ = script._prepare(  # noqa: SLF001
-        "tools", "suffolk", tmp_path, slow=False, selection=selection
+        "tools", "brainfuck", tmp_path, slow=False, selection=selection
     )
     config = tomllib.loads((proj / "pyproject.toml").read_text())
     options = config["tool"]["pytest"]["ini_options"]["addopts"]
     assert options[:4] == ["-n", "0", "-m", "not slow"]
-    assert options[4:] == ([] if selection is None else ["-k", "suffolk"])
+    assert options[4:] == ([] if selection is None else ["-k", "brainfuck"])
 
 
 def test_interpreter_mutation_discovery_includes_nested_packages(

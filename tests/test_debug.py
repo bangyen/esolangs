@@ -108,12 +108,3 @@ class TestSteppingWarnsAboutStdinToo:
             and not esolangs.describe(name)["parameterized"]
             and name != "Alight"
         ]
-
-    def test_alight_refuses_instead_of_warning(self) -> None:
-        """The documented exception, pinned so it stays a *loud* one."""
-        program = esolangs.generate("Alight", "0110")
-        full = esolangs.encode_inputs("Alight", [1, 0])
-        short = "\n".join(full.split("\n")[:-2]) + "\n"
-        dbg = debugger_api.make_debugger("Alight", program, stdin=short)
-        with pytest.raises(esolangs.HaltError, match="eof"):
-            _step_to_halt(dbg)

@@ -13,7 +13,7 @@ import esolangs
 import esolangs.debugger as debugger_api
 from esolangs import _check_program, _run
 from tests.generator_support import evaluate_generated, verify_generated
-from tests.pick import languages
+from tests.pick import first, languages
 from tests.stdin_check import _check_stdin
 from tests.test_language_coupling import REFERENCE
 
@@ -297,7 +297,15 @@ class TestEvaluateCanRunOffTheMainThread:
         """As it does in ``run``; here the same word meant "use the default"."""
         import concurrent.futures as cf
 
-        names = ["brainfuck", "Suffolk", "123", "A Painter Ant", "Fargo"]
+        # One of each way to answer: output, no self-halt, termination, a
+        # dump, and a row-index reader.
+        names = [
+            REFERENCE,
+            first(self_halts=False, boolean_generator=True),
+            first(answer_mode="termination", boolean_generator=True),
+            first(answer_mode="dump", boolean_generator=True),
+            first(input_shape="row_index"),
+        ]
         with cf.ThreadPoolExecutor(4) as pool:
             got = list(pool.map(lambda n: verify_generated(n, "0110", None), names))
         assert all(got), dict(zip(names, got, strict=True))
@@ -306,7 +314,9 @@ class TestEvaluateCanRunOffTheMainThread:
 class TestDivergenceIsProvenNotWaitedOut:
     """A repeated state settles it exactly, and in milliseconds."""
 
-    @pytest.mark.parametrize("name", ["123", "ArrowQueue"])
+    @pytest.mark.parametrize(
+        "name", languages(answer_mode="termination", boolean_generator=True)[:2]
+    )
     def test_the_proven_answer_is_the_table(self, name: str) -> None:
         """The answers must be the ones the clock used to give, exactly."""
         assert evaluate_generated(name, "00011011") == "00011011"

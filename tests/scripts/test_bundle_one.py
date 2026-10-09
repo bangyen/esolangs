@@ -19,7 +19,10 @@ from esolangs import Program
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.registry import LANGUAGES, RUNNERS, canonical_id
 from esolangs.tools.examples import BOOLEAN_EXAMPLES
+from tests.pick import languages
 from tests.scripts.script_support import load
+
+_RASTERS = languages(source_kind="raster", boolean_generator=True)
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = REPO_ROOT / "scripts" / "bundle_one.py"
@@ -234,7 +237,7 @@ def test_install_one_downloads_and_runs_a_bundle() -> None:
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("language", ["Line", "Piet"])
+@pytest.mark.parametrize("language", _RASTERS)
 @pytest.mark.parametrize("scale", [1, 2])
 def test_raster_bundle_matches_pixels_and_runs_standalone(
     language: str, scale: int, tmp_path: Path
@@ -264,7 +267,7 @@ def test_raster_bundle_matches_pixels_and_runs_standalone(
         )
 
 
-@pytest.mark.parametrize("language", ["Line", "Piet"])
+@pytest.mark.parametrize("language", _RASTERS)
 @pytest.mark.medium
 def test_raster_module_entry_point_matches_the_library(
     language: str, tmp_path: Path
@@ -325,7 +328,7 @@ def test_package_bundle_also_supports_text_without_pillow(tmp_path: Path) -> Non
     assert result.stdout == "hello"
 
 
-@pytest.mark.parametrize("language", ["Line", "Piet"])
+@pytest.mark.parametrize("language", _RASTERS)
 @pytest.mark.medium
 def test_raster_package_bundles_from_raw_http_sources(
     language: str, tmp_path: Path

@@ -10,6 +10,7 @@ import pytest
 import esolangs
 from esolangs.cli import HELP, USAGE
 from tests.cli.test_cli import call_main
+from tests.pick import first
 
 
 class TestExamplesShipWithThePackage:
@@ -52,23 +53,18 @@ class TestWikiUrlsAreUsable:
 
     def test_non_ascii_is_escaped(self) -> None:
         """Raw bytes work in a browser and are refused by a strict client."""
-        assert esolangs.describe("Forþ")["wiki_url"] == (
-            "https://esolangs.org/wiki/For%C3%BE"
-        )
+        name = next(n for n in esolangs.list_languages() if not n.isascii())
+        slug = str(esolangs.describe(name)["wiki_url"]).rsplit("/", 1)[1]
+        assert slug.isascii()
+        assert "%" in slug
 
     @pytest.mark.parametrize(
-        ("name", "expected"),
-        [
-            ("CV(N)(C)", "CV(N)(C)"),
-            ("S*bleq", "S*bleq"),
-            ("bit~", "bit~"),
-            ("SLOW ACV MAMMALIAN", "SLOW_ACV_MAMMALIAN"),
-        ],
+        "name", [n for n in esolangs.list_languages() if set(n) & set("()*~ ")]
     )
-    def test_the_readable_ones_stay_readable(self, name: str, expected: str) -> None:
+    def test_the_readable_ones_stay_readable(self, name: str) -> None:
         """Parentheses and ``*`` are legal in a path and all answer 200."""
         assert esolangs.describe(name)["wiki_url"] == (
-            f"https://esolangs.org/wiki/{expected}"
+            f"https://esolangs.org/wiki/{name.replace(' ', '_')}"
         )
 
     def test_every_url_is_a_valid_path(self) -> None:
@@ -144,7 +140,7 @@ class TestDescribeHidesInputFieldsWithNoInput:
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """And names the flag that supplies the bits instead."""
-        out = call_main(["describe", "Minifuck"], capsys)
+        out = call_main(["describe", first(parameterized=True)], capsys)
         assert "input_shape" not in out
         assert "generate --bits" in out
 
@@ -152,7 +148,7 @@ class TestDescribeHidesInputFieldsWithNoInput:
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """The fields are the point for the languages that have them."""
-        out = call_main(["describe", "Fargo"], capsys)
+        out = call_main(["describe", first(input_shape="row_index")], capsys)
         assert "input_shape" in out
         assert "row_index" in out
 

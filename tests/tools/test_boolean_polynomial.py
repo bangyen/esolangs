@@ -341,3 +341,9 @@ def test_polynomial_keeps_a_sign_with_no_term_to_attach_to() -> None:
 def test_polynomial_leaves_a_program_too_short_to_have_a_header() -> None:
     """The ``f(x) =`` header is three terms; a shorter program has none."""
     assert _polynomial("1", 10) == "1"
+
+
+def test_generator_restrictions_name_both_budgets() -> None:
+    restrictions = esolangs.describe("Polynomial")["generator_restrictions"]
+    assert "1934 instructions" in restrictions
+    assert "1000000000 estimated characters" in restrictions

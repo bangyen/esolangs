@@ -5,6 +5,7 @@ from typing import Any
 
 from scripts.check_generator_sizes import (
     BASELINE,
+    BOUNDARIES,
     SCHEMA,
     TABLES,
     baseline,
@@ -63,9 +64,9 @@ class TestDifferences:
         assert differences(_measured(), smaller) != []
 
     def test_a_new_language_is_reported(self) -> None:
-        added = baseline([dict(RECORD), {**RECORD, "language": "Fargo"}])
+        added = baseline([dict(RECORD), {**RECORD, "language": "Newcomer"}])
         assert differences(_measured(), added) == [
-            "Fargo: not in the baseline (new language?)"
+            "Newcomer: not in the baseline (new language?)"
         ]
 
     def test_a_dropped_language_is_reported(self) -> None:
@@ -126,18 +127,19 @@ def test_sweep_refuses_incorrect_or_undecided_rows(monkeypatch) -> None:
 
 
 def test_boundary_rows_are_pinned_and_corpus_drift_fails():
-    table = boundary_tables("Streetcode")[0]
+    name = next(iter(BOUNDARIES))
+    table = boundary_tables(name)[0]
     measured = baseline(
         [
             {
                 **RECORD,
-                "language": "Streetcode",
+                "language": name,
                 "truth_table": table,
                 "executions": [{"row": 0, "commands": 2}, {"row": 1, "commands": 3}],
             }
         ]
     )
-    assert measured["records"]["Streetcode"][table]["commands_by_row"] == {
+    assert measured["records"][name][table]["commands_by_row"] == {
         "0": 2,
         "1": 3,
     }

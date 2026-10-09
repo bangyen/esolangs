@@ -185,3 +185,9 @@ def test_read_answer_finds_a_dumped_answer(capsys: pytest.CaptureFixture[str]) -
     program = esolangs.instantiate("RAM0", esolangs.generate("RAM0", "0110"), [0, 1])
     output = esolangs.run("RAM0", program, timeout=20)
     assert call_main(["read-answer", "RAM0"], capsys, stdin=output).strip() == "1"
+
+
+def test_reading_a_dump_needs_no_parsing_by_the_caller() -> None:
+    ram0 = "z: 1\nn: 1\nram: {\n    0: 0,\n    1: 1\n}"
+    assert esolangs.read_answer("RAM0", ram0) == "1"
+    assert esolangs.read_answer("RAM0", ram0.replace("z: 1", "z: 0")) == "0"
