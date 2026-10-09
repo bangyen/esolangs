@@ -12,7 +12,7 @@ from esolangs.tools.helpers import essential_inputs, read_at
 from esolangs.tools.piet import piet as generate
 from esolangs.tools.piet.balance import _bounded_operations
 from tests.generator_support import verify_generated
-from tests.tools.test_raster_balance import TABLES, score
+from tests.tools.test_boolean_piet_raster_balance import TABLES, score
 
 
 @pytest.mark.parametrize(

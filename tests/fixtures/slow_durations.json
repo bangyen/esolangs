@@ -1,5 +1,5 @@
 {
- "tests/cli/test_cli.py::TestProgramFailuresAreReported::test_the_readme_suffolk_flow_completes": 2.2799767090182286,
+ "tests/languages/test_suffolk.py::test_the_readme_suffolk_flow_completes": 2.2799767090182286,
  "tests/cli/test_cli_io.py::TestReadingTheProgramFileIsBounded::test_a_fifo_with_no_writer_is_bounded": 2.294354666999425,
  "tests/interpreters/test_qoibl.py::TestTheTokenizerCarriesItsOwnStack::test_a_failed_scan_with_data_is_rejected[e\\n\\nr\\n]": 0.00044866699317935854,
  "tests/interpreters/test_qoibl.py::TestTheTokenizerCarriesItsOwnStack::test_a_failed_scan_with_data_is_rejected[qt y\\nqrt\\nrt]": 0.0005077080131741241,

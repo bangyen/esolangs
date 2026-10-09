@@ -13,7 +13,8 @@ from esolangs.vm import make_vm, run_until_halt_or_all_branches_cycle
 from tests.cli.test_cli import call_main
 from tests.cli_support import call_both
 from tests.generator_support import evaluate_generated, overruns
-from tests.test_vm import _run_all
+from tests.test_vm import _run_all, assert_random_steps_reproduce
+from tests.test_vm_protocol import assert_starts_downward
 
 
 def test_bound_execution_passes_the_seed():
@@ -194,3 +195,13 @@ def test_run_still_takes_one_because_it_takes_any_program() -> None:
         esolangs.run("LaserFuck", "o+++.\n", stdin="", timeout=5, seed=0)
         for _ in range(4)
     } == {esolangs.run("LaserFuck", "o+++.\n", stdin="", timeout=5, seed=0)}
+
+
+def test_stepping_through_the_random_instruction_is_reproducible() -> None:
+    """Its random instruction steps the same way twice under one seed."""
+    assert_random_steps_reproduce("LaserFuck", "*\no")
+
+
+def test_the_first_move_is_down_the_rows() -> None:
+    """It begins vertically, so ``VM.ip``'s first component moves first."""
+    assert_starts_downward("LaserFuck")

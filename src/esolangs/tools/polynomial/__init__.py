@@ -19,6 +19,7 @@ from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
     _ASCII_ZERO,
+    _residual_levels,
     _validate_truth_table,
     essential_inputs,
     read_at,
@@ -180,23 +181,9 @@ def _polynomial_factors(instrs: list[list[int]]) -> list[list[int]]:
     return factors
 
 
-def _polynomial_states(truth_table: str, n: int) -> list[list[str]]:
-    """Return the distinct residual subfunctions at each level.
-
-    Two prefixes leaving the same subtable are one state -- the merge a
-    tree cannot make.  A level's states are deduplicated through a set, so
-    a level costs its own text (the states' total length), not a list scan
-    per child; the levels together hold ``n * 2**n`` characters.
-    """
-    levels = [[truth_table]]
-    for k in range(n):
-        width = 2 ** (n - k - 1)
-        nxt: dict[str, None] = {}
-        for state in levels[k]:
-            nxt.setdefault(state[:width])
-            nxt.setdefault(state[width:])
-        levels.append(list(nxt))
-    return levels
+#: The distinct residual subfunctions at each level; Sophie's retired DAG
+#: oracle walks the same levels, so the walk lives in ``helpers``.
+_polynomial_states = _residual_levels
 
 
 def _polynomial_labels(levels: list[list[str]], n: int) -> list[dict[str, int]]:

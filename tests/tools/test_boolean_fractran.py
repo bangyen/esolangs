@@ -8,6 +8,7 @@ from esolangs._evaluate import _evaluate
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.fractran import run as run_fractran
 from esolangs.tools.fractran import PAIR as FRACTRAN_PAIR
+from esolangs.tools.fractran import fractran
 from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
 from esolangs.tools.wrap import balance_program, balance_score
 from tests.generator_support import evaluate_generated
@@ -171,3 +172,8 @@ def test_fractran_parity_representation_omits_empty_width_regimes():
         esolangs.generate("FRACTRAN", "0110", width=width) for width in (1, 4, 8)
     ]
     assert _evaluate("FRACTRAN", balanced, inputs=2) == "0110"
+
+
+def test_folding_shortens_a_constant_table() -> None:
+    """A table whose rows agree collapses below one that folds nothing."""
+    assert len(fractran("00000000")) < len(fractran("01101001"))

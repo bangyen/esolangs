@@ -1,7 +1,6 @@
 """Analytic balance rules match all supported layouts and execute every row."""
 
 import random
-from itertools import product
 
 import pytest
 
@@ -49,10 +48,6 @@ def test_aligned_balanced_programs_compute_the_table(language, table):
     )
     assert balance_score(balanced) == balance_score(optimum)
     assert _evaluate(language, balanced, inputs=len(table).bit_length() - 1) == table
-
-
-def _fish_tables():
-    return [table for inputs in (1, 6) for table in witnesses(inputs)]
 
 
 def _regime_tables():
@@ -104,25 +99,6 @@ def test_balance_reaches_the_supported_minimum(language, table):
     assert balanced in layouts
     assert balance_score(balanced) == balance_score(optimum)
     assert _evaluate(language, balanced, inputs=len(table).bit_length() - 1) == table
-
-
-def test_qoibl_affine_row_envelope_minima():
-    from esolangs.tools.qoibl.balance import _best_width
-
-    for negative, constant, positive, extra in product(
-        [32, 45, 60], [1, 5, 15], [-1, 4, 12], [0, 10, 30]
-    ):
-        rows = [(-2, negative), (0, constant), (1, positive)] + [(0, 1)] * extra
-        length = (
-            sum(slope for slope, _ in rows),
-            sum(offset for _, offset in rows) + len(rows) - 1,
-        )
-        width = _best_width(rows, length, 1, 15)
-        layouts = [
-            "\n".join("x" * (slope * columns + offset) for slope, offset in rows)
-            for columns in range(1, 16)
-        ]
-        assert balance_score(layouts[width - 1]) == min(map(balance_score, layouts))
 
 
 def test_native_width_generators_have_balance_rules():

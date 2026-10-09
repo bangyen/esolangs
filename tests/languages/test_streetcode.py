@@ -13,6 +13,7 @@ from tests.samples import STREETCODE, STREETCODE_GAP
 from tests.test_tui import _frame, _highlighted, _marked_both, _marked_break, _sgr
 from tests.test_validation import _debugger
 from tests.test_vm import _run_all
+from tests.test_vm_protocol import assert_starts_downward
 
 
 class TestBreakpointMarks:
@@ -165,3 +166,8 @@ def test_width_floor_matches_its_source_and_overrun_count() -> None:
     assert max(map(len, source.splitlines())) == 7
     assert overruns("Streetcode", "10010110") == (2, 6)
     assert evaluate_generated("Streetcode", "10010110", width=1) == "10010110"
+
+
+def test_the_first_move_is_down_the_rows() -> None:
+    """It begins vertically, so ``VM.ip``'s first component moves first."""
+    assert_starts_downward("Streetcode")

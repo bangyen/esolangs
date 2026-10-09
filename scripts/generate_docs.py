@@ -8,6 +8,7 @@ to hold them, which is why the gates could stop matching wording.
 
 import pathlib
 import re
+import shlex
 import sys
 import tomllib
 from typing import cast
@@ -71,6 +72,8 @@ _SHAPES_START = "<!-- INPUT-SHAPES:START -->"
 _SHAPES_END = "<!-- INPUT-SHAPES:END -->"
 _API_START = "<!-- PUBLIC-API:START -->"
 _API_END = "<!-- PUBLIC-API:END -->"
+_XOR_START = "<!-- XOR-EXAMPLE:START -->"
+_XOR_END = "<!-- XOR-EXAMPLE:END -->"
 _TUI_START = "<!-- TUI-FRAME:START -->"
 _TUI_END = "<!-- TUI-FRAME:END -->"
 _RASTER_START = "<!-- RASTER-SOURCES:START -->"
@@ -84,6 +87,7 @@ _CENSUS_END = "<!-- CURATION-CENSUS:END -->"
 #: it is a grid language, so the screenshot shows the 2D program pane and a
 #: tuple ``ip``, neither of which a tape language exercises.  ``replay``
 #: derives the frame from nothing, so this is a coordinate, not a recording.
+#: Without it, :func:`tui_language` takes the first grid language like it.
 _TUI_LANGUAGE = "Flowchart"
 _TUI_TABLE = "0110"
 _TUI_BITS = [0, 1]
@@ -298,6 +302,65 @@ def render_api_section() -> str:
     return "\n".join(lines)
 
 
+def xor_language() -> str:
+    """Return the language whose XOR program the README shows first.
+
+    The shortest XOR among the languages reading their inputs as adjacent
+    characters, so it is short enough to read and never a removed language.
+    """
+    readers = [
+        name
+        for name in LANGUAGES
+        if (facts := esolangs.describe(name))["boolean_generator"]
+        and not facts["parameterized"]
+        and not facts["random"]
+        and facts["answer_mode"] == "output"
+        and facts["input_shape"] == "char_stream"
+        and facts["source_kind"] == "text"
+    ]
+    return min(readers, key=lambda name: len(str(esolangs.generate(name, "0110"))))
+
+
+def render_xor_section() -> str:
+    """Render the README's first example: a generated XOR, and its length."""
+    language = xor_language()
+    program = str(esolangs.generate(language, "0110"))
+    return "\n".join(
+        [
+            f"`esolangs generate {shlex.quote(language)} 0110` emits"
+            f" {len(program)} characters computing XOR:",
+            "",
+            "```",
+            program,
+            "```",
+            "",
+            "Feeding it the two adjacent input characters prints their XOR.",
+        ]
+    )
+
+
+def tui_language() -> str:
+    """Return the language the README's frame shows.
+
+    The preferred one while it is registered; otherwise the first grid
+    language that reads its inputs as a plain bit stream, so removing a
+    language never leaves the README pointing at nothing.
+    """
+    if _TUI_LANGUAGE in LANGUAGES:
+        return _TUI_LANGUAGE
+    return next(
+        name
+        for name in LANGUAGES
+        if (facts := esolangs.describe(name))["state_model"] == "grid"
+        and facts["boolean_generator"]
+        and not facts["parameterized"]
+        and not facts["random"]
+        and facts["self_halts"]
+        and facts["answer_mode"] == "output"
+        and facts["input_shape"] == "char_stream"
+    )
+
+
 def render_tui_section() -> str:
     """Render the README's TUI screen between the markers.
 
@@ -316,19 +379,20 @@ def render_tui_section() -> str:
     """
     from esolangs import tui
 
-    program = esolangs.generate(_TUI_LANGUAGE, _TUI_TABLE)
+    language = tui_language()
+    program = esolangs.generate(language, _TUI_TABLE)
     program = cast(str, program)
-    stdin = esolangs.encode_inputs(_TUI_LANGUAGE, _TUI_BITS)
-    frame = tui.replay(_TUI_LANGUAGE, program, stdin, _TUI_STEP)
+    stdin = esolangs.encode_inputs(language, _TUI_BITS)
+    frame = tui.replay(language, program, stdin, _TUI_STEP)
     screen = tui.render(frame, height=_TUI_HEIGHT, width=_TUI_WIDTH)
     drawn = "\n".join(line.rstrip() for line in _ANSI.sub("", screen).splitlines())
     return "\n".join(
         [
-            f"Generate a program with `esolangs generate {_TUI_LANGUAGE}"
-            f" {_TUI_TABLE} > flowchart.txt`, then run",
+            f"Generate a program with `esolangs generate {shlex.quote(language)}"
+            f" {_TUI_TABLE} > {LANGUAGES[language].id}.txt`, then run",
             "`esolangs debug --tui --stdin 01"
-            f" {_TUI_LANGUAGE} flowchart.txt` in a terminal.",
-            f"Here is {_TUI_LANGUAGE} at step {_TUI_STEP}:",
+            f" {shlex.quote(language)} {LANGUAGES[language].id}.txt` in a terminal.",
+            f"Here is {language} at step {_TUI_STEP}:",
             "",
             "```",
             drawn,
@@ -451,6 +515,7 @@ def update_readme(root: pathlib.Path = ROOT) -> None:
         (_README_START, _README_END, render_languages_section),
         (_EXAMPLES_START, _EXAMPLES_END, render_examples_section),
         (_BOOLEAN_COUNT_START, _BOOLEAN_COUNT_END, render_boolean_count_section),
+        (_XOR_START, _XOR_END, render_xor_section),
         (_TUI_START, _TUI_END, render_tui_section),
     ):
         text = _splice(text, start, end, render())

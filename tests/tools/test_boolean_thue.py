@@ -12,7 +12,7 @@ from esolangs.interpreters.other.thue import _Machine, _matches
 from esolangs.interpreters.other.thue import run as run_thue
 from esolangs.interpreters.randomness import Seeded
 from esolangs.tools.thue import thue
-from tests.tools.reader_support import _TABLES
+from tests.tools.reader_support import _TABLES, assert_emissions_grow_by_a_line
 from tests.witness_tables import row_bits as _bits
 from tests.witness_tables import witnesses
 
@@ -242,3 +242,8 @@ def test_a_constant_half_is_stored_once_and_stays_deterministic() -> None:
     for options in ({}, {"balance": True}):
         folded = generate("Thue", half + "1" * 256, **options)
         assert len(folded) < 0.85 * len(generate("Thue", dense, **options))
+
+
+def test_the_emissions_grow_by_a_line() -> None:
+    """Thue drops an ignored input's round, so it is measured on parity."""
+    assert_emissions_grow_by_a_line(thue, parity=True)

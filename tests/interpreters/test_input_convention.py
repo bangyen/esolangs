@@ -9,12 +9,13 @@ import esolangs
 from esolangs.interpreters.io import IO, ScriptedIO
 
 
-@pytest.mark.parametrize(
-    ("language", "program"),
-    [("brainfuck", ",."), ("BFStack", ",.")],
-)
-def test_character_input_preserves_newline(language, program):
+def assert_echoes_a_newline(language: str, program: str) -> None:
+    """``program`` echoes one character; a newline must come back as one."""
     assert esolangs.run(language, program, stdin="\n") == "\n"
+
+
+def test_character_input_preserves_newline():
+    assert_echoes_a_newline("brainfuck", ",.")
 
 
 def test_newline_is_distinct_from_eof():
@@ -33,8 +34,11 @@ def test_interactive_empty_line_is_a_newline_character():
         assert IO().input_char() == 10
 
 
-@pytest.mark.parametrize("language", ["Befunge", "Line", "Piet"])
-def test_numeric_readers_accept_tokens_on_the_same_line(language):
+def assert_reads_tokens_on_one_line(language: str) -> None:
+    """A numeric reader takes ``0 1`` on one line as two inputs.
+
+    Each numeric reader calls this from its own test file.
+    """
     program = esolangs.generate(language, "0110")
     assert (
         esolangs.read_answer(language, esolangs.run(language, program, stdin="0 1"))

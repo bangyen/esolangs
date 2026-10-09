@@ -878,3 +878,22 @@ def same_tokens(template: str, program: object) -> bool:
 def layout_width(template: str) -> int:
     """Return the widest line of ``template``: the width it was laid out to."""
     return max(1, max(map(len, template.splitlines()), default=0))
+
+
+def _residual_levels(truth_table: str, n: int) -> list[list[str]]:
+    """Return the distinct residual subfunctions at each level.
+
+    Two prefixes leaving the same subtable are one state -- the merge a
+    tree cannot make.  A level's states are deduplicated through a set, so
+    a level costs its own text (the states' total length), not a list scan
+    per child; the levels together hold ``n * 2**n`` characters.
+    """
+    levels = [[truth_table]]
+    for k in range(n):
+        width = 2 ** (n - k - 1)
+        nxt: dict[str, None] = {}
+        for state in levels[k]:
+            nxt.setdefault(state[:width])
+            nxt.setdefault(state[width:])
+        levels.append(list(nxt))
+    return levels

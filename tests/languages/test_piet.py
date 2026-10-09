@@ -11,6 +11,7 @@ from esolangs._evaluate import _evaluate
 from esolangs._execution import interpreter_module
 from esolangs.exceptions import TemplateError
 from esolangs.registry import LANGUAGES, SourceKind
+from tests.interpreters.test_input_convention import assert_reads_tokens_on_one_line
 from tests.test_api_contracts import XOR
 
 
@@ -125,3 +126,7 @@ def test_empty_piet_operation_path_halts() -> None:
 def test_piet_detects_its_scale(scale: int) -> None:
     image = esolangs.generate("Piet", "0001", scale=scale)
     assert _evaluate("Piet", Raster.from_png(image.to_png()), inputs=2) == "0001"
+
+
+def test_it_reads_numeric_tokens_on_the_same_line() -> None:
+    assert_reads_tokens_on_one_line("Piet")

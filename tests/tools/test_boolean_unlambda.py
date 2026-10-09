@@ -3,8 +3,9 @@
 import pytest
 
 from esolangs import tools as boolean
+from esolangs.tools.unlambda import unlambda
 from tests.generator_support import verify_generated
-from tests.tools.reader_support import _read_answer
+from tests.tools.reader_support import _read_answer, assert_emissions_grow_by_a_line
 from tests.tools.sample_tables import five_input_sample
 
 
@@ -34,3 +35,15 @@ def test_unlambda_binds_repeated_subtrees_and_skips_equal_halves() -> None:
         for value in (0x6996, 0x1234ABCD5678EF01):
             table = format(value % 2**2**n, f"0{2**n}b")
             assert verify_generated("Unlambda", table), table
+
+
+def test_folding_shortens_a_constant_table() -> None:
+    """A table whose rows agree collapses below one that folds nothing."""
+    assert len(unlambda("00000000")) < len(unlambda("01101001"))
+
+
+def test_the_plain_tree_grows_by_a_line() -> None:
+    """The shipped build folds and shares subtrees, so the plain tree is measured."""
+    from tests.tools.plain_oracles import unlambda_plain
+
+    assert_emissions_grow_by_a_line(unlambda_plain)
