@@ -21,8 +21,6 @@ form still means ``start``.
 from __future__ import annotations
 
 import argparse
-import ast
-import importlib
 import itertools
 import json
 import keyword
@@ -31,7 +29,7 @@ import shlex
 import subprocess
 import sys
 import tomllib
-from collections.abc import Callable, Container
+from collections.abc import Container
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -40,6 +38,15 @@ if TYPE_CHECKING:
     from esolangs.registry import Language
 
 ROOT = Path(__file__).parents[1]
+# ``remove``'s half lives beside this file, imported as a sibling whether
+# this runs as a script or is imported as ``scripts.new_language``.
+if str(Path(__file__).parent) not in sys.path:
+    sys.path.insert(0, str(Path(__file__).parent))
+from remove_language import (  # noqa: E402
+    _tests_attr,
+    remove,
+)
+
 CATEGORIES = tuple(
     sorted(
         path.name
@@ -195,15 +202,6 @@ class Gap:
 
     where: str
     fix: str
-
-
-def _tests_attr(module: str, attr: str) -> Any:
-    """Read ``attr`` from ``tests.<module>``, which needs the repo on the path."""
-    sys.path.insert(0, str(ROOT))
-    try:
-        return getattr(importlib.import_module(f"tests.{module}"), attr)
-    finally:
-        sys.path.remove(str(ROOT))
 
 
 def _tests_module(module: str, attr: str) -> Container[str]:
@@ -576,273 +574,6 @@ def _gate() -> int:
         "language; rerun the gate on a quiet machine before pushing"
     )
     return 0
-
-
-def _whole_statement(
-    node: ast.AST, named: Callable[[ast.AST | None], bool], modules: set[str]
-) -> bool:
-    """Whether ``node`` is a statement that exists only for the language.
-
-    ``X["Name"] = ...``, ``run_x = _runner("module")``, and an import from
-    the language's own interpreter or generator module.
-    """
-    if isinstance(node, ast.ImportFrom):
-        return node.module in modules
-    if not isinstance(node, ast.Assign):
-        return False
-    if any(isinstance(t, ast.Subscript) and named(t.slice) for t in node.targets):
-        return True
-    call = node.value
-    return isinstance(call, ast.Call) and [*map(named, call.args)] == [True]
-
-
-def _drop_entries(path: Path, keys: set[str], modules: set[str]) -> int:
-    """Delete every dict entry, list item or ``X[key] = ...`` keyed by ``keys``.
-
-    Located by AST and cut by line, so an entry must own its lines; one
-    sharing a line with another is left for the leftover report.
-    """
-    source = path.read_text(encoding="utf-8")
-    lines = source.splitlines(keepends=True)
-    spans: list[tuple[int, int]] = []
-
-    def named(node: ast.AST | None) -> bool:
-        return isinstance(node, ast.Constant) and node.value in keys
-
-    def own(first: ast.expr, last: ast.expr) -> None:
-        """Take an entry's lines only if nothing else shares them."""
-        before = lines[first.lineno - 1][: first.col_offset]
-        after = lines[last.end_lineno - 1][last.end_col_offset :]  # type: ignore[operator]
-        if not before.strip() and after.strip() in {"", ","}:
-            lo, hi = first.lineno, last.end_lineno or last.lineno
-            # Its comment goes too, unless a sibling below still sits under it.
-            following = lines[hi].strip() if hi < len(lines) else ""
-            if not following or following[0] in "#)]}":
-                while lo > 1 and lines[lo - 2].strip().startswith("#"):
-                    lo -= 1
-            spans.append((lo, hi))
-
-    for node in ast.walk(ast.parse(source)):
-        if isinstance(node, ast.Dict):
-            for key, value in zip(node.keys, node.values, strict=True):
-                if key is not None and named(key):
-                    own(key, value)
-        elif isinstance(node, ast.List | ast.Set | ast.Tuple):
-            for item in node.elts:
-                # A bare key, or a ``Language("Name", ...)`` naming it.
-                first = (
-                    item.args[0] if isinstance(item, ast.Call) and item.args else None
-                )
-                if named(item) or named(first):
-                    own(item, item)
-        elif isinstance(node, ast.stmt) and _whole_statement(node, named, modules):
-            spans.append((node.lineno, node.end_lineno or node.lineno))
-    # An import another language still uses stays (Cyclic tag reuses BCT's
-    # PAIR); judged on the source with every other cut already made.
-    imports = {
-        (node.lineno, node.end_lineno or node.lineno): node
-        for node in ast.parse(source).body
-        if isinstance(node, ast.ImportFrom)
-    }
-    kept = [*lines]
-    for lo, hi in sorted(set(spans), reverse=True):
-        del kept[lo - 1 : hi]
-    used = {
-        node.id
-        for node in ast.walk(ast.parse("".join(kept)))
-        if isinstance(node, ast.Name)
-    }
-    spans = [
-        span
-        for span in spans
-        if span not in imports
-        or not {a.asname or a.name for a in imports[span].names} & used
-    ]
-    for lo, hi in sorted(set(spans), reverse=True):
-        del lines[lo - 1 : hi]
-    if spans:
-        path.write_text("".join(lines), encoding="utf-8")
-    return len(spans)
-
-
-def _drop_json(path: Path, prune: Callable[[object], object]) -> None:
-    """Rewrite ``path`` through ``prune``, keeping its indent and escaping."""
-    text = path.read_text(encoding="utf-8")
-    indent = len(text.split("\n", 2)[1]) - len(text.split("\n", 2)[1].lstrip())
-    pruned = prune(json.loads(text))
-    out = json.dumps(pruned, indent=indent, ensure_ascii=text.isascii())
-    path.write_text(out + "\n" * text.endswith("\n"), encoding="utf-8")
-
-
-def _drop_toml(path: Path, name: str) -> None:
-    """Drop ``name``'s ``[[...]]`` block and ``"name" = ...`` lines from ``path``.
-
-    Text, not a parse and rewrite, so the file's comments and folding stay.
-    """
-    text = path.read_text(encoding="utf-8")
-    # Each block runs from its header to the next; the head has none.
-    blocks = re.split(r"\n(?=\[)", text)
-    kept = []
-    for block in blocks:
-        if (
-            block.startswith("[[")
-            and tomllib.loads(block.split("\n", 1)[1]).get("generator") == name
-        ):
-            continue
-        lines = block.split("\n")
-        kept.append(
-            "\n".join(
-                line
-                for line in lines
-                if not re.match(
-                    rf"({re.escape(json.dumps(name))}|{re.escape(name)}) =", line
-                )
-            )
-        )
-    path.write_text("\n".join(kept), encoding="utf-8")
-
-
-def _drop_bullets(path: Path, name: str) -> None:
-    """Drop each ``- name ...`` bullet, with its indented lines, from ``path``."""
-    text = path.read_text(encoding="utf-8")
-    bullet = rf"(?m)^- {re.escape(name)}\b.*\n(?:  .*\n)*"
-    path.write_text(re.sub(bullet, "", text), encoding="utf-8")
-
-
-def _owned_test_files(lang: Language) -> list[Path]:
-    """Return the test files the coupling guard counts as ``lang``'s own.
-
-    One rule for both: a file the guard lets name the language goes with it.
-    A prefix that does not end a path segment must be followed by ``.``,
-    ``/`` or ``_``, so stem ``line`` does not take ``lines.toml``.
-    """
-    _, prefixes = _tests_attr("test_language_coupling", "_own")(lang)
-    files = subprocess.run(
-        ["git", "ls-files", "--cached", "--others", "--exclude-standard", "tests"],
-        cwd=ROOT,
-        capture_output=True,
-        text=True,
-        check=True,
-    ).stdout.split()
-    return [
-        ROOT / path
-        for path in files
-        for prefix in prefixes
-        if prefix.startswith("tests/")
-        and path.startswith(prefix)
-        and (prefix.endswith(("/", "_", ".py")) or path[len(prefix)] in "./_")
-    ]
-
-
-def remove(name: str) -> list[str]:
-    """Delete ``name`` everywhere ``check`` looks; return the leftover mentions."""
-    from esolangs.registry import LANGUAGES, example_stems
-
-    lang = LANGUAGES[name]
-    module = lang.interpreter or ""
-    gen = lang.boolean.__name__ if lang.boolean else lang.id
-    stem = example_stems().get(lang.id, "")
-    doomed = [
-        ROOT / "src/esolangs/interpreters" / f"{module.replace('.', '/')}.py",
-        ROOT / f"src/esolangs/tools/{gen}.py",
-        ROOT / f"tests/interpreters/test_{lang.id}.py",
-        ROOT / f"tests/tools/test_boolean_{gen}.py",
-        ROOT / f"tests/fixtures/wiki_examples/{lang.id}.toml",
-        *(ROOT / "src/esolangs/examples").glob(f"{stem}.*" if stem else "-"),
-        *_owned_test_files(lang),
-    ]
-    # ``git rm``, not unlink: tests read ``git ls-files``, which would still
-    # list a file deleted only from disk.
-    subprocess.run(
-        ["git", "rm", "-q", "-r", "--ignore-unmatch", *map(str, doomed)],
-        cwd=ROOT,
-        check=True,
-    )
-    # ``git rm`` skips a file never committed: a language removed before its
-    # first commit would otherwise stay registered.
-    for doomed_path in doomed:
-        if doomed_path.is_file():
-            doomed_path.unlink()
-    keys = {name, module, lang.id, gen, stem} - {""}
-    modules = {f"esolangs.interpreters.{module}", f"esolangs.tools.{gen}"}
-    for relative in (
-        "src/esolangs/registry/_table.py",
-        "src/esolangs/tools/__init__.py",
-        "tests/samples.py",
-        "tests/tools/boolean_runners.py",
-        "tests/tools/test_wrap.py",
-        "tests/proofs/test_execution_formulas.py",
-        "tests/proofs/test_workspace_formulas.py",
-        "tests/proofs/test_schemes.py",
-    ):
-        _drop_entries(ROOT / relative, keys, modules)
-
-    def prune(node: object) -> object:
-        if isinstance(node, dict):
-            return {k: prune(v) for k, v in node.items() if k != name}
-        if isinstance(node, list):
-            return [
-                prune(item)
-                for item in node
-                if not (isinstance(item, dict) and item.get("generator") == name)
-            ]
-        return node
-
-    _drop_json(ROOT / "tests/fixtures/generator_sizes.json", prune)
-    for relative in ("tests/fixtures/curation.toml", "src/esolangs/proof_status.toml"):
-        _drop_toml(ROOT / relative, name)
-    _drop_bullets(ROOT / "docs/limitations.md", name)
-    tuning = ROOT / "tests/fixtures/deep_arities.toml"
-    tuning.write_text(
-        "".join(
-            line
-            for line in tuning.read_text(encoding="utf-8").splitlines(keepends=True)
-            if line.split(" = ", 1)[0] not in keys
-        ),
-        encoding="utf-8",
-    )
-    kept = []
-    for module_name in sorted(modules):
-        users = subprocess.run(
-            ["git", "grep", "-l", "-F", f"from {module_name} import", "--", "*.py"],
-            cwd=ROOT,
-            capture_output=True,
-            text=True,
-            check=False,
-        ).stdout.split()
-        path = f"src/{module_name.replace('.', '/')}.py"
-        if users and (ROOT / path).parent.exists():
-            # Another language imports from it: restore it rather than break.
-            subprocess.run(
-                ["git", "checkout", "HEAD", "--", path], cwd=ROOT, check=True
-            )
-            kept.append(f"{path}: kept, still imported by {', '.join(users)}")
-    for target in ("docs", "examples"):
-        subprocess.run(
-            [sys.executable, "scripts/generate.py", target],
-            cwd=ROOT,
-            check=True,
-            stdout=subprocess.DEVNULL,
-        )
-    # Other files now name fewer languages; the coupling ceiling follows.  A
-    # fresh process: this one's registry still holds the removed language.
-    subprocess.run(
-        [
-            sys.executable,
-            "-c",
-            "from tests.test_language_coupling import lower_recorded; lower_recorded()",
-        ],
-        cwd=ROOT,
-        check=True,
-    )
-    grep = subprocess.run(
-        ["git", "grep", "-n", "-I", "-w", "-e", name, "-e", lang.id, "-e", module],
-        cwd=ROOT,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    return kept + grep.stdout.splitlines()
 
 
 def _report(name: str, gaps: list[Gap]) -> None:
