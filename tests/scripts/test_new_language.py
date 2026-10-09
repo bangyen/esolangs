@@ -37,6 +37,14 @@ def test_an_interpreter_only_language_gets_no_generator() -> None:
     assert [path.name for path in paths] == ["tiny.py", "test_tiny.py"]
 
 
+def test_scaffold_records_the_language_as_unassessed(root: Path) -> None:
+    curation = root / "tests/fixtures/curation.toml"
+    curation.parent.mkdir(parents=True)
+    curation.write_text('[languages]\nKept = { route = "fame" }\n')
+    new_language.scaffold("Tiny Lang", "other", generator=False)
+    assert curation.read_text().endswith('"Tiny Lang" = { route = "unassessed" }\n')
+
+
 def test_scaffold_refuses_overwrite(root: Path) -> None:
     target = root / "src/esolangs/interpreters/other/tiny.py"
     target.parent.mkdir(parents=True)

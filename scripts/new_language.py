@@ -94,7 +94,8 @@ def {slug}(truth_table: str) -> str:
 # line per input (docs/CONTRIBUTING.md#the-boolean-io-contract), and
 # wrap=wrap_chars (esolangs.tools.wrap) if a newline anywhere is harmless,
 # else no_wrap="<why a break changes the program>"; eof="..." if an
-# exhausted read has a spec value, empty_program="..." if "" is rejected;
+# exhausted read has a spec value, empty_program="..." if "" is rejected,
+# random=True if an instruction draws at random (run(seed=...) fixes it);
 # a generator taking a width needs balance=, picking its squarest regime;
 # example=Example(pair=PAIR, expected=...) for a template, or
 # Example(expected=...) when the 0,1 row's output is not a bare "0" (a
@@ -161,7 +162,18 @@ def scaffold(name: str, category: str, *, generator: bool = True) -> list[Path]:
     for path, text in files.items():
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(text)
+    _seed_curation(name)
     return list(files)
+
+
+def _seed_curation(name: str) -> None:
+    """Record ``name`` as unassessed; ``finish`` asks for the real count."""
+    path = ROOT / "tests/fixtures/curation.toml"
+    if not path.exists() or name in tomllib.loads(path.read_text())["languages"]:
+        return
+    key = name if re.fullmatch(r"[A-Za-z0-9_-]+", name) else json.dumps(name)
+    text = path.read_text(encoding="utf-8").rstrip("\n")
+    path.write_text(f'{text}\n{key} = {{ route = "unassessed" }}\n', encoding="utf-8")
 
 
 def _interpreter_stub(name: str) -> str:
@@ -208,7 +220,8 @@ def _unregistered(name: str, slug: str) -> list[Gap]:
             Gap(
                 "src/esolangs/registry/_table.py",
                 f'add Language("{name}", "{module}") to _INTERPRETER_ONLY; add '
-                "split=True only if run() takes list[str], one string per line",
+                "split=True only if run() takes list[str], one string per line, "
+                "and random=True if an instruction draws at random",
             )
         ]
     return [
@@ -221,6 +234,14 @@ def _unregistered(name: str, slug: str) -> list[Gap]:
             "(docs/CONTRIBUTING.md#the-boolean-io-contract)",
         )
     ]
+
+
+def _registered_generator(name: str) -> bool:
+    """Whether ``name`` is registered with a Boolean generator."""
+    from esolangs.registry import LANGUAGES
+
+    lang = LANGUAGES.get(name)
+    return lang is not None and lang.boolean is not None
 
 
 def _common_gaps(name: str, module: str) -> list[Gap]:
@@ -248,13 +269,14 @@ def _common_gaps(name: str, module: str) -> list[Gap]:
         for path in tests
         if "def test_placeholder_" in path.read_text(encoding="utf-8")
     )
-    if name not in _tests_module("samples", "SAMPLES"):
+    if _registered_generator(name):
+        pass  # tests/samples.py derives its sample from the generator
+    elif name not in _tests_module("samples", "SAMPLES"):
         gaps.append(
             Gap(
                 "tests/samples.py",
                 f'add "{name}": (<tiny program>, <stdin>) to SAMPLES; the VM '
-                "protocol and debugger tests step it (a generator language "
-                "gets its own one-input program once the generator runs)",
+                "protocol and debugger tests step it",
             )
         )
     curation = tomllib.loads((ROOT / "tests/fixtures/curation.toml").read_text())
@@ -282,6 +304,16 @@ def _generator_gaps(lang: Language) -> list[Gap]:
     source = ROOT / f"src/esolangs/tools/{gen}.py"
     if source.exists() and PLACEHOLDER in source.read_text(encoding="utf-8"):
         gaps.append(Gap(str(source.relative_to(ROOT)), "write the docstring"))
+    if source.exists() and "raise NotImplementedError(" in source.read_text(
+        encoding="utf-8"
+    ):
+        gaps.append(
+            Gap(
+                str(source.relative_to(ROOT)),
+                "implement the generator; tests/samples.py derives the "
+                "language's VM sample from its one-input program",
+            )
+        )
     if gen not in tools.__all__:
         gaps.append(
             Gap(
@@ -380,11 +412,13 @@ def quick_tests(name: str) -> list[str]:
     from esolangs.registry._language import Shape
 
     lang = LANGUAGES[name]
+    gen = lang.boolean.__name__ if lang.boolean else lang.id
     nodes = [
         path
         for path in (
             f"tests/interpreters/test_{lang.id}.py",
-            f"tests/tools/test_boolean_{lang.id}.py",
+            f"tests/tools/test_boolean_{gen}.py",
+            f"tests/languages/test_{lang.id}.py",
         )
         if (ROOT / path).exists()
     ]
@@ -675,6 +709,31 @@ def _drop_bullets(path: Path, name: str) -> None:
     path.write_text(re.sub(bullet, "", text), encoding="utf-8")
 
 
+def _owned_test_files(lang: Language) -> list[Path]:
+    """Return the test files the coupling guard counts as ``lang``'s own.
+
+    One rule for both: a file the guard lets name the language goes with it.
+    A prefix that does not end a path segment must be followed by ``.``,
+    ``/`` or ``_``, so stem ``line`` does not take ``lines.toml``.
+    """
+    _, prefixes = _tests_attr("test_language_coupling", "_own")(lang)
+    files = subprocess.run(
+        ["git", "ls-files", "--cached", "--others", "--exclude-standard", "tests"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.split()
+    return [
+        ROOT / path
+        for path in files
+        for prefix in prefixes
+        if prefix.startswith("tests/")
+        and path.startswith(prefix)
+        and (prefix.endswith(("/", "_", ".py")) or path[len(prefix)] in "./_")
+    ]
+
+
 def remove(name: str) -> list[str]:
     """Delete ``name`` everywhere ``check`` looks; return the leftover mentions."""
     from esolangs.registry import LANGUAGES, example_stems
@@ -690,6 +749,7 @@ def remove(name: str) -> list[str]:
         ROOT / f"tests/tools/test_boolean_{gen}.py",
         ROOT / f"tests/fixtures/wiki_examples/{lang.id}.toml",
         *(ROOT / "src/esolangs/examples").glob(f"{stem}.*" if stem else "-"),
+        *_owned_test_files(lang),
     ]
     # ``git rm``, not unlink: tests read ``git ls-files``, which would still
     # list a file deleted only from disk.
@@ -698,6 +758,11 @@ def remove(name: str) -> list[str]:
         cwd=ROOT,
         check=True,
     )
+    # ``git rm`` skips a file never committed: a language removed before its
+    # first commit would otherwise stay registered.
+    for doomed_path in doomed:
+        if doomed_path.is_file():
+            doomed_path.unlink()
     keys = {name, module, lang.id, gen, stem} - {""}
     modules = {f"esolangs.interpreters.{module}", f"esolangs.tools.{gen}"}
     for relative in (
