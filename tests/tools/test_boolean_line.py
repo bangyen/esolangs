@@ -218,3 +218,42 @@ def test_line_extent_fast_path_preserves_merged_runs_and_shared_arms() -> None:
     leaf.goto = Node("o")
     with pytest.raises(ValueError, match="goto"):
         tree_extents(leaf)
+
+
+@pytest.mark.medium
+def test_shorter_stems_execute_every_small_function(tmp_path: Path) -> None:
+    from esolangs.tools.line.small_tree import small_tree_canvas
+
+    total = 0
+    path = str(tmp_path / "shorter-stems.png")
+    for inputs in range(1, 4):
+        for encoded in range(2 ** (2**inputs)):
+            table = f"{encoded:0{2**inputs}b}"
+            node = line_boolean(table)
+            previous = small_tree_canvas(node, compact=False)
+            canvas = small_tree_canvas(node)
+            assert canvas.width * canvas.height <= previous.width * previous.height
+            canvas.save(path)
+            program = compile_program(extract(path))
+            for row in range(2**inputs):
+                io, output = _io(list(map(int, f"{row:0{inputs}b}")))
+                run_compiled(program, io=io)
+                assert output == [int(table[row])]
+            if inputs == 3:
+                total += canvas.width * canvas.height
+    assert total == 68_929_572
+
+
+@pytest.mark.medium
+@pytest.mark.parametrize("table", ["00010111", "00010101", "00100110", "01000101"])
+def test_shorter_stems_balance_keeps_the_area_ceiling(table: str) -> None:
+    from esolangs.tools.line.small_tree import small_tree_canvas
+
+    previous = [
+        small_tree_canvas(line_boolean(table, reverse=reverse), compact=False)
+        for reverse in (False, True)
+    ]
+    old = min(previous, key=lambda c: (abs(c.width - c.height), c.width * c.height))
+    image = esolangs.generate("Line", table, balance=True)
+    assert len(image.rows[0]) * len(image.rows) <= old.width * old.height
+    assert _evaluate("Line", image.to_png(), inputs=3) == table

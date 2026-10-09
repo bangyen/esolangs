@@ -138,10 +138,25 @@ def balance(truth_table: str, _default: Raster) -> Raster:
     nodes = [line_boolean(truth_table, reverse=reverse) for reverse in (False, True)]
     if _validate_truth_table(truth_table) <= _SMALL_MAX:
         drawn = [(small_tree_canvas(node), node) for node in nodes]
-        canvas, node = min(
-            drawn,
-            key=lambda p: (abs(p[0].width - p[0].height), p[0].width * p[0].height),
+
+        def canvas_score(pair: tuple[Canvas, Node]) -> tuple[int, int]:
+            canvas, _ = pair
+            return abs(canvas.width - canvas.height), canvas.width * canvas.height
+
+        previous = [(small_tree_canvas(node, compact=False), node) for node in nodes]
+        old = min(previous, key=canvas_score)
+        candidate = min(drawn, key=canvas_score)
+        # Shorter stems can select a wider orientation: 00010101 grows
+        # 209277 -> 248087 pixels. Preserve the preceding area ceiling.
+        chosen = (
+            candidate
+            if (
+                canvas_score(candidate) <= canvas_score(old)
+                and canvas_score(candidate)[1] <= canvas_score(old)[1]
+            )
+            else old
         )
+        canvas, node = chosen
         return lazy_raster(lambda: _grey_rows(canvas), node)
     compact_score, selected = min(
         ((score(node, compact=True), node) for node in nodes), key=lambda p: p[0]
