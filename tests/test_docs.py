@@ -179,8 +179,9 @@ def test_every_test_a_docstring_names_still_exists() -> None:
     assert not missing, "docstrings name tests that do not exist: " + "; ".join(
         f"{name} (in {', '.join(where)})" for name, where in sorted(missing.items())
     )
-    # A regex that stopped matching would make the check above vacuous.
-    assert len(cited) >= 5, f"only {len(cited)} citations found"
+    # A regex that stopped matching would make the check above vacuous; pin
+    # it on a sample rather than a count the languages' own docstrings set.
+    assert _CITATION.findall("see ``test_a_b2`` and ``other``") == ["test_a_b2"]
 
 
 #: A fully-qualified reference into this package.

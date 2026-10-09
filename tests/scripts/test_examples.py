@@ -20,6 +20,7 @@ from esolangs.vm import (
     run_until_halt_or_growth,
 )
 from tests.generator_support import CHECK
+from tests.pick import first
 
 BASE_DIR = Path(__file__).parents[2]
 
@@ -266,7 +267,13 @@ class TestTheWritersWriteWhatTheBuildersBuild:
         from PIL import Image
 
         module = self._redirect(monkeypatch, tmp_path / "examples")
-        raster = Raster.from_png(BOOLEAN_GENERATED["line"].build(balance=True).to_png())
+        painted = esolangs.describe(first(source_kind="raster", boolean_generator=True))
+        stem = next(
+            stem
+            for stem in BOOLEAN_GENERATED
+            if canonical_id(stem.replace("-", " ")) == painted["id"]
+        )
+        raster = Raster.from_png(BOOLEAN_GENERATED[stem].build(balance=True).to_png())
         monkeypatch.setitem(module.SETS, "boolean", lambda: iter([("img", raster)]))  # type: ignore[attr-defined]
         module.write_set("boolean")  # type: ignore[attr-defined]
         path = tmp_path / "examples" / "img.png"

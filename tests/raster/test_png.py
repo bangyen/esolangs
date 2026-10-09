@@ -12,7 +12,9 @@ import pytest
 
 from esolangs.raster import png
 
-FIXTURES = Path(__file__).parents[1] / "fixtures" / "line"
+#: Two wiki images, kept apart from any one language's fixtures so the codec
+#: tests outlive the language that drew them.
+FIXTURES = Path(__file__).parents[1] / "fixtures" / "png"
 
 # Shape and ink count (pixels below the 128 threshold extract.py uses) for
 # each checked-in fixture, as decoded by Pillow's Image.open().convert("L")

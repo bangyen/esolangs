@@ -14,7 +14,6 @@ from typing import Any
 
 from esolangs.exceptions import GeneratorCapError
 from esolangs.interpreters.source_hints import with_hint
-from esolangs.polynomial_resources import estimate_generation
 from esolangs.registry._contracts import BooleanContract
 from esolangs.registry._language import Language
 from esolangs.tools.helpers import (
@@ -24,6 +23,7 @@ from esolangs.tools.helpers import (
     read_at,
 )
 from esolangs.tools.polynomial.algebra import primes, render_product
+from esolangs.tools.polynomial.resources import estimate_generation
 from esolangs.tools.wrap import _polynomial
 
 # Instruction cap.  Analytic n=10 worst case is 1659

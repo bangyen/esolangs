@@ -29,7 +29,13 @@ class TestTestFiles:
         """Include suites that reach generators through package re-exports."""
         script = load_script()
         selected = script._test_files(script._KINDS["tools"])  # noqa: SLF001
-        assert "test_boolean_three_x.py" in selected
+        package_only = [
+            path.name
+            for path in TOOLS_TESTS.glob("test_*.py")
+            if "esolangs.tools" not in path.read_text(encoding="utf-8")
+        ]
+        assert package_only
+        assert set(package_only) <= set(selected)
         assert "test_boolean_contract.py" in selected
 
 
