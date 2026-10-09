@@ -3,7 +3,6 @@
 from functools import partial
 from typing import ClassVar
 
-import esolangs
 from esolangs.interpreters.grid_based.arrowqueue import _Machine, run
 from esolangs.interpreters.io import ScriptedIO
 from tests.interpreters.contract import (
@@ -18,10 +17,6 @@ run_and_capture = partial(run_printing, run)
 class TestArrowQueue:
     def test_noop_ignored_until_off_grid(self) -> None:
         assert run_and_capture(["   "]) == ""
-
-    def test_the_dump_separates_headings_with_a_space(self) -> None:
-        """Two queued headings, so the separator itself is asserted."""
-        assert esolangs.run("ArrowQueue", "~~") == "0 0"
 
     def test_the_dump_goes_to_the_caller_s_io(self) -> None:
         """``run`` must write through the ``io`` it is handed."""

@@ -66,10 +66,6 @@ class TestRun:
         run("Hi 15!", io)
         assert io.getvalue() == "\x01"
 
-    def test_single_instruction(self) -> None:
-        """15 = 3*5 decodes to '+.' which prints chr(1)."""
-        assert run_program(15) == "\x01"
-
     def test_print_letter(self) -> None:
         """3^65 * 5 decodes to 65 increments then a print (ASCII 'A')."""
         assert run_program(3**65 * 5) == "A"

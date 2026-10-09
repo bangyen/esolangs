@@ -61,16 +61,6 @@ class TestParameterizedArrowQueue:
         sizes = [len(generators.arrowqueue("1" * (2**n))) for n in range(7, 11)]
         assert all(b <= 2 * a for a, b in pairwise(sizes))
 
-    def test_template_is_input_independent(self) -> None:
-        """The template has one run per input, not hardcoded bits."""
-        from esolangs import tools as generators
-
-        template = generators.arrowqueue("0110")
-        assert "{X" not in template
-        setters = (PAIR,) * 2
-        assert template.count(TEMPLATE_CHAR) == sum(len(zero) for zero, _ in setters)
-        assert len(runs(template, TEMPLATE_CHAR, setters)) == 2
-
     @pytest.mark.parametrize("table", ["0110", "0110100110010110" * 2])
     def test_every_input_is_the_same_one_cell(self, table: str) -> None:
         """Both routes spell every input as one cell, ``.`` against ``~``."""

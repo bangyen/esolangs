@@ -440,10 +440,6 @@ def test_grapheme_case_preview_preserves_other_characters():
     assert not _grapheme_corrections("EABEYFAFY")
 
 
-def test_the_input_alphabet() -> None:
-    assert esolangs.describe("Grapheme")["input_encoding"] == ("%", "A")
-
-
 def test_grapheme_names_its_input_alphabet() -> None:
     """Digits are read as truthy, so 0/1 lines answer the wrong row."""
     assert esolangs.describe("Grapheme")["input_encoding"] == ("%", "A")

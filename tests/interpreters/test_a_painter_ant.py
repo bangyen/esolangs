@@ -107,11 +107,6 @@ class TestStepMachine:
         assert run_until_halt_or_cycle(_Machine("N")) is False
 
 
-def test_an_empty_program_leaves_the_ant_where_it_started() -> None:
-    """With no instructions each step returns at once, painting nothing."""
-    assert run_program("") == "o"
-
-
 class TestContract(EmptyProgramContract):
     """The shared empty-program shape, with this language's data."""
 

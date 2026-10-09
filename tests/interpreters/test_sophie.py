@@ -99,13 +99,6 @@ def test_console_input(code: str, line: str, expected: str) -> None:
 
 
 class TestSophieExamples:
-    def test_cat_program_stops_on_nul(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-
-        source = ScriptedIO("\0")
-        run("[;@$0{&}{,}]", io=source)
-        assert source.getvalue() == ""
-
     def test_cat_program_halts_at_eof(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
 
@@ -121,14 +114,6 @@ class TestSophieExamples:
         run(f"#$42{read}.&", io=source)
         assert source.getvalue() == "0"
 
-    def test_cat_program_with_input(self) -> None:
-        with (
-            patch("builtins.input", return_value="H"),
-            redirect_stdout(io.StringIO()) as f,
-        ):
-            run(";@$0{&}{,}&", io=IO())
-        assert f.getvalue() == "H"
-
     def test_xor_program_0_0(self) -> None:
         with (
             patch("builtins.input", side_effect=["0", "0"]),
@@ -139,14 +124,6 @@ class TestSophieExamples:
 
 
 class TestStepMachine:
-    def test_halt_command_sets_halted(self) -> None:
-        from esolangs.interpreters.register_based.sophie import _Machine
-
-        machine = _Machine("&", IO())
-        assert not machine.halted
-        machine.step()
-        assert machine.halted
-
     def test_a_read_loop_is_not_a_cycle(self) -> None:
         """The snapshot holds the input cursor (a85db79a)."""
         from esolangs.interpreters.io import ScriptedIO

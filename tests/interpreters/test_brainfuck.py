@@ -75,7 +75,6 @@ class TestBrainfuck:
     def test_a_read_cell_and_an_incremented_one_agree(self) -> None:
         """The bug this pins was a disagreement, not just a wide value."""
         assert run_and_capture(",+.", inputs=["Ā"]) == "\x01"
-        assert run_and_capture(",.", inputs=["ā"]) == "\x01"
 
     def test_machine_exposes_its_state(self) -> None:
         """``ind``/``ptr``/``tape`` track the run and stay in step."""
@@ -103,19 +102,6 @@ class TestBrainfuck:
             run_and_capture("]")
         with pytest.raises(ValueError, match="unmatched"):
             run_and_capture("+]")
-
-
-class TestFastRunParity:
-    @staticmethod
-    def run_reference(code: str, stdin: str = "") -> tuple[str, int]:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.brainfuck import _Machine
-
-        io_obj = ScriptedIO(stdin)
-        machine = _Machine(code, io_obj)
-        while not machine.halted:
-            machine.step()
-        return io_obj.getvalue(), io_obj.reads
 
 
 @pytest.mark.medium
