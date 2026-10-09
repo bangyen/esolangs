@@ -26,6 +26,7 @@
 "tests/scripts/test_new_language_check.py" = 6
 "tests/test_answer_stdin.py" = 1
 "tests/test_debug.py" = 2
+"tests/test_generator_conventions.py" = 1
 "tests/test_interpreter_only_admissions.py" = 6
 "tests/test_source_containers.py" = 1
 "tests/test_run_bounded.py" = 4
