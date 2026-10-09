@@ -324,16 +324,6 @@ def rotfuck(truth_table: str, *, rotation: str = "backward") -> str:
         out.emit(_parse(bf))
         texts.append(out.text())
     return min(texts, key=len)
-    size = 2 ** len(used)
-
-    strip = ">>".join(
-        "+" if table[size - 1 - slot] == "1" else "" for slot in range(size)
-    )
-    bf = strip + ">" + _select(n, used, _groups(len(used)))
-    bf += "<" + "+" * _ASCII_ZERO + "."
-    out = _Builder()
-    out.emit(_parse(bf))
-    return out.text()
 
 
 def _dialect(rotation: str = "backward") -> None:

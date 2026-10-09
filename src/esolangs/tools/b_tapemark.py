@@ -223,7 +223,6 @@ def b_tapemark(truth_table: str, width: int | None = None) -> str:
     if len(painted) <= depth:
         painted, weights = truth_table, [1 << (depth - 1 - i) for i in range(depth)]
     return _b_tapemark_narrow(painted, depth, weights)
-    return _b_tapemark_narrow(truth_table, depth)
 
 
 def _balance(table: str, default: str) -> str:

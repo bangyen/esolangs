@@ -122,8 +122,8 @@
 "tests/tools/reader_support.py" = 3
 "tests/tools/test_balance.py" = 8
 "tests/tools/test_balance_remaining.py" = 12
-"tests/tools/test_boolean_contract.py" = 14
-"tests/tools/test_boolean_grid.py" = 21
+"tests/tools/test_boolean_contract.py" = 11
+"tests/tools/test_boolean_grid.py" = 13
 "tests/tools/test_boolean_oracle_execution.py" = 3
 "tests/tools/test_boolean_parameterized_contract.py" = 10
 "tests/tools/test_boolean_reader_contract.py" = 5
