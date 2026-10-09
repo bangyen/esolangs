@@ -225,8 +225,8 @@ tables. The existing witnesses and counting argument can be made explicit:
     (ln 2)**2 / (ln lambda * ln 10) <= liminf C_F(n)/(T*n)
     limsup C_F(n)/(T*n) <= (435/448) log10 2.
 
-Here `lambda = 5.971960768...` is the largest root of
-`x**3 - 6x**2 + 1`. The coefficients are 0.11675954 and 0.29229475; neither is claimed sharp.
+Here `lambda = 5.948789300...` is the largest root of
+`x**4 - 5x**3 - 5x**2 - 4x + 1`. The coefficients are 0.11701409 and 0.29229475; neither is claimed sharp.
 For the lower bound, first normalize every balanced program that halts
 with exactly one output on each valid input. Delete adjacent `+-`, `-+`,
 `><` and `<>`; the last two return to their origin, since the tape grows
@@ -235,6 +235,10 @@ Delete `[]`: reaching it on a nonzero cell would prevent halting, so it
 only runs as a no-op on valid inputs. Delete `..`: both outputs would run
 together, so this pair is unreachable on every single-output input.
 Replace `+,` and `-,` by `,`, which overwrites their arithmetic.
+Canonicalize `[+]` to `[-]`: either singleton update loop clears any
+wrapping byte, including zero. Its brackets separate the changed command
+from adjacent runs, so its exponent and run rank stay fixed. Repeat this
+canonicalization after deletions expose a new singleton loop.
 Repeated deletion terminates and preserves the entire valid-input behavior,
 including input consumption. The restriction matters: `+[]` is not halting.
 
@@ -262,15 +266,16 @@ choices bound these prefixes by `exp(O(r ln(L/r))) = exp(o(L/ln L))`.
 Every later exponent costs at least `ln(r+1)`, so the remaining word has
 length at most `N = floor(L/ln(r+1))`.
 
-The normalized word avoids the eight displayed pairs, `][`, and `].`;
-after dot, only a closing bracket is allowed. The corresponding 8-by-8
-transition matrix has characteristic polynomial
+The normalized word avoids the eight displayed pairs, `][`, `].`, and
+`[+]`; after dot, only a closing bracket is allowed. The minimized
+factor-avoidance automaton has nine states and characteristic polynomial
 
-    x**2 (x-1)**2 (x+1)(x**3 - 6x**2 + 1).
+    x (x-1)**3 (x+1)(x**4 - 5x**3 - 5x**2 - 4x + 1).
 
-The matrix is irreducible and has self-loops, so the Perron root is the
-largest cubic root `lambda` in `(5.97,5.98)`; the other two cubic roots
-are in `(-1,0)` and `(0,1)`. Allowed words of length at most `N` number
+The Perron root is the largest quartic root `lambda` in `(5.94,5.95)`.
+The other positive root is in `(0.19,0.20)`; the complex pair has modulus
+less than one (their squared modulus is the reciprocal of the two
+positive roots' product). The dominant root is simple. Allowed words of length at most `N` number
 `O(lambda**N)`, uniformly over the prefix's last command. Programs shorter
 than `r` runs are already counted as prefixes. Hence distinct behaviors
 number at most `exp((ln lambda + o(1)) L/ln L)`. Comparing with `2**T`
@@ -395,7 +400,7 @@ an asymptotic limit.
 ## Open problems
 
 **Factor leading constant.** Whether the limit exists, and its value,
-remain open; the bracket above has a 2.503391-fold gap. The lower side
+remain open; the bracket above has a 2.497945-fold gap. The lower side
 counts weighted exponent compositions after local normalization and
 first-output pruning; the upper side prices a traveling counter, fixed
 signed-ball blocks, and an almost-all prime-window covering bound. Parity

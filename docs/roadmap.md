@@ -118,8 +118,9 @@ line changes only when its next step does.
   sharpen either side ([brainfuck-count](proofs/brainfuck-count.md#8-what-is-not-settled)).
 - **Polynomial's constant.** Next: replace the instruction profile or raise
   the coefficient-mass bound ([polynomial](proofs/polynomial.md#explicit-constants)).
-- **Factor leading constant.** Next: a sound local rewrite lowering the
-  lower side's Perron root, or a cheaper weighted command stream
+- **Factor leading constant.** Clearing-loop normalization lowers the Perron
+  root to `5.948789300`. Next: broaden the normal form or construct a cheaper
+  weighted command stream
   ([factor](proofs/factor.md#open-problems)).
 - **Malbolge's first unreachable arity.** Seventeen remains open. Native
   components pass separate controls, but the reduced LAST-only layout is
