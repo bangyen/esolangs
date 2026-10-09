@@ -6,20 +6,16 @@ import pytest
 
 import esolangs
 from esolangs._evaluate import _evaluate
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.intercal import run
-from esolangs.tools.helpers import best_input_order, fill_runs
+from esolangs.tools.helpers import best_input_order
 from esolangs.tools.intercal import PAIR, TEMPLATE_CHAR, intercal
+from tests.generator_support import run_filled
 from tests.tools.plain_oracles import intercal_plain as _intercal_ordered
 
 
 def _run(table: str, row: int) -> str:
     n = len(table).bit_length() - 1
-    bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
-    program = fill_runs(intercal(table), TEMPLATE_CHAR, [PAIR] * n, bits)
-    io = ScriptedIO("")
-    run(program, io)
-    output = io.getvalue()
+    output = run_filled(run, intercal(table), [PAIR] * n, row, n, TEMPLATE_CHAR)
     assert output in {"_\n\n", "I\n"}
     return "1" if output == "I\n" else "0"
 

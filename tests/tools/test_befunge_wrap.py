@@ -5,7 +5,7 @@ import random
 import pytest
 
 import esolangs
-from esolangs.tools.befunge import befunge
+from esolangs.tools.befunge import balance_befunge, befunge
 
 
 @pytest.mark.parametrize("inputs", [1, 4, 13])
@@ -85,3 +85,13 @@ def test_packed_ascii_lookup_controls_and_balance(inputs: int, kind: str) -> Non
             esolangs.run("Befunge", program, stdin=stdin, max_steps=500).strip()
             == table[row]
         )
+
+
+def test_befunge_balance_rejects_oversized_table() -> None:
+    with pytest.raises(ValueError, match="at most thirteen inputs"):
+        balance_befunge("0" * 16384, "")
+
+
+def test_xor_has_one_column() -> None:
+    xor = esolangs.generate("Befunge", "0110", width=1)
+    assert max(map(len, xor.splitlines())) == 1

@@ -7,9 +7,9 @@ import pytest
 import esolangs
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.stack_based.underload import run
-from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
+from esolangs.tools.helpers import TEMPLATE_CHAR
 from esolangs.tools.underload import PAIR, underload, underload_setters
-from tests.generator_support import verify_generated
+from tests.generator_support import run_filled, verify_generated
 from tests.tools.plain_oracles import underload_plain as _plain
 from tests.tools.sample_tables import five_input_sample
 from tests.witness_tables import witnesses
@@ -17,12 +17,8 @@ from tests.witness_tables import witnesses
 
 def _run(table: str, row: int, width: int | None = None) -> str:
     n = len(table).bit_length() - 1
-    bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
     template = underload(table, width)
-    program = fill_runs(template, TEMPLATE_CHAR, underload_setters(template, n), bits)
-    io = ScriptedIO("")
-    run(program, io)
-    return io.getvalue()
+    return run_filled(run, template, underload_setters(template, n), row, n)
 
 
 @pytest.mark.medium

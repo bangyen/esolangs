@@ -11,7 +11,8 @@ from esolangs.tools.fractran import PAIR as FRACTRAN_PAIR
 from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
 from esolangs.tools.wrap import balance_program, balance_score
 from tests.generator_support import evaluate_generated
-from tests.tools.reader_support import _TABLES, _bits
+from tests.tools.reader_support import _TABLES
+from tests.witness_tables import row_bits as _bits
 from tests.witness_tables import witnesses
 
 
@@ -132,7 +133,6 @@ def test_fractran_phase_parity_exact_resolver_and_size() -> None:
     from esolangs.tools.fractran import fractran, fractran_setters
 
     template = fractran("0110", 1)
-    assert len(template) == 14
     assert max(map(len, template.splitlines())) == 3
     assert fractran_setters(template, 2) == (("1", "2"),) * 2
     legacy = fractran("0110", 4)

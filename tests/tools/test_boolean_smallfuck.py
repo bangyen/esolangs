@@ -5,19 +5,16 @@ from itertools import pairwise
 import pytest
 
 import esolangs
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.tape_based.smallfuck import run
-from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
+from esolangs.registry import LANGUAGES
+from esolangs.tools.helpers import TEMPLATE_CHAR
 from esolangs.tools.smallfuck import PAIR, smallfuck
+from tests.generator_support import run_filled
 
 
 def _run(table: str, row: int) -> str:
     n = len(table).bit_length() - 1
-    bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
-    program = fill_runs(smallfuck(table), TEMPLATE_CHAR, [PAIR] * n, bits)
-    io = ScriptedIO("")
-    run(program, io)
-    return io.getvalue()
+    return run_filled(run, smallfuck(table), [PAIR] * n, row, n)
 
 
 @pytest.mark.parametrize("n", range(1, 4))
@@ -92,3 +89,11 @@ def test_narrow_smallfuck_preserves_fitting_and_large_execution() -> None:
                 )
                 == table[row]
             )
+
+
+def test_smallfuck_matches_a_narrow_layout_without_its_newlines() -> None:
+    same_layout = LANGUAGES["Smallfuck"].same_layout
+    assert same_layout is not None
+    narrow = {1: "*\n<", 4: "*>\n*"}
+    assert same_layout("*>*", "*>*<", lambda width: narrow[width])
+    assert same_layout("*>\n*<", "*>*<", lambda width: narrow[width])

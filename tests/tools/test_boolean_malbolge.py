@@ -13,7 +13,7 @@ from esolangs.exceptions import GeneratorCapError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.malbolge import _XLAT1, _load, run
 from esolangs.tools.malbolge.core import _cascade
-from tests.tools.test_boolean_contract import _dense
+from tests.witness_tables import dense, parity
 
 _module = importlib.import_module("esolangs.tools.malbolge")
 
@@ -31,15 +31,11 @@ def _rows(table: str, rows: Sequence[int] | None = None) -> list[str]:
     return outputs
 
 
-def _parity(n: int) -> str:
-    return "".join(str(row.bit_count() & 1) for row in range(2**n))
-
-
 @pytest.mark.medium
 # Wrapping depends on the width and the program length, not the table: the
 # one-char floor, a stride, and one wider than most lines.
 @pytest.mark.parametrize("width", [1, 13, 200])
-@pytest.mark.parametrize("table", ["0110", _dense(5)])
+@pytest.mark.parametrize("table", ["0110", dense(5)])
 def test_wrapping_preserves_loaded_addresses_and_output(table: str, width: int) -> None:
     plain = boolean.malbolge(table)
     wrapped = generate("Malbolge", table, width=width)
@@ -58,8 +54,8 @@ def test_wrapping_preserves_loaded_addresses_and_output(table: str, width: int) 
 
 @pytest.mark.slow
 @pytest.mark.parametrize("n", [6, 9, 10])
-@pytest.mark.parametrize("shape", [_dense, _parity])
-def test_dense_and_parity_run(n: int, shape: object) -> None:
+@pytest.mark.parametrize("shape", [dense, parity])
+def testdense_andparity_run(n: int, shape: object) -> None:
     """The two worst-case shapes at the top of the supported range."""
     table = shape(n)  # type: ignore[operator]
     assert _rows(table) == list(table)
@@ -89,7 +85,7 @@ def test_eleven_input_tables_differ_in_one_cell_per_row() -> None:
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("shape", [_dense, _parity])
+@pytest.mark.parametrize("shape", [dense, parity])
 def test_eleven_inputs_sampled(shape: object) -> None:
     """Every eighth row and every second-level row of the two shapes."""
     table = shape(11)  # type: ignore[operator]
@@ -110,7 +106,7 @@ def test_twelve_inputs_split_the_last_off_the_cascade() -> None:
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("shape", [_dense, _parity])
+@pytest.mark.parametrize("shape", [dense, parity])
 def test_twelve_inputs_sampled(shape: object) -> None:
     """Every sixteenth row and every second-level row of the two shapes."""
     table = shape(12)  # type: ignore[operator]
@@ -140,7 +136,7 @@ def test_thirteen_inputs_label_every_residue() -> None:
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("shape", [_dense, _parity])
+@pytest.mark.parametrize("shape", [dense, parity])
 def test_thirteen_inputs_sampled(shape: object) -> None:
     """Every thirty-second row and every second-level row of the two shapes."""
     table = shape(13)  # type: ignore[operator]
@@ -198,7 +194,7 @@ def test_fourteen_inputs_second_pass_is_nine_nops_and_a_jump() -> None:
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("shape", [_dense, _parity])
+@pytest.mark.parametrize("shape", [dense, parity])
 def test_fourteen_inputs_sampled(shape: object) -> None:
     """Every 64th row, every level-3 row and every fourth level-2 row."""
     table = shape(14)  # type: ignore[operator]
@@ -247,7 +243,7 @@ def test_digit_builds_label_every_cell(n: int) -> None:
 
 @pytest.mark.slow
 @pytest.mark.parametrize("n", [15, 16])
-@pytest.mark.parametrize("shape", [_dense, _parity])
+@pytest.mark.parametrize("shape", [dense, parity])
 def test_digit_builds_sampled(n: int, shape: object) -> None:
     """Every 128th row, offset per arity so both halves of each pair run."""
     table = shape(n)  # type: ignore[operator]
@@ -258,7 +254,7 @@ def test_digit_builds_sampled(n: int, shape: object) -> None:
 def test_past_sixteen_inputs_is_refused() -> None:
     """Seventeen would need 65,536 answer cells in a 59,049-cell store."""
     with pytest.raises(GeneratorCapError, match="at most 16 inputs"):
-        boolean.malbolge(_dense(17))
+        boolean.malbolge(dense(17))
 
 
 def test_a_value_meaning_needs_sixteen_characters() -> None:
@@ -271,7 +267,7 @@ def test_a_value_meaning_needs_sixteen_characters() -> None:
 
 @pytest.mark.parametrize("n", range(11, 17))
 def test_public_high_arity_routes_execute_boundary_rows(n: int) -> None:
-    table = _dense(n)
+    table = dense(n)
     rows = [0, 1, 2**n - 2, 2**n - 1]
     assert _rows(table, rows) == [table[row] for row in rows]
 

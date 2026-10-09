@@ -7,19 +7,16 @@ import pytest
 import esolangs
 from esolangs._evaluate import _evaluate
 from esolangs.interpreters.grid_based.fish import run
-from esolangs.interpreters.io import ScriptedIO
 from esolangs.tools.fish import balance_fish, fish
 from esolangs.tools.wrap import balance_score
+from tests.generator_support import run_lines
 from tests.tools.test_balance_remaining import _fish_tables
 from tests.witness_tables import witnesses
 
 
 def _run(table: str, row: int, width: int | None = None) -> tuple[str, int]:
-    n = len(table).bit_length() - 1
-    bits = f"{row:0{n}b}"
-    io = ScriptedIO("".join(f"{bit}" for bit in bits))
-    run(fish(table, width).splitlines(), io)
-    return io.getvalue(), io.reads
+    bits = f"{row:0{len(table).bit_length() - 1}b}"
+    return run_lines(run, fish(table, width), bits)
 
 
 @pytest.mark.medium
@@ -49,3 +46,8 @@ def test_fish_balance_matches_all_power_of_two_folds(table):
     assert balance_score(balanced) == balance_score(optimum)
     assert esolangs.generate("Fish", table, balance=True) == balanced
     assert _evaluate("Fish", balanced, inputs=len(table).bit_length() - 1) == table
+
+
+def test_xor_has_one_column() -> None:
+    xor = esolangs.generate("Fish", "0110", width=1)
+    assert max(map(len, xor.splitlines())) == 1

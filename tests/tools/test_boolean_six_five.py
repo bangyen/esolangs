@@ -5,7 +5,9 @@ from itertools import permutations
 
 import pytest
 
+from esolangs import run
 from esolangs import tools as boolean
+from esolangs.tools.examples import BOOLEAN_EXAMPLES
 from esolangs.tools.helpers import permute_truth_table
 from esolangs.tools.six_five import (
     _SIX_FIVE_TEST,
@@ -20,12 +22,15 @@ from esolangs.tools.six_five import (
     _six_five_stream_ordered,
     _six_five_walk,
 )
+from esolangs.tools.wrap import (
+    _six_five,
+)
 from tests.tools.boolean_runners import (
     run_six_five,
     run_six_five_from,
 )
 from tests.tools.sample_tables import five_input_sample
-from tests.tools.test_boolean_contract import _dense
+from tests.witness_tables import dense as _dense
 from tests.witness_tables import witnesses
 
 
@@ -432,3 +437,20 @@ class TestGeneratorEdgePaths:
         assert _SIX_FIVE_MAX_LABEL == 35
         assert _six_five_label(_SIX_FIVE_MAX_LABEL) == "Z"
         assert len(_six_five_label(_SIX_FIVE_MAX_LABEL)) == 1
+
+
+def test_six_five_keeps_an_operand_with_its_command() -> None:
+    """``7``/``8`` take the next character, so a break never lands between."""
+    program = "657812A"
+    for width in range(2, 10):
+        for line in _six_five(program, width).split("\n"):
+            assert not line.endswith(("7", "8")), f"width {width} split an operand"
+
+
+def test_six_five_keeps_a_guard_with_the_instruction_it_skips() -> None:
+    """``7n`` skips the next *token*, and a newline is one."""
+    program = "70621A"
+    stdin = BOOLEAN_EXAMPLES["6-5"].stdin
+    unwrapped = run("6-5", program, stdin=stdin)
+    for width in range(2, 12):
+        assert run("6-5", _six_five(program, width), stdin=stdin) == unwrapped

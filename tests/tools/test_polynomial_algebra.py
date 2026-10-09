@@ -56,7 +56,7 @@ class TestResourceEstimate:
         import importlib
 
         from esolangs.tools.polynomial import _polynomial_dag, _polynomial_factors
-        from tests.tools.test_boolean_contract import _dense
+        from tests.witness_tables import dense as _dense
 
         module = importlib.import_module("esolangs.tools.polynomial.algebra")
         original = _pack

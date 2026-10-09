@@ -1,7 +1,6 @@
 """Contract tests every boolean generator must satisfy."""
 
 import contextlib
-import hashlib
 import importlib
 import tomllib
 from collections.abc import Callable
@@ -19,6 +18,7 @@ from esolangs.tools.helpers import essential_inputs
 from esolangs.vm import run_until_halt_or_cycle
 from tests.generator_support import evaluate_generated
 from tests.source_support import source_units
+from tests.witness_tables import dense, parity
 
 # Every sweep here runs an interpreter over a generated program -- the whole
 # file is the execution gate -- so the module is `medium` and the inner loop
@@ -351,36 +351,7 @@ def test_generator_shape_is_what_the_catalogue_says(name: str) -> None:
 # it.  A single-shape sweep reports the wrong ceiling for all three, which
 # is why both shapes are built at every arity and why the cap table is
 # keyed by shape.
-def _dense(n: int) -> str:
-    """A deterministic dense pseudo-random table -- the worst case to fold."""
-    digest = hashlib.sha256(f"dense:{n}".encode()).digest()
-    bits: list[str] = []
-    block = 0
-    while len(bits) < 2**n:
-        digest = hashlib.sha256(digest + bytes([block & 255])).digest()
-        bits.extend(str(byte & 1) for byte in digest)
-        block += 1
-    return "".join(bits[: 2**n])
-
-
-def _nested_dense(n: int) -> str:
-    """A dense table whose every arity *extends* the one below it."""
-    digest = hashlib.sha256(b"nested-dense").digest()
-    bits: list[str] = []
-    block = 0
-    while len(bits) < 2**n:
-        digest = hashlib.sha256(digest + bytes([block & 255])).digest()
-        bits.extend(str(byte & 1) for byte in digest)
-        block += 1
-    return "".join(bits[: 2**n])
-
-
-def _parity(n: int) -> str:
-    """Parity -- the table with no constant subtree above a single row."""
-    return "".join(str(bin(row).count("1") & 1) for row in range(2**n))
-
-
-_SHAPES = (("dense", _dense), ("parity", _parity))
+_SHAPES = (("dense", dense), ("parity", parity))
 
 
 @pytest.mark.parametrize("name", sorted(BY_BOOLEAN))
@@ -526,11 +497,11 @@ def test_generators_scale_linearly(name: str) -> None:
         # third rung; the deep contract carries it on a backstop for the
         # same reason, and its area recurrence is checked with the
         # construction invariants.
-        sizes = [source_units(fn(_parity(n))) for n in (8, 9)]
+        sizes = [source_units(fn(parity(n))) for n in (8, 9)]
         assert sizes[1] <= 2 * sizes[0]
         return
     arities = (8, 10, 12)
-    sizes = [source_units(fn(_parity(n))) for n in arities]
+    sizes = [source_units(fn(parity(n))) for n in arities]
     if name == "Minifuck":
         assert all(size <= 70 * 2**n for size, n in zip(sizes, arities, strict=True))
         return
@@ -551,7 +522,7 @@ def test_generators_scale_linearly(name: str) -> None:
 def test_the_expensive_generators_grow_as_documented(name: str) -> None:
     """``docs/limitations.md`` tells a reader whether n=11 is affordable."""
     at_eight, at_nine, ratio = _DOCUMENTED_SIZES[name]
-    sizes = (len(esolangs.generate(name, _dense(n))) for n in (8, 9))
+    sizes = (len(esolangs.generate(name, dense(n))) for n in (8, 9))
     assert tuple(sizes) == (at_eight, at_nine), (
         f"{name}'s dense n=8 and n=9 sizes moved; update its row in "
         "_DOCUMENTED_SIZES in tests/tools/test_boolean_contract.py"
@@ -563,7 +534,7 @@ def test_the_expensive_generators_grow_as_documented(name: str) -> None:
 def test_nothing_else_is_anywhere_near_that_big() -> None:
     """The document's "every other generator is under 600KB at n=9"."""
     biggest = max(
-        (len(esolangs.generate(name, _dense(9))), name)
+        (len(esolangs.generate(name, dense(9))), name)
         for name in esolangs.list_languages()
         if name not in _DOCUMENTED_SIZES
         and LANGUAGES[name].boolean is not None
