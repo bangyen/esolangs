@@ -13,7 +13,7 @@ concurrency:
 
 # `.python-version` pins 3.14, but the jobs below deliberately sync other
 # interpreters -- the lint job holds the 3.12 floor `requires-python`
-# promises, and the test matrix spans 3.12/3.13/3.14.  A bare `uv run`
+# promises, and the test matrix spans 3.12/3.13/3.14/3.15.  A bare `uv run`
 # re-reads that pin, sees the synced `.venv` does not match it, and *deletes
 # and recreates* the environment on the pinned interpreter instead of the
 # one the job set up.  `UV_NO_SYNC` makes the explicit `uv sync` above each
@@ -114,7 +114,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.12", "3.13"]
+        python-version: ["3.12", "3.13", "3.15"]
         shard: [0, 1]
 
     steps:
@@ -213,7 +213,7 @@ jobs:
     # and weekly.yml (bare `pytest`) remains their only runner.
     #
     # 3.14 only: the fast suite already covers every promised interpreter
-    # on every push, and weekly.yml keeps the whole suite on all three.
+    # on every push; weekly.yml runs the whole suite on each.
     # Recorded durations balance the shards; new tests use the median known
     # duration. Refresh from weekly timing artifacts; the timeout covers CI's
     # slower cores.
@@ -322,7 +322,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         # The floor `requires-python` promises and the newest classifier.
-        python-version: ["3.12", "3.14"]
+        python-version: ["3.12", "3.15"]
     defaults:
       run:
         shell: bash
@@ -359,7 +359,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [macos-latest, windows-latest]
-        python-version: ["3.12", "3.14"]
+        python-version: ["3.12", "3.15"]
     env:
       PYTHONUTF8: "1"
     steps:

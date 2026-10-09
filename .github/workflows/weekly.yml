@@ -1,6 +1,6 @@
 name: Weekly full suite
 
-# The whole suite on all three interpreters, on a schedule.  The `slow`
+# The whole suite on all supported interpreters, on a schedule.  The `slow`
 # band also runs per-PR now, sharded across four jobs in ci.yml; what
 # keeps this workflow is the `weekly` marker -- the two high-arity probes
 # nothing else runs -- plus a weekly full-suite pass at interpreters the
@@ -38,7 +38,7 @@ jobs:
       # others -- on a weekly run there is no queue to protect.
       fail-fast: false
       matrix:
-        python-version: ["3.12", "3.13", "3.14"]
+        python-version: ["3.12", "3.13", "3.14", "3.15"]
 
     steps:
     - uses: actions/checkout@v7
