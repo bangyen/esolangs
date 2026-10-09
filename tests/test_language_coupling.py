@@ -24,6 +24,10 @@ ROOT = Path(__file__).resolve().parents[1]
 ALLOWED = ROOT / "tests/fixtures/coupling.toml"
 #: The language shared tests use as their example: naming it is not coupling.
 REFERENCE = "brainfuck"
+TREES = ("src/", "tests/", "scripts/")
+#: Per-language registries a new language may skip: a missing differential
+#: spec only means no reference comparison for it.
+OPTIONAL = ("scripts/differential",)
 #: Files ``new_language.py remove`` edits by itself.
 MANAGED = frozenset(
     {
@@ -103,7 +107,7 @@ def _counts() -> dict[str, int]:
     owned = [_own(lang) for name, lang in LANGUAGES.items() if name != REFERENCE]
     counts: dict[str, int] = {}
     for path in files:
-        if path in MANAGED or not path.startswith(("src/", "tests/", "scripts/")):
+        if path in MANAGED or path.startswith(OPTIONAL) or not path.startswith(TREES):
             continue
         found = _mentions(path)
         total = sum(

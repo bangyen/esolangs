@@ -5,18 +5,6 @@
 
 "scripts/benchmark.py" = 3
 "scripts/check_generator_sizes.py" = 3
-"scripts/differential.py" = 44
-"scripts/differential_blind_c1.py" = 19
-"scripts/differential_blind_c2.py" = 17
-"scripts/differential_blind_c3.py" = 19
-"scripts/differential_blind_c4.py" = 17
-"scripts/differential_blind_c5.py" = 17
-"scripts/differential_blind_c6.py" = 15
-"scripts/differential_blind_c7.py" = 10
-"scripts/differential_blind_c8.py" = 4
-"scripts/differential_classics.py" = 6
-"scripts/differential_strings.py" = 1
-"scripts/differential_tarpits.py" = 2
 "scripts/generate_docs.py" = 1
 "scripts/mutate_weekly.py" = 5
 "scripts/profile_vandevelo.py" = 1
